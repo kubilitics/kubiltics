@@ -55,6 +55,7 @@ pub fn setup_system_tray(app: &AppHandle) -> Result<(), Box<dyn std::error::Erro
     Ok(())
 }
 
+#[allow(dead_code)]
 pub fn update_tray_icon_health(app: &AppHandle, health: &str) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     // Update tray icon based on cluster health
     // health can be: "healthy" (green), "degraded" (amber), "unhealthy" (red)

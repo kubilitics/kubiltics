@@ -159,6 +159,7 @@ impl BackendManager {
         }
     }
 
+    #[allow(dead_code)]
     pub async fn stop(&self) -> Result<(), Box<dyn std::error::Error>> {
         *self.is_running.lock().unwrap() = false;
         
@@ -318,12 +319,13 @@ impl BackendManager {
         });
     }
 
+    #[allow(dead_code)]
     async fn stop_ai_backend(&self) {
         *self.ai_is_running.lock().unwrap() = false;
         
         // Kill the AI process if it exists
         if let Ok(mut process_guard) = self.ai_process.lock() {
-            if let Some(mut child) = process_guard.take() {
+            if let Some(child) = process_guard.take() {
                 let _ = child.kill();
                 println!("AI backend stopped");
             }

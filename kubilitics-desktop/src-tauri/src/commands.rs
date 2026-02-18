@@ -1,5 +1,5 @@
 use std::path::PathBuf;
-use tauri::{command, Emitter};
+use tauri::command;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::process::Command;
@@ -691,7 +691,7 @@ pub async fn has_analytics_consent_been_asked() -> Result<bool, String> {
 
 #[command]
 pub async fn get_desktop_info() -> Result<DesktopInfo, String> {
-    use std::time::{SystemTime, UNIX_EPOCH};
+    // use std::time::{SystemTime, UNIX_EPOCH};
     
     let app_data_dir = get_app_data_dir().await?;
     let kubeconfig_path = get_kubeconfig_path(None).await?.to_string_lossy().to_string();

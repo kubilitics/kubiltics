@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2.0",
   "productName": "Kubilitics",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "identifier": "com.kubilitics.app",
   "build": {
     "beforeDevCommand": "npm run dev",
@@ -52,7 +52,7 @@
         "https://releases.kubilitics.dev/update/{{target}}/{{arch}}/{{current_version}}"
       ],
       "dialog": true,
-      "pubkey": ""
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDM5MUZCRjI2MUFDMkM4MjUKUldRbHlNSWFKcjhmT2VPZStqMGhVZEl4QmN2RXVFU1V3cFVxWnFENWhCWDYwblpjUUUxVUoxY1gK"
     }
   },
   "app": {
