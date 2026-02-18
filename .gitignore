@@ -83,6 +83,15 @@ kubilitics-desktop/**/target/
 
 # Desktop app bundled binaries
 kubilitics-desktop/**/binaries/
+kubilitics-desktop/src-tauri/binaries/
+**/binaries/*.exe
+**/binaries/kubilitics-*
+**/binaries/kcli-*
+
+# Desktop app build outputs
+kubilitics-desktop/dist/
+kubilitics-desktop/src-tauri/target/
+kubilitics-desktop/src-tauri/gen/
 
 # Bun binary lockfile (optional; remove if you want to commit it)
 *.lockb

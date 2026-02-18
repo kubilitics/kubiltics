@@ -233,6 +233,22 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
+      - name: Clean build artifacts
+        shell: bash
+        run: |
+          # Clean binaries directory to avoid stale artifacts
+          if [ -d "kubilitics-desktop/src-tauri/binaries" ]; then
+            rm -rf kubilitics-desktop/src-tauri/binaries/*
+          fi
+          mkdir -p kubilitics-desktop/src-tauri/binaries
+          # Clean Tauri target directory (optional, but ensures clean builds)
+          if [ -d "kubilitics-desktop/src-tauri/target/release" ]; then
+            rm -rf kubilitics-desktop/src-tauri/target/release
+          fi
+          if [ -d "kubilitics-desktop/src-tauri/target/universal-apple-darwin" ]; then
+            rm -rf kubilitics-desktop/src-tauri/target/universal-apple-darwin
+          fi
+          echo "✅ Cleaned build artifacts"
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
@@ -261,6 +277,7 @@ jobs:
           go-version: ${{ env.GO_VERSION }}
       - name: Build Go backend sidecar
         # Tauri v2 externalBin files MUST carry the platform-triple suffix
+        shell: bash
         run: |
           mkdir -p kubilitics-desktop/src-tauri/binaries
           cd kubilitics-backend
@@ -272,9 +289,11 @@ jobs:
             CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -ldflags="-s -w" -o ../kubilitics-desktop/src-tauri/binaries/kubilitics-backend-x86_64-pc-windows-msvc.exe ./cmd/server
           else
             CGO_ENABLED=0 GOOS=linux   GOARCH=amd64 go build -ldflags="-s -w" -o ../kubilitics-desktop/src-tauri/binaries/kubilitics-backend-x86_64-unknown-linux-gnu  ./cmd/server
+            CGO_ENABLED=0 GOOS=linux   GOARCH=arm64 go build -ldflags="-s -w" -o ../kubilitics-desktop/src-tauri/binaries/kubilitics-backend-aarch64-unknown-linux-gnu ./cmd/server
             chmod +x ../kubilitics-desktop/src-tauri/binaries/kubilitics-backend-*
           fi
       - name: Build kcli sidecar
+        shell: bash
         run: |
           mkdir -p kubilitics-desktop/src-tauri/binaries
           cd kcli
@@ -292,6 +311,7 @@ jobs:
       - name: Build AI sidecar (optional)
         # CGO_ENABLED=0 for cross-platform desktop distribution (no sqlite at desktop layer)
         continue-on-error: true
+        shell: bash
         run: |
           if [ -d "kubilitics-ai" ]; then
             mkdir -p kubilitics-desktop/src-tauri/binaries
@@ -304,9 +324,68 @@ jobs:
               CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -ldflags="-s -w" -o ../kubilitics-desktop/src-tauri/binaries/kubilitics-ai-x86_64-pc-windows-msvc.exe ./cmd/server/main.go
             else
               CGO_ENABLED=0 GOOS=linux   GOARCH=amd64 go build -ldflags="-s -w" -o ../kubilitics-desktop/src-tauri/binaries/kubilitics-ai-x86_64-unknown-linux-gnu  ./cmd/server/main.go
+              CGO_ENABLED=0 GOOS=linux   GOARCH=arm64 go build -ldflags="-s -w" -o ../kubilitics-desktop/src-tauri/binaries/kubilitics-ai-aarch64-unknown-linux-gnu ./cmd/server/main.go
               chmod +x ../kubilitics-desktop/src-tauri/binaries/kubilitics-ai-*
             fi
           fi
+      - name: Verify binaries exist
+        shell: bash
+        run: |
+          echo "🔍 Verifying required binaries exist..."
+          BINARIES_DIR="kubilitics-desktop/src-tauri/binaries"
+          
+          if [ "${{ matrix.os }}" == "macos-latest" ]; then
+            REQUIRED_BINS=(
+              "kubilitics-backend-x86_64-apple-darwin"
+              "kubilitics-backend-aarch64-apple-darwin"
+              "kcli-x86_64-apple-darwin"
+              "kcli-aarch64-apple-darwin"
+            )
+            # AI binary is optional
+            if [ -f "$BINARIES_DIR/kubilitics-ai-x86_64-apple-darwin" ]; then
+              REQUIRED_BINS+=("kubilitics-ai-x86_64-apple-darwin" "kubilitics-ai-aarch64-apple-darwin")
+            fi
+          elif [ "${{ matrix.os }}" == "windows-latest" ]; then
+            REQUIRED_BINS=(
+              "kubilitics-backend-x86_64-pc-windows-msvc.exe"
+              "kcli-x86_64-pc-windows-msvc.exe"
+            )
+            if [ -f "$BINARIES_DIR/kubilitics-ai-x86_64-pc-windows-msvc.exe" ]; then
+              REQUIRED_BINS+=("kubilitics-ai-x86_64-pc-windows-msvc.exe")
+            fi
+          else
+            REQUIRED_BINS=(
+              "kubilitics-backend-x86_64-unknown-linux-gnu"
+              "kubilitics-backend-aarch64-unknown-linux-gnu"
+              "kcli-x86_64-unknown-linux-gnu"
+              "kcli-aarch64-unknown-linux-gnu"
+            )
+            if [ -f "$BINARIES_DIR/kubilitics-ai-x86_64-unknown-linux-gnu" ]; then
+              REQUIRED_BINS+=("kubilitics-ai-x86_64-unknown-linux-gnu" "kubilitics-ai-aarch64-unknown-linux-gnu")
+            fi
+          fi
+          
+          MISSING_BINS=()
+          for bin in "${REQUIRED_BINS[@]}"; do
+            if [ ! -f "$BINARIES_DIR/$bin" ]; then
+              MISSING_BINS+=("$bin")
+            else
+              echo "✅ Found: $bin"
+            fi
+          done
+          
+          if [ ${#MISSING_BINS[@]} -gt 0 ]; then
+            echo "❌ ERROR: Missing required binaries:"
+            for bin in "${MISSING_BINS[@]}"; do
+              echo "   - $bin"
+            done
+            echo ""
+            echo "Available binaries in $BINARIES_DIR:"
+            ls -lh "$BINARIES_DIR" || echo "Directory is empty or does not exist"
+            exit 1
+          fi
+          
+          echo "✅ All required binaries verified"
       - name: Setup macOS code signing
         if: matrix.os == 'macos-latest'
         env:
