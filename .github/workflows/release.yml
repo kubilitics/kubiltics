@@ -439,13 +439,15 @@ jobs:
         if: matrix.os == 'macos-latest'
         working-directory: kubilitics-desktop/src-tauri
         env:
-          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
           TAURI_SKIP_DEVSERVER_CHECK: "true"
         # --config overrides beforeBuildCommand to "" so Tauri doesn't try to run
         # "npm run build" from kubilitics-desktop/ (which has no package.json).
         # The frontend dist was already built and copied in the previous steps.
+        # APPLE_SIGNING_IDENTITY is NOT passed as an env var here — instead we inject
+        # it into the --config JSON only when the secret is set, to prevent Tauri from
+        # attempting codesign with an empty identity and failing with keychain errors.
         shell: bash
         run: |
           # Verify dist exists before building
@@ -459,7 +461,19 @@ jobs:
             exit 1
           fi
           echo "✅ Pre-build checks passed"
-          cargo tauri build --target universal-apple-darwin --config '{"build":{"beforeBuildCommand":""}}'
+
+          # Build config: always disable beforeBuildCommand.
+          # Only add signingIdentity when APPLE_CERTIFICATE secret is actually set —
+          # passing an empty string causes codesign to fail with "keychain item not found".
+          if [ -n "${{ secrets.APPLE_CERTIFICATE }}" ]; then
+            CONFIG='{"build":{"beforeBuildCommand":""},"bundle":{"macOS":{"signingIdentity":"${{ secrets.APPLE_SIGNING_IDENTITY }}"}}}'
+            echo "🔐 Code signing enabled"
+          else
+            CONFIG='{"build":{"beforeBuildCommand":""},"bundle":{"macOS":{"signingIdentity":null}}}'
+            echo "⚠️  No APPLE_CERTIFICATE secret found — building unsigned (ad-hoc) app"
+          fi
+
+          cargo tauri build --target universal-apple-darwin --config "$CONFIG"
       - name: Notarize macOS app
         if: matrix.os == 'macos-latest'
         env:
