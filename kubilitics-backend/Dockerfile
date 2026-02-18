@@ -81,8 +81,9 @@ RUN apk --no-cache add curl ca-certificates && \
     curl -fsSL "https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/${KARCH}/kubectl" \
         -o /usr/local/bin/kubectl && \
     chmod +x /usr/local/bin/kubectl && \
-    # Verify the downloaded binary is the correct arch ELF
-    file /usr/local/bin/kubectl
+    # Verify download succeeded (size check — can't exec cross-arch binary here)
+    test -s /usr/local/bin/kubectl && \
+    echo "kubectl ${KUBECTL_VERSION} for ${KARCH} downloaded: $(ls -lh /usr/local/bin/kubectl | awk '{print $5}')"
 
 # ── Stage 3: Runtime ──────────────────────────────────────────────────────────
 # Runtime stage uses the TARGET platform — this is the actual container image.
