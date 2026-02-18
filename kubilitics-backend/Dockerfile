@@ -107,12 +107,12 @@ COPY --from=builder /out/kcli /usr/local/bin/kcli
 
 # Create writable data directory and fix ownership before dropping to non-root
 RUN mkdir -p /data && \
-    chown -R kubilitics:kubilitics /app /data
-
-# Smoke test: kcli version bypasses kubectl dependency check
-# (PersistentPreRunE early-returns for 'version' and 'completion').
-# KCLI_CI=true disables animations so this RUN step never blocks on TTY.
-RUN KCLI_CI=true /usr/local/bin/kcli version
+    chown -R kubilitics:kubilitics /app /data && \
+    # Verify binaries are present and non-empty (cannot exec cross-arch binaries
+    # at image build time — smoke test happens at container startup instead)
+    test -s /usr/local/bin/kcli && \
+    test -s /usr/local/bin/kubectl && \
+    test -s /app/kubilitics-backend
 
 USER kubilitics
 
