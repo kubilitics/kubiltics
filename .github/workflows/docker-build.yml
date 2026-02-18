@@ -53,6 +53,7 @@ jobs:
   backend:
     name: Build and Push Backend
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     if: |
       github.event_name == 'workflow_dispatch' && (github.event.inputs.component == 'backend' || github.event.inputs.component == 'all') ||
       github.event_name != 'workflow_dispatch'
@@ -88,7 +89,6 @@ jobs:
       - name: Build and push backend image
         uses: docker/build-push-action@v5
         with:
-          # context must be repo root so the Dockerfile can COPY kcli/ alongside kubilitics-backend/
           context: .
           file: ./kubilitics-backend/Dockerfile
           push: ${{ github.event_name != 'pull_request' }}
@@ -101,16 +101,43 @@ jobs:
       - name: Verify kcli binary in Docker image
         if: github.event_name != 'pull_request'
         run: |
-          IMAGE_TAG=$(echo "${{ steps.meta-backend.outputs.tags }}" | head -1)
+          IMAGE_TAG=$(echo "${{ steps.meta-backend.outputs.tags }}" | head -1 | tr -d '\n')
           echo "Verifying kcli binary in image: $IMAGE_TAG"
-          docker run --rm --platform linux/amd64 --entrypoint "" "$IMAGE_TAG" sh -c "test -f /usr/local/bin/kcli" || (echo "❌ kcli not found" && exit 1)
-          docker run --rm --platform linux/amd64 --entrypoint "" "$IMAGE_TAG" sh -c "test -x /usr/local/bin/kcli" || (echo "❌ kcli not executable" && exit 1)
+          
+          # Pull the image if not already available
+          docker pull "$IMAGE_TAG" || true
+          
+          # Verify kcli exists
+          if ! docker run --rm --platform linux/amd64 --entrypoint "" "$IMAGE_TAG" sh -c "test -f /usr/local/bin/kcli"; then
+            echo "❌ kcli not found at /usr/local/bin/kcli"
+            echo "Debugging: Listing /usr/local/bin/"
+            docker run --rm --platform linux/amd64 --entrypoint "" "$IMAGE_TAG" sh -c "ls -la /usr/local/bin/ || echo 'Directory does not exist'"
+            echo "Debugging: Listing /app/"
+            docker run --rm --platform linux/amd64 --entrypoint "" "$IMAGE_TAG" sh -c "ls -la /app/ || echo 'Directory does not exist'"
+            exit 1
+          fi
+          
+          # Verify kcli is executable
+          if ! docker run --rm --platform linux/amd64 --entrypoint "" "$IMAGE_TAG" sh -c "test -x /usr/local/bin/kcli"; then
+            echo "❌ kcli not executable"
+            docker run --rm --platform linux/amd64 --entrypoint "" "$IMAGE_TAG" sh -c "ls -la /usr/local/bin/kcli"
+            exit 1
+          fi
+          
+          # Test kcli actually runs
+          if ! docker run --rm --platform linux/amd64 --entrypoint "" "$IMAGE_TAG" sh -c "/usr/local/bin/kcli version > /dev/null 2>&1"; then
+            echo "❌ kcli version command failed"
+            docker run --rm --platform linux/amd64 --entrypoint "" "$IMAGE_TAG" sh -c "/usr/local/bin/kcli version" || true
+            exit 1
+          fi
+          
           echo "✅ kcli binary verification passed"
           # Trivy scanning is handled by security-scan.yml to avoid duplication
 
   ai:
     name: Build and Push AI Backend
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     if: |
       github.event_name == 'workflow_dispatch' && (github.event.inputs.component == 'ai' || github.event.inputs.component == 'all') ||
       github.event_name != 'workflow_dispatch'
@@ -160,6 +187,7 @@ jobs:
   frontend:
     name: Build Frontend (if Dockerfile exists)
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     if: |
       github.event_name == 'workflow_dispatch' && github.event.inputs.component == 'all' ||
       github.event_name != 'workflow_dispatch'
