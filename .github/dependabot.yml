@@ -1,19 +1,26 @@
 version: 2
 updates:
   # Go modules - Backend
+  # Groups all patch + minor Go dependency bumps into ONE PR per week.
+  # Major version bumps still get individual PRs (breaking changes need review).
   - package-ecosystem: "gomod"
     directory: "/kubilitics-backend"
     schedule:
       interval: "weekly"
       day: "monday"
       time: "09:00"
-    open-pull-requests-limit: 10
-    reviewers:
-      - "kubilitics"
+    open-pull-requests-limit: 5
     labels:
       - "dependencies"
       - "go"
       - "backend"
+    groups:
+      go-backend-minor-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
 
   # Go modules - AI Backend
   - package-ecosystem: "gomod"
@@ -22,13 +29,18 @@ updates:
       interval: "weekly"
       day: "monday"
       time: "09:00"
-    open-pull-requests-limit: 10
-    reviewers:
-      - "kubilitics"
+    open-pull-requests-limit: 5
     labels:
       - "dependencies"
       - "go"
       - "ai"
+    groups:
+      go-ai-minor-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
 
   # npm - Frontend
   - package-ecosystem: "npm"
@@ -37,14 +49,19 @@ updates:
       interval: "weekly"
       day: "monday"
       time: "09:00"
-    open-pull-requests-limit: 10
-    reviewers:
-      - "kubilitics"
+    open-pull-requests-limit: 5
     labels:
       - "dependencies"
       - "javascript"
       - "frontend"
     versioning-strategy: increase
+    groups:
+      npm-frontend-minor-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
 
   # Cargo - Desktop
   - package-ecosystem: "cargo"
@@ -53,13 +70,18 @@ updates:
       interval: "weekly"
       day: "monday"
       time: "09:00"
-    open-pull-requests-limit: 10
-    reviewers:
-      - "kubilitics"
+    open-pull-requests-limit: 5
     labels:
       - "dependencies"
       - "rust"
       - "desktop"
+    groups:
+      cargo-desktop-minor-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
 
   # GitHub Actions
   - package-ecosystem: "github-actions"
@@ -68,10 +90,12 @@ updates:
       interval: "weekly"
       day: "monday"
       time: "09:00"
-    open-pull-requests-limit: 5
-    reviewers:
-      - "kubilitics"
+    open-pull-requests-limit: 3
     labels:
       - "dependencies"
       - "github-actions"
       - "ci"
+    groups:
+      github-actions-all:
+        patterns:
+          - "*"

@@ -56,9 +56,14 @@ jobs:
     name: Build and Push Backend
     runs-on: ubuntu-latest
     timeout-minutes: 25
+    # Skip Docker builds for Dependabot PRs — dependency bumps don't change
+    # Dockerfile logic and the full multi-platform build adds ~25 min of noise.
+    # Dependabot's own CI (backend-ci / ai-ci) validates the Go code changes.
     if: |
-      github.event_name == 'workflow_dispatch' && (github.event.inputs.component == 'backend' || github.event.inputs.component == 'all') ||
-      github.event_name != 'workflow_dispatch'
+      github.actor != 'dependabot[bot]' && (
+        github.event_name == 'workflow_dispatch' && (github.event.inputs.component == 'backend' || github.event.inputs.component == 'all') ||
+        github.event_name != 'workflow_dispatch'
+      )
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -84,7 +89,7 @@ jobs:
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
             type=semver,pattern={{major}}
-            type=sha,prefix={{branch}}-
+            type=sha,prefix=sha-
             type=raw,value=latest,enable={{is_default_branch}}
             type=raw,value=${{ github.event.inputs.tag }},enable=${{ github.event_name == 'workflow_dispatch' && github.event.inputs.tag != '' }}
 
@@ -130,8 +135,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 25
     if: |
-      github.event_name == 'workflow_dispatch' && (github.event.inputs.component == 'ai' || github.event.inputs.component == 'all') ||
-      github.event_name != 'workflow_dispatch'
+      github.actor != 'dependabot[bot]' && (
+        github.event_name == 'workflow_dispatch' && (github.event.inputs.component == 'ai' || github.event.inputs.component == 'all') ||
+        github.event_name != 'workflow_dispatch'
+      )
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -157,7 +164,7 @@ jobs:
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
             type=semver,pattern={{major}}
-            type=sha,prefix={{branch}}-
+            type=sha,prefix=sha-
             type=raw,value=latest,enable={{is_default_branch}}
             type=raw,value=${{ github.event.inputs.tag }},enable=${{ github.event_name == 'workflow_dispatch' && github.event.inputs.tag != '' }}
 
@@ -181,8 +188,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     if: |
-      github.event_name == 'workflow_dispatch' && github.event.inputs.component == 'all' ||
-      github.event_name != 'workflow_dispatch'
+      github.actor != 'dependabot[bot]' && (
+        github.event_name == 'workflow_dispatch' && github.event.inputs.component == 'all' ||
+        github.event_name != 'workflow_dispatch'
+      )
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -220,7 +229,7 @@ jobs:
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
             type=semver,pattern={{major}}
-            type=sha,prefix={{branch}}-
+            type=sha,prefix=sha-
             type=raw,value=latest,enable={{is_default_branch}}
             type=raw,value=${{ github.event.inputs.tag }},enable=${{ github.event_name == 'workflow_dispatch' && github.event.inputs.tag != '' }}
 
