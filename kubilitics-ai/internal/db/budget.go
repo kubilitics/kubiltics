@@ -93,15 +93,19 @@ func (s *sqliteStore) SetUserBudget(ctx context.Context, userID string, limitUSD
 }
 
 func (s *sqliteStore) ResetUserBudget(ctx context.Context, userID string) error {
-	// Update period_start to NOW for the user.
-	// We use Go's time.Now() to ensure higher precision than SQLite's CURRENT_TIMESTAMP (seconds)
-	// to avoid race conditions in tests where reset happens in the same second as recording.
-
+	// Upsert period_start to NOW+1s for the user.
+	// We add 1 second to ensure any records written in the same wall-clock second
+	// as the reset are excluded from the next summary query.
+	// We use UPSERT (INSERT … ON CONFLICT) so this works even when the user has
+	// no existing row in budget_limits (e.g. limit was set via config, not DB).
+	newPeriodStart := time.Now().UTC().Add(time.Second)
 	_, err := s.db.ExecContext(ctx, `
-		UPDATE budget_limits
-		SET period_start = ?, updated_at = CURRENT_TIMESTAMP
-		WHERE user_id = ?
-	`, time.Now().UTC().Add(time.Second), userID)
+		INSERT INTO budget_limits (user_id, limit_usd, period_start, updated_at)
+		VALUES (?, 0, ?, CURRENT_TIMESTAMP)
+		ON CONFLICT(user_id) DO UPDATE SET
+			period_start = excluded.period_start,
+			updated_at   = CURRENT_TIMESTAMP
+	`, userID, newPeriodStart)
 	if err != nil {
 		return fmt.Errorf("reset user budget: %w", err)
 	}
