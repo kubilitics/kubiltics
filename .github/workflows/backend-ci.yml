@@ -5,122 +5,128 @@ on:
     branches: [ main, develop ]
     paths:
       - 'kubilitics-backend/**'
+      - 'kcli/**'
       - '.github/workflows/backend-ci.yml'
   pull_request:
     branches: [ main, develop ]
     paths:
       - 'kubilitics-backend/**'
+      - 'kcli/**'
   workflow_dispatch:
 
 concurrency:
   group: backend-ci-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  GO_VERSION: '1.24.2'
+  # Pinned kubectl — keep aligned with k8s.io/client-go in go.mod
+  KUBECTL_VERSION: 'v1.30.3'
+
 jobs:
   test:
     name: Test
     runs-on: ubuntu-latest
-    
+    timeout-minutes: 20
+
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-    
-    - name: Set up Go
-      uses: actions/setup-go@v5
+    - uses: actions/checkout@v4
+
+    - uses: actions/setup-go@v5
       with:
-        go-version: '1.24'
+        go-version: ${{ env.GO_VERSION }}
         cache-dependency-path: kubilitics-backend/go.sum
-    
+
     - name: Install dependencies
       working-directory: kubilitics-backend
       run: go mod download
-    
+
     - name: Build kcli binary (for integration tests)
       run: |
         cd kcli
-        go build -ldflags="-s -w" -o ../kubilitics-backend/bin/kcli ./cmd/kcli
+        CGO_ENABLED=0 go build -ldflags="-s -w" -o ../kubilitics-backend/bin/kcli ./cmd/kcli
         chmod +x ../kubilitics-backend/bin/kcli
-        # Also ensure kcli is in PATH for tests
-        echo "$(pwd)/../kubilitics-backend/bin" >> $GITHUB_PATH
-      working-directory: .
+        echo "$GITHUB_WORKSPACE/kubilitics-backend/bin" >> $GITHUB_PATH
 
-    - name: Install kubectl (for kcli integration tests)
+    - name: Install kubectl (pinned, matches client-go version)
       run: |
-        curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+        curl -fsSL "https://dl.k8s.io/release/${{ env.KUBECTL_VERSION }}/bin/linux/amd64/kubectl" -o kubectl
         chmod +x kubectl
         sudo mv kubectl /usr/local/bin/
-        kubectl version --client
+        kubectl version --client --output=json
 
     - name: Run tests
       run: |
-        mkdir -p test_reports/backend
-        cd kubilitics-backend && go test -v -race -coverprofile=coverage.out -covermode=atomic ./... 2>&1 | tee ../test_reports/backend/test.log
+        mkdir -p $GITHUB_WORKSPACE/test_reports/backend
+        cd kubilitics-backend
+        go test -v -race -coverprofile=coverage.out -covermode=atomic ./... \
+          2>&1 | tee $GITHUB_WORKSPACE/test_reports/backend/test.log
 
     - name: Run kcli integration tests
+      # Requires a live backend — expected to skip gracefully in CI
+      continue-on-error: true
       run: |
         cd kubilitics-backend
-        go test -v -timeout 10m ./tests/integration/kcli_test.go -run TestKCLI 2>&1 | tee ../test_reports/backend/kcli-integration-test.log || echo "⚠️ kcli integration tests require running backend - skipping in CI"
-      continue-on-error: true
-    
+        go test -v -timeout 10m ./tests/integration/kcli_test.go -run TestKCLI \
+          2>&1 | tee $GITHUB_WORKSPACE/test_reports/backend/kcli-integration-test.log \
+          || echo "kcli integration tests skipped (require running backend)"
+
     - name: Run govulncheck
+      working-directory: kubilitics-backend
       run: |
         go install golang.org/x/vuln/cmd/govulncheck@latest
         govulncheck ./...
-      working-directory: kubilitics-backend
-    
+
     - name: Upload test report
       uses: actions/upload-artifact@v4
       if: always()
       with:
         name: backend-test-report
-        path: test_reports/backend/
-    
+        path: ${{ github.workspace }}/test_reports/backend/
+
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v4
       with:
         files: ./kubilitics-backend/coverage.out
         flags: backend
         name: backend-coverage
-  
+
   lint:
     name: Lint
     runs-on: ubuntu-latest
-    
+    timeout-minutes: 10
+
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-    
-    - name: Set up Go
-      uses: actions/setup-go@v5
+    - uses: actions/checkout@v4
+
+    - uses: actions/setup-go@v5
       with:
-        go-version: '1.24'
-    
+        go-version: ${{ env.GO_VERSION }}
+
     - name: Run golangci-lint
       uses: golangci/golangci-lint-action@v4
       with:
         version: latest
         working-directory: kubilitics-backend
-        args: --timeout=5m
-  
+        args: --timeout=8m
+
   build:
     name: Build
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     needs: [test, lint]
-    
+
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-    
-    - name: Set up Go
-      uses: actions/setup-go@v5
+    - uses: actions/checkout@v4
+
+    - uses: actions/setup-go@v5
       with:
-        go-version: '1.24'
-    
+        go-version: ${{ env.GO_VERSION }}
+
     - name: Build
       working-directory: kubilitics-backend
-      run: |
-        go build -v -o bin/kubilitics-backend cmd/server/main.go
-    
+      run: CGO_ENABLED=0 go build -v -ldflags="-s -w" -o bin/kubilitics-backend ./cmd/server
+
     - name: Upload artifact
       uses: actions/upload-artifact@v4
       with:

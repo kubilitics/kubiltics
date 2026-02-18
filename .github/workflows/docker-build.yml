@@ -40,6 +40,8 @@ env:
   REGISTRY: ghcr.io
   BACKEND_IMAGE: kubilitics-backend
   AI_IMAGE: kubilitics-ai
+  FRONTEND_IMAGE: kubilitics-frontend
+  PLATFORMS: linux/amd64,linux/arm64
 
 permissions:
   contents: read
@@ -96,7 +98,8 @@ jobs:
           labels: ${{ steps.meta-backend.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          platforms: linux/amd64,linux/arm64
+          platforms: ${{ env.PLATFORMS }}
+          provenance: false
           # Docker Buildx automatically provides TARGETOS and TARGETARCH for multi-platform builds
 
       - name: Verify kcli binary in Docker image
@@ -104,35 +107,22 @@ jobs:
         run: |
           IMAGE_TAG=$(echo "${{ steps.meta-backend.outputs.tags }}" | head -1 | tr -d '\n')
           echo "Verifying kcli binary in image: $IMAGE_TAG"
-          
-          # Pull the image if not already available
-          docker pull "$IMAGE_TAG" || true
-          
-          # Verify kcli exists
-          if ! docker run --rm --platform linux/amd64 --entrypoint "" "$IMAGE_TAG" sh -c "test -f /usr/local/bin/kcli"; then
-            echo "❌ kcli not found at /usr/local/bin/kcli"
-            echo "Debugging: Listing /usr/local/bin/"
-            docker run --rm --platform linux/amd64 --entrypoint "" "$IMAGE_TAG" sh -c "ls -la /usr/local/bin/ || echo 'Directory does not exist'"
-            echo "Debugging: Listing /app/"
-            docker run --rm --platform linux/amd64 --entrypoint "" "$IMAGE_TAG" sh -c "ls -la /app/ || echo 'Directory does not exist'"
-            exit 1
-          fi
-          
-          # Verify kcli is executable
-          if ! docker run --rm --platform linux/amd64 --entrypoint "" "$IMAGE_TAG" sh -c "test -x /usr/local/bin/kcli"; then
-            echo "❌ kcli not executable"
-            docker run --rm --platform linux/amd64 --entrypoint "" "$IMAGE_TAG" sh -c "ls -la /usr/local/bin/kcli"
-            exit 1
-          fi
-          
-          # Test kcli actually runs
-          if ! docker run --rm --platform linux/amd64 --entrypoint "" "$IMAGE_TAG" sh -c "/usr/local/bin/kcli version > /dev/null 2>&1"; then
-            echo "❌ kcli version command failed"
-            docker run --rm --platform linux/amd64 --entrypoint "" "$IMAGE_TAG" sh -c "/usr/local/bin/kcli version" || true
-            exit 1
-          fi
-          
-          echo "✅ kcli binary verification passed"
+
+          # kcli version does not require kubectl in PATH (PersistentPreRunE is
+          # bypassed for the version subcommand). KCLI_CI=true disables animations.
+          for PLATFORM in linux/amd64 linux/arm64; do
+            echo "--- Checking platform: $PLATFORM ---"
+
+            if ! docker run --rm --platform "$PLATFORM" --entrypoint "" \
+                -e KCLI_CI=true "$IMAGE_TAG" \
+                sh -c "/usr/local/bin/kcli version && /usr/local/bin/kubectl version --client --output=json > /dev/null"; then
+              echo "❌ kcli/kubectl verification failed for $PLATFORM"
+              docker run --rm --platform "$PLATFORM" --entrypoint "" "$IMAGE_TAG" \
+                sh -c "ls -la /usr/local/bin/ && /usr/local/bin/kcli version || true" || true
+              exit 1
+            fi
+            echo "✅ $PLATFORM passed"
+          done
           # Trivy scanning is handled by security-scan.yml to avoid duplication
 
   ai:
@@ -181,7 +171,8 @@ jobs:
           labels: ${{ steps.meta-ai.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          platforms: linux/amd64,linux/arm64
+          platforms: ${{ env.PLATFORMS }}
+          provenance: false
 
       # Trivy scanning is handled by security-scan.yml to avoid duplication
 
@@ -222,13 +213,16 @@ jobs:
         id: meta-frontend
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/${{ github.repository_owner }}/kubilitics-frontend
+          images: ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ env.FRONTEND_IMAGE }}
           tags: |
             type=ref,event=branch
             type=ref,event=pr
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            type=sha,prefix={{branch}}-
             type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=${{ github.event.inputs.tag }},enable=${{ github.event_name == 'workflow_dispatch' && github.event.inputs.tag != '' }}
 
       - name: Build and push frontend image
         if: steps.check-frontend-dockerfile.outputs.exists == 'true'
@@ -241,7 +235,8 @@ jobs:
           labels: ${{ steps.meta-frontend.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          platforms: linux/amd64,linux/arm64
+          platforms: ${{ env.PLATFORMS }}
+          provenance: false
 
       - name: Skip frontend build
         if: steps.check-frontend-dockerfile.outputs.exists == 'false'

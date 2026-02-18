@@ -16,68 +16,75 @@ concurrency:
   group: ai-ci-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  GO_VERSION: '1.24.2'
+
 jobs:
   test:
     name: Test
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
-      
+
       - uses: actions/setup-go@v5
         with:
-          go-version: '1.24'
+          go-version: ${{ env.GO_VERSION }}
           cache-dependency-path: kubilitics-ai/go.sum
-      
+
       - name: Install deps
         working-directory: kubilitics-ai
         run: go mod download
-      
+
       - name: Run tests
-        working-directory: kubilitics-ai
         run: |
-          mkdir -p test_reports/ai
-          mkdir -p ../test_reports/ai
-          go test -race -cover -coverprofile=coverage.out ./... 2>&1 | tee ../test_reports/ai/test.log
-      
+          mkdir -p $GITHUB_WORKSPACE/test_reports/ai
+          cd kubilitics-ai
+          go test -race -cover -coverprofile=coverage.out ./... \
+            2>&1 | tee $GITHUB_WORKSPACE/test_reports/ai/test.log
+
       - name: Upload test report
         uses: actions/upload-artifact@v4
         if: always()
         with:
           name: ai-test-report
-          path: test_reports/ai/
-      
+          path: ${{ github.workspace }}/test_reports/ai/
+
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
         with:
           files: ./kubilitics-ai/coverage.out
           flags: ai
           name: ai-coverage
-      
+
       - name: Run govulncheck
         working-directory: kubilitics-ai
         run: |
           go install golang.org/x/vuln/cmd/govulncheck@latest
-          govulncheck ./...
-  
+          govulncheck ./... 2>&1 | tee $GITHUB_WORKSPACE/test_reports/ai/govulncheck.log
+
   lint:
     name: Lint
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-      
+
       - uses: actions/setup-go@v5
         with:
-          go-version: '1.24'
-      
+          go-version: ${{ env.GO_VERSION }}
+
       - name: Run golangci-lint
         uses: golangci/golangci-lint-action@v4
         with:
           version: latest
           working-directory: kubilitics-ai
-  
+          args: --timeout=8m
+
   build:
     name: Build (${{ matrix.goos }}-${{ matrix.goarch }})
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     needs: [test, lint]
     strategy:
       matrix:
@@ -102,7 +109,7 @@ jobs:
 
       - uses: actions/setup-go@v5
         with:
-          go-version: '1.24'
+          go-version: ${{ env.GO_VERSION }}
           cache-dependency-path: kubilitics-ai/go.sum
 
       - name: Build kubilitics-ai (${{ matrix.goos }}/${{ matrix.goarch }})
@@ -110,6 +117,8 @@ jobs:
         env:
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
+          # CGO_ENABLED=0 for cross-platform release/desktop binaries.
+          # Container images use CGO_ENABLED=1 (Dockerfile) for sqlite/pty at runtime.
           CGO_ENABLED: "0"
         run: |
           mkdir -p bin

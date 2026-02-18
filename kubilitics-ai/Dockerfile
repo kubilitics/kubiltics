@@ -1,59 +1,57 @@
-# Multi-stage build for kubilitics-ai
-# Stage 1: Build
-FROM golang:1.24-alpine AS builder
+# syntax=docker/dockerfile:1
 
-# Install build dependencies (no make needed — build directly with go)
-RUN apk add --no-cache git gcc musl-dev
+# ── Build arguments — declared before any FROM so they scope globally ─────────
+ARG GO_VERSION=1.24.2
+ARG ALPINE_VERSION=3.19
 
-# Set working directory
+# ── Stage 1: Builder ──────────────────────────────────────────────────────────
+FROM golang:${GO_VERSION}-alpine AS builder
+
+# Prevent Go from downloading a newer toolchain.
+# go.mod requires go 1.24.0; the builder image provides 1.24.2 which satisfies that.
+ENV GOTOOLCHAIN=local
+
+# gcc + musl-dev required for CGO_ENABLED=1 (sqlite, creack/pty)
+RUN apk add --no-cache gcc musl-dev
+
 WORKDIR /build
 
-# Copy go module files first for layer-cache efficiency
 COPY go.mod go.sum ./
-RUN go mod download
+RUN --mount=type=cache,target=/root/.cache/go-build \
+    --mount=type=cache,target=/go/pkg/mod \
+    go mod download
 
-# Copy source code
 COPY . .
 
-# Build the application — strip debug info for a smaller, production binary
-RUN CGO_ENABLED=1 GOOS=linux go build \
-    -ldflags="-s -w" \
-    -o bin/kubilitics-ai \
-    ./cmd/server/main.go
+RUN --mount=type=cache,target=/root/.cache/go-build \
+    --mount=type=cache,target=/go/pkg/mod \
+    CGO_ENABLED=1 GOOS=linux \
+    go build -ldflags="-s -w" -o bin/kubilitics-ai ./cmd/server/main.go
 
-# Stage 2: Runtime — use the same Alpine series as the builder
-FROM alpine:3.21
+# ── Stage 2: Runtime ──────────────────────────────────────────────────────────
+FROM alpine:${ALPINE_VERSION} AS runtime
 
-# Install runtime dependencies
-RUN apk add --no-cache ca-certificates
+# libc6-compat needed by CGO-linked binary on alpine (musl vs glibc shim)
+RUN apk add --no-cache ca-certificates libc6-compat
 
-# Create app user
 RUN addgroup -g 1000 kubilitics && \
     adduser -D -u 1000 -G kubilitics kubilitics
 
-# Set working directory
 WORKDIR /app
 
-# Copy binary from builder
 COPY --from=builder /build/bin/kubilitics-ai /app/
-
-# Copy configuration template
 COPY config.example.yaml /app/config.yaml.example
 
-# Create directory for mutable config
+# Create config dir and set ownership before switching to non-root user
 RUN mkdir -p /etc/kubilitics && \
-    chown -R kubilitics:kubilitics /app
+    chown -R kubilitics:kubilitics /app /etc/kubilitics
 
-# Switch to non-root user
 USER kubilitics
 
-# Expose port 8081 (kubilitics-ai server)
 EXPOSE 8081
 
-# Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
     CMD wget --quiet --tries=1 --spider http://localhost:8081/health || exit 1
 
-# Run the application
 ENTRYPOINT ["/app/kubilitics-ai"]
 CMD ["--config", "/etc/kubilitics/config.yaml"]

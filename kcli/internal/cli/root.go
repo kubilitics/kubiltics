@@ -132,6 +132,12 @@ func newRootCommand(in io.Reader, out, errOut io.Writer) *cobra.Command {
 	)
 
 	cmd.PersistentPreRunE = func(cmd *cobra.Command, _ []string) error {
+		// version and completion do not need a live cluster or kubectl.
+		switch cmd.Name() {
+		case "version", "completion":
+			return nil
+		}
+
 		// CI/CD Mode Enforcement
 		if os.Getenv("KCLI_CI") == "true" {
 			a.force = true

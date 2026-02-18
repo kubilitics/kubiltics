@@ -1,4 +1,4 @@
-# Release automation (R3.3): build and publish artifacts on version tag
+# Release automation: build and publish artifacts on version tag
 name: Release
 
 on:
@@ -10,39 +10,44 @@ permissions:
   contents: write
   packages: write
 
-# Never cancel a release mid-flight — let it complete.
+# Never cancel a release mid-flight — let it complete
 concurrency:
   group: release-${{ github.ref }}
   cancel-in-progress: false
+
+env:
+  # Single source of truth — matches Dockerfile ARG GO_VERSION
+  GO_VERSION: '1.24.2'
+  PLATFORMS: linux/amd64,linux/arm64
 
 jobs:
   kcli:
     name: kcli Binaries
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
-          go-version: '1.24'
+          go-version: ${{ env.GO_VERSION }}
           cache-dependency-path: kcli/go.sum
       - name: Build kcli Linux amd64
         working-directory: kcli
-        run: GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o ../kcli-linux-amd64 ./cmd/kcli
+        run: CGO_ENABLED=0 GOOS=linux   GOARCH=amd64 go build -ldflags="-s -w" -o ../kcli-linux-amd64   ./cmd/kcli
       - name: Build kcli Linux arm64
         working-directory: kcli
-        run: GOOS=linux GOARCH=arm64 go build -ldflags="-s -w" -o ../kcli-linux-arm64 ./cmd/kcli
+        run: CGO_ENABLED=0 GOOS=linux   GOARCH=arm64 go build -ldflags="-s -w" -o ../kcli-linux-arm64   ./cmd/kcli
       - name: Build kcli macOS amd64
         working-directory: kcli
-        run: GOOS=darwin GOARCH=amd64 go build -ldflags="-s -w" -o ../kcli-darwin-amd64 ./cmd/kcli
+        run: CGO_ENABLED=0 GOOS=darwin  GOARCH=amd64 go build -ldflags="-s -w" -o ../kcli-darwin-amd64  ./cmd/kcli
       - name: Build kcli macOS arm64
         working-directory: kcli
-        run: GOOS=darwin GOARCH=arm64 go build -ldflags="-s -w" -o ../kcli-darwin-arm64 ./cmd/kcli
+        run: CGO_ENABLED=0 GOOS=darwin  GOARCH=arm64 go build -ldflags="-s -w" -o ../kcli-darwin-arm64  ./cmd/kcli
       - name: Build kcli Windows amd64
         working-directory: kcli
-        run: GOOS=windows GOARCH=amd64 go build -ldflags="-s -w" -o ../kcli-windows-amd64.exe ./cmd/kcli
-      - name: Make binaries executable (Unix)
-        run: |
-          chmod +x kcli-linux-amd64 kcli-linux-arm64 kcli-darwin-amd64 kcli-darwin-arm64 || true
+        run: CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -ldflags="-s -w" -o ../kcli-windows-amd64.exe ./cmd/kcli
+      - name: Make Unix binaries executable
+        run: chmod +x kcli-linux-amd64 kcli-linux-arm64 kcli-darwin-amd64 kcli-darwin-arm64 || true
       - name: Upload kcli artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -57,6 +62,7 @@ jobs:
   kubilitics-ai:
     name: kubilitics-ai Binaries
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     strategy:
       matrix:
         include:
@@ -79,13 +85,15 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
-          go-version: '1.24'
+          go-version: ${{ env.GO_VERSION }}
           cache-dependency-path: kubilitics-ai/go.sum
       - name: Build kubilitics-ai (${{ matrix.goos }}/${{ matrix.goarch }})
         working-directory: kubilitics-ai
         env:
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
+          # CGO_ENABLED=0 for cross-platform release/desktop binaries.
+          # Container images use CGO_ENABLED=1 (Dockerfile) for sqlite/pty at runtime.
           CGO_ENABLED: "0"
         run: |
           mkdir -p bin
@@ -102,20 +110,21 @@ jobs:
           path: kubilitics-ai/bin/kubilitics-ai-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.suffix }}
 
   backend:
-    name: Backend
+    name: Backend Binaries
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
-          go-version: '1.24'
+          go-version: ${{ env.GO_VERSION }}
           cache-dependency-path: kubilitics-backend/go.sum
       - name: Build Linux amd64
         working-directory: kubilitics-backend
-        run: GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o kubilitics-backend-linux-amd64 ./cmd/server
+        run: CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o kubilitics-backend-linux-amd64 ./cmd/server
       - name: Build Linux arm64
         working-directory: kubilitics-backend
-        run: GOOS=linux GOARCH=arm64 go build -ldflags="-s -w" -o kubilitics-backend-linux-arm64 ./cmd/server
+        run: CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -ldflags="-s -w" -o kubilitics-backend-linux-arm64 ./cmd/server
       - name: Upload backend artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -125,33 +134,34 @@ jobs:
             kubilitics-backend/kubilitics-backend-linux-arm64
 
   docker-backend:
-    name: Build and Push Backend Docker Image
+    name: Backend Docker Image
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
-      
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-      
-      - name: Log in to GitHub Container Registry
+      - name: Log in to GHCR
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      
-      - name: Extract version from tag
+      - name: Extract and validate version from tag
         id: version
         run: |
           VERSION=${GITHUB_REF#refs/tags/v}
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "major=$(echo $VERSION | cut -d. -f1)" >> $GITHUB_OUTPUT
+          if ! echo "$VERSION" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9._-]+)?$'; then
+            echo "ERROR: malformed tag '$VERSION' — expected semver e.g. 1.2.3"
+            exit 1
+          fi
+          echo "version=$VERSION"                        >> $GITHUB_OUTPUT
+          echo "major=$(echo $VERSION | cut -d. -f1)"   >> $GITHUB_OUTPUT
           echo "minor=$(echo $VERSION | cut -d. -f1-2)" >> $GITHUB_OUTPUT
-      
       - name: Build and push backend Docker image
         uses: docker/build-push-action@v5
         with:
-          # context must be repo root so the Dockerfile can COPY kcli/ alongside kubilitics-backend/
+          # context must be repo root: Dockerfile COPYs both kubilitics-backend/ and kcli/
           context: .
           file: ./kubilitics-backend/Dockerfile
           push: true
@@ -160,32 +170,36 @@ jobs:
             ghcr.io/${{ github.repository_owner }}/kubilitics-backend:${{ steps.version.outputs.minor }}
             ghcr.io/${{ github.repository_owner }}/kubilitics-backend:${{ steps.version.outputs.major }}
             ghcr.io/${{ github.repository_owner }}/kubilitics-backend:latest
-          platforms: linux/amd64,linux/arm64
+          platforms: ${{ env.PLATFORMS }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          provenance: false
 
   docker-ai:
-    name: Build and Push AI Docker Image
+    name: AI Docker Image
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
-      
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-      
-      - name: Log in to GitHub Container Registry
+      - name: Log in to GHCR
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      
-      - name: Extract version from tag
+      - name: Extract and validate version from tag
         id: version
         run: |
           VERSION=${GITHUB_REF#refs/tags/v}
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "major=$(echo $VERSION | cut -d. -f1)" >> $GITHUB_OUTPUT
+          if ! echo "$VERSION" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9._-]+)?$'; then
+            echo "ERROR: malformed tag '$VERSION' — expected semver e.g. 1.2.3"
+            exit 1
+          fi
+          echo "version=$VERSION"                        >> $GITHUB_OUTPUT
+          echo "major=$(echo $VERSION | cut -d. -f1)"   >> $GITHUB_OUTPUT
           echo "minor=$(echo $VERSION | cut -d. -f1-2)" >> $GITHUB_OUTPUT
-      
       - name: Build and push AI Docker image
         uses: docker/build-push-action@v5
         with:
@@ -197,11 +211,16 @@ jobs:
             ghcr.io/${{ github.repository_owner }}/kubilitics-ai:${{ steps.version.outputs.minor }}
             ghcr.io/${{ github.repository_owner }}/kubilitics-ai:${{ steps.version.outputs.major }}
             ghcr.io/${{ github.repository_owner }}/kubilitics-ai:latest
-          platforms: linux/amd64,linux/arm64
+          platforms: ${{ env.PLATFORMS }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          provenance: false
 
   desktop:
-    name: Desktop
+    name: Desktop (${{ matrix.name }})
+    timeout-minutes: 90
     strategy:
+      fail-fast: false
       matrix:
         include:
           - os: macos-latest
@@ -238,56 +257,52 @@ jobs:
           cp -r kubilitics-frontend/dist/. kubilitics-desktop/dist/
       - uses: actions/setup-go@v5
         with:
-          go-version: '1.24'
-      - name: Build Go backend for sidecar
-        # Tauri v2 externalBin: files on disk MUST carry the platform-triple suffix
-        # so the bundler can locate them. e.g. kubilitics-backend-x86_64-apple-darwin
+          go-version: ${{ env.GO_VERSION }}
+      - name: Build Go backend sidecar
+        # Tauri v2 externalBin files MUST carry the platform-triple suffix
         run: |
           mkdir -p kubilitics-desktop/src-tauri/binaries
           cd kubilitics-backend
           if [ "${{ matrix.os }}" == "macos-latest" ]; then
-            GOOS=darwin GOARCH=amd64 go build -ldflags="-s -w" -o ../kubilitics-desktop/src-tauri/binaries/kubilitics-backend-x86_64-apple-darwin ./cmd/server
-            GOOS=darwin GOARCH=arm64 go build -ldflags="-s -w" -o ../kubilitics-desktop/src-tauri/binaries/kubilitics-backend-aarch64-apple-darwin ./cmd/server
+            CGO_ENABLED=0 GOOS=darwin  GOARCH=amd64 go build -ldflags="-s -w" -o ../kubilitics-desktop/src-tauri/binaries/kubilitics-backend-x86_64-apple-darwin       ./cmd/server
+            CGO_ENABLED=0 GOOS=darwin  GOARCH=arm64 go build -ldflags="-s -w" -o ../kubilitics-desktop/src-tauri/binaries/kubilitics-backend-aarch64-apple-darwin      ./cmd/server
             chmod +x ../kubilitics-desktop/src-tauri/binaries/kubilitics-backend-*
           elif [ "${{ matrix.os }}" == "windows-latest" ]; then
-            GOOS=windows GOARCH=amd64 go build -ldflags="-s -w" -o ../kubilitics-desktop/src-tauri/binaries/kubilitics-backend-x86_64-pc-windows-msvc.exe ./cmd/server
+            CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -ldflags="-s -w" -o ../kubilitics-desktop/src-tauri/binaries/kubilitics-backend-x86_64-pc-windows-msvc.exe ./cmd/server
           else
-            GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o ../kubilitics-desktop/src-tauri/binaries/kubilitics-backend-x86_64-unknown-linux-gnu ./cmd/server
+            CGO_ENABLED=0 GOOS=linux   GOARCH=amd64 go build -ldflags="-s -w" -o ../kubilitics-desktop/src-tauri/binaries/kubilitics-backend-x86_64-unknown-linux-gnu  ./cmd/server
             chmod +x ../kubilitics-desktop/src-tauri/binaries/kubilitics-backend-*
           fi
-      - name: Build kcli binary for desktop
+      - name: Build kcli sidecar
         run: |
-          # Tauri externalBin resolves paths relative to src-tauri/; binaries MUST
-          # land in src-tauri/binaries/ with platform-triple suffix so Tauri can
-          # bundle them correctly.
           mkdir -p kubilitics-desktop/src-tauri/binaries
           cd kcli
           if [ "${{ matrix.os }}" == "macos-latest" ]; then
-            GOOS=darwin GOARCH=amd64 go build -ldflags="-s -w" -o ../kubilitics-desktop/src-tauri/binaries/kcli-x86_64-apple-darwin ./cmd/kcli
-            GOOS=darwin GOARCH=arm64 go build -ldflags="-s -w" -o ../kubilitics-desktop/src-tauri/binaries/kcli-aarch64-apple-darwin ./cmd/kcli
+            CGO_ENABLED=0 GOOS=darwin  GOARCH=amd64 go build -ldflags="-s -w" -o ../kubilitics-desktop/src-tauri/binaries/kcli-x86_64-apple-darwin       ./cmd/kcli
+            CGO_ENABLED=0 GOOS=darwin  GOARCH=arm64 go build -ldflags="-s -w" -o ../kubilitics-desktop/src-tauri/binaries/kcli-aarch64-apple-darwin      ./cmd/kcli
             chmod +x ../kubilitics-desktop/src-tauri/binaries/kcli-*
           elif [ "${{ matrix.os }}" == "windows-latest" ]; then
-            GOOS=windows GOARCH=amd64 go build -ldflags="-s -w" -o ../kubilitics-desktop/src-tauri/binaries/kcli-x86_64-pc-windows-msvc.exe ./cmd/kcli
+            CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -ldflags="-s -w" -o ../kubilitics-desktop/src-tauri/binaries/kcli-x86_64-pc-windows-msvc.exe ./cmd/kcli
           else
-            GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o ../kubilitics-desktop/src-tauri/binaries/kcli-x86_64-unknown-linux-gnu ./cmd/kcli
-            GOOS=linux GOARCH=arm64 go build -ldflags="-s -w" -o ../kubilitics-desktop/src-tauri/binaries/kcli-aarch64-unknown-linux-gnu ./cmd/kcli
+            CGO_ENABLED=0 GOOS=linux   GOARCH=amd64 go build -ldflags="-s -w" -o ../kubilitics-desktop/src-tauri/binaries/kcli-x86_64-unknown-linux-gnu  ./cmd/kcli
+            CGO_ENABLED=0 GOOS=linux   GOARCH=arm64 go build -ldflags="-s -w" -o ../kubilitics-desktop/src-tauri/binaries/kcli-aarch64-unknown-linux-gnu ./cmd/kcli
             chmod +x ../kubilitics-desktop/src-tauri/binaries/kcli-*
           fi
-      - name: Build Go AI backend for sidecar (if exists)
-        # AI binary also needs the platform-triple suffix for Tauri bundling.
+      - name: Build AI sidecar (optional)
+        # CGO_ENABLED=0 for cross-platform desktop distribution (no sqlite at desktop layer)
         continue-on-error: true
         run: |
           if [ -d "kubilitics-ai" ]; then
             mkdir -p kubilitics-desktop/src-tauri/binaries
             cd kubilitics-ai
             if [ "${{ matrix.os }}" == "macos-latest" ]; then
-              GOOS=darwin GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="-s -w" -o ../kubilitics-desktop/src-tauri/binaries/kubilitics-ai-x86_64-apple-darwin ./cmd/server/main.go
-              GOOS=darwin GOARCH=arm64 CGO_ENABLED=0 go build -ldflags="-s -w" -o ../kubilitics-desktop/src-tauri/binaries/kubilitics-ai-aarch64-apple-darwin ./cmd/server/main.go
+              CGO_ENABLED=0 GOOS=darwin  GOARCH=amd64 go build -ldflags="-s -w" -o ../kubilitics-desktop/src-tauri/binaries/kubilitics-ai-x86_64-apple-darwin       ./cmd/server/main.go
+              CGO_ENABLED=0 GOOS=darwin  GOARCH=arm64 go build -ldflags="-s -w" -o ../kubilitics-desktop/src-tauri/binaries/kubilitics-ai-aarch64-apple-darwin      ./cmd/server/main.go
               chmod +x ../kubilitics-desktop/src-tauri/binaries/kubilitics-ai-*
             elif [ "${{ matrix.os }}" == "windows-latest" ]; then
-              GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="-s -w" -o ../kubilitics-desktop/src-tauri/binaries/kubilitics-ai-x86_64-pc-windows-msvc.exe ./cmd/server/main.go
+              CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -ldflags="-s -w" -o ../kubilitics-desktop/src-tauri/binaries/kubilitics-ai-x86_64-pc-windows-msvc.exe ./cmd/server/main.go
             else
-              GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="-s -w" -o ../kubilitics-desktop/src-tauri/binaries/kubilitics-ai-x86_64-unknown-linux-gnu ./cmd/server/main.go
+              CGO_ENABLED=0 GOOS=linux   GOARCH=amd64 go build -ldflags="-s -w" -o ../kubilitics-desktop/src-tauri/binaries/kubilitics-ai-x86_64-unknown-linux-gnu  ./cmd/server/main.go
               chmod +x ../kubilitics-desktop/src-tauri/binaries/kubilitics-ai-*
             fi
           fi
@@ -380,11 +395,10 @@ jobs:
           path: kubilitics-desktop/src-tauri/target/release/bundle/
 
   release:
-    name: Create Release
-    # Wait for all binary + docker jobs.  kcli and kubilitics-ai are now included
-    # so their artifacts are present before the release is created.
+    name: Create GitHub Release
     needs: [kcli, kubilitics-ai, backend, desktop, docker-backend, docker-ai]
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: Download all artifacts
         uses: actions/download-artifact@v4
@@ -392,14 +406,16 @@ jobs:
           path: artifacts
 
       - name: Flatten artifacts for release upload
-        # actions/download-artifact@v4 nests each artifact in its own sub-directory;
-        # flatten to a single level so softprops/action-gh-release picks them all up.
+        # download-artifact@v4 nests each artifact in its own sub-directory;
+        # flatten to a single level so action-gh-release picks them all up
         run: |
           mkdir -p release-assets
-          find artifacts -type f -exec cp {} release-assets/ \;
+          find artifacts -type f -exec cp {} release-assets/ \; || \
+            (echo "ERROR: artifact flattening failed" && exit 1)
+          echo "Release assets:"
           ls -lh release-assets/
 
-      - name: Create Release
+      - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
           generate_release_notes: true
