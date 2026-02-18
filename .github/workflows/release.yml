@@ -308,7 +308,10 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
           TAURI_SKIP_DEVSERVER_CHECK: "true"
-        run: cargo tauri build --target universal-apple-darwin
+        # --config overrides beforeBuildCommand to "" so Tauri doesn't try to run
+        # "npm run build" from kubilitics-desktop/ (which has no package.json).
+        # The frontend dist was already built and copied in the previous steps.
+        run: cargo tauri build --target universal-apple-darwin --config '{"build":{"beforeBuildCommand":""}}'
       - name: Notarize macOS app
         if: matrix.os == 'macos-latest'
         env:
@@ -332,7 +335,7 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
           TAURI_SKIP_DEVSERVER_CHECK: "true"
-        run: cargo tauri build --target x86_64-pc-windows-msvc
+        run: cargo tauri build --target x86_64-pc-windows-msvc --config '{"build":{"beforeBuildCommand":""}}'
       - name: Build Tauri app (Linux - AppImage)
         if: matrix.os == 'ubuntu-latest'
         working-directory: kubilitics-desktop/src-tauri
@@ -340,7 +343,7 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
           TAURI_SKIP_DEVSERVER_CHECK: "true"
-        run: cargo tauri build --target x86_64-unknown-linux-gnu --bundles appimage
+        run: cargo tauri build --target x86_64-unknown-linux-gnu --bundles appimage --config '{"build":{"beforeBuildCommand":""}}'
       - name: Build Tauri app (Linux - DEB)
         if: matrix.os == 'ubuntu-latest'
         working-directory: kubilitics-desktop/src-tauri
@@ -348,7 +351,7 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
           TAURI_SKIP_DEVSERVER_CHECK: "true"
-        run: cargo tauri build --target x86_64-unknown-linux-gnu --bundles deb
+        run: cargo tauri build --target x86_64-unknown-linux-gnu --bundles deb --config '{"build":{"beforeBuildCommand":""}}'
       - name: Build Tauri app (Linux - RPM)
         if: matrix.os == 'ubuntu-latest'
         working-directory: kubilitics-desktop/src-tauri
@@ -356,7 +359,7 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
           TAURI_SKIP_DEVSERVER_CHECK: "true"
-        run: cargo tauri build --target x86_64-unknown-linux-gnu --bundles rpm
+        run: cargo tauri build --target x86_64-unknown-linux-gnu --bundles rpm --config '{"build":{"beforeBuildCommand":""}}'
       - name: Upload desktop artifacts
         uses: actions/upload-artifact@v4
         with:
