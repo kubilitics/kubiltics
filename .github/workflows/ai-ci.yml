@@ -10,6 +10,7 @@ on:
     branches: [main, develop]
     paths:
       - 'kubilitics-ai/**'
+  workflow_dispatch:
 
 concurrency:
   group: ai-ci-${{ github.ref }}

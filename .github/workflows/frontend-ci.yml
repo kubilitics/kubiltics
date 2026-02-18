@@ -11,6 +11,7 @@ on:
     branches: [main, develop]
     paths:
       - 'kubilitics-frontend/**'
+  workflow_dispatch:
 
 concurrency:
   group: frontend-ci-${{ github.ref }}

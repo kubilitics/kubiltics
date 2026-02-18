@@ -18,6 +18,7 @@ on:
       - 'kubilitics-backend/api/swagger.yaml'
       - 'kubilitics-ai/api/openapi.yaml'
       - 'kubilitics-frontend/src/types/api/**'
+  workflow_dispatch:
 
 permissions:
   contents: read
