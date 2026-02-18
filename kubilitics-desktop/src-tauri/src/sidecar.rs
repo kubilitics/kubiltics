@@ -82,8 +82,10 @@ impl BackendManager {
 
     async fn wait_for_ready(&self) -> Result<(), Box<dyn std::error::Error>> {
         let url = format!("http://localhost:{}/health", BACKEND_PORT);
-        
-        for attempt in 1..=10 {
+
+        // Allow up to 30 seconds (60 attempts × 500ms) for the backend to start.
+        // Go binary cold-start on first launch can take several seconds.
+        for attempt in 1..=60 {
             if let Ok(response) = reqwest::get(&url).await {
                 if response.status().is_success() {
                     println!("Backend is ready after {} attempts", attempt);
@@ -92,8 +94,8 @@ impl BackendManager {
             }
             sleep(Duration::from_millis(500)).await;
         }
-        
-        Err("Backend failed to become ready within timeout".into())
+
+        Err("Backend failed to become ready within 30 seconds".into())
     }
 
     async fn is_port_in_use(&self, port: u16) -> bool {
@@ -249,8 +251,9 @@ impl BackendManager {
 
     async fn wait_for_ai_ready(&self) -> Result<(), Box<dyn std::error::Error>> {
         let url = format!("http://localhost:{}/health", AI_BACKEND_PORT);
-        
-        for attempt in 1..=10 {
+
+        // Allow up to 30 seconds (60 attempts × 500ms) for the AI backend to start.
+        for attempt in 1..=60 {
             if let Ok(response) = reqwest::get(&url).await {
                 if response.status().is_success() {
                     println!("AI backend is ready after {} attempts", attempt);
@@ -259,8 +262,8 @@ impl BackendManager {
             }
             sleep(Duration::from_millis(500)).await;
         }
-        
-        Err("AI backend failed to become ready within timeout".into())
+
+        Err("AI backend failed to become ready within 30 seconds".into())
     }
 
     fn start_ai_health_monitor(&self) {

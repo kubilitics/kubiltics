@@ -22,9 +22,11 @@ i18n
             escapeValue: false, // not needed for react as it escapes by default
         },
 
-        // Optional: backend options if we want to change path
+        // Use relative path so it works under both http://localhost:5173 (dev)
+        // and tauri://localhost (desktop). Absolute '/locales/...' can fail in
+        // some Tauri webview configurations.
         backend: {
-            loadPath: '/locales/{{lng}}/{{ns}}.json',
+            loadPath: './locales/{{lng}}/{{ns}}.json',
         },
     });
 

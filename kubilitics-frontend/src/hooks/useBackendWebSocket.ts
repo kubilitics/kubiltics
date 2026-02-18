@@ -45,27 +45,11 @@ export function useBackendWebSocket(options: UseBackendWebSocketOptions = {}) {
   const retryCountRef = useRef(0);
   const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const reconnect = useCallback(() => {
-    // Reset retry count and attempt reconnection
-    retryCountRef.current = 0;
-    setError(null);
+  // Stable refs so connect/reconnect can call each other without circular useCallback deps
+  const connectRef = useRef<() => void>(() => {});
+  const reconnectRef = useRef<() => void>(() => {});
 
-    // Clear any pending reconnect timeout
-    if (reconnectTimeoutRef.current) {
-      clearTimeout(reconnectTimeoutRef.current);
-      reconnectTimeoutRef.current = null;
-    }
-
-    // Close existing connection if any
-    if (wsRef.current) {
-      wsRef.current.close();
-      wsRef.current = null;
-    }
-
-    // Attempt to reconnect
-    connect();
-  }, [connect]);
-
+  // connect is declared FIRST so reconnect can safely reference it
   const connect = useCallback(() => {
     if (!isConfigured() || !enabled) return;
 
@@ -106,13 +90,14 @@ export function useBackendWebSocket(options: UseBackendWebSocketOptions = {}) {
         setError(errorMsg);
 
         // Show persistent toast with manual reconnect button
+        // Use reconnectRef to avoid circular dependency in useCallback deps
         toast.error('WebSocket connection lost', {
           description: 'Real-time updates are disabled. Click to reconnect.',
           duration: Infinity, // Persist until user dismisses or reconnects
           action: {
             label: 'Reconnect',
             onClick: () => {
-              reconnect();
+              reconnectRef.current();
               toast.dismiss();
             },
           },
@@ -129,14 +114,43 @@ export function useBackendWebSocket(options: UseBackendWebSocketOptions = {}) {
 
       reconnectTimeoutRef.current = setTimeout(() => {
         reconnectTimeoutRef.current = null;
-        connect();
+        // Use connectRef to avoid adding connect to deps (which would cause circular dep with reconnect)
+        connectRef.current();
       }, delay);
     };
 
     ws.onerror = () => {
       setError('WebSocket error');
     };
-  }, [backendBaseUrl, clusterId, enabled, isConfigured, maxRetries, onMessage, reconnect]);
+  }, [backendBaseUrl, clusterId, enabled, isConfigured, maxRetries, onMessage]);
+
+  // Keep connectRef in sync with the latest connect callback
+  useEffect(() => { connectRef.current = connect; }, [connect]);
+
+  // reconnect is declared AFTER connect so [connect] in its deps is safe (no TDZ)
+  const reconnect = useCallback(() => {
+    // Reset retry count and attempt reconnection
+    retryCountRef.current = 0;
+    setError(null);
+
+    // Clear any pending reconnect timeout
+    if (reconnectTimeoutRef.current) {
+      clearTimeout(reconnectTimeoutRef.current);
+      reconnectTimeoutRef.current = null;
+    }
+
+    // Close existing connection if any
+    if (wsRef.current) {
+      wsRef.current.close();
+      wsRef.current = null;
+    }
+
+    // Attempt to reconnect — connect is declared above, no TDZ
+    connect();
+  }, [connect]);
+
+  // Keep reconnectRef in sync with the latest reconnect callback
+  useEffect(() => { reconnectRef.current = reconnect; }, [reconnect]);
 
   const disconnect = useCallback(() => {
     if (reconnectTimeoutRef.current) {

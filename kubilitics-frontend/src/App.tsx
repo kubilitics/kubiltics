@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, MemoryRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useClusterStore } from "@/stores/clusterStore";
 import { AIAssistant } from "@/components/AIAssistant";
 import { Loader2 } from "lucide-react";
@@ -202,6 +202,12 @@ import { isTauri } from "@/lib/tauri";
 // Initialize Error Tracking
 ErrorTracker.init();
 
+// Tauri uses tauri://localhost/index.html as its origin, so window.location.pathname
+// is "/index.html" — BrowserRouter's HTML5 history routing sees a non-root path and
+// renders nothing. MemoryRouter starts at "/" regardless of the actual URL and is the
+// correct router for embedded webviews / Electron-style apps.
+const AppRouter = isTauri() ? MemoryRouter : BrowserRouter;
+
 function AnalyticsConsentWrapper({ children }: { children: React.ReactNode }) {
   const [showConsent, setShowConsent] = useState(false);
   const [checked, setChecked] = useState(false);
@@ -313,7 +319,7 @@ const App = () => (
         <AnalyticsConsentWrapper>
           <KubeconfigContextWrapper>
             <KubectlValidationBanner />
-            <BrowserRouter>
+            <AppRouter>
               <AIAssistant />
               <Suspense fallback={<PageLoader />}>
                 <Routes>
@@ -484,7 +490,7 @@ const App = () => (
                   </Route>
                 </Routes>
               </Suspense>
-            </BrowserRouter>
+            </AppRouter>
           </KubeconfigContextWrapper>
         </AnalyticsConsentWrapper>
       </GlobalErrorBoundary>

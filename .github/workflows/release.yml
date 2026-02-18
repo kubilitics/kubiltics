@@ -266,6 +266,8 @@ jobs:
         run: npm ci
       - name: Build frontend
         working-directory: kubilitics-frontend
+        env:
+          TAURI_BUILD: "true"
         run: npm run build
       - name: Copy frontend dist for Tauri
         # tauri.conf.json frontendDist "../dist" resolves from src-tauri/ → kubilitics-desktop/dist

@@ -5,7 +5,7 @@
   "identifier": "com.kubilitics.app",
   "build": {
     "beforeDevCommand": "npm run dev",
-    "beforeBuildCommand": "npm run build",
+    "beforeBuildCommand": "",
     "devUrl": "http://localhost:5173",
     "frontendDist": "../dist"
   },
@@ -58,6 +58,7 @@
   "app": {
     "windows": [
       {
+        "label": "main",
         "title": "Kubilitics",
         "width": 1400,
         "height": 900,
@@ -65,14 +66,15 @@
         "minHeight": 768,
         "center": true,
         "resizable": true,
-        "fullscreen": false
+        "fullscreen": false,
+        "url": "index.html"
       }
     ],
     "security": {
       "capabilities": [
         "default"
       ],
-      "csp": "default-src 'self'; connect-src 'self' http://localhost:819 ws://localhost:819 http://localhost:8081 ws://localhost:8081; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'"
+      "csp": "default-src 'self' tauri: asset: blob:; connect-src 'self' tauri: ipc: http://ipc.localhost http://localhost:819 ws://localhost:819 http://localhost:8081 ws://localhost:8081; img-src 'self' data: asset: tauri: blob:; style-src 'self' 'unsafe-inline' asset: tauri:; script-src 'self' asset: tauri: blob:; font-src 'self' asset: tauri: data:"
     }
   }
 }
