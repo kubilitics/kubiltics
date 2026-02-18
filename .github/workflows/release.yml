@@ -146,7 +146,8 @@ jobs:
       - name: Build and push backend Docker image
         uses: docker/build-push-action@v5
         with:
-          context: ./kubilitics-backend
+          # context must be repo root so the Dockerfile can COPY kcli/ alongside kubilitics-backend/
+          context: .
           file: ./kubilitics-backend/Dockerfile
           push: true
           tags: |

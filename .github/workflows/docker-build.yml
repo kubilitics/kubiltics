@@ -84,7 +84,8 @@ jobs:
       - name: Build and push backend image
         uses: docker/build-push-action@v5
         with:
-          context: ./kubilitics-backend
+          # context must be repo root so the Dockerfile can COPY kcli/ alongside kubilitics-backend/
+          context: .
           file: ./kubilitics-backend/Dockerfile
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta-backend.outputs.tags }}
