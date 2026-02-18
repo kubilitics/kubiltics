@@ -253,6 +253,9 @@ jobs:
         with:
           node-version: '20'
       - uses: dtolnay/rust-toolchain@stable
+        with:
+          # macOS universal build requires both targets; harmless on Windows/Linux (ignored)
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
       - name: Install Tauri CLI
         run: cargo install tauri-cli --version ^2.0
       - name: Install deps (Ubuntu)
