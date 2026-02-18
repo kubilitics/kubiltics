@@ -15,7 +15,7 @@ require (
 	github.com/jmoiron/sqlx v1.3.5
 	github.com/lib/pq v1.10.9
 	github.com/mattn/go-sqlite3 v1.14.19
-	github.com/rs/cors v1.10.1
+	github.com/rs/cors v1.11.0
 
 	// Configuration
 	github.com/spf13/viper v1.18.2
@@ -80,7 +80,7 @@ require (
 	golang.org/x/term v0.40.0 // indirect
 	golang.org/x/text v0.34.0 // indirect
 	golang.org/x/time v0.14.0
-	google.golang.org/protobuf v1.36.8 // indirect
+	google.golang.org/protobuf v1.36.8
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect

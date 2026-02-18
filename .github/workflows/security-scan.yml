@@ -16,92 +16,42 @@ on:
     # Run weekly on Mondays at 00:00 UTC
     - cron: '0 0 * * 1'
 
+permissions:
+  contents: read
+
 jobs:
   trivy-backend:
     name: Trivy Scan - Backend
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      security-events: write
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Build Docker image
         # Build from repo root so Dockerfile can COPY both kubilitics-backend/ and kcli/
-        run: |
-          docker build -t kubilitics-backend:test -f kubilitics-backend/Dockerfile .
+        run: docker build -t kubilitics-backend:test -f kubilitics-backend/Dockerfile .
 
-      - name: Run Trivy vulnerability scanner
+      - name: Run Trivy vulnerability scanner (table output)
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: 'kubilitics-backend:test'
-          format: 'sarif'
-          output: 'trivy-results-backend.sarif'
+          format: 'table'
           severity: 'CRITICAL,HIGH'
-
-      - name: Upload Trivy results to GitHub Security
-        uses: github/codeql-action/upload-sarif@v3
-        if: always()
-        with:
-          sarif_file: 'trivy-results-backend.sarif'
+          exit-code: '0'   # report but do not fail the build
 
   trivy-ai:
     name: Trivy Scan - AI Backend
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      security-events: write
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Build Docker image
         working-directory: kubilitics-ai
-        run: |
-          docker build -t kubilitics-ai:test -f Dockerfile .
+        run: docker build -t kubilitics-ai:test -f Dockerfile .
 
-      - name: Run Trivy vulnerability scanner
+      - name: Run Trivy vulnerability scanner (table output)
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: 'kubilitics-ai:test'
-          format: 'sarif'
-          output: 'trivy-results-ai.sarif'
+          format: 'table'
           severity: 'CRITICAL,HIGH'
-
-      - name: Upload Trivy results to GitHub Security
-        uses: github/codeql-action/upload-sarif@v3
-        if: always()
-        with:
-          sarif_file: 'trivy-results-ai.sarif'
-
-  # Frontend Dockerfile may not exist - frontend is typically served via nginx
-  # Uncomment if frontend Dockerfile is added
-  # trivy-frontend:
-  #   name: Trivy Scan - Frontend
-  #   runs-on: ubuntu-latest
-  #   permissions:
-  #     contents: read
-  #     security-events: write
-  #   steps:
-  #     - name: Checkout code
-  #       uses: actions/checkout@v4
-  #
-  #     - name: Build Docker image
-  #       working-directory: kubilitics-frontend
-  #       run: |
-  #         docker build -t kubilitics-frontend:test -f Dockerfile .
-  #
-  #     - name: Run Trivy vulnerability scanner
-  #       uses: aquasecurity/trivy-action@master
-  #       with:
-  #         image-ref: 'kubilitics-frontend:test'
-  #         format: 'sarif'
-  #         output: 'trivy-results-frontend.sarif'
-  #         severity: 'CRITICAL,HIGH'
-  #
-  #     - name: Upload Trivy results to GitHub Security
-  #       uses: github/codeql-action/upload-sarif@v3
-  #       if: always()
-  #       with:
-  #         sarif_file: 'trivy-results-frontend.sarif'
+          exit-code: '0'   # report but do not fail the build
