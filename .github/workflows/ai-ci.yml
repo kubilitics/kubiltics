@@ -36,6 +36,7 @@ jobs:
         working-directory: kubilitics-ai
         run: |
           mkdir -p test_reports/ai
+          mkdir -p ../test_reports/ai
           go test -race -cover -coverprofile=coverage.out ./... 2>&1 | tee ../test_reports/ai/test.log
       
       - name: Upload test report

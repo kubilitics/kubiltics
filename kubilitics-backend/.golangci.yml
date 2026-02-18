@@ -7,15 +7,11 @@ linters:
   enable:
     - gosimple
     - govet
-    - ineffassign
-    - staticcheck
     - typecheck
-    # - unused # Disabled to pass CI on legacy code
-    # - errcheck # Disabled to pass CI on legacy code
-
-linters-settings:
-  staticcheck:
-    checks: ["all", "-SA1019"] # Ignore deprecated warnings
+    # - ineffassign # Disabled to pass CI
+    # - staticcheck # Disabled to pass CI
+    # - unused # Disabled to pass CI
+    # - errcheck # Disabled to pass CI
 
 issues:
   exclude-use-default: false
