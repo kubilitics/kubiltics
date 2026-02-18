@@ -39,25 +39,16 @@ RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -ldflags="-s -w
 
 # Verify kcli binary was created
 RUN test -f /out/kcli || (echo "ERROR: kcli binary not found for ${TARGETOS}/${TARGETARCH}" && exit 1)
-RUN ls -lh /out/
-# Verify kcli is executable and not empty/corrupt
-RUN /out/kcli version || (echo "ERROR: kcli binary failed to execute" && exit 1)
-
-# ── Stage 2: Runtime ────────────────────────────────────────────────────────
-FROM alpine:3.19
-WORKDIR /app
-
-# Copy binaries from builder
-COPY --from=builder /out/kubilitics-backend .
-COPY --from=builder /out/kcli /usr/local/bin/kcli
+# Install runtime dependencies
+RUN apk --no-cache add ca-certificates kubectl
 
 # Verify kcli exists and is executable
 RUN test -f /usr/local/bin/kcli || (echo "ERROR: kcli not found in final image" && exit 1)
 RUN chmod +x /usr/local/bin/kcli
 RUN test -x /usr/local/bin/kcli || (echo "ERROR: kcli not executable" && exit 1)
 
-# Install runtime dependencies
-RUN apk --no-cache add ca-certificates kubectl
+# Verify kcli runs (requires kubectl in PATH)
+RUN /usr/local/bin/kcli version || (echo "ERROR: kcli failed to run" && exit 1)
 
 RUN mkdir -p /data
 EXPOSE 819
