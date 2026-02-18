@@ -102,10 +102,23 @@ jobs:
         go-version: '1.24'
 
     - name: Build Go backend (sidecar)
+      # Tauri v2 externalBin: files on disk MUST carry the platform-triple suffix.
       run: |
         mkdir -p kubilitics-desktop/src-tauri/binaries
         cd kubilitics-backend
-        if [ "${{ matrix.target }}" = "aarch64-unknown-linux-gnu" ]; then GOOS=linux GOARCH=arm64 go build -o ../kubilitics-desktop/src-tauri/binaries/kubilitics-backend ./cmd/server; else go build -o ../kubilitics-desktop/src-tauri/binaries/kubilitics-backend ./cmd/server; fi
+        if [ "${{ matrix.target }}" = "aarch64-unknown-linux-gnu" ]; then
+          GOOS=linux GOARCH=arm64 go build -ldflags="-s -w" -o ../kubilitics-desktop/src-tauri/binaries/kubilitics-backend-aarch64-unknown-linux-gnu ./cmd/server
+          chmod +x ../kubilitics-desktop/src-tauri/binaries/kubilitics-backend-*
+        elif [ "${{ matrix.os }}" = "macos-latest" ]; then
+          GOOS=darwin GOARCH=amd64 go build -ldflags="-s -w" -o ../kubilitics-desktop/src-tauri/binaries/kubilitics-backend-x86_64-apple-darwin ./cmd/server
+          GOOS=darwin GOARCH=arm64 go build -ldflags="-s -w" -o ../kubilitics-desktop/src-tauri/binaries/kubilitics-backend-aarch64-apple-darwin ./cmd/server
+          chmod +x ../kubilitics-desktop/src-tauri/binaries/kubilitics-backend-*
+        elif [ "${{ matrix.os }}" = "windows-latest" ]; then
+          GOOS=windows GOARCH=amd64 go build -ldflags="-s -w" -o ../kubilitics-desktop/src-tauri/binaries/kubilitics-backend-x86_64-pc-windows-msvc.exe ./cmd/server
+        else
+          GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o ../kubilitics-desktop/src-tauri/binaries/kubilitics-backend-x86_64-unknown-linux-gnu ./cmd/server
+          chmod +x ../kubilitics-desktop/src-tauri/binaries/kubilitics-backend-*
+        fi
       working-directory: .
 
     - name: Build kcli binary for desktop
