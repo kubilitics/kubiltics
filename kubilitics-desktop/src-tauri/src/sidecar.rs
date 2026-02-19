@@ -1,4 +1,4 @@
-use tauri::{AppHandle, Manager};
+use tauri::{AppHandle, Emitter, Manager};
 use tauri_plugin_shell::ShellExt;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
@@ -46,17 +46,51 @@ impl BackendManager {
     }
 
     pub async fn start(&self) -> Result<(), Box<dyn std::error::Error>> {
-        // Check for port conflicts
+        // Emit startup event so the frontend can show a loading state.
+        // The UI must never show a blank/frozen screen while waiting.
+        let _ = self.app_handle.emit("backend-status", serde_json::json!({
+            "status": "starting",
+            "message": "Starting backend engine…"
+        }));
+
+        // Check for port conflicts — if 819 already responds to /health, the backend
+        // may already be running (e.g. user restarted the app quickly). Treat it as ready.
         if self.is_port_in_use(BACKEND_PORT).await {
-            return Err(format!("Port {} is already in use", BACKEND_PORT).into());
+            println!("Port {} already in use — assuming backend is already running", BACKEND_PORT);
+            *self.is_running.lock().unwrap() = true;
+            let _ = self.app_handle.emit("backend-status", serde_json::json!({
+                "status": "ready",
+                "message": "Backend engine ready"
+            }));
+            self.start_health_monitor();
+            self.start_ai_backend().await;
+            return Ok(());
         }
 
-        self.start_backend_process().await?;
+        match self.start_backend_process().await {
+            Ok(()) => {
+                let _ = self.app_handle.emit("backend-status", serde_json::json!({
+                    "status": "ready",
+                    "message": "Backend engine ready"
+                }));
+            }
+            Err(e) => {
+                // Do NOT crash the app — emit an error event so frontend can show a
+                // helpful message. User can still interact with cached/local features.
+                eprintln!("Backend failed to start: {}", e);
+                let _ = self.app_handle.emit("backend-status", serde_json::json!({
+                    "status": "error",
+                    "message": format!("Backend engine failed to start: {}", e)
+                }));
+                // Don't return Err — let the app open so the user can see the error message
+            }
+        }
+
         self.start_health_monitor();
-        
-        // Start AI backend if available
+
+        // Start AI backend if available (always non-blocking / best-effort)
         self.start_ai_backend().await;
-        
+
         Ok(())
     }
 
@@ -105,12 +139,21 @@ impl BackendManager {
 
         // Allow up to 30 seconds (60 attempts × 500ms) for the backend to start.
         // Go binary cold-start on first launch can take several seconds.
+        // Emit progress events so the frontend shows a live loading state rather than a blank screen.
         for attempt in 1..=60 {
             if let Ok(response) = reqwest::get(&url).await {
                 if response.status().is_success() {
                     println!("Backend is ready after {} attempts", attempt);
                     return Ok(());
                 }
+            }
+            // Emit progress every 3 seconds (every 6 attempts) to keep UI informed
+            if attempt % 6 == 0 {
+                let elapsed = attempt / 2; // seconds
+                let _ = self.app_handle.emit("backend-status", serde_json::json!({
+                    "status": "starting",
+                    "message": format!("Starting backend engine… ({}s)", elapsed)
+                }));
             }
             sleep(Duration::from_millis(500)).await;
         }

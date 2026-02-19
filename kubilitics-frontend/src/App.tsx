@@ -197,6 +197,7 @@ import { ErrorTracker } from "@/lib/errorTracker";
 import { AnalyticsConsentDialog } from "@/components/AnalyticsConsentDialog";
 import { KubeconfigContextDialog } from "@/components/KubeconfigContextDialog";
 import { KubectlValidationBanner } from "@/components/KubectlValidationBanner";
+import { BackendStartupOverlay } from "@/components/BackendStartupOverlay";
 import { isTauri } from "@/lib/tauri";
 
 // Initialize Error Tracking
@@ -316,6 +317,10 @@ const App = () => (
       <Toaster />
       <Sonner />
       <GlobalErrorBoundary>
+        {/* Startup overlay: shown while the Go sidecar is starting up.
+            Disappears automatically once the backend emits 'backend-status: ready'.
+            Prevents the user from seeing a broken/empty UI on cold start. */}
+        <BackendStartupOverlay />
         <AnalyticsConsentWrapper>
           <KubeconfigContextWrapper>
             <KubectlValidationBanner />
