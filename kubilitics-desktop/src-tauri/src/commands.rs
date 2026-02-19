@@ -725,8 +725,6 @@ pub async fn restart_sidecar(_app_handle: tauri::AppHandle) -> Result<(), String
 }
 
 
-}
-
 // Helper functions
 
 async fn get_kubeconfig_path(path: Option<String>) -> Result<PathBuf, String> {
