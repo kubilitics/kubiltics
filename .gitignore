@@ -76,6 +76,15 @@ agenthub/agents/youtube/db
 # Go binaries
 kubilitics-backend/cmd/server/kubilitics-server
 **/kubilitics-server
+kubilitics-backend/server
+**/server
+!**/server.go
+!**/server.ts
+!**/server.tsx
+kcli/bin/kcli
+kubilitics-ai/bin/kubilitics-ai
+**/bin/kcli
+**/bin/kubilitics-ai
 
 # Rust / Tauri build artifacts
 **/target/
