@@ -62,13 +62,33 @@ impl BackendManager {
 
     async fn start_backend_process(&self) -> Result<(), Box<dyn std::error::Error>> {
         let sidecar_command = self.app_handle.shell().sidecar("kubilitics-backend")?;
-        
+
         // Resolve kcli binary path for bundled binary
         let kcli_bin_path = self.resolve_kcli_binary_path().await?;
-        
+
+        // Resolve kubeconfig path so the backend can auto-load clusters on startup
+        // (mirrors how Headlamp/Lens work — no manual kubeconfig import required)
+        let kubeconfig_path = dirs::home_dir()
+            .map(|h| h.join(".kube").join("config"))
+            .filter(|p| p.exists())
+            .map(|p| p.to_string_lossy().to_string())
+            .unwrap_or_default();
+
+        // Tauri WebView uses the origin `tauri://localhost` for all fetch() requests.
+        // The backend's CORS policy must explicitly allow this origin — it will NOT
+        // be included in the default config because the default is browser-only.
+        let tauri_allowed_origins = format!(
+            "tauri://localhost,tauri://,http://localhost:5173,http://localhost:{}",
+            BACKEND_PORT
+        );
+
         let (_rx, _child) = sidecar_command
             .env("KUBILITICS_PORT", BACKEND_PORT.to_string())
             .env("KCLI_BIN", kcli_bin_path)
+            // Allow tauri:// origin so fetch() calls from the WebView are not blocked by CORS
+            .env("KUBILITICS_ALLOWED_ORIGINS", tauri_allowed_origins)
+            // Pass kubeconfig so backend auto-discovers clusters (Headlamp/Lens style)
+            .env("KUBECONFIG", kubeconfig_path)
             .spawn()?;
 
         *self.is_running.lock().unwrap() = true;

@@ -48,7 +48,12 @@ func main() {
 			DatabasePath:   "./kubilitics.db",
 			LogLevel:       "info",
 			LogFormat:      "json",
-			AllowedOrigins: []string{"http://localhost:5173", "http://localhost:819"},
+			AllowedOrigins: []string{
+			"tauri://localhost",     // Tauri v2 WebView (desktop app)
+			"tauri://",             // Tauri origin without host
+			"http://localhost:5173", // Vite dev server
+			"http://localhost:819",  // Backend self-origin
+		},
 		}
 	}
 	if cfg.LogFormat == "" {
@@ -355,7 +360,12 @@ func main() {
 	c := cors.New(cors.Options{
 		AllowedOrigins:   cfg.AllowedOrigins,
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-		AllowedHeaders:   []string{"Content-Type", "Authorization", "X-Request-ID", "X-Confirm-Destructive", "X-API-Key"},
+		AllowedHeaders: []string{
+			"Content-Type", "Authorization", "X-Request-ID",
+			"X-Confirm-Destructive", "X-API-Key",
+			"X-Kubeconfig",         // Desktop: kubeconfig sent per-request (Headlamp/Lens model)
+			"X-Kubeconfig-Context", // Desktop: active context name
+		},
 		ExposedHeaders:   []string{"X-RateLimit-Limit", "X-RateLimit-Remaining", "X-RateLimit-Reset", "Retry-After"},
 		AllowCredentials: true,
 	})

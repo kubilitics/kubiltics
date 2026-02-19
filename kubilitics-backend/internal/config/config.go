@@ -110,8 +110,15 @@ func Load() (*Config, error) {
 	viper.SetDefault("log_level", "info")
 	viper.SetDefault("log_format", "json") // BE-OBS-002: JSON structured logging by default
 	// Development-safe default: no wildcard. Production must set explicit origins (e.g. https://your-domain.com).
-	// For Tauri desktop, set KUBILITICS_ALLOWED_ORIGINS to include the WebView origin (e.g. tauri://localhost).
-	viper.SetDefault("allowed_origins", []string{"http://localhost:5173", "http://localhost:819"})
+	// Tauri desktop WebView uses origin `tauri://localhost` for all fetch() calls — this MUST be in the list
+	// or the browser blocks every API request with a CORS error (even though the backend is local).
+	// The sidecar spawner also sets KUBILITICS_ALLOWED_ORIGINS env var at runtime which overrides this default.
+	viper.SetDefault("allowed_origins", []string{
+		"tauri://localhost", // Tauri v2 WebView origin (macOS/Windows/Linux desktop)
+		"tauri://",         // Tauri origin without explicit host (some platforms)
+		"http://localhost:5173", // Vite dev server
+		"http://localhost:819",  // Backend self-origin (health dashboards etc.)
+	})
 	viper.SetDefault("kubeconfig_path", "")
 	viper.SetDefault("kubeconfig_auto_load", true)
 	viper.SetDefault("request_timeout_sec", 30)

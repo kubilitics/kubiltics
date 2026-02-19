@@ -292,14 +292,17 @@ pub async fn get_recent_exports() -> Result<Vec<String>, String> {
 #[command]
 pub async fn select_kubeconfig_file(app_handle: tauri::AppHandle) -> Result<Option<String>, String> {
     use tauri_plugin_dialog::DialogExt;
-    use std::sync::mpsc;
-    
-    let (tx, rx) = mpsc::channel();
-    
+    use tokio::sync::oneshot;
+
+    // Use tokio oneshot channel — std::sync::mpsc::recv() would block the async executor
+    // and can deadlock on macOS where dialog callbacks run on the main thread.
+    let (tx, rx) = oneshot::channel::<Option<String>>();
+
     app_handle.dialog()
         .file()
         .set_title("Select Kubeconfig File")
         .add_filter("Kubeconfig", &["yaml", "yml"])
+        .add_filter("Config", &["config"])
         .add_filter("All Files", &["*"])
         .pick_file(move |file_path| {
             let path_str = file_path.and_then(|p| {
@@ -308,14 +311,12 @@ pub async fn select_kubeconfig_file(app_handle: tauri::AppHandle) -> Result<Opti
                     tauri_plugin_dialog::FilePath::Url(url) => Some(url.to_string()),
                 }
             });
+            // Ignore send error — it means the receiver was already dropped (caller timed out)
             let _ = tx.send(path_str);
         });
-    
-    // Wait for the dialog result
-    match rx.recv() {
-        Ok(path) => Ok(path),
-        Err(_) => Err("Dialog was cancelled".to_string()),
-    }
+
+    // Await the dialog result asynchronously — does not block the executor
+    rx.await.map_err(|_| "File dialog closed without a selection".to_string())
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -732,21 +733,43 @@ pub struct KubectlStatus {
 
 #[command]
 pub async fn check_kubectl_installed() -> Result<KubectlStatus, String> {
+    // Tauri's WebView process inherits a minimal system PATH (e.g. /usr/bin:/bin) that does NOT
+    // include Homebrew (/opt/homebrew/bin), nix, asdf, or other user package managers where kubectl
+    // is typically installed. We must expand PATH before checking, otherwise we get false negatives.
+    let extended_path = {
+        let current = std::env::var("PATH").unwrap_or_default();
+        // Prepend common installation locations in priority order
+        let extra = if cfg!(target_os = "macos") {
+            "/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/usr/local/sbin"
+        } else if cfg!(target_os = "linux") {
+            "/usr/local/bin:/snap/bin:/home/linuxbrew/.linuxbrew/bin"
+        } else {
+            ""
+        };
+        if extra.is_empty() || current.contains(extra) {
+            current
+        } else {
+            format!("{}:{}", extra, current)
+        }
+    };
+
     // Check if kubectl is in PATH
     let which_output = if cfg!(target_os = "windows") {
         // On Windows, use "where.exe" or "where" command
         std::process::Command::new("where.exe")
             .arg("kubectl")
+            .env("PATH", &extended_path)
             .output()
             .or_else(|_| {
-                // Fallback to "where" if where.exe not found
                 std::process::Command::new("where")
                     .arg("kubectl")
+                    .env("PATH", &extended_path)
                     .output()
             })
     } else {
         std::process::Command::new("which")
             .arg("kubectl")
+            .env("PATH", &extended_path)
             .output()
     };
 
@@ -755,16 +778,24 @@ pub async fn check_kubectl_installed() -> Result<KubectlStatus, String> {
             let path = String::from_utf8(output.stdout)
                 .ok()
                 .map(|s| s.trim().to_string());
-            
-            // Try to get version
+
+            // Try to get version — use extended PATH so kubectl can find itself
             let version_output = std::process::Command::new("kubectl")
-                .args(&["version", "--client", "--short"])
+                .args(&["version", "--client", "--output=yaml"])
+                .env("PATH", &extended_path)
                 .output();
-            
+
+            // --short is deprecated in newer kubectl; parse yaml output or fall back gracefully
             let version = version_output
                 .ok()
                 .and_then(|v| String::from_utf8(v.stdout).ok())
-                .map(|s| s.trim().to_string());
+                .and_then(|s| {
+                    // Extract "gitVersion: vX.Y.Z" from yaml output
+                    s.lines()
+                        .find(|l| l.trim_start().starts_with("gitVersion:"))
+                        .map(|l| l.trim().replace("gitVersion: ", ""))
+                })
+                .or_else(|| Some("installed".to_string()));
 
             Ok(KubectlStatus {
                 installed: true,
