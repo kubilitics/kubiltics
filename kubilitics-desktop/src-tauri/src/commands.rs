@@ -725,19 +725,6 @@ pub async fn restart_sidecar(_app_handle: tauri::AppHandle) -> Result<(), String
 }
 
 
-                installed: true,
-                version,
-                path,
-            })
-        }
-        _ => {
-            Ok(KubectlStatus {
-                installed: false,
-                version: None,
-                path: None,
-            })
-        }
-    }
 }
 
 // Helper functions
