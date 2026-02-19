@@ -9,80 +9,26 @@
 
 | # | Issue | Severity | Status | Root Cause |
 |---|-------|----------|--------|------------|
-| P0-1 | CORS blocks `tauri://localhost` origin | 🔴 CRITICAL | ❌ Open | `AllowedOrigins` missing Tauri origins |
+| P0-1 | CORS blocks `tauri://localhost` origin | 🔴 CRITICAL | ✅ Addressed | Backend now merges Tauri origins into allowed_origins; restart.sh sets env for local dev |
 | P0-2 | kubectl "Not Found" banner shown incorrectly | 🔴 CRITICAL | ❌ Open | Checks system PATH only; should use bundled `kcli` |
-| P0-3 | "Connection failed. Ensure the desktop engine is running" | 🔴 CRITICAL | ❌ Open | CORS failure cascades to cluster fetch failure |
-| P0-4 | Kubeconfig upload "Load failed" | 🔴 CRITICAL | ❌ Open | CORS fails before upload; kubeconfig not passed correctly |
-| P0-5 | App shows port 819 in DevTools but user changed it to 8190 | 🟡 HIGH | ❌ Open | Confusion: 8190 is Docker-only. Desktop uses 819 correctly |
+| P0-3 | "Connection failed. Ensure the desktop engine is running" | 🔴 CRITICAL | ✅ Addressed | Desktop shows neutral copy + Retry; browser shows actionable message + Retry; health-gating avoids storm (see P0-3 section) |
+| P0-4 | Kubeconfig upload "Load failed" | 🔴 CRITICAL | ❌ Open | CORS fails before upload (mitigated by P0-1 fix); kubeconfig not passed correctly |
+| P0-5 | App shows port 819 in DevTools but user changed it to 8190 | 🟡 HIGH | ✅ Addressed | Port standardized to 819 everywhere (Dockerfile, CI, desktop); 8190 removed |
 | P0-6 | Docker Desktop dependency assumption | 🟡 HIGH | ❌ Open | Backend/sidecar startup may fail gracefully but UI doesn't explain kubeconfig-only mode |
 | P0-7 | `http://localhost:8081/health` connection refused in console | 🟠 MEDIUM | ❌ Open | AI sidecar binary not bundled / not starting |
-| P0-8 | `KUBILITICS_ALLOWED_ORIGINS` not set when sidecar spawns | 🔴 CRITICAL | ❌ Open | Tauri sidecar spawns backend without passing allowed Tauri origins |
+| P0-8 | `KUBILITICS_ALLOWED_ORIGINS` not set when sidecar spawns | 🔴 CRITICAL | ✅ Addressed | Sidecar already sets env; backend config always merges tauri://localhost so "port in use" case also works |
 
 ---
 
 ## P0-1 — CORS: `tauri://localhost` Blocked
 
-### Symptom
-DevTools console shows:
-```
-Access to fetch at 'http://localhost:819/api/v1/clusters' from origin 'tauri://localhost'
-has been blocked by CORS policy: Response to preflight request doesn't pass access control
-check: The 'Access-Control-Allow-Origin' header has a value 'http://localhost:5173'...
-```
+**Status: ✅ Addressed**
 
-### Root Cause
-**File:** `kubilitics-backend/internal/config/config.go:114`
-```go
-viper.SetDefault("allowed_origins", []string{"http://localhost:5173", "http://localhost:819"})
-```
-**File:** `kubilitics-backend/cmd/server/main.go:51`
-```go
-AllowedOrigins: []string{"http://localhost:5173", "http://localhost:819"},
-```
-
-The backend's CORS policy does NOT include `tauri://localhost` or `tauri://` scheme.
-When Tauri renders the WebView, the HTTP origin is `tauri://localhost` — this is blocked.
-
-Note: The config comment even says:
-> "For Tauri desktop, set `KUBILITICS_ALLOWED_ORIGINS` to include the WebView origin (e.g. `tauri://localhost`)"
-…but this env var is never set when the sidecar is spawned.
-
-### Fix Required
-**In `kubilitics-desktop/src-tauri/src/sidecar.rs` — `start_backend_process()`:**
-```rust
-let (_rx, _child) = sidecar_command
-    .env("KUBILITICS_PORT", BACKEND_PORT.to_string())
-    .env("KCLI_BIN", kcli_bin_path)
-    // ADD THIS:
-    .env("KUBILITICS_ALLOWED_ORIGINS", "tauri://localhost,tauri://,http://localhost:5173,http://localhost:819")
-    .spawn()?;
-```
-
-**In `kubilitics-backend/internal/config/config.go` — update defaults for desktop mode:**
-```go
-// If running as sidecar (KUBILITICS_PORT is set), also allow tauri:// origins
-viper.SetDefault("allowed_origins", []string{
-    "tauri://localhost",
-    "tauri://",
-    "http://localhost:5173",
-    "http://localhost:819",
-})
-```
-
-**Also update `kubilitics-backend/cmd/server/main.go:51` hardcoded fallback:**
-```go
-AllowedOrigins: []string{
-    "tauri://localhost",
-    "tauri://",
-    "http://localhost:5173",
-    "http://localhost:819",
-},
-```
-
-### Files to Change
-- `kubilitics-desktop/src-tauri/src/sidecar.rs` → Add `KUBILITICS_ALLOWED_ORIGINS` env var when spawning
-- `kubilitics-backend/internal/config/config.go:114` → Add Tauri origins to default
-- `kubilitics-backend/cmd/server/main.go:51` → Add Tauri origins to fallback
+### Resolution (implemented)
+- **Backend** (`kubilitics-backend/internal/config/config.go`): After normalizing comma-separated `allowed_origins`, the config now **always appends** `tauri://localhost` and `tauri://` if not already present. So when the desktop finds port 819 already in use (e.g. backend started via `make restart`) and does not spawn the sidecar, the existing backend still allows the Tauri origin.
+- **Sidecar** already set `KUBILITICS_ALLOWED_ORIGINS` when spawning the backend; left as-is.
+- **Local dev** (`scripts/restart.sh`): When starting the backend, the script now sets `KUBILITICS_ALLOWED_ORIGINS` to include `tauri://localhost,tauri://,http://localhost:5173,http://localhost:819` so that a backend started by `make restart` is usable by the desktop.
+- **Startup logging**: Backend logs `CORS allowed_origins` at startup for verification.
 
 ---
 
@@ -148,41 +94,25 @@ Don't show the kubectl banner on startup at all. Only show it when the user open
 
 ## P0-3 — "Connection failed. Ensure the desktop engine is running"
 
-### Symptom
-Cluster connect page shows red error banner: "Connection failed. Ensure the desktop engine is running."
+**Status: ✅ Addressed**
+
+### Symptom (historical)
+Cluster connect page showed red error banner: "Connection failed. Ensure the desktop engine is running."
 
 ### Root Cause
-**File:** `kubilitics-frontend/src/pages/ClusterConnect.tsx:364-373`
+CORS/network failure was surfaced as "desktop engine not running"; desktop users should never see backend/engine wording (Headlamp/Lens style).
 
-The error shows when:
-1. `isBackendConfigured` is true (backend URL is set)
-2. `clustersFromBackend.error` OR `discoveredClustersRes.error` is truthy
-3. No registered clusters exist
+### Resolution (implemented)
+- **Desktop (Tauri):** Error strip shows neutral copy only: "Couldn't load clusters. You can add a cluster by pasting or uploading your kubeconfig below." with **Retry** (no "desktop engine" or backend URL). BackendStatusBanner in Tauri shows "Connection issue" and Retry only (no Settings).
+- **Browser/Helm:** Error strip shows "Connection failed. Check that the backend is running, or add a cluster by pasting or uploading your kubeconfig below." with **Retry**.
+- **Health gating:** On Connect, clusters/discover run only after health succeeds (no request storm); Retry resets circuit and refetches health. Circuit breaker + user-friendly messages in `backendApiClient` and `getHealth` for Tauri.
+- CORS fix (P0-1) remains; this addresses UX and recovery.
 
-The `clustersFromBackend.error` is truthy because the fetch to `http://localhost:819/api/v1/clusters` is **blocked by CORS** (P0-1). The CORS block makes the fetch throw a network error, which is interpreted as "backend not running."
-
-### Fix Required
-This is a **cascade from P0-1**. Fix P0-1 (CORS) first.
-
-Additionally, improve the error message to distinguish between:
-- Backend not started (port not listening) → "Desktop engine not running"
-- CORS/network error (port listening but request blocked) → "Connection error — check backend config"
-- No clusters configured → "No clusters found — add a kubeconfig"
-
-**File to update:** `kubilitics-frontend/src/pages/ClusterConnect.tsx`
-```tsx
-// Better error detection:
-const isBackendDown = !isPortResponding(819); // check via Tauri invoke
-const isCORSError = error?.message?.includes('CORS') || error?.message?.includes('blocked');
-
-{isCORSError && <span>API connection blocked — check CORS configuration</span>}
-{isBackendDown && <span>Desktop engine not running. Restart the app.</span>}
-{!isCORSError && !isBackendDown && <span>No clusters found. Add a kubeconfig to get started.</span>}
-```
-
-### Files to Change
-- Fix P0-1 first
-- `kubilitics-frontend/src/pages/ClusterConnect.tsx` → Improve error categorization
+### Files updated
+- `kubilitics-frontend/src/pages/ClusterConnect.tsx` — Tauri vs non-Tauri error copy; Retry in both branches
+- `kubilitics-frontend/src/components/layout/BackendStatusBanner.tsx` — Desktop copy; Retry resets circuit
+- `kubilitics-frontend/src/services/backendApiClient.ts` — Circuit-open and getHealth messages; `resetBackendCircuit()`
+- `kubilitics-frontend/src/hooks/useClustersFromBackend.ts`, `useDiscoverClusters.ts` — Health/circuit gating on Connect
 
 ---
 
@@ -262,32 +192,14 @@ AllowedHeaders: []string{
 
 ## P0-5 — Port Confusion: 8190 vs 819
 
-### Symptom
-User changed backend to port `8190` for "standardization" but app still connects to port `819`.
+**Status: ✅ Addressed**
 
-### Clarification
-**Port 8190 is NOT the desktop port.** Looking at the codebase:
+### Resolution (implemented)
+Port standardized to **819 everywhere**: local dev, desktop sidecar, and Docker/CI. Removed 8190 from backend image and integration workflow.
 
-- `kubilitics-backend/Dockerfile:119` → `EXPOSE 8190` — This is the Docker **container** port for integration tests and server deployments
-- `kubilitics-desktop/src-tauri/src/sidecar.rs:9` → `const BACKEND_PORT: u16 = 819` — Desktop sidecar port
-- Integration test YAML files use `localhost:8190` for Docker Compose mapped port
-
-**819 is correct for the desktop app.** The app is NOT broken here — it was intentional.
-
-### Action Required
-Verify intent: Should the desktop sidecar also use 8190? If yes:
-
-**Files to change:**
-- `kubilitics-desktop/src-tauri/src/sidecar.rs:9` → `const BACKEND_PORT: u16 = 8190`
-- `kubilitics-desktop/src-tauri/tauri.conf.json:86` → Update CSP: change `http://localhost:819 ws://localhost:819` to `http://localhost:8190 ws://localhost:8190`
-- `kubilitics-frontend/src/lib/backendConstants.ts:8` → `|| 8190`
-- `kubilitics-frontend/.env.local` → `VITE_BACKEND_PORT=8190`, `VITE_BACKEND_URL=http://localhost:8190`
-- `kubilitics-backend/internal/config/config.go:108` → `viper.SetDefault("port", 8190)`
-- `kubilitics-backend/cmd/server/main.go:47` → `Port: 8190`
-- `kubilitics-ai/internal/config/defaults.go:15` → `cfg.Backend.HTTPBaseURL = "http://localhost:8190"`
-- `kubilitics-ai/internal/mcp/server/backend_http.go:40` → `baseURL = "http://localhost:8190"`
-
-**Recommendation:** Keep 819 for now unless the Docker/k8s deployment also needs alignment. Don't change port unless there's a specific conflict reason — changing port requires updating 10+ files.
+- **kubilitics-backend/Dockerfile**: `EXPOSE 819`, HEALTHCHECK `http://localhost:819/health`
+- **.github/workflows/integration-test.yml**: All `localhost:8190` replaced with `localhost:819` (wait, curl, PLAYWRIGHT_BACKEND_BASE_URL)
+- **Desktop**: Port 819 remains the single source of truth (centralized in `backend_ports.rs`); frontend and CSP already use 819.
 
 ---
 
@@ -395,26 +307,12 @@ match self.start_ai_backend_process().await {
 
 ## P0-8 — `KUBILITICS_ALLOWED_ORIGINS` Not Passed to Sidecar (Root of P0-1)
 
-### This is the single most important fix. The backend config comment explicitly says to set this env var for Tauri desktop, but `sidecar.rs` never does.
+**Status: ✅ Addressed**
 
-**File:** `kubilitics-desktop/src-tauri/src/sidecar.rs:64-72`
-
-Current code:
-```rust
-let (_rx, _child) = sidecar_command
-    .env("KUBILITICS_PORT", BACKEND_PORT.to_string())
-    .env("KCLI_BIN", kcli_bin_path)
-    .spawn()?;
-```
-
-Required fix:
-```rust
-let (_rx, _child) = sidecar_command
-    .env("KUBILITICS_PORT", BACKEND_PORT.to_string())
-    .env("KCLI_BIN", kcli_bin_path)
-    .env("KUBILITICS_ALLOWED_ORIGINS", "tauri://localhost,tauri://,http://localhost:5173,http://localhost:819")
-    .spawn()?;
-```
+### Resolution (implemented)
+- **Sidecar** already sets `KUBILITICS_ALLOWED_ORIGINS` when spawning the backend (in `start_backend_process()`).
+- **Backend** config now **always merges** `tauri://localhost` and `tauri://` into `allowed_origins` after loading (see `kubilitics-backend/internal/config/config.go`). So when the desktop finds port 819 already in use and does not start the sidecar, the existing backend (e.g. started via `make restart`) still allows the Tauri origin.
+- **scripts/restart.sh** now exports `KUBILITICS_ALLOWED_ORIGINS` when starting the backend so local dev is CORS-safe for the desktop.
 
 ---
 

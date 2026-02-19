@@ -72,7 +72,7 @@ export const AlertsStrip = () => {
   const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
   const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured);
   const backendBaseUrl = getEffectiveBackendBaseUrl(useBackendConfigStore((s) => s.backendBaseUrl));
-  const clusterId = activeCluster?.id ?? currentClusterId ?? undefined;
+  const clusterId = currentClusterId ?? undefined;
   const { isConnected } = useConnectionStatus();
   const overview = useClusterOverview(clusterId);
 

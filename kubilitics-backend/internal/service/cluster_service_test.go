@@ -3,13 +3,17 @@ package service
 import (
 	"context"
 	"errors"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/kubilitics/kubilitics-backend/internal/config"
+	"github.com/kubilitics/kubilitics-backend/internal/k8s"
 	"github.com/kubilitics/kubilitics-backend/internal/models"
 	"github.com/kubilitics/kubilitics-backend/internal/repository"
+	"k8s.io/client-go/kubernetes/fake"
 )
 
 // mockClusterRepo implements repository.ClusterRepository for tests.
@@ -145,6 +149,82 @@ func TestClusterService_AddCluster_RespectsMaxClusters(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "cluster limit reached") && !strings.Contains(err.Error(), "max 1") {
 		t.Errorf("expected cluster limit error, got: %v", err)
+	}
+}
+
+// TestClusterService_DiscoverClusters_ReturnsNonEmptyID verifies BA-1 / task list: discovered clusters have non-empty id.
+func TestClusterService_DiscoverClusters_ReturnsNonEmptyID(t *testing.T) {
+	// Minimal valid kubeconfig with one context (same format as rest package createTestKubeconfig).
+	kubeconfig := `apiVersion: v1
+kind: Config
+clusters:
+- cluster:
+    server: https://test-server:6443
+  name: test-cluster
+contexts:
+- context:
+    cluster: test-cluster
+    user: test-user
+  name: ctx-one
+currentContext: ctx-one
+users:
+- name: test-user
+  user:
+    token: test-token
+`
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config")
+	if err := os.WriteFile(path, []byte(kubeconfig), 0600); err != nil {
+		t.Fatalf("write kubeconfig: %v", err)
+	}
+	orig := os.Getenv("KUBECONFIG")
+	os.Setenv("KUBECONFIG", path)
+	defer func() { _ = os.Setenv("KUBECONFIG", orig) }()
+
+	ctx := context.Background()
+	repo := &mockClusterRepo{clusters: make(map[string]*models.Cluster)}
+	svc := NewClusterService(repo, nil)
+
+	list, err := svc.DiscoverClusters(ctx)
+	if err != nil {
+		t.Fatalf("DiscoverClusters: %v", err)
+	}
+	if len(list) == 0 {
+		t.Fatal("expected at least one discovered cluster")
+	}
+	for i, c := range list {
+		if c.ID == "" {
+			t.Errorf("discovered cluster[%d] has empty id (context=%q)", i, c.Context)
+		}
+	}
+}
+
+// TestClusterService_AddCluster_Idempotent verifies task list: POST /clusters with same context twice returns same UUID.
+func TestClusterService_AddCluster_Idempotent(t *testing.T) {
+	ctx := context.Background()
+	repo := &mockClusterRepo{clusters: make(map[string]*models.Cluster)}
+	factory := func(kubeconfigPath, contextName string) (*k8s.Client, error) {
+		return k8s.NewClientForTest(fake.NewSimpleClientset()), nil
+	}
+	svc := NewClusterServiceWithClientFactory(repo, nil, factory)
+
+	path := filepath.Join(t.TempDir(), "kubeconfig")
+	contextName := "ctx-one"
+
+	c1, err := svc.AddCluster(ctx, path, contextName)
+	if err != nil {
+		t.Fatalf("first AddCluster: %v", err)
+	}
+	if c1.ID == "" {
+		t.Fatal("first AddCluster returned cluster with empty ID")
+	}
+
+	c2, err := svc.AddCluster(ctx, path, contextName)
+	if err != nil {
+		t.Fatalf("second AddCluster: %v", err)
+	}
+	if c2.ID != c1.ID {
+		t.Errorf("idempotent add: first ID %q, second ID %q (expected same)", c1.ID, c2.ID)
 	}
 }
 

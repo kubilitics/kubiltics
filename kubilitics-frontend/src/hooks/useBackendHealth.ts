@@ -6,17 +6,26 @@ import { useQuery } from '@tanstack/react-query';
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
 import { getHealth } from '@/services/backendApiClient';
 
-export function useBackendHealth(options?: { refetchInterval?: number; enabled?: boolean }) {
+/** P1-4 / P2-17: Options for gate-on-health (ClusterConnect) vs periodic banner check. */
+export function useBackendHealth(options?: {
+  refetchInterval?: number;
+  enabled?: boolean;
+  /** When true (Connect page): no cache, no retry — backend down detected immediately. */
+  gateOnHealth?: boolean;
+  /** Override retry count. Banner uses 0 so circuit breaker handles recovery. */
+  retry?: number;
+}) {
   const stored = useBackendConfigStore((s) => s.backendBaseUrl);
   const backendBaseUrl = getEffectiveBackendBaseUrl(stored);
   const isConfigured = useBackendConfigStore((s) => s.isBackendConfigured);
+  const gateOnHealth = options?.gateOnHealth === true;
 
   return useQuery({
     queryKey: ['backend', 'health', backendBaseUrl],
     queryFn: () => getHealth(backendBaseUrl),
     enabled: isConfigured() && (options?.enabled !== false),
     refetchInterval: options?.refetchInterval ?? false,
-    retry: 1,
-    staleTime: 30_000,
+    retry: options?.retry ?? (gateOnHealth ? 0 : 1),
+    staleTime: gateOnHealth ? 0 : 30_000,
   });
 }

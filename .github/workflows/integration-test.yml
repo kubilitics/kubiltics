@@ -73,16 +73,50 @@ jobs:
       - name: Wait for backend to be healthy
         run: |
           echo "Waiting for backend to be healthy..."
-          timeout 120 bash -c 'until docker compose -f docker-compose.test.yml exec -T backend wget --quiet --tries=1 --spider http://localhost:8190/health; do sleep 2; done'
+          timeout 120 bash -c 'until docker compose -f docker-compose.test.yml exec -T backend wget --quiet --tries=1 --spider http://localhost:819/health; do sleep 2; done'
           echo "✓ Backend is healthy"
 
       - name: Run backend API tests
         run: |
           echo "Testing backend API..."
-          curl -f http://localhost:8190/health || exit 1
+          curl -f http://localhost:819/health || exit 1
           echo "✓ Backend health check passed"
-          curl -f http://localhost:8190/api/v1/clusters || echo "Clusters endpoint returned non-200 (expected if no clusters)"
+          curl -f http://localhost:819/api/v1/clusters || echo "Clusters endpoint returned non-200 (expected if no clusters)"
           echo "✓ Backend API tests passed"
+
+      - name: Run CORS integration tests
+        run: |
+          echo "Testing CORS configuration..."
+          
+          # Test 1: CORS tauri://localhost always present
+          echo "Test: CORS tauri://localhost origin"
+          RESPONSE=$(curl -s -I -H "Origin: tauri://localhost" http://localhost:819/health)
+          if echo "$RESPONSE" | grep -q "Access-Control-Allow-Origin: tauri://localhost"; then
+            echo "✓ CORS tauri://localhost origin allowed"
+          else
+            echo "✗ FAIL: CORS tauri://localhost origin not allowed"
+            echo "Response headers:"
+            echo "$RESPONSE"
+            exit 1
+          fi
+          
+          # Test 2: CORS X-Kubeconfig header allowed
+          echo "Test: CORS X-Kubeconfig header"
+          RESPONSE=$(curl -s -I -X OPTIONS \
+            -H "Origin: tauri://localhost" \
+            -H "Access-Control-Request-Method: POST" \
+            -H "Access-Control-Request-Headers: X-Kubeconfig,Content-Type" \
+            http://localhost:819/api/v1/clusters)
+          if echo "$RESPONSE" | grep -qi "Access-Control-Allow-Headers.*X-Kubeconfig"; then
+            echo "✓ CORS X-Kubeconfig header allowed"
+          else
+            echo "✗ FAIL: CORS X-Kubeconfig header not allowed"
+            echo "Response headers:"
+            echo "$RESPONSE"
+            exit 1
+          fi
+          
+          echo "✓ All CORS integration tests passed"
 
       - name: Cleanup
         if: always()
@@ -125,7 +159,7 @@ jobs:
       - name: Wait for backend to be healthy
         run: |
           echo "Waiting for backend to be healthy..."
-          timeout 120 bash -c 'until docker compose -f docker-compose.test.yml exec -T backend wget --quiet --tries=1 --spider http://localhost:8190/health; do sleep 2; done'
+          timeout 120 bash -c 'until docker compose -f docker-compose.test.yml exec -T backend wget --quiet --tries=1 --spider http://localhost:819/health; do sleep 2; done'
           echo "✓ Backend is healthy"
 
       - name: Wait for frontend to be ready
@@ -136,7 +170,7 @@ jobs:
 
       - name: Run backend API tests
         run: |
-          curl -f http://localhost:8190/health || exit 1
+          curl -f http://localhost:819/health || exit 1
           echo "✓ Backend health check passed"
 
       - name: Run frontend Playwright tests
@@ -144,7 +178,7 @@ jobs:
         run: |
           npm ci
           export PLAYWRIGHT_BASE_URL=http://localhost:4173
-          export PLAYWRIGHT_BACKEND_BASE_URL=http://localhost:8190
+          export PLAYWRIGHT_BACKEND_BASE_URL=http://localhost:819
           npx playwright test e2e/app.spec.ts --config=playwright.config.mjs || echo "Some tests failed (expected in CI without real cluster)"
           echo "✓ Frontend integration tests completed"
 
@@ -188,14 +222,14 @@ jobs:
 
       - name: Wait for all services
         run: |
-          timeout 180 bash -c 'until docker compose -f docker-compose.test.yml exec -T backend wget --quiet --tries=1 --spider http://localhost:8190/health && \
+          timeout 180 bash -c 'until docker compose -f docker-compose.test.yml exec -T backend wget --quiet --tries=1 --spider http://localhost:819/health && \
             docker compose -f docker-compose.test.yml exec -T frontend wget --quiet --tries=1 --spider http://localhost/ && \
             docker compose -f docker-compose.test.yml exec -T ai wget --quiet --tries=1 --spider http://localhost:8081/health; do sleep 3; done'
           echo "✓ All services are ready"
 
       - name: Test service connectivity
         run: |
-          curl -f http://localhost:8190/health && echo "✓ Backend accessible"
+          curl -f http://localhost:819/health && echo "✓ Backend accessible"
           curl -f http://localhost:4173/ && echo "✓ Frontend accessible"
           curl -f http://localhost:8081/health && echo "✓ AI backend accessible"
 
@@ -204,7 +238,7 @@ jobs:
         run: |
           npm ci
           export PLAYWRIGHT_BASE_URL=http://localhost:4173
-          export PLAYWRIGHT_BACKEND_BASE_URL=http://localhost:8190
+          export PLAYWRIGHT_BACKEND_BASE_URL=http://localhost:819
           export PLAYWRIGHT_AI_BACKEND_URL=http://localhost:8081
           npx playwright test e2e/app.spec.ts --config=playwright.config.mjs || echo "Some tests may have failed (expected without real cluster)"
           echo "✓ Full stack integration tests completed"

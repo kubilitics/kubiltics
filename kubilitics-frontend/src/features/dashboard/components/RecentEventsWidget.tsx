@@ -121,14 +121,15 @@ function k8sToNormalized(item: {
 
 export const RecentEventsWidget = () => {
   const { activeCluster } = useClusterStore();
+  const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
   const storedUrl = useBackendConfigStore((s) => s.backendBaseUrl);
   const backendBaseUrl = getEffectiveBackendBaseUrl(storedUrl);
   const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured);
 
   const backendQuery = useQuery({
-    queryKey: ["backend", "events", activeCluster?.id, "dashboard-recent"],
-    queryFn: () => getEvents(backendBaseUrl, activeCluster!.id, { limit: 100 }),
-    enabled: !!activeCluster?.id && isBackendConfigured(),
+    queryKey: ["backend", "events", currentClusterId, "dashboard-recent"],
+    queryFn: () => getEvents(backendBaseUrl, currentClusterId!, { limit: 100 }),
+    enabled: !!currentClusterId && isBackendConfigured(),
     staleTime: 15000,
   });
 

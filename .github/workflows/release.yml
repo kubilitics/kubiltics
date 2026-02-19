@@ -326,6 +326,10 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: ${{ env.GO_VERSION }}
+          # Cache Go deps for sidecar builds (backend, kcli, ai); avoids "Dependencies file is not found" warning
+          cache-dependency-path: |
+            kubilitics-backend/go.sum
+            kcli/go.sum
       - name: Build Go backend sidecar
         # Tauri v2 externalBin files MUST carry the platform-triple suffix
         shell: bash
@@ -613,12 +617,20 @@ jobs:
           name: kubilitics-desktop-${{ matrix.name }}-${{ github.ref_name }}
           # macOS Tauri universal builds output to universal-apple-darwin, not release/
           path: kubilitics-desktop/src-tauri/target/universal-apple-darwin/release/bundle/
-      - name: Upload desktop artifacts (Windows / Linux)
-        if: matrix.os != 'macos-latest'
+      - name: Upload desktop artifacts (Linux)
+        if: matrix.os == 'ubuntu-latest'
         uses: actions/upload-artifact@v4
         with:
           name: kubilitics-desktop-${{ matrix.name }}-${{ github.ref_name }}
-          path: kubilitics-desktop/src-tauri/target/release/bundle/
+          # Linux builds use --target x86_64-unknown-linux-gnu so output is under that target dir
+          path: kubilitics-desktop/src-tauri/target/x86_64-unknown-linux-gnu/release/bundle/
+      - name: Upload desktop artifacts (Windows)
+        if: matrix.os == 'windows-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: kubilitics-desktop-${{ matrix.name }}-${{ github.ref_name }}
+          # Windows builds use --target x86_64-pc-windows-msvc so output is under that target dir
+          path: kubilitics-desktop/src-tauri/target/x86_64-pc-windows-msvc/release/bundle/
 
   release:
     name: Create GitHub Release

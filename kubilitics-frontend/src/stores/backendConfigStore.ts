@@ -67,8 +67,11 @@ interface BackendConfigStore extends BackendConfigState {
   isBackendConfigured: () => boolean;
 }
 
+// P0-B: Do NOT call getDefaultBackendBaseUrl() here. At module init in Tauri WebView,
+// __TAURI_INTERNALS__ is not yet injected, so isTauri() is false and we'd set backendBaseUrl ''.
+// URL is resolved lazily via getEffectiveBackendBaseUrl() / isBackendConfigured() at call time.
 const initialState: BackendConfigState = {
-  backendBaseUrl: getDefaultBackendBaseUrl(),
+  backendBaseUrl: '',
   currentClusterId: null,
   aiBackendUrl: DEFAULT_AI_BASE_URL,
   aiWsUrl: DEFAULT_AI_WS_URL,
@@ -106,6 +109,12 @@ export const useBackendConfigStore = create<BackendConfigStore>()(
         }),
 
       isBackendConfigured: () => {
+        // P0-B: isTauri() must be called at invocation time (NOT at module init time).
+        // At module init, __TAURI_INTERNALS__ is not yet injected into window, so a
+        // module-level isTauri() call returns false, leaving backendBaseUrl empty and
+        // causing all hooks to have enabled:false on cold start.
+        // Calling isTauri() here (at request time) gets the correct runtime value.
+        if (isTauri()) return true; // Desktop always has sidecar backend at port 819
         const url = getEffectiveBackendBaseUrl(get().backendBaseUrl);
         // In dev on localhost we use '' (proxy), which is valid
         if (typeof import.meta !== 'undefined' && import.meta.env?.DEV && typeof window !== 'undefined' && isLocalHostname(window.location?.hostname ?? '')) {

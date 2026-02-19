@@ -175,7 +175,7 @@ export function useWorkloadsOverview() {
   const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured);
   const stored = useBackendConfigStore((s) => s.backendBaseUrl);
   const backendBaseUrl = getEffectiveBackendBaseUrl(stored);
-  const clusterId = activeCluster?.id ?? currentClusterId ?? undefined;
+  const clusterId = currentClusterId ?? undefined;
 
   const backendQuery = useQuery({
     queryKey: ['backend', 'workloads', backendBaseUrl, clusterId],

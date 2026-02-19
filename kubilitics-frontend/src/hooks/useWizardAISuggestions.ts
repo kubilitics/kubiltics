@@ -10,6 +10,7 @@
 
 import { useState, useCallback } from 'react';
 import { AI_BASE_URL } from '@/services/aiService';
+import { guardAIAvailable } from '@/stores/aiAvailableStore';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -81,6 +82,12 @@ export function useWizardAISuggestions() {
     existingMemory?: string;
   }) => {
     if (!params.image?.trim()) return;
+    try {
+      guardAIAvailable();
+    } catch {
+      setError('AI backend is not available.');
+      return null;
+    }
     setSuggesting(true);
     setError(null);
     setSuggestion(null);
@@ -119,6 +126,13 @@ export function useWizardAISuggestions() {
     replicas: number;
     namespace: string;
   }) => {
+    try {
+      guardAIAvailable();
+    } catch {
+      setError('AI backend is not available.');
+      setValidating(false);
+      return null;
+    }
     setValidating(true);
     setError(null);
     setValidation(null);

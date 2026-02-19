@@ -55,7 +55,9 @@ if [ ! -x "$BACKEND_BIN" ]; then
 fi
 
 echo "Starting backend on :$BACKEND_PORT..."
-(cd "$ROOT/kubilitics-backend" && export KUBILITICS_PORT=$BACKEND_PORT && exec ./bin/kubilitics-backend) &
+# Include Tauri origins so desktop app works when it finds port already in use (e.g. make restart then open desktop).
+export KUBILITICS_ALLOWED_ORIGINS="tauri://localhost,tauri://,http://localhost:5173,http://localhost:$BACKEND_PORT"
+(cd "$ROOT/kubilitics-backend" && export KUBILITICS_PORT=$BACKEND_PORT && export KUBILITICS_ALLOWED_ORIGINS && exec ./bin/kubilitics-backend) &
 BACKEND_PID=$!
 trap "kill $BACKEND_PID 2>/dev/null || true" EXIT
 

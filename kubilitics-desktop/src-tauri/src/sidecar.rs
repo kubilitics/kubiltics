@@ -6,8 +6,7 @@ use tokio::time::sleep;
 
 use serde::{Deserialize, Serialize};
 
-const BACKEND_PORT: u16 = 819;
-const AI_BACKEND_PORT: u16 = 8081;
+use crate::backend_ports::{BACKEND_PORT, AI_BACKEND_PORT};
 const MAX_RESTART_ATTEMPTS: u32 = 3;
 const AI_MAX_RESTART_ATTEMPTS: u32 = 2;
 const HEALTH_CHECK_INTERVAL_SECS: u64 = 10;
@@ -45,9 +44,10 @@ impl BackendManager {
         }
     }
 
-    pub async fn start(&self) -> Result<(), Box<dyn std::error::Error>> {
+    /// Start backend and health monitor. Takes Arc<Self> so the health monitor can restart
+    /// the same instance (P1-2) instead of creating a new BackendManager.
+    pub async fn start(self: Arc<Self>) -> Result<(), Box<dyn std::error::Error>> {
         // Emit startup event so the frontend can show a loading state.
-        // The UI must never show a blank/frozen screen while waiting.
         let _ = self.app_handle.emit("backend-status", serde_json::json!({
             "status": "starting",
             "message": "Starting backend engine…"
@@ -62,7 +62,8 @@ impl BackendManager {
                 "status": "ready",
                 "message": "Backend engine ready"
             }));
-            self.start_health_monitor();
+            let _ = self.app_handle.emit("backend-circuit-reset", ());
+            Self::start_health_monitor(self.clone());
             self.start_ai_backend().await;
             return Ok(());
         }
@@ -73,24 +74,38 @@ impl BackendManager {
                     "status": "ready",
                     "message": "Backend engine ready"
                 }));
+                let _ = self.app_handle.emit("backend-circuit-reset", ());
             }
             Err(e) => {
-                // Do NOT crash the app — emit an error event so frontend can show a
-                // helpful message. User can still interact with cached/local features.
                 eprintln!("Backend failed to start: {}", e);
                 let _ = self.app_handle.emit("backend-status", serde_json::json!({
                     "status": "error",
                     "message": format!("Backend engine failed to start: {}", e)
                 }));
-                // Don't return Err — let the app open so the user can see the error message
             }
         }
 
-        self.start_health_monitor();
+        Self::start_health_monitor(self.clone());
 
         // Start AI backend if available (always non-blocking / best-effort)
         self.start_ai_backend().await;
 
+        Ok(())
+    }
+
+    /// P0-E / P1-1: Restart the backend process (e.g. from "Restart Engine" in UI).
+    /// Emits backend-status: starting, then on success backend-status: ready and backend-circuit-reset.
+    pub async fn restart(&self) -> Result<(), Box<dyn std::error::Error>> {
+        let _ = self.app_handle.emit("backend-status", serde_json::json!({
+            "status": "starting",
+            "message": "Restarting backend engine…"
+        }));
+        self.start_backend_process().await?;
+        let _ = self.app_handle.emit("backend-status", serde_json::json!({
+            "status": "ready",
+            "message": "Backend engine ready"
+        }));
+        let _ = self.app_handle.emit("backend-circuit-reset", ());
         Ok(())
     }
 
@@ -116,6 +131,18 @@ impl BackendManager {
             BACKEND_PORT
         );
 
+        // P0-J: Resolve user-writable DB path.
+        // Default "./kubilitics.db" writes into the .app bundle on signed macOS, which is
+        // read-only under Gatekeeper. Always write to the OS-standard app data directory.
+        // macOS: ~/Library/Application Support/kubilitics/kubilitics.db
+        // Linux: ~/.local/share/kubilitics/kubilitics.db
+        let db_path = dirs::data_local_dir()
+            .unwrap_or_else(|| dirs::home_dir().unwrap_or_else(|| std::path::PathBuf::from(".")))
+            .join("kubilitics");
+        // Create the directory if it doesn't exist (best-effort; backend will also try)
+        let _ = std::fs::create_dir_all(&db_path);
+        let db_file = db_path.join("kubilitics.db");
+
         let (_rx, _child) = sidecar_command
             .env("KUBILITICS_PORT", BACKEND_PORT.to_string())
             .env("KCLI_BIN", kcli_bin_path)
@@ -123,6 +150,8 @@ impl BackendManager {
             .env("KUBILITICS_ALLOWED_ORIGINS", tauri_allowed_origins)
             // Pass kubeconfig so backend auto-discovers clusters (Headlamp/Lens style)
             .env("KUBECONFIG", kubeconfig_path)
+            // P0-J: Write SQLite DB to user-writable location (not read-only .app bundle)
+            .env("KUBILITICS_DATABASE_PATH", db_file.to_string_lossy().as_ref())
             .spawn()?;
 
         *self.is_running.lock().unwrap() = true;
@@ -161,49 +190,66 @@ impl BackendManager {
         Err("Backend failed to become ready within 30 seconds".into())
     }
 
+    /// P1-11: Only treat port as "in use by our backend" if the health response is from kubilitics-backend.
+    /// Another HTTP server on 819 would otherwise be treated as ready and we'd skip spawning.
     async fn is_port_in_use(&self, port: u16) -> bool {
         let url = format!("http://localhost:{}/health", port);
-        reqwest::get(&url).await.is_ok()
+        let Ok(response) = reqwest::get(&url).await else {
+            return false;
+        };
+        if !response.status().is_success() {
+            return false;
+        }
+        let Ok(body) = response.text().await else {
+            return false;
+        };
+        let json: Option<serde_json::Value> = serde_json::from_str(&body).ok();
+        let service = json
+            .as_ref()
+            .and_then(|j| j.get("service"))
+            .and_then(|s| s.as_str());
+        matches!(service, Some("kubilitics-backend"))
     }
 
-    fn start_health_monitor(&self) {
-        let app_handle = self.app_handle.clone();
-        let restart_count = self.restart_count.clone();
-        let is_running = self.is_running.clone();
-        
+    /// P1-2: Use the same Arc<BackendManager> so restart_count is shared and we don't create a new manager on each restart.
+    fn start_health_monitor(this: Arc<Self>) {
         tokio::spawn(async move {
             loop {
                 sleep(Duration::from_secs(HEALTH_CHECK_INTERVAL_SECS)).await;
-                
+
                 let running = {
-                    let is_running_guard = is_running.lock().unwrap();
-                    *is_running_guard
+                    let guard = this.is_running.lock().unwrap();
+                    *guard
                 };
-                
+
                 if !running {
                     continue;
                 }
-                
+
                 if !Self::check_health(BACKEND_PORT).await {
                     println!("Backend health check failed. Attempting restart...");
-                    
+
                     let count = {
-                        let mut count_guard = restart_count.lock().unwrap();
-                        *count_guard += 1;
-                        *count_guard
+                        let mut guard = this.restart_count.lock().unwrap();
+                        *guard += 1;
+                        *guard
                     };
-                    
+
                     if count <= MAX_RESTART_ATTEMPTS {
-                        let manager = BackendManager::new(app_handle.clone());
-                        if let Err(e) = manager.start_backend_process().await {
+                        if let Err(e) = this.start_backend_process().await {
                             eprintln!("Failed to restart backend: {}", e);
                         } else {
                             println!("Backend restarted successfully (attempt {})", count);
+                            let _ = this.app_handle.emit("backend-status", serde_json::json!({
+                                "status": "ready",
+                                "message": "Backend engine ready"
+                            }));
+                            let _ = this.app_handle.emit("backend-circuit-reset", ());
                         }
                     } else {
                         eprintln!("Max restart attempts reached. Backend will not restart.");
-                        let mut running_guard = is_running.lock().unwrap();
-                        *running_guard = false;
+                        let mut guard = this.is_running.lock().unwrap();
+                        *guard = false;
                     }
                 }
             }
@@ -413,54 +459,67 @@ impl BackendManager {
         }
     }
 
+    /// P1-10: Resolve kcli binary deterministically by target triple so universal builds pick the correct arch.
     async fn resolve_kcli_binary_path(&self) -> Result<String, Box<dyn std::error::Error>> {
-        // Check if kcli sidecar binary exists by trying to create the command
         let kcli_sidecar_exists = self.app_handle.shell().sidecar("kcli").is_ok();
-        
+
         if kcli_sidecar_exists {
-            // Tauri bundles external binaries with target triple suffix (e.g., kcli-x86_64-apple-darwin)
-            // The sidecar() method resolves this automatically, but for KCLI_BIN we need the actual path.
-            // We'll use a workaround: execute the sidecar with --version to get its path via which/where
-            
-            // Try to get the path by executing the sidecar and checking what gets executed
-            // Actually, simpler: use Tauri's resource directory and look for the binary
             if let Ok(resource_dir) = self.app_handle.path().resource_dir() {
-                // Tauri places sidecar binaries in the resource directory
-                // They have target triple suffixes, so we need to find the right one
                 if let Ok(entries) = std::fs::read_dir(&resource_dir) {
+                    // Build expected name from compile-time target triple (e.g. kcli-x86_64-apple-darwin, kcli-x86_64-pc-windows-msvc.exe)
+                    let target = std::env::consts::ARCH;
+                    let os = std::env::consts::OS;
+                    let vendor = match os {
+                        "macos" | "ios" => "apple",
+                        "windows" => "pc",
+                        _ => "unknown",
+                    };
+                    let os_suffix = match os {
+                        "macos" => "darwin",
+                        "ios" => "ios",
+                        "linux" => "linux-gnu",
+                        "windows" => "windows-msvc",
+                        _ => os,
+                    };
+                    let expected_base = format!("kcli-{}-{}-{}", target, vendor, os_suffix);
+                    #[cfg(windows)]
+                    let expected_name = format!("{}.exe", expected_base);
+                    #[cfg(not(windows))]
+                    let expected_name = expected_base.clone();
+
+                    let mut fallback_path: Option<std::path::PathBuf> = None;
+
                     for entry in entries.flatten() {
                         let path = entry.path();
-                        let file_name = path.file_name().and_then(|n| n.to_str());
-                        
-                        // Look for kcli binary (with or without target triple suffix)
-                        if let Some(name) = file_name {
-                            if name == "kcli" || name.starts_with("kcli-") {
-                                // Check if it's executable
-                                if let Ok(metadata) = std::fs::metadata(&path) {
-                                    #[cfg(unix)]
-                                    {
-                                        use std::os::unix::fs::PermissionsExt;
-                                        if metadata.permissions().mode() & 0o111 != 0 {
-                                            return Ok(path.to_string_lossy().to_string());
-                                        }
-                                    }
-                                    #[cfg(windows)]
-                                    {
-                                        // On Windows, .exe files are executable
-                                        if name.ends_with(".exe") || name == "kcli" {
-                                            return Ok(path.to_string_lossy().to_string());
-                                        }
-                                    }
-                                    #[cfg(not(any(unix, windows)))]
-                                    {
-                                        // Fallback: assume it's executable if it matches
-                                        if name == "kcli" || name.starts_with("kcli-") {
-                                            return Ok(path.to_string_lossy().to_string());
-                                        }
-                                    }
-                                }
+                        let file_name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
+                        let is_executable = path.metadata().ok().map(|m| {
+                            #[cfg(unix)]
+                            {
+                                use std::os::unix::fs::PermissionsExt;
+                                m.permissions().mode() & 0o111 != 0
                             }
+                            #[cfg(windows)]
+                            {
+                                file_name.ends_with(".exe") || file_name == "kcli"
+                            }
+                            #[cfg(not(any(unix, windows)))]
+                            {
+                                true
+                            }
+                        }).unwrap_or(false);
+
+                        if !is_executable {
+                            continue;
                         }
+                        if file_name == expected_name {
+                            return Ok(path.to_string_lossy().to_string());
+                        }
+                        if (file_name == "kcli" || file_name.starts_with("kcli-")) && fallback_path.is_none() {
+                            fallback_path = Some(path);
+                        }
+                    }
+                    if let Some(p) = fallback_path {
+                        return Ok(p.to_string_lossy().to_string());
                     }
                 }
             }

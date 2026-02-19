@@ -186,7 +186,7 @@ export default function Secrets() {
   const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured);
   const activeCluster = useClusterStore((s) => s.activeCluster);
   const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
-  const clusterId = activeCluster?.id ?? currentClusterId;
+  const clusterId = currentClusterId ?? null;
 
   const allItems = (data?.allItems ?? []) as K8sSecret[];
   const items: Secret[] = useMemo(() => (isConnected ? allItems.map(mapSecret) : []), [isConnected, allItems]);

@@ -252,7 +252,7 @@ export default function Nodes() {
   const storedUrl = useBackendConfigStore((s) => s.backendBaseUrl);
   const backendBaseUrl = getEffectiveBackendBaseUrl(storedUrl);
   const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured);
-  const clusterId = currentClusterId ?? activeCluster?.id;
+  const clusterId = currentClusterId ?? null;
 
   const { data, refetch, isLoading, pagination: hookPagination } = usePaginatedResourceList<NodeResource>('nodes');
   const deleteResource = useDeleteK8sResource('nodes');

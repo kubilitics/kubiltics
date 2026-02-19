@@ -18,7 +18,7 @@ export function useDeploymentMetrics(
   const activeCluster = useClusterStore((s) => s.activeCluster);
   const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
   const clusters = useClusterStore((s) => s.clusters);
-  const clusterId = activeCluster?.id ?? currentClusterId ?? clusters?.[0]?.id;
+  const clusterId = currentClusterId ?? undefined;
 
   const enabled =
     (options?.enabled !== false) &&

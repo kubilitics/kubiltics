@@ -1,10 +1,12 @@
 package rest
 
 import (
+	"bytes"
 	"context"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"time"
 
@@ -41,9 +43,17 @@ func (h *Handler) getKubeconfigFromRequest(r *http.Request) ([]byte, string, err
 	}
 
 	// Try body (for POST/PATCH requests)
+	// BA-6: Read body into memory and restore it so handlers can read it again (e.g. PatchResource reads body after getClientFromRequest).
 	if r.Body != nil && r.ContentLength > 0 {
+		bodyBytes, err := io.ReadAll(r.Body)
+		if err != nil {
+			return nil, "", fmt.Errorf("failed to read request body: %w", err)
+		}
+		r.Body.Close()
+		r.Body = io.NopCloser(bytes.NewReader(bodyBytes))
+
 		var req KubeconfigRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err == nil && req.KubeconfigBase64 != "" {
+		if err := json.NewDecoder(bytes.NewReader(bodyBytes)).Decode(&req); err == nil && req.KubeconfigBase64 != "" {
 			kubeconfigBytes, err = base64.StdEncoding.DecodeString(req.KubeconfigBase64)
 			if err != nil {
 				return nil, "", fmt.Errorf("invalid kubeconfig_base64: %w", err)

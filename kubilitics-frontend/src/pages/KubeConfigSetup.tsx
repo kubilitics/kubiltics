@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Upload, CheckCircle2, XCircle, Server, ArrowRight, ChevronRight } from 'lucide-react';
+import { Upload, CheckCircle2, XCircle, Server, ArrowRight, ChevronRight, Loader2 } from 'lucide-react';
 import { KubernetesLogo } from '@/components/icons/KubernetesIcons';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -9,19 +9,29 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { useKubeConfigStore, parseKubeConfig, validateKubeConfig, ParsedCluster } from '@/stores/kubeConfigStore';
 import { useClusterStore } from '@/stores/clusterStore';
+import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
+import { addClusterWithUpload } from '@/services/backendApiClient';
+import { backendClusterToCluster } from '@/lib/backendClusterAdapter';
+import { toast } from 'sonner';
 
 type Step = 'upload' | 'validating' | 'select' | 'connecting';
 
 export default function KubeConfigSetup() {
   const navigate = useNavigate();
   const { setKubeConfig, parsedClusters, selectCluster, setAuthenticated } = useKubeConfigStore();
-  const { setDemo } = useClusterStore();
-  
+  const { setDemo, setClusters, setActiveCluster } = useClusterStore();
+  const backendBaseUrl = getEffectiveBackendBaseUrl(useBackendConfigStore((s) => s.backendBaseUrl));
+  const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured());
+  const setCurrentClusterId = useBackendConfigStore((s) => s.setCurrentClusterId);
+
   const [step, setStep] = useState<Step>('upload');
   const [isDragging, setIsDragging] = useState(false);
   const [progress, setProgress] = useState(0);
   const [errors, setErrors] = useState<string[]>([]);
   const [selectedClusterId, setSelectedClusterId] = useState<string | null>(null);
+  /** P2-12: Raw kubeconfig content for addClusterWithUpload when backend is configured. */
+  const [rawKubeconfigContent, setRawKubeconfigContent] = useState<string | null>(null);
+  const [isConnecting, setIsConnecting] = useState(false);
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
@@ -59,8 +69,8 @@ export default function KubeConfigSetup() {
       }
 
       setKubeConfig(config);
-      // Navigate to cluster selection page
-      navigate('/setup/clusters');
+      setRawKubeconfigContent(content);
+      setStep('select');
     } catch (error) {
       setErrors(['Failed to parse kubeconfig file. Please check the file format.']);
       setStep('upload');
@@ -73,16 +83,34 @@ export default function KubeConfigSetup() {
 
   const handleConnect = async () => {
     if (!selectedClusterId) return;
-    
     setStep('connecting');
+    setIsConnecting(true);
+    setDemo(false);
+
+    if (isBackendConfigured && backendBaseUrl?.trim() && rawKubeconfigContent) {
+      try {
+        const base64 = btoa(unescape(encodeURIComponent(rawKubeconfigContent)));
+        const result = await addClusterWithUpload(backendBaseUrl, base64, selectedClusterId);
+        const cluster = backendClusterToCluster(result);
+        setCurrentClusterId(result.id);
+        setClusters([cluster]);
+        setActiveCluster(cluster);
+        setAuthenticated(true);
+        toast.success('Connected to cluster', { description: result.name });
+        navigate('/home', { replace: true });
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : 'Failed to add cluster');
+        setStep('select');
+      } finally {
+        setIsConnecting(false);
+      }
+      return;
+    }
+
     selectCluster(selectedClusterId);
     setAuthenticated(true);
-    
-    // Simulate connection
-    await new Promise((r) => setTimeout(r, 1500));
-    
-    setDemo(true);
-    navigate('/dashboard');
+    setIsConnecting(false);
+    navigate('/connect');
   };
 
   return (
@@ -261,12 +289,30 @@ export default function KubeConfigSetup() {
               <Button
                 className="w-full"
                 size="lg"
-                disabled={!selectedClusterId}
+                disabled={!selectedClusterId || isConnecting}
                 onClick={handleConnect}
               >
-                Connect to Cluster
-                <ArrowRight className="h-4 w-4 ml-2" />
+                {isConnecting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    Connecting...
+                  </>
+                ) : (
+                  <>
+                    Connect to Cluster
+                    <ArrowRight className="h-4 w-4 ml-2" />
+                  </>
+                )}
               </Button>
+              <p className="text-center mt-3">
+                <button
+                  type="button"
+                  className="text-sm text-muted-foreground hover:text-foreground"
+                  onClick={() => navigate('/setup/clusters')}
+                >
+                  Or choose from all contexts →
+                </button>
+              </p>
             </motion.div>
           )}
 

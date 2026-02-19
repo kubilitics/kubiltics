@@ -6,12 +6,18 @@
 import type { TopologyGraph } from '@/topology-engine';
 import { adaptTopologyGraph, validateTopologyGraph } from '@/topology-engine';
 import { useAuthStore } from '@/stores/authStore';
-import { getCurrentBackendUrl } from '@/stores/settingsStore';
+import { isTauri } from '@/lib/tauri';
 
 const API_PREFIX = '/api/v1';
 
-/** Circuit breaker: after a network error (e.g. ECONNREFUSED when backend is down), stop sending requests for this long to avoid filling the terminal with proxy errors. */
-const BACKEND_DOWN_COOLDOWN_MS = 60_000;
+/** P1-3: Cooldown shorter in Tauri (local backend) so Retry is useful sooner. */
+const BACKEND_DOWN_COOLDOWN_MS_BROWSER = 60_000;
+const BACKEND_DOWN_COOLDOWN_MS_TAURI = 15_000;
+
+function getBackendDownCooldownMs(): number {
+  return isTauri() ? BACKEND_DOWN_COOLDOWN_MS_TAURI : BACKEND_DOWN_COOLDOWN_MS_BROWSER;
+}
+
 let backendUnavailableUntil = 0;
 
 function isNetworkError(e: unknown): boolean {
@@ -21,13 +27,25 @@ function isNetworkError(e: unknown): boolean {
 
 /** When a request fails due to backend unreachable, open the circuit so we don't hammer the proxy. */
 function markBackendUnavailable(): void {
-  backendUnavailableUntil = Date.now() + BACKEND_DOWN_COOLDOWN_MS;
+  backendUnavailableUntil = Date.now() + getBackendDownCooldownMs();
 }
 
 /** True if we're in cooldown and should skip backend requests (avoids proxy log spam). */
 export function isBackendCircuitOpen(): boolean {
   return Date.now() < backendUnavailableUntil;
 }
+
+/** Reset circuit so the next Retry can attempt the backend immediately (user-initiated recovery). */
+export function resetBackendCircuit(): void {
+  backendUnavailableUntil = 0;
+}
+
+/**
+ * Circuit breaker applies to all backendRequest() and getHealth() calls: topology, metrics, cluster lists,
+ * shell completions, kcli/exec, etc. When open, those calls throw immediately (no request sent).
+ * Shell/KCLI WebSocket connections use URLs from getKubectlShellStreamUrl/getKCLIShellStreamUrl and connect
+ * via new WebSocket() — they are not gated by the circuit; they fail at connection time if backend is down.
+ */
 
 /** Cluster shape returned by GET /api/v1/clusters (matches backend models.Cluster) */
 export interface BackendCluster {
@@ -79,7 +97,7 @@ export async function backendRequest<T>(
 ): Promise<T> {
   if (isBackendCircuitOpen()) {
     throw new BackendApiError(
-      'Backend unreachable (circuit open). Start backend with: make restart',
+      isTauri() ? 'Connection temporarily unavailable. Try again in a moment.' : 'Backend unreachable (circuit open). Check backend URL in Settings or try again later.',
       0,
       undefined
     );
@@ -96,10 +114,7 @@ export async function backendRequest<T>(
   };
 
   // Desktop mode (Tauri): Send kubeconfig with each request (Headlamp/Lens model)
-  const isTauriMode = typeof window !== 'undefined' &&
-    !!(((window as any).__TAURI_INTERNALS__) ?? ((window as any).__TAURI__));
-
-  if (isTauriMode) {
+  if (isTauri()) {
     const { useClusterStore } = await import('@/stores/clusterStore');
     const { activeCluster, kubeconfigContent } = useClusterStore.getState();
 
@@ -118,6 +133,12 @@ export async function backendRequest<T>(
       headers,
     });
   } catch (e) {
+    // BA-3: Circuit breaker ONLY opens on network-level errors (ECONNREFUSED, Failed to fetch, timeout).
+    // HTTP 4xx (404, 401, 403) and 5xx responses must NOT open the circuit — these are application-level
+    // errors (wrong cluster ID, auth failure, server error) not backend unavailability. Opening the circuit
+    // on 404 would lock out the user for 60 seconds just because they navigated to a non-existent resource.
+    // IMPORTANT: markBackendUnavailable() is ONLY called here in the network catch block, never in the
+    // !response.ok path below. Any refactor that moves markBackendUnavailable() to the error path would break this.
     if (isNetworkError(e)) markBackendUnavailable();
     throw e;
   }
@@ -125,13 +146,17 @@ export async function backendRequest<T>(
   const requestId = response.headers.get('X-Request-ID') ?? undefined;
   const body = await response.text();
   if (!response.ok) {
+    // BA-3: HTTP 4xx/5xx responses do NOT open the circuit breaker — these are application errors,
+    // not backend unavailability. Only network-level errors (in catch block above) open the circuit.
     if (response.status === 401) {
-      if (isTauriMode) {
+      if (isTauri()) {
         console.error('Kubeconfig authentication failed - kubeconfig may be invalid or expired');
       } else {
-        // Headlamp/Lens model: no login page — redirect to entry point
         useAuthStore.getState().logout();
-        window.location.href = '/';
+      }
+      // P2-6: Use event so App can navigate via React Router; window.location.href breaks MemoryRouter (Tauri).
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('auth-logout'));
       }
     }
 
@@ -523,13 +548,18 @@ export async function getHealth(
   baseUrl: string
 ): Promise<{ status: string; service?: string; version?: string }> {
   if (isBackendCircuitOpen()) {
-    throw new BackendApiError('Backend unreachable (circuit open). Start backend with: make restart', 0, undefined);
+    throw new BackendApiError(
+      isTauri() ? 'Connection temporarily unavailable. Try again in a moment.' : 'Backend unreachable (circuit open). Check backend URL in Settings or try again later.',
+      0,
+      undefined
+    );
   }
   const normalizedBase = baseUrl.replace(/\/+$/, '');
   const url = `${normalizedBase}/health`;
   let response: Response;
   try {
-    response = await fetch(url);
+    // BA-4: 5s timeout prevents hanging if backend accepts connection but doesn't respond (e.g. DB migration blocking).
+    response = await fetch(url, { signal: AbortSignal.timeout(5000) });
   } catch (e) {
     if (isNetworkError(e)) markBackendUnavailable();
     throw e;
@@ -1359,15 +1389,41 @@ function parseContentDispositionFilename(contentDisposition: string | null): str
 /**
  * GET /api/v1/clusters/{clusterId}/kubeconfig — returns kubeconfig YAML for the cluster (context-specific).
  * Returns blob and filename (from Content-Disposition when present) for download.
+ * P1-12: Uses same auth headers as backendRequest (X-Kubeconfig in Tauri) so backend can authorize.
  */
 export async function getClusterKubeconfig(
   baseUrl: string,
   clusterId: string
 ): Promise<{ blob: Blob; filename: string }> {
+  if (isBackendCircuitOpen()) {
+    throw new BackendApiError(
+      isTauri() ? 'Connection temporarily unavailable. Try again in a moment.' : 'Backend unreachable (circuit open).',
+      0,
+      undefined
+    );
+  }
   const normalizedBase = baseUrl.replace(/\/+$/, '');
   const path = `clusters/${encodeURIComponent(clusterId)}/kubeconfig`;
   const url = `${normalizedBase}${API_PREFIX}/${path}`;
-  const response = await fetch(url);
+
+  const headers: Record<string, string> = {};
+  if (isTauri()) {
+    const { useClusterStore } = await import('@/stores/clusterStore');
+    const { activeCluster, kubeconfigContent } = useClusterStore.getState();
+    if (kubeconfigContent) {
+      headers['X-Kubeconfig'] = btoa(kubeconfigContent);
+    } else if (activeCluster?.kubeconfig) {
+      headers['X-Kubeconfig'] = btoa(activeCluster.kubeconfig);
+    }
+  }
+
+  let response: Response;
+  try {
+    response = await fetch(url, { headers });
+  } catch (e) {
+    if (isNetworkError(e)) markBackendUnavailable();
+    throw e;
+  }
   if (!response.ok) {
     const body = await response.text();
     throw new BackendApiError(

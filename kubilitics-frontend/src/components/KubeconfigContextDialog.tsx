@@ -58,21 +58,14 @@ export function KubeconfigContextDialog({
 
     const handleConfirm = async () => {
         setIsSubmitting(true);
-        // Simulate a small delay for better UX
-        await new Promise(resolve => setTimeout(resolve, 600));
-
-        // In a real implementation with backend, we would save these selections here
-        // For now we just pass them up
-
-        // Import Tauri invoke
+        await new Promise(resolve => setTimeout(resolve, 300));
         try {
             const { invoke } = await import('@tauri-apps/api/core');
             await invoke('save_selected_contexts', { contexts: selected });
-            await invoke('mark_first_launch_complete');
         } catch (e) {
-            console.error('Failed to save selections:', e);
+            console.error('Failed to save selected contexts:', e);
         }
-
+        // P1-5: Parent (KubeconfigContextWrapper) registers clusters with backend, then calls mark_first_launch_complete and navigates.
         onSelect(selected);
         setIsSubmitting(false);
     };

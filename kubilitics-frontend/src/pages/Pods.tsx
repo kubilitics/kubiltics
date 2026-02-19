@@ -278,8 +278,8 @@ export default function Pods() {
   const storedUrl = useBackendConfigStore((s) => s.backendBaseUrl);
   const backendBaseUrl = getEffectiveBackendBaseUrl(storedUrl);
   const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured);
-  // Cluster ID for backend API (metrics, etc.). In dev backendBaseUrl can be '' (proxy); still enable when configured.
-  const clusterId = currentClusterId ?? activeCluster?.id;
+  // P0-D: Use currentClusterId only for backend API paths.
+  const clusterId = currentClusterId ?? null;
 
   // Single full-list fetch (limit 5000 when backend); pagination is frontend-only
   const { data, isLoading, isFetching, dataUpdatedAt, refetch } = useK8sResourceList<PodResource>('pods', undefined, {

@@ -55,6 +55,7 @@ export default defineConfig(({ mode }) => ({
   test: {
     include: ['src/**/*.test.{ts,tsx}'],
     exclude: ['e2e/**', 'node_modules/**'],
+    environment: 'jsdom',
   },
   server: {
     host: "::",

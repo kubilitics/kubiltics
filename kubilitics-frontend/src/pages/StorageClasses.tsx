@@ -124,7 +124,7 @@ export default function StorageClasses() {
   const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured);
   const activeCluster = useClusterStore((s) => s.activeCluster);
   const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
-  const clusterId = activeCluster?.id ?? currentClusterId;
+  const clusterId = currentClusterId ?? null;
 
   const { data: pvCounts } = useQuery({
     queryKey: ['storageclass-pv-counts', clusterId],

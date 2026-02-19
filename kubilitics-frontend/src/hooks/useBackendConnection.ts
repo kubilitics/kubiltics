@@ -7,6 +7,7 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { guardAIAvailable } from '@/stores/aiAvailableStore';
 
 // ─── Types matching the Go BackendStatusResponse ──────────────────────────────
 
@@ -88,12 +89,14 @@ const AI_BASE =
     .replace('wss://', 'https://') ?? 'http://localhost:8081';
 
 async function fetchBackendStatus(): Promise<BackendStatus> {
+  guardAIAvailable();
   const resp = await fetch(`${AI_BASE}/api/v1/backend/status`);
   if (!resp.ok) throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
   return resp.json() as Promise<BackendStatus>;
 }
 
 async function fetchRecentEvents(limit = 30): Promise<RecentEvent[]> {
+  guardAIAvailable();
   const resp = await fetch(`${AI_BASE}/api/v1/backend/events?limit=${limit}`);
   if (!resp.ok) throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
   const data = (await resp.json()) as { events?: Record<string, unknown>[] };

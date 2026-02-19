@@ -152,7 +152,7 @@ export default function ConfigMaps() {
   const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured);
   const activeCluster = useClusterStore((s) => s.activeCluster);
   const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
-  const clusterId = activeCluster?.id ?? currentClusterId;
+  const clusterId = currentClusterId ?? null;
 
   const allItems = (data?.allItems ?? []) as K8sConfigMap[];
   const items: ConfigMap[] = useMemo(() => (isConnected ? allItems.map(mapConfigMap) : []), [isConnected, allItems]);

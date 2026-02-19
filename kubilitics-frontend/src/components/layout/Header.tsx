@@ -93,6 +93,7 @@ const ICON_BTN = cn(
 export function Header() {
   const navigate = useNavigate();
   const { activeCluster, clusters, setActiveCluster, isDemo } = useClusterStore();
+  const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
   const setCurrentClusterId = useBackendConfigStore((s) => s.setCurrentClusterId);
   const [searchOpen, setSearchOpen] = useState(false);
   const [shellOpen, setShellOpen] = useState(false);
@@ -444,11 +445,11 @@ export function Header() {
 
       <GlobalSearch open={searchOpen} onOpenChange={setSearchOpen} />
 
-      {activeCluster && (
+      {activeCluster && currentClusterId && (
         <ClusterShellPanel
           open={shellOpen}
           onOpenChange={setShellOpen}
-          clusterId={activeCluster.id}
+          clusterId={currentClusterId}
           clusterName={activeCluster.name}
           backendBaseUrl={backendBaseUrl}
         />

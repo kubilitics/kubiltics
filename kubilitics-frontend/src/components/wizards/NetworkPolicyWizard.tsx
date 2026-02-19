@@ -43,7 +43,7 @@ export function NetworkPolicyWizard({ onClose, onSubmit }: NetworkPolicyWizardPr
   const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured());
   const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
   const activeCluster = useClusterStore((s) => s.activeCluster);
-  const clusterId = activeCluster?.id ?? currentClusterId;
+  const clusterId = currentClusterId ?? null;
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [name, setName] = useState('');

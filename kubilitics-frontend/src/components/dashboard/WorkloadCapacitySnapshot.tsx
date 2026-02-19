@@ -28,7 +28,7 @@ const PHASE_COLORS: Record<string, string> = {
 export function WorkloadCapacitySnapshot() {
   const { activeCluster } = useClusterStore();
   const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
-  const clusterId = activeCluster?.id ?? currentClusterId;
+  const clusterId = currentClusterId ?? null;
   const summaryQuery = useClusterSummary(clusterId ?? undefined);
   const summary = summaryQuery.data;
 

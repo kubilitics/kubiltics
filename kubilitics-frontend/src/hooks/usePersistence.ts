@@ -3,6 +3,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { AI_BASE_URL } from '@/services/aiService';
+import { guardAIAvailable } from '@/stores/aiAvailableStore';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -121,6 +122,13 @@ export function usePersistenceHealth(opts: { pollIntervalMs?: number } = {}) {
   const [error, setError] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
+    try {
+      guardAIAvailable();
+    } catch {
+      setData(null);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     try {
       const res = await window.fetch(`${API_BASE}/health`);
@@ -151,6 +159,12 @@ export function useAuditLog(query: AuditQuery = {}) {
   const [error, setError] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
+    try {
+      guardAIAvailable();
+    } catch {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     try {
       const params = new URLSearchParams();
@@ -179,6 +193,7 @@ export function useAuditLog(query: AuditQuery = {}) {
 
   const appendEvent = useCallback(async (rec: Partial<AuditRecord>) => {
     try {
+      guardAIAvailable();
       await window.fetch(`${API_BASE}/audit`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -201,6 +216,12 @@ export function useConversations(opts: { clusterID?: string; limit?: number } = 
   const [error, setError] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
+    try {
+      guardAIAvailable();
+    } catch {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     try {
       const params = new URLSearchParams();
@@ -234,6 +255,12 @@ export function useConversation(id: string | null) {
 
   const fetchData = useCallback(async () => {
     if (!id) return;
+    try {
+      guardAIAvailable();
+    } catch {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     try {
       const res = await window.fetch(`${API_BASE}/conversations/${id}`);
@@ -264,6 +291,12 @@ export function useAnomalyHistory(query: AnomalyQuery = {}, opts: { pollInterval
   const abortRef = useRef<AbortController | null>(null);
 
   const fetchData = useCallback(async () => {
+    try {
+      guardAIAvailable();
+    } catch {
+      setLoading(false);
+      return;
+    }
     abortRef.current?.abort();
     const ctrl = new AbortController();
     abortRef.current = ctrl;
@@ -316,6 +349,12 @@ export function useAnomalySummary(opts: {
   const [error, setError] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
+    try {
+      guardAIAvailable();
+    } catch {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     try {
       const params = new URLSearchParams();
@@ -352,6 +391,12 @@ export function useCostSnapshots(opts: { clusterID?: string; limit?: number } = 
   const [error, setError] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
+    try {
+      guardAIAvailable();
+    } catch {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     try {
       const params = new URLSearchParams();
@@ -389,6 +434,12 @@ export function useCostTrend(opts: {
   const [error, setError] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
+    try {
+      guardAIAvailable();
+    } catch {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     try {
       const params = new URLSearchParams();
@@ -425,6 +476,12 @@ export function useLatestCostSnapshot(clusterID = '') {
   const [error, setError] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
+    try {
+      guardAIAvailable();
+    } catch {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     try {
       const params = new URLSearchParams();

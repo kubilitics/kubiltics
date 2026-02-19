@@ -26,7 +26,7 @@ function formatProvider(p: string): string {
 export function ClusterDetailsPanel() {
   const { activeCluster } = useClusterStore();
   const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
-  const clusterId = activeCluster?.id ?? currentClusterId;
+  const clusterId = currentClusterId ?? null;
   const summaryQuery = useClusterSummary(clusterId ?? undefined);
 
   // Real data: version from cluster, provider formatted, region or — when unknown

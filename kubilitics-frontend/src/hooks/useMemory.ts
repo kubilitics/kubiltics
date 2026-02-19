@@ -12,6 +12,7 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { guardAIAvailable } from '@/stores/aiAvailableStore';
 
 const AI_BASE =
   (import.meta.env.VITE_AI_WS_URL as string | undefined)
@@ -21,6 +22,7 @@ const AI_BASE =
 // ─── Shared fetch helper ───────────────────────────────────────────────────────
 
 async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
+  guardAIAvailable();
   const resp = await fetch(`${AI_BASE}${path}`, options);
   if (!resp.ok) throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
   return resp.json() as Promise<T>;

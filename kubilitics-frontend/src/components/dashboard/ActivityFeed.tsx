@@ -108,15 +108,16 @@ function normalizeK8sEvent(item: { metadata?: { uid?: string }; type?: string; r
 
 export function ActivityFeed() {
   const { activeCluster } = useClusterStore();
+  const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
   const storedUrl = useBackendConfigStore((s) => s.backendBaseUrl);
   const backendBaseUrl = getEffectiveBackendBaseUrl(storedUrl);
   const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured);
   const { config } = useKubernetesConfigStore();
 
   const backendEventsQuery = useQuery({
-    queryKey: ['backend', 'events', activeCluster?.id, 'feed'],
-    queryFn: () => getEvents(backendBaseUrl, activeCluster!.id, { namespace: 'default', limit: 30 }),
-    enabled: !!activeCluster?.id && isBackendConfigured(),
+    queryKey: ['backend', 'events', currentClusterId, 'feed'],
+    queryFn: () => getEvents(backendBaseUrl, currentClusterId!, { namespace: 'default', limit: 30 }),
+    enabled: !!currentClusterId && isBackendConfigured(),
     staleTime: 10000,
     refetchInterval: 20000,
   });

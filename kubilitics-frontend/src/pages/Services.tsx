@@ -221,7 +221,7 @@ export default function Services() {
   const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured);
   const activeCluster = useClusterStore((s) => s.activeCluster);
   const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
-  const clusterId = activeCluster?.id ?? currentClusterId;
+  const clusterId = currentClusterId ?? null;
   const { data, isLoading, isFetching, dataUpdatedAt, refetch } = useK8sResourceList<ServiceResource>('services', undefined, { limit: 5000 });
   const deleteResource = useDeleteK8sResource('services');
 

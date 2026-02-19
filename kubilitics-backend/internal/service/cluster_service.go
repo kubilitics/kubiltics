@@ -38,6 +38,10 @@ type ClusterService interface {
 	DiscoverClusters(ctx context.Context) ([]*models.Cluster, error)
 }
 
+// K8sClientFactory creates a k8s client from kubeconfig path and context. Used in tests to inject a fake client.
+// When nil, AddCluster uses k8s.NewClient.
+type K8sClientFactory func(kubeconfigPath, contextName string) (*k8s.Client, error)
+
 type clusterService struct {
 	repo               repository.ClusterRepository
 	clients            map[string]*k8s.Client // id -> live K8s client
@@ -45,9 +49,19 @@ type clusterService struct {
 	k8sTimeout         time.Duration // timeout for outbound K8s API calls; 0 = use request context only
 	k8sRateLimitPerSec float64
 	k8sRateLimitBurst  int
+	clientFactory      K8sClientFactory // optional; tests only
 }
 
 func NewClusterService(repo repository.ClusterRepository, cfg *config.Config) ClusterService {
+	return newClusterService(repo, cfg, nil)
+}
+
+// NewClusterServiceWithClientFactory is for tests: injects a client factory so AddCluster does not call real k8s.NewClient.
+func NewClusterServiceWithClientFactory(repo repository.ClusterRepository, cfg *config.Config, factory K8sClientFactory) ClusterService {
+	return newClusterService(repo, cfg, factory)
+}
+
+func newClusterService(repo repository.ClusterRepository, cfg *config.Config, factory K8sClientFactory) ClusterService {
 	maxClusters := defaultMaxClusters
 	var k8sTimeout time.Duration
 	var k8sRatePerSec float64
@@ -71,6 +85,7 @@ func NewClusterService(repo repository.ClusterRepository, cfg *config.Config) Cl
 		k8sTimeout:         k8sTimeout,
 		k8sRateLimitPerSec: k8sRatePerSec,
 		k8sRateLimitBurst:  k8sRateBurst,
+		clientFactory:      factory,
 	}
 }
 
@@ -188,9 +203,19 @@ func (s *clusterService) AddCluster(ctx context.Context, kubeconfigPath, context
 		return nil, fmt.Errorf("cluster limit reached (max %d); cannot add more clusters", s.maxClusters)
 	}
 
-	client, err := k8s.NewClient(kubeconfigPath, contextName)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create client: %w", err)
+	var client *k8s.Client
+	if s.clientFactory != nil {
+		var err error
+		client, err = s.clientFactory(kubeconfigPath, contextName)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create client: %w", err)
+		}
+	} else {
+		var err error
+		client, err = k8s.NewClient(kubeconfigPath, contextName)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create client: %w", err)
+		}
 	}
 	if s.k8sTimeout > 0 {
 		client.SetTimeout(s.k8sTimeout)
@@ -207,18 +232,39 @@ func (s *clusterService) AddCluster(ctx context.Context, kubeconfigPath, context
 	if err != nil {
 		return nil, err
 	}
-
+	serverURL := info["server_url"].(string)
+	version := info["version"].(string)
 	provider := k8s.ProviderOnPrem
 	if p, err := client.DetectProvider(ctx); err == nil && p != "" {
 		provider = p
 	}
+
+	// P2-10: Idempotent add — return existing cluster (same ID) when (context, kubeconfig_path) or (context, server_url) matches.
+	normPath := filepath.Clean(kubeconfigPath)
+	for _, c := range list {
+		if c.Context != contextName {
+			continue
+		}
+		if filepath.Clean(c.KubeconfigPath) == normPath || c.ServerURL == serverURL {
+			c.Status = "connected"
+			c.LastConnected = time.Now()
+			c.ServerURL = serverURL
+			c.Version = version
+			c.Provider = provider
+			c.UpdatedAt = time.Now()
+			_ = s.repo.Update(ctx, c)
+			s.clients[c.ID] = client
+			return c, nil
+		}
+	}
+
 	cluster := &models.Cluster{
 		ID:             uuid.New().String(),
 		Name:           contextName,
 		Context:        contextName,
 		KubeconfigPath: kubeconfigPath,
-		ServerURL:      info["server_url"].(string),
-		Version:        info["version"].(string),
+		ServerURL:      serverURL,
+		Version:        version,
 		Status:         "connected",
 		Provider:       provider,
 		LastConnected:  time.Now(),
@@ -421,8 +467,9 @@ func (s *clusterService) DiscoverClusters(ctx context.Context) ([]*models.Cluste
 	var discovered []*models.Cluster
 	for _, contextName := range contexts {
 		if !existingContexts[contextName] {
-			// Return a "potential" cluster model (no ID yet, as it's not persisted)
+			// BA-1: Ephemeral UUID so frontend has a stable handle before registration (Connect works; no clusters// in URLs).
 			discovered = append(discovered, &models.Cluster{
+				ID:             uuid.New().String(),
 				Name:           contextName,
 				Context:        contextName,
 				KubeconfigPath: kubeconfigPath,

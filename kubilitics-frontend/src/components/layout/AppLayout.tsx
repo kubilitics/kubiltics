@@ -1,12 +1,12 @@
 import { useEffect, useRef } from 'react';
-import { Outlet, useNavigate, useLocation } from 'react-router-dom';
+import { Outlet, useNavigate, useLocation, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useReducedMotion } from 'framer-motion';
 import { Header } from './Header';
 import { Sidebar } from './Sidebar';
-import { BackendStatusBanner } from './BackendStatusBanner';
 import { ConnectionRequiredBanner } from './ConnectionRequiredBanner';
 import { OfflineIndicator } from '@/components/OfflineIndicator';
+import { useClusterStore } from '@/stores/clusterStore';
 // AIAssistant is rendered globally in App.tsx
 import { useConnectionStatus } from '@/hooks/useConnectionStatus';
 import { useRecentlyVisited } from '@/hooks/useRecentlyVisited';
@@ -20,6 +20,7 @@ export function AppLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const reduceMotion = useReducedMotion();
+  const isDemo = useClusterStore((s) => s.isDemo);
   const { isConnected } = useConnectionStatus();
   const { isOffline, aiBackendReachable } = useOfflineMode();
   const gPendingRef = useRef(false);
@@ -80,12 +81,26 @@ export function AppLayout() {
         Skip to main content
       </a>
       <Header />
+      {isDemo && (
+        <div
+          className="flex items-center justify-center gap-2 px-4 py-2 bg-amber-500/15 border-b border-amber-500/30 text-amber-800 dark:text-amber-200 text-sm font-medium"
+          role="status"
+          aria-live="polite"
+        >
+          <span>Demo Mode — showing sample data.</span>
+          <Link
+            to="/connect"
+            className="underline font-semibold hover:no-underline focus:outline-none focus:ring-2 focus:ring-amber-500 rounded"
+          >
+            Connect a real cluster
+          </Link>
+        </div>
+      )}
       <div className="flex">
         <Sidebar />
         <main id="main-content" className="flex-1 p-6 pb-28 pr-3 overflow-auto flex flex-col gap-4 min-h-0" role="main" aria-label="Main content">
           <OfflineIndicator />
           <ConnectionRequiredBanner />
-          <BackendStatusBanner />
           <div
             className={cn(
               'flex flex-col gap-4 min-h-0 flex-1 transition-opacity duration-200',

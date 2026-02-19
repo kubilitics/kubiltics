@@ -14,7 +14,7 @@ import { cn } from "@/lib/utils";
 export const PodHealthSummary = () => {
   const { activeCluster } = useClusterStore();
   const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
-  const clusterId = activeCluster?.id ?? currentClusterId ?? undefined;
+  const clusterId = currentClusterId ?? undefined;
   const { isConnected } = useConnectionStatus();
   const overview = useClusterOverview(clusterId);
   const podsList = useK8sResourceList("pods", undefined, {

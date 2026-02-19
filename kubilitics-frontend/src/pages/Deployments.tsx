@@ -198,7 +198,7 @@ export default function Deployments() {
   const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured);
   const activeCluster = useClusterStore((s) => s.activeCluster);
   const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
-  const clusterId = activeCluster?.id ?? currentClusterId;
+  const clusterId = currentClusterId ?? null;
 
   const items: Deployment[] = isConnected && data
     ? (data.items ?? []).map(transformResource)

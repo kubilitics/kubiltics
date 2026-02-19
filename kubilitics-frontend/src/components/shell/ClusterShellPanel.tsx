@@ -2,10 +2,13 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Terminal as TerminalIcon, X, GripHorizontal, Maximize2, Minimize2, Trash2, Copy, RefreshCw, AlertCircle, ExternalLink } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { getKCLIComplete, getKCLIShellStreamUrl, getKCLITUIState, getKubectlShellStreamUrl, getShellComplete, type ShellStatusResult } from '@/services/backendApiClient';
+import { getKCLIComplete, getKCLIShellStreamUrl, getKCLITUIState, getKubectlShellStreamUrl, getShellComplete, isBackendCircuitOpen, type ShellStatusResult } from '@/services/backendApiClient';
 import { useNavigate } from 'react-router-dom';
 import { applyCompletionToLine, updateLineBuffer } from './completionEngine';
 import { useClusterStore } from '@/stores/clusterStore';
+import { useBackendCircuitOpen } from '@/hooks/useBackendCircuitOpen';
+import { isTauri } from '@/lib/tauri';
+import { invoke } from '@tauri-apps/api/core';
 import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import '@xterm/xterm/css/xterm.css';
@@ -96,6 +99,24 @@ export function ClusterShellPanel({
   });
   const [reconnectNonce, setReconnectNonce] = useState(0);
   const [isReconnecting, setIsReconnecting] = useState(false);
+  const [kcliSidecarAvailable, setKcliSidecarAvailable] = useState<boolean | null>(null);
+  const circuitOpen = useBackendCircuitOpen();
+
+  // P2-7: In Tauri, kcli may be bundled as sidecar; backend PATH check can be false. Treat as available if sidecar exists.
+  useEffect(() => {
+    if (!open || !isTauri()) return;
+    let cancelled = false;
+    invoke<boolean>('is_kcli_sidecar_available')
+      .then((ok) => {
+        if (!cancelled) setKcliSidecarAvailable(ok);
+      })
+      .catch(() => {
+        if (!cancelled) setKcliSidecarAvailable(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [open]);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const termRef = useRef<Terminal | null>(null);
@@ -369,6 +390,14 @@ export function ClusterShellPanel({
     const sessionId = wsSessionRef.current + 1;
     wsSessionRef.current = sessionId;
 
+    // P2-4: Do not open WebSocket when circuit is open; show friendly message instead.
+    if (isBackendCircuitOpen()) {
+      setConnecting(false);
+      setConnected(false);
+      setError('Backend unavailable. Use Retry in the banner when the connection is back.');
+      return;
+    }
+
     const wsUrl = engine === 'kcli'
       ? getKCLIShellStreamUrl(backendBaseUrl, clusterId, kcliStreamMode, activeNamespace ?? undefined)
       : getKubectlShellStreamUrl(backendBaseUrl, clusterId);
@@ -507,7 +536,7 @@ export function ClusterShellPanel({
         // ignore
       }
     };
-  }, [open, clusterId, backendBaseUrl, engine, kcliStreamMode, reconnectNonce, focusAndFit, flushPendingOutput]);
+  }, [open, clusterId, backendBaseUrl, engine, kcliStreamMode, reconnectNonce, circuitOpen, focusAndFit, flushPendingOutput]);
 
   // Fit on panel layout changes.
   useEffect(() => {
@@ -599,6 +628,9 @@ export function ClusterShellPanel({
   }, [clusterId, open, syncShellState]);
 
   const effectiveNamespace = shellStatus?.namespace || 'default';
+  // P2-7: In Tauri, if kcli sidecar is bundled, report as available even when backend PATH check fails.
+  const effectiveKcliAvailable =
+    shellStatus?.kcliAvailable === true || (isTauri() && kcliSidecarAvailable === true);
   const openResourcePage = useCallback((resourcePath: string) => {
     const query = effectiveNamespace && effectiveNamespace !== 'all'
       ? `?namespace=${encodeURIComponent(effectiveNamespace)}`
@@ -718,12 +750,12 @@ export function ClusterShellPanel({
           <span
             className={cn(
               'rounded border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider',
-              shellStatus?.kcliAvailable
+              effectiveKcliAvailable
                 ? 'border-emerald-400/20 bg-emerald-400/10 text-emerald-300'
                 : 'border-amber-400/20 bg-amber-400/10 text-amber-300'
             )}
           >
-            kcli {shellStatus?.kcliAvailable ? 'Ready' : 'Missing'}
+            kcli {effectiveKcliAvailable ? 'Ready' : 'Missing'}
           </span>
           <span
             className={cn(

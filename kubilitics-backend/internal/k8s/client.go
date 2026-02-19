@@ -58,6 +58,10 @@ type Client struct {
 	lastSuccessTime time.Time
 	lastError       error
 	healthMu        sync.RWMutex
+	// BA-8: Discovery cache for CRD/unknown resource types; TTL 5 min.
+	discoveryCache     []DiscoveredResource
+	discoveryCacheTime time.Time
+	discoveryCacheMu   sync.Mutex
 }
 
 // NewClient creates a new Kubernetes client

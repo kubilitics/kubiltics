@@ -1,6 +1,6 @@
 /**
- * Dedicated route: apply cluster from Connect page and redirect to dashboard.
- * Stays outside ProtectedRoute so we always apply state, then go to /dashboard.
+ * Dedicated route: apply cluster from Connect page and redirect to home (P1-7).
+ * Stays outside ProtectedRoute so we always apply state, then go to /home.
  * If location.state is lost (e.g. refresh), uses clusterId from URL and fetches cluster from backend.
  * Runs apply+redirect exactly once (ref guard) to avoid Strict Mode double-run races.
  */
@@ -32,7 +32,7 @@ export default function ConnectedRedirect() {
       setClusters(state.connectedClusters);
       setActiveCluster(state.connectedCluster);
       setDemo(false);
-      navigate('/dashboard', { replace: true });
+      navigate('/home', { replace: true });
       return;
     }
     if (clusterIdFromUrl) {
@@ -56,7 +56,7 @@ export default function ConnectedRedirect() {
           setClusters(connectedClusters);
           setActiveCluster(connectedCluster);
           setDemo(false);
-          navigate('/dashboard', { replace: true });
+          navigate('/home', { replace: true });
         })
         .catch(() => {
           navigate('/', { replace: true });

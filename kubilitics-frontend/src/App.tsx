@@ -3,8 +3,9 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, MemoryRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, MemoryRouter, Routes, Route, Navigate, useNavigate } from "react-router-dom";
 import { useClusterStore } from "@/stores/clusterStore";
+import { useBackendConfigStore, getEffectiveBackendBaseUrl } from "@/stores/backendConfigStore";
 import { AIAssistant } from "@/components/AIAssistant";
 import { Loader2 } from "lucide-react";
 
@@ -178,17 +179,27 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
-// Initial navigation logic: Mode Selection -> Connection -> Dashboard
+// Initial navigation logic. Desktop (Tauri): landing = Connect (cluster list + add cluster). Browser/Helm: Mode Selection -> Connect -> Dashboard. See ClusterConnect.tsx for landing definition.
 function ModeSelectionEntryPoint() {
-  const { appMode, activeCluster } = useClusterStore();
+  const { appMode, activeCluster, setAppMode } = useClusterStore();
 
-  // If already connected, go to home (the primary hub)
+  // Desktop (Headlamp/Lens style): ALWAYS go to Connect on startup.
+  // P0-A: Do NOT redirect to /home based on a persisted activeCluster — the cluster
+  // must be re-validated against the live backend on every launch. A stale activeCluster
+  // (e.g. from demo mode) would cause all resource hooks to fire against a non-existent
+  // cluster ID (e.g. 'prod-us-east'), triggering CORS/404 errors and opening the circuit.
+  if (isTauri()) {
+    if (!appMode) setAppMode('desktop');
+    return <Navigate to="/connect" replace />;
+  }
+
+  // Browser/Helm: if already connected (activeCluster is valid in this context), go to home
   if (activeCluster) return <Navigate to="/home" replace />;
 
-  // If mode selected but not connected, go to connect page
+  // Browser/Helm: if mode selected but not connected, go to connect page
   if (appMode) return <Navigate to="/connect" replace />;
 
-  // Default: Choose mode
+  // Default: Choose mode (browser only)
   return <ModeSelection />;
 }
 
@@ -197,7 +208,10 @@ import { ErrorTracker } from "@/lib/errorTracker";
 import { AnalyticsConsentDialog } from "@/components/AnalyticsConsentDialog";
 import { KubeconfigContextDialog } from "@/components/KubeconfigContextDialog";
 import { BackendStartupOverlay } from "@/components/BackendStartupOverlay";
+import { BackendStatusBanner } from "@/components/layout/BackendStatusBanner";
 import { isTauri } from "@/lib/tauri";
+import { useAiAvailableStore } from "@/stores/aiAvailableStore";
+import { invoke } from "@tauri-apps/api/core";
 
 // Initialize Error Tracking
 ErrorTracker.init();
@@ -207,6 +221,39 @@ ErrorTracker.init();
 // renders nothing. MemoryRouter starts at "/" regardless of the actual URL and is the
 // correct router for embedded webviews / Electron-style apps.
 const AppRouter = isTauri() ? MemoryRouter : BrowserRouter;
+
+const AI_STATUS_POLL_MS = 30_000;
+
+/** P2-8: In Tauri, sync get_ai_status().available into store so aiService and useAIStatus skip requests when AI is not available. */
+function SyncAIAvailable() {
+  const setAIAvailable = useAiAvailableStore((s) => s.setAIAvailable);
+  useEffect(() => {
+    if (!isTauri()) return;
+    const run = async () => {
+      try {
+        const status = await invoke<{ available: boolean }>('get_ai_status');
+        setAIAvailable(status.available);
+      } catch {
+        setAIAvailable(false);
+      }
+    };
+    run();
+    const t = setInterval(run, AI_STATUS_POLL_MS);
+    return () => clearInterval(t);
+  }, [setAIAvailable]);
+  return null;
+}
+
+/** P2-6: Listens for auth-logout (e.g. 401 from backend). Navigates to / via React Router so MemoryRouter works in Tauri. */
+function AuthLogoutListener({ children }: { children: React.ReactNode }) {
+  const navigate = useNavigate();
+  useEffect(() => {
+    const handler = () => navigate('/', { replace: true });
+    window.addEventListener('auth-logout', handler);
+    return () => window.removeEventListener('auth-logout', handler);
+  }, [navigate]);
+  return <>{children}</>;
+}
 
 function AnalyticsConsentWrapper({ children }: { children: React.ReactNode }) {
   const [showConsent, setShowConsent] = useState(false);
@@ -232,7 +279,7 @@ function AnalyticsConsentWrapper({ children }: { children: React.ReactNode }) {
 
   const handleConsent = async (consent: boolean) => {
     setShowConsent(false);
-    // Consent is saved in the command handler
+    // P2-9: AnalyticsConsentDialog calls invoke('set_analytics_consent', { consent }) before onConsent; no need to save here.
   };
 
   return (
@@ -244,8 +291,11 @@ function AnalyticsConsentWrapper({ children }: { children: React.ReactNode }) {
 }
 
 function KubeconfigContextWrapper({ children }: { children: React.ReactNode }) {
+  const navigate = useNavigate();
+  const storedBackendUrl = useBackendConfigStore((s) => s.backendBaseUrl);
   const [showDialog, setShowDialog] = useState(false);
   const [contexts, setContexts] = useState<Array<{ name: string; cluster: string; user: string; namespace?: string }>>([]);
+  const [kubeconfigPath, setKubeconfigPath] = useState<string>('');
 
   useEffect(() => {
     if (!isTauri()) return;
@@ -256,7 +306,6 @@ function KubeconfigContextWrapper({ children }: { children: React.ReactNode }) {
         const isFirstLaunch = await invoke<boolean>('is_first_launch');
 
         if (isFirstLaunch) {
-          // Load kubeconfig contexts
           const kubeconfigInfo = await invoke<{
             path: string;
             current_context?: string;
@@ -264,10 +313,10 @@ function KubeconfigContextWrapper({ children }: { children: React.ReactNode }) {
           }>('get_kubeconfig_info', { path: null });
 
           if (kubeconfigInfo.contexts.length > 0) {
+            setKubeconfigPath(kubeconfigInfo.path || '');
             setContexts(kubeconfigInfo.contexts);
             setShowDialog(true);
           } else {
-            // No contexts found, mark as complete
             await invoke('mark_first_launch_complete');
           }
         }
@@ -281,7 +330,21 @@ function KubeconfigContextWrapper({ children }: { children: React.ReactNode }) {
 
   const handleSelect = async (selectedContexts: string[]) => {
     setShowDialog(false);
-    // Contexts are saved in the dialog handler
+    // P1-5: Register each selected context with the backend, then mark first launch complete and go to connect.
+    if (!isTauri() || selectedContexts.length === 0) return;
+    try {
+      const baseUrl = getEffectiveBackendBaseUrl(storedBackendUrl);
+      const { addCluster } = await import('@/services/backendApiClient');
+      const path = kubeconfigPath || '';
+      for (const contextName of selectedContexts) {
+        await addCluster(baseUrl, path, contextName);
+      }
+      const { invoke } = await import('@tauri-apps/api/core');
+      await invoke('mark_first_launch_complete');
+      navigate('/connect', { replace: true });
+    } catch (error) {
+      console.error('Failed to register contexts:', error);
+    }
   };
 
   const handleCancel = async () => {
@@ -320,9 +383,13 @@ const App = () => (
             Disappears automatically once the backend emits 'backend-status: ready'.
             Prevents the user from seeing a broken/empty UI on cold start. */}
         <BackendStartupOverlay />
+        <SyncAIAvailable />
         <AnalyticsConsentWrapper>
           <KubeconfigContextWrapper>
             <AppRouter>
+              <AuthLogoutListener>
+              {/* P2-3: Banner at App level so it's visible on /connect and all routes */}
+              <BackendStatusBanner className="rounded-none border-x-0 border-t-0" />
               <AIAssistant />
               <Suspense fallback={<PageLoader />}>
                 <Routes>
@@ -493,6 +560,7 @@ const App = () => (
                   </Route>
                 </Routes>
               </Suspense>
+              </AuthLogoutListener>
             </AppRouter>
           </KubeconfigContextWrapper>
         </AnalyticsConsentWrapper>

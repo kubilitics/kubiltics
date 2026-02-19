@@ -17,6 +17,7 @@
 
 import { useState, useCallback, useRef } from 'react';
 import { AI_BASE_URL } from '@/services/aiService';
+import { guardAIAvailable } from '@/stores/aiAvailableStore';
 
 // ─── Shared graph types ──────────────────────────────────────────────────────
 
@@ -63,6 +64,12 @@ export function useBlastRadiusAnalysis() {
   const [error, setError] = useState<string | null>(null);
 
   const analyze = useCallback(async (req: BlastRadiusAnalysisRequest) => {
+    try {
+      guardAIAvailable();
+    } catch {
+      setError('AI backend is not available.');
+      return null;
+    }
     setLoading(true);
     setError(null);
     try {
@@ -116,6 +123,12 @@ export function useCriticalPath() {
     edges: TopologyEdgeSummary[],
     namespaceFilter?: string,
   ) => {
+    try {
+      guardAIAvailable();
+    } catch {
+      setError('AI backend is not available.');
+      return null;
+    }
     setLoading(true);
     setError(null);
     try {
@@ -182,6 +195,7 @@ export function useNodeExplain() {
     setLoadingId(id);
 
     try {
+      guardAIAvailable();
       const res = await fetch(`${AI_BASE_URL}/api/v1/topology/node-explain`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

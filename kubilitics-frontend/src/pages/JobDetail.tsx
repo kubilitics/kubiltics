@@ -272,7 +272,7 @@ export default function JobDetail() {
       toast.error('Connect to Kubilitics backend in Settings to retry Job.');
       return;
     }
-    const cid = useClusterStore.getState().activeCluster?.id ?? useBackendConfigStore.getState().currentClusterId;
+    const cid = useBackendConfigStore.getState().currentClusterId;
     if (!cid) {
       toast.error('Select a cluster from the cluster list to perform this action.');
       return;

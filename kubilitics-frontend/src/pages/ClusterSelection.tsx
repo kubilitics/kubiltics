@@ -21,7 +21,7 @@ import { useClusterStore, Cluster } from '@/stores/clusterStore';
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
 import { DEFAULT_BACKEND_BASE_URL } from '@/lib/backendConstants';
 import { useClustersFromBackend } from '@/hooks/useClustersFromBackend';
-import { addCluster, type BackendCluster } from '@/services/backendApiClient';
+import { addCluster, getClusterSummary, type BackendCluster } from '@/services/backendApiClient';
 import { backendClusterToCluster as adapterBackendClusterToCluster, inferRegion } from '@/lib/backendClusterAdapter';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -94,10 +94,21 @@ export default function ClusterSelection() {
   const [addContext, setAddContext] = useState('');
   const [isAddingCluster, setIsAddingCluster] = useState(false);
 
+  // P2-11: Per-cluster health from GET /api/v1/clusters/{id}/summary (no direct readyz / no-cors).
+  const [summaryHealth, setSummaryHealth] = useState<Record<string, 'healthy' | 'warning' | 'error' | undefined>>({});
+
   // When backend is configured: use cluster list from GET /api/v1/clusters (A3.2)
   const backendClusters: ClusterWithHealth[] =
     isBackendConfigured && clustersFromBackend.data
-      ? clustersFromBackend.data.map(backendClusterToDisplay)
+      ? clustersFromBackend.data.map((b) => {
+          const base = backendClusterToDisplay(b);
+          const fromSummary = summaryHealth[b.id];
+          return {
+            ...base,
+            status: (fromSummary ?? base.status) as ParsedCluster['status'],
+            isChecking: fromSummary === undefined && !!clustersFromBackend.data?.length,
+          };
+        })
       : [];
 
   // Clusters to display: from backend when configured, else from local state (kubeconfig or demo)
@@ -106,69 +117,37 @@ export default function ClusterSelection() {
       ? backendClusters
       : clusters;
 
-  // Initialize clusters (kubeconfig or demo) when NOT using backend.
-  // Real health check: try fetching the cluster API server /readyz endpoint.
-  // No Math.random() — status is determined by actual reachability.
+  // P2-11: When backend is configured, health = GET /api/v1/clusters/{id}/summary (200 = reachable).
+  useEffect(() => {
+    if (!isBackendConfigured || !backendBaseUrl || !clustersFromBackend.data?.length) return;
+    const list = clustersFromBackend.data;
+    list.forEach((cluster, index) => {
+      const id = cluster.id;
+      setTimeout(async () => {
+        try {
+          await getClusterSummary(backendBaseUrl!, id);
+          setSummaryHealth((prev) => ({ ...prev, [id]: 'healthy' }));
+        } catch {
+          setSummaryHealth((prev) => ({ ...prev, [id]: 'error' }));
+        }
+      }, index * 300);
+    });
+  }, [isBackendConfigured, backendBaseUrl, clustersFromBackend.data]);
+
+  // When NOT using backend: no direct readyz (no-cors is opaque; CORS blocks in browser). Show unknown/warning.
   useEffect(() => {
     if (backendBaseUrl) return;
     if (parsedClusters.length === 0) {
       setClustersState([]);
       return;
     }
-
-    const clustersWithHealth: ClusterWithHealth[] = parsedClusters.map((c) => ({
-      ...c,
-      isChecking: true,
-      status: 'unknown' as ParsedCluster['status'],
-    }));
-    setClustersState(clustersWithHealth);
-
-    clustersWithHealth.forEach((cluster, index) => {
-      // Stagger health checks to avoid thundering-herd
-      setTimeout(async () => {
-        let clusterStatus: ParsedCluster['status'] = 'warning';
-        let version: string | undefined;
-        let nodeCount: number | undefined;
-
-        try {
-          // Try to reach the API server. Most browsers will fail with CORS,
-          // so we treat a network error as unknown/warning rather than error.
-          const controller = new AbortController();
-          const timer = setTimeout(() => controller.abort(), 5000);
-          const res = await fetch(`${cluster.server}/readyz`, {
-            signal: controller.signal,
-            mode: 'no-cors', // avoid CORS preflight; we just need reachability
-          });
-          clearTimeout(timer);
-          // With no-cors the response is opaque — any response means reachable
-          clusterStatus = 'healthy';
-        } catch (err) {
-          if (err instanceof Error && err.name === 'AbortError') {
-            // Timed out — definitely not reachable
-            clusterStatus = 'error';
-          } else {
-            // Network error or CORS — cluster might still be reachable from the
-            // backend process; treat as warning rather than error
-            clusterStatus = 'warning';
-          }
-        }
-
-        setClustersState((prev) =>
-          prev.map((c) => {
-            if (c.id !== cluster.id) return c;
-            return {
-              ...c,
-              isChecking: false,
-              status: clusterStatus,
-              lastChecked: new Date(),
-              version: version ?? c.version,
-              nodeCount: nodeCount ?? c.nodeCount,
-              provider: detectProvider(c.server),
-            };
-          })
-        );
-      }, index * 300); // small stagger, no artificial 1-second delay
-    });
+    setClustersState(
+      parsedClusters.map((c) => ({
+        ...c,
+        isChecking: false,
+        status: 'warning' as ParsedCluster['status'],
+      }))
+    );
   }, [parsedClusters, backendBaseUrl]);
 
   const detectProvider = (server: string): string => {
@@ -180,20 +159,30 @@ export default function ClusterSelection() {
   };
 
   const handleRetry = (clusterId: string) => {
-    setClustersState(prev => prev.map(c => {
-      if (c.id === clusterId) {
-        return { ...c, isChecking: true, status: 'unknown' };
-      }
-      return c;
-    }));
-
+    if (isBackendConfigured && backendBaseUrl) {
+      setSummaryHealth((prev) => {
+        const next = { ...prev };
+        delete next[clusterId];
+        return next;
+      });
+      getClusterSummary(backendBaseUrl, clusterId)
+        .then(() => {
+          setSummaryHealth((prev) => ({ ...prev, [clusterId]: 'healthy' }));
+          toast.success('Connection successful!');
+        })
+        .catch(() => {
+          setSummaryHealth((prev) => ({ ...prev, [clusterId]: 'error' }));
+          toast.error('Cluster unreachable');
+        });
+      return;
+    }
+    setClustersState((prev) =>
+      prev.map((c) => (c.id === clusterId ? { ...c, isChecking: true, status: 'unknown' as ParsedCluster['status'] } : c))
+    );
     setTimeout(() => {
-      setClustersState(prev => prev.map(c => {
-        if (c.id === clusterId) {
-          return { ...c, isChecking: false, status: 'healthy', lastChecked: new Date() };
-        }
-        return c;
-      }));
+      setClustersState((prev) =>
+        prev.map((c) => (c.id === clusterId ? { ...c, isChecking: false, status: 'healthy' as ParsedCluster['status'], lastChecked: new Date() } : c))
+      );
       toast.success('Connection successful!');
     }, 2000);
   };

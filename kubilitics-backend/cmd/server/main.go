@@ -66,6 +66,7 @@ func main() {
 	// BE-OBS-002: Initialize structured logger
 	log := logger.StdLogger(cfg.LogFormat, cfg.LogLevel)
 	log.Info("Kubilitics Backend starting", "port", cfg.Port, "db", cfg.DatabasePath, "log_format", cfg.LogFormat, "log_level", cfg.LogLevel)
+	log.Info("CORS allowed_origins", "origins", cfg.AllowedOrigins)
 
 	defer func() {
 		if r := recover(); r != nil {

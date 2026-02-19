@@ -1,9 +1,14 @@
 use std::path::PathBuf;
+use std::sync::Arc;
 use tauri::command;
+use tauri::Manager;
+use tauri_plugin_shell::ShellExt;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::process::Command;
 use std::fs;
+
+use crate::backend_ports::{BACKEND_PORT, AI_BACKEND_PORT};
 
 use aes_gcm::{
     aead::{Aead, AeadCore, KeyInit, OsRng},
@@ -594,7 +599,8 @@ async fn check_backend_connectivity() -> bool {
         Err(_) => return false,
     };
     
-    client.get("http://localhost:819/health")
+    let url = format!("http://localhost:{}/health", BACKEND_PORT);
+    client.get(&url)
         .send()
         .await
         .map(|r| r.status().is_success())
@@ -610,7 +616,8 @@ async fn check_ai_backend_connectivity() -> bool {
         Err(_) => return false,
     };
     
-    client.get("http://localhost:8081/health")
+    let url = format!("http://localhost:{}/health", AI_BACKEND_PORT);
+    client.get(&url)
         .send()
         .await
         .map(|r| r.status().is_success())
@@ -702,7 +709,7 @@ pub async fn get_desktop_info() -> Result<DesktopInfo, String> {
     let app_version = env!("CARGO_PKG_VERSION").to_string();
     
     // Try to get backend health info
-    let backend_port = 819u16;
+    let backend_port = BACKEND_PORT;
     let backend_version = None; // Would need to call /api/v1/version endpoint
     let backend_uptime_seconds = None; // Would need to call /api/v1/health and parse uptime
     
@@ -717,13 +724,23 @@ pub async fn get_desktop_info() -> Result<DesktopInfo, String> {
 }
 
 #[command]
-pub async fn restart_sidecar(_app_handle: tauri::AppHandle) -> Result<(), String> {
-    // TODO: Implement restart logic
-    // This requires access to BackendManager which is stored in app state
-    // For now, return success - actual implementation needs to be done in sidecar module
-    Ok(())
+pub async fn restart_sidecar(app_handle: tauri::AppHandle) -> Result<(), String> {
+    use crate::sidecar::BackendManager;
+
+    let Some(mgr) = app_handle.try_state::<Arc<BackendManager>>() else {
+        return Err("Backend manager not available".to_string());
+    };
+    mgr.restart()
+        .await
+        .map_err(|e| e.to_string())
 }
 
+/// P2-7: Report whether the kcli sidecar binary is bundled. When true, frontend treats kubectl/kcli as available
+/// even if the backend's PATH-based check returns false (e.g. stripped env in spawned process).
+#[command]
+pub fn is_kcli_sidecar_available(app_handle: tauri::AppHandle) -> Result<bool, String> {
+    Ok(app_handle.shell().sidecar("kcli").is_ok())
+}
 
 // Helper functions
 

@@ -2,6 +2,7 @@ package config
 
 import (
 	"os"
+	"strings"
 	"testing"
 )
 
@@ -79,17 +80,79 @@ func TestLoad_AllowedOriginsCommaSeparated(t *testing.T) {
 		t.Fatalf("Failed to load config: %v", err)
 	}
 	
-	if len(cfg.AllowedOrigins) != 3 {
-		t.Errorf("Expected 3 allowed origins, got %d", len(cfg.AllowedOrigins))
+	// Should have 3 user-specified origins plus 2 tauri origins appended (5 total)
+	if len(cfg.AllowedOrigins) != 5 {
+		t.Errorf("Expected 5 allowed origins (3 user + 2 tauri), got %d: %v", len(cfg.AllowedOrigins), cfg.AllowedOrigins)
 	}
-	if cfg.AllowedOrigins[0] != "http://localhost:3000" {
-		t.Errorf("Expected first origin 'http://localhost:3000', got %s", cfg.AllowedOrigins[0])
+	
+	// Verify user-specified origins are present
+	expectedOrigins := map[string]bool{
+		"http://localhost:3000": false,
+		"https://example.com":   false,
+		"http://localhost:5173": false,
 	}
-	if cfg.AllowedOrigins[1] != "https://example.com" {
-		t.Errorf("Expected second origin 'https://example.com', got %s", cfg.AllowedOrigins[1])
+	for _, origin := range cfg.AllowedOrigins {
+		if _, exists := expectedOrigins[origin]; exists {
+			expectedOrigins[origin] = true
+		}
 	}
-	if cfg.AllowedOrigins[2] != "http://localhost:5173" {
-		t.Errorf("Expected third origin 'http://localhost:5173', got %s", cfg.AllowedOrigins[2])
+	for origin, found := range expectedOrigins {
+		if !found {
+			t.Errorf("Expected origin %q not found in allowed origins: %v", origin, cfg.AllowedOrigins)
+		}
+	}
+	
+	// Verify tauri origins are appended
+	hasTauriLocalhost := false
+	hasTauri := false
+	for _, origin := range cfg.AllowedOrigins {
+		if origin == "tauri://localhost" {
+			hasTauriLocalhost = true
+		}
+		if origin == "tauri://" {
+			hasTauri = true
+		}
+	}
+	if !hasTauriLocalhost {
+		t.Error("Expected 'tauri://localhost' to be appended to allowed origins")
+	}
+	if !hasTauri {
+		t.Error("Expected 'tauri://' to be appended to allowed origins")
+	}
+}
+
+func TestLoad_AllowedOriginsCommaSeparatedWithWhitespace(t *testing.T) {
+	// BA-5: Verify whitespace handling in KUBILITICS_ALLOWED_ORIGINS
+	os.Setenv("KUBILITICS_ALLOWED_ORIGINS", " http://localhost:3000 , https://example.com , http://localhost:5173 ")
+	defer os.Unsetenv("KUBILITICS_ALLOWED_ORIGINS")
+	
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Failed to load config: %v", err)
+	}
+	
+	// Should have 3 origins (whitespace trimmed) plus tauri origins appended
+	if len(cfg.AllowedOrigins) < 3 {
+		t.Errorf("Expected at least 3 allowed origins, got %d", len(cfg.AllowedOrigins))
+	}
+	
+	// Verify whitespace was trimmed
+	found := false
+	for _, origin := range cfg.AllowedOrigins {
+		if origin == "http://localhost:3000" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Errorf("Expected 'http://localhost:3000' (whitespace trimmed) in allowed origins, got %v", cfg.AllowedOrigins)
+	}
+	
+	// Verify no origins have leading/trailing whitespace
+	for _, origin := range cfg.AllowedOrigins {
+		if origin != strings.TrimSpace(origin) {
+			t.Errorf("Origin has unexpected whitespace: %q", origin)
+		}
 	}
 }
 

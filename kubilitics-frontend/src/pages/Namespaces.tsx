@@ -132,7 +132,7 @@ export default function Namespaces() {
   const storedUrl = useBackendConfigStore((s) => s.backendBaseUrl);
   const backendBaseUrl = getEffectiveBackendBaseUrl(storedUrl);
   const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured);
-  const clusterId = currentClusterId ?? activeCluster?.id;
+  const clusterId = currentClusterId ?? null;
 
   const { data, isLoading, refetch, pagination: hookPagination } = usePaginatedResourceList<NamespaceResource>('namespaces');
   const deleteResource = useDeleteK8sResource('namespaces');

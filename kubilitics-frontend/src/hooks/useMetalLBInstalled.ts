@@ -16,7 +16,7 @@ export function useMetalLBInstalled(): { installed: boolean; isLoading: boolean 
   const backendBaseUrl = getEffectiveBackendBaseUrl();
   const activeCluster = useClusterStore((s) => s.activeCluster);
   const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
-  const clusterId = activeCluster?.id ?? currentClusterId;
+  const clusterId = currentClusterId ?? null;
 
   const backendQuery = useQuery({
     queryKey: ['cluster-feature-metallb', clusterId ?? ''],

@@ -60,6 +60,7 @@ function linkFor(kind: string, namespace: string, name: string): string {
 
 export function useInsights(): { insights: Insight[]; isLoading: boolean } {
   const { activeCluster } = useClusterStore();
+  const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
   const storedUrl = useBackendConfigStore((s) => s.backendBaseUrl);
   const backendBaseUrl = getEffectiveBackendBaseUrl(storedUrl);
   const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured());
@@ -74,9 +75,9 @@ export function useInsights(): { insights: Insight[]; isLoading: boolean } {
     refetchInterval: 60000,
   });
   const eventsQuery = useQuery({
-    queryKey: ['backend', 'events', activeCluster?.id, 'insights'],
-    queryFn: () => getEvents(backendBaseUrl, activeCluster!.id, { namespace: 'default', limit: 100 }),
-    enabled: !!activeCluster?.id && isBackendConfigured(),
+    queryKey: ['backend', 'events', currentClusterId, 'insights'],
+    queryFn: () => getEvents(backendBaseUrl, currentClusterId!, { namespace: 'default', limit: 100 }),
+    enabled: !!currentClusterId && isBackendConfigured(),
     staleTime: 15000,
   });
 

@@ -3,9 +3,13 @@ package k8s
 import (
 	"context"
 	"fmt"
+	"strings"
+	"time"
 
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
+
+const discoveryCacheTTL = 5 * time.Minute
 
 // DiscoveredResource represents a discovered K8s resource type
 type DiscoveredResource struct {
@@ -224,5 +228,32 @@ func GetGVRForType(resourceType string) (schema.GroupVersionResource, error) {
 		return gvr, nil
 	}
 
+	return schema.GroupVersionResource{}, fmt.Errorf("unknown resource type: %s", resourceType)
+}
+
+// ResolveGVR returns the GroupVersionResource for a resource type, with BA-8 fallback to live discovery for CRDs.
+// Tries the hardcoded map first; on miss, calls DiscoverAllResources (cached 5 min) and looks up the resource.
+func (c *Client) ResolveGVR(ctx context.Context, resourceType string) (schema.GroupVersionResource, error) {
+	gvr, err := GetGVRForType(resourceType)
+	if err == nil {
+		return gvr, nil
+	}
+
+	c.discoveryCacheMu.Lock()
+	defer c.discoveryCacheMu.Unlock()
+	if time.Since(c.discoveryCacheTime) > discoveryCacheTTL || len(c.discoveryCache) == 0 {
+		list, discoverErr := c.DiscoverAllResources(ctx)
+		if discoverErr != nil {
+			return schema.GroupVersionResource{}, fmt.Errorf("unknown resource type: %s (discovery failed: %w)", resourceType, discoverErr)
+		}
+		c.discoveryCache = list
+		c.discoveryCacheTime = time.Now()
+	}
+	rtLower := strings.ToLower(strings.TrimSpace(resourceType))
+	for _, dr := range c.discoveryCache {
+		if strings.EqualFold(dr.GVR.Resource, rtLower) {
+			return dr.GVR, nil
+		}
+	}
 	return schema.GroupVersionResource{}, fmt.Errorf("unknown resource type: %s", resourceType)
 }

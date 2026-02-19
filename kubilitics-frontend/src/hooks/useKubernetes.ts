@@ -188,8 +188,11 @@ export function useK8sResourceList<T extends KubernetesResource>(
   const backendBaseUrl = getEffectiveBackendBaseUrl(storedUrl);
   const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured);
   const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
-  const activeCluster = useClusterStore((s) => s.activeCluster);
-  const clusterId = activeCluster?.id ?? currentClusterId;
+  const isDemo = useClusterStore((s) => s.isDemo);
+  // P0-D: Use currentClusterId exclusively for API paths.
+  const clusterId = currentClusterId;
+  // P1-8: Demo mode must not fire backend or real K8s requests.
+  const skipRequests = isDemo;
 
   const { activeProject, activeProjectId } = useProjectStore();
   const projectNamespaces = useMemo(() => {
@@ -228,7 +231,7 @@ export function useK8sResourceList<T extends KubernetesResource>(
         const query = [fieldSelector && `fieldSelector=${encodeURIComponent(fieldSelector)}`, labelSelector && `labelSelector=${encodeURIComponent(labelSelector)}`].filter(Boolean).join('&');
         return k8sRequest<ResourceList<T>>(path + (query ? `?${query}` : ''), {}, config);
       },
-    enabled: (useBackend ? true : config.isConnected) && (options?.enabled !== false),
+    enabled: !skipRequests && (useBackend ? true : config.isConnected) && (options?.enabled !== false),
     refetchInterval: options?.refetchInterval ?? 30000,
     staleTime: 10000,
     retry: useBackend ? false : 3,
@@ -249,7 +252,9 @@ export function useK8sResourceListPaginated<T extends KubernetesResource>(
   const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured);
   const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
   const activeCluster = useClusterStore((s) => s.activeCluster);
-  const clusterId = activeCluster?.id ?? currentClusterId;
+  // P0-D: Use currentClusterId exclusively. activeCluster.id may hold a stale or demo
+  // ID (e.g. '__demo__cluster-alpha') which corrupts all resource API URLs.
+  const clusterId = currentClusterId;
 
   const { activeProject, activeProjectId } = useProjectStore();
   const projectNamespaces = useMemo(() => {
@@ -317,7 +322,9 @@ export function usePaginatedResourceList<T extends KubernetesResource>(
   const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured);
   const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
   const activeCluster = useClusterStore((s) => s.activeCluster);
-  const clusterId = activeCluster?.id ?? currentClusterId;
+  // P0-D: Use currentClusterId exclusively. activeCluster.id may hold a stale or demo
+  // ID (e.g. '__demo__cluster-alpha') which corrupts all resource API URLs.
+  const clusterId = currentClusterId;
   const useBackend = isBackendConfigured() && !!clusterId;
   const pageSize = Math.max(1, Math.min(100, options?.pageSize ?? DEFAULT_PAGE_SIZE));
   const [clientPageIndex, setClientPageIndex] = useState(0);
@@ -394,8 +401,8 @@ export function useK8sResource<T extends KubernetesResource>(
   const backendBaseUrl = getEffectiveBackendBaseUrl(storedUrl);
   const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured);
   const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
-  const activeCluster = useClusterStore((s) => s.activeCluster);
-  const clusterId = activeCluster?.id ?? currentClusterId;
+  const isDemo = useClusterStore((s) => s.isDemo);
+  const clusterId = currentClusterId;
 
   const apiBase = API_GROUPS[resourceType];
   const isClusterScoped = CLUSTER_SCOPED_KINDS.includes(resourceType);
@@ -411,7 +418,7 @@ export function useK8sResource<T extends KubernetesResource>(
     queryFn: useBackend
       ? () => getResource(backendBaseUrl, clusterId!, resourceType, nsForBackend, name) as Promise<T>
       : () => k8sRequest<T>(path, {}, config),
-    enabled: (useBackend ? true : config.isConnected) && !!name && (options?.enabled !== false),
+    enabled: !isDemo && (useBackend ? true : config.isConnected) && !!name && (options?.enabled !== false),
     staleTime: 10000,
     retry: useBackend ? false : true,
   });
@@ -450,7 +457,9 @@ export function useUpdateK8sResource(resourceType: ResourceType) {
   const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured);
   const activeCluster = useClusterStore((s) => s.activeCluster);
   const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
-  const clusterId = activeCluster?.id ?? currentClusterId;
+  // P0-D: Use currentClusterId exclusively. activeCluster.id may hold a stale or demo
+  // ID (e.g. '__demo__cluster-alpha') which corrupts all resource API URLs.
+  const clusterId = currentClusterId;
 
   return useMutation({
     mutationFn: async ({ name, yaml, namespace }: { name: string; yaml: string; namespace?: string }) => {
@@ -491,7 +500,9 @@ export function usePatchK8sResource(resourceType: ResourceType) {
   const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured);
   const activeCluster = useClusterStore((s) => s.activeCluster);
   const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
-  const clusterId = activeCluster?.id ?? currentClusterId;
+  // P0-D: Use currentClusterId exclusively. activeCluster.id may hold a stale or demo
+  // ID (e.g. '__demo__cluster-alpha') which corrupts all resource API URLs.
+  const clusterId = currentClusterId;
 
   return useMutation({
     mutationFn: async ({
@@ -529,7 +540,9 @@ export function useDeleteK8sResource(resourceType: ResourceType) {
   const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured);
   const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
   const activeCluster = useClusterStore((s) => s.activeCluster);
-  const clusterId = activeCluster?.id ?? currentClusterId;
+  // P0-D: Use currentClusterId exclusively. activeCluster.id may hold a stale or demo
+  // ID (e.g. '__demo__cluster-alpha') which corrupts all resource API URLs.
+  const clusterId = currentClusterId;
 
   return useMutation({
     mutationFn: async ({ name, namespace }: { name: string; namespace?: string }) => {
@@ -591,7 +604,9 @@ export function useK8sPodLogs(
   const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured);
   const activeCluster = useClusterStore((s) => s.activeCluster);
   const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
-  const clusterId = activeCluster?.id ?? currentClusterId;
+  // P0-D: Use currentClusterId exclusively. activeCluster.id may hold a stale or demo
+  // ID (e.g. '__demo__cluster-alpha') which corrupts all resource API URLs.
+  const clusterId = currentClusterId;
   const useBackend = isBackendConfigured() && !!clusterId;
 
   const queryParams = new URLSearchParams();
@@ -692,7 +707,9 @@ export function useCronJobChildJobs(namespace: string, name: string, enabled: bo
   const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured);
   const activeCluster = useClusterStore((s) => s.activeCluster);
   const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
-  const clusterId = activeCluster?.id ?? currentClusterId;
+  // P0-D: Use currentClusterId exclusively. activeCluster.id may hold a stale or demo
+  // ID (e.g. '__demo__cluster-alpha') which corrupts all resource API URLs.
+  const clusterId = currentClusterId;
   const useBackend = isBackendConfigured() && !!clusterId;
 
   return useQuery({

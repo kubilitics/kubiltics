@@ -1,37 +1,31 @@
 import { useEffect, useState } from 'react';
 import { isTauri } from '@/lib/tauri';
 import { Loader2 } from 'lucide-react';
+import { resetBackendCircuit } from '@/services/backendApiClient';
 
 /**
  * BackendStartupOverlay
  *
- * Shows a non-blocking startup screen while the Go sidecar backend is initialising.
+ * Shows a startup screen while the Go sidecar backend is initialising.
  * Listens for the `backend-status` Tauri event emitted by sidecar.rs:
- *
  *   { status: 'starting' | 'ready' | 'error', message: string }
  *
- * Disappears once the backend emits 'ready' (or after a 10-second timeout so it
- * never permanently blocks the UI). If the backend fails, the overlay hides and
- * the app renders normally — BackendStatusBanner in AppLayout will show the error.
- *
- * This is the key UX fix that prevents the "frozen blank screen" users see on cold
- * start while the Go binary initialises (can take 2–5 seconds on first launch).
+ * P0-E: Overlay hides ONLY on backend-status: ready or error (no short timeout).
+ * Backend wait_for_ready() runs up to 30s; overlay must stay visible at least that long.
+ * On "ready", resetBackendCircuit() is called so any circuit opened during startup is cleared.
  */
 export function BackendStartupOverlay() {
   const [visible, setVisible] = useState(false);
   const [message, setMessage] = useState('Starting backend engine…');
 
   useEffect(() => {
-    // Only show in Tauri desktop mode — in browser/helm mode there's no sidecar
     if (!isTauri()) return;
 
-    // Show the overlay immediately on mount (backend always starts on app open)
     setVisible(true);
 
-    // Maximum time to show the overlay — never block the UI indefinitely
-    const maxTimeout = setTimeout(() => setVisible(false), 12_000);
-
     let unlisten: (() => void) | undefined;
+    // Safety: if event never fires (e.g. Tauri version mismatch), hide after 90s
+    const safetyTimeout = setTimeout(() => setVisible(false), 90_000);
 
     const setupListener = async () => {
       try {
@@ -39,21 +33,22 @@ export function BackendStartupOverlay() {
         unlisten = await listen<{ status: string; message: string }>('backend-status', (event) => {
           const { status, message: msg } = event.payload;
           setMessage(msg);
-          if (status === 'ready' || status === 'error') {
-            // Small delay so "ready" flashes briefly before hiding
+          if (status === 'ready') {
+            resetBackendCircuit();
+            setTimeout(() => setVisible(false), 400);
+          } else if (status === 'error') {
             setTimeout(() => setVisible(false), 400);
           }
         });
       } catch {
-        // Tauri events API not available — hide overlay after short delay
-        setTimeout(() => setVisible(false), 3_000);
+        setTimeout(() => setVisible(false), 5_000);
       }
     };
 
     setupListener();
 
     return () => {
-      clearTimeout(maxTimeout);
+      clearTimeout(safetyTimeout);
       unlisten?.();
     };
   }, []);

@@ -90,7 +90,7 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
   const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured);
   const activeCluster = useClusterStore((s) => s.activeCluster);
   const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
-  const clusterId = activeCluster?.id ?? currentClusterId;
+  const clusterId = currentClusterId ?? null;
   const canSearchLive = isBackendConfigured() && !!clusterId && !!backendBaseUrl;
 
   // Debounce search input for API calls

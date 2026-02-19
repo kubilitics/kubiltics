@@ -16,6 +16,8 @@ export interface Cluster {
   cpu: { used: number; total: number };
   memory: { used: number; total: number };
   kubeconfig?: string; // Kubeconfig content for this cluster (desktop mode)
+  /** P0-A: When true, cluster is demo mock — never use for API calls; backend has no such ID. */
+  __isDemo?: boolean;
 }
 
 export interface Namespace {
@@ -56,12 +58,13 @@ interface ClusterState {
   signOut: () => void;
 }
 
-// Demo mock data
+// Demo mock data — IDs are unambiguously synthetic (prefixed __demo__) so they can
+// never be confused with real cluster UUIDs persisted from the backend. See P0-A.
 const demoClusters: Cluster[] = [
   {
-    id: 'prod-us-east',
-    name: 'production-us-east',
-    context: 'prod-us-east-1',
+    id: '__demo__cluster-alpha',
+    name: 'Demo: Production (EKS)',
+    context: '__demo__prod-context',
     version: 'v1.28.4',
     status: 'healthy',
     region: 'us-east-1',
@@ -71,11 +74,12 @@ const demoClusters: Cluster[] = [
     pods: { running: 156, pending: 3, failed: 1 },
     cpu: { used: 68, total: 100 },
     memory: { used: 72, total: 100 },
+    __isDemo: true,
   },
   {
-    id: 'staging-eu',
-    name: 'staging-eu-west',
-    context: 'staging-eu-west-1',
+    id: '__demo__cluster-beta',
+    name: 'Demo: Staging (EKS)',
+    context: '__demo__staging-context',
     version: 'v1.28.2',
     status: 'warning',
     region: 'eu-west-1',
@@ -85,11 +89,12 @@ const demoClusters: Cluster[] = [
     pods: { running: 78, pending: 5, failed: 2 },
     cpu: { used: 45, total: 100 },
     memory: { used: 52, total: 100 },
+    __isDemo: true,
   },
   {
-    id: 'dev-local',
-    name: 'development',
-    context: 'minikube',
+    id: '__demo__cluster-gamma',
+    name: 'Demo: Local Dev (Minikube)',
+    context: '__demo__local-context',
     version: 'v1.29.0',
     status: 'healthy',
     region: 'local',
@@ -99,6 +104,7 @@ const demoClusters: Cluster[] = [
     pods: { running: 24, pending: 0, failed: 0 },
     cpu: { used: 32, total: 100 },
     memory: { used: 41, total: 100 },
+    __isDemo: true,
   },
 ];
 
@@ -190,6 +196,16 @@ export const useClusterStore = create<ClusterState>()(
     }),
     {
       name: 'kubilitics-cluster',
+      // P0-A: Only persist stable user preferences. Never persist cluster state or credentials.
+      // Excluded: activeCluster, clusters, isDemo, namespaces, kubeconfigPath, detectedClusters, kubeconfigContent.
+      // - activeCluster/clusters/isDemo: re-derived from live backend on every launch
+      // - kubeconfigPath/detectedClusters: re-detect on launch (e.g. get_kubeconfig_info)
+      // - kubeconfigContent: credentials must not sit in localStorage (BA-7)
+      partialize: (state) => ({
+        appMode: state.appMode,
+        activeNamespace: state.activeNamespace,
+        isOnboarded: state.isOnboarded,
+      }),
     }
   )
 );

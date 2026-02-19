@@ -26,6 +26,7 @@
 // ─── Base URL ────────────────────────────────────────────────────────────────
 
 import { getCurrentAiBackendUrl, getCurrentAiWsUrl } from '@/stores/backendConfigStore';
+import { getAIAvailableForRequest } from '@/stores/aiAvailableStore';
 import { DEFAULT_AI_BASE_URL, DEFAULT_AI_WS_URL } from '@/lib/backendConstants';
 
 export const AI_BASE_URL = DEFAULT_AI_BASE_URL;
@@ -158,6 +159,11 @@ async function aiRequest<T>(
   path: string,
   init?: RequestInit
 ): Promise<T> {
+  // P2-8: In Tauri, do not hit AI backend when sidecar is not available.
+  if (!getAIAvailableForRequest()) {
+    throw new AIServiceError('AI backend is not available.');
+  }
+
   const url = `${getCurrentAiBackendUrl()}${path}`;
   let response: Response;
 

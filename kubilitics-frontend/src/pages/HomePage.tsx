@@ -24,8 +24,13 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
+import { useClusterStore } from '@/stores/clusterStore';
+import { backendClusterToCluster } from '@/lib/backendClusterAdapter';
 import { useProjectStore } from '@/stores/projectStore';
 import { useClustersFromBackend } from '@/hooks/useClustersFromBackend';
+import { useBackendCircuitOpen } from '@/hooks/useBackendCircuitOpen';
+import { useActiveClusterId } from '@/hooks/useActiveClusterId';
+import { useClusterOverview } from '@/hooks/useClusterOverview';
 import { HealthRing } from '@/components/HealthRing';
 import { AISetupModal } from '@/features/ai/AISetupModal';
 import { loadLLMProviderConfig } from '@/services/aiService';
@@ -46,6 +51,8 @@ export default function HomePage() {
   const storedBackendUrl = useBackendConfigStore((s) => s.backendBaseUrl);
   const backendBaseUrl = useMemo(() => getEffectiveBackendBaseUrl(storedBackendUrl), [storedBackendUrl]);
   const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured());
+  const setCurrentClusterId = useBackendConfigStore((s) => s.setCurrentClusterId);
+  const setActiveCluster = useClusterStore((s) => s.setActiveCluster);
 
   const [isAiModalOpen, setIsAiModalOpen] = useState(false);
   const [settingsProject, setSettingsProject] = useState<any>(null);
@@ -66,10 +73,13 @@ export default function HomePage() {
   const { data: clustersFromBackend } = useClustersFromBackend();
   const clusters = useMemo(() => clustersFromBackend || [], [clustersFromBackend]);
 
+  const circuitOpen = useBackendCircuitOpen();
+  const currentClusterId = useActiveClusterId();
+  const { data: overview } = useClusterOverview(currentClusterId ?? undefined);
   const { data: projectsFromBackend, isLoading: isProjectsLoading, error: projectsError } = useQuery({
     queryKey: ['projects'],
     queryFn: () => getProjects(backendBaseUrl),
-    enabled: isBackendConfigured,
+    enabled: isBackendConfigured && !circuitOpen,
   });
   const projects = useMemo(() => {
     console.log('Projects from backend:', projectsFromBackend);
@@ -92,7 +102,8 @@ export default function HomePage() {
     setSearchParams({ tab: val });
   };
 
-  const ecosystemHealth = 98;
+  // P2-5: System health from current cluster overview (no hardcoded value).
+  const systemHealthScore = overview?.health?.score;
   const activeClusters = clusters.length;
   const activeNodes = useMemo(() => clusters.reduce((acc, c) => acc + (c.node_count || 0), 0), [clusters]);
 
@@ -155,12 +166,15 @@ export default function HomePage() {
                     key={cluster.id}
                     className="relative group bg-white border border-slate-100 rounded-[2.5rem] p-8 shadow-sm hover:shadow-xl hover:shadow-blue-500/5 hover:border-blue-100 transition-all duration-500 cursor-pointer"
                     onClick={() => {
-                      useBackendConfigStore.getState().setCurrentClusterId(cluster.id);
-                      navigate('/dashboard');
+                      // P0-D: Must set BOTH stores atomically so ProtectedRoute (checks
+                      // activeCluster) and useKubernetes (uses currentClusterId for API) agree.
+                      setCurrentClusterId(cluster.id);
+                      setActiveCluster(backendClusterToCluster(cluster));
+                      navigate('/home');
                     }}
                   >
                     <div className="flex justify-between items-start mb-8">
-                      <HealthRing score={cluster.id === 'docker-desktop' ? 95 : 100} size={64} strokeWidth={8} />
+                      <HealthRing score={currentClusterId === cluster.id ? (systemHealthScore ?? 0) : 0} size={64} strokeWidth={8} />
                       <Badge className="bg-slate-100 text-slate-500 border-none px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest">
                         {cluster.provider || 'Local'}
                       </Badge>
@@ -264,7 +278,7 @@ export default function HomePage() {
                       <ShieldCheck className="h-6 w-6 text-emerald-600" />
                     </div>
                     <div>
-                      <div className="text-2xl font-bold text-slate-900">{ecosystemHealth}%</div>
+                      <div className="text-2xl font-bold text-slate-900">{systemHealthScore != null ? `${systemHealthScore}%` : '—'}</div>
                       <div className="text-xs font-semibold text-slate-600 uppercase tracking-tight">System Health</div>
                     </div>
                   </div>
@@ -295,7 +309,7 @@ export default function HomePage() {
                   <p className="text-sm text-slate-600">Weekly insight of your production and staging environments.</p>
                 </div>
                 <div className="py-8 flex justify-center">
-                  <HealthRing score={ecosystemHealth} size={140} strokeWidth={10} />
+                  <HealthRing score={systemHealthScore ?? 0} size={140} strokeWidth={10} />
                 </div>
                 <Button variant="outline" className="w-full rounded-2xl h-12 border-slate-200 text-slate-700 font-semibold hover:bg-slate-50 group">
                   View Full Metrics

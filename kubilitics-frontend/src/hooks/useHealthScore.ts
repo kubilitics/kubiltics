@@ -37,7 +37,7 @@ export function useHealthScore(): HealthScore {
   const backendBaseUrl = getEffectiveBackendBaseUrl(storedUrl);
   const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured());
   const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
-  const clusterId = activeCluster?.id ?? currentClusterId;
+  const clusterId = currentClusterId ?? undefined;
   const summaryQuery = useClusterSummary(clusterId ?? undefined);
 
   const podsList = useK8sResourceList('pods', undefined, {
@@ -52,9 +52,9 @@ export function useHealthScore(): HealthScore {
   });
 
   const eventsQuery = useQuery({
-    queryKey: ['backend', 'events', activeCluster?.id, 'health'],
-    queryFn: () => getEvents(backendBaseUrl, activeCluster!.id, { namespace: 'default', limit: 100 }),
-    enabled: !!activeCluster?.id && isBackendConfigured,
+    queryKey: ['backend', 'events', currentClusterId, 'health'],
+    queryFn: () => getEvents(backendBaseUrl, currentClusterId!, { namespace: 'default', limit: 100 }),
+    enabled: !!currentClusterId && isBackendConfigured,
     staleTime: 15000,
   });
 

@@ -2,8 +2,12 @@
  * Cluster Connect Page
  * Entry point for the Kubilitics application (Desktop & Helm modes).
  * Uses backend cluster list when configured; no mock data.
+ *
+ * Desktop landing: For Tauri, this is the canonical landing (cluster list + add cluster).
+ * Banners (BackendStatusBanner, ConnectionRequiredBanner) live in AppLayout only; do not
+ * embed backend/connection error content here so that banner changes don't replace this view.
  */
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
@@ -23,22 +27,35 @@ import {
   XCircle,
   Circle,
   Settings,
+  ClipboardPaste,
+  FolderOpen,
 } from 'lucide-react';
 import { KubernetesLogo } from '@/components/icons/KubernetesIcons';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
 import { useClusterStore } from '@/stores/clusterStore';
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
 import { DEFAULT_BACKEND_BASE_URL } from '@/lib/backendConstants';
 import { useClustersFromBackend } from '@/hooks/useClustersFromBackend';
 import { useDiscoverClusters } from '@/hooks/useDiscoverClusters';
-import { addCluster, addClusterWithUpload, type BackendCluster } from '@/services/backendApiClient';
+import { useBackendHealth } from '@/hooks/useBackendHealth';
+import { addCluster, addClusterWithUpload, resetBackendCircuit, type BackendCluster } from '@/services/backendApiClient';
 import { backendClusterToCluster } from '@/lib/backendClusterAdapter';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
 import { WelcomeAddCluster } from '@/components/connect/WelcomeAddCluster';
+import { isTauri } from '@/lib/tauri';
 
 interface DetectedCluster {
   id: string;
@@ -89,15 +106,28 @@ const kubeconfigLocations = [
   { path: '~/.kube/config.d/*', desc: 'Config directory' },
 ];
 
+function extractContextFromKubeconfig(text: string): string {
+  try {
+    const currentMatch = text.match(/current-context:\s*(\S+)/);
+    if (currentMatch) return currentMatch[1].trim();
+    const nameMatch = text.match(/contexts:\s*[\s\S]*?name:\s*(\S+)/);
+    return nameMatch ? nameMatch[1].trim() : 'default';
+  } catch {
+    return 'default';
+  }
+}
+
 export default function ClusterConnect() {
   const navigate = useNavigate();
-  const { activeCluster, setActiveCluster, setClusters, setDemo, appMode } = useClusterStore();
+  const { activeCluster, setActiveCluster, setClusters, setDemo, appMode, setAppMode, signOut } = useClusterStore();
   const storedBackendUrl = useBackendConfigStore((s) => s.backendBaseUrl);
   const backendBaseUrl = getEffectiveBackendBaseUrl(storedBackendUrl);
   const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured());
+  const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
   const setCurrentClusterId = useBackendConfigStore((s) => s.setCurrentClusterId);
   const queryClient = useQueryClient();
-  const clustersFromBackend = useClustersFromBackend();
+  const health = useBackendHealth({ enabled: true });
+  const clustersFromBackend = useClustersFromBackend({ gateOnHealth: true });
   const discoveredClustersRes = useDiscoverClusters();
 
   const [tabMode, setTabMode] = useState<'auto' | 'upload'>('auto');
@@ -106,6 +136,11 @@ export default function ClusterConnect() {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
   const [isAddingDiscovered, setIsAddingDiscovered] = useState<string | null>(null);
+  const [pasteDialogOpen, setPasteDialogOpen] = useState(false);
+  const [pasteContent, setPasteContent] = useState('');
+  const [isPasting, setIsPasting] = useState(false);
+  const autoConnectDoneRef = useRef(false);
+  const sessionRestoreDoneRef = useRef(false);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -113,19 +148,89 @@ export default function ClusterConnect() {
     if (file) handleUploadedFile(file);
   }, []);
 
-  // If no mode selected yet, redirect to selection
+  // If no mode selected yet, redirect to selection (browser/Helm only). Desktop always lands here with appMode set to 'desktop'.
   useEffect(() => {
-    if (!appMode) {
-      navigate('/', { replace: true });
+    if (isTauri()) {
+      if (!appMode) setAppMode('desktop');
+      return;
     }
-  }, [appMode, navigate]);
+    if (!appMode) navigate('/', { replace: true });
+  }, [appMode, navigate, setAppMode]);
 
-  // Already connected (e.g. from persist): redirect to dashboard
+  // P0-C: In Tauri (desktop), ClusterConnect is the startup screen.
+  // NEVER auto-redirect away from it based on a persisted activeCluster — the cluster
+  // must be re-confirmed against the live backend on every launch.
+  // In browser mode only: redirect to dashboard if already connected (session continuity).
   useEffect(() => {
-    if (activeCluster) {
+    if (!isTauri() && activeCluster) {
       navigate('/dashboard', { replace: true });
     }
   }, [activeCluster, navigate]);
+
+  // P2-1: Headlamp/Lens behavior — single context in kubeconfig → auto-connect on startup.
+  // After both cluster lists resolve, if exactly one registered cluster and it is current, connect once.
+  useEffect(() => {
+    const backendReady = health.isSuccess;
+    if (!backendReady || !clustersFromBackend.data || clustersFromBackend.isLoading || discoveredClustersRes.isLoading) return;
+    const registered = clustersFromBackend.data.map(backendToDetected);
+    if (registered.length !== 1 || !registered[0].isCurrent) return;
+    if (autoConnectDoneRef.current) return;
+    autoConnectDoneRef.current = true;
+    const cluster = registered[0];
+    const backendItem = clustersFromBackend.data.find((c) => c.id === cluster.id || c.context === cluster.context);
+    if (!backendItem) return;
+    setIsConnecting(true);
+    setCurrentClusterId(backendItem.id);
+    setClusters(clustersFromBackend.data.map(backendClusterToCluster));
+    setActiveCluster(backendClusterToCluster(backendItem));
+    setDemo(false);
+    navigate('/home', { replace: true });
+  }, [
+    health.isSuccess,
+    clustersFromBackend.data,
+    clustersFromBackend.isLoading,
+    discoveredClustersRes.isLoading,
+    setCurrentClusterId,
+    setClusters,
+    setActiveCluster,
+    setDemo,
+    navigate,
+  ]);
+
+  // P2-2: Session restore on relaunch — if currentClusterId is set, validate against backend and restore or clear.
+  // Skip when single-cluster auto-connect applies (that effect handles it). Run once per mount.
+  useEffect(() => {
+    const backendReady = health.isSuccess;
+    if (!backendReady || !clustersFromBackend.data || clustersFromBackend.isLoading || discoveredClustersRes.isLoading) return;
+    const cid = currentClusterId?.trim();
+    if (!cid) return;
+    if (sessionRestoreDoneRef.current) return;
+    const registered = clustersFromBackend.data.map(backendToDetected);
+    if (registered.length === 1 && registered[0].isCurrent) return; // P2-1 handles this
+    sessionRestoreDoneRef.current = true;
+    const backendItem = clustersFromBackend.data.find((c) => c.id === cid);
+    if (backendItem) {
+      setClusters(clustersFromBackend.data.map(backendClusterToCluster));
+      setActiveCluster(backendClusterToCluster(backendItem));
+      setDemo(false);
+      navigate('/home', { replace: true });
+    } else {
+      setCurrentClusterId(null);
+      signOut();
+    }
+  }, [
+    health.isSuccess,
+    clustersFromBackend.data,
+    clustersFromBackend.isLoading,
+    discoveredClustersRes.isLoading,
+    currentClusterId,
+    setCurrentClusterId,
+    setClusters,
+    setActiveCluster,
+    setDemo,
+    signOut,
+    navigate,
+  ]);
 
   // Clusters from backend API
   const registeredClusters: DetectedCluster[] =
@@ -140,7 +245,8 @@ export default function ClusterConnect() {
       : [];
 
   const handleUploadedFile = async (file: File) => {
-    if (!isBackendConfigured || !backendBaseUrl?.trim()) {
+    const effectiveConfigured = isBackendConfigured || isTauri();
+    if (!effectiveConfigured || !backendBaseUrl?.trim()) {
       toast.error('Set backend URL in Settings first');
       return;
     }
@@ -186,6 +292,7 @@ export default function ClusterConnect() {
     try {
       await addCluster(backendBaseUrl, '', cluster.context); // Empty path uses default on backend
       queryClient.invalidateQueries({ queryKey: ['backend', 'clusters'] });
+      queryClient.invalidateQueries({ queryKey: ['backend', 'clusters', 'discover'] });
       await clustersFromBackend.refetch();
       await discoveredClustersRes.refetch();
       toast.success('Cluster registered', { description: `Context: ${cluster.context}` });
@@ -235,17 +342,82 @@ export default function ClusterConnect() {
   };
 
   const handleRefreshClusters = () => {
+    resetBackendCircuit();
     queryClient.invalidateQueries({ queryKey: ['backend', 'clusters'] });
-    clustersFromBackend.refetch();
-    discoveredClustersRes.refetch();
+    health.refetch().then(() => {
+      clustersFromBackend.refetch();
+      discoveredClustersRes.refetch();
+    });
   };
 
-  if (activeCluster) {
+  const handlePasteSubmit = useCallback(async () => {
+    const trimmed = pasteContent.trim();
+    if (!trimmed) {
+      toast.error('Paste your kubeconfig content first');
+      return;
+    }
+    const effectiveConfigured = isBackendConfigured || isTauri();
+    if (!effectiveConfigured || !backendBaseUrl?.trim()) {
+      toast.error('Set backend URL in Settings first');
+      return;
+    }
+    setIsPasting(true);
+    try {
+      const base64 = btoa(unescape(encodeURIComponent(trimmed)));
+      const contextName = extractContextFromKubeconfig(trimmed);
+      await addClusterWithUpload(backendBaseUrl, base64, contextName);
+      queryClient.invalidateQueries({ queryKey: ['backend', 'clusters'] });
+      clustersFromBackend.refetch();
+      discoveredClustersRes.refetch();
+      toast.success('Cluster added', { description: `Context: ${contextName}` });
+      setPasteDialogOpen(false);
+      setPasteContent('');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to add cluster');
+    } finally {
+      setIsPasting(false);
+    }
+  }, [pasteContent, backendBaseUrl, isBackendConfigured, queryClient, clustersFromBackend, discoveredClustersRes]);
+
+  // P0-C: In Tauri mode, do NOT show the spinner and block the connect page based on
+  // a persisted activeCluster — user must always be able to pick a (live) cluster.
+  // In browser mode, this spinner is fine while the redirect effect fires.
+  if (!isTauri() && activeCluster) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-[#020617] text-slate-50">
         <div className="flex flex-col items-center gap-4">
           <Loader2 className="h-10 w-10 animate-spin text-blue-500" />
           <p className="text-slate-400 font-medium">Initializing Workspace…</p>
+        </div>
+      </div>
+    );
+  }
+
+  // P2-1: Full-page "Connecting…" during auto-connect (single cluster).
+  if (isConnecting && autoConnectDoneRef.current) {
+    return (
+      <div className="min-h-screen bg-[#020617] text-slate-50 flex items-center justify-center p-8">
+        <div className="flex flex-col items-center gap-6 max-w-sm text-center">
+          <KubernetesLogo size={56} className="text-blue-500/80" />
+          <Loader2 className="h-10 w-10 animate-spin text-blue-500" />
+          <p className="text-slate-400 font-medium">Connecting…</p>
+        </div>
+      </div>
+    );
+  }
+
+  // P0-G: Backend not ready yet — show loading skeleton until health succeeds.
+  // When gateOnHealth: true, cluster hooks have enabled: false so they report isLoading: false
+  // and data: undefined; without this branch we'd show "No clusters found" during startup.
+  const backendReady = health.isSuccess;
+  if ((isBackendConfigured || isTauri()) && !backendReady && !health.isError) {
+    return (
+      <div className="min-h-screen bg-[#020617] text-slate-50 flex items-center justify-center p-8">
+        <div className="flex flex-col items-center gap-6 max-w-sm text-center">
+          <KubernetesLogo size={56} className="text-blue-500/80" />
+          <Loader2 className="h-10 w-10 animate-spin text-blue-500" />
+          <p className="text-slate-400 font-medium">Connecting to backend…</p>
+          <p className="text-sm text-slate-500">Scanning for clusters once the engine is ready.</p>
         </div>
       </div>
     );
@@ -340,7 +512,7 @@ export default function ClusterConnect() {
                       <h3 className="font-semibold text-lg text-slate-100">Local Environments</h3>
                       <p className="text-sm text-slate-500">
                         {isBackendConfigured
-                          ? (clustersFromBackend.isLoading || discoveredClustersRes.isLoading)
+                          ? (health.isLoading || !health.isSuccess || clustersFromBackend.isLoading || discoveredClustersRes.isLoading)
                             ? 'Scanning for local clusters…'
                             : 'Registered and detected contexts from ~/.kube/config'
                           : 'Set backend URL in Settings to see clusters'}
@@ -352,27 +524,45 @@ export default function ClusterConnect() {
                         size="sm"
                         className="text-slate-400 hover:text-white"
                         onClick={handleRefreshClusters}
-                        disabled={clustersFromBackend.isFetching || discoveredClustersRes.isFetching}
+                        disabled={health.isFetching || clustersFromBackend.isFetching || discoveredClustersRes.isFetching}
                       >
                         <RefreshCw
-                          className={`h-4 w-4 ${clustersFromBackend.isFetching || discoveredClustersRes.isFetching ? 'animate-spin' : ''}`}
+                          className={`h-4 w-4 ${health.isFetching || clustersFromBackend.isFetching || discoveredClustersRes.isFetching ? 'animate-spin' : ''}`}
                         />
                       </Button>
                     )}
                   </div>
 
-                  {isBackendConfigured && (clustersFromBackend.error || discoveredClustersRes.error) && registeredClusters.length === 0 && (
+                  {isBackendConfigured && (health.error || clustersFromBackend.error || discoveredClustersRes.error) && registeredClusters.length === 0 && (
                     <motion.div
                       initial={{ opacity: 0, height: 0 }}
                       animate={{ opacity: 1, height: 'auto' }}
-                      className="mb-6 p-4 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center gap-3 text-red-400"
+                      className="mb-6 p-4 rounded-xl border flex items-center gap-3 flex-wrap"
+                      style={isTauri() ? { background: 'rgba(59, 130, 246, 0.08)', borderColor: 'rgba(59, 130, 246, 0.2)' } : { background: 'rgba(239, 68, 68, 0.1)', borderColor: 'rgba(239, 68, 68, 0.2)' }}
                     >
-                      <AlertCircle className="h-5 w-5 shrink-0" />
-                      <span className="text-sm font-medium">Connection failed. Ensure the desktop engine is running.</span>
+                      {isTauri() ? (
+                        <>
+                          <AlertCircle className="h-5 w-5 shrink-0 text-blue-400" />
+                          <span className="text-sm font-medium text-slate-200 flex-1">Couldn&apos;t load clusters. You can add a cluster by pasting or uploading your kubeconfig below.</span>
+                          <Button variant="outline" size="sm" className="border-slate-600 hover:bg-slate-800" onClick={handleRefreshClusters} disabled={health.isFetching || clustersFromBackend.isFetching || discoveredClustersRes.isFetching}>
+                            <RefreshCw className={health.isFetching || clustersFromBackend.isFetching || discoveredClustersRes.isFetching ? 'h-4 w-4 animate-spin mr-1.5' : 'h-4 w-4 mr-1.5'} />
+                            Retry
+                          </Button>
+                        </>
+                      ) : (
+                        <>
+                          <AlertCircle className="h-5 w-5 shrink-0 text-red-400" />
+                          <span className="text-sm font-medium text-red-400 flex-1">Connection failed. Check that the backend is running, or add a cluster by pasting or uploading your kubeconfig below.</span>
+                          <Button variant="outline" size="sm" className="border-red-800 hover:bg-red-900/20" onClick={handleRefreshClusters} disabled={health.isFetching || clustersFromBackend.isFetching || discoveredClustersRes.isFetching}>
+                            <RefreshCw className={health.isFetching || clustersFromBackend.isFetching || discoveredClustersRes.isFetching ? 'h-4 w-4 animate-spin mr-1.5' : 'h-4 w-4 mr-1.5'} />
+                            Retry
+                          </Button>
+                        </>
+                      )}
                     </motion.div>
                   )}
 
-                  {!isBackendConfigured && (
+                  {!isBackendConfigured && !isTauri() && (
                     <div className="text-center py-12">
                       <Settings className="h-12 w-12 text-slate-600 mx-auto mb-4" />
                       <p className="text-slate-400 mb-6 max-w-xs mx-auto">
@@ -384,7 +574,7 @@ export default function ClusterConnect() {
                     </div>
                   )}
 
-                  {isBackendConfigured && (clustersFromBackend.isLoading || discoveredClustersRes.isLoading) && (
+                  {(isBackendConfigured || isTauri()) && (clustersFromBackend.isLoading || discoveredClustersRes.isLoading) && (
                     <div className="space-y-3 mb-4">
                       {[1, 2, 3].map((i) => (
                         <div key={i} className="h-16 bg-slate-800/40 animate-pulse rounded-xl" />
@@ -392,7 +582,7 @@ export default function ClusterConnect() {
                     </div>
                   )}
 
-                  {isBackendConfigured && !clustersFromBackend.isLoading && !discoveredClustersRes.isLoading && (
+                  {(isBackendConfigured || isTauri()) && !clustersFromBackend.isLoading && !discoveredClustersRes.isLoading && (
                     <div className="space-y-4">
                       {/* Registered Clusters */}
                       {registeredClusters.map((cluster) => (
@@ -450,7 +640,7 @@ export default function ClusterConnect() {
                       {/* Discovered (New) Clusters */}
                       {discoveredClusters.map((cluster) => (
                         <motion.div
-                          key={cluster.name}
+                          key={cluster.id}
                           initial={{ opacity: 0, y: 10 }}
                           animate={{ opacity: 1, y: 0 }}
                           className="group p-4 rounded-xl border border-blue-500/20 bg-blue-500/[0.02] border-dashed hover:border-blue-500/40 hover:bg-blue-500/[0.04] transition-all"
@@ -489,16 +679,41 @@ export default function ClusterConnect() {
                       ))}
 
                       {registeredClusters.length === 0 && discoveredClusters.length === 0 && (
-                        <div className="text-center py-12">
-                          <AlertCircle className="h-12 w-12 text-slate-600 mx-auto mb-4" />
-                          <p className="text-slate-400 mb-6">
-                            No clusters registered or found in default locations.
-                          </p>
-                          <div className="flex gap-3 justify-center">
-                            <Button variant="outline" className="border-slate-800 hover:bg-slate-800" onClick={() => setTabMode('upload')}>
-                              Upload Kubeconfig
-                            </Button>
-                          </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 py-8">
+                          <Card
+                            className="p-6 bg-slate-900/60 border-slate-800/50 cursor-pointer hover:border-blue-500/50 hover:bg-slate-800/40 transition-all"
+                            onClick={() => setPasteDialogOpen(true)}
+                          >
+                            <div className="flex flex-col items-center text-center gap-4">
+                              <div className="p-3 rounded-xl bg-blue-500/10">
+                                <ClipboardPaste className="h-8 w-8 text-blue-400" />
+                              </div>
+                              <div>
+                                <p className="font-medium text-slate-200">Paste kubeconfig</p>
+                                <p className="text-sm text-slate-500 mt-1">Paste YAML from clipboard</p>
+                              </div>
+                              <Button variant="outline" size="sm" className="border-slate-700">
+                                Paste kubeconfig
+                              </Button>
+                            </div>
+                          </Card>
+                          <Card
+                            className="p-6 bg-slate-900/60 border-slate-800/50 cursor-pointer hover:border-blue-500/50 hover:bg-slate-800/40 transition-all"
+                            onClick={() => setTabMode('upload')}
+                          >
+                            <div className="flex flex-col items-center text-center gap-4">
+                              <div className="p-3 rounded-xl bg-blue-500/10">
+                                <FolderOpen className="h-8 w-8 text-blue-400" />
+                              </div>
+                              <div>
+                                <p className="font-medium text-slate-200">Upload file</p>
+                                <p className="text-sm text-slate-500 mt-1">Select or drag a kubeconfig file</p>
+                              </div>
+                              <Button variant="outline" size="sm" className="border-slate-700">
+                                Upload Kubeconfig
+                              </Button>
+                            </div>
+                          </Card>
                         </div>
                       )}
                     </div>
@@ -624,6 +839,32 @@ export default function ClusterConnect() {
           </p>
         </div>
       </div>
+
+      <Dialog open={pasteDialogOpen} onOpenChange={setPasteDialogOpen}>
+        <DialogContent className="bg-slate-900 border-slate-800 text-slate-100 max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Paste kubeconfig</DialogTitle>
+            <DialogDescription className="text-slate-400">
+              Paste your kubeconfig YAML below. Current context will be used if present.
+            </DialogDescription>
+          </DialogHeader>
+          <Textarea
+            placeholder="apiVersion: v1\nkind: Config\nclusters:\n  ..."
+            value={pasteContent}
+            onChange={(e) => setPasteContent(e.target.value)}
+            className="min-h-[200px] font-mono text-sm bg-slate-800/50 border-slate-700 resize-y"
+          />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPasteDialogOpen(false)} className="border-slate-700">
+              Cancel
+            </Button>
+            <Button onClick={handlePasteSubmit} disabled={isPasting || !pasteContent.trim()}>
+              {isPasting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+              {isPasting ? ' Adding…' : 'Add cluster'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

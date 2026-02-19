@@ -33,7 +33,7 @@ export const ClusterHealthWidget = () => {
   const { activeCluster } = useClusterStore();
   const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
   const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured());
-  const clusterId = activeCluster?.id ?? currentClusterId ?? undefined;
+  const clusterId = currentClusterId ?? undefined;
 
   const overview = useClusterOverview(clusterId);
   const healthScore = useHealthScore();

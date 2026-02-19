@@ -128,9 +128,8 @@ export function useResourceEvents(
 ) {
   const baseUrl = getEffectiveBackendBaseUrl();
   const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured());
-  const activeCluster = useClusterStore((s) => s.activeCluster);
   const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
-  const clusterId = activeCluster?.id ?? currentClusterId;
+  const clusterId = currentClusterId ?? null;
   const useBackend = !!(isBackendConfigured && clusterId && name && (namespace !== undefined || kind === 'IngressClass'));
 
   const backendQuery = useQuery({
@@ -174,8 +173,8 @@ export function usePodEvents(namespace: string | undefined, podName: string | un
   const storedUrl = useBackendConfigStore((s) => s.backendBaseUrl);
   const backendBaseUrl = getEffectiveBackendBaseUrl(storedUrl);
   const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured);
-  const activeCluster = useClusterStore((s) => s.activeCluster);
-  const clusterId = activeCluster?.id;
+  const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
+  const clusterId = currentClusterId ?? null;
   const enabled = !!(isBackendConfigured() && clusterId && namespace && podName);
 
   const query = useQuery({

@@ -13,9 +13,10 @@ import {
 import { cn } from '@/lib/utils';
 import { useConnectionStatus } from '@/hooks/useConnectionStatus';
 import { useActiveClusterId } from '@/hooks/useActiveClusterId';
+import { useBackendCircuitOpen } from '@/hooks/useBackendCircuitOpen';
 import { getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
 import { useBackendConfigStore } from '@/stores/backendConfigStore';
-import { getKCLIShellStreamUrl, getKubectlShellStreamUrl, getPodExecWebSocketUrl, getShellStatus } from '@/services/backendApiClient';
+import { getKCLIShellStreamUrl, getKubectlShellStreamUrl, getPodExecWebSocketUrl, getShellStatus, isBackendCircuitOpen } from '@/services/backendApiClient';
 import { toast } from 'sonner';
 import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
@@ -118,6 +119,7 @@ export function TerminalViewer({
     return saved === 'shell' ? 'shell' : 'ui';
   });
   const [kcliShellModeAllowed, setKcliShellModeAllowed] = useState(true);
+  const circuitOpen = useBackendCircuitOpen();
 
   const terminalRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -259,6 +261,13 @@ export function TerminalViewer({
     const sessionId = wsSessionRef.current + 1;
     wsSessionRef.current = sessionId;
 
+    // P2-4: Do not open WebSocket when circuit is open; show friendly message in terminal panel.
+    if (isBackendCircuitOpen()) {
+      setExecConnecting(false);
+      setExecError('Backend unavailable. Use Retry in the banner when the connection is back.');
+      return;
+    }
+
     const url = terminalSource === 'pod'
       ? getPodExecWebSocketUrl(backendBaseUrl, clusterId!, namespace!, podName!, {
         container: selectedContainer,
@@ -343,7 +352,7 @@ export function TerminalViewer({
         // ignore
       }
     };
-  }, [expectsLiveSession, backendBaseUrl, clusterId, namespace, podName, selectedContainer, terminalSource, kcliStreamMode, reconnectNonce]);
+  }, [expectsLiveSession, backendBaseUrl, clusterId, namespace, podName, selectedContainer, terminalSource, kcliStreamMode, reconnectNonce, circuitOpen]);
 
   // Fit xterm when maximized or window resizes (live exec only); refocus after fit so input works
   useEffect(() => {

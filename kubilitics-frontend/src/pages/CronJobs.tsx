@@ -384,7 +384,7 @@ spec:
       toast.error('Connect to Kubilitics backend and select a cluster to trigger CronJob.');
       return;
     }
-    const cid = useClusterStore.getState().activeCluster?.id ?? useBackendConfigStore.getState().currentClusterId;
+    const cid = useBackendConfigStore.getState().currentClusterId;
     if (!cid) {
       toast.error('Select a cluster from the cluster list to perform this action.');
       return;

@@ -49,7 +49,7 @@ func (c *Client) ListResources(ctx context.Context, kind, namespace string, opts
 	}
 
 	resourceType := NormalizeKindToResource(kind)
-	gvr, err := GetGVRForType(resourceType)
+	gvr, err := c.ResolveGVR(ctx, resourceType)
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
@@ -88,7 +88,7 @@ func (c *Client) GetResource(ctx context.Context, kind, namespace, name string) 
 	}
 
 	resourceType := NormalizeKindToResource(kind)
-	gvr, err := GetGVRForType(resourceType)
+	gvr, err := c.ResolveGVR(ctx, resourceType)
 	if err != nil {
 		return nil, err
 	}
@@ -119,7 +119,7 @@ func (c *Client) DeleteResource(ctx context.Context, kind, namespace, name strin
 	}
 
 	resourceType := NormalizeKindToResource(kind)
-	gvr, err := GetGVRForType(resourceType)
+	gvr, err := c.ResolveGVR(ctx, resourceType)
 	if err != nil {
 		return err
 	}
@@ -147,7 +147,7 @@ func (c *Client) PatchResource(ctx context.Context, kind, namespace, name string
 	}
 
 	resourceType := NormalizeKindToResource(kind)
-	gvr, err := GetGVRForType(resourceType)
+	gvr, err := c.ResolveGVR(ctx, resourceType)
 	if err != nil {
 		return nil, err
 	}
@@ -180,7 +180,7 @@ func (c *Client) CreateResource(ctx context.Context, obj *unstructured.Unstructu
 
 	namespace := obj.GetNamespace()
 	resourceType := NormalizeKindToResource(obj.GetKind())
-	gvr, err := GetGVRForType(resourceType)
+	gvr, err := c.ResolveGVR(ctx, resourceType)
 	if err != nil {
 		return nil, err
 	}
@@ -263,6 +263,7 @@ func (c *Client) ListCRDInstances(ctx context.Context, crdName, namespace string
 }
 
 // IsNamespaced returns whether the given kind is typically namespaced (for validation).
+// Uses static map only; no client/context for discovery (CRD namespacing still correct for known types).
 func IsNamespaced(kind string) bool {
 	resourceType := NormalizeKindToResource(kind)
 	gvr, err := GetGVRForType(resourceType)

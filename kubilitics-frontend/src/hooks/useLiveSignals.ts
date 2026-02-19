@@ -48,7 +48,7 @@ export function useLiveSignals(): LiveSignals {
   const backendBaseUrl = getEffectiveBackendBaseUrl(storedUrl);
   const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured());
   const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
-  const clusterId = activeCluster?.id ?? currentClusterId;
+  const clusterId = currentClusterId ?? null;
   const summaryQuery = useClusterSummary(clusterId ?? undefined);
 
   const podsList = useK8sResourceList('pods', undefined, {
@@ -62,9 +62,9 @@ export function useLiveSignals(): LiveSignals {
     refetchInterval: 30000,
   });
   const eventsQuery = useQuery({
-    queryKey: ['backend', 'events', activeCluster?.id, 'dashboard'],
-    queryFn: () => getEvents(backendBaseUrl, activeCluster!.id, { limit: 100 }),
-    enabled: !!activeCluster?.id && isBackendConfigured,
+    queryKey: ['backend', 'events', currentClusterId, 'dashboard'],
+    queryFn: () => getEvents(backendBaseUrl, currentClusterId!, { limit: 100 }),
+    enabled: !!currentClusterId && isBackendConfigured,
     staleTime: 10000,
     refetchInterval: 20000,
   });

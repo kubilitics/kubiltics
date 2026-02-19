@@ -10,6 +10,8 @@ import {
   getKCLITUIState,
   BackendApiError,
   createBackendApiClient,
+  isBackendCircuitOpen,
+  resetBackendCircuit,
 } from './backendApiClient';
 import { DEFAULT_BACKEND_BASE_URL } from '@/lib/backendConstants';
 
@@ -17,6 +19,7 @@ const BASE = DEFAULT_BACKEND_BASE_URL;
 
 describe('backendApiClient', () => {
   beforeEach(() => {
+    resetBackendCircuit();
     vi.stubGlobal(
       'fetch',
       vi.fn(() => Promise.resolve(new Response('{}', { status: 200 })))
@@ -73,6 +76,16 @@ describe('backendApiClient', () => {
         status: 404,
         body: 'Not Found',
       });
+    });
+
+    it('does NOT open circuit breaker on 404 (BA-3 / test gaps)', async () => {
+      resetBackendCircuit();
+      (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
+        new Response('Not Found', { status: 404 })
+      );
+
+      await expect(getClusters(BASE)).rejects.toThrow(BackendApiError);
+      expect(isBackendCircuitOpen()).toBe(false);
     });
   });
 
@@ -138,7 +151,10 @@ describe('backendApiClient', () => {
 
       const result = await getHealth(BASE);
 
-      expect(globalThis.fetch).toHaveBeenCalledWith(`${BASE}/health`);
+      expect(globalThis.fetch).toHaveBeenCalledWith(
+        `${BASE}/health`,
+        expect.objectContaining({ signal: expect.any(AbortSignal) })
+      );
       expect(result).toEqual(health);
     });
   });

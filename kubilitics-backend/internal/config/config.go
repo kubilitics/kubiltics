@@ -198,13 +198,43 @@ func Load() (*Config, error) {
 	}
 
 	// Normalize allowed_origins: env KUBILITICS_ALLOWED_ORIGINS is often comma-separated (e.g. from Helm).
+	// BA-5: Handle both comma-separated string and already-split array, always trim whitespace.
 	if len(cfg.AllowedOrigins) == 1 && strings.Contains(cfg.AllowedOrigins[0], ",") {
+		// Single string with commas - split and trim
 		parts := strings.Split(cfg.AllowedOrigins[0], ",")
 		cfg.AllowedOrigins = make([]string, 0, len(parts))
 		for _, p := range parts {
 			if o := strings.TrimSpace(p); o != "" {
 				cfg.AllowedOrigins = append(cfg.AllowedOrigins, o)
 			}
+		}
+	} else {
+		// Already split array - trim whitespace from each element
+		normalized := make([]string, 0, len(cfg.AllowedOrigins))
+		for _, origin := range cfg.AllowedOrigins {
+			if trimmed := strings.TrimSpace(origin); trimmed != "" {
+				normalized = append(normalized, trimmed)
+			}
+		}
+		cfg.AllowedOrigins = normalized
+	}
+
+	// P0-F: Always append Tauri origins AFTER env and file are applied (Unmarshal above uses
+	// viper state after AutomaticEnv and ReadInConfig). So KUBILITICS_ALLOWED_ORIGINS override
+	// still gets tauri://localhost and tauri:// appended. When port 819 is already in use (e.g.
+	// make restart), the desktop skips spawning the sidecar; the existing backend still allows
+	// tauri://localhost.
+	tauriOrigins := []string{"tauri://localhost", "tauri://"}
+	for _, o := range tauriOrigins {
+		found := false
+		for _, existing := range cfg.AllowedOrigins {
+			if existing == o {
+				found = true
+				break
+			}
+		}
+		if !found {
+			cfg.AllowedOrigins = append(cfg.AllowedOrigins, o)
 		}
 	}
 

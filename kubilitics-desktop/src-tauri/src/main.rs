@@ -3,6 +3,7 @@
 
 use tauri::{Emitter, Manager};
 
+mod backend_ports;
 mod commands;
 mod menu;
 mod sidecar;
@@ -45,6 +46,7 @@ fn main() {
             commands::install_update,
             commands::get_desktop_info,
             commands::restart_sidecar,
+            commands::is_kcli_sidecar_available,
             sidecar::get_ai_status,
         ])
         .setup(|app| {
