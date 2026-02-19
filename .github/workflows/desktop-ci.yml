@@ -106,18 +106,17 @@ jobs:
           key: ${{ runner.os }}-cargo-${{ hashFiles('kubilitics-desktop/src-tauri/Cargo.lock') }}
           restore-keys: ${{ runner.os }}-cargo-
 
-      - name: Create CI stubs (sidecar binaries + frontend dist)
+      - name: Create CI stubs (Unix - macOS/Linux)
+        if: matrix.os != 'windows-latest'
         # Tauri validates externalBin binaries exist for the current target triple at compile time.
         # Create platform-specific stubs for all required binaries.
+        shell: bash
         run: |
           # Determine target triple based on OS
           if [ "${{ matrix.os }}" == "macos-latest" ]; then
             TRIPLE="aarch64-apple-darwin"
           elif [ "${{ matrix.os }}" == "ubuntu-latest" ]; then
             TRIPLE="x86_64-unknown-linux-gnu"
-          elif [ "${{ matrix.os }}" == "windows-latest" ]; then
-            TRIPLE="x86_64-pc-windows-msvc"
-            EXE_SUFFIX=".exe"
           else
             echo "Unknown OS: ${{ matrix.os }}"
             exit 1
@@ -125,16 +124,10 @@ jobs:
           
           mkdir -p kubilitics-desktop/src-tauri/binaries
           for bin in kubilitics-backend kubilitics-ai kcli; do
-            stub="kubilitics-desktop/src-tauri/binaries/${bin}-${TRIPLE}${EXE_SUFFIX:-}"
+            stub="kubilitics-desktop/src-tauri/binaries/${bin}-${TRIPLE}"
             if [ ! -f "$stub" ]; then
-              if [ "${{ matrix.os }}" == "windows-latest" ]; then
-                # Windows: create empty .exe stub (or use echo to create empty file)
-                echo "" > "$stub"
-              else
-                # Unix: create executable shell script stub
-                echo "#!/bin/sh" > "$stub"
-                chmod +x "$stub"
-              fi
+              echo "#!/bin/sh" > "$stub"
+              chmod +x "$stub"
               echo "Created stub: $stub"
             fi
           done
@@ -143,6 +136,32 @@ jobs:
           mkdir -p kubilitics-desktop/dist
           echo '<html></html>' > kubilitics-desktop/dist/index.html
           echo "Created frontend dist placeholder"
+
+      - name: Create CI stubs (Windows)
+        if: matrix.os == 'windows-latest'
+        # Tauri validates externalBin binaries exist for the current target triple at compile time.
+        # Create platform-specific stubs for Windows.
+        shell: pwsh
+        run: |
+          $TRIPLE = "x86_64-pc-windows-msvc"
+          $binariesDir = "kubilitics-desktop/src-tauri/binaries"
+          New-Item -ItemType Directory -Force -Path $binariesDir | Out-Null
+          
+          $bins = @("kubilitics-backend", "kubilitics-ai", "kcli")
+          foreach ($bin in $bins) {
+            $stub = Join-Path $binariesDir "${bin}-${TRIPLE}.exe"
+            if (-not (Test-Path $stub)) {
+              # Create empty file as stub
+              New-Item -ItemType File -Path $stub -Force | Out-Null
+              Write-Host "Created stub: $stub"
+            }
+          }
+          
+          # Satisfy generate_context!() frontendDist check
+          $distDir = "kubilitics-desktop/dist"
+          New-Item -ItemType Directory -Force -Path $distDir | Out-Null
+          Set-Content -Path (Join-Path $distDir "index.html") -Value "<html></html>"
+          Write-Host "Created frontend dist placeholder"
 
       - name: Cargo check (no build artifacts)
         working-directory: kubilitics-desktop/src-tauri
