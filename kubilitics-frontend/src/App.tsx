@@ -196,7 +196,6 @@ import { GlobalErrorBoundary } from "@/components/GlobalErrorBoundary";
 import { ErrorTracker } from "@/lib/errorTracker";
 import { AnalyticsConsentDialog } from "@/components/AnalyticsConsentDialog";
 import { KubeconfigContextDialog } from "@/components/KubeconfigContextDialog";
-import { KubectlValidationBanner } from "@/components/KubectlValidationBanner";
 import { BackendStartupOverlay } from "@/components/BackendStartupOverlay";
 import { isTauri } from "@/lib/tauri";
 
@@ -323,7 +322,6 @@ const App = () => (
         <BackendStartupOverlay />
         <AnalyticsConsentWrapper>
           <KubeconfigContextWrapper>
-            <KubectlValidationBanner />
             <AppRouter>
               <AIAssistant />
               <Suspense fallback={<PageLoader />}>

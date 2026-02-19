@@ -45,7 +45,6 @@ fn main() {
             commands::install_update,
             commands::get_desktop_info,
             commands::restart_sidecar,
-            commands::check_kubectl_installed,
             sidecar::get_ai_status,
         ])
         .setup(|app| {
