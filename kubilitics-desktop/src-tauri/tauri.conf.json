@@ -61,7 +61,7 @@
         "https://releases.kubilitics.dev/update/{{target}}/{{arch}}/{{current_version}}"
       ],
       "dialog": true,
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXkgNDc2NTIwMjRGQkQ4MTY5RgpSV1NmRnRqN0pDQmxSOXFrTFdoUG1Ba2t0S2x3eXNvUGE0RVhvVDh3TVFnYzJvQ1EyMURha3VXVQo="
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXkgN0M0OTA0N0VBQzgxOTdDMgpSV1RDbDRHc2ZnUkpmRDJ6SG5xeUFiTlZkQ0xyS1lkcVd4UXBLb0FRbERMTHRYL01vbFBuc2xkOAo="
     }
   },
   "app": {
