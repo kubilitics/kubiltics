@@ -133,4 +133,5 @@ test_result*.md
 test_output*.txt
 server_test_output*.txt
 kubilitics-ai/server
+**/kubilitics-ai-server
 kcli/kcli

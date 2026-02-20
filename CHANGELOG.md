@@ -105,10 +105,100 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+---
+
+## [0.1.0] - 2026-02-20
+
+### 🚀 Kubilitics v0.1.0 — Desktop MVP
+
+First public release of **Kubilitics** — an open-source, cross-platform Kubernetes cluster management desktop app built with Tauri, Go, and React.
+
+#### ✨ What's Included
+
+**Desktop App (macOS)**
+- Native macOS app (`Kubilitics.app`) built with Tauri — no Electron, ~20MB
+- Embedded Go sidecar backend (`kubilitics-backend`) on port 819
+- AI sidecar (`kubilitics-ai`) for intelligent cluster insights
+- kcli embedded terminal for interactive kubectl sessions
+- Auto-detects `~/.kube/config` on launch — zero setup required
+
+**Cluster Management**
+- Multi-cluster support with kubeconfig auto-detection
+- Real-time cluster overview — nodes, pods, namespaces, warnings
+- SSE-based live overview stream (no polling)
+- Cluster status tracking: connected / disconnected / error
+
+**Resource Browser**
+- Full CRUD for all standard Kubernetes resource types
+- Nodes, Pods, Deployments, StatefulSets, DaemonSets, Jobs, CronJobs
+- Services, Ingresses, ConfigMaps, Secrets, PVCs, PVs, StorageClasses
+- RBAC: Roles, ClusterRoles, ServiceAccounts
+- CRDs, MutatingWebhooks, ValidatingWebhooks
+- Resource YAML editor with apply support
+- Section overview pages: Networking, Storage, Scaling, Admission, CRDs
+
+**Topology Visualisation**
+- Interactive cluster topology graph (Cytoscape.js)
+- Resource-level topology for any workload
+- Draw.io export
+
+**AI Assistant**
+- Supports OpenAI, Anthropic (Claude), Ollama, and custom endpoints
+- Model catalog with provider-specific model dropdowns
+- API key stored securely in backend SQLite (never in localStorage)
+- Toggle AI on/off without losing configuration
+
+**Built-in Terminal**
+- kcli: full interactive kubectl shell via WebSocket PTY
+- Tab completion, history, real cluster context
+- Pod exec support
+
+#### 🐛 Key Bugs Fixed in This Release
+
+| Bug | Fix |
+|-----|-----|
+| Empty cards / 503 errors on app launch | Circuit breaker half-open race condition fixed — breaker now recovers automatically |
+| Requests routing to Vite dev server instead of sidecar | `__VITE_IS_TAURI_BUILD__` build-time constant eliminates `isTauri()` timing race |
+| Cluster wiped on every restart | `BackendClusterValidator` now auto-reconnects on 503 instead of clearing cluster ID |
+| API keys leaking to localStorage | `apiKey` removed from Zustand `partialize` — backend SQLite only |
+| Azure/none provider sent to Go backend | `toBackendProvider()` centralises mapping to `openai/anthropic/ollama/custom` |
+
+#### 🔌 New API Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/api/v1/clusters/{id}/reconnect` | Reset circuit breaker + rebuild K8s client |
+| `GET` | `/api/v1/clusters/{id}/overview/stream` | SSE real-time overview stream |
+
+#### 🏗️ Architecture
+
+```
+Kubilitics.app
+├── kubilitics-desktop  (Tauri host, Rust)
+├── kubilitics-frontend (React + TypeScript, embedded in app)
+├── kubilitics-backend  (Go sidecar, port 819 — K8s API, REST)
+└── kubilitics-ai       (Go sidecar — AI, analytics, cost)
+```
+
+#### 📥 Installation
+
+Download `Kubilitics.app.tar.gz` from the assets below, extract, move to `/Applications`, and launch.
+Requires macOS (arm64/Apple Silicon). Your `~/.kube/config` is auto-detected on first launch.
+
+#### 🗺️ What's Next — v0.1.1
+
+- MCP (Model Context Protocol) server integration
+- Feature enhancements and bug fixes from community feedback
+- Linux and Windows desktop builds
+
+> Built with ❤️ by [@vellankikoti](https://github.com/vellankikoti)
+
+---
+
 ## Version History
 
 ### Pre-1.0 (Foundation)
-- 0.1.0 - Initial foundation (2026-02-04)
+- 0.1.0 - Desktop MVP (2026-02-20)
 
 ---
 
