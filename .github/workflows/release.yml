@@ -16,8 +16,8 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  # Single source of truth — matches Dockerfile ARG GO_VERSION
-  GO_VERSION: '1.24.2'
+  # Keep in sync with backend-ci.yml — includes security patch fixes
+  GO_VERSION: '1.24.13'
   PLATFORMS: linux/amd64,linux/arm64
 
 jobs:
@@ -255,10 +255,11 @@ jobs:
           KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
         run: |
           if [ -z "$KEY" ]; then
-            echo "⚠️  No TAURI_SIGNING_PRIVATE_KEY secret found — build will fail at signing"
-            exit 1
+            echo "⚠️  TAURI_SIGNING_PRIVATE_KEY not set — updater .sig files will NOT be generated"
+            echo "    Set the secret in repo Settings → Secrets to enable signed updates"
+          else
+            echo "✅ Signing key present (${#KEY} chars) — updater artifacts will be signed"
           fi
-          echo "✅ Signing key secret is present (${#KEY} chars)"
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
@@ -493,20 +494,19 @@ jobs:
           fi
           echo "✅ Pre-build checks passed"
 
-          # Build config: always disable beforeBuildCommand.
-          # Only add signingIdentity when APPLE_CERTIFICATE secret is actually set —
+          # Only inject signingIdentity when APPLE_CERTIFICATE secret is set —
           # passing an empty string causes codesign to fail with "keychain item not found".
+          # tauri.conf.json beforeBuildCommand is already "" so no override needed there.
           if [ -n "${{ secrets.APPLE_CERTIFICATE }}" ]; then
-            CONFIG='{"build":{"beforeBuildCommand":""},"bundle":{"macOS":{"signingIdentity":"${{ secrets.APPLE_SIGNING_IDENTITY }}"}}}'
+            CONFIG='{"bundle":{"macOS":{"signingIdentity":"${{ secrets.APPLE_SIGNING_IDENTITY }}"}}}'
             echo "🔐 Code signing enabled"
           else
-            CONFIG='{"build":{"beforeBuildCommand":""},"bundle":{"macOS":{"signingIdentity":null}}}'
-            echo "⚠️  No APPLE_CERTIFICATE secret found — building unsigned (ad-hoc) app"
+            CONFIG='{"bundle":{"macOS":{"signingIdentity":null}}}'
+            echo "⚠️  No APPLE_CERTIFICATE secret — building unsigned (ad-hoc) app"
           fi
 
           # CI=true tells bundle_dmg.sh to skip AppleScript Finder customization
-          # which always fails on GH Actions runners (not authorised to send Apple events).
-          # --bundles app,dmg still produces both the .app and the .dmg.
+          # which fails on GH Actions runners (not authorised to send Apple events).
           CI=true cargo tauri build --target universal-apple-darwin --bundles app,dmg --config "$CONFIG"
       - name: Notarize macOS app
         if: matrix.os == 'macos-latest'
@@ -544,10 +544,9 @@ jobs:
             exit 1
           fi
           echo "✅ Pre-build checks passed"
-          # Write config to file to avoid shell quoting issues on Windows
-          echo '{"build":{"beforeBuildCommand":""}}' > /tmp/tauri-build-config.json
-          cargo tauri build --target x86_64-pc-windows-msvc --config /tmp/tauri-build-config.json
-      - name: Build Tauri app (Linux - AppImage)
+          # tauri.conf.json beforeBuildCommand is already "" — no override needed
+          cargo tauri build --target x86_64-pc-windows-msvc --bundles nsis,msi
+      - name: Build Tauri app (Linux - AppImage + DEB + RPM)
         if: matrix.os == 'ubuntu-latest'
         working-directory: kubilitics-desktop/src-tauri
         env:
@@ -567,49 +566,9 @@ jobs:
             exit 1
           fi
           echo "✅ Pre-build checks passed"
-          cargo tauri build --target x86_64-unknown-linux-gnu --bundles appimage --config '{"build":{"beforeBuildCommand":""}}'
-      - name: Build Tauri app (Linux - DEB)
-        if: matrix.os == 'ubuntu-latest'
-        working-directory: kubilitics-desktop/src-tauri
-        env:
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-          TAURI_SKIP_DEVSERVER_CHECK: "true"
-        shell: bash
-        run: |
-          # Verify dist exists before building
-          if [ ! -d "../dist" ] || [ -z "$(ls -A ../dist 2>/dev/null)" ]; then
-            echo "❌ ERROR: Frontend dist not found at ../dist"
-            exit 1
-          fi
-          # Verify binaries exist
-          if [ ! -d "binaries" ] || [ -z "$(ls -A binaries 2>/dev/null)" ]; then
-            echo "❌ ERROR: Binaries directory is empty"
-            exit 1
-          fi
-          echo "✅ Pre-build checks passed"
-          cargo tauri build --target x86_64-unknown-linux-gnu --bundles deb --config '{"build":{"beforeBuildCommand":""}}'
-      - name: Build Tauri app (Linux - RPM)
-        if: matrix.os == 'ubuntu-latest'
-        working-directory: kubilitics-desktop/src-tauri
-        env:
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-          TAURI_SKIP_DEVSERVER_CHECK: "true"
-        shell: bash
-        run: |
-          # Verify dist exists before building
-          if [ ! -d "../dist" ] || [ -z "$(ls -A ../dist 2>/dev/null)" ]; then
-            echo "❌ ERROR: Frontend dist not found at ../dist"
-            exit 1
-          fi
-          # Verify binaries exist
-          if [ ! -d "binaries" ] || [ -z "$(ls -A binaries 2>/dev/null)" ]; then
-            echo "❌ ERROR: Binaries directory is empty"
-            exit 1
-          fi
-          echo "✅ Pre-build checks passed"
-          cargo tauri build --target x86_64-unknown-linux-gnu --bundles rpm --config '{"build":{"beforeBuildCommand":""}}'
+          # Build all three Linux package formats in a single cargo invocation
+          # (avoids 3x compilation; tauri.conf.json beforeBuildCommand is already "")
+          cargo tauri build --target x86_64-unknown-linux-gnu --bundles appimage,deb,rpm
       - name: Upload desktop artifacts (macOS)
         if: matrix.os == 'macos-latest'
         uses: actions/upload-artifact@v4
@@ -659,11 +618,14 @@ jobs:
             -o -name "*.msi" \
             -o -name "*.tar.gz" \
             -o -name "*.tar.gz.sig" \
+            -o -name "*.dmg.sig" \
             -o -name "*.AppImage.sig" \
             -o -name "*.deb.sig" \
             -o -name "*.rpm.sig" \
             -o -name "*.exe.sig" \
             -o -name "*.msi.sig" \
+            -o -name "*.nsis.zip" \
+            -o -name "*.nsis.zip.sig" \
             -o -name "kubilitics-backend-linux-*" \
             -o -name "kubilitics-backend-darwin-*" \
             -o -name "kubilitics-backend-windows-*" \
