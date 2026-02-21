@@ -95,7 +95,8 @@ export function ClusterShellPanel({
   });
   const [kcliStreamMode, setKcliStreamMode] = useState<'ui' | 'shell'>(() => {
     const saved = typeof window !== 'undefined' ? localStorage.getItem(KCLI_STREAM_MODE_STORAGE_KEY) : null;
-    return saved === 'shell' ? 'shell' : 'ui';
+    // Default to 'shell' for reliable kcli command output; 'ui' (Bubble Tea TUI) is opt-in
+    return saved === 'ui' ? 'ui' : 'shell';
   });
   const [reconnectNonce, setReconnectNonce] = useState(0);
   const [isReconnecting, setIsReconnecting] = useState(false);
@@ -595,9 +596,14 @@ export function ClusterShellPanel({
     if (!open || !connected) return;
     if (!activeNamespace || activeNamespace === 'all') return;
     if (shellStatus?.namespace === activeNamespace) return;
-    sendStdin(`kubectl config set-context --current --namespace=${activeNamespace}\r`);
+    // Use kcli ns for kcli shell mode, kubectl for kubectl mode
+    if (engine === 'kcli' && kcliStreamMode === 'shell') {
+      sendStdin(`kcli ns ${activeNamespace}\r`);
+    } else {
+      sendStdin(`kubectl config set-context --current --namespace=${activeNamespace}\r`);
+    }
     scheduleStateSync(90);
-  }, [activeNamespace, connected, open, scheduleStateSync, sendStdin, shellStatus?.namespace]);
+  }, [activeNamespace, connected, engine, kcliStreamMode, open, scheduleStateSync, sendStdin, shellStatus?.namespace]);
 
   const handleCopySelection = useCallback(() => {
     const sel = termRef.current?.getSelection() ?? '';

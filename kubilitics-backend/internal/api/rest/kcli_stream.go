@@ -106,7 +106,9 @@ func (h *Handler) GetKCLIStream(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ptmx, err := pty.Start(cmd)
+	// Start with a default PTY size so Bubble Tea (ui mode) reads correct dimensions on init.
+	// The frontend will immediately send a resize event with the actual terminal dimensions.
+	ptmx, err := pty.StartWithSize(cmd, &pty.Winsize{Cols: execDefaultCols, Rows: execDefaultRows})
 	if err != nil {
 		audit.LogCommand(requestID, resolvedID, "kcli_stream", "mode="+mode, "failure", err.Error(), -1, time.Since(start))
 		_ = conn.WriteJSON(wsOutMessage{T: wsMsgError, D: "failed to start kcli stream: " + err.Error()})
@@ -198,7 +200,8 @@ func (h *Handler) GetKCLIStream(w http.ResponseWriter, r *http.Request) {
 		}
 	}()
 
-	_ = pty.Setsize(ptmx, &pty.Winsize{Cols: execDefaultCols, Rows: execDefaultRows})
+	// PTY size already set at start via StartWithSize.
+	// The frontend sends a resize message immediately after connect with actual dimensions.
 
 	firstStdinLogged := false
 	for {
@@ -245,7 +248,12 @@ func (h *Handler) GetKCLIStream(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) makeKCLIStreamCommand(ctx context.Context, clusterContext, kubeconfigPath, mode, namespace string) (*exec.Cmd, error) {
-	env := append(os.Environ(), "KUBECONFIG="+kubeconfigPath)
+	env := append(os.Environ(),
+		"KUBECONFIG="+kubeconfigPath,
+		// Ensure Bubble Tea and other TUI libraries detect a proper terminal
+		"TERM=xterm-256color",
+		"COLORTERM=truecolor",
+	)
 	// Add AI backend env vars for kcli AI commands
 	env = append(env, h.buildKCLIAIEnvVars()...)
 	workDir := "/tmp"
@@ -257,12 +265,12 @@ func (h *Handler) makeKCLIStreamCommand(ctx context.Context, clusterContext, kub
 	case "ui":
 		kcliBin, err := resolveKCLIBinary()
 		if err != nil {
-			// Log binary resolution failure
-			fmt.Fprintf(os.Stderr, "ERROR: kcli binary resolution failed in stream mode: %v\n", err)
+			fmt.Fprintf(os.Stderr, "ERROR: kcli binary resolution failed in ui stream mode: %v\n", err)
 			return nil, err
 		}
 		args := []string{"ui"}
 		if clusterContext != "" {
+			// --context must come before the subcommand for kcli persistent flags
 			args = append([]string{"--context", clusterContext}, args...)
 		}
 		if namespace != "" {
@@ -272,29 +280,78 @@ func (h *Handler) makeKCLIStreamCommand(ctx context.Context, clusterContext, kub
 		cmd.Env = env
 		cmd.Dir = workDir
 		return cmd, nil
+
 	case "shell":
+		// Shell mode: launch an interactive bash/sh session with kcli available.
+		// Use kcli as the primary kubectl-compatible CLI and alias common tools to it.
+		kcliBin, kcliErr := resolveKCLIBinary()
+
 		sh := "/bin/bash"
 		if _, err := exec.LookPath("bash"); err != nil {
 			sh = "/bin/sh"
 		}
+
 		ctxArg := strings.ReplaceAll(clusterContext, "'", "'\"'\"'")
-		var wrapper string
-		if sh == "/bin/bash" {
-			wrapper = "source <(kubectl completion bash) 2>/dev/null; "
-			if clusterContext != "" {
-				wrapper += "kubectl config use-context '" + ctxArg + "' 2>/dev/null; "
+		var sb strings.Builder
+
+		if kcliErr == nil {
+			// kcli is available — set up a rich kcli-powered shell
+			sb.WriteString("export KCLI_BIN='" + strings.ReplaceAll(kcliBin, "'", "'\"'\"'") + "'\n")
+
+			if sh == "/bin/bash" {
+				// Source kcli shell completion
+				sb.WriteString("source <(\"$KCLI_BIN\" completion bash 2>/dev/null) 2>/dev/null\n")
+				// Also try kubectl completion as fallback
+				sb.WriteString("source <(kubectl completion bash 2>/dev/null) 2>/dev/null\n")
 			}
-			wrapper += "exec bash -i"
+
+			// Alias all common tools to kcli
+			sb.WriteString("alias k='\"$KCLI_BIN\"'\n")
+			sb.WriteString("alias kubectl='\"$KCLI_BIN\"'\n")
+			sb.WriteString("alias kcli='\"$KCLI_BIN\"'\n")
+			sb.WriteString("alias kubectx='\"$KCLI_BIN\" ctx'\n")
+			sb.WriteString("alias kubens='\"$KCLI_BIN\" ns'\n")
+			sb.WriteString("alias k9s='\"$KCLI_BIN\" ui'\n")
+
+			// Set Kubernetes context
+			if clusterContext != "" {
+				sb.WriteString("\"$KCLI_BIN\" ctx '" + ctxArg + "' 2>/dev/null || kubectl config use-context '" + ctxArg + "' 2>/dev/null\n")
+			}
+
+			// Set namespace if provided
+			if namespace != "" && namespace != "all" {
+				nsArg := strings.ReplaceAll(namespace, "'", "'\"'\"'")
+				sb.WriteString("\"$KCLI_BIN\" ns '" + nsArg + "' 2>/dev/null || kubectl config set-context --current --namespace='" + nsArg + "' 2>/dev/null\n")
+			}
+
+			// Custom PS1 prompt showing kcli context
+			sb.WriteString("export PS1='\\[\\033[1;32m\\][kcli: $(\"$KCLI_BIN\" config current-context 2>/dev/null)]\\[\\033[0m\\] \\$ '\n")
 		} else {
-			if clusterContext != "" {
-				wrapper = "kubectl config use-context '" + ctxArg + "' 2>/dev/null; "
+			// kcli not available — fall back to plain kubectl shell
+			if sh == "/bin/bash" {
+				sb.WriteString("source <(kubectl completion bash 2>/dev/null) 2>/dev/null\n")
 			}
-			wrapper += "exec sh -i"
+			if clusterContext != "" {
+				sb.WriteString("kubectl config use-context '" + ctxArg + "' 2>/dev/null\n")
+			}
+			if namespace != "" && namespace != "all" {
+				nsArg := strings.ReplaceAll(namespace, "'", "'\"'\"'")
+				sb.WriteString("kubectl config set-context --current --namespace='" + nsArg + "' 2>/dev/null\n")
+			}
+			sb.WriteString("export PS1='\\[\\033[1;33m\\][kubectl]\\[\\033[0m\\] \\$ '\n")
 		}
-		cmd := exec.CommandContext(ctx, sh, "-c", wrapper)
+
+		if sh == "/bin/bash" {
+			sb.WriteString("exec bash -i\n")
+		} else {
+			sb.WriteString("exec sh -i\n")
+		}
+
+		cmd := exec.CommandContext(ctx, sh, "-c", sb.String())
 		cmd.Env = env
 		cmd.Dir = workDir
 		return cmd, nil
+
 	default:
 		return nil, fmt.Errorf("unsupported mode %q (supported: ui, shell)", mode)
 	}
