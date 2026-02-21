@@ -81,6 +81,15 @@ func (m *mockClusterServiceWithClient) Subscribe(clusterID string) (chan *models
 	return nil, func() {}
 }
 
+func (m *mockClusterServiceWithClient) ReconnectCluster(ctx context.Context, id string) (*models.Cluster, error) {
+	for _, c := range m.clusters {
+		if c.ID == id {
+			return c, nil
+		}
+	}
+	return nil, fmt.Errorf("cluster not found: %s", id)
+}
+
 func TestHandler_ListResources_Success(t *testing.T) {
 	// Create fake Kubernetes clientset with test pods
 	pod := &corev1.Pod{

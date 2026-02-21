@@ -30,10 +30,20 @@ func NewSQLiteRepository(dbPath string) (*SQLiteRepository, error) {
 		return nil, fmt.Errorf("failed to connect to SQLite: %w", err)
 	}
 
-	// Set connection pool settings for better concurrency
-	db.SetMaxOpenConns(25) // Allow multiple readers with WAL mode
-	db.SetMaxIdleConns(5)
+	// SQLite WAL mode supports concurrent readers but serializes writers.
+	// Using a single connection prevents SQLITE_BUSY errors under concurrent
+	// write load; the connection pool handles connection reuse efficiently.
+	// BE-SCALE-001: MaxOpenConns=1 is the correct setting for SQLite regardless
+	// of journal mode — multiple connections competing for the write lock cause
+	// SQLITE_BUSY even with busy_timeout enabled.
+	db.SetMaxOpenConns(1)
+	db.SetMaxIdleConns(1)
 	db.SetConnMaxLifetime(5 * time.Minute)
+
+	// Set busy timeout via PRAGMA as well (belt-and-suspenders with DSN param)
+	if _, err := db.Exec("PRAGMA busy_timeout = 5000"); err != nil {
+		return nil, fmt.Errorf("failed to set busy_timeout: %w", err)
+	}
 
 	// Enable foreign keys (also in DSN, but ensure it's set)
 	if _, err := db.Exec("PRAGMA foreign_keys = ON"); err != nil {

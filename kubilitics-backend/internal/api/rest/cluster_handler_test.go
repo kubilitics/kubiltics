@@ -154,6 +154,13 @@ func (m *mockClusterService) Subscribe(clusterID string) (chan *models.ClusterOv
 	return nil, func() {}
 }
 
+func (m *mockClusterService) ReconnectCluster(ctx context.Context, id string) (*models.Cluster, error) {
+	if c, ok := m.clusterMap[id]; ok {
+		return c, nil
+	}
+	return nil, errClusterNotFound
+}
+
 // makeMockClientWithCounts returns a k8s.Client backed by fakes with the given node and namespace counts.
 // Used by summary/overview tests where the handler builds counts from the client.
 func makeMockClientWithCounts(nodeCount, namespaceCount int) *k8s.Client {

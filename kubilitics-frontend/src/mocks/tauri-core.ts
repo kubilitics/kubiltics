@@ -124,13 +124,6 @@ export const invoke = async (cmd: string, _args?: unknown): Promise<unknown> => 
         case 'restart_sidecar':
             return;
 
-        case 'is_kcli_sidecar_available':
-            return false;
-
-        // ── Analytics / misc ────────────────────────────────────────────
-        case 'get_analytics_consent':
-            return false;
-
         default:
             console.warn(`[Mock Tauri] Unhandled invoke command: "${cmd}" — returning null`);
             return null;
