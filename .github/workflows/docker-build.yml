@@ -8,8 +8,10 @@ on:
     paths:
       - 'kubilitics-backend/**'
       - 'kubilitics-ai/**'
+      - 'kubilitics-frontend/**'
       - 'kubilitics-backend/Dockerfile'
       - 'kubilitics-ai/Dockerfile'
+      - 'kubilitics-frontend/Dockerfile'
       - '.github/workflows/docker-build.yml'
     # NOTE: No tags trigger here. Version-tagged Docker images are built and
     # pushed exclusively by release.yml to avoid duplicate image pushes.
