@@ -19,7 +19,7 @@ import (
 // Anthropic API constants
 const (
 	DefaultBaseURL    = "https://api.anthropic.com/v1"
-	DefaultModel      = "claude-3-5-sonnet-20241022"
+	DefaultModel      = "claude-sonnet-4-5"
 	DefaultMaxTokens  = 4096
 	DefaultAPIVersion = "2023-06-01"
 	DefaultTimeout    = 120 * time.Second
@@ -30,6 +30,12 @@ var modelCosts = map[string]struct {
 	InputCost  float64
 	OutputCost float64
 }{
+	"claude-sonnet-4-5":          {0.003, 0.015},
+	"claude-sonnet-4-5-20250929": {0.003, 0.015},
+	"claude-sonnet-4-0":          {0.003, 0.015},
+	"claude-sonnet-4-20250514":   {0.003, 0.015},
+	"claude-haiku-4-5":           {0.00025, 0.00125},
+	"claude-opus-4-5":            {0.015, 0.075},
 	"claude-3-5-sonnet-20241022": {0.003, 0.015},
 	"claude-3-opus-20240229":     {0.015, 0.075},
 	"claude-3-sonnet-20240229":   {0.003, 0.015},
@@ -99,10 +105,10 @@ type anthUsage struct {
 
 // SSE event types from Anthropic streaming API
 type sseEvent struct {
-	Type  string          `json:"type"`
-	Index int             `json:"index,omitempty"`
-	Delta *sseDelta       `json:"delta,omitempty"`
-	Usage *anthUsage      `json:"usage,omitempty"`
+	Type         string        `json:"type"`
+	Index        int           `json:"index,omitempty"`
+	Delta        *sseDelta     `json:"delta,omitempty"`
+	Usage        *anthUsage    `json:"usage,omitempty"`
 	ContentBlock *ContentBlock `json:"content_block,omitempty"`
 }
 
@@ -139,6 +145,7 @@ func NewAnthropicClient(apiKey string, model string) (*AnthropicClientImpl, erro
 			model = DefaultModel
 		}
 	}
+	model = strings.TrimSpace(model)
 
 	maxTokens := DefaultMaxTokens
 	if maxTokensStr := os.Getenv("ANTHROPIC_MAX_TOKENS"); maxTokensStr != "" {
@@ -150,6 +157,13 @@ func NewAnthropicClient(apiKey string, model string) (*AnthropicClientImpl, erro
 	baseURL := os.Getenv("ANTHROPIC_BASE_URL")
 	if baseURL == "" {
 		baseURL = DefaultBaseURL
+	}
+	// Ensure the base URL includes the /v1 path segment.
+	// The ANTHROPIC_BASE_URL env var from Claude Desktop is "https://api.anthropic.com"
+	// (without /v1), which would cause 404 errors on /messages.
+	baseURL = strings.TrimSuffix(baseURL, "/")
+	if !strings.HasSuffix(baseURL, "/v1") {
+		baseURL = baseURL + "/v1"
 	}
 
 	return &AnthropicClientImpl{
@@ -237,7 +251,9 @@ func (c *AnthropicClientImpl) CompleteStream(ctx context.Context, messages []typ
 		return nil, nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
 
-	httpReq, err := http.NewRequestWithContext(ctx, "POST", c.baseURL+"/messages", bytes.NewBuffer(reqBody))
+	// Ensure baseURL doesn't end with a slash to prevent double // in URL construction
+	baseURL := strings.TrimSuffix(c.baseURL, "/")
+	httpReq, err := http.NewRequestWithContext(ctx, "POST", baseURL+"/messages", bytes.NewBuffer(reqBody))
 	if err != nil {
 		close(textChan)
 		close(toolChan)
@@ -476,7 +492,9 @@ func (c *AnthropicClientImpl) makeRequest(ctx context.Context, req anthRequest) 
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
 
-	httpReq, err := http.NewRequestWithContext(ctx, "POST", c.baseURL+"/messages", bytes.NewBuffer(reqBody))
+	// Ensure baseURL doesn't end with a slash
+	baseURL := strings.TrimSuffix(c.baseURL, "/")
+	httpReq, err := http.NewRequestWithContext(ctx, "POST", baseURL+"/messages", bytes.NewBuffer(reqBody))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}

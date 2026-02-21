@@ -8,13 +8,13 @@ import (
 
 // SecurityIssue represents a security configuration issue
 type SecurityIssue struct {
-	Type        string   `json:"type"`        // "security_context", "rbac", "network_policy", etc.
-	Severity    Severity `json:"severity"`
-	Title       string   `json:"title"`
-	Description string   `json:"description"`
-	Remediation string   `json:"remediation"`
-	Resource    string   `json:"resource"`
-	Namespace   string   `json:"namespace,omitempty"`
+	Type        string    `json:"type"` // "security_context", "rbac", "network_policy", etc.
+	Severity    Severity  `json:"severity"`
+	Title       string    `json:"title"`
+	Description string    `json:"description"`
+	Remediation string    `json:"remediation"`
+	Resource    string    `json:"resource"`
+	Namespace   string    `json:"namespace,omitempty"`
 	Timestamp   time.Time `json:"timestamp"`
 }
 
@@ -39,14 +39,14 @@ type IssueSummary struct {
 
 // PodSecurityContext represents pod security configuration
 type PodSecurityContext struct {
-	Name              string
-	Namespace         string
-	RunAsNonRoot      *bool
-	RunAsUser         *int64
-	ReadOnlyRootFS    *bool
-	Privileged        *bool
+	Name                string
+	Namespace           string
+	RunAsNonRoot        *bool
+	RunAsUser           *int64
+	ReadOnlyRootFS      *bool
+	Privileged          *bool
 	AllowPrivEscalation *bool
-	Capabilities      *Capabilities
+	Capabilities        *Capabilities
 }
 
 // Capabilities represents Linux capabilities

@@ -214,7 +214,7 @@ export function Header() {
 
   return (
     <>
-      <header className={cn(HEADER_HEIGHT_CLASS, 'border-b border-slate-100 bg-white/70 backdrop-blur-2xl sticky top-0 z-50 shadow-[0_1px_2px_rgba(0,0,0,0.02)] transition-all duration-300')}>
+      <header className={cn(HEADER_HEIGHT_CLASS, 'border-b border-slate-100 bg-white/80 backdrop-blur-2xl shrink-0 shadow-[0_1px_2px_rgba(0,0,0,0.02)] transition-all duration-300')}>
         <div className="flex items-center h-full w-full">
 
           {/* ──── Logo zone: prominent Kubilitics branding ──── */}

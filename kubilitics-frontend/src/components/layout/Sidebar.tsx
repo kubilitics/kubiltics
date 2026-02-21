@@ -682,8 +682,8 @@ export function Sidebar() {
     return (
       <>
         <aside
-          className="w-[5.5rem] h-[calc(100vh-5rem)] border-r border-border/60 bg-sidebar/95 backdrop-blur supports-[backdrop-filter]:bg-sidebar/60 flex flex-col items-center py-6 gap-4 shrink-0 z-30"
-          // Note: Using calc(100vh-5rem) to match header height (h-20 = 5rem)
+          className="w-[5.5rem] h-full border-r border-border/60 bg-sidebar/95 backdrop-blur supports-[backdrop-filter]:bg-sidebar/60 flex flex-col items-center py-6 gap-4 shrink-0 z-30"
+          // Note: Sidebar fits in h-full flex container below the header
           onMouseEnter={() => setFlyoutOpen(true)}
           onMouseLeave={() => setFlyoutOpen(false)}
           aria-label="Navigation rail"
@@ -741,8 +741,8 @@ export function Sidebar() {
   }
 
   return (
-    <aside className="w-72 h-[calc(100vh-5rem)] flex flex-col border-r border-border/60 bg-sidebar/95 backdrop-blur supports-[backdrop-filter]:bg-sidebar/60 shrink-0 transition-all duration-300"
-    // Note: Using calc(100vh-5rem) to match header height (h-20 = 5rem)
+    <aside className="w-72 h-full flex flex-col border-r border-border/60 bg-sidebar/95 backdrop-blur supports-[backdrop-filter]:bg-sidebar/60 shrink-0 transition-all duration-300"
+    // Note: Sidebar fits in h-full flex container below the header
     >
       {fullContent}
     </aside>

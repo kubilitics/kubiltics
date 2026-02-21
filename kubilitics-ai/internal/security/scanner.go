@@ -21,16 +21,16 @@ const (
 
 // Vulnerability represents a CVE vulnerability
 type Vulnerability struct {
-	CVEID          string    `json:"cve_id"`
-	Severity       Severity  `json:"severity"`
-	Score          float64   `json:"score"` // CVSS score
-	Package        string    `json:"package"`
-	Version        string    `json:"version"`
-	FixedVersion   string    `json:"fixed_version,omitempty"`
-	Description    string    `json:"description"`
-	PublishedDate  time.Time `json:"published_date"`
-	LastModified   time.Time `json:"last_modified"`
-	References     []string  `json:"references,omitempty"`
+	CVEID         string    `json:"cve_id"`
+	Severity      Severity  `json:"severity"`
+	Score         float64   `json:"score"` // CVSS score
+	Package       string    `json:"package"`
+	Version       string    `json:"version"`
+	FixedVersion  string    `json:"fixed_version,omitempty"`
+	Description   string    `json:"description"`
+	PublishedDate time.Time `json:"published_date"`
+	LastModified  time.Time `json:"last_modified"`
+	References    []string  `json:"references,omitempty"`
 }
 
 // ImageScanResult represents the scan result for a container image
@@ -49,8 +49,8 @@ type ImageScanResult struct {
 	MediumCount        int     `json:"medium_count"`
 	LowCount           int     `json:"low_count"`
 	InfoCount          int     `json:"info_count"`
-	RiskScore          float64 `json:"risk_score"`  // 0-100
-	RiskLevel          string  `json:"risk_level"`  // CRITICAL, HIGH, MEDIUM, LOW, MINIMAL
+	RiskScore          float64 `json:"risk_score"` // 0-100
+	RiskLevel          string  `json:"risk_level"` // CRITICAL, HIGH, MEDIUM, LOW, MINIMAL
 }
 
 // VulnSummary provides a summary of vulnerabilities
@@ -135,26 +135,26 @@ func (s *Scanner) simulateVulnerabilityScan(image, tag string) []Vulnerability {
 	// Base image vulnerabilities
 	if strings.Contains(image, "alpine") {
 		vulns = append(vulns, Vulnerability{
-			CVEID:       "CVE-2024-1234",
-			Severity:    SeverityMedium,
-			Score:       5.5,
-			Package:     "musl-libc",
-			Version:     "1.2.3",
-			FixedVersion: "1.2.4",
-			Description: "Buffer overflow in musl libc string handling",
+			CVEID:         "CVE-2024-1234",
+			Severity:      SeverityMedium,
+			Score:         5.5,
+			Package:       "musl-libc",
+			Version:       "1.2.3",
+			FixedVersion:  "1.2.4",
+			Description:   "Buffer overflow in musl libc string handling",
 			PublishedDate: time.Now().AddDate(0, -2, 0),
 		})
 	}
 
 	if strings.Contains(image, "ubuntu") || strings.Contains(image, "debian") {
 		vulns = append(vulns, Vulnerability{
-			CVEID:       "CVE-2024-5678",
-			Severity:    SeverityLow,
-			Score:       3.2,
-			Package:     "openssl",
-			Version:     "1.1.1",
-			FixedVersion: "1.1.1w",
-			Description: "Memory leak in OpenSSL certificate validation",
+			CVEID:         "CVE-2024-5678",
+			Severity:      SeverityLow,
+			Score:         3.2,
+			Package:       "openssl",
+			Version:       "1.1.1",
+			FixedVersion:  "1.1.1w",
+			Description:   "Memory leak in OpenSSL certificate validation",
 			PublishedDate: time.Now().AddDate(0, -1, 0),
 		})
 	}
@@ -162,13 +162,13 @@ func (s *Scanner) simulateVulnerabilityScan(image, tag string) []Vulnerability {
 	// Node.js vulnerabilities
 	if strings.Contains(image, "node") {
 		vulns = append(vulns, Vulnerability{
-			CVEID:       "CVE-2024-9012",
-			Severity:    SeverityHigh,
-			Score:       8.1,
-			Package:     "node",
-			Version:     "16.0.0",
-			FixedVersion: "16.20.2",
-			Description: "Prototype pollution in Node.js HTTP parser",
+			CVEID:         "CVE-2024-9012",
+			Severity:      SeverityHigh,
+			Score:         8.1,
+			Package:       "node",
+			Version:       "16.0.0",
+			FixedVersion:  "16.20.2",
+			Description:   "Prototype pollution in Node.js HTTP parser",
 			PublishedDate: time.Now().AddDate(0, -1, -15),
 			References: []string{
 				"https://nodejs.org/en/blog/vulnerability/",
@@ -186,13 +186,13 @@ func (s *Scanner) generateSampleVulnerabilities(critical, high, medium int) []Vu
 	// Critical vulnerabilities
 	for i := 0; i < critical; i++ {
 		vulns = append(vulns, Vulnerability{
-			CVEID:       fmt.Sprintf("CVE-2024-%04d", 1000+i),
-			Severity:    SeverityCritical,
-			Score:       9.0 + float64(i%10)/10,
-			Package:     fmt.Sprintf("package-%d", i),
-			Version:     "1.0.0",
-			FixedVersion: "1.0.1",
-			Description: "Critical security vulnerability",
+			CVEID:         fmt.Sprintf("CVE-2024-%04d", 1000+i),
+			Severity:      SeverityCritical,
+			Score:         9.0 + float64(i%10)/10,
+			Package:       fmt.Sprintf("package-%d", i),
+			Version:       "1.0.0",
+			FixedVersion:  "1.0.1",
+			Description:   "Critical security vulnerability",
 			PublishedDate: time.Now().AddDate(0, 0, -i),
 		})
 	}
@@ -200,13 +200,13 @@ func (s *Scanner) generateSampleVulnerabilities(critical, high, medium int) []Vu
 	// High vulnerabilities
 	for i := 0; i < high; i++ {
 		vulns = append(vulns, Vulnerability{
-			CVEID:       fmt.Sprintf("CVE-2024-%04d", 2000+i),
-			Severity:    SeverityHigh,
-			Score:       7.0 + float64(i%10)/10,
-			Package:     fmt.Sprintf("package-%d", i+100),
-			Version:     "2.0.0",
-			FixedVersion: "2.0.1",
-			Description: "High severity security issue",
+			CVEID:         fmt.Sprintf("CVE-2024-%04d", 2000+i),
+			Severity:      SeverityHigh,
+			Score:         7.0 + float64(i%10)/10,
+			Package:       fmt.Sprintf("package-%d", i+100),
+			Version:       "2.0.0",
+			FixedVersion:  "2.0.1",
+			Description:   "High severity security issue",
 			PublishedDate: time.Now().AddDate(0, 0, -i*2),
 		})
 	}
@@ -214,13 +214,13 @@ func (s *Scanner) generateSampleVulnerabilities(critical, high, medium int) []Vu
 	// Medium vulnerabilities
 	for i := 0; i < medium; i++ {
 		vulns = append(vulns, Vulnerability{
-			CVEID:       fmt.Sprintf("CVE-2024-%04d", 3000+i),
-			Severity:    SeverityMedium,
-			Score:       4.0 + float64(i%10)/10,
-			Package:     fmt.Sprintf("package-%d", i+200),
-			Version:     "3.0.0",
-			FixedVersion: "3.0.1",
-			Description: "Medium severity security issue",
+			CVEID:         fmt.Sprintf("CVE-2024-%04d", 3000+i),
+			Severity:      SeverityMedium,
+			Score:         4.0 + float64(i%10)/10,
+			Package:       fmt.Sprintf("package-%d", i+200),
+			Version:       "3.0.0",
+			FixedVersion:  "3.0.1",
+			Description:   "Medium severity security issue",
 			PublishedDate: time.Now().AddDate(0, 0, -i*3),
 		})
 	}
@@ -351,10 +351,10 @@ func (db *VulnerabilityDatabase) GetVulnerability(cveID string) (*Vulnerability,
 
 	// Return simulated vulnerability
 	return &Vulnerability{
-		CVEID:       cveID,
-		Severity:    SeverityMedium,
-		Score:       5.0,
-		Description: fmt.Sprintf("Vulnerability %s", cveID),
+		CVEID:         cveID,
+		Severity:      SeverityMedium,
+		Score:         5.0,
+		Description:   fmt.Sprintf("Vulnerability %s", cveID),
 		PublishedDate: time.Now().AddDate(0, -1, 0),
 	}, nil
 }

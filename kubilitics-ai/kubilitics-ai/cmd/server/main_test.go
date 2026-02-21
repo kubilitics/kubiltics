@@ -99,10 +99,10 @@ func TestHealthHandler(t *testing.T) {
 
 func TestLoadConfiguration(t *testing.T) {
 	tests := []struct {
-		name        string
-		setupFunc   func(t *testing.T) string // Returns config file path
-		wantErr     bool
-		validateFn  func(t *testing.T, configPath string)
+		name       string
+		setupFunc  func(t *testing.T) string // Returns config file path
+		wantErr    bool
+		validateFn func(t *testing.T, configPath string)
 	}{
 		{
 			name: "valid configuration file",

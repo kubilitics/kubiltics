@@ -7,12 +7,22 @@ package analysis
 //   detect_resource_contention, analyze_network_connectivity, analyze_rbac_permissions,
 //   analyze_storage_health, check_resource_limits, analyze_hpa_behavior,
 //   analyze_log_patterns, assess_security_posture, detect_configuration_drift
+//
+// gRPC Proxy fallback (AI-FIX-001):
+//   When the gRPC backend proxy is not yet initialized (e.g. backend gRPC not up),
+//   all ListResources / GetResource calls transparently fall back to the backend REST API
+//   so that analysis tools continue working via HTTP even without gRPC.
 
 import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
+	"log"
+	"net/http"
+	"net/url"
 	"strings"
+	"time"
 
 	pb "github.com/kubilitics/kubilitics-ai/api/proto/v1"
 	"github.com/kubilitics/kubilitics-ai/internal/integration/backend"
@@ -26,20 +36,245 @@ type BackendProxy interface {
 	ExecuteCommand(ctx context.Context, operation string, target *pb.Resource, params []byte, dryRun bool) (*pb.CommandResult, error)
 }
 
+// restClient is a minimal HTTP client for the kubilitics-backend REST API.
+// Used as a fallback when the gRPC proxy is not initialized.
+type restClient struct {
+	baseURL    string
+	httpClient *http.Client
+}
+
+var sharedAnalysisHTTPClient = &http.Client{
+	Timeout: 30 * time.Second,
+	Transport: &http.Transport{
+		MaxIdleConns:        20,
+		MaxIdleConnsPerHost: 10,
+		IdleConnTimeout:     90 * time.Second,
+	},
+}
+
+func newRestClient(baseURL string) *restClient {
+	if baseURL == "" {
+		baseURL = "http://localhost:819"
+	}
+	return &restClient{
+		baseURL:    strings.TrimSuffix(baseURL, "/"),
+		httpClient: sharedAnalysisHTTPClient,
+	}
+}
+
+// get performs a GET request and returns the body bytes.
+func (r *restClient) get(ctx context.Context, path string) ([]byte, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, r.baseURL+path, nil)
+	if err != nil {
+		return nil, fmt.Errorf("build request %s: %w", path, err)
+	}
+	req.Header.Set("Accept", "application/json")
+	resp, err := r.httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("GET %s: %w", path, err)
+	}
+	defer resp.Body.Close()
+	body, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("GET %s: HTTP %d: %s", path, resp.StatusCode, truncateStr(string(body), 200))
+	}
+	return body, nil
+}
+
+func truncateStr(s string, n int) string {
+	if len(s) <= n {
+		return s
+	}
+	return s[:n] + "…"
+}
+
+// firstClusterID fetches the first registered cluster ID from the REST API.
+func (r *restClient) firstClusterID(ctx context.Context) string {
+	body, err := r.get(ctx, "/api/v1/clusters")
+	if err != nil {
+		log.Printf("[analysis/rest] list clusters: %v", err)
+		return ""
+	}
+	var clusters []struct {
+		ID string `json:"id"`
+	}
+	if err := json.Unmarshal(body, &clusters); err != nil || len(clusters) == 0 {
+		return ""
+	}
+	return clusters[0].ID
+}
+
+// listResourcesViaREST lists Kubernetes resources using the backend REST API.
+// kind must be the plural lowercase form used by the backend (e.g. "pods", "deployments").
+// Returns a slice of raw JSON objects that callers treat the same way as pb.Resource.Data.
+func (r *restClient) listResourcesViaREST(ctx context.Context, clusterID, kind, namespace string) ([]json.RawMessage, error) {
+	// The backend accepts: /resources/{kind}?namespace={ns}
+	// kind is already expected lowercase plural by the backend (e.g. "pods", "deployments")
+	path := fmt.Sprintf("/api/v1/clusters/%s/resources/%s", clusterID, url.PathEscape(kind))
+	if namespace != "" {
+		path += "?namespace=" + url.QueryEscape(namespace)
+	}
+	body, err := r.get(ctx, path)
+	if err != nil {
+		return nil, err
+	}
+	var result struct {
+		Items []json.RawMessage `json:"items"`
+	}
+	if err := json.Unmarshal(body, &result); err != nil {
+		// Might be a direct array
+		var items []json.RawMessage
+		if err2 := json.Unmarshal(body, &items); err2 != nil {
+			return nil, fmt.Errorf("parse response: %w", err)
+		}
+		return items, nil
+	}
+	return result.Items, nil
+}
+
+// kindToPlural converts a K8s resource kind to the plural lowercase form used by the backend.
+func kindToPlural(kind string) string {
+	lower := strings.ToLower(kind)
+	switch lower {
+	case "networkpolicy":
+		return "networkpolicies"
+	case "rolebinding":
+		return "rolebindings"
+	case "clusterrolebinding":
+		return "clusterrolebindings"
+	case "persistentvolumeclaim":
+		return "persistentvolumeclaims"
+	case "persistentvolume":
+		return "persistentvolumes"
+	case "storageclass":
+		return "storageclasses"
+	case "horizontalpodautoscaler":
+		return "horizontalpodautoscalers"
+	case "serviceaccount":
+		return "serviceaccounts"
+	case "configmap":
+		return "configmaps"
+	case "secret":
+		return "secrets"
+	case "endpoint", "endpoints":
+		return "endpoints"
+	default:
+		if !strings.HasSuffix(lower, "s") {
+			return lower + "s"
+		}
+		return lower
+	}
+}
+
+// rawItemToProtoResource converts a raw JSON resource item to a *pb.Resource.
+// This is used when falling back from gRPC to REST so the same analysis logic applies.
+func rawItemToProtoResource(raw json.RawMessage) *pb.Resource {
+	var meta struct {
+		Kind     string `json:"kind"`
+		Metadata struct {
+			Name      string `json:"name"`
+			Namespace string `json:"namespace"`
+		} `json:"metadata"`
+	}
+	_ = json.Unmarshal(raw, &meta)
+	return &pb.Resource{
+		Kind:      meta.Kind,
+		Name:      meta.Metadata.Name,
+		Namespace: meta.Metadata.Namespace,
+		Data:      raw,
+	}
+}
+
 // AnalysisTools holds all analysis tool implementations.
 type AnalysisTools struct {
-	proxy BackendProxy
+	proxy   BackendProxy
+	restCli *restClient // REST fallback when gRPC proxy is not initialized
 }
 
 // NewAnalysisTools creates a new AnalysisTools instance backed by a real backend proxy.
+// A REST HTTP fallback is always wired to localhost:819 for resilience (AI-FIX-001).
 func NewAnalysisTools(proxy *backend.Proxy) *AnalysisTools {
-	return &AnalysisTools{proxy: proxy}
+	return &AnalysisTools{
+		proxy:   proxy,
+		restCli: newRestClient("http://localhost:819"),
+	}
 }
 
 // NewAnalysisToolsWithProxy creates an AnalysisTools from any BackendProxy implementation.
 // Use this in tests to inject a fake proxy.
 func NewAnalysisToolsWithProxy(proxy BackendProxy) *AnalysisTools {
-	return &AnalysisTools{proxy: proxy}
+	return &AnalysisTools{
+		proxy:   proxy,
+		restCli: newRestClient("http://localhost:819"),
+	}
+}
+
+// listResources calls the gRPC proxy first; if it returns "proxy not initialized"
+// it transparently falls back to the REST API. This makes all 12 analysis tools
+// resilient to gRPC connectivity issues (AI-FIX-001).
+func (t *AnalysisTools) listResources(ctx context.Context, kind, namespace string) ([]*pb.Resource, error) {
+	resources, err := t.proxy.ListResources(ctx, kind, namespace)
+	if err == nil {
+		return resources, nil
+	}
+
+	// Only fall back to REST for "proxy not initialized" — other errors propagate.
+	if !strings.Contains(err.Error(), "proxy not initialized") {
+		return nil, err
+	}
+
+	log.Printf("[analysis/rest] gRPC proxy not initialized, falling back to REST for kind=%s ns=%s", kind, namespace)
+	if t.restCli == nil {
+		return nil, fmt.Errorf("gRPC proxy not initialized and no REST fallback configured")
+	}
+
+	clusterID := t.restCli.firstClusterID(ctx)
+	if clusterID == "" {
+		return nil, fmt.Errorf("no clusters registered in backend")
+	}
+
+	plural := kindToPlural(kind)
+	items, err := t.restCli.listResourcesViaREST(ctx, clusterID, plural, namespace)
+	if err != nil {
+		return nil, fmt.Errorf("REST fallback list %s: %w", kind, err)
+	}
+
+	result := make([]*pb.Resource, 0, len(items))
+	for _, item := range items {
+		result = append(result, rawItemToProtoResource(item))
+	}
+	return result, nil
+}
+
+// getResource calls the gRPC proxy first; falls back to REST on "proxy not initialized".
+func (t *AnalysisTools) getResource(ctx context.Context, kind, namespace, name string) (*pb.Resource, error) {
+	resource, err := t.proxy.GetResource(ctx, kind, namespace, name)
+	if err == nil {
+		return resource, nil
+	}
+
+	if !strings.Contains(err.Error(), "proxy not initialized") {
+		return nil, err
+	}
+
+	log.Printf("[analysis/rest] gRPC proxy not initialized, falling back to REST for kind=%s ns=%s name=%s", kind, namespace, name)
+	if t.restCli == nil {
+		return nil, fmt.Errorf("gRPC proxy not initialized and no REST fallback configured")
+	}
+
+	clusterID := t.restCli.firstClusterID(ctx)
+	if clusterID == "" {
+		return nil, fmt.Errorf("no clusters registered in backend")
+	}
+
+	plural := kindToPlural(kind)
+	path := fmt.Sprintf("/api/v1/clusters/%s/resources/%s/%s/%s",
+		clusterID, url.PathEscape(plural), url.PathEscape(namespace), url.PathEscape(name))
+	body, rerr := t.restCli.get(ctx, path)
+	if rerr != nil {
+		return nil, fmt.Errorf("REST fallback get %s/%s/%s: %w", kind, namespace, name, rerr)
+	}
+	return rawItemToProtoResource(body), nil
 }
 
 // HandlerMap returns all tool handlers keyed by tool name.
@@ -74,7 +309,7 @@ func (t *AnalysisTools) AnalyzePodHealth(ctx context.Context, args map[string]in
 		return nil, fmt.Errorf("analyze_pod_health: invalid args: %w", err)
 	}
 
-	pods, err := t.proxy.ListResources(ctx, "Pod", a.Namespace)
+	pods, err := t.listResources(ctx, "Pod", a.Namespace)
 	if err != nil {
 		return nil, fmt.Errorf("analyze_pod_health: %w", err)
 	}
@@ -186,7 +421,7 @@ func (t *AnalysisTools) AnalyzeDeploymentHealth(ctx context.Context, args map[st
 		return nil, fmt.Errorf("analyze_deployment_health: invalid args: %w", err)
 	}
 
-	deployments, err := t.proxy.ListResources(ctx, "Deployment", a.Namespace)
+	deployments, err := t.listResources(ctx, "Deployment", a.Namespace)
 	if err != nil {
 		return nil, fmt.Errorf("analyze_deployment_health: %w", err)
 	}
@@ -257,7 +492,7 @@ func (t *AnalysisTools) AnalyzeNodePressure(ctx context.Context, args map[string
 		return nil, fmt.Errorf("analyze_node_pressure: invalid args: %w", err)
 	}
 
-	nodes, err := t.proxy.ListResources(ctx, "Node", "")
+	nodes, err := t.listResources(ctx, "Node", "")
 	if err != nil {
 		return nil, fmt.Errorf("analyze_node_pressure: %w", err)
 	}
@@ -334,7 +569,7 @@ func (t *AnalysisTools) DetectResourceContention(ctx context.Context, args map[s
 		return nil, fmt.Errorf("detect_resource_contention: invalid args: %w", err)
 	}
 
-	pods, err := t.proxy.ListResources(ctx, "Pod", a.Namespace)
+	pods, err := t.listResources(ctx, "Pod", a.Namespace)
 	if err != nil {
 		return nil, fmt.Errorf("detect_resource_contention: %w", err)
 	}
@@ -377,10 +612,10 @@ func (t *AnalysisTools) DetectResourceContention(ctx context.Context, args map[s
 	}
 
 	return map[string]interface{}{
-		"namespace":                a.Namespace,
-		"contention_risk":          risk,
-		"pods_missing_limits":      len(missingLimits),
-		"pods_missing_requests":    len(missingRequests),
+		"namespace":                 a.Namespace,
+		"contention_risk":           risk,
+		"pods_missing_limits":       len(missingLimits),
+		"pods_missing_requests":     len(missingRequests),
 		"containers_missing_limits": missingLimits,
 		"recommendation": fmt.Sprintf(
 			"%d containers lack CPU/memory limits, risking node contention", len(missingLimits)),
@@ -401,7 +636,7 @@ func (t *AnalysisTools) AnalyzeNetworkConnectivity(ctx context.Context, args map
 		return nil, fmt.Errorf("analyze_network_connectivity: invalid args: %w", err)
 	}
 
-	services, err := t.proxy.ListResources(ctx, "Service", a.Namespace)
+	services, err := t.listResources(ctx, "Service", a.Namespace)
 	if err != nil {
 		return nil, fmt.Errorf("analyze_network_connectivity: failed to list services: %w", err)
 	}
@@ -409,8 +644,8 @@ func (t *AnalysisTools) AnalyzeNetworkConnectivity(ctx context.Context, args map
 		services = filterByName(services, a.Name)
 	}
 
-	networkPolicies, _ := t.proxy.ListResources(ctx, "NetworkPolicy", a.Namespace)
-	endpoints, _ := t.proxy.ListResources(ctx, "Endpoints", a.Namespace)
+	networkPolicies, _ := t.listResources(ctx, "NetworkPolicy", a.Namespace)
+	endpoints, _ := t.listResources(ctx, "Endpoints", a.Namespace)
 
 	// Map endpoint readiness by service name
 	endpointReady := map[string]bool{}
@@ -444,9 +679,9 @@ func (t *AnalysisTools) AnalyzeNetworkConnectivity(ctx context.Context, args map
 	}
 
 	return map[string]interface{}{
-		"namespace":        a.Namespace,
-		"services":         results,
-		"network_policies": len(networkPolicies),
+		"namespace":            a.Namespace,
+		"services":             results,
+		"network_policies":     len(networkPolicies),
 		"has_network_policies": len(networkPolicies) > 0,
 		"summary": fmt.Sprintf("%d services analysed, %d network policies active",
 			len(services), len(networkPolicies)),
@@ -467,12 +702,12 @@ func (t *AnalysisTools) AnalyzeRBACPermissions(ctx context.Context, args map[str
 		return nil, fmt.Errorf("analyze_rbac_permissions: invalid args: %w", err)
 	}
 
-	roleBindings, err := t.proxy.ListResources(ctx, "RoleBinding", a.Namespace)
+	roleBindings, err := t.listResources(ctx, "RoleBinding", a.Namespace)
 	if err != nil {
 		return nil, fmt.Errorf("analyze_rbac_permissions: %w", err)
 	}
 
-	clusterRoleBindings, _ := t.proxy.ListResources(ctx, "ClusterRoleBinding", "")
+	clusterRoleBindings, _ := t.listResources(ctx, "ClusterRoleBinding", "")
 
 	overprivileged := []map[string]interface{}{}
 	dangerousRoles := []string{"cluster-admin", "admin", "edit"}
@@ -499,13 +734,13 @@ func (t *AnalysisTools) AnalyzeRBACPermissions(ctx context.Context, args map[str
 					continue
 				}
 				overprivileged = append(overprivileged, map[string]interface{}{
-					"binding":          name,
-					"role_kind":        roleKind,
-					"role_name":        roleName,
-					"service_account":  saName,
-					"sa_namespace":     strVal(sMap["namespace"]),
-					"severity":         "HIGH",
-					"recommendation":   fmt.Sprintf("ServiceAccount '%s' has %s role — review if least-privilege principle is met", saName, roleName),
+					"binding":         name,
+					"role_kind":       roleKind,
+					"role_name":       roleName,
+					"service_account": saName,
+					"sa_namespace":    strVal(sMap["namespace"]),
+					"severity":        "HIGH",
+					"recommendation":  fmt.Sprintf("ServiceAccount '%s' has %s role — review if least-privilege principle is met", saName, roleName),
 				})
 			}
 		}
@@ -536,11 +771,11 @@ func (t *AnalysisTools) AnalyzeRBACPermissions(ctx context.Context, args map[str
 	}
 
 	return map[string]interface{}{
-		"namespace":                  a.Namespace,
-		"role_bindings_checked":      len(roleBindings),
-		"cluster_role_bindings":      len(clusterRoleBindings),
-		"overprivileged_accounts":    len(overprivileged),
-		"findings":                   overprivileged,
+		"namespace":               a.Namespace,
+		"role_bindings_checked":   len(roleBindings),
+		"cluster_role_bindings":   len(clusterRoleBindings),
+		"overprivileged_accounts": len(overprivileged),
+		"findings":                overprivileged,
 		"risk_level": func() string {
 			if len(overprivileged) == 0 {
 				return "LOW"
@@ -566,7 +801,7 @@ func (t *AnalysisTools) AnalyzeStorageHealth(ctx context.Context, args map[strin
 		return nil, fmt.Errorf("analyze_storage_health: invalid args: %w", err)
 	}
 
-	pvcs, err := t.proxy.ListResources(ctx, "PersistentVolumeClaim", a.Namespace)
+	pvcs, err := t.listResources(ctx, "PersistentVolumeClaim", a.Namespace)
 	if err != nil {
 		return nil, fmt.Errorf("analyze_storage_health: %w", err)
 	}
@@ -615,7 +850,7 @@ func (t *AnalysisTools) CheckResourceLimits(ctx context.Context, args map[string
 		return nil, fmt.Errorf("check_resource_limits: invalid args: %w", err)
 	}
 
-	pods, err := t.proxy.ListResources(ctx, "Pod", a.Namespace)
+	pods, err := t.listResources(ctx, "Pod", a.Namespace)
 	if err != nil {
 		return nil, fmt.Errorf("check_resource_limits: %w", err)
 	}
@@ -679,7 +914,7 @@ func (t *AnalysisTools) AnalyzeHPABehavior(ctx context.Context, args map[string]
 		return nil, fmt.Errorf("analyze_hpa_behavior: invalid args: %w", err)
 	}
 
-	hpas, err := t.proxy.ListResources(ctx, "HorizontalPodAutoscaler", a.Namespace)
+	hpas, err := t.listResources(ctx, "HorizontalPodAutoscaler", a.Namespace)
 	if err != nil {
 		return nil, fmt.Errorf("analyze_hpa_behavior: %w", err)
 	}
@@ -850,7 +1085,7 @@ func (t *AnalysisTools) AssessSecurityPosture(ctx context.Context, args map[stri
 		return nil, fmt.Errorf("assess_security_posture: invalid args: %w", err)
 	}
 
-	pods, err := t.proxy.ListResources(ctx, "Pod", a.Namespace)
+	pods, err := t.listResources(ctx, "Pod", a.Namespace)
 	if err != nil {
 		return nil, fmt.Errorf("assess_security_posture: %w", err)
 	}
@@ -947,7 +1182,7 @@ func (t *AnalysisTools) AssessSecurityPosture(ctx context.Context, args map[stri
 		"risk_level":     riskLevel,
 		"total_findings": len(findings),
 		"findings":       findings,
-		"summary": fmt.Sprintf("Security score: %d/100 (%d findings)", score, len(findings)),
+		"summary":        fmt.Sprintf("Security score: %d/100 (%d findings)", score, len(findings)),
 	}, nil
 }
 
@@ -970,7 +1205,7 @@ func (t *AnalysisTools) DetectConfigurationDrift(ctx context.Context, args map[s
 		return nil, fmt.Errorf("detect_configuration_drift: kind and name are required")
 	}
 
-	resource, err := t.proxy.GetResource(ctx, a.Kind, a.Namespace, a.Name)
+	resource, err := t.getResource(ctx, a.Kind, a.Namespace, a.Name)
 	if err != nil {
 		return nil, fmt.Errorf("detect_configuration_drift: %w", err)
 	}

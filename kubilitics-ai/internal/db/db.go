@@ -30,10 +30,10 @@ type Store interface {
 // app data directory, readable only by the current OS user on all platforms).
 // It is NEVER sent over the network or echoed in API responses.
 type LLMConfigRecord struct {
-	Provider  string    `json:"provider"`   // openai | anthropic | ollama | custom
-	Model     string    `json:"model"`      // e.g. gpt-4o
-	APIKey    string    `json:"api_key"`    // sensitive — local DB only
-	BaseURL   string    `json:"base_url"`   // for ollama / custom
+	Provider  string    `json:"provider"` // openai | anthropic | ollama | custom
+	Model     string    `json:"model"`    // e.g. gpt-4o
+	APIKey    string    `json:"api_key"`  // sensitive — local DB only
+	BaseURL   string    `json:"base_url"` // for ollama / custom
 	UpdatedAt time.Time `json:"updated_at"`
 }
 

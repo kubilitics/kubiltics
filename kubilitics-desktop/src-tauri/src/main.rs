@@ -1,7 +1,7 @@
 // Prevents additional console window on Windows in release
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use tauri::{Emitter, Manager};
+use tauri::{Emitter, Manager, RunEvent};
 
 mod backend_ports;
 mod commands;
@@ -48,6 +48,7 @@ fn main() {
             commands::restart_sidecar,
             commands::is_kcli_sidecar_available,
             sidecar::get_ai_status,
+            sidecar::get_backend_status,
         ])
         .setup(|app| {
             let handle = app.handle().clone();
@@ -92,6 +93,15 @@ fn main() {
             
             Ok(())
         })
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application")
+        .run(|app_handle, event| {
+            // ROOT CAUSE E: Stop backend sidecar cleanly on any app exit (Force Quit, cmd+Q,
+            // tray Quit). Without this the Go process becomes an orphan after the Tauri shell dies.
+            if let RunEvent::Exit = event {
+                if let Some(manager) = app_handle.try_state::<std::sync::Arc<sidecar::BackendManager>>() {
+                    tauri::async_runtime::block_on(manager.stop());
+                }
+            }
+        });
 }

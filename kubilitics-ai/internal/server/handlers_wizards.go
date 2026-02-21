@@ -64,11 +64,11 @@ type ValidationIssue struct {
 
 // WizardSuggestResponse is the response body for POST /api/v1/wizards/suggest.
 type WizardSuggestResponse struct {
-	Suggestion   ResourceSuggestion `json:"suggestion"`
-	Rationale    string             `json:"rationale"`
-	SimilarImages []string          `json:"similar_images,omitempty"`
-	CostEstimate  *CostEstimate     `json:"cost_estimate,omitempty"`
-	Timestamp    time.Time          `json:"timestamp"`
+	Suggestion    ResourceSuggestion `json:"suggestion"`
+	Rationale     string             `json:"rationale"`
+	SimilarImages []string           `json:"similar_images,omitempty"`
+	CostEstimate  *CostEstimate      `json:"cost_estimate,omitempty"`
+	Timestamp     time.Time          `json:"timestamp"`
 }
 
 // WizardValidateRequest is the request body for POST /api/v1/wizards/validate.
@@ -82,29 +82,29 @@ type WizardValidateRequest struct {
 
 // ContainerSpec is a simplified container spec for validation.
 type ContainerSpec struct {
-	Name       string `json:"name"`
-	Image      string `json:"image"`
-	CPU        string `json:"cpu"`
-	Memory     string `json:"memory"`
-	Port       string `json:"port"`
-	HasProbes  bool   `json:"has_probes"`
-	RunAsRoot  bool   `json:"run_as_root"`
+	Name      string `json:"name"`
+	Image     string `json:"image"`
+	CPU       string `json:"cpu"`
+	Memory    string `json:"memory"`
+	Port      string `json:"port"`
+	HasProbes bool   `json:"has_probes"`
+	RunAsRoot bool   `json:"run_as_root"`
 }
 
 // WizardValidateResponse is the response body for POST /api/v1/wizards/validate.
 type WizardValidateResponse struct {
 	Issues    []ValidationIssue `json:"issues"`
-	Score     int               `json:"score"`     // 0-100, higher is better
+	Score     int               `json:"score"` // 0-100, higher is better
 	Summary   string            `json:"summary"`
 	Timestamp time.Time         `json:"timestamp"`
 }
 
 // CostEstimate is a rough monthly cost estimate.
 type CostEstimate struct {
-	MonthlyCPUCostUSD    float64 `json:"monthly_cpu_cost_usd"`
-	MonthlyMemCostUSD    float64 `json:"monthly_mem_cost_usd"`
-	MonthlyTotalUSD      float64 `json:"monthly_total_usd"`
-	Replicas             int     `json:"replicas"`
+	MonthlyCPUCostUSD float64 `json:"monthly_cpu_cost_usd"`
+	MonthlyMemCostUSD float64 `json:"monthly_mem_cost_usd"`
+	MonthlyTotalUSD   float64 `json:"monthly_total_usd"`
+	Replicas          int     `json:"replicas"`
 }
 
 // ─── Well-known image heuristics ─────────────────────────────────────────────
@@ -434,10 +434,10 @@ func buildDefaultSuggestResponse(req WizardSuggestRequest) WizardSuggestResponse
 		Source:        "default",
 	}
 	return WizardSuggestResponse{
-		Suggestion: suggestion,
-		Rationale:  "Using conservative defaults. For better suggestions, provide a recognized image name (nginx, postgres, redis, etc.).",
+		Suggestion:   suggestion,
+		Rationale:    "Using conservative defaults. For better suggestions, provide a recognized image name (nginx, postgres, redis, etc.).",
 		CostEstimate: estimateCost(suggestion),
-		Timestamp:  time.Now(),
+		Timestamp:    time.Now(),
 	}
 }
 

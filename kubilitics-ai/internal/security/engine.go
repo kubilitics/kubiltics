@@ -60,19 +60,19 @@ type RBACFinding struct {
 
 // SecuritySnapshot holds the full point-in-time security posture.
 type SecuritySnapshot struct {
-	Timestamp       time.Time         `json:"timestamp"`
-	Score           int               `json:"score"`           // 0-100
-	Grade           string            `json:"grade"`           // A–F
-	Issues          []SecurityIssue   `json:"issues"`
-	Summary         IssueSummary      `json:"summary"`
-	RBACFindings    []RBACFinding     `json:"rbac_findings"`
+	Timestamp       time.Time          `json:"timestamp"`
+	Score           int                `json:"score"` // 0-100
+	Grade           string             `json:"grade"` // A–F
+	Issues          []SecurityIssue    `json:"issues"`
+	Summary         IssueSummary       `json:"summary"`
+	RBACFindings    []RBACFinding      `json:"rbac_findings"`
 	NetworkGaps     []NetworkPolicyGap `json:"network_policy_gaps"`
-	SecretExposures []SecretExposure  `json:"secret_exposures"`
-	Compliance      *ComplianceReport `json:"compliance,omitempty"`
-	Recommendations []string          `json:"recommendations"`
-	PodCount        int               `json:"pod_scanned"`
-	RoleCount       int               `json:"roles_audited"`
-	NamespaceCount  int               `json:"namespaces_scanned"`
+	SecretExposures []SecretExposure   `json:"secret_exposures"`
+	Compliance      *ComplianceReport  `json:"compliance,omitempty"`
+	Recommendations []string           `json:"recommendations"`
+	PodCount        int                `json:"pod_scanned"`
+	RoleCount       int                `json:"roles_audited"`
+	NamespaceCount  int                `json:"namespaces_scanned"`
 }
 
 // SecurityEngine drives real security analysis against live cluster resources.

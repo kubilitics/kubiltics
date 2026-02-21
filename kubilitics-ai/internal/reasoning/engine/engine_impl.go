@@ -292,6 +292,13 @@ func (e *engineImpl) ListInvestigations(ctx context.Context, _ interface{}) ([]i
 	return result, nil
 }
 
+// SetLLMAdapter replaces the underlying LLM adapter at runtime.
+func (e *engineImpl) SetLLMAdapter(adapter LLMAdapterInterface) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	e.llmAdapter = adapter
+}
+
 // ─── Core investigation loop ──────────────────────────────────────────────────
 
 func (e *engineImpl) runInvestigation(ctx context.Context, inv *Investigation) {

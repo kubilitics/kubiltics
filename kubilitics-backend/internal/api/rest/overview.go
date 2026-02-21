@@ -5,8 +5,8 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/kubilitics/kubilitics-backend/internal/models"
 	"github.com/kubilitics/kubilitics-backend/internal/pkg/logger"
@@ -24,6 +24,13 @@ func (h *Handler) GetClusterOverview(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Headlamp/Lens model: try kubeconfig from request first, fall back to stored cluster
+	// Attempt to get from Hot Cache first (blazing fast)
+	if overview, ok := h.clusterService.GetOverview(clusterID); ok {
+		respondJSON(w, http.StatusOK, overview)
+		return
+	}
+
+	// Fallback to manual API calls if cache not yet ready or cluster not registered
 	client, err := h.getClientFromRequest(r.Context(), r, clusterID, h.cfg)
 	if err != nil {
 		requestID := logger.FromContext(r.Context())
@@ -130,14 +137,14 @@ func (h *Handler) GetClusterOverview(w http.ResponseWriter, r *http.Request) {
 	health := computeHealth(summary, ps, warnings, critical, pods)
 
 	overview := models.ClusterOverview{
-		Health:      health,
+		Health: health,
 		Counts: models.OverviewCounts{
 			Nodes:       summary.NodeCount,
 			Pods:        summary.PodCount,
 			Namespaces:  summary.NamespaceCount,
 			Deployments: summary.DeploymentCount,
 		},
-		PodStatus:   ps,
+		PodStatus: ps,
 		Alerts: models.OverviewAlerts{
 			Warnings: warnings,
 			Critical: critical,

@@ -15,7 +15,6 @@ use aes_gcm::{
     Aes256Gcm, Nonce,
 };
 use base64::{engine::general_purpose, Engine as _};
-use sha2::{Sha256, Digest};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct KubeconfigContext {
@@ -134,9 +133,13 @@ pub async fn auto_detect_kubeconfig() -> Result<Vec<String>, String> {
         }
     }
     
-    // Check KUBECONFIG env var
+    // Check KUBECONFIG env var — use ':' on Unix, ';' on Windows (ROOT CAUSE I).
     if let Ok(kubeconfig_env) = std::env::var("KUBECONFIG") {
-        for path in kubeconfig_env.split(':') {
+        #[cfg(windows)]
+        let separator = ';';
+        #[cfg(not(windows))]
+        let separator = ':';
+        for path in kubeconfig_env.split(separator) {
             let p = PathBuf::from(path);
             if p.exists() && !paths.contains(&p.to_string_lossy().to_string()) {
                 paths.push(p.to_string_lossy().to_string());
@@ -423,19 +426,60 @@ pub async fn get_custom_kubeconfig_path() -> Result<Option<String>, String> {
 
 // Kubeconfig Encryption Functions
 
+/// ROOT CAUSE O: Replace the predictable SHA-256-of-path key with a random key
+/// persisted in app data.  On first run a 32-byte random key is generated and
+/// written to `<app-data>/kubilitics/encryption.key`; subsequent runs load that
+/// same file.  The key file is created with mode 0600 on Unix so only the
+/// current user can read it.
 fn get_encryption_key() -> Result<Vec<u8>, String> {
-    // Derive key from app data directory path (device-specific)
-    // In production, consider using OS keychain or secure storage
-    let app_data_dir = dirs::data_local_dir()
+    let key_path = dirs::data_local_dir()
         .ok_or("Could not find data directory")?
-        .join("kubilitics");
-    
-    let key_material = format!("{}{}", app_data_dir.to_string_lossy(), "kubilitics-kubeconfig-key");
-    
-    // Use SHA-256 to derive a 32-byte key
-    let mut hasher = Sha256::new();
-    hasher.update(key_material.as_bytes());
-    Ok(hasher.finalize().to_vec())
+        .join("kubilitics")
+        .join("encryption.key");
+
+    if key_path.exists() {
+        // Load the persisted key
+        let key_bytes = fs::read(&key_path)
+            .map_err(|e| format!("Failed to read encryption key: {}", e))?;
+        if key_bytes.len() == 32 {
+            return Ok(key_bytes);
+        }
+        // Key file is corrupt — regenerate below
+        eprintln!("Encryption key file is malformed (len={}), regenerating", key_bytes.len());
+    }
+
+    // Generate a new random 32-byte key
+    use rand::RngCore;
+    let mut key_bytes = vec![0u8; 32];
+    OsRng.fill_bytes(&mut key_bytes);
+
+    // Ensure the directory exists
+    if let Some(parent) = key_path.parent() {
+        let _ = fs::create_dir_all(parent);
+    }
+
+    // Write with restricted permissions on Unix
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+        let mut file = fs::OpenOptions::new()
+            .write(true)
+            .create(true)
+            .truncate(true)
+            .mode(0o600) // owner read+write only
+            .open(&key_path)
+            .map_err(|e| format!("Failed to create encryption key file: {}", e))?;
+        use std::io::Write;
+        file.write_all(&key_bytes)
+            .map_err(|e| format!("Failed to write encryption key: {}", e))?;
+    }
+    #[cfg(not(unix))]
+    {
+        fs::write(&key_path, &key_bytes)
+            .map_err(|e| format!("Failed to write encryption key: {}", e))?;
+    }
+
+    Ok(key_bytes)
 }
 
 #[command]

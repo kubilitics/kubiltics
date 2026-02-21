@@ -303,12 +303,12 @@ func (s *Server) handlePipelineForecast(w http.ResponseWriter, r *http.Request) 
 	seasonalResult, _ := predictor.GetSeasonalPattern(r.Context(), req.ResourceID, req.MetricName)
 
 	response := map[string]interface{}{
-		"resource_id":        req.ResourceID,
-		"metric_name":        req.MetricName,
-		"horizon":            req.Horizon,
-		"forecast":           forecast,
-		"trend":              trendResult,
-		"timestamp":          time.Now(),
+		"resource_id": req.ResourceID,
+		"metric_name": req.MetricName,
+		"horizon":     req.Horizon,
+		"forecast":    forecast,
+		"trend":       trendResult,
+		"timestamp":   time.Now(),
 	}
 	if capacityResult != nil {
 		response["capacity_comparison"] = capacityResult

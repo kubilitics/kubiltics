@@ -309,10 +309,10 @@ func (s *Server) handlePersistenceAnomalySummary(w http.ResponseWriter, r *http.
 		total += v
 	}
 	json.NewEncoder(w).Encode(map[string]any{
-		"summary":    summary,
-		"total":      total,
-		"from":       from.Format(time.RFC3339),
-		"to":         to.Format(time.RFC3339),
+		"summary": summary,
+		"total":   total,
+		"from":    from.Format(time.RFC3339),
+		"to":      to.Format(time.RFC3339),
 	})
 }
 

@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "build:tauri": "TAURI_BUILD=true vite build",
+    "build:tauri": "TAURI_BUILD=true vite build --mode production",
     "build:dev": "vite build --mode development",
     "test": "vitest run",
     "test:watch": "vitest",

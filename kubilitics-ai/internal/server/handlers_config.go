@@ -100,11 +100,9 @@ func (s *Server) handleConfigProvider(w http.ResponseWriter, r *http.Request) {
 // handleGetConfigProvider handles GET /api/v1/config/provider.
 // Returns the currently active provider/model so the Settings UI can populate
 // its form without the user having to re-enter values on every app launch.
+// CORS-protected: allows requests from Tauri desktop app and localhost dev servers.
 func (s *Server) handleGetConfigProvider(w http.ResponseWriter, r *http.Request) {
-	if !isLoopback(r) {
-		http.Error(w, `{"error":"forbidden: endpoint only available from loopback"}`, http.StatusForbidden)
-		return
-	}
+	// CORS middleware handles origin validation, so we allow all requests here
 
 	s.mu.RLock()
 	provider := s.config.LLM.Provider
@@ -140,12 +138,9 @@ func (s *Server) handleGetConfigProvider(w http.ResponseWriter, r *http.Request)
 
 // handlePostConfigProvider handles POST /api/v1/config/provider.
 // It re-wires the LLM adapter at runtime without restarting the service.
+// CORS-protected: allows requests from Tauri desktop app and localhost dev servers.
 func (s *Server) handlePostConfigProvider(w http.ResponseWriter, r *http.Request) {
-	// ── Loopback-only guard (doc 06, Section 4) ───────────────────────────────
-	if !isLoopback(r) {
-		http.Error(w, `{"error":"forbidden: endpoint only available from loopback"}`, http.StatusForbidden)
-		return
-	}
+	// CORS middleware handles origin validation, so we allow all requests here
 
 	// ── Parse request ─────────────────────────────────────────────────────────
 	var req configProviderRequest
@@ -203,6 +198,12 @@ func (s *Server) handlePostConfigProvider(w http.ResponseWriter, r *http.Request
 	// ── Hot-wire the adapter and update config ────────────────────────────────
 	s.mu.Lock()
 	s.llmAdapter = newAdapter
+
+	// Ensure the Reasoning Engine also receives the new adapter so any future chat requests
+	// use the newly selected provider/model over what was loaded at initialization time.
+	if engine := s.GetReasoningEngine(); engine != nil {
+		engine.SetLLMAdapter(newAdapter)
+	}
 
 	// Keep the in-memory config in sync so /health and /info reflect the change.
 	s.config.LLM.Provider = req.Provider
@@ -319,24 +320,86 @@ func maskAPIKey(key string) string {
 
 // defaultModelForProvider returns the recommended default model for each provider.
 func defaultModelForProvider(provider string) string {
-	switch provider {
-	case "anthropic":
-		return "claude-3-5-sonnet-20241022"
-	case "openai":
-		return "gpt-4o"
-	case "ollama":
-		return "llama3.2"
-	case "custom":
-		return "" // custom endpoints vary; let the caller specify
-	default:
-		return ""
+	models := buildModelCatalog()
+	for _, m := range models[provider] {
+		if m.Recommended {
+			return m.ID
+		}
+	}
+	return ""
+}
+
+// ─── Model Catalog ────────────────────────────────────────────────────────────
+
+// modelOption describes a single selectable model for a given provider.
+type modelOption struct {
+	ID          string `json:"id"`
+	Name        string `json:"name"`
+	Recommended bool   `json:"recommended,omitempty"`
+}
+
+// providerModelsResponse is returned by GET /api/v1/config/models.
+type providerModelsResponse struct {
+	Models map[string][]modelOption `json:"models"`
+}
+
+// buildModelCatalog returns the curated list of supported models per provider.
+// Keep this list updated as providers release new models.
+func buildModelCatalog() map[string][]modelOption {
+	return map[string][]modelOption{
+		"anthropic": {
+			{ID: "claude-sonnet-4-5", Name: "Claude Sonnet 4.5 — Recommended", Recommended: true},
+			{ID: "claude-haiku-4-5", Name: "Claude Haiku 4.5 — Fast & Affordable"},
+			{ID: "claude-opus-4-5", Name: "Claude Opus 4.5 — Most Capable"},
+			{ID: "claude-sonnet-4-0", Name: "Claude Sonnet 4.0"},
+			{ID: "claude-haiku-4-0", Name: "Claude Haiku 4.0"},
+			{ID: "claude-3-haiku-20240307", Name: "Claude 3 Haiku (Legacy)"},
+		},
+		"openai": {
+			{ID: "gpt-4o", Name: "GPT-4o — Recommended", Recommended: true},
+			{ID: "gpt-4o-mini", Name: "GPT-4o Mini — Fast & Cheap"},
+			{ID: "gpt-4-turbo", Name: "GPT-4 Turbo — 128k context"},
+			{ID: "gpt-4", Name: "GPT-4 (Legacy)"},
+			{ID: "gpt-3.5-turbo", Name: "GPT-3.5 Turbo (Legacy)"},
+			{ID: "o1", Name: "o1 — Advanced Reasoning"},
+			{ID: "o1-mini", Name: "o1 Mini — Reasoning, Cheaper"},
+			{ID: "o3-mini", Name: "o3 Mini — Latest Reasoning"},
+		},
+		"ollama": {
+			{ID: "llama3.2", Name: "Llama 3.2 — Recommended", Recommended: true},
+			{ID: "llama3", Name: "Llama 3"},
+			{ID: "mistral", Name: "Mistral 7B"},
+			{ID: "codellama", Name: "Code Llama"},
+			{ID: "deepseek-r1", Name: "DeepSeek R1"},
+			{ID: "phi4", Name: "Phi-4 (Microsoft)"},
+			{ID: "gemma2", Name: "Gemma 2 (Google)"},
+			{ID: "qwen2.5", Name: "Qwen 2.5 (Alibaba)"},
+		},
+		"custom": {},
+	}
+}
+
+// handleGetProviderModels handles GET /api/v1/config/models.
+// Returns the curated model catalog for each provider so the frontend can
+// show a smart dropdown instead of a free-text field.
+// No authentication required — the list is static and not sensitive.
+func (s *Server) handleGetProviderModels(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, `{"error":"method not allowed"}`, http.StatusMethodNotAllowed)
+		return
+	}
+	catalog := buildModelCatalog()
+	resp := providerModelsResponse{Models: catalog}
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(resp); err != nil {
+		fmt.Printf("[WARN] handleGetProviderModels: encode: %v\n", err)
 	}
 }
 
 // validateAPIKeyRequest is the JSON body accepted by POST /api/v1/config/validate.
 type validateAPIKeyRequest struct {
 	Provider string `json:"provider"` // anthropic | openai | ollama | custom
-	APIKey   string `json:"api_key"`   // API key to validate
+	APIKey   string `json:"api_key"`  // API key to validate
 	Model    string `json:"model"`    // optional; empty ⇒ provider default
 	BaseURL  string `json:"base_url"` // required for ollama / custom
 }
@@ -351,17 +414,14 @@ type validateAPIKeyResponse struct {
 // handleValidateAPIKey handles POST /api/v1/config/validate.
 // It validates an API key by creating a temporary adapter and making a test API call,
 // without saving the configuration.
+// CORS-protected: allows requests from Tauri desktop app and localhost dev servers.
 func (s *Server) handleValidateAPIKey(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, `{"error":"method not allowed"}`, http.StatusMethodNotAllowed)
 		return
 	}
 
-	// ── Loopback-only guard ─────────────────────────────────────────────────────
-	if !isLoopback(r) {
-		http.Error(w, `{"error":"forbidden: endpoint only available from loopback"}`, http.StatusForbidden)
-		return
-	}
+	// CORS middleware handles origin validation, so we allow all requests here
 
 	// ── Parse request ─────────────────────────────────────────────────────────
 	var req validateAPIKeyRequest

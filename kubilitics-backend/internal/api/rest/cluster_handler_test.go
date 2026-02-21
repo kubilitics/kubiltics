@@ -89,7 +89,7 @@ func (m *mockClusterService) GetClient(clusterID string) (*k8s.Client, error) {
 	if _, ok := m.clusterMap[clusterID]; !ok {
 		return nil, errClusterNotFound
 	}
-	
+
 	if client, ok := m.clientMap[clusterID]; ok {
 		return client, nil
 	}
@@ -98,9 +98,9 @@ func (m *mockClusterService) GetClient(clusterID string) (*k8s.Client, error) {
 	// Create a fake dynamic client for ListResources with list kinds registered
 	scheme := runtime.NewScheme()
 	listKinds := map[schema.GroupVersionResource]string{
-		{Group: "apps", Version: "v1", Resource: "deployments"}:   "DeploymentList",
-		{Group: "apps", Version: "v1", Resource: "statefulsets"}:  "StatefulSetList",
-		{Group: "apps", Version: "v1", Resource: "daemonsets"}:    "DaemonSetList",
+		{Group: "apps", Version: "v1", Resource: "deployments"}:  "DeploymentList",
+		{Group: "apps", Version: "v1", Resource: "statefulsets"}: "StatefulSetList",
+		{Group: "apps", Version: "v1", Resource: "daemonsets"}:   "DaemonSetList",
 		{Group: "batch", Version: "v1", Resource: "jobs"}:        "JobList",
 		{Group: "batch", Version: "v1", Resource: "cronjobs"}:    "CronJobList",
 	}
@@ -146,6 +146,14 @@ func (m *mockClusterService) LoadClustersFromRepo(ctx context.Context) error {
 	return nil
 }
 
+func (m *mockClusterService) GetOverview(clusterID string) (*models.ClusterOverview, bool) {
+	return nil, false
+}
+
+func (m *mockClusterService) Subscribe(clusterID string) (chan *models.ClusterOverview, func()) {
+	return nil, func() {}
+}
+
 // makeMockClientWithCounts returns a k8s.Client backed by fakes with the given node and namespace counts.
 // Used by summary/overview tests where the handler builds counts from the client.
 func makeMockClientWithCounts(nodeCount, namespaceCount int) *k8s.Client {
@@ -163,11 +171,11 @@ func makeMockClientWithCounts(nodeCount, namespaceCount int) *k8s.Client {
 	clientset := k8sfake.NewSimpleClientset(objs...)
 	scheme := runtime.NewScheme()
 	listKinds := map[schema.GroupVersionResource]string{
-		{Group: "apps", Version: "v1", Resource: "deployments"}:   "DeploymentList",
-		{Group: "apps", Version: "v1", Resource: "statefulsets"}:   "StatefulSetList",
-		{Group: "apps", Version: "v1", Resource: "daemonsets"}:     "DaemonSetList",
-		{Group: "batch", Version: "v1", Resource: "jobs"}:         "JobList",
-		{Group: "batch", Version: "v1", Resource: "cronjobs"}:       "CronJobList",
+		{Group: "apps", Version: "v1", Resource: "deployments"}:  "DeploymentList",
+		{Group: "apps", Version: "v1", Resource: "statefulsets"}: "StatefulSetList",
+		{Group: "apps", Version: "v1", Resource: "daemonsets"}:   "DaemonSetList",
+		{Group: "batch", Version: "v1", Resource: "jobs"}:        "JobList",
+		{Group: "batch", Version: "v1", Resource: "cronjobs"}:    "CronJobList",
 	}
 	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, listKinds)
 	client := k8s.NewClientForTest(clientset)
@@ -218,7 +226,7 @@ func setupClusterHandlerTestWithAuth(t *testing.T) (*Handler, *mockClusterServic
 	}
 	repo := setupTestRepoForAuth(t)
 	cfg := &config.Config{
-		AuthMode:     "required",
+		AuthMode:      "required",
 		AuthJWTSecret: "test-secret-key-minimum-32-characters-long",
 	}
 	mockEventsSvc := &mockEventsService{}
@@ -304,7 +312,7 @@ func TestHandler_ListClusters_WithPermissions(t *testing.T) {
 	client1 := k8s.NewClientForTest(clientset1)
 	client1.Dynamic = dynamicClient1
 	mockSvc.clientMap[cluster1ID] = client1
-	
+
 	clientset2 := k8sfake.NewSimpleClientset()
 	dynamicClient2 := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, map[schema.GroupVersionResource]string{})
 	client2 := k8s.NewClientForTest(clientset2)

@@ -75,10 +75,10 @@ import "context"
 type PolicyEvaluationResult string
 
 const (
-	ResultApprove          PolicyEvaluationResult = "approve"
-	ResultDeny             PolicyEvaluationResult = "deny"
-	ResultRequestApproval  PolicyEvaluationResult = "request_approval"
-	ResultWarn             PolicyEvaluationResult = "warn"
+	ResultApprove         PolicyEvaluationResult = "approve"
+	ResultDeny            PolicyEvaluationResult = "deny"
+	ResultRequestApproval PolicyEvaluationResult = "request_approval"
+	ResultWarn            PolicyEvaluationResult = "warn"
 )
 
 // PolicyEngine defines the interface for policy evaluation.

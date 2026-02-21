@@ -7,6 +7,9 @@ import (
 	"sync"
 	"time"
 
+	"os"
+	"strings"
+
 	"github.com/kubilitics/kubilitics-ai/internal/analytics"
 	"github.com/kubilitics/kubilitics-ai/internal/audit"
 	appconfig "github.com/kubilitics/kubilitics-ai/internal/config"
@@ -26,6 +29,7 @@ import (
 	reasoningprompt "github.com/kubilitics/kubilitics-ai/internal/reasoning/prompt"
 	"github.com/kubilitics/kubilitics-ai/internal/safety"
 	"github.com/kubilitics/kubilitics-ai/internal/security"
+
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	_ "github.com/kubilitics/kubilitics-ai/internal/metrics" // register Prometheus metrics
@@ -219,11 +223,20 @@ func (s *Server) initializeComponents() error {
 			// Non-fatal: log and proceed without MCP tooling.
 			fmt.Printf("warning: failed to create audit logger: %v\n", err)
 		} else {
-			// Backend proxy — connects to kubilitics-backend over HTTP.
+			// Backend proxy — connects to kubilitics-backend over gRPC + REST.
 			backendProxy, err := backend.NewProxy(mcpCfg, auditLogger)
 			if err != nil {
 				fmt.Printf("warning: failed to create backend proxy: %v\n", err)
 			} else {
+				// Initialize MUST be called to establish the gRPC connection and set
+				// initialized=true; without this all ListResources/GetResource calls
+				// return "proxy not initialized".
+				if initErr := backendProxy.Initialize(context.Background()); initErr != nil {
+					// Non-fatal: log the failure but continue — observation tools that go
+					// through the REST HTTP path will still work; only gRPC-backed
+					// analysis tools (analyze_pod_health etc.) will degrade gracefully.
+					fmt.Printf("warning: backend proxy Initialize failed: %v (analysis tools will use REST fallback)\n", initErr)
+				}
 				mcp, err := mcpserver.NewMCPServer(mcpCfg, backendProxy, auditLogger, s.store)
 				if err != nil {
 					fmt.Printf("warning: failed to initialize MCP server: %v\n", err)
@@ -316,9 +329,12 @@ func (s *Server) Start() error {
 	mux := http.NewServeMux()
 	s.registerHandlers(mux)
 
+	// Add CORS middleware to allow frontend requests
+	corsHandler := s.corsMiddleware(mux)
+
 	s.httpServer = &http.Server{
 		Addr:         fmt.Sprintf("%s:%d", s.config.Server.Host, s.config.Server.Port),
-		Handler:      mux,
+		Handler:      corsHandler,
 		ReadTimeout:  30 * time.Second,
 		WriteTimeout: 30 * time.Second,
 		IdleTimeout:  120 * time.Second,
@@ -528,10 +544,14 @@ func (s *Server) registerHandlers(mux *http.ServeMux) {
 	// Runtime LLM provider configuration (doc 06 — BYOLLM, loopback-only).
 	// POST /api/v1/config/provider — hot-wires a new LLM adapter without restart.
 	mux.HandleFunc("/api/v1/config/provider", s.handleConfigProvider)
-	
+
 	// API key validation endpoint (loopback-only).
 	// POST /api/v1/config/validate — validates an API key without saving it.
 	mux.HandleFunc("/api/v1/config/validate", s.handleValidateAPIKey)
+
+	// Model catalog endpoint.
+	// GET /api/v1/config/models — returns curated model list per provider for the frontend dropdown.
+	mux.HandleFunc("/api/v1/config/models", s.handleGetProviderModels)
 }
 
 // handleHealth handles health check requests.
@@ -648,6 +668,12 @@ func (s *Server) ReloadLLMAdapter(newCfg *appconfig.Config) error {
 	s.mu.Lock()
 	s.llmAdapter = newLLMAdapter
 	s.config = newCfg
+
+	// Ensure the Reasoning Engine also receives the new adapter so any future chat requests
+	// use the newly selected provider/model.
+	if engine := s.GetReasoningEngine(); engine != nil {
+		engine.SetLLMAdapter(newLLMAdapter)
+	}
 	s.mu.Unlock()
 
 	fmt.Printf("LLM adapter reloaded: provider=%s configured=%v\n", newCfg.LLM.Provider, newCfg.LLM.Configured)
@@ -682,6 +708,56 @@ func (s *Server) runBudgetRolloverCron(ctx context.Context) {
 		}
 		cancel()
 	}
+}
+
+// corsMiddleware adds CORS headers to allow frontend requests.
+// TASK-AI-002: Reads KUBILITICS_ALLOWED_ORIGINS env var (comma-separated) so the Tauri
+// sidecar launcher can inject the correct origins without hardcoding them here.
+func (s *Server) corsMiddleware(next http.Handler) http.Handler {
+	// Build allowed-origins set at middleware construction time (once).
+	defaultOrigins := []string{
+		"tauri://localhost",
+		"tauri://",
+		"http://tauri.localhost",
+		"http://localhost:5173",
+		"http://localhost:819",
+		"http://localhost:8081",
+	}
+	allowedSet := make(map[string]struct{}, len(defaultOrigins))
+	for _, o := range defaultOrigins {
+		allowedSet[strings.ToLower(strings.TrimRight(o, "/"))] = struct{}{}
+	}
+	// Merge env-var overrides so the Tauri sidecar can inject its origins.
+	if envOrigins := os.Getenv("KUBILITICS_ALLOWED_ORIGINS"); envOrigins != "" {
+		for _, o := range strings.Split(envOrigins, ",") {
+			o = strings.TrimSpace(o)
+			if o != "" {
+				allowedSet[strings.ToLower(strings.TrimRight(o, "/"))] = struct{}{}
+			}
+		}
+	}
+
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		origin := r.Header.Get("Origin")
+		normalized := strings.ToLower(strings.TrimRight(origin, "/"))
+		_, allowed := allowedSet[normalized]
+
+		if allowed {
+			w.Header().Set("Access-Control-Allow-Origin", origin)
+		}
+
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Request-ID")
+		w.Header().Set("Access-Control-Allow-Credentials", "true")
+		w.Header().Set("Access-Control-Max-Age", "3600")
+
+		if r.Method == http.MethodOptions {
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
 }
 
 // API endpoint handlers are implemented in handlers.go and websocket.go

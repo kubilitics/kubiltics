@@ -125,16 +125,20 @@ func (f *fakeSafety) EvaluateAction(_ context.Context, _ *safety.Action) (*safet
 
 type noopAuditLog struct{}
 
-func (n *noopAuditLog) Log(_ context.Context, _ *audit.Event) error                                                        { return nil }
-func (n *noopAuditLog) LogInvestigationStarted(_ context.Context, _ string) error                                          { return nil }
-func (n *noopAuditLog) LogInvestigationCompleted(_ context.Context, _ string, _ time.Duration) error                       { return nil }
-func (n *noopAuditLog) LogInvestigationFailed(_ context.Context, _ string, _ error) error                                  { return nil }
-func (n *noopAuditLog) LogActionProposed(_ context.Context, _, _ string) error                                             { return nil }
-func (n *noopAuditLog) LogActionApproved(_ context.Context, _, _, _ string) error                                          { return nil }
-func (n *noopAuditLog) LogActionExecuted(_ context.Context, _, _ string, _ time.Duration) error                            { return nil }
-func (n *noopAuditLog) LogSafetyViolation(_ context.Context, _, _ string) error                                            { return nil }
-func (n *noopAuditLog) Sync() error                                                                                         { return nil }
-func (n *noopAuditLog) Close() error                                                                                        { return nil }
+func (n *noopAuditLog) Log(_ context.Context, _ *audit.Event) error               { return nil }
+func (n *noopAuditLog) LogInvestigationStarted(_ context.Context, _ string) error { return nil }
+func (n *noopAuditLog) LogInvestigationCompleted(_ context.Context, _ string, _ time.Duration) error {
+	return nil
+}
+func (n *noopAuditLog) LogInvestigationFailed(_ context.Context, _ string, _ error) error { return nil }
+func (n *noopAuditLog) LogActionProposed(_ context.Context, _, _ string) error            { return nil }
+func (n *noopAuditLog) LogActionApproved(_ context.Context, _, _, _ string) error         { return nil }
+func (n *noopAuditLog) LogActionExecuted(_ context.Context, _, _ string, _ time.Duration) error {
+	return nil
+}
+func (n *noopAuditLog) LogSafetyViolation(_ context.Context, _, _ string) error { return nil }
+func (n *noopAuditLog) Sync() error                                             { return nil }
+func (n *noopAuditLog) Close() error                                            { return nil }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // helper to create ExecutionTools with fake deps

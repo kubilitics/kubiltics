@@ -23,16 +23,16 @@ type TimeSeriesData struct {
 
 // MLAnomalyRequest represents a request for ML-based anomaly detection
 type MLAnomalyRequest struct {
-	TimeSeries TimeSeriesData `json:"time_series"`
-	Algorithm  string         `json:"algorithm"`  // "isolation_forest", "ensemble"
-	Sensitivity float64       `json:"sensitivity"` // 0.0 to 1.0
-	NumTrees   int            `json:"num_trees,omitempty"`
-	SampleSize int            `json:"sample_size,omitempty"`
+	TimeSeries  TimeSeriesData `json:"time_series"`
+	Algorithm   string         `json:"algorithm"`   // "isolation_forest", "ensemble"
+	Sensitivity float64        `json:"sensitivity"` // 0.0 to 1.0
+	NumTrees    int            `json:"num_trees,omitempty"`
+	SampleSize  int            `json:"sample_size,omitempty"`
 }
 
 // MLAnomalyResponse contains ML anomaly detection results
 type MLAnomalyResponse struct {
-	Anomalies []MLAnomaly     `json:"anomalies"`
+	Anomalies []MLAnomaly            `json:"anomalies"`
 	ModelInfo map[string]interface{} `json:"model_info"`
 }
 
@@ -40,26 +40,26 @@ type MLAnomalyResponse struct {
 type MLAnomaly struct {
 	Timestamp   string  `json:"timestamp"`
 	Value       float64 `json:"value"`
-	Score       float64 `json:"score"`        // 0.0 to 1.0
-	Severity    string  `json:"severity"`     // "low", "medium", "high", "critical"
+	Score       float64 `json:"score"`    // 0.0 to 1.0
+	Severity    string  `json:"severity"` // "low", "medium", "high", "critical"
 	Explanation string  `json:"explanation"`
 	PathLength  float64 `json:"path_length,omitempty"`
 }
 
 // ForecastRequest represents a request for time series forecasting
 type ForecastRequest struct {
-	TimeSeries     TimeSeriesData `json:"time_series"`
-	ForecastSteps  int            `json:"forecast_steps"`
-	Model          string         `json:"model,omitempty"` // "arima", "auto"
-	ARIMAOrder     []int          `json:"arima_order,omitempty"` // [p, d, q]
-	ConfidenceLevel float64       `json:"confidence_level,omitempty"` // 0.95 default
+	TimeSeries      TimeSeriesData `json:"time_series"`
+	ForecastSteps   int            `json:"forecast_steps"`
+	Model           string         `json:"model,omitempty"`            // "arima", "auto"
+	ARIMAOrder      []int          `json:"arima_order,omitempty"`      // [p, d, q]
+	ConfidenceLevel float64        `json:"confidence_level,omitempty"` // 0.95 default
 }
 
 // ForecastResponse contains forecast results
 type ForecastResponse struct {
 	Forecasts []ForecastPoint        `json:"forecasts"`
 	ModelInfo map[string]interface{} `json:"model_info"`
-	StdError  float64               `json:"std_error"`
+	StdError  float64                `json:"std_error"`
 }
 
 // ForecastPoint represents a single forecast point
@@ -134,10 +134,10 @@ func (s *Server) handleMLAnomalies(w http.ResponseWriter, r *http.Request) {
 	response := MLAnomalyResponse{
 		Anomalies: mlAnomalies,
 		ModelInfo: map[string]interface{}{
-			"algorithm":   "isolation_forest",
-			"num_trees":   req.NumTrees,
-			"sample_size": req.SampleSize,
-			"threshold":   req.Sensitivity,
+			"algorithm":    "isolation_forest",
+			"num_trees":    req.NumTrees,
+			"sample_size":  req.SampleSize,
+			"threshold":    req.Sensitivity,
 			"total_points": len(dataPoints),
 		},
 	}

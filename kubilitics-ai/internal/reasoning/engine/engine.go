@@ -99,6 +99,9 @@ type ReasoningEngine interface {
 
 	// ListInvestigations returns all investigations with optional filtering.
 	ListInvestigations(ctx context.Context, filter interface{}) ([]interface{}, error)
+
+	// SetLLMAdapter replaces the underlying LLM adapter at runtime.
+	SetLLMAdapter(adapter LLMAdapterInterface)
 }
 
 // NewReasoningEngine creates a new reasoning engine.

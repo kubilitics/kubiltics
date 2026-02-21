@@ -651,7 +651,7 @@ func TestAnalyzeHPABehavior_ScalingInactive(t *testing.T) {
 	fp := newFakeProxy()
 	fp.add("HorizontalPodAutoscaler", "default",
 		makeResource("HorizontalPodAutoscaler", "default", "batch-hpa", map[string]interface{}{
-			"spec":   map[string]interface{}{"minReplicas": 1, "maxReplicas": 10},
+			"spec": map[string]interface{}{"minReplicas": 1, "maxReplicas": 10},
 			"status": map[string]interface{}{
 				"currentReplicas": 1,
 				"desiredReplicas": 1,

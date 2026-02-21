@@ -65,11 +65,11 @@ type Synchronizer struct {
 // NewSynchronizer creates a new WorldModel synchronizer.
 func NewSynchronizer(wm *WorldModel, fetcher ResourceFetcher, cfg SyncConfig) *Synchronizer {
 	return &Synchronizer{
-		wm:     wm,
+		wm:      wm,
 		fetcher: fetcher,
-		cfg:    cfg,
-		stopCh: make(chan struct{}),
-		doneCh: make(chan struct{}),
+		cfg:     cfg,
+		stopCh:  make(chan struct{}),
+		doneCh:  make(chan struct{}),
 	}
 }
 

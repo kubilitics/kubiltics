@@ -35,11 +35,11 @@ type listResourcesArgs struct {
 
 // ResourceSummary is a lightweight resource representation.
 type ResourceSummary struct {
-	Kind        string            `json:"kind"`
-	Name        string            `json:"name"`
-	Namespace   string            `json:"namespace"`
-	Status      string            `json:"status"`
-	Labels      map[string]string `json:"labels,omitempty"`
+	Kind      string            `json:"kind"`
+	Name      string            `json:"name"`
+	Namespace string            `json:"namespace"`
+	Status    string            `json:"status"`
+	Labels    map[string]string `json:"labels,omitempty"`
 }
 
 // ListResources implements the list_resources MCP tool.

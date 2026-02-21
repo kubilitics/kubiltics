@@ -29,16 +29,20 @@ import (
 // noopLogger satisfies audit.Logger for tests.
 type noopLogger struct{}
 
-func (noopLogger) Log(_ context.Context, _ *audit.Event) error                                      { return nil }
-func (noopLogger) LogInvestigationStarted(_ context.Context, _ string) error                        { return nil }
-func (noopLogger) LogInvestigationCompleted(_ context.Context, _ string, _ time.Duration) error     { return nil }
-func (noopLogger) LogInvestigationFailed(_ context.Context, _ string, _ error) error                { return nil }
-func (noopLogger) LogActionProposed(_ context.Context, _, _ string) error                           { return nil }
-func (noopLogger) LogActionApproved(_ context.Context, _, _, _ string) error                        { return nil }
-func (noopLogger) LogActionExecuted(_ context.Context, _, _ string, _ time.Duration) error          { return nil }
-func (noopLogger) LogSafetyViolation(_ context.Context, _, _ string) error                          { return nil }
-func (noopLogger) Sync() error                                                                       { return nil }
-func (noopLogger) Close() error                                                                      { return nil }
+func (noopLogger) Log(_ context.Context, _ *audit.Event) error               { return nil }
+func (noopLogger) LogInvestigationStarted(_ context.Context, _ string) error { return nil }
+func (noopLogger) LogInvestigationCompleted(_ context.Context, _ string, _ time.Duration) error {
+	return nil
+}
+func (noopLogger) LogInvestigationFailed(_ context.Context, _ string, _ error) error { return nil }
+func (noopLogger) LogActionProposed(_ context.Context, _, _ string) error            { return nil }
+func (noopLogger) LogActionApproved(_ context.Context, _, _, _ string) error         { return nil }
+func (noopLogger) LogActionExecuted(_ context.Context, _, _ string, _ time.Duration) error {
+	return nil
+}
+func (noopLogger) LogSafetyViolation(_ context.Context, _, _ string) error { return nil }
+func (noopLogger) Sync() error                                             { return nil }
+func (noopLogger) Close() error                                            { return nil }
 
 var _ audit.Logger = noopLogger{}
 
@@ -92,11 +96,11 @@ func newTestServer(t *testing.T, backendURL string) *mcpServerImpl {
 	cfg.Backend.HTTPBaseURL = backendURL
 
 	s := &mcpServerImpl{
-		config:   cfg,
-		tools:    make(map[string]*toolRegistration),
-		handlers: make(map[string]ToolHandler),
-		stopChan: make(chan struct{}),
-		auditLog: noopLogger{},
+		config:      cfg,
+		tools:       make(map[string]*toolRegistration),
+		handlers:    make(map[string]ToolHandler),
+		stopChan:    make(chan struct{}),
+		auditLog:    noopLogger{},
 		rateLimiter: newRateLimiter(1000, 0),
 	}
 	s.stats.CallsByTool = make(map[string]int64)

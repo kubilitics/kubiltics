@@ -46,6 +46,9 @@ type WSRequest struct {
 var defaultAllowedOrigins = []string{
 	"http://localhost:3000",
 	"http://localhost:5173",
+	"tauri://localhost",
+	"tauri://",
+	"http://tauri.localhost",
 }
 
 // newUpgrader creates a WebSocket upgrader with origin checking.

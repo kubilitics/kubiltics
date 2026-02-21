@@ -63,7 +63,7 @@ import "context"
 type InvestigationState string
 
 const (
-	StateCreated      InvestigationState = "created"
+	StateCreated       InvestigationState = "created"
 	StateInvestigating InvestigationState = "investigating"
 	StateConcluded     InvestigationState = "concluded"
 	StateCancelled     InvestigationState = "cancelled"
@@ -74,14 +74,14 @@ const (
 type InvestigationType string
 
 const (
-	TypePodCrash     InvestigationType = "pod_crash"
-	TypePerformance  InvestigationType = "performance"
-	TypeSecurity     InvestigationType = "security"
-	TypeCost         InvestigationType = "cost"
-	TypeReliability  InvestigationType = "reliability"
-	TypeProactive    InvestigationType = "proactive"
-	TypeAnomalies    InvestigationType = "anomalies"
-	TypeConfigCheck  InvestigationType = "config_check"
+	TypePodCrash    InvestigationType = "pod_crash"
+	TypePerformance InvestigationType = "performance"
+	TypeSecurity    InvestigationType = "security"
+	TypeCost        InvestigationType = "cost"
+	TypeReliability InvestigationType = "reliability"
+	TypeProactive   InvestigationType = "proactive"
+	TypeAnomalies   InvestigationType = "anomalies"
+	TypeConfigCheck InvestigationType = "config_check"
 )
 
 // Investigation represents the complete state of a single investigation.

@@ -711,21 +711,21 @@ func analyzeWithHeuristics(
 
 func buildHeuristicRole(node TopologyNodeSummary) string {
 	roles := map[string]string{
-		"Deployment":             "Manages a set of replica pods for a stateless application",
-		"StatefulSet":            "Manages stateful pods with stable identities and persistent storage",
-		"DaemonSet":              "Ensures a pod runs on every (or selected) cluster node",
-		"Service":                "Provides stable network access to a group of pods",
-		"Ingress":                "Routes external HTTP/HTTPS traffic into the cluster",
-		"ConfigMap":              "Stores non-sensitive configuration data for pods",
-		"Secret":                 "Stores sensitive data like passwords and API keys",
-		"PersistentVolumeClaim":  "Requests persistent storage for pods",
-		"PersistentVolume":       "Provides a piece of persistent storage in the cluster",
-		"Pod":                    "The smallest deployable unit containing one or more containers",
-		"Node":                   "Physical or virtual machine that runs pods in the cluster",
-		"Namespace":              "Logical partition that isolates resources within the cluster",
+		"Deployment":              "Manages a set of replica pods for a stateless application",
+		"StatefulSet":             "Manages stateful pods with stable identities and persistent storage",
+		"DaemonSet":               "Ensures a pod runs on every (or selected) cluster node",
+		"Service":                 "Provides stable network access to a group of pods",
+		"Ingress":                 "Routes external HTTP/HTTPS traffic into the cluster",
+		"ConfigMap":               "Stores non-sensitive configuration data for pods",
+		"Secret":                  "Stores sensitive data like passwords and API keys",
+		"PersistentVolumeClaim":   "Requests persistent storage for pods",
+		"PersistentVolume":        "Provides a piece of persistent storage in the cluster",
+		"Pod":                     "The smallest deployable unit containing one or more containers",
+		"Node":                    "Physical or virtual machine that runs pods in the cluster",
+		"Namespace":               "Logical partition that isolates resources within the cluster",
 		"HorizontalPodAutoscaler": "Automatically scales pod replicas based on metrics",
-		"Job":                    "Runs pods to completion for batch processing",
-		"CronJob":                "Schedules Jobs to run at specified times or intervals",
+		"Job":                     "Runs pods to completion for batch processing",
+		"CronJob":                 "Schedules Jobs to run at specified times or intervals",
 	}
 	if role, ok := roles[node.Kind]; ok {
 		return fmt.Sprintf("%s (%s)", role, node.Name)

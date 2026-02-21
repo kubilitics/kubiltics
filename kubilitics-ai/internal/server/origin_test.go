@@ -16,10 +16,10 @@ func makeRequest(origin string) *http.Request {
 
 func TestOriginChecking(t *testing.T) {
 	tests := []struct {
-		name     string
-		origins  []string // allowedOrigins config
+		name      string
+		origins   []string // allowedOrigins config
 		reqOrigin string
-		want     bool
+		want      bool
 	}{
 		// Default / development origins
 		{"allow localhost:3000", nil, "http://localhost:3000", true},

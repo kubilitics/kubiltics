@@ -120,7 +120,7 @@ func (b *contextBuilderImpl) PruneContext(_ context.Context, contextStr string, 
 // GetContextMetadata returns metadata about the context builder configuration.
 func (b *contextBuilderImpl) GetContextMetadata(_ context.Context) (interface{}, error) {
 	return map[string]interface{}{
-		"proxy_initialized": b.proxy != nil && b.proxy.IsInitialized(),
+		"proxy_initialized":     b.proxy != nil && b.proxy.IsInitialized(),
 		"token_estimate_method": "chars/4",
 	}, nil
 }

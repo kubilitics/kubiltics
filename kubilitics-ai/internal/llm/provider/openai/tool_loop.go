@@ -24,6 +24,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
 	"sync"
 
@@ -180,8 +181,13 @@ func (c *OpenAIClientImpl) streamSingleTurn(
 	if err != nil {
 		return "", nil, fmt.Errorf("marshal: %w", err)
 	}
+	fmt.Printf("[OpenAI] Sending tool request: %s\n", string(body))
 
-	httpReq, err := http.NewRequestWithContext(ctx, "POST", c.baseURL+"/chat/completions", bytes.NewBuffer(body))
+	requestURL, err := url.JoinPath(c.baseURL, "/chat/completions")
+	if err != nil {
+		return "", nil, fmt.Errorf("failed to join url path: %w", err)
+	}
+	httpReq, err := http.NewRequestWithContext(ctx, "POST", requestURL, bytes.NewBuffer(body))
 	if err != nil {
 		return "", nil, fmt.Errorf("create request: %w", err)
 	}
@@ -205,14 +211,14 @@ func (c *OpenAIClientImpl) streamSingleTurn(
 	// OpenAI streams tool_calls with deltas: each chunk carries a partial
 	// arguments string keyed by index.  We accumulate them per index.
 	type tcAccumulator struct {
-		id       string
-		name     string
-		argsBuf  strings.Builder
+		id      string
+		name    string
+		argsBuf strings.Builder
 	}
 
 	var (
-		textBuf  strings.Builder
-		tcByIdx  = map[int]*tcAccumulator{}
+		textBuf strings.Builder
+		tcByIdx = map[int]*tcAccumulator{}
 	)
 
 	scanner := bufio.NewScanner(httpResp.Body)

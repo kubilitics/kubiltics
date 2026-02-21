@@ -73,6 +73,14 @@ func (m *mockClusterServiceWithClient) DiscoverClusters(ctx context.Context) ([]
 	return nil, nil
 }
 
+func (m *mockClusterServiceWithClient) GetOverview(clusterID string) (*models.ClusterOverview, bool) {
+	return nil, false
+}
+
+func (m *mockClusterServiceWithClient) Subscribe(clusterID string) (chan *models.ClusterOverview, func()) {
+	return nil, func() {}
+}
+
 func TestHandler_ListResources_Success(t *testing.T) {
 	// Create fake Kubernetes clientset with test pods
 	pod := &corev1.Pod{
@@ -112,7 +120,7 @@ func TestHandler_ListResources_Success(t *testing.T) {
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/clusters/"+clusterID+"/resources/pods?namespace=default", nil)
 	rec := httptest.NewRecorder()
-	
+
 	// Note: ListResources requires Dynamic client which is nil in NewClientForTest
 	// This will cause a panic when accessing c.Dynamic - we catch it to verify error handling
 	defer func() {
@@ -121,7 +129,7 @@ func TestHandler_ListResources_Success(t *testing.T) {
 			t.Logf("Handler correctly reaches ListResources (panic expected due to nil Dynamic client): %v", r)
 		}
 	}()
-	
+
 	router.ServeHTTP(rec, req)
 
 	// If no panic, verify response
@@ -129,7 +137,7 @@ func TestHandler_ListResources_Success(t *testing.T) {
 		t.Logf("Handler correctly handles missing Dynamic client: %s", rec.Body.String())
 	} else if rec.Code == http.StatusOK {
 		var response struct {
-			Items []map[string]interface{} `json:"items"`
+			Items    []map[string]interface{} `json:"items"`
 			Metadata struct {
 				ResourceVersion string `json:"resourceVersion"`
 			} `json:"metadata"`
@@ -219,7 +227,7 @@ func TestHandler_ListResources_WithPagination(t *testing.T) {
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/clusters/"+clusterID+"/resources/pods?namespace=default&limit=2", nil)
 	rec := httptest.NewRecorder()
-	
+
 	// Note: ListResources requires Dynamic client which is nil in NewClientForTest
 	defer func() {
 		if r := recover(); r != nil {
@@ -227,7 +235,7 @@ func TestHandler_ListResources_WithPagination(t *testing.T) {
 			t.Logf("Handler correctly reaches ListResources with pagination params (panic expected): %v", r)
 		}
 	}()
-	
+
 	router.ServeHTTP(rec, req)
 
 	// If no panic, verify response
@@ -235,7 +243,7 @@ func TestHandler_ListResources_WithPagination(t *testing.T) {
 		t.Logf("Handler correctly handles missing Dynamic client (expected for unit test)")
 	} else if rec.Code == http.StatusOK {
 		var response struct {
-			Items []map[string]interface{} `json:"items"`
+			Items    []map[string]interface{} `json:"items"`
 			Metadata struct {
 				ResourceVersion string `json:"resourceVersion"`
 				Continue        string `json:"continue,omitempty"`
@@ -286,7 +294,7 @@ func TestHandler_GetResource_Success(t *testing.T) {
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/clusters/"+clusterID+"/resources/pods/default/test-pod", nil)
 	rec := httptest.NewRecorder()
-	
+
 	// Note: GetResource requires Dynamic client which is nil in NewClientForTest
 	defer func() {
 		if r := recover(); r != nil {
@@ -294,7 +302,7 @@ func TestHandler_GetResource_Success(t *testing.T) {
 			t.Logf("Handler correctly reaches GetResource (panic expected): %v", r)
 		}
 	}()
-	
+
 	router.ServeHTTP(rec, req)
 
 	// If no panic, verify response
@@ -341,7 +349,7 @@ func TestHandler_GetResource_NotFound(t *testing.T) {
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/clusters/"+clusterID+"/resources/pods/default/nonexistent", nil)
 	rec := httptest.NewRecorder()
-	
+
 	// Note: GetResource requires Dynamic client which is nil in NewClientForTest
 	defer func() {
 		if r := recover(); r != nil {
@@ -349,7 +357,7 @@ func TestHandler_GetResource_NotFound(t *testing.T) {
 			t.Logf("Handler correctly reaches GetResource for nonexistent resource (panic expected): %v", r)
 		}
 	}()
-	
+
 	router.ServeHTTP(rec, req)
 
 	// If no panic, verify response
@@ -437,7 +445,7 @@ func TestHandler_DeleteResource_WithDestructiveHeader(t *testing.T) {
 	req := httptest.NewRequest(http.MethodDelete, "/api/v1/clusters/"+clusterID+"/resources/pods/default/test-pod", nil)
 	req.Header.Set(DestructiveConfirmHeader, "true")
 	rec := httptest.NewRecorder()
-	
+
 	// Note: DeleteResource requires Dynamic client which is nil in NewClientForTest
 	defer func() {
 		if r := recover(); r != nil {
@@ -445,7 +453,7 @@ func TestHandler_DeleteResource_WithDestructiveHeader(t *testing.T) {
 			t.Logf("Handler correctly reaches DeleteResource with destructive header (panic expected): %v", r)
 		}
 	}()
-	
+
 	router.ServeHTTP(rec, req)
 
 	// If no panic, verify response

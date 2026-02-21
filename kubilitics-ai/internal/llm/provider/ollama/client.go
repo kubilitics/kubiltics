@@ -73,7 +73,7 @@ type ollamaMessage struct {
 }
 
 type ollamaTool struct {
-	Type     string                    `json:"type"`
+	Type     string                   `json:"type"`
 	Function ollamaFunctionDefinition `json:"function"`
 }
 
@@ -91,20 +91,20 @@ type ollamaToolCall struct {
 }
 
 type ollamaChatRequest struct {
-	Model    string          `json:"model"`
-	Messages []ollamaMessage `json:"messages"`
-	Tools    []ollamaTool    `json:"tools,omitempty"`
-	Stream   bool            `json:"stream,omitempty"`
+	Model    string                 `json:"model"`
+	Messages []ollamaMessage        `json:"messages"`
+	Tools    []ollamaTool           `json:"tools,omitempty"`
+	Stream   bool                   `json:"stream,omitempty"`
 	Options  map[string]interface{} `json:"options,omitempty"`
 }
 
 type ollamaChatResponse struct {
-	Model     string        `json:"model"`
-	CreatedAt string        `json:"created_at"`
+	Model     string `json:"model"`
+	CreatedAt string `json:"created_at"`
 	Message   struct {
-		Role       string           `json:"role"`
-		Content    string           `json:"content"`
-		ToolCalls  []ollamaToolCall `json:"tool_calls,omitempty"`
+		Role      string           `json:"role"`
+		Content   string           `json:"content"`
+		ToolCalls []ollamaToolCall `json:"tool_calls,omitempty"`
 	} `json:"message"`
 	Done bool `json:"done"`
 }

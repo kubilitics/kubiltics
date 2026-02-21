@@ -33,7 +33,9 @@ import (
 	"github.com/kubilitics/kubilitics-backend/internal/repository"
 	"github.com/kubilitics/kubilitics-backend/internal/service"
 	"github.com/kubilitics/kubilitics-backend/internal/topology"
+	dbmigrations "github.com/kubilitics/kubilitics-backend/migrations"
 )
+
 
 func main() {
 	ctx, cancel := context.WithCancel(context.Background())
@@ -112,15 +114,23 @@ func main() {
 	}
 	defer repo.Close()
 
-	// Run migrations (001..020)
+	// Run migrations from embedded FS in lexicographic order.
+	// Using ReadDir instead of a hardcoded list so newly added migration files
+	// are picked up automatically without touching this file.
 	log.Info("Running database migrations")
-	for _, name := range []string{"001_initial_schema.sql", "002_add_cluster_provider.sql", "003_projects.sql", "004_simplify_project_clusters.sql", "005_auth.sql", "006_auth_security.sql", "007_rbac.sql", "008_api_keys.sql", "009_audit_log.sql", "010_user_soft_delete.sql", "011_token_blacklist.sql", "012_sessions.sql", "013_namespace_permissions.sql", "014_audit_log_enhancements.sql", "015_password_history.sql", "016_password_reset_tokens.sql", "017_saml_sessions.sql", "018_mfa_totp.sql", "019_groups.sql", "020_security_events.sql"} {
-		migrationSQL, err := os.ReadFile(filepath.Join("migrations", name))
+	migrationEntries, err := dbmigrations.FS.ReadDir(".")
+	if err != nil {
+		log.Error("Failed to read embedded migrations directory", "error", err)
+		os.Exit(1)
+	}
+	for _, entry := range migrationEntries {
+		if entry.IsDir() {
+			continue
+		}
+		name := entry.Name()
+		migrationSQL, err := dbmigrations.FS.ReadFile(name)
 		if err != nil {
-			if os.IsNotExist(err) {
-				continue
-			}
-			log.Warn("Could not read migration", "migration", name, "error", err)
+			log.Warn("Could not read embedded migration", "migration", name, "error", err)
 			continue
 		}
 		if err := repo.RunMigrations(string(migrationSQL)); err != nil {
@@ -357,10 +367,27 @@ func main() {
 	// Rollout path-intercept: handle rollout-history and rollback before the router so they never 404
 	routerWrapped := rolloutPathInterceptor(handler, router)
 
-	// Setup CORS
+	// Setup CORS.
+	// rs/cors only validates http:// and https:// origins. Tauri WebView uses the custom
+	// tauri:// scheme which rs/cors silently rejects. Use AllowOriginFunc so we can match
+	// tauri:// and other custom-scheme origins ourselves while still using rs/cors for the
+	// rest of the CORS handling (preflight, headers, credentials).
+	allowedOriginsSet := make(map[string]struct{}, len(cfg.AllowedOrigins))
+	for _, o := range cfg.AllowedOrigins {
+		allowedOriginsSet[strings.ToLower(strings.TrimRight(o, "/"))] = struct{}{}
+	}
 	c := cors.New(cors.Options{
-		AllowedOrigins:   cfg.AllowedOrigins,
-		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		// AllowOriginFunc overrides AllowedOrigins; we handle matching for ALL origins here.
+		AllowOriginFunc: func(origin string) bool {
+			normalized := strings.ToLower(strings.TrimRight(origin, "/"))
+			_, ok := allowedOriginsSet[normalized]
+			if !ok && origin != "" {
+				// Log CORS rejections for debugging (only log once per origin to avoid spam)
+				log.Debug("CORS request rejected", "origin", origin, "normalized", normalized, "allowed_origins", cfg.AllowedOrigins)
+			}
+			return ok
+		},
+		AllowedMethods: []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowedHeaders: []string{
 			"Content-Type", "Authorization", "X-Request-ID",
 			"X-Confirm-Destructive", "X-API-Key",

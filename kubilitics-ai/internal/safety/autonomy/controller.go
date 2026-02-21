@@ -77,11 +77,11 @@ import "context"
 type AutonomyLevel int
 
 const (
-	LevelObserve         AutonomyLevel = 1
-	LevelRecommend       AutonomyLevel = 2
-	LevelPropose         AutonomyLevel = 3
-	LevelActWithGuard    AutonomyLevel = 4
-	LevelFullAutonomous  AutonomyLevel = 5
+	LevelObserve        AutonomyLevel = 1
+	LevelRecommend      AutonomyLevel = 2
+	LevelPropose        AutonomyLevel = 3
+	LevelActWithGuard   AutonomyLevel = 4
+	LevelFullAutonomous AutonomyLevel = 5
 )
 
 // AutonomyController defines the interface for autonomy management.

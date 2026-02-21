@@ -353,7 +353,7 @@ func (s *Server) handleVectorSearch(w http.ResponseWriter, r *http.Request) {
 
 	var req struct {
 		Query string `json:"query"`
-		Type  string `json:"type"`  // "investigations", "error_patterns", "documentation"
+		Type  string `json:"type"` // "investigations", "error_patterns", "documentation"
 		Limit int    `json:"limit"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {

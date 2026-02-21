@@ -28,10 +28,10 @@ func (c *blastRadiusImpl) CalculateBlastRadius(_ context.Context, action interfa
 	}
 
 	summary := map[string]interface{}{
-		"operation":         op,
-		"severity":          severity,
+		"operation":          op,
+		"severity":           severity,
 		"estimated_affected": len(affected),
-		"description":       fmt.Sprintf("Operation '%s' may affect %d resources", op, len(affected)),
+		"description":        fmt.Sprintf("Operation '%s' may affect %d resources", op, len(affected)),
 	}
 
 	return affected, summary, nil

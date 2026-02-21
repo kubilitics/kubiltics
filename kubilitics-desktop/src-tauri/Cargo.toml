@@ -7,7 +7,8 @@ edition = "2021"
 tauri-build = { version = "2.0", features = [] }
 
 [dependencies]
-tauri = { version = "2.0", features = ["tray-icon", "devtools"] }
+# devtools omitted from release builds — never expose inspector to end users
+tauri = { version = "2.0", features = ["tray-icon"] }
 tauri-plugin-shell = "2.0"
 tauri-plugin-fs = "2.0"
 tauri-plugin-dialog = "2.0"
@@ -25,6 +26,10 @@ aes-gcm = "0.10"
 base64 = "0.22"
 rand = "0.8"
 sha2 = "0.10"
+
+# devtools only in debug builds (cargo build vs cargo build --release)
+[target.'cfg(debug_assertions)'.dependencies]
+tauri = { version = "2.0", features = ["tray-icon", "devtools"] }
 
 [features]
 default = ["custom-protocol"]

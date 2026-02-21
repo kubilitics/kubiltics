@@ -27,16 +27,16 @@ func (r ResourceID) String() string {
 // WorldModel represents the in-memory cluster state
 type WorldModel struct {
 	mu sync.RWMutex
-	
+
 	// Current cluster state
 	resources map[ResourceID]*pb.Resource
-	
+
 	// Index by kind for efficient queries
 	kindIndex map[string]map[ResourceID]*pb.Resource
-	
+
 	// Index by namespace for efficient queries
 	namespaceIndex map[string]map[ResourceID]*pb.Resource
-	
+
 	// Metadata
 	lastSync      time.Time
 	bootstrapped  bool
@@ -57,20 +57,20 @@ func NewWorldModel() *WorldModel {
 func (wm *WorldModel) Bootstrap(ctx context.Context, resources []*pb.Resource) error {
 	wm.mu.Lock()
 	defer wm.mu.Unlock()
-	
+
 	// Clear existing state
 	wm.resources = make(map[ResourceID]*pb.Resource)
 	wm.kindIndex = make(map[string]map[ResourceID]*pb.Resource)
 	wm.namespaceIndex = make(map[string]map[ResourceID]*pb.Resource)
-	
+
 	// Add all resources
 	for _, resource := range resources {
 		wm.addResourceLocked(resource)
 	}
-	
+
 	wm.bootstrapped = true
 	wm.lastSync = time.Now()
-	
+
 	return nil
 }
 
@@ -78,18 +78,18 @@ func (wm *WorldModel) Bootstrap(ctx context.Context, resources []*pb.Resource) e
 func (wm *WorldModel) ApplyUpdate(ctx context.Context, update *pb.StateUpdate) error {
 	wm.mu.Lock()
 	defer wm.mu.Unlock()
-	
+
 	if !wm.bootstrapped {
 		return fmt.Errorf("world model not bootstrapped")
 	}
-	
+
 	resource := update.Resource
 	id := ResourceID{
 		Kind:      resource.Kind,
 		Namespace: resource.Namespace,
 		Name:      resource.Name,
 	}
-	
+
 	switch update.UpdateType {
 	case "ADDED", "MODIFIED":
 		wm.addOrUpdateResourceLocked(id, resource)
@@ -98,7 +98,7 @@ func (wm *WorldModel) ApplyUpdate(ctx context.Context, update *pb.StateUpdate) e
 	default:
 		return fmt.Errorf("unknown update type: %s", update.UpdateType)
 	}
-	
+
 	wm.lastSync = time.Now()
 	return nil
 }
@@ -107,18 +107,18 @@ func (wm *WorldModel) ApplyUpdate(ctx context.Context, update *pb.StateUpdate) e
 func (wm *WorldModel) GetResource(ctx context.Context, kind, namespace, name string) (*pb.Resource, error) {
 	wm.mu.RLock()
 	defer wm.mu.RUnlock()
-	
+
 	id := ResourceID{
 		Kind:      kind,
 		Namespace: namespace,
 		Name:      name,
 	}
-	
+
 	resource, exists := wm.resources[id]
 	if !exists {
 		return nil, fmt.Errorf("resource not found: %s", id.String())
 	}
-	
+
 	return resource, nil
 }
 
@@ -126,16 +126,16 @@ func (wm *WorldModel) GetResource(ctx context.Context, kind, namespace, name str
 func (wm *WorldModel) ListResources(ctx context.Context, kind, namespace string) ([]*pb.Resource, error) {
 	wm.mu.RLock()
 	defer wm.mu.RUnlock()
-	
+
 	var results []*pb.Resource
-	
+
 	// If kind is specified, use kind index
 	if kind != "" {
 		kindMap, exists := wm.kindIndex[kind]
 		if !exists {
 			return results, nil // Empty result
 		}
-		
+
 		for _, resource := range kindMap {
 			if namespace == "" || resource.Namespace == namespace {
 				results = append(results, resource)
@@ -143,25 +143,25 @@ func (wm *WorldModel) ListResources(ctx context.Context, kind, namespace string)
 		}
 		return results, nil
 	}
-	
+
 	// If only namespace is specified, use namespace index
 	if namespace != "" {
 		nsMap, exists := wm.namespaceIndex[namespace]
 		if !exists {
 			return results, nil
 		}
-		
+
 		for _, resource := range nsMap {
 			results = append(results, resource)
 		}
 		return results, nil
 	}
-	
+
 	// Return all resources
 	for _, resource := range wm.resources {
 		results = append(results, resource)
 	}
-	
+
 	return results, nil
 }
 
@@ -172,7 +172,7 @@ func (wm *WorldModel) ListResourcesByLabels(ctx context.Context, kind, namespace
 	if err != nil {
 		return nil, err
 	}
-	
+
 	// Filter by labels
 	var results []*pb.Resource
 	for _, resource := range resources {
@@ -180,7 +180,7 @@ func (wm *WorldModel) ListResourcesByLabels(ctx context.Context, kind, namespace
 			results = append(results, resource)
 		}
 	}
-	
+
 	return results, nil
 }
 
@@ -188,25 +188,25 @@ func (wm *WorldModel) ListResourcesByLabels(ctx context.Context, kind, namespace
 func (wm *WorldModel) GetStats() map[string]interface{} {
 	wm.mu.RLock()
 	defer wm.mu.RUnlock()
-	
+
 	kindCounts := make(map[string]int)
 	namespaceCounts := make(map[string]int)
-	
+
 	for _, resource := range wm.resources {
 		kindCounts[resource.Kind]++
 		if resource.Namespace != "" {
 			namespaceCounts[resource.Namespace]++
 		}
 	}
-	
+
 	return map[string]interface{}{
-		"bootstrapped":      wm.bootstrapped,
-		"last_sync":         wm.lastSync,
-		"total_resources":   len(wm.resources),
-		"kind_counts":       kindCounts,
-		"namespace_counts":  namespaceCounts,
-		"total_kinds":       len(wm.kindIndex),
-		"total_namespaces":  len(wm.namespaceIndex),
+		"bootstrapped":     wm.bootstrapped,
+		"last_sync":        wm.lastSync,
+		"total_resources":  len(wm.resources),
+		"kind_counts":      kindCounts,
+		"namespace_counts": namespaceCounts,
+		"total_kinds":      len(wm.kindIndex),
+		"total_namespaces": len(wm.namespaceIndex),
 	}
 }
 
@@ -228,7 +228,7 @@ func (wm *WorldModel) GetResourceCount() int {
 func (wm *WorldModel) Clear() {
 	wm.mu.Lock()
 	defer wm.mu.Unlock()
-	
+
 	wm.resources = make(map[ResourceID]*pb.Resource)
 	wm.kindIndex = make(map[string]map[ResourceID]*pb.Resource)
 	wm.namespaceIndex = make(map[string]map[ResourceID]*pb.Resource)
@@ -244,15 +244,15 @@ func (wm *WorldModel) addResourceLocked(resource *pb.Resource) {
 		Namespace: resource.Namespace,
 		Name:      resource.Name,
 	}
-	
+
 	wm.resources[id] = resource
-	
+
 	// Update kind index
 	if _, exists := wm.kindIndex[resource.Kind]; !exists {
 		wm.kindIndex[resource.Kind] = make(map[ResourceID]*pb.Resource)
 	}
 	wm.kindIndex[resource.Kind][id] = resource
-	
+
 	// Update namespace index
 	if resource.Namespace != "" {
 		if _, exists := wm.namespaceIndex[resource.Namespace]; !exists {
@@ -260,7 +260,7 @@ func (wm *WorldModel) addResourceLocked(resource *pb.Resource) {
 		}
 		wm.namespaceIndex[resource.Namespace][id] = resource
 	}
-	
+
 	wm.resourceCount++
 }
 
@@ -270,7 +270,7 @@ func (wm *WorldModel) addOrUpdateResourceLocked(id ResourceID, resource *pb.Reso
 		// Update: remove old version first
 		wm.deleteResourceLocked(id)
 	}
-	
+
 	// Add new version
 	wm.addResourceLocked(resource)
 }
@@ -280,10 +280,10 @@ func (wm *WorldModel) deleteResourceLocked(id ResourceID) {
 	if !exists {
 		return
 	}
-	
+
 	// Remove from main map
 	delete(wm.resources, id)
-	
+
 	// Remove from kind index
 	if kindMap, exists := wm.kindIndex[resource.Kind]; exists {
 		delete(kindMap, id)
@@ -291,7 +291,7 @@ func (wm *WorldModel) deleteResourceLocked(id ResourceID) {
 			delete(wm.kindIndex, resource.Kind)
 		}
 	}
-	
+
 	// Remove from namespace index
 	if resource.Namespace != "" {
 		if nsMap, exists := wm.namespaceIndex[resource.Namespace]; exists {
@@ -301,7 +301,7 @@ func (wm *WorldModel) deleteResourceLocked(id ResourceID) {
 			}
 		}
 	}
-	
+
 	wm.resourceCount--
 }
 
@@ -310,13 +310,13 @@ func matchesLabels(resourceLabels, selectorLabels map[string]string) bool {
 	if len(selectorLabels) == 0 {
 		return true // No selector means match all
 	}
-	
+
 	for key, value := range selectorLabels {
 		resourceValue, exists := resourceLabels[key]
 		if !exists || resourceValue != value {
 			return false
 		}
 	}
-	
+
 	return true
 }

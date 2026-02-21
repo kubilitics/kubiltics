@@ -7,36 +7,36 @@ package models
 
 // Investigation represents a single investigation session.
 type Investigation struct {
-	ID              string
-	Type            string
-	State           string
-	CreatedAt       interface{}
-	StartedAt       interface{}
-	ConcludedAt     interface{}
-	UserID          string
-	Description     string
-	Context         string
-	Hypothesis      interface{}
-	ToolCalls       []ToolCall
-	Findings        []Finding
-	Conclusion      interface{}
-	Confidence      int
-	Actions         []string
-	TimeoutSeconds  int
-	CorrelationID   string
+	ID             string
+	Type           string
+	State          string
+	CreatedAt      interface{}
+	StartedAt      interface{}
+	ConcludedAt    interface{}
+	UserID         string
+	Description    string
+	Context        string
+	Hypothesis     interface{}
+	ToolCalls      []ToolCall
+	Findings       []Finding
+	Conclusion     interface{}
+	Confidence     int
+	Actions        []string
+	TimeoutSeconds int
+	CorrelationID  string
 }
 
 // Insight represents a finding or insight from investigation.
 type Insight struct {
-	ID               string
-	Title            string
-	Description      string
-	Category         string
+	ID                string
+	Title             string
+	Description       string
+	Category          string
 	ResourcesAffected []string
-	Evidence         interface{}
-	Severity         string
-	CreatedAt        interface{}
-	InvestigationID  string
+	Evidence          interface{}
+	Severity          string
+	CreatedAt         interface{}
+	InvestigationID   string
 }
 
 // Action represents a proposed or executed action.
@@ -76,14 +76,14 @@ type Recommendation struct {
 
 // ToolCall represents a single tool invocation by LLM.
 type ToolCall struct {
-	ID         string
-	ToolName   string
-	Input      interface{}
-	Output     interface{}
-	Duration   int
-	Success    bool
-	Error      string
-	Timestamp  interface{}
+	ID        string
+	ToolName  string
+	Input     interface{}
+	Output    interface{}
+	Duration  int
+	Success   bool
+	Error     string
+	Timestamp interface{}
 }
 
 // Finding represents a finding discovered during investigation.
@@ -98,13 +98,13 @@ type Finding struct {
 
 // AnalyticsData represents computed analytics.
 type AnalyticsData struct {
-	ID            string
-	Type          string // "trend", "anomaly", "forecast", "score"
-	ResourceID    string
-	MetricName    string
-	Value         float64
-	Timestamp     interface{}
-	Metadata      interface{}
+	ID         string
+	Type       string // "trend", "anomaly", "forecast", "score"
+	ResourceID string
+	MetricName string
+	Value      float64
+	Timestamp  interface{}
+	Metadata   interface{}
 }
 
 // AuditEntry represents an action in the immutable audit log.
@@ -143,11 +143,11 @@ type ScoringResult struct {
 
 // StateSnapshot represents a point-in-time snapshot of cluster state.
 type StateSnapshot struct {
-	Timestamp   interface{}
-	Resources   []interface{}
-	Events      []interface{}
-	Metrics     interface{}
-	Metadata    interface{}
+	Timestamp interface{}
+	Resources []interface{}
+	Events    []interface{}
+	Metrics   interface{}
+	Metadata  interface{}
 }
 
 // ContextData represents the built context for an investigation.

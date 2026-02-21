@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"os"
 	"time"
 
 	_ "modernc.org/sqlite" // pure-Go SQLite driver (no CGO required)
@@ -265,16 +266,18 @@ type sqliteStore struct {
 func NewSQLiteStore(path string) (Store, error) {
 	db, err := sql.Open("sqlite", path)
 	if err != nil {
+		fmt.Fprintf(os.Stderr, "[ERROR] NewSQLiteStore: failed to open sqlite at %q: %v\n", path, err)
 		return nil, fmt.Errorf("open sqlite %q: %w", path, err)
 	}
 
 	// Enable WAL mode for better concurrency and performance.
 	if _, err := db.Exec(`PRAGMA journal_mode=WAL`); err != nil {
-		_ = db.Close()
-		return nil, fmt.Errorf("enable WAL: %w", err)
+		fmt.Fprintf(os.Stderr, "[WARN] NewSQLiteStore: failed to enable WAL mode at %q: %v\n", path, err)
+		// Non-fatal, but we'll try to continue
 	}
 	// Enable foreign-key constraints.
 	if _, err := db.Exec(`PRAGMA foreign_keys=ON`); err != nil {
+		fmt.Fprintf(os.Stderr, "[ERROR] NewSQLiteStore: failed to enable foreign keys at %q: %v\n", path, err)
 		_ = db.Close()
 		return nil, fmt.Errorf("enable foreign keys: %w", err)
 	}

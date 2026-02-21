@@ -57,15 +57,15 @@ func NewExecutionToolsWithDeps(proxy ExecutionProxyInterface, safetyEval SafetyE
 // HandlerMap returns all tool handlers keyed by tool name.
 func (t *ExecutionTools) HandlerMap() map[string]func(ctx context.Context, args map[string]interface{}) (interface{}, error) {
 	return map[string]func(ctx context.Context, args map[string]interface{}) (interface{}, error){
-		"restart_pod":           t.RestartPod,
-		"scale_deployment":      t.ScaleDeployment,
-		"cordon_node":           t.CordonNode,
-		"drain_node":            t.DrainNode,
-		"apply_resource_patch":  t.ApplyResourcePatch,
-		"delete_resource":       t.DeleteResource,
-		"rollback_deployment":   t.RollbackDeployment,
+		"restart_pod":            t.RestartPod,
+		"scale_deployment":       t.ScaleDeployment,
+		"cordon_node":            t.CordonNode,
+		"drain_node":             t.DrainNode,
+		"apply_resource_patch":   t.ApplyResourcePatch,
+		"delete_resource":        t.DeleteResource,
+		"rollback_deployment":    t.RollbackDeployment,
 		"update_resource_limits": t.UpdateResourceLimits,
-		"trigger_hpa_scale":     t.TriggerHPAScale,
+		"trigger_hpa_scale":      t.TriggerHPAScale,
 	}
 }
 
@@ -281,12 +281,12 @@ func (t *ExecutionTools) CordonNode(ctx context.Context, args map[string]interfa
 // ─── drain_node (Autonomy Level 4) ────────────────────────────────────────────
 
 type drainNodeArgs struct {
-	Name              string `json:"name"`
-	GracePeriod       int    `json:"grace_period_seconds,omitempty"`
-	IgnoreDaemonSets  bool   `json:"ignore_daemon_sets,omitempty"`
-	DeleteEmptyDirData bool  `json:"delete_emptydir_data,omitempty"`
-	Justification     string `json:"justification,omitempty"`
-	DryRun            bool   `json:"dry_run,omitempty"`
+	Name               string `json:"name"`
+	GracePeriod        int    `json:"grace_period_seconds,omitempty"`
+	IgnoreDaemonSets   bool   `json:"ignore_daemon_sets,omitempty"`
+	DeleteEmptyDirData bool   `json:"delete_emptydir_data,omitempty"`
+	Justification      string `json:"justification,omitempty"`
+	DryRun             bool   `json:"dry_run,omitempty"`
 }
 
 // DrainNode evicts all pods from a node (Level 4 — requires explicit approval).
@@ -386,11 +386,11 @@ func (t *ExecutionTools) ApplyResourcePatch(ctx context.Context, args map[string
 
 	if a.DryRun {
 		return map[string]interface{}{
-			"dry_run":   true,
-			"approved":  true,
-			"resource":  fmt.Sprintf("%s/%s/%s", a.Kind, a.Namespace, a.Name),
-			"patch":     a.Patch,
-			"message":   "DRY RUN: Patch would be applied",
+			"dry_run":  true,
+			"approved": true,
+			"resource": fmt.Sprintf("%s/%s/%s", a.Kind, a.Namespace, a.Name),
+			"patch":    a.Patch,
+			"message":  "DRY RUN: Patch would be applied",
 		}, nil
 	}
 
@@ -420,12 +420,12 @@ func (t *ExecutionTools) ApplyResourcePatch(ctx context.Context, args map[string
 // ─── delete_resource (Autonomy Level 5) ───────────────────────────────────────
 
 type deleteResourceArgs struct {
-	Namespace         string `json:"namespace"`
-	Kind              string `json:"kind"`
-	Name              string `json:"name"`
-	GracePeriodSeconds int   `json:"grace_period_seconds,omitempty"`
-	Justification     string `json:"justification,omitempty"`
-	DryRun            bool   `json:"dry_run,omitempty"`
+	Namespace          string `json:"namespace"`
+	Kind               string `json:"kind"`
+	Name               string `json:"name"`
+	GracePeriodSeconds int    `json:"grace_period_seconds,omitempty"`
+	Justification      string `json:"justification,omitempty"`
+	DryRun             bool   `json:"dry_run,omitempty"`
 }
 
 // DeleteResource deletes a resource (Level 5 — most restrictive, always requires human approval).
@@ -649,11 +649,11 @@ func buildResourceLimitsPatch(a updateResourceLimitsArgs) map[string]interface{}
 // ─── trigger_hpa_scale (Autonomy Level 4) ─────────────────────────────────────
 
 type triggerHPAScaleArgs struct {
-	Namespace     string `json:"namespace"`
-	Name          string `json:"name"`
-	TargetReplicas int   `json:"target_replicas"`
-	Justification string `json:"justification,omitempty"`
-	DryRun        bool   `json:"dry_run,omitempty"`
+	Namespace      string `json:"namespace"`
+	Name           string `json:"name"`
+	TargetReplicas int    `json:"target_replicas"`
+	Justification  string `json:"justification,omitempty"`
+	DryRun         bool   `json:"dry_run,omitempty"`
 }
 
 // TriggerHPAScale manually overrides HPA target replica count.

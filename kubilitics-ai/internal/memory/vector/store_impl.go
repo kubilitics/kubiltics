@@ -33,7 +33,7 @@ func NewVectorStore() VectorStore {
 
 func (s *inMemoryVectorStore) nextID() string {
 	s.seq++
-	return strings.Join([]string{"item", string(rune('0'+s.seq/100%10)), string(rune('0'+s.seq/10%10)), string(rune('0'+s.seq%10))}, "")
+	return strings.Join([]string{"item", string(rune('0' + s.seq/100%10)), string(rune('0' + s.seq/10%10)), string(rune('0' + s.seq%10))}, "")
 }
 
 // SearchInvestigations finds similar past investigations via keyword search.
@@ -184,9 +184,9 @@ func (s *inMemoryVectorStore) GetStats(ctx context.Context) (interface{}, error)
 	}
 
 	return map[string]interface{}{
-		"backend":       "in_memory_keyword",
-		"total_items":   len(s.items),
-		"type_counts":   typeCounts,
+		"backend":         "in_memory_keyword",
+		"total_items":     len(s.items),
+		"type_counts":     typeCounts,
 		"semantic_search": false,
 	}, nil
 }

@@ -137,11 +137,11 @@ func TestHandlePersistenceAuditQuery_WithData(t *testing.T) {
 	// Append three events
 	for i := 0; i < 3; i++ {
 		body := map[string]any{
-			"event_type":  fmt.Sprintf("action_%d", i),
-			"resource":    "deployment/api",
-			"action":      "scale",
-			"result":      "approved",
-			"timestamp":   time.Now().Add(time.Duration(i) * time.Second).Format(time.RFC3339),
+			"event_type": fmt.Sprintf("action_%d", i),
+			"resource":   "deployment/api",
+			"action":     "scale",
+			"result":     "approved",
+			"timestamp":  time.Now().Add(time.Duration(i) * time.Second).Format(time.RFC3339),
 		}
 		persistencePOST(t, srv, "/api/v1/persistence/audit", body)
 	}

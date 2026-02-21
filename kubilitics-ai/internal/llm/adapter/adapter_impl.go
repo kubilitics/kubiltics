@@ -116,10 +116,14 @@ func NewLLMAdapter(cfg *Config) (LLMAdapter, error) {
 		if cfg.APIKey == "" {
 			return &llmAdapterImpl{provider: ProviderNone, client: nil}, nil
 		}
-		client, err = anthropic.NewAnthropicClient(cfg.APIKey, cfg.Model)
+		anthClient, err := anthropic.NewAnthropicClient(cfg.APIKey, cfg.Model)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create Anthropic client: %w", err)
 		}
+		if cfg.BaseURL != "" {
+			anthClient.SetBaseURL(cfg.BaseURL)
+		}
+		client = anthClient
 
 	case ProviderOllama:
 		if cfg.BaseURL == "" {

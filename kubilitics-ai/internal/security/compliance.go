@@ -28,30 +28,30 @@ const (
 
 // ComplianceCheck represents a single compliance check
 type ComplianceCheck struct {
-	ID          string           `json:"id"`
+	ID          string             `json:"id"`
 	Standard    ComplianceStandard `json:"standard"`
-	Section     string           `json:"section"`
-	Title       string           `json:"title"`
-	Description string           `json:"description"`
-	Status      ComplianceStatus `json:"status"`
-	Severity    Severity         `json:"severity"`
-	Details     string           `json:"details"`
-	Remediation string           `json:"remediation"`
-	Resource    string           `json:"resource,omitempty"`
-	Namespace   string           `json:"namespace,omitempty"`
-	Timestamp   time.Time        `json:"timestamp"`
+	Section     string             `json:"section"`
+	Title       string             `json:"title"`
+	Description string             `json:"description"`
+	Status      ComplianceStatus   `json:"status"`
+	Severity    Severity           `json:"severity"`
+	Details     string             `json:"details"`
+	Remediation string             `json:"remediation"`
+	Resource    string             `json:"resource,omitempty"`
+	Namespace   string             `json:"namespace,omitempty"`
+	Timestamp   time.Time          `json:"timestamp"`
 }
 
 // ComplianceReport represents overall compliance status
 type ComplianceReport struct {
-	Standard      ComplianceStandard `json:"standard"`
-	TotalChecks   int                `json:"total_checks"`
-	PassedChecks  int                `json:"passed_checks"`
-	FailedChecks  int                `json:"failed_checks"`
-	WarningChecks int                `json:"warning_checks"`
-	ComplianceScore float64          `json:"compliance_score"` // 0-100
-	Checks        []ComplianceCheck  `json:"checks"`
-	Timestamp     time.Time          `json:"timestamp"`
+	Standard        ComplianceStandard `json:"standard"`
+	TotalChecks     int                `json:"total_checks"`
+	PassedChecks    int                `json:"passed_checks"`
+	FailedChecks    int                `json:"failed_checks"`
+	WarningChecks   int                `json:"warning_checks"`
+	ComplianceScore float64            `json:"compliance_score"` // 0-100
+	Checks          []ComplianceCheck  `json:"checks"`
+	Timestamp       time.Time          `json:"timestamp"`
 }
 
 // ComplianceChecker performs compliance checks

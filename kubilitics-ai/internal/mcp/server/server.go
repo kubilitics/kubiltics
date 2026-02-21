@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"sync"
 	"time"
 
@@ -629,4 +630,12 @@ func (t *Tool) MarshalJSON() ([]byte, error) {
 	}{
 		Alias: (*Alias)(t),
 	})
+}
+
+// nsQuery is a helper to build a namespace query string.
+func nsQuery(namespace string) string {
+	if namespace != "" {
+		return "?namespace=" + url.PathEscape(namespace)
+	}
+	return ""
 }

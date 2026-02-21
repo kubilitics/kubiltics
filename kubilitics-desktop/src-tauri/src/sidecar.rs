@@ -25,6 +25,10 @@ pub struct BackendManager {
     app_handle: AppHandle,
     restart_count: Arc<Mutex<u32>>,
     is_running: Arc<Mutex<bool>>,
+    /// True once the backend has emitted "ready" — lets get_backend_status answer immediately.
+    is_ready: Arc<Mutex<bool>>,
+    /// TASK-SIDECAR-001: Store process handle so we can kill on exit, not just send HTTP shutdown.
+    backend_process: Arc<Mutex<Option<tauri_plugin_shell::process::CommandChild>>>,
     ai_process: Arc<Mutex<Option<tauri_plugin_shell::process::CommandChild>>>,
     ai_restart_count: Arc<Mutex<u32>>,
     ai_is_running: Arc<Mutex<bool>>,
@@ -37,11 +41,17 @@ impl BackendManager {
             app_handle,
             restart_count: Arc::new(Mutex::new(0)),
             is_running: Arc::new(Mutex::new(false)),
+            is_ready: Arc::new(Mutex::new(false)),
+            backend_process: Arc::new(Mutex::new(None)),
             ai_process: Arc::new(Mutex::new(None)),
             ai_restart_count: Arc::new(Mutex::new(0)),
             ai_is_running: Arc::new(Mutex::new(false)),
             ai_available: Arc::new(Mutex::new(false)),
         }
+    }
+
+    pub fn is_ready(&self) -> bool {
+        *self.is_ready.lock().unwrap()
     }
 
     /// Start backend and health monitor. Takes Arc<Self> so the health monitor can restart
@@ -55,9 +65,14 @@ impl BackendManager {
 
         // Check for port conflicts — if 819 already responds to /health, the backend
         // may already be running (e.g. user restarted the app quickly). Treat it as ready.
+        // Delay so the JS event listener in BackendStartupOverlay has time to register
+        // before we emit "ready" (the JS setup() runs after the first render tick).
+        // Increased delay to 1500ms to ensure listener is registered even on slower systems.
         if self.is_port_in_use(BACKEND_PORT).await {
             println!("Port {} already in use — assuming backend is already running", BACKEND_PORT);
             *self.is_running.lock().unwrap() = true;
+            sleep(Duration::from_millis(1500)).await;
+            *self.is_ready.lock().unwrap() = true;
             let _ = self.app_handle.emit("backend-status", serde_json::json!({
                 "status": "ready",
                 "message": "Backend engine ready"
@@ -70,6 +85,7 @@ impl BackendManager {
 
         match self.start_backend_process().await {
             Ok(()) => {
+                *self.is_ready.lock().unwrap() = true;
                 let _ = self.app_handle.emit("backend-status", serde_json::json!({
                     "status": "ready",
                     "message": "Backend engine ready"
@@ -77,10 +93,12 @@ impl BackendManager {
                 let _ = self.app_handle.emit("backend-circuit-reset", ());
             }
             Err(e) => {
-                eprintln!("Backend failed to start: {}", e);
+                // FIX TASK-013: Use {:#} (alternate format) for better error messages.
+                // Plain {} on boxed errors often produces empty string or unhelpful Rust internals.
+                eprintln!("Backend failed to start: {:#}", e);
                 let _ = self.app_handle.emit("backend-status", serde_json::json!({
                     "status": "error",
-                    "message": format!("Backend engine failed to start: {}", e)
+                    "message": format!("Backend engine failed to start: {:#}", e)
                 }));
             }
         }
@@ -126,8 +144,10 @@ impl BackendManager {
         // Tauri WebView uses the origin `tauri://localhost` for all fetch() requests.
         // The backend's CORS policy must explicitly allow this origin — it will NOT
         // be included in the default config because the default is browser-only.
+        // FIX TASK-011: Include http://tauri.localhost for Windows (Tauri 2.0 on Windows
+        // uses http://tauri.localhost instead of the tauri:// custom-protocol scheme).
         let tauri_allowed_origins = format!(
-            "tauri://localhost,tauri://,http://localhost:5173,http://localhost:{}",
+            "tauri://localhost,tauri://,http://tauri.localhost,http://localhost:5173,http://localhost:{}",
             BACKEND_PORT
         );
 
@@ -143,17 +163,25 @@ impl BackendManager {
         let _ = std::fs::create_dir_all(&db_path);
         let db_file = db_path.join("kubilitics.db");
 
-        let (_rx, _child) = sidecar_command
+        // FIX TASK-015: Only set KUBECONFIG env var when path is non-empty.
+        // Passing KUBECONFIG="" causes some k8s client versions to skip the default
+        // kubeconfig search instead of falling back to ~/.kube/config.
+        let mut cmd = sidecar_command
             .env("KUBILITICS_PORT", BACKEND_PORT.to_string())
             .env("KCLI_BIN", kcli_bin_path)
             // Allow tauri:// origin so fetch() calls from the WebView are not blocked by CORS
             .env("KUBILITICS_ALLOWED_ORIGINS", tauri_allowed_origins)
-            // Pass kubeconfig so backend auto-discovers clusters (Headlamp/Lens style)
-            .env("KUBECONFIG", kubeconfig_path)
             // P0-J: Write SQLite DB to user-writable location (not read-only .app bundle)
-            .env("KUBILITICS_DATABASE_PATH", db_file.to_string_lossy().as_ref())
-            .spawn()?;
+            .env("KUBILITICS_DATABASE_PATH", db_file.to_string_lossy().as_ref());
 
+        if !kubeconfig_path.is_empty() {
+            cmd = cmd.env("KUBECONFIG", &kubeconfig_path);
+        }
+
+        let (_rx, child) = cmd.spawn()?;
+
+        // TASK-SIDECAR-001: Store the process handle so stop() can kill it on force-quit.
+        *self.backend_process.lock().unwrap() = Some(child);
         *self.is_running.lock().unwrap() = true;
         println!("Kubilitics backend started on http://localhost:{}", BACKEND_PORT);
         
@@ -166,18 +194,21 @@ impl BackendManager {
     async fn wait_for_ready(&self) -> Result<(), Box<dyn std::error::Error>> {
         let url = format!("http://localhost:{}/health", BACKEND_PORT);
 
-        // Allow up to 30 seconds (60 attempts × 500ms) for the backend to start.
-        // Go binary cold-start on first launch can take several seconds.
-        // Emit progress events so the frontend shows a live loading state rather than a blank screen.
-        for attempt in 1..=60 {
+        // Performance optimization: Allow up to 60 seconds (120 attempts × 500ms) for the backend to start.
+        // Go binary cold-start on first launch can take 10-15 seconds on a slow machine.
+        // Add 22 SQLite migrations on first launch, which adds more time.
+        // Emit progress events less frequently (every 2 seconds instead of 3) to reduce overhead.
+        // Backend starts in background - UI is not blocked (handled by non-blocking overlay).
+        for attempt in 1..=120 {
             if let Ok(response) = reqwest::get(&url).await {
                 if response.status().is_success() {
                     println!("Backend is ready after {} attempts", attempt);
                     return Ok(());
                 }
             }
-            // Emit progress every 3 seconds (every 6 attempts) to keep UI informed
-            if attempt % 6 == 0 {
+            // Emit progress every 2 seconds (every 4 attempts) - less frequent to reduce overhead
+            // UI is not blocked, so frequent updates aren't needed
+            if attempt % 4 == 0 {
                 let elapsed = attempt / 2; // seconds
                 let _ = self.app_handle.emit("backend-status", serde_json::json!({
                     "status": "starting",
@@ -187,7 +218,7 @@ impl BackendManager {
             sleep(Duration::from_millis(500)).await;
         }
 
-        Err("Backend failed to become ready within 30 seconds".into())
+        Err("Backend failed to become ready within 60 seconds. Check that port 819 is not blocked by another application.".into())
     }
 
     /// P1-11: Only treat port as "in use by our backend" if the health response is from kubilitics-backend.
@@ -268,28 +299,32 @@ impl BackendManager {
         }
     }
 
-    #[allow(dead_code)]
-    pub async fn stop(&self) -> Result<(), Box<dyn std::error::Error>> {
+    pub async fn stop(&self) {
         *self.is_running.lock().unwrap() = false;
-        
+
         // Stop AI backend first
         self.stop_ai_backend().await;
-        
-        // Send graceful shutdown signal to backend
+
+        // Try graceful HTTP shutdown; fall through to SIGKILL on failure or force-quit.
         let url = format!("http://localhost:{}/api/v1/shutdown", BACKEND_PORT);
         let client = reqwest::Client::new();
         let _ = client.post(&url).send().await;
-        
-        // Wait for graceful shutdown
-        sleep(Duration::from_secs(2)).await;
-        
-        println!("Backend stopped gracefully");
-        Ok(())
+
+        // Wait briefly for graceful exit, then kill the process handle if still alive.
+        sleep(Duration::from_millis(1500)).await;
+        if let Ok(mut guard) = self.backend_process.lock() {
+            if let Some(child) = guard.take() {
+                let _ = child.kill();
+                println!("Backend process killed on exit");
+            }
+        }
+
+        println!("Backend stopped");
     }
 
     // AI Backend Management
 
-    async fn start_ai_backend(&self) {
+    async fn start_ai_backend(self: &Arc<Self>) {
         // Check if AI binary exists
         if !self.check_ai_binary_exists().await {
             println!("AI backend binary not found, AI features will be unavailable");
@@ -297,18 +332,38 @@ impl BackendManager {
             return;
         }
 
-        // Check for port conflicts
+        // Check if AI port is already occupied — could be an externally-started AI instance
+        // (e.g. in dev mode from dev-desktop.sh, or a previous session).
+        // If the port is in use AND responds to /health, adopt it instead of refusing to start.
         if self.is_port_in_use(AI_BACKEND_PORT).await {
-            println!("AI backend port {} is already in use", AI_BACKEND_PORT);
-            *self.ai_available.lock().unwrap() = false;
-            return;
+            let health_url = format!("http://localhost:{}/health", AI_BACKEND_PORT);
+            let client = reqwest::Client::builder()
+                .timeout(Duration::from_secs(3))
+                .build()
+                .unwrap_or_default();
+            match client.get(&health_url).send().await {
+                Ok(resp) if resp.status().is_success() => {
+                    println!("AI port {} already in use — healthy AI instance adopted", AI_BACKEND_PORT);
+                    *self.ai_available.lock().unwrap() = true;
+                    *self.ai_is_running.lock().unwrap() = true;
+                    // Start health monitor so we track the adopted process.
+                    Self::start_ai_health_monitor(self.clone());
+                    return;
+                }
+                _ => {
+                    println!("AI backend port {} is in use by an unresponsive process — AI unavailable", AI_BACKEND_PORT);
+                    *self.ai_available.lock().unwrap() = false;
+                    return;
+                }
+            }
         }
 
         match self.start_ai_backend_process().await {
             Ok(_) => {
                 *self.ai_available.lock().unwrap() = true;
                 *self.ai_is_running.lock().unwrap() = true;
-                self.start_ai_health_monitor();
+                // TASK-SIDECAR-003: Pass Arc<Self> so health monitor uses same instance.
+                Self::start_ai_health_monitor(self.clone());
             }
             Err(e) => {
                 eprintln!("Failed to start AI backend: {}", e);
@@ -318,15 +373,45 @@ impl BackendManager {
     }
 
     async fn check_ai_binary_exists(&self) -> bool {
-        // Check if kubilitics-ai binary exists in the sidecar binaries directory
-        // Tauri bundles external binaries, so we check via sidecar command
-        let _sidecar_command = match self.app_handle.shell().sidecar("kubilitics-ai") {
-            Ok(cmd) => cmd,
-            Err(_) => return false,
+        // TASK-AI-001: Verify the binary file actually exists on disk.
+        // shell().sidecar() only checks tauri.conf.json; it does NOT verify the file is present.
+        // Tauri v2 places binaries in the executable directory on macOS, not always in resource_dir.
+        let dirs_to_check = vec![
+            self.app_handle.path().resource_dir().ok(),
+            std::env::current_exe().ok().and_then(|p| p.parent().map(|p| p.to_path_buf())),
+        ];
+
+        let target = std::env::consts::ARCH;
+        let os = std::env::consts::OS;
+        let vendor = match os { "macos" | "ios" => "apple", "windows" => "pc", _ => "unknown" };
+        let os_suffix = match os {
+            "macos" => "darwin", "ios" => "ios", "linux" => "linux-gnu", "windows" => "windows-msvc", _ => os,
         };
-        
-        // If we can create the command, the binary exists
-        true
+        let base_name = format!("kubilitics-ai-{}-{}-{}", target, vendor, os_suffix);
+        #[cfg(windows)]
+        let expected_name = format!("{}.exe", base_name);
+        #[cfg(not(windows))]
+        let expected_name = base_name;
+
+        for dir_opt in dirs_to_check {
+            if let Some(dir) = dir_opt {
+                let exact_path = dir.join(&expected_name);
+                if exact_path.exists() {
+                    return true;
+                }
+                // Fallback: any file starting with "kubilitics-ai"
+                if let Ok(entries) = std::fs::read_dir(&dir) {
+                    for entry in entries.flatten() {
+                        let name = entry.file_name();
+                        let name_str = name.to_string_lossy();
+                        if name_str.starts_with("kubilitics-ai") {
+                            return true;
+                        }
+                    }
+                }
+            }
+        }
+        false
     }
 
     async fn start_ai_backend_process(&self) -> Result<(), Box<dyn std::error::Error>> {
@@ -342,12 +427,24 @@ impl BackendManager {
             .map_err(|e| format!("Failed to create AI data directory: {}", e))?;
 
         let sidecar_command = self.app_handle.shell().sidecar("kubilitics-ai")?;
-        
+
+        // TASK-AI-002: Pass the same allowed-origins list so the AI server accepts tauri:// requests.
+        let tauri_allowed_origins = format!(
+            "tauri://localhost,tauri://,http://tauri.localhost,http://localhost:5173,http://localhost:{}",
+            BACKEND_PORT
+        );
+
         let (_rx, child) = sidecar_command
             .env("KUBILITICS_PORT", AI_BACKEND_PORT.to_string())
             .env("KUBILITICS_BACKEND_ADDRESS", "localhost:50051")
+            .env("KUBILITICS_BACKEND_HTTP_BASE_URL", format!("http://localhost:{}", BACKEND_PORT))
+            .env("KUBILITICS_MCP_ENABLED", "true")
+            .env("KUBILITICS_SAFETY_ENABLED", "true")
+            .env("KUBILITICS_ANALYTICS_ENABLED", "true")
             .env("KUBILITICS_DATABASE_PATH", ai_data_dir.join("kubilitics-ai.db").to_string_lossy().to_string())
+            .env("KUBILITICS_DATABASE_SQLITE_PATH", ai_data_dir.join("kubilitics-ai.db").to_string_lossy().to_string())
             .env("KUBILITICS_DATABASE_TYPE", "sqlite")
+            .env("KUBILITICS_ALLOWED_ORIGINS", tauri_allowed_origins)
             .spawn()?;
 
         *self.ai_process.lock().unwrap() = Some(child);
@@ -376,52 +473,39 @@ impl BackendManager {
         Err("AI backend failed to become ready within 30 seconds".into())
     }
 
-    fn start_ai_health_monitor(&self) {
-        let app_handle = self.app_handle.clone();
-        let ai_restart_count = self.ai_restart_count.clone();
-        let ai_is_running = self.ai_is_running.clone();
-        let ai_available = self.ai_available.clone();
-        let _ai_process = self.ai_process.clone();
-        
+    /// TASK-SIDECAR-003: Takes Arc<Self> so the restart uses the same manager instance
+    /// (same ai_process handle, ai_restart_count, etc.) instead of a fresh BackendManager.
+    fn start_ai_health_monitor(this: Arc<Self>) {
         tokio::spawn(async move {
             loop {
                 sleep(Duration::from_secs(AI_HEALTH_CHECK_INTERVAL_SECS)).await;
-                
-                let running = {
-                    let is_running_guard = ai_is_running.lock().unwrap();
-                    *is_running_guard
-                };
-                
+
+                let running = *this.ai_is_running.lock().unwrap();
                 if !running {
                     continue;
                 }
-                
+
                 if !Self::check_health(AI_BACKEND_PORT).await {
                     println!("AI backend health check failed. Attempting restart...");
-                    
+
                     let count = {
-                        let mut count_guard = ai_restart_count.lock().unwrap();
-                        *count_guard += 1;
-                        *count_guard
+                        let mut guard = this.ai_restart_count.lock().unwrap();
+                        *guard += 1;
+                        *guard
                     };
-                    
+
                     if count <= AI_MAX_RESTART_ATTEMPTS {
-                        // Wait before restart
                         sleep(Duration::from_secs(AI_RESTART_DELAY_SECS)).await;
-                        
-                        let manager = BackendManager::new(app_handle.clone());
-                        if let Err(e) = manager.start_ai_backend_process().await {
+                        if let Err(e) = this.start_ai_backend_process().await {
                             eprintln!("Failed to restart AI backend: {}", e);
                         } else {
                             println!("AI backend restarted successfully (attempt {})", count);
-                            *ai_is_running.lock().unwrap() = true;
+                            *this.ai_is_running.lock().unwrap() = true;
                         }
                     } else {
                         eprintln!("Max AI restart attempts reached. AI backend will not restart.");
-                        let mut running_guard = ai_is_running.lock().unwrap();
-                        *running_guard = false;
-                        let mut available_guard = ai_available.lock().unwrap();
-                        *available_guard = false;
+                        *this.ai_is_running.lock().unwrap() = false;
+                        *this.ai_available.lock().unwrap() = false;
                     }
                 }
             }
@@ -464,62 +548,46 @@ impl BackendManager {
         let kcli_sidecar_exists = self.app_handle.shell().sidecar("kcli").is_ok();
 
         if kcli_sidecar_exists {
-            if let Ok(resource_dir) = self.app_handle.path().resource_dir() {
-                if let Ok(entries) = std::fs::read_dir(&resource_dir) {
-                    // Build expected name from compile-time target triple (e.g. kcli-x86_64-apple-darwin, kcli-x86_64-pc-windows-msvc.exe)
-                    let target = std::env::consts::ARCH;
-                    let os = std::env::consts::OS;
-                    let vendor = match os {
-                        "macos" | "ios" => "apple",
-                        "windows" => "pc",
-                        _ => "unknown",
-                    };
-                    let os_suffix = match os {
-                        "macos" => "darwin",
-                        "ios" => "ios",
-                        "linux" => "linux-gnu",
-                        "windows" => "windows-msvc",
-                        _ => os,
-                    };
-                    let expected_base = format!("kcli-{}-{}-{}", target, vendor, os_suffix);
-                    #[cfg(windows)]
-                    let expected_name = format!("{}.exe", expected_base);
-                    #[cfg(not(windows))]
-                    let expected_name = expected_base.clone();
+            let dirs_to_check = vec![
+                self.app_handle.path().resource_dir().ok(),
+                std::env::current_exe().ok().and_then(|p| p.parent().map(|p| p.to_path_buf())),
+            ];
 
-                    let mut fallback_path: Option<std::path::PathBuf> = None;
+            // Build expected name from compile-time target triple
+            let target = std::env::consts::ARCH;
+            let os = std::env::consts::OS;
+            let vendor = match os { "macos" | "ios" => "apple", "windows" => "pc", _ => "unknown" };
+            let os_suffix = match os { "macos" => "darwin", "ios" => "ios", "linux" => "linux-gnu", "windows" => "windows-msvc", _ => os };
+            let expected_base = format!("kcli-{}-{}-{}", target, vendor, os_suffix);
+            #[cfg(windows)] let expected_name = format!("{}.exe", expected_base);
+            #[cfg(not(windows))] let expected_name = expected_base;
 
-                    for entry in entries.flatten() {
-                        let path = entry.path();
-                        let file_name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
-                        let is_executable = path.metadata().ok().map(|m| {
-                            #[cfg(unix)]
-                            {
-                                use std::os::unix::fs::PermissionsExt;
-                                m.permissions().mode() & 0o111 != 0
-                            }
-                            #[cfg(windows)]
-                            {
-                                file_name.ends_with(".exe") || file_name == "kcli"
-                            }
-                            #[cfg(not(any(unix, windows)))]
-                            {
-                                true
-                            }
-                        }).unwrap_or(false);
+            for dir_opt in dirs_to_check {
+                if let Some(dir) = dir_opt {
+                    if let Ok(entries) = std::fs::read_dir(&dir) {
+                        let mut fallback_path: Option<std::path::PathBuf> = None;
 
-                        if !is_executable {
-                            continue;
+                        for entry in entries.flatten() {
+                            let path = entry.path();
+                            let file_name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
+                            let is_executable = path.metadata().ok().map(|m| {
+                                #[cfg(unix)] { use std::os::unix::fs::PermissionsExt; m.permissions().mode() & 0o111 != 0 }
+                                #[cfg(windows)] { file_name.ends_with(".exe") || file_name == "kcli" }
+                                #[cfg(not(any(unix, windows)))] { true }
+                            }).unwrap_or(false);
+
+                            if !is_executable { continue; }
+                            
+                            if file_name == expected_name {
+                                return Ok(path.to_string_lossy().to_string());
+                            }
+                            if (file_name == "kcli" || file_name == "kcli.exe" || file_name.starts_with("kcli-")) && fallback_path.is_none() {
+                                fallback_path = Some(path.clone());
+                            }
                         }
-                        if file_name == expected_name {
-                            return Ok(path.to_string_lossy().to_string());
+                        if let Some(p) = fallback_path {
+                            return Ok(p.to_string_lossy().to_string());
                         }
-                        if (file_name == "kcli" || file_name.starts_with("kcli-")) && fallback_path.is_none() {
-                            fallback_path = Some(path);
-                        }
-                    }
-                    if let Some(p) = fallback_path {
-                        return Ok(p.to_string_lossy().to_string());
                     }
                 }
             }
@@ -561,6 +629,18 @@ pub fn start_backend(app_handle: &AppHandle) -> Result<Arc<BackendManager>, Box<
     });
     
     Ok(manager)
+}
+
+/// Returns the current backend ready state. The frontend calls this on mount to handle
+/// the race where backend-status:ready fires before the JS event listener is registered.
+#[tauri::command]
+pub fn get_backend_status(app_handle: AppHandle) -> Result<serde_json::Value, String> {
+    let manager = app_handle.try_state::<Arc<BackendManager>>();
+    let ready = manager.map(|m| m.is_ready()).unwrap_or(false);
+    Ok(serde_json::json!({
+        "status": if ready { "ready" } else { "starting" },
+        "message": if ready { "Backend engine ready" } else { "Starting backend engine…" }
+    }))
 }
 
 #[tauri::command]

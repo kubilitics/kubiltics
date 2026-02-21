@@ -3,6 +3,7 @@ package rest
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -10,9 +11,9 @@ import (
 	"net/http"
 	"time"
 
-	"golang.org/x/time/rate"
 	"github.com/kubilitics/kubilitics-backend/internal/config"
 	"github.com/kubilitics/kubilitics-backend/internal/k8s"
+	"golang.org/x/time/rate"
 )
 
 // KubeconfigRequest represents a request that includes kubeconfig (Headlamp/Lens model).
@@ -72,6 +73,12 @@ func (h *Handler) getClientFromRequest(ctx context.Context, r *http.Request, clu
 	// Try to get kubeconfig from request first (Headlamp/Lens model)
 	kubeconfigBytes, contextName, err := h.getKubeconfigFromRequest(r)
 	if err == nil && len(kubeconfigBytes) > 0 {
+		// BA-6: Cache stateless clients by kubeconfig hash + context to avoid overhead.
+		cacheKey := fmt.Sprintf("%x:%s", sha256.Sum256(kubeconfigBytes), contextName)
+		if client, ok := h.k8sClientCache.Get(cacheKey); ok {
+			return client, nil
+		}
+
 		// Create client from kubeconfig bytes (stateless, per-request)
 		client, err := k8s.NewClientFromBytes(kubeconfigBytes, contextName)
 		if err != nil {
@@ -85,6 +92,8 @@ func (h *Handler) getClientFromRequest(ctx context.Context, r *http.Request, clu
 			client.SetLimiter(rate.NewLimiter(rate.Limit(cfg.K8sRateLimitPerSec), cfg.K8sRateLimitBurst))
 		}
 		client.SetClusterID(clusterID)
+
+		h.k8sClientCache.Add(cacheKey, client)
 		return client, nil
 	}
 

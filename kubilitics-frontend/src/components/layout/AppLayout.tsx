@@ -74,7 +74,7 @@ export function AppLayout() {
   }, [navigate]);
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="h-screen flex flex-col bg-background overflow-hidden">
       <a
         href="#main-content"
         className="absolute left-0 top-0 -translate-x-full focus:translate-x-0 focus:z-[100] px-4 py-2 bg-primary text-primary-foreground rounded-br focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 transition-transform duration-200"
@@ -84,7 +84,7 @@ export function AppLayout() {
       <Header />
       {isDemo && (
         <div
-          className="flex items-center justify-center gap-2 px-4 py-2 bg-amber-500/15 border-b border-amber-500/30 text-amber-800 dark:text-amber-200 text-sm font-medium"
+          className="flex-shrink-0 flex items-center justify-center gap-2 px-4 py-2 bg-amber-500/15 border-b border-amber-500/30 text-amber-800 dark:text-amber-200 text-sm font-medium"
           role="status"
           aria-live="polite"
         >
@@ -97,9 +97,9 @@ export function AppLayout() {
           </Link>
         </div>
       )}
-      <div className="flex">
+      <div className="flex flex-1 min-h-0 overflow-hidden">
         <Sidebar />
-        <main id="main-content" className="flex-1 p-6 pb-28 pr-3 overflow-auto flex flex-col gap-4 min-h-0" role="main" aria-label="Main content">
+        <main id="main-content" className="flex-1 p-6 pb-28 pr-3 overflow-auto flex flex-col gap-4" role="main" aria-label="Main content">
           <OfflineIndicator />
           <ConnectionRequiredBanner />
           <div

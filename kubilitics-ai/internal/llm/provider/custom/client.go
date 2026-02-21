@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"time"
 
 	"github.com/kubilitics/kubilitics-ai/internal/llm/types"
@@ -86,7 +87,7 @@ type customMessage struct {
 }
 
 type customTool struct {
-	Type     string                    `json:"type"`
+	Type     string                   `json:"type"`
 	Function customFunctionDefinition `json:"function"`
 }
 
@@ -185,7 +186,11 @@ func NewCustomClient(baseURL, apiKey, model string) (*CustomClientImpl, error) {
 // testConnection verifies endpoint is reachable
 func (c *CustomClientImpl) testConnection(ctx context.Context) error {
 	// Try to make a simple request to /v1/models or just check if endpoint responds
-	req, err := http.NewRequestWithContext(ctx, "GET", c.baseURL+"/models", nil)
+	testURL, err := url.JoinPath(c.baseURL, "/models")
+	if err != nil {
+		return err
+	}
+	req, err := http.NewRequestWithContext(ctx, "GET", testURL, nil)
 	if err != nil {
 		return err
 	}
@@ -408,8 +413,12 @@ func (c *CustomClientImpl) makeRequest(ctx context.Context, endpoint string, pay
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
 
-	url := c.baseURL + endpoint
-	req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewBuffer(body))
+	requestURL, err := url.JoinPath(c.baseURL, endpoint)
+	if err != nil {
+		return nil, fmt.Errorf("failed to join url path: %w", err)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, "POST", requestURL, bytes.NewBuffer(body))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
@@ -450,8 +459,12 @@ func (c *CustomClientImpl) streamRequest(
 		return fmt.Errorf("failed to marshal request: %w", err)
 	}
 
-	url := c.baseURL + endpoint
-	req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewBuffer(body))
+	requestURL, err := url.JoinPath(c.baseURL, endpoint)
+	if err != nil {
+		return fmt.Errorf("failed to join url path: %w", err)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, "POST", requestURL, bytes.NewBuffer(body))
 	if err != nil {
 		return fmt.Errorf("failed to create request: %w", err)
 	}

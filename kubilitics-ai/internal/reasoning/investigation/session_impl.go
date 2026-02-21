@@ -15,42 +15,42 @@ type investigationSessionImpl struct {
 	auditLog audit.Logger
 
 	// In-memory storage for investigations
-	mu              sync.RWMutex
-	investigations  map[string]*Investigation
+	mu             sync.RWMutex
+	investigations map[string]*Investigation
 }
 
 // ToolCall represents a single tool invocation during investigation
 type ToolCall struct {
-	ToolName    string      `json:"tool_name"`
-	Args        interface{} `json:"args"`
-	Result      interface{} `json:"result"`
-	Timestamp   time.Time   `json:"timestamp"`
-	Duration    time.Duration `json:"duration"`
+	ToolName  string        `json:"tool_name"`
+	Args      interface{}   `json:"args"`
+	Result    interface{}   `json:"result"`
+	Timestamp time.Time     `json:"timestamp"`
+	Duration  time.Duration `json:"duration"`
 }
 
 // Finding represents a single finding with evidence
 type Finding struct {
-	Statement   string      `json:"statement"`
-	Evidence    interface{} `json:"evidence"`
-	Confidence  int         `json:"confidence"`
-	Timestamp   time.Time   `json:"timestamp"`
+	Statement  string      `json:"statement"`
+	Evidence   interface{} `json:"evidence"`
+	Confidence int         `json:"confidence"`
+	Timestamp  time.Time   `json:"timestamp"`
 }
 
 // Hypothesis represents a hypothesis being investigated
 type Hypothesis struct {
-	Statement   string    `json:"statement"`
-	Confidence  int       `json:"confidence"`
-	Rationale   string    `json:"rationale"`
-	Timestamp   time.Time `json:"timestamp"`
+	Statement  string    `json:"statement"`
+	Confidence int       `json:"confidence"`
+	Rationale  string    `json:"rationale"`
+	Timestamp  time.Time `json:"timestamp"`
 }
 
 // Conclusion represents the final analysis
 type Conclusion struct {
-	RootCause   string      `json:"root_cause"`
-	Impact      string      `json:"impact"`
-	Evidence    []Finding   `json:"evidence"`
-	Confidence  int         `json:"confidence"`
-	Timestamp   time.Time   `json:"timestamp"`
+	RootCause  string    `json:"root_cause"`
+	Impact     string    `json:"impact"`
+	Evidence   []Finding `json:"evidence"`
+	Confidence int       `json:"confidence"`
+	Timestamp  time.Time `json:"timestamp"`
 }
 
 // NewInvestigationSession creates a new investigation session manager
@@ -152,7 +152,7 @@ func (s *investigationSessionImpl) UpdateState(ctx context.Context, id string, n
 // validateStateTransition checks if a state transition is valid
 func validateStateTransition(from, to InvestigationState) error {
 	validTransitions := map[InvestigationState][]InvestigationState{
-		StateCreated:      {StateInvestigating, StateCancelled},
+		StateCreated:       {StateInvestigating, StateCancelled},
 		StateInvestigating: {StateConcluded, StateCancelled},
 		StateConcluded:     {StateArchived},
 		StateCancelled:     {StateArchived},

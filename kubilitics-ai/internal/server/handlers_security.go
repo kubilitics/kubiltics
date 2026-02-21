@@ -171,11 +171,11 @@ func (s *Server) handleSecurityRBAC(w http.ResponseWriter, r *http.Request) {
 	}
 
 	jsonOK(w, map[string]interface{}{
-		"findings":        snap.RBACFindings,
-		"total":           len(snap.RBACFindings),
-		"by_severity":     bySeverity,
-		"roles_audited":   snap.RoleCount,
-		"timestamp":       snap.Timestamp,
+		"findings":      snap.RBACFindings,
+		"total":         len(snap.RBACFindings),
+		"by_severity":   bySeverity,
+		"roles_audited": snap.RoleCount,
+		"timestamp":     snap.Timestamp,
 	})
 }
 
@@ -204,11 +204,11 @@ func (s *Server) handleSecurityNetwork(w http.ResponseWriter, r *http.Request) {
 	}
 
 	jsonOK(w, map[string]interface{}{
-		"gaps":                snap.NetworkGaps,
-		"total_gaps":          len(snap.NetworkGaps),
-		"total_pods_exposed":  totalPodsExposed,
-		"namespaces_scanned":  snap.NamespaceCount,
-		"timestamp":           snap.Timestamp,
+		"gaps":               snap.NetworkGaps,
+		"total_gaps":         len(snap.NetworkGaps),
+		"total_pods_exposed": totalPodsExposed,
+		"namespaces_scanned": snap.NamespaceCount,
+		"timestamp":          snap.Timestamp,
 	})
 }
 
@@ -237,10 +237,10 @@ func (s *Server) handleSecuritySecrets(w http.ResponseWriter, r *http.Request) {
 	}
 
 	jsonOK(w, map[string]interface{}{
-		"exposures":  snap.SecretExposures,
-		"total":      len(snap.SecretExposures),
-		"by_risk":    byRisk,
-		"timestamp":  snap.Timestamp,
+		"exposures": snap.SecretExposures,
+		"total":     len(snap.SecretExposures),
+		"by_risk":   byRisk,
+		"timestamp": snap.Timestamp,
 	})
 }
 

@@ -280,7 +280,7 @@ func TestGetWorldModel(t *testing.T) {
 	cfg, auditLog := setupTestConfig(t)
 
 	proxy, err := NewProxy(cfg, auditLog)
-	if err != nil{
+	if err != nil {
 		t.Fatalf("NewProxy failed: %v", err)
 	}
 

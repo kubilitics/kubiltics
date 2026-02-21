@@ -18,10 +18,10 @@ type monitoringSession struct {
 }
 
 type rollbackEntry struct {
-	actionID  string
-	reason    string
+	actionID   string
+	reason     string
 	rolledBack bool
-	timestamp time.Time
+	timestamp  time.Time
 }
 
 type rollbackManagerImpl struct {
@@ -34,12 +34,12 @@ type rollbackManagerImpl struct {
 // NewRollbackManager creates a new rollback manager.
 func NewRollbackManager() RollbackManager {
 	return &rollbackManagerImpl{
-		sessions:   make(map[string]*monitoringSession),
-		history:    []rollbackEntry{},
+		sessions: make(map[string]*monitoringSession),
+		history:  []rollbackEntry{},
 		thresholds: map[string]float64{
-			"error_rate":   0.05,  // 5% error rate increase triggers rollback
-			"availability": 0.02,  // 2% availability drop
-			"latency_p99":  0.20,  // 20% latency increase
+			"error_rate":   0.05, // 5% error rate increase triggers rollback
+			"availability": 0.02, // 2% availability drop
+			"latency_p99":  0.20, // 20% latency increase
 		},
 	}
 }

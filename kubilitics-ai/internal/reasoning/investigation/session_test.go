@@ -281,11 +281,11 @@ func TestSetConclusion(t *testing.T) {
 	inv, _ := session.CreateInvestigation(ctx, TypePodCrash, "Pod crash investigation", "user-123")
 
 	conclusion := Conclusion{
-		RootCause: "Out of memory",
-		Impact:    "Service degraded, pods restarting every 2 minutes",
-		Evidence:  []Finding{},
+		RootCause:  "Out of memory",
+		Impact:     "Service degraded, pods restarting every 2 minutes",
+		Evidence:   []Finding{},
 		Confidence: 90,
-		Timestamp: time.Now(),
+		Timestamp:  time.Now(),
 	}
 
 	err := session.SetConclusion(ctx, inv.ID, conclusion, 90)

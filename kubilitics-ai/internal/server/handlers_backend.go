@@ -25,7 +25,7 @@ type BackendStatusResponse struct {
 
 // ConnectionStatusInfo describes the gRPC/backend connection.
 type ConnectionStatusInfo struct {
-	State          string `json:"state"`            // CONNECTED, DISCONNECTED, RECONNECTING, CONNECTING, N/A
+	State          string `json:"state"` // CONNECTED, DISCONNECTED, RECONNECTING, CONNECTING, N/A
 	BackendAddress string `json:"backend_address"`
 	Connected      bool   `json:"connected"`
 	Message        string `json:"message,omitempty"`
@@ -42,12 +42,12 @@ type WorldModelStatusInfo struct {
 
 // EventStatusInfo describes the event handler state.
 type EventStatusInfo struct {
-	TotalEvents     int                      `json:"total_events"`
-	WarningEvents   int                      `json:"warning_events"`
-	AnomalyCount    int                      `json:"anomaly_count"`
-	AnomalyPatterns []events.AnomalyPattern  `json:"anomaly_patterns,omitempty"`
-	TopReasons      map[string]int           `json:"top_reasons,omitempty"`
-	EventsByKind    map[string]int           `json:"events_by_kind,omitempty"`
+	TotalEvents     int                     `json:"total_events"`
+	WarningEvents   int                     `json:"warning_events"`
+	AnomalyCount    int                     `json:"anomaly_count"`
+	AnomalyPatterns []events.AnomalyPattern `json:"anomaly_patterns,omitempty"`
+	TopReasons      map[string]int          `json:"top_reasons,omitempty"`
+	EventsByKind    map[string]int          `json:"events_by_kind,omitempty"`
 }
 
 // handleBackendStatus handles GET /api/v1/backend/status

@@ -77,9 +77,9 @@ func roleWithWildcard(name, ns string) *pb.Resource {
 	data := map[string]interface{}{
 		"rules": []interface{}{
 			map[string]interface{}{
-				"verbs":      []interface{}{"*"},
-				"resources":  []interface{}{"*"},
-				"apiGroups":  []interface{}{"*"},
+				"verbs":     []interface{}{"*"},
+				"resources": []interface{}{"*"},
+				"apiGroups": []interface{}{"*"},
 			},
 		},
 	}

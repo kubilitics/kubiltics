@@ -30,11 +30,11 @@ type ResourceQueryResponse struct {
 
 // MetricQueryRequest queries metrics from backend.
 type MetricQueryRequest struct {
-	ResourceID   string `json:"resource_id"`
-	MetricName   string `json:"metric_name"`
-	StartTime    int64  `json:"start_time"`
-	EndTime      int64  `json:"end_time"`
-	Step         string `json:"step"`
+	ResourceID string `json:"resource_id"`
+	MetricName string `json:"metric_name"`
+	StartTime  int64  `json:"start_time"`
+	EndTime    int64  `json:"end_time"`
+	Step       string `json:"step"`
 }
 
 // MetricQueryResponse returns metric results from backend.
@@ -93,11 +93,11 @@ type FullSyncRequest struct {
 
 // FullSyncResponse returns full cluster state to AI.
 type FullSyncResponse struct {
-	Resources  []interface{} `json:"resources"`
-	Events     []interface{} `json:"events"`
-	Metrics    interface{}   `json:"metrics"`
-	Timestamp  int64         `json:"timestamp"`
-	Complete   bool          `json:"complete"`
+	Resources []interface{} `json:"resources"`
+	Events    []interface{} `json:"events"`
+	Metrics   interface{}   `json:"metrics"`
+	Timestamp int64         `json:"timestamp"`
+	Complete  bool          `json:"complete"`
 }
 
 // HealthCheckRequest checks backend health.
@@ -107,8 +107,8 @@ type HealthCheckRequest struct {
 
 // HealthCheckResponse returns health status.
 type HealthCheckResponse struct {
-	Status    string        `json:"status"` // "healthy", "degraded", "unhealthy"
-	Timestamp int64         `json:"timestamp"`
+	Status    string                 `json:"status"` // "healthy", "degraded", "unhealthy"
+	Timestamp int64                  `json:"timestamp"`
 	Details   map[string]interface{} `json:"details"`
 }
 

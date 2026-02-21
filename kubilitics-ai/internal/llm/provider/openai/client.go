@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"time"
 
 	"github.com/kubilitics/kubilitics-ai/internal/llm/types"
@@ -32,10 +33,10 @@ import (
 //   - gpt-3.5-turbo: Fast, low cost, suitable for simple tasks
 
 const (
-	DefaultBaseURL    = "https://api.openai.com/v1"
-	DefaultModel      = "gpt-4o"
-	DefaultMaxTokens  = 4096
-	DefaultTimeout    = 120 * time.Second
+	DefaultBaseURL   = "https://api.openai.com/v1"
+	DefaultModel     = "gpt-4o"
+	DefaultMaxTokens = 4096
+	DefaultTimeout   = 120 * time.Second
 )
 
 // OpenAIClientImpl implements the LLM adapter interface for OpenAI.
@@ -54,7 +55,7 @@ type openAIMessage struct {
 }
 
 type openAITool struct {
-	Type     string                    `json:"type"`
+	Type     string                   `json:"type"`
 	Function openAIFunctionDefinition `json:"function"`
 }
 
@@ -90,9 +91,9 @@ type openAIChatResponse struct {
 	Choices []struct {
 		Index   int `json:"index"`
 		Message struct {
-			Role       string           `json:"role"`
-			Content    string           `json:"content"`
-			ToolCalls  []openAIToolCall `json:"tool_calls,omitempty"`
+			Role      string           `json:"role"`
+			Content   string           `json:"content"`
+			ToolCalls []openAIToolCall `json:"tool_calls,omitempty"`
 		} `json:"message"`
 		FinishReason string `json:"finish_reason"`
 	} `json:"choices"`
@@ -378,8 +379,12 @@ func (c *OpenAIClientImpl) streamRequest(
 		return fmt.Errorf("failed to marshal request: %w", err)
 	}
 
-	url := c.baseURL + endpoint
-	req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewBuffer(body))
+	requestURL, err := url.JoinPath(c.baseURL, endpoint)
+	if err != nil {
+		return fmt.Errorf("failed to join url path: %w", err)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, "POST", requestURL, bytes.NewBuffer(body))
 	if err != nil {
 		return fmt.Errorf("failed to create request: %w", err)
 	}

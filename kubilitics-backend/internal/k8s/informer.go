@@ -14,10 +14,11 @@ type ResourceEventHandler func(eventType string, obj interface{})
 
 // InformerManager manages Kubernetes informers for real-time updates
 type InformerManager struct {
-	client  *Client
-	factory informers.SharedInformerFactory
-	stopCh  chan struct{}
+	client   *Client
+	factory  informers.SharedInformerFactory
+	stopCh   chan struct{}
 	handlers map[string]ResourceEventHandler
+	stores   map[string]cache.Store
 }
 
 // NewInformerManager creates a new informer manager
@@ -29,6 +30,7 @@ func NewInformerManager(client *Client) *InformerManager {
 		factory:  factory,
 		stopCh:   make(chan struct{}),
 		handlers: make(map[string]ResourceEventHandler),
+		stores:   make(map[string]cache.Store),
 	}
 }
 
@@ -98,12 +100,20 @@ func (im *InformerManager) Start(ctx context.Context) error {
 
 // Stop stops all informers
 func (im *InformerManager) Stop() {
-	close(im.stopCh)
+	if im.stopCh != nil {
+		close(im.stopCh)
+	}
+}
+
+// GetStore returns the store for a resource type
+func (im *InformerManager) GetStore(resourceType string) cache.Store {
+	return im.stores[resourceType]
 }
 
 // setupPodInformer sets up Pod informer
 func (im *InformerManager) setupPodInformer() {
 	informer := im.factory.Core().V1().Pods().Informer()
+	im.stores["Pod"] = informer.GetStore()
 	informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
 			if handler, ok := im.handlers["Pod"]; ok {
@@ -126,6 +136,7 @@ func (im *InformerManager) setupPodInformer() {
 // setupServiceInformer sets up Service informer
 func (im *InformerManager) setupServiceInformer() {
 	informer := im.factory.Core().V1().Services().Informer()
+	im.stores["Service"] = informer.GetStore()
 	informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
 			if handler, ok := im.handlers["Service"]; ok {
@@ -148,6 +159,7 @@ func (im *InformerManager) setupServiceInformer() {
 // setupDeploymentInformer sets up Deployment informer
 func (im *InformerManager) setupDeploymentInformer() {
 	informer := im.factory.Apps().V1().Deployments().Informer()
+	im.stores["Deployment"] = informer.GetStore()
 	informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
 			if handler, ok := im.handlers["Deployment"]; ok {
@@ -280,6 +292,7 @@ func (im *InformerManager) setupCronJobInformer() {
 // setupConfigMapInformer sets up ConfigMap informer
 func (im *InformerManager) setupConfigMapInformer() {
 	informer := im.factory.Core().V1().ConfigMaps().Informer()
+	im.stores["ConfigMap"] = informer.GetStore()
 	informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
 			if handler, ok := im.handlers["ConfigMap"]; ok {
@@ -302,6 +315,7 @@ func (im *InformerManager) setupConfigMapInformer() {
 // setupSecretInformer sets up Secret informer
 func (im *InformerManager) setupSecretInformer() {
 	informer := im.factory.Core().V1().Secrets().Informer()
+	im.stores["Secret"] = informer.GetStore()
 	informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
 			if handler, ok := im.handlers["Secret"]; ok {
@@ -324,6 +338,7 @@ func (im *InformerManager) setupSecretInformer() {
 // setupNodeInformer sets up Node informer
 func (im *InformerManager) setupNodeInformer() {
 	informer := im.factory.Core().V1().Nodes().Informer()
+	im.stores["Node"] = informer.GetStore()
 	informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
 			if handler, ok := im.handlers["Node"]; ok {
@@ -346,6 +361,7 @@ func (im *InformerManager) setupNodeInformer() {
 // setupNamespaceInformer sets up Namespace informer
 func (im *InformerManager) setupNamespaceInformer() {
 	informer := im.factory.Core().V1().Namespaces().Informer()
+	im.stores["Namespace"] = informer.GetStore()
 	informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
 			if handler, ok := im.handlers["Namespace"]; ok {
@@ -456,6 +472,7 @@ func (im *InformerManager) setupEndpointsInformer() {
 // setupEventInformer sets up Event informer
 func (im *InformerManager) setupEventInformer() {
 	informer := im.factory.Core().V1().Events().Informer()
+	im.stores["Event"] = informer.GetStore()
 	informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
 			if handler, ok := im.handlers["Event"]; ok {

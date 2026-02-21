@@ -82,15 +82,15 @@ func NewClient(cfg *config.Config, auditLog audit.Logger) (*Client, error) {
 	if auditLog == nil {
 		return nil, fmt.Errorf("audit logger is required")
 	}
-	
+
 	return &Client{
-		config:      cfg,
-		auditLog:    auditLog,
-		state:       StateDisconnected,
-		reconnect:   defaultReconnectPolicy,
-		updatesChan: make(chan interface{}, 1000),
-		stateChan:   make(chan ConnectionState, 10),
-		stopChan:    make(chan struct{}),
+		config:       cfg,
+		auditLog:     auditLog,
+		state:        StateDisconnected,
+		reconnect:    defaultReconnectPolicy,
+		updatesChan:  make(chan interface{}, 1000),
+		stateChan:    make(chan ConnectionState, 10),
+		stopChan:     make(chan struct{}),
 		backlogLimit: 1000,
 	}, nil
 }
@@ -104,16 +104,16 @@ func (c *Client) Connect(ctx context.Context) error {
 	}
 	c.setState(StateConnecting)
 	c.mu.Unlock()
-	
+
 	// Log connection attempt
 	correlationID := audit.GenerateCorrelationID()
 	ctx = audit.WithCorrelationID(ctx, correlationID)
-	
+
 	c.auditLog.Log(ctx, audit.NewEvent(audit.EventServerStarted).
 		WithCorrelationID(correlationID).
 		WithDescription(fmt.Sprintf("Connecting to backend at %s", c.config.Backend.Address)).
 		WithResult(audit.ResultPending))
-	
+
 	// Set up transport credentials (TLS or insecure)
 	transportCreds, err := c.buildTransportCredentials()
 	if err != nil {
@@ -130,15 +130,15 @@ func (c *Client) Connect(ctx context.Context) error {
 			PermitWithoutStream: true,
 		}),
 		grpc.WithDefaultCallOptions(
-			grpc.MaxCallRecvMsgSize(100 * 1024 * 1024), // 100MB max message size
-			grpc.MaxCallSendMsgSize(100 * 1024 * 1024),
+			grpc.MaxCallRecvMsgSize(100*1024*1024), // 100MB max message size
+			grpc.MaxCallSendMsgSize(100*1024*1024),
 		),
 	}
-	
+
 	// Dial with timeout
 	dialCtx, cancel := context.WithTimeout(ctx, time.Duration(c.config.Backend.Timeout)*time.Second)
 	defer cancel()
-	
+
 	conn, err := grpc.DialContext(dialCtx, c.config.Backend.Address, opts...)
 	if err != nil {
 		c.setState(StateDisconnected)
@@ -149,23 +149,23 @@ func (c *Client) Connect(ctx context.Context) error {
 			WithResult(audit.ResultFailure))
 		return fmt.Errorf("failed to dial backend: %w", err)
 	}
-	
+
 	c.mu.Lock()
 	c.conn = conn
 	c.client = pb.NewClusterDataServiceClient(conn)
 	c.connectedAt = time.Now()
 	c.setState(StateConnected)
 	c.mu.Unlock()
-	
+
 	// Log successful connection
 	c.auditLog.Log(ctx, audit.NewEvent(audit.EventServerStarted).
 		WithCorrelationID(correlationID).
 		WithDescription(fmt.Sprintf("Connected to backend at %s", c.config.Backend.Address)).
 		WithResult(audit.ResultSuccess))
-	
+
 	// Start connection monitoring
 	go c.monitorConnection(ctx)
-	
+
 	return nil
 }
 
@@ -173,15 +173,15 @@ func (c *Client) Connect(ctx context.Context) error {
 func (c *Client) Disconnect(ctx context.Context) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	
+
 	if c.state == StateDisconnected {
 		return nil
 	}
-	
+
 	close(c.stopChan)
-	
+
 	c.setState(StateDisconnected)
-	
+
 	if c.conn != nil {
 		if err := c.conn.Close(); err != nil {
 			return fmt.Errorf("failed to close connection: %w", err)
@@ -189,12 +189,12 @@ func (c *Client) Disconnect(ctx context.Context) error {
 		c.conn = nil
 		c.client = nil
 	}
-	
+
 	// Log disconnection
 	c.auditLog.Log(ctx, audit.NewEvent(audit.EventServerShutdown).
 		WithDescription("Disconnected from backend").
 		WithResult(audit.ResultSuccess))
-	
+
 	return nil
 }
 
@@ -207,21 +207,21 @@ func (c *Client) StreamClusterState(ctx context.Context, namespaces []string, re
 	}
 	client := c.client
 	c.mu.RUnlock()
-	
+
 	req := &pb.StateStreamRequest{
 		Namespaces:      namespaces,
 		ResourceKinds:   resourceKinds,
 		IncludeSnapshot: true,
 	}
-	
+
 	stream, err := client.StreamClusterState(ctx, req)
 	if err != nil {
 		return fmt.Errorf("failed to start stream: %w", err)
 	}
-	
+
 	// Read from stream in background
 	go c.consumeStream(ctx, stream)
-	
+
 	return nil
 }
 
@@ -242,13 +242,13 @@ func (c *Client) consumeStream(ctx context.Context, stream pb.ClusterDataService
 					WithError(err, "stream_error"))
 				return
 			}
-			
+
 			// Update stats
 			c.mu.Lock()
 			c.lastUpdate = time.Now()
 			c.totalUpdates++
 			c.mu.Unlock()
-			
+
 			// Push to channel (non-blocking)
 			select {
 			case c.updatesChan <- update:
@@ -259,7 +259,7 @@ func (c *Client) consumeStream(ctx context.Context, stream pb.ClusterDataService
 				c.droppedUpdates++
 				dropped := c.droppedUpdates
 				c.mu.Unlock()
-				
+
 				if c.backpressureHandler != nil {
 					c.backpressureHandler(len(c.updatesChan), int(dropped))
 				}
@@ -277,13 +277,13 @@ func (c *Client) GetResource(ctx context.Context, kind, namespace, name string) 
 	}
 	client := c.client
 	c.mu.RUnlock()
-	
+
 	req := &pb.ResourceRequest{
 		Kind:      kind,
 		Namespace: namespace,
 		Name:      name,
 	}
-	
+
 	return client.GetResource(ctx, req)
 }
 
@@ -296,13 +296,13 @@ func (c *Client) ListResources(ctx context.Context, kind, namespace string, labe
 	}
 	client := c.client
 	c.mu.RUnlock()
-	
+
 	req := &pb.ListRequest{
 		Kind:          kind,
 		Namespace:     namespace,
 		LabelSelector: labels,
 	}
-	
+
 	return client.ListResources(ctx, req)
 }
 
@@ -315,7 +315,7 @@ func (c *Client) ExecuteCommand(ctx context.Context, operation string, target *p
 	}
 	client := c.client
 	c.mu.RUnlock()
-	
+
 	req := &pb.CommandRequest{
 		Operation:     operation,
 		Target:        target,
@@ -323,7 +323,7 @@ func (c *Client) ExecuteCommand(ctx context.Context, operation string, target *p
 		DryRun:        dryRun,
 		CorrelationId: audit.GenerateCorrelationID(),
 	}
-	
+
 	return client.ExecuteCommand(ctx, req)
 }
 
@@ -336,12 +336,12 @@ func (c *Client) GetTopologyGraph(ctx context.Context, namespace string, maxDept
 	}
 	client := c.client
 	c.mu.RUnlock()
-	
+
 	req := &pb.TopologyRequest{
 		Namespace: namespace,
 		MaxDepth:  maxDepth,
 	}
-	
+
 	return client.GetTopologyGraph(ctx, req)
 }
 
@@ -354,11 +354,11 @@ func (c *Client) GetClusterHealth(ctx context.Context) (*pb.ClusterHealth, error
 	}
 	client := c.client
 	c.mu.RUnlock()
-	
+
 	req := &pb.HealthRequest{
 		IncludeDetails: true,
 	}
-	
+
 	return client.GetClusterHealth(ctx, req)
 }
 
@@ -390,21 +390,21 @@ func (c *Client) GetState() ConnectionState {
 func (c *Client) GetStats() map[string]interface{} {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	
+
 	var connectedDuration time.Duration
 	if c.state == StateConnected {
 		connectedDuration = time.Since(c.connectedAt)
 	}
-	
+
 	return map[string]interface{}{
-		"state":             c.state,
-		"connected_at":      c.connectedAt,
+		"state":              c.state,
+		"connected_at":       c.connectedAt,
 		"connected_duration": connectedDuration.String(),
-		"last_update":       c.lastUpdate,
-		"total_updates":     c.totalUpdates,
-		"reconnect_count":   c.reconnectCount,
-		"dropped_updates":   c.droppedUpdates,
-		"backlog_size":      len(c.updatesChan),
+		"last_update":        c.lastUpdate,
+		"total_updates":      c.totalUpdates,
+		"reconnect_count":    c.reconnectCount,
+		"dropped_updates":    c.droppedUpdates,
+		"backlog_size":       len(c.updatesChan),
 	}
 }
 
@@ -418,7 +418,7 @@ func (c *Client) SetBackpressureHandler(handler func(queueSize int, droppedCount
 // setState changes the connection state and notifies listeners
 func (c *Client) setState(state ConnectionState) {
 	c.state = state
-	
+
 	// Non-blocking send to state channel
 	select {
 	case c.stateChan <- state:
