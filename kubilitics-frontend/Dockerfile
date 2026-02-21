@@ -17,8 +17,10 @@ WORKDIR /app
 
 # Layer: deps — only invalidated when package*.json changes
 COPY package*.json ./
+# Use NODE_ENV=development during install so devDependencies (vite, tsc, etc.)
+# are installed for the build step. The final runtime image uses NODE_ENV=production.
 RUN --mount=type=cache,target=/root/.npm \
-    npm ci
+    NODE_ENV=development npm ci
 
 # Layer: source — invalidated on any source change
 COPY . .
