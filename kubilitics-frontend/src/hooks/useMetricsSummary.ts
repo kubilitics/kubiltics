@@ -48,7 +48,7 @@ export function useMetricsSummary(
         resource_name: resourceName!,
       }),
     enabled,
-    staleTime: 15_000,
-    refetchInterval: 15_000,
+    staleTime: 60_000,
+    refetchInterval: 60_000,
   });
 }

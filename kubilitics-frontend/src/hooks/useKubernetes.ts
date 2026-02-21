@@ -240,9 +240,12 @@ export function useK8sResourceList<T extends KubernetesResource>(
         return k8sRequest<ResourceList<T>>(path + (query ? `?${query}` : ''), {}, config);
       },
     enabled: !skipRequests && (useBackend ? true : config.isConnected) && (options?.enabled !== false),
-    // Removed default refetchInterval - rely on global defaults (refetchOnWindowFocus/reconnect)
+    // No background polling — resource list pages read from informer-backed
+    // backend cache. Data is pushed via informer watch events; 60s staleTime
+    // means a page load shows cached data immediately with a background refresh
+    // at most once per minute (matching Headlamp/Lens behaviour).
     refetchInterval: options?.refetchInterval ?? false,
-    staleTime: options?.staleTime ?? 10_000,
+    staleTime: options?.staleTime ?? 60_000,
     placeholderData: options?.placeholderData,
     retry: useBackend ? false : 3,
   });
@@ -298,7 +301,7 @@ export function useK8sResourceListPaginated<T extends KubernetesResource>(
         }).then((r) => ({ items: r.items as T[], metadata: r.metadata } as ResourceList<T>))
       : () => k8sRequest<ResourceList<T>>(path, {}, config),
     enabled: (useBackend ? true : config.isConnected) && (options?.enabled !== false),
-    staleTime: 10000,
+    staleTime: 60_000,
     retry: useBackend ? false : 3,
   });
 }
@@ -429,7 +432,7 @@ export function useK8sResource<T extends KubernetesResource>(
       ? () => getResource(backendBaseUrl, clusterId!, resourceType, nsForBackend, name) as Promise<T>
       : () => k8sRequest<T>(path, {}, config),
     enabled: !isDemo && (useBackend ? true : config.isConnected) && !!name && (options?.enabled !== false),
-    staleTime: 10000,
+    staleTime: 60_000,
     retry: useBackend ? false : true,
   });
 }
@@ -801,7 +804,7 @@ export function useCronJobChildJobs(namespace: string, name: string, enabled: bo
       });
     },
     enabled: enabled && !!namespace && !!name && (useBackend ? true : config.isConnected),
-    staleTime: 10000,
+    staleTime: 60_000,
   });
 }
 

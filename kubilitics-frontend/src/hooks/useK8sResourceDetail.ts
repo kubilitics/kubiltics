@@ -136,7 +136,7 @@ export function useResourceEvents(
     queryKey: ['resource-events', clusterId, namespace ?? '', kind, name ?? ''],
     queryFn: () => getResourceEvents(baseUrl!, clusterId!, namespace ?? '', kind, name!, 20),
     enabled: useBackend && !!baseUrl,
-    staleTime: 15_000,
+    staleTime: 60_000,
   });
 
   const fieldSelector = name && kind ? `involvedObject.name=${name},involvedObject.kind=${kind}` : undefined;
@@ -181,7 +181,7 @@ export function usePodEvents(namespace: string | undefined, podName: string | un
     queryKey: ['backend', 'resource-events', clusterId, namespace, 'Pod', podName],
     queryFn: () => getResourceEvents(backendBaseUrl, clusterId!, namespace!, 'Pod', podName!, 20),
     enabled,
-    staleTime: 15_000,
+    staleTime: 60_000,
   });
 
   const events: EventInfo[] = (query.data ?? []).map((e) => ({

@@ -61,8 +61,8 @@ export function useWorkloadMetricsMap(
           resource_name: entry.name,
         }),
       enabled: baseEnabled,
-      staleTime: 15_000,
-      refetchInterval: 15_000,
+      staleTime: 60_000,
+      refetchInterval: 60_000,
     })),
   });
 

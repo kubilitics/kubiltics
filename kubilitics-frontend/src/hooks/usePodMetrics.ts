@@ -28,7 +28,7 @@ export function usePodMetrics(
     queryKey: ['backend', 'pod-metrics', clusterId, namespace, podName],
     queryFn: () => getPodMetrics(backendBaseUrl, clusterId!, namespace!, podName!),
     enabled,
-    staleTime: 15_000,
-    refetchInterval: 15_000,
+    staleTime: 60_000,
+    refetchInterval: 60_000,
   });
 }

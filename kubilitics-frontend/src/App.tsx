@@ -244,6 +244,7 @@ import { KubeconfigContextDialog } from "@/components/KubeconfigContextDialog";
 import { BackendStartupOverlay } from "@/components/BackendStartupOverlay";
 import { BackendStatusBanner } from "@/components/layout/BackendStatusBanner";
 import { BackendClusterValidator } from "@/components/BackendClusterValidator";
+import { useOverviewStream } from "@/hooks/useOverviewStream";
 import { isTauri } from "@/lib/tauri";
 import { useAiAvailableStore } from "@/stores/aiAvailableStore";
 import { invokeWithRetry } from "@/lib/tauri";
@@ -258,6 +259,19 @@ ErrorTracker.init();
 const AppRouter = isTauri() ? MemoryRouter : BrowserRouter;
 
 const AI_STATUS_POLL_MS = 30_000;
+
+/**
+ * ClusterOverviewStream — mounts a single persistent WebSocket to
+ * /api/v1/clusters/{id}/overview/stream for the active cluster.
+ * Incoming frames are written into the React Query cache so all
+ * useClusterOverview consumers update in real-time without polling.
+ * Renders nothing — purely a side-effect component.
+ */
+function ClusterOverviewStream() {
+  const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
+  useOverviewStream(currentClusterId ?? undefined);
+  return null;
+}
 
 /**
  * PERMANENT FIX (TASK-NET-001 + P0-B):
@@ -488,6 +502,9 @@ const App = () => (
         <BackendStartupOverlay />
         {/* Validates and clears stale cluster IDs when backend becomes ready */}
         <BackendClusterValidator />
+        {/* Single persistent WebSocket per active cluster — pushes overview
+            updates into React Query cache in real-time (Headlamp/Lens model) */}
+        <ClusterOverviewStream />
         <SyncBackendUrl />
         <SyncAIAvailable />
         <AnalyticsConsentWrapper>

@@ -133,15 +133,24 @@ export function BackendClusterValidator() {
       }
     };
 
-    // Performance optimization: Poll less frequently (1s instead of 500ms) - validation runs in background
-    // This reduces CPU usage and doesn't block UI rendering
-    const pollInterval = setInterval(() => {
-      if (!validatedRef.current) {
-        checkAndValidate();
-      } else {
-        clearInterval(pollInterval);
-      }
-    }, 1000); // Reduced frequency - validation is non-blocking
+    // Retry with exponential backoff — one-shot validation, not a continuous poll.
+    // Starts at 500 ms, doubles each time (500 → 1000 → 2000 → 4000 → 8000 ms cap).
+    // Stops as soon as validatedRef.current is true.
+    let retryDelay = 500;
+    let retryTimer: ReturnType<typeof setTimeout> | null = null;
+
+    const scheduleRetry = () => {
+      if (validatedRef.current) return;
+      retryTimer = setTimeout(async () => {
+        if (!validatedRef.current) {
+          await checkAndValidate();
+          if (!validatedRef.current) {
+            retryDelay = Math.min(retryDelay * 2, 8_000);
+            scheduleRetry();
+          }
+        }
+      }, retryDelay);
+    };
 
     // Also listen for ready event (Tauri only)
     let unlisten: (() => void) | undefined;
@@ -151,10 +160,7 @@ export function BackendClusterValidator() {
           const { listen } = await import('@tauri-apps/api/event');
           unlisten = await listen<{ status: string }>('backend-status', async (event) => {
             if (event.payload.status === 'ready' && !validatedRef.current) {
-              // Backend is ready - check validation after a short delay to let clusters load
-              setTimeout(() => {
-                checkAndValidate();
-              }, 500);
+              setTimeout(() => checkAndValidate(), 500);
             }
           });
         } catch (error) {
@@ -163,11 +169,12 @@ export function BackendClusterValidator() {
       };
       setupListener();
     }
-    
-    checkAndValidate(); // Check immediately
+
+    // Run immediately, then retry with backoff if not yet validated
+    checkAndValidate().then(() => { if (!validatedRef.current) scheduleRetry(); });
 
     return () => {
-      clearInterval(pollInterval);
+      if (retryTimer) clearTimeout(retryTimer);
       unlisten?.();
     };
   }, [

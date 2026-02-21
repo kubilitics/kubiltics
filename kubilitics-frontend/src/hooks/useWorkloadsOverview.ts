@@ -181,8 +181,8 @@ export function useWorkloadsOverview() {
     queryKey: ['backend', 'workloads', backendBaseUrl, clusterId],
     queryFn: () => getWorkloadsOverview(backendBaseUrl, clusterId!),
     enabled: isBackendConfigured() && !!clusterId,
-    staleTime: 15_000,
-    refetchInterval: 30_000,
+    staleTime: 60_000,
+    refetchInterval: 60_000,
   });
 
   // Fallback resource list queries: only fire when backend is NOT configured (direct K8s mode).

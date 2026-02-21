@@ -26,7 +26,7 @@ export function useNodeMetrics(
     queryKey: ['backend', 'node-metrics', clusterId, nodeName],
     queryFn: () => getNodeMetrics(backendBaseUrl, clusterId!, nodeName!),
     enabled,
-    staleTime: 15_000,
-    refetchInterval: 15_000,
+    staleTime: 60_000,
+    refetchInterval: 60_000,
   });
 }

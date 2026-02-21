@@ -50,7 +50,7 @@ export function useWorkloadMetrics(
     queryKey: ['backend', 'workload-metrics', resourceType, clusterId, namespace, name],
     queryFn: () => getter(backendBaseUrl, clusterId!, namespace!, name!),
     enabled,
-    staleTime: 15_000,
-    refetchInterval: 15_000,
+    staleTime: 60_000,
+    refetchInterval: 60_000,
   });
 }

@@ -31,7 +31,7 @@ export function useDeploymentMetrics(
     queryKey: ['backend', 'deployment-metrics', clusterId, namespace, deploymentName],
     queryFn: () => getDeploymentMetrics(backendBaseUrl, clusterId!, namespace!, deploymentName!),
     enabled,
-    staleTime: 15_000,
-    refetchInterval: 15_000,
+    staleTime: 60_000,
+    refetchInterval: 60_000,
   });
 }

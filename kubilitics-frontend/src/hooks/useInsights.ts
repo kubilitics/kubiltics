@@ -68,7 +68,7 @@ export function useInsights(): { insights: Insight[]; isLoading: boolean } {
   const podsList = useK8sResourceList('pods', undefined, {
     enabled: !!activeCluster,
     limit: 2000,
-    refetchInterval: 30000,
+    refetchInterval: 60000,
   });
   const nodesList = useK8sResourceList('nodes', undefined, {
     enabled: !!activeCluster,

@@ -23,7 +23,12 @@ type InformerManager struct {
 
 // NewInformerManager creates a new informer manager
 func NewInformerManager(client *Client) *InformerManager {
-	factory := informers.NewSharedInformerFactory(client.Clientset, 30*time.Second)
+	// Resync period: periodic full re-list from K8s API as a consistency check.
+	// 30s was too aggressive — with 25+ resource types per cluster it generates
+	// a constant stream of LIST calls even when nothing changes. 5 minutes matches
+	// Headlamp's approach: informers get real-time Watch events; the resync is just
+	// a safety net for missed events, not a data source.
+	factory := informers.NewSharedInformerFactory(client.Clientset, 5*time.Minute)
 
 	return &InformerManager{
 		client:   client,

@@ -54,8 +54,11 @@ export function BackendStatusBanner({ className }: { className?: string }) {
         if (mounted) setBackendStarting(false);
       }
     };
+    // Check once immediately, then slow-poll at 10s.
+    // The banner only matters during the brief startup window — once the backend
+    // is ready the status won't change so 10s is more than enough.
     checkBackendStatus();
-    const interval = setInterval(checkBackendStatus, 2000);
+    const interval = setInterval(checkBackendStatus, 10_000);
     return () => {
       mounted = false;
       clearInterval(interval);

@@ -15,7 +15,10 @@ export function useClusterOverview(clusterId: string | undefined) {
     queryKey: ['backend', 'clusterOverview', backendBaseUrl, clusterId],
     queryFn: () => getClusterOverview(backendBaseUrl, clusterId!),
     enabled: isConfigured && !!clusterId,
-    staleTime: 30_000,
-    refetchInterval: 30_000, // TASK-FE-002: Auto-refresh dashboard every 30s
+    // staleTime=Infinity: useOverviewStream pushes live updates via
+    // queryClient.setQueryData — no REST polling needed. The initial
+    // queryFn fires once to pre-populate cache before the WS connects.
+    staleTime: Infinity,
+    refetchInterval: false,
   });
 }
