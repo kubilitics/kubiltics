@@ -185,7 +185,8 @@ func (c *AnthropicClientImpl) Complete(ctx context.Context, messages []types.Mes
 	// Convert to Anthropic message format
 	anthMessages := convertMessages(filteredMessages)
 
-	// Convert tools to Anthropic format
+	// Convert tools to Anthropic format (cap at 128 for API limit)
+	tools = types.CapToolsForAPI(tools)
 	anthTools := convertTools(tools)
 
 	req := anthRequest{
@@ -231,7 +232,8 @@ func (c *AnthropicClientImpl) CompleteStream(ctx context.Context, messages []typ
 	// Extract system message if present
 	system, filteredMessages := extractSystem(messages)
 
-	// Convert messages and tools
+	// Convert messages and tools (cap at 128 for API limit)
+	tools = types.CapToolsForAPI(tools)
 	anthMessages := convertMessages(filteredMessages)
 	anthTools := convertTools(tools)
 

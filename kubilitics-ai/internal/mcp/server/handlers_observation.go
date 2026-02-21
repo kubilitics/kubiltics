@@ -1072,63 +1072,62 @@ func (s *mcpServerImpl) handleMetrics(ctx context.Context, args map[string]inter
 		return nil, err
 	}
 
+	// Accept both kind/resource_type and name/resource_name for LLM robustness.
 	namespace := strArg(args, "namespace")
 	kind := strArg(args, "kind")
+	if kind == "" {
+		kind = strArg(args, "resource_type")
+	}
 	name := strArg(args, "name")
+	if name == "" {
+		name = strArg(args, "resource_name")
+	}
+	kind = strings.ToLower(strings.TrimSpace(kind))
+	name = strings.TrimSpace(name)
+
+	// Namespaced resource types require namespace (backend /metrics/summary and path-based endpoints).
+	namespacedKinds := map[string]bool{
+		"pod": true, "deployment": true, "replicaset": true, "statefulset": true,
+		"daemonset": true, "job": true, "cronjob": true,
+	}
+	if kind != "" && kind != "node" && namespacedKinds[kind] && namespace == "" {
+		return nil, fmt.Errorf("observe_metrics: namespace is required for %s metrics; provide namespace (and name) for the resource", kind)
+	}
+	if kind != "" && kind != "node" && name == "" {
+		return nil, fmt.Errorf("observe_metrics: name (or resource_name) is required for %s metrics", kind)
+	}
+	if kind == "" || name == "" {
+		return nil, fmt.Errorf("observe_metrics: kind (or resource_type) and name (or resource_name) are required; for pod, deployment, etc. namespace is also required")
+	}
 
 	// Route to the most specific metrics endpoint available.
 	var path string
-	switch strings.ToLower(kind) {
+	switch kind {
 	case "node":
-		if name != "" {
-			path = c.clusterPath(clusterID, "/metrics/nodes/"+url.PathEscape(name))
-		} else {
-			path = c.clusterPath(clusterID, "/metrics")
-		}
+		path = c.clusterPath(clusterID, "/metrics/nodes/"+url.PathEscape(name))
 	case "deployment":
-		if name != "" && namespace != "" {
-			path = c.clusterPath(clusterID, "/metrics/"+url.PathEscape(namespace)+"/deployment/"+url.PathEscape(name))
-		} else {
-			path = c.clusterPath(clusterID, "/metrics/summary")
-		}
+		path = c.clusterPath(clusterID, "/metrics/"+url.PathEscape(namespace)+"/deployment/"+url.PathEscape(name))
 	case "pod":
-		if name != "" && namespace != "" {
-			path = c.clusterPath(clusterID, "/metrics/"+url.PathEscape(namespace)+"/"+url.PathEscape(name))
-		} else {
-			path = c.clusterPath(clusterID, "/metrics/summary")
-		}
+		path = c.clusterPath(clusterID, "/metrics/"+url.PathEscape(namespace)+"/"+url.PathEscape(name))
 	case "statefulset":
-		if name != "" && namespace != "" {
-			path = c.clusterPath(clusterID, "/metrics/"+url.PathEscape(namespace)+"/statefulset/"+url.PathEscape(name))
-		} else {
-			path = c.clusterPath(clusterID, "/metrics/summary")
-		}
+		path = c.clusterPath(clusterID, "/metrics/"+url.PathEscape(namespace)+"/statefulset/"+url.PathEscape(name))
 	case "daemonset":
-		if name != "" && namespace != "" {
-			path = c.clusterPath(clusterID, "/metrics/"+url.PathEscape(namespace)+"/daemonset/"+url.PathEscape(name))
-		} else {
-			path = c.clusterPath(clusterID, "/metrics/summary")
-		}
+		path = c.clusterPath(clusterID, "/metrics/"+url.PathEscape(namespace)+"/daemonset/"+url.PathEscape(name))
 	case "replicaset":
-		if name != "" && namespace != "" {
-			path = c.clusterPath(clusterID, "/metrics/"+url.PathEscape(namespace)+"/replicaset/"+url.PathEscape(name))
-		} else {
-			path = c.clusterPath(clusterID, "/metrics/summary")
-		}
+		path = c.clusterPath(clusterID, "/metrics/"+url.PathEscape(namespace)+"/replicaset/"+url.PathEscape(name))
 	case "job":
-		if name != "" && namespace != "" {
-			path = c.clusterPath(clusterID, "/metrics/"+url.PathEscape(namespace)+"/job/"+url.PathEscape(name))
-		} else {
-			path = c.clusterPath(clusterID, "/metrics/summary")
-		}
+		path = c.clusterPath(clusterID, "/metrics/"+url.PathEscape(namespace)+"/job/"+url.PathEscape(name))
 	case "cronjob":
-		if name != "" && namespace != "" {
-			path = c.clusterPath(clusterID, "/metrics/"+url.PathEscape(namespace)+"/cronjob/"+url.PathEscape(name))
-		} else {
-			path = c.clusterPath(clusterID, "/metrics/summary")
-		}
+		path = c.clusterPath(clusterID, "/metrics/"+url.PathEscape(namespace)+"/cronjob/"+url.PathEscape(name))
 	default:
-		path = c.clusterPath(clusterID, "/metrics/summary")
+		// Use unified summary API with required query params (backend requires resource_type, resource_name, namespace for namespaced).
+		q := url.Values{}
+		q.Set("resource_type", kind)
+		q.Set("resource_name", name)
+		if kind != "node" {
+			q.Set("namespace", namespace)
+		}
+		path = c.clusterPath(clusterID, "/metrics/summary?"+q.Encode())
 	}
 
 	var metrics map[string]interface{}
@@ -5703,6 +5702,17 @@ func (s *mcpServerImpl) handleExportTopologyToDrawio(ctx context.Context, args m
 // It is called from registerAllTools via createObservationHandler.
 func (s *mcpServerImpl) routeObservationTool(ctx context.Context, name string, args map[string]interface{}) (interface{}, error) {
 	switch name {
+	// Chat tool names (pod-first subset) — route to same handlers as taxonomy observe_* tools.
+	case "list_resources":
+		return s.handleResourcesByQuery(ctx, args)
+	case "get_resource":
+		return s.handleObserveResource(ctx, args)
+	case "get_logs":
+		return s.handlePodLogs(ctx, args)
+	case "get_events":
+		return s.handleEvents(ctx, args)
+	case "get_cluster_health":
+		return s.handleClusterOverview(ctx, args)
 	case "observe_cluster_overview":
 		return s.handleClusterOverview(ctx, args)
 	case "observe_resource":

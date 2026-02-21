@@ -1,12 +1,17 @@
 # Kubilitics — Enterprise-grade one-command dev and test (B3)
 # Usage: make dev | desktop | desktop-dev | test | backend | frontend | clean
 
-.PHONY: dev test backend frontend kcli backend-test frontend-test kcli-test test-reports clean env-example restart desktop desktop-dev
+.PHONY: dev dev-ai test backend frontend kcli backend-test frontend-test kcli-test test-reports clean env-example restart desktop desktop-dev
 
 # Default: run full stack (backend + frontend) via script
 dev: env-example
 	@chmod +x scripts/dev.sh 2>/dev/null || true
 	@./scripts/dev.sh
+
+# Full stack with AI: backend + kubilitics-ai + frontend (for testing AI Assistant before release)
+dev-ai: env-example
+	@chmod +x scripts/dev-with-ai.sh 2>/dev/null || true
+	@./scripts/dev-with-ai.sh
 
 # Build backend, then kill processes on 819/5173 and start backend + frontend.
 restart:

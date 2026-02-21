@@ -156,7 +156,8 @@ func (c *OpenAIClientImpl) Complete(
 		}
 	}
 
-	// Convert tools to OpenAI format
+	// Convert tools to OpenAI format (cap at 128 for API limit)
+	tools = types.CapToolsForAPI(tools)
 	var openAITools []openAITool
 	if len(tools) > 0 {
 		openAITools = make([]openAITool, len(tools))
@@ -239,7 +240,8 @@ func (c *OpenAIClientImpl) CompleteStream(
 		}
 	}
 
-	// Convert tools
+	// Convert tools (cap at 128 for API limit)
+	tools = types.CapToolsForAPI(tools)
 	var openAITools []openAITool
 	if len(tools) > 0 {
 		openAITools = make([]openAITool, len(tools))

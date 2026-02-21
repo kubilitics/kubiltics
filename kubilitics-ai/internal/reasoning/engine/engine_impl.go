@@ -23,9 +23,18 @@ import (
 	"github.com/kubilitics/kubilitics-ai/internal/db"
 	"github.com/kubilitics/kubilitics-ai/internal/llm/adapter"
 	"github.com/kubilitics/kubilitics-ai/internal/llm/types"
+	"github.com/kubilitics/kubilitics-ai/internal/mcp/tools"
 	reasoningContext "github.com/kubilitics/kubilitics-ai/internal/reasoning/context"
 	"github.com/kubilitics/kubilitics-ai/internal/reasoning/prompt"
 )
+
+// GetChatToolSchemas returns the pod-first tool subset for AI chat/stream.
+// Use this when wiring the reasoning engine or chat handler so the LLM receives
+// at most 128 tools (this subset is well under that). Tools use the same names
+// as the observation and analysis HandlerMaps so the executor can run them.
+func GetChatToolSchemas() []types.Tool {
+	return tools.GetChatTools()
+}
 
 // InvestigationState represents the lifecycle state of an investigation.
 type InvestigationState string

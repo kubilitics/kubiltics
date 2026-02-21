@@ -193,7 +193,8 @@ func (c *OllamaClientImpl) Complete(
 		}
 	}
 
-	// Convert tools to Ollama format
+	// Convert tools to Ollama format (cap at 128 for API limit)
+	tools = types.CapToolsForAPI(tools)
 	var ollamaTools []ollamaTool
 	if len(tools) > 0 {
 		ollamaTools = make([]ollamaTool, len(tools))
@@ -272,7 +273,8 @@ func (c *OllamaClientImpl) CompleteStream(
 		}
 	}
 
-	// Convert tools
+	// Convert tools (cap at 128 for API limit)
+	tools = types.CapToolsForAPI(tools)
 	var ollamaTools []ollamaTool
 	if len(tools) > 0 {
 		ollamaTools = make([]ollamaTool, len(tools))

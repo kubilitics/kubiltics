@@ -33,6 +33,8 @@ import {
   Lock,
   LayoutDashboard,
 } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -361,6 +363,16 @@ interface CollapsibleSectionProps {
   highlight?: boolean;
 }
 
+function MarkdownContent({ content }: { content: string }) {
+  return (
+    <div className="prose prose-sm dark:prose-invert max-w-none prose-table:text-xs prose-th:py-1 prose-th:px-2 prose-td:py-1 prose-td:px-2 prose-p:my-1">
+      <ReactMarkdown remarkPlugins={[remarkGfm]}>
+        {content}
+      </ReactMarkdown>
+    </div>
+  );
+}
+
 function CollapsibleSection({ icon, title, content, defaultOpen = true, highlight = false }: CollapsibleSectionProps) {
   const [open, setOpen] = useState(defaultOpen);
   return (
@@ -381,8 +393,8 @@ function CollapsibleSection({ icon, title, content, defaultOpen = true, highligh
           : <ChevronDown className="h-3 w-3 text-muted-foreground shrink-0" />}
       </button>
       {open && (
-        <div className="px-3 pb-2 pt-1 text-sm whitespace-pre-wrap leading-relaxed">
-          {content}
+        <div className="px-3 pb-2 pt-1 text-sm leading-relaxed">
+          <MarkdownContent content={content} />
         </div>
       )}
     </div>
@@ -424,7 +436,9 @@ function ActionsSection({ content }: { content: string }) {
         <span className="text-sm">🛠</span>
         <span className="text-[11px] font-semibold text-muted-foreground">Suggested Actions</span>
       </div>
-      <div className="px-3 py-2 text-sm whitespace-pre-wrap leading-relaxed">{content}</div>
+      <div className="px-3 py-2 text-sm leading-relaxed">
+        <MarkdownContent content={content} />
+      </div>
       {commands.length > 0 && (
         <div className="px-3 pb-2 space-y-1.5">
           {commands.map((cmd, i) => <KubectlCommand key={i} command={cmd} />)}
@@ -461,7 +475,9 @@ function AssistantMessage({ content, onCopy, copied }: {
           )}
         </>
       ) : (
-        <div className="whitespace-pre-wrap text-sm leading-relaxed">{content}</div>
+        <div className="text-sm leading-relaxed">
+          <MarkdownContent content={content} />
+        </div>
       )}
       <button
         onClick={onCopy}
@@ -1329,7 +1345,7 @@ function ToolEventBubble({ event }: ToolEventBubbleProps) {
       <div className={cn(
         'max-w-[92%] rounded-xl border text-xs font-mono overflow-hidden',
         cat.bgColor, cat.borderColor,
-        isError && 'bg-destructive/8 border-destructive/25',
+        isError && 'bg-muted/40 border-muted-foreground/20',
       )}>
         {/* Header */}
         <div
@@ -1342,7 +1358,7 @@ function ToolEventBubble({ event }: ToolEventBubbleProps) {
           <CategoryIcon className={cn('h-3 w-3 shrink-0', cat.color)} />
           <span className={cn('font-semibold truncate max-w-[180px]', cat.color)}>{humanizeToolName(event.tool_name)}</span>
           <span className="text-muted-foreground ml-auto shrink-0">
-            {isCalling && 'running…'}{isResult && 'done'}{isError && 'failed'}
+            {isCalling && 'running…'}{isResult && 'done'}{isError && 'skipped'}
           </span>
           {/* Copy result button */}
           {isResult && event.result && (
@@ -1402,7 +1418,21 @@ function ToolEventBubble({ event }: ToolEventBubbleProps) {
             )}
           </div>
         )}
-        {isError && event.error && <div className="px-3 pb-2 text-destructive break-words">{event.error}</div>}
+        {isError && event.error && (
+          <div className="px-3 pb-2">
+            {expanded ? (
+              <p className="text-muted-foreground break-words text-[11px]">{event.error}</p>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setExpanded(true)}
+                className="text-[11px] text-muted-foreground hover:text-foreground hover:underline"
+              >
+                Show error details
+              </button>
+            )}
+          </div>
+        )}
       </div>
     </motion.div>
   );

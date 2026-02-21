@@ -50,9 +50,10 @@ func (c *OllamaClientImpl) runAgentLoop(
 ) {
 	msgs := make([]types.Message, len(messages))
 	copy(msgs, messages)
+	toolsForAPI := types.CapToolsForAPI(tools)
 
 	for turn := 0; turn < cfg.MaxTurns; turn++ {
-		text, rawToolCalls, err := c.Complete(ctx, msgs, tools)
+		text, rawToolCalls, err := c.Complete(ctx, msgs, toolsForAPI)
 		if err != nil {
 			evtCh <- types.AgentStreamEvent{Err: fmt.Errorf("LLM turn %d: %w", turn, err)}
 			return

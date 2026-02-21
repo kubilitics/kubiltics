@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -12,6 +13,7 @@ import (
 
 	"github.com/gorilla/websocket"
 	"github.com/kubilitics/kubilitics-ai/internal/llm/types"
+	reasoningengine "github.com/kubilitics/kubilitics-ai/internal/reasoning/engine"
 	mcpserver "github.com/kubilitics/kubilitics-ai/internal/mcp/server"
 )
 
@@ -170,9 +172,18 @@ func (wsc *WSConnection) handle() {
 			var req WSRequest
 			err := wsc.conn.ReadJSON(&req)
 			if err != nil {
-				if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-					log.Printf("WebSocket read error: %v", err)
+				// Only keep connection open for recoverable JSON decode errors; close on connection/EOF errors
+				var syntaxErr *json.SyntaxError
+				var typeErr *json.UnmarshalTypeError
+				if errors.As(err, &syntaxErr) || errors.As(err, &typeErr) {
+					log.Printf("WebSocket invalid JSON (keeping connection open): %v", err)
+					wsc.sendError(fmt.Sprintf("Invalid message format: %v", err))
+					continue
 				}
+				if !websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
+					return
+				}
+				log.Printf("WebSocket read error: %v", err)
 				return
 			}
 
@@ -285,12 +296,12 @@ func (wsc *WSConnection) handleAgenticStream(
 	cs *ConversationStore,
 	executor types.ToolExecutor,
 ) {
-	// Collect tool schemas from MCP server for context.
+	// Use pod-first chat tool subset so the LLM gets a focused set (list_resources,
+	// get_resource, get_logs, get_events, get_cluster_health, analyze_pod_health)
+	// unless the client explicitly sends tools.
 	tools := req.Tools
-	if mcp := wsc.server.GetMCPServer(); mcp != nil && len(tools) == 0 {
-		if mcpTools, err := mcp.ListTools(wsc.ctx); err == nil {
-			tools = convertMCPTools(mcpTools)
-		}
+	if len(tools) == 0 {
+		tools = reasoningengine.GetChatToolSchemas()
 	}
 
 	cfg := types.DefaultAgentConfig()

@@ -114,7 +114,8 @@ func (c *OpenAIClientImpl) runAgentLoop(
 ) {
 	// Convert initial messages to OpenAI wire format.
 	oaiMsgs := convertMessagesToOAI(messages)
-	oaiTools := convertToolsToOAI(tools)
+	toolsForAPI := types.CapToolsForAPI(tools)
+	oaiTools := convertToolsToOAI(toolsForAPI)
 
 	for turn := 0; turn < cfg.MaxTurns; turn++ {
 		req := oaiRequest{

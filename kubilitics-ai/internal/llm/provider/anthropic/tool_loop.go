@@ -65,7 +65,8 @@ func (c *AnthropicClientImpl) runAgentLoop(
 	system, filtered := extractSystem(messages)
 	// Build a mutable copy of the Anthropic message list.
 	anthMsgs := convertMessages(filtered)
-	anthTools := convertTools(tools)
+	toolsForAPI := types.CapToolsForAPI(tools)
+	anthTools := convertTools(toolsForAPI)
 
 	for turn := 0; turn < cfg.MaxTurns; turn++ {
 		req := anthRequest{

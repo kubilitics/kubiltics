@@ -35,6 +35,19 @@ type CompletionResponse struct {
 	Usage     TokenUsage `json:"usage"`      // token usage
 }
 
+// MaxToolsPerRequest is the maximum number of tools to send in a single LLM API request.
+// OpenAI and compatible APIs reject requests with more than 128 tools.
+const MaxToolsPerRequest = 128
+
+// CapToolsForAPI returns at most MaxToolsPerRequest tools so the API payload stays within limits.
+// The executor may still have more handlers; only the list sent to the LLM is capped.
+func CapToolsForAPI(tools []Tool) []Tool {
+	if len(tools) <= MaxToolsPerRequest {
+		return tools
+	}
+	return tools[:MaxToolsPerRequest]
+}
+
 // TokenUsage tracks token usage and cost
 type TokenUsage struct {
 	PromptTokens     int     `json:"prompt_tokens"`     // input tokens

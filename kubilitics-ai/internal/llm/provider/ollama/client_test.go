@@ -8,6 +8,10 @@ import (
 )
 
 func TestNewOllamaClient(t *testing.T) {
+	// Use an unreachable URL so connection test always fails and the test is deterministic
+	// (no dependency on Ollama actually running). Port 1 is typically not listening.
+	unreachableURL := "http://127.0.0.1:1"
+
 	tests := []struct {
 		name      string
 		baseURL   string
@@ -15,22 +19,22 @@ func TestNewOllamaClient(t *testing.T) {
 		wantError bool
 	}{
 		{
-			name:      "Valid configuration with defaults",
-			baseURL:   "",
+			name:      "Unreachable URL with default model",
+			baseURL:   unreachableURL,
 			model:     "",
-			wantError: true, // Will fail to connect to localhost:11434
+			wantError: true,
 		},
 		{
-			name:      "Valid configuration with custom model",
-			baseURL:   "",
+			name:      "Unreachable URL with custom model",
+			baseURL:   unreachableURL,
 			model:     "mistral",
-			wantError: true, // Will fail to connect
+			wantError: true,
 		},
 		{
-			name:      "Custom base URL",
-			baseURL:   "http://remote:11434",
+			name:      "Unreachable custom base URL",
+			baseURL:   unreachableURL,
 			model:     "llama3",
-			wantError: true, // Will fail to connect
+			wantError: true,
 		},
 	}
 

@@ -231,7 +231,8 @@ func (c *CustomClientImpl) Complete(
 		}
 	}
 
-	// Convert tools to custom format
+	// Convert tools to custom format (cap at 128 for API limit)
+	tools = types.CapToolsForAPI(tools)
 	var customTools []customTool
 	if len(tools) > 0 {
 		customTools = make([]customTool, len(tools))
@@ -313,7 +314,8 @@ func (c *CustomClientImpl) CompleteStream(
 		}
 	}
 
-	// Convert tools
+	// Convert tools (cap at 128 for API limit)
+	tools = types.CapToolsForAPI(tools)
 	var customTools []customTool
 	if len(tools) > 0 {
 		customTools = make([]customTool, len(tools))

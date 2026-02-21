@@ -50,7 +50,8 @@ func (c *CustomClientImpl) runAgentLoop(
 	evtCh chan<- types.AgentStreamEvent,
 ) {
 	msgs := makeCustomMessages(messages)
-	cTools := makeCustomTools(tools)
+	toolsForAPI := types.CapToolsForAPI(tools)
+	cTools := makeCustomTools(toolsForAPI)
 
 	for turn := 0; turn < cfg.MaxTurns; turn++ {
 		req := customChatRequest{

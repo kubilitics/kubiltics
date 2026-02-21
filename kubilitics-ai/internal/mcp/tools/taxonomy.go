@@ -230,7 +230,19 @@ var ToolTaxonomy = []ToolDefinition{
 	{
 		Name:        "observe_metrics",
 		Category:    CategoryObservation,
-		Description: "Get time-series metrics for resources with trend analysis and anomaly detection.",
+		Description: "Get current CPU/memory metrics for a resource. For pod, deployment, replicaset, statefulset, daemonset, job, cronjob namespace is required. For node only name is required.",
+		InputSchema: map[string]interface{}{
+			"type": "object",
+			"properties": map[string]interface{}{
+				"cluster_id":     map[string]interface{}{"type": "string", "description": "Cluster ID (optional; defaults to first cluster)"},
+				"namespace":      map[string]interface{}{"type": "string", "description": "Namespace (required for pod, deployment, replicaset, statefulset, daemonset, job, cronjob)"},
+				"kind":           map[string]interface{}{"type": "string", "description": "Resource kind: pod, node, deployment, replicaset, statefulset, daemonset, job, cronjob"},
+				"resource_type":  map[string]interface{}{"type": "string", "description": "Alias for kind"},
+				"name":           map[string]interface{}{"type": "string", "description": "Resource name"},
+				"resource_name":  map[string]interface{}{"type": "string", "description": "Alias for name"},
+			},
+			"required": []string{"kind", "name"},
+		},
 		Destructive: false,
 		RequiresAI:  true,
 	},

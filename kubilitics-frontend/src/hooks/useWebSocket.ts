@@ -74,6 +74,7 @@ export function useWebSocket(options: UseWebSocketOptions) {
   const intentionalClose = useRef(false);
 
   const connect = useCallback(() => {
+    intentionalClose.current = false;
     if (ws.current?.readyState === WebSocket.OPEN) {
       return;
     }

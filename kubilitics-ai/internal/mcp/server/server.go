@@ -408,6 +408,16 @@ func (s *mcpServerImpl) registerAllTools() error {
 		totalTools++
 	}
 
+	// Register chat tool names (list_resources, get_resource, get_logs, get_events, get_cluster_health)
+	// so the executor can run them; they route to the same observation handlers above.
+	for _, toolDef := range tools.GetChatToolDefinitions() {
+		handler := s.createObservationHandler(&toolDef)
+		if err := s.registerToolWithCategory(toolDef.Name, toolDef.Description, toolDef.InputSchema, handler, string(toolDef.Category), toolDef.Destructive, toolDef.RequiresAI, toolDef.RequiredAutonomyLevel); err != nil {
+			return fmt.Errorf("failed to register chat tool %s: %w", toolDef.Name, err)
+		}
+		totalTools++
+	}
+
 	// Register analysis tools
 	analysisTools := tools.GetToolsByCategory(tools.CategoryAnalysis)
 	for _, toolDef := range analysisTools {
