@@ -33,9 +33,10 @@ FROM nginx:${NGINX_VERSION}-alpine AS runtime
 # Copy built assets from builder
 COPY --from=builder /app/dist /usr/share/nginx/html
 
-# Copy and validate nginx config — nginx -t catches syntax errors at build time
+# Copy nginx config. Note: nginx -t cannot be run at build time because
+# proxy_pass upstream hostnames (e.g. 'backend') are only resolvable at
+# runtime when the container network is up. nginx will validate config on startup.
 COPY nginx.conf /etc/nginx/conf.d/default.conf
-RUN nginx -t
 
 # nginx's built-in 'nginx' user (uid 101) must own the dirs it writes to
 # so the worker processes can run without root
