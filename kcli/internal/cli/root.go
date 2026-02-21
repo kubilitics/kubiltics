@@ -110,6 +110,8 @@ func newRootCommand(in io.Reader, out, errOut io.Writer) *cobra.Command {
 		newInstabilityCmd(a),
 		newEventsCmd(a),
 		newIncidentCmd(a),
+		newCostCmd(a),
+		newSecurityCmd(a),
 		newUICmd(a),
 		newAICmd(a),
 		newWhyCmd(a),
@@ -179,7 +181,8 @@ func IsBuiltinFirstArg(name string) bool {
 	case "get", "g", "describe", "desc", "apply", "ap", "create", "cr", "delete", "del", "logs", "exec", "port-forward", "top",
 		"rollout", "diff", "explain", "wait", "scale", "patch", "label", "annotate", "edit", "kgp", "auth",
 		"ctx", "ns", "search", "plugin", "config", "health", "metrics", "restarts", "instability", "events", "incident", "ui",
-		"ai", "why", "summarize", "suggest", "fix", "help", "completion", "version":
+		"ai", "why", "summarize", "suggest", "fix", "help", "completion", "version",
+		"cost", "security":
 		return true
 	default:
 		return false
