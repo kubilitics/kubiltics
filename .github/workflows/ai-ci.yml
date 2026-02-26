@@ -25,9 +25,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version: ${{ env.GO_VERSION }}
           cache-dependency-path: kubilitics-ai/go.sum
@@ -44,14 +44,14 @@ jobs:
             2>&1 | tee $GITHUB_WORKSPACE/test_reports/ai/test.log
 
       - name: Upload test report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         if: always()
         with:
           name: ai-test-report
           path: ${{ github.workspace }}/test_reports/ai/
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v5
         with:
           files: ./kubilitics-ai/coverage.out
           flags: ai
@@ -68,14 +68,14 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version: ${{ env.GO_VERSION }}
 
       - name: Run golangci-lint
-        uses: golangci/golangci-lint-action@v4
+        uses: golangci/golangci-lint-action@v9
         with:
           version: latest
           working-directory: kubilitics-ai
@@ -105,9 +105,9 @@ jobs:
             goarch: amd64
             suffix: ".exe"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version: ${{ env.GO_VERSION }}
           cache-dependency-path: kubilitics-ai/go.sum
@@ -127,7 +127,7 @@ jobs:
             ./cmd/server/main.go
 
       - name: Upload artifact (${{ matrix.goos }}-${{ matrix.goarch }})
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: kubilitics-ai-${{ matrix.goos }}-${{ matrix.goarch }}
           path: kubilitics-ai/bin/kubilitics-ai-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.suffix }}

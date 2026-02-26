@@ -33,7 +33,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Install Swagger/OpenAPI tools
         run: |
@@ -64,10 +64,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: '20'
           cache: 'npm'
@@ -96,7 +96,7 @@ jobs:
           fi
 
       - name: Upload generated types
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         if: always()
         with:
           name: generated-typescript-types
@@ -109,10 +109,10 @@ jobs:
     needs: [validate-backend-spec, generate-typescript-types]
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Download generated types
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: generated-typescript-types
           path: kubilitics-frontend/src/types/api/

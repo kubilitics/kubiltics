@@ -36,7 +36,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Install Helm
         uses: azure/setup-helm@v4
@@ -85,7 +85,7 @@ jobs:
     needs: lint
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Install Helm
         uses: azure/setup-helm@v4
@@ -147,7 +147,7 @@ jobs:
     if: github.event_name != 'pull_request'
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
@@ -172,7 +172,7 @@ jobs:
           ls -lh ./packaged/
 
       - name: Upload chart artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: helm-chart-${{ steps.chart-version.outputs.version }}
           path: deploy/helm/kubilitics/packaged/*.tgz
@@ -187,7 +187,7 @@ jobs:
       (github.event_name == 'workflow_dispatch' && github.event.inputs.publish == 'true')
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Install Helm
         uses: azure/setup-helm@v4
@@ -195,7 +195,7 @@ jobs:
           version: '3.14.0'
 
       - name: Download chart artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           # FIX: pattern matches artifact *names* not filenames — the artifact is named
           # "helm-chart-{version}" (no .tgz suffix), so the old pattern never matched.

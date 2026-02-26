@@ -29,14 +29,14 @@ jobs:
     name: Trivy Scan - Backend
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Build Docker image
         # Build from repo root so Dockerfile can COPY both kubilitics-backend/ and kcli/
         run: docker build -t kubilitics-backend:test -f kubilitics-backend/Dockerfile .
 
       - name: Run Trivy vulnerability scanner (table output)
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@0.34.1
         with:
           image-ref: 'kubilitics-backend:test'
           format: 'table'
@@ -47,14 +47,14 @@ jobs:
     name: Trivy Scan - AI Backend
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Build Docker image
         working-directory: kubilitics-ai
         run: docker build -t kubilitics-ai:test -f Dockerfile .
 
       - name: Run Trivy vulnerability scanner (table output)
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@0.34.1
         with:
           image-ref: 'kubilitics-ai:test'
           format: 'table'
