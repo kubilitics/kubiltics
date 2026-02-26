@@ -116,6 +116,8 @@ project-docs/
 *.md
 !README.md
 !CHANGELOG.md
+!docs/*.md
+!docs/**/*.md
 
 # Temporary/backup files
 Topology.tsx

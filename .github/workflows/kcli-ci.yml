@@ -45,7 +45,9 @@ jobs:
           go-version: '1.24.2'
           cache-dependency-path: kcli/go.sum
       - name: Build Windows binary
-        run: CGO_ENABLED=0 go build -ldflags="-s -w" -o kcli.exe ./cmd/kcli
+        env:
+          CGO_ENABLED: "0"
+        run: go build -ldflags="-s -w" -o kcli.exe ./cmd/kcli
       - name: Smoke test (version)
         run: .\kcli.exe version
       - name: Smoke test (help)

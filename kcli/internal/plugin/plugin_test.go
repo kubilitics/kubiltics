@@ -3,10 +3,29 @@ package plugin
 import (
 	"encoding/json"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
+
+// unshareAvailable returns true only when unshare(1) exists and the kernel
+// permits unprivileged user namespaces (needed for plugin sandbox).
+// GitHub Actions Linux runners typically block this via sysctl, so tests that
+// invoke the sandbox must call this and skip when it returns false.
+func unshareAvailable() bool {
+	if runtime.GOOS != "linux" {
+		return false
+	}
+	path, err := exec.LookPath("unshare")
+	if err != nil {
+		return false
+	}
+	// Probe: attempt to enter a user namespace with a no-op command.
+	probe := exec.Command(path, "--user", "--map-root-user", "true")
+	return probe.Run() == nil
+}
 
 func writeFile(t *testing.T, path, content string, mode os.FileMode) {
 	t.Helper()
@@ -154,6 +173,9 @@ permissions:
 }
 
 func TestTryRunForArgsUsesManifestCommandAlias(t *testing.T) {
+	if runtime.GOOS == "linux" && !unshareAvailable() {
+		t.Skip("unprivileged user namespaces not available on this runner; skipping sandbox execution test")
+	}
 	home := setupPluginHome(t)
 	bin := filepath.Join(home, "plugins", "kcli-foo")
 	writeFile(t, bin, "#!/bin/sh\necho \"$@\" > \"$KCLI_HOME_DIR/ran.txt\"\n", 0o755)
