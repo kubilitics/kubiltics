@@ -496,12 +496,23 @@ jobs:
 
           # Only inject signingIdentity when APPLE_CERTIFICATE secret is set —
           # passing an empty string causes codesign to fail with "keychain item not found".
+          # When TAURI_SIGNING_PRIVATE_KEY is absent, disable createUpdaterArtifacts so
+          # Tauri does not try to decode an empty/missing key and exit 1 after bundling.
           # tauri.conf.json beforeBuildCommand is already "" so no override needed there.
           if [ -n "${{ secrets.APPLE_CERTIFICATE }}" ]; then
-            CONFIG='{"bundle":{"macOS":{"signingIdentity":"${{ secrets.APPLE_SIGNING_IDENTITY }}"}}}'
+            if [ -n "$TAURI_SIGNING_PRIVATE_KEY" ]; then
+              CONFIG='{"bundle":{"macOS":{"signingIdentity":"${{ secrets.APPLE_SIGNING_IDENTITY }}"}}}'
+            else
+              CONFIG='{"bundle":{"macOS":{"signingIdentity":"${{ secrets.APPLE_SIGNING_IDENTITY }}"},"createUpdaterArtifacts":false}}'
+            fi
             echo "🔐 Code signing enabled"
           else
-            CONFIG='{"bundle":{"macOS":{"signingIdentity":null}}}'
+            if [ -n "$TAURI_SIGNING_PRIVATE_KEY" ]; then
+              CONFIG='{"bundle":{"macOS":{"signingIdentity":null}}}'
+            else
+              CONFIG='{"bundle":{"macOS":{"signingIdentity":null},"createUpdaterArtifacts":false}}'
+              echo "⚠️  No TAURI_SIGNING_PRIVATE_KEY — updater artifacts disabled"
+            fi
             echo "⚠️  No APPLE_CERTIFICATE secret — building unsigned (ad-hoc) app"
           fi
 
@@ -544,8 +555,14 @@ jobs:
             exit 1
           fi
           echo "✅ Pre-build checks passed"
-          # tauri.conf.json beforeBuildCommand is already "" — no override needed
-          cargo tauri build --target x86_64-pc-windows-msvc --bundles nsis,msi
+          # Disable updater artifact signing when no private key is set to avoid
+          # "failed to decode secret key" error after successful bundle creation.
+          if [ -n "$TAURI_SIGNING_PRIVATE_KEY" ]; then
+            cargo tauri build --target x86_64-pc-windows-msvc --bundles nsis,msi
+          else
+            echo "⚠️  No TAURI_SIGNING_PRIVATE_KEY — updater artifacts disabled"
+            cargo tauri build --target x86_64-pc-windows-msvc --bundles nsis,msi --config '{"bundle":{"createUpdaterArtifacts":false}}'
+          fi
       - name: Build Tauri app (Linux - AppImage + DEB + RPM)
         if: matrix.os == 'ubuntu-latest'
         working-directory: kubilitics-desktop/src-tauri
@@ -566,9 +583,16 @@ jobs:
             exit 1
           fi
           echo "✅ Pre-build checks passed"
+          # Disable updater artifact signing when no private key is set to avoid
+          # "failed to decode secret key" error after successful bundle creation.
           # Build all three Linux package formats in a single cargo invocation
           # (avoids 3x compilation; tauri.conf.json beforeBuildCommand is already "")
-          cargo tauri build --target x86_64-unknown-linux-gnu --bundles appimage,deb,rpm
+          if [ -n "$TAURI_SIGNING_PRIVATE_KEY" ]; then
+            cargo tauri build --target x86_64-unknown-linux-gnu --bundles appimage,deb,rpm
+          else
+            echo "⚠️  No TAURI_SIGNING_PRIVATE_KEY — updater artifacts disabled"
+            cargo tauri build --target x86_64-unknown-linux-gnu --bundles appimage,deb,rpm --config '{"bundle":{"createUpdaterArtifacts":false}}'
+          fi
       - name: Upload desktop artifacts (macOS)
         if: matrix.os == 'macos-latest'
         uses: actions/upload-artifact@v4
