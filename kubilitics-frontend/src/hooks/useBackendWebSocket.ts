@@ -58,7 +58,7 @@ export function useBackendWebSocket(options: UseBackendWebSocketOptions = {}) {
       ? backendBaseUrl.replace(/^https?:\/\//, '').replace(/\/+$/, '')
       : (typeof window !== 'undefined' ? window.location.host : '');
     if (!host) return;
-    const url = new URL('/ws/resources', `${protocol}//${host}`);
+    const url = new URL('/ws/resources', `${protocol}://${host}`);
     if (clusterId) url.searchParams.set('cluster_id', clusterId);
 
     const ws = new WebSocket(url.toString());

@@ -1,13 +1,13 @@
 import { BackendProject } from '@/services/backendApiClient';
-import { Focus, ArrowRight, Settings, Trash2 } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
+import { FolderKanban, ArrowRight, Settings, Trash2, Server, Layers } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 
 interface ProjectCardProps {
     project: BackendProject;
     /** Primary action: open project dashboard */
     onClick?: () => void;
-    /** Secondary action: open project settings (e.g. icon click) */
+    /** Secondary action: open project settings */
     onSettingsClick?: (e: React.MouseEvent) => void;
     /** Tertiary action: delete project */
     onDeleteClick?: (e: React.MouseEvent) => void;
@@ -16,80 +16,92 @@ interface ProjectCardProps {
 export function ProjectCard({ project, onClick, onSettingsClick, onDeleteClick }: ProjectCardProps) {
     return (
         <div
-            className="glass-card glass-card-hover group cursor-pointer relative overflow-hidden h-[340px] flex flex-col justify-between"
+            role="button"
+            tabIndex={0}
+            className={cn(
+                'group relative flex flex-col gap-5 p-6 rounded-2xl cursor-pointer',
+                'bg-card border border-border/60',
+                'shadow-sm hover:shadow-xl hover:shadow-black/5',
+                'hover:border-primary/30 hover:-translate-y-0.5',
+                'transition-all duration-300',
+                'focus:outline-none focus:ring-2 focus:ring-primary/40 focus:ring-offset-2'
+            )}
             onClick={onClick}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onClick?.(); }}
         >
-            {/* Subtle Top Shine */}
-            <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-white/50 to-transparent z-20" />
-
-            <div className="p-8 relative z-10 flex flex-col h-full">
-                <div className="flex justify-between items-start mb-10">
-                    <div className="relative">
-                        {/* Soft Glow behind icon */}
-                        <div className="absolute inset-x-0 -inset-y-4 bg-blue-500/10 blur-2xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-1000" />
-
-                        <div className="relative h-16 w-16 bg-white rounded-[1.5rem] flex items-center justify-center shadow-sm border border-slate-100 group-hover:border-blue-200 group-hover:-translate-y-1.5 transition-all duration-700 ease-spring">
-                            <Focus className="h-8 w-8 text-slate-400 group-hover:text-blue-600 transition-colors duration-500" />
-                        </div>
-                    </div>
-
-                    <div className="flex items-center gap-1.5">
-                        {onSettingsClick && (
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-10 w-10 rounded-full text-slate-400 hover:text-slate-900 hover:bg-white/90 shadow-sm transition-all"
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    onSettingsClick(e);
-                                }}
-                            >
-                                <Settings className="h-4.5 w-4.5" />
-                            </Button>
-                        )}
-                        {onDeleteClick && (
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-10 w-10 rounded-full text-slate-400 hover:text-red-500 hover:bg-red-50/80 shadow-sm transition-all"
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    onDeleteClick(e);
-                                }}
-                            >
-                                <Trash2 className="h-4.5 w-4.5" />
-                            </Button>
-                        )}
-                    </div>
+            {/* Top row: icon + action buttons */}
+            <div className="flex items-start justify-between">
+                {/* Project icon */}
+                <div className={cn(
+                    'relative h-14 w-14 rounded-2xl flex items-center justify-center',
+                    'bg-primary/10 text-primary',
+                    'group-hover:bg-primary group-hover:text-primary-foreground',
+                    'transition-all duration-300 ease-out'
+                )}>
+                    <FolderKanban className="h-6 w-6" />
                 </div>
 
-                <div className="space-y-3">
-                    <h3 className="apple-title text-2xl group-hover:text-blue-700 transition-colors duration-500">{project.name}</h3>
-                    <p className="apple-description text-sm line-clamp-2 min-h-[2.5rem] opacity-80">
-                        {project.description || "Synthesizing multi-cluster logic into a unified governance scope."}
-                    </p>
-                </div>
-
-                <div className="mt-auto pt-8 border-t border-white/40 flex items-center justify-between">
-                    <div className="flex gap-8">
-                        <div className="flex flex-col gap-1">
-                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">Clusters</span>
-                            <span className="text-xl font-bold text-slate-900 tabular-nums">{project.cluster_count || 0}</span>
-                        </div>
-                        <div className="flex flex-col gap-1">
-                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">Resources</span>
-                            <span className="text-xl font-bold text-slate-900 tabular-nums">{project.namespace_count || 0}</span>
-                        </div>
-                    </div>
-
-                    <div className="h-12 w-12 rounded-full bg-white/50 flex items-center justify-center group-hover:bg-blue-600 group-hover:shadow-xl group-hover:shadow-blue-500/25 transition-all duration-700 ease-spring group-hover:translate-x-1">
-                        <ArrowRight className="h-5 w-5 text-slate-400 group-hover:text-white transition-colors duration-500" />
+                {/* Action buttons + animated arrow */}
+                <div className="flex items-center gap-1">
+                    {onSettingsClick && (
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 rounded-full text-muted-foreground hover:text-foreground hover:bg-secondary opacity-0 group-hover:opacity-100 transition-all duration-200"
+                            onClick={(e) => { e.stopPropagation(); onSettingsClick(e); }}
+                            aria-label="Project settings"
+                        >
+                            <Settings className="h-3.5 w-3.5" />
+                        </Button>
+                    )}
+                    {onDeleteClick && (
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 rounded-full text-muted-foreground hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-all duration-200"
+                            onClick={(e) => { e.stopPropagation(); onDeleteClick(e); }}
+                            aria-label="Delete project"
+                        >
+                            <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                    )}
+                    <div className={cn(
+                        'h-8 w-8 rounded-full flex items-center justify-center',
+                        'bg-secondary text-muted-foreground',
+                        'group-hover:bg-primary group-hover:text-primary-foreground',
+                        'group-hover:translate-x-0.5',
+                        'transition-all duration-300'
+                    )}>
+                        <ArrowRight className="h-4 w-4" />
                     </div>
                 </div>
             </div>
 
-            {/* Premium Background Accent */}
-            <div className="absolute -bottom-12 -right-12 w-48 h-48 bg-blue-500/5 blur-[80px] rounded-full pointer-events-none group-hover:bg-blue-500/10 transition-colors duration-700" />
+            {/* Title + description */}
+            <div className="space-y-1.5">
+                <h3 className="font-bold text-[17px] tracking-tight leading-snug text-foreground group-hover:text-primary transition-colors duration-200">
+                    {project.name}
+                </h3>
+                <p className="text-sm text-muted-foreground leading-relaxed line-clamp-2 min-h-[2.5rem]">
+                    {project.description || 'No description provided.'}
+                </p>
+            </div>
+
+            {/* Stats footer */}
+            <div className="flex items-center gap-3 pt-4 border-t border-border/50 mt-auto">
+                <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-secondary/60 text-xs font-medium text-muted-foreground">
+                    <Server className="h-3.5 w-3.5 text-primary/60" />
+                    {typeof project.cluster_count === 'number'
+                        ? `${project.cluster_count} Cluster${project.cluster_count !== 1 ? 's' : ''}`
+                        : 'Clusters'}
+                </span>
+                <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-secondary/60 text-xs font-medium text-muted-foreground">
+                    <Layers className="h-3.5 w-3.5 text-primary/60" />
+                    {typeof project.namespace_count === 'number'
+                        ? `${project.namespace_count} Namespace${project.namespace_count !== 1 ? 's' : ''}`
+                        : 'Namespaces'}
+                </span>
+            </div>
         </div>
     );
 }

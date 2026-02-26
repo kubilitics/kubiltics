@@ -5,6 +5,18 @@ All notable changes to Kubilitics will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.1.3] - 2026-02-26
+
+### Fixed
+- Desktop: Tauri CSP `img-src` now allows `https:` — add-on cards in the desktop app display real ArtifactHub icons instead of falling back to colored initials
+- Desktop: Tauri CSP `connect-src` and `font-src` extended with `https:` for external API connectivity and web fonts
+- Frontend: WebSocket URL constructor in `useBackendWebSocket` used `${protocol}//${host}` (missing colon) producing `ws//localhost:819`; fixed to `${protocol}://${host}`
+- Frontend: `ProjectCard` rewritten with standard Tailwind classes — removes dependency on `glass-card`/`apple-title`/`ease-spring` custom CSS utilities that caused unpredictable rendering; stat label fixed from "Resources" → "Namespaces"
+- Frontend: `ProjectCard` icon updated from `Focus` to `FolderKanban` for semantic accuracy; action buttons (settings/delete) now only appear on hover to reduce visual noise
+
+### Changed
+- Desktop: macOS-only release (Windows and Linux builds remain commented out, to be re-enabled in a future sprint)
+
 ## [v0.1.2] - 2026-02-26
 
 ### Fixed
