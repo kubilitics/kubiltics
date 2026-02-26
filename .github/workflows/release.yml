@@ -220,6 +220,9 @@ jobs:
   desktop:
     name: Desktop (${{ matrix.name }})
     timeout-minutes: 90
+    # Allow individual matrix entries (e.g. Linux AppImage 503) to fail without
+    # blocking macOS/Windows builds or the downstream release job.
+    continue-on-error: true
     strategy:
       fail-fast: false
       matrix:
@@ -618,6 +621,10 @@ jobs:
   release:
     name: Create GitHub Release
     needs: [kcli, kubilitics-ai, backend, desktop, docker-backend, docker-ai]
+    # continue-on-error on desktop means its result is always "success" to needs[];
+    # add if: !cancelled() as a safety net so release runs whenever the required
+    # non-desktop jobs succeed, even if desktop has transient failures.
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
