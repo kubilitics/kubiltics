@@ -402,6 +402,8 @@ Also update `ARG KUBECTL_VERSION` in the Dockerfile whenever `k8s.io/client-go` 
 - `k8s.io/client-go v0.33.x` → `kubectl v1.33.x`
 - `k8s.io/client-go v0.35.x` → `kubectl v1.35.x`
 
+**govulncheck also flags stdlib CVEs** (e.g. `net/url`, `crypto/tls`, `archive/tar`) that require a Go patch release upgrade — not just a dependency bump. When govulncheck reports `Fixed in: go1.25.X`, bump `ARG GO_VERSION` (and CI `go-version`) to that patch level. Current pin: `go1.25.7` (fixes 10 CVEs from GO-2025-4010 through GO-2026-4341).
+
 ---
 
 ### P-08 — Blocking subprocess calls in watch loops cause CI test timeouts
