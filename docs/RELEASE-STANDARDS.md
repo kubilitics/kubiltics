@@ -368,6 +368,42 @@ actual:   "community/repo/test-pkg1"
 
 ---
 
+### P-07: Docker build fails — `go.mod requires go >= 1.25.0 (running go 1.24.x; GOTOOLCHAIN=local)`
+
+**Symptom:**
+```
+go: go.mod requires go >= 1.25.0 (running go 1.24.2; GOTOOLCHAIN=local)
+ERROR: failed to build: failed to solve: process "/bin/sh -c go mod download" did not complete successfully
+```
+
+**Root cause:** The Dockerfile sets `ENV GOTOOLCHAIN=local` which prevents auto-downloading a newer Go toolchain. When `kcli/go.mod` requires `go 1.25.0` (driven by `k8s.io/api v0.35.0` which requires Go ≥1.25.0), any Docker builder pinned to an older Go image fails at `go mod download`.
+
+**Fix applied:** `kubilitics-backend/Dockerfile` — bumped `ARG GO_VERSION=1.24.2` → `1.25.0`. Updated `backend-ci.yml` and `kcli-ci.yml` to use `GO_VERSION: '1.25.0'`.
+
+**Rule — Go version alignment:** The `ARG GO_VERSION` in the Dockerfile and `GO_VERSION` in all CI workflows **must** be ≥ the highest `go` directive across all modules built in that Docker image:
+
+| Module | go.mod directive |
+|---|---|
+| `kubilitics-backend/go.mod` | `go 1.24.0` |
+| `kcli/go.mod` | `go 1.25.0` ← controls the minimum |
+
+**Whenever you bump a dependency that raises a module's `go` directive, update:**
+1. `kubilitics-backend/Dockerfile` → `ARG GO_VERSION`
+2. `.github/workflows/backend-ci.yml` → `env.GO_VERSION`
+3. `.github/workflows/kcli-ci.yml` → `go-version`
+
+Check current module go directives with:
+```bash
+grep "^go " kubilitics-backend/go.mod kcli/go.mod
+```
+
+Also update `ARG KUBECTL_VERSION` in the Dockerfile whenever `k8s.io/client-go` major version changes:
+- `k8s.io/client-go v0.31.x` → `kubectl v1.31.x`
+- `k8s.io/client-go v0.33.x` → `kubectl v1.33.x`
+- `k8s.io/client-go v0.35.x` → `kubectl v1.35.x`
+
+---
+
 ## 8. Hotfix Releases
 
 Use when `main` has diverged and a critical fix is needed on an older release:
