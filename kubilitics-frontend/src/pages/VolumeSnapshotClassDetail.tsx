@@ -4,15 +4,16 @@ import { Layers, Clock, Download, Trash2, Server, Settings, Star, Info, FileCode
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
+import { downloadResourceJson } from '@/lib/exportUtils';
 import {
   ResourceDetailLayout,
   ResourceOverviewMetadata,
   SectionCard,
   YamlViewer,
-  YamlCompareViewer,
   EventsSection,
   ActionsSection,
   DeleteConfirmDialog,
+  ResourceComparisonView,
   type ResourceStatus,
   type YamlVersion,
 } from '@/components/resources';
@@ -20,6 +21,7 @@ import { useResourceDetail, useResourceEvents } from '@/hooks/useK8sResourceDeta
 import { useDeleteK8sResource, useUpdateK8sResource, type KubernetesResource } from '@/hooks/useKubernetes';
 import { Breadcrumbs, useDetailBreadcrumbs } from '@/components/layout/Breadcrumbs';
 import { useClusterStore } from '@/stores/clusterStore';
+import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
 import { useActiveClusterId } from '@/hooks/useActiveClusterId';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
@@ -37,6 +39,10 @@ export default function VolumeSnapshotClassDetail() {
   const [activeTab, setActiveTab] = useState(initialTab);
   const { activeCluster } = useClusterStore();
   const breadcrumbSegments = useDetailBreadcrumbs('VolumeSnapshotClass', name ?? undefined, undefined, activeCluster?.name);
+  const clusterId = useActiveClusterId();
+  const backendBaseUrl = useBackendConfigStore((s) => s.backendBaseUrl);
+  const baseUrl = getEffectiveBackendBaseUrl(backendBaseUrl);
+  const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured());
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   useEffect(() => {
@@ -67,6 +73,12 @@ export default function VolumeSnapshotClassDetail() {
     a.click();
     URL.revokeObjectURL(url);
   }, [yaml, vsc?.metadata?.name]);
+
+  const handleDownloadJson = useCallback(() => {
+    if (!vsc) return;
+    downloadResourceJson(vsc, `${vsc?.metadata?.name || 'volumesnapshotclass'}.json`);
+    toast.success('JSON downloaded');
+  }, [vsc]);
 
   if (!name?.trim()) return null;
   if (isLoading) {
@@ -109,7 +121,6 @@ export default function VolumeSnapshotClassDetail() {
     { label: 'Default Class', value: isDefault ? 'Yes' : 'No', icon: Star, iconColor: 'muted' as const },
   ];
 
-  const yamlVersions: YamlVersion[] = yaml ? [{ id: 'current', label: 'Current Version', yaml, timestamp: 'now' }] : [];
 
   const handleSaveYaml = async (newYaml: string) => {
     if (!name) return;
@@ -153,7 +164,22 @@ export default function VolumeSnapshotClassDetail() {
     },
     { id: 'events', label: 'Events', icon: Clock, content: <EventsSection events={events} /> },
     { id: 'yaml', label: 'YAML', icon: FileCode, content: <YamlViewer yaml={yaml} resourceName={vscName} editable onSave={handleSaveYaml} /> },
-    { id: 'compare', label: 'Compare', icon: GitCompare, content: <YamlCompareViewer versions={yamlVersions} resourceName={vscName} /> },
+    {
+      id: 'compare',
+      label: 'Compare',
+      icon: GitCompare,
+      content: (
+        <ResourceComparisonView
+          resourceType="volumesnapshotclasses"
+          resourceKind="VolumeSnapshotClass"
+          initialSelectedResources={[vscName]}
+          clusterId={clusterId ?? undefined}
+          backendBaseUrl={baseUrl ?? ''}
+          isConnected={isConnected}
+          embedded
+        />
+      ),
+    },
     {
       id: 'actions',
       label: 'Actions',
@@ -161,6 +187,7 @@ export default function VolumeSnapshotClassDetail() {
       content: (
         <ActionsSection actions={[
           { icon: Download, label: 'Download YAML', description: 'Export VolumeSnapshotClass definition', onClick: handleDownloadYaml },
+          { icon: Download, label: 'Export as JSON', description: 'Export VolumeSnapshotClass as JSON', onClick: handleDownloadJson },
           { icon: Trash2, label: 'Delete VolumeSnapshotClass', description: 'Remove this snapshot class', variant: 'destructive', onClick: () => setShowDeleteDialog(true) },
         ]} />
       ),
@@ -186,6 +213,7 @@ export default function VolumeSnapshotClassDetail() {
         }
         actions={[
           { label: 'Download YAML', icon: Download, variant: 'outline', onClick: handleDownloadYaml },
+          { label: 'Export as JSON', icon: Download, variant: 'outline', onClick: handleDownloadJson },
           { label: 'Edit', icon: FileCode, variant: 'outline', onClick: () => { setActiveTab('yaml'); setSearchParams((p) => { const n = new URLSearchParams(p); n.set('tab', 'yaml'); return n; }, { replace: true }); } },
           { label: 'Delete', icon: Trash2, variant: 'destructive', onClick: () => setShowDeleteDialog(true) },
         ]}

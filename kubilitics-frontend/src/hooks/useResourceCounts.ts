@@ -12,7 +12,7 @@
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
 import { useK8sResourceList, type KubernetesResource } from './useKubernetes';
 import { useConnectionStatus } from '@/hooks/useConnectionStatus';
-import { useClusterSummary } from '@/hooks/useClusterSummary';
+import { useClusterSummaryWithProject } from '@/hooks/useClusterSummary';
 import { useMemo } from 'react';
 
 // Mock counts for demo mode
@@ -136,8 +136,8 @@ export function useResourceCounts(): { counts: ResourceCounts; isLoading: boolea
   const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured);
   const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
 
-  // Backend path: single summary request covers key counts
-  const summaryQuery = useClusterSummary(
+  // Backend path: single summary request (project-scoped when activeProject is set)
+  const summaryQuery = useClusterSummaryWithProject(
     isBackendConfigured() && currentClusterId ? currentClusterId : undefined
   );
 

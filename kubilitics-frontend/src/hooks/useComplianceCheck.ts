@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { AI_BASE_URL } from '@/services/aiService';
+import { checkCompliance } from '@/services/aiService';
 
 export type ComplianceStandard = 'cis_kubernetes' | 'pod_security_standard' | 'nist' | 'soc2';
 export type ComplianceStatus = 'pass' | 'fail' | 'warning' | 'not_applicable';
@@ -67,8 +67,8 @@ export interface UseComplianceCheckResult {
   refresh: () => Promise<void>;
 }
 
-// Compliance check endpoints live on the AI backend (port 8081).
-const API_BASE = AI_BASE_URL;
+
+// Service calls replace direct fetch to handle dynamic backend URLs
 
 export function useComplianceCheck(
   options: UseComplianceCheckOptions = {}
@@ -95,23 +95,11 @@ export function useComplianceCheck(
       setLastConfig({ type: 'pod', config });
 
       try {
-        const response = await fetch(`${API_BASE}/api/v1/security/compliance/check`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            standard,
-            resource_type: 'pod',
-            pod: config,
-          }),
+        const data = await checkCompliance({
+          standard,
+          resource_type: 'pod',
+          pod: config,
         });
-
-        if (!response.ok) {
-          throw new Error(`Compliance check failed: ${response.statusText}`);
-        }
-
-        const data: ComplianceReport = await response.json();
         setReport(data);
       } catch (err) {
         setError(err instanceof Error ? err : new Error('Unknown error'));
@@ -135,23 +123,11 @@ export function useComplianceCheck(
       setLastConfig({ type: 'rbac', config });
 
       try {
-        const response = await fetch(`${API_BASE}/api/v1/security/compliance/check`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            standard,
-            resource_type: 'rbac',
-            rbac: config,
-          }),
+        const data = await checkCompliance({
+          standard,
+          resource_type: 'rbac',
+          rbac: config,
         });
-
-        if (!response.ok) {
-          throw new Error(`Compliance check failed: ${response.statusText}`);
-        }
-
-        const data: ComplianceReport = await response.json();
         setReport(data);
       } catch (err) {
         setError(err instanceof Error ? err : new Error('Unknown error'));

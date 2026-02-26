@@ -1,32 +1,5 @@
-/**
- * useMemory — React hooks for the Memory/World Model REST API (A-CORE-009).
- *
- * Hooks:
- *   useMemoryOverview()     — cluster overview: stats + recent changes
- *   useMemoryResources()    — list / search world model resources
- *   useMemoryChanges()      — recent changes feed (auto-polling)
- *   useTemporalWindow()     — retention window info
- *   useTemporalChanges()    — resource change history
- *   useVectorSearch()       — semantic / keyword search
- *   useVectorStats()        — vector store statistics
- */
-
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { guardAIAvailable } from '@/stores/aiAvailableStore';
-
-const AI_BASE =
-  (import.meta.env.VITE_AI_WS_URL as string | undefined)
-    ?.replace('ws://', 'http://')
-    .replace('wss://', 'https://') ?? 'http://localhost:8081';
-
-// ─── Shared fetch helper ───────────────────────────────────────────────────────
-
-async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
-  guardAIAvailable();
-  const resp = await fetch(`${AI_BASE}${path}`, options);
-  if (!resp.ok) throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
-  return resp.json() as Promise<T>;
-}
+import * as aiService from '@/services/aiService';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -114,7 +87,7 @@ export function useMemoryOverview(pollMs = 15_000) {
     setLoading(true);
     setError(null);
     try {
-      const d = await apiFetch<ClusterOverview>('/api/v1/memory/overview');
+      const d = await aiService.getMemoryOverview();
       setData(d);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -154,14 +127,13 @@ export function useMemoryResources(opts: UseMemoryResourcesOptions = {}) {
     setLoading(true);
     setError(null);
     try {
-      const params = new URLSearchParams();
-      if (kind) params.set('kind', kind);
-      if (namespace) params.set('namespace', namespace);
-      if (search) params.set('search', search);
-      if (limit) params.set('limit', String(limit));
-      const d = await apiFetch<{ resources: ResourceSummary[]; count: number }>(
-        `/api/v1/memory/resources?${params}`
-      );
+      const params: any = {};
+      if (kind) params.kind = kind;
+      if (namespace) params.namespace = namespace;
+      if (search) params.search = search;
+      if (limit) params.limit = String(limit);
+
+      const d = await aiService.searchMemoryResourcesListing(params);
       setResources(d.resources ?? []);
       setCount(d.count ?? 0);
     } catch (e) {
@@ -188,9 +160,7 @@ export function useMemoryChanges(since = '10m', pollMs = 8_000) {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const d = await apiFetch<{ changes: ChangeRecord[]; count: number }>(
-        `/api/v1/memory/changes?since=${since}`
-      );
+      const d = await aiService.getMemoryChanges(since);
       setChanges(d.changes ?? []);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -217,7 +187,7 @@ export function useTemporalWindow() {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const d = await apiFetch<RetentionWindow>('/api/v1/memory/temporal/window');
+      const d = await aiService.getTemporalWindow();
       setTemporalWindow(d);
     } catch {
       setTemporalWindow({ available: false });
@@ -242,10 +212,7 @@ export function useTemporalChanges(kind: string, namespace: string, name: string
     setLoading(true);
     setError(null);
     try {
-      const params = new URLSearchParams({ kind, namespace, name });
-      const d = await apiFetch<{ changes: TemporalChange[] }>(
-        `/api/v1/memory/temporal/changes?${params}`
-      );
+      const d = await aiService.getTemporalChanges(kind, namespace, name);
       setChanges(d.changes ?? []);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -275,11 +242,11 @@ export function useVectorSearch() {
     setLoading(true);
     setError(null);
     try {
-      const d = await apiFetch<{ results: VectorResult[] }>('/api/v1/memory/vector/search', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query, type, limit }),
-        signal: abortRef.current.signal,
+      const d = await aiService.searchMemoryVector({
+        query,
+        type,
+        limit,
+        signal: abortRef.current.signal
       });
       setResults(d.results ?? []);
     } catch (e) {
@@ -303,7 +270,7 @@ export function useVectorStats() {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const d = await apiFetch<VectorStats>('/api/v1/memory/vector/stats');
+      const d = await aiService.getVectorStats();
       setStats(d);
     } catch {
       setStats({ available: false });

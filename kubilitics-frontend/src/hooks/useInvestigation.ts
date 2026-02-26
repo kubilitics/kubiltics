@@ -1,100 +1,15 @@
-/**
- * useInvestigation - hook for managing AI investigation sessions.
- *
- * Covers:
- *   POST /api/v1/investigations       - start investigation
- *   GET  /api/v1/investigations       - list all
- *   GET  /api/v1/investigations/{id}  - get one
- *   DELETE /api/v1/investigations/{id} - cancel
- *   WS   /ws/investigations/{id}      - real-time event stream
- */
-
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { AI_BASE_URL, AI_WS_URL } from '../services/aiService';
-
-// ─── Types matching engine_impl.go ───────────────────────────────────────────
-
-export type InvestigationState =
-  | 'CREATED'
-  | 'INVESTIGATING'
-  | 'ANALYZING'
-  | 'CONCLUDED'
-  | 'FAILED'
-  | 'CANCELLED';
-
-export interface Finding {
-  statement: string;
-  evidence: string;
-  confidence: number;
-  severity: 'critical' | 'high' | 'medium' | 'low' | 'info';
-  timestamp: string;
-}
-
-export interface ToolCallRecord {
-  tool_name: string;
-  args: Record<string, unknown>;
-  result: string;
-  turn_index: number;
-  timestamp: string;
-}
-
-export interface InvestigationStep {
-  number: number;
-  description: string;
-  result: string;
-  timestamp: string;
-}
-
-export interface Investigation {
-  id: string;
-  type: string;
-  state: InvestigationState;
-  description: string;
-  context: string;
-  findings: Finding[];
-  tool_calls: ToolCallRecord[];
-  conclusion: string;
-  confidence: number;
-  steps: InvestigationStep[];
-  tokens_used: number;
-  created_at: string;
-  updated_at: string;
-  concluded_at?: string;
-  metadata: Record<string, unknown>;
-}
-
-// Server-side ToolEvent shape (mirroring llm/types)
-export interface LLMToolEvent {
-  phase: 'calling' | 'result' | 'error';
-  call_id: string;
-  tool_name: string;
-  turn_index: number;
-  args?: Record<string, unknown>;
-  result?: string;
-  error?: string;
-}
-
-export type InvestigationEventType =
-  | 'step'
-  | 'tool'
-  | 'text'
-  | 'finding'
-  | 'conclusion'
-  | 'done'
-  | 'error';
-
-export interface InvestigationEvent {
-  investigation_id: string;
-  type: InvestigationEventType;
-  step?: InvestigationStep;
-  tool_event?: LLMToolEvent;
-  text_token?: string;
-  finding?: Finding;
-  conclusion?: string;
-  error?: string;
-  state: InvestigationState;
-  timestamp: string;
-}
+import * as aiService from '../services/aiService';
+import type {
+  Investigation,
+  InvestigationEvent,
+  InvestigationState,
+  Finding,
+  InvestigationStep,
+  ToolCallRecord,
+  InvestigationEventType,
+  LLMToolEvent
+} from '../services/aiService';
 
 // ─── Hook state ───────────────────────────────────────────────────────────────
 
@@ -104,34 +19,6 @@ export interface InvestigationStreamState {
   streamText: string;     // accumulated text tokens from LLM
   isStreaming: boolean;
   error: string | null;
-}
-
-// ─── API helpers ──────────────────────────────────────────────────────────────
-
-async function apiPost<T>(path: string, body: unknown): Promise<T> {
-  const res = await fetch(`${AI_BASE_URL}${path}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
-  if (!res.ok) {
-    const msg = await res.text().catch(() => '');
-    throw new Error(`${res.status}: ${msg}`);
-  }
-  return res.json();
-}
-
-async function apiGet<T>(path: string): Promise<T> {
-  const res = await fetch(`${AI_BASE_URL}${path}`);
-  if (!res.ok) {
-    const msg = await res.text().catch(() => '');
-    throw new Error(`${res.status}: ${msg}`);
-  }
-  return res.json();
-}
-
-async function apiDelete(path: string): Promise<void> {
-  await fetch(`${AI_BASE_URL}${path}`, { method: 'DELETE' });
 }
 
 // ─── useStartInvestigation ────────────────────────────────────────────────────
@@ -174,7 +61,7 @@ export function useInvestigation() {
     clearPolling();
     pollingRef.current = setInterval(async () => {
       try {
-        const inv = await apiGet<Investigation>(`/api/v1/investigations/${id}`);
+        const inv = await aiService.getInvestigation(id);
         setState(prev => ({ ...prev, investigation: inv }));
         if (
           inv.state === 'CONCLUDED' ||
@@ -195,7 +82,7 @@ export function useInvestigation() {
     (id: string) => {
       disconnect();
 
-      const wsUrl = `${AI_WS_URL}/ws/investigations/${id}`;
+      const wsUrl = aiService.buildInvestigationWSUrl(id);
       const ws = new WebSocket(wsUrl);
       wsRef.current = ws;
 
@@ -265,7 +152,7 @@ export function useInvestigation() {
 
           if (ev.type === 'done') {
             // Fetch final state from REST to get full investigation
-            apiGet<Investigation>(`/api/v1/investigations/${id}`)
+            aiService.getInvestigation(id)
               .then(inv =>
                 setState(prev => ({ ...prev, investigation: inv, isStreaming: false }))
               )
@@ -308,7 +195,7 @@ export function useInvestigation() {
 
       let resp: { id: string; type: string; description: string; state: string };
       try {
-        resp = await apiPost('/api/v1/investigations', { description, type });
+        resp = await aiService.createInvestigation({ description, type });
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
         setState(prev => ({ ...prev, error: `Failed to start: ${msg}` }));
@@ -342,7 +229,7 @@ export function useInvestigation() {
   /** Cancel an in-progress investigation. */
   const cancelInvestigation = useCallback(
     async (id: string) => {
-      await apiDelete(`/api/v1/investigations/${id}`);
+      await aiService.cancelInvestigation(id);
       disconnect();
       setState(prev => ({
         ...prev,
@@ -374,9 +261,7 @@ export function useInvestigationList() {
     setLoading(true);
     setError(null);
     try {
-      const resp = await apiGet<{ investigations: Investigation[]; count: number }>(
-        '/api/v1/investigations'
-      );
+      const resp = await aiService.listInvestigations();
       setInvestigations(resp.investigations ?? []);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));

@@ -13,6 +13,8 @@ export function useResourcesOverview() {
 
     const quotas = useK8sResourceList('resourcequotas', undefined, { enabled: fallbackEnabled });
     const limits = useK8sResourceList('limitranges', undefined, { enabled: fallbackEnabled });
+    const slices = useK8sResourceList('resourceslices', undefined, { enabled: fallbackEnabled });
+    const classes = useK8sResourceList('deviceclasses', undefined, { enabled: fallbackEnabled });
 
     const data = useMemo(() => {
         const items: any[] = [];
@@ -35,6 +37,24 @@ export function useResourcesOverview() {
             });
         });
 
+        (slices.data?.items ?? []).forEach((s: any) => {
+            items.push({
+                kind: 'ResourceSlice',
+                name: s.metadata.name,
+                namespace: s.metadata.namespace,
+                status: 'Available',
+            });
+        });
+
+        (classes.data?.items ?? []).forEach((c: any) => {
+            items.push({
+                kind: 'DeviceClass',
+                name: c.metadata.name,
+                namespace: undefined,
+                status: 'Configured',
+            });
+        });
+
         return {
             pulse: {
                 total: items.length,
@@ -45,7 +65,7 @@ export function useResourcesOverview() {
             },
             resources: items,
         };
-    }, [quotas.data, limits.data]);
+    }, [quotas.data, limits.data, slices.data, classes.data]);
 
-    return { data, isLoading: quotas.isLoading || limits.isLoading };
+    return { data, isLoading: quotas.isLoading || limits.isLoading || slices.isLoading || classes.isLoading };
 }

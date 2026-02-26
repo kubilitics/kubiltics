@@ -5,25 +5,25 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
+import { downloadResourceJson } from '@/lib/exportUtils';
 import {
   ResourceDetailLayout,
   ResourceOverviewMetadata,
   SectionCard,
   YamlViewer,
-  YamlCompareViewer,
   EventsSection,
   ActionsSection,
   DeleteConfirmDialog,
   ResourceTopologyView,
+  ResourceComparisonView,
   type ResourceStatus,
-  type YamlVersion,
 } from '@/components/resources';
 import { useResourceDetail, useResourceEvents } from '@/hooks/useK8sResourceDetail';
 import { useDeleteK8sResource, useUpdateK8sResource, type KubernetesResource } from '@/hooks/useKubernetes';
 import { normalizeKindForTopology } from '@/utils/resourceKindMapper';
 import { Breadcrumbs, useDetailBreadcrumbs } from '@/components/layout/Breadcrumbs';
 import { useClusterStore } from '@/stores/clusterStore';
-import { useBackendConfigStore } from '@/stores/backendConfigStore';
+import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
 import { useActiveClusterId } from '@/hooks/useActiveClusterId';
 import { Button } from '@/components/ui/button';
 
@@ -50,7 +50,9 @@ export default function VolumeAttachmentDetail() {
   const { activeCluster } = useClusterStore();
   const breadcrumbSegments = useDetailBreadcrumbs('VolumeAttachment', name ?? undefined, undefined, activeCluster?.name);
   const clusterId = useActiveClusterId();
-  const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured);
+  const backendBaseUrl = useBackendConfigStore((s) => s.backendBaseUrl);
+  const baseUrl = getEffectiveBackendBaseUrl(backendBaseUrl);
+  const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured());
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   useEffect(() => {
@@ -81,6 +83,12 @@ export default function VolumeAttachmentDetail() {
     a.click();
     URL.revokeObjectURL(url);
   }, [yaml, va?.metadata?.name]);
+
+  const handleDownloadJson = useCallback(() => {
+    if (!va) return;
+    downloadResourceJson(va, `${va?.metadata?.name || 'volumeattachment'}.json`);
+    toast.success('JSON downloaded');
+  }, [va]);
 
   if (!name?.trim()) return null;
   if (isLoading) {
@@ -129,7 +137,6 @@ export default function VolumeAttachmentDetail() {
     { label: 'Age', value: age, icon: Clock, iconColor: 'muted' as const },
   ];
 
-  const yamlVersions: YamlVersion[] = yaml ? [{ id: 'current', label: 'Current Version', yaml, timestamp: 'now' }] : [];
   const handleSaveYaml = async (newYaml: string) => {
     if (!name) return;
     try {
@@ -181,7 +188,22 @@ export default function VolumeAttachmentDetail() {
     },
     { id: 'events', label: 'Events', icon: Clock, content: <EventsSection events={events} /> },
     { id: 'yaml', label: 'YAML', icon: FileCode, content: <YamlViewer yaml={yaml} resourceName={vaName} editable onSave={handleSaveYaml} /> },
-    { id: 'compare', label: 'Compare', icon: GitCompare, content: <YamlCompareViewer versions={yamlVersions} resourceName={vaName} /> },
+    {
+      id: 'compare',
+      label: 'Compare',
+      icon: GitCompare,
+      content: (
+        <ResourceComparisonView
+          resourceType="volumeattachments"
+          resourceKind="VolumeAttachment"
+          initialSelectedResources={[vaName]}
+          clusterId={clusterId ?? undefined}
+          backendBaseUrl={baseUrl ?? ''}
+          isConnected={isConnected}
+          embedded
+        />
+      ),
+    },
     {
       id: 'topology',
       label: 'Topology',
@@ -203,6 +225,7 @@ export default function VolumeAttachmentDetail() {
       content: (
         <ActionsSection actions={[
           { icon: Download, label: 'Download YAML', description: 'Export VolumeAttachment definition', onClick: handleDownloadYaml },
+          { icon: Download, label: 'Export as JSON', description: 'Export VolumeAttachment as JSON', onClick: handleDownloadJson },
           { icon: Trash2, label: 'Delete Attachment', description: 'Remove this volume attachment', variant: 'destructive', onClick: () => setShowDeleteDialog(true) },
         ]} />
       ),
@@ -223,6 +246,7 @@ export default function VolumeAttachmentDetail() {
         headerMetadata={isConnected ? <span className="flex items-center gap-1.5 ml-2 text-sm text-muted-foreground"><Badge variant="outline" className="text-xs">Live</Badge></span> : undefined}
         actions={[
           { label: 'Download YAML', icon: Download, variant: 'outline', onClick: handleDownloadYaml },
+          { label: 'Export as JSON', icon: Download, variant: 'outline', onClick: handleDownloadJson },
           { label: 'Edit', icon: Edit, variant: 'outline', onClick: () => { setActiveTab('yaml'); setSearchParams((p) => { const n = new URLSearchParams(p); n.set('tab', 'yaml'); return n; }, { replace: true }); } },
           { label: 'Delete', icon: Trash2, variant: 'destructive', onClick: () => setShowDeleteDialog(true) },
         ]}

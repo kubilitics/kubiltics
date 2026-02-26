@@ -3,6 +3,7 @@
  * Short, sweet, insightful. Two primary actions: clipboard paste + file upload.
  */
 import { useState, useCallback } from 'react';
+import yaml from 'js-yaml';
 import { motion } from 'framer-motion';
 import {
   ClipboardPaste,
@@ -38,14 +39,27 @@ interface WelcomeAddClusterProps {
   isUploading: boolean;
 }
 
+/**
+ * Extract the best context name from a kubeconfig YAML string.
+ * Reads only `current-context` and `contexts[].name` — never cluster or user names.
+ */
 function extractContextFromKubeconfig(text: string): string {
   try {
-    const currentMatch = text.match(/current-context:\s*(\S+)/);
-    if (currentMatch) return currentMatch[1].trim();
-    const nameMatch = text.match(/contexts:\s*[\s\S]*?name:\s*(\S+)/);
-    return nameMatch ? nameMatch[1].trim() : 'default';
+    const doc = yaml.load(text) as Record<string, unknown> | null;
+    if (!doc || typeof doc !== 'object') return '';
+    // Prefer current-context if set
+    if (typeof doc['current-context'] === 'string' && doc['current-context']) {
+      return doc['current-context'];
+    }
+    // Fall back to first context name
+    const contextsRaw = doc['contexts'];
+    if (Array.isArray(contextsRaw) && contextsRaw.length > 0) {
+      const first = contextsRaw[0] as Record<string, unknown>;
+      if (typeof first['name'] === 'string' && first['name']) return first['name'];
+    }
+    return '';
   } catch {
-    return 'default';
+    return '';
   }
 }
 
@@ -69,7 +83,14 @@ export function WelcomeAddCluster({
     }
     setIsPasting(true);
     try {
-      const base64 = btoa(unescape(encodeURIComponent(trimmed)));
+      // Encode as UTF-8 bytes → base64 (standard, with padding) — compatible with Go's base64.StdEncoding
+      const bytes = new TextEncoder().encode(trimmed);
+      let binary = '';
+      const chunkSize = 8192;
+      for (let i = 0; i < bytes.length; i += chunkSize) {
+        binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
+      }
+      const base64 = btoa(binary);
       const contextName = extractContextFromKubeconfig(trimmed);
       await addClusterWithUpload(backendBaseUrl, base64, contextName);
       queryClient.invalidateQueries({ queryKey: ['backend', 'clusters'] });
@@ -149,7 +170,6 @@ export function WelcomeAddCluster({
               <input
                 type="file"
                 className="hidden"
-                accept=".yaml,.yml,.config,*"
                 onChange={(e) => e.target.files?.[0] && onFileSelect(e.target.files[0])}
               />
               {isUploading ? (
@@ -251,11 +271,15 @@ export function WelcomeAddCluster({
             </DialogDescription>
           </DialogHeader>
           <Textarea
-            placeholder="apiVersion: v1&#10;kind: Config&#10;clusters:&#10;  - cluster: ..."
+            placeholder={`apiVersion: v1\nkind: Config\nclusters:\n  - cluster:\n      server: https://...\n    name: my-cluster\ncontexts:\n  - context:\n      cluster: my-cluster\n      user: admin\n    name: my-cluster\ncurrent-context: my-cluster`}
             value={pasteContent}
             onChange={(e) => setPasteContent(e.target.value)}
-            className="font-mono text-sm min-h-[200px]"
+            className="font-mono text-xs min-h-[220px] resize-y"
+            autoFocus
           />
+          <p className="text-xs text-muted-foreground">
+            Run <code className="bg-muted px-1 rounded text-xs">kubectl config view --raw</code> to get your kubeconfig
+          </p>
           <DialogFooter>
             <Button variant="outline" onClick={() => setClipboardOpen(false)}>
               Cancel

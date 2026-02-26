@@ -32,9 +32,10 @@ import {
 } from '@/components/list';
 import { useTableFiltersAndSort, type ColumnConfig } from '@/hooks/useTableFiltersAndSort';
 import { useColumnVisibility } from '@/hooks/useColumnVisibility';
-import { usePaginatedResourceList, useDeleteK8sResource, calculateAge, type KubernetesResource } from '@/hooks/useKubernetes';
+import { usePaginatedResourceList, useDeleteK8sResource, useCreateK8sResource, calculateAge, type KubernetesResource } from '@/hooks/useKubernetes';
 import { useConnectionStatus } from '@/hooks/useConnectionStatus';
 import { DeleteConfirmDialog } from '@/components/resources';
+import { ResourceCreator, DEFAULT_YAMLS } from '@/components/editor/ResourceCreator';
 import { toast } from 'sonner';
 
 interface PodTemplate {
@@ -85,8 +86,9 @@ function mapPodTemplate(pt: K8sPodTemplate): PodTemplate {
 export default function PodTemplates() {
   const navigate = useNavigate();
   const { isConnected } = useConnectionStatus();
-  const { data, isLoading, isFetching, dataUpdatedAt, refetch, pagination: hookPagination } = usePaginatedResourceList<K8sPodTemplate>('podtemplates');
+  const { data, isLoading, refetch, pagination: hookPagination } = usePaginatedResourceList<K8sPodTemplate>('podtemplates');
   const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; item: PodTemplate | null; bulk?: boolean }>({ open: false, item: null });
+  const [showCreateWizard, setShowCreateWizard] = useState(false);
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedNamespace, setSelectedNamespace] = useState<string>('all');
@@ -94,6 +96,7 @@ export default function PodTemplates() {
   const [pageSize, setPageSize] = useState(10);
   const [pageIndex, setPageIndex] = useState(0);
   const deleteResource = useDeleteK8sResource('podtemplates');
+  const createPT = useCreateK8sResource('podtemplates');
 
   const allItems = (data?.allItems ?? []) as K8sPodTemplate[];
   const items: PodTemplate[] = useMemo(() => (isConnected ? allItems.map(mapPodTemplate) : []), [isConnected, allItems]);
@@ -174,6 +177,16 @@ export default function PodTemplates() {
     setDeleteDialog({ open: false, item: null });
     refetch();
   };
+  const handleCreate = () => setShowCreateWizard(true);
+  const handleApplyCreate = async (yaml: string) => {
+    try {
+      await createPT.mutateAsync({ yaml });
+      setShowCreateWizard(false);
+      refetch();
+    } catch (err) {
+      // toast handled in hook
+    }
+  };
 
   const getItemKey = (item: PodTemplate) => `${item.namespace}/${item.name}`;
   const toggleSelection = (item: PodTemplate) => {
@@ -235,6 +248,8 @@ template:
         demoMode={!isConnected}
         isLoading={isLoading}
         onRefresh={() => refetch()}
+        createLabel="Create Pod Template"
+        onCreate={handleCreate}
         actions={
           <>
             <ResourceExportDropdown items={filteredItems} selectedKeys={selectedItems} getKey={getItemKey} config={exportConfig} selectionLabel={selectedItems.size > 0 ? 'Selected templates' : 'All visible'} onToast={(msg, type) => (type === 'info' ? toast.info(msg) : toast.success(msg))} />
@@ -250,8 +265,8 @@ template:
 
       <div className={cn('grid grid-cols-2 sm:grid-cols-3 gap-4', !isConnected && 'opacity-60')}>
         <ListPageStatCard label="Total" value={stats.total} icon={Layers} iconColor="text-primary" selected={!hasActiveFilters} onClick={clearAllFilters} className={cn(!hasActiveFilters && 'ring-2 ring-primary')} />
-        <ListPageStatCard label="Namespaces" value={stats.namespaces} icon={Layers} iconColor="text-muted-foreground" selected={false} onClick={() => {}} />
-        <ListPageStatCard label="With Labels" value={stats.withLabels} icon={Layers} iconColor="text-muted-foreground" selected={false} onClick={() => {}} />
+        <ListPageStatCard label="Namespaces" value={stats.namespaces} icon={Layers} iconColor="text-muted-foreground" selected={false} onClick={() => { }} />
+        <ListPageStatCard label="With Labels" value={stats.withLabels} icon={Layers} iconColor="text-muted-foreground" selected={false} onClick={() => { }} />
       </div>
 
       {selectedItems.size > 0 && (
@@ -273,34 +288,34 @@ template:
 
       <ResourceListTableToolbar
         globalFilterBar={
-      <ResourceCommandBar
-        scope={
-          <div className="w-full min-w-0">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" className="w-full min-w-0 justify-between h-10 gap-2 rounded-lg border border-border bg-background font-medium shadow-sm hover:bg-muted/50 hover:border-primary/30 focus-visible:ring-2 focus-visible:ring-primary/20">
-                  <Filter className="h-4 w-4 shrink-0 text-muted-foreground" />
-                  <span className="truncate">{selectedNamespace === 'all' ? 'All Namespaces' : selectedNamespace}</span>
-                  <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="w-48">
-                {namespaces.map((ns) => (
-                  <DropdownMenuItem key={ns} onClick={() => setSelectedNamespace(ns)} className={cn(selectedNamespace === ns && 'bg-accent')}>
-                    {ns === 'all' ? 'All Namespaces' : ns}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        }
-        search={
-          <div className="relative w-full min-w-0">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input placeholder="Search pod templates..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full h-10 pl-9 rounded-lg border border-border bg-background text-sm font-medium shadow-sm placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-primary/20" aria-label="Search pod templates" />
-          </div>
-        }
-      />
+          <ResourceCommandBar
+            scope={
+              <div className="w-full min-w-0">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" className="w-full min-w-0 justify-between h-10 gap-2 rounded-lg border border-border bg-background font-medium shadow-sm hover:bg-muted/50 hover:border-primary/30 focus-visible:ring-2 focus-visible:ring-primary/20">
+                      <Filter className="h-4 w-4 shrink-0 text-muted-foreground" />
+                      <span className="truncate">{selectedNamespace === 'all' ? 'All Namespaces' : selectedNamespace}</span>
+                      <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="w-48">
+                    {namespaces.map((ns) => (
+                      <DropdownMenuItem key={ns} onClick={() => setSelectedNamespace(ns)} className={cn(selectedNamespace === ns && 'bg-accent')}>
+                        {ns === 'all' ? 'All Namespaces' : ns}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            }
+            search={
+              <div className="relative w-full min-w-0">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input placeholder="Search pod templates..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full h-10 pl-9 rounded-lg border border-border bg-background text-sm font-medium shadow-sm placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-primary/20" aria-label="Search pod templates" />
+              </div>
+            }
+          />
         }
         hasActiveFilters={hasActiveFilters}
         onClearAllFilters={clearAllFilters}
@@ -310,22 +325,22 @@ template:
         visibleColumns={columnVisibility.visibleColumns}
         onColumnToggle={columnVisibility.setColumnVisible}
         footer={
-        <div className="flex items-center justify-between flex-wrap gap-2">
-          <div className="flex items-center gap-3">
-            <span className="text-sm text-muted-foreground">{pagination.rangeLabel}</span>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="gap-2">{pageSize} per page<ChevronDown className="h-4 w-4 opacity-50" /></Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start">
-                {PAGE_SIZE_OPTIONS.map((size) => (
-                  <DropdownMenuItem key={size} onClick={() => handlePageSizeChange(size)} className={cn(pageSize === size && 'bg-accent')}>{size} per page</DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-muted-foreground">{pagination.rangeLabel}</span>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="gap-2">{pageSize} per page<ChevronDown className="h-4 w-4 opacity-50" /></Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start">
+                  {PAGE_SIZE_OPTIONS.map((size) => (
+                    <DropdownMenuItem key={size} onClick={() => handlePageSizeChange(size)} className={cn(pageSize === size && 'bg-accent')}>{size} per page</DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+            <ListPagination hasPrev={pagination.hasPrev} hasNext={pagination.hasNext} onPrev={pagination.onPrev} onNext={pagination.onNext} rangeLabel={undefined} currentPage={pagination.currentPage} totalPages={pagination.totalPages} onPageChange={pagination.onPageChange} dataUpdatedAt={pagination.dataUpdatedAt} isFetching={pagination.isFetching} />
           </div>
-          <ListPagination hasPrev={pagination.hasPrev} hasNext={pagination.hasNext} onPrev={pagination.onPrev} onNext={pagination.onNext} rangeLabel={undefined} currentPage={pagination.currentPage} totalPages={pagination.totalPages} onPageChange={pagination.onPageChange} dataUpdatedAt={pagination.dataUpdatedAt} isFetching={pagination.isFetching} />
-        </div>
         }
       >
         <ResizableTableProvider tableId="podtemplates" columnConfig={PT_TABLE_COLUMNS}>
@@ -333,10 +348,10 @@ template:
             <TableHeader>
               <TableRow className="bg-muted/50 hover:bg-muted/50 border-b-2 border-border">
                 <TableHead className="w-10"><Checkbox checked={isAllSelected} onCheckedChange={toggleAll} aria-label="Select all" className={cn(isSomeSelected && 'data-[state=checked]:bg-primary/50')} /></TableHead>
-                <ResizableTableHead columnId="name"><TableColumnHeaderWithFilterAndSort columnId="name" label="Name" sortKey={sortKey} sortOrder={sortOrder} onSort={setSort} filterable={false} distinctValues={[]} selectedFilterValues={new Set()} onFilterChange={() => {}} /></ResizableTableHead>
-                {columnVisibility.isColumnVisible('namespace') && <ResizableTableHead columnId="namespace"><TableColumnHeaderWithFilterAndSort columnId="namespace" label="Namespace" sortKey={sortKey} sortOrder={sortOrder} onSort={setSort} filterable={false} distinctValues={[]} selectedFilterValues={new Set()} onFilterChange={() => {}} /></ResizableTableHead>}
-                {columnVisibility.isColumnVisible('labels') && <ResizableTableHead columnId="labels"><TableColumnHeaderWithFilterAndSort columnId="labels" label="Labels" sortKey={sortKey} sortOrder={sortOrder} onSort={setSort} filterable={false} distinctValues={[]} selectedFilterValues={new Set()} onFilterChange={() => {}} /></ResizableTableHead>}
-                {columnVisibility.isColumnVisible('age') && <ResizableTableHead columnId="age"><TableColumnHeaderWithFilterAndSort columnId="age" label="Age" sortKey={sortKey} sortOrder={sortOrder} onSort={setSort} filterable={false} distinctValues={[]} selectedFilterValues={new Set()} onFilterChange={() => {}} /></ResizableTableHead>}
+                <ResizableTableHead columnId="name"><TableColumnHeaderWithFilterAndSort columnId="name" label="Name" sortKey={sortKey} sortOrder={sortOrder} onSort={setSort} filterable={false} distinctValues={[]} selectedFilterValues={new Set()} onFilterChange={() => { }} /></ResizableTableHead>
+                {columnVisibility.isColumnVisible('namespace') && <ResizableTableHead columnId="namespace"><TableColumnHeaderWithFilterAndSort columnId="namespace" label="Namespace" sortKey={sortKey} sortOrder={sortOrder} onSort={setSort} filterable={false} distinctValues={[]} selectedFilterValues={new Set()} onFilterChange={() => { }} /></ResizableTableHead>}
+                {columnVisibility.isColumnVisible('labels') && <ResizableTableHead columnId="labels"><TableColumnHeaderWithFilterAndSort columnId="labels" label="Labels" sortKey={sortKey} sortOrder={sortOrder} onSort={setSort} filterable={false} distinctValues={[]} selectedFilterValues={new Set()} onFilterChange={() => { }} /></ResizableTableHead>}
+                {columnVisibility.isColumnVisible('age') && <ResizableTableHead columnId="age"><TableColumnHeaderWithFilterAndSort columnId="age" label="Age" sortKey={sortKey} sortOrder={sortOrder} onSort={setSort} filterable={false} distinctValues={[]} selectedFilterValues={new Set()} onFilterChange={() => { }} /></ResizableTableHead>}
                 <TableHead className="w-12 text-center"><span className="sr-only">Actions</span><MoreHorizontal className="h-4 w-4 inline-block text-muted-foreground" aria-hidden /></TableHead>
               </TableRow>
               {showTableFilters && (
@@ -404,7 +419,7 @@ template:
               )}
             </TableBody>
           </Table>
-          </ResizableTableProvider>
+        </ResizableTableProvider>
       </ResourceListTableToolbar>
 
       <DeleteConfirmDialog
@@ -415,6 +430,15 @@ template:
         namespace={deleteDialog.item?.namespace}
         onConfirm={handleDelete}
       />
+
+      {showCreateWizard && (
+        <ResourceCreator
+          resourceKind="PodTemplate"
+          onClose={() => setShowCreateWizard(false)}
+          onApply={handleApplyCreate}
+          defaultYaml={DEFAULT_YAMLS.PodTemplate}
+        />
+      )}
     </motion.div>
   );
 }

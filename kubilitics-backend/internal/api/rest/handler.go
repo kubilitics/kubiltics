@@ -11,7 +11,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/hashicorp/golang-lru/v2/expirable"
 
@@ -40,6 +39,7 @@ type Handler struct {
 	metricsService        service.MetricsService
 	unifiedMetricsService *service.UnifiedMetricsService
 	projSvc               service.ProjectService
+	addonService          service.AddOnService
 	cfg                   *config.Config
 	repo                  *repository.SQLiteRepository // BE-AUTHZ-001: for RBAC filtering (can be nil if auth disabled)
 	kcliLimiterMu         sync.Mutex
@@ -49,8 +49,8 @@ type Handler struct {
 	k8sClientCache        *expirable.LRU[string, *k8s.Client] // Cache for stateless requests
 }
 
-// NewHandler creates a new HTTP handler. unifiedMetricsService can be nil; then metrics summary uses legacy per-resource endpoints. projSvc can be nil; then project routes return 501. repo can be nil if auth is disabled.
-func NewHandler(cs service.ClusterService, ts service.TopologyService, cfg *config.Config, logsService service.LogsService, eventsService service.EventsService, metricsService service.MetricsService, unifiedMetricsService *service.UnifiedMetricsService, projSvc service.ProjectService, repo *repository.SQLiteRepository) *Handler {
+// NewHandler creates a new HTTP handler. unifiedMetricsService can be nil; then metrics summary uses legacy per-resource endpoints. projSvc can be nil; then project routes return 501. addonService can be nil; then addon routes return 404 or 501. repo can be nil if auth is disabled.
+func NewHandler(cs service.ClusterService, ts service.TopologyService, cfg *config.Config, logsService service.LogsService, eventsService service.EventsService, metricsService service.MetricsService, unifiedMetricsService *service.UnifiedMetricsService, projSvc service.ProjectService, addonService service.AddOnService, repo *repository.SQLiteRepository) *Handler {
 	if cfg == nil {
 		cfg = &config.Config{}
 	}
@@ -62,6 +62,7 @@ func NewHandler(cs service.ClusterService, ts service.TopologyService, cfg *conf
 		metricsService:        metricsService,
 		unifiedMetricsService: unifiedMetricsService,
 		projSvc:               projSvc,
+		addonService:          addonService,
 		cfg:                   cfg,
 		repo:                  repo,
 		kcliLimiters:          map[string]*rate.Limiter{},
@@ -70,11 +71,19 @@ func NewHandler(cs service.ClusterService, ts service.TopologyService, cfg *conf
 	}
 }
 
-// resolveClusterID returns clusterID if GetClient(clusterID) succeeds; otherwise looks up by Context or Name (e.g. "docker-desktop") so frontend can pass either backend UUID or context name.
+// resolveClusterID returns clusterID if it exists (either as live client or in repo); otherwise looks up by Context or Name (e.g. "docker-desktop") so frontend can pass either backend UUID or context name.
 func (h *Handler) resolveClusterID(ctx context.Context, clusterID string) (string, error) {
+	// 1. Try memory cache (live clients)
 	if _, err := h.clusterService.GetClient(clusterID); err == nil {
 		return clusterID, nil
 	}
+
+	// 2. Try direct lookup from repo (includes disconnected clusters)
+	if c, err := h.clusterService.GetCluster(ctx, clusterID); err == nil && c != nil {
+		return clusterID, nil
+	}
+
+	// 3. Fall back to search by Context or Name
 	clusters, listErr := h.clusterService.ListClusters(ctx)
 	if listErr != nil {
 		return "", listErr
@@ -151,6 +160,63 @@ func SetupRoutes(router *mux.Router, h *Handler) {
 
 	// Cluster features (e.g. MetalLB detection)
 	router.Handle("/clusters/{clusterId}/features/metallb", h.wrapWithRBAC(h.GetMetalLBFeature, auth.RoleViewer)).Methods("GET")
+
+	// Add-on catalog (no cluster context). Frontend uses /addons/catalog and /addons/catalog/{addonId}.
+	router.Handle("/addons", h.wrapWithRBAC(h.ListCatalog, auth.RoleViewer)).Methods("GET")
+	router.Handle("/addons/catalog", h.wrapWithRBAC(h.ListCatalog, auth.RoleViewer)).Methods("GET")
+	// Bootstrap profiles — must be registered before /addons/{addonId} to avoid wildcard capture.
+	router.Handle("/addons/profiles", h.wrapWithRBAC(h.ListProfiles, auth.RoleViewer)).Methods("GET")
+	router.Handle("/addons/profiles", h.wrapWithRBAC(h.CreateProfile, auth.RoleOperator)).Methods("POST")
+	router.Handle("/addons/profiles/{profileId}", h.wrapWithRBAC(h.GetProfile, auth.RoleViewer)).Methods("GET")
+	router.Handle("/addons/{addonId}", h.wrapWithRBAC(h.GetCatalogEntry, auth.RoleViewer)).Methods("GET")
+	router.Handle("/addons/catalog/{addonId}", h.wrapWithRBAC(h.GetCatalogEntry, auth.RoleViewer)).Methods("GET")
+	// Add-on cluster-scoped: read-only (viewer)
+	router.Handle("/clusters/{clusterId}/addons/plan", h.wrapWithRBAC(h.PlanInstall, auth.RoleViewer)).Methods("POST")
+	router.Handle("/clusters/{clusterId}/addons/preflight", h.wrapWithRBAC(h.RunPreflight, auth.RoleViewer)).Methods("POST")
+	router.Handle("/clusters/{clusterId}/addons/estimate-cost", h.wrapWithRBAC(h.EstimateCost, auth.RoleViewer)).Methods("POST")
+	router.Handle("/clusters/{clusterId}/addons/dry-run", h.wrapWithRBAC(h.DryRunInstall, auth.RoleViewer)).Methods("POST")
+	router.Handle("/clusters/{clusterId}/addons/installed", h.wrapWithRBAC(h.ListInstalled, auth.RoleViewer)).Methods("GET")
+	router.Handle("/clusters/{clusterId}/addons/installed/{installId}", h.wrapWithRBAC(h.GetInstall, auth.RoleViewer)).Methods("GET")
+	router.Handle("/clusters/{clusterId}/addons/installed/{installId}/history", h.wrapWithRBAC(h.GetReleaseHistory, auth.RoleViewer)).Methods("GET")
+	router.Handle("/clusters/{clusterId}/addons/installed/{installId}/audit", h.wrapWithRBAC(h.GetAuditEvents, auth.RoleViewer)).Methods("GET")
+	router.Handle("/clusters/{clusterId}/addons/financial-stack", h.wrapWithRBAC(h.GetFinancialStack, auth.RoleViewer)).Methods("GET")
+	router.Handle("/clusters/{clusterId}/addons/financial-stack-plan", h.wrapWithRBAC(h.BuildFinancialStackPlan, auth.RoleViewer)).Methods("POST")
+	router.Handle("/clusters/{clusterId}/addons/catalog/{addonId}/rbac", h.wrapWithRBAC(h.GetRBACManifest, auth.RoleViewer)).Methods("GET")
+	// Add-on cluster-scoped: mutating (operator)
+	router.Handle("/clusters/{clusterId}/addons/execute", h.wrapWithRBAC(h.ExecuteInstall, auth.RoleOperator)).Methods("POST")
+	router.Handle("/clusters/{clusterId}/addons/install/stream", h.wrapWithRBAC(h.StreamInstall, auth.RoleOperator)).Methods("GET")
+	router.Handle("/clusters/{clusterId}/addons/installed/{installId}/upgrade", h.wrapWithRBAC(h.UpgradeInstall, auth.RoleOperator)).Methods("POST")
+	router.Handle("/clusters/{clusterId}/addons/installed/{installId}/rollback", h.wrapWithRBAC(h.RollbackInstall, auth.RoleOperator)).Methods("POST")
+	router.Handle("/clusters/{clusterId}/addons/installed/{installId}", h.wrapWithRBAC(h.UninstallAddon, auth.RoleOperator)).Methods("DELETE")
+	router.Handle("/clusters/{clusterId}/addons/installed/{installId}/policy", h.wrapWithRBAC(h.SetUpgradePolicy, auth.RoleOperator)).Methods("PUT")
+	// Cost attribution endpoint (T8.09) — requires OpenCost running in cluster
+	router.Handle("/clusters/{clusterId}/addons/installed/{installId}/cost-attribution", h.wrapWithRBAC(h.GetCostAttribution, auth.RoleViewer)).Methods("GET")
+	router.Handle("/clusters/{clusterId}/addons/installed/{installId}/rightsizing", h.wrapWithRBAC(h.GetAddonRecommendations, auth.RoleViewer)).Methods("GET")
+	router.Handle("/clusters/{clusterId}/addons/recommendations", h.wrapWithRBAC(h.GetAddonAdvisorRecommendations, auth.RoleViewer)).Methods("GET")
+	// Helm test execution (T9.01)
+	router.Handle("/clusters/{clusterId}/addons/installed/{installId}/test", h.wrapWithRBAC(h.RunAddonTests, auth.RoleOperator)).Methods("POST")
+	// Maintenance window routes (T9.03)
+	router.Handle("/clusters/{clusterId}/addons/maintenance-windows", h.wrapWithRBAC(h.ListMaintenanceWindows, auth.RoleViewer)).Methods("GET")
+	router.Handle("/clusters/{clusterId}/addons/maintenance-windows", h.wrapWithRBAC(h.CreateMaintenanceWindow, auth.RoleAdmin)).Methods("POST")
+	router.Handle("/clusters/{clusterId}/addons/maintenance-windows/{windowId}", h.wrapWithRBAC(h.DeleteMaintenanceWindow, auth.RoleAdmin)).Methods("DELETE")
+	router.Handle("/clusters/{clusterId}/addons/apply-profile", h.wrapWithRBAC(h.ApplyProfile, auth.RoleOperator)).Methods("POST")
+
+	// Multi-cluster rollout routes (T8.06)
+	router.Handle("/addons/rollouts", h.wrapWithRBAC(h.ListRollouts, auth.RoleViewer)).Methods("GET")
+	router.Handle("/addons/rollouts", h.wrapWithRBAC(h.CreateRollout, auth.RoleOperator)).Methods("POST")
+	router.Handle("/addons/rollouts/{rolloutId}", h.wrapWithRBAC(h.GetRollout, auth.RoleViewer)).Methods("GET")
+	router.Handle("/addons/rollouts/{rolloutId}/abort", h.wrapWithRBAC(h.AbortRollout, auth.RoleOperator)).Methods("POST")
+
+	// Notification channel routes (T8.11)
+	router.Handle("/addons/notification-channels", h.wrapWithRBAC(h.ListNotificationChannels, auth.RoleViewer)).Methods("GET")
+	router.Handle("/addons/notification-channels", h.wrapWithRBAC(h.CreateNotificationChannel, auth.RoleOperator)).Methods("POST")
+	router.Handle("/addons/notification-channels/{channelId}", h.wrapWithRBAC(h.UpdateNotificationChannel, auth.RoleOperator)).Methods("PATCH")
+	router.Handle("/addons/notification-channels/{channelId}", h.wrapWithRBAC(h.DeleteNotificationChannel, auth.RoleAdmin)).Methods("DELETE")
+
+	// Private registry routes (T9.04)
+	router.Handle("/addons/registries", h.wrapWithRBAC(h.ListCatalogSources, auth.RoleViewer)).Methods("GET")
+	router.Handle("/addons/registries", h.wrapWithRBAC(h.CreateCatalogSource, auth.RoleOperator)).Methods("POST")
+	router.Handle("/addons/registries/{sourceId}", h.wrapWithRBAC(h.DeleteCatalogSource, auth.RoleAdmin)).Methods("DELETE")
 
 	// CRD instances: list custom resources by CRD name (must be before generic resources)
 	router.Handle("/clusters/{clusterId}/crd-instances/{crdName}", h.wrapWithRBAC(h.ListCRDInstances, auth.RoleViewer)).Methods("GET")
@@ -329,14 +395,15 @@ func (h *Handler) GetCluster(w http.ResponseWriter, r *http.Request) {
 	respondJSON(w, http.StatusOK, cluster)
 }
 
-// AddCluster handles POST /clusters (Headlamp/Lens model: stateless, no backend storage).
-// Accepts kubeconfig_base64 with optional context name.
-// In Headlamp/Lens model, clusters are stored client-side, backend just validates and returns info.
+// AddCluster handles POST /clusters.
+// Accepts kubeconfig_base64 (browser upload/paste) or kubeconfig_path (server-side file path).
+// Both paths fully persist the cluster in the backend database with provider auto-detection.
+// Returns 201 Created with the complete Cluster model.
 func (h *Handler) AddCluster(w http.ResponseWriter, r *http.Request) {
 	var req struct {
-		KubeconfigPath   string `json:"kubeconfig_path"`   // Legacy: file path on server
-		KubeconfigBase64 string `json:"kubeconfig_base64"` // Headlamp/Lens: base64 kubeconfig
-		Context          string `json:"context"`           // Optional context name
+		KubeconfigPath   string `json:"kubeconfig_path"`   // Server-side file path (e.g. ~/.kube/config)
+		KubeconfigBase64 string `json:"kubeconfig_base64"` // Base64-encoded kubeconfig (browser upload/paste)
+		Context          string `json:"context"`           // Optional context name override
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -344,57 +411,38 @@ func (h *Handler) AddCluster(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Headlamp/Lens model: use kubeconfig from request, don't store on backend
+	// Path 1: kubeconfig content uploaded/pasted from browser (base64-encoded).
+	// Writes to ~/.kubilitics/kubeconfigs/, persists cluster, detects provider.
 	if req.KubeconfigBase64 != "" {
+		// Try standard base64 (with padding) then raw (without padding) as fallback.
 		decoded, err := base64.StdEncoding.DecodeString(req.KubeconfigBase64)
 		if err != nil {
-			respondError(w, http.StatusBadRequest, "Invalid kubeconfig_base64")
-			return
+			decoded, err = base64.RawStdEncoding.DecodeString(req.KubeconfigBase64)
+			if err != nil {
+				respondError(w, http.StatusBadRequest, "kubeconfig_base64 is not valid base64")
+				return
+			}
 		}
 
-		// Create client to validate kubeconfig
-		client, err := k8s.NewClientFromBytes(decoded, req.Context)
+		cluster, err := h.clusterService.AddClusterFromBytes(r.Context(), decoded, req.Context)
 		if err != nil {
-			respondError(w, http.StatusBadRequest, fmt.Sprintf("Invalid kubeconfig: %v", err))
+			respondError(w, http.StatusBadRequest, fmt.Sprintf("Failed to add cluster: %v", err))
 			return
 		}
 
-		// Test connection
-		if err := client.TestConnection(r.Context()); err != nil {
-			respondError(w, http.StatusBadRequest, fmt.Sprintf("Connection test failed: %v", err))
-			return
-		}
-
-		// Get cluster info
-		info, err := client.GetClusterInfo(r.Context())
-		if err != nil {
-			respondError(w, http.StatusInternalServerError, err.Error())
-			return
-		}
-
-		// Return cluster info without storing (Headlamp/Lens stateless model)
-		clusterInfo := map[string]interface{}{
-			"id":        uuid.New().String(), // Generate ID for frontend reference
-			"name":      req.Context,
-			"context":   req.Context,
-			"serverURL": info["server_url"],
-			"version":   info["version"],
-			"status":    "connected",
-		}
-		respondJSON(w, http.StatusOK, clusterInfo) // 200 OK, not 201 Created (not stored)
+		respondJSON(w, http.StatusCreated, cluster)
 		return
 	}
 
-	// Legacy: store cluster on backend (for backward compatibility)
-	kubeconfigPath := req.KubeconfigPath
-	if kubeconfigPath == "" {
+	// Path 2: server-side kubeconfig file path (CLI / existing integration).
+	if req.KubeconfigPath == "" {
 		respondError(w, http.StatusBadRequest, "Either kubeconfig_path or kubeconfig_base64 required")
 		return
 	}
 
-	cluster, err := h.clusterService.AddCluster(r.Context(), kubeconfigPath, req.Context)
+	cluster, err := h.clusterService.AddCluster(r.Context(), req.KubeconfigPath, req.Context)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, err.Error())
+		respondError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
@@ -447,6 +495,7 @@ func (h *Handler) ReconnectCluster(w http.ResponseWriter, r *http.Request) {
 }
 
 // GetClusterSummary handles GET /clusters/{clusterId}/summary. clusterId may be backend UUID or context/name.
+// Optional query: projectId — when set, counts are restricted to namespaces belonging to that project in this cluster.
 func (h *Handler) GetClusterSummary(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	clusterID := vars["clusterId"]
@@ -454,6 +503,13 @@ func (h *Handler) GetClusterSummary(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusBadRequest, "Invalid clusterId")
 		return
 	}
+	resolvedID, resolveErr := h.resolveClusterID(r.Context(), clusterID)
+	if resolveErr != nil {
+		requestID := logger.FromContext(r.Context())
+		respondErrorWithCode(w, http.StatusNotFound, ErrCodeNotFound, resolveErr.Error(), requestID)
+		return
+	}
+	clusterID = resolvedID
 	// Headlamp/Lens model: try kubeconfig from request first, fall back to stored cluster
 	client, err := h.getClientFromRequest(r.Context(), r, clusterID, h.cfg)
 	if err != nil {
@@ -469,17 +525,66 @@ func (h *Handler) GetClusterSummary(w http.ResponseWriter, r *http.Request) {
 		respondErrorWithCode(w, http.StatusInternalServerError, ErrCodeInternalError, infoErr.Error(), requestID)
 		return
 	}
+	nodeCount := info["node_count"].(int)
+	namespaceCount := info["namespace_count"].(int)
+
+	var projectNSSet map[string]struct{}
+	if projectID := strings.TrimSpace(r.URL.Query().Get("projectId")); projectID != "" && h.projSvc != nil {
+		proj, projErr := h.projSvc.GetProject(r.Context(), projectID)
+		if projErr == nil {
+			for _, n := range proj.Namespaces {
+				if n.ClusterID == clusterID {
+					if projectNSSet == nil {
+						projectNSSet = make(map[string]struct{})
+					}
+					projectNSSet[n.NamespaceName] = struct{}{}
+				}
+			}
+			// In project context, always use project namespace count (even if 0)
+			if projectNSSet != nil {
+				namespaceCount = len(projectNSSet)
+			} else {
+				namespaceCount = 0
+			}
+		}
+	}
+
 	pods, _ := client.Clientset.CoreV1().Pods("").List(r.Context(), metav1.ListOptions{})
 	deployments, _ := client.Clientset.AppsV1().Deployments("").List(r.Context(), metav1.ListOptions{})
 	services, _ := client.Clientset.CoreV1().Services("").List(r.Context(), metav1.ListOptions{})
+
+	podCount := len(pods.Items)
+	deploymentCount := len(deployments.Items)
+	serviceCount := len(services.Items)
+	if projectNSSet != nil {
+		podCount = 0
+		for _, p := range pods.Items {
+			if _, ok := projectNSSet[p.Namespace]; ok {
+				podCount++
+			}
+		}
+		deploymentCount = 0
+		for _, d := range deployments.Items {
+			if _, ok := projectNSSet[d.Namespace]; ok {
+				deploymentCount++
+			}
+		}
+		serviceCount = 0
+		for _, s := range services.Items {
+			if _, ok := projectNSSet[s.Namespace]; ok {
+				serviceCount++
+			}
+		}
+	}
+
 	summary := &models.ClusterSummary{
 		ID:              clusterID,
 		Name:            clusterID,
-		NodeCount:       info["node_count"].(int),
-		NamespaceCount:  info["namespace_count"].(int),
-		PodCount:        len(pods.Items),
-		DeploymentCount: len(deployments.Items),
-		ServiceCount:    len(services.Items),
+		NodeCount:       nodeCount,
+		NamespaceCount:  namespaceCount,
+		PodCount:        podCount,
+		DeploymentCount: deploymentCount,
+		ServiceCount:    serviceCount,
 		HealthStatus:    "healthy",
 	}
 	respondJSON(w, http.StatusOK, summary)

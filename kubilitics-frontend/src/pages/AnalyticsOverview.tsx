@@ -9,7 +9,6 @@
  *   GET  /api/v1/analytics/anomalies          → 24h anomaly count
  *   GET  /api/v1/analytics/recommendations    → cross-domain insights
  *   GET  /api/v1/analytics/ml/models          → active ML models
- *   GET  /api/v1/cost/overview                → monthly cost, cost trend
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -41,30 +40,19 @@ import {
   getAnomalies,
   getRecommendations,
   getMLModels,
-  AI_BASE_URL,
+  getSecurityPosture,
+  getSecurityCompliance,
   type AnalyticsRecommendation,
   type AIServerInfo,
+  type SecurityPosture,
 } from '@/services/aiService';
 
-// ─── Config ──────────────────────────────────────────────────────────────────
-// All endpoints (including /api/v1/cost/*) live on the AI backend. One base URL.
-const AI_BASE = AI_BASE_URL;
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-
-interface SecurityPosture {
-  overall_score: number;
+// Types are now imported from aiService or defined locally as needed
+interface LocalSecurityPosture extends SecurityPosture {
+  // Add any extra fields needed specifically for this page if not in core type
   security_grade: string;
   critical_issues: number;
-  high_issues: number;
-  compliance_score: number;
-}
-
-interface CostOverview {
-  total_cost_month: number;
-  total_cost_day: number;
-  savings_opportunities: number;
-  provider: string;
 }
 
 // Synthesized view for the health cards
@@ -104,26 +92,23 @@ export function AnalyticsOverview() {
       complianceResult,
       anomaliesResult,
       recommendationsResult,
-      costResult,
       mlModelsResult,
     ] = await Promise.allSettled([
       getAIHealth(),
       getAIInfo(),
-      fetch(`${AI_BASE}/api/v1/security/posture`).then(r => r.ok ? r.json() : null),
-      fetch(`${AI_BASE}/api/v1/security/compliance`).then(r => r.ok ? r.json() : null),
+      getSecurityPosture(),
+      getSecurityCompliance(),
       getAnomalies(),
       getRecommendations(),
-      fetch(`${AI_BASE}/api/v1/cost/overview`).then(r => r.ok ? r.json() : null),
       getMLModels(),
     ]);
 
     const aiHealth = healthResult.status === 'fulfilled' ? healthResult.value : null;
     const aiInfo: AIServerInfo | null = infoResult.status === 'fulfilled' ? infoResult.value : null;
-    const security: SecurityPosture | null = securityResult.status === 'fulfilled' ? securityResult.value : null;
+    const security: any = securityResult.status === 'fulfilled' ? securityResult.value : null;
     const compliance: { compliance_percentage?: number; score?: number } | null = complianceResult.status === 'fulfilled' ? complianceResult.value : null;
     const anomalies = anomaliesResult.status === 'fulfilled' ? anomaliesResult.value : [];
     const recs = recommendationsResult.status === 'fulfilled' ? recommendationsResult.value : [];
-    const cost: CostOverview | null = costResult.status === 'fulfilled' ? costResult.value : null;
     const mlModels = mlModelsResult.status === 'fulfilled' ? mlModelsResult.value : null;
 
     // Derive compliance score from either field
@@ -132,28 +117,19 @@ export function AnalyticsOverview() {
       ?? security?.compliance_score
       ?? 0;
 
-    // Calculate cost trend from savings opportunities vs monthly cost
-    let costTrend: 'up' | 'down' | 'stable' = 'stable';
-    if (cost) {
-      const savings = cost.savings_opportunities ?? 0;
-      const monthly = cost.total_cost_month ?? 0;
-      if (monthly > 0 && savings / monthly > 0.1) costTrend = 'up'; // >10% savings available = costs trending high
-      else costTrend = 'stable';
-    }
-
     setSystemHealth({
       security_score: security?.overall_score ?? 0,
-      security_grade: security?.security_grade ?? '—',
-      anomalies_24h: anomalies.length,
-      monthly_cost: cost?.total_cost_month ?? 0,
-      cost_trend: costTrend,
+      security_grade: security?.overall_grade ?? security?.security_grade ?? '—',
+      anomalies_24h: Array.isArray(anomalies) ? anomalies.length : (anomalies?.anomalies?.length ?? 0),
+      monthly_cost: 0,
+      cost_trend: 'stable',
       compliance_score: complianceScore,
-      critical_issues: security?.critical_issues ?? 0,
+      critical_issues: security?.vulnerability_summary?.critical ?? security?.critical_issues ?? 0,
       ml_models_active: mlModels?.models?.length ?? 0,
       ai_provider: aiInfo?.llm_provider ?? 'none',
       analytics_enabled: aiInfo?.analytics_enabled ?? false,
       ai_reachable: aiHealth?.status === 'healthy',
-      backend_reachable: cost != null,
+      backend_reachable: aiHealth != null,
     });
 
     setInsights(recs);
@@ -207,7 +183,7 @@ export function AnalyticsOverview() {
     if (rec.type?.toLowerCase().includes('secur') || rec.type?.toLowerCase().includes('vuln'))
       return '/security';
     if (rec.type?.toLowerCase().includes('cost') || rec.type?.toLowerCase().includes('saving'))
-      return '/cost';
+      return '/analytics';
     return '/ml-analytics';
   };
 
@@ -335,36 +311,6 @@ export function AnalyticsOverview() {
           </Card>
         </Link>
 
-        {/* Cost */}
-        <Link to="/cost">
-          <Card className="hover:shadow-lg transition-shadow cursor-pointer">
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Cost (Monthly)</CardTitle>
-                <DollarSign className="h-5 w-5 text-green-600" />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-4xl font-bold text-green-600 mb-2">
-                {health.monthly_cost > 0
-                  ? `$${health.monthly_cost.toLocaleString(undefined, { maximumFractionDigits: 0 })}`
-                  : '—'}
-              </div>
-              <div className={`flex items-center gap-1 text-xs ${health.cost_trend === 'up' ? 'text-red-600' :
-                health.cost_trend === 'down' ? 'text-green-600' : 'text-gray-500'
-                }`}>
-                {health.cost_trend === 'up' ? (
-                  <><TrendingUp className="h-3 w-3" /> Savings opportunities available</>
-                ) : health.cost_trend === 'down' ? (
-                  <><TrendingDown className="h-3 w-3" /> Costs trending down</>
-                ) : (
-                  <>{health.backend_reachable ? 'Costs stable' : 'Connect backend for costs'}</>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </Link>
-
         {/* Compliance */}
         <Link to="/security">
           <Card className="hover:shadow-lg transition-shadow cursor-pointer">
@@ -460,7 +406,6 @@ export function AnalyticsOverview() {
                 <>
                   <Brain className="h-10 w-10 mx-auto mb-3 opacity-30" />
                   <p>Connect the AI backend to receive intelligent insights.</p>
-                  <p className="text-xs mt-1">Start kubilitics-ai at <code>{import.meta.env.VITE_AI_BACKEND_URL || 'http://localhost:8081'}</code></p>
                 </>
               )}
             </div>
@@ -508,24 +453,6 @@ export function AnalyticsOverview() {
           </Card>
         </Link>
 
-        <Link to="/cost">
-          <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full">
-            <CardHeader>
-              <CardTitle className="text-sm flex items-center gap-2">
-                <DollarSign className="h-4 w-4 text-green-600" />
-                Cost Intelligence
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-xs text-muted-foreground mb-3">
-                Cost optimization, 6-month forecasting, and multi-cloud pricing
-              </p>
-              <Button variant="outline" size="sm" className="w-full">
-                Go to Cost Dashboard <ArrowRight className="h-3 w-3 ml-2" />
-              </Button>
-            </CardContent>
-          </Card>
-        </Link>
       </div>
 
       {/* ── System Status ─────────────────────────────────────────────────── */}

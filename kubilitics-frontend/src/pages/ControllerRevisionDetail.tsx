@@ -4,12 +4,13 @@ import { History, Clock, Download, Trash2, Info, FileCode, GitCompare, Layers } 
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
+import { downloadResourceJson } from '@/lib/exportUtils';
 import {
   ResourceDetailLayout,
   ResourceOverviewMetadata,
   SectionCard,
   YamlViewer,
-  YamlCompareViewer,
+  ResourceComparisonView,
   EventsSection,
   ActionsSection,
   DeleteConfirmDialog,
@@ -23,11 +24,13 @@ import { useClusterStore } from '@/stores/clusterStore';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import { NamespaceBadge } from '@/components/list';
+import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
+import { useActiveClusterId } from '@/hooks/useActiveClusterId';
 
 interface K8sControllerRevision extends KubernetesResource {
   revision?: number;
   data?: unknown;
-  metadata?: KubernetesResource['metadata'] & {
+  metadata: KubernetesResource['metadata'] & {
     ownerReferences?: Array<{ kind: string; name: string }>;
   };
 }
@@ -41,6 +44,9 @@ export default function ControllerRevisionDetail() {
   const { activeCluster } = useClusterStore();
   const breadcrumbSegments = useDetailBreadcrumbs('ControllerRevision', name ?? undefined, namespace ?? undefined, activeCluster?.name);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const clusterId = useActiveClusterId();
+  const backendBaseUrl = useBackendConfigStore((s) => s.backendBaseUrl);
+  const baseUrl = getEffectiveBackendBaseUrl(backendBaseUrl);
 
   useEffect(() => {
     setActiveTab(initialTab);
@@ -70,6 +76,12 @@ export default function ControllerRevisionDetail() {
     a.click();
     URL.revokeObjectURL(url);
   }, [yaml, cr?.metadata?.name]);
+
+  const handleDownloadJson = useCallback(() => {
+    if (!cr) return;
+    downloadResourceJson(cr, `${cr?.metadata?.name || 'controllerrevision'}.json`);
+    toast.success('JSON downloaded');
+  }, [cr]);
 
   if (!name?.trim() || !namespace?.trim()) return null;
   if (isLoading) {
@@ -119,7 +131,6 @@ export default function ControllerRevisionDetail() {
     { label: 'Revision', value: String(revision), icon: History, iconColor: 'muted' as const },
   ];
 
-  const yamlVersions: YamlVersion[] = yaml ? [{ id: 'current', label: 'Current Version', yaml, timestamp: 'now' }] : [];
 
   const handleSaveYaml = async (newYaml: string) => {
     if (!name || !namespace) return;
@@ -166,7 +177,23 @@ export default function ControllerRevisionDetail() {
     },
     { id: 'events', label: 'Events', icon: Clock, content: <EventsSection events={events} /> },
     { id: 'yaml', label: 'YAML', icon: FileCode, content: <YamlViewer yaml={yaml} resourceName={crName} editable onSave={handleSaveYaml} /> },
-    { id: 'compare', label: 'Compare', icon: GitCompare, content: <YamlCompareViewer versions={yamlVersions} resourceName={crName} /> },
+    {
+      id: 'compare',
+      label: 'Compare',
+      icon: GitCompare,
+      content: (
+        <ResourceComparisonView
+          resourceType="controllerrevisions"
+          resourceKind="ControllerRevision"
+          namespace={crNamespace}
+          initialSelectedResources={crNamespace && crName ? [`${crNamespace}/${crName}`] : [crName]}
+          clusterId={clusterId ?? undefined}
+          backendBaseUrl={baseUrl ?? ''}
+          isConnected={isConnected}
+          embedded
+        />
+      ),
+    },
     {
       id: 'actions',
       label: 'Actions',
@@ -174,6 +201,7 @@ export default function ControllerRevisionDetail() {
       content: (
         <ActionsSection actions={[
           { icon: Download, label: 'Download YAML', description: 'Export ControllerRevision definition', onClick: handleDownloadYaml },
+          { icon: Download, label: 'Export as JSON', description: 'Export ControllerRevision as JSON', onClick: handleDownloadJson },
           { icon: Trash2, label: 'Delete ControllerRevision', description: 'Remove this revision (usually managed by the parent workload)', variant: 'destructive', onClick: () => setShowDeleteDialog(true) },
         ]} />
       ),
@@ -202,6 +230,7 @@ export default function ControllerRevisionDetail() {
         }
         actions={[
           { label: 'Download YAML', icon: Download, variant: 'outline', onClick: handleDownloadYaml },
+          { label: 'Export as JSON', icon: Download, variant: 'outline', onClick: handleDownloadJson },
           { label: 'Edit', icon: FileCode, variant: 'outline', onClick: () => { setActiveTab('yaml'); setSearchParams((p) => { const n = new URLSearchParams(p); n.set('tab', 'yaml'); return n; }, { replace: true }); } },
           { label: 'Delete', icon: Trash2, variant: 'destructive', onClick: () => setShowDeleteDialog(true) },
         ]}

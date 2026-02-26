@@ -11,8 +11,20 @@ import (
 
 func newPluginCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:     "plugin",
-		Short:   "Manage and run kcli plugins",
+		Use:   "plugin",
+		Short: "Manage and run kcli plugins",
+		Long: `Manage and run kcli plugins.
+
+Plugins are executed inside an OS-level isolation boundary derived from the
+manifest permissions declarations:
+
+  macOS  — sandbox-exec(8) Seatbelt policy (deny-by-default, allowlist model)
+  Linux  — unshare(1) namespace isolation (user, pid, mount, ipc, uts, net)
+  other  — no OS sandbox; plugin runs with your full user privileges
+
+Use 'kcli plugin inspect-sandbox <name>' to view the generated policy.
+Binaries must live in ~/.kcli/plugins/ (or set KCLI_PLUGIN_ALLOW_PATH=1 to
+allow plugins found on PATH).`,
 		GroupID: "workflow",
 	}
 	cmd.AddCommand(
@@ -212,6 +224,8 @@ func newPluginCmd() *cobra.Command {
 			},
 		},
 		newPluginVerifyCmd(),
+		newPluginInspectSandboxCmd(),
+		newPluginAllowlistCmd(),
 	)
 	return cmd
 }
@@ -219,23 +233,33 @@ func newPluginCmd() *cobra.Command {
 func newPluginVerifyCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "verify [name]",
-		Short: "Print SHA256 checksum of installed plugin binary(ies)",
-		Long:  "With no name, lists all installed plugins with their binary SHA256. With a name, prints the checksum for that plugin only. Use for integrity verification.",
-		Args:  cobra.MaximumNArgs(1),
+		Short: "Verify plugin binary integrity using SHA-256 checksums",
+		Long: `Verify the integrity of installed plugin binaries.
+
+With no name, verifies all installed plugins.
+With a name, verifies a specific plugin.
+
+kcli records the SHA-256 checksum of each plugin binary at install time and
+stores it in ~/.kcli/registry.json.  'verify' re-computes the current checksum
+and compares it against the recorded value to detect tampering or corruption.
+
+Exit codes:
+  0 — all verified plugins passed
+  1 — one or more plugins failed verification or an error occurred
+`,
+		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) == 1 {
 				name := strings.TrimSpace(args[0])
-				path, err := plugin.Resolve(name)
-				if err != nil {
+				if err := plugin.VerifyPlugin(name); err != nil {
 					return err
 				}
-				checksum, err := plugin.FileSHA256(path)
-				if err != nil {
-					return fmt.Errorf("checksum %s: %w", path, err)
-				}
-				fmt.Fprintf(cmd.OutOrStdout(), "%s\t%s\t%s\n", name, path, checksum)
+				path, _ := plugin.Resolve(name)
+				checksum, _ := plugin.FileSHA256(path)
+				fmt.Fprintf(cmd.OutOrStdout(), "%s: OK (%s)\n", name, checksum)
 				return nil
 			}
+			// Verify all installed plugins.
 			plugins, err := plugin.DiscoverInfo()
 			if err != nil {
 				return err
@@ -244,13 +268,21 @@ func newPluginVerifyCmd() *cobra.Command {
 				fmt.Fprintln(cmd.OutOrStdout(), "No plugins installed.")
 				return nil
 			}
-			fmt.Fprintln(cmd.OutOrStdout(), "NAME\tPATH\tSHA256")
+			var failed int
 			for _, p := range plugins {
-				checksum, err := plugin.FileSHA256(p.Path)
-				if err != nil {
-					checksum = fmt.Sprintf("<error: %v>", err)
+				if verr := plugin.VerifyPlugin(p.Name); verr != nil {
+					fmt.Fprintf(cmd.OutOrStdout(), "%s: FAIL — %v\n", p.Name, verr)
+					failed++
+					continue
 				}
-				fmt.Fprintf(cmd.OutOrStdout(), "%s\t%s\t%s\n", p.Name, p.Path, checksum)
+				checksum, cerr := plugin.FileSHA256(p.Path)
+				if cerr != nil {
+					checksum = fmt.Sprintf("<error: %v>", cerr)
+				}
+				fmt.Fprintf(cmd.OutOrStdout(), "%s: OK (%s)\n", p.Name, checksum)
+			}
+			if failed > 0 {
+				return fmt.Errorf("%d plugin(s) failed integrity verification", failed)
 			}
 			return nil
 		},
@@ -301,6 +333,162 @@ func printPluginInspect(cmd *cobra.Command, name string) error {
 		fmt.Fprintf(cmd.OutOrStdout(), "  - %s (%s)\n", p, status)
 	}
 	return nil
+}
+
+func newPluginInspectSandboxCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "inspect-sandbox <name>",
+		Short: "Show the OS-level sandbox policy for a plugin",
+		Long: `Show the OS-level isolation policy that would be applied when running a plugin.
+
+The policy is generated from the plugin manifest's permissions declarations.
+On macOS this is a Seatbelt (.sb) profile passed to sandbox-exec(8).
+On Linux this is a summary of the unshare(1) namespace flags.
+
+The sandbox is applied automatically on every plugin execution; this command
+lets you audit the generated policy without running the plugin.`,
+		Args: cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			name := strings.TrimSpace(args[0])
+			profile, err := plugin.InspectSandboxProfile(name)
+			if err != nil {
+				return err
+			}
+			out := cmd.OutOrStdout()
+			fmt.Fprintf(out, "Plugin:    %s\n", name)
+			fmt.Fprintf(out, "Platform:  %s\n", profile.Platform)
+			if profile.Available {
+				fmt.Fprintf(out, "Sandbox:   enabled\n\n")
+			} else {
+				fmt.Fprintf(out, "Sandbox:   unavailable (plugin runs with full user privileges)\n\n")
+			}
+			fmt.Fprintf(out, "Policy:\n%s\n", profile.PolicyText)
+			return nil
+		},
+	}
+}
+
+// newPluginAllowlistCmd builds the 'kcli plugin allowlist' command tree.
+//
+// Subcommands:
+//
+//	show    — print the current allowlist and enforcement status
+//	add     — add one or more plugin names to the allowlist
+//	rm      — remove one or more plugin names from the allowlist
+//	lock    — enable enforcement (only allowlisted plugins may run/install)
+//	unlock  — disable enforcement (advisory mode; any plugin may run)
+func newPluginAllowlistCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "allowlist",
+		Short: "Manage the enterprise plugin allowlist",
+		Long: `Manage the organization plugin allowlist.
+
+When the allowlist is locked, only plugins whose names appear in the list
+may be installed or executed.  This lets platform administrators control
+which plugins developers can use in a shared cluster environment.
+
+Allowlist data is stored in ~/.kcli/plugin-allowlist.json.
+
+Examples:
+
+  # Allow specific plugins and enable enforcement
+  kcli plugin allowlist add argocd cert-manager backup
+  kcli plugin allowlist lock
+
+  # Check current status
+  kcli plugin allowlist show
+
+  # Remove a plugin from the allowlist
+  kcli plugin allowlist rm cert-manager
+
+  # Disable enforcement (advisory mode)
+  kcli plugin allowlist unlock`,
+	}
+	cmd.AddCommand(
+		&cobra.Command{
+			Use:   "show",
+			Short: "Show allowed plugins and enforcement status",
+			RunE: func(cmd *cobra.Command, _ []string) error {
+				store, err := plugin.LoadAllowlist()
+				if err != nil {
+					return err
+				}
+				out := cmd.OutOrStdout()
+				status := "unlocked (advisory — any plugin may run)"
+				if store.Locked {
+					status = "LOCKED (only allowlisted plugins may install/run)"
+				}
+				fmt.Fprintf(out, "Enforcement: %s\n", status)
+				if len(store.Plugins) == 0 {
+					fmt.Fprintln(out, "Plugins:     (none)")
+					return nil
+				}
+				fmt.Fprintln(out, "Plugins:")
+				for _, p := range store.Plugins {
+					fmt.Fprintf(out, "  - %s\n", p)
+				}
+				return nil
+			},
+		},
+		&cobra.Command{
+			Use:   "add <name> [name...]",
+			Short: "Add plugin(s) to the allowlist",
+			Args:  cobra.MinimumNArgs(1),
+			RunE: func(cmd *cobra.Command, args []string) error {
+				if err := plugin.AllowlistAdd(args); err != nil {
+					return err
+				}
+				fmt.Fprintf(cmd.OutOrStdout(), "Added %d plugin(s) to the allowlist: %s\n",
+					len(args), strings.Join(args, ", "))
+				return nil
+			},
+		},
+		&cobra.Command{
+			Use:     "rm <name> [name...]",
+			Aliases: []string{"remove"},
+			Short:   "Remove plugin(s) from the allowlist",
+			Args:    cobra.MinimumNArgs(1),
+			RunE: func(cmd *cobra.Command, args []string) error {
+				if err := plugin.AllowlistRemove(args); err != nil {
+					return err
+				}
+				fmt.Fprintf(cmd.OutOrStdout(), "Removed %d plugin(s) from the allowlist: %s\n",
+					len(args), strings.Join(args, ", "))
+				return nil
+			},
+		},
+		&cobra.Command{
+			Use:   "lock",
+			Short: "Enable allowlist enforcement",
+			Long: `Enable allowlist enforcement.
+
+Once locked, only plugins listed in 'kcli plugin allowlist show' may be
+installed or executed.  Use 'kcli plugin allowlist unlock' to revert.`,
+			RunE: func(cmd *cobra.Command, _ []string) error {
+				if err := plugin.AllowlistSetLocked(true); err != nil {
+					return err
+				}
+				fmt.Fprintln(cmd.OutOrStdout(), "Allowlist locked — only allowlisted plugins may install/run.")
+				return nil
+			},
+		},
+		&cobra.Command{
+			Use:   "unlock",
+			Short: "Disable allowlist enforcement (advisory mode)",
+			Long: `Disable allowlist enforcement.
+
+The allowlist file is preserved but no longer checked during plugin install
+or execution.  Use 'kcli plugin allowlist lock' to re-enable enforcement.`,
+			RunE: func(cmd *cobra.Command, _ []string) error {
+				if err := plugin.AllowlistSetLocked(false); err != nil {
+					return err
+				}
+				fmt.Fprintln(cmd.OutOrStdout(), "Allowlist unlocked — any plugin may install/run.")
+				return nil
+			},
+		},
+	)
+	return cmd
 }
 
 func newPluginUpdateCmd() *cobra.Command {

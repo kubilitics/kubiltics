@@ -26,16 +26,16 @@ import (
 
 // AuthHandler handles /api/v1/auth/* (BE-AUTH-001, BE-AUTH-002).
 type AuthHandler struct {
-	repo        *repository.SQLiteRepository
-	cfg         *config.Config
-	loginLimiterMu sync.Mutex
-	loginLimiters  map[string]*rate.Limiter // per-IP rate limiters (BE-AUTH-002)
-	securityDetector *auth.SecurityDetector // Phase 5: Security event detection
+	repo             *repository.SQLiteRepository
+	cfg              *config.Config
+	loginLimiterMu   sync.Mutex
+	loginLimiters    map[string]*rate.Limiter // per-IP rate limiters (BE-AUTH-002)
+	securityDetector *auth.SecurityDetector   // Phase 5: Security event detection
 }
 
 const (
 	minPasswordLength = 12
-	loginRateLimit    = 5  // per minute
+	loginRateLimit    = 5 // per minute
 	loginBurst        = 5
 	maxFailedLogins   = 10
 	lockoutDuration   = 30 * time.Minute
@@ -46,11 +46,11 @@ func NewAuthHandler(repo *repository.SQLiteRepository, cfg *config.Config) *Auth
 	// Create security detector adapter
 	detectorRepo := &securityDetectorRepoAdapter{repo: repo}
 	securityDetector := auth.NewSecurityDetector(detectorRepo)
-	
+
 	return &AuthHandler{
-		repo:         repo,
-		cfg:          cfg,
-		loginLimiters: make(map[string]*rate.Limiter),
+		repo:             repo,
+		cfg:              cfg,
+		loginLimiters:    make(map[string]*rate.Limiter),
 		securityDetector: securityDetector,
 	}
 }
@@ -102,7 +102,7 @@ type LoginResponse struct {
 	ExpiresIn    int    `json:"expires_in,omitempty"`
 	TokenType    string `json:"token_type,omitempty"`
 	MFARequired  bool   `json:"mfa_required,omitempty"` // True if MFA code is required
-	Message      string `json:"message,omitempty"`       // Message if MFA is required
+	Message      string `json:"message,omitempty"`      // Message if MFA is required
 }
 
 // RefreshRequest is the body for POST /auth/refresh.
@@ -112,13 +112,13 @@ type RefreshRequest struct {
 
 // MeResponse is the response for GET /auth/me (BE-AUTHZ-001).
 type MeResponse struct {
-	ID                string            `json:"id"`
-	Username          string            `json:"username"`
-	Role              string            `json:"role"`
+	ID                 string            `json:"id"`
+	Username           string            `json:"username"`
+	Role               string            `json:"role"`
 	ClusterPermissions map[string]string `json:"cluster_permissions,omitempty"` // cluster_id -> role
-	MFAEnabled        bool              `json:"mfa_enabled"`        // Whether MFA is enabled for this user
-	MFARequired       bool              `json:"mfa_required"`        // Whether MFA is required for this user's role
-	Groups             []string          `json:"groups,omitempty"`   // Group names user belongs to
+	MFAEnabled         bool              `json:"mfa_enabled"`                   // Whether MFA is enabled for this user
+	MFARequired        bool              `json:"mfa_required"`                  // Whether MFA is required for this user's role
+	Groups             []string          `json:"groups,omitempty"`              // Group names user belongs to
 }
 
 // RegisterRoutes registers auth routes on the given router (expect path prefix /api/v1 already applied).
@@ -222,44 +222,45 @@ func (h *AuthHandler) logAuthEvent(ctx context.Context, eventType, username, ip,
 			sessionID = &session.ID
 		}
 	}
-	
+
 	// Extract device info
 	deviceInfo := h.extractDeviceInfo(userAgent)
-	
+
 	// Calculate risk score (simple implementation - can be enhanced)
 	riskScore := 0
-	if eventType == "login_failure" {
+	switch eventType {
+	case "login_failure":
 		riskScore = 30
-	} else if eventType == "account_locked" {
+	case "account_locked":
 		riskScore = 80
-	} else if eventType == "login_success" {
+	case "login_success":
 		riskScore = 10
 	}
-	
+
 	// Generate correlation ID for related events (e.g., login attempts)
 	correlationID := uuid.New().String()
-	
+
 	// Simple geolocation (can be enhanced with IP geolocation service)
 	geolocation := "Unknown"
 	if ip != "" && ip != "127.0.0.1" && !strings.HasPrefix(ip, "192.168.") && !strings.HasPrefix(ip, "10.") {
 		geolocation = "External" // Placeholder - would use IP geolocation service in production
 	}
-	
+
 	// Create audit log entry
 	_ = h.repo.CreateAuditLog(ctx, &models.AuditLogEntry{
-		Timestamp:        time.Now(),
-		UserID:           userID,
-		Username:         username,
-		Action:           eventType,
-		RequestIP:        ip,
-		Details:          details,
-		SessionID:        sessionID,
-		DeviceInfo:       &deviceInfo,
-		Geolocation:      &geolocation,
-		RiskScore:        &riskScore,
-		CorrelationID:    &correlationID,
+		Timestamp:     time.Now(),
+		UserID:        userID,
+		Username:      username,
+		Action:        eventType,
+		RequestIP:     ip,
+		Details:       details,
+		SessionID:     sessionID,
+		DeviceInfo:    &deviceInfo,
+		Geolocation:   &geolocation,
+		RiskScore:     &riskScore,
+		CorrelationID: &correlationID,
 	})
-	
+
 	// Also create AuthEvent for backward compatibility
 	e := &models.AuthEvent{
 		ID:        uuid.New().String(),
@@ -309,7 +310,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	
+
 	// Check common passwords
 	if auth.CheckCommonPasswords(req.Password) {
 		respondError(w, http.StatusBadRequest, "Password is too common. Please choose a more unique password.")
@@ -363,12 +364,12 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	if err := auth.CheckPassword(u.PasswordHash, req.Password); err != nil {
 		// BE-AUTH-002: Increment failed login count
 		_ = h.repo.IncrementFailedLogin(ctx, u.ID)
-		
+
 		// Phase 5: Record failed login for security detection
 		if h.securityDetector != nil {
 			_ = h.securityDetector.RecordFailedLogin(ctx, ip, req.Username, userAgent)
 		}
-		
+
 		// Reload user to get updated failed count
 		u, _ = h.repo.GetUserByUsername(ctx, req.Username)
 		if u != nil {
@@ -390,12 +391,12 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	}
 	// BE-AUTH-002: Successful login - reset failed count
 	_ = h.repo.ResetFailedLogin(ctx, u.ID)
-	
+
 	// Phase 5: Check if MFA is required/enabled
 	mfaRequired := h.isMFARequired(u.Role)
 	mfaSecret, _ := h.repo.GetMFATOTPSecret(ctx, u.ID)
 	mfaEnabled := mfaSecret != nil && mfaSecret.Enabled
-	
+
 	if mfaRequired || mfaEnabled {
 		// MFA is required - check if code provided
 		if req.MFACode == "" {
@@ -408,13 +409,13 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 			})
 			return
 		}
-		
+
 		// Verify MFA code
 		if mfaSecret == nil || !mfaSecret.Enabled {
 			respondError(w, http.StatusBadRequest, "MFA not set up for this account")
 			return
 		}
-		
+
 		// Try backup code first (backup codes use bcrypt which is correct)
 		backupValid, err := h.repo.VerifyAndUseMFABackupCode(ctx, u.ID, req.MFACode)
 		if err == nil && backupValid {
@@ -439,7 +440,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 				}
 				plainSecret = string(decoded)
 			}
-			
+
 			// Verify TOTP code
 			if !mfa.VerifyTOTPCode(plainSecret, req.MFACode) {
 				h.logAuthEvent(ctx, "login_mfa_failure", u.Username, ip, userAgent, &u.ID, "invalid_mfa_code")
@@ -448,7 +449,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
-	
+
 	// Login successful - issue tokens
 	h.logAuthEvent(ctx, "login_success", u.Username, ip, userAgent, &u.ID, "")
 	metrics.AuthLoginAttemptsTotal.WithLabelValues("password", "success").Inc()
@@ -462,7 +463,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusInternalServerError, "Failed to issue token")
 		return
 	}
-	
+
 	// Phase 1: Create refresh token family for rotation
 	refreshClaims, _ := auth.ValidateToken(h.cfg.AuthJWTSecret, refreshToken)
 	if refreshClaims != nil && refreshClaims.ID != "" {
@@ -477,21 +478,21 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 			log.Printf("Failed to create refresh token family: %v", err)
 		}
 	}
-	
+
 	// Phase 4: Create session for tracking
 	accessClaims, _ := auth.ValidateToken(h.cfg.AuthJWTSecret, accessToken)
 	if accessClaims != nil && accessClaims.ID != "" {
 		now := time.Now()
 		expiresAt := now.Add(auth.AccessTokenExpiry)
 		session := &models.Session{
-			UserID:      u.ID,
-			TokenID:     accessClaims.ID,
-			DeviceInfo:  h.extractDeviceInfo(userAgent),
-			IPAddress:   ip,
-			UserAgent:   userAgent,
-			CreatedAt:   now,
+			UserID:       u.ID,
+			TokenID:      accessClaims.ID,
+			DeviceInfo:   h.extractDeviceInfo(userAgent),
+			IPAddress:    ip,
+			UserAgent:    userAgent,
+			CreatedAt:    now,
 			LastActivity: now,
-			ExpiresAt:   expiresAt,
+			ExpiresAt:    expiresAt,
 		}
 		// Phase 4: Check session limits
 		if h.cfg.MaxConcurrentSessions > 0 {
@@ -517,7 +518,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 			log.Printf("Failed to create session: %v", err)
 		}
 	}
-	
+
 	_ = h.repo.UpdateUserLastLogin(ctx, u.ID, time.Now())
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
@@ -569,7 +570,7 @@ func (h *AuthHandler) Refresh(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusUnauthorized, "Invalid or expired refresh token")
 		return
 	}
-	
+
 	// Phase 1: Check refresh token family for rotation
 	family, err := h.repo.GetRefreshTokenFamilyByTokenID(r.Context(), claims.ID)
 	if err != nil || family == nil {
@@ -579,13 +580,13 @@ func (h *AuthHandler) Refresh(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusUnauthorized, "Refresh token has been revoked")
 		return
 	}
-	
+
 	u, err := h.repo.GetUserByID(r.Context(), claims.UserID)
 	if err != nil || u == nil {
 		respondError(w, http.StatusUnauthorized, "User not found")
 		return
 	}
-	
+
 	// Phase 1: Token rotation - revoke old refresh token and issue new one
 	var newRefreshToken string
 	if family != nil && !family.IsRevoked() && claims.ID != "" {
@@ -602,7 +603,7 @@ func (h *AuthHandler) Refresh(w http.ResponseWriter, r *http.Request) {
 			Reason:    "token_rotation",
 		}
 		_ = h.repo.CreateTokenBlacklistEntry(r.Context(), oldTokenEntry)
-		
+
 		// Issue new refresh token
 		newRefreshTokenStr, err := auth.IssueRefreshToken(h.cfg.AuthJWTSecret, u.ID)
 		if err == nil {
@@ -614,13 +615,13 @@ func (h *AuthHandler) Refresh(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
-	
+
 	accessToken, err := auth.IssueAccessToken(h.cfg.AuthJWTSecret, u.ID, u.Username, u.Role)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "Failed to issue token")
 		return
 	}
-	
+
 	response := LoginResponse{
 		AccessToken: accessToken,
 		ExpiresIn:   int(auth.AccessTokenExpiry.Seconds()),
@@ -629,7 +630,7 @@ func (h *AuthHandler) Refresh(w http.ResponseWriter, r *http.Request) {
 	if newRefreshToken != "" {
 		response.RefreshToken = newRefreshToken
 	}
-	
+
 	metrics.AuthTokenRefreshesTotal.WithLabelValues("success").Inc()
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
@@ -653,29 +654,29 @@ func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 	for _, p := range perms {
 		permMap[p.ClusterID] = p.Role
 	}
-	
+
 	// Phase 5: Check MFA status
 	mfaSecret, _ := h.repo.GetMFATOTPSecret(r.Context(), claims.UserID)
 	mfaEnabled := mfaSecret != nil && mfaSecret.Enabled
 	mfaRequired := h.isMFARequired(claims.Role)
-	
+
 	// Phase 5: Get user groups
 	userGroups, _ := h.repo.ListUserGroups(r.Context(), claims.UserID)
 	groupNames := make([]string, len(userGroups))
 	for i, g := range userGroups {
 		groupNames[i] = g.Name
 	}
-	
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	_ = json.NewEncoder(w).Encode(MeResponse{
-		ID:                claims.UserID,
-		Username:          claims.Username,
-		Role:              claims.Role,
+		ID:                 claims.UserID,
+		Username:           claims.Username,
+		Role:               claims.Role,
 		ClusterPermissions: permMap,
-		MFAEnabled:        mfaEnabled,
-		MFARequired:       mfaRequired,
-		Groups:            groupNames,
+		MFAEnabled:         mfaEnabled,
+		MFARequired:        mfaRequired,
+		Groups:             groupNames,
 	})
 }
 
@@ -702,7 +703,7 @@ func (h *AuthHandler) ChangePassword(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusUnauthorized, "User not found")
 		return
 	}
-	
+
 	// Verify current password
 	if err := auth.CheckPassword(u.PasswordHash, req.CurrentPassword); err != nil {
 		ip := h.getIP(r)
@@ -711,7 +712,7 @@ func (h *AuthHandler) ChangePassword(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusUnauthorized, "Current password is incorrect")
 		return
 	}
-	
+
 	// Phase 5: Enhanced password policy validation
 	policy := auth.PasswordPolicy{
 		MinLength:        h.cfg.PasswordMinLength,
@@ -724,20 +725,20 @@ func (h *AuthHandler) ChangePassword(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	
+
 	// Check common passwords
 	if auth.CheckCommonPasswords(req.NewPassword) {
 		respondError(w, http.StatusBadRequest, "Password is too common. Please choose a more unique password.")
 		return
 	}
-	
+
 	// Hash new password
 	newHash, err := auth.HashPassword(req.NewPassword)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "Failed to hash password")
 		return
 	}
-	
+
 	// Check password history
 	historyCount := h.cfg.PasswordHistoryCount
 	if historyCount > 0 {
@@ -747,22 +748,22 @@ func (h *AuthHandler) ChangePassword(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	
+
 	// Update password
 	if err := h.repo.UpdateUserPassword(ctx, u.ID, newHash); err != nil {
 		respondError(w, http.StatusInternalServerError, "Failed to update password")
 		return
 	}
-	
+
 	// Phase 5: Add to password history
 	if historyCount > 0 {
 		_ = h.repo.CreatePasswordHistory(ctx, u.ID, newHash)
 		_ = h.repo.CleanupOldPasswordHistory(ctx, u.ID, historyCount+1) // Keep one extra for safety
 	}
-	
+
 	// Phase 1: Auto-revoke all tokens on password change
 	_ = h.repo.RevokeAllUserTokens(ctx, u.ID, "password_change")
-	
+
 	ip := h.getIP(r)
 	userAgent := r.Header.Get("User-Agent")
 	h.logAuthEvent(ctx, "password_change", u.Username, ip, userAgent, &u.ID, "")
@@ -948,10 +949,10 @@ func (h *AuthHandler) DeleteUser(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusBadRequest, "Cannot delete your own account")
 		return
 	}
-	
+
 	// Phase 1: Auto-revoke all tokens on user deletion
 	_ = h.repo.RevokeAllUserTokens(r.Context(), userID, "user_deletion")
-	
+
 	if err := h.repo.DeleteUser(r.Context(), userID); err != nil {
 		respondError(w, http.StatusInternalServerError, err.Error())
 		return
@@ -1069,7 +1070,7 @@ type CreateAPIKeyRequest struct {
 type CreateAPIKeyResponse struct {
 	ID        string     `json:"id"`
 	Name      string     `json:"name"`
-	Key       string     `json:"key"`        // Plaintext key (shown only once)
+	Key       string     `json:"key"` // Plaintext key (shown only once)
 	ExpiresAt *time.Time `json:"expires_at,omitempty"`
 	CreatedAt time.Time  `json:"created_at"`
 }
@@ -1200,13 +1201,13 @@ func (h *AuthHandler) RevokeToken(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusUnauthorized, "Not authenticated")
 		return
 	}
-	
+
 	var req RevokeTokenRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		respondError(w, http.StatusBadRequest, "Invalid request body")
 		return
 	}
-	
+
 	ctx := r.Context()
 	if req.TokenID != "" {
 		// Revoke specific token
@@ -1251,30 +1252,30 @@ func (h *AuthHandler) RevokeAllTokens(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusUnauthorized, "Not authenticated")
 		return
 	}
-	
+
 	// Admin only
 	if claims.Role != "admin" {
 		respondError(w, http.StatusForbidden, "Admin access required")
 		return
 	}
-	
+
 	var req RevokeAllTokensRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		respondError(w, http.StatusBadRequest, "Invalid request body")
 		return
 	}
-	
+
 	if req.UserID == "" {
 		respondError(w, http.StatusBadRequest, "user_id required")
 		return
 	}
-	
+
 	ctx := r.Context()
 	if err := h.repo.RevokeAllUserTokens(ctx, req.UserID, "admin_revoke"); err != nil {
 		respondError(w, http.StatusInternalServerError, "Failed to revoke tokens")
 		return
 	}
-	
+
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write([]byte(`{"message":"All tokens revoked successfully"}`))
 }
@@ -1360,7 +1361,7 @@ type IntrospectTokenRequest struct {
 
 // IntrospectTokenResponse is the response for token introspection
 type IntrospectTokenResponse struct {
-	Active   bool   `json:"active"`   // Whether token is active
+	Active   bool   `json:"active"` // Whether token is active
 	UserID   string `json:"user_id,omitempty"`
 	Username string `json:"username,omitempty"`
 	Role     string `json:"role,omitempty"`
@@ -1420,9 +1421,9 @@ type CheckPasswordStrengthRequest struct {
 
 // CheckPasswordStrengthResponse is the response for password strength check
 type CheckPasswordStrengthResponse struct {
-	Strength int    `json:"strength"` // 0-100
-	Label    string `json:"label"`    // Weak, Fair, Good, Strong
-	Valid    bool   `json:"valid"`    // Whether password meets policy requirements
+	Strength int      `json:"strength"`         // 0-100
+	Label    string   `json:"label"`            // Weak, Fair, Good, Strong
+	Valid    bool     `json:"valid"`            // Whether password meets policy requirements
 	Errors   []string `json:"errors,omitempty"` // Policy validation errors
 }
 
@@ -1449,12 +1450,12 @@ func (h *AuthHandler) CheckPasswordStrength(w http.ResponseWriter, r *http.Reque
 
 	strength := auth.CalculatePasswordStrength(req.Password)
 	label := auth.GetPasswordStrengthLabel(strength)
-	
+
 	var errors []string
 	if err := auth.ValidatePassword(req.Password, policy); err != nil {
 		errors = append(errors, err.Error())
 	}
-	
+
 	if auth.CheckCommonPasswords(req.Password) {
 		errors = append(errors, "Password is too common")
 	}
@@ -1477,8 +1478,8 @@ type MFASetupRequest struct {
 }
 
 type MFASetupResponse struct {
-	Secret    string   `json:"secret"`     // TOTP secret (for manual entry)
-	QRCodeURL string   `json:"qr_code_url"` // QR code data URL
+	Secret      string   `json:"secret"`       // TOTP secret (for manual entry)
+	QRCodeURL   string   `json:"qr_code_url"`  // QR code data URL
 	BackupCodes []string `json:"backup_codes"` // Backup codes (shown only once)
 }
 
@@ -1610,7 +1611,7 @@ func (h *AuthHandler) MFAVerify(w http.ResponseWriter, r *http.Request) {
 		}
 		plainSecret = string(decoded)
 	}
-	
+
 	// Verify TOTP code
 	if !mfa.VerifyTOTPCode(plainSecret, req.Code) {
 		respondError(w, http.StatusUnauthorized, "Invalid TOTP code")
@@ -1828,7 +1829,7 @@ func (h *AuthHandler) ForgotPassword(w http.ResponseWriter, r *http.Request) {
 
 	ctx := r.Context()
 	ip := h.getIP(r)
-	
+
 	// Rate limiting: max 3 requests per hour per user
 	user, err := h.repo.GetUserByUsername(ctx, req.Username)
 	if err == nil && user != nil {
@@ -1844,12 +1845,12 @@ func (h *AuthHandler) ForgotPassword(w http.ResponseWriter, r *http.Request) {
 	// In production, would send email here
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write([]byte(`{"message":"If the username exists, a password reset link has been sent"}`))
-	
+
 	// If user exists, create reset token
 	if user != nil {
 		// Generate secure random token using UUIDs
 		tokenPlaintext := uuid.New().String() + uuid.New().String()
-		
+
 		// Hash token for storage
 		tokenHash, err := auth.HashPassword(tokenPlaintext)
 		if err == nil {
@@ -1984,7 +1985,7 @@ func (h *AuthHandler) ResetPassword(w http.ResponseWriter, r *http.Request) {
 type SetUserNamespacePermissionRequest struct {
 	ClusterID string `json:"cluster_id"`
 	Namespace string `json:"namespace"` // '*' for all namespaces
-	Role      string `json:"role"`       // viewer | operator | admin
+	Role      string `json:"role"`      // viewer | operator | admin
 }
 
 // SetUserNamespacePermission sets a namespace-level permission (Phase 3: Advanced RBAC)

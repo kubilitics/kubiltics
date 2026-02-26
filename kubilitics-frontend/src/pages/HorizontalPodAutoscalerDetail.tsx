@@ -1,21 +1,22 @@
 import { useState, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Scale, Clock, Download, Trash2, TrendingUp, TrendingDown, Server, Cpu, Network } from 'lucide-react';
+import { Scale, Clock, Download, Trash2, TrendingUp, TrendingDown, Server, Cpu, Network, GitCompare } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
+import { downloadResourceJson } from '@/lib/exportUtils';
 import {
   ResourceDetailLayout,
   YamlViewer,
-  YamlCompareViewer,
   EventsSection,
   ActionsSection,
   DeleteConfirmDialog,
   MetadataCard,
   ResourceTopologyView,
+  ResourceComparisonView,
   type ResourceStatus,
   type YamlVersion,
 } from '@/components/resources';
@@ -23,6 +24,8 @@ import { useResourceDetail, useResourceEvents, type EventInfo } from '@/hooks/us
 import { useDeleteK8sResource, type KubernetesResource } from '@/hooks/useKubernetes';
 import { normalizeKindForTopology, getDetailPath } from '@/utils/resourceKindMapper';
 import { useConnectionStatus } from '@/hooks/useConnectionStatus';
+import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
+import { useActiveClusterId } from '@/hooks/useActiveClusterId';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 interface HPAResource extends KubernetesResource {
@@ -90,6 +93,10 @@ export default function HorizontalPodAutoscalerDetail() {
   const [activeTab, setActiveTab] = useState('overview');
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const { isConnected } = useConnectionStatus();
+  const clusterId = useActiveClusterId();
+  const backendBaseUrl = useBackendConfigStore((s) => s.backendBaseUrl);
+  const baseUrl = getEffectiveBackendBaseUrl(backendBaseUrl);
+  const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured);
 
   const { resource, isLoading, error: resourceError, age, yaml, refetch } = useResourceDetail<HPAResource>(
     'horizontalpodautoscalers',
@@ -139,6 +146,12 @@ export default function HorizontalPodAutoscalerDetail() {
     a.click();
     URL.revokeObjectURL(url);
   }, [yaml, hpaName]);
+
+  const handleDownloadJson = useCallback(() => {
+    if (!resource) return;
+    downloadResourceJson(resource, `${hpaName || 'hpa'}.json`);
+    toast.success('JSON downloaded');
+  }, [resource, hpaName]);
 
   const yamlVersions: YamlVersion[] = yaml ? [{ id: 'current', label: 'Current Version', yaml, timestamp: 'now' }] : [];
 
@@ -311,7 +324,23 @@ export default function HorizontalPodAutoscalerDetail() {
       ),
     },
     { id: 'yaml', label: 'YAML', content: <YamlViewer yaml={yaml} resourceName={hpaName} /> },
-    { id: 'compare', label: 'Compare', content: <YamlCompareViewer versions={yamlVersions} resourceName={hpaName} /> },
+    {
+      id: 'compare',
+      label: 'Compare',
+      icon: GitCompare,
+      content: (
+        <ResourceComparisonView
+          resourceType="horizontalpodautoscalers"
+          resourceKind="HorizontalPodAutoscaler"
+          namespace={namespace}
+          initialSelectedResources={namespace && name ? [`${namespace}/${name}`] : [name || '']}
+          clusterId={clusterId ?? undefined}
+          backendBaseUrl={baseUrl ?? ''}
+          isConnected={isConnected}
+          embedded
+        />
+      ),
+    },
     {
       id: 'topology',
       label: 'Topology',
@@ -334,6 +363,7 @@ export default function HorizontalPodAutoscalerDetail() {
           actions={[
             { icon: TrendingUp, label: 'Edit Scaling', description: 'Modify min/max replicas and metrics', onClick: () => toast.info('Edit not implemented') },
             { icon: Download, label: 'Download YAML', description: 'Export HPA definition', onClick: handleDownloadYaml },
+            { icon: Download, label: 'Export as JSON', description: 'Export HPA as JSON', onClick: handleDownloadJson },
             { icon: Trash2, label: 'Delete HPA', description: 'Remove this autoscaler', variant: 'destructive', onClick: () => setShowDeleteDialog(true) },
           ]}
         />
@@ -341,7 +371,7 @@ export default function HorizontalPodAutoscalerDetail() {
     },
   ];
 
-  const status: ResourceStatus = currentReplicas === desiredReplicas ? 'Healthy' : 'Progressing';
+  const status: ResourceStatus = currentReplicas === desiredReplicas ? 'Healthy' : 'Warning';
 
   return (
     <>
@@ -356,6 +386,7 @@ export default function HorizontalPodAutoscalerDetail() {
         headerMetadata={<span className="flex items-center gap-1.5 ml-2 text-sm text-muted-foreground"><Clock className="h-3.5 w-3.5" />Created {age}</span>}
         actions={[
           { label: 'Download YAML', icon: Download, variant: 'outline', onClick: handleDownloadYaml },
+          { label: 'Export as JSON', icon: Download, variant: 'outline', onClick: handleDownloadJson },
           { label: 'Edit', icon: TrendingUp, variant: 'outline', onClick: () => toast.info('Edit not implemented') },
           { label: 'Delete', icon: Trash2, variant: 'destructive', onClick: () => setShowDeleteDialog(true) },
         ]}

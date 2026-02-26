@@ -1,23 +1,20 @@
 import { useState, useCallback, useMemo } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { Network, Clock, Download, Globe, Server, Trash2, Activity } from 'lucide-react';
+import { Network, Clock, Download, Globe, Server, Trash2, Activity, GitCompare } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   ResourceDetailLayout,
-  
   YamlViewer,
-  YamlCompareViewer,
+  ResourceComparisonView,
   EventsSection,
   ActionsSection,
   DeleteConfirmDialog,
   SectionCard,
   MetadataCard,
   ResourceTopologyView,
-  
-  
   type ResourceStatus,
   type EventInfo,
   type YamlVersion,
@@ -26,7 +23,9 @@ import { useResourceDetail, useResourceEvents } from '@/hooks/useK8sResourceDeta
 import { useDeleteK8sResource, useUpdateK8sResource, calculateAge, type KubernetesResource } from '@/hooks/useKubernetes';
 import { normalizeKindForTopology } from '@/utils/resourceKindMapper';
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
+import { useActiveClusterId } from '@/hooks/useActiveClusterId';
 import { toast } from 'sonner';
+import { downloadResourceJson } from '@/lib/exportUtils';
 
 interface EndpointSliceResource extends KubernetesResource {
   addressType?: string;
@@ -46,9 +45,9 @@ export default function EndpointSliceDetail() {
   const [activeTab, setActiveTab] = useState('overview');
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const namespace = nsParam ?? '';
-  const baseUrl = getEffectiveBackendBaseUrl();
-  const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured());
-  const clusterId = useBackendConfigStore((s) => s.currentClusterId);
+  const baseUrl = getEffectiveBackendBaseUrl(useBackendConfigStore((s) => s.backendBaseUrl));
+  const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured);
+  const clusterId = useActiveClusterId();
 
   const { resource: es, isLoading, error, age, yaml, isConnected, refetch } = useResourceDetail<EndpointSliceResource>(
     'endpointslices',
@@ -80,6 +79,12 @@ export default function EndpointSliceDetail() {
     a.click();
     URL.revokeObjectURL(url);
   }, [yaml, esName]);
+
+  const handleDownloadJson = useCallback(() => {
+    if (!es) return;
+    downloadResourceJson(es, `${esName || 'endpointslice'}.json`);
+    toast.success('JSON downloaded');
+  }, [es, esName]);
 
   const handleSaveYaml = useCallback(async (newYaml: string) => {
     if (!isConnected || !name || !namespace) {
@@ -230,7 +235,23 @@ export default function EndpointSliceDetail() {
     { id: 'events', label: 'Events', content: <EventsSection events={events} /> },
     { id: 'metrics', label: 'Metrics', content: <SectionCard title="Metrics" icon={Activity}><p className="text-muted-foreground text-sm">Placeholder until metrics pipeline.</p></SectionCard> },
     { id: 'yaml', label: 'YAML', content: <YamlViewer yaml={yaml} resourceName={esName} editable onSave={handleSaveYaml} /> },
-    { id: 'compare', label: 'Compare', content: <YamlCompareViewer versions={yamlVersions} resourceName={esName} /> },
+    {
+      id: 'compare',
+      label: 'Compare',
+      icon: GitCompare,
+      content: (
+        <ResourceComparisonView
+          resourceType="endpointslices"
+          resourceKind="EndpointSlice"
+          namespace={esNamespace}
+          initialSelectedResources={esNamespace && esName ? [`${esNamespace}/${esName}`] : [esName]}
+          clusterId={clusterId ?? undefined}
+          backendBaseUrl={baseUrl ?? ''}
+          isConnected={isConnected}
+          embedded
+        />
+      ),
+    },
     {
       id: 'topology',
       label: 'Topology',
@@ -252,6 +273,7 @@ export default function EndpointSliceDetail() {
         <ActionsSection actions={[
           { icon: Globe, label: 'View Service', description: 'Navigate to the related service', onClick: () => serviceName && navigate(`/services/${namespace}/${serviceName}`) },
           { icon: Download, label: 'Download YAML', description: 'Export EndpointSlice definition', onClick: handleDownloadYaml },
+          { icon: Download, label: 'Export as JSON', description: 'Export EndpointSlice as JSON', onClick: handleDownloadJson },
           { icon: Trash2, label: 'Delete EndpointSlice', description: 'Remove this endpoint slice', variant: 'destructive', onClick: () => setShowDeleteDialog(true) },
         ]} />
       ),
@@ -271,6 +293,7 @@ export default function EndpointSliceDetail() {
         headerMetadata={<span className="flex items-center gap-1.5 ml-2 text-sm text-muted-foreground"><Clock className="h-3.5 w-3.5" />Created {age}{isConnected && <Badge variant="outline" className="ml-2 text-xs">Live</Badge>}</span>}
         actions={[
           { label: 'Download YAML', icon: Download, variant: 'outline', onClick: handleDownloadYaml },
+          { label: 'Export as JSON', icon: Download, variant: 'outline', onClick: handleDownloadJson },
           { label: 'Delete', icon: Trash2, variant: 'destructive', onClick: () => setShowDeleteDialog(true) },
         ]}
         statusCards={statusCards}

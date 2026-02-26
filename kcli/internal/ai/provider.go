@@ -31,6 +31,8 @@ type Config struct {
 	AzureAPIVersion  string
 	BudgetMonthlyUSD float64
 	SoftLimitPercent float64
+	// MaxInputChars caps total prompt input (0 = no limit).
+	MaxInputChars int
 }
 
 type Resource struct {

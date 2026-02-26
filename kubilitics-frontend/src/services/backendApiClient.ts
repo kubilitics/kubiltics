@@ -7,6 +7,24 @@ import type { TopologyGraph } from '@/topology-engine';
 import { adaptTopologyGraph, validateTopologyGraph } from '@/topology-engine';
 import { useAuthStore } from '@/stores/authStore';
 import { isTauri } from '@/lib/tauri';
+import type {
+  AddOnAuditEvent,
+  AddOnDetail,
+  AddOnEntry,
+  AddOnInstallWithHealth,
+  AddOnUpgradePolicy,
+  ClusterProfile,
+  DryRunResult,
+  FinancialStack,
+  FinancialStackPlanResponse,
+  HelmReleaseRevision,
+  InstallPlan,
+  InstallProgressEvent,
+  InstallRequest,
+  PlanCostEstimate,
+  PreflightReport,
+  PrivateCatalogSource,
+} from "../types/api/addons";
 
 const API_PREFIX = '/api/v1';
 
@@ -358,12 +376,15 @@ export async function getClusterFeatureMetallb(
 
 /**
  * GET /api/v1/clusters/{clusterId}/summary — cluster statistics (node_count, namespace_count, pod_count, etc.).
+ * Optional projectId: when set, counts are restricted to that project's namespaces in the cluster.
  */
 export async function getClusterSummary(
   baseUrl: string,
-  clusterId: string
+  clusterId: string,
+  projectId?: string
 ): Promise<BackendClusterSummary> {
-  const path = `clusters/${encodeURIComponent(clusterId)}/summary`;
+  const search = projectId ? `?projectId=${encodeURIComponent(projectId)}` : '';
+  const path = `clusters/${encodeURIComponent(clusterId)}/summary${search}`;
   return backendRequest<BackendClusterSummary>(baseUrl, path);
 }
 
@@ -489,6 +510,21 @@ export async function reconnectCluster(
     baseUrl,
     `clusters/${encodeURIComponent(clusterId)}/reconnect`,
     { method: 'POST' }
+  );
+}
+
+/**
+ * DELETE /api/v1/clusters/{clusterId} — unregister a cluster from the backend.
+ * Removes the cluster from the DB and in-memory clients. Does not modify kubeconfig.
+ */
+export async function deleteCluster(
+  baseUrl: string,
+  clusterId: string
+): Promise<void> {
+  await backendRequest(
+    baseUrl,
+    `clusters/${encodeURIComponent(clusterId)}`,
+    { method: 'DELETE' }
   );
 }
 
@@ -664,16 +700,27 @@ export async function listCRDInstances(
 
 /**
  * GET /api/v1/clusters/{clusterId}/resources/{kind} — list resources by kind.
- * Query: namespace, limit, continue, labelSelector, fieldSelector.
+ * Query: namespace (single), namespaces (comma-separated for project scope), limit, continue, labelSelector, fieldSelector.
  */
 export async function listResources(
   baseUrl: string,
   clusterId: string,
   kind: string,
-  params?: { namespace?: string; limit?: number; continue?: string; labelSelector?: string; fieldSelector?: string }
+  params?: {
+    namespace?: string;
+    namespaces?: string[];
+    limit?: number;
+    continue?: string;
+    labelSelector?: string;
+    fieldSelector?: string;
+  }
 ): Promise<BackendResourceListResponse> {
   const search = new URLSearchParams();
-  if (params?.namespace !== undefined && params.namespace !== '') search.set('namespace', params.namespace);
+  if (params?.namespaces !== undefined) {
+    search.set('namespaces', params.namespaces.length ? params.namespaces.join(',') : '');
+  } else if (params?.namespace !== undefined && params.namespace !== '') {
+    search.set('namespace', params.namespace);
+  }
   if (params?.limit != null) search.set('limit', String(params.limit));
   if (params?.continue) search.set('continue', params.continue);
   if (params?.labelSelector) search.set('labelSelector', params.labelSelector);
@@ -1492,6 +1539,661 @@ export async function getClusterKubeconfig(
   return { blob, filename };
 }
 
+
+// --- Add-on Platform API Functions ---
+
+export interface CatalogPageResponse {
+  items: AddOnEntry[];
+  total: number;
+}
+
+/** GET /api/v1/addons/catalog — paginated list from Artifact Hub (limit, offset/page, q). */
+export async function listCatalog(
+  baseUrl: string,
+  opts?: { page?: number; limit?: number; q?: string }
+): Promise<CatalogPageResponse> {
+  const page = opts?.page ?? 1;
+  const limit = opts?.limit ?? 24;
+  const query = new URLSearchParams();
+  query.set("page", String(page));
+  query.set("limit", String(limit));
+  if (opts?.q?.trim()) query.set("q", opts.q.trim());
+
+  const path = `addons/catalog?${query.toString()}`;
+  return backendRequest(baseUrl, path);
+}
+
+/** GET /api/v1/addons/catalog/{addonId} */
+export async function getCatalogEntry(
+  baseUrl: string,
+  addonId: string
+): Promise<AddOnDetail> {
+  const path = `addons/catalog/${encodeURIComponent(addonId)}`;
+  return backendRequest(baseUrl, path);
+}
+
+/** POST /api/v1/clusters/{clusterId}/addons/plan */
+export async function planAddonInstall(
+  baseUrl: string,
+  clusterId: string,
+  addonId: string,
+  namespace: string
+): Promise<InstallPlan> {
+  const path = `clusters/${encodeURIComponent(clusterId)}/addons/plan`;
+  return backendRequest(baseUrl, path, {
+    method: "POST",
+    body: JSON.stringify({ addon_id: addonId, namespace }),
+  });
+}
+
+/** POST /api/v1/clusters/{clusterId}/addons/preflight */
+export async function runAddonPreflight(
+  baseUrl: string,
+  clusterId: string,
+  plan: InstallPlan
+): Promise<PreflightReport> {
+  const path = `clusters/${encodeURIComponent(clusterId)}/addons/preflight`;
+  return backendRequest(baseUrl, path, {
+    method: "POST",
+    body: JSON.stringify({ plan }),
+  });
+}
+
+/** POST /api/v1/clusters/{clusterId}/addons/estimate-cost */
+export async function estimateAddonCost(
+  baseUrl: string,
+  clusterId: string,
+  plan: InstallPlan
+): Promise<PlanCostEstimate> {
+  const path = `clusters/${encodeURIComponent(clusterId)}/addons/estimate-cost`;
+  return backendRequest(baseUrl, path, {
+    method: "POST",
+    body: JSON.stringify({ plan }),
+  });
+}
+
+/** POST /api/v1/clusters/{clusterId}/addons/dry-run */
+export async function dryRunAddonInstall(
+  baseUrl: string,
+  clusterId: string,
+  req: InstallRequest
+): Promise<DryRunResult> {
+  const path = `clusters/${encodeURIComponent(clusterId)}/addons/dry-run`;
+  return backendRequest(baseUrl, path, {
+    method: "POST",
+    body: JSON.stringify(req),
+  });
+}
+
+/** POST /api/v1/clusters/{clusterId}/addons/execute */
+export async function executeAddonInstall(
+  baseUrl: string,
+  clusterId: string,
+  req: InstallRequest
+): Promise<{ install_id: string }> {
+  const path = `clusters/${encodeURIComponent(clusterId)}/addons/execute`;
+  return backendRequest(baseUrl, path, {
+    method: "POST",
+    body: JSON.stringify(req),
+  });
+}
+
+/** GET /api/v1/clusters/{clusterId}/addons/installed */
+export async function listInstalledAddons(
+  baseUrl: string,
+  clusterId: string
+): Promise<AddOnInstallWithHealth[]> {
+  const path = `clusters/${encodeURIComponent(clusterId)}/addons/installed`;
+  return backendRequest(baseUrl, path);
+}
+
+/** POST /api/v1/clusters/{clusterId}/addons/installed/{installId}/upgrade */
+export async function upgradeAddon(
+  baseUrl: string,
+  clusterId: string,
+  installId: string,
+  version?: string,
+  values?: Record<string, unknown>,
+  reuseValues?: boolean
+): Promise<void> {
+  const path = `clusters/${encodeURIComponent(clusterId)}/addons/installed/${encodeURIComponent(installId)}/upgrade`;
+  await backendRequest(baseUrl, path, {
+    method: "POST",
+    body: JSON.stringify({ version, values: values ?? {}, reuse_values: reuseValues ?? false }),
+  });
+}
+
+/** POST /api/v1/clusters/{clusterId}/addons/installed/{installId}/rollback */
+export async function rollbackAddon(
+  baseUrl: string,
+  clusterId: string,
+  installId: string,
+  revision: number
+): Promise<void> {
+  const path = `clusters/${encodeURIComponent(clusterId)}/addons/installed/${encodeURIComponent(installId)}/rollback`;
+  await backendRequest(baseUrl, path, {
+    method: "POST",
+    body: JSON.stringify({ revision }),
+  });
+}
+
+
+
+/** GET /api/v1/clusters/{clusterId}/addons/installed/{installId} */
+export async function getAddonInstall(
+  baseUrl: string,
+  clusterId: string,
+  installId: string
+): Promise<AddOnInstallWithHealth> {
+  const path = `clusters/${encodeURIComponent(clusterId)}/addons/installed/${encodeURIComponent(installId)}`;
+  return backendRequest(baseUrl, path);
+}
+
+/** DELETE /api/v1/clusters/{clusterId}/addons/installed/{installId} */
+export async function uninstallAddon(
+  baseUrl: string,
+  clusterId: string,
+  installId: string,
+  deleteCrds?: boolean
+): Promise<void> {
+  const query = deleteCrds ? "?deleteCrds=true" : "";
+  const path = `clusters/${encodeURIComponent(clusterId)}/addons/installed/${encodeURIComponent(installId)}${query}`;
+  await backendRequest(baseUrl, path, {
+    method: "DELETE",
+    headers: { [CONFIRM_DESTRUCTIVE_HEADER]: "true" },
+  });
+}
+
+/** GET /api/v1/clusters/{clusterId}/addons/installed/{installId}/history */
+export async function getAddonReleaseHistory(
+  baseUrl: string,
+  clusterId: string,
+  installId: string
+): Promise<HelmReleaseRevision[]> {
+  const path = `clusters/${encodeURIComponent(clusterId)}/addons/installed/${encodeURIComponent(installId)}/history`;
+  return backendRequest(baseUrl, path);
+}
+
+/** GET /api/v1/clusters/{clusterId}/addons/installed/{installId}/audit */
+export async function getAddonAuditEvents(
+  baseUrl: string,
+  clusterId: string,
+  installId: string
+): Promise<AddOnAuditEvent[]> {
+  const path = `clusters/${encodeURIComponent(clusterId)}/addons/installed/${encodeURIComponent(installId)}/audit`;
+  return backendRequest(baseUrl, path);
+}
+
+/** PUT /api/v1/clusters/{clusterId}/addons/installed/{installId}/policy */
+export async function setAddonUpgradePolicy(
+  baseUrl: string,
+  clusterId: string,
+  installId: string,
+  policy: AddOnUpgradePolicy
+): Promise<void> {
+  const path = `clusters/${encodeURIComponent(clusterId)}/addons/installed/${encodeURIComponent(installId)}/policy`;
+  await backendRequest(baseUrl, path, {
+    method: "PUT",
+    body: JSON.stringify(policy),
+  });
+}
+
+/** GET /api/v1/clusters/{clusterId}/addons/financial-stack — returns FinancialStack (prometheus/opencost installed). */
+export async function getFinancialStack(
+  baseUrl: string,
+  clusterId: string
+): Promise<FinancialStack> {
+  const path = `clusters/${encodeURIComponent(clusterId)}/addons/financial-stack`;
+  return backendRequest(baseUrl, path);
+}
+
+/** POST /api/v1/clusters/{clusterId}/addons/financial-stack-plan — returns InstallPlan for cost stack. */
+export async function getFinancialStackPlanForCluster(
+  baseUrl: string,
+  clusterId: string
+): Promise<InstallPlan | null> {
+  const path = `clusters/${encodeURIComponent(clusterId)}/addons/financial-stack-plan`;
+  return backendRequest(baseUrl, path, { method: "POST" });
+}
+
+/** GET /api/v1/projects/{projectId}/financial-stack — project-level recommendation (suggested_addons). */
+export async function getFinancialStackPlan(
+  baseUrl: string,
+  projectId: string
+): Promise<FinancialStackPlanResponse | null> {
+  const path = `projects/${encodeURIComponent(projectId)}/financial-stack`;
+  return backendRequest(baseUrl, path);
+}
+
+// ── Cluster Bootstrap Profiles ────────────────────────────────────────────────
+
+/** GET /api/v1/addons/profiles — list all profiles (built-in + user-created). */
+export async function listProfiles(baseUrl: string): Promise<ClusterProfile[]> {
+  return backendRequest(baseUrl, 'addons/profiles');
+}
+
+/** GET /api/v1/addons/profiles/{profileId} */
+export async function getProfile(baseUrl: string, profileId: string): Promise<ClusterProfile> {
+  return backendRequest(baseUrl, `addons/profiles/${encodeURIComponent(profileId)}`);
+}
+
+/** POST /api/v1/addons/profiles — create a custom profile. */
+export async function createProfile(
+  baseUrl: string,
+  payload: { name: string; description?: string; addons: ClusterProfile['addons'] }
+): Promise<ClusterProfile> {
+  return backendRequest(baseUrl, 'addons/profiles', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+/** PATCH /api/v1/addons/profiles/{profileId} */
+export async function updateProfile(
+  baseUrl: string,
+  profileId: string,
+  payload: Partial<ClusterProfile>
+): Promise<ClusterProfile> {
+  return backendRequest(baseUrl, `addons/profiles/${encodeURIComponent(profileId)}`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  });
+}
+
+/** DELETE /api/v1/addons/profiles/{profileId} */
+export async function deleteProfile(baseUrl: string, profileId: string): Promise<void> {
+  return backendRequest(baseUrl, `addons/profiles/${encodeURIComponent(profileId)}`, {
+    method: 'DELETE',
+  });
+}
+
+/**
+ * POST /api/v1/clusters/{clusterId}/addons/apply-profile
+ * Streams NDJSON InstallProgressEvents. Calls onEvent for each line,
+ * resolves when done (or rejects on stream error).
+ */
+export async function applyProfile(
+  baseUrl: string,
+  clusterId: string,
+  profileId: string,
+  onEvent: (event: InstallProgressEvent) => void
+): Promise<void> {
+  if (isBackendCircuitOpen()) {
+    throw new BackendApiError('Backend unreachable (circuit open).', 0, undefined);
+  }
+  const normalized = baseUrl.replace(/\/+$/, '');
+  const url = `${normalized}${API_PREFIX}/clusters/${encodeURIComponent(clusterId)}/addons/apply-profile`;
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    Accept: 'application/x-ndjson, */*',
+  };
+  if (isTauri()) {
+    const { useClusterStore } = await import('@/stores/clusterStore');
+    const { activeCluster, kubeconfigContent } = useClusterStore.getState();
+    const kc = kubeconfigContent ?? activeCluster?.kubeconfig;
+    if (kc) headers['X-Kubeconfig'] = btoa(kc);
+  }
+  const res = await fetch(url, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ profile_id: profileId }),
+  });
+  if (!res.ok) {
+    const body = await res.text();
+    throw new BackendApiError(`Apply profile failed: ${res.status}${body ? ' - ' + body : ''}`, res.status, body);
+  }
+  const reader = res.body?.getReader();
+  if (!reader) return;
+  const decoder = new TextDecoder();
+  let buf = '';
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buf += decoder.decode(value, { stream: true });
+    const lines = buf.split('\n');
+    buf = lines.pop() ?? '';
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed) continue;
+      try {
+        const event: InstallProgressEvent = JSON.parse(trimmed);
+        onEvent(event);
+      } catch {
+        // ignore malformed lines
+      }
+    }
+  }
+  // Flush remaining buffer
+  if (buf.trim()) {
+    try { onEvent(JSON.parse(buf.trim()) as InstallProgressEvent); } catch { /**/ }
+  }
+}
+
+/** GET /api/v1/clusters/{clusterId}/addons/catalog/{addonId}/rbac — returns raw YAML string. */
+export async function getAddonRBACManifest(
+  baseUrl: string,
+  clusterId: string,
+  addonId: string,
+  namespace: string
+): Promise<string> {
+  if (isBackendCircuitOpen()) {
+    throw new BackendApiError(
+      isTauri() ? "Connection temporarily unavailable." : "Backend unreachable (circuit open).",
+      0,
+      undefined
+    );
+  }
+  const normalizedBase = baseUrl.replace(/\/+$/, "");
+  const query = new URLSearchParams({ namespace });
+  const path = `clusters/${encodeURIComponent(clusterId)}/addons/catalog/${encodeURIComponent(addonId)}/rbac?${query.toString()}`;
+  const url = `${normalizedBase}${API_PREFIX}/${path}`;
+  const headers: Record<string, string> = { Accept: "text/yaml, text/plain, */*" };
+  if (isTauri()) {
+    const { useClusterStore } = await import("@/stores/clusterStore");
+    const { activeCluster, kubeconfigContent } = useClusterStore.getState();
+    const kc = kubeconfigContent ?? activeCluster?.kubeconfig;
+    if (kc) headers["X-Kubeconfig"] = btoa(kc);
+  }
+  const res = await fetch(url, { headers });
+  if (!res.ok) {
+    const body = await res.text();
+    throw new BackendApiError(`Backend API error: ${res.status}${body ? ` - ${body}` : ""}`, res.status, body);
+  }
+  return res.text();
+}
+
+/** WebSocket URL for install progress stream — client sends InstallRequest as first message. */
+export function getAddonInstallStreamUrl(baseUrl: string, clusterId: string): string {
+  const normalized = baseUrl.replace(/\/+$/, "");
+  const wsProtocol = normalized.startsWith("https") ? "wss" : "ws";
+  const baseForWs = normalized.replace(/^https?:\/\//, "");
+  const path = `api/v1/clusters/${encodeURIComponent(clusterId)}/addons/install/stream`;
+  return `${wsProtocol}://${baseForWs}/${path}`;
+}
+
+// ── Cost Attribution (T8.09) ─────────────────────────────────────────────────
+
+export interface AddonCostAttribution {
+  addon_install_id: string;
+  release_name: string;
+  namespace: string;
+  monthly_cost_usd: number;
+  efficiency: number;
+  window: string;
+  fetched_at: string;
+}
+
+/**
+ * GET /clusters/{clusterId}/addons/installed/{installId}/cost-attribution
+ * Returns null when OpenCost is not available (204 No Content).
+ */
+export async function getAddonCostAttribution(
+  baseUrl: string,
+  clusterId: string,
+  installId: string,
+  window = "30d"
+): Promise<AddonCostAttribution | null> {
+  if (isBackendCircuitOpen()) {
+    throw new BackendApiError(
+      isTauri() ? "Connection temporarily unavailable." : "Backend unreachable (circuit open).",
+      0,
+      undefined
+    );
+  }
+  const normalizedBase = baseUrl.replace(/\/+$/, "");
+  const query = new URLSearchParams({ window });
+  const url = `${normalizedBase}${API_PREFIX}/clusters/${encodeURIComponent(clusterId)}/addons/installed/${encodeURIComponent(installId)}/cost-attribution?${query.toString()}`;
+  const headers: Record<string, string> = { Accept: "application/json" };
+  if (isTauri()) {
+    const { useClusterStore } = await import("@/stores/clusterStore");
+    const { activeCluster, kubeconfigContent } = useClusterStore.getState();
+    const kc = kubeconfigContent ?? activeCluster?.kubeconfig;
+    if (kc) headers["X-Kubeconfig"] = btoa(kc);
+  }
+  const res = await fetch(url, { headers });
+  if (res.status === 204) return null; // OpenCost not available
+  if (!res.ok) {
+    const body = await res.text();
+    throw new BackendApiError(`Backend API error: ${res.status}${body ? ` - ${body}` : ""}`, res.status, body);
+  }
+  return res.json() as Promise<AddonCostAttribution>;
+}
+
+// ── Rightsizing Recommendations (T8.10) ──────────────────────────────────────
+
+export interface RightsizingRecommendation {
+  addon_install_id: string;
+  release_name: string;
+  namespace: string;
+  current_cpu: number;
+  current_mem: number;
+  suggested_cpu: number;
+  suggested_mem: number;
+  monthly_savings_usd: number;
+  confidence: number;
+  description: string;
+  generated_at: string;
+}
+
+export interface AdvisorRecommendation {
+  addon_id: string;
+  reason: string;
+  priority: 'high' | 'medium' | 'low';
+  description: string;
+}
+
+/**
+ * GET /clusters/{clusterId}/addons/installed/{installId}/rightsizing
+ * Returns null when OpenCost/RightSizing is not available (204 No Content).
+ */
+export async function getAddonRightsizing(
+  baseUrl: string,
+  clusterId: string,
+  installId: string
+): Promise<RightsizingRecommendation | null> {
+  if (isBackendCircuitOpen()) {
+    throw new BackendApiError(
+      isTauri() ? "Connection temporarily unavailable." : "Backend unreachable (circuit open).",
+      0,
+      undefined
+    );
+  }
+  const normalizedBase = baseUrl.replace(/\/+$/, "");
+  const url = `${normalizedBase}${API_PREFIX}/clusters/${encodeURIComponent(clusterId)}/addons/installed/${encodeURIComponent(installId)}/rightsizing`;
+  const headers: Record<string, string> = { Accept: "application/json" };
+  if (isTauri()) {
+    const { useClusterStore } = await import("@/stores/clusterStore");
+    const { activeCluster, kubeconfigContent } = useClusterStore.getState();
+    const kc = kubeconfigContent ?? activeCluster?.kubeconfig;
+    if (kc) headers["X-Kubeconfig"] = btoa(kc);
+  }
+  const res = await fetch(url, { headers });
+  if (res.status === 204) return null; // Not available
+  if (!res.ok) {
+    const body = await res.text();
+    throw new BackendApiError(`Backend API error: ${res.status}${body ? ` - ${body}` : ""}`, res.status, body);
+  }
+  return res.json() as Promise<RightsizingRecommendation>;
+}
+
+/**
+ * GET /clusters/{clusterId}/addons/recommendations
+ * Returns intelligent advisor recommendations for add-ons to install.
+ */
+export async function getAddonAdvisorRecommendations(
+  baseUrl: string,
+  clusterId: string
+): Promise<AdvisorRecommendation[]> {
+  if (isBackendCircuitOpen()) {
+    throw new BackendApiError(
+      isTauri() ? "Connection temporarily unavailable." : "Backend unreachable (circuit open).",
+      0,
+      undefined
+    );
+  }
+  const normalizedBase = baseUrl.replace(/\/+$/, "");
+  const url = `${normalizedBase}${API_PREFIX}/clusters/${encodeURIComponent(clusterId)}/addons/recommendations`;
+  const headers: Record<string, string> = { Accept: "application/json" };
+  if (isTauri()) {
+    const { useClusterStore } = await import("@/stores/clusterStore");
+    const { activeCluster, kubeconfigContent } = useClusterStore.getState();
+    const kc = kubeconfigContent ?? activeCluster?.kubeconfig;
+    if (kc) headers["X-Kubeconfig"] = btoa(kc);
+  }
+  const res = await fetch(url, { headers });
+  if (!res.ok) {
+    const body = await res.text();
+    if (res.status === 401 || res.status === 403 || res.status >= 500) {
+      markBackendUnavailable();
+    }
+    throw new BackendApiError(`Backup API error: ${res.status}${body ? ` - ${body}` : ""}`, res.status, body);
+  }
+  return res.json() as Promise<AdvisorRecommendation[]>;
+}
+
+// ── T9.01 — Helm test execution ───────────────────────────────────────────────
+
+export interface TestSuite {
+  name: string;
+  status: string; // "Succeeded" | "Failed" | "Running" | "Unknown"
+  info: string;   // pod log snippet, if available
+}
+
+export interface AddonTestResult {
+  passed: boolean;
+  tests: TestSuite[];
+}
+
+/**
+ * POST /clusters/{clusterId}/addons/installed/{installId}/test
+ * Runs helm test for the given release and returns per-hook results.
+ */
+export async function runAddonTests(
+  baseUrl: string,
+  clusterId: string,
+  installId: string
+): Promise<AddonTestResult> {
+  if (isBackendCircuitOpen()) {
+    throw new BackendApiError(
+      isTauri() ? "Connection temporarily unavailable." : "Backend unreachable (circuit open).",
+      0,
+      undefined
+    );
+  }
+  const normalizedBase = baseUrl.replace(/\/+$/, "");
+  const url = `${normalizedBase}${API_PREFIX}/clusters/${encodeURIComponent(clusterId)}/addons/installed/${encodeURIComponent(installId)}/test`;
+  const headers: Record<string, string> = { Accept: "application/json" };
+  if (isTauri()) {
+    const { useClusterStore } = await import("@/stores/clusterStore");
+    const { activeCluster, kubeconfigContent } = useClusterStore.getState();
+    const kc = kubeconfigContent ?? activeCluster?.kubeconfig;
+    if (kc) headers["X-Kubeconfig"] = btoa(kc);
+  }
+  const res = await fetch(url, { method: "POST", headers });
+  if (!res.ok) {
+    const body = await res.text();
+    throw new BackendApiError(`Backend API error: ${res.status}${body ? ` - ${body}` : ""}`, res.status, body);
+  }
+  return res.json() as Promise<AddonTestResult>;
+}
+
+// ── T9.03 — Maintenance window management ─────────────────────────────────────
+
+export interface AddonMaintenanceWindow {
+  id: string;
+  cluster_id: string;
+  name: string;
+  /** -1 = every day, 0 = Sunday … 6 = Saturday (Go time.Weekday) */
+  day_of_week: number;
+  start_hour: number;
+  start_minute: number;
+  timezone: string;
+  duration_minutes: number;
+  /** "all" or JSON array of addon IDs */
+  apply_to: string;
+  created_at: string;
+}
+
+export interface CreateMaintenanceWindowRequest {
+  name: string;
+  day_of_week: number;
+  start_hour: number;
+  start_minute: number;
+  timezone: string;
+  duration_minutes: number;
+  apply_to?: string;
+}
+
+/**
+ * GET /clusters/{clusterId}/addons/maintenance-windows
+ */
+export async function listMaintenanceWindows(
+  baseUrl: string,
+  clusterId: string
+): Promise<AddonMaintenanceWindow[]> {
+  const url = `${baseUrl.replace(/\/+$/, "")}${API_PREFIX}/clusters/${encodeURIComponent(clusterId)}/addons/maintenance-windows`;
+  const headers: Record<string, string> = { Accept: "application/json" };
+  if (isTauri()) {
+    const { useClusterStore } = await import("@/stores/clusterStore");
+    const { activeCluster, kubeconfigContent } = useClusterStore.getState();
+    const kc = kubeconfigContent ?? activeCluster?.kubeconfig;
+    if (kc) headers["X-Kubeconfig"] = btoa(kc);
+  }
+  const res = await fetch(url, { headers });
+  if (!res.ok) {
+    const body = await res.text();
+    throw new BackendApiError(`Backend API error: ${res.status}${body ? ` - ${body}` : ""}`, res.status, body);
+  }
+  return res.json() as Promise<AddonMaintenanceWindow[]>;
+}
+
+/**
+ * POST /clusters/{clusterId}/addons/maintenance-windows
+ */
+export async function createMaintenanceWindow(
+  baseUrl: string,
+  clusterId: string,
+  req: CreateMaintenanceWindowRequest
+): Promise<AddonMaintenanceWindow> {
+  const url = `${baseUrl.replace(/\/+$/, "")}${API_PREFIX}/clusters/${encodeURIComponent(clusterId)}/addons/maintenance-windows`;
+  const headers: Record<string, string> = { "Content-Type": "application/json", Accept: "application/json" };
+  if (isTauri()) {
+    const { useClusterStore } = await import("@/stores/clusterStore");
+    const { activeCluster, kubeconfigContent } = useClusterStore.getState();
+    const kc = kubeconfigContent ?? activeCluster?.kubeconfig;
+    if (kc) headers["X-Kubeconfig"] = btoa(kc);
+  }
+  const res = await fetch(url, { method: "POST", headers, body: JSON.stringify(req) });
+  if (!res.ok) {
+    const body = await res.text();
+    throw new BackendApiError(`Backend API error: ${res.status}${body ? ` - ${body}` : ""}`, res.status, body);
+  }
+  return res.json() as Promise<AddonMaintenanceWindow>;
+}
+
+/**
+ * DELETE /clusters/{clusterId}/addons/maintenance-windows/{windowId}
+ */
+export async function deleteMaintenanceWindow(
+  baseUrl: string,
+  clusterId: string,
+  windowId: string
+): Promise<void> {
+  const url = `${baseUrl.replace(/\/+$/, "")}${API_PREFIX}/clusters/${encodeURIComponent(clusterId)}/addons/maintenance-windows/${encodeURIComponent(windowId)}`;
+  const headers: Record<string, string> = {};
+  if (isTauri()) {
+    const { useClusterStore } = await import("@/stores/clusterStore");
+    const { activeCluster, kubeconfigContent } = useClusterStore.getState();
+    const kc = kubeconfigContent ?? activeCluster?.kubeconfig;
+    if (kc) headers["X-Kubeconfig"] = btoa(kc);
+  }
+  const res = await fetch(url, { method: "DELETE", headers });
+  if (!res.ok && res.status !== 204) {
+    const body = await res.text();
+    throw new BackendApiError(`Backend API error: ${res.status}${body ? ` - ${body}` : ""}`, res.status, body);
+  }
+}
+
 /** Factory: create a client interface bound to a base URL (for hooks/pages). */
 export function createBackendApiClient(baseUrl: string) {
   return {
@@ -1534,5 +2236,107 @@ export function createBackendApiClient(baseUrl: string) {
       getKCLIComplete(baseUrl, clusterId, line),
     postKCLIExec: (clusterId: string, args: string[], force?: boolean) =>
       postKCLIExec(baseUrl, clusterId, args, force),
+
+    // --- Add-on Platform API ---
+    listCatalog: (opts?: { page?: number; limit?: number; q?: string }) =>
+      listCatalog(baseUrl, opts),
+    getCatalogEntry: (addonId: string) =>
+      getCatalogEntry(baseUrl, addonId),
+    planAddonInstall: (clusterId: string, addonId: string, namespace: string) =>
+      planAddonInstall(baseUrl, clusterId, addonId, namespace),
+    runAddonPreflight: (clusterId: string, plan: InstallPlan) =>
+      runAddonPreflight(baseUrl, clusterId, plan),
+    estimateAddonCost: (clusterId: string, plan: InstallPlan) =>
+      estimateAddonCost(baseUrl, clusterId, plan),
+    dryRunAddonInstall: (clusterId: string, req: InstallRequest) =>
+      dryRunAddonInstall(baseUrl, clusterId, req),
+    executeAddonInstall: (clusterId: string, req: InstallRequest) =>
+      executeAddonInstall(baseUrl, clusterId, req),
+    listInstalledAddons: (clusterId: string) =>
+      listInstalledAddons(baseUrl, clusterId),
+    getAddonInstall: (clusterId: string, installId: string) =>
+      getAddonInstall(baseUrl, clusterId, installId),
+    upgradeAddon: (clusterId: string, installId: string, version?: string, values?: Record<string, unknown>, reuseValues?: boolean) =>
+      upgradeAddon(baseUrl, clusterId, installId, version, values, reuseValues),
+    rollbackAddon: (clusterId: string, installId: string, revision: number) =>
+      rollbackAddon(baseUrl, clusterId, installId, revision),
+    uninstallAddon: (clusterId: string, installId: string, purge?: boolean) =>
+      uninstallAddon(baseUrl, clusterId, installId, purge),
+    getAddonReleaseHistory: (clusterId: string, installId: string) =>
+      getAddonReleaseHistory(baseUrl, clusterId, installId),
+    getAddonAuditEvents: (clusterId: string, installId: string) =>
+      getAddonAuditEvents(baseUrl, clusterId, installId),
+    setAddonUpgradePolicy: (clusterId: string, installId: string, policy: AddOnUpgradePolicy) =>
+      setAddonUpgradePolicy(baseUrl, clusterId, installId, policy),
+    getFinancialStackPlan: (projectId: string) =>
+      getFinancialStackPlan(baseUrl, projectId),
+    getFinancialStack: (clusterId: string) =>
+      getFinancialStack(baseUrl, clusterId),
+    getFinancialStackPlanForCluster: (clusterId: string) =>
+      getFinancialStackPlanForCluster(baseUrl, clusterId),
+    getAddonRBACManifest: (clusterId: string, addonId: string, namespace: string) =>
+      getAddonRBACManifest(baseUrl, clusterId, addonId, namespace),
+    getAddonInstallStreamUrl: (clusterId: string) =>
+      getAddonInstallStreamUrl(baseUrl, clusterId),
+
+    // --- Cluster Bootstrap Profiles ---
+    listProfiles: () => listProfiles(baseUrl),
+    getProfile: (profileId: string) => getProfile(baseUrl, profileId),
+    createProfile: (payload: Parameters<typeof createProfile>[1]) => createProfile(baseUrl, payload),
+    applyProfile: (clusterId: string, profileId: string, onEvent: (e: InstallProgressEvent) => void) =>
+      applyProfile(baseUrl, clusterId, profileId, onEvent),
+    updateProfile: (profileId: string, payload: Partial<ClusterProfile>) =>
+      updateProfile(baseUrl, profileId, payload),
+    deleteProfile: (profileId: string) =>
+      deleteProfile(baseUrl, profileId),
+    // --- Cost Attribution (T8.09) ---
+    getAddonCostAttribution: (clusterId: string, installId: string, window?: string) =>
+      getAddonCostAttribution(baseUrl, clusterId, installId, window),
+    getAddonRightsizing: (clusterId: string, installId: string) =>
+      getAddonRightsizing(baseUrl, clusterId, installId),
+    getAddonAdvisorRecommendations: (clusterId: string) =>
+      getAddonAdvisorRecommendations(baseUrl, clusterId),
+    runAddonTests: (clusterId: string, installId: string) =>
+      runAddonTests(baseUrl, clusterId, installId),
+    // --- Maintenance Windows (T9.03) ---
+    listMaintenanceWindows: (clusterId: string) =>
+      listMaintenanceWindows(baseUrl, clusterId),
+    deleteMaintenanceWindow: (clusterId: string, windowId: string) =>
+      deleteMaintenanceWindow(baseUrl, clusterId, windowId),
+    createMaintenanceWindow: (clusterId: string, req: CreateMaintenanceWindowRequest) =>
+      createMaintenanceWindow(baseUrl, clusterId, req),
+    // --- Private Registries (T9.04) ---
+    listCatalogSources: () => listCatalogSources(baseUrl),
+    createCatalogSource: (req: Partial<PrivateCatalogSource>) => createCatalogSource(baseUrl, req),
+    deleteCatalogSource: (sourceId: string) => deleteCatalogSource(baseUrl, sourceId),
   };
+}
+
+// ── Private Catalog Sources (T9.04) ──────────────────────────────────────────
+
+/** GET /api/v1/addons/registries */
+export async function listCatalogSources(baseUrl: string): Promise<PrivateCatalogSource[]> {
+  const path = 'addons/registries';
+  return backendRequest(baseUrl, path);
+}
+
+/** POST /api/v1/addons/registries */
+export async function createCatalogSource(
+  baseUrl: string,
+  req: Partial<PrivateCatalogSource>
+): Promise<PrivateCatalogSource> {
+  const path = 'addons/registries';
+  return backendRequest(baseUrl, path, {
+    method: "POST",
+    body: JSON.stringify(req),
+  });
+}
+
+/** DELETE /api/v1/addons/registries/{sourceId} */
+export async function deleteCatalogSource(
+  baseUrl: string,
+  sourceId: string
+): Promise<void> {
+  const path = `addons/registries/${encodeURIComponent(sourceId)}`;
+  await backendRequest(baseUrl, path, { method: "DELETE" });
 }

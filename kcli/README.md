@@ -2,12 +2,20 @@
 
 `kcli` is the Kubilitics terminal core: kubectl-parity workflows with guardrails, context ergonomics, observability shortcuts, incident mode, and optional AI.
 
+**Requirements:** kcli requires `kubectl` on your PATH for all standard Kubernetes verbs (get, apply, delete, logs, exec, etc.). kcli invokes kubectl for these commands. client-go is used only for context/namespace listing and auth checks.
+
+**Scale limits:** TUI is tested for clusters with up to ~3k pods per view; for larger clusters use CLI. Completion may be slower on cold cache or CRD-heavy clusters (default timeout 250ms). See [PRD §5.4](../project-docs/PRD-08-KCLI-PRODUCT.md#54-scale-limits-and-supported-cluster-size) for details.
+
 ## Build
 
 ```bash
 cd kcli
 go build -o bin/kcli ./cmd/kcli
 ```
+
+## Windows
+
+kcli builds for Windows (`kcli-windows-amd64.exe`). **Full color and TUI support requires Windows Terminal.** In cmd.exe and older PowerShell, ANSI colors are disabled automatically — output is plain text with no `\x1b[32m`-style escape sequences. Set `KCLI_NO_COLOR=1` or `NO_COLOR=1` to disable colors on any platform.
 
 ## Shell completion
 
@@ -35,9 +43,13 @@ kcli restarts
 kcli events --recent 30m --output json
 kcli incident
 kcli incident --recent 2h --restarts-threshold 5 --output json
+kcli incident export --since 1h --output ./incident-bundle
+kcli incident export --since 30m --output replay.tar.gz --with-logs
 kcli config view
 kcli config set tui.refresh_interval 3s
 kcli config get tui.refresh_interval
+kcli kubeconfig get-contexts
+kcli kubeconfig use-context prod
 kcli exec -it pod/my-pod -- /bin/sh
 kcli logs app=demo-app -n blue-green-demo --tail=50 --grep='error' --save=logs.txt
 kcli logs deployment/my-app -n prod -f --timestamps
@@ -57,7 +69,7 @@ kcli --force delete pod my-pod
 
 ## Optional AI
 
-Set `KCLI_AI_PROVIDER` and provider-specific credentials to enable AI commands.
+Set `KCLI_AI_PROVIDER` and provider-specific credentials to enable AI commands. When enabled, resource names, context/namespace, event text, and log excerpts may be sent to the provider; secrets are redacted. For high-security environments, disable AI or use a self-hosted provider (e.g. Ollama).
 
 Supported providers:
 - `openai`: `KCLI_AI_PROVIDER=openai`, `KCLI_OPENAI_API_KEY` (or `KCLI_AI_API_KEY`), optional `KCLI_AI_MODEL`, optional `KCLI_AI_ENDPOINT`
@@ -143,9 +155,7 @@ kcli mytool --flag value
 kcli mt --flag value
 ```
 
-Plugin sandboxing:
-- By default, only plugins under `~/.kcli/plugins/` are executable.
-- PATH plugins are blocked unless `KCLI_PLUGIN_ALLOW_PATH=1` is explicitly set.
+**Plugin security:** Plugins run with your user privileges and are **not** sandboxed (no process isolation, no network restriction). Install only plugins from trusted sources. By default, only executables under `~/.kcli/plugins/` are allowed; binaries must not be symlinks and must not be group/world-writable. To allow plugins from PATH, set `KCLI_PLUGIN_ALLOW_PATH=1` (use only in controlled environments).
 
 Official plugins in this repo:
 

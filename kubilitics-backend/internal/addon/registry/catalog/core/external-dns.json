@@ -1,0 +1,87 @@
+{
+  "addon": {
+    "id": "kubilitics/external-dns",
+    "name": "external-dns",
+    "display_name": "External DNS",
+    "description": "Synchronizes Kubernetes Services and Ingresses with DNS providers.",
+    "tier": "CORE",
+    "version": "1.15.0",
+    "k8s_compat_min": "1.24",
+    "helm_repo_url": "https://kubernetes-sigs.github.io/external-dns",
+    "helm_chart": "external-dns",
+    "helm_chart_version": "1.15.0",
+    "tags": [
+      "networking",
+      "dns"
+    ],
+    "source_url": "https://github.com/kubernetes-sigs/external-dns",
+    "maintainer": "kubernetes-sigs",
+    "icon_url": "https://artifacthub.io/image/02e08c6f-28bb-4f1d-885f-ec60c2d4c2f2",
+    "is_deprecated": false
+  },
+  "dependencies": [],
+  "conflicts": [],
+  "crds_owned": [],
+  "rbac_required": [
+    {
+      "addon_id": "kubilitics/external-dns",
+      "api_groups": [
+        ""
+      ],
+      "resources": [
+        "services",
+        "nodes"
+      ],
+      "verbs": [
+        "get",
+        "list",
+        "watch"
+      ],
+      "scope": "cluster"
+    },
+    {
+      "addon_id": "kubilitics/external-dns",
+      "api_groups": [
+        "networking.k8s.io"
+      ],
+      "resources": [
+        "ingresses"
+      ],
+      "verbs": [
+        "get",
+        "list",
+        "watch"
+      ],
+      "scope": "cluster"
+    }
+  ],
+  "cost_models": [
+    {
+      "addon_id": "kubilitics/external-dns",
+      "cluster_tier": "dev",
+      "cpu_millicores": 50,
+      "memory_mb": 64,
+      "storage_gb": 0,
+      "monthly_cost_usd_estimate": 1,
+      "replica_count": 1
+    },
+    {
+      "addon_id": "kubilitics/external-dns",
+      "cluster_tier": "staging",
+      "cpu_millicores": 100,
+      "memory_mb": 128,
+      "storage_gb": 0,
+      "monthly_cost_usd_estimate": 2,
+      "replica_count": 1
+    },
+    {
+      "addon_id": "kubilitics/external-dns",
+      "cluster_tier": "production",
+      "cpu_millicores": 100,
+      "memory_mb": 128,
+      "storage_gb": 0,
+      "monthly_cost_usd_estimate": 2,
+      "replica_count": 2
+    }
+  ]
+}

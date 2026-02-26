@@ -1,9 +1,5 @@
-// A-CORE-013: Persistence layer hooks — backed by real /api/v1/persistence/* endpoints.
-// Persistence endpoints live on the AI backend (port 8081), not the main backend (port 819).
-
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { AI_BASE_URL } from '@/services/aiService';
-import { guardAIAvailable } from '@/stores/aiAvailableStore';
+import * as aiService from '@/services/aiService';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -107,12 +103,6 @@ export interface PersistenceHealth {
   error?: string;
 }
 
-// ─── API base ─────────────────────────────────────────────────────────────────
-// Persistence layer (audit, conversations, anomalies, cost snapshots) lives on
-// the AI backend (port 8081 by default). Use the canonical AI_BASE_URL so the
-// port is consistent across all AI-backend callers.
-const API_BASE = `${AI_BASE_URL}/api/v1/persistence`;
-
 // ─── usePersistenceHealth ─────────────────────────────────────────────────────
 
 export function usePersistenceHealth(opts: { pollIntervalMs?: number } = {}) {
@@ -122,20 +112,14 @@ export function usePersistenceHealth(opts: { pollIntervalMs?: number } = {}) {
   const [error, setError] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
-    try {
-      guardAIAvailable();
-    } catch {
-      setData(null);
-      setLoading(false);
-      return;
-    }
     setLoading(true);
     try {
-      const res = await window.fetch(`${API_BASE}/health`);
-      setData(await res.json());
+      const result = await aiService.getPersistenceHealth();
+      setData(result);
       setError(null);
     } catch (e) {
       setError((e as Error).message);
+      setData(null);
     } finally {
       setLoading(false);
     }
@@ -159,26 +143,18 @@ export function useAuditLog(query: AuditQuery = {}) {
   const [error, setError] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
-    try {
-      guardAIAvailable();
-    } catch {
-      setLoading(false);
-      return;
-    }
     setLoading(true);
     try {
-      const params = new URLSearchParams();
-      if (query.resource) params.set('resource', query.resource);
-      if (query.action) params.set('action', query.action);
-      if (query.user_id) params.set('user_id', query.user_id);
-      if (query.from) params.set('from', query.from);
-      if (query.to) params.set('to', query.to);
-      if (query.limit !== undefined) params.set('limit', String(query.limit));
-      if (query.offset !== undefined) params.set('offset', String(query.offset));
+      const params: Record<string, string> = {};
+      if (query.resource) params.resource = query.resource;
+      if (query.action) params.action = query.action;
+      if (query.user_id) params.user_id = query.user_id;
+      if (query.from) params.from = query.from;
+      if (query.to) params.to = query.to;
+      if (query.limit !== undefined) params.limit = String(query.limit);
+      if (query.offset !== undefined) params.offset = String(query.offset);
 
-      const res = await window.fetch(`${API_BASE}/audit?${params.toString()}`);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const json = await res.json();
+      const json = await aiService.getAuditLogs(params);
       setEvents(json.events ?? []);
       setTotal(json.total ?? 0);
       setError(null);
@@ -193,12 +169,7 @@ export function useAuditLog(query: AuditQuery = {}) {
 
   const appendEvent = useCallback(async (rec: Partial<AuditRecord>) => {
     try {
-      guardAIAvailable();
-      await window.fetch(`${API_BASE}/audit`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(rec),
-      });
+      await aiService.appendAuditLog(rec);
       fetchData();
     } catch { /* ignore */ }
   }, [fetchData]);
@@ -216,22 +187,13 @@ export function useConversations(opts: { clusterID?: string; limit?: number } = 
   const [error, setError] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
-    try {
-      guardAIAvailable();
-    } catch {
-      setLoading(false);
-      return;
-    }
     setLoading(true);
     try {
-      const params = new URLSearchParams();
-      if (clusterID) params.set('cluster_id', clusterID);
-      params.set('limit', String(limit));
+      const params: Record<string, string> = { limit: String(limit) };
+      if (clusterID) params.cluster_id = clusterID;
 
-      const res = await window.fetch(`${API_BASE}/conversations?${params.toString()}`);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const json = await res.json();
-      setConversations(json.conversations ?? []);
+      const json = await aiService.listConversations(params);
+      setConversations(json.conversations as unknown as ConversationRecord[] ?? []);
       setTotal(json.total ?? 0);
       setError(null);
     } catch (e) {
@@ -255,18 +217,10 @@ export function useConversation(id: string | null) {
 
   const fetchData = useCallback(async () => {
     if (!id) return;
-    try {
-      guardAIAvailable();
-    } catch {
-      setLoading(false);
-      return;
-    }
     setLoading(true);
     try {
-      const res = await window.fetch(`${API_BASE}/conversations/${id}`);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const json = await res.json();
-      setConversation(json.conversation ?? null);
+      const json = await aiService.getConversation(id);
+      setConversation(json.conversation as unknown as ConversationRecord ?? null);
       setMessages(json.messages ?? []);
       setError(null);
     } catch (e) {
@@ -291,31 +245,20 @@ export function useAnomalyHistory(query: AnomalyQuery = {}, opts: { pollInterval
   const abortRef = useRef<AbortController | null>(null);
 
   const fetchData = useCallback(async () => {
-    try {
-      guardAIAvailable();
-    } catch {
-      setLoading(false);
-      return;
-    }
-    abortRef.current?.abort();
-    const ctrl = new AbortController();
-    abortRef.current = ctrl;
     setLoading(true);
     try {
-      const params = new URLSearchParams();
-      if (query.resource_id) params.set('resource_id', query.resource_id);
-      if (query.namespace) params.set('namespace', query.namespace);
-      if (query.kind) params.set('kind', query.kind);
-      if (query.anomaly_type) params.set('anomaly_type', query.anomaly_type);
-      if (query.severity) params.set('severity', query.severity);
-      if (query.from) params.set('from', query.from);
-      if (query.to) params.set('to', query.to);
-      if (query.limit !== undefined) params.set('limit', String(query.limit));
-      if (query.offset !== undefined) params.set('offset', String(query.offset));
+      const params: Record<string, string> = {};
+      if (query.resource_id) params.resource_id = query.resource_id;
+      if (query.namespace) params.namespace = query.namespace;
+      if (query.kind) params.kind = query.kind;
+      if (query.anomaly_type) params.anomaly_type = query.anomaly_type;
+      if (query.severity) params.severity = query.severity;
+      if (query.from) params.from = query.from;
+      if (query.to) params.to = query.to;
+      if (query.limit !== undefined) params.limit = String(query.limit);
+      if (query.offset !== undefined) params.offset = String(query.offset);
 
-      const res = await window.fetch(`${API_BASE}/anomalies?${params.toString()}`, { signal: ctrl.signal });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const json = await res.json();
+      const json = await aiService.getAnomalyHistory(params);
       setAnomalies(json.anomalies ?? []);
       setTotal(json.total ?? 0);
       setError(null);
@@ -349,21 +292,14 @@ export function useAnomalySummary(opts: {
   const [error, setError] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
-    try {
-      guardAIAvailable();
-    } catch {
-      setLoading(false);
-      return;
-    }
     setLoading(true);
     try {
-      const params = new URLSearchParams();
-      if (from) params.set('from', from);
-      if (to) params.set('to', to);
+      const params: Record<string, string> = {};
+      if (from) params.from = from;
+      if (to) params.to = to;
 
-      const res = await window.fetch(`${API_BASE}/anomalies/summary?${params.toString()}`);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      setData(await res.json());
+      const result = await aiService.getAnomalySummary(params);
+      setData(result);
       setError(null);
     } catch (e) {
       setError((e as Error).message);
@@ -391,21 +327,12 @@ export function useCostSnapshots(opts: { clusterID?: string; limit?: number } = 
   const [error, setError] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
-    try {
-      guardAIAvailable();
-    } catch {
-      setLoading(false);
-      return;
-    }
     setLoading(true);
     try {
-      const params = new URLSearchParams();
-      if (clusterID) params.set('cluster_id', clusterID);
-      params.set('limit', String(limit));
+      const params: Record<string, string> = { limit: String(limit) };
+      if (clusterID) params.cluster_id = clusterID;
 
-      const res = await window.fetch(`${API_BASE}/cost/snapshots?${params.toString()}`);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const json = await res.json();
+      const json = await aiService.getCostSnapshots(params);
       setSnapshots(json.snapshots ?? []);
       setTotal(json.total ?? 0);
       setError(null);
@@ -434,22 +361,14 @@ export function useCostTrend(opts: {
   const [error, setError] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
-    try {
-      guardAIAvailable();
-    } catch {
-      setLoading(false);
-      return;
-    }
     setLoading(true);
     try {
-      const params = new URLSearchParams();
-      if (clusterID) params.set('cluster_id', clusterID);
-      if (from) params.set('from', from);
-      if (to) params.set('to', to);
+      const params: Record<string, string> = {};
+      if (clusterID) params.cluster_id = clusterID;
+      if (from) params.from = from;
+      if (to) params.to = to;
 
-      const res = await window.fetch(`${API_BASE}/cost/trend?${params.toString()}`);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const json = await res.json();
+      const json = await aiService.getCostTrend(params);
       setTrend(json.trend ?? []);
       setError(null);
     } catch (e) {
@@ -476,25 +395,15 @@ export function useLatestCostSnapshot(clusterID = '') {
   const [error, setError] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
-    try {
-      guardAIAvailable();
-    } catch {
-      setLoading(false);
-      return;
-    }
     setLoading(true);
     try {
-      const params = new URLSearchParams();
-      if (clusterID) params.set('cluster_id', clusterID);
-
-      const res = await window.fetch(`${API_BASE}/cost/latest?${params.toString()}`);
-      if (res.status === 204) {
+      const result = await aiService.getLatestCostSnapshot(clusterID);
+      if (!result) {
         setSnapshot(null);
         setError(null);
         return;
       }
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      setSnapshot(await res.json());
+      setSnapshot(result);
       setError(null);
     } catch (e) {
       setError((e as Error).message);

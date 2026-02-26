@@ -15,9 +15,10 @@ import { Link, useNavigate } from 'react-router-dom';
 import { ResourceCommandBar, ClusterScopedScope, ResourceExportDropdown, ListPagination, PAGE_SIZE_OPTIONS, ListPageStatCard, ListPageHeader, TableColumnHeaderWithFilterAndSort, TableFilterCell, resourceTableRowClassName, ROW_MOTION, AgeCell, TableEmptyState, TableSkeletonRows, CopyNameDropdownItem, ResourceListTableToolbar } from '@/components/list';
 import { useTableFiltersAndSort, type ColumnConfig } from '@/hooks/useTableFiltersAndSort';
 import { useColumnVisibility } from '@/hooks/useColumnVisibility';
-import { usePaginatedResourceList, useDeleteK8sResource, calculateAge, type KubernetesResource } from '@/hooks/useKubernetes';
+import { usePaginatedResourceList, useDeleteK8sResource, useCreateK8sResource, calculateAge, type KubernetesResource } from '@/hooks/useKubernetes';
 import { useConnectionStatus } from '@/hooks/useConnectionStatus';
 import { DeleteConfirmDialog } from '@/components/resources';
+import { ResourceCreator, DEFAULT_YAMLS } from '@/components/editor/ResourceCreator';
 import { toast } from 'sonner';
 
 interface ResourceSlice {
@@ -39,7 +40,7 @@ interface K8sResourceSlice extends KubernetesResource {
 }
 
 function formatCapacity(rs: K8sResourceSlice): string {
-  const raw = rs as Record<string, unknown>;
+  const raw = rs as unknown as Record<string, unknown>;
   const named = raw.namedResources as { entries?: Array<{ capacity?: Record<string, string> }> } | undefined;
   const structured = raw.structuredResources as { capacity?: Record<string, string> } | undefined;
   if (named?.entries?.length) {
@@ -53,11 +54,11 @@ function formatCapacity(rs: K8sResourceSlice): string {
 }
 
 function mapRS(rs: K8sResourceSlice): ResourceSlice {
-  const raw = rs as Record<string, unknown>;
+  const raw = rs as unknown as Record<string, unknown>;
   const driver = (raw.driver as string) ?? (raw.spec as Record<string, unknown>)?.driver ?? '—';
   const nodeName = (raw.nodeName as string) ?? (raw.spec as Record<string, unknown>)?.nodeName;
   const pool = raw.pool as { name?: string } | undefined;
-  const poolName = pool?.name ?? (raw.spec as Record<string, unknown>)?.pool?.name ?? '—';
+  const poolName = (pool as any)?.name ?? (raw.spec as any)?.pool?.name ?? '—';
   const node = nodeName ?? poolName ?? '—';
   return {
     name: rs.metadata?.name ?? '',
@@ -90,14 +91,16 @@ const RS_COLUMNS_FOR_VISIBILITY = [
 export default function ResourceSlices() {
   const navigate = useNavigate();
   const { isConnected } = useConnectionStatus();
-  const { data, isLoading, isFetching, dataUpdatedAt, refetch } = usePaginatedResourceList<K8sResourceSlice>('resourceslices');
+  const { data, isLoading, refetch, pagination: hookPagination } = usePaginatedResourceList<K8sResourceSlice>('resourceslices');
   const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; item: ResourceSlice | null; bulk?: boolean }>({ open: false, item: null });
+  const [showCreateWizard, setShowCreateWizard] = useState(false);
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
   const [searchQuery, setSearchQuery] = useState('');
   const [showTableFilters, setShowTableFilters] = useState(false);
   const [pageSize, setPageSize] = useState(10);
   const [pageIndex, setPageIndex] = useState(0);
   const deleteRS = useDeleteK8sResource('resourceslices');
+  const createRS = useCreateK8sResource('resourceslices');
 
   const allItems = (data?.allItems ?? []) as K8sResourceSlice[];
   const items: ResourceSlice[] = useMemo(() => (isConnected ? allItems.map(mapRS) : []), [isConnected, allItems]);
@@ -154,6 +157,17 @@ export default function ResourceSlices() {
   useEffect(() => {
     if (safePageIndex !== pageIndex) setPageIndex(safePageIndex);
   }, [safePageIndex, pageIndex]);
+
+  const handleCreate = () => setShowCreateWizard(true);
+  const handleApplyCreate = async (yaml: string) => {
+    try {
+      await createRS.mutateAsync({ yaml });
+      setShowCreateWizard(false);
+      refetch();
+    } catch (err) {
+      // toast handled in hook
+    }
+  };
 
   const handlePageSizeChange = (size: number) => {
     setPageSize(size);
@@ -228,6 +242,8 @@ export default function ResourceSlices() {
         demoMode={!isConnected}
         isLoading={isLoading}
         onRefresh={() => refetch()}
+        createLabel="Create Resource Slice"
+        onCreate={handleCreate}
         actions={
           <>
             <ResourceExportDropdown items={filteredItems} selectedKeys={selectedItems} getKey={(v) => v.name} config={exportConfig} selectionLabel={selectedItems.size > 0 ? 'Selected slices' : 'All visible'} onToast={(msg, type) => (type === 'info' ? toast.info(msg) : toast.success(msg))} />
@@ -243,9 +259,9 @@ export default function ResourceSlices() {
 
       <div className={cn('grid grid-cols-2 sm:grid-cols-4 gap-4', !isConnected && 'opacity-60')}>
         <ListPageStatCard label="Total" value={stats.total} icon={Cpu} iconColor="text-primary" selected={!hasActiveFilters} onClick={clearAllFilters} className={cn(!hasActiveFilters && 'ring-2 ring-primary')} />
-        <ListPageStatCard label="By Driver" value={stats.drivers} icon={Cpu} iconColor="text-muted-foreground" selected={false} onClick={() => {}} />
-        <ListPageStatCard label="Nodes" value={stats.nodes} icon={Cpu} iconColor="text-muted-foreground" selected={false} onClick={() => {}} />
-        <ListPageStatCard label="Pools" value={stats.pools} icon={Cpu} iconColor="text-muted-foreground" selected={false} onClick={() => {}} />
+        <ListPageStatCard label="By Driver" value={stats.drivers} icon={Cpu} iconColor="text-muted-foreground" selected={false} onClick={() => { }} />
+        <ListPageStatCard label="Nodes" value={stats.nodes} icon={Cpu} iconColor="text-muted-foreground" selected={false} onClick={() => { }} />
+        <ListPageStatCard label="Pools" value={stats.pools} icon={Cpu} iconColor="text-muted-foreground" selected={false} onClick={() => { }} />
       </div>
 
       {selectedItems.size > 0 && (
@@ -299,7 +315,7 @@ export default function ResourceSlices() {
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
-            <ListPagination hasPrev={pagination.hasPrev} hasNext={pagination.hasNext} onPrev={pagination.onPrev} onNext={pagination.onNext} rangeLabel={undefined} currentPage={pagination.currentPage} totalPages={pagination.totalPages} onPageChange={pagination.onPageChange} dataUpdatedAt={dataUpdatedAt} isFetching={isFetching} />
+            <ListPagination hasPrev={pagination.hasPrev} hasNext={pagination.hasNext} onPrev={pagination.onPrev} onNext={pagination.onNext} rangeLabel={undefined} currentPage={pagination.currentPage} totalPages={pagination.totalPages} onPageChange={pagination.onPageChange} dataUpdatedAt={hookPagination?.dataUpdatedAt} isFetching={hookPagination?.isFetching} />
           </div>
         }
       >
@@ -308,12 +324,12 @@ export default function ResourceSlices() {
             <TableHeader>
               <TableRow className="bg-muted/50 hover:bg-muted/50 border-b-2 border-border">
                 <TableHead className="w-10"><Checkbox checked={isAllSelected} onCheckedChange={toggleAll} aria-label="Select all" className={cn(isSomeSelected && 'data-[state=checked]:bg-primary/50')} /></TableHead>
-                <ResizableTableHead columnId="name"><TableColumnHeaderWithFilterAndSort columnId="name" label="Name" sortKey={sortKey} sortOrder={sortOrder} onSort={setSort} filterable={false} distinctValues={[]} selectedFilterValues={new Set()} onFilterChange={() => {}} /></ResizableTableHead>
-                {columnVisibility.isColumnVisible('node') && <ResizableTableHead columnId="node"><TableColumnHeaderWithFilterAndSort columnId="node" label="Node" sortKey={sortKey} sortOrder={sortOrder} onSort={setSort} filterable={false} distinctValues={[]} selectedFilterValues={new Set()} onFilterChange={() => {}} /></ResizableTableHead>}
-                {columnVisibility.isColumnVisible('driver') && <ResizableTableHead columnId="driver"><TableColumnHeaderWithFilterAndSort columnId="driver" label="Driver" sortKey={sortKey} sortOrder={sortOrder} onSort={setSort} filterable={false} distinctValues={[]} selectedFilterValues={new Set()} onFilterChange={() => {}} /></ResizableTableHead>}
-                {columnVisibility.isColumnVisible('pool') && <ResizableTableHead columnId="pool"><TableColumnHeaderWithFilterAndSort columnId="pool" label="Pool" sortKey={sortKey} sortOrder={sortOrder} onSort={setSort} filterable={false} distinctValues={[]} selectedFilterValues={new Set()} onFilterChange={() => {}} /></ResizableTableHead>}
-                {columnVisibility.isColumnVisible('capacity') && <ResizableTableHead columnId="capacity"><TableColumnHeaderWithFilterAndSort columnId="capacity" label="Capacity" sortKey={sortKey} sortOrder={sortOrder} onSort={setSort} filterable={false} distinctValues={[]} selectedFilterValues={new Set()} onFilterChange={() => {}} /></ResizableTableHead>}
-                {columnVisibility.isColumnVisible('age') && <ResizableTableHead columnId="age"><TableColumnHeaderWithFilterAndSort columnId="age" label="Age" sortKey={sortKey} sortOrder={sortOrder} onSort={setSort} filterable={false} distinctValues={[]} selectedFilterValues={new Set()} onFilterChange={() => {}} /></ResizableTableHead>}
+                <ResizableTableHead columnId="name"><TableColumnHeaderWithFilterAndSort columnId="name" label="Name" sortKey={sortKey} sortOrder={sortOrder} onSort={setSort} filterable={false} distinctValues={[]} selectedFilterValues={new Set()} onFilterChange={() => { }} /></ResizableTableHead>
+                {columnVisibility.isColumnVisible('node') && <ResizableTableHead columnId="node"><TableColumnHeaderWithFilterAndSort columnId="node" label="Node" sortKey={sortKey} sortOrder={sortOrder} onSort={setSort} filterable={false} distinctValues={[]} selectedFilterValues={new Set()} onFilterChange={() => { }} /></ResizableTableHead>}
+                {columnVisibility.isColumnVisible('driver') && <ResizableTableHead columnId="driver"><TableColumnHeaderWithFilterAndSort columnId="driver" label="Driver" sortKey={sortKey} sortOrder={sortOrder} onSort={setSort} filterable={false} distinctValues={[]} selectedFilterValues={new Set()} onFilterChange={() => { }} /></ResizableTableHead>}
+                {columnVisibility.isColumnVisible('pool') && <ResizableTableHead columnId="pool"><TableColumnHeaderWithFilterAndSort columnId="pool" label="Pool" sortKey={sortKey} sortOrder={sortOrder} onSort={setSort} filterable={false} distinctValues={[]} selectedFilterValues={new Set()} onFilterChange={() => { }} /></ResizableTableHead>}
+                {columnVisibility.isColumnVisible('capacity') && <ResizableTableHead columnId="capacity"><TableColumnHeaderWithFilterAndSort columnId="capacity" label="Capacity" sortKey={sortKey} sortOrder={sortOrder} onSort={setSort} filterable={false} distinctValues={[]} selectedFilterValues={new Set()} onFilterChange={() => { }} /></ResizableTableHead>}
+                {columnVisibility.isColumnVisible('age') && <ResizableTableHead columnId="age"><TableColumnHeaderWithFilterAndSort columnId="age" label="Age" sortKey={sortKey} sortOrder={sortOrder} onSort={setSort} filterable={false} distinctValues={[]} selectedFilterValues={new Set()} onFilterChange={() => { }} /></ResizableTableHead>}
                 <TableHead className="w-12 text-center"><span className="sr-only">Actions</span><MoreHorizontal className="h-4 w-4 inline-block text-muted-foreground" aria-hidden /></TableHead>
               </TableRow>
               {showTableFilters && (
@@ -387,6 +403,8 @@ export default function ResourceSlices() {
                             </DropdownMenuItem>
                           )}
                           <DropdownMenuSeparator />
+                          <DropdownMenuItem onClick={() => navigate(`/resourceslices/${item.name}?tab=yaml`)} className="gap-2">Edit YAML</DropdownMenuItem>
+                          <DropdownMenuSeparator />
                           <DropdownMenuItem onClick={() => navigate(`/resourceslices/${item.name}?tab=yaml`)} className="gap-2"><FileText className="h-4 w-4" />Download YAML</DropdownMenuItem>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem className="gap-2 text-[hsl(0,72%,51%)]" onClick={() => setDeleteDialog({ open: true, item })} disabled={!isConnected}><Trash2 className="h-4 w-4" />Delete</DropdownMenuItem>
@@ -409,6 +427,15 @@ export default function ResourceSlices() {
         namespace={undefined}
         onConfirm={handleDelete}
       />
+
+      {showCreateWizard && (
+        <ResourceCreator
+          resourceKind="ResourceSlice"
+          onClose={() => setShowCreateWizard(false)}
+          onApply={handleApplyCreate}
+          defaultYaml={DEFAULT_YAMLS.ResourceSlice}
+        />
+      )}
     </motion.div>
   );
 }

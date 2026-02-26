@@ -460,7 +460,7 @@ func setupTestHandler(t *testing.T) *rest.Handler {
 	defer repo.Close()
 
 	clusterService := service.NewClusterService(repo, cfg)
-	handler := rest.NewHandler(clusterService, nil, cfg, nil, nil, nil, nil, nil, repo)
+	handler := rest.NewHandler(clusterService, nil, cfg, nil, nil, nil, nil, nil, nil, repo)
 	return handler
 }
 

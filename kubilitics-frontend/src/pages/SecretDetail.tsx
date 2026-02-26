@@ -11,11 +11,11 @@ import {
   SectionCard,
   MetadataCard,
   YamlViewer,
-  YamlCompareViewer,
   EventsSection,
   ActionsSection,
   DeleteConfirmDialog,
   ResourceTopologyView,
+  ResourceComparisonView,
   type ResourceStatus,
   type YamlVersion,
 } from '@/components/resources';
@@ -28,6 +28,7 @@ import { useActiveClusterId } from '@/hooks/useActiveClusterId';
 import { getSecretConsumers, getSecretTLSInfo } from '@/services/backendApiClient';
 import { Breadcrumbs, useDetailBreadcrumbs } from '@/components/layout/Breadcrumbs';
 import { toast } from 'sonner';
+import { downloadResourceJson } from '@/lib/exportUtils';
 import { cn } from '@/lib/utils';
 import {
   Table,
@@ -43,6 +44,7 @@ interface SecretResource extends KubernetesResource {
   type?: string;
   data?: Record<string, string>;
   stringData?: Record<string, string>;
+  immutable?: boolean;
 }
 
 function daysRemainingColor(days: number): string {
@@ -79,7 +81,8 @@ export default function SecretDetail() {
   const updateSecret = useUpdateK8sResource('secrets');
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
-  const baseUrl = getEffectiveBackendBaseUrl();
+  const storedUrl = useBackendConfigStore((s) => s.backendBaseUrl);
+  const baseUrl = getEffectiveBackendBaseUrl(storedUrl);
   const consumersQuery = useQuery({
     queryKey: ['secret-consumers', clusterId, namespace, name],
     queryFn: () => getSecretConsumers(baseUrl!, clusterId!, namespace ?? '', name!),
@@ -114,13 +117,13 @@ export default function SecretDetail() {
       () => toast.success(`Copied value of "${key}"`),
       () => toast.error('Copy failed')
     );
-  }, [data, decodeValue]);
+  }, [s.data, decodeValue]);
 
   const decodedSize = useCallback((b64: string): number => Math.round((b64?.length ?? 0) * 0.75), []);
 
-  const status: ResourceStatus = 'Healthy';
-  const secretType = s.type || 'Opaque';
   const data = s.data || {};
+  const secretType = s.type || 'Opaque';
+  const status: ResourceStatus = 'Healthy';
   const labels = s.metadata?.labels || {};
   const sName = s.metadata?.name || '';
   const sNamespace = s.metadata?.namespace || '';
@@ -134,6 +137,11 @@ export default function SecretDetail() {
     a.click();
     URL.revokeObjectURL(url);
   }, [yaml, sName]);
+
+  const handleDownloadJson = useCallback(() => {
+    downloadResourceJson(s, `${sName || 'secret'}.json`);
+    toast.success('JSON downloaded');
+  }, [s, sName]);
 
   const yamlVersions: YamlVersion[] = yaml ? [{ id: 'current', label: 'Current Version', yaml, timestamp: 'now' }] : [];
 
@@ -154,7 +162,7 @@ export default function SecretDetail() {
       <div className="space-y-6">
         <Skeleton className="h-20 w-full" />
         <div className="grid grid-cols-3 gap-4">
-          {[1,2,3].map(i => <Skeleton key={i} className="h-24" />)}
+          {[1, 2, 3].map(i => <Skeleton key={i} className="h-24" />)}
         </div>
         <Skeleton className="h-96" />
       </div>
@@ -381,7 +389,23 @@ export default function SecretDetail() {
     { id: 'used-by', label: 'Used By', icon: KeyRound, content: usedByContent },
     { id: 'events', label: 'Events', icon: Clock, content: <EventsSection events={events} /> },
     { id: 'yaml', label: 'YAML', icon: FileCode, content: <YamlViewer yaml={yaml} resourceName={sName} editable onSave={handleSaveYaml} /> },
-    { id: 'compare', label: 'Compare', icon: GitCompare, content: <YamlCompareViewer versions={yamlVersions} resourceName={sName} /> },
+    {
+      id: 'compare',
+      label: 'Compare',
+      icon: GitCompare,
+      content: (
+        <ResourceComparisonView
+          resourceType="secrets"
+          resourceKind="Secret"
+          namespace={namespace}
+          initialSelectedResources={namespace && name ? [`${namespace}/${name}`] : [name || '']}
+          clusterId={clusterId ?? undefined}
+          backendBaseUrl={baseUrl ?? ''}
+          isConnected={isConnected}
+          embedded
+        />
+      ),
+    },
     {
       id: 'topology',
       label: 'Topology',
@@ -405,6 +429,7 @@ export default function SecretDetail() {
           { icon: Edit, label: 'Edit Secret', description: 'Modify secret data' },
           { icon: Copy, label: 'Duplicate', description: 'Create a copy of this Secret' },
           { icon: Download, label: 'Download YAML', description: 'Export Secret definition', onClick: handleDownloadYaml },
+          { icon: Download, label: 'Export as JSON', description: 'Export Secret as JSON', onClick: handleDownloadJson },
           { icon: Trash2, label: 'Delete Secret', description: 'Remove this Secret', variant: 'destructive', onClick: () => setShowDeleteDialog(true) },
         ]} />
       ),
@@ -424,6 +449,7 @@ export default function SecretDetail() {
         headerMetadata={<span className="flex items-center gap-1.5 ml-2 text-sm text-muted-foreground"><Clock className="h-3.5 w-3.5" />Created {age}{isConnected && <Badge variant="outline" className="ml-2 text-xs">Live</Badge>}</span>}
         actions={[
           { label: 'Download YAML', icon: Download, variant: 'outline', onClick: handleDownloadYaml },
+          { label: 'Export as JSON', icon: Download, variant: 'outline', onClick: handleDownloadJson },
           { label: 'Edit', icon: Edit, variant: 'outline', onClick: () => { setActiveTab('yaml'); setSearchParams((p) => { const n = new URLSearchParams(p); n.set('tab', 'yaml'); return n; }, { replace: true }); } },
           { label: 'Delete', icon: Trash2, variant: 'destructive', onClick: () => setShowDeleteDialog(true) },
         ]}

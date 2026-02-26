@@ -3,6 +3,7 @@ package cli
 import (
 	"fmt"
 	"strings"
+	"sync"
 
 	"github.com/kubilitics/kcli/internal/runner"
 	"github.com/kubilitics/kcli/internal/state"
@@ -63,25 +64,42 @@ func (a *app) runGetWithMultiCluster(args []string) error {
 		return fmt.Errorf("--all-contexts cannot be combined with global --context")
 	}
 
+	type result struct {
+		ctxName string
+		out     string
+		err     error
+	}
+	results := make([]result, len(contexts))
+	var wg sync.WaitGroup
+	for i, ctxName := range contexts {
+		wg.Add(1)
+		go func(i int, ctxName string) {
+			defer wg.Done()
+			cmdArgs := make([]string, 0, len(opts.Args)+4)
+			cmdArgs = append(cmdArgs, "--context", ctxName, "get")
+			if a.namespace != "" && !hasNamespaceFlag(opts.Args) {
+				cmdArgs = append(cmdArgs, "-n", a.namespace)
+			}
+			cmdArgs = append(cmdArgs, opts.Args...)
+			out, runErr := runner.CaptureKubectl(cmdArgs)
+			results[i] = result{ctxName: ctxName, out: out, err: runErr}
+		}(i, ctxName)
+	}
+	wg.Wait()
+
+	// Output in original context order
 	var hadFailure bool
-	for _, ctxName := range contexts {
-		fmt.Printf("\n=== Context: %s ===\n", ctxName)
-		cmdArgs := make([]string, 0, len(opts.Args)+4)
-		cmdArgs = append(cmdArgs, "--context", ctxName, "get")
-		if a.namespace != "" && !hasNamespaceFlag(opts.Args) {
-			cmdArgs = append(cmdArgs, "-n", a.namespace)
-		}
-		cmdArgs = append(cmdArgs, opts.Args...)
-		out, runErr := runner.CaptureKubectl(cmdArgs)
-		if strings.TrimSpace(out) != "" {
-			fmt.Print(out)
-			if !strings.HasSuffix(out, "\n") {
+	for _, r := range results {
+		fmt.Printf("\n=== Context: %s ===\n", r.ctxName)
+		if strings.TrimSpace(r.out) != "" {
+			fmt.Print(r.out)
+			if !strings.HasSuffix(r.out, "\n") {
 				fmt.Println()
 			}
 		}
-		if runErr != nil {
+		if r.err != nil {
 			hadFailure = true
-			fmt.Printf("error: %v\n", runErr)
+			fmt.Printf("error: %v\n", r.err)
 		}
 	}
 	if hadFailure {

@@ -1,14 +1,15 @@
 import { useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Link2, Clock, Download, Trash2, Edit, ShieldCheck, UserCircle, Globe, Network } from 'lucide-react';
+import { Link2, Clock, Download, Trash2, Edit, ShieldCheck, UserCircle, Globe, Network, GitCompare } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import {
   ResourceDetailLayout,
+  MetadataCard,
   YamlViewer,
-  YamlCompareViewer,
+  ResourceComparisonView,
   EventsSection,
   ActionsSection,
   DeleteConfirmDialog,
@@ -20,7 +21,10 @@ import { useResourceDetail, useResourceEvents } from '@/hooks/useK8sResourceDeta
 import { useDeleteK8sResource, type KubernetesResource } from '@/hooks/useKubernetes';
 import { normalizeKindForTopology } from '@/utils/resourceKindMapper';
 import { useConnectionStatus } from '@/hooks/useConnectionStatus';
+import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
+import { useActiveClusterId } from '@/hooks/useActiveClusterId';
 import { toast } from 'sonner';
+import { downloadResourceJson } from '@/lib/exportUtils';
 
 interface Subject {
   kind: string;
@@ -40,6 +44,9 @@ export default function ClusterRoleBindingDetail() {
   const [activeTab, setActiveTab] = useState('overview');
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const { isConnected } = useConnectionStatus();
+  const clusterId = useActiveClusterId();
+  const backendBaseUrl = useBackendConfigStore((s) => s.backendBaseUrl);
+  const baseUrl = getEffectiveBackendBaseUrl(backendBaseUrl);
 
   const { resource, isLoading, error: resourceError, age, yaml, refetch } = useResourceDetail<ClusterRoleBindingResource>(
     'clusterrolebindings',
@@ -67,7 +74,10 @@ export default function ClusterRoleBindingDetail() {
     URL.revokeObjectURL(url);
   }, [yaml, crbName]);
 
-  const yamlVersions: YamlVersion[] = yaml ? [{ id: 'current', label: 'Current Version', yaml, timestamp: 'now' }] : [];
+  const handleDownloadJson = useCallback(() => {
+    downloadResourceJson(resource, `${crbName || 'clusterrolebinding'}.json`);
+    toast.success('JSON downloaded');
+  }, [resource, crbName]);
 
   const statusCards = [
     { label: 'ClusterRole', value: clusterRoleName, icon: ShieldCheck, iconColor: 'primary' as const },
@@ -195,7 +205,22 @@ export default function ClusterRoleBindingDetail() {
     },
     { id: 'events', label: 'Events', content: <EventsSection events={events} /> },
     { id: 'yaml', label: 'YAML', content: <YamlViewer yaml={yaml} resourceName={crbName} /> },
-    { id: 'compare', label: 'Compare', content: <YamlCompareViewer versions={yamlVersions} resourceName={crbName} /> },
+    {
+      id: 'compare',
+      label: 'Compare',
+      icon: GitCompare,
+      content: (
+        <ResourceComparisonView
+          resourceType="clusterrolebindings"
+          resourceKind="ClusterRoleBinding"
+          initialSelectedResources={[crbName]}
+          clusterId={clusterId ?? undefined}
+          backendBaseUrl={baseUrl ?? ''}
+          isConnected={isConnected}
+          embedded
+        />
+      ),
+    },
     {
       id: 'topology',
       label: 'Topology',
@@ -218,6 +243,7 @@ export default function ClusterRoleBindingDetail() {
           actions={[
             { icon: Edit, label: 'Edit Binding', description: 'Modify subjects or role reference', onClick: () => toast.info('Edit not implemented') },
             { icon: Download, label: 'Download YAML', description: 'Export ClusterRoleBinding definition', onClick: handleDownloadYaml },
+            { icon: Download, label: 'Export as JSON', description: 'Export ClusterRoleBinding as JSON', onClick: handleDownloadJson },
             { icon: Trash2, label: 'Delete ClusterRoleBinding', description: 'Remove this cluster role binding', variant: 'destructive', onClick: () => setShowDeleteDialog(true) },
           ]}
         />
@@ -239,6 +265,7 @@ export default function ClusterRoleBindingDetail() {
         headerMetadata={<span className="flex items-center gap-1.5 ml-2 text-sm text-muted-foreground"><Clock className="h-3.5 w-3.5" />Created {age}</span>}
         actions={[
           { label: 'Download YAML', icon: Download, variant: 'outline', onClick: handleDownloadYaml },
+          { label: 'Export as JSON', icon: Download, variant: 'outline', onClick: handleDownloadJson },
           { label: 'Edit', icon: Edit, variant: 'outline', onClick: () => toast.info('Edit not implemented') },
           { label: 'Delete', icon: Trash2, variant: 'destructive', onClick: () => setShowDeleteDialog(true) },
         ]}

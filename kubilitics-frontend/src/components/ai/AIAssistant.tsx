@@ -1544,7 +1544,7 @@ export function AIAssistant() {
             exit={{ scale: 0, opacity: 0, y: 20 }}
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            className="fixed bottom-8 right-8 z-50 flex flex-col items-center gap-2"
+            className="fixed bottom-8 right-8 z-[100] flex flex-col items-center gap-2"
           >
             {/* Pulsing Glow Effect */}
             <motion.div
@@ -1611,7 +1611,7 @@ export function AIAssistant() {
             aria-label="Kubilitics AI Assistant"
             aria-modal="true"
             className={cn(
-              'fixed z-50 flex flex-col bg-card border border-border rounded-2xl shadow-xl overflow-hidden',
+              'fixed z-[100] flex flex-col bg-card border border-border rounded-2xl shadow-xl overflow-hidden',
               isExpanded ? 'inset-6' : 'bottom-6 right-6 w-[420px] h-[600px] max-h-[80vh]'
             )}
           >

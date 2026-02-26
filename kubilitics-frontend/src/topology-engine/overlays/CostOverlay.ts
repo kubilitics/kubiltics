@@ -25,8 +25,8 @@ export interface CostMetrics {
  * - 51-80: Expensive (orange)
  * - 81-100: Very expensive (red)
  *
- * NOTE: This requires backend integration with cost tracking service
- * (e.g., Kubecost, OpenCost, or cloud provider billing APIs)
+ * NOTE: Uses local heuristics (CPU/memory usage, replica count). For actual
+ * cost data, integrate with a cost tracking service or cloud billing APIs.
  */
 export function useCostOverlay(graph: TopologyGraph): OverlayData {
   const overlayData = useMemo(() => {

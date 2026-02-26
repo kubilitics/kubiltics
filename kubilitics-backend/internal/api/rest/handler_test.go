@@ -64,7 +64,7 @@ users:
 	}
 	cfg := &config.Config{}
 	cs := service.NewClusterService(repo, cfg)
-	h := NewHandler(cs, nil, cfg, nil, nil, nil, nil, nil, nil)
+	h := NewHandler(cs, nil, cfg, nil, nil, nil, nil, nil, nil, nil)
 
 	router := mux.NewRouter()
 	api := router.PathPrefix("/api/v1").Subrouter()
@@ -140,7 +140,7 @@ users:
 	}
 	cfg := &config.Config{}
 	cs := service.NewClusterService(repo, cfg)
-	h := NewHandler(cs, nil, cfg, nil, nil, nil, nil, nil, nil)
+	h := NewHandler(cs, nil, cfg, nil, nil, nil, nil, nil, nil, nil)
 
 	router := mux.NewRouter()
 	api := router.PathPrefix("/api/v1").Subrouter()
@@ -195,7 +195,7 @@ func TestAPI_GET_ShellComplete_FileFlagPathCompletion(t *testing.T) {
 	}
 	cfg := &config.Config{}
 	cs := service.NewClusterService(repo, cfg)
-	h := NewHandler(cs, nil, cfg, nil, nil, nil, nil, nil, nil)
+	h := NewHandler(cs, nil, cfg, nil, nil, nil, nil, nil, nil, nil)
 
 	router := mux.NewRouter()
 	api := router.PathPrefix("/api/v1").Subrouter()
@@ -250,7 +250,7 @@ func TestAPI_GET_KCLIComplete_FileFlagPathCompletion(t *testing.T) {
 	}
 	cfg := &config.Config{}
 	cs := service.NewClusterService(repo, cfg)
-	h := NewHandler(cs, nil, cfg, nil, nil, nil, nil, nil, nil)
+	h := NewHandler(cs, nil, cfg, nil, nil, nil, nil, nil, nil, nil)
 
 	router := mux.NewRouter()
 	api := router.PathPrefix("/api/v1").Subrouter()
@@ -301,7 +301,7 @@ func TestAPI_GET_Clusters_Returns200AndArray(t *testing.T) {
 	repo := &mockClusterRepo{list: []*models.Cluster{}}
 	cfg := &config.Config{}
 	cs := service.NewClusterService(repo, cfg)
-	h := NewHandler(cs, nil, cfg, nil, nil, nil, nil, nil, nil)
+	h := NewHandler(cs, nil, cfg, nil, nil, nil, nil, nil, nil, nil)
 
 	router := mux.NewRouter()
 	api := router.PathPrefix("/api/v1").Subrouter()
@@ -356,7 +356,7 @@ func TestAPI_POST_Shell_BlockedVerb_Returns400(t *testing.T) {
 	}
 	cfg := &config.Config{}
 	cs := service.NewClusterService(repo, cfg)
-	h := NewHandler(cs, nil, cfg, nil, nil, nil, nil, nil, nil)
+	h := NewHandler(cs, nil, cfg, nil, nil, nil, nil, nil, nil, nil)
 
 	router := mux.NewRouter()
 	api := router.PathPrefix("/api/v1").Subrouter()
@@ -392,7 +392,7 @@ func TestAPI_POST_Shell_EmptyCommand_Returns200(t *testing.T) {
 	}
 	cfg := &config.Config{}
 	cs := service.NewClusterService(repo, cfg)
-	h := NewHandler(cs, nil, cfg, nil, nil, nil, nil, nil, nil)
+	h := NewHandler(cs, nil, cfg, nil, nil, nil, nil, nil, nil, nil)
 
 	router := mux.NewRouter()
 	api := router.PathPrefix("/api/v1").Subrouter()

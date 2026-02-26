@@ -35,7 +35,6 @@ import {
   ResourceDetailLayout,
   ContainersSection,
   YamlViewer,
-  YamlCompareViewer,
   EventsSection,
   MetadataCard,
   ActionsSection,
@@ -46,6 +45,7 @@ import {
   LogViewer,
   TerminalViewer,
   ResourceTopologyView,
+  ResourceComparisonView,
   type ResourceStatus,
   type ContainerInfo,
   type YamlVersion,
@@ -62,6 +62,7 @@ import { useQuery } from '@tanstack/react-query';
 import { getDaemonSetMetrics } from '@/services/backendApiClient';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
+import { downloadResourceJson } from '@/lib/exportUtils';
 
 interface DaemonSetResource extends KubernetesResource {
   spec?: {
@@ -94,7 +95,7 @@ export default function DaemonSetDetail() {
   const { namespace, name } = useParams();
   const clusterId = useActiveClusterId();
   const navigate = useNavigate();
-  
+
   const [activeTab, setActiveTab] = useState('overview');
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showRolloutDialog, setShowRolloutDialog] = useState(false);
@@ -120,15 +121,15 @@ export default function DaemonSetDetail() {
   const updateDaemonSet = useUpdateK8sResource('daemonsets');
   const patchDaemonSet = usePatchK8sResource('daemonsets');
 
-  const status: ResourceStatus = daemonSet.status?.numberReady === daemonSet.status?.desiredNumberScheduled ? 'Running' : 
+  const status: ResourceStatus = daemonSet.status?.numberReady === daemonSet.status?.desiredNumberScheduled ? 'Running' :
     daemonSet.status?.numberReady ? 'Pending' : 'Failed';
-  
+
   const desired = daemonSet.status?.desiredNumberScheduled || 0;
   const current = daemonSet.status?.currentNumberScheduled || 0;
   const ready = daemonSet.status?.numberReady || 0;
   const available = daemonSet.status?.numberAvailable || 0;
   const updated = daemonSet.status?.updatedNumberScheduled || 0;
-  
+
   const containers: ContainerInfo[] = (daemonSet.spec?.template?.spec?.containers || []).map(c => ({
     name: c.name,
     image: c.image,
@@ -176,7 +177,7 @@ export default function DaemonSetDetail() {
   const podMetricsByName = useMemo(() => {
     const pods = dsMetricsQuery.data?.pods ?? [];
     const map: Record<string, { cpu: string; memory: string }> = {};
-    pods.forEach((p) => { map[p.name] = { cpu: p.cpu ?? '–', memory: p.memory ?? '–' }; });
+    pods.forEach((p) => { map[p.name] = { cpu: p.CPU ?? '–', memory: p.Memory ?? '–' }; });
     return map;
   }, [dsMetricsQuery.data?.pods]);
 
@@ -196,6 +197,11 @@ export default function DaemonSetDetail() {
     URL.revokeObjectURL(url);
     toast.success('YAML downloaded');
   }, [yaml, daemonSet.metadata?.name]);
+
+  const handleDownloadJson = useCallback(() => {
+    downloadResourceJson(daemonSet, `${daemonSet.metadata?.name || 'daemonset'}.json`);
+    toast.success('JSON downloaded');
+  }, [daemonSet]);
 
   const handleCopyYaml = useCallback(() => {
     navigator.clipboard.writeText(yaml);
@@ -238,7 +244,7 @@ export default function DaemonSetDetail() {
       <div className="space-y-6">
         <Skeleton className="h-20 w-full" />
         <div className="grid grid-cols-4 gap-4">
-          {[1,2,3,4].map(i => <Skeleton key={i} className="h-24" />)}
+          {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-24" />)}
         </div>
         <Skeleton className="h-96" />
       </div>
@@ -634,7 +640,18 @@ export default function DaemonSetDetail() {
       id: 'compare',
       label: 'Compare',
       icon: GitCompare,
-      content: <YamlCompareViewer versions={yamlVersions} resourceName={daemonSet.metadata?.name || ''} />,
+      content: (
+        <ResourceComparisonView
+          resourceType="daemonsets"
+          resourceKind="DaemonSet"
+          namespace={namespace}
+          initialSelectedResources={namespace && name ? [`${namespace}/${name}`] : [name || '']}
+          clusterId={clusterId ?? undefined}
+          backendBaseUrl={backendBaseUrl ?? ''}
+          isConnected={isConnected}
+          embedded
+        />
+      ),
     },
     {
       id: 'topology',
@@ -658,6 +675,7 @@ export default function DaemonSetDetail() {
         <ActionsSection actions={[
           { icon: RotateCcw, label: 'Rollout Restart', description: 'Trigger a rolling restart of all pods', onClick: () => setShowRolloutDialog(true) },
           { icon: Download, label: 'Download YAML', description: 'Export DaemonSet definition', onClick: handleDownloadYaml },
+          { icon: Download, label: 'Export as JSON', description: 'Export DaemonSet as JSON', onClick: handleDownloadJson },
           { icon: Trash2, label: 'Delete DaemonSet', description: 'Permanently remove this DaemonSet', variant: 'destructive', onClick: () => setShowDeleteDialog(true) },
         ]} />
       ),
@@ -690,6 +708,7 @@ export default function DaemonSetDetail() {
         }
         actions={[
           { label: 'Download YAML', icon: Download, variant: 'outline', onClick: handleDownloadYaml },
+          { label: 'Export as JSON', icon: Download, variant: 'outline', onClick: handleDownloadJson },
           { label: 'Restart', icon: RotateCcw, variant: 'outline', onClick: () => setShowRolloutDialog(true) },
           { label: 'Delete', icon: Trash2, variant: 'destructive', onClick: () => setShowDeleteDialog(true) },
         ]}

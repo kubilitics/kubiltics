@@ -207,7 +207,6 @@ export default function KubeConfigSetup() {
                         <input
                           type="file"
                           className="hidden"
-                          accept=".yaml,.yml,.config,*"
                           onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])}
                         />
                       </label>

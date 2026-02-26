@@ -19,6 +19,8 @@ export interface YamlViewerProps {
   resourceName: string;
   editable?: boolean;
   onSave?: (yaml: string) => Promise<void> | void;
+  /** Optional warning or notice (e.g. Pod immutability) shown below the description */
+  warning?: React.ReactNode;
 }
 
 function validateYaml(yaml: string): YamlValidationError[] {
@@ -55,7 +57,7 @@ function validateYaml(yaml: string): YamlValidationError[] {
   return errors;
 }
 
-export function YamlViewer({ yaml, resourceName, editable = false, onSave }: YamlViewerProps) {
+export function YamlViewer({ yaml, resourceName, editable = false, onSave, warning }: YamlViewerProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editedYaml, setEditedYaml] = useState(yaml);
   const [errors, setErrors] = useState<YamlValidationError[]>([]);
@@ -133,11 +135,12 @@ export function YamlViewer({ yaml, resourceName, editable = false, onSave }: Yam
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
-        <div>
+        <div className="space-y-1.5">
           <CardTitle className="text-base">YAML Definition</CardTitle>
           <CardDescription>
             {isEditing ? 'Edit mode - make changes and apply' : 'View and edit the resource specification'}
           </CardDescription>
+          {warning && <div className="text-sm text-muted-foreground pt-0.5">{warning}</div>}
         </div>
         <div className="flex items-center gap-2">
           {isEditing ? (

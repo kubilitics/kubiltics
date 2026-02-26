@@ -39,11 +39,11 @@ import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Progress } from '@/components/ui/progress';
 import { toast } from 'sonner';
+import { downloadResourceJson } from '@/lib/exportUtils';
 import {
   ResourceDetailLayout,
   ContainersSection,
   YamlViewer,
-  YamlCompareViewer,
   EventsSection,
   MetadataCard,
   ActionsSection,
@@ -55,6 +55,7 @@ import {
   LogViewer,
   TerminalViewer,
   ResourceTopologyView,
+  ResourceComparisonView,
   type ResourceStatus,
   type ContainerInfo,
   type YamlVersion,
@@ -134,14 +135,14 @@ export default function StatefulSetDetail() {
   const updateStatefulSet = useUpdateK8sResource('statefulsets');
   const patchStatefulSet = usePatchK8sResource('statefulsets');
 
-  const status: ResourceStatus = statefulSet.status?.readyReplicas === statefulSet.spec?.replicas ? 'Running' : 
+  const status: ResourceStatus = statefulSet.status?.readyReplicas === statefulSet.spec?.replicas ? 'Running' :
     statefulSet.status?.readyReplicas ? 'Pending' : 'Failed';
-  
+
   const desired = statefulSet.spec?.replicas || 0;
   const ready = statefulSet.status?.readyReplicas || 0;
   const current = statefulSet.status?.currentReplicas || 0;
   const updated = statefulSet.status?.updatedReplicas || 0;
-  
+
   const containers: ContainerInfo[] = (statefulSet.spec?.template?.spec?.containers || []).map(c => ({
     name: c.name,
     image: c.image,
@@ -222,6 +223,11 @@ export default function StatefulSetDetail() {
     toast.success('YAML downloaded');
   }, [yaml, statefulSet.metadata?.name]);
 
+  const handleDownloadJson = useCallback(() => {
+    downloadResourceJson(statefulSet, `${statefulSet.metadata?.name || 'statefulset'}.json`);
+    toast.success('JSON downloaded');
+  }, [statefulSet]);
+
   const handleCopyYaml = useCallback(() => {
     navigator.clipboard.writeText(yaml);
     toast.success('YAML copied to clipboard');
@@ -280,7 +286,7 @@ export default function StatefulSetDetail() {
       <div className="space-y-6">
         <Skeleton className="h-20 w-full" />
         <div className="grid grid-cols-4 gap-4">
-          {[1,2,3,4].map(i => <Skeleton key={i} className="h-24" />)}
+          {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-24" />)}
         </div>
         <Skeleton className="h-96" />
       </div>
@@ -814,7 +820,18 @@ export default function StatefulSetDetail() {
       id: 'compare',
       label: 'Compare',
       icon: GitCompare,
-      content: <YamlCompareViewer versions={yamlVersions} resourceName={statefulSet.metadata?.name || ''} />,
+      content: (
+        <ResourceComparisonView
+          resourceType="statefulsets"
+          resourceKind="StatefulSet"
+          namespace={namespace}
+          initialSelectedResources={namespace && name ? [`${namespace}/${name}`] : [name || '']}
+          clusterId={clusterId ?? undefined}
+          backendBaseUrl={backendBaseUrl ?? ''}
+          isConnected={isConnected}
+          embedded
+        />
+      ),
     },
     {
       id: 'topology',
@@ -840,6 +857,7 @@ export default function StatefulSetDetail() {
           { icon: RotateCcw, label: 'Rollout Restart', description: 'Trigger a rolling restart', onClick: () => setShowRolloutDialog(true) },
           { icon: History, label: 'Rollout History', description: 'View and manage revisions', onClick: () => setShowRolloutDialog(true) },
           { icon: Download, label: 'Download YAML', description: 'Export StatefulSet definition', onClick: handleDownloadYaml },
+          { icon: Download, label: 'Export as JSON', description: 'Export StatefulSet as JSON', onClick: handleDownloadJson },
           { icon: Trash2, label: 'Delete StatefulSet', description: 'Permanently remove this StatefulSet', variant: 'destructive', onClick: () => setShowDeleteDialog(true) },
         ]} />
       ),
@@ -868,6 +886,7 @@ export default function StatefulSetDetail() {
         }
         actions={[
           { label: 'Download YAML', icon: Download, variant: 'outline', onClick: handleDownloadYaml },
+          { label: 'Export as JSON', icon: Download, variant: 'outline', onClick: handleDownloadJson },
           { label: 'Scale', icon: Scale, variant: 'outline', onClick: () => setShowScaleDialog(true) },
           { label: 'Restart', icon: RotateCcw, variant: 'outline', onClick: () => setShowRolloutDialog(true) },
           { label: 'Delete', icon: Trash2, variant: 'destructive', onClick: () => setShowDeleteDialog(true) },

@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
@@ -53,20 +52,6 @@ func setupTestRepoForGroups(t *testing.T) *repository.SQLiteRepository {
 		t.Fatalf("Failed to run migrations: %v", err)
 	}
 	return repo
-}
-
-func createTestUserForGroups(t *testing.T, repo *repository.SQLiteRepository) string {
-	user := &models.User{
-		ID:           uuid.New().String(),
-		Username:     "testuser",
-		PasswordHash: "hashedpassword",
-		Role:         auth.RoleViewer,
-		CreatedAt:    time.Now(),
-	}
-	if err := repo.CreateUser(context.Background(), user); err != nil {
-		t.Fatalf("Failed to create test user: %v", err)
-	}
-	return user.ID
 }
 
 func TestListGroups_Empty(t *testing.T) {

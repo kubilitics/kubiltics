@@ -13,7 +13,7 @@ dev-ai: env-example
 	@chmod +x scripts/dev-with-ai.sh 2>/dev/null || true
 	@./scripts/dev-with-ai.sh
 
-# Build backend, then kill processes on 819/5173 and start backend + frontend.
+# Build backend + kubilitics-ai, kill processes on 819/8081/5173, then start backend + AI + frontend.
 restart:
 	@chmod +x scripts/restart.sh 2>/dev/null || true
 	@./scripts/restart.sh

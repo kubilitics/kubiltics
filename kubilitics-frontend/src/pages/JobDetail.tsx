@@ -32,11 +32,11 @@ import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Progress } from '@/components/ui/progress';
 import { toast } from 'sonner';
+import { downloadResourceJson } from '@/lib/exportUtils';
 import {
   ResourceDetailLayout,
   ContainersSection,
   YamlViewer,
-  YamlCompareViewer,
   EventsSection,
   MetadataCard,
   ActionsSection,
@@ -46,6 +46,7 @@ import {
   DeleteConfirmDialog,
   SectionCard,
   ResourceTopologyView,
+  ResourceComparisonView,
   type ResourceStatus,
   type ContainerInfo,
   type YamlVersion,
@@ -105,14 +106,14 @@ export default function JobDetail() {
   const { namespace, name } = useParams();
   const clusterId = useActiveClusterId();
   const navigate = useNavigate();
-  
+
   const [activeTab, setActiveTab] = useState('overview');
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [selectedLogPod, setSelectedLogPod] = useState<string>('');
   const [selectedLogContainer, setSelectedLogContainer] = useState<string>('');
   const [selectedTerminalPod, setSelectedTerminalPod] = useState<string>('');
   const [selectedTerminalContainer, setSelectedTerminalContainer] = useState<string>('');
-  
+
   const { isConnected } = useConnectionStatus();
   const { activeCluster } = useClusterStore();
   const breadcrumbSegments = useDetailBreadcrumbs('Job', name ?? undefined, namespace ?? undefined, activeCluster?.name);
@@ -133,15 +134,15 @@ export default function JobDetail() {
   const failed = job.status?.failed || 0;
   const active = job.status?.active || 0;
   const completions = job.spec?.completions || 1;
-  
-  const status: ResourceStatus = succeeded >= completions ? 'Succeeded' : 
+
+  const status: ResourceStatus = succeeded >= completions ? 'Succeeded' :
     failed > 0 ? 'Failed' : active > 0 ? 'Running' : 'Pending';
-  
+
   const duration = job.status?.startTime && job.status?.completionTime
     ? calculateAge(job.status.startTime).replace(/ ago$/, '')
     : job.status?.startTime
-    ? 'Running...'
-    : '-';
+      ? 'Running...'
+      : '-';
 
   const containers: ContainerInfo[] = (job.spec?.template?.spec?.containers || []).map(c => ({
     name: c.name,
@@ -174,7 +175,7 @@ export default function JobDetail() {
   const podMetricsByName = useMemo(() => {
     const pods = jobMetricsQuery.data?.pods ?? [];
     const map: Record<string, { cpu: string; memory: string }> = {};
-    pods.forEach((p) => { map[p.name] = { cpu: p.cpu ?? '–', memory: p.memory ?? '–' }; });
+    pods.forEach((p) => { map[p.name] = { cpu: p.CPU ?? '–', memory: p.Memory ?? '–' }; });
     return map;
   }, [jobMetricsQuery.data?.pods]);
 
@@ -243,6 +244,11 @@ export default function JobDetail() {
     toast.success('YAML downloaded');
   }, [yaml, job.metadata?.name]);
 
+  const handleDownloadJson = useCallback(() => {
+    downloadResourceJson(job, `${job.metadata?.name || 'job'}.json`);
+    toast.success('JSON downloaded');
+  }, [job]);
+
   const handleCopyYaml = useCallback(() => {
     navigator.clipboard.writeText(yaml);
     toast.success('YAML copied to clipboard');
@@ -294,7 +300,7 @@ export default function JobDetail() {
       <div className="space-y-6">
         <Skeleton className="h-20 w-full" />
         <div className="grid grid-cols-4 gap-4">
-          {[1,2,3,4].map(i => <Skeleton key={i} className="h-24" />)}
+          {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-24" />)}
         </div>
         <Skeleton className="h-96" />
       </div>
@@ -696,7 +702,18 @@ export default function JobDetail() {
       id: 'compare',
       label: 'Compare',
       icon: GitCompare,
-      content: <YamlCompareViewer versions={yamlVersions} resourceName={job.metadata?.name || ''} />,
+      content: (
+        <ResourceComparisonView
+          resourceType="jobs"
+          resourceKind="Job"
+          namespace={namespace}
+          initialSelectedResources={namespace && name ? [`${namespace}/${name}`] : [name || '']}
+          clusterId={clusterId ?? undefined}
+          backendBaseUrl={backendBaseUrl ?? ''}
+          isConnected={isConnected}
+          embedded
+        />
+      ),
     },
     {
       id: 'topology',
@@ -721,6 +738,7 @@ export default function JobDetail() {
           { icon: RotateCw, label: 'Retry', description: 'Create a new Job with the same spec', onClick: handleRetry },
           { icon: Play, label: 'View Pod Logs', description: 'See logs from job pod', onClick: () => setActiveTab('logs') },
           { icon: Download, label: 'Download YAML', description: 'Export Job definition', onClick: handleDownloadYaml },
+          { icon: Download, label: 'Export as JSON', description: 'Export Job as JSON', onClick: handleDownloadJson },
           { icon: Trash2, label: 'Delete Job', description: 'Permanently remove this Job', variant: 'destructive', onClick: () => setShowDeleteDialog(true) },
         ]} />
       ),
@@ -750,6 +768,7 @@ export default function JobDetail() {
         actions={[
           { label: 'Retry', icon: RotateCw, variant: 'outline', onClick: handleRetry },
           { label: 'Download YAML', icon: Download, variant: 'outline', onClick: handleDownloadYaml },
+          { label: 'Export as JSON', icon: Download, variant: 'outline', onClick: handleDownloadJson },
           { label: 'Delete', icon: Trash2, variant: 'destructive', onClick: () => setShowDeleteDialog(true) },
         ]}
         statusCards={statusCards}

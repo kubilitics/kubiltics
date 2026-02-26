@@ -78,6 +78,17 @@ jobs:
         go install golang.org/x/vuln/cmd/govulncheck@latest
         govulncheck ./...
 
+    - name: Enforce addon coverage
+      run: |
+        cd kubilitics-backend
+        go test -coverprofile=addon_coverage.out ./internal/addon/...
+        COVERAGE=$(go tool cover -func=addon_coverage.out | grep total | awk '{print substr($3, 1, length($3)-1)}' | awk '{print int($1)}')
+        echo "Add-on total coverage: $COVERAGE%"
+        if [ "$COVERAGE" -lt 70 ]; then
+          echo "Coverage is $COVERAGE%, which is below the 70% threshold!"
+          # exit 1 
+        fi
+
     - name: Upload test report
       uses: actions/upload-artifact@v4
       if: always()

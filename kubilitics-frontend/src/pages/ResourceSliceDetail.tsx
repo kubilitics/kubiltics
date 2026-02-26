@@ -1,18 +1,20 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { Cpu, Clock, Download, Trash2, Info, FileCode, GitCompare, Layers } from 'lucide-react';
+import { Cpu, Clock, Download, Trash2, Info, FileCode, GitCompare, Layers, Network } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
+import { downloadResourceJson } from '@/lib/exportUtils';
 import {
   ResourceDetailLayout,
-  ResourceOverviewMetadata,
-  SectionCard,
-  YamlViewer,
-  YamlCompareViewer,
+  ResourceComparisonView,
   EventsSection,
   ActionsSection,
   DeleteConfirmDialog,
+  ResourceOverviewMetadata,
+  SectionCard,
+  YamlViewer,
+  ResourceTopologyView,
   type ResourceStatus,
   type YamlVersion,
 } from '@/components/resources';
@@ -22,6 +24,8 @@ import { Breadcrumbs, useDetailBreadcrumbs } from '@/components/layout/Breadcrum
 import { useClusterStore } from '@/stores/clusterStore';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
+import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
+import { useActiveClusterId } from '@/hooks/useActiveClusterId';
 
 interface K8sResourceSlice extends KubernetesResource {
   driver?: string;
@@ -32,7 +36,7 @@ interface K8sResourceSlice extends KubernetesResource {
 }
 
 function formatCapacity(rs: K8sResourceSlice): string {
-  const raw = rs as Record<string, unknown>;
+  const raw = rs as any;
   const named = raw.namedResources as { entries?: Array<{ capacity?: Record<string, string> }> } | undefined;
   const structured = raw.structuredResources as { capacity?: Record<string, string> } | undefined;
   if (named?.entries?.length) {
@@ -54,6 +58,9 @@ export default function ResourceSliceDetail() {
   const { activeCluster } = useClusterStore();
   const breadcrumbSegments = useDetailBreadcrumbs('ResourceSlice', name ?? undefined, undefined, activeCluster?.name);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const clusterId = useActiveClusterId();
+  const backendBaseUrl = useBackendConfigStore((s) => s.backendBaseUrl);
+  const baseUrl = getEffectiveBackendBaseUrl(backendBaseUrl);
 
   useEffect(() => {
     setActiveTab(initialTab);
@@ -84,6 +91,12 @@ export default function ResourceSliceDetail() {
     URL.revokeObjectURL(url);
   }, [yaml, rs?.metadata?.name]);
 
+  const handleDownloadJson = useCallback(() => {
+    if (!rs) return;
+    downloadResourceJson(rs, `${rs?.metadata?.name || 'resourceslice'}.json`);
+    toast.success('JSON downloaded');
+  }, [rs]);
+
   if (!name?.trim()) return null;
   if (isLoading) {
     return (
@@ -113,11 +126,11 @@ export default function ResourceSliceDetail() {
     );
   }
 
-  const raw = rs as Record<string, unknown>;
-  const driver = (raw.driver as string) ?? (raw.spec as Record<string, unknown>)?.driver ?? '—';
-  const nodeName = (raw.nodeName as string) ?? (raw.spec as Record<string, unknown>)?.nodeName;
-  const pool = raw.pool as { name?: string; generation?: number; resourceSliceCount?: number } | undefined;
-  const poolName = pool?.name ?? (raw.spec as Record<string, unknown>)?.pool?.name ?? '—';
+  const raw = rs as any;
+  const driver = raw.driver ?? raw.spec?.driver ?? '—';
+  const nodeName = raw.nodeName ?? raw.spec?.nodeName;
+  const pool = raw.pool ?? raw.spec?.pool;
+  const poolName = pool?.name ?? '—';
   const node = nodeName ?? poolName ?? '—';
   const capacity = formatCapacity(rs as K8sResourceSlice);
 
@@ -172,7 +185,36 @@ export default function ResourceSliceDetail() {
     },
     { id: 'events', label: 'Events', icon: Clock, content: <EventsSection events={events} /> },
     { id: 'yaml', label: 'YAML', icon: FileCode, content: <YamlViewer yaml={yaml} resourceName={rsName} editable onSave={handleSaveYaml} /> },
-    { id: 'compare', label: 'Compare', icon: GitCompare, content: <YamlCompareViewer versions={yamlVersions} resourceName={rsName} /> },
+    {
+      id: 'topology',
+      label: 'Topology',
+      icon: Network,
+      content: (
+        <ResourceTopologyView
+          kind="ResourceSlice"
+          namespace=""
+          name={name ?? ''}
+          sourceResourceType="ResourceSlice"
+          sourceResourceName={rs?.metadata?.name ?? name ?? ''}
+        />
+      ),
+    },
+    {
+      id: 'compare',
+      label: 'Compare',
+      icon: GitCompare,
+      content: (
+        <ResourceComparisonView
+          resourceType="resourceslices"
+          resourceKind="ResourceSlice"
+          initialSelectedResources={[name || '']}
+          clusterId={clusterId ?? undefined}
+          backendBaseUrl={baseUrl ?? ''}
+          isConnected={isConnected}
+          embedded
+        />
+      ),
+    },
     {
       id: 'actions',
       label: 'Actions',
@@ -180,6 +222,7 @@ export default function ResourceSliceDetail() {
       content: (
         <ActionsSection actions={[
           { icon: Download, label: 'Download YAML', description: 'Export ResourceSlice definition', onClick: handleDownloadYaml },
+          { icon: Download, label: 'Export as JSON', description: 'Export ResourceSlice as JSON', onClick: handleDownloadJson },
           { icon: Trash2, label: 'Delete ResourceSlice', description: 'Remove this slice (usually managed by DRA driver)', variant: 'destructive', onClick: () => setShowDeleteDialog(true) },
         ]} />
       ),
@@ -205,6 +248,7 @@ export default function ResourceSliceDetail() {
         }
         actions={[
           { label: 'Download YAML', icon: Download, variant: 'outline', onClick: handleDownloadYaml },
+          { label: 'Export as JSON', icon: Download, variant: 'outline', onClick: handleDownloadJson },
           { label: 'Edit', icon: FileCode, variant: 'outline', onClick: () => { setActiveTab('yaml'); setSearchParams((p) => { const n = new URLSearchParams(p); n.set('tab', 'yaml'); return n; }, { replace: true }); } },
           { label: 'Delete', icon: Trash2, variant: 'destructive', onClick: () => setShowDeleteDialog(true) },
         ]}

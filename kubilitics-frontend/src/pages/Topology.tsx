@@ -31,7 +31,6 @@ import { toast } from 'sonner';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { useClusterTopology } from '@/hooks/useClusterTopology';
 import { useActiveClusterId } from '@/hooks/useActiveClusterId';
-import { useTopologyLiveUpdates } from '@/hooks/useTopologyLiveUpdates';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { getTopologyExportDrawio } from '@/services/backendApiClient';
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
@@ -206,9 +205,6 @@ export default function Topology() {
     () => (perfTestNodes != null ? generateTestGraph(perfTestNodes) : null),
     [perfTestNodes]
   );
-
-  // Task 8.4: invalidate topology on WebSocket resource_update / topology_update
-  useTopologyLiveUpdates({ clusterId, enabled: !!clusterId });
 
   const displayGraph = perfTestGraph ?? clusterGraph ?? mockGraph;
   const isLiveData = !!clusterGraph;

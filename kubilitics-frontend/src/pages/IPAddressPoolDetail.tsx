@@ -4,15 +4,16 @@ import { Network, Clock, Download, Trash2, Info, FileCode, GitCompare } from 'lu
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
+import { downloadResourceJson } from '@/lib/exportUtils';
 import {
   ResourceDetailLayout,
-  ResourceOverviewMetadata,
-  SectionCard,
-  YamlViewer,
-  YamlCompareViewer,
+  ResourceComparisonView,
   EventsSection,
   ActionsSection,
   DeleteConfirmDialog,
+  ResourceOverviewMetadata,
+  SectionCard,
+  YamlViewer,
   type ResourceStatus,
   type YamlVersion,
 } from '@/components/resources';
@@ -22,6 +23,8 @@ import { Breadcrumbs, useDetailBreadcrumbs } from '@/components/layout/Breadcrum
 import { useClusterStore } from '@/stores/clusterStore';
 import { Button } from '@/components/ui/button';
 import { NamespaceBadge } from '@/components/list';
+import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
+import { useActiveClusterId } from '@/hooks/useActiveClusterId';
 
 interface K8sIPAddressPool extends KubernetesResource {
   spec?: { addresses?: string[]; autoAssign?: boolean };
@@ -37,6 +40,9 @@ export default function IPAddressPoolDetail() {
   const { activeCluster } = useClusterStore();
   const breadcrumbSegments = useDetailBreadcrumbs('IPAddressPool', name ?? undefined, namespace ?? undefined, activeCluster?.name);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const clusterId = useActiveClusterId();
+  const backendBaseUrl = useBackendConfigStore((s) => s.backendBaseUrl);
+  const baseUrl = getEffectiveBackendBaseUrl(backendBaseUrl);
 
   useEffect(() => {
     setActiveTab(initialTab);
@@ -66,6 +72,12 @@ export default function IPAddressPoolDetail() {
     a.click();
     URL.revokeObjectURL(url);
   }, [yaml, pool?.metadata?.name]);
+
+  const handleDownloadJson = useCallback(() => {
+    if (!pool) return;
+    downloadResourceJson(pool, `${pool?.metadata?.name || 'ipaddresspool'}.json`);
+    toast.success('JSON downloaded');
+  }, [pool]);
 
   if (!name?.trim() || !namespace?.trim()) return null;
   if (isLoading) {
@@ -153,7 +165,23 @@ export default function IPAddressPoolDetail() {
     },
     { id: 'events', label: 'Events', icon: Clock, content: <EventsSection events={events} /> },
     { id: 'yaml', label: 'YAML', icon: FileCode, content: <YamlViewer yaml={yaml} resourceName={poolName} editable onSave={handleSaveYaml} /> },
-    { id: 'compare', label: 'Compare', icon: GitCompare, content: <YamlCompareViewer versions={yamlVersions} resourceName={poolName} /> },
+    {
+      id: 'compare',
+      label: 'Compare',
+      icon: GitCompare,
+      content: (
+        <ResourceComparisonView
+          resourceType="ipaddresspools"
+          resourceKind="IPAddressPool"
+          namespace={namespace}
+          initialSelectedResources={namespace && name ? [`${namespace}/${name}`] : [name || '']}
+          clusterId={clusterId ?? undefined}
+          backendBaseUrl={baseUrl ?? ''}
+          isConnected={isConnected}
+          embedded
+        />
+      ),
+    },
     {
       id: 'actions',
       label: 'Actions',
@@ -161,6 +189,7 @@ export default function IPAddressPoolDetail() {
       content: (
         <ActionsSection actions={[
           { icon: Download, label: 'Download YAML', description: 'Export IPAddressPool definition', onClick: handleDownloadYaml },
+          { icon: Download, label: 'Export as JSON', description: 'Export IPAddressPool as JSON', onClick: handleDownloadJson },
           { icon: Trash2, label: 'Delete IPAddressPool', description: 'Remove this pool', variant: 'destructive', onClick: () => setShowDeleteDialog(true) },
         ]} />
       ),
@@ -186,6 +215,7 @@ export default function IPAddressPoolDetail() {
         }
         actions={[
           { label: 'Download YAML', icon: Download, variant: 'outline', onClick: handleDownloadYaml },
+          { label: 'Export as JSON', icon: Download, variant: 'outline', onClick: handleDownloadJson },
           { label: 'Edit', icon: FileCode, variant: 'outline', onClick: () => { setActiveTab('yaml'); setSearchParams((p) => { const n = new URLSearchParams(p); n.set('tab', 'yaml'); return n; }, { replace: true }); } },
           { label: 'Delete', icon: Trash2, variant: 'destructive', onClick: () => setShowDeleteDialog(true) },
         ]}

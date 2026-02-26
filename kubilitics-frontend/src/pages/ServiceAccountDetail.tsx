@@ -1,23 +1,21 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { UserCircle, Clock, Download, Trash2, KeyRound, Shield, Network } from 'lucide-react';
+import { UserCircle, Clock, Download, Trash2, KeyRound, Shield, Network, GitCompare } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
+import { downloadResourceJson } from '@/lib/exportUtils';
 import {
   ResourceDetailLayout,
-  
   MetadataCard,
   YamlViewer,
-  YamlCompareViewer,
   EventsSection,
   ActionsSection,
   DeleteConfirmDialog,
   ResourceTopologyView,
-  
-  
+  ResourceComparisonView,
   type ResourceStatus,
   type YamlVersion,
 } from '@/components/resources';
@@ -25,6 +23,8 @@ import { useResourceDetail, useResourceEvents } from '@/hooks/useK8sResourceDeta
 import { useDeleteK8sResource, type KubernetesResource } from '@/hooks/useKubernetes';
 import { normalizeKindForTopology } from '@/utils/resourceKindMapper';
 import { useConnectionStatus } from '@/hooks/useConnectionStatus';
+import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
+import { useActiveClusterId } from '@/hooks/useActiveClusterId';
 
 interface ServiceAccountResource extends KubernetesResource {
   secrets?: Array<{ name?: string }>;
@@ -40,6 +40,9 @@ export default function ServiceAccountDetail() {
   const [activeTab, setActiveTab] = useState(initialTab);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const { isConnected } = useConnectionStatus();
+  const clusterId = useActiveClusterId();
+  const backendBaseUrl = useBackendConfigStore((s) => s.backendBaseUrl);
+  const baseUrl = getEffectiveBackendBaseUrl(backendBaseUrl);
 
   const { resource, isLoading, error: resourceError, age, yaml, refetch } = useResourceDetail<ServiceAccountResource>(
     'serviceaccounts',
@@ -72,6 +75,12 @@ export default function ServiceAccountDetail() {
     a.click();
     URL.revokeObjectURL(url);
   }, [yaml, saName]);
+
+  const handleDownloadJson = useCallback(() => {
+    if (!resource) return;
+    downloadResourceJson(resource, `${saName || 'serviceaccount'}.json`);
+    toast.success('JSON downloaded');
+  }, [resource, saName]);
 
   const yamlVersions: YamlVersion[] = yaml ? [{ id: 'current', label: 'Current Version', yaml, timestamp: 'now' }] : [];
 
@@ -194,7 +203,23 @@ export default function ServiceAccountDetail() {
     },
     { id: 'events', label: 'Events', content: <EventsSection events={events} /> },
     { id: 'yaml', label: 'YAML', content: <YamlViewer yaml={yaml} resourceName={saName} /> },
-    { id: 'compare', label: 'Compare', content: <YamlCompareViewer versions={yamlVersions} resourceName={saName} /> },
+    {
+      id: 'compare',
+      label: 'Compare',
+      icon: GitCompare,
+      content: (
+        <ResourceComparisonView
+          resourceType="serviceaccounts"
+          resourceKind="ServiceAccount"
+          namespace={namespace}
+          initialSelectedResources={namespace && name ? [`${namespace}/${name}`] : [name || '']}
+          clusterId={clusterId ?? undefined}
+          backendBaseUrl={baseUrl ?? ''}
+          isConnected={isConnected}
+          embedded
+        />
+      ),
+    },
     {
       id: 'topology',
       label: 'Topology',
@@ -217,6 +242,7 @@ export default function ServiceAccountDetail() {
           actions={[
             { icon: KeyRound, label: 'Create Token', description: 'Generate a new service account token', onClick: () => toast.info('Create token not implemented') },
             { icon: Download, label: 'Download YAML', description: 'Export ServiceAccount definition', onClick: handleDownloadYaml },
+            { icon: Download, label: 'Export as JSON', description: 'Export ServiceAccount as JSON', onClick: handleDownloadJson },
             { icon: Trash2, label: 'Delete ServiceAccount', description: 'Remove this service account', variant: 'destructive', onClick: () => setShowDeleteDialog(true) },
           ]}
         />
@@ -239,6 +265,7 @@ export default function ServiceAccountDetail() {
         headerMetadata={<span className="flex items-center gap-1.5 ml-2 text-sm text-muted-foreground"><Clock className="h-3.5 w-3.5" />Created {age}</span>}
         actions={[
           { label: 'Download YAML', icon: Download, variant: 'outline', onClick: handleDownloadYaml },
+          { label: 'Export as JSON', icon: Download, variant: 'outline', onClick: handleDownloadJson },
           { label: 'Create Token', icon: KeyRound, variant: 'outline', onClick: () => toast.info('Create token not implemented') },
           { label: 'Delete', icon: Trash2, variant: 'destructive', onClick: () => setShowDeleteDialog(true) },
         ]}

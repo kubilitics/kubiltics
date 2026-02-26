@@ -1,0 +1,32 @@
+{
+  "addon": {
+    "id": "kubilitics/velero",
+    "name": "velero",
+    "display_name": "Velero",
+    "description": "Backup and restore for Kubernetes clusters.",
+    "tier": "CORE",
+    "version": "7.2.1",
+    "k8s_compat_min": "1.24",
+    "helm_repo_url": "https://vmware-tanzu.github.io/helm-charts",
+    "helm_chart": "velero",
+    "helm_chart_version": "7.2.1",
+    "tags": ["backup", "disaster-recovery"],
+    "source_url": "https://github.com/vmware-tanzu/velero",
+    "maintainer": "vmware-tanzu",
+    "is_deprecated": false
+  },
+  "dependencies": [],
+  "conflicts": [],
+  "crds_owned": [
+    {"addon_id": "kubilitics/velero", "crd_group": "velero.io", "crd_resource": "backups", "crd_version": "v1"},
+    {"addon_id": "kubilitics/velero", "crd_group": "velero.io", "crd_resource": "restores", "crd_version": "v1"},
+    {"addon_id": "kubilitics/velero", "crd_group": "velero.io", "crd_resource": "schedules", "crd_version": "v1"},
+    {"addon_id": "kubilitics/velero", "crd_group": "velero.io", "crd_resource": "backupstoragelocations", "crd_version": "v1"}
+  ],
+  "rbac_required": [],
+  "cost_models": [
+    {"addon_id": "kubilitics/velero", "cluster_tier": "dev", "cpu_millicores": 100, "memory_mb": 128, "storage_gb": 0, "monthly_cost_usd_estimate": 2, "replica_count": 1},
+    {"addon_id": "kubilitics/velero", "cluster_tier": "staging", "cpu_millicores": 200, "memory_mb": 256, "storage_gb": 0, "monthly_cost_usd_estimate": 4, "replica_count": 1},
+    {"addon_id": "kubilitics/velero", "cluster_tier": "production", "cpu_millicores": 500, "memory_mb": 512, "storage_gb": 0, "monthly_cost_usd_estimate": 8, "replica_count": 2}
+  ]
+}

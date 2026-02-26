@@ -22,6 +22,11 @@ import (
 	"github.com/kubilitics/kubilitics-backend/internal/api/middleware"
 	"github.com/kubilitics/kubilitics-backend/internal/api/rest"
 	"github.com/kubilitics/kubilitics-backend/internal/api/websocket"
+	"github.com/kubilitics/kubilitics-backend/internal/addon/helm"
+	"github.com/kubilitics/kubilitics-backend/internal/addon/lifecycle"
+	"github.com/kubilitics/kubilitics-backend/internal/addon/registry"
+	"github.com/kubilitics/kubilitics-backend/internal/addon/resolver"
+	"github.com/kubilitics/kubilitics-backend/internal/addon/scanner"
 	"github.com/kubilitics/kubilitics-backend/internal/auth"
 	"github.com/kubilitics/kubilitics-backend/internal/config"
 	"github.com/kubilitics/kubilitics-backend/internal/models"
@@ -262,8 +267,45 @@ func main() {
 			}
 		}
 	}
+	// Add-on service and LMC (Part 4)
+	var addonSvc service.AddOnService
+	var lmc *lifecycle.LifecycleController
+	reg := registry.NewRegistry(repo, log)
+	if err := reg.SeedOnStartup(ctx); err != nil {
+		log.Warn("Add-on catalog seed failed", "error", err)
+	} else {
+		if err := repo.SeedBuiltinProfiles(ctx); err != nil {
+			log.Warn("Built-in profile seed failed", "error", err)
+		}
+		res := resolver.NewDependencyResolver(repo, log)
+		helmFactory := func(clusterID string) (helm.HelmClient, error) {
+			c, err := clusterService.GetCluster(context.Background(), clusterID)
+			if err != nil {
+				return nil, err
+			}
+			if c.KubeconfigPath == "" {
+				return nil, fmt.Errorf("cluster has no kubeconfig path")
+			}
+			kube, err := os.ReadFile(c.KubeconfigPath)
+			if err != nil {
+				return nil, err
+			}
+			return helm.NewHelmClient(kube, "", log)
+		}
+		scan := scanner.NewClusterScanner(clusterService, repo, log)
+		addonSvcImpl := service.NewAddOnServiceImpl(repo, reg, scan, res, helmFactory, nil, nil, clusterService, log)
+		lmcHelmFactory := func(kubeconfig []byte, namespace string, logger *slog.Logger) (helm.HelmClient, error) {
+			return helm.NewHelmClient(kubeconfig, namespace, logger)
+		}
+		lmc = lifecycle.NewLifecycleController(clusterService, repo, lmcHelmFactory, reg, log)
+		addonSvcImpl.SetLMC(lmc)
+		addonSvc = addonSvcImpl
+		reg.StartArtifactHubSync(ctx)
+		log.Info("Add-on service and LMC initialized")
+	}
 	router := mux.NewRouter()
-	handler := rest.NewHandler(clusterService, topologyService, cfg, logsService, eventsService, metricsService, unifiedMetricsService, projectService, repo)
+	router.UseEncodedPath()
+	handler := rest.NewHandler(clusterService, topologyService, cfg, logsService, eventsService, metricsService, unifiedMetricsService, projectService, addonSvc, repo)
 	authHandler := rest.NewAuthHandler(repo, cfg)
 	
 	// OIDC handler (Phase 2: Enterprise Authentication)
@@ -467,6 +509,14 @@ func main() {
 		}()
 	}
 
+	// Start LMC after server is ready (Part 4)
+	if lmc != nil {
+		go func() {
+			if err := lmc.Start(ctx); err != nil {
+				log.Warn("LMC start failed", "error", err)
+			}
+		}()
+	}
 	// Start HTTP server in goroutine
 	go func() {
 		log.Info("Server starting",
@@ -500,6 +550,11 @@ func main() {
 
 	log.Info("Shutting down server")
 
+	// Stop LMC before draining HTTP (Part 4)
+	if lmc != nil {
+		lmc.Stop()
+		log.Info("LMC stopped")
+	}
 	// Stop WebSocket hub
 	wsHub.Stop()
 	log.Info("WebSocket hub stopped")

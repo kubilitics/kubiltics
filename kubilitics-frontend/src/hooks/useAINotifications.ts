@@ -10,7 +10,7 @@
 import { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { AI_BASE_URL as AI_BACKEND_URL } from '@/services/aiService';
+import { getAnomalies } from '@/services/aiService';
 
 const POLL_INTERVAL_MS = 5 * 60 * 1_000; // 5 minutes
 const SEEN_KEY = 'kubilitics-ai-notif-seen';
@@ -83,15 +83,13 @@ export function useAINotifications() {
     abortRef.current = ctrl;
 
     try {
-      const res = await fetch(`${AI_BACKEND_URL}/api/v1/analytics/anomalies`, {
-        signal: ctrl.signal,
-        headers: { 'Content-Type': 'application/json' },
-      });
-      if (!res.ok) return;
-
-      type ApiResult = { anomalies?: AnomalyResult[] };
-      const data: ApiResult = await res.json();
-      const anomalies: AnomalyResult[] = Array.isArray(data.anomalies) ? data.anomalies : [];
+      const data = await getAnomalies();
+      // Service now returns { anomalies: [...] }
+      const anomalies: AnomalyResult[] = (data?.anomalies || []).map(a => ({
+        ...a,
+        // Map lowercase API severity to uppercase Sonner expectation
+        severity: (a.severity?.toUpperCase() as any) || 'LOW'
+      }));
 
       const criticalOrHigh = anomalies.filter(
         (a) => a.severity === 'CRITICAL' || a.severity === 'HIGH'
@@ -120,9 +118,9 @@ export function useAINotifications() {
             duration: 10_000,
             action: path
               ? {
-                  label: 'View',
-                  onClick: () => navigate(path),
-                }
+                label: 'View',
+                onClick: () => navigate(path),
+              }
               : undefined,
           }
         );

@@ -1,93 +1,120 @@
 import { useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Webhook, Clock, Shield, Download, Trash2, AlertTriangle, Network } from 'lucide-react';
+import { Webhook, Clock, Shield, Download, Trash2, AlertTriangle, Network, GitCompare } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { toast } from 'sonner';
-import { normalizeKindForTopology } from '@/utils/resourceKindMapper';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Button } from '@/components/ui/button';
 import {
   ResourceDetailLayout,
   YamlViewer,
+  ResourceComparisonView,
   EventsSection,
   ActionsSection,
   DeleteConfirmDialog,
   ResourceTopologyView,
   type ResourceStatus,
-  type EventInfo,
 } from '@/components/resources';
+import { useResourceDetail, useResourceEvents } from '@/hooks/useK8sResourceDetail';
+import { useDeleteK8sResource, type KubernetesResource } from '@/hooks/useKubernetes';
+import { useConnectionStatus } from '@/hooks/useConnectionStatus';
+import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
+import { useActiveClusterId } from '@/hooks/useActiveClusterId';
+import { normalizeKindForTopology } from '@/utils/resourceKindMapper';
+import { toast } from 'sonner';
+import { downloadResourceJson } from '@/lib/exportUtils';
 
-const mockWebhook = {
-  name: 'cert-manager-webhook',
-  status: 'Active' as ResourceStatus,
-  age: '90d',
-  webhooks: [
-    {
-      name: 'webhook.cert-manager.io',
-      failurePolicy: 'Fail',
-      matchPolicy: 'Equivalent',
-      sideEffects: 'None',
-      timeoutSeconds: 10,
-      admissionReviewVersions: ['v1', 'v1beta1'],
-      rules: [
-        { apiGroups: ['cert-manager.io'], apiVersions: ['v1'], operations: ['CREATE', 'UPDATE'], resources: ['certificates'] },
-      ],
-      clientConfig: {
-        service: { name: 'cert-manager-webhook', namespace: 'cert-manager', port: 443 },
-        caBundle: '...',
-      },
-    },
-  ],
-};
-
-const mockEvents: EventInfo[] = [];
-
-const yaml = `apiVersion: admissionregistration.k8s.io/v1
-kind: MutatingWebhookConfiguration
-metadata:
-  name: cert-manager-webhook
-webhooks:
-- name: webhook.cert-manager.io
-  failurePolicy: Fail
-  matchPolicy: Equivalent
-  sideEffects: None
-  timeoutSeconds: 10
-  admissionReviewVersions:
-  - v1
-  - v1beta1
-  rules:
-  - apiGroups: ["cert-manager.io"]
-    apiVersions: ["v1"]
-    operations: ["CREATE", "UPDATE"]
-    resources: ["certificates"]
-  clientConfig:
-    service:
-      name: cert-manager-webhook
-      namespace: cert-manager
-      port: 443`;
+interface MutatingWebhookResource extends KubernetesResource {
+  webhooks?: Array<{
+    name: string;
+    failurePolicy?: string;
+    matchPolicy?: string;
+    sideEffects?: string;
+    timeoutSeconds?: number;
+    admissionReviewVersions?: string[];
+    rules?: Array<{
+      apiGroups: string[];
+      apiVersions: string[];
+      operations: string[];
+      resources: string[];
+    }>;
+    clientConfig?: {
+      service?: { name: string; namespace: string; port: number };
+      url?: string;
+    };
+  }>;
+}
 
 export default function MutatingWebhookDetail() {
-  const { name } = useParams();
+  const { name } = useParams<{ name: string }>();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('overview');
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  const wh = mockWebhook;
+  const { isConnected } = useConnectionStatus();
+  const clusterId = useActiveClusterId();
+  const backendBaseUrl = useBackendConfigStore((s) => s.backendBaseUrl);
+  const baseUrl = getEffectiveBackendBaseUrl(backendBaseUrl);
+
+  const { resource: wh, isLoading, error: resourceError, age, yaml, refetch } = useResourceDetail<MutatingWebhookResource>(
+    'mutatingwebhookconfigurations',
+    name ?? undefined,
+    undefined,
+    undefined as unknown as MutatingWebhookResource
+  );
+  const { events, refetch: refetchEvents } = useResourceEvents('MutatingWebhookConfiguration', undefined, name ?? undefined);
+  const deleteResource = useDeleteK8sResource('mutatingwebhookconfigurations');
+
+  const whName = wh?.metadata?.name ?? name ?? '';
+  const webhooks = wh?.webhooks ?? [];
 
   const handleDownloadYaml = useCallback(() => {
+    if (!yaml) return;
     const blob = new Blob([yaml], { type: 'application/yaml' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${wh.name || 'mutatingwebhook'}.yaml`;
+    a.download = `${whName || 'mutatingwebhook'}.yaml`;
     a.click();
     URL.revokeObjectURL(url);
-  }, [wh.name]);
+  }, [yaml, whName]);
+
+  const handleDownloadJson = useCallback(() => {
+    if (!wh) return;
+    downloadResourceJson(wh, `${whName || 'mutatingwebhook'}.json`);
+    toast.success('JSON downloaded');
+  }, [wh, whName]);
 
   const statusCards = [
-    { label: 'Webhooks', value: wh.webhooks.length, icon: Webhook, iconColor: 'primary' as const },
-    { label: 'Failure Policy', value: wh.webhooks[0]?.failurePolicy || '-', icon: AlertTriangle, iconColor: 'warning' as const },
-    { label: 'Side Effects', value: wh.webhooks[0]?.sideEffects || '-', icon: Shield, iconColor: 'info' as const },
-    { label: 'Age', value: wh.age, icon: Clock, iconColor: 'muted' as const },
+    { label: 'Webhooks', value: webhooks.length, icon: Webhook, iconColor: 'primary' as const },
+    { label: 'Failure Policy', value: webhooks[0]?.failurePolicy || '-', icon: AlertTriangle, iconColor: 'warning' as const },
+    { label: 'Side Effects', value: webhooks[0]?.sideEffects || '-', icon: Shield, iconColor: 'info' as const },
+    { label: 'Age', value: age || '-', icon: Clock, iconColor: 'muted' as const },
   ];
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <Skeleton className="h-20 w-full" />
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map((i) => (
+            <Skeleton key={i} className="h-24" />
+          ))}
+        </div>
+        <Skeleton className="h-96" />
+      </div>
+    );
+  }
+
+  if (isConnected && (resourceError || !wh?.metadata?.name)) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[40vh] gap-4">
+        <Webhook className="h-12 w-12 text-muted-foreground" />
+        <p className="text-lg font-medium">Webhook not found</p>
+        <p className="text-sm text-muted-foreground">{name ? `No MutatingWebhookConfiguration "${name}".` : 'Missing name.'}</p>
+        <Button variant="outline" onClick={() => navigate('/mutatingwebhooks')}>Back to Webhooks</Button>
+      </div>
+    );
+  }
 
   const tabs = [
     {
@@ -95,62 +122,88 @@ export default function MutatingWebhookDetail() {
       label: 'Overview',
       content: (
         <div className="space-y-6">
-          {wh.webhooks.map((webhook, idx) => (
-            <Card key={idx}>
-              <CardHeader>
-                <CardTitle className="text-base flex items-center gap-2">
-                  <Webhook className="h-4 w-4" />
-                  {webhook.name}
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                  <div>
-                    <p className="text-muted-foreground mb-1">Failure Policy</p>
-                    <Badge variant={webhook.failurePolicy === 'Fail' ? 'destructive' : 'secondary'}>
-                      {webhook.failurePolicy}
-                    </Badge>
+          {webhooks.length === 0 ? (
+            <Card><CardContent className="p-4 text-muted-foreground">No webhooks configured</CardContent></Card>
+          ) : (
+            webhooks.map((webhook, idx) => (
+              <Card key={idx}>
+                <CardHeader>
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Webhook className="h-4 w-4" />
+                    {webhook.name}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                    <div>
+                      <p className="text-muted-foreground mb-1">Failure Policy</p>
+                      <Badge variant={webhook.failurePolicy === 'Fail' ? 'destructive' : 'secondary'}>
+                        {webhook.failurePolicy}
+                      </Badge>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground mb-1">Match Policy</p>
+                      <Badge variant="outline">{webhook.matchPolicy}</Badge>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground mb-1">Side Effects</p>
+                      <Badge variant="outline">{webhook.sideEffects}</Badge>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground mb-1">Timeout</p>
+                      <p>{webhook.timeoutSeconds}s</p>
+                    </div>
                   </div>
                   <div>
-                    <p className="text-muted-foreground mb-1">Match Policy</p>
-                    <Badge variant="outline">{webhook.matchPolicy}</Badge>
+                    <p className="text-sm text-muted-foreground mb-2">Rules</p>
+                    <div className="space-y-2">
+                      {webhook.rules?.map((rule, ruleIdx) => (
+                        <div key={ruleIdx} className="p-3 rounded-lg bg-muted/50 text-sm font-mono">
+                          <p>Groups: {rule.apiGroups.join(', ')}</p>
+                          <p>Versions: {rule.apiVersions.join(', ')}</p>
+                          <p>Operations: {rule.operations.join(', ')}</p>
+                          <p>Resources: {rule.resources.join(', ')}</p>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                   <div>
-                    <p className="text-muted-foreground mb-1">Side Effects</p>
-                    <Badge variant="outline">{webhook.sideEffects}</Badge>
+                    <p className="text-sm text-muted-foreground mb-2">Client Config</p>
+                    <div className="p-3 rounded-lg bg-muted/50 text-sm">
+                      {webhook.clientConfig?.service ? (
+                        <p>Service: {webhook.clientConfig.service.namespace}/{webhook.clientConfig.service.name}:{webhook.clientConfig.service.port}</p>
+                      ) : webhook.clientConfig?.url ? (
+                        <p>URL: {webhook.clientConfig.url}</p>
+                      ) : (
+                        <p>No client configuration</p>
+                      )}
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-muted-foreground mb-1">Timeout</p>
-                    <p>{webhook.timeoutSeconds}s</p>
-                  </div>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground mb-2">Rules</p>
-                  <div className="space-y-2">
-                    {webhook.rules.map((rule, ruleIdx) => (
-                      <div key={ruleIdx} className="p-3 rounded-lg bg-muted/50 text-sm font-mono">
-                        <p>Groups: {rule.apiGroups.join(', ')}</p>
-                        <p>Versions: {rule.apiVersions.join(', ')}</p>
-                        <p>Operations: {rule.operations.join(', ')}</p>
-                        <p>Resources: {rule.resources.join(', ')}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground mb-2">Client Config</p>
-                  <div className="p-3 rounded-lg bg-muted/50 text-sm">
-                    <p>Service: {webhook.clientConfig.service.namespace}/{webhook.clientConfig.service.name}:{webhook.clientConfig.service.port}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                </CardContent>
+              </Card>
+            ))
+          )}
         </div>
       ),
     },
-    { id: 'events', label: 'Events', content: <EventsSection events={mockEvents} /> },
-    { id: 'yaml', label: 'YAML', content: <YamlViewer yaml={yaml} resourceName={wh.name} /> },
+    { id: 'events', label: 'Events', content: <EventsSection events={events} /> },
+    { id: 'yaml', label: 'YAML', content: <YamlViewer yaml={yaml} resourceName={whName} /> },
+    {
+      id: 'compare',
+      label: 'Compare',
+      icon: GitCompare,
+      content: (
+        <ResourceComparisonView
+          resourceType="mutatingwebhookconfigurations"
+          resourceKind="MutatingWebhookConfiguration"
+          initialSelectedResources={[whName]}
+          clusterId={clusterId ?? undefined}
+          backendBaseUrl={baseUrl ?? ''}
+          isConnected={isConnected}
+          embedded
+        />
+      ),
+    },
     {
       id: 'topology',
       label: 'Topology',
@@ -161,7 +214,7 @@ export default function MutatingWebhookDetail() {
           namespace={''}
           name={name ?? ''}
           sourceResourceType="MutatingWebhookConfiguration"
-          sourceResourceName={wh.name ?? name ?? ''}
+          sourceResourceName={whName}
         />
       ),
     },
@@ -171,24 +224,28 @@ export default function MutatingWebhookDetail() {
       content: (
         <ActionsSection actions={[
           { icon: Download, label: 'Download YAML', description: 'Export Webhook configuration', onClick: handleDownloadYaml },
+          { icon: Download, label: 'Export as JSON', description: 'Export webhook as JSON', onClick: handleDownloadJson },
           { icon: Trash2, label: 'Delete Webhook', description: 'Remove this webhook configuration', variant: 'destructive', onClick: () => setShowDeleteDialog(true) },
         ]} />
       ),
     },
   ];
 
+  const statusLabel: ResourceStatus = 'Healthy';
+
   return (
     <>
       <ResourceDetailLayout
         resourceType="MutatingWebhookConfiguration"
         resourceIcon={Webhook}
-        name={wh.name}
-        status={wh.status}
+        name={whName}
+        status={statusLabel}
         backLink="/mutatingwebhooks"
         backLabel="Mutating Webhooks"
-        headerMetadata={<span className="flex items-center gap-1.5 ml-2 text-sm text-muted-foreground"><Clock className="h-3.5 w-3.5" />Created {wh.age}</span>}
+        headerMetadata={<span className="flex items-center gap-1.5 ml-2 text-sm text-muted-foreground"><Clock className="h-3.5 w-3.5" />Created {age}</span>}
         actions={[
           { label: 'Download YAML', icon: Download, variant: 'outline', onClick: handleDownloadYaml },
+          { label: 'Export as JSON', icon: Download, variant: 'outline', onClick: handleDownloadJson },
           { label: 'Delete', icon: Trash2, variant: 'destructive', onClick: () => setShowDeleteDialog(true) },
         ]}
         statusCards={statusCards}
@@ -200,9 +257,9 @@ export default function MutatingWebhookDetail() {
         open={showDeleteDialog}
         onOpenChange={setShowDeleteDialog}
         resourceType="MutatingWebhookConfiguration"
-        resourceName={wh.name}
-        onConfirm={() => {
-          toast.success(`MutatingWebhookConfiguration ${wh.name} deleted (demo mode)`);
+        resourceName={whName}
+        onConfirm={async () => {
+          await deleteResource.mutateAsync({ name: whName });
           navigate('/mutatingwebhooks');
         }}
         requireNameConfirmation

@@ -1,5 +1,5 @@
-import { useState, useCallback, useMemo } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   Container,
@@ -39,13 +39,13 @@ import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Progress } from '@/components/ui/progress';
 import { toast } from 'sonner';
+import { downloadResourceJson } from '@/lib/exportUtils';
 import {
   ResourceDetailLayout,
   ResourceOverviewMetadata,
   SectionCard,
   ContainersSection,
   YamlViewer,
-  YamlCompareViewer,
   EventsSection,
   MetadataCard,
   ActionsSection,
@@ -56,6 +56,7 @@ import {
   RolloutActionsDialog,
   DeleteConfirmDialog,
   ResourceTopologyView,
+  ResourceComparisonView,
   type ResourceStatus,
   type ContainerInfo,
   type YamlVersion,
@@ -139,11 +140,19 @@ export default function DeploymentDetail() {
     activeCluster?.name
   );
   const navigate = useNavigate();
-  
-  const [activeTab, setActiveTab] = useState('overview');
+
+  const [searchParams, setSearchParams] = useSearchParams();
+  const initialTab = searchParams.get('tab') || 'overview';
+  const [activeTab, setActiveTab] = useState(initialTab);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showScaleDialog, setShowScaleDialog] = useState(false);
   const [showRolloutDialog, setShowRolloutDialog] = useState(false);
+
+  useEffect(() => {
+    if (initialTab !== activeTab) {
+      setActiveTab(initialTab);
+    }
+  }, [initialTab]);
   const [selectedLogPod, setSelectedLogPod] = useState<string>('');
   const [selectedLogContainer, setSelectedLogContainer] = useState<string>('');
   const [selectedTerminalPod, setSelectedTerminalPod] = useState<string>('');
@@ -185,15 +194,15 @@ export default function DeploymentDetail() {
   const patchDeployment = usePatchK8sResource('deployments');
 
 
-  const status: ResourceStatus = deployment.status?.readyReplicas === deployment.spec?.replicas ? 'Running' : 
+  const status: ResourceStatus = deployment.status?.readyReplicas === deployment.spec?.replicas ? 'Running' :
     deployment.status?.readyReplicas ? 'Pending' : 'Failed';
-  
+
   const conditions = deployment.status?.conditions || [];
   const desired = deployment.spec?.replicas || 0;
   const ready = deployment.status?.readyReplicas || 0;
   const updated = deployment.status?.updatedReplicas || 0;
   const available = deployment.status?.availableReplicas || 0;
-  
+
   const containers: ContainerInfo[] = (deployment.spec?.template?.spec?.containers || []).map(c => ({
     name: c.name,
     image: c.image,
@@ -261,7 +270,7 @@ export default function DeploymentDetail() {
     const pods = deploymentMetricsQuery.data?.pods ?? [];
     const map: Record<string, { cpu: string; memory: string }> = {};
     pods.forEach((p) => {
-      map[p.name] = { cpu: p.cpu ?? '–', memory: p.memory ?? '–' };
+      map[p.name] = { cpu: p.CPU ?? '–', memory: p.Memory ?? '–' };
     });
     return map;
   }, [deploymentMetricsQuery.data?.pods]);
@@ -282,6 +291,11 @@ export default function DeploymentDetail() {
     URL.revokeObjectURL(url);
     toast.success('YAML downloaded');
   }, [yaml, deployment.metadata?.name]);
+
+  const handleDownloadJson = useCallback(() => {
+    downloadResourceJson(deployment, `${deployment.metadata?.name || 'deployment'}.json`);
+    toast.success('JSON downloaded');
+  }, [deployment]);
 
   const handleCopyYaml = useCallback(() => {
     navigator.clipboard.writeText(yaml);
@@ -400,7 +414,7 @@ export default function DeploymentDetail() {
       <div className="space-y-6">
         <Skeleton className="h-20 w-full" />
         <div className="grid grid-cols-4 gap-4">
-          {[1,2,3,4].map(i => <Skeleton key={i} className="h-24" />)}
+          {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-24" />)}
         </div>
         <Skeleton className="h-96" />
       </div>
@@ -524,29 +538,29 @@ export default function DeploymentDetail() {
           </div>
 
           <SectionCard icon={Activity} title="Conditions" tooltip={<p className="text-xs text-muted-foreground">Deployment condition status</p>}>
-              <div className="space-y-3">
-                {conditions.map((condition) => {
-                  const isTrue = condition.status === 'True';
-                  return (
-                    <div key={condition.type} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
-                      <div className="flex items-center gap-3">
-                        {isTrue ? (
-                          <CheckCircle2 className="h-5 w-5 text-[hsl(142,76%,36%)]" />
-                        ) : (
-                          <XCircle className="h-5 w-5 text-[hsl(0,72%,51%)]" />
-                        )}
-                        <div>
-                          <p className="font-medium text-sm">{condition.type}</p>
-                          <p className="text-xs text-muted-foreground">{condition.reason}</p>
-                        </div>
+            <div className="space-y-3">
+              {conditions.map((condition) => {
+                const isTrue = condition.status === 'True';
+                return (
+                  <div key={condition.type} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+                    <div className="flex items-center gap-3">
+                      {isTrue ? (
+                        <CheckCircle2 className="h-5 w-5 text-[hsl(142,76%,36%)]" />
+                      ) : (
+                        <XCircle className="h-5 w-5 text-[hsl(0,72%,51%)]" />
+                      )}
+                      <div>
+                        <p className="font-medium text-sm">{condition.type}</p>
+                        <p className="text-xs text-muted-foreground">{condition.reason}</p>
                       </div>
-                      <span className="text-xs text-muted-foreground">
-                        {new Date(condition.lastTransitionTime).toLocaleString()}
-                      </span>
                     </div>
-                  );
-                })}
-              </div>
+                    <span className="text-xs text-muted-foreground">
+                      {new Date(condition.lastTransitionTime).toLocaleString()}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
           </SectionCard>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -567,8 +581,8 @@ export default function DeploymentDetail() {
             <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 text-sm text-muted-foreground">
               <p className="font-medium text-foreground mb-1">About revisions</p>
               <p>
-                A new revision is created only when the <strong>pod template</strong> changes (e.g. image, env, resources). 
-                Changing replica count (e.g. 5 → 6) does <strong>not</strong> create a new revision — the same ReplicaSet scales. 
+                A new revision is created only when the <strong>pod template</strong> changes (e.g. image, env, resources).
+                Changing replica count (e.g. 5 → 6) does <strong>not</strong> create a new revision — the same ReplicaSet scales.
                 To change replicas or revert a scale change, use the <strong>Scale deployment</strong> button or the <strong>Scaling</strong> tab.
               </p>
             </div>
@@ -615,99 +629,99 @@ export default function DeploymentDetail() {
               <p className="text-sm text-muted-foreground">No revision history yet, or no ReplicaSets owned by this deployment.</p>
             ) : (
               <>
-              <p className="text-sm text-muted-foreground mb-2">
-                Showing <strong>{rolloutRevisions.length}</strong> revision(s) from cluster. Select a revision and use Rollback to revert the deployment to that configuration (pod template).
-              </p>
-              <div className="rounded-lg border overflow-x-auto">
-                <table className="w-full text-sm min-w-[800px]">
-                  <thead className="bg-muted/50">
-                    <tr>
-                      <th className="text-left p-3 font-medium">Revision</th>
-                      <th className="text-left p-3 font-medium">Created</th>
-                      <th className="text-left p-3 font-medium">Change cause</th>
-                      <th className="text-left p-3 font-medium">Images</th>
-                      <th className="text-left p-3 font-medium">Image changes</th>
-                      <th className="text-left p-3 font-medium">Duration</th>
-                      <th className="text-left p-3 font-medium">Ready / Desired</th>
-                      <th className="text-left p-3 font-medium">ReplicaSet</th>
-                      <th className="text-right p-3 font-medium">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {(() => {
-                      const newestFirst: RolloutHistoryRevision[] = [...rolloutRevisions].reverse();
-                      return newestFirst.map((rev, idx) => {
-                        const isCurrent = String(rev.revision) === revisionLabel;
-                        const nextRev = idx > 0 ? newestFirst[idx - 1] : null;
-                        const images = rev.images ?? [];
-                        const imageDiffs = nextRev?.images
-                          ? images
-                            .map((img, i) => (nextRev.images![i] !== undefined && nextRev.images![i] !== img ? { old: img, new: nextRev.images![i] } : null))
-                            .filter((x): x is { old: string; new: string } => x != null)
-                          : [];
-                        return (
-                          <tr key={rev.revision} className="border-t hover:bg-muted/20">
-                            <td className="p-3 font-mono align-top">
-                              <span className="font-semibold">{rev.revision}</span>
-                              {isCurrent && (
-                                <Badge variant="default" className="ml-2 text-xs">Active</Badge>
-                              )}
-                            </td>
-                            <td className="p-3 text-muted-foreground align-top whitespace-nowrap">
-                              {rev.creationTimestamp ? new Date(rev.creationTimestamp).toLocaleString() : '—'}
-                            </td>
-                            <td className="p-3 text-muted-foreground align-top max-w-[180px]">
-                              <span className="line-clamp-2" title={rev.changeCause || undefined}>{rev.changeCause || '—'}</span>
-                            </td>
-                            <td className="p-3 align-top max-w-[200px]">
-                              {images.length > 0 ? (
-                                <ul className="list-disc list-inside text-xs space-y-0.5">
-                                  {images.map((img, i) => (
-                                    <li key={i} className="truncate font-mono" title={img}>{img}</li>
-                                  ))}
-                                </ul>
-                              ) : (
-                                <span className="text-muted-foreground">—</span>
-                              )}
-                            </td>
-                            <td className="p-3 align-top max-w-[220px]">
-                              {imageDiffs.length > 0 ? (
-                                <ul className="text-xs space-y-1">
-                                  {imageDiffs.map((d, i) => (
-                                    <li key={i} className="text-amber-600 dark:text-amber-400">
-                                      <span className="line-through opacity-80">{d.old}</span>
-                                      <span className="mx-1">→</span>
-                                      <span className="font-medium">{d.new}</span>
-                                    </li>
-                                  ))}
-                                </ul>
-                              ) : (
-                                <span className="text-muted-foreground">—</span>
-                              )}
-                            </td>
-                            <td className="p-3 font-mono text-muted-foreground align-top whitespace-nowrap">
-                              {formatRolloutDuration(rev.durationSeconds)}
-                            </td>
-                            <td className="p-3 font-mono align-top">{rev.ready} / {rev.desired}</td>
-                            <td className="p-3 font-mono text-xs align-top truncate max-w-[120px]" title={rev.name}>{rev.name}</td>
-                            <td className="p-3 text-right align-top">
-                              {!isCurrent && (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => handleRollback(rev.revision)}
-                                >
-                                  Rollback
-                                </Button>
-                              )}
-                            </td>
-                          </tr>
-                        );
-                      });
-                    })()}
-                  </tbody>
-                </table>
-              </div>
+                <p className="text-sm text-muted-foreground mb-2">
+                  Showing <strong>{rolloutRevisions.length}</strong> revision(s) from cluster. Select a revision and use Rollback to revert the deployment to that configuration (pod template).
+                </p>
+                <div className="rounded-lg border overflow-x-auto">
+                  <table className="w-full text-sm min-w-[800px]">
+                    <thead className="bg-muted/50">
+                      <tr>
+                        <th className="text-left p-3 font-medium">Revision</th>
+                        <th className="text-left p-3 font-medium">Created</th>
+                        <th className="text-left p-3 font-medium">Change cause</th>
+                        <th className="text-left p-3 font-medium">Images</th>
+                        <th className="text-left p-3 font-medium">Image changes</th>
+                        <th className="text-left p-3 font-medium">Duration</th>
+                        <th className="text-left p-3 font-medium">Ready / Desired</th>
+                        <th className="text-left p-3 font-medium">ReplicaSet</th>
+                        <th className="text-right p-3 font-medium">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(() => {
+                        const newestFirst: RolloutHistoryRevision[] = [...rolloutRevisions].reverse();
+                        return newestFirst.map((rev, idx) => {
+                          const isCurrent = String(rev.revision) === revisionLabel;
+                          const nextRev = idx > 0 ? newestFirst[idx - 1] : null;
+                          const images = rev.images ?? [];
+                          const imageDiffs = nextRev?.images
+                            ? images
+                              .map((img, i) => (nextRev.images![i] !== undefined && nextRev.images![i] !== img ? { old: img, new: nextRev.images![i] } : null))
+                              .filter((x): x is { old: string; new: string } => x != null)
+                            : [];
+                          return (
+                            <tr key={rev.revision} className="border-t hover:bg-muted/20">
+                              <td className="p-3 font-mono align-top">
+                                <span className="font-semibold">{rev.revision}</span>
+                                {isCurrent && (
+                                  <Badge variant="default" className="ml-2 text-xs">Active</Badge>
+                                )}
+                              </td>
+                              <td className="p-3 text-muted-foreground align-top whitespace-nowrap">
+                                {rev.creationTimestamp ? new Date(rev.creationTimestamp).toLocaleString() : '—'}
+                              </td>
+                              <td className="p-3 text-muted-foreground align-top max-w-[180px]">
+                                <span className="line-clamp-2" title={rev.changeCause || undefined}>{rev.changeCause || '—'}</span>
+                              </td>
+                              <td className="p-3 align-top max-w-[200px]">
+                                {images.length > 0 ? (
+                                  <ul className="list-disc list-inside text-xs space-y-0.5">
+                                    {images.map((img, i) => (
+                                      <li key={i} className="truncate font-mono" title={img}>{img}</li>
+                                    ))}
+                                  </ul>
+                                ) : (
+                                  <span className="text-muted-foreground">—</span>
+                                )}
+                              </td>
+                              <td className="p-3 align-top max-w-[220px]">
+                                {imageDiffs.length > 0 ? (
+                                  <ul className="text-xs space-y-1">
+                                    {imageDiffs.map((d, i) => (
+                                      <li key={i} className="text-amber-600 dark:text-amber-400">
+                                        <span className="line-through opacity-80">{d.old}</span>
+                                        <span className="mx-1">→</span>
+                                        <span className="font-medium">{d.new}</span>
+                                      </li>
+                                    ))}
+                                  </ul>
+                                ) : (
+                                  <span className="text-muted-foreground">—</span>
+                                )}
+                              </td>
+                              <td className="p-3 font-mono text-muted-foreground align-top whitespace-nowrap">
+                                {formatRolloutDuration(rev.durationSeconds)}
+                              </td>
+                              <td className="p-3 font-mono align-top">{rev.ready} / {rev.desired}</td>
+                              <td className="p-3 font-mono text-xs align-top truncate max-w-[120px]" title={rev.name}>{rev.name}</td>
+                              <td className="p-3 text-right align-top">
+                                {!isCurrent && (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleRollback(rev.revision)}
+                                  >
+                                    Rollback
+                                  </Button>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        });
+                      })()}
+                    </tbody>
+                  </table>
+                </div>
               </>
             )}
           </div>
@@ -1064,16 +1078,27 @@ export default function DeploymentDetail() {
       content: <MetricsDashboard resourceType="deployment" resourceName={name} namespace={namespace} clusterId={clusterId} />,
     },
     {
-      id: 'yaml',
-      label: 'YAML',
-      icon: FileCode,
-      content: <YamlViewer yaml={yaml} resourceName={deployment.metadata?.name || ''} editable onSave={handleSaveYaml} />,
-    },
-    {
       id: 'compare',
       label: 'Compare',
       icon: GitCompare,
-      content: <YamlCompareViewer versions={yamlVersions} resourceName={deployment.metadata?.name || ''} />,
+      content: (
+        <ResourceComparisonView
+          resourceType="deployments"
+          resourceKind="Deployment"
+          namespace={namespace}
+          initialSelectedResources={namespace && name ? [`${namespace}/${name}`] : [name || '']}
+          clusterId={clusterId ?? undefined}
+          backendBaseUrl={backendBaseUrl ?? ''}
+          isConnected={isConnected}
+          embedded
+        />
+      ),
+    },
+    {
+      id: 'yaml',
+      label: 'YAML',
+      icon: FileCode,
+      content: <YamlViewer yaml={yaml} resourceName={deploymentName || ''} editable onSave={handleSaveYaml} />,
     },
     {
       id: 'topology',
@@ -1099,6 +1124,7 @@ export default function DeploymentDetail() {
           { icon: RotateCcw, label: 'Rollout Restart', description: 'Trigger a rolling restart', onClick: () => setShowRolloutDialog(true) },
           { icon: History, label: 'Rollout History', description: 'View and manage revisions', onClick: () => setShowRolloutDialog(true) },
           { icon: Download, label: 'Download YAML', description: 'Export deployment definition', onClick: handleDownloadYaml },
+          { icon: Download, label: 'Export as JSON', description: 'Export deployment as JSON', onClick: handleDownloadJson },
           { icon: Trash2, label: 'Delete Deployment', description: 'Permanently remove this deployment', variant: 'destructive', onClick: () => setShowDeleteDialog(true) },
         ]} />
       ),
@@ -1132,7 +1158,15 @@ export default function DeploymentDetail() {
         statusCards={statusCards}
         tabs={tabs}
         activeTab={activeTab}
-        onTabChange={setActiveTab}
+        onTabChange={(tabId) => {
+          setActiveTab(tabId);
+          setSearchParams((prev) => {
+            const next = new URLSearchParams(prev);
+            if (tabId === 'overview') next.delete('tab');
+            else next.set('tab', tabId);
+            return next;
+          }, { replace: true });
+        }}
       >
         {breadcrumbSegments.length > 0 && (
           <Breadcrumbs segments={breadcrumbSegments} className="mb-2" />

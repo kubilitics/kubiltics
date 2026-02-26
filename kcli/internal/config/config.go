@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/kubilitics/kcli/internal/keychain"
 	"gopkg.in/yaml.v3"
 )
 
@@ -27,24 +28,51 @@ var (
 	}
 )
 
+func ptr[T any](v T) *T { return &v }
+
 type Store struct {
 	ActiveProfile string             `yaml:"active_profile" json:"active_profile"`
 	Profiles      map[string]*Config `yaml:"profiles" json:"profiles"`
 }
 
 type Config struct {
-	General     GeneralConfig     `yaml:"general" json:"general"`
-	Context     ContextConfig     `yaml:"context" json:"context"`
-	TUI         TUIConfig         `yaml:"tui" json:"tui"`
-	Logs        LogsConfig        `yaml:"logs" json:"logs"`
-	Performance PerformanceConfig `yaml:"performance" json:"performance"`
-	Shell       ShellConfig       `yaml:"shell" json:"shell"`
-	AI          AIConfig          `yaml:"ai" json:"ai"`
+	General      GeneralConfig      `yaml:"general" json:"general"`
+	Context      ContextConfig      `yaml:"context" json:"context"`
+	TUI          TUIConfig          `yaml:"tui" json:"tui"`
+	Logs         LogsConfig         `yaml:"logs" json:"logs"`
+	Performance  PerformanceConfig  `yaml:"performance" json:"performance"`
+	Shell        ShellConfig        `yaml:"shell" json:"shell"`
+	AI           AIConfig           `yaml:"ai" json:"ai"`
+	Integrations IntegrationsConfig `yaml:"integrations" json:"integrations"`
+	// KeychainKeys lists config key paths whose values are stored in the system keychain (P3-9).
+	// E.g. ["ai.api_key", "integrations.pagerDutyKey"]. Persisted in config file; values resolved on Load.
+	KeychainKeys []string `yaml:"keychain_keys,omitempty" json:"keychain_keys,omitempty"`
+}
+
+// IntegrationsConfig holds external tool endpoint configuration.
+type IntegrationsConfig struct {
+	PrometheusEndpoint string `yaml:"prometheusEndpoint,omitempty" json:"prometheusEndpoint,omitempty"`
+	GitopsEngine       string `yaml:"gitopsEngine,omitempty" json:"gitopsEngine,omitempty"` // "argocd" | "flux" | ""
+	PagerDutyKey       string `yaml:"pagerDutyKey,omitempty" json:"pagerDutyKey,omitempty"`
+	SlackWebhook       string `yaml:"slackWebhook,omitempty" json:"slackWebhook,omitempty"`
+	JiraURL            string `yaml:"jiraUrl,omitempty" json:"jiraUrl,omitempty"`
+	JiraToken          string `yaml:"jiraToken,omitempty" json:"jiraToken,omitempty"`
+	JiraProject        string `yaml:"jiraProject,omitempty" json:"jiraProject,omitempty"`
+	// OpenCostEndpoint is the base URL of an OpenCost instance (e.g. http://opencost:9090).
+	// When set, kcli cost overview uses OpenCost's /allocation API for actual-usage billing data.
+	// Auto-detected from the cluster if not set and the opencost service exists in the opencost namespace.
+	OpenCostEndpoint string `yaml:"opencostEndpoint,omitempty" json:"opencostEndpoint,omitempty"`
+	// LokiEndpoint is the base URL of a Loki instance (e.g. http://loki:3100).
+	LokiEndpoint string `yaml:"lokiEndpoint,omitempty" json:"lokiEndpoint,omitempty"`
 }
 
 type GeneralConfig struct {
 	Theme             string `yaml:"theme" json:"theme"`
 	StartupTimeBudget string `yaml:"startupTimeBudget" json:"startupTimeBudget"`
+	// KubectlPath is the path to the kubectl binary (default: "kubectl"). Use for air-gapped or custom wrappers.
+	KubectlPath string `yaml:"kubectlPath" json:"kubectlPath"`
+	// AuditEnabled records mutating kubectl commands to ~/.kcli/audit.json. Nil = default enabled. Set via kcli audit enable/disable.
+	AuditEnabled *bool `yaml:"auditEnabled,omitempty" json:"auditEnabled,omitempty"`
 }
 
 type ContextConfig struct {
@@ -58,6 +86,11 @@ type TUIConfig struct {
 	Theme           string `yaml:"theme" json:"theme"`
 	Colors          bool   `yaml:"colors" json:"colors"`
 	Animations      bool   `yaml:"animations" json:"animations"`
+	// MaxListSize limits the number of resources loaded in TUI (e.g. 2000). 0 = no limit. Use for large clusters to keep memory and latency under control.
+	MaxListSize int `yaml:"maxListSize" json:"maxListSize"`
+	// ReadOnly disables all mutations in the TUI (edit, exec, bulk-delete, etc.).
+	// Useful for shared/demo/audit environments. Equivalent to --read-only flag.
+	ReadOnly bool `yaml:"readOnly" json:"readOnly"`
 }
 
 type LogsConfig struct {
@@ -84,6 +117,8 @@ type AIConfig struct {
 	Endpoint         string  `yaml:"endpoint,omitempty" json:"endpoint,omitempty"`
 	BudgetMonthlyUSD float64 `yaml:"budgetMonthlyUSD" json:"budgetMonthlyUSD"`
 	SoftLimitPercent float64 `yaml:"softLimitPercent" json:"softLimitPercent"`
+	// MaxInputChars caps total prompt input sent to the provider (0 = no limit). Helps avoid cost and injection surface.
+	MaxInputChars int `yaml:"maxInputChars" json:"maxInputChars"`
 }
 
 func Default() *Config {
@@ -91,6 +126,7 @@ func Default() *Config {
 		General: GeneralConfig{
 			Theme:             "ocean",
 			StartupTimeBudget: "250ms",
+			AuditEnabled:      ptr(true),
 		},
 		Context: ContextConfig{
 			Favorites:   []string{},
@@ -124,6 +160,7 @@ func Default() *Config {
 			Endpoint:         "",
 			BudgetMonthlyUSD: 50,
 			SoftLimitPercent: 80,
+			MaxInputChars:    16384,
 		},
 	}
 }
@@ -187,8 +224,9 @@ func LoadStore() (*Store, error) {
 	if s.ActiveProfile == "" {
 		s.ActiveProfile = "default"
 	}
-	for _, cfg := range s.Profiles {
+	for name, cfg := range s.Profiles {
 		cfg.normalize()
+		cfg.resolveKeychain(name)
 	}
 	return s, nil
 }
@@ -240,7 +278,12 @@ func SaveStore(s *Store) error {
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return err
 	}
-	b, err := yaml.Marshal(s)
+	// Marshal a copy with keychain-backed secrets zeroed so they are not written to disk (P3-9).
+	out := &Store{ActiveProfile: s.ActiveProfile, Profiles: make(map[string]*Config)}
+	for name, cfg := range s.Profiles {
+		out.Profiles[name] = cfg.copyForSave()
+	}
+	b, err := yaml.Marshal(out)
 	if err != nil {
 		return err
 	}
@@ -354,6 +397,14 @@ func (c *Config) SetByKey(key, value string) error {
 		c.General.Theme = strings.ToLower(v)
 	case k == "general.startuptimebudget", k == "general.startup_time_budget":
 		c.General.StartupTimeBudget = v
+	case k == "general.kubectlpath", k == "general.kubectl_path":
+		c.General.KubectlPath = strings.TrimSpace(v)
+	case k == "general.auditenabled", k == "general.audit_enabled":
+		b, err := strconv.ParseBool(v)
+		if err != nil {
+			return fmt.Errorf("general.auditEnabled must be true or false")
+		}
+		c.General.AuditEnabled = ptr(b)
 	case k == "context.recentlimit", k == "context.recent_limit":
 		n, err := strconv.Atoi(v)
 		if err != nil {
@@ -387,6 +438,12 @@ func (c *Config) SetByKey(key, value string) error {
 			return fmt.Errorf("tui.animations must be true or false")
 		}
 		c.TUI.Animations = b
+	case k == "tui.readonly", k == "tui.read_only":
+		b, err := strconv.ParseBool(v)
+		if err != nil {
+			return fmt.Errorf("tui.readOnly must be true or false")
+		}
+		c.TUI.ReadOnly = b
 	case k == "logs.follownewpods", k == "logs.follow_new_pods":
 		b, err := strconv.ParseBool(v)
 		if err != nil {
@@ -454,6 +511,30 @@ func (c *Config) SetByKey(key, value string) error {
 			return fmt.Errorf("ai.softLimitPercent must be a number")
 		}
 		c.AI.SoftLimitPercent = f
+	case k == "ai.maxinputchars", k == "ai.max_input_chars":
+		n, err := strconv.Atoi(v)
+		if err != nil || n < 0 {
+			return fmt.Errorf("ai.maxInputChars must be a non-negative integer")
+		}
+		c.AI.MaxInputChars = n
+	case k == "integrations.prometheusendpoint", k == "integrations.prometheus_endpoint":
+		c.Integrations.PrometheusEndpoint = v
+	case k == "integrations.gitopsengine", k == "integrations.gitops_engine":
+		c.Integrations.GitopsEngine = strings.ToLower(v)
+	case k == "integrations.pagerdutykey", k == "integrations.pagerduty_key":
+		c.Integrations.PagerDutyKey = value
+	case k == "integrations.slackwebhook", k == "integrations.slack_webhook":
+		c.Integrations.SlackWebhook = value
+	case k == "integrations.jiraurl", k == "integrations.jira_url":
+		c.Integrations.JiraURL = v
+	case k == "integrations.jiratoken", k == "integrations.jira_token":
+		c.Integrations.JiraToken = value
+	case k == "integrations.jiraproject", k == "integrations.jira_project":
+		c.Integrations.JiraProject = v
+	case k == "integrations.opencostendpoint", k == "integrations.opencost_endpoint":
+		c.Integrations.OpenCostEndpoint = strings.TrimRight(strings.TrimSpace(v), "/")
+	case k == "integrations.lokiendpoint", k == "integrations.loki_endpoint":
+		c.Integrations.LokiEndpoint = strings.TrimRight(strings.TrimSpace(v), "/")
 	default:
 		return fmt.Errorf("unsupported key %q", key)
 	}
@@ -471,6 +552,13 @@ func (c *Config) GetByKey(key string) (any, error) {
 		return c.General.Theme, nil
 	case k == "general.startuptimebudget", k == "general.startup_time_budget":
 		return c.General.StartupTimeBudget, nil
+	case k == "general.kubectlpath", k == "general.kubectl_path":
+		return c.General.KubectlPath, nil
+	case k == "general.auditenabled", k == "general.audit_enabled":
+		if c.General.AuditEnabled == nil {
+			return true, nil
+		}
+		return *c.General.AuditEnabled, nil
 	case k == "context.recentlimit", k == "context.recent_limit":
 		return c.Context.RecentLimit, nil
 	case k == "context.favorites":
@@ -489,6 +577,8 @@ func (c *Config) GetByKey(key string) (any, error) {
 		return c.TUI.Colors, nil
 	case k == "tui.animations":
 		return c.TUI.Animations, nil
+	case k == "tui.readonly", k == "tui.read_only":
+		return c.TUI.ReadOnly, nil
 	case k == "logs.follownewpods", k == "logs.follow_new_pods":
 		return c.Logs.FollowNewPods, nil
 	case k == "logs.maxpods", k == "logs.max_pods":
@@ -525,8 +615,122 @@ func (c *Config) GetByKey(key string) (any, error) {
 		return c.AI.BudgetMonthlyUSD, nil
 	case k == "ai.softlimitpercent", k == "ai.soft_limit_percent":
 		return c.AI.SoftLimitPercent, nil
+	case k == "ai.maxinputchars", k == "ai.max_input_chars":
+		return c.AI.MaxInputChars, nil
+	case k == "integrations.prometheusendpoint", k == "integrations.prometheus_endpoint":
+		return c.Integrations.PrometheusEndpoint, nil
+	case k == "integrations.gitopsengine", k == "integrations.gitops_engine":
+		return c.Integrations.GitopsEngine, nil
+	case k == "integrations.pagerdutykey", k == "integrations.pagerduty_key":
+		return maskIfSet(c.Integrations.PagerDutyKey), nil
+	case k == "integrations.slackwebhook", k == "integrations.slack_webhook":
+		return maskIfSet(c.Integrations.SlackWebhook), nil
+	case k == "integrations.jiraurl", k == "integrations.jira_url":
+		return c.Integrations.JiraURL, nil
+	case k == "integrations.jiratoken", k == "integrations.jira_token":
+		return maskIfSet(c.Integrations.JiraToken), nil
+	case k == "integrations.jiraproject", k == "integrations.jira_project":
+		return c.Integrations.JiraProject, nil
+	case k == "integrations.opencostendpoint", k == "integrations.opencost_endpoint":
+		return c.Integrations.OpenCostEndpoint, nil
+	case k == "integrations.lokiendpoint", k == "integrations.loki_endpoint":
+		return c.Integrations.LokiEndpoint, nil
 	default:
 		return nil, fmt.Errorf("unsupported key %q", key)
+	}
+}
+
+// KeychainableKeys are config key paths that may be stored in the system keychain (P3-9).
+var KeychainableKeys = map[string]struct{}{
+	"ai.api_key": {}, "ai.apikey": {},
+	"integrations.pagerdutykey": {}, "integrations.pagerduty_key": {},
+	"integrations.slackwebhook": {}, "integrations.slack_webhook": {},
+	"integrations.jiratoken": {}, "integrations.jira_token": {},
+}
+
+// AddKeychainKey adds the normalized key to KeychainKeys if keychainable and not already present.
+func (c *Config) AddKeychainKey(key string) {
+	k := strings.ToLower(strings.TrimSpace(key))
+	if k == "" {
+		return
+	}
+	if _, ok := KeychainableKeys[k]; !ok {
+		return
+	}
+	norm := NormalizeKeyForAccount(k)
+	for _, existing := range c.KeychainKeys {
+		if strings.ToLower(existing) == norm {
+			return
+		}
+	}
+	c.KeychainKeys = append(c.KeychainKeys, norm)
+}
+
+// NormalizeKeyForAccount returns a canonical form for keychain account (e.g. ai.api_key).
+// Exported for CLI when building keychain account names.
+func NormalizeKeyForAccount(k string) string {
+	k = strings.ToLower(strings.TrimSpace(k))
+	// Prefer dotted form for persistence
+	switch k {
+	case "ai.apikey":
+		return "ai.api_key"
+	case "integrations.pagerdutykey":
+		return "integrations.pagerduty_key"
+	case "integrations.slackwebhook":
+		return "integrations.slack_webhook"
+	case "integrations.jiratoken":
+		return "integrations.jira_token"
+	}
+	return k
+}
+
+// resolveKeychain fills keychain-backed keys from the system keychain (called after Load).
+func (c *Config) resolveKeychain(profileName string) {
+	if !keychain.Available() {
+		return
+	}
+	for _, key := range c.KeychainKeys {
+		account := profileName + "." + key
+		val, err := keychain.Get(keychain.Service, account)
+		if err != nil || val == "" {
+			continue
+		}
+		_ = c.SetByKey(key, val)
+	}
+}
+
+// copyForSave returns a deep copy of the config with keychain-backed fields zeroed
+// so that secrets are not written to the config file.
+func (c *Config) copyForSave() *Config {
+	cp := *c
+	cp.Context.Groups = make(map[string][]string)
+	for k, v := range c.Context.Groups {
+		cp.Context.Groups[k] = append([]string(nil), v...)
+	}
+	cp.Shell.Aliases = make(map[string]string)
+	for k, v := range c.Shell.Aliases {
+		cp.Shell.Aliases[k] = v
+	}
+	cp.KeychainKeys = append([]string(nil), c.KeychainKeys...)
+	cp.AI = c.AI
+	cp.Integrations = c.Integrations
+	for _, key := range cp.KeychainKeys {
+		zeroKeychainKey(&cp, key)
+	}
+	return &cp
+}
+
+func zeroKeychainKey(c *Config, key string) {
+	k := strings.ToLower(strings.TrimSpace(key))
+	switch k {
+	case "ai.api_key", "ai.apikey":
+		c.AI.APIKey = ""
+	case "integrations.pagerduty_key", "integrations.pagerdutykey":
+		c.Integrations.PagerDutyKey = ""
+	case "integrations.slack_webhook", "integrations.slackwebhook":
+		c.Integrations.SlackWebhook = ""
+	case "integrations.jira_token", "integrations.jiratoken":
+		c.Integrations.JiraToken = ""
 	}
 }
 

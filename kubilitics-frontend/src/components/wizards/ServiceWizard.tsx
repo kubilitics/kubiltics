@@ -42,7 +42,7 @@ export function ServiceWizard({ onClose, onSubmit }: ServiceWizardProps) {
   const activeCluster = useClusterStore((s) => s.activeCluster);
   const clusterId = currentClusterId ?? null;
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
+
   const [name, setName] = useState('');
   const [namespace, setNamespace] = useState('default');
   const [type, setType] = useState('ClusterIP');
@@ -315,30 +315,9 @@ ${portsYaml}`;
   ];
 
   const handleSubmit = async () => {
-    try {
-      if (isBackendConfigured() && clusterId) {
-        setIsSubmitting(true);
-        await applyManifest(backendBaseUrl, clusterId, yaml);
-        queryClient.invalidateQueries({ queryKey: ['k8s', 'services'] });
-        queryClient.invalidateQueries({ queryKey: ['backend', 'resources', clusterId, 'services'] });
-        toast.success('Service created successfully');
-        onClose();
-        onSubmit?.(yaml);
-      } else if (config.isConnected) {
-        await createResource.mutateAsync({ yaml, namespace });
-        onClose();
-        onSubmit?.(yaml);
-      } else {
-        onSubmit?.(yaml);
-        onClose();
-      }
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      toast.error(`Failed to create Service: ${message}`);
-      throw err;
-    } finally {
-      setIsSubmitting(false);
-    }
+    await createResource.mutateAsync({ yaml, namespace });
+    onClose();
+    onSubmit?.(yaml);
   };
 
   return (

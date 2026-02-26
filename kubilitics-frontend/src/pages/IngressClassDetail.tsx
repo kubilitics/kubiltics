@@ -1,6 +1,6 @@
 import { useState, useCallback, useMemo } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { Route, Clock, Download, Trash2, Star, Server, Activity, Network } from 'lucide-react';
+import { Route, Clock, Download, Trash2, Star, Server, Activity, Network, GitCompare } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -9,13 +9,13 @@ import {
   ResourceDetailLayout,
   MetadataCard,
   YamlViewer,
-  YamlCompareViewer,
   EventsSection,
   ActionsSection,
   DeleteConfirmDialog,
   SectionCard,
   DetailRow,
   ResourceTopologyView,
+  ResourceComparisonView,
   type ResourceStatus,
   type YamlVersion,
   type EventInfo,
@@ -24,7 +24,9 @@ import { useResourceDetail, useResourceEvents } from '@/hooks/useK8sResourceDeta
 import { useDeleteK8sResource, useUpdateK8sResource, useK8sResourceList, calculateAge, type KubernetesResource } from '@/hooks/useKubernetes';
 import { normalizeKindForTopology } from '@/utils/resourceKindMapper';
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
+import { useActiveClusterId } from '@/hooks/useActiveClusterId';
 import { toast } from 'sonner';
+import { downloadResourceJson } from '@/lib/exportUtils';
 
 interface IngressClassResource extends KubernetesResource {
   spec?: {
@@ -40,9 +42,10 @@ export default function IngressClassDetail() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('overview');
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  const baseUrl = getEffectiveBackendBaseUrl();
+  const backendBaseUrl = useBackendConfigStore((s) => s.backendBaseUrl);
+  const baseUrl = getEffectiveBackendBaseUrl(backendBaseUrl);
   const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured());
-  const clusterId = useBackendConfigStore((s) => s.currentClusterId);
+  const clusterId = useActiveClusterId();
 
   const { resource: icResource, isLoading, error, age, yaml, isConnected, refetch } = useResourceDetail<IngressClassResource>(
     'ingressclasses',
@@ -81,6 +84,12 @@ export default function IngressClassDetail() {
     URL.revokeObjectURL(url);
   }, [yaml, icName]);
 
+  const handleDownloadJson = useCallback(() => {
+    if (!icResource) return;
+    downloadResourceJson(icResource, `${icName || 'ingressclass'}.json`);
+    toast.success('JSON downloaded');
+  }, [icResource, icName]);
+
   const handleSaveYaml = useCallback(async (newYaml: string) => {
     if (!isConnected || !name) {
       toast.error('Connect cluster to update IngressClass');
@@ -101,10 +110,6 @@ export default function IngressClassDetail() {
     toast.info('Set as default: patch annotation ingressclass.kubernetes.io/is-default-class');
   };
 
-
-  const yamlVersions: YamlVersion[] = useMemo(() => [
-    { id: 'current', label: 'Current Version', yaml, timestamp: 'now' },
-  ], [yaml]);
 
   if (isLoading) {
     return (
@@ -198,7 +203,22 @@ export default function IngressClassDetail() {
     { id: 'events', label: 'Events', content: <EventsSection events={events} /> },
     { id: 'metrics', label: 'Metrics', content: <SectionCard title="Metrics" icon={Activity}><p className="text-muted-foreground text-sm">Placeholder until metrics pipeline.</p></SectionCard> },
     { id: 'yaml', label: 'YAML', content: <YamlViewer yaml={yaml} resourceName={icName} editable onSave={handleSaveYaml} /> },
-    { id: 'compare', label: 'Compare', content: <YamlCompareViewer versions={yamlVersions} resourceName={icName} /> },
+    {
+      id: 'compare',
+      label: 'Compare',
+      icon: GitCompare,
+      content: (
+        <ResourceComparisonView
+          resourceType="ingressclasses"
+          resourceKind="IngressClass"
+          initialSelectedResources={[icName]}
+          clusterId={clusterId ?? undefined}
+          backendBaseUrl={baseUrl ?? ''}
+          isConnected={isConnected}
+          embedded
+        />
+      ),
+    },
     {
       id: 'topology',
       label: 'Topology',
@@ -220,6 +240,7 @@ export default function IngressClassDetail() {
         <ActionsSection actions={[
           { icon: Star, label: 'Set as Default', description: 'Make this the default ingress class', onClick: handleSetDefault },
           { icon: Download, label: 'Download YAML', description: 'Export IngressClass definition', onClick: handleDownloadYaml },
+          { icon: Download, label: 'Export as JSON', description: 'Export IngressClass as JSON', onClick: handleDownloadJson },
           { icon: Trash2, label: 'Delete IngressClass', description: 'Remove this ingress class', variant: 'destructive', onClick: () => setShowDeleteDialog(true) },
         ]} />
       ),
@@ -244,6 +265,7 @@ export default function IngressClassDetail() {
         }
         actions={[
           { label: 'Download YAML', icon: Download, variant: 'outline', onClick: handleDownloadYaml },
+          { label: 'Export as JSON', icon: Download, variant: 'outline', onClick: handleDownloadJson },
           { label: 'Delete', icon: Trash2, variant: 'destructive', onClick: () => setShowDeleteDialog(true) },
         ]}
         statusCards={statusCards}

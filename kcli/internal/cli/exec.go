@@ -1,14 +1,32 @@
 package cli
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
 	"os"
+	"regexp"
 	"strings"
 
 	"github.com/kubilitics/kcli/internal/runner"
 	"github.com/spf13/cobra"
 )
+
+// destructiveExecPattern matches shell commands that can permanently destroy
+// data or system state inside a container. This is a best-effort heuristic —
+// it covers the most common dangerous patterns and is not exhaustive.
+var destructiveExecPattern = regexp.MustCompile(
+	`(?i)\b(rm\s+(-[a-z]*f[a-z]*|--force)\b|` + // rm -rf, rm -f, rm --force
+		`dd\s+|` + // dd (disk dump — can overwrite block devices)
+		`mkfs\b|` + // format filesystem
+		`fdisk\b|` + // partition editor
+		`truncate\s+|` + // truncate file to zero bytes
+		`shred\s+|` + // secure delete
+		`>(>?)\s*/dev/[^n]|` + // redirect to /dev/sda, /dev/nvme etc. (not /dev/null)
+		`kubectl\s+delete|` + // kubectl inside kubectl exec — high blast radius
+		`apt(-get)?\s+(remove|purge)|` + // package removal
+		`yum\s+(remove|erase)|` + // rpm package removal
+		`apk\s+del)`) // Alpine package removal
 
 func newExecCmd(a *app) *cobra.Command {
 	return &cobra.Command{
@@ -34,6 +52,32 @@ func newExecCmd(a *app) *cobra.Command {
 						if err == nil && container != "" {
 							clean = insertContainerFlag(clean, container)
 						}
+					}
+				}
+			}
+
+			// Guard against destructive commands run via exec without --yes.
+			// e.g. kcli exec pod-name -- rm -rf /data
+			if !a.force {
+				if cmd, ok := extractExecCommand(clean); ok && isDestructiveExecCmd(cmd) {
+					if !runner.IsTerminal() {
+						return fmt.Errorf(
+							"refusing to exec destructive command in non-interactive mode: %q\n"+
+								"  Rerun with --yes to bypass this check, or verify the command is safe.",
+							strings.Join(cmd, " "))
+					}
+					fmt.Fprintf(os.Stderr,
+						"kcli: WARNING — this exec command may be destructive:\n"+
+							"  kubectl exec %s\n"+
+							"  Command after --: %s\n"+
+							"Proceed? [y/N]: ",
+						strings.Join(clean, " "),
+						strings.Join(cmd, " "))
+					r := bufio.NewReader(os.Stdin)
+					line, _ := r.ReadString('\n')
+					ans := strings.ToLower(strings.TrimSpace(line))
+					if ans != "y" && ans != "yes" {
+						return fmt.Errorf("aborted")
 					}
 				}
 			}
@@ -105,6 +149,25 @@ func (a *app) resolvePod(target string) (string, string, error) {
 		ns = "default"
 	}
 	return ns, target, nil
+}
+
+// extractExecCommand returns the slice of arguments that follow a "--"
+// separator in the exec arg list. These are the commands run inside the
+// container and are the only portion subject to the destructive-command check.
+func extractExecCommand(args []string) ([]string, bool) {
+	for i, a := range args {
+		if a == "--" && i+1 < len(args) {
+			return args[i+1:], true
+		}
+	}
+	return nil, false
+}
+
+// isDestructiveExecCmd returns true if any token in cmd matches the
+// destructive-command heuristic pattern.
+func isDestructiveExecCmd(cmd []string) bool {
+	joined := strings.Join(cmd, " ")
+	return destructiveExecPattern.MatchString(joined)
 }
 
 func (a *app) selectContainer(namespace, pod, _ string) (string, error) {

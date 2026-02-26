@@ -51,6 +51,8 @@ func newContextCmd(a *app) *cobra.Command {
 				}
 				target = store.LastContext
 			}
+			// Resolve alias → real context name
+			target = store.ResolveContextAlias(target)
 			current, _ := currentContext(a)
 			if err := a.runKubectl([]string{"config", "use-context", target}); err != nil {
 				return err
@@ -113,8 +115,30 @@ func newContextCmd(a *app) *cobra.Command {
 				if err != nil {
 					return err
 				}
-				for _, v := range s.Favorites {
-					fmt.Fprintln(cmd.OutOrStdout(), v)
+				if len(s.Favorites) == 0 {
+					fmt.Fprintln(cmd.OutOrStdout(), "No favorite contexts. Add one with: kcli ctx fav add <context>")
+					return nil
+				}
+				cur, _ := currentContext(a)
+				// Sort: current first, then alphabetical.
+				favs := make([]string, len(s.Favorites))
+				copy(favs, s.Favorites)
+				sort.Slice(favs, func(i, j int) bool {
+					if favs[i] == cur {
+						return true
+					}
+					if favs[j] == cur {
+						return false
+					}
+					return favs[i] < favs[j]
+				})
+				for _, v := range favs {
+					marker := "  ★ "
+					suffix := ""
+					if v == cur {
+						suffix = " → (current)"
+					}
+					fmt.Fprintf(cmd.OutOrStdout(), "%s%s%s\n", marker, v, suffix)
 				}
 				return nil
 			},
@@ -122,6 +146,7 @@ func newContextCmd(a *app) *cobra.Command {
 	)
 	ctxCmd.AddCommand(favCmd)
 	ctxCmd.AddCommand(newContextGroupCmd(a))
+	ctxCmd.AddCommand(newContextAliasCmd(a))
 
 	ctxCmd.ValidArgsFunction = func(cmd *cobra.Command, args []string, _ string) ([]string, cobra.ShellCompDirective) {
 		if len(args) > 0 {
@@ -750,4 +775,86 @@ func currentContext(a *app) (string, error) {
 		return strings.TrimSpace(a.context), nil
 	}
 	return k8sclient.CurrentContext(a.kubeconfig)
+}
+
+// ─── kcli ctx alias ───────────────────────────────────────────────────────────
+
+func newContextAliasCmd(_ *app) *cobra.Command {
+	aliasCmd := &cobra.Command{
+		Use:   "alias",
+		Short: "Manage context aliases (short names for long context names)",
+		Example: `  kcli ctx alias add prod arn:aws:eks:us-east-1:123456789:cluster/production
+  kcli ctx alias ls
+  kcli ctx alias rm prod`,
+	}
+
+	aliasCmd.AddCommand(
+		&cobra.Command{
+			Use:   "add <alias> <context>",
+			Short: "Create an alias for a context name",
+			Args:  cobra.ExactArgs(2),
+			RunE: func(cmd *cobra.Command, args []string) error {
+				alias := strings.TrimSpace(args[0])
+				ctx := strings.TrimSpace(args[1])
+				if alias == "" || ctx == "" {
+					return fmt.Errorf("alias and context name are required")
+				}
+				s, err := state.Load()
+				if err != nil {
+					return err
+				}
+				s.SetContextAlias(alias, ctx)
+				if err := state.Save(s); err != nil {
+					return err
+				}
+				fmt.Fprintf(cmd.OutOrStdout(), "Alias %q → %q saved\n", alias, ctx)
+				return nil
+			},
+		},
+		&cobra.Command{
+			Use:   "rm <alias>",
+			Short: "Remove a context alias",
+			Args:  cobra.ExactArgs(1),
+			RunE: func(cmd *cobra.Command, args []string) error {
+				alias := strings.TrimSpace(args[0])
+				s, err := state.Load()
+				if err != nil {
+					return err
+				}
+				s.RemoveContextAlias(alias)
+				if err := state.Save(s); err != nil {
+					return err
+				}
+				fmt.Fprintf(cmd.OutOrStdout(), "Alias %q removed\n", alias)
+				return nil
+			},
+		},
+		&cobra.Command{
+			Use:   "ls",
+			Short: "List all context aliases",
+			RunE: func(cmd *cobra.Command, _ []string) error {
+				s, err := state.Load()
+				if err != nil {
+					return err
+				}
+				if len(s.ContextAliases) == 0 {
+					fmt.Fprintln(cmd.OutOrStdout(), "No context aliases configured.")
+					return nil
+				}
+				aliases := make([]string, 0, len(s.ContextAliases))
+				for k := range s.ContextAliases {
+					aliases = append(aliases, k)
+				}
+				sort.Strings(aliases)
+				fmt.Fprintf(cmd.OutOrStdout(), "%-20s %s\n", "ALIAS", "CONTEXT")
+				fmt.Fprintf(cmd.OutOrStdout(), "%s\n", strings.Repeat("─", 60))
+				for _, alias := range aliases {
+					fmt.Fprintf(cmd.OutOrStdout(), "%-20s %s\n", alias, s.ContextAliases[alias])
+				}
+				return nil
+			},
+		},
+	)
+
+	return aliasCmd
 }

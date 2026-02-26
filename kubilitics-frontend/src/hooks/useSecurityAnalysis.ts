@@ -1,7 +1,16 @@
-// A-CORE-012: Security Analysis hooks — backed by real /api/v1/security/* endpoints.
-// All security endpoints live on the AI backend (port 8081).
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { AI_BASE_URL } from '@/services/aiService';
+import {
+  getSecurityPosture,
+  getSecurityIssues,
+  getSecurityRBAC,
+  getSecurityNetwork,
+  getSecuritySecrets,
+  getSecurityCompliance,
+  scanImage,
+  analyzePodSecurity,
+  type SecurityPosture,
+  type SecurityIssue as AISecurityIssue,
+} from '@/services/aiService';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -16,31 +25,9 @@ export interface IssueSummary {
   low: number;
 }
 
-export interface SecurityIssue {
-  type: string;
-  severity: Severity;
-  title: string;
-  description: string;
-  remediation: string;
-  resource: string;
-  namespace?: string;
-  timestamp: string;
-}
+export interface SecurityIssue extends AISecurityIssue { }
 
-export interface SecurityPosture {
-  score: number;
-  grade: 'A' | 'B' | 'C' | 'D' | 'F';
-  summary: IssueSummary;
-  pod_scanned: number;
-  roles_audited: number;
-  namespaces: number;
-  recommendations: string[];
-  rbac_findings: number;
-  network_gaps: number;
-  secret_exposures: number;
-  timestamp: string;
-  note?: string;
-}
+// Interface already imported from aiService
 
 export interface RBACFinding {
   resource_type: string;
@@ -138,10 +125,8 @@ export interface SecurityAnalysisResult {
   summary: IssueSummary;
 }
 
-// ─── API base ─────────────────────────────────────────────────────────────────
-// Security endpoints live on the AI backend. Use absolute URL to avoid Vite
-// proxy routing them to the main backend (port 819).
-const API_BASE = `${AI_BASE_URL}/api/v1/security`;
+
+// Service calls replace direct fetch to handle dynamic backend URLs
 
 // ─── useSecurityPosture — polls cluster-wide security posture ─────────────────
 
@@ -163,11 +148,7 @@ export function useSecurityPosture(opts: {
     abortRef.current = new AbortController();
     setLoading(true);
     try {
-      const res = await window.fetch(`${API_BASE}/posture`, {
-        signal: abortRef.current.signal,
-      });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const json: SecurityPosture = await res.json();
+      const json = await getSecurityPosture();
       setData(json);
       setError(null);
       setLastRefreshedAt(new Date());
@@ -208,13 +189,12 @@ export function useSecurityIssues(opts: {
     if (!enabled) return;
     setLoading(true);
     try {
-      const params = new URLSearchParams();
-      if (severity) params.set('severity', severity);
-      if (issueType) params.set('type', issueType);
-      if (namespace) params.set('namespace', namespace);
-      const res = await window.fetch(`${API_BASE}/issues?${params}`);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      setData(await res.json());
+      const params: Record<string, string> = {};
+      if (severity) params.severity = severity;
+      if (issueType) params.type = issueType;
+      if (namespace) params.namespace = namespace;
+      const json = await getSecurityIssues(params);
+      setData(json);
       setError(null);
     } catch (e) {
       setError((e as Error).message);
@@ -239,9 +219,8 @@ export function useSecurityRBAC(opts: { enabled?: boolean } = {}) {
     if (!enabled) return;
     setLoading(true);
     try {
-      const res = await window.fetch(`${API_BASE}/rbac`);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      setData(await res.json());
+      const json = await getSecurityRBAC();
+      setData(json);
       setError(null);
     } catch (e) { setError((e as Error).message); }
     finally { setLoading(false); }
@@ -263,9 +242,8 @@ export function useSecurityNetwork(opts: { enabled?: boolean } = {}) {
     if (!enabled) return;
     setLoading(true);
     try {
-      const res = await window.fetch(`${API_BASE}/network`);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      setData(await res.json());
+      const json = await getSecurityNetwork();
+      setData(json);
       setError(null);
     } catch (e) { setError((e as Error).message); }
     finally { setLoading(false); }
@@ -287,9 +265,8 @@ export function useSecuritySecrets(opts: { enabled?: boolean } = {}) {
     if (!enabled) return;
     setLoading(true);
     try {
-      const res = await window.fetch(`${API_BASE}/secrets`);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      setData(await res.json());
+      const json = await getSecuritySecrets();
+      setData(json);
       setError(null);
     } catch (e) { setError((e as Error).message); }
     finally { setLoading(false); }
@@ -311,9 +288,8 @@ export function useSecurityCompliance(opts: { enabled?: boolean } = {}) {
     if (!enabled) return;
     setLoading(true);
     try {
-      const res = await window.fetch(`${API_BASE}/compliance`);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      setData(await res.json());
+      const json = await getSecurityCompliance();
+      setData(json);
       setError(null);
     } catch (e) { setError((e as Error).message); }
     finally { setLoading(false); }
@@ -335,16 +311,8 @@ export function useImageScan() {
     setError(null);
     setData(null);
     try {
-      const res = await window.fetch(`${API_BASE}/scan/image`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ image }),
-      });
-      if (!res.ok) {
-        const text = await res.text();
-        throw new Error(text || `HTTP ${res.status}`);
-      }
-      setData(await res.json());
+      const json = await scanImage({ image });
+      setData(json);
     } catch (e) { setError((e as Error).message); }
     finally { setLoading(false); }
   }, []);
@@ -373,16 +341,7 @@ export function useSecurityAnalysis() {
     setIsLoading(true);
     setError(null);
     try {
-      const res = await window.fetch(`${API_BASE}/analyze/pod`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(podSpec),
-      });
-      if (!res.ok) {
-        const text = await res.text();
-        throw new Error(text || `HTTP ${res.status}`);
-      }
-      const json = await res.json();
+      const json = await analyzePodSecurity(podSpec);
       // Map backend response to SecurityAnalysisResult shape
       setAnalysisResult({
         score: json.score ?? 0,

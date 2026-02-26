@@ -1,5 +1,5 @@
 /**
- * Shared log parsing for LogViewer and PodComparisonView.
+ * Shared log parsing for LogViewer and ResourceComparisonView.
  * Parses raw log text into structured entries with level detection for highlighting.
  */
 export interface LogEntry {

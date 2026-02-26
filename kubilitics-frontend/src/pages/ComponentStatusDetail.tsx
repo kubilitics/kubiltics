@@ -1,9 +1,10 @@
 import { useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Activity, Clock, CheckCircle, AlertTriangle, Download, Trash2, Network, Server } from 'lucide-react';
+import { Activity, Clock, CheckCircle, AlertTriangle, Download, Trash2, Network, Server, GitCompare } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
+import { downloadResourceJson } from '@/lib/exportUtils';
 import { normalizeKindForTopology } from '@/utils/resourceKindMapper';
 import {
   ResourceDetailLayout,
@@ -13,6 +14,7 @@ import {
   ActionsSection,
   DeleteConfirmDialog,
   ResourceTopologyView,
+  ResourceComparisonView,
   type ResourceStatus,
 } from '@/components/resources';
 import { useResourceEvents } from '@/hooks/useK8sResourceDetail';
@@ -53,6 +55,11 @@ export default function ComponentStatusDetail() {
     URL.revokeObjectURL(url);
   }, [cs.name]);
 
+  const handleDownloadJson = useCallback(() => {
+    downloadResourceJson(cs, `${cs.name || 'componentstatus'}.json`);
+    toast.success('JSON downloaded');
+  }, [cs]);
+
   const isHealthy = cs.conditions.some(c => c.type === 'Healthy' && c.status === 'True');
 
   const statusCards = [
@@ -70,59 +77,73 @@ export default function ComponentStatusDetail() {
         <div className="space-y-6">
           <ResourceOverviewMetadata metadata={{ name: cs.name }} />
           <div className="grid grid-cols-1 gap-6">
-          <Card>
-            <CardHeader><CardTitle className="text-base">Component Info</CardTitle></CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center gap-4">
-                <div className={`p-4 rounded-full ${isHealthy ? 'bg-green-500/10' : 'bg-red-500/10'}`}>
-                  {isHealthy ? (
-                    <CheckCircle className="h-8 w-8 text-green-500" />
-                  ) : (
-                    <AlertTriangle className="h-8 w-8 text-red-500" />
-                  )}
-                </div>
-                <div>
-                  <h3 className="text-xl font-semibold">{cs.name}</h3>
-                  <p className="text-muted-foreground">
-                    {isHealthy ? 'Component is healthy and responding normally' : 'Component is experiencing issues'}
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader><CardTitle className="text-base">Conditions</CardTitle></CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {cs.conditions.map((condition, idx) => (
-                  <div key={idx} className="p-4 rounded-lg bg-muted/50 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <Badge variant={condition.status === 'True' ? 'default' : 'destructive'}>
-                        {condition.type}
-                      </Badge>
-                      <Badge variant="outline">{condition.status}</Badge>
-                    </div>
-                    {condition.message && (
-                      <p className="text-sm font-mono text-muted-foreground break-all">
-                        {condition.message}
-                      </p>
-                    )}
-                    {condition.error && (
-                      <p className="text-sm text-destructive">
-                        Error: {condition.error}
-                      </p>
+            <Card>
+              <CardHeader><CardTitle className="text-base">Component Info</CardTitle></CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center gap-4">
+                  <div className={`p-4 rounded-full ${isHealthy ? 'bg-green-500/10' : 'bg-red-500/10'}`}>
+                    {isHealthy ? (
+                      <CheckCircle className="h-8 w-8 text-green-500" />
+                    ) : (
+                      <AlertTriangle className="h-8 w-8 text-red-500" />
                     )}
                   </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+                  <div>
+                    <h3 className="text-xl font-semibold">{cs.name}</h3>
+                    <p className="text-muted-foreground">
+                      {isHealthy ? 'Component is healthy and responding normally' : 'Component is experiencing issues'}
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader><CardTitle className="text-base">Conditions</CardTitle></CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {cs.conditions.map((condition, idx) => (
+                    <div key={idx} className="p-4 rounded-lg bg-muted/50 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <Badge variant={condition.status === 'True' ? 'default' : 'destructive'}>
+                          {condition.type}
+                        </Badge>
+                        <Badge variant="outline">{condition.status}</Badge>
+                      </div>
+                      {condition.message && (
+                        <p className="text-sm font-mono text-muted-foreground break-all">
+                          {condition.message}
+                        </p>
+                      )}
+                      {condition.error && (
+                        <p className="text-sm text-destructive">
+                          Error: {condition.error}
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
           </div>
         </div>
       ),
     },
     { id: 'events', label: 'Events', content: <EventsSection events={events} /> },
-    { id: 'yaml', label: 'YAML', content: <YamlViewer yaml={yaml} resourceName={cs.name} /> },
+    { id: 'yaml', label: 'YAML', icon: Server, content: <YamlViewer yaml={yaml} resourceName={cs.name} /> },
+    {
+      id: 'compare',
+      label: 'Compare',
+      icon: GitCompare,
+      content: (
+        <ResourceComparisonView
+          resourceType="componentstatuses"
+          resourceKind="ComponentStatus"
+          initialSelectedResources={[cs.name]}
+          isConnected={false} // ComponentStatus is mostly mock/deprecated here
+          embedded
+        />
+      ),
+    },
     {
       id: 'topology',
       label: 'Topology',
@@ -143,6 +164,7 @@ export default function ComponentStatusDetail() {
       content: (
         <ActionsSection actions={[
           { icon: Download, label: 'Download YAML', description: 'Export ComponentStatus definition', onClick: handleDownloadYaml },
+          { icon: Download, label: 'Export as JSON', description: 'Export ComponentStatus as JSON', onClick: handleDownloadJson },
           { icon: Trash2, label: 'Delete', description: 'Remove this component status', variant: 'destructive', onClick: () => setShowDeleteDialog(true) },
         ]} />
       ),
@@ -161,6 +183,7 @@ export default function ComponentStatusDetail() {
         createdLabel={cs.age}
         actions={[
           { label: 'Download YAML', icon: Download, variant: 'outline', onClick: handleDownloadYaml },
+          { label: 'Export as JSON', icon: Download, variant: 'outline', onClick: handleDownloadJson },
           { label: 'Delete', icon: Trash2, variant: 'destructive', onClick: () => setShowDeleteDialog(true) },
         ]}
         statusCards={statusCards}

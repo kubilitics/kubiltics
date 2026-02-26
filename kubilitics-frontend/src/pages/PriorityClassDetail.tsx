@@ -1,6 +1,6 @@
-import { useState, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { AlertTriangle, Clock, ArrowUpDown, Download, Trash2, Shield, Network } from 'lucide-react';
+import { useState, useCallback, useEffect } from 'react';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
+import { AlertTriangle, Clock, ArrowUpDown, Download, Trash2, Shield, Network, GitCompare } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -9,19 +9,22 @@ import {
   ResourceDetailLayout,
   ResourceOverviewMetadata,
   YamlViewer,
-  YamlCompareViewer,
   EventsSection,
   ActionsSection,
   DeleteConfirmDialog,
   ResourceTopologyView,
+  ResourceComparisonView,
   type ResourceStatus,
   type YamlVersion,
 } from '@/components/resources';
 import { useResourceDetail, useResourceEvents } from '@/hooks/useK8sResourceDetail';
-import { useDeleteK8sResource, type KubernetesResource } from '@/hooks/useKubernetes';
+import { useDeleteK8sResource, useUpdateK8sResource, type KubernetesResource } from '@/hooks/useKubernetes';
 import { normalizeKindForTopology } from '@/utils/resourceKindMapper';
 import { useConnectionStatus } from '@/hooks/useConnectionStatus';
+import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
+import { useActiveClusterId } from '@/hooks/useActiveClusterId';
 import { toast } from 'sonner';
+import { downloadResourceJson } from '@/lib/exportUtils';
 
 interface PriorityClassResource extends KubernetesResource {
   value?: number;
@@ -33,9 +36,20 @@ interface PriorityClassResource extends KubernetesResource {
 export default function PriorityClassDetail() {
   const { name } = useParams<{ name: string }>();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('overview');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const initialTab = searchParams.get('tab') || 'overview';
+  const [activeTab, setActiveTab] = useState(initialTab);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+
+  useEffect(() => {
+    if (initialTab !== activeTab) {
+      setActiveTab(initialTab);
+    }
+  }, [initialTab]);
   const { isConnected } = useConnectionStatus();
+  const clusterId = useActiveClusterId();
+  const backendBaseUrl = useBackendConfigStore((s) => s.backendBaseUrl);
+  const baseUrl = getEffectiveBackendBaseUrl(backendBaseUrl);
 
   const { resource, isLoading, error: resourceError, age, yaml, refetch } = useResourceDetail<PriorityClassResource>(
     'priorityclasses',
@@ -45,8 +59,24 @@ export default function PriorityClassDetail() {
   );
   const { events, refetch: refetchEvents } = useResourceEvents('PriorityClass', undefined, name ?? undefined);
   const deleteResource = useDeleteK8sResource('priorityclasses');
+  const updateResource = useUpdateK8sResource('priorityclasses');
 
   const pcName = resource?.metadata?.name ?? name ?? '';
+
+  const handleSaveYaml = useCallback(async (newYaml: string) => {
+    if (!isConnected || !name) {
+      toast.error('Connect cluster to update resource');
+      throw new Error('Not connected');
+    }
+    try {
+      await updateResource.mutateAsync({ name, yaml: newYaml });
+      toast.success('Resource updated successfully');
+      refetch();
+    } catch (error: any) {
+      toast.error(`Failed to update: ${error.message}`);
+      throw error;
+    }
+  }, [isConnected, name, updateResource, refetch]);
   const value = typeof resource?.value === 'number' ? resource.value : 0;
   const globalDefault = !!resource?.globalDefault;
   const preemptionPolicy = resource?.preemptionPolicy ?? 'PreemptLowerPriority';
@@ -62,6 +92,12 @@ export default function PriorityClassDetail() {
     a.click();
     URL.revokeObjectURL(url);
   }, [yaml, pcName]);
+
+  const handleDownloadJson = useCallback(() => {
+    if (!resource) return;
+    downloadResourceJson(resource, `${pcName || 'priorityclass'}.json`);
+    toast.success('JSON downloaded');
+  }, [resource, pcName]);
 
   const yamlVersions: YamlVersion[] = yaml ? [{ id: 'current', label: 'Current Version', yaml, timestamp: 'now' }] : [];
 
@@ -110,55 +146,55 @@ export default function PriorityClassDetail() {
             createdLabel={age}
           />
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <Card>
-            <CardHeader><CardTitle className="text-base">Priority Class Info</CardTitle></CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <p className="text-muted-foreground mb-1">Priority Value</p>
-                  <p className="font-mono text-lg font-bold text-primary">{value.toLocaleString()}</p>
+            <Card>
+              <CardHeader><CardTitle className="text-base">Priority Class Info</CardTitle></CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <p className="text-muted-foreground mb-1">Priority Value</p>
+                    <p className="font-mono text-lg font-bold text-primary">{value.toLocaleString()}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground mb-1">Global Default</p>
+                    <Badge variant={globalDefault ? 'default' : 'secondary'}>
+                      {globalDefault ? 'Yes' : 'No'}
+                    </Badge>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground mb-1">Preemption Policy</p>
+                    <Badge variant="outline">{preemptionPolicy}</Badge>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground mb-1">Age</p>
+                    <p>{age}</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-muted-foreground mb-1">Global Default</p>
-                  <Badge variant={globalDefault ? 'default' : 'secondary'}>
-                    {globalDefault ? 'Yes' : 'No'}
-                  </Badge>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader><CardTitle className="text-base">Description</CardTitle></CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground">{description || '–'}</p>
+              </CardContent>
+            </Card>
+            <Card className="lg:col-span-2">
+              <CardHeader><CardTitle className="text-base">Priority Scale</CardTitle></CardHeader>
+              <CardContent>
+                <div className="flex items-center gap-4">
+                  <div className="flex-1 h-4 bg-muted rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-gradient-to-r from-green-500 via-yellow-500 to-red-500"
+                      style={{ width: `${Math.min((value / 2000001000) * 100, 100)}%` }}
+                    />
+                  </div>
+                  <Badge variant="default">{value.toLocaleString()}</Badge>
                 </div>
-                <div>
-                  <p className="text-muted-foreground mb-1">Preemption Policy</p>
-                  <Badge variant="outline">{preemptionPolicy}</Badge>
+                <div className="flex justify-between text-xs text-muted-foreground mt-2">
+                  <span>0 (Lowest)</span>
+                  <span>2,000,001,000 (Highest)</span>
                 </div>
-                <div>
-                  <p className="text-muted-foreground mb-1">Age</p>
-                  <p>{age}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader><CardTitle className="text-base">Description</CardTitle></CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">{description || '–'}</p>
-            </CardContent>
-          </Card>
-          <Card className="lg:col-span-2">
-            <CardHeader><CardTitle className="text-base">Priority Scale</CardTitle></CardHeader>
-            <CardContent>
-              <div className="flex items-center gap-4">
-                <div className="flex-1 h-4 bg-muted rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-gradient-to-r from-green-500 via-yellow-500 to-red-500"
-                    style={{ width: `${Math.min((value / 2000001000) * 100, 100)}%` }}
-                  />
-                </div>
-                <Badge variant="default">{value.toLocaleString()}</Badge>
-              </div>
-              <div className="flex justify-between text-xs text-muted-foreground mt-2">
-                <span>0 (Lowest)</span>
-                <span>2,000,001,000 (Highest)</span>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
           </div>
         </div>
       ),
@@ -177,8 +213,23 @@ export default function PriorityClassDetail() {
       ),
     },
     { id: 'events', label: 'Events', content: <EventsSection events={events} /> },
-    { id: 'yaml', label: 'YAML', content: <YamlViewer yaml={yaml} resourceName={pcName} /> },
-    { id: 'compare', label: 'Compare', content: <YamlCompareViewer versions={yamlVersions} resourceName={pcName} /> },
+    { id: 'yaml', label: 'YAML', content: <YamlViewer yaml={yaml} resourceName={pcName} editable onSave={handleSaveYaml} /> },
+    {
+      id: 'compare',
+      label: 'Compare',
+      icon: GitCompare,
+      content: (
+        <ResourceComparisonView
+          resourceType="priorityclasses"
+          resourceKind="PriorityClass"
+          initialSelectedResources={[pcName]}
+          clusterId={clusterId ?? undefined}
+          backendBaseUrl={baseUrl ?? ''}
+          isConnected={isConnected}
+          embedded
+        />
+      ),
+    },
     {
       id: 'topology',
       label: 'Topology',
@@ -200,6 +251,7 @@ export default function PriorityClassDetail() {
         <ActionsSection
           actions={[
             { icon: Download, label: 'Download YAML', description: 'Export PriorityClass definition', onClick: handleDownloadYaml },
+            { icon: Download, label: 'Export as JSON', description: 'Export PriorityClass as JSON', onClick: handleDownloadJson },
             { icon: Trash2, label: 'Delete PriorityClass', description: 'Remove this priority class', variant: 'destructive', onClick: () => setShowDeleteDialog(true) },
           ]}
         />
@@ -222,12 +274,21 @@ export default function PriorityClassDetail() {
         createdAt={resource?.metadata?.creationTimestamp}
         actions={[
           { label: 'Download YAML', icon: Download, variant: 'outline', onClick: handleDownloadYaml },
+          { label: 'Export as JSON', icon: Download, variant: 'outline', onClick: handleDownloadJson },
           { label: 'Delete', icon: Trash2, variant: 'destructive', onClick: () => setShowDeleteDialog(true) },
         ]}
         statusCards={statusCards}
         tabs={tabs}
         activeTab={activeTab}
-        onTabChange={setActiveTab}
+        onTabChange={(tabId) => {
+          setActiveTab(tabId);
+          setSearchParams((prev) => {
+            const next = new URLSearchParams(prev);
+            if (tabId === 'overview') next.delete('tab');
+            else next.set('tab', tabId);
+            return next;
+          }, { replace: true });
+        }}
       />
       <DeleteConfirmDialog
         open={showDeleteDialog}

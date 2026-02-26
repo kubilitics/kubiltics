@@ -6,7 +6,9 @@ import {
     RefreshCw,
     ArrowUpRight,
     Scale,
-    Activity
+    Activity,
+    Cpu,
+    Zap
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useResourcesOverview } from '@/hooks/useResourcesOverview';
@@ -45,12 +47,14 @@ export default function ResourcesOverview() {
 
     const quotaCount = data?.resources.filter(r => r.kind === 'ResourceQuota').length ?? 0;
     const limitCount = data?.resources.filter(r => r.kind === 'LimitRange').length ?? 0;
+    const sliceCount = data?.resources.filter(r => r.kind === 'ResourceSlice').length ?? 0;
+    const classCount = data?.resources.filter(r => r.kind === 'DeviceClass').length ?? 0;
 
     return (
         <div className="flex flex-col gap-6 p-6">
             <SectionOverviewHeader
                 title="Resources Overview"
-                description="High-fidelity visibility across namespace-level resource quotas and limit ranges."
+                description="Manage cluster-wide resource constraints and Dynamic Resource Allocation (DRA) capabilities."
                 icon={Gauge}
                 onSync={handleSync}
                 isSyncing={isSyncing}
@@ -98,38 +102,40 @@ export default function ResourcesOverview() {
                     </CardContent>
                 </Card>
 
-                {/* Quota Action Card */}
-                <Card className="lg:col-span-4 border-[#326CE5]/10 shadow-sm bg-white/50 backdrop-blur-sm flex flex-col p-8 relative overflow-hidden group">
-                    <Scale className="absolute -bottom-10 -right-10 w-48 h-48 opacity-[0.02] text-[#326CE5] rotate-12" />
+                {/* DRA Action Card */}
+                <Card className="lg:col-span-4 border-amber-200/50 shadow-sm bg-gradient-to-br from-amber-50/30 to-white/50 backdrop-blur-sm flex flex-col p-8 relative overflow-hidden group">
+                    <Cpu className="absolute -bottom-10 -right-10 w-48 h-48 opacity-[0.03] text-amber-600 rotate-12" />
 
                     <div className="flex-1 space-y-6">
-                        <div>
-                            <h3 className="text-lg font-black text-[#326CE5]">Enforcement Pulse</h3>
-                            <p className="text-xs text-muted-foreground mt-1 font-medium italic">Namespace-level resource limits are currently optimal.</p>
+                        <div className="flex items-center gap-2 mb-2">
+                            <Zap className="h-5 w-5 text-amber-500 fill-amber-500/20" />
+                            <h3 className="text-lg font-black text-slate-900">Dynamic Resource Allocation</h3>
                         </div>
+                        <p className="text-xs text-muted-foreground font-medium">
+                            DRA (Dynamic Resource Allocation) is a new way to request specialized hardware (GPUs, FPGAs) that goes beyond standard resource limits.
+                        </p>
 
-                        <div className="space-y-3">
-                            <div className="py-3 px-4 rounded-xl bg-[#326CE5]/5 border border-[#326CE5]/10">
-                                <span className="block text-[10px] font-black text-[#326CE5]/60 uppercase tracking-wider">Compliance Score</span>
-                                <div className="flex items-end justify-between">
-                                    <span className="text-2xl font-black text-[#326CE5]">100%</span>
-                                    <span className="text-[10px] font-bold text-emerald-500 mb-1">SECURE</span>
-                                </div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="py-3 px-4 rounded-xl bg-amber-500/5 border border-amber-500/10">
+                                <span className="block text-[10px] font-black text-amber-600/60 uppercase tracking-wider">Resource Slices</span>
+                                <span className="text-2xl font-black text-amber-600">{sliceCount}</span>
                             </div>
                             <div className="py-3 px-4 rounded-xl bg-slate-50 border border-slate-100">
-                                <span className="block text-[10px] font-black text-slate-400 uppercase tracking-wider">System Alerts</span>
-                                <div className="flex items-end justify-between">
-                                    <span className="text-2xl font-black text-slate-400">0</span>
-                                    <span className="text-[10px] font-bold text-slate-400 mb-1">ALL CLEAR</span>
-                                </div>
+                                <span className="block text-[10px] font-black text-slate-400 uppercase tracking-wider">Device Classes</span>
+                                <span className="text-2xl font-black text-slate-400">{classCount}</span>
                             </div>
                         </div>
 
-                        <Button className="w-full h-12 bg-[#326CE5] hover:bg-[#2856b3] rounded-xl font-bold shadow-lg shadow-[#326CE5]/10">
-                            Apply Limit Ranges
-                        </Button>
+                        <div className="pt-2">
+                            <Button variant="outline" asChild className="w-full h-11 border-amber-200 text-amber-700 font-bold hover:bg-amber-50 rounded-xl">
+                                <a href="https://kubernetes.io/docs/concepts/scheduling-eviction/dynamic-resource-allocation/" target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2">
+                                    DRA Documentation <ArrowUpRight className="h-4 w-4" />
+                                </a>
+                            </Button>
+                        </div>
                     </div>
                 </Card>
+
             </div>
 
             {/* Explorer Table */}

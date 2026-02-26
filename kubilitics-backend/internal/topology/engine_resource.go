@@ -11,6 +11,7 @@ import (
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/labels"
 )
 
@@ -21,7 +22,7 @@ const resourceSubgraphMaxNodes = 500
 
 // ResourceTopologyKinds lists canonical kinds that support resource-scoped topology
 // (BuildResourceSubgraph). API accepts plural lowercase (e.g. "statefulsets").
-var ResourceTopologyKinds = []string{"Node", "Pod", "Deployment", "ReplicaSet", "StatefulSet", "DaemonSet", "Job", "CronJob", "Service", "Ingress", "IngressClass", "Endpoints", "EndpointSlice", "NetworkPolicy", "ConfigMap", "Secret", "PersistentVolumeClaim", "PersistentVolume", "StorageClass", "VolumeAttachment"}
+var ResourceTopologyKinds = []string{"Node", "Pod", "Deployment", "ReplicaSet", "StatefulSet", "DaemonSet", "Job", "CronJob", "Service", "Ingress", "IngressClass", "Endpoints", "EndpointSlice", "NetworkPolicy", "ConfigMap", "Secret", "PersistentVolumeClaim", "PersistentVolume", "StorageClass", "VolumeAttachment", "ResourceQuota", "LimitRange", "PriorityClass", "ResourceSlice", "DeviceClass"}
 
 // buildResourceEdge adds an edge with the given label (used for resource-scoped topology).
 func buildResourceEdge(source, target, label string) models.TopologyEdge {
@@ -101,6 +102,16 @@ func normalizeResourceKind(kind string) string {
 		return "NetworkPolicy"
 	case "volumeattachments", "volumeattachment":
 		return "VolumeAttachment"
+	case "resourcequotas", "resourcequota":
+		return "ResourceQuota"
+	case "limitranges", "limitrange":
+		return "LimitRange"
+	case "priorityclasses", "priorityclass":
+		return "PriorityClass"
+	case "resourceslices", "resourceslice":
+		return "ResourceSlice"
+	case "deviceclasses", "deviceclass":
+		return "DeviceClass"
 	default:
 		return kind
 	}
@@ -152,6 +163,16 @@ func (e *Engine) BuildResourceSubgraph(ctx context.Context, kind, namespace, nam
 		return e.buildVolumeAttachmentSubgraph(ctx, namespace, name)
 	case "Node":
 		return e.buildNodeSubgraph(ctx, name)
+	case "ResourceQuota":
+		return e.buildResourceQuotaSubgraph(ctx, namespace, name)
+	case "LimitRange":
+		return e.buildLimitRangeSubgraph(ctx, namespace, name)
+	case "PriorityClass":
+		return e.buildPriorityClassSubgraph(ctx, name)
+	case "ResourceSlice":
+		return e.buildResourceSliceSubgraph(ctx, name)
+	case "DeviceClass":
+		return e.buildDeviceClassSubgraph(ctx, name)
 	default:
 		return nil, fmt.Errorf("resource topology not implemented for kind %q (supported kinds: %s)", canonicalKind, strings.Join(ResourceTopologyKinds, ", "))
 	}
@@ -551,7 +572,7 @@ func (e *Engine) buildCronJobSubgraph(ctx context.Context, namespace, name strin
 
 	// Jobs owned by this CronJob
 	jobList, err := e.client.Clientset.BatchV1().Jobs(ns).List(ctx, metav1.ListOptions{})
-		if err == nil {
+	if err == nil {
 		for i := range jobList.Items {
 			job := &jobList.Items[i]
 			for _, ref := range job.OwnerReferences {
@@ -802,7 +823,7 @@ func (e *Engine) buildIngressSubgraph(ctx context.Context, namespace, name strin
 }
 
 // buildIngressClassSubgraph builds IngressClass -> Ingresses using this class (cluster-scoped; namespace is ignored).
-func (e *Engine) buildIngressClassSubgraph(ctx context.Context, namespace, name string) (*Graph, error) {
+func (e *Engine) buildIngressClassSubgraph(ctx context.Context, _, name string) (*Graph, error) {
 	ic, err := e.client.Clientset.NetworkingV1().IngressClasses().Get(ctx, name, metav1.GetOptions{})
 	if err != nil {
 		return nil, ErrResourceNotFound
@@ -1617,7 +1638,7 @@ func (e *Engine) buildPersistentVolumeClaimSubgraph(ctx context.Context, namespa
 }
 
 // buildPersistentVolumeSubgraph builds PV -> PVC -> StorageClass; Pods using the PVC.
-func (e *Engine) buildPersistentVolumeSubgraph(ctx context.Context, namespace, name string) (*Graph, error) {
+func (e *Engine) buildPersistentVolumeSubgraph(ctx context.Context, _, name string) (*Graph, error) {
 	pv, err := e.client.Clientset.CoreV1().PersistentVolumes().Get(ctx, name, metav1.GetOptions{})
 	if err != nil {
 		return nil, ErrResourceNotFound
@@ -1694,7 +1715,7 @@ func (e *Engine) buildPersistentVolumeSubgraph(ctx context.Context, namespace, n
 }
 
 // buildStorageClassSubgraph builds StorageClass -> PVs and PVCs that use it.
-func (e *Engine) buildStorageClassSubgraph(ctx context.Context, namespace, name string) (*Graph, error) {
+func (e *Engine) buildStorageClassSubgraph(ctx context.Context, _, name string) (*Graph, error) {
 	sc, err := e.client.Clientset.StorageV1().StorageClasses().Get(ctx, name, metav1.GetOptions{})
 	if err != nil {
 		return nil, ErrResourceNotFound
@@ -1744,7 +1765,7 @@ func (e *Engine) buildStorageClassSubgraph(ctx context.Context, namespace, name 
 }
 
 // buildVolumeAttachmentSubgraph builds VolumeAttachment -> Node, PV.
-func (e *Engine) buildVolumeAttachmentSubgraph(ctx context.Context, namespace, name string) (*Graph, error) {
+func (e *Engine) buildVolumeAttachmentSubgraph(ctx context.Context, _, name string) (*Graph, error) {
 	va, err := e.client.Clientset.StorageV1().VolumeAttachments().Get(ctx, name, metav1.GetOptions{})
 	if err != nil {
 		return nil, ErrResourceNotFound
@@ -1774,6 +1795,146 @@ func (e *Engine) buildVolumeAttachmentSubgraph(ctx context.Context, namespace, n
 			addResourceEdge(g, vaID, pvID, "Attaches")
 		}
 	}
+
+	g.LayoutSeed = g.GenerateLayoutSeed()
+	if err := g.Validate(); err != nil {
+		return nil, fmt.Errorf("graph validation failed: %w", err)
+	}
+	return g, nil
+}
+
+// buildResourceQuotaSubgraph builds ResourceQuota -> Namespace.
+func (e *Engine) buildResourceQuotaSubgraph(ctx context.Context, namespace, name string) (*Graph, error) {
+	if namespace == "" {
+		return nil, fmt.Errorf("namespace required for ResourceQuota resource topology")
+	}
+	quota, err := e.client.Clientset.CoreV1().ResourceQuotas(namespace).Get(ctx, name, metav1.GetOptions{})
+	if err != nil {
+		return nil, ErrResourceNotFound
+	}
+	g := NewGraph(resourceSubgraphMaxNodes)
+	quotaID := ensureNode(g, "ResourceQuota", quota.Namespace, quota.Name, "Active", quota.ObjectMeta)
+
+	// Linked Namespace
+	ns, err := e.client.Clientset.CoreV1().Namespaces().Get(ctx, quota.Namespace, metav1.GetOptions{})
+	if err == nil {
+		nsID := ensureNode(g, "Namespace", "", ns.Name, "Active", ns.ObjectMeta)
+		addResourceEdge(g, quotaID, nsID, "Limits")
+	}
+
+	g.LayoutSeed = g.GenerateLayoutSeed()
+	if err := g.Validate(); err != nil {
+		return nil, fmt.Errorf("graph validation failed: %w", err)
+	}
+	return g, nil
+}
+
+// buildLimitRangeSubgraph builds LimitRange -> Namespace.
+func (e *Engine) buildLimitRangeSubgraph(ctx context.Context, namespace, name string) (*Graph, error) {
+	if namespace == "" {
+		return nil, fmt.Errorf("namespace required for LimitRange resource topology")
+	}
+	lr, err := e.client.Clientset.CoreV1().LimitRanges(namespace).Get(ctx, name, metav1.GetOptions{})
+	if err != nil {
+		return nil, ErrResourceNotFound
+	}
+	g := NewGraph(resourceSubgraphMaxNodes)
+	lrID := ensureNode(g, "LimitRange", lr.Namespace, lr.Name, "Active", lr.ObjectMeta)
+
+	// Linked Namespace
+	ns, err := e.client.Clientset.CoreV1().Namespaces().Get(ctx, lr.Namespace, metav1.GetOptions{})
+	if err == nil {
+		nsID := ensureNode(g, "Namespace", "", ns.Name, "Active", ns.ObjectMeta)
+		addResourceEdge(g, lrID, nsID, "Restricts")
+	}
+
+	g.LayoutSeed = g.GenerateLayoutSeed()
+	if err := g.Validate(); err != nil {
+		return nil, fmt.Errorf("graph validation failed: %w", err)
+	}
+	return g, nil
+}
+
+// buildPriorityClassSubgraph builds PriorityClass -> Pods (that use it).
+func (e *Engine) buildPriorityClassSubgraph(ctx context.Context, name string) (*Graph, error) {
+	pc, err := e.client.Clientset.SchedulingV1().PriorityClasses().Get(ctx, name, metav1.GetOptions{})
+	if err != nil {
+		return nil, ErrResourceNotFound
+	}
+	g := NewGraph(resourceSubgraphMaxNodes)
+	pcID := ensureNode(g, "PriorityClass", "", pc.Name, "Active", pc.ObjectMeta)
+
+	// Pods using this PriorityClass
+	podList, err := e.client.Clientset.CoreV1().Pods(metav1.NamespaceAll).List(ctx, metav1.ListOptions{})
+	if err == nil {
+		for i := range podList.Items {
+			if g.Truncated {
+				break
+			}
+			pod := &podList.Items[i]
+			if pod.Spec.PriorityClassName == name {
+				podID := ensureNode(g, "Pod", pod.Namespace, pod.Name, string(pod.Status.Phase), pod.ObjectMeta)
+				addResourceEdge(g, podID, pcID, "References")
+			}
+		}
+	}
+
+	g.LayoutSeed = g.GenerateLayoutSeed()
+	if err := g.Validate(); err != nil {
+		return nil, fmt.Errorf("graph validation failed: %w", err)
+	}
+	return g, nil
+}
+
+// buildResourceSliceSubgraph builds ResourceSlice -> Node.
+func (e *Engine) buildResourceSliceSubgraph(ctx context.Context, name string) (*Graph, error) {
+	unstr, err := e.client.GetResource(ctx, "ResourceSlice", "", name)
+	if err != nil {
+		return nil, ErrResourceNotFound
+	}
+	g := NewGraph(resourceSubgraphMaxNodes)
+	meta := metav1.ObjectMeta{
+		Name:              unstr.GetName(),
+		Namespace:         unstr.GetNamespace(),
+		UID:               unstr.GetUID(),
+		Labels:            unstr.GetLabels(),
+		Annotations:       unstr.GetAnnotations(),
+		CreationTimestamp: unstr.GetCreationTimestamp(),
+	}
+	rsID := ensureNode(g, "ResourceSlice", "", meta.Name, "Active", meta)
+
+	// Linked Node
+	nodeName, _, _ := unstructured.NestedString(unstr.Object, "spec", "nodeName")
+	if nodeName != "" {
+		node, err := e.client.Clientset.CoreV1().Nodes().Get(ctx, nodeName, metav1.GetOptions{})
+		if err == nil {
+			nodeID := ensureNode(g, "Node", "", node.Name, "Ready", node.ObjectMeta)
+			addResourceEdge(g, rsID, nodeID, "Allocates on")
+		}
+	}
+
+	g.LayoutSeed = g.GenerateLayoutSeed()
+	if err := g.Validate(); err != nil {
+		return nil, fmt.Errorf("graph validation failed: %w", err)
+	}
+	return g, nil
+}
+
+// buildDeviceClassSubgraph builds DeviceClass.
+func (e *Engine) buildDeviceClassSubgraph(ctx context.Context, name string) (*Graph, error) {
+	unstr, err := e.client.GetResource(ctx, "DeviceClass", "", name)
+	if err != nil {
+		return nil, ErrResourceNotFound
+	}
+	g := NewGraph(resourceSubgraphMaxNodes)
+	meta := metav1.ObjectMeta{
+		Name:              unstr.GetName(),
+		UID:               unstr.GetUID(),
+		Labels:            unstr.GetLabels(),
+		Annotations:       unstr.GetAnnotations(),
+		CreationTimestamp: unstr.GetCreationTimestamp(),
+	}
+	ensureNode(g, "DeviceClass", "", meta.Name, "Active", meta)
 
 	g.LayoutSeed = g.GenerateLayoutSeed()
 	if err := g.Validate(); err != nil {

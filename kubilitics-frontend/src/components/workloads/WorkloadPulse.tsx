@@ -90,7 +90,7 @@ export function WorkloadPulse({ data }: WorkloadPulseProps) {
                     className="absolute inset-2 border-2 border-blue-100 rounded-full"
                 />
 
-                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1 z-10">Fleet Health</span>
+                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1 z-10">Cluster Health</span>
                 <AnimatePresence mode="wait">
                     <motion.div
                         key={score}

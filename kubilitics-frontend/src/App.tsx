@@ -6,6 +6,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, MemoryRouter, Routes, Route, Navigate, useNavigate, useLocation } from "react-router-dom";
 import { useClusterStore } from "@/stores/clusterStore";
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from "@/stores/backendConfigStore";
+import { getClusters } from "@/services/backendApiClient";
+import { backendClusterToCluster } from "@/lib/backendClusterAdapter";
 import { AIAssistant } from "@/components/ai";
 import { Loader2 } from "lucide-react";
 
@@ -26,6 +28,7 @@ const ClusterSelection = lazy(() => import("./pages/ClusterSelection"));
 const DashboardPage = lazy(() => import("./pages/DashboardPage"));
 const HomePage = lazy(() => import("./pages/HomePage"));
 const ProjectDetailPage = lazy(() => import("./pages/ProjectDetailPage"));
+const ProjectDashboardPage = lazy(() => import("./pages/ProjectDashboardPage"));
 
 // Workloads
 const Pods = lazy(() => import("./pages/Pods"));
@@ -95,7 +98,6 @@ const VolumeSnapshotContents = lazy(() => import("./pages/VolumeSnapshotContents
 const VolumeSnapshotContentDetail = lazy(() => import("./pages/VolumeSnapshotContentDetail"));
 const StorageOverview = lazy(() => import("./pages/StorageOverview"));
 const ClusterOverview = lazy(() => import("./pages/ClusterOverview"));
-const SecurityOverviewPage = lazy(() => import("./pages/SecurityDashboard").then(m => ({ default: m.SecurityDashboard })));
 const ResourcesOverview = lazy(() => import("./pages/ResourcesOverview"));
 const ScalingOverview = lazy(() => import("./pages/ScalingOverview"));
 const CRDsOverview = lazy(() => import("./pages/CRDsOverview"));
@@ -144,6 +146,8 @@ const LimitRanges = lazy(() => import("./pages/LimitRanges"));
 const LimitRangeDetail = lazy(() => import("./pages/LimitRangeDetail"));
 const PriorityClasses = lazy(() => import("./pages/PriorityClasses"));
 const PriorityClassDetail = lazy(() => import("./pages/PriorityClassDetail"));
+const AddOns = lazy(() => import("./pages/AddOns"));
+const AddOnDetail = lazy(() => import("./pages/AddOnDetail"));
 
 // Custom Resources & Admission Control
 const CustomResourceDefinitions = lazy(() => import("./pages/CustomResourceDefinitions"));
@@ -158,9 +162,9 @@ const Topology = lazy(() => import("./pages/Topology"));
 
 // Analytics Dashboards
 const AnalyticsOverview = lazy(() => import("./pages/AnalyticsOverview").then(m => ({ default: m.AnalyticsOverview })));
-const SecurityDashboard = lazy(() => import("./pages/SecurityDashboard").then(m => ({ default: m.SecurityDashboard })));
 const MLAnalyticsDashboard = lazy(() => import("./pages/MLAnalyticsDashboard").then(m => ({ default: m.MLAnalyticsDashboard })));
-const CostDashboard = lazy(() => import("./pages/CostDashboard").then(m => ({ default: m.CostDashboard })));
+
+import { useResourceLiveUpdates } from "./hooks/useResourceLiveUpdates";
 
 // Layout
 import { AppLayout } from "./components/layout/AppLayout";
@@ -187,22 +191,99 @@ const queryClient = new QueryClient({
   },
 });
 
-// Protected route: requires active cluster only (Headlamp/Lens model — no login wall).
-function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { activeCluster } = useClusterStore();
-  const [isHydrated, setIsHydrated] = useState(false);
+// Restore activeCluster from backend when currentClusterId is persisted (e.g. after refresh).
+// So the user stays on the current URL instead of being sent to "/".
+function useRestoreClusterFromBackend() {
+  const { activeCluster, setActiveCluster, setClusters, setDemo } = useClusterStore();
+  const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
+  const backendBaseUrl = useBackendConfigStore((s) => s.backendBaseUrl);
+  const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured);
+  const [restoreAttempted, setRestoreAttempted] = useState(false);
+  const [restoreFailed, setRestoreFailed] = useState(false);
 
   useEffect(() => {
-    if (useClusterStore.persist.hasHydrated()) {
-      setIsHydrated(true);
+    if (activeCluster != null || restoreAttempted || !currentClusterId || !isBackendConfigured()) {
+      if (activeCluster == null && restoreAttempted && currentClusterId) setRestoreFailed(true);
       return;
     }
-    const unsub = useClusterStore.persist.onFinishHydration(() => setIsHydrated(true));
-    return () => unsub();
+    const baseUrl = getEffectiveBackendBaseUrl(backendBaseUrl);
+    if (!baseUrl) {
+      setRestoreAttempted(true);
+      setRestoreFailed(true);
+      return;
+    }
+    setRestoreAttempted(true);
+    getClusters(baseUrl)
+      .then((list) => {
+        const backendCluster = list.find((c) => c.id === currentClusterId);
+        if (!backendCluster) {
+          setRestoreFailed(true);
+          return;
+        }
+        const connectedCluster = backendClusterToCluster(backendCluster);
+        const connectedClusters = list.map(backendClusterToCluster);
+        setClusters(connectedClusters);
+        setActiveCluster(connectedCluster);
+        setDemo(false);
+      })
+      .catch(() => setRestoreFailed(true));
+  }, [
+    activeCluster,
+    currentClusterId,
+    backendBaseUrl,
+    isBackendConfigured,
+    restoreAttempted,
+    setClusters,
+    setActiveCluster,
+    setDemo,
+  ]);
+
+  return { restoreAttempted, restoreFailed };
+}
+
+// Protected route: requires active cluster only (Headlamp/Lens model — no login wall).
+// On refresh, activeCluster is not persisted; we restore it from backend using persisted currentClusterId
+// so the user stays on the current page instead of being redirected to "/".
+// When redirecting to connect, we preserve the current URL in returnUrl so after reconnect the user lands back.
+function ProtectedRoute({ children }: { children: React.ReactNode }) {
+  const location = useLocation();
+  const { activeCluster } = useClusterStore();
+  const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
+  const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured);
+  const [isHydrated, setIsHydrated] = useState(false);
+  const { restoreAttempted, restoreFailed } = useRestoreClusterFromBackend();
+
+  useEffect(() => {
+    const checkHydration = () => {
+      const clusterHydrated = useClusterStore.persist.hasHydrated();
+      const configHydrated = useBackendConfigStore.persist.hasHydrated();
+      if (clusterHydrated && configHydrated) {
+        setIsHydrated(true);
+      }
+    };
+
+    checkHydration();
+    const unsubCluster = useClusterStore.persist.onFinishHydration(checkHydration);
+    const unsubConfig = useBackendConfigStore.persist.onFinishHydration(checkHydration);
+
+    return () => {
+      unsubCluster();
+      unsubConfig();
+    };
   }, []);
 
   if (!isHydrated) return <PageLoader />;
-  if (!activeCluster) return <Navigate to="/" replace />;
+
+  // If we have a persisted cluster ID but no activeCluster yet, wait for restore (or show loader until it fails).
+  const canRestore = currentClusterId && isBackendConfigured();
+  if (!activeCluster && canRestore && !restoreFailed) {
+    return <PageLoader />;
+  }
+
+  if (!activeCluster) {
+    const returnUrl = encodeURIComponent(location.pathname + location.search);
+    return <Navigate to={returnUrl ? `/connect?returnUrl=${returnUrl}` : '/connect'} replace />;
+  }
 
   return <>{children}</>;
 }
@@ -270,6 +351,17 @@ const AI_STATUS_POLL_MS = 30_000;
 function ClusterOverviewStream() {
   const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
   useOverviewStream(currentClusterId ?? undefined);
+  return null;
+}
+
+/**
+ * ResourceLiveUpdates — mounts a persistent WebSocket to /ws/resources
+ * for the active cluster. Incoming events trigger React Query cache
+ * invalidations for the corresponding resource types.
+ */
+function ResourceLiveUpdates() {
+  const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
+  useResourceLiveUpdates({ clusterId: currentClusterId });
   return null;
 }
 
@@ -505,6 +597,8 @@ const App = () => (
         {/* Single persistent WebSocket per active cluster — pushes overview
             updates into React Query cache in real-time (Headlamp/Lens model) */}
         <ClusterOverviewStream />
+        {/* Global WebSocket for resource events — invalidates list queries */}
+        <ResourceLiveUpdates />
         <SyncBackendUrl />
         <SyncAIAvailable />
         <AnalyticsConsentWrapper>
@@ -538,15 +632,14 @@ const App = () => (
                       >
                         <Route path="/home" element={<HomePage />} />
                         <Route path="/projects/:projectId" element={<ProjectDetailPage />} />
+                        <Route path="/projects/:projectId/dashboard" element={<ProjectDashboardPage />} />
                         <Route path="/dashboard" element={<DashboardPage />} />
                         <Route path="/settings" element={<SettingsPage />} />
                         <Route path="/audit-log" element={<AuditLog />} />
 
                         {/* Analytics Dashboards */}
                         <Route path="/analytics" element={<AnalyticsOverview />} />
-                        <Route path="/security" element={<SecurityDashboard />} />
                         <Route path="/ml-analytics" element={<MLAnalyticsDashboard />} />
-                        <Route path="/cost" element={<CostDashboard />} />
 
                         {/* Cluster Topology */}
                         <Route path="/topology" element={<Topology />} />
@@ -647,7 +740,6 @@ const App = () => (
                         <Route path="/runtime-classes/:name" element={<RuntimeClassDetail />} />
 
                         {/* RBAC / Security */}
-                        <Route path="/security-overview" element={<SecurityOverviewPage />} />
                         <Route path="/serviceaccounts" element={<ServiceAccounts />} />
                         <Route path="/serviceaccounts/:namespace/:name" element={<ServiceAccountDetail />} />
                         <Route path="/roles" element={<Roles />} />
@@ -693,6 +785,10 @@ const App = () => (
                         <Route path="/mutatingwebhooks/:name" element={<MutatingWebhookDetail />} />
                         <Route path="/validatingwebhooks" element={<ValidatingWebhooks />} />
                         <Route path="/validatingwebhooks/:name" element={<ValidatingWebhookDetail />} />
+
+                        {/* Add-ons */}
+                        <Route path="/addons" element={<AddOns />} />
+                        <Route path="/addons/:addonId" element={<AddOnDetail />} />
 
                         {/* 404 */}
                         <Route path="*" element={<NotFound />} />

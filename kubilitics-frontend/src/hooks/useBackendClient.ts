@@ -15,7 +15,7 @@ import {
 export function useBackendClient() {
   const stored = useBackendConfigStore((s) => s.backendBaseUrl);
   const backendBaseUrl = getEffectiveBackendBaseUrl(stored);
-  const isConfigured = useBackendConfigStore((s) => s.isBackendConfigured());
+  const isConfigured = useBackendConfigStore((s) => s.isBackendConfigured);
 
   const client = useMemo(() => {
     if (!isConfigured()) return null;
@@ -29,7 +29,7 @@ export function useBackendClient() {
     getClusters: isConfigured() ? () => getClusters(backendBaseUrl) : null,
     getTopology: isConfigured()
       ? (clusterId: string, params?: { namespace?: string; resource_types?: string[] }) =>
-          getTopology(backendBaseUrl, clusterId, params)
+        getTopology(backendBaseUrl, clusterId, params)
       : null,
     getHealth: isConfigured() ? () => getHealth(backendBaseUrl) : null,
   };

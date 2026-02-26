@@ -13,7 +13,7 @@ export { ResourceHeader, type ResourceHeaderProps, type ResourceAction, type Res
 export { ContainersSection, type ContainerInfo, type ContainersSectionProps } from './ContainersSection';
 export { ResourceList, type Column, type ResourceListProps, type ResourceListPagination } from './ResourceList';
 export { YamlViewer, type YamlViewerProps, type YamlValidationError } from './YamlViewer';
-export { YamlCompareViewer, computeDiff, type YamlVersion, type DiffLine, type YamlCompareViewerProps } from './YamlCompareViewer';
+export { computeDiff, YamlLineContent, getIntraLineDiff, type DiffLine, type YamlVersion } from './YamlDiffUtils';
 export { EventsSection, type EventInfo, type EventsSectionProps } from './EventsSection';
 export { DetailRow, type DetailRowProps } from './DetailRow';
 export { SectionCard, type SectionCardProps } from './SectionCard';
@@ -23,5 +23,6 @@ export { ActionsSection, type ActionItem, type ActionsSectionProps } from './Act
 export { NodeDetailPopup, type ResourceDetail } from './NodeDetailPopup';
 export { Sparkline, LiveMetric, useLiveMetrics } from './PodSparkline';
 export { UsageBar, parseCpu, parseMemory, calculatePodResourceMax, type UsageBarProps, type UsageBarKind, type UsageBarVariant } from './UsageBar';
-export { PodComparisonView } from './PodComparisonView';
+export { ResourceComparisonView } from './ResourceComparisonView';
 export { ResourceTopologyView, type ResourceTopologyViewProps } from './ResourceTopologyView';
+export { X } from 'lucide-react'; // Export X if needed, or just let users import from lucide-react

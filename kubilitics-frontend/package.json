@@ -1,7 +1,7 @@
 {
   "name": "kubilitics-frontend",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.1.1",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -129,7 +129,6 @@
     "eslint-plugin-react-refresh": "^0.4.20",
     "globals": "^15.15.0",
     "jsdom": "^25.0.0",
-    "lovable-tagger": "^1.1.13",
     "openapi-typescript": "^7.0.0",
     "postcss": "^8.5.6",
     "rollup-plugin-visualizer": "^6.0.5",

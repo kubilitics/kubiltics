@@ -181,6 +181,24 @@ permissions: []
 	}
 }
 
+func TestRunRefusesWhenMinKcliVersionTooNew(t *testing.T) {
+	home := setupPluginHome(t)
+	manifest := `name: foo
+version: 1.0.0
+minKcliVersion: "99.0.0"
+permissions: []
+`
+	createPlugin(t, home, "foo", manifest)
+
+	err := Run("foo", nil)
+	if err == nil {
+		t.Fatalf("expected error when plugin requires newer kcli")
+	}
+	if !strings.Contains(err.Error(), "99.0.0") || !strings.Contains(err.Error(), "current") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
 func TestResolveBlocksPathPluginsByDefault(t *testing.T) {
 	home := setupPluginHome(t)
 	ext := t.TempDir()
@@ -352,5 +370,155 @@ func TestInstallFromMarketplaceName(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(home, "plugins", "kcli-marketdemo")); err != nil {
 		t.Fatalf("expected installed binary: %v", err)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// P2-1: Plugin binary integrity tests
+// ---------------------------------------------------------------------------
+
+func TestBinaryChecksum_MatchesFileSHA256(t *testing.T) {
+	tmp := t.TempDir()
+	path := filepath.Join(tmp, "plugin-bin")
+	content := []byte("#!/bin/sh\necho hello\n")
+	if err := os.WriteFile(path, content, 0o755); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+	a, err := BinaryChecksum(path)
+	if err != nil {
+		t.Fatalf("BinaryChecksum: %v", err)
+	}
+	b, err := FileSHA256(path)
+	if err != nil {
+		t.Fatalf("FileSHA256: %v", err)
+	}
+	if a != b {
+		t.Fatalf("BinaryChecksum %q != FileSHA256 %q", a, b)
+	}
+	if len(a) != 64 {
+		t.Fatalf("expected 64-char hex SHA-256, got %d chars: %s", len(a), a)
+	}
+}
+
+func TestBinaryChecksum_Deterministic(t *testing.T) {
+	tmp := t.TempDir()
+	path := filepath.Join(tmp, "plugin-bin")
+	if err := os.WriteFile(path, []byte("consistent content"), 0o755); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+	a, _ := BinaryChecksum(path)
+	b, _ := BinaryChecksum(path)
+	if a != b {
+		t.Fatal("BinaryChecksum is not deterministic")
+	}
+}
+
+func TestVerifyPlugin_NoRegistryEntry_PassesThrough(t *testing.T) {
+	// A plugin not in the registry must be allowed through (manual install).
+	setupPluginHome(t)
+	if err := VerifyPlugin("no-such-plugin"); err != nil {
+		t.Fatalf("expected VerifyPlugin to pass for unregistered plugin, got: %v", err)
+	}
+}
+
+func TestVerifyPlugin_EmptyChecksum_PassesThrough(t *testing.T) {
+	// A registry entry with no recorded checksum must pass (legacy install).
+	home := setupPluginHome(t)
+	reg := &Registry{Plugins: map[string]RegistryEntry{
+		"myplugin": {Name: "myplugin", SHA256: ""},
+	}}
+	if err := SaveRegistry(reg); err != nil {
+		t.Fatalf("SaveRegistry: %v", err)
+	}
+	// Create the binary so Resolve can find it.
+	createPlugin(t, home, "myplugin", `{"name":"myplugin","version":"1.0.0"}`)
+	if err := VerifyPlugin("myplugin"); err != nil {
+		t.Fatalf("expected VerifyPlugin to pass for entry with no checksum, got: %v", err)
+	}
+}
+
+func TestVerifyPlugin_CorrectChecksum_Passes(t *testing.T) {
+	home := setupPluginHome(t)
+	binPath := createPlugin(t, home, "myplugin", `{"name":"myplugin","version":"1.0.0"}`)
+	sum, err := BinaryChecksum(binPath)
+	if err != nil {
+		t.Fatalf("BinaryChecksum: %v", err)
+	}
+	reg := &Registry{Plugins: map[string]RegistryEntry{
+		"myplugin": {Name: "myplugin", SHA256: sum},
+	}}
+	if err := SaveRegistry(reg); err != nil {
+		t.Fatalf("SaveRegistry: %v", err)
+	}
+	if err := VerifyPlugin("myplugin"); err != nil {
+		t.Fatalf("expected VerifyPlugin to pass for correct checksum, got: %v", err)
+	}
+}
+
+func TestVerifyPlugin_TamperedBinary_Fails(t *testing.T) {
+	home := setupPluginHome(t)
+	binPath := createPlugin(t, home, "myplugin", `{"name":"myplugin","version":"1.0.0"}`)
+
+	// Record the original checksum.
+	sum, _ := BinaryChecksum(binPath)
+	reg := &Registry{Plugins: map[string]RegistryEntry{
+		"myplugin": {Name: "myplugin", SHA256: sum},
+	}}
+	if err := SaveRegistry(reg); err != nil {
+		t.Fatalf("SaveRegistry: %v", err)
+	}
+
+	// Tamper with the binary after recording the checksum.
+	if err := os.WriteFile(binPath, []byte("#!/bin/sh\necho tampered\n"), 0o755); err != nil {
+		t.Fatalf("tamper write: %v", err)
+	}
+
+	err := VerifyPlugin("myplugin")
+	if err == nil {
+		t.Fatal("expected VerifyPlugin to fail for tampered binary")
+	}
+	if !strings.Contains(err.Error(), "checksum mismatch") && !strings.Contains(err.Error(), "tampered") {
+		t.Fatalf("expected checksum mismatch error, got: %v", err)
+	}
+}
+
+func TestInstallFromSource_RecordsChecksum(t *testing.T) {
+	home := setupPluginHome(t)
+	// Build a minimal installable local plugin directory.
+	srcDir := filepath.Join(t.TempDir(), "myplugin")
+	if err := os.MkdirAll(srcDir, 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	// Write a fake binary (must start with "kcli-").
+	binPath := filepath.Join(srcDir, "kcli-myplugin")
+	if err := os.WriteFile(binPath, []byte("#!/bin/sh\necho hello\n"), 0o755); err != nil {
+		t.Fatalf("write binary: %v", err)
+	}
+	// Write a YAML manifest named plugin.yaml (what findManifestPath looks for).
+	manifestContent := "name: myplugin\nversion: 0.1.0\n"
+	manifestPath := filepath.Join(srcDir, "plugin.yaml")
+	if err := os.WriteFile(manifestPath, []byte(manifestContent), 0o644); err != nil {
+		t.Fatalf("write manifest: %v", err)
+	}
+
+	entry, err := InstallFromSource(srcDir)
+	if err != nil {
+		t.Fatalf("InstallFromSource: %v", err)
+	}
+	if strings.TrimSpace(entry.SHA256) == "" {
+		t.Fatal("expected InstallFromSource to record SHA256 in registry entry")
+	}
+	if len(entry.SHA256) != 64 {
+		t.Fatalf("expected 64-char hex SHA-256, got %q", entry.SHA256)
+	}
+
+	// Also verify the stored checksum matches the installed binary.
+	installedBin := filepath.Join(home, "plugins", "kcli-myplugin")
+	expected, err := BinaryChecksum(installedBin)
+	if err != nil {
+		t.Fatalf("BinaryChecksum of installed binary: %v", err)
+	}
+	if entry.SHA256 != expected {
+		t.Fatalf("registry SHA256 %q != installed binary SHA256 %q", entry.SHA256, expected)
 	}
 }

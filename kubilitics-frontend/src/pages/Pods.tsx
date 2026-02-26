@@ -1,9 +1,9 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   Search, Filter, RefreshCw, MoreHorizontal, CheckCircle2, XCircle, Clock, Loader2, WifiOff, Box,
   ChevronDown, ChevronLeft, ChevronRight, Trash2, RotateCcw, Scale, History, Rocket, FileText,
-  List, Layers, Activity, PauseCircle, LayoutGrid, Terminal, ExternalLink, Download, FileSpreadsheet, GitCompare, Boxes, type LucideIcon
+  List, Layers, Activity, PauseCircle, LayoutGrid, Terminal, ExternalLink, Download, GitCompare, Boxes, X, type LucideIcon
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -23,11 +23,12 @@ import { useConnectionStatus } from '@/hooks/useConnectionStatus';
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
 import { useClusterStore } from '@/stores/clusterStore';
 import { getPodMetrics, getPodLogsUrl, postShellCommand } from '@/services/backendApiClient';
-import { DeleteConfirmDialog, PortForwardDialog, UsageBar, parseCpu, parseMemory, calculatePodResourceMax, PodComparisonView } from '@/components/resources';
+import { DeleteConfirmDialog, PortForwardDialog, UsageBar, parseCpu, parseMemory, calculatePodResourceMax, ResourceComparisonView } from '@/components/resources';
 import { ResourceCommandBar, ResourceExportDropdown, ListViewSegmentedControl, NamespaceFilter } from '@/components/list';
 import { ResourceCreator, DEFAULT_YAMLS } from '@/components/editor';
 import { useQuery, useQueries } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { objectsToYaml, downloadBlob, downloadResourceJson } from '@/lib/exportUtils';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Progress } from '@/components/ui/progress';
 
@@ -494,17 +495,79 @@ export default function Pods() {
   };
 
   const handleDownloadYaml = (pod: Pod) => {
-    // Reconstruct YAML from resource. Ideally fetch from backend.
-    toast.info('Downloading YAML...');
+    const data: Record<string, unknown> = {
+      name: pod.name,
+      namespace: pod.namespace,
+      status: pod.status,
+      ready: pod.ready,
+      restarts: pod.restarts,
+      cpu: pod.cpu,
+      memory: pod.memory,
+      age: pod.age,
+      node: pod.node,
+      internalIP: pod.internalIP,
+      externalIP: pod.externalIP,
+      containers: pod.containers?.length ?? 0,
+      containerNames: pod.containers?.map((c) => c.name).join(', ') ?? '',
+    };
+    const yaml = objectsToYaml([data]);
+    const blob = new Blob([yaml], { type: 'text/yaml' });
+    downloadBlob(blob, `${pod.namespace}-${pod.name}.yaml`);
+    toast.success('YAML downloaded');
   };
 
-  const handleBulkExportCsv = () => {
-    toast.info('Exporting CSV...');
+  const handleDownloadJson = (pod: Pod) => {
+    const data: Record<string, unknown> = {
+      name: pod.name,
+      namespace: pod.namespace,
+      status: pod.status,
+      ready: pod.ready,
+      restarts: pod.restarts,
+      cpu: pod.cpu,
+      memory: pod.memory,
+      age: pod.age,
+      node: pod.node,
+      internalIP: pod.internalIP,
+      externalIP: pod.externalIP,
+      containers: pod.containers?.length ?? 0,
+      containerNames: pod.containers?.map((c) => c.name).join(', ') ?? '',
+    };
+    downloadResourceJson(data, `${pod.namespace}-${pod.name}.json`);
+    toast.success('JSON downloaded');
   };
 
-  const handleBulkExportYaml = () => {
-    toast.info('Exporting YAML...');
-  };
+  const podExportConfig = useMemo(() => ({
+    filenamePrefix: 'pods',
+    resourceLabel: 'pods',
+    getExportData: (p: Pod) => ({
+      name: p.name,
+      namespace: p.namespace,
+      status: p.status,
+      ready: p.ready,
+      restarts: p.restarts,
+      cpu: p.cpu,
+      memory: p.memory,
+      age: p.age,
+      node: p.node,
+      internalIP: p.internalIP,
+      externalIP: p.externalIP,
+      containers: p.containers?.length ?? 0,
+      containerNames: p.containers?.map(c => c.name).join(', ') ?? '',
+    }),
+    csvColumns: [
+      { label: 'Name', getValue: (p: Pod) => p.name },
+      { label: 'Namespace', getValue: (p: Pod) => p.namespace },
+      { label: 'Status', getValue: (p: Pod) => p.status },
+      { label: 'Ready', getValue: (p: Pod) => p.ready },
+      { label: 'Restarts', getValue: (p: Pod) => p.restarts },
+      { label: 'CPU', getValue: (p: Pod) => p.cpu },
+      { label: 'Memory', getValue: (p: Pod) => p.memory },
+      { label: 'Age', getValue: (p: Pod) => p.age },
+      { label: 'Node', getValue: (p: Pod) => p.node },
+      { label: 'Internal IP', getValue: (p: Pod) => p.internalIP },
+      { label: 'External IP', getValue: (p: Pod) => p.externalIP },
+    ],
+  }), []);
 
   const handleBulkRestart = () => {
     toast.info(`Restarting ${selectedPods.size} pods...`);
@@ -549,34 +612,31 @@ export default function Pods() {
         onCreate={() => setShowCreateWizard(true)}
         actions={
           <>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="gap-2">
-                  <Download className="h-4 w-4" />
-                  Export
-                  <ChevronDown className="h-4 w-4 opacity-50" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={handleBulkExportCsv} className="gap-2 cursor-pointer">
-                  <FileSpreadsheet className="h-4 w-4 shrink-0" />
-                  Export as CSV — for spreadsheets
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={handleBulkExportYaml} className="gap-2 cursor-pointer">
-                  <FileText className="h-4 w-4 shrink-0" />
-                  Download as YAML — Kubernetes manifests
-                </DropdownMenuItem>
-                {selectedPods.size > 0 && (
-                  <>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={handleBulkRestart} className="gap-2 cursor-pointer">
-                      <RotateCcw className="h-4 w-4" />
-                      Restart selected
-                    </DropdownMenuItem>
-                  </>
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <ResourceExportDropdown
+              items={filteredPods}
+              selectedKeys={selectedPods}
+              getKey={(p) => `${p.namespace}/${p.name}`}
+              config={podExportConfig}
+              selectionLabel={selectedPods.size > 0 ? 'Selected pods' : 'All visible pods'}
+              onToast={(msg, type) => (type === 'info' ? toast.info(msg) : toast.success(msg))}
+            />
+            {selectedPods.size > 0 && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="gap-2">
+                    <RotateCcw className="h-4 w-4" />
+                    Actions
+                    <ChevronDown className="h-4 w-4 opacity-50" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={handleBulkRestart} className="gap-2 cursor-pointer">
+                    <RotateCcw className="h-4 w-4 shrink-0" />
+                    Restart selected
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
             <Button variant="outline" size="sm" className="gap-2" onClick={() => setShowComparison(true)}>
               <GitCompare className="h-4 w-4" />
               Compare
@@ -1187,6 +1247,10 @@ export default function Pods() {
                               <Download className="h-4 w-4" />
                               Download YAML
                             </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleDownloadJson(pod)} className="gap-2">
+                              <Download className="h-4 w-4" />
+                              Export as JSON
+                            </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem
                               className="gap-2 text-destructive"
@@ -1214,11 +1278,14 @@ export default function Pods() {
             resourceKind="Pod"
             defaultYaml={DEFAULT_YAMLS.Pod}
             onClose={() => setShowCreateWizard(false)}
-            onApply={(yaml) => {
-              console.log('Creating Pod with YAML:', yaml);
-              toast.success('Pod created successfully (demo mode)');
-              setShowCreateWizard(false);
-              refetch();
+            onApply={async (yaml) => {
+              try {
+                await createResource.mutateAsync({ yaml });
+                setShowCreateWizard(false);
+                refetch();
+              } catch (e) {
+                // Error toast is handled by useCreateK8sResource
+              }
             }}
             clusterName="docker-desktop"
           />
@@ -1248,15 +1315,43 @@ export default function Pods() {
         )
       }
 
-      {/* Pod Comparison View */}
-      <PodComparisonView
-        open={showComparison}
-        onClose={() => setShowComparison(false)}
-        availablePods={fullPods.map(p => ({ name: p.name, namespace: p.namespace, status: p.status }))}
-        clusterId={clusterId ?? undefined}
-        backendBaseUrl={backendBaseUrl ?? ''}
-        isConnected={isConnected}
-      />
+      {/* Resource Comparison View Modal */}
+      <AnimatePresence>
+        {showComparison && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="w-full h-full max-w-[min(96vw,1680px)] max-h-[95vh] flex flex-col bg-background border rounded-xl shadow-2xl overflow-hidden relative"
+            >
+              <Button
+                variant="ghost"
+                size="icon"
+                className="absolute right-4 top-4 z-50"
+                onClick={() => setShowComparison(false)}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+              <div className="flex-1 overflow-hidden">
+                <ResourceComparisonView
+                  resourceType="pods"
+                  resourceKind="Pod"
+                  initialSelectedResources={Array.from(selectedPods)}
+                  clusterId={clusterId ?? undefined}
+                  backendBaseUrl={backendBaseUrl ?? ''}
+                  isConnected={isConnected}
+                />
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div >
   );
 }

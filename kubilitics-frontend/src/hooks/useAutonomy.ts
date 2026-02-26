@@ -1,70 +1,22 @@
-/**
- * useAutonomy — hook for safety engine: autonomy levels, policies, rules.
- *
- * Covers:
- *   GET  /api/v1/safety/rules                                 - immutable rules
- *   GET  /api/v1/safety/policies                              - list policies
- *   POST /api/v1/safety/policies                              - create policy
- *   DELETE /api/v1/safety/policies/{name}                     - delete policy
- *   GET  /api/v1/safety/autonomy/{user_id}                    - get autonomy level
- *   POST /api/v1/safety/autonomy/{user_id}                    - set autonomy level
- *   GET  /api/v1/safety/autonomy/{user_id}/namespaces         - list ns overrides
- *   POST /api/v1/safety/autonomy/{user_id}/namespaces         - upsert ns override
- *   DELETE /api/v1/safety/autonomy/{user_id}/namespaces/{ns}  - delete ns override
- *   GET  /api/v1/safety/approvals                             - list approvals
- *   POST /api/v1/safety/approvals/{id}/approve                - approve action
- *   POST /api/v1/safety/approvals/{id}/reject                 - reject action
- *   POST /api/v1/safety/evaluate                              - evaluate an action
- */
-
 import { useState, useCallback, useEffect } from 'react';
-import { AI_BASE_URL } from '../services/aiService';
+import * as aiService from '../services/aiService';
+import {
+  SafetyRule,
+  SafetyPolicy,
+  SafetyEvaluationResult,
+  SafetyAction,
+  NamespaceOverride,
+  PendingApproval
+} from '../services/aiService';
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-
-export interface SafetyRule {
-  name?: string;
-  description?: string;
-}
-
-export interface SafetyPolicy {
-  name: string;
-  condition: string;
-  effect: 'deny' | 'warn';
-  reason: string;
-}
-
-export interface PolicyCheck {
-  policy_name: string;
-  passed: boolean;
-  reason: string;
-  severity: 'critical' | 'high' | 'medium' | 'low';
-}
-
-export interface SafetyEvaluationResult {
-  approved: boolean;
-  result: 'approve' | 'deny' | 'request_approval' | 'warn';
-  reason: string;
-  risk_level: 'critical' | 'high' | 'medium' | 'low';
-  blast_radius?: {
-    affected_resources: unknown[];
-    impact_summary: string;
-  };
-  requires_human: boolean;
-  policy_checks: PolicyCheck[];
-  metadata: Record<string, unknown>;
-}
-
-export interface SafetyAction {
-  id?: string;
-  operation: string;
-  resource_type: string;
-  resource_name: string;
-  namespace: string;
-  target_state?: Record<string, unknown>;
-  justification?: string;
-  user_id?: string;
-}
+export {
+  type SafetyRule,
+  type SafetyPolicy,
+  type SafetyEvaluationResult,
+  type SafetyAction,
+  type NamespaceOverride,
+  type PendingApproval
+};
 
 // Autonomy level definitions matching backend
 export const AUTONOMY_LEVELS = [
@@ -120,29 +72,6 @@ export const AUTONOMY_LEVELS = [
   },
 ] as const;
 
-// ─── API helpers ──────────────────────────────────────────────────────────────
-
-async function safetyGet<T>(path: string): Promise<T> {
-  const res = await fetch(`${AI_BASE_URL}${path}`);
-  if (!res.ok) throw new Error(`${res.status}: ${await res.text().catch(() => '')}`);
-  return res.json();
-}
-
-async function safetyPost<T>(path: string, body: unknown): Promise<T> {
-  const res = await fetch(`${AI_BASE_URL}${path}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
-  if (!res.ok) throw new Error(`${res.status}: ${await res.text().catch(() => '')}`);
-  return res.json();
-}
-
-async function safetyDelete(path: string): Promise<void> {
-  const res = await fetch(`${AI_BASE_URL}${path}`, { method: 'DELETE' });
-  if (!res.ok) throw new Error(`${res.status}: ${await res.text().catch(() => '')}`);
-}
-
 // ─── useImmutableRules ────────────────────────────────────────────────────────
 
 export function useImmutableRules() {
@@ -154,7 +83,7 @@ export function useImmutableRules() {
     setLoading(true);
     setError(null);
     try {
-      const data = await safetyGet<{ rules: string[] } | string[]>('/api/v1/safety/rules');
+      const data = await aiService.getSafetyRules();
       const arr = Array.isArray(data)
         ? (data as string[])
         : ((data as { rules: string[] }).rules ?? []);
@@ -183,7 +112,7 @@ export function useSafetyPolicies() {
     setLoading(true);
     setError(null);
     try {
-      const data = await safetyGet<{ policies: SafetyPolicy[] } | SafetyPolicy[]>('/api/v1/safety/policies');
+      const data = await aiService.getSafetyPolicies();
       const arr = Array.isArray(data)
         ? (data as SafetyPolicy[])
         : ((data as { policies: SafetyPolicy[] }).policies ?? []);
@@ -200,7 +129,7 @@ export function useSafetyPolicies() {
   const createPolicy = useCallback(async (policy: SafetyPolicy) => {
     setSaving(true);
     try {
-      await safetyPost('/api/v1/safety/policies', policy);
+      await aiService.createSafetyPolicy(policy);
       await load();
     } finally {
       setSaving(false);
@@ -210,7 +139,7 @@ export function useSafetyPolicies() {
   const deletePolicy = useCallback(async (name: string) => {
     setSaving(true);
     try {
-      await safetyDelete(`/api/v1/safety/policies/${encodeURIComponent(name)}`);
+      await aiService.deleteSafetyPolicy(name);
       await load();
     } finally {
       setSaving(false);
@@ -232,7 +161,7 @@ export function useAutonomyLevel(userID = 'default') {
     setLoading(true);
     setError(null);
     try {
-      const data = await safetyGet<{ user_id: string; level: number }>(`/api/v1/safety/autonomy/${encodeURIComponent(userID)}`);
+      const data = await aiService.getAutonomyLevel(userID);
       setLevelState(data.level ?? 1);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -247,7 +176,7 @@ export function useAutonomyLevel(userID = 'default') {
     setSaving(true);
     setError(null);
     try {
-      await safetyPost(`/api/v1/safety/autonomy/${encodeURIComponent(userID)}`, { level: newLevel });
+      await aiService.setAutonomyLevel(userID, newLevel);
       setLevelState(newLevel);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -271,9 +200,9 @@ export function useSafetyEvaluate() {
     setError(null);
     setResult(null);
     try {
-      const data = await safetyPost<SafetyEvaluationResult>('/api/v1/safety/evaluate', {
+      const data = await aiService.safetyEvaluate({
         action: action.operation,
-        context: action,
+        context: action as unknown as Record<string, unknown>,
       });
       setResult(data);
       return data;
@@ -291,13 +220,6 @@ export function useSafetyEvaluate() {
 
 // ─── Namespace overrides ──────────────────────────────────────────────────────
 
-export interface NamespaceOverride {
-  user_id: string;
-  namespace: string;
-  level: number;
-  updated_at: string;
-}
-
 export function useNamespaceOverrides(userID = 'default') {
   const [overrides, setOverrides] = useState<NamespaceOverride[]>([]);
   const [loading, setLoading] = useState(false);
@@ -308,9 +230,7 @@ export function useNamespaceOverrides(userID = 'default') {
     setLoading(true);
     setError(null);
     try {
-      const data = await safetyGet<{ overrides: NamespaceOverride[] }>(
-        `/api/v1/safety/autonomy/${encodeURIComponent(userID)}/namespaces`,
-      );
+      const data = await aiService.getNamespaceOverrides(userID);
       setOverrides(Array.isArray(data.overrides) ? data.overrides : []);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -325,10 +245,7 @@ export function useNamespaceOverrides(userID = 'default') {
     setSaving(true);
     setError(null);
     try {
-      await safetyPost(`/api/v1/safety/autonomy/${encodeURIComponent(userID)}/namespaces`, {
-        namespace,
-        level,
-      });
+      await aiService.upsertNamespaceOverride(userID, namespace, level);
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -341,9 +258,7 @@ export function useNamespaceOverrides(userID = 'default') {
     setSaving(true);
     setError(null);
     try {
-      await fetch(`${AI_BASE_URL}/api/v1/safety/autonomy/${encodeURIComponent(userID)}/namespaces/${encodeURIComponent(namespace)}`, {
-        method: 'DELETE',
-      });
+      await aiService.deleteNamespaceOverride(userID, namespace);
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -357,21 +272,6 @@ export function useNamespaceOverrides(userID = 'default') {
 
 // ─── Approvals ────────────────────────────────────────────────────────────────
 
-export interface PendingApproval {
-  id: string;
-  user_id: string;
-  operation: string;
-  namespace?: string;
-  resource_id?: string;
-  description: string;
-  risk_level: string;
-  status: 'pending' | 'approved' | 'rejected';
-  created_at: string;
-  resolved_at?: string;
-  resolved_by?: string;
-  metadata?: Record<string, unknown>;
-}
-
 export function useApprovals(userID = 'default', autoRefreshMs = 15_000) {
   const [approvals, setApprovals] = useState<PendingApproval[]>([]);
   const [loading, setLoading] = useState(false);
@@ -382,10 +282,7 @@ export function useApprovals(userID = 'default', autoRefreshMs = 15_000) {
     setLoading(true);
     setError(null);
     try {
-      const url = userID
-        ? `/api/v1/safety/approvals?user_id=${encodeURIComponent(userID)}`
-        : '/api/v1/safety/approvals';
-      const data = await safetyGet<{ approvals: PendingApproval[] }>(url);
+      const data = await aiService.listApprovals(userID);
       const list = Array.isArray(data.approvals) ? data.approvals : [];
       setApprovals(list);
     } catch (err) {
@@ -407,10 +304,7 @@ export function useApprovals(userID = 'default', autoRefreshMs = 15_000) {
     setActing(true);
     setError(null);
     try {
-      await safetyPost(
-        `/api/v1/safety/approvals/${encodeURIComponent(actionID)}/approve?user_id=${encodeURIComponent(userID)}`,
-        {},
-      );
+      await aiService.approveAction(actionID, userID);
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -423,10 +317,7 @@ export function useApprovals(userID = 'default', autoRefreshMs = 15_000) {
     setActing(true);
     setError(null);
     try {
-      await safetyPost(
-        `/api/v1/safety/approvals/${encodeURIComponent(actionID)}/reject?user_id=${encodeURIComponent(userID)}`,
-        {},
-      );
+      await aiService.rejectAction(actionID, userID);
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));

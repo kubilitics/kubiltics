@@ -39,6 +39,7 @@ import { AISetupModal } from '@/features/ai/AISetupModal';
 import { getClusterKubeconfig } from '@/services/backendApiClient';
 import { getEffectiveBackendBaseUrl, useBackendConfigStore } from '@/stores/backendConfigStore';
 import { useUIStore } from '@/stores/uiStore';
+import { useProjectStore } from '@/stores/projectStore';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { useAIStatus } from '@/hooks/useAIStatus';
@@ -70,35 +71,35 @@ export const HEADER_HEIGHT_CLASS = 'h-20';
 
 /** Secondary action — Cluster (same treatment) */
 const BTN = cn(
-  'h-12 px-6 rounded-2xl',
-  'inline-flex items-center justify-center gap-3',
-  'text-base font-semibold leading-none',
-  'border border-slate-200/60 bg-white/50 text-slate-700',
-  'hover:bg-white hover:border-slate-300 hover:shadow-sm hover:translate-y-[-1px]',
-  'transition-all duration-300 ease-out',
+  'h-11 px-5 rounded-xl',
+  'inline-flex items-center justify-center gap-2.5',
+  'text-[13px] font-semibold leading-none',
+  'border border-slate-200/50 bg-white/40 text-slate-700',
+  'hover:bg-white hover:border-slate-300 hover:shadow-apple hover:translate-y-[-0.5px]',
+  'transition-all duration-300 ease-spring',
   'active:scale-[0.98]',
   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20'
 );
 
 /** Feature actions — Shell, Kubeconfig: clear button treatment and value proposition */
 const FEATURE_BTN = cn(
-  'h-12 px-6 rounded-2xl',
-  'inline-flex items-center justify-center gap-3',
-  'text-base font-bold leading-none',
-  'border border-slate-200/50 bg-slate-50/50 text-slate-800',
-  'hover:bg-white hover:border-primary/20 hover:shadow-lg hover:shadow-primary/5 hover:translate-y-[-1px]',
-  'transition-all duration-300 ease-out',
+  'h-11 px-5 rounded-xl',
+  'inline-flex items-center justify-center gap-2.5',
+  'text-[13px] font-bold leading-none',
+  'border border-slate-200/40 bg-slate-50/40 text-slate-800',
+  'hover:bg-white hover:border-primary/20 hover:shadow-apple-lg hover:translate-y-[-0.5px]',
+  'transition-all duration-300 ease-spring',
   'active:scale-[0.98]',
   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20'
 );
 
 /** Icon or labelled button (Notifications, etc.) */
 const ICON_BTN = cn(
-  'h-12 min-w-[3rem] rounded-2xl',
-  'inline-flex items-center justify-center gap-3',
+  'h-11 min-w-[2.75rem] rounded-xl',
+  'inline-flex items-center justify-center gap-2.5',
   'text-slate-500',
-  'hover:bg-slate-100/80 hover:text-slate-900 hover:translate-y-[-1px]',
-  'transition-all duration-300 ease-out',
+  'hover:bg-slate-100/60 hover:text-slate-900 hover:translate-y-[-0.5px]',
+  'transition-all duration-300 ease-spring',
   'active:scale-[0.98]',
   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20'
 );
@@ -106,6 +107,7 @@ const ICON_BTN = cn(
 export function Header() {
   const collapsed = useUIStore((s) => s.isSidebarCollapsed);
   const navigate = useNavigate();
+  const activeProject = useProjectStore((s) => s.activeProject);
   const { activeCluster, clusters, setActiveCluster, isDemo, signOut } = useClusterStore();
   const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
   const setCurrentClusterId = useBackendConfigStore((s) => s.setCurrentClusterId);
@@ -214,26 +216,26 @@ export function Header() {
 
   return (
     <>
-      <header className={cn(HEADER_HEIGHT_CLASS, 'border-b border-slate-100 bg-white/80 backdrop-blur-2xl shrink-0 shadow-[0_1px_2px_rgba(0,0,0,0.02)] transition-all duration-300')}>
+      <header className={cn(HEADER_HEIGHT_CLASS, 'border-b border-slate-100 bg-white/60 backdrop-blur-3xl shrink-0 shadow-[0_1px_3px_rgba(0,0,0,0.02)] transition-all duration-300 sticky top-0 z-50')}>
         <div className="flex items-center h-full w-full">
 
           {/* ──── Logo zone: prominent Kubilitics branding ──── */}
           <div className={cn(
-            "shrink-0 flex items-center justify-start h-full bg-slate-50/40 border-r border-slate-100/60 px-6 transition-all duration-300",
+            "shrink-0 flex items-center justify-start h-full bg-slate-50/20 border-r border-slate-100/60 px-6 transition-all duration-300",
             collapsed ? "w-[5.5rem]" : "w-72"
           )}>
             <button
               onClick={() => navigate('/home')}
-              className="flex items-center gap-4 group focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 rounded-2xl p-2 -ml-2 transition-all"
+              className="flex items-center gap-4 group focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 rounded-xl p-2 -ml-2 transition-all"
               aria-label="Go to Home"
             >
               <div className="relative group/logo shrink-0">
                 <div className="absolute inset-0 bg-primary/25 blur-xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                <div className="relative flex items-center justify-center w-[44px] h-[44px] rounded-2xl bg-primary shadow-2xl shadow-primary/20 group-hover:scale-105 transition-all duration-500">
-                  <KubiliticsLogo size={28} className="text-white group-hover:rotate-12 transition-transform duration-500" />
+                <div className="relative flex items-center justify-center w-[38px] h-[38px] rounded-xl bg-gradient-to-br from-[#0076DD] to-[#00CDE9] shadow-apple-lg shadow-primary/10 group-hover:scale-105 transition-all duration-500">
+                  <KubiliticsLogo size={24} className="text-white group-hover:rotate-12 transition-transform duration-500" />
                 </div>
               </div>
-              <KubiliticsText height={26} className={cn("hidden lg:inline text-primary transition-all duration-300", collapsed && "lg:hidden")} />
+              <KubiliticsText height={22} className={cn("hidden lg:inline text-primary transition-all duration-300", collapsed && "lg:hidden")} />
             </button>
           </div>
 
@@ -244,19 +246,29 @@ export function Header() {
               type="button"
               onClick={() => setSearchOpen(true)}
               className={cn(
-                'flex-1 max-w-[140px] sm:max-w-xs md:max-w-md lg:max-w-xl h-12 px-3 md:px-5 flex items-center gap-3 md:gap-4 rounded-2xl',
-                'bg-slate-100/50 border border-slate-200/40 text-slate-400',
-                'hover:bg-slate-100 hover:border-slate-300 hover:text-slate-600',
+                'flex-1 max-w-[140px] sm:max-w-xs md:max-w-md lg:max-w-xl h-11 px-3 md:px-5 flex items-center gap-3 md:gap-4 rounded-xl',
+                'bg-slate-100/40 border border-slate-100 text-slate-400',
+                'hover:bg-slate-100/60 hover:border-slate-200 hover:text-slate-600',
                 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/10',
                 'transition-all duration-300 group'
               )}
             >
-              <Search className="h-5 w-5 shrink-0 group-hover:text-primary transition-colors duration-300" />
-              <span className="flex-1 text-left text-sm font-bold tracking-tight hidden md:block">Search resources...</span>
-              <kbd className="hidden sm:inline-flex h-8 items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 font-mono text-[10px] font-black text-slate-400 shrink-0 shadow-sm">
-                <Command className="h-3 w-3" />K
+              <Search className="h-4 w-4 shrink-0 group-hover:text-primary transition-colors duration-300" />
+              <span className="flex-1 text-left text-[13px] font-semibold tracking-tight hidden md:block">Search resources...</span>
+              <kbd className="hidden sm:inline-flex h-7 items-center gap-1 rounded-lg border border-slate-200/60 bg-white px-2.5 font-mono text-[9px] font-bold text-slate-400 shrink-0 shadow-sm">
+                <Command className="h-2.5 w-2.5" />K
               </kbd>
             </button>
+
+            {/* Project context badge when in project scope */}
+            {activeProject && (
+              <div className="shrink-0 flex items-center gap-2 px-3 py-1.5 rounded-xl bg-primary/10 border border-primary/20">
+                <span className="text-xs font-semibold text-primary truncate max-w-[120px]" title={activeProject.name}>
+                  {activeProject.name}
+                </span>
+                <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Project</span>
+              </div>
+            )}
 
             {/* Right group: pushed to the edge with even spacing between items */}
             <div className="flex items-center gap-2 lg:gap-4 shrink-0 ml-auto">

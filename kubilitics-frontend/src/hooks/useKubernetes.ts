@@ -4,6 +4,7 @@ import { useKubernetesConfigStore } from '@/stores/kubernetesConfigStore';
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
 import { useClusterStore } from '@/stores/clusterStore';
 import { listResources, getResource, deleteResource, patchResource, applyManifest, getPodLogsUrl, CONFIRM_DESTRUCTIVE_HEADER, getCronJobJobs } from '@/services/backendApiClient';
+import yamlParser from 'js-yaml';
 import { useProjectStore } from '@/stores/projectStore';
 import { toast } from 'sonner';
 
@@ -59,6 +60,7 @@ export const API_GROUPS = {
   limitranges: '/api/v1',
   replicationcontrollers: '/api/v1',
   podtemplates: '/api/v1',
+  componentstatuses: '/api/v1',
 
   // Apps API
   deployments: '/apis/apps/v1',
@@ -173,7 +175,7 @@ const CLUSTER_SCOPED_KINDS: ResourceType[] = [
   'runtimeclasses', 'apiservices', 'customresourcedefinitions', 'volumeattachments',
   'mutatingwebhookconfigurations', 'validatingwebhookconfigurations', 'podsecuritypolicies',
   'volumesnapshotclasses', 'volumesnapshotcontents',
-  'resourceslices', 'deviceclasses',
+  'resourceslices', 'deviceclasses', 'componentstatuses',
 ];
 
 // Generic hook for fetching any K8s resource list (backend or direct K8s). Per A3.3: single code path for backend mode.
@@ -181,11 +183,11 @@ const CLUSTER_SCOPED_KINDS: ResourceType[] = [
 export function useK8sResourceList<T extends KubernetesResource>(
   resourceType: ResourceType,
   namespace?: string,
-  options?: { 
-    enabled?: boolean; 
-    refetchInterval?: number | false; 
-    limit?: number; 
-    fieldSelector?: string; 
+  options?: {
+    enabled?: boolean;
+    refetchInterval?: number | false;
+    limit?: number;
+    fieldSelector?: string;
     labelSelector?: string;
     staleTime?: number;
     placeholderData?: (previousData: ResourceList<T> | undefined) => ResourceList<T> | undefined;
@@ -208,9 +210,11 @@ export function useK8sResourceList<T extends KubernetesResource>(
     const projectCluster = activeProject.clusters.find(c => c.cluster_id === clusterId);
     return projectCluster?.namespaces ?? null;
   }, [activeProject, clusterId]);
-  // Backend accepts only a single namespace; use project filter only when exactly one namespace.
+  // Project scope: single namespace -> namespace param; multiple or zero -> namespaces param.
   const projectNamespaceParam =
     projectNamespaces && projectNamespaces.length === 1 ? projectNamespaces[0]! : undefined;
+  const projectNamespacesParam =
+    projectNamespaces && projectNamespaces.length !== 1 ? projectNamespaces : undefined;
 
   const apiBase = API_GROUPS[resourceType];
   const isClusterScoped = CLUSTER_SCOPED_KINDS.includes(resourceType);
@@ -225,16 +229,26 @@ export function useK8sResourceList<T extends KubernetesResource>(
 
   return useQuery({
     queryKey: useBackend
-      ? ['backend', 'resources', clusterId, activeProjectId ?? 'no-project', resourceType, namespace, limit ?? '', fieldSelector ?? '', labelSelector ?? '']
+      ? ['backend', 'resources', clusterId, activeProjectId ?? 'no-project', resourceType, namespace, projectNamespacesParam?.join(',') ?? '', limit ?? '', fieldSelector ?? '', labelSelector ?? '']
       : ['k8s', resourceType, namespace, fieldSelector ?? '', labelSelector ?? ''],
     queryFn: useBackend
-      ? () =>
-        listResources(backendBaseUrl, clusterId!, resourceType, {
-          namespace: isClusterScoped ? undefined : (namespace || projectNamespaceParam),
+      ? () => {
+        const listParams: Parameters<typeof listResources>[3] = {
           ...(limit != null && limit > 0 ? { limit } : {}),
           ...(fieldSelector ? { fieldSelector } : {}),
           ...(labelSelector ? { labelSelector } : {}),
-        }).then((r) => ({ items: r.items as T[], metadata: r.metadata } as ResourceList<T>))
+        };
+        if (!isClusterScoped) {
+          if (projectNamespacesParam !== undefined) {
+            listParams.namespaces = projectNamespacesParam;
+          } else if (namespace || projectNamespaceParam) {
+            listParams.namespace = namespace || projectNamespaceParam;
+          }
+        }
+        return listResources(backendBaseUrl, clusterId!, resourceType, listParams).then(
+          (r) => ({ items: r.items as T[], metadata: r.metadata } as ResourceList<T>)
+        );
+      }
       : () => {
         const query = [fieldSelector && `fieldSelector=${encodeURIComponent(fieldSelector)}`, labelSelector && `labelSelector=${encodeURIComponent(labelSelector)}`].filter(Boolean).join('&');
         return k8sRequest<ResourceList<T>>(path + (query ? `?${query}` : ''), {}, config);
@@ -244,7 +258,7 @@ export function useK8sResourceList<T extends KubernetesResource>(
     // backend cache. Data is pushed via informer watch events; 60s staleTime
     // means a page load shows cached data immediately with a background refresh
     // at most once per minute (matching Headlamp/Lens behaviour).
-    refetchInterval: options?.refetchInterval ?? false,
+    refetchInterval: options?.refetchInterval ?? 10_000,
     staleTime: options?.staleTime ?? 60_000,
     placeholderData: options?.placeholderData,
     retry: useBackend ? false : 3,
@@ -277,6 +291,8 @@ export function useK8sResourceListPaginated<T extends KubernetesResource>(
   }, [activeProject, clusterId]);
   const projectNamespaceParam =
     projectNamespaces && projectNamespaces.length === 1 ? projectNamespaces[0]! : undefined;
+  const projectNamespacesParam =
+    projectNamespaces && projectNamespaces.length !== 1 ? projectNamespaces : undefined;
 
   const apiBase = API_GROUPS[resourceType];
   const isClusterScoped = CLUSTER_SCOPED_KINDS.includes(resourceType);
@@ -290,15 +306,22 @@ export function useK8sResourceListPaginated<T extends KubernetesResource>(
 
   return useQuery({
     queryKey: useBackend
-      ? ['backend', 'resources', clusterId, activeProjectId ?? 'no-project', resourceType, namespace, limit, continueToken ?? '']
+      ? ['backend', 'resources', clusterId, activeProjectId ?? 'no-project', resourceType, namespace, projectNamespacesParam?.join(',') ?? '', limit, continueToken ?? '']
       : ['k8s', resourceType, namespace],
     queryFn: useBackend
-      ? () =>
-        listResources(backendBaseUrl, clusterId!, resourceType, {
-          namespace: isClusterScoped ? undefined : (namespace || projectNamespaceParam),
-          limit,
-          continue: continueToken,
-        }).then((r) => ({ items: r.items as T[], metadata: r.metadata } as ResourceList<T>))
+      ? () => {
+        const listParams: Parameters<typeof listResources>[3] = { limit, ...(continueToken ? { continue: continueToken } : {}) };
+        if (!isClusterScoped) {
+          if (projectNamespacesParam !== undefined) {
+            listParams.namespaces = projectNamespacesParam;
+          } else if (namespace || projectNamespaceParam) {
+            listParams.namespace = namespace || projectNamespaceParam;
+          }
+        }
+        return listResources(backendBaseUrl, clusterId!, resourceType, listParams).then(
+          (r) => ({ items: r.items as T[], metadata: r.metadata } as ResourceList<T>)
+        );
+      }
       : () => k8sRequest<ResourceList<T>>(path, {}, config),
     enabled: (useBackend ? true : config.isConnected) && (options?.enabled !== false),
     staleTime: 60_000,
@@ -442,16 +465,30 @@ export function useCreateK8sResource(resourceType: ResourceType) {
   const { config } = useKubernetesConfigStore();
   const queryClient = useQueryClient();
   const apiBase = API_GROUPS[resourceType];
+  const storedUrl = useBackendConfigStore((s) => s.backendBaseUrl);
+  const backendBaseUrl = getEffectiveBackendBaseUrl(storedUrl);
+  const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured);
+  const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
+  const clusterId = currentClusterId;
 
   return useMutation({
     mutationFn: async ({ yaml, namespace }: { yaml: string; namespace?: string }) => {
+      if (isBackendConfigured() && clusterId) {
+        return applyManifest(backendBaseUrl, clusterId, yaml);
+      }
+
       const resource = parseYaml(yaml);
       const ns = namespace || resource.metadata?.namespace || 'default';
-      const path = `${apiBase}/namespaces/${ns}/${resourceType}`;
+      const path = CLUSTER_SCOPED_KINDS.includes(resourceType)
+        ? `${apiBase}/${resourceType}`
+        : `${apiBase}/namespaces/${ns}/${resourceType}`;
       return k8sRequest(path, { method: 'POST', body: yaml }, config);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['k8s', resourceType] });
+      if (clusterId) {
+        queryClient.invalidateQueries({ queryKey: ['backend', 'resources', clusterId, resourceType] });
+      }
       toast.success(`${resourceType} created successfully`);
     },
     onError: (error: Error) => {
@@ -468,26 +505,13 @@ export function useUpdateK8sResource(resourceType: ResourceType) {
   const storedUrl = useBackendConfigStore((s) => s.backendBaseUrl);
   const backendBaseUrl = getEffectiveBackendBaseUrl(storedUrl);
   const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured);
-  const activeCluster = useClusterStore((s) => s.activeCluster);
   const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
-  // P0-D: Use currentClusterId exclusively. activeCluster.id may hold a stale or demo
-  // ID (e.g. '__demo__cluster-alpha') which corrupts all resource API URLs.
   const clusterId = currentClusterId;
 
   return useMutation({
     mutationFn: async ({ name, yaml, namespace }: { name: string; yaml: string; namespace?: string }) => {
       if (isBackendConfigured() && clusterId) {
-        const base = backendBaseUrl.replace(/\/+$/, '');
-        const res = await fetch(`${base}/api/v1/clusters/${encodeURIComponent(clusterId)}/apply`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', [CONFIRM_DESTRUCTIVE_HEADER]: 'true' },
-          body: JSON.stringify({ yaml }),
-        });
-        if (!res.ok) {
-          const text = await res.text();
-          throw new Error(text || `Apply failed: ${res.status}`);
-        }
-        return res.json();
+        return applyManifest(backendBaseUrl, clusterId, yaml);
       }
       const path = namespace
         ? `${apiBase}/namespaces/${namespace}/${resourceType}/${name}`
@@ -496,7 +520,10 @@ export function useUpdateK8sResource(resourceType: ResourceType) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['k8s', resourceType] });
-      if (clusterId) queryClient.invalidateQueries({ queryKey: ['backend', 'resource', clusterId, resourceType] });
+      if (clusterId) {
+        queryClient.invalidateQueries({ queryKey: ['backend', 'resource', clusterId, resourceType] });
+        queryClient.invalidateQueries({ queryKey: ['backend', 'resources', clusterId, resourceType] });
+      }
       toast.success(`${resourceType} updated successfully`);
     },
     onError: (error: Error) => {
@@ -677,32 +704,15 @@ export function calculateAge(timestamp: string | undefined): string {
   return `${Math.floor(days / 7)}wk`;
 }
 
-// Simple YAML parser (for basic use - in production use a proper library)
+// Simple YAML parser using js-yaml
 function parseYaml(yaml: string): KubernetesResource {
-  const lines = yaml.split('\n');
-  const result: any = { metadata: {} };
-
-  for (const line of lines) {
-    if (!line.trim() || line.trim().startsWith('#')) continue;
-    const content = line.trim();
-
-    if (content.includes(':')) {
-      const [key, ...valueParts] = content.split(':');
-      const value = valueParts.join(':').trim();
-      const indent = line.search(/\S/);
-
-      if (indent === 0 && value) {
-        result[key] = value.replace(/^["']|["']$/g, '');
-      } else if (indent === 2 && line.startsWith('  ') && value) {
-        const parentKey = Object.keys(result).find(k => typeof result[k] === 'object');
-        if (parentKey) {
-          result[parentKey][key] = value.replace(/^["']|["']$/g, '');
-        }
-      }
-    }
+  try {
+    return yamlParser.load(yaml) as KubernetesResource;
+  } catch (e) {
+    console.error('Failed to parse YAML:', e);
+    // Fallback to minimal structure if parsing fails
+    return { metadata: { name: '', uid: '', creationTimestamp: '' } };
   }
-
-  return result;
 }
 
 /** Child job row for CronJob expandable drill-down (Job Name | Status | Start Time | Duration). */

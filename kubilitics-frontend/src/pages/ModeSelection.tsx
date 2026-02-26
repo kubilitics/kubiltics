@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence, type Variants } from 'framer-motion';
+import { motion, type Variants } from 'framer-motion';
 import {
     Monitor,
     Cloud,
@@ -22,20 +22,22 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
+import { cn } from '@/lib/utils';
 
 const container: Variants = {
     hidden: { opacity: 0 },
     show: {
         opacity: 1,
         transition: {
-            staggerChildren: 0.15
+            staggerChildren: 0.12,
+            delayChildren: 0.1
         }
     }
 };
 
 const item: Variants = {
-    hidden: { opacity: 0, y: 30 },
-    show: { opacity: 1, y: 0, transition: { duration: 0.8, ease: "easeOut" } }
+    hidden: { opacity: 0, y: 20 },
+    show: { opacity: 1, y: 0, transition: { duration: 0.8, ease: [0.16, 1, 0.3, 1] } }
 };
 
 export default function ModeSelection() {
@@ -45,208 +47,223 @@ export default function ModeSelection() {
 
     const handleSelectMode = (mode: 'desktop' | 'in-cluster') => {
         setAppMode(mode);
-        if (mode === 'desktop') {
-            navigate('/connect');
-        } else {
-            navigate('/connect'); // Will handle in-cluster details there
-        }
+        navigate('/connect');
     };
 
     return (
-        <div className="relative min-h-screen bg-[#020617] text-slate-50 overflow-hidden flex flex-col items-center justify-center p-6">
-            {/* Background Ambient Glow */}
-            <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-blue-500/10 rounded-full blur-[120px]" />
-            <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-purple-500/10 rounded-full blur-[120px]" />
+        <div className="relative min-h-screen bg-[#02040a] text-slate-50 overflow-hidden flex flex-col items-center justify-center p-8">
+            {/* Apple-style Animated Background Mesh */}
+            <div className="absolute inset-0 overflow-hidden pointer-events-none">
+                <div className="absolute top-[-15%] left-[-10%] w-[60%] h-[60%] bg-blue-600/10 rounded-full blur-[140px] animate-pulse" style={{ animationDuration: '8s' }} />
+                <div className="absolute bottom-[-15%] right-[-10%] w-[60%] h-[60%] bg-indigo-600/10 rounded-full blur-[140px] animate-pulse" style={{ animationDuration: '10s', animationDelay: '2s' }} />
+                <div className="absolute top-[20%] right-[-5%] w-[30%] h-[40%] bg-purple-600/5 rounded-full blur-[100px]" />
+            </div>
 
             <motion.div
                 variants={container}
                 initial="hidden"
                 animate="show"
-                className="relative z-10 w-full max-w-5xl"
+                className="relative z-10 w-full max-w-6xl"
             >
-                <motion.div variants={item} className="text-center mb-16">
-                    <div className="flex items-center justify-center gap-4 mb-8">
-                        <div className="relative">
-                            <div className="absolute inset-0 bg-blue-500/20 blur-xl rounded-full" />
-                            <KubiliticsLogo size={48} className="text-primary mb-6" />
+                <motion.div variants={item} className="text-center mb-20">
+                    <div className="flex flex-col items-center justify-center gap-6 mb-10">
+                        <div className="relative group">
+                            <div className="absolute inset-0 bg-blue-500/30 blur-2xl rounded-full scale-0 group-hover:scale-150 transition-transform duration-1000 opacity-50" />
+                            <KubiliticsLogo size={56} className="text-blue-500 transition-transform duration-700 ease-spring group-hover:scale-110" />
                         </div>
-                        <KubiliticsText height={48} className="text-white bg-clip-text" />
+                        <KubiliticsText height={32} className="text-white opacity-90" />
                     </div>
-                    <h1 className="text-4xl md:text-6xl font-bold mb-6 tracking-tight">
+
+                    <h1 className="text-5xl md:text-7xl font-bold mb-6 tracking-tighter leading-[1.1] text-transparent bg-clip-text bg-gradient-to-b from-white to-white/60">
                         Choose your journey.
                     </h1>
-                    <p className="text-lg md:text-xl text-slate-400 max-w-2xl mx-auto leading-relaxed">
-                        The Kubernetes Operating System adapts to your environment.
-                        Select how you want to experience the future of cluster management.
+                    <p className="text-lg md:text-xl text-slate-400 max-w-2xl mx-auto leading-relaxed font-medium">
+                        The ultimate Kubernetes Operating System. Designed for performance,
+                        architected for multi-cloud, built for humanity.
                     </p>
                 </motion.div>
 
-                <div className="grid md:grid-cols-2 gap-8 mb-12">
+                <div className="grid md:grid-cols-2 gap-10 mb-16">
                     {/* Desktop Mode Card */}
-                    <motion.div variants={item}>
+                    <motion.div variants={item} className="h-full">
                         <Card
                             onClick={() => handleSelectMode('desktop')}
-                            className="group relative h-full bg-slate-900/40 border-slate-800/50 backdrop-blur-xl hover:border-blue-500/50 hover:bg-slate-800/60 transition-all duration-500 cursor-pointer overflow-hidden p-8"
+                            className={cn(
+                                "group relative h-full bg-slate-900/40 border-slate-800/50 backdrop-blur-3xl transition-all duration-700 cursor-pointer overflow-hidden p-10 rounded-[2.5rem]",
+                                "hover:border-blue-500/40 hover:bg-slate-900/60 hover:shadow-[0_20px_40px_rgba(0,0,0,0.4)] hover:-translate-y-2",
+                                "before:absolute before:inset-0 before:p-[1px] before:bg-gradient-to-br before:from-white/10 before:to-transparent before:rounded-[2.5rem] before:-z-10"
+                            )}
                         >
-                            <div className="absolute top-0 right-0 p-6 opacity-5 group-hover:opacity-10 transition-opacity">
-                                <Monitor size={120} />
-                            </div>
+                            <div className="absolute -top-12 -right-12 w-48 h-48 bg-blue-500/5 rounded-full blur-3xl group-hover:bg-blue-500/10 transition-colors duration-700" />
 
-                            <div className="relative z-10">
-                                <div className="w-14 h-14 rounded-2xl bg-blue-500/10 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-500">
-                                    <Monitor className="text-blue-400" size={28} />
+                            <div className="relative z-10 h-full flex flex-col">
+                                <div className="w-16 h-16 rounded-[1.25rem] bg-blue-500/10 flex items-center justify-center mb-8 border border-blue-500/20 shadow-inner group-hover:scale-110 group-hover:bg-blue-600 transition-all duration-700 ease-spring">
+                                    <Monitor className="text-blue-400 group-hover:text-white transition-colors duration-500" size={32} />
                                 </div>
-                                <h3 className="text-2xl font-bold mb-3 tracking-tight group-hover:text-blue-400 transition-colors">
+                                <h3 className="text-3xl font-bold mb-4 tracking-tight text-slate-50 group-hover:text-blue-400 transition-colors duration-500">
                                     Desktop Engine
                                 </h3>
-                                <p className="text-slate-400 mb-8 leading-relaxed">
-                                    The ultimate local experience. Auto-detects your kubeconfigs and runs entirely on your hardware. Zero setup, maximum power.
+                                <p className="text-slate-400 mb-10 leading-relaxed text-base font-medium">
+                                    A high-fidelity local experience. Auto-detects your environment and runs entirely on your silicon. Zero latency, maximum privacy.
                                 </p>
 
-                                <ul className="space-y-3 mb-10">
+                                <ul className="space-y-4 mb-12 flex-grow">
                                     {[
-                                        'Auto-discovery of ~/.kube/config',
-                                        'Support for GKE, EKS, AKS, & Kind',
-                                        'Offline-first architecture',
-                                        'Native OS integration'
+                                        'Ambient kubeconfig discovery',
+                                        'Optimized for Silicon architecture',
+                                        'Offline-first synchronization',
+                                        'Deep system-level integration'
                                     ].map((feature) => (
-                                        <li key={feature} className="flex items-center gap-3 text-sm text-slate-300">
-                                            <CheckCircle2 size={16} className="text-blue-500/70" />
+                                        <li key={feature} className="flex items-center gap-4 text-sm text-slate-300/80 font-medium">
+                                            <div className="flex-shrink-0 w-5 h-5 rounded-full bg-blue-500/20 flex items-center justify-center">
+                                                <CheckCircle2 size={12} className="text-blue-400" />
+                                            </div>
                                             {feature}
                                         </li>
                                     ))}
                                 </ul>
 
-                                <Button className="w-full bg-blue-600 hover:bg-blue-500 text-white border-none h-12 text-base font-medium transition-all group-hover:translate-x-1">
-                                    Start Desktop Engine
-                                    <ArrowRight size={18} className="ml-2" />
+                                <Button className="w-full bg-blue-600 hover:bg-blue-500 text-white rounded-2xl h-14 text-base font-bold transition-all shadow-[0_8px_16px_rgba(37,99,235,0.2)] group-hover:shadow-[0_12px_24px_rgba(37,99,235,0.35)] group-hover:translate-x-1 border border-white/10">
+                                    Launch Desktop
+                                    <ArrowRight size={20} className="ml-2 group-hover:translate-x-1 transition-transform" />
                                 </Button>
                             </div>
                         </Card>
                     </motion.div>
 
                     {/* In-Cluster Card */}
-                    <motion.div variants={item}>
+                    <motion.div variants={item} className="h-full">
                         <Card
                             onClick={() => handleSelectMode('in-cluster')}
-                            className="group relative h-full bg-slate-900/40 border-slate-800/50 backdrop-blur-xl hover:border-purple-500/50 hover:bg-slate-800/60 transition-all duration-500 cursor-pointer overflow-hidden p-8"
+                            className={cn(
+                                "group relative h-full bg-slate-900/40 border-slate-800/50 backdrop-blur-3xl transition-all duration-700 cursor-pointer overflow-hidden p-10 rounded-[2.5rem]",
+                                "hover:border-purple-500/40 hover:bg-slate-900/60 hover:shadow-[0_20px_40px_rgba(0,0,0,0.4)] hover:-translate-y-2",
+                                "before:absolute before:inset-0 before:p-[1px] before:bg-gradient-to-br before:from-white/10 before:to-transparent before:rounded-[2.5rem] before:-z-10"
+                            )}
                         >
-                            <div className="absolute top-0 right-0 p-6 opacity-5 group-hover:opacity-10 transition-opacity">
-                                <Cloud size={120} />
-                            </div>
+                            <div className="absolute -top-12 -right-12 w-48 h-48 bg-purple-500/5 rounded-full blur-3xl group-hover:bg-purple-500/10 transition-colors duration-700" />
 
-                            <div className="relative z-10">
-                                <div className="w-14 h-14 rounded-2xl bg-purple-500/10 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-500">
-                                    <Cloud className="text-purple-400" size={28} />
+                            <div className="relative z-10 h-full flex flex-col">
+                                <div className="w-16 h-16 rounded-[1.25rem] bg-purple-500/10 flex items-center justify-center mb-8 border border-purple-500/20 shadow-inner group-hover:scale-110 group-hover:bg-purple-600 transition-all duration-700 ease-spring">
+                                    <Cloud className="text-purple-400 group-hover:text-white transition-colors duration-500" size={32} />
                                 </div>
-                                <h3 className="text-2xl font-bold mb-3 tracking-tight group-hover:text-purple-400 transition-colors">
+                                <h3 className="text-3xl font-bold mb-4 tracking-tight text-slate-50 group-hover:text-purple-400 transition-colors duration-500">
                                     In-Cluster OS
                                 </h3>
-                                <p className="text-slate-400 mb-8 leading-relaxed">
-                                    Deploy Kubilitics directly into your cluster. Perfect for team collaboration, shared monitoring, and production visibility.
+                                <p className="text-slate-400 mb-10 leading-relaxed text-base font-medium">
+                                    Server-side orchestration. Perfect for engineering teams, persistent monitoring, and organization-wide visibility.
                                 </p>
 
-                                <ul className="space-y-3 mb-10">
+                                <ul className="space-y-4 mb-12 flex-grow">
                                     {[
-                                        'Helm-based deployment',
-                                        'Native RBAC integration',
-                                        'Shared persistent analytics',
-                                        'Zero local configuration'
+                                        'Native K8s deployment (Helm)',
+                                        'Collaborative team workspaces',
+                                        'Persistent cloud analytics',
+                                        'Unified governance & RBAC'
                                     ].map((feature) => (
-                                        <li key={feature} className="flex items-center gap-3 text-sm text-slate-300">
-                                            <CheckCircle2 size={16} className="text-purple-500/70" />
+                                        <li key={feature} className="flex items-center gap-4 text-sm text-slate-300/80 font-medium">
+                                            <div className="flex-shrink-0 w-5 h-5 rounded-full bg-purple-500/20 flex items-center justify-center">
+                                                <CheckCircle2 size={12} className="text-purple-400" />
+                                            </div>
                                             {feature}
                                         </li>
                                     ))}
                                 </ul>
 
-                                <Button className="w-full bg-purple-600 hover:bg-purple-500 text-white border-none h-12 text-base font-medium transition-all group-hover:translate-x-1">
-                                    Deploy to Cluster
-                                    <ArrowRight size={18} className="ml-2" />
+                                <Button className="w-full bg-purple-600 hover:bg-purple-500 text-white rounded-2xl h-14 text-base font-bold transition-all shadow-[0_8px_16px_rgba(147,51,234,0.2)] group-hover:shadow-[0_12px_24px_rgba(147,51,234,0.35)] group-hover:translate-x-1 border border-white/10">
+                                    Deploy Cluster OS
+                                    <ArrowRight size={20} className="ml-2 group-hover:translate-x-1 transition-transform" />
                                 </Button>
                             </div>
                         </Card>
                     </motion.div>
                 </div>
 
-                <motion.div variants={item} className="flex flex-col items-center gap-6">
+                <motion.div variants={item} className="flex flex-col items-center gap-10">
                     <button
                         onClick={() => setShowComparison(true)}
-                        className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors text-sm"
+                        className="flex items-center gap-2.5 text-slate-500 hover:text-white transition-all text-sm font-semibold tracking-wide"
                     >
-                        <Info size={16} />
-                        Not sure which to choose? Compare modes
+                        <Info size={16} className="text-blue-400" />
+                        Compare operational modes
                     </button>
 
-                    <div className="flex items-center gap-8 py-8 px-12 rounded-full bg-slate-900/50 border border-slate-800/50 backdrop-blur-md">
-                        <div className="flex flex-col items-center text-center">
-                            <span className="text-2xl font-bold text-white">50+</span>
-                            <span className="text-[10px] uppercase tracking-widest text-slate-500 font-semibold">Resources</span>
+                    <div className="flex items-center gap-12 py-6 px-16 rounded-[2rem] bg-slate-950/40 border border-white/5 backdrop-blur-3xl shadow-2xl relative overflow-hidden group">
+                        <div className="absolute inset-0 bg-gradient-to-r from-blue-500/5 via-transparent to-purple-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-1000" />
+
+                        <div className="flex flex-col items-center text-center relative z-10">
+                            <span className="text-3xl font-bold tracking-tighter text-white">50+</span>
+                            <span className="text-[10px] uppercase tracking-[0.2em] text-slate-500 font-bold mt-1">Resources</span>
                         </div>
-                        <div className="w-px h-8 bg-slate-800" />
-                        <div className="flex flex-col items-center text-center">
-                            <span className="text-2xl font-bold text-white">Real-Time</span>
-                            <span className="text-[10px] uppercase tracking-widest text-slate-500 font-semibold">Discovery</span>
+                        <div className="w-px h-10 bg-white/10" />
+                        <div className="flex flex-col items-center text-center relative z-10">
+                            <span className="text-3xl font-bold tracking-tighter text-white">Real-Time</span>
+                            <span className="text-[10px] uppercase tracking-[0.2em] text-slate-500 font-bold mt-1">Discovery</span>
                         </div>
-                        <div className="w-px h-8 bg-slate-800" />
-                        <div className="flex flex-col items-center text-center">
-                            <span className="text-2xl font-bold text-white">AI</span>
-                            <span className="text-[10px] uppercase tracking-widest text-slate-500 font-semibold">Augmented</span>
+                        <div className="w-px h-10 bg-white/10" />
+                        <div className="flex flex-col items-center text-center relative z-10">
+                            <span className="text-3xl font-bold tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-400">AI</span>
+                            <span className="text-[10px] uppercase tracking-[0.2em] text-slate-500 font-bold mt-1">Augmented</span>
                         </div>
                     </div>
                 </motion.div>
             </motion.div>
 
-            {/* Comparison Dialog */}
+            {/* Comparison Dialog - Redesigned for Apple Quality */}
             <Dialog open={showComparison} onOpenChange={setShowComparison}>
-                <DialogContent className="max-w-3xl bg-[#0a0f1e] border-slate-800 text-slate-50">
-                    <DialogHeader>
-                        <DialogTitle className="text-2xl font-bold tracking-tight">Compare Kubilitics Modes</DialogTitle>
-                        <DialogDescription className="text-slate-400">
-                            Find the version that best fits your workflow.
+                <DialogContent className="max-w-4xl bg-slate-950/95 border-none text-slate-50 backdrop-blur-3xl rounded-[2.5rem] p-12 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)] overflow-hidden">
+                    <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-blue-500/50 to-transparent" />
+
+                    <DialogHeader className="mb-10">
+                        <DialogTitle className="text-4xl font-bold tracking-tighter mb-4 leading-tight">Compare Kubilitics Modes</DialogTitle>
+                        <DialogDescription className="text-lg text-slate-400 font-medium">
+                            Tailored for your specific infrastructure requirements and workflow scale.
                         </DialogDescription>
                     </DialogHeader>
 
-                    <div className="mt-6 overflow-hidden rounded-xl border border-slate-800">
-                        <table className="w-full text-sm">
-                            <thead className="bg-slate-900/50">
-                                <tr>
-                                    <th className="p-4 text-left font-medium text-slate-400">Feature</th>
-                                    <th className="p-4 text-center font-bold text-blue-400">Desktop</th>
-                                    <th className="p-4 text-center font-bold text-purple-400">In-Cluster</th>
+                    <div className="overflow-hidden rounded-3xl border border-white/10 bg-black/20 shadow-inner">
+                        <table className="w-full text-base">
+                            <thead>
+                                <tr className="border-b border-white/10 bg-white/5">
+                                    <th className="p-6 text-left font-bold text-slate-400 uppercase text-xs tracking-widest">Dimension</th>
+                                    <th className="p-6 text-center font-bold text-blue-400 flex items-center justify-center gap-2">
+                                        <Monitor size={16} /> Desktop
+                                    </th>
+                                    <th className="p-6 text-center font-bold text-purple-400 flex items-center justify-center gap-2">
+                                        <Cloud size={16} /> Cluster OS
+                                    </th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-slate-800/50">
+                            <tbody className="divide-y divide-white/5">
                                 {[
-                                    { name: 'Installation', desktop: 'One-click executable', cluster: 'Helm Chart / YAML' },
-                                    { name: 'Architecture', desktop: 'Local process', cluster: 'K8s Deployment' },
-                                    { name: 'Connectivity', desktop: 'Direct via Kubeconfig', cluster: 'In-cluster API Access' },
-                                    { name: 'Data Privacy', desktop: '100% Local', cluster: 'Stay within VPC' },
-                                    { name: 'Updates', desktop: 'Automatic per release', cluster: 'GitOps / Manual' },
-                                    { name: 'Collaboration', desktop: 'Individual', cluster: 'Team-based access' },
+                                    { name: 'Installation', desktop: 'Direct Executable', cluster: 'Helm / K8s Native' },
+                                    { name: 'Control Plane', desktop: 'Local Process', cluster: 'Shared Service' },
+                                    { name: 'Data Sovereignty', desktop: '100% On-Device', cluster: 'VPC Bound' },
+                                    { name: 'Live Updates', desktop: 'Per-instance', cluster: 'Managed / GitOps' },
+                                    { name: 'Collaboration', desktop: 'Private Workstation', cluster: 'Multi-user Teams' },
                                 ].map((row) => (
-                                    <tr key={row.name} className="hover:bg-white/5 transition-colors">
-                                        <td className="p-4 font-medium text-slate-300">{row.name}</td>
-                                        <td className="p-4 text-center text-slate-400">{row.desktop}</td>
-                                        <td className="p-4 text-center text-slate-400">{row.cluster}</td>
+                                    <tr key={row.name} className="hover:bg-white/[0.02] transition-colors duration-300">
+                                        <td className="p-6 font-bold text-slate-300 text-sm tracking-tight">{row.name}</td>
+                                        <td className="p-6 text-center text-slate-400 font-medium">{row.desktop}</td>
+                                        <td className="p-6 text-center text-slate-400 font-medium">{row.cluster}</td>
                                     </tr>
                                 ))}
                             </tbody>
                         </table>
                     </div>
 
-                    <div className="mt-6 grid grid-cols-3 gap-4">
-                        <div className="p-4 rounded-xl bg-blue-500/5 border border-blue-500/10 flex flex-col items-center text-center">
-                            <Zap className="text-blue-400 mb-2" size={20} />
-                            <span className="text-xs font-semibold">High Performance</span>
+                    <div className="mt-12 grid grid-cols-3 gap-6">
+                        <div className="p-6 rounded-[1.5rem] bg-blue-500/5 border border-blue-500/10 backdrop-blur-xl flex flex-col items-center text-center group">
+                            <Zap className="text-blue-400 mb-3 group-hover:scale-110 transition-transform" size={24} />
+                            <span className="text-xs font-bold uppercase tracking-widest text-slate-500">Performance</span>
                         </div>
-                        <div className="p-4 rounded-xl bg-purple-500/5 border border-purple-500/10 flex flex-col items-center text-center">
-                            <Shield className="text-purple-400 mb-2" size={20} />
-                            <span className="text-xs font-semibold">Enterprise Ready</span>
+                        <div className="p-6 rounded-[1.5rem] bg-purple-500/5 border border-purple-500/10 backdrop-blur-xl flex flex-col items-center text-center group">
+                            <Shield className="text-purple-400 mb-3 group-hover:scale-110 transition-transform" size={24} />
+                            <span className="text-xs font-bold uppercase tracking-widest text-slate-500">Security</span>
                         </div>
-                        <div className="p-4 rounded-xl bg-emerald-500/5 border border-emerald-500/10 flex flex-col items-center text-center">
-                            <BarChart3 className="text-emerald-400 mb-2" size={20} />
-                            <span className="text-xs font-semibold">Advanced Analytics</span>
+                        <div className="p-6 rounded-[1.5rem] bg-emerald-500/5 border border-emerald-500/10 backdrop-blur-xl flex flex-col items-center text-center group">
+                            <BarChart3 className="text-emerald-400 mb-3 group-hover:scale-110 transition-transform" size={24} />
+                            <span className="text-xs font-bold uppercase tracking-widest text-slate-500">Scale</span>
                         </div>
                     </div>
                 </DialogContent>

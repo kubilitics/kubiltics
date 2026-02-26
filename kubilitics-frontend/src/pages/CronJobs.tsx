@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { 
+import {
   Search, Filter, RefreshCw, MoreHorizontal, CheckCircle2, XCircle, Clock, Loader2, WifiOff, Plus,
   ChevronDown, ChevronRight, CheckSquare, Trash2, FileText, Play, Pause, Timer, List, Layers, Box, Gauge, CalendarCheck,
 } from 'lucide-react';
@@ -147,33 +147,33 @@ function cronNextRun(schedule: string): string {
 }
 
 function transformResource(resource: CronJobResource): CronJob {
-  const spec = resource.spec || {};
-  const status = resource.status || {};
-  const schedule = spec.schedule || '-';
+  const spec = resource.spec;
+  const status = resource.status;
+  const schedule = spec?.schedule || '-';
   let lastSchedule = '-';
-  if (status.lastScheduleTime) {
+  if (status?.lastScheduleTime) {
     const diff = Date.now() - new Date(status.lastScheduleTime).getTime();
     const mins = Math.floor(diff / 60000);
     if (mins < 60) lastSchedule = `${mins}m ago`;
     else if (mins < 1440) lastSchedule = `${Math.floor(mins / 60)}h ago`;
     else lastSchedule = `${Math.floor(mins / 1440)}d ago`;
   }
-  const successfulLimit = spec.successfulJobsHistoryLimit ?? 3;
-  const failedLimit = spec.failedJobsHistoryLimit ?? 1;
+  const successfulLimit = spec?.successfulJobsHistoryLimit ?? 3;
+  const failedLimit = spec?.failedJobsHistoryLimit ?? 1;
   const historyLimit = successfulLimit + failedLimit;
-  const hasFailedCondition = status.conditions?.some((c) => c.type === 'Failed' && c.status === 'True');
-  const lastResult = status.active?.length ? 'Running' : hasFailedCondition ? 'Failed' : status.lastSuccessfulTime ? 'Success' : '–';
+  const hasFailedCondition = status?.conditions?.some((c) => c.type === 'Failed' && c.status === 'True');
+  const lastResult = status?.active?.length ? 'Running' : hasFailedCondition ? 'Failed' : status?.lastSuccessfulTime ? 'Success' : '–';
   return {
     name: resource.metadata.name,
     namespace: resource.metadata.namespace || 'default',
-    status: spec.suspend ? 'Suspended' : 'Active',
+    status: spec?.suspend ? 'Suspended' : 'Active',
     schedule,
     scheduleHuman: cronScheduleToHuman(schedule),
     lastSchedule,
-    nextSchedule: spec.suspend ? '—' : cronNextRun(schedule),
-    active: status.active?.length || 0,
-    concurrencyPolicy: spec.concurrencyPolicy || 'Allow',
-    suspend: !!spec.suspend,
+    nextSchedule: spec?.suspend ? '—' : cronNextRun(schedule),
+    active: status?.active?.length || 0,
+    concurrencyPolicy: spec?.concurrencyPolicy || 'Allow',
+    suspend: !!spec?.suspend,
     historyLimit,
     lastResult,
     successRate7d: '-',
@@ -453,7 +453,7 @@ spec:
       />
 
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
-        <ListPageStatCard label="Total" value={stats.total} icon={CronJobIcon} iconColor="text-primary" selected={!columnFilters.status?.size} onClick={() => setColumnFilter('status', null)} className={cn(!columnFilters.status?.size && 'ring-2 ring-primary')} />
+        <ListPageStatCard label="Total" value={stats.total} icon={CronJobIcon as any} iconColor="text-primary" selected={!columnFilters.status?.size} onClick={() => setColumnFilter('status', null)} className={cn(!columnFilters.status?.size && 'ring-2 ring-primary')} />
         <ListPageStatCard label="Active" value={stats.active} icon={Clock} iconColor="text-cyan-500" valueClassName="text-cyan-600" selected={columnFilters.hasActiveJobs?.size === 1 && columnFilters.hasActiveJobs.has('Yes')} onClick={() => setColumnFilter('hasActiveJobs', new Set(['Yes']))} className={cn(columnFilters.hasActiveJobs?.size === 1 && columnFilters.hasActiveJobs.has('Yes') && 'ring-2 ring-cyan-500')} />
         <ListPageStatCard label="Suspended" value={stats.suspended} icon={Pause} iconColor="text-[hsl(45,93%,47%)]" valueClassName="text-[hsl(45,93%,47%)]" selected={columnFilters.status?.size === 1 && columnFilters.status.has('Suspended')} onClick={() => setColumnFilter('status', new Set(['Suspended']))} className={cn(columnFilters.status?.size === 1 && columnFilters.status.has('Suspended') && 'ring-2 ring-[hsl(45,93%,47%)]')} />
         <ListPageStatCard label="On Schedule" value={stats.onSchedule} icon={CalendarCheck} iconColor="text-[hsl(142,76%,36%)]" valueClassName="text-[hsl(142,76%,36%)]" />
@@ -463,36 +463,36 @@ spec:
 
       <ResourceListTableToolbar
         globalFilterBar={
-      <ResourceCommandBar
-        scope={
-          <div className="w-full min-w-0">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" className="w-full min-w-0 justify-between h-10 gap-2 rounded-lg border border-border bg-background font-medium shadow-sm hover:bg-muted/50 hover:border-primary/30 focus-visible:ring-2 focus-visible:ring-primary/20">
-                  <Filter className="h-4 w-4 shrink-0 text-muted-foreground" />
-                  <span className="truncate">{selectedNamespace === 'all' ? 'All Namespaces' : selectedNamespace}</span>
-                  <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="w-48">
-                {namespaces.map((ns) => (
-                  <DropdownMenuItem key={ns} onClick={() => setSelectedNamespace(ns)} className={cn(selectedNamespace === ns && 'bg-accent')}>
-                    {ns === 'all' ? 'All Namespaces' : ns}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        }
-        search={
-          <div className="relative w-full min-w-0">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input placeholder="Search cronjobs..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full h-10 pl-9 rounded-lg border border-border bg-background text-sm font-medium shadow-sm placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/50 transition-all" aria-label="Search cronjobs" />
-          </div>
-        }
-        structure={<ListViewSegmentedControl value={listView} onChange={(v) => setListView(v as ListView)} options={[{ id: 'flat', label: 'Flat', icon: List }, { id: 'byNamespace', label: 'By Namespace', icon: Layers }]} label="" ariaLabel="List structure" />}
-        className="mb-0"
-      />
+          <ResourceCommandBar
+            scope={
+              <div className="w-full min-w-0">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" className="w-full min-w-0 justify-between h-10 gap-2 rounded-lg border border-border bg-background font-medium shadow-sm hover:bg-muted/50 hover:border-primary/30 focus-visible:ring-2 focus-visible:ring-primary/20">
+                      <Filter className="h-4 w-4 shrink-0 text-muted-foreground" />
+                      <span className="truncate">{selectedNamespace === 'all' ? 'All Namespaces' : selectedNamespace}</span>
+                      <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="w-48">
+                    {namespaces.map((ns) => (
+                      <DropdownMenuItem key={ns} onClick={() => setSelectedNamespace(ns)} className={cn(selectedNamespace === ns && 'bg-accent')}>
+                        {ns === 'all' ? 'All Namespaces' : ns}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            }
+            search={
+              <div className="relative w-full min-w-0">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input placeholder="Search cronjobs..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full h-10 pl-9 rounded-lg border border-border bg-background text-sm font-medium shadow-sm placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/50 transition-all" aria-label="Search cronjobs" />
+              </div>
+            }
+            structure={<ListViewSegmentedControl value={listView} onChange={(v) => setListView(v as ListView)} options={[{ id: 'flat', label: 'Flat', icon: List }, { id: 'byNamespace', label: 'By Namespace', icon: Layers }]} label="" ariaLabel="List structure" />}
+            className="mb-0"
+          />
         }
         hasActiveFilters={hasActiveFilters}
         onClearAllFilters={clearAllFilters}
@@ -502,335 +502,335 @@ spec:
         visibleColumns={columnVisibility.visibleColumns}
         onColumnToggle={columnVisibility.setColumnVisible}
         footer={
-        <div className="flex items-center justify-between flex-wrap gap-2">
-          <div className="flex items-center gap-3">
-            <span className="text-sm text-muted-foreground">{pagination.rangeLabel}</span>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="gap-2">
-                  {pageSize} per page
-                  <ChevronDown className="h-4 w-4 opacity-50" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start">
-                {PAGE_SIZE_OPTIONS.map((size) => (
-                  <DropdownMenuItem key={size} onClick={() => handlePageSizeChange(size)} className={cn(pageSize === size && 'bg-accent')}>
-                    {size} per page
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-muted-foreground">{pagination.rangeLabel}</span>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="gap-2">
+                    {pageSize} per page
+                    <ChevronDown className="h-4 w-4 opacity-50" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start">
+                  {PAGE_SIZE_OPTIONS.map((size) => (
+                    <DropdownMenuItem key={size} onClick={() => handlePageSizeChange(size)} className={cn(pageSize === size && 'bg-accent')}>
+                      {size} per page
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+            <ListPagination
+              hasPrev={pagination.hasPrev}
+              hasNext={pagination.hasNext}
+              onPrev={pagination.onPrev}
+              onNext={pagination.onNext}
+              rangeLabel={undefined}
+              currentPage={pagination.currentPage}
+              totalPages={pagination.totalPages}
+              onPageChange={pagination.onPageChange}
+              dataUpdatedAt={dataUpdatedAt}
+              isFetching={isFetching}
+            />
           </div>
-          <ListPagination
-            hasPrev={pagination.hasPrev}
-            hasNext={pagination.hasNext}
-            onPrev={pagination.onPrev}
-            onNext={pagination.onNext}
-            rangeLabel={undefined}
-            currentPage={pagination.currentPage}
-            totalPages={pagination.totalPages}
-            onPageChange={pagination.onPageChange}
-            dataUpdatedAt={dataUpdatedAt}
-            isFetching={isFetching}
-          />
-        </div>
         }
       >
         <ResizableTableProvider tableId="cronjobs" columnConfig={CRONJOBS_TABLE_COLUMNS}>
-        <Table className="table-fixed" style={{ minWidth: 1810 }}>
-          <TableHeader><TableRow className="bg-muted/50 hover:bg-muted/50 border-b-2 border-border">
-            <TableHead className="w-10"><Checkbox checked={isAllSelected} onCheckedChange={toggleAll} className={cn(isSomeSelected && 'data-[state=checked]:bg-primary/50')} /></TableHead>
-            <ResizableTableHead columnId="expand">
-              <span className="sr-only">Expand</span>
-            </ResizableTableHead>
-            <ResizableTableHead columnId="name">
-              <TableColumnHeaderWithFilterAndSort columnId="name" label="Name" sortKey={sortKey} sortOrder={sortOrder} onSort={setSort} filterable={false} distinctValues={[]} selectedFilterValues={new Set()} onFilterChange={() => {}} />
-            </ResizableTableHead>
-            <ResizableTableHead columnId="namespace">
-              <TableColumnHeaderWithFilterAndSort columnId="namespace" label="Namespace" sortKey={sortKey} sortOrder={sortOrder} onSort={setSort} filterable={false} distinctValues={[]} selectedFilterValues={new Set()} onFilterChange={() => {}} />
-            </ResizableTableHead>
-            <ResizableTableHead columnId="status">
-              <TableColumnHeaderWithFilterAndSort columnId="status" label="Status" sortKey={sortKey} sortOrder={sortOrder} onSort={setSort} filterable={false} distinctValues={[]} selectedFilterValues={new Set()} onFilterChange={() => {}} />
-            </ResizableTableHead>
-            <ResizableTableHead columnId="schedule">
-              <TableColumnHeaderWithFilterAndSort columnId="schedule" label="Schedule" sortKey={sortKey} sortOrder={sortOrder} onSort={setSort} filterable={false} distinctValues={[]} selectedFilterValues={new Set()} onFilterChange={() => {}} />
-            </ResizableTableHead>
-            <ResizableTableHead columnId="lastSchedule">
-              <TableColumnHeaderWithFilterAndSort columnId="lastSchedule" label="Last Schedule" sortKey={sortKey} sortOrder={sortOrder} onSort={setSort} filterable={false} distinctValues={[]} selectedFilterValues={new Set()} onFilterChange={() => {}} />
-            </ResizableTableHead>
-            <ResizableTableHead columnId="nextSchedule">
-              <TableColumnHeaderWithFilterAndSort columnId="nextSchedule" label="Next Schedule" sortKey={sortKey} sortOrder={sortOrder} onSort={setSort} filterable={false} distinctValues={[]} selectedFilterValues={new Set()} onFilterChange={() => {}} />
-            </ResizableTableHead>
-            <ResizableTableHead columnId="active">
-              <TableColumnHeaderWithFilterAndSort columnId="active" label="Active Jobs" sortKey={sortKey} sortOrder={sortOrder} onSort={setSort} filterable={false} distinctValues={[]} selectedFilterValues={new Set()} onFilterChange={() => {}} />
-            </ResizableTableHead>
-            <ResizableTableHead columnId="concurrencyPolicy">
-              <TableColumnHeaderWithFilterAndSort columnId="concurrencyPolicy" label="Concurrency" sortKey={sortKey} sortOrder={sortOrder} onSort={setSort} filterable={false} distinctValues={[]} selectedFilterValues={new Set()} onFilterChange={() => {}} />
-            </ResizableTableHead>
-            <ResizableTableHead columnId="suspend">
-              <TableColumnHeaderWithFilterAndSort columnId="suspend" label="Suspend" sortKey={sortKey} sortOrder={sortOrder} onSort={setSort} filterable={false} distinctValues={[]} selectedFilterValues={new Set()} onFilterChange={() => {}} />
-            </ResizableTableHead>
-            <ResizableTableHead columnId="historyLimit">
-              <TableColumnHeaderWithFilterAndSort columnId="historyLimit" label="History Limit" sortKey={sortKey} sortOrder={sortOrder} onSort={setSort} filterable={false} distinctValues={[]} selectedFilterValues={new Set()} onFilterChange={() => {}} />
-            </ResizableTableHead>
-            <ResizableTableHead columnId="lastResult">
-              <TableColumnHeaderWithFilterAndSort columnId="lastResult" label="Last Result" sortKey={sortKey} sortOrder={sortOrder} onSort={setSort} filterable={false} distinctValues={[]} selectedFilterValues={new Set()} onFilterChange={() => {}} />
-            </ResizableTableHead>
-            <ResizableTableHead columnId="age">
-              <TableColumnHeaderWithFilterAndSort columnId="age" label="Age" sortKey={sortKey} sortOrder={sortOrder} onSort={setSort} filterable={false} distinctValues={[]} selectedFilterValues={new Set()} onFilterChange={() => {}} />
-            </ResizableTableHead>
-            <TableHead className="w-12 text-center"><span className="sr-only">Actions</span><MoreHorizontal className="h-4 w-4 inline-block text-muted-foreground" aria-hidden /></TableHead>
-          </TableRow>
-          {showTableFilters && (
-            <TableRow className="bg-muted/30 hover:bg-muted/30 border-b-2 border-border">
-              <TableCell className="w-10 p-1.5" />
-              <ResizableTableCell columnId="expand" className="p-1.5" />
-              <ResizableTableCell columnId="name" className="p-1.5">
-                <TableFilterCell columnId="name" label="Name" distinctValues={distinctValuesByColumn.name ?? []} selectedFilterValues={columnFilters.name ?? new Set()} onFilterChange={setColumnFilter} valueCounts={valueCountsByColumn.name} />
-              </ResizableTableCell>
-              <ResizableTableCell columnId="namespace" className="p-1.5">
-                <TableFilterCell columnId="namespace" label="Namespace" distinctValues={distinctValuesByColumn.namespace ?? []} selectedFilterValues={columnFilters.namespace ?? new Set()} onFilterChange={setColumnFilter} valueCounts={valueCountsByColumn.namespace} />
-              </ResizableTableCell>
-              <ResizableTableCell columnId="status" className="p-1.5">
-                <TableFilterCell columnId="status" label="Status" distinctValues={distinctValuesByColumn.status ?? []} selectedFilterValues={columnFilters.status ?? new Set()} onFilterChange={setColumnFilter} valueCounts={valueCountsByColumn.status} />
-              </ResizableTableCell>
-              <ResizableTableCell columnId="schedule" className="p-1.5" />
-              <ResizableTableCell columnId="lastSchedule" className="p-1.5" />
-              <ResizableTableCell columnId="nextSchedule" className="p-1.5" />
-              <ResizableTableCell columnId="active" className="p-1.5">
-                <TableFilterCell columnId="hasActiveJobs" label="Has Active Jobs" distinctValues={distinctValuesByColumn.hasActiveJobs ?? []} selectedFilterValues={columnFilters.hasActiveJobs ?? new Set()} onFilterChange={setColumnFilter} valueCounts={valueCountsByColumn.hasActiveJobs} />
-              </ResizableTableCell>
-              <ResizableTableCell columnId="concurrencyPolicy" className="p-1.5">
-                <TableFilterCell columnId="concurrencyPolicy" label="Concurrency Policy" distinctValues={distinctValuesByColumn.concurrencyPolicy ?? []} selectedFilterValues={columnFilters.concurrencyPolicy ?? new Set()} onFilterChange={setColumnFilter} valueCounts={valueCountsByColumn.concurrencyPolicy} />
-              </ResizableTableCell>
-              <ResizableTableCell columnId="suspend" className="p-1.5" />
-              <ResizableTableCell columnId="historyLimit" className="p-1.5" />
-              <ResizableTableCell columnId="lastResult" className="p-1.5" />
-              <ResizableTableCell columnId="age" className="p-1.5" />
-              <TableCell className="w-12 p-1.5" />
+          <Table className="table-fixed" style={{ minWidth: 1810 }}>
+            <TableHeader><TableRow className="bg-muted/50 hover:bg-muted/50 border-b-2 border-border">
+              <TableHead className="w-10"><Checkbox checked={isAllSelected} onCheckedChange={toggleAll} className={cn(isSomeSelected && 'data-[state=checked]:bg-primary/50')} /></TableHead>
+              <ResizableTableHead columnId="expand">
+                <span className="sr-only">Expand</span>
+              </ResizableTableHead>
+              <ResizableTableHead columnId="name">
+                <TableColumnHeaderWithFilterAndSort columnId="name" label="Name" sortKey={sortKey} sortOrder={sortOrder} onSort={setSort} filterable={false} distinctValues={[]} selectedFilterValues={new Set()} onFilterChange={() => { }} />
+              </ResizableTableHead>
+              <ResizableTableHead columnId="namespace">
+                <TableColumnHeaderWithFilterAndSort columnId="namespace" label="Namespace" sortKey={sortKey} sortOrder={sortOrder} onSort={setSort} filterable={false} distinctValues={[]} selectedFilterValues={new Set()} onFilterChange={() => { }} />
+              </ResizableTableHead>
+              <ResizableTableHead columnId="status">
+                <TableColumnHeaderWithFilterAndSort columnId="status" label="Status" sortKey={sortKey} sortOrder={sortOrder} onSort={setSort} filterable={false} distinctValues={[]} selectedFilterValues={new Set()} onFilterChange={() => { }} />
+              </ResizableTableHead>
+              <ResizableTableHead columnId="schedule">
+                <TableColumnHeaderWithFilterAndSort columnId="schedule" label="Schedule" sortKey={sortKey} sortOrder={sortOrder} onSort={setSort} filterable={false} distinctValues={[]} selectedFilterValues={new Set()} onFilterChange={() => { }} />
+              </ResizableTableHead>
+              <ResizableTableHead columnId="lastSchedule">
+                <TableColumnHeaderWithFilterAndSort columnId="lastSchedule" label="Last Schedule" sortKey={sortKey} sortOrder={sortOrder} onSort={setSort} filterable={false} distinctValues={[]} selectedFilterValues={new Set()} onFilterChange={() => { }} />
+              </ResizableTableHead>
+              <ResizableTableHead columnId="nextSchedule">
+                <TableColumnHeaderWithFilterAndSort columnId="nextSchedule" label="Next Schedule" sortKey={sortKey} sortOrder={sortOrder} onSort={setSort} filterable={false} distinctValues={[]} selectedFilterValues={new Set()} onFilterChange={() => { }} />
+              </ResizableTableHead>
+              <ResizableTableHead columnId="active">
+                <TableColumnHeaderWithFilterAndSort columnId="active" label="Active Jobs" sortKey={sortKey} sortOrder={sortOrder} onSort={setSort} filterable={false} distinctValues={[]} selectedFilterValues={new Set()} onFilterChange={() => { }} />
+              </ResizableTableHead>
+              <ResizableTableHead columnId="concurrencyPolicy">
+                <TableColumnHeaderWithFilterAndSort columnId="concurrencyPolicy" label="Concurrency" sortKey={sortKey} sortOrder={sortOrder} onSort={setSort} filterable={false} distinctValues={[]} selectedFilterValues={new Set()} onFilterChange={() => { }} />
+              </ResizableTableHead>
+              <ResizableTableHead columnId="suspend">
+                <TableColumnHeaderWithFilterAndSort columnId="suspend" label="Suspend" sortKey={sortKey} sortOrder={sortOrder} onSort={setSort} filterable={false} distinctValues={[]} selectedFilterValues={new Set()} onFilterChange={() => { }} />
+              </ResizableTableHead>
+              <ResizableTableHead columnId="historyLimit">
+                <TableColumnHeaderWithFilterAndSort columnId="historyLimit" label="History Limit" sortKey={sortKey} sortOrder={sortOrder} onSort={setSort} filterable={false} distinctValues={[]} selectedFilterValues={new Set()} onFilterChange={() => { }} />
+              </ResizableTableHead>
+              <ResizableTableHead columnId="lastResult">
+                <TableColumnHeaderWithFilterAndSort columnId="lastResult" label="Last Result" sortKey={sortKey} sortOrder={sortOrder} onSort={setSort} filterable={false} distinctValues={[]} selectedFilterValues={new Set()} onFilterChange={() => { }} />
+              </ResizableTableHead>
+              <ResizableTableHead columnId="age">
+                <TableColumnHeaderWithFilterAndSort columnId="age" label="Age" sortKey={sortKey} sortOrder={sortOrder} onSort={setSort} filterable={false} distinctValues={[]} selectedFilterValues={new Set()} onFilterChange={() => { }} />
+              </ResizableTableHead>
+              <TableHead className="w-12 text-center"><span className="sr-only">Actions</span><MoreHorizontal className="h-4 w-4 inline-block text-muted-foreground" aria-hidden /></TableHead>
             </TableRow>
-          )}
-          </TableHeader>
-          <TableBody>
-            {isLoading && isConnected ? (
-              <TableSkeletonRows columnCount={15} />
-            ) : itemsOnPage.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={16} className="h-40 text-center">
-                  <TableEmptyState
-                    icon={<Timer className="h-8 w-8" />}
-                    title="No CronJobs found"
-                    subtitle={searchQuery || hasActiveFilters ? 'Clear filters to see resources.' : 'Get started by creating a CronJob for scheduled jobs.'}
-                    hasActiveFilters={!!(searchQuery || hasActiveFilters)}
-                    onClearFilters={() => { setSearchQuery(''); clearAllFilters(); }}
-                    createLabel="Create CronJob"
-                    onCreate={() => setShowCreateWizard(true)}
-                  />
-                </TableCell>
-              </TableRow>
-            ) : listView === 'flat' ? itemsOnPage.flatMap((item, idx) => {
-              const StatusIcon = statusConfig[item.status]?.icon || Clock;
-              const key = `${item.namespace}/${item.name}`;
-              const isSelected = selectedItems.has(key);
-              const isExpanded = expandedRow === key;
-              return [
-                <motion.tr key={key} initial={ROW_MOTION.initial} animate={ROW_MOTION.animate} transition={ROW_MOTION.transition(idx)} className={cn(resourceTableRowClassName, idx % 2 === 1 && 'bg-muted/5', isSelected && 'bg-primary/5')}>
-                  <TableCell><Checkbox checked={isSelected} onCheckedChange={() => toggleSelection(item)} /></TableCell>
-                  <ResizableTableCell columnId="expand">
-                    <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={() => setExpandedRow(isExpanded ? null : key)} aria-label={isExpanded ? 'Collapse' : 'Expand'} aria-expanded={isExpanded}>
-                      {isExpanded ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
-                    </Button>
+              {showTableFilters && (
+                <TableRow className="bg-muted/30 hover:bg-muted/30 border-b-2 border-border">
+                  <TableCell className="w-10 p-1.5" />
+                  <ResizableTableCell columnId="expand" className="p-1.5" />
+                  <ResizableTableCell columnId="name" className="p-1.5">
+                    <TableFilterCell columnId="name" label="Name" distinctValues={distinctValuesByColumn.name ?? []} selectedFilterValues={columnFilters.name ?? new Set()} onFilterChange={setColumnFilter} valueCounts={valueCountsByColumn.name} />
                   </ResizableTableCell>
-                  <ResizableTableCell columnId="name"><Link to={`/cronjobs/${item.namespace}/${item.name}`} className="font-medium text-primary hover:underline flex items-center gap-2 truncate"><CronJobIcon className="h-4 w-4 text-muted-foreground flex-shrink-0" /><span className="truncate">{item.name}</span></Link></ResizableTableCell>
-                  <ResizableTableCell columnId="namespace"><NamespaceBadge namespace={item.namespace} className="font-normal truncate block w-fit max-w-full" /></ResizableTableCell>
-                  <ResizableTableCell columnId="status"><StatusPill label={item.status} variant={cronJobStatusToVariant[item.status]} icon={StatusIcon} /></ResizableTableCell>
-                  <ResizableTableCell columnId="schedule" className="min-w-0" title={item.schedule}><span className="text-xs truncate block">{item.scheduleHuman !== '-' ? item.scheduleHuman : item.schedule}</span></ResizableTableCell>
-                  <ResizableTableCell columnId="lastSchedule" className="text-muted-foreground whitespace-nowrap text-sm">{item.lastSchedule}</ResizableTableCell>
-                  <ResizableTableCell columnId="nextSchedule" className="text-muted-foreground whitespace-nowrap text-sm">{item.nextSchedule}</ResizableTableCell>
-                  <ResizableTableCell columnId="active" className="font-mono text-sm">{item.active}</ResizableTableCell>
-                  <ResizableTableCell columnId="concurrencyPolicy">
-                    <Badge
-                      variant={item.concurrencyPolicy === 'Allow' ? 'default' : item.concurrencyPolicy === 'Forbid' ? 'secondary' : 'destructive'}
-                      className={cn('font-mono text-xs', item.concurrencyPolicy === 'Forbid' && 'bg-amber-500/90 text-white border-0')}
-                    >
-                      {item.concurrencyPolicy}
-                    </Badge>
+                  <ResizableTableCell columnId="namespace" className="p-1.5">
+                    <TableFilterCell columnId="namespace" label="Namespace" distinctValues={distinctValuesByColumn.namespace ?? []} selectedFilterValues={columnFilters.namespace ?? new Set()} onFilterChange={setColumnFilter} valueCounts={valueCountsByColumn.namespace} />
                   </ResizableTableCell>
-                  <ResizableTableCell columnId="suspend">
-                    <Badge variant={item.suspend ? 'secondary' : 'outline'} className="text-xs">{item.suspend ? 'Yes' : 'No'}</Badge>
+                  <ResizableTableCell columnId="status" className="p-1.5">
+                    <TableFilterCell columnId="status" label="Status" distinctValues={distinctValuesByColumn.status ?? []} selectedFilterValues={columnFilters.status ?? new Set()} onFilterChange={setColumnFilter} valueCounts={valueCountsByColumn.status} />
                   </ResizableTableCell>
-                  <ResizableTableCell columnId="historyLimit" className="font-mono text-sm">{item.historyLimit}</ResizableTableCell>
-                  <ResizableTableCell columnId="lastResult">
-                    {item.lastResult !== '–' ? (
-                      <StatusPill
-                        label={item.lastResult}
-                        variant={item.lastResult === 'Success' ? 'success' : item.lastResult === 'Failed' ? 'destructive' : 'warning'}
-                        icon={item.lastResult === 'Success' ? CheckCircle2 : item.lastResult === 'Failed' ? XCircle : Play}
-                      />
-                    ) : (
-                      <span className="text-muted-foreground text-sm">—</span>
-                    )}
+                  <ResizableTableCell columnId="schedule" className="p-1.5" />
+                  <ResizableTableCell columnId="lastSchedule" className="p-1.5" />
+                  <ResizableTableCell columnId="nextSchedule" className="p-1.5" />
+                  <ResizableTableCell columnId="active" className="p-1.5">
+                    <TableFilterCell columnId="hasActiveJobs" label="Has Active Jobs" distinctValues={distinctValuesByColumn.hasActiveJobs ?? []} selectedFilterValues={columnFilters.hasActiveJobs ?? new Set()} onFilterChange={setColumnFilter} valueCounts={valueCountsByColumn.hasActiveJobs} />
                   </ResizableTableCell>
-                  <ResizableTableCell columnId="age" className="text-muted-foreground whitespace-nowrap"><AgeCell age={item.age} timestamp={item.creationTimestamp} /></ResizableTableCell>
-                  <TableCell>
-                    <DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors" aria-label="CronJob actions"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-52">
-                        <CopyNameDropdownItem name={item.name} namespace={item.namespace} />
-                        <DropdownMenuItem onClick={() => navigate(`/cronjobs/${item.namespace}/${item.name}`)} className="gap-2">View Details</DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleTriggerNow(item)} className="gap-2" disabled={!isConnected}><Play className="h-4 w-4" />Trigger Now</DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleToggleSuspend(item)} className="gap-2" disabled={!isConnected}>{item.status === 'Active' ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}{item.status === 'Active' ? 'Suspend' : 'Resume'}</DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => navigate(`/jobs?namespace=${item.namespace}`)} className="gap-2"><Box className="h-4 w-4" />View Jobs</DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => navigate(`/cronjobs/${item.namespace}/${item.name}?tab=logs`)} className="gap-2"><FileText className="h-4 w-4" />View Last Job Logs</DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => navigate(`/cronjobs/${item.namespace}/${item.name}?tab=yaml`)} className="gap-2"><FileText className="h-4 w-4" />Download YAML</DropdownMenuItem>
-                        <DropdownMenuSeparator /><DropdownMenuItem className="gap-2 text-[hsl(0,72%,51%)]" onClick={() => setDeleteDialog({ open: true, item })} disabled={!isConnected}><Trash2 className="h-4 w-4" />Delete</DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                  <ResizableTableCell columnId="concurrencyPolicy" className="p-1.5">
+                    <TableFilterCell columnId="concurrencyPolicy" label="Concurrency Policy" distinctValues={distinctValuesByColumn.concurrencyPolicy ?? []} selectedFilterValues={columnFilters.concurrencyPolicy ?? new Set()} onFilterChange={setColumnFilter} valueCounts={valueCountsByColumn.concurrencyPolicy} />
+                  </ResizableTableCell>
+                  <ResizableTableCell columnId="suspend" className="p-1.5" />
+                  <ResizableTableCell columnId="historyLimit" className="p-1.5" />
+                  <ResizableTableCell columnId="lastResult" className="p-1.5" />
+                  <ResizableTableCell columnId="age" className="p-1.5" />
+                  <TableCell className="w-12 p-1.5" />
+                </TableRow>
+              )}
+            </TableHeader>
+            <TableBody>
+              {isLoading && isConnected ? (
+                <TableSkeletonRows columnCount={15} />
+              ) : itemsOnPage.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={16} className="h-40 text-center">
+                    <TableEmptyState
+                      icon={<Timer className="h-8 w-8" />}
+                      title="No CronJobs found"
+                      subtitle={searchQuery || hasActiveFilters ? 'Clear filters to see resources.' : 'Get started by creating a CronJob for scheduled jobs.'}
+                      hasActiveFilters={!!(searchQuery || hasActiveFilters)}
+                      onClearFilters={() => { setSearchQuery(''); clearAllFilters(); }}
+                      createLabel="Create CronJob"
+                      onCreate={() => setShowCreateWizard(true)}
+                    />
                   </TableCell>
-                </motion.tr>,
-                ...(isExpanded ? [
-                  <TableRow key={`${key}-jobs`} className="bg-muted/20 hover:bg-muted/20 border-b border-border/60">
-                    <TableCell colSpan={16} className="p-0 align-top">
-                      <div className="pl-14 pr-4 py-3">
-                        <div className="text-xs font-medium text-muted-foreground mb-2">Recent Jobs (last 5)</div>
-                        {childJobsLoading ? (
-                          <div className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" />Loading jobs…</div>
-                        ) : childJobs.length === 0 ? (
-                          <div className="text-sm text-muted-foreground">No jobs yet</div>
-                        ) : (
-                          <Table>
-                            <TableHeader><TableRow className="border-0 hover:bg-transparent">
-                              <TableHead className="h-8 text-xs font-medium text-muted-foreground">Job Name</TableHead>
-                              <TableHead className="h-8 text-xs font-medium text-muted-foreground">Status</TableHead>
-                              <TableHead className="h-8 text-xs font-medium text-muted-foreground">Start Time</TableHead>
-                              <TableHead className="h-8 text-xs font-medium text-muted-foreground">Duration</TableHead>
-                            </TableRow></TableHeader>
-                            <TableBody>
-                              {childJobs.map((job) => (
-                                <TableRow key={job.name} className="border-0 hover:bg-muted/30" onClick={() => navigate(`/jobs/${job.namespace}/${job.name}`)}>
-                                  <TableCell className="py-1.5 text-sm"><Link to={`/jobs/${job.namespace}/${job.name}`} className="text-primary hover:underline font-medium" onClick={(e) => e.stopPropagation()}>{job.name}</Link></TableCell>
-                                  <TableCell className="py-1.5"><StatusPill label={job.status} variant={job.status === 'Complete' ? 'success' : job.status === 'Failed' ? 'destructive' : 'warning'} icon={job.status === 'Complete' ? CheckCircle2 : job.status === 'Failed' ? XCircle : Clock} /></TableCell>
-                                  <TableCell className="py-1.5 text-sm text-muted-foreground">{job.startTime !== '-' ? new Date(job.startTime).toLocaleString() : '-'}</TableCell>
-                                  <TableCell className="py-1.5 text-sm font-mono">{job.duration}</TableCell>
-                                </TableRow>
-                              ))}
-                            </TableBody>
-                          </Table>
-                        )}
+                </TableRow>
+              ) : listView === 'flat' ? itemsOnPage.flatMap((item, idx) => {
+                const StatusIcon = statusConfig[item.status]?.icon || Clock;
+                const key = `${item.namespace}/${item.name}`;
+                const isSelected = selectedItems.has(key);
+                const isExpanded = expandedRow === key;
+                return [
+                  <motion.tr key={key} initial={ROW_MOTION.initial} animate={ROW_MOTION.animate} transition={ROW_MOTION.transition(idx)} className={cn(resourceTableRowClassName, idx % 2 === 1 && 'bg-muted/5', isSelected && 'bg-primary/5')}>
+                    <TableCell><Checkbox checked={isSelected} onCheckedChange={() => toggleSelection(item)} /></TableCell>
+                    <ResizableTableCell columnId="expand">
+                      <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={() => setExpandedRow(isExpanded ? null : key)} aria-label={isExpanded ? 'Collapse' : 'Expand'} aria-expanded={isExpanded}>
+                        {isExpanded ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
+                      </Button>
+                    </ResizableTableCell>
+                    <ResizableTableCell columnId="name"><Link to={`/cronjobs/${item.namespace}/${item.name}`} className="font-medium text-primary hover:underline flex items-center gap-2 truncate"><CronJobIcon className="h-4 w-4 text-muted-foreground flex-shrink-0" /><span className="truncate">{item.name}</span></Link></ResizableTableCell>
+                    <ResizableTableCell columnId="namespace"><NamespaceBadge namespace={item.namespace} className="font-normal truncate block w-fit max-w-full" /></ResizableTableCell>
+                    <ResizableTableCell columnId="status"><StatusPill label={item.status} variant={cronJobStatusToVariant[item.status]} icon={StatusIcon} /></ResizableTableCell>
+                    <ResizableTableCell columnId="schedule" className="min-w-0" title={item.schedule}><span className="text-xs truncate block">{item.scheduleHuman !== '-' ? item.scheduleHuman : item.schedule}</span></ResizableTableCell>
+                    <ResizableTableCell columnId="lastSchedule" className="text-muted-foreground whitespace-nowrap text-sm">{item.lastSchedule}</ResizableTableCell>
+                    <ResizableTableCell columnId="nextSchedule" className="text-muted-foreground whitespace-nowrap text-sm">{item.nextSchedule}</ResizableTableCell>
+                    <ResizableTableCell columnId="active" className="font-mono text-sm">{item.active}</ResizableTableCell>
+                    <ResizableTableCell columnId="concurrencyPolicy">
+                      <Badge
+                        variant={item.concurrencyPolicy === 'Allow' ? 'default' : item.concurrencyPolicy === 'Forbid' ? 'secondary' : 'destructive'}
+                        className={cn('font-mono text-xs', item.concurrencyPolicy === 'Forbid' && 'bg-amber-500/90 text-white border-0')}
+                      >
+                        {item.concurrencyPolicy}
+                      </Badge>
+                    </ResizableTableCell>
+                    <ResizableTableCell columnId="suspend">
+                      <Badge variant={item.suspend ? 'secondary' : 'outline'} className="text-xs">{item.suspend ? 'Yes' : 'No'}</Badge>
+                    </ResizableTableCell>
+                    <ResizableTableCell columnId="historyLimit" className="font-mono text-sm">{item.historyLimit}</ResizableTableCell>
+                    <ResizableTableCell columnId="lastResult">
+                      {item.lastResult !== '–' ? (
+                        <StatusPill
+                          label={item.lastResult}
+                          variant={item.lastResult === 'Success' ? 'success' : item.lastResult === 'Failed' ? 'error' : 'warning'}
+                          icon={item.lastResult === 'Success' ? CheckCircle2 : item.lastResult === 'Failed' ? XCircle : Play}
+                        />
+                      ) : (
+                        <span className="text-muted-foreground text-sm">—</span>
+                      )}
+                    </ResizableTableCell>
+                    <ResizableTableCell columnId="age" className="text-muted-foreground whitespace-nowrap"><AgeCell age={item.age} timestamp={item.creationTimestamp} /></ResizableTableCell>
+                    <TableCell>
+                      <DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors" aria-label="CronJob actions"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-52">
+                          <CopyNameDropdownItem name={item.name} namespace={item.namespace} />
+                          <DropdownMenuItem onClick={() => navigate(`/cronjobs/${item.namespace}/${item.name}`)} className="gap-2">View Details</DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleTriggerNow(item)} className="gap-2" disabled={!isConnected}><Play className="h-4 w-4" />Trigger Now</DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleToggleSuspend(item)} className="gap-2" disabled={!isConnected}>{item.status === 'Active' ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}{item.status === 'Active' ? 'Suspend' : 'Resume'}</DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => navigate(`/jobs?namespace=${item.namespace}`)} className="gap-2"><Box className="h-4 w-4" />View Jobs</DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => navigate(`/cronjobs/${item.namespace}/${item.name}?tab=logs`)} className="gap-2"><FileText className="h-4 w-4" />View Last Job Logs</DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => navigate(`/cronjobs/${item.namespace}/${item.name}?tab=yaml`)} className="gap-2"><FileText className="h-4 w-4" />Download YAML</DropdownMenuItem>
+                          <DropdownMenuSeparator /><DropdownMenuItem className="gap-2 text-[hsl(0,72%,51%)]" onClick={() => setDeleteDialog({ open: true, item })} disabled={!isConnected}><Trash2 className="h-4 w-4" />Delete</DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </motion.tr>,
+                  ...(isExpanded ? [
+                    <TableRow key={`${key}-jobs`} className="bg-muted/20 hover:bg-muted/20 border-b border-border/60">
+                      <TableCell colSpan={16} className="p-0 align-top">
+                        <div className="pl-14 pr-4 py-3">
+                          <div className="text-xs font-medium text-muted-foreground mb-2">Recent Jobs (last 5)</div>
+                          {childJobsLoading ? (
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" />Loading jobs…</div>
+                          ) : childJobs.length === 0 ? (
+                            <div className="text-sm text-muted-foreground">No jobs yet</div>
+                          ) : (
+                            <Table>
+                              <TableHeader><TableRow className="border-0 hover:bg-transparent">
+                                <TableHead className="h-8 text-xs font-medium text-muted-foreground">Job Name</TableHead>
+                                <TableHead className="h-8 text-xs font-medium text-muted-foreground">Status</TableHead>
+                                <TableHead className="h-8 text-xs font-medium text-muted-foreground">Start Time</TableHead>
+                                <TableHead className="h-8 text-xs font-medium text-muted-foreground">Duration</TableHead>
+                              </TableRow></TableHeader>
+                              <TableBody>
+                                {childJobs.map((job) => (
+                                  <TableRow key={job.name} className="border-0 hover:bg-muted/30" onClick={() => navigate(`/jobs/${job.namespace}/${job.name}`)}>
+                                    <TableCell className="py-1.5 text-sm"><Link to={`/jobs/${job.namespace}/${job.name}`} className="text-primary hover:underline font-medium" onClick={(e) => e.stopPropagation()}>{job.name}</Link></TableCell>
+                                    <TableCell className="py-1.5"><StatusPill label={job.status} variant={job.status === 'Complete' ? 'success' : job.status === 'Failed' ? 'error' : 'warning'} icon={job.status === 'Complete' ? CheckCircle2 : job.status === 'Failed' ? XCircle : Clock} /></TableCell>
+                                    <TableCell className="py-1.5 text-sm text-muted-foreground">{job.startTime !== '-' ? new Date(job.startTime).toLocaleString() : '-'}</TableCell>
+                                    <TableCell className="py-1.5 text-sm font-mono">{job.duration}</TableCell>
+                                  </TableRow>
+                                ))}
+                              </TableBody>
+                            </Table>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>,
+                  ] : []),
+                ];
+              }) : groupedOnPage.flatMap((group) => {
+                const isCollapsed = collapsedGroups.has(group.groupKey);
+                return [
+                  <TableRow key={group.groupKey} className="bg-muted/30 hover:bg-muted/40 cursor-pointer border-b border-border" onClick={() => toggleGroup(group.groupKey)}>
+                    <TableCell colSpan={16} className="py-2 font-medium">
+                      <div className="flex items-center gap-2">
+                        {isCollapsed ? <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" /> : <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />}
+                        Namespace: {group.label}
+                        <span className="text-muted-foreground font-normal">({group.list.length})</span>
                       </div>
                     </TableCell>
                   </TableRow>,
-                ] : []),
-              ];
-            }            ) : groupedOnPage.flatMap((group) => {
-              const isCollapsed = collapsedGroups.has(group.groupKey);
-              return [
-                <TableRow key={group.groupKey} className="bg-muted/30 hover:bg-muted/40 cursor-pointer border-b border-border" onClick={() => toggleGroup(group.groupKey)}>
-                  <TableCell colSpan={16} className="py-2 font-medium">
-                    <div className="flex items-center gap-2">
-                      {isCollapsed ? <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" /> : <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />}
-                      Namespace: {group.label}
-                      <span className="text-muted-foreground font-normal">({group.list.length})</span>
-                    </div>
-                  </TableCell>
-                </TableRow>,
-                ...(isCollapsed ? [] : group.list.flatMap((item, idx) => {
-                  const StatusIcon = statusConfig[item.status]?.icon || Clock;
-                  const key = `${item.namespace}/${item.name}`;
-                  const isSelected = selectedItems.has(key);
-                  const isExpanded = expandedRow === key;
-                  return [
-                    <motion.tr key={key} initial={ROW_MOTION.initial} animate={ROW_MOTION.animate} transition={ROW_MOTION.transition(idx)} className={cn(resourceTableRowClassName, idx % 2 === 1 && 'bg-muted/5', isSelected && 'bg-primary/5')}>
-                      <TableCell><Checkbox checked={isSelected} onCheckedChange={() => toggleSelection(item)} /></TableCell>
-                      <ResizableTableCell columnId="expand">
-                        <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={() => setExpandedRow(isExpanded ? null : key)} aria-label={isExpanded ? 'Collapse' : 'Expand'} aria-expanded={isExpanded}>
-                          {isExpanded ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
-                        </Button>
-                      </ResizableTableCell>
-                      <ResizableTableCell columnId="name"><Link to={`/cronjobs/${item.namespace}/${item.name}`} className="font-medium text-primary hover:underline flex items-center gap-2 truncate"><CronJobIcon className="h-4 w-4 text-muted-foreground flex-shrink-0" /><span className="truncate">{item.name}</span></Link></ResizableTableCell>
-                      <ResizableTableCell columnId="namespace"><NamespaceBadge namespace={item.namespace} className="font-normal truncate block w-fit max-w-full" /></ResizableTableCell>
-                      <ResizableTableCell columnId="status"><StatusPill label={item.status} variant={cronJobStatusToVariant[item.status]} icon={StatusIcon} /></ResizableTableCell>
-                      <ResizableTableCell columnId="schedule" className="min-w-0" title={item.schedule}><span className="text-xs truncate block">{item.scheduleHuman !== '-' ? item.scheduleHuman : item.schedule}</span></ResizableTableCell>
-                      <ResizableTableCell columnId="lastSchedule" className="text-muted-foreground whitespace-nowrap text-sm">{item.lastSchedule}</ResizableTableCell>
-                      <ResizableTableCell columnId="nextSchedule" className="text-muted-foreground whitespace-nowrap text-sm">{item.nextSchedule}</ResizableTableCell>
-                      <ResizableTableCell columnId="active" className="font-mono text-sm">{item.active}</ResizableTableCell>
-                      <ResizableTableCell columnId="concurrencyPolicy">
-                        <Badge
-                          variant={item.concurrencyPolicy === 'Allow' ? 'default' : item.concurrencyPolicy === 'Forbid' ? 'secondary' : 'destructive'}
-                          className={cn('font-mono text-xs', item.concurrencyPolicy === 'Forbid' && 'bg-amber-500/90 text-white border-0')}
-                        >
-                          {item.concurrencyPolicy}
-                        </Badge>
-                      </ResizableTableCell>
-                      <ResizableTableCell columnId="suspend">
-                        <Badge variant={item.suspend ? 'secondary' : 'outline'} className="text-xs">{item.suspend ? 'Yes' : 'No'}</Badge>
-                      </ResizableTableCell>
-                      <ResizableTableCell columnId="historyLimit" className="font-mono text-sm">{item.historyLimit}</ResizableTableCell>
-                      <ResizableTableCell columnId="lastResult">
-                        {item.lastResult !== '–' ? (
-                          <StatusPill
-                            label={item.lastResult}
-                            variant={item.lastResult === 'Success' ? 'success' : item.lastResult === 'Failed' ? 'destructive' : 'warning'}
-                            icon={item.lastResult === 'Success' ? CheckCircle2 : item.lastResult === 'Failed' ? XCircle : Play}
-                          />
-                        ) : (
-                          <span className="text-muted-foreground text-sm">—</span>
-                        )}
-                      </ResizableTableCell>
-                      <ResizableTableCell columnId="age" className="text-muted-foreground whitespace-nowrap"><AgeCell age={item.age} timestamp={item.creationTimestamp} /></ResizableTableCell>
-                      <TableCell>
-                        <DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors" aria-label="CronJob actions"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-52">
-                            <CopyNameDropdownItem name={item.name} namespace={item.namespace} />
-                            <DropdownMenuItem onClick={() => navigate(`/cronjobs/${item.namespace}/${item.name}`)} className="gap-2">View Details</DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleTriggerNow(item)} className="gap-2" disabled={!isConnected}><Play className="h-4 w-4" />Trigger Now</DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleToggleSuspend(item)} className="gap-2" disabled={!isConnected}>{item.status === 'Active' ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}{item.status === 'Active' ? 'Suspend' : 'Resume'}</DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => navigate(`/jobs?namespace=${item.namespace}`)} className="gap-2"><Box className="h-4 w-4" />View Jobs</DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => navigate(`/cronjobs/${item.namespace}/${item.name}?tab=logs`)} className="gap-2"><FileText className="h-4 w-4" />View Last Job Logs</DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => navigate(`/cronjobs/${item.namespace}/${item.name}?tab=yaml`)} className="gap-2"><FileText className="h-4 w-4" />Download YAML</DropdownMenuItem>
-                            <DropdownMenuSeparator /><DropdownMenuItem className="gap-2 text-[hsl(0,72%,51%)]" onClick={() => setDeleteDialog({ open: true, item })} disabled={!isConnected}><Trash2 className="h-4 w-4" />Delete</DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </motion.tr>,
-                    ...(isExpanded ? [
-                      <TableRow key={`${key}-jobs`} className="bg-muted/20 hover:bg-muted/20 border-b border-border/60">
-                        <TableCell colSpan={16} className="p-0 align-top">
-                          <div className="pl-14 pr-4 py-3">
-                            <div className="text-xs font-medium text-muted-foreground mb-2">Recent Jobs (last 5)</div>
-                            {childJobsLoading ? (
-                              <div className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" />Loading jobs…</div>
-                            ) : childJobs.length === 0 ? (
-                              <div className="text-sm text-muted-foreground">No jobs yet</div>
-                            ) : (
-                              <Table>
-                                <TableHeader><TableRow className="border-0 hover:bg-transparent">
-                                  <TableHead className="h-8 text-xs font-medium text-muted-foreground">Job Name</TableHead>
-                                  <TableHead className="h-8 text-xs font-medium text-muted-foreground">Status</TableHead>
-                                  <TableHead className="h-8 text-xs font-medium text-muted-foreground">Start Time</TableHead>
-                                  <TableHead className="h-8 text-xs font-medium text-muted-foreground">Duration</TableHead>
-                                </TableRow></TableHeader>
-                                <TableBody>
-                                  {childJobs.map((job) => (
-                                    <TableRow key={job.name} className="border-0 hover:bg-muted/30" onClick={() => navigate(`/jobs/${job.namespace}/${job.name}`)}>
-                                      <TableCell className="py-1.5 text-sm"><Link to={`/jobs/${job.namespace}/${job.name}`} className="text-primary hover:underline font-medium" onClick={(e) => e.stopPropagation()}>{job.name}</Link></TableCell>
-                                      <TableCell className="py-1.5"><StatusPill label={job.status} variant={job.status === 'Complete' ? 'success' : job.status === 'Failed' ? 'destructive' : 'warning'} icon={job.status === 'Complete' ? CheckCircle2 : job.status === 'Failed' ? XCircle : Clock} /></TableCell>
-                                      <TableCell className="py-1.5 text-sm text-muted-foreground">{job.startTime !== '-' ? new Date(job.startTime).toLocaleString() : '-'}</TableCell>
-                                      <TableCell className="py-1.5 text-sm font-mono">{job.duration}</TableCell>
-                                    </TableRow>
-                                  ))}
-                                </TableBody>
-                              </Table>
-                            )}
-                          </div>
+                  ...(isCollapsed ? [] : group.list.flatMap((item, idx) => {
+                    const StatusIcon = statusConfig[item.status]?.icon || Clock;
+                    const key = `${item.namespace}/${item.name}`;
+                    const isSelected = selectedItems.has(key);
+                    const isExpanded = expandedRow === key;
+                    return [
+                      <motion.tr key={key} initial={ROW_MOTION.initial} animate={ROW_MOTION.animate} transition={ROW_MOTION.transition(idx)} className={cn(resourceTableRowClassName, idx % 2 === 1 && 'bg-muted/5', isSelected && 'bg-primary/5')}>
+                        <TableCell><Checkbox checked={isSelected} onCheckedChange={() => toggleSelection(item)} /></TableCell>
+                        <ResizableTableCell columnId="expand">
+                          <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={() => setExpandedRow(isExpanded ? null : key)} aria-label={isExpanded ? 'Collapse' : 'Expand'} aria-expanded={isExpanded}>
+                            {isExpanded ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
+                          </Button>
+                        </ResizableTableCell>
+                        <ResizableTableCell columnId="name"><Link to={`/cronjobs/${item.namespace}/${item.name}`} className="font-medium text-primary hover:underline flex items-center gap-2 truncate"><CronJobIcon className="h-4 w-4 text-muted-foreground flex-shrink-0" /><span className="truncate">{item.name}</span></Link></ResizableTableCell>
+                        <ResizableTableCell columnId="namespace"><NamespaceBadge namespace={item.namespace} className="font-normal truncate block w-fit max-w-full" /></ResizableTableCell>
+                        <ResizableTableCell columnId="status"><StatusPill label={item.status} variant={cronJobStatusToVariant[item.status]} icon={StatusIcon} /></ResizableTableCell>
+                        <ResizableTableCell columnId="schedule" className="min-w-0" title={item.schedule}><span className="text-xs truncate block">{item.scheduleHuman !== '-' ? item.scheduleHuman : item.schedule}</span></ResizableTableCell>
+                        <ResizableTableCell columnId="lastSchedule" className="text-muted-foreground whitespace-nowrap text-sm">{item.lastSchedule}</ResizableTableCell>
+                        <ResizableTableCell columnId="nextSchedule" className="text-muted-foreground whitespace-nowrap text-sm">{item.nextSchedule}</ResizableTableCell>
+                        <ResizableTableCell columnId="active" className="font-mono text-sm">{item.active}</ResizableTableCell>
+                        <ResizableTableCell columnId="concurrencyPolicy">
+                          <Badge
+                            variant={item.concurrencyPolicy === 'Allow' ? 'default' : item.concurrencyPolicy === 'Forbid' ? 'secondary' : 'destructive'}
+                            className={cn('font-mono text-xs', item.concurrencyPolicy === 'Forbid' && 'bg-amber-500/90 text-white border-0')}
+                          >
+                            {item.concurrencyPolicy}
+                          </Badge>
+                        </ResizableTableCell>
+                        <ResizableTableCell columnId="suspend">
+                          <Badge variant={item.suspend ? 'secondary' : 'outline'} className="text-xs">{item.suspend ? 'Yes' : 'No'}</Badge>
+                        </ResizableTableCell>
+                        <ResizableTableCell columnId="historyLimit" className="font-mono text-sm">{item.historyLimit}</ResizableTableCell>
+                        <ResizableTableCell columnId="lastResult">
+                          {item.lastResult !== '–' ? (
+                            <StatusPill
+                              label={item.lastResult}
+                              variant={item.lastResult === 'Success' ? 'success' : item.lastResult === 'Failed' ? 'error' : 'warning'}
+                              icon={item.lastResult === 'Success' ? CheckCircle2 : item.lastResult === 'Failed' ? XCircle : Play}
+                            />
+                          ) : (
+                            <span className="text-muted-foreground text-sm">—</span>
+                          )}
+                        </ResizableTableCell>
+                        <ResizableTableCell columnId="age" className="text-muted-foreground whitespace-nowrap"><AgeCell age={item.age} timestamp={item.creationTimestamp} /></ResizableTableCell>
+                        <TableCell>
+                          <DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors" aria-label="CronJob actions"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-52">
+                              <CopyNameDropdownItem name={item.name} namespace={item.namespace} />
+                              <DropdownMenuItem onClick={() => navigate(`/cronjobs/${item.namespace}/${item.name}`)} className="gap-2">View Details</DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleTriggerNow(item)} className="gap-2" disabled={!isConnected}><Play className="h-4 w-4" />Trigger Now</DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleToggleSuspend(item)} className="gap-2" disabled={!isConnected}>{item.status === 'Active' ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}{item.status === 'Active' ? 'Suspend' : 'Resume'}</DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => navigate(`/jobs?namespace=${item.namespace}`)} className="gap-2"><Box className="h-4 w-4" />View Jobs</DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => navigate(`/cronjobs/${item.namespace}/${item.name}?tab=logs`)} className="gap-2"><FileText className="h-4 w-4" />View Last Job Logs</DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => navigate(`/cronjobs/${item.namespace}/${item.name}?tab=yaml`)} className="gap-2"><FileText className="h-4 w-4" />Download YAML</DropdownMenuItem>
+                              <DropdownMenuSeparator /><DropdownMenuItem className="gap-2 text-[hsl(0,72%,51%)]" onClick={() => setDeleteDialog({ open: true, item })} disabled={!isConnected}><Trash2 className="h-4 w-4" />Delete</DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </TableCell>
-                      </TableRow>,
-                    ] : []),
-                  ];
-                })),
-              ];
-            })}
-          </TableBody>
-        </Table>
+                      </motion.tr>,
+                      ...(isExpanded ? [
+                        <TableRow key={`${key}-jobs`} className="bg-muted/20 hover:bg-muted/20 border-b border-border/60">
+                          <TableCell colSpan={16} className="p-0 align-top">
+                            <div className="pl-14 pr-4 py-3">
+                              <div className="text-xs font-medium text-muted-foreground mb-2">Recent Jobs (last 5)</div>
+                              {childJobsLoading ? (
+                                <div className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" />Loading jobs…</div>
+                              ) : childJobs.length === 0 ? (
+                                <div className="text-sm text-muted-foreground">No jobs yet</div>
+                              ) : (
+                                <Table>
+                                  <TableHeader><TableRow className="border-0 hover:bg-transparent">
+                                    <TableHead className="h-8 text-xs font-medium text-muted-foreground">Job Name</TableHead>
+                                    <TableHead className="h-8 text-xs font-medium text-muted-foreground">Status</TableHead>
+                                    <TableHead className="h-8 text-xs font-medium text-muted-foreground">Start Time</TableHead>
+                                    <TableHead className="h-8 text-xs font-medium text-muted-foreground">Duration</TableHead>
+                                  </TableRow></TableHeader>
+                                  <TableBody>
+                                    {childJobs.map((job) => (
+                                      <TableRow key={job.name} className="border-0 hover:bg-muted/30" onClick={() => navigate(`/jobs/${job.namespace}/${job.name}`)}>
+                                        <TableCell className="py-1.5 text-sm"><Link to={`/jobs/${job.namespace}/${job.name}`} className="text-primary hover:underline font-medium" onClick={(e) => e.stopPropagation()}>{job.name}</Link></TableCell>
+                                        <TableCell className="py-1.5"><StatusPill label={job.status} variant={job.status === 'Complete' ? 'success' : job.status === 'Failed' ? 'error' : 'warning'} icon={job.status === 'Complete' ? CheckCircle2 : job.status === 'Failed' ? XCircle : Clock} /></TableCell>
+                                        <TableCell className="py-1.5 text-sm text-muted-foreground">{job.startTime !== '-' ? new Date(job.startTime).toLocaleString() : '-'}</TableCell>
+                                        <TableCell className="py-1.5 text-sm font-mono">{job.duration}</TableCell>
+                                      </TableRow>
+                                    ))}
+                                  </TableBody>
+                                </Table>
+                              )}
+                            </div>
+                          </TableCell>
+                        </TableRow>,
+                      ] : []),
+                    ];
+                  })),
+                ];
+              })}
+            </TableBody>
+          </Table>
         </ResizableTableProvider>
       </ResourceListTableToolbar>
 
@@ -840,15 +840,12 @@ spec:
           defaultYaml={DEFAULT_YAMLS.CronJob}
           onClose={() => setShowCreateWizard(false)}
           onApply={async (yaml) => {
-            if (!isConnected) { toast.error('Connect cluster to create CronJob'); return; }
             try {
               await createResource.mutateAsync({ yaml });
-              toast.success('CronJob created successfully');
               setShowCreateWizard(false);
               refetch();
-            } catch (e: any) {
-              toast.error(e?.message ?? 'Failed to create');
-              throw e;
+            } catch (e) {
+              // Error toast is handled by useCreateK8sResource
             }
           }}
         />

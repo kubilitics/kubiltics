@@ -1,28 +1,31 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { normalizeKindForTopology } from '@/utils/resourceKindMapper';
-import { FolderCog, Clock, Cpu, Download, Trash2, Settings, Package, Box, Network, Loader2 } from 'lucide-react';
+import { FolderCog, Clock, Cpu, Download, Trash2, Settings, Package, Box, Network, Loader2, GitCompare } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { NamespaceBadge } from '@/components/list';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
+import { downloadResourceJson } from '@/lib/exportUtils';
 import {
   ResourceDetailLayout,
   ResourceOverviewMetadata,
   YamlViewer,
-  YamlCompareViewer,
   EventsSection,
   ActionsSection,
   DeleteConfirmDialog,
   ResourceTopologyView,
+  ResourceComparisonView,
   type ResourceStatus,
   type YamlVersion,
 } from '@/components/resources';
 import { useResourceDetail, useResourceEvents } from '@/hooks/useK8sResourceDetail';
 import { useDeleteK8sResource, useK8sResourceList, calculateAge, type KubernetesResource } from '@/hooks/useKubernetes';
 import { useConnectionStatus } from '@/hooks/useConnectionStatus';
+import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
+import { useActiveClusterId } from '@/hooks/useActiveClusterId';
 
 interface K8sRuntimeClass extends KubernetesResource {
   handler?: string;
@@ -43,6 +46,9 @@ export default function RuntimeClassDetail() {
   const [activeTab, setActiveTab] = useState('overview');
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const { isConnected } = useConnectionStatus();
+  const clusterId = useActiveClusterId();
+  const backendBaseUrl = useBackendConfigStore((s) => s.backendBaseUrl);
+  const baseUrl = getEffectiveBackendBaseUrl(backendBaseUrl);
 
   const { resource: k8sRc, isLoading, age, yaml, isConnected: resourceConnected, refetch } = useResourceDetail<K8sRuntimeClass>(
     'runtimeclasses',
@@ -86,6 +92,12 @@ export default function RuntimeClassDetail() {
     URL.revokeObjectURL(url);
   }, [yaml, rc?.name, name]);
 
+  const handleDownloadJson = useCallback(() => {
+    if (!k8sRc) return;
+    downloadResourceJson(k8sRc, `${rc?.name ?? name ?? 'runtimeclass'}.json`);
+    toast.success('JSON downloaded');
+  }, [k8sRc, rc?.name, name]);
+
   const handleSaveYaml = useCallback(async () => {
     toast.info('Update RuntimeClass via YAML is not implemented in this flow. Use Apply in cluster.');
   }, []);
@@ -94,11 +106,11 @@ export default function RuntimeClassDetail() {
 
   const statusCards = rc
     ? [
-        { label: 'Handler', value: rc.handler, icon: Cpu, iconColor: 'primary' as const },
-        { label: 'CPU Overhead', value: rc.overhead?.podFixed?.cpu ?? '—', icon: Settings, iconColor: 'info' as const },
-        { label: 'Memory Overhead', value: rc.overhead?.podFixed?.memory ?? '—', icon: FolderCog, iconColor: 'warning' as const },
-        { label: 'Age', value: rc.age, icon: Clock, iconColor: 'muted' as const },
-      ]
+      { label: 'Handler', value: rc.handler, icon: Cpu, iconColor: 'primary' as const },
+      { label: 'CPU Overhead', value: rc.overhead?.podFixed?.cpu ?? '—', icon: Settings, iconColor: 'info' as const },
+      { label: 'Memory Overhead', value: rc.overhead?.podFixed?.memory ?? '—', icon: FolderCog, iconColor: 'warning' as const },
+      { label: 'Age', value: rc.age, icon: Clock, iconColor: 'muted' as const },
+    ]
     : [];
 
   const handleDelete = useCallback(async () => {
@@ -279,7 +291,22 @@ export default function RuntimeClassDetail() {
     },
     { id: 'events', label: 'Events', content: <EventsSection events={events} /> },
     { id: 'yaml', label: 'YAML', content: <YamlViewer yaml={yaml} resourceName={rc.name} editable onSave={handleSaveYaml} /> },
-    { id: 'compare', label: 'Compare', content: <YamlCompareViewer versions={yamlVersions} resourceName={rc.name} /> },
+    {
+      id: 'compare',
+      label: 'Compare',
+      icon: GitCompare,
+      content: (
+        <ResourceComparisonView
+          resourceType="runtimeclasses"
+          resourceKind="RuntimeClass"
+          initialSelectedResources={[rc?.name ?? '']}
+          clusterId={clusterId ?? undefined}
+          backendBaseUrl={baseUrl ?? ''}
+          isConnected={isConnected}
+          embedded
+        />
+      ),
+    },
     {
       id: 'topology',
       label: 'Topology',
@@ -300,6 +327,7 @@ export default function RuntimeClassDetail() {
       content: (
         <ActionsSection actions={[
           { icon: Download, label: 'Download YAML', description: 'Export RuntimeClass definition', onClick: handleDownloadYaml },
+          { icon: Download, label: 'Export as JSON', description: 'Export RuntimeClass as JSON', onClick: handleDownloadJson },
           { icon: Trash2, label: 'Delete RuntimeClass', description: 'Remove this runtime class', variant: 'destructive', onClick: () => setShowDeleteDialog(true) },
         ]} />
       ),
@@ -318,6 +346,7 @@ export default function RuntimeClassDetail() {
         createdLabel={rc.age}
         actions={[
           { label: 'Download YAML', icon: Download, variant: 'outline', onClick: handleDownloadYaml },
+          { label: 'Export as JSON', icon: Download, variant: 'outline', onClick: handleDownloadJson },
           { label: 'Delete', icon: Trash2, variant: 'destructive', onClick: () => setShowDeleteDialog(true) },
         ]}
         statusCards={statusCards}

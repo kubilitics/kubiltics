@@ -1,22 +1,22 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom';
-import { Shield, Clock, Download, Trash2, ArrowDownToLine, ArrowUpFromLine, Activity, Network } from 'lucide-react';
+import { Shield, Clock, Download, Trash2, ArrowDownToLine, ArrowUpFromLine, Activity, Network, GitCompare } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   ResourceDetailLayout,
-  
+
   YamlViewer,
-  YamlCompareViewer,
   EventsSection,
   ActionsSection,
   DeleteConfirmDialog,
   SectionCard,
   ResourceTopologyView,
-  
-  
+  ResourceComparisonView,
+
+
   type ResourceStatus,
   type EventInfo,
   type YamlVersion,
@@ -26,6 +26,7 @@ import { useDeleteK8sResource, useUpdateK8sResource, useK8sResourceList, calcula
 import { normalizeKindForTopology } from '@/utils/resourceKindMapper';
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
 import { toast } from 'sonner';
+import { downloadResourceJson } from '@/lib/exportUtils';
 
 interface NetworkPolicyResource extends KubernetesResource {
   spec?: {
@@ -68,15 +69,16 @@ export default function NetworkPolicyDetail() {
       return next;
     }, { replace: true });
   }, [setSearchParams]);
-  const baseUrl = getEffectiveBackendBaseUrl();
-  const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured());
+  const backendBaseUrl = useBackendConfigStore((s) => s.backendBaseUrl);
+  const baseUrl = getEffectiveBackendBaseUrl(backendBaseUrl);
+  const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured);
   const clusterId = useBackendConfigStore((s) => s.currentClusterId);
 
   const { resource: np, isLoading, error, age, yaml, isConnected, refetch } = useResourceDetail<NetworkPolicyResource>(
     'networkpolicies',
     name,
     nsParam,
-    undefined
+    {} as NetworkPolicyResource
   );
   const resourceEvents = useResourceEvents('NetworkPolicy', namespace, name ?? undefined);
   const events = resourceEvents.events;
@@ -110,6 +112,12 @@ export default function NetworkPolicyDetail() {
     a.click();
     URL.revokeObjectURL(url);
   }, [yaml, npName]);
+
+  const handleDownloadJson = useCallback(() => {
+    if (!np) return;
+    downloadResourceJson(np, `${npName || 'networkpolicy'}.json`);
+    toast.success('JSON downloaded');
+  }, [np, npName]);
 
   const handleSaveYaml = useCallback(async (newYaml: string) => {
     if (!isConnected || !name || !namespace) {
@@ -325,7 +333,23 @@ export default function NetworkPolicyDetail() {
     { id: 'events', label: 'Events', content: <EventsSection events={events} /> },
     { id: 'metrics', label: 'Metrics', content: <SectionCard title="Metrics" icon={Activity}><p className="text-muted-foreground text-sm">Placeholder until metrics pipeline.</p></SectionCard> },
     { id: 'yaml', label: 'YAML', content: <YamlViewer yaml={yaml} resourceName={npName} editable onSave={handleSaveYaml} /> },
-    { id: 'compare', label: 'Compare', content: <YamlCompareViewer versions={yamlVersions} resourceName={npName} /> },
+    {
+      id: 'compare',
+      label: 'Compare',
+      icon: GitCompare,
+      content: (
+        <ResourceComparisonView
+          resourceType="networkpolicies"
+          resourceKind="NetworkPolicy"
+          namespace={namespace}
+          initialSelectedResources={namespace && name ? [`${namespace}/${name}`] : [name || '']}
+          clusterId={clusterId ?? undefined}
+          backendBaseUrl={baseUrl ?? ''}
+          isConnected={isConnected}
+          embedded
+        />
+      ),
+    },
     {
       id: 'topology',
       label: 'Topology',
@@ -349,6 +373,7 @@ export default function NetworkPolicyDetail() {
           { icon: Shield, label: 'Simulate', description: 'Run policy simulation', onClick: () => toast.info('Simulation: requires backend support (design 3.6)') },
           { icon: Download, label: 'Clone policy', description: 'Create a copy', onClick: () => toast.info('Clone: open create with same YAML') },
           { icon: Download, label: 'Download YAML', description: 'Export NetworkPolicy definition', onClick: handleDownloadYaml },
+          { icon: Download, label: 'Export as JSON', description: 'Export NetworkPolicy as JSON', onClick: handleDownloadJson },
           { icon: Trash2, label: 'Delete Policy', description: 'Remove this network policy', variant: 'destructive', onClick: () => setShowDeleteDialog(true) },
         ]} />
       ),
@@ -368,6 +393,7 @@ export default function NetworkPolicyDetail() {
         headerMetadata={<span className="flex items-center gap-1.5 ml-2 text-sm text-muted-foreground"><Clock className="h-3.5 w-3.5" />Created {age}{isConnected && <Badge variant="outline" className="ml-2 text-xs">Live</Badge>}</span>}
         actions={[
           { label: 'Download YAML', icon: Download, variant: 'outline', onClick: handleDownloadYaml },
+          { label: 'Export as JSON', icon: Download, variant: 'outline', onClick: handleDownloadJson },
           { label: 'Delete', icon: Trash2, variant: 'destructive', onClick: () => setShowDeleteDialog(true) },
         ]}
         statusCards={statusCards}

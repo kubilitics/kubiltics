@@ -1,18 +1,20 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { Cpu, Clock, Download, Trash2, Info, FileCode, GitCompare } from 'lucide-react';
+import { Cpu, Clock, Download, Trash2, Info, FileCode, GitCompare, Network } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
+import { downloadResourceJson } from '@/lib/exportUtils';
 import {
   ResourceDetailLayout,
-  ResourceOverviewMetadata,
-  SectionCard,
-  YamlViewer,
-  YamlCompareViewer,
+  ResourceComparisonView,
   EventsSection,
   ActionsSection,
   DeleteConfirmDialog,
+  ResourceOverviewMetadata,
+  SectionCard,
+  YamlViewer,
+  ResourceTopologyView,
   type ResourceStatus,
   type YamlVersion,
 } from '@/components/resources';
@@ -21,6 +23,8 @@ import { useDeleteK8sResource, useUpdateK8sResource, type KubernetesResource } f
 import { Breadcrumbs, useDetailBreadcrumbs } from '@/components/layout/Breadcrumbs';
 import { useClusterStore } from '@/stores/clusterStore';
 import { Button } from '@/components/ui/button';
+import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
+import { useActiveClusterId } from '@/hooks/useActiveClusterId';
 
 interface K8sDeviceClass extends KubernetesResource {
   spec?: {
@@ -51,6 +55,9 @@ export default function DeviceClassDetail() {
   const { activeCluster } = useClusterStore();
   const breadcrumbSegments = useDetailBreadcrumbs('DeviceClass', name ?? undefined, undefined, activeCluster?.name);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const clusterId = useActiveClusterId();
+  const backendBaseUrl = useBackendConfigStore((s) => s.backendBaseUrl);
+  const baseUrl = getEffectiveBackendBaseUrl(backendBaseUrl);
 
   useEffect(() => {
     setActiveTab(initialTab);
@@ -80,6 +87,12 @@ export default function DeviceClassDetail() {
     a.click();
     URL.revokeObjectURL(url);
   }, [yaml, dc?.metadata?.name]);
+
+  const handleDownloadJson = useCallback(() => {
+    if (!dc) return;
+    downloadResourceJson(dc, `${dc?.metadata?.name || 'deviceclass'}.json`);
+    toast.success('JSON downloaded');
+  }, [dc]);
 
   if (!name?.trim()) return null;
   if (isLoading) {
@@ -171,7 +184,36 @@ export default function DeviceClassDetail() {
     },
     { id: 'events', label: 'Events', icon: Clock, content: <EventsSection events={events} /> },
     { id: 'yaml', label: 'YAML', icon: FileCode, content: <YamlViewer yaml={yaml} resourceName={dcName} editable onSave={handleSaveYaml} /> },
-    { id: 'compare', label: 'Compare', icon: GitCompare, content: <YamlCompareViewer versions={yamlVersions} resourceName={dcName} /> },
+    {
+      id: 'topology',
+      label: 'Topology',
+      icon: Network,
+      content: (
+        <ResourceTopologyView
+          kind="DeviceClass"
+          namespace=""
+          name={name ?? ''}
+          sourceResourceType="DeviceClass"
+          sourceResourceName={dc?.metadata?.name ?? name ?? ''}
+        />
+      ),
+    },
+    {
+      id: 'compare',
+      label: 'Compare',
+      icon: GitCompare,
+      content: (
+        <ResourceComparisonView
+          resourceType="deviceclasses"
+          resourceKind="DeviceClass"
+          initialSelectedResources={[name || '']}
+          clusterId={clusterId ?? undefined}
+          backendBaseUrl={baseUrl ?? ''}
+          isConnected={isConnected}
+          embedded
+        />
+      ),
+    },
     {
       id: 'actions',
       label: 'Actions',
@@ -179,6 +221,7 @@ export default function DeviceClassDetail() {
       content: (
         <ActionsSection actions={[
           { icon: Download, label: 'Download YAML', description: 'Export DeviceClass definition', onClick: handleDownloadYaml },
+          { icon: Download, label: 'Export as JSON', description: 'Export DeviceClass as JSON', onClick: handleDownloadJson },
           { icon: Trash2, label: 'Delete DeviceClass', description: 'Remove this device class', variant: 'destructive', onClick: () => setShowDeleteDialog(true) },
         ]} />
       ),
@@ -204,6 +247,7 @@ export default function DeviceClassDetail() {
         }
         actions={[
           { label: 'Download YAML', icon: Download, variant: 'outline', onClick: handleDownloadYaml },
+          { label: 'Export as JSON', icon: Download, variant: 'outline', onClick: handleDownloadJson },
           { label: 'Edit', icon: FileCode, variant: 'outline', onClick: () => { setActiveTab('yaml'); setSearchParams((p) => { const n = new URLSearchParams(p); n.set('tab', 'yaml'); return n; }, { replace: true }); } },
           { label: 'Delete', icon: Trash2, variant: 'destructive', onClick: () => setShowDeleteDialog(true) },
         ]}

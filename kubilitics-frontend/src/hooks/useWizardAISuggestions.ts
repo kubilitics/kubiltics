@@ -9,7 +9,7 @@
  */
 
 import { useState, useCallback } from 'react';
-import { AI_BASE_URL } from '@/services/aiService';
+import { getWizardAISuggestions, validateWizardAISpec } from '@/services/aiService';
 import { guardAIAvailable } from '@/stores/aiAvailableStore';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -92,21 +92,14 @@ export function useWizardAISuggestions() {
     setError(null);
     setSuggestion(null);
     try {
-      const res = await fetch(`${AI_BASE_URL}/api/v1/wizards/suggest`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          image: params.image,
-          namespace: params.namespace ?? 'default',
-          replicas: params.replicas ?? 0,
-          workload_type: params.workloadType ?? '',
-          existing_cpu: params.existingCpu ?? '',
-          existing_memory: params.existingMemory ?? '',
-        }),
-        signal: AbortSignal.timeout(10_000),
+      const data: WizardSuggestion = await getWizardAISuggestions({
+        image: params.image,
+        namespace: params.namespace ?? 'default',
+        replicas: params.replicas ?? 0,
+        workload_type: params.workloadType ?? '',
+        existing_cpu: params.existingCpu ?? '',
+        existing_memory: params.existingMemory ?? '',
       });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data: WizardSuggestion = await res.json();
       setSuggestion(data);
       return data;
     } catch (err) {
@@ -137,19 +130,12 @@ export function useWizardAISuggestions() {
     setError(null);
     setValidation(null);
     try {
-      const res = await fetch(`${AI_BASE_URL}/api/v1/wizards/validate`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          resource_kind: params.resourceKind,
-          containers: params.containers,
-          replicas: params.replicas,
-          namespace: params.namespace,
-        }),
-        signal: AbortSignal.timeout(10_000),
+      const data: ValidationResult = await validateWizardAISpec({
+        resource_kind: params.resourceKind,
+        containers: params.containers,
+        replicas: params.replicas,
+        namespace: params.namespace,
       });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data: ValidationResult = await res.json();
       setValidation(data);
       return data;
     } catch (err) {

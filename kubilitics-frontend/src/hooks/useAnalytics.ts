@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { AI_BASE_URL } from '@/services/aiService';
+import * as aiService from '@/services/aiService';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -99,9 +99,6 @@ export interface ForecastRequest {
 
 // ─── Hooks ────────────────────────────────────────────────────────────────────
 
-// Analytics pipeline endpoints live on the AI backend (port 8081).
-const API_BASE = `${AI_BASE_URL}/api/v1/analytics/pipeline`;
-
 /**
  * useAnalyticsAnomalies — polls for recent anomalies.
  */
@@ -132,16 +129,11 @@ export function useAnalyticsAnomalies(opts: {
 
     setLoading(true);
     try {
-      const params = new URLSearchParams();
-      if (namespace) params.set('namespace', namespace);
-      if (limit) params.set('limit', String(limit));
+      const params: Record<string, string> = { limit: String(limit) };
+      if (namespace) params.namespace = namespace;
 
-      const res = await window.fetch(`${API_BASE}/anomalies?${params}`, {
-        signal: fetchRef.current.signal,
-      });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const json: AnomalyResponse = await res.json();
-      setData(json);
+      const json = await aiService.getAnalyticsAnomalies(params);
+      setData(json as unknown as AnomalyResponse);
       setError(null);
       setLastRefreshedAt(new Date());
     } catch (e) {
@@ -184,11 +176,8 @@ export function useAnalyticsTrend(opts: {
     if (!enabled || !resourceId) return;
     setLoading(true);
     try {
-      const params = new URLSearchParams({ resource_id: resourceId, metric });
-      const res = await window.fetch(`${API_BASE}/trends?${params}`);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const json: TrendResponse = await res.json();
-      setData(json);
+      const json = await aiService.getAnalyticsTrend(resourceId, metric);
+      setData(json as unknown as TrendResponse);
       setError(null);
     } catch (e) {
       setError((e as Error).message);
@@ -221,11 +210,8 @@ export function useAnalyticsScore(opts: {
     if (!enabled || !resourceId) return;
     setLoading(true);
     try {
-      const params = new URLSearchParams({ resource_id: resourceId });
-      const res = await window.fetch(`${API_BASE}/scores?${params}`);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const json: ScoreResult = await res.json();
-      setData(json);
+      const json = await aiService.getAnalyticsScore(resourceId);
+      setData(json as unknown as ScoreResult);
       setError(null);
     } catch (e) {
       setError((e as Error).message);
@@ -254,20 +240,11 @@ export function useAnalyticsForecast() {
     setError(null);
     setData(null);
     try {
-      const res = await window.fetch(`${API_BASE}/forecast`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          horizon: '1h',
-          direction: 'above',
-          ...req,
-        }),
+      const json = await aiService.getAnalyticsForecast({
+        horizon: '1h',
+        direction: 'above',
+        ...req,
       });
-      if (!res.ok) {
-        const text = await res.text();
-        throw new Error(text || `HTTP ${res.status}`);
-      }
-      const json: ForecastResponse = await res.json();
       setData(json);
     } catch (e) {
       setError((e as Error).message);
@@ -291,15 +268,7 @@ export function useAnalyticsIngest() {
     setLoading(true);
     setError(null);
     try {
-      const res = await window.fetch(`${API_BASE}/ingest`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(req),
-      });
-      if (!res.ok) {
-        const text = await res.text();
-        throw new Error(text || `HTTP ${res.status}`);
-      }
+      await aiService.ingestAnalyticsMetric(req);
       setLastIngestedAt(new Date());
     } catch (e) {
       setError((e as Error).message);

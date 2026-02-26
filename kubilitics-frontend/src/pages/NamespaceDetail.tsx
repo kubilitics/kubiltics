@@ -1,29 +1,31 @@
 import { useState, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Folder, Clock, Download, Trash2, Box, Globe, Settings, Layers, Package, Database, Shield, Activity, Loader2, Network } from 'lucide-react';
+import { Folder, Clock, Download, Trash2, Box, Globe, Settings, Layers, Package, Database, Shield, Activity, Loader2, Network, GitCompare } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
+import { downloadResourceJson } from '@/lib/exportUtils';
 import {
   ResourceDetailLayout,
   SectionCard,
   MetadataCard,
   YamlViewer,
-  YamlCompareViewer,
   EventsSection,
   ActionsSection,
   DeleteConfirmDialog,
   ResourceTopologyView,
+  ResourceComparisonView,
   type ResourceStatus,
   type YamlVersion,
 } from '@/components/resources';
 import { useResourceDetail, useResourceEvents } from '@/hooks/useK8sResourceDetail';
-import { useDeleteK8sResource, useK8sResourceList, type KubernetesResource } from '@/hooks/useKubernetes';
+import { useDeleteK8sResource, useUpdateK8sResource, useK8sResourceList, type KubernetesResource } from '@/hooks/useKubernetes';
 import { normalizeKindForTopology } from '@/utils/resourceKindMapper';
 import { useConnectionStatus } from '@/hooks/useConnectionStatus';
 import { useActiveClusterId } from '@/hooks/useActiveClusterId';
+import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
 
 interface NamespaceResource extends KubernetesResource {
   spec?: {
@@ -39,15 +41,20 @@ export default function NamespaceDetail() {
   const navigate = useNavigate();
   const { isConnected } = useConnectionStatus();
   const clusterId = useActiveClusterId();
+  const backendBaseUrl = useBackendConfigStore((s) => s.backendBaseUrl);
+  const baseUrl = getEffectiveBackendBaseUrl(backendBaseUrl);
+  const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured);
   const [activeTab, setActiveTab] = useState('overview');
 
   const { resource: ns, isLoading, error: resourceError, age, yaml, isConnected: resourceConnected, refetch } = useResourceDetail<NamespaceResource>(
     'namespaces',
     name ?? undefined,
-    undefined
+    undefined,
+    {} as NamespaceResource
   );
   const { events } = useResourceEvents('Namespace', name ?? undefined, name ?? undefined);
   const deleteNamespace = useDeleteK8sResource('namespaces');
+  const updateNamespace = useUpdateK8sResource('namespaces');
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   const nsName = ns?.metadata?.name ?? name ?? '';
@@ -67,7 +74,24 @@ export default function NamespaceDetail() {
     URL.revokeObjectURL(url);
   }, [yaml, nsName]);
 
+  const handleDownloadJson = useCallback(() => {
+    downloadResourceJson(ns, `${nsName || 'namespace'}.json`);
+    toast.success('JSON downloaded');
+  }, [ns, nsName]);
+
   const yamlVersions: YamlVersion[] = yaml ? [{ id: 'current', label: 'Current Version', yaml, timestamp: 'now' }] : [];
+
+  const handleSaveYaml = async (newYaml: string) => {
+    if (!nsName) return;
+    try {
+      await updateNamespace.mutateAsync({ name: nsName, yaml: newYaml });
+      toast.success('Namespace updated successfully');
+      refetch();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Failed to update Namespace');
+      throw e;
+    }
+  };
 
   const podsList = useK8sResourceList<KubernetesResource>('pods', nsName, { enabled: !!nsName && isConnected, limit: 5000 });
   const deploymentsList = useK8sResourceList<KubernetesResource>('deployments', nsName, { enabled: !!nsName && isConnected, limit: 500 });
@@ -116,11 +140,11 @@ export default function NamespaceDetail() {
   }
 
   const statusCards = [
-    { label: 'Status', value: phase, icon: Box, iconColor: (phase === 'Active' ? 'success' : 'warning') as const },
-    { label: 'Pods', value: String(resourceCounts.pods), icon: Package, iconColor: 'primary' as const },
-    { label: 'Deployments', value: String(resourceCounts.deployments), icon: Layers, iconColor: 'info' as const },
-    { label: 'Services', value: String(resourceCounts.services), icon: Globe, iconColor: 'success' as const },
-    { label: 'Age', value: age, icon: Clock, iconColor: 'muted' as const },
+    { label: 'Status', value: phase, icon: Box, iconColor: (phase === 'Active' ? 'success' : 'warning') as any },
+    { label: 'Pods', value: String(resourceCounts.pods), icon: Package, iconColor: 'primary' as any },
+    { label: 'Deployments', value: String(resourceCounts.deployments), icon: Layers, iconColor: 'info' as any },
+    { label: 'Services', value: String(resourceCounts.services), icon: Globe, iconColor: 'success' as any },
+    { label: 'Age', value: age, icon: Clock, iconColor: 'muted' as any },
   ];
 
   const tabs = [
@@ -196,8 +220,23 @@ export default function NamespaceDetail() {
       ),
     },
     { id: 'events', label: 'Events', content: <EventsSection events={events} /> },
-    { id: 'yaml', label: 'YAML', content: <YamlViewer yaml={yaml} resourceName={nsName} editable={false} /> },
-    { id: 'compare', label: 'Compare', content: <YamlCompareViewer versions={yamlVersions} resourceName={nsName} /> },
+    { id: 'yaml', label: 'YAML', content: <YamlViewer yaml={yaml} resourceName={nsName} editable onSave={handleSaveYaml} /> },
+    {
+      id: 'compare',
+      label: 'Compare',
+      icon: GitCompare,
+      content: (
+        <ResourceComparisonView
+          resourceType="namespaces"
+          resourceKind="Namespace"
+          initialSelectedResources={[nsName]}
+          clusterId={clusterId ?? undefined}
+          backendBaseUrl={baseUrl ?? ''}
+          isConnected={isConnected}
+          embedded
+        />
+      ),
+    },
     {
       id: 'topology',
       label: 'Topology',
@@ -219,6 +258,7 @@ export default function NamespaceDetail() {
         <ActionsSection
           actions={[
             { icon: Download, label: 'Download YAML', description: 'Export Namespace definition', onClick: handleDownloadYaml },
+            { icon: Download, label: 'Export as JSON', description: 'Export Namespace as JSON', onClick: handleDownloadJson },
             { icon: Trash2, label: 'Delete Namespace', description: 'Remove namespace and all resources', variant: 'destructive', onClick: () => setShowDeleteDialog(true) },
           ]}
         />
@@ -245,6 +285,7 @@ export default function NamespaceDetail() {
         }
         actions={[
           { label: 'Download YAML', icon: Download, variant: 'outline', onClick: handleDownloadYaml },
+          { label: 'Export as JSON', icon: Download, variant: 'outline', onClick: handleDownloadJson },
           { label: 'Delete', icon: Trash2, variant: 'destructive', onClick: () => setShowDeleteDialog(true) },
         ]}
         statusCards={statusCards}

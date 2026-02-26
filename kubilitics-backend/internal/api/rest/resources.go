@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/gorilla/mux"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -20,17 +21,51 @@ import (
 	"github.com/kubilitics/kubilitics-backend/internal/pkg/validate"
 )
 
+const maxNamespacesParam = 20
+
 // DestructiveConfirmHeader (D1.2): clients must send this for DELETE resource and POST /apply.
 const DestructiveConfirmHeader = "X-Confirm-Destructive"
 
 // ListResources handles GET /clusters/{clusterId}/resources/{kind}
+// Query: namespace (single) or namespaces (comma-separated, max 20) for multi-namespace list; limit, continue, labelSelector, fieldSelector.
 func (h *Handler) ListResources(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	clusterID := vars["clusterId"]
 	kind := vars["kind"]
 	namespace := r.URL.Query().Get("namespace")
+	namespacesParam := strings.TrimSpace(r.URL.Query().Get("namespaces"))
+	hasNamespacesParam := r.URL.Query().Has("namespaces")
 
-	if !validate.ClusterID(clusterID) || !validate.Kind(kind) || !validate.Namespace(namespace) {
+	var nsList []string
+	if hasNamespacesParam {
+		if namespacesParam != "" {
+			parts := strings.Split(namespacesParam, ",")
+		for _, p := range parts {
+			p = strings.TrimSpace(p)
+			if p == "" {
+				continue
+			}
+			if !validate.Namespace(p) {
+				requestID := logger.FromContext(r.Context())
+				respondErrorWithCode(w, http.StatusBadRequest, ErrCodeInvalidRequest, "Invalid namespace in namespaces list", requestID)
+				return
+			}
+			nsList = append(nsList, p)
+		}
+		if len(nsList) > maxNamespacesParam {
+			requestID := logger.FromContext(r.Context())
+			respondErrorWithCode(w, http.StatusBadRequest, ErrCodeInvalidRequest, "Too many namespaces in namespaces list (max "+strconv.Itoa(maxNamespacesParam)+")", requestID)
+			return
+		}
+		}
+		// nsList may be empty when namespaces= was provided with no value (project-scoped empty)
+	}
+	if !validate.ClusterID(clusterID) || !validate.Kind(kind) {
+		requestID := logger.FromContext(r.Context())
+		respondErrorWithCode(w, http.StatusBadRequest, ErrCodeInvalidRequest, "Invalid clusterId or kind", requestID)
+		return
+	}
+	if len(nsList) == 0 && !validate.Namespace(namespace) {
 		requestID := logger.FromContext(r.Context())
 		respondErrorWithCode(w, http.StatusBadRequest, ErrCodeInvalidRequest, "Invalid clusterId, kind, or namespace", requestID)
 		return
@@ -44,7 +79,7 @@ func (h *Handler) ListResources(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// BE-FUNC-002: Pagination support (limit, continue token)
+	// BE-FUNC-002: Pagination support (limit, continue token). For multi-namespace, continue is ignored.
 	opts := metav1.ListOptions{}
 	const defaultLimit = 100
 	const maxLimit = 500
@@ -57,7 +92,8 @@ func (h *Handler) ListResources(w http.ResponseWriter, r *http.Request) {
 			opts.Limit = n
 		}
 	}
-	if continueToken := r.URL.Query().Get("continue"); continueToken != "" {
+	continueToken := r.URL.Query().Get("continue")
+	if continueToken != "" && len(nsList) == 0 {
 		opts.Continue = continueToken
 	}
 	if labelSelector := r.URL.Query().Get("labelSelector"); labelSelector != "" {
@@ -67,9 +103,48 @@ func (h *Handler) ListResources(w http.ResponseWriter, r *http.Request) {
 		opts.FieldSelector = fieldSelector
 	}
 
-	list, err := client.ListResources(r.Context(), kind, namespace, opts)
+	var list *unstructured.UnstructuredList
+	if hasNamespacesParam && len(nsList) == 0 {
+		// Explicit empty namespaces list (e.g. project with no namespaces in this cluster).
+		list = &unstructured.UnstructuredList{Items: nil}
+	} else if len(nsList) > 0 {
+		// Multi-namespace: list per namespace and merge. Pagination: limit per-namespace (ceil(limit/len(nsList))).
+		perNsLimit := opts.Limit
+		if len(nsList) > 1 {
+			perNsLimit = (opts.Limit + int64(len(nsList)) - 1) / int64(len(nsList))
+			if perNsLimit < 1 {
+				perNsLimit = 1
+			}
+		}
+		merged := &unstructured.UnstructuredList{}
+		for _, ns := range nsList {
+			optsNs := opts
+			optsNs.Limit = perNsLimit
+			part, err := client.ListResources(r.Context(), kind, ns, optsNs)
+			if err != nil {
+				requestID := logger.FromContext(r.Context())
+				if errors.Is(err, k8s.ErrCircuitOpen) {
+					w.Header().Set("Retry-After", "30")
+					respondErrorWithCode(w, http.StatusServiceUnavailable, ErrCodeCircuitBreaker, "Cluster API is temporarily unavailable due to repeated failures. Circuit breaker is open. Please retry after 30 seconds.", requestID)
+					return
+				}
+				if errors.Is(err, context.DeadlineExceeded) {
+					respondErrorWithCode(w, http.StatusGatewayTimeout, ErrCodeTimeout, "Request to Kubernetes API timed out. The cluster may be slow or overloaded. Try again or use a more specific query with namespace or label selectors.", requestID)
+					return
+				}
+				if apierrors.IsNotFound(err) || apierrors.IsForbidden(err) {
+					continue
+				}
+				respondErrorWithCode(w, http.StatusInternalServerError, ErrCodeInternalError, err.Error(), requestID)
+				return
+			}
+			merged.Items = append(merged.Items, part.Items...)
+		}
+		list = merged
+	} else {
+		list, err = client.ListResources(r.Context(), kind, namespace, opts)
+	}
 	if err != nil {
-		// BE-SCALE-001: Handle circuit breaker errors
 		requestID := logger.FromContext(r.Context())
 		if errors.Is(err, k8s.ErrCircuitOpen) {
 			w.Header().Set("Retry-After", "30")
@@ -99,18 +174,19 @@ func (h *Handler) ListResources(w http.ResponseWriter, r *http.Request) {
 			redact.SecretData(itemsRaw[i])
 		}
 	}
-	// Calculate total: if RemainingItemCount is set, total = len(items) + remaining; otherwise use len(items) as estimate
 	total := int64(len(itemsRaw))
-	if list.GetRemainingItemCount() != nil {
+	if len(nsList) == 0 && list.GetRemainingItemCount() != nil {
 		total = int64(len(itemsRaw)) + *list.GetRemainingItemCount()
 	}
 	meta := map[string]interface{}{
 		"resourceVersion": list.GetResourceVersion(),
-		"continue":        list.GetContinue(),
-		"total":           total,
+		"total":            total,
 	}
-	if list.GetRemainingItemCount() != nil {
-		meta["remainingItemCount"] = *list.GetRemainingItemCount()
+	if len(nsList) == 0 {
+		meta["continue"] = list.GetContinue()
+		if list.GetRemainingItemCount() != nil {
+			meta["remainingItemCount"] = *list.GetRemainingItemCount()
+		}
 	}
 	out := map[string]interface{}{
 		"items":    itemsRaw,

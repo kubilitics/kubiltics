@@ -4,15 +4,16 @@ import { Network, Clock, Download, Trash2, Info, FileCode, GitCompare } from 'lu
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
+import { downloadResourceJson } from '@/lib/exportUtils';
 import {
   ResourceDetailLayout,
-  ResourceOverviewMetadata,
-  SectionCard,
-  YamlViewer,
-  YamlCompareViewer,
+  ResourceComparisonView,
   EventsSection,
   ActionsSection,
   DeleteConfirmDialog,
+  ResourceOverviewMetadata,
+  SectionCard,
+  YamlViewer,
   type ResourceStatus,
   type YamlVersion,
 } from '@/components/resources';
@@ -22,6 +23,8 @@ import { Breadcrumbs, useDetailBreadcrumbs } from '@/components/layout/Breadcrum
 import { useClusterStore } from '@/stores/clusterStore';
 import { Button } from '@/components/ui/button';
 import { NamespaceBadge } from '@/components/list';
+import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
+import { useActiveClusterId } from '@/hooks/useActiveClusterId';
 
 interface K8sBGPPeer extends KubernetesResource {
   spec?: {
@@ -43,6 +46,9 @@ export default function BGPPeerDetail() {
   const { activeCluster } = useClusterStore();
   const breadcrumbSegments = useDetailBreadcrumbs('BGPPeer', name ?? undefined, namespace ?? undefined, activeCluster?.name);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const clusterId = useActiveClusterId();
+  const backendBaseUrl = useBackendConfigStore((s) => s.backendBaseUrl);
+  const baseUrl = getEffectiveBackendBaseUrl(backendBaseUrl);
 
   useEffect(() => {
     setActiveTab(initialTab);
@@ -72,6 +78,12 @@ export default function BGPPeerDetail() {
     a.click();
     URL.revokeObjectURL(url);
   }, [yaml, peer?.metadata?.name]);
+
+  const handleDownloadJson = useCallback(() => {
+    if (!peer) return;
+    downloadResourceJson(peer, `${peer?.metadata?.name || 'bgppeer'}.json`);
+    toast.success('JSON downloaded');
+  }, [peer]);
 
   if (!name?.trim() || !namespace?.trim()) return null;
   if (isLoading) {
@@ -153,7 +165,23 @@ export default function BGPPeerDetail() {
     },
     { id: 'events', label: 'Events', icon: Clock, content: <EventsSection events={events} /> },
     { id: 'yaml', label: 'YAML', icon: FileCode, content: <YamlViewer yaml={yaml} resourceName={peerName} editable onSave={handleSaveYaml} /> },
-    { id: 'compare', label: 'Compare', icon: GitCompare, content: <YamlCompareViewer versions={yamlVersions} resourceName={peerName} /> },
+    {
+      id: 'compare',
+      label: 'Compare',
+      icon: GitCompare,
+      content: (
+        <ResourceComparisonView
+          resourceType="bgppeers"
+          resourceKind="BGPPeer"
+          namespace={namespace}
+          initialSelectedResources={namespace && name ? [`${namespace}/${name}`] : [name || '']}
+          clusterId={clusterId ?? undefined}
+          backendBaseUrl={baseUrl ?? ''}
+          isConnected={isConnected}
+          embedded
+        />
+      ),
+    },
     {
       id: 'actions',
       label: 'Actions',
@@ -161,6 +189,7 @@ export default function BGPPeerDetail() {
       content: (
         <ActionsSection actions={[
           { icon: Download, label: 'Download YAML', description: 'Export BGPPeer definition', onClick: handleDownloadYaml },
+          { icon: Download, label: 'Export as JSON', description: 'Export BGPPeer as JSON', onClick: handleDownloadJson },
           { icon: Trash2, label: 'Delete BGPPeer', description: 'Remove this BGP peer', variant: 'destructive', onClick: () => setShowDeleteDialog(true) },
         ]} />
       ),
@@ -186,6 +215,7 @@ export default function BGPPeerDetail() {
         }
         actions={[
           { label: 'Download YAML', icon: Download, variant: 'outline', onClick: handleDownloadYaml },
+          { label: 'Export as JSON', icon: Download, variant: 'outline', onClick: handleDownloadJson },
           { label: 'Edit', icon: FileCode, variant: 'outline', onClick: () => { setActiveTab('yaml'); setSearchParams((p) => { const n = new URLSearchParams(p); n.set('tab', 'yaml'); return n; }, { replace: true }); } },
           { label: 'Delete', icon: Trash2, variant: 'destructive', onClick: () => setShowDeleteDialog(true) },
         ]}

@@ -19,6 +19,7 @@ import {
   Plus,
   MoreVertical,
   Pencil,
+  LayoutDashboard,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -109,7 +110,7 @@ export default function ProjectDetailPage() {
     setActiveCluster(active);
     setDemo(false);
     toast.success(`Connected to ${backendCluster.name}`);
-    navigate('/dashboard');
+    navigate(`/projects/${projectId}/dashboard`, { replace: true });
   };
 
   const handleRemoveCluster = async (clusterId: string) => {
@@ -193,6 +194,15 @@ export default function ProjectDetailPage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <Button
+            variant="default"
+            className="gap-2"
+            onClick={() => navigate(`/projects/${projectId}/dashboard`)}
+            disabled={!project.clusters?.length}
+          >
+            <LayoutDashboard className="h-4 w-4" />
+            Open dashboard
+          </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="icon" aria-label="Project actions">

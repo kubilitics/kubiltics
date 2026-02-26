@@ -49,7 +49,7 @@ import { ResourceCommandBar, ResourceExportDropdown, ListViewSegmentedControl, L
 import { ConfigMapIcon } from '@/components/icons/KubernetesIcons';
 import { useTableFiltersAndSort, type ColumnConfig } from '@/hooks/useTableFiltersAndSort';
 import { useColumnVisibility } from '@/hooks/useColumnVisibility';
-import { usePaginatedResourceList, useDeleteK8sResource, calculateAge, type KubernetesResource } from '@/hooks/useKubernetes';
+import { usePaginatedResourceList, useDeleteK8sResource, useCreateK8sResource, calculateAge, type KubernetesResource } from '@/hooks/useKubernetes';
 import { resourceToYaml } from '@/hooks/useK8sResourceDetail';
 import { useConnectionStatus } from '@/hooks/useConnectionStatus';
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
@@ -137,6 +137,7 @@ export default function ConfigMaps() {
   const { isConnected } = useConnectionStatus();
   const { data, isLoading, refetch } = usePaginatedResourceList<K8sConfigMap>('configmaps');
   const deleteResource = useDeleteK8sResource('configmaps');
+  const createResource = useCreateK8sResource('configmaps');
   const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; item: ConfigMap | null; bulk?: boolean }>({ open: false, item: null });
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
   const [showCreateWizard, setShowCreateWizard] = useState(false);
@@ -318,6 +319,8 @@ export default function ConfigMaps() {
     currentPage: safePageIndex + 1,
     totalPages: Math.max(1, totalPages),
     onPageChange: (p: number) => setPageIndex(Math.max(0, Math.min(p - 1, totalPages - 1))),
+    dataUpdatedAt: (data as any)?.dataUpdatedAt,
+    isFetching: isLoading,
   };
 
   const groupedOnPage = useMemo(() => {
@@ -501,60 +504,60 @@ data: {}
 
         <ResourceListTableToolbar
           globalFilterBar={
-        <ResourceCommandBar
-          scope={
-            <div className="w-full min-w-0">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className="w-full min-w-0 justify-between h-10 gap-2 rounded-lg border border-border bg-background font-medium shadow-sm hover:bg-muted/50 hover:border-primary/30 focus-visible:ring-2 focus-visible:ring-primary/20"
-                  >
-                    <Filter className="h-4 w-4 shrink-0 text-muted-foreground" />
-                    <span className="truncate">{selectedNamespace === 'all' ? 'All Namespaces' : selectedNamespace}</span>
-                    <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="w-48">
-                  {namespaces.map((ns) => (
-                    <DropdownMenuItem
-                      key={ns}
-                      onClick={() => setSelectedNamespace(ns)}
-                      className={cn(selectedNamespace === ns && 'bg-accent')}
-                    >
-                      {ns === 'all' ? 'All Namespaces' : ns}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-          }
-          search={
-            <div className="relative w-full min-w-0">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search configmaps..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full h-10 pl-9 rounded-lg border border-border bg-background text-sm font-medium shadow-sm placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/50 transition-all"
-                aria-label="Search configmaps"
-              />
-            </div>
-          }
-          structure={
-            <ListViewSegmentedControl
-              value={listView}
-              onChange={(v) => setListView(v as ListView)}
-              options={[
-                { id: 'flat', label: 'Flat', icon: List },
-                { id: 'byNamespace', label: 'By Namespace', icon: Layers },
-              ]}
-              label=""
-              ariaLabel="List structure"
+            <ResourceCommandBar
+              scope={
+                <div className="w-full min-w-0">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className="w-full min-w-0 justify-between h-10 gap-2 rounded-lg border border-border bg-background font-medium shadow-sm hover:bg-muted/50 hover:border-primary/30 focus-visible:ring-2 focus-visible:ring-primary/20"
+                      >
+                        <Filter className="h-4 w-4 shrink-0 text-muted-foreground" />
+                        <span className="truncate">{selectedNamespace === 'all' ? 'All Namespaces' : selectedNamespace}</span>
+                        <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start" className="w-48">
+                      {namespaces.map((ns) => (
+                        <DropdownMenuItem
+                          key={ns}
+                          onClick={() => setSelectedNamespace(ns)}
+                          className={cn(selectedNamespace === ns && 'bg-accent')}
+                        >
+                          {ns === 'all' ? 'All Namespaces' : ns}
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              }
+              search={
+                <div className="relative w-full min-w-0">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search configmaps..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full h-10 pl-9 rounded-lg border border-border bg-background text-sm font-medium shadow-sm placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/50 transition-all"
+                    aria-label="Search configmaps"
+                  />
+                </div>
+              }
+              structure={
+                <ListViewSegmentedControl
+                  value={listView}
+                  onChange={(v) => setListView(v as ListView)}
+                  options={[
+                    { id: 'flat', label: 'Flat', icon: List },
+                    { id: 'byNamespace', label: 'By Namespace', icon: Layers },
+                  ]}
+                  label=""
+                  ariaLabel="List structure"
+                />
+              }
+              className="mb-0"
             />
-          }
-          className="mb-0"
-        />
           }
           hasActiveFilters={hasActiveFilters}
           onClearAllFilters={clearAllFilters}
@@ -564,276 +567,276 @@ data: {}
           visibleColumns={columnVisibility.visibleColumns}
           onColumnToggle={columnVisibility.setColumnVisible}
           footer={
-          <div className="flex items-center justify-between flex-wrap gap-2">
-            <div className="flex items-center gap-3">
-              <span className="text-sm text-muted-foreground">{pagination.rangeLabel}</span>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm" className="gap-2">
-                    {pageSize} per page
-                    <ChevronDown className="h-4 w-4 opacity-50" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start">
-                  {PAGE_SIZE_OPTIONS.map((size) => (
-                    <DropdownMenuItem
-                      key={size}
-                      onClick={() => handlePageSizeChange(size)}
-                      className={cn(pageSize === size && 'bg-accent')}
-                    >
-                      {size} per page
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <div className="flex items-center gap-3">
+                <span className="text-sm text-muted-foreground">{pagination.rangeLabel}</span>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm" className="gap-2">
+                      {pageSize} per page
+                      <ChevronDown className="h-4 w-4 opacity-50" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start">
+                    {PAGE_SIZE_OPTIONS.map((size) => (
+                      <DropdownMenuItem
+                        key={size}
+                        onClick={() => handlePageSizeChange(size)}
+                        className={cn(pageSize === size && 'bg-accent')}
+                      >
+                        {size} per page
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+              <ListPagination
+                hasPrev={pagination.hasPrev}
+                hasNext={pagination.hasNext}
+                onPrev={pagination.onPrev}
+                onNext={pagination.onNext}
+                rangeLabel={undefined}
+                currentPage={pagination.currentPage}
+                totalPages={pagination.totalPages}
+                onPageChange={pagination.onPageChange}
+                dataUpdatedAt={pagination.dataUpdatedAt}
+                isFetching={pagination.isFetching}
+              />
             </div>
-            <ListPagination
-              hasPrev={pagination.hasPrev}
-              hasNext={pagination.hasNext}
-              onPrev={pagination.onPrev}
-              onNext={pagination.onNext}
-              rangeLabel={undefined}
-              currentPage={pagination.currentPage}
-              totalPages={pagination.totalPages}
-              onPageChange={pagination.onPageChange}
-              dataUpdatedAt={pagination.dataUpdatedAt}
-              isFetching={pagination.isFetching}
-            />
-          </div>
           }
         >
-        <div className="overflow-x-auto">
-          <ResizableTableProvider tableId="configmaps" columnConfig={CONFIGMAPS_TABLE_COLUMNS}>
-            <Table className="table-fixed" style={{ minWidth: 1000 }}>
-              <TableHeader>
-                <TableRow className="bg-muted/50 hover:bg-muted/50 border-b-2 border-border">
-                  <TableHead className="w-10"><Checkbox checked={isAllSelected} onCheckedChange={toggleAll} aria-label="Select all" className={cn(isSomeSelected && 'data-[state=checked]:bg-primary/50')} /></TableHead>
-                  <ResizableTableHead columnId="name">
-                    <TableColumnHeaderWithFilterAndSort columnId="name" label="Name" sortKey={sortKey} sortOrder={sortOrder} onSort={setSort} filterable={false} distinctValues={[]} selectedFilterValues={new Set()} onFilterChange={() => {}} />
-                  </ResizableTableHead>
-                  {columnVisibility.isColumnVisible('namespace') && (
-                  <ResizableTableHead columnId="namespace">
-                    <TableColumnHeaderWithFilterAndSort columnId="namespace" label="Namespace" sortKey={sortKey} sortOrder={sortOrder} onSort={setSort} filterable={false} distinctValues={[]} selectedFilterValues={new Set()} onFilterChange={() => {}} />
-                  </ResizableTableHead>
-                  )}
-                  {columnVisibility.isColumnVisible('dataKeys') && (
-                  <ResizableTableHead columnId="dataKeys">
-                    <TableColumnHeaderWithFilterAndSort columnId="dataKeys" label="Data Keys" sortKey={sortKey} sortOrder={sortOrder} onSort={setSort} filterable={false} distinctValues={[]} selectedFilterValues={new Set()} onFilterChange={() => {}} />
-                  </ResizableTableHead>
-                  )}
-                  {columnVisibility.isColumnVisible('totalSize') && (
-                  <ResizableTableHead columnId="totalSize">
-                    <TableColumnHeaderWithFilterAndSort columnId="totalSize" label="Total Size" sortKey={sortKey} sortOrder={sortOrder} onSort={setSort} filterable={false} distinctValues={[]} selectedFilterValues={new Set()} onFilterChange={() => {}} />
-                  </ResizableTableHead>
-                  )}
-                  {columnVisibility.isColumnVisible('usedBy') && (
-                  <ResizableTableHead columnId="usedBy" title="Used By">
-                    <span className="text-xs font-medium text-muted-foreground">Used By</span>
-                  </ResizableTableHead>
-                  )}
-                  {columnVisibility.isColumnVisible('binaryData') && (
-                  <ResizableTableHead columnId="binaryData">
-                    <TableColumnHeaderWithFilterAndSort columnId="binaryData" label="Binary Data" sortKey={sortKey} sortOrder={sortOrder} onSort={setSort} filterable={false} distinctValues={[]} selectedFilterValues={new Set()} onFilterChange={() => {}} />
-                  </ResizableTableHead>
-                  )}
-                  {columnVisibility.isColumnVisible('immutable') && (
-                  <ResizableTableHead columnId="immutable">
-                    <TableColumnHeaderWithFilterAndSort columnId="immutable" label="Immutable" sortKey={sortKey} sortOrder={sortOrder} onSort={setSort} filterable={false} distinctValues={[]} selectedFilterValues={new Set()} onFilterChange={() => {}} />
-                  </ResizableTableHead>
-                  )}
-                  {columnVisibility.isColumnVisible('age') && (
-                  <ResizableTableHead columnId="age">
-                    <TableColumnHeaderWithFilterAndSort columnId="age" label="Age" sortKey={sortKey} sortOrder={sortOrder} onSort={setSort} filterable={false} distinctValues={[]} selectedFilterValues={new Set()} onFilterChange={() => {}} />
-                  </ResizableTableHead>
-                  )}
-                  {columnVisibility.isColumnVisible('lastModified') && (
-                  <ResizableTableHead columnId="lastModified">
-                    <TableColumnHeaderWithFilterAndSort columnId="lastModified" label="Last Modified" sortKey={sortKey} sortOrder={sortOrder} onSort={setSort} filterable={false} distinctValues={[]} selectedFilterValues={new Set()} onFilterChange={() => {}} />
-                  </ResizableTableHead>
-                  )}
-                  <TableHead className="w-12 text-center">
-                    <span className="sr-only">Actions</span>
-                    <MoreHorizontal className="h-4 w-4 inline-block text-muted-foreground" aria-hidden />
-                  </TableHead>
-                </TableRow>
-                {showTableFilters && (
-                  <TableRow className="bg-muted/30 hover:bg-muted/30 border-b-2 border-border">
-                    <TableCell className="w-10 p-1.5" />
-                    <ResizableTableCell columnId="name" className="p-1.5">
-                      <TableFilterCell columnId="name" label="Name" distinctValues={distinctValuesByColumn.name ?? []} selectedFilterValues={columnFilters.name ?? new Set()} onFilterChange={setColumnFilter} valueCounts={valueCountsByColumn.name} />
-                    </ResizableTableCell>
-                    {columnVisibility.isColumnVisible('namespace') && <ResizableTableCell columnId="namespace" className="p-1.5"><TableFilterCell columnId="namespace" label="Namespace" distinctValues={distinctValuesByColumn.namespace ?? []} selectedFilterValues={columnFilters.namespace ?? new Set()} onFilterChange={setColumnFilter} valueCounts={valueCountsByColumn.namespace} /></ResizableTableCell>}
-                    {columnVisibility.isColumnVisible('dataKeys') && <ResizableTableCell columnId="dataKeys" className="p-1.5" />}
-                    {columnVisibility.isColumnVisible('totalSize') && <ResizableTableCell columnId="totalSize" className="p-1.5" />}
-                    {columnVisibility.isColumnVisible('usedBy') && <ResizableTableCell columnId="usedBy" className="p-1.5"><TableFilterCell columnId="usage" label="Used By" distinctValues={distinctValuesByColumn.usage ?? []} selectedFilterValues={columnFilters.usage ?? new Set()} onFilterChange={setColumnFilter} valueCounts={valueCountsByColumn.usage} /></ResizableTableCell>}
-                    {columnVisibility.isColumnVisible('binaryData') && <ResizableTableCell columnId="binaryData" className="p-1.5"><TableFilterCell columnId="binaryData" label="Binary Data" distinctValues={['Yes', 'No']} selectedFilterValues={columnFilters.binaryData ?? new Set()} onFilterChange={setColumnFilter} valueCounts={valueCountsByColumn.binaryData} /></ResizableTableCell>}
-                    {columnVisibility.isColumnVisible('immutable') && <ResizableTableCell columnId="immutable" className="p-1.5"><TableFilterCell columnId="immutable" label="Immutable" distinctValues={['Yes', 'No']} selectedFilterValues={columnFilters.immutable ?? new Set()} onFilterChange={setColumnFilter} valueCounts={valueCountsByColumn.immutable} /></ResizableTableCell>}
-                    {columnVisibility.isColumnVisible('age') && <ResizableTableCell columnId="age" className="p-1.5" />}
-                    {columnVisibility.isColumnVisible('lastModified') && <ResizableTableCell columnId="lastModified" className="p-1.5" />}
-                    <TableCell className="w-12 p-1.5" />
+          <div className="overflow-x-auto">
+            <ResizableTableProvider tableId="configmaps" columnConfig={CONFIGMAPS_TABLE_COLUMNS}>
+              <Table className="table-fixed" style={{ minWidth: 1000 }}>
+                <TableHeader>
+                  <TableRow className="bg-muted/50 hover:bg-muted/50 border-b-2 border-border">
+                    <TableHead className="w-10"><Checkbox checked={isAllSelected} onCheckedChange={toggleAll} aria-label="Select all" className={cn(isSomeSelected && 'data-[state=checked]:bg-primary/50')} /></TableHead>
+                    <ResizableTableHead columnId="name">
+                      <TableColumnHeaderWithFilterAndSort columnId="name" label="Name" sortKey={sortKey} sortOrder={sortOrder} onSort={setSort} filterable={false} distinctValues={[]} selectedFilterValues={new Set()} onFilterChange={() => { }} />
+                    </ResizableTableHead>
+                    {columnVisibility.isColumnVisible('namespace') && (
+                      <ResizableTableHead columnId="namespace">
+                        <TableColumnHeaderWithFilterAndSort columnId="namespace" label="Namespace" sortKey={sortKey} sortOrder={sortOrder} onSort={setSort} filterable={false} distinctValues={[]} selectedFilterValues={new Set()} onFilterChange={() => { }} />
+                      </ResizableTableHead>
+                    )}
+                    {columnVisibility.isColumnVisible('dataKeys') && (
+                      <ResizableTableHead columnId="dataKeys">
+                        <TableColumnHeaderWithFilterAndSort columnId="dataKeys" label="Data Keys" sortKey={sortKey} sortOrder={sortOrder} onSort={setSort} filterable={false} distinctValues={[]} selectedFilterValues={new Set()} onFilterChange={() => { }} />
+                      </ResizableTableHead>
+                    )}
+                    {columnVisibility.isColumnVisible('totalSize') && (
+                      <ResizableTableHead columnId="totalSize">
+                        <TableColumnHeaderWithFilterAndSort columnId="totalSize" label="Total Size" sortKey={sortKey} sortOrder={sortOrder} onSort={setSort} filterable={false} distinctValues={[]} selectedFilterValues={new Set()} onFilterChange={() => { }} />
+                      </ResizableTableHead>
+                    )}
+                    {columnVisibility.isColumnVisible('usedBy') && (
+                      <ResizableTableHead columnId="usedBy" title="Used By">
+                        <span className="text-xs font-medium text-muted-foreground">Used By</span>
+                      </ResizableTableHead>
+                    )}
+                    {columnVisibility.isColumnVisible('binaryData') && (
+                      <ResizableTableHead columnId="binaryData">
+                        <TableColumnHeaderWithFilterAndSort columnId="binaryData" label="Binary Data" sortKey={sortKey} sortOrder={sortOrder} onSort={setSort} filterable={false} distinctValues={[]} selectedFilterValues={new Set()} onFilterChange={() => { }} />
+                      </ResizableTableHead>
+                    )}
+                    {columnVisibility.isColumnVisible('immutable') && (
+                      <ResizableTableHead columnId="immutable">
+                        <TableColumnHeaderWithFilterAndSort columnId="immutable" label="Immutable" sortKey={sortKey} sortOrder={sortOrder} onSort={setSort} filterable={false} distinctValues={[]} selectedFilterValues={new Set()} onFilterChange={() => { }} />
+                      </ResizableTableHead>
+                    )}
+                    {columnVisibility.isColumnVisible('age') && (
+                      <ResizableTableHead columnId="age">
+                        <TableColumnHeaderWithFilterAndSort columnId="age" label="Age" sortKey={sortKey} sortOrder={sortOrder} onSort={setSort} filterable={false} distinctValues={[]} selectedFilterValues={new Set()} onFilterChange={() => { }} />
+                      </ResizableTableHead>
+                    )}
+                    {columnVisibility.isColumnVisible('lastModified') && (
+                      <ResizableTableHead columnId="lastModified">
+                        <TableColumnHeaderWithFilterAndSort columnId="lastModified" label="Last Modified" sortKey={sortKey} sortOrder={sortOrder} onSort={setSort} filterable={false} distinctValues={[]} selectedFilterValues={new Set()} onFilterChange={() => { }} />
+                      </ResizableTableHead>
+                    )}
+                    <TableHead className="w-12 text-center">
+                      <span className="sr-only">Actions</span>
+                      <MoreHorizontal className="h-4 w-4 inline-block text-muted-foreground" aria-hidden />
+                    </TableHead>
                   </TableRow>
-                )}
-              </TableHeader>
-              <TableBody>
-                {isLoading && isConnected ? (
-                  <TableRow>
-                    <TableCell colSpan={10} className="h-32 text-center">
-                      <div className="flex flex-col items-center gap-2">
-                        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                        <p className="text-sm text-muted-foreground">Loading...</p>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ) : filteredItems.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={10} className="h-40 text-center">
-                      <TableEmptyState
-                        icon={<FileJson className="h-8 w-8" />}
-                        title="No ConfigMaps found"
-                        subtitle={searchQuery || hasActiveFilters ? 'Clear filters to see resources.' : 'Create a ConfigMap to store non-sensitive configuration.'}
-                        hasActiveFilters={!!(searchQuery || hasActiveFilters)}
-                        onClearFilters={() => { setSearchQuery(''); clearAllFilters(); }}
-                        createLabel="Create ConfigMap"
-                        onCreate={() => setShowCreateWizard(true)}
-                      />
-                    </TableCell>
-                  </TableRow>
-                ) : listView === 'flat' ? (
-                  itemsOnPage.map((item, idx) => {
-                    const key = `${item.namespace}/${item.name}`;
-                    const usedByCount = consumersCountByKey[key];
-                    const usedByNode =
-                      !isBackendConfigured() || !clusterId ? (
-                        <span className="text-muted-foreground">—</span>
-                      ) : usedByCount !== undefined ? (
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <span className="font-mono text-sm">{usedByCount}</span>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p className="text-xs">{usedByCount} workload(s) use this ConfigMap</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      ) : (
-                        <span className="text-muted-foreground">—</span>
-                      );
-                    return (
-                      <motion.tr
-                        key={key}
-                        initial={ROW_MOTION.initial}
-                        animate={ROW_MOTION.animate}
-                        transition={ROW_MOTION.transition(idx)}
-                        className={cn(resourceTableRowClassName, idx % 2 === 1 && 'bg-muted/5', selectedItems.has(key) && 'bg-primary/5')}
-                      >
-                        <TableCell><Checkbox checked={selectedItems.has(key)} onCheckedChange={() => toggleSelection(item)} aria-label={`Select ${item.name}`} /></TableCell>
-                        <ResizableTableCell columnId="name">
-                          <Link to={`/configmaps/${item.namespace}/${item.name}`} className="font-medium text-primary hover:underline flex items-center gap-2 truncate">
-                            <FileJson className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                            <span className="truncate">{item.name}</span>
-                          </Link>
-                        </ResizableTableCell>
-                        {columnVisibility.isColumnVisible('namespace') && (
-                        <ResizableTableCell columnId="namespace">
-                          <Badge variant="outline" className="font-normal truncate block w-fit max-w-full">
-                            {item.namespace}
-                          </Badge>
-                        </ResizableTableCell>
-                        )}
-                        {columnVisibility.isColumnVisible('dataKeys') && (
-                        <ResizableTableCell columnId="dataKeys" className="font-mono text-sm">
-                          {item.dataKeys}
-                        </ResizableTableCell>
-                        )}
-                        {columnVisibility.isColumnVisible('totalSize') && (
-                        <ResizableTableCell columnId="totalSize" className="text-muted-foreground font-mono text-sm">
-                          {item.totalSizeHuman}
-                        </ResizableTableCell>
-                        )}
-                        {columnVisibility.isColumnVisible('usedBy') && (
-                        <ResizableTableCell columnId="usedBy">{usedByNode}</ResizableTableCell>
-                        )}
-                        {columnVisibility.isColumnVisible('binaryData') && (
-                        <ResizableTableCell columnId="binaryData">
-                          {item.binaryData ? <Badge variant="secondary">Yes</Badge> : <span className="text-muted-foreground">No</span>}
-                        </ResizableTableCell>
-                        )}
-                        {columnVisibility.isColumnVisible('immutable') && (
-                        <ResizableTableCell columnId="immutable">
-                          {item.immutable ? <Badge variant="default">Yes</Badge> : <Badge variant="outline">No</Badge>}
-                        </ResizableTableCell>
-                        )}
-                        {columnVisibility.isColumnVisible('age') && (
-                        <ResizableTableCell columnId="age" className="text-muted-foreground whitespace-nowrap">
-                          <AgeCell age={item.age} timestamp={item.creationTimestamp} />
-                        </ResizableTableCell>
-                        )}
-                        {columnVisibility.isColumnVisible('lastModified') && (
-                        <ResizableTableCell columnId="lastModified" className="text-muted-foreground whitespace-nowrap">
+                  {showTableFilters && (
+                    <TableRow className="bg-muted/30 hover:bg-muted/30 border-b-2 border-border">
+                      <TableCell className="w-10 p-1.5" />
+                      <ResizableTableCell columnId="name" className="p-1.5">
+                        <TableFilterCell columnId="name" label="Name" distinctValues={distinctValuesByColumn.name ?? []} selectedFilterValues={columnFilters.name ?? new Set()} onFilterChange={setColumnFilter} valueCounts={valueCountsByColumn.name} />
+                      </ResizableTableCell>
+                      {columnVisibility.isColumnVisible('namespace') && <ResizableTableCell columnId="namespace" className="p-1.5"><TableFilterCell columnId="namespace" label="Namespace" distinctValues={distinctValuesByColumn.namespace ?? []} selectedFilterValues={columnFilters.namespace ?? new Set()} onFilterChange={setColumnFilter} valueCounts={valueCountsByColumn.namespace} /></ResizableTableCell>}
+                      {columnVisibility.isColumnVisible('dataKeys') && <ResizableTableCell columnId="dataKeys" className="p-1.5" />}
+                      {columnVisibility.isColumnVisible('totalSize') && <ResizableTableCell columnId="totalSize" className="p-1.5" />}
+                      {columnVisibility.isColumnVisible('usedBy') && <ResizableTableCell columnId="usedBy" className="p-1.5"><TableFilterCell columnId="usage" label="Used By" distinctValues={distinctValuesByColumn.usage ?? []} selectedFilterValues={columnFilters.usage ?? new Set()} onFilterChange={setColumnFilter} valueCounts={valueCountsByColumn.usage} /></ResizableTableCell>}
+                      {columnVisibility.isColumnVisible('binaryData') && <ResizableTableCell columnId="binaryData" className="p-1.5"><TableFilterCell columnId="binaryData" label="Binary Data" distinctValues={['Yes', 'No']} selectedFilterValues={columnFilters.binaryData ?? new Set()} onFilterChange={setColumnFilter} valueCounts={valueCountsByColumn.binaryData} /></ResizableTableCell>}
+                      {columnVisibility.isColumnVisible('immutable') && <ResizableTableCell columnId="immutable" className="p-1.5"><TableFilterCell columnId="immutable" label="Immutable" distinctValues={['Yes', 'No']} selectedFilterValues={columnFilters.immutable ?? new Set()} onFilterChange={setColumnFilter} valueCounts={valueCountsByColumn.immutable} /></ResizableTableCell>}
+                      {columnVisibility.isColumnVisible('age') && <ResizableTableCell columnId="age" className="p-1.5" />}
+                      {columnVisibility.isColumnVisible('lastModified') && <ResizableTableCell columnId="lastModified" className="p-1.5" />}
+                      <TableCell className="w-12 p-1.5" />
+                    </TableRow>
+                  )}
+                </TableHeader>
+                <TableBody>
+                  {isLoading && isConnected ? (
+                    <TableRow>
+                      <TableCell colSpan={10} className="h-32 text-center">
+                        <div className="flex flex-col items-center gap-2">
+                          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                          <p className="text-sm text-muted-foreground">Loading...</p>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ) : filteredItems.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={10} className="h-40 text-center">
+                        <TableEmptyState
+                          icon={<FileJson className="h-8 w-8" />}
+                          title="No ConfigMaps found"
+                          subtitle={searchQuery || hasActiveFilters ? 'Clear filters to see resources.' : 'Create a ConfigMap to store non-sensitive configuration.'}
+                          hasActiveFilters={!!(searchQuery || hasActiveFilters)}
+                          onClearFilters={() => { setSearchQuery(''); clearAllFilters(); }}
+                          createLabel="Create ConfigMap"
+                          onCreate={() => setShowCreateWizard(true)}
+                        />
+                      </TableCell>
+                    </TableRow>
+                  ) : listView === 'flat' ? (
+                    itemsOnPage.map((item, idx) => {
+                      const key = `${item.namespace}/${item.name}`;
+                      const usedByCount = consumersCountByKey[key];
+                      const usedByNode =
+                        !isBackendConfigured() || !clusterId ? (
+                          <span className="text-muted-foreground">—</span>
+                        ) : usedByCount !== undefined ? (
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              <span><AgeCell age={item.age} timestamp={item.creationTimestamp} /></span>
+                              <span className="font-mono text-sm">{usedByCount}</span>
                             </TooltipTrigger>
-                            <TooltipContent side="top" className="text-xs max-w-xs">
-                              K8s does not expose last-modified time; showing creation time
+                            <TooltipContent>
+                              <p className="text-xs">{usedByCount} workload(s) use this ConfigMap</p>
                             </TooltipContent>
                           </Tooltip>
-                        </ResizableTableCell>
-                        )}
-                        <TableCell>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors" aria-label="ConfigMap actions">
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-48">
-                              <CopyNameDropdownItem name={item.name} namespace={item.namespace} />
-                              <DropdownMenuItem onClick={() => navigate(`/configmaps/${item.namespace}/${item.name}`)} className="gap-2">
-                                View Details
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => navigate(`/configmaps/${item.namespace}/${item.name}?tab=data`)} className="gap-2">
-                                View Data
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => navigate(`/configmaps/${item.namespace}/${item.name}?tab=used-by`)} className="gap-2">
-                                View Consumers
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleClone(item)} className="gap-2">
-                                Clone / Duplicate
-                              </DropdownMenuItem>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem onClick={() => navigate(`/configmaps/${item.namespace}/${item.name}?tab=yaml`)} className="gap-2">
-                                Download YAML
-                              </DropdownMenuItem>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem className="gap-2 text-destructive" onClick={() => setDeleteDialog({ open: true, item })} disabled={!isConnected}>
-                                <Trash2 className="h-4 w-4" /> Delete
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </TableCell>
-                      </motion.tr>
-                    );
-                  })
-                ) : (
-                  groupedOnPage.flatMap((group) => {
-                    const isCollapsed = collapsedGroups.has(group.groupKey);
-                    return [
-                      <TableRow
-                        key={group.groupKey}
-                        className="bg-muted/30 hover:bg-muted/40 cursor-pointer border-b border-border/60 transition-all duration-200"
-                        onClick={() => toggleGroup(group.groupKey)}
-                      >
-                        <TableCell colSpan={11} className="py-2">
-                          <div className="flex items-center gap-2 font-medium">
-                            {isCollapsed ? <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" /> : <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />}
-                            Namespace: {group.label}
-                            <span className="text-muted-foreground font-normal">({group.configMaps.length})</span>
-                          </div>
-                        </TableCell>
-                      </TableRow>,
-                      ...(isCollapsed
-                        ? []
-                        : group.configMaps.map((item, idx) => {
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        );
+                      return (
+                        <motion.tr
+                          key={key}
+                          initial={ROW_MOTION.initial}
+                          animate={ROW_MOTION.animate}
+                          transition={ROW_MOTION.transition(idx)}
+                          className={cn(resourceTableRowClassName, idx % 2 === 1 && 'bg-muted/5', selectedItems.has(key) && 'bg-primary/5')}
+                        >
+                          <TableCell><Checkbox checked={selectedItems.has(key)} onCheckedChange={() => toggleSelection(item)} aria-label={`Select ${item.name}`} /></TableCell>
+                          <ResizableTableCell columnId="name">
+                            <Link to={`/configmaps/${item.namespace}/${item.name}`} className="font-medium text-primary hover:underline flex items-center gap-2 truncate">
+                              <FileJson className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                              <span className="truncate">{item.name}</span>
+                            </Link>
+                          </ResizableTableCell>
+                          {columnVisibility.isColumnVisible('namespace') && (
+                            <ResizableTableCell columnId="namespace">
+                              <Badge variant="outline" className="font-normal truncate block w-fit max-w-full">
+                                {item.namespace}
+                              </Badge>
+                            </ResizableTableCell>
+                          )}
+                          {columnVisibility.isColumnVisible('dataKeys') && (
+                            <ResizableTableCell columnId="dataKeys" className="font-mono text-sm">
+                              {item.dataKeys}
+                            </ResizableTableCell>
+                          )}
+                          {columnVisibility.isColumnVisible('totalSize') && (
+                            <ResizableTableCell columnId="totalSize" className="text-muted-foreground font-mono text-sm">
+                              {item.totalSizeHuman}
+                            </ResizableTableCell>
+                          )}
+                          {columnVisibility.isColumnVisible('usedBy') && (
+                            <ResizableTableCell columnId="usedBy">{usedByNode}</ResizableTableCell>
+                          )}
+                          {columnVisibility.isColumnVisible('binaryData') && (
+                            <ResizableTableCell columnId="binaryData">
+                              {item.binaryData ? <Badge variant="secondary">Yes</Badge> : <span className="text-muted-foreground">No</span>}
+                            </ResizableTableCell>
+                          )}
+                          {columnVisibility.isColumnVisible('immutable') && (
+                            <ResizableTableCell columnId="immutable">
+                              {item.immutable ? <Badge variant="default">Yes</Badge> : <Badge variant="outline">No</Badge>}
+                            </ResizableTableCell>
+                          )}
+                          {columnVisibility.isColumnVisible('age') && (
+                            <ResizableTableCell columnId="age" className="text-muted-foreground whitespace-nowrap">
+                              <AgeCell age={item.age} timestamp={item.creationTimestamp} />
+                            </ResizableTableCell>
+                          )}
+                          {columnVisibility.isColumnVisible('lastModified') && (
+                            <ResizableTableCell columnId="lastModified" className="text-muted-foreground whitespace-nowrap">
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <span><AgeCell age={item.age} timestamp={item.creationTimestamp} /></span>
+                                </TooltipTrigger>
+                                <TooltipContent side="top" className="text-xs max-w-xs">
+                                  K8s does not expose last-modified time; showing creation time
+                                </TooltipContent>
+                              </Tooltip>
+                            </ResizableTableCell>
+                          )}
+                          <TableCell>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors" aria-label="ConfigMap actions">
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="w-48">
+                                <CopyNameDropdownItem name={item.name} namespace={item.namespace} />
+                                <DropdownMenuItem onClick={() => navigate(`/configmaps/${item.namespace}/${item.name}`)} className="gap-2">
+                                  View Details
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => navigate(`/configmaps/${item.namespace}/${item.name}?tab=data`)} className="gap-2">
+                                  View Data
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => navigate(`/configmaps/${item.namespace}/${item.name}?tab=used-by`)} className="gap-2">
+                                  View Consumers
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleClone(item)} className="gap-2">
+                                  Clone / Duplicate
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem onClick={() => navigate(`/configmaps/${item.namespace}/${item.name}?tab=yaml`)} className="gap-2">
+                                  Download YAML
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem className="gap-2 text-destructive" onClick={() => setDeleteDialog({ open: true, item })} disabled={!isConnected}>
+                                  <Trash2 className="h-4 w-4" /> Delete
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
+                        </motion.tr>
+                      );
+                    })
+                  ) : (
+                    groupedOnPage.flatMap((group) => {
+                      const isCollapsed = collapsedGroups.has(group.groupKey);
+                      return [
+                        <TableRow
+                          key={group.groupKey}
+                          className="bg-muted/30 hover:bg-muted/40 cursor-pointer border-b border-border/60 transition-all duration-200"
+                          onClick={() => toggleGroup(group.groupKey)}
+                        >
+                          <TableCell colSpan={11} className="py-2">
+                            <div className="flex items-center gap-2 font-medium">
+                              {isCollapsed ? <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" /> : <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />}
+                              Namespace: {group.label}
+                              <span className="text-muted-foreground font-normal">({group.configMaps.length})</span>
+                            </div>
+                          </TableCell>
+                        </TableRow>,
+                        ...(isCollapsed
+                          ? []
+                          : group.configMaps.map((item, idx) => {
                             const key = `${item.namespace}/${item.name}`;
                             const usedByCount = consumersCountByKey[key];
                             const usedByNode =
@@ -860,51 +863,51 @@ data: {}
                                   </Link>
                                 </ResizableTableCell>
                                 {columnVisibility.isColumnVisible('namespace') && (
-                                <ResizableTableCell columnId="namespace">
-                                  <Badge variant="outline" className="font-normal truncate block w-fit max-w-full">
-                                    {item.namespace}
-                                  </Badge>
-                                </ResizableTableCell>
+                                  <ResizableTableCell columnId="namespace">
+                                    <Badge variant="outline" className="font-normal truncate block w-fit max-w-full">
+                                      {item.namespace}
+                                    </Badge>
+                                  </ResizableTableCell>
                                 )}
                                 {columnVisibility.isColumnVisible('dataKeys') && (
-                                <ResizableTableCell columnId="dataKeys" className="font-mono text-sm">
-                                  {item.dataKeys}
-                                </ResizableTableCell>
+                                  <ResizableTableCell columnId="dataKeys" className="font-mono text-sm">
+                                    {item.dataKeys}
+                                  </ResizableTableCell>
                                 )}
                                 {columnVisibility.isColumnVisible('totalSize') && (
-                                <ResizableTableCell columnId="totalSize" className="text-muted-foreground font-mono text-sm">
-                                  {item.totalSizeHuman}
-                                </ResizableTableCell>
+                                  <ResizableTableCell columnId="totalSize" className="text-muted-foreground font-mono text-sm">
+                                    {item.totalSizeHuman}
+                                  </ResizableTableCell>
                                 )}
                                 {columnVisibility.isColumnVisible('usedBy') && (
-                                <ResizableTableCell columnId="usedBy">{usedByNode}</ResizableTableCell>
+                                  <ResizableTableCell columnId="usedBy">{usedByNode}</ResizableTableCell>
                                 )}
                                 {columnVisibility.isColumnVisible('binaryData') && (
-                                <ResizableTableCell columnId="binaryData">
-                                  {item.binaryData ? <Badge variant="secondary">Yes</Badge> : <span className="text-muted-foreground">No</span>}
-                                </ResizableTableCell>
+                                  <ResizableTableCell columnId="binaryData">
+                                    {item.binaryData ? <Badge variant="secondary">Yes</Badge> : <span className="text-muted-foreground">No</span>}
+                                  </ResizableTableCell>
                                 )}
                                 {columnVisibility.isColumnVisible('immutable') && (
-                                <ResizableTableCell columnId="immutable">
-                                  {item.immutable ? <Badge variant="default">Yes</Badge> : <Badge variant="outline">No</Badge>}
-                                </ResizableTableCell>
+                                  <ResizableTableCell columnId="immutable">
+                                    {item.immutable ? <Badge variant="default">Yes</Badge> : <Badge variant="outline">No</Badge>}
+                                  </ResizableTableCell>
                                 )}
                                 {columnVisibility.isColumnVisible('age') && (
-                                <ResizableTableCell columnId="age" className="text-muted-foreground whitespace-nowrap">
-                                  <AgeCell age={item.age} timestamp={item.creationTimestamp} />
-                                </ResizableTableCell>
+                                  <ResizableTableCell columnId="age" className="text-muted-foreground whitespace-nowrap">
+                                    <AgeCell age={item.age} timestamp={item.creationTimestamp} />
+                                  </ResizableTableCell>
                                 )}
                                 {columnVisibility.isColumnVisible('lastModified') && (
-                                <ResizableTableCell columnId="lastModified" className="text-muted-foreground whitespace-nowrap">
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <span><AgeCell age={item.age} timestamp={item.creationTimestamp} /></span>
-                                    </TooltipTrigger>
-                                    <TooltipContent side="top" className="text-xs max-w-xs">
-                                      K8s does not expose last-modified time; showing creation time
-                                    </TooltipContent>
-                                  </Tooltip>
-                                </ResizableTableCell>
+                                  <ResizableTableCell columnId="lastModified" className="text-muted-foreground whitespace-nowrap">
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <span><AgeCell age={item.age} timestamp={item.creationTimestamp} /></span>
+                                      </TooltipTrigger>
+                                      <TooltipContent side="top" className="text-xs max-w-xs">
+                                        K8s does not expose last-modified time; showing creation time
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  </ResizableTableCell>
                                 )}
                                 <TableCell>
                                   <DropdownMenu>
@@ -941,13 +944,13 @@ data: {}
                               </motion.tr>
                             );
                           })),
-                    ];
-                  })
-                )}
-              </TableBody>
-            </Table>
-          </ResizableTableProvider>
-        </div>
+                      ];
+                    })
+                  )}
+                </TableBody>
+              </Table>
+            </ResizableTableProvider>
+          </div>
         </ResourceListTableToolbar>
         <p className="text-xs text-muted-foreground mt-1">
           {listView === 'flat' ? 'flat list' : 'grouped by namespace'}
@@ -960,10 +963,14 @@ data: {}
           resourceKind="ConfigMap"
           defaultYaml={cloneInitialYaml ?? DEFAULT_YAMLS.ConfigMap}
           onClose={handleCloseCreateWizard}
-          onApply={() => {
-            toast.success('ConfigMap created');
-            handleCloseCreateWizard();
-            refetch();
+          onApply={async (yaml) => {
+            try {
+              await createResource.mutateAsync({ yaml });
+              handleCloseCreateWizard();
+              refetch();
+            } catch (e) {
+              // Error toast is handled by useCreateK8sResource
+            }
           }}
         />
       )}

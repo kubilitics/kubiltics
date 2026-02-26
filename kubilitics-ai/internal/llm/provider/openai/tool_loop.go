@@ -114,8 +114,20 @@ func (c *OpenAIClientImpl) runAgentLoop(
 ) {
 	// Convert initial messages to OpenAI wire format.
 	oaiMsgs := convertMessagesToOAI(messages)
-	toolsForAPI := types.CapToolsForAPI(tools)
+	// Stay under API tool limit (128): prefer intent-aware selection when we have a user message.
+	latestUserMsg := ""
+	for i := len(messages) - 1; i >= 0; i-- {
+		if messages[i].Role == "user" {
+			latestUserMsg = messages[i].Content
+			break
+		}
+	}
+	toolsForAPI := types.SelectToolsForQuery(tools, latestUserMsg)
 	oaiTools := convertToolsToOAI(toolsForAPI)
+	// Last-line-of-defense: API rejects requests with >128 tools; ensure we never exceed.
+	if len(oaiTools) > types.MaxToolsPerRequest {
+		oaiTools = oaiTools[:types.MaxToolsPerRequest]
+	}
 
 	for turn := 0; turn < cfg.MaxTurns; turn++ {
 		req := oaiRequest{
@@ -178,11 +190,14 @@ func (c *OpenAIClientImpl) streamSingleTurn(
 	evtCh chan<- types.AgentStreamEvent,
 	turn int,
 ) (string, []oaiToolCall, error) {
+	// Enforce 128-tool limit right before send; API rejects larger arrays.
+	if len(req.Tools) > types.MaxToolsPerRequest {
+		req.Tools = req.Tools[:types.MaxToolsPerRequest]
+	}
 	body, err := json.Marshal(req)
 	if err != nil {
 		return "", nil, fmt.Errorf("marshal: %w", err)
 	}
-	fmt.Printf("[OpenAI] Sending tool request: %s\n", string(body))
 
 	requestURL, err := url.JoinPath(c.baseURL, "/chat/completions")
 	if err != nil {

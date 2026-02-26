@@ -1,7 +1,15 @@
 // A-CORE-014: Token budget enforcement hooks — backed by real /api/v1/budget/* endpoints.
 // Budget endpoints live on the AI backend (port 8081).
 import { useState, useEffect, useCallback } from 'react';
-import { AI_BASE_URL } from '@/services/aiService';
+import {
+  getBudgetSummary,
+  getBudgetLimits,
+  setBudgetLimit as setBudgetLimitService,
+  getBudgetDetails,
+  recordBudgetUsage,
+  estimateBudgetCost,
+  resetBudget as resetBudgetService
+} from '@/services/aiService';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -50,9 +58,8 @@ export interface BudgetCheckResult {
   warning?: string;
 }
 
-// ─── API base ─────────────────────────────────────────────────────────────────
 
-const API_BASE = `${AI_BASE_URL}/api/v1/budget`;
+// Service calls replace direct fetch to handle dynamic backend URLs
 
 // ─── useBudgetSummary ─────────────────────────────────────────────────────────
 
@@ -65,9 +72,8 @@ export function useBudgetSummary(userID = 'global', opts: { pollIntervalMs?: num
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await window.fetch(`${API_BASE}/summary?user_id=${encodeURIComponent(userID)}`);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      setData(await res.json());
+      const data = await getBudgetSummary(userID);
+      setData(data);
       setError(null);
     } catch (e) {
       setError((e as Error).message);
@@ -95,9 +101,8 @@ export function useBudgetLimits(userID = 'global') {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await window.fetch(`${API_BASE}/limits?user_id=${encodeURIComponent(userID)}`);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      setData(await res.json());
+      const data = await getBudgetLimits(userID);
+      setData(data);
       setError(null);
     } catch (e) {
       setError((e as Error).message);
@@ -110,12 +115,7 @@ export function useBudgetLimits(userID = 'global') {
 
   const setLimit = useCallback(async (limitUSD: number) => {
     try {
-      const res = await window.fetch(`${API_BASE}/limits`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user_id: userID, limit_usd: limitUSD }),
-      });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      await setBudgetLimitService(userID, limitUSD);
       fetchData();
     } catch (e) {
       setError((e as Error).message);
@@ -135,11 +135,7 @@ export function useBudgetDetails(userID = 'global', investigationID = '') {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const params = new URLSearchParams({ user_id: userID });
-      if (investigationID) params.set('investigation_id', investigationID);
-      const res = await window.fetch(`${API_BASE}/details?${params.toString()}`);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const json = await res.json();
+      const json = await getBudgetDetails(userID, investigationID);
       setEntries(json.entries ?? []);
       setError(null);
     } catch (e) {
@@ -168,19 +164,13 @@ export function useBudgetRecord() {
   }) => {
     setLoading(true);
     try {
-      const res = await window.fetch(`${API_BASE}/record`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          user_id: params.userID ?? 'global',
-          investigation_id: params.investigationID ?? '',
-          input_tokens: params.inputTokens,
-          output_tokens: params.outputTokens,
-          provider: params.provider ?? 'openai',
-        }),
+      const json = await recordBudgetUsage({
+        user_id: params.userID ?? 'global',
+        investigation_id: params.investigationID ?? '',
+        input_tokens: params.inputTokens,
+        output_tokens: params.outputTokens,
+        provider: params.provider ?? 'openai',
       });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const json = await res.json();
       setError(null);
       return json;
     } catch (e) {
@@ -204,14 +194,11 @@ export function useBudgetEstimate() {
   const estimate = useCallback(async (inputTokens: number, outputTokens: number, provider = 'openai') => {
     setLoading(true);
     try {
-      const params = new URLSearchParams({
+      const json = await estimateBudgetCost({
         input_tokens: String(inputTokens),
         output_tokens: String(outputTokens),
         provider,
       });
-      const res = await window.fetch(`${API_BASE}/estimate?${params.toString()}`);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const json = await res.json();
       setData(json);
       setError(null);
       return json as CostEstimate;
@@ -235,12 +222,7 @@ export function useBudgetReset() {
   const resetBudget = useCallback(async (userID = 'global') => {
     setLoading(true);
     try {
-      const res = await window.fetch(`${API_BASE}/reset`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user_id: userID }),
-      });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      await resetBudgetService(userID);
       setError(null);
       return true;
     } catch (e) {

@@ -9,14 +9,16 @@ import (
 
 	"github.com/kubilitics/kcli/internal/ai"
 	kcfg "github.com/kubilitics/kcli/internal/config"
+	"github.com/kubilitics/kcli/internal/state"
 	"github.com/spf13/cobra"
 	"golang.org/x/term"
 )
 
 func newAICmd(a *app) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:     "ai [question]",
-		Short:   "AI-assisted analysis commands (optional)",
+		Use:   "ai [question]",
+		Short: "AI-assisted analysis commands (optional)",
+		Long:  "AI commands send to the configured provider: current context/namespace, target resource IDs, and for summarize: event messages. Secrets are redacted. Avoid PII in resource names or events. See 'kcli ai config' and ai.maxInputChars in ~/.kcli/config.yaml.",
 		GroupID: "ai",
 		Args:    cobra.ArbitraryArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -32,12 +34,87 @@ func newAICmd(a *app) *cobra.Command {
 		newAISummarizeCmd(a),
 		newAIActionCmd(a, "suggest-fix [resource]", "Suggest remediation for a workload", "suggest-fix"),
 		newAIActionCmd(a, "fix [resource]", "Suggest remediation for a workload", "suggest-fix"),
+		newAIWhatWouldBeSentCmd(a),
 		newAIConfigCmd(a),
 		newAIStatusCmd(a),
 		newAIUsageCmd(),
 		newAICostCmd(a),
+		newAIPricingCmd(),
 	)
 	return cmd
+}
+
+// newAIWhatWouldBeSentCmd returns the 'kcli ai what-would-be-sent' command that
+// shows the exact sanitized prompt that would be sent to the AI provider —
+// without actually calling the provider.  Engineers use this to audit what
+// data leaves their cluster before enabling AI features.
+func newAIWhatWouldBeSentCmd(a *app) *cobra.Command {
+	return &cobra.Command{
+		Use:   "what-would-be-sent [action] [resource]",
+		Short: "Show the exact prompt that would be sent to the AI provider (audit tool)",
+		Long: `Print the full sanitized prompt that would be sent to the AI provider
+without making an API call.
+
+Use this command to:
+  - Audit what Kubernetes cluster data leaves your environment
+  - Verify that sensitive values are being redacted correctly
+  - Debug AI responses by reviewing the exact input
+  - Compliance reviews for air-gapped or regulated environments
+
+Sensitive values (API keys, tokens, PEM certificates, JWT tokens, etc.) are
+redacted before sending. Content inside <k8s-resource-data> tags is marked
+as untrusted data per the system prompt instruction.
+
+Examples:
+
+  # See what would be sent for a 'why' analysis
+  kcli ai what-would-be-sent why pod/crashed-xyz
+
+  # See the explain prompt for a Kubernetes field
+  kcli ai what-would-be-sent explain "kubectl explain pod.spec.containers.resources\n\nFIELD: resources\nDESCRIPTION: Compute Resources required by this container."
+
+  # See the query prompt
+  kcli ai what-would-be-sent query "why are my pods OOMKilled?"`,
+		Args: cobra.ArbitraryArgs,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			action := "why"
+			target := ""
+			if len(args) >= 1 {
+				action = strings.TrimSpace(args[0])
+			}
+			if len(args) >= 2 {
+				target = strings.TrimSpace(strings.Join(args[1:], " "))
+			}
+			prompt := ai.BuildPrompt(ai.PromptRequest{
+				Action: action,
+				Target: target,
+				Query:  target,
+			})
+			maxInputChars := 16384
+			if a.cfg != nil && a.cfg.AI.MaxInputChars > 0 {
+				maxInputChars = a.cfg.AI.MaxInputChars
+			}
+			fullPrompt := "System:\n" + prompt.System + "\n\nUser:\n" + prompt.User
+			truncated := false
+			if len(fullPrompt) > maxInputChars {
+				fullPrompt = fullPrompt[:maxInputChars]
+				truncated = true
+			}
+			fmt.Fprintf(cmd.OutOrStdout(), "═══════════════════════════════════════════════════════\n")
+			fmt.Fprintf(cmd.OutOrStdout(), " kcli ai what-would-be-sent  (no API call made)\n")
+			fmt.Fprintf(cmd.OutOrStdout(), " action: %s | target: %q\n", action, target)
+			fmt.Fprintf(cmd.OutOrStdout(), " estimated tokens: %d | max input chars: %d\n", prompt.EstimatedTokens, maxInputChars)
+			if truncated {
+				fmt.Fprintf(cmd.OutOrStdout(), " ⚠  prompt would be TRUNCATED at %d chars\n", maxInputChars)
+			}
+			fmt.Fprintf(cmd.OutOrStdout(), "═══════════════════════════════════════════════════════\n\n")
+			fmt.Fprintln(cmd.OutOrStdout(), fullPrompt)
+			if truncated {
+				fmt.Fprintf(cmd.OutOrStdout(), "\n[... truncated at %d chars ...]", maxInputChars)
+			}
+			return nil
+		},
+	}
 }
 
 func newWhyCmd(a *app) *cobra.Command {
@@ -254,6 +331,28 @@ func newAICostCmd(a *app) *cobra.Command {
 	}
 }
 
+// newAIPricingCmd implements `kcli ai pricing`.
+// It shows the current per-token cost table, including whether it came from
+// the live feed, the local disk cache, or the bundled fallback.
+func newAIPricingCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "pricing",
+		Short: "Show current AI provider per-token pricing",
+		Long: `Show per-token cost rates for each AI provider.
+
+kcli fetches live pricing from the kcli GitHub repository and caches it for
+24 hours (~/.kcli/pricing.json).  The bundled fallback is used when offline.
+
+Example:
+  kcli ai pricing
+`,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			fmt.Fprint(cmd.OutOrStdout(), ai.FormatPricingTable())
+			return nil
+		},
+	}
+}
+
 func printAIConfig(cmd *cobra.Command, cfg *kcfg.Config) {
 	maskedKey := emptyDash(maskSecret(cfg.AI.APIKey))
 	fmt.Fprintf(cmd.OutOrStdout(), "enabled: %v\n", cfg.AI.Enabled)
@@ -277,6 +376,20 @@ func maskSecret(v string) string {
 }
 
 func runAIAction(a *app, cmd *cobra.Command, action, target string) error {
+	// P3-2: Surface similar past resolutions when running why
+	if action == "why" && strings.TrimSpace(target) != "" {
+		if mem, err := state.LoadMemory(); err == nil {
+			if similar := mem.FindSimilar(target); similar != nil {
+				resolved := similar.ResolvedAt
+				if len(resolved) >= 10 {
+					resolved = resolved[:10]
+				}
+				fmt.Fprintf(cmd.OutOrStdout(), "%sSimilar issue resolved on %s: %s%s\n\n",
+					ansiGreen, resolved, similar.Resolution, ansiReset)
+			}
+		}
+	}
+
 	client := a.aiClient()
 	if !client.Enabled() {
 		fmt.Fprintln(cmd.OutOrStdout(), "AI disabled. Set KCLI_AI_PROVIDER (or provider-specific env vars) to enable.")

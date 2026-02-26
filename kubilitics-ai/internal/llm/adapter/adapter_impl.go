@@ -332,6 +332,9 @@ func (a *llmAdapterImpl) CompleteWithTools(
 		return ch, ErrProviderNotConfigured
 	}
 
+	// Enforce API limit (e.g. OpenAI/Anthropic max 128 tools) so no provider receives more.
+	tools = types.CapToolsForAPI(tools)
+
 	switch client := a.client.(type) {
 	case *anthropic.AnthropicClientImpl:
 		return client.CompleteWithTools(ctx, messages, tools, executor, cfg)

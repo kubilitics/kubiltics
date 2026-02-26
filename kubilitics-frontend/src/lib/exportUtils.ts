@@ -57,3 +57,9 @@ export function buildCsv(headers: string[], rows: string[][]): string {
   const dataLines = rows.map((row) => row.join(','));
   return [headerLine, ...dataLines].join('\n');
 }
+
+/** Download a single resource (or any object) as JSON. Use on detail pages for "Export as JSON". */
+export function downloadResourceJson(resource: object, filename: string): void {
+  const blob = new Blob([JSON.stringify(resource, null, 2)], { type: 'application/json' });
+  downloadBlob(blob, filename);
+}

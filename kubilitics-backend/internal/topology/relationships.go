@@ -106,7 +106,7 @@ func (ri *RelationshipInferencer) inferLabelSelectors() error {
 
 	for _, service := range services {
 		svcLabels := service.Metadata.Labels
-		if svcLabels == nil || len(svcLabels) == 0 {
+		if len(svcLabels) == 0 {
 			continue
 		}
 		for _, pod := range pods {

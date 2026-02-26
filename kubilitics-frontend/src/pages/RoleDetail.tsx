@@ -1,6 +1,6 @@
 import { useState, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Shield, Clock, Download, Trash2, Edit, Users, Network } from 'lucide-react';
+import { Shield, Clock, Download, Trash2, Edit, Users, Network, GitCompare } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -15,16 +15,14 @@ import {
 } from '@/components/ui/table';
 import {
   ResourceDetailLayout,
-  
+
   MetadataCard,
   YamlViewer,
-  YamlCompareViewer,
+  ResourceComparisonView,
   EventsSection,
   ActionsSection,
   DeleteConfirmDialog,
   ResourceTopologyView,
-  
-  
   type ResourceStatus,
   type YamlVersion,
 } from '@/components/resources';
@@ -32,7 +30,10 @@ import { useResourceDetail, useResourceEvents } from '@/hooks/useK8sResourceDeta
 import { useDeleteK8sResource, type KubernetesResource } from '@/hooks/useKubernetes';
 import { normalizeKindForTopology } from '@/utils/resourceKindMapper';
 import { useConnectionStatus } from '@/hooks/useConnectionStatus';
+import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
+import { useActiveClusterId } from '@/hooks/useActiveClusterId';
 import { toast } from 'sonner';
+import { downloadResourceJson } from '@/lib/exportUtils';
 
 interface RoleRule {
   apiGroups?: string[];
@@ -66,6 +67,9 @@ export default function RoleDetail() {
   const [activeTab, setActiveTab] = useState('overview');
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const { isConnected } = useConnectionStatus();
+  const clusterId = useActiveClusterId();
+  const backendBaseUrl = useBackendConfigStore((s) => s.backendBaseUrl);
+  const baseUrl = getEffectiveBackendBaseUrl(backendBaseUrl);
 
   const { resource, isLoading, error: resourceError, age, yaml, refetch } = useResourceDetail<RoleResource>(
     'roles',
@@ -107,7 +111,10 @@ export default function RoleDetail() {
     URL.revokeObjectURL(url);
   }, [yaml, roleName]);
 
-  const yamlVersions: YamlVersion[] = yaml ? [{ id: 'current', label: 'Current Version', yaml, timestamp: 'now' }] : [];
+  const handleDownloadJson = useCallback(() => {
+    downloadResourceJson(resource, `${roleName || 'role'}.json`);
+    toast.success('JSON downloaded');
+  }, [resource, roleName]);
 
   const statusCards = [
     { label: 'Rules Count', value: rules.length, icon: Shield, iconColor: 'primary' as const },
@@ -262,7 +269,23 @@ export default function RoleDetail() {
     },
     { id: 'events', label: 'Events', content: <EventsSection events={events} /> },
     { id: 'yaml', label: 'YAML', content: <YamlViewer yaml={yaml} resourceName={roleName} /> },
-    { id: 'compare', label: 'Compare', content: <YamlCompareViewer versions={yamlVersions} resourceName={roleName} /> },
+    {
+      id: 'compare',
+      label: 'Compare',
+      icon: GitCompare,
+      content: (
+        <ResourceComparisonView
+          resourceType="roles"
+          resourceKind="Role"
+          namespace={roleNamespace}
+          initialSelectedResources={roleNamespace && roleName ? [`${roleNamespace}/${roleName}`] : [roleName]}
+          clusterId={clusterId ?? undefined}
+          backendBaseUrl={baseUrl ?? ''}
+          isConnected={isConnected}
+          embedded
+        />
+      ),
+    },
     {
       id: 'topology',
       label: 'Topology',
@@ -286,6 +309,7 @@ export default function RoleDetail() {
             { icon: Edit, label: 'Edit Role', description: 'Modify role permissions', onClick: () => toast.info('Edit not implemented') },
             { icon: Users, label: 'View Bindings', description: 'See all role bindings using this role', onClick: () => navigate(`/rolebindings?namespace=${roleNamespace}`) },
             { icon: Download, label: 'Download YAML', description: 'Export Role definition', onClick: handleDownloadYaml },
+            { icon: Download, label: 'Export as JSON', description: 'Export Role as JSON', onClick: handleDownloadJson },
             { icon: Trash2, label: 'Delete Role', description: 'Remove this role', variant: 'destructive', onClick: () => setShowDeleteDialog(true) },
           ]}
         />
@@ -308,6 +332,7 @@ export default function RoleDetail() {
         headerMetadata={<span className="flex items-center gap-1.5 ml-2 text-sm text-muted-foreground"><Clock className="h-3.5 w-3.5" />Created {age}</span>}
         actions={[
           { label: 'Download YAML', icon: Download, variant: 'outline', onClick: handleDownloadYaml },
+          { label: 'Export as JSON', icon: Download, variant: 'outline', onClick: handleDownloadJson },
           { label: 'Edit', icon: Edit, variant: 'outline', onClick: () => toast.info('Edit not implemented') },
           { label: 'Delete', icon: Trash2, variant: 'destructive', onClick: () => setShowDeleteDialog(true) },
         ]}

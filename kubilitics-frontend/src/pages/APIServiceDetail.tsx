@@ -1,17 +1,18 @@
 import { useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { FileCode, Clock, Server, Download, Trash2, CheckCircle, Network } from 'lucide-react';
+import { FileCode, Clock, Server, Download, Trash2, CheckCircle, Network, GitCompare } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
+import { downloadResourceJson } from '@/lib/exportUtils';
 import {
   ResourceDetailLayout,
   ResourceOverviewMetadata,
   SectionCard,
   YamlViewer,
-  YamlCompareViewer,
+  ResourceComparisonView,
   EventsSection,
   ActionsSection,
   DeleteConfirmDialog,
@@ -23,8 +24,13 @@ import { useResourceDetail, useResourceEvents } from '@/hooks/useK8sResourceDeta
 import { useDeleteK8sResource, type KubernetesResource } from '@/hooks/useKubernetes';
 import { normalizeKindForTopology } from '@/utils/resourceKindMapper';
 import { useConnectionStatus } from '@/hooks/useConnectionStatus';
+import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
+import { useActiveClusterId } from '@/hooks/useActiveClusterId';
 
 interface APIServiceResource extends KubernetesResource {
+  metadata: KubernetesResource['metadata'] & {
+    ownerReferences?: Array<{ kind: string; name: string }>;
+  };
   spec?: {
     service?: { namespace?: string; name?: string };
     group?: string;
@@ -44,11 +50,15 @@ export default function APIServiceDetail() {
   const { isConnected } = useConnectionStatus();
   const [activeTab, setActiveTab] = useState('overview');
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const clusterId = useActiveClusterId();
+  const backendBaseUrl = useBackendConfigStore((s) => s.backendBaseUrl);
+  const baseUrl = getEffectiveBackendBaseUrl(backendBaseUrl);
 
   const { resource: api, isLoading, error: resourceError, age, yaml, refetch } = useResourceDetail<APIServiceResource>(
     'apiservices',
     name ?? undefined,
-    undefined
+    undefined,
+    undefined as unknown as APIServiceResource
   );
   const { events } = useResourceEvents('APIService', undefined, name ?? undefined);
   const deleteResource = useDeleteK8sResource('apiservices');
@@ -73,7 +83,10 @@ export default function APIServiceDetail() {
     URL.revokeObjectURL(url);
   }, [yaml, apiName]);
 
-  const yamlVersions: YamlVersion[] = yaml ? [{ id: 'current', label: 'Current Version', yaml, timestamp: 'now' }] : [];
+  const handleDownloadJson = useCallback(() => {
+    downloadResourceJson(api, `${apiName || 'apiservice'}.json`);
+    toast.success('JSON downloaded');
+  }, [api, apiName]);
 
   if (isLoading) {
     return (
@@ -101,7 +114,7 @@ export default function APIServiceDetail() {
   }
 
   const statusCards = [
-    { label: 'Available', value: available ? 'Yes' : 'No', icon: CheckCircle, iconColor: (available ? 'success' : 'error') as const },
+    { label: 'Available', value: available ? 'Yes' : 'No', icon: CheckCircle, iconColor: (available ? 'success' : 'error') as 'success' | 'error' },
     { label: 'Group / Version', value: `${group} / ${version}`, icon: FileCode, iconColor: 'primary' as const },
     { label: 'Service', value: serviceRef, icon: Server, iconColor: 'info' as const },
     { label: 'Age', value: age, icon: Clock, iconColor: 'muted' as const },
@@ -120,40 +133,55 @@ export default function APIServiceDetail() {
             createdLabel={age}
           />
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <SectionCard icon={FileCode} title="API Service Info" tooltip="Group, version, service reference">
-            <div className="grid grid-cols-2 gap-4 text-sm">
-              <div><p className="text-muted-foreground mb-1">Group</p><p className="font-mono">{group}</p></div>
-              <div><p className="text-muted-foreground mb-1">Version</p><Badge variant="secondary">{version}</Badge></div>
-              <div><p className="text-muted-foreground mb-1">Service</p><p>{serviceRef}</p></div>
-              <div><p className="text-muted-foreground mb-1">Insecure Skip TLS</p><p>{api?.spec?.insecureSkipTLSVerify ? 'Yes' : 'No'}</p></div>
-              <div><p className="text-muted-foreground mb-1">Group Priority Minimum</p><p className="font-mono">{api?.spec?.groupPriorityMinimum ?? '–'}</p></div>
-              <div><p className="text-muted-foreground mb-1">Version Priority</p><p className="font-mono">{api?.spec?.versionPriority ?? '–'}</p></div>
-            </div>
-          </SectionCard>
-          <SectionCard icon={FileCode} title="Conditions" tooltip="Status conditions" className="lg:col-span-2">
-            {conditions.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No conditions.</p>
-            ) : (
-              <div className="space-y-3">
-                {conditions.map((c) => (
-                  <div key={c.type} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
-                    <div className="flex items-center gap-3">
-                      <Badge variant={c.status === 'True' ? 'default' : 'secondary'}>{c.type}</Badge>
-                      <span className="text-sm text-muted-foreground">{c.reason ?? '–'}</span>
-                    </div>
-                    <p className="text-sm">{c.message ?? '–'}</p>
-                  </div>
-                ))}
+            <SectionCard icon={FileCode} title="API Service Info" tooltip="Group, version, service reference">
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div><p className="text-muted-foreground mb-1">Group</p><p className="font-mono">{group}</p></div>
+                <div><p className="text-muted-foreground mb-1">Version</p><Badge variant="secondary">{version}</Badge></div>
+                <div><p className="text-muted-foreground mb-1">Service</p><p>{serviceRef}</p></div>
+                <div><p className="text-muted-foreground mb-1">Insecure Skip TLS</p><p>{api?.spec?.insecureSkipTLSVerify ? 'Yes' : 'No'}</p></div>
+                <div><p className="text-muted-foreground mb-1">Group Priority Minimum</p><p className="font-mono">{api?.spec?.groupPriorityMinimum ?? '–'}</p></div>
+                <div><p className="text-muted-foreground mb-1">Version Priority</p><p className="font-mono">{api?.spec?.versionPriority ?? '–'}</p></div>
               </div>
-            )}
-          </SectionCard>
+            </SectionCard>
+            <SectionCard icon={FileCode} title="Conditions" tooltip="Status conditions" className="lg:col-span-2">
+              {conditions.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No conditions.</p>
+              ) : (
+                <div className="space-y-3">
+                  {conditions.map((c) => (
+                    <div key={c.type} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+                      <div className="flex items-center gap-3">
+                        <Badge variant={c.status === 'True' ? 'default' : 'secondary'}>{c.type}</Badge>
+                        <span className="text-sm text-muted-foreground">{c.reason ?? '–'}</span>
+                      </div>
+                      <p className="text-sm">{c.message ?? '–'}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </SectionCard>
           </div>
         </div>
       ),
     },
     { id: 'events', label: 'Events', content: <EventsSection events={events} /> },
     { id: 'yaml', label: 'YAML', content: <YamlViewer yaml={yaml} resourceName={apiName} editable={false} /> },
-    { id: 'compare', label: 'Compare', content: <YamlCompareViewer versions={yamlVersions} resourceName={apiName} /> },
+    {
+      id: 'compare',
+      label: 'Compare',
+      icon: GitCompare,
+      content: (
+        <ResourceComparisonView
+          resourceType="apiservices"
+          resourceKind="APIService"
+          initialSelectedResources={[apiName]}
+          clusterId={clusterId ?? undefined}
+          backendBaseUrl={baseUrl ?? ''}
+          isConnected={isConnected}
+          embedded
+        />
+      ),
+    },
     {
       id: 'topology',
       label: 'Topology',
@@ -175,6 +203,7 @@ export default function APIServiceDetail() {
         <ActionsSection
           actions={[
             { icon: Download, label: 'Download YAML', description: 'Export API Service definition', onClick: handleDownloadYaml },
+            { icon: Download, label: 'Export as JSON', description: 'Export API Service as JSON', onClick: handleDownloadJson },
             { icon: Trash2, label: 'Delete API Service', description: 'Remove this API service', variant: 'destructive', onClick: () => setShowDeleteDialog(true) },
           ]}
         />
@@ -202,6 +231,7 @@ export default function APIServiceDetail() {
         }
         actions={[
           { label: 'Download YAML', icon: Download, variant: 'outline', onClick: handleDownloadYaml },
+          { label: 'Export as JSON', icon: Download, variant: 'outline', onClick: handleDownloadJson },
           { label: 'Delete', icon: Trash2, variant: 'destructive', onClick: () => setShowDeleteDialog(true) },
         ]}
         statusCards={statusCards}

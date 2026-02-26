@@ -23,6 +23,9 @@ dist-ssr
 *.sln
 *.sw?
 
+# Vite cache (can reference old tooling e.g. lovable-tagger)
+vite.config.ts.timestamp-*.mjs
+
 # Test artifacts
 test-results/
 playwright-report/

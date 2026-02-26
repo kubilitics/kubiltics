@@ -1,15 +1,16 @@
 import { useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Scale, Clock, Download, Trash2, Cpu, MemoryStick, TrendingUp, Network } from 'lucide-react';
+import { Scale, Clock, Download, Trash2, Cpu, MemoryStick, TrendingUp, Network, GitCompare } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
+import { downloadResourceJson } from '@/lib/exportUtils';
 import {
   ResourceDetailLayout,
   YamlViewer,
-  YamlCompareViewer,
+  ResourceComparisonView,
   EventsSection,
   ActionsSection,
   DeleteConfirmDialog,
@@ -22,6 +23,8 @@ import { useResourceDetail, useResourceEvents } from '@/hooks/useK8sResourceDeta
 import { useDeleteK8sResource, type KubernetesResource } from '@/hooks/useKubernetes';
 import { normalizeKindForTopology } from '@/utils/resourceKindMapper';
 import { useConnectionStatus } from '@/hooks/useConnectionStatus';
+import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
+import { useActiveClusterId } from '@/hooks/useActiveClusterId';
 
 interface VPAResource extends KubernetesResource {
   spec?: {
@@ -49,6 +52,9 @@ export default function VerticalPodAutoscalerDetail() {
   const [activeTab, setActiveTab] = useState('overview');
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const { isConnected } = useConnectionStatus();
+  const clusterId = useActiveClusterId();
+  const backendBaseUrl = useBackendConfigStore((s) => s.backendBaseUrl);
+  const baseUrl = getEffectiveBackendBaseUrl(backendBaseUrl);
 
   const { resource, isLoading, error: resourceError, age, yaml, refetch } = useResourceDetail<VPAResource>(
     'verticalpodautoscalers',
@@ -81,7 +87,11 @@ export default function VerticalPodAutoscalerDetail() {
     URL.revokeObjectURL(url);
   }, [yaml, vpaName]);
 
-  const yamlVersions: YamlVersion[] = yaml ? [{ id: 'current', label: 'Current Version', yaml, timestamp: 'now' }] : [];
+  const handleDownloadJson = useCallback(() => {
+    if (!resource) return;
+    downloadResourceJson(resource, `${vpaName || 'vpa'}.json`);
+    toast.success('JSON downloaded');
+  }, [resource, vpaName]);
 
   const firstRec = recommendations[0];
   const statusCards = [
@@ -234,7 +244,23 @@ export default function VerticalPodAutoscalerDetail() {
     },
     { id: 'events', label: 'Events', content: <EventsSection events={events} /> },
     { id: 'yaml', label: 'YAML', content: <YamlViewer yaml={yaml} resourceName={vpaName} /> },
-    { id: 'compare', label: 'Compare', content: <YamlCompareViewer versions={yamlVersions} resourceName={vpaName} /> },
+    {
+      id: 'compare',
+      label: 'Compare',
+      icon: GitCompare,
+      content: (
+        <ResourceComparisonView
+          resourceType="verticalpodautoscalers"
+          resourceKind="VerticalPodAutoscaler"
+          namespace={vpaNamespace}
+          initialSelectedResources={vpaNamespace && vpaName ? [`${vpaNamespace}/${vpaName}`] : [vpaName]}
+          clusterId={clusterId ?? undefined}
+          backendBaseUrl={baseUrl ?? ''}
+          isConnected={isConnected}
+          embedded
+        />
+      ),
+    },
     {
       id: 'topology',
       label: 'Topology',
@@ -257,6 +283,7 @@ export default function VerticalPodAutoscalerDetail() {
           actions={[
             { icon: TrendingUp, label: 'Edit VPA', description: 'Modify resource policies', onClick: () => toast.info('Edit not implemented') },
             { icon: Download, label: 'Download YAML', description: 'Export VPA definition', onClick: handleDownloadYaml },
+            { icon: Download, label: 'Export as JSON', description: 'Export VPA as JSON', onClick: handleDownloadJson },
             { icon: Trash2, label: 'Delete VPA', description: 'Remove this autoscaler', variant: 'destructive', onClick: () => setShowDeleteDialog(true) },
           ]}
         />
@@ -264,7 +291,7 @@ export default function VerticalPodAutoscalerDetail() {
     },
   ];
 
-  const status: ResourceStatus = recommendations.length > 0 ? 'Healthy' : 'Progressing';
+  const status = (recommendations.length > 0 ? 'Healthy' : 'Progressing') as ResourceStatus;
 
   return (
     <>
@@ -279,6 +306,7 @@ export default function VerticalPodAutoscalerDetail() {
         headerMetadata={<span className="flex items-center gap-1.5 ml-2 text-sm text-muted-foreground"><Clock className="h-3.5 w-3.5" />Created {age}</span>}
         actions={[
           { label: 'Download YAML', icon: Download, variant: 'outline', onClick: handleDownloadYaml },
+          { label: 'Export as JSON', icon: Download, variant: 'outline', onClick: handleDownloadJson },
           { label: 'Edit', icon: TrendingUp, variant: 'outline', onClick: () => toast.info('Edit not implemented') },
           { label: 'Delete', icon: Trash2, variant: 'destructive', onClick: () => setShowDeleteDialog(true) },
         ]}

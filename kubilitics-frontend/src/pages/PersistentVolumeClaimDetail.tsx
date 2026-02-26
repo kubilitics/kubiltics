@@ -5,16 +5,17 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
+import { downloadResourceJson } from '@/lib/exportUtils';
 import {
   ResourceDetailLayout,
   SectionCard,
   MetadataCard,
   YamlViewer,
-  YamlCompareViewer,
   EventsSection,
   ActionsSection,
   DeleteConfirmDialog,
   ResourceTopologyView,
+  ResourceComparisonView,
   type ResourceStatus,
   type YamlVersion,
 } from '@/components/resources';
@@ -23,7 +24,7 @@ import { useDeleteK8sResource, useUpdateK8sResource, type KubernetesResource } f
 import { normalizeKindForTopology } from '@/utils/resourceKindMapper';
 import { Breadcrumbs, useDetailBreadcrumbs } from '@/components/layout/Breadcrumbs';
 import { useClusterStore } from '@/stores/clusterStore';
-import { useBackendConfigStore } from '@/stores/backendConfigStore';
+import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
 import { useActiveClusterId } from '@/hooks/useActiveClusterId';
 import { Button } from '@/components/ui/button';
 
@@ -52,6 +53,8 @@ export default function PersistentVolumeClaimDetail() {
   const breadcrumbSegments = useDetailBreadcrumbs('PersistentVolumeClaim', name ?? undefined, namespace ?? undefined, activeCluster?.name);
   const clusterId = useActiveClusterId();
   const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured);
+  const backendBaseUrl = useBackendConfigStore((s) => s.backendBaseUrl);
+  const baseUrl = getEffectiveBackendBaseUrl(backendBaseUrl);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   useEffect(() => {
@@ -78,6 +81,12 @@ export default function PersistentVolumeClaimDetail() {
     a.click();
     URL.revokeObjectURL(url);
   }, [yaml, pvc?.metadata?.name]);
+
+  const handleDownloadJson = useCallback(() => {
+    if (!pvc) return;
+    downloadResourceJson(pvc, `${pvc?.metadata?.name || 'pvc'}.json`);
+    toast.success('JSON downloaded');
+  }, [pvc]);
 
   if (isLoading) {
     return (
@@ -184,7 +193,23 @@ export default function PersistentVolumeClaimDetail() {
     },
     { id: 'events', label: 'Events', icon: Clock, content: <EventsSection events={events} /> },
     { id: 'yaml', label: 'YAML', icon: FileCode, content: <YamlViewer yaml={yaml} resourceName={pvcName} editable onSave={handleSaveYaml} /> },
-    { id: 'compare', label: 'Compare', icon: GitCompare, content: <YamlCompareViewer versions={yamlVersions} resourceName={pvcName} /> },
+    {
+      id: 'compare',
+      label: 'Compare',
+      icon: GitCompare,
+      content: (
+        <ResourceComparisonView
+          resourceType="persistentvolumeclaims"
+          resourceKind="PersistentVolumeClaim"
+          namespace={namespace}
+          initialSelectedResources={namespace && name ? [`${namespace}/${name}`] : [name || '']}
+          clusterId={clusterId ?? undefined}
+          backendBaseUrl={baseUrl ?? ''}
+          isConnected={isConnected}
+          embedded
+        />
+      ),
+    },
     {
       id: 'topology',
       label: 'Topology',
@@ -207,6 +232,7 @@ export default function PersistentVolumeClaimDetail() {
         <ActionsSection actions={[
           { icon: Expand, label: 'Expand Volume', description: 'Increase the storage capacity', onClick: () => toast.info('Expand requires backend support') },
           { icon: Download, label: 'Download YAML', description: 'Export PVC definition', onClick: handleDownloadYaml },
+          { icon: Download, label: 'Export as JSON', description: 'Export PVC as JSON', onClick: handleDownloadJson },
           { icon: Trash2, label: 'Delete PVC', description: 'Remove this Persistent Volume Claim', variant: 'destructive', onClick: () => setShowDeleteDialog(true) },
         ]} />
       ),
@@ -226,6 +252,7 @@ export default function PersistentVolumeClaimDetail() {
         headerMetadata={<span className="flex items-center gap-1.5 ml-2 text-sm text-muted-foreground"><Clock className="h-3.5 w-3.5" />Created {age}{isConnected && <Badge variant="outline" className="ml-2 text-xs">Live</Badge>}</span>}
         actions={[
           { label: 'Download YAML', icon: Download, variant: 'outline', onClick: handleDownloadYaml },
+          { label: 'Export as JSON', icon: Download, variant: 'outline', onClick: handleDownloadJson },
           { label: 'Edit', icon: Edit, variant: 'outline', onClick: () => { setActiveTab('yaml'); setSearchParams((p) => { const n = new URLSearchParams(p); n.set('tab', 'yaml'); return n; }, { replace: true }); } },
           { label: 'Expand', icon: Expand, variant: 'outline', onClick: () => toast.info('Expand requires backend support') },
           { label: 'Delete', icon: Trash2, variant: 'destructive', onClick: () => setShowDeleteDialog(true) },

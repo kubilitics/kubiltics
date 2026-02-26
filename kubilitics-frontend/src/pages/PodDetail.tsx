@@ -50,7 +50,6 @@ import {
   ContainersSection,
   DetailRow,
   YamlViewer,
-  YamlCompareViewer,
   EventsSection,
   ActionsSection,
   LogViewer,
@@ -59,9 +58,9 @@ import {
   PortForwardDialog,
   MetricsDashboard,
   ResourceTopologyView,
+  ResourceComparisonView,
   type ResourceStatus,
   type ContainerInfo,
-  type YamlVersion,
 } from '@/components/resources';
 import { Breadcrumbs, useDetailBreadcrumbs } from '@/components/layout/Breadcrumbs';
 import { useClusterStore } from '@/stores/clusterStore';
@@ -77,13 +76,14 @@ import {
   TOOLTIP_VOLUME_DEFAULT_MODE,
 } from '@/lib/k8sTooltips';
 import { useResourceDetail, useResourceEvents } from '@/hooks/useK8sResourceDetail';
-import { useDeleteK8sResource, useUpdateK8sResource, calculateAge, type KubernetesResource } from '@/hooks/useKubernetes';
+import { useK8sResourceList, useDeleteK8sResource, useUpdateK8sResource, calculateAge, type KubernetesResource } from '@/hooks/useKubernetes';
 import { useMetricsSummary } from '@/hooks/useMetricsSummary';
 import { useActiveClusterId } from '@/hooks/useActiveClusterId';
 import { useConnectionStatus } from '@/hooks/useConnectionStatus';
-import { useBackendConfigStore } from '@/stores/backendConfigStore';
+import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
 import { normalizeKindForTopology } from '@/utils/resourceKindMapper';
 import { cn } from '@/lib/utils';
+import { downloadResourceJson } from '@/lib/exportUtils';
 
 function parseCPUToMillicores(s: string): number {
   if (!s || s === '-') return 0;
@@ -180,6 +180,7 @@ export default function PodDetail() {
   const { namespace, name } = useParams();
   const { activeCluster } = useClusterStore();
   const clusterId = useActiveClusterId();
+  const backendBaseUrl = getEffectiveBackendBaseUrl(useBackendConfigStore((s) => s.backendBaseUrl));
   const breadcrumbSegments = useDetailBreadcrumbs(
     'Pod',
     name ?? undefined,
@@ -204,7 +205,7 @@ export default function PodDetail() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showPortForwardDialog, setShowPortForwardDialog] = useState(false);
   const [portForwardInitial, setPortForwardInitial] = useState<{ containerName: string; port: number } | null>(null);
-  
+
   const { isConnected } = useConnectionStatus();
   const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured);
   const { resource: pod, isLoading, error, age, yaml, refetch } = useResourceDetail<PodResource>(
@@ -216,15 +217,48 @@ export default function PodDetail() {
   const resourceEvents = useResourceEvents('Pod', namespace ?? undefined, name ?? undefined);
   const events = resourceEvents.events;
   const eventsLoading = resourceEvents.isLoading;
-    const { data: metricsResult } = useMetricsSummary('pod', namespace ?? undefined, name ?? undefined, { enabled: !!namespace && !!name });
-    const podMetrics = useMemo(() => {
-      const summary = metricsResult?.summary;
-      const p = summary?.pods?.[0];
-      if (!p) return undefined;
-      return { CPU: p.cpu, Memory: p.memory, containers: p.containers ?? [] };
-    }, [metricsResult?.summary]);
+  const { data: metricsResult } = useMetricsSummary('pod', namespace ?? undefined, name ?? undefined, { enabled: !!namespace && !!name });
+  const podMetrics = useMemo(() => {
+    const summary = metricsResult?.summary;
+    const p = summary?.pods?.[0];
+    if (!p) return undefined;
+    return { CPU: p.cpu, Memory: p.memory, containers: p.containers ?? [] };
+  }, [metricsResult?.summary]);
   const deletePod = useDeleteK8sResource('pods');
   const updatePod = useUpdateK8sResource('pods');
+
+  // Pods in same namespace for Compare tab (embedded ResourceComparisonView)
+  const { data: namespacePodsData } = useK8sResourceList<PodResource>('pods', namespace ?? undefined, {
+    limit: 500,
+    enabled: !!namespace,
+  });
+  const namespacePods = useMemo(() => {
+    if (!namespacePodsData?.items) return [];
+    return namespacePodsData.items.map((item: PodResource) => {
+      const statusPhase = item.status?.phase;
+      const containerStatuses = item.status?.containerStatuses || [];
+      let status: string = (statusPhase as string) || 'Unknown';
+      if ((item.metadata as { deletionTimestamp?: string }).deletionTimestamp) {
+        status = 'Terminating';
+      } else {
+        for (const c of containerStatuses) {
+          if (c.state?.waiting?.reason === 'CrashLoopBackOff') {
+            status = 'CrashLoopBackOff';
+            break;
+          }
+          if (c.state?.waiting?.reason === 'ContainerCreating') {
+            status = 'ContainerCreating';
+            break;
+          }
+        }
+      }
+      return {
+        name: item.metadata.name,
+        namespace: item.metadata.namespace || 'default',
+        status,
+      };
+    });
+  }, [namespacePodsData?.items, namespace]);
 
   const status = pod.status?.phase as ResourceStatus || 'Unknown';
   const conditions = pod.status?.conditions || [];
@@ -264,11 +298,11 @@ export default function PodDetail() {
         startedAt: containerStatus?.state?.running?.startedAt,
         lastState: lastState
           ? {
-              reason: lastState.reason ?? 'Unknown',
-              exitCode: (lastState as { exitCode?: number }).exitCode,
-              startedAt: (lastState as { startedAt?: string }).startedAt,
-              finishedAt: (lastState as { finishedAt?: string }).finishedAt,
-            }
+            reason: lastState.reason ?? 'Unknown',
+            exitCode: (lastState as { exitCode?: number }).exitCode,
+            startedAt: (lastState as { startedAt?: string }).startedAt,
+            finishedAt: (lastState as { finishedAt?: string }).finishedAt,
+          }
           : undefined,
         containerID: containerStatus?.containerID,
         imageID: containerStatus?.imageID,
@@ -298,6 +332,11 @@ export default function PodDetail() {
     toast.success('YAML downloaded');
   }, [yaml, pod.metadata?.name]);
 
+  const handleDownloadJson = useCallback(() => {
+    downloadResourceJson(pod, `${pod.metadata?.name || 'pod'}.json`);
+    toast.success('JSON downloaded');
+  }, [pod]);
+
   const handleCopyYaml = useCallback(() => {
     navigator.clipboard.writeText(yaml);
     toast.success('YAML copied to clipboard');
@@ -323,7 +362,19 @@ export default function PodDetail() {
         toast.success('Pod updated successfully');
         refetch();
       } catch (error: any) {
-        toast.error(`Failed to update: ${error.message}`);
+        const msg = error?.message ?? String(error);
+        const isPodImmutable =
+          msg.includes('pod updates may not change') ||
+          (msg.includes('is invalid') && msg.includes('Pod'));
+        if (isPodImmutable) {
+          toast.error('Pod spec is mostly immutable', {
+            description:
+              'Only container image, activeDeadlineSeconds, tolerations (additions), and terminationGracePeriodSeconds can be updated. To change env, volumes, or other fields, edit the owning Deployment or ReplicaSet.',
+            duration: 8000,
+          });
+        } else {
+          toast.error(`Failed to update: ${msg}`);
+        }
         throw error;
       }
     } else {
@@ -338,7 +389,7 @@ export default function PodDetail() {
       <div className="space-y-6">
         <Skeleton className="h-20 w-full" />
         <div className="grid grid-cols-4 gap-4">
-          {[1,2,3,4].map(i => <Skeleton key={i} className="h-24" />)}
+          {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-24" />)}
         </div>
         <Skeleton className="h-96" />
       </div>
@@ -384,13 +435,9 @@ export default function PodDetail() {
       projectedSources: projectedSources?.join(', ') || undefined,
     };
   });
-  
+
   const podName = pod.metadata?.name || '';
 
-  // Only current version from API; no history without backend support
-  const yamlVersions: YamlVersion[] = yaml
-    ? [{ id: 'current', label: 'Current Version', yaml, timestamp: 'now' }]
-    : [];
 
   const displayEvents = events ?? [];
 
@@ -407,6 +454,22 @@ export default function PodDetail() {
   };
   const ownerPath = ownerRef ? ownerKindToPath[ownerRef.kind] : null;
   const creationTimestamp = pod.metadata?.creationTimestamp ? new Date(pod.metadata.creationTimestamp).toLocaleString() : '';
+
+  const podYamlWarning = (
+    <>
+      Pod spec is mostly immutable. You can only update: container image, activeDeadlineSeconds, tolerations (additions), terminationGracePeriodSeconds.
+      To change env, volumes, or other fields, edit the owning workload.
+      {ownerPath && ownerRef?.name && namespace && (
+        <Button
+          variant="link"
+          className="h-auto p-0 text-primary ml-1 font-medium"
+          onClick={() => navigate(`/${ownerPath}/${namespace}/${ownerRef.name}`)}
+        >
+          Edit {ownerRef.kind} →
+        </Button>
+      )}
+    </>
+  );
 
   const tabs = [
     {
@@ -630,48 +693,48 @@ export default function PodDetail() {
                 </>
               }
             >
-                <div className="space-y-3">
-                  {conditions.map((condition) => {
-                    const isTrue = condition.status === 'True';
-                    const transitionExact = new Date(condition.lastTransitionTime).toLocaleString();
-                    const transitionRelative = calculateAge(condition.lastTransitionTime);
-                    const tooltipParts = [transitionExact];
-                    if (condition.reason) tooltipParts.push(`Reason: ${condition.reason}`);
-                    if (condition.message) tooltipParts.push(condition.message);
-                    const tooltipContent = tooltipParts.join('\n');
-                    return (
-                      <div key={condition.type} className="flex items-center justify-between gap-4 p-3 rounded-lg bg-muted/50 flex-wrap">
-                        <div className="flex items-center gap-3 flex-wrap">
-                          <Badge variant="secondary" className="font-medium text-xs bg-background">
-                            {condition.type}
-                          </Badge>
-                          <Badge
-                            variant="outline"
-                            className={cn(
-                              isTrue && 'bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/30',
-                              !isTrue && 'bg-red-500/10 text-red-700 dark:text-red-400 border-red-500/30'
-                            )}
-                          >
-                            {condition.status}
-                          </Badge>
-                          {condition.message && (
-                            <p className="text-xs text-muted-foreground">{condition.message}</p>
+              <div className="space-y-3">
+                {conditions.map((condition) => {
+                  const isTrue = condition.status === 'True';
+                  const transitionExact = new Date(condition.lastTransitionTime).toLocaleString();
+                  const transitionRelative = calculateAge(condition.lastTransitionTime);
+                  const tooltipParts = [transitionExact];
+                  if (condition.reason) tooltipParts.push(`Reason: ${condition.reason}`);
+                  if (condition.message) tooltipParts.push(condition.message);
+                  const tooltipContent = tooltipParts.join('\n');
+                  return (
+                    <div key={condition.type} className="flex items-center justify-between gap-4 p-3 rounded-lg bg-muted/50 flex-wrap">
+                      <div className="flex items-center gap-3 flex-wrap">
+                        <Badge variant="secondary" className="font-medium text-xs bg-background">
+                          {condition.type}
+                        </Badge>
+                        <Badge
+                          variant="outline"
+                          className={cn(
+                            isTrue && 'bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/30',
+                            !isTrue && 'bg-red-500/10 text-red-700 dark:text-red-400 border-red-500/30'
                           )}
-                        </div>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <span className="text-xs text-muted-foreground cursor-help underline decoration-dotted decoration-muted-foreground underline-offset-2 shrink-0">
-                              {transitionRelative}
-                            </span>
-                          </TooltipTrigger>
-                          <TooltipContent side="left" className="max-w-xs whitespace-pre-line">
-                            {tooltipContent}
-                          </TooltipContent>
-                        </Tooltip>
+                        >
+                          {condition.status}
+                        </Badge>
+                        {condition.message && (
+                          <p className="text-xs text-muted-foreground">{condition.message}</p>
+                        )}
                       </div>
-                    );
-                  })}
-                </div>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span className="text-xs text-muted-foreground cursor-help underline decoration-dotted decoration-muted-foreground underline-offset-2 shrink-0">
+                            {transitionRelative}
+                          </span>
+                        </TooltipTrigger>
+                        <TooltipContent side="left" className="max-w-xs whitespace-pre-line">
+                          {tooltipContent}
+                        </TooltipContent>
+                      </Tooltip>
+                    </div>
+                  );
+                })}
+              </div>
             </SectionCard>
           </div>
 
@@ -687,60 +750,60 @@ export default function PodDetail() {
                 </>
               }
             >
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b">
-                        <th className="text-left py-2 font-medium">Key</th>
-                        <th className="text-left py-2 font-medium">Value</th>
-                        <th className="text-left py-2 font-medium">Operator</th>
-                        <th className="text-left py-2 font-medium">Effect</th>
-                        <th className="text-left py-2 font-medium">Seconds</th>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b">
+                      <th className="text-left py-2 font-medium">Key</th>
+                      <th className="text-left py-2 font-medium">Value</th>
+                      <th className="text-left py-2 font-medium">Operator</th>
+                      <th className="text-left py-2 font-medium">Effect</th>
+                      <th className="text-left py-2 font-medium">Seconds</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {pod.spec.tolerations.map((t, i) => (
+                      <tr key={i} className="border-b last:border-0">
+                        <td className="py-2 font-mono text-xs">{t.key ?? '-'}</td>
+                        <td className="py-2 font-mono text-xs">{t.value ?? '-'}</td>
+                        <td className="py-2">{t.operator ?? '-'}</td>
+                        <td className="py-2">
+                          {t.effect ? (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="cursor-help underline decoration-dotted decoration-muted-foreground underline-offset-2">
+                                  {t.effect}
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent side="top" className="max-w-xs">
+                                {TOOLTIP_TOLERATION_EFFECT[t.effect] ?? t.effect}
+                              </TooltipContent>
+                            </Tooltip>
+                          ) : (
+                            '-'
+                          )}
+                        </td>
+                        <td className="py-2">
+                          {t.tolerationSeconds != null ? (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="cursor-help underline decoration-dotted decoration-muted-foreground underline-offset-2">
+                                  {t.tolerationSeconds}
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent side="top" className="max-w-xs">
+                                {TOOLTIP_TOLERATION_SECONDS}
+                              </TooltipContent>
+                            </Tooltip>
+                          ) : (
+                            '-'
+                          )}
+                        </td>
                       </tr>
-                    </thead>
-                    <tbody>
-                      {pod.spec.tolerations.map((t, i) => (
-                        <tr key={i} className="border-b last:border-0">
-                          <td className="py-2 font-mono text-xs">{t.key ?? '-'}</td>
-                          <td className="py-2 font-mono text-xs">{t.value ?? '-'}</td>
-                          <td className="py-2">{t.operator ?? '-'}</td>
-                          <td className="py-2">
-                            {t.effect ? (
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <span className="cursor-help underline decoration-dotted decoration-muted-foreground underline-offset-2">
-                                    {t.effect}
-                                  </span>
-                                </TooltipTrigger>
-                                <TooltipContent side="top" className="max-w-xs">
-                                  {TOOLTIP_TOLERATION_EFFECT[t.effect] ?? t.effect}
-                                </TooltipContent>
-                              </Tooltip>
-                            ) : (
-                              '-'
-                            )}
-                          </td>
-                          <td className="py-2">
-                            {t.tolerationSeconds != null ? (
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <span className="cursor-help underline decoration-dotted decoration-muted-foreground underline-offset-2">
-                                    {t.tolerationSeconds}
-                                  </span>
-                                </TooltipTrigger>
-                                <TooltipContent side="top" className="max-w-xs">
-                                  {TOOLTIP_TOLERATION_SECONDS}
-                                </TooltipContent>
-                              </Tooltip>
-                            ) : (
-                              '-'
-                            )}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </SectionCard>
           )}
 
@@ -774,49 +837,49 @@ export default function PodDetail() {
                 <p className="text-xs text-muted-foreground">Volume definitions for this pod</p>
               }
             >
-                {volumes.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">No volumes configured</p>
-                ) : (
-                  <div className="space-y-3">
-                    {volumes.map((volume) => (
-                      <div key={volume.name} className="p-3 rounded-lg bg-muted/50 space-y-2">
-                        <div className="flex items-center justify-between flex-wrap gap-2">
-                          <p className="font-medium text-sm">{volume.name}</p>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Badge variant="secondary" className="text-xs cursor-help">
-                                {volume.kind}
-                              </Badge>
-                            </TooltipTrigger>
-                            <TooltipContent side="top" className="max-w-xs">
-                              {TOOLTIP_VOLUME_KIND[volume.kind] ?? volume.kind}
-                            </TooltipContent>
-                          </Tooltip>
-                        </div>
-                        <p className="text-xs text-muted-foreground">
-                          Source: <span className="font-mono">{volume.source}</span>
-                        </p>
-                        {volume.projectedSources && (
-                          <p className="text-xs text-muted-foreground">
-                            Sources: <span className="font-mono">{volume.projectedSources}</span>
-                          </p>
-                        )}
-                        {volume.defaultMode != null && (
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <p className="text-xs text-muted-foreground cursor-help">
-                                defaultMode: <span className="font-mono">{volume.defaultMode}</span>
-                              </p>
-                            </TooltipTrigger>
-                            <TooltipContent side="top" className="max-w-xs">
-                              {TOOLTIP_VOLUME_DEFAULT_MODE}
-                            </TooltipContent>
-                          </Tooltip>
-                        )}
+              {volumes.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No volumes configured</p>
+              ) : (
+                <div className="space-y-3">
+                  {volumes.map((volume) => (
+                    <div key={volume.name} className="p-3 rounded-lg bg-muted/50 space-y-2">
+                      <div className="flex items-center justify-between flex-wrap gap-2">
+                        <p className="font-medium text-sm">{volume.name}</p>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Badge variant="secondary" className="text-xs cursor-help">
+                              {volume.kind}
+                            </Badge>
+                          </TooltipTrigger>
+                          <TooltipContent side="top" className="max-w-xs">
+                            {TOOLTIP_VOLUME_KIND[volume.kind] ?? volume.kind}
+                          </TooltipContent>
+                        </Tooltip>
                       </div>
-                    ))}
-                  </div>
-                )}
+                      <p className="text-xs text-muted-foreground">
+                        Source: <span className="font-mono">{volume.source}</span>
+                      </p>
+                      {volume.projectedSources && (
+                        <p className="text-xs text-muted-foreground">
+                          Sources: <span className="font-mono">{volume.projectedSources}</span>
+                        </p>
+                      )}
+                      {volume.defaultMode != null && (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <p className="text-xs text-muted-foreground cursor-help">
+                              defaultMode: <span className="font-mono">{volume.defaultMode}</span>
+                            </p>
+                          </TooltipTrigger>
+                          <TooltipContent side="top" className="max-w-xs">
+                            {TOOLTIP_VOLUME_DEFAULT_MODE}
+                          </TooltipContent>
+                        </Tooltip>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
             </SectionCard>
           </div>
 
@@ -896,7 +959,7 @@ export default function PodDetail() {
       label: 'Logs',
       icon: FileText,
       content: (
-        <LogViewer 
+        <LogViewer
           podName={name}
           namespace={namespace}
           containerName={selectedLogContainer || containers[0]?.name}
@@ -910,7 +973,7 @@ export default function PodDetail() {
       label: 'Terminal',
       icon: Terminal,
       content: (
-        <TerminalViewer 
+        <TerminalViewer
           podName={name}
           namespace={namespace}
           containerName={selectedTerminalContainer || containers[0]?.name}
@@ -936,13 +999,32 @@ export default function PodDetail() {
       id: 'yaml',
       label: 'YAML',
       icon: FileCode,
-      content: <YamlViewer yaml={yaml} resourceName={podName} editable onSave={handleSaveYaml} />,
+      content: (
+        <YamlViewer
+          yaml={yaml}
+          resourceName={podName}
+          editable
+          onSave={handleSaveYaml}
+          warning={podYamlWarning}
+        />
+      ),
     },
     {
       id: 'compare',
       label: 'Compare',
       icon: GitCompare,
-      content: <YamlCompareViewer versions={yamlVersions} resourceName={podName} />,
+      content: (
+        <ResourceComparisonView
+          resourceType="pods"
+          resourceKind="Pod"
+          namespace={namespace}
+          initialSelectedResources={namespace && name ? [`${namespace}/${name}`] : []}
+          clusterId={clusterId ?? undefined}
+          backendBaseUrl={backendBaseUrl ?? ''}
+          isConnected={isConnected}
+          embedded
+        />
+      ),
     },
     {
       id: 'topology',
@@ -964,40 +1046,46 @@ export default function PodDetail() {
       icon: Settings,
       content: (
         <ActionsSection actions={[
-          { 
-            icon: Terminal, 
-            label: 'Execute Shell', 
+          {
+            icon: Terminal,
+            label: 'Execute Shell',
             description: 'Open interactive terminal in container',
             onClick: () => setActiveTab('terminal'),
           },
-          { 
-            icon: FileText, 
-            label: 'View Logs', 
+          {
+            icon: FileText,
+            label: 'View Logs',
             description: 'Stream logs from container',
             onClick: () => setActiveTab('logs'),
           },
-          { 
-            icon: ExternalLink, 
-            label: 'Port Forward', 
+          {
+            icon: ExternalLink,
+            label: 'Port Forward',
             description: 'Forward local port to container',
             onClick: () => setShowPortForwardDialog(true),
           },
-          { 
-            icon: RotateCcw, 
-            label: 'Restart Pod', 
+          {
+            icon: RotateCcw,
+            label: 'Restart Pod',
             description: 'Delete and recreate the pod',
             onClick: handleRestartPod,
           },
-          { 
-            icon: Download, 
-            label: 'Download YAML', 
+          {
+            icon: Download,
+            label: 'Download YAML',
             description: 'Export pod definition',
             onClick: handleDownloadYaml,
           },
-          { 
-            icon: Trash2, 
-            label: 'Delete Pod', 
-            description: 'Permanently remove this pod', 
+          {
+            icon: Download,
+            label: 'Export as JSON',
+            description: 'Export pod as JSON',
+            onClick: handleDownloadJson,
+          },
+          {
+            icon: Trash2,
+            label: 'Delete Pod',
+            description: 'Permanently remove this pod',
             variant: 'destructive',
             onClick: () => setShowDeleteDialog(true),
           },

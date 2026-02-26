@@ -62,11 +62,11 @@ From repo root, start backend and frontend:
 ```bash
 # Terminal 1: backend (or run in background)
 cd kubilitics-backend && go run ./cmd/server
-# Backend: http://localhost:8080  (health: /health, API: /api/v1)
+# Backend: http://localhost:819  (health: /health, API: /api/v1)
 
 # Terminal 2: frontend (after backend is up)
 cd kubilitics-frontend && npm run dev
-# Frontend: http://localhost:8080 or next free port (e.g. 8081) — check terminal output
+# Frontend: http://localhost:5173 (Vite; strictPort)
 ```
 
 Or one command (backend in background, then frontend in foreground):
@@ -75,7 +75,7 @@ Or one command (backend in background, then frontend in foreground):
 make dev
 ```
 
-**To test:** Open the frontend URL in your browser. In Settings, set Backend URL to `http://localhost:8080` if needed. Add a cluster (kubeconfig path or in-cluster) and check cluster list, topology, resources.
+**To test:** Open the frontend URL in your browser. In Settings, set Backend URL to `http://localhost:819` if needed. Add a cluster (kubeconfig path or in-cluster) and check cluster list, topology, resources.
 
 ---
 
@@ -87,7 +87,7 @@ After pushing, validate the real app end-to-end:
    - Start backend: `make backend-dev` or `cd kubilitics-backend && go run ./cmd/server`.  
    - Start frontend: `make frontend-dev` or `cd kubilitics-frontend && npm run dev`.  
    - Open browser: frontend URL (e.g. http://localhost:5173).  
-   - Configure backend URL in Settings (e.g. http://localhost:8080) if not default.  
+   - Configure backend URL in Settings (e.g. http://localhost:819) if not default.  
    - Add a cluster (kubeconfig or in-cluster).  
    - **Check:** Cluster list, topology view, resource list/detail, logs/events/metrics (or 501), error states (backend unreachable, no clusters).
 

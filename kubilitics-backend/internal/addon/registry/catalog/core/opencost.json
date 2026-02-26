@@ -1,0 +1,98 @@
+{
+  "addon": {
+    "id": "kubilitics/opencost",
+    "name": "opencost",
+    "display_name": "OpenCost",
+    "description": "Real-time Kubernetes cost allocation and optimization.",
+    "tier": "CORE",
+    "version": "1.43.0",
+    "k8s_compat_min": "1.24",
+    "helm_repo_url": "https://opencost.github.io/opencost-helm-chart",
+    "helm_chart": "opencost",
+    "helm_chart_version": "1.43.0",
+    "tags": [
+      "cost",
+      "finops"
+    ],
+    "home_url": "https://opencost.io",
+    "source_url": "https://github.com/opencost/opencost",
+    "maintainer": "opencost",
+    "icon_url": "https://raw.githubusercontent.com/opencost/opencost/develop/opencost-icon.svg",
+    "is_deprecated": false
+  },
+  "dependencies": [
+    {
+      "addon_id": "kubilitics/opencost",
+      "depends_on_id": "kubilitics/kube-prometheus-stack",
+      "dependency_type": "required",
+      "reason": "Requires Prometheus metrics backend"
+    }
+  ],
+  "conflicts": [],
+  "crds_owned": [],
+  "rbac_required": [
+    {
+      "addon_id": "kubilitics/opencost",
+      "api_groups": [
+        ""
+      ],
+      "resources": [
+        "nodes",
+        "pods",
+        "persistentvolumeclaims",
+        "services",
+        "namespaces"
+      ],
+      "verbs": [
+        "get",
+        "list",
+        "watch"
+      ],
+      "scope": "cluster"
+    },
+    {
+      "addon_id": "kubilitics/opencost",
+      "api_groups": [
+        "apps"
+      ],
+      "resources": [
+        "deployments"
+      ],
+      "verbs": [
+        "get",
+        "list",
+        "watch"
+      ],
+      "scope": "cluster"
+    }
+  ],
+  "cost_models": [
+    {
+      "addon_id": "kubilitics/opencost",
+      "cluster_tier": "dev",
+      "cpu_millicores": 100,
+      "memory_mb": 128,
+      "storage_gb": 0,
+      "monthly_cost_usd_estimate": 2,
+      "replica_count": 1
+    },
+    {
+      "addon_id": "kubilitics/opencost",
+      "cluster_tier": "staging",
+      "cpu_millicores": 150,
+      "memory_mb": 192,
+      "storage_gb": 0,
+      "monthly_cost_usd_estimate": 3,
+      "replica_count": 1
+    },
+    {
+      "addon_id": "kubilitics/opencost",
+      "cluster_tier": "production",
+      "cpu_millicores": 200,
+      "memory_mb": 256,
+      "storage_gb": 0,
+      "monthly_cost_usd_estimate": 5,
+      "replica_count": 2
+    }
+  ]
+}

@@ -1,9 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { DataPoint } from './useAnomalyDetection';
-import { AI_BASE_URL } from '@/services/aiService';
-
-// Use the canonical AI base URL from aiService (VITE_AI_BACKEND_URL || http://localhost:8081)
-const AI_BACKEND_URL = AI_BASE_URL;
+import * as aiService from '@/services/aiService';
 
 export interface Trend {
   direction: 'increasing' | 'decreasing' | 'stable';
@@ -44,7 +41,7 @@ export function useTrendAnalysis(options: UseTrendAnalysisOptions): UseTrendAnal
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const analyzeTrend = async () => {
+  const analyzeTrend = useCallback(async () => {
     if (!enabled || data.length < 3) {
       setTrend(null);
       return;
@@ -54,29 +51,18 @@ export function useTrendAnalysis(options: UseTrendAnalysisOptions): UseTrendAnal
     setError(null);
 
     try {
-      const response = await fetch(`${AI_BACKEND_URL}/api/v1/analytics/trends`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
+      const result = await aiService.analyzeTrends({
+        time_series: {
+          metric_name: metricName,
+          metric_type: metricType,
+          data: data.map(d => ({
+            timestamp: d.timestamp,
+            value: d.value
+          }))
         },
-        body: JSON.stringify({
-          time_series: {
-            metric_name: metricName,
-            metric_type: metricType,
-            data: data.map(d => ({
-              timestamp: d.timestamp,
-              value: d.value
-            }))
-          },
-          forecast_steps: forecastSteps
-        })
+        forecast_steps: forecastSteps
       });
 
-      if (!response.ok) {
-        throw new Error(`Trend analysis failed: ${response.statusText}`);
-      }
-
-      const result = await response.json();
       setTrend(result.trend);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
@@ -85,16 +71,16 @@ export function useTrendAnalysis(options: UseTrendAnalysisOptions): UseTrendAnal
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [enabled, data, metricName, metricType, forecastSteps]);
 
   useEffect(() => {
     analyzeTrend();
 
-    if (refreshInterval > 0) {
+    if (refreshInterval > 0 && enabled) {
       const interval = setInterval(analyzeTrend, refreshInterval);
       return () => clearInterval(interval);
     }
-  }, [metricName, metricType, JSON.stringify(data), forecastSteps, enabled, refreshInterval]);
+  }, [analyzeTrend, refreshInterval, enabled]);
 
   return {
     trend,

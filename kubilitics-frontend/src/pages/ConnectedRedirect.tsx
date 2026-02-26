@@ -13,11 +13,19 @@ import { getClusters } from '@/services/backendApiClient';
 import { backendClusterToCluster } from '@/lib/backendClusterAdapter';
 import { Loader2 } from 'lucide-react';
 
+function getPostConnectPath(returnUrl: string | null): string {
+  if (!returnUrl || !returnUrl.startsWith('/') || returnUrl.startsWith('//')) return '/home';
+  if (returnUrl === '/' || returnUrl === '/connect' || returnUrl.startsWith('/connect?') || returnUrl === '/mode-selection') return '/home';
+  return returnUrl;
+}
+
 export default function ConnectedRedirect() {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
   const clusterIdFromUrl = searchParams.get('clusterId');
+  const returnUrl = searchParams.get('returnUrl');
+  const postConnectPath = getPostConnectPath(returnUrl);
   const backendBaseUrl = useBackendConfigStore((s) => s.backendBaseUrl);
   const { setActiveCluster, setClusters, setDemo } = useClusterStore();
   const setCurrentClusterId = useBackendConfigStore((s) => s.setCurrentClusterId);
@@ -32,7 +40,7 @@ export default function ConnectedRedirect() {
       setClusters(state.connectedClusters);
       setActiveCluster(state.connectedCluster);
       setDemo(false);
-      navigate('/home', { replace: true });
+      navigate(postConnectPath, { replace: true });
       return;
     }
     if (clusterIdFromUrl) {
@@ -56,7 +64,7 @@ export default function ConnectedRedirect() {
           setClusters(connectedClusters);
           setActiveCluster(connectedCluster);
           setDemo(false);
-          navigate('/home', { replace: true });
+          navigate(postConnectPath, { replace: true });
         })
         .catch(() => {
           navigate('/', { replace: true });
@@ -68,6 +76,7 @@ export default function ConnectedRedirect() {
   }, [
     location.state,
     clusterIdFromUrl,
+    postConnectPath,
     backendBaseUrl,
     navigate,
     setCurrentClusterId,

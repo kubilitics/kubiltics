@@ -1,13 +1,5 @@
-/**
- * useBackendConnection — React hook for backend connection & event status.
- *
- * Polls GET /api/v1/backend/status and GET /api/v1/backend/events at a
- * configurable interval, exposing connection state, world model stats,
- * and anomaly alerts to the UI.
- */
-
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { guardAIAvailable } from '@/stores/aiAvailableStore';
+import * as aiService from '@/services/aiService';
 
 // ─── Types matching the Go BackendStatusResponse ──────────────────────────────
 
@@ -83,51 +75,6 @@ export interface UseBackendConnectionResult {
   refresh: () => void;
 }
 
-const AI_BASE =
-  (import.meta.env.VITE_AI_WS_URL as string | undefined)
-    ?.replace('ws://', 'http://')
-    .replace('wss://', 'https://') ?? 'http://localhost:8081';
-
-async function fetchBackendStatus(): Promise<BackendStatus> {
-  guardAIAvailable();
-  const resp = await fetch(`${AI_BASE}/api/v1/backend/status`);
-  if (!resp.ok) throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
-  return resp.json() as Promise<BackendStatus>;
-}
-
-async function fetchRecentEvents(limit = 30): Promise<RecentEvent[]> {
-  guardAIAvailable();
-  const resp = await fetch(`${AI_BASE}/api/v1/backend/events?limit=${limit}`);
-  if (!resp.ok) throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
-  const data = (await resp.json()) as { events?: Record<string, unknown>[] };
-  // Events come back as ProcessedEvent structs from Go — map fields
-  return (data.events ?? []).map((e) => ({
-    id: String(e.ID ?? e.id ?? ''),
-    type: String(e.Type ?? e.type ?? 'normal'),
-    reason: String(e.Reason ?? e.reason ?? ''),
-    message: String(e.Message ?? e.message ?? ''),
-    namespace: String(e.Namespace ?? e.namespace ?? ''),
-    involved_kind: String(e.InvolvedKind ?? e.involved_kind ?? ''),
-    involved_name: String(e.InvolvedName ?? e.involved_name ?? ''),
-    count: Number(e.Count ?? e.count ?? 0),
-    first_seen: String(e.FirstSeen ?? e.first_seen ?? ''),
-    last_seen: String(e.LastSeen ?? e.last_seen ?? ''),
-    is_anomaly: Boolean(e.IsAnomaly ?? e.is_anomaly ?? false),
-    anomaly_type:
-      e.AnomalyType != null
-        ? String(e.AnomalyType)
-        : e.anomaly_type != null
-          ? String(e.anomaly_type)
-          : undefined,
-    investigation_id:
-      e.InvestigationID != null
-        ? String(e.InvestigationID)
-        : e.investigation_id != null
-          ? String(e.investigation_id)
-          : undefined,
-  }));
-}
-
 export function useBackendConnection({
   pollIntervalMs = 10_000,
   enabled = true,
@@ -147,11 +94,40 @@ export function useBackendConnection({
     setLoading(true);
     setError(null);
     try {
-      const [s, evts] = await Promise.all([
-        fetchBackendStatus(),
-        fetchRecentEvents(30),
+      const [s, eventsData] = await Promise.all([
+        aiService.getBackendStatus(),
+        aiService.getBackendEvents(30),
       ]);
+
       setStatus(s);
+
+      // Events come back as ProcessedEvent structs from Go — map fields
+      const evts = (eventsData.events ?? []).map((e: any) => ({
+        id: String(e.ID ?? e.id ?? ''),
+        type: String(e.Type ?? e.type ?? 'normal'),
+        reason: String(e.Reason ?? e.reason ?? ''),
+        message: String(e.Message ?? e.message ?? ''),
+        namespace: String(e.Namespace ?? e.namespace ?? ''),
+        involved_kind: String(e.InvolvedKind ?? e.involved_kind ?? ''),
+        involved_name: String(e.InvolvedName ?? e.involved_name ?? ''),
+        count: Number(e.Count ?? e.count ?? 0),
+        first_seen: String(e.FirstSeen ?? e.first_seen ?? ''),
+        last_seen: String(e.LastSeen ?? e.last_seen ?? ''),
+        is_anomaly: Boolean(e.IsAnomaly ?? e.is_anomaly ?? false),
+        anomaly_type:
+          e.AnomalyType != null
+            ? String(e.AnomalyType)
+            : e.anomaly_type != null
+              ? String(e.anomaly_type)
+              : undefined,
+        investigation_id:
+          e.InvestigationID != null
+            ? String(e.InvestigationID)
+            : e.investigation_id != null
+              ? String(e.investigation_id)
+              : undefined,
+      }));
+
       setRecentEvents(evts);
       setLastRefreshedAt(new Date());
     } catch (e) {

@@ -64,6 +64,12 @@ func (c *Client) applyOne(ctx context.Context, obj *unstructured.Unstructured) (
 		return "", fmt.Errorf("resource missing metadata.name")
 	}
 
+	// BE-FUNC-001: Default namespace for namespaced resources
+	if namespace == "" && IsNamespaced(kind) {
+		namespace = "default"
+		obj.SetNamespace(namespace)
+	}
+
 	gv, err := schema.ParseGroupVersion(apiVersion)
 	if err != nil {
 		return "", fmt.Errorf("invalid apiVersion %q: %w", apiVersion, err)

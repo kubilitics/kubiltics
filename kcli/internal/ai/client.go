@@ -10,20 +10,33 @@ import (
 	"time"
 )
 
+// maxCacheEntries caps the AI response cache to prevent unbounded growth in
+// long-running TUI sessions. When the cap is reached, the oldest entry is
+// evicted (approximate LRU via insertion-order key tracking).
+const maxCacheEntries = 500
+
+// cacheSweeperInterval controls how often the background goroutine removes
+// expired entries. 60 s is a reasonable cadence; the TTL is 5 minutes.
+const cacheSweeperInterval = 60 * time.Second
+
 type Client struct {
-	provider Provider
-	cfg      Config
-	initErr  error
-	cacheTTL time.Duration
-	cacheMu  sync.Mutex
-	cache    map[string]cacheEntry
-	usageMu  sync.Mutex
-	usage    Usage
+	provider  Provider
+	cfg       Config
+	initErr   error
+	cacheTTL  time.Duration
+	cacheMu   sync.Mutex
+	cache     map[string]cacheEntry
+	cacheKeys []string // insertion-order key list for approximate LRU eviction
+	usageMu   sync.Mutex
+	usage     Usage
 
 	// Rate Limiting
 	rateLimit time.Duration
 	lastCall  time.Time
 	rateMu    sync.Mutex
+
+	// Background cache sweeper lifecycle
+	stopSweeper chan struct{}
 }
 
 type Request struct {
@@ -56,20 +69,75 @@ func NewFromEnv(timeout time.Duration) *Client {
 func New(cfg Config) *Client {
 	cfg = cfg.normalized()
 	if !cfg.Enabled {
-		return &Client{
-			cfg:      cfg,
-			cacheTTL: 5 * time.Minute,
-			cache:    map[string]cacheEntry{},
+		c := &Client{
+			cfg:         cfg,
+			cacheTTL:    5 * time.Minute,
+			cache:       make(map[string]cacheEntry, 64),
+			cacheKeys:   make([]string, 0, 64),
+			stopSweeper: make(chan struct{}),
 		}
+		go c.runCacheSweeper()
+		return c
 	}
 	provider, err := NewProvider(cfg)
-	return &Client{
-		provider:  provider,
-		cfg:       cfg,
-		initErr:   err,
-		cacheTTL:  5 * time.Minute,
-		cache:     map[string]cacheEntry{},
-		rateLimit: 1 * time.Second, // Default 1s between calls
+	c := &Client{
+		provider:    provider,
+		cfg:         cfg,
+		initErr:     err,
+		cacheTTL:    5 * time.Minute,
+		cache:       make(map[string]cacheEntry, 64),
+		cacheKeys:   make([]string, 0, 64),
+		rateLimit:   1 * time.Second,
+		stopSweeper: make(chan struct{}),
+	}
+	go c.runCacheSweeper()
+	return c
+}
+
+// runCacheSweeper periodically removes expired cache entries. It runs until
+// the client's stopSweeper channel is closed (i.e. the process exits or the
+// client is explicitly shut down). This prevents unbounded memory growth in
+// long-running TUI sessions that issue many unique AI queries.
+func (c *Client) runCacheSweeper() {
+	ticker := time.NewTicker(cacheSweeperInterval)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ticker.C:
+			c.sweepExpiredCache()
+		case <-c.stopSweeper:
+			return
+		}
+	}
+}
+
+// sweepExpiredCache evicts all expired entries and rebuilds the key list.
+func (c *Client) sweepExpiredCache() {
+	now := time.Now()
+	c.cacheMu.Lock()
+	defer c.cacheMu.Unlock()
+	live := c.cacheKeys[:0]
+	for _, k := range c.cacheKeys {
+		if e, ok := c.cache[k]; ok && now.Before(e.expires) {
+			live = append(live, k)
+		} else {
+			delete(c.cache, k)
+		}
+	}
+	c.cacheKeys = live
+}
+
+// Close stops the background cache sweeper. Call this when the client will no
+// longer be used (e.g. on process shutdown). Safe to call multiple times.
+func (c *Client) Close() {
+	if c == nil {
+		return
+	}
+	select {
+	case <-c.stopSweeper:
+		// already closed
+	default:
+		close(c.stopSweeper)
 	}
 }
 
@@ -124,6 +192,9 @@ func (c *Client) Analyze(ctx context.Context, action, target string) (string, er
 		return "", fmt.Errorf("ai monthly budget exceeded: $%.2f/$%.2f", monthly.EstimatedCostUSD, c.cfg.BudgetMonthlyUSD)
 	}
 	fullPrompt := "System:\n" + prompt.System + "\n\nUser:\n" + prompt.User
+	if c.cfg.MaxInputChars > 0 && len(fullPrompt) > c.cfg.MaxInputChars {
+		fullPrompt = fullPrompt[:c.cfg.MaxInputChars] + "\n\n[Input truncated for length.]"
+	}
 	cacheKey := c.ProviderName() + "|" + action + "|" + target
 	if v, ok := c.getCached(cacheKey); ok {
 		c.addUsage(prompt.EstimatedTokens, estimateTokens(v), 0, true)
@@ -147,6 +218,39 @@ func (c *Client) Analyze(ctx context.Context, action, target string) (string, er
 	return res, nil
 }
 
+// QueryWithPrompt sends a custom system and user prompt to the provider (e.g. for
+// multi-turn sessions like kcli oncall). No caching. Rate limit and budget still apply.
+func (c *Client) QueryWithPrompt(ctx context.Context, systemPrompt, userPrompt string) (string, error) {
+	if c == nil || !c.cfg.Enabled || c.initErr != nil || c.provider == nil {
+		return "", fmt.Errorf("ai integration disabled or not configured")
+	}
+	fullPrompt := "System:\n" + strings.TrimSpace(systemPrompt) + "\n\nUser:\n" + strings.TrimSpace(userPrompt)
+	if c.cfg.MaxInputChars > 0 && len(fullPrompt) > c.cfg.MaxInputChars {
+		fullPrompt = fullPrompt[:c.cfg.MaxInputChars] + "\n\n[Input truncated for length.]"
+	}
+	c.rateMu.Lock()
+	elapsed := time.Since(c.lastCall)
+	if elapsed < c.rateLimit {
+		wait := c.rateLimit - elapsed
+		c.rateMu.Unlock()
+		time.Sleep(wait)
+		c.rateMu.Lock()
+	}
+	c.lastCall = time.Now()
+	c.rateMu.Unlock()
+	monthly, err := LoadMonthlyUsage(time.Now())
+	if err == nil && c.cfg.BudgetMonthlyUSD > 0 && monthly.EstimatedCostUSD >= c.cfg.BudgetMonthlyUSD {
+		return "", fmt.Errorf("ai monthly budget exceeded: $%.2f/$%.2f", monthly.EstimatedCostUSD, c.cfg.BudgetMonthlyUSD)
+	}
+	res, err := c.provider.Query(ctx, fullPrompt, &ClusterContext{})
+	if err != nil {
+		return "", err
+	}
+	res = strings.TrimSpace(res)
+	c.addUsage(estimateTokens(fullPrompt), estimateTokens(res), estimateCostUSD(c.ProviderName(), estimateTokens(fullPrompt), estimateTokens(res)), false)
+	return res, nil
+}
+
 func (c *Client) Usage() Usage {
 	c.usageMu.Lock()
 	defer c.usageMu.Unlock()
@@ -161,6 +265,8 @@ func (c *Client) getCached(key string) (string, bool) {
 		return "", false
 	}
 	if time.Now().After(v.expires) {
+		// Lazy eviction: remove the expired entry. The key will be cleaned
+		// from cacheKeys on the next sweepExpiredCache pass.
 		delete(c.cache, key)
 		return "", false
 	}
@@ -170,6 +276,20 @@ func (c *Client) getCached(key string) (string, bool) {
 func (c *Client) setCached(key, value string) {
 	c.cacheMu.Lock()
 	defer c.cacheMu.Unlock()
+
+	// Enforce the max-entries cap by evicting the oldest key when full.
+	// This is O(1) amortised via the insertion-order cacheKeys slice.
+	if _, exists := c.cache[key]; !exists {
+		if len(c.cache) >= maxCacheEntries {
+			// Evict oldest entry from front of the insertion-order list.
+			if len(c.cacheKeys) > 0 {
+				oldest := c.cacheKeys[0]
+				c.cacheKeys = c.cacheKeys[1:]
+				delete(c.cache, oldest)
+			}
+		}
+		c.cacheKeys = append(c.cacheKeys, key)
+	}
 	c.cache[key] = cacheEntry{value: value, expires: time.Now().Add(c.cacheTTL)}
 }
 
@@ -192,22 +312,12 @@ func (c *Client) addUsage(promptTokens, completionTokens int, cost float64, cach
 	}, time.Now())
 }
 
+// estimateCostUSD computes the estimated cost in USD for an AI call.
+// It uses the live pricing table (fetched from GitHub and cached for 24 h)
+// with the bundled table as a fallback — budget guardrails always work even
+// in air-gapped environments.
 func estimateCostUSD(provider string, promptTokens, completionTokens int) float64 {
-	inRate, outRate := 0.0, 0.0
-	switch strings.TrimSpace(strings.ToLower(provider)) {
-	case ProviderOpenAI:
-		inRate, outRate = 0.00015, 0.00060
-	case ProviderAnthropic:
-		inRate, outRate = 0.00300, 0.01500
-	case ProviderAzureOpenAI:
-		inRate, outRate = 0.00020, 0.00080
-	case ProviderOllama:
-		inRate, outRate = 0.0, 0.0
-	case ProviderCustom:
-		inRate, outRate = 0.0, 0.0
-	default:
-		inRate, outRate = 0.0, 0.0
-	}
+	inRate, outRate := PricingRates(strings.TrimSpace(strings.ToLower(provider)))
 	return (float64(max(0, promptTokens))/1000.0)*inRate + (float64(max(0, completionTokens))/1000.0)*outRate
 }
 

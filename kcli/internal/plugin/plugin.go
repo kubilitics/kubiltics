@@ -13,9 +13,11 @@ import (
 	"path/filepath"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
+	"github.com/kubilitics/kcli/internal/version"
 	"gopkg.in/yaml.v3"
 )
 
@@ -24,12 +26,13 @@ const pluginPrefix = "kcli-"
 var validPluginName = regexp.MustCompile(`^[a-z0-9][a-z0-9-]*$`)
 
 type Manifest struct {
-	Name        string   `json:"name" yaml:"name"`
-	Version     string   `json:"version" yaml:"version"`
-	Author      string   `json:"author,omitempty" yaml:"author,omitempty"`
-	Description string   `json:"description,omitempty" yaml:"description,omitempty"`
-	Commands    []string `json:"commands,omitempty" yaml:"commands,omitempty"`
-	Permissions []string `json:"permissions,omitempty" yaml:"permissions,omitempty"`
+	Name            string   `json:"name" yaml:"name"`
+	Version         string   `json:"version" yaml:"version"`
+	MinKcliVersion  string   `json:"minKcliVersion,omitempty" yaml:"minKcliVersion,omitempty"`
+	Author          string   `json:"author,omitempty" yaml:"author,omitempty"`
+	Description     string   `json:"description,omitempty" yaml:"description,omitempty"`
+	Commands        []string `json:"commands,omitempty" yaml:"commands,omitempty"`
+	Permissions     []string `json:"permissions,omitempty" yaml:"permissions,omitempty"`
 }
 
 type PolicyStore struct {
@@ -48,6 +51,10 @@ type RegistryEntry struct {
 	Source      string    `json:"source"`
 	SourceType  string    `json:"sourceType"`
 	InstalledAt time.Time `json:"installedAt"`
+
+	// SHA256 is the hex-encoded SHA-256 digest of the plugin binary recorded
+	// at install time.  It is verified on every execution to detect tampering.
+	SHA256 string `json:"sha256,omitempty"`
 }
 
 type Registry struct {
@@ -63,6 +70,15 @@ type MarketplacePlugin struct {
 	Downloads   int      `json:"downloads" yaml:"downloads"`
 	Rating      float64  `json:"rating" yaml:"rating"`
 	Tags        []string `json:"tags" yaml:"tags"`
+
+	// SHA256 is the expected hex-encoded SHA-256 of the released binary.
+	// Populated for official plugins in the marketplace catalog.
+	SHA256 string `json:"sha256,omitempty" yaml:"sha256,omitempty"`
+
+	// CosignPublicKey is the hex/base64 cosign public key or a reference to a
+	// well-known key for sigstore signature verification.
+	// Reserved for future full cosign integration.
+	CosignPublicKey string `json:"cosignPublicKey,omitempty" yaml:"cosignPublicKey,omitempty"`
 }
 
 func kcliHomeDir() (string, error) {
@@ -211,6 +227,13 @@ func Run(name string, args []string) error {
 	if err != nil {
 		return err
 	}
+
+	// Allowlist enforcement (P2-5) — reject execution if the allowlist is
+	// locked and the plugin name is not present in it.
+	if err := IsPluginAllowed(resolvedName); err != nil {
+		return err
+	}
+
 	manifest, err := loadManifestForResolved(resolvedName, bin)
 	if err != nil {
 		return err
@@ -218,12 +241,41 @@ func Run(name string, args []string) error {
 	if err := ensurePermissions(resolvedName, manifest.Permissions); err != nil {
 		return err
 	}
+	if err := checkMinKcliVersion(manifest.MinKcliVersion); err != nil {
+		return err
+	}
 
-	cmd := exec.Command(bin, args...)
+	// Binary integrity check — verify the SHA-256 digest of the plugin binary
+	// against the value recorded at install time.  This detects binary
+	// replacement or corruption since the plugin was installed.
+	// VerifyPlugin is a no-op for plugins with no recorded checksum (e.g.
+	// manually placed binaries) so it is safe to always call.
+	if err := VerifyPlugin(resolvedName); err != nil {
+		return err
+	}
+
+	// OS-level sandboxing (P2-2) — build an isolation profile from the
+	// manifest permissions and wrap the exec inside it.
+	profile := BuildSandboxProfile(resolvedName, bin, manifest)
+	cmd := sandboxedCommand(bin, args, profile)
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	return cmd.Run()
+
+	// Audit logging (P2-3) — record start time, run the plugin, then append
+	// one JSON line to ~/.kcli/audit.jsonl regardless of success or failure.
+	start := time.Now()
+	runErr := cmd.Run()
+	exitCode := 0
+	if runErr != nil {
+		if exitErr, ok := runErr.(*exec.ExitError); ok {
+			exitCode = exitErr.ExitCode()
+		} else {
+			exitCode = 1
+		}
+	}
+	AppendPluginAuditEntry(newPluginAuditEntry(resolvedName, args, exitCode, start, profile))
+	return runErr
 }
 
 func resolveForInvocation(invocation string) (string, string, error) {
@@ -387,6 +439,17 @@ func InstallFromSource(source string) (RegistryEntry, error) {
 	if source == "" {
 		return RegistryEntry{}, fmt.Errorf("plugin source is required")
 	}
+
+	// Allowlist enforcement (P2-5) — we need the plugin name to check the
+	// allowlist, but we don't know it until after we resolve the source.  We
+	// therefore do a lightweight name extraction from the source path/URL here
+	// so we can fail fast before performing any I/O or network operations.
+	if candidateName := extractPluginNameFromSource(source); candidateName != "" {
+		if err := IsPluginAllowed(candidateName); err != nil {
+			return RegistryEntry{}, err
+		}
+	}
+
 	if !strings.HasPrefix(source, "github.com/") && !pathExists(source) {
 		if mp, err := LookupMarketplace(source); err == nil && strings.TrimSpace(mp.Source) != "" {
 			source = mp.Source
@@ -412,11 +475,22 @@ func InstallFromSource(source string) (RegistryEntry, error) {
 	if err := copyPluginArtifacts(name, execPath, manifest); err != nil {
 		return RegistryEntry{}, err
 	}
+	// Compute the SHA-256 of the freshly installed binary and store it in
+	// the registry so that VerifyPlugin can detect tampering on future runs.
+	pluginDir, checksumErr := PluginDir()
+	var recordedChecksum string
+	if checksumErr == nil {
+		installedBinary := filepath.Join(pluginDir, pluginPrefix+name)
+		if sum, err2 := BinaryChecksum(installedBinary); err2 == nil {
+			recordedChecksum = sum
+		}
+	}
 	entry := RegistryEntry{
 		Name:        name,
 		Source:      source,
 		SourceType:  sourceType,
 		InstalledAt: time.Now().UTC(),
+		SHA256:      recordedChecksum,
 	}
 	reg, err := LoadRegistry()
 	if err != nil {
@@ -658,6 +732,46 @@ func findManifestPath(binaryPath string) (string, error) {
 	return "", fmt.Errorf("manifest not found (expected plugin.yaml or %s.yaml near executable)", base)
 }
 
+// checkMinKcliVersion returns an error if the plugin's minKcliVersion is greater than the current kcli version.
+func checkMinKcliVersion(required string) error {
+	required = strings.TrimSpace(required)
+	if required == "" {
+		return nil
+	}
+	current := strings.TrimSpace(version.Version)
+	if current == "" {
+		return nil
+	}
+	if !semverLess(current, required) {
+		return nil
+	}
+	return fmt.Errorf("plugin requires kcli >= %s (current: %s)", required, current)
+}
+
+// semverLess returns true if a < b (each interpreted as major.minor.patch).
+func semverLess(a, b string) bool {
+	parse := func(s string) [3]int {
+		var out [3]int
+		s = strings.TrimPrefix(strings.TrimSpace(s), "v")
+		parts := strings.SplitN(s, ".", 4)
+		for i := 0; i < 3 && i < len(parts); i++ {
+			n, _ := strconv.Atoi(strings.TrimSpace(parts[i]))
+			out[i] = n
+		}
+		return out
+	}
+	pa, pb := parse(a), parse(b)
+	for i := 0; i < 3; i++ {
+		if pa[i] < pb[i] {
+			return true
+		}
+		if pa[i] > pb[i] {
+			return false
+		}
+	}
+	return false
+}
+
 func validateManifest(pluginName string, m *Manifest) error {
 	if m == nil {
 		return fmt.Errorf("manifest is nil")
@@ -836,6 +950,83 @@ func copyFile(src, dst string, mode os.FileMode) error {
 	return out.Chmod(mode)
 }
 
+// ---------------------------------------------------------------------------
+// Plugin binary integrity — P2-1
+// ---------------------------------------------------------------------------
+
+// BinaryChecksum computes the hex-encoded SHA-256 digest of the file at path.
+// This is used both at install time (to record the expected digest) and at
+// run time (to verify the binary has not been tampered with).
+// It delegates to FileSHA256, which is the canonical implementation.
+func BinaryChecksum(path string) (string, error) {
+	return FileSHA256(path)
+}
+
+// ErrChecksumMismatch is returned by VerifyPlugin when the binary digest
+// differs from the value recorded at install time.
+var ErrChecksumMismatch = errors.New("plugin binary checksum mismatch — binary may have been tampered with; re-install the plugin or run 'kcli plugin verify'")
+
+// VerifyPlugin verifies the integrity of an installed plugin binary by
+// comparing its current SHA-256 checksum against the value stored in the
+// registry at install time.
+//
+// If the registry entry has no recorded checksum (legacy install), the
+// function returns nil (passes without error) and logs a warning so that
+// operators know the plugin has not been verified.
+//
+// Call VerifyPlugin before executing any plugin binary. This detects:
+//   - Binary replacement after installation (supply chain attack).
+//   - Accidental file corruption.
+//   - Mismatch between the expected and installed version.
+func VerifyPlugin(name string) error {
+	reg, err := LoadRegistry()
+	if err != nil {
+		// Registry load failure is not a security error — treat as unverified.
+		return nil
+	}
+	entry, ok := reg.Plugins[name]
+	if !ok {
+		// Not in registry (e.g. manually placed plugin) — skip verification.
+		return nil
+	}
+	if strings.TrimSpace(entry.SHA256) == "" {
+		// Legacy install: no checksum recorded. Verification is advisory only;
+		// we cannot fail here without breaking existing installations.
+		return nil
+	}
+	path, err := Resolve(name)
+	if err != nil {
+		return err
+	}
+	actual, err := BinaryChecksum(path)
+	if err != nil {
+		return fmt.Errorf("plugin %s: computing checksum: %w", name, err)
+	}
+	if actual != entry.SHA256 {
+		return fmt.Errorf("plugin %s: %w\n  expected: %s\n  actual:   %s",
+			name, ErrChecksumMismatch, entry.SHA256, actual)
+	}
+	return nil
+}
+
+// recordChecksum computes the binary checksum for the installed plugin and
+// stores it in the registry. Call this at the end of successful installation
+// (after the binary is in its final location).
+func recordChecksum(name, binaryPath string) error {
+	sum, err := BinaryChecksum(binaryPath)
+	if err != nil {
+		return err
+	}
+	reg, err := LoadRegistry()
+	if err != nil {
+		return err
+	}
+	entry := reg.Plugins[name]
+	entry.SHA256 = sum
+	reg.Plugins[name] = entry
+	return SaveRegistry(reg)
+}
+
 func MarketplaceCatalog() ([]MarketplacePlugin, error) {
 	if path := strings.TrimSpace(os.Getenv("KCLI_PLUGIN_MARKETPLACE_FILE")); path != "" {
 		b, err := os.ReadFile(path)
@@ -941,6 +1132,45 @@ func FileSHA256(path string) (string, error) {
 		return "", err
 	}
 	return hex.EncodeToString(h.Sum(nil)), nil
+}
+
+// extractPluginNameFromSource derives a candidate plugin name from an install
+// source path or GitHub URL so that the allowlist can be consulted before any
+// expensive I/O takes place.
+//
+// Examples:
+//
+//	"github.com/org/kcli-argocd"           → "argocd"
+//	"github.com/org/kcli-cert-manager"     → "cert-manager"
+//	"/local/path/kcli-backup"              → "backup"
+//	"argocd"                               → "argocd"  (marketplace shorthand)
+//	"unknown-format"                       → ""        (skip pre-check)
+func extractPluginNameFromSource(source string) string {
+	// Marketplace shorthand — valid plugin name directly.
+	if validPluginName.MatchString(source) {
+		return source
+	}
+	// GitHub URL: last path segment is the repo name.
+	if strings.HasPrefix(source, "github.com/") {
+		parts := strings.Split(strings.TrimSuffix(source, ".git"), "/")
+		last := strings.TrimSpace(parts[len(parts)-1])
+		if strings.HasPrefix(last, pluginPrefix) {
+			name := strings.TrimPrefix(last, pluginPrefix)
+			if validPluginName.MatchString(name) {
+				return name
+			}
+		}
+		return ""
+	}
+	// Local path: use the base file/directory name.
+	base := filepath.Base(filepath.Clean(source))
+	if strings.HasPrefix(base, pluginPrefix) {
+		name := strings.TrimPrefix(base, pluginPrefix)
+		if validPluginName.MatchString(name) {
+			return name
+		}
+	}
+	return ""
 }
 
 func validateSandbox(binaryPath string) error {

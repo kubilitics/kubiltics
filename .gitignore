@@ -135,3 +135,23 @@ server_test_output*.txt
 kubilitics-ai/server
 **/kubilitics-ai-server
 kcli/kcli
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Build/CI artifacts
+backend-ci-logs.zip
+build_*.log
+
+# Test and debug files
+body.json
+test_result.md
+test_ws.js
+test-pod.yaml
+latest-kubeconfig.yaml
+systematic-restart.sh
+
+# Temporary topology file
+Topology.tsx

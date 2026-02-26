@@ -31,11 +31,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
+import { downloadResourceJson } from '@/lib/exportUtils';
 import {
   ResourceDetailLayout,
   ContainersSection,
   YamlViewer,
-  YamlCompareViewer,
   EventsSection,
   MetadataCard,
   ActionsSection,
@@ -45,6 +45,7 @@ import {
   LogViewer,
   TerminalViewer,
   ResourceTopologyView,
+  ResourceComparisonView,
   type ResourceStatus,
   type ContainerInfo,
   type YamlVersion,
@@ -244,14 +245,14 @@ export default function CronJobDetail() {
   const { namespace, name } = useParams();
   const clusterId = useActiveClusterId();
   const navigate = useNavigate();
-  
+
   const [activeTab, setActiveTab] = useState('overview');
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [selectedLogPod, setSelectedLogPod] = useState<string>('');
   const [selectedLogContainer, setSelectedLogContainer] = useState<string>('');
   const [selectedTerminalPod, setSelectedTerminalPod] = useState<string>('');
   const [selectedTerminalContainer, setSelectedTerminalContainer] = useState<string>('');
-  
+
   const { isConnected } = useConnectionStatus();
   const { activeCluster } = useClusterStore();
   const breadcrumbSegments = useDetailBreadcrumbs('CronJob', name ?? undefined, namespace ?? undefined, activeCluster?.name);
@@ -272,13 +273,13 @@ export default function CronJobDetail() {
   const isSuspended = cronJob.spec?.suspend || false;
   const status: ResourceStatus = isSuspended ? 'Pending' : 'Running';
   const activeJobs = cronJob.status?.active?.length || 0;
-  const lastSchedule = cronJob.status?.lastScheduleTime 
+  const lastSchedule = cronJob.status?.lastScheduleTime
     ? calculateAge(cronJob.status.lastScheduleTime) + ' ago'
     : 'Never';
   const lastSuccess = cronJob.status?.lastSuccessfulTime
     ? calculateAge(cronJob.status.lastSuccessfulTime) + ' ago'
     : 'Never';
-  
+
   const containers: ContainerInfo[] = (cronJob.spec?.jobTemplate?.spec?.template?.spec?.containers || []).map(c => ({
     name: c.name,
     image: c.image,
@@ -356,6 +357,11 @@ export default function CronJobDetail() {
     toast.success('YAML downloaded');
   }, [yaml, cronJob.metadata?.name]);
 
+  const handleDownloadJson = useCallback(() => {
+    downloadResourceJson(cronJob, `${cronJob.metadata?.name || 'cronjob'}.json`);
+    toast.success('JSON downloaded');
+  }, [cronJob]);
+
   const handleCopyYaml = useCallback(() => {
     navigator.clipboard.writeText(yaml);
     toast.success('YAML copied to clipboard');
@@ -420,7 +426,7 @@ export default function CronJobDetail() {
       <div className="space-y-6">
         <Skeleton className="h-20 w-full" />
         <div className="grid grid-cols-4 gap-4">
-          {[1,2,3,4].map(i => <Skeleton key={i} className="h-24" />)}
+          {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-24" />)}
         </div>
         <Skeleton className="h-96" />
       </div>
@@ -1031,7 +1037,18 @@ export default function CronJobDetail() {
       id: 'compare',
       label: 'Compare',
       icon: GitCompare,
-      content: <YamlCompareViewer versions={yamlVersions} resourceName={cronJob.metadata?.name || ''} />,
+      content: (
+        <ResourceComparisonView
+          resourceType="cronjobs"
+          resourceKind="CronJob"
+          namespace={namespace}
+          initialSelectedResources={namespace && name ? [`${namespace}/${name}`] : [name || '']}
+          clusterId={clusterId ?? undefined}
+          backendBaseUrl={backendBaseUrl ?? ''}
+          isConnected={isConnected}
+          embedded
+        />
+      ),
     },
     {
       id: 'topology',
@@ -1057,6 +1074,7 @@ export default function CronJobDetail() {
           { icon: isSuspended ? Play : Pause, label: isSuspended ? 'Resume' : 'Suspend', description: isSuspended ? 'Resume scheduled runs' : 'Pause scheduled runs', onClick: handleToggleSuspend },
           { icon: History, label: 'View Job History', description: 'See all spawned jobs', onClick: () => navigate(`/jobs?cronjob=${name}`) },
           { icon: Download, label: 'Download YAML', description: 'Export CronJob definition', onClick: handleDownloadYaml },
+          { icon: Download, label: 'Export as JSON', description: 'Export CronJob as JSON', onClick: handleDownloadJson },
           { icon: Trash2, label: 'Delete CronJob', description: 'Permanently remove this CronJob', variant: 'destructive', onClick: () => setShowDeleteDialog(true) },
         ]} />
       ),
@@ -1085,6 +1103,7 @@ export default function CronJobDetail() {
         }
         actions={[
           { label: 'Download YAML', icon: Download, variant: 'outline', onClick: handleDownloadYaml },
+          { label: 'Export as JSON', icon: Download, variant: 'outline', onClick: handleDownloadJson },
           { label: 'Trigger', icon: Play, variant: 'outline', onClick: handleTriggerNow },
           { label: isSuspended ? 'Resume' : 'Suspend', icon: isSuspended ? Play : Pause, variant: 'outline', onClick: handleToggleSuspend },
           { label: 'Delete', icon: Trash2, variant: 'destructive', onClick: () => setShowDeleteDialog(true) },

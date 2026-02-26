@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
   Search, Filter, RefreshCw, MoreHorizontal, CheckCircle2, XCircle, Clock, Loader2, WifiOff, Plus,
-  ChevronDown, ChevronLeft, ChevronRight, Trash2, RotateCcw, Scale, History, Rocket, FileText,
+  ChevronDown, ChevronLeft, ChevronRight, Trash2, RotateCcw, Scale, History, Rocket, FileText, FileCode,
   List, Layers, Activity, PauseCircle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -521,7 +521,7 @@ spec:
       />
 
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
-        <ListPageStatCard label="Total" value={stats.total} icon={DeploymentIcon} iconColor="text-primary" selected={!hasActiveFilters} onClick={clearAllFilters} className={cn(!hasActiveFilters && 'ring-2 ring-primary')} />
+        <ListPageStatCard label="Total" value={stats.total} icon={DeploymentIcon as any} iconColor="text-primary" selected={!hasActiveFilters} onClick={clearAllFilters} className={cn(!hasActiveFilters && 'ring-2 ring-primary')} />
         <ListPageStatCard label="Available" value={stats.available} icon={CheckCircle2} iconColor="text-[hsl(142,76%,36%)]" valueClassName="text-[hsl(142,76%,36%)]" selected={columnFilters.status?.size === 1 && columnFilters.status.has('Healthy')} onClick={() => setColumnFilter('status', new Set(['Healthy']))} className={cn(columnFilters.status?.size === 1 && columnFilters.status.has('Healthy') && 'ring-2 ring-[hsl(142,76%,36%)]')} />
         <ListPageStatCard label="Progressing" value={stats.progressing} icon={Clock} iconColor="text-[hsl(45,93%,47%)]" valueClassName="text-[hsl(45,93%,47%)]" selected={columnFilters.status?.size === 1 && columnFilters.status.has('Progressing')} onClick={() => setColumnFilter('status', new Set(['Progressing']))} className={cn(columnFilters.status?.size === 1 && columnFilters.status.has('Progressing') && 'ring-2 ring-[hsl(45,93%,47%)]')} />
         <ListPageStatCard label="Degraded" value={stats.degraded} icon={XCircle} iconColor="text-[hsl(0,72%,51%)]" valueClassName="text-[hsl(0,72%,51%)]" selected={columnFilters.status?.size === 1 && columnFilters.status.has('Degraded')} onClick={() => setColumnFilter('status', new Set(['Degraded']))} className={cn(columnFilters.status?.size === 1 && columnFilters.status.has('Degraded') && 'ring-2 ring-[hsl(0,72%,51%)]')} />
@@ -531,58 +531,58 @@ spec:
 
       <ResourceListTableToolbar
         globalFilterBar={
-      <ResourceCommandBar
-        scope={
-          <div className="w-full min-w-0">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" className="w-full min-w-0 justify-between h-10 gap-2 rounded-lg border border-border bg-background font-medium shadow-sm hover:bg-muted/50 hover:border-primary/30 focus-visible:ring-2 focus-visible:ring-primary/20">
-                  <Filter className="h-4 w-4 shrink-0 text-muted-foreground" />
-                  <span className="truncate">{selectedNamespace === 'all' ? 'All Namespaces' : selectedNamespace}</span>
-                  <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
-                </Button>
-              </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-48">
-              {namespaces.map((ns) => (
-                <DropdownMenuItem
-                  key={ns}
-                  onClick={() => setSelectedNamespace(ns)}
-                  className={cn(selectedNamespace === ns && 'bg-accent')}
-                >
-                  {ns === 'all' ? 'All Namespaces' : ns}
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        }
-        search={
-          <div className="relative w-full min-w-0">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search deployments..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full h-10 pl-9 rounded-lg border border-border bg-background text-sm font-medium shadow-sm placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/50 transition-all"
-              aria-label="Search deployments"
-            />
-          </div>
-        }
-        structure={
-          <ListViewSegmentedControl
-            value={listView}
-            onChange={(v) => setListView(v as ListView)}
-            options={[
-              { id: 'flat', label: 'Flat', icon: List },
-              { id: 'byNamespace', label: 'By Namespace', icon: Layers },
-              { id: 'byStrategy', label: 'By Strategy', icon: Activity },
-            ]}
-            label=""
-            ariaLabel="List structure"
+          <ResourceCommandBar
+            scope={
+              <div className="w-full min-w-0">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" className="w-full min-w-0 justify-between h-10 gap-2 rounded-lg border border-border bg-background font-medium shadow-sm hover:bg-muted/50 hover:border-primary/30 focus-visible:ring-2 focus-visible:ring-primary/20">
+                      <Filter className="h-4 w-4 shrink-0 text-muted-foreground" />
+                      <span className="truncate">{selectedNamespace === 'all' ? 'All Namespaces' : selectedNamespace}</span>
+                      <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="w-48">
+                    {namespaces.map((ns) => (
+                      <DropdownMenuItem
+                        key={ns}
+                        onClick={() => setSelectedNamespace(ns)}
+                        className={cn(selectedNamespace === ns && 'bg-accent')}
+                      >
+                        {ns === 'all' ? 'All Namespaces' : ns}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            }
+            search={
+              <div className="relative w-full min-w-0">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search deployments..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full h-10 pl-9 rounded-lg border border-border bg-background text-sm font-medium shadow-sm placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/50 transition-all"
+                  aria-label="Search deployments"
+                />
+              </div>
+            }
+            structure={
+              <ListViewSegmentedControl
+                value={listView}
+                onChange={(v) => setListView(v as ListView)}
+                options={[
+                  { id: 'flat', label: 'Flat', icon: List },
+                  { id: 'byNamespace', label: 'By Namespace', icon: Layers },
+                  { id: 'byStrategy', label: 'By Strategy', icon: Activity },
+                ]}
+                label=""
+                ariaLabel="List structure"
+              />
+            }
+            className="mb-0"
           />
-        }
-        className="mb-0"
-      />
         }
         hasActiveFilters={hasActiveFilters}
         onClearAllFilters={clearAllFilters}
@@ -593,42 +593,42 @@ spec:
         onColumnToggle={columnVisibility.setColumnVisible}
         tableContainerProps={keyboardNav.tableContainerProps}
         footer={
-        <div className="flex items-center justify-between flex-wrap gap-2">
-          <div className="flex items-center gap-3">
-            <span className="text-sm text-muted-foreground">{pagination.rangeLabel}</span>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="gap-2">
-                  {pageSize} per page
-                  <ChevronDown className="h-4 w-4 opacity-50" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start">
-                {PAGE_SIZE_OPTIONS.map((size) => (
-                  <DropdownMenuItem
-                    key={size}
-                    onClick={() => handlePageSizeChange(size)}
-                    className={cn(pageSize === size && 'bg-accent')}
-                  >
-                    {size} per page
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-muted-foreground">{pagination.rangeLabel}</span>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="gap-2">
+                    {pageSize} per page
+                    <ChevronDown className="h-4 w-4 opacity-50" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start">
+                  {PAGE_SIZE_OPTIONS.map((size) => (
+                    <DropdownMenuItem
+                      key={size}
+                      onClick={() => handlePageSizeChange(size)}
+                      className={cn(pageSize === size && 'bg-accent')}
+                    >
+                      {size} per page
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+            <ListPagination
+              hasPrev={pagination.hasPrev}
+              hasNext={pagination.hasNext}
+              onPrev={pagination.onPrev}
+              onNext={pagination.onNext}
+              rangeLabel={undefined}
+              currentPage={pagination.currentPage}
+              totalPages={pagination.totalPages}
+              onPageChange={pagination.onPageChange}
+              dataUpdatedAt={dataUpdatedAt}
+              isFetching={isFetching}
+            />
           </div>
-          <ListPagination
-            hasPrev={pagination.hasPrev}
-            hasNext={pagination.hasNext}
-            onPrev={pagination.onPrev}
-            onNext={pagination.onNext}
-            rangeLabel={undefined}
-            currentPage={pagination.currentPage}
-            totalPages={pagination.totalPages}
-            onPageChange={pagination.onPageChange}
-            dataUpdatedAt={dataUpdatedAt}
-            isFetching={isFetching}
-          />
-        </div>
         }
       >
         <ResizableTableProvider tableId="deployments" columnConfig={DEPLOYMENTS_TABLE_COLUMNS}>
@@ -638,72 +638,72 @@ spec:
                 <TableHead className="w-10"><Checkbox checked={isAllSelected} onCheckedChange={toggleAll} className={cn(isSomeSelected && 'data-[state=checked]:bg-primary/50')} /></TableHead>
                 {columnVisibility.isColumnVisible('name') && (
                   <ResizableTableHead columnId="name">
-                    <TableColumnHeaderWithFilterAndSort columnId="name" label="Name" sortKey={sortKey} sortOrder={sortOrder} onSort={setSort} filterable={false} distinctValues={[]} selectedFilterValues={new Set()} onFilterChange={() => {}} />
+                    <TableColumnHeaderWithFilterAndSort columnId="name" label="Name" sortKey={sortKey} sortOrder={sortOrder} onSort={setSort} filterable={false} distinctValues={[]} selectedFilterValues={new Set()} onFilterChange={() => { }} />
                   </ResizableTableHead>
                 )}
                 {columnVisibility.isColumnVisible('namespace') && (
                   <ResizableTableHead columnId="namespace">
-                    <TableColumnHeaderWithFilterAndSort columnId="namespace" label="Namespace" sortKey={sortKey} sortOrder={sortOrder} onSort={setSort} filterable={false} distinctValues={[]} selectedFilterValues={new Set()} onFilterChange={() => {}} />
+                    <TableColumnHeaderWithFilterAndSort columnId="namespace" label="Namespace" sortKey={sortKey} sortOrder={sortOrder} onSort={setSort} filterable={false} distinctValues={[]} selectedFilterValues={new Set()} onFilterChange={() => { }} />
                   </ResizableTableHead>
                 )}
                 {columnVisibility.isColumnVisible('status') && (
                   <ResizableTableHead columnId="status">
-                    <TableColumnHeaderWithFilterAndSort columnId="status" label="Status" sortKey={sortKey} sortOrder={sortOrder} onSort={setSort} filterable={false} distinctValues={[]} selectedFilterValues={new Set()} onFilterChange={() => {}} />
+                    <TableColumnHeaderWithFilterAndSort columnId="status" label="Status" sortKey={sortKey} sortOrder={sortOrder} onSort={setSort} filterable={false} distinctValues={[]} selectedFilterValues={new Set()} onFilterChange={() => { }} />
                   </ResizableTableHead>
                 )}
                 {columnVisibility.isColumnVisible('ready') && (
                   <ResizableTableHead columnId="ready">
-                    <TableColumnHeaderWithFilterAndSort columnId="ready" label="Ready" sortKey={sortKey} sortOrder={sortOrder} onSort={setSort} filterable={false} distinctValues={[]} selectedFilterValues={new Set()} onFilterChange={() => {}} />
+                    <TableColumnHeaderWithFilterAndSort columnId="ready" label="Ready" sortKey={sortKey} sortOrder={sortOrder} onSort={setSort} filterable={false} distinctValues={[]} selectedFilterValues={new Set()} onFilterChange={() => { }} />
                   </ResizableTableHead>
                 )}
                 {columnVisibility.isColumnVisible('upToDate') && (
                   <ResizableTableHead columnId="upToDate">
-                    <TableColumnHeaderWithFilterAndSort columnId="upToDate" label="Up-to-date" sortKey={sortKey} sortOrder={sortOrder} onSort={setSort} filterable={false} distinctValues={[]} selectedFilterValues={new Set()} onFilterChange={() => {}} />
+                    <TableColumnHeaderWithFilterAndSort columnId="upToDate" label="Up-to-date" sortKey={sortKey} sortOrder={sortOrder} onSort={setSort} filterable={false} distinctValues={[]} selectedFilterValues={new Set()} onFilterChange={() => { }} />
                   </ResizableTableHead>
                 )}
                 {columnVisibility.isColumnVisible('available') && (
                   <ResizableTableHead columnId="available">
-                    <TableColumnHeaderWithFilterAndSort columnId="available" label="Available" sortKey={sortKey} sortOrder={sortOrder} onSort={setSort} filterable={false} distinctValues={[]} selectedFilterValues={new Set()} onFilterChange={() => {}} />
+                    <TableColumnHeaderWithFilterAndSort columnId="available" label="Available" sortKey={sortKey} sortOrder={sortOrder} onSort={setSort} filterable={false} distinctValues={[]} selectedFilterValues={new Set()} onFilterChange={() => { }} />
                   </ResizableTableHead>
                 )}
                 {columnVisibility.isColumnVisible('strategy') && (
                   <ResizableTableHead columnId="strategy">
-                    <TableColumnHeaderWithFilterAndSort columnId="strategy" label="Strategy" sortKey={sortKey} sortOrder={sortOrder} onSort={setSort} filterable={false} distinctValues={[]} selectedFilterValues={new Set()} onFilterChange={() => {}} />
+                    <TableColumnHeaderWithFilterAndSort columnId="strategy" label="Strategy" sortKey={sortKey} sortOrder={sortOrder} onSort={setSort} filterable={false} distinctValues={[]} selectedFilterValues={new Set()} onFilterChange={() => { }} />
                   </ResizableTableHead>
                 )}
                 {columnVisibility.isColumnVisible('maxSurge') && (
                   <ResizableTableHead columnId="maxSurge">
-                    <TableColumnHeaderWithFilterAndSort columnId="maxSurge" label="Max Surge" sortKey={sortKey} sortOrder={sortOrder} onSort={setSort} filterable={false} distinctValues={[]} selectedFilterValues={new Set()} onFilterChange={() => {}} />
+                    <TableColumnHeaderWithFilterAndSort columnId="maxSurge" label="Max Surge" sortKey={sortKey} sortOrder={sortOrder} onSort={setSort} filterable={false} distinctValues={[]} selectedFilterValues={new Set()} onFilterChange={() => { }} />
                   </ResizableTableHead>
                 )}
                 {columnVisibility.isColumnVisible('maxUnavailable') && (
                   <ResizableTableHead columnId="maxUnavailable">
-                    <TableColumnHeaderWithFilterAndSort columnId="maxUnavailable" label="Max Unavailable" sortKey={sortKey} sortOrder={sortOrder} onSort={setSort} filterable={false} distinctValues={[]} selectedFilterValues={new Set()} onFilterChange={() => {}} />
+                    <TableColumnHeaderWithFilterAndSort columnId="maxUnavailable" label="Max Unavailable" sortKey={sortKey} sortOrder={sortOrder} onSort={setSort} filterable={false} distinctValues={[]} selectedFilterValues={new Set()} onFilterChange={() => { }} />
                   </ResizableTableHead>
                 )}
                 {columnVisibility.isColumnVisible('revision') && (
                   <ResizableTableHead columnId="revision">
-                    <TableColumnHeaderWithFilterAndSort columnId="revision" label="Revision" sortKey={sortKey} sortOrder={sortOrder} onSort={setSort} filterable={false} distinctValues={[]} selectedFilterValues={new Set()} onFilterChange={() => {}} />
+                    <TableColumnHeaderWithFilterAndSort columnId="revision" label="Revision" sortKey={sortKey} sortOrder={sortOrder} onSort={setSort} filterable={false} distinctValues={[]} selectedFilterValues={new Set()} onFilterChange={() => { }} />
                   </ResizableTableHead>
                 )}
                 {columnVisibility.isColumnVisible('images') && (
                   <ResizableTableHead columnId="images">
-                    <TableColumnHeaderWithFilterAndSort columnId="images" label="Images" sortKey={sortKey} sortOrder={sortOrder} onSort={setSort} filterable={false} distinctValues={[]} selectedFilterValues={new Set()} onFilterChange={() => {}} />
+                    <TableColumnHeaderWithFilterAndSort columnId="images" label="Images" sortKey={sortKey} sortOrder={sortOrder} onSort={setSort} filterable={false} distinctValues={[]} selectedFilterValues={new Set()} onFilterChange={() => { }} />
                   </ResizableTableHead>
                 )}
                 {columnVisibility.isColumnVisible('cpu') && (
                   <ResizableTableHead columnId="cpu" title="CPU">
-                    <TableColumnHeaderWithFilterAndSort columnId="cpu" label="CPU" sortKey={sortKey} sortOrder={sortOrder} onSort={setSort} filterable={false} distinctValues={[]} selectedFilterValues={new Set()} onFilterChange={() => {}} />
+                    <TableColumnHeaderWithFilterAndSort columnId="cpu" label="CPU" sortKey={sortKey} sortOrder={sortOrder} onSort={setSort} filterable={false} distinctValues={[]} selectedFilterValues={new Set()} onFilterChange={() => { }} />
                   </ResizableTableHead>
                 )}
                 {columnVisibility.isColumnVisible('memory') && (
                   <ResizableTableHead columnId="memory" title="Memory">
-                    <TableColumnHeaderWithFilterAndSort columnId="memory" label="Memory" sortKey={sortKey} sortOrder={sortOrder} onSort={setSort} filterable={false} distinctValues={[]} selectedFilterValues={new Set()} onFilterChange={() => {}} />
+                    <TableColumnHeaderWithFilterAndSort columnId="memory" label="Memory" sortKey={sortKey} sortOrder={sortOrder} onSort={setSort} filterable={false} distinctValues={[]} selectedFilterValues={new Set()} onFilterChange={() => { }} />
                   </ResizableTableHead>
                 )}
                 {columnVisibility.isColumnVisible('age') && (
                   <ResizableTableHead columnId="age">
-                    <TableColumnHeaderWithFilterAndSort columnId="age" label="Age" sortKey={sortKey} sortOrder={sortOrder} onSort={setSort} filterable={false} distinctValues={[]} selectedFilterValues={new Set()} onFilterChange={() => {}} />
+                    <TableColumnHeaderWithFilterAndSort columnId="age" label="Age" sortKey={sortKey} sortOrder={sortOrder} onSort={setSort} filterable={false} distinctValues={[]} selectedFilterValues={new Set()} onFilterChange={() => { }} />
                   </ResizableTableHead>
                 )}
                 <TableHead className="w-12 text-center"><span className="sr-only">Actions</span><MoreHorizontal className="h-4 w-4 inline-block text-muted-foreground" aria-hidden /></TableHead>
@@ -858,174 +858,174 @@ spec:
                       )}
                       {columnVisibility.isColumnVisible('age') && <ResizableTableCell columnId="age" className="text-muted-foreground whitespace-nowrap"><AgeCell age={item.age} timestamp={item.creationTimestamp} /></ResizableTableCell>}
                       <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors" aria-label="Deployment actions"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-52">
-                          <CopyNameDropdownItem name={item.name} namespace={item.namespace} />
-                          <DropdownMenuItem onClick={() => navigate(`/deployments/${item.namespace}/${item.name}`)} className="gap-2">View Details</DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => navigate(`/pods?namespace=${item.namespace}&deployment=${item.name}`)} className="gap-2">View Pods</DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem onClick={() => setScaleDialog({ open: true, item })} className="gap-2" disabled={!isConnected}><Scale className="h-4 w-4" />Scale</DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => setRolloutDialog({ open: true, item })} className="gap-2" disabled={!isConnected}><History className="h-4 w-4" />Rollout Actions</DropdownMenuItem>
-                          {!item.paused && (
-                            <DropdownMenuItem
-                              className="gap-2"
-                              disabled={!isConnected}
-                              onClick={async () => {
-                                if (!isConnected) return;
-                                if (isBackendConfigured() && clusterId) {
-                                  await patchDeployment.mutateAsync({ name: item.name, namespace: item.namespace, patch: { spec: { paused: true } } });
-                                  toast.success(`Deployment paused: ${item.name}`);
-                                  refetch();
-                                } else {
-                                  toast.error('Backend connection required to pause deployments.');
-                                }
-                              }}
-                            >
-                              <PauseCircle className="h-4 w-4" />Pause Rollout
-                            </DropdownMenuItem>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors" aria-label="Deployment actions"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-52">
+                            <CopyNameDropdownItem name={item.name} namespace={item.namespace} />
+                            <DropdownMenuItem onClick={() => navigate(`/deployments/${item.namespace}/${item.name}`)} className="gap-2">View Details</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => navigate(`/pods?namespace=${item.namespace}&deployment=${item.name}`)} className="gap-2">View Pods</DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={() => setScaleDialog({ open: true, item })} className="gap-2" disabled={!isConnected}><Scale className="h-4 w-4" />Scale</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => setRolloutDialog({ open: true, item })} className="gap-2" disabled={!isConnected}><History className="h-4 w-4" />Rollout Actions</DropdownMenuItem>
+                            {!item.paused && (
+                              <DropdownMenuItem
+                                className="gap-2"
+                                disabled={!isConnected}
+                                onClick={async () => {
+                                  if (!isConnected) return;
+                                  if (isBackendConfigured() && clusterId) {
+                                    await patchDeployment.mutateAsync({ name: item.name, namespace: item.namespace, patch: { spec: { paused: true } } });
+                                    toast.success(`Deployment paused: ${item.name}`);
+                                    refetch();
+                                  } else {
+                                    toast.error('Backend connection required to pause deployments.');
+                                  }
+                                }}
+                              >
+                                <PauseCircle className="h-4 w-4" />Pause Rollout
+                              </DropdownMenuItem>
+                            )}
+                            {item.paused && (
+                              <DropdownMenuItem
+                                className="gap-2"
+                                disabled={!isConnected}
+                                onClick={async () => {
+                                  if (!isConnected) return;
+                                  if (isBackendConfigured() && clusterId) {
+                                    await patchDeployment.mutateAsync({ name: item.name, namespace: item.namespace, patch: { spec: { paused: false } } });
+                                    toast.success(`Deployment resumed: ${item.name}`);
+                                    refetch();
+                                  } else {
+                                    toast.error('Backend connection required to resume deployments.');
+                                  }
+                                }}
+                              >
+                                <Activity className="h-4 w-4" />Resume Rollout
+                              </DropdownMenuItem>
+                            )}
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={() => navigate(`/deployments/${item.namespace}/${item.name}?tab=yaml`)} className="gap-2"><FileCode className="h-4 w-4" />Edit YAML / Download</DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem className="gap-2 text-[hsl(0,72%,51%)]" onClick={() => setDeleteDialog({ open: true, item })} disabled={!isConnected}><Trash2 className="h-4 w-4" />Delete</DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </motion.tr>
+                  );
+                })
+              ) : (
+                groupedOnPage.flatMap((group) => {
+                  const isCollapsed = collapsedGroups.has(group.groupKey);
+                  return [
+                    <TableRow key={group.groupKey} className="bg-muted/30 hover:bg-muted/40 cursor-pointer border-b border-border/60 transition-all duration-200" onClick={() => toggleGroup(group.groupKey)}>
+                      <TableCell colSpan={visibleColumnCount} className="py-2">
+                        <div className="flex items-center gap-2 font-medium">
+                          {isCollapsed ? <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" /> : <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />}
+                          {group.label}
+                          <span className="text-muted-foreground font-normal">({group.deployments.length})</span>
+                        </div>
+                      </TableCell>
+                    </TableRow>,
+                    ...(isCollapsed ? [] : group.deployments.map((item, idx) => {
+                      const StatusIcon = statusConfig[item.status]?.icon || Clock;
+                      const style = statusConfig[item.status];
+                      const key = `${item.namespace}/${item.name}`;
+                      const isSelected = selectedItems.has(key);
+                      const cpuVal = metricsMap[key]?.cpu ?? '-';
+                      const memVal = metricsMap[key]?.memory ?? '-';
+                      const cpuNum = parseCpu(cpuVal);
+                      const memNum = parseMemory(memVal);
+                      const cpuDataPoints = cpuNum != null ? Array(12).fill(cpuNum) : undefined;
+                      const memDataPoints = memNum != null ? Array(12).fill(memNum) : undefined;
+                      return (
+                        <motion.tr key={key} initial={ROW_MOTION.initial} animate={ROW_MOTION.animate} transition={ROW_MOTION.transition(idx)} className={cn(resourceTableRowClassName, idx % 2 === 1 && 'bg-muted/5', isSelected && 'bg-primary/5')}>
+                          <TableCell><Checkbox checked={isSelected} onCheckedChange={() => toggleSelection(item)} /></TableCell>
+                          {columnVisibility.isColumnVisible('name') && <ResizableTableCell columnId="name"><Link to={`/deployments/${item.namespace}/${item.name}`} className="font-medium text-primary hover:underline flex items-center gap-2 truncate"><DeploymentIcon className="h-4 w-4 text-muted-foreground flex-shrink-0" /><span className="truncate">{item.name}</span></Link></ResizableTableCell>}
+                          {columnVisibility.isColumnVisible('namespace') && <ResizableTableCell columnId="namespace"><NamespaceBadge namespace={item.namespace} className="font-normal truncate block w-fit max-w-full" /></ResizableTableCell>}
+                          {columnVisibility.isColumnVisible('status') && <ResizableTableCell columnId="status"><div className={cn('inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium truncate w-fit max-w-full', style.bg, style.color)}><StatusIcon className="h-3.5 w-3.5 flex-shrink-0" /><span className="truncate">{item.status}</span></div></ResizableTableCell>}
+                          {columnVisibility.isColumnVisible('ready') && <ResizableTableCell columnId="ready" className="font-mono text-sm">{item.ready}</ResizableTableCell>}
+                          {columnVisibility.isColumnVisible('upToDate') && <ResizableTableCell columnId="upToDate" className="font-mono text-sm">{item.upToDate}</ResizableTableCell>}
+                          {columnVisibility.isColumnVisible('available') && <ResizableTableCell columnId="available" className="font-mono text-sm">{item.available}</ResizableTableCell>}
+                          {columnVisibility.isColumnVisible('strategy') && <ResizableTableCell columnId="strategy"><Badge variant="secondary" className="font-mono text-xs truncate block w-fit max-w-full">{item.strategy}</Badge></ResizableTableCell>}
+                          {columnVisibility.isColumnVisible('maxSurge') && <ResizableTableCell columnId="maxSurge" className="font-mono text-xs">{item.maxSurge}</ResizableTableCell>}
+                          {columnVisibility.isColumnVisible('maxUnavailable') && <ResizableTableCell columnId="maxUnavailable" className="font-mono text-xs">{item.maxUnavailable}</ResizableTableCell>}
+                          {columnVisibility.isColumnVisible('revision') && <ResizableTableCell columnId="revision" className="font-mono text-xs">{item.revision}</ResizableTableCell>}
+                          {columnVisibility.isColumnVisible('images') && <ResizableTableCell columnId="images" className="text-xs truncate max-w-[180px]" title={item.images.join(', ')}>{item.images.length ? item.images.join(', ') : '-'}</ResizableTableCell>}
+                          {columnVisibility.isColumnVisible('cpu') && (
+                            <ResizableTableCell columnId="cpu">
+                              <div className="min-w-0 overflow-hidden">
+                                <UsageBar variant="sparkline" value={cpuVal} kind="cpu" displayFormat="compact" width={56} />
+                              </div>
+                            </ResizableTableCell>
                           )}
-                          {item.paused && (
-                            <DropdownMenuItem
-                              className="gap-2"
-                              disabled={!isConnected}
-                              onClick={async () => {
-                                if (!isConnected) return;
-                                if (isBackendConfigured() && clusterId) {
-                                  await patchDeployment.mutateAsync({ name: item.name, namespace: item.namespace, patch: { spec: { paused: false } } });
-                                  toast.success(`Deployment resumed: ${item.name}`);
-                                  refetch();
-                                } else {
-                                  toast.error('Backend connection required to resume deployments.');
-                                }
-                              }}
-                            >
-                              <Activity className="h-4 w-4" />Resume Rollout
-                            </DropdownMenuItem>
+                          {columnVisibility.isColumnVisible('memory') && (
+                            <ResizableTableCell columnId="memory">
+                              <div className="min-w-0 overflow-hidden">
+                                <UsageBar variant="sparkline" value={memVal} kind="memory" displayFormat="compact" width={56} />
+                              </div>
+                            </ResizableTableCell>
                           )}
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem onClick={() => navigate(`/deployments/${item.namespace}/${item.name}?tab=yaml`)} className="gap-2"><FileText className="h-4 w-4" />Download YAML</DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem className="gap-2 text-[hsl(0,72%,51%)]" onClick={() => setDeleteDialog({ open: true, item })} disabled={!isConnected}><Trash2 className="h-4 w-4" />Delete</DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </motion.tr>
-                );
-              })
-            ) : (
-              groupedOnPage.flatMap((group) => {
-                const isCollapsed = collapsedGroups.has(group.groupKey);
-                return [
-                  <TableRow key={group.groupKey} className="bg-muted/30 hover:bg-muted/40 cursor-pointer border-b border-border/60 transition-all duration-200" onClick={() => toggleGroup(group.groupKey)}>
-                    <TableCell colSpan={visibleColumnCount} className="py-2">
-                      <div className="flex items-center gap-2 font-medium">
-                        {isCollapsed ? <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" /> : <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />}
-                        {group.label}
-                        <span className="text-muted-foreground font-normal">({group.deployments.length})</span>
-                      </div>
-                    </TableCell>
-                  </TableRow>,
-                  ...(isCollapsed ? [] : group.deployments.map((item, idx) => {
-                    const StatusIcon = statusConfig[item.status]?.icon || Clock;
-                    const style = statusConfig[item.status];
-                    const key = `${item.namespace}/${item.name}`;
-                    const isSelected = selectedItems.has(key);
-                    const cpuVal = metricsMap[key]?.cpu ?? '-';
-                    const memVal = metricsMap[key]?.memory ?? '-';
-                    const cpuNum = parseCpu(cpuVal);
-                    const memNum = parseMemory(memVal);
-                    const cpuDataPoints = cpuNum != null ? Array(12).fill(cpuNum) : undefined;
-                    const memDataPoints = memNum != null ? Array(12).fill(memNum) : undefined;
-                    return (
-                      <motion.tr key={key} initial={ROW_MOTION.initial} animate={ROW_MOTION.animate} transition={ROW_MOTION.transition(idx)} className={cn(resourceTableRowClassName, idx % 2 === 1 && 'bg-muted/5', isSelected && 'bg-primary/5')}>
-                        <TableCell><Checkbox checked={isSelected} onCheckedChange={() => toggleSelection(item)} /></TableCell>
-                        {columnVisibility.isColumnVisible('name') && <ResizableTableCell columnId="name"><Link to={`/deployments/${item.namespace}/${item.name}`} className="font-medium text-primary hover:underline flex items-center gap-2 truncate"><DeploymentIcon className="h-4 w-4 text-muted-foreground flex-shrink-0" /><span className="truncate">{item.name}</span></Link></ResizableTableCell>}
-                        {columnVisibility.isColumnVisible('namespace') && <ResizableTableCell columnId="namespace"><NamespaceBadge namespace={item.namespace} className="font-normal truncate block w-fit max-w-full" /></ResizableTableCell>}
-                        {columnVisibility.isColumnVisible('status') && <ResizableTableCell columnId="status"><div className={cn('inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium truncate w-fit max-w-full', style.bg, style.color)}><StatusIcon className="h-3.5 w-3.5 flex-shrink-0" /><span className="truncate">{item.status}</span></div></ResizableTableCell>}
-                        {columnVisibility.isColumnVisible('ready') && <ResizableTableCell columnId="ready" className="font-mono text-sm">{item.ready}</ResizableTableCell>}
-                        {columnVisibility.isColumnVisible('upToDate') && <ResizableTableCell columnId="upToDate" className="font-mono text-sm">{item.upToDate}</ResizableTableCell>}
-                        {columnVisibility.isColumnVisible('available') && <ResizableTableCell columnId="available" className="font-mono text-sm">{item.available}</ResizableTableCell>}
-                        {columnVisibility.isColumnVisible('strategy') && <ResizableTableCell columnId="strategy"><Badge variant="secondary" className="font-mono text-xs truncate block w-fit max-w-full">{item.strategy}</Badge></ResizableTableCell>}
-                        {columnVisibility.isColumnVisible('maxSurge') && <ResizableTableCell columnId="maxSurge" className="font-mono text-xs">{item.maxSurge}</ResizableTableCell>}
-                        {columnVisibility.isColumnVisible('maxUnavailable') && <ResizableTableCell columnId="maxUnavailable" className="font-mono text-xs">{item.maxUnavailable}</ResizableTableCell>}
-                        {columnVisibility.isColumnVisible('revision') && <ResizableTableCell columnId="revision" className="font-mono text-xs">{item.revision}</ResizableTableCell>}
-                        {columnVisibility.isColumnVisible('images') && <ResizableTableCell columnId="images" className="text-xs truncate max-w-[180px]" title={item.images.join(', ')}>{item.images.length ? item.images.join(', ') : '-'}</ResizableTableCell>}
-                        {columnVisibility.isColumnVisible('cpu') && (
-                          <ResizableTableCell columnId="cpu">
-                            <div className="min-w-0 overflow-hidden">
-                              <UsageBar variant="sparkline" value={cpuVal} kind="cpu" displayFormat="compact" width={56} />
-                            </div>
-                          </ResizableTableCell>
-                        )}
-                        {columnVisibility.isColumnVisible('memory') && (
-                          <ResizableTableCell columnId="memory">
-                            <div className="min-w-0 overflow-hidden">
-                              <UsageBar variant="sparkline" value={memVal} kind="memory" displayFormat="compact" width={56} />
-                            </div>
-                          </ResizableTableCell>
-                        )}
-                        {columnVisibility.isColumnVisible('age') && <ResizableTableCell columnId="age" className="text-muted-foreground whitespace-nowrap"><AgeCell age={item.age} timestamp={item.creationTimestamp} /></ResizableTableCell>}
-                        <TableCell>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors" aria-label="Deployment actions"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-52">
-                              <CopyNameDropdownItem name={item.name} namespace={item.namespace} />
-                              <DropdownMenuItem onClick={() => navigate(`/deployments/${item.namespace}/${item.name}`)} className="gap-2">View Details</DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => navigate(`/pods?namespace=${item.namespace}&deployment=${item.name}`)} className="gap-2">View Pods</DropdownMenuItem>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem onClick={() => setScaleDialog({ open: true, item })} className="gap-2" disabled={!isConnected}><Scale className="h-4 w-4" />Scale</DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => setRolloutDialog({ open: true, item })} className="gap-2" disabled={!isConnected}><History className="h-4 w-4" />Rollout Actions</DropdownMenuItem>
-                              {!item.paused && (
-                                <DropdownMenuItem
-                                  className="gap-2"
-                                  disabled={!isConnected}
-                                  onClick={async () => {
-                                    if (!isConnected) return;
-                                    if (isBackendConfigured() && clusterId) {
-                                      await patchDeployment.mutateAsync({ name: item.name, namespace: item.namespace, patch: { spec: { paused: true } } });
-                                      toast.success(`Deployment paused: ${item.name}`);
-                                      refetch();
-                                    } else {
-                                      toast.error('Backend connection required to pause deployments.');
-                                    }
-                                  }}
-                                >
-                                  <PauseCircle className="h-4 w-4" />Pause Rollout
-                                </DropdownMenuItem>
-                              )}
-                              {item.paused && (
-                                <DropdownMenuItem
-                                  className="gap-2"
-                                  disabled={!isConnected}
-                                  onClick={async () => {
-                                    if (!isConnected) return;
-                                    if (isBackendConfigured() && clusterId) {
-                                      await patchDeployment.mutateAsync({ name: item.name, namespace: item.namespace, patch: { spec: { paused: false } } });
-                                      toast.success(`Deployment resumed: ${item.name}`);
-                                      refetch();
-                                    } else {
-                                      toast.error('Backend connection required to resume deployments.');
-                                    }
-                                  }}
-                                >
-                                  <Activity className="h-4 w-4" />Resume Rollout
-                                </DropdownMenuItem>
-                              )}
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem onClick={() => navigate(`/deployments/${item.namespace}/${item.name}?tab=yaml`)} className="gap-2"><FileText className="h-4 w-4" />Download YAML</DropdownMenuItem>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem className="gap-2 text-[hsl(0,72%,51%)]" onClick={() => setDeleteDialog({ open: true, item })} disabled={!isConnected}><Trash2 className="h-4 w-4" />Delete</DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </TableCell>
-                      </motion.tr>
-                    );
-                  })),
-                ];
-              })
-            )}
-          </TableBody>
+                          {columnVisibility.isColumnVisible('age') && <ResizableTableCell columnId="age" className="text-muted-foreground whitespace-nowrap"><AgeCell age={item.age} timestamp={item.creationTimestamp} /></ResizableTableCell>}
+                          <TableCell>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors" aria-label="Deployment actions"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="w-52">
+                                <CopyNameDropdownItem name={item.name} namespace={item.namespace} />
+                                <DropdownMenuItem onClick={() => navigate(`/deployments/${item.namespace}/${item.name}`)} className="gap-2">View Details</DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => navigate(`/pods?namespace=${item.namespace}&deployment=${item.name}`)} className="gap-2">View Pods</DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem onClick={() => setScaleDialog({ open: true, item })} className="gap-2" disabled={!isConnected}><Scale className="h-4 w-4" />Scale</DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => setRolloutDialog({ open: true, item })} className="gap-2" disabled={!isConnected}><History className="h-4 w-4" />Rollout Actions</DropdownMenuItem>
+                                {!item.paused && (
+                                  <DropdownMenuItem
+                                    className="gap-2"
+                                    disabled={!isConnected}
+                                    onClick={async () => {
+                                      if (!isConnected) return;
+                                      if (isBackendConfigured() && clusterId) {
+                                        await patchDeployment.mutateAsync({ name: item.name, namespace: item.namespace, patch: { spec: { paused: true } } });
+                                        toast.success(`Deployment paused: ${item.name}`);
+                                        refetch();
+                                      } else {
+                                        toast.error('Backend connection required to pause deployments.');
+                                      }
+                                    }}
+                                  >
+                                    <PauseCircle className="h-4 w-4" />Pause Rollout
+                                  </DropdownMenuItem>
+                                )}
+                                {item.paused && (
+                                  <DropdownMenuItem
+                                    className="gap-2"
+                                    disabled={!isConnected}
+                                    onClick={async () => {
+                                      if (!isConnected) return;
+                                      if (isBackendConfigured() && clusterId) {
+                                        await patchDeployment.mutateAsync({ name: item.name, namespace: item.namespace, patch: { spec: { paused: false } } });
+                                        toast.success(`Deployment resumed: ${item.name}`);
+                                        refetch();
+                                      } else {
+                                        toast.error('Backend connection required to resume deployments.');
+                                      }
+                                    }}
+                                  >
+                                    <Activity className="h-4 w-4" />Resume Rollout
+                                  </DropdownMenuItem>
+                                )}
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem onClick={() => navigate(`/deployments/${item.namespace}/${item.name}?tab=yaml`)} className="gap-2"><FileCode className="h-4 w-4" />Edit YAML / Download</DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem className="gap-2 text-[hsl(0,72%,51%)]" onClick={() => setDeleteDialog({ open: true, item })} disabled={!isConnected}><Trash2 className="h-4 w-4" />Delete</DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
+                        </motion.tr>
+                      );
+                    })),
+                  ];
+                })
+              )}
+            </TableBody>
           </Table>
         </ResizableTableProvider>
       </ResourceListTableToolbar>
@@ -1036,28 +1036,9 @@ spec:
           defaultYaml={DEFAULT_YAMLS.Deployment}
           onClose={() => setShowCreateWizard(false)}
           onApply={async (yaml) => {
-            if (!isConnected) {
-              toast.error('Connect cluster to create deployments');
-              return;
-            }
-            try {
-              if (isBackendConfigured() && clusterId && backendBaseUrl) {
-                const res = await fetch(`${backendBaseUrl.replace(/\/+$/, '')}/api/v1/clusters/${encodeURIComponent(clusterId)}/apply`, {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json', [CONFIRM_DESTRUCTIVE_HEADER]: 'true' },
-                  body: JSON.stringify({ yaml }),
-                });
-                if (!res.ok) throw new Error(await res.text());
-                toast.success('Deployment created successfully');
-              } else {
-                await createResource.mutateAsync({ yaml });
-              }
-              setShowCreateWizard(false);
-              refetch();
-            } catch (e: any) {
-              toast.error(e?.message || 'Failed to create deployment');
-              throw e;
-            }
+            await createResource.mutateAsync({ yaml });
+            setShowCreateWizard(false);
+            refetch();
           }}
           clusterName="docker-desktop"
         />

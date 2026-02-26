@@ -15,7 +15,7 @@ import (
 func TestGetCapabilities(t *testing.T) {
 	cfg := &config.Config{}
 	cs := service.NewClusterService(&mockClusterRepo{list: []*models.Cluster{}}, cfg)
-	h := NewHandler(cs, nil, cfg, nil, nil, nil, nil, nil, nil)
+	h := NewHandler(cs, nil, cfg, nil, nil, nil, nil, nil, nil, nil)
 
 	router := mux.NewRouter()
 	api := router.PathPrefix("/api/v1").Subrouter()
@@ -43,7 +43,7 @@ func TestGetCapabilities(t *testing.T) {
 func TestGetCapabilities_ContentType(t *testing.T) {
 	cfg := &config.Config{}
 	cs := service.NewClusterService(&mockClusterRepo{list: []*models.Cluster{}}, cfg)
-	h := NewHandler(cs, nil, cfg, nil, nil, nil, nil, nil, nil)
+	h := NewHandler(cs, nil, cfg, nil, nil, nil, nil, nil, nil, nil)
 
 	router := mux.NewRouter()
 	api := router.PathPrefix("/api/v1").Subrouter()

@@ -39,7 +39,7 @@ func TestHandler_InvalidClusterID_Returns400(t *testing.T) {
 	repo := &mockClusterRepoForValidation{list: []*models.Cluster{}}
 	cfg := &config.Config{}
 	cs := service.NewClusterService(repo, cfg)
-	h := NewHandler(cs, nil, cfg, nil, nil, nil, nil, nil, nil)
+	h := NewHandler(cs, nil, cfg, nil, nil, nil, nil, nil, nil, nil)
 
 	router := mux.NewRouter()
 	api := router.PathPrefix("/api/v1").Subrouter()
@@ -89,7 +89,7 @@ func TestHandler_InvalidNamespace_Returns400(t *testing.T) {
 	}
 	cfg := &config.Config{}
 	cs := service.NewClusterService(repo, cfg)
-	h := NewHandler(cs, nil, cfg, nil, nil, nil, nil, nil, nil)
+	h := NewHandler(cs, nil, cfg, nil, nil, nil, nil, nil, nil, nil)
 
 	router := mux.NewRouter()
 	api := router.PathPrefix("/api/v1").Subrouter()
@@ -133,7 +133,7 @@ func TestHandler_InvalidResourceName_Returns400(t *testing.T) {
 	}
 	cfg := &config.Config{}
 	cs := service.NewClusterService(repo, cfg)
-	h := NewHandler(cs, nil, cfg, nil, nil, nil, nil, nil, nil)
+	h := NewHandler(cs, nil, cfg, nil, nil, nil, nil, nil, nil, nil)
 
 	router := mux.NewRouter()
 	api := router.PathPrefix("/api/v1").Subrouter()
@@ -177,7 +177,7 @@ func TestHandler_OversizedBody_Returns413(t *testing.T) {
 	}
 	cfg := &config.Config{}
 	cs := service.NewClusterService(repo, cfg)
-	h := NewHandler(cs, nil, cfg, nil, nil, nil, nil, nil, nil)
+	h := NewHandler(cs, nil, cfg, nil, nil, nil, nil, nil, nil, nil)
 
 	router := mux.NewRouter()
 	api := router.PathPrefix("/api/v1").Subrouter()

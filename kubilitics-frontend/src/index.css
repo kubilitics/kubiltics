@@ -4,16 +4,16 @@
 
 @layer base {
   :root {
-    /* Clean White & Slate Theme (Default) */
-    --background: 210 40% 98%;
-    /* slate-50 */
-    --foreground: 222.2 84% 4.9%;
+    /* Apple-standard High Fidelity Design System */
+    --background: 210 50% 98.5%;
+    /* SF-style cleaner background */
+    --foreground: 224 71% 4%;
 
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 224 71% 4%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover-foreground: 224 71% 4%;
 
     --primary: 221.2 83.2% 53.3%;
     --primary-foreground: 210 40% 98%;
@@ -30,18 +30,20 @@
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
+    --border: 214.3 31.8% 88%;
+    /* Sharper border */
+    --input: 214.3 31.8% 88%;
     --ring: 221.2 83.2% 53.3%;
 
     --radius: 1rem;
+    /* Slightly tighter for a precision look */
 
-    /* Sidebar CSS variables */
-    --sidebar-background: 210 40% 98%;
-    --sidebar-foreground: 222.2 84% 4.9%;
-    --sidebar-border: 214.3 31.8% 91.4%;
-    --sidebar-accent: 210 40% 96.1%;
-    --sidebar-accent-foreground: 222.2 47.4% 11.2%;
+    /* Premium High-Impact Design Variables */
+    --glass-bg: rgba(255, 255, 255, 0.85);
+    --glass-border: rgba(0, 0, 0, 0.08);
+    /* Much more visible border */
+    --apple-shadow: 0 8px 32px -4px rgba(0, 0, 0, 0.08), 0 4px 12px -2px rgba(0, 0, 0, 0.04);
+    --apple-shadow-lg: 0 20px 64px -16px rgba(0, 0, 0, 0.12), 0 12px 24px -12px rgba(0, 0, 0, 0.08);
   }
 
   * {
@@ -50,65 +52,88 @@
 
   body {
     @apply bg-background text-foreground antialiased selection:bg-blue-100 selection:text-blue-900;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   }
 }
 
 @layer components {
 
-  /* Apple-style Soft Shadow Cards */
-  .clean-card {
-    @apply bg-white rounded-[2rem] border border-slate-100/50 transition-all duration-300;
-    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.02), 0 2px 4px -2px rgb(0 0 0 / 0.02), 0 20px 25px -5px rgb(0 0 0 / 0.03);
+  /* Apple-style Glassmorphism */
+  .glass-card {
+    background: var(--glass-bg);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius);
+    box-shadow: var(--apple-shadow);
+    @apply transition-all duration-500 ease-in-out;
   }
 
-  .clean-card:hover {
-    @apply border-blue-100/50;
-    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.04), 0 4px 6px -4px rgb(0 0 0 / 0.04), 0 25px 50px -12px rgb(0 0 0 / 0.08);
+  .glass-card-hover:hover {
+    @apply -translate-y-0.5;
+    box-shadow: var(--apple-shadow-lg);
+    border-color: rgba(255, 255, 255, 0.7);
+    background: rgba(255, 255, 255, 0.8);
   }
 
-  /* Refined Hero Banner */
-  .clean-hero {
-    @apply relative overflow-hidden bg-white border border-slate-100/80 rounded-[2.5rem];
-    box-shadow: 0 20px 50px -12px rgb(0 0 0 / 0.05);
+  /* Design Marvel Cards */
+  .premium-card {
+    @apply bg-white rounded-[2rem] border border-slate-100/60 shadow-sm transition-all duration-500 ease-spring;
   }
 
-  /* Minimalist Tabs */
-  .clean-tabs-list {
-    @apply inline-flex h-12 items-center justify-center rounded-2xl bg-slate-100/50 p-1.5 text-slate-500;
+  .premium-card:hover {
+    @apply shadow-xl shadow-blue-500/5 border-blue-200/40 -translate-y-1;
   }
 
-  .clean-tabs-trigger {
-    @apply inline-flex items-center justify-center whitespace-nowrap rounded-xl px-5 py-2 text-sm font-medium transition-all;
+  /* Apple-style Typography */
+  .apple-title {
+    @apply text-slate-900 font-semibold tracking-tight leading-tight;
   }
 
-  .clean-tabs-trigger[data-state='active'] {
-    @apply bg-white text-slate-950 shadow-sm ring-1 ring-slate-200;
+  .apple-description {
+    @apply text-slate-500 font-medium leading-relaxed;
   }
 }
 
 @layer utilities {
-  .text-balance {
-    text-wrap: balance;
+  .ease-spring {
+    transition-timing-function: cubic-bezier(0.175, 0.885, 0.32, 1.275);
   }
 
-  /* Refined Typography */
-  .heading-xl {
-    @apply text-5xl font-extrabold tracking-tight text-slate-900 sm:text-6xl;
+  .glass-surface {
+    background: rgba(255, 255, 255, 0.5);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
   }
 
-  .heading-lg {
-    @apply text-3xl font-bold tracking-tight text-slate-900;
+  /* Vibrant Gradients */
+  .grad-blue {
+    @apply bg-gradient-to-br from-blue-500/10 via-indigo-500/5 to-transparent;
   }
 
-  /* Subtle AI Accent (Apple-ish) */
-  .ai-accent-text {
-    @apply bg-clip-text text-transparent bg-gradient-to-br from-indigo-500 via-blue-600 to-indigo-700;
+  .grad-violet {
+    @apply bg-gradient-to-br from-violet-500/10 via-purple-500/5 to-transparent;
   }
 
-  .ai-accent-bg {
-    @apply bg-gradient-to-br from-indigo-50/50 to-blue-50/50;
+  .grad-emerald {
+    @apply bg-gradient-to-br from-emerald-500/10 via-teal-500/5 to-transparent;
+  }
+
+  .grad-amber {
+    @apply bg-gradient-to-br from-amber-500/10 via-orange-500/5 to-transparent;
+  }
+
+  .grad-rose {
+    @apply bg-gradient-to-br from-rose-500/10 via-pink-500/5 to-transparent;
+  }
+
+  /* AI Dreamline */
+  .ai-dreamline {
+    @apply bg-gradient-to-r from-blue-400 via-indigo-500 to-purple-500 h-[2px] w-full;
   }
 }
+
 
 /* Base animations */
 @keyframes fadeIn {

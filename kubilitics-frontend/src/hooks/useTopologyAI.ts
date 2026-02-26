@@ -1,23 +1,5 @@
-/**
- * useTopologyAI — E-PLAT-001: AI-Powered Topology Analysis hooks
- *
- * Provides three AI-backed capabilities for the Topology page:
- *  1. analyzeBlastRadius  — POST /api/v1/topology/analyze
- *     Natural-language impact analysis when user asks "what happens if I delete X?"
- *
- *  2. fetchCriticalPath   — POST /api/v1/topology/critical-path
- *     Identifies the user-traffic critical path + SPOFs across the topology
- *
- *  3. explainNode         — POST /api/v1/topology/node-explain
- *     AI tooltip with role, dependencies, anomalies for hovered/selected nodes
- *
- * All endpoints fall back to heuristic results server-side when LLM is unavailable,
- * so the hooks always return something useful.
- */
-
 import { useState, useCallback, useRef } from 'react';
-import { AI_BASE_URL } from '@/services/aiService';
-import { guardAIAvailable } from '@/stores/aiAvailableStore';
+import * as aiService from '@/services/aiService';
 
 // ─── Shared graph types ──────────────────────────────────────────────────────
 
@@ -64,25 +46,10 @@ export function useBlastRadiusAnalysis() {
   const [error, setError] = useState<string | null>(null);
 
   const analyze = useCallback(async (req: BlastRadiusAnalysisRequest) => {
-    try {
-      guardAIAvailable();
-    } catch {
-      setError('AI backend is not available.');
-      return null;
-    }
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`${AI_BASE_URL}/api/v1/topology/analyze`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(req),
-      });
-      if (!res.ok) {
-        const text = await res.text();
-        throw new Error(`AI backend error ${res.status}: ${text}`);
-      }
-      const data: BlastRadiusAnalysisResult = await res.json();
+      const data = await aiService.getTopologyBlastRadius(req);
       setResult(data);
       return data;
     } catch (err) {
@@ -123,25 +90,10 @@ export function useCriticalPath() {
     edges: TopologyEdgeSummary[],
     namespaceFilter?: string,
   ) => {
-    try {
-      guardAIAvailable();
-    } catch {
-      setError('AI backend is not available.');
-      return null;
-    }
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`${AI_BASE_URL}/api/v1/topology/critical-path`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nodes, edges, namespace_filter: namespaceFilter ?? '' }),
-      });
-      if (!res.ok) {
-        const text = await res.text();
-        throw new Error(`AI backend error ${res.status}: ${text}`);
-      }
-      const data: CriticalPathResult = await res.json();
+      const data = await aiService.getTopologyCriticalPath({ nodes, edges, namespace_filter: namespaceFilter ?? '' });
       setResult(data);
       return data;
     } catch (err) {
@@ -195,18 +147,11 @@ export function useNodeExplain() {
     setLoadingId(id);
 
     try {
-      guardAIAvailable();
-      const res = await fetch(`${AI_BASE_URL}/api/v1/topology/node-explain`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          node,
-          nodes: nodes ?? [],
-          edges: edges ?? [],
-        }),
+      const data = await aiService.getTopologyNodeExplain({
+        node,
+        nodes: nodes ?? [],
+        edges: edges ?? [],
       });
-      if (!res.ok) return null;
-      const data: NodeExplainResult = await res.json();
       setResults(prev => new Map(prev).set(id, data));
       return data;
     } catch {

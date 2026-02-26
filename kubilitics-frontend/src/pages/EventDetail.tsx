@@ -19,6 +19,8 @@ import { useResourceDetail, useResourceEvents } from '@/hooks/useK8sResourceDeta
 import type { KubernetesResource } from '@/hooks/useKubernetes';
 import { normalizeKindForTopology } from '@/utils/resourceKindMapper';
 import { useConnectionStatus } from '@/hooks/useConnectionStatus';
+import { toast } from 'sonner';
+import { downloadResourceJson } from '@/lib/exportUtils';
 
 interface EventResource extends KubernetesResource {
   type?: string;
@@ -102,6 +104,12 @@ export default function EventDetail() {
     a.click();
     URL.revokeObjectURL(url);
   }, [yaml, eventNamespace, eventName]);
+
+  const handleDownloadJson = useCallback(() => {
+    if (!ev) return;
+    downloadResourceJson(ev, `event-${eventNamespace}-${eventName}.json`);
+    toast.success('JSON downloaded');
+  }, [ev, eventNamespace, eventName]);
 
   const yamlVersions: YamlVersion[] = yaml ? [{ id: 'current', label: 'Current Version', yaml, timestamp: 'now' }] : [];
 
@@ -215,6 +223,7 @@ export default function EventDetail() {
         <ActionsSection
           actions={[
             { icon: Download, label: 'Download YAML', description: 'Export event definition', onClick: handleDownloadYaml },
+            { icon: Download, label: 'Export as JSON', description: 'Export event as JSON', onClick: handleDownloadJson },
           ]}
         />
       ),
@@ -238,6 +247,7 @@ export default function EventDetail() {
       }
       actions={[
         { label: 'Download YAML', icon: Download, variant: 'outline', onClick: handleDownloadYaml },
+        { label: 'Export as JSON', icon: Download, variant: 'outline', onClick: handleDownloadJson },
       ]}
       statusCards={statusCards}
       tabs={tabs}

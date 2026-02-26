@@ -1,13 +1,13 @@
 import { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { 
-  Plus, 
-  Upload, 
-  Undo2, 
-  X, 
-  Check, 
-  Copy, 
+import {
+  Plus,
+  Upload,
+  Undo2,
+  X,
+  Check,
+  Copy,
   Download,
   FileCode,
   BookOpen,
@@ -40,7 +40,7 @@ interface YamlValidationResult {
 
 function validateYaml(yaml: string): YamlValidationResult {
   const errors: string[] = [];
-  
+
   if (!yaml.trim()) {
     errors.push('YAML cannot be empty');
     return { isValid: false, errors };
@@ -226,15 +226,15 @@ export function ResourceCreator({
           <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'editor' | 'docs')} className="flex-1 flex flex-col overflow-hidden">
             <div className="border-b border-border px-4">
               <TabsList className="h-10 bg-transparent p-0 gap-0">
-                <TabsTrigger 
-                  value="editor" 
+                <TabsTrigger
+                  value="editor"
                   className="h-10 px-4 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none gap-2"
                 >
                   <FileCode className="h-4 w-4" />
                   Editor
                 </TabsTrigger>
-                <TabsTrigger 
-                  value="docs" 
+                <TabsTrigger
+                  value="docs"
                   className="h-10 px-4 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none gap-2"
                 >
                   <BookOpen className="h-4 w-4" />
@@ -339,8 +339,8 @@ export function ResourceCreator({
           <Button variant="outline" size="sm" onClick={onClose}>
             Close
           </Button>
-          <Button 
-            size="sm" 
+          <Button
+            size="sm"
             onClick={handleApply}
             disabled={!validation.isValid || isApplying}
           >
@@ -913,4 +913,49 @@ spec:
   group: ''
   version: ''
   insecureSkipTLSVerify: false`,
+
+  PodTemplate: `apiVersion: v1
+kind: PodTemplate
+metadata:
+  name: ''
+  namespace: ''
+template:
+  metadata:
+    labels:
+      app: kubilitics
+  spec:
+    containers:
+      - name: container-1
+        image: nginx`,
+
+  ControllerRevision: `apiVersion: apps/v1
+kind: ControllerRevision
+metadata:
+  name: ''
+  namespace: ''
+revision: 1
+data:
+  # Managed by StatefulSet or DaemonSet
+  # Provide the underlying object state here
+  {}`,
+
+  ResourceSlice: `apiVersion: resource.k8s.io/v1alpha3
+kind: ResourceSlice
+metadata:
+  name: ''
+spec:
+  driverName: ''
+  pool:
+    name: ''
+    generation: 0
+    resourceSliceCount: 1`,
+
+  DeviceClass: `apiVersion: resource.k8s.io/v1
+kind: DeviceClass
+metadata:
+  name: ''
+spec:
+  selectors:
+    - cel:
+        expression: "device.driver == 'example.com/driver'"`
 };

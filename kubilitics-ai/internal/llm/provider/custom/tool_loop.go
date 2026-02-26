@@ -52,6 +52,9 @@ func (c *CustomClientImpl) runAgentLoop(
 	msgs := makeCustomMessages(messages)
 	toolsForAPI := types.CapToolsForAPI(tools)
 	cTools := makeCustomTools(toolsForAPI)
+	if len(cTools) > types.MaxToolsPerRequest {
+		cTools = cTools[:types.MaxToolsPerRequest]
+	}
 
 	for turn := 0; turn < cfg.MaxTurns; turn++ {
 		req := customChatRequest{
@@ -106,6 +109,10 @@ func (c *CustomClientImpl) streamSingleTurn(
 	evtCh chan<- types.AgentStreamEvent,
 	turn int,
 ) (string, []customToolCall, error) {
+	// Enforce 128-tool limit right before send; OpenAI-compatible APIs reject larger arrays.
+	if len(req.Tools) > types.MaxToolsPerRequest {
+		req.Tools = req.Tools[:types.MaxToolsPerRequest]
+	}
 	body, err := json.Marshal(req)
 	if err != nil {
 		return "", nil, fmt.Errorf("marshal: %w", err)

@@ -302,7 +302,8 @@ func TestHandler_GetCluster_WithKubeconfigHeader(t *testing.T) {
 
 	// Handler should attempt to use kubeconfig
 	// May fail due to test kubeconfig, but should not fall back to stored cluster
-	if rec.Code == http.StatusOK {
+	switch rec.Code {
+	case http.StatusOK:
 		var clusterInfo map[string]interface{}
 		if err := json.NewDecoder(rec.Body).Decode(&clusterInfo); err == nil {
 			// Verify it's using kubeconfig (should have context from kubeconfig)
@@ -312,7 +313,7 @@ func TestHandler_GetCluster_WithKubeconfigHeader(t *testing.T) {
 				}
 			}
 		}
-	} else if rec.Code == http.StatusBadRequest || rec.Code == http.StatusInternalServerError {
+	case http.StatusBadRequest, http.StatusInternalServerError:
 		// Expected - test kubeconfig doesn't connect to real cluster
 		// But verify it attempted to use kubeconfig (not stored cluster)
 		t.Logf("Handler attempted to use kubeconfig (expected failure for test kubeconfig): status=%d", rec.Code)
@@ -385,7 +386,8 @@ func TestHandler_AddCluster_WithKubeconfigBase64(t *testing.T) {
 	router.ServeHTTP(rec, req)
 
 	// Headlamp/Lens model: should return 200 OK (not 201 Created) and not store cluster
-	if rec.Code == http.StatusOK {
+	switch rec.Code {
+	case http.StatusOK:
 		var clusterInfo map[string]interface{}
 		if err := json.NewDecoder(rec.Body).Decode(&clusterInfo); err == nil {
 			// Verify cluster info returned but not stored
@@ -393,7 +395,7 @@ func TestHandler_AddCluster_WithKubeconfigBase64(t *testing.T) {
 				t.Error("Expected cluster info with id field")
 			}
 		}
-	} else if rec.Code == http.StatusBadRequest || rec.Code == http.StatusInternalServerError {
+	case http.StatusBadRequest, http.StatusInternalServerError:
 		// Expected - test kubeconfig doesn't connect to real cluster
 		t.Logf("Handler attempted to validate kubeconfig (expected failure for test kubeconfig): status=%d", rec.Code)
 	}
@@ -408,7 +410,7 @@ func TestHandler_AddCluster_WithKubeconfigPath_Legacy(t *testing.T) {
 
 	reqBody := map[string]string{
 		"kubeconfig_path": "/path/to/kubeconfig",
-		"context":        "test-ctx",
+		"context":         "test-ctx",
 	}
 	body, _ := json.Marshal(reqBody)
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/clusters", bytes.NewReader(body))

@@ -6,7 +6,10 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
+	"sync"
 	"time"
+	"unicode"
 
 	"github.com/google/uuid"
 	"github.com/kubilitics/kubilitics-backend/internal/config"
@@ -16,6 +19,7 @@ import (
 	"golang.org/x/time/rate"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/tools/clientcmd"
 )
 
 const defaultMaxClusters = 100
@@ -25,6 +29,10 @@ type ClusterService interface {
 	ListClusters(ctx context.Context) ([]*models.Cluster, error)
 	GetCluster(ctx context.Context, id string) (*models.Cluster, error)
 	AddCluster(ctx context.Context, kubeconfigPath, contextName string) (*models.Cluster, error)
+	// AddClusterFromBytes adds a cluster from raw kubeconfig content (e.g., uploaded via browser).
+	// It writes the content to ~/.kubilitics/kubeconfigs/<context>.yaml and delegates to AddCluster.
+	// The cluster is fully persisted and provider-detected, same as AddCluster.
+	AddClusterFromBytes(ctx context.Context, kubeconfigBytes []byte, contextName string) (*models.Cluster, error)
 	RemoveCluster(ctx context.Context, id string) error
 	TestConnection(ctx context.Context, id string) error
 	GetClusterSummary(ctx context.Context, id string) (*models.ClusterSummary, error)
@@ -50,6 +58,7 @@ type ClusterService interface {
 type K8sClientFactory func(kubeconfigPath, contextName string) (*k8s.Client, error)
 
 type clusterService struct {
+	mu                 sync.RWMutex
 	repo               repository.ClusterRepository
 	clients            map[string]*k8s.Client // id -> live K8s client
 	overviewCache      *OverviewCache
@@ -112,48 +121,79 @@ func (s *clusterService) ListClusters(ctx context.Context) ([]*models.Cluster, e
 	}
 
 	// Enrich with live client status where available; try reconnect when client missing
+	// P0-B: Parallelize enrichment to avoid sequential delays from hanging EKS clusters.
+	var wg sync.WaitGroup
 	for _, c := range clusters {
-		c.IsCurrent = (c.Context == currentContext)
-		if client, ok := s.clients[c.ID]; ok {
-			info, err := client.GetClusterInfo(ctx)
-			if err != nil {
-				c.Status = clusterStatusFromError(err)
-				_ = s.repo.Update(ctx, c)
-				continue
-			}
-			c.ServerURL = info["server_url"].(string)
-			c.Version = info["version"].(string)
-			c.NodeCount = info["node_count"].(int)
-			c.NamespaceCount = info["namespace_count"].(int)
-			c.Status = "connected"
-			c.LastConnected = time.Now()
-			if p, err := client.DetectProvider(ctx); err == nil && p != "" {
-				c.Provider = p
-			}
-			_ = s.repo.Update(ctx, c)
-		} else {
-			// No in-memory client (e.g. after restart or temp kubeconfig gone); try reconnect with stored or default kubeconfig
-			if s.tryReconnectCluster(ctx, c) {
-				if client, ok := s.clients[c.ID]; ok {
-					info, _ := client.GetClusterInfo(ctx)
-					if info != nil {
-						c.ServerURL = info["server_url"].(string)
-						c.Version = info["version"].(string)
-						c.NodeCount = info["node_count"].(int)
-						c.NamespaceCount = info["namespace_count"].(int)
-					}
-					c.Status = "connected"
-					c.LastConnected = time.Now()
-					if p, err := client.DetectProvider(ctx); err == nil && p != "" {
-						c.Provider = p
-					}
-					_ = s.repo.Update(ctx, c)
+		wg.Add(1)
+		go func(c *models.Cluster) {
+			defer func() {
+				if r := recover(); r != nil {
+					fmt.Printf("[ListClusters] Panic in enrichment goroutine for cluster %s: %v\n", c.ID, r)
 				}
+				wg.Done()
+			}()
+
+			// Per-cluster timeout for background enrichment to ensure responsiveness.
+			clusterCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+			defer cancel()
+
+			c.IsCurrent = (c.Context == currentContext)
+
+			s.mu.RLock()
+			client, hasClient := s.clients[c.ID]
+			s.mu.RUnlock()
+
+			if hasClient {
+				info, err := client.GetClusterInfo(clusterCtx)
+				if err != nil {
+					c.Status = clusterStatusFromError(err)
+					_ = s.repo.Update(ctx, c)
+					return
+				}
+				c.ServerURL = info["server_url"].(string)
+				c.Version = info["version"].(string)
+				c.NodeCount = info["node_count"].(int)
+				c.NamespaceCount = info["namespace_count"].(int)
+				c.Status = "connected"
+				c.LastConnected = time.Now()
+				if p, err := client.DetectProvider(clusterCtx); err == nil && p != "" {
+					c.Provider = p
+				}
+				_ = s.repo.Update(ctx, c)
+
+				// Start/Ensure cache (internal lockers handle concurrency)
+				_ = s.overviewCache.StartClusterCache(clusterCtx, c.ID, client)
 			} else {
-				c.Status = "disconnected"
+				// No client in map, try to reconnect
+				if s.tryReconnectCluster(clusterCtx, c) {
+					// tryReconnect successfully updated s.clients (with internal lock)
+					s.mu.RLock()
+					client = s.clients[c.ID]
+					s.mu.RUnlock()
+
+					if client != nil {
+						info, _ := client.GetClusterInfo(clusterCtx)
+						if info != nil {
+							c.ServerURL = info["server_url"].(string)
+							c.Version = info["version"].(string)
+							c.NodeCount = info["node_count"].(int)
+							c.NamespaceCount = info["namespace_count"].(int)
+						}
+						c.Status = "connected"
+						c.LastConnected = time.Now()
+						if p, err := client.DetectProvider(clusterCtx); err == nil && p != "" {
+							c.Provider = p
+						}
+						_ = s.repo.Update(ctx, c)
+						_ = s.overviewCache.StartClusterCache(clusterCtx, c.ID, client)
+					}
+				} else {
+					c.Status = "disconnected"
+				}
 			}
-		}
+		}(c)
 	}
+	wg.Wait()
 	return clusters, nil
 }
 
@@ -162,9 +202,18 @@ func (s *clusterService) GetCluster(ctx context.Context, id string) (*models.Clu
 	if err != nil {
 		return nil, err
 	}
-	if client, ok := s.clients[id]; ok {
-		info, err := client.GetClusterInfo(ctx)
-		if err == nil {
+	if c == nil {
+		return nil, nil
+	}
+
+	s.mu.RLock()
+	client, ok := s.clients[id]
+	s.mu.RUnlock()
+
+	if ok {
+		ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+		defer cancel()
+		if info, err := client.GetClusterInfo(ctx); err == nil {
 			c.ServerURL = info["server_url"].(string)
 			c.Version = info["version"].(string)
 			c.NodeCount = info["node_count"].(int)
@@ -181,7 +230,10 @@ func (s *clusterService) GetCluster(ctx context.Context, id string) (*models.Clu
 		}
 	} else {
 		if s.tryReconnectCluster(ctx, c) {
-			if client, ok := s.clients[id]; ok {
+			s.mu.RLock()
+			client, ok = s.clients[id]
+			s.mu.RUnlock()
+			if ok {
 				info, _ := client.GetClusterInfo(ctx)
 				if info != nil {
 					c.ServerURL = info["server_url"].(string)
@@ -204,27 +256,44 @@ func (s *clusterService) GetCluster(ctx context.Context, id string) (*models.Clu
 }
 
 func (s *clusterService) AddCluster(ctx context.Context, kubeconfigPath, contextName string) (*models.Cluster, error) {
+	fmt.Printf("[AddCluster] Starting for context: %s, path: %s\n", contextName, kubeconfigPath)
+
+	if kubeconfigPath == "" {
+		kubeconfigPath = os.Getenv("KUBECONFIG")
+		if kubeconfigPath == "" {
+			home, _ := os.UserHomeDir()
+			if home != "" {
+				kubeconfigPath = filepath.Join(home, ".kube", "config")
+			}
+		}
+	}
+
+	if kubeconfigPath == "" {
+		return nil, fmt.Errorf("could not determine kubeconfig path")
+	}
+
 	list, err := s.repo.List(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to list clusters: %w", err)
+		return nil, fmt.Errorf("failed to check existing clusters: %w", err)
 	}
+
 	if len(list) >= s.maxClusters {
 		return nil, fmt.Errorf("cluster limit reached (max %d); cannot add more clusters", s.maxClusters)
 	}
 
+	if _, err := os.Stat(kubeconfigPath); err != nil {
+		return nil, fmt.Errorf("kubeconfig not found: %w", err)
+	}
+
+	fmt.Printf("[AddCluster] Initializing K8s client for %s\n", contextName)
 	var client *k8s.Client
 	if s.clientFactory != nil {
-		var err error
 		client, err = s.clientFactory(kubeconfigPath, contextName)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create client: %w", err)
-		}
 	} else {
-		var err error
 		client, err = k8s.NewClient(kubeconfigPath, contextName)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create client: %w", err)
-		}
+	}
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize k8s client: %w", err)
 	}
 	if s.k8sTimeout > 0 {
 		client.SetTimeout(s.k8sTimeout)
@@ -233,19 +302,30 @@ func (s *clusterService) AddCluster(ctx context.Context, kubeconfigPath, context
 		client.SetLimiter(rate.NewLimiter(rate.Limit(s.k8sRateLimitPerSec), s.k8sRateLimitBurst))
 	}
 
-	if err := client.TestConnection(ctx); err != nil {
-		return nil, fmt.Errorf("connection test failed: %w", err)
-	}
+	// P0-B: For new registrations, cap connection test to 5s to avoid blocking the UI forever.
+	fmt.Printf("[AddCluster] Testing connection for %s (5s timeout)\n", contextName)
+	regCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
 
-	info, err := client.GetClusterInfo(ctx)
-	if err != nil {
-		return nil, err
-	}
-	serverURL := info["server_url"].(string)
-	version := info["version"].(string)
+	status := "connected"
+	serverURL := ""
+	version := ""
 	provider := k8s.ProviderOnPrem
-	if p, err := client.DetectProvider(ctx); err == nil && p != "" {
-		provider = p
+
+	if err := client.TestConnection(regCtx); err != nil {
+		fmt.Printf("[AddCluster] Connection test failed for %s: %v\n", contextName, err)
+		status = clusterStatusFromError(err)
+	} else {
+		fmt.Printf("[AddCluster] Connection test successful for %s\n", contextName)
+		if info, err := client.GetClusterInfo(regCtx); err == nil {
+			serverURL = info["server_url"].(string)
+			version = info["version"].(string)
+			if p, err := client.DetectProvider(regCtx); err == nil && p != "" {
+				provider = p
+			}
+		} else {
+			status = "error"
+		}
 	}
 
 	// P2-10: Idempotent add — return existing cluster (same ID) when (context, kubeconfig_path) or (context, server_url) matches.
@@ -254,39 +334,135 @@ func (s *clusterService) AddCluster(ctx context.Context, kubeconfigPath, context
 		if c.Context != contextName {
 			continue
 		}
-		if filepath.Clean(c.KubeconfigPath) == normPath || c.ServerURL == serverURL {
-			c.Status = "connected"
+		// Match by path or server URL (if we were able to get it)
+		pathMatch := filepath.Clean(c.KubeconfigPath) == normPath
+		urlMatch := serverURL != "" && c.ServerURL == serverURL
+
+		if pathMatch || urlMatch {
+			c.Status = status
 			c.LastConnected = time.Now()
-			c.ServerURL = serverURL
-			c.Version = version
-			c.Provider = provider
+			if serverURL != "" {
+				c.ServerURL = serverURL
+			}
+			if version != "" {
+				c.Version = version
+			}
+			if provider != k8s.ProviderOnPrem {
+				c.Provider = provider
+			}
 			c.UpdatedAt = time.Now()
-			_ = s.repo.Update(ctx, c)
-			s.clients[c.ID] = client
-			_ = s.overviewCache.StartClusterCache(ctx, c.ID, client)
+			fmt.Printf("[AddCluster] Idempotent match found, updating cluster %s\n", c.ID)
+			if err := s.repo.Update(ctx, c); err != nil {
+				return nil, fmt.Errorf("failed to update existing cluster: %w", err)
+			}
+			if status == "connected" {
+				s.mu.Lock()
+				s.clients[c.ID] = client
+				s.mu.Unlock()
+				_ = s.overviewCache.StartClusterCache(ctx, c.ID, client)
+			}
 			return c, nil
 		}
 	}
 
 	cluster := &models.Cluster{
 		ID:             uuid.New().String(),
-		Name:           contextName,
+		Name:           contextName, // Default name to context
 		Context:        contextName,
-		KubeconfigPath: kubeconfigPath,
+		KubeconfigPath: normPath,
 		ServerURL:      serverURL,
 		Version:        version,
-		Status:         "connected",
+		Status:         status,
 		Provider:       provider,
 		LastConnected:  time.Now(),
 		CreatedAt:      time.Now(),
 		UpdatedAt:      time.Now(),
 	}
+
+	fmt.Printf("[AddCluster] Persisting new cluster %s in repo\n", cluster.ID)
 	if err := s.repo.Create(ctx, cluster); err != nil {
 		return nil, fmt.Errorf("failed to persist cluster: %w", err)
 	}
-	s.clients[cluster.ID] = client
-	_ = s.overviewCache.StartClusterCache(ctx, cluster.ID, client)
+
+	if status == "connected" {
+		s.mu.Lock()
+		s.clients[cluster.ID] = client
+		s.mu.Unlock()
+		_ = s.overviewCache.StartClusterCache(ctx, cluster.ID, client)
+	}
+
+	fmt.Printf("[AddCluster] Successfully registered %s\n", cluster.ID)
 	return cluster, nil
+}
+
+// AddClusterFromBytes adds a cluster from raw kubeconfig bytes (browser upload / paste).
+// It resolves the context name, writes the kubeconfig to ~/.kubilitics/kubeconfigs/<context>.yaml
+// with 0600 permissions, then delegates fully to AddCluster for persistence and provider detection.
+func (s *clusterService) AddClusterFromBytes(ctx context.Context, kubeconfigBytes []byte, contextName string) (*models.Cluster, error) {
+	// Parse kubeconfig to resolve context name and validate structure.
+	rawConfig, err := clientcmd.Load(kubeconfigBytes)
+	if err != nil {
+		return nil, fmt.Errorf("invalid kubeconfig: %w", err)
+	}
+
+	if contextName == "" {
+		contextName = rawConfig.CurrentContext
+	}
+	if contextName == "" {
+		// Pick first available context when current-context is not set.
+		for name := range rawConfig.Contexts {
+			contextName = name
+			break
+		}
+	}
+	if contextName == "" {
+		return nil, fmt.Errorf("kubeconfig contains no contexts")
+	}
+	if _, exists := rawConfig.Contexts[contextName]; !exists {
+		available := make([]string, 0, len(rawConfig.Contexts))
+		for n := range rawConfig.Contexts {
+			available = append(available, n)
+		}
+		return nil, fmt.Errorf("context %q not found in kubeconfig (available: %s)", contextName, strings.Join(available, ", "))
+	}
+
+	// Persist to ~/.kubilitics/kubeconfigs/<sanitized-context>.yaml
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return nil, fmt.Errorf("cannot determine home directory: %w", err)
+	}
+	kubeDir := filepath.Join(home, ".kubilitics", "kubeconfigs")
+	if err := os.MkdirAll(kubeDir, 0700); err != nil {
+		return nil, fmt.Errorf("failed to create kubeconfigs directory: %w", err)
+	}
+
+	safeName := sanitizeContextForFilename(contextName)
+	kubeconfigPath := filepath.Join(kubeDir, safeName+".yaml")
+
+	if err := os.WriteFile(kubeconfigPath, kubeconfigBytes, 0600); err != nil {
+		return nil, fmt.Errorf("failed to write kubeconfig: %w", err)
+	}
+
+	fmt.Printf("[AddClusterFromBytes] Written kubeconfig to %s for context %s\n", kubeconfigPath, contextName)
+	return s.AddCluster(ctx, kubeconfigPath, contextName)
+}
+
+// sanitizeContextForFilename maps a Kubernetes context name to a safe filesystem name.
+// Characters outside [a-zA-Z0-9._-] are replaced with '-'. Max length 200.
+func sanitizeContextForFilename(name string) string {
+	safe := strings.Map(func(r rune) rune {
+		if unicode.IsLetter(r) || unicode.IsDigit(r) || r == '-' || r == '_' || r == '.' {
+			return r
+		}
+		return '-'
+	}, name)
+	if len(safe) > 200 {
+		safe = safe[:200]
+	}
+	if safe == "" {
+		safe = "default"
+	}
+	return safe
 }
 
 func (s *clusterService) RemoveCluster(ctx context.Context, id string) error {
@@ -296,13 +472,17 @@ func (s *clusterService) RemoveCluster(ctx context.Context, id string) error {
 	if err := s.repo.Delete(ctx, id); err != nil {
 		return err
 	}
+	s.mu.Lock()
 	delete(s.clients, id)
+	s.mu.Unlock()
 	s.overviewCache.StopClusterCache(id)
 	return nil
 }
 
 func (s *clusterService) TestConnection(ctx context.Context, id string) error {
+	s.mu.RLock()
 	client, exists := s.clients[id]
+	s.mu.RUnlock()
 	if !exists {
 		return fmt.Errorf("cluster not found: %s", id)
 	}
@@ -310,7 +490,9 @@ func (s *clusterService) TestConnection(ctx context.Context, id string) error {
 }
 
 func (s *clusterService) GetClusterSummary(ctx context.Context, id string) (*models.ClusterSummary, error) {
+	s.mu.RLock()
 	client, exists := s.clients[id]
+	s.mu.RUnlock()
 	if !exists {
 		return nil, fmt.Errorf("cluster not found: %s", id)
 	}
@@ -338,9 +520,11 @@ func (s *clusterService) GetClusterSummary(ctx context.Context, id string) (*mod
 
 // GetClient returns K8s client for internal use
 func (s *clusterService) GetClient(id string) (*k8s.Client, error) {
-	client, exists := s.clients[id]
-	if !exists {
-		return nil, fmt.Errorf("cluster not found: %s", id)
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	client, ok := s.clients[id]
+	if !ok {
+		return nil, fmt.Errorf("client not found for cluster %s", id)
 	}
 	return client, nil
 }
@@ -363,8 +547,15 @@ func (s *clusterService) HasMetalLB(ctx context.Context, id string) (bool, error
 	return true, nil
 }
 
+// loadStartupTimeout is the per-cluster timeout for connection tests during startup.
+// Keep it short so the backend starts promptly even when clusters are offline or require
+// slow exec-based auth (aws eks get-token, gke-gcloud-auth-plugin, etc.).
+const loadStartupTimeout = 8 * time.Second
+
 // LoadClustersFromRepo restores K8s clients from persisted clusters (call on startup).
 // Per-cluster failures do not abort the process; each cluster gets status disconnected/error.
+// Connection tests run with a hard per-cluster timeout so unreachable or exec-auth clusters
+// (EKS, GKE, AKS) never block the server from starting.
 func (s *clusterService) LoadClustersFromRepo(ctx context.Context) error {
 	clusters, err := s.repo.List(ctx)
 	if err != nil {
@@ -376,30 +567,64 @@ func (s *clusterService) LoadClustersFromRepo(ctx context.Context) error {
 			_ = s.repo.Update(ctx, c)
 			continue
 		}
-		client, err := k8s.NewClient(c.KubeconfigPath, c.Context)
-		if err != nil {
+		// New client for each cluster
+		var client *k8s.Client
+		var clientErr error
+		if s.clientFactory != nil {
+			client, clientErr = s.clientFactory(c.KubeconfigPath, c.Context)
+		} else {
+			client, clientErr = k8s.NewClient(c.KubeconfigPath, c.Context)
+		}
+
+		if clientErr != nil {
+			fmt.Printf("[LoadClustersFromRepo] Skipping cluster %s (%s): failed to create client: %v\n", c.ID, c.Context, clientErr)
 			c.Status = "error"
 			_ = s.repo.Update(ctx, c)
 			continue
 		}
+
 		if s.k8sTimeout > 0 {
 			client.SetTimeout(s.k8sTimeout)
 		}
 		if s.k8sRateLimitPerSec > 0 && s.k8sRateLimitBurst > 0 {
 			client.SetLimiter(rate.NewLimiter(rate.Limit(s.k8sRateLimitPerSec), s.k8sRateLimitBurst))
 		}
-		if err := client.TestConnection(ctx); err != nil {
-			c.Status = clusterStatusFromError(err)
-			_ = s.repo.Update(ctx, c)
-			continue
+
+		// Test connection with a hard per-cluster deadline so exec-based auth plugins
+		// (aws eks get-token, gke-gcloud-auth-plugin) and offline clusters don't block startup.
+		testCtx, testCancel := context.WithTimeout(ctx, loadStartupTimeout)
+		connErr := client.TestConnection(testCtx)
+		testCancel()
+		if connErr != nil {
+			fmt.Printf("[LoadClustersFromRepo] Cluster %s (%s): connection test failed (%v) — marking %s\n",
+				c.ID, c.Context, connErr, clusterStatusFromError(connErr))
+			c.Status = clusterStatusFromError(connErr)
+		} else {
+			c.Status = "connected"
 		}
-		s.clients[c.ID] = client
-		c.Status = "connected"
-		c.LastConnected = time.Now()
-		_ = s.overviewCache.StartClusterCache(ctx, c.ID, client)
-		if p, err := client.DetectProvider(ctx); err == nil && p != "" {
-			c.Provider = p
+
+		if connErr == nil {
+			// Only register the live client and start the informer cache when the cluster
+			// is reachable. Starting informers for offline/disconnected clusters causes
+			// continuous reflector log spam as they hammer unreachable API servers.
+			s.mu.Lock()
+			s.clients[c.ID] = client
+			s.mu.Unlock()
+
+			c.LastConnected = time.Now()
+			_ = s.overviewCache.StartClusterCache(ctx, c.ID, client)
+
+			// Detect provider with the same short timeout so it never blocks startup.
+			provCtx, provCancel := context.WithTimeout(ctx, loadStartupTimeout)
+			if p, err := client.DetectProvider(provCtx); err == nil && p != "" {
+				c.Provider = p
+			}
+			provCancel()
+		} else {
+			fmt.Printf("[LoadClustersFromRepo] Cluster %s (%s): skipping informer cache (cluster is %s)\n",
+				c.ID, c.Context, c.Status)
 		}
+
 		_ = s.repo.Update(ctx, c)
 	}
 	return nil

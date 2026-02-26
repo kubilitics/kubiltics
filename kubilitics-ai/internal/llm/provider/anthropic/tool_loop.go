@@ -139,6 +139,10 @@ func (c *AnthropicClientImpl) streamSingleTurn(
 	evtCh chan<- types.AgentStreamEvent,
 	turn int,
 ) (string, []toolUseRecord, error) {
+	// Enforce 128-tool limit right before send; API rejects larger arrays.
+	if len(req.Tools) > types.MaxToolsPerRequest {
+		req.Tools = req.Tools[:types.MaxToolsPerRequest]
+	}
 	// ── Build and send HTTP request ───────────────────────────────────────────
 	reqBody, err := json.Marshal(req)
 	if err != nil {

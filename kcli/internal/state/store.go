@@ -15,13 +15,15 @@ const (
 )
 
 type Store struct {
-	LastContext        string              `json:"lastContext,omitempty"`
-	RecentContexts     []string            `json:"recentContexts,omitempty"`
-	LastNamespace      string              `json:"lastNamespace,omitempty"`
-	RecentNamespaces   []string            `json:"recentNamespaces,omitempty"`
-	Favorites          []string            `json:"favorites,omitempty"`
-	ContextGroups      map[string][]string `json:"contextGroups,omitempty"`
-	ActiveContextGroup string              `json:"activeContextGroup,omitempty"`
+	LastContext         string              `json:"lastContext,omitempty"`
+	RecentContexts      []string            `json:"recentContexts,omitempty"`
+	LastNamespace       string              `json:"lastNamespace,omitempty"`
+	RecentNamespaces    []string            `json:"recentNamespaces,omitempty"`
+	Favorites           []string            `json:"favorites,omitempty"`           // context favorites
+	NamespaceFavorites  []string            `json:"namespaceFavorites,omitempty"`  // namespace favorites
+	ContextAliases      map[string]string   `json:"contextAliases,omitempty"`      // alias → context name
+	ContextGroups       map[string][]string `json:"contextGroups,omitempty"`
+	ActiveContextGroup  string              `json:"activeContextGroup,omitempty"`
 }
 
 func FilePath() (string, error) {
@@ -96,6 +98,53 @@ func (s *Store) RemoveFavorite(name string) {
 		}
 	}
 	s.Favorites = out
+}
+
+// Namespace favorites
+
+func (s *Store) AddNamespaceFavorite(name string) {
+	s.NamespaceFavorites = addUniqueFront(s.NamespaceFavorites, name, 200)
+}
+
+func (s *Store) RemoveNamespaceFavorite(name string) {
+	out := make([]string, 0, len(s.NamespaceFavorites))
+	for _, v := range s.NamespaceFavorites {
+		if v != name {
+			out = append(out, v)
+		}
+	}
+	s.NamespaceFavorites = out
+}
+
+// Context aliases
+
+func (s *Store) SetContextAlias(alias, context string) {
+	alias = strings.TrimSpace(alias)
+	context = strings.TrimSpace(context)
+	if alias == "" || context == "" {
+		return
+	}
+	if s.ContextAliases == nil {
+		s.ContextAliases = map[string]string{}
+	}
+	s.ContextAliases[alias] = context
+}
+
+func (s *Store) RemoveContextAlias(alias string) {
+	alias = strings.TrimSpace(alias)
+	if s.ContextAliases != nil {
+		delete(s.ContextAliases, alias)
+	}
+}
+
+func (s *Store) ResolveContextAlias(nameOrAlias string) string {
+	nameOrAlias = strings.TrimSpace(nameOrAlias)
+	if s.ContextAliases != nil {
+		if resolved, ok := s.ContextAliases[nameOrAlias]; ok {
+			return resolved
+		}
+	}
+	return nameOrAlias
 }
 
 func (s *Store) SetContextGroup(name string, contexts []string) {

@@ -10,7 +10,10 @@ import (
 	"os/exec"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
+
+	"github.com/kubilitics/kcli/internal/terminal"
 )
 
 // MinKubectlMajor and MinKubectlMinor define the minimum recommended kubectl client version.
@@ -23,6 +26,13 @@ type ExecOptions struct {
 	Stdin  io.Reader
 	Stdout io.Writer
 	Stderr io.Writer
+	// AuditFn, when set, is called after every mutating kubectl execution
+	// with the full args list, the process exit code (0 = success), and the
+	// wall-clock duration in milliseconds.  Called synchronously before
+	// RunKubectl returns so the audit record is always written.  The
+	// implementation must be fast and non-blocking (e.g. write to a file;
+	// do NOT make network calls).  Set to nil to disable.
+	AuditFn func(args []string, exitCode int, durationMS int64)
 }
 
 var mutatingVerbs = map[string]struct{}{
@@ -31,9 +41,59 @@ var mutatingVerbs = map[string]struct{}{
 	"rollout": {}, "scale": {}, "autoscale": {}, "label": {}, "annotate": {},
 }
 
+var (
+	kubectlCheckOnce sync.Once
+	kubectlCheckErr  error
+)
+
+// kubectlEnv returns the environment for kubectl child process.
+// P2-10: When ColorDisabled (e.g. Windows cmd.exe), sets TERM=dumb so kubectl outputs plain text.
+func kubectlEnv() []string {
+	env := os.Environ()
+	if !terminal.ColorDisabled() {
+		return env
+	}
+	// Override TERM so kubectl does not emit ANSI codes
+	out := make([]string, 0, len(env)+1)
+	prefix := "TERM="
+	for _, e := range env {
+		if !strings.HasPrefix(e, prefix) {
+			out = append(out, e)
+		}
+	}
+	out = append(out, "TERM=dumb")
+	return out
+}
+
+// getKubectlBinary returns the kubectl binary path (from KCLI_KUBECTL_PATH env or "kubectl").
+func getKubectlBinary() string {
+	if p := strings.TrimSpace(os.Getenv("KCLI_KUBECTL_PATH")); p != "" {
+		return p
+	}
+	return "kubectl"
+}
+
+// ensureKubectlAvailable runs kubectl version --client once per process and caches the result.
+// This avoids running the check for commands that do not use kubectl (e.g. version, completion, prompt).
+func ensureKubectlAvailable() error {
+	kubectlCheckOnce.Do(func() {
+		cmd := exec.Command(getKubectlBinary(), "version", "--client", "--output=json")
+		cmd.Stdout = nil
+		cmd.Stderr = nil
+		kubectlCheckErr = cmd.Run()
+	})
+	return kubectlCheckErr
+}
+
 func RunKubectl(args []string, opts ExecOptions) error {
 	if len(args) == 0 {
 		return fmt.Errorf("no kubectl command provided")
+	}
+	if err := ensureKubectlAvailable(); err != nil {
+		return fmt.Errorf("kubectl not available: %w", err)
+	}
+	if opts.Stderr != nil {
+		WarnKubectlVersionSkew(opts.Stderr)
 	}
 	if shouldConfirm(args, opts.Force) {
 		ok, err := askForConfirmation(args)
@@ -44,7 +104,100 @@ func RunKubectl(args []string, opts ExecOptions) error {
 			return fmt.Errorf("aborted")
 		}
 	}
-	cmd := exec.Command("kubectl", args...)
+	cmd := exec.Command(getKubectlBinary(), args...)
+	cmd.Env = kubectlEnv()
+	stdin := opts.Stdin
+	if stdin == nil {
+		stdin = os.Stdin
+	}
+	stdout := opts.Stdout
+	if stdout == nil {
+		stdout = os.Stdout
+	}
+	stderr := opts.Stderr
+	if stderr == nil {
+		stderr = os.Stderr
+	}
+	cmd.Stdin = stdin
+	cmd.Stdout = stdout
+	cmd.Stderr = stderr
+
+	// P2-5: Track timing for mutating verbs so we can write an audit record.
+	isMutating := opts.AuditFn != nil && isMutatingVerb(args)
+	start := time.Now()
+	runErr := cmd.Run()
+
+	if isMutating {
+		exitCode := 0
+		if runErr != nil {
+			if ee, ok := runErr.(*exec.ExitError); ok {
+				exitCode = ee.ExitCode()
+			} else {
+				exitCode = 1
+			}
+		}
+		opts.AuditFn(args, exitCode, time.Since(start).Milliseconds())
+	}
+
+	return runErr
+}
+
+// isMutatingVerb returns true when the first non-flag word in args is one of
+// the known mutating kubectl verbs.
+func isMutatingVerb(args []string) bool {
+	verb := firstVerb(args)
+	_, ok := mutatingVerbs[verb]
+	return ok
+}
+
+// NewKubectlCmd creates an *exec.Cmd for the given kubectl args with stdin,
+// stdout, and stderr wired from opts, but does NOT call cmd.Start().
+//
+// Use this when you need Start/Wait semantics (e.g. concurrent progress
+// display while kubectl runs in the background).  The caller is responsible
+// for calling cmd.Start() and cmd.Wait().
+//
+// Note: WarnKubectlVersionSkew is NOT called here to avoid duplicate warnings.
+// The caller should call WarnKubectlVersionSkew if needed before Start().
+func NewKubectlCmd(args []string, opts ExecOptions) (*exec.Cmd, error) {
+	if len(args) == 0 {
+		return nil, fmt.Errorf("no kubectl command provided")
+	}
+	if err := ensureKubectlAvailable(); err != nil {
+		return nil, fmt.Errorf("kubectl not available: %w", err)
+	}
+	cmd := exec.Command(getKubectlBinary(), args...)
+	cmd.Env = kubectlEnv()
+	stdin := opts.Stdin
+	if stdin == nil {
+		stdin = os.Stdin
+	}
+	stdout := opts.Stdout
+	if stdout == nil {
+		stdout = os.Stdout
+	}
+	stderr := opts.Stderr
+	if stderr == nil {
+		stderr = os.Stderr
+	}
+	cmd.Stdin = stdin
+	cmd.Stdout = stdout
+	cmd.Stderr = stderr
+	return cmd, nil
+}
+
+// RunKubectlContext is like RunKubectl but accepts a context for cancellation.
+// Useful for running kubectl commands that should be cancelled when a parent
+// operation completes (e.g. background event watchers).
+func RunKubectlContext(ctx context.Context, args []string, opts ExecOptions) error {
+	if len(args) == 0 {
+		return fmt.Errorf("no kubectl command provided")
+	}
+	if err := ensureKubectlAvailable(); err != nil {
+		return fmt.Errorf("kubectl not available: %w", err)
+	}
+	cmd := exec.CommandContext(ctx, getKubectlBinary(), args...)
+	cmd.Env = kubectlEnv()
 	stdin := opts.Stdin
 	if stdin == nil {
 		stdin = os.Stdin
@@ -64,7 +217,10 @@ func RunKubectl(args []string, opts ExecOptions) error {
 }
 
 func CaptureKubectl(args []string) (string, error) {
-	cmd := exec.Command("kubectl", args...)
+	if err := ensureKubectlAvailable(); err != nil {
+		return "", fmt.Errorf("kubectl not available: %w", err)
+	}
+	cmd := exec.Command(getKubectlBinary(), args...)
 	b, err := cmd.CombinedOutput()
 	return string(b), err
 }
@@ -110,12 +266,16 @@ func WarnKubectlVersionSkew(w io.Writer) {
 }
 
 func CaptureKubectlWithTimeout(args []string, timeout time.Duration) (string, error) {
+	if err := ensureKubectlAvailable(); err != nil {
+		return "", fmt.Errorf("kubectl not available: %w", err)
+	}
 	if timeout <= 0 {
 		return CaptureKubectl(args)
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
-	cmd := exec.CommandContext(ctx, "kubectl", args...)
+	cmd := exec.CommandContext(ctx, getKubectlBinary(), args...)
+	cmd.Env = kubectlEnv()
 	b, err := cmd.CombinedOutput()
 	if ctx.Err() == context.DeadlineExceeded {
 		return string(b), fmt.Errorf("kubectl timed out after %s", timeout)

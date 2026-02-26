@@ -1,88 +1,121 @@
 import { useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { normalizeKindForTopology } from '@/utils/resourceKindMapper';
-import { FileCode, Clock, Layers, Download, Trash2, Package, Code, List, ExternalLink, Network } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { FileCode, Clock, Layers, Download, Trash2, Package, GitCompare, Network } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
-import { toast } from 'sonner';
 import {
   ResourceDetailLayout,
-  
+  MetadataCard,
   YamlViewer,
-  YamlCompareViewer,
+  ResourceComparisonView,
   EventsSection,
   ActionsSection,
   DeleteConfirmDialog,
   ResourceTopologyView,
-  
-  
   type ResourceStatus,
-  type EventInfo,
-  type YamlVersion,
 } from '@/components/resources';
+import { useResourceDetail, useResourceEvents } from '@/hooks/useK8sResourceDetail';
+import { useDeleteK8sResource, type KubernetesResource } from '@/hooks/useKubernetes';
+import { useConnectionStatus } from '@/hooks/useConnectionStatus';
+import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
+import { useActiveClusterId } from '@/hooks/useActiveClusterId';
+import { normalizeKindForTopology } from '@/utils/resourceKindMapper';
+import { toast } from 'sonner';
+import { downloadResourceJson } from '@/lib/exportUtils';
 
-const mockCRD = {
-  name: 'certificates.cert-manager.io',
-  status: 'Established' as ResourceStatus,
-  group: 'cert-manager.io',
-  version: 'v1',
-  scope: 'Namespaced',
-  kind: 'Certificate',
-  plural: 'certificates',
-  singular: 'certificate',
-  shortNames: ['cert', 'certs'],
-  age: '90d',
-  versions: [
-    { name: 'v1', served: true, storage: true },
-    { name: 'v1alpha2', served: true, storage: false },
-  ],
-  conditions: [
-    { type: 'Established', status: 'True', reason: 'InitialNamesAccepted' },
-    { type: 'NamesAccepted', status: 'True', reason: 'NoConflicts' },
-  ],
-  printerColumns: [
-    { name: 'Ready', type: 'string', jsonPath: '.status.conditions[?(@.type=="Ready")].status' },
-    { name: 'Secret', type: 'string', jsonPath: '.spec.secretName' },
-    { name: 'Age', type: 'date', jsonPath: '.metadata.creationTimestamp' },
-  ],
-};
-
-// Mock custom resource instances
-const mockCRInstances = [
-  { name: 'my-tls-cert', namespace: 'production', ready: true },
-  { name: 'api-cert', namespace: 'production', ready: true },
-  { name: 'staging-cert', namespace: 'staging', ready: false },
-];
-
-const mockEvents: EventInfo[] = [];
+interface CRDResource extends KubernetesResource {
+  spec?: {
+    group: string;
+    names: { kind: string; plural: string; singular: string; shortNames?: string[] };
+    scope: string;
+    versions: Array<{ name: string; served: boolean; storage: boolean }>;
+  };
+  status?: {
+    conditions?: Array<{ type: string; status: string; reason: string; message?: string }>;
+  };
+}
 
 export default function CustomResourceDefinitionDetail() {
-  const { name } = useParams();
+  const { name } = useParams<{ name: string }>();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('overview');
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  const crd = mockCRD;
+  const { isConnected } = useConnectionStatus();
+  const clusterId = useActiveClusterId();
+  const backendBaseUrl = useBackendConfigStore((s) => s.backendBaseUrl);
+  const baseUrl = getEffectiveBackendBaseUrl(backendBaseUrl);
+
+  const { resource: crd, isLoading, error: resourceError, age, yaml, refetch } = useResourceDetail<CRDResource>(
+    'customresourcedefinitions',
+    name ?? undefined,
+    undefined,
+    undefined as unknown as CRDResource
+  );
+  const { events, refetch: refetchEvents } = useResourceEvents('CustomResourceDefinition', undefined, name ?? undefined);
+  const deleteResource = useDeleteK8sResource('customresourcedefinitions');
+
+  const crdName = crd?.metadata?.name ?? name ?? '';
+  const spec = crd?.spec;
+  const status = crd?.status;
+  const group = spec?.group ?? '-';
+  const scope = spec?.scope ?? '-';
+  const kind = spec?.names?.kind ?? '-';
+  const plural = spec?.names?.plural ?? '-';
+  const singular = spec?.names?.singular ?? '-';
+  const shortNames = spec?.names?.shortNames ?? [];
+  const versions = spec?.versions ?? [];
+  const conditions = status?.conditions ?? [];
 
   const handleDownloadYaml = useCallback(() => {
-    const blob = new Blob(['apiVersion: apiextensions.k8s.io/v1\nkind: CustomResourceDefinition\n...'], { type: 'application/yaml' });
+    if (!yaml) return;
+    const blob = new Blob([yaml], { type: 'application/yaml' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${crd.name || 'crd'}.yaml`;
+    a.download = `${crdName || 'crd'}.yaml`;
     a.click();
     URL.revokeObjectURL(url);
-  }, [crd.name]);
+  }, [yaml, crdName]);
 
-  const yaml = 'apiVersion: apiextensions.k8s.io/v1\nkind: CustomResourceDefinition\n...';
-  const yamlVersions: YamlVersion[] = yaml ? [{ id: 'current', label: 'Current Version', yaml, timestamp: 'now' }] : [];
+  const handleDownloadJson = useCallback(() => {
+    if (!crd) return;
+    downloadResourceJson(crd, `${crdName || 'crd'}.json`);
+    toast.success('JSON downloaded');
+  }, [crd, crdName]);
 
   const statusCards = [
-    { label: 'Group', value: crd.group, icon: Package, iconColor: 'primary' as const },
-    { label: 'Version', value: crd.version, icon: Layers, iconColor: 'info' as const },
-    { label: 'Scope', value: crd.scope, icon: FileCode, iconColor: 'success' as const },
-    { label: 'Age', value: crd.age, icon: Clock, iconColor: 'muted' as const },
+    { label: 'Group', value: group, icon: Package, iconColor: 'primary' as const },
+    { label: 'Versions', value: versions.length, icon: Layers, iconColor: 'info' as const },
+    { label: 'Scope', value: scope, icon: FileCode, iconColor: 'success' as const },
+    { label: 'Age', value: age || '-', icon: Clock, iconColor: 'muted' as const },
   ];
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <Skeleton className="h-20 w-full" />
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map((i) => (
+            <Skeleton key={i} className="h-24" />
+          ))}
+        </div>
+        <Skeleton className="h-96" />
+      </div>
+    );
+  }
+
+  if (isConnected && (resourceError || !crd?.metadata?.name)) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[40vh] gap-4">
+        <FileCode className="h-12 w-12 text-muted-foreground" />
+        <p className="text-lg font-medium">CRD not found</p>
+        <p className="text-sm text-muted-foreground">{name ? `No CRD "${name}".` : 'Missing name.'}</p>
+        <Button variant="outline" onClick={() => navigate('/customresourcedefinitions')}>Back to CRDs</Button>
+      </div>
+    );
+  }
 
   const tabs = [
     {
@@ -96,28 +129,28 @@ export default function CustomResourceDefinitionDetail() {
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
                   <p className="text-muted-foreground mb-1">Group</p>
-                  <p className="font-mono">{crd.group}</p>
+                  <p className="font-mono">{group}</p>
                 </div>
                 <div>
                   <p className="text-muted-foreground mb-1">Kind</p>
-                  <Badge variant="default">{crd.kind}</Badge>
+                  <Badge variant="default">{kind}</Badge>
                 </div>
                 <div>
                   <p className="text-muted-foreground mb-1">Plural</p>
-                  <p className="font-mono">{crd.plural}</p>
+                  <p className="font-mono">{plural}</p>
                 </div>
                 <div>
                   <p className="text-muted-foreground mb-1">Singular</p>
-                  <p className="font-mono">{crd.singular}</p>
+                  <p className="font-mono">{singular}</p>
                 </div>
                 <div>
                   <p className="text-muted-foreground mb-1">Scope</p>
-                  <Badge variant="outline">{crd.scope}</Badge>
+                  <Badge variant="outline">{scope}</Badge>
                 </div>
                 <div>
                   <p className="text-muted-foreground mb-1">Short Names</p>
                   <div className="flex gap-1 flex-wrap">
-                    {crd.shortNames.map((sn) => (
+                    {shortNames.map((sn) => (
                       <Badge key={sn} variant="secondary" className="font-mono text-xs">{sn}</Badge>
                     ))}
                   </div>
@@ -129,7 +162,7 @@ export default function CustomResourceDefinitionDetail() {
             <CardHeader><CardTitle className="text-base">Versions</CardTitle></CardHeader>
             <CardContent>
               <div className="space-y-2">
-                {crd.versions.map((ver) => (
+                {versions.map((ver) => (
                   <div key={ver.name} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
                     <div className="flex items-center gap-2">
                       <Badge variant={ver.storage ? 'default' : 'secondary'}>{ver.name}</Badge>
@@ -147,7 +180,7 @@ export default function CustomResourceDefinitionDetail() {
             <CardHeader><CardTitle className="text-base">Conditions</CardTitle></CardHeader>
             <CardContent>
               <div className="space-y-2">
-                {crd.conditions.map((condition) => (
+                {conditions.map((condition) => (
                   <div key={condition.type} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
                     <Badge variant={condition.status === 'True' ? 'default' : 'secondary'}>
                       {condition.type}
@@ -155,122 +188,32 @@ export default function CustomResourceDefinitionDetail() {
                     <span className="text-sm text-muted-foreground">{condition.reason}</span>
                   </div>
                 ))}
+                {conditions.length === 0 && <p className="text-sm text-muted-foreground">No conditions</p>}
               </div>
             </CardContent>
           </Card>
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2">
-                <List className="h-4 w-4" />
-                Printer Columns
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                {crd.printerColumns.map((col) => (
-                  <div key={col.name} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
-                    <div>
-                      <p className="font-medium text-sm">{col.name}</p>
-                      <p className="text-xs text-muted-foreground font-mono">{col.jsonPath}</p>
-                    </div>
-                    <Badge variant="outline">{col.type}</Badge>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+          <MetadataCard title="Labels" items={crd?.metadata?.labels ?? {}} variant="badges" />
         </div>
       ),
     },
+    { id: 'events', label: 'Events', content: <EventsSection events={events} /> },
+    { id: 'yaml', label: 'YAML', content: <YamlViewer yaml={yaml} resourceName={crdName} /> },
     {
-      id: 'instances',
-      label: `Instances (${mockCRInstances.length})`,
+      id: 'compare',
+      label: 'Compare',
+      icon: GitCompare,
       content: (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Custom Resource Instances</CardTitle>
-            <CardDescription>
-              All {crd.kind} resources in the cluster
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              {mockCRInstances.map((cr) => (
-                <div 
-                  key={cr.name}
-                  className="flex items-center justify-between p-4 rounded-lg bg-muted/50 hover:bg-muted cursor-pointer transition-colors"
-                >
-                  <div className="flex items-center gap-3">
-                    <Badge variant={cr.ready ? 'default' : 'secondary'}>
-                      {cr.ready ? 'Ready' : 'Not Ready'}
-                    </Badge>
-                    <div>
-                      <p className="font-medium">{cr.name}</p>
-                      <p className="text-xs text-muted-foreground">{cr.namespace}</p>
-                    </div>
-                  </div>
-                  <Button variant="ghost" size="sm">
-                    <ExternalLink className="h-4 w-4" />
-                  </Button>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+        <ResourceComparisonView
+          resourceType="customresourcedefinitions"
+          resourceKind="CustomResourceDefinition"
+          initialSelectedResources={[crdName]}
+          clusterId={clusterId ?? undefined}
+          backendBaseUrl={baseUrl ?? ''}
+          isConnected={isConnected}
+          embedded
+        />
       ),
     },
-    {
-      id: 'schema',
-      label: 'Schema',
-      content: (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
-              <Code className="h-4 w-4" />
-              OpenAPI Schema
-            </CardTitle>
-            <CardDescription>
-              The validation schema for {crd.kind} resources
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <pre className="p-4 rounded-lg bg-muted/50 overflow-auto text-sm font-mono">
-{`openAPIV3Schema:
-  type: object
-  properties:
-    spec:
-      type: object
-      properties:
-        secretName:
-          type: string
-          description: The name of the secret to store the certificate
-        issuerRef:
-          type: object
-          properties:
-            name:
-              type: string
-            kind:
-              type: string
-              enum: [Issuer, ClusterIssuer]
-        dnsNames:
-          type: array
-          items:
-            type: string
-        duration:
-          type: string
-    status:
-      type: object
-      properties:
-        conditions:
-          type: array`}
-            </pre>
-          </CardContent>
-        </Card>
-      ),
-    },
-    { id: 'events', label: 'Events', content: <EventsSection events={mockEvents} /> },
-    { id: 'yaml', label: 'YAML', content: <YamlViewer yaml={yaml} resourceName={crd.name} editable onSave={handleSaveYaml} /> },
-    { id: 'compare', label: 'Compare', content: <YamlCompareViewer versions={yamlVersions} resourceName={crd.name} /> },
     {
       id: 'topology',
       label: 'Topology',
@@ -281,7 +224,7 @@ export default function CustomResourceDefinitionDetail() {
           namespace={''}
           name={name ?? ''}
           sourceResourceType="CustomResourceDefinition"
-          sourceResourceName={crd?.name ?? name ?? ''}
+          sourceResourceName={crdName}
         />
       ),
     },
@@ -291,24 +234,28 @@ export default function CustomResourceDefinitionDetail() {
       content: (
         <ActionsSection actions={[
           { icon: Download, label: 'Download YAML', description: 'Export CRD definition', onClick: handleDownloadYaml },
+          { icon: Download, label: 'Export as JSON', description: 'Export CRD as JSON', onClick: handleDownloadJson },
           { icon: Trash2, label: 'Delete CRD', description: 'Remove this custom resource definition', variant: 'destructive', onClick: () => setShowDeleteDialog(true) },
         ]} />
       ),
     },
   ];
 
+  const statusLabel: ResourceStatus = 'Healthy';
+
   return (
     <>
       <ResourceDetailLayout
         resourceType="CustomResourceDefinition"
         resourceIcon={FileCode}
-        name={crd.name}
-        status="Healthy"
+        name={crdName}
+        status={statusLabel}
         backLink="/customresourcedefinitions"
         backLabel="Custom Resource Definitions"
-        headerMetadata={<span className="flex items-center gap-1.5 ml-2 text-sm text-muted-foreground"><Clock className="h-3.5 w-3.5" />Created {crd.age}</span>}
+        headerMetadata={<span className="flex items-center gap-1.5 ml-2 text-sm text-muted-foreground"><Clock className="h-3.5 w-3.5" />Created {age}</span>}
         actions={[
           { label: 'Download YAML', icon: Download, variant: 'outline', onClick: handleDownloadYaml },
+          { label: 'Export as JSON', icon: Download, variant: 'outline', onClick: handleDownloadJson },
           { label: 'Delete', icon: Trash2, variant: 'destructive', onClick: () => setShowDeleteDialog(true) },
         ]}
         statusCards={statusCards}
@@ -320,9 +267,9 @@ export default function CustomResourceDefinitionDetail() {
         open={showDeleteDialog}
         onOpenChange={setShowDeleteDialog}
         resourceType="CustomResourceDefinition"
-        resourceName={crd.name}
-        onConfirm={() => {
-          toast.success(`CRD ${crd.name} deleted (demo mode)`);
+        resourceName={crdName}
+        onConfirm={async () => {
+          await deleteResource.mutateAsync({ name: crdName });
           navigate('/customresourcedefinitions');
         }}
         requireNameConfirmation

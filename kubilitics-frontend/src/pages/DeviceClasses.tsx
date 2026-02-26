@@ -15,9 +15,10 @@ import { Link, useNavigate } from 'react-router-dom';
 import { ResourceCommandBar, ClusterScopedScope, ResourceExportDropdown, ListPagination, PAGE_SIZE_OPTIONS, ListPageStatCard, ListPageHeader, TableColumnHeaderWithFilterAndSort, TableFilterCell, resourceTableRowClassName, ROW_MOTION, AgeCell, TableEmptyState, TableSkeletonRows, CopyNameDropdownItem, ResourceListTableToolbar } from '@/components/list';
 import { useTableFiltersAndSort, type ColumnConfig } from '@/hooks/useTableFiltersAndSort';
 import { useColumnVisibility } from '@/hooks/useColumnVisibility';
-import { usePaginatedResourceList, useDeleteK8sResource, calculateAge, type KubernetesResource } from '@/hooks/useKubernetes';
+import { usePaginatedResourceList, useDeleteK8sResource, useCreateK8sResource, calculateAge, type KubernetesResource } from '@/hooks/useKubernetes';
 import { useConnectionStatus } from '@/hooks/useConnectionStatus';
 import { DeleteConfirmDialog } from '@/components/resources';
+import { ResourceCreator, DEFAULT_YAMLS } from '@/components/editor/ResourceCreator';
 import { toast } from 'sonner';
 
 interface DeviceClass {
@@ -83,14 +84,16 @@ const DC_COLUMNS_FOR_VISIBILITY = [
 export default function DeviceClasses() {
   const navigate = useNavigate();
   const { isConnected } = useConnectionStatus();
-  const { data, isLoading, isFetching, dataUpdatedAt, refetch } = usePaginatedResourceList<K8sDeviceClass>('deviceclasses');
+  const { data, isLoading, refetch, pagination: hookPagination } = usePaginatedResourceList<K8sDeviceClass>('deviceclasses');
   const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; item: DeviceClass | null; bulk?: boolean }>({ open: false, item: null });
+  const [showCreateWizard, setShowCreateWizard] = useState(false);
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
   const [searchQuery, setSearchQuery] = useState('');
   const [showTableFilters, setShowTableFilters] = useState(false);
   const [pageSize, setPageSize] = useState(10);
   const [pageIndex, setPageIndex] = useState(0);
   const deleteDC = useDeleteK8sResource('deviceclasses');
+  const createDC = useCreateK8sResource('deviceclasses');
 
   const allItems = (data?.allItems ?? []) as K8sDeviceClass[];
   const items: DeviceClass[] = useMemo(() => (isConnected ? allItems.map(mapDC) : []), [isConnected, allItems]);
@@ -143,6 +146,17 @@ export default function DeviceClasses() {
   useEffect(() => {
     if (safePageIndex !== pageIndex) setPageIndex(safePageIndex);
   }, [safePageIndex, pageIndex]);
+
+  const handleCreate = () => setShowCreateWizard(true);
+  const handleApplyCreate = async (yaml: string) => {
+    try {
+      await createDC.mutateAsync({ yaml });
+      setShowCreateWizard(false);
+      refetch();
+    } catch (err) {
+      // toast handled in hook
+    }
+  };
 
   const handlePageSizeChange = (size: number) => {
     setPageSize(size);
@@ -215,6 +229,8 @@ export default function DeviceClasses() {
         demoMode={!isConnected}
         isLoading={isLoading}
         onRefresh={() => refetch()}
+        createLabel="Create Device Class"
+        onCreate={handleCreate}
         actions={
           <>
             <ResourceExportDropdown items={filteredItems} selectedKeys={selectedItems} getKey={(v) => v.name} config={exportConfig} selectionLabel={selectedItems.size > 0 ? 'Selected classes' : 'All visible'} onToast={(msg, type) => (type === 'info' ? toast.info(msg) : toast.success(msg))} />
@@ -230,8 +246,8 @@ export default function DeviceClasses() {
 
       <div className={cn('grid grid-cols-2 sm:grid-cols-4 gap-4', !isConnected && 'opacity-60')}>
         <ListPageStatCard label="Total" value={stats.total} icon={Cpu} iconColor="text-primary" selected={!hasActiveFilters} onClick={clearAllFilters} className={cn(!hasActiveFilters && 'ring-2 ring-primary')} />
-        <ListPageStatCard label="With Selectors" value={stats.withSelectors} icon={Cpu} iconColor="text-muted-foreground" selected={false} onClick={() => {}} />
-        <ListPageStatCard label="With Config" value={stats.withConfig} icon={Cpu} iconColor="text-muted-foreground" selected={false} onClick={() => {}} />
+        <ListPageStatCard label="With Selectors" value={stats.withSelectors} icon={Cpu} iconColor="text-muted-foreground" selected={false} onClick={() => { }} />
+        <ListPageStatCard label="With Config" value={stats.withConfig} icon={Cpu} iconColor="text-muted-foreground" selected={false} onClick={() => { }} />
       </div>
 
       {selectedItems.size > 0 && (
@@ -285,7 +301,7 @@ export default function DeviceClasses() {
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
-            <ListPagination hasPrev={pagination.hasPrev} hasNext={pagination.hasNext} onPrev={pagination.onPrev} onNext={pagination.onNext} rangeLabel={undefined} currentPage={pagination.currentPage} totalPages={pagination.totalPages} onPageChange={pagination.onPageChange} dataUpdatedAt={dataUpdatedAt} isFetching={isFetching} />
+            <ListPagination hasPrev={pagination.hasPrev} hasNext={pagination.hasNext} onPrev={pagination.onPrev} onNext={pagination.onNext} rangeLabel={undefined} currentPage={pagination.currentPage} totalPages={pagination.totalPages} onPageChange={pagination.onPageChange} dataUpdatedAt={hookPagination?.dataUpdatedAt} isFetching={hookPagination?.isFetching} />
           </div>
         }
       >
@@ -294,10 +310,10 @@ export default function DeviceClasses() {
             <TableHeader>
               <TableRow className="bg-muted/50 hover:bg-muted/50 border-b-2 border-border">
                 <TableHead className="w-10"><Checkbox checked={isAllSelected} onCheckedChange={toggleAll} aria-label="Select all" className={cn(isSomeSelected && 'data-[state=checked]:bg-primary/50')} /></TableHead>
-                <ResizableTableHead columnId="name"><TableColumnHeaderWithFilterAndSort columnId="name" label="Name" sortKey={sortKey} sortOrder={sortOrder} onSort={setSort} filterable={false} distinctValues={[]} selectedFilterValues={new Set()} onFilterChange={() => {}} /></ResizableTableHead>
-                {columnVisibility.isColumnVisible('selectors') && <ResizableTableHead columnId="selectors"><TableColumnHeaderWithFilterAndSort columnId="selectors" label="Selectors" sortKey={sortKey} sortOrder={sortOrder} onSort={setSort} filterable={false} distinctValues={[]} selectedFilterValues={new Set()} onFilterChange={() => {}} /></ResizableTableHead>}
-                {columnVisibility.isColumnVisible('config') && <ResizableTableHead columnId="config"><TableColumnHeaderWithFilterAndSort columnId="config" label="Config" sortKey={sortKey} sortOrder={sortOrder} onSort={setSort} filterable={false} distinctValues={[]} selectedFilterValues={new Set()} onFilterChange={() => {}} /></ResizableTableHead>}
-                {columnVisibility.isColumnVisible('age') && <ResizableTableHead columnId="age"><TableColumnHeaderWithFilterAndSort columnId="age" label="Age" sortKey={sortKey} sortOrder={sortOrder} onSort={setSort} filterable={false} distinctValues={[]} selectedFilterValues={new Set()} onFilterChange={() => {}} /></ResizableTableHead>}
+                <ResizableTableHead columnId="name"><TableColumnHeaderWithFilterAndSort columnId="name" label="Name" sortKey={sortKey} sortOrder={sortOrder} onSort={setSort} filterable={false} distinctValues={[]} selectedFilterValues={new Set()} onFilterChange={() => { }} /></ResizableTableHead>
+                {columnVisibility.isColumnVisible('selectors') && <ResizableTableHead columnId="selectors"><TableColumnHeaderWithFilterAndSort columnId="selectors" label="Selectors" sortKey={sortKey} sortOrder={sortOrder} onSort={setSort} filterable={false} distinctValues={[]} selectedFilterValues={new Set()} onFilterChange={() => { }} /></ResizableTableHead>}
+                {columnVisibility.isColumnVisible('config') && <ResizableTableHead columnId="config"><TableColumnHeaderWithFilterAndSort columnId="config" label="Config" sortKey={sortKey} sortOrder={sortOrder} onSort={setSort} filterable={false} distinctValues={[]} selectedFilterValues={new Set()} onFilterChange={() => { }} /></ResizableTableHead>}
+                {columnVisibility.isColumnVisible('age') && <ResizableTableHead columnId="age"><TableColumnHeaderWithFilterAndSort columnId="age" label="Age" sortKey={sortKey} sortOrder={sortOrder} onSort={setSort} filterable={false} distinctValues={[]} selectedFilterValues={new Set()} onFilterChange={() => { }} /></ResizableTableHead>}
                 <TableHead className="w-12 text-center"><span className="sr-only">Actions</span><MoreHorizontal className="h-4 w-4 inline-block text-muted-foreground" aria-hidden /></TableHead>
               </TableRow>
               {showTableFilters && (
@@ -358,6 +374,8 @@ export default function DeviceClasses() {
                           <CopyNameDropdownItem name={item.name} />
                           <DropdownMenuItem onClick={() => navigate(`/deviceclasses/${item.name}`)} className="gap-2">View Details</DropdownMenuItem>
                           <DropdownMenuSeparator />
+                          <DropdownMenuItem onClick={() => navigate(`/deviceclasses/${item.name}?tab=yaml`)} className="gap-2">Edit YAML</DropdownMenuItem>
+                          <DropdownMenuSeparator />
                           <DropdownMenuItem onClick={() => navigate(`/deviceclasses/${item.name}?tab=yaml`)} className="gap-2"><FileText className="h-4 w-4" />Download YAML</DropdownMenuItem>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem className="gap-2 text-[hsl(0,72%,51%)]" onClick={() => setDeleteDialog({ open: true, item })} disabled={!isConnected}><Trash2 className="h-4 w-4" />Delete</DropdownMenuItem>
@@ -380,6 +398,15 @@ export default function DeviceClasses() {
         namespace={undefined}
         onConfirm={handleDelete}
       />
+
+      {showCreateWizard && (
+        <ResourceCreator
+          resourceKind="DeviceClass"
+          onClose={() => setShowCreateWizard(false)}
+          onApply={handleApplyCreate}
+          defaultYaml={DEFAULT_YAMLS.DeviceClass}
+        />
+      )}
     </motion.div>
   );
 }

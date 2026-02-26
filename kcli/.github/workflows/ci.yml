@@ -30,3 +30,28 @@ jobs:
         run: |
           CGO_ENABLED=0 go build -ldflags="-s -w" -o bin/kcli ./cmd/kcli
           ./bin/kcli version
+
+  windows:
+    name: Windows smoke
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24.2'
+          cache-dependency-path: go.sum
+      
+      - name: Build Windows binary
+        run: |
+          CGO_ENABLED=0 go build -ldflags="-s -w" -o kcli.exe ./cmd/kcli
+      
+      - name: Smoke test (version)
+        run: .\kcli.exe version
+      
+      - name: Smoke test (help)
+        run: .\kcli.exe help
+      
+      - name: Smoke test (completion)
+        run: .\kcli.exe completion powershell

@@ -6,7 +6,6 @@ export { BackendConnectionPanel } from './BackendConnectionPanel';
 
 export { MemoryPanel } from './MemoryPanel';
 export { AnalyticsPanel } from './AnalyticsPanel';
-export { CostPanel } from './CostPanel';
 export { SecurityPanel } from './SecurityPanel';
 export { PersistencePanel } from './PersistencePanel';
 export { BudgetPanel } from './BudgetPanel';

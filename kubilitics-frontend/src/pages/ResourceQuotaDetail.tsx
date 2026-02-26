@@ -1,6 +1,6 @@
-import { useState, useCallback, useMemo } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { Gauge, Clock, Download, Trash2, Box, Network, AlertTriangle } from 'lucide-react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
+import { Gauge, Clock, Download, Trash2, Box, Network, AlertTriangle, GitCompare } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
@@ -11,41 +11,34 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import {
   ResourceDetailLayout,
   YamlViewer,
-  YamlCompareViewer,
   EventsSection,
   ActionsSection,
   DeleteConfirmDialog,
   MetadataCard,
   ResourceTopologyView,
+  ResourceComparisonView,
   type ResourceStatus,
   type YamlVersion,
 } from '@/components/resources';
 import { useResourceDetail, useResourceEvents } from '@/hooks/useK8sResourceDetail';
-import { useDeleteK8sResource, type KubernetesResource } from '@/hooks/useKubernetes';
+import { useDeleteK8sResource, useUpdateK8sResource, type KubernetesResource } from '@/hooks/useKubernetes';
 import { normalizeKindForTopology } from '@/utils/resourceKindMapper';
 import { useConnectionStatus } from '@/hooks/useConnectionStatus';
+import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
+import { useActiveClusterId } from '@/hooks/useActiveClusterId';
+import { parseQuantityToNum, formatUsagePercent } from '@/lib/k8s-utils';
+import { toast } from 'sonner';
+import { downloadResourceJson } from '@/lib/exportUtils';
 
 interface ResourceQuotaResource extends KubernetesResource {
   spec?: { hard?: Record<string, string>; scopeSelector?: unknown };
   status?: { hard?: Record<string, string>; used?: Record<string, string> };
 }
 
-function parseQuantityToNum(q: string): number | null {
-  if (q === undefined || q === null || q === '') return null;
-  const s = String(q).trim();
-  if (/^\d+$/.test(s)) return parseInt(s, 10);
-  const m = s.match(/^(\d+)m$/);
-  if (m) return parseInt(m[1], 10) / 1000;
-  const m2 = s.match(/^(\d+)([KMGTPE]i?)$/i);
-  if (m2) return parseInt(m2[1], 10);
-  return null;
-}
+// parseQuantityToNum is now imported from @/lib/k8s-utils
 
 function getUsagePercent(used: string, hard: string): number | null {
-  const uNum = parseQuantityToNum(used);
-  const hNum = parseQuantityToNum(hard);
-  if (hNum == null || hNum === 0 || uNum == null) return null;
-  return Math.round((uNum / hNum) * 100);
+  return formatUsagePercent(used, hard);
 }
 
 function usageBarIndicatorClass(pct: number | null): string {
@@ -58,9 +51,20 @@ function usageBarIndicatorClass(pct: number | null): string {
 export default function ResourceQuotaDetail() {
   const { namespace, name } = useParams<{ namespace: string; name: string }>();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('overview');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const initialTab = searchParams.get('tab') || 'overview';
+  const [activeTab, setActiveTab] = useState(initialTab);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+
+  useEffect(() => {
+    if (initialTab !== activeTab) {
+      setActiveTab(initialTab);
+    }
+  }, [initialTab]);
   const { isConnected } = useConnectionStatus();
+  const clusterId = useActiveClusterId();
+  const backendBaseUrl = useBackendConfigStore((s) => s.backendBaseUrl);
+  const baseUrl = getEffectiveBackendBaseUrl(backendBaseUrl);
 
   const { resource, isLoading, error: resourceError, age, yaml, refetch } = useResourceDetail<ResourceQuotaResource>(
     'resourcequotas',
@@ -70,9 +74,25 @@ export default function ResourceQuotaDetail() {
   );
   const { events, refetch: refetchEvents } = useResourceEvents('ResourceQuota', namespace ?? undefined, name ?? undefined);
   const deleteResource = useDeleteK8sResource('resourcequotas');
+  const updateResource = useUpdateK8sResource('resourcequotas');
 
   const quotaName = resource?.metadata?.name ?? name ?? '';
   const quotaNamespace = resource?.metadata?.namespace ?? namespace ?? '';
+
+  const handleSaveYaml = useCallback(async (newYaml: string) => {
+    if (!isConnected || !name || !namespace) {
+      toast.error('Connect cluster to update resource');
+      throw new Error('Not connected');
+    }
+    try {
+      await updateResource.mutateAsync({ name, yaml: newYaml, namespace });
+      toast.success('Resource updated successfully');
+      refetch();
+    } catch (error: any) {
+      toast.error(`Failed to update: ${error.message}`);
+      throw error;
+    }
+  }, [isConnected, name, namespace, updateResource, refetch]);
   const hard = resource?.status?.hard || resource?.spec?.hard || {};
   const used = resource?.status?.used || {};
   const labels = resource?.metadata?.labels ?? {};
@@ -112,6 +132,12 @@ export default function ResourceQuotaDetail() {
     a.click();
     URL.revokeObjectURL(url);
   }, [yaml, quotaName]);
+
+  const handleDownloadJson = useCallback(() => {
+    if (!resource) return;
+    downloadResourceJson(resource, `${quotaName || 'resourcequota'}.json`);
+    toast.success('JSON downloaded');
+  }, [resource, quotaName]);
 
   const yamlVersions: YamlVersion[] = yaml ? [{ id: 'current', label: 'Current Version', yaml, timestamp: 'now' }] : [];
 
@@ -259,8 +285,24 @@ export default function ResourceQuotaDetail() {
       ),
     },
     { id: 'events', label: 'Events', content: <EventsSection events={events} /> },
-    { id: 'yaml', label: 'YAML', content: <YamlViewer yaml={yaml} resourceName={quotaName} /> },
-    { id: 'compare', label: 'Compare', content: <YamlCompareViewer versions={yamlVersions} resourceName={quotaName} /> },
+    { id: 'yaml', label: 'YAML', content: <YamlViewer yaml={yaml} resourceName={quotaName} editable onSave={handleSaveYaml} /> },
+    {
+      id: 'compare',
+      label: 'Compare',
+      icon: GitCompare,
+      content: (
+        <ResourceComparisonView
+          resourceType="resourcequotas"
+          resourceKind="ResourceQuota"
+          namespace={namespace}
+          initialSelectedResources={namespace && name ? [`${namespace}/${name}`] : [name || '']}
+          clusterId={clusterId ?? undefined}
+          backendBaseUrl={baseUrl ?? ''}
+          isConnected={isConnected}
+          embedded
+        />
+      ),
+    },
     {
       id: 'topology',
       label: 'Topology',
@@ -282,6 +324,7 @@ export default function ResourceQuotaDetail() {
         <ActionsSection
           actions={[
             { icon: Download, label: 'Download YAML', description: 'Export ResourceQuota definition', onClick: handleDownloadYaml },
+            { icon: Download, label: 'Export as JSON', description: 'Export ResourceQuota as JSON', onClick: handleDownloadJson },
             { icon: Trash2, label: 'Delete Quota', description: 'Remove this resource quota', variant: 'destructive', onClick: () => setShowDeleteDialog(true) },
           ]}
         />
@@ -304,12 +347,21 @@ export default function ResourceQuotaDetail() {
         headerMetadata={<span className="flex items-center gap-1.5 ml-2 text-sm text-muted-foreground"><Clock className="h-3.5 w-3.5" />Created {age}</span>}
         actions={[
           { label: 'Download YAML', icon: Download, variant: 'outline', onClick: handleDownloadYaml },
+          { label: 'Export as JSON', icon: Download, variant: 'outline', onClick: handleDownloadJson },
           { label: 'Delete', icon: Trash2, variant: 'destructive', onClick: () => setShowDeleteDialog(true) },
         ]}
         statusCards={statusCards}
         tabs={tabs}
         activeTab={activeTab}
-        onTabChange={setActiveTab}
+        onTabChange={(tabId) => {
+          setActiveTab(tabId);
+          setSearchParams((prev) => {
+            const next = new URLSearchParams(prev);
+            if (tabId === 'overview') next.delete('tab');
+            else next.set('tab', tabId);
+            return next;
+          }, { replace: true });
+        }}
       />
       <DeleteConfirmDialog
         open={showDeleteDialog}

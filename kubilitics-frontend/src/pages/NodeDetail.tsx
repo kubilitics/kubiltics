@@ -1,7 +1,7 @@
 import { useState, useCallback, useMemo, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useQueries } from '@tanstack/react-query';
-import { Server, Clock, Download, Trash2, Cpu, HardDrive, Box, Shield, Pause, Play, AlertTriangle, Loader2, Info, BarChart2, Activity, MapPin, Tag, FileJson, FileSpreadsheet, Image, Network } from 'lucide-react';
+import { Server, Clock, Download, Trash2, Cpu, HardDrive, Box, Shield, Pause, Play, AlertTriangle, Loader2, Info, BarChart2, Activity, MapPin, Tag, FileJson, FileSpreadsheet, Image, Network, GitCompare } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { NamespaceBadge } from '@/components/list';
@@ -9,21 +9,22 @@ import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
+import { downloadResourceJson } from '@/lib/exportUtils';
 import {
   ResourceDetailLayout,
   SectionCard,
   YamlViewer,
-  YamlCompareViewer,
   EventsSection,
   ActionsSection,
   MetricsDashboard,
   DeleteConfirmDialog,
   ResourceTopologyView,
+  ResourceComparisonView,
   type ResourceStatus,
   type YamlVersion,
 } from '@/components/resources';
 import { useResourceDetail, useK8sEvents } from '@/hooks/useK8sResourceDetail';
-import { useDeleteK8sResource, useK8sResourceList, calculateAge, type KubernetesResource } from '@/hooks/useKubernetes';
+import { useDeleteK8sResource, useUpdateK8sResource, useK8sResourceList, calculateAge, type KubernetesResource } from '@/hooks/useKubernetes';
 import { normalizeKindForTopology } from '@/utils/resourceKindMapper';
 import { useConnectionStatus } from '@/hooks/useConnectionStatus';
 import { useActiveClusterId } from '@/hooks/useActiveClusterId';
@@ -74,7 +75,8 @@ export default function NodeDetail() {
   const { resource: n, isLoading, error: resourceError, age, yaml, isConnected: resourceConnected, refetch } = useResourceDetail<NodeResource>(
     'nodes',
     name ?? undefined,
-    undefined
+    undefined,
+    {} as NodeResource
   );
   const podsOnNodeQuery = useK8sResourceList<KubernetesResource>('pods', undefined, {
     fieldSelector: name ? `spec.nodeName=${name}` : '',
@@ -126,6 +128,7 @@ export default function NodeDetail() {
 
   const { events } = useK8sEvents();
   const deleteNode = useDeleteK8sResource('nodes');
+  const updateNode = useUpdateK8sResource('nodes');
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   // Unique PVCs referenced by pods (for fetching volumeName -> PV).
@@ -216,12 +219,23 @@ export default function NodeDetail() {
     URL.revokeObjectURL(url);
   }, [yaml, nodeName]);
 
+  const handleDownloadJson = useCallback(() => {
+    downloadResourceJson(n, `${nodeName || 'node'}.json`);
+    toast.success('JSON downloaded');
+  }, [n, nodeName]);
 
   const yamlVersions: YamlVersion[] = yaml ? [{ id: 'current', label: 'Current Version', yaml, timestamp: 'now' }] : [];
 
   const handleSaveYaml = async (newYaml: string) => {
-    toast.success('Node updated successfully');
-    console.log('Saving YAML:', newYaml);
+    if (!nodeName) return;
+    try {
+      await updateNode.mutateAsync({ name: nodeName, yaml: newYaml });
+      toast.success('Node updated successfully');
+      refetch();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Failed to update Node');
+      throw e;
+    }
   };
 
   const handleCordon = () => {
@@ -238,7 +252,7 @@ export default function NodeDetail() {
       <div className="space-y-6">
         <Skeleton className="h-20 w-full" />
         <div className="grid grid-cols-4 gap-4">
-          {[1,2,3,4].map(i => <Skeleton key={i} className="h-24" />)}
+          {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-24" />)}
         </div>
         <Skeleton className="h-96" />
       </div>
@@ -319,7 +333,7 @@ export default function NodeDetail() {
   const podUsagePercent = capacityPods > 0 ? Math.round((runningPods.length / capacityPods) * 100) : 0;
 
   const statusCards = [
-    { label: 'Status', value: isReady ? 'Ready' : 'Not Ready', icon: Server, iconColor: (isReady ? 'success' : 'error') as const },
+    { label: 'Status', value: isReady ? 'Ready' : 'Not Ready', icon: Server, iconColor: (isReady ? 'success' : 'error') as "success" | "error" },
     { label: 'Role', value: roles.length ? roles.join(', ') || 'worker' : 'worker', icon: Activity, iconColor: 'muted' as const },
     { label: 'CPU', value: cpuUsagePercent != null ? `${cpuUsagePercent}%` : '–', icon: Cpu, iconColor: 'primary' as const },
     { label: 'Memory', value: memoryUsagePercent != null ? `${memoryUsagePercent}%` : '–', icon: HardDrive, iconColor: 'info' as const },
@@ -354,13 +368,13 @@ export default function NodeDetail() {
             {/* Node Info */}
             <SectionCard icon={Info} title="Node Info" tooltip={<p className="text-xs text-muted-foreground">OS, kernel, runtime, and network info</p>}>
               <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div><p className="text-muted-foreground mb-1">OS Image</p><p>{nodeInfo?.osImage || '-'}</p></div>
-                  <div><p className="text-muted-foreground mb-1">Architecture</p><p>{nodeInfo?.architecture || '-'}</p></div>
-                  <div><p className="text-muted-foreground mb-1">Kernel</p><p className="font-mono text-xs">{nodeInfo?.kernelVersion || '-'}</p></div>
-                  <div><p className="text-muted-foreground mb-1">Container Runtime</p><p className="font-mono text-xs">{nodeInfo?.containerRuntimeVersion || '-'}</p></div>
-                  <div><p className="text-muted-foreground mb-1">Kubelet</p><Badge variant="secondary">{nodeInfo?.kubeletVersion || '-'}</Badge></div>
-                  <div><p className="text-muted-foreground mb-1">Pod CIDR</p><p className="font-mono text-xs">{podCIDR}</p></div>
-                </div>
+                <div><p className="text-muted-foreground mb-1">OS Image</p><p>{nodeInfo?.osImage || '-'}</p></div>
+                <div><p className="text-muted-foreground mb-1">Architecture</p><p>{nodeInfo?.architecture || '-'}</p></div>
+                <div><p className="text-muted-foreground mb-1">Kernel</p><p className="font-mono text-xs">{nodeInfo?.kernelVersion || '-'}</p></div>
+                <div><p className="text-muted-foreground mb-1">Container Runtime</p><p className="font-mono text-xs">{nodeInfo?.containerRuntimeVersion || '-'}</p></div>
+                <div><p className="text-muted-foreground mb-1">Kubelet</p><Badge variant="secondary">{nodeInfo?.kubeletVersion || '-'}</Badge></div>
+                <div><p className="text-muted-foreground mb-1">Pod CIDR</p><p className="font-mono text-xs">{podCIDR}</p></div>
+              </div>
             </SectionCard>
 
             {/* Resource Usage */}
@@ -394,55 +408,55 @@ export default function NodeDetail() {
 
             {/* Conditions */}
             <SectionCard icon={Activity} title="Conditions" tooltip={<p className="text-xs text-muted-foreground">Node condition status</p>}>
-                <div className="space-y-2">
-                  {conditions.map((c) => (
-                    <div key={c.type} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
-                      <div className="flex items-center gap-3">
-                        <Badge 
-                          variant={
-                            c.type === 'Ready' 
-                              ? (c.status === 'True' ? 'default' : 'destructive')
-                              : (c.status === 'False' ? 'secondary' : 'destructive')
-                          }
-                        >
-                          {c.type}
-                        </Badge>
-                        <span className="text-sm">{c.status}</span>
-                      </div>
-                      <span className="text-xs text-muted-foreground">{c.reason}</span>
+              <div className="space-y-2">
+                {conditions.map((c) => (
+                  <div key={c.type} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+                    <div className="flex items-center gap-3">
+                      <Badge
+                        variant={
+                          c.type === 'Ready'
+                            ? (c.status === 'True' ? 'default' : 'destructive')
+                            : (c.status === 'False' ? 'secondary' : 'destructive')
+                        }
+                      >
+                        {c.type}
+                      </Badge>
+                      <span className="text-sm">{c.status}</span>
                     </div>
-                  ))}
-                </div>
+                    <span className="text-xs text-muted-foreground">{c.reason}</span>
+                  </div>
+                ))}
+              </div>
             </SectionCard>
 
             {/* Addresses */}
             <SectionCard icon={MapPin} title="Addresses" tooltip={<p className="text-xs text-muted-foreground">Node network addresses</p>}>
-                <div className="space-y-2">
-                  {addresses.map((addr) => (
-                    <div key={addr.type} className="flex items-center justify-between p-2 rounded-lg bg-muted/50">
-                      <span className="text-sm text-muted-foreground">{addr.type}</span>
-                      <span className="font-mono text-sm">{addr.address}</span>
-                    </div>
-                  ))}
-                </div>
+              <div className="space-y-2">
+                {addresses.map((addr) => (
+                  <div key={addr.type} className="flex items-center justify-between p-2 rounded-lg bg-muted/50">
+                    <span className="text-sm text-muted-foreground">{addr.type}</span>
+                    <span className="font-mono text-sm">{addr.address}</span>
+                  </div>
+                ))}
+              </div>
             </SectionCard>
 
             {/* Taints */}
             <SectionCard icon={Shield} title="Taints" tooltip={<p className="text-xs text-muted-foreground">Taints prevent pods from being scheduled on this node</p>}>
-                {taints.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">No taints configured</p>
-                ) : (
-                  <div className="space-y-2">
-                    {taints.map((taint, i) => (
-                      <div key={i} className="flex items-center gap-2 p-2 rounded-lg bg-muted/50">
-                        <Badge variant="outline" className="font-mono text-xs">{taint.key}</Badge>
-                        {taint.value && <span className="text-sm">=</span>}
-                        {taint.value && <Badge variant="secondary" className="font-mono text-xs">{taint.value}</Badge>}
-                        <Badge variant="destructive" className="text-xs ml-auto">{taint.effect}</Badge>
-                      </div>
-                    ))}
-                  </div>
-                )}
+              {taints.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No taints configured</p>
+              ) : (
+                <div className="space-y-2">
+                  {taints.map((taint, i) => (
+                    <div key={i} className="flex items-center gap-2 p-2 rounded-lg bg-muted/50">
+                      <Badge variant="outline" className="font-mono text-xs">{taint.key}</Badge>
+                      {taint.value && <span className="text-sm">=</span>}
+                      {taint.value && <Badge variant="secondary" className="font-mono text-xs">{taint.value}</Badge>}
+                      <Badge variant="destructive" className="text-xs ml-auto">{taint.effect}</Badge>
+                    </div>
+                  ))}
+                </div>
+              )}
             </SectionCard>
 
             {/* Roles & Labels */}
@@ -589,7 +603,22 @@ export default function NodeDetail() {
     },
     { id: 'events', label: 'Events', content: <EventsSection events={events} /> },
     { id: 'yaml', label: 'YAML', content: <YamlViewer yaml={yaml} resourceName={nodeName} editable onSave={handleSaveYaml} /> },
-    { id: 'compare', label: 'Compare', content: <YamlCompareViewer versions={yamlVersions} resourceName={nodeName} /> },
+    {
+      id: 'compare',
+      label: 'Compare',
+      icon: GitCompare,
+      content: (
+        <ResourceComparisonView
+          resourceType="nodes"
+          resourceKind="Node"
+          initialSelectedResources={[nodeName]}
+          clusterId={clusterId ?? undefined}
+          backendBaseUrl={backendBaseUrl ?? ''}
+          isConnected={isConnected}
+          embedded
+        />
+      ),
+    },
     {
       id: 'topology',
       label: 'Topology',
@@ -614,14 +643,15 @@ export default function NodeDetail() {
       label: 'Actions',
       content: (
         <ActionsSection actions={[
-          { 
-            icon: isCordoned ? Play : Pause, 
-            label: isCordoned ? 'Uncordon Node' : 'Cordon Node', 
+          {
+            icon: isCordoned ? Play : Pause,
+            label: isCordoned ? 'Uncordon Node' : 'Cordon Node',
             description: isCordoned ? 'Allow pods to be scheduled on this node' : 'Mark node as unschedulable',
             onClick: handleCordon,
           },
           { icon: Shield, label: 'Drain Node', description: 'Safely evict all pods from node', onClick: handleDrain },
           { icon: Download, label: 'Download YAML', description: 'Export Node definition', onClick: handleDownloadYaml },
+          { icon: Download, label: 'Export as JSON', description: 'Export Node as JSON', onClick: handleDownloadJson },
           { icon: Trash2, label: 'Delete Node', description: 'Remove node from cluster', variant: 'destructive', onClick: () => setShowDeleteDialog(true) },
         ]} />
       ),
@@ -648,6 +678,7 @@ export default function NodeDetail() {
         }
         actions={[
           { label: 'Download YAML', icon: Download, variant: 'outline', onClick: handleDownloadYaml },
+          { label: 'Export as JSON', icon: Download, variant: 'outline', onClick: handleDownloadJson },
           { label: isCordoned ? 'Uncordon' : 'Cordon', icon: isCordoned ? Play : Pause, variant: 'outline', onClick: handleCordon },
           { label: 'Drain', icon: Shield, variant: 'outline', onClick: handleDrain },
           { label: 'Delete', icon: Trash2, variant: 'destructive', onClick: () => setShowDeleteDialog(true) },

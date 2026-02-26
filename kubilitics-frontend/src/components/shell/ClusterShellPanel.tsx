@@ -745,7 +745,7 @@ export function ClusterShellPanel({
                   variant="outline"
                   size="sm"
                   onClick={() => {
-                    window.open('https://github.com/kubilitics/kubilitics-os-emergent/docs/DEPLOYMENT_KCLI.md', '_blank');
+                    window.open('https://github.com/kubilitics/kubilitics/docs/DEPLOYMENT_KCLI.md', '_blank');
                   }}
                   className="h-6 text-xs border-red-400/20 text-red-400 hover:bg-red-400/20"
                 >

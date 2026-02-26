@@ -3,6 +3,7 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -157,5 +158,56 @@ func TestLegacyConfigMigration(t *testing.T) {
 	}
 	if s.Current().General.Theme != "forest" {
 		t.Fatalf("expected theme forest after migration, got %q", s.Current().General.Theme)
+	}
+}
+
+func TestNormalizeKeyForAccount(t *testing.T) {
+	if got := NormalizeKeyForAccount("ai.apikey"); got != "ai.api_key" {
+		t.Fatalf("expected ai.api_key, got %q", got)
+	}
+	if got := NormalizeKeyForAccount("integrations.pagerDutyKey"); got != "integrations.pagerduty_key" {
+		t.Fatalf("expected integrations.pagerduty_key, got %q", got)
+	}
+	if got := NormalizeKeyForAccount("ai.api_key"); got != "ai.api_key" {
+		t.Fatalf("expected ai.api_key, got %q", got)
+	}
+}
+
+func TestAddKeychainKey(t *testing.T) {
+	cfg := Default()
+	cfg.AddKeychainKey("ai.api_key")
+	if len(cfg.KeychainKeys) != 1 || cfg.KeychainKeys[0] != "ai.api_key" {
+		t.Fatalf("expected [ai.api_key], got %v", cfg.KeychainKeys)
+	}
+	cfg.AddKeychainKey("ai.api_key")
+	if len(cfg.KeychainKeys) != 1 {
+		t.Fatalf("expected no duplicate, got %v", cfg.KeychainKeys)
+	}
+	cfg.AddKeychainKey("integrations.pagerduty_key")
+	if len(cfg.KeychainKeys) != 2 {
+		t.Fatalf("expected 2 keys, got %v", cfg.KeychainKeys)
+	}
+	cfg.AddKeychainKey("unknown.key")
+	if len(cfg.KeychainKeys) != 2 {
+		t.Fatalf("expected keychainable-only, got %v", cfg.KeychainKeys)
+	}
+}
+
+func TestSaveStoreZeroesKeychainBackedSecrets(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+
+	cfg := Default()
+	cfg.AI.APIKey = "sk-secret-not-on-disk"
+	cfg.KeychainKeys = []string{"ai.api_key"}
+	if err := Save(cfg); err != nil {
+		t.Fatalf("Save: %v", err)
+	}
+	raw, err := os.ReadFile(filepath.Join(home, ".kcli", "config.yaml"))
+	if err != nil {
+		t.Fatalf("read config: %v", err)
+	}
+	if strings.Contains(string(raw), "sk-secret-not-on-disk") {
+		t.Fatal("keychain-backed secret must not be written to config file")
 	}
 }

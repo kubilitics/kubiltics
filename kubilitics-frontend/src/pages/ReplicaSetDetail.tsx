@@ -29,11 +29,11 @@ import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Progress } from '@/components/ui/progress';
 import { toast } from 'sonner';
+import { downloadResourceJson } from '@/lib/exportUtils';
 import {
   ResourceDetailLayout,
   ContainersSection,
   YamlViewer,
-  YamlCompareViewer,
   EventsSection,
   MetadataCard,
   ActionsSection,
@@ -44,6 +44,7 @@ import {
   TerminalViewer,
   SectionCard,
   ResourceTopologyView,
+  ResourceComparisonView,
   type ResourceStatus,
   type ContainerInfo,
   type YamlVersion,
@@ -88,7 +89,7 @@ export default function ReplicaSetDetail() {
   const { namespace, name } = useParams();
   const clusterId = useActiveClusterId();
   const navigate = useNavigate();
-  
+
   const [activeTab, setActiveTab] = useState('overview');
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showScaleDialog, setShowScaleDialog] = useState(false);
@@ -113,14 +114,14 @@ export default function ReplicaSetDetail() {
   const updateReplicaSet = useUpdateK8sResource('replicasets');
   const patchReplicaSet = usePatchK8sResource('replicasets');
 
-  const status: ResourceStatus = replicaSet.status?.readyReplicas === replicaSet.spec?.replicas ? 'Running' : 
+  const status: ResourceStatus = replicaSet.status?.readyReplicas === replicaSet.spec?.replicas ? 'Running' :
     replicaSet.status?.readyReplicas ? 'Pending' : 'Failed';
-  
+
   const desired = replicaSet.spec?.replicas || 0;
   const ready = replicaSet.status?.readyReplicas || 0;
   const available = replicaSet.status?.availableReplicas || 0;
   const fullyLabeled = replicaSet.status?.fullyLabeledReplicas || 0;
-  
+
   const containers: ContainerInfo[] = (replicaSet.spec?.template?.spec?.containers || []).map(c => ({
     name: c.name,
     image: c.image,
@@ -151,7 +152,7 @@ export default function ReplicaSetDetail() {
   const podMetricsByName = useMemo(() => {
     const pods = rsMetricsQuery.data?.pods ?? [];
     const map: Record<string, { cpu: string; memory: string }> = {};
-    pods.forEach((p) => { map[p.name] = { cpu: p.cpu ?? '–', memory: p.memory ?? '–' }; });
+    pods.forEach((p) => { map[p.name] = { cpu: p.CPU ?? '–', memory: p.Memory ?? '–' }; });
     return map;
   }, [rsMetricsQuery.data?.pods]);
 
@@ -180,6 +181,11 @@ export default function ReplicaSetDetail() {
     URL.revokeObjectURL(url);
     toast.success('YAML downloaded');
   }, [yaml, replicaSet.metadata?.name]);
+
+  const handleDownloadJson = useCallback(() => {
+    downloadResourceJson(replicaSet, `${replicaSet.metadata?.name || 'replicaset'}.json`);
+    toast.success('JSON downloaded');
+  }, [replicaSet]);
 
   const handleCopyYaml = useCallback(() => {
     navigator.clipboard.writeText(yaml);
@@ -229,7 +235,7 @@ export default function ReplicaSetDetail() {
       <div className="space-y-6">
         <Skeleton className="h-20 w-full" />
         <div className="grid grid-cols-4 gap-4">
-          {[1,2,3,4].map(i => <Skeleton key={i} className="h-24" />)}
+          {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-24" />)}
         </div>
         <Skeleton className="h-96" />
       </div>
@@ -542,7 +548,18 @@ export default function ReplicaSetDetail() {
       id: 'compare',
       label: 'Compare',
       icon: GitCompare,
-      content: <YamlCompareViewer versions={yamlVersions} resourceName={replicaSet.metadata?.name || ''} />,
+      content: (
+        <ResourceComparisonView
+          resourceType="replicasets"
+          resourceKind="ReplicaSet"
+          namespace={namespace}
+          initialSelectedResources={namespace && name ? [`${namespace}/${name}`] : [name || '']}
+          clusterId={clusterId ?? undefined}
+          backendBaseUrl={backendBaseUrl ?? ''}
+          isConnected={isConnected}
+          embedded
+        />
+      ),
     },
     {
       id: 'topology',
@@ -566,6 +583,7 @@ export default function ReplicaSetDetail() {
         <ActionsSection actions={[
           { icon: Scale, label: 'Scale ReplicaSet', description: 'Adjust the number of replicas', onClick: () => setShowScaleDialog(true) },
           { icon: Download, label: 'Download YAML', description: 'Export ReplicaSet definition', onClick: handleDownloadYaml },
+          { icon: Download, label: 'Export as JSON', description: 'Export ReplicaSet as JSON', onClick: handleDownloadJson },
           { icon: Trash2, label: 'Delete ReplicaSet', description: 'Permanently remove this ReplicaSet', variant: 'destructive', onClick: () => setShowDeleteDialog(true) },
         ]} />
       ),
@@ -597,6 +615,7 @@ export default function ReplicaSetDetail() {
         }
         actions={[
           { label: 'Download YAML', icon: Download, variant: 'outline', onClick: handleDownloadYaml },
+          { label: 'Export as JSON', icon: Download, variant: 'outline', onClick: handleDownloadJson },
           { label: 'Scale', icon: Scale, variant: 'outline', onClick: () => setShowScaleDialog(true) },
           { label: 'Delete', icon: Trash2, variant: 'destructive', onClick: () => setShowDeleteDialog(true) },
         ]}

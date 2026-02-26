@@ -1,6 +1,6 @@
-import { useState, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { Scale, Clock, Cpu, HardDrive, Download, Trash2, Network } from 'lucide-react';
+import { useState, useCallback, useEffect } from 'react';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
+import { Scale, Clock, Cpu, HardDrive, Download, Trash2, Network, GitCompare } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -8,19 +8,23 @@ import { Button } from '@/components/ui/button';
 import {
   ResourceDetailLayout,
   YamlViewer,
-  YamlCompareViewer,
   EventsSection,
   ActionsSection,
   DeleteConfirmDialog,
   MetadataCard,
   ResourceTopologyView,
+  ResourceComparisonView,
   type ResourceStatus,
   type YamlVersion,
 } from '@/components/resources';
 import { useResourceDetail, useResourceEvents } from '@/hooks/useK8sResourceDetail';
-import { useDeleteK8sResource, type KubernetesResource } from '@/hooks/useKubernetes';
+import { useDeleteK8sResource, useUpdateK8sResource, type KubernetesResource } from '@/hooks/useKubernetes';
 import { normalizeKindForTopology } from '@/utils/resourceKindMapper';
 import { useConnectionStatus } from '@/hooks/useConnectionStatus';
+import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
+import { useActiveClusterId } from '@/hooks/useActiveClusterId';
+import { toast } from 'sonner';
+import { downloadResourceJson } from '@/lib/exportUtils';
 
 interface LimitRangeItemSpec {
   type: string;
@@ -38,9 +42,20 @@ interface LimitRangeResource extends KubernetesResource {
 export default function LimitRangeDetail() {
   const { namespace, name } = useParams<{ namespace: string; name: string }>();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('overview');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const initialTab = searchParams.get('tab') || 'overview';
+  const [activeTab, setActiveTab] = useState(initialTab);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+
+  useEffect(() => {
+    if (initialTab !== activeTab) {
+      setActiveTab(initialTab);
+    }
+  }, [initialTab]);
   const { isConnected } = useConnectionStatus();
+  const clusterId = useActiveClusterId();
+  const backendBaseUrl = useBackendConfigStore((s) => s.backendBaseUrl);
+  const baseUrl = getEffectiveBackendBaseUrl(backendBaseUrl);
 
   const { resource, isLoading, error: resourceError, age, yaml, refetch } = useResourceDetail<LimitRangeResource>(
     'limitranges',
@@ -50,9 +65,25 @@ export default function LimitRangeDetail() {
   );
   const { events, refetch: refetchEvents } = useResourceEvents('LimitRange', namespace ?? undefined, name ?? undefined);
   const deleteResource = useDeleteK8sResource('limitranges');
+  const updateResource = useUpdateK8sResource('limitranges');
 
   const lrName = resource?.metadata?.name ?? name ?? '';
   const lrNamespace = resource?.metadata?.namespace ?? namespace ?? '';
+
+  const handleSaveYaml = useCallback(async (newYaml: string) => {
+    if (!isConnected || !name || !namespace) {
+      toast.error('Connect cluster to update resource');
+      throw new Error('Not connected');
+    }
+    try {
+      await updateResource.mutateAsync({ name, yaml: newYaml, namespace });
+      toast.success('Resource updated successfully');
+      refetch();
+    } catch (error: any) {
+      toast.error(`Failed to update: ${error.message}`);
+      throw error;
+    }
+  }, [isConnected, name, namespace, updateResource, refetch]);
   const limits = resource?.spec?.limits ?? [];
   const labels = resource?.metadata?.labels ?? {};
   const annotations = resource?.metadata?.annotations ?? {};
@@ -71,6 +102,12 @@ export default function LimitRangeDetail() {
     a.click();
     URL.revokeObjectURL(url);
   }, [yaml, lrName]);
+
+  const handleDownloadJson = useCallback(() => {
+    if (!resource) return;
+    downloadResourceJson(resource, `${lrName || 'limitrange'}.json`);
+    toast.success('JSON downloaded');
+  }, [resource, lrName]);
 
   const yamlVersions: YamlVersion[] = yaml ? [{ id: 'current', label: 'Current Version', yaml, timestamp: 'now' }] : [];
 
@@ -197,8 +234,24 @@ export default function LimitRangeDetail() {
       ),
     },
     { id: 'events', label: 'Events', content: <EventsSection events={events} /> },
-    { id: 'yaml', label: 'YAML', content: <YamlViewer yaml={yaml} resourceName={lrName} /> },
-    { id: 'compare', label: 'Compare', content: <YamlCompareViewer versions={yamlVersions} resourceName={lrName} /> },
+    { id: 'yaml', label: 'YAML', content: <YamlViewer yaml={yaml} resourceName={lrName} editable onSave={handleSaveYaml} /> },
+    {
+      id: 'compare',
+      label: 'Compare',
+      icon: GitCompare,
+      content: (
+        <ResourceComparisonView
+          resourceType="limitranges"
+          resourceKind="LimitRange"
+          namespace={namespace}
+          initialSelectedResources={namespace && name ? [`${namespace}/${name}`] : [name || '']}
+          clusterId={clusterId ?? undefined}
+          backendBaseUrl={baseUrl ?? ''}
+          isConnected={isConnected}
+          embedded
+        />
+      ),
+    },
     {
       id: 'topology',
       label: 'Topology',
@@ -220,6 +273,7 @@ export default function LimitRangeDetail() {
         <ActionsSection
           actions={[
             { icon: Download, label: 'Download YAML', description: 'Export LimitRange definition', onClick: handleDownloadYaml },
+            { icon: Download, label: 'Export as JSON', description: 'Export LimitRange as JSON', onClick: handleDownloadJson },
             { icon: Trash2, label: 'Delete LimitRange', description: 'Remove this limit range', variant: 'destructive', onClick: () => setShowDeleteDialog(true) },
           ]}
         />
@@ -242,12 +296,21 @@ export default function LimitRangeDetail() {
         headerMetadata={<span className="flex items-center gap-1.5 ml-2 text-sm text-muted-foreground"><Clock className="h-3.5 w-3.5" />Created {age}</span>}
         actions={[
           { label: 'Download YAML', icon: Download, variant: 'outline', onClick: handleDownloadYaml },
+          { label: 'Export as JSON', icon: Download, variant: 'outline', onClick: handleDownloadJson },
           { label: 'Delete', icon: Trash2, variant: 'destructive', onClick: () => setShowDeleteDialog(true) },
         ]}
         statusCards={statusCards}
         tabs={tabs}
         activeTab={activeTab}
-        onTabChange={setActiveTab}
+        onTabChange={(tabId) => {
+          setActiveTab(tabId);
+          setSearchParams((prev) => {
+            const next = new URLSearchParams(prev);
+            if (tabId === 'overview') next.delete('tab');
+            else next.set('tab', tabId);
+            return next;
+          }, { replace: true });
+        }}
       />
       <DeleteConfirmDialog
         open={showDeleteDialog}

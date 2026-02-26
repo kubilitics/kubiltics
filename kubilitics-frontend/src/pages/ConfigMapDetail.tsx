@@ -10,11 +10,11 @@ import {
   SectionCard,
   MetadataCard,
   YamlViewer,
-  YamlCompareViewer,
   EventsSection,
   ActionsSection,
   DeleteConfirmDialog,
   ResourceTopologyView,
+  ResourceComparisonView,
   type ResourceStatus,
   type YamlVersion,
 } from '@/components/resources';
@@ -26,6 +26,7 @@ import { useClusterStore } from '@/stores/clusterStore';
 import { useActiveClusterId } from '@/hooks/useActiveClusterId';
 import { getConfigMapConsumers, BackendApiError } from '@/services/backendApiClient';
 import { Breadcrumbs, useDetailBreadcrumbs } from '@/components/layout/Breadcrumbs';
+import { downloadResourceJson } from '@/lib/exportUtils';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { toast } from 'sonner';
@@ -117,6 +118,11 @@ export default function ConfigMapDetail() {
     a.click();
     URL.revokeObjectURL(url);
   }, [yaml, cmName]);
+
+  const handleDownloadJson = useCallback(() => {
+    downloadResourceJson(cm, `${cmName || 'configmap'}.json`);
+    toast.success('JSON downloaded');
+  }, [cm, cmName]);
 
   const yamlVersions: YamlVersion[] = yaml ? [{ id: 'current', label: 'Current Version', yaml, timestamp: 'now' }] : [];
 
@@ -391,7 +397,23 @@ export default function ConfigMapDetail() {
     { id: 'used-by', label: 'Used By', icon: FileJson, content: usedByContent },
     { id: 'events', label: 'Events', icon: Clock, content: <EventsSection events={events} /> },
     { id: 'yaml', label: 'YAML', icon: FileCode, content: <YamlViewer yaml={yaml} resourceName={cmName} editable onSave={handleSaveYaml} /> },
-    { id: 'compare', label: 'Compare', icon: GitCompare, content: <YamlCompareViewer versions={yamlVersions} resourceName={cmName} /> },
+    {
+      id: 'compare',
+      label: 'Compare',
+      icon: GitCompare,
+      content: (
+        <ResourceComparisonView
+          resourceType="configmaps"
+          resourceKind="ConfigMap"
+          namespace={namespace}
+          initialSelectedResources={namespace && name ? [`${namespace}/${name}`] : [name || '']}
+          clusterId={clusterId ?? undefined}
+          backendBaseUrl={baseUrl ?? ''}
+          isConnected={isConnected}
+          embedded
+        />
+      ),
+    },
     {
       id: 'topology',
       label: 'Topology',
@@ -415,6 +437,7 @@ export default function ConfigMapDetail() {
           { icon: Edit, label: 'Edit ConfigMap', description: 'Modify configuration data' },
           { icon: Copy, label: 'Duplicate', description: 'Create a copy of this ConfigMap' },
           { icon: Download, label: 'Download YAML', description: 'Export ConfigMap definition', onClick: handleDownloadYaml },
+          { icon: Download, label: 'Export as JSON', description: 'Export ConfigMap as JSON', onClick: handleDownloadJson },
           { icon: Trash2, label: 'Delete ConfigMap', description: 'Remove this ConfigMap', variant: 'destructive', onClick: () => setShowDeleteDialog(true) },
         ]} />
       ),

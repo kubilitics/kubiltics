@@ -26,13 +26,13 @@ func buildNode(kind, namespace, name, status string, meta metav1.ObjectMeta) mod
 		meta.Annotations = make(map[string]string)
 	}
 	return models.TopologyNode{
-		ID:          id,
-		Kind:        kind,
-		Namespace:   namespace,
-		Name:        name,
-		Status:      status,
-		Metadata:    models.NodeMetadata{Labels: meta.Labels, Annotations: meta.Annotations, UID: string(meta.UID), CreatedAt: createdAt},
-		Computed:    models.NodeComputed{Health: "healthy"},
+		ID:        id,
+		Kind:      kind,
+		Namespace: namespace,
+		Name:      name,
+		Status:    status,
+		Metadata:  models.NodeMetadata{Labels: meta.Labels, Annotations: meta.Annotations, UID: string(meta.UID), CreatedAt: createdAt},
+		Computed:  models.NodeComputed{Health: "healthy"},
 	}
 }
 
@@ -521,23 +521,4 @@ func (e *Engine) discoverPodDisruptionBudgets(ctx context.Context, graph *Graph,
 		graph.AddNode(buildNode("PodDisruptionBudget", pdb.Namespace, pdb.Name, "Active", pdb.ObjectMeta))
 	}
 	return nil
-}
-
-// convertToMap converts ObjectMeta to map for storage
-func convertToMap(meta metav1.ObjectMeta) map[string]interface{} {
-	result := make(map[string]interface{})
-	
-	if len(meta.OwnerReferences) > 0 {
-		owners := make([]map[string]interface{}, len(meta.OwnerReferences))
-		for i, owner := range meta.OwnerReferences {
-			owners[i] = map[string]interface{}{
-				"kind": owner.Kind,
-				"name": owner.Name,
-				"uid":  string(owner.UID),
-			}
-		}
-		result["ownerReferences"] = owners
-	}
-	
-	return result
 }

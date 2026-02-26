@@ -1,22 +1,23 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom';
-import { Globe, Clock, Server, Download, Trash2, ExternalLink, Network, Loader2, Copy, Activity, Shield, Layers, Search } from 'lucide-react';
+import { Globe, Clock, Server, Download, Trash2, ExternalLink, Network, Loader2, Copy, Activity, Shield, Layers, Search, GitCompare } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
+import { downloadResourceJson } from '@/lib/exportUtils';
 import {
   ResourceDetailLayout,
   YamlViewer,
-  YamlCompareViewer,
   EventsSection,
   ActionsSection,
   DeleteConfirmDialog,
   SectionCard,
   DetailRow,
   ResourceTopologyView,
+  ResourceComparisonView,
   type ResourceStatus,
   type YamlVersion,
   type EventInfo,
@@ -76,8 +77,9 @@ export default function ServiceDetail() {
   const [podsTabSearch, setPodsTabSearch] = useState('');
 
   const namespace = nsParam ?? '';
-  const baseUrl = getEffectiveBackendBaseUrl();
-  const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured());
+  const storedUrl = useBackendConfigStore((s) => s.backendBaseUrl);
+  const baseUrl = getEffectiveBackendBaseUrl(storedUrl);
+  const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured);
   const clusterId = useActiveClusterId();
   const activeCluster = useClusterStore((s) => s.activeCluster);
   const breadcrumbSegments = useDetailBreadcrumbs('Service', name ?? undefined, nsParam ?? undefined, activeCluster?.name);
@@ -85,12 +87,11 @@ export default function ServiceDetail() {
   useEffect(() => {
     setActiveTab(initialTab);
   }, [initialTab]);
-
   const { resource: svc, isLoading, error, age, yaml, isConnected, refetch } = useResourceDetail<ServiceResource>(
     'services',
     name,
     nsParam,
-    undefined
+    {} as ServiceResource
   );
   const resourceEvents = useResourceEvents('Service', namespace, name ?? undefined);
   const events = resourceEvents.events;
@@ -121,33 +122,6 @@ export default function ServiceDetail() {
     { enabled: !!namespace }
   );
   const networkPoliciesList = networkPoliciesInNs.data?.items ?? [];
-  const otherServiceNames = useMemo(
-    () =>
-      (servicesInNs.data?.items ?? [])
-        .filter((s) => s.metadata?.name !== name)
-        .slice(0, 3)
-        .map((s) => s.metadata!.name!),
-    [servicesInNs.data?.items, name]
-  );
-  const compareServicesQuery = useQuery({
-    queryKey: ['service-compare-yamls', clusterId, namespace, otherServiceNames],
-    queryFn: async () => {
-      const results = await Promise.all(
-        otherServiceNames.map((n) => getResource(baseUrl!, clusterId!, 'services', namespace, n))
-      );
-      return results.map((r, i) => ({ name: otherServiceNames[i], yaml: resourceToYaml(r as KubernetesResource) }));
-    },
-    enabled: !!(isBackendConfigured && clusterId && baseUrl && namespace && otherServiceNames.length > 0),
-    staleTime: 30_000,
-  });
-  const yamlVersionsForCompare: YamlVersion[] = useMemo(() => {
-    const currentName = svc.metadata?.name ?? 'Current';
-    const versions: YamlVersion[] = [{ id: 'current', label: currentName, yaml, timestamp: 'Current' }];
-    if (compareServicesQuery.data) {
-      compareServicesQuery.data.forEach((d, i) => versions.push({ id: `other-${i}`, label: d.name, yaml: d.yaml, timestamp: '' }));
-    }
-    return versions;
-  }, [svc.metadata?.name, yaml, compareServicesQuery.data]);
 
   const podsInNs = useK8sResourceList<KubernetesResource & { spec?: { containers?: { name: string }[] }; metadata?: { name: string } }>(
     'pods',
@@ -215,7 +189,7 @@ export default function ServiceDetail() {
     return { endpointsReady: ready, endpointsTotal: rows.length, endpointRows: rows };
   }, [endpointsResource]);
 
-  const status: ResourceStatus = endpointsTotal > 0 && endpointsReady === 0 ? 'Degraded' : 'Healthy';
+  const status: ResourceStatus = (endpointsTotal > 0 && endpointsReady === 0) ? 'Degraded' as ResourceStatus : 'Healthy' as ResourceStatus;
   const serviceType = svc.spec?.type || 'ClusterIP';
   const clusterIP = svc.spec?.clusterIP ?? (serviceType === 'ExternalName' ? '-' : 'None');
   const externalIP = useMemo(() => {
@@ -241,8 +215,10 @@ export default function ServiceDetail() {
     URL.revokeObjectURL(url);
   }, [yaml, svcName]);
 
-  // Compare tab: current + up to 3 other services from same namespace (real backend data)
-  const yamlVersions = yamlVersionsForCompare;
+  const handleDownloadJson = useCallback(() => {
+    downloadResourceJson(svc, `${svcName || 'service'}.json`);
+    toast.success('JSON downloaded');
+  }, [svc, svcName]);
 
   const handleSaveYaml = useCallback(async (newYaml: string) => {
     if (!isConnected || !name || !namespace) {
@@ -266,7 +242,7 @@ export default function ServiceDetail() {
       <div className="space-y-6">
         <Skeleton className="h-20 w-full" />
         <div className="grid grid-cols-4 gap-4">
-          {[1,2,3,4].map(i => <Skeleton key={i} className="h-24" />)}
+          {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-24" />)}
         </div>
         <Skeleton className="h-96" />
       </div>
@@ -644,12 +620,18 @@ export default function ServiceDetail() {
     {
       id: 'compare',
       label: 'Compare',
-      content: !isBackendConfigured || !clusterId ? (
-        <SectionCard title="Compare" icon={Layers}>
-          <p className="text-muted-foreground text-sm">Connect to the Kubilitics backend and select a cluster to compare this service with others in the namespace.</p>
-        </SectionCard>
-      ) : (
-        <YamlCompareViewer versions={yamlVersions} resourceName={svcName} />
+      icon: GitCompare,
+      content: (
+        <ResourceComparisonView
+          resourceType="services"
+          resourceKind="Service"
+          namespace={namespace}
+          initialSelectedResources={namespace && name ? [`${namespace}/${name}`] : [name || '']}
+          clusterId={clusterId ?? undefined}
+          backendBaseUrl={baseUrl ?? ''}
+          isConnected={isConnected}
+          embedded
+        />
       ),
     },
     {
@@ -701,6 +683,7 @@ export default function ServiceDetail() {
           { icon: Globe, label: 'Test Connectivity', description: 'Simple connectivity check', onClick: () => toast.info('Test connectivity: requires backend support (design 3.1)') },
           ...(backingDeployment ? [{ icon: Server, label: 'Scale Backing Deployment', description: `Open Deployment ${backingDeployment.name} to scale`, onClick: () => navigate(`/deployments/${backingDeployment.namespace}/${backingDeployment.name}`) }] : []),
           { icon: Download, label: 'Download YAML', description: 'Export Service definition', onClick: handleDownloadYaml },
+          { icon: Download, label: 'Export as JSON', description: 'Export Service as JSON', onClick: handleDownloadJson },
           { icon: Trash2, label: 'Delete Service', description: 'Remove this service', variant: 'destructive', onClick: () => setShowDeleteDialog(true) },
         ]} />
       ),
@@ -720,6 +703,7 @@ export default function ServiceDetail() {
         headerMetadata={<span className="flex items-center gap-1.5 ml-2 text-sm text-muted-foreground"><Clock className="h-3.5 w-3.5" />Created {age}{isConnected && <Badge variant="outline" className="ml-2 text-xs">Live</Badge>}</span>}
         actions={[
           { label: 'Download YAML', icon: Download, variant: 'outline', onClick: handleDownloadYaml },
+          { label: 'Export as JSON', icon: Download, variant: 'outline', onClick: handleDownloadJson },
           { label: 'Port Forward', icon: ExternalLink, variant: 'outline', onClick: () => toast.info(`kubectl port-forward svc/${svcName} -n ${namespace} <localPort>:<servicePort>`) },
           { label: 'Delete', icon: Trash2, variant: 'destructive', onClick: () => setShowDeleteDialog(true) },
         ]}

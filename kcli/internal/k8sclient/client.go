@@ -137,6 +137,25 @@ func CurrentContext(kubeconfigPath string) (string, error) {
 	return strings.TrimSpace(raw.CurrentContext), nil
 }
 
+// CurrentContextAndNamespace returns the effective context and namespace (from kubeconfig).
+// If contextOverride is non-empty it is used as context; otherwise raw.CurrentContext is used.
+// Namespace comes from the context's Namespace field, or "default" if unset.
+func CurrentContextAndNamespace(kubeconfigPath, contextOverride string) (contextName, namespace string, err error) {
+	raw, err := loadRawConfig(kubeconfigPath)
+	if err != nil {
+		return "", "", err
+	}
+	ctxName := strings.TrimSpace(contextOverride)
+	if ctxName == "" {
+		ctxName = strings.TrimSpace(raw.CurrentContext)
+	}
+	ns := "default"
+	if c, ok := raw.Contexts[ctxName]; ok && c != nil && strings.TrimSpace(c.Namespace) != "" {
+		ns = strings.TrimSpace(c.Namespace)
+	}
+	return ctxName, ns, nil
+}
+
 func DetectAuthMethods(raw clientcmdapi.Config, contextName string) []string {
 	ctxName := strings.TrimSpace(contextName)
 	if ctxName == "" {

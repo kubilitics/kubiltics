@@ -60,7 +60,7 @@ func TestListProjects_Empty(t *testing.T) {
 	cfg := &config.Config{AuthMode: "disabled"}
 	cs := service.NewClusterService(&mockClusterRepo{list: []*models.Cluster{}}, cfg)
 	ps := service.NewProjectService(repo, &mockClusterRepo{list: []*models.Cluster{}})
-	h := NewHandler(cs, nil, cfg, nil, nil, nil, nil, ps, nil)
+	h := NewHandler(cs, nil, cfg, nil, nil, nil, nil, ps, nil, nil)
 
 	router := mux.NewRouter()
 	api := router.PathPrefix("/api/v1").Subrouter()
@@ -90,7 +90,7 @@ func TestCreateProject(t *testing.T) {
 	cfg := &config.Config{AuthMode: "disabled"}
 	cs := service.NewClusterService(&mockClusterRepo{list: []*models.Cluster{}}, cfg)
 	ps := service.NewProjectService(repo, &mockClusterRepo{list: []*models.Cluster{}})
-	h := NewHandler(cs, nil, cfg, nil, nil, nil, nil, ps, nil)
+	h := NewHandler(cs, nil, cfg, nil, nil, nil, nil, ps, nil, nil)
 
 	router := mux.NewRouter()
 	api := router.PathPrefix("/api/v1").Subrouter()
@@ -118,7 +118,7 @@ func TestGetProject_NotFound(t *testing.T) {
 	cfg := &config.Config{AuthMode: "disabled"}
 	cs := service.NewClusterService(&mockClusterRepo{list: []*models.Cluster{}}, cfg)
 	ps := service.NewProjectService(repo, &mockClusterRepo{list: []*models.Cluster{}})
-	h := NewHandler(cs, nil, cfg, nil, nil, nil, nil, ps, nil)
+	h := NewHandler(cs, nil, cfg, nil, nil, nil, nil, ps, nil, nil)
 
 	router := mux.NewRouter()
 	api := router.PathPrefix("/api/v1").Subrouter()
@@ -149,7 +149,7 @@ func TestGetProject_Found(t *testing.T) {
 	cfg := &config.Config{AuthMode: "disabled"}
 	cs := service.NewClusterService(&mockClusterRepo{list: []*models.Cluster{}}, cfg)
 	ps := service.NewProjectService(repo, &mockClusterRepo{list: []*models.Cluster{}})
-	h := NewHandler(cs, nil, cfg, nil, nil, nil, nil, ps, nil)
+	h := NewHandler(cs, nil, cfg, nil, nil, nil, nil, ps, nil, nil)
 
 	router := mux.NewRouter()
 	api := router.PathPrefix("/api/v1").Subrouter()
@@ -188,7 +188,7 @@ func TestUpdateProject(t *testing.T) {
 	cfg := &config.Config{AuthMode: "disabled"}
 	cs := service.NewClusterService(&mockClusterRepo{list: []*models.Cluster{}}, cfg)
 	ps := service.NewProjectService(repo, &mockClusterRepo{list: []*models.Cluster{}})
-	h := NewHandler(cs, nil, cfg, nil, nil, nil, nil, ps, nil)
+	h := NewHandler(cs, nil, cfg, nil, nil, nil, nil, ps, nil, nil)
 
 	router := mux.NewRouter()
 	api := router.PathPrefix("/api/v1").Subrouter()
@@ -224,7 +224,7 @@ func TestDeleteProject(t *testing.T) {
 	cfg := &config.Config{AuthMode: "disabled"}
 	cs := service.NewClusterService(&mockClusterRepo{list: []*models.Cluster{}}, cfg)
 	ps := service.NewProjectService(repo, &mockClusterRepo{list: []*models.Cluster{}})
-	h := NewHandler(cs, nil, cfg, nil, nil, nil, nil, ps, nil)
+	h := NewHandler(cs, nil, cfg, nil, nil, nil, nil, ps, nil, nil)
 
 	router := mux.NewRouter()
 	api := router.PathPrefix("/api/v1").Subrouter()

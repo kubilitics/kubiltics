@@ -4,15 +4,16 @@ import { Layers, Clock, Download, Trash2, Server, Settings, Info, FileCode, GitC
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
+import { downloadResourceJson } from '@/lib/exportUtils';
 import {
   ResourceDetailLayout,
   ResourceOverviewMetadata,
   SectionCard,
   YamlViewer,
-  YamlCompareViewer,
   EventsSection,
   ActionsSection,
   DeleteConfirmDialog,
+  ResourceComparisonView,
   type ResourceStatus,
   type YamlVersion,
 } from '@/components/resources';
@@ -20,6 +21,8 @@ import { useResourceDetail, useResourceEvents } from '@/hooks/useK8sResourceDeta
 import { useDeleteK8sResource, useUpdateK8sResource, type KubernetesResource } from '@/hooks/useKubernetes';
 import { Breadcrumbs, useDetailBreadcrumbs } from '@/components/layout/Breadcrumbs';
 import { useClusterStore } from '@/stores/clusterStore';
+import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
+import { useActiveClusterId } from '@/hooks/useActiveClusterId';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 
@@ -47,6 +50,10 @@ export default function VolumeSnapshotContentDetail() {
   const [activeTab, setActiveTab] = useState(initialTab);
   const { activeCluster } = useClusterStore();
   const breadcrumbSegments = useDetailBreadcrumbs('VolumeSnapshotContent', name ?? undefined, undefined, activeCluster?.name);
+  const clusterId = useActiveClusterId();
+  const backendBaseUrl = useBackendConfigStore((s) => s.backendBaseUrl);
+  const baseUrl = getEffectiveBackendBaseUrl(backendBaseUrl);
+  const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured());
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   useEffect(() => {
@@ -77,6 +84,12 @@ export default function VolumeSnapshotContentDetail() {
     a.click();
     URL.revokeObjectURL(url);
   }, [yaml, vsc?.metadata?.name]);
+
+  const handleDownloadJson = useCallback(() => {
+    if (!vsc) return;
+    downloadResourceJson(vsc, `${vsc?.metadata?.name || 'volumesnapshotcontent'}.json`);
+    toast.success('JSON downloaded');
+  }, [vsc]);
 
   if (!name?.trim()) return null;
   if (isLoading) {
@@ -112,9 +125,8 @@ export default function VolumeSnapshotContentDetail() {
   const sourceSpec = spec.source ?? {};
   const vsRef = spec.volumeSnapshotRef ?? {};
 
-  const raw = vsc as Record<string, unknown>;
-  const driver = (raw.driver as string) ?? spec.driver ?? (raw.spec as Record<string, unknown>)?.driver ?? '—';
-  const deletionPolicy = (raw.deletionPolicy as string) ?? spec.deletionPolicy ?? (raw.spec as Record<string, unknown>)?.deletionPolicy ?? 'Delete';
+  const driver = vsc?.spec?.driver ?? (vsc as any)?.driver ?? '—';
+  const deletionPolicy = vsc?.spec?.deletionPolicy ?? (vsc as any)?.deletionPolicy ?? 'Delete';
   const snapshotClass = spec.volumeSnapshotClassName ?? '—';
   const restoreSize = status.restoreSize ?? '—';
   const readyToUse = status.readyToUse === true;
@@ -135,7 +147,6 @@ export default function VolumeSnapshotContentDetail() {
     { label: 'Deletion Policy', value: deletionPolicy, icon: Settings, iconColor: 'muted' as const },
   ];
 
-  const yamlVersions: YamlVersion[] = yaml ? [{ id: 'current', label: 'Current Version', yaml, timestamp: 'now' }] : [];
 
   const handleSaveYaml = async (newYaml: string) => {
     if (!name) return;
@@ -192,7 +203,22 @@ export default function VolumeSnapshotContentDetail() {
     },
     { id: 'events', label: 'Events', icon: Clock, content: <EventsSection events={events} /> },
     { id: 'yaml', label: 'YAML', icon: FileCode, content: <YamlViewer yaml={yaml} resourceName={vscName} editable onSave={handleSaveYaml} /> },
-    { id: 'compare', label: 'Compare', icon: GitCompare, content: <YamlCompareViewer versions={yamlVersions} resourceName={vscName} /> },
+    {
+      id: 'compare',
+      label: 'Compare',
+      icon: GitCompare,
+      content: (
+        <ResourceComparisonView
+          resourceType="volumesnapshotcontents"
+          resourceKind="VolumeSnapshotContent"
+          initialSelectedResources={[vscName]}
+          clusterId={clusterId ?? undefined}
+          backendBaseUrl={baseUrl ?? ''}
+          isConnected={isConnected}
+          embedded
+        />
+      ),
+    },
     {
       id: 'actions',
       label: 'Actions',
@@ -200,6 +226,7 @@ export default function VolumeSnapshotContentDetail() {
       content: (
         <ActionsSection actions={[
           { icon: Download, label: 'Download YAML', description: 'Export VolumeSnapshotContent definition', onClick: handleDownloadYaml },
+          { icon: Download, label: 'Export as JSON', description: 'Export VolumeSnapshotContent as JSON', onClick: handleDownloadJson },
           { icon: Trash2, label: 'Delete VolumeSnapshotContent', description: 'Remove this snapshot content (consider deleting the VolumeSnapshot first)', variant: 'destructive', onClick: () => setShowDeleteDialog(true) },
         ]} />
       ),
@@ -225,6 +252,7 @@ export default function VolumeSnapshotContentDetail() {
         }
         actions={[
           { label: 'Download YAML', icon: Download, variant: 'outline', onClick: handleDownloadYaml },
+          { label: 'Export as JSON', icon: Download, variant: 'outline', onClick: handleDownloadJson },
           { label: 'Edit', icon: FileCode, variant: 'outline', onClick: () => { setActiveTab('yaml'); setSearchParams((p) => { const n = new URLSearchParams(p); n.set('tab', 'yaml'); return n; }, { replace: true }); } },
           { label: 'Delete', icon: Trash2, variant: 'destructive', onClick: () => setShowDeleteDialog(true) },
         ]}

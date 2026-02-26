@@ -236,13 +236,13 @@ export default function WorkloadsOverview() {
         isSyncing={isSyncing}
       />
 
-      {/* Hero Section: Workload Health Pulse + Alerts */}
+      {/* Hero Section: Workload Health Pulse */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
-        <Card className="lg:col-span-8 overflow-hidden border-slate-100 shadow-sm bg-white ring-1 ring-slate-100">
+        <Card className="lg:col-span-12 overflow-hidden border-slate-100 shadow-sm bg-white ring-1 ring-slate-100">
           <CardHeader className="flex flex-row items-center justify-between pb-4 pt-10 px-12">
             <div>
               <CardTitle className="text-2xl font-bold tracking-tight text-slate-900 leading-tight">Workload Intelligence</CardTitle>
-              <p className="text-[11px] text-slate-400 font-bold uppercase tracking-widest mt-1.5 opacity-70">Fleet-Wide Autonomous Health Pulse</p>
+              <p className="text-[11px] text-slate-400 font-bold uppercase tracking-widest mt-1.5 opacity-70">Cluster-Wide Autonomous Health Pulse</p>
             </div>
             {pulse && (
               <div className="flex items-center gap-2.5 px-5 py-2 rounded-full bg-emerald-50 text-emerald-700 text-[10px] font-bold uppercase tracking-wider border border-emerald-100 shadow-sm shadow-emerald-500/5">
@@ -298,61 +298,6 @@ export default function WorkloadsOverview() {
               </div>
             </div>
           </CardContent>
-        </Card>
-
-        {/* Alerts / Insights */}
-        <Card className="lg:col-span-4 border-slate-100 shadow-sm bg-white ring-1 ring-slate-100 flex flex-col p-10 relative overflow-hidden group">
-          <AlertTriangle className="absolute -bottom-12 -right-12 w-56 h-56 opacity-[0.03] text-blue-600 -rotate-12 transition-transform duration-700 group-hover:rotate-0" />
-
-          <div className="flex-1 relative z-10">
-            <div className="flex items-center gap-4 mb-10">
-              <div className="h-12 w-12 rounded-2xl bg-blue-50 flex items-center justify-center border border-blue-100">
-                <Zap className="h-6 w-6 text-blue-600" />
-              </div>
-              <div>
-                <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider">Alert Intelligence</h3>
-                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">Autonomous Tracking</p>
-              </div>
-            </div>
-
-            {isLoading ? (
-              <div className="py-12 flex justify-center">
-                <Loader2 className="h-8 w-8 animate-spin text-blue-200" />
-              </div>
-            ) : alerts && (alerts.warnings > 0 || alerts.critical > 0) ? (
-              <div className="space-y-6">
-                <div className="flex gap-2">
-                  <Badge className="bg-rose-50 text-rose-700 border-rose-100 text-[10px] font-bold px-3 py-1 rounded-lg">{alerts.critical} Critical</Badge>
-                  <Badge className="bg-amber-50 text-amber-700 border-amber-100 text-[10px] font-bold px-3 py-1 rounded-lg">{alerts.warnings} Warnings</Badge>
-                </div>
-
-                <div className="space-y-3">
-                  {alerts.top_3?.slice(0, 2).map((a, i) => (
-                    <div key={i} className="p-4 rounded-2xl bg-slate-50 border border-slate-100 hover:border-blue-200 transition-colors group/alert cursor-default">
-                      <p className="text-xs font-bold text-slate-900 leading-snug group-hover/alert:text-blue-600 transition-colors">{a.reason}</p>
-                      <p className="text-[10px] text-slate-500 font-medium mt-1 truncate font-mono">{a.resource}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ) : (
-              <div className="py-10 text-center">
-                <div className="h-16 w-16 rounded-full bg-emerald-50 flex items-center justify-center mx-auto mb-6 border border-emerald-100">
-                  <Activity className="h-8 w-8 text-emerald-500" />
-                </div>
-                <p className="text-sm font-bold text-slate-900 uppercase tracking-wider">Health Nominal</p>
-                <p className="text-[10px] text-slate-400 font-semibold mt-1 uppercase tracking-widest">No Active Interruptions</p>
-              </div>
-            )}
-          </div>
-
-          <div className="mt-10 relative z-10">
-            <Button variant="outline" asChild className="w-full h-14 border-slate-200 text-slate-600 font-bold rounded-2xl hover:bg-slate-50 hover:text-blue-600 hover:border-blue-200 transition-all shadow-sm">
-              <Link to="/events" className="flex items-center justify-center gap-2">
-                Deep Inspection <ChevronRight className="w-4 h-4" />
-              </Link>
-            </Button>
-          </div>
         </Card>
       </div>
 
@@ -473,7 +418,7 @@ export default function WorkloadsOverview() {
 
         <div className="p-6 border-t border-slate-50 bg-slate-50/30 flex flex-col sm:flex-row items-center justify-between gap-6">
           <ListPagination
-            rangeLabel={`Fleet Census: ${totalFiltered} Controllers`}
+            rangeLabel={`Cluster Census: ${totalFiltered} Controllers`}
             hasPrev={safePageIndex > 0}
             hasNext={start + pageSize < totalFiltered}
             onPrev={() => setPageIndex((i) => Math.max(0, i - 1))}

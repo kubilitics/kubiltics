@@ -77,6 +77,7 @@ export const RESOURCE_TOPOLOGY_SUPPORTED_KINDS = [
   'Node', 'Pod', 'Deployment', 'ReplicaSet', 'StatefulSet', 'DaemonSet', 'Job', 'CronJob',
   'Service', 'Ingress', 'IngressClass', 'Endpoints', 'EndpointSlice', 'NetworkPolicy',
   'ConfigMap', 'Secret', 'PersistentVolumeClaim', 'PersistentVolume', 'StorageClass', 'VolumeAttachment',
+  'ResourceQuota', 'LimitRange', 'PriorityClass', 'ResourceSlice', 'DeviceClass',
 ] as const;
 
 /**
@@ -140,13 +141,13 @@ export function normalizeKindForTopology(kind: string): string {
   if (ROUTE_TO_KIND[kind.toLowerCase()]) {
     return ROUTE_TO_KIND[kind.toLowerCase()];
   }
-  
+
   // Try PascalCase conversion
   const pascalCase = kind.charAt(0).toUpperCase() + kind.slice(1).toLowerCase();
   if (KIND_TO_ROUTE[pascalCase]) {
     return pascalCase;
   }
-  
+
   // Return as-is if already canonical
   return kind;
 }

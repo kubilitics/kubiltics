@@ -145,7 +145,7 @@ cp .env.example .env   # optional; edit as needed
 make dev
 ```
 
-Or run in two terminals: `make backend-dev` and `make frontend-dev`. Backend: http://localhost:8080. Frontend: http://localhost:5173 (Vite; port 5173 avoids conflict with backend). Metrics: http://localhost:8080/metrics.
+Or run in two terminals: `make backend-dev` and `make frontend-dev`. Backend: http://localhost:819. Frontend: http://localhost:5173 (Vite). Metrics: http://localhost:819/metrics. See `project-docs/PORTS.md` for all ports.
 
 ### 1. Backend
 
@@ -156,9 +156,9 @@ cd kubilitics-backend
 go mod download
 
 # Run backend
-go run cmd/server/main.go
+go run ./cmd/server
 
-# Backend runs on http://localhost:8080
+# Backend runs on http://localhost:819 (override with KUBILITICS_PORT)
 ```
 
 ### 2. Desktop

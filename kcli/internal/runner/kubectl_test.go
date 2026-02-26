@@ -58,3 +58,37 @@ func TestCommandWords(t *testing.T) {
 		t.Fatalf("commandWords mismatch: got %v want %v", got, want)
 	}
 }
+
+// ---------------------------------------------------------------------------
+// P2-5: isMutatingVerb and AuditFn wiring
+// ---------------------------------------------------------------------------
+
+func TestIsMutatingVerb_Mutating(t *testing.T) {
+	cases := [][]string{
+		{"delete", "pod", "api-0"},
+		{"apply", "-f", "deploy.yaml"},
+		{"--context", "prod", "-n", "default", "create", "ns", "test"},
+		{"scale", "deployment/api", "--replicas=3"},
+		{"patch", "pod", "api-0", "-p", `{"spec":{}}`},
+	}
+	for _, args := range cases {
+		if !isMutatingVerb(args) {
+			t.Errorf("expected isMutatingVerb(%v)=true", args)
+		}
+	}
+}
+
+func TestIsMutatingVerb_ReadOnly(t *testing.T) {
+	cases := [][]string{
+		{"get", "pods"},
+		{"describe", "pod", "api-0"},
+		{"logs", "api-0"},
+		{"version"},
+		{"config", "view"},
+	}
+	for _, args := range cases {
+		if isMutatingVerb(args) {
+			t.Errorf("expected isMutatingVerb(%v)=false", args)
+		}
+	}
+}

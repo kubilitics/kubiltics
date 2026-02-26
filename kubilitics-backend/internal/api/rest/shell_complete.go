@@ -485,7 +485,7 @@ func (h *Handler) GetShellComplete(w http.ResponseWriter, r *http.Request) {
 	respondJSON(w, http.StatusOK, map[string]interface{}{"completions": completions})
 }
 
-func staticCompletions(line string, words []string) []string {
+func staticCompletions(_ string, words []string) []string {
 	// When the user is typing the command name (e.g. "ku", "kub"), complete to "kubectl" first.
 	if len(words) == 1 {
 		first := strings.ToLower(strings.TrimSpace(words[0]))

@@ -78,7 +78,7 @@ func TestPostKCLIExec_RequiresDestructiveHeader(t *testing.T) {
 	}
 	cfg := &config.Config{}
 	cs := service.NewClusterService(repo, cfg)
-	h := NewHandler(cs, nil, cfg, nil, nil, nil, nil, nil, nil)
+	h := NewHandler(cs, nil, cfg, nil, nil, nil, nil, nil, nil, nil)
 
 	router := mux.NewRouter()
 	api := router.PathPrefix("/api/v1").Subrouter()
@@ -121,7 +121,7 @@ func TestPostKCLIExec_RateLimited(t *testing.T) {
 		KCLIRateLimitBurst:  1,
 	}
 	cs := service.NewClusterService(repo, cfg)
-	h := NewHandler(cs, nil, cfg, nil, nil, nil, nil, nil, nil)
+	h := NewHandler(cs, nil, cfg, nil, nil, nil, nil, nil, nil, nil)
 
 	router := mux.NewRouter()
 	api := router.PathPrefix("/api/v1").Subrouter()
@@ -159,7 +159,7 @@ func TestGetKCLIStream_ShellModeDisabled(t *testing.T) {
 		KCLIAllowShellMode: false,
 	}
 	cs := service.NewClusterService(repo, cfg)
-	h := NewHandler(cs, nil, cfg, nil, nil, nil, nil, nil, nil)
+	h := NewHandler(cs, nil, cfg, nil, nil, nil, nil, nil, nil, nil)
 
 	router := mux.NewRouter()
 	api := router.PathPrefix("/api/v1").Subrouter()

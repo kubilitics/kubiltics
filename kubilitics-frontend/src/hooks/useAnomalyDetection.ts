@@ -1,8 +1,5 @@
 import { useEffect, useState } from 'react';
-import { AI_BASE_URL } from '@/services/aiService';
-
-// Use the canonical AI base URL from aiService (VITE_AI_BACKEND_URL || http://localhost:8081)
-const AI_BACKEND_URL = AI_BASE_URL;
+import { detectAnomalies as detectAnomaliesService } from '@/services/aiService';
 
 export interface DataPoint {
   timestamp: string;
@@ -59,29 +56,18 @@ export function useAnomalyDetection(options: UseAnomalyDetectionOptions): UseAno
     setError(null);
 
     try {
-      const response = await fetch(`${AI_BACKEND_URL}/api/v1/analytics/anomalies`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
+      const result = await detectAnomaliesService({
+        time_series: {
+          metric_name: metricName,
+          metric_type: metricType,
+          data: data.map(d => ({
+            timestamp: d.timestamp,
+            value: d.value
+          }))
         },
-        body: JSON.stringify({
-          time_series: {
-            metric_name: metricName,
-            metric_type: metricType,
-            data: data.map(d => ({
-              timestamp: d.timestamp,
-              value: d.value
-            }))
-          },
-          sensitivity
-        })
+        sensitivity
       });
-
-      if (!response.ok) {
-        throw new Error(`Anomaly detection failed: ${response.statusText}`);
-      }
-
-      const result = await response.json();
+      setAnomalies(result.anomalies || []);
       setAnomalies(result.anomalies || []);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';

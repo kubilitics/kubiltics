@@ -68,13 +68,32 @@ func (c *Client) ExecuteStream(command string) (<-chan StreamChunk, error) {
 	errR, errW := io.Pipe()
 	ch := make(chan StreamChunk, 64)
 
-	go streamPipe("stdout", outR, ch)
-	go streamPipe("stderr", errR, ch)
+	// wg tracks the two streamPipe goroutines so we can wait for them to
+	// drain their respective pipes before sending the Done sentinel and
+	// closing the channel. Without this synchronisation the main goroutine
+	// could close(ch) while a streamPipe goroutine is still sending, causing
+	// a data race detected by the Go race detector.
+	var wg sync.WaitGroup
+	wg.Add(2)
+
+	go func() {
+		defer wg.Done()
+		streamPipe("stdout", outR, ch)
+	}()
+	go func() {
+		defer wg.Done()
+		streamPipe("stderr", errR, ch)
+	}()
 
 	go func() {
 		err := c.executeArgs(context.Background(), args, outW, errW)
+		// Close the write ends of the pipes so that streamPipe goroutines
+		// reach EOF and their scanners exit cleanly.
 		_ = outW.Close()
 		_ = errW.Close()
+		// Wait for both streamPipe goroutines to finish sending before we
+		// send the Done sentinel and close the channel.
+		wg.Wait()
 		ch <- StreamChunk{Done: true, Err: err}
 		close(ch)
 	}()

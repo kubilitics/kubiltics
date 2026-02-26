@@ -90,6 +90,10 @@ func (m *mockClusterServiceWithClient) ReconnectCluster(ctx context.Context, id 
 	return nil, fmt.Errorf("cluster not found: %s", id)
 }
 
+func (m *mockClusterServiceWithClient) AddClusterFromBytes(_ context.Context, _ []byte, _ string) (*models.Cluster, error) {
+	return nil, nil
+}
+
 func TestHandler_ListResources_Success(t *testing.T) {
 	// Create fake Kubernetes clientset with test pods
 	pod := &corev1.Pod{
@@ -121,7 +125,7 @@ func TestHandler_ListResources_Success(t *testing.T) {
 	}
 
 	cfg := &config.Config{}
-	h := NewHandler(mockService, nil, cfg, nil, nil, nil, nil, nil, nil)
+	h := NewHandler(mockService, nil, cfg, nil, nil, nil, nil, nil, nil, nil)
 
 	router := mux.NewRouter()
 	api := router.PathPrefix("/api/v1").Subrouter()
@@ -142,9 +146,10 @@ func TestHandler_ListResources_Success(t *testing.T) {
 	router.ServeHTTP(rec, req)
 
 	// If no panic, verify response
-	if rec.Code == http.StatusInternalServerError {
+	switch rec.Code {
+	case http.StatusInternalServerError:
 		t.Logf("Handler correctly handles missing Dynamic client: %s", rec.Body.String())
-	} else if rec.Code == http.StatusOK {
+	case http.StatusOK:
 		var response struct {
 			Items    []map[string]interface{} `json:"items"`
 			Metadata struct {
@@ -164,7 +169,7 @@ func TestHandler_ListResources_InvalidClusterID(t *testing.T) {
 	}
 
 	cfg := &config.Config{}
-	h := NewHandler(mockService, nil, cfg, nil, nil, nil, nil, nil, nil)
+	h := NewHandler(mockService, nil, cfg, nil, nil, nil, nil, nil, nil, nil)
 
 	router := mux.NewRouter()
 	api := router.PathPrefix("/api/v1").Subrouter()
@@ -185,7 +190,7 @@ func TestHandler_ListResources_ClusterNotFound(t *testing.T) {
 	}
 
 	cfg := &config.Config{}
-	h := NewHandler(mockService, nil, cfg, nil, nil, nil, nil, nil, nil)
+	h := NewHandler(mockService, nil, cfg, nil, nil, nil, nil, nil, nil, nil)
 
 	router := mux.NewRouter()
 	api := router.PathPrefix("/api/v1").Subrouter()
@@ -228,7 +233,7 @@ func TestHandler_ListResources_WithPagination(t *testing.T) {
 	}
 
 	cfg := &config.Config{}
-	h := NewHandler(mockService, nil, cfg, nil, nil, nil, nil, nil, nil)
+	h := NewHandler(mockService, nil, cfg, nil, nil, nil, nil, nil, nil, nil)
 
 	router := mux.NewRouter()
 	api := router.PathPrefix("/api/v1").Subrouter()
@@ -248,9 +253,10 @@ func TestHandler_ListResources_WithPagination(t *testing.T) {
 	router.ServeHTTP(rec, req)
 
 	// If no panic, verify response
-	if rec.Code == http.StatusInternalServerError {
+	switch rec.Code {
+	case http.StatusInternalServerError:
 		t.Logf("Handler correctly handles missing Dynamic client (expected for unit test)")
-	} else if rec.Code == http.StatusOK {
+	case http.StatusOK:
 		var response struct {
 			Items    []map[string]interface{} `json:"items"`
 			Metadata struct {
@@ -295,7 +301,7 @@ func TestHandler_GetResource_Success(t *testing.T) {
 	}
 
 	cfg := &config.Config{}
-	h := NewHandler(mockService, nil, cfg, nil, nil, nil, nil, nil, nil)
+	h := NewHandler(mockService, nil, cfg, nil, nil, nil, nil, nil, nil, nil)
 
 	router := mux.NewRouter()
 	api := router.PathPrefix("/api/v1").Subrouter()
@@ -315,9 +321,10 @@ func TestHandler_GetResource_Success(t *testing.T) {
 	router.ServeHTTP(rec, req)
 
 	// If no panic, verify response
-	if rec.Code == http.StatusInternalServerError {
+	switch rec.Code {
+	case http.StatusInternalServerError:
 		t.Logf("Handler correctly handles missing Dynamic client (expected for unit test)")
-	} else if rec.Code == http.StatusOK {
+	case http.StatusOK:
 		var podResponse map[string]interface{}
 		if err := json.NewDecoder(rec.Body).Decode(&podResponse); err != nil {
 			t.Fatalf("Failed to decode response: %v", err)
@@ -350,7 +357,7 @@ func TestHandler_GetResource_NotFound(t *testing.T) {
 	}
 
 	cfg := &config.Config{}
-	h := NewHandler(mockService, nil, cfg, nil, nil, nil, nil, nil, nil)
+	h := NewHandler(mockService, nil, cfg, nil, nil, nil, nil, nil, nil, nil)
 
 	router := mux.NewRouter()
 	api := router.PathPrefix("/api/v1").Subrouter()
@@ -404,7 +411,7 @@ func TestHandler_DeleteResource_RequiresDestructiveHeader(t *testing.T) {
 	}
 
 	cfg := &config.Config{}
-	h := NewHandler(mockService, nil, cfg, nil, nil, nil, nil, nil, nil)
+	h := NewHandler(mockService, nil, cfg, nil, nil, nil, nil, nil, nil, nil)
 
 	router := mux.NewRouter()
 	api := router.PathPrefix("/api/v1").Subrouter()
@@ -444,7 +451,7 @@ func TestHandler_DeleteResource_WithDestructiveHeader(t *testing.T) {
 	}
 
 	cfg := &config.Config{}
-	h := NewHandler(mockService, nil, cfg, nil, nil, nil, nil, nil, nil)
+	h := NewHandler(mockService, nil, cfg, nil, nil, nil, nil, nil, nil, nil)
 
 	router := mux.NewRouter()
 	api := router.PathPrefix("/api/v1").Subrouter()
@@ -466,13 +473,14 @@ func TestHandler_DeleteResource_WithDestructiveHeader(t *testing.T) {
 	router.ServeHTTP(rec, req)
 
 	// If no panic, verify response
-	if rec.Code == http.StatusOK || rec.Code == http.StatusNoContent {
+	switch rec.Code {
+	case http.StatusOK, http.StatusNoContent:
 		// Success - verify it doesn't return 400 (missing header)
 		t.Logf("Delete succeeded with destructive header: status=%d", rec.Code)
-	} else if rec.Code == http.StatusInternalServerError {
+	case http.StatusInternalServerError:
 		// Expected due to nil Dynamic client
 		t.Logf("Handler correctly handles missing Dynamic client (expected for unit test)")
-	} else if rec.Code == http.StatusBadRequest {
+	case http.StatusBadRequest:
 		t.Errorf("Expected success with destructive header, got %d", rec.Code)
 	}
 }

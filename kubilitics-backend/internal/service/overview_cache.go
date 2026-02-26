@@ -147,7 +147,7 @@ func (c *OverviewCache) Subscribe(clusterID string) (chan *models.ClusterOvervie
 	return ch, unsubscribe
 }
 
-func (c *OverviewCache) updatePodStatus(clusterID string, eventType string, obj interface{}) {
+func (c *OverviewCache) updatePodStatus(clusterID string, _ string, _ interface{}) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -184,7 +184,7 @@ func (c *OverviewCache) updatePodStatus(clusterID string, eventType string, obj 
 	c.recalculateHealthRLocked(ov)
 }
 
-func (c *OverviewCache) updateNodeCount(clusterID string, eventType string, obj interface{}) {
+func (c *OverviewCache) updateNodeCount(clusterID string, _ string, _ interface{}) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	ov, ok := c.overviews[clusterID]
@@ -195,7 +195,7 @@ func (c *OverviewCache) updateNodeCount(clusterID string, eventType string, obj 
 	c.recalculateHealthRLocked(ov)
 }
 
-func (c *OverviewCache) updateNamespaceCount(clusterID string, eventType string, obj interface{}) {
+func (c *OverviewCache) updateNamespaceCount(clusterID string, _ string, _ interface{}) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	ov, ok := c.overviews[clusterID]
@@ -205,7 +205,7 @@ func (c *OverviewCache) updateNamespaceCount(clusterID string, eventType string,
 	ov.Counts.Namespaces = len(c.informers[clusterID].GetStore("Namespace").List())
 }
 
-func (c *OverviewCache) updateDeploymentCount(clusterID string, eventType string, obj interface{}) {
+func (c *OverviewCache) updateDeploymentCount(clusterID string, _ string, _ interface{}) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	ov, ok := c.overviews[clusterID]
@@ -215,7 +215,7 @@ func (c *OverviewCache) updateDeploymentCount(clusterID string, eventType string
 	ov.Counts.Deployments = len(c.informers[clusterID].GetStore("Deployment").List())
 }
 
-func (c *OverviewCache) updateAlerts(clusterID string, eventType string, obj interface{}) {
+func (c *OverviewCache) updateAlerts(clusterID string, _ string, _ interface{}) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	ov, ok := c.overviews[clusterID]

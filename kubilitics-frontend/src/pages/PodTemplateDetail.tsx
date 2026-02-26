@@ -4,12 +4,13 @@ import { Layers, Clock, Download, Trash2, Info, FileCode, GitCompare } from 'luc
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
+import { downloadResourceJson } from '@/lib/exportUtils';
 import {
   ResourceDetailLayout,
   ResourceOverviewMetadata,
   SectionCard,
   YamlViewer,
-  YamlCompareViewer,
+  ResourceComparisonView,
   EventsSection,
   ActionsSection,
   DeleteConfirmDialog,
@@ -22,6 +23,8 @@ import { Breadcrumbs, useDetailBreadcrumbs } from '@/components/layout/Breadcrum
 import { useClusterStore } from '@/stores/clusterStore';
 import { Button } from '@/components/ui/button';
 import { NamespaceBadge } from '@/components/list';
+import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
+import { useActiveClusterId } from '@/hooks/useActiveClusterId';
 
 interface K8sPodTemplate extends KubernetesResource {
   template?: {
@@ -39,6 +42,9 @@ export default function PodTemplateDetail() {
   const { activeCluster } = useClusterStore();
   const breadcrumbSegments = useDetailBreadcrumbs('PodTemplate', name ?? undefined, namespace ?? undefined, activeCluster?.name);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const clusterId = useActiveClusterId();
+  const backendBaseUrl = useBackendConfigStore((s) => s.backendBaseUrl);
+  const baseUrl = getEffectiveBackendBaseUrl(backendBaseUrl);
 
   useEffect(() => {
     setActiveTab(initialTab);
@@ -68,6 +74,12 @@ export default function PodTemplateDetail() {
     a.click();
     URL.revokeObjectURL(url);
   }, [yaml, pt?.metadata?.name]);
+
+  const handleDownloadJson = useCallback(() => {
+    if (!pt) return;
+    downloadResourceJson(pt, `${pt?.metadata?.name || 'podtemplate'}.json`);
+    toast.success('JSON downloaded');
+  }, [pt]);
 
   if (!name?.trim() || !namespace?.trim()) return null;
   if (isLoading) {
@@ -164,7 +176,23 @@ export default function PodTemplateDetail() {
     },
     { id: 'events', label: 'Events', icon: Clock, content: <EventsSection events={events} /> },
     { id: 'yaml', label: 'YAML', icon: FileCode, content: <YamlViewer yaml={yaml} resourceName={ptName} editable onSave={handleSaveYaml} /> },
-    { id: 'compare', label: 'Compare', icon: GitCompare, content: <YamlCompareViewer versions={yamlVersions} resourceName={ptName} /> },
+    {
+      id: 'compare',
+      label: 'Compare',
+      icon: GitCompare,
+      content: (
+        <ResourceComparisonView
+          resourceType="podtemplates"
+          resourceKind="PodTemplate"
+          namespace={ptNamespace}
+          initialSelectedResources={ptNamespace && ptName ? [`${ptNamespace}/${ptName}`] : [ptName]}
+          clusterId={clusterId ?? undefined}
+          backendBaseUrl={baseUrl ?? ''}
+          isConnected={isConnected}
+          embedded
+        />
+      ),
+    },
     {
       id: 'actions',
       label: 'Actions',
@@ -172,6 +200,7 @@ export default function PodTemplateDetail() {
       content: (
         <ActionsSection actions={[
           { icon: Download, label: 'Download YAML', description: 'Export PodTemplate definition', onClick: handleDownloadYaml },
+          { icon: Download, label: 'Export as JSON', description: 'Export PodTemplate as JSON', onClick: handleDownloadJson },
           { icon: Trash2, label: 'Delete PodTemplate', description: 'Remove this pod template', variant: 'destructive', onClick: () => setShowDeleteDialog(true) },
         ]} />
       ),
@@ -198,6 +227,7 @@ export default function PodTemplateDetail() {
         }
         actions={[
           { label: 'Download YAML', icon: Download, variant: 'outline', onClick: handleDownloadYaml },
+          { label: 'Export as JSON', icon: Download, variant: 'outline', onClick: handleDownloadJson },
           { label: 'Edit', icon: FileCode, variant: 'outline', onClick: () => { setActiveTab('yaml'); setSearchParams((p) => { const n = new URLSearchParams(p); n.set('tab', 'yaml'); return n; }, { replace: true }); } },
           { label: 'Delete', icon: Trash2, variant: 'destructive', onClick: () => setShowDeleteDialog(true) },
         ]}

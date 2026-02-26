@@ -303,6 +303,8 @@ func (wsc *WSConnection) handleAgenticStream(
 	if len(tools) == 0 {
 		tools = reasoningengine.GetChatToolSchemas()
 	}
+	// Enforce API limit (OpenAI/Anthropic max 128 tools) so the request never fails with array_above_max_length.
+	tools = types.CapToolsForAPI(tools)
 
 	cfg := types.DefaultAgentConfig()
 	evtCh, err := llmAdapter.CompleteWithTools(wsc.ctx, req.Messages, tools, executor, cfg)

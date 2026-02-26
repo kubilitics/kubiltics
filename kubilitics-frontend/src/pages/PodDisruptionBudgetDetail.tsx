@@ -1,20 +1,21 @@
 import { useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Shield, Clock, Download, Trash2, Server, AlertTriangle, Network } from 'lucide-react';
+import { Shield, Clock, Download, Trash2, Server, AlertTriangle, Network, GitCompare } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
+import { downloadResourceJson } from '@/lib/exportUtils';
 import {
   ResourceDetailLayout,
   YamlViewer,
-  YamlCompareViewer,
   MetadataCard,
   EventsSection,
   ActionsSection,
   DeleteConfirmDialog,
   ResourceTopologyView,
+  ResourceComparisonView,
   type ResourceStatus,
   type YamlVersion,
 } from '@/components/resources';
@@ -22,6 +23,8 @@ import { useResourceDetail, useResourceEvents } from '@/hooks/useK8sResourceDeta
 import { useDeleteK8sResource, type KubernetesResource } from '@/hooks/useKubernetes';
 import { normalizeKindForTopology } from '@/utils/resourceKindMapper';
 import { useConnectionStatus } from '@/hooks/useConnectionStatus';
+import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
+import { useActiveClusterId } from '@/hooks/useActiveClusterId';
 
 interface PDBResource extends KubernetesResource {
   spec?: {
@@ -44,6 +47,10 @@ export default function PodDisruptionBudgetDetail() {
   const [activeTab, setActiveTab] = useState('overview');
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const { isConnected } = useConnectionStatus();
+  const clusterId = useActiveClusterId();
+  const backendBaseUrl = useBackendConfigStore((s) => s.backendBaseUrl);
+  const baseUrl = getEffectiveBackendBaseUrl(backendBaseUrl);
+  const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured);
 
   const { resource, isLoading, error: resourceError, age, yaml, refetch } = useResourceDetail<PDBResource>(
     'poddisruptionbudgets',
@@ -77,6 +84,12 @@ export default function PodDisruptionBudgetDetail() {
     a.click();
     URL.revokeObjectURL(url);
   }, [yaml, pdbName]);
+
+  const handleDownloadJson = useCallback(() => {
+    if (!resource) return;
+    downloadResourceJson(resource, `${pdbName || 'pdb'}.json`);
+    toast.success('JSON downloaded');
+  }, [resource, pdbName]);
 
   const yamlVersions: YamlVersion[] = yaml ? [{ id: 'current', label: 'Current Version', yaml, timestamp: 'now' }] : [];
 
@@ -195,7 +208,23 @@ export default function PodDisruptionBudgetDetail() {
     },
     { id: 'events', label: 'Events', content: <EventsSection events={events} /> },
     { id: 'yaml', label: 'YAML', content: <YamlViewer yaml={yaml} resourceName={pdbName} /> },
-    { id: 'compare', label: 'Compare', content: <YamlCompareViewer versions={yamlVersions} resourceName={pdbName} /> },
+    {
+      id: 'compare',
+      label: 'Compare',
+      icon: GitCompare,
+      content: (
+        <ResourceComparisonView
+          resourceType="poddisruptionbudgets"
+          resourceKind="PodDisruptionBudget"
+          namespace={namespace}
+          initialSelectedResources={namespace && name ? [`${namespace}/${name}`] : [name || '']}
+          clusterId={clusterId ?? undefined}
+          backendBaseUrl={baseUrl ?? ''}
+          isConnected={isConnected}
+          embedded
+        />
+      ),
+    },
     {
       id: 'topology',
       label: 'Topology',
@@ -217,6 +246,7 @@ export default function PodDisruptionBudgetDetail() {
         <ActionsSection
           actions={[
             { icon: Download, label: 'Download YAML', description: 'Export PDB definition', onClick: handleDownloadYaml },
+            { icon: Download, label: 'Export as JSON', description: 'Export PDB as JSON', onClick: handleDownloadJson },
             { icon: Trash2, label: 'Delete PDB', description: 'Remove this disruption budget', variant: 'destructive', onClick: () => setShowDeleteDialog(true) },
           ]}
         />
@@ -224,7 +254,7 @@ export default function PodDisruptionBudgetDetail() {
     },
   ];
 
-  const status: ResourceStatus = disruptionsAllowed > 0 || currentHealthy >= desiredHealthy ? 'Healthy' : 'Progressing';
+  const status: ResourceStatus = disruptionsAllowed > 0 || currentHealthy >= desiredHealthy ? 'Healthy' : 'Warning';
 
   return (
     <>
@@ -239,6 +269,7 @@ export default function PodDisruptionBudgetDetail() {
         headerMetadata={<span className="flex items-center gap-1.5 ml-2 text-sm text-muted-foreground"><Clock className="h-3.5 w-3.5" />Created {age}</span>}
         actions={[
           { label: 'Download YAML', icon: Download, variant: 'outline', onClick: handleDownloadYaml },
+          { label: 'Export as JSON', icon: Download, variant: 'outline', onClick: handleDownloadJson },
           { label: 'Delete', icon: Trash2, variant: 'destructive', onClick: () => setShowDeleteDialog(true) },
         ]}
         statusCards={statusCards}

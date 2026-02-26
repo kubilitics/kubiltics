@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { AI_BASE_URL } from '@/services/aiService';
+import { scanImage } from '@/services/aiService';
 
 export interface Vulnerability {
   cve_id: string;
@@ -43,8 +43,8 @@ export interface UseSecurityScanResult {
   refresh: () => Promise<void>;
 }
 
-// Security scan endpoints live on the AI backend (port 8081).
-const API_BASE = AI_BASE_URL;
+
+// Service call replaces direct fetch to handle dynamic backend URLs
 
 export function useSecurityScan(options: UseSecurityScanOptions = {}): UseSecurityScanResult {
   const {
@@ -69,23 +69,11 @@ export function useSecurityScan(options: UseSecurityScanOptions = {}): UseSecuri
     setError(null);
 
     try {
-      const response = await fetch(`${API_BASE}/api/v1/security/scan/image`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          image: imageName,
-          min_severity: minSeverity,
-          include_fixes: includeFixes,
-        }),
+      const data = await scanImage({
+        image: imageName,
+        min_severity: minSeverity,
+        include_fixes: includeFixes,
       });
-
-      if (!response.ok) {
-        throw new Error(`Scan failed: ${response.statusText}`);
-      }
-
-      const data: ImageScanResult = await response.json();
       setScanResult(data);
     } catch (err) {
       setError(err instanceof Error ? err : new Error('Unknown error'));

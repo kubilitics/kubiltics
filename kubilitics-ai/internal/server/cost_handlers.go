@@ -20,7 +20,10 @@ package server
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
+	"os"
+	"sort"
 	"strings"
 	"time"
 
@@ -56,12 +59,129 @@ func (s *Server) handleCostDispatch(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// ─── OpenCost integration helpers ─────────────────────────────────────────────
+
+// opencostResponse is the top-level structure returned by the OpenCost
+// /model/allocation API.
+type opencostResponse struct {
+	Code int                             `json:"code"`
+	Data []map[string]opencostAllocation `json:"data"`
+}
+
+// opencostAllocation contains per-namespace billing data from OpenCost.
+type opencostAllocation struct {
+	CPUCost      float64 `json:"cpuCost"`
+	MemoryCost   float64 `json:"memoryCost"`
+	NetworkCost  float64 `json:"networkCost"`
+	StorageCost  float64 `json:"storageCost"`
+	TotalCost    float64 `json:"totalCost"`
+	CPUCoreHours float64 `json:"cpuCoreHours"`
+	RAMByteHours float64 `json:"ramByteHours"`
+}
+
+// detectOpenCostEndpoint returns the OpenCost base URL to use.
+// Priority (for now):
+//   1. OPENCOST_ENDPOINT environment variable
+// Returns "" if OpenCost is not configured.
+func detectOpenCostEndpoint() string {
+	if ep := strings.TrimSpace(os.Getenv("OPENCOST_ENDPOINT")); ep != "" {
+		return strings.TrimRight(ep, "/")
+	}
+	return ""
+}
+
+// fetchOpenCostNamespaceCosts calls the OpenCost /model/allocation API and returns
+// namespace-level cost summaries for the last 24 hours (scaled to month for convenience).
+// Returns (summaries, nil) on success, or (nil, err) on any failure.
+func fetchOpenCostNamespaceCosts(endpoint string) ([]cost.NamespaceCost, error) {
+	url := endpoint + "/model/allocation?window=1d&aggregate=namespace&accumulate=true"
+
+	client := &http.Client{Timeout: 8 * time.Second}
+	resp, err := client.Get(url) //nolint:noctx
+	if err != nil {
+		return nil, fmt.Errorf("opencost unreachable at %s: %w", endpoint, err)
+	}
+	defer resp.Body.Close()
+
+	var ocResp opencostResponse
+	if err := json.NewDecoder(resp.Body).Decode(&ocResp); err != nil {
+		return nil, fmt.Errorf("opencost response parse error: %w", err)
+	}
+	if resp.StatusCode != http.StatusOK || ocResp.Code != 200 || len(ocResp.Data) == 0 {
+		return nil, fmt.Errorf("opencost returned no data (status=%d code=%d)", resp.StatusCode, ocResp.Code)
+	}
+
+	// Accumulate across all time buckets (there should be just one with accumulate=true).
+	totals := map[string]*cost.NamespaceCost{}
+	for _, bucket := range ocResp.Data {
+		for ns, alloc := range bucket {
+			if ns == "__unallocated__" || ns == "__idle__" {
+				continue
+			}
+			s, ok := totals[ns]
+			if !ok {
+				s = &cost.NamespaceCost{Namespace: ns}
+				totals[ns] = s
+			}
+			// OpenCost TotalCost is for the requested window (1d). Convert to per-hour/day/month.
+			dayCost := alloc.TotalCost
+			hourCost := alloc.TotalCost / 24.0
+			monthCost := alloc.TotalCost * 30.0
+
+			s.CostPerHour += hourCost
+			s.CostPerDay += dayCost
+			s.CostPerMonth += monthCost
+		}
+	}
+
+	result := make([]cost.NamespaceCost, 0, len(totals))
+	for _, s := range totals {
+		result = append(result, *s)
+	}
+
+	// Sort by monthly cost descending.
+	sort.Slice(result, func(i, j int) bool {
+		return result[i].CostPerMonth > result[j].CostPerMonth
+	})
+	return result, nil
+}
+
 // ─── Overview ─────────────────────────────────────────────────────────────────
 
 func (s *Server) handleCostOverview(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
+	}
+	// When OpenCost is configured, prefer it as the primary cost engine.
+	if ep := detectOpenCostEndpoint(); ep != "" {
+		nsCosts, err := fetchOpenCostNamespaceCosts(ep)
+		if err == nil && len(nsCosts) > 0 {
+			totalHour := 0.0
+			byNamespace := make(map[string]float64, len(nsCosts))
+			for _, ns := range nsCosts {
+				totalHour += ns.CostPerHour
+				// Use monthly cost for namespace breakdown to match dashboard expectations.
+				byNamespace[ns.Namespace] = ns.CostPerMonth
+			}
+
+			jsonOK(w, map[string]interface{}{
+				"total_cost_hour":       totalHour,
+				"total_cost_day":        totalHour * 24,
+				"total_cost_month":      totalHour * 24 * 30,
+				"total_cost_year":       totalHour * 24 * 30 * 12,
+				"by_namespace":          byNamespace,
+				"by_resource_type":      map[string]float64{}, // OpenCost aggregation by type can be added later
+				"resource_count":        0,
+				"savings_opportunities": 0.0,
+				"provider":              "opencost",
+				"top_waste_resources":   0,
+				"top_optimizations":     0,
+				"timestamp":             time.Now(),
+			})
+			return
+		}
+		// If OpenCost is configured but errors, fall through to pipeline-based behaviour.
 	}
 	if s.costPipeline == nil {
 		jsonOK(w, map[string]interface{}{
@@ -104,6 +224,19 @@ func (s *Server) handleCostNamespaces(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
+	}
+	// Prefer OpenCost when configured.
+	if ep := detectOpenCostEndpoint(); ep != "" {
+		nsCosts, err := fetchOpenCostNamespaceCosts(ep)
+		if err == nil {
+			jsonOK(w, map[string]interface{}{
+				"namespaces": nsCosts,
+				"total":      len(nsCosts),
+				"timestamp":  time.Now(),
+			})
+			return
+		}
+		// On error, fall back to pipeline behaviour.
 	}
 	if s.costPipeline == nil {
 		jsonOK(w, map[string]interface{}{"namespaces": []interface{}{}, "note": "cost pipeline not initialised"})

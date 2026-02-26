@@ -1,6 +1,6 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom';
-import { Globe, Clock, Download, Trash2, Lock, ExternalLink, Activity, Shield, Route, Server, Network } from 'lucide-react';
+import { Globe, Clock, Download, Trash2, Lock, ExternalLink, Activity, Shield, Route, Server, Network, GitCompare } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -8,13 +8,13 @@ import { Skeleton } from '@/components/ui/skeleton';
 import {
   ResourceDetailLayout,
   YamlViewer,
-  YamlCompareViewer,
   EventsSection,
   ActionsSection,
   DeleteConfirmDialog,
   SectionCard,
   DetailRow,
   ResourceTopologyView,
+  ResourceComparisonView,
   type ResourceStatus,
   type YamlVersion,
   type EventInfo,
@@ -27,6 +27,7 @@ import { useQuery } from '@tanstack/react-query';
 import { getSecretTLSInfo } from '@/services/backendApiClient';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { downloadResourceJson } from '@/lib/exportUtils';
 
 interface IngressResource extends KubernetesResource {
   spec?: {
@@ -44,6 +45,7 @@ interface IngressResource extends KubernetesResource {
       };
     }>;
     tls?: Array<{ hosts?: string[]; secretName?: string }>;
+    defaultBackend?: { service?: { name: string; port: { number?: number; name?: string } } };
   };
   status?: {
     loadBalancer?: {
@@ -154,8 +156,9 @@ export default function IngressDetail() {
   useEffect(() => {
     setActiveTab(initialTab);
   }, [initialTab]);
-  const baseUrl = getEffectiveBackendBaseUrl();
-  const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured());
+  const backendBaseUrl = useBackendConfigStore((s) => s.backendBaseUrl);
+  const baseUrl = getEffectiveBackendBaseUrl(backendBaseUrl);
+  const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured);
   const clusterId = useBackendConfigStore((s) => s.currentClusterId);
 
   const { resource: ing, isLoading, error, age, yaml, isConnected, refetch } = useResourceDetail<IngressResource>(
@@ -183,6 +186,12 @@ export default function IngressDetail() {
     a.click();
     URL.revokeObjectURL(url);
   }, [yaml, ingName]);
+
+  const handleDownloadJson = useCallback(() => {
+    downloadResourceJson(ing, `${ingName || 'ingress'}.json`);
+    toast.success('JSON downloaded');
+  }, [ing, ingName]);
+
   const annotations = ing.metadata?.annotations || {};
   const ingressClassName = ing.spec?.ingressClassName || '-';
   const rules = ing.spec?.rules || [];
@@ -231,7 +240,7 @@ export default function IngressDetail() {
       <div className="space-y-6">
         <Skeleton className="h-20 w-full" />
         <div className="grid grid-cols-4 gap-4">
-          {[1,2,3,4].map(i => <Skeleton key={i} className="h-24" />)}
+          {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-24" />)}
         </div>
         <Skeleton className="h-96" />
       </div>
@@ -498,7 +507,23 @@ export default function IngressDetail() {
     { id: 'events', label: 'Events', content: <EventsSection events={events} /> },
     { id: 'metrics', label: 'Metrics', content: <SectionCard title="Metrics" icon={Activity}><p className="text-muted-foreground text-sm">Placeholder until metrics pipeline.</p></SectionCard> },
     { id: 'yaml', label: 'YAML', content: <YamlViewer yaml={yaml} resourceName={ingName} editable onSave={handleSaveYaml} /> },
-    { id: 'compare', label: 'Compare', content: <YamlCompareViewer versions={yamlVersions} resourceName={ingName} /> },
+    {
+      id: 'compare',
+      label: 'Compare',
+      icon: GitCompare,
+      content: (
+        <ResourceComparisonView
+          resourceType="ingresses"
+          resourceKind="Ingress"
+          namespace={namespace}
+          initialSelectedResources={namespace && name ? [`${namespace}/${name}`] : [name || '']}
+          clusterId={clusterId ?? undefined}
+          backendBaseUrl={baseUrl ?? ''}
+          isConnected={isConnected}
+          embedded
+        />
+      ),
+    },
     {
       id: 'topology',
       label: 'Topology',
@@ -525,6 +550,7 @@ export default function IngressDetail() {
           { icon: Lock, label: 'View Certificate', description: 'View TLS secret', onClick: () => tls[0]?.secretName ? navigate(`/secrets/${namespace}/${tls[0].secretName}`) : toast.info('No TLS configured') },
           { icon: ExternalLink, label: 'Open in Browser', description: 'Open external URL', onClick: () => { const u = lbIngress[0]?.hostname || lbIngress[0]?.ip; if (u) window.open(`http://${u}`, '_blank'); else toast.info('No address'); } },
           { icon: Download, label: 'Download YAML', description: 'Export Ingress definition', onClick: handleDownloadYaml },
+          { icon: Download, label: 'Export as JSON', description: 'Export Ingress as JSON', onClick: handleDownloadJson },
           { icon: Trash2, label: 'Delete Ingress', description: 'Remove this ingress', variant: 'destructive', onClick: () => setShowDeleteDialog(true) },
         ]} />
       ),
@@ -544,6 +570,7 @@ export default function IngressDetail() {
         headerMetadata={<span className="flex items-center gap-1.5 ml-2 text-sm text-muted-foreground"><Clock className="h-3.5 w-3.5" />Created {age}{isConnected && <Badge variant="outline" className="ml-2 text-xs">Live</Badge>}</span>}
         actions={[
           { label: 'Download YAML', icon: Download, variant: 'outline', onClick: handleDownloadYaml },
+          { label: 'Export as JSON', icon: Download, variant: 'outline', onClick: handleDownloadJson },
           { label: 'Delete', icon: Trash2, variant: 'destructive', onClick: () => setShowDeleteDialog(true) },
         ]}
         statusCards={statusCards}

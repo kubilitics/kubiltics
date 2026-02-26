@@ -1,0 +1,9 @@
+{
+  "name": "kubilitics-scripts",
+  "private": true,
+  "description": "Scripts for testing and tooling (MCP NL query tests, etc.)",
+  "type": "module",
+  "dependencies": {
+    "ws": "^8.18.0"
+  }
+}

@@ -1,9 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { DataPoint } from './useAnomalyDetection';
-import { AI_BASE_URL } from '@/services/aiService';
-
-// Use the canonical AI base URL from aiService (VITE_AI_BACKEND_URL || http://localhost:8081)
-const AI_BACKEND_URL = AI_BASE_URL;
+import * as aiService from '@/services/aiService';
 
 export interface MLAnomaly {
   timestamp: string;
@@ -62,7 +59,7 @@ export function useMLAnomalyDetection(
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const detectAnomalies = async () => {
+  const detectAnomalies = useCallback(async () => {
     if (!enabled || data.length < 10) {
       setAnomalies([]);
       setModelInfo(null);
@@ -73,32 +70,21 @@ export function useMLAnomalyDetection(
     setError(null);
 
     try {
-      const response = await fetch(`${AI_BACKEND_URL}/api/v1/analytics/ml/anomalies`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
+      const result = await aiService.detectMLAnomalies({
+        time_series: {
+          metric_name: metricName,
+          metric_type: metricType,
+          data: data.map(d => ({
+            timestamp: d.timestamp,
+            value: d.value
+          }))
         },
-        body: JSON.stringify({
-          time_series: {
-            metric_name: metricName,
-            metric_type: metricType,
-            data: data.map(d => ({
-              timestamp: d.timestamp,
-              value: d.value
-            }))
-          },
-          algorithm,
-          sensitivity,
-          num_trees: numTrees,
-          sample_size: sampleSize
-        })
+        algorithm,
+        sensitivity,
+        num_trees: numTrees,
+        sample_size: sampleSize
       });
 
-      if (!response.ok) {
-        throw new Error(`ML anomaly detection failed: ${response.statusText}`);
-      }
-
-      const result = await response.json();
       setAnomalies(result.anomalies || []);
       setModelInfo(result.model_info || null);
     } catch (err) {
@@ -108,26 +94,16 @@ export function useMLAnomalyDetection(
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [enabled, data, metricName, metricType, algorithm, sensitivity, numTrees, sampleSize]);
 
   useEffect(() => {
     detectAnomalies();
 
-    if (refreshInterval > 0) {
+    if (refreshInterval > 0 && enabled) {
       const interval = setInterval(detectAnomalies, refreshInterval);
       return () => clearInterval(interval);
     }
-  }, [
-    metricName,
-    metricType,
-    JSON.stringify(data),
-    algorithm,
-    sensitivity,
-    numTrees,
-    sampleSize,
-    enabled,
-    refreshInterval
-  ]);
+  }, [detectAnomalies, refreshInterval, enabled]);
 
   return {
     anomalies,

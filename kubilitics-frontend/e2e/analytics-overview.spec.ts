@@ -23,10 +23,6 @@ test.describe('Analytics Overview Dashboard', () => {
     const mlCard = page.locator('text=ML Analytics').first();
     await expect(mlCard).toBeVisible();
 
-    // Check for Cost card
-    const costCard = page.locator('text=Cost (Monthly)').first();
-    await expect(costCard).toBeVisible();
-
     // Check for Compliance card
     const complianceCard = page.locator('text=Compliance').first();
     await expect(complianceCard).toBeVisible();
@@ -76,15 +72,6 @@ test.describe('Analytics Overview Dashboard', () => {
     await expect(page.locator('h1')).toContainText('ML Analytics Dashboard');
   });
 
-  test('should navigate to cost dashboard', async ({ page }) => {
-    // Click on Cost card
-    await page.locator('text=Cost (Monthly)').first().click();
-
-    // Should navigate to cost dashboard
-    await expect(page).toHaveURL(/.*\/cost/);
-    await expect(page.locator('h1')).toContainText('Cost Intelligence Dashboard');
-  });
-
   test('should display quick action cards', async ({ page }) => {
     // Scroll to quick actions section
     await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
@@ -92,7 +79,6 @@ test.describe('Analytics Overview Dashboard', () => {
     // Check for quick action cards
     await expect(page.getByText('Go to Security')).toBeVisible();
     await expect(page.getByText('Go to ML Analytics')).toBeVisible();
-    await expect(page.getByText('Go to Cost Dashboard')).toBeVisible();
   });
 
   test('should display system status', async ({ page }) => {
@@ -121,13 +107,6 @@ test.describe('Analytics Overview Dashboard', () => {
     const mlCard = page.locator('text=ML Analytics').locator('../..');
     const anomalyCount = mlCard.locator('text=/\\d+/').first();
     await expect(anomalyCount).toBeVisible();
-  });
-
-  test('should display cost amount', async ({ page }) => {
-    // Find Cost card and check for dollar amount
-    const costCard = page.locator('text=Cost (Monthly)').locator('../..');
-    const costAmount = costCard.locator('text=/\\$[\\d,]+/').first();
-    await expect(costAmount).toBeVisible();
   });
 
   test('should display compliance score percentage', async ({ page }) => {

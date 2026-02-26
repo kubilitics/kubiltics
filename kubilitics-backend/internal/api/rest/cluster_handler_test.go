@@ -73,6 +73,19 @@ func (m *mockClusterService) AddCluster(ctx context.Context, kubeconfigPath, con
 	return cluster, nil
 }
 
+func (m *mockClusterService) AddClusterFromBytes(ctx context.Context, kubeconfigBytes []byte, contextName string) (*models.Cluster, error) {
+	if m.addError != nil {
+		return nil, m.addError
+	}
+	cluster := &models.Cluster{
+		ID:      uuid.New().String(),
+		Name:    contextName,
+		Context: contextName,
+		Status:  "connected",
+	}
+	return cluster, nil
+}
+
 func (m *mockClusterService) RemoveCluster(ctx context.Context, id string) error {
 	if m.removeError != nil {
 		return m.removeError
@@ -220,7 +233,7 @@ func setupClusterHandlerTest(t *testing.T) (*Handler, *mockClusterService) {
 		AuthMode: "disabled",
 	}
 	mockEventsSvc := &mockEventsService{}
-	handler := NewHandler(mockSvc, nil, cfg, nil, mockEventsSvc, nil, nil, nil, nil)
+	handler := NewHandler(mockSvc, nil, cfg, nil, mockEventsSvc, nil, nil, nil, nil, nil)
 	return handler, mockSvc
 }
 
@@ -237,7 +250,7 @@ func setupClusterHandlerTestWithAuth(t *testing.T) (*Handler, *mockClusterServic
 		AuthJWTSecret: "test-secret-key-minimum-32-characters-long",
 	}
 	mockEventsSvc := &mockEventsService{}
-	handler := NewHandler(mockSvc, nil, cfg, nil, mockEventsSvc, nil, nil, nil, repo)
+	handler := NewHandler(mockSvc, nil, cfg, nil, mockEventsSvc, nil, nil, nil, nil, repo)
 	return handler, mockSvc, repo
 }
 

@@ -40,31 +40,31 @@ func (h *ComplianceHandler) RegisterRoutes(router *mux.Router) {
 
 // UserAccessReportResponse represents a user access report
 type UserAccessReportResponse struct {
-	GeneratedAt time.Time                    `json:"generated_at"`
-	Users       []UserAccessReportEntry      `json:"users"`
-	Summary     UserAccessReportSummary      `json:"summary"`
+	GeneratedAt time.Time               `json:"generated_at"`
+	Users       []UserAccessReportEntry `json:"users"`
+	Summary     UserAccessReportSummary `json:"summary"`
 }
 
 // UserAccessReportEntry represents a single user's access
 type UserAccessReportEntry struct {
-	UserID              string                `json:"user_id"`
-	Username            string                `json:"username"`
-	Role                string                `json:"role"`
-	Groups              []string              `json:"groups"`
-	ClusterPermissions  map[string]string    `json:"cluster_permissions"`  // cluster_id -> role
+	UserID               string                       `json:"user_id"`
+	Username             string                       `json:"username"`
+	Role                 string                       `json:"role"`
+	Groups               []string                     `json:"groups"`
+	ClusterPermissions   map[string]string            `json:"cluster_permissions"`   // cluster_id -> role
 	NamespacePermissions map[string]map[string]string `json:"namespace_permissions"` // cluster_id -> namespace -> role
-	LastLogin           *time.Time           `json:"last_login,omitempty"`
-	MFAEnabled          bool                 `json:"mfa_enabled"`
-	AccountStatus       string                `json:"account_status"` // active, locked, deleted
+	LastLogin            *time.Time                   `json:"last_login,omitempty"`
+	MFAEnabled           bool                         `json:"mfa_enabled"`
+	AccountStatus        string                       `json:"account_status"` // active, locked, deleted
 }
 
 // UserAccessReportSummary provides summary statistics
 type UserAccessReportSummary struct {
-	TotalUsers           int `json:"total_users"`
-	ActiveUsers          int `json:"active_users"`
-	LockedUsers          int `json:"locked_users"`
-	UsersWithMFA         int `json:"users_with_mfa"`
-	UsersWithClusterAccess int `json:"users_with_cluster_access"`
+	TotalUsers               int `json:"total_users"`
+	ActiveUsers              int `json:"active_users"`
+	LockedUsers              int `json:"locked_users"`
+	UsersWithMFA             int `json:"users_with_mfa"`
+	UsersWithClusterAccess   int `json:"users_with_cluster_access"`
 	UsersWithNamespaceAccess int `json:"users_with_namespace_access"`
 }
 
@@ -91,13 +91,13 @@ func (h *ComplianceHandler) GetUserAccessReport(w http.ResponseWriter, r *http.R
 
 	for _, user := range users {
 		entry := UserAccessReportEntry{
-			UserID:              user.ID,
-			Username:            user.Username,
-			Role:                user.Role,
-			ClusterPermissions:  make(map[string]string),
+			UserID:               user.ID,
+			Username:             user.Username,
+			Role:                 user.Role,
+			ClusterPermissions:   make(map[string]string),
 			NamespacePermissions: make(map[string]map[string]string),
-			LastLogin:           user.LastLogin,
-			AccountStatus:       "active",
+			LastLogin:            user.LastLogin,
+			AccountStatus:        "active",
 		}
 
 		// Check account status
@@ -140,9 +140,10 @@ func (h *ComplianceHandler) GetUserAccessReport(w http.ResponseWriter, r *http.R
 		report.Users = append(report.Users, entry)
 
 		// Update summary
-		if entry.AccountStatus == "active" {
+		switch entry.AccountStatus {
+		case "active":
 			report.Summary.ActiveUsers++
-		} else if entry.AccountStatus == "locked" {
+		case "locked":
 			report.Summary.LockedUsers++
 		}
 	}
@@ -162,19 +163,19 @@ func (h *ComplianceHandler) GetUserAccessReport(w http.ResponseWriter, r *http.R
 
 // PermissionMatrixResponse represents a permission matrix
 type PermissionMatrixResponse struct {
-	GeneratedAt time.Time                    `json:"generated_at"`
-	Matrix      []PermissionMatrixEntry      `json:"matrix"`
+	GeneratedAt time.Time               `json:"generated_at"`
+	Matrix      []PermissionMatrixEntry `json:"matrix"`
 }
 
 // PermissionMatrixEntry represents a single permission entry
 type PermissionMatrixEntry struct {
-	UserID      string `json:"user_id"`
-	Username    string `json:"username"`
+	UserID       string `json:"user_id"`
+	Username     string `json:"username"`
 	ResourceType string `json:"resource_type"` // cluster, namespace
-	ResourceID  string `json:"resource_id"`    // cluster_id or cluster_id/namespace
-	Role        string `json:"role"`
-	Source      string `json:"source"` // direct, group
-	GroupName   string `json:"group_name,omitempty"`
+	ResourceID   string `json:"resource_id"`   // cluster_id or cluster_id/namespace
+	Role         string `json:"role"`
+	Source       string `json:"source"` // direct, group
+	GroupName    string `json:"group_name,omitempty"`
 }
 
 // GetPermissionMatrix generates a permission matrix
@@ -203,12 +204,12 @@ func (h *ComplianceHandler) GetPermissionMatrix(w http.ResponseWriter, r *http.R
 		clusterPerms, _ := h.repo.ListClusterPermissionsByUser(ctx, user.ID)
 		for _, perm := range clusterPerms {
 			matrix = append(matrix, PermissionMatrixEntry{
-				UserID:      user.ID,
-				Username:    user.Username,
+				UserID:       user.ID,
+				Username:     user.Username,
 				ResourceType: "cluster",
-				ResourceID:  perm.ClusterID,
-				Role:        perm.Role,
-				Source:      "direct",
+				ResourceID:   perm.ClusterID,
+				Role:         perm.Role,
+				Source:       "direct",
 			})
 		}
 
@@ -232,13 +233,13 @@ func (h *ComplianceHandler) GetPermissionMatrix(w http.ResponseWriter, r *http.R
 			groupClusterPerms, _ := h.repo.ListGroupClusterPermissions(ctx, group.ID)
 			for _, perm := range groupClusterPerms {
 				matrix = append(matrix, PermissionMatrixEntry{
-					UserID:      user.ID,
-					Username:    user.Username,
+					UserID:       user.ID,
+					Username:     user.Username,
 					ResourceType: "cluster",
-					ResourceID:  perm.ClusterID,
-					Role:        perm.Role,
-					Source:      "group",
-					GroupName:   group.Name,
+					ResourceID:   perm.ClusterID,
+					Role:         perm.Role,
+					Source:       "group",
+					GroupName:    group.Name,
 				})
 			}
 
@@ -276,14 +277,14 @@ func (h *ComplianceHandler) GetPermissionMatrix(w http.ResponseWriter, r *http.R
 
 // AuditSummaryResponse represents an audit log summary
 type AuditSummaryResponse struct {
-	GeneratedAt    time.Time                `json:"generated_at"`
-	Period         string                   `json:"period"` // e.g., "last_30_days"
-	TotalEvents    int                      `json:"total_events"`
-	EventsByAction map[string]int           `json:"events_by_action"`
-	EventsByUser   map[string]int           `json:"events_by_user"`
-	EventsByCluster map[string]int           `json:"events_by_cluster"`
-	HighRiskEvents int                      `json:"high_risk_events"`
-	RecentEvents   []*models.AuditLogEntry  `json:"recent_events"`
+	GeneratedAt     time.Time               `json:"generated_at"`
+	Period          string                  `json:"period"` // e.g., "last_30_days"
+	TotalEvents     int                     `json:"total_events"`
+	EventsByAction  map[string]int          `json:"events_by_action"`
+	EventsByUser    map[string]int          `json:"events_by_user"`
+	EventsByCluster map[string]int          `json:"events_by_cluster"`
+	HighRiskEvents  int                     `json:"high_risk_events"`
+	RecentEvents    []*models.AuditLogEntry `json:"recent_events"`
 }
 
 // GetAuditSummary generates an audit log summary
@@ -324,14 +325,14 @@ func (h *ComplianceHandler) GetAuditSummary(w http.ResponseWriter, r *http.Reque
 	}
 
 	summary := AuditSummaryResponse{
-		GeneratedAt:    time.Now(),
-		Period:         periodStr,
-		TotalEvents:    len(events),
-		EventsByAction: make(map[string]int),
-		EventsByUser:   make(map[string]int),
+		GeneratedAt:     time.Now(),
+		Period:          periodStr,
+		TotalEvents:     len(events),
+		EventsByAction:  make(map[string]int),
+		EventsByUser:    make(map[string]int),
 		EventsByCluster: make(map[string]int),
-		HighRiskEvents: 0,
-		RecentEvents:   events,
+		HighRiskEvents:  0,
+		RecentEvents:    events,
 	}
 
 	// Count events

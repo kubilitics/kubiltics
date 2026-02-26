@@ -47,6 +47,7 @@ func (a *app) completeKubectl(verb string) func(*cobra.Command, []string, string
 
 		names, err := a.resourceNames(verb, res, args)
 		if err != nil {
+			// P2-8: Cache miss or timeout — return empty completion (no error).
 			return nil, cobra.ShellCompDirectiveNoFileComp
 		}
 		return filterPrefix(names, toComplete), cobra.ShellCompDirectiveNoFileComp
@@ -67,21 +68,36 @@ func filterPrefix(values []string, prefix string) []string {
 	return out
 }
 
+// completionCacheTTL is the TTL for completion cache (P2-8: 2s for fast, cache-first completion).
+const completionCacheTTL = 2 * time.Second
+
 func (a *app) resourceTypes() ([]string, error) {
 	key := fmt.Sprintf("api-resources:%s", strings.TrimSpace(a.context))
-	out, err := a.cachedKubectl(key, []string{"api-resources", "-o", "name"}, 30*time.Second)
+	out, err := a.cachedKubectl(key, []string{"api-resources", "-o", "name"}, completionCacheTTL)
 	if err != nil {
 		return nil, err
 	}
 	return splitNonEmptyLines(out), nil
 }
 
+// listVerbForCompletion returns "get" for verbs that need to list resources by name.
+// exec, logs, port-forward, delete don't support listing; we use kubectl get -o name.
+func listVerbForCompletion(verb string) string {
+	switch verb {
+	case "exec", "logs", "port-forward", "delete":
+		return "get"
+	default:
+		return verb
+	}
+}
+
 func (a *app) resourceNames(verb, resource string, inputArgs []string) ([]string, error) {
-	args := []string{verb, resource}
+	listVerb := listVerbForCompletion(verb)
+	args := []string{listVerb, resource}
 	args = append(args, extractScopeFlags(inputArgs)...)
 	args = append(args, "-o", "name")
-	key := fmt.Sprintf("names:%s:%s:%s:%s:%s", verb, resource, a.namespace, a.context, strings.Join(extractScopeFlags(inputArgs), "|"))
-	out, err := a.cachedKubectl(key, args, 10*time.Second)
+	key := fmt.Sprintf("names:%s:%s:%s:%s:%s", listVerb, resource, a.namespace, a.context, strings.Join(extractScopeFlags(inputArgs), "|"))
+	out, err := a.cachedKubectl(key, args, completionCacheTTL)
 	if err != nil {
 		return nil, err
 	}
@@ -100,6 +116,8 @@ func splitNonEmptyLines(s string) []string {
 	return out
 }
 
+// cachedKubectl returns cached output or fetches via kubectl. On cache miss or timeout,
+// returns ("", err) so callers can fall back to empty completion (P2-8: no live API block).
 func (a *app) cachedKubectl(key string, args []string, ttl time.Duration) (string, error) {
 	now := time.Now()
 	a.cacheMu.Lock()
@@ -116,6 +134,7 @@ func (a *app) cachedKubectl(key string, args []string, ttl time.Duration) (strin
 		if hasStale {
 			return stale.value, nil
 		}
+		// P2-8: Fall back to empty on cache miss/timeout — no error to user.
 		return "", err
 	}
 	a.cacheMu.Lock()

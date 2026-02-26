@@ -1,9 +1,10 @@
 import { useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Shield, Clock, Lock, Download, Trash2, AlertTriangle, Network } from 'lucide-react';
+import { Shield, Clock, Lock, Download, Trash2, AlertTriangle, Network, GitCompare } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
+import { downloadResourceJson } from '@/lib/exportUtils';
 import { normalizeKindForTopology } from '@/utils/resourceKindMapper';
 import {
   ResourceDetailLayout,
@@ -12,6 +13,7 @@ import {
   ActionsSection,
   DeleteConfirmDialog,
   ResourceTopologyView,
+  ResourceComparisonView,
   type ResourceStatus,
   type EventInfo,
 } from '@/components/resources';
@@ -77,6 +79,11 @@ export default function PodSecurityPolicyDetail() {
     a.click();
     URL.revokeObjectURL(url);
   }, [psp.name]);
+
+  const handleDownloadJson = useCallback(() => {
+    downloadResourceJson(psp, `${psp.name || 'psp'}.json`);
+    toast.success('JSON downloaded');
+  }, [psp]);
 
   const statusCards = [
     { label: 'Privileged', value: psp.privileged ? 'Yes' : 'No', icon: Lock, iconColor: psp.privileged ? 'error' as const : 'success' as const },
@@ -169,7 +176,21 @@ export default function PodSecurityPolicyDetail() {
       ),
     },
     { id: 'events', label: 'Events', content: <EventsSection events={mockEvents} /> },
-    { id: 'yaml', label: 'YAML', content: <YamlViewer yaml={yaml} resourceName={psp.name} /> },
+    { id: 'yaml', label: 'YAML', icon: Shield, content: <YamlViewer yaml={yaml} resourceName={psp.name} /> },
+    {
+      id: 'compare',
+      label: 'Compare',
+      icon: GitCompare,
+      content: (
+        <ResourceComparisonView
+          resourceType="podsecuritypolicies"
+          resourceKind="PodSecurityPolicy"
+          initialSelectedResources={[psp.name]}
+          isConnected={false} // PSP is mock here
+          embedded
+        />
+      ),
+    },
     {
       id: 'topology',
       label: 'Topology',
@@ -190,6 +211,7 @@ export default function PodSecurityPolicyDetail() {
       content: (
         <ActionsSection actions={[
           { icon: Download, label: 'Download YAML', description: 'Export PSP definition', onClick: handleDownloadYaml },
+          { icon: Download, label: 'Export as JSON', description: 'Export PSP as JSON', onClick: handleDownloadJson },
           { icon: Trash2, label: 'Delete PSP', description: 'Remove this pod security policy', variant: 'destructive', onClick: () => setShowDeleteDialog(true) },
         ]} />
       ),
@@ -208,6 +230,7 @@ export default function PodSecurityPolicyDetail() {
         headerMetadata={<span className="flex items-center gap-1.5 ml-2 text-sm text-muted-foreground"><Clock className="h-3.5 w-3.5" />Created {psp.age}</span>}
         actions={[
           { label: 'Download YAML', icon: Download, variant: 'outline', onClick: handleDownloadYaml },
+          { label: 'Export as JSON', icon: Download, variant: 'outline', onClick: handleDownloadJson },
           { label: 'Delete', icon: Trash2, variant: 'destructive', onClick: () => setShowDeleteDialog(true) },
         ]}
         statusCards={statusCards}

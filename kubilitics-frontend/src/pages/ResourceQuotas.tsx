@@ -34,6 +34,7 @@ import { ResourceCreator, DEFAULT_YAMLS } from '@/components/editor';
 import { DeleteConfirmDialog } from '@/components/resources';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { parseQuantityToNum, formatUsagePercent } from '@/lib/k8s-utils';
 import {
   ResourceCommandBar,
   ResourceExportDropdown,
@@ -81,39 +82,19 @@ interface ResourceQuotaRow {
   isAtLimit: boolean;
 }
 
-function parseQuantityToNum(q: string): number | null {
-  if (q === undefined || q === null || q === '') return null;
-  const s = String(q).trim();
-  if (/^\d+$/.test(s)) return parseInt(s, 10);
-  const m = s.match(/^(\d+)m$/);
-  if (m) return parseInt(m[1], 10) / 1000;
-  const m2 = s.match(/^(\d+)([KMGTPE]i?)$/i);
-  if (m2) return parseInt(m2[1], 10);
-  return null;
-}
+// parseQuantityToNum is now imported from @/lib/k8s-utils
 
 function computeUsagePercent(used: Record<string, string>, hard: Record<string, string>): number | null {
   let maxPct: number | null = null;
   for (const key of Object.keys(hard || {})) {
-    const h = hard[key];
-    const u = (used || {})[key] || '0';
-    const hNum = parseQuantityToNum(h);
-    const uNum = parseQuantityToNum(u);
-    if (hNum != null && hNum > 0 && uNum != null) {
-      const pct = Math.round((uNum / hNum) * 100);
-      if (maxPct == null || pct > maxPct) maxPct = pct;
-    }
+    const pct = formatUsagePercent(used?.[key], hard?.[key]);
+    if (pct != null && (maxPct == null || pct > maxPct)) maxPct = pct;
   }
   return maxPct;
 }
 
 function usagePercentForKey(used: Record<string, string>, hard: Record<string, string>, key: string): number | null {
-  const h = (hard || {})[key];
-  const u = (used || {})[key] || '0';
-  const hNum = parseQuantityToNum(h);
-  const uNum = parseQuantityToNum(u);
-  if (hNum != null && hNum > 0 && uNum != null) return Math.round((uNum / hNum) * 100);
-  return null;
+  return formatUsagePercent(used?.[key], hard?.[key]);
 }
 
 function usageBarIndicatorClass(pct: number | null): string {
@@ -382,46 +363,46 @@ export default function ResourceQuotas() {
           hasActiveFilters={hasActiveFilters}
           onClearAllFilters={clearAllFilters}
           globalFilterBar={
-        <ResourceCommandBar
-          scope={
-            <div className="w-full min-w-0">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" className="w-full min-w-0 justify-between h-10 gap-2 rounded-lg border border-border bg-background font-medium shadow-sm hover:bg-muted/50 hover:border-primary/30 focus-visible:ring-2 focus-visible:ring-primary/20">
-                    <Filter className="h-4 w-4 shrink-0 text-muted-foreground" />
-                    <span className="truncate">{selectedNamespace === 'all' ? 'All Namespaces' : selectedNamespace}</span>
-                    <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="w-48">
-                  {namespaces.map((ns) => (
-                    <DropdownMenuItem key={ns} onClick={() => setSelectedNamespace(ns)} className={cn(selectedNamespace === ns && 'bg-accent')}>
-                      {ns === 'all' ? 'All Namespaces' : ns}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-          }
-          search={
-            <div className="relative w-full min-w-0">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input placeholder="Search resource quotas..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full h-10 pl-9 rounded-lg border border-border bg-background text-sm font-medium shadow-sm placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-primary/20" aria-label="Search resource quotas" />
-            </div>
-          }
-          structure={
-            <ListViewSegmentedControl
-              value={listView}
-              onChange={(v) => setListView(v as 'flat' | 'byNamespace')}
-              options={[
-                { id: 'flat', label: 'Flat', icon: List },
-                { id: 'byNamespace', label: 'By Namespace', icon: Layers },
-              ]}
-              label=""
-              ariaLabel="List structure"
+            <ResourceCommandBar
+              scope={
+                <div className="w-full min-w-0">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline" className="w-full min-w-0 justify-between h-10 gap-2 rounded-lg border border-border bg-background font-medium shadow-sm hover:bg-muted/50 hover:border-primary/30 focus-visible:ring-2 focus-visible:ring-primary/20">
+                        <Filter className="h-4 w-4 shrink-0 text-muted-foreground" />
+                        <span className="truncate">{selectedNamespace === 'all' ? 'All Namespaces' : selectedNamespace}</span>
+                        <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start" className="w-48">
+                      {namespaces.map((ns) => (
+                        <DropdownMenuItem key={ns} onClick={() => setSelectedNamespace(ns)} className={cn(selectedNamespace === ns && 'bg-accent')}>
+                          {ns === 'all' ? 'All Namespaces' : ns}
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              }
+              search={
+                <div className="relative w-full min-w-0">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input placeholder="Search resource quotas..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full h-10 pl-9 rounded-lg border border-border bg-background text-sm font-medium shadow-sm placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-primary/20" aria-label="Search resource quotas" />
+                </div>
+              }
+              structure={
+                <ListViewSegmentedControl
+                  value={listView}
+                  onChange={(v) => setListView(v as 'flat' | 'byNamespace')}
+                  options={[
+                    { id: 'flat', label: 'Flat', icon: List },
+                    { id: 'byNamespace', label: 'By Namespace', icon: Layers },
+                  ]}
+                  label=""
+                  ariaLabel="List structure"
+                />
+              }
             />
-          }
-        />
           }
           showTableFilters={showTableFilters}
           onToggleTableFilters={() => setShowTableFilters((v) => !v)}
@@ -429,22 +410,22 @@ export default function ResourceQuotas() {
           visibleColumns={columnVisibility.visibleColumns}
           onColumnToggle={columnVisibility.setColumnVisible}
           footer={
-          <div className="flex items-center justify-between flex-wrap gap-2">
-            <div className="flex items-center gap-3">
-              <span className="text-sm text-muted-foreground">{pagination.rangeLabel}</span>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm" className="gap-2">{pageSize} per page<ChevronDown className="h-4 w-4 opacity-50" /></Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start">
-                  {PAGE_SIZE_OPTIONS.map((size) => (
-                    <DropdownMenuItem key={size} onClick={() => handlePageSizeChange(size)} className={cn(pageSize === size && 'bg-accent')}>{size} per page</DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <div className="flex items-center gap-3">
+                <span className="text-sm text-muted-foreground">{pagination.rangeLabel}</span>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm" className="gap-2">{pageSize} per page<ChevronDown className="h-4 w-4 opacity-50" /></Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start">
+                    {PAGE_SIZE_OPTIONS.map((size) => (
+                      <DropdownMenuItem key={size} onClick={() => handlePageSizeChange(size)} className={cn(pageSize === size && 'bg-accent')}>{size} per page</DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+              <ListPagination hasPrev={pagination.hasPrev} hasNext={pagination.hasNext} onPrev={pagination.onPrev} onNext={pagination.onNext} rangeLabel={undefined} currentPage={pagination.currentPage} totalPages={pagination.totalPages} onPageChange={pagination.onPageChange} dataUpdatedAt={pagination.dataUpdatedAt} isFetching={pagination.isFetching} />
             </div>
-            <ListPagination hasPrev={pagination.hasPrev} hasNext={pagination.hasNext} onPrev={pagination.onPrev} onNext={pagination.onNext} rangeLabel={undefined} currentPage={pagination.currentPage} totalPages={pagination.totalPages} onPageChange={pagination.onPageChange} dataUpdatedAt={pagination.dataUpdatedAt} isFetching={pagination.isFetching} />
-          </div>
           }
         >
           <ResizableTableProvider tableId="resourcequotas" columnConfig={RQ_TABLE_COLUMNS}>
@@ -452,17 +433,17 @@ export default function ResourceQuotas() {
               <TableHeader>
                 <TableRow className="bg-muted/50 hover:bg-muted/50 border-b-2 border-border">
                   <TableHead className="w-10"><Checkbox checked={isAllSelected} onCheckedChange={toggleAll} aria-label="Select all" className={cn(isSomeSelected && 'data-[state=checked]:bg-primary/50')} /></TableHead>
-                  <ResizableTableHead columnId="name"><TableColumnHeaderWithFilterAndSort columnId="name" label="Name" sortKey={sortKey} sortOrder={sortOrder} onSort={setSort} filterable={false} distinctValues={[]} selectedFilterValues={new Set()} onFilterChange={() => {}} /></ResizableTableHead>
-                  <ResizableTableHead columnId="namespace"><TableColumnHeaderWithFilterAndSort columnId="namespace" label="Namespace" sortKey={sortKey} sortOrder={sortOrder} onSort={setSort} filterable={false} distinctValues={[]} selectedFilterValues={new Set()} onFilterChange={() => {}} /></ResizableTableHead>
-                  <ResizableTableHead columnId="cpuRequests"><TableColumnHeaderWithFilterAndSort columnId="cpuRequests" label="CPU Used / Limit" sortKey={sortKey} sortOrder={sortOrder} onSort={setSort} filterable={false} distinctValues={[]} selectedFilterValues={new Set()} onFilterChange={() => {}} /></ResizableTableHead>
-                  <ResizableTableHead columnId="cpuLimits"><TableColumnHeaderWithFilterAndSort columnId="cpuLimits" label="CPU Lim" sortKey={sortKey} sortOrder={sortOrder} onSort={setSort} filterable={false} distinctValues={[]} selectedFilterValues={new Set()} onFilterChange={() => {}} /></ResizableTableHead>
-                  <ResizableTableHead columnId="memoryRequests"><TableColumnHeaderWithFilterAndSort columnId="memoryRequests" label="Memory Used / Limit" sortKey={sortKey} sortOrder={sortOrder} onSort={setSort} filterable={false} distinctValues={[]} selectedFilterValues={new Set()} onFilterChange={() => {}} /></ResizableTableHead>
-                  <ResizableTableHead columnId="memoryLimits"><TableColumnHeaderWithFilterAndSort columnId="memoryLimits" label="Mem Lim" sortKey={sortKey} sortOrder={sortOrder} onSort={setSort} filterable={false} distinctValues={[]} selectedFilterValues={new Set()} onFilterChange={() => {}} /></ResizableTableHead>
-                  <ResizableTableHead columnId="pods"><TableColumnHeaderWithFilterAndSort columnId="pods" label="Pod Count" sortKey={sortKey} sortOrder={sortOrder} onSort={setSort} filterable={false} distinctValues={[]} selectedFilterValues={new Set()} onFilterChange={() => {}} /></ResizableTableHead>
-                  <ResizableTableHead columnId="services"><TableColumnHeaderWithFilterAndSort columnId="services" label="Services" sortKey={sortKey} sortOrder={sortOrder} onSort={setSort} filterable={false} distinctValues={[]} selectedFilterValues={new Set()} onFilterChange={() => {}} /></ResizableTableHead>
-                  <ResizableTableHead columnId="pvcs"><TableColumnHeaderWithFilterAndSort columnId="pvcs" label="PVCs" sortKey={sortKey} sortOrder={sortOrder} onSort={setSort} filterable={false} distinctValues={[]} selectedFilterValues={new Set()} onFilterChange={() => {}} /></ResizableTableHead>
-                  <ResizableTableHead columnId="overallUsage"><TableColumnHeaderWithFilterAndSort columnId="overallUsage" label="Overall %" sortKey={sortKey} sortOrder={sortOrder} onSort={setSort} filterable={false} distinctValues={[]} selectedFilterValues={new Set()} onFilterChange={() => {}} /></ResizableTableHead>
-                  <ResizableTableHead columnId="age"><TableColumnHeaderWithFilterAndSort columnId="age" label="Age" sortKey={sortKey} sortOrder={sortOrder} onSort={setSort} filterable={false} distinctValues={[]} selectedFilterValues={new Set()} onFilterChange={() => {}} /></ResizableTableHead>
+                  <ResizableTableHead columnId="name"><TableColumnHeaderWithFilterAndSort columnId="name" label="Name" sortKey={sortKey} sortOrder={sortOrder} onSort={setSort} filterable={false} distinctValues={[]} selectedFilterValues={new Set()} onFilterChange={() => { }} /></ResizableTableHead>
+                  <ResizableTableHead columnId="namespace"><TableColumnHeaderWithFilterAndSort columnId="namespace" label="Namespace" sortKey={sortKey} sortOrder={sortOrder} onSort={setSort} filterable={false} distinctValues={[]} selectedFilterValues={new Set()} onFilterChange={() => { }} /></ResizableTableHead>
+                  <ResizableTableHead columnId="cpuRequests"><TableColumnHeaderWithFilterAndSort columnId="cpuRequests" label="CPU Used / Limit" sortKey={sortKey} sortOrder={sortOrder} onSort={setSort} filterable={false} distinctValues={[]} selectedFilterValues={new Set()} onFilterChange={() => { }} /></ResizableTableHead>
+                  <ResizableTableHead columnId="cpuLimits"><TableColumnHeaderWithFilterAndSort columnId="cpuLimits" label="CPU Lim" sortKey={sortKey} sortOrder={sortOrder} onSort={setSort} filterable={false} distinctValues={[]} selectedFilterValues={new Set()} onFilterChange={() => { }} /></ResizableTableHead>
+                  <ResizableTableHead columnId="memoryRequests"><TableColumnHeaderWithFilterAndSort columnId="memoryRequests" label="Memory Used / Limit" sortKey={sortKey} sortOrder={sortOrder} onSort={setSort} filterable={false} distinctValues={[]} selectedFilterValues={new Set()} onFilterChange={() => { }} /></ResizableTableHead>
+                  <ResizableTableHead columnId="memoryLimits"><TableColumnHeaderWithFilterAndSort columnId="memoryLimits" label="Mem Lim" sortKey={sortKey} sortOrder={sortOrder} onSort={setSort} filterable={false} distinctValues={[]} selectedFilterValues={new Set()} onFilterChange={() => { }} /></ResizableTableHead>
+                  <ResizableTableHead columnId="pods"><TableColumnHeaderWithFilterAndSort columnId="pods" label="Pod Count" sortKey={sortKey} sortOrder={sortOrder} onSort={setSort} filterable={false} distinctValues={[]} selectedFilterValues={new Set()} onFilterChange={() => { }} /></ResizableTableHead>
+                  <ResizableTableHead columnId="services"><TableColumnHeaderWithFilterAndSort columnId="services" label="Services" sortKey={sortKey} sortOrder={sortOrder} onSort={setSort} filterable={false} distinctValues={[]} selectedFilterValues={new Set()} onFilterChange={() => { }} /></ResizableTableHead>
+                  <ResizableTableHead columnId="pvcs"><TableColumnHeaderWithFilterAndSort columnId="pvcs" label="PVCs" sortKey={sortKey} sortOrder={sortOrder} onSort={setSort} filterable={false} distinctValues={[]} selectedFilterValues={new Set()} onFilterChange={() => { }} /></ResizableTableHead>
+                  <ResizableTableHead columnId="overallUsage"><TableColumnHeaderWithFilterAndSort columnId="overallUsage" label="Overall %" sortKey={sortKey} sortOrder={sortOrder} onSort={setSort} filterable={false} distinctValues={[]} selectedFilterValues={new Set()} onFilterChange={() => { }} /></ResizableTableHead>
+                  <ResizableTableHead columnId="age"><TableColumnHeaderWithFilterAndSort columnId="age" label="Age" sortKey={sortKey} sortOrder={sortOrder} onSort={setSort} filterable={false} distinctValues={[]} selectedFilterValues={new Set()} onFilterChange={() => { }} /></ResizableTableHead>
                   <TableHead className="w-12 text-center"><span className="sr-only">Actions</span><MoreHorizontal className="h-4 w-4 inline-block text-muted-foreground" aria-hidden /></TableHead>
                 </TableRow>
                 {showTableFilters && (
@@ -569,6 +550,7 @@ export default function ResourceQuotas() {
                             <DropdownMenuItem onClick={() => navigate(`/resourcequotas/${r.namespace}/${r.name}`)} className="gap-2">View Details</DropdownMenuItem>
                             <DropdownMenuItem onClick={() => navigate(`/namespaces/${r.namespace}`)} className="gap-2">View Namespace</DropdownMenuItem>
                             <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={() => navigate(`/resourcequotas/${r.namespace}/${r.name}?tab=yaml`)} className="gap-2">Edit YAML</DropdownMenuItem>
                             <DropdownMenuItem onClick={() => navigate(`/resourcequotas/${r.namespace}/${r.name}?tab=yaml`)} className="gap-2">Download YAML</DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem className="gap-2 text-destructive" onClick={() => setDeleteDialog({ open: true, item: r })} disabled={!isConnected}>Delete</DropdownMenuItem>

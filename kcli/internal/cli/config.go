@@ -8,13 +8,15 @@ import (
 	"strings"
 
 	kcfg "github.com/kubilitics/kcli/internal/config"
+	"github.com/kubilitics/kcli/internal/keychain"
 	"github.com/spf13/cobra"
 )
 
 func newConfigCmd(a *app) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:     "config",
-		Short:   "Manage kcli configuration",
+		Use:   "config",
+		Short: "Manage kcli configuration (~/.kcli/config.yaml)",
+		Long:  "Manages kcli settings (view, get, set, reset, edit). For kubeconfig (get-contexts, use-context, set-cluster), use 'kcli kubeconfig' instead.",
 		GroupID: "workflow",
 	}
 	cmd.AddCommand(
@@ -97,26 +99,53 @@ func newConfigGetCmd() *cobra.Command {
 }
 
 func newConfigSetCmd(a *app) *cobra.Command {
+	var useKeychain bool
 	cmd := &cobra.Command{
 		Use:   "set <key> <value>",
 		Short: "Set a config value by key path",
+		Long:  "Set a config value. Use --keychain to store the value in the system keychain (macOS Keychain / Linux Secret Service) instead of in the config file. Supported for: ai.api_key, integrations.pagerDutyKey, integrations.slackWebhook, integrations.jiraToken.",
 		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg, err := kcfg.Load()
+			store, err := kcfg.LoadStore()
 			if err != nil {
 				return err
 			}
-			if err := cfg.SetByKey(args[0], args[1]); err != nil {
+			cfg := store.Current()
+			key, value := args[0], args[1]
+			if useKeychain {
+				if !keychain.Available() {
+					return fmt.Errorf("keychain not available on this platform (macOS: Keychain, Linux: install libsecret-tools for secret-tool)")
+				}
+				norm := strings.ToLower(strings.TrimSpace(key))
+				if _, ok := kcfg.KeychainableKeys[norm]; !ok {
+					return fmt.Errorf("key %q cannot be stored in keychain (supported: ai.api_key, integrations.pagerDutyKey, integrations.slackWebhook, integrations.jiraToken)", key)
+				}
+				account := store.ActiveProfile + "." + kcfg.NormalizeKeyForAccount(key)
+				if err := keychain.Set(keychain.Service, account, value); err != nil {
+					return fmt.Errorf("keychain set failed: %w", err)
+				}
+				cfg.AddKeychainKey(key)
+			}
+			if err := cfg.SetByKey(key, value); err != nil {
 				return err
 			}
 			if err := kcfg.Save(cfg); err != nil {
 				return err
 			}
-			a.cfg = cfg
-			fmt.Fprintf(cmd.OutOrStdout(), "Updated %s\n", args[0])
+			// Reload so a.cfg has the latest config (and keychain-resolved values).
+			reloaded, err := kcfg.Load()
+			if err == nil {
+				a.cfg = reloaded
+			}
+			msg := "Updated %s\n"
+			if useKeychain {
+				msg = "Updated %s (stored in system keychain)\n"
+			}
+			fmt.Fprintf(cmd.OutOrStdout(), msg, key)
 			return nil
 		},
 	}
+	cmd.Flags().BoolVar(&useKeychain, "keychain", false, "store value in system keychain (macOS Keychain / Linux Secret Service) instead of config file")
 	return cmd
 }
 
