@@ -5,6 +5,16 @@ All notable changes to Kubilitics will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.1.2] - 2026-02-26
+
+### Fixed
+- CI: bumped Go toolchain to 1.25.7 across release.yml, backend-ci.yml, kcli-ci.yml and backend Dockerfile — resolves 10 stdlib CVEs (net/url, crypto/tls, crypto/x509, archive/tar) fixed in go1.25.2–1.25.7
+- kcli: `TestIncidentWatchContextCancellation` CI timeout — `fetchPods`, `fetchNodes`, `fetchEvents`, and all observability helpers now use `runner.CaptureKubectlCtx(ctx, args)` so kubectl subprocesses are killed when the parent context is cancelled; watch loop no longer blocks past the test deadline
+- Desktop: version strings in tauri.conf.json, Cargo.toml, and package.json aligned to release version
+
+### Changed
+- Release test timeout for `TestIncidentWatchContextCancellation` increased 2s → 10s to absorb GHA runner cold-start latency
+
 ## [v0.1.1] - 2026-02-26
 
 ### Fixed
