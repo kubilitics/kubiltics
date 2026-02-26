@@ -21,6 +21,41 @@ env:
   PLATFORMS: linux/amd64,linux/arm64
 
 jobs:
+  # ──────────────────────────────────────────────────────────────────────────
+  # Build the frontend dist ONCE (Tauri mode) and share across all desktop
+  # platforms.  Saves ~5 min × 3 platforms = ~15 min total vs. building it
+  # inside each platform runner.
+  # ──────────────────────────────────────────────────────────────────────────
+  frontend-dist:
+    name: Frontend Dist (Tauri)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: kubilitics-frontend/package-lock.json
+      - name: Install deps
+        working-directory: kubilitics-frontend
+        run: npm ci
+      - name: Build frontend (Tauri mode)
+        working-directory: kubilitics-frontend
+        env:
+          TAURI_BUILD: "true"
+        run: npm run build
+      - name: Upload frontend dist
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist-tauri-${{ github.ref_name }}
+          path: kubilitics-frontend/dist/
+          retention-days: 1   # only needed during the release run
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # kcli — all 5 platform binaries built in PARALLEL on one ubuntu runner.
+  # Cuts job time from ~10 min → ~4 min (limited by the slowest cross-compile).
+  # ──────────────────────────────────────────────────────────────────────────
   kcli:
     name: kcli Binaries
     runs-on: ubuntu-latest
@@ -31,21 +66,15 @@ jobs:
         with:
           go-version: ${{ env.GO_VERSION }}
           cache-dependency-path: kcli/go.sum
-      - name: Build kcli Linux amd64
+      - name: Build all kcli binaries (parallel)
         working-directory: kcli
-        run: CGO_ENABLED=0 GOOS=linux   GOARCH=amd64 go build -ldflags="-s -w" -o ../kcli-linux-amd64   ./cmd/kcli
-      - name: Build kcli Linux arm64
-        working-directory: kcli
-        run: CGO_ENABLED=0 GOOS=linux   GOARCH=arm64 go build -ldflags="-s -w" -o ../kcli-linux-arm64   ./cmd/kcli
-      - name: Build kcli macOS amd64
-        working-directory: kcli
-        run: CGO_ENABLED=0 GOOS=darwin  GOARCH=amd64 go build -ldflags="-s -w" -o ../kcli-darwin-amd64  ./cmd/kcli
-      - name: Build kcli macOS arm64
-        working-directory: kcli
-        run: CGO_ENABLED=0 GOOS=darwin  GOARCH=arm64 go build -ldflags="-s -w" -o ../kcli-darwin-arm64  ./cmd/kcli
-      - name: Build kcli Windows amd64
-        working-directory: kcli
-        run: CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -ldflags="-s -w" -o ../kcli-windows-amd64.exe ./cmd/kcli
+        run: |
+          CGO_ENABLED=0 GOOS=linux   GOARCH=amd64 go build -ldflags="-s -w" -o ../kcli-linux-amd64        ./cmd/kcli &
+          CGO_ENABLED=0 GOOS=linux   GOARCH=arm64 go build -ldflags="-s -w" -o ../kcli-linux-arm64        ./cmd/kcli &
+          CGO_ENABLED=0 GOOS=darwin  GOARCH=amd64 go build -ldflags="-s -w" -o ../kcli-darwin-amd64       ./cmd/kcli &
+          CGO_ENABLED=0 GOOS=darwin  GOARCH=arm64 go build -ldflags="-s -w" -o ../kcli-darwin-arm64       ./cmd/kcli &
+          CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -ldflags="-s -w" -o ../kcli-windows-amd64.exe ./cmd/kcli &
+          wait
       - name: Make Unix binaries executable
         run: chmod +x kcli-linux-amd64 kcli-linux-arm64 kcli-darwin-amd64 kcli-darwin-arm64 || true
       - name: Upload kcli artifacts
@@ -59,6 +88,9 @@ jobs:
             kcli-darwin-arm64
             kcli-windows-amd64.exe
 
+  # ──────────────────────────────────────────────────────────────────────────
+  # kubilitics-ai — matrix already runs all 5 platforms in parallel.
+  # ──────────────────────────────────────────────────────────────────────────
   kubilitics-ai:
     name: kubilitics-ai Binaries
     runs-on: ubuntu-latest
@@ -109,6 +141,9 @@ jobs:
           name: kubilitics-ai-${{ matrix.goos }}-${{ matrix.goarch }}-${{ github.ref_name }}
           path: kubilitics-ai/bin/kubilitics-ai-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.suffix }}
 
+  # ──────────────────────────────────────────────────────────────────────────
+  # Backend — Linux amd64 + arm64 built in PARALLEL.
+  # ──────────────────────────────────────────────────────────────────────────
   backend:
     name: Backend Binaries
     runs-on: ubuntu-latest
@@ -119,12 +154,12 @@ jobs:
         with:
           go-version: ${{ env.GO_VERSION }}
           cache-dependency-path: kubilitics-backend/go.sum
-      - name: Build Linux amd64
+      - name: Build Linux amd64 + arm64 (parallel)
         working-directory: kubilitics-backend
-        run: CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o kubilitics-backend-linux-amd64 ./cmd/server
-      - name: Build Linux arm64
-        working-directory: kubilitics-backend
-        run: CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -ldflags="-s -w" -o kubilitics-backend-linux-arm64 ./cmd/server
+        run: |
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o kubilitics-backend-linux-amd64 ./cmd/server &
+          CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -ldflags="-s -w" -o kubilitics-backend-linux-arm64 ./cmd/server &
+          wait
       - name: Upload backend artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -217,11 +252,24 @@ jobs:
           cache-to: type=gha,mode=max
           provenance: false
 
+  # ──────────────────────────────────────────────────────────────────────────
+  # Desktop — macOS, Windows, Linux run in PARALLEL (matrix).
+  #
+  # Key optimizations vs. the old sequential approach:
+  #   1. Frontend dist downloaded from the shared `frontend-dist` artifact —
+  #      no npm ci / npm run build per platform (~5 min saved each).
+  #   2. Go sidecar binaries built in parallel with `& wait` inside each job
+  #      (~50% faster than sequential for 4 thin binaries).
+  #   3. Swatinem/rust-cache@v2 instead of raw actions/cache — purpose-built
+  #      for Rust; smarter key strategy, higher warm-cache hit rate.
+  #   4. setup-node removed from desktop jobs (not needed without npm build).
+  #   5. Rust targets scoped per OS — no macOS targets installed on Win/Linux.
+  # ──────────────────────────────────────────────────────────────────────────
   desktop:
     name: Desktop (${{ matrix.name }})
     timeout-minutes: 90
-    # Allow individual matrix entries (e.g. Linux AppImage 503) to fail without
-    # blocking macOS/Windows builds or the downstream release job.
+    needs: [frontend-dist]
+    # Allow individual matrix entries to fail without blocking the release job.
     continue-on-error: true
     strategy:
       fail-fast: false
@@ -236,51 +284,34 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
-      - name: Clean build artifacts
+
+      - name: Clean stale build artifacts
         shell: bash
         run: |
-          # Clean binaries directory to avoid stale artifacts
-          if [ -d "kubilitics-desktop/src-tauri/binaries" ]; then
-            rm -rf kubilitics-desktop/src-tauri/binaries/*
-          fi
+          rm -rf kubilitics-desktop/src-tauri/binaries
           mkdir -p kubilitics-desktop/src-tauri/binaries
-          # Clean Tauri target directory (optional, but ensures clean builds)
-          if [ -d "kubilitics-desktop/src-tauri/target/release" ]; then
-            rm -rf kubilitics-desktop/src-tauri/target/release
-          fi
-          if [ -d "kubilitics-desktop/src-tauri/target/universal-apple-darwin" ]; then
-            rm -rf kubilitics-desktop/src-tauri/target/universal-apple-darwin
-          fi
+          rm -rf kubilitics-desktop/src-tauri/target/release
+          rm -rf kubilitics-desktop/src-tauri/target/universal-apple-darwin
           echo "✅ Cleaned build artifacts"
-      - name: Verify signing key secret
-        shell: bash
-        env:
-          KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-        run: |
-          if [ -z "$KEY" ]; then
-            echo "⚠️  TAURI_SIGNING_PRIVATE_KEY not set — updater .sig files will NOT be generated"
-            echo "    Set the secret in repo Settings → Secrets to enable signed updates"
-          else
-            echo "✅ Signing key present (${#KEY} chars) — updater artifacts will be signed"
-          fi
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
+
+      # ── Rust toolchain — targets scoped per OS ──────────────────────────
       - uses: dtolnay/rust-toolchain@stable
         with:
-          # macOS universal build requires both targets; harmless on Windows/Linux (ignored)
-          targets: aarch64-apple-darwin,x86_64-apple-darwin
-      - name: Cache Cargo registry and build artifacts
-        uses: actions/cache@v4
+          # macOS universal build needs both Intel + ARM targets.
+          # Windows/Linux default target is fine; passing an empty string is
+          # harmless (rustup accepts it gracefully).
+          targets: ${{ matrix.os == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+
+      # ── Rust cache — Swatinem/rust-cache is purpose-built for Rust CI ──
+      # Caches: ~/.cargo/registry, ~/.cargo/git, ./target (build artifacts).
+      # Smarter invalidation than raw actions/cache; typically 10-25 min
+      # faster than a cold cargo build on a warm runner.
+      - uses: Swatinem/rust-cache@v2
         with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            kubilitics-desktop/src-tauri/target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('kubilitics-desktop/src-tauri/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-
-      - name: Cache tauri-cli install
+          workspaces: kubilitics-desktop/src-tauri -> target
+          cache-on-failure: true
+
+      - name: Cache tauri-cli binary
         id: cache-tauri-cli
         uses: actions/cache@v4
         with:
@@ -289,121 +320,125 @@ jobs:
       - name: Install Tauri CLI
         if: steps.cache-tauri-cli.outputs.cache-hit != 'true'
         run: cargo install tauri-cli --version ^2.0
-      - name: Install deps (Ubuntu)
+
+      # ── Linux system deps ───────────────────────────────────────────────
+      - name: Install GTK / WebKit deps (Ubuntu only)
         if: matrix.os == 'ubuntu-latest'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev
-      - name: Install frontend deps
-        # The Vite/React frontend lives in kubilitics-frontend/, not kubilitics-desktop/
-        working-directory: kubilitics-frontend
-        run: npm ci
-      - name: Build frontend
-        working-directory: kubilitics-frontend
-        env:
-          TAURI_BUILD: "true"
-        run: npm run build
-      - name: Copy frontend dist for Tauri
-        # tauri.conf.json frontendDist "../dist" resolves from src-tauri/ → kubilitics-desktop/dist
+          sudo apt-get install -y \
+            libgtk-3-dev \
+            libwebkit2gtk-4.1-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev
+
+      # ── Frontend dist (pre-built, shared) ───────────────────────────────
+      - name: Download frontend dist
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-dist-tauri-${{ github.ref_name }}
+          path: kubilitics-frontend/dist/
+      - name: Copy frontend dist into Tauri working dir
         shell: bash
         run: |
+          if [ -z "$(ls -A kubilitics-frontend/dist 2>/dev/null)" ]; then
+            echo "❌ Frontend dist artifact is empty"
+            exit 1
+          fi
           mkdir -p kubilitics-desktop/dist
-          if [ ! -d "kubilitics-frontend/dist" ] || [ -z "$(ls -A kubilitics-frontend/dist 2>/dev/null)" ]; then
-            echo "❌ ERROR: Frontend dist directory is empty or does not exist"
-            echo "Frontend build may have failed. Checking kubilitics-frontend/dist:"
-            ls -la kubilitics-frontend/dist/ || echo "Directory does not exist"
-            exit 1
-          fi
           cp -r kubilitics-frontend/dist/. kubilitics-desktop/dist/
-          echo "✅ Frontend dist copied successfully"
-          echo "Verifying dist contents:"
-          ls -la kubilitics-desktop/dist/ | head -10
-      - name: Verify frontend dist exists
-        shell: bash
-        run: |
-          if [ ! -d "kubilitics-desktop/dist" ] || [ -z "$(ls -A kubilitics-desktop/dist 2>/dev/null)" ]; then
-            echo "❌ ERROR: kubilitics-desktop/dist is empty or does not exist"
-            echo "This is required for Tauri build (frontendDist: ../dist)"
-            exit 1
-          fi
-          echo "✅ Frontend dist verified: $(du -sh kubilitics-desktop/dist | cut -f1)"
+          echo "✅ Frontend dist ready ($(du -sh kubilitics-desktop/dist | cut -f1))"
+
+      # ── Go toolchain + module cache ──────────────────────────────────────
       - uses: actions/setup-go@v5
         with:
           go-version: ${{ env.GO_VERSION }}
-          # Cache Go deps for sidecar builds (backend, kcli, ai); avoids "Dependencies file is not found" warning
           cache-dependency-path: |
             kubilitics-backend/go.sum
             kcli/go.sum
-      - name: Build Go backend sidecar
-        # Tauri v2 externalBin files MUST carry the platform-triple suffix
+
+      # ── Build Go sidecar binaries IN PARALLEL ────────────────────────────
+      # macOS: 4 thin binaries launched concurrently, lipo-merged afterwards.
+      # Linux: 4 binaries (amd64+arm64 × backend+kcli) launched concurrently.
+      # Windows: single amd64 build per component (no parallel benefit).
+      - name: Build Go sidecars (parallel)
         shell: bash
         run: |
-          mkdir -p kubilitics-desktop/src-tauri/binaries
-          cd kubilitics-backend
+          BINS="kubilitics-desktop/src-tauri/binaries"
+          mkdir -p "$BINS"
+
           if [ "${{ matrix.os }}" == "macos-latest" ]; then
-            CGO_ENABLED=0 GOOS=darwin  GOARCH=amd64 go build -ldflags="-s -w" -o ../kubilitics-desktop/src-tauri/binaries/kubilitics-backend-x86_64-apple-darwin       ./cmd/server
-            CGO_ENABLED=0 GOOS=darwin  GOARCH=arm64 go build -ldflags="-s -w" -o ../kubilitics-desktop/src-tauri/binaries/kubilitics-backend-aarch64-apple-darwin      ./cmd/server
-            chmod +x ../kubilitics-desktop/src-tauri/binaries/kubilitics-backend-*
-            # Create universal binary for universal-apple-darwin target
-            lipo -create ../kubilitics-desktop/src-tauri/binaries/kubilitics-backend-x86_64-apple-darwin ../kubilitics-desktop/src-tauri/binaries/kubilitics-backend-aarch64-apple-darwin -output ../kubilitics-desktop/src-tauri/binaries/kubilitics-backend-universal-apple-darwin
-            chmod +x ../kubilitics-desktop/src-tauri/binaries/kubilitics-backend-universal-apple-darwin
+            # 4 thin binaries in parallel
+            (cd kubilitics-backend && CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -ldflags="-s -w" -o "../$BINS/kubilitics-backend-x86_64-apple-darwin"   ./cmd/server) &
+            (cd kubilitics-backend && CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -ldflags="-s -w" -o "../$BINS/kubilitics-backend-aarch64-apple-darwin"  ./cmd/server) &
+            (cd kcli              && CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -ldflags="-s -w" -o "../$BINS/kcli-x86_64-apple-darwin"                  ./cmd/kcli) &
+            (cd kcli              && CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -ldflags="-s -w" -o "../$BINS/kcli-aarch64-apple-darwin"                 ./cmd/kcli) &
+            wait
+            # lipo-merge into universal fat binaries
+            lipo -create "$BINS/kubilitics-backend-x86_64-apple-darwin" \
+                         "$BINS/kubilitics-backend-aarch64-apple-darwin" \
+                 -output "$BINS/kubilitics-backend-universal-apple-darwin"
+            lipo -create "$BINS/kcli-x86_64-apple-darwin" \
+                         "$BINS/kcli-aarch64-apple-darwin" \
+                 -output "$BINS/kcli-universal-apple-darwin"
+            chmod +x "$BINS/kubilitics-backend-"* "$BINS/kcli-"*
+
           elif [ "${{ matrix.os }}" == "windows-latest" ]; then
-            CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -ldflags="-s -w" -o ../kubilitics-desktop/src-tauri/binaries/kubilitics-backend-x86_64-pc-windows-msvc.exe ./cmd/server
+            cd kubilitics-backend
+            CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -ldflags="-s -w" \
+              -o "../$BINS/kubilitics-backend-x86_64-pc-windows-msvc.exe" ./cmd/server
+            cd ../kcli
+            CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -ldflags="-s -w" \
+              -o "../$BINS/kcli-x86_64-pc-windows-msvc.exe" ./cmd/kcli
+
           else
-            CGO_ENABLED=0 GOOS=linux   GOARCH=amd64 go build -ldflags="-s -w" -o ../kubilitics-desktop/src-tauri/binaries/kubilitics-backend-x86_64-unknown-linux-gnu  ./cmd/server
-            CGO_ENABLED=0 GOOS=linux   GOARCH=arm64 go build -ldflags="-s -w" -o ../kubilitics-desktop/src-tauri/binaries/kubilitics-backend-aarch64-unknown-linux-gnu ./cmd/server
-            chmod +x ../kubilitics-desktop/src-tauri/binaries/kubilitics-backend-*
+            # Linux — amd64 + arm64 for both components in parallel
+            (cd kubilitics-backend && CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o "../$BINS/kubilitics-backend-x86_64-unknown-linux-gnu"   ./cmd/server) &
+            (cd kubilitics-backend && CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -ldflags="-s -w" -o "../$BINS/kubilitics-backend-aarch64-unknown-linux-gnu"  ./cmd/server) &
+            (cd kcli              && CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o "../$BINS/kcli-x86_64-unknown-linux-gnu"                  ./cmd/kcli) &
+            (cd kcli              && CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -ldflags="-s -w" -o "../$BINS/kcli-aarch64-unknown-linux-gnu"                 ./cmd/kcli) &
+            wait
+            chmod +x "$BINS/kubilitics-backend-"* "$BINS/kcli-"*
           fi
-      - name: Build kcli sidecar
-        shell: bash
-        run: |
-          mkdir -p kubilitics-desktop/src-tauri/binaries
-          cd kcli
-          if [ "${{ matrix.os }}" == "macos-latest" ]; then
-            CGO_ENABLED=0 GOOS=darwin  GOARCH=amd64 go build -ldflags="-s -w" -o ../kubilitics-desktop/src-tauri/binaries/kcli-x86_64-apple-darwin       ./cmd/kcli
-            CGO_ENABLED=0 GOOS=darwin  GOARCH=arm64 go build -ldflags="-s -w" -o ../kubilitics-desktop/src-tauri/binaries/kcli-aarch64-apple-darwin      ./cmd/kcli
-            chmod +x ../kubilitics-desktop/src-tauri/binaries/kcli-*
-            # Create universal binary for universal-apple-darwin target
-            lipo -create ../kubilitics-desktop/src-tauri/binaries/kcli-x86_64-apple-darwin ../kubilitics-desktop/src-tauri/binaries/kcli-aarch64-apple-darwin -output ../kubilitics-desktop/src-tauri/binaries/kcli-universal-apple-darwin
-            chmod +x ../kubilitics-desktop/src-tauri/binaries/kcli-universal-apple-darwin
-          elif [ "${{ matrix.os }}" == "windows-latest" ]; then
-            CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -ldflags="-s -w" -o ../kubilitics-desktop/src-tauri/binaries/kcli-x86_64-pc-windows-msvc.exe ./cmd/kcli
-          else
-            CGO_ENABLED=0 GOOS=linux   GOARCH=amd64 go build -ldflags="-s -w" -o ../kubilitics-desktop/src-tauri/binaries/kcli-x86_64-unknown-linux-gnu  ./cmd/kcli
-            CGO_ENABLED=0 GOOS=linux   GOARCH=arm64 go build -ldflags="-s -w" -o ../kubilitics-desktop/src-tauri/binaries/kcli-aarch64-unknown-linux-gnu ./cmd/kcli
-            chmod +x ../kubilitics-desktop/src-tauri/binaries/kcli-*
-          fi
+
       - name: Build AI sidecar (optional)
-        # CGO_ENABLED=0 for cross-platform desktop distribution (no sqlite at desktop layer)
+        # Non-fatal: AI features degrade gracefully if this fails.
+        # Runs after the required sidecars so it never blocks them.
         continue-on-error: true
         shell: bash
         run: |
-          if [ -d "kubilitics-ai" ]; then
-            mkdir -p kubilitics-desktop/src-tauri/binaries
+          [ -d "kubilitics-ai" ] || exit 0
+          BINS="kubilitics-desktop/src-tauri/binaries"
+
+          if [ "${{ matrix.os }}" == "macos-latest" ]; then
+            (cd kubilitics-ai && CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -ldflags="-s -w" -o "../$BINS/kubilitics-ai-x86_64-apple-darwin"  ./cmd/server/main.go) &
+            (cd kubilitics-ai && CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -ldflags="-s -w" -o "../$BINS/kubilitics-ai-aarch64-apple-darwin" ./cmd/server/main.go) &
+            wait
+            lipo -create "$BINS/kubilitics-ai-x86_64-apple-darwin" \
+                         "$BINS/kubilitics-ai-aarch64-apple-darwin" \
+                 -output "$BINS/kubilitics-ai-universal-apple-darwin"
+            chmod +x "$BINS/kubilitics-ai-"*
+
+          elif [ "${{ matrix.os }}" == "windows-latest" ]; then
             cd kubilitics-ai
-            if [ "${{ matrix.os }}" == "macos-latest" ]; then
-              CGO_ENABLED=0 GOOS=darwin  GOARCH=amd64 go build -ldflags="-s -w" -o ../kubilitics-desktop/src-tauri/binaries/kubilitics-ai-x86_64-apple-darwin       ./cmd/server/main.go
-              CGO_ENABLED=0 GOOS=darwin  GOARCH=arm64 go build -ldflags="-s -w" -o ../kubilitics-desktop/src-tauri/binaries/kubilitics-ai-aarch64-apple-darwin      ./cmd/server/main.go
-              chmod +x ../kubilitics-desktop/src-tauri/binaries/kubilitics-ai-*
-              # Create universal binary for universal-apple-darwin target
-              lipo -create ../kubilitics-desktop/src-tauri/binaries/kubilitics-ai-x86_64-apple-darwin ../kubilitics-desktop/src-tauri/binaries/kubilitics-ai-aarch64-apple-darwin -output ../kubilitics-desktop/src-tauri/binaries/kubilitics-ai-universal-apple-darwin
-              chmod +x ../kubilitics-desktop/src-tauri/binaries/kubilitics-ai-universal-apple-darwin
-            elif [ "${{ matrix.os }}" == "windows-latest" ]; then
-              CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -ldflags="-s -w" -o ../kubilitics-desktop/src-tauri/binaries/kubilitics-ai-x86_64-pc-windows-msvc.exe ./cmd/server/main.go
-            else
-              CGO_ENABLED=0 GOOS=linux   GOARCH=amd64 go build -ldflags="-s -w" -o ../kubilitics-desktop/src-tauri/binaries/kubilitics-ai-x86_64-unknown-linux-gnu  ./cmd/server/main.go
-              CGO_ENABLED=0 GOOS=linux   GOARCH=arm64 go build -ldflags="-s -w" -o ../kubilitics-desktop/src-tauri/binaries/kubilitics-ai-aarch64-unknown-linux-gnu ./cmd/server/main.go
-              chmod +x ../kubilitics-desktop/src-tauri/binaries/kubilitics-ai-*
-            fi
+            CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -ldflags="-s -w" \
+              -o "../$BINS/kubilitics-ai-x86_64-pc-windows-msvc.exe" ./cmd/server/main.go
+
+          else
+            (cd kubilitics-ai && CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o "../$BINS/kubilitics-ai-x86_64-unknown-linux-gnu"   ./cmd/server/main.go) &
+            (cd kubilitics-ai && CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -ldflags="-s -w" -o "../$BINS/kubilitics-ai-aarch64-unknown-linux-gnu"  ./cmd/server/main.go) &
+            wait
+            chmod +x "$BINS/kubilitics-ai-"*
           fi
-      - name: Verify binaries exist
+
+      - name: Verify all required binaries exist
         shell: bash
         run: |
-          echo "🔍 Verifying required binaries exist..."
-          BINARIES_DIR="kubilitics-desktop/src-tauri/binaries"
-          
+          echo "🔍 Verifying required binaries..."
+          BINS="kubilitics-desktop/src-tauri/binaries"
+
           if [ "${{ matrix.os }}" == "macos-latest" ]; then
-            REQUIRED_BINS=(
+            REQUIRED=(
               "kubilitics-backend-x86_64-apple-darwin"
               "kubilitics-backend-aarch64-apple-darwin"
               "kubilitics-backend-universal-apple-darwin"
@@ -411,51 +446,39 @@ jobs:
               "kcli-aarch64-apple-darwin"
               "kcli-universal-apple-darwin"
             )
-            # AI binary is optional
-            if [ -f "$BINARIES_DIR/kubilitics-ai-x86_64-apple-darwin" ]; then
-              REQUIRED_BINS+=("kubilitics-ai-x86_64-apple-darwin" "kubilitics-ai-aarch64-apple-darwin" "kubilitics-ai-universal-apple-darwin")
-            fi
+            [ -f "$BINS/kubilitics-ai-x86_64-apple-darwin" ] && \
+              REQUIRED+=("kubilitics-ai-x86_64-apple-darwin" "kubilitics-ai-aarch64-apple-darwin" "kubilitics-ai-universal-apple-darwin")
           elif [ "${{ matrix.os }}" == "windows-latest" ]; then
-            REQUIRED_BINS=(
+            REQUIRED=(
               "kubilitics-backend-x86_64-pc-windows-msvc.exe"
               "kcli-x86_64-pc-windows-msvc.exe"
             )
-            if [ -f "$BINARIES_DIR/kubilitics-ai-x86_64-pc-windows-msvc.exe" ]; then
-              REQUIRED_BINS+=("kubilitics-ai-x86_64-pc-windows-msvc.exe")
-            fi
+            [ -f "$BINS/kubilitics-ai-x86_64-pc-windows-msvc.exe" ] && \
+              REQUIRED+=("kubilitics-ai-x86_64-pc-windows-msvc.exe")
           else
-            REQUIRED_BINS=(
+            REQUIRED=(
               "kubilitics-backend-x86_64-unknown-linux-gnu"
               "kubilitics-backend-aarch64-unknown-linux-gnu"
               "kcli-x86_64-unknown-linux-gnu"
               "kcli-aarch64-unknown-linux-gnu"
             )
-            if [ -f "$BINARIES_DIR/kubilitics-ai-x86_64-unknown-linux-gnu" ]; then
-              REQUIRED_BINS+=("kubilitics-ai-x86_64-unknown-linux-gnu" "kubilitics-ai-aarch64-unknown-linux-gnu")
-            fi
+            [ -f "$BINS/kubilitics-ai-x86_64-unknown-linux-gnu" ] && \
+              REQUIRED+=("kubilitics-ai-x86_64-unknown-linux-gnu" "kubilitics-ai-aarch64-unknown-linux-gnu")
           fi
-          
-          MISSING_BINS=()
-          for bin in "${REQUIRED_BINS[@]}"; do
-            if [ ! -f "$BINARIES_DIR/$bin" ]; then
-              MISSING_BINS+=("$bin")
-            else
-              echo "✅ Found: $bin"
-            fi
+
+          MISSING=()
+          for bin in "${REQUIRED[@]}"; do
+            [ -f "$BINS/$bin" ] && echo "✅ $bin" || MISSING+=("$bin")
           done
-          
-          if [ ${#MISSING_BINS[@]} -gt 0 ]; then
-            echo "❌ ERROR: Missing required binaries:"
-            for bin in "${MISSING_BINS[@]}"; do
-              echo "   - $bin"
-            done
-            echo ""
-            echo "Available binaries in $BINARIES_DIR:"
-            ls -lh "$BINARIES_DIR" || echo "Directory is empty or does not exist"
+
+          if [ ${#MISSING[@]} -gt 0 ]; then
+            echo "❌ Missing: ${MISSING[*]}"
+            ls -lh "$BINS" || true
             exit 1
           fi
-          
-          echo "✅ All required binaries verified"
+          echo "✅ All required binaries present"
+
+      # ── macOS code signing ───────────────────────────────────────────────
       - name: Setup macOS code signing
         if: matrix.os == 'macos-latest'
         env:
@@ -470,6 +493,8 @@ jobs:
             security import certificate.p12 -k build.keychain -P "$APPLE_CERTIFICATE_PASSWORD" -T /usr/bin/codesign || true
             security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "" build.keychain
           fi
+
+      # ── Tauri builds — one per OS ────────────────────────────────────────
       - name: Build Tauri app (macOS universal)
         if: matrix.os == 'macos-latest'
         working-directory: kubilitics-desktop/src-tauri
@@ -477,67 +502,45 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
           TAURI_SKIP_DEVSERVER_CHECK: "true"
-        # --config overrides beforeBuildCommand to "" so Tauri doesn't try to run
-        # "npm run build" from kubilitics-desktop/ (which has no package.json).
-        # The frontend dist was already built and copied in the previous steps.
-        # APPLE_SIGNING_IDENTITY is NOT passed as an env var here — instead we inject
-        # it into the --config JSON only when the secret is set, to prevent Tauri from
-        # attempting codesign with an empty identity and failing with keychain errors.
         shell: bash
         run: |
-          # Verify dist exists before building
-          if [ ! -d "../dist" ] || [ -z "$(ls -A ../dist 2>/dev/null)" ]; then
-            echo "❌ ERROR: Frontend dist not found at ../dist"
-            exit 1
-          fi
-          # Verify binaries exist
-          if [ ! -d "binaries" ] || [ -z "$(ls -A binaries 2>/dev/null)" ]; then
-            echo "❌ ERROR: Binaries directory is empty"
-            exit 1
-          fi
-          echo "✅ Pre-build checks passed"
+          [ -d "../dist" ] && [ -n "$(ls -A ../dist)" ] || { echo "❌ dist missing"; exit 1; }
+          [ -n "$(ls -A binaries)" ]                    || { echo "❌ binaries missing"; exit 1; }
 
-          # Only inject signingIdentity when APPLE_CERTIFICATE secret is set —
-          # passing an empty string causes codesign to fail with "keychain item not found".
-          # When TAURI_SIGNING_PRIVATE_KEY is absent, disable createUpdaterArtifacts so
-          # Tauri does not try to decode an empty/missing key and exit 1 after bundling.
-          # tauri.conf.json beforeBuildCommand is already "" so no override needed there.
           if [ -n "${{ secrets.APPLE_CERTIFICATE }}" ]; then
             if [ -n "$TAURI_SIGNING_PRIVATE_KEY" ]; then
               CONFIG='{"bundle":{"macOS":{"signingIdentity":"${{ secrets.APPLE_SIGNING_IDENTITY }}"}}}'
             else
               CONFIG='{"bundle":{"macOS":{"signingIdentity":"${{ secrets.APPLE_SIGNING_IDENTITY }}"},"createUpdaterArtifacts":false}}'
             fi
-            echo "🔐 Code signing enabled"
           else
             if [ -n "$TAURI_SIGNING_PRIVATE_KEY" ]; then
               CONFIG='{"bundle":{"macOS":{"signingIdentity":null}}}'
             else
               CONFIG='{"bundle":{"macOS":{"signingIdentity":null},"createUpdaterArtifacts":false}}'
-              echo "⚠️  No TAURI_SIGNING_PRIVATE_KEY — updater artifacts disabled"
             fi
-            echo "⚠️  No APPLE_CERTIFICATE secret — building unsigned (ad-hoc) app"
           fi
 
-          # CI=true tells bundle_dmg.sh to skip AppleScript Finder customization
-          # which fails on GH Actions runners (not authorised to send Apple events).
           CI=true cargo tauri build --target universal-apple-darwin --bundles app,dmg --config "$CONFIG"
+
       - name: Notarize macOS app
         if: matrix.os == 'macos-latest'
+        continue-on-error: true
         env:
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-        continue-on-error: true
         run: |
           if [ -n "$APPLE_ID" ] && [ -n "$APPLE_PASSWORD" ]; then
-            xcrun notarytool submit kubilitics-desktop/src-tauri/target/universal-apple-darwin/release/bundle/macos/Kubilitics.app \
-              --apple-id "$APPLE_ID" \
-              --password "$APPLE_PASSWORD" \
-              --team-id "$APPLE_TEAM_ID" \
+            xcrun notarytool submit \
+              kubilitics-desktop/src-tauri/target/universal-apple-darwin/release/bundle/macos/Kubilitics.app \
+              --apple-id "$APPLE_ID" --password "$APPLE_PASSWORD" --team-id "$APPLE_TEAM_ID" \
               --wait || echo "Notarization skipped or failed"
-            xcrun stapler staple kubilitics-desktop/src-tauri/target/universal-apple-darwin/release/bundle/macos/Kubilitics.app || true
+            xcrun stapler staple \
+              kubilitics-desktop/src-tauri/target/universal-apple-darwin/release/bundle/macos/Kubilitics.app \
+              || true
           fi
+
       - name: Build Tauri app (Windows)
         if: matrix.os == 'windows-latest'
         working-directory: kubilitics-desktop/src-tauri
@@ -547,26 +550,15 @@ jobs:
           TAURI_SKIP_DEVSERVER_CHECK: "true"
         shell: bash
         run: |
-          # Verify dist exists before building
-          if [ ! -d "../dist" ] || [ -z "$(ls -A ../dist 2>/dev/null)" ]; then
-            echo "❌ ERROR: Frontend dist not found at ../dist"
-            exit 1
-          fi
-          # Verify binaries exist
-          if [ ! -d "binaries" ] || [ -z "$(ls -A binaries 2>/dev/null)" ]; then
-            echo "❌ ERROR: Binaries directory is empty"
-            exit 1
-          fi
-          echo "✅ Pre-build checks passed"
-          # Disable updater artifact signing when no private key is set to avoid
-          # "failed to decode secret key" error after successful bundle creation.
+          [ -d "../dist" ] && [ -n "$(ls -A ../dist)" ] || { echo "❌ dist missing"; exit 1; }
           if [ -n "$TAURI_SIGNING_PRIVATE_KEY" ]; then
             cargo tauri build --target x86_64-pc-windows-msvc --bundles nsis,msi
           else
-            echo "⚠️  No TAURI_SIGNING_PRIVATE_KEY — updater artifacts disabled"
-            cargo tauri build --target x86_64-pc-windows-msvc --bundles nsis,msi --config '{"bundle":{"createUpdaterArtifacts":false}}'
+            cargo tauri build --target x86_64-pc-windows-msvc --bundles nsis,msi \
+              --config '{"bundle":{"createUpdaterArtifacts":false}}'
           fi
-      - name: Build Tauri app (Linux - AppImage + DEB + RPM)
+
+      - name: Build Tauri app (Linux AppImage + DEB + RPM)
         if: matrix.os == 'ubuntu-latest'
         working-directory: kubilitics-desktop/src-tauri
         env:
@@ -575,55 +567,44 @@ jobs:
           TAURI_SKIP_DEVSERVER_CHECK: "true"
         shell: bash
         run: |
-          # Verify dist exists before building
-          if [ ! -d "../dist" ] || [ -z "$(ls -A ../dist 2>/dev/null)" ]; then
-            echo "❌ ERROR: Frontend dist not found at ../dist"
-            exit 1
-          fi
-          # Verify binaries exist
-          if [ ! -d "binaries" ] || [ -z "$(ls -A binaries 2>/dev/null)" ]; then
-            echo "❌ ERROR: Binaries directory is empty"
-            exit 1
-          fi
-          echo "✅ Pre-build checks passed"
-          # Disable updater artifact signing when no private key is set to avoid
-          # "failed to decode secret key" error after successful bundle creation.
-          # Build all three Linux package formats in a single cargo invocation
-          # (avoids 3x compilation; tauri.conf.json beforeBuildCommand is already "")
+          [ -d "../dist" ] && [ -n "$(ls -A ../dist)" ] || { echo "❌ dist missing"; exit 1; }
           if [ -n "$TAURI_SIGNING_PRIVATE_KEY" ]; then
             cargo tauri build --target x86_64-unknown-linux-gnu --bundles appimage,deb,rpm
           else
-            echo "⚠️  No TAURI_SIGNING_PRIVATE_KEY — updater artifacts disabled"
-            cargo tauri build --target x86_64-unknown-linux-gnu --bundles appimage,deb,rpm --config '{"bundle":{"createUpdaterArtifacts":false}}'
+            cargo tauri build --target x86_64-unknown-linux-gnu --bundles appimage,deb,rpm \
+              --config '{"bundle":{"createUpdaterArtifacts":false}}'
           fi
+
+      # ── Upload artifacts ─────────────────────────────────────────────────
       - name: Upload desktop artifacts (macOS)
         if: matrix.os == 'macos-latest'
         uses: actions/upload-artifact@v4
         with:
           name: kubilitics-desktop-${{ matrix.name }}-${{ github.ref_name }}
-          # macOS Tauri universal builds output to universal-apple-darwin, not release/
           path: kubilitics-desktop/src-tauri/target/universal-apple-darwin/release/bundle/
+
       - name: Upload desktop artifacts (Linux)
         if: matrix.os == 'ubuntu-latest'
         uses: actions/upload-artifact@v4
         with:
           name: kubilitics-desktop-${{ matrix.name }}-${{ github.ref_name }}
-          # Linux builds use --target x86_64-unknown-linux-gnu so output is under that target dir
           path: kubilitics-desktop/src-tauri/target/x86_64-unknown-linux-gnu/release/bundle/
+
       - name: Upload desktop artifacts (Windows)
         if: matrix.os == 'windows-latest'
         uses: actions/upload-artifact@v4
         with:
           name: kubilitics-desktop-${{ matrix.name }}-${{ github.ref_name }}
-          # Windows builds use --target x86_64-pc-windows-msvc so output is under that target dir
           path: kubilitics-desktop/src-tauri/target/x86_64-pc-windows-msvc/release/bundle/
 
+  # ──────────────────────────────────────────────────────────────────────────
+  # Create GitHub Release — runs after all build jobs regardless of desktop
+  # failures (continue-on-error on desktop means its result is always "success"
+  # to needs[]; if: !cancelled() guards against workflow-level cancellation).
+  # ──────────────────────────────────────────────────────────────────────────
   release:
     name: Create GitHub Release
     needs: [kcli, kubilitics-ai, backend, desktop, docker-backend, docker-ai]
-    # continue-on-error on desktop means its result is always "success" to needs[];
-    # add if: !cancelled() as a safety net so release runs whenever the required
-    # non-desktop jobs succeed, even if desktop has transient failures.
     if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -634,40 +615,37 @@ jobs:
           path: artifacts
 
       - name: Flatten artifacts for release upload
-        # download-artifact@v4 nests each artifact in its own sub-directory.
-        # Only copy the final installer/binary files — not Tauri intermediate
-        # build outputs (hundreds of .so/.dll files from the bundle/ tree).
+        # Only copy final installer/binary files — not Tauri intermediate build outputs.
         run: |
           mkdir -p release-assets
-          # Copy final installer and binary formats only
           find artifacts -type f \( \
-            -name "*.dmg" \
-            -o -name "*.AppImage" \
-            -o -name "*.deb" \
-            -o -name "*.rpm" \
-            -o -name "*-setup.exe" \
-            -o -name "*.msi" \
-            -o -name "*.tar.gz" \
-            -o -name "*.tar.gz.sig" \
-            -o -name "*.dmg.sig" \
+            -name "*.dmg"            \
+            -o -name "*.AppImage"    \
+            -o -name "*.deb"         \
+            -o -name "*.rpm"         \
+            -o -name "*-setup.exe"   \
+            -o -name "*.msi"         \
+            -o -name "*.tar.gz"      \
+            -o -name "*.tar.gz.sig"  \
+            -o -name "*.dmg.sig"     \
             -o -name "*.AppImage.sig" \
-            -o -name "*.deb.sig" \
-            -o -name "*.rpm.sig" \
-            -o -name "*.exe.sig" \
-            -o -name "*.msi.sig" \
-            -o -name "*.nsis.zip" \
+            -o -name "*.deb.sig"     \
+            -o -name "*.rpm.sig"     \
+            -o -name "*.exe.sig"     \
+            -o -name "*.msi.sig"     \
+            -o -name "*.nsis.zip"    \
             -o -name "*.nsis.zip.sig" \
-            -o -name "kubilitics-backend-linux-*" \
-            -o -name "kubilitics-backend-darwin-*" \
+            -o -name "kubilitics-backend-linux-*"   \
+            -o -name "kubilitics-backend-darwin-*"  \
             -o -name "kubilitics-backend-windows-*" \
-            -o -name "kubilitics-ai-linux-*" \
-            -o -name "kubilitics-ai-darwin-*" \
-            -o -name "kubilitics-ai-windows-*" \
-            -o -name "kcli-linux-*" \
-            -o -name "kcli-darwin-*" \
-            -o -name "kcli-windows-*" \
+            -o -name "kubilitics-ai-linux-*"        \
+            -o -name "kubilitics-ai-darwin-*"       \
+            -o -name "kubilitics-ai-windows-*"      \
+            -o -name "kcli-linux-*"                 \
+            -o -name "kcli-darwin-*"                \
+            -o -name "kcli-windows-*"               \
           \) -exec cp {} release-assets/ \;
-          echo "Release assets (installer/binary files only):"
+          echo "Release assets:"
           ls -lh release-assets/
           echo "Total: $(ls release-assets/ | wc -l) files"
 
