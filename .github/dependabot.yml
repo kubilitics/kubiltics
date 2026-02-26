@@ -63,26 +63,6 @@ updates:
           - "minor"
           - "patch"
 
-  # Cargo - Desktop
-  - package-ecosystem: "cargo"
-    directory: "/kubilitics-desktop"
-    schedule:
-      interval: "weekly"
-      day: "monday"
-      time: "09:00"
-    open-pull-requests-limit: 5
-    labels:
-      - "dependencies"
-      - "rust"
-      - "desktop"
-    groups:
-      cargo-desktop-minor-patch:
-        patterns:
-          - "*"
-        update-types:
-          - "minor"
-          - "patch"
-
   # GitHub Actions
   - package-ecosystem: "github-actions"
     directory: "/"
