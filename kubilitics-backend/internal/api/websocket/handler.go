@@ -11,6 +11,7 @@ import (
 	"github.com/kubilitics/kubilitics-backend/internal/auth"
 	"github.com/kubilitics/kubilitics-backend/internal/config"
 	"github.com/kubilitics/kubilitics-backend/internal/k8s"
+	"github.com/kubilitics/kubilitics-backend/internal/pkg/metrics"
 	"github.com/kubilitics/kubilitics-backend/internal/repository"
 )
 
@@ -176,11 +177,18 @@ func (h *Handler) validateAPIKey(ctx context.Context, plaintextKey string) (*aut
 	return claims, nil
 }
 
-// extractBearer extracts Bearer token from request
+// extractBearer extracts Bearer token from request.
+// Falls back to ?token= query parameter (DEPRECATED — will be removed in a future version).
 func (h *Handler) extractBearer(r *http.Request) string {
 	s := r.Header.Get("Authorization")
 	if s == "" {
-		return r.URL.Query().Get("token")
+		token := r.URL.Query().Get("token")
+		if token != "" {
+			log.Printf("[ws-auth] DEPRECATED: ?token= query parameter used from %s for WebSocket %s — migrate to Authorization header",
+				r.RemoteAddr, r.URL.Path)
+			metrics.AuthDeprecatedTokenQueryTotal.Inc()
+		}
+		return token
 	}
 	const prefix = "Bearer "
 	if len(s) > len(prefix) && strings.EqualFold(s[:len(prefix)], prefix) {

@@ -2,6 +2,7 @@ package runner
 
 import (
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -89,6 +90,106 @@ func TestIsMutatingVerb_ReadOnly(t *testing.T) {
 	for _, args := range cases {
 		if isMutatingVerb(args) {
 			t.Errorf("expected isMutatingVerb(%v)=false", args)
+		}
+	}
+}
+
+func TestIsMutatingVerb_CpIsMutating(t *testing.T) {
+	cases := [][]string{
+		{"cp", "my-pod:/tmp/data", "/local/data"},
+		{"cp", "/local/data", "my-pod:/tmp/data"},
+		{"--context", "prod", "cp", "my-pod:/etc/config", "/tmp/config"},
+	}
+	for _, args := range cases {
+		if !isMutatingVerb(args) {
+			t.Errorf("expected isMutatingVerb(%v)=true (cp should be mutating)", args)
+		}
+	}
+}
+
+// ---------------------------------------------------------------------------
+// P1-ERR: KubectlError structured error
+// ---------------------------------------------------------------------------
+
+func TestKubectlError_WithStderr(t *testing.T) {
+	err := &KubectlError{
+		Args:     []string{"get", "pods"},
+		ExitCode: 1,
+		Stderr:   "error: the server doesn't have a resource type \"pods\"",
+	}
+	msg := err.Error()
+	if msg == "" {
+		t.Fatal("expected non-empty error message")
+	}
+	// Must contain the command, exit code, and stderr
+	if !containsStr(msg, "get pods") {
+		t.Errorf("expected error to contain 'get pods', got: %s", msg)
+	}
+	if !containsStr(msg, "exit 1") {
+		t.Errorf("expected error to contain 'exit 1', got: %s", msg)
+	}
+	if !containsStr(msg, "server doesn't have") {
+		t.Errorf("expected error to contain stderr content, got: %s", msg)
+	}
+}
+
+func TestKubectlError_WithoutStderr(t *testing.T) {
+	err := &KubectlError{
+		Args:     []string{"get", "nodes"},
+		ExitCode: 2,
+		Stderr:   "",
+	}
+	msg := err.Error()
+	if !containsStr(msg, "get nodes") {
+		t.Errorf("expected error to contain 'get nodes', got: %s", msg)
+	}
+	if !containsStr(msg, "exit 2") {
+		t.Errorf("expected error to contain 'exit 2', got: %s", msg)
+	}
+}
+
+func TestKubectlError_Unwrap(t *testing.T) {
+	err := &KubectlError{Args: []string{"get"}, ExitCode: 1, Stderr: "err"}
+	unwrapped := err.Unwrap()
+	if unwrapped == nil {
+		t.Fatal("Unwrap should return non-nil error")
+	}
+	if !containsStr(unwrapped.Error(), "exit status 1") {
+		t.Errorf("expected unwrapped error to mention exit status, got: %s", unwrapped.Error())
+	}
+}
+
+func containsStr(s, sub string) bool {
+	return len(s) >= len(sub) && strings.Contains(s, sub)
+}
+
+func TestIsSensitiveEnv(t *testing.T) {
+	sensitive := []string{
+		"AWS_SECRET_ACCESS_KEY=AKIA123456",
+		"AWS_SESSION_TOKEN=FwoG123",
+		"GOOGLE_APPLICATION_CREDENTIALS=/home/.gcp/creds.json",
+		"AZURE_CLIENT_SECRET=secret123",
+		"GITHUB_TOKEN=ghp_abc123",
+		"GH_TOKEN=ghp_abc123",
+		"DOCKER_PASSWORD=dckr_pat_123",
+	}
+	for _, e := range sensitive {
+		if !isSensitiveEnv(e) {
+			t.Errorf("expected isSensitiveEnv(%q)=true", e)
+		}
+	}
+
+	safe := []string{
+		"KUBECONFIG=/home/.kube/config",
+		"HOME=/home/user",
+		"PATH=/usr/bin",
+		"TERM=xterm-256color",
+		"AWS_REGION=us-east-1",
+		"AWS_PROFILE=staging",
+	}
+	for _, e := range safe {
+		if isSensitiveEnv(e) {
+			t.Errorf("expected isSensitiveEnv(%q)=false", e)
 		}
 	}
 }

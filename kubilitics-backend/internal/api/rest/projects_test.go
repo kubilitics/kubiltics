@@ -97,7 +97,7 @@ func TestCreateProject(t *testing.T) {
 	SetupRoutes(api, h)
 
 	projectData := map[string]string{
-		"name":        "Test Project",
+		"name":        "test-project",
 		"description": "Test Description",
 	}
 	body, _ := json.Marshal(projectData)
@@ -141,7 +141,7 @@ func TestGetProject_Found(t *testing.T) {
 	projectID := uuid.New().String()
 	project := &models.Project{
 		ID:          projectID,
-		Name:        "Test Project",
+		Name:        "test-project",
 		Description: "Test Description",
 	}
 	repo.CreateProject(context.Background(), project)
@@ -167,8 +167,8 @@ func TestGetProject_Found(t *testing.T) {
 	if err := json.NewDecoder(rec.Body).Decode(&projectResp); err != nil {
 		t.Fatalf("Failed to decode response: %v", err)
 	}
-	if projectResp.Name != "Test Project" {
-		t.Errorf("Expected name 'Test Project', got '%s'", projectResp.Name)
+	if projectResp.Name != "test-project" {
+		t.Errorf("Expected name 'test-project', got '%s'", projectResp.Name)
 	}
 }
 
@@ -180,7 +180,7 @@ func TestUpdateProject(t *testing.T) {
 	projectID := uuid.New().String()
 	project := &models.Project{
 		ID:          projectID,
-		Name:        "Original Name",
+		Name:        "original-name",
 		Description: "Original Description",
 	}
 	repo.CreateProject(context.Background(), project)
@@ -195,7 +195,7 @@ func TestUpdateProject(t *testing.T) {
 	SetupRoutes(api, h)
 
 	updateData := map[string]string{
-		"name":        "Updated Name",
+		"name":        "updated-name",
 		"description": "Updated Description",
 	}
 	body, _ := json.Marshal(updateData)
@@ -217,7 +217,7 @@ func TestDeleteProject(t *testing.T) {
 	projectID := uuid.New().String()
 	project := &models.Project{
 		ID:   projectID,
-		Name: "Test Project",
+		Name: "test-project",
 	}
 	repo.CreateProject(context.Background(), project)
 

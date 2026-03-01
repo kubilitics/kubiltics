@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"net/url"
 	"sort"
 	"strings"
 	"time"
@@ -98,6 +99,62 @@ func (s *AddOnServiceImpl) GetAddOn(ctx context.Context, addonID string) (*model
 	return s.registry.GetAddOn(ctx, addonID)
 }
 
+// GetAddonDefaultValues returns the raw values.yaml content for a chart.
+// For community addons (id prefix "community/"), the content is fetched live from Artifact Hub
+// using the registry path embedded in the addon ID: "community/{repo}/{chart}".
+// When the addon ID is a UUID fallback ("community/{packageId}"), the addon detail is looked up
+// from the registry to resolve the repo/chart names.
+// For CORE / private addons the content is not yet stored in the DB — returns "".
+func (s *AddOnServiceImpl) GetAddonDefaultValues(ctx context.Context, addonID string) (string, error) {
+	if !strings.HasPrefix(addonID, "community/") {
+		// CORE/private addons: no values stored yet — return empty (not an error).
+		return "", nil
+	}
+	// community/{repo}/{chart}  →  repo = parts[0], chart = parts[1]
+	parts := strings.SplitN(strings.TrimPrefix(addonID, "community/"), "/", 2)
+	if len(parts) == 2 && parts[0] != "" && parts[1] != "" {
+		return s.registry.GetChartValues(ctx, parts[0], parts[1])
+	}
+	// Fallback: addon ID is "community/{packageId}" (UUID).
+	// Look up the addon detail to resolve the Helm repo URL and chart name.
+	detail, err := s.registry.GetAddOn(ctx, addonID)
+	if err != nil {
+		s.logger.Warn("GetAddonDefaultValues: cannot resolve addon for UUID-style ID",
+			"addon_id", addonID, "error", err)
+		return "", fmt.Errorf("cannot resolve addon %q: %w", addonID, err)
+	}
+	if detail.HelmRepoURL == "" || detail.HelmChart == "" {
+		s.logger.Warn("GetAddonDefaultValues: addon missing HelmRepoURL or HelmChart",
+			"addon_id", addonID, "helm_repo_url", detail.HelmRepoURL, "helm_chart", detail.HelmChart)
+		// Return empty — the user can still type values manually.
+		return "", nil
+	}
+	// Extract repo name from the Helm repo URL or use the chart name as fallback.
+	// The registry.GetAddOn call for community addons populates entry.Name with the AH chart name.
+	return s.registry.GetChartValues(ctx, extractRepoSlug(detail.HelmRepoURL), detail.HelmChart)
+}
+
+// extractRepoSlug derives an Artifact Hub repository slug from a Helm repo URL.
+// For example "https://charts.jenkins.io" → "jenkinsci" is not derivable from the URL alone,
+// so this returns the last non-empty path segment (or hostname segment) as a best-effort slug.
+// The caller should treat a values-fetch failure as non-fatal (user can type values manually).
+func extractRepoSlug(helmRepoURL string) string {
+	u, err := url.Parse(helmRepoURL)
+	if err != nil || u.Host == "" {
+		return ""
+	}
+	// Try last path segment first (e.g. "https://argoproj.github.io/argo-helm" → "argo-helm").
+	trimmed := strings.TrimRight(u.Path, "/")
+	if trimmed != "" {
+		parts := strings.Split(trimmed, "/")
+		if slug := parts[len(parts)-1]; slug != "" {
+			return slug
+		}
+	}
+	// Fallback: first hostname label (e.g. "charts.jenkins.io" → "charts").
+	return strings.SplitN(u.Hostname(), ".", 2)[0]
+}
+
 func (s *AddOnServiceImpl) PlanInstall(ctx context.Context, clusterID, addonID, namespace string) (*models.InstallPlan, error) {
 	ctx, span := tracing.StartSpanWithAttributes(ctx, "addon.plan_install",
 		attribute.String("addon.id", addonID),
@@ -108,6 +165,47 @@ func (s *AddOnServiceImpl) PlanInstall(ctx context.Context, clusterID, addonID, 
 
 	plan, err := s.resolver.Resolve(ctx, addonID, clusterID)
 	if err != nil {
+		// Community addons are fetched live from Artifact Hub and are not
+		// seeded into the local SQLite DB, so the resolver (which queries
+		// only the DB) returns ADDON_NOT_FOUND for them.  Fall back to the
+		// registry (which has an AH HTTP client) and build a minimal
+		// single-step plan so the install wizard can proceed.
+		if strings.HasPrefix(addonID, "community/") {
+			if detail, regErr := s.registry.GetAddOn(ctx, addonID); regErr == nil && detail != nil {
+				ns := namespace
+				if ns == "" {
+					ns = "default"
+				}
+				return &models.InstallPlan{
+					RequestedAddonID:           addonID,
+					ClusterID:                  clusterID,
+					GeneratedAt:                time.Now().UTC(),
+					HasConflicts:               false,
+					ConflictReasons:            []string{},
+					TotalEstimatedDurationSec:  120,
+					TotalEstimatedCostDeltaUSD: 0,
+					Steps: []models.InstallStep{
+						{
+							Action:               models.ActionInstall,
+							AddonID:              addonID,
+							AddonName:            detail.Name,
+							DisplayName:          detail.DisplayName,
+							ToVersion:            detail.Version,
+							Namespace:            ns,
+							ReleaseName:          detail.Name,
+							Reason:               "Community add-on (Artifact Hub)",
+							IsRequired:           true,
+							DependencyDepth:      0,
+							EstimatedDurationSec: 120,
+							// Carry Helm chart reference — ExecuteInstall uses these
+							// directly; no DB or registry lookup needed at install time.
+							HelmRepoURL: detail.HelmRepoURL,
+							HelmChart:   detail.HelmChart,
+						},
+					},
+				}, nil
+			}
+		}
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
 		return nil, err
@@ -271,15 +369,30 @@ func (s *AddOnServiceImpl) ExecuteInstall(ctx context.Context, clusterID string,
 		return nil, fmt.Errorf("helm client: %w", err)
 	}
 
+	// Execute the install loop using fields already resolved at plan time.
+	// PlanInstall (both the resolver path and the community-fallback path) now
+	// stores HelmRepoURL, HelmChart, and DisplayName directly in each InstallStep.
+	// We validate them here (fail-fast) so no DB or registry lookup is ever
+	// needed during the execute phase — this is the permanent fix for
+	// "addon not found" on community addons.
+	for i := range plan.Steps {
+		if plan.Steps[i].Action != models.ActionInstall {
+			continue
+		}
+		if plan.Steps[i].HelmRepoURL == "" || plan.Steps[i].HelmChart == "" {
+			// Plan is missing chart reference — surface a clear error before touching Helm.
+			return nil, fmt.Errorf(
+				"addon %s: plan step missing HelmRepoURL/HelmChart; re-run plan or contact support",
+				plan.Steps[i].AddonID,
+			)
+		}
+	}
+
 	var primaryInstall *models.AddOnInstall
 	for i := range plan.Steps {
 		step := &plan.Steps[i]
 		if step.Action != models.ActionInstall {
 			continue
-		}
-		detail, err := s.repo.GetAddOn(ctx, step.AddonID)
-		if err != nil {
-			return nil, fmt.Errorf("get addon %s: %w", step.AddonID, err)
 		}
 		ns := step.Namespace
 		releaseName := step.ReleaseName
@@ -293,10 +406,15 @@ func (s *AddOnServiceImpl) ExecuteInstall(ctx context.Context, clusterID string,
 			ns = "default"
 		}
 		if releaseName == "" {
-			releaseName = detail.Name
+			releaseName = step.AddonName
+		}
+		// Use DisplayName for human-readable progress messages; fall back to AddonName.
+		displayName := step.DisplayName
+		if displayName == "" {
+			displayName = step.AddonName
 		}
 
-		emit("install", fmt.Sprintf("Installing %s...", detail.DisplayName), "running")
+		emit("install", fmt.Sprintf("Installing %s...", displayName), "running")
 		installID := uuid.New().String()
 		// Compute values hash from raw values (before redaction) for future drift detection.
 		valuesHash, _ := helm.ValuesHash(vals)
@@ -350,7 +468,7 @@ func (s *AddOnServiceImpl) ExecuteInstall(ctx context.Context, clusterID string,
 			CreatedAt:      time.Now().UTC(),
 		})
 
-		chartRef := detail.HelmRepoURL + "|" + detail.HelmChart
+		chartRef := step.HelmRepoURL + "|" + step.HelmChart
 		hr := helm.InstallRequest{
 			ReleaseName:     releaseName,
 			Namespace:       ns,
@@ -362,7 +480,20 @@ func (s *AddOnServiceImpl) ExecuteInstall(ctx context.Context, clusterID string,
 			Timeout:         5 * time.Minute,
 			Atomic:          true,
 		}
+
+		// Stream live Kubernetes Events to the progress channel while Helm deploys.
+		// The watcher runs in a background goroutine and is cancelled as soon as
+		// helmClient.Install returns (success or error), so it never outlives this step.
+		// clusterService may be nil in unit tests — guard before calling GetClient.
+		watchCtx, cancelWatch := context.WithCancel(ctx)
+		if s.clusterService != nil {
+			if k8sClient, k8sErr := s.clusterService.GetClient(clusterID); k8sErr == nil && k8sClient != nil {
+				go streamK8sEventsToProgress(watchCtx, k8sClient.Clientset, ns, releaseName, installRunID, progressCh)
+			}
+		}
+
 		result, err := helmClient.Install(ctx, hr)
+		cancelWatch() // always stop the watcher, regardless of Helm outcome
 		if err != nil {
 			_ = s.repo.UpdateInstallStatus(ctx, installID, models.StatusFailed, 0)
 			emit("install", fmt.Sprintf("Failed: %v", err), "error")
@@ -374,11 +505,28 @@ func (s *AddOnServiceImpl) ExecuteInstall(ctx context.Context, clusterID string,
 		}
 		_ = s.repo.UpdateInstallStatus(ctx, installID, models.StatusInstalled, result.Revision)
 		log.Info("helm install succeeded", "addon_id", step.AddonID, "revision", result.Revision, "namespace", ns)
-		emit("install", fmt.Sprintf("Installed %s", detail.DisplayName), "success")
+		emit("install", fmt.Sprintf("Installed %s", displayName), "success")
 	}
 
 	if primaryInstall == nil {
-		return nil, fmt.Errorf("no primary install for %s", plan.RequestedAddonID)
+		// The requested addon may already be installed (Action=SKIP) from a
+		// previous run.  Return the existing DB record instead of erroring.
+		installs, lookupErr := s.repo.ListClusterInstalls(ctx, clusterID)
+		if lookupErr == nil {
+			for i := range installs {
+				if installs[i].AddonID == plan.RequestedAddonID {
+					rec := installs[i].AddOnInstall
+					primaryInstall = &rec
+					log.Info("addon already installed, returning existing record",
+						"install_id", rec.ID, "status", rec.Status)
+					emit("install", "Add-on already installed", "success")
+					break
+				}
+			}
+		}
+		if primaryInstall == nil {
+			return nil, fmt.Errorf("no primary install for %s", plan.RequestedAddonID)
+		}
 	}
 	addonmetrics.AddonInstallsTotal.WithLabelValues(plan.RequestedAddonID, "success").Inc()
 	addonmetrics.AddonOperationDurationSeconds.WithLabelValues("install", plan.RequestedAddonID).Observe(time.Since(installStart).Seconds())

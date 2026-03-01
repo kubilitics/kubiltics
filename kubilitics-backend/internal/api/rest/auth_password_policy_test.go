@@ -53,12 +53,14 @@ func setupTestRepoForAuth(t *testing.T) *repository.SQLiteRepository {
 			id TEXT PRIMARY KEY,
 			user_id TEXT NOT NULL,
 			key_hash TEXT NOT NULL,
+			key_prefix TEXT NOT NULL DEFAULT '',
 			name TEXT NOT NULL,
 			last_used TIMESTAMP,
 			expires_at TIMESTAMP,
 			created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 			FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 		);
+		CREATE INDEX IF NOT EXISTS idx_api_keys_prefix ON api_keys(key_prefix);
 		CREATE TABLE IF NOT EXISTS cluster_permissions (
 			id TEXT PRIMARY KEY,
 			user_id TEXT NOT NULL,

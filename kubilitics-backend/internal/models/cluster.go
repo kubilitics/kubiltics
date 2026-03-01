@@ -22,12 +22,17 @@ type Cluster struct {
 
 // ClusterSummary provides cluster statistics
 type ClusterSummary struct {
-	ID              string `json:"id"`
-	Name            string `json:"name"`
-	NodeCount       int    `json:"node_count"`
-	NamespaceCount  int    `json:"namespace_count"`
-	PodCount        int    `json:"pod_count"`
-	DeploymentCount int    `json:"deployment_count"`
-	ServiceCount    int    `json:"service_count"`
-	HealthStatus    string `json:"health_status"`
+	ID                 string `json:"id"`
+	Name               string `json:"name"`
+	NodeCount          int    `json:"node_count"`
+	NamespaceCount     int    `json:"namespace_count"`
+	PodCount           int    `json:"pod_count"`
+	DeploymentCount    int    `json:"deployment_count"`
+	ServiceCount       int    `json:"service_count"`
+	StatefulSetCount   int    `json:"statefulset_count"`
+	ReplicaSetCount    int    `json:"replicaset_count"`
+	DaemonSetCount     int    `json:"daemonset_count"`
+	JobCount           int    `json:"job_count"`
+	CronJobCount       int    `json:"cronjob_count"`
+	HealthStatus       string `json:"health_status"`
 }

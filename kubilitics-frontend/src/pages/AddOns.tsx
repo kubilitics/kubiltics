@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ListPageHeader } from "@/components/list";
 import { Package, CheckCircle, Sparkles, Puzzle, GitMerge, Database } from "lucide-react";
@@ -12,8 +13,26 @@ import { RegistriesTab } from "@/components/addons/RegistriesTab";
 import { useActiveClusterId } from "@/hooks/useActiveClusterId";
 import { useCatalog } from "@/hooks/useAddOnCatalog";
 
+const VALID_TABS = ["catalog", "installed", "profiles", "registries", "graph"] as const;
+type ValidTab = typeof VALID_TABS[number];
+
+function isValidTab(t: string | null): t is ValidTab {
+    return VALID_TABS.includes(t as ValidTab);
+}
+
 export default function AddOns() {
-    const [activeTab, setActiveTab] = useState("catalog");
+    const [searchParams] = useSearchParams();
+    const initialTab = isValidTab(searchParams.get("tab")) ? searchParams.get("tab")! : "catalog";
+    const [activeTab, setActiveTab] = useState<string>(initialTab);
+
+    // Keep the active tab in sync when the URL ?tab= param changes (e.g. back-nav from ExecuteStep)
+    useEffect(() => {
+        const tab = searchParams.get("tab");
+        if (isValidTab(tab) && tab !== activeTab) {
+            setActiveTab(tab);
+        }
+    }, [searchParams]);
+
     const clusterId = useActiveClusterId();
     const { data: catalogPage, refetch: refetchCatalog } = useCatalog(1, 24);
 

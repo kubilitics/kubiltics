@@ -170,8 +170,10 @@ func TestRegistry_SearchCommunity(t *testing.T) {
 					Version:     "1.0.0",
 					Description: "desc",
 					Repository: struct {
-						URL  string `json:"url"`
-						Name string `json:"name"`
+						URL               string `json:"url"`
+						Name              string `json:"name"`
+						VerifiedPublisher bool   `json:"verified_publisher"`
+						Official          bool   `json:"official"`
 					}{URL: "http://repo", Name: "repo"},
 				},
 			},
@@ -203,8 +205,10 @@ func TestRegistry_GetChart(t *testing.T) {
 			DisplayName: "Chart",
 			Version:     "1.0.0",
 			Repository: struct {
-				URL  string `json:"url"`
-				Name string `json:"name"`
+				URL               string `json:"url"`
+				Name              string `json:"name"`
+				VerifiedPublisher bool   `json:"verified_publisher"`
+				Official          bool   `json:"official"`
 			}{URL: "http://repo", Name: "repo"},
 		}
 		json.NewEncoder(w).Encode(resp)
@@ -228,8 +232,10 @@ func TestRegistry_ListAll_Community(t *testing.T) {
 		resp := ArtifactHubSearchResponse{
 			Packages: []ArtifactHubChart{
 				{PackageID: "c1", Name: "comm1", Version: "1.0.0", Repository: struct {
-					URL  string `json:"url"`
-					Name string `json:"name"`
+					URL               string `json:"url"`
+					Name              string `json:"name"`
+					VerifiedPublisher bool   `json:"verified_publisher"`
+					Official          bool   `json:"official"`
 				}{URL: "u", Name: "r"}},
 			},
 		}

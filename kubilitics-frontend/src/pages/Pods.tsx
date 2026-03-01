@@ -7,9 +7,25 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { resourceTableRowClassName, ROW_MOTION, StatusPill, ListPagination, PAGE_SIZE_OPTIONS, ListPageStatCard, ListPageHeader, TableColumnHeaderWithFilterAndSort, TableFilterCell, AgeCell, TableEmptyState, TableSkeletonRows, CopyNameDropdownItem, ResourceListTableToolbar, type StatusPillVariant } from '@/components/list';
+import {
+  resourceTableRowClassName,
+  ROW_MOTION,
+  StatusPill,
+  ListPagination,
+  PAGE_SIZE_OPTIONS,
+  ListPageStatCard,
+  ListPageHeader,
+  TableColumnHeaderWithFilterAndSort,
+  TableFilterCell,
+  AgeCell,
+  TableEmptyState,
+  TableSkeletonRows,
+  CopyNameDropdownItem,
+  ResourceListTableToolbar,
+  NamespaceBadge,
+  type StatusPillVariant,
+} from '@/components/list';
 import { useTableFiltersAndSort, type ColumnConfig } from '@/hooks/useTableFiltersAndSort';
 import { useTableKeyboardNav } from '@/hooks/useTableKeyboardNav';
 import { useColumnVisibility } from '@/hooks/useColumnVisibility';
@@ -17,20 +33,21 @@ import { ResizableTableProvider, ResizableTableHead, ResizableTableCell, type Re
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useK8sResourceList, useDeleteK8sResource, useCreateK8sResource, calculateAge, type KubernetesResource } from '@/hooks/useKubernetes';
 import { useConnectionStatus } from '@/hooks/useConnectionStatus';
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
 import { useClusterStore } from '@/stores/clusterStore';
-import { getPodMetrics, getPodLogsUrl, postShellCommand } from '@/services/backendApiClient';
+import { getPodMetrics, postShellCommand } from '@/services/backendApiClient';
 import { DeleteConfirmDialog, PortForwardDialog, UsageBar, parseCpu, parseMemory, calculatePodResourceMax, ResourceComparisonView } from '@/components/resources';
 import { ResourceCommandBar, ResourceExportDropdown, ListViewSegmentedControl, NamespaceFilter } from '@/components/list';
 import { ResourceCreator, DEFAULT_YAMLS } from '@/components/editor';
 import { useQuery, useQueries } from '@tanstack/react-query';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
 import { objectsToYaml, downloadBlob, downloadResourceJson } from '@/lib/exportUtils';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Progress } from '@/components/ui/progress';
+import { buildAutoWidthColumns } from '@/lib/tableSizing';
 
 interface PodResource extends KubernetesResource {
   spec: {
@@ -185,6 +202,7 @@ type ListView = 'flat' | 'byNamespace' | 'byNode';
 
 export default function Pods() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedNamespaces, setSelectedNamespaces] = useState<Set<string>>(new Set());
   const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; pod: Pod | null; bulk?: boolean }>({ open: false, pod: null });
@@ -217,6 +235,15 @@ export default function Pods() {
     return Array.from(new Set(fullPods.map(p => p.namespace))).sort();
   }, [fullPods]);
 
+  // Seed namespace filter from ?namespace=<ns> on initial load so views
+  // navigated from Namespace detail are scoped correctly.
+  useEffect(() => {
+    const nsFromQuery = searchParams.get('namespace');
+    if (!nsFromQuery) return;
+    if (selectedNamespaces.size > 0) return;
+    setSelectedNamespaces(new Set([nsFromQuery]));
+  }, [searchParams, selectedNamespaces.size]);
+
   // Calculate resource max values from pod spec (for sparklines)
   const podResourceMaxMap = useMemo(() => {
     const m: Record<string, { cpuMax?: number; memoryMax?: number }> = {};
@@ -246,12 +273,18 @@ export default function Pods() {
     });
   }, [fullPods, searchQuery, selectedNamespaces]);
 
-  const stats = useMemo(() => ({
-    total: fullPods.length,
-    running: fullPods.filter((p) => p.status === 'Running').length,
-    pending: fullPods.filter((p) => p.status === 'Pending').length,
-    failed: fullPods.filter((p) => p.status === 'Failed' || p.status === 'CrashLoopBackOff').length,
-  }), [fullPods]);
+  // High-level stats aligned with the current global scope (search + namespace filter)
+  const stats = useMemo(
+    () => ({
+      total: currentFilteredPods.length,
+      running: currentFilteredPods.filter((p) => p.status === 'Running').length,
+      pending: currentFilteredPods.filter((p) => p.status === 'Pending').length,
+      failed: currentFilteredPods.filter(
+        (p) => p.status === 'Failed' || p.status === 'CrashLoopBackOff'
+      ).length,
+    }),
+    [currentFilteredPods]
+  );
 
   // Use raw data for initial filter/sort to avoid expensive metrics merging on every render
   const filteredUnsorted = useMemo(() => {
@@ -339,6 +372,33 @@ export default function Pods() {
     columns: PODS_COLUMNS_FOR_VISIBILITY,
     alwaysVisible: ['name'],
   });
+
+  // Data-aware default widths for all visible columns, based on current data.
+  const podsColumnConfig: ResizableColumnConfig[] = useMemo(() => {
+    const valueGetters: Record<string, (p: Pod) => unknown> = {
+      name: (p) => p.name,
+      namespace: (p) => p.namespace,
+      status: (p) => p.status,
+      ready: (p) => p.ready,
+      restarts: (p) => p.restarts,
+      ip: (p) => `${p.internalIP} / ${p.externalIP}`,
+      cpu: (p) => p.cpu,
+      memory: (p) => p.memory,
+      age: (p) => p.age,
+      node: (p) => p.node,
+    };
+    const rows = filteredPods.length > 0 ? filteredPods : fullPods;
+    if (!rows.length) return PODS_TABLE_COLUMNS;
+    return buildAutoWidthColumns(PODS_TABLE_COLUMNS, rows, valueGetters, {
+      perColumn: {
+        name: { maxPx: 320 },
+        namespace: { maxPx: 260 },
+        node: { maxPx: 280 },
+        ip: { maxPx: 300 },
+        images: { maxPx: 320 },
+      },
+    });
+  }, [filteredPods, fullPods]);
 
   // Calculate pagination
   const totalFiltered = filteredPods.length;
@@ -484,14 +544,14 @@ export default function Pods() {
   const isSomeSelected = selectedPods.size > 0 && selectedPods.size < filteredPods.length;
 
   const handleViewLogs = (pod: Pod) => {
-    const url = getPodLogsUrl(backendBaseUrl, clusterId!, pod.namespace, pod.name, { follow: true });
-    // TODO: Use internal log viewer
-    window.open(url, '_blank');
+    // FIX P2-001: Navigate to the pod detail page's Logs tab (internal LogViewer component)
+    // instead of opening a raw backend URL in a new browser tab.
+    navigate(`/pods/${pod.namespace}/${pod.name}?tab=logs`);
   };
 
   const handleExecShell = (pod: Pod) => {
-    // Open in separate window or terminal drawer
-    console.log('Exec shell for', pod.name);
+    // Navigate to pod detail exec tab
+    navigate(`/pods/${pod.namespace}/${pod.name}?tab=exec`);
   };
 
   const handleDownloadYaml = (pod: Pod) => {
@@ -793,7 +853,7 @@ export default function Pods() {
           </div>
         }
       >
-        <ResizableTableProvider tableId="pods" columnConfig={PODS_TABLE_COLUMNS}>
+        <ResizableTableProvider tableId="pods" columnConfig={podsColumnConfig}>
           <Table className="table-fixed">
             <TableHeader>
               <TableRow className="bg-muted/50 hover:bg-muted/50 border-b-2 border-border">
@@ -1116,9 +1176,10 @@ export default function Pods() {
                       )}
                       {columnVisibility.isColumnVisible('namespace') && (
                         <ResizableTableCell columnId="namespace">
-                          <Badge variant="outline" className="font-normal truncate max-w-full inline-block">
-                            {pod.namespace}
-                          </Badge>
+                          <NamespaceBadge
+                            namespace={pod.namespace}
+                            className="font-normal truncate block w-fit max-w-full"
+                          />
                         </ResizableTableCell>
                       )}
                       {columnVisibility.isColumnVisible('status') && (

@@ -170,8 +170,7 @@ export function Header() {
         backendHealth.isFetching && !backendHealth.data ? 'warning' :
           backendHealth.isSuccess ? 'healthy' : 'warning';
 
-  const handleWizardSubmit = (yaml: string) => {
-    console.log('Created resource:', yaml);
+  const handleWizardSubmit = (_yaml: string) => {
     toast.success('Resource YAML generated successfully!');
     setWizardOpen(null);
   };

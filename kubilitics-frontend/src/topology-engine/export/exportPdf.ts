@@ -1,17 +1,34 @@
 /**
  * Export – PDF format
  * Converts PNG to PDF (browser-side)
- * For production: use server-side PDF generation
+ *
+ * FIX DESKTOP-EXPORT: In Tauri, window.open() to a blank page won't work
+ * for print-to-PDF. Instead, save the high-res PNG via the Tauri export
+ * command and let the user use their OS print facilities. In browser mode,
+ * fall back to the original print dialog approach.
  */
 import type { Core } from 'cytoscape';
 import { exportAsPNG } from './exportPng';
+import { downloadFile } from '../utils/exportUtils';
 
-export function downloadPDF(cy: Core, filename = 'topology.pdf') {
-  // In browser: export as high-res PNG and open print dialog
+export async function downloadPDF(cy: Core, filename = 'topology.pdf') {
   const pngData = exportAsPNG(cy, { scale: 3, bg: '#ffffff' });
   if (!pngData) return;
 
-  // Open in new window for print-to-PDF
+  // Check if running in Tauri desktop
+  const w = typeof window !== 'undefined' ? window as Window & { __TAURI_INTERNALS__?: unknown; __TAURI__?: unknown } : null;
+  const isTauriEnv = !!(w?.__TAURI_INTERNALS__ ?? w?.__TAURI__);
+
+  if (isTauriEnv) {
+    // In Tauri: save as high-res PNG (print-to-PDF isn't available in webview)
+    const response = await fetch(pngData);
+    const blob = await response.blob();
+    const pngFilename = filename.replace(/\.pdf$/i, '-print.png');
+    await downloadFile(blob, pngFilename);
+    return;
+  }
+
+  // Browser: open in new window for print-to-PDF
   const printWindow = window.open('', '_blank');
   if (printWindow) {
     printWindow.document.write(`

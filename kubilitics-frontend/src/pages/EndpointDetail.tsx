@@ -214,7 +214,7 @@ export default function EndpointDetail() {
     },
     { id: 'health', label: 'Health Monitoring', content: <SectionCard title="Health monitoring" icon={Activity}><p className="text-muted-foreground text-sm">Placeholder for health check results.</p></SectionCard> },
     { id: 'events', label: 'Events', content: <EventsSection events={events} /> },
-    { id: 'metrics', label: 'Metrics', content: <SectionCard title="Metrics" icon={Activity}><p className="text-muted-foreground text-sm">Placeholder until metrics pipeline.</p></SectionCard> },
+    { id: 'metrics', label: 'Metrics', content: <SectionCard title="Metrics" icon={Activity}><div className="flex items-center gap-3 p-4 rounded-lg bg-muted/30 border border-border/50"><Activity className="h-5 w-5 text-muted-foreground shrink-0" /><div><p className="text-sm font-medium text-muted-foreground">Metrics require a metrics server</p><p className="text-xs text-muted-foreground/70 mt-0.5">Install a metrics pipeline (e.g. Prometheus + kube-prometheus-stack) in your cluster to view resource metrics here.</p></div></div></SectionCard> },
     { id: 'yaml', label: 'YAML', content: <YamlViewer yaml={yaml} resourceName={epName} editable onSave={handleSaveYaml} /> },
     {
       id: 'compare',

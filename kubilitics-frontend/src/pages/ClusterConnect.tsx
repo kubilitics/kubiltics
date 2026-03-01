@@ -8,6 +8,7 @@
  * embed backend/connection error content here so that banner changes don't replace this view.
  */
 import { useState, useCallback, useEffect, useRef } from 'react';
+import { cn } from '@/lib/utils';
 import yaml from 'js-yaml';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -53,7 +54,7 @@ import { useDiscoverClusters } from '@/hooks/useDiscoverClusters';
 import { useBackendHealth } from '@/hooks/useBackendHealth';
 import { addCluster, addClusterWithUpload, resetBackendCircuit, type BackendCluster } from '@/services/backendApiClient';
 import { backendClusterToCluster } from '@/lib/backendClusterAdapter';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
 import { useQueryClient } from '@tanstack/react-query';
 import { WelcomeAddCluster } from '@/components/connect/WelcomeAddCluster';
 import { isTauri } from '@/lib/tauri';
@@ -166,6 +167,21 @@ export default function ClusterConnect() {
   const [multiContextCurrentContext, setMultiContextCurrentContext] = useState<string>('');
   const [multiContextBase64, setMultiContextBase64] = useState<string>('');
   const [multiContextSelectedContext, setMultiContextSelectedContext] = useState<string>('');
+
+  const showClusterErrorToast = useCallback((err: unknown, fallbackTitle: string) => {
+    const description =
+      err instanceof Error
+        ? err.message
+        : err != null
+          ? String(err)
+          : '';
+
+    if (description && description !== fallbackTitle) {
+      toast.error(fallbackTitle, { description });
+    } else {
+      toast.error(fallbackTitle);
+    }
+  }, []);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -409,7 +425,7 @@ export default function ClusterConnect() {
       setMultiContextBase64(base64);
       setMultiContextDialogOpen(true);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to add cluster');
+      showClusterErrorToast(err, 'Failed to add cluster');
     } finally {
       setIsUploading(false);
       setUploadProgress(0);
@@ -443,7 +459,7 @@ export default function ClusterConnect() {
 
       toast.success('Cluster registered', { description: `Context: ${cluster.context}` });
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to register cluster');
+      showClusterErrorToast(err, 'Failed to register cluster');
     } finally {
       setIsAddingDiscovered(null);
     }
@@ -548,7 +564,7 @@ export default function ClusterConnect() {
       setPasteDialogOpen(false);
       setPasteContent('');
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to add cluster');
+      showClusterErrorToast(err, 'Failed to add cluster');
     } finally {
       setIsPasting(false);
     }
@@ -1095,7 +1111,7 @@ users:
                 try {
                   await submitClusterWithContext(multiContextBase64, multiContextSelectedContext);
                 } catch (err) {
-                  toast.error(err instanceof Error ? err.message : 'Failed to add cluster');
+                  showClusterErrorToast(err, 'Failed to add cluster');
                 } finally {
                   setIsUploading(false);
                 }
@@ -1111,6 +1127,3 @@ users:
   );
 }
 
-function cn(...classes: (string | boolean | undefined)[]) {
-  return classes.filter(Boolean).join(' ');
-}

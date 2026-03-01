@@ -18,7 +18,6 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
 import {
   Table,
   TableBody,
@@ -42,9 +41,11 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
-import { Link, useNavigate } from 'react-router-dom';
+import { Badge } from '@/components/ui/badge';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQueries } from '@tanstack/react-query';
-import { ResourceCommandBar, ResourceExportDropdown, ListViewSegmentedControl, ListPagination, PAGE_SIZE_OPTIONS, ListPageStatCard, ListPageHeader, TableColumnHeaderWithFilterAndSort, TableFilterCell, resourceTableRowClassName, ROW_MOTION, AgeCell, TableEmptyState, CopyNameDropdownItem, ResourceListTableToolbar } from '@/components/list';
+import { ResourceCommandBar, ResourceExportDropdown, ListViewSegmentedControl, ListPagination, PAGE_SIZE_OPTIONS, ListPageStatCard, ListPageHeader, TableColumnHeaderWithFilterAndSort, TableFilterCell, resourceTableRowClassName, ROW_MOTION, AgeCell, TableEmptyState, CopyNameDropdownItem, ResourceListTableToolbar, NamespaceBadge } from '@/components/list';
+import { buildAutoWidthColumns } from '@/lib/tableSizing';
 import { SecretIcon } from '@/components/icons/KubernetesIcons';
 import { useTableFiltersAndSort, type ColumnConfig } from '@/hooks/useTableFiltersAndSort';
 import { useColumnVisibility } from '@/hooks/useColumnVisibility';
@@ -205,6 +206,16 @@ export default function Secrets() {
 
   const namespaces = useMemo(() => ['all', ...Array.from(new Set(items.map((i) => i.namespace)))], [items]);
 
+  const [searchParams] = useSearchParams();
+
+  // Seed namespace filter from ?namespace=<ns> when navigated from Namespace views.
+  useEffect(() => {
+    const nsFromQuery = searchParams.get('namespace');
+    if (!nsFromQuery) return;
+    if (selectedNamespace !== 'all') return;
+    setSelectedNamespace(nsFromQuery);
+  }, [searchParams, selectedNamespace]);
+
   const itemsAfterSearchAndNs = useMemo(() => {
     return items.filter((item) => {
       const matchesSearch =
@@ -249,6 +260,31 @@ export default function Secrets() {
     columns: SECRETS_COLUMNS_FOR_VISIBILITY,
     alwaysVisible: ['name'],
   });
+
+  // Data-aware default widths for all Secrets columns.
+  const secretsColumnConfig: ResizableColumnConfig[] = useMemo(() => {
+    const valueGetters: Record<string, (s: Secret) => unknown> = {
+      name: (s) => s.name,
+      namespace: (s) => s.namespace,
+      type: (s) => typeLabel(s.type),
+      dataKeys: (s) => s.dataKeys,
+      totalSize: (s) => s.totalSizeBytes,
+      usedBy: () => '', // numeric indicator; keep compact
+      tlsExpiry: () => '', // rendered via badge; width small
+      immutable: (s) => (s.immutable ? 'Yes' : 'No'),
+      age: (s) => s.age,
+      lastModified: (s) => s.age,
+    };
+    const rows = filteredItems.length > 0 ? filteredItems : items;
+    if (!rows.length) return SECRETS_TABLE_COLUMNS;
+    return buildAutoWidthColumns(SECRETS_TABLE_COLUMNS, rows, valueGetters, {
+      perColumn: {
+        name: { maxPx: 320 },
+        namespace: { maxPx: 260 },
+        type: { maxPx: 220 },
+      },
+    });
+  }, [filteredItems, items]);
 
   const totalFiltered = filteredItems.length;
   const totalPages = Math.max(1, Math.ceil(totalFiltered / pageSize));
@@ -570,7 +606,7 @@ data: {}
           }
         >
           <div className="overflow-x-auto">
-            <ResizableTableProvider tableId="secrets" columnConfig={SECRETS_TABLE_COLUMNS}>
+            <ResizableTableProvider tableId="secrets" columnConfig={secretsColumnConfig}>
               <Table className="table-fixed" style={{ minWidth: 900 }}>
                 <TableHeader>
                   <TableRow className="bg-muted/50 hover:bg-muted/50 border-b-2 border-border">
@@ -688,9 +724,10 @@ data: {}
                             </Link>
                           </ResizableTableCell>
                           <ResizableTableCell columnId="namespace">
-                            <Badge variant="outline" className="font-normal truncate block w-fit max-w-full">
-                              {item.namespace}
-                            </Badge>
+                            <NamespaceBadge
+                              namespace={item.namespace}
+                              className="font-normal truncate block w-fit max-w-full"
+                            />
                           </ResizableTableCell>
                           <ResizableTableCell columnId="type">
                             <Badge variant="secondary" className="font-mono text-xs truncate block w-fit max-w-full">
@@ -798,9 +835,10 @@ data: {}
                                   </Link>
                                 </ResizableTableCell>
                                 <ResizableTableCell columnId="namespace">
-                                  <Badge variant="outline" className="font-normal truncate block w-fit max-w-full">
-                                    {item.namespace}
-                                  </Badge>
+                                  <NamespaceBadge
+                                    namespace={item.namespace}
+                                    className="font-normal truncate block w-fit max-w-full"
+                                  />
                                 </ResizableTableCell>
                                 <ResizableTableCell columnId="type">
                                   <Badge variant="secondary" className="font-mono text-xs truncate block w-fit max-w-full">

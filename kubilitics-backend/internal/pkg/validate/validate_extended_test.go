@@ -256,6 +256,151 @@ spec:
 	}
 }
 
+// --- PatchJSONDangerousWarnings tests ---
+
+func TestPatchJSONDangerousWarnings_HostPID(t *testing.T) {
+	patch := map[string]interface{}{
+		"spec": map[string]interface{}{
+			"template": map[string]interface{}{
+				"spec": map[string]interface{}{
+					"hostPID": true,
+				},
+			},
+		},
+	}
+	warnings := PatchJSONDangerousWarnings(patch)
+	if len(warnings) == 0 {
+		t.Error("Expected warning for hostPID in JSON patch")
+	}
+	found := false
+	for _, w := range warnings {
+		if contains(w, "hostPID") {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Error("Expected warning about hostPID")
+	}
+}
+
+func TestPatchJSONDangerousWarnings_Privileged(t *testing.T) {
+	patch := map[string]interface{}{
+		"spec": map[string]interface{}{
+			"template": map[string]interface{}{
+				"spec": map[string]interface{}{
+					"containers": []interface{}{
+						map[string]interface{}{
+							"name":  "test",
+							"image": "nginx",
+							"securityContext": map[string]interface{}{
+								"privileged": true,
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	warnings := PatchJSONDangerousWarnings(patch)
+	if len(warnings) == 0 {
+		t.Error("Expected warning for privileged in JSON patch")
+	}
+	found := false
+	for _, w := range warnings {
+		if contains(w, "privileged") {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Error("Expected warning about privileged")
+	}
+}
+
+func TestPatchJSONDangerousWarnings_HostNetwork(t *testing.T) {
+	patch := map[string]interface{}{
+		"spec": map[string]interface{}{
+			"hostNetwork": true,
+		},
+	}
+	warnings := PatchJSONDangerousWarnings(patch)
+	if len(warnings) == 0 {
+		t.Error("Expected warning for hostNetwork in JSON patch")
+	}
+	found := false
+	for _, w := range warnings {
+		if contains(w, "hostNetwork") {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Error("Expected warning about hostNetwork")
+	}
+}
+
+func TestPatchJSONDangerousWarnings_NoWarnings(t *testing.T) {
+	patch := map[string]interface{}{
+		"spec": map[string]interface{}{
+			"replicas": 3,
+		},
+	}
+	warnings := PatchJSONDangerousWarnings(patch)
+	if len(warnings) > 0 {
+		t.Errorf("Expected no warnings for safe patch, got %d: %v", len(warnings), warnings)
+	}
+}
+
+func TestPatchJSONDangerousWarnings_MultipleWarnings(t *testing.T) {
+	patch := map[string]interface{}{
+		"spec": map[string]interface{}{
+			"hostPID":     true,
+			"hostNetwork": true,
+			"containers": []interface{}{
+				map[string]interface{}{
+					"securityContext": map[string]interface{}{
+						"privileged": true,
+					},
+				},
+			},
+		},
+	}
+	warnings := PatchJSONDangerousWarnings(patch)
+	if len(warnings) < 3 {
+		t.Errorf("Expected at least 3 warnings (hostPID, hostNetwork, privileged), got %d: %v", len(warnings), warnings)
+	}
+}
+
+func TestPatchJSONDangerousWarnings_EmptyPatch(t *testing.T) {
+	patch := map[string]interface{}{}
+	warnings := PatchJSONDangerousWarnings(patch)
+	if len(warnings) > 0 {
+		t.Errorf("Expected no warnings for empty patch, got %d", len(warnings))
+	}
+}
+
+func TestPatchJSONDangerousWarnings_FalseValues(t *testing.T) {
+	// Explicitly setting dangerous fields to false should NOT trigger warnings
+	patch := map[string]interface{}{
+		"spec": map[string]interface{}{
+			"hostPID":     false,
+			"hostNetwork": false,
+			"containers": []interface{}{
+				map[string]interface{}{
+					"securityContext": map[string]interface{}{
+						"privileged": false,
+					},
+				},
+			},
+		},
+	}
+	warnings := PatchJSONDangerousWarnings(patch)
+	if len(warnings) > 0 {
+		t.Errorf("Expected no warnings when dangerous fields are false, got %d: %v", len(warnings), warnings)
+	}
+}
+
 func contains(s, substr string) bool {
 	return len(s) >= len(substr) && (s == substr || 
 		(len(s) > len(substr) && 

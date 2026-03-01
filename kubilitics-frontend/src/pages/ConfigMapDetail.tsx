@@ -29,7 +29,8 @@ import { Breadcrumbs, useDetailBreadcrumbs } from '@/components/layout/Breadcrum
 import { downloadResourceJson } from '@/lib/exportUtils';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
+import { normalizeError, notifyError, notifySuccess } from '@/lib/notificationFormatter';
 
 interface ConfigMapResource extends KubernetesResource {
   data?: Record<string, string>;
@@ -95,6 +96,23 @@ export default function ConfigMapDetail() {
   });
   const consumers = consumersQuery.data;
 
+  // ⚠ Must be above ALL early returns — calling a hook after a conditional early return
+  // violates React's Rules of Hooks ("Rendered more hooks than during the previous render").
+  const usedByRows = useMemo(() => {
+    if (!consumers) return [];
+    const rows: { type: string; namespace: string; name: string; path: string }[] = [];
+    const add = (type: string, pathPrefix: string, items: { namespace: string; name: string }[] | undefined) => {
+      (items ?? []).forEach((ref) => rows.push({ type, namespace: ref.namespace, name: ref.name, path: `${pathPrefix}/${ref.namespace}/${ref.name}` }));
+    };
+    add('Pod', '/pods', consumers.pods);
+    add('Deployment', '/deployments', consumers.deployments);
+    add('StatefulSet', '/statefulsets', consumers.statefulSets);
+    add('DaemonSet', '/daemonsets', consumers.daemonSets);
+    add('Job', '/jobs', consumers.jobs);
+    add('CronJob', '/cronjobs', consumers.cronJobs);
+    return rows;
+  }, [consumers]);
+
   const data = cm.data || {};
   const dataKeysCount = Object.keys(data).length + (cm.binaryData ? Object.keys(cm.binaryData).length : 0);
   const totalSizeBytes = useMemo(() => {
@@ -130,10 +148,20 @@ export default function ConfigMapDetail() {
     if (!namespace || !name) return;
     try {
       await updateConfigMap.mutateAsync({ name, namespace, yaml: newYaml });
-      toast.success('ConfigMap updated successfully');
+      notifySuccess({
+        action: 'update',
+        resourceType: 'configmaps',
+        resourceName: name,
+        namespace,
+      });
       refetch();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Failed to update ConfigMap');
+      notifyError(e, {
+        action: 'update',
+        resourceType: 'configmaps',
+        resourceName: name,
+        namespace,
+      });
       throw e;
     }
   };
@@ -152,6 +180,12 @@ export default function ConfigMapDetail() {
 
   if (resourceError) {
     const isBackend404 = resourceError instanceof BackendApiError && resourceError.status === 404;
+    const normalized = normalizeError(resourceError, {
+      action: 'load',
+      resourceType: 'configmaps',
+      resourceName: name,
+      namespace,
+    });
     return (
       <div className="space-y-4 p-6">
         <Breadcrumbs segments={breadcrumbSegments} className="mb-2" />
@@ -161,8 +195,23 @@ export default function ConfigMapDetail() {
             <p className="text-sm text-muted-foreground">
               {isBackend404
                 ? 'The backend returned 404. Ensure the Kubilitics backend is running (e.g. port 819) and the cluster is registered in Settings.'
-                : resourceError instanceof Error ? resourceError.message : String(resourceError)}
+                : normalized.description}
             </p>
+            {normalized.details && !isBackend404 && (
+              <button
+                type="button"
+                className="text-xs text-muted-foreground underline"
+                onClick={() => {
+                  try {
+                    void navigator.clipboard.writeText(normalized.details!);
+                  } catch {
+                    // ignore
+                  }
+                }}
+              >
+                Copy technical details
+              </button>
+            )}
             <div className="flex gap-2">
               <Button variant="outline" onClick={() => refetch()}>Retry</Button>
               <Button variant="outline" onClick={() => navigate('/configmaps')}>Back to ConfigMaps</Button>
@@ -205,28 +254,13 @@ export default function ConfigMapDetail() {
   ];
 
 
-  const usedByRows = useMemo(() => {
-    if (!consumers) return [];
-    const rows: { type: string; namespace: string; name: string; path: string }[] = [];
-    const add = (type: string, pathPrefix: string, items: { namespace: string; name: string }[] | undefined) => {
-      (items ?? []).forEach((ref) => rows.push({ type, namespace: ref.namespace, name: ref.name, path: `${pathPrefix}/${ref.namespace}/${ref.name}` }));
-    };
-    add('Pod', '/pods', consumers.pods);
-    add('Deployment', '/deployments', consumers.deployments);
-    add('StatefulSet', '/statefulsets', consumers.statefulSets);
-    add('DaemonSet', '/daemonsets', consumers.daemonSets);
-    add('Job', '/jobs', consumers.jobs);
-    add('CronJob', '/cronjobs', consumers.cronJobs);
-    return rows;
-  }, [consumers]);
-
   const usedByContent = !namespace || !name ? (
     <p className="text-muted-foreground text-sm">No resource selected.</p>
   ) : !isBackendConfigured() || !clusterId ? (
     <p className="text-muted-foreground text-sm">Connect to Kubilitics backend to see which Pods and workloads use this ConfigMap.</p>
   ) : consumersQuery.isLoading ? (
     <Skeleton className="h-32 w-full" />
-  ) : consumers ? (
+  ) : consumers != null ? (
     <div className="space-y-4">
       {usedByRows.length > 0 && (
         <>
@@ -488,7 +522,17 @@ export default function ConfigMapDetail() {
             await deleteConfigMap.mutateAsync({ name, namespace: cmNamespace });
             navigate('/configmaps');
           } else {
-            toast.success(`ConfigMap ${cmName} deleted (demo mode)`);
+            notifySuccess(
+              {
+                action: 'delete',
+                resourceType: 'configmaps',
+                resourceName: cmName,
+                namespace: cmNamespace,
+              },
+              {
+                description: 'Demo mode – no changes were made to your cluster.',
+              }
+            );
             navigate('/configmaps');
           }
         }}

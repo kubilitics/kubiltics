@@ -75,8 +75,8 @@ export function useBackendWebSocket(options: UseBackendWebSocketOptions = {}) {
         const data = JSON.parse(event.data) as BackendWebSocketMessage;
         setLastMessage(data);
         onMessage?.(data);
-      } catch {
-        // ignore non-JSON
+      } catch (parseErr) {
+        console.warn('[ws] failed to parse WebSocket message:', parseErr, 'raw:', typeof event.data === 'string' ? event.data.slice(0, 200) : '(binary)');
       }
     };
 
@@ -89,16 +89,16 @@ export function useBackendWebSocket(options: UseBackendWebSocketOptions = {}) {
         const errorMsg = `WebSocket disconnected after ${maxRetries} retries`;
         setError(errorMsg);
 
-        // Show persistent toast with manual reconnect button
-        // Use reconnectRef to avoid circular dependency in useCallback deps
-        toast.error('WebSocket connection lost', {
-          description: 'Real-time updates are disabled. Click to reconnect.',
-          duration: Infinity, // Persist until user dismisses or reconnects
+        // Show a high-visibility toast with a clear call to action.
+        // Let it auto-dismiss after a short time; persistent state is surfaced
+        // via BackendStatusBanner and ConnectionRequiredBanner.
+        toast.error('Live updates paused', {
+          description: 'WebSocket connection to the backend was lost. Click Reconnect to try again.',
+          duration: 12000,
           action: {
             label: 'Reconnect',
             onClick: () => {
               reconnectRef.current();
-              toast.dismiss();
             },
           },
         });

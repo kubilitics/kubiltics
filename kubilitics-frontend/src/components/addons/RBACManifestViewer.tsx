@@ -2,9 +2,10 @@ import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useBackendClient } from '@/hooks/useBackendClient';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Shield, Copy, Check, Loader2 } from 'lucide-react';
 import { useState } from 'react';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 
 interface RBACManifestViewerProps {
     clusterId: string;
@@ -19,8 +20,6 @@ interface RBACManifestViewerProps {
 export function RBACManifestViewer({ clusterId, addonId, namespace }: RBACManifestViewerProps) {
     const client = useBackendClient();
     const [copied, setCopied] = useState(false);
-    const { toast } = useToast();
-
     const { data: yaml, isLoading, error } = useQuery({
         queryKey: ['addon-rbac', clusterId, addonId, namespace],
         queryFn: () => client.getAddonRBACManifest(clusterId, addonId, namespace),
@@ -30,8 +29,7 @@ export function RBACManifestViewer({ clusterId, addonId, namespace }: RBACManife
         if (!yaml) return;
         navigator.clipboard.writeText(yaml);
         setCopied(true);
-        toast({
-            title: "Copied to clipboard",
+        toast.success("Copied to clipboard", {
             description: "RBAC manifest YAML has been copied.",
         });
         setTimeout(() => setCopied(false), 2000);

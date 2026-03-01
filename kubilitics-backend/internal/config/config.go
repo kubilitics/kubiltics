@@ -114,10 +114,13 @@ func Load() (*Config, error) {
 	// or the browser blocks every API request with a CORS error (even though the backend is local).
 	// The sidecar spawner also sets KUBILITICS_ALLOWED_ORIGINS env var at runtime which overrides this default.
 	viper.SetDefault("allowed_origins", []string{
-		"tauri://localhost", // Tauri v2 WebView origin (macOS/Windows/Linux desktop)
-		"tauri://",         // Tauri origin without explicit host (some platforms)
-		"http://localhost:5173", // Vite dev server
+		"tauri://localhost",       // Tauri v2 WebView origin (macOS/Windows/Linux desktop)
+		"tauri://",               // Tauri origin without explicit host (some platforms)
+		"http://localhost:5173",  // Vite dev server (localhost)
+		"http://127.0.0.1:5173", // Vite dev server (IPv4 loopback — Vite binds to :: so browsers may use 127.0.0.1)
+		"http://[::1]:5173",     // Vite dev server (IPv6 loopback)
 		"http://localhost:819",  // Backend self-origin (health dashboards etc.)
+		"http://127.0.0.1:819",  // Backend self-origin (IPv4 loopback)
 	})
 	viper.SetDefault("kubeconfig_path", "")
 	viper.SetDefault("kubeconfig_auto_load", true)

@@ -17,7 +17,15 @@ import (
 	"k8s.io/client-go/restmapper"
 )
 
-const tickIntervalDefault = 60 * time.Second
+const (
+	tickIntervalDefault = 60 * time.Second
+	// suppressDriftWindow is the grace period after a fresh install or upgrade during which
+	// drift scanning is suppressed. Kubernetes admission controllers and defaulting webhooks
+	// commonly mutate resources in the first few seconds after apply (e.g. injecting
+	// terminationMessagePath, imagePullPolicy, clusterIP). Checking too soon produces
+	// false-positive STRUCTURAL drift events on resources that were never actually drifted.
+	suppressDriftWindow = 2 * time.Minute
+)
 
 // clusterMonitor holds per-cluster monitors and cancel.
 type clusterMonitor struct {
@@ -210,6 +218,13 @@ func (c *LifecycleController) runDriftCheck(ctx context.Context, clusterID strin
 	}
 	for _, inst := range installs {
 		if inst.Status != string(models.StatusInstalled) {
+			continue
+		}
+		// Suppress drift scanning during the settle window after a fresh install or upgrade.
+		// Kubernetes admission controllers mutate resources in the first seconds after Helm
+		// applies them (injecting terminationMessagePath, imagePullPolicy, clusterIP, etc.).
+		// Scanning too soon produces false-positive STRUCTURAL drift on untouched resources.
+		if time.Since(inst.UpdatedAt) < suppressDriftWindow {
 			continue
 		}
 		event, err := mon.driftDetector.DetectDrift(ctx, inst)

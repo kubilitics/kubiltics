@@ -6,7 +6,8 @@ import "time"
 type APIKey struct {
 	ID        string     `json:"id" db:"id"`
 	UserID    string     `json:"user_id" db:"user_id"`
-	KeyHash   string     `json:"-" db:"key_hash"` // Never expose hash in JSON
+	KeyHash   string     `json:"-" db:"key_hash"`       // Never expose hash in JSON
+	KeyPrefix string     `json:"-" db:"key_prefix"`     // SHA-256 prefix for O(1) lookup (8 hex chars)
 	Name      string     `json:"name" db:"name"`
 	LastUsed  *time.Time `json:"last_used,omitempty" db:"last_used"`
 	ExpiresAt *time.Time `json:"expires_at,omitempty" db:"expires_at"`

@@ -125,7 +125,6 @@ export async function exportExecutiveMode(
 
   // Temporarily hide UI elements for clean export
   // This would be implemented in the actual engine component
-  console.log('Exporting in executive mode with clean UI');
 
   return await exportAsPNG(engineRef, defaultOptions);
 }
@@ -133,98 +132,85 @@ export async function exportExecutiveMode(
 /**
  * Export topology as video (MP4, GIF, or WebM)
  *
- * Creates an animated video of the topology with camera movements
+ * FIX P2-002: Video export requires MediaRecorder API or ffmpeg.wasm integration.
+ * Not exposed in the UI export menu. Returns null with a descriptive error.
  */
 export async function exportAsVideo(
-  engineRef: React.RefObject<EngineRef>,
-  graph: TopologyGraph,
+  _engineRef: React.RefObject<EngineRef>,
+  _graph: TopologyGraph,
   options: ExportOptions
 ): Promise<Blob | null> {
-  if (!engineRef.current) {
-    console.error('Engine ref not available');
-    return null;
-  }
-
-  const { video, format } = options;
-  if (!video) {
+  if (!options.video) {
     throw new Error('Video options required for video export');
   }
 
-  try {
-    // This requires recording frames over time
-    // Implementation would use MediaRecorder API or canvas-to-video libraries
-    console.log('Starting video export:', {
-      format,
-      duration: video.duration,
-      fps: video.fps,
-      animation: video.animationType,
-    });
-
-    // Placeholder for actual video generation
-    // In a real implementation, this would:
-    // 1. Capture frames at specified FPS
-    // 2. Apply camera animations
-    // 3. Encode to video format using libraries like:
-    //    - gif.js for GIF
-    //    - MediaRecorder for WebM/MP4
-    //    - ffmpeg.wasm for advanced encoding
-
-    const frames: ImageData[] = [];
-    const frameCount = video.duration * video.fps;
-
-    // TODO: Capture frames with animation
-    // for (let i = 0; i < frameCount; i++) {
-    //   applyAnimation(i / frameCount, video.animationType);
-    //   frames.push(captureFrame());
-    // }
-
-    // TODO: Encode frames to video
-    // return encodeToVideo(frames, format, video.fps);
-
-    console.warn('Video export not fully implemented yet');
-    return null;
-  } catch (error) {
-    console.error('Video export failed:', error);
-    return null;
-  }
+  // Video export is not yet available — requires MediaRecorder or ffmpeg.wasm.
+  // This function is retained for API completeness but is not wired to the UI.
+  return null;
 }
 
 /**
  * Export topology as 3D model (GLTF)
  *
- * Exports the Three.js scene as a portable 3D model
+ * FIX P2-002: GLTF export requires three.js GLTFExporter integration.
+ * Not exposed in the UI export menu. Returns null.
  */
 export async function exportAsGLTF(
-  graph: TopologyGraph,
-  options: ExportOptions = { format: 'gltf' }
+  _graph: TopologyGraph,
+  _options: ExportOptions = { format: 'gltf' }
 ): Promise<Blob | null> {
-  try {
-    // This requires GLTFExporter from three.js
-    // Implementation would export the entire 3D scene
-
-    console.log('Exporting as GLTF');
-
-    // TODO: Implement GLTF export
-    // import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter';
-    // const exporter = new GLTFExporter();
-    // const gltf = await exporter.parseAsync(scene);
-
-    console.warn('GLTF export not fully implemented yet');
-    return null;
-  } catch (error) {
-    console.error('GLTF export failed:', error);
-    return null;
-  }
+  // GLTF export is not yet available — requires GLTFExporter from three.js.
+  // This function is retained for API completeness but is not wired to the UI.
+  return null;
 }
 
 /**
  * Download exported file
+ *
+ * FIX DESKTOP-EXPORT: In Tauri desktop, blob: URLs with the tauri://localhost
+ * origin contain colons that break the <a download> mechanism. Instead, we
+ * convert the blob to a Uint8Array and invoke the save_topology_export Tauri
+ * command which writes to the app data exports directory and opens the file
+ * in the system file manager. Falls back to the standard browser download
+ * for non-Tauri (web/Helm) environments.
  */
-export function downloadFile(blob: Blob, filename: string) {
+export async function downloadFile(blob: Blob, filename: string) {
+  // Sanitize filename — remove colons and other characters illegal on Windows/macOS
+  const safeFilename = filename.replace(/[<>:"/\\|?*]/g, '-');
+
+  // Check if running in Tauri desktop
+  const w = typeof window !== 'undefined' ? window as Window & { __TAURI_INTERNALS__?: unknown; __TAURI__?: unknown } : null;
+  const isTauriEnv = !!(w?.__TAURI_INTERNALS__ ?? w?.__TAURI__);
+
+  if (isTauriEnv) {
+    try {
+      const { invoke } = await import('@tauri-apps/api/core');
+      const arrayBuffer = await blob.arrayBuffer();
+      const data = Array.from(new Uint8Array(arrayBuffer));
+      const format = safeFilename.split('.').pop() ?? 'bin';
+      const savedPath = await invoke<string>('save_topology_export', {
+        data,
+        filename: safeFilename,
+        format,
+      });
+      // Open the exports folder in the system file manager so the user can see the file
+      try {
+        await invoke('reveal_in_file_manager', { filePath: savedPath });
+      } catch {
+        // Non-critical — file was saved successfully even if reveal fails
+      }
+      return;
+    } catch (err) {
+      // Fall through to browser download as a last resort
+      if (import.meta.env?.DEV) console.warn('Tauri save_topology_export failed, falling back to browser download:', err);
+    }
+  }
+
+  // Standard browser download via blob URL
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
-  link.download = filename;
+  link.download = safeFilename;
   link.click();
   URL.revokeObjectURL(url);
 }
@@ -232,9 +218,9 @@ export function downloadFile(blob: Blob, filename: string) {
 /**
  * Download SVG string
  */
-export function downloadSVG(svgString: string, filename: string) {
+export async function downloadSVG(svgString: string, filename: string) {
   const blob = new Blob([svgString], { type: 'image/svg+xml' });
-  downloadFile(blob, filename);
+  await downloadFile(blob, filename);
 }
 
 /**

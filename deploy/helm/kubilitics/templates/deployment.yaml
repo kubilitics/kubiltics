@@ -93,6 +93,8 @@ spec:
             {{- end }}
             - name: KUBILITICS_PORT
               value: {{ .Values.config.port | quote }}
+            - name: KUBILITICS_AUTH_MODE
+              value: {{ .Values.config.authMode | quote }}
             # kcli Configuration
             {{- if .Values.kcli.enabled }}
             - name: KCLI_BIN

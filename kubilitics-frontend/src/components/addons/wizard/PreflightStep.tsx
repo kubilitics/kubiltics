@@ -4,7 +4,7 @@ import { useActiveClusterId } from "@/hooks/useActiveClusterId";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
     CheckCircle2, AlertTriangle, XCircle, Info,
-    Loader2, ShieldCheck, Gauge, AlertCircle
+    Loader2, ShieldCheck, Gauge, AlertCircle,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -19,6 +19,33 @@ export function PreflightStep({ planId }: { planId: string }) {
         queryFn: () => api.runAddonPreflight(clusterId!, planId),
         enabled: !!clusterId && !!planId,
     });
+
+    // Community add-ons use a frontend-synthesised plan that has no plan_id.
+    // In that case we skip the preflight API call and show a "ready to proceed"
+    // state so the user can advance to Configure without seeing a false error.
+    if (!planId) {
+        return (
+            <div className="flex flex-col gap-6">
+                <div className="p-6 rounded-2xl border bg-blue-500/10 border-blue-500/20 flex items-center gap-6">
+                    <Info className="h-10 w-10 text-blue-500 shrink-0" />
+                    <div>
+                        <h3 className="text-xl font-bold tracking-tight">Preflight Skipped</h3>
+                        <p className="text-sm opacity-80 leading-tight mt-1">
+                            This community add-on is served directly from Artifact Hub.
+                            Standard cluster validation is not required — you can proceed to configure values and install.
+                        </p>
+                    </div>
+                </div>
+                <Alert className="bg-muted/30 border-border">
+                    <ShieldCheck className="h-4 w-4 text-emerald-500" />
+                    <AlertTitle className="text-sm">Ready to Proceed</AlertTitle>
+                    <AlertDescription className="text-xs">
+                        The install will be validated during the Dry Run step before any changes are applied to your cluster.
+                    </AlertDescription>
+                </Alert>
+            </div>
+        );
+    }
 
     if (isLoading) {
         return (

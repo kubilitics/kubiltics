@@ -23,6 +23,7 @@ type Event struct {
 type WebSocketMessage struct {
 	Type      string                 `json:"type"`      // resource_update, event, error
 	Event     string                 `json:"event"`     // added, updated, deleted
+	ClusterID string                 `json:"cluster_id,omitempty"` // Cluster scope for filtering
 	Resource  map[string]interface{} `json:"resource"`
 	Timestamp time.Time              `json:"timestamp"`
 }

@@ -1,13 +1,18 @@
 import { useEffect, useRef, useCallback } from 'react';
-import { EditorState, Extension } from '@codemirror/state';
-import { EditorView, keymap, lineNumbers, highlightActiveLineGutter, highlightSpecialChars, drawSelection, dropCursor, rectangularSelection, crosshairCursor, highlightActiveLine } from '@codemirror/view';
+import { EditorState, Extension, RangeSetBuilder } from '@codemirror/state';
+import {
+  EditorView, ViewPlugin, ViewUpdate, Decoration, DecorationSet,
+  keymap, lineNumbers, highlightActiveLineGutter, highlightSpecialChars,
+  drawSelection, dropCursor, rectangularSelection, crosshairCursor, highlightActiveLine,
+} from '@codemirror/view';
 import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands';
 import { yaml } from '@codemirror/lang-yaml';
 import { syntaxHighlighting, indentOnInput, bracketMatching, foldGutter, foldKeymap, HighlightStyle } from '@codemirror/language';
 import { tags } from '@lezer/highlight';
 import { cn } from '@/lib/utils';
 
-// Custom Kubilitics dark theme - base theme without font size
+// ── Kubilitics editor theme ─────────────────────────────────────────────────────
+
 const createKubiliticsTheme = (fontSize: string) => EditorView.theme({
   '&': {
     height: '100%',
@@ -27,12 +32,8 @@ const createKubiliticsTheme = (fontSize: string) => EditorView.theme({
   '.cm-selectionBackground, .cm-content ::selection': {
     backgroundColor: 'hsl(var(--primary) / 0.2)',
   },
-  '.cm-activeLine': {
-    backgroundColor: 'hsl(var(--muted) / 0.3)',
-  },
-  '.cm-activeLineGutter': {
-    backgroundColor: 'hsl(var(--muted) / 0.3)',
-  },
+  '.cm-activeLine': { backgroundColor: 'hsl(var(--muted) / 0.3)' },
+  '.cm-activeLineGutter': { backgroundColor: 'hsl(var(--muted) / 0.3)' },
   '.cm-gutters': {
     backgroundColor: 'hsl(var(--muted) / 0.3)',
     color: 'hsl(var(--muted-foreground))',
@@ -45,10 +46,7 @@ const createKubiliticsTheme = (fontSize: string) => EditorView.theme({
     minWidth: '40px',
     fontSize: '12px',
   },
-  '.cm-foldGutter .cm-gutterElement': {
-    padding: '0 4px',
-    cursor: 'pointer',
-  },
+  '.cm-foldGutter .cm-gutterElement': { padding: '0 4px', cursor: 'pointer' },
   '.cm-foldPlaceholder': {
     backgroundColor: 'hsl(var(--muted))',
     color: 'hsl(var(--muted-foreground))',
@@ -56,86 +54,95 @@ const createKubiliticsTheme = (fontSize: string) => EditorView.theme({
     padding: '0 4px',
     borderRadius: '4px',
   },
-  '.cm-scroller': {
-    overflow: 'auto',
-    fontFamily: 'inherit',
-  },
+  '.cm-scroller': { overflow: 'auto', fontFamily: 'inherit' },
   '.cm-matchingBracket': {
     backgroundColor: 'hsl(var(--primary) / 0.3)',
     outline: '1px solid hsl(var(--primary) / 0.5)',
   },
-  '.cm-searchMatch': {
-    backgroundColor: 'hsl(48 100% 50% / 0.3)',
-    outline: '1px solid hsl(48 100% 50% / 0.5)',
+  // URL link decoration
+  '.cm-yaml-url': {
+    color: '#2563eb',
+    textDecoration: 'underline',
+    textDecorationColor: '#93c5fd',
+    cursor: 'pointer',
   },
-  '.cm-searchMatch.cm-searchMatch-selected': {
-    backgroundColor: 'hsl(48 100% 50% / 0.5)',
-  },
-  '.cm-tooltip': {
-    backgroundColor: 'hsl(var(--popover))',
-    border: '1px solid hsl(var(--border))',
-    borderRadius: '6px',
-    boxShadow: '0 4px 12px hsl(var(--foreground) / 0.1)',
-  },
-  '.cm-tooltip-autocomplete': {
-    '& > ul > li': {
-      padding: '4px 8px',
-    },
-    '& > ul > li[aria-selected]': {
-      backgroundColor: 'hsl(var(--accent))',
-      color: 'hsl(var(--accent-foreground))',
-    },
-  },
-  '.cm-panels': {
-    backgroundColor: 'hsl(var(--muted))',
-    color: 'hsl(var(--foreground))',
-  },
-  '.cm-panels.cm-panels-top': {
-    borderBottom: '1px solid hsl(var(--border))',
-  },
-  '.cm-panels.cm-panels-bottom': {
-    borderTop: '1px solid hsl(var(--border))',
-  },
-  '.cm-panel.cm-search': {
-    padding: '8px 12px',
-    backgroundColor: 'hsl(var(--muted))',
-  },
-  '.cm-panel.cm-search input': {
-    backgroundColor: 'hsl(var(--background))',
-    border: '1px solid hsl(var(--border))',
-    borderRadius: '4px',
-    padding: '4px 8px',
-    color: 'hsl(var(--foreground))',
-  },
-  '.cm-panel.cm-search button': {
-    backgroundColor: 'hsl(var(--primary))',
-    color: 'hsl(var(--primary-foreground))',
-    borderRadius: '4px',
-    padding: '4px 8px',
-    marginLeft: '4px',
+  // YAML document separator ---
+  '.cm-yaml-doc-sep': {
+    color: '#7c3aed',
+    fontWeight: 'bold',
   },
 });
 
-// Syntax highlighting style for YAML
+// ── Syntax highlight colours (One Light-inspired, readable on light & dark) ────
+//
+//  · YAML keys  (propertyName)  → bold dark-blue
+//  · String values              → green
+//  · Numbers / booleans         → amber/orange
+//  · Comments                   → gray italic
+//  · Anchors / aliases          → purple
+//  · Document separators ---    → purple (meta tag)
+
 const kubiliticsHighlightStyle = HighlightStyle.define([
-  { tag: tags.keyword, color: 'hsl(280 80% 65%)' },
-  { tag: tags.atom, color: 'hsl(200 80% 65%)' },
-  { tag: tags.number, color: 'hsl(30 90% 60%)' },
-  { tag: tags.definition(tags.variableName), color: 'hsl(180 60% 55%)' },
-  { tag: tags.variableName, color: 'hsl(var(--foreground))' },
-  { tag: tags.string, color: 'hsl(100 60% 55%)' },
-  { tag: tags.special(tags.string), color: 'hsl(100 60% 55%)' },
-  { tag: tags.comment, color: 'hsl(var(--muted-foreground))', fontStyle: 'italic' },
-  { tag: tags.propertyName, color: 'hsl(200 80% 65%)' },
-  { tag: tags.bool, color: 'hsl(30 90% 60%)' },
-  { tag: tags.null, color: 'hsl(var(--muted-foreground))' },
-  { tag: tags.operator, color: 'hsl(var(--foreground))' },
-  { tag: tags.punctuation, color: 'hsl(var(--muted-foreground))' },
-  { tag: tags.meta, color: 'hsl(var(--muted-foreground))' },
-  { tag: tags.tagName, color: 'hsl(340 75% 60%)' },
-  { tag: tags.attributeName, color: 'hsl(200 80% 65%)' },
-  { tag: tags.attributeValue, color: 'hsl(100 60% 55%)' },
+  // YAML mapping keys — the most important differentiation
+  { tag: tags.propertyName,                color: '#0550ae', fontWeight: '600' },
+  { tag: tags.attributeName,               color: '#0550ae', fontWeight: '600' },
+  // String values
+  { tag: tags.string,                      color: '#116329' },
+  { tag: tags.special(tags.string),        color: '#116329' },
+  { tag: tags.attributeValue,              color: '#116329' },
+  // Numbers, booleans, null
+  { tag: tags.number,                      color: '#953800', fontWeight: '600' },
+  { tag: tags.bool,                        color: '#953800', fontWeight: '600' },
+  { tag: tags.null,                        color: '#953800' },
+  { tag: tags.atom,                        color: '#953800' },
+  // Keywords (true / false / null as keywords in some YAML parsers)
+  { tag: tags.keyword,                     color: '#953800', fontWeight: '600' },
+  // Comments — muted gray italic
+  { tag: tags.comment,                     color: '#6e7781', fontStyle: 'italic' },
+  // YAML anchors (&anchor) and aliases (*alias)
+  { tag: tags.variableName,               color: '#6639ba' },
+  { tag: tags.definition(tags.variableName), color: '#6639ba', fontWeight: '600' },
+  // Document separator --- and other meta tokens
+  { tag: tags.meta,                        color: '#8250df', fontWeight: 'bold' },
+  { tag: tags.tagName,                     color: '#8250df' },
+  // Operators and punctuation (: - [ ] { })
+  { tag: tags.operator,                    color: '#6e7781' },
+  { tag: tags.punctuation,                 color: '#6e7781' },
 ]);
+
+// ── URL highlight decoration ──────────────────────────────────────────────────
+// Scans visible ranges for http/https URLs and marks them with .cm-yaml-url
+
+const URL_RE = /https?:\/\/[^\s,'")\]>}\n]+/g;
+const urlMark = Decoration.mark({ class: 'cm-yaml-url' });
+
+function buildUrlDecorations(view: EditorView): DecorationSet {
+  const builder = new RangeSetBuilder<Decoration>();
+  for (const { from, to } of view.visibleRanges) {
+    const text = view.state.doc.sliceString(from, to);
+    URL_RE.lastIndex = 0;
+    let m: RegExpExecArray | null;
+    while ((m = URL_RE.exec(text)) !== null) {
+      builder.add(from + m.index, from + m.index + m[0].length, urlMark);
+    }
+  }
+  return builder.finish();
+}
+
+const urlHighlighter = ViewPlugin.fromClass(
+  class {
+    decorations: DecorationSet;
+    constructor(view: EditorView) { this.decorations = buildUrlDecorations(view); }
+    update(update: ViewUpdate) {
+      if (update.docChanged || update.viewportChanged) {
+        this.decorations = buildUrlDecorations(update.view);
+      }
+    }
+  },
+  { decorations: v => v.decorations },
+);
+
+// ── Component ─────────────────────────────────────────────────────────────────
 
 interface CodeEditorProps {
   value: string;
@@ -149,12 +156,7 @@ interface CodeEditorProps {
 }
 
 const EMPTY_EXTENSIONS: Extension[] = [];
-
-const fontSizeMap = {
-  small: '13px',
-  medium: '15px',
-  large: '17px',
-};
+const fontSizeMap = { small: '13px', medium: '15px', large: '17px' };
 
 export function CodeEditor({
   value,
@@ -169,21 +171,15 @@ export function CodeEditor({
   const viewRef = useRef<EditorView | null>(null);
   const onChangeRef = useRef(onChange);
 
-  // Keep onChange ref updated
-  useEffect(() => {
-    onChangeRef.current = onChange;
-  }, [onChange]);
+  useEffect(() => { onChangeRef.current = onChange; }, [onChange]);
 
   const createExtensions = useCallback(() => {
-    const baseExtensions: Extension[] = [
+    const base: Extension[] = [
       lineNumbers(),
       highlightActiveLineGutter(),
       highlightSpecialChars(),
       history(),
-      foldGutter({
-        openText: '▼',
-        closedText: '▶',
-      }),
+      foldGutter({ openText: '▼', closedText: '▶' }),
       drawSelection(),
       dropCursor(),
       EditorState.allowMultipleSelections.of(true),
@@ -192,38 +188,31 @@ export function CodeEditor({
       rectangularSelection(),
       crosshairCursor(),
       highlightActiveLine(),
-      keymap.of([
-        ...defaultKeymap,
-        ...historyKeymap,
-        ...foldKeymap,
-        indentWithTab,
-      ]),
+      keymap.of([...defaultKeymap, ...historyKeymap, ...foldKeymap, indentWithTab]),
       yaml(),
       createKubiliticsTheme(fontSizeMap[fontSize]),
       syntaxHighlighting(kubiliticsHighlightStyle),
+      urlHighlighter,
       EditorView.lineWrapping,
       ...additionalExtensions,
     ];
 
     if (readOnly) {
-      baseExtensions.push(EditorState.readOnly.of(true));
+      base.push(EditorState.readOnly.of(true));
     } else {
-      baseExtensions.push(
+      base.push(
         EditorView.updateListener.of((update) => {
           if (update.docChanged && onChangeRef.current) {
             onChangeRef.current(update.state.doc.toString());
           }
-        })
+        }),
       );
     }
 
-    return baseExtensions;
+    return base;
   }, [readOnly, additionalExtensions, fontSize]);
 
-  // When editable (onChange provided): use value only as initial doc; never overwrite from prop so typing is never reverted.
-  // When readOnly: sync value from prop so external updates (e.g. refetch) are shown.
-  const isControlled = !readOnly && typeof onChange === 'function';
-
+  // Create the editor once (or when extensions change)
   useEffect(() => {
     if (!editorRef.current) return;
 
@@ -232,40 +221,35 @@ export function CodeEditor({
       extensions: createExtensions(),
     });
 
-    const view = new EditorView({
-      state,
-      parent: editorRef.current,
-    });
-
+    const view = new EditorView({ state, parent: editorRef.current });
     viewRef.current = view;
 
-    return () => {
-      view.destroy();
-      viewRef.current = null;
-    };
+    return () => { view.destroy(); viewRef.current = null; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [createExtensions]);
 
-  // Only sync prop into editor when read-only (no onChange). Editable mode never overwrites doc from prop.
+  // Sync value prop → editor whenever it diverges from the current doc.
+  //
+  // This covers two cases:
+  //  1. Read-only mode: external updates (e.g. refetch) must always reflect in the editor.
+  //  2. Editable mode: external seeds (e.g. default values arriving after mount) must also
+  //     be applied. User-typed content is safe because onChange fires → store updates →
+  //     the new prop value matches what the editor already has, so the equality guard
+  //     below prevents any spurious dispatch.
   useEffect(() => {
-    if (isControlled) return;
     const view = viewRef.current;
-    if (!view || value === view.state.doc.toString()) return;
+    if (!view) return;
+    const current = view.state.doc.toString();
+    if (value === current) return; // nothing to do — guards user-typed content
     view.dispatch({
-      changes: {
-        from: 0,
-        to: view.state.doc.length,
-        insert: value,
-      },
+      changes: { from: 0, to: current.length, insert: value },
     });
-  }, [value, isControlled]);
+  }, [value]);
 
   return (
     <div
       ref={editorRef}
-      className={cn(
-        'rounded-lg border border-border overflow-hidden',
-        className
-      )}
+      className={cn('rounded-lg border border-border overflow-hidden', className)}
       style={{ minHeight }}
     />
   );

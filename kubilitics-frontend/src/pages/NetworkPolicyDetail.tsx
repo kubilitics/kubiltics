@@ -294,7 +294,13 @@ export default function NetworkPolicyDetail() {
       label: 'Policy Simulation',
       content: (
         <SectionCard title="Policy simulation" icon={Shield}>
-          <p className="text-muted-foreground text-sm">Simulate: source pod/ns/IP, dest pod/ns/IP, port → ALLOW/DENY. Placeholder until evaluation implemented.</p>
+          <div className="flex items-center gap-3 p-4 rounded-lg bg-amber-50/50 border border-amber-200/50 dark:bg-amber-950/10 dark:border-amber-800/30">
+            <Shield className="h-5 w-5 text-amber-600 dark:text-amber-400 shrink-0" />
+            <div>
+              <p className="text-sm font-medium text-amber-800 dark:text-amber-300">Coming Soon</p>
+              <p className="text-xs text-amber-700/70 dark:text-amber-400/70 mt-0.5">Policy simulation will allow you to test traffic flow against this network policy by specifying source and destination pods, namespaces, or IP addresses. This feature requires backend support and is planned for a future release.</p>
+            </div>
+          </div>
         </SectionCard>
       ),
     },
@@ -331,7 +337,7 @@ export default function NetworkPolicyDetail() {
       ),
     },
     { id: 'events', label: 'Events', content: <EventsSection events={events} /> },
-    { id: 'metrics', label: 'Metrics', content: <SectionCard title="Metrics" icon={Activity}><p className="text-muted-foreground text-sm">Placeholder until metrics pipeline.</p></SectionCard> },
+    { id: 'metrics', label: 'Metrics', content: <SectionCard title="Metrics" icon={Activity}><div className="flex items-center gap-3 p-4 rounded-lg bg-muted/30 border border-border/50"><Activity className="h-5 w-5 text-muted-foreground shrink-0" /><div><p className="text-sm font-medium text-muted-foreground">Metrics require a metrics server</p><p className="text-xs text-muted-foreground/70 mt-0.5">Install a metrics pipeline (e.g. Prometheus + kube-prometheus-stack) in your cluster to view resource metrics here.</p></div></div></SectionCard> },
     { id: 'yaml', label: 'YAML', content: <YamlViewer yaml={yaml} resourceName={npName} editable onSave={handleSaveYaml} /> },
     {
       id: 'compare',

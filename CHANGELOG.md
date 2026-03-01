@@ -5,246 +5,79 @@ All notable changes to Kubilitics will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [v0.1.3] - 2026-02-26
-
-### Fixed
-- Desktop: Tauri CSP `img-src` now allows `https:` — add-on cards in the desktop app display real ArtifactHub icons instead of falling back to colored initials
-- Desktop: Tauri CSP `connect-src` and `font-src` extended with `https:` for external API connectivity and web fonts
-- Frontend: WebSocket URL constructor in `useBackendWebSocket` used `${protocol}//${host}` (missing colon) producing `ws//localhost:819`; fixed to `${protocol}://${host}`
-- Frontend: `ProjectCard` rewritten with standard Tailwind classes — removes dependency on `glass-card`/`apple-title`/`ease-spring` custom CSS utilities that caused unpredictable rendering; stat label fixed from "Resources" → "Namespaces"
-- Frontend: `ProjectCard` icon updated from `Focus` to `FolderKanban` for semantic accuracy; action buttons (settings/delete) now only appear on hover to reduce visual noise
-
-### Changed
-- Desktop: macOS-only release (Windows and Linux builds remain commented out, to be re-enabled in a future sprint)
-
-## [v0.1.2] - 2026-02-26
-
-### Fixed
-- CI: bumped Go toolchain to 1.25.7 across release.yml, backend-ci.yml, kcli-ci.yml and backend Dockerfile — resolves 10 stdlib CVEs (net/url, crypto/tls, crypto/x509, archive/tar) fixed in go1.25.2–1.25.7
-- kcli: `TestIncidentWatchContextCancellation` CI timeout — `fetchPods`, `fetchNodes`, `fetchEvents`, and all observability helpers now use `runner.CaptureKubectlCtx(ctx, args)` so kubectl subprocesses are killed when the parent context is cancelled; watch loop no longer blocks past the test deadline
-- Desktop: version strings in tauri.conf.json, Cargo.toml, and package.json aligned to release version
-
-### Changed
-- Release test timeout for `TestIncidentWatchContextCancellation` increased 2s → 10s to absorb GHA runner cold-start latency
-
-## [v0.1.1] - 2026-02-26
-
-### Fixed
-- Backend: nil-pointer panic in `ExecuteUpgrade` when `clusterService` is not injected (test and standalone-binary scenarios)
-- Backend: community add-on IDs in registry tests updated to reflect `community/repo/chart` format used by ArtifactHub URL routing
+## [v0.1.1] - 2026-03-02
 
 ### Added
-- kcli: cost visibility commands (`kcli cost`) and security scan (`kcli security`)
-- kcli: embedded terminal mode fixes and improved shell integration
-- kcli: intent-aware AI tool selection replacing fixed 128-tool truncation
-- Frontend: premium UI redesign — new metric visualisations, section enhancements, and layout polish
-- Frontend: add-on catalog, install wizard, and lifecycle management UI
-- Frontend: resource comparison view and YAML diff utilities
-- Frontend: security dashboard components (HolographicMedal, NeuralScanner, SecurityPulse)
-- Frontend: live resource updates hook and natural language search improvements
-- Backend: add-on platform — catalog, install/upgrade/rollback lifecycle, Velero backup checkpoints, audit log, notification channels, maintenance windows, private catalog sources, rollout tracking
-- Backend: OpenAPI spec for add-on endpoints
-- Backend: Velero pre-upgrade backup checkpoint (non-fatal; upgrade proceeds on backup failure)
-- docs: `docs/release-steps.md` — step-by-step runbook for future releases
 
-### Changed
-- Backend: community add-on ID format changed from `community/<packageID>` to `community/<repoName>/<chartName>` to support ArtifactHub `GetPackageByID` lookups
-- Website moved to standalone repo (`Kubernetes/kubilitics-website`)
+**kcli TUI (k9s-like Terminal UI)**
+- Namespace switching: Enter on a namespace row switches context and reloads pods (like k9s)
+- Direct namespace command: `:ns <name>` switches namespace without navigating to namespace list; `:ns all` reverts to all-namespaces mode
+- Unit tests covering all namespace switch scenarios
+- Cost visibility commands (`kcli cost`) and security scan (`kcli security`)
+- Intent-aware AI tool selection replacing fixed 128-tool truncation
+- Embedded terminal mode with shell completion and aliases
 
-## [Unreleased]
+**Backend**
+- Add-on platform: catalog sync (ArtifactHub), install/upgrade/rollback lifecycle, drift detection, dependency resolution
+- Port-forward handler for pod port forwarding via REST API
+- API key prefix migration for improved security
+- Body-limit middleware, metrics auth, RBAC enhancements
+- WebSocket hub improvements with per-cluster per-user connection limits
+- Topology engine: resource-level topology, relationship inference enhancements
+- OpenAPI spec for add-on endpoints
 
-### Foundation Phase - 2026-02-04
+**Frontend**
+- Production UI hardening across 40+ pages and components
+- Add-on catalog, install wizard (dependency plan, dry-run, preflight, execute steps)
+- Topology engine: D3 canvas, Cytoscape engine, AGT renderer, export (CSV, JSON, PDF, PNG, SVG)
+- Resource comparison view and YAML diff utilities
+- Overview pagination, notification formatter, table sizing utilities
+- Code editor, log viewer, and terminal viewer improvements
+- Connection-required banner, backend status banner polish
 
-#### Added
-- Initial project structure for backend, desktop, and mobile
-- Go backend foundation with Kubernetes client integration
-- Tauri desktop application scaffolding
-- Tauri mobile application scaffolding
-- Topology engine foundation with graph data structures
-- REST API handlers for clusters and topology
-- Data models for Cluster, Resource, Topology, Events
-- Service layer (ClusterService, TopologyService)
-- Configuration management with Viper
-- Comprehensive documentation (README, ARCHITECTURE, TASKS)
-- Contributing guidelines and security policy
+**Desktop**
+- Tauri 2.0 sidecar bundling (backend + AI + kcli)
+- CSP updated for images, WebSocket, fonts
+- Cross-platform build configuration (macOS, Windows, Linux)
 
-#### Backend
-- Kubernetes client-go v0.30.0 integration
-- Resource discovery for core types (Pods, Deployments, Services, ReplicaSets, ConfigMaps, Secrets)
-- Basic relationship inference (OwnerReferences, Label Selectors, Volume Mounts)
-- Deterministic layout seed generation
-- Graph validation (orphan edge detection)
-- HTTP server with graceful shutdown
-- CORS middleware
-- Health check endpoint
+### Fixed
+- kcli TUI: namespace selection no longer shows detail view — it switches context and reloads resources
+- Backend: send-on-closed-channel panic in WebSocket stream handlers (kcli_stream.go, shell_stream.go) — context cancelled before channel close
+- Backend: WebSocket origin validation now includes 127.0.0.1 and [::1] loopback variants (fixes Vite dev server connections)
+- Frontend: shell panel default mode changed from 'shell' to 'ui' (Bubble Tea TUI) for better out-of-box experience
+- Frontend: shell panel z-index raised to z-[60] so it renders above all UI layers
+- Frontend: input isolation — UI mode bypasses shell-mode tab completion and line buffer tracking
+- Frontend: global keyboard shortcuts (g+p, g+n, /) no longer capture keystrokes meant for terminal
+- Frontend: WebSocket URL constructor fixed (missing colon in protocol)
+- Desktop: version strings aligned across tauri.conf.json, Cargo.toml, and package.json
+- CI: Go toolchain bumped to 1.25.7 — resolves 10 stdlib CVEs
+- CI: context-aware kubectl calls fix watch-loop blocking in tests
 
-#### Desktop
-- Tauri 2.0 configuration
-- Rust IPC commands (read_kubeconfig, get_app_data_dir)
-- Sidecar process manager for Go backend
-- Cross-platform build configuration
-- File system access for kubeconfig
-
-#### Mobile
-- Tauri Mobile library setup
-- API client for remote backend
-- Commands for cluster connection and topology fetching
-
-#### Documentation
-- Comprehensive README with quick start
-- Architecture deep-dive (topology engine, data flow)
-- Complete task list with 200+ tasks
-- Contributing guidelines
-- Security policy
-
-### In Progress
-- [ ] Complete Kubernetes resource discovery (50+ types)
-- [ ] Complete relationship inference (RBAC, Network, Autoscaling)
-- [ ] WebSocket real-time layer
-- [ ] Database persistence layer
-- [ ] Export service (PNG, PDF, SVG)
-- [ ] Desktop frontend integration
-- [ ] Mobile native features (biometric auth, push notifications)
-- [ ] Comprehensive testing suite
-
----
-
-## [1.0.0] - TBD
-
-### Planned Features
-
-#### Backend
-- Complete topology engine with all relationship types
-- WebSocket real-time updates
-- SQLite/PostgreSQL persistence
-- Export service (PNG, PDF, SVG)
-- Logs and metrics collection
-- Events streaming
-
-#### Desktop
-- Full frontend integration
-- Kubeconfig auto-detection
-- Native menus and system tray
-- Auto-updater
-- Multi-cluster support
-
-#### Mobile
-- iOS app (App Store)
-- Android app (Play Store)
-- Offline mode with sync
-- Biometric authentication
-- Push notifications
-- QR code connection
-
-#### Testing
-- 85%+ code coverage
-- Integration tests with K8s
-- E2E tests with Playwright
-- Topology truth tests
-- Performance benchmarks
-
-#### Infrastructure
-- CI/CD pipeline
-- Automated releases
-- Code signing
-- App store submissions
-
----
-
----
-
-## [0.1.0] - 2026-02-20
-
-### 🚀 Kubilitics v0.1.0 — Desktop MVP
-
-First public release of **Kubilitics** — an open-source, cross-platform Kubernetes cluster management desktop app built with Tauri, Go, and React.
-
-#### ✨ What's Included
-
-**Desktop App (macOS)**
-- Native macOS app (`Kubilitics.app`) built with Tauri — no Electron, ~20MB
-- Embedded Go sidecar backend (`kubilitics-backend`) on port 819
-- AI sidecar (`kubilitics-ai`) for intelligent cluster insights
-- kcli embedded terminal for interactive kubectl sessions
-- Auto-detects `~/.kube/config` on launch — zero setup required
-
-**Cluster Management**
-- Multi-cluster support with kubeconfig auto-detection
-- Real-time cluster overview — nodes, pods, namespaces, warnings
-- SSE-based live overview stream (no polling)
-- Cluster status tracking: connected / disconnected / error
-
-**Resource Browser**
-- Full CRUD for all standard Kubernetes resource types
-- Nodes, Pods, Deployments, StatefulSets, DaemonSets, Jobs, CronJobs
-- Services, Ingresses, ConfigMaps, Secrets, PVCs, PVs, StorageClasses
-- RBAC: Roles, ClusterRoles, ServiceAccounts
-- CRDs, MutatingWebhooks, ValidatingWebhooks
-- Resource YAML editor with apply support
-- Section overview pages: Networking, Storage, Scaling, Admission, CRDs
-
-**Topology Visualisation**
-- Interactive cluster topology graph (Cytoscape.js)
-- Resource-level topology for any workload
-- Draw.io export
-
-**AI Assistant**
-- Supports OpenAI, Anthropic (Claude), Ollama, and custom endpoints
-- Model catalog with provider-specific model dropdowns
-- API key stored securely in backend SQLite (never in localStorage)
-- Toggle AI on/off without losing configuration
-
-**Built-in Terminal**
-- kcli: full interactive kubectl shell via WebSocket PTY
-- Tab completion, history, real cluster context
-- Pod exec support
-
-#### 🐛 Key Bugs Fixed in This Release
-
-| Bug | Fix |
-|-----|-----|
-| Empty cards / 503 errors on app launch | Circuit breaker half-open race condition fixed — breaker now recovers automatically |
-| Requests routing to Vite dev server instead of sidecar | `__VITE_IS_TAURI_BUILD__` build-time constant eliminates `isTauri()` timing race |
-| Cluster wiped on every restart | `BackendClusterValidator` now auto-reconnects on 503 instead of clearing cluster ID |
-| API keys leaking to localStorage | `apiKey` removed from Zustand `partialize` — backend SQLite only |
-| Azure/none provider sent to Go backend | `toBackendProvider()` centralises mapping to `openai/anthropic/ollama/custom` |
-
-#### 🔌 New API Endpoints
-
-| Method | Path | Description |
-|--------|------|-------------|
-| `POST` | `/api/v1/clusters/{id}/reconnect` | Reset circuit breaker + rebuild K8s client |
-| `GET` | `/api/v1/clusters/{id}/overview/stream` | SSE real-time overview stream |
-
-#### 🏗️ Architecture
+### Architecture
 
 ```
-Kubilitics.app
-├── kubilitics-desktop  (Tauri host, Rust)
-├── kubilitics-frontend (React + TypeScript, embedded in app)
-├── kubilitics-backend  (Go sidecar, port 819 — K8s API, REST)
-└── kubilitics-ai       (Go sidecar — AI, analytics, cost)
+Kubilitics
+├── kubilitics-desktop  (Tauri 2.0 host, Rust)
+├── kubilitics-frontend (React + TypeScript + Vite SPA)
+├── kubilitics-backend  (Go REST API + WebSocket, SQLite, port 819)
+├── kubilitics-ai       (Go AI backend service, port 8081)
+└── kcli                (AI-powered kubectl CLI replacement, Go)
 ```
 
-#### 📥 Installation
+### Installation
 
-Download `Kubilitics.app.tar.gz` from the assets below, extract, move to `/Applications`, and launch.
-Requires macOS (arm64/Apple Silicon). Your `~/.kube/config` is auto-detected on first launch.
+**Desktop (macOS)**
+Download `Kubilitics.app.tar.gz` from the release assets, extract, move to `/Applications`, and launch.
+Your `~/.kube/config` is auto-detected on first launch.
 
-#### 🗺️ What's Next — v0.1.1
+**Helm (In-Cluster)**
+```bash
+helm install kubilitics deploy/helm/kubilitics \
+  --set image.tag=0.1.1 \
+  --namespace kubilitics --create-namespace
+```
 
-- MCP (Model Context Protocol) server integration
-- Feature enhancements and bug fixes from community feedback
-- Linux and Windows desktop builds
-
-> Built with ❤️ by [@vellankikoti](https://github.com/vellankikoti)
-
----
-
-## Version History
-
-### Pre-1.0 (Foundation)
-- 0.1.0 - Desktop MVP (2026-02-20)
+See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for detailed deployment instructions.
 
 ---
 

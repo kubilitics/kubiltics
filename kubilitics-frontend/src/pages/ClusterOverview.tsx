@@ -7,10 +7,11 @@ import {
     RefreshCw,
     ArrowUpRight,
     Activity,
-    Layers
+    Layers,
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useClusterOverviewData } from '@/hooks/useClusterOverviewData';
+import { useOverviewPagination } from '@/hooks/useOverviewPagination';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -18,6 +19,8 @@ import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { SectionOverviewHeader } from '@/components/layout/SectionOverviewHeader';
 import { InfrastructureMap } from '@/components/cluster/InfrastructureMap';
+import { ListPagination } from '@/components/list/ListPagination';
+
 export default function ClusterOverview() {
     const navigate = useNavigate();
     const [searchQuery, setSearchQuery] = useState('');
@@ -34,6 +37,8 @@ export default function ClusterOverview() {
         r.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         r.kind.toLowerCase().includes(searchQuery.toLowerCase())
     ) ?? [];
+
+    const pagination = useOverviewPagination(filteredResources, searchQuery, 10);
 
     if (isLoading) {
         return (
@@ -152,42 +157,44 @@ export default function ClusterOverview() {
             </div>
 
             {/* Explorer Table */}
-            <div className="glass-card overflow-hidden">
-                <div className="p-8 border-b border-white/40 flex flex-col md:flex-row md:items-center gap-6 justify-between bg-white/20">
-                    <div>
-                        <h2 className="apple-title text-xl mb-1">Infrastructure Explorer</h2>
-                        <p className="text-xs text-slate-400 font-bold uppercase tracking-widest">Global Resource Registry</p>
-                    </div>
-                    <div className="relative flex-1 max-w-md">
-                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4.5 w-4.5 text-slate-400" />
-                        <Input
-                            placeholder="Search nodes, pods, and services..."
-                            className="pl-12 h-12 bg-white/50 border-white rounded-[1rem] shadow-sm focus:ring-blue-500/20"
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                        />
+            <div className="bg-white border border-slate-100 rounded-[2rem] overflow-hidden shadow-sm ring-1 ring-slate-100">
+                <div className="p-8 border-b border-slate-50">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                        <div>
+                            <h3 className="text-xl font-bold tracking-tight text-slate-900">Infrastructure Explorer</h3>
+                            <p className="text-[11px] text-slate-500 font-semibold uppercase tracking-wider mt-1">Global Resource Registry</p>
+                        </div>
+                        <div className="relative min-w-[320px]">
+                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                            <Input
+                                placeholder="Search nodes, pods, and services..."
+                                className="pl-12 bg-slate-50 border-transparent transition-all rounded-xl focus:bg-white focus:ring-4 focus:ring-blue-500/5 focus:border-slate-200 h-10 font-medium text-sm"
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                            />
+                        </div>
                     </div>
                 </div>
 
                 <div className="overflow-x-auto">
                     <table className="w-full text-left border-collapse">
                         <thead>
-                            <tr className="bg-slate-50/50 border-b border-slate-100">
-                                <th className="px-8 py-5 text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">Identity</th>
-                                <th className="px-8 py-5 text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">Class</th>
-                                <th className="px-8 py-5 text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">State</th>
-                                <th className="px-8 py-5 text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">Telemetry</th>
-                                <th className="px-8 py-5"></th>
+                            <tr className="bg-slate-50/50">
+                                <th className="px-8 py-5 text-[10px] font-bold uppercase tracking-widest text-slate-500 border-b border-slate-100">Identity</th>
+                                <th className="px-8 py-5 text-[10px] font-bold uppercase tracking-widest text-slate-500 border-b border-slate-100">Class</th>
+                                <th className="px-8 py-5 text-[10px] font-bold uppercase tracking-widest text-slate-500 border-b border-slate-100">State</th>
+                                <th className="px-8 py-5 text-[10px] font-bold uppercase tracking-widest text-slate-500 border-b border-slate-100">Telemetry</th>
+                                <th className="px-8 py-5 border-b border-slate-100"></th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-100/50">
-                            {filteredResources.map((resource, idx) => (
+                        <tbody className="divide-y divide-slate-50 text-sm">
+                            {pagination.paginatedItems.map((resource, idx) => (
                                 <motion.tr
-                                    initial={{ opacity: 0, y: 8 }}
+                                    initial={{ opacity: 0, y: 5 }}
                                     animate={{ opacity: 1, y: 0 }}
-                                    transition={{ delay: idx * 0.03 }}
+                                    transition={{ delay: idx * 0.02 }}
                                     key={`${resource.kind}-${resource.name}`}
-                                    className="group hover:bg-white/80 transition-all duration-500 cursor-pointer"
+                                    className="group hover:bg-slate-50 transition-colors cursor-pointer"
                                     onClick={() => {
                                         const kindPath = resource.kind.toLowerCase() === 'node' ? 'nodes' :
                                             resource.kind.toLowerCase() === 'namespace' ? 'namespaces' :
@@ -195,42 +202,59 @@ export default function ClusterOverview() {
                                         navigate(`/${kindPath}/${resource.name}`);
                                     }}
                                 >
-                                    <td className="px-8 py-6">
-                                        <div className="font-bold text-slate-900 group-hover:text-blue-700 transition-colors tracking-tight text-base">
+                                    <td className="px-8 py-4">
+                                        <div className="font-bold text-slate-900 group-hover:text-blue-600 transition-colors leading-tight tracking-tight">
                                             {resource.name}
                                         </div>
                                     </td>
-                                    <td className="px-8 py-6">
-                                        <Badge className="font-bold text-[10px] uppercase tracking-widest bg-slate-100 text-slate-500 hover:bg-blue-600 hover:text-white border-transparent transition-all px-3 py-1 rounded-full">
+                                    <td className="px-8 py-4">
+                                        <Badge variant="outline" className="text-[9px] uppercase tracking-wider font-bold border-slate-100 text-slate-500">
                                             {resource.kind}
                                         </Badge>
                                     </td>
-                                    <td className="px-8 py-6">
-                                        <div className="flex items-center gap-3">
-                                            <div className={cn(
-                                                "h-2 w-2 rounded-full",
-                                                ['Ready', 'Active', 'Running'].includes(resource.status)
-                                                    ? "bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]"
-                                                    : "bg-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.5)]"
-                                            )} />
-                                            <span className="text-sm font-bold text-slate-700 group-hover:text-slate-900">{resource.status}</span>
+                                    <td className="px-8 py-4">
+                                        <div className="flex items-center gap-2">
+                                            <div className={cn("h-1.5 w-1.5 rounded-full", ['Ready', 'Active', 'Running'].includes(resource.status) ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" : "bg-amber-500")} />
+                                            <span className="text-[12px] font-bold text-slate-700">{resource.status}</span>
                                         </div>
                                     </td>
-                                    <td className="px-8 py-6">
-                                        <span className="text-sm font-extrabold text-blue-600 tabular-nums bg-blue-50 px-3 py-1 rounded-lg border border-blue-100">
+                                    <td className="px-8 py-4">
+                                        <span className="text-xs font-bold text-blue-600 tabular-nums bg-blue-50 px-3 py-1 rounded-lg border border-blue-100">
                                             {resource.version || 'v1.0.0'}
                                         </span>
                                     </td>
-                                    <td className="px-8 py-6 text-right">
-                                        <div className="h-10 w-10 rounded-full bg-slate-50 flex items-center justify-center opacity-0 group-hover:opacity-100 group-hover:translate-x-1 group-hover:bg-blue-700 transition-all duration-700 ease-spring">
-                                            <ArrowUpRight className="h-5 w-5 text-slate-400 group-hover:text-white" />
-                                        </div>
+                                    <td className="px-8 py-4 text-right">
+                                        <Button variant="ghost" size="sm" className="h-9 w-9 p-0 hover:bg-white hover:text-blue-600 hover:shadow-sm rounded-xl transition-all border border-transparent hover:border-slate-100">
+                                            <ArrowUpRight className="h-4 w-4" />
+                                        </Button>
                                     </td>
                                 </motion.tr>
                             ))}
+                            {pagination.paginatedItems.length === 0 && (
+                                <tr>
+                                    <td colSpan={5} className="px-8 py-12 text-center text-sm text-slate-400">
+                                        {searchQuery ? 'No resources match your search.' : 'No cluster resources found.'}
+                                    </td>
+                                </tr>
+                            )}
                         </tbody>
                     </table>
                 </div>
+
+                {pagination.totalItems > 0 && (
+                    <div className="p-6 border-t border-slate-50 bg-slate-50/30">
+                        <ListPagination
+                            hasPrev={pagination.hasPrev}
+                            hasNext={pagination.hasNext}
+                            onPrev={pagination.onPrev}
+                            onNext={pagination.onNext}
+                            rangeLabel={`Infrastructure Registry: ${pagination.totalItems} Resources`}
+                            currentPage={pagination.currentPage}
+                            totalPages={pagination.totalPages}
+                            onPageChange={pagination.setCurrentPage}
+                        />
+                    </div>
+                )}
             </div>
         </div>
     );

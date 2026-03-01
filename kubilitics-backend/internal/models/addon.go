@@ -32,6 +32,11 @@ type AddOnEntry struct {
 	Stars            int       `json:"stars,omitempty" db:"stars"`
 	CreatedAt        time.Time `json:"created_at" db:"created_at"`
 	UpdatedAt        time.Time `json:"updated_at" db:"updated_at"`
+	// Trust / provenance signals — populated from Artifact Hub metadata for community
+	// add-ons; not stored in the local DB (db:"-") to avoid schema migrations.
+	IsOfficial          bool `json:"is_official,omitempty" db:"-"`
+	IsVerifiedPublisher bool `json:"is_verified_publisher,omitempty" db:"-"`
+	IsSigned            bool `json:"is_signed,omitempty" db:"-"`
 }
 
 type AddOnDependency struct {

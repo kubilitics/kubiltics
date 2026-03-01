@@ -151,3 +151,10 @@
 .animate-in {
   animation: fadeIn 0.5s ease-out forwards;
 }
+
+/* Indeterminate progress bar for addon install */
+@keyframes indeterminate {
+  0%   { transform: translateX(-100%) scaleX(0.5); }
+  50%  { transform: translateX(100%) scaleX(1.2); }
+  100% { transform: translateX(300%) scaleX(0.5); }
+}

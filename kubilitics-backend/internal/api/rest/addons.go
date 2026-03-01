@@ -12,6 +12,7 @@ import (
 	"github.com/kubilitics/kubilitics-backend/internal/addon/financial"
 	"github.com/kubilitics/kubilitics-backend/internal/auth"
 	"github.com/kubilitics/kubilitics-backend/internal/models"
+	"github.com/kubilitics/kubilitics-backend/internal/pkg/validate"
 	"github.com/kubilitics/kubilitics-backend/internal/service"
 )
 
@@ -67,8 +68,8 @@ func (h *Handler) ListCatalog(w http.ResponseWriter, r *http.Request) {
 	if limit <= 0 {
 		limit = 24
 	}
-	if limit > 100 {
-		limit = 100
+	if limit > 60 {
+		limit = 60 // Artifact Hub API enforces max 60
 	}
 	offset, _ := strconv.Atoi(r.URL.Query().Get("offset"))
 	if offset < 0 {
@@ -107,6 +108,36 @@ func (h *Handler) GetCatalogEntry(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	respondJSON(w, http.StatusOK, detail)
+}
+
+// GetCatalogValues handles GET /addons/catalog/{addonId}/values.
+// Returns the raw values.yaml for a chart so the wizard Configure step can pre-populate the editor.
+// For community add-ons the content is fetched live from Artifact Hub (cached by HTTP layer).
+// Returns 200 with an empty body when the chart publishes no default values — never 404.
+func (h *Handler) GetCatalogValues(w http.ResponseWriter, r *http.Request) {
+	if h.addonService == nil {
+		respondErrorWithRequestID(w, r, http.StatusNotImplemented, ErrCodeInternalError, "addon service not configured")
+		return
+	}
+	vars := mux.Vars(r)
+	rawAddonID := vars["addonId"]
+	if rawAddonID == "" {
+		respondErrorWithRequestID(w, r, http.StatusBadRequest, ErrCodeInvalidRequest, "addonId required")
+		return
+	}
+	addonID, err := url.PathUnescape(rawAddonID)
+	if err != nil {
+		respondErrorWithRequestID(w, r, http.StatusBadRequest, ErrCodeInvalidRequest, "invalid addonId encoding")
+		return
+	}
+	values, err := h.addonService.GetAddonDefaultValues(r.Context(), addonID)
+	if err != nil {
+		respondErrorWithRequestID(w, r, http.StatusInternalServerError, ErrCodeInternalError, err.Error())
+		return
+	}
+	w.Header().Set("Content-Type", "text/yaml; charset=utf-8")
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(values)) //nolint:errcheck
 }
 
 func (h *Handler) PlanInstall(w http.ResponseWriter, r *http.Request) {
@@ -211,6 +242,10 @@ func (h *Handler) DryRunInstall(w http.ResponseWriter, r *http.Request) {
 	if body.ReleaseName == "" {
 		body.ReleaseName = body.AddonID
 	}
+	if errMsg := validate.ResourceName(body.ReleaseName); errMsg != "" {
+		respondErrorWithRequestID(w, r, http.StatusBadRequest, ErrCodeInvalidRequest, "release_name: "+errMsg)
+		return
+	}
 	actor := ""
 	if claims := auth.ClaimsFromContext(r.Context()); claims != nil {
 		actor = claims.Username
@@ -253,6 +288,10 @@ func (h *Handler) ExecuteInstall(w http.ResponseWriter, r *http.Request) {
 	}
 	if body.ReleaseName == "" {
 		body.ReleaseName = body.AddonID
+	}
+	if errMsg := validate.ResourceName(body.ReleaseName); errMsg != "" {
+		respondErrorWithRequestID(w, r, http.StatusBadRequest, ErrCodeInvalidRequest, "release_name: "+errMsg)
+		return
 	}
 	actor := ""
 	if claims := auth.ClaimsFromContext(r.Context()); claims != nil {

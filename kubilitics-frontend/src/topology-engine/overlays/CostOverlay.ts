@@ -97,6 +97,8 @@ export function useCostOverlay(graph: TopologyGraph): OverlayData {
         totalCostScore: totalCost,
         averageCostScore: avgCost,
         expensiveNodes: Array.from(nodeValues.values()).filter(v => v > 80).length,
+        isEstimated: true,
+        disclaimerMessage: 'Cost scores are estimated based on resource usage heuristics. For accurate cost data, integrate with OpenCost or your cloud billing API.',
       },
     };
   }, [graph.nodes]);

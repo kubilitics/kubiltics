@@ -102,6 +102,14 @@ func (r *Registry) SeedOnStartup(ctx context.Context) error {
 	return nil
 }
 
+// GetChartValues fetches the raw values.yaml for a community (Artifact Hub) Helm chart.
+// repoName and chartName correspond to the repo slug and chart name on Artifact Hub
+// (e.g. repoName="jenkinsci", chartName="jenkins").
+// Returns the values.yaml content as a string, or "" when no values are published.
+func (r *Registry) GetChartValues(ctx context.Context, repoName, chartName string) (string, error) {
+	return r.ahClient.GetChartValues(ctx, repoName, chartName, "")
+}
+
 func (r *Registry) GetAddOn(ctx context.Context, id string) (*models.AddOnDetail, error) {
 	cacheKey := "addon:" + id
 	if v, ok := r.cache.Get(cacheKey); ok {
@@ -126,16 +134,31 @@ func (r *Registry) GetAddOn(ctx context.Context, id string) (*models.AddOnDetail
 			if ahErr == nil && chart != nil {
 				entry := r.ahClient.mapToAddOnEntry(*chart)
 				detail := &models.AddOnDetail{
-					AddOnEntry:    entry,
-					Dependencies:  nil,
-					Conflicts:     nil,
-					CRDsOwned:     nil,
-					RBACRequired:  nil,
-					CostModels:    nil,
-					Versions:      nil,
+					AddOnEntry:   entry,
+					Dependencies: nil,
+					Conflicts:    nil,
+					CRDsOwned:    nil,
+					RBACRequired: nil,
+					CostModels:   nil,
+					Versions:     nil,
+				}
+				// Persist to DB so repo.GetAddOn finds it on subsequent requests
+				// after the in-memory cache expires or the process restarts.
+				// This is the permanent fix for "addon not found" on community addons:
+				// once fetched from AH, the addon is always available in SQLite.
+				if upsertErr := r.repo.UpsertAddonEntries(ctx, []models.AddOnEntry{entry}); upsertErr != nil {
+					r.logger.Warn("failed to persist community addon to local DB",
+						"id", id, "error", upsertErr)
 				}
 				r.cache.Set(cacheKey, detail, communityCacheTTL)
 				return detail, nil
+			}
+			// ArtifactHub fetch failed — surface a descriptive error rather than
+			// returning the raw "addon not found" DB error, which is confusing.
+			if ahErr != nil {
+				r.logger.Warn("ArtifactHub fallback failed for community addon",
+					"id", id, "ah_error", ahErr)
+				return nil, fmt.Errorf("addon %q not found in local catalog; ArtifactHub lookup also failed: %w", id, ahErr)
 			}
 		}
 		return nil, fmt.Errorf("get addon from repository %s: %w", id, err)

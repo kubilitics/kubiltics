@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/health"
 	"google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/reflection"
@@ -36,15 +37,20 @@ func NewServer(cfg *config.Config, clusterService service.ClusterService, topolo
 		grpc.ConnectionTimeout(30 * time.Second),
 	}
 
-	// TODO: Add TLS support when cfg.GRPCTLSEnabled is true
-	// if cfg.GRPCTLSEnabled {
-	// 	creds, err := credentials.NewServerTLSFromFile(cfg.TLSCertPath, cfg.TLSKeyPath)
-	// 	if err != nil {
-	// 		log.Error("Failed to load gRPC TLS credentials", "error", err)
-	// 	} else {
-	// 		opts = append(opts, grpc.Creds(creds))
-	// 	}
-	// }
+	// FIX P2-003: Wire TLS support for gRPC when configured.
+	if cfg.GRPCTLSEnabled {
+		if cfg.TLSCertPath == "" || cfg.TLSKeyPath == "" {
+			log.Error("gRPC TLS enabled but cert/key paths are empty — falling back to insecure")
+		} else {
+			creds, err := credentials.NewServerTLSFromFile(cfg.TLSCertPath, cfg.TLSKeyPath)
+			if err != nil {
+				log.Error("Failed to load gRPC TLS credentials, falling back to insecure", "error", err)
+			} else {
+				opts = append(opts, grpc.Creds(creds))
+				log.Info("gRPC TLS enabled", "cert", cfg.TLSCertPath)
+			}
+		}
+	}
 
 	s := grpc.NewServer(opts...)
 	healthServer := health.NewServer()

@@ -18,6 +18,7 @@ import {
   DetailRow,
   ResourceTopologyView,
   ResourceComparisonView,
+  PortForwardDialog,
   type ResourceStatus,
   type YamlVersion,
   type EventInfo,
@@ -75,6 +76,7 @@ export default function ServiceDetail() {
   const [activeTab, setActiveTab] = useState(initialTab);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [podsTabSearch, setPodsTabSearch] = useState('');
+  const [showPortForwardDialog, setShowPortForwardDialog] = useState(false);
 
   const namespace = nsParam ?? '';
   const storedUrl = useBackendConfigStore((s) => s.backendBaseUrl);
@@ -503,8 +505,13 @@ export default function ServiceDetail() {
       label: 'Port Forward',
       content: (
         <SectionCard title="Port forward" icon={ExternalLink}>
-          <p className="text-muted-foreground text-sm mb-4">Forward a local port to this service (e.g. <code className="text-xs bg-muted px-1 rounded">kubectl port-forward svc/{svcName} 8080:80</code>). For pod-level port forward, use the Pod detail page.</p>
-          <Button onClick={() => toast.info(`Use: kubectl port-forward svc/${svcName} -n ${namespace} <localPort>:<servicePort>`)}>Create port forward</Button>
+          <p className="text-muted-foreground text-sm mb-4">
+            Forward a local port to this service. For pod-level port forward, use the Pod detail page.
+          </p>
+          <Button onClick={() => setShowPortForwardDialog(true)}>
+            <ExternalLink className="h-4 w-4 mr-2" />
+            Create port forward
+          </Button>
         </SectionCard>
       ),
     },
@@ -592,8 +599,14 @@ export default function ServiceDetail() {
       label: 'Metrics',
       content: (
         <SectionCard title="Metrics" icon={Activity}>
-          <p className="text-muted-foreground text-sm mb-4">Traffic, latency, and error rate for services require a metrics pipeline (e.g. Prometheus). Placeholder until integration.</p>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
+          <div className="flex items-center gap-3 p-4 rounded-lg bg-muted/30 border border-border/50 mb-4">
+            <Activity className="h-5 w-5 text-muted-foreground shrink-0" />
+            <div>
+              <p className="text-sm font-medium text-muted-foreground">Metrics require a metrics server</p>
+              <p className="text-xs text-muted-foreground/70 mt-0.5">Install a metrics pipeline (e.g. Prometheus + kube-prometheus-stack) in your cluster to view traffic, latency, and error rate metrics here.</p>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <Card><CardContent className="pt-4"><p className="text-sm font-medium">Request rate</p><p className="text-muted-foreground text-xs">—</p></CardContent></Card>
             <Card><CardContent className="pt-4"><p className="text-sm font-medium">Latency</p><p className="text-muted-foreground text-xs">—</p></CardContent></Card>
             <Card><CardContent className="pt-4"><p className="text-sm font-medium">Error rate</p><p className="text-muted-foreground text-xs">—</p></CardContent></Card>
@@ -679,7 +692,7 @@ export default function ServiceDetail() {
       label: 'Actions',
       content: (
         <ActionsSection actions={[
-          { icon: ExternalLink, label: 'Port Forward', description: 'Forward local port to this service', onClick: () => toast.info(`kubectl port-forward svc/${svcName} -n ${namespace} <localPort>:<servicePort>`) },
+          { icon: ExternalLink, label: 'Port Forward', description: 'Forward local port to this service', onClick: () => setShowPortForwardDialog(true) },
           { icon: Globe, label: 'Test Connectivity', description: 'Simple connectivity check', onClick: () => toast.info('Test connectivity: requires backend support (design 3.1)') },
           ...(backingDeployment ? [{ icon: Server, label: 'Scale Backing Deployment', description: `Open Deployment ${backingDeployment.name} to scale`, onClick: () => navigate(`/deployments/${backingDeployment.namespace}/${backingDeployment.name}`) }] : []),
           { icon: Download, label: 'Download YAML', description: 'Export Service definition', onClick: handleDownloadYaml },
@@ -704,7 +717,7 @@ export default function ServiceDetail() {
         actions={[
           { label: 'Download YAML', icon: Download, variant: 'outline', onClick: handleDownloadYaml },
           { label: 'Export as JSON', icon: Download, variant: 'outline', onClick: handleDownloadJson },
-          { label: 'Port Forward', icon: ExternalLink, variant: 'outline', onClick: () => toast.info(`kubectl port-forward svc/${svcName} -n ${namespace} <localPort>:<servicePort>`) },
+          { label: 'Port Forward', icon: ExternalLink, variant: 'outline', onClick: () => setShowPortForwardDialog(true) },
           { label: 'Delete', icon: Trash2, variant: 'destructive', onClick: () => setShowDeleteDialog(true) },
         ]}
         statusCards={statusCards}
@@ -736,6 +749,16 @@ export default function ServiceDetail() {
           }
         }}
         requireNameConfirmation
+      />
+      <PortForwardDialog
+        open={showPortForwardDialog}
+        onOpenChange={setShowPortForwardDialog}
+        podName={svcName}
+        namespace={svcNamespace}
+        baseUrl={baseUrl ?? ''}
+        clusterId={clusterId ?? ''}
+        resourceType="service"
+        servicePorts={svc.spec?.ports ?? []}
       />
     </>
   );

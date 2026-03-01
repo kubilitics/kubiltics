@@ -7,6 +7,7 @@ import (
 	"github.com/gorilla/mux"
 
 	"github.com/kubilitics/kubilitics-backend/internal/models"
+	"github.com/kubilitics/kubilitics-backend/internal/pkg/validate"
 	"github.com/kubilitics/kubilitics-backend/internal/service"
 )
 
@@ -69,8 +70,8 @@ func (h *Handler) CreateProject(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusBadRequest, "Invalid request body")
 		return
 	}
-	if req.Name == "" {
-		respondError(w, http.StatusBadRequest, "name is required")
+	if errMsg := validate.ResourceName(req.Name); errMsg != "" {
+		respondError(w, http.StatusBadRequest, errMsg)
 		return
 	}
 	p := &models.Project{Name: req.Name, Description: req.Description}
@@ -109,6 +110,10 @@ func (h *Handler) UpdateProject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if req.Name != nil {
+		if errMsg := validate.ResourceName(*req.Name); errMsg != "" {
+			respondError(w, http.StatusBadRequest, errMsg)
+			return
+		}
 		proj.Name = *req.Name
 	}
 	if req.Description != nil {

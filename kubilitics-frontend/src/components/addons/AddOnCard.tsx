@@ -4,7 +4,8 @@ import { AddOnEntry } from "@/types/api/addons";
 import { Button } from "@/components/ui/button";
 import {
     Package, ArrowRight,
-    CheckCircle2, AlertTriangle, Sparkles, ShieldCheck, Globe, Lock, Star
+    CheckCircle2, AlertTriangle, Sparkles, ShieldCheck, Globe, Lock, Star,
+    BadgeCheck, KeyRound, Building2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -102,6 +103,66 @@ function TierBadge({ tier }: { tier: string }) {
     );
 }
 
+// ─── Trust badge row (Artifact Hub-inspired) ──────────────────────────────────
+// Shows up to 3 compact trust signals: Official · Verified Publisher · Signed
+// CORE-tier add-ons are always shown as official (they are our curated packages).
+interface TrustBadgesProps {
+    entry: AddOnEntry;
+}
+function TrustBadges({ entry }: TrustBadgesProps) {
+    const isOfficial = entry.is_official || entry.tier === "CORE";
+    const isVerified = entry.is_verified_publisher || entry.tier === "CORE";
+    const isSigned   = entry.is_signed || !!entry.chart_digest;
+
+    if (!isOfficial && !isVerified && !isSigned) return null;
+
+    return (
+        <TooltipProvider>
+            <div className="flex items-center gap-1.5 flex-wrap">
+                {isOfficial && (
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-blue-50 dark:bg-blue-900/25 border border-blue-200 dark:border-blue-800/50 cursor-help">
+                                <Building2 className="h-3 w-3 text-blue-600 dark:text-blue-400 shrink-0" />
+                                <span className="text-[10px] font-bold text-blue-700 dark:text-blue-300 leading-none">Official</span>
+                            </div>
+                        </TooltipTrigger>
+                        <TooltipContent side="top" className="text-[11px]">
+                            Officially maintained by the project publisher
+                        </TooltipContent>
+                    </Tooltip>
+                )}
+                {isVerified && (
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-900/25 border border-emerald-200 dark:border-emerald-800/50 cursor-help">
+                                <BadgeCheck className="h-3 w-3 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                                <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-300 leading-none">Verified</span>
+                            </div>
+                        </TooltipTrigger>
+                        <TooltipContent side="top" className="text-[11px]">
+                            Publisher identity verified by Artifact Hub
+                        </TooltipContent>
+                    </Tooltip>
+                )}
+                {isSigned && (
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-violet-50 dark:bg-violet-900/25 border border-violet-200 dark:border-violet-800/50 cursor-help">
+                                <KeyRound className="h-3 w-3 text-violet-600 dark:text-violet-400 shrink-0" />
+                                <span className="text-[10px] font-bold text-violet-700 dark:text-violet-300 leading-none">Signed</span>
+                            </div>
+                        </TooltipTrigger>
+                        <TooltipContent side="top" className="text-[11px]">
+                            Chart artifact is cryptographically signed
+                        </TooltipContent>
+                    </Tooltip>
+                )}
+            </div>
+        </TooltipProvider>
+    );
+}
+
 // ─── Extract short maintainer label ──────────────────────────────────────────
 function extractMaintainer(entry: AddOnEntry): string | null {
     if (entry.maintainer) return entry.maintainer;
@@ -186,30 +247,39 @@ export function AddOnCard({
                             {entry.display_name}
                         </h3>
 
-                        {/* Version · Maintainer */}
-                        <div className="flex items-center gap-1.5 mt-1.5 text-[12px] text-muted-foreground">
+                        {/* Publisher row: maintainer + stars */}
+                        <div className="flex items-center gap-1.5 mt-1 text-[12px] text-muted-foreground">
+                            {maintainer && (
+                                <span className="flex items-center gap-1 truncate" title={maintainer}>
+                                    <Globe className="h-3 w-3 shrink-0 opacity-60" />
+                                    <span className="truncate">{maintainer}</span>
+                                </span>
+                            )}
+                            {maintainer && versionLabel && (
+                                <span className="text-border shrink-0">·</span>
+                            )}
                             {versionLabel && (
                                 <span className="font-mono font-medium text-foreground/60 shrink-0">
                                     v{versionLabel.replace(/^v/, "")}
                                 </span>
                             )}
-                            {maintainer && versionLabel && (
-                                <span className="text-border">·</span>
-                            )}
-                            {maintainer && (
-                                <span className="truncate" title={maintainer}>{maintainer}</span>
+                            {typeof entry.stars === "number" && entry.stars > 0 && (
+                                <>
+                                    <span className="text-border shrink-0">·</span>
+                                    <span className="flex items-center gap-0.5 shrink-0" title="Artifact Hub stars">
+                                        <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
+                                        <span className="text-[11px] font-medium">
+                                            {entry.stars >= 1000 ? `${(entry.stars / 1000).toFixed(1)}k` : entry.stars}
+                                        </span>
+                                    </span>
+                                </>
                             )}
                         </div>
 
-                        {/* Tier badge + stars */}
+                        {/* Trust badges + tier */}
                         <div className="mt-2 flex items-center gap-2 flex-wrap">
                             <TierBadge tier={entry.tier} />
-                            {typeof entry.stars === "number" && entry.stars > 0 && (
-                                <span className="flex items-center gap-0.5 text-[11px] text-muted-foreground font-medium" title="Artifact Hub stars">
-                                    <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
-                                    {entry.stars >= 1000 ? `${(entry.stars / 1000).toFixed(1)}k` : entry.stars}
-                                </span>
-                            )}
+                            <TrustBadges entry={entry} />
                         </div>
                     </div>
 

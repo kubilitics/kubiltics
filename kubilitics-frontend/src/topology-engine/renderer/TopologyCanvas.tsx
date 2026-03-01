@@ -84,6 +84,10 @@ export const TopologyCanvas = forwardRef<TopologyCanvasRef, TopologyCanvasProps>
   const cyRef = useRef<Core | null>(null);
   const minimapRef = useRef<HTMLDivElement>(null);
   const [isReady, setIsReady] = useState(false);
+  // Virtual scrollbar state: tracks graph extent vs viewport for vertical panning
+  const [scrollInfo, setScrollInfo] = useState<{ thumbRatio: number; thumbTop: number } | null>(null);
+  const scrollTrackRef = useRef<HTMLDivElement>(null);
+  const isDraggingScroll = useRef(false);
   const trafficAnimRef = useRef<number | null>(null);
   const onContextMenuRef = useRef(onContextMenu);
   onContextMenuRef.current = onContextMenu;
@@ -190,9 +194,24 @@ export const TopologyCanvas = forwardRef<TopologyCanvasRef, TopologyCanvasProps>
             node.addClass('current');
           }
         } else {
+          // Fit to width for readable nodes; allow vertical overflow + scrollbar
           cy.fit(undefined, 50);
+          const fitAllZoom = cy.zoom();
+          const bb = cy.elements().boundingBox();
+          const cw = containerRef.current?.clientWidth ?? 800;
+          const pad = 50;
+          const zoomW = (cw - pad * 2) / bb.w;
+          // Use fit-to-width when it yields noticeably larger (more readable) nodes
+          if (zoomW > fitAllZoom * 1.1) {
+            cy.zoom(zoomW);
+            cy.pan({
+              x: -bb.x1 * zoomW + pad,
+              y: -bb.y1 * zoomW + pad,
+            });
+          }
         }
         updateMinimap();
+        updateScrollbar();
       };
 
       if (nodeCount > ELK_NODE_CAP) {
@@ -529,6 +548,82 @@ export const TopologyCanvas = forwardRef<TopologyCanvasRef, TopologyCanvasProps>
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [onNodeSelect]);
 
+  // Update the virtual scrollbar position based on Cytoscape viewport vs graph extent
+  const updateScrollbar = useCallback(() => {
+    if (!cyRef.current) { setScrollInfo(null); return; }
+    const cy = cyRef.current;
+    const bb = cy.elements().boundingBox();
+    if (!bb || bb.h === 0) { setScrollInfo(null); return; }
+    const ext = cy.extent();
+    const zoom = cy.zoom();
+    const graphH = bb.h * zoom;
+    const viewH = ext.h * zoom;
+    if (graphH <= viewH * 1.05) { setScrollInfo(null); return; } // graph fits, no scrollbar needed
+    const thumbRatio = Math.min(viewH / graphH, 1);
+    const scrollRange = graphH - viewH;
+    const currentOffset = (ext.y1 - bb.y1) * zoom;
+    const thumbTop = scrollRange > 0 ? currentOffset / scrollRange : 0;
+    setScrollInfo({ thumbRatio, thumbTop: Math.max(0, Math.min(1, thumbTop)) });
+  }, []);
+
+  // Sync scrollbar on viewport changes
+  useEffect(() => {
+    if (!cyRef.current || !isReady) return;
+    const cy = cyRef.current;
+    const handler = () => requestAnimationFrame(updateScrollbar);
+    cy.on('viewport', handler);
+    cy.on('layoutstop', handler);
+    return () => { cy.off('viewport', handler); cy.off('layoutstop', handler); };
+  }, [isReady, updateScrollbar]);
+
+  // Wheel on canvas → vertical pan (not zoom) so user can scroll through topology
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container || !cyRef.current) return;
+    const cy = cyRef.current;
+    const handleWheel = (e: WheelEvent) => {
+      // Only intercept vertical scroll; let horizontal and pinch-zoom (ctrl/meta) through
+      if (Math.abs(e.deltaY) < Math.abs(e.deltaX) || e.ctrlKey || e.metaKey) return;
+      e.preventDefault();
+      e.stopPropagation(); // prevent Cytoscape from zooming
+      const pan = cy.pan();
+      cy.pan({ x: pan.x, y: pan.y - e.deltaY });
+    };
+    // Use capture phase so we intercept before Cytoscape's internal wheel-zoom handler
+    container.addEventListener('wheel', handleWheel, { passive: false, capture: true });
+    return () => container.removeEventListener('wheel', handleWheel, { capture: true });
+  }, [isReady]);
+
+  // Scrollbar drag handler
+  const handleScrollbarMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    isDraggingScroll.current = true;
+    const track = scrollTrackRef.current;
+    if (!track || !cyRef.current) return;
+    const cy = cyRef.current;
+    const bb = cy.elements().boundingBox();
+    const trackRect = track.getBoundingClientRect();
+    const trackH = trackRect.height;
+
+    const onMove = (me: MouseEvent) => {
+      if (!isDraggingScroll.current) return;
+      const relY = Math.max(0, Math.min(1, (me.clientY - trackRect.top) / trackH));
+      const zoom = cy.zoom();
+      const ext = cy.extent();
+      const targetY = bb.y1 + relY * (bb.h - ext.h / zoom);
+      cy.pan({ x: cy.pan().x, y: -(targetY * zoom) + (containerRef.current?.clientHeight || 0) / 2 });
+    };
+    const onUp = () => {
+      isDraggingScroll.current = false;
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+    // Jump to clicked position immediately
+    onMove(e.nativeEvent);
+  }, []);
+
   return (
     <div className={cn('relative w-full h-full rounded-xl overflow-hidden border border-border', className)}
          style={{ background: CANVAS_BG }}>
@@ -539,6 +634,23 @@ export const TopologyCanvas = forwardRef<TopologyCanvasRef, TopologyCanvasProps>
         aria-label="Kubernetes topology graph"
         tabIndex={0}
       />
+
+      {/* Virtual vertical scrollbar — right edge */}
+      {scrollInfo && (
+        <div
+          ref={scrollTrackRef}
+          className="absolute top-2 right-1 bottom-2 w-2.5 rounded-full bg-black/10 cursor-pointer z-10"
+          onMouseDown={handleScrollbarMouseDown}
+        >
+          <div
+            className="absolute w-full rounded-full bg-muted-foreground/50 hover:bg-muted-foreground/70 transition-colors min-h-[24px]"
+            style={{
+              top: `${scrollInfo.thumbTop * (1 - scrollInfo.thumbRatio) * 100}%`,
+              height: `${Math.max(scrollInfo.thumbRatio * 100, 5)}%`,
+            }}
+          />
+        </div>
+      )}
 
       {/* Minimap (click to jump) */}
       <div

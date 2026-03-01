@@ -29,6 +29,7 @@ import {
   Network,
   Settings,
   Search,
+  ChevronDown,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -38,8 +39,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Progress } from '@/components/ui/progress';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
 import { downloadResourceJson } from '@/lib/exportUtils';
+import { cn } from '@/lib/utils';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import {
   ResourceDetailLayout,
   ResourceOverviewMetadata,
@@ -63,7 +71,7 @@ import {
 } from '@/components/resources';
 import { useResourceDetail, useResourceEvents } from '@/hooks/useK8sResourceDetail';
 import { useDeleteK8sResource, useUpdateK8sResource, usePatchK8sResource, useK8sResourceList, calculateAge, type KubernetesResource } from '@/hooks/useKubernetes';
-import { AgeCell } from '@/components/list';
+import { AgeCell, ListPagination, PAGE_SIZE_OPTIONS } from '@/components/list';
 import { normalizeKindForTopology } from '@/utils/resourceKindMapper';
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
 import { Breadcrumbs, useDetailBreadcrumbs } from '@/components/layout/Breadcrumbs';
@@ -72,6 +80,7 @@ import { useConnectionStatus } from '@/hooks/useConnectionStatus';
 import { useActiveClusterId } from '@/hooks/useActiveClusterId';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getDeploymentRolloutHistory, postDeploymentRollback, BackendApiError, getResourceEvents, getDeploymentMetrics, type RolloutHistoryRevision, type BackendEvent } from '@/services/backendApiClient';
+import { normalizeError, notifyError, notifySuccess } from '@/lib/notificationFormatter';
 
 function formatRolloutDuration(seconds: number | undefined): string {
   if (seconds == null || seconds <= 0) return '—';
@@ -281,6 +290,42 @@ export default function DeploymentDetail() {
     return deploymentPods.filter((pod) => (pod.metadata?.name ?? '').toLowerCase().includes(q) || ((pod.spec as { nodeName?: string })?.nodeName ?? '').toLowerCase().includes(q));
   }, [deploymentPods, podsTabSearch]);
 
+  // Local pagination for Pods tab
+  const [podsPageSize, setPodsPageSize] = useState(10);
+  const [podsPageIndex, setPodsPageIndex] = useState(0);
+
+  const totalDeploymentPods = deploymentPodsFiltered.length;
+  const podsTotalPages = Math.max(1, Math.ceil(totalDeploymentPods / podsPageSize));
+  const safePodsPageIndex = Math.min(podsPageIndex, podsTotalPages - 1);
+  const podsStart = safePodsPageIndex * podsPageSize;
+  const deploymentPodsPage = useMemo(
+    () => deploymentPodsFiltered.slice(podsStart, podsStart + podsPageSize),
+    [deploymentPodsFiltered, podsStart, podsPageSize]
+  );
+
+  useEffect(() => {
+    if (safePodsPageIndex !== podsPageIndex) setPodsPageIndex(safePodsPageIndex);
+  }, [safePodsPageIndex, podsPageIndex]);
+
+  const handlePodsPageSizeChange = (size: number) => {
+    setPodsPageSize(size);
+    setPodsPageIndex(0);
+  };
+
+  const podsPagination = {
+    rangeLabel:
+      totalDeploymentPods > 0
+        ? `Showing ${podsStart + 1}–${Math.min(podsStart + podsPageSize, totalDeploymentPods)} of ${totalDeploymentPods}`
+        : 'No pods',
+    hasPrev: safePodsPageIndex > 0,
+    hasNext: podsStart + podsPageSize < totalDeploymentPods,
+    onPrev: () => setPodsPageIndex((i) => Math.max(0, i - 1)),
+    onNext: () => setPodsPageIndex((i) => Math.min(podsTotalPages - 1, i + 1)),
+    currentPage: safePodsPageIndex + 1,
+    totalPages: Math.max(1, podsTotalPages),
+    onPageChange: (p: number) => setPodsPageIndex(Math.max(0, Math.min(p - 1, podsTotalPages - 1))),
+  };
+
   const handleDownloadYaml = useCallback(() => {
     const blob = new Blob([yaml], { type: 'text/yaml' });
     const url = URL.createObjectURL(blob);
@@ -318,13 +363,28 @@ export default function DeploymentDetail() {
     }
     try {
       await patchDeployment.mutateAsync({ name, namespace, patch: { spec: { replicas } } });
-      toast.success(`Scaled ${name} to ${replicas} replicas`);
+      notifySuccess(
+        {
+          action: 'scale',
+          resourceType: 'deployments',
+          resourceName: name,
+          namespace,
+        },
+        {
+          description: `New replica count: ${replicas}.`,
+        }
+      );
       refetch();
       if (clusterId && namespace && name) {
         queryClient.invalidateQueries({ queryKey: ['backend', 'deployment-rollout-history', clusterId, namespace, name] });
       }
     } catch (err: any) {
-      toast.error(err?.message ?? 'Failed to scale');
+      notifyError(err, {
+        action: 'scale',
+        resourceType: 'deployments',
+        resourceName: name,
+        namespace,
+      });
       throw err;
     }
   }, [isConnected, name, namespace, clusterId, patchDeployment, refetch, queryClient]);
@@ -354,13 +414,23 @@ export default function DeploymentDetail() {
         },
       };
       await patchDeployment.mutateAsync({ name, namespace, patch });
-      toast.success(`Rollout restart initiated for ${name}`);
+      notifySuccess({
+        action: 'restart',
+        resourceType: 'deployments',
+        resourceName: name,
+        namespace,
+      });
       refetch();
       if (clusterId && namespace && name) {
         queryClient.invalidateQueries({ queryKey: ['backend', 'deployment-rollout-history', clusterId, namespace, name] });
       }
     } catch (err: any) {
-      toast.error(err?.message ?? 'Failed to restart');
+      notifyError(err, {
+        action: 'restart',
+        resourceType: 'deployments',
+        resourceName: name,
+        namespace,
+      });
       throw err;
     }
   }, [isConnected, name, namespace, clusterId, patchDeployment, refetch, queryClient]);
@@ -382,14 +452,23 @@ export default function DeploymentDetail() {
     const backendBase = getEffectiveBackendBaseUrl(useBackendConfigStore.getState().backendBaseUrl);
     try {
       await postDeploymentRollback(backendBase, clusterId, namespace, name, { revision });
-      toast.success(`Rolled back ${name} to revision ${revision}`);
+      notifySuccess({
+        action: 'rollback',
+        resourceType: 'deployments',
+        resourceName: name,
+        namespace,
+      });
       refetch();
       if (clusterId && namespace && name) {
         queryClient.invalidateQueries({ queryKey: ['backend', 'deployment-rollout-history', clusterId, namespace, name] });
       }
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : String(err);
-      toast.error(message ?? 'Failed to rollback');
+      notifyError(err, {
+        action: 'rollback',
+        resourceType: 'deployments',
+        resourceName: name,
+        namespace,
+      });
       throw err;
     }
   }, [isConnected, name, namespace, clusterId, refetch, queryClient]);
@@ -401,10 +480,20 @@ export default function DeploymentDetail() {
     }
     try {
       await updateDeployment.mutateAsync({ name, yaml: newYaml, namespace });
-      toast.success('Deployment updated successfully');
+      notifySuccess({
+        action: 'update',
+        resourceType: 'deployments',
+        resourceName: name,
+        namespace,
+      });
       refetch();
     } catch (error: any) {
-      toast.error(`Failed to update: ${error.message}`);
+      notifyError(error, {
+        action: 'update',
+        resourceType: 'deployments',
+        resourceName: name,
+        namespace,
+      });
       throw error;
     }
   }, [isConnected, name, namespace, updateDeployment, refetch]);
@@ -428,7 +517,34 @@ export default function DeploymentDetail() {
         <Card>
           <CardContent className="pt-6">
             <p className="text-muted-foreground">Deployment not found.</p>
-            {error && <p className="text-sm text-destructive mt-2">{String(error)}</p>}
+            {error && (() => {
+              const normalized = normalizeError(error, {
+                action: 'load',
+                resourceType: 'deployments',
+                resourceName: name,
+                namespace,
+              });
+              return (
+                <div className="mt-2 space-y-1">
+                  <p className="text-sm text-destructive">{normalized.description}</p>
+                  {normalized.details && (
+                    <button
+                      type="button"
+                      className="text-xs text-muted-foreground underline"
+                      onClick={() => {
+                        try {
+                          void navigator.clipboard.writeText(normalized.details!);
+                        } catch {
+                          // ignore
+                        }
+                      }}
+                    >
+                      Copy technical details
+                    </button>
+                  )}
+                </div>
+              );
+            })()}
             <Button variant="outline" className="mt-4" onClick={() => navigate('/deployments')}>
               Back to Deployments
             </Button>
@@ -897,57 +1013,95 @@ export default function DeploymentDetail() {
             ) : deploymentPodsFiltered.length === 0 ? (
               <p className="text-sm text-muted-foreground">No pods match the search.</p>
             ) : (
-              <div className="rounded-lg border overflow-x-auto">
-                <table className="w-full text-sm min-w-[700px]">
-                  <thead className="bg-muted/50">
-                    <tr>
-                      <th className="text-left p-3 font-medium">Name</th>
-                      <th className="text-left p-3 font-medium">Status</th>
-                      <th className="text-left p-3 font-medium">Ready</th>
-                      <th className="text-left p-3 font-medium">Restarts</th>
-                      <th className="text-left p-3 font-medium">Node</th>
-                      <th className="text-left p-3 font-medium">CPU</th>
-                      <th className="text-left p-3 font-medium">Memory</th>
-                      <th className="text-left p-3 font-medium">Age</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {deploymentPodsFiltered.map((pod) => {
-                      const podName = pod.metadata?.name ?? '';
-                      const podNs = pod.metadata?.namespace ?? namespace ?? '';
-                      const status = pod.status as { phase?: string; containerStatuses?: Array<{ ready?: boolean; restartCount?: number }> } | undefined;
-                      const phase = status?.phase ?? '–';
-                      const containerStatuses = status?.containerStatuses ?? [];
-                      const readyCount = containerStatuses.filter((c) => c.ready).length;
-                      const totalContainers = containerStatuses.length || 1;
-                      const readyStr = `${readyCount}/${totalContainers}`;
-                      const restarts = containerStatuses.reduce((sum, c) => sum + (c.restartCount ?? 0), 0);
-                      const nodeName = (pod.spec as { nodeName?: string } | undefined)?.nodeName ?? '–';
-                      const metrics = podMetricsByName[podName];
-                      return (
-                        <tr
-                          key={podName}
-                          className="border-t hover:bg-muted/20 cursor-pointer"
-                          onClick={() => navigate(`/pods/${podNs}/${podName}`)}
-                        >
-                          <td className="p-3">
-                            <Link to={`/pods/${podNs}/${podName}`} className="text-primary hover:underline font-medium" onClick={(e) => e.stopPropagation()}>
-                              {podName}
-                            </Link>
-                          </td>
-                          <td className="p-3"><Badge variant={phase === 'Running' ? 'default' : 'secondary'} className="text-xs">{phase}</Badge></td>
-                          <td className="p-3 font-mono text-xs">{readyStr}</td>
-                          <td className="p-3 font-mono text-xs">{restarts}</td>
-                          <td className="p-3 font-mono text-xs truncate max-w-[140px]" title={nodeName}>{nodeName}</td>
-                          <td className="p-3 font-mono text-xs text-muted-foreground">{metrics?.cpu ?? '–'}</td>
-                          <td className="p-3 font-mono text-xs text-muted-foreground">{metrics?.memory ?? '–'}</td>
-                          <td className="p-3"><AgeCell age={pod.metadata?.creationTimestamp ? calculateAge(pod.metadata.creationTimestamp) : '–'} timestamp={pod.metadata?.creationTimestamp} /></td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+              <>
+                <div className="rounded-lg border overflow-x-auto">
+                  <table className="w-full text-sm min-w-[700px]">
+                    <thead className="bg-muted/50">
+                      <tr>
+                        <th className="text-left p-3 font-medium">Name</th>
+                        <th className="text-left p-3 font-medium">Status</th>
+                        <th className="text-left p-3 font-medium">Ready</th>
+                        <th className="text-left p-3 font-medium">Restarts</th>
+                        <th className="text-left p-3 font-medium">Node</th>
+                        <th className="text-left p-3 font-medium">CPU</th>
+                        <th className="text-left p-3 font-medium">Memory</th>
+                        <th className="text-left p-3 font-medium">Age</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {deploymentPodsPage.map((pod) => {
+                        const podName = pod.metadata?.name ?? '';
+                        const podNs = pod.metadata?.namespace ?? namespace ?? '';
+                        const status = pod.status as { phase?: string; containerStatuses?: Array<{ ready?: boolean; restartCount?: number }> } | undefined;
+                        const phase = status?.phase ?? '–';
+                        const containerStatuses = status?.containerStatuses ?? [];
+                        const readyCount = containerStatuses.filter((c) => c.ready).length;
+                        const totalContainers = containerStatuses.length || 1;
+                        const readyStr = `${readyCount}/${totalContainers}`;
+                        const restarts = containerStatuses.reduce((sum, c) => sum + (c.restartCount ?? 0), 0);
+                        const nodeName = (pod.spec as { nodeName?: string } | undefined)?.nodeName ?? '–';
+                        const metrics = podMetricsByName[podName];
+                        return (
+                          <tr
+                            key={podName}
+                            className="border-t hover:bg-muted/20 cursor-pointer"
+                            onClick={() => navigate(`/pods/${podNs}/${podName}`)}
+                          >
+                            <td className="p-3">
+                              <Link to={`/pods/${podNs}/${podName}`} className="text-primary hover:underline font-medium" onClick={(e) => e.stopPropagation()}>
+                                {podName}
+                              </Link>
+                            </td>
+                            <td className="p-3"><Badge variant={phase === 'Running' ? 'default' : 'secondary'} className="text-xs">{phase}</Badge></td>
+                            <td className="p-3 font-mono text-xs">{readyStr}</td>
+                            <td className="p-3 font-mono text-xs">{restarts}</td>
+                            <td className="p-3 font-mono text-xs truncate max-w-[140px]" title={nodeName}>{nodeName}</td>
+                            <td className="p-3 font-mono text-xs text-muted-foreground">{metrics?.cpu ?? '–'}</td>
+                            <td className="p-3 font-mono text-xs text-muted-foreground">{metrics?.memory ?? '–'}</td>
+                            <td className="p-3"><AgeCell age={pod.metadata?.creationTimestamp ? calculateAge(pod.metadata.creationTimestamp) : '–'} timestamp={pod.metadata?.creationTimestamp} /></td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+                <div className="flex items-center justify-between flex-wrap gap-2 pt-2">
+                  <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                    <span>{podsPagination.rangeLabel}</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="outline" size="sm" className="gap-2">
+                          {podsPageSize} per page
+                          <ChevronDown className="h-4 w-4 opacity-50" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="start">
+                        {PAGE_SIZE_OPTIONS.map((size) => (
+                          <DropdownMenuItem
+                            key={size}
+                            onClick={() => handlePodsPageSizeChange(size)}
+                            className={cn(podsPageSize === size && 'bg-accent')}
+                          >
+                            {size} per page
+                          </DropdownMenuItem>
+                        ))}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                    <ListPagination
+                      hasPrev={podsPagination.hasPrev}
+                      hasNext={podsPagination.hasNext}
+                      onPrev={podsPagination.onPrev}
+                      onNext={podsPagination.onNext}
+                      rangeLabel={undefined}
+                      currentPage={podsPagination.currentPage}
+                      totalPages={podsPagination.totalPages}
+                      onPageChange={podsPagination.onPageChange}
+                    />
+                  </div>
+                </div>
+              </>
             )}
           </div>
         </SectionCard>
@@ -1121,7 +1275,7 @@ export default function DeploymentDetail() {
       content: (
         <ActionsSection actions={[
           { icon: Scale, label: 'Scale Deployment', description: 'Adjust the number of replicas', onClick: () => setShowScaleDialog(true) },
-          { icon: RotateCcw, label: 'Rollout Restart', description: 'Trigger a rolling restart', onClick: () => setShowRolloutDialog(true) },
+          { icon: RotateCcw, label: 'Rollout Restart', description: 'Trigger a rolling restart', variant: 'warning', onClick: () => setShowRolloutDialog(true) },
           { icon: History, label: 'Rollout History', description: 'View and manage revisions', onClick: () => setShowRolloutDialog(true) },
           { icon: Download, label: 'Download YAML', description: 'Export deployment definition', onClick: handleDownloadYaml },
           { icon: Download, label: 'Export as JSON', description: 'Export deployment as JSON', onClick: handleDownloadJson },

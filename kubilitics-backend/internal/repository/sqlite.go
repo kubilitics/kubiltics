@@ -584,8 +584,8 @@ func (r *SQLiteRepository) CreateAPIKey(ctx context.Context, key *models.APIKey)
 	if key.ID == "" {
 		key.ID = uuid.New().String()
 	}
-	query := `INSERT INTO api_keys (id, user_id, key_hash, name, last_used, expires_at, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)`
-	_, err := r.db.ExecContext(ctx, query, key.ID, key.UserID, key.KeyHash, key.Name, key.LastUsed, key.ExpiresAt, key.CreatedAt)
+	query := `INSERT INTO api_keys (id, user_id, key_hash, key_prefix, name, last_used, expires_at, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+	_, err := r.db.ExecContext(ctx, query, key.ID, key.UserID, key.KeyHash, key.KeyPrefix, key.Name, key.LastUsed, key.ExpiresAt, key.CreatedAt)
 	return err
 }
 
@@ -618,22 +618,42 @@ func (r *SQLiteRepository) DeleteAPIKey(ctx context.Context, keyID string) error
 	return err
 }
 
-// FindAPIKeyByPlaintext finds an API key by checking all stored hashes against the plaintext (BE-AUTH-003).
-// This is inefficient but secure. In production, consider optimizing with a lookup table.
+// FindAPIKeyByPlaintext finds an API key by prefix-indexed lookup then bcrypt verification (BE-AUTH-003).
+// Uses key_prefix (SHA-256 prefix) for O(1) DB lookup, then bcrypt-verifies the match.
+// Falls back to full-table scan for legacy keys without a prefix (created before migration 041).
 func (r *SQLiteRepository) FindAPIKeyByPlaintext(ctx context.Context, plaintextKey string) (*models.APIKey, error) {
-	// Get all API keys (this is inefficient but works for MVP)
-	// In production, we'd want a better lookup mechanism
-	var allKeys []*models.APIKey
-	err := r.db.SelectContext(ctx, &allKeys, `SELECT id, user_id, key_hash, name, last_used, expires_at, created_at FROM api_keys`)
+	prefix := auth.APIKeyPrefix(plaintextKey)
+
+	// Fast path: query by prefix index (O(1) with idx_api_keys_prefix)
+	var candidates []*models.APIKey
+	err := r.db.SelectContext(ctx, &candidates,
+		`SELECT id, user_id, key_hash, key_prefix, name, last_used, expires_at, created_at FROM api_keys WHERE key_prefix = ?`, prefix)
 	if err != nil {
 		return nil, err
 	}
-	// Check each hash against the plaintext
-	for _, key := range allKeys {
+	for _, key := range candidates {
 		if err := auth.CheckAPIKey(key.KeyHash, plaintextKey); err == nil {
 			return key, nil
 		}
 	}
+
+	// Slow path: legacy keys with empty prefix (created before migration 041).
+	// Check only un-prefixed keys to avoid re-checking prefixed ones.
+	var legacy []*models.APIKey
+	err = r.db.SelectContext(ctx, &legacy,
+		`SELECT id, user_id, key_hash, key_prefix, name, last_used, expires_at, created_at FROM api_keys WHERE key_prefix = ''`)
+	if err != nil {
+		return nil, err
+	}
+	for _, key := range legacy {
+		if err := auth.CheckAPIKey(key.KeyHash, plaintextKey); err == nil {
+			// Backfill prefix for future fast lookups
+			_, _ = r.db.ExecContext(ctx, `UPDATE api_keys SET key_prefix = ? WHERE id = ?`, prefix, key.ID)
+			key.KeyPrefix = prefix
+			return key, nil
+		}
+	}
+
 	return nil, sql.ErrNoRows
 }
 

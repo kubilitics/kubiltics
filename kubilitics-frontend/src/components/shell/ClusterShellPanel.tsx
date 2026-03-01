@@ -95,8 +95,8 @@ export function ClusterShellPanel({
   });
   const [kcliStreamMode, setKcliStreamMode] = useState<'ui' | 'shell'>(() => {
     const saved = typeof window !== 'undefined' ? localStorage.getItem(KCLI_STREAM_MODE_STORAGE_KEY) : null;
-    // Default to 'shell' for reliable kcli command output; 'ui' (Bubble Tea TUI) is opt-in
-    return saved === 'ui' ? 'ui' : 'shell';
+    // Default to 'ui' (Bubble Tea k9s-like TUI) for the best out-of-box experience
+    return saved === 'shell' ? 'shell' : 'ui';
   });
   const [reconnectNonce, setReconnectNonce] = useState(0);
   const [isReconnecting, setIsReconnecting] = useState(false);
@@ -319,6 +319,19 @@ export function ClusterShellPanel({
     focusAndFit();
 
     term.onData((data) => {
+      // In UI mode (Bubble Tea TUI), send all input directly to the PTY without
+      // interception. Tab completion, line buffer tracking, and state sync are
+      // shell-mode concerns that interfere with Bubble Tea's own input handling.
+      const currentMode = localStorage.getItem(KCLI_STREAM_MODE_STORAGE_KEY);
+      const currentEngine = localStorage.getItem(MODE_STORAGE_KEY);
+      const isUIMode = currentEngine !== 'kubectl' && currentMode !== 'shell';
+
+      if (isUIMode) {
+        sendStdinRef.current(data);
+        return;
+      }
+
+      // Shell mode: intercept Tab for server-side completion
       if (data === '\t') {
         void (async () => {
           const handled = await requestServerCompletionRef.current();
@@ -596,6 +609,8 @@ export function ClusterShellPanel({
     if (!open || !connected) return;
     if (!activeNamespace || activeNamespace === 'all') return;
     if (shellStatus?.namespace === activeNamespace) return;
+    // In UI mode, Bubble Tea handles its own namespace switching via :ns command — don't inject shell commands
+    if (engine === 'kcli' && kcliStreamMode === 'ui') return;
     // Use kcli ns for kcli shell mode, kubectl for kubectl mode
     if (engine === 'kcli' && kcliStreamMode === 'shell') {
       sendStdin(`kcli ns ${activeNamespace}\r`);
@@ -673,8 +688,9 @@ export function ClusterShellPanel({
 
   return (
     <div
+      data-shell-panel
       className={cn(
-        'fixed bottom-0 left-0 right-0 z-50 flex flex-col border-t border-border bg-[hsl(221_39%_11%)] shadow-[0_-4px_30px_rgba(0,0,0,0.4)] transition-[height] duration-200 ease-in-out',
+        'fixed bottom-0 left-0 right-0 z-[60] flex flex-col border-t border-border bg-[hsl(221_39%_11%)] shadow-[0_-4px_30px_rgba(0,0,0,0.4)] transition-[height] duration-200 ease-in-out',
         isMaximized && 'h-[calc(100vh-64px)]'
       )}
       style={isMaximized ? {} : { height: heightPx }}

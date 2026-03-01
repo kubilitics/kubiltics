@@ -2,6 +2,7 @@
 package middleware
 
 import (
+	"encoding/json"
 	"net/http"
 	"strings"
 )
@@ -15,6 +16,12 @@ const (
 
 // MaxBodySize returns middleware that limits request body size: applyMax for POST .../apply, standardMax otherwise.
 // Use for methods that may have a body (POST, PUT, PATCH). GET/HEAD/DELETE are not limited.
+//
+// Two-layer enforcement:
+//  1. Content-Length header check: rejects oversized requests immediately with 413, before reading any body data.
+//     This catches clients that declare their body size upfront and prevents wasted I/O.
+//  2. MaxBytesReader wrapper: safety net for chunked transfers (no Content-Length) and clients that
+//     send a misleading Content-Length. Enforces the limit during actual body reads.
 func MaxBodySize(standardMax, applyMax int64) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -27,6 +34,16 @@ func MaxBodySize(standardMax, applyMax int64) func(http.Handler) http.Handler {
 				strings.HasSuffix(strings.TrimSuffix(r.URL.Path, "/"), "/apply") {
 				max = applyMax
 			}
+			// Layer 1: Reject early if Content-Length exceeds limit (avoids reading body).
+			if r.ContentLength > max {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusRequestEntityTooLarge)
+				json.NewEncoder(w).Encode(map[string]string{
+					"error": "Request body too large",
+				})
+				return
+			}
+			// Layer 2: Wrap body reader as safety net for chunked transfers or mismatched Content-Length.
 			r.Body = http.MaxBytesReader(w, r.Body, max)
 			next.ServeHTTP(w, r)
 		})

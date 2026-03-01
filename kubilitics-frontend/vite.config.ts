@@ -1,8 +1,18 @@
-import { defineConfig, Plugin } from "vite";
+import { defineConfig, createLogger, Plugin } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
 
 const isTauriBuild = process.env.TAURI_BUILD === 'true';
+
+// Suppress noisy "ws proxy socket error: write EPIPE" messages that flood the
+// console when the backend isn't running. These are harmless in dev — the
+// frontend handles reconnection itself.
+const logger = createLogger();
+const originalError = logger.error.bind(logger);
+logger.error = (msg, options) => {
+  if (typeof msg === 'string' && msg.includes('ws proxy socket error')) return;
+  originalError(msg, options);
+};
 
 // Tauri's tauri:// custom-protocol does not send CORS headers for its own assets.
 // Vite emits <script type="module" crossorigin> and <link crossorigin> tags which
@@ -49,6 +59,7 @@ function removeCrossOriginPlugin(): Plugin {
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
+  customLogger: logger,
   // Use relative paths for Tauri desktop builds (absolute paths don't work with tauri:// protocol)
   base: isTauriBuild ? './' : '/',
   // Bake build-time constants into the JS bundle so they are available at runtime
@@ -80,10 +91,14 @@ export default defineConfig(({ mode }) => ({
         target,
         changeOrigin: true,
         ...(path === "/api" ? { ws: true } : {}),
-        configure: (proxy: { on: (ev: string, fn: () => void) => void }) => {
-          proxy.on("error", () => {
-            // Suppress proxy error logging (e.g. ECONNREFUSED when backend is down).
-            // Frontend backs off polling when backend is unreachable; start backend with: make restart
+        configure: (proxy: any) => {
+          // Suppress ECONNREFUSED / EPIPE proxy errors — frontend handles reconnect itself.
+          proxy.on("error", () => {});
+          // Suppress "ws proxy socket error: write EPIPE" — emitted when the browser
+          // closes the WebSocket connection (e.g. navigating away) while the backend is
+          // still writing. Harmless in dev; backend sees a closed socket and stops writing.
+          proxy.on("proxyReqWs", (_proxyReq: any, _req: any, socket: any) => {
+            socket.on("error", () => {});
           });
         },
       });

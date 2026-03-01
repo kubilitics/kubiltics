@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"context"
+	"log"
 	"net/http"
 
 	"github.com/gorilla/mux"
@@ -16,9 +17,7 @@ func RequireRole(repo *repository.SQLiteRepository, minRole string) func(http.Ha
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			claims := auth.ClaimsFromContext(r.Context())
 			if claims == nil {
-				w.Header().Set("Content-Type", "application/json")
-				w.WriteHeader(http.StatusUnauthorized)
-				_, _ = w.Write([]byte(`{"error":"Authentication required"}`))
+				writeJSONError(w, http.StatusUnauthorized, "Authentication required")
 				return
 			}
 			userRole := claims.Role
@@ -49,9 +48,10 @@ func RequireRole(repo *repository.SQLiteRepository, minRole string) func(http.Ha
 				}
 			}
 			if !auth.HasRole(userRole, minRole) {
-				w.Header().Set("Content-Type", "application/json")
-				w.WriteHeader(http.StatusForbidden)
-				_, _ = w.Write([]byte(`{"error":"Insufficient permissions"}`))
+				// P2-SEC: Log authorization failure with user and required role for audit trail
+				log.Printf("[rbac] DENIED: user=%s role=%s requires=%s for %s %s from %s",
+					claims.Username, userRole, minRole, r.Method, r.URL.Path, r.RemoteAddr)
+				writeJSONError(w, http.StatusForbidden, "Insufficient permissions")
 				return
 			}
 			next.ServeHTTP(w, r)

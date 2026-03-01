@@ -247,10 +247,7 @@ function isPathIn(pathname: string, prefixes: string[]) {
 
 /** Subtle background sync indicator - only shows on initial load, not background refresh */
 function SyncingIndicator({ isLoading, isInitialLoad }: { isLoading: boolean; isInitialLoad: boolean }) {
-  // Only show on initial load, not during background refresh
-  if (!isInitialLoad) return null;
-
-  // Only show for a brief moment on initial load (max 3s)
+  // Hooks must be called unconditionally (Rules of Hooks)
   const [show, setShow] = useState(false);
   useEffect(() => {
     if (isLoading && isInitialLoad) {
@@ -262,7 +259,8 @@ function SyncingIndicator({ isLoading, isInitialLoad }: { isLoading: boolean; is
     }
   }, [isLoading, isInitialLoad]);
 
-  if (!isLoading || !show) return null;
+  // Only show on initial load, not during background refresh
+  if (!isInitialLoad || !isLoading || !show) return null;
 
   // Very subtle indicator - small dot in corner, not prominent banner
   return (
@@ -452,22 +450,6 @@ function SidebarContent({
       <SyncingIndicator isLoading={isLoading} isInitialLoad={isInitialLoad} />
 
       <div className="space-y-5">
-        {/* AI Intelligence — only shown when AI backend is active */}
-        {aiActive && (
-          <NavGroup
-            label="AI Intelligence"
-            sectionId={SECTION_IDS.AI}
-            to="/analytics"
-            icon={Bot}
-            isOpen={openSection === SECTION_IDS.AI}
-            onToggle={(id) => handleSectionToggle(id, true)}
-            isSectionActive={getSectionForPath(pathname) === SECTION_IDS.AI}
-          >
-            <NavItem to="/analytics" icon={BarChart3} label="Analytics Overview" onNavigate={() => handleNavItemClick(SECTION_IDS.AI)} />
-            <NavItem to="/ml-analytics" icon={Brain} label="ML Analytics" onNavigate={() => handleNavItemClick(SECTION_IDS.AI)} />
-          </NavGroup>
-        )}
-
         {/* Workloads */}
         <NavGroup
           label="Workloads"
@@ -647,10 +629,26 @@ export function Sidebar() {
   const pathname = location.pathname;
   const isSettingsActive = pathname.startsWith('/settings');
 
-  // Expand sidebar when navigating to a section route (e.g. Workloads) so user sees full nav
+  // Auto-collapse sidebar on small viewports (< 768px) to prevent overlap
   useEffect(() => {
+    const mql = window.matchMedia('(max-width: 767px)');
+    const handleChange = (e: MediaQueryListEvent | MediaQueryList) => {
+      if (e.matches && !collapsed) {
+        setCollapsed(true);
+      }
+    };
+    // Check on mount
+    handleChange(mql);
+    mql.addEventListener('change', handleChange);
+    return () => mql.removeEventListener('change', handleChange);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Expand sidebar when navigating to a section route (e.g. Workloads) so user sees full nav
+  // Skip auto-expand on mobile viewports to prevent sidebar overlap
+  useEffect(() => {
+    const isMobile = window.matchMedia('(max-width: 767px)').matches;
     const isSectionRoute = SECTION_ROUTES.some((p) => pathname === p || pathname.startsWith(`${p}/`));
-    if (isSectionRoute && collapsed) {
+    if (isSectionRoute && collapsed && !isMobile) {
       setCollapsed(false);
     }
   }, [pathname, collapsed, setCollapsed]);

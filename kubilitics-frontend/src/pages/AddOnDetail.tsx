@@ -5,7 +5,7 @@ import { useAddonMutations } from "@/hooks/useAddonInstall";
 import {
     ChevronLeft, Info, Cpu, Shield,
     Workflow, DollarSign, ExternalLink, AlertTriangle,
-    Settings2, History, Star
+    Settings2, History, Star, Trash2, Package
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -55,6 +55,17 @@ export default function AddOnDetail() {
             </div>
         );
     }
+
+    // Derive real cost and RBAC data — never hardcode estimates
+    const costModel =
+        addon.cost_models?.find(m => m.cluster_tier === 'production') ??
+        addon.cost_models?.find(m => m.cluster_tier === 'staging') ??
+        addon.cost_models?.[0];
+    const hasCostData = !!costModel && costModel.monthly_cost_usd_estimate > 0;
+    const rbacRules = addon.rbac_required ?? [];
+    const clusterScopedCount = rbacRules.filter(
+        r => r.scope?.toLowerCase() === 'cluster'
+    ).length;
 
     const handleUpgrade = async (version: string) => {
         if (!installed) return;
@@ -144,26 +155,32 @@ export default function AddOnDetail() {
                                 <div className="grid md:grid-cols-2 gap-4">
                                     <Card className="bg-muted/30 border-none shadow-none">
                                         <CardContent className="p-4 flex gap-4 items-center">
-                                            <div className="h-10 w-10 rounded-full bg-background flex items-center justify-center border shadow-sm">
+                                            <div className="h-10 w-10 rounded-full bg-background flex items-center justify-center border shadow-sm shrink-0">
                                                 <Shield className="h-5 w-5 text-indigo-500" />
                                             </div>
                                             <div>
                                                 <h4 className="text-sm font-semibold">RBAC Requirements</h4>
                                                 <p className="text-xs text-muted-foreground">
-                                                    Requires RBAC permission groups for operation.
+                                                    {rbacRules.length === 0
+                                                        ? "No additional RBAC rules required."
+                                                        : `${rbacRules.length} rule${rbacRules.length !== 1 ? 's' : ''}${clusterScopedCount > 0 ? ` · ${clusterScopedCount} cluster-scoped` : ' · namespace-scoped'}`
+                                                    }
                                                 </p>
                                             </div>
                                         </CardContent>
                                     </Card>
                                     <Card className="bg-muted/30 border-none shadow-none">
                                         <CardContent className="p-4 flex gap-4 items-center">
-                                            <div className="h-10 w-10 rounded-full bg-background flex items-center justify-center border shadow-sm">
+                                            <div className="h-10 w-10 rounded-full bg-background flex items-center justify-center border shadow-sm shrink-0">
                                                 <Cpu className="h-5 w-5 text-emerald-500" />
                                             </div>
                                             <div>
                                                 <h4 className="text-sm font-semibold">Resource Profile</h4>
                                                 <p className="text-xs text-muted-foreground">
-                                                    Managed resource footprint with automated scaling.
+                                                    {costModel
+                                                        ? `${costModel.cpu_millicores}m CPU · ${costModel.memory_mb >= 1024 ? `${(costModel.memory_mb / 1024).toFixed(1)} Gi` : `${costModel.memory_mb} Mi`} RAM${costModel.storage_gb > 0 ? ` · ${costModel.storage_gb} GB` : ''}`
+                                                        : "No resource profile available."
+                                                    }
                                                 </p>
                                             </div>
                                         </CardContent>
@@ -238,16 +255,30 @@ export default function AddOnDetail() {
 
                                 <Separator />
 
-                                <div className="p-4 rounded-xl bg-blue-50/50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-800/50">
-                                    <div className="flex items-center gap-2 mb-2">
-                                        <DollarSign className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-                                        <span className="text-sm font-semibold">Estimated Cost Impact</span>
+                                {hasCostData ? (
+                                    <div className="p-4 rounded-xl bg-emerald-50/50 dark:bg-emerald-900/10 border border-emerald-100 dark:border-emerald-800/50">
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <DollarSign className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                                            <span className="text-sm font-semibold">Estimated Cost Impact</span>
+                                        </div>
+                                        <div className="flex items-baseline gap-1">
+                                            <span className="text-2xl font-bold text-emerald-700 dark:text-emerald-400">
+                                                +${costModel!.monthly_cost_usd_estimate.toFixed(2)}
+                                            </span>
+                                            <span className="text-xs text-muted-foreground uppercase">/ Month</span>
+                                        </div>
+                                        <p className="text-[10px] text-muted-foreground mt-1 capitalize">
+                                            Based on {costModel!.cluster_tier} tier profile
+                                        </p>
                                     </div>
-                                    <div className="flex items-baseline gap-1">
-                                        <span className="text-2xl font-bold text-emerald-700 dark:text-emerald-400">+$12.50</span>
-                                        <span className="text-xs text-muted-foreground uppercase">/ Month</span>
+                                ) : (
+                                    <div className="p-4 rounded-xl bg-muted/30 border border-muted/60 flex items-center gap-3">
+                                        <Package className="h-4 w-4 text-muted-foreground shrink-0" />
+                                        <p className="text-xs text-muted-foreground">
+                                            Cost data not yet available for this add-on.
+                                        </p>
                                     </div>
-                                </div>
+                                )}
 
                                 <Button
                                     className="w-full py-6 text-base font-bold shadow-md shadow-primary/10 transition-all hover:scale-[1.02]"
@@ -284,7 +315,7 @@ export default function AddOnDetail() {
                         <CardContent className="flex flex-col gap-3">
                             <div className="flex flex-col gap-1">
                                 <span className="text-xs text-muted-foreground">Maintainer</span>
-                                <span className="text-sm font-medium">{addon.maintainer || "Kubilitics Community"}</span>
+                                <span className="text-sm font-medium">{addon.maintainer || "Community"}</span>
                             </div>
                             {addon.home_url && (
                                 <a href={addon.home_url} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-xs text-blue-600 hover:underline text-[10px]">

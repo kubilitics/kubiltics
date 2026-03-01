@@ -298,9 +298,9 @@ func (s *fakeClusterService) GetOverview(clusterID string) (*models.ClusterOverv
 	return nil, false
 }
 
-func (s *fakeClusterService) Subscribe(clusterID string) (chan *models.ClusterOverview, func()) {
+func (s *fakeClusterService) Subscribe(clusterID string) (chan *models.ClusterOverview, func(), error) {
 	ch := make(chan *models.ClusterOverview)
-	return ch, func() { close(ch) }
+	return ch, func() { close(ch) }, nil
 }
 
 func (s *fakeClusterService) ReconnectCluster(ctx context.Context, id string) (*models.Cluster, error) {

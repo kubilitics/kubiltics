@@ -24,6 +24,7 @@ import (
 	"github.com/kubilitics/kubilitics-backend/internal/k8s"
 	"github.com/kubilitics/kubilitics-backend/internal/models"
 	"github.com/kubilitics/kubilitics-backend/internal/repository"
+	"github.com/kubilitics/kubilitics-backend/internal/service"
 )
 
 var errClusterNotFound = errors.New("cluster not found")
@@ -163,8 +164,8 @@ func (m *mockClusterService) GetOverview(clusterID string) (*models.ClusterOverv
 	return nil, false
 }
 
-func (m *mockClusterService) Subscribe(clusterID string) (chan *models.ClusterOverview, func()) {
-	return nil, func() {}
+func (m *mockClusterService) Subscribe(clusterID string) (chan *models.ClusterOverview, func(), error) {
+	return nil, func() {}, nil
 }
 
 func (m *mockClusterService) ReconnectCluster(ctx context.Context, id string) (*models.Cluster, error) {
@@ -552,6 +553,46 @@ func TestHandler_AddCluster_WithKubeconfigPath(t *testing.T) {
 	}
 	if cluster.Context != "test-ctx" {
 		t.Errorf("Expected context 'test-ctx', got '%s'", cluster.Context)
+	}
+}
+
+// Test AddCluster 409 Conflict when cluster limit reached (P1-MC)
+func TestHandler_AddCluster_ClusterLimitReached(t *testing.T) {
+	handler, mockSvc := setupClusterHandlerTest(t)
+	// Set addError to ErrClusterLimitReached
+	mockSvc.addError = &service.ErrClusterLimitReached{Current: 5, Max: 5}
+
+	router := mux.NewRouter()
+	api := router.PathPrefix("/api/v1").Subrouter()
+	SetupRoutes(api, handler)
+
+	reqBody := map[string]string{
+		"kubeconfig_path": "/path/to/kubeconfig",
+		"context":         "new-cluster",
+	}
+	body, _ := json.Marshal(reqBody)
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/clusters", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusConflict {
+		t.Fatalf("Expected status 409, got %d: %s", rec.Code, rec.Body.String())
+	}
+
+	var resp map[string]interface{}
+	if err := json.NewDecoder(rec.Body).Decode(&resp); err != nil {
+		t.Fatalf("Failed to decode response: %v", err)
+	}
+
+	if resp["error"] == nil {
+		t.Fatal("Expected 'error' field in response")
+	}
+	if resp["current"] != float64(5) {
+		t.Errorf("Expected current=5, got %v", resp["current"])
+	}
+	if resp["limit"] != float64(5) {
+		t.Errorf("Expected limit=5, got %v", resp["limit"])
 	}
 }
 

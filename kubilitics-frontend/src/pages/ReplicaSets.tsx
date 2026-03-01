@@ -335,9 +335,6 @@ spec:
               {activeOnly ? <EyeOff className="h-4 w-4" /> : <GitBranch className="h-4 w-4" />}
               Active Only
             </Button>
-            {selectedItems.size > 0 && (
-              <Button variant="destructive" size="sm" className="gap-2" onClick={() => setDeleteDialog({ open: true, item: null, bulk: true })}><Trash2 className="h-4 w-4" />Delete</Button>
-            )}
           </>
         }
       />

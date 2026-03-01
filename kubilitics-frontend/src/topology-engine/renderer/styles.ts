@@ -49,9 +49,13 @@ export const NODE_COLORS: Record<string, { bg: string; border: string; glow: str
   RoleBinding: { bg: '#F06292', border: '#EC407A', glow: 'rgba(240, 98, 146, 0.4)', text: '#fff' },
   ClusterRoleBinding: { bg: '#E91E63', border: '#C2185B', glow: 'rgba(233, 30, 99, 0.4)', text: '#fff' },
 
+  // Workload - Legacy
+  ReplicationController: { bg: '#78909C', border: '#546E7A', glow: 'rgba(120, 144, 156, 0.4)', text: '#fff' }, // Blue-grey (legacy workload)
+
   // Networking & Policy
   NetworkPolicy: { bg: '#FF6F00', border: '#E65100', glow: 'rgba(255, 111, 0, 0.4)', text: '#fff' },
   HorizontalPodAutoscaler: { bg: '#0288D1', border: '#01579B', glow: 'rgba(2, 136, 209, 0.4)', text: '#fff' },
+  PodDisruptionBudget: { bg: '#F4511E', border: '#BF360C', glow: 'rgba(244, 81, 30, 0.4)', text: '#fff' }, // Deep orange (policy/protection)
 
   // Endpoints
   Endpoints: { bg: '#546E7A', border: '#37474F', glow: 'rgba(84, 110, 122, 0.3)', text: '#fff' },
@@ -63,6 +67,22 @@ export const NODE_COLORS: Record<string, { bg: string; border: string; glow: str
 
   // Container
   Container: { bg: '#81D4FA', border: '#4FC3F7', glow: 'rgba(129, 212, 250, 0.3)', text: '#01579B' },
+
+  // Infrastructure — warm stone / slate
+  RuntimeClass: { bg: '#78716C', border: '#57534E', glow: 'rgba(120, 113, 108, 0.4)', text: '#fff' }, // Warm stone
+  Lease: { bg: '#64748B', border: '#475569', glow: 'rgba(100, 116, 139, 0.35)', text: '#fff' },         // Slate
+
+  // Storage — teal/cyan CSI family
+  CSIDriver: { bg: '#2DD4BF', border: '#0D9488', glow: 'rgba(45, 212, 191, 0.4)', text: '#fff' },      // Teal
+  CSINode: { bg: '#34D399', border: '#059669', glow: 'rgba(52, 211, 153, 0.4)', text: '#fff' },         // Emerald green
+
+  // Admission/Webhook — pink-rose (policy family)
+  MutatingWebhookConfiguration: { bg: '#F9A8D4', border: '#DB2777', glow: 'rgba(249, 168, 212, 0.4)', text: '#831843' },
+  ValidatingWebhookConfiguration: { bg: '#FDA4AF', border: '#E11D48', glow: 'rgba(253, 164, 175, 0.4)', text: '#881337' },
+
+  // Flow Control — amber/yellow family
+  FlowSchema: { bg: '#FCD34D', border: '#D97706', glow: 'rgba(252, 211, 77, 0.4)', text: '#78350F' },
+  PriorityLevelConfiguration: { bg: '#FDE68A', border: '#F59E0B', glow: 'rgba(253, 230, 138, 0.4)', text: '#78350F' },
 };
 
 // ─── Node Sizes ───────────────────────────────────────────────
@@ -141,10 +161,23 @@ export const NODE_ICONS: Record<string, string> = {
   ClusterRoleBinding: 'ClusterRoleBinding',
   NetworkPolicy: 'NetworkPolicy',
   HorizontalPodAutoscaler: 'HorizontalPodAutoscaler',
+  ReplicationController: 'ReplicationController',
+  PodDisruptionBudget: 'PodDisruptionBudget',
   Endpoints: 'Endpoints',
   EndpointSlice: 'EndpointSlice',
   ResourceQuota: 'ResourceQuota',
   LimitRange: 'LimitRange',
+  VolumeAttachment: 'VolumeAttachment',
+  IngressClass: 'IngressClass',
+  PriorityClass: 'PriorityClass',
+  RuntimeClass: 'RuntimeClass',
+  Lease: 'Lease',
+  CSIDriver: 'CSIDriver',
+  CSINode: 'CSINode',
+  MutatingWebhookConfiguration: 'MutatingWebhookConfiguration',
+  ValidatingWebhookConfiguration: 'ValidatingWebhookConfiguration',
+  FlowSchema: 'FlowSchema',
+  PriorityLevelConfiguration: 'PriorityLevelConfiguration',
 };
 
 // ─── Public Helpers ───────────────────────────────────────────
@@ -330,8 +363,8 @@ export function getStylesheet(): StylesheetStyle[] {
     {
       selector: 'node.faded',
       style: {
-        'opacity': 0.15,
-        'text-opacity': 0.08,
+        'opacity': 0.08,
+        'text-opacity': 0.04,
       },
     },
 
@@ -379,7 +412,7 @@ export function getStylesheet(): StylesheetStyle[] {
     },
     {
       selector: 'node.blast-dim',
-      style: { 'opacity': 0.2, 'text-opacity': 0.1 } as any,
+      style: { 'opacity': 0.08, 'text-opacity': 0.04 } as any,
     },
 
     // ─── Insight overlay (value 0-100: green=good, yellow=mid, red=bad) ─────
@@ -564,7 +597,7 @@ export function getStylesheet(): StylesheetStyle[] {
     {
       selector: 'edge.faded',
       style: {
-        'opacity': 0.08,
+        'opacity': 0.03,
         'text-opacity': 0,
       },
     },
@@ -580,7 +613,7 @@ export function getStylesheet(): StylesheetStyle[] {
     },
     {
       selector: 'edge.blast-dim',
-      style: { 'opacity': 0.12, 'text-opacity': 0 } as any,
+      style: { 'opacity': 0.03, 'text-opacity': 0 } as any,
     },
 
     // ─── Highlighted edges ───────────────────────────

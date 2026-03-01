@@ -3,6 +3,7 @@
  * Task 6.4: Nodes + Edges as two files (topology-nodes-YYYY-MM-DD.csv, topology-edges-YYYY-MM-DD.csv)
  */
 import type { TopologyGraph } from '../types/topology.types';
+import { downloadFile } from '../utils/exportUtils';
 
 function escapeCsv(value: string | number | undefined | null): string {
   if (value === undefined || value === null) return '""';
@@ -50,25 +51,20 @@ export function exportAsCSV(graph: TopologyGraph): string {
   return exportAsNodesCSV(graph);
 }
 
-function downloadFile(content: string, filename: string, type: string) {
-  const blob = new Blob([content], { type });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = filename;
-  link.click();
-  URL.revokeObjectURL(url);
-}
+// FIX DESKTOP-EXPORT: Use shared Tauri-aware downloadFile instead of inline blob URL logic
 
 /** Download one CSV file (legacy – nodes only) */
-export function downloadCSV(graph: TopologyGraph, filename = 'topology.csv') {
+export async function downloadCSV(graph: TopologyGraph, filename = 'topology.csv') {
   const data = exportAsCSV(graph);
-  downloadFile(data, filename, 'text/csv');
+  const blob = new Blob([data], { type: 'text/csv' });
+  await downloadFile(blob, filename);
 }
 
 /** Task 6.4: Download two files – topology-nodes-YYYY-MM-DD.csv, topology-edges-YYYY-MM-DD.csv */
-export function downloadCSVSummary(graph: TopologyGraph) {
+export async function downloadCSVSummary(graph: TopologyGraph) {
   const dateStr = new Date().toISOString().slice(0, 10);
-  downloadFile(exportAsNodesCSV(graph), `topology-nodes-${dateStr}.csv`, 'text/csv');
-  downloadFile(exportAsEdgesCSV(graph), `topology-edges-${dateStr}.csv`, 'text/csv');
+  const nodesBlob = new Blob([exportAsNodesCSV(graph)], { type: 'text/csv' });
+  const edgesBlob = new Blob([exportAsEdgesCSV(graph)], { type: 'text/csv' });
+  await downloadFile(nodesBlob, `topology-nodes-${dateStr}.csv`);
+  await downloadFile(edgesBlob, `topology-edges-${dateStr}.csv`);
 }

@@ -41,15 +41,6 @@ export {
   getNodeColor, getNodeDataAttributes, getHealthColor, getHeatmapColor,
   getStylesheet, CANVAS_BG, CANVAS_BG_DARK, EXPORT_BG,
 } from './renderer/styles';
-// D3.js Force-Directed Topology
-export { D3TopologyCanvas } from './renderer/D3TopologyCanvas';
-export { D3MiniMap } from './renderer/D3MiniMap';
-export type { TopologyNode as D3TopologyNode, TopologyEdge as D3TopologyEdge, ResourceType } from './renderer/D3TopologyCanvas';
-
-// D3.js Hierarchical Topology
-export { D3HierarchicalTopologyCanvas } from './renderer/D3HierarchicalTopologyCanvas';
-export type { HierarchicalNode } from './renderer/D3HierarchicalTopologyCanvas';
-export { convertToHierarchicalTree } from './utils/hierarchicalAdapter';
 
 // ─── Three.js 3D Engine ───────────────────────────────────────
 export { Scene3D } from './engines/three/Scene3D';
@@ -84,7 +75,6 @@ export { adaptTopologyGraph, validateTopologyGraph } from './utils/topologyAdapt
 export { computeBlastRadius, getBlastRadiusSummary } from './utils/blastRadiusCompute';
 export type { BlastRadiusOptions } from './utils/blastRadiusCompute';
 export type { BlastRadiusResult } from './types/interaction.types';
-export { convertToD3Topology } from './utils/d3Adapter';
 export { generateTestGraph } from './utils/testGraphGenerator';
 
 // Path finding and journey tracing
@@ -130,6 +120,10 @@ export { TrafficParticles, TrafficPulse, TrafficHeatMap } from './engines/three/
 // ─── Integrated Topology Viewer ───────────────────────────────
 export { TopologyViewer } from './TopologyViewer';
 export type { TopologyViewerProps } from './TopologyViewer';
+
+// ─── UI Components ────────────────────────────────────────────
+export { TopologyNodePanel } from './components/TopologyNodePanel';
+export type { TopologyNodePanelProps } from './components/TopologyNodePanel';
 
 // ─── Overlay Color Utilities ──────────────────────────────────
 export { getHealthColor as getHealthOverlayColor, getHealthLabel } from './overlays/HealthOverlay';

@@ -49,6 +49,10 @@ export interface AddOnEntry {
   stars?: number;
   created_at?: string;
   updated_at?: string;
+  // Trust / provenance signals (populated from Artifact Hub for community add-ons)
+  is_official?: boolean;
+  is_verified_publisher?: boolean;
+  is_signed?: boolean;
 }
 
 export interface AddOnDependency {
@@ -117,6 +121,8 @@ export interface InstallStep {
   action: InstallStepAction;
   addon_id: string;
   addon_name: string;
+  /** Human-readable display name (e.g. "Jenkins" vs name "jenkins"). */
+  display_name?: string;
   from_version?: string;
   to_version: string;
   namespace: string;
@@ -126,6 +132,13 @@ export interface InstallStep {
   dependency_depth: number;
   estimated_duration_sec: number;
   estimated_cost_delta_usd: number;
+  /**
+   * Helm chart reference resolved at plan time.
+   * ExecuteInstall uses these directly — no registry lookup needed.
+   * Present for all INSTALL steps; may be absent for legacy SKIP/BLOCK steps.
+   */
+  helm_repo_url?: string;
+  helm_chart?: string;
 }
 
 export interface InstallPlan {

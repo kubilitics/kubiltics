@@ -245,9 +245,16 @@ export function ResourceComparisonView({
     const [selectedResources, setSelectedResources] = useState<string[]>(() => initialSelectedResources ?? []);
     const [activeTab, setActiveTab] = useState('yaml');
 
+    const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured);
+
+    // canList: only requires backend + cluster (no WebSocket needed) — used for the Add dropdown
+    const canList = Boolean(clusterId && isBackendConfigured() && backendBaseUrl);
+    // canFetch: also requires live connection — used for YAML / metrics / logs queries
+    const canFetch = Boolean(isConnected && clusterId && isBackendConfigured());
+
     const { data: listData } = useK8sResourceList<KubernetesResource>(resourceType, namespace, {
         limit: 500,
-        enabled: !!clusterId,
+        enabled: canList,
     });
 
     const availableResources = useMemo(() => {
@@ -257,9 +264,6 @@ export function ResourceComparisonView({
             status: (item.status?.phase as string) || (item.status?.conditions?.find((c: any) => c.type === 'Ready')?.status === 'True' ? 'Running' : 'Ready') || 'Unknown',
         }));
     }, [listData]);
-
-    const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured);
-    const canFetch = Boolean(isConnected && clusterId && isBackendConfigured());
 
     const resourceQueries = useQueries({
         queries: selectedResources.map(key => {

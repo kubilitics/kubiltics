@@ -36,7 +36,15 @@ function getBackendDownCooldownMs(): number {
   return isTauri() ? BACKEND_DOWN_COOLDOWN_MS_TAURI : BACKEND_DOWN_COOLDOWN_MS_BROWSER;
 }
 
+/** Global circuit: backend server itself is unreachable (affects all clusters). */
 let backendUnavailableUntil = 0;
+
+/**
+ * Per-cluster circuit: individual cluster network failures only block that cluster.
+ * Key: clusterId, Value: timestamp when circuit closes.
+ * This prevents one unhealthy cluster from blocking the entire dashboard.
+ */
+const clusterCircuitMap = new Map<string, number>();
 
 function isNetworkError(e: unknown): boolean {
   if (e instanceof TypeError && (e.message === 'Failed to fetch' || e.message?.includes('NetworkError'))) return true;
@@ -52,19 +60,47 @@ function isCORSError(e: unknown): boolean {
   return false;
 }
 
-/** When a request fails due to backend unreachable, open the circuit so we don't hammer the proxy. */
-function markBackendUnavailable(): void {
-  backendUnavailableUntil = Date.now() + getBackendDownCooldownMs();
+/** Extract clusterId from a request path like "clusters/{id}/..." or return null for non-cluster paths. */
+function extractClusterIdFromPath(path: string): string | null {
+  const match = path.match(/^clusters\/([^/]+)\//);
+  return match ? decodeURIComponent(match[1]) : null;
+}
+
+/**
+ * Mark backend unavailable. If clusterId is provided, only that cluster's circuit opens.
+ * If clusterId is null (non-cluster request failed), the global circuit opens.
+ */
+function markBackendUnavailable(clusterId?: string | null): void {
+  const cooldown = Date.now() + getBackendDownCooldownMs();
+  if (clusterId) {
+    clusterCircuitMap.set(clusterId, cooldown);
+  } else {
+    backendUnavailableUntil = cooldown;
+  }
 }
 
 /** True if we're in cooldown and should skip backend requests (avoids proxy log spam). */
-export function isBackendCircuitOpen(): boolean {
-  return Date.now() < backendUnavailableUntil;
+export function isBackendCircuitOpen(clusterId?: string | null): boolean {
+  // Global circuit always checked
+  if (Date.now() < backendUnavailableUntil) return true;
+  // Per-cluster circuit
+  if (clusterId) {
+    const until = clusterCircuitMap.get(clusterId);
+    if (until && Date.now() < until) return true;
+    // Auto-clean expired entries
+    if (until && Date.now() >= until) clusterCircuitMap.delete(clusterId);
+  }
+  return false;
 }
 
 /** Reset circuit so the next Retry can attempt the backend immediately (user-initiated recovery). */
-export function resetBackendCircuit(): void {
-  backendUnavailableUntil = 0;
+export function resetBackendCircuit(clusterId?: string | null): void {
+  if (clusterId) {
+    clusterCircuitMap.delete(clusterId);
+  } else {
+    backendUnavailableUntil = 0;
+    clusterCircuitMap.clear();
+  }
 }
 
 /**
@@ -122,9 +158,14 @@ export async function backendRequest<T>(
   path: string,
   init?: RequestInit
 ): Promise<T> {
-  if (isBackendCircuitOpen()) {
+  const clusterId = extractClusterIdFromPath(path);
+
+  // Check global circuit first, then per-cluster circuit
+  if (isBackendCircuitOpen(clusterId)) {
     throw new BackendApiError(
-      isTauri() ? 'Connection temporarily unavailable. Try again in a moment.' : 'Backend unreachable (circuit open). Check backend URL in Settings or try again later.',
+      clusterId
+        ? `Cluster ${clusterId} temporarily unavailable. Try again in a moment.`
+        : isTauri() ? 'Connection temporarily unavailable. Try again in a moment.' : 'Backend unreachable (circuit open). Check backend URL in Settings or try again later.',
       0,
       undefined
     );
@@ -167,8 +208,9 @@ export async function backendRequest<T>(
     // on 404 would lock out the user for 60 seconds just because they navigated to a non-existent resource.
     // IMPORTANT: markBackendUnavailable() is ONLY called here in the network catch block, never in the
     // !response.ok path below. Any refactor that moves markBackendUnavailable() to the error path would break this.
+    // Per-cluster circuit: if this was a cluster-specific request, only block that cluster.
     if (isNetworkError(e) && !isCORSError(e)) {
-      markBackendUnavailable();
+      markBackendUnavailable(clusterId);
     }
     throw e;
   }
@@ -229,6 +271,94 @@ export async function backendRequest<T>(
       requestId
     );
   }
+}
+
+/**
+ * Like backendRequest but returns raw text instead of parsing JSON.
+ * Used for endpoints that return non-JSON content (e.g. YAML, plain text).
+ * Shares all the same infrastructure: circuit breaker, Tauri X-Kubeconfig
+ * header, rate-limit retry, and auth-logout on 401.
+ */
+export async function backendRequestText(
+  baseUrl: string,
+  path: string,
+  init?: RequestInit
+): Promise<string> {
+  const clusterId = extractClusterIdFromPath(path);
+
+  if (isBackendCircuitOpen(clusterId)) {
+    throw new BackendApiError(
+      clusterId
+        ? `Cluster ${clusterId} temporarily unavailable. Try again in a moment.`
+        : isTauri() ? 'Connection temporarily unavailable. Try again in a moment.' : 'Backend unreachable (circuit open). Check backend URL in Settings or try again later.',
+      0,
+      undefined
+    );
+  }
+
+  const normalizedBase = baseUrl.replace(/\/+$/, '');
+  const normalizedPath = path.startsWith('/') ? path.slice(1) : path;
+  const url = `${normalizedBase}${API_PREFIX}/${normalizedPath}`;
+
+  const headers: Record<string, string> = {
+    Accept: 'text/yaml, text/plain, */*',
+    ...((init?.headers as Record<string, string>) || {}),
+  };
+
+  if (isTauri()) {
+    const { useClusterStore } = await import('@/stores/clusterStore');
+    const { activeCluster, kubeconfigContent } = useClusterStore.getState();
+
+    if (kubeconfigContent) {
+      headers['X-Kubeconfig'] = btoa(kubeconfigContent);
+    } else if (activeCluster?.kubeconfig) {
+      headers['X-Kubeconfig'] = btoa(activeCluster.kubeconfig);
+    }
+  }
+
+  let response: Response;
+  try {
+    response = await fetch(url, { ...init, headers });
+  } catch (e) {
+    if (isNetworkError(e) && !isCORSError(e)) {
+      markBackendUnavailable(clusterId);
+    }
+    throw e;
+  }
+
+  const body = await response.text();
+  if (!response.ok) {
+    if (response.status === 401) {
+      if (isTauri()) {
+        console.error('Kubeconfig authentication failed - kubeconfig may be invalid or expired');
+      } else {
+        useAuthStore.getState().logout();
+      }
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('auth-logout'));
+      }
+    }
+
+    if (response.status === 429) {
+      const retryAfter = response.headers.get('Retry-After');
+      const retryAfterSeconds = retryAfter ? parseInt(retryAfter, 10) : null;
+      const waitMs = retryAfterSeconds
+        ? Math.min(retryAfterSeconds * 1000, 10_000)
+        : 1_000;
+      await new Promise(resolve => setTimeout(resolve, waitMs));
+      return backendRequestText(baseUrl, path, init);
+    }
+
+    const requestId = response.headers.get('X-Request-ID') ?? undefined;
+    throw new BackendApiError(
+      `Backend API error: ${response.status}${body ? ` - ${body}` : ''}`,
+      response.status,
+      body,
+      requestId
+    );
+  }
+
+  return body;
 }
 
 /**
@@ -360,6 +490,11 @@ export interface BackendClusterSummary {
   pod_count: number;
   deployment_count: number;
   service_count: number;
+  statefulset_count?: number;
+  replicaset_count?: number;
+  daemonset_count?: number;
+  job_count?: number;
+  cronjob_count?: number;
   health_status: string;
 }
 
@@ -506,6 +641,8 @@ export async function reconnectCluster(
   baseUrl: string,
   clusterId: string
 ): Promise<BackendCluster> {
+  // Clear per-cluster circuit so the reconnect attempt is not blocked
+  resetBackendCircuit(clusterId);
   return backendRequest<BackendCluster>(
     baseUrl,
     `clusters/${encodeURIComponent(clusterId)}/reconnect`,
@@ -673,7 +810,7 @@ export async function getHealth(
 export interface BackendResourceListResponse {
   kind?: string;
   apiVersion?: string;
-  metadata?: { resourceVersion?: string; continue?: string; remainingItemCount?: number };
+  metadata?: { resourceVersion?: string; continue?: string; remainingItemCount?: number; total?: number };
   items: Record<string, unknown>[];
 }
 
@@ -1496,9 +1633,9 @@ export async function getClusterKubeconfig(
   baseUrl: string,
   clusterId: string
 ): Promise<{ blob: Blob; filename: string }> {
-  if (isBackendCircuitOpen()) {
+  if (isBackendCircuitOpen(clusterId)) {
     throw new BackendApiError(
-      isTauri() ? 'Connection temporarily unavailable. Try again in a moment.' : 'Backend unreachable (circuit open).',
+      `Cluster ${clusterId} temporarily unavailable. Try again in a moment.`,
       0,
       undefined
     );
@@ -1570,6 +1707,24 @@ export async function getCatalogEntry(
 ): Promise<AddOnDetail> {
   const path = `addons/catalog/${encodeURIComponent(addonId)}`;
   return backendRequest(baseUrl, path);
+}
+
+/**
+ * GET /api/v1/addons/catalog/{addonId}/values
+ * Returns the raw values.yaml content for a chart (plain text).
+ * Used by the wizard Configure step to pre-populate the YAML editor.
+ * Returns an empty string when the chart publishes no defaults.
+ *
+ * NOTE: Uses backendRequestText (not backendRequest) because the response is
+ * plain text YAML, not JSON. Shares the same header setup (X-Kubeconfig for
+ * Tauri, circuit breaker, rate-limit retry) with all other API calls.
+ */
+export async function getAddonDefaultValues(
+  baseUrl: string,
+  addonId: string
+): Promise<string> {
+  const path = `addons/catalog/${encodeURIComponent(addonId)}/values`;
+  return backendRequestText(baseUrl, path);
 }
 
 /** POST /api/v1/clusters/{clusterId}/addons/plan */
@@ -1818,8 +1973,8 @@ export async function applyProfile(
   profileId: string,
   onEvent: (event: InstallProgressEvent) => void
 ): Promise<void> {
-  if (isBackendCircuitOpen()) {
-    throw new BackendApiError('Backend unreachable (circuit open).', 0, undefined);
+  if (isBackendCircuitOpen(clusterId)) {
+    throw new BackendApiError(`Cluster ${clusterId} temporarily unavailable.`, 0, undefined);
   }
   const normalized = baseUrl.replace(/\/+$/, '');
   const url = `${normalized}${API_PREFIX}/clusters/${encodeURIComponent(clusterId)}/addons/apply-profile`;
@@ -1876,9 +2031,9 @@ export async function getAddonRBACManifest(
   addonId: string,
   namespace: string
 ): Promise<string> {
-  if (isBackendCircuitOpen()) {
+  if (isBackendCircuitOpen(clusterId)) {
     throw new BackendApiError(
-      isTauri() ? "Connection temporarily unavailable." : "Backend unreachable (circuit open).",
+      `Cluster ${clusterId} temporarily unavailable.`,
       0,
       undefined
     );
@@ -1902,13 +2057,20 @@ export async function getAddonRBACManifest(
   return res.text();
 }
 
-/** WebSocket URL for install progress stream — client sends InstallRequest as first message. */
+/**
+ * WebSocket URL for install progress stream — client sends InstallRequest as first message.
+ * When baseUrl is empty (dev proxy mode), falls back to window.location.origin so the
+ * Vite proxy forwards the WebSocket to the backend — same pattern as all other WS URL helpers.
+ * Without this, an empty baseUrl produces the invalid URL "ws:///api/v1/..." (triple-slash),
+ * causing an immediate WebSocket failure on every connect attempt.
+ */
 export function getAddonInstallStreamUrl(baseUrl: string, clusterId: string): string {
-  const normalized = baseUrl.replace(/\/+$/, "");
-  const wsProtocol = normalized.startsWith("https") ? "wss" : "ws";
-  const baseForWs = normalized.replace(/^https?:\/\//, "");
-  const path = `api/v1/clusters/${encodeURIComponent(clusterId)}/addons/install/stream`;
-  return `${wsProtocol}://${baseForWs}/${path}`;
+  const normalizedBase = (baseUrl || '').replace(/\/+$/, '');
+  let wsBase = normalizedBase.replace(/^http:/, 'ws:').replace(/^https:/, 'wss:');
+  if (!wsBase && typeof window !== 'undefined') {
+    wsBase = window.location.origin.replace(/^http:/, 'ws:').replace(/^https:/, 'wss:');
+  }
+  return `${wsBase}${API_PREFIX}/clusters/${encodeURIComponent(clusterId)}/addons/install/stream`;
 }
 
 // ── Cost Attribution (T8.09) ─────────────────────────────────────────────────
@@ -1933,30 +2095,10 @@ export async function getAddonCostAttribution(
   installId: string,
   window = "30d"
 ): Promise<AddonCostAttribution | null> {
-  if (isBackendCircuitOpen()) {
-    throw new BackendApiError(
-      isTauri() ? "Connection temporarily unavailable." : "Backend unreachable (circuit open).",
-      0,
-      undefined
-    );
-  }
-  const normalizedBase = baseUrl.replace(/\/+$/, "");
   const query = new URLSearchParams({ window });
-  const url = `${normalizedBase}${API_PREFIX}/clusters/${encodeURIComponent(clusterId)}/addons/installed/${encodeURIComponent(installId)}/cost-attribution?${query.toString()}`;
-  const headers: Record<string, string> = { Accept: "application/json" };
-  if (isTauri()) {
-    const { useClusterStore } = await import("@/stores/clusterStore");
-    const { activeCluster, kubeconfigContent } = useClusterStore.getState();
-    const kc = kubeconfigContent ?? activeCluster?.kubeconfig;
-    if (kc) headers["X-Kubeconfig"] = btoa(kc);
-  }
-  const res = await fetch(url, { headers });
-  if (res.status === 204) return null; // OpenCost not available
-  if (!res.ok) {
-    const body = await res.text();
-    throw new BackendApiError(`Backend API error: ${res.status}${body ? ` - ${body}` : ""}`, res.status, body);
-  }
-  return res.json() as Promise<AddonCostAttribution>;
+  const path = `clusters/${encodeURIComponent(clusterId)}/addons/installed/${encodeURIComponent(installId)}/cost-attribution?${query.toString()}`;
+  const result = await backendRequest<AddonCostAttribution | undefined>(baseUrl, path);
+  return result ?? null;
 }
 
 // ── Rightsizing Recommendations (T8.10) ──────────────────────────────────────
@@ -1991,29 +2133,9 @@ export async function getAddonRightsizing(
   clusterId: string,
   installId: string
 ): Promise<RightsizingRecommendation | null> {
-  if (isBackendCircuitOpen()) {
-    throw new BackendApiError(
-      isTauri() ? "Connection temporarily unavailable." : "Backend unreachable (circuit open).",
-      0,
-      undefined
-    );
-  }
-  const normalizedBase = baseUrl.replace(/\/+$/, "");
-  const url = `${normalizedBase}${API_PREFIX}/clusters/${encodeURIComponent(clusterId)}/addons/installed/${encodeURIComponent(installId)}/rightsizing`;
-  const headers: Record<string, string> = { Accept: "application/json" };
-  if (isTauri()) {
-    const { useClusterStore } = await import("@/stores/clusterStore");
-    const { activeCluster, kubeconfigContent } = useClusterStore.getState();
-    const kc = kubeconfigContent ?? activeCluster?.kubeconfig;
-    if (kc) headers["X-Kubeconfig"] = btoa(kc);
-  }
-  const res = await fetch(url, { headers });
-  if (res.status === 204) return null; // Not available
-  if (!res.ok) {
-    const body = await res.text();
-    throw new BackendApiError(`Backend API error: ${res.status}${body ? ` - ${body}` : ""}`, res.status, body);
-  }
-  return res.json() as Promise<RightsizingRecommendation>;
+  const path = `clusters/${encodeURIComponent(clusterId)}/addons/installed/${encodeURIComponent(installId)}/rightsizing`;
+  const result = await backendRequest<RightsizingRecommendation | undefined>(baseUrl, path);
+  return result ?? null;
 }
 
 /**
@@ -2024,31 +2146,8 @@ export async function getAddonAdvisorRecommendations(
   baseUrl: string,
   clusterId: string
 ): Promise<AdvisorRecommendation[]> {
-  if (isBackendCircuitOpen()) {
-    throw new BackendApiError(
-      isTauri() ? "Connection temporarily unavailable." : "Backend unreachable (circuit open).",
-      0,
-      undefined
-    );
-  }
-  const normalizedBase = baseUrl.replace(/\/+$/, "");
-  const url = `${normalizedBase}${API_PREFIX}/clusters/${encodeURIComponent(clusterId)}/addons/recommendations`;
-  const headers: Record<string, string> = { Accept: "application/json" };
-  if (isTauri()) {
-    const { useClusterStore } = await import("@/stores/clusterStore");
-    const { activeCluster, kubeconfigContent } = useClusterStore.getState();
-    const kc = kubeconfigContent ?? activeCluster?.kubeconfig;
-    if (kc) headers["X-Kubeconfig"] = btoa(kc);
-  }
-  const res = await fetch(url, { headers });
-  if (!res.ok) {
-    const body = await res.text();
-    if (res.status === 401 || res.status === 403 || res.status >= 500) {
-      markBackendUnavailable();
-    }
-    throw new BackendApiError(`Backup API error: ${res.status}${body ? ` - ${body}` : ""}`, res.status, body);
-  }
-  return res.json() as Promise<AdvisorRecommendation[]>;
+  const path = `clusters/${encodeURIComponent(clusterId)}/addons/recommendations`;
+  return backendRequest<AdvisorRecommendation[]>(baseUrl, path);
 }
 
 // ── T9.01 — Helm test execution ───────────────────────────────────────────────
@@ -2073,28 +2172,8 @@ export async function runAddonTests(
   clusterId: string,
   installId: string
 ): Promise<AddonTestResult> {
-  if (isBackendCircuitOpen()) {
-    throw new BackendApiError(
-      isTauri() ? "Connection temporarily unavailable." : "Backend unreachable (circuit open).",
-      0,
-      undefined
-    );
-  }
-  const normalizedBase = baseUrl.replace(/\/+$/, "");
-  const url = `${normalizedBase}${API_PREFIX}/clusters/${encodeURIComponent(clusterId)}/addons/installed/${encodeURIComponent(installId)}/test`;
-  const headers: Record<string, string> = { Accept: "application/json" };
-  if (isTauri()) {
-    const { useClusterStore } = await import("@/stores/clusterStore");
-    const { activeCluster, kubeconfigContent } = useClusterStore.getState();
-    const kc = kubeconfigContent ?? activeCluster?.kubeconfig;
-    if (kc) headers["X-Kubeconfig"] = btoa(kc);
-  }
-  const res = await fetch(url, { method: "POST", headers });
-  if (!res.ok) {
-    const body = await res.text();
-    throw new BackendApiError(`Backend API error: ${res.status}${body ? ` - ${body}` : ""}`, res.status, body);
-  }
-  return res.json() as Promise<AddonTestResult>;
+  const path = `clusters/${encodeURIComponent(clusterId)}/addons/installed/${encodeURIComponent(installId)}/test`;
+  return backendRequest<AddonTestResult>(baseUrl, path, { method: "POST" });
 }
 
 // ── T9.03 — Maintenance window management ─────────────────────────────────────
@@ -2131,20 +2210,8 @@ export async function listMaintenanceWindows(
   baseUrl: string,
   clusterId: string
 ): Promise<AddonMaintenanceWindow[]> {
-  const url = `${baseUrl.replace(/\/+$/, "")}${API_PREFIX}/clusters/${encodeURIComponent(clusterId)}/addons/maintenance-windows`;
-  const headers: Record<string, string> = { Accept: "application/json" };
-  if (isTauri()) {
-    const { useClusterStore } = await import("@/stores/clusterStore");
-    const { activeCluster, kubeconfigContent } = useClusterStore.getState();
-    const kc = kubeconfigContent ?? activeCluster?.kubeconfig;
-    if (kc) headers["X-Kubeconfig"] = btoa(kc);
-  }
-  const res = await fetch(url, { headers });
-  if (!res.ok) {
-    const body = await res.text();
-    throw new BackendApiError(`Backend API error: ${res.status}${body ? ` - ${body}` : ""}`, res.status, body);
-  }
-  return res.json() as Promise<AddonMaintenanceWindow[]>;
+  const path = `clusters/${encodeURIComponent(clusterId)}/addons/maintenance-windows`;
+  return backendRequest<AddonMaintenanceWindow[]>(baseUrl, path);
 }
 
 /**
@@ -2155,20 +2222,11 @@ export async function createMaintenanceWindow(
   clusterId: string,
   req: CreateMaintenanceWindowRequest
 ): Promise<AddonMaintenanceWindow> {
-  const url = `${baseUrl.replace(/\/+$/, "")}${API_PREFIX}/clusters/${encodeURIComponent(clusterId)}/addons/maintenance-windows`;
-  const headers: Record<string, string> = { "Content-Type": "application/json", Accept: "application/json" };
-  if (isTauri()) {
-    const { useClusterStore } = await import("@/stores/clusterStore");
-    const { activeCluster, kubeconfigContent } = useClusterStore.getState();
-    const kc = kubeconfigContent ?? activeCluster?.kubeconfig;
-    if (kc) headers["X-Kubeconfig"] = btoa(kc);
-  }
-  const res = await fetch(url, { method: "POST", headers, body: JSON.stringify(req) });
-  if (!res.ok) {
-    const body = await res.text();
-    throw new BackendApiError(`Backend API error: ${res.status}${body ? ` - ${body}` : ""}`, res.status, body);
-  }
-  return res.json() as Promise<AddonMaintenanceWindow>;
+  const path = `clusters/${encodeURIComponent(clusterId)}/addons/maintenance-windows`;
+  return backendRequest<AddonMaintenanceWindow>(baseUrl, path, {
+    method: "POST",
+    body: JSON.stringify(req),
+  });
 }
 
 /**
@@ -2179,19 +2237,8 @@ export async function deleteMaintenanceWindow(
   clusterId: string,
   windowId: string
 ): Promise<void> {
-  const url = `${baseUrl.replace(/\/+$/, "")}${API_PREFIX}/clusters/${encodeURIComponent(clusterId)}/addons/maintenance-windows/${encodeURIComponent(windowId)}`;
-  const headers: Record<string, string> = {};
-  if (isTauri()) {
-    const { useClusterStore } = await import("@/stores/clusterStore");
-    const { activeCluster, kubeconfigContent } = useClusterStore.getState();
-    const kc = kubeconfigContent ?? activeCluster?.kubeconfig;
-    if (kc) headers["X-Kubeconfig"] = btoa(kc);
-  }
-  const res = await fetch(url, { method: "DELETE", headers });
-  if (!res.ok && res.status !== 204) {
-    const body = await res.text();
-    throw new BackendApiError(`Backend API error: ${res.status}${body ? ` - ${body}` : ""}`, res.status, body);
-  }
+  const path = `clusters/${encodeURIComponent(clusterId)}/addons/maintenance-windows/${encodeURIComponent(windowId)}`;
+  await backendRequest<void>(baseUrl, path, { method: "DELETE" });
 }
 
 /** Factory: create a client interface bound to a base URL (for hooks/pages). */
@@ -2242,6 +2289,8 @@ export function createBackendApiClient(baseUrl: string) {
       listCatalog(baseUrl, opts),
     getCatalogEntry: (addonId: string) =>
       getCatalogEntry(baseUrl, addonId),
+    getAddonDefaultValues: (addonId: string) =>
+      getAddonDefaultValues(baseUrl, addonId),
     planAddonInstall: (clusterId: string, addonId: string, namespace: string) =>
       planAddonInstall(baseUrl, clusterId, addonId, namespace),
     runAddonPreflight: (clusterId: string, plan: InstallPlan) =>
@@ -2339,4 +2388,46 @@ export async function deleteCatalogSource(
 ): Promise<void> {
   const path = `addons/registries/${encodeURIComponent(sourceId)}`;
   await backendRequest(baseUrl, path, { method: "DELETE" });
+}
+
+// ── Port Forward ──────────────────────────────────────────────────────────────
+
+export interface PortForwardStartRequest {
+  resourceType: 'pod' | 'service';
+  name: string;
+  namespace: string;
+  localPort: number;
+  remotePort: number;
+}
+
+export interface PortForwardStartResponse {
+  sessionId: string;
+  localPort: number;
+  status: string;
+}
+
+/** POST /api/v1/clusters/{clusterId}/port-forward — starts a real kubectl port-forward subprocess. */
+export async function startPortForward(
+  baseUrl: string,
+  clusterId: string,
+  req: PortForwardStartRequest
+): Promise<PortForwardStartResponse> {
+  return backendRequest<PortForwardStartResponse>(
+    baseUrl,
+    `clusters/${encodeURIComponent(clusterId)}/port-forward`,
+    { method: 'POST', body: JSON.stringify(req) }
+  );
+}
+
+/** DELETE /api/v1/clusters/{clusterId}/port-forward/{sessionId} — stops the subprocess. */
+export async function stopPortForward(
+  baseUrl: string,
+  clusterId: string,
+  sessionId: string
+): Promise<void> {
+  await backendRequest<void>(
+    baseUrl,
+    `clusters/${encodeURIComponent(clusterId)}/port-forward/${encodeURIComponent(sessionId)}`,
+    { method: 'DELETE' }
+  );
 }

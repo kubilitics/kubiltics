@@ -83,10 +83,10 @@ if [ "$DEV_MODE" = "true" ]; then
   echo "NOTE: Backend runs as a real sidecar inside Tauri — changes to Go code require"
   echo "      stopping and re-running this script."
   echo ""
-  npm run tauri -- dev
+  CI=false npm run tauri -- dev
 else
   echo "Building Tauri desktop app..."
-  npm run tauri -- build
+  CI=false npm run tauri -- build
   echo ""
   echo "========================================"
   echo "  Build Complete!"

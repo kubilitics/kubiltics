@@ -250,9 +250,27 @@ func main() {
 		os.Exit(1)
 	}
 	projectService := service.NewProjectService(repo, repo)
+
+	// Validate AuthJWTSecret when auth is required: reject startup if secret is empty or too short.
+	// This prevents a state where auth is "required" but tokens cannot be generated/validated.
+	if strings.EqualFold(cfg.AuthMode, "required") {
+		if cfg.AuthJWTSecret == "" {
+			log.Error("FATAL: auth_mode is 'required' but auth_jwt_secret is empty — tokens cannot be generated; set KUBILITICS_AUTH_JWT_SECRET")
+			os.Exit(1)
+		}
+		if len(cfg.AuthJWTSecret) < 32 {
+			log.Error("FATAL: auth_jwt_secret is too short (must be >= 32 characters for security); set a stronger KUBILITICS_AUTH_JWT_SECRET")
+			os.Exit(1)
+		}
+	}
+
 	// Bootstrap admin user when auth is enabled and no users exist (BE-AUTH-001)
 	if cfg.AuthMode != "" && cfg.AuthMode != "disabled" && cfg.AuthJWTSecret != "" && cfg.AuthAdminUser != "" && cfg.AuthAdminPass != "" {
-		n, _ := repo.CountUsers(ctx)
+		n, err := repo.CountUsers(ctx)
+		if err != nil {
+			log.Error("failed to count users during admin bootstrap — cannot determine if admin user exists", "error", err)
+			os.Exit(1)
+		}
 		if n == 0 {
 			hash, err := auth.HashPassword(cfg.AuthAdminPass)
 			if err != nil {
@@ -367,6 +385,11 @@ func main() {
 
 	// API routes
 	apiRouter := router.PathPrefix("/api/v1").Subrouter()
+	// UseEncodedPath must be set on the subrouter too — it is NOT inherited from the parent router.
+	// Without this, Go's net/http decodes %2F → / before Gorilla Mux sees the path, so
+	// addon IDs like "community%2Fjenkinsci%2Fjenkins" are split across multiple path segments
+	// and {addonId} (pattern [^/]+) never matches. Handlers call url.PathUnescape() to decode.
+	apiRouter.UseEncodedPath()
 	authHandler.RegisterRoutes(apiRouter)
 	if oidcHandler != nil {
 		oidcHandler.RegisterRoutes(apiRouter)
@@ -429,7 +452,7 @@ func main() {
 			}
 			return ok
 		},
-		AllowedMethods: []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowedMethods: []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
 		AllowedHeaders: []string{
 			"Content-Type", "Authorization", "X-Request-ID",
 			"X-Confirm-Destructive", "X-API-Key",

@@ -25,6 +25,8 @@ const (
 	ErrCodeCircuitBreaker    = "CIRCUIT_BREAKER_OPEN"
 	ErrCodeRateLimitExceeded = "RATE_LIMIT_EXCEEDED"
 	ErrCodeValidationFailed  = "VALIDATION_FAILED"
+	ErrCodeConflict          = "CONFLICT"
+	ErrCodePayloadTooLarge   = "PAYLOAD_TOO_LARGE"
 )
 
 // respondStructuredError sends a structured error response with error code and details

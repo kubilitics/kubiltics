@@ -77,8 +77,8 @@ func (m *mockClusterServiceWithClient) GetOverview(clusterID string) (*models.Cl
 	return nil, false
 }
 
-func (m *mockClusterServiceWithClient) Subscribe(clusterID string) (chan *models.ClusterOverview, func()) {
-	return nil, func() {}
+func (m *mockClusterServiceWithClient) Subscribe(clusterID string) (chan *models.ClusterOverview, func(), error) {
+	return nil, func() {}, nil
 }
 
 func (m *mockClusterServiceWithClient) ReconnectCluster(ctx context.Context, id string) (*models.Cluster, error) {

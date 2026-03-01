@@ -28,9 +28,9 @@ import {
 import { useClusterStore } from '@/stores/clusterStore';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { useClusterTopology } from '@/hooks/useClusterTopology';
 import { useActiveClusterId } from '@/hooks/useActiveClusterId';
+import { useNamespacesFromCluster } from '@/hooks/useNamespacesFromCluster';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { getTopologyExportDrawio } from '@/services/backendApiClient';
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
@@ -43,6 +43,7 @@ import {
 } from '@/hooks/useTopologyAI';
 
 // ─── Import from portable topology-engine ─────────────────────
+
 import {
   TopologyCanvas,
   ABSTRACTION_LEVELS,
@@ -54,8 +55,6 @@ import {
   downloadCSVSummary,
   downloadPDF,
   getRecommendedAbstraction,
-  D3TopologyCanvas,
-  convertToD3Topology,
   computeBlastRadius,
   useHealthOverlay,
   useCostOverlay,
@@ -75,6 +74,7 @@ import {
   type BlastRadiusResult,
   type OverlayType,
   generateTestGraph,
+  TopologyNodePanel,
 } from '@/topology-engine';
 
 // ─── Resource type filter config ──────────────────────────────
@@ -225,7 +225,6 @@ export default function Topology() {
     new Set(['healthy', 'warning', 'critical', 'unknown'])
   );
   const [selectedNode, setSelectedNode] = useState<TopologyNode | null>(null);
-  const [activeTab, setActiveTab] = useState<'cytoscape' | 'd3-force'>('cytoscape');
   const [contextMenu, setContextMenu] = useState<{ nodeId: string; x: number; y: number } | null>(null);
   const [blastRadius, setBlastRadius] = useState<BlastRadiusResult | null>(null);
   const [activeOverlay, setActiveOverlay] = useState<OverlayType | null>(null);
@@ -260,11 +259,18 @@ export default function Topology() {
       relationship_type: e.relationshipType,
     })), []);
 
+  // Fetch all namespaces from cluster API so the dropdown always shows every
+  // namespace regardless of the current filter selection.
+  const { data: clusterNamespaces } = useNamespacesFromCluster(clusterId ?? null);
   const availableNamespaces = useMemo(() => {
+    if (clusterNamespaces && clusterNamespaces.length > 0) {
+      return [...clusterNamespaces].sort();
+    }
+    // Fallback: derive from displayed graph nodes when cluster API isn't available
     const ns = new Set<string>();
     displayGraph.nodes.forEach(n => { if (n.namespace) ns.add(n.namespace); });
-    return Array.from(ns);
-  }, [displayGraph.nodes]);
+    return Array.from(ns).sort();
+  }, [clusterNamespaces, displayGraph.nodes]);
 
   const availableNodes = useMemo(() => {
     return displayGraph.nodes.filter(n => n.kind === 'Node').map(n => ({ id: n.id, name: n.name }));
@@ -321,11 +327,6 @@ export default function Topology() {
       edges: filteredEdges,
     };
   }, [nodeFilteredGraph, selectedResources]);
-
-  const d3Topology = useMemo(
-    () => convertToD3Topology(filteredGraph),
-    [filteredGraph]
-  );
 
   const healthOverlayData = useHealthOverlay(filteredGraph);
   const costOverlayData = useCostOverlay(filteredGraph);
@@ -502,10 +503,6 @@ export default function Topology() {
         break;
       }
       case 'pdf': {
-        if (activeTab !== 'cytoscape') {
-          toast.info('PDF export is available for Cytoscape layout. Switch to that tab first.');
-          return;
-        }
         canvasRef.current?.exportAsPDF?.();
         break;
       }
@@ -513,7 +510,7 @@ export default function Topology() {
       case 'csv': downloadCSVSummary(filteredGraph); break;
     }
     if (format !== 'drawio') toast.success(`Exported as ${format.toUpperCase()}`);
-  }, [activeTab, filteredGraph, clusterId, effectiveBaseUrl, isBackendConfigured]);
+  }, [filteredGraph, clusterId, effectiveBaseUrl, isBackendConfigured]);
 
   const handleRefresh = useCallback(async () => {
     setIsRefreshing(true);
@@ -890,60 +887,33 @@ export default function Topology() {
         </div>
       )}
 
-      {/* Canvas with Tabs */}
+      {/* Canvas */}
       <div className="flex-1 relative min-h-0">
-        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'cytoscape' | 'd3-force')} className="h-full flex flex-col">
-          <TabsList className="mb-2 flex-shrink-0" data-testid="topology-tabs">
-            <TabsTrigger value="cytoscape" data-testid="topology-tab-cytoscape">Cytoscape Layout</TabsTrigger>
-            <TabsTrigger value="d3-force" data-testid="topology-tab-d3">D3.js</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="cytoscape" className="flex-1 relative min-h-0 mt-0">
-            {activeTab === 'cytoscape' && (
-              <TopologyCanvas
-                ref={canvasRef}
-                graph={filteredGraph}
-                selectedResources={selectedResources}
-                selectedRelationships={selectedRelationships}
-                selectedHealth={selectedHealth}
-                searchQuery={searchQuery}
-                abstractionLevel={abstractionLevel}
-                namespace={selectedNamespace}
-                centeredNodeId={centeredNodeIdForCanvas}
-                snapToGrid={snapToGrid}
-                isPaused={isPaused}
-                heatMapMode={heatMapMode}
-                trafficFlowEnabled={topologyMode === 'traffic'}
-                onNodeSelect={setSelectedNode}
-                onNodeDoubleClick={handleNodeDoubleClick}
-                onContextMenu={handleContextMenu}
-                onNodeHover={handleNodeHover}
-                blastRadius={blastRadius}
-                overlayData={overlayDataForCanvas}
-                className="h-full"
-              />
-            )}
-            {/* Same Legend, Node count, and Zoom controls below */}
-            {/* ... */}
-          </TabsContent>
-
-          <TabsContent value="d3-force" className="flex-1 relative min-h-0 mt-0">
-            {activeTab === 'd3-force' && (
-              <D3TopologyCanvas
-                nodes={d3Topology.nodes}
-                edges={d3Topology.edges}
-                onNodeClick={(node) => {
-                  const path = getDetailPathForNode({ id: node.id, name: node.name, namespace: node.namespace });
-                  if (path) navigate(path);
-                }}
-                className="h-full"
-              />
-            )}
-          </TabsContent>
-        </Tabs>
+        <TopologyCanvas
+          ref={canvasRef}
+          graph={filteredGraph}
+          selectedResources={selectedResources}
+          selectedRelationships={selectedRelationships}
+          selectedHealth={selectedHealth}
+          searchQuery={searchQuery}
+          abstractionLevel={abstractionLevel}
+          namespace={selectedNamespace}
+          centeredNodeId={centeredNodeIdForCanvas}
+          snapToGrid={snapToGrid}
+          isPaused={isPaused}
+          heatMapMode={heatMapMode}
+          trafficFlowEnabled={topologyMode === 'traffic'}
+          onNodeSelect={setSelectedNode}
+          onNodeDoubleClick={handleNodeDoubleClick}
+          onContextMenu={handleContextMenu}
+          onNodeHover={handleNodeHover}
+          blastRadius={blastRadius}
+          overlayData={overlayDataForCanvas}
+          className="h-full"
+        />
 
         {/* Node hover tooltip */}
-        {activeTab === 'cytoscape' && hoveredNode && createPortal(
+        {hoveredNode && createPortal(
           <div
             className="fixed z-[9998] max-w-[280px] rounded-lg border border-border bg-background/95 backdrop-blur-sm shadow-xl p-3 text-sm pointer-events-none"
             style={{
@@ -1022,7 +992,7 @@ export default function Topology() {
         )}
 
         {/* Blast radius panel */}
-        {activeTab === 'cytoscape' && blastRadius && (
+        {blastRadius && (
           <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="absolute top-4 left-4 w-72 z-10">
             <Card className="p-4 bg-background/95 backdrop-blur-sm shadow-lg border-orange-500/30">
               <div className="flex items-center justify-between gap-2">
@@ -1260,119 +1230,70 @@ export default function Topology() {
           </motion.div>
         )}
 
-        {/* Selected Node Panel - show for Cytoscape and Enterprise tabs */}
-        {activeTab === 'cytoscape' && selectedNode && (
-          <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="absolute top-4 left-4 w-72">
-            <Card className="p-4 bg-background/95 backdrop-blur-sm shadow-lg border-primary/30">
-              <div className="flex items-center gap-3">
-                <div
-                  className="w-11 h-11 rounded-lg flex items-center justify-center text-white text-[10px] font-bold shrink-0 shadow-md leading-tight text-center"
-                  style={{ backgroundColor: getKindColor(selectedNode.kind) }}
-                >
-                  {selectedNode.kind}
-                </div>
-                <div className="min-w-0">
-                  <h3 className="font-semibold truncate text-sm">{selectedNode.name}</h3>
-                  <p className="text-xs text-muted-foreground">
-                    {selectedNode.kind}{selectedNode.namespace && ` • ${selectedNode.namespace}`}
-                  </p>
-                </div>
-              </div>
-              <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-muted-foreground">Status:</span>
-                  <Badge variant={
-                    selectedNode.computed?.health === 'healthy' ? 'default' :
-                      selectedNode.computed?.health === 'warning' ? 'secondary' : 'destructive'
-                  } className="text-[10px] h-5">
-                    {selectedNode.computed?.health ?? '—'}
-                  </Badge>
-                </div>
-                {selectedNode.computed?.restartCount !== undefined && (
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-muted-foreground">Restarts:</span>
-                    <span className="font-medium">{selectedNode.computed.restartCount}</span>
-                  </div>
-                )}
-                {selectedNode.computed?.cpuUsage !== undefined && (
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-muted-foreground">CPU:</span>
-                    <span className="font-medium">{selectedNode.computed.cpuUsage}%</span>
-                  </div>
-                )}
-                {selectedNode.computed?.replicas && (
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-muted-foreground">Replicas:</span>
-                    <span className="font-medium">{selectedNode.computed.replicas.ready}/{selectedNode.computed.replicas.desired}</span>
-                  </div>
-                )}
-              </div>
-
-              {/* E-PLAT-001: AI node explanation */}
-              {(() => {
-                const aiNode = nodeExplains.get(selectedNode.id);
-                const isLoadingThis = nodeExplainLoadingId === selectedNode.id;
-                return (
-                  <div className="mt-3 pt-3 border-t border-border space-y-2">
-                    {isLoadingThis && (
-                      <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                        <Loader2 className="h-3 w-3 animate-spin" /> Generating AI explanation…
-                      </div>
-                    )}
-                    {aiNode && (
-                      <div className="space-y-1.5">
-                        {/* Role */}
-                        <div className="flex items-start gap-1.5 bg-purple-500/5 border border-purple-500/20 rounded-md p-2">
-                          <Sparkles className="h-3 w-3 text-purple-500 shrink-0 mt-0.5" />
-                          <p className="text-[11px] leading-relaxed text-foreground">{aiNode.role}</p>
-                        </div>
-                        {/* Anomalies */}
-                        {aiNode.anomalies.length > 0 && (
-                          <div className="space-y-1">
-                            {aiNode.anomalies.map((a, i) => (
-                              <div key={i} className="flex items-start gap-1.5 text-[11px] text-amber-700">
-                                <AlertCircle className="h-3 w-3 shrink-0 mt-0.5" />
-                                <span>{a}</span>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    )}
-                    {!aiNode && !isLoadingThis && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="w-full text-xs h-7 gap-1.5 text-purple-600 hover:text-purple-700 hover:bg-purple-500/10"
-                        onClick={() => {
-                          explainNode(
-                            {
-                              id: selectedNode.id,
-                              kind: selectedNode.kind,
-                              name: selectedNode.name,
-                              namespace: selectedNode.namespace,
-                              health: selectedNode.computed?.health,
-                              replicas: selectedNode.computed?.replicas?.ready,
-                            },
-                            toAINodes(filteredGraph.nodes),
-                            toAIEdges(filteredGraph.edges),
-                          );
-                        }}
-                      >
-                        <Brain className="h-3 w-3" />
-                        AI Explain this resource
-                      </Button>
-                    )}
-                    <div className="flex items-center justify-end">
-                      <Button variant="outline" size="sm" className="text-xs" onClick={() => handleNodeDoubleClick(selectedNode)}>
-                        View Details →
-                      </Button>
+        {/* Selected Node Panel — centered modal for both Cytoscape and D3 tabs */}
+        {selectedNode && (
+          <TopologyNodePanel
+            node={selectedNode}
+            onClose={() => setSelectedNode(null)}
+            onNavigate={handleNodeDoubleClick}
+          >
+            {/* E-PLAT-001: AI node explanation (passed as children → rendered in AI Insights section) */}
+            {(() => {
+              const aiNode = nodeExplains.get(selectedNode.id);
+              const isLoadingThis = nodeExplainLoadingId === selectedNode.id;
+              return (
+                <div className="space-y-2">
+                  {isLoadingThis && (
+                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <Loader2 className="h-3 w-3 animate-spin" /> Generating AI explanation…
                     </div>
-                  </div>
-                );
-              })()}
-            </Card>
-          </motion.div>
+                  )}
+                  {aiNode && (
+                    <div className="space-y-1.5">
+                      <div className="flex items-start gap-1.5 bg-purple-500/5 border border-purple-500/20 rounded-md p-2">
+                        <Sparkles className="h-3 w-3 text-purple-500 shrink-0 mt-0.5" />
+                        <p className="text-[11px] leading-relaxed text-foreground">{aiNode.role}</p>
+                      </div>
+                      {aiNode.anomalies.length > 0 && (
+                        <div className="space-y-1">
+                          {aiNode.anomalies.map((a, i) => (
+                            <div key={i} className="flex items-start gap-1.5 text-[11px] text-amber-700">
+                              <AlertCircle className="h-3 w-3 shrink-0 mt-0.5" />
+                              <span>{a}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  {!aiNode && !isLoadingThis && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="w-full text-xs h-7 gap-1.5 text-purple-600 hover:text-purple-700 hover:bg-purple-500/10"
+                      onClick={() => {
+                        explainNode(
+                          {
+                            id: selectedNode.id,
+                            kind: selectedNode.kind,
+                            name: selectedNode.name,
+                            namespace: selectedNode.namespace,
+                            health: selectedNode.computed?.health,
+                            replicas: selectedNode.computed?.replicas?.ready,
+                          },
+                          toAINodes(filteredGraph.nodes),
+                          toAIEdges(filteredGraph.edges),
+                        );
+                      }}
+                    >
+                      <Brain className="h-3 w-3" />
+                      AI Explain this resource
+                    </Button>
+                  )}
+                </div>
+              );
+            })()}
+          </TopologyNodePanel>
         )}
         {/* Final Premium Legend & Statistics Panel */}
         <Card className="absolute bottom-4 left-4 p-4 shadow-2xl border-none bg-white/90 backdrop-blur-md dark:bg-slate-900/90 z-20 w-80 overflow-hidden transition-all duration-300 hover:w-96">

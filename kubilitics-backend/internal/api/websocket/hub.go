@@ -3,6 +3,7 @@ package websocket
 import (
 	"context"
 	"encoding/json"
+	"log"
 	"sync"
 	"time"
 
@@ -11,13 +12,25 @@ import (
 	"github.com/kubilitics/kubilitics-backend/internal/pkg/metrics"
 )
 
+const (
+	// broadcastSendTimeout is the per-client grace period before disconnecting
+	// a client whose send buffer is full during broadcast.
+	broadcastSendTimeout = 5 * time.Second
+)
+
+// broadcastMessage wraps the raw message bytes with optional cluster scope for filtering.
+type broadcastMessage struct {
+	data      []byte
+	clusterID string // empty = send to all clients (unscoped)
+}
+
 // Hub maintains active WebSocket connections and broadcasts messages
 type Hub struct {
 	// Registered clients
 	clients map[*Client]bool
 
 	// Inbound messages from clients
-	broadcast chan []byte
+	broadcast chan broadcastMessage
 
 	// Register requests from clients
 	register chan *Client
@@ -40,7 +53,7 @@ type Hub struct {
 func NewHub(ctx context.Context) *Hub {
 	hubCtx, cancel := context.WithCancel(ctx)
 	return &Hub{
-		broadcast:  make(chan []byte, 256),
+		broadcast:  make(chan broadcastMessage, 256),
 		register:   make(chan *Client),
 		unregister: make(chan *Client),
 		clients:    make(map[*Client]bool),
@@ -71,25 +84,51 @@ func (h *Hub) Run() {
 			metrics.WebSocketConnectionsActive.Set(float64(len(h.clients)))
 			h.mu.Unlock()
 
-		case message := <-h.broadcast:
+		case msg := <-h.broadcast:
 			h.mu.RLock()
-			clientCount := len(h.clients)
-			messageSize := float64(len(message))
+			messageSize := float64(len(msg.data))
+			var deadClients []*Client
+			sentCount := 0
 			for client := range h.clients {
+				// Cluster-scoped filtering: if the message has a clusterID and the
+				// client has subscribed to specific clusters, only send if matched.
+				if msg.clusterID != "" && !client.AcceptsCluster(msg.clusterID) {
+					continue
+				}
 				select {
-				case client.send <- message:
+				case client.send <- msg.data:
 					metrics.WebSocketMessageSizeBytes.WithLabelValues("sent").Observe(messageSize)
+					sentCount++
 				default:
-					// Client buffer full, close connection
-					close(client.send)
-					delete(h.clients, client)
+					// Buffer full — give client a grace period before disconnecting
+					select {
+					case client.send <- msg.data:
+						metrics.WebSocketMessageSizeBytes.WithLabelValues("sent").Observe(messageSize)
+						sentCount++
+					case <-time.After(broadcastSendTimeout):
+						log.Printf("ws hub: client %s send timeout after %v, disconnecting", client.id, broadcastSendTimeout)
+						deadClients = append(deadClients, client)
+					}
 				}
 			}
-			// Track total messages sent (one per client that received it)
-			if clientCount > 0 {
-				metrics.WebSocketMessagesSentTotal.Add(float64(clientCount))
-			}
 			h.mu.RUnlock()
+
+			// Remove dead clients under write lock (fixes RLock mutation bug)
+			if len(deadClients) > 0 {
+				h.mu.Lock()
+				for _, client := range deadClients {
+					if _, ok := h.clients[client]; ok {
+						close(client.send)
+						delete(h.clients, client)
+					}
+				}
+				metrics.WebSocketConnectionsActive.Set(float64(len(h.clients)))
+				h.mu.Unlock()
+			}
+
+			if sentCount > 0 {
+				metrics.WebSocketMessagesSentTotal.Add(float64(sentCount))
+			}
 		}
 	}
 }
@@ -125,20 +164,21 @@ func (h *Hub) BroadcastResourceEvent(clusterID, namespace, eventType string, res
 		inv(clusterID, namespace)
 	}
 
-	msg := models.WebSocketMessage{
+	wsMsg := models.WebSocketMessage{
 		Type:      "resource_update",
 		Event:     eventType,
+		ClusterID: clusterID,
 		Resource:  map[string]interface{}{"type": resourceType, "data": obj},
 		Timestamp: time.Now(),
 	}
 
-	data, err := json.Marshal(msg)
+	data, err := json.Marshal(wsMsg)
 	if err != nil {
 		return err
 	}
 
 	select {
-	case h.broadcast <- data:
+	case h.broadcast <- broadcastMessage{data: data, clusterID: clusterID}:
 		return nil
 	case <-h.ctx.Done():
 		return h.ctx.Err()
@@ -147,20 +187,20 @@ func (h *Hub) BroadcastResourceEvent(clusterID, namespace, eventType string, res
 
 // BroadcastTopologyUpdate broadcasts a topology update
 func (h *Hub) BroadcastTopologyUpdate(topology *models.TopologyGraph) error {
-	msg := models.WebSocketMessage{
+	wsMsg := models.WebSocketMessage{
 		Type:      "topology_update",
 		Event:     "updated",
 		Resource:  map[string]interface{}{"topology": topology},
 		Timestamp: time.Now(),
 	}
 
-	data, err := json.Marshal(msg)
+	data, err := json.Marshal(wsMsg)
 	if err != nil {
 		return err
 	}
 
 	select {
-	case h.broadcast <- data:
+	case h.broadcast <- broadcastMessage{data: data}:
 		return nil
 	case <-h.ctx.Done():
 		return h.ctx.Err()

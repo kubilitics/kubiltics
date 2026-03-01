@@ -136,8 +136,10 @@ export function BackendStatusBanner({ className }: { className?: string }) {
 
   const requestId = health.error instanceof BackendApiError ? health.error.requestId : undefined;
   const desktop = isTauri();
-  const headline = desktop ? 'Connection issue' : 'Backend unreachable';
-  const detail = desktop ? 'Data below may be cached. Use Retry when the connection is back.' : (health.error instanceof Error ? health.error.message : 'Load failed') + ' (data below may be cached and outdated).';
+  const headline = desktop ? 'Backend connection issue' : 'Kubilitics backend unreachable';
+  const detail = desktop
+    ? 'Data below may be cached. Retry once your backend is reachable again.'
+    : 'Some data may be cached or outdated until the backend is reachable again.';
 
   return (
     <div

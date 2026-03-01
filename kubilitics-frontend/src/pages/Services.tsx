@@ -47,7 +47,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useK8sResourceList, useDeleteK8sResource, calculateAge, type KubernetesResource } from '@/hooks/useKubernetes';
 import { useConnectionStatus } from '@/hooks/useConnectionStatus';
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
@@ -203,6 +203,7 @@ type ListView = 'flat' | 'byNamespace' | 'byType';
 
 export default function Services() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedNamespace, setSelectedNamespace] = useState<string>('all');
   const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; item: Service | null; bulk?: boolean }>({ open: false, item: null });
@@ -252,6 +253,14 @@ export default function Services() {
   const namespaces = useMemo(() => {
     return ['all', ...Array.from(new Set(services.map(s => s.namespace)))];
   }, [services]);
+
+  // Seed namespace filter from ?namespace=<ns> when navigated from Namespace views.
+  useEffect(() => {
+    const nsFromQuery = searchParams.get('namespace');
+    if (!nsFromQuery) return;
+    if (selectedNamespace !== 'all') return;
+    setSelectedNamespace(nsFromQuery);
+  }, [searchParams, selectedNamespace]);
 
   const itemsAfterSearchAndNs = useMemo(() => {
     return services.filter(svc => {

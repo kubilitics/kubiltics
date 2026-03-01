@@ -4,6 +4,9 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"sync"
+
+	"golang.org/x/sync/errgroup"
 
 	"github.com/kubilitics/kubilitics-backend/internal/models"
 	corev1 "k8s.io/api/core/v1"
@@ -73,20 +76,34 @@ func (s *eventsService) ListEventsAllNamespaces(ctx context.Context, clusterID s
 		}
 	}
 
+	var mu sync.Mutex
 	var all []*models.Event
+
+	g, gctx := errgroup.WithContext(ctx)
+	g.SetLimit(10) // Bound concurrent K8s API calls
+
 	for _, ns := range nsList.Items {
-		listOpts := metav1.ListOptions{}
-		if perNamespaceLimit > 0 {
-			listOpts.Limit = int64(perNamespaceLimit)
-		}
-		eventList, err := client.Clientset.CoreV1().Events(ns.Name).List(ctx, listOpts)
-		if err != nil {
-			continue
-		}
-		for i := range eventList.Items {
-			all = append(all, k8sEventToModel(&eventList.Items[i]))
-		}
+		nsName := ns.Name
+		g.Go(func() error {
+			listOpts := metav1.ListOptions{}
+			if perNamespaceLimit > 0 {
+				listOpts.Limit = int64(perNamespaceLimit)
+			}
+			eventList, err := client.Clientset.CoreV1().Events(nsName).List(gctx, listOpts)
+			if err != nil {
+				return nil // Skip namespace on error (same as sequential version)
+			}
+			batch := make([]*models.Event, 0, len(eventList.Items))
+			for i := range eventList.Items {
+				batch = append(batch, k8sEventToModel(&eventList.Items[i]))
+			}
+			mu.Lock()
+			all = append(all, batch...)
+			mu.Unlock()
+			return nil
+		})
 	}
+	_ = g.Wait()
 
 	sort.Slice(all, func(i, j int) bool {
 		return all[i].LastTimestamp.After(all[j].LastTimestamp)

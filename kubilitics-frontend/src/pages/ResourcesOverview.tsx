@@ -8,10 +8,11 @@ import {
     Scale,
     Activity,
     Cpu,
-    Zap
+    Zap,
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useResourcesOverview } from '@/hooks/useResourcesOverview';
+import { useOverviewPagination } from '@/hooks/useOverviewPagination';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -19,6 +20,7 @@ import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { SectionOverviewHeader } from '@/components/layout/SectionOverviewHeader';
 import { QuotaPulse } from '@/components/resources/QuotaPulse';
+import { ListPagination } from '@/components/list/ListPagination';
 
 export default function ResourcesOverview() {
     const [searchQuery, setSearchQuery] = useState('');
@@ -36,6 +38,8 @@ export default function ResourcesOverview() {
         r.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         r.kind.toLowerCase().includes(searchQuery.toLowerCase())
     ) ?? [];
+
+    const pagination = useOverviewPagination(filteredResources, searchQuery, 10);
 
     if (isLoading) {
         return (
@@ -139,68 +143,98 @@ export default function ResourcesOverview() {
             </div>
 
             {/* Explorer Table */}
-            <div className="bg-card border border-primary/5 rounded-2xl overflow-hidden shadow-sm">
-                <div className="p-6 border-b border-primary/5 flex flex-col md:flex-row md:items-center gap-4 justify-between bg-muted/20">
-                    <div className="relative flex-1 max-w-md">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input
-                            placeholder="Search resource constraints..."
-                            className="pl-10 bg-background/50 border-primary/10 transition-all rounded-xl focus:ring-[#326CE5]/20"
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                        />
+            <div className="bg-white border border-slate-100 rounded-[2rem] overflow-hidden shadow-sm ring-1 ring-slate-100">
+                <div className="p-8 border-b border-slate-50">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                        <div>
+                            <h3 className="text-xl font-bold tracking-tight text-slate-900">Resources Explorer</h3>
+                            <p className="text-[11px] text-slate-500 font-semibold uppercase tracking-wider mt-1">Quota & Limit Constraints Registry</p>
+                        </div>
+                        <div className="relative min-w-[320px]">
+                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                            <Input
+                                placeholder="Search resource constraints..."
+                                className="pl-12 bg-slate-50 border-transparent transition-all rounded-xl focus:bg-white focus:ring-4 focus:ring-blue-500/5 focus:border-slate-200 h-10 font-medium text-sm"
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                            />
+                        </div>
                     </div>
                 </div>
 
                 <div className="overflow-x-auto">
                     <table className="w-full text-left border-collapse">
                         <thead>
-                            <tr className="bg-muted/30">
-                                <th className="px-6 py-4 text-xs font-black uppercase tracking-widest text-muted-foreground border-b border-primary/5">Resource Name</th>
-                                <th className="px-6 py-4 text-xs font-black uppercase tracking-widest text-muted-foreground border-b border-primary/5">Kind</th>
-                                <th className="px-6 py-4 text-xs font-black uppercase tracking-widest text-muted-foreground border-b border-primary/5">Namespace</th>
-                                <th className="px-6 py-4 text-xs font-black uppercase tracking-widest text-muted-foreground border-b border-primary/5">Status</th>
-                                <th className="px-6 py-4 border-b border-primary/5"></th>
+                            <tr className="bg-slate-50/50">
+                                <th className="px-8 py-5 text-[10px] font-bold uppercase tracking-widest text-slate-500 border-b border-slate-100">Resource Name</th>
+                                <th className="px-8 py-5 text-[10px] font-bold uppercase tracking-widest text-slate-500 border-b border-slate-100">Kind</th>
+                                <th className="px-8 py-5 text-[10px] font-bold uppercase tracking-widest text-slate-500 border-b border-slate-100">Namespace</th>
+                                <th className="px-8 py-5 text-[10px] font-bold uppercase tracking-widest text-slate-500 border-b border-slate-100">Status</th>
+                                <th className="px-8 py-5 border-b border-slate-100"></th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-primary/5">
-                            {filteredResources.map((resource, idx) => (
+                        <tbody className="divide-y divide-slate-50 text-sm">
+                            {pagination.paginatedItems.map((resource, idx) => (
                                 <motion.tr
                                     initial={{ opacity: 0, y: 5 }}
                                     animate={{ opacity: 1, y: 0 }}
-                                    transition={{ delay: idx * 0.05 }}
+                                    transition={{ delay: idx * 0.02 }}
                                     key={`${resource.kind}-${resource.name}`}
-                                    className="group hover:bg-[#326CE5]/5 transition-colors"
+                                    className="group hover:bg-slate-50 transition-colors"
                                 >
-                                    <td className="px-6 py-4">
-                                        <div className="font-bold text-foreground group-hover:text-[#326CE5] transition-colors">
+                                    <td className="px-8 py-4">
+                                        <div className="font-bold text-slate-900 group-hover:text-blue-600 transition-colors leading-tight tracking-tight">
                                             {resource.name}
                                         </div>
                                     </td>
-                                    <td className="px-6 py-4">
-                                        <Badge variant="outline" className="font-bold text-[9px] uppercase tracking-wider bg-white border-[#326CE5]/20 text-[#326CE5]">
+                                    <td className="px-8 py-4">
+                                        <Badge variant="outline" className="text-[9px] uppercase tracking-wider font-bold border-slate-100 text-slate-500">
                                             {resource.kind}
                                         </Badge>
                                     </td>
-                                    <td className="px-6 py-4 text-sm font-medium text-muted-foreground">
-                                        {resource.namespace}
+                                    <td className="px-8 py-4">
+                                        <span className="font-mono text-[10px] font-bold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-lg">
+                                            {resource.namespace}
+                                        </span>
                                     </td>
-                                    <td className="px-6 py-4">
+                                    <td className="px-8 py-4">
                                         <div className="flex items-center gap-2">
                                             <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
                                             <span className="text-[12px] font-bold text-slate-700">Enforced</span>
                                         </div>
                                     </td>
-                                    <td className="px-6 py-4 text-right">
-                                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0 hover:bg-[#326CE5] hover:text-white rounded-lg transition-all">
+                                    <td className="px-8 py-4 text-right">
+                                        <Button variant="ghost" size="sm" className="h-9 w-9 p-0 hover:bg-white hover:text-blue-600 hover:shadow-sm rounded-xl transition-all border border-transparent hover:border-slate-100">
                                             <ArrowUpRight className="h-4 w-4" />
                                         </Button>
                                     </td>
                                 </motion.tr>
                             ))}
+                            {pagination.paginatedItems.length === 0 && (
+                                <tr>
+                                    <td colSpan={5} className="px-8 py-12 text-center text-sm text-slate-400">
+                                        {searchQuery ? 'No resources match your search.' : 'No resource constraints found.'}
+                                    </td>
+                                </tr>
+                            )}
                         </tbody>
                     </table>
                 </div>
+
+                {pagination.totalItems > 0 && (
+                    <div className="p-6 border-t border-slate-50 bg-slate-50/30">
+                        <ListPagination
+                            hasPrev={pagination.hasPrev}
+                            hasNext={pagination.hasNext}
+                            onPrev={pagination.onPrev}
+                            onNext={pagination.onNext}
+                            rangeLabel={`Constraint Registry: ${pagination.totalItems} Resources`}
+                            currentPage={pagination.currentPage}
+                            totalPages={pagination.totalPages}
+                            onPageChange={pagination.setCurrentPage}
+                        />
+                    </div>
+                )}
             </div>
         </div>
     );

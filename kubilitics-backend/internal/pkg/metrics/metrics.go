@@ -219,6 +219,15 @@ var (
 		[]string{"outcome"}, // outcome: success/failure
 	)
 
+	// AuthDeprecatedTokenQueryTotal counts requests using deprecated ?token= query parameter.
+	AuthDeprecatedTokenQueryTotal = promauto.NewCounter(
+		prometheus.CounterOpts{
+			Namespace: namespace,
+			Name:      "auth_deprecated_token_query_total",
+			Help:      "Total number of requests using deprecated ?token= query parameter instead of Authorization header.",
+		},
+	)
+
 	// TokenCleanupDeletedTotal counts tokens deleted by cleanup job.
 	TokenCleanupDeletedTotal = promauto.NewCounter(
 		prometheus.CounterOpts{

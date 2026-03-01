@@ -147,8 +147,20 @@ func TestClusterService_AddCluster_RespectsMaxClusters(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error when at cluster limit")
 	}
-	if !strings.Contains(err.Error(), "cluster limit reached") && !strings.Contains(err.Error(), "max 1") {
+	if !strings.Contains(err.Error(), "cluster limit reached") {
 		t.Errorf("expected cluster limit error, got: %v", err)
+	}
+
+	// Verify typed error carries count and limit
+	var limitErr *ErrClusterLimitReached
+	if !errors.As(err, &limitErr) {
+		t.Fatal("expected ErrClusterLimitReached typed error")
+	}
+	if limitErr.Current != 1 {
+		t.Errorf("expected Current=1, got %d", limitErr.Current)
+	}
+	if limitErr.Max != 1 {
+		t.Errorf("expected Max=1, got %d", limitErr.Max)
 	}
 }
 

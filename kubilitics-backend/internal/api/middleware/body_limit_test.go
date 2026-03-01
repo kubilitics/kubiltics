@@ -118,6 +118,70 @@ func TestMaxBodySize_NilBody(t *testing.T) {
 	}
 }
 
+func TestMaxBodySize_ContentLengthRejection_Standard(t *testing.T) {
+	handlerCalled := false
+	handler := MaxBodySize(512*1024, 5*1024*1024)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		handlerCalled = true
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	// Create request with Content-Length exceeding standard limit
+	body := bytes.NewReader(make([]byte, 600*1024)) // 600KB > 512KB
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/clusters", body)
+	req.ContentLength = 600 * 1024
+	rec := httptest.NewRecorder()
+
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusRequestEntityTooLarge {
+		t.Errorf("Expected 413, got %d", rec.Code)
+	}
+	if handlerCalled {
+		t.Error("Handler should not have been called when Content-Length exceeds limit")
+	}
+}
+
+func TestMaxBodySize_ContentLengthRejection_Apply(t *testing.T) {
+	handlerCalled := false
+	handler := MaxBodySize(512*1024, 5*1024*1024)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		handlerCalled = true
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	// 6MB > 5MB apply limit
+	body := bytes.NewReader(make([]byte, 6*1024*1024))
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/clusters/test-cluster/apply", body)
+	req.ContentLength = 6 * 1024 * 1024
+	rec := httptest.NewRecorder()
+
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusRequestEntityTooLarge {
+		t.Errorf("Expected 413, got %d", rec.Code)
+	}
+	if handlerCalled {
+		t.Error("Handler should not have been called when Content-Length exceeds apply limit")
+	}
+}
+
+func TestMaxBodySize_ContentLengthWithinLimit_Passes(t *testing.T) {
+	handler := MaxBodySize(512*1024, 5*1024*1024)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	// 400KB < 512KB standard limit
+	body := bytes.NewReader(make([]byte, 400*1024))
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/clusters", body)
+	req.ContentLength = 400 * 1024
+	rec := httptest.NewRecorder()
+
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Errorf("Expected 200, got %d", rec.Code)
+	}
+}
+
 func TestMaxBodySize_ApplyPathDetection(t *testing.T) {
 	tests := []struct {
 		path    string

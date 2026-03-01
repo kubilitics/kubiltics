@@ -20,11 +20,8 @@ import (
 	"github.com/kubilitics/kubilitics-backend/internal/pkg/validate"
 )
 
-var shellStreamUpgrader = websocket.Upgrader{
-	CheckOrigin:     func(r *http.Request) bool { return true },
-	ReadBufferSize:  65536,
-	WriteBufferSize: 65536,
-}
+// shellStreamUpgrader is no longer used — replaced by h.newWSUpgrader() for proper origin validation.
+// Kept as a comment for reference: ReadBufferSize=65536, WriteBufferSize=65536.
 
 // GetShellStream handles GET /clusters/{clusterId}/shell/stream
 // Upgrades to WebSocket and runs an interactive PTY shell with KUBECONFIG set for the cluster.
@@ -53,7 +50,16 @@ func (h *Handler) GetShellStream(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	conn, err := shellStreamUpgrader.Upgrade(w, r, nil)
+	// Enforce per-cluster per-user WebSocket connection limit.
+	wsRelease, wsErr := h.wsAcquire(r, clusterID)
+	if wsErr != nil {
+		respondError(w, http.StatusTooManyRequests, wsErr.Error())
+		return
+	}
+	defer wsRelease()
+
+	upgrader := h.newWSUpgrader(65536, 65536)
+	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Printf("Terminal: WebSocket upgrade failed for %s: %v", clusterID, err)
 		return
@@ -145,6 +151,8 @@ func (h *Handler) GetShellStream(w http.ResponseWriter, r *http.Request) {
 	closeExecDone := func() { once.Do(func() { close(execDone) }) }
 	writerDone := make(chan struct{})
 	defer func() {
+		// Cancel context FIRST so goroutines see ctx.Done() before outChan is closed.
+		cancel()
 		closeExecDone()
 		// Wait for PTY reader to finish, but do not block forever (avoids hang on client disconnect).
 		select {
@@ -175,7 +183,7 @@ func (h *Handler) GetShellStream(w http.ResponseWriter, r *http.Request) {
 		_, _ = io.Copy(stdoutW, ptmx)
 		select {
 		case outChan <- wsOutMessage{T: wsMsgExit}:
-		default:
+		case <-ctx.Done():
 		}
 	}()
 
@@ -205,6 +213,10 @@ func (h *Handler) GetShellStream(w http.ResponseWriter, r *http.Request) {
 	}()
 
 	conn.SetReadLimit(1 << 20)
+	_ = conn.SetReadDeadline(time.Now().Add(readDeadline))
+	conn.SetPongHandler(func(string) error {
+		return conn.SetReadDeadline(time.Now().Add(readDeadline))
+	})
 	for {
 		conn.SetReadDeadline(time.Now().Add(readDeadline))
 		_, data, err := conn.ReadMessage()

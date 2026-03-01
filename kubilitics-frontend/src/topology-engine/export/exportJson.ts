@@ -3,6 +3,7 @@
  * Full topology graph matching TopologyResponse: schemaVersion, metadata, nodes, edges
  */
 import type { TopologyGraph } from '../types/topology.types';
+import { downloadFile } from '../utils/exportUtils';
 
 export interface ExportedTopologyJSON {
   schemaVersion: string;
@@ -35,13 +36,9 @@ export function exportAsJSON(graph: TopologyGraph): string {
   return JSON.stringify(exportData, null, 2);
 }
 
-export function downloadJSON(graph: TopologyGraph, filename = 'topology.json') {
+// FIX DESKTOP-EXPORT: Use shared Tauri-aware downloadFile instead of inline blob URL logic
+export async function downloadJSON(graph: TopologyGraph, filename = 'topology.json') {
   const data = exportAsJSON(graph);
   const blob = new Blob([data], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.download = filename;
-  link.href = url;
-  link.click();
-  URL.revokeObjectURL(url);
+  await downloadFile(blob, filename);
 }

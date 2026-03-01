@@ -36,8 +36,8 @@ func MetricsAuth(cfg *config.Config, repo *repository.SQLiteRepository) func(htt
 				}
 			}
 
-			// Try Bearer token
-			token := extractBearer(r)
+			// Try Bearer token (with deprecation notice for ?token= query parameter)
+			token := extractBearerWithDeprecation(r, w)
 			if token != "" {
 				claims, err := auth.ValidateToken(cfg.AuthJWTSecret, token)
 				if err == nil && claims != nil && !claims.Refresh {
@@ -47,9 +47,7 @@ func MetricsAuth(cfg *config.Config, repo *repository.SQLiteRepository) func(htt
 			}
 
 			// No valid auth - return 401
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusUnauthorized)
-			w.Write([]byte(`{"error":"Authentication required for metrics endpoint"}`))
+			writeJSONError(w, http.StatusUnauthorized, "Authentication required for metrics endpoint")
 		})
 	}
 }

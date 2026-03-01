@@ -121,6 +121,93 @@ func TestDesiredSubsetEqual(t *testing.T) {
 	assert.False(t, desiredSubsetEqual(desired, liveDiff))
 }
 
+// TestDesiredSubsetEqual_ContainerInjectedFields verifies that Kubernetes-injected fields
+// in container specs (terminationMessagePath, imagePullPolicy, terminationMessagePolicy)
+// do NOT trigger false-positive STRUCTURAL drift. This is the root cause of drift being
+// reported immediately after a fresh Helm install (e.g. Jenkins StatefulSet on Docker Desktop).
+func TestDesiredSubsetEqual_ContainerInjectedFields(t *testing.T) {
+	// Desired: minimal container spec as it would appear in a Helm chart manifest.
+	desired := map[string]interface{}{
+		"template": map[string]interface{}{
+			"spec": map[string]interface{}{
+				"containers": []interface{}{
+					map[string]interface{}{
+						"name":  "jenkins",
+						"image": "jenkins/jenkins:2.440",
+						"ports": []interface{}{
+							map[string]interface{}{"name": "http", "containerPort": int64(8080)},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	// Live: same container but with K8s-injected fields added by the defaulting admission controller.
+	live := map[string]interface{}{
+		"template": map[string]interface{}{
+			"spec": map[string]interface{}{
+				"dnsPolicy":    "ClusterFirst",
+				"restartPolicy": "Always",
+				"containers": []interface{}{
+					map[string]interface{}{
+						"name":                     "jenkins",
+						"image":                    "jenkins/jenkins:2.440",
+						"imagePullPolicy":          "IfNotPresent",           // K8s injected
+						"terminationMessagePath":   "/dev/termination-log",   // K8s injected
+						"terminationMessagePolicy": "File",                   // K8s injected
+						"ports": []interface{}{
+							map[string]interface{}{
+								"name":          "http",
+								"containerPort": int64(8080),
+								"protocol":      "TCP", // K8s injected
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	// No false-positive drift — the only difference is K8s-injected fields.
+	assert.True(t, desiredSubsetEqual(desired, live),
+		"should not flag drift when live containers only have K8s-injected extra fields")
+
+	// Actual drift: image changed.
+	liveDrifted := map[string]interface{}{
+		"template": map[string]interface{}{
+			"spec": map[string]interface{}{
+				"containers": []interface{}{
+					map[string]interface{}{
+						"name":            "jenkins",
+						"image":           "jenkins/jenkins:2.430", // changed — real drift
+						"imagePullPolicy": "IfNotPresent",
+					},
+				},
+			},
+		},
+	}
+	assert.False(t, desiredSubsetEqual(desired, liveDrifted),
+		"should detect drift when container image changes")
+
+	// Actual drift: container removed from live.
+	liveMissingContainer := map[string]interface{}{
+		"template": map[string]interface{}{
+			"spec": map[string]interface{}{
+				"containers": []interface{}{
+					// "jenkins" container missing
+					map[string]interface{}{
+						"name":  "sidecar",
+						"image": "something/sidecar:latest",
+					},
+				},
+			},
+		},
+	}
+	assert.False(t, desiredSubsetEqual(desired, liveMissingContainer),
+		"should detect drift when desired container is absent from live")
+}
+
 func TestCompareSpecAndMetadata(t *testing.T) {
 	desired := &unstructured.Unstructured{
 		Object: map[string]interface{}{

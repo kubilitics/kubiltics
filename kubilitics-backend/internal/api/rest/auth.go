@@ -1111,10 +1111,11 @@ func (h *AuthHandler) CreateAPIKey(w http.ResponseWriter, r *http.Request) {
 		exp := time.Now().Add(time.Duration(*req.ExpiresIn) * 24 * time.Hour)
 		expiresAt = &exp
 	}
-	// Create API key record
+	// Create API key record with prefix for O(1) lookup
 	apiKey := &models.APIKey{
 		UserID:    claims.UserID,
 		KeyHash:   hash,
+		KeyPrefix: auth.APIKeyPrefix(plaintext),
 		Name:      req.Name,
 		ExpiresAt: expiresAt,
 		CreatedAt: time.Now(),

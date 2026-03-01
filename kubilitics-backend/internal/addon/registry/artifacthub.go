@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/kubilitics/kubilitics-backend/internal/models"
@@ -16,11 +17,26 @@ import (
 
 const (
 	defaultArtifactHubBaseURL = "https://artifacthub.io/api/v1"
+	// chartValuesCacheTTL controls how long fetched values.yaml content is kept
+	// in memory before a fresh request to Artifact Hub is required.
+	chartValuesCacheTTL = 30 * time.Minute
 )
+
+// chartValuesCacheEntry stores a cached values.yaml response from Artifact Hub.
+type chartValuesCacheEntry struct {
+	values    string
+	fetchedAt time.Time
+}
 
 type ArtifactHubClient struct {
 	baseURL    string
 	httpClient *http.Client
+
+	// In-memory cache for GetChartValues results keyed by "repo/chart/version".
+	// Eliminates redundant Artifact Hub round-trips when the install wizard is
+	// re-opened or retried within the TTL window.
+	valuesCache   map[string]chartValuesCacheEntry
+	valuesCacheMu sync.RWMutex
 }
 
 type ArtifactHubHTTPError struct {
@@ -37,8 +53,9 @@ func NewArtifactHubClient() *ArtifactHubClient {
 	return &ArtifactHubClient{
 		baseURL: defaultArtifactHubBaseURL,
 		httpClient: &http.Client{
-			Timeout: 10 * time.Second,
+			Timeout: 15 * time.Second,
 		},
+		valuesCache: make(map[string]chartValuesCacheEntry),
 	}
 }
 
@@ -138,16 +155,141 @@ func (c *ArtifactHubClient) GetChart(ctx context.Context, repoName, chartName st
 	return &out, nil
 }
 
+// GetChartValues returns the raw values.yaml content for a Helm chart from Artifact Hub.
+// repoName and chartName must match the AH repository slug and chart name (e.g. "jenkinsci", "jenkins").
+// version is optional; pass empty string to use the chart's latest published version.
+//
+// The Artifact Hub API requires two requests:
+//  1. GET /packages/helm/{repo}/{chart}  →  resolves package_id (UUID) + latest version
+//  2. GET /packages/{packageId}/{version}/values  →  returns raw values.yaml text
+func (c *ArtifactHubClient) GetChartValues(ctx context.Context, repoName, chartName, version string) (string, error) {
+	repoName = strings.TrimSpace(repoName)
+	chartName = strings.TrimSpace(chartName)
+	if repoName == "" || chartName == "" {
+		return "", fmt.Errorf("repoName and chartName are required")
+	}
+
+	// ── Check in-memory cache first ─────────────────────────────────────────
+	cacheKey := repoName + "/" + chartName + "/" + version
+	c.valuesCacheMu.RLock()
+	if entry, ok := c.valuesCache[cacheKey]; ok && time.Since(entry.fetchedAt) < chartValuesCacheTTL {
+		c.valuesCacheMu.RUnlock()
+		return entry.values, nil
+	}
+	c.valuesCacheMu.RUnlock()
+
+	// ── Step 1: resolve package detail (includes data.values if available) ──
+	chart, err := c.GetChart(ctx, repoName, chartName)
+	if err != nil {
+		return "", fmt.Errorf("GetChartValues: resolve package detail: %w", err)
+	}
+
+	resolvedVersion := version
+	if resolvedVersion == "" {
+		resolvedVersion = strings.TrimSpace(chart.Version)
+	}
+	resolvedCacheKey := repoName + "/" + chartName + "/" + resolvedVersion
+
+	// The package detail endpoint (/packages/helm/{repo}/{chart}) already returns
+	// data.values with the raw values.yaml for the latest version. Use it directly
+	// to avoid a second HTTP round-trip that can time out or 404.
+	if chart.Data.Values != "" {
+		c.cacheValues(cacheKey, resolvedCacheKey, chart.Data.Values)
+		return chart.Data.Values, nil
+	}
+
+	// ── Step 2: fallback to the dedicated values endpoint ────────────────────
+	pkgID := strings.TrimSpace(chart.PackageID)
+	if pkgID == "" {
+		// No package ID and no inline values — chart has no published defaults.
+		c.cacheValues(cacheKey, resolvedCacheKey, "")
+		return "", nil
+	}
+	if resolvedVersion == "" {
+		// No version available — cannot construct the values URL.
+		c.cacheValues(cacheKey, resolvedCacheKey, "")
+		return "", nil
+	}
+
+	// Check cache again with resolved version (initial key may have been empty version).
+	if resolvedCacheKey != cacheKey {
+		c.valuesCacheMu.RLock()
+		if entry, ok := c.valuesCache[resolvedCacheKey]; ok && time.Since(entry.fetchedAt) < chartValuesCacheTTL {
+			c.valuesCacheMu.RUnlock()
+			return entry.values, nil
+		}
+		c.valuesCacheMu.RUnlock()
+	}
+
+	endpoint := fmt.Sprintf("%s/packages/%s/%s/values",
+		c.baseURL, url.PathEscape(pkgID), url.PathEscape(resolvedVersion))
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
+	if err != nil {
+		return "", fmt.Errorf("build artifacthub values request: %w", err)
+	}
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("artifacthub values request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusNotFound {
+		// Chart exists but has no published values.yaml — cache the empty result.
+		c.cacheValues(cacheKey, resolvedCacheKey, "")
+		return "", nil
+	}
+	if resp.StatusCode != http.StatusOK {
+		return "", decodeArtifactHubError(resp, endpoint)
+	}
+
+	raw, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("read artifacthub values body: %w", err)
+	}
+
+	result := string(raw)
+	c.cacheValues(cacheKey, resolvedCacheKey, result)
+	return result, nil
+}
+
+// cacheValues stores a values.yaml result under one or two cache keys.
+func (c *ArtifactHubClient) cacheValues(key1, key2, values string) {
+	c.valuesCacheMu.Lock()
+	defer c.valuesCacheMu.Unlock()
+	entry := chartValuesCacheEntry{values: values, fetchedAt: time.Now()}
+	c.valuesCache[key1] = entry
+	if key2 != key1 {
+		c.valuesCache[key2] = entry
+	}
+	// Lazy eviction: purge expired entries when cache grows large.
+	if len(c.valuesCache) > 200 {
+		now := time.Now()
+		for k, v := range c.valuesCache {
+			if now.Sub(v.fetchedAt) >= chartValuesCacheTTL {
+				delete(c.valuesCache, k)
+			}
+		}
+	}
+}
+
 func (c *ArtifactHubClient) mapToAddOnEntry(chart ArtifactHubChart) models.AddOnEntry {
 	var iconUrl string
 	if chart.LogoImageID != "" {
 		iconUrl = fmt.Sprintf("https://artifacthub.io/image/%s", chart.LogoImageID)
 	}
 	// Use repo/chart as ID so GetPackageByID can fetch details (Artifact Hub uses repo/chart in URLs).
-	communityID := "community/" + chart.Repository.Name + "/" + chart.Name
-	if chart.Repository.Name == "" {
-		communityID = "community/" + chart.PackageID
+	// Always produce a 3-part "community/{repo}/{chart}" ID so that GetAddonDefaultValues can
+	// parse it. When Repository.Name is empty, fall back to PackageID as the repo segment.
+	repoSlug := chart.Repository.Name
+	if repoSlug == "" {
+		repoSlug = chart.PackageID
 	}
+	communityID := "community/" + repoSlug + "/" + chart.Name
+
+	// "Official" is true when either the package itself is official OR when it comes
+	// from an officially maintained repository.
+	isOfficial := chart.Official || chart.Repository.Official
 
 	return models.AddOnEntry{
 		ID:               communityID,
@@ -163,6 +305,10 @@ func (c *ArtifactHubClient) mapToAddOnEntry(chart ArtifactHubChart) models.AddOn
 		IconURL:          iconUrl,
 		IsDeprecated:     chart.Deprecated,
 		Stars:            chart.Stars,
+		// Trust signals
+		IsOfficial:          isOfficial,
+		IsVerifiedPublisher: chart.Repository.VerifiedPublisher,
+		IsSigned:            chart.Signed,
 	}
 }
 

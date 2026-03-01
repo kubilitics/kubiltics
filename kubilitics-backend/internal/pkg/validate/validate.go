@@ -63,6 +63,22 @@ func Name(name string) bool {
 	return k8sNameRe.MatchString(strings.ToLower(name))
 }
 
+// ResourceName validates a user-provided name for projects, addons, release names, etc.
+// Enforces DNS-safe naming: lowercase alphanumeric and hyphens, max 253 chars.
+// Returns an empty string on valid input, or a human-readable error message.
+func ResourceName(name string) string {
+	if name == "" {
+		return "name is required"
+	}
+	if len(name) > 253 {
+		return "name must be at most 253 characters"
+	}
+	if !k8sNameRe.MatchString(strings.ToLower(name)) {
+		return "name must consist of lowercase alphanumeric characters, '-' or '.', and must start and end with an alphanumeric character (RFC 1123 DNS subdomain)"
+	}
+	return ""
+}
+
 // ApplyYAMLDangerousWarnings parses YAML (single or multi-doc) and returns warnings for dangerous pod/container settings (BE-DATA-001).
 // Example: hostPID: true, privileged: true. Caller may log and optionally reject.
 func ApplyYAMLDangerousWarnings(yamlContent string) []string {
@@ -124,4 +140,13 @@ func pathKey(p string) string {
 func toBool(v interface{}) (bool, bool) {
 	b, ok := v.(bool)
 	return b, ok
+}
+
+// PatchJSONDangerousWarnings inspects a JSON merge-patch body (map[string]interface{}) for
+// dangerous pod/container security settings (BE-DATA-001). Returns warnings for fields like
+// hostPID: true, privileged: true, hostNetwork: true — same checks as ApplyYAMLDangerousWarnings.
+func PatchJSONDangerousWarnings(patch map[string]interface{}) []string {
+	var warnings []string
+	walkForDangerous(patch, "", &warnings)
+	return warnings
 }

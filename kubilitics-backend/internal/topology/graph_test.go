@@ -161,17 +161,19 @@ func TestValidate(t *testing.T) {
 
 func TestValidateOrphanEdge(t *testing.T) {
 	graph := NewGraph(0)
-	
+
 	// Add edge without nodes
 	graph.AddEdge(models.TopologyEdge{
 		ID: "edge-1", Source: "nonexistent-1", Target: "nonexistent-2", RelationshipType: "owner",
 		Metadata: models.EdgeMetadata{},
 	})
-	
-	// Should fail validation
+
+	// Validate should succeed — orphan edges are gracefully removed
 	err := graph.Validate()
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "non-existent")
+	assert.NoError(t, err)
+	// Orphan edge should have been removed
+	assert.Equal(t, 0, len(graph.Edges), "orphan edges should be removed during validation")
+	assert.False(t, graph.EdgeMap["nonexistent-1->nonexistent-2:owner"], "orphan edge should be removed from EdgeMap")
 }
 
 func TestGetOutgoingEdges(t *testing.T) {

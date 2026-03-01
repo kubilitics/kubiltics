@@ -36,11 +36,13 @@ func setupTestRepo(t *testing.T) *repository.SQLiteRepository {
 			user_id TEXT NOT NULL,
 			name TEXT NOT NULL,
 			key_hash TEXT NOT NULL,
+			key_prefix TEXT NOT NULL DEFAULT '',
 			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 			last_used DATETIME,
 			expires_at DATETIME,
 			FOREIGN KEY(user_id) REFERENCES users(id)
 		);
+		CREATE INDEX IF NOT EXISTS idx_api_keys_prefix ON api_keys(key_prefix);
 	`
 	if err := repo.RunMigrations(migrationSQL); err != nil {
 		t.Fatalf("Failed to run migrations: %v", err)

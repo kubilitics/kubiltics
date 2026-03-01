@@ -271,6 +271,12 @@ func newRootCommand(in io.Reader, out, errOut io.Writer) *cobra.Command {
 		return nil
 	}
 
+	cmd.PersistentPostRun = func(_ *cobra.Command, _ []string) {
+		if a.ai != nil {
+			a.ai.Close()
+		}
+	}
+
 	cmd.SetErrPrefix("kcli: ")
 	cmd.SetOut(a.stdout)
 	cmd.SetErr(a.stderr)

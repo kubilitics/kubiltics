@@ -22,7 +22,7 @@ const resourceSubgraphMaxNodes = 500
 
 // ResourceTopologyKinds lists canonical kinds that support resource-scoped topology
 // (BuildResourceSubgraph). API accepts plural lowercase (e.g. "statefulsets").
-var ResourceTopologyKinds = []string{"Node", "Pod", "Deployment", "ReplicaSet", "StatefulSet", "DaemonSet", "Job", "CronJob", "Service", "Ingress", "IngressClass", "Endpoints", "EndpointSlice", "NetworkPolicy", "ConfigMap", "Secret", "PersistentVolumeClaim", "PersistentVolume", "StorageClass", "VolumeAttachment", "ResourceQuota", "LimitRange", "PriorityClass", "ResourceSlice", "DeviceClass"}
+var ResourceTopologyKinds = []string{"Node", "Pod", "Deployment", "ReplicaSet", "StatefulSet", "DaemonSet", "Job", "CronJob", "Service", "Ingress", "IngressClass", "Endpoints", "EndpointSlice", "NetworkPolicy", "ConfigMap", "Secret", "PersistentVolumeClaim", "PersistentVolume", "StorageClass", "VolumeAttachment", "ResourceQuota", "LimitRange", "PriorityClass", "ResourceSlice", "DeviceClass", "Namespace", "ServiceAccount", "HorizontalPodAutoscaler", "ReplicationController", "Role", "ClusterRole", "RoleBinding", "ClusterRoleBinding", "PodDisruptionBudget", "RuntimeClass", "Lease", "CSIDriver", "CSINode", "MutatingWebhookConfiguration", "ValidatingWebhookConfiguration", "FlowSchema", "PriorityLevelConfiguration"}
 
 // buildResourceEdge adds an edge with the given label (used for resource-scoped topology).
 func buildResourceEdge(source, target, label string) models.TopologyEdge {
@@ -112,6 +112,38 @@ func normalizeResourceKind(kind string) string {
 		return "ResourceSlice"
 	case "deviceclasses", "deviceclass":
 		return "DeviceClass"
+	case "namespaces", "namespace":
+		return "Namespace"
+	case "horizontalpodautoscalers", "horizontalpodautoscaler", "hpa":
+		return "HorizontalPodAutoscaler"
+	case "replicationcontrollers", "replicationcontroller", "rc":
+		return "ReplicationController"
+	case "roles", "role":
+		return "Role"
+	case "clusterroles", "clusterrole":
+		return "ClusterRole"
+	case "rolebindings", "rolebinding":
+		return "RoleBinding"
+	case "clusterrolebindings", "clusterrolebinding":
+		return "ClusterRoleBinding"
+	case "poddisruptionbudgets", "poddisruptionbudget", "pdb":
+		return "PodDisruptionBudget"
+	case "runtimeclasses", "runtimeclass":
+		return "RuntimeClass"
+	case "leases", "lease":
+		return "Lease"
+	case "csidrivers", "csidriver":
+		return "CSIDriver"
+	case "csinodes", "csinode":
+		return "CSINode"
+	case "mutatingwebhookconfigurations", "mutatingwebhookconfiguration", "mwc":
+		return "MutatingWebhookConfiguration"
+	case "validatingwebhookconfigurations", "validatingwebhookconfiguration", "vwc":
+		return "ValidatingWebhookConfiguration"
+	case "flowschemas", "flowschema":
+		return "FlowSchema"
+	case "prioritylevelconfigurations", "prioritylevelconfiguration", "plc":
+		return "PriorityLevelConfiguration"
 	default:
 		return kind
 	}
@@ -173,6 +205,40 @@ func (e *Engine) BuildResourceSubgraph(ctx context.Context, kind, namespace, nam
 		return e.buildResourceSliceSubgraph(ctx, name)
 	case "DeviceClass":
 		return e.buildDeviceClassSubgraph(ctx, name)
+	case "Namespace":
+		return e.buildNamespaceSubgraph(ctx, name)
+	case "ServiceAccount":
+		return e.buildServiceAccountSubgraph(ctx, namespace, name)
+	case "HorizontalPodAutoscaler":
+		return e.buildHorizontalPodAutoscalerSubgraph(ctx, namespace, name)
+	case "ReplicationController":
+		return e.buildReplicationControllerSubgraph(ctx, namespace, name)
+	case "Role":
+		return e.buildRoleSubgraph(ctx, namespace, name)
+	case "ClusterRole":
+		return e.buildClusterRoleSubgraph(ctx, name)
+	case "RoleBinding":
+		return e.buildRoleBindingSubgraph(ctx, namespace, name)
+	case "ClusterRoleBinding":
+		return e.buildClusterRoleBindingSubgraph(ctx, name)
+	case "PodDisruptionBudget":
+		return e.buildPodDisruptionBudgetSubgraph(ctx, namespace, name)
+	case "RuntimeClass":
+		return e.buildRuntimeClassSubgraph(ctx, name)
+	case "Lease":
+		return e.buildLeaseSubgraph(ctx, namespace, name)
+	case "CSIDriver":
+		return e.buildCSIDriverSubgraph(ctx, name)
+	case "CSINode":
+		return e.buildCSINodeSubgraph(ctx, name)
+	case "MutatingWebhookConfiguration":
+		return e.buildMutatingWebhookConfigurationSubgraph(ctx, name)
+	case "ValidatingWebhookConfiguration":
+		return e.buildValidatingWebhookConfigurationSubgraph(ctx, name)
+	case "FlowSchema":
+		return e.buildFlowSchemaSubgraph(ctx, name)
+	case "PriorityLevelConfiguration":
+		return e.buildPriorityLevelConfigurationSubgraph(ctx, name)
 	default:
 		return nil, fmt.Errorf("resource topology not implemented for kind %q (supported kinds: %s)", canonicalKind, strings.Join(ResourceTopologyKinds, ", "))
 	}
@@ -325,6 +391,9 @@ func (e *Engine) buildDeploymentSubgraph(ctx context.Context, namespace, name st
 		}
 	}
 
+	// Pod template references: ConfigMaps, Secrets, ServiceAccount, PriorityClass, PVCs
+	e.addPodTemplateRefsToGraph(ctx, g, ns, depID, &dep.Spec.Template.Spec)
+
 	g.LayoutSeed = g.GenerateLayoutSeed()
 	if err := g.Validate(); err != nil {
 		return nil, fmt.Errorf("graph validation failed: %w", err)
@@ -447,6 +516,30 @@ func (e *Engine) buildStatefulSetSubgraph(ctx context.Context, namespace, name s
 		}
 	}
 
+	// Pod template references: ConfigMaps, Secrets, ServiceAccount, PriorityClass, PVCs
+	e.addPodTemplateRefsToGraph(ctx, g, ns, stsID, &sts.Spec.Template.Spec)
+
+	// volumeClaimTemplates → existing PVCs (pattern: {template}-{sts}-{index}) (W-18)
+	if len(sts.Spec.VolumeClaimTemplates) > 0 {
+		pvcList, err := e.client.Clientset.CoreV1().PersistentVolumeClaims(ns).List(ctx, metav1.ListOptions{})
+		if err == nil {
+			for i := range pvcList.Items {
+				if g.Truncated {
+					break
+				}
+				pvc := &pvcList.Items[i]
+				for _, tmpl := range sts.Spec.VolumeClaimTemplates {
+					prefix := tmpl.Name + "-" + sts.Name + "-"
+					if strings.HasPrefix(pvc.Name, prefix) {
+						pvcID := ensureNode(g, "PersistentVolumeClaim", pvc.Namespace, pvc.Name, string(pvc.Status.Phase), pvc.ObjectMeta)
+						addResourceEdge(g, stsID, pvcID, "Claims")
+						break
+					}
+				}
+			}
+		}
+	}
+
 	g.LayoutSeed = g.GenerateLayoutSeed()
 	if err := g.Validate(); err != nil {
 		return nil, fmt.Errorf("graph validation failed: %w", err)
@@ -501,6 +594,9 @@ func (e *Engine) buildDaemonSetSubgraph(ctx context.Context, namespace, name str
 		}
 	}
 
+	// Pod template references: ConfigMaps, Secrets, ServiceAccount, PriorityClass, PVCs
+	e.addPodTemplateRefsToGraph(ctx, g, ns, dsID, &ds.Spec.Template.Spec)
+
 	g.LayoutSeed = g.GenerateLayoutSeed()
 	if err := g.Validate(); err != nil {
 		return nil, fmt.Errorf("graph validation failed: %w", err)
@@ -548,6 +644,9 @@ func (e *Engine) buildJobSubgraph(ctx context.Context, namespace, name string) (
 			break
 		}
 	}
+
+	// Pod template references: ConfigMaps, Secrets, ServiceAccount, PriorityClass, PVCs
+	e.addPodTemplateRefsToGraph(ctx, g, ns, jobID, &job.Spec.Template.Spec)
 
 	g.LayoutSeed = g.GenerateLayoutSeed()
 	if err := g.Validate(); err != nil {
@@ -599,6 +698,9 @@ func (e *Engine) buildCronJobSubgraph(ctx context.Context, namespace, name strin
 			}
 		}
 	}
+
+	// Job template references: ConfigMaps, Secrets, ServiceAccount, PriorityClass, PVCs
+	e.addPodTemplateRefsToGraph(ctx, g, ns, cjID, &cj.Spec.JobTemplate.Spec.Template.Spec)
 
 	g.LayoutSeed = g.GenerateLayoutSeed()
 	if err := g.Validate(); err != nil {
@@ -1343,6 +1445,38 @@ func (e *Engine) buildNodeSubgraph(ctx context.Context, name string) (*Graph, er
 		}
 	}
 
+	// VolumeAttachments on this node (I-01)
+	vaList, vaErr := e.client.Clientset.StorageV1().VolumeAttachments().List(ctx, metav1.ListOptions{})
+	if vaErr == nil {
+		for i := range vaList.Items {
+			if g.Truncated {
+				break
+			}
+			va := &vaList.Items[i]
+			if va.Spec.NodeName != name {
+				continue
+			}
+			vaID := ensureNode(g, "VolumeAttachment", "", va.Name, "Active", va.ObjectMeta)
+			addResourceEdge(g, nodeID, vaID, "Has")
+		}
+	}
+
+	// Lease for this node (I-02) — kube-node-lease namespace convention
+	leaseList, leaseErr := e.client.Clientset.CoordinationV1().Leases("kube-node-lease").List(ctx, metav1.ListOptions{})
+	if leaseErr == nil {
+		for i := range leaseList.Items {
+			if g.Truncated {
+				break
+			}
+			lease := &leaseList.Items[i]
+			if lease.Spec.HolderIdentity == nil || *lease.Spec.HolderIdentity != name {
+				continue
+			}
+			leaseID := ensureNode(g, "Lease", lease.Namespace, lease.Name, "Active", lease.ObjectMeta)
+			addResourceEdge(g, leaseID, nodeID, "Renews")
+		}
+	}
+
 	g.LayoutSeed = g.GenerateLayoutSeed()
 	if err := g.Validate(); err != nil {
 		return nil, fmt.Errorf("graph validation failed: %w", err)
@@ -1373,22 +1507,60 @@ func podReferencesConfigMap(pod *corev1.Pod, configMapName string) bool {
 }
 
 // podReferencesSecret returns true if the pod references the named Secret (volume, envFrom, or env valueFrom).
+// containerReferencesSecret checks a single container (regular or init) for secret references.
+func containerReferencesSecret(c corev1.Container, secretName string) bool {
+	for _, ef := range c.EnvFrom {
+		if ef.SecretRef != nil && ef.SecretRef.Name == secretName {
+			return true
+		}
+	}
+	for _, env := range c.Env {
+		if env.ValueFrom != nil && env.ValueFrom.SecretKeyRef != nil && env.ValueFrom.SecretKeyRef.Name == secretName {
+			return true
+		}
+	}
+	return false
+}
+
 func podReferencesSecret(pod *corev1.Pod, secretName string) bool {
+	// Volume mounts
 	for _, vol := range pod.Spec.Volumes {
 		if vol.Secret != nil && vol.Secret.SecretName == secretName {
 			return true
 		}
-	}
-	for _, c := range pod.Spec.Containers {
-		for _, ef := range c.EnvFrom {
-			if ef.SecretRef != nil && ef.SecretRef.Name == secretName {
-				return true
+		// Projected volumes can reference secrets
+		if vol.Projected != nil {
+			for _, src := range vol.Projected.Sources {
+				if src.Secret != nil && src.Secret.Name == secretName {
+					return true
+				}
 			}
 		}
-		for _, env := range c.Env {
-			if env.ValueFrom != nil && env.ValueFrom.SecretKeyRef != nil && env.ValueFrom.SecretKeyRef.Name == secretName {
-				return true
-			}
+	}
+	// Regular containers
+	for _, c := range pod.Spec.Containers {
+		if containerReferencesSecret(c, secretName) {
+			return true
+		}
+	}
+	// Init containers (previously unchecked — common cause of missing connections)
+	for _, c := range pod.Spec.InitContainers {
+		if containerReferencesSecret(c, secretName) {
+			return true
+		}
+	}
+	// Ephemeral containers
+	for _, c := range pod.Spec.EphemeralContainers {
+		// EphemeralContainer embeds EphemeralContainerCommon which has the same Env/EnvFrom fields
+		ec := corev1.Container{Name: c.Name, Env: c.Env, EnvFrom: c.EnvFrom}
+		if containerReferencesSecret(ec, secretName) {
+			return true
+		}
+	}
+	// imagePullSecrets
+	for _, ips := range pod.Spec.ImagePullSecrets {
+		if ips.Name == secretName {
+			return true
 		}
 	}
 	return false
@@ -1402,6 +1574,178 @@ func podUsesPVC(pod *corev1.Pod, pvcName string) bool {
 		}
 	}
 	return false
+}
+
+// ── Pod spec reference extraction helpers ────────────────────────────────────────────────────────
+
+// podSpecExtractConfigMaps returns all unique ConfigMap names referenced by a PodSpec.
+// Covers volumes, projected volumes, env.valueFrom, envFrom across all container types.
+func podSpecExtractConfigMaps(spec *corev1.PodSpec) []string {
+	seen := map[string]bool{}
+	add := func(name string) {
+		if name != "" {
+			seen[name] = true
+		}
+	}
+	for _, vol := range spec.Volumes {
+		if vol.ConfigMap != nil {
+			add(vol.ConfigMap.Name)
+		}
+		if vol.Projected != nil {
+			for _, src := range vol.Projected.Sources {
+				if src.ConfigMap != nil {
+					add(src.ConfigMap.Name)
+				}
+			}
+		}
+	}
+	extractFromContainers := func(containers []corev1.Container) {
+		for _, c := range containers {
+			for _, ef := range c.EnvFrom {
+				if ef.ConfigMapRef != nil {
+					add(ef.ConfigMapRef.Name)
+				}
+			}
+			for _, env := range c.Env {
+				if env.ValueFrom != nil && env.ValueFrom.ConfigMapKeyRef != nil {
+					add(env.ValueFrom.ConfigMapKeyRef.Name)
+				}
+			}
+		}
+	}
+	extractFromContainers(spec.Containers)
+	extractFromContainers(spec.InitContainers)
+	for _, ec := range spec.EphemeralContainers {
+		extractFromContainers([]corev1.Container{{Name: ec.Name, EnvFrom: ec.EnvFrom, Env: ec.Env}})
+	}
+	result := make([]string, 0, len(seen))
+	for name := range seen {
+		result = append(result, name)
+	}
+	return result
+}
+
+// podSpecExtractSecrets returns all unique Secret names referenced by a PodSpec.
+// Covers volumes, projected volumes, imagePullSecrets, env.valueFrom, envFrom across all container types.
+func podSpecExtractSecrets(spec *corev1.PodSpec) []string {
+	seen := map[string]bool{}
+	add := func(name string) {
+		if name != "" {
+			seen[name] = true
+		}
+	}
+	for _, vol := range spec.Volumes {
+		if vol.Secret != nil {
+			add(vol.Secret.SecretName)
+		}
+		if vol.Projected != nil {
+			for _, src := range vol.Projected.Sources {
+				if src.Secret != nil {
+					add(src.Secret.Name)
+				}
+			}
+		}
+	}
+	for _, ips := range spec.ImagePullSecrets {
+		add(ips.Name)
+	}
+	extractFromContainers := func(containers []corev1.Container) {
+		for _, c := range containers {
+			for _, ef := range c.EnvFrom {
+				if ef.SecretRef != nil {
+					add(ef.SecretRef.Name)
+				}
+			}
+			for _, env := range c.Env {
+				if env.ValueFrom != nil && env.ValueFrom.SecretKeyRef != nil {
+					add(env.ValueFrom.SecretKeyRef.Name)
+				}
+			}
+		}
+	}
+	extractFromContainers(spec.Containers)
+	extractFromContainers(spec.InitContainers)
+	for _, ec := range spec.EphemeralContainers {
+		extractFromContainers([]corev1.Container{{Name: ec.Name, EnvFrom: ec.EnvFrom, Env: ec.Env}})
+	}
+	result := make([]string, 0, len(seen))
+	for name := range seen {
+		result = append(result, name)
+	}
+	return result
+}
+
+// podSpecExtractPVCs returns all PVC claim names referenced in a PodSpec's volumes.
+func podSpecExtractPVCs(spec *corev1.PodSpec) []string {
+	seen := map[string]bool{}
+	for _, vol := range spec.Volumes {
+		if vol.PersistentVolumeClaim != nil && vol.PersistentVolumeClaim.ClaimName != "" {
+			seen[vol.PersistentVolumeClaim.ClaimName] = true
+		}
+	}
+	result := make([]string, 0, len(seen))
+	for name := range seen {
+		result = append(result, name)
+	}
+	return result
+}
+
+// addPodTemplateRefsToGraph adds edges from a workload node to ConfigMaps, Secrets, ServiceAccount,
+// PVCs, and PriorityClass referenced in the given pod template spec.
+// workloadID must already be present in the graph.
+func (e *Engine) addPodTemplateRefsToGraph(ctx context.Context, g *Graph, namespace, workloadID string, spec *corev1.PodSpec) {
+	if spec == nil {
+		return
+	}
+	// ConfigMaps
+	for _, cmName := range podSpecExtractConfigMaps(spec) {
+		if g.Truncated {
+			break
+		}
+		cm, err := e.client.Clientset.CoreV1().ConfigMaps(namespace).Get(ctx, cmName, metav1.GetOptions{})
+		if err == nil {
+			cmID := ensureNode(g, "ConfigMap", cm.Namespace, cm.Name, "Active", cm.ObjectMeta)
+			addResourceEdge(g, workloadID, cmID, "Uses")
+		}
+	}
+	// Secrets
+	for _, secName := range podSpecExtractSecrets(spec) {
+		if g.Truncated {
+			break
+		}
+		sec, err := e.client.Clientset.CoreV1().Secrets(namespace).Get(ctx, secName, metav1.GetOptions{})
+		if err == nil {
+			secID := ensureNode(g, "Secret", sec.Namespace, sec.Name, "Active", sec.ObjectMeta)
+			addResourceEdge(g, workloadID, secID, "Uses")
+		}
+	}
+	// ServiceAccount
+	if spec.ServiceAccountName != "" && spec.ServiceAccountName != "default" {
+		sa, err := e.client.Clientset.CoreV1().ServiceAccounts(namespace).Get(ctx, spec.ServiceAccountName, metav1.GetOptions{})
+		if err == nil {
+			saID := ensureNode(g, "ServiceAccount", sa.Namespace, sa.Name, "Active", sa.ObjectMeta)
+			addResourceEdge(g, workloadID, saID, "Uses")
+		}
+	}
+	// PriorityClass (cluster-scoped)
+	if spec.PriorityClassName != "" {
+		pc, err := e.client.Clientset.SchedulingV1().PriorityClasses().Get(ctx, spec.PriorityClassName, metav1.GetOptions{})
+		if err == nil {
+			pcID := ensureNode(g, "PriorityClass", "", pc.Name, "Active", pc.ObjectMeta)
+			addResourceEdge(g, workloadID, pcID, "Uses")
+		}
+	}
+	// PVCs from volumes
+	for _, pvcName := range podSpecExtractPVCs(spec) {
+		if g.Truncated {
+			break
+		}
+		pvc, err := e.client.Clientset.CoreV1().PersistentVolumeClaims(namespace).Get(ctx, pvcName, metav1.GetOptions{})
+		if err == nil {
+			pvcID := ensureNode(g, "PersistentVolumeClaim", pvc.Namespace, pvc.Name, string(pvc.Status.Phase), pvc.ObjectMeta)
+			addResourceEdge(g, workloadID, pvcID, "Mounts")
+		}
+	}
 }
 
 // addPodOwnerToGraph adds the pod's owner (Deployment/StatefulSet/DaemonSet/Job/CronJob) to the graph and edge from owner to pod.
@@ -1707,6 +2051,15 @@ func (e *Engine) buildPersistentVolumeSubgraph(ctx context.Context, _, name stri
 		}
 	}
 
+	// CSI driver
+	if pv.Spec.CSI != nil && pv.Spec.CSI.Driver != "" {
+		csiDriver, err := e.client.Clientset.StorageV1().CSIDrivers().Get(ctx, pv.Spec.CSI.Driver, metav1.GetOptions{})
+		if err == nil {
+			csiID := ensureNode(g, "CSIDriver", "", csiDriver.Name, "Active", csiDriver.ObjectMeta)
+			addResourceEdge(g, pvID, csiID, "Provisioned by")
+		}
+	}
+
 	g.LayoutSeed = g.GenerateLayoutSeed()
 	if err := g.Validate(); err != nil {
 		return nil, fmt.Errorf("graph validation failed: %w", err)
@@ -1755,6 +2108,13 @@ func (e *Engine) buildStorageClassSubgraph(ctx context.Context, _, name string) 
 			pvcID := ensureNode(g, "PersistentVolumeClaim", pvc.Namespace, pvc.Name, string(pvc.Status.Phase), pvc.ObjectMeta)
 			addResourceEdge(g, pvcID, scID, "Uses")
 		}
+	}
+
+	// CSIDriver (provisioner field matches CSIDriver name)
+	csiDriver, err := e.client.Clientset.StorageV1().CSIDrivers().Get(ctx, sc.Provisioner, metav1.GetOptions{})
+	if err == nil {
+		csiID := ensureNode(g, "CSIDriver", "", csiDriver.Name, "Active", csiDriver.ObjectMeta)
+		addResourceEdge(g, scID, csiID, "Uses")
 	}
 
 	g.LayoutSeed = g.GenerateLayoutSeed()
@@ -1935,6 +2295,1125 @@ func (e *Engine) buildDeviceClassSubgraph(ctx context.Context, name string) (*Gr
 		CreationTimestamp: unstr.GetCreationTimestamp(),
 	}
 	ensureNode(g, "DeviceClass", "", meta.Name, "Active", meta)
+
+	g.LayoutSeed = g.GenerateLayoutSeed()
+	if err := g.Validate(); err != nil {
+		return nil, fmt.Errorf("graph validation failed: %w", err)
+	}
+	return g, nil
+}
+
+// isOwnedBy returns true if refs contains an owner reference matching the given kind and name.
+func isOwnedBy(refs []metav1.OwnerReference, kind, name string) bool {
+	for _, r := range refs {
+		if r.Kind == kind && r.Name == name {
+			return true
+		}
+	}
+	return false
+}
+
+// buildNamespaceSubgraph builds a high-level topology of all resources within a namespace.
+// Shows workload controllers, services, ingresses, config/secret/storage, policy and admin resources.
+// Individual Pods and ReplicaSets are omitted to keep the graph readable (see Deployment topology for those).
+func (e *Engine) buildNamespaceSubgraph(ctx context.Context, name string) (*Graph, error) {
+	ns, err := e.client.Clientset.CoreV1().Namespaces().Get(ctx, name, metav1.GetOptions{})
+	if err != nil {
+		return nil, ErrResourceNotFound
+	}
+	g := NewGraph(resourceSubgraphMaxNodes)
+	nsStatus := string(ns.Status.Phase)
+	if nsStatus == "" {
+		nsStatus = "Active"
+	}
+	nsID := ensureNode(g, "Namespace", "", ns.Name, nsStatus, ns.ObjectMeta)
+
+	// Fetch all resource types (errors are non-fatal — render what we can)
+	depList, _ := e.client.Clientset.AppsV1().Deployments(name).List(ctx, metav1.ListOptions{})
+	stsList, _ := e.client.Clientset.AppsV1().StatefulSets(name).List(ctx, metav1.ListOptions{})
+	dsList, _ := e.client.Clientset.AppsV1().DaemonSets(name).List(ctx, metav1.ListOptions{})
+	jobList, _ := e.client.Clientset.BatchV1().Jobs(name).List(ctx, metav1.ListOptions{})
+	cjList, _ := e.client.Clientset.BatchV1().CronJobs(name).List(ctx, metav1.ListOptions{})
+	svcList, _ := e.client.Clientset.CoreV1().Services(name).List(ctx, metav1.ListOptions{})
+	ingList, _ := e.client.Clientset.NetworkingV1().Ingresses(name).List(ctx, metav1.ListOptions{})
+	cmList, _ := e.client.Clientset.CoreV1().ConfigMaps(name).List(ctx, metav1.ListOptions{})
+	secretList, _ := e.client.Clientset.CoreV1().Secrets(name).List(ctx, metav1.ListOptions{})
+	pvcList, _ := e.client.Clientset.CoreV1().PersistentVolumeClaims(name).List(ctx, metav1.ListOptions{})
+	npList, _ := e.client.Clientset.NetworkingV1().NetworkPolicies(name).List(ctx, metav1.ListOptions{})
+	saList, _ := e.client.Clientset.CoreV1().ServiceAccounts(name).List(ctx, metav1.ListOptions{})
+	quotaList, _ := e.client.Clientset.CoreV1().ResourceQuotas(name).List(ctx, metav1.ListOptions{})
+	lrList, _ := e.client.Clientset.CoreV1().LimitRanges(name).List(ctx, metav1.ListOptions{})
+	hpaList, _ := e.client.Clientset.AutoscalingV2().HorizontalPodAutoscalers(name).List(ctx, metav1.ListOptions{})
+
+	// ── Workload nodes ───────────────────────────────────────────────────────────
+	depIDs := map[string]string{}
+	if depList != nil {
+		for i := range depList.Items {
+			if g.Truncated {
+				break
+			}
+			dep := &depList.Items[i]
+			id := ensureNode(g, "Deployment", dep.Namespace, dep.Name, deploymentStatus(dep), dep.ObjectMeta)
+			addResourceEdge(g, nsID, id, "Contains")
+			depIDs[dep.Name] = id
+		}
+	}
+
+	stsIDs := map[string]string{}
+	if stsList != nil {
+		for i := range stsList.Items {
+			if g.Truncated {
+				break
+			}
+			sts := &stsList.Items[i]
+			id := ensureNode(g, "StatefulSet", sts.Namespace, sts.Name, "Active", sts.ObjectMeta)
+			addResourceEdge(g, nsID, id, "Contains")
+			stsIDs[sts.Name] = id
+		}
+	}
+
+	dsIDs := map[string]string{}
+	if dsList != nil {
+		for i := range dsList.Items {
+			if g.Truncated {
+				break
+			}
+			ds := &dsList.Items[i]
+			id := ensureNode(g, "DaemonSet", ds.Namespace, ds.Name, "Active", ds.ObjectMeta)
+			addResourceEdge(g, nsID, id, "Contains")
+			dsIDs[ds.Name] = id
+		}
+	}
+
+	cjIDs := map[string]string{}
+	if cjList != nil {
+		for i := range cjList.Items {
+			if g.Truncated {
+				break
+			}
+			cj := &cjList.Items[i]
+			id := ensureNode(g, "CronJob", cj.Namespace, cj.Name, "Active", cj.ObjectMeta)
+			addResourceEdge(g, nsID, id, "Contains")
+			cjIDs[cj.Name] = id
+		}
+	}
+
+	if jobList != nil {
+		for i := range jobList.Items {
+			if g.Truncated {
+				break
+			}
+			job := &jobList.Items[i]
+			jobID := ensureNode(g, "Job", job.Namespace, job.Name, "Active", job.ObjectMeta)
+			addResourceEdge(g, nsID, jobID, "Contains")
+			// Wire CronJob → Job if owned
+			for _, ref := range job.OwnerReferences {
+				if ref.Kind == "CronJob" {
+					if cjID, ok := cjIDs[ref.Name]; ok {
+						addResourceEdge(g, cjID, jobID, "Schedules")
+					}
+					break
+				}
+			}
+		}
+	}
+
+	// ── Service nodes + Service → Workload edges ─────────────────────────────────
+	svcIDs := map[string]string{}
+	if svcList != nil {
+		for i := range svcList.Items {
+			if g.Truncated {
+				break
+			}
+			svc := &svcList.Items[i]
+			svcID := ensureNode(g, "Service", svc.Namespace, svc.Name, "Active", svc.ObjectMeta)
+			addResourceEdge(g, nsID, svcID, "Contains")
+			svcIDs[svc.Name] = svcID
+
+			if len(svc.Spec.Selector) == 0 {
+				continue
+			}
+			svcSel := labels.SelectorFromSet(svc.Spec.Selector)
+			if depList != nil {
+				for _, dep := range depList.Items {
+					if dep.Spec.Template.Labels != nil && svcSel.Matches(labels.Set(dep.Spec.Template.Labels)) {
+						if id, ok := depIDs[dep.Name]; ok {
+							addResourceEdge(g, svcID, id, "Exposes")
+						}
+					}
+				}
+			}
+			if stsList != nil {
+				for _, sts := range stsList.Items {
+					if sts.Spec.Template.Labels != nil && svcSel.Matches(labels.Set(sts.Spec.Template.Labels)) {
+						if id, ok := stsIDs[sts.Name]; ok {
+							addResourceEdge(g, svcID, id, "Exposes")
+						}
+					}
+				}
+			}
+			if dsList != nil {
+				for _, ds := range dsList.Items {
+					if ds.Spec.Template.Labels != nil && svcSel.Matches(labels.Set(ds.Spec.Template.Labels)) {
+						if id, ok := dsIDs[ds.Name]; ok {
+							addResourceEdge(g, svcID, id, "Exposes")
+						}
+					}
+				}
+			}
+		}
+	}
+
+	// ── Ingress nodes + Ingress → Service edges ──────────────────────────────────
+	if ingList != nil {
+		for i := range ingList.Items {
+			if g.Truncated {
+				break
+			}
+			ing := &ingList.Items[i]
+			ingID := ensureNode(g, "Ingress", ing.Namespace, ing.Name, "Active", ing.ObjectMeta)
+			addResourceEdge(g, nsID, ingID, "Contains")
+			for _, rule := range ing.Spec.Rules {
+				if rule.HTTP == nil {
+					continue
+				}
+				for _, path := range rule.HTTP.Paths {
+					if path.Backend.Service != nil {
+						if id, ok := svcIDs[path.Backend.Service.Name]; ok {
+							addResourceEdge(g, ingID, id, "Routes to")
+						}
+					}
+				}
+			}
+			if ing.Spec.DefaultBackend != nil && ing.Spec.DefaultBackend.Service != nil {
+				if id, ok := svcIDs[ing.Spec.DefaultBackend.Service.Name]; ok {
+					addResourceEdge(g, ingID, id, "Routes to")
+				}
+			}
+		}
+	}
+
+	// ── HPA nodes + HPA → Workload edges ─────────────────────────────────────────
+	if hpaList != nil {
+		for i := range hpaList.Items {
+			if g.Truncated {
+				break
+			}
+			hpa := &hpaList.Items[i]
+			hpaID := ensureNode(g, "HorizontalPodAutoscaler", hpa.Namespace, hpa.Name, "Active", hpa.ObjectMeta)
+			addResourceEdge(g, nsID, hpaID, "Contains")
+			ref := hpa.Spec.ScaleTargetRef
+			switch ref.Kind {
+			case "Deployment":
+				if id, ok := depIDs[ref.Name]; ok {
+					addResourceEdge(g, hpaID, id, "Scales")
+				}
+			case "StatefulSet":
+				if id, ok := stsIDs[ref.Name]; ok {
+					addResourceEdge(g, hpaID, id, "Scales")
+				}
+			}
+		}
+	}
+
+	// ── NetworkPolicy nodes + NetworkPolicy → Workload edges ────────────────────
+	if npList != nil {
+		for i := range npList.Items {
+			if g.Truncated {
+				break
+			}
+			np := &npList.Items[i]
+			npID := ensureNode(g, "NetworkPolicy", np.Namespace, np.Name, "Active", np.ObjectMeta)
+			addResourceEdge(g, nsID, npID, "Contains")
+			if len(np.Spec.PodSelector.MatchLabels) > 0 {
+				npSel := labels.SelectorFromSet(np.Spec.PodSelector.MatchLabels)
+				if depList != nil {
+					for _, dep := range depList.Items {
+						if dep.Spec.Template.Labels != nil && npSel.Matches(labels.Set(dep.Spec.Template.Labels)) {
+							if id, ok := depIDs[dep.Name]; ok {
+								addResourceEdge(g, npID, id, "Governs")
+							}
+						}
+					}
+				}
+				if stsList != nil {
+					for _, sts := range stsList.Items {
+						if sts.Spec.Template.Labels != nil && npSel.Matches(labels.Set(sts.Spec.Template.Labels)) {
+							if id, ok := stsIDs[sts.Name]; ok {
+								addResourceEdge(g, npID, id, "Governs")
+							}
+						}
+					}
+				}
+				if dsList != nil {
+					for _, ds := range dsList.Items {
+						if ds.Spec.Template.Labels != nil && npSel.Matches(labels.Set(ds.Spec.Template.Labels)) {
+							if id, ok := dsIDs[ds.Name]; ok {
+								addResourceEdge(g, npID, id, "Governs")
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
+	// ── Config & Storage nodes ────────────────────────────────────────────────────
+	if cmList != nil {
+		for i := range cmList.Items {
+			if g.Truncated {
+				break
+			}
+			cm := &cmList.Items[i]
+			cmID := ensureNode(g, "ConfigMap", cm.Namespace, cm.Name, "Active", cm.ObjectMeta)
+			addResourceEdge(g, nsID, cmID, "Contains")
+		}
+	}
+
+	if secretList != nil {
+		for i := range secretList.Items {
+			if g.Truncated {
+				break
+			}
+			sec := &secretList.Items[i]
+			secID := ensureNode(g, "Secret", sec.Namespace, sec.Name, "Active", sec.ObjectMeta)
+			addResourceEdge(g, nsID, secID, "Contains")
+		}
+	}
+
+	if pvcList != nil {
+		for i := range pvcList.Items {
+			if g.Truncated {
+				break
+			}
+			pvc := &pvcList.Items[i]
+			pvcID := ensureNode(g, "PersistentVolumeClaim", pvc.Namespace, pvc.Name, string(pvc.Status.Phase), pvc.ObjectMeta)
+			addResourceEdge(g, nsID, pvcID, "Contains")
+		}
+	}
+
+	// ── Admin nodes ───────────────────────────────────────────────────────────────
+	if saList != nil {
+		for i := range saList.Items {
+			if g.Truncated {
+				break
+			}
+			sa := &saList.Items[i]
+			saID := ensureNode(g, "ServiceAccount", sa.Namespace, sa.Name, "Active", sa.ObjectMeta)
+			addResourceEdge(g, nsID, saID, "Contains")
+		}
+	}
+
+	if quotaList != nil {
+		for i := range quotaList.Items {
+			if g.Truncated {
+				break
+			}
+			q := &quotaList.Items[i]
+			qID := ensureNode(g, "ResourceQuota", q.Namespace, q.Name, "Active", q.ObjectMeta)
+			addResourceEdge(g, nsID, qID, "Contains")
+		}
+	}
+
+	if lrList != nil {
+		for i := range lrList.Items {
+			if g.Truncated {
+				break
+			}
+			lr := &lrList.Items[i]
+			lrID := ensureNode(g, "LimitRange", lr.Namespace, lr.Name, "Active", lr.ObjectMeta)
+			addResourceEdge(g, nsID, lrID, "Contains")
+		}
+	}
+
+	g.LayoutSeed = g.GenerateLayoutSeed()
+	if err := g.Validate(); err != nil {
+		return nil, fmt.Errorf("graph validation failed: %w", err)
+	}
+	return g, nil
+}
+
+// buildServiceAccountSubgraph builds ServiceAccount -> Pods that use it (+ their owner workloads) + token Secrets.
+func (e *Engine) buildServiceAccountSubgraph(ctx context.Context, namespace, name string) (*Graph, error) {
+	if namespace == "" {
+		return nil, fmt.Errorf("namespace required for ServiceAccount resource topology")
+	}
+	sa, err := e.client.Clientset.CoreV1().ServiceAccounts(namespace).Get(ctx, name, metav1.GetOptions{})
+	if err != nil {
+		return nil, ErrResourceNotFound
+	}
+	g := NewGraph(resourceSubgraphMaxNodes)
+	saID := ensureNode(g, "ServiceAccount", sa.Namespace, sa.Name, "Active", sa.ObjectMeta)
+
+	// Pods that use this ServiceAccount
+	podList, err := e.client.Clientset.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{})
+	if err == nil {
+		for i := range podList.Items {
+			if g.Truncated {
+				break
+			}
+			pod := &podList.Items[i]
+			if pod.Spec.ServiceAccountName != name {
+				continue
+			}
+			podID := ensureNode(g, "Pod", pod.Namespace, pod.Name, string(pod.Status.Phase), pod.ObjectMeta)
+			addResourceEdge(g, saID, podID, "Used by")
+			e.addPodOwnerToGraph(ctx, g, pod, podID)
+		}
+	}
+
+	// Token Secrets bound to this ServiceAccount
+	secretList, err := e.client.Clientset.CoreV1().Secrets(namespace).List(ctx, metav1.ListOptions{})
+	if err == nil {
+		for i := range secretList.Items {
+			if g.Truncated {
+				break
+			}
+			sec := &secretList.Items[i]
+			if sec.Type == corev1.SecretTypeServiceAccountToken &&
+				sec.Annotations[corev1.ServiceAccountNameKey] == name {
+				secID := ensureNode(g, "Secret", sec.Namespace, sec.Name, "Active", sec.ObjectMeta)
+				addResourceEdge(g, saID, secID, "Token")
+			}
+		}
+	}
+
+	// RoleBindings that grant permissions to this ServiceAccount
+	rbList, err := e.client.Clientset.RbacV1().RoleBindings(namespace).List(ctx, metav1.ListOptions{})
+	if err == nil {
+		for i := range rbList.Items {
+			if g.Truncated {
+				break
+			}
+			rb := &rbList.Items[i]
+			for _, sub := range rb.Subjects {
+				if sub.Kind == "ServiceAccount" && sub.Name == name && (sub.Namespace == "" || sub.Namespace == namespace) {
+					rbID := ensureNode(g, "RoleBinding", rb.Namespace, rb.Name, "Active", rb.ObjectMeta)
+					addResourceEdge(g, rbID, saID, "Grants")
+					// Role/ClusterRole referenced by this RoleBinding
+					if rb.RoleRef.Kind == "Role" {
+						role, err := e.client.Clientset.RbacV1().Roles(namespace).Get(ctx, rb.RoleRef.Name, metav1.GetOptions{})
+						if err == nil {
+							roleID := ensureNode(g, "Role", role.Namespace, role.Name, "Active", role.ObjectMeta)
+							addResourceEdge(g, rbID, roleID, "Binds to")
+						}
+					} else if rb.RoleRef.Kind == "ClusterRole" {
+						cr, err := e.client.Clientset.RbacV1().ClusterRoles().Get(ctx, rb.RoleRef.Name, metav1.GetOptions{})
+						if err == nil {
+							crID := ensureNode(g, "ClusterRole", "", cr.Name, "Active", cr.ObjectMeta)
+							addResourceEdge(g, rbID, crID, "Binds to")
+						}
+					}
+					break
+				}
+			}
+		}
+	}
+
+	// ClusterRoleBindings that grant permissions to this ServiceAccount (cluster-wide)
+	crbList, err := e.client.Clientset.RbacV1().ClusterRoleBindings().List(ctx, metav1.ListOptions{})
+	if err == nil {
+		for i := range crbList.Items {
+			if g.Truncated {
+				break
+			}
+			crb := &crbList.Items[i]
+			for _, sub := range crb.Subjects {
+				if sub.Kind == "ServiceAccount" && sub.Name == name && sub.Namespace == namespace {
+					crbID := ensureNode(g, "ClusterRoleBinding", "", crb.Name, "Active", crb.ObjectMeta)
+					addResourceEdge(g, crbID, saID, "Grants")
+					cr, err := e.client.Clientset.RbacV1().ClusterRoles().Get(ctx, crb.RoleRef.Name, metav1.GetOptions{})
+					if err == nil {
+						crID := ensureNode(g, "ClusterRole", "", cr.Name, "Active", cr.ObjectMeta)
+						addResourceEdge(g, crbID, crID, "Binds to")
+					}
+					break
+				}
+			}
+		}
+	}
+
+	g.LayoutSeed = g.GenerateLayoutSeed()
+	if err := g.Validate(); err != nil {
+		return nil, fmt.Errorf("graph validation failed: %w", err)
+	}
+	return g, nil
+}
+
+// buildHorizontalPodAutoscalerSubgraph builds HPA -> target workload (Deployment/StatefulSet/ReplicaSet) -> Pods.
+func (e *Engine) buildHorizontalPodAutoscalerSubgraph(ctx context.Context, namespace, name string) (*Graph, error) {
+	if namespace == "" {
+		return nil, fmt.Errorf("namespace required for HorizontalPodAutoscaler resource topology")
+	}
+	hpa, err := e.client.Clientset.AutoscalingV2().HorizontalPodAutoscalers(namespace).Get(ctx, name, metav1.GetOptions{})
+	if err != nil {
+		return nil, ErrResourceNotFound
+	}
+	g := NewGraph(resourceSubgraphMaxNodes)
+	hpaID := ensureNode(g, "HorizontalPodAutoscaler", hpa.Namespace, hpa.Name, "Active", hpa.ObjectMeta)
+
+	ref := hpa.Spec.ScaleTargetRef
+	switch ref.Kind {
+	case "Deployment":
+		dep, err := e.client.Clientset.AppsV1().Deployments(namespace).Get(ctx, ref.Name, metav1.GetOptions{})
+		if err == nil {
+			depID := ensureNode(g, "Deployment", dep.Namespace, dep.Name, deploymentStatus(dep), dep.ObjectMeta)
+			addResourceEdge(g, hpaID, depID, "Scales")
+			rsList, _ := e.client.Clientset.AppsV1().ReplicaSets(namespace).List(ctx, metav1.ListOptions{})
+			podList, _ := e.client.Clientset.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{})
+			if rsList != nil {
+				for i := range rsList.Items {
+					if g.Truncated {
+						break
+					}
+					rs := &rsList.Items[i]
+					if !isOwnedBy(rs.OwnerReferences, "Deployment", dep.Name) {
+						continue
+					}
+					rsID := ensureNode(g, "ReplicaSet", rs.Namespace, rs.Name, "Active", rs.ObjectMeta)
+					addResourceEdge(g, depID, rsID, "Owns")
+					if podList != nil {
+						for j := range podList.Items {
+							if g.Truncated {
+								break
+							}
+							pod := &podList.Items[j]
+							if isOwnedBy(pod.OwnerReferences, "ReplicaSet", rs.Name) {
+								podID := ensureNode(g, "Pod", pod.Namespace, pod.Name, string(pod.Status.Phase), pod.ObjectMeta)
+								addResourceEdge(g, rsID, podID, "Owns")
+							}
+						}
+					}
+				}
+			}
+		}
+	case "StatefulSet":
+		sts, err := e.client.Clientset.AppsV1().StatefulSets(namespace).Get(ctx, ref.Name, metav1.GetOptions{})
+		if err == nil {
+			stsID := ensureNode(g, "StatefulSet", sts.Namespace, sts.Name, "Active", sts.ObjectMeta)
+			addResourceEdge(g, hpaID, stsID, "Scales")
+			podList, _ := e.client.Clientset.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{})
+			if podList != nil {
+				for i := range podList.Items {
+					if g.Truncated {
+						break
+					}
+					pod := &podList.Items[i]
+					if isOwnedBy(pod.OwnerReferences, "StatefulSet", sts.Name) {
+						podID := ensureNode(g, "Pod", pod.Namespace, pod.Name, string(pod.Status.Phase), pod.ObjectMeta)
+						addResourceEdge(g, stsID, podID, "Owns")
+					}
+				}
+			}
+		}
+	case "ReplicaSet":
+		rs, err := e.client.Clientset.AppsV1().ReplicaSets(namespace).Get(ctx, ref.Name, metav1.GetOptions{})
+		if err == nil {
+			rsID := ensureNode(g, "ReplicaSet", rs.Namespace, rs.Name, "Active", rs.ObjectMeta)
+			addResourceEdge(g, hpaID, rsID, "Scales")
+			podList, _ := e.client.Clientset.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{})
+			if podList != nil {
+				for i := range podList.Items {
+					if g.Truncated {
+						break
+					}
+					pod := &podList.Items[i]
+					if isOwnedBy(pod.OwnerReferences, "ReplicaSet", rs.Name) {
+						podID := ensureNode(g, "Pod", pod.Namespace, pod.Name, string(pod.Status.Phase), pod.ObjectMeta)
+						addResourceEdge(g, rsID, podID, "Owns")
+					}
+				}
+			}
+		}
+	}
+
+	g.LayoutSeed = g.GenerateLayoutSeed()
+	if err := g.Validate(); err != nil {
+		return nil, fmt.Errorf("graph validation failed: %w", err)
+	}
+	return g, nil
+}
+
+// buildReplicationControllerSubgraph builds ReplicationController -> Pods it owns + Services that select them.
+func (e *Engine) buildReplicationControllerSubgraph(ctx context.Context, namespace, name string) (*Graph, error) {
+	if namespace == "" {
+		return nil, fmt.Errorf("namespace required for ReplicationController resource topology")
+	}
+	rc, err := e.client.Clientset.CoreV1().ReplicationControllers(namespace).Get(ctx, name, metav1.GetOptions{})
+	if err != nil {
+		return nil, ErrResourceNotFound
+	}
+	g := NewGraph(resourceSubgraphMaxNodes)
+	rcID := ensureNode(g, "ReplicationController", rc.Namespace, rc.Name, "Active", rc.ObjectMeta)
+
+	// Pods owned by this RC (via owner references)
+	podList, _ := e.client.Clientset.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{})
+	if podList != nil {
+		for i := range podList.Items {
+			if g.Truncated {
+				break
+			}
+			pod := &podList.Items[i]
+			if isOwnedBy(pod.OwnerReferences, "ReplicationController", name) {
+				podID := ensureNode(g, "Pod", pod.Namespace, pod.Name, string(pod.Status.Phase), pod.ObjectMeta)
+				addResourceEdge(g, rcID, podID, "Owns")
+			}
+		}
+	}
+
+	// Services that select pods matching this RC's selector
+	if len(rc.Spec.Selector) > 0 {
+		svcList, _ := e.client.Clientset.CoreV1().Services(namespace).List(ctx, metav1.ListOptions{})
+		if svcList != nil {
+			for i := range svcList.Items {
+				if g.Truncated {
+					break
+				}
+				svc := &svcList.Items[i]
+				if len(svc.Spec.Selector) == 0 {
+					continue
+				}
+				// Service selects RC pods when its selector matches the RC's pod selector labels
+				svcSel := labels.SelectorFromSet(svc.Spec.Selector)
+				if svcSel.Matches(labels.Set(rc.Spec.Selector)) {
+					svcID := ensureNode(g, "Service", svc.Namespace, svc.Name, "Active", svc.ObjectMeta)
+					addResourceEdge(g, svcID, rcID, "Selects")
+				}
+			}
+		}
+	}
+
+	g.LayoutSeed = g.GenerateLayoutSeed()
+	if err := g.Validate(); err != nil {
+		return nil, fmt.Errorf("graph validation failed: %w", err)
+	}
+	return g, nil
+}
+
+// buildRoleSubgraph builds Role → RoleBindings that reference it → ServiceAccount subjects.
+func (e *Engine) buildRoleSubgraph(ctx context.Context, namespace, name string) (*Graph, error) {
+	if namespace == "" {
+		return nil, fmt.Errorf("namespace required for Role resource topology")
+	}
+	role, err := e.client.Clientset.RbacV1().Roles(namespace).Get(ctx, name, metav1.GetOptions{})
+	if err != nil {
+		return nil, ErrResourceNotFound
+	}
+	g := NewGraph(resourceSubgraphMaxNodes)
+	roleID := ensureNode(g, "Role", role.Namespace, role.Name, "Active", role.ObjectMeta)
+
+	rbList, err := e.client.Clientset.RbacV1().RoleBindings(namespace).List(ctx, metav1.ListOptions{})
+	if err == nil {
+		for i := range rbList.Items {
+			if g.Truncated {
+				break
+			}
+			rb := &rbList.Items[i]
+			if rb.RoleRef.Kind != "Role" || rb.RoleRef.Name != name {
+				continue
+			}
+			rbID := ensureNode(g, "RoleBinding", rb.Namespace, rb.Name, "Active", rb.ObjectMeta)
+			addResourceEdge(g, rbID, roleID, "Binds to")
+			for _, sub := range rb.Subjects {
+				if g.Truncated {
+					break
+				}
+				if sub.Kind == "ServiceAccount" {
+					subNS := sub.Namespace
+					if subNS == "" {
+						subNS = namespace
+					}
+					sa, err := e.client.Clientset.CoreV1().ServiceAccounts(subNS).Get(ctx, sub.Name, metav1.GetOptions{})
+					if err == nil {
+						saID := ensureNode(g, "ServiceAccount", sa.Namespace, sa.Name, "Active", sa.ObjectMeta)
+						addResourceEdge(g, rbID, saID, "Grants")
+					}
+				}
+			}
+		}
+	}
+
+	g.LayoutSeed = g.GenerateLayoutSeed()
+	if err := g.Validate(); err != nil {
+		return nil, fmt.Errorf("graph validation failed: %w", err)
+	}
+	return g, nil
+}
+
+// buildClusterRoleSubgraph builds ClusterRole → ClusterRoleBindings + RoleBindings that reference it → subjects.
+func (e *Engine) buildClusterRoleSubgraph(ctx context.Context, name string) (*Graph, error) {
+	cr, err := e.client.Clientset.RbacV1().ClusterRoles().Get(ctx, name, metav1.GetOptions{})
+	if err != nil {
+		return nil, ErrResourceNotFound
+	}
+	g := NewGraph(resourceSubgraphMaxNodes)
+	crID := ensureNode(g, "ClusterRole", "", cr.Name, "Active", cr.ObjectMeta)
+
+	// ClusterRoleBindings that reference this ClusterRole
+	crbList, err := e.client.Clientset.RbacV1().ClusterRoleBindings().List(ctx, metav1.ListOptions{})
+	if err == nil {
+		for i := range crbList.Items {
+			if g.Truncated {
+				break
+			}
+			crb := &crbList.Items[i]
+			if crb.RoleRef.Kind != "ClusterRole" || crb.RoleRef.Name != name {
+				continue
+			}
+			crbID := ensureNode(g, "ClusterRoleBinding", "", crb.Name, "Active", crb.ObjectMeta)
+			addResourceEdge(g, crbID, crID, "Binds to")
+			for _, sub := range crb.Subjects {
+				if g.Truncated {
+					break
+				}
+				if sub.Kind == "ServiceAccount" {
+					sa, err := e.client.Clientset.CoreV1().ServiceAccounts(sub.Namespace).Get(ctx, sub.Name, metav1.GetOptions{})
+					if err == nil {
+						saID := ensureNode(g, "ServiceAccount", sa.Namespace, sa.Name, "Active", sa.ObjectMeta)
+						addResourceEdge(g, crbID, saID, "Grants")
+					}
+				}
+			}
+		}
+	}
+
+	// Namespace-scoped RoleBindings that also bind this ClusterRole
+	rbList, err := e.client.Clientset.RbacV1().RoleBindings(metav1.NamespaceAll).List(ctx, metav1.ListOptions{})
+	if err == nil {
+		for i := range rbList.Items {
+			if g.Truncated {
+				break
+			}
+			rb := &rbList.Items[i]
+			if rb.RoleRef.Kind != "ClusterRole" || rb.RoleRef.Name != name {
+				continue
+			}
+			rbID := ensureNode(g, "RoleBinding", rb.Namespace, rb.Name, "Active", rb.ObjectMeta)
+			addResourceEdge(g, rbID, crID, "Binds to")
+		}
+	}
+
+	g.LayoutSeed = g.GenerateLayoutSeed()
+	if err := g.Validate(); err != nil {
+		return nil, fmt.Errorf("graph validation failed: %w", err)
+	}
+	return g, nil
+}
+
+// buildRoleBindingSubgraph builds RoleBinding → Role/ClusterRole + ServiceAccount subjects.
+func (e *Engine) buildRoleBindingSubgraph(ctx context.Context, namespace, name string) (*Graph, error) {
+	if namespace == "" {
+		return nil, fmt.Errorf("namespace required for RoleBinding resource topology")
+	}
+	rb, err := e.client.Clientset.RbacV1().RoleBindings(namespace).Get(ctx, name, metav1.GetOptions{})
+	if err != nil {
+		return nil, ErrResourceNotFound
+	}
+	g := NewGraph(resourceSubgraphMaxNodes)
+	rbID := ensureNode(g, "RoleBinding", rb.Namespace, rb.Name, "Active", rb.ObjectMeta)
+
+	// Role or ClusterRole this binding references
+	if rb.RoleRef.Kind == "Role" {
+		role, err := e.client.Clientset.RbacV1().Roles(namespace).Get(ctx, rb.RoleRef.Name, metav1.GetOptions{})
+		if err == nil {
+			roleID := ensureNode(g, "Role", role.Namespace, role.Name, "Active", role.ObjectMeta)
+			addResourceEdge(g, rbID, roleID, "Binds to")
+		}
+	} else if rb.RoleRef.Kind == "ClusterRole" {
+		cr, err := e.client.Clientset.RbacV1().ClusterRoles().Get(ctx, rb.RoleRef.Name, metav1.GetOptions{})
+		if err == nil {
+			crID := ensureNode(g, "ClusterRole", "", cr.Name, "Active", cr.ObjectMeta)
+			addResourceEdge(g, rbID, crID, "Binds to")
+		}
+	}
+
+	// ServiceAccount subjects
+	for _, sub := range rb.Subjects {
+		if g.Truncated {
+			break
+		}
+		if sub.Kind == "ServiceAccount" {
+			subNS := sub.Namespace
+			if subNS == "" {
+				subNS = namespace
+			}
+			sa, err := e.client.Clientset.CoreV1().ServiceAccounts(subNS).Get(ctx, sub.Name, metav1.GetOptions{})
+			if err == nil {
+				saID := ensureNode(g, "ServiceAccount", sa.Namespace, sa.Name, "Active", sa.ObjectMeta)
+				addResourceEdge(g, rbID, saID, "Grants")
+			}
+		}
+	}
+
+	g.LayoutSeed = g.GenerateLayoutSeed()
+	if err := g.Validate(); err != nil {
+		return nil, fmt.Errorf("graph validation failed: %w", err)
+	}
+	return g, nil
+}
+
+// buildClusterRoleBindingSubgraph builds ClusterRoleBinding → ClusterRole + ServiceAccount subjects.
+func (e *Engine) buildClusterRoleBindingSubgraph(ctx context.Context, name string) (*Graph, error) {
+	crb, err := e.client.Clientset.RbacV1().ClusterRoleBindings().Get(ctx, name, metav1.GetOptions{})
+	if err != nil {
+		return nil, ErrResourceNotFound
+	}
+	g := NewGraph(resourceSubgraphMaxNodes)
+	crbID := ensureNode(g, "ClusterRoleBinding", "", crb.Name, "Active", crb.ObjectMeta)
+
+	// ClusterRole target
+	cr, err := e.client.Clientset.RbacV1().ClusterRoles().Get(ctx, crb.RoleRef.Name, metav1.GetOptions{})
+	if err == nil {
+		crID := ensureNode(g, "ClusterRole", "", cr.Name, "Active", cr.ObjectMeta)
+		addResourceEdge(g, crbID, crID, "Binds to")
+	}
+
+	// ServiceAccount subjects
+	for _, sub := range crb.Subjects {
+		if g.Truncated {
+			break
+		}
+		if sub.Kind == "ServiceAccount" {
+			sa, err := e.client.Clientset.CoreV1().ServiceAccounts(sub.Namespace).Get(ctx, sub.Name, metav1.GetOptions{})
+			if err == nil {
+				saID := ensureNode(g, "ServiceAccount", sa.Namespace, sa.Name, "Active", sa.ObjectMeta)
+				addResourceEdge(g, crbID, saID, "Grants")
+			}
+		}
+	}
+
+	g.LayoutSeed = g.GenerateLayoutSeed()
+	if err := g.Validate(); err != nil {
+		return nil, fmt.Errorf("graph validation failed: %w", err)
+	}
+	return g, nil
+}
+
+// buildPodDisruptionBudgetSubgraph builds PDB → target Pods (via selector) → their owner workloads.
+func (e *Engine) buildPodDisruptionBudgetSubgraph(ctx context.Context, namespace, name string) (*Graph, error) {
+	if namespace == "" {
+		return nil, fmt.Errorf("namespace required for PodDisruptionBudget resource topology")
+	}
+	pdb, err := e.client.Clientset.PolicyV1().PodDisruptionBudgets(namespace).Get(ctx, name, metav1.GetOptions{})
+	if err != nil {
+		return nil, ErrResourceNotFound
+	}
+	g := NewGraph(resourceSubgraphMaxNodes)
+
+	pdbStatus := "Active"
+	if pdb.Status.DisruptionsAllowed == 0 {
+		pdbStatus = "Blocking"
+	}
+	pdbID := ensureNode(g, "PodDisruptionBudget", pdb.Namespace, pdb.Name, pdbStatus, pdb.ObjectMeta)
+
+	if pdb.Spec.Selector != nil {
+		sel, err := metav1.LabelSelectorAsSelector(pdb.Spec.Selector)
+		if err == nil && !sel.Empty() {
+			podList, err := e.client.Clientset.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{LabelSelector: sel.String()})
+			if err == nil {
+				for i := range podList.Items {
+					if g.Truncated {
+						break
+					}
+					pod := &podList.Items[i]
+					podID := ensureNode(g, "Pod", pod.Namespace, pod.Name, string(pod.Status.Phase), pod.ObjectMeta)
+					addResourceEdge(g, pdbID, podID, "Protects")
+					e.addPodOwnerToGraph(ctx, g, pod, podID)
+				}
+			}
+		}
+	}
+
+	g.LayoutSeed = g.GenerateLayoutSeed()
+	if err := g.Validate(); err != nil {
+		return nil, fmt.Errorf("graph validation failed: %w", err)
+	}
+	return g, nil
+}
+
+// buildRuntimeClassSubgraph builds RuntimeClass <- Pods using this runtime class.
+func (e *Engine) buildRuntimeClassSubgraph(ctx context.Context, name string) (*Graph, error) {
+	rc, err := e.client.Clientset.NodeV1().RuntimeClasses().Get(ctx, name, metav1.GetOptions{})
+	if err != nil {
+		return nil, ErrResourceNotFound
+	}
+	g := NewGraph(resourceSubgraphMaxNodes)
+	rcID := ensureNode(g, "RuntimeClass", "", rc.Name, "Active", rc.ObjectMeta)
+
+	podList, err := e.client.Clientset.CoreV1().Pods(metav1.NamespaceAll).List(ctx, metav1.ListOptions{})
+	if err == nil {
+		for i := range podList.Items {
+			if g.Truncated {
+				break
+			}
+			pod := &podList.Items[i]
+			if pod.Spec.RuntimeClassName == nil || *pod.Spec.RuntimeClassName != name {
+				continue
+			}
+			podID := ensureNode(g, "Pod", pod.Namespace, pod.Name, string(pod.Status.Phase), pod.ObjectMeta)
+			addResourceEdge(g, podID, rcID, "Uses")
+			e.addPodOwnerToGraph(ctx, g, pod, podID)
+		}
+	}
+
+	g.LayoutSeed = g.GenerateLayoutSeed()
+	if err := g.Validate(); err != nil {
+		return nil, fmt.Errorf("graph validation failed: %w", err)
+	}
+	return g, nil
+}
+
+// buildLeaseSubgraph builds Lease -> Node/Pod (via spec.holderIdentity).
+func (e *Engine) buildLeaseSubgraph(ctx context.Context, namespace, name string) (*Graph, error) {
+	if namespace == "" {
+		namespace = "kube-node-lease"
+	}
+	lease, err := e.client.Clientset.CoordinationV1().Leases(namespace).Get(ctx, name, metav1.GetOptions{})
+	if err != nil {
+		return nil, ErrResourceNotFound
+	}
+	g := NewGraph(resourceSubgraphMaxNodes)
+	leaseID := ensureNode(g, "Lease", lease.Namespace, lease.Name, "Active", lease.ObjectMeta)
+
+	if lease.Spec.HolderIdentity != nil && *lease.Spec.HolderIdentity != "" {
+		holderName := *lease.Spec.HolderIdentity
+		// Try as Node (kube-node-lease convention)
+		node, err := e.client.Clientset.CoreV1().Nodes().Get(ctx, holderName, metav1.GetOptions{})
+		if err == nil {
+			status := "Ready"
+			for _, c := range node.Status.Conditions {
+				if c.Type == corev1.NodeReady && c.Status != corev1.ConditionTrue {
+					status = "NotReady"
+					break
+				}
+			}
+			nodeID := ensureNode(g, "Node", "", node.Name, status, node.ObjectMeta)
+			addResourceEdge(g, leaseID, nodeID, "Held by")
+		} else {
+			// Try as Pod (leader election leases)
+			podList, err := e.client.Clientset.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{})
+			if err == nil {
+				for i := range podList.Items {
+					pod := &podList.Items[i]
+					if pod.Name == holderName {
+						podID := ensureNode(g, "Pod", pod.Namespace, pod.Name, string(pod.Status.Phase), pod.ObjectMeta)
+						addResourceEdge(g, leaseID, podID, "Held by")
+						e.addPodOwnerToGraph(ctx, g, pod, podID)
+						break
+					}
+				}
+			}
+		}
+	}
+
+	g.LayoutSeed = g.GenerateLayoutSeed()
+	if err := g.Validate(); err != nil {
+		return nil, fmt.Errorf("graph validation failed: %w", err)
+	}
+	return g, nil
+}
+
+// buildCSIDriverSubgraph builds CSIDriver <- PVs using it + <- StorageClasses provisioned by it.
+func (e *Engine) buildCSIDriverSubgraph(ctx context.Context, name string) (*Graph, error) {
+	csiDriver, err := e.client.Clientset.StorageV1().CSIDrivers().Get(ctx, name, metav1.GetOptions{})
+	if err != nil {
+		return nil, ErrResourceNotFound
+	}
+	g := NewGraph(resourceSubgraphMaxNodes)
+	csiID := ensureNode(g, "CSIDriver", "", csiDriver.Name, "Active", csiDriver.ObjectMeta)
+
+	pvList, err := e.client.Clientset.CoreV1().PersistentVolumes().List(ctx, metav1.ListOptions{})
+	if err == nil {
+		for i := range pvList.Items {
+			if g.Truncated {
+				break
+			}
+			pv := &pvList.Items[i]
+			if pv.Spec.CSI == nil || pv.Spec.CSI.Driver != name {
+				continue
+			}
+			pvID := ensureNode(g, "PersistentVolume", "", pv.Name, string(pv.Status.Phase), pv.ObjectMeta)
+			addResourceEdge(g, pvID, csiID, "Provisioned by")
+		}
+	}
+
+	scList, err := e.client.Clientset.StorageV1().StorageClasses().List(ctx, metav1.ListOptions{})
+	if err == nil {
+		for i := range scList.Items {
+			if g.Truncated {
+				break
+			}
+			sc := &scList.Items[i]
+			if sc.Provisioner != name {
+				continue
+			}
+			scID := ensureNode(g, "StorageClass", "", sc.Name, "Active", sc.ObjectMeta)
+			addResourceEdge(g, scID, csiID, "Uses")
+		}
+	}
+
+	g.LayoutSeed = g.GenerateLayoutSeed()
+	if err := g.Validate(); err != nil {
+		return nil, fmt.Errorf("graph validation failed: %w", err)
+	}
+	return g, nil
+}
+
+// buildCSINodeSubgraph builds CSINode -> Node (same name) + -> CSIDrivers loaded on this node.
+func (e *Engine) buildCSINodeSubgraph(ctx context.Context, name string) (*Graph, error) {
+	csiNode, err := e.client.Clientset.StorageV1().CSINodes().Get(ctx, name, metav1.GetOptions{})
+	if err != nil {
+		return nil, ErrResourceNotFound
+	}
+	g := NewGraph(resourceSubgraphMaxNodes)
+	csiNodeID := ensureNode(g, "CSINode", "", csiNode.Name, "Active", csiNode.ObjectMeta)
+
+	node, err := e.client.Clientset.CoreV1().Nodes().Get(ctx, name, metav1.GetOptions{})
+	if err == nil {
+		status := "Ready"
+		for _, c := range node.Status.Conditions {
+			if c.Type == corev1.NodeReady && c.Status != corev1.ConditionTrue {
+				status = "NotReady"
+				break
+			}
+		}
+		nodeID := ensureNode(g, "Node", "", node.Name, status, node.ObjectMeta)
+		addResourceEdge(g, csiNodeID, nodeID, "Represents")
+	}
+
+	for _, d := range csiNode.Spec.Drivers {
+		if g.Truncated {
+			break
+		}
+		driver, err := e.client.Clientset.StorageV1().CSIDrivers().Get(ctx, d.Name, metav1.GetOptions{})
+		if err == nil {
+			driverID := ensureNode(g, "CSIDriver", "", driver.Name, "Active", driver.ObjectMeta)
+			addResourceEdge(g, csiNodeID, driverID, "Loads")
+		}
+	}
+
+	g.LayoutSeed = g.GenerateLayoutSeed()
+	if err := g.Validate(); err != nil {
+		return nil, fmt.Errorf("graph validation failed: %w", err)
+	}
+	return g, nil
+}
+
+// buildMutatingWebhookConfigurationSubgraph builds MutatingWebhookConfiguration -> Services it calls.
+func (e *Engine) buildMutatingWebhookConfigurationSubgraph(ctx context.Context, name string) (*Graph, error) {
+	mwc, err := e.client.Clientset.AdmissionregistrationV1().MutatingWebhookConfigurations().Get(ctx, name, metav1.GetOptions{})
+	if err != nil {
+		return nil, ErrResourceNotFound
+	}
+	g := NewGraph(resourceSubgraphMaxNodes)
+	mwcID := ensureNode(g, "MutatingWebhookConfiguration", "", mwc.Name, "Active", mwc.ObjectMeta)
+
+	for i := range mwc.Webhooks {
+		if g.Truncated {
+			break
+		}
+		wh := &mwc.Webhooks[i]
+		if wh.ClientConfig.Service != nil {
+			svc, err := e.client.Clientset.CoreV1().Services(wh.ClientConfig.Service.Namespace).Get(ctx, wh.ClientConfig.Service.Name, metav1.GetOptions{})
+			if err == nil {
+				svcID := ensureNode(g, "Service", svc.Namespace, svc.Name, "Active", svc.ObjectMeta)
+				addResourceEdge(g, mwcID, svcID, "Calls")
+			}
+		}
+	}
+
+	g.LayoutSeed = g.GenerateLayoutSeed()
+	if err := g.Validate(); err != nil {
+		return nil, fmt.Errorf("graph validation failed: %w", err)
+	}
+	return g, nil
+}
+
+// buildValidatingWebhookConfigurationSubgraph builds ValidatingWebhookConfiguration -> Services it calls.
+func (e *Engine) buildValidatingWebhookConfigurationSubgraph(ctx context.Context, name string) (*Graph, error) {
+	vwc, err := e.client.Clientset.AdmissionregistrationV1().ValidatingWebhookConfigurations().Get(ctx, name, metav1.GetOptions{})
+	if err != nil {
+		return nil, ErrResourceNotFound
+	}
+	g := NewGraph(resourceSubgraphMaxNodes)
+	vwcID := ensureNode(g, "ValidatingWebhookConfiguration", "", vwc.Name, "Active", vwc.ObjectMeta)
+
+	for i := range vwc.Webhooks {
+		if g.Truncated {
+			break
+		}
+		wh := &vwc.Webhooks[i]
+		if wh.ClientConfig.Service != nil {
+			svc, err := e.client.Clientset.CoreV1().Services(wh.ClientConfig.Service.Namespace).Get(ctx, wh.ClientConfig.Service.Name, metav1.GetOptions{})
+			if err == nil {
+				svcID := ensureNode(g, "Service", svc.Namespace, svc.Name, "Active", svc.ObjectMeta)
+				addResourceEdge(g, vwcID, svcID, "Calls")
+			}
+		}
+	}
+
+	g.LayoutSeed = g.GenerateLayoutSeed()
+	if err := g.Validate(); err != nil {
+		return nil, fmt.Errorf("graph validation failed: %w", err)
+	}
+	return g, nil
+}
+
+// buildFlowSchemaSubgraph builds FlowSchema -> PriorityLevelConfiguration it assigns to.
+func (e *Engine) buildFlowSchemaSubgraph(ctx context.Context, name string) (*Graph, error) {
+	fs, err := e.client.Clientset.FlowcontrolV1().FlowSchemas().Get(ctx, name, metav1.GetOptions{})
+	if err != nil {
+		return nil, ErrResourceNotFound
+	}
+	g := NewGraph(resourceSubgraphMaxNodes)
+	fsStatus := "Active"
+	if len(fs.Status.Conditions) > 0 {
+		fsStatus = string(fs.Status.Conditions[0].Status)
+	}
+	fsID := ensureNode(g, "FlowSchema", "", fs.Name, fsStatus, fs.ObjectMeta)
+
+	if fs.Spec.PriorityLevelConfiguration.Name != "" {
+		plc, err := e.client.Clientset.FlowcontrolV1().PriorityLevelConfigurations().Get(ctx, fs.Spec.PriorityLevelConfiguration.Name, metav1.GetOptions{})
+		if err == nil {
+			plcID := ensureNode(g, "PriorityLevelConfiguration", "", plc.Name, "Active", plc.ObjectMeta)
+			addResourceEdge(g, fsID, plcID, "Assigns to")
+		}
+	}
+
+	g.LayoutSeed = g.GenerateLayoutSeed()
+	if err := g.Validate(); err != nil {
+		return nil, fmt.Errorf("graph validation failed: %w", err)
+	}
+	return g, nil
+}
+
+// buildPriorityLevelConfigurationSubgraph builds PriorityLevelConfiguration <- FlowSchemas that reference it.
+func (e *Engine) buildPriorityLevelConfigurationSubgraph(ctx context.Context, name string) (*Graph, error) {
+	plc, err := e.client.Clientset.FlowcontrolV1().PriorityLevelConfigurations().Get(ctx, name, metav1.GetOptions{})
+	if err != nil {
+		return nil, ErrResourceNotFound
+	}
+	g := NewGraph(resourceSubgraphMaxNodes)
+	plcID := ensureNode(g, "PriorityLevelConfiguration", "", plc.Name, "Active", plc.ObjectMeta)
+
+	fsList, err := e.client.Clientset.FlowcontrolV1().FlowSchemas().List(ctx, metav1.ListOptions{})
+	if err == nil {
+		for i := range fsList.Items {
+			if g.Truncated {
+				break
+			}
+			fs := &fsList.Items[i]
+			if fs.Spec.PriorityLevelConfiguration.Name != name {
+				continue
+			}
+			fsStatus := "Active"
+			if len(fs.Status.Conditions) > 0 {
+				fsStatus = string(fs.Status.Conditions[0].Status)
+			}
+			fsID := ensureNode(g, "FlowSchema", "", fs.Name, fsStatus, fs.ObjectMeta)
+			addResourceEdge(g, fsID, plcID, "Assigns to")
+		}
+	}
 
 	g.LayoutSeed = g.GenerateLayoutSeed()
 	if err := g.Validate(); err != nil {

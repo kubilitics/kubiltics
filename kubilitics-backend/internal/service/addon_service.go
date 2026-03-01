@@ -51,6 +51,10 @@ type AddOnService interface {
 	// ListCatalog returns one page of packages from Artifact Hub with total count (no tier filtering).
 	ListCatalog(ctx context.Context, search string, limit, offset int) ([]models.AddOnEntry, int, error)
 	GetAddOn(ctx context.Context, addonID string) (*models.AddOnDetail, error)
+	// GetAddonDefaultValues returns the raw values.yaml content for a chart.
+	// For community addons the content is fetched live from Artifact Hub.
+	// Returns an empty string (not an error) when no values are available.
+	GetAddonDefaultValues(ctx context.Context, addonID string) (string, error)
 	PlanInstall(ctx context.Context, clusterID, addonID, namespace string) (*models.InstallPlan, error)
 	EstimateCost(ctx context.Context, clusterID string, plan *models.InstallPlan) (*financial.PlanCostEstimate, error)
 	RunPreflight(ctx context.Context, clusterID string, plan *models.InstallPlan) (*models.PreflightReport, error)

@@ -735,7 +735,7 @@ export default function JobDetail() {
       icon: Settings,
       content: (
         <ActionsSection actions={[
-          { icon: RotateCw, label: 'Retry', description: 'Create a new Job with the same spec', onClick: handleRetry },
+          { icon: RotateCw, label: 'Retry', description: 'Create a new Job with the same spec', variant: 'warning', onClick: handleRetry },
           { icon: Play, label: 'View Pod Logs', description: 'See logs from job pod', onClick: () => setActiveTab('logs') },
           { icon: Download, label: 'Download YAML', description: 'Export Job definition', onClick: handleDownloadYaml },
           { icon: Download, label: 'Export as JSON', description: 'Export Job as JSON', onClick: handleDownloadJson },

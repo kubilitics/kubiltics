@@ -7,6 +7,7 @@ export const ADDON_KEYS = {
   catalog: (filters: { page?: number; limit?: number; q?: string }) =>
     ["addon-catalog", filters] as const,
   entry: (addonId: string) => ["addon-catalog-entry", addonId] as const,
+  entryValues: (addonId: string) => ["addon-catalog-entry-values", addonId] as const,
   installed: (clusterId: string) => ["installed-addons", clusterId] as const,
   install: (installId: string) => ["addon-install", installId] as const,
   history: (clusterId: string, installId: string) =>
@@ -41,6 +42,24 @@ export function useCatalogEntry(addonId: string) {
     queryKey: ADDON_KEYS.entry(addonId),
     queryFn: () => api.getCatalogEntry(addonId),
     enabled: !!addonId,
+  });
+}
+
+/**
+ * Fetches the raw values.yaml for a chart from the backend.
+ * For community add-ons the backend proxies Artifact Hub live; result cached 10 min.
+ * Returns an empty string when the chart publishes no defaults (never throws for 200).
+ */
+export function useAddonDefaultValues(addonId: string) {
+  const api = useApi();
+  return useQuery<string>({
+    queryKey: ADDON_KEYS.entryValues(addonId),
+    queryFn: () => api.getAddonDefaultValues(addonId),
+    enabled: !!addonId,
+    staleTime: 10 * 60 * 1000, // 10 min — backend caches AH responses for 30 min
+    refetchOnMount: "always",  // force a fresh fetch each time the wizard opens
+    retry: 3,                  // 4 total attempts — AH can be flaky under load
+    retryDelay: (attempt) => Math.min(1000 * Math.pow(2, attempt), 8000), // 1s, 2s, 4s, 8s
   });
 }
 

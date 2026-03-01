@@ -28,12 +28,14 @@ func setupTestRepoForAPIKeys(t *testing.T) *SQLiteRepository {
 			id TEXT PRIMARY KEY,
 			user_id TEXT NOT NULL,
 			key_hash TEXT NOT NULL,
+			key_prefix TEXT NOT NULL DEFAULT '',
 			name TEXT NOT NULL,
 			last_used DATETIME,
 			expires_at DATETIME,
 			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 			FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
 		);
+		CREATE INDEX IF NOT EXISTS idx_api_keys_prefix ON api_keys(key_prefix);
 	`
 	if err := repo.RunMigrations(migrationSQL); err != nil {
 		t.Fatalf("Failed to run migrations: %v", err)
@@ -242,6 +244,7 @@ func TestFindAPIKeyByPlaintext(t *testing.T) {
 		ID:        uuid.New().String(),
 		UserID:    userID,
 		KeyHash:   hash,
+		KeyPrefix: auth.APIKeyPrefix(plaintext),
 		Name:      "Test API Key",
 		CreatedAt: time.Now(),
 	}
@@ -256,6 +259,47 @@ func TestFindAPIKeyByPlaintext(t *testing.T) {
 	}
 	if retrieved.KeyHash != hash {
 		t.Errorf("Expected hash '%s', got '%s'", hash, retrieved.KeyHash)
+	}
+}
+
+func TestFindAPIKeyByPlaintext_LegacyBackfill(t *testing.T) {
+	// Tests that legacy keys (without prefix) are found via fallback scan
+	// and automatically backfilled with the prefix for future lookups.
+	repo := setupTestRepoForAPIKeys(t)
+	defer repo.Close()
+	userID := createTestUser(t, repo)
+
+	plaintext, hash, err := auth.GenerateAPIKey()
+	if err != nil {
+		t.Fatalf("Failed to generate API key: %v", err)
+	}
+
+	// Create key without prefix (simulates pre-migration key)
+	apiKey := &models.APIKey{
+		ID:        uuid.New().String(),
+		UserID:    userID,
+		KeyHash:   hash,
+		KeyPrefix: "", // Legacy: no prefix
+		Name:      "Legacy Key",
+		CreatedAt: time.Now(),
+	}
+	repo.CreateAPIKey(context.Background(), apiKey)
+
+	// Should still find via slow-path legacy scan
+	retrieved, err := repo.FindAPIKeyByPlaintext(context.Background(), plaintext)
+	if err != nil {
+		t.Fatalf("Failed to find legacy API key: %v", err)
+	}
+	if retrieved == nil {
+		t.Fatal("Legacy API key should be found")
+	}
+	// Verify backfill: prefix should now be set
+	if retrieved.KeyPrefix == "" {
+		t.Error("KeyPrefix should be backfilled after legacy lookup")
+	}
+	expectedPrefix := auth.APIKeyPrefix(plaintext)
+	if retrieved.KeyPrefix != expectedPrefix {
+		t.Errorf("Expected backfilled prefix '%s', got '%s'", expectedPrefix, retrieved.KeyPrefix)
 	}
 }
 

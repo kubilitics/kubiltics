@@ -3,6 +3,7 @@
  * Uses Cytoscape's built-in SVG export with poster-mode layout
  */
 import type { Core } from 'cytoscape';
+import { downloadFile } from '../utils/exportUtils';
 
 export function exportAsSVG(cy: Core): string | undefined {
   try {
@@ -12,14 +13,10 @@ export function exportAsSVG(cy: Core): string | undefined {
   }
 }
 
-export function downloadSVG(cy: Core, filename = 'topology.svg') {
+// FIX DESKTOP-EXPORT: Use shared Tauri-aware downloadFile instead of inline blob URL logic
+export async function downloadSVG(cy: Core, filename = 'topology.svg') {
   const svgData = exportAsSVG(cy);
   if (!svgData) return;
   const blob = new Blob([svgData], { type: 'image/svg+xml' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.download = filename;
-  link.href = url;
-  link.click();
-  URL.revokeObjectURL(url);
+  await downloadFile(blob, filename);
 }

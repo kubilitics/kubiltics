@@ -24,6 +24,17 @@ import (
 
 const defaultMaxClusters = 100
 
+// ErrClusterLimitReached is returned when a cluster registration would exceed the configured maxClusters limit.
+// Carries the current count and limit for structured error responses.
+type ErrClusterLimitReached struct {
+	Current int
+	Max     int
+}
+
+func (e *ErrClusterLimitReached) Error() string {
+	return fmt.Sprintf("cluster limit reached (%d/%d); cannot add more clusters", e.Current, e.Max)
+}
+
 // ClusterService manages Kubernetes clusters
 type ClusterService interface {
 	ListClusters(ctx context.Context) ([]*models.Cluster, error)
@@ -47,7 +58,8 @@ type ClusterService interface {
 	// GetOverview returns the cached overview for a cluster if available.
 	GetOverview(clusterID string) (*models.ClusterOverview, bool)
 	// Subscribe returns a channel and unsubscribe function for real-time overview updates.
-	Subscribe(clusterID string) (chan *models.ClusterOverview, func())
+	// Returns ErrTooManyListeners if the per-cluster listener limit is reached.
+	Subscribe(clusterID string) (chan *models.ClusterOverview, func(), error)
 	// ReconnectCluster resets the circuit breaker and forces a fresh K8s client connection.
 	// Call this when the user explicitly requests reconnect or the cluster status page is opened.
 	ReconnectCluster(ctx context.Context, id string) (*models.Cluster, error)
@@ -278,7 +290,7 @@ func (s *clusterService) AddCluster(ctx context.Context, kubeconfigPath, context
 	}
 
 	if len(list) >= s.maxClusters {
-		return nil, fmt.Errorf("cluster limit reached (max %d); cannot add more clusters", s.maxClusters)
+		return nil, &ErrClusterLimitReached{Current: len(list), Max: s.maxClusters}
 	}
 
 	if _, err := os.Stat(kubeconfigPath); err != nil {
@@ -744,7 +756,7 @@ func (s *clusterService) GetOverview(clusterID string) (*models.ClusterOverview,
 	return s.overviewCache.GetOverview(clusterID)
 }
 
-func (s *clusterService) Subscribe(clusterID string) (chan *models.ClusterOverview, func()) {
+func (s *clusterService) Subscribe(clusterID string) (chan *models.ClusterOverview, func(), error) {
 	return s.overviewCache.Subscribe(clusterID)
 }
 

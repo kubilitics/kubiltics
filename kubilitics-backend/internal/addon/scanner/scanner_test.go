@@ -164,8 +164,8 @@ func (f *fakeClusterSvc) DiscoverClusters(ctx context.Context) ([]*models.Cluste
 func (f *fakeClusterSvc) GetOverview(clusterID string) (*models.ClusterOverview, bool) {
 	return nil, false
 }
-func (f *fakeClusterSvc) Subscribe(clusterID string) (chan *models.ClusterOverview, func()) {
-	return nil, nil
+func (f *fakeClusterSvc) Subscribe(clusterID string) (chan *models.ClusterOverview, func(), error) {
+	return nil, nil, nil
 }
 func (f *fakeClusterSvc) ReconnectCluster(ctx context.Context, id string) (*models.Cluster, error) {
 	return nil, nil

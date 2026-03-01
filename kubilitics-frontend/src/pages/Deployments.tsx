@@ -18,7 +18,7 @@ import { ResizableTableProvider, ResizableTableHead, ResizableTableCell, type Re
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useK8sResourceList, useDeleteK8sResource, useCreateK8sResource, usePatchK8sResource, calculateAge, type KubernetesResource } from '@/hooks/useKubernetes';
 import { useConnectionStatus } from '@/hooks/useConnectionStatus';
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
@@ -175,6 +175,7 @@ type ListView = 'flat' | 'byNamespace' | 'byStrategy';
 
 export default function Deployments() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedNamespace, setSelectedNamespace] = useState<string>('all');
   const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; item: Deployment | null; bulk?: boolean }>({ open: false, item: null });
@@ -250,6 +251,14 @@ export default function Deployments() {
   }), [items, selectedNamespace, scaleEvents24h]);
 
   const namespaces = useMemo(() => ['all', ...Array.from(new Set(items.map(i => i.namespace)))], [items]);
+
+  // Seed namespace filter from ?namespace=<ns> when navigated from Namespace detail.
+  useEffect(() => {
+    const nsFromQuery = searchParams.get('namespace');
+    if (!nsFromQuery) return;
+    if (selectedNamespace !== 'all') return;
+    setSelectedNamespace(nsFromQuery);
+  }, [searchParams, selectedNamespace]);
 
   const itemsAfterSearchAndNs = useMemo(() => {
     return items.filter((item) => {

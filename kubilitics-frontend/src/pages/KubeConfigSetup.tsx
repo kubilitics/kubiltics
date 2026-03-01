@@ -12,7 +12,7 @@ import { useClusterStore } from '@/stores/clusterStore';
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
 import { addClusterWithUpload } from '@/services/backendApiClient';
 import { backendClusterToCluster } from '@/lib/backendClusterAdapter';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
 
 type Step = 'upload' | 'validating' | 'select' | 'connecting';
 
@@ -99,7 +99,8 @@ export default function KubeConfigSetup() {
         toast.success('Connected to cluster', { description: result.name });
         navigate('/home', { replace: true });
       } catch (err) {
-        toast.error(err instanceof Error ? err.message : 'Failed to add cluster');
+        const description = err instanceof Error ? err.message : 'Failed to add cluster';
+        toast.error('Failed to add cluster', { description });
         setStep('select');
       } finally {
         setIsConnecting(false);

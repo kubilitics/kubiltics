@@ -210,6 +210,11 @@ export function useResourceCounts(): { counts: ResourceCounts; isLoading: boolea
           services: 'service_count',
           nodes: 'node_count',
           namespaces: 'namespace_count',
+          statefulsets: 'statefulset_count',
+          replicasets: 'replicaset_count',
+          daemonsets: 'daemonset_count',
+          jobs: 'job_count',
+          cronjobs: 'cronjob_count',
         };
         const summaryKey = summaryMap[key];
         if (summaryKey && s[summaryKey] !== undefined) {

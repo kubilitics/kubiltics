@@ -11,7 +11,8 @@ import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/back
 import { useClusterStore } from '@/stores/clusterStore';
 import { useQueryClient } from '@tanstack/react-query';
 import { applyManifest } from '@/services/backendApiClient';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
+import { notifyError, notifySuccess } from '@/lib/notificationFormatter';
 
 interface IngressWizardProps {
   onClose: () => void;
@@ -360,12 +361,21 @@ ${rulesYaml || '    - http:\n        paths: []'}${tlsYaml}
       await applyManifest(backendBaseUrl, clusterId, yaml);
       queryClient.invalidateQueries({ queryKey: ['k8s', 'ingresses'] });
       queryClient.invalidateQueries({ queryKey: ['backend', 'resources', clusterId, 'ingresses'] });
-      toast.success('Ingress created successfully');
+      notifySuccess({
+        action: 'create',
+        resourceType: 'ingresses',
+        resourceName: name,
+        namespace,
+      });
       onClose();
       onSubmit?.(yaml);
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      toast.error(`Failed to create Ingress: ${message}`);
+      notifyError(err, {
+        action: 'create',
+        resourceType: 'ingresses',
+        resourceName: name,
+        namespace,
+      });
       throw err;
     } finally {
       setIsSubmitting(false);

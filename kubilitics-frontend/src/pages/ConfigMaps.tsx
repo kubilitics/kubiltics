@@ -19,7 +19,6 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
 import {
   Table,
   TableBody,
@@ -42,10 +41,12 @@ import {
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQueries } from '@tanstack/react-query';
-import { ResourceCommandBar, ResourceExportDropdown, ListViewSegmentedControl, ListPagination, PAGE_SIZE_OPTIONS, ListPageStatCard, ListPageHeader, TableColumnHeaderWithFilterAndSort, TableFilterCell, resourceTableRowClassName, ROW_MOTION, AgeCell, TableEmptyState, CopyNameDropdownItem, ResourceListTableToolbar } from '@/components/list';
+import { ResourceCommandBar, ResourceExportDropdown, ListViewSegmentedControl, ListPagination, PAGE_SIZE_OPTIONS, ListPageStatCard, ListPageHeader, TableColumnHeaderWithFilterAndSort, TableFilterCell, resourceTableRowClassName, ROW_MOTION, AgeCell, TableEmptyState, CopyNameDropdownItem, ResourceListTableToolbar, NamespaceBadge } from '@/components/list';
+import { buildAutoWidthColumns } from '@/lib/tableSizing';
 import { ConfigMapIcon } from '@/components/icons/KubernetesIcons';
 import { useTableFiltersAndSort, type ColumnConfig } from '@/hooks/useTableFiltersAndSort';
 import { useColumnVisibility } from '@/hooks/useColumnVisibility';
@@ -201,6 +202,16 @@ export default function ConfigMaps() {
 
   const namespaces = useMemo(() => ['all', ...Array.from(new Set(items.map((i) => i.namespace)))], [items]);
 
+  const [searchParams] = useSearchParams();
+
+  // Seed namespace filter from ?namespace=<ns> when navigated from Namespace views.
+  useEffect(() => {
+    const nsFromQuery = searchParams.get('namespace');
+    if (!nsFromQuery) return;
+    if (selectedNamespace !== 'all') return;
+    setSelectedNamespace(nsFromQuery);
+  }, [searchParams, selectedNamespace]);
+
   const handleClone = useCallback((item: ConfigMap) => {
     const raw = (allItems as K8sConfigMap[]).find((cm) => cm.metadata?.name === item.name && (cm.metadata?.namespace || 'default') === item.namespace);
     if (!raw) return;
@@ -264,6 +275,29 @@ export default function ConfigMaps() {
     columns: CONFIGMAPS_COLUMNS_FOR_VISIBILITY,
     alwaysVisible: ['name'],
   });
+
+  // Data-aware default widths for all ConfigMaps columns.
+  const configMapsColumnConfig: ResizableColumnConfig[] = useMemo(() => {
+    const valueGetters: Record<string, (cm: ConfigMap) => unknown> = {
+      name: (cm) => cm.name,
+      namespace: (cm) => cm.namespace,
+      dataKeys: (cm) => cm.dataKeys,
+      totalSize: (cm) => cm.totalSizeHuman,
+      usedBy: (cm) => '', // numeric badge; keep compact
+      binaryData: (cm) => (cm.binaryData ? 'Yes' : 'No'),
+      immutable: (cm) => (cm.immutable ? 'Yes' : 'No'),
+      age: (cm) => cm.age,
+      lastModified: (cm) => cm.age,
+    };
+    const rows = filteredItems.length > 0 ? filteredItems : items;
+    if (!rows.length) return CONFIGMAPS_TABLE_COLUMNS;
+    return buildAutoWidthColumns(CONFIGMAPS_TABLE_COLUMNS, rows, valueGetters, {
+      perColumn: {
+        name: { maxPx: 320 },
+        namespace: { maxPx: 260 },
+      },
+    });
+  }, [filteredItems, items]);
 
   const totalFiltered = filteredItems.length;
   const totalPages = Math.max(1, Math.ceil(totalFiltered / pageSize));
@@ -606,7 +640,7 @@ data: {}
           }
         >
           <div className="overflow-x-auto">
-            <ResizableTableProvider tableId="configmaps" columnConfig={CONFIGMAPS_TABLE_COLUMNS}>
+            <ResizableTableProvider tableId="configmaps" columnConfig={configMapsColumnConfig}>
               <Table className="table-fixed" style={{ minWidth: 1000 }}>
                 <TableHeader>
                   <TableRow className="bg-muted/50 hover:bg-muted/50 border-b-2 border-border">
@@ -737,9 +771,10 @@ data: {}
                           </ResizableTableCell>
                           {columnVisibility.isColumnVisible('namespace') && (
                             <ResizableTableCell columnId="namespace">
-                              <Badge variant="outline" className="font-normal truncate block w-fit max-w-full">
-                                {item.namespace}
-                              </Badge>
+                              <NamespaceBadge
+                                namespace={item.namespace}
+                                className="font-normal truncate block w-fit max-w-full"
+                              />
                             </ResizableTableCell>
                           )}
                           {columnVisibility.isColumnVisible('dataKeys') && (
@@ -864,9 +899,10 @@ data: {}
                                 </ResizableTableCell>
                                 {columnVisibility.isColumnVisible('namespace') && (
                                   <ResizableTableCell columnId="namespace">
-                                    <Badge variant="outline" className="font-normal truncate block w-fit max-w-full">
-                                      {item.namespace}
-                                    </Badge>
+                                    <NamespaceBadge
+                                      namespace={item.namespace}
+                                      className="font-normal truncate block w-fit max-w-full"
+                                    />
                                   </ResizableTableCell>
                                 )}
                                 {columnVisibility.isColumnVisible('dataKeys') && (

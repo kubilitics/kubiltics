@@ -555,6 +555,30 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					}
 					return m, nil
 				}
+				// Handle ":ns <name>" — direct namespace switch without navigating to namespace list.
+				// E.g. ":ns kube-system" switches to kube-system and reloads current resource.
+				trimmed := strings.TrimPrefix(input, ":")
+				if parts := strings.Fields(trimmed); len(parts) == 2 {
+					alias := strings.ToLower(parts[0])
+					if alias == "ns" || alias == "namespace" || alias == "namespaces" {
+						newNS := parts[1]
+						if strings.EqualFold(newNS, "all") {
+							newNS = "" // empty = all namespaces (-A flag)
+						}
+						m.opts.Namespace = newNS
+						if newNS == "" {
+							m.detail = "Switched to all namespaces"
+						} else {
+							m.detail = fmt.Sprintf("Switched to namespace %q", newNS)
+						}
+						m.selected = 0
+						m.viewportTop = 0
+						m.err = ""
+						m.selectedRows = map[string]bool{}
+						m.resourcesLoading = true
+						return m, m.bestLoadAndWatchCmd()
+					}
+				}
 				spec, ok := resolveResourceSpec(input)
 				if !ok {
 					m.err = fmt.Sprintf("unknown resource shortcut %q", input)
@@ -812,6 +836,24 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.selectedRows = map[string]bool{}
 					m.resourcesLoading = true
 					return m, m.bestLoadAndWatchCmd()
+				}
+				// Namespace view: selecting a namespace switches the active namespace
+				// context and returns to the previous resource view (like k9s).
+				if m.spec.Key == "ns" {
+					newNS := strings.TrimSpace(r.Name)
+					if newNS != "" {
+						m.opts.Namespace = newNS
+						m.detail = fmt.Sprintf("Switched to namespace %q", newNS)
+						// Switch back to pods view (most common post-namespace action)
+						spec, _ := resolveResourceSpec(":po")
+						m.spec = spec
+						m.selected = 0
+						m.viewportTop = 0
+						m.err = ""
+						m.selectedRows = map[string]bool{}
+						m.resourcesLoading = true
+						return m, m.bestLoadAndWatchCmd()
+					}
 				}
 				m.enterDetailMode(r)
 				return m, loadDetailTabCmd(m.opts, m.effectiveSpec(), r, m.activeTab)

@@ -58,6 +58,9 @@ func (m *mockAddonService) ListCatalog(_ context.Context, _ string, _, _ int) ([
 func (m *mockAddonService) GetAddOn(_ context.Context, _ string) (*models.AddOnDetail, error) {
 	return m.getAddOnOut, m.getAddOnErr
 }
+func (m *mockAddonService) GetAddonDefaultValues(_ context.Context, _ string) (string, error) {
+	return "", nil
+}
 func (m *mockAddonService) PlanInstall(_ context.Context, _, _, _ string) (*models.InstallPlan, error) {
 	return m.planInstallOut, m.planInstallErr
 }
@@ -191,9 +194,9 @@ func (t *testClusterService) DiscoverClusters(_ context.Context) ([]*models.Clus
 	return nil, nil
 }
 func (t *testClusterService) GetOverview(_ string) (*models.ClusterOverview, bool) { return nil, false }
-func (t *testClusterService) Subscribe(_ string) (chan *models.ClusterOverview, func()) {
+func (t *testClusterService) Subscribe(_ string) (chan *models.ClusterOverview, func(), error) {
 	ch := make(chan *models.ClusterOverview)
-	return ch, func() { close(ch) }
+	return ch, func() { close(ch) }, nil
 }
 func (t *testClusterService) ReconnectCluster(_ context.Context, _ string) (*models.Cluster, error) {
 	return nil, nil

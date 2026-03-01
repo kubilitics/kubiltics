@@ -510,18 +510,30 @@ export default function PodDetail() {
                   tooltip={creationTimestamp ? `Created: ${creationTimestamp}` : undefined}
                 />
                 {ownerRef && ownerPath && (
-                  <DetailRow
-                    label="Controlled by"
-                    value={
-                      <Button
-                        variant="link"
-                        className="h-auto p-0 font-mono text-left"
-                        onClick={() => navigate(`/${ownerPath}/${ownerRef.name}${namespace ? `?namespace=${namespace}` : ''}`)}
-                      >
-                        {ownerRef.kind}: {ownerRef.name}
-                      </Button>
-                    }
-                  />
+                  <div className="min-w-0 overflow-hidden">
+                    <DetailRow
+                      label="Controlled by"
+                      value={
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="link"
+                              className="h-auto p-0 font-mono text-left min-w-0 max-w-full"
+                              onClick={() => navigate(`/${ownerPath}/${ownerRef.name}${namespace ? `?namespace=${namespace}` : ''}`)}
+                            >
+                              <span className="flex items-baseline gap-1 min-w-0">
+                                <span className="text-muted-foreground font-normal shrink-0">{ownerRef.kind}:</span>
+                                <span className="truncate min-w-0">{ownerRef.name}</span>
+                              </span>
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent side="top" className="font-mono text-xs max-w-sm break-all">
+                            {ownerRef.kind}: {ownerRef.name}
+                          </TooltipContent>
+                        </Tooltip>
+                      }
+                    />
+                  </div>
                 )}
                 <div className="flex items-center justify-between gap-4 text-sm md:col-span-2 lg:col-span-1">
                   <span className="flex items-center gap-2 text-muted-foreground shrink-0">State</span>
@@ -1068,6 +1080,7 @@ export default function PodDetail() {
             icon: RotateCcw,
             label: 'Restart Pod',
             description: 'Delete and recreate the pod',
+            variant: 'warning',
             onClick: handleRestartPod,
           },
           {
@@ -1155,6 +1168,8 @@ export default function PodDetail() {
         }}
         podName={pod.metadata?.name || ''}
         namespace={pod.metadata?.namespace || ''}
+        baseUrl={backendBaseUrl ?? ''}
+        clusterId={clusterId ?? ''}
         containers={(pod.spec?.containers || []).map(c => ({
           name: c.name,
           ports: c.ports,

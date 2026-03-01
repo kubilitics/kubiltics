@@ -32,11 +32,16 @@ func BuildInstallPlan(
 		step := models.InstallStep{
 			AddonID:         id,
 			AddonName:       detail.Name,
+			DisplayName:     detail.DisplayName,
 			Namespace:       "default",
 			ReleaseName:     detail.Name,
 			ToVersion:       detail.Version,
 			IsRequired:      node.IsRequired,
 			DependencyDepth: node.Depth,
+			// Carry the Helm chart reference so ExecuteInstall can build
+			// chartRef = HelmRepoURL + "|" + HelmChart without a DB lookup.
+			HelmRepoURL: detail.HelmRepoURL,
+			HelmChart:   detail.HelmChart,
 		}
 
 		if existing, isInstalled := installedMap[id]; isInstalled && existing != nil {

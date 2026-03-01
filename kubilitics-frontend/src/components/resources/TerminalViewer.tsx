@@ -63,6 +63,7 @@ export interface TerminalViewerProps {
 
 const TERMINAL_SOURCE_STORAGE_KEY = 'kubilitics-pod-terminal-source';
 const TERMINAL_KCLI_MODE_STORAGE_KEY = 'kubilitics-pod-terminal-kcli-mode';
+const TERMINAL_SHELL_STORAGE_KEY = 'kubilitics-pod-terminal-shell';
 
 /** Robust base64 encoding/decoding for terminal I/O */
 function base64Encode(str: string): string {
@@ -119,6 +120,10 @@ export function TerminalViewer({
     return saved === 'shell' ? 'shell' : 'ui';
   });
   const [kcliShellModeAllowed, setKcliShellModeAllowed] = useState(true);
+  const [shellPreference, setShellPreference] = useState<'bash' | 'sh'>(() => {
+    const saved = typeof window !== 'undefined' ? localStorage.getItem(TERMINAL_SHELL_STORAGE_KEY) : null;
+    return saved === 'sh' ? 'sh' : 'bash';
+  });
   const circuitOpen = useBackendCircuitOpen();
 
   const terminalRef = useRef<HTMLDivElement>(null);
@@ -145,6 +150,12 @@ export function TerminalViewer({
       localStorage.setItem(TERMINAL_KCLI_MODE_STORAGE_KEY, kcliStreamMode);
     }
   }, [kcliStreamMode]);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(TERMINAL_SHELL_STORAGE_KEY, shellPreference);
+    }
+  }, [shellPreference]);
 
   useEffect(() => {
     if (!clusterId) return;
@@ -271,7 +282,7 @@ export function TerminalViewer({
     const url = terminalSource === 'pod'
       ? getPodExecWebSocketUrl(backendBaseUrl, clusterId!, namespace!, podName!, {
         container: selectedContainer,
-        shell: '/bin/sh',
+        shell: shellPreference === 'bash' ? '/bin/bash' : '/bin/sh',
       })
       : terminalSource === 'kcli'
         ? getKCLIShellStreamUrl(backendBaseUrl, clusterId!, kcliStreamMode)
@@ -352,7 +363,7 @@ export function TerminalViewer({
         // ignore
       }
     };
-  }, [expectsLiveSession, backendBaseUrl, clusterId, namespace, podName, selectedContainer, terminalSource, kcliStreamMode, reconnectNonce, circuitOpen]);
+  }, [expectsLiveSession, backendBaseUrl, clusterId, namespace, podName, selectedContainer, terminalSource, kcliStreamMode, shellPreference, reconnectNonce, circuitOpen]);
 
   // Fit xterm when maximized or window resizes (live exec only); refocus after fit so input works
   useEffect(() => {
@@ -495,6 +506,15 @@ export function TerminalViewer({
       }
     } else if (e.key === 'Tab') {
       e.preventDefault();
+      // When a live WebSocket session is open but xterm hasn't mounted yet,
+      // forward Tab as stdin so the shell can do completion.
+      if (execConnected && wsRef.current?.readyState === WebSocket.OPEN) {
+        try {
+          wsRef.current.send(JSON.stringify({ t: 'stdin', d: base64Encode('\t') }));
+        } catch {
+          // ignore
+        }
+      }
     } else if (e.key === 'c' && e.ctrlKey) {
       setCurrentInput('');
       setLines(prev => [...prev, { type: 'input', content: `$ ${currentInput}^C` }]);
@@ -611,6 +631,30 @@ export function TerminalViewer({
             </Button>
           </div>
 
+          {/* Shell selector (pod exec mode only) */}
+          {terminalSource === 'pod' && (
+            <div className="mr-2 flex items-center gap-1 rounded border border-white/10 bg-white/5 p-0.5">
+              {(['bash', 'sh'] as const).map(s => (
+                <Button
+                  key={s}
+                  variant="ghost"
+                  size="sm"
+                  className={cn(
+                    'h-6 px-2 text-[11px] font-semibold',
+                    shellPreference === s ? 'bg-white/15 text-white' : 'text-white/50 hover:text-white',
+                  )}
+                  onClick={() => {
+                    setShellPreference(s);
+                    setReconnectNonce(n => n + 1);
+                  }}
+                  title={s === 'bash' ? '/bin/bash — full tab completion, history, prompt' : '/bin/sh — POSIX shell, minimal tab completion'}
+                >
+                  {s}
+                </Button>
+              ))}
+            </div>
+          )}
+
           {terminalSource === 'kcli' && (
             <div className="mr-2 flex items-center gap-1 rounded border border-white/10 bg-white/5 p-0.5">
               <Button
@@ -706,8 +750,16 @@ export function TerminalViewer({
 
       {/* Terminal Content: xterm when live exec connected, else lines + input (demo or connecting) */}
       <div
-        className="relative bg-[hsl(221_39%_11%)] text-[hsl(142_76%_73%)] font-mono text-sm overflow-hidden"
-        style={{ height: isMaximized ? 'calc(100vh - 120px)' : '400px' }}
+        className="relative bg-[hsl(221_39%_11%)] text-[hsl(142_76%_73%)] font-mono text-sm overflow-auto"
+        style={
+          isMaximized
+            ? { height: 'calc(100vh - 120px)' }
+            : {
+                minHeight: '320px',
+                // Grow with viewport for better readability, but avoid overflowing smaller screens
+                height: 'min(560px, calc(100vh - 260px))',
+              }
+        }
       >
         {/* xterm container: only when connected so terminal is created with visible size and can receive focus */}
         {expectsLiveSession && execConnected && (
@@ -774,8 +826,8 @@ export function TerminalViewer({
       <div className="px-4 py-1.5 bg-[hsl(221_39%_13%)] border-t border-[hsl(0_0%_100%/0.1)] text-xs text-[hsl(0_0%_100%/0.4)] flex items-center justify-between">
         <span>
           {expectsLiveSession && execConnected
-            ? 'Full interactive terminal • Select text to copy • Ctrl+L clear'
-            : 'Waiting for live terminal session • Ctrl+L clear • Ctrl+C cancel input'}
+            ? `Full interactive terminal (${shellPreference}) • Tab completion ${shellPreference === 'bash' ? 'active' : 'limited (switch to bash)'} • Ctrl+L clear`
+            : `Waiting for live session (${terminalSource === 'pod' ? shellPreference : terminalSource}) • Ctrl+L clear • Ctrl+C cancel`}
         </span>
         {!execConnected && <span>{commandHistory.length} commands</span>}
       </div>

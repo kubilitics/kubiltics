@@ -140,15 +140,18 @@ export function useAddonInstallFlow(clusterId: string) {
                   resolve();
                 } else if (data.status === "failed") {
                   settled = true;
-                  const errMsg = (data as { error?: string }).error ?? "Installation failed";
+                  // Backend sends {"status":"failed","message":"..."} — read both
+                  // "message" and "error" keys for forward compat with any shape.
+                  const d = data as { error?: string; message?: string };
+                  const errMsg = d.error ?? d.message ?? "Installation failed";
                   store.setInstallError(errMsg);
                   store.setIsInstalling(false);
                   ws.close();
                   reject(new Error(errMsg));
                 }
               }
-            } catch {
-              // ignore JSON parse errors (e.g. keep-alive pings)
+            } catch (parseErr) {
+              console.warn('[addon-ws] failed to parse install message:', parseErr, 'raw:', typeof event.data === 'string' ? (event.data as string).slice(0, 200) : '(binary)');
             }
           };
 

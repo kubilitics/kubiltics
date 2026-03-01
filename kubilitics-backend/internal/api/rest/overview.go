@@ -1,6 +1,7 @@
 package rest
 
 import (
+	"log"
 	"math"
 	"net/http"
 
@@ -45,24 +46,50 @@ func (h *Handler) GetClusterOverview(w http.ResponseWriter, r *http.Request) {
 		respondErrorWithCode(w, http.StatusInternalServerError, ErrCodeInternalError, infoErr.Error(), requestID)
 		return
 	}
-	pods, _ := client.Clientset.CoreV1().Pods("").List(r.Context(), metav1.ListOptions{})
-	deployments, _ := client.Clientset.AppsV1().Deployments("").List(r.Context(), metav1.ListOptions{})
-	services, _ := client.Clientset.CoreV1().Services("").List(r.Context(), metav1.ListOptions{})
+
+	// Track partial failures to set HealthStatus accurately.
+	degraded := false
+
+	pods, podErr := client.Clientset.CoreV1().Pods("").List(r.Context(), metav1.ListOptions{})
+	if podErr != nil {
+		log.Printf("overview: failed to list pods cluster=%s error=%v", clusterID, podErr)
+		pods = &corev1.PodList{}
+		degraded = true
+	}
+	deployments, deployErr := client.Clientset.AppsV1().Deployments("").List(r.Context(), metav1.ListOptions{})
+	if deployErr != nil {
+		log.Printf("overview: failed to list deployments cluster=%s error=%v", clusterID, deployErr)
+		degraded = true
+	}
+	services, svcErr := client.Clientset.CoreV1().Services("").List(r.Context(), metav1.ListOptions{})
+	if svcErr != nil {
+		log.Printf("overview: failed to list services cluster=%s error=%v", clusterID, svcErr)
+		degraded = true
+	}
+
+	healthStatus := "healthy"
+	if degraded {
+		healthStatus = "degraded"
+	}
+
+	deployCount := 0
+	if deployments != nil {
+		deployCount = len(deployments.Items)
+	}
+	svcCount := 0
+	if services != nil {
+		svcCount = len(services.Items)
+	}
+
 	summary := &models.ClusterSummary{
 		ID:              clusterID,
 		Name:            clusterID,
 		NodeCount:       info["node_count"].(int),
 		NamespaceCount:  info["namespace_count"].(int),
 		PodCount:        len(pods.Items),
-		DeploymentCount: len(deployments.Items),
-		ServiceCount:    len(services.Items),
-		HealthStatus:    "healthy",
-	}
-
-	// Pod status
-	pods, podErr := client.Clientset.CoreV1().Pods("").List(r.Context(), metav1.ListOptions{})
-	if podErr != nil {
-		pods = &corev1.PodList{}
+		DeploymentCount: deployCount,
+		ServiceCount:    svcCount,
+		HealthStatus:    healthStatus,
 	}
 	ps := models.OverviewPodStatus{}
 	for _, p := range pods.Items {

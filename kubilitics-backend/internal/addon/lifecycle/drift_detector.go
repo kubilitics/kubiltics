@@ -261,8 +261,11 @@ func compareSpecAndMetadata(desired, live *unstructured.Unstructured, kind, ns, 
 
 // desiredSubsetEqual returns true when every key present in desired also exists in live with
 // an equal value. Keys present only in live (K8s-defaulted / admission-injected fields) are
-// silently ignored. Comparison recurses into nested maps. Well-known injected field names
-// (see injectedSpecFields) are skipped even when they appear in the desired map.
+// silently ignored. Comparison recurses into nested maps. Arrays of maps are compared with
+// desiredSliceSubsetEqual to handle K8s-injected container fields (terminationMessagePath,
+// imagePullPolicy, etc.) without triggering false-positive STRUCTURAL drift.
+// Well-known injected field names (see injectedSpecFields) are skipped even when they appear
+// in the desired map.
 func desiredSubsetEqual(desired, live map[string]interface{}) bool {
 	for k, dv := range desired {
 		// Skip field names that Kubernetes commonly injects regardless of chart content.
@@ -279,11 +282,78 @@ func desiredSubsetEqual(desired, live map[string]interface{}) bool {
 			if !desiredSubsetEqual(dMap, lMap) {
 				return false
 			}
+		} else if dArr, dIsSlice := dv.([]interface{}); dIsSlice {
+			// Arrays: use subset comparison for map elements (e.g. containers, ports)
+			// instead of reflect.DeepEqual to ignore K8s-injected per-element fields.
+			lArr, lIsSlice := lv.([]interface{})
+			if !lIsSlice {
+				return false
+			}
+			if !desiredSliceSubsetEqual(dArr, lArr) {
+				return false
+			}
 		} else {
 			if !reflect.DeepEqual(dv, lv) {
 				return false
 			}
 		}
+	}
+	return true
+}
+
+// desiredSliceSubsetEqual compares two slices with subset semantics for map elements.
+// Elements that are maps with a "name" field are matched by name and compared with
+// desiredSubsetEqual, allowing live elements to carry K8s-injected fields
+// (e.g. container.terminationMessagePath, container.imagePullPolicy) without false positives.
+// Elements without a "name" field fall back to positional index comparison.
+// Primitive elements (non-map) use reflect.DeepEqual.
+func desiredSliceSubsetEqual(desired, live []interface{}) bool {
+	// Build a name-keyed index of live map elements for O(1) name lookup.
+	liveByName := make(map[string]map[string]interface{}, len(live))
+	for _, lv := range live {
+		if lm, ok := lv.(map[string]interface{}); ok {
+			if name, ok := lm["name"].(string); ok {
+				liveByName[name] = lm
+			}
+		}
+	}
+
+	positionalIdx := 0 // index into live for non-named elements
+	for _, dv := range desired {
+		dMap, dIsMap := dv.(map[string]interface{})
+		if dIsMap {
+			dName, hasName := dMap["name"].(string)
+			if hasName {
+				lMap, found := liveByName[dName]
+				if !found {
+					return false // desired named element absent from live
+				}
+				if !desiredSubsetEqual(dMap, lMap) {
+					return false
+				}
+				continue
+			}
+			// Named lookup failed — fall through to positional comparison.
+			if positionalIdx >= len(live) {
+				return false
+			}
+			if lMap, ok := live[positionalIdx].(map[string]interface{}); ok {
+				if !desiredSubsetEqual(dMap, lMap) {
+					return false
+				}
+			} else if !reflect.DeepEqual(dv, live[positionalIdx]) {
+				return false
+			}
+		} else {
+			// Primitive (string, int, bool, etc.): positional exact match.
+			if positionalIdx >= len(live) {
+				return false
+			}
+			if !reflect.DeepEqual(dv, live[positionalIdx]) {
+				return false
+			}
+		}
+		positionalIdx++
 	}
 	return true
 }

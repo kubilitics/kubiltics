@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
+	"github.com/gorilla/websocket"
 	"github.com/hashicorp/golang-lru/v2/expirable"
 
 	"github.com/kubilitics/kubilitics-backend/internal/api/middleware"
@@ -47,6 +48,8 @@ type Handler struct {
 	kcliStreamMu          sync.Mutex
 	kcliStreamActive      map[string]int
 	k8sClientCache        *expirable.LRU[string, *k8s.Client] // Cache for stateless requests
+	wsConnMu              sync.Mutex
+	wsConns               map[string]int // "clusterId:userIdentity" -> active WS connection count
 }
 
 // NewHandler creates a new HTTP handler. unifiedMetricsService can be nil; then metrics summary uses legacy per-resource endpoints. projSvc can be nil; then project routes return 501. addonService can be nil; then addon routes return 404 or 501. repo can be nil if auth is disabled.
@@ -68,7 +71,68 @@ func NewHandler(cs service.ClusterService, ts service.TopologyService, cfg *conf
 		kcliLimiters:          map[string]*rate.Limiter{},
 		kcliStreamActive:      map[string]int{},
 		k8sClientCache:        expirable.NewLRU[string, *k8s.Client](100, nil, time.Minute*10),
+		wsConns:               map[string]int{},
 	}
+}
+
+// wsCheckOrigin validates a WebSocket upgrade request's Origin header against the
+// configured allowed origins. This prevents CSRF-over-WebSocket attacks by ensuring
+// only trusted origins (configured via KUBILITICS_ALLOWED_ORIGINS) can establish
+// WebSocket connections to exec, shell, addon install, and overview stream endpoints.
+func (h *Handler) wsCheckOrigin(r *http.Request) bool {
+	origin := r.Header.Get("Origin")
+	if origin == "" {
+		// Non-browser clients (curl, wscat) do not send Origin; allow them.
+		return true
+	}
+	normalized := strings.ToLower(strings.TrimRight(origin, "/"))
+	for _, allowed := range h.cfg.AllowedOrigins {
+		if strings.ToLower(strings.TrimRight(allowed, "/")) == normalized {
+			return true
+		}
+	}
+	return false
+}
+
+// newWSUpgrader returns a websocket.Upgrader that validates the Origin header
+// against the server's configured allowed origins.
+func (h *Handler) newWSUpgrader(readBuf, writeBuf int) websocket.Upgrader {
+	return websocket.Upgrader{
+		CheckOrigin:     h.wsCheckOrigin,
+		ReadBufferSize:  readBuf,
+		WriteBufferSize: writeBuf,
+	}
+}
+
+const maxWSConnsPerClusterUser = 10
+
+// wsAcquire checks if the user can open another WebSocket connection for the given cluster.
+// Returns a release function to call when the connection closes, or an error if the limit is reached.
+// When auth is disabled, the remote IP address is used as the identity.
+func (h *Handler) wsAcquire(r *http.Request, clusterID string) (release func(), err error) {
+	identity := "anon:" + r.RemoteAddr
+	if claims := auth.ClaimsFromContext(r.Context()); claims != nil {
+		identity = "user:" + claims.UserID
+	}
+	key := clusterID + ":" + identity
+	h.wsConnMu.Lock()
+	defer h.wsConnMu.Unlock()
+	if h.wsConns[key] >= maxWSConnsPerClusterUser {
+		return nil, fmt.Errorf("WebSocket connection limit (%d) reached for this cluster", maxWSConnsPerClusterUser)
+	}
+	h.wsConns[key]++
+	released := false
+	return func() {
+		h.wsConnMu.Lock()
+		defer h.wsConnMu.Unlock()
+		if !released {
+			released = true
+			h.wsConns[key]--
+			if h.wsConns[key] <= 0 {
+				delete(h.wsConns, key)
+			}
+		}
+	}, nil
 }
 
 // resolveClusterID returns clusterID if it exists (either as live client or in repo); otherwise looks up by Context or Name (e.g. "docker-desktop") so frontend can pass either backend UUID or context name.
@@ -169,6 +233,8 @@ func SetupRoutes(router *mux.Router, h *Handler) {
 	router.Handle("/addons/profiles", h.wrapWithRBAC(h.CreateProfile, auth.RoleOperator)).Methods("POST")
 	router.Handle("/addons/profiles/{profileId}", h.wrapWithRBAC(h.GetProfile, auth.RoleViewer)).Methods("GET")
 	router.Handle("/addons/{addonId}", h.wrapWithRBAC(h.GetCatalogEntry, auth.RoleViewer)).Methods("GET")
+	// /values must be registered before the bare {addonId} wildcard so Gorilla picks the specific path first.
+	router.Handle("/addons/catalog/{addonId}/values", h.wrapWithRBAC(h.GetCatalogValues, auth.RoleViewer)).Methods("GET")
 	router.Handle("/addons/catalog/{addonId}", h.wrapWithRBAC(h.GetCatalogEntry, auth.RoleViewer)).Methods("GET")
 	// Add-on cluster-scoped: read-only (viewer)
 	router.Handle("/clusters/{clusterId}/addons/plan", h.wrapWithRBAC(h.PlanInstall, auth.RoleViewer)).Methods("POST")
@@ -260,6 +326,11 @@ func SetupRoutes(router *mux.Router, h *Handler) {
 	// Events routes
 	router.Handle("/clusters/{clusterId}/events", h.wrapWithRBAC(h.GetEvents, auth.RoleViewer)).Methods("GET")
 
+	// Port-forward: start a real kubectl port-forward subprocess - BE-AUTHZ-001: operator required
+	router.Handle("/clusters/{clusterId}/port-forward", h.wrapWithRBAC(h.PostPortForward, auth.RoleOperator)).Methods("POST")
+	// Port-forward: stop a running session
+	router.Handle("/clusters/{clusterId}/port-forward/{sessionId}", h.wrapWithRBAC(h.DeletePortForward, auth.RoleOperator)).Methods("DELETE")
+
 	// Pod exec (WebSocket) - BE-AUTHZ-001: operator required
 	router.Handle("/clusters/{clusterId}/pods/{namespace}/{name}/exec", h.wrapWithRBAC(h.GetPodExec, auth.RoleOperator)).Methods("GET")
 
@@ -310,8 +381,14 @@ func (h *Handler) ListClusters(w http.ResponseWriter, r *http.Request) {
 				respondJSON(w, http.StatusOK, clusters)
 				return
 			}
-			// Get user's cluster permissions
-			perms, _ := h.repo.ListClusterPermissionsByUser(r.Context(), claims.UserID)
+			// Get user's cluster permissions — fail-closed: on DB error return empty list, not all clusters.
+			perms, err := h.repo.ListClusterPermissionsByUser(r.Context(), claims.UserID)
+			if err != nil {
+				requestID := logger.FromContext(r.Context())
+				respondErrorWithCode(w, http.StatusInternalServerError, ErrCodeInternalError,
+					"failed to query cluster permissions", requestID)
+				return
+			}
 			permMap := make(map[string]bool)
 			for _, p := range perms {
 				permMap[p.ClusterID] = true
@@ -426,6 +503,16 @@ func (h *Handler) AddCluster(w http.ResponseWriter, r *http.Request) {
 
 		cluster, err := h.clusterService.AddClusterFromBytes(r.Context(), decoded, req.Context)
 		if err != nil {
+			// P1-MC: Return 409 Conflict when cluster limit reached, with count and limit.
+			var limitErr *service.ErrClusterLimitReached
+			if errors.As(err, &limitErr) {
+				respondJSON(w, http.StatusConflict, map[string]interface{}{
+					"error":   limitErr.Error(),
+					"current": limitErr.Current,
+					"limit":   limitErr.Max,
+				})
+				return
+			}
 			respondError(w, http.StatusBadRequest, fmt.Sprintf("Failed to add cluster: %v", err))
 			return
 		}
@@ -442,6 +529,16 @@ func (h *Handler) AddCluster(w http.ResponseWriter, r *http.Request) {
 
 	cluster, err := h.clusterService.AddCluster(r.Context(), req.KubeconfigPath, req.Context)
 	if err != nil {
+		// P1-MC: Return 409 Conflict when cluster limit reached, with count and limit.
+		var limitErr *service.ErrClusterLimitReached
+		if errors.As(err, &limitErr) {
+			respondJSON(w, http.StatusConflict, map[string]interface{}{
+				"error":   limitErr.Error(),
+				"current": limitErr.Current,
+				"limit":   limitErr.Max,
+			})
+			return
+		}
 		respondError(w, http.StatusBadRequest, err.Error())
 		return
 	}
@@ -552,10 +649,20 @@ func (h *Handler) GetClusterSummary(w http.ResponseWriter, r *http.Request) {
 	pods, _ := client.Clientset.CoreV1().Pods("").List(r.Context(), metav1.ListOptions{})
 	deployments, _ := client.Clientset.AppsV1().Deployments("").List(r.Context(), metav1.ListOptions{})
 	services, _ := client.Clientset.CoreV1().Services("").List(r.Context(), metav1.ListOptions{})
+	statefulsets, _ := client.Clientset.AppsV1().StatefulSets("").List(r.Context(), metav1.ListOptions{})
+	replicasets, _ := client.Clientset.AppsV1().ReplicaSets("").List(r.Context(), metav1.ListOptions{})
+	daemonsets, _ := client.Clientset.AppsV1().DaemonSets("").List(r.Context(), metav1.ListOptions{})
+	jobs, _ := client.Clientset.BatchV1().Jobs("").List(r.Context(), metav1.ListOptions{})
+	cronjobs, _ := client.Clientset.BatchV1().CronJobs("").List(r.Context(), metav1.ListOptions{})
 
 	podCount := len(pods.Items)
 	deploymentCount := len(deployments.Items)
 	serviceCount := len(services.Items)
+	statefulsetCount := len(statefulsets.Items)
+	replicasetCount := len(replicasets.Items)
+	daemonsetCount := len(daemonsets.Items)
+	jobCount := len(jobs.Items)
+	cronjobCount := len(cronjobs.Items)
 	if projectNSSet != nil {
 		podCount = 0
 		for _, p := range pods.Items {
@@ -575,17 +682,52 @@ func (h *Handler) GetClusterSummary(w http.ResponseWriter, r *http.Request) {
 				serviceCount++
 			}
 		}
+		statefulsetCount = 0
+		for _, sts := range statefulsets.Items {
+			if _, ok := projectNSSet[sts.Namespace]; ok {
+				statefulsetCount++
+			}
+		}
+		replicasetCount = 0
+		for _, rs := range replicasets.Items {
+			if _, ok := projectNSSet[rs.Namespace]; ok {
+				replicasetCount++
+			}
+		}
+		daemonsetCount = 0
+		for _, ds := range daemonsets.Items {
+			if _, ok := projectNSSet[ds.Namespace]; ok {
+				daemonsetCount++
+			}
+		}
+		jobCount = 0
+		for _, j := range jobs.Items {
+			if _, ok := projectNSSet[j.Namespace]; ok {
+				jobCount++
+			}
+		}
+		cronjobCount = 0
+		for _, cj := range cronjobs.Items {
+			if _, ok := projectNSSet[cj.Namespace]; ok {
+				cronjobCount++
+			}
+		}
 	}
 
 	summary := &models.ClusterSummary{
-		ID:              clusterID,
-		Name:            clusterID,
-		NodeCount:       nodeCount,
-		NamespaceCount:  namespaceCount,
-		PodCount:        podCount,
-		DeploymentCount: deploymentCount,
-		ServiceCount:    serviceCount,
-		HealthStatus:    "healthy",
+		ID:                 clusterID,
+		Name:               clusterID,
+		NodeCount:          nodeCount,
+		NamespaceCount:     namespaceCount,
+		PodCount:            podCount,
+		DeploymentCount:     deploymentCount,
+		ServiceCount:        serviceCount,
+		StatefulSetCount:   statefulsetCount,
+		ReplicaSetCount:    replicasetCount,
+		DaemonSetCount:     daemonsetCount,
+		JobCount:            jobCount,
+		CronJobCount:       cronjobCount,
+		HealthStatus:       "healthy",
 	}
 	respondJSON(w, http.StatusOK, summary)
 }

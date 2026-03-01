@@ -3,6 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Activity, Clock, CheckCircle, AlertTriangle, Download, Trash2, Network, Server, GitCompare } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
 import { downloadResourceJson } from '@/lib/exportUtils';
 import { normalizeKindForTopology } from '@/utils/resourceKindMapper';
@@ -17,56 +19,94 @@ import {
   ResourceComparisonView,
   type ResourceStatus,
 } from '@/components/resources';
-import { useResourceEvents } from '@/hooks/useK8sResourceDetail';
+import { useResourceDetail, useResourceEvents } from '@/hooks/useK8sResourceDetail';
+import { useDeleteK8sResource, type KubernetesResource } from '@/hooks/useKubernetes';
+import { useConnectionStatus } from '@/hooks/useConnectionStatus';
+import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
+import { useActiveClusterId } from '@/hooks/useActiveClusterId';
 
-const mockComponentStatus = {
-  name: 'etcd-0',
-  status: 'Healthy' as ResourceStatus,
-  age: '180d',
-  conditions: [
-    { type: 'Healthy', status: 'True', message: '{"health":"true","reason":""}', error: '' },
-  ],
-};
-
-const yaml = `apiVersion: v1
-kind: ComponentStatus
-metadata:
-  name: etcd-0
-conditions:
-- type: Healthy
-  status: "True"
-  message: '{"health":"true","reason":""}'`;
+interface ComponentStatusResource extends KubernetesResource {
+  conditions?: Array<{
+    type: string;
+    status: string;
+    message?: string;
+    error?: string;
+  }>;
+}
 
 export default function ComponentStatusDetail() {
   const { name } = useParams();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('overview');
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const backendBaseUrl = useBackendConfigStore((s) => s.backendBaseUrl);
+  const baseUrl = getEffectiveBackendBaseUrl(backendBaseUrl);
+  const clusterId = useActiveClusterId();
+
+  const { resource: cs, isLoading, error, age, yaml, isConnected, refetch } = useResourceDetail<ComponentStatusResource>(
+    'componentstatuses',
+    name,
+    undefined, // cluster-scoped resource
+    {} as ComponentStatusResource
+  );
   const { events } = useResourceEvents('ComponentStatus', undefined, name ?? undefined);
-  const cs = mockComponentStatus;
+  const deleteComponentStatus = useDeleteK8sResource('componentstatuses');
+
+  const csName = cs?.metadata?.name || '';
+  const conditions = cs?.conditions ?? [];
+  const isHealthy = conditions.some(c => c.type === 'Healthy' && c.status === 'True');
+  const status: ResourceStatus = isHealthy ? 'Healthy' : 'Unhealthy';
 
   const handleDownloadYaml = useCallback(() => {
+    if (!yaml) return;
     const blob = new Blob([yaml], { type: 'application/yaml' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${cs.name || 'componentstatus'}.yaml`;
+    a.download = `${csName || 'componentstatus'}.yaml`;
     a.click();
     URL.revokeObjectURL(url);
-  }, [cs.name]);
+  }, [yaml, csName]);
 
   const handleDownloadJson = useCallback(() => {
-    downloadResourceJson(cs, `${cs.name || 'componentstatus'}.json`);
+    if (!cs?.metadata?.name) return;
+    downloadResourceJson(cs, `${csName || 'componentstatus'}.json`);
     toast.success('JSON downloaded');
-  }, [cs]);
+  }, [cs, csName]);
 
-  const isHealthy = cs.conditions.some(c => c.type === 'Healthy' && c.status === 'True');
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <Skeleton className="h-20 w-full" />
+        <div className="grid grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-24" />)}
+        </div>
+        <Skeleton className="h-96" />
+      </div>
+    );
+  }
+
+  if (!cs?.metadata?.name || error) {
+    return (
+      <div className="space-y-4 p-6">
+        <Card>
+          <CardContent className="pt-6">
+            <p className="text-muted-foreground">{error ? 'Failed to load resource.' : 'ComponentStatus not found.'}</p>
+            {error && <p className="text-sm text-destructive mt-2">{String(error)}</p>}
+            <Button variant="outline" className="mt-4" onClick={() => navigate('/componentstatuses')}>
+              Back to Component Statuses
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   const statusCards = [
     { label: 'Status', value: isHealthy ? 'Healthy' : 'Unhealthy', icon: isHealthy ? CheckCircle : AlertTriangle, iconColor: isHealthy ? 'success' as const : 'error' as const },
-    { label: 'Component', value: cs.name, icon: Server, iconColor: 'primary' as const },
-    { label: 'Conditions', value: cs.conditions.length, icon: Activity, iconColor: 'info' as const },
-    { label: 'Age', value: cs.age, icon: Clock, iconColor: 'muted' as const },
+    { label: 'Component', value: csName, icon: Server, iconColor: 'primary' as const },
+    { label: 'Conditions', value: conditions.length, icon: Activity, iconColor: 'info' as const },
+    { label: 'Age', value: age, icon: Clock, iconColor: 'muted' as const },
   ];
 
   const tabs = [
@@ -75,7 +115,7 @@ export default function ComponentStatusDetail() {
       label: 'Overview',
       content: (
         <div className="space-y-6">
-          <ResourceOverviewMetadata metadata={{ name: cs.name }} />
+          <ResourceOverviewMetadata metadata={cs.metadata ?? { name: csName }} />
           <div className="grid grid-cols-1 gap-6">
             <Card>
               <CardHeader><CardTitle className="text-base">Component Info</CardTitle></CardHeader>
@@ -89,7 +129,7 @@ export default function ComponentStatusDetail() {
                     )}
                   </div>
                   <div>
-                    <h3 className="text-xl font-semibold">{cs.name}</h3>
+                    <h3 className="text-xl font-semibold">{csName}</h3>
                     <p className="text-muted-foreground">
                       {isHealthy ? 'Component is healthy and responding normally' : 'Component is experiencing issues'}
                     </p>
@@ -100,28 +140,32 @@ export default function ComponentStatusDetail() {
             <Card>
               <CardHeader><CardTitle className="text-base">Conditions</CardTitle></CardHeader>
               <CardContent>
-                <div className="space-y-3">
-                  {cs.conditions.map((condition, idx) => (
-                    <div key={idx} className="p-4 rounded-lg bg-muted/50 space-y-2">
-                      <div className="flex items-center justify-between">
-                        <Badge variant={condition.status === 'True' ? 'default' : 'destructive'}>
-                          {condition.type}
-                        </Badge>
-                        <Badge variant="outline">{condition.status}</Badge>
+                {conditions.length === 0 ? (
+                  <p className="text-muted-foreground text-sm">No conditions reported.</p>
+                ) : (
+                  <div className="space-y-3">
+                    {conditions.map((condition, idx) => (
+                      <div key={idx} className="p-4 rounded-lg bg-muted/50 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <Badge variant={condition.status === 'True' ? 'default' : 'destructive'}>
+                            {condition.type}
+                          </Badge>
+                          <Badge variant="outline">{condition.status}</Badge>
+                        </div>
+                        {condition.message && (
+                          <p className="text-sm font-mono text-muted-foreground break-all">
+                            {condition.message}
+                          </p>
+                        )}
+                        {condition.error && (
+                          <p className="text-sm text-destructive">
+                            Error: {condition.error}
+                          </p>
+                        )}
                       </div>
-                      {condition.message && (
-                        <p className="text-sm font-mono text-muted-foreground break-all">
-                          {condition.message}
-                        </p>
-                      )}
-                      {condition.error && (
-                        <p className="text-sm text-destructive">
-                          Error: {condition.error}
-                        </p>
-                      )}
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
@@ -129,7 +173,7 @@ export default function ComponentStatusDetail() {
       ),
     },
     { id: 'events', label: 'Events', content: <EventsSection events={events} /> },
-    { id: 'yaml', label: 'YAML', icon: Server, content: <YamlViewer yaml={yaml} resourceName={cs.name} /> },
+    { id: 'yaml', label: 'YAML', icon: Server, content: <YamlViewer yaml={yaml} resourceName={csName} /> },
     {
       id: 'compare',
       label: 'Compare',
@@ -138,8 +182,10 @@ export default function ComponentStatusDetail() {
         <ResourceComparisonView
           resourceType="componentstatuses"
           resourceKind="ComponentStatus"
-          initialSelectedResources={[cs.name]}
-          isConnected={false} // ComponentStatus is mostly mock/deprecated here
+          initialSelectedResources={[csName]}
+          clusterId={clusterId ?? undefined}
+          backendBaseUrl={baseUrl ?? ''}
+          isConnected={isConnected}
           embedded
         />
       ),
@@ -154,7 +200,7 @@ export default function ComponentStatusDetail() {
           namespace={''}
           name={name ?? ''}
           sourceResourceType="ComponentStatus"
-          sourceResourceName={cs.name ?? name ?? ''}
+          sourceResourceName={csName ?? name ?? ''}
         />
       ),
     },
@@ -176,11 +222,11 @@ export default function ComponentStatusDetail() {
       <ResourceDetailLayout
         resourceType="ComponentStatus"
         resourceIcon={Activity}
-        name={cs.name}
-        status={cs.status}
+        name={csName}
+        status={status}
         backLink="/componentstatuses"
         backLabel="Component Statuses"
-        createdLabel={cs.age}
+        createdLabel={age}
         actions={[
           { label: 'Download YAML', icon: Download, variant: 'outline', onClick: handleDownloadYaml },
           { label: 'Export as JSON', icon: Download, variant: 'outline', onClick: handleDownloadJson },
@@ -195,10 +241,14 @@ export default function ComponentStatusDetail() {
         open={showDeleteDialog}
         onOpenChange={setShowDeleteDialog}
         resourceType="ComponentStatus"
-        resourceName={cs.name}
-        onConfirm={() => {
-          toast.success(`ComponentStatus ${cs.name} deleted (demo mode)`);
-          navigate('/componentstatuses');
+        resourceName={csName}
+        onConfirm={async () => {
+          if (isConnected && name) {
+            await deleteComponentStatus.mutateAsync({ name });
+            navigate('/componentstatuses');
+          } else {
+            toast.error('Connect to a cluster to delete resources');
+          }
         }}
         requireNameConfirmation
       />

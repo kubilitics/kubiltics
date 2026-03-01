@@ -12,7 +12,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { ResourceWizard, type WizardStep } from './ResourceWizard';
 import { useCreateK8sResource } from '@/hooks/useKubernetes';
 import { useKubernetesConfigStore } from '@/stores/kubernetesConfigStore';
-import { toast } from 'sonner';
+import { notifySuccess } from '@/lib/notificationFormatter';
 
 interface ContainerSpec {
   name: string;
@@ -375,16 +375,23 @@ export function PodWizard({ open, onClose, onSuccess }: PodWizardProps) {
           namespace: spec.namespace,
           yaml: generateYaml(),
         });
-        toast.success(`Pod "${spec.name}" created successfully`);
         onSuccess?.();
         onClose();
       } catch (error: any) {
-        toast.error(`Failed to create pod: ${error.message}`);
+        // Error toast is handled by useCreateK8sResource / notifyError
       }
     } else {
-      toast.success(`Pod "${spec.name}" created (demo mode)`, {
-        description: 'Connect to a cluster to create resources',
-      });
+      notifySuccess(
+        {
+          action: 'create',
+          resourceType: 'pods',
+          resourceName: spec.name,
+          namespace: spec.namespace,
+        },
+        {
+          description: 'Demo mode – connect to a cluster to actually create this pod.',
+        }
+      );
       onSuccess?.();
       onClose();
     }

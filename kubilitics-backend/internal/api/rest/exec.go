@@ -22,11 +22,8 @@ import (
 	"github.com/kubilitics/kubilitics-backend/internal/pkg/validate"
 )
 
-var execUpgrader = websocket.Upgrader{
-	CheckOrigin:     func(r *http.Request) bool { return true },
-	ReadBufferSize:  4096,
-	WriteBufferSize: 4096,
-}
+// execUpgrader is no longer used — replaced by h.newWSUpgrader() for proper origin validation.
+// Kept as a comment for reference: ReadBufferSize=4096, WriteBufferSize=4096.
 
 const (
 	wsMsgStdin  = "stdin"
@@ -126,7 +123,16 @@ func (h *Handler) GetPodExec(w http.ResponseWriter, r *http.Request) {
 		shell = "/bin/sh"
 	}
 
-	conn, err := execUpgrader.Upgrade(w, r, nil)
+	// Enforce per-cluster per-user WebSocket connection limit.
+	wsRelease, wsErr := h.wsAcquire(r, clusterID)
+	if wsErr != nil {
+		respondError(w, http.StatusTooManyRequests, wsErr.Error())
+		return
+	}
+	defer wsRelease()
+
+	upgrader := h.newWSUpgrader(4096, 4096)
+	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		return
 	}
@@ -233,6 +239,33 @@ func (h *Handler) GetPodExec(w http.ResponseWriter, r *http.Request) {
 	stdoutW := &chanWriter{ch: outChan, typ: wsMsgStdout}
 	stderrW := &chanWriter{ch: outChan, typ: wsMsgStderr}
 
+	// Prefer a richer interactive shell with filename completion and typical colorized `ls`
+	// when the client did not explicitly request a custom shell.
+	// For safety, we only wrap when the shell is the default "/bin/sh" (or empty in query),
+	// so any explicit shell choice is honored exactly.
+	command := []string{shell}
+	if shell == "/bin/sh" {
+		// Wrapper runs inside /bin/sh and prefers bash when available, with interactive mode.
+		// Basic logic:
+		//   - If bash exists, exec bash -il (interactive login shell: enables readline + default rc)
+		//   - Else, fall back to sh -i
+		//
+		// This improves UX in pod terminals:
+		//   - Tab-based filename completion (built-in to bash)
+		//   - Typical distro defaults like colored `ls` when configured in bashrc.
+		wrapperScript := `
+if command -v bash >/dev/null 2>&1; then
+  exec bash -il
+elif command -v sh >/dev/null 2>&1; then
+  exec sh -i
+else
+  echo "No interactive shell found (bash/sh) in this container."
+  sleep 3600
+fi
+`
+		command = []string{"/bin/sh", "-c", wrapperScript}
+	}
+
 	req := client.Clientset.CoreV1().RESTClient().Post().
 		Resource("pods").
 		Namespace(namespace).
@@ -240,7 +273,7 @@ func (h *Handler) GetPodExec(w http.ResponseWriter, r *http.Request) {
 		SubResource("exec").
 		VersionedParams(&corev1.PodExecOptions{
 			Container: container,
-			Command:   []string{shell},
+			Command:   command,
 			Stdin:     true,
 			Stdout:    true,
 			Stderr:    true,

@@ -15,6 +15,9 @@ type InstallStep struct {
 	Action                InstallStepAction `json:"action"`
 	AddonID               string            `json:"addon_id"`
 	AddonName             string            `json:"addon_name"`
+	// DisplayName is the human-readable title (e.g. "Jenkins" vs name "jenkins").
+	// Carried here so ExecuteInstall can use it in progress messages without a DB lookup.
+	DisplayName           string            `json:"display_name,omitempty"`
 	FromVersion           string            `json:"from_version,omitempty"`
 	ToVersion             string            `json:"to_version"`
 	Namespace             string            `json:"namespace"`
@@ -24,6 +27,12 @@ type InstallStep struct {
 	DependencyDepth       int               `json:"dependency_depth"`
 	EstimatedDurationSec  int               `json:"estimated_duration_sec"`
 	EstimatedCostDeltaUSD float64           `json:"estimated_cost_delta_usd"`
+	// HelmRepoURL and HelmChart carry the Helm chart reference resolved during
+	// plan time. ExecuteInstall uses these directly — no DB or registry lookup
+	// needed at install time. This is the Headlamp pattern: the plan carries
+	// everything needed to execute; the execute phase is DB-free.
+	HelmRepoURL string `json:"helm_repo_url,omitempty"`
+	HelmChart   string `json:"helm_chart,omitempty"`
 }
 
 type InstallPlan struct {

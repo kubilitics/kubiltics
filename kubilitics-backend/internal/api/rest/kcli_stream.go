@@ -69,7 +69,16 @@ func (h *Handler) GetKCLIStream(w http.ResponseWriter, r *http.Request) {
 	}
 	defer releaseStreamSlot()
 
-	conn, err := shellStreamUpgrader.Upgrade(w, r, nil)
+	// Enforce per-cluster per-user WebSocket connection limit.
+	wsRelease, wsErr := h.wsAcquire(r, resolvedID)
+	if wsErr != nil {
+		respondError(w, http.StatusTooManyRequests, wsErr.Error())
+		return
+	}
+	defer wsRelease()
+
+	upgrader := h.newWSUpgrader(65536, 65536)
+	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		return
 	}
@@ -131,6 +140,9 @@ func (h *Handler) GetKCLIStream(w http.ResponseWriter, r *http.Request) {
 	closeExecDone := func() { once.Do(func() { close(execDone) }) }
 
 	defer func() {
+		// Cancel context FIRST so all goroutines see ctx.Done() before outChan is closed.
+		// This prevents send-on-closed-channel panics in the cmd.Wait goroutine.
+		cancel()
 		closeExecDone()
 		select {
 		case <-execDone:
@@ -188,15 +200,17 @@ func (h *Handler) GetKCLIStream(w http.ResponseWriter, r *http.Request) {
 			audit.LogCommand(requestID, resolvedID, "kcli_stream", "mode="+mode, "failure", err.Error(), -1, time.Since(start))
 			select {
 			case outChan <- wsOutMessage{T: wsMsgError, D: "kcli stream exited: " + err.Error()}:
-			default:
+			case <-ctx.Done():
 			}
 		} else {
 			audit.LogCommand(requestID, resolvedID, "kcli_stream", "mode="+mode, "success", "exited", 0, time.Since(start))
 		}
 		closeExecDone()
+		// Use ctx.Done() to avoid send-on-closed-channel panic: the deferred cleanup
+		// cancels ctx before closing outChan, so this select exits safely.
 		select {
 		case outChan <- wsOutMessage{T: wsMsgExit}:
-		default:
+		case <-ctx.Done():
 		}
 	}()
 

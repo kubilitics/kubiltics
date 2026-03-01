@@ -1070,8 +1070,8 @@ export default function CronJobDetail() {
       icon: Settings,
       content: (
         <ActionsSection actions={[
-          { icon: Play, label: 'Trigger Now', description: 'Manually trigger a job run', onClick: handleTriggerNow },
-          { icon: isSuspended ? Play : Pause, label: isSuspended ? 'Resume' : 'Suspend', description: isSuspended ? 'Resume scheduled runs' : 'Pause scheduled runs', onClick: handleToggleSuspend },
+          { icon: Play, label: 'Trigger Now', description: 'Manually trigger a job run', variant: 'warning', onClick: handleTriggerNow },
+          { icon: isSuspended ? Play : Pause, label: isSuspended ? 'Resume' : 'Suspend', description: isSuspended ? 'Resume scheduled runs' : 'Pause scheduled runs', variant: 'warning', onClick: handleToggleSuspend },
           { icon: History, label: 'View Job History', description: 'See all spawned jobs', onClick: () => navigate(`/jobs?cronjob=${name}`) },
           { icon: Download, label: 'Download YAML', description: 'Export CronJob definition', onClick: handleDownloadYaml },
           { icon: Download, label: 'Export as JSON', description: 'Export CronJob as JSON', onClick: handleDownloadJson },

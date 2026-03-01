@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
   Database,
@@ -29,8 +29,15 @@ import {
   SlidersHorizontal,
   Hash,
   ArrowDown,
+  ChevronDown,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -60,6 +67,8 @@ import {
   type ContainerInfo,
   type YamlVersion,
 } from '@/components/resources';
+import { ListPagination, PAGE_SIZE_OPTIONS } from '@/components/list';
+import { cn } from '@/lib/utils';
 import { Breadcrumbs, useDetailBreadcrumbs } from '@/components/layout/Breadcrumbs';
 import { useResourceDetail, useResourceEvents } from '@/hooks/useK8sResourceDetail';
 import { useDeleteK8sResource, useUpdateK8sResource, usePatchK8sResource, useK8sResourceList, calculateAge, type KubernetesResource } from '@/hooks/useKubernetes';
@@ -182,11 +191,23 @@ export default function StatefulSetDetail() {
   );
   const stsPvcs = useMemo(() => {
     const items = pvcList?.items ?? [];
+    // 1. Match PVCs created by volumeClaimTemplates: {template}-{stsName}-{ordinal}
+    const templatePattern = new RegExp(`^[a-z0-9-]+-${stsName}-\\d+$`);
+    // 2. Also collect PVC names referenced directly in pod volumes
+    const podPvcNames = new Set<string>();
+    for (const pod of stsPodsRaw) {
+      const volumes = (pod as { spec?: { volumes?: Array<{ persistentVolumeClaim?: { claimName?: string } }> } }).spec?.volumes ?? [];
+      for (const vol of volumes) {
+        if (vol.persistentVolumeClaim?.claimName) {
+          podPvcNames.add(vol.persistentVolumeClaim.claimName);
+        }
+      }
+    }
     return items.filter((pvc) => {
       const pvcName = pvc.metadata?.name ?? '';
-      return pvcName.includes(stsName) && new RegExp(`^[a-z0-9-]+-${stsName}-\\d+$`).test(pvcName);
+      return templatePattern.test(pvcName) || podPvcNames.has(pvcName);
     });
-  }, [pvcList?.items, stsName]);
+  }, [pvcList?.items, stsName, stsPodsRaw]);
   const stsPvcsWithOrdinal = useMemo(() => stsPvcs.map((pvc) => {
     const pvcName = pvc.metadata?.name ?? '';
     const match = pvcName.match(new RegExp(`-${stsName}-(\\d+)$`));
@@ -210,6 +231,42 @@ export default function StatefulSetDetail() {
   const terminalPod = selectedTerminalPod || firstStsPodName;
   const logPodContainers = (stsPods.find((p) => p.metadata?.name === logPod) as { spec?: { containers?: Array<{ name: string }> } } | undefined)?.spec?.containers?.map((c) => c.name) ?? containers.map((c) => c.name);
   const terminalPodContainers = (stsPods.find((p) => p.metadata?.name === terminalPod) as { spec?: { containers?: Array<{ name: string }> } } | undefined)?.spec?.containers?.map((c) => c.name) ?? containers.map((c) => c.name);
+
+  // Local pagination for Pods & Ordinals tab
+  const [podsPageSize, setPodsPageSize] = useState(10);
+  const [podsPageIndex, setPodsPageIndex] = useState(0);
+
+  const totalStsPods = stsPods.length;
+  const podsTotalPages = Math.max(1, Math.ceil(totalStsPods / podsPageSize));
+  const safePodsPageIndex = Math.min(podsPageIndex, podsTotalPages - 1);
+  const podsStart = safePodsPageIndex * podsPageSize;
+  const stsPodsPage = useMemo(
+    () => stsPods.slice(podsStart, podsStart + podsPageSize),
+    [stsPods, podsStart, podsPageSize]
+  );
+
+  useEffect(() => {
+    if (safePodsPageIndex !== podsPageIndex) setPodsPageIndex(safePodsPageIndex);
+  }, [safePodsPageIndex, podsPageIndex]);
+
+  const handlePodsPageSizeChange = (size: number) => {
+    setPodsPageSize(size);
+    setPodsPageIndex(0);
+  };
+
+  const podsPagination = {
+    rangeLabel:
+      totalStsPods > 0
+        ? `Showing ${podsStart + 1}–${Math.min(podsStart + podsPageSize, totalStsPods)} of ${totalStsPods}`
+        : 'No pods',
+    hasPrev: safePodsPageIndex > 0,
+    hasNext: podsStart + podsPageSize < totalStsPods,
+    onPrev: () => setPodsPageIndex((i) => Math.max(0, i - 1)),
+    onNext: () => setPodsPageIndex((i) => Math.min(podsTotalPages - 1, i + 1)),
+    currentPage: safePodsPageIndex + 1,
+    totalPages: Math.max(1, podsTotalPages),
+    onPageChange: (p: number) => setPodsPageIndex(Math.max(0, Math.min(p - 1, podsTotalPages - 1))),
+  };
 
 
   const handleDownloadYaml = useCallback(() => {
@@ -312,7 +369,8 @@ export default function StatefulSetDetail() {
 
   const updateStrategyType = statefulSet.spec?.updateStrategy?.type ?? 'RollingUpdate';
   const partition = statefulSet.spec?.updateStrategy?.rollingUpdate?.partition ?? 0;
-  const pvcCount = volumeClaimTemplates.length * desired;
+  // Use actual discovered PVCs (includes both volumeClaimTemplate PVCs and pod-volume PVCs)
+  const pvcCount = stsPvcs.length || (volumeClaimTemplates.length * desired);
   const statusCards = [
     { label: 'Ready', value: `${ready}/${desired}`, icon: Server, iconColor: ready === desired ? 'success' as const : 'warning' as const },
     { label: 'Replicas', value: desired, icon: Activity, iconColor: 'info' as const },
@@ -482,55 +540,93 @@ export default function StatefulSetDetail() {
           {stsPods.length === 0 ? (
             <p className="text-sm text-muted-foreground">No pods match this StatefulSet&apos;s selector yet.</p>
           ) : (
-            <div className="rounded-lg border overflow-hidden">
-              <table className="w-full text-sm">
-                <thead className="bg-muted/50">
-                  <tr>
-                    <th className="text-left p-3 font-medium">Ordinal</th>
-                    <th className="text-left p-3 font-medium">Name</th>
-                    <th className="text-left p-3 font-medium">Template</th>
-                    <th className="text-left p-3 font-medium">Status</th>
-                    <th className="text-left p-3 font-medium">Node</th>
-                    <th className="text-left p-3 font-medium">IP</th>
-                    <th className="text-left p-3 font-medium">Age</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {stsPods.map((pod) => {
-                    const podName = pod.metadata?.name ?? '';
-                    const podNs = pod.metadata?.namespace ?? namespace ?? '';
-                    const phase = (pod.status as { phase?: string } | undefined)?.phase ?? '-';
-                    const nodeName = (pod.spec as { nodeName?: string } | undefined)?.nodeName ?? '-';
-                    const podIP = (pod.status as { podIP?: string } | undefined)?.podIP ?? '-';
-                    const created = pod.metadata?.creationTimestamp ? calculateAge(pod.metadata.creationTimestamp) : '-';
-                    const ordinalStr = podName.replace(new RegExp(`^${stsName}-`), '') || '?';
-                    const ordinalNum = /^\d+$/.test(ordinalStr) ? parseInt(ordinalStr, 10) : -1;
-                    const isNewTemplate = ordinalNum >= partition;
-                    const templateBadge = updateStrategyType === 'RollingUpdate' && partition > 0
-                      ? (isNewTemplate ? <Badge variant="default" className="bg-primary/90 text-primary-foreground text-xs">New Template</Badge> : <Badge variant="secondary" className="text-muted-foreground text-xs">Old Template</Badge>)
-                      : null;
-                    return (
-                      <tr key={podName} className="border-t">
-                        <td className="p-3"><Badge variant="secondary" className="font-mono">[{ordinalStr}]</Badge></td>
-                        <td className="p-3">
-                          <span className="inline-flex items-center gap-2">
-                            <span className="font-mono text-muted-foreground text-xs">[{ordinalStr}]</span>
-                            <Link to={`/pods/${podNs}/${podName}`} className="text-primary hover:underline font-medium">
-                              {podName}
-                            </Link>
-                          </span>
-                        </td>
-                        <td className="p-3">{templateBadge ?? '—'}</td>
-                        <td className="p-3"><Badge variant={phase === 'Running' ? 'default' : 'secondary'} className="text-xs">{phase}</Badge></td>
-                        <td className="p-3 font-mono text-xs">{nodeName}</td>
-                        <td className="p-3 font-mono text-xs">{podIP}</td>
-                        <td className="p-3">{created}</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+            <>
+              <div className="rounded-lg border overflow-hidden">
+                <table className="w-full text-sm">
+                  <thead className="bg-muted/50">
+                    <tr>
+                      <th className="text-left p-3 font-medium">Ordinal</th>
+                      <th className="text-left p-3 font-medium">Name</th>
+                      <th className="text-left p-3 font-medium">Template</th>
+                      <th className="text-left p-3 font-medium">Status</th>
+                      <th className="text-left p-3 font-medium">Node</th>
+                      <th className="text-left p-3 font-medium">IP</th>
+                      <th className="text-left p-3 font-medium">Age</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {stsPodsPage.map((pod) => {
+                      const podName = pod.metadata?.name ?? '';
+                      const podNs = pod.metadata?.namespace ?? namespace ?? '';
+                      const phase = (pod.status as { phase?: string } | undefined)?.phase ?? '-';
+                      const nodeName = (pod.spec as { nodeName?: string } | undefined)?.nodeName ?? '-';
+                      const podIP = (pod.status as { podIP?: string } | undefined)?.podIP ?? '-';
+                      const created = pod.metadata?.creationTimestamp ? calculateAge(pod.metadata.creationTimestamp) : '-';
+                      const ordinalStr = podName.replace(new RegExp(`^${stsName}-`), '') || '?';
+                      const ordinalNum = /^\d+$/.test(ordinalStr) ? parseInt(ordinalStr, 10) : -1;
+                      const isNewTemplate = ordinalNum >= partition;
+                      const templateBadge = updateStrategyType === 'RollingUpdate' && partition > 0
+                        ? (isNewTemplate ? <Badge variant="default" className="bg-primary/90 text-primary-foreground text-xs">New Template</Badge> : <Badge variant="secondary" className="text-muted-foreground text-xs">Old Template</Badge>)
+                        : null;
+                      return (
+                        <tr key={podName} className="border-t">
+                          <td className="p-3"><Badge variant="secondary" className="font-mono">[{ordinalStr}]</Badge></td>
+                          <td className="p-3">
+                            <span className="inline-flex items-center gap-2">
+                              <span className="font-mono text-muted-foreground text-xs">[{ordinalStr}]</span>
+                              <Link to={`/pods/${podNs}/${podName}`} className="text-primary hover:underline font-medium">
+                                {podName}
+                              </Link>
+                            </span>
+                          </td>
+                          <td className="p-3">{templateBadge ?? '—'}</td>
+                          <td className="p-3"><Badge variant={phase === 'Running' ? 'default' : 'secondary'} className="text-xs">{phase}</Badge></td>
+                          <td className="p-3 font-mono text-xs">{nodeName}</td>
+                          <td className="p-3 font-mono text-xs">{podIP}</td>
+                          <td className="p-3">{created}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+              <div className="flex items-center justify-between flex-wrap gap-2 pt-2">
+                <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                  <span>{podsPagination.rangeLabel}</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline" size="sm" className="gap-2">
+                        {podsPageSize} per page
+                        <ChevronDown className="h-4 w-4 opacity-50" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start">
+                      {PAGE_SIZE_OPTIONS.map((size) => (
+                        <DropdownMenuItem
+                          key={size}
+                          onClick={() => handlePodsPageSizeChange(size)}
+                          className={cn(podsPageSize === size && 'bg-accent')}
+                        >
+                          {size} per page
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                  <ListPagination
+                    hasPrev={podsPagination.hasPrev}
+                    hasNext={podsPagination.hasNext}
+                    onPrev={podsPagination.onPrev}
+                    onNext={podsPagination.onNext}
+                    rangeLabel={undefined}
+                    currentPage={podsPagination.currentPage}
+                    totalPages={podsPagination.totalPages}
+                    onPageChange={podsPagination.onPageChange}
+                  />
+                </div>
+              </div>
+            </>
           )}
         </SectionCard>
       ),
@@ -542,8 +638,8 @@ export default function StatefulSetDetail() {
       badge: stsPvcs.length.toString(),
       content: (
         <SectionCard icon={HardDrive} title="PersistentVolumeClaims" tooltip={<p className="text-xs text-muted-foreground">PVCs used by this StatefulSet, per pod ordinal</p>}>
-          {volumeClaimTemplates.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No volume claim templates defined.</p>
+          {stsPvcs.length === 0 && volumeClaimTemplates.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No PVCs associated with this StatefulSet.</p>
           ) : stsPvcs.length === 0 ? (
             <p className="text-sm text-muted-foreground">No PVCs found for this StatefulSet yet.</p>
           ) : (
@@ -854,7 +950,7 @@ export default function StatefulSetDetail() {
       content: (
         <ActionsSection actions={[
           { icon: Scale, label: 'Scale StatefulSet', description: 'Adjust the number of replicas', onClick: () => setShowScaleDialog(true) },
-          { icon: RotateCcw, label: 'Rollout Restart', description: 'Trigger a rolling restart', onClick: () => setShowRolloutDialog(true) },
+          { icon: RotateCcw, label: 'Rollout Restart', description: 'Trigger a rolling restart', variant: 'warning', onClick: () => setShowRolloutDialog(true) },
           { icon: History, label: 'Rollout History', description: 'View and manage revisions', onClick: () => setShowRolloutDialog(true) },
           { icon: Download, label: 'Download YAML', description: 'Export StatefulSet definition', onClick: handleDownloadYaml },
           { icon: Download, label: 'Export as JSON', description: 'Export StatefulSet as JSON', onClick: handleDownloadJson },

@@ -210,6 +210,38 @@ const resourceLabels: Record<ResourceType, string> = {
   cluster: 'Cluster',
 };
 
+// Short abbreviations shown inside D3 force nodes
+const KIND_ABBREVS: Record<ResourceType, string> = {
+  pod: 'Pod', deployment: 'Dep', replicaset: 'RS', service: 'Svc',
+  node: 'N', namespace: 'NS', configmap: 'CM', secret: 'Sec',
+  ingress: 'Ing', statefulset: 'STS', daemonset: 'DS', job: 'Job',
+  cronjob: 'CJ', pv: 'PV', pvc: 'PVC', hpa: 'HPA', vpa: 'VPA',
+  pdb: 'PDB', networkpolicy: 'NP', serviceaccount: 'SA', role: 'Rol',
+  clusterrole: 'CR', rolebinding: 'RB', clusterrolebinding: 'CRB',
+  endpoint: 'EP', endpointslice: 'EPS', ingressclass: 'IC',
+  storageclass: 'SC', user: 'Usr', group: 'Grp', cluster: 'K8s',
+};
+
+// Edge colors by relationship label for visual differentiation
+const EDGE_LABEL_COLORS: Record<string, string> = {
+  owns: '#546E7A', selects: '#78909C', exposes: '#2ECC71', routes: '#2ECC71',
+  mounts: '#00ACC1', stores: '#00ACC1', references: '#FFC107', configures: '#FFC107',
+  contains: '#9B59B6', permits: '#EC407A', manages: '#3498DB',
+  scheduled_on: '#FF6B35', runs: '#FF6B35', backed_by: '#00ACC1', limits: '#795548',
+};
+
+// Namespace cluster hull colors
+const NS_HULL_FILLS = [
+  'rgba(52,152,219,0.06)', 'rgba(46,204,113,0.06)', 'rgba(155,89,182,0.06)',
+  'rgba(241,196,15,0.06)', 'rgba(231,76,60,0.06)', 'rgba(26,188,156,0.06)',
+  'rgba(243,156,18,0.06)', 'rgba(142,68,173,0.06)',
+];
+const NS_HULL_STROKES = [
+  'rgba(52,152,219,0.3)', 'rgba(46,204,113,0.3)', 'rgba(155,89,182,0.3)',
+  'rgba(241,196,15,0.3)', 'rgba(231,76,60,0.3)', 'rgba(26,188,156,0.3)',
+  'rgba(243,156,18,0.3)', 'rgba(142,68,173,0.3)',
+];
+
 // D3 simulation node type
 interface D3Node extends d3.SimulationNodeDatum {
   id: string;
@@ -487,6 +519,28 @@ export function D3TopologyCanvas({
         .attr('stop-color', 'hsl(142, 76%, 36%)')
         .attr('stop-opacity', 0.8);
 
+      // Radial gradients for 3D sphere effect on each resource type
+      Object.entries(resourceStyles).forEach(([type, style]) => {
+        const grad = defs.append('radialGradient')
+          .attr('id', `node-grad-${type}`)
+          .attr('cx', '35%').attr('cy', '30%').attr('r', '65%');
+        grad.append('stop').attr('offset', '0%')
+          .attr('stop-color', '#ffffff').attr('stop-opacity', 0.4);
+        grad.append('stop').attr('offset', '100%')
+          .attr('stop-color', style.color).attr('stop-opacity', 1);
+      });
+
+      // Glow filter for depth effect
+      const glowFilter = defs.append('filter')
+        .attr('id', 'node-glow-filter')
+        .attr('x', '-50%').attr('y', '-50%')
+        .attr('width', '200%').attr('height', '200%');
+      glowFilter.append('feGaussianBlur')
+        .attr('in', 'SourceGraphic').attr('stdDeviation', '6').attr('result', 'blur');
+      const glowMerge = glowFilter.append('feMerge');
+      glowMerge.append('feMergeNode').attr('in', 'blur');
+      glowMerge.append('feMergeNode').attr('in', 'SourceGraphic');
+
       // Create container group for zoom/pan
       const g = svg.append('g').attr('class', 'topology-container');
 
@@ -499,6 +553,9 @@ export function D3TopologyCanvas({
 
       zoomRef.current = zoom;
       svg.call(zoom);
+
+      // Create namespace hull backgrounds group (rendered behind everything)
+      const hullsGroup = g.append('g').attr('class', 'namespace-hulls');
 
       // Create links group
       const linksGroup = g.append('g').attr('class', 'links');
@@ -514,9 +571,12 @@ export function D3TopologyCanvas({
         .data(d3Links)
         .enter()
         .append('path')
-        .attr('stroke', 'hsl(var(--muted-foreground))')
-        .attr('stroke-opacity', 0.25)
-        .attr('stroke-width', d => d.traffic ? Math.max(1.5, d.traffic / 25) : 1.5)
+        .attr('stroke', d => {
+          const key = (d.label || '').replace(/\s+/g, '_').toLowerCase();
+          return EDGE_LABEL_COLORS[key] || 'hsl(var(--muted-foreground))';
+        })
+        .attr('stroke-opacity', d => d.label ? 0.6 : 0.3)
+        .attr('stroke-width', d => d.traffic ? Math.max(2, d.traffic / 20) : d.label ? 2.5 : 1.5)
         .attr('fill', 'none')
         .attr('marker-end', 'url(#arrowhead)');
 
@@ -558,12 +618,22 @@ export function D3TopologyCanvas({
           .on('end', dragended)
         );
 
-      // Add outer glow for selected/current nodes
+      // Add ambient glow behind each node for depth
       node.append('circle')
-        .attr('r', d => d.radius + 8)
-        .attr('fill', d => d.isCurrent ? d.color : 'transparent')
+        .attr('r', d => d.radius + 10)
+        .attr('fill', d => d.color)
         .attr('opacity', 0.15)
-        .attr('class', 'node-glow');
+        .attr('class', 'node-ambient-glow')
+        .style('filter', 'url(#node-glow-filter)');
+
+      // Add selection ring for current nodes
+      node.append('circle')
+        .attr('r', d => d.radius + 4)
+        .attr('fill', 'none')
+        .attr('stroke', d => d.isCurrent ? d.color : 'transparent')
+        .attr('stroke-width', 2.5)
+        .attr('opacity', 0.7)
+        .attr('class', 'node-selection-ring');
 
       // Add special glow effect for cluster node
       node.filter(d => d.type === 'cluster')
@@ -591,10 +661,10 @@ export function D3TopologyCanvas({
         .attr('stroke-dasharray', '4 2')
         .attr('opacity', 0.6);
 
-      // Add main circle
+      // Add main circle with gradient fill for 3D sphere effect
       node.append('circle')
         .attr('r', d => d.radius)
-        .attr('fill', d => d.color)
+        .attr('fill', d => `url(#node-grad-${d.type})`)
         .attr('stroke', d => {
           if (d.type === 'cluster') return 'hsl(var(--background))';
           return d.isCurrent ? 'hsl(var(--background))' : 'transparent';
@@ -646,18 +716,22 @@ export function D3TopologyCanvas({
         .attr('class', 'traffic-indicator')
         .style('animation', 'pulse 1s ease-in-out infinite');
 
-      // Add icon/text
+      // Add kind abbreviation inside node
       node.append('text')
         .attr('text-anchor', 'middle')
         .attr('dominant-baseline', 'central')
         .attr('fill', 'white')
-        .attr('font-size', d => d.isGroup ? 14 : Math.max(d.radius * 0.5, 12))
-        .attr('font-weight', 'bold')
+        .attr('font-size', d => {
+          if (d.isGroup) return 14;
+          const abbr = KIND_ABBREVS[d.type] || '';
+          return abbr.length > 3 ? Math.max(d.radius * 0.4, 9) : Math.max(d.radius * 0.55, 10);
+        })
+        .attr('font-weight', '700')
+        .attr('font-family', '"Inter", "SF Pro Text", system-ui, sans-serif')
+        .attr('letter-spacing', '0.3px')
         .text(d => {
-          if (d.isGroup) {
-            return d.childCount || '?';
-          }
-          return resourceLabels[d.type]?.charAt(0) || '?';
+          if (d.isGroup) return d.childCount || '?';
+          return KIND_ABBREVS[d.type] || resourceLabels[d.type]?.charAt(0) || '?';
         });
 
       // Add resource type label
@@ -815,6 +889,51 @@ export function D3TopologyCanvas({
             const target = d.target as D3Node;
             return (source.y! + target.y!) / 2 - (target.x! - source.x!) / 4;
           });
+
+        // Render namespace cluster hulls (every 5 ticks for performance)
+        if (tickCount % 5 === 0) {
+          const nsGroups = new Map<string, [number, number][]>();
+          d3Nodes.forEach(n => {
+            if (!n.namespace || n.isGroup) return;
+            if (!nsGroups.has(n.namespace)) nsGroups.set(n.namespace, []);
+            nsGroups.get(n.namespace)!.push([n.x!, n.y!]);
+          });
+          hullsGroup.selectAll('path').remove();
+          hullsGroup.selectAll('text').remove();
+          let nsIdx = 0;
+          nsGroups.forEach((points, ns) => {
+            const ci = nsIdx % NS_HULL_FILLS.length;
+            if (points.length >= 3) {
+              const hull = d3.polygonHull(points);
+              if (hull) {
+                const cx = d3.mean(hull, h => h[0])!;
+                const cy = d3.mean(hull, h => h[1])!;
+                const padded = hull.map(p => {
+                  const dx = p[0] - cx;
+                  const dy = p[1] - cy;
+                  const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+                  return [p[0] + dx / dist * 55, p[1] + dy / dist * 55] as [number, number];
+                });
+                hullsGroup.append('path')
+                  .attr('d', `M${padded.map(p => p.join(',')).join('L')}Z`)
+                  .attr('fill', NS_HULL_FILLS[ci])
+                  .attr('stroke', NS_HULL_STROKES[ci])
+                  .attr('stroke-width', 1.5)
+                  .attr('stroke-dasharray', '8 4');
+                const topY = Math.min(...padded.map(p => p[1]));
+                hullsGroup.append('text')
+                  .attr('x', cx).attr('y', topY - 12)
+                  .attr('text-anchor', 'middle')
+                  .attr('font-size', 11)
+                  .attr('font-weight', 600)
+                  .attr('fill', NS_HULL_STROKES[ci].replace('0.3', '0.8'))
+                  .attr('font-family', '"Inter", system-ui, sans-serif')
+                  .text(ns);
+              }
+            }
+            nsIdx++;
+          });
+        }
 
         node.attr('transform', d => `translate(${d.x},${d.y})`);
 
@@ -1209,6 +1328,22 @@ export function D3TopologyCanvas({
             onClose={() => setShowMiniMap(false)}
           />
         )}
+
+        {/* Resource Type Legend */}
+        <div className="absolute top-12 right-4 z-10 bg-background/90 backdrop-blur-sm border border-border rounded-lg p-3 max-h-[300px] overflow-y-auto shadow-lg">
+          <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-2">Resource Types</div>
+          <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+            {Array.from(new Set(nodes.map(n => n.type))).sort().map(type => {
+              const style = resourceStyles[type];
+              return style ? (
+                <div key={type} className="flex items-center gap-1.5">
+                  <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: style.color }} />
+                  <span className="text-[10px] text-foreground/80">{resourceLabels[type]}</span>
+                </div>
+              ) : null;
+            })}
+          </div>
+        </div>
 
         {/* Instructions overlay with keyboard shortcuts */}
         <div className="absolute bottom-4 left-4 text-xs text-muted-foreground bg-background/80 backdrop-blur-sm px-3 py-2 rounded-lg border border-border">

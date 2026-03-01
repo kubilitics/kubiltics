@@ -247,23 +247,24 @@ function getStaticStyles(): cytoscape.StylesheetStyle[] {
     {
       selector: 'node',
       style: {
-        'shape': 'round-rectangle',
+        'shape': 'ellipse',
         'background-color': (ele: any) => RESOURCE_COLOR_MAP[ele.data('kind')] || '#64748b',
         'width': (ele: any) => {
           const kind = ele.data('kind');
-          if (kind === 'Cluster') return 120;
-          if (kind === 'Namespace' || kind === 'Node') return 90;
-          if (['Deployment', 'Service', 'Ingress'].includes(kind)) return 80;
-          return 72;
+          if (kind === 'Cluster') return 170;
+          if (kind === 'Namespace' || kind === 'Node') return 130;
+          if (['Deployment', 'Service', 'Ingress'].includes(kind)) return 115;
+          return 100;
         },
         'height': (ele: any) => {
           const kind = ele.data('kind');
-          if (kind === 'Cluster') return 120;
-          if (kind === 'Namespace' || kind === 'Node') return 90;
-          if (['Deployment', 'Service', 'Ingress'].includes(kind)) return 80;
-          return 72;
+          if (kind === 'Cluster') return 170;
+          if (kind === 'Namespace' || kind === 'Node') return 130;
+          if (['Deployment', 'Service', 'Ingress'].includes(kind)) return 115;
+          return 100;
         },
-        'border-width': 0,
+        'border-width': 2.5,
+        'border-color': 'rgba(255,255,255,0.25)',
         'shadow-blur': 15,
         'shadow-color': 'rgba(0,0,0,0.1)',
         'shadow-offset-x': 0,
@@ -274,26 +275,37 @@ function getStaticStyles(): cytoscape.StylesheetStyle[] {
           const kind = ele.data('kind') || '';
           const name = ele.data('name') || '';
           if (kind === 'Cluster') return name;
+          const abbrevs: Record<string, string> = {
+            Pod: 'Pod', Deployment: 'Dep', ReplicaSet: 'RS', Service: 'Svc',
+            Node: 'N', Namespace: 'NS', ConfigMap: 'CM', Secret: 'Sec',
+            Ingress: 'Ing', StatefulSet: 'STS', DaemonSet: 'DS', Job: 'Job',
+            CronJob: 'CJ', PersistentVolume: 'PV', PersistentVolumeClaim: 'PVC',
+            ServiceAccount: 'SA', Role: 'Rol', ClusterRole: 'CR',
+            RoleBinding: 'RB', ClusterRoleBinding: 'CRB', Endpoints: 'EP',
+            EndpointSlice: 'EPS', NetworkPolicy: 'NP', HorizontalPodAutoscaler: 'HPA',
+          };
+          const abbr = abbrevs[kind] || kind.substring(0, 3);
           const status = ele.data('statusBadge') || '';
-          const maxNameLen = 20;
+          const maxNameLen = 18;
           const nameStr = name.length > maxNameLen ? name.substring(0, maxNameLen - 1) + '…' : name;
-          return `${kind}${status ? ' ' + status : ''}\n${nameStr}`;
+          return `${abbr}${status}\n${nameStr}`;
         },
-        'text-valign': 'bottom',
+        'text-valign': 'center',
         'text-halign': 'center',
-        'text-margin-y': 10,
-        'font-size': '11px',
+        'text-margin-y': 0,
+        'font-size': '13px',
         'font-weight': '700',
-        'font-family': '"Outfit", "Inter", system-ui, sans-serif',
-        'color': '#334155',
+        'font-family': '"Inter", "SF Pro Text", system-ui, sans-serif',
+        'color': (ele: any) => {
+          const lightKinds = ['ConfigMap', 'Job', 'CronJob'];
+          return lightKinds.includes(ele.data('kind')) ? '#1a1a1a' : '#ffffff';
+        },
         'text-wrap': 'wrap',
-        'text-max-width': 160,
-        'line-height': 1.4,
-        'text-background-color': '#ffffff',
-        'text-background-opacity': 0.85,
-        'text-background-padding': '3px 6px',
-        'text-background-shape': 'round-rectangle',
-        'min-zoomed-font-size': 7,
+        'text-max-width': 120,
+        'line-height': 1.3,
+        'text-outline-color': 'rgba(0,0,0,0.15)',
+        'text-outline-width': 1,
+        'min-zoomed-font-size': 8,
       } as any,
     },
     {
@@ -323,39 +335,84 @@ function getStaticStyles(): cytoscape.StylesheetStyle[] {
         'text-background-opacity': 1,
         'text-valign': 'center',
         'text-margin-y': 0,
-        'font-size': '16px',
+        'font-size': '18px',
         'font-weight': '800',
-        'width': 140,
-        'height': 140,
+        'width': 170,
+        'height': 170,
       } as any
     },
     {
       selector: 'edge',
       style: {
-        'width': 2,
+        'width': 2.5,
         'line-color': '#cbd5e1',
         'target-arrow-color': '#cbd5e1',
         'target-arrow-shape': 'vee',
         'curve-style': 'taxi',
         'taxi-direction': 'vertical',
-        'arrow-scale': 1.1,
-        'opacity': 0.6,
+        'arrow-scale': 1.2,
+        'opacity': 0.7,
         'label': (ele: any) => {
           const rel = ele.data('relationshipType') || '';
           if (rel === 'contains') return '';
           return rel.replace(/_/g, ' ');
         },
-        'font-size': '9px',
+        'font-size': '11px',
         'font-weight': '600',
-        'color': '#94a3b8',
+        'color': '#64748b',
         'text-background-color': '#ffffff',
         'text-background-opacity': 0.9,
         'text-background-padding': '2px 4px',
         'text-background-shape': 'round-rectangle',
-        'text-margin-y': -8,
-        'min-zoomed-font-size': 10,
+        'text-margin-y': -10,
+        'min-zoomed-font-size': 8,
         'edge-distances': 'node-position',
       } as any,
+    },
+    // Ownership edges (solid, prominent)
+    {
+      selector: 'edge[relationshipType="owns"]',
+      style: { 'line-color': '#546E7A', 'target-arrow-color': '#546E7A', 'width': 2.5, 'opacity': 0.7 } as any,
+    },
+    // Selects edges (dashed)
+    {
+      selector: 'edge[relationshipType="selects"]',
+      style: { 'line-color': '#78909C', 'target-arrow-color': '#78909C', 'line-style': 'dashed', 'width': 2 } as any,
+    },
+    // Routes/Exposes (vibrant green)
+    {
+      selector: 'edge[relationshipType="exposes"], edge[relationshipType="routes"]',
+      style: { 'line-color': '#2ECC71', 'target-arrow-color': '#2ECC71', 'width': 3, 'opacity': 0.8 } as any,
+    },
+    // Storage (teal, dotted)
+    {
+      selector: 'edge[relationshipType="mounts"], edge[relationshipType="stores"], edge[relationshipType="backed_by"]',
+      style: { 'line-color': '#00ACC1', 'target-arrow-color': '#00ACC1', 'line-style': 'dotted', 'width': 2 } as any,
+    },
+    // References/Configures (amber, dashed)
+    {
+      selector: 'edge[relationshipType="references"], edge[relationshipType="configures"]',
+      style: { 'line-color': '#FFC107', 'target-arrow-color': '#FFC107', 'line-style': 'dashed', 'width': 2 } as any,
+    },
+    // Contains (namespace, subtle purple)
+    {
+      selector: 'edge[relationshipType="contains"]',
+      style: { 'line-color': '#9B59B6', 'target-arrow-color': '#9B59B6', 'line-style': 'dashed', 'opacity': 0.4, 'width': 1.5 } as any,
+    },
+    // Manages (blue)
+    {
+      selector: 'edge[relationshipType="manages"]',
+      style: { 'line-color': '#3498DB', 'target-arrow-color': '#3498DB', 'width': 2.5, 'opacity': 0.75 } as any,
+    },
+    // Scheduled_on / Runs (orange)
+    {
+      selector: 'edge[relationshipType="scheduled_on"], edge[relationshipType="runs"]',
+      style: { 'line-color': '#FF6B35', 'target-arrow-color': '#FF6B35', 'width': 2.2 } as any,
+    },
+    // Permits (RBAC, pink)
+    {
+      selector: 'edge[relationshipType="permits"]',
+      style: { 'line-color': '#EC407A', 'target-arrow-color': '#EC407A', 'line-style': 'dashed', 'width': 2 } as any,
     },
     {
       selector: 'edge:selected',
@@ -570,20 +627,9 @@ export const CytoscapeCanvas = forwardRef<EngineRef, CytoscapeCanvasProps>(
         updateMinimap();
         cy.resize();
 
-        // Update container height if graph is very long
+        // Resize Cytoscape to match container after layout
         if (containerRef.current) {
-          const bb = cy.elements().boundingBox();
-          const padding = 200;
-          const contentHeight = bb.y2 - bb.y1 + padding;
-          const parentHeight = containerRef.current.parentElement?.clientHeight || 800;
-
-          if (contentHeight > parentHeight) {
-            containerRef.current.style.height = `${contentHeight}px`;
-            cy.resize();
-          } else {
-            containerRef.current.style.height = '100%';
-            cy.resize();
-          }
+          cy.resize();
         }
       });
     }, [layoutSignature, onLoadTime, updateMinimap]);
@@ -953,14 +999,13 @@ export const CytoscapeCanvas = forwardRef<EngineRef, CytoscapeCanvasProps>(
           </div>
         )}
 
-        {/* FIXED HEIGHT CONTAINER - PURE WHITE BACKGROUND */}
+        {/* Canvas container — fills parent, grows dynamically after layout if needed */}
         <div
           ref={containerRef}
           className="relative bg-white transition-[height] duration-300"
           style={{
             width: '100%',
             height: '100%',
-            minHeight: '800px',
             backgroundColor: '#ffffff',
           }}
         />
@@ -984,13 +1029,42 @@ export const CytoscapeCanvas = forwardRef<EngineRef, CytoscapeCanvasProps>(
             <span className="text-slate-500 text-xs" aria-hidden>{legendExpanded ? '▼ Collapse' : '▲ Expand'}</span>
           </button>
           {legendExpanded && (
-            <div className="px-6 py-4 flex items-center gap-6 flex-wrap justify-center">
-              {Object.entries(RESOURCE_COLOR_MAP).map(([kind, color]) => (
-                <div key={kind} className="flex items-center gap-2 shrink-0">
-                  <div className="w-3.5 h-3.5 rounded border border-slate-700" style={{ backgroundColor: color }} />
-                  <span className="text-xs font-semibold text-slate-800">{kind}</span>
+            <div className="px-6 py-4 space-y-4">
+              <div>
+                <div className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Node Types</div>
+                <div className="flex items-center gap-4 flex-wrap justify-center">
+                  {Object.entries(RESOURCE_COLOR_MAP).map(([kind, color]) => (
+                    <div key={kind} className="flex items-center gap-1.5 shrink-0">
+                      <div className="w-3 h-3 rounded-full" style={{ backgroundColor: color }} />
+                      <span className="text-[11px] font-semibold text-slate-800">{kind}</span>
+                    </div>
+                  ))}
                 </div>
-              ))}
+              </div>
+              <div className="border-t border-slate-200 pt-3">
+                <div className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Relationships</div>
+                <div className="flex items-center gap-5 flex-wrap justify-center">
+                  {[
+                    { label: 'Owns', color: '#546E7A', dash: false },
+                    { label: 'Selects', color: '#78909C', dash: true },
+                    { label: 'Routes/Exposes', color: '#2ECC71', dash: false },
+                    { label: 'Storage', color: '#00ACC1', dash: true },
+                    { label: 'References', color: '#FFC107', dash: true },
+                    { label: 'Contains', color: '#9B59B6', dash: true },
+                    { label: 'Manages', color: '#3498DB', dash: false },
+                    { label: 'Runs On', color: '#FF6B35', dash: false },
+                    { label: 'RBAC', color: '#EC407A', dash: true },
+                  ].map(rel => (
+                    <div key={rel.label} className="flex items-center gap-1.5 shrink-0">
+                      <svg width="20" height="4" className="flex-shrink-0">
+                        <line x1="0" y1="2" x2="20" y2="2" stroke={rel.color} strokeWidth="2"
+                          strokeDasharray={rel.dash ? '4 2' : undefined} />
+                      </svg>
+                      <span className="text-[11px] font-medium text-slate-700">{rel.label}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           )}
         </div>

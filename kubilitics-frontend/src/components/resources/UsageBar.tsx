@@ -451,13 +451,6 @@ export function UsageBar({
                 </svg>
               ) : (
                 <div className="h-full w-full relative">
-                  <defs>
-                    <linearGradient id={gradientId} x1="0" x2="0" y1="0" y2="1">
-                      {gradientStops.map((stop, i) => (
-                        <stop key={i} offset={stop.offset} stopColor={fillColor} stopOpacity={stop.opacity} />
-                      ))}
-                    </linearGradient>
-                  </defs>
                   <motion.div
                     className="h-full rounded-r-sm"
                     style={{

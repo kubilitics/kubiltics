@@ -10,14 +10,11 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import {
   TopologyCanvas,
   NODE_COLORS,
   downloadJSON,
   downloadCSV,
-  D3TopologyCanvas,
-  convertToD3Topology,
   useHealthOverlay,
   type TopologyCanvasRef,
   type TopologyGraph,
@@ -35,6 +32,7 @@ import type {
 import { useResourceTopology } from '@/hooks/useResourceTopology';
 import { useCapabilities } from '@/hooks/useCapabilities';
 import { kindToRoutePath, buildTopologyNodeId, isResourceTopologySupported, RESOURCE_TOPOLOGY_SUPPORTED_KINDS } from '@/utils/resourceKindMapper';
+import { TopologyNodePanel } from '@/topology-engine/components/TopologyNodePanel';
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
 import { useActiveClusterId } from '@/hooks/useActiveClusterId';
 import { getTopologyExportDrawio } from '@/services/backendApiClient';
@@ -76,8 +74,9 @@ export function ResourceTopologyView({
   const clusterId = useActiveClusterId();
   const canvasRef = useRef<TopologyCanvasRef>(null);
   const [zoomLevel, setZoomLevel] = useState(100);
-  const [activeTab, setActiveTab] = useState<'cytoscape' | 'd3-force'>('cytoscape');
   const [activeOverlay, setActiveOverlay] = useState<OverlayType | null>(null);
+  // Node info panel — shown on single click; double-click navigates directly
+  const [selectedNode, setSelectedNode] = useState<TopologyNode | null>(null);
 
   const backendConfigured = isBackendConfigured();
   const hasClusterId = !!clusterId;
@@ -98,11 +97,6 @@ export function ResourceTopologyView({
     if (!kind || !name) return undefined;
     return buildTopologyNodeId(kind, namespace ?? '', name);
   }, [kind, namespace, name]);
-
-  const d3Topology = useMemo(
-    () => (graph ? convertToD3Topology(graph, currentNodeId) : { nodes: [], edges: [] }),
-    [graph, currentNodeId]
-  );
 
   const healthOverlayData = useHealthOverlay(graph ?? { schemaVersion: 'v1', nodes: [], edges: [], metadata: { clusterId: '', generatedAt: '', layoutSeed: '', isComplete: false, warnings: [] } });
   const overlayDataForCanvas = activeOverlay === 'health' ? healthOverlayData : null;
@@ -141,7 +135,15 @@ export function ResourceTopologyView({
     [navigate]
   );
 
-  const handleNodeSelect = useCallback((_node: TopologyNode | null) => { }, []);
+  // Single click → show info panel (double-click still navigates directly)
+  const handleNodeSelect = useCallback((node: TopologyNode | null) => {
+    setSelectedNode(node);
+  }, []);
+
+  const handleNavigateToNode = useCallback((node: TopologyNode) => {
+    const route = getResourceRoute(node);
+    if (route) navigate(route);
+  }, [navigate]);
 
   // Export handlers
   const handleExportJSON = useCallback(() => {
@@ -163,7 +165,10 @@ export function ResourceTopologyView({
       const link = document.createElement('a');
       link.download = `topology-${kind}-${name || 'resource'}.png`;
       link.href = pngData;
+      // Append to DOM so the click works in WebKit / Tauri WebView
+      document.body.appendChild(link);
       link.click();
+      document.body.removeChild(link);
       toast.success('Exported as PNG');
     }
   }, [kind, name]);
@@ -218,16 +223,26 @@ export function ResourceTopologyView({
     toast.success('Layout refreshed');
   }, []);
 
+  // D3 single click → find full TopologyNode and show info panel
   const handleD3NodeClick = useCallback((node: { id: string; type: string; name: string; namespace?: string }) => {
-    const parts = node.id.split('/');
-    if (parts.length >= 3) {
-      const [k, ns, n] = parts;
-      const route = kindToRoutePath(k as KubernetesKind);
-      if (route) {
-        navigate(ns ? `/${route}/${ns}/${n}` : `/${route}/${n}`);
+    if (!graph) return;
+    const found = graph.nodes.find((n) => n.id === node.id);
+    if (found) {
+      setSelectedNode(found);
+    } else {
+      // Fallback: build a minimal node for lookup if id doesn't match directly
+      const parts = node.id.split('/');
+      if (parts.length >= 2) {
+        const k = parts[0] as KubernetesKind;
+        const route = kindToRoutePath(k);
+        if (route) {
+          navigate(parts[2]
+            ? `/${route}/${parts[1]}/${parts[2]}`
+            : `/${route}/${parts[1]}`);
+        }
       }
     }
-  }, [navigate]);
+  }, [graph, navigate]);
 
 
   // --- All hooks called above this line. Conditional returns below. ---
@@ -298,14 +313,26 @@ export function ResourceTopologyView({
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px] text-center p-6">
         <Network className="h-12 w-12 text-muted-foreground mb-4" />
-        <p className="text-muted-foreground mb-2">No related resources found in topology</p>
-        <p className="text-sm text-muted-foreground">This resource has no relationships with other resources in the cluster.</p>
+        <p className="text-muted-foreground mb-2 font-medium">No connections found</p>
+        <p className="text-sm text-muted-foreground max-w-md">
+          This resource isn&apos;t mounted by any Pod or workload in this namespace.
+          Check the <strong>Used By</strong> tab for details.
+        </p>
       </div>
     );
   }
 
   return (
-    <div className="relative h-[calc(100vh-20rem)] min-h-[500px] w-full bg-white rounded-lg border border-gray-200 shadow-sm" data-topology-container>
+    <div className="relative w-full bg-white rounded-lg border border-gray-200 shadow-sm" style={{ height: 'calc(100vh - 18rem)', minHeight: '500px' }} data-topology-container>
+      {/* Node Info Panel — shown on single click */}
+      {selectedNode && (
+        <TopologyNodePanel
+          node={selectedNode}
+          onClose={() => setSelectedNode(null)}
+          onNavigate={handleNavigateToNode}
+        />
+      )}
+
       {/* Header Bar */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 bg-white rounded-t-lg">
         {/* Left Section - Title, link to full topology, Layout */}
@@ -331,7 +358,7 @@ export function ResourceTopologyView({
             size="sm"
             onClick={handleRefreshLayout}
             className="h-8 px-3 text-xs text-gray-600 hover:text-gray-900"
-            disabled={activeTab === 'd3-force'}
+            disabled={false}
           >
             <Layers className="h-3.5 w-3.5 mr-1.5" />
             Refresh Layout
@@ -347,7 +374,7 @@ export function ResourceTopologyView({
                 variant={activeOverlay ? 'default' : 'outline'}
                 size="sm"
                 className="h-8 px-3 text-xs gap-1.5"
-                disabled={activeTab !== 'cytoscape'}
+                disabled={false}
               >
                 <Layers className="h-3.5 w-3.5" />
                 {activeOverlay ? OVERLAY_LABELS[activeOverlay] : 'Overlays'}
@@ -375,7 +402,7 @@ export function ResourceTopologyView({
               <DropdownMenuItem onClick={handleExportPNG}>
                 <FileImage className="h-3.5 w-3.5 mr-2" /> PNG
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={handleExportPDF} disabled={activeTab !== 'cytoscape'}>
+              <DropdownMenuItem onClick={handleExportPDF} disabled={false}>
                 <FileText className="h-3.5 w-3.5 mr-2" /> PDF (Cytoscape)
               </DropdownMenuItem>
               <DropdownMenuItem onClick={handleExportDrawio}>
@@ -431,88 +458,37 @@ export function ResourceTopologyView({
         </div>
       </div>
 
-      {/* Canvas Area with Tabs */}
+      {/* Canvas Area */}
       <div className="relative h-[calc(100%-3.5rem)]">
-        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'cytoscape' | 'd3-force')} className="h-full flex flex-col">
-          <TabsList className="mb-2 flex-shrink-0 mx-4 mt-2">
-            <TabsTrigger value="cytoscape">Network View</TabsTrigger>
-            <TabsTrigger value="d3-force">Clustered Force</TabsTrigger>
-          </TabsList>
+        {graph && (
+          <TopologyCanvas
+            ref={canvasRef}
+            graph={graph}
+            selectedResources={selectedResources}
+            selectedRelationships={selectedRelationships}
+            selectedHealth={selectedHealth}
+            searchQuery={searchQuery}
+            abstractionLevel={abstractionLevel}
+            namespace={namespace ?? undefined}
+            centeredNodeId={currentNodeId}
+            isPaused={isPaused}
+            heatMapMode="none"
+            trafficFlowEnabled={false}
+            overlayData={overlayDataForCanvas}
+            onNodeSelect={handleNodeSelect}
+            onNodeDoubleClick={handleNodeDoubleClick}
+            className="h-full w-full rounded-b-lg"
+          />
+        )}
 
-
-          <TabsContent value="cytoscape" className="flex-1 relative min-h-0 mt-0">
-            {activeTab === 'cytoscape' && graph && (
-              <TopologyCanvas
-                ref={canvasRef}
-                graph={graph}
-                selectedResources={selectedResources}
-                selectedRelationships={selectedRelationships}
-                selectedHealth={selectedHealth}
-                searchQuery={searchQuery}
-                abstractionLevel={abstractionLevel}
-                namespace={namespace ?? undefined}
-                centeredNodeId={currentNodeId}
-                isPaused={isPaused}
-                heatMapMode="none"
-                trafficFlowEnabled={false}
-                overlayData={overlayDataForCanvas}
-                onNodeSelect={handleNodeSelect}
-                onNodeDoubleClick={handleNodeDoubleClick}
-                className="h-full w-full rounded-b-lg"
-              />
-            )}
-
-            {/* Resource Count Badge */}
-            {graph && (
-              <div className="absolute bottom-4 right-4 z-50 bg-gray-100 border border-gray-200 rounded-md px-2.5 py-1">
-                <span className="text-xs font-medium text-gray-700">
-                  {graph.nodes.length} Resources
-                </span>
-              </div>
-            )}
-
-            {/* Premium Legend Panel (mirrored from main Topology page) */}
-            <div className="absolute bottom-4 left-4 z-50 p-4 shadow-2xl border-none bg-white/90 backdrop-blur-md dark:bg-slate-900/90 rounded-xl w-72 overflow-hidden transition-all duration-300 hover:w-80">
-              <div className="flex items-center gap-2 mb-2">
-                <div className="p-1 bg-blue-100 dark:bg-blue-900 rounded-md">
-                  <MapIcon className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
-                </div>
-                <h4 className="font-bold text-[11px] tracking-tight text-slate-800 dark:text-slate-100 uppercase">Ecosystem Legend</h4>
-              </div>
-              <div className="grid grid-cols-2 gap-x-2 gap-y-1.5">
-                {[
-                  { kind: 'Deployment', label: 'Deployment', color: NODE_COLORS.Deployment.bg },
-                  { kind: 'ReplicaSet', label: 'ReplicaSet', color: NODE_COLORS.ReplicaSet.bg },
-                  { kind: 'Pod', label: 'Pod', color: NODE_COLORS.Pod.bg },
-                  { kind: 'Service', label: 'Service', color: NODE_COLORS.Service.bg },
-                  { kind: 'Ingress', label: 'Ingress', color: NODE_COLORS.Ingress.bg },
-                  { kind: 'ConfigMap', label: 'ConfigMap', color: NODE_COLORS.ConfigMap.bg },
-                  { kind: 'Node', label: 'Node', color: NODE_COLORS.Node.bg },
-                  { kind: 'PersistentVolumeClaim', label: 'PVC', color: NODE_COLORS.PersistentVolumeClaim.bg },
-                ].map(rt => (
-                  <div key={rt.kind} className="flex items-center gap-1.5 group cursor-default">
-                    <div
-                      className="w-1.5 h-1.5 rounded-full shadow-sm group-hover:scale-125 transition-transform"
-                      style={{ backgroundColor: rt.color }}
-                    />
-                    <span className="text-[9px] font-medium text-slate-500 dark:text-slate-400 truncate">{rt.label}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </TabsContent>
-
-          <TabsContent value="d3-force" className="flex-1 relative min-h-0 mt-0">
-            {activeTab === 'd3-force' && (
-              <D3TopologyCanvas
-                nodes={d3Topology.nodes}
-                edges={d3Topology.edges}
-                onNodeClick={handleD3NodeClick}
-                className="h-full w-full rounded-b-lg"
-              />
-            )}
-          </TabsContent>
-        </Tabs>
+        {/* Resource Count Badge */}
+        {graph && (
+          <div className="absolute bottom-4 right-4 z-50 bg-gray-100 border border-gray-200 rounded-md px-2.5 py-1">
+            <span className="text-xs font-medium text-gray-700">
+              {graph.nodes.length} Resources
+            </span>
+          </div>
+        )}
       </div>
     </div>
   );

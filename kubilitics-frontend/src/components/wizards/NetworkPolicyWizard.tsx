@@ -11,7 +11,8 @@ import { useClusterStore } from '@/stores/clusterStore';
 import { useQueryClient } from '@tanstack/react-query';
 import { applyManifest } from '@/services/backendApiClient';
 import { useK8sResourceList, type KubernetesResource } from '@/hooks/useKubernetes';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
+import { notifyError, notifySuccess } from '@/lib/notificationFormatter';
 
 function podMatchesMatchLabels(podLabels: Record<string, string> | undefined, matchLabels: Record<string, string>): boolean {
   if (Object.keys(matchLabels).length === 0) return true;
@@ -298,12 +299,21 @@ ${policyTypes.map((t) => `  - ${t}`).join('\n')}${ingressYaml}${egressYaml}
       await applyManifest(backendBaseUrl, clusterId, yaml);
       queryClient.invalidateQueries({ queryKey: ['k8s', 'networkpolicies'] });
       queryClient.invalidateQueries({ queryKey: ['backend', 'resources', clusterId, 'networkpolicies'] });
-      toast.success('NetworkPolicy created successfully');
+      notifySuccess({
+        action: 'create',
+        resourceType: 'networkpolicies',
+        resourceName: name,
+        namespace,
+      });
       onClose();
       onSubmit?.(yaml);
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      toast.error(`Failed to create NetworkPolicy: ${message}`);
+      notifyError(err, {
+        action: 'create',
+        resourceType: 'networkpolicies',
+        resourceName: name,
+        namespace,
+      });
       throw err;
     } finally {
       setIsSubmitting(false);

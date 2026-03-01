@@ -2,14 +2,15 @@ import { useState, useMemo } from 'react';
 import { ResourceWizard, WizardStep } from './ResourceWizard';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
 import { useClusterStore } from '@/stores/clusterStore';
 import { useQueryClient } from '@tanstack/react-query';
 import { applyManifest } from '@/services/backendApiClient';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
+import { notifyError, notifySuccess } from '@/lib/notificationFormatter';
 
 interface IngressClassWizardProps {
   onClose: () => void;
@@ -158,12 +159,19 @@ spec:
       await applyManifest(backendBaseUrl, clusterId, yaml);
       queryClient.invalidateQueries({ queryKey: ['k8s', 'ingressclasses'] });
       queryClient.invalidateQueries({ queryKey: ['backend', 'resources', clusterId, 'ingressclasses'] });
-      toast.success('IngressClass created successfully');
+      notifySuccess({
+        action: 'create',
+        resourceType: 'ingressclasses',
+        resourceName: name,
+      });
       onClose();
       onSubmit?.(yaml);
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      toast.error(`Failed to create IngressClass: ${message}`);
+      notifyError(err, {
+        action: 'create',
+        resourceType: 'ingressclasses',
+        resourceName: name,
+      });
       throw err;
     } finally {
       setIsSubmitting(false);

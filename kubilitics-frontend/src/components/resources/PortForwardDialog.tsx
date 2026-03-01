@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { ExternalLink, Copy, Check, Terminal, Globe, Server, ArrowRight } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { ExternalLink, Copy, Check, Terminal, Globe, Server, ArrowRight, Loader2 } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -10,7 +10,6 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
 import { NamespaceBadge } from '@/components/list';
 import { Card, CardContent } from '@/components/ui/card';
 import {
@@ -21,6 +20,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { toast } from 'sonner';
+import { startPortForward, stopPortForward } from '@/services/backendApiClient';
 
 export interface PortInfo {
   name?: string;
@@ -28,15 +28,32 @@ export interface PortInfo {
   protocol?: string;
 }
 
+/** Service port entry (used when resourceType = 'service'). */
+export interface ServicePortInfo {
+  name?: string;
+  port: number;
+  targetPort?: number | string;
+  protocol?: string;
+  nodePort?: number;
+}
+
 export interface PortForwardDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   podName: string;
   namespace: string;
+  /** Backend base URL (e.g. "http://localhost:819"). Required for real port-forward. */
+  baseUrl?: string;
+  /** Active cluster ID. Required for real port-forward. */
+  clusterId?: string;
   containers?: Array<{ name: string; ports?: PortInfo[] }>;
   /** When set, dialog opens with this container and port pre-selected (e.g. from ContainersSection "Forward" click). */
   initialContainer?: string;
   initialPort?: number;
+  /** When 'service', targets svc/{podName} instead of pod/{podName} and uses servicePorts. */
+  resourceType?: 'pod' | 'service';
+  /** Service ports — used when resourceType = 'service'. */
+  servicePorts?: ServicePortInfo[];
 }
 
 export function PortForwardDialog({
@@ -44,34 +61,58 @@ export function PortForwardDialog({
   onOpenChange,
   podName,
   namespace,
+  baseUrl,
+  clusterId,
   containers = [],
   initialContainer,
   initialPort,
+  resourceType = 'pod',
+  servicePorts = [],
 }: PortForwardDialogProps) {
   const [selectedContainer, setSelectedContainer] = useState(containers[0]?.name || '');
   const [selectedPort, setSelectedPort] = useState<number | null>(null);
   const [localPort, setLocalPort] = useState('');
+  const [localPortTouched, setLocalPortTouched] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [isStarting, setIsStarting] = useState(false);
   const [isForwarding, setIsForwarding] = useState(false);
+  const sessionIdRef = useRef<string | null>(null);
 
-  // Get available ports for selected container
+  const isServiceMode = resourceType === 'service';
+
+  // Get available ports for selected container (pod mode) or service ports (service mode)
   const currentContainer = containers.find(c => c.name === selectedContainer);
-  const availablePorts = currentContainer?.ports || [];
+  const availablePorts = isServiceMode
+    ? servicePorts.map(p => ({ containerPort: p.port, name: p.name, protocol: p.protocol }))
+    : (currentContainer?.ports || []);
 
-  // Set default port when container changes
+  // Set default port when container/service changes (only if user hasn't manually set a local port)
   useEffect(() => {
     if (availablePorts.length > 0 && !selectedPort) {
       setSelectedPort(availablePorts[0].containerPort);
-      setLocalPort(String(availablePorts[0].containerPort));
+      if (!localPortTouched) {
+        setLocalPort(String(availablePorts[0].containerPort));
+      }
     }
-  }, [availablePorts, selectedPort]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedPort]);
 
-  // Reset when dialog opens; use initialContainer/initialPort when provided
+  // Reset when dialog opens; use initialContainer/initialPort when provided.
+  // Only [open] in deps — containers/servicePorts are new array refs every parent render
+  // (PodDetail polls every few seconds). Including them would reset localPort on every
+  // poll cycle while the dialog is open.
   useEffect(() => {
     if (open) {
       setIsForwarding(false);
+      setIsStarting(false);
       setCopied(false);
-      if (containers.length > 0) {
+      setLocalPortTouched(false);
+      sessionIdRef.current = null;
+      if (isServiceMode) {
+        const port = servicePorts[0]?.port ?? null;
+        setSelectedPort(port);
+        setLocalPort(port ? String(port) : '');
+      } else if (containers.length > 0) {
         const containerName = initialContainer && containers.some(c => c.name === initialContainer)
           ? initialContainer
           : containers[0].name;
@@ -89,10 +130,18 @@ export function PortForwardDialog({
           setLocalPort('');
         }
       }
+    } else {
+      // Dialog closed — stop any active session silently
+      if (sessionIdRef.current && baseUrl && clusterId) {
+        stopPortForward(baseUrl, clusterId, sessionIdRef.current).catch(() => {});
+        sessionIdRef.current = null;
+      }
     }
-  }, [open, containers, initialContainer, initialPort]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
-  const kubectlCommand = `kubectl port-forward pod/${podName} ${localPort}:${selectedPort} -n ${namespace}`;
+  const resourceTarget = isServiceMode ? `svc/${podName}` : `pod/${podName}`;
+  const kubectlCommand = `kubectl port-forward ${resourceTarget} ${localPort}:${selectedPort} -n ${namespace}`;
 
   const handleCopyCommand = () => {
     navigator.clipboard.writeText(kubectlCommand);
@@ -101,14 +150,39 @@ export function PortForwardDialog({
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleStartForwarding = () => {
-    setIsForwarding(true);
-    toast.success('Port forwarding simulation started', {
-      description: `Access your service at http://localhost:${localPort}`,
-    });
+  const handleStartForwarding = async () => {
+    if (!selectedPort || !localPort) return;
+    setIsStarting(true);
+    try {
+      const resp = await startPortForward(baseUrl ?? '', clusterId ?? '', {
+        resourceType: isServiceMode ? 'service' : 'pod',
+        name: podName,
+        namespace,
+        localPort: Number(localPort),
+        remotePort: selectedPort,
+      });
+      sessionIdRef.current = resp.sessionId;
+      setIsForwarding(true);
+      toast.success('Port forwarding active', {
+        description: `Tunnel open at http://localhost:${localPort}`,
+      });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      toast.error('Port forward failed', { description: msg });
+    } finally {
+      setIsStarting(false);
+    }
   };
 
-  const handleStopForwarding = () => {
+  const handleStopForwarding = async () => {
+    if (sessionIdRef.current && baseUrl && clusterId) {
+      try {
+        await stopPortForward(baseUrl, clusterId, sessionIdRef.current);
+      } catch {
+        // Best-effort; session may have already ended
+      }
+      sessionIdRef.current = null;
+    }
     setIsForwarding(false);
     toast.info('Port forwarding stopped');
   };
@@ -131,19 +205,22 @@ export function PortForwardDialog({
         </DialogHeader>
 
         <div className="space-y-4 py-4">
-          {/* Pod Info */}
+          {/* Resource Info */}
           <Card className="bg-muted/50">
             <CardContent className="p-3">
               <div className="flex items-center gap-2 text-sm">
                 <Server className="h-4 w-4 text-muted-foreground" />
+                <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+                  {isServiceMode ? 'Service' : 'Pod'}
+                </span>
                 <span className="font-mono">{podName}</span>
                 <NamespaceBadge namespace={namespace} className="text-xs" />
               </div>
             </CardContent>
           </Card>
 
-          {/* Container Selection */}
-          {containers.length > 1 && (
+          {/* Container Selection — pod mode only */}
+          {!isServiceMode && containers.length > 1 && (
             <div className="space-y-2">
               <Label>Container</Label>
               <Select value={selectedContainer} onValueChange={setSelectedContainer}>
@@ -164,11 +241,14 @@ export function PortForwardDialog({
             <div className="space-y-2">
               <Label>Container Port</Label>
               {availablePorts.length > 0 ? (
-                <Select 
-                  value={String(selectedPort)} 
+                <Select
+                  value={String(selectedPort)}
                   onValueChange={(v) => {
                     setSelectedPort(Number(v));
-                    setLocalPort(v);
+                    // Only sync local port if the user hasn't manually changed it
+                    if (!localPortTouched) {
+                      setLocalPort(v);
+                    }
                   }}
                 >
                   <SelectTrigger>
@@ -184,20 +264,31 @@ export function PortForwardDialog({
                 </Select>
               ) : (
                 <Input
-                  type="number"
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
                   placeholder="8080"
-                  value={selectedPort || ''}
-                  onChange={(e) => setSelectedPort(Number(e.target.value))}
+                  value={selectedPort ?? ''}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/\D/g, '');
+                    setSelectedPort(val ? Number(val) : null);
+                  }}
                 />
               )}
             </div>
             <div className="space-y-2">
               <Label>Local Port</Label>
               <Input
-                type="number"
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
                 placeholder="8080"
                 value={localPort}
-                onChange={(e) => setLocalPort(e.target.value)}
+                onChange={(e) => {
+                  const val = e.target.value.replace(/\D/g, '');
+                  setLocalPort(val);
+                  setLocalPortTouched(true);
+                }}
               />
             </div>
           </div>
@@ -219,13 +310,13 @@ export function PortForwardDialog({
                     <Server className="h-5 w-5 text-primary mx-auto" />
                   </div>
                   <p className="font-mono text-xs">:{selectedPort}</p>
-                  <p className="text-muted-foreground text-xs">{selectedContainer}</p>
+                  <p className="text-muted-foreground text-xs">{isServiceMode ? podName : selectedContainer}</p>
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          {/* Status Indicator */}
+          {/* Active Status */}
           {isForwarding && (
             <Card className="border-[hsl(var(--success))] bg-[hsl(var(--success)/0.1)]">
               <CardContent className="p-3">
@@ -237,7 +328,7 @@ export function PortForwardDialog({
                 </div>
                 <p className="text-sm mt-1 text-muted-foreground">
                   Access your service at{' '}
-                  <a 
+                  <a
                     href={`http://localhost:${localPort}`}
                     target="_blank"
                     rel="noopener noreferrer"
@@ -257,9 +348,9 @@ export function PortForwardDialog({
                 <Terminal className="h-4 w-4" />
                 kubectl command
               </Label>
-              <Button 
-                variant="ghost" 
-                size="sm" 
+              <Button
+                variant="ghost"
+                size="sm"
                 className="h-7 gap-1.5"
                 onClick={handleCopyCommand}
               >
@@ -293,9 +384,21 @@ export function PortForwardDialog({
               <Button variant="outline" onClick={() => onOpenChange(false)}>
                 Cancel
               </Button>
-              <Button onClick={handleStartForwarding} disabled={!selectedPort || !localPort}>
-                <ExternalLink className="h-4 w-4 mr-2" />
-                Start Forwarding
+              <Button
+                onClick={handleStartForwarding}
+                disabled={!selectedPort || !localPort || isStarting}
+              >
+                {isStarting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Starting…
+                  </>
+                ) : (
+                  <>
+                    <ExternalLink className="h-4 w-4 mr-2" />
+                    Start Forwarding
+                  </>
+                )}
               </Button>
             </>
           )}

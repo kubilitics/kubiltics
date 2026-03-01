@@ -1,4 +1,4 @@
-import React, { useCallback, useState, useRef } from 'react';
+import React, { useCallback, useState, useRef, Component, type ReactNode, type ErrorInfo } from 'react';
 import { CytoscapeCanvas } from './engines/cytoscape/CytoscapeCanvas';
 import { Scene3D } from './engines/three/Scene3D';
 import type { TopologyGraph, HeatMapMode } from './types/topology.types';
@@ -24,6 +24,55 @@ import {
 import { Button } from '@/components/ui/button';
 import { downloadJSON } from './export/exportJson';
 import { downloadCSVSummary } from './export/exportCsv';
+
+/* ── TopologyErrorBoundary: catches rendering crashes in Cytoscape/Three.js ── */
+interface TopologyErrorBoundaryProps {
+  engine: string;
+  onSwitchEngine?: () => void;
+  onRetry?: () => void;
+  children: ReactNode;
+}
+interface TopologyErrorBoundaryState { hasError: boolean; error: Error | null; }
+
+class TopologyErrorBoundary extends Component<TopologyErrorBoundaryProps, TopologyErrorBoundaryState> {
+  constructor(props: TopologyErrorBoundaryProps) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+  static getDerivedStateFromError(error: Error): TopologyErrorBoundaryState {
+    return { hasError: true, error };
+  }
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    console.error(`Topology ${this.props.engine} engine crashed:`, error, errorInfo.componentStack);
+  }
+  handleRetry = () => { this.setState({ hasError: false, error: null }); this.props.onRetry?.(); };
+  handleSwitch = () => { this.setState({ hasError: false, error: null }); this.props.onSwitchEngine?.(); };
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="flex flex-col items-center justify-center h-full p-8 text-center bg-slate-50">
+          <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mb-4">
+            <X className="h-6 w-6 text-red-500" />
+          </div>
+          <h3 className="text-lg font-semibold text-slate-900 mb-1">Topology rendering failed</h3>
+          <p className="text-sm text-muted-foreground mb-1 max-w-sm">{this.state.error?.message || 'An unexpected error occurred while rendering the topology graph.'}</p>
+          <p className="text-xs text-muted-foreground/60 mb-4">Engine: {this.props.engine === 'cytoscape' ? 'Cytoscape 2D' : 'Three.js 3D'}</p>
+          <div className="flex gap-2">
+            <Button size="sm" onClick={this.handleRetry}>
+              <RotateCcw className="mr-2 h-4 w-4" />Try Again
+            </Button>
+            {this.props.onSwitchEngine && (
+              <Button variant="outline" size="sm" onClick={this.handleSwitch}>
+                <Box className="mr-2 h-4 w-4" />Switch to {this.props.engine === 'cytoscape' ? '3D' : '2D'}
+              </Button>
+            )}
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 type Engine = 'cytoscape' | '3d';
 
@@ -119,29 +168,27 @@ export const TopologyViewer: React.FC<TopologyViewerProps> = ({
     handleNodeSelect(nodeId || null);
   }, [handleNodeSelect]);
 
-  // Export handlers
-  const handleExportSVG = useCallback(() => {
+  // Export handlers — FIX DESKTOP-EXPORT: use shared downloadFile which is Tauri-aware
+  // (blob: URLs with tauri://localhost origin contain colons that break <a download>)
+  const handleExportSVG = useCallback(async () => {
     if (!engineRef.current?.exportAsSVG) return;
     const svgData = engineRef.current.exportAsSVG();
     if (svgData) {
+      const { downloadFile: dlFile } = await import('./utils/exportUtils');
       const blob = new Blob([svgData], { type: 'image/svg+xml' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `topology-${new Date().toISOString().slice(0, 10)}.svg`; // Task 6.2: YYYY-MM-DD
-      link.click();
-      URL.revokeObjectURL(url);
+      await dlFile(blob, `topology-${new Date().toISOString().slice(0, 10)}.svg`);
     }
   }, []);
 
-  const handleExportPNG = useCallback(() => {
+  const handleExportPNG = useCallback(async () => {
     if (!engineRef.current?.exportAsPNG) return;
     const pngData = engineRef.current.exportAsPNG();
     if (pngData) {
-      const link = document.createElement('a');
-      link.href = pngData;
-      link.download = `topology-${new Date().toISOString().slice(0, 10)}.png`; // Task 6.1: YYYY-MM-DD
-      link.click();
+      // pngData is a data URL — convert to blob for Tauri-aware download
+      const response = await fetch(pngData);
+      const blob = await response.blob();
+      const { downloadFile: dlFile } = await import('./utils/exportUtils');
+      await dlFile(blob, `topology-${new Date().toISOString().slice(0, 10)}.png`);
     }
   }, []);
 
@@ -245,6 +292,14 @@ export const TopologyViewer: React.FC<TopologyViewerProps> = ({
         </div>
       )}
 
+      {/* Cost overlay estimated disclaimer */}
+      {activeOverlay === 'cost' && (
+        <div className="absolute top-3 left-1/2 -translate-x-1/2 z-50 px-3 py-1.5 rounded-lg bg-amber-50/95 border border-amber-200/60 shadow-md backdrop-blur-sm flex items-center gap-2">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-amber-700 bg-amber-200/60 px-1.5 py-0.5 rounded">Estimated</span>
+          <span className="text-xs text-amber-700/80">Cost scores are approximations based on resource usage. Integrate OpenCost for accurate data.</span>
+        </div>
+      )}
+
       {/* Task 7.3: Zoom controls (top-right) */}
       {showControls && (
         <div className="absolute top-3 right-3 z-50 flex flex-col gap-1 p-1 bg-background/95 border rounded-lg shadow-lg">
@@ -321,31 +376,37 @@ export const TopologyViewer: React.FC<TopologyViewerProps> = ({
         </div>
       )}
 
-      {/* Topology rendering canvas */}
+      {/* Topology rendering canvas — wrapped in error boundary */}
       <div className="w-full h-full">
-        {engine === 'cytoscape' ? (
-          <CytoscapeCanvas
-            ref={engineRef}
-            graph={graph}
-            selectedNodeId={selectedNodeId}
-            onNodeSelect={handleNodeSelect}
-            enabledOverlays={enabledOverlays}
-            overlayData={overlayData}
-            blastRadiusResult={blastRadiusResult}
-            onContextMenuAction={handleContextMenuAction}
-            onClearBlastRadius={() => setBlastRadiusResult(null)}
-            heatMapMode={heatMapMode}
-            trafficFlowEnabled={trafficFlowEnabled}
-          />
-        ) : (
-          <Scene3D
-            ref={engineRef}
-            graph={graph}
-            selectedNodeId={selectedNodeId ?? undefined}
-            onNodeSelect={handleScene3DSelect}
-            overlayType={activeOverlay ?? undefined}
-          />
-        )}
+        <TopologyErrorBoundary
+          engine={engine}
+          onSwitchEngine={() => setEngine(engine === 'cytoscape' ? '3d' : 'cytoscape')}
+          onRetry={() => {/* state reset triggers re-render */}}
+        >
+          {engine === 'cytoscape' ? (
+            <CytoscapeCanvas
+              ref={engineRef}
+              graph={graph}
+              selectedNodeId={selectedNodeId}
+              onNodeSelect={handleNodeSelect}
+              enabledOverlays={enabledOverlays}
+              overlayData={overlayData}
+              blastRadiusResult={blastRadiusResult}
+              onContextMenuAction={handleContextMenuAction}
+              onClearBlastRadius={() => setBlastRadiusResult(null)}
+              heatMapMode={heatMapMode}
+              trafficFlowEnabled={trafficFlowEnabled}
+            />
+          ) : (
+            <Scene3D
+              ref={engineRef}
+              graph={graph}
+              selectedNodeId={selectedNodeId ?? undefined}
+              onNodeSelect={handleScene3DSelect}
+              overlayType={activeOverlay ?? undefined}
+            />
+          )}
+        </TopologyErrorBoundary>
       </div>
     </div>
   );

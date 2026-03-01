@@ -24,10 +24,10 @@ export function ConnectionRequiredBanner({ className }: { className?: string }) 
       role="alert"
     >
       <WifiOff className="h-4 w-4" />
-      <AlertTitle className="mb-0">Not connected to a cluster</AlertTitle>
+      <AlertTitle className="mb-0">Cluster connection required</AlertTitle>
       <AlertDescription>
         <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
-          <span>Connect to a cluster to view and manage resources.</span>
+          <span>Connect a Kubernetes cluster to browse and manage its resources.</span>
           <Button size="sm" variant="outline" className="shrink-0 border-amber-600/50 hover:bg-amber-500/20" asChild>
             <Link to="/">Connect now</Link>
           </Button>

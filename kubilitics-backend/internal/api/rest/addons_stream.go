@@ -12,11 +12,12 @@ import (
 	"github.com/kubilitics/kubilitics-backend/internal/service"
 )
 
-var addonStreamUpgrader = websocket.Upgrader{
-	CheckOrigin:     func(r *http.Request) bool { return true },
-	ReadBufferSize:  4096,
-	WriteBufferSize: 4096,
-}
+const (
+	addonPingInterval = 30 * time.Second
+	addonPongWait     = 75 * time.Second
+)
+
+// addonStreamUpgrader is no longer used — replaced by h.newWSUpgrader() for proper origin validation.
 
 // StreamInstall handles GET /clusters/{clusterId}/addons/install/stream.
 // WebSocket: client sends one JSON message (InstallRequest), server streams InstallProgressEvent as JSON messages.
@@ -40,19 +41,60 @@ func (h *Handler) StreamInstall(w http.ResponseWriter, r *http.Request) {
 
 	// Authenticate BEFORE upgrading to WebSocket.
 	// After upgrade it is impossible to send HTTP 401/403 responses.
-	// The auth middleware already validated the Authorization header and populated
-	// r.Context() with claims. If claims are absent the request is unauthenticated.
+	// The auth middleware validates the Authorization header (or ?token= query param for
+	// browser WebSocket clients that cannot set custom headers) and populates r.Context().
+	//
+	// When AuthMode == "" | "disabled" the Auth middleware passes through WITHOUT setting
+	// claims — we must not reject the request in that case. Instead synthesize an anonymous
+	// "system" principal so Actor is always set for audit logging.
 	claims := auth.ClaimsFromContext(r.Context())
 	if claims == nil {
-		respondErrorWithRequestID(w, r, http.StatusUnauthorized, ErrCodeUnauthorized, "authentication required")
-		return
+		authMode := strings.ToLower(strings.TrimSpace(h.cfg.AuthMode))
+		if authMode != "" && authMode != "disabled" {
+			respondErrorWithRequestID(w, r, http.StatusUnauthorized, ErrCodeUnauthorized, "authentication required")
+			return
+		}
+		// Auth disabled — synthesise a system actor for audit logging
+		claims = &auth.Claims{Username: "system"}
 	}
 
-	conn, err := addonStreamUpgrader.Upgrade(w, r, nil)
+	// Enforce per-cluster per-user WebSocket connection limit.
+	wsRelease, wsErr := h.wsAcquire(r, clusterID)
+	if wsErr != nil {
+		respondError(w, http.StatusTooManyRequests, wsErr.Error())
+		return
+	}
+	defer wsRelease()
+
+	upgrader := h.newWSUpgrader(4096, 4096)
+	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		return
 	}
 	defer conn.Close()
+
+	// Ping-pong heartbeat: detect dead clients during long installs
+	_ = conn.SetReadDeadline(time.Now().Add(addonPongWait))
+	conn.SetPongHandler(func(string) error {
+		return conn.SetReadDeadline(time.Now().Add(addonPongWait))
+	})
+	pingStop := make(chan struct{})
+	defer close(pingStop)
+	go func() {
+		ticker := time.NewTicker(addonPingInterval)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-pingStop:
+				return
+			case <-ticker.C:
+				_ = conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
+				if err := conn.WriteMessage(websocket.PingMessage, nil); err != nil {
+					return
+				}
+			}
+		}
+	}()
 
 	// Read first message: InstallRequest JSON
 	_, raw, err := conn.ReadMessage()

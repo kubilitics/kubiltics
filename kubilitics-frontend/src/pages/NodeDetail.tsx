@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, useRef } from 'react';
+import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useQueries } from '@tanstack/react-query';
 import { Server, Clock, Download, Trash2, Cpu, HardDrive, Box, Shield, Pause, Play, AlertTriangle, Loader2, Info, BarChart2, Activity, MapPin, Tag, FileJson, FileSpreadsheet, Image, Network, GitCompare } from 'lucide-react';
@@ -39,7 +39,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { AgeCell, StatusPill, type StatusPillVariant } from '@/components/list';
+import { AgeCell, StatusPill, ListPagination, PAGE_SIZE_OPTIONS, type StatusPillVariant } from '@/components/list';
 
 interface NodeResource extends KubernetesResource {
   spec?: {
@@ -125,6 +125,42 @@ export default function NodeDetail() {
       };
     });
   }, [runningPodsBase, podMetricsQueries]);
+
+  // Local pagination for "Pods on this node"
+  const [podsPageSize, setPodsPageSize] = useState(10);
+  const [podsPageIndex, setPodsPageIndex] = useState(0);
+
+  const totalRunningPods = runningPods.length;
+  const podsTotalPages = Math.max(1, Math.ceil(totalRunningPods / podsPageSize));
+  const safePodsPageIndex = Math.min(podsPageIndex, podsTotalPages - 1);
+  const podsStart = safePodsPageIndex * podsPageSize;
+  const runningPodsPage = useMemo(
+    () => runningPods.slice(podsStart, podsStart + podsPageSize),
+    [runningPods, podsStart, podsPageSize]
+  );
+
+  useEffect(() => {
+    if (safePodsPageIndex !== podsPageIndex) setPodsPageIndex(safePodsPageIndex);
+  }, [safePodsPageIndex, podsPageIndex]);
+
+  const handlePodsPageSizeChange = (size: number) => {
+    setPodsPageSize(size);
+    setPodsPageIndex(0);
+  };
+
+  const podsPagination = {
+    rangeLabel:
+      totalRunningPods > 0
+        ? `Showing ${podsStart + 1}–${Math.min(podsStart + podsPageSize, totalRunningPods)} of ${totalRunningPods}`
+        : 'No pods',
+    hasPrev: safePodsPageIndex > 0,
+    hasNext: podsStart + podsPageSize < totalRunningPods,
+    onPrev: () => setPodsPageIndex((i) => Math.max(0, i - 1)),
+    onNext: () => setPodsPageIndex((i) => Math.min(podsTotalPages - 1, i + 1)),
+    currentPage: safePodsPageIndex + 1,
+    totalPages: Math.max(1, podsTotalPages),
+    onPageChange: (p: number) => setPodsPageIndex(Math.max(0, Math.min(p - 1, podsTotalPages - 1))),
+  };
 
   const { events } = useK8sEvents();
   const deleteNode = useDeleteK8sResource('nodes');
@@ -506,43 +542,73 @@ export default function NodeDetail() {
               <p className="text-sm text-muted-foreground mt-1">Pods scheduled here will appear in this table.</p>
             </div>
           ) : (
-            <div className="rounded-lg border border-border overflow-hidden">
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-muted/40 hover:bg-muted/40 border-b border-border">
-                    <TableHead className="font-semibold">Name</TableHead>
-                    <TableHead className="font-semibold">Namespace</TableHead>
-                    <TableHead className="font-semibold">Status</TableHead>
-                    <TableHead className="font-semibold">CPU</TableHead>
-                    <TableHead className="font-semibold">Memory</TableHead>
-                    <TableHead className="font-semibold">Age</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {runningPods.map((pod) => (
-                    <TableRow
-                      key={`${pod.namespace}/${pod.name}`}
-                      className="cursor-pointer hover:bg-muted/60 transition-colors"
-                      onClick={() => navigate(`/pods/${pod.namespace}/${pod.name}`)}
-                    >
-                      <TableCell className="font-medium text-primary">{pod.name}</TableCell>
-                      <TableCell><NamespaceBadge namespace={pod.namespace} className="font-normal" /></TableCell>
-                      <TableCell>
-                        <StatusPill
-                          label={pod.status}
-                          variant={(pod.status === 'Running' ? 'success' : pod.status === 'Pending' ? 'warning' : 'error') as StatusPillVariant}
-                        />
-                      </TableCell>
-                      <TableCell className="font-mono text-sm">{pod.cpu}</TableCell>
-                      <TableCell className="font-mono text-sm">{pod.memory}</TableCell>
-                      <TableCell className="text-muted-foreground whitespace-nowrap">
-                        <AgeCell age={pod.age} timestamp={pod.creationTimestamp} />
-                      </TableCell>
+            <>
+              <div className="rounded-lg border border-border overflow-hidden">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-muted/40 hover:bg-muted/40 border-b border-border">
+                      <TableHead className="font-semibold">Name</TableHead>
+                      <TableHead className="font-semibold">Namespace</TableHead>
+                      <TableHead className="font-semibold">Status</TableHead>
+                      <TableHead className="font-semibold">CPU</TableHead>
+                      <TableHead className="font-semibold">Memory</TableHead>
+                      <TableHead className="font-semibold">Age</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+                  </TableHeader>
+                  <TableBody>
+                    {runningPodsPage.map((pod) => (
+                      <TableRow
+                        key={`${pod.namespace}/${pod.name}`}
+                        className="cursor-pointer hover:bg-muted/60 transition-colors"
+                        onClick={() => navigate(`/pods/${pod.namespace}/${pod.name}`)}
+                      >
+                        <TableCell className="font-medium text-primary">{pod.name}</TableCell>
+                        <TableCell><NamespaceBadge namespace={pod.namespace} className="font-normal" /></TableCell>
+                        <TableCell>
+                          <StatusPill
+                            label={pod.status}
+                            variant={(pod.status === 'Running' ? 'success' : pod.status === 'Pending' ? 'warning' : 'error') as StatusPillVariant}
+                          />
+                        </TableCell>
+                        <TableCell className="font-mono text-sm">{pod.cpu}</TableCell>
+                        <TableCell className="font-mono text-sm">{pod.memory}</TableCell>
+                        <TableCell className="text-muted-foreground whitespace-nowrap">
+                          <AgeCell age={pod.age} timestamp={pod.creationTimestamp} />
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+              <div className="flex items-center justify-between flex-wrap gap-2 pt-2">
+                <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                  <span>{podsPagination.rangeLabel}</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <select
+                    className="border border-border rounded-md px-2 py-1 text-xs bg-background"
+                    value={podsPageSize}
+                    onChange={(e) => handlePodsPageSizeChange(Number(e.target.value))}
+                  >
+                    {PAGE_SIZE_OPTIONS.map((size) => (
+                      <option key={size} value={size}>
+                        {size} per page
+                      </option>
+                    ))}
+                  </select>
+                  <ListPagination
+                    hasPrev={podsPagination.hasPrev}
+                    hasNext={podsPagination.hasNext}
+                    onPrev={podsPagination.onPrev}
+                    onNext={podsPagination.onNext}
+                    rangeLabel={undefined}
+                    currentPage={podsPagination.currentPage}
+                    totalPages={podsPagination.totalPages}
+                    onPageChange={podsPagination.onPageChange}
+                  />
+                </div>
+              </div>
+            </>
           )}
         </SectionCard>
       ),

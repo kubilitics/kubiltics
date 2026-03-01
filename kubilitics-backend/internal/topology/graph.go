@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"sort"
+	"sync"
 	"time"
 
 	"github.com/kubilitics/kubilitics-backend/internal/models"
@@ -20,10 +21,14 @@ type OwnerRef struct {
 
 // Graph represents the topology graph
 type Graph struct {
+	mu            sync.Mutex // protects concurrent node/edge insertion during parallel discovery
 	Nodes         []models.TopologyNode
 	Edges         []models.TopologyEdge
-	NodeMap       map[string]*models.TopologyNode // id -> node
-	UIDToNode     map[string]*models.TopologyNode // uid -> node (for owner ref inference)
+	NodeMap       map[string]*models.TopologyNode   // id -> node
+	UIDToNode     map[string]*models.TopologyNode   // uid -> node (for owner ref inference)
+	KindIndex     map[string][]*models.TopologyNode // kind -> nodes (O(1) lookup by kind)
+	LabelIndex    map[string][]*models.TopologyNode // "namespace\x00key\x00value" -> nodes (inverted label index for O(1) selector matching)
+	NameIndex     map[string]*models.TopologyNode   // "namespace\x00kind\x00name" -> node (O(1) lookup by name)
 	EdgeMap       map[string]bool
 	nodeOwnerRefs map[string][]OwnerRef            // nodeID -> owner refs
 	nodeExtra     map[string]map[string]interface{} // nodeID -> extra fields for inference (scaleTargetRef, roleRef, spec, etc.)
@@ -40,6 +45,9 @@ func NewGraph(maxNodes int) *Graph {
 		Edges:         []models.TopologyEdge{},
 		NodeMap:       make(map[string]*models.TopologyNode),
 		UIDToNode:     make(map[string]*models.TopologyNode),
+		KindIndex:     make(map[string][]*models.TopologyNode),
+		LabelIndex:    make(map[string][]*models.TopologyNode),
+		NameIndex:     make(map[string]*models.TopologyNode),
 		EdgeMap:       make(map[string]bool),
 		nodeOwnerRefs: make(map[string][]OwnerRef),
 		nodeExtra:     make(map[string]map[string]interface{}),
@@ -49,21 +57,31 @@ func NewGraph(maxNodes int) *Graph {
 
 // SetNodeExtra stores extra per-node data for inference (e.g. scaleTargetRef, roleRef, spec).
 func (g *Graph) SetNodeExtra(nodeID string, extra map[string]interface{}) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
 	g.nodeExtra[nodeID] = extra
 }
 
 // GetNodeExtra returns extra data for a node (for inference only).
+// Note: safe to call without lock after discovery phase completes (single-writer then read-only).
+// Lock added defensively for correctness if ever called during concurrent discovery.
 func (g *Graph) GetNodeExtra(nodeID string) map[string]interface{} {
+	g.mu.Lock()
+	defer g.mu.Unlock()
 	return g.nodeExtra[nodeID]
 }
 
 // SetOwnerRefs stores owner references for a node (used by engine for inference).
 func (g *Graph) SetOwnerRefs(nodeID string, refs []OwnerRef) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
 	g.nodeOwnerRefs[nodeID] = refs
 }
 
 // GetOwnerRefs returns owner references for a node.
 func (g *Graph) GetOwnerRefs(nodeID string) []OwnerRef {
+	g.mu.Lock()
+	defer g.mu.Unlock()
 	return g.nodeOwnerRefs[nodeID]
 }
 
@@ -74,7 +92,10 @@ func (g *Graph) GetNodeByUID(uid string) *models.TopologyNode {
 
 // AddNode adds a node to the graph and indexes by UID for owner-ref inference.
 // When MaxNodes > 0 and capacity is reached, no-op and set Truncated (C1.4).
+// Thread-safe: protected by g.mu for concurrent discovery.
 func (g *Graph) AddNode(node models.TopologyNode) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
 	if g.MaxNodes > 0 && len(g.Nodes) >= g.MaxNodes {
 		g.Truncated = true
 		return
@@ -85,13 +106,24 @@ func (g *Graph) AddNode(node models.TopologyNode) {
 	g.Nodes = append(g.Nodes, node)
 	ptr := &g.Nodes[len(g.Nodes)-1]
 	g.NodeMap[node.ID] = ptr
+	g.KindIndex[node.Kind] = append(g.KindIndex[node.Kind], ptr)
 	if node.Metadata.UID != "" {
 		g.UIDToNode[node.Metadata.UID] = ptr
 	}
+	// Populate inverted label index for O(1) selector matching (P0 perf fix).
+	for k, v := range node.Metadata.Labels {
+		labelKey := node.Namespace + "\x00" + k + "\x00" + v
+		g.LabelIndex[labelKey] = append(g.LabelIndex[labelKey], ptr)
+	}
+	// Populate name index for O(1) name-based lookup (used by volume/env/network inference).
+	nameKey := node.Namespace + "\x00" + node.Kind + "\x00" + node.Name
+	g.NameIndex[nameKey] = ptr
 }
 
-// AddEdge adds an edge to the graph
+// AddEdge adds an edge to the graph. Thread-safe.
 func (g *Graph) AddEdge(edge models.TopologyEdge) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
 	edgeKey := fmt.Sprintf("%s->%s:%s", edge.Source, edge.Target, edge.RelationshipType)
 	if g.EdgeMap[edgeKey] {
 		return // Skip duplicates
@@ -161,17 +193,22 @@ func (g *Graph) ToTopologyGraph(clusterID string) models.TopologyGraph {
 	}
 }
 
-// Validate checks graph completeness and correctness
+// Validate checks graph completeness and correctness.
+// Orphan edges (referencing non-existent nodes) are removed gracefully rather than
+// failing the entire graph, because partial discovery may leave stale edges.
 func (g *Graph) Validate() error {
-	// Check for orphan edges (edges referencing non-existent nodes)
+	// Remove orphan edges (edges referencing non-existent nodes)
+	valid := g.Edges[:0]
 	for _, edge := range g.Edges {
-		if g.GetNode(edge.Source) == nil {
-			return fmt.Errorf("edge references non-existent source node: %s", edge.Source)
-		}
-		if g.GetNode(edge.Target) == nil {
-			return fmt.Errorf("edge references non-existent target node: %s", edge.Target)
+		if g.GetNode(edge.Source) != nil && g.GetNode(edge.Target) != nil {
+			valid = append(valid, edge)
+		} else {
+			// Clean up EdgeMap entry for removed edge
+			edgeKey := fmt.Sprintf("%s->%s:%s", edge.Source, edge.Target, edge.RelationshipType)
+			delete(g.EdgeMap, edgeKey)
 		}
 	}
+	g.Edges = valid
 
 	// Check for duplicate node IDs
 	if len(g.Nodes) != len(g.NodeMap) {
@@ -181,13 +218,12 @@ func (g *Graph) Validate() error {
 	return nil
 }
 
-// GetNodesByKind returns all nodes of a given kind (contract: use "kind" not "type").
+// GetNodesByKind returns all nodes of a given kind using the O(1) kind index.
 func (g *Graph) GetNodesByKind(kind string) []models.TopologyNode {
-	var result []models.TopologyNode
-	for _, node := range g.Nodes {
-		if node.Kind == kind {
-			result = append(result, node)
-		}
+	ptrs := g.KindIndex[kind]
+	result := make([]models.TopologyNode, len(ptrs))
+	for i, p := range ptrs {
+		result[i] = *p
 	}
 	return result
 }
@@ -195,6 +231,55 @@ func (g *Graph) GetNodesByKind(kind string) []models.TopologyNode {
 // GetNodesByType is an alias for GetNodesByKind for backward compatibility.
 func (g *Graph) GetNodesByType(kind string) []models.TopologyNode {
 	return g.GetNodesByKind(kind)
+}
+
+// GetNodesBySelector returns nodes in the given namespace whose labels match ALL key=value
+// pairs in the selector. Uses the inverted label index for O(k) intersection where
+// k = number of selector keys, instead of O(n) linear scan across all nodes.
+func (g *Graph) GetNodesBySelector(namespace string, selector map[string]string) []*models.TopologyNode {
+	if len(selector) == 0 {
+		return nil
+	}
+
+	// Start with the candidate set from the first selector key.
+	var candidates map[*models.TopologyNode]struct{}
+	first := true
+	for k, v := range selector {
+		labelKey := namespace + "\x00" + k + "\x00" + v
+		ptrs := g.LabelIndex[labelKey]
+		if first {
+			candidates = make(map[*models.TopologyNode]struct{}, len(ptrs))
+			for _, p := range ptrs {
+				candidates[p] = struct{}{}
+			}
+			first = false
+		} else {
+			// Intersect: keep only nodes present in both sets.
+			intersection := make(map[*models.TopologyNode]struct{}, len(candidates))
+			for _, p := range ptrs {
+				if _, ok := candidates[p]; ok {
+					intersection[p] = struct{}{}
+				}
+			}
+			candidates = intersection
+		}
+		if len(candidates) == 0 {
+			return nil
+		}
+	}
+
+	result := make([]*models.TopologyNode, 0, len(candidates))
+	for p := range candidates {
+		result = append(result, p)
+	}
+	return result
+}
+
+// GetNodeByName returns a single node by namespace, kind, and name using the O(1) name index.
+// Returns nil if not found.
+func (g *Graph) GetNodeByName(namespace, kind, name string) *models.TopologyNode {
+	nameKey := namespace + "\x00" + kind + "\x00" + name
+	return g.NameIndex[nameKey]
 }
 
 // GetOutgoingEdges returns all edges originating from a node

@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
 import { useAddonInstallFlow } from "@/hooks/useAddonInstall";
 import { useCatalogEntry } from "@/hooks/useAddOnCatalog";
 import { useAddOnStore } from "@/stores/addonStore";
@@ -10,7 +9,10 @@ import { PreflightStep } from "./wizard/PreflightStep";
 import { ValuesEditorStep } from "./wizard/ValuesEditorStep";
 import { DryRunStep } from "./wizard/DryRunStep";
 import { ExecuteStep } from "./wizard/ExecuteStep";
-import { ChevronLeft, ChevronRight, X, Sparkles, AlertCircle } from "lucide-react";
+import {
+    ChevronLeft, ChevronRight, X, ShieldCheck,
+    ClipboardList, Settings2, FlaskConical, Rocket, Workflow,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface InstallWizardProps {
@@ -20,132 +22,253 @@ interface InstallWizardProps {
     clusterId: string;
 }
 
+const STEPS = [
+    {
+        id: 1, title: "Plan",
+        description: "Name release, pick namespace, resolve dependencies",
+        Icon: ClipboardList,
+        color: "text-blue-500",
+    },
+    {
+        id: 2, title: "Preflight",
+        description: "Validate cluster compatibility & RBAC",
+        Icon: ShieldCheck,
+        color: "text-indigo-500",
+    },
+    {
+        id: 3, title: "Configure",
+        description: "Customise Helm values",
+        Icon: Settings2,
+        color: "text-violet-500",
+    },
+    {
+        id: 4, title: "Dry Run",
+        description: "Preview manifests, catch issues early",
+        Icon: FlaskConical,
+        color: "text-amber-500",
+    },
+    {
+        id: 5, title: "Install",
+        description: "Execute on cluster with live progress",
+        Icon: Rocket,
+        color: "text-emerald-500",
+    },
+];
+
 export function InstallWizard({ open, onClose, addonId, clusterId }: InstallWizardProps) {
     const [currentStep, setCurrentStep] = useState(1);
     const { data: addon } = useCatalogEntry(addonId);
     const flow = useAddonInstallFlow(clusterId);
-    const { yamlValidationError } = useAddOnStore();
+    const { yamlValidationError, resetWizard } = useAddOnStore();
 
-    const steps = [
-        { title: "Plan", description: "Resolve dependencies and prepare installation path" },
-        { title: "Preflight", description: "Validate cluster compatibility and RBAC" },
-        { title: "Configure", description: "Set installation values and parameters" },
-        { title: "Dry Run", description: "Preview generated manifests and warnings" },
-        { title: "Install", description: "Execute installation on cluster" },
-    ];
+    // Reset fully when dialog opens fresh (clears valuesYaml, progress, plan, etc.)
+    useEffect(() => {
+        if (open) {
+            setCurrentStep(1);
+            resetWizard();
+            flow.reset?.();
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [open]);
 
-    const handleNext = () => {
-        if (currentStep < 5) setCurrentStep(currentStep + 1);
-    };
+    const handleNext = () => { if (currentStep < 5) setCurrentStep(s => s + 1); };
+    const handleBack = () => { if (currentStep > 1) setCurrentStep(s => s - 1); };
 
-    const handleBack = () => {
-        if (currentStep > 1) setCurrentStep(currentStep - 1);
-    };
+    const step = STEPS[currentStep - 1];
+    const pct = Math.round((currentStep / 5) * 100);
+
+    const nextDisabled =
+        (currentStep === 1 && !flow.plan) ||
+        (currentStep === 3 && !!yamlValidationError);
 
     return (
-        <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-            <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col p-0 overflow-hidden bg-background border-primary/20">
-                <div className="flex h-full">
-                    {/* Sidebar Navigation */}
-                    <div className="w-64 bg-muted/30 border-r p-6 hidden md:flex flex-col gap-8">
-                        <div className="flex items-center gap-2 mb-2">
-                            <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center border border-primary/20">
-                                <Sparkles className="h-4 w-4 text-primary" />
+        <Dialog open={open} onOpenChange={o => !o && onClose()}>
+            <DialogContent
+                hideCloseButton
+                className="flex flex-col p-0 overflow-hidden bg-background rounded-2xl border-border/60"
+                style={{
+                    width: 'min(1320px, 96vw)',
+                    maxWidth: 'min(1320px, 96vw)',
+                    height: '92vh',
+                    maxHeight: '92vh',
+                }}
+            >
+                <div className="flex h-full min-h-0">
+
+                    {/* ═══════════════════════════════ SIDEBAR ═══════════════════════════════ */}
+                    <aside className="w-[280px] shrink-0 bg-muted/25 border-r border-border/60 hidden md:flex flex-col">
+
+                        {/* Addon identity */}
+                        <div className="px-6 pt-6 pb-5 border-b border-border/40">
+                            <div className="flex items-start gap-3">
+                                <div className="h-11 w-11 rounded-xl bg-background border border-border/60 flex items-center justify-center overflow-hidden shrink-0 shadow-sm">
+                                    {addon?.icon_url
+                                        ? <img src={addon.icon_url} alt="" className="w-full h-full object-contain p-1" />
+                                        : <Workflow className="h-5 w-5 text-muted-foreground/50" />
+                                    }
+                                </div>
+                                <div className="min-w-0">
+                                    <p className="font-bold text-sm leading-tight truncate">
+                                        {addon?.display_name ?? 'Add-on'}
+                                    </p>
+                                    <p className="text-[11px] text-muted-foreground mt-0.5">
+                                        v{addon?.version ?? '—'}
+                                    </p>
+                                    {addon?.tier && (
+                                        <span className={cn(
+                                            "inline-block text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded mt-1",
+                                            addon.tier === 'CORE' ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300" :
+                                            addon.tier === 'COMMUNITY' ? "bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300" :
+                                            "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300"
+                                        )}>
+                                            {addon.tier}
+                                        </span>
+                                    )}
+                                </div>
                             </div>
-                            <span className="font-bold text-sm tracking-tight capitalize">{addon?.display_name || 'Add-on'} Install</span>
                         </div>
 
-                        <nav className="flex flex-col gap-1">
-                            {steps.map((step, i) => (
-                                <div
-                                    key={i}
-                                    className={cn(
-                                        "flex items-center gap-3 p-2 rounded-lg transition-colors",
-                                        currentStep === i + 1 ? "bg-primary/10 text-primary font-semibold" : "text-muted-foreground"
-                                    )}
-                                >
-                                    <div className={cn(
-                                        "h-6 w-6 rounded-full border-2 flex items-center justify-center text-[10px]",
-                                        currentStep === i + 1 ? "border-primary bg-primary text-primary-foreground" :
-                                            currentStep > i + 1 ? "border-emerald-500 bg-emerald-500 text-white" : "border-muted-foreground/30"
-                                    )}>
-                                        {currentStep > i + 1 ? "✓" : i + 1}
+                        {/* Step nav */}
+                        <nav className="flex-1 px-3 py-4 space-y-0.5">
+                            {STEPS.map(s => {
+                                const done = currentStep > s.id;
+                                const active = currentStep === s.id;
+                                return (
+                                    <div
+                                        key={s.id}
+                                        className={cn(
+                                            "flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors duration-150",
+                                            active ? "bg-background shadow-sm border border-border/50" : "hover:bg-muted/40"
+                                        )}
+                                    >
+                                        {/* Step circle */}
+                                        <div className={cn(
+                                            "h-7 w-7 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0 transition-all",
+                                            done ? "bg-emerald-500 text-white" :
+                                            active ? "bg-primary text-primary-foreground shadow-sm" :
+                                            "bg-muted border border-border/50 text-muted-foreground"
+                                        )}>
+                                            {done ? <span className="text-sm">✓</span> : s.id}
+                                        </div>
+                                        {/* Label */}
+                                        <div className="min-w-0">
+                                            <p className={cn(
+                                                "text-xs font-semibold leading-none",
+                                                active ? "text-foreground" : done ? "text-muted-foreground" : "text-muted-foreground/70"
+                                            )}>
+                                                {s.title}
+                                            </p>
+                                            {active && (
+                                                <p className="text-[10px] text-muted-foreground/70 mt-0.5 leading-tight line-clamp-2">
+                                                    {s.description}
+                                                </p>
+                                            )}
+                                        </div>
                                     </div>
-                                    <span className="text-xs">{step.title}</span>
-                                </div>
-                            ))}
+                                );
+                            })}
                         </nav>
 
-                        <div className="mt-auto p-4 rounded-xl bg-muted/50 border border-muted-foreground/10">
-                            <div className="flex items-center gap-2 text-primary mb-1">
-                                <AlertCircle className="h-3 w-3" />
-                                <span className="text-[10px] uppercase font-bold tracking-widest">Enterprise Safe</span>
-                            </div>
-                            <p className="text-[10px] text-muted-foreground leading-tight">
-                                Kubilitics ensures all add-on installs are pre-validated and reversible.
-                            </p>
-                        </div>
-                    </div>
-
-                    {/* Main Content Area */}
-                    <div className="flex-1 flex flex-col">
-                        <DialogHeader className="p-6 pb-0 border-b md:border-none">
-                            <div className="flex justify-between items-start">
-                                <div>
-                                    <DialogTitle className="text-xl font-bold">{steps[currentStep - 1].title}</DialogTitle>
-                                    <DialogDescription className="text-xs mt-1">
-                                        {steps[currentStep - 1].description}
-                                    </DialogDescription>
+                        {/* Footer trust badge */}
+                        <div className="px-4 pb-5">
+                            <div className="rounded-xl bg-muted/50 border border-border/40 px-4 py-3">
+                                <div className="flex items-center gap-2 mb-1">
+                                    <ShieldCheck className="h-3.5 w-3.5 text-emerald-500" />
+                                    <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-700 dark:text-emerald-400">
+                                        Enterprise Safe
+                                    </span>
                                 </div>
-                                <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8 -mt-2 -mr-2">
+                                <p className="text-[10px] text-muted-foreground leading-relaxed">
+                                    All installs are pre-validated, dry-run tested, and reversible.
+                                </p>
+                            </div>
+                        </div>
+                    </aside>
+
+                    {/* ═══════════════════════════════ MAIN PANEL ═════════════════════════════ */}
+                    <div className="flex-1 flex flex-col min-w-0 min-h-0">
+
+                        {/* Top bar */}
+                        <header className="flex items-center justify-between px-7 py-4 border-b border-border/60 shrink-0">
+                            <div className="flex items-center gap-3">
+                                <div className={cn(
+                                    "h-8 w-8 rounded-lg flex items-center justify-center",
+                                    "bg-primary/8 dark:bg-primary/12"
+                                )}>
+                                    <step.Icon className={cn("h-4 w-4", step.color)} />
+                                </div>
+                                <div>
+                                    <h2 className="text-base font-bold leading-none">{step.title}</h2>
+                                    <p className="text-xs text-muted-foreground mt-0.5">{step.description}</p>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-3">
+                                {/* Progress pill */}
+                                <div className="hidden sm:flex items-center gap-2">
+                                    <div className="h-1.5 w-24 rounded-full bg-muted overflow-hidden">
+                                        <div
+                                            className="h-full bg-primary rounded-full transition-all duration-500"
+                                            style={{ width: `${pct}%` }}
+                                        />
+                                    </div>
+                                    <span className="text-[11px] text-muted-foreground font-medium tabular-nums">
+                                        {currentStep} / 5
+                                    </span>
+                                </div>
+                                <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground">
                                     <X className="h-4 w-4" />
                                 </Button>
                             </div>
-                            <Progress value={(currentStep / 5) * 100} className="h-1 mt-6" />
-                        </DialogHeader>
+                        </header>
 
-                        <div className="flex-1 overflow-y-auto p-6 min-h-[400px]">
+                        {/* Step content */}
+                        <div className="flex-1 overflow-y-auto px-7 py-6 min-h-0">
                             {currentStep === 1 && (
                                 <DependencyPlanStep
                                     addonId={addonId}
                                     clusterId={clusterId}
+                                    addonName={addon?.name ?? addon?.display_name ?? ''}
+                                    addonVersion={addon?.version ?? ''}
                                     onPlanResolved={handleNext}
                                 />
                             )}
-                            {currentStep === 2 && <PreflightStep planId={flow.plan?.plan_id || ""} />}
+                            {currentStep === 2 && <PreflightStep planId={(flow.plan as any)?.plan_id ?? ''} />}
                             {currentStep === 3 && <ValuesEditorStep addonId={addonId} />}
                             {currentStep === 4 && <DryRunStep />}
                             {currentStep === 5 && <ExecuteStep />}
                         </div>
 
-                        <div className="p-4 border-t bg-muted/20 flex justify-between items-center px-6">
+                        {/* Bottom nav */}
+                        <footer className="shrink-0 border-t border-border/60 px-7 py-4 bg-muted/10 flex justify-between items-center">
                             <Button
-                                variant="outline"
+                                variant="ghost"
                                 onClick={handleBack}
                                 disabled={currentStep === 1 || currentStep === 5}
-                                className="gap-2"
+                                className="gap-1.5 text-muted-foreground"
                             >
                                 <ChevronLeft className="h-4 w-4" /> Back
                             </Button>
 
-                            <div className="flex gap-3">
-                                <Button variant="ghost" onClick={onClose} disabled={currentStep === 5}>
-                                    Cancel
-                                </Button>
+                            <div className="flex items-center gap-2">
+                                {currentStep < 5 && (
+                                    <Button variant="ghost" onClick={onClose}
+                                        disabled={currentStep === 5}
+                                        className="text-muted-foreground text-sm">
+                                        Cancel
+                                    </Button>
+                                )}
                                 {currentStep < 5 && (
                                     <Button
                                         onClick={handleNext}
-                                        className="gap-2 px-6"
-                                        disabled={
-                                            (currentStep === 1 && !flow.plan) ||
-                                            (currentStep === 3 && !!yamlValidationError)
-                                        }
+                                        disabled={nextDisabled}
+                                        className="gap-1.5 px-6 min-w-[110px]"
                                     >
-                                        Next <ChevronRight className="h-4 w-4" />
+                                        {currentStep === 4 ? 'Confirm Install' : 'Next'}
+                                        {currentStep !== 4 && <ChevronRight className="h-4 w-4" />}
                                     </Button>
                                 )}
                             </div>
-                        </div>
+                        </footer>
                     </div>
                 </div>
             </DialogContent>

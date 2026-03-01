@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
   Cpu,
@@ -22,8 +22,15 @@ import {
   Settings,
   History,
   Gauge,
+  ChevronDown,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -50,6 +57,7 @@ import {
   type ContainerInfo,
   type YamlVersion,
 } from '@/components/resources';
+import { ListPagination, PAGE_SIZE_OPTIONS } from '@/components/list';
 import { useResourceDetail, useResourceEvents } from '@/hooks/useK8sResourceDetail';
 import { useDeleteK8sResource, useUpdateK8sResource, usePatchK8sResource, useK8sResourceList, calculateAge, type KubernetesResource } from '@/hooks/useKubernetes';
 import { normalizeKindForTopology } from '@/utils/resourceKindMapper';
@@ -154,6 +162,42 @@ export default function DaemonSetDetail() {
     return Object.entries(dsMatchLabels).every(([k, v]) => labels[k] === v);
   });
   const firstDsPodName = dsPods[0]?.metadata?.name ?? '';
+
+  // Local pagination for Pods tab
+  const [podsPageSize, setPodsPageSize] = useState(10);
+  const [podsPageIndex, setPodsPageIndex] = useState(0);
+
+  const totalDsPods = dsPods.length;
+  const podsTotalPages = Math.max(1, Math.ceil(totalDsPods / podsPageSize));
+  const safePodsPageIndex = Math.min(podsPageIndex, podsTotalPages - 1);
+  const podsStart = safePodsPageIndex * podsPageSize;
+  const dsPodsPage = useMemo(
+    () => dsPods.slice(podsStart, podsStart + podsPageSize),
+    [dsPods, podsStart, podsPageSize]
+  );
+
+  useEffect(() => {
+    if (safePodsPageIndex !== podsPageIndex) setPodsPageIndex(safePodsPageIndex);
+  }, [safePodsPageIndex, podsPageIndex]);
+
+  const handlePodsPageSizeChange = (size: number) => {
+    setPodsPageSize(size);
+    setPodsPageIndex(0);
+  };
+
+  const podsPagination = {
+    rangeLabel:
+      totalDsPods > 0
+        ? `Showing ${podsStart + 1}–${Math.min(podsStart + podsPageSize, totalDsPods)} of ${totalDsPods}`
+        : 'No pods',
+    hasPrev: safePodsPageIndex > 0,
+    hasNext: podsStart + podsPageSize < totalDsPods,
+    onPrev: () => setPodsPageIndex((i) => Math.max(0, i - 1)),
+    onNext: () => setPodsPageIndex((i) => Math.min(podsTotalPages - 1, i + 1)),
+    currentPage: safePodsPageIndex + 1,
+    totalPages: Math.max(1, podsTotalPages),
+    onPageChange: (p: number) => setPodsPageIndex(Math.max(0, Math.min(p - 1, podsTotalPages - 1))),
+  };
 
   const { data: nodesList } = useK8sResourceList<KubernetesResource & { metadata?: { name?: string; labels?: Record<string, string> } }>(
     'nodes',
@@ -488,39 +532,77 @@ export default function DaemonSetDetail() {
           {dsPods.length === 0 ? (
             <p className="text-sm text-muted-foreground">No pods match this DaemonSet&apos;s selector yet.</p>
           ) : (
-            <div className="rounded-lg border overflow-hidden">
-              <table className="w-full text-sm">
-                <thead className="bg-muted/50">
-                  <tr>
-                    <th className="text-left p-3 font-medium">Name</th>
-                    <th className="text-left p-3 font-medium">Status</th>
-                    <th className="text-left p-3 font-medium">Node</th>
-                    <th className="text-left p-3 font-medium">Age</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {dsPods.map((pod) => {
-                    const podName = pod.metadata?.name ?? '';
-                    const podNs = pod.metadata?.namespace ?? namespace ?? '';
-                    const phase = (pod.status as { phase?: string } | undefined)?.phase ?? '-';
-                    const nodeName = (pod.spec as { nodeName?: string } | undefined)?.nodeName ?? '-';
-                    const created = pod.metadata?.creationTimestamp ? calculateAge(pod.metadata.creationTimestamp) : '-';
-                    return (
-                      <tr key={podName} className="border-t">
-                        <td className="p-3">
-                          <Link to={`/pods/${podNs}/${podName}`} className="text-primary hover:underline font-medium">
-                            {podName}
-                          </Link>
-                        </td>
-                        <td className="p-3">{phase}</td>
-                        <td className="p-3 font-mono text-xs">{nodeName}</td>
-                        <td className="p-3">{created}</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+            <>
+              <div className="rounded-lg border overflow-hidden">
+                <table className="w-full text-sm">
+                  <thead className="bg-muted/50">
+                    <tr>
+                      <th className="text-left p-3 font-medium">Name</th>
+                      <th className="text-left p-3 font-medium">Status</th>
+                      <th className="text-left p-3 font-medium">Node</th>
+                      <th className="text-left p-3 font-medium">Age</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {dsPodsPage.map((pod) => {
+                      const podName = pod.metadata?.name ?? '';
+                      const podNs = pod.metadata?.namespace ?? namespace ?? '';
+                      const phase = (pod.status as { phase?: string } | undefined)?.phase ?? '-';
+                      const nodeName = (pod.spec as { nodeName?: string } | undefined)?.nodeName ?? '-';
+                      const created = pod.metadata?.creationTimestamp ? calculateAge(pod.metadata.creationTimestamp) : '-';
+                      return (
+                        <tr key={podName} className="border-t">
+                          <td className="p-3">
+                            <Link to={`/pods/${podNs}/${podName}`} className="text-primary hover:underline font-medium">
+                              {podName}
+                            </Link>
+                          </td>
+                          <td className="p-3">{phase}</td>
+                          <td className="p-3 font-mono text-xs">{nodeName}</td>
+                          <td className="p-3">{created}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+              <div className="flex items-center justify-between flex-wrap gap-2 pt-2">
+                <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                  <span>{podsPagination.rangeLabel}</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline" size="sm" className="gap-2">
+                        {podsPageSize} per page
+                        <ChevronDown className="h-4 w-4 opacity-50" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start">
+                      {PAGE_SIZE_OPTIONS.map((size) => (
+                        <DropdownMenuItem
+                          key={size}
+                          onClick={() => handlePodsPageSizeChange(size)}
+                          className={cn(podsPageSize === size && 'bg-accent')}
+                        >
+                          {size} per page
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                  <ListPagination
+                    hasPrev={podsPagination.hasPrev}
+                    hasNext={podsPagination.hasNext}
+                    onPrev={podsPagination.onPrev}
+                    onNext={podsPagination.onNext}
+                    rangeLabel={undefined}
+                    currentPage={podsPagination.currentPage}
+                    totalPages={podsPagination.totalPages}
+                    onPageChange={podsPagination.onPageChange}
+                  />
+                </div>
+              </div>
+            </>
           )}
         </SectionCard>
       ),
@@ -673,7 +755,7 @@ export default function DaemonSetDetail() {
       icon: Settings,
       content: (
         <ActionsSection actions={[
-          { icon: RotateCcw, label: 'Rollout Restart', description: 'Trigger a rolling restart of all pods', onClick: () => setShowRolloutDialog(true) },
+          { icon: RotateCcw, label: 'Rollout Restart', description: 'Trigger a rolling restart of all pods', variant: 'warning', onClick: () => setShowRolloutDialog(true) },
           { icon: Download, label: 'Download YAML', description: 'Export DaemonSet definition', onClick: handleDownloadYaml },
           { icon: Download, label: 'Export as JSON', description: 'Export DaemonSet as JSON', onClick: handleDownloadJson },
           { icon: Trash2, label: 'Delete DaemonSet', description: 'Permanently remove this DaemonSet', variant: 'destructive', onClick: () => setShowDeleteDialog(true) },

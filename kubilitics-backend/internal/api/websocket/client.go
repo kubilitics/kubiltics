@@ -2,7 +2,9 @@ package websocket
 
 import (
 	"context"
+	"encoding/json"
 	"log"
+	"sync"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -47,6 +49,11 @@ type Client struct {
 
 	// Subscription filters
 	filters map[string]interface{}
+
+	// Cluster subscription: if non-empty, only messages for these clusters are sent.
+	// Empty = receive all messages (backward-compatible default).
+	clustersMu   sync.RWMutex
+	clustersSubs map[string]bool
 }
 
 // NewClient creates a new WebSocket client
@@ -182,9 +189,45 @@ func (c *Client) Close() {
 	c.cancel()
 }
 
-// handleMessage handles incoming messages from the client
+// AcceptsCluster returns true if the client should receive messages for the given clusterID.
+// Returns true if the client has no cluster subscription (receives all), or if the
+// clusterID is in the subscription set.
+func (c *Client) AcceptsCluster(clusterID string) bool {
+	c.clustersMu.RLock()
+	defer c.clustersMu.RUnlock()
+	if len(c.clustersSubs) == 0 {
+		return true // No subscription filter = receive all
+	}
+	return c.clustersSubs[clusterID]
+}
+
+// handleMessage handles incoming messages from the client.
+// Supports subscription messages: {"type":"subscribe","clusters":["cluster-1","cluster-2"]}
 func (c *Client) handleMessage(message []byte) {
-	// Parse message and update filters/subscriptions
-	// Implementation depends on subscription model
-	log.Printf("Received message from client %s: %s", c.id, string(message))
+	var msg struct {
+		Type     string   `json:"type"`
+		Clusters []string `json:"clusters"`
+	}
+	if err := json.Unmarshal(message, &msg); err != nil {
+		log.Printf("ws client %s: invalid message: %v", c.id, err)
+		return
+	}
+
+	switch msg.Type {
+	case "subscribe":
+		c.clustersMu.Lock()
+		c.clustersSubs = make(map[string]bool, len(msg.Clusters))
+		for _, id := range msg.Clusters {
+			c.clustersSubs[id] = true
+		}
+		c.clustersMu.Unlock()
+		log.Printf("ws client %s: subscribed to clusters: %v", c.id, msg.Clusters)
+	case "unsubscribe":
+		c.clustersMu.Lock()
+		c.clustersSubs = nil
+		c.clustersMu.Unlock()
+		log.Printf("ws client %s: unsubscribed from cluster filter (receiving all)", c.id)
+	default:
+		log.Printf("ws client %s: unknown message type: %s", c.id, msg.Type)
+	}
 }

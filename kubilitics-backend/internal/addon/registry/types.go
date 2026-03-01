@@ -29,11 +29,22 @@ type ArtifactHubChart struct {
 	Version     string `json:"version"`
 	Stars       int    `json:"stars"`
 	Repository  struct {
-		URL  string `json:"url"`
-		Name string `json:"name"`
+		URL              string `json:"url"`
+		Name             string `json:"name"`
+		VerifiedPublisher bool   `json:"verified_publisher"`
+		Official         bool   `json:"official"`
 	} `json:"repository"`
 	CreatedAt  int64 `json:"created_at"`
 	Deprecated bool  `json:"deprecated"`
+	// Trust / provenance fields returned by the Artifact Hub API
+	Official bool `json:"official"`
+	Signed   bool `json:"signed"`
+	// Data contains chart-level metadata returned by the package detail endpoint.
+	// Values holds the raw values.yaml content for pre-populating the configure step.
+	Data struct {
+		Values       string `json:"values"`
+		ValuesSchema string `json:"values_schema"`
+	} `json:"data"`
 }
 
 type ArtifactHubSearchResponse struct {

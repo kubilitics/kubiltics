@@ -59,7 +59,13 @@ const ROUTE_TO_KIND: Record<string, string> = {
   'priorityclasses': 'PriorityClass',
   'customresourcedefinitions': 'CustomResourceDefinition',
   'mutatingwebhooks': 'MutatingWebhookConfiguration',
+  'mutatingwebhookconfigurations': 'MutatingWebhookConfiguration',
   'validatingwebhooks': 'ValidatingWebhookConfiguration',
+  'validatingwebhookconfigurations': 'ValidatingWebhookConfiguration',
+  'csidrivers': 'CSIDriver',
+  'csinodes': 'CSINode',
+  'flowschemas': 'FlowSchema',
+  'prioritylevelconfigurations': 'PriorityLevelConfiguration',
 };
 
 /**
@@ -78,6 +84,11 @@ export const RESOURCE_TOPOLOGY_SUPPORTED_KINDS = [
   'Service', 'Ingress', 'IngressClass', 'Endpoints', 'EndpointSlice', 'NetworkPolicy',
   'ConfigMap', 'Secret', 'PersistentVolumeClaim', 'PersistentVolume', 'StorageClass', 'VolumeAttachment',
   'ResourceQuota', 'LimitRange', 'PriorityClass', 'ResourceSlice', 'DeviceClass',
+  'Namespace', 'ServiceAccount', 'HorizontalPodAutoscaler', 'ReplicationController',
+  'Role', 'ClusterRole', 'RoleBinding', 'ClusterRoleBinding', 'PodDisruptionBudget',
+  'RuntimeClass', 'Lease', 'CSIDriver', 'CSINode',
+  'MutatingWebhookConfiguration', 'ValidatingWebhookConfiguration',
+  'FlowSchema', 'PriorityLevelConfiguration',
 ] as const;
 
 /**
@@ -109,6 +120,10 @@ const CLUSTER_SCOPED_KINDS = new Set([
   'ValidatingWebhookConfiguration',
   'ResourceSlice',
   'DeviceClass',
+  'CSIDriver',
+  'CSINode',
+  'FlowSchema',
+  'PriorityLevelConfiguration',
 ]);
 
 /**

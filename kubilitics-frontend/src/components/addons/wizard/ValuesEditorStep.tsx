@@ -1,18 +1,22 @@
-// T6.FE-03: ValuesEditorStep with YAML validation edge cases
+// T6.FE-03: ValuesEditorStep — pre-loads chart values.yaml from Artifact Hub via backend
+// - Fetches GET /addons/catalog/{addonId}/values on mount (useAddonDefaultValues)
+// - Seeds editor once when values arrive (only if user hasn't already typed anything)
+// - Shows skeleton while loading, error banner on fetch failure
 // - Tabs → specific "use spaces" error
 // - Empty string → valid (treated as {})
 // - Multi-document YAML → extract first document, no crash
-// - Reset to defaults button
+// - Reset to defaults button reloads fetched content
 // - Disables Next via yamlValidationError in store (read by InstallWizard)
 
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import * as yaml from "js-yaml";
-import { useCatalogEntry } from "@/hooks/useAddOnCatalog";
+import { useAddonDefaultValues } from "@/hooks/useAddOnCatalog";
 import { useAddOnStore } from "@/stores/addonStore";
 import { CodeEditor } from "@/components/editor/CodeEditor";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Info, FileText, Settings2, AlertCircle, RotateCcw } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Info, FileText, Settings2, AlertCircle, RotateCcw, ServerCrash } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 /** Validate YAML string and return an error message, or null if valid. */
@@ -22,18 +26,15 @@ function validateYaml(value: string): string | null {
     if (trimmed === "" || trimmed === "{}") return null;
 
     // YAML spec disallows literal tab characters in indentation.
-    // Detect tabs before yaml.load() since the parser error is less user-friendly.
     if (/\t/.test(value)) {
         return "YAML does not allow tabs — use spaces for indentation";
     }
 
-    // Multi-document YAML: split on document markers and parse only the first document
-    // to avoid a YAMLException for multiple documents.
+    // Multi-document YAML: parse only the first document.
     const firstDoc = value.split(/^---\s*$/m)[0];
 
     try {
         const parsed = yaml.load(firstDoc);
-        // Parsed value must be null (empty doc) or a plain object
         if (parsed !== null && typeof parsed !== "object") {
             return "Values must be a YAML mapping (key: value), not a scalar";
         }
@@ -48,7 +49,14 @@ function validateYaml(value: string): string | null {
 }
 
 export function ValuesEditorStep({ addonId }: { addonId: string }) {
-    const { data: addon } = useCatalogEntry(addonId);
+    const {
+        data: defaultValues,
+        isLoading: isLoadingValues,
+        isFetching: isFetchingValues,
+        isError: isValuesError,
+        refetch: refetchValues,
+    } = useAddonDefaultValues(addonId);
+
     const {
         valuesYaml,
         setValuesYaml,
@@ -56,15 +64,39 @@ export function ValuesEditorStep({ addonId }: { addonId: string }) {
         setYamlValidationError,
     } = useAddOnStore();
 
-    // Seed default values from catalog when the step first loads
+    // Track whether we've already seeded the editor for this addonId so we don't
+    // overwrite edits the user has made after the initial load.
+    const seededForRef = useRef<string>("");
+
+    // When addonId changes (user opened wizard for a different addon), clear the editor
+    // so stale content from the previous addon is not shown while fresh values load.
     useEffect(() => {
-        if (addon && "default_values_yaml" in (addon as any) && !(addon as any).default_values_yaml) return;
-        const defaultValues = (addon as any)?.default_values_yaml as string | undefined;
-        if (defaultValues && !valuesYaml) {
+        seededForRef.current = "";
+        setValuesYaml("");
+        setYamlValidationError(null);
+    }, [addonId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    // Seed editor with fetched defaults when they arrive — but only once per addonId,
+    // and only when the user hasn't already typed anything.
+    //
+    // IMPORTANT: guard on BOTH isLoadingValues AND isFetchingValues.
+    // With staleTime:0 + refetchOnMount:"always", React Query returns stale cache data
+    // (empty string "") immediately while isFetching:true. Without the isFetching guard,
+    // seededForRef gets set with the stale "" value; when the real 58KB YAML arrives
+    // the ref already equals addonId and we return early — editor stays empty.
+    useEffect(() => {
+        if (isLoadingValues || isFetchingValues) return; // wait for the real network response
+        if (seededForRef.current === addonId) return;    // already seeded for this addon
+        if (typeof defaultValues !== "string") return;
+
+        seededForRef.current = addonId;
+
+        // Only auto-fill if the editor is still empty (preserve manual edits on re-render)
+        if (!valuesYaml && defaultValues) {
             setValuesYaml(defaultValues);
             setYamlValidationError(validateYaml(defaultValues));
         }
-    }, [addon]);
+    }, [addonId, defaultValues, isLoadingValues, isFetchingValues]);
 
     const handleChange = useCallback(
         (newValue: string) => {
@@ -75,10 +107,10 @@ export function ValuesEditorStep({ addonId }: { addonId: string }) {
     );
 
     const handleReset = useCallback(() => {
-        const defaultValues = (addon as any)?.default_values_yaml as string | undefined ?? "";
-        setValuesYaml(defaultValues);
-        setYamlValidationError(validateYaml(defaultValues));
-    }, [addon, setValuesYaml, setYamlValidationError]);
+        const resetTo = defaultValues ?? "";
+        setValuesYaml(resetTo);
+        setYamlValidationError(validateYaml(resetTo));
+    }, [defaultValues, setValuesYaml, setYamlValidationError]);
 
     return (
         <div className="flex flex-col h-full gap-6">
@@ -91,7 +123,9 @@ export function ValuesEditorStep({ addonId }: { addonId: string }) {
                             Configuration (values.yaml)
                         </h4>
                         <p className="text-xs text-blue-700 dark:text-blue-300">
-                            Customize the installation by overriding default parameters.
+                            {(isLoadingValues || isFetchingValues)
+                                ? "Loading chart defaults from Artifact Hub…"
+                                : "Customize the installation by overriding default parameters."}
                         </p>
                     </div>
                 </div>
@@ -100,6 +134,7 @@ export function ValuesEditorStep({ addonId }: { addonId: string }) {
                         variant="ghost"
                         size="sm"
                         onClick={handleReset}
+                        disabled={isLoadingValues || isFetchingValues || !defaultValues}
                         className="gap-1.5 text-xs text-muted-foreground hover:text-primary h-8"
                         title="Reset to chart defaults"
                     >
@@ -122,20 +157,59 @@ export function ValuesEditorStep({ addonId }: { addonId: string }) {
                 </div>
             </div>
 
-            {/* Editor */}
-            <div className="flex-1 min-h-[400px] border rounded-xl overflow-hidden shadow-inner bg-background relative">
-                <div className="absolute top-0 right-0 p-3 z-10 pointer-events-none opacity-50">
-                    <FileText className="h-6 w-6 text-muted-foreground" />
+            {/* Loading skeleton — shown while we're fetching values and editor is still empty */}
+            {(isLoadingValues || isFetchingValues) && !valuesYaml && (
+                <div className="flex-1 min-h-[400px] border rounded-xl overflow-hidden bg-muted/30 p-4 space-y-2">
+                    <Skeleton className="h-4 w-1/3" />
+                    <Skeleton className="h-4 w-full" />
+                    <Skeleton className="h-4 w-5/6" />
+                    <Skeleton className="h-4 w-full" />
+                    <Skeleton className="h-4 w-2/3" />
+                    <Skeleton className="h-4 w-full" />
+                    <Skeleton className="h-4 w-4/5" />
+                    <Skeleton className="h-4 w-full" />
+                    <Skeleton className="h-4 w-3/4" />
+                    <Skeleton className="h-4 w-full" />
+                    <Skeleton className="h-4 w-1/2" />
                 </div>
-                <CodeEditor
-                    value={valuesYaml}
-                    onChange={handleChange}
-                    minHeight="100%"
-                    className="h-full border-none"
-                />
-            </div>
+            )}
 
-            {/* YAML validation error (T6.FE-03) */}
+            {/* Editor — shown once values are fully fetched (or if user already has content) */}
+            {((!isLoadingValues && !isFetchingValues) || valuesYaml) && (
+                <div className="flex-1 min-h-[400px] border rounded-xl overflow-hidden shadow-inner bg-background relative">
+                    <div className="absolute top-0 right-0 p-3 z-10 pointer-events-none opacity-50">
+                        <FileText className="h-6 w-6 text-muted-foreground" />
+                    </div>
+                    <CodeEditor
+                        value={valuesYaml}
+                        onChange={handleChange}
+                        minHeight="100%"
+                        className="h-full border-none"
+                    />
+                </div>
+            )}
+
+            {/* Fetch error banner with retry */}
+            {isValuesError && (
+                <Alert variant="destructive" className="bg-destructive/10 border-destructive/20 text-destructive py-3">
+                    <ServerCrash className="h-4 w-4 shrink-0" />
+                    <AlertDescription className="text-[12px] leading-snug font-medium flex items-center justify-between gap-3">
+                        <span>Could not load chart defaults from Artifact Hub. You can still type values manually.</span>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => { seededForRef.current = ""; refetchValues(); }}
+                            disabled={isFetchingValues}
+                            className="shrink-0 h-7 px-3 text-[11px] border-destructive/30 hover:bg-destructive/10"
+                        >
+                            <RotateCcw className={cn("h-3 w-3 mr-1.5", isFetchingValues && "animate-spin")} />
+                            {isFetchingValues ? "Retrying…" : "Retry"}
+                        </Button>
+                    </AlertDescription>
+                </Alert>
+            )}
+
+            {/* YAML validation error */}
             {yamlValidationError && (
                 <Alert variant="destructive" className="bg-destructive/10 border-destructive/20 text-destructive py-3">
                     <AlertCircle className="h-4 w-4 shrink-0" />
@@ -146,7 +220,7 @@ export function ValuesEditorStep({ addonId }: { addonId: string }) {
             )}
 
             {/* Info footer (shown only when no error) */}
-            {!yamlValidationError && (
+            {!yamlValidationError && !isValuesError && (
                 <Alert className="bg-muted/50 border-none shadow-none">
                     <Info className="h-4 w-4" />
                     <AlertDescription className="text-[11px] leading-tight">

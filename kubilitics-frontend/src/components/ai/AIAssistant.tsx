@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useMotionValue } from 'framer-motion';
 import {
   Bot,
   Send,
@@ -1447,7 +1447,13 @@ export function AIAssistant() {
 
   const inputRef = useRef<HTMLInputElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const dragJustHappenedRef = useRef(false);
   const getContext = useRouteContext();
+
+  // Drag position — keeps the button wherever the user drops it.
+  // Initial anchor is bottom-8 right-8; these values are offsets from that position.
+  const dragX = useMotionValue(0);
+  const dragY = useMotionValue(0);
 
   // Merge store context (from "Ask AI" buttons) with route-derived context
   const routeCtx = getContext();
@@ -1535,16 +1541,32 @@ export function AIAssistant() {
 
   return (
     <>
-      {/* Floating trigger button */}
+      {/* Floating trigger button — draggable so it never blocks content */}
       <AnimatePresence>
         {!isOpen && (
           <motion.div
-            initial={{ scale: 0, opacity: 0, y: 20 }}
-            animate={{ scale: 1, opacity: 1, y: 0 }}
-            exit={{ scale: 0, opacity: 0, y: 20 }}
+            drag
+            dragMomentum={false}
+            dragElastic={0}
+            onDragStart={() => {
+              dragJustHappenedRef.current = true;
+            }}
+            onDragEnd={() => {
+              // Mark that a drag occurred; the next click should be ignored.
+              dragJustHappenedRef.current = true;
+              // After a short delay, allow normal clicks again.
+              setTimeout(() => {
+                dragJustHappenedRef.current = false;
+              }, 150);
+            }}
+            style={{ x: dragX, y: dragY, bottom: 32, right: 32, position: 'fixed' }}
+            initial={{ scale: 0, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0, opacity: 0 }}
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            className="fixed bottom-8 right-8 z-[100] flex flex-col items-center gap-2"
+            whileDrag={{ scale: 0.97, cursor: 'grabbing' }}
+            className="z-[100] flex flex-col items-center gap-2 cursor-grab select-none"
           >
             {/* Pulsing Glow Effect */}
             <motion.div
@@ -1561,7 +1583,13 @@ export function AIAssistant() {
             />
 
             <button
-              onClick={open}
+              onClick={() => {
+                // If the user just finished dragging the launcher, do not open the panel.
+                if (dragJustHappenedRef.current) {
+                  return;
+                }
+                open();
+              }}
               className="relative h-16 w-16 rounded-[2rem] shadow-2xl bg-gradient-to-br from-blue-600 via-blue-500 to-indigo-600 border border-white/20 flex items-center justify-center group overflow-hidden"
               aria-label="Activate KOS Intelligence"
             >

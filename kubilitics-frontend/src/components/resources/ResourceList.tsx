@@ -39,6 +39,7 @@ import { Link } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { ResourceExportDropdown, ResourceTableRow, resourceTableRowClassName, ListPagination, ResourceCommandBar, type ResourceExportConfig } from '@/components/list';
+import { buildAutoWidthColumns } from '@/lib/tableSizing';
 
 export interface ResourceListPagination {
   hasPrev: boolean;
@@ -117,10 +118,6 @@ export function ResourceList<T extends object>({
     if (key === 'age') return { defaultWidth: 90, minWidth: 56 };
     return { defaultWidth: 150, minWidth: 70 };
   };
-  const effectiveResizableConfig: ResizableColumnConfig[] =
-    resizableColumnConfig ??
-    (tableId ? columns.map((col, idx) => ({ id: col.key, ...defaultColumnConfig(col.key, idx) })) : []);
-  const useResizable = tableId.length > 0 && effectiveResizableConfig.length > 0;
 
   const filterValues = filterKey 
     ? ['all', ...Array.from(new Set(items.map(item => String(item[filterKey]))))]
@@ -165,6 +162,42 @@ export function ResourceList<T extends object>({
           effectivePagination.currentPage * pageSize
         )
       : filteredItems;
+
+  // Base column config (static defaults), before applying data-aware sizing.
+  const baseResizableConfig: ResizableColumnConfig[] = useMemo(
+    () =>
+      resizableColumnConfig ??
+      (tableId
+        ? columns.map((col, idx) => ({ id: col.key, ...defaultColumnConfig(col.key, idx) }))
+        : []),
+    [resizableColumnConfig, tableId, columns],
+  );
+
+  // Data-aware default widths for ResourceList columns when using the built-in
+  // resizable behavior. If the caller supplies resizableColumnConfig explicitly,
+  // we respect it as-is and do not override with auto-sizing.
+  const effectiveResizableConfig: ResizableColumnConfig[] = useMemo(() => {
+    if (!tableId || !baseResizableConfig.length) return baseResizableConfig;
+    if (resizableColumnConfig) return baseResizableConfig;
+    if (!displayItems.length) return baseResizableConfig;
+
+    const valueGetters: Record<string, (row: T) => unknown> = {};
+    for (const col of columns) {
+      valueGetters[col.key] = (row: T) => {
+        const rendered = col.render(row);
+        if (typeof rendered === 'string' || typeof rendered === 'number') {
+          return rendered;
+        }
+        const asAny = row as any;
+        // Fallback: try the raw field on the row; otherwise, empty string.
+        return asAny?.[col.key] ?? '';
+      };
+    }
+
+    return buildAutoWidthColumns(baseResizableConfig, displayItems, valueGetters);
+  }, [tableId, baseResizableConfig, resizableColumnConfig, displayItems, columns]);
+
+  const useResizable = tableId.length > 0 && effectiveResizableConfig.length > 0;
 
   const useVirtual = displayItems.length > VIRTUAL_THRESHOLD;
   const parentRef = useRef<HTMLDivElement>(null);

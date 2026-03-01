@@ -4,6 +4,7 @@ import { useKubernetesConfigStore } from '@/stores/kubernetesConfigStore';
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
 import { useClusterStore } from '@/stores/clusterStore';
 import { listResources, getResource, deleteResource, patchResource, applyManifest, getPodLogsUrl, CONFIRM_DESTRUCTIVE_HEADER, getCronJobJobs } from '@/services/backendApiClient';
+import { notifyError, notifySuccess } from '@/lib/notificationFormatter';
 import yamlParser from 'js-yaml';
 import { useProjectStore } from '@/stores/projectStore';
 import { toast } from 'sonner';
@@ -39,6 +40,7 @@ export interface ResourceList<T> {
     continue?: string;
     resourceVersion?: string;
     remainingItemCount?: number;
+    total?: number;
   };
 }
 
@@ -489,10 +491,16 @@ export function useCreateK8sResource(resourceType: ResourceType) {
       if (clusterId) {
         queryClient.invalidateQueries({ queryKey: ['backend', 'resources', clusterId, resourceType] });
       }
-      toast.success(`${resourceType} created successfully`);
+      notifySuccess({
+        action: 'create',
+        resourceType,
+      });
     },
     onError: (error: Error) => {
-      toast.error(`Failed to create ${resourceType}: ${error.message}`);
+      notifyError(error, {
+        action: 'create',
+        resourceType,
+      });
     },
   });
 }
@@ -524,10 +532,16 @@ export function useUpdateK8sResource(resourceType: ResourceType) {
         queryClient.invalidateQueries({ queryKey: ['backend', 'resource', clusterId, resourceType] });
         queryClient.invalidateQueries({ queryKey: ['backend', 'resources', clusterId, resourceType] });
       }
-      toast.success(`${resourceType} updated successfully`);
+      notifySuccess({
+        action: 'update',
+        resourceType,
+      });
     },
     onError: (error: Error) => {
-      toast.error(`Failed to update ${resourceType}: ${error.message}`);
+      notifyError(error, {
+        action: 'update',
+        resourceType,
+      });
     },
   });
 }
@@ -603,10 +617,16 @@ export function useDeleteK8sResource(resourceType: ResourceType) {
       if (clusterId) {
         queryClient.invalidateQueries({ queryKey: ['backend', 'resources', clusterId, resourceType] });
       }
-      toast.success(`${resourceType} deleted successfully`);
+      notifySuccess({
+        action: 'delete',
+        resourceType,
+      });
     },
     onError: (error: Error) => {
-      toast.error(`Failed to delete ${resourceType}: ${error.message}`);
+      notifyError(error, {
+        action: 'delete',
+        resourceType,
+      });
     },
   });
 }
@@ -622,11 +642,17 @@ export function useTestK8sConnection() {
     },
     onSuccess: () => {
       setConnected(true);
-      toast.success('Connected to Kubernetes cluster');
+      notifySuccess({
+        action: 'connect',
+        resourceType: 'cluster',
+      }, { description: 'Kubernetes API is reachable.' });
     },
     onError: (error: Error) => {
       setConnected(false);
-      toast.error(`Connection failed: ${error.message}`);
+      notifyError(error, {
+        action: 'connect',
+        resourceType: 'cluster',
+      });
     },
   });
 }

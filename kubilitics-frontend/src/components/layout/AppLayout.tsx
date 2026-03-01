@@ -40,6 +40,9 @@ export function AppLayout() {
       const inInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
       if (inInput) return;
 
+      // Don't intercept keys when the shell/terminal panel has focus (xterm.js canvas)
+      if (target.closest('[data-shell-panel]') || target.closest('.xterm')) return;
+
       if (e.key === 'g' && !e.metaKey && !e.ctrlKey && !e.altKey) {
         gPendingRef.current = true;
         if (gTimeoutRef.current) clearTimeout(gTimeoutRef.current);

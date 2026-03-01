@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import { Bell, Search, RefreshCw, MoreHorizontal, Loader2, WifiOff, ChevronDown, CheckCircle2, AlertTriangle, XCircle, ExternalLink } from 'lucide-react';
@@ -146,7 +146,7 @@ export default function Events() {
   const [searchQuery, setSearchQuery] = useState('');
   const [showTableFilters, setShowTableFilters] = useState(false);
   const [autoRefresh, setAutoRefresh] = useState(false);
-  const [pageSize, setPageSize] = useState(20);
+  const [pageSize, setPageSize] = useState(10);
   const [pageIndex, setPageIndex] = useState(0);
 
   const nsParam = namespaceFilter === 'all' ? '*' : namespaceFilter;
@@ -192,8 +192,15 @@ export default function Events() {
     []
   );
 
-  const { filteredAndSortedItems: filteredRows, distinctValuesByColumn, valueCountsByColumn, columnFilters, setColumnFilter, sortKey, sortOrder, setSort, clearAllFilters, hasActiveFilters } = useTableFiltersAndSort(searchFiltered, { columns: tableConfig, defaultSortKey: 'lastSeen', defaultSortOrder: 'desc' });
+  const { filteredAndSortedItems: filteredRows, distinctValuesByColumn, valueCountsByColumn, columnFilters, setColumnFilter: setColumnFilterRaw, sortKey, sortOrder, setSort, clearAllFilters: clearAllFiltersRaw, hasActiveFilters } = useTableFiltersAndSort(searchFiltered, { columns: tableConfig, defaultSortKey: 'lastSeen', defaultSortOrder: 'desc' });
   const columnVisibility = useColumnVisibility({ tableId: 'events', columns: EVENTS_COLUMNS_FOR_VISIBILITY, alwaysVisible: ['type'] });
+
+  // Wrap filter setters to reset page index on any filter change
+  const setColumnFilter = useCallback((...args: Parameters<typeof setColumnFilterRaw>) => { setPageIndex(0); setColumnFilterRaw(...args); }, [setColumnFilterRaw]);
+  const clearAllFilters = useCallback(() => { setPageIndex(0); clearAllFiltersRaw(); }, [clearAllFiltersRaw]);
+
+  // Reset page index when search or namespace changes
+  useEffect(() => { setPageIndex(0); }, [searchQuery, namespaceFilter]);
 
   const typeFilterActive = columnFilters.type != null && columnFilters.type.size > 0;
   const typeFilterValue = typeFilterActive && columnFilters.type!.size === 1 ? Array.from(columnFilters.type!)[0] as 'Normal' | 'Warning' | 'Error' : 'all';
@@ -207,16 +214,31 @@ export default function Events() {
     return { total, warning, errors, resourcesAffected };
   }, [rawRows]);
 
-  /* Pagination removed for virtualization, but kept compatible object for UI */
+  // Real pagination over filteredRows
+  const totalPages = Math.max(1, Math.ceil(filteredRows.length / pageSize));
+  // Clamp pageIndex if filters reduce the total pages
+  const safePageIndex = Math.min(pageIndex, totalPages - 1);
+  if (safePageIndex !== pageIndex) setPageIndex(safePageIndex);
+
+  const paginatedRows = useMemo(() => {
+    const start = safePageIndex * pageSize;
+    return filteredRows.slice(start, start + pageSize);
+  }, [filteredRows, safePageIndex, pageSize]);
+
+  const rangeStart = safePageIndex * pageSize + 1;
+  const rangeEnd = Math.min((safePageIndex + 1) * pageSize, filteredRows.length);
+
   const pagination = {
-    rangeLabel: `${filteredRows.length} events`,
-    hasPrev: false,
-    hasNext: false,
-    onPrev: () => { },
-    onNext: () => { },
-    currentPage: 1,
-    totalPages: 1,
-    onPageChange: () => { },
+    rangeLabel: filteredRows.length === 0
+      ? '0 events'
+      : `${rangeStart}–${rangeEnd} of ${filteredRows.length} events`,
+    hasPrev: safePageIndex > 0,
+    hasNext: safePageIndex < totalPages - 1,
+    onPrev: () => setPageIndex((p) => Math.max(0, p - 1)),
+    onNext: () => setPageIndex((p) => Math.min(totalPages - 1, p + 1)),
+    currentPage: safePageIndex + 1,
+    totalPages,
+    onPageChange: (page: number) => setPageIndex(page - 1),
     dataUpdatedAt: eventsQuery.dataUpdatedAt,
     isFetching: eventsQuery.isFetching,
   };
@@ -367,7 +389,7 @@ export default function Events() {
                   )}
                 </TableHeader>
                 <VirtualTableBody
-                  data={filteredRows}
+                  data={paginatedRows}
                   tableContainerRef={tableContainerRef}
                   rowHeight={48}
                   renderRow={(ev) => {

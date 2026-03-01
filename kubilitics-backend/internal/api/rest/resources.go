@@ -23,6 +23,33 @@ import (
 
 const maxNamespacesParam = 20
 
+// respondK8sError maps Kubernetes API errors to structured HTTP error responses
+// with proper status codes, error codes, and request IDs.
+func respondK8sError(w http.ResponseWriter, err error, requestID string) {
+	if errors.Is(err, k8s.ErrCircuitOpen) {
+		w.Header().Set("Retry-After", "30")
+		respondErrorWithCode(w, http.StatusServiceUnavailable, ErrCodeCircuitBreaker, "Cluster API is temporarily unavailable due to repeated failures. Circuit breaker is open. Please retry after 30 seconds.", requestID)
+		return
+	}
+	if errors.Is(err, context.DeadlineExceeded) {
+		respondErrorWithCode(w, http.StatusGatewayTimeout, ErrCodeTimeout, "Request to Kubernetes API timed out. The cluster may be slow or overloaded.", requestID)
+		return
+	}
+	if apierrors.IsNotFound(err) {
+		respondErrorWithCode(w, http.StatusNotFound, ErrCodeNotFound, err.Error(), requestID)
+		return
+	}
+	if apierrors.IsForbidden(err) {
+		respondErrorWithCode(w, http.StatusForbidden, ErrCodeForbidden, err.Error(), requestID)
+		return
+	}
+	if apierrors.IsConflict(err) || apierrors.IsAlreadyExists(err) {
+		respondErrorWithCode(w, http.StatusConflict, ErrCodeConflict, err.Error(), requestID)
+		return
+	}
+	respondErrorWithCode(w, http.StatusInternalServerError, ErrCodeInternalError, err.Error(), requestID)
+}
+
 // DestructiveConfirmHeader (D1.2): clients must send this for DELETE resource and POST /apply.
 const DestructiveConfirmHeader = "X-Confirm-Destructive"
 
@@ -140,6 +167,10 @@ func (h *Handler) ListResources(w http.ResponseWriter, r *http.Request) {
 			}
 			merged.Items = append(merged.Items, part.Items...)
 		}
+		// Truncate to requested limit to avoid returning more items than requested.
+		if int64(len(merged.Items)) > opts.Limit {
+			merged.Items = merged.Items[:opts.Limit]
+		}
 		list = merged
 	} else {
 		list, err = client.ListResources(r.Context(), kind, namespace, opts)
@@ -232,19 +263,8 @@ func (h *Handler) GetResource(w http.ResponseWriter, r *http.Request) {
 
 	obj, err := client.GetResource(r.Context(), kind, namespace, name)
 	if err != nil {
-		if errors.Is(err, context.DeadlineExceeded) {
-			respondError(w, http.StatusGatewayTimeout, "Request to Kubernetes API timed out. The cluster may be slow or overloaded.")
-			return
-		}
-		if apierrors.IsNotFound(err) {
-			respondError(w, http.StatusNotFound, err.Error())
-			return
-		}
-		if apierrors.IsForbidden(err) {
-			respondError(w, http.StatusForbidden, err.Error())
-			return
-		}
-		respondError(w, http.StatusInternalServerError, err.Error())
+		requestID := logger.FromContext(r.Context())
+		respondK8sError(w, err, requestID)
 		return
 	}
 
@@ -284,38 +304,32 @@ func (h *Handler) PatchResource(w http.ResponseWriter, r *http.Request) {
 
 	r.Body = http.MaxBytesReader(w, r.Body, 64*1024)
 	var patch map[string]interface{}
+	requestID := logger.FromContext(r.Context())
 	if err := json.NewDecoder(r.Body).Decode(&patch); err != nil {
-		respondError(w, http.StatusBadRequest, "Invalid JSON patch body")
+		respondErrorWithCode(w, http.StatusBadRequest, ErrCodeInvalidRequest, "Invalid JSON patch body", requestID)
 		return
 	}
 	if len(patch) == 0 {
-		respondError(w, http.StatusBadRequest, "Patch body is required")
+		respondErrorWithCode(w, http.StatusBadRequest, ErrCodeInvalidRequest, "Patch body is required", requestID)
 		return
+	}
+
+	// BE-DATA-001: log dangerous pod/container settings in PATCH body (hostPID, privileged, hostNetwork)
+	dangerousWarnings := validate.PatchJSONDangerousWarnings(patch)
+	for _, w := range dangerousWarnings {
+		log.Printf("[patch] security warning: cluster=%s kind=%s ns=%s name=%s %s", clusterID, kind, namespace, name, w)
 	}
 
 	patchBytes, err := json.Marshal(patch)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "Failed to encode patch")
+		respondErrorWithCode(w, http.StatusInternalServerError, ErrCodeInternalError, "Failed to encode patch", requestID)
 		return
 	}
 
 	obj, err := client.PatchResource(r.Context(), kind, namespace, name, patchBytes)
-	requestID := logger.FromContext(r.Context())
 	if err != nil {
 		audit.LogMutation(requestID, clusterID, "patch", kind, namespace, name, "failure", err.Error())
-		if errors.Is(err, context.DeadlineExceeded) {
-			respondError(w, http.StatusGatewayTimeout, "Request to Kubernetes API timed out. The cluster may be slow or overloaded.")
-			return
-		}
-		if apierrors.IsNotFound(err) {
-			respondError(w, http.StatusNotFound, err.Error())
-			return
-		}
-		if apierrors.IsForbidden(err) {
-			respondError(w, http.StatusForbidden, err.Error())
-			return
-		}
-		respondError(w, http.StatusInternalServerError, err.Error())
+		respondK8sError(w, err, requestID)
 		return
 	}
 	audit.LogMutation(requestID, clusterID, "patch", kind, namespace, name, "success", "")
@@ -323,14 +337,19 @@ func (h *Handler) PatchResource(w http.ResponseWriter, r *http.Request) {
 	if redact.IsSecretKind(kind) {
 		redact.SecretData(payload)
 	}
-	respondJSON(w, http.StatusOK, payload)
+	result := map[string]interface{}{"resource": payload}
+	if len(dangerousWarnings) > 0 {
+		result["warnings"] = dangerousWarnings
+	}
+	respondJSON(w, http.StatusOK, result)
 }
 
 // DeleteResource handles DELETE /clusters/{clusterId}/resources/{kind}/{namespace}/{name}
 // For cluster-scoped resources use namespace "-" or "_" in the path.
 func (h *Handler) DeleteResource(w http.ResponseWriter, r *http.Request) {
-	if r.Header.Get(DestructiveConfirmHeader) != "true" {
-		respondError(w, http.StatusBadRequest, "Destructive action requires X-Confirm-Destructive: true")
+	requestID := logger.FromContext(r.Context())
+	if !strings.EqualFold(r.Header.Get(DestructiveConfirmHeader), "true") {
+		respondErrorWithCode(w, http.StatusBadRequest, ErrCodeInvalidRequest, "Destructive action requires X-Confirm-Destructive: true", requestID)
 		return
 	}
 
@@ -344,7 +363,6 @@ func (h *Handler) DeleteResource(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if !validate.ClusterID(clusterID) || !validate.Kind(kind) || !validate.Namespace(namespace) || !validate.Name(name) {
-		requestID := logger.FromContext(r.Context())
 		respondErrorWithCode(w, http.StatusBadRequest, ErrCodeInvalidRequest, "Invalid clusterId, kind, namespace, or name", requestID)
 		return
 	}
@@ -352,32 +370,17 @@ func (h *Handler) DeleteResource(w http.ResponseWriter, r *http.Request) {
 	// Headlamp/Lens model: try kubeconfig from request first, fall back to stored cluster
 	client, err := h.getClientFromRequest(r.Context(), r, clusterID, h.cfg)
 	if err != nil {
-		requestID := logger.FromContext(r.Context())
 		respondErrorWithCode(w, http.StatusNotFound, ErrCodeNotFound, err.Error(), requestID)
 		return
 	}
 
 	opts := metav1.DeleteOptions{}
 	if err := client.DeleteResource(r.Context(), kind, namespace, name, opts); err != nil {
-		requestID := logger.FromContext(r.Context())
 		audit.LogDelete(requestID, clusterID, kind, namespace, name, "failure", err.Error())
-		if errors.Is(err, context.DeadlineExceeded) {
-			respondError(w, http.StatusGatewayTimeout, "Request to Kubernetes API timed out. The cluster may be slow or overloaded.")
-			return
-		}
-		if apierrors.IsNotFound(err) {
-			respondError(w, http.StatusNotFound, err.Error())
-			return
-		}
-		if apierrors.IsForbidden(err) {
-			respondError(w, http.StatusForbidden, err.Error())
-			return
-		}
-		respondError(w, http.StatusInternalServerError, err.Error())
+		respondK8sError(w, err, requestID)
 		return
 	}
 
-	requestID := logger.FromContext(r.Context())
 	audit.LogDelete(requestID, clusterID, kind, namespace, name, "success", "")
 
 	respondJSON(w, http.StatusOK, map[string]interface{}{
@@ -391,8 +394,9 @@ func (h *Handler) DeleteResource(w http.ResponseWriter, r *http.Request) {
 
 // ApplyManifest handles POST /clusters/{clusterId}/apply
 func (h *Handler) ApplyManifest(w http.ResponseWriter, r *http.Request) {
-	if r.Header.Get(DestructiveConfirmHeader) != "true" {
-		respondError(w, http.StatusBadRequest, "Apply requires X-Confirm-Destructive: true (review YAML before applying)")
+	requestID := logger.FromContext(r.Context())
+	if !strings.EqualFold(r.Header.Get(DestructiveConfirmHeader), "true") {
+		respondErrorWithCode(w, http.StatusBadRequest, ErrCodeInvalidRequest, "Apply requires X-Confirm-Destructive: true (review YAML before applying)", requestID)
 		return
 	}
 
@@ -400,7 +404,7 @@ func (h *Handler) ApplyManifest(w http.ResponseWriter, r *http.Request) {
 	clusterID := vars["clusterId"]
 
 	if !validate.ClusterID(clusterID) {
-		respondError(w, http.StatusBadRequest, "Invalid clusterId")
+		respondErrorWithCode(w, http.StatusBadRequest, ErrCodeInvalidRequest, "Invalid clusterId", requestID)
 		return
 	}
 
@@ -408,62 +412,42 @@ func (h *Handler) ApplyManifest(w http.ResponseWriter, r *http.Request) {
 		YAML string `json:"yaml"`
 	}
 
-	// Limit body size (D1.2): use a limited reader if config set
-	maxBytes := 512 * 1024 // 512KB default
-	if h.cfg != nil && h.cfg.ApplyMaxYAMLBytes > 0 {
-		maxBytes = h.cfg.ApplyMaxYAMLBytes
-	}
-	r.Body = http.MaxBytesReader(w, r.Body, int64(maxBytes))
-
+	// Body size is enforced by the MaxBodySize middleware (5MB for /apply routes).
+	// No duplicate MaxBytesReader here — the middleware already wraps r.Body.
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		var maxBytesErr *http.MaxBytesError
 		if errors.As(err, &maxBytesErr) {
-			respondError(w, http.StatusRequestEntityTooLarge, "Request entity too large")
+			respondErrorWithCode(w, http.StatusRequestEntityTooLarge, ErrCodePayloadTooLarge, "Request entity too large", requestID)
 			return
 		}
-		respondError(w, http.StatusBadRequest, "Invalid request body")
+		respondErrorWithCode(w, http.StatusBadRequest, ErrCodeInvalidRequest, "Invalid request body", requestID)
 		return
 	}
 
 	if req.YAML == "" {
-		respondError(w, http.StatusBadRequest, "YAML content is required")
+		respondErrorWithCode(w, http.StatusBadRequest, ErrCodeInvalidRequest, "YAML content is required", requestID)
 		return
 	}
 
 	// BE-DATA-001: log dangerous pod/container settings (hostPID, privileged, hostNetwork)
-	for _, w := range validate.ApplyYAMLDangerousWarnings(req.YAML) {
+	dangerousWarnings := validate.ApplyYAMLDangerousWarnings(req.YAML)
+	for _, w := range dangerousWarnings {
 		log.Printf("[apply] security warning: %s", w)
 	}
 
 	// Headlamp/Lens model: try kubeconfig from request first, fall back to stored cluster
 	client, err := h.getClientFromRequest(r.Context(), r, clusterID, h.cfg)
 	if err != nil {
-		requestID := logger.FromContext(r.Context())
 		respondErrorWithCode(w, http.StatusNotFound, ErrCodeNotFound, err.Error(), requestID)
 		return
 	}
 
 	applied, err := client.ApplyYAML(r.Context(), req.YAML)
 	if err != nil {
-		requestID := logger.FromContext(r.Context())
 		audit.LogApply(requestID, clusterID, "failure", err.Error(), nil)
-		if errors.Is(err, context.DeadlineExceeded) {
-			respondError(w, http.StatusGatewayTimeout, "Request to Kubernetes API timed out. The cluster may be slow or overloaded.")
-			return
-		}
-		if apierrors.IsNotFound(err) {
-			respondError(w, http.StatusNotFound, err.Error())
-			return
-		}
-		if apierrors.IsForbidden(err) {
-			respondError(w, http.StatusForbidden, err.Error())
-			return
-		}
-		respondError(w, http.StatusInternalServerError, err.Error())
+		respondK8sError(w, err, requestID)
 		return
 	}
-
-	requestID := logger.FromContext(r.Context())
 	resources := make([]audit.AppliedResource, len(applied))
 	for i := range applied {
 		resources[i] = audit.AppliedResource{
@@ -475,11 +459,15 @@ func (h *Handler) ApplyManifest(w http.ResponseWriter, r *http.Request) {
 	}
 	audit.LogApply(requestID, clusterID, "success", "", resources)
 
-	respondJSON(w, http.StatusOK, map[string]interface{}{
+	resp := map[string]interface{}{
 		"message":    "Manifest applied successfully",
 		"cluster_id": clusterID,
 		"resources":  applied,
-	})
+	}
+	if len(dangerousWarnings) > 0 {
+		resp["warnings"] = dangerousWarnings
+	}
+	respondJSON(w, http.StatusOK, resp)
 }
 
 // GetServiceEndpoints handles GET /clusters/{clusterId}/resources/services/{namespace}/{name}/endpoints.
@@ -506,19 +494,8 @@ func (h *Handler) GetServiceEndpoints(w http.ResponseWriter, r *http.Request) {
 
 	obj, err := client.GetResource(r.Context(), "endpoints", namespace, name)
 	if err != nil {
-		if errors.Is(err, context.DeadlineExceeded) {
-			respondError(w, http.StatusGatewayTimeout, "Request to Kubernetes API timed out. The cluster may be slow or overloaded.")
-			return
-		}
-		if apierrors.IsNotFound(err) {
-			respondError(w, http.StatusNotFound, err.Error())
-			return
-		}
-		if apierrors.IsForbidden(err) {
-			respondError(w, http.StatusForbidden, err.Error())
-			return
-		}
-		respondError(w, http.StatusInternalServerError, err.Error())
+		requestID := logger.FromContext(r.Context())
+		respondK8sError(w, err, requestID)
 		return
 	}
 

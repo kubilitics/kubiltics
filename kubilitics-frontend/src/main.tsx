@@ -19,8 +19,7 @@ createRoot(document.getElementById("root")!).render(
 );
 
 // FIX TASK-033: reportWebVitals was being called twice. Consolidated into a single
-// call that both logs to console and captures to ErrorTracker.
+// call that captures to ErrorTracker.
 reportWebVitals((metric) => {
-  console.log(metric);
   ErrorTracker.captureMetric(metric);
 });

@@ -23,10 +23,11 @@ type OverviewCounts struct {
 }
 
 type OverviewPodStatus struct {
-	Running   int `json:"running"`
-	Pending   int `json:"pending"`
-	Failed    int `json:"failed"`
-	Succeeded int `json:"succeeded"`
+	Running       int `json:"running"`
+	Pending       int `json:"pending"`
+	Failed        int `json:"failed"`
+	Succeeded     int `json:"succeeded"`
+	TotalRestarts int `json:"total_restarts"`
 }
 
 type OverviewAlerts struct {

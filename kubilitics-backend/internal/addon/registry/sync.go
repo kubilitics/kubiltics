@@ -10,9 +10,9 @@ import (
 )
 
 const (
-	syncPageSize    = 100
+	syncPageSize    = 60  // Artifact Hub API enforces 0 < limit <= 60
 	syncRateLimit   = 1 * time.Second
-	syncMaxPages    = 250 // cap at 25k packages per run to avoid unbounded runs
+	syncMaxPages    = 420 // cap at ~25k packages per run to avoid unbounded runs
 )
 
 // SyncArtifactHub paginates the Artifact Hub packages search API and upserts

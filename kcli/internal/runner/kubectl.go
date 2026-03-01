@@ -2,6 +2,7 @@ package runner
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -16,10 +17,36 @@ import (
 	"github.com/kubilitics/kcli/internal/terminal"
 )
 
+// KubectlError wraps a kubectl exit error with the captured stderr content,
+// enabling callers to programmatically inspect error messages from kubectl
+// (e.g. "error: the server doesn't have a resource type ...").
+type KubectlError struct {
+	Args     []string // kubectl args that were executed
+	ExitCode int      // process exit code (non-zero)
+	Stderr   string   // captured stderr output (trimmed)
+}
+
+func (e *KubectlError) Error() string {
+	if e.Stderr != "" {
+		return fmt.Sprintf("kubectl %s failed (exit %d): %s", strings.Join(e.Args, " "), e.ExitCode, e.Stderr)
+	}
+	return fmt.Sprintf("kubectl %s failed (exit %d)", strings.Join(e.Args, " "), e.ExitCode)
+}
+
+func (e *KubectlError) Unwrap() error {
+	return fmt.Errorf("exit status %d", e.ExitCode)
+}
+
 // MinKubectlMajor and MinKubectlMinor define the minimum recommended kubectl client version.
 // Older versions may trigger a warning (no hard failure).
 const MinKubectlMajor = 1
 const MinKubectlMinor = 28
+
+// defaultKubectlTimeout is the maximum wall-clock time for non-streaming kubectl commands.
+// Streaming/interactive commands (exec, attach, port-forward, proxy, edit, logs -f) are
+// exempt and run without a timeout. This prevents hung kubectl processes from blocking
+// kcli indefinitely when the kube-apiserver is unreachable.
+const defaultKubectlTimeout = 5 * time.Minute
 
 type ExecOptions struct {
 	Force  bool
@@ -39,6 +66,7 @@ var mutatingVerbs = map[string]struct{}{
 	"apply": {}, "delete": {}, "edit": {}, "patch": {}, "replace": {},
 	"create": {}, "run": {}, "drain": {}, "taint": {}, "set": {}, "expose": {},
 	"rollout": {}, "scale": {}, "autoscale": {}, "label": {}, "annotate": {},
+	"cp": {}, // file copy to/from containers — tracked in audit log
 }
 
 var (
@@ -46,23 +74,56 @@ var (
 	kubectlCheckErr  error
 )
 
-// kubectlEnv returns the environment for kubectl child process.
-// P2-10: When ColorDisabled (e.g. Windows cmd.exe), sets TERM=dumb so kubectl outputs plain text.
+// sensitiveEnvPrefixes lists environment variable prefixes that must NOT be
+// forwarded to kubectl child processes. These typically contain cloud provider
+// secrets that kubectl does not need (it uses KUBECONFIG instead).
+var sensitiveEnvPrefixes = []string{
+	"AWS_SECRET_ACCESS_KEY=",
+	"AWS_SESSION_TOKEN=",
+	"GOOGLE_APPLICATION_CREDENTIALS=",
+	"AZURE_CLIENT_SECRET=",
+	"AZURE_TENANT_ID=",
+	"AZURE_CLIENT_ID=",
+	"GITHUB_TOKEN=",
+	"GH_TOKEN=",
+	"GITLAB_TOKEN=",
+	"NPM_TOKEN=",
+	"DOCKER_PASSWORD=",
+	"REGISTRY_PASSWORD=",
+}
+
+// kubectlEnv returns a filtered environment for kubectl child processes.
+// Strips sensitive cloud/CI credentials that kubectl doesn't need, and
+// when ColorDisabled (e.g. Windows cmd.exe), sets TERM=dumb.
 func kubectlEnv() []string {
 	env := os.Environ()
-	if !terminal.ColorDisabled() {
-		return env
-	}
-	// Override TERM so kubectl does not emit ANSI codes
-	out := make([]string, 0, len(env)+1)
-	prefix := "TERM="
+	out := make([]string, 0, len(env))
+	colorDisabled := terminal.ColorDisabled()
 	for _, e := range env {
-		if !strings.HasPrefix(e, prefix) {
-			out = append(out, e)
+		// Filter TERM when color is disabled
+		if colorDisabled && strings.HasPrefix(e, "TERM=") {
+			continue
+		}
+		// Filter sensitive credentials
+		if isSensitiveEnv(e) {
+			continue
+		}
+		out = append(out, e)
+	}
+	if colorDisabled {
+		out = append(out, "TERM=dumb")
+	}
+	return out
+}
+
+// isSensitiveEnv returns true if the env var matches a known sensitive prefix.
+func isSensitiveEnv(envVar string) bool {
+	for _, p := range sensitiveEnvPrefixes {
+		if strings.HasPrefix(envVar, p) {
+			return true
 		}
 	}
-	out = append(out, "TERM=dumb")
-	return out
+	return false
 }
 
 // getKubectlBinary returns the kubectl binary path (from KCLI_KUBECTL_PATH env or "kubectl").
@@ -85,6 +146,24 @@ func ensureKubectlAvailable() error {
 	return kubectlCheckErr
 }
 
+// isStreamingCommand returns true for kubectl commands that are long-lived or interactive
+// and should NOT have a default timeout applied.
+func isStreamingCommand(args []string) bool {
+	verb := firstVerb(args)
+	switch verb {
+	case "exec", "attach", "port-forward", "proxy", "edit":
+		return true
+	case "logs":
+		// kubectl logs -f / --follow is streaming
+		for _, a := range args {
+			if a == "-f" || a == "--follow" || strings.HasPrefix(a, "--follow=") {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 func RunKubectl(args []string, opts ExecOptions) error {
 	if len(args) == 0 {
 		return fmt.Errorf("no kubectl command provided")
@@ -104,7 +183,21 @@ func RunKubectl(args []string, opts ExecOptions) error {
 			return fmt.Errorf("aborted")
 		}
 	}
-	cmd := exec.Command(getKubectlBinary(), args...)
+	// Use exec.CommandContext with a default timeout for non-streaming commands
+	// to prevent hung kubectl processes when the kube-apiserver is unreachable.
+	// Streaming/interactive commands run without timeout.
+	var cmd *exec.Cmd
+	var cancel context.CancelFunc
+	if isStreamingCommand(args) {
+		cmd = exec.Command(getKubectlBinary(), args...)
+	} else {
+		var ctx context.Context
+		ctx, cancel = context.WithTimeout(context.Background(), defaultKubectlTimeout)
+		cmd = exec.CommandContext(ctx, getKubectlBinary(), args...)
+	}
+	if cancel != nil {
+		defer cancel()
+	}
 	cmd.Env = kubectlEnv()
 	stdin := opts.Stdin
 	if stdin == nil {
@@ -120,14 +213,25 @@ func RunKubectl(args []string, opts ExecOptions) error {
 	}
 	cmd.Stdin = stdin
 	cmd.Stdout = stdout
-	cmd.Stderr = stderr
+
+	// P1-ERR: For non-mutating commands, capture stderr via MultiWriter so that
+	// (a) the user still sees real-time stderr output, and (b) on error we can
+	// wrap the captured content into a structured KubectlError.
+	// Mutating commands keep raw stderr flow for interactive feedback.
+	isMutating := isMutatingVerb(args)
+	var stderrBuf bytes.Buffer
+	if !isMutating {
+		cmd.Stderr = io.MultiWriter(stderr, &stderrBuf)
+	} else {
+		cmd.Stderr = stderr
+	}
 
 	// P2-5: Track timing for mutating verbs so we can write an audit record.
-	isMutating := opts.AuditFn != nil && isMutatingVerb(args)
+	wantAudit := opts.AuditFn != nil && isMutating
 	start := time.Now()
 	runErr := cmd.Run()
 
-	if isMutating {
+	if wantAudit {
 		exitCode := 0
 		if runErr != nil {
 			if ee, ok := runErr.(*exec.ExitError); ok {
@@ -137,6 +241,19 @@ func RunKubectl(args []string, opts ExecOptions) error {
 			}
 		}
 		opts.AuditFn(args, exitCode, time.Since(start).Milliseconds())
+	}
+
+	// P1-ERR: Wrap non-mutating command errors with captured stderr for structured handling.
+	if runErr != nil && !isMutating {
+		exitCode := 1
+		if ee, ok := runErr.(*exec.ExitError); ok {
+			exitCode = ee.ExitCode()
+		}
+		return &KubectlError{
+			Args:     args,
+			ExitCode: exitCode,
+			Stderr:   strings.TrimSpace(stderrBuf.String()),
+		}
 	}
 
 	return runErr
@@ -217,12 +334,11 @@ func RunKubectlContext(ctx context.Context, args []string, opts ExecOptions) err
 }
 
 func CaptureKubectl(args []string) (string, error) {
-	if err := ensureKubectlAvailable(); err != nil {
-		return "", fmt.Errorf("kubectl not available: %w", err)
-	}
-	cmd := exec.Command(getKubectlBinary(), args...)
-	b, err := cmd.CombinedOutput()
-	return string(b), err
+	// Delegate to CaptureKubectlCtx with a default timeout to prevent indefinite
+	// blocking when kube-apiserver is unreachable (P1: default context timeout).
+	ctx, cancel := context.WithTimeout(context.Background(), defaultKubectlTimeout)
+	defer cancel()
+	return CaptureKubectlCtx(ctx, args)
 }
 
 // CaptureKubectlCtx is like CaptureKubectl but kills the kubectl subprocess when
