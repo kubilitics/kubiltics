@@ -5,6 +5,27 @@ All notable changes to Kubilitics will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.1.2] - 2026-03-02
+
+### Fixed
+
+**Frontend UX**
+- Resource status cards: adaptive grid layout that fills rows evenly (3-10 cards)
+- Resource status cards: truncate long values (UUIDs, PVC names) with tooltip on hover
+- Resource status cards: uniform card heights across all resolutions
+- Resource status cards: monospace font auto-applied to technical values
+- Resource status cards: uppercase label hierarchy for better scannability
+- Topology overlays: all 6 overlay types (Health, Cost, Security, Performance, Dependency, Traffic) wired in per-resource topology views
+- Topology export: loading toast feedback (toast.loading → toast.success/error) for all export formats
+- Topology overlay legend panel with color scale and metadata stats
+- Toasts in Tauri desktop: removed `next-themes` dependency (no ThemeProvider in tree caused silent failures in WKWebView)
+- Toasts in Tauri desktop: removed `backdrop-filter` CSS (known WKWebView rendering bug for fixed-position elements)
+- Toasts in Tauri desktop: added explicit z-index and pointer-events for portal visibility
+- CodeEditor: migrated from CodeMirror to Monaco Editor for YAML editing
+- YamlViewer: upgraded with diff view and multi-version support
+- HomePage: cluster card text overflow handling
+- AIAssistant: drag constraint boundaries
+
 ## [v0.1.1] - 2026-03-02
 
 ### Added

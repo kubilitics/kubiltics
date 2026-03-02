@@ -1,9 +1,10 @@
 import { useState, useCallback, useEffect } from 'react';
-import { Copy, Download, Edit3, CheckCircle2, AlertCircle, RotateCcw, Save, X } from 'lucide-react';
+import { Copy, Download, Edit3, CheckCircle2, AlertCircle, RotateCcw, Save, X, FileCode, Search, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Separator } from '@/components/ui/separator';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { CodeEditor } from '@/components/editor/CodeEditor';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -40,7 +41,6 @@ function validateYaml(yaml: string): YamlValidationError[] {
       errors.push({ line: 1, message: 'Missing required field: metadata' });
     }
   } catch (err: any) {
-    // Extract line number from js-yaml error if possible
     let line = 1;
     let message = 'Invalid YAML';
 
@@ -62,20 +62,21 @@ export function YamlViewer({ yaml, resourceName, editable = false, onSave, warni
   const [editedYaml, setEditedYaml] = useState(yaml);
   const [errors, setErrors] = useState<YamlValidationError[]>([]);
   const [isSaving, setIsSaving] = useState(false);
-  /** Bump to remount editable editor so it gets fresh value (e.g. after Reset). Avoids controlled sync overwriting typing. */
   const [editorKey, setEditorKey] = useState(0);
+  const [copied, setCopied] = useState(false);
 
-  // Sync editedYaml when parent yaml changes (e.g. after refetch) and we're not editing
   useEffect(() => {
     if (!isEditing) setEditedYaml(yaml);
   }, [yaml, isEditing]);
 
-  const handleCopy = () => {
+  const handleCopy = useCallback(() => {
     navigator.clipboard.writeText(isEditing ? editedYaml : yaml);
+    setCopied(true);
     toast.success('YAML copied to clipboard');
-  };
+    setTimeout(() => setCopied(false), 2000);
+  }, [isEditing, editedYaml, yaml]);
 
-  const handleDownload = () => {
+  const handleDownload = useCallback(() => {
     const content = isEditing ? editedYaml : yaml;
     const blob = new Blob([content], { type: 'text/yaml' });
     const url = URL.createObjectURL(blob);
@@ -86,8 +87,8 @@ export function YamlViewer({ yaml, resourceName, editable = false, onSave, warni
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    toast.success('YAML downloaded');
-  };
+    toast.success(`Downloaded ${resourceName}.yaml`);
+  }, [isEditing, editedYaml, yaml, resourceName]);
 
   const handleEdit = () => {
     setEditedYaml(yaml);
@@ -105,7 +106,7 @@ export function YamlViewer({ yaml, resourceName, editable = false, onSave, warni
   const handleReset = () => {
     setEditedYaml(yaml);
     setErrors([]);
-    setEditorKey((k) => k + 1); // Remount editor so it shows original yaml
+    setEditorKey((k) => k + 1);
   };
 
   const handleYamlChange = useCallback((value: string) => {
@@ -131,110 +132,174 @@ export function YamlViewer({ yaml, resourceName, editable = false, onSave, warni
 
   const isValid = errors.length === 0;
   const hasChanges = editedYaml !== yaml;
+  const lineCount = (isEditing ? editedYaml : yaml).split('\n').length;
 
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
-        <div className="space-y-1.5">
-          <CardTitle className="text-base">YAML Definition</CardTitle>
-          <CardDescription>
-            {isEditing ? 'Edit mode - make changes and apply' : 'View and edit the resource specification'}
-          </CardDescription>
-          {warning && <div className="text-sm text-muted-foreground pt-0.5">{warning}</div>}
-        </div>
-        <div className="flex items-center gap-2">
-          {isEditing ? (
+    <div className="rounded-xl border border-border bg-card overflow-hidden shadow-sm">
+      {/* ── VS Code-style title bar ── */}
+      <div className="flex items-center justify-between px-4 py-2.5 bg-[#f8fafc] border-b border-border/60">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="flex items-center gap-2">
+            <FileCode className="h-4 w-4 text-primary shrink-0" />
+            <span className="text-sm font-semibold text-foreground truncate">{resourceName}.yaml</span>
+          </div>
+          <Separator orientation="vertical" className="h-4" />
+          <span className="text-[11px] text-muted-foreground tabular-nums shrink-0">
+            {lineCount} lines
+          </span>
+          {isEditing && (
             <>
+              <Separator orientation="vertical" className="h-4" />
               {isValid ? (
-                <Badge variant="outline" className="gap-1.5 text-primary border-primary/30 bg-primary/5">
-                  <CheckCircle2 className="h-3.5 w-3.5" />
+                <Badge variant="outline" className="gap-1 h-5 text-[10px] font-semibold text-emerald-600 border-emerald-500/30 bg-emerald-500/5 px-1.5">
+                  <CheckCircle2 className="h-3 w-3" />
                   Valid
                 </Badge>
               ) : (
-                <Badge variant="outline" className="gap-1.5 text-destructive border-destructive/30 bg-destructive/5">
-                  <AlertCircle className="h-3.5 w-3.5" />
+                <Badge variant="outline" className="gap-1 h-5 text-[10px] font-semibold text-destructive border-destructive/30 bg-destructive/5 px-1.5">
+                  <AlertCircle className="h-3 w-3" />
                   {errors.length} error{errors.length > 1 ? 's' : ''}
                 </Badge>
               )}
-              <Button variant="ghost" size="sm" onClick={handleReset} disabled={!hasChanges} className="gap-1.5">
-                <RotateCcw className="h-3.5 w-3.5" />
-                Reset
-              </Button>
-              <Button variant="ghost" size="sm" onClick={handleCancel} className="gap-1.5">
-                <X className="h-3.5 w-3.5" />
-                Cancel
-              </Button>
-              <Button size="sm" onClick={handleSave} disabled={!isValid || !hasChanges || isSaving} className="gap-1.5">
-                <Save className="h-3.5 w-3.5" />
-                {isSaving ? 'Saving...' : 'Apply'}
-              </Button>
-            </>
-          ) : (
-            <>
-              <Button variant="outline" size="sm" className="gap-1.5" onClick={handleCopy}>
-                <Copy className="h-3.5 w-3.5" />
-                Copy
-              </Button>
-              <Button variant="outline" size="sm" className="gap-1.5" onClick={handleDownload}>
-                <Download className="h-3.5 w-3.5" />
-                Download
-              </Button>
-              {editable && onSave && (
-                <Button variant="outline" size="sm" className="gap-1.5" onClick={handleEdit}>
-                  <Edit3 className="h-3.5 w-3.5" />
-                  Edit
-                </Button>
+              {hasChanges && (
+                <Badge variant="outline" className="h-5 text-[10px] font-semibold text-amber-600 border-amber-500/30 bg-amber-500/5 px-1.5">
+                  Modified
+                </Badge>
               )}
             </>
           )}
         </div>
-      </CardHeader>
-      <CardContent>
-        {isEditing ? (
-          <div className="flex gap-4">
-            <div className="flex-1">
-              <CodeEditor
-                key={`yaml-edit-${editorKey}`}
-                value={editedYaml}
-                onChange={handleYamlChange}
-                minHeight="500px"
-                className="rounded-lg"
-              />
-            </div>
 
-            {errors.length > 0 && (
-              <div className="w-56 shrink-0">
-                <div className="h-full rounded-lg border border-border bg-muted/30 p-3">
-                  <h4 className="font-medium text-sm mb-3 flex items-center gap-2">
-                    <AlertCircle className="h-4 w-4 text-destructive" />
-                    Errors
-                  </h4>
-                  <ScrollArea className="h-[460px]">
-                    <div className="space-y-2">
-                      {errors.map((error, i) => (
-                        <div
-                          key={i}
-                          className="p-2 rounded bg-destructive/5 border border-destructive/20 text-sm"
-                        >
-                          <div className="text-destructive font-medium text-xs">Line {error.line}</div>
-                          <p className="text-xs text-muted-foreground">{error.message}</p>
-                        </div>
-                      ))}
-                    </div>
-                  </ScrollArea>
-                </div>
-              </div>
-            )}
+        {/* ── Toolbar actions ── */}
+        <div className="flex items-center gap-1">
+          {isEditing ? (
+            <>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleReset} disabled={!hasChanges}>
+                    <RotateCcw className="h-3.5 w-3.5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">Reset changes</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleCancel}>
+                    <X className="h-3.5 w-3.5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">Cancel editing</TooltipContent>
+              </Tooltip>
+              <Separator orientation="vertical" className="h-4 mx-1" />
+              <Button
+                size="sm"
+                className="h-7 text-xs font-semibold gap-1.5 px-3 rounded-lg"
+                onClick={handleSave}
+                disabled={!isValid || !hasChanges || isSaving}
+              >
+                {isSaving ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : (
+                  <Save className="h-3 w-3" />
+                )}
+                {isSaving ? 'Applying…' : 'Apply Changes'}
+              </Button>
+            </>
+          ) : (
+            <>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleCopy}>
+                    {copied ? <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">{copied ? 'Copied!' : 'Copy YAML'}</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleDownload}>
+                    <Download className="h-3.5 w-3.5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">Download YAML</TooltipContent>
+              </Tooltip>
+              {editable && onSave && (
+                <>
+                  <Separator orientation="vertical" className="h-4 mx-1" />
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button variant="ghost" size="sm" className="h-7 text-xs font-medium gap-1.5 px-2.5" onClick={handleEdit}>
+                        <Edit3 className="h-3.5 w-3.5" />
+                        Edit
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom">Edit YAML definition</TooltipContent>
+                  </Tooltip>
+                </>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* ── Warning banner ── */}
+      {warning && (
+        <div className="px-4 py-2 text-xs text-muted-foreground bg-amber-500/5 border-b border-amber-500/20">
+          {warning}
+        </div>
+      )}
+
+      {/* ── Editor area ── */}
+      {isEditing ? (
+        <div className="flex">
+          <div className="flex-1 min-w-0">
+            <CodeEditor
+              key={`yaml-edit-${editorKey}`}
+              value={editedYaml}
+              onChange={handleYamlChange}
+              minHeight="600px"
+              className="rounded-none border-0"
+              fontSize="small"
+            />
           </div>
-        ) : (
-          <CodeEditor
-            value={yaml}
-            readOnly
-            minHeight="500px"
-            className="rounded-lg"
-          />
-        )}
-      </CardContent>
-    </Card>
+
+          {errors.length > 0 && (
+            <div className="w-64 shrink-0 border-l border-border bg-[#fef2f2]">
+              <div className="px-3 py-2 border-b border-destructive/20 flex items-center gap-2">
+                <AlertCircle className="h-3.5 w-3.5 text-destructive shrink-0" />
+                <span className="text-xs font-semibold text-destructive">
+                  Problems ({errors.length})
+                </span>
+              </div>
+              <ScrollArea className="h-[560px]">
+                <div className="p-2 space-y-1.5">
+                  {errors.map((error, i) => (
+                    <div
+                      key={i}
+                      className="px-2.5 py-2 rounded-lg bg-white border border-destructive/15 cursor-pointer hover:border-destructive/30 transition-colors"
+                    >
+                      <div className="flex items-center gap-1.5 mb-0.5">
+                        <span className="text-[10px] font-mono font-bold text-destructive tabular-nums">
+                          Ln {error.line}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-foreground/70 leading-relaxed">{error.message}</p>
+                    </div>
+                  ))}
+                </div>
+              </ScrollArea>
+            </div>
+          )}
+        </div>
+      ) : (
+        <CodeEditor
+          value={yaml}
+          readOnly
+          minHeight="600px"
+          className="rounded-none border-0"
+          fontSize="small"
+        />
+      )}
+    </div>
   );
 }

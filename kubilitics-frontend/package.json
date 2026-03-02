@@ -1,7 +1,7 @@
 {
   "name": "kubilitics-frontend",
   "private": true,
-  "version": "0.1.1",
+  "version": "0.1.2",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -25,6 +25,7 @@
     "@codemirror/view": "^6.39.12",
     "@hookform/resolvers": "^3.10.0",
     "@lezer/highlight": "^1.2.3",
+    "@monaco-editor/react": "^4.7.0",
     "@radix-ui/react-accordion": "^1.2.11",
     "@radix-ui/react-alert-dialog": "^1.1.14",
     "@radix-ui/react-aspect-ratio": "^1.1.7",

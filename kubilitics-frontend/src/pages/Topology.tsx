@@ -104,6 +104,20 @@ const ALL_RELATIONSHIPS: RelationshipType[] = [
   'permits', 'limits', 'manages',
 ];
 
+// ── Overlay legend row ──
+function LegendRow({ color, label, range }: { color: string; label: string; range: string }) {
+  return (
+    <div className="flex items-center gap-2.5">
+      <div
+        className="h-2.5 w-2.5 rounded-full shrink-0 ring-2 ring-offset-1"
+        style={{ backgroundColor: color, ringColor: `${color}40` }}
+      />
+      <span className="text-[11px] font-medium text-foreground flex-1">{label}</span>
+      <span className="text-[10px] text-muted-foreground tabular-nums">{range}</span>
+    </div>
+  );
+}
+
 // Helper
 function n(partial: Omit<TopologyNode, 'label'>): TopologyNode {
   return { ...partial, label: partial.name };
@@ -464,52 +478,82 @@ export default function Topology() {
   const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured);
 
   const handleExport = useCallback((format: string) => {
-    if (format !== 'json' && format !== 'csv' && format !== 'pdf' && format !== 'drawio' && !canvasRef.current) return;
+    if (format !== 'json' && format !== 'csv' && format !== 'pdf' && format !== 'drawio' && !canvasRef.current) {
+      toast.error('Canvas not ready. Please wait for the topology to load.');
+      return;
+    }
+
+    const dateStr = new Date().toISOString().slice(0, 10);
+    const filename = `topology-${dateStr}`;
+
     if (format === 'drawio') {
       (async () => {
         if (!clusterId || !isBackendConfigured()) {
           toast.error('Connect backend and select a cluster to open topology in draw.io.');
           return;
         }
+        const exportToast = toast.loading('Exporting to draw.io…');
         try {
           const { url } = await getTopologyExportDrawio(effectiveBaseUrl, clusterId, { format: 'mermaid' });
           window.open(url, '_blank', 'noopener,noreferrer');
-          toast.success('Opened in draw.io');
+          toast.success('Opened in draw.io', { id: exportToast });
         } catch (e) {
-          toast.error(e instanceof Error ? e.message : 'Failed to export to draw.io');
+          toast.error(e instanceof Error ? e.message : 'Failed to export to draw.io', { id: exportToast });
         }
       })();
       return;
     }
-    switch (format) {
-      case 'svg': {
-        const data = canvasRef.current.exportAsSVG();
-        if (data) {
-          const blob = new Blob([data], { type: 'image/svg+xml' });
-          const url = URL.createObjectURL(blob);
-          const link = document.createElement('a');
-          link.download = `topology-${new Date().toISOString().slice(0, 10)}.svg`;
-          link.href = url; link.click(); URL.revokeObjectURL(url);
+
+    const exportToast = toast.loading(`Exporting ${format.toUpperCase()}…`);
+    try {
+      let exported = false;
+      switch (format) {
+        case 'svg': {
+          const data = canvasRef.current!.exportAsSVG();
+          if (data) {
+            const blob = new Blob([data], { type: 'image/svg+xml' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.download = `${filename}.svg`;
+            link.href = url; link.click(); URL.revokeObjectURL(url);
+            exported = true;
+          }
+          break;
         }
-        break;
-      }
-      case 'png': {
-        const data = canvasRef.current.exportAsPNG();
-        if (data) {
-          const link = document.createElement('a');
-          link.download = `topology-${new Date().toISOString().slice(0, 10)}.png`;
-          link.href = data; link.click();
+        case 'png': {
+          const data = canvasRef.current!.exportAsPNG();
+          if (data) {
+            const link = document.createElement('a');
+            link.download = `${filename}.png`;
+            link.href = data; link.click();
+            exported = true;
+          }
+          break;
         }
-        break;
+        case 'pdf': {
+          canvasRef.current?.exportAsPDF?.();
+          exported = true;
+          break;
+        }
+        case 'json': {
+          downloadJSON(filteredGraph, `${filename}.json`);
+          exported = true;
+          break;
+        }
+        case 'csv': {
+          downloadCSVSummary(filteredGraph);
+          exported = true;
+          break;
+        }
       }
-      case 'pdf': {
-        canvasRef.current?.exportAsPDF?.();
-        break;
+      if (exported) {
+        toast.success(`${format.toUpperCase()} exported — check your downloads`, { id: exportToast });
+      } else {
+        toast.error(`Export failed — no data available to export`, { id: exportToast });
       }
-      case 'json': downloadJSON(filteredGraph, `topology-${new Date().toISOString().slice(0, 10)}.json`); break;
-      case 'csv': downloadCSVSummary(filteredGraph); break;
+    } catch (err) {
+      toast.error(`Export failed: ${err instanceof Error ? err.message : 'Unknown error'}`, { id: exportToast });
     }
-    if (format !== 'drawio') toast.success(`Exported as ${format.toUpperCase()}`);
   }, [filteredGraph, clusterId, effectiveBaseUrl, isBackendConfigured]);
 
   const handleRefresh = useCallback(async () => {
@@ -911,6 +955,112 @@ export default function Topology() {
           overlayData={overlayDataForCanvas}
           className="h-full"
         />
+
+        {/* ── Overlay Legend (shown when an overlay is active) ── */}
+        {activeOverlay && overlayDataForCanvas && (
+          <div className="absolute top-3 left-3 z-20 bg-card/95 backdrop-blur-md rounded-xl border border-border shadow-lg px-4 py-3 min-w-[200px]">
+            <div className="flex items-center justify-between mb-2.5">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-foreground">
+                {OVERLAY_LABELS[activeOverlay]}
+              </h4>
+              <button
+                onClick={() => setActiveOverlay(null)}
+                className="text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+
+            {/* Color scale legend */}
+            <div className="space-y-1.5">
+              {activeOverlay === 'health' && (
+                <>
+                  <LegendRow color="#16A34A" label="Healthy" range="70–100" />
+                  <LegendRow color="#CA8A04" label="Warning" range="40–69" />
+                  <LegendRow color="#DC2626" label="Critical" range="0–39" />
+                </>
+              )}
+              {activeOverlay === 'cost' && (
+                <>
+                  <LegendRow color="#DC2626" label="Expensive" range="70–100" />
+                  <LegendRow color="#CA8A04" label="Moderate" range="40–69" />
+                  <LegendRow color="#16A34A" label="Efficient" range="0–39" />
+                </>
+              )}
+              {activeOverlay === 'security' && (
+                <>
+                  <LegendRow color="#16A34A" label="Secure" range="70–100" />
+                  <LegendRow color="#CA8A04" label="Moderate Risk" range="40–69" />
+                  <LegendRow color="#DC2626" label="Critical Risk" range="0–39" />
+                </>
+              )}
+              {activeOverlay === 'performance' && (
+                <>
+                  <LegendRow color="#DC2626" label="Overloaded" range="70–100" />
+                  <LegendRow color="#CA8A04" label="High Utilization" range="40–69" />
+                  <LegendRow color="#16A34A" label="Healthy" range="0–39" />
+                </>
+              )}
+              {activeOverlay === 'dependency' && (
+                <>
+                  <LegendRow color="#DC2626" label="Critical / SPOF" range="70–100" />
+                  <LegendRow color="#CA8A04" label="High Criticality" range="40–69" />
+                  <LegendRow color="#16A34A" label="Low Criticality" range="0–39" />
+                </>
+              )}
+              {activeOverlay === 'traffic' && (
+                <>
+                  <LegendRow color="#DC2626" label="Very High Traffic" range="70–100" />
+                  <LegendRow color="#CA8A04" label="Moderate Traffic" range="40–69" />
+                  <LegendRow color="#16A34A" label="Low Traffic" range="0–39" />
+                </>
+              )}
+            </div>
+
+            {/* Summary stats */}
+            {overlayDataForCanvas.metadata && (
+              <div className="mt-3 pt-2.5 border-t border-border/60">
+                <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+                  {overlayDataForCanvas.metadata.totalNodes != null && (
+                    <div className="text-[10px] text-muted-foreground">
+                      Total: <span className="font-semibold text-foreground">{overlayDataForCanvas.metadata.totalNodes}</span>
+                    </div>
+                  )}
+                  {overlayDataForCanvas.metadata.healthyNodes != null && (
+                    <div className="text-[10px] text-muted-foreground">
+                      Healthy: <span className="font-semibold text-emerald-600">{overlayDataForCanvas.metadata.healthyNodes}</span>
+                    </div>
+                  )}
+                  {overlayDataForCanvas.metadata.warningNodes != null && (
+                    <div className="text-[10px] text-muted-foreground">
+                      Warning: <span className="font-semibold text-amber-600">{overlayDataForCanvas.metadata.warningNodes}</span>
+                    </div>
+                  )}
+                  {overlayDataForCanvas.metadata.criticalNodes != null && (
+                    <div className="text-[10px] text-muted-foreground">
+                      Critical: <span className="font-semibold text-red-600">{overlayDataForCanvas.metadata.criticalNodes}</span>
+                    </div>
+                  )}
+                  {overlayDataForCanvas.metadata.criticalRiskNodes != null && (
+                    <div className="text-[10px] text-muted-foreground">
+                      At Risk: <span className="font-semibold text-red-600">{overlayDataForCanvas.metadata.criticalRiskNodes}</span>
+                    </div>
+                  )}
+                  {overlayDataForCanvas.metadata.singlePointsOfFailure != null && (
+                    <div className="text-[10px] text-muted-foreground">
+                      SPOFs: <span className="font-semibold text-red-600">{overlayDataForCanvas.metadata.singlePointsOfFailure}</span>
+                    </div>
+                  )}
+                  {overlayDataForCanvas.metadata.highTrafficNodes != null && (
+                    <div className="text-[10px] text-muted-foreground">
+                      Hot: <span className="font-semibold text-orange-600">{overlayDataForCanvas.metadata.highTrafficNodes}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Node hover tooltip */}
         {hoveredNode && createPortal(

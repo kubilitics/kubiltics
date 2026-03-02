@@ -1,146 +1,7 @@
-import { useEffect, useRef, useCallback } from 'react';
-import { EditorState, Extension, RangeSetBuilder } from '@codemirror/state';
-import {
-  EditorView, ViewPlugin, ViewUpdate, Decoration, DecorationSet,
-  keymap, lineNumbers, highlightActiveLineGutter, highlightSpecialChars,
-  drawSelection, dropCursor, rectangularSelection, crosshairCursor, highlightActiveLine,
-} from '@codemirror/view';
-import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands';
-import { yaml } from '@codemirror/lang-yaml';
-import { syntaxHighlighting, indentOnInput, bracketMatching, foldGutter, foldKeymap, HighlightStyle } from '@codemirror/language';
-import { tags } from '@lezer/highlight';
+import { useRef, useCallback } from 'react';
+import Editor, { type OnMount, type OnChange } from '@monaco-editor/react';
+import type * as monacoType from 'monaco-editor';
 import { cn } from '@/lib/utils';
-
-// ── Kubilitics editor theme ─────────────────────────────────────────────────────
-
-const createKubiliticsTheme = (fontSize: string) => EditorView.theme({
-  '&': {
-    height: '100%',
-    fontSize: fontSize,
-    backgroundColor: 'hsl(var(--background))',
-    color: 'hsl(var(--foreground))',
-  },
-  '.cm-content': {
-    caretColor: 'hsl(var(--primary))',
-    fontFamily: 'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace',
-    padding: '12px 0',
-  },
-  '.cm-cursor, .cm-dropCursor': {
-    borderLeftColor: 'hsl(var(--primary))',
-    borderLeftWidth: '2px',
-  },
-  '.cm-selectionBackground, .cm-content ::selection': {
-    backgroundColor: 'hsl(var(--primary) / 0.2)',
-  },
-  '.cm-activeLine': { backgroundColor: 'hsl(var(--muted) / 0.3)' },
-  '.cm-activeLineGutter': { backgroundColor: 'hsl(var(--muted) / 0.3)' },
-  '.cm-gutters': {
-    backgroundColor: 'hsl(var(--muted) / 0.3)',
-    color: 'hsl(var(--muted-foreground))',
-    border: 'none',
-    borderRight: '1px solid hsl(var(--border))',
-    paddingRight: '8px',
-  },
-  '.cm-lineNumbers .cm-gutterElement': {
-    padding: '0 8px 0 16px',
-    minWidth: '40px',
-    fontSize: '12px',
-  },
-  '.cm-foldGutter .cm-gutterElement': { padding: '0 4px', cursor: 'pointer' },
-  '.cm-foldPlaceholder': {
-    backgroundColor: 'hsl(var(--muted))',
-    color: 'hsl(var(--muted-foreground))',
-    border: 'none',
-    padding: '0 4px',
-    borderRadius: '4px',
-  },
-  '.cm-scroller': { overflow: 'auto', fontFamily: 'inherit' },
-  '.cm-matchingBracket': {
-    backgroundColor: 'hsl(var(--primary) / 0.3)',
-    outline: '1px solid hsl(var(--primary) / 0.5)',
-  },
-  // URL link decoration
-  '.cm-yaml-url': {
-    color: '#2563eb',
-    textDecoration: 'underline',
-    textDecorationColor: '#93c5fd',
-    cursor: 'pointer',
-  },
-  // YAML document separator ---
-  '.cm-yaml-doc-sep': {
-    color: '#7c3aed',
-    fontWeight: 'bold',
-  },
-});
-
-// ── Syntax highlight colours (One Light-inspired, readable on light & dark) ────
-//
-//  · YAML keys  (propertyName)  → bold dark-blue
-//  · String values              → green
-//  · Numbers / booleans         → amber/orange
-//  · Comments                   → gray italic
-//  · Anchors / aliases          → purple
-//  · Document separators ---    → purple (meta tag)
-
-const kubiliticsHighlightStyle = HighlightStyle.define([
-  // YAML mapping keys — the most important differentiation
-  { tag: tags.propertyName,                color: '#0550ae', fontWeight: '600' },
-  { tag: tags.attributeName,               color: '#0550ae', fontWeight: '600' },
-  // String values
-  { tag: tags.string,                      color: '#116329' },
-  { tag: tags.special(tags.string),        color: '#116329' },
-  { tag: tags.attributeValue,              color: '#116329' },
-  // Numbers, booleans, null
-  { tag: tags.number,                      color: '#953800', fontWeight: '600' },
-  { tag: tags.bool,                        color: '#953800', fontWeight: '600' },
-  { tag: tags.null,                        color: '#953800' },
-  { tag: tags.atom,                        color: '#953800' },
-  // Keywords (true / false / null as keywords in some YAML parsers)
-  { tag: tags.keyword,                     color: '#953800', fontWeight: '600' },
-  // Comments — muted gray italic
-  { tag: tags.comment,                     color: '#6e7781', fontStyle: 'italic' },
-  // YAML anchors (&anchor) and aliases (*alias)
-  { tag: tags.variableName,               color: '#6639ba' },
-  { tag: tags.definition(tags.variableName), color: '#6639ba', fontWeight: '600' },
-  // Document separator --- and other meta tokens
-  { tag: tags.meta,                        color: '#8250df', fontWeight: 'bold' },
-  { tag: tags.tagName,                     color: '#8250df' },
-  // Operators and punctuation (: - [ ] { })
-  { tag: tags.operator,                    color: '#6e7781' },
-  { tag: tags.punctuation,                 color: '#6e7781' },
-]);
-
-// ── URL highlight decoration ──────────────────────────────────────────────────
-// Scans visible ranges for http/https URLs and marks them with .cm-yaml-url
-
-const URL_RE = /https?:\/\/[^\s,'")\]>}\n]+/g;
-const urlMark = Decoration.mark({ class: 'cm-yaml-url' });
-
-function buildUrlDecorations(view: EditorView): DecorationSet {
-  const builder = new RangeSetBuilder<Decoration>();
-  for (const { from, to } of view.visibleRanges) {
-    const text = view.state.doc.sliceString(from, to);
-    URL_RE.lastIndex = 0;
-    let m: RegExpExecArray | null;
-    while ((m = URL_RE.exec(text)) !== null) {
-      builder.add(from + m.index, from + m.index + m[0].length, urlMark);
-    }
-  }
-  return builder.finish();
-}
-
-const urlHighlighter = ViewPlugin.fromClass(
-  class {
-    decorations: DecorationSet;
-    constructor(view: EditorView) { this.decorations = buildUrlDecorations(view); }
-    update(update: ViewUpdate) {
-      if (update.docChanged || update.viewportChanged) {
-        this.decorations = buildUrlDecorations(update.view);
-      }
-    }
-  },
-  { decorations: v => v.decorations },
-);
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
@@ -151,12 +12,12 @@ interface CodeEditorProps {
   className?: string;
   minHeight?: string;
   placeholder?: string;
-  extensions?: Extension[];
   fontSize?: 'small' | 'medium' | 'large';
+  /** @deprecated Ignored — extensions are CodeMirror-specific. */
+  extensions?: unknown[];
 }
 
-const EMPTY_EXTENSIONS: Extension[] = [];
-const fontSizeMap = { small: '13px', medium: '15px', large: '17px' };
+const fontSizeMap = { small: 13, medium: 15, large: 17 };
 
 export function CodeEditor({
   value,
@@ -164,93 +25,182 @@ export function CodeEditor({
   readOnly = false,
   className,
   minHeight = '400px',
-  extensions: additionalExtensions = EMPTY_EXTENSIONS,
   fontSize = 'small',
 }: CodeEditorProps) {
-  const editorRef = useRef<HTMLDivElement>(null);
-  const viewRef = useRef<EditorView | null>(null);
-  const onChangeRef = useRef(onChange);
+  const editorRef = useRef<monacoType.editor.IStandaloneCodeEditor | null>(null);
 
-  useEffect(() => { onChangeRef.current = onChange; }, [onChange]);
+  const handleMount: OnMount = useCallback((editor, monaco) => {
+    editorRef.current = editor;
 
-  const createExtensions = useCallback(() => {
-    const base: Extension[] = [
-      lineNumbers(),
-      highlightActiveLineGutter(),
-      highlightSpecialChars(),
-      history(),
-      foldGutter({ openText: '▼', closedText: '▶' }),
-      drawSelection(),
-      dropCursor(),
-      EditorState.allowMultipleSelections.of(true),
-      indentOnInput(),
-      bracketMatching(),
-      rectangularSelection(),
-      crosshairCursor(),
-      highlightActiveLine(),
-      keymap.of([...defaultKeymap, ...historyKeymap, ...foldKeymap, indentWithTab]),
-      yaml(),
-      createKubiliticsTheme(fontSizeMap[fontSize]),
-      syntaxHighlighting(kubiliticsHighlightStyle),
-      urlHighlighter,
-      EditorView.lineWrapping,
-      ...additionalExtensions,
-    ];
+    // ── Define Kubilitics light theme (VS Code Light+ inspired) ──
+    monaco.editor.defineTheme('kubilitics-light', {
+      base: 'vs',
+      inherit: true,
+      rules: [
+        // YAML keys
+        { token: 'type.yaml', foreground: '0550ae', fontStyle: 'bold' },
+        { token: 'tag.yaml', foreground: '8250df' },
+        // Strings
+        { token: 'string.yaml', foreground: '116329' },
+        { token: 'string', foreground: '116329' },
+        // Numbers & booleans
+        { token: 'number.yaml', foreground: '953800', fontStyle: 'bold' },
+        { token: 'number', foreground: '953800' },
+        { token: 'keyword.yaml', foreground: '953800', fontStyle: 'bold' },
+        { token: 'keyword', foreground: '0550ae', fontStyle: 'bold' },
+        // Comments
+        { token: 'comment.yaml', foreground: '6e7781', fontStyle: 'italic' },
+        { token: 'comment', foreground: '6e7781', fontStyle: 'italic' },
+        // Operators & punctuation
+        { token: 'operators.yaml', foreground: '6e7781' },
+        { token: 'delimiter', foreground: '6e7781' },
+      ],
+      colors: {
+        'editor.background': '#FAFCFF',
+        'editor.foreground': '#1b1f23',
+        'editor.lineHighlightBackground': '#f0f4f8',
+        'editor.selectionBackground': '#3b82f640',
+        'editor.inactiveSelectionBackground': '#3b82f620',
+        'editorLineNumber.foreground': '#94a3b8',
+        'editorLineNumber.activeForeground': '#334155',
+        'editorGutter.background': '#f8fafc',
+        'editorCursor.foreground': '#3b82f6',
+        'editor.findMatchBackground': '#fbbf2460',
+        'editor.findMatchHighlightBackground': '#fbbf2430',
+        'editorBracketMatch.background': '#3b82f630',
+        'editorBracketMatch.border': '#3b82f680',
+        'editorIndentGuide.background': '#e2e8f0',
+        'editorIndentGuide.activeBackground': '#94a3b8',
+        'minimap.background': '#f8fafc',
+        'scrollbarSlider.background': '#cbd5e140',
+        'scrollbarSlider.hoverBackground': '#94a3b860',
+        'scrollbarSlider.activeBackground': '#64748b80',
+        'editorOverviewRuler.border': '#e2e8f000',
+        'editorWidget.background': '#ffffff',
+        'editorWidget.border': '#e2e8f0',
+        'input.background': '#f8fafc',
+        'input.border': '#e2e8f0',
+        'focusBorder': '#3b82f6',
+      },
+    });
 
-    if (readOnly) {
-      base.push(EditorState.readOnly.of(true));
-    } else {
-      base.push(
-        EditorView.updateListener.of((update) => {
-          if (update.docChanged && onChangeRef.current) {
-            onChangeRef.current(update.state.doc.toString());
-          }
-        }),
-      );
+    monaco.editor.setTheme('kubilitics-light');
+
+    // Focus the editor
+    editor.focus();
+  }, []);
+
+  const handleChange: OnChange = useCallback((val) => {
+    if (onChange && val !== undefined) {
+      onChange(val);
     }
-
-    return base;
-  }, [readOnly, additionalExtensions, fontSize]);
-
-  // Create the editor once (or when extensions change)
-  useEffect(() => {
-    if (!editorRef.current) return;
-
-    const state = EditorState.create({
-      doc: value,
-      extensions: createExtensions(),
-    });
-
-    const view = new EditorView({ state, parent: editorRef.current });
-    viewRef.current = view;
-
-    return () => { view.destroy(); viewRef.current = null; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [createExtensions]);
-
-  // Sync value prop → editor whenever it diverges from the current doc.
-  //
-  // This covers two cases:
-  //  1. Read-only mode: external updates (e.g. refetch) must always reflect in the editor.
-  //  2. Editable mode: external seeds (e.g. default values arriving after mount) must also
-  //     be applied. User-typed content is safe because onChange fires → store updates →
-  //     the new prop value matches what the editor already has, so the equality guard
-  //     below prevents any spurious dispatch.
-  useEffect(() => {
-    const view = viewRef.current;
-    if (!view) return;
-    const current = view.state.doc.toString();
-    if (value === current) return; // nothing to do — guards user-typed content
-    view.dispatch({
-      changes: { from: 0, to: current.length, insert: value },
-    });
-  }, [value]);
+  }, [onChange]);
 
   return (
     <div
-      ref={editorRef}
-      className={cn('rounded-lg border border-border overflow-hidden', className)}
+      className={cn(
+        'rounded-xl border border-border overflow-hidden',
+        'shadow-sm',
+        'bg-[#FAFCFF]',
+        className,
+      )}
       style={{ minHeight }}
-    />
+    >
+      <Editor
+        height={minHeight}
+        defaultLanguage="yaml"
+        value={value}
+        onChange={readOnly ? undefined : handleChange}
+        onMount={handleMount}
+        theme="kubilitics-light"
+        loading={
+          <div className="flex items-center justify-center h-full gap-3 text-muted-foreground">
+            <div className="h-5 w-5 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+            <span className="text-sm font-medium">Loading editor…</span>
+          </div>
+        }
+        options={{
+          readOnly,
+          fontSize: fontSizeMap[fontSize],
+          fontFamily: '"JetBrains Mono", "SF Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
+          fontLigatures: true,
+          lineHeight: 22,
+          letterSpacing: 0.3,
+          // VS Code experience
+          minimap: {
+            enabled: true,
+            scale: 2,
+            showSlider: 'mouseover',
+            renderCharacters: false,
+          },
+          // Scrollbar styling
+          scrollbar: {
+            vertical: 'auto',
+            horizontal: 'auto',
+            verticalScrollbarSize: 10,
+            horizontalScrollbarSize: 10,
+            useShadows: false,
+          },
+          // Editor behavior
+          automaticLayout: true,
+          wordWrap: 'on',
+          wrappingStrategy: 'advanced',
+          tabSize: 2,
+          insertSpaces: true,
+          renderWhitespace: 'selection',
+          // Bracket & guides
+          bracketPairColorization: { enabled: true },
+          guides: {
+            bracketPairs: true,
+            indentation: true,
+            highlightActiveIndentation: true,
+          },
+          // Line decorations
+          renderLineHighlight: 'all',
+          renderLineHighlightOnlyWhenFocus: false,
+          lineNumbers: 'on',
+          glyphMargin: false,
+          folding: true,
+          foldingStrategy: 'indentation',
+          showFoldingControls: 'mouseover',
+          // Find / search
+          find: {
+            addExtraSpaceOnTop: true,
+            autoFindInSelection: 'multiline',
+            seedSearchStringFromSelection: 'selection',
+          },
+          // Smooth scrolling
+          smoothScrolling: true,
+          cursorBlinking: 'smooth',
+          cursorSmoothCaretAnimation: 'on',
+          cursorStyle: 'line',
+          cursorWidth: 2,
+          // Padding
+          padding: { top: 16, bottom: 16 },
+          // Line number column width
+          lineNumbersMinChars: 4,
+          lineDecorationsWidth: 8,
+          // Misc
+          contextmenu: true,
+          quickSuggestions: false,
+          suggest: { showWords: false },
+          parameterHints: { enabled: false },
+          overviewRulerBorder: false,
+          hideCursorInOverviewRuler: true,
+          scrollBeyondLastLine: false,
+          colorDecorators: true,
+          // Accessibility
+          accessibilitySupport: 'auto',
+          // Selection
+          multiCursorModifier: 'alt',
+          selectionHighlight: true,
+          occurrencesHighlight: 'singleFile',
+          // Hover
+          hover: { enabled: false },
+          // Sticky scroll (VS Code-like breadcrumbs for nested YAML)
+          stickyScroll: { enabled: true, maxLineCount: 3 },
+        }}
+      />
+    </div>
   );
 }

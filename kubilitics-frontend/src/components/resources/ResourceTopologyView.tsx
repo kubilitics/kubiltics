@@ -16,6 +16,11 @@ import {
   downloadJSON,
   downloadCSV,
   useHealthOverlay,
+  useCostOverlay,
+  usePerformanceOverlay,
+  useSecurityOverlay,
+  useDependencyOverlay,
+  useTrafficOverlay,
   type TopologyCanvasRef,
   type TopologyGraph,
   type OverlayType,
@@ -50,6 +55,19 @@ export interface ResourceTopologyViewProps {
   name?: string | null;
   sourceResourceType?: string;
   sourceResourceName?: string;
+}
+
+function LegendRow({ color, label, range }: { color: string; label: string; range: string }) {
+  return (
+    <div className="flex items-center gap-2.5">
+      <div
+        className="h-2.5 w-2.5 rounded-full shrink-0 ring-2 ring-offset-1"
+        style={{ backgroundColor: color, ringColor: `${color}40` }}
+      />
+      <span className="text-[11px] font-medium text-gray-800 flex-1">{label}</span>
+      <span className="text-[10px] text-gray-500 tabular-nums">{range}</span>
+    </div>
+  );
 }
 
 function getResourceRoute(node: TopologyNode): string | null {
@@ -98,8 +116,22 @@ export function ResourceTopologyView({
     return buildTopologyNodeId(kind, namespace ?? '', name);
   }, [kind, namespace, name]);
 
-  const healthOverlayData = useHealthOverlay(graph ?? { schemaVersion: 'v1', nodes: [], edges: [], metadata: { clusterId: '', generatedAt: '', layoutSeed: '', isComplete: false, warnings: [] } });
-  const overlayDataForCanvas = activeOverlay === 'health' ? healthOverlayData : null;
+  const emptyGraph = { schemaVersion: 'v1' as const, nodes: [] as TopologyNode[], edges: [] as Array<{ id: string; source: string; target: string; relationshipType: string; label: string; metadata: any }>, metadata: { clusterId: '', generatedAt: '', layoutSeed: '', isComplete: false, warnings: [] as string[] } };
+  const overlayGraph = graph ?? emptyGraph;
+  const healthOverlayData = useHealthOverlay(overlayGraph);
+  const costOverlayData = useCostOverlay(overlayGraph);
+  const performanceOverlayData = usePerformanceOverlay(overlayGraph);
+  const securityOverlayData = useSecurityOverlay(overlayGraph);
+  const dependencyOverlayData = useDependencyOverlay(overlayGraph);
+  const trafficOverlayData = useTrafficOverlay(overlayGraph);
+
+  const overlayDataForCanvas = activeOverlay === 'health' ? healthOverlayData
+    : activeOverlay === 'cost' ? costOverlayData
+      : activeOverlay === 'performance' ? performanceOverlayData
+        : activeOverlay === 'security' ? securityOverlayData
+          : activeOverlay === 'dependency' ? dependencyOverlayData
+            : activeOverlay === 'traffic' ? trafficOverlayData
+              : null;
 
   // All filter sets declared as hooks (unconditionally)
   const [selectedResources] = useState<Set<KubernetesKind>>(
@@ -145,31 +177,48 @@ export function ResourceTopologyView({
     if (route) navigate(route);
   }, [navigate]);
 
-  // Export handlers
+  // Export handlers — loading → success/error toast pattern
   const handleExportJSON = useCallback(() => {
     if (!graph) return;
-    downloadJSON(graph, `topology-${kind}-${name || 'resource'}.json`);
-    toast.success('Exported as JSON');
+    const t = toast.loading('Exporting JSON...');
+    try {
+      downloadJSON(graph, `topology-${kind}-${name || 'resource'}.json`);
+      toast.success('JSON exported — check your downloads', { id: t });
+    } catch (err) {
+      toast.error(`Export failed: ${err instanceof Error ? err.message : 'Unknown error'}`, { id: t });
+    }
   }, [graph, kind, name]);
 
   const handleExportCSV = useCallback(() => {
     if (!graph) return;
-    downloadCSV(graph, `topology-${kind}-${name || 'resource'}.csv`);
-    toast.success('Exported as CSV');
+    const t = toast.loading('Exporting CSV...');
+    try {
+      downloadCSV(graph, `topology-${kind}-${name || 'resource'}.csv`);
+      toast.success('CSV exported — check your downloads', { id: t });
+    } catch (err) {
+      toast.error(`Export failed: ${err instanceof Error ? err.message : 'Unknown error'}`, { id: t });
+    }
   }, [graph, kind, name]);
 
   const handleExportPNG = useCallback(() => {
     if (!canvasRef.current) return;
-    const pngData = canvasRef.current.exportAsPNG();
-    if (pngData) {
-      const link = document.createElement('a');
-      link.download = `topology-${kind}-${name || 'resource'}.png`;
-      link.href = pngData;
-      // Append to DOM so the click works in WebKit / Tauri WebView
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      toast.success('Exported as PNG');
+    const t = toast.loading('Exporting PNG...');
+    try {
+      const pngData = canvasRef.current.exportAsPNG();
+      if (pngData) {
+        const link = document.createElement('a');
+        link.download = `topology-${kind}-${name || 'resource'}.png`;
+        link.href = pngData;
+        // Append to DOM so the click works in WebKit / Tauri WebView
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        toast.success('PNG exported — check your downloads', { id: t });
+      } else {
+        toast.error('Export failed — no data available', { id: t });
+      }
+    } catch (err) {
+      toast.error(`Export failed: ${err instanceof Error ? err.message : 'Unknown error'}`, { id: t });
     }
   }, [kind, name]);
 
@@ -178,8 +227,13 @@ export function ResourceTopologyView({
       toast.info('PDF export is available in Cytoscape layout. Switch to that tab first.');
       return;
     }
-    canvasRef.current.exportAsPDF(`topology-${kind}-${name || 'resource'}.pdf`);
-    toast.success('Exported as PDF');
+    const t = toast.loading('Exporting PDF...');
+    try {
+      canvasRef.current.exportAsPDF(`topology-${kind}-${name || 'resource'}.pdf`);
+      toast.success('PDF exported — check your downloads', { id: t });
+    } catch (err) {
+      toast.error(`Export failed: ${err instanceof Error ? err.message : 'Unknown error'}`, { id: t });
+    }
   }, [kind, name]);
 
   const backendBaseUrl = useBackendConfigStore((s) => s.backendBaseUrl);
@@ -189,12 +243,13 @@ export function ResourceTopologyView({
       toast.error('Connect backend and select a cluster to open topology in draw.io.');
       return;
     }
+    const t = toast.loading('Opening in draw.io...');
     try {
       const { url } = await getTopologyExportDrawio(effectiveBaseUrl, clusterId, { format: 'mermaid' });
       window.open(url, '_blank', 'noopener,noreferrer');
-      toast.success('Opened in draw.io');
+      toast.success('Opened in draw.io', { id: t });
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Failed to export to draw.io');
+      toast.error(e instanceof Error ? e.message : 'Failed to export to draw.io', { id: t });
     }
   }, [clusterId, effectiveBaseUrl, isBackendConfigured]);
 
@@ -383,9 +438,11 @@ export function ResourceTopologyView({
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem onClick={() => setActiveOverlay(null)}>Off</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setActiveOverlay('health')}>
-                {OVERLAY_LABELS.health}
-              </DropdownMenuItem>
+              {(['health', 'cost', 'security', 'performance', 'dependency', 'traffic'] as OverlayType[]).map((ov) => (
+                <DropdownMenuItem key={ov} onClick={() => setActiveOverlay(ov)}>
+                  {OVERLAY_LABELS[ov]}
+                </DropdownMenuItem>
+              ))}
             </DropdownMenuContent>
           </DropdownMenu>
 
@@ -479,6 +536,80 @@ export function ResourceTopologyView({
             onNodeDoubleClick={handleNodeDoubleClick}
             className="h-full w-full rounded-b-lg"
           />
+        )}
+
+        {/* Overlay Legend Panel */}
+        {activeOverlay && overlayDataForCanvas && (
+          <div className="absolute top-3 left-3 z-20 bg-white/95 rounded-xl border border-gray-200 shadow-lg px-4 py-3 min-w-[200px]">
+            <div className="flex items-center justify-between mb-2.5">
+              <h4 className="text-[11px] font-bold uppercase tracking-wider text-gray-500">
+                {OVERLAY_LABELS[activeOverlay]}
+              </h4>
+              <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => setActiveOverlay(null)}>
+                <span className="text-xs">✕</span>
+              </Button>
+            </div>
+            <div className="space-y-1.5">
+              {activeOverlay === 'health' && (
+                <>
+                  <LegendRow color="#16A34A" label="Healthy" range="70–100" />
+                  <LegendRow color="#CA8A04" label="Warning" range="40–69" />
+                  <LegendRow color="#DC2626" label="Critical" range="0–39" />
+                </>
+              )}
+              {activeOverlay === 'cost' && (
+                <>
+                  <LegendRow color="#16A34A" label="Low Cost" range="0–30" />
+                  <LegendRow color="#CA8A04" label="Moderate" range="31–70" />
+                  <LegendRow color="#DC2626" label="High Cost" range="71–100" />
+                </>
+              )}
+              {activeOverlay === 'security' && (
+                <>
+                  <LegendRow color="#16A34A" label="Secure" range="70–100" />
+                  <LegendRow color="#CA8A04" label="Moderate" range="40–69" />
+                  <LegendRow color="#DC2626" label="At Risk" range="0–39" />
+                </>
+              )}
+              {activeOverlay === 'performance' && (
+                <>
+                  <LegendRow color="#16A34A" label="Optimal" range="70–100" />
+                  <LegendRow color="#CA8A04" label="Degraded" range="40–69" />
+                  <LegendRow color="#DC2626" label="Critical" range="0–39" />
+                </>
+              )}
+              {activeOverlay === 'dependency' && (
+                <>
+                  <LegendRow color="#16A34A" label="Low Fan-out" range="0–3" />
+                  <LegendRow color="#CA8A04" label="Moderate" range="4–7" />
+                  <LegendRow color="#DC2626" label="High Fan-out" range="8+" />
+                </>
+              )}
+              {activeOverlay === 'traffic' && (
+                <>
+                  <LegendRow color="#16A34A" label="Low Traffic" range="0–30%" />
+                  <LegendRow color="#CA8A04" label="Moderate" range="31–70%" />
+                  <LegendRow color="#DC2626" label="Hot Path" range="71–100%" />
+                </>
+              )}
+            </div>
+            {overlayDataForCanvas.metadata && (
+              <div className="mt-2.5 pt-2 border-t border-gray-100 space-y-0.5 text-[10px] text-gray-500">
+                {overlayDataForCanvas.metadata.totalNodes != null && (
+                  <div>Total: <span className="font-semibold text-gray-900">{overlayDataForCanvas.metadata.totalNodes}</span></div>
+                )}
+                {overlayDataForCanvas.metadata.healthyNodes != null && (
+                  <div>Healthy: <span className="font-semibold text-emerald-600">{overlayDataForCanvas.metadata.healthyNodes}</span></div>
+                )}
+                {overlayDataForCanvas.metadata.warningNodes != null && (
+                  <div>Warning: <span className="font-semibold text-amber-600">{overlayDataForCanvas.metadata.warningNodes}</span></div>
+                )}
+                {overlayDataForCanvas.metadata.criticalNodes != null && (
+                  <div>Critical: <span className="font-semibold text-red-600">{overlayDataForCanvas.metadata.criticalNodes}</span></div>
+                )}
+              </div>
+            )}
+          </div>
         )}
 
         {/* Resource Count Badge */}
