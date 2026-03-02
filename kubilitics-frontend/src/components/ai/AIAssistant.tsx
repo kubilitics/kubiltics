@@ -1448,6 +1448,7 @@ export function AIAssistant() {
   const inputRef = useRef<HTMLInputElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const dragJustHappenedRef = useRef(false);
+  const constraintsRef = useRef<HTMLDivElement>(null);
   const getContext = useRouteContext();
 
   // Drag position — keeps the button wherever the user drops it.
@@ -1541,19 +1542,38 @@ export function AIAssistant() {
 
   return (
     <>
+      {/* Drag constraint boundary — full viewport */}
+      <div ref={constraintsRef} className="fixed inset-0 pointer-events-none z-[99]" />
+
       {/* Floating trigger button — draggable so it never blocks content */}
       <AnimatePresence>
         {!isOpen && (
           <motion.div
             drag
             dragMomentum={false}
-            dragElastic={0}
+            dragElastic={0.1}
+            dragConstraints={constraintsRef}
             onDragStart={() => {
               dragJustHappenedRef.current = true;
             }}
             onDragEnd={() => {
               // Mark that a drag occurred; the next click should be ignored.
               dragJustHappenedRef.current = true;
+
+              // Snap back into viewport if somehow dragged out of bounds
+              const vw = window.innerWidth;
+              const vh = window.innerHeight;
+              const curX = dragX.get();
+              const curY = dragY.get();
+              // Anchor is bottom-right (32px from each edge), size ~80px
+              // Make sure the button stays within visible bounds
+              const maxRight = vw - 100;
+              const maxDown = vh - 120;
+              if (curX > maxRight) dragX.set(maxRight);
+              if (curX < -(vw - 100)) dragX.set(-(vw - 100));
+              if (curY > maxDown) dragY.set(maxDown);
+              if (curY < -(vh - 120)) dragY.set(-(vh - 120));
+
               // After a short delay, allow normal clicks again.
               setTimeout(() => {
                 dragJustHappenedRef.current = false;
@@ -1566,7 +1586,7 @@ export function AIAssistant() {
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             whileDrag={{ scale: 0.97, cursor: 'grabbing' }}
-            className="z-[100] flex flex-col items-center gap-2 cursor-grab select-none"
+            className="z-[100] flex flex-col items-center gap-2 cursor-grab select-none pointer-events-auto"
           >
             {/* Pulsing Glow Effect */}
             <motion.div
@@ -1590,7 +1610,7 @@ export function AIAssistant() {
                 }
                 open();
               }}
-              className="relative h-16 w-16 rounded-[2rem] shadow-2xl bg-gradient-to-br from-blue-600 via-blue-500 to-indigo-600 border border-white/20 flex items-center justify-center group overflow-hidden"
+              className="relative h-14 w-14 rounded-[1.75rem] shadow-2xl bg-gradient-to-br from-blue-600 via-blue-500 to-indigo-600 border border-white/20 flex items-center justify-center group overflow-hidden"
               aria-label="Activate KOS Intelligence"
             >
               {/* Animated Inner Shine */}
@@ -1604,11 +1624,11 @@ export function AIAssistant() {
                 <AnimatePresence mode="wait">
                   {isConnecting ? (
                     <motion.div key="loader" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                      <Loader2 className="h-7 w-7 text-white animate-spin" />
+                      <Loader2 className="h-6 w-6 text-white animate-spin" />
                     </motion.div>
                   ) : (
                     <motion.div key="bot" initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }}>
-                      <Bot className="h-7 w-7 text-white drop-shadow-lg" />
+                      <Bot className="h-6 w-6 text-white drop-shadow-lg" />
                     </motion.div>
                   )}
                 </AnimatePresence>
@@ -1618,9 +1638,9 @@ export function AIAssistant() {
             <motion.div
               initial={{ opacity: 0, y: 5 }}
               animate={{ opacity: 1, y: 0 }}
-              className="bg-slate-900/90 backdrop-blur-md text-[#38BDF8] px-4 py-1.5 rounded-xl text-[11px] font-semibold tracking-wide shadow-xl border border-white/10 flex items-center gap-2"
+              className="bg-slate-900/90 backdrop-blur-md text-[#38BDF8] px-3 py-1 rounded-lg text-[10px] font-semibold tracking-wide shadow-xl border border-white/10 flex items-center gap-1.5 whitespace-nowrap"
             >
-              <Zap className="h-3.5 w-3.5 fill-[#38BDF8]" />
+              <Zap className="h-3 w-3 fill-[#38BDF8]" />
               KOS Intelligence
             </motion.div>
           </motion.div>

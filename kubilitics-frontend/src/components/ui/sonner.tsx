@@ -2,22 +2,25 @@
  * Apple-style toast notifications powered by Sonner.
  *
  * Design language: macOS/iOS system notifications
- *  • Bottom-right positioning (macOS notification centre)
- *  • SF Pro-equivalent font stack (system-ui)
- *  • Vibrancy glass: white/85% + backdrop-blur-xl
- *  • No visible border — pure layered shadow
- *  • Coloured leading stripe per semantic type (success/error/warning/info)
- *  • Compact, information-dense layout
- *  • Spring-in, slide-right-out animation
+ *  - Bottom-right positioning (macOS notification centre)
+ *  - SF Pro-equivalent font stack (system-ui)
+ *  - Vibrancy glass: solid bg with subtle shadow (WebKit-safe)
+ *  - No visible border — pure layered shadow
+ *  - Coloured leading stripe per semantic type (success/error/warning/info)
+ *  - Compact, information-dense layout
+ *  - Spring-in, slide-right-out animation
+ *
+ * NOTE: Removed next-themes dependency. The previous `useTheme()` call
+ * required a ThemeProvider that was never added to the app tree.
+ * This caused silent failures in Tauri's WKWebView where the Toaster
+ * could fail to render. Also removed backdrop-filter (known WKWebView
+ * rendering bug that can make fixed-position elements invisible).
  */
-import { useTheme } from "next-themes";
 import { Toaster as Sonner, toast } from "sonner";
 
 type ToasterProps = React.ComponentProps<typeof Sonner>;
 
 const Toaster = ({ ...props }: ToasterProps) => {
-  const { theme = "system" } = useTheme();
-
   return (
     <>
       {/* Per-type accent stripe + dark mode overrides */}
@@ -33,9 +36,7 @@ const Toaster = ({ ...props }: ToasterProps) => {
             0 12px 36px rgba(0, 0, 0, 0.08) !important;
           border-radius: 14px !important;
           padding: 13px 16px 13px 18px !important;
-          background: rgba(255, 255, 255, 0.90) !important;
-          backdrop-filter: blur(24px) saturate(180%) !important;
-          -webkit-backdrop-filter: blur(24px) saturate(180%) !important;
+          background: rgba(255, 255, 255, 0.97) !important;
           min-width: 300px !important;
           max-width: 380px !important;
           position: relative !important;
@@ -119,7 +120,7 @@ const Toaster = ({ ...props }: ToasterProps) => {
 
         /* ── Dark mode overrides ─────────────────────────────────── */
         .dark [data-sonner-toaster] [data-sonner-toast] {
-          background: rgba(28, 28, 30, 0.88) !important;
+          background: rgba(28, 28, 30, 0.97) !important;
           box-shadow:
             0 0 0 0.5px rgba(255, 255, 255, 0.08),
             0 4px 16px rgba(0, 0, 0, 0.40),
@@ -137,11 +138,17 @@ const Toaster = ({ ...props }: ToasterProps) => {
         .dark [data-sonner-toaster] [data-sonner-toast] [data-close-button]:hover {
           background: rgba(255, 255, 255, 0.14) !important;
         }
+
+        /* ── Ensure toaster portal is always visible (Tauri fix) ── */
+        [data-sonner-toaster] {
+          z-index: 999999999 !important;
+          pointer-events: auto !important;
+        }
       `}</style>
 
       <Sonner
         position="bottom-right"
-        theme={theme as ToasterProps["theme"]}
+        theme="light"
         offset={24}
         gap={8}
         visibleToasts={5}
@@ -153,6 +160,7 @@ const Toaster = ({ ...props }: ToasterProps) => {
             toast: "apple-toast",
           },
         }}
+        style={{ zIndex: 999999999 }}
         {...props}
       />
     </>

@@ -244,20 +244,20 @@ export default function HomePage() {
                 </CardContent>
               </Card>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-8">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6">
                 {filteredClusters.map((cluster) => (
-                  <div key={cluster.id} className="h-full">
+                  <div key={cluster.id} className="h-full min-w-0">
                     <div
-                      className="glass-card glass-card-hover group cursor-pointer p-8 h-full flex flex-col justify-between"
+                      className="glass-card glass-card-hover group cursor-pointer p-6 h-full flex flex-col justify-between min-h-[220px] overflow-hidden"
                       onClick={() => {
                         setCurrentClusterId(cluster.id);
                         setActiveCluster(backendClusterToCluster(cluster));
                         navigate('/dashboard');
                       }}
                     >
-                      <div className="flex justify-between items-start mb-10">
-                        <div className="h-16 w-16 rounded-[1.5rem] bg-slate-50 group-hover:bg-blue-600 group-hover:shadow-xl group-hover:shadow-blue-500/20 flex items-center justify-center transition-all duration-700 ease-spring shadow-sm border border-white">
-                          <Server className="h-8 w-8 text-slate-400 group-hover:text-white transition-colors duration-500" />
+                      <div className="flex justify-between items-start mb-6">
+                        <div className="h-12 w-12 rounded-2xl bg-slate-50 group-hover:bg-blue-600 group-hover:shadow-xl group-hover:shadow-blue-500/20 flex items-center justify-center transition-all duration-700 ease-spring shadow-sm border border-white shrink-0">
+                          <Server className="h-6 w-6 text-slate-400 group-hover:text-white transition-colors duration-500" />
                         </div>
 
                         <DropdownMenu>
@@ -286,22 +286,22 @@ export default function HomePage() {
                         </DropdownMenu>
                       </div>
 
-                      <div>
+                      <div className="min-w-0">
                         <div className="flex items-center gap-2.5 mb-2.5">
-                          <span className="h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.6)] animate-pulse" />
-                          <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-[0.2em]">{cluster.provider || 'Core'} Engine</span>
+                          <span className="h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.6)] animate-pulse shrink-0" />
+                          <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-[0.2em] truncate">{cluster.provider || 'Core'} Engine</span>
                         </div>
-                        <h3 className="apple-title text-2xl group-hover:text-blue-700 transition-colors duration-500">{cluster.name}</h3>
+                        <h3 className="apple-title text-lg leading-tight group-hover:text-blue-700 transition-colors duration-500 line-clamp-2 break-all" title={cluster.name}>{cluster.name}</h3>
                       </div>
 
-                      <div className="mt-10 flex items-end justify-between">
-                        <div className="flex flex-col gap-1">
+                      <div className="mt-auto pt-6 flex items-end justify-between">
+                        <div className="flex flex-col gap-1 min-w-0">
                           <span className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">Compute Units</span>
-                          <span className="text-3xl font-bold tabular-nums text-slate-900">{cluster.node_count ?? 0}</span>
+                          <span className="text-2xl font-bold tabular-nums text-slate-900">{cluster.node_count ?? 0}</span>
                         </div>
 
-                        <div className="h-12 w-12 rounded-full bg-slate-50 flex items-center justify-center group-hover:bg-blue-600 group-hover:shadow-xl group-hover:shadow-blue-500/25 group-hover:translate-x-1.5 transition-all duration-700 ease-spring shadow-sm border border-white">
-                          <ArrowRight className="h-6 w-6 text-slate-400 group-hover:text-white transition-colors duration-500" />
+                        <div className="h-10 w-10 rounded-full bg-slate-50 flex items-center justify-center shrink-0 group-hover:bg-blue-600 group-hover:shadow-xl group-hover:shadow-blue-500/25 group-hover:translate-x-1.5 transition-all duration-700 ease-spring shadow-sm border border-white">
+                          <ArrowRight className="h-5 w-5 text-slate-400 group-hover:text-white transition-colors duration-500" />
                         </div>
                       </div>
                     </div>

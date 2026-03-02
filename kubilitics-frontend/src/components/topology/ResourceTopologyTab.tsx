@@ -2,34 +2,46 @@
  * ResourceTopologyTab Component
  * Displays resource-scoped topology for a specific Kubernetes resource
  * Uses TopologyCanvas from topology-engine
+ * Includes overlay support (health, cost, security, performance, dependency, traffic)
+ * and export capabilities (PNG, JSON, CSV)
  */
 import { useState, useRef, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   Network, ZoomIn, ZoomOut, Maximize, RotateCcw, Loader2, AlertCircle,
-  Layers, ChevronDown,
+  Layers, ChevronDown, Download, FileImage, FileJson, Table, X,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Skeleton } from '@/components/ui/skeleton';
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator,
+} from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import {
   TopologyCanvas,
-  TopologyViewer,
   ABSTRACTION_LEVELS,
   NODE_COLORS,
   getKindColor,
+  downloadJSON,
+  downloadCSVSummary,
+  useHealthOverlay,
+  useCostOverlay,
+  usePerformanceOverlay,
+  useSecurityOverlay,
+  useDependencyOverlay,
+  useTrafficOverlay,
+  OVERLAY_LABELS,
   type TopologyCanvasRef,
   type TopologyNode,
   type KubernetesKind,
   type HealthStatus,
   type RelationshipType,
   type AbstractionLevel,
+  type OverlayType,
 } from '@/topology-engine';
 import { useResourceTopology } from '@/hooks/useResourceTopology';
 import { buildTopologyNodeId, normalizeKindForTopology, isClusterScoped } from '@/utils/resourceKindMapper';
@@ -61,6 +73,20 @@ const ALL_RELATIONSHIPS: RelationshipType[] = [
   'configures', 'mounts', 'stores', 'contains', 'exposes', 'backed_by',
   'permits', 'limits', 'manages',
 ];
+
+// ── Overlay legend row ──
+function LegendRow({ color, label, range }: { color: string; label: string; range: string }) {
+  return (
+    <div className="flex items-center gap-2.5">
+      <div
+        className="h-2.5 w-2.5 rounded-full shrink-0 ring-2 ring-offset-1"
+        style={{ backgroundColor: color, ringColor: `${color}40` }}
+      />
+      <span className="text-[11px] font-medium text-foreground flex-1">{label}</span>
+      <span className="text-[10px] text-muted-foreground tabular-nums">{range}</span>
+    </div>
+  );
+}
 
 interface ResourceTopologyTabProps {
   kind: string;
@@ -94,7 +120,7 @@ export function ResourceTopologyTab({
     () => new Set(['healthy', 'warning', 'critical', 'unknown'])
   );
   const [selectedNode, setSelectedNode] = useState<TopologyNode | null>(null);
-  const [activeTab, setActiveTab] = useState<'standard'>('standard');
+  const [activeOverlay, setActiveOverlay] = useState<OverlayType | null>(null);
 
   const { graph, isLoading, error, refetch } = useResourceTopology({
     kind: normalizedKind,
@@ -102,6 +128,22 @@ export function ResourceTopologyTab({
     name: name ?? undefined,
     enabled: !!clusterId && !!kind && !!name,
   });
+
+  // ── Overlay hooks ──
+  const healthOverlayData = useHealthOverlay(graph ?? { schemaVersion: '1.0', nodes: [], edges: [], metadata: { clusterId: '', generatedAt: '', isComplete: false } });
+  const costOverlayData = useCostOverlay(graph ?? { schemaVersion: '1.0', nodes: [], edges: [], metadata: { clusterId: '', generatedAt: '', isComplete: false } });
+  const performanceOverlayData = usePerformanceOverlay(graph ?? { schemaVersion: '1.0', nodes: [], edges: [], metadata: { clusterId: '', generatedAt: '', isComplete: false } });
+  const securityOverlayData = useSecurityOverlay(graph ?? { schemaVersion: '1.0', nodes: [], edges: [], metadata: { clusterId: '', generatedAt: '', isComplete: false } });
+  const dependencyOverlayData = useDependencyOverlay(graph ?? { schemaVersion: '1.0', nodes: [], edges: [], metadata: { clusterId: '', generatedAt: '', isComplete: false } });
+  const trafficOverlayData = useTrafficOverlay(graph ?? { schemaVersion: '1.0', nodes: [], edges: [], metadata: { clusterId: '', generatedAt: '', isComplete: false } });
+
+  const overlayDataForCanvas = activeOverlay === 'health' ? healthOverlayData
+    : activeOverlay === 'cost' ? costOverlayData
+      : activeOverlay === 'performance' ? performanceOverlayData
+        : activeOverlay === 'security' ? securityOverlayData
+          : activeOverlay === 'dependency' ? dependencyOverlayData
+            : activeOverlay === 'traffic' ? trafficOverlayData
+              : null;
 
   const handleNodeDoubleClick = useCallback((node: TopologyNode) => {
     const routeMap: Record<string, string> = {
@@ -141,6 +183,38 @@ export function ResourceTopologyTab({
     refetch();
     toast.success('Topology refreshed');
   }, [refetch]);
+
+  const handleExport = useCallback((format: string) => {
+    if (!graph) {
+      toast.error('No topology data to export');
+      return;
+    }
+
+    const dateStr = new Date().toISOString().slice(0, 10);
+    const filename = `${name}-topology-${dateStr}`;
+    const exportToast = toast.loading(`Exporting ${format.toUpperCase()}...`);
+
+    try {
+      if (format === 'png') {
+        const exported = canvasRef.current?.exportPNG?.();
+        if (exported) {
+          toast.success('PNG exported — check your downloads', { id: exportToast });
+        } else {
+          toast.error('Export failed — canvas not ready', { id: exportToast });
+        }
+      } else if (format === 'json') {
+        downloadJSON(graph, `${filename}.json`);
+        toast.success('JSON exported — check your downloads', { id: exportToast });
+      } else if (format === 'csv') {
+        downloadCSVSummary(graph, `${filename}.csv`);
+        toast.success('CSV exported — check your downloads', { id: exportToast });
+      } else {
+        toast.error(`Unsupported format: ${format}`, { id: exportToast });
+      }
+    } catch (err) {
+      toast.error(`Export failed: ${err instanceof Error ? err.message : 'Unknown error'}`, { id: exportToast });
+    }
+  }, [graph, name]);
 
   // Parameter validation - after all hooks
   if (!kind || !name) {
@@ -228,29 +302,72 @@ export function ResourceTopologyTab({
           <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100">Relationship Map</h3>
         </div>
 
-        <div className="flex items-center gap-3">
-          {activeTab === 'standard' && (
-            <div className="flex items-center gap-0.5 p-0.5 bg-muted rounded-lg">
-              {(['L0', 'L1', 'L2', 'L3'] as AbstractionLevel[]).map((level) => (
-                <Tooltip key={level}>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant={abstractionLevel === level ? 'default' : 'ghost'}
-                      size="sm"
-                      onClick={() => setAbstractionLevel(level)}
-                      className="h-8 px-3 text-xs font-medium"
-                    >
-                      {level}
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p className="font-medium">{ABSTRACTION_LEVELS[level].label}</p>
-                    <p className="text-xs text-muted-foreground">{ABSTRACTION_LEVELS[level].description}</p>
-                  </TooltipContent>
-                </Tooltip>
+        <div className="flex items-center gap-2">
+          {/* Abstraction level selector */}
+          <div className="flex items-center gap-0.5 p-0.5 bg-muted rounded-lg">
+            {(['L0', 'L1', 'L2', 'L3'] as AbstractionLevel[]).map((level) => (
+              <Tooltip key={level}>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant={abstractionLevel === level ? 'default' : 'ghost'}
+                    size="sm"
+                    onClick={() => setAbstractionLevel(level)}
+                    className="h-8 px-3 text-xs font-medium"
+                  >
+                    {level}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p className="font-medium">{ABSTRACTION_LEVELS[level].label}</p>
+                  <p className="text-xs text-muted-foreground">{ABSTRACTION_LEVELS[level].description}</p>
+                </TooltipContent>
+              </Tooltip>
+            ))}
+          </div>
+
+          {/* Overlays dropdown */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant={activeOverlay ? 'default' : 'outline'} size="sm" className="gap-1.5 h-8">
+                <Layers className="h-3.5 w-3.5" />
+                {activeOverlay ? OVERLAY_LABELS[activeOverlay] : 'Overlays'}
+                <ChevronDown className="h-3 w-3 opacity-50" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => setActiveOverlay(null)}>
+                Off
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              {(['health', 'cost', 'security', 'performance', 'dependency', 'traffic'] as OverlayType[]).map((ov) => (
+                <DropdownMenuItem key={ov} onClick={() => setActiveOverlay(ov)}>
+                  {OVERLAY_LABELS[ov]}
+                </DropdownMenuItem>
               ))}
-            </div>
-          )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          {/* Export dropdown */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="gap-1.5 h-8">
+                <Download className="h-3.5 w-3.5" />
+                Export
+                <ChevronDown className="h-3 w-3 opacity-50" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => handleExport('png')}>
+                <FileImage className="h-4 w-4 mr-2" /> PNG Image
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleExport('json')}>
+                <FileJson className="h-4 w-4 mr-2" /> JSON Data
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleExport('csv')}>
+                <Table className="h-4 w-4 mr-2" /> CSV Summary
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
 
           <Button variant="outline" size="sm" className="gap-1.5 h-8" onClick={handleRefresh}>
             <RotateCcw className="h-4 w-4" />
@@ -259,92 +376,171 @@ export function ResourceTopologyTab({
         </div>
       </div>
 
-
-
       <div className="flex-1 relative min-h-[600px] mt-2">
         <div className="h-full m-0 p-0">
-          {activeTab === 'standard' && (
-            <>
-              <TopologyCanvas
-                ref={canvasRef}
-                graph={graph}
-                selectedResources={selectedResources}
-                selectedRelationships={selectedRelationships}
-                selectedHealth={selectedHealth}
-                searchQuery=""
-                abstractionLevel={abstractionLevel}
-                namespace={namespace}
-                centeredNodeId={nodeId}
-                isPaused={false}
-                heatMapMode="none"
-                trafficFlowEnabled={false}
-                onNodeSelect={setSelectedNode}
-                onNodeDoubleClick={handleNodeDoubleClick}
-                className="h-full"
-              />
+          <TopologyCanvas
+            ref={canvasRef}
+            graph={graph}
+            selectedResources={selectedResources}
+            selectedRelationships={selectedRelationships}
+            selectedHealth={selectedHealth}
+            searchQuery=""
+            abstractionLevel={abstractionLevel}
+            namespace={namespace}
+            centeredNodeId={nodeId}
+            isPaused={false}
+            heatMapMode="none"
+            trafficFlowEnabled={false}
+            overlayData={overlayDataForCanvas}
+            onNodeSelect={setSelectedNode}
+            onNodeDoubleClick={handleNodeDoubleClick}
+            className="h-full"
+          />
 
-              {/* Standard zoom controls for standard tab */}
-              <div className="absolute top-4 right-4 flex flex-col gap-1">
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button variant="outline" size="icon" className="h-8 w-8 bg-background/80" onClick={() => canvasRef.current?.zoomIn()}>
-                      <ZoomIn className="h-4 w-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="left">Zoom In</TooltipContent>
-                </Tooltip>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button variant="outline" size="icon" className="h-8 w-8 bg-background/80" onClick={() => canvasRef.current?.zoomOut()}>
-                      <ZoomOut className="h-4 w-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="left">Zoom Out</TooltipContent>
-                </Tooltip>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button variant="outline" size="icon" className="h-8 w-8 bg-background/80" onClick={() => canvasRef.current?.fitToScreen()}>
-                      <Maximize className="h-4 w-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="left">Fit</TooltipContent>
-                </Tooltip>
+          {/* Zoom controls */}
+          <div className="absolute top-4 right-4 flex flex-col gap-1">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="outline" size="icon" className="h-8 w-8 bg-background/80" onClick={() => canvasRef.current?.zoomIn()}>
+                  <ZoomIn className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="left">Zoom In</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="outline" size="icon" className="h-8 w-8 bg-background/80" onClick={() => canvasRef.current?.zoomOut()}>
+                  <ZoomOut className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="left">Zoom Out</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="outline" size="icon" className="h-8 w-8 bg-background/80" onClick={() => canvasRef.current?.fitToScreen()}>
+                  <Maximize className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="left">Fit</TooltipContent>
+            </Tooltip>
+          </div>
+
+          {/* Overlay legend panel */}
+          {activeOverlay && overlayDataForCanvas && (
+            <div className="absolute top-3 left-3 z-20 bg-card/95 backdrop-blur-md rounded-xl border border-border shadow-lg px-4 py-3 min-w-[200px]">
+              <div className="flex items-center justify-between mb-2.5">
+                <h4 className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                  {OVERLAY_LABELS[activeOverlay]}
+                </h4>
+                <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => setActiveOverlay(null)}>
+                  <X className="h-3 w-3" />
+                </Button>
               </div>
-
-              {/* Premium Legend Panel (mirrored from main Topology page) */}
-              <div className="absolute bottom-4 left-4 z-50 p-4 shadow-2xl border-none bg-white/90 backdrop-blur-md dark:bg-slate-900/90 rounded-xl w-72 overflow-hidden transition-all duration-300 hover:w-80">
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="p-1 bg-blue-100 dark:bg-blue-900 rounded-md">
-                    <Network className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
-                  </div>
-                  <h4 className="font-bold text-[11px] tracking-tight text-slate-800 dark:text-slate-100 uppercase">Resource Legend</h4>
-                </div>
-                <div className="grid grid-cols-2 gap-x-2 gap-y-1.5">
-                  {[
-                    { kind: 'Deployment', label: 'Deployment', color: NODE_COLORS.Deployment.bg },
-                    { kind: 'ReplicaSet', label: 'ReplicaSet', color: NODE_COLORS.ReplicaSet.bg },
-                    { kind: 'Pod', label: 'Pod', color: NODE_COLORS.Pod.bg },
-                    { kind: 'Service', label: 'Service', color: NODE_COLORS.Service.bg },
-                    { kind: 'Ingress', label: 'Ingress', color: NODE_COLORS.Ingress.bg },
-                    { kind: 'ConfigMap', label: 'ConfigMap', color: NODE_COLORS.ConfigMap.bg },
-                    { kind: 'Node', label: 'Node', color: NODE_COLORS.Node.bg },
-                    { kind: 'PersistentVolumeClaim', label: 'PVC', color: NODE_COLORS.PersistentVolumeClaim.bg },
-                  ].map(rt => (
-                    <div key={rt.kind} className="flex items-center gap-1.5 group cursor-default">
-                      <div
-                        className="w-1.5 h-1.5 rounded-full shadow-sm group-hover:scale-125 transition-transform"
-                        style={{ backgroundColor: rt.color }}
-                      />
-                      <span className="text-[9px] font-medium text-slate-500 dark:text-slate-400 truncate">{rt.label}</span>
+              <div className="space-y-1.5">
+                {activeOverlay === 'health' && (
+                  <>
+                    <LegendRow color="#16A34A" label="Healthy" range="70–100" />
+                    <LegendRow color="#CA8A04" label="Warning" range="40–69" />
+                    <LegendRow color="#DC2626" label="Critical" range="0–39" />
+                  </>
+                )}
+                {activeOverlay === 'cost' && (
+                  <>
+                    <LegendRow color="#16A34A" label="Low Cost" range="0–30" />
+                    <LegendRow color="#CA8A04" label="Moderate" range="31–70" />
+                    <LegendRow color="#DC2626" label="High Cost" range="71–100" />
+                  </>
+                )}
+                {activeOverlay === 'security' && (
+                  <>
+                    <LegendRow color="#16A34A" label="Secure" range="70–100" />
+                    <LegendRow color="#CA8A04" label="Moderate" range="40–69" />
+                    <LegendRow color="#DC2626" label="At Risk" range="0–39" />
+                  </>
+                )}
+                {activeOverlay === 'performance' && (
+                  <>
+                    <LegendRow color="#16A34A" label="Optimal" range="70–100" />
+                    <LegendRow color="#CA8A04" label="Degraded" range="40–69" />
+                    <LegendRow color="#DC2626" label="Critical" range="0–39" />
+                  </>
+                )}
+                {activeOverlay === 'dependency' && (
+                  <>
+                    <LegendRow color="#16A34A" label="Low Fan-out" range="0–3" />
+                    <LegendRow color="#CA8A04" label="Moderate" range="4–7" />
+                    <LegendRow color="#DC2626" label="High Fan-out" range="8+" />
+                  </>
+                )}
+                {activeOverlay === 'traffic' && (
+                  <>
+                    <LegendRow color="#16A34A" label="Low Traffic" range="0–30%" />
+                    <LegendRow color="#CA8A04" label="Moderate" range="31–70%" />
+                    <LegendRow color="#DC2626" label="Hot Path" range="71–100%" />
+                  </>
+                )}
+              </div>
+              {overlayDataForCanvas.metadata && (
+                <div className="mt-2.5 pt-2 border-t border-border/50 space-y-0.5 text-[10px] text-muted-foreground">
+                  {overlayDataForCanvas.metadata.totalNodes != null && (
+                    <div>
+                      Total: <span className="font-semibold text-foreground">{overlayDataForCanvas.metadata.totalNodes}</span>
                     </div>
-                  ))}
+                  )}
+                  {overlayDataForCanvas.metadata.healthyNodes != null && (
+                    <div>
+                      Healthy: <span className="font-semibold text-emerald-600">{overlayDataForCanvas.metadata.healthyNodes}</span>
+                    </div>
+                  )}
+                  {overlayDataForCanvas.metadata.warningNodes != null && (
+                    <div>
+                      Warning: <span className="font-semibold text-amber-600">{overlayDataForCanvas.metadata.warningNodes}</span>
+                    </div>
+                  )}
+                  {overlayDataForCanvas.metadata.criticalNodes != null && (
+                    <div>
+                      Critical: <span className="font-semibold text-red-600">{overlayDataForCanvas.metadata.criticalNodes}</span>
+                    </div>
+                  )}
                 </div>
+              )}
+            </div>
+          )}
+
+          {/* Resource legend panel (show when no overlay active) */}
+          {!activeOverlay && (
+            <div className="absolute bottom-4 left-4 z-50 p-4 shadow-2xl border-none bg-white/90 backdrop-blur-md dark:bg-slate-900/90 rounded-xl w-72 overflow-hidden transition-all duration-300 hover:w-80">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="p-1 bg-blue-100 dark:bg-blue-900 rounded-md">
+                  <Network className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                </div>
+                <h4 className="font-bold text-[11px] tracking-tight text-slate-800 dark:text-slate-100 uppercase">Resource Legend</h4>
               </div>
-            </>
+              <div className="grid grid-cols-2 gap-x-2 gap-y-1.5">
+                {[
+                  { kind: 'Deployment', label: 'Deployment', color: NODE_COLORS.Deployment.bg },
+                  { kind: 'ReplicaSet', label: 'ReplicaSet', color: NODE_COLORS.ReplicaSet.bg },
+                  { kind: 'Pod', label: 'Pod', color: NODE_COLORS.Pod.bg },
+                  { kind: 'Service', label: 'Service', color: NODE_COLORS.Service.bg },
+                  { kind: 'Ingress', label: 'Ingress', color: NODE_COLORS.Ingress.bg },
+                  { kind: 'ConfigMap', label: 'ConfigMap', color: NODE_COLORS.ConfigMap.bg },
+                  { kind: 'Node', label: 'Node', color: NODE_COLORS.Node.bg },
+                  { kind: 'PersistentVolumeClaim', label: 'PVC', color: NODE_COLORS.PersistentVolumeClaim.bg },
+                ].map(rt => (
+                  <div key={rt.kind} className="flex items-center gap-1.5 group cursor-default">
+                    <div
+                      className="w-1.5 h-1.5 rounded-full shadow-sm group-hover:scale-125 transition-transform"
+                      style={{ backgroundColor: rt.color }}
+                    />
+                    <span className="text-[9px] font-medium text-slate-500 dark:text-slate-400 truncate">{rt.label}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
           )}
         </div>
 
-        {/* Shared Selected Node Panel */}
+        {/* Selected Node Panel */}
         {selectedNode && (
           <motion.div
             initial={{ opacity: 0, x: -20 }}

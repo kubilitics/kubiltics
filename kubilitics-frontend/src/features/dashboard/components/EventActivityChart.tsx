@@ -1,6 +1,5 @@
 import React from 'react';
 import { BarChart, Bar, ResponsiveContainer, XAxis, Tooltip, Cell } from 'recharts';
-import { useTheme } from 'next-themes';
 
 const data = [
     { time: '10:00', events: 12, type: 'normal' },
@@ -18,7 +17,6 @@ const data = [
 ];
 
 export const EventActivityChart = () => {
-    const { theme } = useTheme();
 
     const getColor = (entry: any) => {
         if (entry.events > 20) return '#f43f5e'; // Rose 500 (Critical)
