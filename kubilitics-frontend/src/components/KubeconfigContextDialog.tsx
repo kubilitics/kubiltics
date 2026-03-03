@@ -13,7 +13,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Server, User, Loader2 } from 'lucide-react';
-import { KubiliticsLogo } from './icons/KubernetesIcons';
+import { BrandLogo } from '@/components/BrandLogo';
 
 interface KubeconfigContext {
     name: string;
@@ -76,7 +76,7 @@ export function KubeconfigContextDialog({
                 <DialogHeader>
                     <div className="flex items-center gap-3 mb-2">
                         <div className="p-2 rounded-lg bg-blue-500/10">
-                            <KubiliticsLogo size={48} className="text-primary mb-6" />
+                            <BrandLogo height={40} className="mb-2" />
                         </div>
                         <DialogTitle className="text-xl">Discovered Clusters</DialogTitle>
                     </div>

@@ -16,7 +16,6 @@ import {
   Pause,
   RotateCcw,
 } from 'lucide-react';
-import { KubiliticsLogo } from '../icons/KubernetesIcons';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';

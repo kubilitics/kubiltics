@@ -9,7 +9,7 @@
 // - enabled: !!clusterId && !!activeInstallPlan && !!addonId (no !!valuesYaml gate)
 // - Error parsing: extracts unique missing CRD types, provides structured guidance
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import * as yaml from "js-yaml";
 import { useQuery } from "@tanstack/react-query";
 import { useApi } from "@/hooks/useApi";
@@ -175,6 +175,8 @@ export function DryRunStep() {
         create_namespace: false,
     };
 
+    const { setActiveDryRunResult } = useAddOnStore();
+
     const { data: result, isLoading, error } = useQuery({
         queryKey: [
             "addons", "dry-run",
@@ -186,6 +188,19 @@ export function DryRunStep() {
         retry: 1,
         staleTime: 0,
     });
+
+    // Sync dry-run result to the addon store so InstallWizard can gate the
+    // "Confirm Install" button — prevents advancing to ExecuteStep while the
+    // simulation is still loading.  Error results are also synced: users can
+    // still choose to proceed (e.g. CRD-missing addons may install fine).
+    useEffect(() => {
+        if (result) {
+            setActiveDryRunResult(result);
+        } else if (error) {
+            // On error, set a synthetic result so the gate opens (user can still proceed).
+            setActiveDryRunResult({ manifest: '', notes: '', resource_count: 0, resource_diff: [] } as any);
+        }
+    }, [result, error, setActiveDryRunResult]);
 
     // ── Loading ───────────────────────────────────────────────────────────────
 

@@ -14,8 +14,10 @@ import type {
 import { toast } from "sonner";
 
 // T6.FE-02: WebSocket reconnection constants
-const WS_MAX_RETRIES = 3;
-const WS_RECONNECT_DELAY_MS = 2000;
+// Increased from 3→5 retries with exponential backoff (2s, 4s, 8s, 16s, 32s)
+// to survive slow backend restarts in desktop mode (sidecar startup can take 10-15s).
+const WS_MAX_RETRIES = 5;
+const WS_INITIAL_DELAY_MS = 2000;
 
 export function useAddonInstallFlow(clusterId: string) {
   const api = useApi();
@@ -185,7 +187,9 @@ export function useAddonInstallFlow(clusterId: string) {
               timestamp: new Date().toISOString(),
             });
 
-            setTimeout(connect, WS_RECONNECT_DELAY_MS);
+            // Exponential backoff: 2s, 4s, 8s, 16s, 32s
+            const delay = WS_INITIAL_DELAY_MS * Math.pow(2, attempt - 1);
+            setTimeout(connect, delay);
           };
         };
 

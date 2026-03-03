@@ -751,10 +751,17 @@ func (s *AddOnServiceImpl) ExecuteUninstall(ctx context.Context, clusterID, inst
 	}
 	ur := helm.UninstallRequest{ReleaseName: install.ReleaseName, Namespace: install.Namespace, KeepHistory: false, DeleteCRDs: deleteCRDs}
 	if err := helmClient.Uninstall(ctx, ur); err != nil {
-		_ = s.repo.UpdateInstallStatus(ctx, installID, models.StatusFailed, install.HelmRevision)
-		addonmetrics.AddonUninstallsTotal.WithLabelValues(addonID, "failed").Inc()
-		addonmetrics.AddonOperationDurationSeconds.WithLabelValues("uninstall", addonID).Observe(time.Since(uninstallStart).Seconds())
-		return err
+		// If the Helm release doesn't exist (e.g. install FAILED before Helm created it),
+		// treat as a successful uninstall — just clean up the DB record.
+		if strings.Contains(err.Error(), "not found") {
+			s.logger.Info("Helm release not found during uninstall, cleaning up DB record only",
+				"installID", installID, "release", install.ReleaseName, "error", err)
+		} else {
+			_ = s.repo.UpdateInstallStatus(ctx, installID, models.StatusFailed, install.HelmRevision)
+			addonmetrics.AddonUninstallsTotal.WithLabelValues(addonID, "failed").Inc()
+			addonmetrics.AddonOperationDurationSeconds.WithLabelValues("uninstall", addonID).Observe(time.Since(uninstallStart).Seconds())
+			return err
+		}
 	}
 	if err := s.repo.DeleteInstall(ctx, installID); err != nil {
 		return err

@@ -1,3 +1,8 @@
+// Monaco local loading MUST be initialized before any Editor component renders.
+// This configures @monaco-editor/react to use the bundled monaco-editor package
+// instead of fetching from CDN (which is blocked by Tauri's CSP).
+import './lib/monacoSetup';
+
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import App from "./App.tsx";

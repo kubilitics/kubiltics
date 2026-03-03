@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Upload, CheckCircle2, XCircle, Server, ArrowRight, ChevronRight, Loader2 } from 'lucide-react';
-import { KubiliticsLogo } from '../components/icons/KubernetesIcons';
+import { BrandLogo } from '@/components/BrandLogo';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -124,7 +124,7 @@ export default function KubeConfigSetup() {
           className="flex items-center justify-between mb-12"
         >
           <div className="flex items-center gap-3">
-            <KubiliticsLogo size={48} className="text-primary mb-6" />
+            <BrandLogo height={40} className="mb-1" />
             <span className="text-xl font-semibold">Kubilitics Setup</span>
           </div>
           <Button variant="ghost" onClick={() => navigate('/')}>

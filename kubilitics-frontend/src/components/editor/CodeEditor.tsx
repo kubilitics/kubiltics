@@ -1,7 +1,44 @@
-import { useRef, useCallback } from 'react';
+import { useRef, useCallback, useState, useEffect } from 'react';
 import Editor, { type OnMount, type OnChange } from '@monaco-editor/react';
 import type * as monacoType from 'monaco-editor';
 import { cn } from '@/lib/utils';
+
+// ── Fallback textarea ────────────────────────────────────────────────────────
+// Rendered if Monaco fails to initialize (e.g. CSP blocks workers, stale cache).
+// Provides full editing capability — users are never blocked.
+
+function TextareaFallback({
+  value,
+  onChange,
+  readOnly,
+  minHeight,
+  fontSize,
+}: {
+  value: string;
+  onChange?: (v: string) => void;
+  readOnly: boolean;
+  minHeight: string;
+  fontSize: 'small' | 'medium' | 'large';
+}) {
+  const sizeMap = { small: '13px', medium: '15px', large: '17px' };
+  return (
+    <div className="flex flex-col h-full">
+      <textarea
+        value={value}
+        onChange={readOnly ? undefined : (e) => onChange?.(e.target.value)}
+        readOnly={readOnly}
+        spellCheck={false}
+        className={cn(
+          'flex-1 w-full resize-none font-mono p-4',
+          'bg-[#FAFCFF] text-[#1b1f23] border-0 outline-none',
+          'leading-relaxed',
+          readOnly && 'cursor-default opacity-80',
+        )}
+        style={{ minHeight, fontSize: sizeMap[fontSize] }}
+      />
+    </div>
+  );
+}
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
@@ -19,6 +56,9 @@ interface CodeEditorProps {
 
 const fontSizeMap = { small: 13, medium: 15, large: 17 };
 
+// How long to wait for Monaco to mount before showing the textarea fallback.
+const MONACO_LOAD_TIMEOUT_MS = 8000;
+
 export function CodeEditor({
   value,
   onChange,
@@ -28,9 +68,25 @@ export function CodeEditor({
   fontSize = 'small',
 }: CodeEditorProps) {
   const editorRef = useRef<monacoType.editor.IStandaloneCodeEditor | null>(null);
+  const [monacoReady, setMonacoReady] = useState(false);
+  const [monacoFailed, setMonacoFailed] = useState(false);
+
+  // Timeout: if Monaco hasn't mounted after MONACO_LOAD_TIMEOUT_MS, fall back
+  // to textarea so the user is never stuck on "Loading editor…"
+  useEffect(() => {
+    if (monacoReady) return;
+    const timer = setTimeout(() => {
+      if (!monacoReady) {
+        console.warn('[CodeEditor] Monaco failed to load within timeout — using textarea fallback');
+        setMonacoFailed(true);
+      }
+    }, MONACO_LOAD_TIMEOUT_MS);
+    return () => clearTimeout(timer);
+  }, [monacoReady]);
 
   const handleMount: OnMount = useCallback((editor, monaco) => {
     editorRef.current = editor;
+    setMonacoReady(true);
 
     // ── Define Kubilitics light theme (VS Code Light+ inspired) ──
     monaco.editor.defineTheme('kubilitics-light', {
@@ -95,6 +151,29 @@ export function CodeEditor({
       onChange(val);
     }
   }, [onChange]);
+
+  // Monaco failed to load — use resilient textarea fallback
+  if (monacoFailed) {
+    return (
+      <div
+        className={cn(
+          'rounded-xl border border-border overflow-hidden',
+          'shadow-sm',
+          'bg-[#FAFCFF]',
+          className,
+        )}
+        style={{ minHeight }}
+      >
+        <TextareaFallback
+          value={value}
+          onChange={onChange}
+          readOnly={readOnly}
+          minHeight={minHeight}
+          fontSize={fontSize}
+        />
+      </div>
+    );
+  }
 
   return (
     <div

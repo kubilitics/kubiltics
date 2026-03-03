@@ -83,6 +83,11 @@ export function ExecuteStep() {
                 // install Promise resolves (backend sends the final "complete" status event).
                 setComplete(true);
             } catch (err) {
+                // Preserve the actual error message so the user sees meaningful feedback
+                // (e.g. "Lost connection to server", "Helm install failed: ...", etc.).
+                if (err instanceof Error && err.message) {
+                    console.error('[ExecuteStep] install failed:', err.message);
+                }
                 setFailed(true);
             }
         };
@@ -143,7 +148,7 @@ export function ExecuteStep() {
                 <div className="space-y-1">
                     <h3 className="text-2xl font-bold tracking-tight">
                         {headerState === 'installing' && "Installing Add-on..."}
-                        {headerState === 'reconnecting' && `Reconnecting... (attempt ${flow.wsReconnectAttempt}/3)`}
+                        {headerState === 'reconnecting' && `Reconnecting... (attempt ${flow.wsReconnectAttempt}/5)`}
                         {headerState === 'exhausted' && "Connection Lost"}
                         {headerState === 'complete' && "Installation Complete!"}
                         {headerState === 'failed' && "Installation Failed"}

@@ -1,0 +1,187 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --font-inter: "Inter", system-ui, sans-serif;
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+}
+
+html {
+  scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  background: #06080C;
+  color: #EEF2F7;
+  font-family: var(--font-inter);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+}
+
+::selection {
+  background: rgba(79, 123, 247, 0.28);
+  color: #EEF2F7;
+}
+
+::-webkit-scrollbar {
+  width: 5px;
+}
+
+::-webkit-scrollbar-track {
+  background: #06080C;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #1D2535;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #263043;
+}
+
+/* ─── Utility helpers ─── */
+
+.text-gradient {
+  background: linear-gradient(135deg, #EEF2F7 0%, #9BAABE 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.text-gradient-brand {
+  background: linear-gradient(135deg, #6B9BFF 0%, #4F7BF7 60%, #2FC8B8 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.dot-grid {
+  background-image: radial-gradient(circle, #1D2535 1px, transparent 1px);
+  background-size: 28px 28px;
+}
+
+.line-grid {
+  background-image:
+    linear-gradient(rgba(79, 123, 247, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(79, 123, 247, 0.04) 1px, transparent 1px);
+  background-size: 48px 48px;
+}
+
+/* ─── Noise texture overlay ─── */
+.noise::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+  pointer-events: none;
+  opacity: 0.4;
+}
+
+/* ─── Card base ─── */
+.card {
+  background: #0B0E14;
+  border: 1px solid #1D2535;
+  border-radius: 1rem;
+  transition: border-color 0.25s ease, box-shadow 0.25s ease;
+}
+
+.card:hover {
+  border-color: #263043;
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.5);
+}
+
+/* ─── Scroll reveal ─── */
+.reveal {
+  opacity: 0;
+  transform: translateY(20px);
+}
+
+.reveal.visible {
+  animation: revealUp 0.65s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes revealUp {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ─── Graph node pulse ─── */
+@keyframes nodePulse {
+
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes edgeFlow {
+  to {
+    stroke-dashoffset: -24;
+  }
+}
+
+@keyframes float {
+
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+.float {
+  animation: float 5s ease-in-out infinite;
+}
+
+/* ─── Glow ring ─── */
+.glow-ring {
+  box-shadow: 0 0 0 1px rgba(79, 123, 247, 0.3), 0 0 32px rgba(79, 123, 247, 0.15);
+}
+
+/* ─── Terminal / code block ─── */
+.terminal {
+  background: #0B0E14;
+  border: 1px solid #1D2535;
+  border-radius: 0.75rem;
+  font-family: "Geist Mono", "Fira Code", "SF Mono", ui-monospace, monospace;
+  font-size: 0.8125rem;
+  line-height: 1.7;
+}
+
+/* ─── Shimmer skeleton ─── */
+@keyframes shimmer {
+  from {
+    background-position: 200% 0;
+  }
+
+  to {
+    background-position: -200% 0;
+  }
+}
+
+.shimmer {
+  background: linear-gradient(90deg, #10141C 25%, #151B26 50%, #10141C 75%);
+  background-size: 200% 100%;
+  animation: shimmer 2s infinite;
+}

@@ -12,7 +12,7 @@ import {
   Trash2,
   Star,
 } from 'lucide-react';
-import { KubiliticsLogo } from '../components/icons/KubernetesIcons';
+import { BrandLogo } from '@/components/BrandLogo';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -269,7 +269,7 @@ export default function ClusterSelection() {
           className="flex items-center justify-between mb-8"
         >
           <div className="flex items-center gap-3">
-            <KubiliticsLogo size={32} className="text-primary" />
+            <BrandLogo height={32} />
             <span className="text-xl font-semibold">Kubilitics Setup</span>
           </div>
           <Button variant="ghost" onClick={() => navigate('/setup/kubeconfig')}>

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useAddonInstallFlow } from "@/hooks/useAddonInstall";
@@ -59,7 +59,7 @@ export function InstallWizard({ open, onClose, addonId, clusterId }: InstallWiza
     const [currentStep, setCurrentStep] = useState(1);
     const { data: addon } = useCatalogEntry(addonId);
     const flow = useAddonInstallFlow(clusterId);
-    const { yamlValidationError, resetWizard } = useAddOnStore();
+    const { yamlValidationError, activeDryRunResult, isInstalling, resetWizard } = useAddOnStore();
 
     // Reset fully when dialog opens fresh (clears valuesYaml, progress, plan, etc.)
     useEffect(() => {
@@ -71,20 +71,59 @@ export function InstallWizard({ open, onClose, addonId, clusterId }: InstallWiza
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [open]);
 
-    const handleNext = () => { if (currentStep < 5) setCurrentStep(s => s + 1); };
-    const handleBack = () => { if (currentStep > 1) setCurrentStep(s => s - 1); };
+    // Stable callbacks — prevents re-render churn propagating to child effects
+    // (DependencyPlanStep's auto-advance timer depends on onPlanResolved identity).
+    const handleNext = useCallback(() => { setCurrentStep(s => s < 5 ? s + 1 : s); }, []);
+    const handleBack = useCallback(() => { setCurrentStep(s => s > 1 ? s - 1 : s); }, []);
+
+    // Installation is in progress — lock the dialog (prevent Escape, X button, Cancel)
+    const installInFlight = currentStep === 5 && isInstalling;
 
     const step = STEPS[currentStep - 1];
     const pct = Math.round((currentStep / 5) * 100);
 
+    // Gate: prevent advancing when prerequisites aren't met.
+    // Step 1: Plan must be resolved.
+    // Step 3: YAML must be valid.
+    // Step 4: Dry run must have completed (result available in store) — prevents clicking
+    //         "Confirm Install" while the simulation is still loading. Users can still
+    //         proceed after a dry-run error (intentional — CRD-missing addons may install fine).
     const nextDisabled =
         (currentStep === 1 && !flow.plan) ||
-        (currentStep === 3 && !!yamlValidationError);
+        (currentStep === 3 && !!yamlValidationError) ||
+        (currentStep === 4 && !activeDryRunResult);
+
+    // The wizard is a multi-step form — NEVER close via overlay click, focus loss,
+    // or Escape. In Tauri/WKWebView, async operations (API calls, sidecar IPC,
+    // WebSocket) can trigger synthetic focus/pointer events that Radix Dialog
+    // interprets as "interact outside", closing the dialog unexpectedly.
+    // Users close the wizard ONLY via the explicit X button or Cancel button.
+    const handleOpenChange = useCallback((o: boolean) => {
+        // Block ALL implicit close attempts from Radix (Escape, overlay, focus loss).
+        // Only explicit button clicks (handleClose) can dismiss the wizard.
+        if (!o) return;
+    }, []);
+
+    // Explicit close: only via X button or Cancel button.
+    const handleClose = useCallback(() => {
+        if (installInFlight) return;
+        onClose();
+    }, [installInFlight, onClose]);
 
     return (
-        <Dialog open={open} onOpenChange={o => !o && onClose()}>
+        <Dialog open={open} onOpenChange={handleOpenChange}>
             <DialogContent
                 hideCloseButton
+                // ALWAYS prevent Radix from closing the wizard via overlay/Escape/focus.
+                // In Tauri/WKWebView, async operations (sidecar IPC, API calls, WebSocket)
+                // can trigger synthetic focus/pointer events that Radix interprets as
+                // "interact outside", closing the dialog unexpectedly mid-wizard.
+                // The wizard is a multi-step form — it should only close via the
+                // explicit X button or Cancel button (handleClose).
+                onEscapeKeyDown={(e) => { if (!installInFlight) { handleClose(); } e.preventDefault(); }}
+                onPointerDownOutside={(e) => e.preventDefault()}
+                onInteractOutside={(e) => e.preventDefault()}
+                onFocusOutside={(e) => e.preventDefault()}
                 className="flex flex-col p-0 overflow-hidden bg-background rounded-2xl border-border/60"
                 style={{
                     width: 'min(1320px, 96vw)',
@@ -215,7 +254,14 @@ export function InstallWizard({ open, onClose, addonId, clusterId }: InstallWiza
                                         {currentStep} / 5
                                     </span>
                                 </div>
-                                <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground">
+                                {/* X button: disabled during install to prevent accidental close */}
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={handleClose}
+                                    disabled={installInFlight}
+                                    className="h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground"
+                                >
                                     <X className="h-4 w-4" />
                                 </Button>
                             </div>
@@ -251,7 +297,7 @@ export function InstallWizard({ open, onClose, addonId, clusterId }: InstallWiza
 
                             <div className="flex items-center gap-2">
                                 {currentStep < 5 && (
-                                    <Button variant="ghost" onClick={onClose}
+                                    <Button variant="ghost" onClick={handleClose}
                                         disabled={currentStep === 5}
                                         className="text-muted-foreground text-sm">
                                         Cancel

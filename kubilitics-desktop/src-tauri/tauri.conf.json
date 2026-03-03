@@ -82,7 +82,7 @@
       "capabilities": [
         "default"
       ],
-      "csp": "default-src 'self' tauri: asset: blob:; connect-src 'self' tauri: ipc: http://ipc.localhost http://localhost:819 ws://localhost:819 http://localhost:8081 ws://localhost:8081 https:; img-src 'self' data: asset: tauri: blob: https: http:; style-src 'self' 'unsafe-inline' asset: tauri:; script-src 'self' asset: tauri: blob:; font-src 'self' asset: tauri: data: https:"
+      "csp": "default-src 'self' tauri: asset: blob:; connect-src 'self' tauri: ipc: http://ipc.localhost http://localhost:819 ws://localhost:819 http://localhost:8081 ws://localhost:8081 https:; img-src 'self' data: asset: tauri: blob: https: http:; style-src 'self' 'unsafe-inline' asset: tauri:; script-src 'self' asset: tauri: blob: 'unsafe-eval'; worker-src 'self' blob:; font-src 'self' asset: tauri: data: https:"
     }
   }
 }

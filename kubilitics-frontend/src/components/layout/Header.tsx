@@ -21,7 +21,7 @@ import {
   Unplug,
   Zap,
 } from 'lucide-react';
-import { KubiliticsLogo, KubiliticsText } from '../icons/KubernetesIcons';
+import { BrandLogo } from '@/components/BrandLogo';
 import { useClusterStore } from '@/stores/clusterStore';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
@@ -220,21 +220,19 @@ export function Header() {
 
           {/* ──── Logo zone: prominent Kubilitics branding ──── */}
           <div className={cn(
-            "shrink-0 flex items-center justify-start h-full bg-slate-50/20 border-r border-slate-100/60 px-6 transition-all duration-300",
-            collapsed ? "w-[5.5rem]" : "w-72"
+            'shrink-0 flex items-center justify-start h-full bg-slate-50/20 border-r border-slate-100/60 px-6 transition-all duration-300',
+            collapsed ? 'w-[5.5rem]' : 'w-72'
           )}>
             <button
               onClick={() => navigate('/home')}
               className="flex items-center gap-4 group focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 rounded-xl p-2 -ml-2 transition-all"
               aria-label="Go to Home"
             >
-              <div className="relative group/logo shrink-0">
-                <div className="absolute inset-0 bg-primary/25 blur-xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                <div className="relative flex items-center justify-center w-[38px] h-[38px] rounded-xl bg-gradient-to-br from-[#0076DD] to-[#00CDE9] shadow-apple-lg shadow-primary/10 group-hover:scale-105 transition-all duration-500">
-                  <KubiliticsLogo size={24} className="text-white group-hover:rotate-12 transition-transform duration-500" />
-                </div>
-              </div>
-              <KubiliticsText height={22} className={cn("hidden lg:inline text-primary transition-all duration-300", collapsed && "lg:hidden")} />
+              <BrandLogo
+                height={32}
+                variant="dark"
+                className="shrink-0 drop-shadow-sm group-hover:scale-[1.03] transition-transform duration-300"
+              />
             </button>
           </div>
 

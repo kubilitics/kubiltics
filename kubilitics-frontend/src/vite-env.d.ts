@@ -9,6 +9,12 @@ interface ImportMeta {
   readonly env: ImportMetaEnv;
 }
 
+// Vite ?worker import suffix — returns a Worker constructor from any module.
+declare module 'monaco-editor/esm/vs/editor/editor.worker?worker' {
+  const WorkerConstructor: new () => Worker;
+  export default WorkerConstructor;
+}
+
 /**
  * Compile-time constant injected by vite.config.ts `define`.
  * True when the frontend was built with TAURI_BUILD=true (i.e. for the desktop app).

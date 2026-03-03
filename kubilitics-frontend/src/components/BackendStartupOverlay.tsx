@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import { isTauri, invokeWithRetry } from '@/lib/tauri';
 import { Loader2 } from 'lucide-react';
 import { resetBackendCircuit } from '@/services/backendApiClient';
-import { KubiliticsLogo, KubiliticsText } from './icons/KubernetesIcons';
+import { BrandLogo } from '@/components/BrandLogo';
 
 /**
  * BackendStartupOverlay
@@ -207,10 +207,7 @@ export function BackendStartupOverlay() {
       <div className="flex flex-col items-center gap-6 max-w-sm text-center px-8">
         {/* App logo / brand mark */}
         <div className="flex flex-col items-center gap-3 mb-2">
-          <div className="h-12 w-12 rounded-2xl bg-primary shadow-xl shadow-primary/20 flex items-center justify-center">
-            <KubiliticsLogo size={32} className="text-white" />
-          </div>
-          <KubiliticsText height={28} className="text-foreground" />
+          <BrandLogo height={40} className="drop-shadow-xl" />
         </div>
 
         {/* Spinner */}

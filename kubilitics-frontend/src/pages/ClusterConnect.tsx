@@ -32,7 +32,7 @@ import {
   ClipboardPaste,
   FolderOpen,
 } from 'lucide-react';
-import { KubiliticsLogo, KubiliticsText } from '@/components/icons/KubernetesIcons';
+import { BrandLogo } from '@/components/BrandLogo';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
@@ -641,7 +641,7 @@ export default function ClusterConnect() {
         >
           <motion.div variants={item} className="text-center mb-10">
             <div className="flex items-center justify-center gap-3 mb-6">
-              <KubiliticsText height={40} className="text-foreground bg-clip-text" />
+              <BrandLogo height={40} className="drop-shadow-sm" />
             </div>
             <h1 className="text-2xl font-semibold tracking-tight mb-3">
               Connect Your Cluster
