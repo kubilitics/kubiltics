@@ -20,6 +20,12 @@ const (
 	// chartValuesCacheTTL controls how long fetched values.yaml content is kept
 	// in memory before a fresh request to Artifact Hub is required.
 	chartValuesCacheTTL = 30 * time.Minute
+
+	// Retry settings for transient errors (429 rate-limit, 5xx server errors).
+	maxRetries       = 3
+	retryBaseDelay   = 1 * time.Second
+	retryMaxDelay    = 10 * time.Second
+	retryBackoffMult = 2
 )
 
 // chartValuesCacheEntry stores a cached values.yaml response from Artifact Hub.
@@ -49,6 +55,19 @@ func (e *ArtifactHubHTTPError) Error() string {
 	return fmt.Sprintf("artifacthub request failed: status=%d url=%s body=%s", e.StatusCode, e.URL, e.Body)
 }
 
+// IsRateLimited returns true when ArtifactHub returned HTTP 429.
+func (e *ArtifactHubHTTPError) IsRateLimited() bool {
+	return e.StatusCode == http.StatusTooManyRequests
+}
+
+// isRetryable returns true for transient HTTP errors worth retrying.
+func (e *ArtifactHubHTTPError) isRetryable() bool {
+	return e.StatusCode == http.StatusTooManyRequests ||
+		e.StatusCode == http.StatusBadGateway ||
+		e.StatusCode == http.StatusServiceUnavailable ||
+		e.StatusCode == http.StatusGatewayTimeout
+}
+
 func NewArtifactHubClient() *ArtifactHubClient {
 	return &ArtifactHubClient{
 		baseURL: defaultArtifactHubBaseURL,
@@ -56,6 +75,77 @@ func NewArtifactHubClient() *ArtifactHubClient {
 			Timeout: 15 * time.Second,
 		},
 		valuesCache: make(map[string]chartValuesCacheEntry),
+	}
+}
+
+// doWithRetry executes an HTTP request with exponential backoff on transient
+// errors (429 rate-limit, 502/503/504). It respects the Retry-After header
+// from 429 responses and honours context cancellation.
+func (c *ArtifactHubClient) doWithRetry(ctx context.Context, req *http.Request) (*http.Response, error) {
+	delay := retryBaseDelay
+	var lastErr error
+
+	for attempt := 0; attempt <= maxRetries; attempt++ {
+		if attempt > 0 {
+			// Clone the request for retry (body is nil for GETs).
+			retryReq, err := http.NewRequestWithContext(ctx, req.Method, req.URL.String(), nil)
+			if err != nil {
+				return nil, fmt.Errorf("build retry request: %w", err)
+			}
+			req = retryReq
+		}
+
+		resp, err := c.httpClient.Do(req)
+		if err != nil {
+			// Network error — worth retrying.
+			lastErr = err
+			if attempt < maxRetries {
+				if sleepErr := sleepWithContext(ctx, delay); sleepErr != nil {
+					return nil, lastErr // context cancelled
+				}
+				delay = min(delay*time.Duration(retryBackoffMult), retryMaxDelay)
+				continue
+			}
+			return nil, lastErr
+		}
+
+		// Success or non-retryable error — return immediately.
+		if resp.StatusCode == http.StatusOK || resp.StatusCode == http.StatusNotFound {
+			return resp, nil
+		}
+
+		ahErr := decodeArtifactHubError(resp, req.URL.String())
+		httpErr, ok := ahErr.(*ArtifactHubHTTPError)
+		if !ok || !httpErr.isRetryable() || attempt >= maxRetries {
+			return nil, ahErr
+		}
+		lastErr = ahErr
+
+		// Honour Retry-After header if present (AH sends it on 429).
+		if ra := resp.Header.Get("Retry-After"); ra != "" {
+			if secs, parseErr := strconv.Atoi(ra); parseErr == nil && secs > 0 && secs <= 30 {
+				delay = time.Duration(secs) * time.Second
+			}
+		}
+
+		if sleepErr := sleepWithContext(ctx, delay); sleepErr != nil {
+			return nil, lastErr // context cancelled
+		}
+		delay = min(delay*time.Duration(retryBackoffMult), retryMaxDelay)
+	}
+
+	return nil, lastErr
+}
+
+// sleepWithContext blocks for the given duration or until the context is done.
+func sleepWithContext(ctx context.Context, d time.Duration) error {
+	t := time.NewTimer(d)
+	defer t.Stop()
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-t.C:
+		return nil
 	}
 }
 
@@ -88,15 +178,11 @@ func (c *ArtifactHubClient) Search(ctx context.Context, query, kind string, limi
 	if err != nil {
 		return nil, fmt.Errorf("build artifacthub search request: %w", err)
 	}
-	resp, err := c.httpClient.Do(req)
+	resp, err := c.doWithRetry(ctx, req)
 	if err != nil {
 		return nil, fmt.Errorf("artifacthub search request failed: %w", err)
 	}
 	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, decodeArtifactHubError(resp, endpoint.String())
-	}
 
 	var out ArtifactHubSearchResponse
 	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
@@ -138,15 +224,11 @@ func (c *ArtifactHubClient) GetChart(ctx context.Context, repoName, chartName st
 	if err != nil {
 		return nil, fmt.Errorf("build artifacthub chart request: %w", err)
 	}
-	resp, err := c.httpClient.Do(req)
+	resp, err := c.doWithRetry(ctx, req)
 	if err != nil {
 		return nil, fmt.Errorf("artifacthub get chart request failed: %w", err)
 	}
 	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, decodeArtifactHubError(resp, endpoint)
-	}
 
 	var out ArtifactHubChart
 	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
@@ -228,7 +310,7 @@ func (c *ArtifactHubClient) GetChartValues(ctx context.Context, repoName, chartN
 	if err != nil {
 		return "", fmt.Errorf("build artifacthub values request: %w", err)
 	}
-	resp, err := c.httpClient.Do(req)
+	resp, err := c.doWithRetry(ctx, req)
 	if err != nil {
 		return "", fmt.Errorf("artifacthub values request failed: %w", err)
 	}
@@ -238,9 +320,6 @@ func (c *ArtifactHubClient) GetChartValues(ctx context.Context, repoName, chartN
 		// Chart exists but has no published values.yaml — cache the empty result.
 		c.cacheValues(cacheKey, resolvedCacheKey, "")
 		return "", nil
-	}
-	if resp.StatusCode != http.StatusOK {
-		return "", decodeArtifactHubError(resp, endpoint)
 	}
 
 	raw, err := io.ReadAll(resp.Body)

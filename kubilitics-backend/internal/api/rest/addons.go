@@ -2,6 +2,7 @@ package rest
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -10,6 +11,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/kubilitics/kubilitics-backend/internal/addon/financial"
+	"github.com/kubilitics/kubilitics-backend/internal/addon/registry"
 	"github.com/kubilitics/kubilitics-backend/internal/auth"
 	"github.com/kubilitics/kubilitics-backend/internal/models"
 	"github.com/kubilitics/kubilitics-backend/internal/pkg/validate"
@@ -80,6 +82,11 @@ func (h *Handler) ListCatalog(w http.ResponseWriter, r *http.Request) {
 	}
 	entries, total, err := h.addonService.ListCatalog(r.Context(), search, limit, offset)
 	if err != nil {
+		var ahErr *registry.ArtifactHubHTTPError
+		if errors.As(err, &ahErr) && ahErr.IsRateLimited() {
+			respondErrorWithRequestID(w, r, http.StatusTooManyRequests, ErrCodeInternalError, "Artifact Hub rate limit exceeded — please try again shortly")
+			return
+		}
 		respondErrorWithRequestID(w, r, http.StatusInternalServerError, ErrCodeInternalError, err.Error())
 		return
 	}
@@ -104,6 +111,11 @@ func (h *Handler) GetCatalogEntry(w http.ResponseWriter, r *http.Request) {
 	}
 	detail, err := h.addonService.GetAddOn(r.Context(), addonID)
 	if err != nil {
+		var ahErr *registry.ArtifactHubHTTPError
+		if errors.As(err, &ahErr) && ahErr.IsRateLimited() {
+			respondErrorWithRequestID(w, r, http.StatusTooManyRequests, ErrCodeInternalError, "Artifact Hub rate limit exceeded — please try again shortly")
+			return
+		}
 		respondErrorWithRequestID(w, r, http.StatusNotFound, ErrCodeNotFound, err.Error())
 		return
 	}
@@ -132,6 +144,11 @@ func (h *Handler) GetCatalogValues(w http.ResponseWriter, r *http.Request) {
 	}
 	values, err := h.addonService.GetAddonDefaultValues(r.Context(), addonID)
 	if err != nil {
+		var ahErr *registry.ArtifactHubHTTPError
+		if errors.As(err, &ahErr) && ahErr.IsRateLimited() {
+			respondErrorWithRequestID(w, r, http.StatusTooManyRequests, ErrCodeInternalError, "Artifact Hub rate limit exceeded — please try again shortly")
+			return
+		}
 		respondErrorWithRequestID(w, r, http.StatusInternalServerError, ErrCodeInternalError, err.Error())
 		return
 	}
