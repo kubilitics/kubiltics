@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import logo from "@/public/brand/logo-transparent.png";
+import logo from "@/public/brand/logo-dark.png";
 
 const groups = [
     {

@@ -23,7 +23,7 @@ export function BrandLogo({
   variant = 'dark',
   ...imgProps
 }: BrandLogoProps) {
-  const src = variant === 'dark' ? '/brand/logo-transparent.png' : '/brand/logo.png';
+  const src = variant === 'dark' ? '/brand/logo-dark.png' : '/brand/logo.png';
 
   return (
     <img
