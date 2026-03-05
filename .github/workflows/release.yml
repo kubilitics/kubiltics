@@ -89,85 +89,9 @@ jobs:
             kcli-windows-amd64.exe
 
   # ──────────────────────────────────────────────────────────────────────────
-  # kubilitics-ai — matrix already runs all 5 platforms in parallel.
+  # Docker images — backend and AI are server-side only (no standalone
+  # binaries in the GitHub Release).  They are distributed via GHCR.
   # ──────────────────────────────────────────────────────────────────────────
-  kubilitics-ai:
-    name: kubilitics-ai Binaries
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    strategy:
-      matrix:
-        include:
-          - goos: linux
-            goarch: amd64
-            suffix: ""
-          - goos: linux
-            goarch: arm64
-            suffix: ""
-          - goos: darwin
-            goarch: amd64
-            suffix: ""
-          - goos: darwin
-            goarch: arm64
-            suffix: ""
-          - goos: windows
-            goarch: amd64
-            suffix: ".exe"
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
-        with:
-          go-version: ${{ env.GO_VERSION }}
-          cache-dependency-path: kubilitics-ai/go.sum
-      - name: Build kubilitics-ai (${{ matrix.goos }}/${{ matrix.goarch }})
-        working-directory: kubilitics-ai
-        env:
-          GOOS: ${{ matrix.goos }}
-          GOARCH: ${{ matrix.goarch }}
-          # CGO_ENABLED=0 for cross-platform release/desktop binaries.
-          # Container images use CGO_ENABLED=1 (Dockerfile) for sqlite/pty at runtime.
-          CGO_ENABLED: "0"
-        run: |
-          mkdir -p bin
-          go build -ldflags="-s -w" \
-            -o bin/kubilitics-ai-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.suffix }} \
-            ./cmd/server/main.go
-      - name: Make binary executable (Unix)
-        if: matrix.goos != 'windows'
-        run: chmod +x kubilitics-ai/bin/kubilitics-ai-${{ matrix.goos }}-${{ matrix.goarch }} || true
-      - name: Upload kubilitics-ai artifact (${{ matrix.goos }}-${{ matrix.goarch }})
-        uses: actions/upload-artifact@v4
-        with:
-          name: kubilitics-ai-${{ matrix.goos }}-${{ matrix.goarch }}-${{ github.ref_name }}
-          path: kubilitics-ai/bin/kubilitics-ai-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.suffix }}
-
-  # ──────────────────────────────────────────────────────────────────────────
-  # Backend — Linux amd64 + arm64 built in PARALLEL.
-  # ──────────────────────────────────────────────────────────────────────────
-  backend:
-    name: Backend Binaries
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
-        with:
-          go-version: ${{ env.GO_VERSION }}
-          cache-dependency-path: kubilitics-backend/go.sum
-      - name: Build Linux amd64 + arm64 (parallel)
-        working-directory: kubilitics-backend
-        run: |
-          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o kubilitics-backend-linux-amd64 ./cmd/server &
-          CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -ldflags="-s -w" -o kubilitics-backend-linux-arm64 ./cmd/server &
-          wait
-      - name: Upload backend artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: kubilitics-backend-${{ github.ref_name }}
-          path: |
-            kubilitics-backend/kubilitics-backend-linux-amd64
-            kubilitics-backend/kubilitics-backend-linux-arm64
-
   docker-backend:
     name: Backend Docker Image
     runs-on: ubuntu-latest
@@ -598,13 +522,18 @@ jobs:
           path: kubilitics-desktop/src-tauri/target/x86_64-pc-windows-msvc/release/bundle/
 
   # ──────────────────────────────────────────────────────────────────────────
-  # Create GitHub Release — runs after all build jobs regardless of desktop
-  # failures (continue-on-error on desktop means its result is always "success"
-  # to needs[]; if: !cancelled() guards against workflow-level cancellation).
+  # Create GitHub Release — desktop installers + kcli CLI only.
+  #
+  # Release assets follow the Headlamp pattern:
+  #   • Desktop installers (.dmg, .AppImage, .deb, .rpm, .exe, .msi)
+  #   • kcli CLI binaries (linux/darwin/windows × amd64/arm64)
+  #   • checksums.txt (SHA-256 of every asset)
+  #
+  # Backend and AI are server-side — distributed via Docker (GHCR) only.
   # ──────────────────────────────────────────────────────────────────────────
   release:
     name: Create GitHub Release
-    needs: [kcli, kubilitics-ai, backend, desktop, docker-backend, docker-ai]
+    needs: [kcli, desktop, docker-backend, docker-ai]
     if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -615,9 +544,12 @@ jobs:
           path: artifacts
 
       - name: Flatten artifacts for release upload
-        # Only copy final installer/binary files — not Tauri intermediate build outputs.
+        # Pick ONLY final user-facing files — desktop installers + kcli binaries.
+        # Excludes Debian internals (control.tar.gz, data.tar.gz) and server binaries.
         run: |
           mkdir -p release-assets
+
+          # ── Desktop installers ──
           find artifacts -type f \( \
             -name "*.dmg"            \
             -o -name "*.AppImage"    \
@@ -625,29 +557,37 @@ jobs:
             -o -name "*.rpm"         \
             -o -name "*-setup.exe"   \
             -o -name "*.msi"         \
-            -o -name "*.tar.gz"      \
-            -o -name "*.tar.gz.sig"  \
-            -o -name "*.dmg.sig"     \
+            -o -name "*.nsis.zip"    \
+          \) -exec cp {} release-assets/ \;
+
+          # ── Updater signature files (if signing is enabled) ──
+          find artifacts -type f \( \
+            -name "*.dmg.sig"        \
             -o -name "*.AppImage.sig" \
             -o -name "*.deb.sig"     \
             -o -name "*.rpm.sig"     \
             -o -name "*.exe.sig"     \
             -o -name "*.msi.sig"     \
-            -o -name "*.nsis.zip"    \
             -o -name "*.nsis.zip.sig" \
-            -o -name "kubilitics-backend-linux-*"   \
-            -o -name "kubilitics-backend-darwin-*"  \
-            -o -name "kubilitics-backend-windows-*" \
-            -o -name "kubilitics-ai-linux-*"        \
-            -o -name "kubilitics-ai-darwin-*"       \
-            -o -name "kubilitics-ai-windows-*"      \
-            -o -name "kcli-linux-*"                 \
-            -o -name "kcli-darwin-*"                \
-            -o -name "kcli-windows-*"               \
           \) -exec cp {} release-assets/ \;
+
+          # ── kcli CLI binaries ──
+          find artifacts -type f \( \
+            -name "kcli-linux-*"     \
+            -o -name "kcli-darwin-*" \
+            -o -name "kcli-windows-*" \
+          \) -exec cp {} release-assets/ \;
+
           echo "Release assets:"
           ls -lh release-assets/
           echo "Total: $(ls release-assets/ | wc -l) files"
+
+      - name: Generate checksums
+        working-directory: release-assets
+        run: |
+          sha256sum * > checksums.txt
+          echo "Checksums:"
+          cat checksums.txt
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
