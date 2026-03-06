@@ -218,21 +218,26 @@ export function Header() {
       <header className={cn(HEADER_HEIGHT_CLASS, 'border-b border-slate-100 bg-white/60 backdrop-blur-3xl shrink-0 shadow-[0_1px_3px_rgba(0,0,0,0.02)] transition-all duration-300 sticky top-0 z-50')}>
         <div className="flex items-center h-full w-full">
 
-          {/* ──── Logo zone: prominent Kubilitics branding ──── */}
+          {/* ──── Logo zone: icon mark + wordmark, Apple-quality sizing ──── */}
           <div className={cn(
-            'shrink-0 flex items-center justify-start h-full bg-slate-50/20 border-r border-slate-100/60 px-6 transition-all duration-300',
-            collapsed ? 'w-[5.5rem]' : 'w-72'
+            'shrink-0 flex items-center h-full bg-slate-50/20 border-r border-slate-100/60 transition-all duration-300',
+            collapsed ? 'w-[5.5rem] justify-center px-0' : 'w-72 justify-start px-5'
           )}>
             <button
               onClick={() => navigate('/home')}
-              className="flex items-center gap-4 group focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 rounded-xl p-2 -ml-2 transition-all"
+              className="flex items-center gap-3 group focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 rounded-xl p-1.5 transition-all"
               aria-label="Go to Home"
             >
               <BrandLogo
-                height={32}
-                variant="dark"
-                className="shrink-0 drop-shadow-sm group-hover:scale-[1.03] transition-transform duration-300"
+                mark
+                height={40}
+                className="shrink-0 rounded-[10px] shadow-sm group-hover:shadow-md group-hover:scale-[1.04] transition-all duration-300"
               />
+              {!collapsed && (
+                <span className="text-[15px] font-semibold tracking-[0.08em] text-slate-700 whitespace-nowrap select-none transition-opacity duration-300">
+                  KUBILITICS
+                </span>
+              )}
             </button>
           </div>
 

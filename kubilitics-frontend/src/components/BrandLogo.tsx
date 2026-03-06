@@ -15,15 +15,25 @@ interface BrandLogoProps extends ImgHTMLAttributes<HTMLImageElement> {
    * - 'light' → solid-background PNG for light backgrounds
    */
   variant?: BrandLogoVariant;
+  /**
+   * When true, renders only the icon mark (no wordmark text).
+   * Uses the cropped hexagonal icon with rounded corners.
+   */
+  mark?: boolean;
 }
 
 export function BrandLogo({
   className,
   height = 32,
   variant = 'dark',
+  mark = false,
   ...imgProps
 }: BrandLogoProps) {
-  const src = variant === 'dark' ? '/brand/logo-dark.png' : '/brand/logo.png';
+  const src = mark
+    ? '/brand/logo-mark-rounded.png'
+    : variant === 'dark'
+      ? '/brand/logo-dark.png'
+      : '/brand/logo.png';
 
   return (
     <img
@@ -35,4 +45,3 @@ export function BrandLogo({
     />
   );
 }
-
