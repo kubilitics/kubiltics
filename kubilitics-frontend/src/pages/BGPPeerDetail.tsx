@@ -76,7 +76,7 @@ export default function BGPPeerDetail() {
     a.href = url;
     a.download = `${peer?.metadata?.name || 'bgppeer'}.yaml`;
     a.click();
-    URL.revokeObjectURL(url);
+    setTimeout(() => URL.revokeObjectURL(url), 30_000);
   }, [yaml, peer?.metadata?.name]);
 
   const handleDownloadJson = useCallback(() => {

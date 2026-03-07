@@ -79,7 +79,7 @@ export default function PersistentVolumeClaimDetail() {
     a.href = url;
     a.download = `${pvc?.metadata?.name || 'pvc'}.yaml`;
     a.click();
-    URL.revokeObjectURL(url);
+    setTimeout(() => URL.revokeObjectURL(url), 30_000);
   }, [yaml, pvc?.metadata?.name]);
 
   const handleDownloadJson = useCallback(() => {

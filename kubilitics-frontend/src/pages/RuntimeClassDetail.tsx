@@ -89,7 +89,7 @@ export default function RuntimeClassDetail() {
     a.href = url;
     a.download = `${rc?.name ?? name ?? 'runtimeclass'}.yaml`;
     a.click();
-    URL.revokeObjectURL(url);
+    setTimeout(() => URL.revokeObjectURL(url), 30_000);
   }, [yaml, rc?.name, name]);
 
   const handleDownloadJson = useCallback(() => {

@@ -71,7 +71,7 @@ export default function NamespaceDetail() {
     a.href = url;
     a.download = `${nsName || 'namespace'}.yaml`;
     a.click();
-    URL.revokeObjectURL(url);
+    setTimeout(() => URL.revokeObjectURL(url), 30_000);
   }, [yaml, nsName]);
 
   const handleDownloadJson = useCallback(() => {

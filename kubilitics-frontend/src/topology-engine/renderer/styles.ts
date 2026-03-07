@@ -451,19 +451,19 @@ export function getStylesheet(): StylesheetStyle[] {
         'taxi-direction': 'downward',
         'taxi-turn': '50%',
         'opacity': 0.6,
-        // Edge labels — dark, high-contrast, clearly readable
+        // Edge labels — always visible, dark, readable at any zoom
         'label': 'data(label)',
-        'font-size': 11,
+        'font-size': 12,
         'font-family': '"Inter", system-ui, sans-serif',
         'font-weight': 600,
-        'color': '#0a0a0a',                        // Near-black for maximum readability
+        'color': '#0f172a',
         'text-background-color': '#ffffff',
         'text-background-opacity': 0.95,
-        'text-background-padding': '5px',
+        'text-background-padding': '4px',
         'text-background-shape': 'roundrectangle',
-        'text-rotation': 'autorotate',
+        'text-rotation': 0,
         'text-margin-y': -8,
-        'min-zoomed-font-size': 7,
+        'min-zoomed-font-size': 0,
         'transition-property': 'line-color, opacity, width',
         'transition-duration': 200,
       } as any,
@@ -584,6 +584,7 @@ export function getStylesheet(): StylesheetStyle[] {
     {
       selector: 'edge.traffic-flow',
       style: {
+        'label': 'data(label)',
         'line-color': '#2ECC71',
         'target-arrow-color': '#2ECC71',
         'width': 3.5,
@@ -605,7 +606,7 @@ export function getStylesheet(): StylesheetStyle[] {
     // ─── Blast radius edges ───────────────────────────
     {
       selector: 'edge.blast-affected',
-      style: { 'line-color': '#EA580C', 'target-arrow-color': '#EA580C', 'width': 3.5, 'opacity': 1, 'z-index': 350 } as any,
+      style: { 'label': 'data(label)', 'line-color': '#EA580C', 'target-arrow-color': '#EA580C', 'width': 3.5, 'opacity': 1, 'z-index': 350 } as any,
     },
     {
       selector: 'edge.blast-alternative',
@@ -616,10 +617,11 @@ export function getStylesheet(): StylesheetStyle[] {
       style: { 'opacity': 0.03, 'text-opacity': 0 } as any,
     },
 
-    // ─── Highlighted edges ───────────────────────────
+    // ─── Highlighted edges (show label on hover/selection) ───
     {
       selector: 'edge.highlighted',
       style: {
+        'label': 'data(label)',
         'width': 4,
         'opacity': 1,
         'z-index': 100,

@@ -80,7 +80,7 @@ export default function APIServiceDetail() {
     a.href = url;
     a.download = `${apiName || 'apiservice'}.yaml`;
     a.click();
-    URL.revokeObjectURL(url);
+    setTimeout(() => URL.revokeObjectURL(url), 30_000);
   }, [yaml, apiName]);
 
   const handleDownloadJson = useCallback(() => {

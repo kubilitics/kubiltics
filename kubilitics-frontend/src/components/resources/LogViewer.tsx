@@ -253,7 +253,7 @@ export function LogViewer({
     a.href = url;
     a.download = `${podName || 'logs'}-${selectedContainer}.log`;
     a.click();
-    URL.revokeObjectURL(url);
+    setTimeout(() => URL.revokeObjectURL(url), 30_000);
   }, [displayLogs, podName, selectedContainer]);
 
   const handleClear = useCallback(() => setLocalLogs([]), []);

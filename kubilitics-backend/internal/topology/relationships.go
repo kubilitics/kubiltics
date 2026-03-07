@@ -24,6 +24,12 @@ func NewRelationshipInferencer(engine *Engine, graph *Graph) *RelationshipInfere
 
 // InferAllRelationships discovers all relationships between resources
 func (ri *RelationshipInferencer) InferAllRelationships(ctx context.Context) error {
+	// 0. Namespace containment (Namespace -> all namespaced resources)
+	// Guarantees the graph is always connected through namespace roots.
+	if err := ri.inferNamespaceContainment(); err != nil {
+		return fmt.Errorf("failed to infer namespace containment: %w", err)
+	}
+
 	// 1. Owner reference relationships (Deployment -> ReplicaSet -> Pod, etc.)
 	if err := ri.inferOwnerReferences(); err != nil {
 		return fmt.Errorf("failed to infer owner references: %w", err)
@@ -74,6 +80,55 @@ func (ri *RelationshipInferencer) InferAllRelationships(ctx context.Context) err
 		return fmt.Errorf("failed to infer job relationships: %w", err)
 	}
 
+	return nil
+}
+
+// inferNamespaceContainment creates Namespace -> Resource "contains" edges for all
+// namespaced resources. This guarantees the graph is always connected through namespace roots.
+func (ri *RelationshipInferencer) inferNamespaceContainment() error {
+	namespaces := ri.graph.GetNodesByType("Namespace")
+	if len(namespaces) == 0 {
+		return nil
+	}
+
+	// Build namespace name -> node ID map for O(1) lookup
+	nsMap := make(map[string]string, len(namespaces))
+	for _, ns := range namespaces {
+		nsMap[ns.Name] = ns.ID
+	}
+
+	// Cluster-scoped kinds that should NOT get namespace containment edges
+	clusterScoped := map[string]bool{
+		"Namespace":          true,
+		"Node":               true,
+		"PersistentVolume":   true,
+		"StorageClass":       true,
+		"ClusterRole":        true,
+		"ClusterRoleBinding": true,
+		"IngressClass":       true,
+		"PriorityClass":      true,
+		"CSIDriver":          true,
+		"CSINode":            true,
+		"RuntimeClass":       true,
+	}
+
+	for _, node := range ri.graph.Nodes {
+		if clusterScoped[node.Kind] || node.Namespace == "" {
+			continue
+		}
+		nsID, ok := nsMap[node.Namespace]
+		if !ok {
+			continue
+		}
+		ri.graph.AddEdge(models.TopologyEdge{
+			ID:               fmt.Sprintf("%s-%s-contains", nsID, node.ID),
+			Source:           nsID,
+			Target:           node.ID,
+			RelationshipType: "contains",
+			Label:            "contains",
+			Metadata:         models.EdgeMetadata{Derivation: "namespaceMembership", Confidence: 1, SourceField: "metadata.namespace"},
+		})
+	}
 	return nil
 }
 
@@ -253,14 +308,13 @@ func (ri *RelationshipInferencer) inferVolumeRelationships(ctx context.Context) 
 	pods := ri.graph.GetNodesByType("Pod")
 
 	for _, pod := range pods {
-		// Get full pod spec from K8s
-		k8sPod, err := ri.engine.client.Clientset.CoreV1().Pods(pod.Namespace).Get(ctx, pod.Name, metav1.GetOptions{})
-		if err != nil {
-			// Pod might have been deleted, skip
+		// Use cached pod spec from discovery phase instead of re-fetching from API server.
+		spec, ok := ri.graph.PodSpecCache[pod.Namespace+"/"+pod.Name]
+		if !ok {
 			continue
 		}
 
-		for _, volume := range k8sPod.Spec.Volumes {
+		for _, volume := range spec.Volumes {
 			if volume.ConfigMap != nil {
 				// O(1) name index lookup instead of scanning all ConfigMaps
 				cm := ri.graph.GetNodeByName(pod.Namespace, "ConfigMap", volume.ConfigMap.Name)
@@ -313,12 +367,13 @@ func (ri *RelationshipInferencer) inferEnvironmentRelationships(ctx context.Cont
 	pods := ri.graph.GetNodesByType("Pod")
 
 	for _, pod := range pods {
-		k8sPod, err := ri.engine.client.Clientset.CoreV1().Pods(pod.Namespace).Get(ctx, pod.Name, metav1.GetOptions{})
-		if err != nil {
+		// Use cached pod spec from discovery phase instead of re-fetching from API server.
+		spec, ok := ri.graph.PodSpecCache[pod.Namespace+"/"+pod.Name]
+		if !ok {
 			continue
 		}
 
-		for _, container := range k8sPod.Spec.Containers {
+		for _, container := range spec.Containers {
 			// Check envFrom
 			for _, envFrom := range container.EnvFrom {
 				if envFrom.ConfigMapRef != nil {
@@ -684,29 +739,31 @@ func (ri *RelationshipInferencer) inferStorageRelationships(ctx context.Context)
 }
 
 // inferNodeRelationships infers node-related relationships.
-// Uses O(1) name index lookup for Node resolution.
-func (ri *RelationshipInferencer) inferNodeRelationships(ctx context.Context) error {
+// Uses stored spec.nodeName from discovery phase (no extra API calls needed).
+func (ri *RelationshipInferencer) inferNodeRelationships(_ context.Context) error {
 	pods := ri.graph.GetNodesByType("Pod")
 
 	for _, pod := range pods {
-		k8sPod, err := ri.engine.client.Clientset.CoreV1().Pods(pod.Namespace).Get(ctx, pod.Name, metav1.GetOptions{})
-		if err != nil {
+		extra := ri.graph.GetNodeExtra(pod.ID)
+		if extra == nil {
+			continue
+		}
+		nodeName, _ := extra["nodeName"].(string)
+		if nodeName == "" {
 			continue
 		}
 
-		if k8sPod.Spec.NodeName != "" {
-			// Nodes are cluster-scoped (namespace="")
-			node := ri.graph.GetNodeByName("", "Node", k8sPod.Spec.NodeName)
-			if node != nil {
-				ri.graph.AddEdge(models.TopologyEdge{
-					ID:               fmt.Sprintf("%s-%s-node", pod.ID, node.ID),
-					Source:           pod.ID,
-					Target:           node.ID,
-					RelationshipType: "schedules",
-					Label:            "runs on",
-					Metadata:         models.EdgeMetadata{Derivation: "fieldReference", Confidence: 1, SourceField: "spec.nodeName"},
-				})
-			}
+		// Nodes are cluster-scoped (namespace="")
+		node := ri.graph.GetNodeByName("", "Node", nodeName)
+		if node != nil {
+			ri.graph.AddEdge(models.TopologyEdge{
+				ID:               fmt.Sprintf("%s-%s-node", pod.ID, node.ID),
+				Source:           pod.ID,
+				Target:           node.ID,
+				RelationshipType: "schedules",
+				Label:            "runs on",
+				Metadata:         models.EdgeMetadata{Derivation: "fieldReference", Confidence: 1, SourceField: "spec.nodeName"},
+			})
 		}
 	}
 

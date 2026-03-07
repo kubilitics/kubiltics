@@ -73,7 +73,7 @@ export default function EndpointDetail() {
     a.href = url;
     a.download = `${epName || 'endpoints'}.yaml`;
     a.click();
-    URL.revokeObjectURL(url);
+    setTimeout(() => URL.revokeObjectURL(url), 30_000);
   }, [yaml, epName]);
 
   const handleDownloadJson = useCallback(() => {

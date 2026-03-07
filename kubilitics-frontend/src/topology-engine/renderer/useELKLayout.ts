@@ -10,7 +10,10 @@ export interface ELKLayoutOptions {
   'elk.direction': string;
   'elk.edgeRouting': string;
   'elk.spacing.nodeNode': number;
+  'elk.spacing.edgeNode': number;
+  'elk.spacing.componentComponent': number;
   'elk.layered.spacing.nodeNodeBetweenLayers': number;
+  'elk.layered.spacing.edgeNodeBetweenLayers': number;
   'elk.layered.crossingMinimization.strategy': string;
   'elk.layered.nodePlacement.strategy': string;
   'elk.layered.mergeEdges': string;
@@ -22,12 +25,15 @@ function getELKOptions(spacingMultiplier = 1): ELKLayoutOptions {
     'elk.algorithm': 'layered',
     'elk.direction': 'DOWN',
     'elk.edgeRouting': 'ORTHOGONAL',
-    'elk.spacing.nodeNode': 80 * spacingMultiplier,
-    'elk.layered.spacing.nodeNodeBetweenLayers': 120 * spacingMultiplier,
+    'elk.spacing.nodeNode': 220 * spacingMultiplier,
+    'elk.spacing.edgeNode': 40 * spacingMultiplier,
+    'elk.spacing.componentComponent': 100 * spacingMultiplier,
+    'elk.layered.spacing.nodeNodeBetweenLayers': 260 * spacingMultiplier,
+    'elk.layered.spacing.edgeNodeBetweenLayers': 50 * spacingMultiplier,
     'elk.layered.crossingMinimization.strategy': 'LAYER_SWEEP',
     'elk.layered.nodePlacement.strategy': 'BRANDES_KOEPF',
     'elk.layered.mergeEdges': 'true',
-    'elk.padding': `[top=${30 * spacingMultiplier},left=${30 * spacingMultiplier},bottom=${30 * spacingMultiplier},right=${30 * spacingMultiplier}]`,
+    'elk.padding': `[top=${50 * spacingMultiplier},left=${50 * spacingMultiplier},bottom=${50 * spacingMultiplier},right=${50 * spacingMultiplier}]`,
   };
 }
 

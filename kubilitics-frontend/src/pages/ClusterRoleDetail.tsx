@@ -109,7 +109,7 @@ export default function ClusterRoleDetail() {
     a.href = url;
     a.download = `${crName || 'clusterrole'}.yaml`;
     a.click();
-    URL.revokeObjectURL(url);
+    setTimeout(() => URL.revokeObjectURL(url), 30_000);
   }, [yaml, crName]);
 
   const handleDownloadJson = useCallback(() => {

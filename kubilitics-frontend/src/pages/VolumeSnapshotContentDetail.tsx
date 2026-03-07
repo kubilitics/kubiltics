@@ -82,7 +82,7 @@ export default function VolumeSnapshotContentDetail() {
     a.href = url;
     a.download = `${vsc?.metadata?.name || 'volumesnapshotcontent'}.yaml`;
     a.click();
-    URL.revokeObjectURL(url);
+    setTimeout(() => URL.revokeObjectURL(url), 30_000);
   }, [yaml, vsc?.metadata?.name]);
 
   const handleDownloadJson = useCallback(() => {

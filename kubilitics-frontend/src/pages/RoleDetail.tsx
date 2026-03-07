@@ -108,7 +108,7 @@ export default function RoleDetail() {
     a.href = url;
     a.download = `${roleName || 'role'}.yaml`;
     a.click();
-    URL.revokeObjectURL(url);
+    setTimeout(() => URL.revokeObjectURL(url), 30_000);
   }, [yaml, roleName]);
 
   const handleDownloadJson = useCallback(() => {

@@ -96,7 +96,7 @@ export default function ReplicationControllerDetail() {
     a.href = url;
     a.download = `${rcName || 'rc'}.yaml`;
     a.click();
-    URL.revokeObjectURL(url);
+    setTimeout(() => URL.revokeObjectURL(url), 30_000);
   }, [yaml, rcName]);
 
   const handleDownloadJson = useCallback(() => {

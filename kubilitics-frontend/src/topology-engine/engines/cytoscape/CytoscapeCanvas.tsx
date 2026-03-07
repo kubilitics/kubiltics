@@ -954,13 +954,22 @@ export const CytoscapeCanvas = forwardRef<EngineRef, CytoscapeCanvasProps>(
         // Fit with padding
         cy.fit(undefined, 100);
 
+        // Dynamically cap scale so the canvas stays within browser limits.
+        // Most browsers cap at ~32767px per dimension. We target a 30000px max.
+        const bb = cy.elements().boundingBox();
+        const maxDim = Math.max(bb.w, bb.h);
+        const maxCanvasPx = 30000;
+        const idealScale = 5;
+        const safeScale = maxDim > 0 ? Math.min(idealScale, maxCanvasPx / maxDim) : idealScale;
+        const effectiveScale = Math.max(1, safeScale); // never below 1×
+
         // Task 9.7: Measure PNG export time
         if (import.meta.env?.DEV) {
           console.time('PNG Export');
         }
         const png = cy.png({
           output: 'base64uri',
-          scale: 5,
+          scale: effectiveScale,
           full: true,
           bg: '#ffffff',
         });

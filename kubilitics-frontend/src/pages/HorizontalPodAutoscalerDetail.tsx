@@ -144,7 +144,7 @@ export default function HorizontalPodAutoscalerDetail() {
     a.href = url;
     a.download = `${hpaName || 'hpa'}.yaml`;
     a.click();
-    URL.revokeObjectURL(url);
+    setTimeout(() => URL.revokeObjectURL(url), 30_000);
   }, [yaml, hpaName]);
 
   const handleDownloadJson = useCallback(() => {

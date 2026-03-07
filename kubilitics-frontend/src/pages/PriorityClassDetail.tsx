@@ -90,7 +90,7 @@ export default function PriorityClassDetail() {
     a.href = url;
     a.download = `${pcName || 'priorityclass'}.yaml`;
     a.click();
-    URL.revokeObjectURL(url);
+    setTimeout(() => URL.revokeObjectURL(url), 30_000);
   }, [yaml, pcName]);
 
   const handleDownloadJson = useCallback(() => {

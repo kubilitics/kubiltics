@@ -37,8 +37,9 @@ export function exportAsJSON(graph: TopologyGraph): string {
 }
 
 // FIX DESKTOP-EXPORT: Use shared Tauri-aware downloadFile instead of inline blob URL logic
-export async function downloadJSON(graph: TopologyGraph, filename = 'topology.json') {
+export async function downloadJSON(graph: TopologyGraph, filename?: string) {
   const data = exportAsJSON(graph);
   const blob = new Blob([data], { type: 'application/json' });
-  await downloadFile(blob, filename);
+  const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+  await downloadFile(blob, filename ?? `topology-${graph.nodes.length}-nodes-${ts}.json`);
 }

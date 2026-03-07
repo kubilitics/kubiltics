@@ -5,6 +5,28 @@ All notable changes to Kubilitics will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.1.3] - 2026-03-07
+
+### Fixed
+
+**Topology Export**
+- Fix zero-byte PNG exports for large namespaces (130+ resources) — canvas scale now dynamically capped to stay within browser's ~32767px max dimension limit
+- Fix `URL.revokeObjectURL` race condition causing zero-byte downloads for large files — delayed revocation by 30s across all export utilities and 57 detail pages
+- Fix SVG/PNG exports on Tauri desktop — now route through Tauri-aware `downloadFile()` instead of inline blob URLs that fail in webview
+- Fix `exportPNG()` method name in ResourceTopologyTab — was calling nonexistent `exportPNG` instead of `exportAsPNG`
+- Add dynamic scale cap to `exportPng.ts`, `CytoscapeCanvas.tsx`, and `TopologyCanvas.tsx` — prevents empty data URLs when graph exceeds canvas limits
+
+**Topology UX**
+- Fix edge labels invisible at fit-to-screen zoom — set `min-zoomed-font-size: 0` with `font-size: 12` and dark color
+- Fix namespace cross-filter bug — clicking node filter no longer resets namespace to "All Namespaces"
+- Fix loading state — show spinner overlay instead of mock graph while topology loads
+- Redesign resource type filter badges — compact K8s abbreviations (Deploy, STS, PVC, CM) with group separators and tooltips
+- Add descriptive export filenames with cluster/namespace/resource context and timestamps across all export formats
+
+**Backend**
+- Cache pod specs during topology discovery to eliminate ~200 redundant per-pod API calls during relationship inference
+- O(1) edge deduplication in GraphEnhancer using Set-based lookup instead of O(edges) linear scan
+
 ## [v0.1.2] - 2026-03-02
 
 ### Fixed

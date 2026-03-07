@@ -134,7 +134,7 @@ export default function ConfigMapDetail() {
     a.href = url;
     a.download = `${cmName || 'configmap'}.yaml`;
     a.click();
-    URL.revokeObjectURL(url);
+    setTimeout(() => URL.revokeObjectURL(url), 30_000);
   }, [yaml, cmName]);
 
   const handleDownloadJson = useCallback(() => {
@@ -376,7 +376,7 @@ export default function ConfigMapDetail() {
                           <Button variant="outline" size="sm" className="gap-1.5" onClick={() => { navigator.clipboard.writeText(value ?? ''); toast.success('Value copied'); }}>
                             <Copy className="h-3.5 w-3.5" /> Copy Value
                           </Button>
-                          <Button variant="outline" size="sm" className="gap-1.5" onClick={() => { const blob = new Blob([value ?? ''], { type: 'text/plain' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `${key}${ext}`; a.click(); URL.revokeObjectURL(url); toast.success('Downloaded'); }}>
+                          <Button variant="outline" size="sm" className="gap-1.5" onClick={() => { const blob = new Blob([value ?? ''], { type: 'text/plain' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `${key}${ext}`; a.click(); setTimeout(() => URL.revokeObjectURL(url), 30_000); toast.success('Downloaded'); }}>
                             <Download className="h-3.5 w-3.5" /> Download as File
                           </Button>
                         </div>
@@ -405,7 +405,7 @@ export default function ConfigMapDetail() {
                       <span className="font-mono text-sm">{key}</span>
                       <span className="text-xs text-muted-foreground">{decodedLength} B</span>
                       <code className="text-xs font-mono text-muted-foreground break-all w-full">{hexPreview}</code>
-                      <Button variant="outline" size="sm" className="gap-1.5" onClick={() => { try { const bin = atob(b64 ?? ''); const bytes = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i); const blob = new Blob([bytes]); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = key; a.click(); URL.revokeObjectURL(url); toast.success('Downloaded'); } catch { toast.error('Failed to decode'); } }}>
+                      <Button variant="outline" size="sm" className="gap-1.5" onClick={() => { try { const bin = atob(b64 ?? ''); const bytes = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i); const blob = new Blob([bytes]); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = key; a.click(); setTimeout(() => URL.revokeObjectURL(url), 30_000); toast.success('Downloaded'); } catch { toast.error('Failed to decode'); } }}>
                         <Download className="h-3.5 w-3.5" /> Download
                       </Button>
                     </div>

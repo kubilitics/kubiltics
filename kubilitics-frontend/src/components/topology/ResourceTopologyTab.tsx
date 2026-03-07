@@ -28,6 +28,7 @@ import {
   getKindColor,
   downloadJSON,
   downloadCSVSummary,
+  downloadFile,
   useHealthOverlay,
   useCostOverlay,
   usePerformanceOverlay,
@@ -184,20 +185,33 @@ export function ResourceTopologyTab({
     toast.success('Topology refreshed');
   }, [refetch]);
 
-  const handleExport = useCallback((format: string) => {
+  const handleExport = useCallback(async (format: string) => {
     if (!graph) {
       toast.error('No topology data to export');
       return;
     }
 
-    const dateStr = new Date().toISOString().slice(0, 10);
-    const filename = `${name}-topology-${dateStr}`;
+    const now = new Date();
+    const ts = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}_${String(now.getHours()).padStart(2, '0')}-${String(now.getMinutes()).padStart(2, '0')}-${String(now.getSeconds()).padStart(2, '0')}`;
+    // Descriptive prefix: kind-namespace-name
+    const kindSlug = kind.toLowerCase();
+    const nsSlug = namespace ? namespace : 'cluster';
+    const nameSlug = name.replace(/[^a-zA-Z0-9_-]/g, '-');
+    const prefix = `${kindSlug}-${nsSlug}-${nameSlug}`;
+    const filename = `${prefix}-topology-${ts}`;
     const exportToast = toast.loading(`Exporting ${format.toUpperCase()}...`);
 
     try {
       if (format === 'png') {
-        const exported = canvasRef.current?.exportPNG?.();
-        if (exported) {
+        const data = canvasRef.current?.exportAsPNG?.();
+        if (data && data.length > 100) {
+          const res = await fetch(data);
+          const blob = await res.blob();
+          if (blob.size < 100) {
+            toast.error('PNG export produced empty image — try filtering to fewer resources.', { id: exportToast });
+            return;
+          }
+          await downloadFile(blob, `${filename}.png`);
           toast.success('PNG exported — check your downloads', { id: exportToast });
         } else {
           toast.error('Export failed — canvas not ready', { id: exportToast });
@@ -206,7 +220,7 @@ export function ResourceTopologyTab({
         downloadJSON(graph, `${filename}.json`);
         toast.success('JSON exported — check your downloads', { id: exportToast });
       } else if (format === 'csv') {
-        downloadCSVSummary(graph, `${filename}.csv`);
+        downloadCSVSummary(graph, prefix);
         toast.success('CSV exported — check your downloads', { id: exportToast });
       } else {
         toast.error(`Unsupported format: ${format}`, { id: exportToast });
@@ -214,7 +228,7 @@ export function ResourceTopologyTab({
     } catch (err) {
       toast.error(`Export failed: ${err instanceof Error ? err.message : 'Unknown error'}`, { id: exportToast });
     }
-  }, [graph, name]);
+  }, [graph, kind, namespace, name]);
 
   // Parameter validation - after all hooks
   if (!kind || !name) {

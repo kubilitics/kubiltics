@@ -214,7 +214,7 @@ export default function ServiceDetail() {
     a.href = url;
     a.download = `${svcName || 'service'}.yaml`;
     a.click();
-    URL.revokeObjectURL(url);
+    setTimeout(() => URL.revokeObjectURL(url), 30_000);
   }, [yaml, svcName]);
 
   const handleDownloadJson = useCallback(() => {

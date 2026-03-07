@@ -77,7 +77,7 @@ export default function PodSecurityPolicyDetail() {
     a.href = url;
     a.download = `${psp.name || 'psp'}.yaml`;
     a.click();
-    URL.revokeObjectURL(url);
+    setTimeout(() => URL.revokeObjectURL(url), 30_000);
   }, [psp.name]);
 
   const handleDownloadJson = useCallback(() => {

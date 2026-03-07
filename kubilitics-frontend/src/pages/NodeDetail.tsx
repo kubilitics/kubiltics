@@ -252,7 +252,7 @@ export default function NodeDetail() {
     a.href = url;
     a.download = `${nodeName || 'node'}.yaml`;
     a.click();
-    URL.revokeObjectURL(url);
+    setTimeout(() => URL.revokeObjectURL(url), 30_000);
   }, [yaml, nodeName]);
 
   const handleDownloadJson = useCallback(() => {

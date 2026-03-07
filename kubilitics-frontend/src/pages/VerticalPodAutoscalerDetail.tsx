@@ -84,7 +84,7 @@ export default function VerticalPodAutoscalerDetail() {
     a.href = url;
     a.download = `${vpaName || 'vpa'}.yaml`;
     a.click();
-    URL.revokeObjectURL(url);
+    setTimeout(() => URL.revokeObjectURL(url), 30_000);
   }, [yaml, vpaName]);
 
   const handleDownloadJson = useCallback(() => {

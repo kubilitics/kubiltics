@@ -48,7 +48,8 @@ export function downloadBlob(blob: Blob, filename: string): void {
   a.href = url;
   a.download = filename;
   a.click();
-  URL.revokeObjectURL(url);
+  // Delay revoke — immediate revoke causes zero-byte downloads for large files
+  setTimeout(() => URL.revokeObjectURL(url), 30_000);
 }
 
 /** Build CSV string from headers and row arrays (values already escaped). */

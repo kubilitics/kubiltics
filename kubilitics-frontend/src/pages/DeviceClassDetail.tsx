@@ -85,7 +85,7 @@ export default function DeviceClassDetail() {
     a.href = url;
     a.download = `${dc?.metadata?.name || 'deviceclass'}.yaml`;
     a.click();
-    URL.revokeObjectURL(url);
+    setTimeout(() => URL.revokeObjectURL(url), 30_000);
   }, [yaml, dc?.metadata?.name]);
 
   const handleDownloadJson = useCallback(() => {

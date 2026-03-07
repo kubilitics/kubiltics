@@ -477,7 +477,12 @@ export const TopologyCanvas = forwardRef<TopologyCanvasRef, TopologyCanvasProps>
     },
     exportAsPNG: () => {
       if (!cyRef.current) return;
-      return cyRef.current.png({ full: true, scale: 2, bg: '#ffffff' });
+      // Cap scale so canvas stays within browser limits (~32767px max dimension)
+      const bb = cyRef.current.elements().boundingBox();
+      const maxDim = Math.max(bb.w, bb.h);
+      const maxCanvasPx = 30000;
+      const safeScale = maxDim > 0 ? Math.min(2, maxCanvasPx / maxDim) : 2;
+      return cyRef.current.png({ full: true, scale: Math.max(1, safeScale), bg: '#ffffff' });
     },
     exportAsPDF: (filename?: string) => {
       if (cyRef.current) {

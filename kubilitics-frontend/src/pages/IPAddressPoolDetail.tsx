@@ -70,7 +70,7 @@ export default function IPAddressPoolDetail() {
     a.href = url;
     a.download = `${pool?.metadata?.name || 'ipaddresspool'}.yaml`;
     a.click();
-    URL.revokeObjectURL(url);
+    setTimeout(() => URL.revokeObjectURL(url), 30_000);
   }, [yaml, pool?.metadata?.name]);
 
   const handleDownloadJson = useCallback(() => {

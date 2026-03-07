@@ -79,7 +79,7 @@ export default function LeaseDetail() {
     a.href = url;
     a.download = `lease-${leaseNamespace}-${leaseName}.yaml`;
     a.click();
-    URL.revokeObjectURL(url);
+    setTimeout(() => URL.revokeObjectURL(url), 30_000);
   }, [yaml, leaseNamespace, leaseName]);
 
   const handleDownloadJson = useCallback(() => {

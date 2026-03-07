@@ -120,7 +120,7 @@ export function YamlEditorDialog({
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    setTimeout(() => URL.revokeObjectURL(url), 30_000);
     toast.success('YAML downloaded');
   };
 

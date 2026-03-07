@@ -328,7 +328,7 @@ export default function PodDetail() {
     a.href = url;
     a.download = `${pod.metadata?.name || 'pod'}.yaml`;
     a.click();
-    URL.revokeObjectURL(url);
+    setTimeout(() => URL.revokeObjectURL(url), 30_000);
     toast.success('YAML downloaded');
   }, [yaml, pod.metadata?.name]);
 
