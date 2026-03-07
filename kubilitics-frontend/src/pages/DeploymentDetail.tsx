@@ -333,7 +333,7 @@ export default function DeploymentDetail() {
     a.href = url;
     a.download = `${deployment.metadata?.name || 'deployment'}.yaml`;
     a.click();
-    URL.revokeObjectURL(url);
+    setTimeout(() => URL.revokeObjectURL(url), 30_000);
     toast.success('YAML downloaded');
   }, [yaml, deployment.metadata?.name]);
 

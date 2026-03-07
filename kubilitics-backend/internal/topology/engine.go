@@ -78,10 +78,17 @@ func (e *Engine) BuildGraph(ctx context.Context, filters models.TopologyFilters,
 		return nil, fmt.Errorf("relationship inference failed: %w", err)
 	}
 
-	// Phase 3: Generate deterministic layout seed
+	// Phase 3: Prune disconnected cluster-scoped resources when namespace filter is active.
+	// Without this, ALL Nodes/PVs/StorageClasses/ClusterRoles appear even if unrelated
+	// to the selected namespace, creating visual islands in the topology.
+	if filters.Namespace != "" {
+		graph.PruneDisconnectedClusterScoped()
+	}
+
+	// Phase 4: Generate deterministic layout seed
 	graph.LayoutSeed = graph.GenerateLayoutSeed()
 
-	// Phase 4: Validate graph
+	// Phase 5: Validate graph
 	if err := graph.Validate(); err != nil {
 		return nil, fmt.Errorf("graph validation failed: %w", err)
 	}
@@ -216,11 +223,20 @@ func (e *Engine) discoverPods(ctx context.Context, graph *Graph, namespace strin
 
 		graph.AddNode(node)
 		graph.SetOwnerRefs(node.ID, convertOwnerRefs(pod.OwnerReferences))
+		// Cache full pod spec so inferVolumeRelationships / inferEnvironmentRelationships
+		// can reuse it instead of re-fetching each pod individually from the API server.
+		graph.mu.Lock()
+		graph.PodSpecCache[pod.Namespace+"/"+pod.Name] = pod.Spec
+		graph.mu.Unlock()
 		saName := pod.Spec.ServiceAccountName
 		if saName == "" {
 			saName = "default"
 		}
-		graph.SetNodeExtra(node.ID, map[string]interface{}{"serviceAccountName": saName})
+		extra := map[string]interface{}{"serviceAccountName": saName}
+		if pod.Spec.NodeName != "" {
+			extra["nodeName"] = pod.Spec.NodeName
+		}
+		graph.SetNodeExtra(node.ID, extra)
 	}
 	return nil
 }

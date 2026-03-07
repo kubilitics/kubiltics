@@ -102,7 +102,7 @@ export default function EventDetail() {
     a.href = url;
     a.download = `event-${eventNamespace}-${eventName}.yaml`;
     a.click();
-    URL.revokeObjectURL(url);
+    setTimeout(() => URL.revokeObjectURL(url), 30_000);
   }, [yaml, eventNamespace, eventName]);
 
   const handleDownloadJson = useCallback(() => {

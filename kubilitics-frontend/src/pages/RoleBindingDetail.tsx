@@ -74,7 +74,7 @@ export default function RoleBindingDetail() {
     a.href = url;
     a.download = `${rbName || 'rolebinding'}.yaml`;
     a.click();
-    URL.revokeObjectURL(url);
+    setTimeout(() => URL.revokeObjectURL(url), 30_000);
   }, [yaml, rbName]);
 
   const handleDownloadJson = useCallback(() => {

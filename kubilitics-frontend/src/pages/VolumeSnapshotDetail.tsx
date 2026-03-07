@@ -84,7 +84,7 @@ export default function VolumeSnapshotDetail() {
     a.href = url;
     a.download = `${vs?.metadata?.name || name || 'volumesnapshot'}.yaml`;
     a.click();
-    URL.revokeObjectURL(url);
+    setTimeout(() => URL.revokeObjectURL(url), 30_000);
     toast.success('YAML downloaded');
   }, [yaml, vs?.metadata?.name, name]);
 

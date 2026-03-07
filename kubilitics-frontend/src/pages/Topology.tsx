@@ -54,6 +54,7 @@ import {
   downloadJSON,
   downloadCSVSummary,
   downloadPDF,
+  downloadFile,
   getRecommendedAbstraction,
   computeBlastRadius,
   useHealthOverlay,
@@ -78,24 +79,30 @@ import {
 } from '@/topology-engine';
 
 // ─── Resource type filter config ──────────────────────────────
-const RESOURCE_TYPES: Array<{ kind: KubernetesKind; label: string; color: string }> = [
-  { kind: 'Namespace', label: 'Namespace', color: NODE_COLORS.Namespace.bg },
-  { kind: 'Ingress', label: 'Ingress', color: NODE_COLORS.Ingress.bg },
-  { kind: 'Service', label: 'Service', color: NODE_COLORS.Service.bg },
-  { kind: 'Deployment', label: 'Deployment', color: NODE_COLORS.Deployment.bg },
-  { kind: 'StatefulSet', label: 'StatefulSet', color: NODE_COLORS.StatefulSet.bg },
-  { kind: 'DaemonSet', label: 'DaemonSet', color: NODE_COLORS.DaemonSet.bg },
-  { kind: 'ReplicaSet', label: 'ReplicaSet', color: NODE_COLORS.ReplicaSet.bg },
-  { kind: 'Pod', label: 'Pod', color: NODE_COLORS.Pod.bg },
-  { kind: 'PodGroup', label: 'PodGroup', color: NODE_COLORS.PodGroup.bg },
-  { kind: 'ConfigMap', label: 'ConfigMap', color: NODE_COLORS.ConfigMap.bg },
-  { kind: 'Secret', label: 'Secret', color: NODE_COLORS.Secret.bg },
-  { kind: 'PersistentVolumeClaim', label: 'PersistentVolumeClaim', color: NODE_COLORS.PersistentVolumeClaim.bg },
-  { kind: 'PersistentVolume', label: 'PersistentVolume', color: NODE_COLORS.PersistentVolume.bg },
-  { kind: 'StorageClass', label: 'StorageClass', color: NODE_COLORS.StorageClass.bg },
-  { kind: 'Node', label: 'Node', color: NODE_COLORS.Node.bg },
-  { kind: 'Job', label: 'Job', color: NODE_COLORS.Job.bg },
-  { kind: 'CronJob', label: 'CronJob', color: NODE_COLORS.CronJob.bg },
+// Short labels use standard K8s abbreviations for compact display
+const RESOURCE_TYPES: Array<{ kind: KubernetesKind; label: string; short: string; color: string; group: string }> = [
+  // Networking
+  { kind: 'Ingress', label: 'Ingress', short: 'Ing', color: NODE_COLORS.Ingress.bg, group: 'net' },
+  { kind: 'Service', label: 'Service', short: 'Svc', color: NODE_COLORS.Service.bg, group: 'net' },
+  // Workloads
+  { kind: 'Deployment', label: 'Deployment', short: 'Deploy', color: NODE_COLORS.Deployment.bg, group: 'workload' },
+  { kind: 'StatefulSet', label: 'StatefulSet', short: 'STS', color: NODE_COLORS.StatefulSet.bg, group: 'workload' },
+  { kind: 'DaemonSet', label: 'DaemonSet', short: 'DS', color: NODE_COLORS.DaemonSet.bg, group: 'workload' },
+  { kind: 'ReplicaSet', label: 'ReplicaSet', short: 'RS', color: NODE_COLORS.ReplicaSet.bg, group: 'workload' },
+  { kind: 'Pod', label: 'Pod', short: 'Pod', color: NODE_COLORS.Pod.bg, group: 'workload' },
+  { kind: 'PodGroup', label: 'PodGroup', short: 'PG', color: NODE_COLORS.PodGroup.bg, group: 'workload' },
+  { kind: 'Job', label: 'Job', short: 'Job', color: NODE_COLORS.Job.bg, group: 'workload' },
+  { kind: 'CronJob', label: 'CronJob', short: 'CJ', color: NODE_COLORS.CronJob.bg, group: 'workload' },
+  // Config
+  { kind: 'ConfigMap', label: 'ConfigMap', short: 'CM', color: NODE_COLORS.ConfigMap.bg, group: 'config' },
+  { kind: 'Secret', label: 'Secret', short: 'Secret', color: NODE_COLORS.Secret.bg, group: 'config' },
+  // Storage
+  { kind: 'PersistentVolumeClaim', label: 'PersistentVolumeClaim', short: 'PVC', color: NODE_COLORS.PersistentVolumeClaim.bg, group: 'storage' },
+  { kind: 'PersistentVolume', label: 'PersistentVolume', short: 'PV', color: NODE_COLORS.PersistentVolume.bg, group: 'storage' },
+  { kind: 'StorageClass', label: 'StorageClass', short: 'SC', color: NODE_COLORS.StorageClass.bg, group: 'storage' },
+  // Infrastructure
+  { kind: 'Namespace', label: 'Namespace', short: 'NS', color: NODE_COLORS.Namespace.bg, group: 'infra' },
+  { kind: 'Node', label: 'Node', short: 'Node', color: NODE_COLORS.Node.bg, group: 'infra' },
 ];
 
 const ALL_RELATIONSHIPS: RelationshipType[] = [
@@ -192,7 +199,7 @@ export default function Topology() {
 
   const handleNodeChange = useCallback((nodeId: string) => {
     setSelectedNodeFilter(nodeId);
-    setSelectedNamespace('all');
+    // Do NOT reset namespace — filters are independent
   }, []);
 
   const { graph: clusterGraph, isLoading: topologyLoading, error: topologyError, refetch: refetchTopology } = useClusterTopology({
@@ -227,6 +234,7 @@ export default function Topology() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [topologyMode, setTopologyMode] = useState<'structural' | 'traffic'>('structural');
+  const [legendCollapsed, setLegendCollapsed] = useState(true);
   const [heatMapMode, setHeatMapMode] = useState<HeatMapMode>('none');
 
   const [selectedResources, setSelectedResources] = useState<Set<KubernetesKind>>(
@@ -477,14 +485,22 @@ export default function Topology() {
   const effectiveBaseUrl = getEffectiveBackendBaseUrl(backendBaseUrl);
   const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured);
 
-  const handleExport = useCallback((format: string) => {
+  const handleExport = useCallback(async (format: string) => {
     if (format !== 'json' && format !== 'csv' && format !== 'pdf' && format !== 'drawio' && !canvasRef.current) {
       toast.error('Canvas not ready. Please wait for the topology to load.');
       return;
     }
 
-    const dateStr = new Date().toISOString().slice(0, 10);
-    const filename = `topology-${dateStr}`;
+    const now = new Date();
+    const timestamp = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}_${String(now.getHours()).padStart(2, '0')}-${String(now.getMinutes()).padStart(2, '0')}-${String(now.getSeconds()).padStart(2, '0')}`;
+    // Build descriptive prefix: cluster-namespace-nodeFilter
+    const clusterSlug = (activeCluster?.name || 'cluster').replace(/[^a-zA-Z0-9_-]/g, '-');
+    const nsSlug = selectedNamespace !== 'all' ? selectedNamespace : 'all-namespaces';
+    const nodeSlug = selectedNodeFilter !== 'all'
+      ? (displayGraph.nodes.find(n => n.id === selectedNodeFilter)?.name || selectedNodeFilter).replace(/[^a-zA-Z0-9_-]/g, '-')
+      : '';
+    const prefix = [clusterSlug, nsSlug, nodeSlug].filter(Boolean).join('-');
+    const filename = `${prefix}-topology-${timestamp}`;
 
     if (format === 'drawio') {
       (async () => {
@@ -512,26 +528,27 @@ export default function Topology() {
           const data = canvasRef.current!.exportAsSVG();
           if (data) {
             const blob = new Blob([data], { type: 'image/svg+xml' });
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement('a');
-            link.download = `${filename}.svg`;
-            link.href = url; link.click(); URL.revokeObjectURL(url);
+            await downloadFile(blob, `${filename}.svg`);
             exported = true;
           }
           break;
         }
         case 'png': {
           const data = canvasRef.current!.exportAsPNG();
-          if (data) {
-            const link = document.createElement('a');
-            link.download = `${filename}.png`;
-            link.href = data; link.click();
+          if (data && data.length > 100) {
+            const res = await fetch(data);
+            const blob = await res.blob();
+            if (blob.size < 100) {
+              toast.error('PNG export produced empty image — graph may be too large. Try filtering to fewer resources.', { id: exportToast });
+              return;
+            }
+            await downloadFile(blob, `${filename}.png`);
             exported = true;
           }
           break;
         }
         case 'pdf': {
-          canvasRef.current?.exportAsPDF?.();
+          canvasRef.current?.exportAsPDF?.(`${filename}.pdf`);
           exported = true;
           break;
         }
@@ -541,7 +558,7 @@ export default function Topology() {
           break;
         }
         case 'csv': {
-          downloadCSVSummary(filteredGraph);
+          downloadCSVSummary(filteredGraph, `${prefix}-topology`);
           exported = true;
           break;
         }
@@ -554,7 +571,7 @@ export default function Topology() {
     } catch (err) {
       toast.error(`Export failed: ${err instanceof Error ? err.message : 'Unknown error'}`, { id: exportToast });
     }
-  }, [filteredGraph, clusterId, effectiveBaseUrl, isBackendConfigured]);
+  }, [filteredGraph, clusterId, effectiveBaseUrl, isBackendConfigured, activeCluster?.name, selectedNamespace, selectedNodeFilter, displayGraph.nodes]);
 
   const handleRefresh = useCallback(async () => {
     setIsRefreshing(true);
@@ -865,23 +882,35 @@ export default function Topology() {
         </Button>
       </div>
 
-      {/* Resource Type Filters */}
-      <div className="flex flex-wrap items-center gap-1.5 flex-shrink-0">
-        {RESOURCE_TYPES.map(rt => {
+      {/* Resource Type Filters — grouped, compact */}
+      <div className="flex flex-wrap items-center gap-1 flex-shrink-0">
+        {RESOURCE_TYPES.map((rt, idx) => {
           const active = selectedResources.has(rt.kind);
+          const prevGroup = idx > 0 ? RESOURCE_TYPES[idx - 1].group : null;
+          const showSep = prevGroup !== null && prevGroup !== rt.group;
           return (
-            <button
-              key={rt.kind}
-              onClick={() => handleResourceToggle(rt.kind)}
-              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-all border ${active
-                ? 'border-transparent text-white shadow-sm'
-                : 'border-border text-muted-foreground bg-background hover:bg-muted'
-                }`}
-              style={active ? { backgroundColor: rt.color } : undefined}
-            >
-              <span className="w-2 h-2 rounded-full" style={{ backgroundColor: rt.color }} />
-              {rt.label}
-            </button>
+            <span key={rt.kind} className="inline-flex items-center">
+              {showSep && <span className="w-px h-4 bg-border mx-1" />}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={() => handleResourceToggle(rt.kind)}
+                    className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-semibold tracking-wide transition-all ${active
+                      ? 'text-white shadow-sm'
+                      : 'text-muted-foreground bg-muted/50 hover:bg-muted'
+                      }`}
+                    style={active ? { backgroundColor: rt.color } : undefined}
+                  >
+                    <span
+                      className="w-1.5 h-1.5 rounded-full shrink-0"
+                      style={{ backgroundColor: active ? 'rgba(255,255,255,0.7)' : rt.color }}
+                    />
+                    {rt.short}
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="text-xs">{rt.label}</TooltipContent>
+              </Tooltip>
+            </span>
           );
         })}
       </div>
@@ -933,6 +962,15 @@ export default function Topology() {
 
       {/* Canvas */}
       <div className="flex-1 relative min-h-0">
+        {/* Loading overlay — shown when backend data is loading and no cached graph exists */}
+        {topologyLoading && !clusterGraph && (
+          <div className="absolute inset-0 z-30 flex items-center justify-center bg-background/80 backdrop-blur-sm">
+            <div className="flex flex-col items-center gap-3">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <span className="text-sm font-medium text-muted-foreground">Loading topology...</span>
+            </div>
+          </div>
+        )}
         <TopologyCanvas
           ref={canvasRef}
           graph={filteredGraph}
@@ -1445,51 +1483,65 @@ export default function Topology() {
             })()}
           </TopologyNodePanel>
         )}
-        {/* Final Premium Legend & Statistics Panel */}
-        <Card className="absolute bottom-4 left-4 p-4 shadow-2xl border-none bg-white/90 backdrop-blur-md dark:bg-slate-900/90 z-20 w-80 overflow-hidden transition-all duration-300 hover:w-96">
-          <div className="flex items-center justify-between mb-3">
+        {/* Legend & Statistics Panel — collapsible */}
+        <Card className={`absolute bottom-4 left-4 shadow-2xl border-none bg-white/90 backdrop-blur-md dark:bg-slate-900/90 z-20 overflow-hidden transition-all duration-300 ${legendCollapsed ? 'p-2' : 'p-4 w-80'}`}>
+          <div
+            className="flex items-center justify-between cursor-pointer select-none"
+            onClick={() => setLegendCollapsed(!legendCollapsed)}
+          >
             <div className="flex items-center gap-2">
               <div className="p-1.5 bg-blue-100 dark:bg-blue-900 rounded-lg">
                 <Grid3X3 className="w-4 h-4 text-blue-600 dark:text-blue-400" />
               </div>
-              <h3 className="font-bold text-sm tracking-tight text-slate-800 dark:text-slate-100">Live Ecosystem</h3>
+              {!legendCollapsed && (
+                <h3 className="font-bold text-sm tracking-tight text-slate-800 dark:text-slate-100">Live Ecosystem</h3>
+              )}
             </div>
-            <Badge variant="outline" className="text-[10px] font-bold px-1.5 py-0 border-blue-200 text-blue-600">
-              {(clusterGraph?.nodes || mockGraph.nodes).length} Nodes
-            </Badge>
+            <div className="flex items-center gap-1.5">
+              <Badge variant="outline" className="text-[10px] font-bold px-1.5 py-0 border-blue-200 text-blue-600">
+                {(clusterGraph?.nodes || mockGraph.nodes).length}
+              </Badge>
+              {legendCollapsed ? (
+                <ChevronUp className="w-3.5 h-3.5 text-slate-400" />
+              ) : (
+                <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+              )}
+            </div>
           </div>
 
-          <div className="space-y-3">
-            <div className="grid grid-cols-2 gap-x-3 gap-y-2">
-              {RESOURCE_TYPES.slice(0, 8).map((rt) => (
-                <div key={rt.kind} className="flex items-center gap-2 group cursor-default">
-                  <div
-                    className="w-2 h-2 rounded-full shadow-sm group-hover:scale-125 transition-transform"
-                    style={{ backgroundColor: rt.color }}
-                  />
-                  <span className="text-[10px] font-medium text-slate-500 dark:text-slate-400 truncate">{rt.label}</span>
-                </div>
-              ))}
-            </div>
-
-            <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
-              <div className="flex gap-2">
-                <div className="flex items-center gap-1">
-                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                  <span className="text-[10px] font-bold text-emerald-600">{stats.healthy}</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <div className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-                  <span className="text-[10px] font-bold text-amber-600">{stats.warning}</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <div className="w-1.5 h-1.5 rounded-full bg-rose-500" />
-                  <span className="text-[10px] font-bold text-rose-600">{stats.critical}</span>
-                </div>
+          {!legendCollapsed && (
+            <div className="space-y-3 mt-3">
+              <div className="grid grid-cols-2 gap-x-3 gap-y-2">
+                {RESOURCE_TYPES.slice(0, 8).map((rt) => (
+                  <div key={rt.kind} className="flex items-center gap-2 group cursor-default">
+                    <div
+                      className="w-2 h-2 rounded-full shadow-sm group-hover:scale-125 transition-transform"
+                      style={{ backgroundColor: rt.color }}
+                    />
+                    <span className="text-[10px] font-medium text-slate-500 dark:text-slate-400 truncate">{rt.label}</span>
+                  </div>
+                ))}
               </div>
-              <span className="text-[9px] text-slate-400 font-medium italic">Auto-refresh active</span>
+
+              <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                <div className="flex gap-2">
+                  <div className="flex items-center gap-1">
+                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                    <span className="text-[10px] font-bold text-emerald-600">{stats.healthy}</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <div className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                    <span className="text-[10px] font-bold text-amber-600">{stats.warning}</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <div className="w-1.5 h-1.5 rounded-full bg-rose-500" />
+                    <span className="text-[10px] font-bold text-rose-600">{stats.critical}</span>
+                  </div>
+                </div>
+                <span className="text-[9px] text-slate-400 font-medium italic">Auto-refresh active</span>
+              </div>
             </div>
-          </div>
+          )}
         </Card>
       </div>
     </motion.div>

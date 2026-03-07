@@ -75,7 +75,7 @@ export default function MutatingWebhookDetail() {
     a.href = url;
     a.download = `${whName || 'mutatingwebhook'}.yaml`;
     a.click();
-    URL.revokeObjectURL(url);
+    setTimeout(() => URL.revokeObjectURL(url), 30_000);
   }, [yaml, whName]);
 
   const handleDownloadJson = useCallback(() => {

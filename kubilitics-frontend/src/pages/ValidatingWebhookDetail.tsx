@@ -79,7 +79,7 @@ export default function ValidatingWebhookDetail() {
     a.href = url;
     a.download = `${whName || 'validatingwebhook'}.yaml`;
     a.click();
-    URL.revokeObjectURL(url);
+    setTimeout(() => URL.revokeObjectURL(url), 30_000);
   }, [yaml, whName]);
 
   const handleDownloadJson = useCallback(() => {

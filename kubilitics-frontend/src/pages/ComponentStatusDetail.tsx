@@ -65,7 +65,7 @@ export default function ComponentStatusDetail() {
     a.href = url;
     a.download = `${csName || 'componentstatus'}.yaml`;
     a.click();
-    URL.revokeObjectURL(url);
+    setTimeout(() => URL.revokeObjectURL(url), 30_000);
   }, [yaml, csName]);
 
   const handleDownloadJson = useCallback(() => {

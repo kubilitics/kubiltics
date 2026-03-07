@@ -71,7 +71,7 @@ export default function ClusterRoleBindingDetail() {
     a.href = url;
     a.download = `${crbName || 'clusterrolebinding'}.yaml`;
     a.click();
-    URL.revokeObjectURL(url);
+    setTimeout(() => URL.revokeObjectURL(url), 30_000);
   }, [yaml, crbName]);
 
   const handleDownloadJson = useCallback(() => {

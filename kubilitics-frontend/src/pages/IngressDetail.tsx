@@ -184,7 +184,7 @@ export default function IngressDetail() {
     a.href = url;
     a.download = `${ingName || 'ingress'}.yaml`;
     a.click();
-    URL.revokeObjectURL(url);
+    setTimeout(() => URL.revokeObjectURL(url), 30_000);
   }, [yaml, ingName]);
 
   const handleDownloadJson = useCallback(() => {

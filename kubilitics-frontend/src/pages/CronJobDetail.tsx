@@ -353,7 +353,7 @@ export default function CronJobDetail() {
     a.href = url;
     a.download = `${cronJob.metadata?.name || 'cronjob'}.yaml`;
     a.click();
-    URL.revokeObjectURL(url);
+    setTimeout(() => URL.revokeObjectURL(url), 30_000);
     toast.success('YAML downloaded');
   }, [yaml, cronJob.metadata?.name]);
 

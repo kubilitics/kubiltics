@@ -76,7 +76,7 @@ export default function CustomResourceDefinitionDetail() {
     a.href = url;
     a.download = `${crdName || 'crd'}.yaml`;
     a.click();
-    URL.revokeObjectURL(url);
+    setTimeout(() => URL.revokeObjectURL(url), 30_000);
   }, [yaml, crdName]);
 
   const handleDownloadJson = useCallback(() => {

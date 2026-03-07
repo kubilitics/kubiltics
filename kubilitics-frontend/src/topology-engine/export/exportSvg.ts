@@ -14,9 +14,10 @@ export function exportAsSVG(cy: Core): string | undefined {
 }
 
 // FIX DESKTOP-EXPORT: Use shared Tauri-aware downloadFile instead of inline blob URL logic
-export async function downloadSVG(cy: Core, filename = 'topology.svg') {
+export async function downloadSVG(cy: Core, filename?: string) {
   const svgData = exportAsSVG(cy);
   if (!svgData) return;
   const blob = new Blob([svgData], { type: 'image/svg+xml' });
-  await downloadFile(blob, filename);
+  const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+  await downloadFile(blob, filename ?? `topology-${ts}.svg`);
 }

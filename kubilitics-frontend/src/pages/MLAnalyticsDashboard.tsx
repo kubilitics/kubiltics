@@ -222,7 +222,7 @@ export function MLAnalyticsDashboard() {
     a.href = url;
     a.download = `ml-analytics-${selectedMetric}-${new Date().toISOString().slice(0, 10)}.json`;
     a.click();
-    URL.revokeObjectURL(url);
+    setTimeout(() => URL.revokeObjectURL(url), 30_000);
   };
 
   const getSeverityBadge = (count: number) => {

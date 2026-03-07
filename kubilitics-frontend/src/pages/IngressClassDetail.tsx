@@ -81,7 +81,7 @@ export default function IngressClassDetail() {
     a.href = url;
     a.download = `${icName || 'ingressclass'}.yaml`;
     a.click();
-    URL.revokeObjectURL(url);
+    setTimeout(() => URL.revokeObjectURL(url), 30_000);
   }, [yaml, icName]);
 
   const handleDownloadJson = useCallback(() => {

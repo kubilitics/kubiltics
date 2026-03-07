@@ -240,7 +240,7 @@ export default function JobDetail() {
     a.href = url;
     a.download = `${job.metadata?.name || 'job'}.yaml`;
     a.click();
-    URL.revokeObjectURL(url);
+    setTimeout(() => URL.revokeObjectURL(url), 30_000);
     toast.success('YAML downloaded');
   }, [yaml, job.metadata?.name]);
 

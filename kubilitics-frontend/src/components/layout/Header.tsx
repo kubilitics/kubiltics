@@ -188,7 +188,7 @@ export function Header() {
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      setTimeout(() => URL.revokeObjectURL(url), 30_000);
       toast.success(`Downloaded ${filename}`);
     } catch (error) {
       toast.error('Failed to download kubeconfig');

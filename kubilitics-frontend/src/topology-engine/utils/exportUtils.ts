@@ -207,12 +207,15 @@ export async function downloadFile(blob: Blob, filename: string) {
   }
 
   // Standard browser download via blob URL
+  // IMPORTANT: Delay revokeObjectURL — calling it immediately after click()
+  // causes zero-byte downloads for large files because the browser hasn't
+  // finished reading the blob URL before it's revoked.
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
   link.download = safeFilename;
   link.click();
-  URL.revokeObjectURL(url);
+  setTimeout(() => URL.revokeObjectURL(url), 30_000);
 }
 
 /**
@@ -391,9 +394,12 @@ async function postProcessImage(
  */
 export function getSuggestedFilename(
   graph: TopologyGraph,
-  format: string
+  format: string,
+  prefix?: string
 ): string {
-  const timestamp = new Date().toISOString().split('T')[0];
+  const now = new Date();
+  const ts = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}_${String(now.getHours()).padStart(2, '0')}-${String(now.getMinutes()).padStart(2, '0')}-${String(now.getSeconds()).padStart(2, '0')}`;
   const nodeCount = graph.nodes.length;
-  return `topology-${nodeCount}-nodes-${timestamp}.${format}`;
+  const base = prefix ? `${prefix}-topology` : `topology-${nodeCount}-nodes`;
+  return `${base}-${ts}.${format}`;
 }

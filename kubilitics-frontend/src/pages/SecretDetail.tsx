@@ -135,7 +135,7 @@ export default function SecretDetail() {
     a.href = url;
     a.download = `${sName || 'secret'}.yaml`;
     a.click();
-    URL.revokeObjectURL(url);
+    setTimeout(() => URL.revokeObjectURL(url), 30_000);
   }, [yaml, sName]);
 
   const handleDownloadJson = useCallback(() => {

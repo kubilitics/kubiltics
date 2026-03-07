@@ -139,7 +139,7 @@ export function ResourceWizard({
     a.href = url;
     a.download = `${resourceType.toLowerCase()}.yaml`;
     a.click();
-    URL.revokeObjectURL(url);
+    setTimeout(() => URL.revokeObjectURL(url), 30_000);
     toast.success('YAML downloaded');
   };
 

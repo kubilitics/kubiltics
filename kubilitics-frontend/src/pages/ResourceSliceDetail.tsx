@@ -88,7 +88,7 @@ export default function ResourceSliceDetail() {
     a.href = url;
     a.download = `${rs?.metadata?.name || 'resourceslice'}.yaml`;
     a.click();
-    URL.revokeObjectURL(url);
+    setTimeout(() => URL.revokeObjectURL(url), 30_000);
   }, [yaml, rs?.metadata?.name]);
 
   const handleDownloadJson = useCallback(() => {

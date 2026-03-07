@@ -130,7 +130,7 @@ export default function ResourceQuotaDetail() {
     a.href = url;
     a.download = `${quotaName || 'resourcequota'}.yaml`;
     a.click();
-    URL.revokeObjectURL(url);
+    setTimeout(() => URL.revokeObjectURL(url), 30_000);
   }, [yaml, quotaName]);
 
   const handleDownloadJson = useCallback(() => {

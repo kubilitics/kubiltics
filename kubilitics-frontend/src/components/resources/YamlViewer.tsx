@@ -86,7 +86,7 @@ export function YamlViewer({ yaml, resourceName, editable = false, onSave, warni
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    setTimeout(() => URL.revokeObjectURL(url), 30_000);
     toast.success(`Downloaded ${resourceName}.yaml`);
   }, [isEditing, editedYaml, yaml, resourceName]);
 

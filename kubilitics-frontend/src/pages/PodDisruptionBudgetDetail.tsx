@@ -82,7 +82,7 @@ export default function PodDisruptionBudgetDetail() {
     a.href = url;
     a.download = `${pdbName || 'pdb'}.yaml`;
     a.click();
-    URL.revokeObjectURL(url);
+    setTimeout(() => URL.revokeObjectURL(url), 30_000);
   }, [yaml, pdbName]);
 
   const handleDownloadJson = useCallback(() => {

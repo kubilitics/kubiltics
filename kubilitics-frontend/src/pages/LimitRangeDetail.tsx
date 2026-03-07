@@ -100,7 +100,7 @@ export default function LimitRangeDetail() {
     a.href = url;
     a.download = `${lrName || 'limitrange'}.yaml`;
     a.click();
-    URL.revokeObjectURL(url);
+    setTimeout(() => URL.revokeObjectURL(url), 30_000);
   }, [yaml, lrName]);
 
   const handleDownloadJson = useCallback(() => {

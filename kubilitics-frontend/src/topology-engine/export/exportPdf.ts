@@ -11,7 +11,11 @@ import type { Core } from 'cytoscape';
 import { exportAsPNG } from './exportPng';
 import { downloadFile } from '../utils/exportUtils';
 
-export async function downloadPDF(cy: Core, filename = 'topology.pdf') {
+export async function downloadPDF(cy: Core, filename?: string) {
+  if (!filename) {
+    const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+    filename = `topology-${ts}.pdf`;
+  }
   const pngData = exportAsPNG(cy, { scale: 3, bg: '#ffffff' });
   if (!pngData) return;
 

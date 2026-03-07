@@ -77,7 +77,7 @@ export default function EndpointSliceDetail() {
     a.href = url;
     a.download = `${esName || 'endpointslice'}.yaml`;
     a.click();
-    URL.revokeObjectURL(url);
+    setTimeout(() => URL.revokeObjectURL(url), 30_000);
   }, [yaml, esName]);
 
   const handleDownloadJson = useCallback(() => {

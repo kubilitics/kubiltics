@@ -72,7 +72,7 @@ export default function PodTemplateDetail() {
     a.href = url;
     a.download = `${pt?.metadata?.name || 'podtemplate'}.yaml`;
     a.click();
-    URL.revokeObjectURL(url);
+    setTimeout(() => URL.revokeObjectURL(url), 30_000);
   }, [yaml, pt?.metadata?.name]);
 
   const handleDownloadJson = useCallback(() => {

@@ -110,7 +110,7 @@ export default function NetworkPolicyDetail() {
     a.href = url;
     a.download = `${npName || 'networkpolicy'}.yaml`;
     a.click();
-    URL.revokeObjectURL(url);
+    setTimeout(() => URL.revokeObjectURL(url), 30_000);
   }, [yaml, npName]);
 
   const handleDownloadJson = useCallback(() => {

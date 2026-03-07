@@ -54,17 +54,19 @@ export function exportAsCSV(graph: TopologyGraph): string {
 // FIX DESKTOP-EXPORT: Use shared Tauri-aware downloadFile instead of inline blob URL logic
 
 /** Download one CSV file (legacy – nodes only) */
-export async function downloadCSV(graph: TopologyGraph, filename = 'topology.csv') {
+export async function downloadCSV(graph: TopologyGraph, filename?: string) {
   const data = exportAsCSV(graph);
   const blob = new Blob([data], { type: 'text/csv' });
-  await downloadFile(blob, filename);
+  const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+  await downloadFile(blob, filename ?? `topology-nodes-${ts}.csv`);
 }
 
-/** Task 6.4: Download two files – topology-nodes-YYYY-MM-DD.csv, topology-edges-YYYY-MM-DD.csv */
-export async function downloadCSVSummary(graph: TopologyGraph) {
-  const dateStr = new Date().toISOString().slice(0, 10);
+/** Task 6.4: Download two files – {prefix}-nodes-{timestamp}.csv, {prefix}-edges-{timestamp}.csv */
+export async function downloadCSVSummary(graph: TopologyGraph, prefix = 'topology') {
+  const now = new Date();
+  const ts = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}_${String(now.getHours()).padStart(2, '0')}-${String(now.getMinutes()).padStart(2, '0')}-${String(now.getSeconds()).padStart(2, '0')}`;
   const nodesBlob = new Blob([exportAsNodesCSV(graph)], { type: 'text/csv' });
   const edgesBlob = new Blob([exportAsEdgesCSV(graph)], { type: 'text/csv' });
-  await downloadFile(nodesBlob, `topology-nodes-${dateStr}.csv`);
-  await downloadFile(edgesBlob, `topology-edges-${dateStr}.csv`);
+  await downloadFile(nodesBlob, `${prefix}-nodes-${ts}.csv`);
+  await downloadFile(edgesBlob, `${prefix}-edges-${ts}.csv`);
 }

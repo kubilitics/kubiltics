@@ -73,7 +73,7 @@ export default function ServiceAccountDetail() {
     a.href = url;
     a.download = `${saName || 'serviceaccount'}.yaml`;
     a.click();
-    URL.revokeObjectURL(url);
+    setTimeout(() => URL.revokeObjectURL(url), 30_000);
   }, [yaml, saName]);
 
   const handleDownloadJson = useCallback(() => {

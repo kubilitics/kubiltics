@@ -276,7 +276,7 @@ export default function StatefulSetDetail() {
     a.href = url;
     a.download = `${statefulSet.metadata?.name || 'statefulset'}.yaml`;
     a.click();
-    URL.revokeObjectURL(url);
+    setTimeout(() => URL.revokeObjectURL(url), 30_000);
     toast.success('YAML downloaded');
   }, [yaml, statefulSet.metadata?.name]);
 

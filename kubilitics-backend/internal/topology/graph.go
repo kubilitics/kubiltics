@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/kubilitics/kubilitics-backend/internal/models"
+	corev1 "k8s.io/api/core/v1"
 )
 
 // OwnerRef is used for inferencing owner-reference edges (UID lookup).
@@ -32,6 +33,7 @@ type Graph struct {
 	EdgeMap       map[string]bool
 	nodeOwnerRefs map[string][]OwnerRef            // nodeID -> owner refs
 	nodeExtra     map[string]map[string]interface{} // nodeID -> extra fields for inference (scaleTargetRef, roleRef, spec, etc.)
+	PodSpecCache  map[string]corev1.PodSpec         // "namespace/name" -> cached pod spec from discovery phase
 	LayoutSeed    string
 	// MaxNodes caps the number of nodes (C1.4); 0 = no limit. When reached, Truncated is set and no more nodes are added.
 	MaxNodes   int
@@ -51,6 +53,7 @@ func NewGraph(maxNodes int) *Graph {
 		EdgeMap:       make(map[string]bool),
 		nodeOwnerRefs: make(map[string][]OwnerRef),
 		nodeExtra:     make(map[string]map[string]interface{}),
+		PodSpecCache:  make(map[string]corev1.PodSpec),
 		MaxNodes:      maxNodes,
 	}
 }
@@ -191,6 +194,79 @@ func (g *Graph) ToTopologyGraph(clusterID string) models.TopologyGraph {
 			EdgeCount:   len(g.Edges),
 		},
 	}
+}
+
+// PruneDisconnectedClusterScoped removes cluster-scoped nodes that have no
+// path to any namespaced resource. When a namespace filter is active, the
+// backend discovers ALL cluster-scoped resources (Nodes, PVs, StorageClasses,
+// ClusterRoles, etc.) but only namespaced resources from the selected namespace.
+// This leaves cluster-scoped resources that are unrelated to that namespace as
+// disconnected islands. BFS from namespaced resources finds all reachable nodes;
+// unreachable cluster-scoped nodes are pruned.
+func (g *Graph) PruneDisconnectedClusterScoped() {
+	// Seed BFS with all namespaced resources + Namespace nodes themselves
+	reachable := make(map[string]bool, len(g.Nodes))
+	queue := make([]string, 0, len(g.Nodes))
+
+	for _, node := range g.Nodes {
+		if node.Namespace != "" || node.Kind == "Namespace" {
+			reachable[node.ID] = true
+			queue = append(queue, node.ID)
+		}
+	}
+
+	// Build undirected adjacency list from edges
+	adj := make(map[string][]string, len(g.Nodes))
+	for _, edge := range g.Edges {
+		adj[edge.Source] = append(adj[edge.Source], edge.Target)
+		adj[edge.Target] = append(adj[edge.Target], edge.Source)
+	}
+
+	// BFS to find all reachable nodes
+	for len(queue) > 0 {
+		current := queue[0]
+		queue = queue[1:]
+		for _, neighbor := range adj[current] {
+			if !reachable[neighbor] {
+				reachable[neighbor] = true
+				queue = append(queue, neighbor)
+			}
+		}
+	}
+
+	// Rebuild Nodes slice keeping only reachable ones
+	kept := g.Nodes[:0]
+	for _, node := range g.Nodes {
+		if reachable[node.ID] {
+			kept = append(kept, node)
+		} else {
+			// Clean up indexes for pruned node
+			delete(g.NodeMap, node.ID)
+			if node.Metadata.UID != "" {
+				delete(g.UIDToNode, node.Metadata.UID)
+			}
+			nameKey := node.Namespace + "\x00" + node.Kind + "\x00" + node.Name
+			delete(g.NameIndex, nameKey)
+		}
+	}
+	g.Nodes = kept
+
+	// Rebuild node pointers in NodeMap (slice may have shifted)
+	for i := range g.Nodes {
+		g.NodeMap[g.Nodes[i].ID] = &g.Nodes[i]
+	}
+
+	// Remove edges referencing pruned nodes
+	keptEdges := g.Edges[:0]
+	for _, edge := range g.Edges {
+		if reachable[edge.Source] && reachable[edge.Target] {
+			keptEdges = append(keptEdges, edge)
+		} else {
+			edgeKey := fmt.Sprintf("%s->%s:%s", edge.Source, edge.Target, edge.RelationshipType)
+			delete(g.EdgeMap, edgeKey)
+		}
+	}
+	g.Edges = keptEdges
 }
 
 // Validate checks graph completeness and correctness.

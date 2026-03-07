@@ -238,7 +238,7 @@ export default function DaemonSetDetail() {
     a.href = url;
     a.download = `${daemonSet.metadata?.name || 'daemonset'}.yaml`;
     a.click();
-    URL.revokeObjectURL(url);
+    setTimeout(() => URL.revokeObjectURL(url), 30_000);
     toast.success('YAML downloaded');
   }, [yaml, daemonSet.metadata?.name]);
 

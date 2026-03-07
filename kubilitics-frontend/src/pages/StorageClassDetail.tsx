@@ -75,7 +75,7 @@ export default function StorageClassDetail() {
     a.href = url;
     a.download = `${sc?.metadata?.name || 'storageclass'}.yaml`;
     a.click();
-    URL.revokeObjectURL(url);
+    setTimeout(() => URL.revokeObjectURL(url), 30_000);
   }, [yaml, sc?.metadata?.name]);
 
   const handleDownloadJson = useCallback(() => {

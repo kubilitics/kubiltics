@@ -81,7 +81,7 @@ export default function VolumeAttachmentDetail() {
     a.href = url;
     a.download = `${va?.metadata?.name || 'volumeattachment'}.yaml`;
     a.click();
-    URL.revokeObjectURL(url);
+    setTimeout(() => URL.revokeObjectURL(url), 30_000);
   }, [yaml, va?.metadata?.name]);
 
   const handleDownloadJson = useCallback(() => {
