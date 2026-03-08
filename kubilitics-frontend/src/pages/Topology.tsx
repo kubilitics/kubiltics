@@ -1,206 +1,1337 @@
 /**
- * World-Class Topology Page
- * Uses the portable /topology-engine
- * Structural + Traffic Flow modes, Heatmap, Minimap
+ * Kubilitics Topology — Enterprise Architecture Redesign
+ *
+ * 3 clear views:
+ *   1. Application  — how apps run (Ingress → Service → Deployment → Pod → Node)
+ *   2. Dependencies — what a resource depends on (radial upstream/downstream)
+ *   3. Infrastructure — cluster infra (Node → Pods/Volumes/Controllers)
+ *
+ * Design: Apple HIG, calm palette, focus-mode interaction, Figma-like canvas.
+ * Rule: if a user can't understand the cluster in 3 seconds, it failed.
  */
-import { useState, useRef, useCallback, useMemo, useEffect } from 'react';
-import { motion } from 'framer-motion';
+
+import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import {
-  Network, ZoomIn, ZoomOut, Maximize, RotateCcw, Download,
-  FileCode, FileImage, FileText, FileJson, Table, Search,
-  Layers, ChevronDown, Activity, Thermometer, RefreshCcw,
-  Map as MapIcon, Copy, Bomb, Route, Trash2, Edit, X, ScrollText, ExternalLink, ChevronUp, Grid3X3,
-  Brain, GitBranch, AlertCircle, CheckCircle2, Sparkles, Loader2, ShieldAlert, ArrowRight,
+  ReactFlow,
+  Background,
+  BackgroundVariant,
+  Controls,
+  MiniMap,
+  useNodesState,
+  useEdgesState,
+  useReactFlow,
+  ReactFlowProvider,
+  Handle,
+  Position,
+  BaseEdge,
+  getBezierPath,
+  MarkerType,
+  Panel,
+  type Node,
+  type Edge,
+  type NodeTypes,
+  type EdgeTypes,
+  type NodeProps,
+  type EdgeProps,
+} from '@xyflow/react';
+import '@xyflow/react/dist/style.css';
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+  Search, X, Layers, Globe, Server, Box, Cpu, Database,
+  Shield, Key, Lock, HardDrive, Archive, FileCode, Zap,
+  Activity, Network, GitBranch, Share2, Waypoints, Filter,
+  LayoutGrid, Settings, RefreshCw, Download, ChevronDown,
+  AlertCircle, CheckCircle2, AlertTriangle, Loader2,
+  Maximize2, SlidersHorizontal,
 } from 'lucide-react';
-import { createPortal } from 'react-dom';
-import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { Separator } from '@/components/ui/separator';
-import { Input } from '@/components/ui/input';
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from '@/components/ui/select';
-import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator,
-} from '@/components/ui/dropdown-menu';
+import ELK from 'elkjs/lib/elk.bundled.js';
 import { useClusterStore } from '@/stores/clusterStore';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useClusterTopology } from '@/hooks/useClusterTopology';
 import { useActiveClusterId } from '@/hooks/useActiveClusterId';
 import { useNamespacesFromCluster } from '@/hooks/useNamespacesFromCluster';
+import { Button } from '@/components/ui/button';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { Input } from '@/components/ui/input';
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select';
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem,
+  DropdownMenuTrigger, DropdownMenuSeparator,
+} from '@/components/ui/dropdown-menu';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { getTopologyExportDrawio } from '@/services/backendApiClient';
-import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
+import { GraphModel } from '@/topology-engine/core/graphModel';
+import { AdjacencyMap } from '@/topology-engine/core/adjacencyMap';
+import { getUpstreamChain, getDownstreamChain } from '@/topology-engine/core/graphTraversal';
+import type {
+  TopologyGraph, TopologyNode, TopologyEdge, KubernetesKind,
+} from '@/topology-engine/types/topology.types';
 import {
-  useBlastRadiusAnalysis,
-  useCriticalPath,
-  useNodeExplain,
-  type TopologyNodeSummary as AINodeSummary,
-  type TopologyEdgeSummary as AIEdgeSummary,
-} from '@/hooks/useTopologyAI';
-
-// ─── Import from portable topology-engine ─────────────────────
-
-import {
-  TopologyCanvas,
-  ABSTRACTION_LEVELS,
-  NODE_COLORS,
-  KIND_LABELS,
-  getKindColor,
-  RELATIONSHIP_CONFIG,
-  downloadJSON,
-  downloadCSVSummary,
-  downloadPDF,
-  downloadFile,
-  getRecommendedAbstraction,
-  computeBlastRadius,
-  useHealthOverlay,
-  useCostOverlay,
-  usePerformanceOverlay,
-  useSecurityOverlay,
-  useDependencyOverlay,
-  useTrafficOverlay,
-  OVERLAY_LABELS,
-  type TopologyCanvasRef,
-  type TopologyGraph,
-  type TopologyNode,
-  type KubernetesKind,
-  type HealthStatus,
-  type RelationshipType,
-  type AbstractionLevel,
-  type HeatMapMode,
-  type BlastRadiusResult,
-  type OverlayType,
-  generateTestGraph,
-  TopologyNodePanel,
+  downloadJSON, downloadCSVSummary, downloadFile, generateTestGraph,
 } from '@/topology-engine';
 
-// ─── Resource type filter config ──────────────────────────────
-// Short labels use standard K8s abbreviations for compact display
-const RESOURCE_TYPES: Array<{ kind: KubernetesKind; label: string; short: string; color: string; group: string }> = [
-  // Networking
-  { kind: 'Ingress', label: 'Ingress', short: 'Ing', color: NODE_COLORS.Ingress.bg, group: 'net' },
-  { kind: 'Service', label: 'Service', short: 'Svc', color: NODE_COLORS.Service.bg, group: 'net' },
-  // Workloads
-  { kind: 'Deployment', label: 'Deployment', short: 'Deploy', color: NODE_COLORS.Deployment.bg, group: 'workload' },
-  { kind: 'StatefulSet', label: 'StatefulSet', short: 'STS', color: NODE_COLORS.StatefulSet.bg, group: 'workload' },
-  { kind: 'DaemonSet', label: 'DaemonSet', short: 'DS', color: NODE_COLORS.DaemonSet.bg, group: 'workload' },
-  { kind: 'ReplicaSet', label: 'ReplicaSet', short: 'RS', color: NODE_COLORS.ReplicaSet.bg, group: 'workload' },
-  { kind: 'Pod', label: 'Pod', short: 'Pod', color: NODE_COLORS.Pod.bg, group: 'workload' },
-  { kind: 'PodGroup', label: 'PodGroup', short: 'PG', color: NODE_COLORS.PodGroup.bg, group: 'workload' },
-  { kind: 'Job', label: 'Job', short: 'Job', color: NODE_COLORS.Job.bg, group: 'workload' },
-  { kind: 'CronJob', label: 'CronJob', short: 'CJ', color: NODE_COLORS.CronJob.bg, group: 'workload' },
-  // Config
-  { kind: 'ConfigMap', label: 'ConfigMap', short: 'CM', color: NODE_COLORS.ConfigMap.bg, group: 'config' },
-  { kind: 'Secret', label: 'Secret', short: 'Secret', color: NODE_COLORS.Secret.bg, group: 'config' },
-  // Storage
-  { kind: 'PersistentVolumeClaim', label: 'PersistentVolumeClaim', short: 'PVC', color: NODE_COLORS.PersistentVolumeClaim.bg, group: 'storage' },
-  { kind: 'PersistentVolume', label: 'PersistentVolume', short: 'PV', color: NODE_COLORS.PersistentVolume.bg, group: 'storage' },
-  { kind: 'StorageClass', label: 'StorageClass', short: 'SC', color: NODE_COLORS.StorageClass.bg, group: 'storage' },
-  // Infrastructure
-  { kind: 'Namespace', label: 'Namespace', short: 'NS', color: NODE_COLORS.Namespace.bg, group: 'infra' },
-  { kind: 'Node', label: 'Node', short: 'Node', color: NODE_COLORS.Node.bg, group: 'infra' },
-];
+// ─── View Types ───────────────────────────────────────────────────────────────
 
-const ALL_RELATIONSHIPS: RelationshipType[] = [
-  'owns', 'selects', 'scheduled_on', 'routes', 'references',
-  'configures', 'mounts', 'stores', 'contains', 'exposes', 'backed_by',
-  'permits', 'limits', 'manages',
-];
+type TopologyView = 'application' | 'dependencies' | 'infrastructure';
 
-// ── Overlay legend row ──
-function LegendRow({ color, label, range }: { color: string; label: string; range: string }) {
+const VIEW_CONFIG = {
+  application: {
+    label: 'Application',
+    description: 'How apps run in the cluster',
+    icon: Layers,
+  },
+  dependencies: {
+    label: 'Dependencies',
+    description: 'What resources depend on',
+    icon: GitBranch,
+  },
+  infrastructure: {
+    label: 'Infrastructure',
+    description: 'Cluster nodes & scheduling',
+    icon: Server,
+  },
+} as const;
+
+// ─── Design System ────────────────────────────────────────────────────────────
+
+// Calm, semantic colors — no neon, no chaos
+type GradientDef = { from: string; to: string; text: string };
+
+const GRADIENTS: Record<string, GradientDef> = {
+  // Workloads — blue
+  Deployment:  { from: '#4A7EC4', to: '#2A52A0', text: '#fff' },
+  StatefulSet: { from: '#5B68B8', to: '#3A4290', text: '#fff' },
+  DaemonSet:   { from: '#6B52B0', to: '#4A3590', text: '#fff' },
+  ReplicaSet:  { from: '#5868B8', to: '#384290', text: '#fff' },
+  Pod:         { from: '#4A7EC4', to: '#2A52A0', text: '#fff' },
+  PodGroup:    { from: '#6AA8D0', to: '#2A6090', text: '#fff' },
+  Job:         { from: '#4290B8', to: '#1A6090', text: '#fff' },
+  CronJob:     { from: '#3888B0', to: '#1A5880', text: '#fff' },
+  Container:   { from: '#4A7EC4', to: '#2A52A0', text: '#fff' },
+  ReplicationController: { from: '#6070A0', to: '#3A4480', text: '#fff' },
+  HorizontalPodAutoscaler: { from: '#4290B8', to: '#1A6090', text: '#fff' },
+  PodDisruptionBudget: { from: '#A85252', to: '#7A3030', text: '#fff' },
+
+  // Networking — teal
+  Service:       { from: '#2A9890', to: '#1A6A62', text: '#fff' },
+  Ingress:       { from: '#2A8E88', to: '#1A6260', text: '#fff' },
+  NetworkPolicy: { from: '#226A58', to: '#144038', text: '#fff' },
+  Endpoints:     { from: '#389878', to: '#1A6050', text: '#fff' },
+  EndpointSlice: { from: '#40A888', to: '#1A6858', text: '#fff' },
+  IngressClass:  { from: '#60B898', to: '#2A7858', text: '#fff' },
+
+  // Storage — cyan + amber
+  PersistentVolumeClaim: { from: '#3A88B0', to: '#1A5A88', text: '#fff' },
+  PersistentVolume:      { from: '#2A78A0', to: '#1A4C78', text: '#fff' },
+  StorageClass:          { from: '#3090A8', to: '#1A6078', text: '#fff' },
+  VolumeAttachment:      { from: '#4A9CB8', to: '#1A6A88', text: '#fff' },
+  ConfigMap:             { from: '#A88040', to: '#785028', text: '#fff' },
+  Secret:                { from: '#A84848', to: '#782828', text: '#fff' },
+
+  // RBAC — violet
+  ServiceAccount:     { from: '#8068B8', to: '#5A4090', text: '#fff' },
+  Role:               { from: '#9060B0', to: '#684090', text: '#fff' },
+  ClusterRole:        { from: '#9048A8', to: '#682080', text: '#fff' },
+  RoleBinding:        { from: '#A058B8', to: '#782890', text: '#fff' },
+  ClusterRoleBinding: { from: '#A878C0', to: '#8040A0', text: '#fff' },
+
+  // Infrastructure — warm amber
+  Node:          { from: '#A88040', to: '#785028', text: '#fff' },
+  Namespace:     { from: '#A86838', to: '#784020', text: '#fff' },
+  LimitRange:    { from: '#7A7470', to: '#504A46', text: '#fff' },
+  ResourceQuota: { from: '#6A6058', to: '#403838', text: '#fff' },
+  PriorityClass: { from: '#8A8680', to: '#5A5450', text: '#fff' },
+  RuntimeClass:  { from: '#7A7E90', to: '#4A5060', text: '#fff' },
+  Lease:         { from: '#6A7488', to: '#3A4458', text: '#fff' },
+  CSIDriver:     { from: '#2A8888', to: '#1A5858', text: '#fff' },
+  CSINode:       { from: '#389878', to: '#1A6050', text: '#fff' },
+};
+
+const FALLBACK_GRADIENT: GradientDef = { from: '#5A6878', to: '#323C48', text: '#fff' };
+
+function getGradient(kind: string): GradientDef {
+  return GRADIENTS[kind] ?? FALLBACK_GRADIENT;
+}
+
+// Kind → Lucide icon mapping
+const KIND_ICONS: Record<string, React.ElementType> = {
+  Deployment: Layers, StatefulSet: Database, DaemonSet: Cpu, ReplicaSet: Share2,
+  Pod: Box, Job: Zap, CronJob: Activity, PodGroup: Waypoints,
+  Service: Globe, Ingress: Network, NetworkPolicy: Shield, Endpoints: Waypoints,
+  EndpointSlice: Waypoints, IngressClass: GitBranch, HorizontalPodAutoscaler: SlidersHorizontal,
+  PersistentVolumeClaim: Archive, PersistentVolume: HardDrive, StorageClass: Database,
+  ConfigMap: FileCode, Secret: Key, VolumeAttachment: HardDrive,
+  ServiceAccount: Lock, Role: Shield, ClusterRole: Shield, RoleBinding: Lock, ClusterRoleBinding: Lock,
+  Node: Server, Namespace: LayoutGrid, LimitRange: Filter, ResourceQuota: Filter,
+  Container: Box, CSIDriver: HardDrive, CSINode: Server, Lease: Activity,
+  ReplicationController: Share2, PodDisruptionBudget: AlertCircle, PriorityClass: Zap,
+  RuntimeClass: Settings,
+};
+
+function KindIcon({ kind, size = 14 }: { kind: string; size?: number }) {
+  const Icon = KIND_ICONS[kind] ?? Box;
+  return <Icon size={size} />;
+}
+
+function healthColor(h: string | undefined): string {
+  if (h === 'healthy') return '#34A853';
+  if (h === 'warning') return '#FBBC04';
+  if (h === 'critical') return '#EA4335';
+  return '#9AA0A6';
+}
+
+function healthBorder(h: string | undefined): string {
+  if (h === 'healthy') return '2px solid #34A85330';
+  if (h === 'warning') return '2px solid #FBBC0440';
+  if (h === 'critical') return '2px solid #EA433540';
+  return '2px solid #E8EAED';
+}
+
+// ─── Application View Tiers ──────────────────────────────────────────────────
+
+const APP_TIER_ORDER: Record<string, number> = {
+  Ingress: 0, IngressClass: 0,
+  Service: 1, Endpoints: 1, EndpointSlice: 1,
+  Deployment: 2, StatefulSet: 2, DaemonSet: 2, Job: 2, CronJob: 2,
+  ReplicaSet: 3, ReplicationController: 3,
+  Pod: 4, PodGroup: 4, Container: 4,
+  Node: 5,
+};
+
+const APP_TIER_LABELS = ['Ingress', 'Services', 'Workloads', 'Replica Sets', 'Pods', 'Nodes'];
+
+// Infrastructure grouping
+const INFRA_GROUPS = {
+  compute: ['Pod', 'PodGroup', 'Container'],
+  controllers: ['Deployment', 'StatefulSet', 'DaemonSet', 'ReplicaSet', 'Job', 'CronJob'],
+  network: ['Service', 'Ingress', 'NetworkPolicy', 'Endpoints', 'EndpointSlice'],
+  storage: ['PersistentVolumeClaim', 'PersistentVolume', 'StorageClass', 'VolumeAttachment'],
+  config: ['ConfigMap', 'Secret'],
+  rbac: ['ServiceAccount', 'Role', 'ClusterRole', 'RoleBinding', 'ClusterRoleBinding'],
+};
+
+// ─── Node Components ──────────────────────────────────────────────────────────
+
+// Node data type for ReactFlow
+type TopologyNodeData = {
+  topologyNode: TopologyNode;
+  focused: boolean;   // is this node in the focus set?
+  dimmed: boolean;    // should fade out?
+};
+
+// Unified node — clean, minimal, Apple-style card
+function UnifiedNode({ data, selected }: NodeProps<Node<TopologyNodeData>>) {
+  const { topologyNode, dimmed } = data;
+  const grad = getGradient(topologyNode.kind);
+  const health = topologyNode.computed?.health ?? 'unknown';
+  const replicas = topologyNode.computed?.replicas;
+  const isPod = topologyNode.kind === 'Pod' || topologyNode.kind === 'PodGroup' || topologyNode.kind === 'Container';
+
   return (
-    <div className="flex items-center gap-2.5">
-      <div
-        className="h-2.5 w-2.5 rounded-full shrink-0 ring-2 ring-offset-1"
-        style={{ backgroundColor: color, ringColor: `${color}40` }}
-      />
-      <span className="text-[11px] font-medium text-foreground flex-1">{label}</span>
-      <span className="text-[10px] text-muted-foreground tabular-nums">{range}</span>
+    <div style={{
+      width: isPod ? 160 : 192,
+      borderRadius: 12,
+      background: '#FFFFFF',
+      border: selected ? `2px solid ${grad.from}` : healthBorder(health),
+      boxShadow: selected
+        ? `0 0 0 1px ${grad.from}30, 0 8px 24px rgba(0,0,0,0.12)`
+        : dimmed
+          ? '0 1px 3px rgba(0,0,0,0.04)'
+          : '0 2px 8px rgba(0,0,0,0.06), 0 0 0 1px rgba(0,0,0,0.04)',
+      opacity: dimmed ? 0.15 : 1,
+      transition: 'opacity 0.25s ease, box-shadow 0.2s ease, border-color 0.2s ease',
+      cursor: 'pointer',
+      overflow: 'hidden',
+    }}>
+      <Handle type="target" position={Position.Top} style={{ opacity: 0, width: 8, height: 8 }} />
+      <Handle type="source" position={Position.Bottom} style={{ opacity: 0, width: 8, height: 8 }} />
+      <Handle type="target" position={Position.Left} style={{ opacity: 0, width: 8, height: 8 }} />
+      <Handle type="source" position={Position.Right} style={{ opacity: 0, width: 8, height: 8 }} />
+
+      {/* Gradient accent bar */}
+      <div style={{
+        height: 4,
+        background: `linear-gradient(90deg, ${grad.from}, ${grad.to})`,
+      }} />
+
+      <div style={{ padding: isPod ? '6px 10px 8px' : '8px 12px 10px' }}>
+        {/* Kind badge + health dot */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 4,
+            background: `${grad.from}12`, borderRadius: 5, padding: '2px 6px',
+          }}>
+            <KindIcon kind={topologyNode.kind} size={10} />
+            <span style={{
+              fontSize: 9, fontWeight: 700, color: grad.from,
+              textTransform: 'uppercase', letterSpacing: '0.04em',
+              fontFamily: '"Inter", system-ui, sans-serif',
+            }}>
+              {topologyNode.kind}
+            </span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            {replicas && (
+              <span style={{
+                fontSize: 10, fontWeight: 700, fontFamily: 'monospace',
+                color: replicas.ready === replicas.desired ? '#34A853' : replicas.ready > 0 ? '#FBBC04' : '#EA4335',
+              }}>
+                {replicas.ready}/{replicas.desired}
+              </span>
+            )}
+            <div style={{
+              width: 7, height: 7, borderRadius: '50%',
+              background: healthColor(health),
+            }} />
+          </div>
+        </div>
+
+        {/* Resource name */}
+        <div style={{
+          fontSize: 12, fontWeight: 600, color: '#1A1A1A',
+          fontFamily: '"Inter", system-ui, sans-serif',
+          lineHeight: 1.3,
+          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+        }}>
+          {topologyNode.name}
+        </div>
+
+        {/* Namespace */}
+        {topologyNode.namespace && (
+          <div style={{
+            fontSize: 10, color: '#6B7280', marginTop: 1,
+            fontFamily: '"Inter", system-ui, sans-serif',
+            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+          }}>
+            {topologyNode.namespace}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
 
-// Helper
+const MemoUnifiedNode = React.memo(UnifiedNode, (prev, next) =>
+  prev.data.topologyNode.id === next.data.topologyNode.id &&
+  prev.data.dimmed === next.data.dimmed &&
+  prev.selected === next.selected &&
+  prev.data.topologyNode.computed?.health === next.data.topologyNode.computed?.health
+);
+
+const NODE_TYPES: NodeTypes = {
+  unified: MemoUnifiedNode as any,
+};
+
+// ─── Edge Components ──────────────────────────────────────────────────────────
+
+// Edge styles injected once
+const EDGE_KEYFRAMES = `
+@keyframes topoDash { to { stroke-dashoffset: -40; } }
+`;
+let edgeStylesInjected = false;
+function injectEdgeStyles() {
+  if (edgeStylesInjected || typeof document === 'undefined') return;
+  const el = document.createElement('style');
+  el.textContent = EDGE_KEYFRAMES;
+  document.head.appendChild(el);
+  edgeStylesInjected = true;
+}
+
+const EDGE_COLORS: Record<string, string> = {
+  owns: '#5A6E82', manages: '#5A6E82',
+  selects: '#2A9890', exposes: '#2A9890',
+  routes: '#4A7EC4',
+  mounts: '#3A88B0', stores: '#3A88B0', backed_by: '#3A88B0',
+  configures: '#A88040', references: '#A88040',
+  permits: '#8068B8',
+  scheduled_on: '#A86838', runs: '#A86838', schedules: '#A86838',
+  contains: '#6A7888',
+  limits: '#605850',
+};
+
+function getEdgeColor(rel: string): string {
+  return EDGE_COLORS[rel] ?? '#94A3B8';
+}
+
+// Structural edge — clean bezier with directional arrow
+function StructuralEdge({ sourceX, sourceY, targetX, targetY, data, style }: EdgeProps) {
+  injectEdgeStyles();
+  const [edgePath] = getBezierPath({ sourceX, sourceY, targetX, targetY, curvature: 0.25 });
+  const rel = (data as any)?.rel ?? '';
+  const color = getEdgeColor(rel);
+  const dimmed = (data as any)?.dimmed ?? false;
+  const isTraffic = rel === 'selects' || rel === 'routes' || rel === 'exposes';
+
+  return (
+    <g>
+      {/* Wider invisible hit area */}
+      <BaseEdge
+        path={edgePath}
+        style={{ stroke: 'transparent', strokeWidth: 16 }}
+      />
+      {/* Soft glow underline */}
+      <BaseEdge
+        path={edgePath}
+        style={{ stroke: color, strokeWidth: 6, opacity: dimmed ? 0.01 : 0.04, strokeLinecap: 'round' }}
+      />
+      {/* Main edge */}
+      <BaseEdge
+        path={edgePath}
+        markerEnd={`url(#arrow-${color.replace('#', '')})`}
+        style={{
+          ...style,
+          stroke: color,
+          strokeWidth: isTraffic ? 2 : 1.5,
+          strokeDasharray: isTraffic ? '6 4' : undefined,
+          strokeLinecap: 'round',
+          opacity: dimmed ? 0.03 : 0.6,
+          transition: 'opacity 0.25s ease',
+          animation: isTraffic && !dimmed ? 'topoDash 1.5s linear infinite' : undefined,
+        }}
+      />
+    </g>
+  );
+}
+
+const EDGE_TYPES: EdgeTypes = {
+  structural: StructuralEdge as any,
+};
+
+// ─── Layout Engine ────────────────────────────────────────────────────────────
+
+const elk = new ELK();
+
+async function layoutApplication(
+  rfNodes: Node<TopologyNodeData>[],
+  rfEdges: Edge[],
+): Promise<Node<TopologyNodeData>[]> {
+  if (rfNodes.length === 0) return rfNodes;
+
+  const elkGraph = {
+    id: 'root',
+    layoutOptions: {
+      'elk.algorithm': 'layered',
+      'elk.direction': 'DOWN',
+      'elk.layered.spacing.nodeNodeBetweenLayers': '90',
+      'elk.spacing.nodeNode': '35',
+      'elk.layered.crossingMinimization.strategy': 'LAYER_SWEEP',
+      'elk.layered.nodePlacement.strategy': 'NETWORK_SIMPLEX',
+      'elk.edgeRouting': 'POLYLINE',
+    },
+    children: rfNodes.map(n => ({
+      id: n.id,
+      width: n.measured?.width ?? 192,
+      height: n.measured?.height ?? 72,
+    })),
+    edges: rfEdges.map(e => ({
+      id: e.id,
+      sources: [e.source],
+      targets: [e.target],
+    })),
+  };
+
+  const result = await elk.layout(elkGraph);
+  const positionMap = new Map<string, { x: number; y: number }>();
+  for (const child of result.children ?? []) {
+    positionMap.set(child.id, { x: child.x ?? 0, y: child.y ?? 0 });
+  }
+
+  return rfNodes.map(n => ({
+    ...n,
+    position: positionMap.get(n.id) ?? n.position,
+  }));
+}
+
+async function layoutInfrastructure(
+  rfNodes: Node<TopologyNodeData>[],
+  rfEdges: Edge[],
+): Promise<Node<TopologyNodeData>[]> {
+  if (rfNodes.length === 0) return rfNodes;
+
+  const elkGraph = {
+    id: 'root',
+    layoutOptions: {
+      'elk.algorithm': 'layered',
+      'elk.direction': 'RIGHT',
+      'elk.layered.spacing.nodeNodeBetweenLayers': '100',
+      'elk.spacing.nodeNode': '30',
+      'elk.layered.crossingMinimization.strategy': 'LAYER_SWEEP',
+    },
+    children: rfNodes.map(n => ({
+      id: n.id,
+      width: n.measured?.width ?? 192,
+      height: n.measured?.height ?? 72,
+    })),
+    edges: rfEdges.map(e => ({
+      id: e.id,
+      sources: [e.source],
+      targets: [e.target],
+    })),
+  };
+
+  const result = await elk.layout(elkGraph);
+  const positionMap = new Map<string, { x: number; y: number }>();
+  for (const child of result.children ?? []) {
+    positionMap.set(child.id, { x: child.x ?? 0, y: child.y ?? 0 });
+  }
+
+  return rfNodes.map(n => ({
+    ...n,
+    position: positionMap.get(n.id) ?? n.position,
+  }));
+}
+
+function layoutDependencies(
+  rfNodes: Node<TopologyNodeData>[],
+  focusNodeId: string | null,
+): Node<TopologyNodeData>[] {
+  if (rfNodes.length === 0) return rfNodes;
+
+  // Radial layout centered on focus node (or center of all nodes)
+  const center = { x: 400, y: 400 };
+  const focusNode = focusNodeId ? rfNodes.find(n => n.id === focusNodeId) : null;
+
+  if (!focusNode || rfNodes.length === 1) {
+    // Simple grid layout as fallback
+    const cols = Math.ceil(Math.sqrt(rfNodes.length));
+    return rfNodes.map((n, i) => ({
+      ...n,
+      position: {
+        x: (i % cols) * 230,
+        y: Math.floor(i / cols) * 100,
+      },
+    }));
+  }
+
+  // Place focus node at center
+  const others = rfNodes.filter(n => n.id !== focusNodeId);
+  const ringCount = Math.ceil(others.length / 8);
+
+  const positioned = rfNodes.map(n => {
+    if (n.id === focusNodeId) {
+      return { ...n, position: center };
+    }
+    const idx = others.indexOf(n);
+    const ring = Math.floor(idx / 8);
+    const posInRing = idx % 8;
+    const totalInRing = Math.min(8, others.length - ring * 8);
+    const angle = (posInRing / totalInRing) * Math.PI * 2 - Math.PI / 2;
+    const radius = 200 + ring * 160;
+
+    return {
+      ...n,
+      position: {
+        x: center.x + Math.cos(angle) * radius - 96,
+        y: center.y + Math.sin(angle) * radius - 36,
+      },
+    };
+  });
+
+  return positioned;
+}
+
+// ─── Graph Filtering ──────────────────────────────────────────────────────────
+
+function filterGraphForView(
+  graph: TopologyGraph,
+  view: TopologyView,
+  focusNodeId: string | null,
+): { nodes: TopologyNode[]; edges: TopologyEdge[] } {
+  const { nodes, edges } = graph;
+
+  if (view === 'application') {
+    // Show: Ingress → Service → Deployment/StatefulSet → ReplicaSet → Pod → Node
+    // Hide: Config, RBAC, Storage (those go in Dependencies)
+    const appKinds = new Set<string>([
+      'Ingress', 'IngressClass', 'Service', 'Endpoints', 'EndpointSlice',
+      'Deployment', 'StatefulSet', 'DaemonSet', 'Job', 'CronJob',
+      'ReplicaSet', 'ReplicationController',
+      'Pod', 'PodGroup', 'Container',
+      'Node',
+    ]);
+    const filtered = nodes.filter(n => appKinds.has(n.kind));
+    const nodeIds = new Set(filtered.map(n => n.id));
+    const filteredEdges = edges.filter(e => nodeIds.has(e.source) && nodeIds.has(e.target));
+    return { nodes: filtered, edges: filteredEdges };
+  }
+
+  if (view === 'dependencies') {
+    if (!focusNodeId) {
+      // Show everything but let the layout engine handle it
+      return { nodes, edges };
+    }
+    // Show the focus node + all directly connected resources
+    const connected = new Set<string>([focusNodeId]);
+    for (const e of edges) {
+      if (e.source === focusNodeId) connected.add(e.target);
+      if (e.target === focusNodeId) connected.add(e.source);
+    }
+    const filtered = nodes.filter(n => connected.has(n.id));
+    const nodeIds = new Set(filtered.map(n => n.id));
+    const filteredEdges = edges.filter(e => nodeIds.has(e.source) && nodeIds.has(e.target));
+    return { nodes: filtered, edges: filteredEdges };
+  }
+
+  if (view === 'infrastructure') {
+    // Show: Node + everything scheduled on it + controllers + volumes
+    const infraKinds = new Set<string>([
+      'Node', 'Namespace',
+      'Pod', 'PodGroup', 'Container',
+      'Deployment', 'StatefulSet', 'DaemonSet', 'ReplicaSet', 'Job', 'CronJob',
+      'PersistentVolumeClaim', 'PersistentVolume', 'StorageClass',
+      'Service', 'Ingress', 'NetworkPolicy',
+    ]);
+    const filtered = nodes.filter(n => infraKinds.has(n.kind));
+    const nodeIds = new Set(filtered.map(n => n.id));
+    const filteredEdges = edges.filter(e => nodeIds.has(e.source) && nodeIds.has(e.target));
+    return { nodes: filtered, edges: filteredEdges };
+  }
+
+  return { nodes, edges };
+}
+
+// ─── Convert to ReactFlow ─────────────────────────────────────────────────────
+
+function toRFNodes(
+  tNodes: TopologyNode[],
+  focusSet: Set<string> | null,
+  selectedId: string | null,
+): Node<TopologyNodeData>[] {
+  return tNodes.map(n => ({
+    id: n.id,
+    type: 'unified',
+    position: { x: 0, y: 0 },
+    data: {
+      topologyNode: n,
+      focused: focusSet ? focusSet.has(n.id) : true,
+      dimmed: focusSet ? !focusSet.has(n.id) : false,
+    },
+    selected: n.id === selectedId,
+  }));
+}
+
+function toRFEdges(
+  tEdges: TopologyEdge[],
+  focusSet: Set<string> | null,
+): Edge[] {
+  // Deduplicate edges by source-target pair
+  const seen = new Set<string>();
+  const deduped: TopologyEdge[] = [];
+  for (const e of tEdges) {
+    const key = `${e.source}|${e.target}`;
+    if (!seen.has(key)) {
+      seen.add(key);
+      deduped.push(e);
+    }
+  }
+
+  return deduped.map(e => ({
+    id: e.id,
+    source: e.source,
+    target: e.target,
+    type: 'structural',
+    data: {
+      rel: e.relationshipType,
+      dimmed: focusSet ? !(focusSet.has(e.source) && focusSet.has(e.target)) : false,
+    },
+  }));
+}
+
+// ─── Arrow Markers ────────────────────────────────────────────────────────────
+
+function ArrowMarkers() {
+  const colors = [...new Set(Object.values(EDGE_COLORS))];
+  return (
+    <svg style={{ position: 'absolute', width: 0, height: 0 }}>
+      <defs>
+        {colors.map(color => (
+          <marker
+            key={color}
+            id={`arrow-${color.replace('#', '')}`}
+            markerWidth="10"
+            markerHeight="7"
+            refX="9"
+            refY="3.5"
+            orient="auto"
+          >
+            <polygon
+              points="0 0, 10 3.5, 0 7"
+              fill={color}
+              fillOpacity={0.5}
+            />
+          </marker>
+        ))}
+      </defs>
+    </svg>
+  );
+}
+
+// ─── Tier Labels (Application View) ──────────────────────────────────────────
+
+function TierLabel({ label, y }: { label: string; y: number }) {
+  return (
+    <div style={{
+      position: 'absolute',
+      left: -120,
+      top: y,
+      width: 100,
+      textAlign: 'right',
+      pointerEvents: 'none',
+      zIndex: 5,
+    }}>
+      <span style={{
+        fontSize: 10, fontWeight: 700, color: '#6B7280',
+        textTransform: 'uppercase', letterSpacing: '0.06em',
+        fontFamily: '"Inter", system-ui, sans-serif',
+      }}>
+        {label}
+      </span>
+    </div>
+  );
+}
+
+// ─── Detail Panel ─────────────────────────────────────────────────────────────
+
+function DetailPanel({
+  node,
+  graph,
+  onClose,
+  onNavigate,
+}: {
+  node: TopologyNode;
+  graph: TopologyGraph;
+  onClose: () => void;
+  onNavigate: (node: TopologyNode) => void;
+}) {
+  const grad = getGradient(node.kind);
+  const health = node.computed?.health ?? 'unknown';
+
+  // Find relationships
+  const outgoing = graph.edges.filter(e => e.source === node.id);
+  const incoming = graph.edges.filter(e => e.target === node.id);
+
+  const relatedNodes = useMemo(() => {
+    const ids = new Set([
+      ...outgoing.map(e => e.target),
+      ...incoming.map(e => e.source),
+    ]);
+    return graph.nodes.filter(n => ids.has(n.id));
+  }, [graph, outgoing, incoming]);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, x: 16 }}
+      animate={{ opacity: 1, x: 0 }}
+      exit={{ opacity: 0, x: 16 }}
+      style={{
+        position: 'absolute', top: 16, right: 16, width: 320,
+        background: 'rgba(255,255,255,0.97)',
+        backdropFilter: 'blur(16px)',
+        borderRadius: 16,
+        border: '1px solid rgba(0,0,0,0.08)',
+        boxShadow: '0 16px 48px rgba(0,0,0,0.12), 0 0 0 1px rgba(0,0,0,0.04)',
+        overflow: 'hidden',
+        zIndex: 30,
+        fontFamily: '"Inter", system-ui, sans-serif',
+        maxHeight: 'calc(100% - 32px)',
+        overflowY: 'auto',
+      }}
+    >
+      {/* Header */}
+      <div style={{
+        background: `linear-gradient(135deg, ${grad.from}, ${grad.to})`,
+        padding: '16px 18px 14px',
+        color: '#fff',
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+              <KindIcon kind={node.kind} size={14} />
+              <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', opacity: 0.9 }}>
+                {node.kind}
+              </span>
+            </div>
+            <div style={{ fontSize: 15, fontWeight: 700, lineHeight: 1.3, wordBreak: 'break-word' }}>
+              {node.name}
+            </div>
+            {node.namespace && (
+              <div style={{ fontSize: 11, opacity: 0.8, marginTop: 2 }}>
+                {node.namespace}
+              </div>
+            )}
+          </div>
+          <button
+            onClick={onClose}
+            style={{
+              background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: 6,
+              padding: 4, cursor: 'pointer', color: '#fff', flexShrink: 0,
+            }}
+          >
+            <X size={14} />
+          </button>
+        </div>
+
+        {/* Health + status badges */}
+        <div style={{ display: 'flex', gap: 6, marginTop: 10, flexWrap: 'wrap' }}>
+          <span style={{
+            fontSize: 10, fontWeight: 700, textTransform: 'uppercase',
+            background: 'rgba(255,255,255,0.2)', borderRadius: 4, padding: '2px 8px',
+            display: 'flex', alignItems: 'center', gap: 4,
+          }}>
+            <div style={{ width: 6, height: 6, borderRadius: '50%', background: healthColor(health) }} />
+            {health}
+          </span>
+          {node.status && (
+            <span style={{
+              fontSize: 10, background: 'rgba(255,255,255,0.15)', borderRadius: 4, padding: '2px 8px',
+            }}>
+              {node.status}
+            </span>
+          )}
+          {node.computed?.replicas && (
+            <span style={{
+              fontSize: 10, fontFamily: 'monospace',
+              background: 'rgba(255,255,255,0.15)', borderRadius: 4, padding: '2px 8px',
+            }}>
+              {node.computed.replicas.ready}/{node.computed.replicas.desired} replicas
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* Metrics */}
+      {(node.computed?.cpuUsage != null || node.computed?.memoryUsage != null || node.computed?.restartCount != null) && (
+        <div style={{ padding: '12px 18px', borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
+          <div style={{ display: 'flex', gap: 16 }}>
+            {node.computed?.cpuUsage != null && (
+              <div>
+                <div style={{ fontSize: 9, color: '#6B7280', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.05em' }}>CPU</div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: '#1A1A1A', fontFamily: 'monospace' }}>{node.computed.cpuUsage}%</div>
+              </div>
+            )}
+            {node.computed?.memoryUsage != null && (
+              <div>
+                <div style={{ fontSize: 9, color: '#6B7280', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.05em' }}>Memory</div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: '#1A1A1A', fontFamily: 'monospace' }}>{node.computed.memoryUsage}%</div>
+              </div>
+            )}
+            {node.computed?.restartCount != null && (
+              <div>
+                <div style={{ fontSize: 9, color: '#6B7280', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.05em' }}>Restarts</div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: node.computed.restartCount > 3 ? '#EA4335' : '#1A1A1A', fontFamily: 'monospace' }}>{node.computed.restartCount}</div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Relationships */}
+      {relatedNodes.length > 0 && (
+        <div style={{ padding: '12px 18px' }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>
+            Related ({relatedNodes.length})
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            {relatedNodes.slice(0, 12).map(rn => {
+              const rg = getGradient(rn.kind);
+              return (
+                <button
+                  key={rn.id}
+                  onClick={() => onNavigate(rn)}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 8,
+                    padding: '5px 8px', borderRadius: 8,
+                    background: 'rgba(0,0,0,0.02)', border: '1px solid rgba(0,0,0,0.04)',
+                    cursor: 'pointer', textAlign: 'left', width: '100%',
+                    transition: 'background 0.15s',
+                  }}
+                  onMouseEnter={e => (e.currentTarget.style.background = 'rgba(0,0,0,0.05)')}
+                  onMouseLeave={e => (e.currentTarget.style.background = 'rgba(0,0,0,0.02)')}
+                >
+                  <div style={{
+                    background: `${rg.from}15`, borderRadius: 4, padding: 3,
+                    display: 'flex', alignItems: 'center', flexShrink: 0,
+                  }}>
+                    <KindIcon kind={rn.kind} size={10} />
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: '#1A1A1A', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {rn.name}
+                    </div>
+                    <div style={{ fontSize: 9, color: '#9AA0A6' }}>{rn.kind}</div>
+                  </div>
+                  <div style={{ width: 5, height: 5, borderRadius: '50%', background: healthColor(rn.computed?.health), flexShrink: 0 }} />
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </motion.div>
+  );
+}
+
+// ─── Mock Graph ───────────────────────────────────────────────────────────────
+
 function n(partial: Omit<TopologyNode, 'label'>): TopologyNode {
   return { ...partial, label: partial.name };
 }
 
-// ─── Mock Graph ───────────────────────────────────────────────
 const mockGraph: TopologyGraph = {
   schemaVersion: '1.0',
   nodes: [
-    n({ id: 'Namespace/blue-green-demo', kind: 'Namespace', namespace: '', name: 'blue-green-demo', apiVersion: 'v1', status: 'Running', metadata: { labels: {}, annotations: {}, createdAt: '2024-01-01', uid: 'ns-1' }, computed: { health: 'healthy' } }),
-    n({ id: 'Node/desktop-worker', kind: 'Node', namespace: '', name: 'desktop-worker', apiVersion: 'v1', status: 'Ready', metadata: { labels: {}, annotations: {}, createdAt: '2024-01-01', uid: 'node-1' }, computed: { health: 'healthy', cpuUsage: 45 } }),
-    n({ id: 'Deployment/blue-green-demo/nginx', kind: 'Deployment', namespace: 'blue-green-demo', name: 'nginx-deployment', apiVersion: 'apps/v1', status: 'Running', metadata: { labels: {}, annotations: {}, createdAt: '2024-01-01', uid: 'dep-1' }, computed: { health: 'healthy', replicas: { desired: 3, ready: 3, available: 3 } } }),
-    n({ id: 'Deployment/blue-green-demo/api', kind: 'Deployment', namespace: 'blue-green-demo', name: 'api-gateway', apiVersion: 'apps/v1', status: 'Running', metadata: { labels: {}, annotations: {}, createdAt: '2024-01-01', uid: 'dep-2' }, computed: { health: 'warning', replicas: { desired: 2, ready: 1, available: 1 }, cpuUsage: 78 } }),
-    n({ id: 'ReplicaSet/blue-green-demo/nginx-rs', kind: 'ReplicaSet', namespace: 'blue-green-demo', name: 'nginx-rs-abc12', apiVersion: 'apps/v1', status: 'Running', metadata: { labels: {}, annotations: {}, createdAt: '2024-01-01', uid: 'rs-1' }, computed: { health: 'healthy', replicas: { desired: 3, ready: 3, available: 3 } } }),
-    n({ id: 'Pod/blue-green-demo/nginx-1', kind: 'Pod', namespace: 'blue-green-demo', name: 'nginx-abc12', apiVersion: 'v1', status: 'Running', metadata: { labels: {}, annotations: {}, createdAt: '2024-01-01', uid: 'pod-1' }, computed: { health: 'healthy', restartCount: 0, cpuUsage: 12 } }),
-    n({ id: 'Pod/blue-green-demo/nginx-2', kind: 'Pod', namespace: 'blue-green-demo', name: 'nginx-def34', apiVersion: 'v1', status: 'Running', metadata: { labels: {}, annotations: {}, createdAt: '2024-01-01', uid: 'pod-2' }, computed: { health: 'healthy', restartCount: 0, cpuUsage: 18 } }),
-    n({ id: 'Pod/blue-green-demo/nginx-3', kind: 'Pod', namespace: 'blue-green-demo', name: 'nginx-ghi56', apiVersion: 'v1', status: 'Running', metadata: { labels: {}, annotations: {}, createdAt: '2024-01-01', uid: 'pod-3' }, computed: { health: 'warning', restartCount: 5, cpuUsage: 62 } }),
-    n({ id: 'Pod/blue-green-demo/api-1', kind: 'Pod', namespace: 'blue-green-demo', name: 'api-jkl78', apiVersion: 'v1', status: 'Running', metadata: { labels: {}, annotations: {}, createdAt: '2024-01-01', uid: 'pod-4' }, computed: { health: 'healthy', restartCount: 1, cpuUsage: 34 } }),
-    n({ id: 'Service/blue-green-demo/nginx-svc', kind: 'Service', namespace: 'blue-green-demo', name: 'nginx-svc', apiVersion: 'v1', status: 'Running', metadata: { labels: {}, annotations: {}, createdAt: '2024-01-01', uid: 'svc-1' }, computed: { health: 'healthy' } }),
-    n({ id: 'Service/blue-green-demo/api-svc', kind: 'Service', namespace: 'blue-green-demo', name: 'api-svc', apiVersion: 'v1', status: 'Running', metadata: { labels: {}, annotations: {}, createdAt: '2024-01-01', uid: 'svc-2' }, computed: { health: 'healthy' } }),
-    n({ id: 'ConfigMap/blue-green-demo/nginx-config', kind: 'ConfigMap', namespace: 'blue-green-demo', name: 'nginx-config', apiVersion: 'v1', status: 'Running', metadata: { labels: {}, annotations: {}, createdAt: '2024-01-01', uid: 'cm-1' }, computed: { health: 'healthy' } }),
-    n({ id: 'Secret/blue-green-demo/api-secrets', kind: 'Secret', namespace: 'blue-green-demo', name: 'api-secrets', apiVersion: 'v1', status: 'Running', metadata: { labels: {}, annotations: {}, createdAt: '2024-01-01', uid: 'sec-1' }, computed: { health: 'healthy' } }),
-    n({ id: 'Ingress/blue-green-demo/main-ingress', kind: 'Ingress', namespace: 'blue-green-demo', name: 'todo-ingress', apiVersion: 'networking.k8s.io/v1', status: 'Running', metadata: { labels: {}, annotations: {}, createdAt: '2024-01-01', uid: 'ing-1' }, computed: { health: 'healthy' } }),
-    n({ id: 'PersistentVolume/pv-test-001', kind: 'PersistentVolume', namespace: '', name: 'pv-test-001', apiVersion: 'v1', status: 'Bound', metadata: { labels: {}, annotations: {}, createdAt: '2024-01-01', uid: 'pv-1' }, computed: { health: 'healthy' } }),
-    n({ id: 'PersistentVolumeClaim/blue-green-demo/data-pvc', kind: 'PersistentVolumeClaim', namespace: 'blue-green-demo', name: 'data-pvc', apiVersion: 'v1', status: 'Bound', metadata: { labels: {}, annotations: {}, createdAt: '2024-01-01', uid: 'pvc-1' }, computed: { health: 'healthy' } }),
-    n({ id: 'StorageClass/hostpath', kind: 'StorageClass', namespace: '', name: 'hostpath', apiVersion: 'storage.k8s.io/v1', status: 'Running', metadata: { labels: {}, annotations: {}, createdAt: '2024-01-01', uid: 'sc-1' }, computed: { health: 'healthy' } }),
+    n({ id: 'Namespace/demo', kind: 'Namespace', namespace: '', name: 'demo', apiVersion: 'v1', status: 'Running', metadata: { labels: {}, annotations: {}, createdAt: '2024-01-01', uid: 'ns-1' }, computed: { health: 'healthy' } }),
+    n({ id: 'Node/worker-1', kind: 'Node', namespace: '', name: 'worker-1', apiVersion: 'v1', status: 'Ready', metadata: { labels: {}, annotations: {}, createdAt: '2024-01-01', uid: 'node-1' }, computed: { health: 'healthy', cpuUsage: 45 } }),
+    n({ id: 'Ingress/demo/main', kind: 'Ingress', namespace: 'demo', name: 'main-ingress', apiVersion: 'networking.k8s.io/v1', status: 'Running', metadata: { labels: {}, annotations: {}, createdAt: '2024-01-01', uid: 'ing-1' }, computed: { health: 'healthy' } }),
+    n({ id: 'Service/demo/web', kind: 'Service', namespace: 'demo', name: 'web-svc', apiVersion: 'v1', status: 'Running', metadata: { labels: {}, annotations: {}, createdAt: '2024-01-01', uid: 'svc-1' }, computed: { health: 'healthy' } }),
+    n({ id: 'Service/demo/api', kind: 'Service', namespace: 'demo', name: 'api-svc', apiVersion: 'v1', status: 'Running', metadata: { labels: {}, annotations: {}, createdAt: '2024-01-01', uid: 'svc-2' }, computed: { health: 'healthy' } }),
+    n({ id: 'Deployment/demo/web', kind: 'Deployment', namespace: 'demo', name: 'web', apiVersion: 'apps/v1', status: 'Running', metadata: { labels: {}, annotations: {}, createdAt: '2024-01-01', uid: 'dep-1' }, computed: { health: 'healthy', replicas: { desired: 3, ready: 3, available: 3 } } }),
+    n({ id: 'Deployment/demo/api', kind: 'Deployment', namespace: 'demo', name: 'api-gateway', apiVersion: 'apps/v1', status: 'Running', metadata: { labels: {}, annotations: {}, createdAt: '2024-01-01', uid: 'dep-2' }, computed: { health: 'warning', replicas: { desired: 2, ready: 1, available: 1 }, cpuUsage: 78 } }),
+    n({ id: 'ReplicaSet/demo/web-rs', kind: 'ReplicaSet', namespace: 'demo', name: 'web-rs-abc', apiVersion: 'apps/v1', status: 'Running', metadata: { labels: {}, annotations: {}, createdAt: '2024-01-01', uid: 'rs-1' }, computed: { health: 'healthy', replicas: { desired: 3, ready: 3, available: 3 } } }),
+    n({ id: 'Pod/demo/web-1', kind: 'Pod', namespace: 'demo', name: 'web-abc-1', apiVersion: 'v1', status: 'Running', metadata: { labels: {}, annotations: {}, createdAt: '2024-01-01', uid: 'pod-1' }, computed: { health: 'healthy', restartCount: 0, cpuUsage: 12 } }),
+    n({ id: 'Pod/demo/web-2', kind: 'Pod', namespace: 'demo', name: 'web-abc-2', apiVersion: 'v1', status: 'Running', metadata: { labels: {}, annotations: {}, createdAt: '2024-01-01', uid: 'pod-2' }, computed: { health: 'healthy', restartCount: 0, cpuUsage: 18 } }),
+    n({ id: 'Pod/demo/web-3', kind: 'Pod', namespace: 'demo', name: 'web-abc-3', apiVersion: 'v1', status: 'Running', metadata: { labels: {}, annotations: {}, createdAt: '2024-01-01', uid: 'pod-3' }, computed: { health: 'warning', restartCount: 5, cpuUsage: 62 } }),
+    n({ id: 'Pod/demo/api-1', kind: 'Pod', namespace: 'demo', name: 'api-xyz-1', apiVersion: 'v1', status: 'Running', metadata: { labels: {}, annotations: {}, createdAt: '2024-01-01', uid: 'pod-4' }, computed: { health: 'healthy', restartCount: 1, cpuUsage: 34 } }),
+    n({ id: 'ConfigMap/demo/web-config', kind: 'ConfigMap', namespace: 'demo', name: 'web-config', apiVersion: 'v1', status: 'Running', metadata: { labels: {}, annotations: {}, createdAt: '2024-01-01', uid: 'cm-1' }, computed: { health: 'healthy' } }),
+    n({ id: 'Secret/demo/api-secrets', kind: 'Secret', namespace: 'demo', name: 'api-secrets', apiVersion: 'v1', status: 'Running', metadata: { labels: {}, annotations: {}, createdAt: '2024-01-01', uid: 'sec-1' }, computed: { health: 'healthy' } }),
+    n({ id: 'PersistentVolumeClaim/demo/data', kind: 'PersistentVolumeClaim', namespace: 'demo', name: 'data-pvc', apiVersion: 'v1', status: 'Bound', metadata: { labels: {}, annotations: {}, createdAt: '2024-01-01', uid: 'pvc-1' }, computed: { health: 'healthy' } }),
+    n({ id: 'ServiceAccount/demo/web-sa', kind: 'ServiceAccount', namespace: 'demo', name: 'web-sa', apiVersion: 'v1', status: 'Running', metadata: { labels: {}, annotations: {}, createdAt: '2024-01-01', uid: 'sa-1' }, computed: { health: 'healthy' } }),
   ],
   edges: [
-    { id: 'e-dep-rs', source: 'Deployment/blue-green-demo/nginx', target: 'ReplicaSet/blue-green-demo/nginx-rs', relationshipType: 'owns', label: 'owns', metadata: { derivation: 'ownerReference', confidence: 1, sourceField: 'metadata.ownerReferences' } },
-    { id: 'e-rs-pod1', source: 'ReplicaSet/blue-green-demo/nginx-rs', target: 'Pod/blue-green-demo/nginx-1', relationshipType: 'owns', label: 'owns', metadata: { derivation: 'ownerReference', confidence: 1, sourceField: 'metadata.ownerReferences' } },
-    { id: 'e-rs-pod2', source: 'ReplicaSet/blue-green-demo/nginx-rs', target: 'Pod/blue-green-demo/nginx-2', relationshipType: 'owns', label: 'owns', metadata: { derivation: 'ownerReference', confidence: 1, sourceField: 'metadata.ownerReferences' } },
-    { id: 'e-rs-pod3', source: 'ReplicaSet/blue-green-demo/nginx-rs', target: 'Pod/blue-green-demo/nginx-3', relationshipType: 'owns', label: 'owns', metadata: { derivation: 'ownerReference', confidence: 1, sourceField: 'metadata.ownerReferences' } },
-    { id: 'e-dep-pod4', source: 'Deployment/blue-green-demo/api', target: 'Pod/blue-green-demo/api-1', relationshipType: 'owns', label: 'owns', metadata: { derivation: 'ownerReference', confidence: 1, sourceField: 'metadata.ownerReferences' } },
-    { id: 'e-svc-pod1', source: 'Service/blue-green-demo/nginx-svc', target: 'Pod/blue-green-demo/nginx-1', relationshipType: 'selects', label: 'selected by', metadata: { derivation: 'labelSelector', confidence: 1, sourceField: 'spec.selector' } },
-    { id: 'e-svc-pod2', source: 'Service/blue-green-demo/nginx-svc', target: 'Pod/blue-green-demo/nginx-2', relationshipType: 'selects', label: 'selected by', metadata: { derivation: 'labelSelector', confidence: 1, sourceField: 'spec.selector' } },
-    { id: 'e-svc-pod3', source: 'Service/blue-green-demo/nginx-svc', target: 'Pod/blue-green-demo/nginx-3', relationshipType: 'selects', label: 'selected by', metadata: { derivation: 'labelSelector', confidence: 1, sourceField: 'spec.selector' } },
-    { id: 'e-svc-pod4', source: 'Service/blue-green-demo/api-svc', target: 'Pod/blue-green-demo/api-1', relationshipType: 'selects', label: 'selected by', metadata: { derivation: 'labelSelector', confidence: 1, sourceField: 'spec.selector' } },
-    { id: 'e-ing-svc1', source: 'Ingress/blue-green-demo/main-ingress', target: 'Service/blue-green-demo/nginx-svc', relationshipType: 'routes', label: 'routes to', metadata: { derivation: 'fieldReference', confidence: 1, sourceField: 'spec.rules' } },
-    { id: 'e-ing-svc2', source: 'Ingress/blue-green-demo/main-ingress', target: 'Service/blue-green-demo/api-svc', relationshipType: 'routes', label: 'routes to', metadata: { derivation: 'fieldReference', confidence: 1, sourceField: 'spec.rules' } },
-    { id: 'e-dep-cm', source: 'Deployment/blue-green-demo/nginx', target: 'ConfigMap/blue-green-demo/nginx-config', relationshipType: 'references', label: 'uses config', metadata: { derivation: 'envReference', confidence: 1, sourceField: 'spec.template.spec.volumes' } },
-    { id: 'e-dep-sec', source: 'Deployment/blue-green-demo/api', target: 'Secret/blue-green-demo/api-secrets', relationshipType: 'references', label: 'uses secret', metadata: { derivation: 'envReference', confidence: 1, sourceField: 'spec.template.spec.containers[].envFrom' } },
-    { id: 'e-pod-node1', source: 'Pod/blue-green-demo/nginx-1', target: 'Node/desktop-worker', relationshipType: 'scheduled_on', label: 'runs on', metadata: { derivation: 'fieldReference', confidence: 1, sourceField: 'spec.nodeName' } },
-    { id: 'e-pod-node2', source: 'Pod/blue-green-demo/nginx-2', target: 'Node/desktop-worker', relationshipType: 'scheduled_on', label: 'runs on', metadata: { derivation: 'fieldReference', confidence: 1, sourceField: 'spec.nodeName' } },
-    { id: 'e-pod-node3', source: 'Pod/blue-green-demo/nginx-3', target: 'Node/desktop-worker', relationshipType: 'scheduled_on', label: 'runs on', metadata: { derivation: 'fieldReference', confidence: 1, sourceField: 'spec.nodeName' } },
-    { id: 'e-pod-node4', source: 'Pod/blue-green-demo/api-1', target: 'Node/desktop-worker', relationshipType: 'scheduled_on', label: 'runs on', metadata: { derivation: 'fieldReference', confidence: 1, sourceField: 'spec.nodeName' } },
-    { id: 'e-pvc-pv', source: 'PersistentVolumeClaim/blue-green-demo/data-pvc', target: 'PersistentVolume/pv-test-001', relationshipType: 'stores', label: 'binds to', metadata: { derivation: 'fieldReference', confidence: 1, sourceField: 'spec.volumeName' } },
-    { id: 'e-sc-pv1', source: 'StorageClass/hostpath', target: 'PersistentVolume/pv-test-001', relationshipType: 'backed_by', label: 'provisions', metadata: { derivation: 'fieldReference', confidence: 1, sourceField: 'spec.storageClassName' } },
-    { id: 'e-pod-pvc', source: 'Pod/blue-green-demo/nginx-1', target: 'PersistentVolumeClaim/blue-green-demo/data-pvc', relationshipType: 'mounts', label: 'mounts', metadata: { derivation: 'volumeMount', confidence: 1, sourceField: 'spec.volumes' } },
+    { id: 'e1', source: 'Ingress/demo/main', target: 'Service/demo/web', relationshipType: 'routes', label: 'routes', metadata: { derivation: 'fieldReference', confidence: 1, sourceField: 'spec.rules' } },
+    { id: 'e2', source: 'Ingress/demo/main', target: 'Service/demo/api', relationshipType: 'routes', label: 'routes', metadata: { derivation: 'fieldReference', confidence: 1, sourceField: 'spec.rules' } },
+    { id: 'e3', source: 'Service/demo/web', target: 'Pod/demo/web-1', relationshipType: 'selects', label: 'selects', metadata: { derivation: 'labelSelector', confidence: 1, sourceField: 'spec.selector' } },
+    { id: 'e4', source: 'Service/demo/web', target: 'Pod/demo/web-2', relationshipType: 'selects', label: 'selects', metadata: { derivation: 'labelSelector', confidence: 1, sourceField: 'spec.selector' } },
+    { id: 'e5', source: 'Service/demo/web', target: 'Pod/demo/web-3', relationshipType: 'selects', label: 'selects', metadata: { derivation: 'labelSelector', confidence: 1, sourceField: 'spec.selector' } },
+    { id: 'e6', source: 'Service/demo/api', target: 'Pod/demo/api-1', relationshipType: 'selects', label: 'selects', metadata: { derivation: 'labelSelector', confidence: 1, sourceField: 'spec.selector' } },
+    { id: 'e7', source: 'Deployment/demo/web', target: 'ReplicaSet/demo/web-rs', relationshipType: 'owns', label: 'owns', metadata: { derivation: 'ownerReference', confidence: 1, sourceField: 'metadata.ownerReferences' } },
+    { id: 'e8', source: 'ReplicaSet/demo/web-rs', target: 'Pod/demo/web-1', relationshipType: 'owns', label: 'owns', metadata: { derivation: 'ownerReference', confidence: 1, sourceField: 'metadata.ownerReferences' } },
+    { id: 'e9', source: 'ReplicaSet/demo/web-rs', target: 'Pod/demo/web-2', relationshipType: 'owns', label: 'owns', metadata: { derivation: 'ownerReference', confidence: 1, sourceField: 'metadata.ownerReferences' } },
+    { id: 'e10', source: 'ReplicaSet/demo/web-rs', target: 'Pod/demo/web-3', relationshipType: 'owns', label: 'owns', metadata: { derivation: 'ownerReference', confidence: 1, sourceField: 'metadata.ownerReferences' } },
+    { id: 'e11', source: 'Deployment/demo/api', target: 'Pod/demo/api-1', relationshipType: 'owns', label: 'owns', metadata: { derivation: 'ownerReference', confidence: 1, sourceField: 'metadata.ownerReferences' } },
+    { id: 'e12', source: 'Pod/demo/web-1', target: 'Node/worker-1', relationshipType: 'scheduled_on', label: 'runs on', metadata: { derivation: 'fieldReference', confidence: 1, sourceField: 'spec.nodeName' } },
+    { id: 'e13', source: 'Pod/demo/web-2', target: 'Node/worker-1', relationshipType: 'scheduled_on', label: 'runs on', metadata: { derivation: 'fieldReference', confidence: 1, sourceField: 'spec.nodeName' } },
+    { id: 'e14', source: 'Pod/demo/web-3', target: 'Node/worker-1', relationshipType: 'scheduled_on', label: 'runs on', metadata: { derivation: 'fieldReference', confidence: 1, sourceField: 'spec.nodeName' } },
+    { id: 'e15', source: 'Pod/demo/api-1', target: 'Node/worker-1', relationshipType: 'scheduled_on', label: 'runs on', metadata: { derivation: 'fieldReference', confidence: 1, sourceField: 'spec.nodeName' } },
+    { id: 'e16', source: 'Deployment/demo/web', target: 'ConfigMap/demo/web-config', relationshipType: 'references', label: 'uses config', metadata: { derivation: 'envReference', confidence: 1, sourceField: 'spec.template.spec.volumes' } },
+    { id: 'e17', source: 'Deployment/demo/api', target: 'Secret/demo/api-secrets', relationshipType: 'references', label: 'uses secret', metadata: { derivation: 'envReference', confidence: 1, sourceField: 'spec.template.spec.containers[].envFrom' } },
+    { id: 'e18', source: 'Pod/demo/web-1', target: 'PersistentVolumeClaim/demo/data', relationshipType: 'mounts', label: 'mounts', metadata: { derivation: 'volumeMount', confidence: 1, sourceField: 'spec.volumes' } },
+    { id: 'e19', source: 'Pod/demo/web-1', target: 'ServiceAccount/demo/web-sa', relationshipType: 'references', label: 'uses SA', metadata: { derivation: 'fieldReference', confidence: 1, sourceField: 'spec.serviceAccountName' } },
   ],
   metadata: {
     clusterId: 'docker-desktop',
     generatedAt: new Date().toISOString(),
-    layoutSeed: 'deterministic-seed-123',
+    layoutSeed: 'deterministic',
     isComplete: true,
     warnings: [],
   },
 };
 
+// ─── Inner Component (uses ReactFlow context) ─────────────────────────────────
+
+function TopologyInner({ graph }: { graph: TopologyGraph }) {
+  const { fitView, setCenter } = useReactFlow();
+  const navigate = useNavigate();
+
+  const [activeView, setActiveView] = useState<TopologyView>('application');
+  const [nodes, setNodes, onNodesChange] = useNodesState<Node<TopologyNodeData>>([]);
+  const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
+  const [selectedNode, setSelectedNode] = useState<TopologyNode | null>(null);
+  const [focusNodeId, setFocusNodeId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [layoutBusy, setLayoutBusy] = useState(false);
+
+  // Graph analysis structures
+  const graphModel = useMemo(() => graph?.nodes?.length ? new GraphModel(graph) : null, [graph]);
+  const adjacencyMap = useMemo(() => graph?.edges?.length ? new AdjacencyMap(graph.edges) : null, [graph?.edges]);
+
+  // Filter + layout whenever view or focus changes
+  const { viewNodes, viewEdges } = useMemo(() => {
+    const { nodes: vn, edges: ve } = filterGraphForView(graph, activeView, focusNodeId);
+    return { viewNodes: vn, viewEdges: ve };
+  }, [graph, activeView, focusNodeId]);
+
+  // Build focus set for highlighting
+  const focusSet = useMemo((): Set<string> | null => {
+    if (!focusNodeId || !graphModel) return null;
+
+    const upstream = getUpstreamChain(graphModel, focusNodeId);
+    const downstream = getDownstreamChain(graphModel, focusNodeId);
+    return new Set([...upstream, ...downstream]);
+  }, [focusNodeId, graphModel]);
+
+  // Convert to ReactFlow format
+  const rfNodes = useMemo(() => toRFNodes(viewNodes, focusSet, selectedNode?.id ?? null), [viewNodes, focusSet, selectedNode?.id]);
+  const rfEdges = useMemo(() => toRFEdges(viewEdges, focusSet), [viewEdges, focusSet]);
+
+  // Run layout
+  useEffect(() => {
+    if (rfNodes.length === 0) {
+      setNodes([]);
+      setEdges([]);
+      return;
+    }
+
+    setLayoutBusy(true);
+
+    const doLayout = async () => {
+      let laidOut: Node<TopologyNodeData>[];
+
+      if (activeView === 'application') {
+        laidOut = await layoutApplication(rfNodes, rfEdges);
+      } else if (activeView === 'infrastructure') {
+        laidOut = await layoutInfrastructure(rfNodes, rfEdges);
+      } else {
+        laidOut = layoutDependencies(rfNodes, focusNodeId);
+      }
+
+      setNodes(laidOut);
+      setEdges(rfEdges);
+      setLayoutBusy(false);
+
+      // Auto-fit after layout
+      setTimeout(() => {
+        try { fitView({ padding: 0.15, maxZoom: 1.2, duration: 400 }); } catch {}
+      }, 100);
+    };
+
+    doLayout();
+  }, [rfNodes, rfEdges, activeView, focusNodeId]);
+
+  // Node click → focus mode
+  const handleNodeClick = useCallback((_: React.MouseEvent, node: Node<TopologyNodeData>) => {
+    const tNode = node.data.topologyNode;
+
+    // Toggle focus
+    if (focusNodeId === tNode.id) {
+      setFocusNodeId(null);
+      setSelectedNode(null);
+      return;
+    }
+
+    setFocusNodeId(tNode.id);
+    setSelectedNode(tNode);
+  }, [focusNodeId]);
+
+  // Double click → navigate to detail page
+  const handleNodeDoubleClick = useCallback((_: React.MouseEvent, node: Node<TopologyNodeData>) => {
+    const tNode = node.data.topologyNode;
+    const routeMap: Record<string, string> = {
+      Pod: 'pods', Deployment: 'deployments', ReplicaSet: 'replicasets',
+      StatefulSet: 'statefulsets', DaemonSet: 'daemonsets', Service: 'services',
+      ConfigMap: 'configmaps', Secret: 'secrets', Ingress: 'ingresses',
+      Node: 'nodes', Namespace: 'namespaces', Job: 'jobs', CronJob: 'cronjobs',
+      PersistentVolume: 'persistentvolumes', PersistentVolumeClaim: 'persistentvolumeclaims',
+    };
+    const route = routeMap[tNode.kind] ?? tNode.kind.toLowerCase() + 's';
+    const path = tNode.namespace ? `/${route}/${tNode.namespace}/${tNode.name}` : `/${route}/${tNode.name}`;
+    navigate(path);
+  }, [navigate]);
+
+  // Pane click → clear focus
+  const handlePaneClick = useCallback(() => {
+    setFocusNodeId(null);
+    setSelectedNode(null);
+  }, []);
+
+  // Navigate to related node from detail panel
+  const handleNavigateToNode = useCallback((tNode: TopologyNode) => {
+    setFocusNodeId(tNode.id);
+    setSelectedNode(tNode);
+    // Center on node
+    const rfNode = nodes.find(n => n.id === tNode.id);
+    if (rfNode) {
+      setTimeout(() => {
+        try { setCenter(rfNode.position.x + 96, rfNode.position.y + 36, { zoom: 1.2, duration: 500 }); } catch {}
+      }, 50);
+    }
+  }, [nodes, setCenter]);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      if (e.key === 'Escape') {
+        setFocusNodeId(null);
+        setSelectedNode(null);
+      }
+      if (e.key === 'f' && !e.metaKey && !e.ctrlKey) {
+        try { fitView({ padding: 0.15, maxZoom: 1.2, duration: 400 }); } catch {}
+      }
+      if (e.key === '1' && !e.metaKey) setActiveView('application');
+      if (e.key === '2' && !e.metaKey) setActiveView('dependencies');
+      if (e.key === '3' && !e.metaKey) setActiveView('infrastructure');
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [fitView]);
+
+  // Search results
+  const searchMatchIds = useMemo(() => {
+    if (!searchQuery.trim()) return [];
+    const q = searchQuery.toLowerCase().trim();
+    return graph.nodes
+      .filter(n =>
+        n.name.toLowerCase().includes(q) ||
+        n.kind.toLowerCase().includes(q) ||
+        (n.namespace || '').toLowerCase().includes(q)
+      )
+      .map(n => n.id);
+  }, [graph.nodes, searchQuery]);
+
+  // Stats
+  const stats = useMemo(() => {
+    const pods = graph.nodes.filter(n => n.kind === 'Pod');
+    return {
+      total: graph.nodes.length,
+      pods: pods.length,
+      healthy: pods.filter(p => !p.computed?.health || p.computed.health === 'healthy').length,
+      warning: pods.filter(p => p.computed?.health === 'warning').length,
+      critical: pods.filter(p => p.computed?.health === 'critical').length,
+    };
+  }, [graph.nodes]);
+
+  return (
+    <div style={{
+      position: 'relative', width: '100%', height: '100%',
+      background: '#FAFBFC',
+      fontFamily: '"Inter", system-ui, sans-serif',
+      overflow: 'hidden',
+    }}>
+      <ArrowMarkers />
+
+      <ReactFlow
+        nodes={nodes}
+        edges={edges}
+        onNodesChange={onNodesChange}
+        onEdgesChange={onEdgesChange}
+        onNodeClick={handleNodeClick}
+        onNodeDoubleClick={handleNodeDoubleClick}
+        onPaneClick={handlePaneClick}
+        nodeTypes={NODE_TYPES}
+        edgeTypes={EDGE_TYPES}
+        fitView
+        fitViewOptions={{ padding: 0.15, maxZoom: 1.2 }}
+        minZoom={0.05}
+        maxZoom={3}
+        proOptions={{ hideAttribution: true }}
+        defaultEdgeOptions={{
+          type: 'structural',
+        }}
+      >
+        <Background variant={BackgroundVariant.Dots} gap={20} size={1} color="rgba(0,0,0,0.04)" />
+        <Controls
+          showZoom
+          showFitView
+          showInteractive={false}
+          style={{
+            background: 'rgba(255,255,255,0.9)',
+            backdropFilter: 'blur(8px)',
+            borderRadius: 10,
+            border: '1px solid rgba(0,0,0,0.08)',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.06)',
+          }}
+        />
+        <MiniMap
+          style={{
+            background: 'rgba(255,255,255,0.9)',
+            borderRadius: 10,
+            border: '1px solid rgba(0,0,0,0.08)',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.06)',
+          }}
+          maskColor="rgba(0,0,0,0.06)"
+          pannable
+          zoomable
+        />
+
+        {/* ── View Selector (centered top) ── */}
+        <Panel position="top-center">
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 2,
+            background: 'rgba(255,255,255,0.95)',
+            backdropFilter: 'blur(16px)',
+            borderRadius: 12,
+            border: '1px solid rgba(0,0,0,0.08)',
+            boxShadow: '0 4px 16px rgba(0,0,0,0.08)',
+            padding: 3,
+          }}>
+            {(Object.entries(VIEW_CONFIG) as [TopologyView, typeof VIEW_CONFIG[TopologyView]][]).map(([key, config]) => {
+              const isActive = activeView === key;
+              const Icon = config.icon;
+              return (
+                <button
+                  key={key}
+                  onClick={() => { setActiveView(key); setFocusNodeId(null); setSelectedNode(null); }}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 6,
+                    padding: '7px 14px',
+                    borderRadius: 9,
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontSize: 12,
+                    fontWeight: isActive ? 700 : 500,
+                    color: isActive ? '#fff' : '#4B5563',
+                    background: isActive ? '#1A1A1A' : 'transparent',
+                    transition: 'all 0.2s ease',
+                    fontFamily: '"Inter", system-ui, sans-serif',
+                  }}
+                  onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = 'rgba(0,0,0,0.04)'; }}
+                  onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = 'transparent'; }}
+                >
+                  <Icon size={14} />
+                  {config.label}
+                </button>
+              );
+            })}
+          </div>
+        </Panel>
+
+        {/* ── Status bar (bottom-left) ── */}
+        <Panel position="bottom-left">
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 12,
+            background: 'rgba(255,255,255,0.92)',
+            backdropFilter: 'blur(12px)',
+            borderRadius: 10,
+            border: '1px solid rgba(0,0,0,0.06)',
+            padding: '6px 14px',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+            fontSize: 11,
+            color: '#6B7280',
+            fontFamily: '"Inter", system-ui, sans-serif',
+          }}>
+            <span style={{ fontWeight: 600, color: '#1A1A1A' }}>{viewNodes.length}</span> resources
+            <span style={{ width: 1, height: 12, background: 'rgba(0,0,0,0.1)' }} />
+            <span style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+              <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#34A853' }} />
+              {stats.healthy}
+            </span>
+            {stats.warning > 0 && (
+              <span style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#FBBC04' }} />
+                {stats.warning}
+              </span>
+            )}
+            {stats.critical > 0 && (
+              <span style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#EA4335' }} />
+                {stats.critical}
+              </span>
+            )}
+            {focusNodeId && (
+              <>
+                <span style={{ width: 1, height: 12, background: 'rgba(0,0,0,0.1)' }} />
+                <span style={{ color: '#4A7EC4', fontWeight: 600 }}>Focus mode</span>
+                <button
+                  onClick={() => { setFocusNodeId(null); setSelectedNode(null); }}
+                  style={{
+                    background: 'rgba(0,0,0,0.06)', border: 'none', borderRadius: 4,
+                    padding: '1px 5px', cursor: 'pointer', fontSize: 10, color: '#6B7280',
+                  }}
+                >
+                  Clear
+                </button>
+              </>
+            )}
+          </div>
+        </Panel>
+
+        {/* ── Keyboard hint (bottom-center) ── */}
+        <Panel position="bottom-center">
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 10,
+            fontSize: 10, color: '#9AA0A6',
+            fontFamily: '"Inter", system-ui, sans-serif',
+          }}>
+            {[
+              ['Click', 'Focus'],
+              ['Dbl-click', 'Details'],
+              ['Esc', 'Clear'],
+              ['F', 'Fit'],
+              ['1/2/3', 'View'],
+            ].map(([key, label]) => (
+              <span key={key} style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                <kbd style={{
+                  fontSize: 9, background: 'rgba(0,0,0,0.05)', border: '1px solid rgba(0,0,0,0.08)',
+                  borderRadius: 3, padding: '0px 4px', fontFamily: '"Inter", system-ui, sans-serif',
+                }}>{key}</kbd>
+                <span>{label}</span>
+              </span>
+            ))}
+          </div>
+        </Panel>
+      </ReactFlow>
+
+      {/* Loading spinner */}
+      {layoutBusy && (
+        <div style={{
+          position: 'absolute', top: 16, right: 16,
+          display: 'flex', alignItems: 'center', gap: 8,
+          background: 'rgba(255,255,255,0.95)', borderRadius: 10,
+          padding: '8px 14px', boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+          border: '1px solid rgba(0,0,0,0.06)', zIndex: 25,
+          fontSize: 12, color: '#6B7280',
+        }}>
+          <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} />
+          Computing layout...
+        </div>
+      )}
+
+      {/* Detail panel */}
+      <AnimatePresence>
+        {selectedNode && (
+          <DetailPanel
+            node={selectedNode}
+            graph={graph}
+            onClose={() => { setSelectedNode(null); setFocusNodeId(null); }}
+            onNavigate={handleNavigateToNode}
+          />
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+// ─── Empty State ──────────────────────────────────────────────────────────────
+
+function EmptyState() {
+  return (
+    <div style={{
+      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+      height: '100%', gap: 16,
+      background: '#FAFBFC',
+      fontFamily: '"Inter", system-ui, sans-serif',
+    }}>
+      <div style={{
+        width: 56, height: 56,
+        background: 'linear-gradient(135deg, #4A7EC4, #2A52A0)',
+        borderRadius: 16, display: 'flex', alignItems: 'center', justifyContent: 'center',
+        boxShadow: '0 6px 24px rgba(74,126,196,0.25)',
+      }}>
+        <Network size={26} style={{ color: '#fff' }} />
+      </div>
+      <div style={{ textAlign: 'center' }}>
+        <div style={{ fontSize: 17, fontWeight: 700, color: '#1A1A1A', marginBottom: 6 }}>
+          Cluster Topology
+        </div>
+        <div style={{ fontSize: 13, color: '#6B7280' }}>
+          Connect to a cluster to visualize your resources
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Main Page Component ──────────────────────────────────────────────────────
+
 export default function Topology() {
   const { activeCluster } = useClusterStore();
   const clusterId = useActiveClusterId();
   const navigate = useNavigate();
-  const canvasRef = useRef<TopologyCanvasRef>(null);
 
   const [selectedNamespace, setSelectedNamespace] = useState('all');
-  const [selectedNodeFilter, setSelectedNodeFilter] = useState<string>('all');
-
-  const handleNamespaceChange = useCallback((ns: string) => {
-    setSelectedNamespace(ns);
-    setSelectedNodeFilter('all');
-  }, []);
-
-  const handleNodeChange = useCallback((nodeId: string) => {
-    setSelectedNodeFilter(nodeId);
-    // Do NOT reset namespace — filters are independent
-  }, []);
 
   const { graph: clusterGraph, isLoading: topologyLoading, error: topologyError, refetch: refetchTopology } = useClusterTopology({
     clusterId,
@@ -208,761 +1339,155 @@ export default function Topology() {
     enabled: !!clusterId,
   });
 
-  // Calculate statistics (Number of pods, health status)
-  const stats = useMemo(() => {
-    const nodes = clusterGraph?.nodes || mockGraph.nodes;
-    const pods = nodes.filter(n => n.kind === 'Pod');
-    return {
-      total: pods.length,
-      healthy: pods.filter(p => !p.computed?.health || p.computed.health === 'healthy').length,
-      warning: pods.filter(p => p.computed?.health === 'warning').length,
-      critical: pods.filter(p => p.computed?.health === 'critical').length,
-    };
-  }, [clusterGraph]);
+  const { data: clusterNamespaces } = useNamespacesFromCluster(clusterId ?? null);
+  const availableNamespaces = useMemo(() => {
+    if (clusterNamespaces?.length) return [...clusterNamespaces].sort();
+    const ns = new Set<string>();
+    (clusterGraph ?? mockGraph).nodes.forEach(n => { if (n.namespace) ns.add(n.namespace); });
+    return Array.from(ns).sort();
+  }, [clusterNamespaces, clusterGraph]);
 
-  // Task 9.1–9.3: Optional performance test graph (100 / 1K / 5K / 10K nodes)
+  // Performance test graph
   const [perfTestNodes, setPerfTestNodes] = useState<number | null>(null);
   const perfTestGraph = useMemo(
-    () => (perfTestNodes != null ? generateTestGraph(perfTestNodes) : null),
+    () => perfTestNodes != null ? generateTestGraph(perfTestNodes) : null,
     [perfTestNodes]
   );
 
   const displayGraph = perfTestGraph ?? clusterGraph ?? mockGraph;
   const isLiveData = !!clusterGraph;
-  const [searchQuery, setSearchQuery] = useState('');
-  const [abstractionLevel, setAbstractionLevel] = useState<AbstractionLevel>('L2');
+
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [isPaused, setIsPaused] = useState(false);
-  const [topologyMode, setTopologyMode] = useState<'structural' | 'traffic'>('structural');
-  const [legendCollapsed, setLegendCollapsed] = useState(true);
-  const [heatMapMode, setHeatMapMode] = useState<HeatMapMode>('none');
-
-  const [selectedResources, setSelectedResources] = useState<Set<KubernetesKind>>(
-    new Set(RESOURCE_TYPES.map(r => r.kind))
-  );
-  const [selectedRelationships, setSelectedRelationships] = useState<Set<RelationshipType>>(
-    new Set(ALL_RELATIONSHIPS)
-  );
-  const [selectedHealth, setSelectedHealth] = useState<Set<HealthStatus | 'pending'>>(
-    new Set(['healthy', 'warning', 'critical', 'unknown'])
-  );
-  const [selectedNode, setSelectedNode] = useState<TopologyNode | null>(null);
-  const [contextMenu, setContextMenu] = useState<{ nodeId: string; x: number; y: number } | null>(null);
-  const [blastRadius, setBlastRadius] = useState<BlastRadiusResult | null>(null);
-  const [activeOverlay, setActiveOverlay] = useState<OverlayType | null>(null);
-  const [hoveredNode, setHoveredNode] = useState<{ node: TopologyNode; position: { x: number; y: number } } | null>(null);
-  const [searchMatchIndex, setSearchMatchIndex] = useState(0);
-  const [snapToGrid, setSnapToGrid] = useState(false);
-  // E-PLAT-001: AI analysis state
-  const [showAIPanel, setShowAIPanel] = useState(false);
-  const [aiPanelTab, setAIPanelTab] = useState<'blast' | 'critical-path'>('blast');
-
-  // E-PLAT-001: AI hooks
-  const { result: aiAnalysis, loading: aiAnalyzing, analyze: analyzeBlastRadius, clear: clearAIAnalysis } = useBlastRadiusAnalysis();
-  const { result: criticalPath, loading: critPathLoading, fetchCriticalPath, clear: clearCriticalPath } = useCriticalPath();
-  const { results: nodeExplains, loadingId: nodeExplainLoadingId, explain: explainNode } = useNodeExplain();
-
-  // Helpers to convert topology graph nodes/edges to AI API format
-  const toAINodes = useCallback((nodes: TopologyNode[]): AINodeSummary[] =>
-    nodes.map(n => ({
-      id: n.id,
-      kind: n.kind,
-      name: n.name,
-      namespace: n.namespace,
-      health: n.computed?.health,
-      replicas: n.computed?.replicas?.ready,
-    })), []);
-
-
-  const toAIEdges = useCallback((edges: Array<{ source: string; target: string; relationshipType: string }>): AIEdgeSummary[] =>
-    edges.map(e => ({
-      source: e.source,
-      target: e.target,
-      relationship_type: e.relationshipType,
-    })), []);
-
-  // Fetch all namespaces from cluster API so the dropdown always shows every
-  // namespace regardless of the current filter selection.
-  const { data: clusterNamespaces } = useNamespacesFromCluster(clusterId ?? null);
-  const availableNamespaces = useMemo(() => {
-    if (clusterNamespaces && clusterNamespaces.length > 0) {
-      return [...clusterNamespaces].sort();
-    }
-    // Fallback: derive from displayed graph nodes when cluster API isn't available
-    const ns = new Set<string>();
-    displayGraph.nodes.forEach(n => { if (n.namespace) ns.add(n.namespace); });
-    return Array.from(ns).sort();
-  }, [clusterNamespaces, displayGraph.nodes]);
-
-  const availableNodes = useMemo(() => {
-    return displayGraph.nodes.filter(n => n.kind === 'Node').map(n => ({ id: n.id, name: n.name }));
-  }, [displayGraph.nodes]);
-
-  // When a node is selected, show only that node + pods on it + resources connected to those pods
-  const nodeFilteredGraph = useMemo(() => {
-    if (!selectedNodeFilter || selectedNodeFilter === 'all') return displayGraph;
-
-    // Strict Filtering: Only show the targeted node and its immediate workloads/pods
-    const inScope = new Set<string>([selectedNodeFilter]);
-    const edges = displayGraph.edges;
-    const allNodes = displayGraph.nodes;
-
-    // 1. Find workloads/pods scheduled on this node
-    const scheduledOnThisNode = new Set<string>();
-    for (const e of edges) {
-      if (e.target === selectedNodeFilter && (e.relationshipType === 'scheduled_on' || e.relationshipType === 'runs' || e.relationshipType === 'schedules')) {
-        scheduledOnThisNode.add(e.source);
-        inScope.add(e.source);
-      }
-    }
-
-    // 2. Find direct parents/owners of those scheduled items (Deployments, ReplicaSets, Services)
-    // but NEVER add another Node.
-    for (const e of edges) {
-      if (scheduledOnThisNode.has(e.source) || scheduledOnThisNode.has(e.target)) {
-        const otherId = scheduledOnThisNode.has(e.source) ? e.target : e.source;
-        const otherNode = allNodes.find(n => n.id === otherId);
-
-        // Only add if it's NOT a node and NOT the Cluster root
-        if (otherNode && otherNode.kind !== 'Node' && otherNode.id !== 'cluster-root') {
-          inScope.add(otherId);
-        }
-      }
-    }
-
-    const filteredNodes = allNodes.filter(n => inScope.has(n.id));
-    const nodeIds = new Set(filteredNodes.map(n => n.id));
-    const filteredEdges = edges.filter(e => nodeIds.has(e.source) && nodeIds.has(e.target));
-    return { ...displayGraph, nodes: filteredNodes, edges: filteredEdges };
-  }, [displayGraph, selectedNodeFilter]);
-
-  // Task 8.3: filteredGraph — apply node filter first, then hide by resource type
-  const filteredGraph = useMemo(() => {
-    const filteredNodes = nodeFilteredGraph.nodes.filter((n) => selectedResources.has(n.kind));
-    const nodeIds = new Set(filteredNodes.map((n) => n.id));
-    const filteredEdges = nodeFilteredGraph.edges.filter(
-      (e) => nodeIds.has(e.source) && nodeIds.has(e.target)
-    );
-    return {
-      ...nodeFilteredGraph,
-      nodes: filteredNodes,
-      edges: filteredEdges,
-    };
-  }, [nodeFilteredGraph, selectedResources]);
-
-  const healthOverlayData = useHealthOverlay(filteredGraph);
-  const costOverlayData = useCostOverlay(filteredGraph);
-  const performanceOverlayData = usePerformanceOverlay(filteredGraph);
-  const securityOverlayData = useSecurityOverlay(filteredGraph);
-  const dependencyOverlayData = useDependencyOverlay(filteredGraph);
-  const trafficOverlayData = useTrafficOverlay(filteredGraph);
-  const searchMatchIds = useMemo(() => {
-    if (!searchQuery.trim()) return [];
-    const q = searchQuery.toLowerCase().trim();
-    return filteredGraph.nodes
-      .filter(n =>
-        n.name.toLowerCase().includes(q) ||
-        n.kind.toLowerCase().includes(q) ||
-        (n.namespace || '').toLowerCase().includes(q)
-      )
-      .map(n => n.id);
-  }, [filteredGraph.nodes, searchQuery]);
-  const centeredNodeIdForCanvas = searchMatchIds.length > 0
-    ? searchMatchIds[Math.min(searchMatchIndex, searchMatchIds.length - 1)]
-    : selectedNode?.id;
-
-  const overlayDataForCanvas = activeOverlay === 'health' ? healthOverlayData
-    : activeOverlay === 'cost' ? costOverlayData
-      : activeOverlay === 'performance' ? performanceOverlayData
-        : activeOverlay === 'security' ? securityOverlayData
-          : activeOverlay === 'dependency' ? dependencyOverlayData
-            : activeOverlay === 'traffic' ? trafficOverlayData
-              : null;
-
-  const handleResourceToggle = useCallback((kind: KubernetesKind) => {
-    setSelectedResources(prev => {
-      const next = new Set(prev);
-      if (next.has(kind)) next.delete(kind);
-      else next.add(kind);
-      return next;
-    });
-  }, []);
-
-  /** Builds detail path for topology node (matches App.tsx routes: /pods/ns/name or /nodes/name). */
-  const getDetailPathForNode = useCallback((node: { id: string; kind?: string; namespace?: string; name?: string }) => {
-    const routeMap: Record<string, string> = {
-      Pod: 'pods', Deployment: 'deployments', ReplicaSet: 'replicasets',
-      StatefulSet: 'statefulsets', DaemonSet: 'daemonsets', Service: 'services',
-      ConfigMap: 'configmaps', Secret: 'secrets', Ingress: 'ingresses',
-      Node: 'nodes', Namespace: 'namespaces', PersistentVolume: 'persistentvolumes',
-      PersistentVolumeClaim: 'persistentvolumeclaims', StorageClass: 'storageclasses',
-      Job: 'jobs', CronJob: 'cronjobs', Endpoints: 'endpoints', EndpointSlice: 'endpointslices',
-      NetworkPolicy: 'networkpolicies', IngressClass: 'ingressclasses', VolumeAttachment: 'volumeattachments',
-    };
-    const parts = node.id.split('/');
-    const kind = node.kind ?? parts[0];
-    const route = routeMap[kind] ?? kind.toLowerCase() + 's';
-    if (parts.length === 2) {
-      return `/${route}/${parts[1]}`;
-    }
-    if (parts.length >= 3) {
-      return `/${route}/${parts[1]}/${parts[2]}`;
-    }
-    if (node.namespace && node.name) return `/${route}/${node.namespace}/${node.name}`;
-    if (node.name) return `/${route}/${node.name}`;
-    return null;
-  }, []);
-
-  const handleNodeDoubleClick = useCallback((node: TopologyNode) => {
-    const path = getDetailPathForNode(node);
-    if (path) navigate(path);
-  }, [navigate, getDetailPathForNode]);
-
-  const handleContextMenu = useCallback((event: { nodeId: string; position: { x: number; y: number } }) => {
-    setContextMenu({ nodeId: event.nodeId, x: event.position.x, y: event.position.y });
-  }, []);
-
-  useEffect(() => { setSearchMatchIndex(0); }, [searchQuery]);
-
-  const handleNodeHover = useCallback((nodeId: string | null, clientPosition: { x: number; y: number } | null) => {
-    if (!nodeId || !clientPosition) {
-      setHoveredNode(null);
-      return;
-    }
-    const node = filteredGraph.nodes.find(n => n.id === nodeId);
-    if (node) setHoveredNode({ node, position: clientPosition });
-    else setHoveredNode(null);
-  }, [filteredGraph.nodes]);
-
-  const closeContextMenu = useCallback(() => setContextMenu(null), []);
-
-  const handleContextMenuAction = useCallback((actionId: string, nodeId: string) => {
-    const node = filteredGraph.nodes.find(n => n.id === nodeId);
-    if (actionId === 'copy-name' && node) {
-      navigator.clipboard.writeText(node.name);
-      toast.success('Copied to clipboard');
-    } else if (actionId === 'blast-radius') {
-      const result = computeBlastRadius(filteredGraph, nodeId);
-      setBlastRadius(result);
-      toast.success(`Blast radius: ${result.affectedNodes.size} resources affected`);
-      // E-PLAT-001: Also fetch AI analysis
-      clearAIAnalysis();
-      setShowAIPanel(true);
-      setAIPanelTab('blast');
-      analyzeBlastRadius({
-        target_node_id: nodeId,
-        operation: 'delete',
-        nodes: toAINodes(filteredGraph.nodes),
-        edges: toAIEdges(filteredGraph.edges),
-        blast_radius_node_ids: Array.from(result.affectedNodes),
-        total_impact: result.totalImpact,
-      });
-    } else if (actionId === 'view-logs' && node) {
-      const routeMap: Record<string, string> = {
-        Pod: 'pods', Deployment: 'deployments', ReplicaSet: 'replicasets',
-        StatefulSet: 'statefulsets', DaemonSet: 'daemonsets', Job: 'jobs', CronJob: 'cronjobs',
-      };
-      const route = routeMap[node.kind];
-      if (route) {
-        const path = node.namespace ? `/${route}/${node.namespace}/${node.name}` : `/${route}/${node.name}`;
-        navigate(`${path}?tab=logs`);
-      } else {
-        toast.info('Logs are available for Pod, Deployment, StatefulSet, DaemonSet, Job, CronJob, ReplicaSet.');
-      }
-    } else if (actionId === 'view-yaml' || actionId === 'view-metrics' || actionId === 'dependencies') {
-      if (node) setSelectedNode(node);
-    } else if (actionId === 'user-journey') {
-      toast.info('User journey tracing coming soon');
-    } else if (actionId === 'edit' && node) {
-      handleNodeDoubleClick(node);
-    } else if (actionId === 'delete') {
-      toast.error('Delete is not implemented in topology view. Use the resource detail page.');
-    }
-    setContextMenu(null);
-  }, [filteredGraph, handleNodeDoubleClick, navigate]);
-
-  const backendBaseUrl = useBackendConfigStore((s) => s.backendBaseUrl);
-  const effectiveBaseUrl = getEffectiveBackendBaseUrl(backendBaseUrl);
-  const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured);
-
-  const handleExport = useCallback(async (format: string) => {
-    if (format !== 'json' && format !== 'csv' && format !== 'pdf' && format !== 'drawio' && !canvasRef.current) {
-      toast.error('Canvas not ready. Please wait for the topology to load.');
-      return;
-    }
-
-    const now = new Date();
-    const timestamp = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}_${String(now.getHours()).padStart(2, '0')}-${String(now.getMinutes()).padStart(2, '0')}-${String(now.getSeconds()).padStart(2, '0')}`;
-    // Build descriptive prefix: cluster-namespace-nodeFilter
-    const clusterSlug = (activeCluster?.name || 'cluster').replace(/[^a-zA-Z0-9_-]/g, '-');
-    const nsSlug = selectedNamespace !== 'all' ? selectedNamespace : 'all-namespaces';
-    const nodeSlug = selectedNodeFilter !== 'all'
-      ? (displayGraph.nodes.find(n => n.id === selectedNodeFilter)?.name || selectedNodeFilter).replace(/[^a-zA-Z0-9_-]/g, '-')
-      : '';
-    const prefix = [clusterSlug, nsSlug, nodeSlug].filter(Boolean).join('-');
-    const filename = `${prefix}-topology-${timestamp}`;
-
-    if (format === 'drawio') {
-      (async () => {
-        if (!clusterId || !isBackendConfigured()) {
-          toast.error('Connect backend and select a cluster to open topology in draw.io.');
-          return;
-        }
-        const exportToast = toast.loading('Exporting to draw.io…');
-        try {
-          const { url } = await getTopologyExportDrawio(effectiveBaseUrl, clusterId, { format: 'mermaid' });
-          window.open(url, '_blank', 'noopener,noreferrer');
-          toast.success('Opened in draw.io', { id: exportToast });
-        } catch (e) {
-          toast.error(e instanceof Error ? e.message : 'Failed to export to draw.io', { id: exportToast });
-        }
-      })();
-      return;
-    }
-
-    const exportToast = toast.loading(`Exporting ${format.toUpperCase()}…`);
-    try {
-      let exported = false;
-      switch (format) {
-        case 'svg': {
-          const data = canvasRef.current!.exportAsSVG();
-          if (data) {
-            const blob = new Blob([data], { type: 'image/svg+xml' });
-            await downloadFile(blob, `${filename}.svg`);
-            exported = true;
-          }
-          break;
-        }
-        case 'png': {
-          const data = canvasRef.current!.exportAsPNG();
-          if (data && data.length > 100) {
-            const res = await fetch(data);
-            const blob = await res.blob();
-            if (blob.size < 100) {
-              toast.error('PNG export produced empty image — graph may be too large. Try filtering to fewer resources.', { id: exportToast });
-              return;
-            }
-            await downloadFile(blob, `${filename}.png`);
-            exported = true;
-          }
-          break;
-        }
-        case 'pdf': {
-          canvasRef.current?.exportAsPDF?.(`${filename}.pdf`);
-          exported = true;
-          break;
-        }
-        case 'json': {
-          downloadJSON(filteredGraph, `${filename}.json`);
-          exported = true;
-          break;
-        }
-        case 'csv': {
-          downloadCSVSummary(filteredGraph, `${prefix}-topology`);
-          exported = true;
-          break;
-        }
-      }
-      if (exported) {
-        toast.success(`${format.toUpperCase()} exported — check your downloads`, { id: exportToast });
-      } else {
-        toast.error(`Export failed — no data available to export`, { id: exportToast });
-      }
-    } catch (err) {
-      toast.error(`Export failed: ${err instanceof Error ? err.message : 'Unknown error'}`, { id: exportToast });
-    }
-  }, [filteredGraph, clusterId, effectiveBaseUrl, isBackendConfigured, activeCluster?.name, selectedNamespace, selectedNodeFilter, displayGraph.nodes]);
-
   const handleRefresh = useCallback(async () => {
     setIsRefreshing(true);
-    if (isLiveData) {
-      await refetchTopology();
-    } else {
-      await new Promise(r => setTimeout(r, 1000));
-    }
+    if (isLiveData) await refetchTopology();
+    else await new Promise(r => setTimeout(r, 800));
     setIsRefreshing(false);
-    toast.success(isLiveData ? 'Topology refreshed' : 'Topology refreshed');
+    toast.success('Topology refreshed');
   }, [isLiveData, refetchTopology]);
 
-  // Keyboard: space to toggle pause; Escape close menu/blast
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        setContextMenu(null);
-        setBlastRadius(null);
-      }
-      if (e.key === ' ' && !e.metaKey && !e.ctrlKey) {
-        e.preventDefault();
-        setIsPaused(p => !p);
-      }
-    };
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, []);
+  // Namespace-filtered graph
+  const filteredGraph = useMemo(() => {
+    if (selectedNamespace === 'all') return displayGraph;
+    const filtered = displayGraph.nodes.filter(n => !n.namespace || n.namespace === selectedNamespace);
+    const nodeIds = new Set(filtered.map(n => n.id));
+    const filteredEdges = displayGraph.edges.filter(e => nodeIds.has(e.source) && nodeIds.has(e.target));
+    return { ...displayGraph, nodes: filtered, edges: filteredEdges };
+  }, [displayGraph, selectedNamespace]);
 
-  const contextMenuActions = [
-    { id: 'copy-name', label: 'Copy Resource Name', icon: Copy },
-    { id: 'view-logs', label: 'View Logs', icon: ScrollText },
-    { id: 'view-yaml', label: 'View Full YAML', icon: FileText },
-    { id: 'view-metrics', label: 'Show Metrics', icon: Activity },
-    { id: 'dependencies', label: 'Inspect Dependencies', icon: Network },
-    { id: 'blast-radius', label: 'Compute Blast Radius', icon: Bomb },
-    { id: 'user-journey', label: 'Trace User Journey', icon: Route },
-    { id: 'edit', label: 'Edit Resource', icon: Edit },
-    { id: 'delete', label: 'Delete', icon: Trash2, danger: true },
-  ];
+  // Stats for header
+  const stats = useMemo(() => {
+    const pods = filteredGraph.nodes.filter(n => n.kind === 'Pod');
+    return {
+      total: filteredGraph.nodes.length,
+      healthy: pods.filter(p => !p.computed?.health || p.computed.health === 'healthy').length,
+      warning: pods.filter(p => p.computed?.health === 'warning').length,
+      critical: pods.filter(p => p.computed?.health === 'critical').length,
+    };
+  }, [filteredGraph.nodes]);
 
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col h-[calc(100vh-4rem)] gap-3">
-      {/* Header */}
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col h-[calc(100vh-4rem)] gap-2">
+      {/* ── Header ── */}
       <div className="flex items-center justify-between flex-shrink-0">
         <div className="flex items-center gap-3">
-          <div className="p-2.5 rounded-xl bg-primary/10">
-            <Network className="h-7 w-7 text-primary" />
+          <div className="p-2 rounded-xl bg-primary/8">
+            <Network className="h-6 w-6 text-primary" />
           </div>
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight">Cluster Topology</h1>
-            <p className="text-sm text-muted-foreground">
-              {activeCluster?.name || 'docker-desktop'} • {filteredGraph.nodes.length} resources • ELK Layered
-              {topologyLoading && ' • Loading…'}
+            <h1 className="text-xl font-semibold tracking-tight">Topology</h1>
+            <p className="text-xs text-muted-foreground">
+              {activeCluster?.name || 'docker-desktop'} · {filteredGraph.nodes.length} resources
+              {topologyLoading && ' · Loading...'}
             </p>
           </div>
         </div>
 
         <div className="flex items-center gap-2">
-          {/* Structural / Traffic toggle */}
-          <div className="flex items-center gap-0.5 p-0.5 bg-muted rounded-lg">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant={topologyMode === 'structural' ? 'default' : 'ghost'}
-                  size="sm"
-                  onClick={() => setTopologyMode('structural')}
-                  className="h-8 px-3 text-xs font-medium gap-1.5"
-                >
-                  <Layers className="h-3.5 w-3.5" />
-                  Structural
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Cluster Intelligence Map – resource connections</TooltipContent>
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant={topologyMode === 'traffic' ? 'default' : 'ghost'}
-                  size="sm"
-                  onClick={() => setTopologyMode('traffic')}
-                  className="h-8 px-3 text-xs font-medium gap-1.5"
-                >
-                  <Activity className="h-3.5 w-3.5" />
-                  Traffic Flow
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Interactive Traffic Topology – request flow simulation</TooltipContent>
-            </Tooltip>
-          </div>
+          {/* Namespace selector */}
+          <Select value={selectedNamespace} onValueChange={setSelectedNamespace}>
+            <SelectTrigger className="w-[160px] h-8 text-xs">
+              <SelectValue placeholder="All Namespaces" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Namespaces</SelectItem>
+              {availableNamespaces.map(ns => (
+                <SelectItem key={ns} value={ns}>{ns}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
-          <Separator orientation="vertical" className="h-6" />
-
-          {/* Abstraction Level Selector */}
-          <div className="flex items-center gap-0.5 p-0.5 bg-muted rounded-lg">
-            {(['L0', 'L1', 'L2', 'L3'] as AbstractionLevel[]).map((level) => (
-              <Tooltip key={level}>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant={abstractionLevel === level ? 'default' : 'ghost'}
-                    size="sm"
-                    onClick={() => setAbstractionLevel(level)}
-                    className="h-8 px-3 text-xs font-medium"
-                  >
-                    {level}
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p className="font-medium">{ABSTRACTION_LEVELS[level].label}</p>
-                  <p className="text-xs text-muted-foreground">{ABSTRACTION_LEVELS[level].description}</p>
-                </TooltipContent>
-              </Tooltip>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Toolbar */}
-      <div className="flex flex-wrap items-center gap-3 flex-shrink-0">
-        {/* Namespace selector */}
-        <Select value={selectedNamespace} onValueChange={handleNamespaceChange}>
-          <SelectTrigger className="w-[180px] h-9">
-            <SelectValue placeholder="All Namespaces" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Namespaces</SelectItem>
-            {availableNamespaces.map(ns => (
-              <SelectItem key={ns} value={ns}>{ns}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        {/* Node selector — show resources on selected node only */}
-        <Select value={selectedNodeFilter} onValueChange={handleNodeChange}>
-          <SelectTrigger className="w-[180px] h-9">
-            <SelectValue placeholder="All Nodes" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Nodes</SelectItem>
-            {availableNodes.map(n => (
-              <SelectItem key={n.id} value={n.id}>{n.name}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        {/* Search + jump between matches */}
-        <div className="relative flex-1 max-w-sm flex items-center gap-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-          <Input
-            type="search"
-            placeholder="Search resources..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9 pr-8 h-9"
-          />
-          {searchMatchIds.length > 0 && (
-            <div className="absolute right-1 flex items-center gap-0.5 bg-muted/80 rounded px-1">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-6 w-6"
-                onClick={() => {
-                  const next = searchMatchIndex <= 0 ? searchMatchIds.length - 1 : searchMatchIndex - 1;
-                  setSearchMatchIndex(next);
-                  const node = filteredGraph.nodes.find(n => n.id === searchMatchIds[next]);
-                  if (node) setSelectedNode(node);
-                }}
-              >
-                <ChevronUp className="h-3.5 w-3.5" />
+          {/* Export */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="gap-1 h-8 text-xs">
+                <Download className="h-3.5 w-3.5" /> Export
               </Button>
-              <span className="text-[10px] font-medium text-muted-foreground min-w-[2.5rem] text-center">
-                {searchMatchIndex + 1}/{searchMatchIds.length}
-              </span>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-6 w-6"
-                onClick={() => {
-                  const next = searchMatchIndex >= searchMatchIds.length - 1 ? 0 : searchMatchIndex + 1;
-                  setSearchMatchIndex(next);
-                  const node = filteredGraph.nodes.find(n => n.id === searchMatchIds[next]);
-                  if (node) setSelectedNode(node);
-                }}
-              >
-                <ChevronDown className="h-3.5 w-3.5" />
-              </Button>
-            </div>
-          )}
-        </div>
-
-        {/* Heatmap */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant={heatMapMode !== 'none' ? 'default' : 'outline'} size="sm" className="gap-1.5 h-9">
-              <Thermometer className="h-4 w-4" />
-              {heatMapMode === 'none' ? 'Heatmap' : heatMapMode === 'cpu' ? 'CPU Heat' : 'Restart Heat'}
-              <ChevronDown className="h-3 w-3" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => setHeatMapMode('none')}>
-              Off
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setHeatMapMode('cpu')}>
-              <Thermometer className="h-4 w-4 mr-2" /> CPU Usage
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setHeatMapMode('restarts')}>
-              <RefreshCcw className="h-4 w-4 mr-2" /> Restart Count
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-
-        {/* Insight overlays */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant={activeOverlay ? 'default' : 'outline'} size="sm" className="gap-1.5 h-9">
-              <Layers className="h-4 w-4" />
-              {activeOverlay ? OVERLAY_LABELS[activeOverlay] : 'Overlays'}
-              <ChevronDown className="h-3 w-3" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => setActiveOverlay(null)}>
-              Off
-            </DropdownMenuItem>
-            {(['health', 'cost', 'security', 'performance', 'dependency', 'traffic'] as OverlayType[]).map((type) => (
-              <DropdownMenuItem key={type} onClick={() => setActiveOverlay(type)}>
-                {OVERLAY_LABELS[type]}
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => {
+                downloadJSON(filteredGraph, `topology-${Date.now()}.json`);
+                toast.success('JSON exported');
+              }}>
+                JSON (Full Graph)
               </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
+              <DropdownMenuItem onClick={() => {
+                downloadCSVSummary(filteredGraph, `topology-${Date.now()}`);
+                toast.success('CSV exported');
+              }}>
+                CSV (Summary)
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
 
-        {/* E-PLAT-001: AI Analysis toggle */}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant={showAIPanel ? 'default' : 'outline'}
-              size="sm"
-              className="h-9 gap-1.5"
-              onClick={() => {
-                setShowAIPanel(v => !v);
-                if (!showAIPanel && criticalPath === null && !critPathLoading) {
-                  fetchCriticalPath(toAINodes(filteredGraph.nodes), toAIEdges(filteredGraph.edges));
-                }
-              }}
-            >
-              {(aiAnalyzing || critPathLoading) ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Brain className="h-4 w-4" />
-              )}
-              AI Analysis
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>Toggle AI-powered blast radius analysis and critical path visualization</TooltipContent>
-        </Tooltip>
-
-        {/* Snap to grid (Cytoscape only) */}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant={snapToGrid ? 'default' : 'outline'}
-              size="icon"
-              className="h-9 w-9"
-              onClick={() => setSnapToGrid((v) => !v)}
-            >
-              <Grid3X3 className="h-4 w-4" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>
-            <p>Snap nodes to grid when dragging (Cytoscape)</p>
-          </TooltipContent>
-        </Tooltip>
-
-        {/* Export */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm" className="gap-1.5 h-9">
-              <Download className="h-4 w-4" /> Export <ChevronDown className="h-3 w-3" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => handleExport('svg')}>
-              <FileCode className="h-4 w-4 mr-2" /> SVG (Vector)
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => handleExport('png')}>
-              <FileImage className="h-4 w-4 mr-2" /> PNG (High DPI)
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => handleExport('pdf')}>
-              <FileText className="h-4 w-4 mr-2" /> PDF (Print)
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => handleExport('drawio')}>
-              <ExternalLink className="h-4 w-4 mr-2" /> Open in draw.io
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => handleExport('json')}>
-              <FileJson className="h-4 w-4 mr-2" /> JSON (Full Graph)
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => handleExport('csv')}>
-              <Table className="h-4 w-4 mr-2" /> CSV (Summary)
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-
-        {/* Refresh */}
-        <Button variant="outline" size="icon" className="h-9 w-9" onClick={handleRefresh} disabled={isRefreshing}>
-          <RotateCcw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-        </Button>
+          {/* Refresh */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="outline" size="icon" className="h-8 w-8" onClick={handleRefresh} disabled={isRefreshing}>
+                <RefreshCw className={`h-3.5 w-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Refresh topology</TooltipContent>
+          </Tooltip>
+        </div>
       </div>
 
-      {/* Resource Type Filters — grouped, compact */}
-      <div className="flex flex-wrap items-center gap-1 flex-shrink-0">
-        {RESOURCE_TYPES.map((rt, idx) => {
-          const active = selectedResources.has(rt.kind);
-          const prevGroup = idx > 0 ? RESOURCE_TYPES[idx - 1].group : null;
-          const showSep = prevGroup !== null && prevGroup !== rt.group;
-          return (
-            <span key={rt.kind} className="inline-flex items-center">
-              {showSep && <span className="w-px h-4 bg-border mx-1" />}
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    onClick={() => handleResourceToggle(rt.kind)}
-                    className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-semibold tracking-wide transition-all ${active
-                      ? 'text-white shadow-sm'
-                      : 'text-muted-foreground bg-muted/50 hover:bg-muted'
-                      }`}
-                    style={active ? { backgroundColor: rt.color } : undefined}
-                  >
-                    <span
-                      className="w-1.5 h-1.5 rounded-full shrink-0"
-                      style={{ backgroundColor: active ? 'rgba(255,255,255,0.7)' : rt.color }}
-                    />
-                    {rt.short}
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom" className="text-xs">{rt.label}</TooltipContent>
-              </Tooltip>
-            </span>
-          );
-        })}
-      </div>
-
-      {/* Data source banner + Perf test (Task 9.1–9.3) */}
+      {/* Data source banner */}
       {(!isLiveData || perfTestNodes != null) && !topologyLoading && (
-        <Alert className="flex-shrink-0 border-amber-500/30 bg-amber-500/5">
-          <AlertDescription className="flex flex-wrap items-center gap-3">
+        <Alert className="flex-shrink-0 border-amber-500/30 bg-amber-50 dark:bg-amber-500/5 py-2">
+          <AlertDescription className="flex items-center gap-3 text-xs">
             <span>
               {perfTestNodes != null
-                ? `Performance test graph: ${perfTestNodes.toLocaleString()} nodes (check console for load/overlay/export timing)`
-                : 'Using demo data. Connect backend for live cluster topology.'}
+                ? `Performance test: ${perfTestNodes.toLocaleString()} nodes`
+                : 'Demo data — connect backend for live topology'}
             </span>
             <Select
               value={perfTestNodes != null ? String(perfTestNodes) : 'live'}
               onValueChange={(v) => setPerfTestNodes(v === 'live' ? null : parseInt(v, 10))}
             >
-              <SelectTrigger className="w-[140px] h-8">
-                <SelectValue placeholder="Graph" />
+              <SelectTrigger className="w-[120px] h-7 text-xs">
+                <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="live">Live / Demo</SelectItem>
-                <SelectItem value="100">Perf: 100 nodes</SelectItem>
-                <SelectItem value="1000">Perf: 1,000 nodes</SelectItem>
-                <SelectItem value="5000">Perf: 5,000 nodes</SelectItem>
-                <SelectItem value="10000">Perf: 10,000 nodes</SelectItem>
+                <SelectItem value="100">100 nodes</SelectItem>
+                <SelectItem value="1000">1K nodes</SelectItem>
+                <SelectItem value="5000">5K nodes</SelectItem>
               </SelectContent>
             </Select>
           </AlertDescription>
         </Alert>
       )}
       {topologyError && (
-        <Alert variant="destructive" className="flex-shrink-0">
-          <AlertDescription>
-            Could not load topology: {topologyError.message}. Showing demo data.
+        <Alert variant="destructive" className="flex-shrink-0 py-2">
+          <AlertDescription className="text-xs">
+            Failed to load: {topologyError.message}. Showing demo data.
           </AlertDescription>
         </Alert>
       )}
 
-      {/* Traffic mode info banner */}
-      {topologyMode === 'traffic' && (
-        <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex-shrink-0">
-          <Activity className="h-4 w-4 text-emerald-600" />
-          <span className="text-sm text-emerald-700 font-medium">
-            Traffic Flow Mode — Animated edges show request flow: Ingress → Service → Pod
-          </span>
-        </div>
-      )}
-
-      {/* Canvas */}
-      <div className="flex-1 relative min-h-0">
-        {/* Loading overlay — shown when backend data is loading and no cached graph exists */}
+      {/* ── Canvas ── */}
+      <div className="flex-1 relative min-h-0 rounded-xl overflow-hidden border border-border/50">
         {topologyLoading && !clusterGraph && (
           <div className="absolute inset-0 z-30 flex items-center justify-center bg-background/80 backdrop-blur-sm">
             <div className="flex flex-col items-center gap-3">
@@ -971,578 +1496,14 @@ export default function Topology() {
             </div>
           </div>
         )}
-        <TopologyCanvas
-          ref={canvasRef}
-          graph={filteredGraph}
-          selectedResources={selectedResources}
-          selectedRelationships={selectedRelationships}
-          selectedHealth={selectedHealth}
-          searchQuery={searchQuery}
-          abstractionLevel={abstractionLevel}
-          namespace={selectedNamespace}
-          centeredNodeId={centeredNodeIdForCanvas}
-          snapToGrid={snapToGrid}
-          isPaused={isPaused}
-          heatMapMode={heatMapMode}
-          trafficFlowEnabled={topologyMode === 'traffic'}
-          onNodeSelect={setSelectedNode}
-          onNodeDoubleClick={handleNodeDoubleClick}
-          onContextMenu={handleContextMenu}
-          onNodeHover={handleNodeHover}
-          blastRadius={blastRadius}
-          overlayData={overlayDataForCanvas}
-          className="h-full"
-        />
 
-        {/* ── Overlay Legend (shown when an overlay is active) ── */}
-        {activeOverlay && overlayDataForCanvas && (
-          <div className="absolute top-3 left-3 z-20 bg-card/95 backdrop-blur-md rounded-xl border border-border shadow-lg px-4 py-3 min-w-[200px]">
-            <div className="flex items-center justify-between mb-2.5">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-foreground">
-                {OVERLAY_LABELS[activeOverlay]}
-              </h4>
-              <button
-                onClick={() => setActiveOverlay(null)}
-                className="text-muted-foreground hover:text-foreground transition-colors"
-              >
-                <X className="h-3.5 w-3.5" />
-              </button>
-            </div>
-
-            {/* Color scale legend */}
-            <div className="space-y-1.5">
-              {activeOverlay === 'health' && (
-                <>
-                  <LegendRow color="#16A34A" label="Healthy" range="70–100" />
-                  <LegendRow color="#CA8A04" label="Warning" range="40–69" />
-                  <LegendRow color="#DC2626" label="Critical" range="0–39" />
-                </>
-              )}
-              {activeOverlay === 'cost' && (
-                <>
-                  <LegendRow color="#DC2626" label="Expensive" range="70–100" />
-                  <LegendRow color="#CA8A04" label="Moderate" range="40–69" />
-                  <LegendRow color="#16A34A" label="Efficient" range="0–39" />
-                </>
-              )}
-              {activeOverlay === 'security' && (
-                <>
-                  <LegendRow color="#16A34A" label="Secure" range="70–100" />
-                  <LegendRow color="#CA8A04" label="Moderate Risk" range="40–69" />
-                  <LegendRow color="#DC2626" label="Critical Risk" range="0–39" />
-                </>
-              )}
-              {activeOverlay === 'performance' && (
-                <>
-                  <LegendRow color="#DC2626" label="Overloaded" range="70–100" />
-                  <LegendRow color="#CA8A04" label="High Utilization" range="40–69" />
-                  <LegendRow color="#16A34A" label="Healthy" range="0–39" />
-                </>
-              )}
-              {activeOverlay === 'dependency' && (
-                <>
-                  <LegendRow color="#DC2626" label="Critical / SPOF" range="70–100" />
-                  <LegendRow color="#CA8A04" label="High Criticality" range="40–69" />
-                  <LegendRow color="#16A34A" label="Low Criticality" range="0–39" />
-                </>
-              )}
-              {activeOverlay === 'traffic' && (
-                <>
-                  <LegendRow color="#DC2626" label="Very High Traffic" range="70–100" />
-                  <LegendRow color="#CA8A04" label="Moderate Traffic" range="40–69" />
-                  <LegendRow color="#16A34A" label="Low Traffic" range="0–39" />
-                </>
-              )}
-            </div>
-
-            {/* Summary stats */}
-            {overlayDataForCanvas.metadata && (
-              <div className="mt-3 pt-2.5 border-t border-border/60">
-                <div className="grid grid-cols-2 gap-x-4 gap-y-1">
-                  {overlayDataForCanvas.metadata.totalNodes != null && (
-                    <div className="text-[10px] text-muted-foreground">
-                      Total: <span className="font-semibold text-foreground">{overlayDataForCanvas.metadata.totalNodes}</span>
-                    </div>
-                  )}
-                  {overlayDataForCanvas.metadata.healthyNodes != null && (
-                    <div className="text-[10px] text-muted-foreground">
-                      Healthy: <span className="font-semibold text-emerald-600">{overlayDataForCanvas.metadata.healthyNodes}</span>
-                    </div>
-                  )}
-                  {overlayDataForCanvas.metadata.warningNodes != null && (
-                    <div className="text-[10px] text-muted-foreground">
-                      Warning: <span className="font-semibold text-amber-600">{overlayDataForCanvas.metadata.warningNodes}</span>
-                    </div>
-                  )}
-                  {overlayDataForCanvas.metadata.criticalNodes != null && (
-                    <div className="text-[10px] text-muted-foreground">
-                      Critical: <span className="font-semibold text-red-600">{overlayDataForCanvas.metadata.criticalNodes}</span>
-                    </div>
-                  )}
-                  {overlayDataForCanvas.metadata.criticalRiskNodes != null && (
-                    <div className="text-[10px] text-muted-foreground">
-                      At Risk: <span className="font-semibold text-red-600">{overlayDataForCanvas.metadata.criticalRiskNodes}</span>
-                    </div>
-                  )}
-                  {overlayDataForCanvas.metadata.singlePointsOfFailure != null && (
-                    <div className="text-[10px] text-muted-foreground">
-                      SPOFs: <span className="font-semibold text-red-600">{overlayDataForCanvas.metadata.singlePointsOfFailure}</span>
-                    </div>
-                  )}
-                  {overlayDataForCanvas.metadata.highTrafficNodes != null && (
-                    <div className="text-[10px] text-muted-foreground">
-                      Hot: <span className="font-semibold text-orange-600">{overlayDataForCanvas.metadata.highTrafficNodes}</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
+        {filteredGraph.nodes.length > 0 ? (
+          <ReactFlowProvider>
+            <TopologyInner graph={filteredGraph} />
+          </ReactFlowProvider>
+        ) : (
+          <EmptyState />
         )}
-
-        {/* Node hover tooltip */}
-        {hoveredNode && createPortal(
-          <div
-            className="fixed z-[9998] w-[300px] rounded-lg border border-border bg-background/95 backdrop-blur-sm shadow-xl p-3 text-sm pointer-events-none"
-            style={{
-              left: Math.min(hoveredNode.position.x + 12, window.innerWidth - 320),
-              top: hoveredNode.position.y + 12,
-            }}
-          >
-            <div className="flex items-start gap-2.5 mb-2">
-              <div
-                className="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0 mt-0.5"
-                style={{ backgroundColor: getKindColor(hoveredNode.node.kind) }}
-              >
-                {hoveredNode.node.kind.substring(0, 3)}
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="font-semibold text-sm leading-snug break-words">{hoveredNode.node.name}</p>
-                <p className="text-xs text-muted-foreground mt-0.5">{hoveredNode.node.kind}{hoveredNode.node.namespace ? ` · ${hoveredNode.node.namespace}` : ''}</p>
-              </div>
-            </div>
-            <div className="space-y-1 text-xs">
-              <div className="flex justify-between gap-2">
-                <span className="text-muted-foreground">Status</span>
-                <Badge variant={hoveredNode.node.computed.health === 'healthy' ? 'default' : hoveredNode.node.computed.health === 'warning' ? 'secondary' : 'destructive'} className="text-[10px] h-5">
-                  {hoveredNode.node.computed.health}
-                </Badge>
-              </div>
-              {hoveredNode.node.computed.restartCount != null && (
-                <div className="flex justify-between"><span className="text-muted-foreground">Restarts</span><span>{hoveredNode.node.computed.restartCount}</span></div>
-              )}
-              {hoveredNode.node.computed.cpuUsage != null && (
-                <div className="flex justify-between"><span className="text-muted-foreground">CPU</span><span>{hoveredNode.node.computed.cpuUsage}%</span></div>
-              )}
-              {hoveredNode.node.computed.replicas && (
-                <div className="flex justify-between"><span className="text-muted-foreground">Replicas</span><span>{hoveredNode.node.computed.replicas.ready}/{hoveredNode.node.computed.replicas.desired}</span></div>
-              )}
-            </div>
-            <div className="mt-2 pt-2 border-t border-border flex gap-1 flex-wrap pointer-events-auto">
-              <Button
-                variant="outline"
-                size="sm"
-                className="text-xs h-7"
-                onClick={() => {
-                  const routeMap: Record<string, string> = { Pod: 'pods', Deployment: 'deployments', StatefulSet: 'statefulsets', DaemonSet: 'daemonsets', Job: 'jobs', CronJob: 'cronjobs', ReplicaSet: 'replicasets' };
-                  const route = routeMap[hoveredNode.node.kind];
-                  if (route) navigate(`${hoveredNode.node.namespace ? `/${route}/${hoveredNode.node.namespace}/${hoveredNode.node.name}` : `/${route}/${hoveredNode.node.name}`}?tab=logs`);
-                  setHoveredNode(null);
-                }}
-              >
-                View Logs
-              </Button>
-              <Button variant="outline" size="sm" className="text-xs h-7" onClick={() => { setSelectedNode(hoveredNode.node); setHoveredNode(null); }}>Inspect</Button>
-            </div>
-          </div>,
-          document.body
-        )}
-
-        {/* Floating context menu */}
-        {contextMenu && createPortal(
-          <div
-            className="fixed z-[9999] min-w-[200px] py-1 rounded-lg border border-border bg-background shadow-xl"
-            style={{ left: contextMenu.x, top: contextMenu.y }}
-          >
-            {contextMenuActions.map(({ id, label, icon: Icon, danger }) => (
-              <button
-                key={id}
-                type="button"
-                className={`w-full flex items-center gap-2 px-3 py-2 text-left text-sm hover:bg-muted ${danger ? 'text-destructive' : ''}`}
-                onClick={() => handleContextMenuAction(id, contextMenu.nodeId)}
-              >
-                <Icon className="h-4 w-4 shrink-0" />
-                {label}
-              </button>
-            ))}
-          </div>,
-          document.body
-        )}
-
-        {/* Blast radius panel */}
-        {blastRadius && (
-          <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="absolute top-4 left-4 w-72 z-10">
-            <Card className="p-4 bg-background/95 backdrop-blur-sm shadow-lg border-orange-500/30">
-              <div className="flex items-center justify-between gap-2">
-                <h3 className="font-semibold text-sm flex items-center gap-2">
-                  <Bomb className="h-4 w-4 text-orange-500" />
-                  Blast Radius
-                </h3>
-                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setBlastRadius(null)}>
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-              <p className="mt-2 text-xs text-muted-foreground">
-                {blastRadius.affectedNodes.size} resources affected
-                {filteredGraph.nodes.length > 0 && (
-                  <> ({Math.round((blastRadius.affectedNodes.size / filteredGraph.nodes.length) * 100)}% of visible graph)</>
-                )}
-              </p>
-              {blastRadius.suggestions && blastRadius.suggestions.length > 0 && (
-                <ul className="mt-2 text-xs text-muted-foreground list-disc list-inside">
-                  {blastRadius.suggestions.slice(0, 3).map((s, i) => (
-                    <li key={i}>{s}</li>
-                  ))}
-                </ul>
-              )}
-            </Card>
-          </motion.div>
-        )}
-
-        {/* E-PLAT-001: AI Analysis Panel — Critical Path + Blast Radius AI */}
-        {showAIPanel && (
-          <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: 20 }}
-            className="absolute top-4 right-4 w-80 z-20 flex flex-col gap-2"
-          >
-            <Card className="bg-background/95 backdrop-blur-sm shadow-xl border-purple-500/30">
-              <div className="p-3 border-b border-border flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Brain className="h-4 w-4 text-purple-500" />
-                  <span className="font-semibold text-sm">AI Topology Analysis</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <button
-                    onClick={() => setAIPanelTab('blast')}
-                    className={`px-2 py-0.5 text-xs rounded font-medium transition-colors ${aiPanelTab === 'blast' ? 'bg-purple-500/20 text-purple-600' : 'text-muted-foreground hover:text-foreground'}`}
-                  >
-                    Impact
-                  </button>
-                  <button
-                    onClick={() => {
-                      setAIPanelTab('critical-path');
-                      if (!criticalPath && !critPathLoading) {
-                        fetchCriticalPath(toAINodes(filteredGraph.nodes), toAIEdges(filteredGraph.edges));
-                      }
-                    }}
-                    className={`px-2 py-0.5 text-xs rounded font-medium transition-colors ${aiPanelTab === 'critical-path' ? 'bg-purple-500/20 text-purple-600' : 'text-muted-foreground hover:text-foreground'}`}
-                  >
-                    Critical Path
-                  </button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-6 w-6 ml-1"
-                    onClick={() => { setShowAIPanel(false); clearAIAnalysis(); clearCriticalPath(); }}
-                  >
-                    <X className="h-3.5 w-3.5" />
-                  </Button>
-                </div>
-              </div>
-
-              {/* Impact tab */}
-              {aiPanelTab === 'blast' && (
-                <div className="p-3 space-y-3">
-                  {!aiAnalysis && !aiAnalyzing && (
-                    <div className="text-center py-4 space-y-2">
-                      <Bomb className="h-8 w-8 text-muted-foreground mx-auto" />
-                      <p className="text-xs text-muted-foreground">Right-click any resource and select<br /><strong>Compute Blast Radius</strong> for AI analysis</p>
-                    </div>
-                  )}
-                  {aiAnalyzing && (
-                    <div className="flex items-center gap-2 py-3 text-sm text-muted-foreground">
-                      <Loader2 className="h-4 w-4 animate-spin text-purple-500" />
-                      Analyzing impact with AI…
-                    </div>
-                  )}
-                  {aiAnalysis && (
-                    <div className="space-y-3">
-                      {/* Risk badge */}
-                      <div className="flex items-center gap-2">
-                        <span className={`px-2 py-0.5 rounded text-xs font-bold uppercase tracking-wide ${aiAnalysis.risk_level === 'critical' ? 'bg-red-500/20 text-red-600' :
-                          aiAnalysis.risk_level === 'high' ? 'bg-orange-500/20 text-orange-600' :
-                            aiAnalysis.risk_level === 'medium' ? 'bg-yellow-500/20 text-yellow-700' :
-                              'bg-green-500/20 text-green-600'
-                          }`}>
-                          {aiAnalysis.risk_level} risk
-                        </span>
-                        {aiAnalysis.can_proceed_safely ? (
-                          <span className="flex items-center gap-1 text-xs text-green-600">
-                            <CheckCircle2 className="h-3.5 w-3.5" /> Safe to proceed
-                          </span>
-                        ) : (
-                          <span className="flex items-center gap-1 text-xs text-red-600">
-                            <ShieldAlert className="h-3.5 w-3.5" /> Proceed with caution
-                          </span>
-                        )}
-                      </div>
-
-                      {/* AI summary */}
-                      <div className="bg-muted/50 rounded-lg p-2.5">
-                        <div className="flex items-start gap-1.5">
-                          <Sparkles className="h-3.5 w-3.5 text-purple-500 shrink-0 mt-0.5" />
-                          <p className="text-xs leading-relaxed text-foreground">{aiAnalysis.natural_language_summary}</p>
-                        </div>
-                        {aiAnalysis.source === 'llm' && (
-                          <span className="text-[10px] text-muted-foreground mt-1 block">AI-powered analysis</span>
-                        )}
-                      </div>
-
-                      {/* Affected services */}
-                      {aiAnalysis.affected_services.length > 0 && (
-                        <div>
-                          <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide mb-1.5">Impacted Services</p>
-                          <div className="flex flex-wrap gap-1">
-                            {aiAnalysis.affected_services.map(svc => (
-                              <span key={svc} className="px-1.5 py-0.5 bg-orange-500/10 text-orange-600 rounded text-xs border border-orange-500/20">{svc}</span>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Recommended actions */}
-                      {aiAnalysis.recommended_actions.length > 0 && (
-                        <div>
-                          <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide mb-1.5">Recommended Actions</p>
-                          <ul className="space-y-1.5">
-                            {aiAnalysis.recommended_actions.map((action, i) => (
-                              <li key={i} className="flex items-start gap-1.5 text-xs">
-                                <ArrowRight className="h-3 w-3 text-purple-400 mt-0.5 shrink-0" />
-                                <span>{action}</span>
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-
-                      {/* Safety message */}
-                      <p className="text-[11px] text-muted-foreground border-t border-border pt-2">{aiAnalysis.safety_check_message}</p>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Critical Path tab */}
-              {aiPanelTab === 'critical-path' && (
-                <div className="p-3 space-y-3">
-                  {critPathLoading && (
-                    <div className="flex items-center gap-2 py-3 text-sm text-muted-foreground">
-                      <Loader2 className="h-4 w-4 animate-spin text-purple-500" />
-                      Computing critical path…
-                    </div>
-                  )}
-                  {!criticalPath && !critPathLoading && (
-                    <div className="text-center py-4 space-y-2">
-                      <GitBranch className="h-8 w-8 text-muted-foreground mx-auto" />
-                      <p className="text-xs text-muted-foreground">Computing critical user traffic path…</p>
-                    </div>
-                  )}
-                  {criticalPath && (
-                    <div className="space-y-3">
-                      {/* Path visualization */}
-                      <div>
-                        <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide mb-2">
-                          <GitBranch className="h-3 w-3 inline mr-1" /> User Traffic Path
-                        </p>
-                        <p className="text-xs bg-muted/50 rounded p-2 font-mono leading-relaxed break-words">
-                          {criticalPath.path_description || 'No user-facing path detected'}
-                        </p>
-                      </div>
-
-                      {/* SPOFs */}
-                      {criticalPath.spofs.length > 0 && (
-                        <div>
-                          <p className="text-[11px] font-medium text-red-600 uppercase tracking-wide mb-1.5">
-                            <AlertCircle className="h-3 w-3 inline mr-1" /> Single Points of Failure
-                          </p>
-                          <div className="flex flex-col gap-1">
-                            {criticalPath.spofs.map(spof => (
-                              <span key={spof} className="flex items-center gap-1.5 px-2 py-1 bg-red-500/10 text-red-600 rounded text-xs border border-red-500/20">
-                                <ShieldAlert className="h-3 w-3 shrink-0" />
-                                {spof}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                      {criticalPath.spofs.length === 0 && (
-                        <div className="flex items-center gap-1.5 text-xs text-green-600">
-                          <CheckCircle2 className="h-3.5 w-3.5" /> No SPOFs detected on critical path
-                        </div>
-                      )}
-
-                      {/* AI explanation */}
-                      {criticalPath.llm_explanation && (
-                        <div className="bg-muted/50 rounded-lg p-2.5">
-                          <div className="flex items-start gap-1.5">
-                            <Sparkles className="h-3.5 w-3.5 text-purple-500 shrink-0 mt-0.5" />
-                            <p className="text-xs leading-relaxed">{criticalPath.llm_explanation}</p>
-                          </div>
-                          {criticalPath.source === 'llm' && (
-                            <span className="text-[10px] text-muted-foreground mt-1 block">AI-powered analysis</span>
-                          )}
-                        </div>
-                      )}
-
-                      {/* Refresh */}
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="w-full text-xs h-8 gap-1.5"
-                        onClick={() => {
-                          clearCriticalPath();
-                          fetchCriticalPath(toAINodes(filteredGraph.nodes), toAIEdges(filteredGraph.edges));
-                        }}
-                        disabled={critPathLoading}
-                      >
-                        <RotateCcw className="h-3 w-3" />
-                        Refresh Analysis
-                      </Button>
-                    </div>
-                  )}
-                </div>
-              )}
-            </Card>
-          </motion.div>
-        )}
-
-        {/* Selected Node Panel — centered modal for both Cytoscape and D3 tabs */}
-        {selectedNode && (
-          <TopologyNodePanel
-            node={selectedNode}
-            onClose={() => setSelectedNode(null)}
-            onNavigate={handleNodeDoubleClick}
-          >
-            {/* E-PLAT-001: AI node explanation (passed as children → rendered in AI Insights section) */}
-            {(() => {
-              const aiNode = nodeExplains.get(selectedNode.id);
-              const isLoadingThis = nodeExplainLoadingId === selectedNode.id;
-              return (
-                <div className="space-y-2">
-                  {isLoadingThis && (
-                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                      <Loader2 className="h-3 w-3 animate-spin" /> Generating AI explanation…
-                    </div>
-                  )}
-                  {aiNode && (
-                    <div className="space-y-1.5">
-                      <div className="flex items-start gap-1.5 bg-purple-500/5 border border-purple-500/20 rounded-md p-2">
-                        <Sparkles className="h-3 w-3 text-purple-500 shrink-0 mt-0.5" />
-                        <p className="text-[11px] leading-relaxed text-foreground">{aiNode.role}</p>
-                      </div>
-                      {aiNode.anomalies.length > 0 && (
-                        <div className="space-y-1">
-                          {aiNode.anomalies.map((a, i) => (
-                            <div key={i} className="flex items-start gap-1.5 text-[11px] text-amber-700">
-                              <AlertCircle className="h-3 w-3 shrink-0 mt-0.5" />
-                              <span>{a}</span>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                  {!aiNode && !isLoadingThis && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="w-full text-xs h-7 gap-1.5 text-purple-600 hover:text-purple-700 hover:bg-purple-500/10"
-                      onClick={() => {
-                        explainNode(
-                          {
-                            id: selectedNode.id,
-                            kind: selectedNode.kind,
-                            name: selectedNode.name,
-                            namespace: selectedNode.namespace,
-                            health: selectedNode.computed?.health,
-                            replicas: selectedNode.computed?.replicas?.ready,
-                          },
-                          toAINodes(filteredGraph.nodes),
-                          toAIEdges(filteredGraph.edges),
-                        );
-                      }}
-                    >
-                      <Brain className="h-3 w-3" />
-                      AI Explain this resource
-                    </Button>
-                  )}
-                </div>
-              );
-            })()}
-          </TopologyNodePanel>
-        )}
-        {/* Legend & Statistics Panel — collapsible */}
-        <Card className={`absolute bottom-4 left-4 shadow-2xl border-none bg-white/90 backdrop-blur-md dark:bg-slate-900/90 z-20 overflow-hidden transition-all duration-300 ${legendCollapsed ? 'p-2' : 'p-4 w-80'}`}>
-          <div
-            className="flex items-center justify-between cursor-pointer select-none"
-            onClick={() => setLegendCollapsed(!legendCollapsed)}
-          >
-            <div className="flex items-center gap-2">
-              <div className="p-1.5 bg-blue-100 dark:bg-blue-900 rounded-lg">
-                <Grid3X3 className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-              </div>
-              {!legendCollapsed && (
-                <h3 className="font-bold text-sm tracking-tight text-slate-800 dark:text-slate-100">Live Ecosystem</h3>
-              )}
-            </div>
-            <div className="flex items-center gap-1.5">
-              <Badge variant="outline" className="text-[10px] font-bold px-1.5 py-0 border-blue-200 text-blue-600">
-                {(clusterGraph?.nodes || mockGraph.nodes).length}
-              </Badge>
-              {legendCollapsed ? (
-                <ChevronUp className="w-3.5 h-3.5 text-slate-400" />
-              ) : (
-                <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
-              )}
-            </div>
-          </div>
-
-          {!legendCollapsed && (
-            <div className="space-y-3 mt-3">
-              <div className="grid grid-cols-2 gap-x-3 gap-y-2">
-                {RESOURCE_TYPES.slice(0, 8).map((rt) => (
-                  <div key={rt.kind} className="flex items-center gap-2 group cursor-default">
-                    <div
-                      className="w-2 h-2 rounded-full shadow-sm group-hover:scale-125 transition-transform"
-                      style={{ backgroundColor: rt.color }}
-                    />
-                    <span className="text-[10px] font-medium text-slate-500 dark:text-slate-400 truncate">{rt.label}</span>
-                  </div>
-                ))}
-              </div>
-
-              <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
-                <div className="flex gap-2">
-                  <div className="flex items-center gap-1">
-                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                    <span className="text-[10px] font-bold text-emerald-600">{stats.healthy}</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <div className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-                    <span className="text-[10px] font-bold text-amber-600">{stats.warning}</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <div className="w-1.5 h-1.5 rounded-full bg-rose-500" />
-                    <span className="text-[10px] font-bold text-rose-600">{stats.critical}</span>
-                  </div>
-                </div>
-                <span className="text-[9px] text-slate-400 font-medium italic">Auto-refresh active</span>
-              </div>
-            </div>
-          )}
-        </Card>
       </div>
     </motion.div>
   );
