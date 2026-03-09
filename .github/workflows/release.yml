@@ -31,8 +31,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
         with:
           node-version: '20'
           cache: 'npm'
@@ -46,7 +46,7 @@ jobs:
           TAURI_BUILD: "true"
         run: npm run build
       - name: Upload frontend dist
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: frontend-dist-tauri-${{ github.ref_name }}
           path: kubilitics-frontend/dist/
@@ -61,8 +61,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
         with:
           go-version: ${{ env.GO_VERSION }}
           cache-dependency-path: kcli/go.sum
@@ -78,7 +78,7 @@ jobs:
       - name: Make Unix binaries executable
         run: chmod +x kcli-linux-amd64 kcli-linux-arm64 kcli-darwin-amd64 kcli-darwin-arm64 || true
       - name: Upload kcli artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: kcli-${{ github.ref_name }}
           path: |
@@ -97,11 +97,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
       - name: Log in to GHCR
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -118,7 +118,7 @@ jobs:
           echo "major=$(echo $VERSION | cut -d. -f1)"   >> $GITHUB_OUTPUT
           echo "minor=$(echo $VERSION | cut -d. -f1-2)" >> $GITHUB_OUTPUT
       - name: Build and push backend Docker image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v7
         with:
           # context must be repo root: Dockerfile COPYs both kubilitics-backend/ and kcli/
           context: .
@@ -139,11 +139,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
       - name: Log in to GHCR
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -160,7 +160,7 @@ jobs:
           echo "major=$(echo $VERSION | cut -d. -f1)"   >> $GITHUB_OUTPUT
           echo "minor=$(echo $VERSION | cut -d. -f1-2)" >> $GITHUB_OUTPUT
       - name: Build and push AI Docker image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v7
         with:
           context: ./kubilitics-ai
           file: ./kubilitics-ai/Dockerfile
@@ -207,7 +207,7 @@ jobs:
             name: linux
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Clean stale build artifacts
         shell: bash
@@ -237,7 +237,7 @@ jobs:
 
       - name: Cache tauri-cli binary
         id: cache-tauri-cli
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.cargo/bin/cargo-tauri
           key: ${{ runner.os }}-tauri-cli-2
@@ -258,7 +258,7 @@ jobs:
 
       # ── Frontend dist (pre-built, shared) ───────────────────────────────
       - name: Download frontend dist
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: frontend-dist-tauri-${{ github.ref_name }}
           path: kubilitics-frontend/dist/
@@ -274,7 +274,7 @@ jobs:
           echo "✅ Frontend dist ready ($(du -sh kubilitics-desktop/dist | cut -f1))"
 
       # ── Go toolchain + module cache ──────────────────────────────────────
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version: ${{ env.GO_VERSION }}
           cache-dependency-path: |
@@ -502,21 +502,21 @@ jobs:
       # ── Upload artifacts ─────────────────────────────────────────────────
       - name: Upload desktop artifacts (macOS)
         if: matrix.os == 'macos-latest'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: kubilitics-desktop-${{ matrix.name }}-${{ github.ref_name }}
           path: kubilitics-desktop/src-tauri/target/universal-apple-darwin/release/bundle/
 
       - name: Upload desktop artifacts (Linux)
         if: matrix.os == 'ubuntu-latest'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: kubilitics-desktop-${{ matrix.name }}-${{ github.ref_name }}
           path: kubilitics-desktop/src-tauri/target/x86_64-unknown-linux-gnu/release/bundle/
 
       - name: Upload desktop artifacts (Windows)
         if: matrix.os == 'windows-latest'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: kubilitics-desktop-${{ matrix.name }}-${{ github.ref_name }}
           path: kubilitics-desktop/src-tauri/target/x86_64-pc-windows-msvc/release/bundle/
@@ -539,7 +539,7 @@ jobs:
     timeout-minutes: 15
     steps:
       - name: Download all artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           path: artifacts
 
@@ -590,7 +590,7 @@ jobs:
           cat checksums.txt
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           generate_release_notes: true
           files: release-assets/*
