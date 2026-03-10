@@ -718,10 +718,12 @@ export async function getResourceTopology(
   clusterId: string,
   kind: string,
   namespace: string,
-  name: string
+  name: string,
+  depth = 3
 ): Promise<TopologyGraph> {
   const ns = namespace === '' ? '-' : namespace;
-  const path = `clusters/${encodeURIComponent(clusterId)}/topology/resource/${encodeURIComponent(kind)}/${encodeURIComponent(ns)}/${encodeURIComponent(name)}`;
+  const depthParam = depth > 0 ? `?depth=${depth}` : '';
+  const path = `clusters/${encodeURIComponent(clusterId)}/topology/resource/${encodeURIComponent(kind)}/${encodeURIComponent(ns)}/${encodeURIComponent(name)}${depthParam}`;
 
   try {
     const result = await backendRequest<unknown>(baseUrl, path);

@@ -85,12 +85,18 @@ function TopologyCanvasInner({
     });
   }, [nodes, selectedNodeId, highlightNodeIds]);
 
-  // Hide edge labels when zoomed out (too cluttered with 1000+ edges)
+  // Adapt edges to zoom level: hide labels at low zoom, thin strokes at extreme zoom-out
   const styledEdges = useMemo(() => {
     if (currentZoom >= 0.4) return edges;
+    const thinStroke = currentZoom < 0.15;
     return edges.map((e) => ({
       ...e,
       data: { ...e.data, hideLabel: true },
+      style: {
+        ...(e.style ?? {}),
+        strokeWidth: thinStroke ? 0.5 : 1,
+        opacity: thinStroke ? 0.3 : 0.5,
+      },
     }));
   }, [edges, currentZoom]);
 
