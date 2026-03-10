@@ -29,7 +29,7 @@ export interface TopologyCanvasProps {
 }
 
 /**
- * Determines the semantic zoom node type based on current zoom level.
+ * Semantic zoom: determines node type based on zoom level.
  * <0.3 = minimal, 0.3-0.6 = compact, 0.6-1.5 = base, >1.5 = expanded
  */
 function getNodeTypeForZoom(zoom: number): string {
@@ -55,20 +55,35 @@ function TopologyCanvasInner({
   const [edges, setEdges, onEdgesChange] = useEdgesState(elkEdges);
   const reactFlow = useReactFlow();
 
+  const nodeCount = topology?.nodes?.length ?? 0;
+  const isLargeGraph = nodeCount > 200;
+
   // Sync ELK layout output into React Flow state
   useEffect(() => {
     setNodes(elkNodes);
     setEdges(elkEdges);
   }, [elkNodes, elkEdges, setNodes, setEdges]);
 
+  // Auto-fit after layout completes
+  useEffect(() => {
+    if (!isLayouting && elkNodes.length > 0) {
+      // Small delay to allow React Flow to render nodes before fitting
+      const t = setTimeout(() => {
+        reactFlow.fitView({ padding: 0.1, duration: 300 });
+      }, 50);
+      return () => clearTimeout(t);
+    }
+  }, [isLayouting, elkNodes.length, reactFlow]);
+
   // Expose fitView to parent
   useEffect(() => {
     if (fitViewRef) {
-      fitViewRef.current = () => reactFlow.fitView({ padding: 0.12, duration: 400 });
+      fitViewRef.current = () =>
+        reactFlow.fitView({ padding: 0.12, duration: 400 });
     }
   }, [reactFlow, fitViewRef]);
 
-  // Apply highlight/selection styling to nodes
+  // Apply highlight/selection styling
   const styledNodes = useMemo(() => {
     if (!selectedNodeId && highlightNodeIds.length === 0) return nodes;
     return nodes.map((n) => {
@@ -78,15 +93,25 @@ function TopologyCanvasInner({
       return {
         ...n,
         className: [
-          isSelected ? "ring-2 ring-blue-500 ring-offset-2 rounded-lg" : "",
-          isHighlighted ? "ring-2 ring-amber-400 ring-offset-1 rounded-lg" : "",
-        ].filter(Boolean).join(" "),
+          isSelected
+            ? "ring-2 ring-blue-500 ring-offset-2 rounded-lg"
+            : "",
+          isHighlighted
+            ? "ring-2 ring-amber-400 ring-offset-1 rounded-lg"
+            : "",
+        ]
+          .filter(Boolean)
+          .join(" "),
       };
     });
   }, [nodes, selectedNodeId, highlightNodeIds]);
 
-  // Adapt edges to zoom level: hide labels at low zoom, thin strokes at extreme zoom-out
+  // Performance: hide edges for large graphs at low zoom, thin strokes at extreme zoom
   const styledEdges = useMemo(() => {
+    // For large graphs: hide all edges below zoom 0.5 to prevent render lag
+    if (isLargeGraph && currentZoom < 0.5) {
+      return [];
+    }
     if (currentZoom >= 0.4) return edges;
     const thinStroke = currentZoom < 0.15;
     return edges.map((e) => ({
@@ -98,28 +123,27 @@ function TopologyCanvasInner({
         opacity: thinStroke ? 0.3 : 0.5,
       },
     }));
-  }, [edges, currentZoom]);
+  }, [edges, currentZoom, isLargeGraph]);
 
   const onNodeClick = useCallback(
-    (_: React.MouseEvent, node: { id: string }) => {
-      onSelectNode(node.id);
-    },
+    (_: React.MouseEvent, node: { id: string }) => onSelectNode(node.id),
     [onSelectNode]
   );
   const onPaneClick = useCallback(() => onSelectNode(null), [onSelectNode]);
 
-  const onMoveEnd = useCallback((_: MouseEvent | TouchEvent | null, viewport: Viewport) => {
-    setCurrentZoom(viewport.zoom);
-  }, []);
+  const onMoveEnd = useCallback(
+    (_: MouseEvent | TouchEvent | null, viewport: Viewport) => {
+      setCurrentZoom(viewport.zoom);
+    },
+    []
+  );
 
   // Category-based minimap colors
   const miniMapNodeColor = useCallback((n: Node) => {
     const category = (n.data as any)?.category;
     const status = (n.data as any)?.status;
-
     if (status === "error") return "#ef4444";
     if (status === "warning") return "#f59e0b";
-
     const catColors: Record<string, string> = {
       compute: "#3b82f6",
       networking: "#8b5cf6",
@@ -140,7 +164,7 @@ function TopologyCanvasInner({
       nodeTypes={nodeTypes}
       edgeTypes={edgeTypes}
       fitView
-      fitViewOptions={{ padding: 0.12 }}
+      fitViewOptions={{ padding: 0.1 }}
       onlyRenderVisibleElements
       onNodesChange={onNodesChange}
       onEdgesChange={onEdgesChange}
@@ -171,6 +195,12 @@ function TopologyCanvasInner({
         showInteractive={false}
         className="!bg-white !border !border-gray-200 !rounded-lg !shadow-md"
       />
+      {/* Edge visibility hint for large graphs */}
+      {isLargeGraph && currentZoom < 0.5 && (
+        <div className="absolute top-3 left-1/2 -translate-x-1/2 z-10 rounded-full bg-gray-900/70 px-4 py-1.5 text-xs text-white backdrop-blur-sm">
+          Zoom in to see connections
+        </div>
+      )}
     </ReactFlow>
   );
 }
