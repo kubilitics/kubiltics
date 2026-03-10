@@ -6,48 +6,102 @@ import type { TopologyResponse, ViewMode } from "../types/topology";
 
 /**
  * ELK Layout Configuration per view mode.
- * ELK.js uses the Eclipse Layout Kernel for deterministic hierarchical layout.
+ *
+ * Two tiers:
+ * - Small graphs (<200 nodes): `layered` with RIGHT direction for clean hierarchy
+ * - Large graphs (>=200 nodes): `stress` for better 2D spread (avoids thin vertical strip)
  */
-const ELK_OPTIONS: Record<ViewMode, Record<string, string>> = {
+
+const ELK_SMALL: Record<ViewMode, Record<string, string>> = {
   cluster: {
     "elk.algorithm": "layered",
     "elk.direction": "RIGHT",
     "elk.spacing.nodeNode": "60",
-    "elk.layered.spacing.nodeNodeBetweenLayers": "120",
+    "elk.layered.spacing.nodeNodeBetweenLayers": "140",
     "elk.layered.crossingMinimization.strategy": "LAYER_SWEEP",
+    "elk.layered.nodePlacement.strategy": "NETWORK_SIMPLEX",
+    "elk.separateConnectedComponents": "true",
+    "elk.spacing.componentComponent": "80",
   },
   namespace: {
     "elk.algorithm": "layered",
-    "elk.direction": "DOWN",
-    "elk.spacing.nodeNode": "40",
-    "elk.layered.spacing.nodeNodeBetweenLayers": "80",
+    "elk.direction": "RIGHT",
+    "elk.spacing.nodeNode": "50",
+    "elk.layered.spacing.nodeNodeBetweenLayers": "120",
     "elk.layered.crossingMinimization.strategy": "LAYER_SWEEP",
+    "elk.layered.nodePlacement.strategy": "NETWORK_SIMPLEX",
+    "elk.separateConnectedComponents": "true",
+    "elk.spacing.componentComponent": "80",
   },
   workload: {
     "elk.algorithm": "layered",
     "elk.direction": "RIGHT",
     "elk.spacing.nodeNode": "50",
-    "elk.layered.spacing.nodeNodeBetweenLayers": "100",
+    "elk.layered.spacing.nodeNodeBetweenLayers": "120",
     "elk.layered.crossingMinimization.strategy": "LAYER_SWEEP",
+    "elk.separateConnectedComponents": "true",
+    "elk.spacing.componentComponent": "80",
   },
   resource: {
     "elk.algorithm": "force",
-    "elk.spacing.nodeNode": "80",
+    "elk.spacing.nodeNode": "100",
     "elk.force.iterations": "300",
   },
   rbac: {
     "elk.algorithm": "layered",
-    "elk.direction": "DOWN",
-    "elk.spacing.nodeNode": "50",
-    "elk.layered.spacing.nodeNodeBetweenLayers": "80",
+    "elk.direction": "RIGHT",
+    "elk.spacing.nodeNode": "60",
+    "elk.layered.spacing.nodeNodeBetweenLayers": "100",
+    "elk.separateConnectedComponents": "true",
+    "elk.spacing.componentComponent": "60",
   },
 };
 
+const ELK_LARGE: Record<ViewMode, Record<string, string>> = {
+  cluster: {
+    "elk.algorithm": "stress",
+    "elk.stress.desiredEdgeLength": "220",
+    "elk.spacing.nodeNode": "80",
+    "elk.separateConnectedComponents": "true",
+    "elk.spacing.componentComponent": "100",
+  },
+  namespace: {
+    "elk.algorithm": "stress",
+    "elk.stress.desiredEdgeLength": "200",
+    "elk.spacing.nodeNode": "60",
+    "elk.separateConnectedComponents": "true",
+    "elk.spacing.componentComponent": "100",
+  },
+  workload: {
+    "elk.algorithm": "stress",
+    "elk.stress.desiredEdgeLength": "200",
+    "elk.spacing.nodeNode": "60",
+    "elk.separateConnectedComponents": "true",
+    "elk.spacing.componentComponent": "80",
+  },
+  resource: {
+    "elk.algorithm": "force",
+    "elk.spacing.nodeNode": "140",
+    "elk.force.iterations": "400",
+  },
+  rbac: {
+    "elk.algorithm": "stress",
+    "elk.stress.desiredEdgeLength": "180",
+    "elk.spacing.nodeNode": "60",
+    "elk.separateConnectedComponents": "true",
+    "elk.spacing.componentComponent": "80",
+  },
+};
+
+function getElkOptions(viewMode: ViewMode, nodeCount: number): Record<string, string> {
+  return nodeCount >= 200 ? ELK_LARGE[viewMode] : ELK_SMALL[viewMode];
+}
+
 const NODE_DIMENSIONS: Record<string, { width: number; height: number }> = {
-  base: { width: 220, height: 90 },
-  compact: { width: 160, height: 50 },
-  expanded: { width: 280, height: 180 },
-  minimal: { width: 30, height: 40 },
+  base: { width: 230, height: 100 },
+  compact: { width: 180, height: 55 },
+  expanded: { width: 300, height: 200 },
+  minimal: { width: 40, height: 50 },
   group: { width: 300, height: 200 },
 };
 
@@ -73,7 +127,7 @@ interface ElkGraph {
 }
 
 interface ElkLayoutResult {
-  children?: Array<{ id: string; x: number; y: number }>;
+  children?: Array<{ id: string; x: number; y: number; children?: Array<{ id: string; x: number; y: number }> }>;
 }
 
 /**
@@ -90,7 +144,6 @@ export function useElkLayout(
   viewMode: ViewMode = "namespace",
   nodeType: string = "base"
 ) {
-  // Positions are computed once per topology/viewMode change using "base" dimensions.
   const [positionedNodes, setPositionedNodes] = useState<Array<{ id: string; x: number; y: number; data: BaseNodeData }>>([]);
   const [layoutEdges, setLayoutEdges] = useState<Edge<LabeledEdgeData>[]>([]);
   const [isLayouting, setIsLayouting] = useState(false);
@@ -118,26 +171,88 @@ export function useElkLayout(
     }
 
     setIsLayouting(true);
-    const dims = NODE_DIMENSIONS.base; // Always layout with base dimensions for stability
+    const nodeCount = topology.nodes.length;
+    const dims = NODE_DIMENSIONS.base;
+    const elkOptions = getElkOptions(viewMode, nodeCount);
 
-    // Build ELK graph
-    const elkGraph: ElkGraph = {
-      id: "root",
-      layoutOptions: {
-        ...ELK_OPTIONS[viewMode],
-        "elk.randomSeed": "42", // Deterministic layout
-      },
-      children: topology.nodes.map((n) => ({
-        id: n.id,
-        width: dims.width,
-        height: dims.height,
-      })),
-      edges: topology.edges.map((e) => ({
-        id: e.id,
-        sources: [e.source],
-        targets: [e.target],
-      })),
-    };
+    // Build namespace groups for namespace/workload view with compound layout
+    const useGrouping = (viewMode === "namespace" || viewMode === "workload") && nodeCount >= 20 && nodeCount < 500;
+    let elkGraph: ElkGraph;
+
+    if (useGrouping) {
+      // Group nodes by namespace for compound ELK layout
+      const nsByNamespace = new Map<string, typeof topology.nodes>();
+      for (const n of topology.nodes) {
+        const ns = n.namespace || "__cluster__";
+        if (!nsByNamespace.has(ns)) nsByNamespace.set(ns, []);
+        nsByNamespace.get(ns)!.push(n);
+      }
+
+      const children: ElkNode[] = [];
+      const nodeToGroup = new Map<string, string>();
+
+      for (const [ns, nsNodes] of nsByNamespace) {
+        const groupId = `__ns__${ns}`;
+        const group: ElkNode = {
+          id: groupId,
+          width: 0,
+          height: 0,
+          children: nsNodes.map((n) => {
+            nodeToGroup.set(n.id, groupId);
+            return { id: n.id, width: dims.width, height: dims.height };
+          }),
+          layoutOptions: {
+            "elk.algorithm": "layered",
+            "elk.direction": "RIGHT",
+            "elk.spacing.nodeNode": "30",
+            "elk.layered.spacing.nodeNodeBetweenLayers": "80",
+            "elk.padding": "[top=40,left=20,bottom=20,right=20]",
+          },
+        };
+        children.push(group);
+      }
+
+      // Only include edges where both ends are in the graph
+      const nodeIds = new Set(topology.nodes.map((n) => n.id));
+      const validEdges = topology.edges.filter((e) => nodeIds.has(e.source) && nodeIds.has(e.target));
+
+      elkGraph = {
+        id: "root",
+        layoutOptions: {
+          ...elkOptions,
+          "elk.randomSeed": "42",
+          "elk.hierarchyHandling": "INCLUDE_CHILDREN",
+        },
+        children,
+        edges: validEdges.map((e) => ({
+          id: e.id,
+          sources: [e.source],
+          targets: [e.target],
+        })),
+      };
+    } else {
+      // Flat layout for small graphs or very large graphs (grouping too expensive)
+      const nodeIds = new Set(topology.nodes.map((n) => n.id));
+      const validEdges = topology.edges.filter((e) => nodeIds.has(e.source) && nodeIds.has(e.target));
+
+      elkGraph = {
+        id: "root",
+        layoutOptions: {
+          ...elkOptions,
+          "elk.randomSeed": "42",
+        },
+        children: topology.nodes.map((n) => ({
+          id: n.id,
+          width: dims.width,
+          height: dims.height,
+        })),
+        edges: validEdges.map((e) => ({
+          id: e.id,
+          sources: [e.source],
+          targets: [e.target],
+        })),
+      };
+    }
 
     try {
       let positions: Map<string, { x: number; y: number }>;
@@ -145,8 +260,20 @@ export function useElkLayout(
       if (elkRef.current) {
         const result: ElkLayoutResult = await elkRef.current.layout(elkGraph);
         positions = new Map();
-        for (const child of result.children ?? []) {
-          positions.set(child.id, { x: child.x, y: child.y });
+
+        if (useGrouping) {
+          // Extract positions from compound layout (groups → children)
+          for (const group of result.children ?? []) {
+            const groupX = group.x ?? 0;
+            const groupY = group.y ?? 0;
+            for (const child of group.children ?? []) {
+              positions.set(child.id, { x: groupX + child.x, y: groupY + child.y });
+            }
+          }
+        } else {
+          for (const child of result.children ?? []) {
+            positions.set(child.id, { x: child.x, y: child.y });
+          }
         }
       } else {
         positions = fallbackLayout(topology, dims);
@@ -230,6 +357,10 @@ export function useElkLayout(
   return { nodes, edges: layoutEdges, isLayouting };
 }
 
+/**
+ * Fallback grid layout when ELK.js is not available.
+ * Groups by layer for decent visual structure.
+ */
 function fallbackLayout(
   topology: TopologyResponse,
   dims: { width: number; height: number }
@@ -242,8 +373,8 @@ function fallbackLayout(
     byLayer.get(layer)!.push(n.id);
   }
   const layers = Array.from(byLayer.keys()).sort((a, b) => a - b);
-  const gapX = dims.width + 60;
-  const gapY = dims.height + 30;
+  const gapX = dims.width + 80;
+  const gapY = dims.height + 40;
   layers.forEach((layer, col) => {
     const ids = byLayer.get(layer)!;
     ids.forEach((id, row) => {
