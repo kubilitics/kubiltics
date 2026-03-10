@@ -51,6 +51,7 @@ import { toast } from 'sonner';
 import { useClusterTopology } from '@/hooks/useClusterTopology';
 import { useActiveClusterId } from '@/hooks/useActiveClusterId';
 import { useNamespacesFromCluster } from '@/hooks/useNamespacesFromCluster';
+import { TopologyPage } from '@/topology/TopologyPage';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Input } from '@/components/ui/input';
@@ -1326,7 +1327,17 @@ function EmptyState() {
 
 // ─── Main Page Component ──────────────────────────────────────────────────────
 
+const FEATURE_TOPOLOGY_V2 =
+  typeof import.meta !== 'undefined' &&
+  // Vite in-browser config
+  (import.meta.env?.VITE_FEATURE_TOPOLOGY_V2 === 'true' ||
+    // Fallback for tests / non-Vite environments
+    process.env.VITE_FEATURE_TOPOLOGY_V2 === 'true');
+
 export default function Topology() {
+  if (FEATURE_TOPOLOGY_V2) {
+    return <TopologyPage />;
+  }
   const { activeCluster } = useClusterStore();
   const clusterId = useActiveClusterId();
   const navigate = useNavigate();

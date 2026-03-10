@@ -27,6 +27,8 @@ import (
 	"github.com/kubilitics/kubilitics-backend/internal/repository"
 	"github.com/kubilitics/kubilitics-backend/internal/service"
 	"github.com/kubilitics/kubilitics-backend/internal/topology"
+	topologyv2 "github.com/kubilitics/kubilitics-backend/internal/topology/v2"
+	topologyv2builder "github.com/kubilitics/kubilitics-backend/internal/topology/v2/builder"
 	"golang.org/x/time/rate"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -215,6 +217,7 @@ func SetupRoutes(router *mux.Router, h *Handler) {
 
 	// Topology routes (BE-AUTHZ-001: GET = viewer, POST export = operator)
 	router.Handle("/clusters/{clusterId}/topology", h.wrapWithRBAC(h.GetTopology, auth.RoleViewer)).Methods("GET")
+	router.Handle("/clusters/{clusterId}/topology/v2", h.wrapWithRBAC(h.GetTopologyV2, auth.RoleViewer)).Methods("GET")
 	router.Handle("/clusters/{clusterId}/topology/resource/{kind}/{namespace}/{name}", h.wrapWithRBAC(h.GetResourceTopology, auth.RoleViewer)).Methods("GET")
 	router.Handle("/clusters/{clusterId}/topology/export", h.wrapWithRBAC(h.ExportTopology, auth.RoleOperator)).Methods("POST")
 	router.Handle("/clusters/{clusterId}/topology/export/drawio", h.wrapWithRBAC(h.GetTopologyExportDrawio, auth.RoleViewer)).Methods("GET")
@@ -788,6 +791,38 @@ func (h *Handler) GetTopology(w http.ResponseWriter, r *http.Request) {
 	}
 
 	respondJSON(w, http.StatusOK, topology)
+}
+
+// GetTopologyV2 handles GET /clusters/{clusterId}/topology/v2. Builds topology from cluster when client is available, otherwise returns mock.
+func (h *Handler) GetTopologyV2(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	clusterID := vars["clusterId"]
+	if !validate.ClusterID(clusterID) {
+		respondError(w, http.StatusBadRequest, "Invalid clusterId")
+		return
+	}
+	clusterName := clusterID
+	if c, err := h.clusterService.GetCluster(r.Context(), clusterID); err == nil && c != nil && c.Name != "" {
+		clusterName = c.Name
+	}
+	mode := r.URL.Query().Get("mode")
+	if mode == "" {
+		mode = string(topologyv2.ViewModeNamespace)
+	}
+	namespace := r.URL.Query().Get("namespace")
+	opts := topologyv2.Options{
+		ClusterID:   clusterID,
+		ClusterName: clusterName,
+		Mode:        topologyv2.ViewMode(mode),
+		Namespace:   namespace,
+	}
+	client, _ := h.getClientFromRequest(r.Context(), r, clusterID, h.cfg)
+	resp, err := topologyv2builder.BuildTopology(r.Context(), opts, client)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	respondJSON(w, http.StatusOK, resp)
 }
 
 // GetResourceTopology handles GET /clusters/{clusterId}/topology/resource/{kind}/{namespace}/{name}.
