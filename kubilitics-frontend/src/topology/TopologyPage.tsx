@@ -31,18 +31,18 @@ export function TopologyPage() {
   const navigateBack = useTopologyStore((s) => s.navigateBack);
   const storeSetData = useTopologyStore((s) => s.setTopologyData);
 
-  const [namespace, setNamespace] = useState<string>("");
+  const [selectedNamespaces, setSelectedNamespaces] = useState<Set<string>>(new Set());
   const [resource, setResource] = useState<string>("");
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [showHelp, setShowHelp] = useState(false);
   const [warnings, setWarnings] = useState<string[]>([]);
   const fitViewRef = useRef<(() => void) | null>(null);
 
-  // Data fetching
-  const { topology, isLoading, isError, error, refetch } = useTopologyData({
+  // Data fetching — pass selected namespaces for filtering
+  const { topology, allNamespaces, isLoading, isError, error, refetch } = useTopologyData({
     clusterId,
     viewMode,
-    namespace,
+    selectedNamespaces,
     resource: viewMode === "resource" ? resource : undefined,
     enabled: !!clusterId,
   });
@@ -124,6 +124,11 @@ export function TopologyPage() {
     [searchResults]
   );
 
+  // Breadcrumb namespace display
+  const activeNamespace = selectedNamespaces.size === 1
+    ? Array.from(selectedNamespaces)[0]
+    : null;
+
   // Render main content area
   const renderContent = () => {
     if (isError && !topology) {
@@ -146,9 +151,9 @@ export function TopologyPage() {
     if (!topology || topology.nodes.length === 0) {
       return (
         <TopologyEmptyState
-          type={namespace ? "empty-namespace" : "empty-cluster"}
+          type={selectedNamespaces.size > 0 ? "empty-namespace" : "empty-cluster"}
           clusterId={clusterId}
-          namespace={namespace}
+          namespace={activeNamespace ?? undefined}
         />
       );
     }
@@ -179,12 +184,13 @@ export function TopologyPage() {
       {/* Toolbar */}
       <TopologyToolbar
         viewMode={viewMode}
-        namespace={namespace}
+        selectedNamespaces={selectedNamespaces}
+        availableNamespaces={allNamespaces}
         topology={topology}
         searchQuery={searchQuery}
         searchResults={searchResults}
         onViewModeChange={handleViewModeChange}
-        onNamespaceChange={setNamespace}
+        onNamespaceSelectionChange={setSelectedNamespaces}
         onSearchChange={setSearchQuery}
         onSearchSelect={handleSearchSelect}
         onFitView={handleFitView}
@@ -193,7 +199,7 @@ export function TopologyPage() {
       {/* Breadcrumbs */}
       <TopologyBreadcrumbs
         viewMode={viewMode}
-        namespace={namespace || null}
+        namespace={activeNamespace}
         resource={viewMode === "resource" ? resource : null}
       />
 
