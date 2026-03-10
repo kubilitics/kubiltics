@@ -1,9 +1,16 @@
 /**
  * ResourceTopologyView - Reusable component for displaying resource-scoped topology
- * Integrates topology-engine with backend API
+ * Integrates topology-engine with backend API.
+ * When FEATURE_TOPOLOGY_V2 is enabled, delegates to the v2 React Flow implementation.
  */
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { ResourceTopologyV2View } from '@/topology/ResourceTopologyV2View';
+
+// Topology V2 is enabled by default. Set VITE_FEATURE_TOPOLOGY_V2=false to revert to v1.
+const FEATURE_TOPOLOGY_V2 =
+  !(import.meta.env?.VITE_FEATURE_TOPOLOGY_V2 === 'false' ||
+    (typeof process !== 'undefined' && process.env?.VITE_FEATURE_TOPOLOGY_V2 === 'false'));
 import {
   Network, Loader2, AlertCircle, RefreshCw, ZoomIn, ZoomOut, Maximize,
   FileJson, FileText, FileImage, Layers, ExternalLink, ChevronDown, Map as MapIcon
@@ -86,7 +93,22 @@ export function ResourceTopologyView({
   kind,
   namespace,
   name,
+  sourceResourceType,
+  sourceResourceName,
 }: ResourceTopologyViewProps) {
+  // V2: Delegate to React Flow implementation when feature flag is on
+  if (FEATURE_TOPOLOGY_V2) {
+    return (
+      <ResourceTopologyV2View
+        kind={kind}
+        namespace={namespace}
+        name={name}
+        sourceResourceType={sourceResourceType}
+        sourceResourceName={sourceResourceName}
+      />
+    );
+  }
+
   const navigate = useNavigate();
   const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured);
   const clusterId = useActiveClusterId();
