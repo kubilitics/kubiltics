@@ -60,24 +60,27 @@ const ELK_SMALL: Record<ViewMode, Record<string, string>> = {
 const ELK_LARGE: Record<ViewMode, Record<string, string>> = {
   cluster: {
     "elk.algorithm": "stress",
-    "elk.stress.desiredEdgeLength": "220",
-    "elk.spacing.nodeNode": "80",
+    "elk.stress.desiredEdgeLength": "280",
+    "elk.spacing.nodeNode": "100",
     "elk.separateConnectedComponents": "true",
-    "elk.spacing.componentComponent": "100",
+    "elk.spacing.componentComponent": "120",
+    "elk.stress.epsilon": "0.001",
   },
   namespace: {
     "elk.algorithm": "stress",
-    "elk.stress.desiredEdgeLength": "200",
-    "elk.spacing.nodeNode": "60",
+    "elk.stress.desiredEdgeLength": "260",
+    "elk.spacing.nodeNode": "80",
     "elk.separateConnectedComponents": "true",
-    "elk.spacing.componentComponent": "100",
+    "elk.spacing.componentComponent": "120",
+    "elk.stress.epsilon": "0.001",
   },
   workload: {
     "elk.algorithm": "stress",
-    "elk.stress.desiredEdgeLength": "200",
-    "elk.spacing.nodeNode": "60",
+    "elk.stress.desiredEdgeLength": "260",
+    "elk.spacing.nodeNode": "80",
     "elk.separateConnectedComponents": "true",
-    "elk.spacing.componentComponent": "80",
+    "elk.spacing.componentComponent": "100",
+    "elk.stress.epsilon": "0.001",
   },
   resource: {
     "elk.algorithm": "force",
@@ -86,10 +89,11 @@ const ELK_LARGE: Record<ViewMode, Record<string, string>> = {
   },
   rbac: {
     "elk.algorithm": "stress",
-    "elk.stress.desiredEdgeLength": "180",
-    "elk.spacing.nodeNode": "60",
+    "elk.stress.desiredEdgeLength": "220",
+    "elk.spacing.nodeNode": "80",
     "elk.separateConnectedComponents": "true",
-    "elk.spacing.componentComponent": "80",
+    "elk.spacing.componentComponent": "100",
+    "elk.stress.epsilon": "0.001",
   },
 };
 
@@ -147,17 +151,20 @@ export function useElkLayout(
   const [positionedNodes, setPositionedNodes] = useState<Array<{ id: string; x: number; y: number; data: BaseNodeData }>>([]);
   const [layoutEdges, setLayoutEdges] = useState<Edge<LabeledEdgeData>[]>([]);
   const [isLayouting, setIsLayouting] = useState(false);
+  const [elkReady, setElkReady] = useState(false);
   const elkRef = useRef<any>(null);
 
-  // Lazily load ELK
+  // Lazily load ELK — sets elkReady to trigger re-layout once loaded
   useEffect(() => {
     let cancelled = false;
     import("elkjs/lib/elk.bundled.js").then((mod) => {
       if (!cancelled) {
         elkRef.current = new mod.default();
+        setElkReady(true);
       }
     }).catch(() => {
       // ELK not available, will use fallback
+      if (!cancelled) setElkReady(true);
     });
     return () => { cancelled = true; };
   }, []);
@@ -258,6 +265,9 @@ export function useElkLayout(
       let positions: Map<string, { x: number; y: number }>;
 
       if (elkRef.current) {
+        if (process.env.NODE_ENV !== "production") {
+          console.info(`[useElkLayout] Running ELK (${elkOptions["elk.algorithm"]}) for ${nodeCount} nodes, grouping=${useGrouping}`);
+        }
         const result: ElkLayoutResult = await elkRef.current.layout(elkGraph);
         positions = new Map();
 
@@ -310,7 +320,8 @@ export function useElkLayout(
 
       setPositionedNodes(positioned);
       setLayoutEdges(edges);
-    } catch {
+    } catch (err) {
+      console.warn("[useElkLayout] ELK layout failed, using fallback grid:", err);
       const positions = fallbackLayout(topology, dims);
       const positioned = topology.nodes.map((tn) => {
         const pos = positions.get(tn.id) ?? { x: 0, y: 0 };
@@ -336,7 +347,7 @@ export function useElkLayout(
     } finally {
       setIsLayouting(false);
     }
-  }, [topology, viewMode]); // NOTE: nodeType NOT in deps — zoom doesn't trigger re-layout
+  }, [topology, viewMode, elkReady]); // NOTE: nodeType NOT in deps — zoom doesn't trigger re-layout. elkReady triggers re-layout once ELK loads.
 
   useEffect(() => {
     computeLayout();
@@ -359,7 +370,8 @@ export function useElkLayout(
 
 /**
  * Fallback grid layout when ELK.js is not available.
- * Groups by layer for decent visual structure.
+ * Uses a 2D grid within each layer group, spreading nodes horizontally
+ * to avoid the "thin vertical strip" problem.
  */
 function fallbackLayout(
   topology: TopologyResponse,
@@ -373,13 +385,20 @@ function fallbackLayout(
     byLayer.get(layer)!.push(n.id);
   }
   const layers = Array.from(byLayer.keys()).sort((a, b) => a - b);
-  const gapX = dims.width + 80;
+  const gapX = dims.width + 60;
   const gapY = dims.height + 40;
-  layers.forEach((layer, col) => {
+  // Max columns per layer row — spread horizontally
+  const maxCols = Math.max(6, Math.ceil(Math.sqrt(topology.nodes.length / Math.max(layers.length, 1))));
+  let yOffset = 0;
+  layers.forEach((layer) => {
     const ids = byLayer.get(layer)!;
-    ids.forEach((id, row) => {
-      positions.set(id, { x: col * gapX, y: row * gapY });
+    const rowCount = Math.ceil(ids.length / maxCols);
+    ids.forEach((id, idx) => {
+      const col = idx % maxCols;
+      const row = Math.floor(idx / maxCols);
+      positions.set(id, { x: col * gapX, y: yOffset + row * gapY });
     });
+    yOffset += rowCount * gapY + 80; // gap between layer groups
   });
   return positions;
 }
