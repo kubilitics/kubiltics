@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Node, Edge } from "@xyflow/react";
 import type { BaseNodeData } from "../nodes/BaseNode";
 import type { LabeledEdgeData } from "../edges/LabeledEdge";
@@ -80,13 +80,18 @@ interface ElkLayoutResult {
  * useElkLayout: Computes ELK.js layout for topology nodes.
  * Falls back to simple grid layout if ELK is not available.
  * Uses a fixed seed for deterministic layout.
+ *
+ * IMPORTANT: Layout (positions) only recomputes when topology or viewMode changes.
+ * nodeType (semantic zoom) only changes the `type` field on existing nodes —
+ * no expensive re-layout. This keeps zoom smooth.
  */
 export function useElkLayout(
   topology: TopologyResponse | null,
   viewMode: ViewMode = "namespace",
   nodeType: string = "base"
 ) {
-  const [layoutNodes, setLayoutNodes] = useState<Node<BaseNodeData>[]>([]);
+  // Positions are computed once per topology/viewMode change using "base" dimensions.
+  const [positionedNodes, setPositionedNodes] = useState<Array<{ id: string; x: number; y: number; data: BaseNodeData }>>([]);
   const [layoutEdges, setLayoutEdges] = useState<Edge<LabeledEdgeData>[]>([]);
   const [isLayouting, setIsLayouting] = useState(false);
   const elkRef = useRef<any>(null);
@@ -104,15 +109,16 @@ export function useElkLayout(
     return () => { cancelled = true; };
   }, []);
 
+  // Expensive layout — only runs when topology or viewMode changes, NOT on zoom
   const computeLayout = useCallback(async () => {
     if (!topology?.nodes?.length) {
-      setLayoutNodes([]);
+      setPositionedNodes([]);
       setLayoutEdges([]);
       return;
     }
 
     setIsLayouting(true);
-    const dims = NODE_DIMENSIONS[nodeType] ?? NODE_DIMENSIONS.base;
+    const dims = NODE_DIMENSIONS.base; // Always layout with base dimensions for stability
 
     // Build ELK graph
     const elkGraph: ElkGraph = {
@@ -143,16 +149,15 @@ export function useElkLayout(
           positions.set(child.id, { x: child.x, y: child.y });
         }
       } else {
-        // Fallback: simple layered grid
         positions = fallbackLayout(topology, dims);
       }
 
-      const nodes: Node<BaseNodeData>[] = topology.nodes.map((tn) => {
+      const positioned = topology.nodes.map((tn) => {
         const pos = positions.get(tn.id) ?? { x: 0, y: 0 };
         return {
           id: tn.id,
-          type: nodeType,
-          position: pos,
+          x: pos.x,
+          y: pos.y,
           data: {
             kind: tn.kind,
             name: tn.name,
@@ -163,7 +168,7 @@ export function useElkLayout(
             metrics: tn.metrics,
             labels: tn.labels,
             createdAt: tn.createdAt,
-          },
+          } as BaseNodeData,
         };
       });
 
@@ -176,17 +181,16 @@ export function useElkLayout(
         data: { label: e.label, detail: e.detail },
       }));
 
-      setLayoutNodes(nodes);
+      setPositionedNodes(positioned);
       setLayoutEdges(edges);
     } catch {
-      // Fallback on error
       const positions = fallbackLayout(topology, dims);
-      const nodes: Node<BaseNodeData>[] = topology.nodes.map((tn) => {
+      const positioned = topology.nodes.map((tn) => {
         const pos = positions.get(tn.id) ?? { x: 0, y: 0 };
         return {
           id: tn.id,
-          type: nodeType,
-          position: pos,
+          x: pos.x,
+          y: pos.y,
           data: {
             kind: tn.kind,
             name: tn.name,
@@ -194,10 +198,10 @@ export function useElkLayout(
             category: tn.category,
             status: mapStatus(tn.status),
             statusReason: tn.statusReason ?? tn.status,
-          },
+          } as BaseNodeData,
         };
       });
-      setLayoutNodes(nodes);
+      setPositionedNodes(positioned);
       setLayoutEdges(topology.edges.map((e) => ({
         id: e.id, source: e.source, target: e.target, type: "labeled",
         data: { label: e.label, detail: e.detail },
@@ -205,13 +209,25 @@ export function useElkLayout(
     } finally {
       setIsLayouting(false);
     }
-  }, [topology, viewMode, nodeType]);
+  }, [topology, viewMode]); // NOTE: nodeType NOT in deps — zoom doesn't trigger re-layout
 
   useEffect(() => {
     computeLayout();
   }, [computeLayout]);
 
-  return { nodes: layoutNodes, edges: layoutEdges, isLayouting };
+  // Cheap derivation: apply current nodeType to positioned nodes (runs on zoom change)
+  const nodes: Node<BaseNodeData>[] = useMemo(
+    () =>
+      positionedNodes.map((pn) => ({
+        id: pn.id,
+        type: nodeType,
+        position: { x: pn.x, y: pn.y },
+        data: pn.data,
+      })),
+    [positionedNodes, nodeType]
+  );
+
+  return { nodes, edges: layoutEdges, isLayouting };
 }
 
 function fallbackLayout(
