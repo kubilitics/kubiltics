@@ -3,6 +3,7 @@ import type { Node, Edge } from "@xyflow/react";
 import type { BaseNodeData } from "../nodes/BaseNode";
 import type { LabeledEdgeData } from "../edges/LabeledEdge";
 import type { TopologyResponse, ViewMode } from "../types/topology";
+import { getNodeDims } from "../constants/designTokens";
 
 /**
  * useElkLayout — Topology layout engine.
@@ -72,7 +73,7 @@ const ELK_OPTIONS: Record<ViewMode, Record<string, string>> = {
   },
 };
 
-const NODE_DIMS = { width: 260, height: 110 };
+// NODE_DIMS are now dynamic — imported from designTokens via getNodeDims(nodeType)
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -209,6 +210,7 @@ export function useElkLayout(
         // in adjacent layers flowing left-to-right.
         const elkOptions = ELK_OPTIONS[viewMode];
 
+        const dims = getNodeDims(nodeType);
         const elkGraph: ElkGraph = {
           id: "root",
           layoutOptions: {
@@ -217,8 +219,8 @@ export function useElkLayout(
           },
           children: topology.nodes.map((n) => ({
             id: n.id,
-            width: NODE_DIMS.width,
-            height: NODE_DIMS.height,
+            width: dims.width,
+            height: dims.height,
           })),
           edges: validEdges.map((e) => ({
             id: e.id,
@@ -305,7 +307,7 @@ export function useElkLayout(
     } finally {
       if (gen === layoutGenRef.current) setIsLayouting(false);
     }
-  }, [topology, viewMode, elkReady]);
+  }, [topology, viewMode, nodeType, elkReady]);
 
   useEffect(() => {
     computeLayout();

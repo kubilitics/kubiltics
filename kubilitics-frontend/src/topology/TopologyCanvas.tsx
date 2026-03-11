@@ -14,10 +14,12 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 
+import { toast } from "sonner";
 import { nodeTypes } from "./nodes/nodeTypes";
 import { edgeTypes } from "./edges/edgeTypes";
 import { useElkLayout } from "./hooks/useElkLayout";
 import { captureFullTopologyPNG, captureFullTopologySVG } from "./export/exportTopology";
+import { ZOOM_THRESHOLDS, CANVAS, fitViewMinZoom, minimapNodeColor } from "./constants/designTokens";
 import type { TopologyResponse, ViewMode } from "./types/topology";
 
 export type ExportFormat = "png" | "svg";
@@ -33,17 +35,11 @@ export interface TopologyCanvasProps {
   exportRef?: React.MutableRefObject<((format: ExportFormat, filename: string) => void) | null>;
 }
 
-/**
- * Semantic zoom thresholds — tuned so fitView always shows readable nodes.
- * <0.08 = minimal (dots — only for 700+ all-cluster overview)
- * 0.08-0.30 = compact (small cards: name + kind)
- * 0.30-1.5 = base (standard cards: status, metrics)
- * >1.5 = expanded (full detail)
- */
+/** Semantic zoom — uses centralized thresholds from designTokens */
 function getNodeTypeForZoom(zoom: number): string {
-  if (zoom < 0.08) return "minimal";
-  if (zoom < 0.30) return "compact";
-  if (zoom > 1.5) return "expanded";
+  if (zoom < ZOOM_THRESHOLDS.minimal) return "minimal";
+  if (zoom < ZOOM_THRESHOLDS.compact) return "compact";
+  if (zoom > ZOOM_THRESHOLDS.expanded) return "expanded";
   return "base";
 }
 
@@ -85,16 +81,11 @@ function TopologyCanvasInner({
   useEffect(() => {
     if (!isLayouting && elkNodes.length > 0) {
       const t = setTimeout(() => {
-        let minZoom = 0.35;
-        if (nodeCount > 300) minZoom = 0.12;
-        else if (nodeCount > 150) minZoom = 0.2;
-        else if (nodeCount > 50) minZoom = 0.25;
-
         reactFlow.fitView({
           padding: 0.06,
           duration: 350,
           maxZoom: 1.0,
-          minZoom,
+          minZoom: fitViewMinZoom(nodeCount),
         });
       }, 100);
       return () => clearTimeout(t);
@@ -144,8 +135,11 @@ function TopologyCanvasInner({
         } else {
           await captureFullTopologySVG(pending.filename);
         }
+        toast.success(`${pending.format.toUpperCase()} exported successfully`);
       } catch (err) {
         console.error("Export capture failed:", err);
+        const msg = err instanceof Error ? err.message : "Unknown error";
+        toast.error(`Export failed: ${msg}`);
       } finally {
         // Restore previous viewport position/zoom
         reactFlow.setViewport(savedViewport, { duration: 0 });
@@ -206,16 +200,9 @@ function TopologyCanvasInner({
   );
 
   const miniMapNodeColor = useCallback((n: Node) => {
-    const category = (n.data as any)?.category;
-    const status = (n.data as any)?.status;
-    if (status === "error") return "#ef4444";
-    if (status === "warning") return "#f59e0b";
-    const catColors: Record<string, string> = {
-      compute: "#3b82f6", networking: "#8b5cf6", config: "#f59e0b",
-      storage: "#06b6d4", security: "#ec4899", scheduling: "#6b7280",
-      scaling: "#22c55e", custom: "#94a3b8",
-    };
-    return catColors[category] ?? "#10b981";
+    const category = (n.data as any)?.category ?? "custom";
+    const status = (n.data as any)?.status ?? "unknown";
+    return minimapNodeColor(category, status);
   }, []);
 
   return (
@@ -237,7 +224,7 @@ function TopologyCanvasInner({
       proOptions={{ hideAttribution: true }}
       className="!bg-[#f8f9fb]"
     >
-      <Background variant={BackgroundVariant.Dots} gap={24} size={1} color="#d4d4d8" />
+      <Background variant={BackgroundVariant.Dots} gap={CANVAS.gridGap} size={CANVAS.gridSize} color={CANVAS.gridColor} />
       <MiniMap
         nodeColor={miniMapNodeColor}
         nodeStrokeWidth={0}

@@ -2,28 +2,17 @@ import { memo } from "react";
 import type { NodeProps } from "@xyflow/react";
 import { Handle, Position } from "@xyflow/react";
 import type { BaseNodeData } from "./BaseNode";
-import { categoryIcon, statusColor } from "./nodeUtils";
-
-/** Category accent colors for left border */
-const categoryAccent: Record<string, string> = {
-  compute: "#3b82f6",
-  networking: "#8b5cf6",
-  config: "#f59e0b",
-  storage: "#06b6d4",
-  security: "#ec4899",
-  scheduling: "#6b7280",
-  scaling: "#22c55e",
-  custom: "#94a3b8",
-};
+import { categoryIcon } from "./nodeUtils";
+import { getCategoryColor, statusDotClass } from "../constants/designTokens";
 
 /**
- * CompactNode: Displayed at zoom level 0.3x-0.6x.
+ * CompactNode: Displayed at zoom level 0.08x-0.30x.
  * Card with colored left accent, kind icon, name, kind badge, and status dot.
  */
 function CompactNodeInner({ data }: NodeProps<BaseNodeData>) {
   const icon = categoryIcon(data.category);
-  const color = statusColor(data.status);
-  const accent = categoryAccent[data.category] ?? "#94a3b8";
+  const color = statusDotClass(data.status);
+  const accent = getCategoryColor(data.category).accent;
 
   return (
     <div

@@ -1,4 +1,5 @@
 import type { TopologyResponse, ViewMode } from "../types/topology";
+import { EXPORT, CANVAS, getCategoryColor, STATUS_COLORS } from "../constants/designTokens";
 
 // ─── Export context for dynamic filenames ─────────────────────────────────────
 
@@ -102,46 +103,48 @@ export async function captureFullTopologyPNG(
   const viewport = document.querySelector(
     ".react-flow__viewport"
   ) as HTMLElement | null;
-  if (!viewport) return;
+  if (!viewport) throw new Error("No viewport element found");
 
-  try {
-    const { toPng } = await import("html-to-image");
+  const { toPng } = await import("html-to-image");
 
-    const bounds = computeNodeBounds(viewport);
-    if (!bounds) return;
+  const bounds = computeNodeBounds(viewport);
+  if (!bounds) throw new Error("No nodes found to export");
 
-    const { minX, minY, maxX, maxY } = bounds;
-    const padding = 80; // generous padding for edges curving outside nodes
-    const captureWidth = Math.ceil(maxX - minX + padding * 2);
-    const captureHeight = Math.ceil(maxY - minY + padding * 2);
+  const { minX, minY, maxX, maxY } = bounds;
+  const contentW = maxX - minX;
+  const contentH = maxY - minY;
+  const padding = EXPORT.dynamicPadding(contentW, contentH);
+  const captureWidth = Math.ceil(contentW + padding * 2);
+  const captureHeight = Math.ceil(contentH + padding * 2);
 
-    // pixelRatio: at scale 1, nodes are already full-size.
-    // Use 2x for retina-quality. Clamp if canvas would exceed browser limits.
-    const maxDim = Math.max(captureWidth, captureHeight);
-    const pixelRatio = Math.min(2, 16000 / maxDim);
+  // At scale 1, nodes are full-size. Use 2x for retina. Clamp to browser canvas limits.
+  const maxDim = Math.max(captureWidth, captureHeight);
+  const pixelRatio = Math.min(EXPORT.pngPixelRatio, EXPORT.maxCanvasPixels / maxDim);
 
-    const dataUrl = await toPng(viewport, {
-      backgroundColor: "#f8f9fb",
-      pixelRatio,
-      width: captureWidth,
-      height: captureHeight,
-      quality: 1.0,
-      style: {
-        // Override viewport transform: render at scale 1, positioned so
-        // the top-left-most node sits at (padding, padding)
-        transform: `translate(${-minX + padding}px, ${-minY + padding}px) scale(1)`,
-        transformOrigin: "top left",
-      },
-      filter: exportFilter,
-    });
+  // Wrap in timeout protection
+  const capturePromise = toPng(viewport, {
+    backgroundColor: EXPORT.backgroundColor,
+    pixelRatio,
+    width: captureWidth,
+    height: captureHeight,
+    quality: 1.0,
+    style: {
+      transform: `translate(${-minX + padding}px, ${-minY + padding}px) scale(1)`,
+      transformOrigin: "top left",
+    },
+    filter: exportFilter,
+  });
 
-    const link = document.createElement("a");
-    link.download = filename;
-    link.href = dataUrl;
-    link.click();
-  } catch (err) {
-    console.error("PNG export failed:", err);
-  }
+  const timeoutPromise = new Promise<never>((_, reject) =>
+    setTimeout(() => reject(new Error("Export timed out")), EXPORT.timeoutMs)
+  );
+
+  const dataUrl = await Promise.race([capturePromise, timeoutPromise]);
+
+  const link = document.createElement("a");
+  link.download = filename;
+  link.href = dataUrl;
+  link.click();
 }
 
 // ─── SVG Export — same scale-1 approach ──────────────────────────────────────
@@ -152,37 +155,41 @@ export async function captureFullTopologySVG(
   const viewport = document.querySelector(
     ".react-flow__viewport"
   ) as HTMLElement | null;
-  if (!viewport) return;
+  if (!viewport) throw new Error("No viewport element found");
 
-  try {
-    const { toSvg } = await import("html-to-image");
+  const { toSvg } = await import("html-to-image");
 
-    const bounds = computeNodeBounds(viewport);
-    if (!bounds) return;
+  const bounds = computeNodeBounds(viewport);
+  if (!bounds) throw new Error("No nodes found to export");
 
-    const { minX, minY, maxX, maxY } = bounds;
-    const padding = 80;
-    const captureWidth = Math.ceil(maxX - minX + padding * 2);
-    const captureHeight = Math.ceil(maxY - minY + padding * 2);
+  const { minX, minY, maxX, maxY } = bounds;
+  const contentW = maxX - minX;
+  const contentH = maxY - minY;
+  const padding = EXPORT.dynamicPadding(contentW, contentH);
+  const captureWidth = Math.ceil(contentW + padding * 2);
+  const captureHeight = Math.ceil(contentH + padding * 2);
 
-    const dataUrl = await toSvg(viewport, {
-      backgroundColor: "#f8f9fb",
-      width: captureWidth,
-      height: captureHeight,
-      style: {
-        transform: `translate(${-minX + padding}px, ${-minY + padding}px) scale(1)`,
-        transformOrigin: "top left",
-      },
-      filter: exportFilter,
-    });
+  const capturePromise = toSvg(viewport, {
+    backgroundColor: EXPORT.backgroundColor,
+    width: captureWidth,
+    height: captureHeight,
+    style: {
+      transform: `translate(${-minX + padding}px, ${-minY + padding}px) scale(1)`,
+      transformOrigin: "top left",
+    },
+    filter: exportFilter,
+  });
 
-    const link = document.createElement("a");
-    link.download = filename;
-    link.href = dataUrl;
-    link.click();
-  } catch (err) {
-    console.error("SVG export failed:", err);
-  }
+  const timeoutPromise = new Promise<never>((_, reject) =>
+    setTimeout(() => reject(new Error("Export timed out")), EXPORT.timeoutMs)
+  );
+
+  const dataUrl = await Promise.race([capturePromise, timeoutPromise]);
+
+  const link = document.createElement("a");
+  link.download = filename;
+  link.href = dataUrl;
+  link.click();
 }
 
 // ─── Draw.io Export — Uses actual topology positions and edges ─────────────────
@@ -218,23 +225,10 @@ export function exportTopologyDrawIO(
     });
   }
 
-  const statusBorderColors: Record<string, string> = {
-    healthy: "#059669",
-    warning: "#d97706",
-    error: "#dc2626",
-    unknown: "#9ca3af",
-  };
+  // Use centralized design tokens instead of inline duplicates
+  const statusBorderColors = STATUS_COLORS;
 
-  const categoryColors: Record<string, string> = {
-    compute: "#dbeafe",
-    networking: "#ede9fe",
-    config: "#fef3c7",
-    storage: "#cffafe",
-    security: "#ffe4e6",
-    scheduling: "#f3f4f6",
-    scaling: "#dcfce7",
-    custom: "#f1f5f9",
-  };
+  const getCategoryBg = (cat: string) => getCategoryColor(cat).bg;
 
   let xml = `<?xml version="1.0" encoding="UTF-8"?>
 <mxfile>
@@ -251,8 +245,8 @@ export function exportTopologyDrawIO(
     const y = pos?.y ?? Math.floor(i / 6) * 160;
     const w = pos?.w ?? 230;
     const h = pos?.h ?? 100;
-    const fill = categoryColors[n.category] ?? "#ffffff";
-    const border = statusBorderColors[n.status] ?? "#9ca3af";
+    const fill = getCategoryBg(n.category);
+    const border = statusBorderColors[n.status as keyof typeof statusBorderColors] ?? "#9ca3af";
 
     const label = `${n.kind}&#xa;${n.name}${n.namespace ? "&#xa;(" + n.namespace + ")" : ""}`;
     xml += `<mxCell id="${escXml(n.id)}" value="${escXml(label)}" style="rounded=1;whiteSpace=wrap;html=0;fillColor=${fill};strokeColor=${border};strokeWidth=2;fontSize=11;fontFamily=Inter;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;" vertex="1" parent="1">
