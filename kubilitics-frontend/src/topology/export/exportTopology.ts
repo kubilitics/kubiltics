@@ -1,6 +1,12 @@
 import type { TopologyResponse, ViewMode } from "../types/topology";
 import { EXPORT, CANVAS, getCategoryColor, STATUS_COLORS } from "../constants/designTokens";
 
+// ─── Export bounds — computed from React Flow state or DOM ──────────────────
+
+export interface ExportBounds {
+  minX: number; minY: number; maxX: number; maxY: number;
+}
+
 // ─── Export context for dynamic filenames ─────────────────────────────────────
 
 export interface ExportContext {
@@ -57,18 +63,23 @@ function exportFilter(node: HTMLElement): boolean {
 
 // ─── Compute content bounds from all nodes in flow coordinates ───────────────
 
-function computeNodeBounds(viewport: HTMLElement): {
-  minX: number; minY: number; maxX: number; maxY: number;
-} | null {
+/**
+ * DOM-based fallback for computing bounds. Handles both translate() and translate3d().
+ * Prefer using React Flow's getNodes() and passing bounds from TopologyCanvas instead.
+ */
+function computeNodeBoundsFromDOM(viewport: HTMLElement): ExportBounds | null {
   const nodeEls = viewport.querySelectorAll(".react-flow__node");
   if (nodeEls.length === 0) return null;
 
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
 
+  // Match both: translate(Xpx, Ypx) and translate3d(Xpx, Ypx, Zpx)
+  const translateRe = /translate(?:3d)?\((-?[\d.]+)px,\s*(-?[\d.]+)px/;
+
   nodeEls.forEach((el) => {
     const node = el as HTMLElement;
     const style = node.style.transform || "";
-    const match = style.match(/translate\((-?[\d.]+)px,\s*(-?[\d.]+)px\)/);
+    const match = style.match(translateRe);
     if (match) {
       const x = parseFloat(match[1]);
       const y = parseFloat(match[2]);
@@ -151,7 +162,8 @@ function computeExportParams(bounds: { minX: number; minY: number; maxX: number;
 // ─── PNG Export — Adaptive quality capture ───────────────────────────────────
 
 export async function captureFullTopologyPNG(
-  filename: string
+  filename: string,
+  precomputedBounds?: ExportBounds
 ): Promise<void> {
   const viewport = document.querySelector(
     ".react-flow__viewport"
@@ -160,7 +172,9 @@ export async function captureFullTopologyPNG(
 
   const { toPng } = await import("html-to-image");
 
-  const bounds = computeNodeBounds(viewport);
+  // Prefer pre-computed bounds from React Flow state (always accurate).
+  // Fall back to DOM parsing if not provided.
+  const bounds = precomputedBounds ?? computeNodeBoundsFromDOM(viewport);
   if (!bounds) throw new Error("No nodes found to export");
 
   const params = computeExportParams(bounds);
@@ -199,7 +213,8 @@ export async function captureFullTopologyPNG(
 // ─── SVG Export — same adaptive approach ─────────────────────────────────────
 
 export async function captureFullTopologySVG(
-  filename: string
+  filename: string,
+  precomputedBounds?: ExportBounds
 ): Promise<void> {
   const viewport = document.querySelector(
     ".react-flow__viewport"
@@ -208,7 +223,8 @@ export async function captureFullTopologySVG(
 
   const { toSvg } = await import("html-to-image");
 
-  const bounds = computeNodeBounds(viewport);
+  // Prefer pre-computed bounds from React Flow state (always accurate).
+  const bounds = precomputedBounds ?? computeNodeBoundsFromDOM(viewport);
   if (!bounds) throw new Error("No nodes found to export");
 
   const params = computeExportParams(bounds);
@@ -257,7 +273,7 @@ export function exportTopologyDrawIO(
       const id = node.getAttribute("data-id");
       if (!id) return;
       const style = node.style.transform || "";
-      const match = style.match(/translate\((-?[\d.]+)px,\s*(-?[\d.]+)px\)/);
+      const match = style.match(/translate(?:3d)?\((-?[\d.]+)px,\s*(-?[\d.]+)px/);
       if (match) {
         positionMap.set(id, {
           x: parseFloat(match[1]),

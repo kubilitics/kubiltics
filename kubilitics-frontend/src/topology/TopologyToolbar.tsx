@@ -256,6 +256,7 @@ export function TopologyToolbar({
           <input
             ref={searchRef}
             data-topology-search
+            aria-label="Search topology resources"
             className="h-8 w-full rounded-lg border border-gray-200 bg-white pl-9 pr-8 text-sm placeholder:text-gray-400 focus:border-indigo-300 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-100 transition-all shadow-sm"
             placeholder="Search resources..."
             value={searchQuery}

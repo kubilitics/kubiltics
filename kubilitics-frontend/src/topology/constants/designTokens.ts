@@ -214,6 +214,26 @@ export function minimapNodeColor(category: string, status: string): string {
   return getCategoryColor(category).accent;
 }
 
+// ─── Node Card Shared Styles ────────────────────────────────────────────────
+// Used by: BaseNode, CompactNode, ExpandedNode — ensures consistent card look
+
+export const NODE_CARD = {
+  /** Default shadow */
+  shadow: "shadow-sm",
+  /** Hover shadow */
+  hoverShadow: "hover:shadow-md",
+  /** Card rounding */
+  rounding: "rounded-lg",
+  /** Card background */
+  bg: "bg-white",
+  /** Body padding */
+  bodyPadding: "px-3 py-2.5",
+  /** Header padding */
+  headerPadding: "px-3 py-1.5",
+  /** Handle styles */
+  handleClass: "!bg-gray-300 !border-white !border-2",
+} as const;
+
 // ─── Accessibility Constants ────────────────────────────────────────────────
 // Used by: all interactive topology components
 

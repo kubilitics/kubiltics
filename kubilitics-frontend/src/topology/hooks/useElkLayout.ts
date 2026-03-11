@@ -154,6 +154,11 @@ export function useElkLayout(
   viewMode: ViewMode = "namespace",
   nodeType: string = "base"
 ) {
+  // IMPORTANT: Layout computation always uses "base" dimensions so that:
+  // 1. Switching semantic zoom (compact/base/expanded) never triggers re-layout
+  // 2. Export mode (which locks nodeType to "base") never triggers re-layout
+  // 3. Node spacing is always computed for the largest card size (base)
+  // The `nodeType` parameter only controls visual rendering via the useMemo below.
   const [positionedNodes, setPositionedNodes] = useState<
     Array<{ id: string; x: number; y: number; data: BaseNodeData }>
   >([]);
@@ -210,7 +215,8 @@ export function useElkLayout(
         // in adjacent layers flowing left-to-right.
         const elkOptions = ELK_OPTIONS[viewMode];
 
-        const dims = getNodeDims(nodeType);
+        // Always use "base" dims for layout — see comment at hook top
+        const dims = getNodeDims("base");
         const elkGraph: ElkGraph = {
           id: "root",
           layoutOptions: {
@@ -307,7 +313,10 @@ export function useElkLayout(
     } finally {
       if (gen === layoutGenRef.current) setIsLayouting(false);
     }
-  }, [topology, viewMode, nodeType, elkReady]);
+  // NOTE: nodeType intentionally excluded — layout always uses "base" dims.
+  // nodeType only affects the visual rendering (useMemo below), not layout positions.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [topology, viewMode, elkReady]);
 
   useEffect(() => {
     computeLayout();

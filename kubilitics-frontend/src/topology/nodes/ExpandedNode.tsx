@@ -12,8 +12,10 @@ import {
 
 export type ExpandedNodeData = BaseNodeData & {
   metrics?: {
+    cpuUsage?: number;
     cpuRequest?: number;
     cpuLimit?: number;
+    memoryUsage?: number;
     memoryRequest?: number;
     memoryLimit?: number;
     restartCount?: number;
@@ -37,7 +39,7 @@ function ExpandedNodeInner({ data }: NodeProps<ExpandedNodeData>) {
 
   return (
     <div
-      className={`min-w-[300px] max-w-[420px] rounded-xl border-2 ${borderColor} bg-white shadow-lg overflow-hidden ${A11Y.focusRing}`}
+      className={`min-w-[300px] max-w-[420px] rounded-lg border ${borderColor} bg-white shadow-sm ${A11Y.transition} hover:shadow-md ${A11Y.focusRing} overflow-hidden`}
       role="treeitem"
       aria-roledescription="topology node"
       aria-label={`${data.kind}: ${data.name}, status ${data.statusReason ?? data.status}${data.namespace ? `, namespace ${data.namespace}` : ""}${metrics?.podCount != null ? `, ${metrics.readyCount ?? 0} of ${metrics.podCount} pods ready` : ""}`}
@@ -49,7 +51,7 @@ function ExpandedNodeInner({ data }: NodeProps<ExpandedNodeData>) {
       <div className={`flex items-center gap-2.5 ${headerBg} px-4 py-2`}>
         <span className="text-base" aria-hidden="true">{icon}</span>
         <div className="flex-1 min-w-0">
-          <span className="text-xs font-bold text-white tracking-wide uppercase">{data.kind}</span>
+          <span className="text-[11px] font-semibold text-white tracking-wide uppercase">{data.kind}</span>
         </div>
         <div className={`h-3 w-3 rounded-full ${badge.dotClass} ring-2 ring-white/30`} aria-hidden="true" />
       </div>
@@ -70,11 +72,11 @@ function ExpandedNodeInner({ data }: NodeProps<ExpandedNodeData>) {
 
         {metrics && (
           <div className="grid grid-cols-2 gap-2 border-t border-gray-100 pt-3" role="group" aria-label="Resource metrics">
-            {metrics.cpuRequest != null && (
-              <MetricCard label="CPU" value={formatCPU(metrics.cpuRequest)} />
+            {(metrics.cpuUsage != null || metrics.cpuRequest != null) && (
+              <MetricCard label="CPU" value={formatCPU(metrics.cpuUsage ?? metrics.cpuRequest ?? 0)} />
             )}
-            {metrics.memoryRequest != null && metrics.memoryRequest > 0 && (
-              <MetricCard label="Memory" value={formatBytes(metrics.memoryRequest)} />
+            {((metrics.memoryUsage != null && metrics.memoryUsage > 0) || (metrics.memoryRequest != null && metrics.memoryRequest > 0)) && (
+              <MetricCard label="Memory" value={formatBytes(metrics.memoryUsage ?? metrics.memoryRequest ?? 0)} />
             )}
             {metrics.podCount != null && (
               <MetricCard label="Pods" value={`${metrics.readyCount ?? 0}/${metrics.podCount}`} />

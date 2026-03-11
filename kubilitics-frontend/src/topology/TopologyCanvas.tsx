@@ -18,7 +18,7 @@ import { toast } from "sonner";
 import { nodeTypes } from "./nodes/nodeTypes";
 import { edgeTypes } from "./edges/edgeTypes";
 import { useElkLayout } from "./hooks/useElkLayout";
-import { captureFullTopologyPNG, captureFullTopologySVG } from "./export/exportTopology";
+import { captureFullTopologyPNG, captureFullTopologySVG, type ExportBounds } from "./export/exportTopology";
 import { ZOOM_THRESHOLDS, CANVAS, fitViewMinZoom, minimapNodeColor } from "./constants/designTokens";
 import type { TopologyResponse, ViewMode } from "./types/topology";
 
@@ -113,25 +113,69 @@ function TopologyCanvasInner({
   }, [exportRef]);
 
   // When isExporting becomes true, all nodes render (onlyRenderVisibleElements=false).
-  // We fitView, wait for render, capture, then restore.
+  // We compute bounds from React Flow state (always accurate), fitView, wait for
+  // DOM nodes to actually render, then capture.
   useEffect(() => {
     if (!isExporting || !exportPendingRef.current) return;
 
     const pending = exportPendingRef.current;
+    let cancelled = false;
 
     // Save current viewport to restore after export
     const savedViewport = reactFlow.getViewport();
 
+    // Compute bounds from React Flow's internal node data — always accurate,
+    // no DOM parsing needed. This works even if nodes haven't rendered to DOM yet.
+    const rfNodes = reactFlow.getNodes();
+    const bounds: ExportBounds | null = rfNodes.length > 0 ? (() => {
+      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+      for (const n of rfNodes) {
+        const w = n.measured?.width ?? n.width ?? 260;
+        const h = n.measured?.height ?? n.height ?? 110;
+        minX = Math.min(minX, n.position.x);
+        minY = Math.min(minY, n.position.y);
+        maxX = Math.max(maxX, n.position.x + w);
+        maxY = Math.max(maxY, n.position.y + h);
+      }
+      return isFinite(minX) ? { minX, minY, maxX, maxY } : null;
+    })() : null;
+
     // FitView so ALL nodes are visible within the container
     reactFlow.fitView({ padding: 0.04, duration: 0, minZoom: 0.05 });
 
-    // Wait for React to render all nodes (since onlyRenderVisibleElements is now off)
-    const timer = setTimeout(async () => {
+    // Wait for DOM to actually render all nodes. Instead of a fixed timeout,
+    // poll until the expected number of node DOM elements matches.
+    const expectedCount = rfNodes.length;
+    let attempts = 0;
+    const MAX_ATTEMPTS = 40; // 40 × 100ms = 4 seconds max wait
+
+    function waitForRender() {
+      if (cancelled) return;
+
+      const viewport = document.querySelector(".react-flow__viewport");
+      const renderedCount = viewport?.querySelectorAll(".react-flow__node").length ?? 0;
+      attempts++;
+
+      // Proceed when: enough nodes rendered OR max attempts reached
+      // "Enough" = at least 90% of expected (some may be hidden by React Flow)
+      const threshold = Math.max(1, Math.floor(expectedCount * 0.9));
+      if (renderedCount >= threshold || attempts >= MAX_ATTEMPTS) {
+        // One final rAF to let the browser paint
+        requestAnimationFrame(() => {
+          if (cancelled) return;
+          doCapture();
+        });
+      } else {
+        setTimeout(waitForRender, 100);
+      }
+    }
+
+    async function doCapture() {
       try {
         if (pending.format === "png") {
-          await captureFullTopologyPNG(pending.filename);
+          await captureFullTopologyPNG(pending.filename, bounds ?? undefined);
         } else {
-          await captureFullTopologySVG(pending.filename);
+          await captureFullTopologySVG(pending.filename, bounds ?? undefined);
         }
         toast.success(`${pending.format.toUpperCase()} exported successfully`);
       } catch (err) {
@@ -144,9 +188,15 @@ function TopologyCanvasInner({
         exportPendingRef.current = null;
         setIsExporting(false);
       }
-    }, 500);
+    }
 
-    return () => clearTimeout(timer);
+    // Start the wait-for-render loop
+    // Initial delay of 200ms to let React commit the onlyRenderVisibleElements change
+    setTimeout(() => {
+      if (!cancelled) waitForRender();
+    }, 200);
+
+    return () => { cancelled = true; };
   }, [isExporting, reactFlow]);
 
   // Selection/highlight styling
