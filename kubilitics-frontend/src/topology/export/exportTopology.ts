@@ -44,84 +44,48 @@ export function exportTopologyJSON(
   downloadBlob(blob, buildExportFilename("json", ctx));
 }
 
-// ─── PNG Export — Captures FULL topology via React Flow fitView ───────────────
+// ─── Shared filter: exclude minimap, controls, background from export ────────
 
-/**
- * This function is called from TopologyCanvas which temporarily:
- * 1. Disables onlyRenderVisibleElements so ALL nodes are in the DOM
- * 2. Calls fitView() to show the entire graph at scale
- * 3. Captures the viewport at high resolution
- * 4. Restores the original viewport state
- *
- * The `captureElement` is the .react-flow__viewport with all nodes visible.
- */
+function exportFilter(node: HTMLElement): boolean {
+  const cn = node.className?.toString() ?? "";
+  if (cn.includes("react-flow__minimap")) return false;
+  if (cn.includes("react-flow__controls")) return false;
+  if (cn.includes("react-flow__background")) return false;
+  return true;
+}
+
+// ─── PNG Export — Captures FULL topology ─────────────────────────────────────
+//
+// Called from TopologyCanvas AFTER it has:
+// 1. Set onlyRenderVisibleElements=false (all nodes in DOM)
+// 2. Called fitView() with duration:0 (all nodes visible in container)
+// 3. Waited 300ms for React to render
+//
+// We simply capture the .react-flow container at its natural rendered size.
+// fitView already positioned everything correctly — no transform math needed.
+
 export async function captureFullTopologyPNG(
   filename: string
 ): Promise<void> {
-  const viewport = document.querySelector(
-    ".react-flow__viewport"
+  const container = document.querySelector(
+    ".react-flow"
   ) as HTMLElement | null;
-  if (!viewport) return;
+  if (!container) return;
 
   try {
     const { toPng } = await import("html-to-image");
 
-    // Get the bounding rect of the viewport's content after fitView
-    const nodeEls = viewport.querySelectorAll(".react-flow__node");
-    if (nodeEls.length === 0) return;
+    const w = container.offsetWidth;
+    const h = container.offsetHeight;
 
-    // Compute bounds of all rendered nodes in viewport-local coordinates
-    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-    nodeEls.forEach((el) => {
-      const node = el as HTMLElement;
-      const style = node.style.transform || "";
-      const match = style.match(/translate\((-?[\d.]+)px,\s*(-?[\d.]+)px\)/);
-      if (match) {
-        const x = parseFloat(match[1]);
-        const y = parseFloat(match[2]);
-        minX = Math.min(minX, x);
-        minY = Math.min(minY, y);
-        maxX = Math.max(maxX, x + node.offsetWidth);
-        maxY = Math.max(maxY, y + node.offsetHeight);
-      }
-    });
-
-    if (!isFinite(minX)) return;
-
-    // Read current viewport transform to get the scale and offset applied by fitView
-    const vpTransform = viewport.style.transform || "";
-    const scaleMatch = vpTransform.match(/scale\((-?[\d.]+)\)/);
-    const scale = scaleMatch ? parseFloat(scaleMatch[1]) : 1;
-    const transMatch = vpTransform.match(/translate\((-?[\d.]+)px,\s*(-?[\d.]+)px\)/);
-    const tx = transMatch ? parseFloat(transMatch[1]) : 0;
-    const ty = transMatch ? parseFloat(transMatch[2]) : 0;
-
-    // Calculate the actual pixel dimensions of the full graph as rendered
-    const contentWidth = (maxX - minX) * scale;
-    const contentHeight = (maxY - minY) * scale;
-    const padding = 40 * scale;
-
-    // The capture area: the content offset by viewport translation
-    const captureWidth = contentWidth + padding * 2;
-    const captureHeight = contentHeight + padding * 2;
-
-    // Capture the viewport element — fitView already positioned everything correctly
-    const dataUrl = await toPng(viewport, {
+    // Capture exactly what's visible: the entire .react-flow container
+    // pixelRatio 3 gives high-quality output (3x resolution)
+    const dataUrl = await toPng(container, {
       backgroundColor: "#f8f9fb",
-      pixelRatio: Math.min(4, 16000 / Math.max(captureWidth, captureHeight)), // Stay under browser limits
-      width: captureWidth,
-      height: captureHeight,
-      style: {
-        transform: `translate(${tx + (-minX * scale) + padding}px, ${ty + (-minY * scale) + padding}px) scale(${scale})`,
-        transformOrigin: "top left",
-      },
-      filter: (node: HTMLElement) => {
-        const cn = node.className?.toString() ?? "";
-        if (cn.includes("react-flow__minimap")) return false;
-        if (cn.includes("react-flow__controls")) return false;
-        if (cn.includes("react-flow__background")) return false;
-        return true;
-      },
+      pixelRatio: Math.min(3, 16000 / Math.max(w, h)),
+      width: w,
+      height: h,
+      filter: exportFilter,
     });
 
     const link = document.createElement("a");
@@ -133,67 +97,27 @@ export async function captureFullTopologyPNG(
   }
 }
 
-// ─── SVG Export — same approach ───────────────────────────────────────────────
+// ─── SVG Export — same simple approach ───────────────────────────────────────
 
 export async function captureFullTopologySVG(
   filename: string
 ): Promise<void> {
-  const viewport = document.querySelector(
-    ".react-flow__viewport"
+  const container = document.querySelector(
+    ".react-flow"
   ) as HTMLElement | null;
-  if (!viewport) return;
+  if (!container) return;
 
   try {
     const { toSvg } = await import("html-to-image");
 
-    const nodeEls = viewport.querySelectorAll(".react-flow__node");
-    if (nodeEls.length === 0) return;
+    const w = container.offsetWidth;
+    const h = container.offsetHeight;
 
-    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-    nodeEls.forEach((el) => {
-      const node = el as HTMLElement;
-      const style = node.style.transform || "";
-      const match = style.match(/translate\((-?[\d.]+)px,\s*(-?[\d.]+)px\)/);
-      if (match) {
-        const x = parseFloat(match[1]);
-        const y = parseFloat(match[2]);
-        minX = Math.min(minX, x);
-        minY = Math.min(minY, y);
-        maxX = Math.max(maxX, x + node.offsetWidth);
-        maxY = Math.max(maxY, y + node.offsetHeight);
-      }
-    });
-
-    if (!isFinite(minX)) return;
-
-    const vpTransform = viewport.style.transform || "";
-    const scaleMatch = vpTransform.match(/scale\((-?[\d.]+)\)/);
-    const scale = scaleMatch ? parseFloat(scaleMatch[1]) : 1;
-    const transMatch = vpTransform.match(/translate\((-?[\d.]+)px,\s*(-?[\d.]+)px\)/);
-    const tx = transMatch ? parseFloat(transMatch[1]) : 0;
-    const ty = transMatch ? parseFloat(transMatch[2]) : 0;
-
-    const contentWidth = (maxX - minX) * scale;
-    const contentHeight = (maxY - minY) * scale;
-    const padding = 40 * scale;
-    const captureWidth = contentWidth + padding * 2;
-    const captureHeight = contentHeight + padding * 2;
-
-    const dataUrl = await toSvg(viewport, {
+    const dataUrl = await toSvg(container, {
       backgroundColor: "#f8f9fb",
-      width: captureWidth,
-      height: captureHeight,
-      style: {
-        transform: `translate(${tx + (-minX * scale) + padding}px, ${ty + (-minY * scale) + padding}px) scale(${scale})`,
-        transformOrigin: "top left",
-      },
-      filter: (node: HTMLElement) => {
-        const cn = node.className?.toString() ?? "";
-        if (cn.includes("react-flow__minimap")) return false;
-        if (cn.includes("react-flow__controls")) return false;
-        if (cn.includes("react-flow__background")) return false;
-        return true;
-      },
+      width: w,
+      height: h,
+      filter: exportFilter,
     });
 
     const link = document.createElement("a");
