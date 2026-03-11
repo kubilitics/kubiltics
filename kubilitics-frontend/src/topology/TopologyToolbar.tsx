@@ -34,6 +34,7 @@ import { categoryIcon } from "./nodes/nodeUtils";
 export interface TopologyToolbarProps {
   viewMode?: ViewMode;
   namespace?: string;
+  clusterName?: string;
   selectedNamespaces?: Set<string>;
   availableNamespaces?: string[];
   topology?: TopologyResponse | null;
@@ -51,6 +52,7 @@ const SYSTEM_NAMESPACES = new Set(["kube-system", "kube-public", "kube-node-leas
 
 export function TopologyToolbar({
   viewMode = "namespace",
+  clusterName,
   selectedNamespaces = new Set(),
   availableNamespaces = [],
   topology,
@@ -337,7 +339,7 @@ export function TopologyToolbar({
                 const exportCtx: ExportContext = {
                   viewMode,
                   selectedNamespaces,
-                  clusterName: topology?.metadata?.clusterName,
+                  clusterName,
                 };
                 return (
                   <>
@@ -359,7 +361,7 @@ export function TopologyToolbar({
                         <div className="text-[10px] text-gray-400">Scalable vector</div>
                       </div>
                     </DropdownMenuItem>
-                    <DropdownMenuItem className="rounded-lg gap-2.5 py-2" onClick={() => exportTopologyPDF(topology?.metadata?.clusterName, viewMode, selectedNamespaces)}>
+                    <DropdownMenuItem className="rounded-lg gap-2.5 py-2" onClick={() => exportTopologyPDF(clusterName, viewMode, selectedNamespaces)}>
                       <div className="flex items-center justify-center h-7 w-7 rounded-md bg-red-50">
                         <FileType className="h-3.5 w-3.5 text-red-600" />
                       </div>

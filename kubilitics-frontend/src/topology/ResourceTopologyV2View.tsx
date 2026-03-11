@@ -23,6 +23,7 @@ import { toast } from "sonner";
 
 import { useResourceTopology } from "@/hooks/useResourceTopology";
 import { useBackendConfigStore } from "@/stores/backendConfigStore";
+import { useClusterStore } from "@/stores/clusterStore";
 import { useActiveClusterId } from "@/hooks/useActiveClusterId";
 import { useCapabilities } from "@/hooks/useCapabilities";
 import {
@@ -57,6 +58,7 @@ export function ResourceTopologyV2View({
   const navigate = useNavigate();
   const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured);
   const clusterId = useActiveClusterId();
+  const activeClusterName = useClusterStore((s) => s.activeCluster?.name);
   const fitViewRef = useRef<(() => void) | null>(null);
 
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
@@ -112,8 +114,8 @@ export function ResourceTopologyV2View({
   const exportCtx: ExportContext = useMemo(() => ({
     viewMode: "resource" as const,
     selectedNamespaces: namespace ? new Set([namespace]) : new Set<string>(),
-    clusterName: topology?.metadata?.clusterName ?? undefined,
-  }), [namespace, topology?.metadata?.clusterName]);
+    clusterName: activeClusterName ?? undefined,
+  }), [namespace, activeClusterName]);
 
   const handleExportJSON = useCallback(() => {
     if (!topology) return;

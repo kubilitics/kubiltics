@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef, useMemo } from "react";
 import { useBackendConfigStore } from "@/stores/backendConfigStore";
+import { useClusterStore } from "@/stores/clusterStore";
 
 import { TopologyToolbar } from "./TopologyToolbar";
 import { TopologyCanvas } from "./TopologyCanvas";
@@ -22,6 +23,7 @@ import type { ViewMode } from "./types/topology";
 
 export function TopologyPage() {
   const clusterId = useBackendConfigStore((s) => s.currentClusterId) ?? null;
+  const clusterName = useClusterStore((s) => s.activeCluster?.name) ?? null;
 
   // Store state
   const viewMode = useTopologyStore((s) => s.viewMode);
@@ -95,9 +97,9 @@ export function TopologyPage() {
       exportTopologyPNG({
         viewMode,
         selectedNamespaces,
-        clusterName: topology?.metadata?.clusterName ?? undefined,
+        clusterName: clusterName ?? undefined,
       });
-    }, [viewMode, selectedNamespaces, topology?.metadata?.clusterName]),
+    }, [viewMode, selectedNamespaces, clusterName]),
     onShowHelp: useCallback(() => setShowHelp((v) => !v), []),
     onNavigateBack: useCallback(() => navigateBack(), [navigateBack]),
   });
@@ -190,6 +192,7 @@ export function TopologyPage() {
       {/* Toolbar */}
       <TopologyToolbar
         viewMode={viewMode}
+        clusterName={clusterName ?? undefined}
         selectedNamespaces={selectedNamespaces}
         availableNamespaces={allNamespaces}
         topology={topology}
