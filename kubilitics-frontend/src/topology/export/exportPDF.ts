@@ -66,6 +66,7 @@ export async function exportTopologyPDF(
   const nsPart = selectedNamespaces && selectedNamespaces.size > 0
     ? `-${Array.from(selectedNamespaces).slice(0, 3).join("-")}`
     : "";
-  const filename = `kubilitics-topology-${clusterId ?? "cluster"}${nsPart}-${viewMode ?? "namespace"}-${dateStr.replace(/\//g, "-")}.pdf`;
+  const ts = Date.now();
+  const filename = `${clusterId ?? "cluster"}${nsPart}-${viewMode ?? "namespace"}-${ts}.pdf`;
   pdf.save(filename);
 }

@@ -9,7 +9,7 @@ export interface ExportContext {
 }
 
 function buildFilename(base: string, ext: string, ctx?: ExportContext): string {
-  const parts: string[] = ["kubilitics-topology"];
+  const parts: string[] = [];
 
   if (ctx?.clusterId) parts.push(ctx.clusterId);
 
@@ -24,10 +24,11 @@ function buildFilename(base: string, ext: string, ctx?: ExportContext): string {
 
   if (ctx?.viewMode) parts.push(ctx.viewMode);
 
-  const date = new Date().toISOString().slice(0, 10);
-  parts.push(date);
+  // Timestamp for uniqueness across multiple exports
+  const ts = Date.now();
+  parts.push(String(ts));
 
-  return `${parts.join("-")}.${ext}`;
+  return `${parts.length > 1 ? parts.join("-") : `topology-${ts}`}.${ext}`;
 }
 
 // ─── Helpers to compute full node bounds from DOM ─────────────────────────────
