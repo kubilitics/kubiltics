@@ -169,13 +169,13 @@ function categoryGridLayout(
     .sort((a, b) => categoryOrder(a[0]) - categoryOrder(b[0]));
 
   // Arrange category groups as columns flowing left to right
-  // Within each column, arrange nodes in a grid
+  // Within each column, arrange nodes in a wider grid for better aspect ratio
   let columnX = 0;
 
   for (const [, nodes] of sortedCategories) {
-    // Determine column width: how many sub-columns within this category
-    const maxPerColumn = Math.max(1, Math.ceil(Math.sqrt(nodes.length)));
-    const subCols = Math.min(maxPerColumn, Math.max(1, Math.ceil(nodes.length / 8)));
+    // Use wider sub-columns to prevent tall vertical stacking.
+    // Target: roughly square aspect ratio per category block.
+    const subCols = Math.max(2, Math.min(8, Math.ceil(Math.sqrt(nodes.length * 1.5))));
 
     nodes.forEach((n, idx) => {
       const subCol = idx % subCols;
@@ -321,7 +321,9 @@ async function hybridLayout(
 
   // Place isolated nodes below the connected components in a category-grouped grid
   if (isolatedNodeIds.size > 0) {
-    const isolatedY = currentY + rowMaxHeight + COMPONENT_GAP * 2;
+    const isolatedY = componentBounds.length > 0
+      ? currentY + rowMaxHeight + COMPONENT_GAP * 2
+      : 0;  // No connected components — start at top
 
     // Group isolated nodes by category for logical arrangement
     const nodeMap = new Map<string, TopologyNode>();
@@ -338,16 +340,25 @@ async function hybridLayout(
     const sortedCats = Array.from(catGroups.entries())
       .sort((a, b) => categoryOrder(a[0]) - categoryOrder(b[0]));
 
+    // Use a wider grid with more columns for better aspect ratio.
+    // Target: fill horizontally first to avoid tall vertical layouts.
+    const totalIsolated = isolatedNodeIds.size;
+    const targetCols = Math.max(4, Math.min(12, Math.ceil(Math.sqrt(totalIsolated * 2))));
     let isoX = 0;
+    let isoY = isolatedY;
+
     for (const [, nids] of sortedCats) {
-      const cols = Math.max(2, Math.min(6, Math.ceil(Math.sqrt(nids.length))));
+      // Each category gets a proportional share of the target column count
+      const cols = Math.max(2, Math.min(targetCols, Math.ceil(Math.sqrt(nids.length * 2.5))));
       nids.forEach((nid, idx) => {
         positions.set(nid, {
           x: isoX + (idx % cols) * 280,
-          y: isolatedY + Math.floor(idx / cols) * 140,
+          y: isoY + Math.floor(idx / cols) * 140,
         });
       });
-      isoX += cols * 280 + 100;
+      // Stack categories vertically within the same column block
+      const rows = Math.ceil(nids.length / cols);
+      isoY += rows * 140 + 60;
     }
   }
 
@@ -419,9 +430,12 @@ export function useElkLayout(
         // ELK is too slow and produces poor results for large sparse graphs.
         // Category grid gives instant, readable layouts.
         positions = categoryGridLayout(topology);
-      } else if (elkRef.current && density >= 0.8) {
+      } else if (elkRef.current && density >= 2.0) {
         // ─── DENSE GRAPH: Full ELK layered ──────────────────────────────
-        // When most nodes have edges, the layered algorithm excels.
+        // Only use full ELK when the graph is truly well-connected
+        // (avg 2+ edges per node). Below this, many nodes are isolated
+        // and ELK stacks them vertically in a single layer.
+        // density ~1.0 just means ~1 edge/node which still has many isolates.
         const elkOptions = ELK_OPTIONS[viewMode];
         const dims = getNodeDims("base");
         const elkGraph: ElkGraph = {

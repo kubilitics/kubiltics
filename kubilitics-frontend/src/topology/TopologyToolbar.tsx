@@ -114,7 +114,8 @@ export function TopologyToolbar({
         {/* ── View Mode Selector ── */}
         <ViewModeSelect value={viewMode} onChange={onViewModeChange} />
 
-        {/* Separator */}
+        {/* Separator + Namespace Filter — only for namespace-aware views */}
+        {(viewMode === "namespace" || viewMode === "workload" || viewMode === "resource") && (<>
         <div className="h-7 w-px bg-gradient-to-b from-transparent via-gray-300 to-transparent" />
 
         {/* ── Namespace Filter ── */}
@@ -246,6 +247,7 @@ export function TopologyToolbar({
             ))}
           </div>
         )}
+        </>)}
 
         {/* Separator */}
         <div className="h-7 w-px bg-gradient-to-b from-transparent via-gray-300 to-transparent" />

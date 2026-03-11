@@ -128,6 +128,10 @@ export function useTopologyData({
     return Array.from(nsSet).sort();
   }, [graph]);
 
+  // View modes where namespace filtering makes sense.
+  // Cluster and RBAC show cluster-scoped resources (no namespace) so filtering would exclude everything.
+  const NS_FILTERABLE_VIEWS = new Set<ViewMode>(["namespace", "workload", "resource"]);
+
   // Transform to v2 format and apply both filters
   const topology = useMemo<TopologyResponse | null>(() => {
     if (!graph) return null;
@@ -136,11 +140,12 @@ export function useTopologyData({
     // Layer 1: View mode filtering
     const afterViewMode = filterByViewMode(response.nodes, response.edges, viewMode);
 
-    // Layer 2: Namespace filtering
+    // Layer 2: Namespace filtering — only for namespace-aware views
+    const effectiveNs = NS_FILTERABLE_VIEWS.has(viewMode) ? selectedNamespaces : new Set<string>();
     const afterNamespace = filterByNamespaces(
       afterViewMode.nodes,
       afterViewMode.edges,
-      selectedNamespaces
+      effectiveNs
     );
 
     response.nodes = afterNamespace.nodes;
