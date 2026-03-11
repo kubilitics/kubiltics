@@ -91,8 +91,10 @@ function filterByNamespaces(
   if (selectedNamespaces.size === 0) return { nodes, edges };
 
   const filteredNodes = nodes.filter((n) => {
-    // Cluster-scoped resources (no namespace) always included
-    if (!n.namespace) return true;
+    // Only include resources that belong to one of the selected namespaces.
+    // Cluster-scoped resources (no namespace) are EXCLUDED — when the user
+    // picks a specific namespace they want to see only that namespace's resources.
+    if (!n.namespace) return false;
     return selectedNamespaces.has(n.namespace);
   });
 
