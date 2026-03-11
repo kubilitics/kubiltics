@@ -29,18 +29,15 @@ export interface TopologyCanvasProps {
 }
 
 /**
- * Semantic zoom: node display type based on zoom level.
- * Thresholds tuned so that after fitView, nodes show as readable cards
- * rather than tiny dots.
- *
- * <0.12 = minimal (dots only — extreme zoom-out for 700+ nodes)
- * 0.12-0.35 = compact (small cards with name + kind)
- * 0.35-1.5 = base (standard cards with status + metrics)
- * >1.5 = expanded (full detail cards)
+ * Semantic zoom thresholds — tuned so fitView always shows readable nodes.
+ * <0.08 = minimal (dots — only for 700+ all-cluster overview)
+ * 0.08-0.30 = compact (small cards: name + kind)
+ * 0.30-1.5 = base (standard cards: status, metrics)
+ * >1.5 = expanded (full detail)
  */
 function getNodeTypeForZoom(zoom: number): string {
-  if (zoom < 0.12) return "minimal";
-  if (zoom < 0.35) return "compact";
+  if (zoom < 0.08) return "minimal";
+  if (zoom < 0.30) return "compact";
   if (zoom > 1.5) return "expanded";
   return "base";
 }
@@ -69,43 +66,36 @@ function TopologyCanvasInner({
     setEdges(elkEdges);
   }, [elkNodes, elkEdges, setNodes, setEdges]);
 
-  // Auto-fit after layout completes with smart zoom limits
+  // Auto-fit after layout — with smart zoom floor so nodes are readable
   useEffect(() => {
     if (!isLayouting && elkNodes.length > 0) {
       const t = setTimeout(() => {
-        // Limit how far fitView zooms out so nodes remain readable
-        // For small graphs, don't zoom out past 0.5 (shows base nodes)
-        // For medium graphs, don't zoom out past 0.2 (shows compact nodes)
-        // For large graphs, allow 0.05 (minimal dots are expected)
-        let maxZoom = 1.2;
-        let minZoom = 0.4;
-        if (nodeCount > 300) {
-          minZoom = 0.05;
-        } else if (nodeCount > 100) {
-          minZoom = 0.15;
-        } else if (nodeCount > 40) {
-          minZoom = 0.25;
-        }
+        // Minimum zoom ensures nodes are readable cards, not dots
+        let minZoom = 0.35;
+        if (nodeCount > 300) minZoom = 0.12;
+        else if (nodeCount > 150) minZoom = 0.2;
+        else if (nodeCount > 50) minZoom = 0.25;
+
         reactFlow.fitView({
-          padding: 0.08,
-          duration: 300,
-          maxZoom,
+          padding: 0.06,
+          duration: 350,
+          maxZoom: 1.0,
           minZoom,
         });
-      }, 80);
+      }, 100);
       return () => clearTimeout(t);
     }
   }, [isLayouting, elkNodes.length, reactFlow, nodeCount]);
 
-  // Expose fitView to parent
+  // Expose fitView to parent toolbar "Fit" button
   useEffect(() => {
     if (fitViewRef) {
       fitViewRef.current = () =>
-        reactFlow.fitView({ padding: 0.08, duration: 400 });
+        reactFlow.fitView({ padding: 0.06, duration: 400 });
     }
   }, [reactFlow, fitViewRef]);
 
-  // Apply highlight/selection styling
+  // Selection/highlight styling
   const styledNodes = useMemo(() => {
     if (!selectedNodeId && highlightNodeIds.length === 0) return nodes;
     return nodes.map((n) => {
@@ -117,62 +107,46 @@ function TopologyCanvasInner({
         className: [
           isSelected ? "ring-2 ring-blue-500 ring-offset-2 rounded-lg" : "",
           isHighlighted ? "ring-2 ring-amber-400 ring-offset-1 rounded-lg" : "",
-        ]
-          .filter(Boolean)
-          .join(" "),
+        ].filter(Boolean).join(" "),
       };
     });
   }, [nodes, selectedNodeId, highlightNodeIds]);
 
-  // Edge visibility: hide labels at low zoom, hide all edges for very large graphs at extreme zoom-out
+  // Edge styling — ALWAYS show edges, just hide labels at low zoom
   const styledEdges = useMemo(() => {
-    // Only hide edges for genuinely large graphs (500+) at extreme zoom-out
-    if (nodeCount > 500 && currentZoom < 0.1) {
-      return [];
-    }
-    // Hide edge labels below zoom 0.3 for performance
-    if (currentZoom < 0.3) {
+    if (currentZoom < 0.25) {
       return edges.map((e) => ({
         ...e,
         data: { ...e.data, hideLabel: true },
         style: {
           ...(e.style ?? {}),
           strokeWidth: currentZoom < 0.1 ? 0.5 : 1,
-          opacity: currentZoom < 0.1 ? 0.3 : 0.6,
+          opacity: currentZoom < 0.1 ? 0.35 : 0.55,
         },
       }));
     }
     return edges;
-  }, [edges, currentZoom, nodeCount]);
+  }, [edges, currentZoom]);
 
   const onNodeClick = useCallback(
     (_: React.MouseEvent, node: { id: string }) => onSelectNode(node.id),
     [onSelectNode]
   );
   const onPaneClick = useCallback(() => onSelectNode(null), [onSelectNode]);
-
   const onMoveEnd = useCallback(
-    (_: MouseEvent | TouchEvent | null, viewport: Viewport) => {
-      setCurrentZoom(viewport.zoom);
-    },
+    (_: MouseEvent | TouchEvent | null, viewport: Viewport) => setCurrentZoom(viewport.zoom),
     []
   );
 
-  // Category-based minimap colors
   const miniMapNodeColor = useCallback((n: Node) => {
     const category = (n.data as any)?.category;
     const status = (n.data as any)?.status;
     if (status === "error") return "#ef4444";
     if (status === "warning") return "#f59e0b";
     const catColors: Record<string, string> = {
-      compute: "#3b82f6",
-      networking: "#8b5cf6",
-      config: "#f59e0b",
-      storage: "#06b6d4",
-      security: "#ec4899",
-      scheduling: "#6b7280",
-      scaling: "#22c55e",
-      custom: "#94a3b8",
+      compute: "#3b82f6", networking: "#8b5cf6", config: "#f59e0b",
+      storage: "#06b6d4", security: "#ec4899", scheduling: "#6b7280",
+      scaling: "#22c55e", custom: "#94a3b8",
     };
     return catColors[category] ?? "#10b981";
   }, []);
@@ -184,7 +158,7 @@ function TopologyCanvasInner({
       nodeTypes={nodeTypes}
       edgeTypes={edgeTypes}
       fitView
-      fitViewOptions={{ padding: 0.08 }}
+      fitViewOptions={{ padding: 0.06 }}
       onlyRenderVisibleElements
       onNodesChange={onNodesChange}
       onEdgesChange={onEdgesChange}
@@ -192,22 +166,19 @@ function TopologyCanvasInner({
       onPaneClick={onPaneClick}
       onMoveEnd={onMoveEnd}
       maxZoom={4}
-      minZoom={0.02}
+      minZoom={0.01}
       proOptions={{ hideAttribution: true }}
       className="!bg-[#f8f9fb]"
     >
-      <Background
-        variant={BackgroundVariant.Dots}
-        gap={24}
-        size={1}
-        color="#d4d4d8"
-      />
+      <Background variant={BackgroundVariant.Dots} gap={24} size={1} color="#d4d4d8" />
       <MiniMap
         nodeColor={miniMapNodeColor}
         nodeStrokeWidth={0}
         maskColor="rgba(0, 0, 0, 0.06)"
         className="!bg-white !border !border-gray-200 !rounded-lg !shadow-md"
         style={{ width: 180, height: 120 }}
+        pannable
+        zoomable
       />
       <Controls
         showZoom
@@ -215,12 +186,6 @@ function TopologyCanvasInner({
         showInteractive={false}
         className="!bg-white !border !border-gray-200 !rounded-lg !shadow-md"
       />
-      {/* Zoom hint for large graphs at extreme zoom-out */}
-      {nodeCount > 500 && currentZoom < 0.1 && (
-        <div className="absolute top-3 left-1/2 -translate-x-1/2 z-10 rounded-full bg-gray-900/70 px-4 py-1.5 text-xs text-white backdrop-blur-sm">
-          Zoom in to see connections
-        </div>
-      )}
     </ReactFlow>
   );
 }
