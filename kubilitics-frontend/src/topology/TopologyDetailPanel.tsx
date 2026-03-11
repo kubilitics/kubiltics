@@ -1,5 +1,5 @@
 import { useMemo, useCallback } from "react";
-import type { TopologyResponse, TopologyNode, TopologyEdge } from "./types/topology";
+import type { TopologyResponse, TopologyNode, TopologyEdge, NodeMetrics } from "./types/topology";
 import { categoryIcon, formatBytes, formatCPU } from "./nodes/nodeUtils";
 import { getStatusBadge, getCategoryColor, A11Y } from "./constants/designTokens";
 
@@ -108,13 +108,19 @@ export function TopologyDetailPanel({
         <ResourceSpecificSection node={node} />
 
         {/* Metrics */}
-        {node.metrics && (
+        {node.metrics && hasMetricsData(node.metrics) && (
           <Section title="Metrics">
+            {node.metrics.cpuUsage != null && (
+              <InfoRow label="CPU Usage" value={formatCPU(node.metrics.cpuUsage)} />
+            )}
             {node.metrics.cpuRequest != null && (
               <InfoRow label="CPU Request" value={formatCPU(node.metrics.cpuRequest)} />
             )}
             {node.metrics.cpuLimit != null && node.metrics.cpuLimit > 0 && (
               <InfoRow label="CPU Limit" value={formatCPU(node.metrics.cpuLimit)} />
+            )}
+            {node.metrics.memoryUsage != null && node.metrics.memoryUsage > 0 && (
+              <InfoRow label="Memory Usage" value={formatBytes(node.metrics.memoryUsage)} />
             )}
             {node.metrics.memoryRequest != null && node.metrics.memoryRequest > 0 && (
               <InfoRow label="Memory Request" value={formatBytes(node.metrics.memoryRequest)} />
@@ -302,6 +308,20 @@ function ResourceSpecificSection({ node }: { node: TopologyNode }) {
     default:
       return null;
   }
+}
+
+/** Returns true if metrics object has any displayable data */
+function hasMetricsData(m: NodeMetrics): boolean {
+  return (
+    m.cpuUsage != null ||
+    m.cpuRequest != null ||
+    m.cpuLimit != null ||
+    (m.memoryUsage != null && m.memoryUsage > 0) ||
+    (m.memoryRequest != null && m.memoryRequest > 0) ||
+    (m.memoryLimit != null && m.memoryLimit > 0) ||
+    m.podCount != null ||
+    (m.restartCount != null && m.restartCount > 0)
+  );
 }
 
 function formatDate(iso: string): string {

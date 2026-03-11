@@ -17,8 +17,10 @@ export type BaseNodeData = {
   status: "healthy" | "warning" | "error" | "unknown";
   statusReason?: string;
   metrics?: {
+    cpuUsage?: number;
     cpuRequest?: number;
     cpuLimit?: number;
+    memoryUsage?: number;
     memoryRequest?: number;
     memoryLimit?: number;
     restartCount?: number;
@@ -72,12 +74,24 @@ function BaseNodeInner({ data }: NodeProps<BaseNodeData>) {
         </div>
 
         {/* Compact metrics row */}
-        {data.metrics?.podCount != null && (
-          <div className="flex items-center gap-3 pt-1 border-t border-gray-100 mt-1.5" aria-label="Pod metrics">
-            <div className="text-[11px] text-gray-500">
-              <span className="font-semibold text-gray-700">{data.metrics.readyCount ?? 0}/{data.metrics.podCount}</span> pods
-            </div>
-            {data.metrics.restartCount != null && data.metrics.restartCount > 0 && (
+        {(data.metrics?.podCount != null || data.metrics?.cpuUsage != null || data.metrics?.cpuRequest != null) && (
+          <div className="flex items-center gap-3 pt-1 border-t border-gray-100 mt-1.5 flex-wrap" aria-label="Resource metrics">
+            {data.metrics?.podCount != null && (
+              <div className="text-[11px] text-gray-500">
+                <span className="font-semibold text-gray-700">{data.metrics.readyCount ?? 0}/{data.metrics.podCount}</span> pods
+              </div>
+            )}
+            {(data.metrics?.cpuUsage != null || data.metrics?.cpuRequest != null) && (
+              <div className="text-[11px] text-gray-500">
+                <span className="font-semibold text-gray-700">{formatCPU(data.metrics.cpuUsage ?? data.metrics.cpuRequest ?? 0)}</span> CPU
+              </div>
+            )}
+            {(data.metrics?.memoryUsage != null || data.metrics?.memoryRequest != null) && (data.metrics.memoryUsage ?? data.metrics.memoryRequest ?? 0) > 0 && (
+              <div className="text-[11px] text-gray-500">
+                <span className="font-semibold text-gray-700">{formatBytes(data.metrics.memoryUsage ?? data.metrics.memoryRequest ?? 0)}</span> Mem
+              </div>
+            )}
+            {data.metrics?.restartCount != null && data.metrics.restartCount > 0 && (
               <div className="text-[11px] text-amber-600 font-medium" role="status">
                 {data.metrics.restartCount} restarts
               </div>
