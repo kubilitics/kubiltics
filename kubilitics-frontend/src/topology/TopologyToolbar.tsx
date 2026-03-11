@@ -352,8 +352,8 @@ export function TopologyToolbar({
                         <FileImage className="h-3.5 w-3.5 text-emerald-600" />
                       </div>
                       <div>
-                        <div className="text-xs font-semibold">PNG (High-Res)</div>
-                        <div className="text-[10px] text-gray-400">Full topology at 4x</div>
+                        <div className="text-xs font-semibold">PNG</div>
+                        <div className="text-[10px] text-gray-400">Full topology image</div>
                       </div>
                     </DropdownMenuItem>
                     <DropdownMenuItem className="rounded-lg gap-2.5 py-2" onClick={() => triggerExport("svg")}>

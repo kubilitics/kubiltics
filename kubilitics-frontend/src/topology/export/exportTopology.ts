@@ -79,12 +79,13 @@ export async function captureFullTopologyPNG(
     const h = container.offsetHeight;
 
     // Capture exactly what's visible: the entire .react-flow container
-    // pixelRatio 3 gives high-quality output (3x resolution)
+    // pixelRatio 4 gives crisp, high-quality output (4x resolution)
     const dataUrl = await toPng(container, {
       backgroundColor: "#f8f9fb",
-      pixelRatio: Math.min(3, 16000 / Math.max(w, h)),
+      pixelRatio: Math.min(4, 16000 / Math.max(w, h)),
       width: w,
       height: h,
+      quality: 1.0,
       filter: exportFilter,
     });
 
