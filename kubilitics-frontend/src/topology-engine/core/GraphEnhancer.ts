@@ -201,19 +201,153 @@ export class GraphEnhancer {
     }
 
     /**
-     * Pass 6: Configuration (Pod -> CM/Secret)
+     * Pass 6: Configuration & RBAC relationships
+     * - Workload → references → ConfigMap/Secret (smart name matching)
+     * - RoleBinding → permits → ServiceAccount
+     * - RoleBinding → references → Role/ClusterRole
      */
     private addConfigurationRelationships() {
+        const workloads = this.graph.nodes.filter(n =>
+            ['Deployment', 'StatefulSet', 'DaemonSet', 'CronJob', 'Job'].includes(n.kind)
+        );
         const pods = this.graph.nodes.filter(n => n.kind === 'Pod');
         const cms = this.graph.nodes.filter(n => n.kind === 'ConfigMap');
         const secrets = this.graph.nodes.filter(n => n.kind === 'Secret');
+        const serviceAccounts = this.graph.nodes.filter(n => n.kind === 'ServiceAccount');
+        const roleBindings = this.graph.nodes.filter(n =>
+            ['RoleBinding', 'ClusterRoleBinding'].includes(n.kind)
+        );
+        const roles = this.graph.nodes.filter(n =>
+            ['Role', 'ClusterRole'].includes(n.kind)
+        );
 
-        pods.forEach(pod => {
-            [...cms, ...secrets].forEach(cfg => {
-                if (pod.namespace === cfg.namespace && (pod.name.includes(cfg.name) || cfg.name.includes(pod.name))) {
-                    // this.addEdge(pod.id, cfg.id, 'references', 'references', 'configInference');
+        // System ConfigMaps/Secrets that are auto-injected — skip these to reduce noise
+        const isSystemConfig = (name: string): boolean => {
+            return name === 'kube-root-ca.crt' ||
+                   name.startsWith('default-token-') ||
+                   name.startsWith('sh.helm.release.');
+        };
+
+        // ── ConfigMap/Secret → Workload connections ──────────────────
+        // Strategy: match ConfigMaps/Secrets to workloads in the same namespace
+        // by checking if the workload's base name is a prefix of the config name
+        const configResources = [...cms, ...secrets].filter(c => !isSystemConfig(c.name));
+
+        for (const cfg of configResources) {
+            let matched = false;
+
+            // First try: match against workloads (Deployment, StatefulSet, etc.)
+            for (const wl of workloads) {
+                if (wl.namespace !== cfg.namespace) continue;
+                if (this.namesAreRelated(wl.name, cfg.name)) {
+                    this.addEdge(wl.id, cfg.id, 'references', 'references', 'configInference');
+                    matched = true;
+                    break; // one workload match per config is enough
                 }
-            });
-        });
+            }
+
+            // Fallback: if no workload matched, try matching against pods directly
+            if (!matched) {
+                for (const pod of pods) {
+                    if (pod.namespace !== cfg.namespace) continue;
+                    // Extract pod's workload prefix (strip RS hash + pod hash)
+                    const podBase = this.extractWorkloadPrefix(pod.name);
+                    if (podBase && this.namesAreRelated(podBase, cfg.name)) {
+                        this.addEdge(pod.id, cfg.id, 'references', 'references', 'configInference');
+                        break;
+                    }
+                }
+            }
+        }
+
+        // ── ServiceAccount → Pod connections ─────────────────────────
+        // ServiceAccounts named after workloads connect to those workloads
+        for (const sa of serviceAccounts) {
+            if (sa.name === 'default') {
+                // 'default' SA → connect to pods that don't have a specific SA
+                // Only connect if there's no other SA in the namespace
+                const nsServiceAccounts = serviceAccounts.filter(s => s.namespace === sa.namespace);
+                if (nsServiceAccounts.length === 1) {
+                    // Only 'default' SA exists — connect it to all workloads in this namespace
+                    for (const wl of workloads) {
+                        if (wl.namespace === sa.namespace) {
+                            this.addEdge(wl.id, sa.id, 'runs', 'runs as', 'saInference');
+                        }
+                    }
+                }
+                continue;
+            }
+
+            // Named SAs: match to workloads by name
+            for (const wl of workloads) {
+                if (wl.namespace !== sa.namespace) continue;
+                if (this.namesAreRelated(wl.name, sa.name)) {
+                    this.addEdge(wl.id, sa.id, 'runs', 'runs as', 'saInference');
+                }
+            }
+        }
+
+        // ── RoleBinding → Role + ServiceAccount ──────────────────────
+        for (const rb of roleBindings) {
+            // Connect RoleBinding to Roles with related names
+            for (const role of roles) {
+                if (rb.namespace && role.namespace && rb.namespace !== role.namespace) continue;
+                if (this.namesAreRelated(rb.name, role.name)) {
+                    this.addEdge(rb.id, role.id, 'references', 'binds', 'rbacInference');
+                }
+            }
+
+            // Connect RoleBinding to ServiceAccounts with related names
+            for (const sa of serviceAccounts) {
+                if (rb.namespace && sa.namespace && rb.namespace !== sa.namespace) continue;
+                if (this.namesAreRelated(rb.name, sa.name)) {
+                    this.addEdge(rb.id, sa.id, 'permits', 'grants', 'rbacInference');
+                }
+            }
+        }
+    }
+
+    /**
+     * Check if two Kubernetes resource names are related.
+     * Uses multiple strategies to catch common naming patterns:
+     * - "jenkins" ConfigMap ↔ "jenkins" StatefulSet (exact)
+     * - "jenkins-jenkins-jcasc-config" ↔ "jenkins" (prefix/contains)
+     * - "nginx-rs-1907" ReplicaSet ↔ "nginx" config
+     */
+    private namesAreRelated(nameA: string, nameB: string): boolean {
+        if (nameA === nameB) return true;
+
+        // One name is a prefix of the other (with separator)
+        if (nameB.startsWith(nameA + '-') || nameA.startsWith(nameB + '-')) return true;
+
+        // Extract base segments and check overlap
+        const baseA = nameA.split('-')[0];
+        const baseB = nameB.split('-')[0];
+        if (baseA.length >= 3 && baseB.length >= 3 && baseA === baseB) return true;
+
+        return false;
+    }
+
+    /**
+     * Extract a workload name prefix from a Pod name.
+     * Pod names follow patterns like:
+     * - "nginx-deployment-7fb96c846b-x4k2j" → "nginx-deployment"
+     * - "batch-processor-fhdp" → "batch-processor"
+     */
+    private extractWorkloadPrefix(podName: string): string | null {
+        const parts = podName.split('-');
+        if (parts.length < 3) return parts[0] || null;
+
+        // Strip last 1-2 segments (pod hash, possibly RS hash)
+        // RS hash is 8-10 chars hex, pod hash is 5 chars
+        const last = parts[parts.length - 1];
+        const secondLast = parts[parts.length - 2];
+
+        if (last.length <= 5 && secondLast && /^[a-f0-9]{8,10}$/.test(secondLast)) {
+            // Pattern: workload-rshash-podhash
+            return parts.slice(0, -2).join('-');
+        }
+        // Pattern: workload-podhash
+        return parts.slice(0, -1).join('-');
     }
 }
