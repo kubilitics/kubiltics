@@ -126,10 +126,11 @@ function TopologyCanvasInner({
     // Save current viewport to restore after export
     const savedViewport = reactFlow.getViewport();
 
-    // FitView so all nodes are visible and positioned
-    reactFlow.fitView({ padding: 0.05, duration: 0 });
+    // FitView so ALL nodes are visible within the container — no minimum zoom constraint
+    reactFlow.fitView({ padding: 0.04, duration: 0, minZoom: 0.01 });
 
     // Wait for React to render all nodes (since onlyRenderVisibleElements is now off)
+    // 500ms ensures even large topologies have time to paint
     const timer = setTimeout(async () => {
       try {
         if (pending.format === "png") {
@@ -145,7 +146,7 @@ function TopologyCanvasInner({
         exportPendingRef.current = null;
         setIsExporting(false);
       }
-    }, 300); // 300ms to let all nodes render
+    }, 500);
 
     return () => clearTimeout(timer);
   }, [isExporting, reactFlow]);
