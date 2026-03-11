@@ -1,6 +1,12 @@
 /**
  * Shared utility functions for topology nodes.
+ * Color functions delegate to designTokens for single-source-of-truth consistency.
  */
+import {
+  statusDotClass,
+  categoryBorderClass,
+  categoryHeaderClass,
+} from "../constants/designTokens";
 
 /** Returns an emoji icon for a resource category. */
 export function categoryIcon(category: string): string {
@@ -22,67 +28,19 @@ export function categoryIcon(category: string): string {
   return icons[category] || "\uD83D\uDD37";
 }
 
-/** Returns a Tailwind color class for a status indicator. */
+/** Returns a Tailwind bg class for a status dot. Delegates to designTokens. */
 export function statusColor(status: string): string {
-  switch (status) {
-    case "healthy":
-    case "Running":
-    case "Ready":
-    case "Bound":
-    case "Available":
-      return "bg-emerald-500";
-    case "warning":
-    case "Pending":
-    case "PartiallyAvailable":
-      return "bg-amber-500";
-    case "error":
-    case "Failed":
-    case "NotReady":
-    case "Lost":
-      return "bg-red-500";
-    default:
-      return "bg-gray-400";
-  }
+  return statusDotClass(status);
 }
 
-/** Returns a Tailwind border color class for category. */
+/** Returns a Tailwind border class for category. Delegates to designTokens. */
 export function categoryBorderColor(category: string): string {
-  const colors: Record<string, string> = {
-    compute: "border-blue-300",
-    workload: "border-blue-300",
-    networking: "border-purple-300",
-    config: "border-teal-300",
-    configuration: "border-teal-300",
-    storage: "border-orange-300",
-    security: "border-rose-300",
-    rbac: "border-rose-300",
-    scheduling: "border-gray-300",
-    cluster: "border-gray-300",
-    scaling: "border-green-300",
-    policy: "border-orange-300",
-    custom: "border-indigo-300",
-  };
-  return colors[category] || "border-gray-200";
+  return categoryBorderClass(category);
 }
 
-/** Returns a Tailwind background accent for category header. */
+/** Returns a Tailwind bg class for category header. Delegates to designTokens. */
 export function categoryHeaderBg(category: string): string {
-  const colors: Record<string, string> = {
-    compute: "bg-blue-500",
-    workload: "bg-blue-500",
-    networking: "bg-purple-500",
-    config: "bg-teal-500",
-    configuration: "bg-teal-500",
-    storage: "bg-orange-500",
-    security: "bg-rose-500",
-    rbac: "bg-rose-500",
-    scheduling: "bg-gray-500",
-    cluster: "bg-gray-500",
-    scaling: "bg-green-500",
-    policy: "bg-orange-500",
-    custom: "bg-indigo-500",
-  };
-  return colors[category] || "bg-gray-500";
+  return categoryHeaderClass(category);
 }
 
 /** Format bytes to human readable. */

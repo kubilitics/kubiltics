@@ -5,6 +5,7 @@ import {
   getBezierPath,
   type EdgeProps,
 } from "@xyflow/react";
+import { getCategoryColor } from "../constants/designTokens";
 
 export interface AnimatedEdgeData {
   label?: string;
@@ -37,6 +38,7 @@ function AnimatedEdgeComponent({
   });
 
   const d = data as AnimatedEdgeData | undefined;
+  const accent = getCategoryColor(d?.category ?? "networking").accent;
 
   return (
     <>
@@ -44,7 +46,7 @@ function AnimatedEdgeComponent({
         id={id}
         path={edgePath}
         style={{
-          stroke: selected ? "#2563EB" : "#7C3AED",
+          stroke: selected ? getCategoryColor("compute").accent : accent,
           strokeWidth: selected ? 3 : 2,
           strokeDasharray: "8 4",
           animation: "dash-flow 1s linear infinite",
@@ -59,6 +61,8 @@ function AnimatedEdgeComponent({
               pointerEvents: "all",
             }}
             className="rounded border bg-background px-1.5 py-0.5 text-[10px] shadow-sm"
+            role="note"
+            aria-label={`Traffic: ${d.label}`}
           >
             {d.label}
           </div>

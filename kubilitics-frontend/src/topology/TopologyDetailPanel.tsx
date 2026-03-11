@@ -1,6 +1,7 @@
 import { useMemo, useCallback } from "react";
 import type { TopologyResponse, TopologyNode, TopologyEdge } from "./types/topology";
-import { categoryIcon, statusColor, formatBytes, formatCPU } from "./nodes/nodeUtils";
+import { categoryIcon, formatBytes, formatCPU } from "./nodes/nodeUtils";
+import { getStatusBadge, getCategoryColor, A11Y } from "./constants/designTokens";
 
 export interface TopologyDetailPanelProps {
   selectedNodeId: string | null;
@@ -40,10 +41,13 @@ export function TopologyDetailPanel({
 
   if (!node) {
     return (
-      <aside className="hidden w-80 shrink-0 border-l border-gray-200 bg-gray-50/50 p-6 text-xs text-muted-foreground md:block">
+      <aside
+        className="hidden w-80 shrink-0 border-l border-gray-200 bg-gray-50/50 p-6 text-xs text-muted-foreground md:block"
+        aria-label="Resource detail panel"
+      >
         <div className="flex h-full flex-col items-center justify-center text-center">
           <div className="w-14 h-14 rounded-2xl bg-gray-100 flex items-center justify-center mb-4">
-            <svg className="w-7 h-7 text-gray-300" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+            <svg className="w-7 h-7 text-gray-300" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" d="M15.042 21.672 13.684 16.6m0 0-2.51 2.225.569-9.47 5.227 7.917-3.286-.672ZM12 2.25V4.5m5.834.166-1.591 1.591M20.25 10.5H18M7.757 14.743l-1.59 1.59M6 10.5H3.75m4.007-4.243-1.59-1.59" />
             </svg>
           </div>
@@ -55,20 +59,32 @@ export function TopologyDetailPanel({
   }
 
   const icon = categoryIcon(node.category);
-  const sColor = statusColor(node.status);
+  const badge = getStatusBadge(node.status);
+  const accent = getCategoryColor(node.category).accent;
 
   return (
-    <aside className="hidden w-80 shrink-0 overflow-y-auto border-l border-gray-200 bg-white md:block">
+    <aside
+      className="hidden w-80 shrink-0 overflow-y-auto border-l border-gray-200 bg-white md:block"
+      aria-label={`Details for ${node.kind} ${node.name}`}
+      role="complementary"
+    >
       {/* Header */}
-      <div className="sticky top-0 border-b bg-background p-3">
+      <div className="sticky top-0 border-b bg-background p-3 z-10">
         <div className="flex items-center gap-2">
-          <span className="text-lg">{icon}</span>
+          <span className="text-lg" aria-hidden="true">{icon}</span>
           <div className="min-w-0 flex-1">
             <div className="truncate text-sm font-semibold">{node.name}</div>
             <div className="text-[11px] text-muted-foreground">{node.kind}</div>
           </div>
-          <div className={`h-3 w-3 rounded-full ${sColor}`} title={node.status} />
+          <div
+            className={`h-3 w-3 rounded-full ${badge.dotClass}`}
+            title={node.statusReason ?? node.status}
+            aria-label={`Status: ${node.statusReason ?? node.status}`}
+            role="img"
+          />
         </div>
+        {/* Category accent bar */}
+        <div className="h-0.5 mt-2 rounded-full" style={{ backgroundColor: accent }} aria-hidden="true" />
       </div>
 
       <div className="space-y-3 p-3 text-xs">
@@ -78,7 +94,13 @@ export function TopologyDetailPanel({
           <InfoRow label="Name" value={node.name} />
           {node.namespace && <InfoRow label="Namespace" value={node.namespace} />}
           <InfoRow label="API Version" value={node.apiVersion} />
-          <InfoRow label="Status" value={node.statusReason ?? node.status} />
+          <div className="flex justify-between py-0.5">
+            <span className="text-muted-foreground">Status</span>
+            <span className={`inline-flex items-center gap-1 ${badge.textColor} font-medium`}>
+              <span className={`h-1.5 w-1.5 rounded-full ${badge.dotClass}`} aria-hidden="true" />
+              {node.statusReason ?? badge.text}
+            </span>
+          </div>
           {node.createdAt && <InfoRow label="Created" value={formatDate(node.createdAt)} />}
         </Section>
 
@@ -112,9 +134,9 @@ export function TopologyDetailPanel({
         {/* Connections */}
         <Section title={`Connections (${connections.length})`}>
           {connections.length === 0 ? (
-            <p className="text-muted-foreground">No connections</p>
+            <p className="text-muted-foreground italic">No connections</p>
           ) : (
-            <div className="space-y-1.5">
+            <div className="space-y-1.5" role="list" aria-label="Connected resources">
               {connections.map((edge) => {
                 const peerId = edge.source === selectedNodeId ? edge.target : edge.source;
                 const peer = connectedNodes.get(peerId);
@@ -136,9 +158,9 @@ export function TopologyDetailPanel({
         {/* Labels */}
         {node.labels && Object.keys(node.labels).length > 0 && (
           <Section title="Labels">
-            <div className="space-y-0.5">
+            <div className="space-y-0.5" role="list" aria-label="Resource labels">
               {Object.entries(node.labels).slice(0, 10).map(([k, v]) => (
-                <div key={k} className="flex gap-1">
+                <div key={k} className="flex gap-1" role="listitem">
                   <span className="font-mono text-[10px] text-muted-foreground">{k}:</span>
                   <span className="font-mono text-[10px] break-all">{v}</span>
                 </div>
@@ -155,10 +177,10 @@ export function TopologyDetailPanel({
         {/* Go to Resource Button */}
         <button
           type="button"
-          className="w-full rounded-md bg-primary px-3 py-2 text-center text-xs font-medium text-primary-foreground hover:bg-primary/90"
+          className={`w-full rounded-lg bg-primary px-3 py-2.5 text-center text-xs font-semibold text-primary-foreground hover:bg-primary/90 ${A11Y.focusRing} ${A11Y.transition}`}
           onClick={() => handleNavigate(node.id)}
         >
-          Go to Resource
+          View Resource Details
         </button>
       </div>
     </aside>
@@ -167,7 +189,7 @@ export function TopologyDetailPanel({
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div>
+    <div role="group" aria-label={title}>
       <h3 className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{title}</h3>
       {children}
     </div>
@@ -178,7 +200,7 @@ function InfoRow({ label, value, highlight }: { label: string; value: string; hi
   return (
     <div className="flex justify-between py-0.5">
       <span className="text-muted-foreground">{label}</span>
-      <span className={`text-right ${highlight ? "font-semibold text-amber-600" : ""}`}>{value}</span>
+      <span className={`text-right max-w-[55%] truncate ${highlight ? "font-semibold text-amber-600" : ""}`} title={value}>{value}</span>
     </div>
   );
 }
@@ -203,17 +225,23 @@ function ConnectionRow({
   return (
     <button
       type="button"
-      className="flex w-full items-center gap-1.5 rounded px-1.5 py-1 text-left hover:bg-muted/50"
+      className={`flex w-full items-center gap-1.5 rounded-lg px-1.5 py-1.5 text-left hover:bg-muted/50 ${A11Y.focusRing} ${A11Y.transition}`}
       onClick={() => onNavigate(peerId)}
+      role="listitem"
+      aria-label={`${direction === "outgoing" ? "connects to" : "connected from"} ${peerKind} ${peerName} via ${edge.label}`}
     >
-      <span className="text-[10px]">{icon}</span>
-      <span className="text-[10px] text-muted-foreground">{arrow}</span>
+      <span className="text-[10px]" aria-hidden="true">{icon}</span>
+      <span className="text-[10px] text-muted-foreground" aria-hidden="true">{arrow}</span>
       <div className="min-w-0 flex-1">
         <div className="truncate text-[11px] font-medium">{peerName}</div>
         <div className="flex items-center gap-1 text-[9px] text-muted-foreground">
           <span>{peerKind}</span>
-          <span>|</span>
-          <span>{edge.label}</span>
+          {edge.label && (
+            <>
+              <span aria-hidden="true">|</span>
+              <span>{edge.label}</span>
+            </>
+          )}
         </div>
       </div>
     </button>
@@ -221,7 +249,6 @@ function ConnectionRow({
 }
 
 function ResourceSpecificSection({ node }: { node: TopologyNode }) {
-  // Show resource-specific key fields based on kind
   switch (node.kind) {
     case "Pod":
       return (

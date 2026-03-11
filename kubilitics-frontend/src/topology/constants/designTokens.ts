@@ -131,6 +131,80 @@ export const EXPORT = {
   backgroundColor: CANVAS.background,
 } as const;
 
+// ─── Edge / Relationship Colors ─────────────────────────────────────────────
+// Used by: LabeledEdge, AnimatedEdge, Draw.io export
+
+export const EDGE_COLORS: Record<string, string> = {
+  ownership:      "#3b82f6",    // blue
+  networking:     "#8b5cf6",    // purple
+  configuration:  "#f59e0b",    // amber
+  storage:        "#06b6d4",    // cyan
+  rbac:           "#ec4899",    // pink
+  scheduling:     "#6b7280",    // gray
+  scaling:        "#22c55e",    // green
+  policy:         "#f97316",    // orange
+  containment:    "#94a3b8",    // slate
+} as const;
+
+export function getEdgeColor(relationshipCategory?: string): string {
+  return EDGE_COLORS[relationshipCategory ?? ""] ?? EDGE_COLORS.containment;
+}
+
+// ─── Tailwind Class Helpers ─────────────────────────────────────────────────
+// Used by: BaseNode, ExpandedNode (for Tailwind bg-* and border-* classes)
+
+/** Tailwind border class for category */
+export function categoryBorderClass(category: string): string {
+  const map: Record<string, string> = {
+    compute:    "border-blue-200",
+    workload:   "border-blue-200",
+    networking: "border-purple-200",
+    config:     "border-teal-200",
+    configuration: "border-teal-200",
+    storage:    "border-orange-200",
+    security:   "border-rose-200",
+    rbac:       "border-amber-200",
+    scheduling: "border-slate-200",
+    cluster:    "border-slate-200",
+    scaling:    "border-green-200",
+    custom:     "border-indigo-200",
+  };
+  return map[category] ?? "border-gray-200";
+}
+
+/** Tailwind bg class for category header */
+export function categoryHeaderClass(category: string): string {
+  const map: Record<string, string> = {
+    compute:    "bg-blue-600",
+    workload:   "bg-blue-600",
+    networking: "bg-purple-600",
+    config:     "bg-teal-600",
+    configuration: "bg-teal-600",
+    storage:    "bg-orange-600",
+    security:   "bg-rose-600",
+    rbac:       "bg-amber-600",
+    scheduling: "bg-slate-600",
+    cluster:    "bg-slate-600",
+    scaling:    "bg-green-600",
+    custom:     "bg-indigo-600",
+  };
+  return map[category] ?? "bg-gray-600";
+}
+
+// ─── Status Badge Config ────────────────────────────────────────────────────
+// Used by: BaseNode, ExpandedNode
+
+export function getStatusBadge(status: string): { text: string; bg: string; textColor: string; dotClass: string } {
+  const key = mapStatusKey(status);
+  const map: Record<StatusKey, { text: string; bg: string; textColor: string; dotClass: string }> = {
+    healthy: { text: "Healthy", bg: "bg-emerald-50", textColor: "text-emerald-700", dotClass: "bg-emerald-500" },
+    warning: { text: "Warning", bg: "bg-amber-50", textColor: "text-amber-700", dotClass: "bg-amber-500" },
+    error:   { text: "Error",   bg: "bg-red-50",     textColor: "text-red-700",     dotClass: "bg-red-500" },
+    unknown: { text: "Unknown", bg: "bg-gray-50",    textColor: "text-gray-500",    dotClass: "bg-gray-400" },
+  };
+  return map[key];
+}
+
 // ─── Minimap Colors ──────────────────────────────────────────────────────────
 // Used by: TopologyCanvas minimap — matches actual node header colors
 
@@ -139,3 +213,17 @@ export function minimapNodeColor(category: string, status: string): string {
   if (mapStatusKey(status) === "warning") return STATUS_COLORS.warning;
   return getCategoryColor(category).accent;
 }
+
+// ─── Accessibility Constants ────────────────────────────────────────────────
+// Used by: all interactive topology components
+
+export const A11Y = {
+  /** Focus ring class for keyboard navigation */
+  focusRing: "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2",
+  /** Focus ring for dark backgrounds */
+  focusRingLight: "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:ring-offset-2",
+  /** Minimum touch target size (px) */
+  minTouchTarget: 44,
+  /** Transition for interactive elements */
+  transition: "transition-all duration-150 ease-in-out",
+} as const;

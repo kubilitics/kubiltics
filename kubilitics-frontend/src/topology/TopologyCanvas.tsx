@@ -123,11 +123,9 @@ function TopologyCanvasInner({
     const savedViewport = reactFlow.getViewport();
 
     // FitView so ALL nodes are visible within the container
-    // Use minZoom 0.05 to keep nodes at a reasonable readable size
     reactFlow.fitView({ padding: 0.04, duration: 0, minZoom: 0.05 });
 
     // Wait for React to render all nodes (since onlyRenderVisibleElements is now off)
-    // 500ms ensures even large topologies have time to paint
     const timer = setTimeout(async () => {
       try {
         if (pending.format === "png") {
@@ -206,41 +204,65 @@ function TopologyCanvasInner({
   }, []);
 
   return (
-    <ReactFlow
-      nodes={styledNodes}
-      edges={styledEdges}
-      nodeTypes={nodeTypes}
-      edgeTypes={edgeTypes}
-      fitView
-      fitViewOptions={{ padding: 0.06 }}
-      onlyRenderVisibleElements={!isExporting}
-      onNodesChange={onNodesChange}
-      onEdgesChange={onEdgesChange}
-      onNodeClick={onNodeClick}
-      onPaneClick={onPaneClick}
-      onMoveEnd={onMoveEnd}
-      maxZoom={4}
-      minZoom={0.01}
-      proOptions={{ hideAttribution: true }}
-      className="!bg-[#f8f9fb]"
+    <div
+      role="application"
+      aria-roledescription="Kubernetes topology graph"
+      aria-label={`Topology visualization with ${nodeCount} resources. Use mouse wheel to zoom, drag to pan.`}
+      className="relative h-full w-full"
     >
-      <Background variant={BackgroundVariant.Dots} gap={CANVAS.gridGap} size={CANVAS.gridSize} color={CANVAS.gridColor} />
-      <MiniMap
-        nodeColor={miniMapNodeColor}
-        nodeStrokeWidth={0}
-        maskColor="rgba(0, 0, 0, 0.06)"
-        className="!bg-white !border !border-gray-200 !rounded-lg !shadow-md"
-        style={{ width: 180, height: 120 }}
-        pannable
-        zoomable
-      />
-      <Controls
-        showZoom
-        showFitView
-        showInteractive={false}
-        className="!bg-white !border !border-gray-200 !rounded-lg !shadow-md"
-      />
-    </ReactFlow>
+      <ReactFlow
+        nodes={styledNodes}
+        edges={styledEdges}
+        nodeTypes={nodeTypes}
+        edgeTypes={edgeTypes}
+        fitView
+        fitViewOptions={{ padding: 0.06 }}
+        onlyRenderVisibleElements={!isExporting}
+        onNodesChange={onNodesChange}
+        onEdgesChange={onEdgesChange}
+        onNodeClick={onNodeClick}
+        onPaneClick={onPaneClick}
+        onMoveEnd={onMoveEnd}
+        maxZoom={4}
+        minZoom={0.01}
+        proOptions={{ hideAttribution: true }}
+        className="!bg-[#f8f9fb]"
+      >
+        <Background variant={BackgroundVariant.Dots} gap={CANVAS.gridGap} size={CANVAS.gridSize} color={CANVAS.gridColor} />
+        <MiniMap
+          nodeColor={miniMapNodeColor}
+          nodeStrokeWidth={0}
+          maskColor="rgba(0, 0, 0, 0.06)"
+          className="!bg-white !border !border-gray-200 !rounded-lg !shadow-md"
+          style={{ width: 180, height: 120 }}
+          pannable
+          zoomable
+          aria-label="Minimap navigation"
+        />
+        <Controls
+          showZoom
+          showFitView
+          showInteractive={false}
+          className="!bg-white !border !border-gray-200 !rounded-lg !shadow-md"
+          aria-label="Zoom and fit controls"
+        />
+      </ReactFlow>
+
+      {/* Live region for export status */}
+      {isExporting && (
+        <div
+          className="absolute top-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 rounded-lg bg-white/95 px-4 py-2 shadow-lg border border-gray-200 backdrop-blur-sm"
+          role="status"
+          aria-live="polite"
+        >
+          <svg className="w-4 h-4 animate-spin text-blue-500" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+          </svg>
+          <span className="text-sm font-medium text-gray-700">Exporting topology...</span>
+        </div>
+      )}
+    </div>
   );
 }
 

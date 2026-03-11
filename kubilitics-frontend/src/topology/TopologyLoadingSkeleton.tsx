@@ -1,4 +1,5 @@
 import type { ViewMode } from "./types/topology";
+import { CANVAS } from "./constants/designTokens";
 
 export interface TopologyLoadingSkeletonProps {
   viewMode?: ViewMode;
@@ -8,7 +9,7 @@ export interface TopologyLoadingSkeletonProps {
 /**
  * TopologyLoadingSkeleton: Displays a contextual skeleton matching the expected
  * view mode layout while topology data loads. Uses pulse animation
- * (respects prefers-reduced-motion).
+ * (respects prefers-reduced-motion via Tailwind's motion-safe).
  */
 export function TopologyLoadingSkeleton({
   viewMode = "namespace",
@@ -17,12 +18,22 @@ export function TopologyLoadingSkeleton({
   const isHorizontal = viewMode === "namespace" || viewMode === "rbac";
   const nodeCount = viewMode === "cluster" ? 4 : viewMode === "resource" ? 7 : 9;
 
-  const skeletonColors = ["bg-blue-100", "bg-purple-100", "bg-teal-100", "bg-orange-100", "bg-pink-100", "bg-green-100"];
+  // Category-aligned skeleton colors from designTokens
+  const skeletonColors = [
+    "bg-blue-100/80", "bg-purple-100/80", "bg-teal-100/80",
+    "bg-orange-100/80", "bg-pink-100/80", "bg-green-100/80",
+  ];
 
   return (
-    <div className="flex flex-1 flex-col items-center justify-center p-8 bg-[#f8f9fb]">
+    <div
+      className="flex flex-1 flex-col items-center justify-center p-8"
+      style={{ backgroundColor: CANVAS.background }}
+      role="status"
+      aria-label={progress != null ? `Computing layout: ${Math.round(progress)}% complete` : "Building topology graph"}
+      aria-live="polite"
+    >
       {/* Animated constellation skeleton */}
-      <div className="relative" style={{ width: 600, height: 360 }}>
+      <div className="relative" style={{ width: 600, height: 360 }} aria-hidden="true">
         {Array.from({ length: nodeCount }).map((_, i) => {
           const angle = (i / nodeCount) * 2 * Math.PI;
           const rx = 220;
@@ -32,14 +43,13 @@ export function TopologyLoadingSkeleton({
           return (
             <div
               key={i}
-              className={`absolute animate-pulse rounded-xl ${skeletonColors[i % skeletonColors.length]} shadow-sm`}
+              className={`absolute motion-safe:animate-pulse rounded-xl ${skeletonColors[i % skeletonColors.length]} shadow-sm`}
               style={{
                 left: cx - 55,
                 top: cy - 25,
                 width: 110,
                 height: 50,
                 animationDelay: `${i * 120}ms`,
-                opacity: 0.7,
               }}
             />
           );
@@ -59,7 +69,7 @@ export function TopologyLoadingSkeleton({
                 stroke="#e5e7eb"
                 strokeWidth="1.5"
                 strokeDasharray="6 4"
-                className="animate-pulse"
+                className="motion-safe:animate-pulse"
                 style={{ animationDelay: `${i * 100 + 60}ms` }}
               />
             );
@@ -76,7 +86,7 @@ export function TopologyLoadingSkeleton({
           Arranging {isHorizontal ? "namespace" : "cluster"} resources with ELK engine
         </div>
         {progress != null && (
-          <div className="mt-3 h-1.5 w-56 overflow-hidden rounded-full bg-gray-200 mx-auto">
+          <div className="mt-3 h-1.5 w-56 overflow-hidden rounded-full bg-gray-200 mx-auto" role="progressbar" aria-valuenow={Math.round(progress)} aria-valuemin={0} aria-valuemax={100}>
             <div
               className="h-full rounded-full bg-blue-500 transition-all duration-300"
               style={{ width: `${progress}%` }}
