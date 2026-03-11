@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { A11Y } from "./constants/designTokens";
 
 export interface TopologyErrorStateProps {
@@ -106,21 +107,42 @@ export function TopologyPartialErrorBanner({
 }
 
 /**
- * WebSocket disconnection banner.
+ * WebSocket disconnection banner — subtle bottom-left toast, auto-hides after 5s.
+ * Not a blocking full-width bar. User can dismiss it.
  */
 export function TopologyWsDisconnectBanner({ reconnectIn }: { reconnectIn?: number }) {
+  const [dismissed, setDismissed] = useState(false);
+
+  // Auto-dismiss after 5 seconds
+  useEffect(() => {
+    const t = setTimeout(() => setDismissed(true), 5000);
+    return () => clearTimeout(t);
+  }, []);
+
+  if (dismissed) return null;
+
   return (
     <div
-      className="fixed bottom-0 left-0 right-0 z-50 flex items-center justify-center gap-2 border-t border-amber-200 bg-amber-50 py-2 text-xs text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200"
+      className="fixed bottom-4 left-72 z-40 flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50/95 backdrop-blur-sm px-3 py-2 text-xs text-amber-700 shadow-lg"
       role="status"
       aria-live="polite"
     >
-      <svg className="w-4 h-4 animate-spin text-amber-500" fill="none" viewBox="0 0 24 24" aria-hidden="true">
-        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-      </svg>
-      Live updates paused. Reconnecting...
+      <span className="relative flex h-2 w-2">
+        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-400 opacity-75" />
+        <span className="relative inline-flex h-2 w-2 rounded-full bg-amber-500" />
+      </span>
+      Reconnecting...
       {reconnectIn != null && ` (${Math.ceil(reconnectIn / 1000)}s)`}
+      <button
+        type="button"
+        className="ml-1 rounded p-0.5 hover:bg-amber-100 text-amber-500"
+        onClick={() => setDismissed(true)}
+        aria-label="Dismiss"
+      >
+        <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
     </div>
   );
 }

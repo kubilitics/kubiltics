@@ -1,5 +1,6 @@
 import { useMemo, useCallback, useState } from "react";
-import { Copy, Check, ChevronRight } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Copy, Check, ChevronRight, X } from "lucide-react";
 import type { TopologyResponse, TopologyNode, TopologyEdge, NodeMetrics } from "./types/topology";
 import { categoryIcon, formatBytes, formatCPU } from "./nodes/nodeUtils";
 import { getStatusBadge, getCategoryColor, getEdgeColor, A11Y } from "./constants/designTokens";
@@ -8,13 +9,42 @@ export interface TopologyDetailPanelProps {
   selectedNodeId: string | null;
   topology: TopologyResponse | null;
   onNavigateToResource?: (nodeId: string) => void;
+  onClose?: () => void;
+}
+
+/**
+ * Map a K8s kind to its URL path segment.
+ * Route pattern: /{kind-plural-lowercase}/{namespace}/{name}
+ */
+function kindToRouteSegment(kind: string): string {
+  const k = kind.toLowerCase();
+  const irregulars: Record<string, string> = {
+    ingress: "ingresses",
+    endpointslice: "endpointslices",
+    networkpolicy: "networkpolicies",
+    podsecuritypolicy: "podsecuritypolicies",
+    storageclass: "storageclasses",
+    ingressclass: "ingressclasses",
+    priorityclass: "priorityclasses",
+    runtimeclass: "runtimeclasses",
+    resourcequota: "resourcequotas",
+    limitrange: "limitranges",
+    componentstatus: "componentstatuses",
+  };
+  if (irregulars[k]) return irregulars[k];
+  // Standard pluralization
+  if (k.endsWith("s")) return k;
+  return k + "s";
 }
 
 export function TopologyDetailPanel({
   selectedNodeId,
   topology,
   onNavigateToResource,
+  onClose,
 }: TopologyDetailPanelProps) {
+  const navigate = useNavigate();
+
   const node = useMemo(
     () => selectedNodeId ? topology?.nodes?.find((n) => n.id === selectedNodeId) ?? null : null,
     [selectedNodeId, topology]
@@ -39,6 +69,15 @@ export function TopologyDetailPanel({
   const handleNavigate = useCallback((id: string) => {
     onNavigateToResource?.(id);
   }, [onNavigateToResource]);
+
+  const handleViewResourceDetails = useCallback((n: TopologyNode) => {
+    const segment = kindToRouteSegment(n.kind);
+    if (n.namespace) {
+      navigate(`/${segment}/${n.namespace}/${n.name}`);
+    } else {
+      navigate(`/${segment}/${n.name}`);
+    }
+  }, [navigate]);
 
   if (!node) {
     return (
@@ -83,6 +122,17 @@ export function TopologyDetailPanel({
             aria-label={`Status: ${node.statusReason ?? node.status}`}
             role="img"
           />
+          {/* Close button */}
+          {onClose && (
+            <button
+              type="button"
+              className={`ml-1 rounded-md p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 ${A11Y.focusRing} ${A11Y.transition}`}
+              onClick={onClose}
+              aria-label="Close detail panel"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
         </div>
         {/* Category accent bar */}
         <div className="h-0.5 mt-2 rounded-full" style={{ backgroundColor: accent }} aria-hidden="true" />
@@ -181,11 +231,11 @@ export function TopologyDetailPanel({
           </Section>
         )}
 
-        {/* Go to Resource Button */}
+        {/* Go to Resource Button — navigates to the resource detail page */}
         <button
           type="button"
           className={`w-full rounded-lg bg-primary px-3 py-2.5 text-center text-xs font-semibold text-primary-foreground hover:bg-primary/90 ${A11Y.focusRing} ${A11Y.transition}`}
-          onClick={() => handleNavigate(node.id)}
+          onClick={() => handleViewResourceDetails(node)}
         >
           View Resource Details
         </button>

@@ -284,6 +284,7 @@ export function TopologyPage() {
           selectedNodeId={selectedNodeId}
           topology={topology ?? null}
           onNavigateToResource={handleNavigateToResource}
+          onClose={() => setSelectedNodeId(null)}
         />
       </div>
 
