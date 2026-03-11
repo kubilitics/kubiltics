@@ -54,38 +54,84 @@ function exportFilter(node: HTMLElement): boolean {
   return true;
 }
 
-// ─── PNG Export — Captures FULL topology ─────────────────────────────────────
+// ─── Compute content bounds from all nodes in flow coordinates ───────────────
+
+function computeNodeBounds(viewport: HTMLElement): {
+  minX: number; minY: number; maxX: number; maxY: number;
+} | null {
+  const nodeEls = viewport.querySelectorAll(".react-flow__node");
+  if (nodeEls.length === 0) return null;
+
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+
+  nodeEls.forEach((el) => {
+    const node = el as HTMLElement;
+    const style = node.style.transform || "";
+    const match = style.match(/translate\((-?[\d.]+)px,\s*(-?[\d.]+)px\)/);
+    if (match) {
+      const x = parseFloat(match[1]);
+      const y = parseFloat(match[2]);
+      minX = Math.min(minX, x);
+      minY = Math.min(minY, y);
+      maxX = Math.max(maxX, x + node.offsetWidth);
+      maxY = Math.max(maxY, y + node.offsetHeight);
+    }
+  });
+
+  return isFinite(minX) ? { minX, minY, maxX, maxY } : null;
+}
+
+// ─── PNG Export — Full-quality capture at scale 1 ────────────────────────────
 //
-// Called from TopologyCanvas AFTER it has:
-// 1. Set onlyRenderVisibleElements=false (all nodes in DOM)
-// 2. Called fitView() with duration:0 (all nodes visible in container)
-// 3. Waited 300ms for React to render
+// Called from TopologyCanvas AFTER onlyRenderVisibleElements=false
+// so ALL nodes exist in the DOM.
 //
-// We simply capture the .react-flow container at its natural rendered size.
-// fitView already positioned everything correctly — no transform math needed.
+// KEY APPROACH: Instead of capturing at whatever zoom fitView sets (which
+// makes nodes tiny for large topologies), we capture the .react-flow__viewport
+// at SCALE 1 with a style override. This means:
+// - Every node renders at its full CSS size (not zoomed down)
+// - Capture dimensions = actual content bounds in flow coordinates
+// - Result is a crisp, full-size image regardless of node count
+//
+// The html-to-image `style` option applies the override to the cloned element
+// only — the actual DOM is never modified.
 
 export async function captureFullTopologyPNG(
   filename: string
 ): Promise<void> {
-  const container = document.querySelector(
-    ".react-flow"
+  const viewport = document.querySelector(
+    ".react-flow__viewport"
   ) as HTMLElement | null;
-  if (!container) return;
+  if (!viewport) return;
 
   try {
     const { toPng } = await import("html-to-image");
 
-    const w = container.offsetWidth;
-    const h = container.offsetHeight;
+    const bounds = computeNodeBounds(viewport);
+    if (!bounds) return;
 
-    // Capture exactly what's visible: the entire .react-flow container
-    // pixelRatio 4 gives crisp, high-quality output (4x resolution)
-    const dataUrl = await toPng(container, {
+    const { minX, minY, maxX, maxY } = bounds;
+    const padding = 80; // generous padding for edges curving outside nodes
+    const captureWidth = Math.ceil(maxX - minX + padding * 2);
+    const captureHeight = Math.ceil(maxY - minY + padding * 2);
+
+    // pixelRatio: at scale 1, nodes are already full-size.
+    // Use 2x for retina-quality. Clamp if canvas would exceed browser limits.
+    const maxDim = Math.max(captureWidth, captureHeight);
+    const pixelRatio = Math.min(2, 16000 / maxDim);
+
+    const dataUrl = await toPng(viewport, {
       backgroundColor: "#f8f9fb",
-      pixelRatio: Math.min(4, 16000 / Math.max(w, h)),
-      width: w,
-      height: h,
+      pixelRatio,
+      width: captureWidth,
+      height: captureHeight,
       quality: 1.0,
+      style: {
+        // Override viewport transform: render at scale 1, positioned so
+        // the top-left-most node sits at (padding, padding)
+        transform: `translate(${-minX + padding}px, ${-minY + padding}px) scale(1)`,
+        transformOrigin: "top left",
+      },
       filter: exportFilter,
     });
 
@@ -98,26 +144,35 @@ export async function captureFullTopologyPNG(
   }
 }
 
-// ─── SVG Export — same simple approach ───────────────────────────────────────
+// ─── SVG Export — same scale-1 approach ──────────────────────────────────────
 
 export async function captureFullTopologySVG(
   filename: string
 ): Promise<void> {
-  const container = document.querySelector(
-    ".react-flow"
+  const viewport = document.querySelector(
+    ".react-flow__viewport"
   ) as HTMLElement | null;
-  if (!container) return;
+  if (!viewport) return;
 
   try {
     const { toSvg } = await import("html-to-image");
 
-    const w = container.offsetWidth;
-    const h = container.offsetHeight;
+    const bounds = computeNodeBounds(viewport);
+    if (!bounds) return;
 
-    const dataUrl = await toSvg(container, {
+    const { minX, minY, maxX, maxY } = bounds;
+    const padding = 80;
+    const captureWidth = Math.ceil(maxX - minX + padding * 2);
+    const captureHeight = Math.ceil(maxY - minY + padding * 2);
+
+    const dataUrl = await toSvg(viewport, {
       backgroundColor: "#f8f9fb",
-      width: w,
-      height: h,
+      width: captureWidth,
+      height: captureHeight,
+      style: {
+        transform: `translate(${-minX + padding}px, ${-minY + padding}px) scale(1)`,
+        transformOrigin: "top left",
+      },
       filter: exportFilter,
     });
 
