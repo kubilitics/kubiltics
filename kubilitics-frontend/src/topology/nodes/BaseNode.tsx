@@ -46,7 +46,7 @@ function BaseNodeInner({ data }: NodeProps<BaseNodeData>) {
 
   return (
     <div
-      className={`w-[230px] rounded-lg border ${borderColor} bg-white shadow-sm transition-shadow hover:shadow-md overflow-hidden`}
+      className={`min-w-[230px] max-w-[320px] rounded-lg border ${borderColor} bg-white shadow-sm transition-shadow hover:shadow-md overflow-hidden`}
       role="treeitem"
       aria-label={`${data.kind} ${data.name} — ${data.statusReason ?? data.status}`}
     >
@@ -61,9 +61,9 @@ function BaseNodeInner({ data }: NodeProps<BaseNodeData>) {
 
       {/* Body */}
       <div className="px-3 py-2.5 space-y-1.5">
-        <div className="truncate text-sm font-semibold text-gray-900">{data.name}</div>
+        <div className="text-sm font-semibold text-gray-900 break-all leading-snug">{data.name}</div>
         {data.namespace && (
-          <div className="truncate text-[11px] text-gray-400">{data.namespace}</div>
+          <div className="text-[11px] text-gray-400 break-all">{data.namespace}</div>
         )}
 
         {/* Status badge */}

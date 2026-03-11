@@ -4,7 +4,8 @@
  */
 export async function exportTopologyPDF(
   clusterId?: string,
-  viewMode?: string
+  viewMode?: string,
+  selectedNamespaces?: Set<string>
 ): Promise<void> {
   const viewport = document.querySelector(".react-flow__viewport");
   if (!viewport) {
@@ -62,6 +63,9 @@ export async function exportTopologyPDF(
   pdf.text("1", 1880, 1060, { align: "right" });
 
   // Download
-  const filename = `kubilitics-topology-${clusterId ?? "cluster"}-${viewMode ?? "namespace"}-${dateStr.replace(/\//g, "-")}.pdf`;
+  const nsPart = selectedNamespaces && selectedNamespaces.size > 0
+    ? `-${Array.from(selectedNamespaces).slice(0, 3).join("-")}`
+    : "";
+  const filename = `kubilitics-topology-${clusterId ?? "cluster"}${nsPart}-${viewMode ?? "namespace"}-${dateStr.replace(/\//g, "-")}.pdf`;
   pdf.save(filename);
 }

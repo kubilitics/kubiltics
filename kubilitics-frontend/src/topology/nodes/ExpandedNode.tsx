@@ -31,7 +31,7 @@ function ExpandedNodeInner({ data }: NodeProps<ExpandedNodeData>) {
 
   return (
     <div
-      className={`w-[300px] rounded-xl border-2 ${borderColor} bg-white shadow-lg overflow-hidden`}
+      className={`min-w-[300px] max-w-[420px] rounded-xl border-2 ${borderColor} bg-white shadow-lg overflow-hidden`}
       role="treeitem"
       aria-label={`${data.kind} ${data.name} — ${data.statusReason ?? data.status}${metrics?.podCount != null ? `, ${metrics.readyCount ?? 0}/${metrics.podCount} pods ready` : ""}`}
     >
@@ -49,7 +49,7 @@ function ExpandedNodeInner({ data }: NodeProps<ExpandedNodeData>) {
       {/* Body */}
       <div className="px-4 py-3 space-y-3">
         <div>
-          <div className="text-sm font-bold text-gray-900 truncate">{data.name}</div>
+          <div className="text-sm font-bold text-gray-900 break-all leading-snug">{data.name}</div>
           {data.namespace && (
             <div className="text-xs text-gray-400 mt-0.5">{data.namespace}</div>
           )}
@@ -82,7 +82,7 @@ function ExpandedNodeInner({ data }: NodeProps<ExpandedNodeData>) {
             <div className="text-[9px] font-semibold uppercase tracking-wider text-gray-400 mb-1">Labels</div>
             <div className="flex flex-wrap gap-1">
               {Object.entries(data.labels).slice(0, 3).map(([k, v]) => (
-                <span key={k} className="inline-flex px-1.5 py-0.5 rounded bg-gray-100 text-[9px] text-gray-600 font-mono truncate max-w-[130px]">
+                <span key={k} className="inline-flex px-1.5 py-0.5 rounded bg-gray-100 text-[9px] text-gray-600 font-mono break-all">
                   {k.split("/").pop()}={v}
                 </span>
               ))}

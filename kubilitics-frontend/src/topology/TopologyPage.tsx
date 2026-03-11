@@ -91,7 +91,13 @@ export function TopologyPage() {
     }, [setViewModeStore]),
     onToggleHealthOverlay: useCallback(() => toggleOverlay("health"), [toggleOverlay]),
     onToggleCostOverlay: useCallback(() => toggleOverlay("cost"), [toggleOverlay]),
-    onScreenshot: useCallback(() => { exportTopologyPNG(); }, []),
+    onScreenshot: useCallback(() => {
+      exportTopologyPNG({
+        viewMode,
+        selectedNamespaces,
+        clusterId: clusterId ?? undefined,
+      });
+    }, [viewMode, selectedNamespaces, clusterId]),
     onShowHelp: useCallback(() => setShowHelp((v) => !v), []),
     onNavigateBack: useCallback(() => navigateBack(), [navigateBack]),
   });

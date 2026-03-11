@@ -37,6 +37,7 @@ import {
   exportTopologyJSON,
   exportTopologyPNG,
   exportTopologySVG,
+  type ExportContext,
 } from "./export/exportTopology";
 import type { TopologyResponse, ViewMode } from "./types/topology";
 
@@ -108,19 +109,25 @@ export function ResourceTopologyV2View({
   }, []);
 
   // Exports
+  const exportCtx: ExportContext = useMemo(() => ({
+    viewMode: "resource" as const,
+    selectedNamespaces: namespace ? new Set([namespace]) : new Set<string>(),
+    clusterId: clusterId ?? undefined,
+  }), [namespace, clusterId]);
+
   const handleExportJSON = useCallback(() => {
     if (!topology) return;
-    exportTopologyJSON(topology, `topology-${kind}-${name || "resource"}.json`);
+    exportTopologyJSON(topology, exportCtx);
     toast.success("JSON exported");
-  }, [topology, kind, name]);
+  }, [topology, exportCtx]);
 
   const handleExportPNG = useCallback(() => {
-    exportTopologyPNG(`topology-${kind}-${name || "resource"}.png`);
-  }, [kind, name]);
+    exportTopologyPNG(exportCtx);
+  }, [exportCtx]);
 
   const handleExportSVG = useCallback(() => {
-    exportTopologySVG(`topology-${kind}-${name || "resource"}.svg`);
-  }, [kind, name]);
+    exportTopologySVG(exportCtx);
+  }, [exportCtx]);
 
   // --- Conditional renders (all hooks called above) ---
 

@@ -72,7 +72,7 @@ const ELK_OPTIONS: Record<ViewMode, Record<string, string>> = {
   },
 };
 
-const NODE_DIMS = { width: 230, height: 100 };
+const NODE_DIMS = { width: 260, height: 110 };
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 

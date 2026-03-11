@@ -24,6 +24,7 @@ import {
   exportTopologyPNG,
   exportTopologySVG,
   exportTopologyDrawIO,
+  type ExportContext,
 } from "./export/exportTopology";
 import { exportTopologyPDF } from "./export/exportPDF";
 import type { SearchResult } from "./hooks/useTopologySearch";
@@ -270,21 +271,32 @@ export function TopologyToolbar({
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-44">
-            <DropdownMenuItem onClick={() => exportTopologyJSON(topology ?? null)}>
-              <FileJson className="h-3.5 w-3.5 mr-2" /> JSON
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => exportTopologyPNG()}>
-              <FileImage className="h-3.5 w-3.5 mr-2" /> PNG
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => exportTopologySVG()}>
-              <FileImage className="h-3.5 w-3.5 mr-2" /> SVG
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => exportTopologyDrawIO(topology ?? null)}>
-              <Pen className="h-3.5 w-3.5 mr-2" /> Draw.io
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => exportTopologyPDF(topology?.metadata?.clusterId, viewMode)}>
-              <FileType className="h-3.5 w-3.5 mr-2" /> PDF
-            </DropdownMenuItem>
+            {(() => {
+              const exportCtx: ExportContext = {
+                viewMode,
+                selectedNamespaces,
+                clusterId: topology?.metadata?.clusterId,
+              };
+              return (
+                <>
+                  <DropdownMenuItem onClick={() => exportTopologyJSON(topology ?? null, exportCtx)}>
+                    <FileJson className="h-3.5 w-3.5 mr-2" /> JSON
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => exportTopologyPNG(exportCtx)}>
+                    <FileImage className="h-3.5 w-3.5 mr-2" /> PNG (High-Res)
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => exportTopologySVG(exportCtx)}>
+                    <FileImage className="h-3.5 w-3.5 mr-2" /> SVG
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => exportTopologyDrawIO(topology ?? null, exportCtx)}>
+                    <Pen className="h-3.5 w-3.5 mr-2" /> Draw.io
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => exportTopologyPDF(topology?.metadata?.clusterId, viewMode, selectedNamespaces)}>
+                    <FileType className="h-3.5 w-3.5 mr-2" /> PDF
+                  </DropdownMenuItem>
+                </>
+              );
+            })()}
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
