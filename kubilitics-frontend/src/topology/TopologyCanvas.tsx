@@ -57,7 +57,16 @@ function TopologyCanvasInner({
   exportRef,
 }: TopologyCanvasProps) {
   const [currentZoom, setCurrentZoom] = useState(0.5);
-  const nodeType = getNodeTypeForZoom(currentZoom);
+
+  // Export state: when exporting, disable onlyRenderVisibleElements and lock node type
+  const [isExporting, setIsExporting] = useState(false);
+  const exportPendingRef = useRef<{ format: ExportFormat; filename: string } | null>(null);
+
+  // CRITICAL: During export, lock nodeType to "base" so semantic zoom doesn't
+  // switch to "compact" when fitView zooms out. This prevents the exported image
+  // from showing tiny compact cards instead of the full colorful base cards.
+  const nodeType = isExporting ? "base" : getNodeTypeForZoom(currentZoom);
+
   const { nodes: elkNodes, edges: elkEdges, isLayouting } =
     useElkLayout(topology, viewMode, nodeType);
   const [nodes, setNodes, onNodesChange] = useNodesState(elkNodes);
@@ -65,10 +74,6 @@ function TopologyCanvasInner({
   const reactFlow = useReactFlow();
 
   const nodeCount = topology?.nodes?.length ?? 0;
-
-  // Export state: when exporting, disable onlyRenderVisibleElements
-  const [isExporting, setIsExporting] = useState(false);
-  const exportPendingRef = useRef<{ format: ExportFormat; filename: string } | null>(null);
 
   // Sync ELK layout output into React Flow state
   useEffect(() => {
@@ -126,8 +131,9 @@ function TopologyCanvasInner({
     // Save current viewport to restore after export
     const savedViewport = reactFlow.getViewport();
 
-    // FitView so ALL nodes are visible within the container — no minimum zoom constraint
-    reactFlow.fitView({ padding: 0.04, duration: 0, minZoom: 0.01 });
+    // FitView so ALL nodes are visible within the container
+    // Use minZoom 0.05 to keep nodes at a reasonable readable size
+    reactFlow.fitView({ padding: 0.04, duration: 0, minZoom: 0.05 });
 
     // Wait for React to render all nodes (since onlyRenderVisibleElements is now off)
     // 500ms ensures even large topologies have time to paint
@@ -189,8 +195,13 @@ function TopologyCanvasInner({
     [onSelectNode]
   );
   const onPaneClick = useCallback(() => onSelectNode(null), [onSelectNode]);
+  // Freeze zoom updates during export so fitView doesn't trigger semantic zoom changes
   const onMoveEnd = useCallback(
-    (_: MouseEvent | TouchEvent | null, viewport: Viewport) => setCurrentZoom(viewport.zoom),
+    (_: MouseEvent | TouchEvent | null, viewport: Viewport) => {
+      if (!exportPendingRef.current) {
+        setCurrentZoom(viewport.zoom);
+      }
+    },
     []
   );
 
