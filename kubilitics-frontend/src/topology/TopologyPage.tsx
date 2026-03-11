@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef, useMemo, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useBackendConfigStore } from "@/stores/backendConfigStore";
 import { useClusterStore } from "@/stores/clusterStore";
 
@@ -23,9 +24,25 @@ import type { ExportFormat } from "./TopologyCanvas";
 import { TopologyWelcomeTips } from "./TopologyWelcomeTips";
 import type { ViewMode } from "./types/topology";
 
+// ─── URL Search Params helpers ───────────────────────────────────────────────
+// Namespace selection is persisted in URL as ?ns=default or ?ns=blue-green-demo,foo
+// This ensures the browser back button restores the correct namespace.
+
+function namespacesFromURL(searchParams: URLSearchParams): Set<string> {
+  const raw = searchParams.get("ns");
+  if (!raw) return new Set(["default"]);
+  const names = raw.split(",").map((s) => s.trim()).filter(Boolean);
+  return names.length > 0 ? new Set(names) : new Set(["default"]);
+}
+
+function namespacesToURL(ns: Set<string>): string {
+  return Array.from(ns).sort().join(",");
+}
+
 export function TopologyPage() {
   const clusterId = useBackendConfigStore((s) => s.currentClusterId) ?? null;
   const clusterName = useClusterStore((s) => s.activeCluster?.name) ?? null;
+  const [searchParams, setSearchParams] = useSearchParams();
 
   // Store state
   const viewMode = useTopologyStore((s) => s.viewMode);
@@ -35,9 +52,43 @@ export function TopologyPage() {
   const navigateBack = useTopologyStore((s) => s.navigateBack);
   const storeSetData = useTopologyStore((s) => s.setTopologyData);
 
-  // Default to "default" namespace (like kubectl) to avoid loading ALL namespaces at once
-  const [selectedNamespaces, setSelectedNamespaces] = useState<Set<string>>(new Set(["default"]));
+  // ─── Namespace selection — synced with URL search params ──────────────────
+  // Initialize from URL so browser back button restores the correct namespace.
+  const [selectedNamespaces, setSelectedNamespacesRaw] = useState<Set<string>>(
+    () => namespacesFromURL(searchParams)
+  );
   const [hasAutoSelectedNs, setHasAutoSelectedNs] = useState(false);
+
+  // Wrapper that also updates URL search params
+  const setSelectedNamespaces = useCallback((next: Set<string>) => {
+    setSelectedNamespacesRaw(next);
+    // Update URL without creating a new history entry for every namespace change.
+    // Use `replace` so rapid namespace switching doesn't pollute browser history.
+    setSearchParams((prev) => {
+      const updated = new URLSearchParams(prev);
+      const nsStr = namespacesToURL(next);
+      if (nsStr === "default") {
+        updated.delete("ns"); // Clean URL for default
+      } else {
+        updated.set("ns", nsStr);
+      }
+      return updated;
+    }, { replace: true });
+  }, [setSearchParams]);
+
+  // When the user navigates back, the URL changes but our state doesn't update.
+  // Sync state from URL whenever searchParams change (back/forward navigation).
+  useEffect(() => {
+    const fromURL = namespacesFromURL(searchParams);
+    // Only update if actually different to avoid loops
+    const current = namespacesToURL(selectedNamespaces);
+    const fromURLStr = namespacesToURL(fromURL);
+    if (current !== fromURLStr) {
+      setSelectedNamespacesRaw(fromURL);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
+
   const [resource, setResource] = useState<string>("");
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [showHelp, setShowHelp] = useState(false);
@@ -47,15 +98,13 @@ export function TopologyPage() {
 
   // GUARD: Never allow an empty namespace set in namespace-aware views.
   // Empty set = "All Namespaces" = 735 resources = system freeze.
-  // When the user deselects the last namespace (e.g. to switch to a different one),
-  // keep "default" as fallback so the UI stays responsive.
   const handleNamespaceSelectionChange = useCallback((next: Set<string>) => {
     if (next.size === 0) {
       setSelectedNamespaces(new Set(["default"]));
     } else {
       setSelectedNamespaces(next);
     }
-  }, []);
+  }, [setSelectedNamespaces]);
 
   // Helper to build export context
   const getExportCtx = useCallback(() => ({
@@ -75,9 +124,13 @@ export function TopologyPage() {
 
   // Auto-select "default" namespace on first data load.
   // If the cluster doesn't have a "default" namespace, pick the first user namespace.
+  // Skip if URL already had a namespace set (user navigated back).
   useEffect(() => {
     if (hasAutoSelectedNs || allNamespaces.length === 0) return;
     setHasAutoSelectedNs(true);
+
+    // If the URL already specified a namespace, respect it
+    if (searchParams.has("ns")) return;
 
     if (allNamespaces.includes("default")) {
       // "default" exists — keep the initial selection
@@ -90,13 +143,13 @@ export function TopologyPage() {
     if (firstUserNs) {
       setSelectedNamespaces(new Set([firstUserNs]));
     }
-  }, [allNamespaces, hasAutoSelectedNs]);
+  }, [allNamespaces, hasAutoSelectedNs, searchParams, setSelectedNamespaces]);
 
   // Reset namespace selection when cluster changes
   useEffect(() => {
     setSelectedNamespaces(new Set(["default"]));
     setHasAutoSelectedNs(false);
-  }, [clusterId]);
+  }, [clusterId, setSelectedNamespaces]);
 
   // Sync to store when data arrives
   useMemo(() => {
