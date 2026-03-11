@@ -1,6 +1,6 @@
 /**
  * PDF export for topology visualization.
- * Uses the same scale-1 viewport capture as PNG/SVG, then embeds in a
+ * Uses the same adaptive scaling as PNG/SVG, then embeds in a
  * dynamically-sized PDF page.
  */
 import { EXPORT } from "../constants/designTokens";
@@ -22,7 +22,7 @@ export async function exportTopologyPDF(
     import("jspdf"),
   ]);
 
-  // Compute node bounds for scale-1 capture (same as PNG/SVG)
+  // Compute node bounds
   const nodeEls = viewport.querySelectorAll(".react-flow__node");
   if (nodeEls.length === 0) return;
 
@@ -46,18 +46,27 @@ export async function exportTopologyPDF(
   const contentW = maxX - minX;
   const contentH = maxY - minY;
   const padding = EXPORT.dynamicPadding(contentW, contentH);
-  const captureWidth = Math.ceil(contentW + padding * 2);
-  const captureHeight = Math.ceil(contentH + padding * 2);
 
-  // Capture at scale 1
+  // Adaptive scaling: same logic as PNG export but target max 6000px for PDF
+  const TARGET_MAX = 6000;
+  const rawWidth = contentW + padding * 2;
+  const rawHeight = contentH + padding * 2;
+  const rawMaxDim = Math.max(rawWidth, rawHeight);
+  const scale = rawMaxDim > TARGET_MAX ? TARGET_MAX / rawMaxDim : 1;
+
+  const captureWidth = Math.ceil(rawWidth * scale);
+  const captureHeight = Math.ceil(rawHeight * scale);
+  const scaledPadding = padding * scale;
+
+  // Capture
   const pngDataUrl = await toPng(viewport, {
     backgroundColor: EXPORT.backgroundColor,
-    pixelRatio: 1, // 1x is enough for PDF — PDF handles resolution internally
+    pixelRatio: 1.5, // Good quality for PDF without hitting canvas limits
     width: captureWidth,
     height: captureHeight,
     quality: 1.0,
     style: {
-      transform: `translate(${-minX + padding}px, ${-minY + padding}px) scale(1)`,
+      transform: `translate(${-minX * scale + scaledPadding}px, ${-minY * scale + scaledPadding}px) scale(${scale})`,
       transformOrigin: "top left",
     },
     filter: (node: HTMLElement) => {
@@ -69,7 +78,7 @@ export async function exportTopologyPDF(
     },
   });
 
-  // Dynamic page size — fit content with 40px margin for header/footer
+  // Dynamic page size — fit content with margin for header/footer
   const headerHeight = 50;
   const footerHeight = 30;
   const pageWidth = captureWidth + 80;

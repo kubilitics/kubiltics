@@ -82,20 +82,73 @@ function computeNodeBounds(viewport: HTMLElement): {
   return isFinite(minX) ? { minX, minY, maxX, maxY } : null;
 }
 
-// ─── PNG Export — Full-quality capture at scale 1 ────────────────────────────
+// ─── Adaptive Export Scaling ─────────────────────────────────────────────────
 //
-// Called from TopologyCanvas AFTER onlyRenderVisibleElements=false
-// so ALL nodes exist in the DOM.
+// The core challenge: Topology content bounds can range from 2,000 px (small
+// namespace) to 30,000+ px (default namespace with 300+ resources).
 //
-// KEY APPROACH: Instead of capturing at whatever zoom fitView sets (which
-// makes nodes tiny for large topologies), we capture the .react-flow__viewport
-// at SCALE 1 with a style override. This means:
-// - Every node renders at its full CSS size (not zoomed down)
-// - Capture dimensions = actual content bounds in flow coordinates
-// - Result is a crisp, full-size image regardless of node count
+// Browser canvas has a hard limit of ~16,384 px per dimension. If we naively
+// use scale(1) with pixelRatio 2, a 25,000 px wide topology would need
+// 50,000 px — far beyond the limit. The pixelRatio would drop to 0.32,
+// making everything blurry.
 //
-// The html-to-image `style` option applies the override to the cloned element
-// only — the actual DOM is never modified.
+// SOLUTION: Adaptive scale factor.
+// 1. Compute content bounds in flow coordinates (scale 1)
+// 2. Pick a target output size (e.g., 8000x8000 max) that guarantees
+//    pixelRatio >= 1.5 within browser limits
+// 3. If content exceeds that, compute a scale factor < 1 to fit
+// 4. Apply scale factor in the CSS transform (nodes still render at
+//    their natural DOM size — the clone is scaled)
+// 5. Always ensure pixelRatio >= 1.5 for crisp output
+
+function computeExportParams(bounds: { minX: number; minY: number; maxX: number; maxY: number }) {
+  const contentW = bounds.maxX - bounds.minX;
+  const contentH = bounds.maxY - bounds.minY;
+  const padding = EXPORT.dynamicPadding(contentW, contentH);
+
+  // Target: keep final pixel dimensions within browser canvas limit
+  // with at least 1.5x pixel ratio for retina quality.
+  // maxCanvasPixels = 16000, so at pixelRatio 1.5 → max dimension = 10666
+  // We use 8000 as our comfortable target (gives us pixelRatio 2 headroom).
+  const TARGET_MAX_DIM = 8000;
+  const MIN_PIXEL_RATIO = 1.5;
+
+  const rawWidth = contentW + padding * 2;
+  const rawHeight = contentH + padding * 2;
+  const rawMaxDim = Math.max(rawWidth, rawHeight);
+
+  // If content fits within target at scale 1, use scale 1
+  // Otherwise, shrink to fit
+  let scale = 1;
+  if (rawMaxDim > TARGET_MAX_DIM) {
+    scale = TARGET_MAX_DIM / rawMaxDim;
+  }
+
+  const captureWidth = Math.ceil(rawWidth * scale);
+  const captureHeight = Math.ceil(rawHeight * scale);
+  const scaledPadding = padding * scale;
+
+  // Compute best pixelRatio that stays within browser limits
+  const maxDim = Math.max(captureWidth, captureHeight);
+  const pixelRatio = Math.max(
+    MIN_PIXEL_RATIO,
+    Math.min(EXPORT.pngPixelRatio, EXPORT.maxCanvasPixels / maxDim)
+  );
+
+  return {
+    scale,
+    captureWidth,
+    captureHeight,
+    scaledPadding,
+    pixelRatio,
+    // For debug logging
+    originalSize: `${Math.round(rawWidth)}x${Math.round(rawHeight)}`,
+    exportSize: `${captureWidth}x${captureHeight}`,
+    finalPixels: `${Math.round(captureWidth * pixelRatio)}x${Math.round(captureHeight * pixelRatio)}`,
+  };
+}
+
+// ─── PNG Export — Adaptive quality capture ───────────────────────────────────
 
 export async function captureFullTopologyPNG(
   filename: string
@@ -110,26 +163,22 @@ export async function captureFullTopologyPNG(
   const bounds = computeNodeBounds(viewport);
   if (!bounds) throw new Error("No nodes found to export");
 
-  const { minX, minY, maxX, maxY } = bounds;
-  const contentW = maxX - minX;
-  const contentH = maxY - minY;
-  const padding = EXPORT.dynamicPadding(contentW, contentH);
-  const captureWidth = Math.ceil(contentW + padding * 2);
-  const captureHeight = Math.ceil(contentH + padding * 2);
+  const params = computeExportParams(bounds);
 
-  // At scale 1, nodes are full-size. Use 2x for retina. Clamp to browser canvas limits.
-  const maxDim = Math.max(captureWidth, captureHeight);
-  const pixelRatio = Math.min(EXPORT.pngPixelRatio, EXPORT.maxCanvasPixels / maxDim);
+  console.info(
+    `[Export PNG] Content: ${params.originalSize}, Scale: ${params.scale.toFixed(3)}, ` +
+    `Capture: ${params.exportSize}, PixelRatio: ${params.pixelRatio.toFixed(2)}, ` +
+    `Final: ${params.finalPixels}`
+  );
 
-  // Wrap in timeout protection
   const capturePromise = toPng(viewport, {
     backgroundColor: EXPORT.backgroundColor,
-    pixelRatio,
-    width: captureWidth,
-    height: captureHeight,
+    pixelRatio: params.pixelRatio,
+    width: params.captureWidth,
+    height: params.captureHeight,
     quality: 1.0,
     style: {
-      transform: `translate(${-minX + padding}px, ${-minY + padding}px) scale(1)`,
+      transform: `translate(${-bounds.minX * params.scale + params.scaledPadding}px, ${-bounds.minY * params.scale + params.scaledPadding}px) scale(${params.scale})`,
       transformOrigin: "top left",
     },
     filter: exportFilter,
@@ -147,7 +196,7 @@ export async function captureFullTopologyPNG(
   link.click();
 }
 
-// ─── SVG Export — same scale-1 approach ──────────────────────────────────────
+// ─── SVG Export — same adaptive approach ─────────────────────────────────────
 
 export async function captureFullTopologySVG(
   filename: string
@@ -162,19 +211,14 @@ export async function captureFullTopologySVG(
   const bounds = computeNodeBounds(viewport);
   if (!bounds) throw new Error("No nodes found to export");
 
-  const { minX, minY, maxX, maxY } = bounds;
-  const contentW = maxX - minX;
-  const contentH = maxY - minY;
-  const padding = EXPORT.dynamicPadding(contentW, contentH);
-  const captureWidth = Math.ceil(contentW + padding * 2);
-  const captureHeight = Math.ceil(contentH + padding * 2);
+  const params = computeExportParams(bounds);
 
   const capturePromise = toSvg(viewport, {
     backgroundColor: EXPORT.backgroundColor,
-    width: captureWidth,
-    height: captureHeight,
+    width: params.captureWidth,
+    height: params.captureHeight,
     style: {
-      transform: `translate(${-minX + padding}px, ${-minY + padding}px) scale(1)`,
+      transform: `translate(${-bounds.minX * params.scale + params.scaledPadding}px, ${-bounds.minY * params.scale + params.scaledPadding}px) scale(${params.scale})`,
       transformOrigin: "top left",
     },
     filter: exportFilter,
