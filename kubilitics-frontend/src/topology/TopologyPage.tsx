@@ -45,10 +45,16 @@ export function TopologyPage() {
   const fitViewRef = useRef<(() => void) | null>(null);
   const exportRef = useRef<((format: ExportFormat, filename: string) => void) | null>(null);
 
-  // Wrap namespace selection — empty set means "All Namespaces", which is intentional
-  // when the user explicitly clicks "All" in the dropdown.
+  // GUARD: Never allow an empty namespace set in namespace-aware views.
+  // Empty set = "All Namespaces" = 735 resources = system freeze.
+  // When the user deselects the last namespace (e.g. to switch to a different one),
+  // keep "default" as fallback so the UI stays responsive.
   const handleNamespaceSelectionChange = useCallback((next: Set<string>) => {
-    setSelectedNamespaces(next);
+    if (next.size === 0) {
+      setSelectedNamespaces(new Set(["default"]));
+    } else {
+      setSelectedNamespaces(next);
+    }
   }, []);
 
   // Helper to build export context

@@ -93,16 +93,19 @@ export function TopologyToolbar({
 
   const toggleNamespace = useCallback((ns: string) => {
     const next = new Set(selectedNamespaces);
-    if (next.has(ns)) next.delete(ns);
-    else next.add(ns);
+    if (next.has(ns)) {
+      // Don't deselect the last namespace — would trigger all-namespaces load
+      if (next.size <= 1) return;
+      next.delete(ns);
+    } else {
+      next.add(ns);
+    }
     onNamespaceSelectionChange?.(next);
   }, [selectedNamespaces, onNamespaceSelectionChange]);
 
-  const nsLabel = selectedNamespaces.size === 0
-    ? "All Namespaces"
-    : selectedNamespaces.size === 1
-      ? Array.from(selectedNamespaces)[0]
-      : `${selectedNamespaces.size} namespaces`;
+  const nsLabel = selectedNamespaces.size === 1
+    ? Array.from(selectedNamespaces)[0]
+    : `${selectedNamespaces.size} namespaces`;
 
   const hasNamespaceFilter = selectedNamespaces.size > 0;
 
@@ -148,13 +151,13 @@ export function TopologyToolbar({
                   </div>
                   <p className="text-xs font-bold text-gray-700">Namespace Filter</p>
                 </div>
-                {hasNamespaceFilter && (
+                {selectedNamespaces.size > 1 && (
                   <button
                     type="button"
                     className="text-[10px] text-indigo-600 font-medium hover:underline"
-                    onClick={() => onNamespaceSelectionChange?.(new Set())}
+                    onClick={() => onNamespaceSelectionChange?.(new Set(["default"]))}
                   >
-                    Clear all
+                    Reset to default
                   </button>
                 )}
               </div>
@@ -162,13 +165,13 @@ export function TopologyToolbar({
                 <button
                   type="button"
                   className={`flex-1 h-7 rounded-md text-[11px] font-semibold transition-all border ${
-                    selectedNamespaces.size === 0
+                    selectedNamespaces.size === 1 && selectedNamespaces.has("default")
                       ? "bg-indigo-500 text-white border-indigo-500 shadow-sm"
                       : "bg-white text-gray-600 border-gray-200 hover:border-indigo-200 hover:text-indigo-600"
                   }`}
-                  onClick={() => onNamespaceSelectionChange?.(new Set())}
+                  onClick={() => onNamespaceSelectionChange?.(new Set(["default"]))}
                 >
-                  All
+                  Default
                 </button>
                 <button
                   type="button"
