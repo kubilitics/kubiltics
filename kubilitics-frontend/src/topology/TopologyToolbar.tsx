@@ -22,11 +22,11 @@ import { ViewModeSelect } from "./components/ViewModeSelect";
 import type { ViewMode, TopologyResponse } from "./types/topology";
 import {
   exportTopologyJSON,
-  exportTopologyPNG,
-  exportTopologySVG,
   exportTopologyDrawIO,
+  buildExportFilename,
   type ExportContext,
 } from "./export/exportTopology";
+import type { ExportFormat } from "./TopologyCanvas";
 import { exportTopologyPDF } from "./export/exportPDF";
 import type { SearchResult } from "./hooks/useTopologySearch";
 import { categoryIcon } from "./nodes/nodeUtils";
@@ -40,6 +40,8 @@ export interface TopologyToolbarProps {
   topology?: TopologyResponse | null;
   searchQuery?: string;
   searchResults?: SearchResult[];
+  exportRef?: React.MutableRefObject<((format: ExportFormat, filename: string) => void) | null>;
+  getExportCtx?: () => ExportContext;
   onViewModeChange?: (mode: ViewMode) => void;
   onNamespaceChange?: (ns: string) => void;
   onNamespaceSelectionChange?: (selected: Set<string>) => void;
@@ -63,6 +65,8 @@ export function TopologyToolbar({
   onSearchChange,
   onSearchSelect,
   onFitView,
+  exportRef,
+  getExportCtx,
 }: TopologyToolbarProps) {
   const [showSearchResults, setShowSearchResults] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
@@ -336,14 +340,14 @@ export function TopologyToolbar({
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-52 p-1 rounded-xl shadow-xl">
               {(() => {
-                const exportCtx: ExportContext = {
-                  viewMode,
-                  selectedNamespaces,
-                  clusterName,
+                const ctx = getExportCtx?.() ?? { viewMode, selectedNamespaces, clusterName };
+                const triggerExport = (format: ExportFormat) => {
+                  const filename = buildExportFilename(format, ctx);
+                  exportRef?.current?.(format, filename);
                 };
                 return (
                   <>
-                    <DropdownMenuItem className="rounded-lg gap-2.5 py-2" onClick={() => exportTopologyPNG(exportCtx)}>
+                    <DropdownMenuItem className="rounded-lg gap-2.5 py-2" onClick={() => triggerExport("png")}>
                       <div className="flex items-center justify-center h-7 w-7 rounded-md bg-emerald-50">
                         <FileImage className="h-3.5 w-3.5 text-emerald-600" />
                       </div>
@@ -352,7 +356,7 @@ export function TopologyToolbar({
                         <div className="text-[10px] text-gray-400">Full topology at 4x</div>
                       </div>
                     </DropdownMenuItem>
-                    <DropdownMenuItem className="rounded-lg gap-2.5 py-2" onClick={() => exportTopologySVG(exportCtx)}>
+                    <DropdownMenuItem className="rounded-lg gap-2.5 py-2" onClick={() => triggerExport("svg")}>
                       <div className="flex items-center justify-center h-7 w-7 rounded-md bg-violet-50">
                         <FileImage className="h-3.5 w-3.5 text-violet-600" />
                       </div>
@@ -371,7 +375,7 @@ export function TopologyToolbar({
                       </div>
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem className="rounded-lg gap-2.5 py-2" onClick={() => exportTopologyJSON(topology ?? null, exportCtx)}>
+                    <DropdownMenuItem className="rounded-lg gap-2.5 py-2" onClick={() => exportTopologyJSON(topology ?? null, ctx)}>
                       <div className="flex items-center justify-center h-7 w-7 rounded-md bg-amber-50">
                         <FileJson className="h-3.5 w-3.5 text-amber-600" />
                       </div>
@@ -380,7 +384,7 @@ export function TopologyToolbar({
                         <div className="text-[10px] text-gray-400">Raw topology data</div>
                       </div>
                     </DropdownMenuItem>
-                    <DropdownMenuItem className="rounded-lg gap-2.5 py-2" onClick={() => exportTopologyDrawIO(topology ?? null, exportCtx)}>
+                    <DropdownMenuItem className="rounded-lg gap-2.5 py-2" onClick={() => exportTopologyDrawIO(topology ?? null, ctx)}>
                       <div className="flex items-center justify-center h-7 w-7 rounded-md bg-blue-50">
                         <Pen className="h-3.5 w-3.5 text-blue-600" />
                       </div>

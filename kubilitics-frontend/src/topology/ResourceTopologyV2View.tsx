@@ -36,10 +36,10 @@ import { TopologyDetailPanel } from "./TopologyDetailPanel";
 import { transformGraph } from "./utils/transformGraph";
 import {
   exportTopologyJSON,
-  exportTopologyPNG,
-  exportTopologySVG,
+  buildExportFilename,
   type ExportContext,
 } from "./export/exportTopology";
+import type { ExportFormat } from "./TopologyCanvas";
 import type { TopologyResponse, ViewMode } from "./types/topology";
 
 export interface ResourceTopologyV2ViewProps {
@@ -60,6 +60,7 @@ export function ResourceTopologyV2View({
   const clusterId = useActiveClusterId();
   const activeClusterName = useClusterStore((s) => s.activeCluster?.name);
   const fitViewRef = useRef<(() => void) | null>(null);
+  const exportCanvasRef = useRef<((format: ExportFormat, filename: string) => void) | null>(null);
 
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [viewMode] = useState<ViewMode>("resource");
@@ -124,11 +125,13 @@ export function ResourceTopologyV2View({
   }, [topology, exportCtx]);
 
   const handleExportPNG = useCallback(() => {
-    exportTopologyPNG(exportCtx);
+    const filename = buildExportFilename("png", exportCtx);
+    exportCanvasRef.current?.("png", filename);
   }, [exportCtx]);
 
   const handleExportSVG = useCallback(() => {
-    exportTopologySVG(exportCtx);
+    const filename = buildExportFilename("svg", exportCtx);
+    exportCanvasRef.current?.("svg", filename);
   }, [exportCtx]);
 
   // --- Conditional renders (all hooks called above) ---
@@ -294,6 +297,7 @@ export function ResourceTopologyV2View({
             highlightNodeIds={highlightNodeIds}
             viewMode={viewMode}
             onSelectNode={setSelectedNodeId}
+            exportRef={exportCanvasRef}
             fitViewRef={fitViewRef}
           />
 

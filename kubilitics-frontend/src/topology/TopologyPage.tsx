@@ -18,7 +18,8 @@ import { useTopologyData } from "./hooks/useTopologyData";
 import { useTopologySearch } from "./hooks/useTopologySearch";
 import { useTopologyWebSocket } from "./hooks/useTopologyWebSocket";
 import { useTopologyStore } from "./store/topologyStore";
-import { exportTopologyPNG } from "./export/exportTopology";
+import { buildExportFilename } from "./export/exportTopology";
+import type { ExportFormat } from "./TopologyCanvas";
 import type { ViewMode } from "./types/topology";
 
 export function TopologyPage() {
@@ -39,6 +40,14 @@ export function TopologyPage() {
   const [showHelp, setShowHelp] = useState(false);
   const [warnings, setWarnings] = useState<string[]>([]);
   const fitViewRef = useRef<(() => void) | null>(null);
+  const exportRef = useRef<((format: ExportFormat, filename: string) => void) | null>(null);
+
+  // Helper to build export context
+  const getExportCtx = useCallback(() => ({
+    viewMode,
+    selectedNamespaces,
+    clusterName: clusterName ?? undefined,
+  }), [viewMode, selectedNamespaces, clusterName]);
 
   // Data fetching — pass selected namespaces for filtering
   const { topology, allNamespaces, isLoading, isError, error, refetch } = useTopologyData({
@@ -94,12 +103,9 @@ export function TopologyPage() {
     onToggleHealthOverlay: useCallback(() => toggleOverlay("health"), [toggleOverlay]),
     onToggleCostOverlay: useCallback(() => toggleOverlay("cost"), [toggleOverlay]),
     onScreenshot: useCallback(() => {
-      exportTopologyPNG({
-        viewMode,
-        selectedNamespaces,
-        clusterName: clusterName ?? undefined,
-      });
-    }, [viewMode, selectedNamespaces, clusterName]),
+      const filename = buildExportFilename("png", getExportCtx());
+      exportRef.current?.("png", filename);
+    }, [getExportCtx]),
     onShowHelp: useCallback(() => setShowHelp((v) => !v), []),
     onNavigateBack: useCallback(() => navigateBack(), [navigateBack]),
   });
@@ -182,6 +188,7 @@ export function TopologyPage() {
         highlightNodeIds={highlightNodeIds}
         viewMode={viewMode}
         onSelectNode={setSelectedNodeId}
+        exportRef={exportRef}
         fitViewRef={fitViewRef}
       />
     );
@@ -196,6 +203,8 @@ export function TopologyPage() {
         selectedNamespaces={selectedNamespaces}
         availableNamespaces={allNamespaces}
         topology={topology}
+        exportRef={exportRef}
+        getExportCtx={getExportCtx}
         searchQuery={searchQuery}
         searchResults={searchResults}
         onViewModeChange={handleViewModeChange}

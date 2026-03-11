@@ -8,7 +8,7 @@ export interface ExportContext {
   clusterName?: string;
 }
 
-function buildFilename(base: string, ext: string, ctx?: ExportContext): string {
+export function buildExportFilename(ext: string, ctx?: ExportContext): string {
   const parts: string[] = [];
 
   if (ctx?.clusterName) parts.push(ctx.clusterName);
@@ -31,37 +31,6 @@ function buildFilename(base: string, ext: string, ctx?: ExportContext): string {
   return `${parts.length > 1 ? parts.join("-") : `topology-${ts}`}.${ext}`;
 }
 
-// ─── Helpers to compute full node bounds from DOM ─────────────────────────────
-
-function computeNodeBounds(viewport: HTMLElement) {
-  const nodeElements = viewport.querySelectorAll(".react-flow__node");
-  if (nodeElements.length === 0) return null;
-
-  let minX = Infinity,
-    minY = Infinity,
-    maxX = -Infinity,
-    maxY = -Infinity;
-
-  nodeElements.forEach((el) => {
-    const node = el as HTMLElement;
-    const style = node.style.transform || "";
-    const match = style.match(/translate\((-?[\d.]+)px,\s*(-?[\d.]+)px\)/);
-    if (match) {
-      const x = parseFloat(match[1]);
-      const y = parseFloat(match[2]);
-      const w = node.offsetWidth;
-      const h = node.offsetHeight;
-      minX = Math.min(minX, x);
-      minY = Math.min(minY, y);
-      maxX = Math.max(maxX, x + w);
-      maxY = Math.max(maxY, y + h);
-    }
-  });
-
-  if (!isFinite(minX)) return null;
-  return { minX, minY, maxX, maxY };
-}
-
 // ─── JSON Export ──────────────────────────────────────────────────────────────
 
 export function exportTopologyJSON(
@@ -72,76 +41,91 @@ export function exportTopologyJSON(
   const blob = new Blob([JSON.stringify(topology, null, 2)], {
     type: "application/json",
   });
-  downloadBlob(blob, buildFilename("topology", "json", ctx));
+  downloadBlob(blob, buildExportFilename("json", ctx));
 }
 
-// ─── PNG Export — Full topology at high resolution ────────────────────────────
+// ─── PNG Export — Captures FULL topology via React Flow fitView ───────────────
 
 /**
- * Captures the FULL topology (all nodes, not just visible viewport) at high
- * resolution. Strategy: temporarily adjust the container and viewport transform
- * to show all content at scale 1, render at 4x pixel ratio for crisp zoom.
+ * This function is called from TopologyCanvas which temporarily:
+ * 1. Disables onlyRenderVisibleElements so ALL nodes are in the DOM
+ * 2. Calls fitView() to show the entire graph at scale
+ * 3. Captures the viewport at high resolution
+ * 4. Restores the original viewport state
+ *
+ * The `captureElement` is the .react-flow__viewport with all nodes visible.
  */
-export async function exportTopologyPNG(ctx?: ExportContext) {
-  const container = document.querySelector(".react-flow") as HTMLElement | null;
+export async function captureFullTopologyPNG(
+  filename: string
+): Promise<void> {
   const viewport = document.querySelector(
     ".react-flow__viewport"
   ) as HTMLElement | null;
-  if (!container || !viewport) return;
+  if (!viewport) return;
 
   try {
     const { toPng } = await import("html-to-image");
 
-    const bounds = computeNodeBounds(viewport);
-    if (!bounds) return;
+    // Get the bounding rect of the viewport's content after fitView
+    const nodeEls = viewport.querySelectorAll(".react-flow__node");
+    if (nodeEls.length === 0) return;
 
-    const padding = 60;
-    const fullWidth = bounds.maxX - bounds.minX + padding * 2;
-    const fullHeight = bounds.maxY - bounds.minY + padding * 2;
+    // Compute bounds of all rendered nodes in viewport-local coordinates
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    nodeEls.forEach((el) => {
+      const node = el as HTMLElement;
+      const style = node.style.transform || "";
+      const match = style.match(/translate\((-?[\d.]+)px,\s*(-?[\d.]+)px\)/);
+      if (match) {
+        const x = parseFloat(match[1]);
+        const y = parseFloat(match[2]);
+        minX = Math.min(minX, x);
+        minY = Math.min(minY, y);
+        maxX = Math.max(maxX, x + node.offsetWidth);
+        maxY = Math.max(maxY, y + node.offsetHeight);
+      }
+    });
 
-    // Save original styles
-    const origTransform = viewport.style.transform;
-    const origContainerWidth = container.style.width;
-    const origContainerHeight = container.style.height;
-    const origContainerOverflow = container.style.overflow;
-    const origContainerPosition = container.style.position;
+    if (!isFinite(minX)) return;
 
-    // Temporarily resize container & reset viewport transform to show all nodes
-    container.style.width = `${fullWidth}px`;
-    container.style.height = `${fullHeight}px`;
-    container.style.overflow = "visible";
-    container.style.position = "relative";
-    viewport.style.transform = `translate(${-bounds.minX + padding}px, ${-bounds.minY + padding}px) scale(1)`;
+    // Read current viewport transform to get the scale and offset applied by fitView
+    const vpTransform = viewport.style.transform || "";
+    const scaleMatch = vpTransform.match(/scale\((-?[\d.]+)\)/);
+    const scale = scaleMatch ? parseFloat(scaleMatch[1]) : 1;
+    const transMatch = vpTransform.match(/translate\((-?[\d.]+)px,\s*(-?[\d.]+)px\)/);
+    const tx = transMatch ? parseFloat(transMatch[1]) : 0;
+    const ty = transMatch ? parseFloat(transMatch[2]) : 0;
 
-    await new Promise((r) => setTimeout(r, 80));
+    // Calculate the actual pixel dimensions of the full graph as rendered
+    const contentWidth = (maxX - minX) * scale;
+    const contentHeight = (maxY - minY) * scale;
+    const padding = 40 * scale;
 
-    const dataUrl = await toPng(container, {
+    // The capture area: the content offset by viewport translation
+    const captureWidth = contentWidth + padding * 2;
+    const captureHeight = contentHeight + padding * 2;
+
+    // Capture the viewport element — fitView already positioned everything correctly
+    const dataUrl = await toPng(viewport, {
       backgroundColor: "#f8f9fb",
-      width: fullWidth,
-      height: fullHeight,
-      pixelRatio: 4, // High resolution — crisp even when zoomed in
+      pixelRatio: Math.min(4, 16000 / Math.max(captureWidth, captureHeight)), // Stay under browser limits
+      width: captureWidth,
+      height: captureHeight,
       style: {
-        width: `${fullWidth}px`,
-        height: `${fullHeight}px`,
+        transform: `translate(${tx + (-minX * scale) + padding}px, ${ty + (-minY * scale) + padding}px) scale(${scale})`,
+        transformOrigin: "top left",
       },
       filter: (node: HTMLElement) => {
-        const className = node.className?.toString() ?? "";
-        if (className.includes("react-flow__minimap")) return false;
-        if (className.includes("react-flow__controls")) return false;
-        if (className.includes("react-flow__background")) return false;
+        const cn = node.className?.toString() ?? "";
+        if (cn.includes("react-flow__minimap")) return false;
+        if (cn.includes("react-flow__controls")) return false;
+        if (cn.includes("react-flow__background")) return false;
         return true;
       },
     });
 
-    // Restore
-    viewport.style.transform = origTransform;
-    container.style.width = origContainerWidth;
-    container.style.height = origContainerHeight;
-    container.style.overflow = origContainerOverflow;
-    container.style.position = origContainerPosition;
-
     const link = document.createElement("a");
-    link.download = buildFilename("topology", "png", ctx);
+    link.download = filename;
     link.href = dataUrl;
     link.click();
   } catch (err) {
@@ -149,60 +133,71 @@ export async function exportTopologyPNG(ctx?: ExportContext) {
   }
 }
 
-// ─── SVG Export — Full topology ───────────────────────────────────────────────
+// ─── SVG Export — same approach ───────────────────────────────────────────────
 
-export async function exportTopologySVG(ctx?: ExportContext) {
-  const container = document.querySelector(".react-flow") as HTMLElement | null;
+export async function captureFullTopologySVG(
+  filename: string
+): Promise<void> {
   const viewport = document.querySelector(
     ".react-flow__viewport"
   ) as HTMLElement | null;
-  if (!container || !viewport) return;
+  if (!viewport) return;
 
   try {
     const { toSvg } = await import("html-to-image");
 
-    const bounds = computeNodeBounds(viewport);
-    if (!bounds) return;
+    const nodeEls = viewport.querySelectorAll(".react-flow__node");
+    if (nodeEls.length === 0) return;
 
-    const padding = 60;
-    const fullWidth = bounds.maxX - bounds.minX + padding * 2;
-    const fullHeight = bounds.maxY - bounds.minY + padding * 2;
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    nodeEls.forEach((el) => {
+      const node = el as HTMLElement;
+      const style = node.style.transform || "";
+      const match = style.match(/translate\((-?[\d.]+)px,\s*(-?[\d.]+)px\)/);
+      if (match) {
+        const x = parseFloat(match[1]);
+        const y = parseFloat(match[2]);
+        minX = Math.min(minX, x);
+        minY = Math.min(minY, y);
+        maxX = Math.max(maxX, x + node.offsetWidth);
+        maxY = Math.max(maxY, y + node.offsetHeight);
+      }
+    });
 
-    const origTransform = viewport.style.transform;
-    const origContainerWidth = container.style.width;
-    const origContainerHeight = container.style.height;
-    const origContainerOverflow = container.style.overflow;
-    const origContainerPosition = container.style.position;
+    if (!isFinite(minX)) return;
 
-    container.style.width = `${fullWidth}px`;
-    container.style.height = `${fullHeight}px`;
-    container.style.overflow = "visible";
-    container.style.position = "relative";
-    viewport.style.transform = `translate(${-bounds.minX + padding}px, ${-bounds.minY + padding}px) scale(1)`;
+    const vpTransform = viewport.style.transform || "";
+    const scaleMatch = vpTransform.match(/scale\((-?[\d.]+)\)/);
+    const scale = scaleMatch ? parseFloat(scaleMatch[1]) : 1;
+    const transMatch = vpTransform.match(/translate\((-?[\d.]+)px,\s*(-?[\d.]+)px\)/);
+    const tx = transMatch ? parseFloat(transMatch[1]) : 0;
+    const ty = transMatch ? parseFloat(transMatch[2]) : 0;
 
-    await new Promise((r) => setTimeout(r, 80));
+    const contentWidth = (maxX - minX) * scale;
+    const contentHeight = (maxY - minY) * scale;
+    const padding = 40 * scale;
+    const captureWidth = contentWidth + padding * 2;
+    const captureHeight = contentHeight + padding * 2;
 
-    const dataUrl = await toSvg(container, {
+    const dataUrl = await toSvg(viewport, {
       backgroundColor: "#f8f9fb",
-      width: fullWidth,
-      height: fullHeight,
+      width: captureWidth,
+      height: captureHeight,
+      style: {
+        transform: `translate(${tx + (-minX * scale) + padding}px, ${ty + (-minY * scale) + padding}px) scale(${scale})`,
+        transformOrigin: "top left",
+      },
       filter: (node: HTMLElement) => {
-        const className = node.className?.toString() ?? "";
-        if (className.includes("react-flow__minimap")) return false;
-        if (className.includes("react-flow__controls")) return false;
-        if (className.includes("react-flow__background")) return false;
+        const cn = node.className?.toString() ?? "";
+        if (cn.includes("react-flow__minimap")) return false;
+        if (cn.includes("react-flow__controls")) return false;
+        if (cn.includes("react-flow__background")) return false;
         return true;
       },
     });
 
-    viewport.style.transform = origTransform;
-    container.style.width = origContainerWidth;
-    container.style.height = origContainerHeight;
-    container.style.overflow = origContainerOverflow;
-    container.style.position = origContainerPosition;
-
     const link = document.createElement("a");
-    link.download = buildFilename("topology", "svg", ctx);
+    link.download = filename;
     link.href = dataUrl;
     link.click();
   } catch (err) {
@@ -212,23 +207,12 @@ export async function exportTopologySVG(ctx?: ExportContext) {
 
 // ─── Draw.io Export — Uses actual topology positions and edges ─────────────────
 
-/**
- * Generates a Draw.io XML file that preserves the actual topology layout,
- * including node positions from ELK layout and all edge connections.
- * Users can open this in draw.io/diagrams.net to:
- * - Edit the topology diagram with full diagramming tools
- * - Add annotations, notes, or architecture documentation
- * - Rearrange nodes for custom presentations
- * - Export to PDF/PNG/SVG with draw.io's own renderer
- * - Share editable architecture diagrams with teams
- */
 export function exportTopologyDrawIO(
   topology: TopologyResponse | null,
   ctx?: ExportContext
 ) {
   if (!topology) return;
 
-  // Get actual node positions from the DOM
   const viewport = document.querySelector(".react-flow__viewport");
   const positionMap = new Map<
     string,
@@ -311,7 +295,7 @@ export function exportTopologyDrawIO(
 </mxfile>`;
 
   const blob = new Blob([xml], { type: "application/xml" });
-  downloadBlob(blob, buildFilename("topology", "drawio", ctx));
+  downloadBlob(blob, buildExportFilename("drawio", ctx));
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────

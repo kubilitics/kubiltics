@@ -1,4 +1,4 @@
-import { useCallback, useState, useEffect, useMemo } from "react";
+import { useCallback, useState, useEffect, useMemo, useRef } from "react";
 import {
   Background,
   Controls,
@@ -17,7 +17,10 @@ import "@xyflow/react/dist/style.css";
 import { nodeTypes } from "./nodes/nodeTypes";
 import { edgeTypes } from "./edges/edgeTypes";
 import { useElkLayout } from "./hooks/useElkLayout";
+import { captureFullTopologyPNG, captureFullTopologySVG } from "./export/exportTopology";
 import type { TopologyResponse, ViewMode } from "./types/topology";
+
+export type ExportFormat = "png" | "svg";
 
 export interface TopologyCanvasProps {
   topology: TopologyResponse | null;
@@ -26,6 +29,8 @@ export interface TopologyCanvasProps {
   viewMode?: ViewMode;
   onSelectNode: (id: string | null) => void;
   fitViewRef?: React.MutableRefObject<(() => void) | null>;
+  /** Ref that parent sets to trigger an export. Call with (format, filename). */
+  exportRef?: React.MutableRefObject<((format: ExportFormat, filename: string) => void) | null>;
 }
 
 /**
@@ -49,6 +54,7 @@ function TopologyCanvasInner({
   viewMode = "namespace",
   onSelectNode,
   fitViewRef,
+  exportRef,
 }: TopologyCanvasProps) {
   const [currentZoom, setCurrentZoom] = useState(0.5);
   const nodeType = getNodeTypeForZoom(currentZoom);
@@ -60,6 +66,10 @@ function TopologyCanvasInner({
 
   const nodeCount = topology?.nodes?.length ?? 0;
 
+  // Export state: when exporting, disable onlyRenderVisibleElements
+  const [isExporting, setIsExporting] = useState(false);
+  const exportPendingRef = useRef<{ format: ExportFormat; filename: string } | null>(null);
+
   // Sync ELK layout output into React Flow state
   useEffect(() => {
     setNodes(elkNodes);
@@ -70,7 +80,6 @@ function TopologyCanvasInner({
   useEffect(() => {
     if (!isLayouting && elkNodes.length > 0) {
       const t = setTimeout(() => {
-        // Minimum zoom ensures nodes are readable cards, not dots
         let minZoom = 0.35;
         if (nodeCount > 300) minZoom = 0.12;
         else if (nodeCount > 150) minZoom = 0.2;
@@ -95,6 +104,52 @@ function TopologyCanvasInner({
     }
   }, [reactFlow, fitViewRef]);
 
+  // ── Export flow ─────────────────────────────────────────────────────────────
+  // Step 1: Parent calls exportRef → sets isExporting=true (renders ALL nodes)
+  // Step 2: useEffect detects isExporting → fitView → wait → capture → restore
+  useEffect(() => {
+    if (exportRef) {
+      exportRef.current = (format: ExportFormat, filename: string) => {
+        exportPendingRef.current = { format, filename };
+        setIsExporting(true);
+      };
+    }
+  }, [exportRef]);
+
+  // When isExporting becomes true, all nodes render (onlyRenderVisibleElements=false).
+  // We fitView, wait for render, capture, then restore.
+  useEffect(() => {
+    if (!isExporting || !exportPendingRef.current) return;
+
+    const pending = exportPendingRef.current;
+
+    // Save current viewport to restore after export
+    const savedViewport = reactFlow.getViewport();
+
+    // FitView so all nodes are visible and positioned
+    reactFlow.fitView({ padding: 0.05, duration: 0 });
+
+    // Wait for React to render all nodes (since onlyRenderVisibleElements is now off)
+    const timer = setTimeout(async () => {
+      try {
+        if (pending.format === "png") {
+          await captureFullTopologyPNG(pending.filename);
+        } else {
+          await captureFullTopologySVG(pending.filename);
+        }
+      } catch (err) {
+        console.error("Export capture failed:", err);
+      } finally {
+        // Restore previous viewport position/zoom
+        reactFlow.setViewport(savedViewport, { duration: 0 });
+        exportPendingRef.current = null;
+        setIsExporting(false);
+      }
+    }, 300); // 300ms to let all nodes render
+
+    return () => clearTimeout(timer);
+  }, [isExporting, reactFlow]);
+
   // Selection/highlight styling
   const styledNodes = useMemo(() => {
     if (!selectedNodeId && highlightNodeIds.length === 0) return nodes;
@@ -114,7 +169,7 @@ function TopologyCanvasInner({
 
   // Edge styling — ALWAYS show edges, just hide labels at low zoom
   const styledEdges = useMemo(() => {
-    if (currentZoom < 0.25) {
+    if (currentZoom < 0.25 && !isExporting) {
       return edges.map((e) => ({
         ...e,
         data: { ...e.data, hideLabel: true },
@@ -126,7 +181,7 @@ function TopologyCanvasInner({
       }));
     }
     return edges;
-  }, [edges, currentZoom]);
+  }, [edges, currentZoom, isExporting]);
 
   const onNodeClick = useCallback(
     (_: React.MouseEvent, node: { id: string }) => onSelectNode(node.id),
@@ -159,7 +214,7 @@ function TopologyCanvasInner({
       edgeTypes={edgeTypes}
       fitView
       fitViewOptions={{ padding: 0.06 }}
-      onlyRenderVisibleElements
+      onlyRenderVisibleElements={!isExporting}
       onNodesChange={onNodesChange}
       onEdgesChange={onEdgesChange}
       onNodeClick={onNodeClick}
