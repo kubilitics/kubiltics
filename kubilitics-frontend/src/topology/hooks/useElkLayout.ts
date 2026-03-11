@@ -211,8 +211,9 @@ export function useElkLayout(
     try {
       let positions: Map<string, { x: number; y: number }>;
 
-      if (nodeCount > 300) {
+      if (nodeCount > 500) {
         // ─── FAST PATH: namespace-grouped grid (instant, no ELK) ────────
+        // ELK layered can handle up to ~500 nodes on main thread without freeze
         positions = fastGridLayout(topology);
       } else if (elkRef.current) {
         // ─── ELK PATH: layered algorithm ────────────────────────────────
@@ -247,9 +248,10 @@ export function useElkLayout(
               layoutOptions: {
                 "elk.algorithm": "layered",
                 "elk.direction": "RIGHT",
-                "elk.spacing.nodeNode": "25",
-                "elk.layered.spacing.nodeNodeBetweenLayers": "60",
-                "elk.padding": "[top=40,left=20,bottom=20,right=20]",
+                "elk.spacing.nodeNode": "40",
+                "elk.layered.spacing.nodeNodeBetweenLayers": "100",
+                "elk.layered.crossingMinimization.strategy": "LAYER_SWEEP",
+                "elk.padding": "[top=50,left=30,bottom=30,right=30]",
               },
             });
           }
