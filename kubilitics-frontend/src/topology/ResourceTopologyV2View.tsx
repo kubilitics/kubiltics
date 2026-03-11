@@ -83,7 +83,7 @@ export function ResourceTopologyV2View({
   // Transform engine graph to v2 format
   const topology = useMemo<TopologyResponse | null>(() => {
     if (!graph) return null;
-    const response = transformGraph(graph);
+    const response = transformGraph(graph, clusterId ?? undefined);
     response.metadata.mode = "resource";
     if (namespace) response.metadata.namespace = namespace;
     return response;
@@ -112,8 +112,8 @@ export function ResourceTopologyV2View({
   const exportCtx: ExportContext = useMemo(() => ({
     viewMode: "resource" as const,
     selectedNamespaces: namespace ? new Set([namespace]) : new Set<string>(),
-    clusterId: clusterId ?? undefined,
-  }), [namespace, clusterId]);
+    clusterName: topology?.metadata?.clusterName ?? undefined,
+  }), [namespace, topology?.metadata?.clusterName]);
 
   const handleExportJSON = useCallback(() => {
     if (!topology) return;

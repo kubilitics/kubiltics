@@ -5,13 +5,13 @@ import type { TopologyResponse, ViewMode } from "../types/topology";
 export interface ExportContext {
   viewMode?: ViewMode;
   selectedNamespaces?: Set<string>;
-  clusterId?: string;
+  clusterName?: string;
 }
 
 function buildFilename(base: string, ext: string, ctx?: ExportContext): string {
   const parts: string[] = [];
 
-  if (ctx?.clusterId) parts.push(ctx.clusterId);
+  if (ctx?.clusterName) parts.push(ctx.clusterName);
 
   if (ctx?.selectedNamespaces && ctx.selectedNamespaces.size > 0) {
     const nsList = Array.from(ctx.selectedNamespaces);

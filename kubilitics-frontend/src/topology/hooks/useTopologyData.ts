@@ -131,7 +131,7 @@ export function useTopologyData({
   // Transform to v2 format and apply both filters
   const topology = useMemo<TopologyResponse | null>(() => {
     if (!graph) return null;
-    const response = transformGraph(graph);
+    const response = transformGraph(graph, clusterId ?? undefined);
 
     // Layer 1: View mode filtering
     const afterViewMode = filterByViewMode(response.nodes, response.edges, viewMode);

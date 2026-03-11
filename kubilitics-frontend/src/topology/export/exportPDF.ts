@@ -3,7 +3,7 @@
  * Generates SVG first, then converts to PDF using jspdf.
  */
 export async function exportTopologyPDF(
-  clusterId?: string,
+  clusterName?: string,
   viewMode?: string,
   selectedNamespaces?: Set<string>
 ): Promise<void> {
@@ -36,7 +36,7 @@ export async function exportTopologyPDF(
 
   // Add header
   const dateStr = new Date().toLocaleDateString();
-  const title = `Kubilitics Topology — ${clusterId ?? "cluster"} — ${dateStr}`;
+  const title = `Kubilitics Topology — ${clusterName ?? "cluster"} — ${dateStr}`;
   pdf.setFontSize(14);
   pdf.text(title, 40, 30);
 
@@ -67,6 +67,6 @@ export async function exportTopologyPDF(
     ? `-${Array.from(selectedNamespaces).slice(0, 3).join("-")}`
     : "";
   const ts = Date.now();
-  const filename = `${clusterId ?? "cluster"}${nsPart}-${viewMode ?? "namespace"}-${ts}.pdf`;
+  const filename = `${clusterName ?? "cluster"}${nsPart}-${viewMode ?? "namespace"}-${ts}.pdf`;
   pdf.save(filename);
 }

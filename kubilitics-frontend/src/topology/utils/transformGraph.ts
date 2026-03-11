@@ -69,7 +69,7 @@ export function kindToLayer(kind: string): number {
 }
 
 /** Convert engine TopologyGraph → v2 TopologyResponse */
-export function transformGraph(graph: TopologyGraph): TopologyResponse {
+export function transformGraph(graph: TopologyGraph, clusterName?: string): TopologyResponse {
   const nodes: TopologyNode[] = graph.nodes.map((n: EngineNode) => ({
     id: n.id,
     kind: n.kind,
@@ -112,7 +112,7 @@ export function transformGraph(graph: TopologyGraph): TopologyResponse {
   return {
     metadata: {
       clusterId: graph.metadata?.clusterId ?? "",
-      clusterName: graph.metadata?.clusterId ?? "",
+      clusterName: clusterName || graph.metadata?.clusterId || "",
       mode: "namespace",
       resourceCount: nodes.length,
       edgeCount: edges.length,

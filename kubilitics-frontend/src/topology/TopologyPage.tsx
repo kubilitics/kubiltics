@@ -95,9 +95,9 @@ export function TopologyPage() {
       exportTopologyPNG({
         viewMode,
         selectedNamespaces,
-        clusterId: clusterId ?? undefined,
+        clusterName: topology?.metadata?.clusterName ?? undefined,
       });
-    }, [viewMode, selectedNamespaces, clusterId]),
+    }, [viewMode, selectedNamespaces, topology?.metadata?.clusterName]),
     onShowHelp: useCallback(() => setShowHelp((v) => !v), []),
     onNavigateBack: useCallback(() => navigateBack(), [navigateBack]),
   });
