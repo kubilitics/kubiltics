@@ -18,6 +18,21 @@ export default {
         sans: ['Inter', 'system-ui', 'sans-serif'],
         mono: ['JetBrains Mono', 'ui-monospace', 'monospace'],
       },
+      fontSize: {
+        // Semantic typographic scale — modular 1.25 ratio
+        'display': ['3rem', { lineHeight: '1.1', letterSpacing: '-0.02em', fontWeight: '700' }],
+        'h1': ['2.25rem', { lineHeight: '1.2', letterSpacing: '-0.02em', fontWeight: '700' }],
+        'h2': ['1.875rem', { lineHeight: '1.3', letterSpacing: '-0.01em', fontWeight: '600' }],
+        'h3': ['1.5rem', { lineHeight: '1.4', fontWeight: '600' }],
+        'h4': ['1.25rem', { lineHeight: '1.4', fontWeight: '600' }],
+        'h5': ['1.125rem', { lineHeight: '1.5', fontWeight: '600' }],
+        'body-lg': ['1.125rem', { lineHeight: '1.6' }],
+        'body': ['1rem', { lineHeight: '1.6' }],
+        'body-sm': ['0.875rem', { lineHeight: '1.5' }],
+        'caption': ['0.75rem', { lineHeight: '1.4' }],
+        'overline': ['0.75rem', { lineHeight: '1.4', letterSpacing: '0.05em', fontWeight: '600' }],
+        'code': ['0.875rem', { lineHeight: '1.5' }],
+      },
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
@@ -105,11 +120,27 @@ export default {
           "0%": { opacity: "0", transform: "translateY(4px)" },
           "100%": { opacity: "1", transform: "translateY(0)" },
         },
+        "topbar-indeterminate": {
+          "0%": { transform: "translateX(-100%)", width: "40%" },
+          "50%": { transform: "translateX(100%)", width: "60%" },
+          "100%": { transform: "translateX(300%)", width: "40%" },
+        },
+        "shimmer-slide": {
+          "0%": { backgroundPosition: "-200% 0" },
+          "100%": { backgroundPosition: "200% 0" },
+        },
+        "row-entrance": {
+          "from": { opacity: "0", transform: "translateY(6px)" },
+          "to": { opacity: "1", transform: "translateY(0)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
         "fade-in": "fade-in 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+        "topbar-indeterminate": "topbar-indeterminate 1.8s cubic-bezier(0.4, 0, 0.2, 1) infinite",
+        "shimmer-slide": "shimmer-slide 2s linear infinite",
+        "row-entrance": "row-entrance 0.2s ease-out both",
       },
       transitionTimingFunction: {
         'spring': 'cubic-bezier(0.175, 0.885, 0.32, 1.275)',
