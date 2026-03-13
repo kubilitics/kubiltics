@@ -94,12 +94,11 @@ export function TopologyToolbar({
   const toggleNamespace = useCallback((ns: string) => {
     const next = new Set(selectedNamespaces);
     if (next.has(ns)) {
-      // Don't deselect the last namespace — would trigger all-namespaces load
-      if (next.size <= 1) return;
       next.delete(ns);
     } else {
       next.add(ns);
     }
+    // Parent handler (TopologyPage) guards against empty set → falls back to "default"
     onNamespaceSelectionChange?.(next);
   }, [selectedNamespaces, onNamespaceSelectionChange]);
 
