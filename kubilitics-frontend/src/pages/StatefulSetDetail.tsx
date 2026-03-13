@@ -63,6 +63,7 @@ import {
   TerminalViewer,
   ResourceTopologyView,
   ResourceComparisonView,
+  DetailPodTable,
   type ResourceStatus,
   type ContainerInfo,
   type YamlVersion,
@@ -530,104 +531,22 @@ export default function StatefulSetDetail() {
       icon: Hash,
       badge: stsPods.length.toString(),
       content: (
-        <SectionCard icon={Box} title="Pods & Ordinals" tooltip={<p className="text-xs text-muted-foreground">Ordered pod list with ordinal index and partition state</p>}>
-          {stsPods.length > 0 && updateStrategyType === 'RollingUpdate' && (
-            <div className="flex items-center gap-2 mb-3 text-xs text-muted-foreground">
-              <ArrowDown className="h-4 w-4 shrink-0" aria-hidden />
-              <span>Update direction: highest ordinal first (e.g. {Math.max(0, stsPods.length - 1)} → … → 0)</span>
-            </div>
-          )}
-          {stsPods.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No pods match this StatefulSet&apos;s selector yet.</p>
-          ) : (
-            <>
-              <div className="rounded-lg border overflow-hidden">
-                <table className="w-full text-sm">
-                  <thead className="bg-muted/50">
-                    <tr>
-                      <th className="text-left p-3 font-medium">Ordinal</th>
-                      <th className="text-left p-3 font-medium">Name</th>
-                      <th className="text-left p-3 font-medium">Template</th>
-                      <th className="text-left p-3 font-medium">Status</th>
-                      <th className="text-left p-3 font-medium">Node</th>
-                      <th className="text-left p-3 font-medium">IP</th>
-                      <th className="text-left p-3 font-medium">Age</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {stsPodsPage.map((pod) => {
-                      const podName = pod.metadata?.name ?? '';
-                      const podNs = pod.metadata?.namespace ?? namespace ?? '';
-                      const phase = (pod.status as { phase?: string } | undefined)?.phase ?? '-';
-                      const nodeName = (pod.spec as { nodeName?: string } | undefined)?.nodeName ?? '-';
-                      const podIP = (pod.status as { podIP?: string } | undefined)?.podIP ?? '-';
-                      const created = pod.metadata?.creationTimestamp ? calculateAge(pod.metadata.creationTimestamp) : '-';
-                      const ordinalStr = podName.replace(new RegExp(`^${stsName}-`), '') || '?';
-                      const ordinalNum = /^\d+$/.test(ordinalStr) ? parseInt(ordinalStr, 10) : -1;
-                      const isNewTemplate = ordinalNum >= partition;
-                      const templateBadge = updateStrategyType === 'RollingUpdate' && partition > 0
-                        ? (isNewTemplate ? <Badge variant="default" className="bg-primary/90 text-primary-foreground text-xs">New Template</Badge> : <Badge variant="secondary" className="text-muted-foreground text-xs">Old Template</Badge>)
-                        : null;
-                      return (
-                        <tr key={podName} className="border-t">
-                          <td className="p-3"><Badge variant="secondary" className="font-mono">[{ordinalStr}]</Badge></td>
-                          <td className="p-3">
-                            <span className="inline-flex items-center gap-2">
-                              <span className="font-mono text-muted-foreground text-xs">[{ordinalStr}]</span>
-                              <Link to={`/pods/${podNs}/${podName}`} className="text-primary hover:underline font-medium">
-                                {podName}
-                              </Link>
-                            </span>
-                          </td>
-                          <td className="p-3">{templateBadge ?? '—'}</td>
-                          <td className="p-3"><Badge variant={phase === 'Running' ? 'default' : 'secondary'} className="text-xs">{phase}</Badge></td>
-                          <td className="p-3 font-mono text-xs">{nodeName}</td>
-                          <td className="p-3 font-mono text-xs">{podIP}</td>
-                          <td className="p-3">{created}</td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-              <div className="flex items-center justify-between flex-wrap gap-2 pt-2">
-                <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                  <span>{podsPagination.rangeLabel}</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="outline" size="sm" className="gap-2">
-                        {podsPageSize} per page
-                        <ChevronDown className="h-4 w-4 opacity-50" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="start">
-                      {PAGE_SIZE_OPTIONS.map((size) => (
-                        <DropdownMenuItem
-                          key={size}
-                          onClick={() => handlePodsPageSizeChange(size)}
-                          className={cn(podsPageSize === size && 'bg-accent')}
-                        >
-                          {size} per page
-                        </DropdownMenuItem>
-                      ))}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                  <ListPagination
-                    hasPrev={podsPagination.hasPrev}
-                    hasNext={podsPagination.hasNext}
-                    onPrev={podsPagination.onPrev}
-                    onNext={podsPagination.onNext}
-                    rangeLabel={undefined}
-                    currentPage={podsPagination.currentPage}
-                    totalPages={podsPagination.totalPages}
-                    onPageChange={podsPagination.onPageChange}
-                  />
-                </div>
-              </div>
-            </>
-          )}
+        <SectionCard icon={Box} title="Pods & Ordinals" tooltip={<p className="text-xs text-muted-foreground">Ordered pods managed by this StatefulSet</p>}>
+          <DetailPodTable
+            pods={stsPods}
+            namespace={namespace ?? ''}
+            extraColumns={[
+              {
+                header: 'Ordinal',
+                render: (pod) => {
+                  const podName = pod.metadata?.name ?? '';
+                  const parts = podName.split('-');
+                  const ordinal = parseInt(parts[parts.length - 1], 10);
+                  return <span className="font-mono text-xs">{isNaN(ordinal) ? '–' : ordinal}</span>;
+                },
+              },
+            ]}
+          />
         </SectionCard>
       ),
     },

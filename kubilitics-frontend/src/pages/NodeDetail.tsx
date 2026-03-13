@@ -23,6 +23,7 @@ import {
   type ResourceStatus,
   type YamlVersion,
 } from '@/components/resources';
+import { DetailPodTable } from '@/components/resources/DetailPodTable';
 import { useResourceDetail, useK8sEvents } from '@/hooks/useK8sResourceDetail';
 import { useDeleteK8sResource, useUpdateK8sResource, useK8sResourceList, calculateAge, type KubernetesResource } from '@/hooks/useKubernetes';
 import { normalizeKindForTopology } from '@/utils/resourceKindMapper';
@@ -530,86 +531,7 @@ export default function NodeDetail() {
       label: 'Pods',
       content: (
         <SectionCard icon={Box} title={`Pods on this node (${runningPods.length})`} tooltip={<p className="text-xs text-muted-foreground">Pods scheduled on this node (fieldSelector=spec.nodeName). Click a row to open pod detail.</p>}>
-          {podsOnNodeQuery.isLoading ? (
-            <div className="flex items-center justify-center py-12 gap-2 text-muted-foreground">
-              <Loader2 className="h-5 w-5 animate-spin" />
-              <span>Loading pods…</span>
-            </div>
-          ) : runningPods.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 text-center px-4">
-              <Box className="h-10 w-10 text-muted-foreground mb-3" />
-              <p className="font-medium text-foreground">No pods on this node</p>
-              <p className="text-sm text-muted-foreground mt-1">Pods scheduled here will appear in this table.</p>
-            </div>
-          ) : (
-            <>
-              <div className="rounded-lg border border-border overflow-hidden">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-muted/40 hover:bg-muted/40 border-b border-border">
-                      <TableHead className="font-semibold">Name</TableHead>
-                      <TableHead className="font-semibold">Namespace</TableHead>
-                      <TableHead className="font-semibold">Status</TableHead>
-                      <TableHead className="font-semibold">CPU</TableHead>
-                      <TableHead className="font-semibold">Memory</TableHead>
-                      <TableHead className="font-semibold">Age</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {runningPodsPage.map((pod) => (
-                      <TableRow
-                        key={`${pod.namespace}/${pod.name}`}
-                        className="cursor-pointer hover:bg-muted/60 transition-colors"
-                        onClick={() => navigate(`/pods/${pod.namespace}/${pod.name}`)}
-                      >
-                        <TableCell className="font-medium text-primary">{pod.name}</TableCell>
-                        <TableCell><NamespaceBadge namespace={pod.namespace} className="font-normal" /></TableCell>
-                        <TableCell>
-                          <StatusPill
-                            label={pod.status}
-                            variant={(pod.status === 'Running' ? 'success' : pod.status === 'Pending' ? 'warning' : 'error') as StatusPillVariant}
-                          />
-                        </TableCell>
-                        <TableCell className="font-mono text-sm">{pod.cpu}</TableCell>
-                        <TableCell className="font-mono text-sm">{pod.memory}</TableCell>
-                        <TableCell className="text-muted-foreground whitespace-nowrap">
-                          <AgeCell age={pod.age} timestamp={pod.creationTimestamp} />
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-              <div className="flex items-center justify-between flex-wrap gap-2 pt-2">
-                <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                  <span>{podsPagination.rangeLabel}</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <select
-                    className="border border-border rounded-md px-2 py-1 text-xs bg-background"
-                    value={podsPageSize}
-                    onChange={(e) => handlePodsPageSizeChange(Number(e.target.value))}
-                  >
-                    {PAGE_SIZE_OPTIONS.map((size) => (
-                      <option key={size} value={size}>
-                        {size} per page
-                      </option>
-                    ))}
-                  </select>
-                  <ListPagination
-                    hasPrev={podsPagination.hasPrev}
-                    hasNext={podsPagination.hasNext}
-                    onPrev={podsPagination.onPrev}
-                    onNext={podsPagination.onNext}
-                    rangeLabel={undefined}
-                    currentPage={podsPagination.currentPage}
-                    totalPages={podsPagination.totalPages}
-                    onPageChange={podsPagination.onPageChange}
-                  />
-                </div>
-              </div>
-            </>
-          )}
+          <DetailPodTable pods={runningPods} namespace="" />
         </SectionCard>
       ),
     },

@@ -58,6 +58,7 @@ import {
   type ContainerInfo,
   type YamlVersion,
 } from '@/components/resources';
+import { DetailPodTable } from '@/components/resources/DetailPodTable';
 import { useResourceDetail, useResourceEvents } from '@/hooks/useK8sResourceDetail';
 import { useDeleteK8sResource, useUpdateK8sResource, usePatchK8sResource, useK8sResourceList, calculateAge, type KubernetesResource } from '@/hooks/useKubernetes';
 import { normalizeKindForTopology } from '@/utils/resourceKindMapper';
@@ -398,113 +399,7 @@ export default function ReplicaSetDetail() {
       badge: rsPods.length.toString(),
       content: (
         <SectionCard icon={Box} title="Pods" tooltip={<p className="text-xs text-muted-foreground">Pods managed by this ReplicaSet</p>}>
-          {rsPods.length > 0 && (
-            <div className="relative mb-3 max-w-sm">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search by pod name or node..."
-                value={podsTabSearch}
-                onChange={(e) => setPodsTabSearch(e.target.value)}
-                className="pl-9 h-10 text-sm"
-                aria-label="Search pods"
-              />
-            </div>
-          )}
-          {rsPods.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No pods match this ReplicaSet&apos;s selector yet.</p>
-          ) : rsPodsFiltered.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No pods match the search.</p>
-          ) : (
-            <>
-              <div className="rounded-lg border overflow-x-auto">
-                <table className="w-full text-sm min-w-[700px]">
-                  <thead className="bg-muted/50">
-                    <tr>
-                      <th className="text-left p-3 font-medium">Name</th>
-                      <th className="text-left p-3 font-medium">Status</th>
-                      <th className="text-left p-3 font-medium">Ready</th>
-                      <th className="text-left p-3 font-medium">Restarts</th>
-                      <th className="text-left p-3 font-medium">Node</th>
-                      <th className="text-left p-3 font-medium">CPU</th>
-                      <th className="text-left p-3 font-medium">Memory</th>
-                      <th className="text-left p-3 font-medium">Age</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {rsPodsPage.map((pod) => {
-                      const podName = pod.metadata?.name ?? '';
-                      const podNs = pod.metadata?.namespace ?? namespace ?? '';
-                      const status = pod.status as { phase?: string; containerStatuses?: Array<{ ready?: boolean; restartCount?: number }> } | undefined;
-                      const phase = status?.phase ?? '–';
-                      const containerStatuses = status?.containerStatuses ?? [];
-                      const readyCount = containerStatuses.filter((c) => c.ready).length;
-                      const totalContainers = containerStatuses.length || 1;
-                      const readyStr = `${readyCount}/${totalContainers}`;
-                      const restarts = containerStatuses.reduce((sum, c) => sum + (c.restartCount ?? 0), 0);
-                      const nodeName = (pod.spec as { nodeName?: string } | undefined)?.nodeName ?? '–';
-                      const metrics = podMetricsByName[podName];
-                      return (
-                        <tr
-                          key={podName}
-                          className="border-t hover:bg-muted/20 cursor-pointer"
-                          onClick={() => navigate(`/pods/${podNs}/${podName}`)}
-                        >
-                          <td className="p-3">
-                            <Link to={`/pods/${podNs}/${podName}`} className="text-primary hover:underline font-medium" onClick={(e) => e.stopPropagation()}>
-                              {podName}
-                            </Link>
-                          </td>
-                          <td className="p-3"><Badge variant={phase === 'Running' ? 'default' : 'secondary'} className="text-xs">{phase}</Badge></td>
-                          <td className="p-3 font-mono text-xs">{readyStr}</td>
-                          <td className="p-3 font-mono text-xs">{restarts}</td>
-                          <td className="p-3 font-mono text-xs truncate max-w-[140px]" title={nodeName}>{nodeName}</td>
-                          <td className="p-3 font-mono text-xs text-muted-foreground">{metrics?.cpu ?? '–'}</td>
-                          <td className="p-3 font-mono text-xs text-muted-foreground">{metrics?.memory ?? '–'}</td>
-                          <td className="p-3"><AgeCell age={pod.metadata?.creationTimestamp ? calculateAge(pod.metadata.creationTimestamp) : '–'} timestamp={pod.metadata?.creationTimestamp} /></td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-              <div className="flex items-center justify-between flex-wrap gap-2 pt-2">
-                <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                  <span>{podsPagination.rangeLabel}</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="outline" size="sm" className="gap-2">
-                        {podsPageSize} per page
-                        <ChevronDown className="h-4 w-4 opacity-50" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="start">
-                      {PAGE_SIZE_OPTIONS.map((size) => (
-                        <DropdownMenuItem
-                          key={size}
-                          onClick={() => handlePodsPageSizeChange(size)}
-                          className={cn(podsPageSize === size && 'bg-accent')}
-                        >
-                          {size} per page
-                        </DropdownMenuItem>
-                      ))}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                  <ListPagination
-                    hasPrev={podsPagination.hasPrev}
-                    hasNext={podsPagination.hasNext}
-                    onPrev={podsPagination.onPrev}
-                    onNext={podsPagination.onNext}
-                    rangeLabel={undefined}
-                    currentPage={podsPagination.currentPage}
-                    totalPages={podsPagination.totalPages}
-                    onPageChange={podsPagination.onPageChange}
-                  />
-                </div>
-              </div>
-            </>
-          )}
+          <DetailPodTable pods={rsPods} namespace={namespace ?? ''} />
         </SectionCard>
       ),
     },
