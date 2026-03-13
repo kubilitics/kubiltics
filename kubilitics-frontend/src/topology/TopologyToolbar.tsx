@@ -198,14 +198,14 @@ export function TopologyToolbar({
                     </div>
                     <div className="space-y-0.5">
                       {userNamespaces.map((ns) => (
-                        <label key={ns} className={`flex items-center gap-2.5 cursor-pointer rounded-lg px-2.5 py-2 transition-all ${
+                        <div key={ns} role="button" tabIndex={0} onClick={() => toggleNamespace(ns)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleNamespace(ns); } }} className={`flex items-center gap-2.5 cursor-pointer rounded-lg px-2.5 py-2 transition-all ${
                           selectedNamespaces.has(ns)
                             ? "bg-indigo-50/80 border border-indigo-100"
                             : "hover:bg-gray-50 border border-transparent"
                         }`}>
-                          <Checkbox checked={selectedNamespaces.has(ns)} onCheckedChange={() => toggleNamespace(ns)} />
+                          <div className="pointer-events-none"><Checkbox checked={selectedNamespaces.has(ns)} /></div>
                           <span className={`text-sm font-medium ${selectedNamespaces.has(ns) ? "text-indigo-700" : "text-gray-700"}`}>{ns}</span>
-                        </label>
+                        </div>
                       ))}
                     </div>
                   </div>
@@ -218,14 +218,14 @@ export function TopologyToolbar({
                     </div>
                     <div className="space-y-0.5">
                       {systemNamespaces.map((ns) => (
-                        <label key={ns} className={`flex items-center gap-2.5 cursor-pointer rounded-lg px-2.5 py-2 transition-all ${
+                        <div key={ns} role="button" tabIndex={0} onClick={() => toggleNamespace(ns)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleNamespace(ns); } }} className={`flex items-center gap-2.5 cursor-pointer rounded-lg px-2.5 py-2 transition-all ${
                           selectedNamespaces.has(ns)
                             ? "bg-indigo-50/80 border border-indigo-100"
                             : "hover:bg-gray-50 border border-transparent"
                         }`}>
-                          <Checkbox checked={selectedNamespaces.has(ns)} onCheckedChange={() => toggleNamespace(ns)} />
+                          <div className="pointer-events-none"><Checkbox checked={selectedNamespaces.has(ns)} /></div>
                           <span className={`text-sm font-medium ${selectedNamespaces.has(ns) ? "text-indigo-700" : "text-gray-500"}`}>{ns}</span>
-                        </label>
+                        </div>
                       ))}
                     </div>
                   </div>
