@@ -379,14 +379,14 @@ export default function ServiceDetail() {
                           key={i}
                           className={cn(
                             'border-b',
-                            row.ready ? 'bg-[hsl(142,76%,36%)]/5 border-l-4 border-l-[hsl(142,76%,36%)]' : 'bg-destructive/5 border-l-4 border-l-destructive'
+                            row.ready ? 'bg-emerald-600/5 border-l-4 border-l-[hsl(142,76%,36%)]' : 'bg-destructive/5 border-l-4 border-l-destructive'
                           )}
                         >
                           <td className="p-3 font-mono text-xs">{row.address}</td>
                           <td className="p-3 font-mono text-xs">{row.port}</td>
                           <td className="p-3 font-mono text-xs">{row.protocol}</td>
                           <td className="p-3">
-                            {row.ready ? <Badge variant="default" className="bg-[hsl(142,76%,36%)] text-white border-0">Yes</Badge> : <Badge variant="destructive" className="border-0">No</Badge>}
+                            {row.ready ? <Badge variant="default" className="bg-emerald-600 text-white border-0">Yes</Badge> : <Badge variant="destructive" className="border-0">No</Badge>}
                           </td>
                           <td className="p-3 font-mono text-xs text-muted-foreground">{row.hostname ?? '—'}</td>
                           <td className="p-3 font-mono text-xs text-muted-foreground">{row.nodeName ?? '—'}</td>

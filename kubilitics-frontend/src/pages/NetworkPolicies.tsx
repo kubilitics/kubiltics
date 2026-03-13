@@ -389,7 +389,7 @@ spec:
  <ListPageStatCard size="sm" label="Ingress Rules" value={stats.withIngress} valueClassName="text-blue-600" icon={ArrowDownToLine} iconColor="text-blue-600" selected={columnFilters.policyTypes?.size === 1 && columnFilters.policyTypes.has('Ingress')} onClick={() => setColumnFilter('policyTypes', new Set(['Ingress']))} className={cn(columnFilters.policyTypes?.size === 1 && columnFilters.policyTypes.has('Ingress') && 'ring-2 ring-blue-600')} isLoading={isLoading} />
  <ListPageStatCard size="sm" label="Egress Rules" value={stats.withEgress} valueClassName="text-orange-600" icon={ArrowUpFromLine} iconColor="text-orange-600" selected={columnFilters.policyTypes?.size === 1 && columnFilters.policyTypes.has('Egress')} onClick={() => setColumnFilter('policyTypes', new Set(['Egress']))} className={cn(columnFilters.policyTypes?.size === 1 && columnFilters.policyTypes.has('Egress') && 'ring-2 ring-orange-600')} isLoading={isLoading} />
  <ListPageStatCard size="sm" label="Default Deny" value={stats.defaultDeny} valueClassName="text-purple-600" isLoading={isLoading} />
- <ListPageStatCard size="sm" label="Unprotected Pods" value={stats.unprotectedPods} valueClassName="text-[hsl(45,93%,47%)]" isLoading={isLoading} />
+ <ListPageStatCard size="sm" label="Unprotected Pods" value={stats.unprotectedPods} valueClassName="text-amber-600" isLoading={isLoading} />
  </div>
 
  <ResourceListTableToolbar

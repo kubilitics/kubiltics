@@ -247,7 +247,7 @@ export default function VolumeSnapshotContentDetail() {
         headerMetadata={
           <span className="flex items-center gap-1.5 ml-2 text-sm text-muted-foreground">
             {isConnected && <Badge variant="outline" className="text-xs">Live</Badge>}
-            {readyToUse && <><span className="mx-2">•</span><span className="text-[hsl(142,76%,36%)]">Ready</span></>}
+            {readyToUse && <><span className="mx-2">•</span><span className="text-emerald-600">Ready</span></>}
           </span>
         }
         actions={[

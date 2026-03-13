@@ -309,9 +309,9 @@ subsets: []
  {/* Stats Cards - Design 3.4: Total, Healthy, Degraded, Empty */}
  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
  <ListPageStatCard size="sm" label="Total Endpoints" value={stats.total} selected={!hasActiveFilters} onClick={clearAllFilters} className={cn(!hasActiveFilters && !isLoading && 'ring-2 ring-primary')} isLoading={isLoading} />
- <ListPageStatCard size="sm" label="Healthy" value={stats.healthy} valueClassName="text-[hsl(142,76%,36%)]" selected={columnFilters.healthStatus?.size === 1 && columnFilters.healthStatus.has('Healthy')} onClick={() => setColumnFilter('healthStatus', new Set(['Healthy']))} className={cn(columnFilters.healthStatus?.size === 1 && columnFilters.healthStatus.has('Healthy') && 'ring-2 ring-[hsl(142,76%,36%)]')} isLoading={isLoading} />
- <ListPageStatCard size="sm" label="Degraded" value={stats.degraded} valueClassName="text-[hsl(45,93%,47%)]" selected={columnFilters.healthStatus?.size === 1 && columnFilters.healthStatus.has('Degraded')} onClick={() => setColumnFilter('healthStatus', new Set(['Degraded']))} className={cn(columnFilters.healthStatus?.size === 1 && columnFilters.healthStatus.has('Degraded') && 'ring-2 ring-[hsl(45,93%,47%)]')} isLoading={isLoading} />
- <ListPageStatCard size="sm" label="Empty" value={stats.empty} valueClassName="text-[hsl(0,72%,51%)]" selected={columnFilters.healthStatus?.size === 1 && columnFilters.healthStatus.has('Empty')} onClick={() => setColumnFilter('healthStatus', new Set(['Empty']))} className={cn(columnFilters.healthStatus?.size === 1 && columnFilters.healthStatus.has('Empty') && 'ring-2 ring-[hsl(0,72%,51%)]')} isLoading={isLoading} />
+ <ListPageStatCard size="sm" label="Healthy" value={stats.healthy} valueClassName="text-emerald-600" selected={columnFilters.healthStatus?.size === 1 && columnFilters.healthStatus.has('Healthy')} onClick={() => setColumnFilter('healthStatus', new Set(['Healthy']))} className={cn(columnFilters.healthStatus?.size === 1 && columnFilters.healthStatus.has('Healthy') && 'ring-2 ring-emerald-500')} isLoading={isLoading} />
+ <ListPageStatCard size="sm" label="Degraded" value={stats.degraded} valueClassName="text-amber-600" selected={columnFilters.healthStatus?.size === 1 && columnFilters.healthStatus.has('Degraded')} onClick={() => setColumnFilter('healthStatus', new Set(['Degraded']))} className={cn(columnFilters.healthStatus?.size === 1 && columnFilters.healthStatus.has('Degraded') && 'ring-2 ring-amber-500')} isLoading={isLoading} />
+ <ListPageStatCard size="sm" label="Empty" value={stats.empty} valueClassName="text-rose-600" selected={columnFilters.healthStatus?.size === 1 && columnFilters.healthStatus.has('Empty')} onClick={() => setColumnFilter('healthStatus', new Set(['Empty']))} className={cn(columnFilters.healthStatus?.size === 1 && columnFilters.healthStatus.has('Empty') && 'ring-2 ring-rose-500')} isLoading={isLoading} />
  </div>
 
  <ResourceListTableToolbar
@@ -465,10 +465,10 @@ subsets: []
  </ResizableTableCell>
  <ResizableTableCell columnId="namespace"><NamespaceBadge namespace={ep.namespace} /></ResizableTableCell>
  <ResizableTableCell columnId="readyCount">
- <span className={cn('font-mono', ep.readyCount > 0 ? 'text-[hsl(142,76%,36%)]' : 'text-muted-foreground')}>{ep.readyCount}</span>
+ <span className={cn('font-mono', ep.readyCount > 0 ? 'text-emerald-600' : 'text-muted-foreground')}>{ep.readyCount}</span>
  </ResizableTableCell>
  <ResizableTableCell columnId="notReadyCount">
- <span className={cn('font-mono', ep.notReadyCount > 0 ? 'text-[hsl(0,72%,51%)]' : 'text-muted-foreground')}>{ep.notReadyCount}</span>
+ <span className={cn('font-mono', ep.notReadyCount > 0 ? 'text-rose-600' : 'text-muted-foreground')}>{ep.notReadyCount}</span>
  </ResizableTableCell>
  <ResizableTableCell columnId="totalAddresses"><span className="font-mono">{ep.readyCount + ep.notReadyCount}</span></ResizableTableCell>
  <ResizableTableCell columnId="ports"><span className="font-mono text-xs truncate block">{ep.ports}</span></ResizableTableCell>

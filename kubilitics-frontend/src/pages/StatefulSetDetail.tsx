@@ -504,7 +504,7 @@ export default function StatefulSetDetail() {
                   {statefulSet.status?.conditions?.map((c) => (
                     <div key={c.type} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
                       <div className="flex items-center gap-3">
-                        {c.status === 'True' ? <CheckCircle2 className="h-5 w-5 text-[hsl(142,76%,36%)]" /> : <XCircle className="h-5 w-5 text-[hsl(0,72%,51%)]" />}
+                        {c.status === 'True' ? <CheckCircle2 className="h-5 w-5 text-emerald-600" /> : <XCircle className="h-5 w-5 text-rose-600" />}
                         <div>
                           <p className="font-medium text-sm">{c.type}</p>
                           {c.reason && <p className="text-xs text-muted-foreground">{c.reason}</p>}
@@ -584,7 +584,7 @@ export default function StatefulSetDetail() {
                       const age = pvc.metadata?.creationTimestamp ? calculateAge(pvc.metadata.creationTimestamp) : '—';
                       const podLabel = ordinal !== null ? `${stsName}-${ordinal}` : '—';
                       const statusVariant = phase === 'Bound' ? 'default' : phase === 'Pending' ? 'secondary' : 'destructive';
-                      const statusClassName = phase === 'Bound' ? 'bg-[hsl(142,76%,36%)]/90 text-white border-0' : phase === 'Pending' ? 'bg-amber-500/90 text-white border-0' : phase === 'Lost' ? 'bg-destructive/90 text-destructive-foreground border-0' : '';
+                      const statusClassName = phase === 'Bound' ? 'bg-emerald-600/90 text-white border-0' : phase === 'Pending' ? 'bg-amber-500/90 text-white border-0' : phase === 'Lost' ? 'bg-destructive/90 text-destructive-foreground border-0' : '';
                       return (
                         <tr key={pvcName} className="border-t">
                           <td className="p-3">

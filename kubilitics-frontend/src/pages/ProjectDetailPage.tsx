@@ -282,7 +282,7 @@ export default function ProjectDetailPage() {
                     <span className="font-medium truncate">{pc.cluster_name}</span>
                   </div>
                   {pc.cluster_provider && (
-                    <Badge variant="outline" className="text-[10px] shrink-0">
+                    <Badge variant="outline" className="text-xs shrink-0">
                       {pc.cluster_provider}
                     </Badge>
                   )}
@@ -370,7 +370,7 @@ export default function ProjectDetailPage() {
                         >
                           <span>{n.namespace_name}</span>
                           {n.team && (
-                            <Badge variant="secondary" className="text-[10px]">
+                            <Badge variant="secondary" className="text-xs">
                               {n.team}
                             </Badge>
                           )}

@@ -314,8 +314,8 @@ export default function Leases() {
 
  <div className={cn('grid grid-cols-2 sm:grid-cols-4 gap-4', !isConnected && 'opacity-60')}>
  <ListPageStatCard label="Total Leases" value={stats.total} icon={Activity} iconColor="text-primary" isLoading={isLoading} />
- <ListPageStatCard label="Held" value={stats.held} icon={Activity} iconColor="text-[hsl(142,76%,36%)]" isLoading={isLoading} />
- <ListPageStatCard label="Expired" value={stats.expired} icon={Activity} iconColor="text-[hsl(0,72%,51%)]" isLoading={isLoading} />
+ <ListPageStatCard label="Held" value={stats.held} icon={Activity} iconColor="text-emerald-600" isLoading={isLoading} />
+ <ListPageStatCard label="Expired" value={stats.expired} icon={Activity} iconColor="text-rose-600" isLoading={isLoading} />
  <ListPageStatCard label="Leader Election" value={stats.leaderElection} icon={Activity} iconColor="text-muted-foreground" isLoading={isLoading} />
  </div>
 

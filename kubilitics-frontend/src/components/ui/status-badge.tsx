@@ -5,21 +5,21 @@ export type StatusBadgeVariant = 'success' | 'warning' | 'error' | 'info' | 'neu
 
 const variantConfig: Record<StatusBadgeVariant, { bg: string; text: string; border: string; icon: LucideIcon }> = {
   success: {
-    bg: 'bg-[hsl(142,76%,36%)]/10',
-    text: 'text-[hsl(142,76%,36%)]',
-    border: 'border-[hsl(142,76%,36%)]/20',
+    bg: 'bg-emerald-500/10',
+    text: 'text-emerald-600',
+    border: 'border-emerald-500/20',
     icon: CheckCircle2,
   },
   warning: {
-    bg: 'bg-[hsl(45,93%,47%)]/10',
-    text: 'text-[hsl(45,93%,47%)]',
-    border: 'border-[hsl(45,93%,47%)]/20',
+    bg: 'bg-amber-500/10',
+    text: 'text-amber-600',
+    border: 'border-amber-500/20',
     icon: AlertTriangle,
   },
   error: {
-    bg: 'bg-[hsl(0,72%,51%)]/10',
-    text: 'text-[hsl(0,72%,51%)]',
-    border: 'border-[hsl(0,72%,51%)]/20',
+    bg: 'bg-rose-500/10',
+    text: 'text-rose-600',
+    border: 'border-rose-500/20',
     icon: XCircle,
   },
   info: {

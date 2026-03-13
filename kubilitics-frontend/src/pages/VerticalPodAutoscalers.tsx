@@ -290,9 +290,9 @@ export default function VerticalPodAutoscalers() {
 
  <div className={cn('grid grid-cols-2 sm:grid-cols-4 gap-4', !isConnected && 'opacity-60')}>
  <ListPageStatCard label="Total" value={stats.total} icon={Scale} iconColor="text-primary" selected={!hasActiveFilters} onClick={clearAllFilters} className={cn(!hasActiveFilters && !isLoading && 'ring-2 ring-primary')} isLoading={isLoading} />
- <ListPageStatCard label="Auto Mode" value={stats.autoMode} icon={Scale} iconColor="text-[hsl(142,76%,36%)]" valueClassName="text-[hsl(142,76%,36%)]" selected={columnFilters.updateMode?.size === 1 && columnFilters.updateMode.has('Auto')} onClick={() => setColumnFilter('updateMode', new Set(['Auto']))} className={cn(columnFilters.updateMode?.size === 1 && columnFilters.updateMode.has('Auto') && 'ring-2 ring-[hsl(142,76%,36%)]')} isLoading={isLoading} />
+ <ListPageStatCard label="Auto Mode" value={stats.autoMode} icon={Scale} iconColor="text-emerald-600" valueClassName="text-emerald-600" selected={columnFilters.updateMode?.size === 1 && columnFilters.updateMode.has('Auto')} onClick={() => setColumnFilter('updateMode', new Set(['Auto']))} className={cn(columnFilters.updateMode?.size === 1 && columnFilters.updateMode.has('Auto') && 'ring-2 ring-emerald-500')} isLoading={isLoading} />
  <ListPageStatCard label="Off Mode" value={stats.offMode} icon={Scale} iconColor="text-muted-foreground" selected={columnFilters.updateMode?.size === 1 && columnFilters.updateMode.has('Off')} onClick={() => setColumnFilter('updateMode', new Set(['Off']))} className={cn(columnFilters.updateMode?.size === 1 && columnFilters.updateMode.has('Off') && 'ring-2 ring-muted-foreground')} isLoading={isLoading} />
- <ListPageStatCard label="With Recommendations" value={stats.withRecommendations} icon={Scale} iconColor="text-[hsl(217,91%,60%)]" valueClassName="text-[hsl(217,91%,60%)]" isLoading={isLoading} />
+ <ListPageStatCard label="With Recommendations" value={stats.withRecommendations} icon={Scale} iconColor="text-blue-500" valueClassName="text-blue-500" isLoading={isLoading} />
  </div>
 
  {/* Bulk Actions Bar */}

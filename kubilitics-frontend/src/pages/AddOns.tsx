@@ -51,35 +51,35 @@ export default function AddOns() {
                     <TabsList className="bg-slate-100/80 p-1.5 rounded-2xl h-14 border border-slate-300/60 shadow-inner flex gap-1 items-center overflow-x-auto no-scrollbar max-w-full">
                         <TabsTrigger
                             value="catalog"
-                            className="px-8 h-11 flex gap-3 items-center rounded-xl font-black text-[11px] uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:shadow-xl data-[state=active]:shadow-primary/25 transition-all duration-300 active:scale-95 shrink-0"
+                            className="px-8 h-11 flex gap-3 items-center rounded-xl font-black text-xs uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:shadow-xl data-[state=active]:shadow-primary/25 transition-all duration-300 active:scale-95 shrink-0"
                         >
                             <Sparkles className="h-4 w-4" />
                             Catalog
                         </TabsTrigger>
                         <TabsTrigger
                             value="installed"
-                            className="px-8 h-11 flex gap-3 items-center rounded-xl font-black text-[11px] uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:shadow-xl data-[state=active]:shadow-primary/25 transition-all duration-300 active:scale-95 shrink-0"
+                            className="px-8 h-11 flex gap-3 items-center rounded-xl font-black text-xs uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:shadow-xl data-[state=active]:shadow-primary/25 transition-all duration-300 active:scale-95 shrink-0"
                         >
                             <CheckCircle className="h-4 w-4" />
                             Installed
                         </TabsTrigger>
                         <TabsTrigger
                             value="profiles"
-                            className="px-8 h-11 flex gap-3 items-center rounded-xl font-black text-[11px] uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:shadow-xl data-[state=active]:shadow-primary/25 transition-all duration-300 active:scale-95 shrink-0"
+                            className="px-8 h-11 flex gap-3 items-center rounded-xl font-black text-xs uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:shadow-xl data-[state=active]:shadow-primary/25 transition-all duration-300 active:scale-95 shrink-0"
                         >
                             <Package className="h-4 w-4" />
                             Profiles
                         </TabsTrigger>
                         <TabsTrigger
                             value="registries"
-                            className="px-8 h-11 flex gap-3 items-center rounded-xl font-black text-[11px] uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:shadow-xl data-[state=active]:shadow-primary/25 transition-all duration-300 active:scale-95 shrink-0"
+                            className="px-8 h-11 flex gap-3 items-center rounded-xl font-black text-xs uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:shadow-xl data-[state=active]:shadow-primary/25 transition-all duration-300 active:scale-95 shrink-0"
                         >
                             <Database className="h-4 w-4" />
                             Registries
                         </TabsTrigger>
                         <TabsTrigger
                             value="graph"
-                            className="px-8 h-11 flex gap-3 items-center rounded-xl font-black text-[11px] uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:shadow-xl data-[state=active]:shadow-primary/25 transition-all duration-300 active:scale-95 shrink-0"
+                            className="px-8 h-11 flex gap-3 items-center rounded-xl font-black text-xs uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:shadow-xl data-[state=active]:shadow-primary/25 transition-all duration-300 active:scale-95 shrink-0"
                         >
                             <GitMerge className="h-4 w-4" />
                             Graph

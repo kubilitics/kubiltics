@@ -61,7 +61,7 @@ function daysRemainingColor(days: number): string {
   if (days < 0) return 'bg-red-900/30 text-red-900 dark:bg-red-950/50 dark:text-red-400';
   if (days <= 7) return 'bg-red-500/20 text-red-700 dark:text-red-400';
   if (days <= 30) return 'bg-amber-500/20 text-amber-700 dark:text-amber-400';
-  return 'bg-[hsl(142,76%,36%)]/20 text-[hsl(142,76%,36%)]';
+  return 'bg-emerald-500/20 text-emerald-600';
 }
 
 function TLSCertCard({

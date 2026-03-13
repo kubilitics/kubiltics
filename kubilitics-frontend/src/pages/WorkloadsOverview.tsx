@@ -224,69 +224,68 @@ export default function WorkloadsOverview() {
   const alerts = data?.alerts;
 
   return (
-    <div className="flex flex-col gap-6 p-6" role="main" aria-label="Workloads Overview">
-      <ConnectionRequiredBanner />
+    <div className="page-container" role="main" aria-label="Workloads Overview">
+      <div className="page-inner p-6 gap-6 flex flex-col">
+        <ConnectionRequiredBanner />
 
-      {/* Header */}
-      <SectionOverviewHeader
-        title="Workloads Overview"
-        description="Deployments, stateful sets, jobs, and other controllers running in your cluster."
-        icon={Zap}
-        onSync={handleSync}
-        isSyncing={isSyncing}
-      />
+        {/* Header */}
+        <SectionOverviewHeader
+          title="Workloads Overview"
+          description="Deployments, stateful sets, jobs, and other controllers running in your cluster."
+          icon={Zap}
+          onSync={handleSync}
+          isSyncing={isSyncing}
+        />
 
-      {/* Hero Section: Workload Health Pulse */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
-        <Card className="lg:col-span-12 overflow-hidden border-slate-100 shadow-sm bg-white ring-1 ring-slate-100 elevation-2" aria-live="polite">
-          <CardHeader className="flex flex-row items-center justify-between pb-4 pt-10 px-12">
+        {/* Hero Section: Workload Health Pulse */}
+        <Card className="overflow-hidden border-slate-200/80 bg-white elevation-2" aria-live="polite">
+          <CardHeader className="flex flex-row items-center justify-between pb-4 pt-8 px-8">
             <div>
-              <CardTitle className="text-2xl font-bold tracking-tight text-slate-900 leading-tight">Workload Health</CardTitle>
-              <p className="text-sm text-slate-500 mt-1">Overall health across all running workloads</p>
+              <CardTitle className="text-h4 text-slate-900">Workload Health</CardTitle>
+              <p className="text-body-sm text-slate-500 mt-1">Overall health across all running workloads</p>
             </div>
             {pulse && (
-              <div className="flex items-center gap-2.5 px-5 py-2 rounded-full bg-emerald-50 text-emerald-700 text-[10px] font-bold uppercase tracking-wider border border-emerald-100 shadow-sm shadow-emerald-500/5">
-                <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+              <div className="flex items-center gap-2.5 px-4 py-1.5 rounded-full bg-emerald-50 text-emerald-700 text-xs font-semibold uppercase tracking-wider border border-emerald-100">
+                <span className="status-dot-live" />
                 {pulse.optimal_percent >= 95 ? 'All Systems Nominal' : pulse.optimal_percent >= 80 ? 'Serviceable' : pulse.optimal_percent >= 60 ? 'Degraded' : 'Critical Failure'}
               </div>
             )}
           </CardHeader>
-          <CardContent className="pt-2 pb-14 px-12">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-16 items-center">
+          <CardContent className="pt-2 pb-10 px-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
               <div className="relative">
                 <WorkloadPulse data={pulse} />
-                {/* Visual anchor for the chart */}
                 <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 h-1 w-24 bg-slate-100 rounded-full blur-[1px]" />
               </div>
 
-              <div className="space-y-12 pr-4">
+              <div className="space-y-10 pr-4">
                 <div className="relative pl-6">
-                  <span className="block text-6xl font-bold text-slate-900 tracking-tighter leading-none">{pulse?.total ?? 0}</span>
-                  <span className="text-[11px] font-bold text-slate-400 uppercase tracking-[0.2em] mt-3 block">Total Workloads</span>
+                  <span className="block text-5xl font-bold text-slate-900 tracking-tighter leading-none">{pulse?.total ?? 0}</span>
+                  <span className="label-xs mt-3 block">Total Workloads</span>
                   <div className="absolute left-0 top-1 bottom-1 w-1 bg-blue-500 rounded-full shadow-[0_0_8px_rgba(59,130,246,0.3)]" />
                 </div>
 
-                <div className="grid grid-cols-3 gap-10 py-10 border-y border-slate-50 relative">
+                <div className="grid grid-cols-3 gap-8 py-8 border-y border-slate-100 relative">
                   <div className="space-y-1.5">
-                    <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-[0.15em]">Healthy</span>
-                    <span className="text-2xl font-bold text-emerald-600 transition-all">{pulse?.healthy ?? 0}</span>
+                    <span className="label-xs block">Healthy</span>
+                    <span className="text-2xl font-bold text-emerald-600">{pulse?.healthy ?? 0}</span>
                   </div>
-                  <div className="space-y-1.5 border-l border-slate-50 pl-6">
-                    <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-[0.15em]">Warning</span>
+                  <div className="space-y-1.5 border-l border-slate-100 pl-6">
+                    <span className="label-xs block">Warning</span>
                     <span className="text-2xl font-bold text-amber-500">{pulse?.warning ?? 0}</span>
                   </div>
-                  <div className="space-y-1.5 border-l border-slate-50 pl-6">
-                    <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-[0.15em]">Critical</span>
+                  <div className="space-y-1.5 border-l border-slate-100 pl-6">
+                    <span className="label-xs block">Critical</span>
                     <span className="text-2xl font-bold text-rose-600">{pulse?.critical ?? 0}</span>
                   </div>
                 </div>
 
                 <div className="pt-2">
                   <div className="flex items-center justify-between mb-4">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">Health Score</span>
+                    <span className="label-xs">Health Score</span>
                     <span className="text-sm font-bold text-emerald-600 tabular-nums">{pulse?.optimal_percent.toFixed(1)}%</span>
                   </div>
-                  <div className="h-3 w-full bg-slate-50 rounded-full overflow-hidden p-0.5 border border-slate-100 shadow-inner">
+                  <div className="h-2.5 w-full bg-slate-50 rounded-full overflow-hidden p-0.5 border border-slate-100">
                     <motion.div
                       initial={{ width: 0 }}
                       animate={{ width: `${pulse?.optimal_percent ?? 0}%` }}
@@ -299,145 +298,148 @@ export default function WorkloadsOverview() {
             </div>
           </CardContent>
         </Card>
-      </div>
 
-      {/* Resources Overview: Pod Distribution & Efficiency */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        <Card className="lg:col-span-8 border-slate-100 shadow-sm overflow-hidden bg-white ring-1 ring-slate-100 elevation-2">
-          <PodStatusDistribution />
-        </Card>
-        <Card className="lg:col-span-4 border-slate-100 shadow-sm overflow-hidden bg-white ring-1 ring-slate-100 elevation-2">
-          <ClusterEfficiencyCard />
-        </Card>
-      </div>
+        {/* Resources Overview: Pod Distribution & Efficiency */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          <Card className="lg:col-span-8 border-slate-200/80 overflow-hidden bg-white elevation-2">
+            <PodStatusDistribution />
+          </Card>
+          <Card className="lg:col-span-4 border-slate-200/80 overflow-hidden bg-white elevation-2">
+            <ClusterEfficiencyCard />
+          </Card>
+        </div>
 
-      {/* Workloads Explorer */}
-      <div className="bg-white border border-slate-100 rounded-[2rem] overflow-hidden shadow-sm ring-1 ring-slate-100">
-        <div className="p-8 border-b border-slate-50">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-            <div>
-              <h3 className="text-xl font-bold tracking-tight text-slate-900">Workloads Explorer</h3>
-              <p className="text-sm text-slate-500 mt-0.5">All controllers and their current state</p>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="relative flex-1 min-w-[320px]">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" aria-hidden />
-                <Input
-                  placeholder="Search controllers..."
-                  className="pl-12 bg-slate-50 border-transparent transition-all rounded-xl focus:bg-white focus:ring-4 focus:ring-blue-500/5 focus:border-slate-200 h-10 font-medium text-sm"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  aria-label="Search workload controllers"
+        {/* Workloads Explorer */}
+        <div className="section-card overflow-hidden !p-0">
+          <div className="p-6 border-b border-slate-100">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <h3 className="text-h5 text-slate-900">Workloads Explorer</h3>
+                <p className="text-body-sm text-slate-500 mt-0.5">All controllers and their current state</p>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="relative flex-1 min-w-[300px]">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" aria-hidden />
+                  <Input
+                    placeholder="Search controllers..."
+                    className="pl-10 bg-slate-50 border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500/10 focus:border-blue-300 h-10 text-sm"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    aria-label="Search workload controllers"
+                  />
+                </div>
+                <ColumnVisibilityDropdown
+                  columns={WORKLOADS_COLUMNS_FOR_VISIBILITY}
+                  visibleColumns={columnVisibility.visibleColumns}
+                  onToggle={columnVisibility.setColumnVisible}
                 />
               </div>
-              <ColumnVisibilityDropdown
-                columns={WORKLOADS_COLUMNS_FOR_VISIBILITY}
-                visibleColumns={columnVisibility.visibleColumns}
-                onToggle={columnVisibility.setColumnVisible}
-              />
             </div>
           </div>
-        </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-slate-50/50">
-                <th className="px-8 py-5 text-[10px] font-bold uppercase tracking-widest text-slate-500 border-b border-slate-100 w-10">
-                  <Checkbox checked={isAllSelected} onCheckedChange={toggleAll} />
-                </th>
-                <th className="px-8 py-5 text-[10px] font-bold uppercase tracking-widest text-slate-500 border-b border-slate-100">Controller</th>
-                <th className="px-8 py-5 text-[10px] font-bold uppercase tracking-widest text-slate-500 border-b border-slate-100">Namespace</th>
-                <th className="px-8 py-5 text-[10px] font-bold uppercase tracking-widest text-slate-500 border-b border-slate-100">Status</th>
-                <th className="px-8 py-5 text-[10px] font-bold uppercase tracking-widest text-slate-500 border-b border-slate-100 text-right">Replicas</th>
-                <th className="px-8 py-5 text-[10px] font-bold uppercase tracking-widest text-slate-500 border-b border-slate-100 text-right">Pressure</th>
-                <th className="px-8 py-5 border-b border-slate-100"></th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-50 text-sm">
-              {itemsOnPage.map((w, i) => {
-                const Icon = KIND_ICONS[w.kind] ?? Container;
-                const detailPath = getDetailPath(w.kind, w.name, w.namespace);
-                const isSelected = selectedItems.has(getWorkloadKey(w));
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-slate-50/80">
+                  <th className="px-6 py-3.5 border-b border-slate-100 w-10">
+                    <Checkbox checked={isAllSelected} onCheckedChange={toggleAll} />
+                  </th>
+                  <th className="px-6 py-3.5 table-header-cell border-b border-slate-100">Controller</th>
+                  <th className="px-6 py-3.5 table-header-cell border-b border-slate-100">Namespace</th>
+                  <th className="px-6 py-3.5 table-header-cell border-b border-slate-100">Status</th>
+                  <th className="px-6 py-3.5 table-header-cell border-b border-slate-100 text-right">Replicas</th>
+                  <th className="px-6 py-3.5 table-header-cell border-b border-slate-100 text-right">Pressure</th>
+                  <th className="px-6 py-3.5 border-b border-slate-100"></th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-50">
+                {itemsOnPage.map((w, i) => {
+                  const Icon = KIND_ICONS[w.kind] ?? Container;
+                  const detailPath = getDetailPath(w.kind, w.name, w.namespace);
+                  const isSelected = selectedItems.has(getWorkloadKey(w));
 
-                return (
-                  <motion.tr
-                    key={getWorkloadKey(w)}
-                    initial={{ opacity: 0, y: 5 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: i * 0.02 }}
-                    className={cn("group hover:bg-slate-50 transition-colors", isSelected && "bg-blue-50/30")}
-                  >
-                    <td className="px-8 py-4">
-                      <Checkbox checked={isSelected} onCheckedChange={() => toggleSelection(w)} />
-                    </td>
-                    <td className="px-8 py-4">
-                      <div className="flex items-center gap-4">
-                        <div className="h-9 w-9 rounded-xl bg-slate-100 flex items-center justify-center text-slate-500 group-hover:bg-blue-100 group-hover:text-blue-600 transition-colors">
-                          <Icon className="h-4.5 w-4.5" />
+                  return (
+                    <motion.tr
+                      key={getWorkloadKey(w)}
+                      initial={{ opacity: 0, y: 4 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: i * 0.02 }}
+                      className={cn("group hover:bg-slate-50/80 transition-colors", isSelected && "bg-blue-50/40")}
+                    >
+                      <td className="px-6 py-3.5">
+                        <Checkbox checked={isSelected} onCheckedChange={() => toggleSelection(w)} />
+                      </td>
+                      <td className="px-6 py-3.5">
+                        <div className="flex items-center gap-3">
+                          <div className="h-8 w-8 rounded-lg bg-slate-100 flex items-center justify-center text-slate-500 group-hover:bg-blue-50 group-hover:text-blue-600 transition-colors">
+                            <Icon className="h-4 w-4" />
+                          </div>
+                          <div>
+                            <Link to={detailPath || '#'} className="font-semibold text-slate-900 group-hover:text-blue-600 transition-colors block leading-tight">
+                              {w.name}
+                            </Link>
+                            <span className="label-xs text-xs mt-0.5 block">{w.kind}</span>
+                          </div>
                         </div>
-                        <div>
-                          <Link to={detailPath || '#'} className="font-bold text-slate-900 group-hover:text-blue-600 transition-colors block leading-tight tracking-tight">
-                            {w.name}
-                          </Link>
-                          <span className="text-[10px] font-bold uppercase text-slate-400 tracking-wider mt-0.5 block">{w.kind}</span>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-8 py-4">
-                      <span className="font-mono text-[10px] font-bold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-lg">
-                        {w.namespace}
-                      </span>
-                    </td>
-                    <td className="px-8 py-4 text-xs font-bold text-slate-700">
-                      <Badge variant="outline" className={cn("text-[9px] uppercase tracking-wider bg-white border-slate-100 font-bold px-2 py-0.5 rounded-lg",
-                        w.status === 'Running' || w.status === 'Healthy' ? "text-emerald-600 border-emerald-100" : "text-blue-600 border-blue-100")}>
-                        {w.status}
-                      </Badge>
-                    </td>
-                    <td className="px-8 py-4 text-right">
-                      <span className="font-mono text-xs font-bold text-slate-600">
-                        {w.desired > 0 ? `${w.ready}/${w.desired}` : '—'}
-                      </span>
-                    </td>
-                    <td className="px-8 py-4 text-right">
-                      <span className={cn("text-[10px] font-bold uppercase tracking-wider", PRESSURE_COLORS[w.pressure])}>
-                        {w.pressure}
-                      </span>
-                    </td>
-                    <td className="px-8 py-4 text-right">
-                      <Button variant="ghost" size="sm" className="h-9 w-9 p-0 hover:bg-white hover:text-blue-600 hover:shadow-sm rounded-xl transition-all border border-transparent hover:border-slate-100 press-effect">
-                        <ArrowUpRight className="h-4 w-4" aria-hidden />
-                      </Button>
-                    </td>
-                  </motion.tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+                      </td>
+                      <td className="px-6 py-3.5">
+                        <span className="font-mono text-xs font-medium text-slate-500 bg-slate-100 px-2.5 py-1 rounded-md">
+                          {w.namespace}
+                        </span>
+                      </td>
+                      <td className="px-6 py-3.5">
+                        <Badge variant="outline" className={cn("text-xs uppercase tracking-wider font-semibold",
+                          w.status === 'Running' || w.status === 'Healthy' ? "text-emerald-600 border-emerald-100 bg-emerald-50" :
+                          w.status === 'Failed' ? "text-rose-600 border-rose-100 bg-rose-50" :
+                          w.status === 'Pending' ? "text-amber-600 border-amber-100 bg-amber-50" :
+                          "text-blue-600 border-blue-100 bg-blue-50")}>
+                          {w.status}
+                        </Badge>
+                      </td>
+                      <td className="px-6 py-3.5 text-right">
+                        <span className="font-mono text-xs font-semibold text-slate-600">
+                          {w.desired > 0 ? `${w.ready}/${w.desired}` : '—'}
+                        </span>
+                      </td>
+                      <td className="px-6 py-3.5 text-right">
+                        <span className={cn("text-xs font-semibold uppercase tracking-wider", PRESSURE_COLORS[w.pressure])}>
+                          {w.pressure}
+                        </span>
+                      </td>
+                      <td className="px-6 py-3.5 text-right">
+                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0 hover:bg-white hover:text-blue-600 hover:shadow-sm rounded-lg transition-all border border-transparent hover:border-slate-200 press-effect">
+                          <ArrowUpRight className="h-4 w-4" aria-hidden />
+                        </Button>
+                      </td>
+                    </motion.tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
 
-        <div className="p-6 border-t border-slate-50 bg-slate-50/30 flex flex-col sm:flex-row items-center justify-between gap-6">
-          <ListPagination
-            rangeLabel={`${totalFiltered} ${totalFiltered === 1 ? 'workload' : 'workloads'}`}
-            hasPrev={safePageIndex > 0}
-            hasNext={start + pageSize < totalFiltered}
-            onPrev={() => setPageIndex((i) => Math.max(0, i - 1))}
-            onNext={() => setPageIndex((i) => Math.min(totalPages - 1, i + 1))}
-            currentPage={safePageIndex + 1}
-            totalPages={totalPages}
-            onPageChange={(p) => setPageIndex(p - 1)}
-          />
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" asChild className="h-10 px-5 font-bold border-slate-200 text-slate-600 hover:bg-white hover:text-blue-600 rounded-xl transition-all press-effect">
-              <Link to="/deployments">Deployments</Link>
-            </Button>
-            <Button variant="outline" size="sm" asChild className="h-10 px-5 font-bold border-slate-200 text-slate-600 hover:bg-white hover:text-blue-600 rounded-xl transition-all press-effect">
-              <Link to="/statefulsets">StatefulSets</Link>
-            </Button>
-            <Button variant="outline" size="sm" asChild className="h-10 px-5 font-bold border-slate-200 text-slate-600 hover:bg-white hover:text-blue-600 rounded-xl transition-all press-effect">
-              <Link to="/pods">All Pods</Link>
-            </Button>
+          <div className="p-4 border-t border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <ListPagination
+              rangeLabel={`${totalFiltered} ${totalFiltered === 1 ? 'workload' : 'workloads'}`}
+              hasPrev={safePageIndex > 0}
+              hasNext={start + pageSize < totalFiltered}
+              onPrev={() => setPageIndex((i) => Math.max(0, i - 1))}
+              onNext={() => setPageIndex((i) => Math.min(totalPages - 1, i + 1))}
+              currentPage={safePageIndex + 1}
+              totalPages={totalPages}
+              onPageChange={(p) => setPageIndex(p - 1)}
+            />
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" asChild className="h-9 px-4 font-medium border-slate-200 text-slate-600 hover:bg-white hover:text-blue-600 rounded-xl transition-all press-effect">
+                <Link to="/deployments">Deployments</Link>
+              </Button>
+              <Button variant="outline" size="sm" asChild className="h-9 px-4 font-medium border-slate-200 text-slate-600 hover:bg-white hover:text-blue-600 rounded-xl transition-all press-effect">
+                <Link to="/statefulsets">StatefulSets</Link>
+              </Button>
+              <Button variant="outline" size="sm" asChild className="h-9 px-4 font-medium border-slate-200 text-slate-600 hover:bg-white hover:text-blue-600 rounded-xl transition-all press-effect">
+                <Link to="/pods">All Pods</Link>
+              </Button>
+            </div>
           </div>
         </div>
       </div>

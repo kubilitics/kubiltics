@@ -306,11 +306,11 @@ export default function PriorityClasses() {
  label="Default"
  value={stats.defaultCount}
  icon={AlertTriangle}
- iconColor="text-[hsl(142,76%,36%)]"
- valueClassName={stats.defaultCount > 0 ? 'text-[hsl(142,76%,36%)]' : undefined}
+ iconColor="text-emerald-600"
+ valueClassName={stats.defaultCount > 0 ? 'text-emerald-600' : undefined}
  selected={columnFilters.globalDefault?.size === 1 && columnFilters.globalDefault.has('Yes')}
  onClick={() => toggleStatFilter('globalDefault', 'Yes')}
- className={cn(columnFilters.globalDefault?.size === 1 && columnFilters.globalDefault.has('Yes') && 'ring-2 ring-[hsl(142,76%,36%)]')}
+ className={cn(columnFilters.globalDefault?.size === 1 && columnFilters.globalDefault.has('Yes') && 'ring-2 ring-emerald-500')}
  isLoading={isLoading} />
  <ListPageStatCard
  label="Preemption Enabled"

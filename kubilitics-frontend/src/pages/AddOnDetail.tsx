@@ -267,7 +267,7 @@ export default function AddOnDetail() {
                                             </span>
                                             <span className="text-xs text-muted-foreground uppercase">/ Month</span>
                                         </div>
-                                        <p className="text-[10px] text-muted-foreground mt-1 capitalize">
+                                        <p className="text-xs text-muted-foreground mt-1 capitalize">
                                             Based on {costModel!.cluster_tier} tier profile
                                         </p>
                                     </div>
@@ -318,7 +318,7 @@ export default function AddOnDetail() {
                                 <span className="text-sm font-medium">{addon.maintainer || "Community"}</span>
                             </div>
                             {addon.home_url && (
-                                <a href={addon.home_url} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-xs text-blue-600 hover:underline text-[10px]">
+                                <a href={addon.home_url} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-xs text-blue-600 hover:underline text-xs">
                                     Project Homepage <ExternalLink className="h-3 w-3" />
                                 </a>
                             )}

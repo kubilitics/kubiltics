@@ -68,7 +68,7 @@ export function ListPageHeader({
             <p className="text-sm text-muted-foreground mt-0.5">
               {subtitle}
               {demoMode && (
-                <span className="ml-2 inline-flex items-center gap-1 text-[hsl(45,93%,47%)]">
+                <span className="ml-2 inline-flex items-center gap-1 text-amber-600">
                   <WifiOff className="h-3 w-3" /> Connect cluster
                 </span>
               )}

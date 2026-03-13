@@ -101,7 +101,7 @@ function usageBarIndicatorClass(pct: number | null): string {
  if (pct == null) return 'bg-muted-foreground/40';
  if (pct >= 100) return 'bg-destructive';
  if (pct >= 80) return 'bg-amber-500';
- return 'bg-[hsl(142,76%,36%)]';
+ return 'bg-emerald-600';
 }
 
 function formatUsedHard(used: Record<string, string>, hard: Record<string, string>, key: string): string {
@@ -336,7 +336,7 @@ export default function ResourceQuotas() {
  <ListPageStatCard label="Total" value={stats.total} icon={Gauge} iconColor="text-primary" selected={!hasActiveFilters} onClick={clearAllFilters} className={cn(!hasActiveFilters && !isLoading && 'ring-2 ring-primary')} isLoading={isLoading} />
  <ListPageStatCard label="At Limit" value={stats.atLimit} icon={Gauge} iconColor="text-destructive" valueClassName="text-destructive" selected={columnFilters.quotaStatus?.size === 1 && columnFilters.quotaStatus.has('At Limit')} onClick={() => setColumnFilter('quotaStatus', new Set(['At Limit']))} className={cn(columnFilters.quotaStatus?.size === 1 && columnFilters.quotaStatus.has('At Limit') && 'ring-2 ring-destructive')} isLoading={isLoading} />
  <ListPageStatCard label="Warning (≥80%)" value={stats.warning} icon={Gauge} iconColor="text-amber-600" valueClassName="text-amber-600" selected={columnFilters.quotaStatus?.size === 1 && columnFilters.quotaStatus.has('Warning')} onClick={() => setColumnFilter('quotaStatus', new Set(['Warning']))} className={cn(columnFilters.quotaStatus?.size === 1 && columnFilters.quotaStatus.has('Warning') && 'ring-2 ring-amber-600')} isLoading={isLoading} />
- <ListPageStatCard label="Healthy" value={stats.healthy} icon={Gauge} iconColor="text-[hsl(142,76%,36%)]" valueClassName="text-[hsl(142,76%,36%)]" selected={columnFilters.quotaStatus?.size === 1 && columnFilters.quotaStatus.has('Healthy')} onClick={() => setColumnFilter('quotaStatus', new Set(['Healthy']))} className={cn(columnFilters.quotaStatus?.size === 1 && columnFilters.quotaStatus.has('Healthy') && 'ring-2 ring-[hsl(142,76%,36%)]')} isLoading={isLoading} />
+ <ListPageStatCard label="Healthy" value={stats.healthy} icon={Gauge} iconColor="text-emerald-600" valueClassName="text-emerald-600" selected={columnFilters.quotaStatus?.size === 1 && columnFilters.quotaStatus.has('Healthy')} onClick={() => setColumnFilter('quotaStatus', new Set(['Healthy']))} className={cn(columnFilters.quotaStatus?.size === 1 && columnFilters.quotaStatus.has('Healthy') && 'ring-2 ring-emerald-500')} isLoading={isLoading} />
  </div>
 
  {/* Bulk Actions Bar */}
@@ -503,7 +503,7 @@ export default function ResourceQuotas() {
  {r.cpuRequestsPct != null ? (
  <div className="flex items-center gap-2 min-w-0">
  <Progress value={Math.min(r.cpuRequestsPct, 100)} className="h-2 w-16 shrink-0" indicatorClassName={usageBarIndicatorClass(r.cpuRequestsPct)} />
- <span className={cn('text-xs font-mono truncate', r.cpuRequestsPct >= 100 && 'text-destructive', r.cpuRequestsPct >= 80 && r.cpuRequestsPct < 100 && 'text-amber-600', r.cpuRequestsPct < 80 && 'text-[hsl(142,76%,36%)]')} title={r.cpuRequests}>{r.cpuRequests}</span>
+ <span className={cn('text-xs font-mono truncate', r.cpuRequestsPct >= 100 && 'text-destructive', r.cpuRequestsPct >= 80 && r.cpuRequestsPct < 100 && 'text-amber-600', r.cpuRequestsPct < 80 && 'text-emerald-600')} title={r.cpuRequests}>{r.cpuRequests}</span>
  </div>
  ) : <span className="text-muted-foreground font-mono text-xs" title={r.cpuRequests}>{r.cpuRequests}</span>}
  </ResizableTableCell>
@@ -512,7 +512,7 @@ export default function ResourceQuotas() {
  {r.memoryRequestsPct != null ? (
  <div className="flex items-center gap-2 min-w-0">
  <Progress value={Math.min(r.memoryRequestsPct, 100)} className="h-2 w-16 shrink-0" indicatorClassName={usageBarIndicatorClass(r.memoryRequestsPct)} />
- <span className={cn('text-xs font-mono truncate', r.memoryRequestsPct >= 100 && 'text-destructive', r.memoryRequestsPct >= 80 && r.memoryRequestsPct < 100 && 'text-amber-600', r.memoryRequestsPct < 80 && 'text-[hsl(142,76%,36%)]')} title={r.memoryRequests}>{r.memoryRequests}</span>
+ <span className={cn('text-xs font-mono truncate', r.memoryRequestsPct >= 100 && 'text-destructive', r.memoryRequestsPct >= 80 && r.memoryRequestsPct < 100 && 'text-amber-600', r.memoryRequestsPct < 80 && 'text-emerald-600')} title={r.memoryRequests}>{r.memoryRequests}</span>
  </div>
  ) : <span className="text-muted-foreground font-mono text-xs" title={r.memoryRequests}>{r.memoryRequests}</span>}
  </ResizableTableCell>
@@ -521,7 +521,7 @@ export default function ResourceQuotas() {
  {r.podsPct != null ? (
  <div className="flex items-center gap-2 min-w-0">
  <Progress value={Math.min(r.podsPct, 100)} className="h-2 w-16 shrink-0" indicatorClassName={usageBarIndicatorClass(r.podsPct)} />
- <span className={cn('text-xs font-mono truncate', r.podsPct >= 100 && 'text-destructive', r.podsPct >= 80 && r.podsPct < 100 && 'text-amber-600', r.podsPct < 80 && 'text-[hsl(142,76%,36%)]')} title={r.pods}>{r.pods}</span>
+ <span className={cn('text-xs font-mono truncate', r.podsPct >= 100 && 'text-destructive', r.podsPct >= 80 && r.podsPct < 100 && 'text-amber-600', r.podsPct < 80 && 'text-emerald-600')} title={r.pods}>{r.pods}</span>
  </div>
  ) : <span className="text-muted-foreground font-mono text-xs" title={r.pods}>{r.pods}</span>}
  </ResizableTableCell>
@@ -531,7 +531,7 @@ export default function ResourceQuotas() {
  {r.overallUsagePct != null ? (
  <div className="flex items-center gap-2">
  <Progress value={Math.min(r.overallUsagePct, 100)} className="h-2 w-14" indicatorClassName={usageBarIndicatorClass(r.overallUsagePct)} />
- <span className={cn('text-sm font-medium', r.isAtLimit && 'text-destructive', r.isNearLimit && !r.isAtLimit && 'text-amber-600', !r.isAtLimit && !r.isNearLimit && 'text-[hsl(142,76%,36%)]')}>{r.overallUsagePct}%</span>
+ <span className={cn('text-sm font-medium', r.isAtLimit && 'text-destructive', r.isNearLimit && !r.isAtLimit && 'text-amber-600', !r.isAtLimit && !r.isNearLimit && 'text-emerald-600')}>{r.overallUsagePct}%</span>
  </div>
  ) : (
  <span className="text-muted-foreground">–</span>

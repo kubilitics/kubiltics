@@ -233,7 +233,7 @@ spec:
  <h1 className="text-2xl font-semibold tracking-tight">Pod Security Policies</h1>
  <p className="text-sm text-muted-foreground">
  {filteredItems.length} pod security policies (cluster-scoped)
- {!isConnected && <span className="ml-2 inline-flex items-center gap-1 text-[hsl(45,93%,47%)]"><WifiOff className="h-3 w-3" /> Connect cluster</span>}
+ {!isConnected && <span className="ml-2 inline-flex items-center gap-1 text-amber-600"><WifiOff className="h-3 w-3" /> Connect cluster</span>}
  </p>
  </div>
  {selectedItems.size > 0 && (
@@ -262,9 +262,9 @@ spec:
 
  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
  <ListPageStatCard label="Total" value={stats.total} icon={Shield} iconColor="text-primary" selected={!hasActiveFilters} onClick={() => clearAllFilters()} className={cn(!hasActiveFilters && !isLoading && 'ring-2 ring-primary')} isLoading={isLoading} />
- <ListPageStatCard label="Privileged" value={stats.privileged} icon={XCircle} iconColor="text-[hsl(0,72%,51%)]" valueClassName="text-[hsl(0,72%,51%)]" selected={columnFilters.privileged?.size === 1 && columnFilters.privileged.has('true')} onClick={() => setColumnFilter('privileged', columnFilters.privileged?.has('true') ? null : new Set(['true']))} className={cn(columnFilters.privileged?.size === 1 && columnFilters.privileged.has('true') && 'ring-2 ring-[hsl(0,72%,51%)]')} isLoading={isLoading} />
- <ListPageStatCard label="Restricted" value={stats.restricted} icon={CheckCircle2} iconColor="text-[hsl(142,76%,36%)]" valueClassName="text-[hsl(142,76%,36%)]" selected={columnFilters.privileged?.size === 1 && columnFilters.privileged.has('false')} onClick={() => setColumnFilter('privileged', columnFilters.privileged?.has('false') ? null : new Set(['false']))} className={cn(columnFilters.privileged?.size === 1 && columnFilters.privileged.has('false') && 'ring-2 ring-[hsl(142,76%,36%)]')} isLoading={isLoading} />
- <ListPageStatCard label="With Host Access" value={stats.hostAccess} icon={Clock} iconColor="text-[hsl(45,93%,47%)]" valueClassName="text-[hsl(45,93%,47%)]" selected={columnFilters.hasHostAccess?.size === 1 && columnFilters.hasHostAccess.has('Yes')} onClick={() => setColumnFilter('hasHostAccess', columnFilters.hasHostAccess?.has('Yes') ? null : new Set(['Yes']))} className={cn(columnFilters.hasHostAccess?.size === 1 && columnFilters.hasHostAccess.has('Yes') && 'ring-2 ring-[hsl(45,93%,47%)]')} isLoading={isLoading} />
+ <ListPageStatCard label="Privileged" value={stats.privileged} icon={XCircle} iconColor="text-rose-600" valueClassName="text-rose-600" selected={columnFilters.privileged?.size === 1 && columnFilters.privileged.has('true')} onClick={() => setColumnFilter('privileged', columnFilters.privileged?.has('true') ? null : new Set(['true']))} className={cn(columnFilters.privileged?.size === 1 && columnFilters.privileged.has('true') && 'ring-2 ring-rose-500')} isLoading={isLoading} />
+ <ListPageStatCard label="Restricted" value={stats.restricted} icon={CheckCircle2} iconColor="text-emerald-600" valueClassName="text-emerald-600" selected={columnFilters.privileged?.size === 1 && columnFilters.privileged.has('false')} onClick={() => setColumnFilter('privileged', columnFilters.privileged?.has('false') ? null : new Set(['false']))} className={cn(columnFilters.privileged?.size === 1 && columnFilters.privileged.has('false') && 'ring-2 ring-emerald-500')} isLoading={isLoading} />
+ <ListPageStatCard label="With Host Access" value={stats.hostAccess} icon={Clock} iconColor="text-amber-600" valueClassName="text-amber-600" selected={columnFilters.hasHostAccess?.size === 1 && columnFilters.hasHostAccess.has('Yes')} onClick={() => setColumnFilter('hasHostAccess', columnFilters.hasHostAccess?.has('Yes') ? null : new Set(['Yes']))} className={cn(columnFilters.hasHostAccess?.size === 1 && columnFilters.hasHostAccess.has('Yes') && 'ring-2 ring-amber-500')} isLoading={isLoading} />
  </div>
 
  <ResourceListTableToolbar
@@ -389,7 +389,7 @@ spec:
  <DropdownMenuSeparator />
  <DropdownMenuItem onClick={() => navigate(`/podsecuritypolicies/${item.name}?tab=yaml`)} className="gap-2"><FileText className="h-4 w-4" />Download YAML</DropdownMenuItem>
  <DropdownMenuSeparator />
- <DropdownMenuItem className="gap-2 text-[hsl(0,72%,51%)]" onClick={() => setDeleteDialog({ open: true, item })} disabled={!isConnected}><Trash2 className="h-4 w-4" />Delete</DropdownMenuItem>
+ <DropdownMenuItem className="gap-2 text-rose-600" onClick={() => setDeleteDialog({ open: true, item })} disabled={!isConnected}><Trash2 className="h-4 w-4" />Delete</DropdownMenuItem>
  </DropdownMenuContent>
  </DropdownMenu>
  </TableCell>

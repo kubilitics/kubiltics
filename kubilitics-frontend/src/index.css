@@ -62,6 +62,39 @@
     /* ─── Focus Ring ─── */
     --focus-ring: 0 0 0 2px hsl(var(--background)), 0 0 0 4px hsl(var(--primary));
 
+    /* ─── Semantic Status Colors ─── */
+    --success: 142 71% 45%;
+    --warning: 38 92% 50%;
+    --error: 0 84% 60%;
+    --info: 217 91% 60%;
+    --cosmic-purple: 263 70% 50%;
+
+    /* ─── Spacing Scale (8px base) ─── */
+    --space-1: 0.25rem;   /* 4px */
+    --space-2: 0.5rem;    /* 8px */
+    --space-3: 0.75rem;   /* 12px */
+    --space-4: 1rem;      /* 16px */
+    --space-5: 1.25rem;   /* 20px */
+    --space-6: 1.5rem;    /* 24px */
+    --space-8: 2rem;      /* 32px */
+    --space-10: 2.5rem;   /* 40px */
+    --space-12: 3rem;     /* 48px */
+    --space-16: 4rem;     /* 64px */
+
+    /* ─── Card System ─── */
+    --card-radius: 1.25rem;        /* 20px — unified */
+    --card-radius-lg: 1.5rem;      /* 24px — hero cards */
+    --card-padding: 1.5rem;        /* 24px */
+    --card-padding-sm: 1.25rem;    /* 20px */
+    --card-border: hsl(214 32% 91% / 0.8);
+
+    /* ─── Sidebar ─── */
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 224 71% 4%;
+    --sidebar-border: 214.3 31.8% 91.4%;
+    --sidebar-accent: 210 40% 96.1%;
+    --sidebar-accent-foreground: 222.2 47.4% 11.2%;
+
     /* Legacy aliases */
     --apple-shadow: var(--shadow-3);
     --apple-shadow-lg: var(--shadow-5);
@@ -214,6 +247,145 @@
 
   .empty-state-description {
     @apply text-sm text-muted-foreground max-w-sm mb-6;
+  }
+
+  /* ─── Unified Metric Card ─── */
+  .metric-card {
+    @apply relative bg-white border border-slate-200/80 overflow-hidden;
+    border-radius: var(--card-radius);
+    padding: var(--card-padding);
+    transition: all var(--duration-emphasis) var(--ease-default);
+  }
+
+  .metric-card:hover {
+    @apply border-slate-300/80;
+    box-shadow: var(--shadow-3);
+  }
+
+  .metric-card .metric-gradient {
+    @apply absolute inset-0 opacity-0 transition-opacity duration-500 pointer-events-none;
+  }
+
+  .metric-card:hover .metric-gradient {
+    @apply opacity-100;
+  }
+
+  /* ─── Unified Section Card ─── */
+  .section-card {
+    @apply bg-white border border-slate-200/80;
+    border-radius: var(--card-radius-lg);
+    padding: var(--card-padding);
+    box-shadow: var(--shadow-1);
+    transition: all var(--duration-emphasis) var(--ease-default);
+  }
+
+  .section-card:hover {
+    @apply border-slate-300/80;
+    box-shadow: var(--shadow-3);
+  }
+
+  /* ─── Cluster / Project Card ─── */
+  .entity-card {
+    @apply relative bg-white border border-slate-200/80 overflow-hidden cursor-pointer;
+    border-radius: var(--card-radius);
+    padding: var(--card-padding);
+    transition: all var(--duration-emphasis) cubic-bezier(0.16, 1, 0.3, 1);
+    min-height: 210px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+
+  .entity-card:hover {
+    @apply border-slate-300;
+    box-shadow: var(--shadow-4);
+    transform: translateY(-2px);
+  }
+
+  .entity-card:active {
+    transform: translateY(0) scale(0.98);
+    transition-duration: var(--duration-micro);
+  }
+
+  /* ─── Unified Label Typography ─── */
+  .label-xs {
+    @apply text-xs font-semibold text-slate-400 uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  /* ─── Icon Container (standardized) ─── */
+  .icon-box {
+    @apply flex items-center justify-center shrink-0;
+    border-radius: 0.75rem;
+    transition: box-shadow var(--duration-emphasis) var(--ease-default);
+  }
+
+  .icon-box-md {
+    @apply h-11 w-11 icon-box;
+  }
+
+  .icon-box-lg {
+    @apply h-12 w-12 icon-box;
+  }
+
+  /* ─── Table Standardization ─── */
+  .table-header-cell {
+    @apply text-xs font-semibold text-slate-400 uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  .table-body-cell {
+    @apply text-sm text-slate-700;
+  }
+
+  /* ─── Status Dot ─── */
+  .status-dot {
+    @apply h-1.5 w-1.5 rounded-full shrink-0;
+  }
+
+  .status-dot-live {
+    @apply status-dot bg-emerald-500 animate-pulse;
+    box-shadow: 0 0 8px rgba(16, 185, 129, 0.5);
+  }
+
+  /* ─── Progress Bar ─── */
+  .progress-track {
+    @apply relative h-1.5 w-full bg-slate-100 rounded-full overflow-hidden;
+  }
+
+  .progress-fill {
+    @apply absolute inset-y-0 left-0 rounded-full;
+  }
+
+  /* ─── Empty State (unified) ─── */
+  .empty-state-container {
+    @apply relative border-2 border-dashed border-slate-200 bg-slate-50/50 py-16 px-6 text-center;
+    border-radius: var(--card-radius);
+  }
+
+  .empty-state-icon-box {
+    @apply h-14 w-14 bg-white border border-slate-200 flex items-center justify-center mx-auto mb-4;
+    border-radius: var(--card-radius);
+    box-shadow: var(--shadow-1);
+  }
+
+  /* ─── Page Layout ─── */
+  .page-container {
+    @apply min-h-screen;
+    background: linear-gradient(to bottom, hsl(210 50% 98.5%), white 40%, hsl(217 100% 98% / 0.2));
+  }
+
+  .page-inner {
+    @apply flex flex-col gap-0 w-full mx-auto;
+    max-width: 1600px;
+  }
+
+  .page-header {
+    padding: var(--space-10) var(--space-8) var(--space-8);
+  }
+
+  .page-section {
+    padding: var(--space-8) var(--space-8) var(--space-2);
   }
 }
 

@@ -548,21 +548,21 @@ export default function Nodes() {
  label="Ready"
  value={stats.ready}
  icon={Layers}
- iconColor="text-[hsl(142,76%,36%)]"
- valueClassName="text-[hsl(142,76%,36%)]"
+ iconColor="text-emerald-600"
+ valueClassName="text-emerald-600"
  selected={columnFilters.status?.size === 1 && columnFilters.status.has('Ready')}
  onClick={() => toggleStatFilter('status', 'Ready')}
- className={cn(columnFilters.status?.size === 1 && columnFilters.status.has('Ready') && 'ring-2 ring-[hsl(142,76%,36%)]')}
+ className={cn(columnFilters.status?.size === 1 && columnFilters.status.has('Ready') && 'ring-2 ring-emerald-500')}
  isLoading={isLoading} />
  <ListPageStatCard
  label="Not Ready"
  value={stats.notReady}
  icon={Layers}
- iconColor="text-[hsl(0,72%,51%)]"
- valueClassName="text-[hsl(0,72%,51%)]"
+ iconColor="text-rose-600"
+ valueClassName="text-rose-600"
  selected={columnFilters.status?.size === 1 && columnFilters.status.has('NotReady')}
  onClick={() => toggleStatFilter('status', 'NotReady')}
- className={cn(columnFilters.status?.size === 1 && columnFilters.status.has('NotReady') && 'ring-2 ring-[hsl(0,72%,51%)]')}
+ className={cn(columnFilters.status?.size === 1 && columnFilters.status.has('NotReady') && 'ring-2 ring-rose-500')}
  isLoading={isLoading} />
  <ListPageStatCard
  label="Control Plane"
@@ -577,11 +577,11 @@ export default function Nodes() {
  label="Unschedulable"
  value={stats.unschedulable}
  icon={Layers}
- iconColor="text-[hsl(45,93%,47%)]"
- valueClassName="text-[hsl(45,93%,47%)]"
+ iconColor="text-amber-600"
+ valueClassName="text-amber-600"
  selected={columnFilters.status?.size === 1 && columnFilters.status.has('SchedulingDisabled')}
  onClick={() => toggleStatFilter('status', 'SchedulingDisabled')}
- className={cn(columnFilters.status?.size === 1 && columnFilters.status.has('SchedulingDisabled') && 'ring-2 ring-[hsl(45,93%,47%)]')}
+ className={cn(columnFilters.status?.size === 1 && columnFilters.status.has('SchedulingDisabled') && 'ring-2 ring-amber-500')}
  isLoading={isLoading} />
  </div>
 

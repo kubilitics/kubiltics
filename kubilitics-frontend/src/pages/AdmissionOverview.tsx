@@ -241,7 +241,7 @@ export default function AdmissionOverview() {
                       <span className="font-semibold text-slate-900 group-hover:text-blue-600 transition-colors">{resource.name}</span>
                     </td>
                     <td className="px-6 py-3.5">
-                      <Badge variant="outline" className="text-[10px] uppercase tracking-wider font-semibold border-slate-200 text-slate-500">{resource.kind}</Badge>
+                      <Badge variant="outline" className="text-xs uppercase tracking-wider font-semibold border-slate-200 text-slate-500">{resource.kind}</Badge>
                     </td>
                     <td className="px-6 py-3.5">
                       <div className="flex items-center gap-2">

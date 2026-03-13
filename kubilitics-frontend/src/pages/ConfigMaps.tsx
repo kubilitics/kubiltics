@@ -489,11 +489,11 @@ data: {}
  label="In Use"
  value={statsWithUsage.inUse}
  icon={FileText}
- iconColor="text-[hsl(142,76%,36%)]"
- valueClassName="text-[hsl(142,76%,36%)]"
+ iconColor="text-emerald-600"
+ valueClassName="text-emerald-600"
  selected={columnFilters.usage?.size === 1 && columnFilters.usage.has('In Use')}
  onClick={() => { if (columnFilters.usage?.size === 1 && columnFilters.usage.has('In Use')) setColumnFilter('usage', null); else setColumnFilter('usage', new Set(['In Use'])); }}
- className={cn(columnFilters.usage?.size === 1 && columnFilters.usage.has('In Use') && 'ring-2 ring-[hsl(142,76%,36%)]')}
+ className={cn(columnFilters.usage?.size === 1 && columnFilters.usage.has('In Use') && 'ring-2 ring-emerald-500')}
  isLoading={isLoading}
  />
  <ListPageStatCard

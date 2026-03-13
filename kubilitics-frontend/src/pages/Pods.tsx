@@ -117,12 +117,12 @@ const PODS_COLUMNS_FOR_VISIBILITY = [
 ];
 
 const statusConfig: Record<string, { icon: LucideIcon; color: string; bg: string }> = {
- Running: { icon: CheckCircle2, color: 'text-[hsl(142,76%,36%)]', bg: 'bg-[hsl(142,76%,36%)]/10' },
- Pending: { icon: Clock, color: 'text-[hsl(45,93%,47%)]', bg: 'bg-[hsl(45,93%,47%)]/10' },
+ Running: { icon: CheckCircle2, color: 'text-emerald-600', bg: 'bg-emerald-500/10' },
+ Pending: { icon: Clock, color: 'text-amber-600', bg: 'bg-amber-500/10' },
  Succeeded: { icon: CheckCircle2, color: 'text-blue-500', bg: 'bg-blue-500/10' },
- Failed: { icon: XCircle, color: 'text-[hsl(0,72%,51%)]', bg: 'bg-[hsl(0,72%,51%)]/10' },
+ Failed: { icon: XCircle, color: 'text-rose-600', bg: 'bg-rose-500/10' },
  Unknown: { icon: Loader2, color: 'text-gray-500', bg: 'bg-gray-500/10' },
- CrashLoopBackOff: { icon: RotateCcw, color: 'text-[hsl(0,72%,51%)]', bg: 'bg-[hsl(0,72%,51%)]/10' },
+ CrashLoopBackOff: { icon: RotateCcw, color: 'text-rose-600', bg: 'bg-rose-500/10' },
  ContainerCreating: { icon: Loader2, color: 'text-blue-500', bg: 'bg-blue-500/10' },
  Terminating: { icon: XCircle, color: 'text-orange-500', bg: 'bg-orange-500/10' },
 };
@@ -733,34 +733,34 @@ export default function Pods() {
  label="Running"
  value={stats.running}
  icon={CheckCircle2}
- iconColor="text-[hsl(142,76%,36%)]"
- valueClassName="text-[hsl(142,76%,36%)]"
+ iconColor="text-emerald-600"
+ valueClassName="text-emerald-600"
  isLoading={isLoading}
  selected={columnFilters.status?.size === 1 && columnFilters.status.has('Running')}
  onClick={() => setColumnFilter('status', new Set(['Running']))}
- className={cn(columnFilters.status?.size === 1 && columnFilters.status.has('Running') && 'ring-2 ring-[hsl(142,76%,36%)]')}
+ className={cn(columnFilters.status?.size === 1 && columnFilters.status.has('Running') && 'ring-2 ring-emerald-500')}
  />
  <ListPageStatCard
  label="Pending"
  value={stats.pending}
  icon={Clock}
- iconColor="text-[hsl(45,93%,47%)]"
- valueClassName="text-[hsl(45,93%,47%)]"
+ iconColor="text-amber-600"
+ valueClassName="text-amber-600"
  isLoading={isLoading}
  selected={columnFilters.status?.size === 1 && columnFilters.status.has('Pending')}
  onClick={() => setColumnFilter('status', new Set(['Pending']))}
- className={cn(columnFilters.status?.size === 1 && columnFilters.status.has('Pending') && 'ring-2 ring-[hsl(45,93%,47%)]')}
+ className={cn(columnFilters.status?.size === 1 && columnFilters.status.has('Pending') && 'ring-2 ring-amber-500')}
  />
  <ListPageStatCard
  label="Failed"
  value={stats.failed}
  icon={XCircle}
- iconColor="text-[hsl(0,72%,51%)]"
- valueClassName="text-[hsl(0,72%,51%)]"
+ iconColor="text-rose-600"
+ valueClassName="text-rose-600"
  isLoading={isLoading}
  selected={columnFilters.status?.size !== undefined && columnFilters.status?.size > 0 && ['Failed', 'CrashLoopBackOff'].every((s) => columnFilters.status?.has(s)) && columnFilters.status.size === 2}
  onClick={() => setColumnFilter('status', new Set(['Failed', 'CrashLoopBackOff']))}
- className={cn(columnFilters.status?.size === 2 && columnFilters.status?.has('Failed') && columnFilters.status?.has('CrashLoopBackOff') && 'ring-2 ring-[hsl(0,72%,51%)]')}
+ className={cn(columnFilters.status?.size === 2 && columnFilters.status?.has('Failed') && columnFilters.status?.has('CrashLoopBackOff') && 'ring-2 ring-rose-500')}
  />
  </div>
 
@@ -1209,8 +1209,8 @@ export default function Pods() {
  <ResizableTableCell columnId="restarts">
  <span className={cn(
  'font-medium',
- pod.restarts > 5 && 'text-[hsl(0,72%,51%)]',
- pod.restarts > 0 && pod.restarts <= 5 && 'text-[hsl(45,93%,47%)]'
+ pod.restarts > 5 && 'text-rose-600',
+ pod.restarts > 0 && pod.restarts <= 5 && 'text-amber-600'
  )}>
  {pod.restarts}
  </span>

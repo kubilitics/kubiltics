@@ -300,11 +300,11 @@ export default function StorageClasses() {
  label="Default"
  value={stats.defaultCount}
  icon={Layers}
- iconColor="text-[hsl(142,76%,36%)]"
- valueClassName="text-[hsl(142,76%,36%)]"
+ iconColor="text-emerald-600"
+ valueClassName="text-emerald-600"
  selected={columnFilters.isDefault?.size === 1 && columnFilters.isDefault.has('Yes')}
  onClick={toggleDefaultFilter}
- className={cn(columnFilters.isDefault?.size === 1 && columnFilters.isDefault.has('Yes') && 'ring-2 ring-[hsl(142,76%,36%)]')}
+ className={cn(columnFilters.isDefault?.size === 1 && columnFilters.isDefault.has('Yes') && 'ring-2 ring-emerald-500')}
  isLoading={isLoading} />
  <ListPageStatCard
  label="With PVs"

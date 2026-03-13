@@ -145,9 +145,9 @@ const resourceLabels: Record<ResourceType, string> = {
 };
 
 const statusConfig = {
-  healthy: { icon: CheckCircle2, color: 'text-[hsl(142,76%,36%)]', bg: 'bg-[hsl(142,76%,36%)]/10', label: 'Healthy' },
-  warning: { icon: AlertTriangle, color: 'text-[hsl(45,93%,47%)]', bg: 'bg-[hsl(45,93%,47%)]/10', label: 'Warning' },
-  error: { icon: XCircle, color: 'text-[hsl(0,72%,51%)]', bg: 'bg-[hsl(0,72%,51%)]/10', label: 'Error' },
+  healthy: { icon: CheckCircle2, color: 'text-emerald-600', bg: 'bg-emerald-500/10', label: 'Healthy' },
+  warning: { icon: AlertTriangle, color: 'text-amber-600', bg: 'bg-amber-500/10', label: 'Warning' },
+  error: { icon: XCircle, color: 'text-rose-600', bg: 'bg-rose-500/10', label: 'Error' },
   pending: { icon: Clock, color: 'text-muted-foreground', bg: 'bg-muted', label: 'Pending' },
 };
 

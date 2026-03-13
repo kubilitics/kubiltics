@@ -5,9 +5,9 @@ import { cn } from '@/lib/utils';
 export type StatusPillVariant = 'success' | 'warning' | 'error' | 'neutral';
 
 const variantStyles: Record<StatusPillVariant, { bg: string; color: string }> = {
-  success: { bg: 'bg-[hsl(142,76%,36%)]/10', color: 'text-[hsl(142,76%,36%)]/90' },
-  warning: { bg: 'bg-[hsl(45,93%,47%)]/10', color: 'text-[hsl(45,93%,47%)]/90' },
-  error: { bg: 'bg-[hsl(0,72%,51%)]/10', color: 'text-[hsl(0,72%,51%)]/90' },
+  success: { bg: 'bg-emerald-500/10', color: 'text-emerald-600/90' },
+  warning: { bg: 'bg-amber-500/10', color: 'text-amber-600/90' },
+  error: { bg: 'bg-rose-500/10', color: 'text-rose-600/90' },
   neutral: { bg: 'bg-muted', color: 'text-muted-foreground' },
 };
 

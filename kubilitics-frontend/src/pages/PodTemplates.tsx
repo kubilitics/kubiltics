@@ -416,7 +416,7 @@ template:
  <DropdownMenuSeparator />
  <DropdownMenuItem onClick={() => navigate(`/podtemplates/${item.namespace}/${item.name}?tab=yaml`)} className="gap-2"><FileText className="h-4 w-4" />Download YAML</DropdownMenuItem>
  <DropdownMenuSeparator />
- <DropdownMenuItem className="gap-2 text-[hsl(0,72%,51%)]" onClick={() => setDeleteDialog({ open: true, item })} disabled={!isConnected}><Trash2 className="h-4 w-4" />Delete</DropdownMenuItem>
+ <DropdownMenuItem className="gap-2 text-rose-600" onClick={() => setDeleteDialog({ open: true, item })} disabled={!isConnected}><Trash2 className="h-4 w-4" />Delete</DropdownMenuItem>
  </DropdownMenuContent>
  </DropdownMenu>
  </TableCell>

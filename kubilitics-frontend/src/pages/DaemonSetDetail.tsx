@@ -431,7 +431,7 @@ export default function DaemonSetDetail() {
           <div className="space-y-4">
             <div className="flex flex-wrap gap-6 text-sm">
               <span className="text-muted-foreground">Eligible Nodes: <span className="font-medium text-foreground">{desired}</span></span>
-              <span className="text-muted-foreground">Covered Nodes: <span className="font-medium text-[hsl(142,76%,36%)]">{ready}</span></span>
+              <span className="text-muted-foreground">Covered Nodes: <span className="font-medium text-emerald-600">{ready}</span></span>
               <span className="text-muted-foreground">Missing Nodes: <span className="font-medium text-destructive">{Math.max(0, desired - ready)}</span></span>
             </div>
             {dsPods.length === 0 ? (
@@ -456,7 +456,7 @@ export default function DaemonSetDetail() {
                           type="button"
                           className={cn(
                             'rounded-lg border p-3 text-left transition-all hover:ring-2 hover:ring-primary/30 focus:outline-none focus:ring-2 focus:ring-primary',
-                            cardVariant === 'green' && 'border-[hsl(142,76%,36%)]/50 bg-[hsl(142,76%,36%)]/10',
+                            cardVariant === 'green' && 'border-emerald-500/50 bg-emerald-500/10',
                             cardVariant === 'yellow' && 'border-amber-500/50 bg-amber-500/10',
                             cardVariant === 'red' && 'border-destructive/50 bg-destructive/10'
                           )}

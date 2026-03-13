@@ -62,8 +62,8 @@ interface CronJob {
 }
 
 const statusConfig = {
- Active: { icon: CheckCircle2, color: 'text-[hsl(142,76%,36%)]', bg: 'bg-[hsl(142,76%,36%)]/10' },
- Suspended: { icon: Pause, color: 'text-[hsl(45,93%,47%)]', bg: 'bg-[hsl(45,93%,47%)]/10' },
+ Active: { icon: CheckCircle2, color: 'text-emerald-600', bg: 'bg-emerald-500/10' },
+ Suspended: { icon: Pause, color: 'text-amber-600', bg: 'bg-amber-500/10' },
 };
 
 const CRONJOBS_TABLE_COLUMNS: ResizableColumnConfig[] = [
@@ -454,8 +454,8 @@ spec:
  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
  <ListPageStatCard label="Total" value={stats.total} icon={CronJobIcon as any} iconColor="text-primary" selected={!columnFilters.status?.size} onClick={() => setColumnFilter('status', null)} className={cn(!columnFilters.status?.size && !isLoading && 'ring-2 ring-primary')} isLoading={isLoading} />
  <ListPageStatCard label="Active" value={stats.active} icon={Clock} iconColor="text-cyan-500" valueClassName="text-cyan-600" selected={columnFilters.hasActiveJobs?.size === 1 && columnFilters.hasActiveJobs.has('Yes')} onClick={() => setColumnFilter('hasActiveJobs', new Set(['Yes']))} className={cn(columnFilters.hasActiveJobs?.size === 1 && columnFilters.hasActiveJobs.has('Yes') && 'ring-2 ring-cyan-500')} isLoading={isLoading} />
- <ListPageStatCard label="Suspended" value={stats.suspended} icon={Pause} iconColor="text-[hsl(45,93%,47%)]" valueClassName="text-[hsl(45,93%,47%)]" selected={columnFilters.status?.size === 1 && columnFilters.status.has('Suspended')} onClick={() => setColumnFilter('status', new Set(['Suspended']))} className={cn(columnFilters.status?.size === 1 && columnFilters.status.has('Suspended') && 'ring-2 ring-[hsl(45,93%,47%)]')} isLoading={isLoading} />
- <ListPageStatCard label="On Schedule" value={stats.onSchedule} icon={CalendarCheck} iconColor="text-[hsl(142,76%,36%)]" valueClassName="text-[hsl(142,76%,36%)]" isLoading={isLoading} />
+ <ListPageStatCard label="Suspended" value={stats.suspended} icon={Pause} iconColor="text-amber-600" valueClassName="text-amber-600" selected={columnFilters.status?.size === 1 && columnFilters.status.has('Suspended')} onClick={() => setColumnFilter('status', new Set(['Suspended']))} className={cn(columnFilters.status?.size === 1 && columnFilters.status.has('Suspended') && 'ring-2 ring-amber-500')} isLoading={isLoading} />
+ <ListPageStatCard label="On Schedule" value={stats.onSchedule} icon={CalendarCheck} iconColor="text-emerald-600" valueClassName="text-emerald-600" isLoading={isLoading} />
  <ListPageStatCard label="Overdue" value={stats.overdue} icon={Timer} iconColor="text-muted-foreground" isLoading={isLoading} />
  <ListPageStatCard label="Success Rate (7d)" value={stats.successRate7d} icon={Gauge} iconColor="text-muted-foreground" isLoading={isLoading} />
  </div>
@@ -688,7 +688,7 @@ spec:
  <DropdownMenuItem onClick={() => navigate(`/jobs?namespace=${item.namespace}`)} className="press-effect gap-2"><Box className="h-4 w-4" />View Jobs</DropdownMenuItem>
  <DropdownMenuItem onClick={() => navigate(`/cronjobs/${item.namespace}/${item.name}?tab=logs`)} className="press-effect gap-2"><FileText className="h-4 w-4" />View Last Job Logs</DropdownMenuItem>
  <DropdownMenuItem onClick={() => navigate(`/cronjobs/${item.namespace}/${item.name}?tab=yaml`)} className="press-effect gap-2"><FileText className="h-4 w-4" />Download YAML</DropdownMenuItem>
- <DropdownMenuSeparator /><DropdownMenuItem className="gap-2 text-[hsl(0,72%,51%)]" onClick={() => setDeleteDialog({ open: true, item })} disabled={!isConnected}><Trash2 className="h-4 w-4" />Delete</DropdownMenuItem>
+ <DropdownMenuSeparator /><DropdownMenuItem className="gap-2 text-rose-600" onClick={() => setDeleteDialog({ open: true, item })} disabled={!isConnected}><Trash2 className="h-4 w-4" />Delete</DropdownMenuItem>
  </DropdownMenuContent>
  </DropdownMenu>
  </TableCell>
@@ -793,7 +793,7 @@ spec:
  <DropdownMenuItem onClick={() => navigate(`/jobs?namespace=${item.namespace}`)} className="press-effect gap-2"><Box className="h-4 w-4" />View Jobs</DropdownMenuItem>
  <DropdownMenuItem onClick={() => navigate(`/cronjobs/${item.namespace}/${item.name}?tab=logs`)} className="press-effect gap-2"><FileText className="h-4 w-4" />View Last Job Logs</DropdownMenuItem>
  <DropdownMenuItem onClick={() => navigate(`/cronjobs/${item.namespace}/${item.name}?tab=yaml`)} className="press-effect gap-2"><FileText className="h-4 w-4" />Download YAML</DropdownMenuItem>
- <DropdownMenuSeparator /><DropdownMenuItem className="gap-2 text-[hsl(0,72%,51%)]" onClick={() => setDeleteDialog({ open: true, item })} disabled={!isConnected}><Trash2 className="h-4 w-4" />Delete</DropdownMenuItem>
+ <DropdownMenuSeparator /><DropdownMenuItem className="gap-2 text-rose-600" onClick={() => setDeleteDialog({ open: true, item })} disabled={!isConnected}><Trash2 className="h-4 w-4" />Delete</DropdownMenuItem>
  </DropdownMenuContent>
  </DropdownMenu>
  </TableCell>

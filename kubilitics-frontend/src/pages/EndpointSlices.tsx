@@ -455,7 +455,7 @@ ports: []
  <ResizableTableCell columnId="namespace"><NamespaceBadge namespace={es.namespace} /></ResizableTableCell>
  <ResizableTableCell columnId="addressType"><Badge variant="secondary">{es.addressType}</Badge></ResizableTableCell>
  <ResizableTableCell columnId="endpoints"><span className="font-mono">{es.endpoints}</span></ResizableTableCell>
- <TableCell><span className={cn('font-mono', es.ready > 0 ? 'text-[hsl(142,76%,36%)]' : 'text-muted-foreground')}>{es.ready}</span></TableCell>
+ <TableCell><span className={cn('font-mono', es.ready > 0 ? 'text-emerald-600' : 'text-muted-foreground')}>{es.ready}</span></TableCell>
  <TableCell><span className="font-mono">{es.serving}</span></TableCell>
  <TableCell><span className="font-mono">{es.terminating}</span></TableCell>
  <TableCell><span className="font-mono text-xs truncate block">{es.ports}</span></TableCell>

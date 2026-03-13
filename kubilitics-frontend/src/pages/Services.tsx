@@ -132,9 +132,9 @@ const SERVICES_COLUMNS_FOR_VISIBILITY = [
 ];
 
 const statusConfig = {
- Healthy: { icon: CheckCircle2, color: 'text-[hsl(142,76%,36%)]', bg: 'bg-[hsl(142,76%,36%)]/10' },
- Pending: { icon: Clock, color: 'text-[hsl(45,93%,47%)]', bg: 'bg-[hsl(45,93%,47%)]/10' },
- Error: { icon: XCircle, color: 'text-[hsl(0,72%,51%)]', bg: 'bg-[hsl(0,72%,51%)]/10' },
+ Healthy: { icon: CheckCircle2, color: 'text-emerald-600', bg: 'bg-emerald-500/10' },
+ Pending: { icon: Clock, color: 'text-amber-600', bg: 'bg-amber-500/10' },
+ Error: { icon: XCircle, color: 'text-rose-600', bg: 'bg-rose-500/10' },
 };
 
 const typeColors: Record<string, string> = {
@@ -537,7 +537,7 @@ spec:
  <ListPageStatCard size="sm" label="NodePort" value={stats.nodePort} valueClassName="text-orange-600" selected={columnFilters.type?.size === 1 && columnFilters.type?.has('NodePort')} onClick={() => setColumnFilter('type', new Set(['NodePort']))} className={cn(columnFilters.type?.size === 1 && columnFilters.type?.has('NodePort') && 'ring-2 ring-primary')} isLoading={isLoading} />
  <ListPageStatCard size="sm" label="LoadBalancer" value={stats.loadBalancer} valueClassName="text-green-600" selected={columnFilters.type?.size === 1 && columnFilters.type?.has('LoadBalancer')} onClick={() => setColumnFilter('type', new Set(['LoadBalancer']))} className={cn(columnFilters.type?.size === 1 && columnFilters.type?.has('LoadBalancer') && 'ring-2 ring-primary')} isLoading={isLoading} />
  <ListPageStatCard size="sm" label="ExternalName" value={stats.externalName} valueClassName="text-purple-600" selected={columnFilters.type?.size === 1 && columnFilters.type?.has('ExternalName')} onClick={() => setColumnFilter('type', new Set(['ExternalName']))} className={cn(columnFilters.type?.size === 1 && columnFilters.type?.has('ExternalName') && 'ring-2 ring-primary')} isLoading={isLoading} />
- <ListPageStatCard size="sm" label="Unhealthy Endpoints" value={stats.unhealthyEndpoints} valueClassName="text-[hsl(0,72%,51%)]" selected={columnFilters.hasUnhealthyEndpoints?.size === 1 && columnFilters.hasUnhealthyEndpoints?.has('Yes')} onClick={() => { if (columnFilters.hasUnhealthyEndpoints?.size === 1 && columnFilters.hasUnhealthyEndpoints?.has('Yes')) setColumnFilter('hasUnhealthyEndpoints', null); else setColumnFilter('hasUnhealthyEndpoints', new Set(['Yes'])); }} className={cn(columnFilters.hasUnhealthyEndpoints?.size === 1 && columnFilters.hasUnhealthyEndpoints?.has('Yes') && 'ring-2 ring-destructive')} isLoading={isLoading} />
+ <ListPageStatCard size="sm" label="Unhealthy Endpoints" value={stats.unhealthyEndpoints} valueClassName="text-rose-600" selected={columnFilters.hasUnhealthyEndpoints?.size === 1 && columnFilters.hasUnhealthyEndpoints?.has('Yes')} onClick={() => { if (columnFilters.hasUnhealthyEndpoints?.size === 1 && columnFilters.hasUnhealthyEndpoints?.has('Yes')) setColumnFilter('hasUnhealthyEndpoints', null); else setColumnFilter('hasUnhealthyEndpoints', new Set(['Yes'])); }} className={cn(columnFilters.hasUnhealthyEndpoints?.size === 1 && columnFilters.hasUnhealthyEndpoints?.has('Yes') && 'ring-2 ring-destructive')} isLoading={isLoading} />
  </div>
 
  <ResourceListTableToolbar
@@ -780,7 +780,7 @@ spec:
  <span className="font-mono text-sm truncate block">{svc.clusterIP}</span>
  </ResizableTableCell>
  <ResizableTableCell columnId="externalIP">
- <span className={cn('font-mono text-sm truncate block', svc.externalIP === '<pending>' && 'text-[hsl(45,93%,47%)]')}>{svc.externalIP}</span>
+ <span className={cn('font-mono text-sm truncate block', svc.externalIP === '<pending>' && 'text-amber-600')}>{svc.externalIP}</span>
  </ResizableTableCell>
  <ResizableTableCell columnId="ports">
  <span className="font-mono text-xs truncate block">{svc.ports}</span>
@@ -881,7 +881,7 @@ spec:
  <ResizableTableCell columnId="status"><StatusPill variant={serviceStatusToPillVariant[svc.status]} label={svc.status} /></ResizableTableCell>
  <ResizableTableCell columnId="type"><Badge className={cn('font-medium', typeColors[svc.type])}>{svc.type}</Badge></ResizableTableCell>
  <ResizableTableCell columnId="clusterIP"><span className="font-mono text-sm truncate block">{svc.clusterIP}</span></ResizableTableCell>
- <ResizableTableCell columnId="externalIP"><span className={cn('font-mono text-sm truncate block', svc.externalIP === '<pending>' && 'text-[hsl(45,93%,47%)]')}>{svc.externalIP}</span></ResizableTableCell>
+ <ResizableTableCell columnId="externalIP"><span className={cn('font-mono text-sm truncate block', svc.externalIP === '<pending>' && 'text-amber-600')}>{svc.externalIP}</span></ResizableTableCell>
  <ResizableTableCell columnId="ports"><span className="font-mono text-xs truncate block">{svc.ports}</span></ResizableTableCell>
  <ResizableTableCell columnId="endpoints"><span className="text-muted-foreground">{endpointsMap[`${svc.namespace}/${svc.name}`] ?? svc.endpoints}</span></ResizableTableCell>
  <ResizableTableCell columnId="selector"><span className="font-mono text-xs truncate block" title={svc.selector}>{svc.selector}</span></ResizableTableCell>

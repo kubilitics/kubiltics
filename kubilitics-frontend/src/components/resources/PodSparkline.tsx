@@ -108,7 +108,7 @@ interface LiveMetricProps {
 
 export function LiveMetric({ label, value, unit, trend, data, color = 'hsl(var(--primary))' }: LiveMetricProps) {
   const trendIcon = trend === 'up' ? '↑' : trend === 'down' ? '↓' : '→';
-  const trendColor = trend === 'up' ? 'text-[hsl(0,72%,51%)]' : trend === 'down' ? 'text-[hsl(142,76%,36%)]' : 'text-muted-foreground';
+  const trendColor = trend === 'up' ? 'text-rose-600' : trend === 'down' ? 'text-emerald-600' : 'text-muted-foreground';
 
   return (
     <div className="flex items-center gap-2">

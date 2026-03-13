@@ -362,21 +362,21 @@ export default function Namespaces() {
  label="Active"
  value={stats.active}
  icon={Folder}
- iconColor="text-[hsl(142,76%,36%)]"
- valueClassName="text-[hsl(142,76%,36%)]"
+ iconColor="text-emerald-600"
+ valueClassName="text-emerald-600"
  selected={columnFilters.status?.size === 1 && columnFilters.status.has('Active')}
  onClick={() => toggleStatFilter('status', 'Active')}
- className={cn(columnFilters.status?.size === 1 && columnFilters.status.has('Active') && 'ring-2 ring-[hsl(142,76%,36%)]')}
+ className={cn(columnFilters.status?.size === 1 && columnFilters.status.has('Active') && 'ring-2 ring-emerald-500')}
  isLoading={isLoading} />
  <ListPageStatCard
  label="Terminating"
  value={stats.terminating}
  icon={Folder}
- iconColor="text-[hsl(0,72%,51%)]"
- valueClassName="text-[hsl(0,72%,51%)]"
+ iconColor="text-rose-600"
+ valueClassName="text-rose-600"
  selected={columnFilters.status?.size === 1 && columnFilters.status.has('Terminating')}
  onClick={() => toggleStatFilter('status', 'Terminating')}
- className={cn(columnFilters.status?.size === 1 && columnFilters.status.has('Terminating') && 'ring-2 ring-[hsl(0,72%,51%)]')}
+ className={cn(columnFilters.status?.size === 1 && columnFilters.status.has('Terminating') && 'ring-2 ring-rose-500')}
  isLoading={isLoading} />
  </div>
 

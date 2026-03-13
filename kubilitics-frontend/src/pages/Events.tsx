@@ -53,7 +53,7 @@ import { getDetailPath, normalizeKindForTopology } from '@/utils/resourceKindMap
 
 const typeConfig = {
  Normal: { icon: CheckCircle2, color: 'text-muted-foreground', bg: 'bg-muted' },
- Warning: { icon: AlertTriangle, color: 'text-[hsl(25,95%,53%)]', bg: 'bg-[hsl(25,95%,53%)]/15' },
+ Warning: { icon: AlertTriangle, color: 'text-orange-500', bg: 'bg-orange-500/15' },
  Error: { icon: XCircle, color: 'text-destructive', bg: 'bg-destructive/10' },
 };
 
@@ -260,7 +260,7 @@ export default function Events() {
  <p className="text-sm text-muted-foreground">
  Cluster events from all namespaces
  {!isConnected && (
- <span className="ml-2 inline-flex items-center gap-1 text-[hsl(45,93%,47%)]">
+ <span className="ml-2 inline-flex items-center gap-1 text-amber-600">
  <WifiOff className="h-3 w-3" /> Connect cluster
  </span>
  )}
@@ -284,7 +284,7 @@ export default function Events() {
 
  <div className={cn('grid grid-cols-2 sm:grid-cols-4 gap-4', !isConnected && 'opacity-60')}>
  <ListPageStatCard label="Total" value={stats.total} icon={Bell} iconColor="text-primary" selected={!typeFilterActive} onClick={() => setColumnFilter('type', null)} className={cn(!typeFilterActive && 'ring-2 ring-primary')} isLoading={isLoading} />
- <ListPageStatCard label="Warnings" value={stats.warning} icon={AlertTriangle} iconColor="text-[hsl(25,95%,53%)]" valueClassName="text-[hsl(25,95%,53%)]" selected={typeFilterValue === 'Warning'} onClick={() => setColumnFilter('type', typeFilterValue === 'Warning' ? null : new Set(['Warning']))} className={cn(typeFilterValue === 'Warning' && 'ring-2 ring-[hsl(25,95%,53%)]')} isLoading={isLoading} />
+ <ListPageStatCard label="Warnings" value={stats.warning} icon={AlertTriangle} iconColor="text-orange-500" valueClassName="text-orange-500" selected={typeFilterValue === 'Warning'} onClick={() => setColumnFilter('type', typeFilterValue === 'Warning' ? null : new Set(['Warning']))} className={cn(typeFilterValue === 'Warning' && 'ring-2 ring-orange-500')} isLoading={isLoading} />
  <ListPageStatCard label="Errors" value={stats.errors} icon={XCircle} iconColor="text-destructive" valueClassName="text-destructive" selected={typeFilterValue === 'Error'} onClick={() => setColumnFilter('type', typeFilterValue === 'Error' ? null : new Set(['Error']))} className={cn(typeFilterValue === 'Error' && 'ring-2 ring-destructive')} isLoading={isLoading} />
  <ListPageStatCard label="Resources Affected" value={stats.resourcesAffected} icon={Bell} iconColor="text-muted-foreground" selected={!typeFilterActive && !reasonFilterActive} onClick={() => { setColumnFilter('type', null); setColumnFilter('reason', null); }} className={cn(!typeFilterActive && !reasonFilterActive && 'ring-2 ring-primary')} isLoading={isLoading} />
  </div>

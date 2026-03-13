@@ -224,7 +224,7 @@ metadata:
  <h1 className="text-2xl font-semibold tracking-tight">Mutating Admission Webhooks</h1>
  <p className="text-sm text-muted-foreground">
  {filteredItems.length} mutating webhook configurations (cluster-scoped)
- {!isConnected && <span className="ml-2 inline-flex items-center gap-1 text-[hsl(45,93%,47%)]"><WifiOff className="h-3 w-3" /> Connect cluster</span>}
+ {!isConnected && <span className="ml-2 inline-flex items-center gap-1 text-amber-600"><WifiOff className="h-3 w-3" /> Connect cluster</span>}
  </p>
  </div>
  {selectedItems.size > 0 && (
@@ -253,9 +253,9 @@ metadata:
 
  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
  <ListPageStatCard label="Total" value={stats.total} icon={Webhook} iconColor="text-primary" selected={!hasActiveFilters} onClick={clearAllFilters} className={cn(!hasActiveFilters && !isLoading && 'ring-2 ring-primary')} isLoading={isLoading} />
- <ListPageStatCard label="Fail Policy" value={stats.failPolicy} icon={XCircle} iconColor="text-[hsl(0,72%,51%)]" valueClassName="text-[hsl(0,72%,51%)]" selected={columnFilters.failurePolicy?.size === 1 && columnFilters.failurePolicy.has('Fail')} onClick={() => toggleStatFilter('failurePolicy', 'Fail')} className={cn(columnFilters.failurePolicy?.size === 1 && columnFilters.failurePolicy.has('Fail') && 'ring-2 ring-[hsl(0,72%,51%)]')} isLoading={isLoading} />
+ <ListPageStatCard label="Fail Policy" value={stats.failPolicy} icon={XCircle} iconColor="text-rose-600" valueClassName="text-rose-600" selected={columnFilters.failurePolicy?.size === 1 && columnFilters.failurePolicy.has('Fail')} onClick={() => toggleStatFilter('failurePolicy', 'Fail')} className={cn(columnFilters.failurePolicy?.size === 1 && columnFilters.failurePolicy.has('Fail') && 'ring-2 ring-rose-500')} isLoading={isLoading} />
  <ListPageStatCard label="Ignore Policy" value={stats.ignorePolicy} icon={CheckCircle2} iconColor="text-muted-foreground" valueClassName="text-muted-foreground" selected={columnFilters.failurePolicy?.size === 1 && columnFilters.failurePolicy.has('Ignore')} onClick={() => toggleStatFilter('failurePolicy', 'Ignore')} className={cn(columnFilters.failurePolicy?.size === 1 && columnFilters.failurePolicy.has('Ignore') && 'ring-2 ring-muted-foreground')} isLoading={isLoading} />
- <ListPageStatCard label="Multiple Webhooks" value={stats.multipleWebhooks} icon={Clock} iconColor="text-[hsl(45,93%,47%)]" valueClassName="text-[hsl(45,93%,47%)]" selected={columnFilters.hasMultipleWebhooks?.size === 1 && columnFilters.hasMultipleWebhooks.has('Yes')} onClick={() => toggleStatFilter('hasMultipleWebhooks', 'Yes')} className={cn(columnFilters.hasMultipleWebhooks?.size === 1 && columnFilters.hasMultipleWebhooks.has('Yes') && 'ring-2 ring-[hsl(45,93%,47%)]')} isLoading={isLoading} />
+ <ListPageStatCard label="Multiple Webhooks" value={stats.multipleWebhooks} icon={Clock} iconColor="text-amber-600" valueClassName="text-amber-600" selected={columnFilters.hasMultipleWebhooks?.size === 1 && columnFilters.hasMultipleWebhooks.has('Yes')} onClick={() => toggleStatFilter('hasMultipleWebhooks', 'Yes')} className={cn(columnFilters.hasMultipleWebhooks?.size === 1 && columnFilters.hasMultipleWebhooks.has('Yes') && 'ring-2 ring-amber-500')} isLoading={isLoading} />
  </div>
 
  <ResourceListTableToolbar
@@ -377,7 +377,7 @@ metadata:
  <DropdownMenuSeparator />
  <DropdownMenuItem onClick={() => navigate(`/mutatingwebhooks/${item.name}?tab=yaml`)} className="gap-2"><FileText className="h-4 w-4" />Download YAML</DropdownMenuItem>
  <DropdownMenuSeparator />
- <DropdownMenuItem className="gap-2 text-[hsl(0,72%,51%)]" onClick={() => setDeleteDialog({ open: true, item })} disabled={!isConnected}><Trash2 className="h-4 w-4" />Delete</DropdownMenuItem>
+ <DropdownMenuItem className="gap-2 text-rose-600" onClick={() => setDeleteDialog({ open: true, item })} disabled={!isConnected}><Trash2 className="h-4 w-4" />Delete</DropdownMenuItem>
  </DropdownMenuContent>
  </DropdownMenu>
  </TableCell>

@@ -261,7 +261,7 @@ export function ResourceWizard({
                     </Badge>
                   )}
                   {yamlValidation.isValid && editedYaml.trim() && (
-                    <Badge variant="outline" className="text-xs text-[hsl(142,76%,36%)]">
+                    <Badge variant="outline" className="text-xs text-emerald-600">
                       Valid
                     </Badge>
                   )}

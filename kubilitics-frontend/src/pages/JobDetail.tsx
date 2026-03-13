@@ -433,9 +433,9 @@ export default function JobDetail() {
                       <div key={condition.type} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
                         <div className="flex items-center gap-3">
                           {isTrue ? (
-                            <CheckCircle2 className="h-5 w-5 text-[hsl(142,76%,36%)]" />
+                            <CheckCircle2 className="h-5 w-5 text-emerald-600" />
                           ) : (
-                            <XCircle className="h-5 w-5 text-[hsl(0,72%,51%)]" />
+                            <XCircle className="h-5 w-5 text-rose-600" />
                           )}
                           <div>
                             <p className="font-medium text-sm">{condition.type}</p>

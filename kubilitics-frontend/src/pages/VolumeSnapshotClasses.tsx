@@ -234,7 +234,7 @@ deletionPolicy: ${v.deletionPolicy}
 
  <div className={cn('grid grid-cols-2 sm:grid-cols-4 gap-4', !isConnected && 'opacity-60')}>
  <ListPageStatCard label="Total" value={stats.total} icon={Camera} iconColor="text-primary" selected={!hasActiveFilters} onClick={clearAllFilters} className={cn(!hasActiveFilters && !isLoading && 'ring-2 ring-primary')} isLoading={isLoading} />
- <ListPageStatCard label="Default" value={stats.defaultCount} icon={Star} iconColor="text-[hsl(142,76%,36%)]" valueClassName="text-[hsl(142,76%,36%)]" selected={columnFilters.isDefault?.size === 1 && columnFilters.isDefault.has('Yes')} onClick={toggleDefaultFilter} className={cn(columnFilters.isDefault?.size === 1 && columnFilters.isDefault.has('Yes') && 'ring-2 ring-[hsl(142,76%,36%)]')} isLoading={isLoading} />
+ <ListPageStatCard label="Default" value={stats.defaultCount} icon={Star} iconColor="text-emerald-600" valueClassName="text-emerald-600" selected={columnFilters.isDefault?.size === 1 && columnFilters.isDefault.has('Yes')} onClick={toggleDefaultFilter} className={cn(columnFilters.isDefault?.size === 1 && columnFilters.isDefault.has('Yes') && 'ring-2 ring-emerald-500')} isLoading={isLoading} />
  <ListPageStatCard label="Retain Policy" value={stats.retainPolicy} icon={Layers} iconColor="text-muted-foreground" selected={columnFilters.deletionPolicy?.size === 1 && columnFilters.deletionPolicy.has('Retain')} onClick={() => setColumnFilter('deletionPolicy', columnFilters.deletionPolicy?.has('Retain') ? null : new Set(['Retain']))} isLoading={isLoading} />
  <ListPageStatCard label="Delete Policy" value={stats.deletePolicy} icon={Layers} iconColor="text-muted-foreground" selected={columnFilters.deletionPolicy?.size === 1 && columnFilters.deletionPolicy.has('Delete')} onClick={() => setColumnFilter('deletionPolicy', columnFilters.deletionPolicy?.has('Delete') ? null : new Set(['Delete']))} isLoading={isLoading} />
  </div>
@@ -369,7 +369,7 @@ deletionPolicy: ${v.deletionPolicy}
  <DropdownMenuSeparator />
  <DropdownMenuItem onClick={() => navigate(`/volumesnapshotclasses/${item.name}?tab=yaml`)} className="gap-2"><FileText className="h-4 w-4" />Download YAML</DropdownMenuItem>
  <DropdownMenuSeparator />
- <DropdownMenuItem className="gap-2 text-[hsl(0,72%,51%)]" onClick={() => setDeleteDialog({ open: true, item })} disabled={!isConnected}><Trash2 className="h-4 w-4" />Delete</DropdownMenuItem>
+ <DropdownMenuItem className="gap-2 text-rose-600" onClick={() => setDeleteDialog({ open: true, item })} disabled={!isConnected}><Trash2 className="h-4 w-4" />Delete</DropdownMenuItem>
  </DropdownMenuContent>
  </DropdownMenu>
  </TableCell>

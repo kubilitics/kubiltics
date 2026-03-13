@@ -45,7 +45,7 @@ function usageBarIndicatorClass(pct: number | null): string {
   if (pct == null) return 'bg-muted-foreground/40';
   if (pct >= 100) return 'bg-destructive';
   if (pct >= 80) return 'bg-amber-500';
-  return 'bg-[hsl(142,76%,36%)]';
+  return 'bg-emerald-600';
 }
 
 export default function ResourceQuotaDetail() {
@@ -258,7 +258,7 @@ export default function ResourceQuotaDetail() {
                         <TableCell className="font-mono text-sm">{row.hard}</TableCell>
                         <TableCell>
                           {row.percent != null ? (
-                            <span className={row.percent >= 100 ? 'text-destructive font-medium' : row.percent >= 80 ? 'text-amber-600 font-medium' : 'text-[hsl(142,76%,36%)] font-medium'}>
+                            <span className={row.percent >= 100 ? 'text-destructive font-medium' : row.percent >= 80 ? 'text-amber-600 font-medium' : 'text-emerald-600 font-medium'}>
                               {row.percent}%
                             </span>
                           ) : (

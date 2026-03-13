@@ -270,7 +270,7 @@ export default function VolumeSnapshotContents() {
 
  <div className={cn('grid grid-cols-2 sm:grid-cols-4 gap-4', !isConnected && 'opacity-60')}>
  <ListPageStatCard label="Total" value={stats.total} icon={Camera} iconColor="text-primary" selected={!hasActiveFilters} onClick={clearAllFilters} className={cn(!hasActiveFilters && !isLoading && 'ring-2 ring-primary')} isLoading={isLoading} />
- <ListPageStatCard label="Ready" value={stats.ready} icon={CheckCircle2} iconColor="text-[hsl(142,76%,36%)]" valueClassName="text-[hsl(142,76%,36%)]" selected={columnFilters.status?.size === 1 && columnFilters.status.has('Ready')} onClick={() => setColumnFilter('status', columnFilters.status?.has('Ready') ? null : new Set(['Ready']))} className={cn(columnFilters.status?.size === 1 && columnFilters.status.has('Ready') && 'ring-2 ring-[hsl(142,76%,36%)]')} isLoading={isLoading} />
+ <ListPageStatCard label="Ready" value={stats.ready} icon={CheckCircle2} iconColor="text-emerald-600" valueClassName="text-emerald-600" selected={columnFilters.status?.size === 1 && columnFilters.status.has('Ready')} onClick={() => setColumnFilter('status', columnFilters.status?.has('Ready') ? null : new Set(['Ready']))} className={cn(columnFilters.status?.size === 1 && columnFilters.status.has('Ready') && 'ring-2 ring-emerald-500')} isLoading={isLoading} />
  <ListPageStatCard label="Pending" value={stats.pending} icon={Clock} iconColor="text-muted-foreground" selected={columnFilters.status?.size === 1 && columnFilters.status.has('Pending')} onClick={() => setColumnFilter('status', columnFilters.status?.has('Pending') ? null : new Set(['Pending']))} isLoading={isLoading} />
  <ListPageStatCard label="Failed" value={stats.failed} icon={XCircle} iconColor="text-destructive" valueClassName="text-destructive" selected={columnFilters.status?.size === 1 && columnFilters.status.has('Failed')} onClick={() => setColumnFilter('status', columnFilters.status?.has('Failed') ? null : new Set(['Failed']))} isLoading={isLoading} />
  </div>
@@ -414,7 +414,7 @@ export default function VolumeSnapshotContents() {
  <DropdownMenuSeparator />
  <DropdownMenuItem onClick={() => navigate(`/volumesnapshotcontents/${item.name}?tab=yaml`)} className="gap-2"><FileText className="h-4 w-4" />Download YAML</DropdownMenuItem>
  <DropdownMenuSeparator />
- <DropdownMenuItem className="gap-2 text-[hsl(0,72%,51%)]" onClick={() => setDeleteDialog({ open: true, item })} disabled={!isConnected}><Trash2 className="h-4 w-4" />Delete</DropdownMenuItem>
+ <DropdownMenuItem className="gap-2 text-rose-600" onClick={() => setDeleteDialog({ open: true, item })} disabled={!isConnected}><Trash2 className="h-4 w-4" />Delete</DropdownMenuItem>
  </DropdownMenuContent>
  </DropdownMenu>
  </TableCell>

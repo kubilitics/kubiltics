@@ -489,13 +489,13 @@ export default function ClusterSelection() {
                       <div className="flex items-center gap-2 mb-1">
                         <span className="font-medium truncate">{cluster.name}</span>
                         {primaryClusterId === cluster.id && (
-                          <Badge variant="secondary" className="text-[10px] gap-0.5">
+                          <Badge variant="secondary" className="text-xs gap-0.5">
                             <Star className="h-2.5 w-2.5" />
                             Primary
                           </Badge>
                         )}
                         {cluster.provider && (
-                          <Badge variant="outline" className="text-[10px]">
+                          <Badge variant="outline" className="text-xs">
                             {cluster.provider}
                           </Badge>
                         )}

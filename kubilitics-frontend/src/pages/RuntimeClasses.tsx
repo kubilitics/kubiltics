@@ -233,7 +233,7 @@ handler: ${d.handler}
  <h1 className="text-2xl font-semibold tracking-tight">Runtime Classes</h1>
  <p className="text-sm text-muted-foreground">
  {filteredItems.length} runtime classes (cluster-scoped)
- {!isConnected && <span className="ml-2 inline-flex items-center gap-1 text-[hsl(45,93%,47%)]"><WifiOff className="h-3 w-3" /> Connect cluster</span>}
+ {!isConnected && <span className="ml-2 inline-flex items-center gap-1 text-amber-600"><WifiOff className="h-3 w-3" /> Connect cluster</span>}
  </p>
  </div>
  {selectedItems.size > 0 && (
@@ -263,7 +263,7 @@ handler: ${d.handler}
  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
  <ListPageStatCard label="Total" value={stats.total} icon={FolderCog} iconColor="text-primary" selected={!columnFilters.category?.size} onClick={() => setCategoryFilter(null)} className={cn(!columnFilters.category?.size && !isLoading && 'ring-2 ring-primary')} isLoading={isLoading} />
  <ListPageStatCard label="With Overhead" value={stats.withOverhead} icon={CheckCircle2} iconColor="text-purple-500" valueClassName="text-purple-600" selected={columnFilters.category?.size === 1 && columnFilters.category.has('With Overhead')} onClick={() => setCategoryFilter(columnFilters.category?.has('With Overhead') ? null : 'With Overhead')} className={cn(columnFilters.category?.size === 1 && columnFilters.category.has('With Overhead') && 'ring-2 ring-purple-500')} isLoading={isLoading} />
- <ListPageStatCard label="With Scheduling" value={stats.withScheduling} icon={Clock} iconColor="text-[hsl(45,93%,47%)]" valueClassName="text-[hsl(45,93%,47%)]" selected={columnFilters.category?.size === 1 && columnFilters.category.has('With Scheduling')} onClick={() => setCategoryFilter(columnFilters.category?.has('With Scheduling') ? null : 'With Scheduling')} className={cn(columnFilters.category?.size === 1 && columnFilters.category.has('With Scheduling') && 'ring-2 ring-[hsl(45,93%,47%)]')} isLoading={isLoading} />
+ <ListPageStatCard label="With Scheduling" value={stats.withScheduling} icon={Clock} iconColor="text-amber-600" valueClassName="text-amber-600" selected={columnFilters.category?.size === 1 && columnFilters.category.has('With Scheduling')} onClick={() => setCategoryFilter(columnFilters.category?.has('With Scheduling') ? null : 'With Scheduling')} className={cn(columnFilters.category?.size === 1 && columnFilters.category.has('With Scheduling') && 'ring-2 ring-amber-500')} isLoading={isLoading} />
  <ListPageStatCard label="Standard" value={stats.standard} icon={XCircle} iconColor="text-muted-foreground" valueClassName="text-muted-foreground" selected={columnFilters.category?.size === 1 && columnFilters.category.has('Standard')} onClick={() => setCategoryFilter(columnFilters.category?.has('Standard') ? null : 'Standard')} className={cn(columnFilters.category?.size === 1 && columnFilters.category.has('Standard') && 'ring-2 ring-muted-foreground')} isLoading={isLoading} />
  </div>
 
@@ -394,7 +394,7 @@ handler: ${d.handler}
  <DropdownMenuSeparator />
  <DropdownMenuItem onClick={() => navigate(`/runtimeclasses/${item.name}?tab=yaml`)} className="gap-2"><FileText className="h-4 w-4" />Download YAML</DropdownMenuItem>
  <DropdownMenuSeparator />
- <DropdownMenuItem className="gap-2 text-[hsl(0,72%,51%)]" onClick={() => setDeleteDialog({ open: true, item })} disabled={!isConnected}><Trash2 className="h-4 w-4" />Delete</DropdownMenuItem>
+ <DropdownMenuItem className="gap-2 text-rose-600" onClick={() => setDeleteDialog({ open: true, item })} disabled={!isConnected}><Trash2 className="h-4 w-4" />Delete</DropdownMenuItem>
  </DropdownMenuContent>
  </DropdownMenu>
  </TableCell>

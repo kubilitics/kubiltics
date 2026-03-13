@@ -226,12 +226,12 @@ export default function ModeSelection() {
                     <div className="flex items-center gap-6 md:gap-10 py-3.5 px-8 md:px-12 rounded-xl bg-white/60 border border-slate-200/60 backdrop-blur-sm shadow-sm">
                         <div className="flex flex-col items-center text-center">
                             <span className="text-xl md:text-2xl font-bold tracking-tight text-slate-900">50+</span>
-                            <span className="text-[9px] uppercase tracking-[0.2em] text-slate-400 font-bold mt-0.5">Resources</span>
+                            <span className="text-xs uppercase tracking-[0.2em] text-slate-400 font-bold mt-0.5">Resources</span>
                         </div>
                         <div className="w-px h-7 bg-slate-200" aria-hidden="true" />
                         <div className="flex flex-col items-center text-center">
                             <span className="text-xl md:text-2xl font-bold tracking-tight text-slate-900">Real-Time</span>
-                            <span className="text-[9px] uppercase tracking-[0.2em] text-slate-400 font-bold mt-0.5">Discovery</span>
+                            <span className="text-xs uppercase tracking-[0.2em] text-slate-400 font-bold mt-0.5">Discovery</span>
                         </div>
                         <div className="w-px h-7 bg-slate-200" aria-hidden="true" />
                         <div className="flex flex-col items-center text-center">
@@ -239,7 +239,7 @@ export default function ModeSelection() {
                                 <Sparkles size={16} className="text-blue-500" />
                                 AI
                             </span>
-                            <span className="text-[9px] uppercase tracking-[0.2em] text-slate-400 font-bold mt-0.5">Augmented</span>
+                            <span className="text-xs uppercase tracking-[0.2em] text-slate-400 font-bold mt-0.5">Augmented</span>
                         </div>
                     </div>
                 </motion.div>

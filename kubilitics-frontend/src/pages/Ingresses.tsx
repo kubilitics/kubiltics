@@ -114,9 +114,9 @@ const INGRESSES_COLUMNS_FOR_VISIBILITY = [
 ];
 
 const statusConfig = {
- Healthy: { icon: CheckCircle2, color: 'text-[hsl(142,76%,36%)]', bg: 'bg-[hsl(142,76%,36%)]/10' },
- Degraded: { icon: Clock, color: 'text-[hsl(45,93%,47%)]', bg: 'bg-[hsl(45,93%,47%)]/10' },
- Error: { icon: XCircle, color: 'text-[hsl(0,72%,51%)]', bg: 'bg-[hsl(0,72%,51%)]/10' },
+ Healthy: { icon: CheckCircle2, color: 'text-emerald-600', bg: 'bg-emerald-500/10' },
+ Degraded: { icon: Clock, color: 'text-amber-600', bg: 'bg-amber-500/10' },
+ Error: { icon: XCircle, color: 'text-rose-600', bg: 'bg-rose-500/10' },
 };
 
 const ingressStatusToVariant: Record<Ingress['status'], StatusPillVariant> = {
@@ -402,10 +402,10 @@ spec:
  {/* Stats Cards - with icons like Deployments */}
  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
  <ListPageStatCard label="Total" value={stats.total} icon={Route} iconColor="text-primary" selected={!hasActiveFilters} onClick={clearAllFilters} className={cn(!hasActiveFilters && !isLoading && 'ring-2 ring-primary')} isLoading={isLoading} />
- <ListPageStatCard label="Healthy" value={stats.healthy} icon={CheckCircle2} iconColor="text-[hsl(142,76%,36%)]" valueClassName="text-[hsl(142,76%,36%)]" selected={columnFilters.status?.size === 1 && columnFilters.status?.has('Healthy')} onClick={() => setColumnFilter('status', new Set(['Healthy']))} className={cn(columnFilters.status?.size === 1 && columnFilters.status?.has('Healthy') && 'ring-2 ring-[hsl(142,76%,36%)]')} isLoading={isLoading} />
- <ListPageStatCard label="Degraded" value={stats.degraded} icon={Clock} iconColor="text-[hsl(45,93%,47%)]" valueClassName="text-[hsl(45,93%,47%)]" selected={columnFilters.status?.size === 1 && (columnFilters.status?.has('Degraded') || columnFilters.status?.has('Error'))} onClick={() => setColumnFilter('status', new Set(['Degraded']))} className={cn(columnFilters.status?.size === 1 && columnFilters.status?.has('Degraded') && 'ring-2 ring-[hsl(45,93%,47%)]')} isLoading={isLoading} />
+ <ListPageStatCard label="Healthy" value={stats.healthy} icon={CheckCircle2} iconColor="text-emerald-600" valueClassName="text-emerald-600" selected={columnFilters.status?.size === 1 && columnFilters.status?.has('Healthy')} onClick={() => setColumnFilter('status', new Set(['Healthy']))} className={cn(columnFilters.status?.size === 1 && columnFilters.status?.has('Healthy') && 'ring-2 ring-emerald-500')} isLoading={isLoading} />
+ <ListPageStatCard label="Degraded" value={stats.degraded} icon={Clock} iconColor="text-amber-600" valueClassName="text-amber-600" selected={columnFilters.status?.size === 1 && (columnFilters.status?.has('Degraded') || columnFilters.status?.has('Error'))} onClick={() => setColumnFilter('status', new Set(['Degraded']))} className={cn(columnFilters.status?.size === 1 && columnFilters.status?.has('Degraded') && 'ring-2 ring-amber-500')} isLoading={isLoading} />
  <ListPageStatCard label="TLS Enabled" value={stats.tlsEnabled} icon={Lock} iconColor="text-green-600" valueClassName="text-green-600" selected={columnFilters.tls?.size === 1 && columnFilters.tls?.has('Yes')} onClick={() => { if (columnFilters.tls?.size === 1 && columnFilters.tls?.has('Yes')) setColumnFilter('tls', null); else setColumnFilter('tls', new Set(['Yes'])); }} className={cn(columnFilters.tls?.size === 1 && columnFilters.tls?.has('Yes') && 'ring-2 ring-green-600')} isLoading={isLoading} />
- <ListPageStatCard label="TLS Expiring" value={stats.tlsExpiring} icon={Clock} iconColor="text-[hsl(45,93%,47%)]" valueClassName="text-[hsl(45,93%,47%)]" selected={columnFilters.tlsExpiring?.size === 1 && columnFilters.tlsExpiring?.has('Yes')} onClick={() => { if (columnFilters.tlsExpiring?.size === 1 && columnFilters.tlsExpiring?.has('Yes')) setColumnFilter('tlsExpiring', null); else setColumnFilter('tlsExpiring', new Set(['Yes'])); }} className={cn(columnFilters.tlsExpiring?.size === 1 && columnFilters.tlsExpiring?.has('Yes') && 'ring-2 ring-[hsl(45,93%,47%)]')} isLoading={isLoading} />
+ <ListPageStatCard label="TLS Expiring" value={stats.tlsExpiring} icon={Clock} iconColor="text-amber-600" valueClassName="text-amber-600" selected={columnFilters.tlsExpiring?.size === 1 && columnFilters.tlsExpiring?.has('Yes')} onClick={() => { if (columnFilters.tlsExpiring?.size === 1 && columnFilters.tlsExpiring?.has('Yes')) setColumnFilter('tlsExpiring', null); else setColumnFilter('tlsExpiring', new Set(['Yes'])); }} className={cn(columnFilters.tlsExpiring?.size === 1 && columnFilters.tlsExpiring?.has('Yes') && 'ring-2 ring-amber-500')} isLoading={isLoading} />
  </div>
 
  <ResourceListTableToolbar
@@ -602,7 +602,7 @@ spec:
  <ResizableTableCell columnId="status"><StatusPill label={ing.status} variant={ingressStatusToVariant[ing.status]} icon={StatusIcon} /></ResizableTableCell>
  <ResizableTableCell columnId="class"><Badge variant="secondary" className="font-mono text-xs truncate block w-fit max-w-full">{ing.class}</Badge></ResizableTableCell>
  <ResizableTableCell columnId="hosts"><span className="font-mono text-sm truncate block" title={ing.hosts}>{ing.hosts}</span></ResizableTableCell>
- <ResizableTableCell columnId="addresses"><span className={cn('font-mono text-sm truncate block', ing.address === '<pending>' && 'text-[hsl(45,93%,47%)]')}>{ing.address}</span></ResizableTableCell>
+ <ResizableTableCell columnId="addresses"><span className={cn('font-mono text-sm truncate block', ing.address === '<pending>' && 'text-amber-600')}>{ing.address}</span></ResizableTableCell>
  <ResizableTableCell columnId="tls">{ing.tls ? <Lock className="h-4 w-4 text-green-600" /> : <span className="text-muted-foreground">—</span>}</ResizableTableCell>
  <ResizableTableCell columnId="rules" className="font-mono text-sm">{ing.rulesCount}</ResizableTableCell>
  <ResizableTableCell columnId="defaultBackend"><span className="font-mono text-xs truncate block" title={ing.defaultBackend}>{ing.defaultBackend}</span></ResizableTableCell>
@@ -638,7 +638,7 @@ spec:
  <DropdownMenuItem onClick={() => { const u = ing.address !== '<pending>' ? `https://${ing.hosts.split(',')[0]?.trim() || ing.address}` : null; if (u) window.open(u, '_blank'); else toast.info('No address yet'); }} className="gap-2"><ExternalLink className="h-4 w-4" />Open in Browser</DropdownMenuItem>
  <DropdownMenuItem onClick={() => navigate(`/ingresses/${ing.namespace}/${ing.name}?tab=yaml`)} className="gap-2"><FileText className="h-4 w-4" />Download YAML</DropdownMenuItem>
  <DropdownMenuSeparator />
- <DropdownMenuItem className="gap-2 text-[hsl(0,72%,51%)]" onClick={() => setDeleteDialog({ open: true, item: ing })} disabled={!isConnected}><Trash2 className="h-4 w-4" />Delete</DropdownMenuItem>
+ <DropdownMenuItem className="gap-2 text-rose-600" onClick={() => setDeleteDialog({ open: true, item: ing })} disabled={!isConnected}><Trash2 className="h-4 w-4" />Delete</DropdownMenuItem>
  </DropdownMenuContent>
  </DropdownMenu>
  </TableCell>
@@ -669,7 +669,7 @@ spec:
  <ResizableTableCell columnId="status"><StatusPill label={ing.status} variant={ingressStatusToVariant[ing.status]} icon={StatusIcon} /></ResizableTableCell>
  <ResizableTableCell columnId="class"><Badge variant="secondary" className="font-mono text-xs truncate block w-fit max-w-full">{ing.class}</Badge></ResizableTableCell>
  <ResizableTableCell columnId="hosts"><span className="font-mono text-sm truncate block" title={ing.hosts}>{ing.hosts}</span></ResizableTableCell>
- <ResizableTableCell columnId="addresses"><span className={cn('font-mono text-sm truncate block', ing.address === '<pending>' && 'text-[hsl(45,93%,47%)]')}>{ing.address}</span></ResizableTableCell>
+ <ResizableTableCell columnId="addresses"><span className={cn('font-mono text-sm truncate block', ing.address === '<pending>' && 'text-amber-600')}>{ing.address}</span></ResizableTableCell>
  <ResizableTableCell columnId="tls">{ing.tls ? <Lock className="h-4 w-4 text-green-600" /> : <span className="text-muted-foreground">—</span>}</ResizableTableCell>
  <ResizableTableCell columnId="rules" className="font-mono text-sm">{ing.rulesCount}</ResizableTableCell>
  <ResizableTableCell columnId="defaultBackend"><span className="font-mono text-xs truncate block" title={ing.defaultBackend}>{ing.defaultBackend}</span></ResizableTableCell>
@@ -705,7 +705,7 @@ spec:
  <DropdownMenuItem onClick={() => { const u = ing.address !== '<pending>' ? `https://${ing.hosts.split(',')[0]?.trim() || ing.address}` : null; if (u) window.open(u, '_blank'); else toast.info('No address yet'); }} className="gap-2"><ExternalLink className="h-4 w-4" />Open in Browser</DropdownMenuItem>
  <DropdownMenuItem onClick={() => navigate(`/ingresses/${ing.namespace}/${ing.name}?tab=yaml`)} className="gap-2"><FileText className="h-4 w-4" />Download YAML</DropdownMenuItem>
  <DropdownMenuSeparator />
- <DropdownMenuItem className="gap-2 text-[hsl(0,72%,51%)]" onClick={() => setDeleteDialog({ open: true, item: ing })} disabled={!isConnected}><Trash2 className="h-4 w-4" />Delete</DropdownMenuItem>
+ <DropdownMenuItem className="gap-2 text-rose-600" onClick={() => setDeleteDialog({ open: true, item: ing })} disabled={!isConnected}><Trash2 className="h-4 w-4" />Delete</DropdownMenuItem>
  </DropdownMenuContent>
  </DropdownMenu>
  </TableCell>

@@ -5,7 +5,9 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Activity,
   ArrowRight,
+  Cpu,
   Focus,
+  HardDrive,
   Loader2,
   MoreVertical,
   Plus,
@@ -14,7 +16,6 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -59,6 +60,13 @@ const stagger = {
     transition: { duration: 0.35, ease: [0.16, 1, 0.3, 1] },
   },
 };
+
+/* ─── Utilization Color Helpers ─── */
+function utilGradient(value: number, baseFrom: string, baseTo: string) {
+  if (value > 80) return 'from-red-500 to-orange-500';
+  if (value > 50) return 'from-amber-500 to-yellow-500';
+  return `from-${baseFrom} to-${baseTo}`;
+}
 
 export default function HomePage() {
   const navigate = useNavigate();
@@ -145,36 +153,43 @@ export default function HomePage() {
   const cpuUtil = clusterUtil?.metricsAvailable ? clusterUtil.cpuPercent : null;
   const memUtil = clusterUtil?.metricsAvailable ? clusterUtil.memoryPercent : null;
 
-  /* ─── Helpers ─── */
+  /* ─── Color Helpers ─── */
   const cpuColor = (cpuUtil ?? 0) > 80 ? 'from-red-500 to-orange-500' : (cpuUtil ?? 0) > 50 ? 'from-amber-500 to-yellow-500' : 'from-blue-500 to-indigo-500';
   const memColor = (memUtil ?? 0) > 80 ? 'from-red-500 to-orange-500' : (memUtil ?? 0) > 50 ? 'from-amber-500 to-yellow-500' : 'from-violet-500 to-purple-500';
 
-  return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-50/80 via-white to-blue-50/20" role="main" aria-label="Systems overview page">
-      <div className="flex flex-col gap-0 w-full max-w-[1600px] mx-auto">
+  /* ─── Cluster card click handler ─── */
+  const handleClusterClick = (cluster: BackendCluster) => {
+    setCurrentClusterId(cluster.id);
+    setActiveCluster(backendClusterToCluster(cluster));
+    navigate('/dashboard');
+  };
 
-        {/* ────────── Hero Header ────────── */}
+  return (
+    <div className="page-container" role="main" aria-label="Systems overview page">
+      <div className="page-inner">
+
+        {/* ════════════ Hero Header ════════════ */}
         <motion.header
-          className="px-8 pt-10 pb-8"
+          className="page-header"
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
         >
           <div className="flex items-start justify-between gap-6">
             <div>
-              <h1 className="text-3xl font-bold text-slate-900 tracking-tight leading-tight">
+              <h1 className="text-h1 text-slate-900">
                 Welcome back
               </h1>
-              <p className="text-sm text-slate-500 mt-2 max-w-lg leading-relaxed">
+              <p className="text-body-sm text-slate-500 mt-2 max-w-lg">
                 Here's what's happening across your clusters and projects.
               </p>
             </div>
           </div>
         </motion.header>
 
-        {/* ────────── Metrics Strip ────────── */}
+        {/* ════════════ Metrics Strip ════════════ */}
         <motion.section
-          className="px-8 pb-2"
+          className="page-section"
           initial="initial"
           animate="animate"
           variants={stagger.container}
@@ -183,139 +198,150 @@ export default function HomePage() {
           aria-live="polite"
         >
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-5">
-            {/* Health Score */}
+
+            {/* ── Health Score ── */}
             <motion.div
               variants={stagger.item}
-              className="group relative bg-white rounded-2xl border border-slate-200/80 p-5 hover:border-slate-300/80 hover:shadow-apple-lg transition-all duration-500 ease-out overflow-hidden"
+              className="group metric-card"
               role="status"
               aria-label={`Health score: ${health.score} out of 100`}
             >
-              <div className="absolute inset-0 bg-gradient-to-br from-blue-50/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+              <div className="metric-gradient bg-gradient-to-br from-blue-50/40 to-transparent" />
               <div className="relative flex flex-col items-center text-center gap-3">
                 <HealthRing score={health.score} size={72} strokeWidth={6} aria-valuenow={health.score} aria-valuemin={0} aria-valuemax={100} />
                 <div>
-                  <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-[0.12em]">Health</p>
-                  <p className="text-[11px] text-slate-500 mt-0.5 leading-snug">{health.insight}</p>
+                  <p className="label-xs">Health</p>
+                  <p className="text-xs text-slate-500 mt-0.5 leading-snug">{health.insight}</p>
                 </div>
               </div>
             </motion.div>
 
-            {/* Clusters */}
+            {/* ── Clusters ── */}
             <motion.div
               variants={stagger.item}
-              className="group relative bg-white rounded-2xl border border-slate-200/80 p-5 hover:border-slate-300/80 hover:shadow-apple-lg transition-all duration-500 ease-out overflow-hidden"
+              className="group metric-card"
               role="status"
               aria-label={`${activeClusters} active clusters`}
             >
-              <div className="absolute inset-0 bg-gradient-to-br from-blue-50/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+              <div className="metric-gradient bg-gradient-to-br from-blue-50/40 to-transparent" />
               <div className="relative flex items-center gap-4">
-                <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shrink-0 shadow-lg shadow-blue-500/20">
+                <div className="icon-box-lg bg-gradient-to-br from-blue-500 to-blue-600 shadow-lg shadow-blue-500/20">
                   <Server className="h-5 w-5 text-white" />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-[0.12em]">Clusters</p>
+                  <p className="label-xs">Clusters</p>
                   <p className="text-2xl font-bold tabular-nums text-slate-900 mt-0.5 leading-none">{activeClusters}</p>
-                  <p className="text-[11px] text-emerald-600 font-semibold mt-1 flex items-center gap-1.5">
-                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  <p className="text-xs text-emerald-600 font-semibold mt-1 flex items-center gap-1.5">
+                    <span className="status-dot-live" />
                     Active
                   </p>
                 </div>
               </div>
             </motion.div>
 
-            {/* Nodes */}
+            {/* ── Nodes ── */}
             <motion.div
               variants={stagger.item}
-              className="group relative bg-white rounded-2xl border border-slate-200/80 p-5 hover:border-slate-300/80 hover:shadow-apple-lg transition-all duration-500 ease-out overflow-hidden"
+              className="group metric-card"
               role="status"
               aria-label={`${activeNodes} active nodes`}
             >
-              <div className="absolute inset-0 bg-gradient-to-br from-emerald-50/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+              <div className="metric-gradient bg-gradient-to-br from-emerald-50/40 to-transparent" />
               <div className="relative flex items-center gap-4">
-                <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center shrink-0 shadow-lg shadow-emerald-500/20">
+                <div className="icon-box-lg bg-gradient-to-br from-emerald-500 to-emerald-600 shadow-lg shadow-emerald-500/20">
                   <Activity className="h-5 w-5 text-white" />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-[0.12em]">Nodes</p>
+                  <p className="label-xs">Nodes</p>
                   <p className="text-2xl font-bold tabular-nums text-slate-900 mt-0.5 leading-none">{activeNodes}</p>
-                  <p className="text-[11px] text-slate-500 mt-1">Provisioned</p>
+                  <p className="text-xs text-slate-500 mt-1">Provisioned</p>
                 </div>
               </div>
             </motion.div>
 
-            {/* CPU Usage */}
+            {/* ── CPU Usage ── */}
             <motion.div
               variants={stagger.item}
-              className="group relative bg-white rounded-2xl border border-slate-200/80 p-5 hover:border-slate-300/80 hover:shadow-apple-lg transition-all duration-500 ease-out overflow-hidden"
+              className="group metric-card"
               role="status"
               aria-label={cpuUtil != null ? `CPU usage at ${Math.round(cpuUtil)} percent` : 'CPU usage unavailable'}
             >
-              <div className="absolute inset-0 bg-gradient-to-br from-indigo-50/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+              <div className="metric-gradient bg-gradient-to-br from-indigo-50/40 to-transparent" />
               <div className="relative">
-                <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-[0.12em] mb-2">CPU</p>
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center shadow-md shadow-blue-500/15">
+                    <Cpu className="h-3.5 w-3.5 text-white" />
+                  </div>
+                  <p className="label-xs">CPU</p>
+                </div>
                 {cpuUtil != null ? (
                   <>
                     <p className="text-2xl font-bold tabular-nums text-slate-900 leading-none">
                       {Math.round(cpuUtil)}<span className="text-sm text-slate-400 ml-0.5">%</span>
                     </p>
-                    <div className="relative h-1.5 w-full bg-slate-100 rounded-full overflow-hidden mt-3">
+                    <div className="progress-track mt-3">
                       <motion.div
                         initial={{ width: 0 }}
                         animate={{ width: `${Math.min(100, cpuUtil)}%` }}
                         transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
-                        className={`absolute inset-y-0 left-0 bg-gradient-to-r ${cpuColor} rounded-full`}
+                        className={`progress-fill bg-gradient-to-r ${cpuColor}`}
                         role="progressbar"
                         aria-valuenow={Math.round(cpuUtil)}
                         aria-valuemin={0}
                         aria-valuemax={100}
                       />
                     </div>
-                    <p className="text-[10px] text-slate-400 mt-1.5">Cluster average</p>
+                    <p className="text-xs text-slate-400 mt-1.5">Cluster average</p>
                   </>
                 ) : (
                   <>
                     <p className="text-2xl font-bold text-slate-300 leading-none">—</p>
-                    <div className="relative h-1.5 w-full bg-slate-100 rounded-full overflow-hidden mt-3" />
-                    <p className="text-[10px] text-slate-400 mt-1.5">No metrics available</p>
+                    <div className="progress-track mt-3" />
+                    <p className="text-xs text-slate-400 mt-1.5">No metrics available</p>
                   </>
                 )}
               </div>
             </motion.div>
 
-            {/* Memory Usage */}
+            {/* ── Memory Usage ── */}
             <motion.div
               variants={stagger.item}
-              className="group relative bg-white rounded-2xl border border-slate-200/80 p-5 hover:border-slate-300/80 hover:shadow-apple-lg transition-all duration-500 ease-out overflow-hidden"
+              className="group metric-card"
               role="status"
               aria-label={memUtil != null ? `Memory usage at ${Math.round(memUtil)} percent` : 'Memory usage unavailable'}
             >
-              <div className="absolute inset-0 bg-gradient-to-br from-violet-50/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+              <div className="metric-gradient bg-gradient-to-br from-violet-50/40 to-transparent" />
               <div className="relative">
-                <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-[0.12em] mb-2">Memory</p>
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-violet-500 to-purple-500 flex items-center justify-center shadow-md shadow-violet-500/15">
+                    <HardDrive className="h-3.5 w-3.5 text-white" />
+                  </div>
+                  <p className="label-xs">Memory</p>
+                </div>
                 {memUtil != null ? (
                   <>
                     <p className="text-2xl font-bold tabular-nums text-slate-900 leading-none">
                       {Math.round(memUtil)}<span className="text-sm text-slate-400 ml-0.5">%</span>
                     </p>
-                    <div className="relative h-1.5 w-full bg-slate-100 rounded-full overflow-hidden mt-3">
+                    <div className="progress-track mt-3">
                       <motion.div
                         initial={{ width: 0 }}
                         animate={{ width: `${Math.min(100, memUtil)}%` }}
                         transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
-                        className={`absolute inset-y-0 left-0 bg-gradient-to-r ${memColor} rounded-full`}
+                        className={`progress-fill bg-gradient-to-r ${memColor}`}
                         role="progressbar"
                         aria-valuenow={Math.round(memUtil)}
                         aria-valuemin={0}
                         aria-valuemax={100}
                       />
                     </div>
-                    <p className="text-[10px] text-slate-400 mt-1.5">Cluster average</p>
+                    <p className="text-xs text-slate-400 mt-1.5">Cluster average</p>
                   </>
                 ) : (
                   <>
                     <p className="text-2xl font-bold text-slate-300 leading-none">—</p>
-                    <div className="relative h-1.5 w-full bg-slate-100 rounded-full overflow-hidden mt-3" />
-                    <p className="text-[10px] text-slate-400 mt-1.5">No metrics available</p>
+                    <div className="progress-track mt-3" />
+                    <p className="text-xs text-slate-400 mt-1.5">No metrics available</p>
                   </>
                 )}
               </div>
@@ -323,30 +349,30 @@ export default function HomePage() {
           </div>
         </motion.section>
 
-        {/* ────────── Clusters Section ────────── */}
+        {/* ════════════ Clusters Section ════════════ */}
         <motion.section
-          className="px-8 pt-8 pb-2"
+          className="page-section pt-10"
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.15, duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
           aria-label="Clusters section"
         >
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-5">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
             <div>
-              <h2 className="text-lg font-semibold text-slate-900">Clusters</h2>
-              <p className="text-sm text-slate-500 mt-0.5">
+              <h2 className="text-h4 text-slate-900">Clusters</h2>
+              <p className="text-body-sm text-slate-500 mt-1">
                 Connected clusters and their status. Select one to view details.
               </p>
             </div>
           </div>
 
           {filteredClusters.length === 0 ? (
-            <div className="relative rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50/50 py-16 px-6 text-center">
-              <div className="h-14 w-14 rounded-2xl bg-white border border-slate-200 flex items-center justify-center mx-auto mb-4 shadow-sm">
+            <div className="empty-state-container">
+              <div className="empty-state-icon-box">
                 <Server className="h-7 w-7 text-slate-400" aria-hidden="true" />
               </div>
               <h3 className="text-base font-semibold text-slate-800">No clusters connected</h3>
-              <p className="text-sm text-slate-500 mt-1.5 max-w-sm mx-auto">
+              <p className="text-body-sm text-slate-500 mt-1.5 max-w-sm mx-auto">
                 Connect your first cluster to start monitoring workloads and health.
               </p>
               <Button
@@ -368,31 +394,24 @@ export default function HomePage() {
               {filteredClusters.map((cluster) => (
                 <motion.div key={cluster.id} variants={stagger.item} className="h-full min-w-0">
                   <div
-                    className="group relative bg-white rounded-2xl border border-slate-200/80 p-6 h-full flex flex-col justify-between min-h-[210px] overflow-hidden cursor-pointer
-                      hover:border-slate-300 hover:shadow-apple-lg transition-all duration-500 ease-out press-effect"
-                    onClick={() => {
-                      setCurrentClusterId(cluster.id);
-                      setActiveCluster(backendClusterToCluster(cluster));
-                      navigate('/dashboard');
-                    }}
+                    className="entity-card group"
+                    onClick={() => handleClusterClick(cluster)}
                     role="button"
                     tabIndex={0}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' || e.key === ' ') {
                         e.preventDefault();
-                        setCurrentClusterId(cluster.id);
-                        setActiveCluster(backendClusterToCluster(cluster));
-                        navigate('/dashboard');
+                        handleClusterClick(cluster);
                       }
                     }}
                     aria-label={`Open cluster ${cluster.name}`}
                   >
-                    {/* Hover gradient overlay */}
+                    {/* Hover gradient */}
                     <div className="absolute inset-0 bg-gradient-to-br from-blue-50/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
 
                     <div className="relative">
                       <div className="flex justify-between items-start mb-5">
-                        <div className="h-11 w-11 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-lg shadow-blue-500/20 group-hover:shadow-xl group-hover:shadow-blue-500/30 transition-shadow duration-500">
+                        <div className="icon-box-md bg-gradient-to-br from-blue-500 to-blue-600 shadow-lg shadow-blue-500/20 group-hover:shadow-xl group-hover:shadow-blue-500/30 transition-shadow duration-500">
                           <Server className="h-5 w-5 text-white" />
                         </div>
 
@@ -424,8 +443,8 @@ export default function HomePage() {
                       </div>
 
                       <div className="flex items-center gap-2 mb-1.5">
-                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)] animate-pulse shrink-0" />
-                        <span className="text-[10px] font-semibold text-emerald-600 uppercase tracking-[0.15em] truncate">{cluster.provider || 'Core'}</span>
+                        <span className="status-dot-live" />
+                        <span className="label-xs text-emerald-600 normal-case tracking-wider truncate">{cluster.provider || 'Core'}</span>
                       </div>
                       <h3 className="text-base font-semibold text-slate-900 leading-snug group-hover:text-blue-700 transition-colors duration-300 line-clamp-2 break-all" title={cluster.name}>
                         {cluster.name}
@@ -434,7 +453,7 @@ export default function HomePage() {
 
                     <div className="relative mt-auto pt-5 flex items-end justify-between">
                       <div className="flex flex-col gap-0.5">
-                        <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-[0.15em]">Nodes</span>
+                        <span className="label-xs">Nodes</span>
                         <span className="text-xl font-bold tabular-nums text-slate-900">{cluster.node_count ?? 0}</span>
                       </div>
                       <div className="h-9 w-9 rounded-full bg-slate-100 flex items-center justify-center shrink-0 group-hover:bg-blue-600 group-hover:shadow-lg group-hover:shadow-blue-500/25 transition-all duration-500 ease-out">
@@ -448,18 +467,18 @@ export default function HomePage() {
           )}
         </motion.section>
 
-        {/* ────────── Projects Section ────────── */}
+        {/* ════════════ Projects Section ════════════ */}
         <motion.section
-          className="px-8 pt-8 pb-12"
+          className="px-8 pt-10 pb-12"
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2, duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
           aria-label="Projects section"
         >
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-5">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
             <div>
-              <h2 className="text-lg font-semibold text-slate-900">Projects</h2>
-              <p className="text-sm text-slate-500 mt-0.5">
+              <h2 className="text-h4 text-slate-900">Projects</h2>
+              <p className="text-body-sm text-slate-500 mt-1">
                 Logical scopes for workloads and policy. Open a project to see its dashboard.
               </p>
             </div>
@@ -472,30 +491,30 @@ export default function HomePage() {
           </div>
 
           {isProjectsLoading ? (
-            <div className="rounded-2xl border border-slate-200/80 bg-white py-20 flex items-center justify-center">
+            <div className="section-card py-20 flex items-center justify-center">
               <div className="flex flex-col items-center gap-3">
                 <Loader2 className="h-8 w-8 animate-spin text-slate-400" aria-label="Loading projects" />
-                <p className="text-sm text-slate-400">Loading projects...</p>
+                <p className="text-body-sm text-slate-400">Loading projects...</p>
               </div>
             </div>
           ) : circuitOpen ? (
-            <div className="rounded-2xl border border-amber-200 bg-amber-50/50 py-16 px-6 text-center">
+            <div className="rounded-[var(--card-radius)] border border-amber-200 bg-amber-50/50 py-16 px-6 text-center">
               <div className="h-14 w-14 rounded-2xl bg-amber-100 flex items-center justify-center mx-auto mb-4">
                 <Activity className="h-7 w-7 text-amber-600" aria-hidden="true" />
               </div>
               <h3 className="text-base font-semibold text-slate-800">Backend connection suspended</h3>
-              <p className="text-sm text-slate-500 mt-1.5 max-w-sm mx-auto">
+              <p className="text-body-sm text-slate-500 mt-1.5 max-w-sm mx-auto">
                 Connectivity is currently throttled due to recent failures.
                 Project data will reappear automatically once the connection is restored.
               </p>
             </div>
           ) : isProjectsError ? (
-            <div className="rounded-2xl border border-red-200 bg-red-50/50 py-16 px-6 text-center">
+            <div className="rounded-[var(--card-radius)] border border-red-200 bg-red-50/50 py-16 px-6 text-center">
               <div className="h-14 w-14 rounded-2xl bg-red-100 flex items-center justify-center mx-auto mb-4">
                 <Focus className="h-7 w-7 text-red-600" aria-hidden="true" />
               </div>
               <h3 className="text-base font-semibold text-slate-800">Query failed</h3>
-              <p className="text-sm text-slate-500 mt-1.5 max-w-sm mx-auto">
+              <p className="text-body-sm text-slate-500 mt-1.5 max-w-sm mx-auto">
                 {(projectsError as any)?.message || "Internal system sync failed"}
               </p>
             </div>
@@ -518,12 +537,12 @@ export default function HomePage() {
               ))}
             </motion.div>
           ) : (
-            <div className="relative rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50/50 py-16 px-6 text-center">
-              <div className="h-14 w-14 rounded-2xl bg-white border border-slate-200 flex items-center justify-center mx-auto mb-4 shadow-sm">
+            <div className="empty-state-container">
+              <div className="empty-state-icon-box">
                 <Focus className="h-7 w-7 text-slate-400" aria-hidden="true" />
               </div>
               <h3 className="text-base font-semibold text-slate-800">No projects yet</h3>
-              <p className="text-sm text-slate-500 mt-1.5 max-w-sm mx-auto">
+              <p className="text-body-sm text-slate-500 mt-1.5 max-w-sm mx-auto">
                 Create a project to group workloads and apply governance.
               </p>
               <CreateProjectDialog>
@@ -537,12 +556,12 @@ export default function HomePage() {
         </motion.section>
       </div>
 
-      {/* ────────── Dialogs ────────── */}
+      {/* ════════════ Dialogs ════════════ */}
       <AlertDialog open={!!clusterToRemove} onOpenChange={(open) => !open && setClusterToRemove(null)}>
         <AlertDialogContent className="rounded-2xl border border-slate-200 bg-white p-8 shadow-apple-xl max-w-md">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-xl font-bold text-slate-900">Remove cluster?</AlertDialogTitle>
-            <AlertDialogDescription className="text-sm text-slate-500 mt-2 leading-relaxed">
+            <AlertDialogDescription className="text-body-sm text-slate-500 mt-2 leading-relaxed">
               This will unregister <strong className="text-slate-700">{clusterToRemove?.name ?? ''}</strong> from Kubilitics. The cluster will be
               removed from the app and from any projects. This does not modify your kubeconfig file.
             </AlertDialogDescription>
@@ -572,7 +591,7 @@ export default function HomePage() {
         <AlertDialogContent className="rounded-2xl border border-slate-200 bg-white p-8 shadow-apple-xl max-w-md">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-xl font-bold text-slate-900">Delete project?</AlertDialogTitle>
-            <AlertDialogDescription className="text-sm text-slate-500 mt-2 leading-relaxed">
+            <AlertDialogDescription className="text-body-sm text-slate-500 mt-2 leading-relaxed">
               This action is <span className="text-red-600 font-semibold">irreversible</span>.
               All cluster associations and resource links for <strong className="text-slate-700">{projectToRemove?.name}</strong> will be permanently deleted.
             </AlertDialogDescription>

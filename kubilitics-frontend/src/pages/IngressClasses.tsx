@@ -338,8 +338,8 @@ spec:
  {/* Stats Cards - with icons and click-to-filter like Ingresses */}
  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
  <ListPageStatCard label="Total Classes" value={stats.total} icon={Route} iconColor="text-primary" selected={!hasActiveFilters} onClick={clearAllFilters} className={cn(!hasActiveFilters && !isLoading && 'ring-2 ring-primary')} isLoading={isLoading} />
- <ListPageStatCard label="Default" value={stats.default} icon={Star} iconColor="text-[hsl(45,93%,47%)]" valueClassName="text-[hsl(45,93%,47%)]" selected={columnFilters.default?.size === 1 && columnFilters.default.has('Yes')} onClick={() => setColumnFilter('default', new Set(['Yes']))} className={cn(columnFilters.default?.size === 1 && columnFilters.default.has('Yes') && 'ring-2 ring-[hsl(45,93%,47%)]')} isLoading={isLoading} />
- <ListPageStatCard label="Active" value={stats.active} icon={CheckCircle2} iconColor="text-[hsl(142,76%,36%)]" valueClassName="text-[hsl(142,76%,36%)]" selected={columnFilters.hasIngresses?.size === 1 && columnFilters.hasIngresses.has('Yes')} onClick={() => setColumnFilter('hasIngresses', new Set(['Yes']))} className={cn(columnFilters.hasIngresses?.size === 1 && columnFilters.hasIngresses.has('Yes') && 'ring-2 ring-[hsl(142,76%,36%)]')} isLoading={isLoading} />
+ <ListPageStatCard label="Default" value={stats.default} icon={Star} iconColor="text-amber-600" valueClassName="text-amber-600" selected={columnFilters.default?.size === 1 && columnFilters.default.has('Yes')} onClick={() => setColumnFilter('default', new Set(['Yes']))} className={cn(columnFilters.default?.size === 1 && columnFilters.default.has('Yes') && 'ring-2 ring-amber-500')} isLoading={isLoading} />
+ <ListPageStatCard label="Active" value={stats.active} icon={CheckCircle2} iconColor="text-emerald-600" valueClassName="text-emerald-600" selected={columnFilters.hasIngresses?.size === 1 && columnFilters.hasIngresses.has('Yes')} onClick={() => setColumnFilter('hasIngresses', new Set(['Yes']))} className={cn(columnFilters.hasIngresses?.size === 1 && columnFilters.hasIngresses.has('Yes') && 'ring-2 ring-emerald-500')} isLoading={isLoading} />
  <ListPageStatCard label="Controllers" value={stats.controllers} valueClassName="text-blue-600" isLoading={isLoading} />
  </div>
 
@@ -503,7 +503,7 @@ spec:
  {!ic.isDefault && <DropdownMenuItem onClick={() => toast.info('Set as Default: requires cluster-admin or patch IngressClass')} className="gap-2"><Star className="h-4 w-4" />Set as Default</DropdownMenuItem>}
  <DropdownMenuItem onClick={() => navigate(`/ingressclasses/${ic.name}?tab=yaml`)} className="gap-2"><FileText className="h-4 w-4" />Download YAML</DropdownMenuItem>
  <DropdownMenuSeparator />
- <DropdownMenuItem className="gap-2 text-[hsl(0,72%,51%)]" onClick={() => setDeleteDialog({ open: true, item: ic })} disabled={!isConnected}><Trash2 className="h-4 w-4" />Delete</DropdownMenuItem>
+ <DropdownMenuItem className="gap-2 text-rose-600" onClick={() => setDeleteDialog({ open: true, item: ic })} disabled={!isConnected}><Trash2 className="h-4 w-4" />Delete</DropdownMenuItem>
  </DropdownMenuContent>
  </DropdownMenu>
  </TableCell>
@@ -544,7 +544,7 @@ spec:
  {!ic.isDefault && <DropdownMenuItem onClick={() => toast.info('Set as Default: requires cluster-admin or patch IngressClass')} className="gap-2"><Star className="h-4 w-4" />Set as Default</DropdownMenuItem>}
  <DropdownMenuItem onClick={() => navigate(`/ingressclasses/${ic.name}?tab=yaml`)} className="gap-2"><FileText className="h-4 w-4" />Download YAML</DropdownMenuItem>
  <DropdownMenuSeparator />
- <DropdownMenuItem className="gap-2 text-[hsl(0,72%,51%)]" onClick={() => setDeleteDialog({ open: true, item: ic })} disabled={!isConnected}><Trash2 className="h-4 w-4" />Delete</DropdownMenuItem>
+ <DropdownMenuItem className="gap-2 text-rose-600" onClick={() => setDeleteDialog({ open: true, item: ic })} disabled={!isConnected}><Trash2 className="h-4 w-4" />Delete</DropdownMenuItem>
  </DropdownMenuContent>
  </DropdownMenu>
  </TableCell>

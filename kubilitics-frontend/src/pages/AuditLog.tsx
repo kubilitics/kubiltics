@@ -103,7 +103,7 @@ function AuditRow({ record }: { record: AuditRecord }) {
         {/* Result badge */}
         <div className="shrink-0">
           {record.result && (
-            <span className={cn('inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full', resultClass(record.result))}>
+            <span className={cn('inline-flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-full', resultClass(record.result))}>
               <ResultIcon result={record.result} className="h-3 w-3" />
               {record.result}
             </span>
@@ -111,7 +111,7 @@ function AuditRow({ record }: { record: AuditRecord }) {
         </div>
 
         {/* Timestamp */}
-        <div className="shrink-0 text-[10px] text-slate-400 text-right min-w-[100px] hidden lg:block">
+        <div className="shrink-0 text-xs text-slate-400 text-right min-w-[100px] hidden lg:block">
           {record.timestamp ? new Date(record.timestamp).toLocaleString() : '—'}
         </div>
       </div>
@@ -121,19 +121,19 @@ function AuditRow({ record }: { record: AuditRecord }) {
         <div className="px-4 pb-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
           {record.correlation_id && (
             <div className="rounded-lg bg-slate-100 px-3 py-2 space-y-0.5">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Correlation ID</p>
+              <p className="text-xs font-bold uppercase tracking-widest text-slate-500">Correlation ID</p>
               <p className="text-xs font-mono text-slate-700 break-all">{record.correlation_id}</p>
             </div>
           )}
           {record.timestamp && (
             <div className="rounded-lg bg-slate-100 px-3 py-2 space-y-0.5">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Timestamp</p>
+              <p className="text-xs font-bold uppercase tracking-widest text-slate-500">Timestamp</p>
               <p className="text-xs font-mono text-slate-700">{new Date(record.timestamp).toISOString()}</p>
             </div>
           )}
           {record.metadata && record.metadata !== '{}' && record.metadata !== 'null' && (
             <div className="sm:col-span-2 rounded-lg bg-slate-100 px-3 py-2 space-y-0.5">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Metadata</p>
+              <p className="text-xs font-bold uppercase tracking-widest text-slate-500">Metadata</p>
               <pre className="text-xs font-mono text-slate-700 whitespace-pre-wrap break-all max-h-32 overflow-y-auto">
                 {(() => {
                   try { return JSON.stringify(JSON.parse(record.metadata), null, 2); }
@@ -243,7 +243,7 @@ export default function AuditLog() {
           <div key={label} className={`rounded-xl border border-slate-200 p-3 flex items-center gap-3 ${bg}`}>
             <Icon className={`h-4 w-4 shrink-0 ${color}`} />
             <div>
-              <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{label}</p>
+              <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">{label}</p>
               <p className={`text-lg font-black leading-tight ${color}`}>{value}</p>
             </div>
           </div>
@@ -339,11 +339,11 @@ export default function AuditLog() {
         <CardContent className="p-0">
           {/* Column headers */}
           <div className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-3 items-center px-4 py-2 border-b border-slate-100 bg-slate-50/60">
-            <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Event</span>
-            <span className="hidden sm:block text-[10px] font-bold uppercase tracking-widest text-slate-500 min-w-[100px]">Resource</span>
-            <span className="hidden md:block text-[10px] font-bold uppercase tracking-widest text-slate-500 min-w-[80px]">User</span>
-            <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 shrink-0">Result</span>
-            <span className="hidden lg:block text-[10px] font-bold uppercase tracking-widest text-slate-500 text-right min-w-[100px]">Time</span>
+            <span className="text-xs font-bold uppercase tracking-widest text-slate-500">Event</span>
+            <span className="hidden sm:block text-xs font-bold uppercase tracking-widest text-slate-500 min-w-[100px]">Resource</span>
+            <span className="hidden md:block text-xs font-bold uppercase tracking-widest text-slate-500 min-w-[80px]">User</span>
+            <span className="text-xs font-bold uppercase tracking-widest text-slate-500 shrink-0">Result</span>
+            <span className="hidden lg:block text-xs font-bold uppercase tracking-widest text-slate-500 text-right min-w-[100px]">Time</span>
           </div>
 
           {loading && events.length === 0 ? (

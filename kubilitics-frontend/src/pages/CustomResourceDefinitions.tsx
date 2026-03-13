@@ -264,7 +264,7 @@ spec:
  <h1 className="text-2xl font-semibold tracking-tight">Custom Resource Definitions</h1>
  <p className="text-sm text-muted-foreground">
  {filteredItems.length} CRDs (cluster-scoped)
- {!isConnected && <span className="ml-2 inline-flex items-center gap-1 text-[hsl(45,93%,47%)]"><WifiOff className="h-3 w-3" /> Connect cluster</span>}
+ {!isConnected && <span className="ml-2 inline-flex items-center gap-1 text-amber-600"><WifiOff className="h-3 w-3" /> Connect cluster</span>}
  </p>
  </div>
  {selectedItems.size > 0 && (
@@ -293,14 +293,14 @@ spec:
 
  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
  <ListPageStatCard label="Total" value={stats.total} icon={FileCode} iconColor="text-primary" selected={!hasActiveFilters} onClick={() => clearAllFilters()} className={cn(!hasActiveFilters && !isLoading && 'ring-2 ring-primary')} isLoading={isLoading} />
- <ListPageStatCard label="Established" value={stats.established} icon={CheckCircle2} iconColor="text-[hsl(142,76%,36%)]" valueClassName="text-[hsl(142,76%,36%)]" selected={columnFilters.established?.size === 1 && columnFilters.established.has('true')} onClick={() => setColumnFilter('established', columnFilters.established?.has('true') ? null : new Set(['true']))} className={cn(columnFilters.established?.size === 1 && columnFilters.established.has('true') && 'ring-2 ring-[hsl(142,76%,36%)]')} isLoading={isLoading} />
- <ListPageStatCard label="Not Established" value={stats.notEstablished} icon={XCircle} iconColor="text-[hsl(0,72%,51%)]" valueClassName="text-[hsl(0,72%,51%)]" selected={columnFilters.established?.size === 1 && columnFilters.established.has('false')} onClick={() => setColumnFilter('established', columnFilters.established?.has('false') ? null : new Set(['false']))} className={cn(columnFilters.established?.size === 1 && columnFilters.established.has('false') && 'ring-2 ring-[hsl(0,72%,51%)]')} isLoading={isLoading} />
+ <ListPageStatCard label="Established" value={stats.established} icon={CheckCircle2} iconColor="text-emerald-600" valueClassName="text-emerald-600" selected={columnFilters.established?.size === 1 && columnFilters.established.has('true')} onClick={() => setColumnFilter('established', columnFilters.established?.has('true') ? null : new Set(['true']))} className={cn(columnFilters.established?.size === 1 && columnFilters.established.has('true') && 'ring-2 ring-emerald-500')} isLoading={isLoading} />
+ <ListPageStatCard label="Not Established" value={stats.notEstablished} icon={XCircle} iconColor="text-rose-600" valueClassName="text-rose-600" selected={columnFilters.established?.size === 1 && columnFilters.established.has('false')} onClick={() => setColumnFilter('established', columnFilters.established?.has('false') ? null : new Set(['false']))} className={cn(columnFilters.established?.size === 1 && columnFilters.established.has('false') && 'ring-2 ring-rose-500')} isLoading={isLoading} />
  <ListPageStatCard
  label="Custom Groups"
  value={stats.customGroups}
  icon={Clock}
- iconColor="text-[hsl(45,93%,47%)]"
- valueClassName="text-[hsl(45,93%,47%)]"
+ iconColor="text-amber-600"
+ valueClassName="text-amber-600"
  selected={columnFilters.hasCustomGroup?.size === 1 && columnFilters.hasCustomGroup.has('Yes')}
  onClick={() =>
  setColumnFilter(
@@ -308,7 +308,7 @@ spec:
  columnFilters.hasCustomGroup?.size === 1 && columnFilters.hasCustomGroup.has('Yes') ? null : new Set(['Yes'])
  )
  }
- className={cn(columnFilters.hasCustomGroup?.size === 1 && columnFilters.hasCustomGroup.has('Yes') && 'ring-2 ring-[hsl(45,93%,47%)]')}
+ className={cn(columnFilters.hasCustomGroup?.size === 1 && columnFilters.hasCustomGroup.has('Yes') && 'ring-2 ring-amber-500')}
  isLoading={isLoading} />
  </div>
 
@@ -438,7 +438,7 @@ spec:
  <DropdownMenuSeparator />
  <DropdownMenuItem onClick={() => navigate(`/customresourcedefinitions/${item.name}?tab=yaml`)} className="gap-2"><FileText className="h-4 w-4" />Download YAML</DropdownMenuItem>
  <DropdownMenuSeparator />
- <DropdownMenuItem className="gap-2 text-[hsl(0,72%,51%)]" onClick={() => setDeleteDialog({ open: true, item })} disabled={!isConnected}><Trash2 className="h-4 w-4" />Delete</DropdownMenuItem>
+ <DropdownMenuItem className="gap-2 text-rose-600" onClick={() => setDeleteDialog({ open: true, item })} disabled={!isConnected}><Trash2 className="h-4 w-4" />Delete</DropdownMenuItem>
  </DropdownMenuContent>
  </DropdownMenu>
  </TableCell>

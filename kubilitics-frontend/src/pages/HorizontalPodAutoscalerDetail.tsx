@@ -302,7 +302,7 @@ export default function HorizontalPodAutoscalerDetail() {
                   {scalingEvents.map((ev, i) => (
                     <div key={i} className="flex items-center gap-4 p-3 rounded-lg bg-muted/50">
                       {ev.direction === 'up' ? (
-                        <TrendingUp className="h-5 w-5 text-[hsl(142,76%,36%)] shrink-0" aria-hidden />
+                        <TrendingUp className="h-5 w-5 text-emerald-600 shrink-0" aria-hidden />
                       ) : (
                         <TrendingDown className="h-5 w-5 text-amber-600 shrink-0" aria-hidden />
                       )}

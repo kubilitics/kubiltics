@@ -196,7 +196,7 @@ metadata:
  <h1 className="text-2xl font-semibold tracking-tight">Component Statuses</h1>
  <p className="text-sm text-muted-foreground">
  {filteredItems.length} control plane components (cluster-scoped)
- {!isConnected && <span className="ml-2 inline-flex items-center gap-1 text-[hsl(45,93%,47%)]"><WifiOff className="h-3 w-3" /> Connect cluster</span>}
+ {!isConnected && <span className="ml-2 inline-flex items-center gap-1 text-amber-600"><WifiOff className="h-3 w-3" /> Connect cluster</span>}
  </p>
  </div>
  {selectedItems.size > 0 && (
@@ -221,8 +221,8 @@ metadata:
 
  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
  <ListPageStatCard label="Total" value={stats.total} icon={Gauge} iconColor="text-primary" selected={!columnFilters.status?.size} onClick={() => setColumnFilter('status', null)} className={cn(!columnFilters.status?.size && !isLoading && 'ring-2 ring-primary')} isLoading={isLoading} />
- <ListPageStatCard label="Healthy" value={stats.healthy} icon={CheckCircle2} iconColor="text-[hsl(142,76%,36%)]" valueClassName="text-[hsl(142,76%,36%)]" selected={columnFilters.status?.size === 1 && columnFilters.status.has('Healthy')} onClick={() => setColumnFilter('status', new Set(['Healthy']))} className={cn(columnFilters.status?.size === 1 && columnFilters.status.has('Healthy') && 'ring-2 ring-[hsl(142,76%,36%)]')} isLoading={isLoading} />
- <ListPageStatCard label="Unhealthy" value={stats.unhealthy} icon={XCircle} iconColor="text-[hsl(0,72%,51%)]" valueClassName="text-[hsl(0,72%,51%)]" selected={columnFilters.status?.size === 1 && columnFilters.status.has('Unhealthy')} onClick={() => setColumnFilter('status', new Set(['Unhealthy']))} className={cn(columnFilters.status?.size === 1 && columnFilters.status.has('Unhealthy') && 'ring-2 ring-[hsl(0,72%,51%)]')} isLoading={isLoading} />
+ <ListPageStatCard label="Healthy" value={stats.healthy} icon={CheckCircle2} iconColor="text-emerald-600" valueClassName="text-emerald-600" selected={columnFilters.status?.size === 1 && columnFilters.status.has('Healthy')} onClick={() => setColumnFilter('status', new Set(['Healthy']))} className={cn(columnFilters.status?.size === 1 && columnFilters.status.has('Healthy') && 'ring-2 ring-emerald-500')} isLoading={isLoading} />
+ <ListPageStatCard label="Unhealthy" value={stats.unhealthy} icon={XCircle} iconColor="text-rose-600" valueClassName="text-rose-600" selected={columnFilters.status?.size === 1 && columnFilters.status.has('Unhealthy')} onClick={() => setColumnFilter('status', new Set(['Unhealthy']))} className={cn(columnFilters.status?.size === 1 && columnFilters.status.has('Unhealthy') && 'ring-2 ring-rose-500')} isLoading={isLoading} />
  <ListPageStatCard label="Unknown" value={stats.unknown} icon={Clock} iconColor="text-muted-foreground" valueClassName="text-muted-foreground" selected={columnFilters.status?.size === 1 && columnFilters.status.has('Unknown')} onClick={() => setColumnFilter('status', new Set(['Unknown']))} className={cn(columnFilters.status?.size === 1 && columnFilters.status.has('Unknown') && 'ring-2 ring-muted-foreground')} isLoading={isLoading} />
  </div>
 

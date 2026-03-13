@@ -240,15 +240,15 @@ export default function ReplicationControllerDetail() {
                           <div>
                             <p className="text-muted-foreground mb-1">Requests</p>
                             <div className="space-y-0.5">
-                              <p className="font-mono text-[10px]">CPU: {container.resources.requests?.cpu || '-'}</p>
-                              <p className="font-mono text-[10px]">Mem: {container.resources.requests?.memory || '-'}</p>
+                              <p className="font-mono text-xs">CPU: {container.resources.requests?.cpu || '-'}</p>
+                              <p className="font-mono text-xs">Mem: {container.resources.requests?.memory || '-'}</p>
                             </div>
                           </div>
                           <div>
                             <p className="text-muted-foreground mb-1">Limits</p>
                             <div className="space-y-0.5">
-                              <p className="font-mono text-[10px]">CPU: {container.resources.limits?.cpu || '-'}</p>
-                              <p className="font-mono text-[10px]">Mem: {container.resources.limits?.memory || '-'}</p>
+                              <p className="font-mono text-xs">CPU: {container.resources.limits?.cpu || '-'}</p>
+                              <p className="font-mono text-xs">Mem: {container.resources.limits?.memory || '-'}</p>
                             </div>
                           </div>
                         </div>

@@ -71,9 +71,9 @@ interface Job {
 }
 
 const statusConfig = {
- Complete: { icon: CheckCircle2, color: 'text-[hsl(142,76%,36%)]', bg: 'bg-[hsl(142,76%,36%)]/10' },
- Running: { icon: Clock, color: 'text-[hsl(45,93%,47%)]', bg: 'bg-[hsl(45,93%,47%)]/10' },
- Failed: { icon: XCircle, color: 'text-[hsl(0,72%,51%)]', bg: 'bg-[hsl(0,72%,51%)]/10' },
+ Complete: { icon: CheckCircle2, color: 'text-emerald-600', bg: 'bg-emerald-500/10' },
+ Running: { icon: Clock, color: 'text-amber-600', bg: 'bg-amber-500/10' },
+ Failed: { icon: XCircle, color: 'text-rose-600', bg: 'bg-rose-500/10' },
 };
 
 const JOBS_TABLE_COLUMNS: ResizableColumnConfig[] = [
@@ -442,9 +442,9 @@ spec:
 
  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
  <ListPageStatCard label="Total" value={stats.total} icon={JobIcon as any} iconColor="text-primary" selected={!columnFilters.status?.size} onClick={() => setColumnFilter('status', null)} className={cn(!columnFilters.status?.size && !isLoading && 'ring-2 ring-primary')} isLoading={isLoading} />
- <ListPageStatCard label="Running" value={stats.running} icon={Clock} iconColor="text-[hsl(45,93%,47%)]" valueClassName="text-[hsl(45,93%,47%)]" selected={columnFilters.status?.size === 1 && columnFilters.status.has('Running')} onClick={() => setColumnFilter('status', new Set(['Running']))} className={cn(columnFilters.status?.size === 1 && columnFilters.status.has('Running') && 'ring-2 ring-[hsl(45,93%,47%)]')} isLoading={isLoading} />
- <ListPageStatCard label="Succeeded" value={stats.succeeded} icon={CheckCircle2} iconColor="text-[hsl(142,76%,36%)]" valueClassName="text-[hsl(142,76%,36%)]" selected={columnFilters.status?.size === 1 && columnFilters.status.has('Complete')} onClick={() => setColumnFilter('status', new Set(['Complete']))} className={cn(columnFilters.status?.size === 1 && columnFilters.status.has('Complete') && 'ring-2 ring-[hsl(142,76%,36%)]')} isLoading={isLoading} />
- <ListPageStatCard label="Failed" value={stats.failed} icon={XCircle} iconColor="text-[hsl(0,72%,51%)]" valueClassName="text-[hsl(0,72%,51%)]" selected={columnFilters.status?.size === 1 && columnFilters.status.has('Failed')} onClick={() => setColumnFilter('status', new Set(['Failed']))} className={cn(columnFilters.status?.size === 1 && columnFilters.status.has('Failed') && 'ring-2 ring-[hsl(0,72%,51%)]')} isLoading={isLoading} />
+ <ListPageStatCard label="Running" value={stats.running} icon={Clock} iconColor="text-amber-600" valueClassName="text-amber-600" selected={columnFilters.status?.size === 1 && columnFilters.status.has('Running')} onClick={() => setColumnFilter('status', new Set(['Running']))} className={cn(columnFilters.status?.size === 1 && columnFilters.status.has('Running') && 'ring-2 ring-amber-500')} isLoading={isLoading} />
+ <ListPageStatCard label="Succeeded" value={stats.succeeded} icon={CheckCircle2} iconColor="text-emerald-600" valueClassName="text-emerald-600" selected={columnFilters.status?.size === 1 && columnFilters.status.has('Complete')} onClick={() => setColumnFilter('status', new Set(['Complete']))} className={cn(columnFilters.status?.size === 1 && columnFilters.status.has('Complete') && 'ring-2 ring-emerald-500')} isLoading={isLoading} />
+ <ListPageStatCard label="Failed" value={stats.failed} icon={XCircle} iconColor="text-rose-600" valueClassName="text-rose-600" selected={columnFilters.status?.size === 1 && columnFilters.status.has('Failed')} onClick={() => setColumnFilter('status', new Set(['Failed']))} className={cn(columnFilters.status?.size === 1 && columnFilters.status.has('Failed') && 'ring-2 ring-rose-500')} isLoading={isLoading} />
  <ListPageStatCard label="Completion Rate" value={stats.completionRatePct + '%'} icon={Gauge} iconColor="text-cyan-500" valueClassName="text-cyan-600" isLoading={isLoading} />
  </div>
 
@@ -680,7 +680,7 @@ spec:
  <DropdownMenuItem onClick={() => navigate(`/jobs/${item.namespace}/${item.name}?tab=logs`)} className="press-effect gap-2"><FileText className="h-4 w-4" />View Logs</DropdownMenuItem>
  <DropdownMenuItem onClick={() => handleRetry(item)} className="gap-2" disabled={!isConnected}><RotateCw className="h-4 w-4" />Retry</DropdownMenuItem>
  <DropdownMenuItem onClick={() => navigate(`/jobs/${item.namespace}/${item.name}?tab=yaml`)} className="press-effect gap-2"><FileText className="h-4 w-4" />Download YAML</DropdownMenuItem>
- <DropdownMenuSeparator /><DropdownMenuItem className="gap-2 text-[hsl(0,72%,51%)]" onClick={() => setDeleteDialog({ open: true, item })} disabled={!isConnected}><Trash2 className="h-4 w-4" />Delete</DropdownMenuItem>
+ <DropdownMenuSeparator /><DropdownMenuItem className="gap-2 text-rose-600" onClick={() => setDeleteDialog({ open: true, item })} disabled={!isConnected}><Trash2 className="h-4 w-4" />Delete</DropdownMenuItem>
  </DropdownMenuContent>
  </DropdownMenu>
  </TableCell>
@@ -754,7 +754,7 @@ spec:
  <DropdownMenuItem onClick={() => navigate(`/jobs/${item.namespace}/${item.name}?tab=logs`)} className="press-effect gap-2"><FileText className="h-4 w-4" />View Logs</DropdownMenuItem>
  <DropdownMenuItem onClick={() => handleRetry(item)} className="gap-2" disabled={!isConnected}><RotateCw className="h-4 w-4" />Retry</DropdownMenuItem>
  <DropdownMenuItem onClick={() => navigate(`/jobs/${item.namespace}/${item.name}?tab=yaml`)} className="press-effect gap-2"><FileText className="h-4 w-4" />Download YAML</DropdownMenuItem>
- <DropdownMenuSeparator /><DropdownMenuItem className="gap-2 text-[hsl(0,72%,51%)]" onClick={() => setDeleteDialog({ open: true, item })} disabled={!isConnected}><Trash2 className="h-4 w-4" />Delete</DropdownMenuItem>
+ <DropdownMenuSeparator /><DropdownMenuItem className="gap-2 text-rose-600" onClick={() => setDeleteDialog({ open: true, item })} disabled={!isConnected}><Trash2 className="h-4 w-4" />Delete</DropdownMenuItem>
  </DropdownMenuContent>
  </DropdownMenu>
  </TableCell>

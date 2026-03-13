@@ -261,8 +261,8 @@ export default function APIServices() {
 
  <div className={cn('grid grid-cols-2 sm:grid-cols-4 gap-4', !isConnected && 'opacity-60')}>
  <ListPageStatCard label="Total API Services" value={stats.total} icon={FileCode} iconColor="text-primary" isLoading={isLoading} />
- <ListPageStatCard label="Available" value={stats.available} icon={FileCode} iconColor="text-[hsl(142,76%,36%)]" isLoading={isLoading} />
- <ListPageStatCard label="Unavailable" value={stats.unavailable} icon={FileCode} iconColor="text-[hsl(0,72%,51%)]" isLoading={isLoading} />
+ <ListPageStatCard label="Available" value={stats.available} icon={FileCode} iconColor="text-emerald-600" isLoading={isLoading} />
+ <ListPageStatCard label="Unavailable" value={stats.unavailable} icon={FileCode} iconColor="text-rose-600" isLoading={isLoading} />
  <ListPageStatCard label="Local" value={stats.local} icon={FileCode} iconColor="text-muted-foreground" isLoading={isLoading} />
  </div>
 

@@ -566,7 +566,7 @@ export default function NodeDetail() {
                         <TableCell>
                           <Badge
                             variant={isGood ? 'default' : isBad ? 'destructive' : 'secondary'}
-                            className={isGood ? 'bg-[hsl(142,76%,36%)] hover:bg-[hsl(142,76%,36%)]' : isBad ? 'bg-[hsl(0,72%,51%)] hover:bg-[hsl(0,72%,51%)]' : ''}
+                            className={isGood ? 'bg-emerald-600 hover:bg-emerald-600' : isBad ? 'bg-rose-600 hover:bg-rose-600' : ''}
                           >
                             {c.type}
                           </Badge>

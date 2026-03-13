@@ -297,31 +297,31 @@ export default function VolumeAttachments() {
  label="Attached"
  value={stats.attached}
  icon={Database}
- iconColor="text-[hsl(142,76%,36%)]"
- valueClassName="text-[hsl(142,76%,36%)]"
+ iconColor="text-emerald-600"
+ valueClassName="text-emerald-600"
  selected={isStatCardSelected('Attached')}
  onClick={() => toggleStatFilter('Attached')}
- className={cn(isStatCardSelected('Attached') && 'ring-2 ring-[hsl(142,76%,36%)]')}
+ className={cn(isStatCardSelected('Attached') && 'ring-2 ring-emerald-500')}
  isLoading={isLoading} />
  <ListPageStatCard
  label="Detaching"
  value={stats.detaching}
  icon={Database}
- iconColor="text-[hsl(45,93%,47%)]"
- valueClassName="text-[hsl(45,93%,47%)]"
+ iconColor="text-amber-600"
+ valueClassName="text-amber-600"
  selected={isStatCardSelected('Detaching')}
  onClick={() => toggleStatFilter('Detaching')}
- className={cn(isStatCardSelected('Detaching') && 'ring-2 ring-[hsl(45,93%,47%)]')}
+ className={cn(isStatCardSelected('Detaching') && 'ring-2 ring-amber-500')}
  isLoading={isLoading} />
  <ListPageStatCard
  label="Error"
  value={stats.error}
  icon={Database}
- iconColor="text-[hsl(0,72%,51%)]"
- valueClassName="text-[hsl(0,72%,51%)]"
+ iconColor="text-rose-600"
+ valueClassName="text-rose-600"
  selected={isStatCardSelected('Error')}
  onClick={() => toggleStatFilter('Error')}
- className={cn(isStatCardSelected('Error') && 'ring-2 ring-[hsl(0,72%,51%)]')}
+ className={cn(isStatCardSelected('Error') && 'ring-2 ring-rose-500')}
  isLoading={isLoading} />
  </div>
 
