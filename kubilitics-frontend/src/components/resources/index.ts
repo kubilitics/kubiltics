@@ -23,6 +23,7 @@ export { ActionsSection, type ActionItem, type ActionsSectionProps } from './Act
 export { NodeDetailPopup, type ResourceDetail } from './NodeDetailPopup';
 export { Sparkline, LiveMetric, useLiveMetrics } from './PodSparkline';
 export { UsageBar, parseCpu, parseMemory, calculatePodResourceMax, type UsageBarProps, type UsageBarKind, type UsageBarVariant } from './UsageBar';
+export { DetailPodTable, type DetailPodTableProps } from './DetailPodTable';
 export { ResourceComparisonView } from './ResourceComparisonView';
 export { ResourceTopologyView, type ResourceTopologyViewProps } from './ResourceTopologyView';
 export { X } from 'lucide-react'; // Export X if needed, or just let users import from lucide-react
