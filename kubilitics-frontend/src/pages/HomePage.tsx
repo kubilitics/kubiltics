@@ -140,12 +140,13 @@ export default function HomePage() {
     () => clusters.reduce((acc, c) => acc + (c.node_count || 0), 0),
     [clusters]
   );
-  const cpuUtil = overview?.utilization?.cpu_percent ?? 0;
-  const memUtil = overview?.utilization?.memory_percent ?? 0;
+  const hasUtilization = overview?.utilization != null;
+  const cpuUtil = overview?.utilization?.cpu_percent ?? null;
+  const memUtil = overview?.utilization?.memory_percent ?? null;
 
   /* ─── Helpers ─── */
-  const cpuColor = cpuUtil > 80 ? 'from-red-500 to-orange-500' : cpuUtil > 50 ? 'from-amber-500 to-yellow-500' : 'from-blue-500 to-indigo-500';
-  const memColor = memUtil > 80 ? 'from-red-500 to-orange-500' : memUtil > 50 ? 'from-amber-500 to-yellow-500' : 'from-violet-500 to-purple-500';
+  const cpuColor = (cpuUtil ?? 0) > 80 ? 'from-red-500 to-orange-500' : (cpuUtil ?? 0) > 50 ? 'from-amber-500 to-yellow-500' : 'from-blue-500 to-indigo-500';
+  const memColor = (memUtil ?? 0) > 80 ? 'from-red-500 to-orange-500' : (memUtil ?? 0) > 50 ? 'from-amber-500 to-yellow-500' : 'from-violet-500 to-purple-500';
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50/80 via-white to-blue-50/20" role="main" aria-label="Systems overview page">
@@ -246,27 +247,37 @@ export default function HomePage() {
               variants={stagger.item}
               className="group relative bg-white rounded-2xl border border-slate-200/80 p-5 hover:border-slate-300/80 hover:shadow-apple-lg transition-all duration-500 ease-out overflow-hidden"
               role="status"
-              aria-label={`CPU usage at ${Math.round(cpuUtil)} percent`}
+              aria-label={cpuUtil != null ? `CPU usage at ${Math.round(cpuUtil)} percent` : 'CPU usage unavailable'}
             >
               <div className="absolute inset-0 bg-gradient-to-br from-indigo-50/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
               <div className="relative">
                 <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-[0.12em] mb-2">CPU</p>
-                <p className="text-2xl font-bold tabular-nums text-slate-900 leading-none">
-                  {Math.round(cpuUtil)}<span className="text-sm text-slate-400 ml-0.5">%</span>
-                </p>
-                <div className="relative h-1.5 w-full bg-slate-100 rounded-full overflow-hidden mt-3">
-                  <motion.div
-                    initial={{ width: 0 }}
-                    animate={{ width: `${Math.min(100, cpuUtil)}%` }}
-                    transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
-                    className={`absolute inset-y-0 left-0 bg-gradient-to-r ${cpuColor} rounded-full`}
-                    role="progressbar"
-                    aria-valuenow={Math.round(cpuUtil)}
-                    aria-valuemin={0}
-                    aria-valuemax={100}
-                  />
-                </div>
-                <p className="text-[10px] text-slate-400 mt-1.5">Cluster average</p>
+                {cpuUtil != null ? (
+                  <>
+                    <p className="text-2xl font-bold tabular-nums text-slate-900 leading-none">
+                      {Math.round(cpuUtil)}<span className="text-sm text-slate-400 ml-0.5">%</span>
+                    </p>
+                    <div className="relative h-1.5 w-full bg-slate-100 rounded-full overflow-hidden mt-3">
+                      <motion.div
+                        initial={{ width: 0 }}
+                        animate={{ width: `${Math.min(100, cpuUtil)}%` }}
+                        transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
+                        className={`absolute inset-y-0 left-0 bg-gradient-to-r ${cpuColor} rounded-full`}
+                        role="progressbar"
+                        aria-valuenow={Math.round(cpuUtil)}
+                        aria-valuemin={0}
+                        aria-valuemax={100}
+                      />
+                    </div>
+                    <p className="text-[10px] text-slate-400 mt-1.5">Cluster average</p>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-2xl font-bold text-slate-300 leading-none">—</p>
+                    <div className="relative h-1.5 w-full bg-slate-100 rounded-full overflow-hidden mt-3" />
+                    <p className="text-[10px] text-slate-400 mt-1.5">No metrics available</p>
+                  </>
+                )}
               </div>
             </motion.div>
 
@@ -275,27 +286,37 @@ export default function HomePage() {
               variants={stagger.item}
               className="group relative bg-white rounded-2xl border border-slate-200/80 p-5 hover:border-slate-300/80 hover:shadow-apple-lg transition-all duration-500 ease-out overflow-hidden"
               role="status"
-              aria-label={`Memory usage at ${Math.round(memUtil)} percent`}
+              aria-label={memUtil != null ? `Memory usage at ${Math.round(memUtil)} percent` : 'Memory usage unavailable'}
             >
               <div className="absolute inset-0 bg-gradient-to-br from-violet-50/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
               <div className="relative">
                 <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-[0.12em] mb-2">Memory</p>
-                <p className="text-2xl font-bold tabular-nums text-slate-900 leading-none">
-                  {Math.round(memUtil)}<span className="text-sm text-slate-400 ml-0.5">%</span>
-                </p>
-                <div className="relative h-1.5 w-full bg-slate-100 rounded-full overflow-hidden mt-3">
-                  <motion.div
-                    initial={{ width: 0 }}
-                    animate={{ width: `${Math.min(100, memUtil)}%` }}
-                    transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
-                    className={`absolute inset-y-0 left-0 bg-gradient-to-r ${memColor} rounded-full`}
-                    role="progressbar"
-                    aria-valuenow={Math.round(memUtil)}
-                    aria-valuemin={0}
-                    aria-valuemax={100}
-                  />
-                </div>
-                <p className="text-[10px] text-slate-400 mt-1.5">Cluster average</p>
+                {memUtil != null ? (
+                  <>
+                    <p className="text-2xl font-bold tabular-nums text-slate-900 leading-none">
+                      {Math.round(memUtil)}<span className="text-sm text-slate-400 ml-0.5">%</span>
+                    </p>
+                    <div className="relative h-1.5 w-full bg-slate-100 rounded-full overflow-hidden mt-3">
+                      <motion.div
+                        initial={{ width: 0 }}
+                        animate={{ width: `${Math.min(100, memUtil)}%` }}
+                        transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
+                        className={`absolute inset-y-0 left-0 bg-gradient-to-r ${memColor} rounded-full`}
+                        role="progressbar"
+                        aria-valuenow={Math.round(memUtil)}
+                        aria-valuemin={0}
+                        aria-valuemax={100}
+                      />
+                    </div>
+                    <p className="text-[10px] text-slate-400 mt-1.5">Cluster average</p>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-2xl font-bold text-slate-300 leading-none">—</p>
+                    <div className="relative h-1.5 w-full bg-slate-100 rounded-full overflow-hidden mt-3" />
+                    <p className="text-[10px] text-slate-400 mt-1.5">No metrics available</p>
+                  </>
+                )}
               </div>
             </motion.div>
           </div>

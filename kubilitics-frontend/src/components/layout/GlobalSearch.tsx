@@ -27,19 +27,15 @@ import {
   HardDrive,
   Workflow,
   BarChart3,
-  Lock,
   Users,
-  Tag,
   Blocks,
   Webhook,
   ScrollText,
   Waypoints,
   MonitorCheck,
   Cpu,
-  MemoryStick,
 } from 'lucide-react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
-import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { searchResources, type SearchResultItem as ApiSearchResult } from '@/services/backendApiClient';
 import { getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
@@ -47,6 +43,20 @@ import { useBackendConfigStore } from '@/stores/backendConfigStore';
 import { useClusterStore } from '@/stores/clusterStore';
 
 const SEARCH_DEBOUNCE_MS = 250;
+
+// --- Category colors ---
+const categoryColors: Record<string, { bg: string; text: string; selectedBg: string }> = {
+  'General':            { bg: 'bg-blue-50',    text: 'text-blue-500',    selectedBg: 'bg-blue-100' },
+  'Workloads':          { bg: 'bg-emerald-50', text: 'text-emerald-500', selectedBg: 'bg-emerald-100' },
+  'Networking':         { bg: 'bg-violet-50',  text: 'text-violet-500',  selectedBg: 'bg-violet-100' },
+  'Storage & Config':   { bg: 'bg-amber-50',   text: 'text-amber-500',   selectedBg: 'bg-amber-100' },
+  'Cluster':            { bg: 'bg-sky-50',     text: 'text-sky-500',     selectedBg: 'bg-sky-100' },
+  'Access Control':     { bg: 'bg-rose-50',    text: 'text-rose-500',    selectedBg: 'bg-rose-100' },
+  'Scaling & Resources':{ bg: 'bg-orange-50',  text: 'text-orange-500',  selectedBg: 'bg-orange-100' },
+  'Extensions':         { bg: 'bg-indigo-50',  text: 'text-indigo-500',  selectedBg: 'bg-indigo-100' },
+};
+
+const defaultCatColor = { bg: 'bg-slate-50', text: 'text-slate-500', selectedBg: 'bg-slate-100' };
 
 // --- Navigation catalog ---
 
@@ -78,7 +88,6 @@ const navigationItems: NavItem[] = [
   { id: 'cronjobs', name: 'CronJobs', keywords: ['schedule', 'periodic', 'cron', 'timer'], icon: Clock, path: '/cronjobs', category: 'Workloads' },
   { id: 'podtemplates', name: 'Pod Templates', keywords: ['template'], icon: FileText, path: '/podtemplates', category: 'Workloads' },
   { id: 'controllerrevisions', name: 'Controller Revisions', keywords: ['revision', 'history'], icon: Workflow, path: '/controllerrevisions', category: 'Workloads' },
-  { id: 'replicationcontrollers', name: 'Replication Controllers', keywords: ['legacy', 'rc'], icon: Layers, path: '/replicationcontrollers', category: 'Workloads' },
 
   // Networking
   { id: 'networking', name: 'Networking', keywords: ['overview', 'traffic'], icon: Globe, path: '/networking', category: 'Networking' },
@@ -87,7 +96,7 @@ const navigationItems: NavItem[] = [
   { id: 'ingressclasses', name: 'Ingress Classes', keywords: ['nginx', 'traefik', 'controller'], icon: Globe, path: '/ingressclasses', category: 'Networking' },
   { id: 'endpoints', name: 'Endpoints', keywords: ['ip', 'address', 'backend'], icon: Network, path: '/endpoints', category: 'Networking' },
   { id: 'endpointslices', name: 'Endpoint Slices', keywords: ['slice'], icon: Network, path: '/endpointslices', category: 'Networking' },
-  { id: 'networkpolicies', name: 'Network Policies', keywords: ['policy', 'firewall', 'security', 'egress', 'ingress'], icon: Shield, path: '/networkpolicies', category: 'Networking' },
+  { id: 'networkpolicies', name: 'Network Policies', keywords: ['policy', 'firewall', 'security', 'egress'], icon: Shield, path: '/networkpolicies', category: 'Networking' },
 
   // Storage & Config
   { id: 'storage', name: 'Storage', keywords: ['overview', 'volumes', 'disk'], icon: HardDrive, path: '/storage', category: 'Storage & Config' },
@@ -96,31 +105,23 @@ const navigationItems: NavItem[] = [
   { id: 'persistentvolumes', name: 'Persistent Volumes', keywords: ['pv', 'disk', 'storage', 'nfs', 'ebs'], icon: HardDrive, path: '/persistentvolumes', category: 'Storage & Config' },
   { id: 'persistentvolumeclaims', name: 'Persistent Volume Claims', keywords: ['pvc', 'claim', 'storage request'], icon: HardDrive, path: '/persistentvolumeclaims', category: 'Storage & Config' },
   { id: 'storageclasses', name: 'Storage Classes', keywords: ['sc', 'provisioner', 'gp2', 'ssd'], icon: HardDrive, path: '/storageclasses', category: 'Storage & Config' },
-  { id: 'volumeattachments', name: 'Volume Attachments', keywords: ['attach', 'mount'], icon: HardDrive, path: '/volumeattachments', category: 'Storage & Config' },
-  { id: 'volumesnapshots', name: 'Volume Snapshots', keywords: ['snapshot', 'backup'], icon: HardDrive, path: '/volumesnapshots', category: 'Storage & Config' },
 
   // Cluster
   { id: 'cluster-overview', name: 'Cluster Overview', keywords: ['cluster', 'health', 'nodes'], icon: MonitorCheck, path: '/cluster-overview', category: 'Cluster' },
   { id: 'nodes', name: 'Nodes', keywords: ['node', 'worker', 'master', 'machine', 'host'], icon: Server, path: '/nodes', category: 'Cluster' },
   { id: 'namespaces', name: 'Namespaces', keywords: ['namespace', 'ns', 'project', 'tenant'], icon: Layers, path: '/namespaces', category: 'Cluster' },
   { id: 'events', name: 'Events', keywords: ['event', 'warning', 'error', 'log'], icon: Activity, path: '/events', category: 'Cluster' },
-  { id: 'apiservices', name: 'API Services', keywords: ['api', 'aggregation'], icon: Blocks, path: '/apiservices', category: 'Cluster' },
-  { id: 'leases', name: 'Leases', keywords: ['leader', 'election', 'lock'], icon: Clock, path: '/leases', category: 'Cluster' },
-  { id: 'runtimeclasses', name: 'Runtime Classes', keywords: ['runtime', 'container', 'gvisor', 'kata'], icon: Cpu, path: '/runtimeclasses', category: 'Cluster' },
 
   // RBAC & Security
   { id: 'serviceaccounts', name: 'Service Accounts', keywords: ['sa', 'identity', 'principal'], icon: Users, path: '/serviceaccounts', category: 'Access Control' },
   { id: 'roles', name: 'Roles', keywords: ['role', 'permission', 'rbac'], icon: Shield, path: '/roles', category: 'Access Control' },
-  { id: 'rolebindings', name: 'Role Bindings', keywords: ['binding', 'rbac'], icon: Shield, path: '/rolebindings', category: 'Access Control' },
   { id: 'clusterroles', name: 'Cluster Roles', keywords: ['cluster', 'rbac', 'global'], icon: Shield, path: '/clusterroles', category: 'Access Control' },
-  { id: 'clusterrolebindings', name: 'Cluster Role Bindings', keywords: ['binding', 'rbac', 'global'], icon: Shield, path: '/clusterrolebindings', category: 'Access Control' },
 
   // Scaling & Resources
   { id: 'scaling', name: 'Scaling', keywords: ['autoscale', 'overview'], icon: Scale, path: '/scaling', category: 'Scaling & Resources' },
   { id: 'resources', name: 'Resources', keywords: ['overview', 'quota', 'limits'], icon: Gauge, path: '/resources', category: 'Scaling & Resources' },
-  { id: 'horizontalpodautoscalers', name: 'Horizontal Pod Autoscalers', keywords: ['hpa', 'autoscale', 'scale out', 'cpu', 'memory'], icon: Scale, path: '/horizontalpodautoscalers', category: 'Scaling & Resources' },
-  { id: 'verticalpodautoscalers', name: 'Vertical Pod Autoscalers', keywords: ['vpa', 'right-size', 'resource'], icon: Scale, path: '/verticalpodautoscalers', category: 'Scaling & Resources' },
-  { id: 'poddisruptionbudgets', name: 'Pod Disruption Budgets', keywords: ['pdb', 'disruption', 'budget', 'availability'], icon: Shield, path: '/poddisruptionbudgets', category: 'Scaling & Resources' },
+  { id: 'horizontalpodautoscalers', name: 'Horizontal Pod Autoscalers', keywords: ['hpa', 'autoscale', 'cpu', 'memory'], icon: Scale, path: '/horizontalpodautoscalers', category: 'Scaling & Resources' },
+  { id: 'poddisruptionbudgets', name: 'Pod Disruption Budgets', keywords: ['pdb', 'disruption', 'availability'], icon: Shield, path: '/poddisruptionbudgets', category: 'Scaling & Resources' },
   { id: 'resourcequotas', name: 'Resource Quotas', keywords: ['quota', 'limit', 'namespace'], icon: Gauge, path: '/resourcequotas', category: 'Scaling & Resources' },
   { id: 'limitranges', name: 'Limit Ranges', keywords: ['limit', 'range', 'default'], icon: Gauge, path: '/limitranges', category: 'Scaling & Resources' },
   { id: 'priorityclasses', name: 'Priority Classes', keywords: ['priority', 'preemption', 'scheduling'], icon: ListChecks, path: '/priorityclasses', category: 'Scaling & Resources' },
@@ -129,7 +130,6 @@ const navigationItems: NavItem[] = [
   { id: 'crds', name: 'CRDs', keywords: ['custom resource', 'overview', 'api extension'], icon: Blocks, path: '/crds', category: 'Extensions' },
   { id: 'admission', name: 'Admission', keywords: ['webhook', 'overview', 'validation', 'mutation'], icon: Webhook, path: '/admission', category: 'Extensions' },
   { id: 'customresourcedefinitions', name: 'Custom Resource Definitions', keywords: ['crd', 'custom', 'api'], icon: Blocks, path: '/customresourcedefinitions', category: 'Extensions' },
-  { id: 'customresources', name: 'Custom Resources', keywords: ['cr', 'custom', 'instance'], icon: Blocks, path: '/customresources', category: 'Extensions' },
   { id: 'mutatingwebhooks', name: 'Mutating Webhooks', keywords: ['mutate', 'admission', 'webhook'], icon: Webhook, path: '/mutatingwebhooks', category: 'Extensions' },
   { id: 'validatingwebhooks', name: 'Validating Webhooks', keywords: ['validate', 'admission', 'webhook'], icon: Webhook, path: '/validatingwebhooks', category: 'Extensions' },
 ];
@@ -177,6 +177,20 @@ function apiResultToSearchResult(item: ApiSearchResult): SearchResult {
   };
 }
 
+// Helper: highlight matching portion of text
+function HighlightMatch({ text, query }: { text: string; query: string }) {
+  if (!query) return <>{text}</>;
+  const idx = text.toLowerCase().indexOf(query.toLowerCase());
+  if (idx === -1) return <>{text}</>;
+  return (
+    <>
+      {text.slice(0, idx)}
+      <span className="text-blue-600 font-semibold">{text.slice(idx, idx + query.length)}</span>
+      {text.slice(idx + query.length)}
+    </>
+  );
+}
+
 // --- Component ---
 
 interface GlobalSearchProps {
@@ -187,6 +201,7 @@ interface GlobalSearchProps {
 export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
   const navigate = useNavigate();
   const inputRef = useRef<HTMLInputElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
   const [search, setSearch] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -197,7 +212,6 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
   const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
   const activeCluster = useClusterStore((s) => s.activeCluster);
 
-  // Use activeCluster.id as fallback when currentClusterId is not set
   const clusterId = currentClusterId ?? activeCluster?.id ?? null;
   const canSearchLive = isBackendConfigured() && !!clusterId && !!backendBaseUrl;
 
@@ -212,7 +226,6 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
     if (open) {
       setSearch('');
       setSelectedIndex(0);
-      // Small delay to let dialog render
       requestAnimationFrame(() => inputRef.current?.focus());
     }
   }, [open]);
@@ -265,7 +278,6 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
   const allItems = useMemo(() => {
     const items: { type: 'nav' | 'live' | 'quick'; path: string; id: string }[] = [];
     if (!search.trim()) {
-      // Show default quick nav items
       navigationItems.slice(0, 8).forEach((n) => items.push({ type: 'quick', path: n.path, id: n.id }));
     } else {
       filteredNav.forEach((n) => items.push({ type: 'nav', path: n.path, id: n.id }));
@@ -274,7 +286,6 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
     return items;
   }, [search, filteredNav, liveResults]);
 
-  // Reset selection when results change
   useEffect(() => {
     setSelectedIndex(0);
   }, [allItems.length]);
@@ -305,131 +316,126 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
     [allItems, selectedIndex, handleSelect]
   );
 
+  // Scroll selected item into view
+  useEffect(() => {
+    if (!listRef.current) return;
+    const el = listRef.current.querySelector(`[data-index="${selectedIndex}"]`);
+    el?.scrollIntoView({ block: 'nearest' });
+  }, [selectedIndex]);
+
   const hasSearchText = search.trim().length > 0;
   const isLoading = hasSearchText && isFetching;
   const hasNavResults = filteredNav.length > 0;
   const hasLiveResults = liveResults.length > 0;
   const noResults = hasSearchText && !hasNavResults && !hasLiveResults && !isLoading;
 
-  // Track flat index for highlight
   let flatIndex = 0;
+
+  const renderNavItem = (item: NavItem, showCategory = false) => {
+    const isSelected = flatIndex === selectedIndex;
+    const idx = flatIndex++;
+    const colors = categoryColors[item.category] || defaultCatColor;
+    return (
+      <button
+        key={item.id}
+        data-index={idx}
+        onClick={() => handleSelect(item.path)}
+        onMouseEnter={() => setSelectedIndex(idx)}
+        className={cn(
+          'flex items-center gap-3 w-full px-3 py-2 mx-1 rounded-xl text-left transition-all duration-150',
+          isSelected
+            ? 'bg-blue-50 shadow-[0_0_0_1px_rgba(59,130,246,0.15)]'
+            : 'hover:bg-slate-50'
+        )}
+        style={{ width: 'calc(100% - 8px)' }}
+      >
+        <div className={cn(
+          'flex items-center justify-center w-8 h-8 rounded-lg transition-colors',
+          isSelected ? colors.selectedBg : colors.bg,
+          colors.text
+        )}>
+          <item.icon className="h-4 w-4" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <span className={cn('text-[13px] font-medium', isSelected ? 'text-blue-700' : 'text-slate-700')}>
+            <HighlightMatch text={item.name} query={search.trim()} />
+          </span>
+          {showCategory && (
+            <span className="text-[10px] text-slate-400 ml-2">{item.category}</span>
+          )}
+        </div>
+        <ArrowRight className={cn('h-3.5 w-3.5 transition-colors', isSelected ? 'text-blue-400' : 'text-slate-200')} />
+      </button>
+    );
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="overflow-hidden p-0 shadow-2xl border-slate-200/80 max-w-[560px] rounded-2xl gap-0">
+      <DialogContent className="overflow-hidden p-0 shadow-2xl border border-slate-200/60 max-w-[540px] rounded-2xl gap-0 bg-white">
         {/* Search input */}
         <div className="flex items-center gap-3 px-4 border-b border-slate-100" onKeyDown={handleKeyDown}>
-          <Search className="h-4 w-4 shrink-0 text-slate-400" />
+          <Search className="h-[18px] w-[18px] shrink-0 text-blue-500" />
           <input
             ref={inputRef}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search pages, resources, and more..."
-            className="flex h-12 w-full bg-transparent text-sm outline-none placeholder:text-slate-400"
+            placeholder="Search pages, resources..."
+            className="flex h-13 w-full bg-transparent text-sm font-medium outline-none placeholder:text-slate-400 placeholder:font-normal"
             autoComplete="off"
             spellCheck={false}
           />
-          {isLoading && <Loader2 className="h-4 w-4 animate-spin text-slate-400" />}
-          <kbd className="hidden sm:inline-flex items-center px-1.5 py-0.5 text-[10px] font-medium text-slate-400 bg-slate-100 rounded border border-slate-200">
+          {isLoading && <Loader2 className="h-4 w-4 animate-spin text-blue-400" />}
+          <kbd className="hidden sm:inline-flex items-center px-1.5 py-0.5 text-[10px] font-semibold text-slate-400 bg-slate-100 rounded-md border border-slate-200/80">
             ESC
           </kbd>
         </div>
 
         {/* Results */}
-        <div className="max-h-[420px] overflow-y-auto overscroll-contain py-1">
+        <div ref={listRef} className="max-h-[400px] overflow-y-auto overscroll-contain py-2">
           {/* Default state: popular pages */}
           {!hasSearchText && (
             <>
-              <div className="px-3 py-1.5">
-                <p className="text-[11px] font-medium text-slate-400 uppercase tracking-wider px-1">Go to</p>
+              <div className="px-4 pb-1 pt-0.5">
+                <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Quick navigation</p>
               </div>
-              {navigationItems.slice(0, 8).map((item) => {
-                const isSelected = flatIndex === selectedIndex;
-                const idx = flatIndex++;
-                return (
-                  <button
-                    key={item.id}
-                    onClick={() => handleSelect(item.path)}
-                    onMouseEnter={() => setSelectedIndex(idx)}
-                    className={cn(
-                      'flex items-center gap-3 w-full px-4 py-2.5 text-left transition-colors',
-                      isSelected ? 'bg-slate-50' : 'hover:bg-slate-50/60'
-                    )}
-                  >
-                    <div className={cn(
-                      'flex items-center justify-center w-8 h-8 rounded-lg',
-                      isSelected ? 'bg-blue-50 text-blue-600' : 'bg-slate-100 text-slate-500'
-                    )}>
-                      <item.icon className="h-4 w-4" />
-                    </div>
-                    <span className="flex-1 text-sm text-slate-700 font-medium">{item.name}</span>
-                    <ArrowRight className="h-3.5 w-3.5 text-slate-300" />
-                  </button>
-                );
-              })}
+              {navigationItems.slice(0, 8).map((item) => renderNavItem(item))}
             </>
           )}
 
           {/* Navigation results */}
           {hasSearchText && hasNavResults && (
             <>
-              <div className="px-3 py-1.5">
-                <p className="text-[11px] font-medium text-slate-400 uppercase tracking-wider px-1">Pages</p>
-              </div>
-              {Object.entries(groupedNav).map(([category, items]) => (
-                <div key={category}>
-                  <div className="px-4 py-1">
-                    <span className="text-[10px] font-medium text-slate-300 uppercase tracking-wider">{category}</span>
+              {Object.entries(groupedNav).map(([category, items]) => {
+                const colors = categoryColors[category] || defaultCatColor;
+                return (
+                  <div key={category} className="mb-1">
+                    <div className="flex items-center gap-2 px-4 pt-2 pb-1">
+                      <div className={cn('w-1.5 h-1.5 rounded-full', colors.bg.replace('bg-', 'bg-').replace('-50', '-400'))} />
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{category}</span>
+                    </div>
+                    {items.map((item) => renderNavItem(item, true))}
                   </div>
-                  {items.map((item) => {
-                    const isSelected = flatIndex === selectedIndex;
-                    const idx = flatIndex++;
-                    return (
-                      <button
-                        key={item.id}
-                        onClick={() => handleSelect(item.path)}
-                        onMouseEnter={() => setSelectedIndex(idx)}
-                        className={cn(
-                          'flex items-center gap-3 w-full px-4 py-2 text-left transition-colors',
-                          isSelected ? 'bg-slate-50' : 'hover:bg-slate-50/60'
-                        )}
-                      >
-                        <div className={cn(
-                          'flex items-center justify-center w-7 h-7 rounded-lg',
-                          isSelected ? 'bg-blue-50 text-blue-600' : 'bg-slate-100 text-slate-500'
-                        )}>
-                          <item.icon className="h-3.5 w-3.5" />
-                        </div>
-                        <span className="flex-1 text-sm text-slate-700">{item.name}</span>
-                        <ArrowRight className="h-3.5 w-3.5 text-slate-300" />
-                      </button>
-                    );
-                  })}
-                </div>
-              ))}
+                );
+              })}
             </>
           )}
 
           {/* Live cluster resource results */}
           {hasSearchText && hasLiveResults && (
             <>
-              {hasNavResults && <div className="h-px bg-slate-100 mx-3 my-1" />}
-              <div className="px-3 py-1.5">
-                <p className="text-[11px] font-medium text-slate-400 uppercase tracking-wider px-1">
-                  Cluster Resources
-                  <Badge variant="secondary" className="ml-2 text-[9px] px-1.5 py-0 bg-slate-100 text-slate-500 font-normal">
-                    {liveResults.length}
-                  </Badge>
-                </p>
+              {hasNavResults && <div className="h-px bg-slate-100 mx-3 my-2" />}
+              <div className="flex items-center gap-2 px-4 pt-1 pb-1">
+                <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Cluster resources</span>
+                <span className="text-[10px] text-slate-300 bg-slate-100 rounded-full px-1.5">{liveResults.length}</span>
               </div>
               {Object.entries(groupedLive).map(([type, resources]) => {
                 const Icon = resourceIcons[type] || resourceIcons[type.toLowerCase()] || Box;
                 return (
-                  <div key={type}>
-                    <div className="px-4 py-1 flex items-center gap-1.5">
-                      <Icon className="h-3 w-3 text-slate-400" />
-                      <span className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">{type}s</span>
-                      <span className="text-[10px] text-slate-300">({resources.length})</span>
+                  <div key={type} className="mb-1">
+                    <div className="flex items-center gap-1.5 px-4 py-0.5">
+                      <Icon className="h-3 w-3 text-slate-300" />
+                      <span className="text-[10px] font-semibold text-slate-300 uppercase tracking-wider">{type}s</span>
                     </div>
                     {resources.map((resource) => {
                       const isSelected = flatIndex === selectedIndex;
@@ -438,26 +444,32 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
                       return (
                         <button
                           key={resource.id}
+                          data-index={idx}
                           onClick={() => handleSelect(resource.path)}
                           onMouseEnter={() => setSelectedIndex(idx)}
                           className={cn(
-                            'flex items-center gap-3 w-full px-4 py-2 text-left transition-colors',
-                            isSelected ? 'bg-slate-50' : 'hover:bg-slate-50/60'
+                            'flex items-center gap-3 w-full px-3 py-2 mx-1 rounded-xl text-left transition-all duration-150',
+                            isSelected
+                              ? 'bg-blue-50 shadow-[0_0_0_1px_rgba(59,130,246,0.15)]'
+                              : 'hover:bg-slate-50'
                           )}
+                          style={{ width: 'calc(100% - 8px)' }}
                         >
                           <div className={cn(
-                            'flex items-center justify-center w-7 h-7 rounded-lg',
-                            isSelected ? 'bg-blue-50 text-blue-600' : 'bg-slate-100 text-slate-500'
+                            'flex items-center justify-center w-8 h-8 rounded-lg',
+                            isSelected ? 'bg-emerald-100 text-emerald-600' : 'bg-emerald-50 text-emerald-500'
                           )}>
-                            <ResIcon className="h-3.5 w-3.5" />
+                            <ResIcon className="h-4 w-4" />
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm text-slate-700 truncate font-medium">{resource.name}</p>
+                            <p className={cn('text-[13px] truncate font-medium', isSelected ? 'text-blue-700' : 'text-slate-700')}>
+                              <HighlightMatch text={resource.name} query={search.trim()} />
+                            </p>
                             {resource.namespace && (
                               <p className="text-[11px] text-slate-400 truncate">{resource.namespace}</p>
                             )}
                           </div>
-                          <ArrowRight className="h-3.5 w-3.5 text-slate-300 shrink-0" />
+                          <ArrowRight className={cn('h-3.5 w-3.5 shrink-0', isSelected ? 'text-blue-400' : 'text-slate-200')} />
                         </button>
                       );
                     })}
@@ -470,30 +482,32 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
           {/* Loading state for backend search */}
           {hasSearchText && isLoading && !hasLiveResults && (
             <div className="flex items-center justify-center gap-2 py-8">
-              <Loader2 className="h-4 w-4 animate-spin text-slate-400" />
+              <Loader2 className="h-4 w-4 animate-spin text-blue-400" />
               <span className="text-sm text-slate-400">Searching cluster...</span>
             </div>
           )}
 
           {/* Empty state */}
           {noResults && (
-            <div className="flex flex-col items-center gap-2 py-10">
-              <Search className="h-8 w-8 text-slate-200" />
-              <p className="text-sm text-slate-500">No results for &ldquo;{search.trim()}&rdquo;</p>
+            <div className="flex flex-col items-center gap-2.5 py-12">
+              <div className="flex items-center justify-center w-12 h-12 rounded-2xl bg-slate-100">
+                <Search className="h-5 w-5 text-slate-300" />
+              </div>
+              <p className="text-sm font-medium text-slate-500">No results for &ldquo;{search.trim()}&rdquo;</p>
               <p className="text-xs text-slate-400">Try a different search term</p>
             </div>
           )}
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between px-4 py-2 border-t border-slate-100 bg-slate-50/50">
-          <div className="flex items-center gap-3 text-[11px] text-slate-400">
-            <span className="flex items-center gap-1">
-              <kbd className="px-1 py-0.5 bg-white rounded border border-slate-200 text-[10px]">↵</kbd>
+        <div className="flex items-center justify-between px-4 py-2.5 border-t border-slate-100 bg-slate-50/60">
+          <div className="flex items-center gap-4 text-[11px] text-slate-400">
+            <span className="flex items-center gap-1.5">
+              <kbd className="px-1.5 py-0.5 bg-white rounded-md border border-slate-200 text-[10px] font-semibold shadow-sm">↵</kbd>
               Open
             </span>
-            <span className="flex items-center gap-1">
-              <kbd className="px-1 py-0.5 bg-white rounded border border-slate-200 text-[10px]">↑↓</kbd>
+            <span className="flex items-center gap-1.5">
+              <kbd className="px-1.5 py-0.5 bg-white rounded-md border border-slate-200 text-[10px] font-semibold shadow-sm">↑↓</kbd>
               Navigate
             </span>
           </div>
