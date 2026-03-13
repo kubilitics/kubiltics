@@ -230,7 +230,7 @@ export default function WorkloadsOverview() {
       {/* Header */}
       <SectionOverviewHeader
         title="Workloads Overview"
-        description="Enterprise visibility across cluster resource performance and autonomous health orchestration."
+        description="Deployments, stateful sets, jobs, and other controllers running in your cluster."
         icon={Zap}
         onSync={handleSync}
         isSyncing={isSyncing}
@@ -241,8 +241,8 @@ export default function WorkloadsOverview() {
         <Card className="lg:col-span-12 overflow-hidden border-slate-100 shadow-sm bg-white ring-1 ring-slate-100 elevation-2" aria-live="polite">
           <CardHeader className="flex flex-row items-center justify-between pb-4 pt-10 px-12">
             <div>
-              <CardTitle className="text-2xl font-bold tracking-tight text-slate-900 leading-tight">Workload Intelligence</CardTitle>
-              <p className="text-[11px] text-slate-400 font-bold uppercase tracking-widest mt-1.5 opacity-70">Cluster-Wide Autonomous Health Pulse</p>
+              <CardTitle className="text-2xl font-bold tracking-tight text-slate-900 leading-tight">Workload Health</CardTitle>
+              <p className="text-sm text-slate-500 mt-1">Overall health across all running workloads</p>
             </div>
             {pulse && (
               <div className="flex items-center gap-2.5 px-5 py-2 rounded-full bg-emerald-50 text-emerald-700 text-[10px] font-bold uppercase tracking-wider border border-emerald-100 shadow-sm shadow-emerald-500/5">
@@ -262,7 +262,7 @@ export default function WorkloadsOverview() {
               <div className="space-y-12 pr-4">
                 <div className="relative pl-6">
                   <span className="block text-6xl font-bold text-slate-900 tracking-tighter leading-none">{pulse?.total ?? 0}</span>
-                  <span className="text-[11px] font-bold text-slate-400 uppercase tracking-[0.2em] mt-3 block">Orchestrated Units</span>
+                  <span className="text-[11px] font-bold text-slate-400 uppercase tracking-[0.2em] mt-3 block">Total Workloads</span>
                   <div className="absolute left-0 top-1 bottom-1 w-1 bg-blue-500 rounded-full shadow-[0_0_8px_rgba(59,130,246,0.3)]" />
                 </div>
 
@@ -283,7 +283,7 @@ export default function WorkloadsOverview() {
 
                 <div className="pt-2">
                   <div className="flex items-center justify-between mb-4">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">Health Convergence</span>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">Health Score</span>
                     <span className="text-sm font-bold text-emerald-600 tabular-nums">{pulse?.optimal_percent.toFixed(1)}%</span>
                   </div>
                   <div className="h-3 w-full bg-slate-50 rounded-full overflow-hidden p-0.5 border border-slate-100 shadow-inner">
@@ -317,7 +317,7 @@ export default function WorkloadsOverview() {
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
             <div>
               <h3 className="text-xl font-bold tracking-tight text-slate-900">Workloads Explorer</h3>
-              <p className="text-[11px] text-slate-500 font-semibold uppercase tracking-wider mt-1">Controller Registry & Orchestration Metrics</p>
+              <p className="text-sm text-slate-500 mt-0.5">All controllers and their current state</p>
             </div>
             <div className="flex items-center gap-3">
               <div className="relative flex-1 min-w-[320px]">
@@ -419,7 +419,7 @@ export default function WorkloadsOverview() {
 
         <div className="p-6 border-t border-slate-50 bg-slate-50/30 flex flex-col sm:flex-row items-center justify-between gap-6">
           <ListPagination
-            rangeLabel={`Cluster Census: ${totalFiltered} Controllers`}
+            rangeLabel={`${totalFiltered} ${totalFiltered === 1 ? 'workload' : 'workloads'}`}
             hasPrev={safePageIndex > 0}
             hasNext={start + pageSize < totalFiltered}
             onPrev={() => setPageIndex((i) => Math.max(0, i - 1))}

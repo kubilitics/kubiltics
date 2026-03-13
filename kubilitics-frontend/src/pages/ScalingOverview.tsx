@@ -1,246 +1,292 @@
-import React, { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import {
-    Zap,
-    Search,
-    RefreshCw,
-    ArrowUpRight,
-    Scale,
-    Shield,
-    Activity,
+  Zap,
+  Search,
+  ArrowUpRight,
+  Shield,
+  Activity,
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useScalingOverview } from '@/hooks/useScalingOverview';
-import { useOverviewPagination } from '@/hooks/useOverviewPagination';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
 import { SectionOverviewHeader } from '@/components/layout/SectionOverviewHeader';
 import { ScalingPulse } from '@/components/scaling/ScalingPulse';
 import { ListPagination } from '@/components/list/ListPagination';
+import { ConnectionRequiredBanner } from '@/components/layout/ConnectionRequiredBanner';
+import { PageLoadingState } from '@/components/PageLoadingState';
+
+type ScalingResource = {
+  kind: string;
+  name: string;
+  namespace: string;
+  status: string;
+};
+
+function getResourceKey(r: ScalingResource): string {
+  return `${r.kind}/${r.namespace}/${r.name}`;
+}
 
 export default function ScalingOverview() {
-    const [searchQuery, setSearchQuery] = useState('');
-    const [isSyncing, setIsSyncing] = useState(false);
-    const queryClient = useQueryClient();
-    const { data, isLoading } = useScalingOverview();
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
+  const [pageSize] = useState(10);
+  const [pageIndex, setPageIndex] = useState(0);
+  const queryClient = useQueryClient();
+  const { data, isLoading } = useScalingOverview();
 
-    const handleSync = useCallback(() => {
-        setIsSyncing(true);
-        queryClient.invalidateQueries({ queryKey: ['k8s'] });
-        setTimeout(() => setIsSyncing(false), 1500);
-    }, [queryClient]);
+  const handleSync = useCallback(() => {
+    setIsSyncing(true);
+    queryClient.invalidateQueries({ queryKey: ['k8s'] });
+    setTimeout(() => setIsSyncing(false), 1500);
+  }, [queryClient]);
 
-    const filteredResources = data?.resources.filter(r =>
-        r.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        r.kind.toLowerCase().includes(searchQuery.toLowerCase())
-    ) ?? [];
+  const resources: ScalingResource[] = data?.resources ?? [];
 
-    const pagination = useOverviewPagination(filteredResources, searchQuery, 10);
-
-    if (isLoading) {
-        return (
-            <div className="flex items-center justify-center min-h-[400px]">
-                <RefreshCw className="h-8 w-8 animate-spin text-[#326CE5]" />
-            </div>
-        );
-    }
-
-    const hpaCount = data?.resources.filter(r => r.kind === 'HPA').length ?? 0;
-    const vpaCount = data?.resources.filter(r => r.kind === 'VPA').length ?? 0;
-    const pdbCount = data?.resources.filter(r => r.kind === 'PDB').length ?? 0;
-
-    return (
-        <div className="flex flex-col gap-6 p-6" role="main" aria-label="Scaling and Policies Overview">
-            {/* Header Section */}
-            <SectionOverviewHeader
-                title="Scaling & Policies"
-                description="High-fidelity visibility across automated scaling configurations and pod disruption budgets."
-                icon={Zap}
-                onSync={handleSync}
-                isSyncing={isSyncing}
-            />
-
-            {/* Hero Section: Scaling Pulse & Policy Matrix */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                {/* Elasticity Pulse */}
-                <Card className="lg:col-span-8 overflow-hidden border-[#326CE5]/10 shadow-sm bg-white/50 backdrop-blur-sm elevation-2" aria-live="polite">
-                    <CardHeader className="pb-0">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <CardTitle className="text-xl font-black text-[#326CE5]">Elasticity Pulse</CardTitle>
-                                <p className="text-xs text-muted-foreground font-medium uppercase tracking-widest">Replica Alignment Intelligence</p>
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                                <span className="text-[10px] font-black text-[#326CE5] uppercase">Synchronized</span>
-                            </div>
-                        </div>
-                    </CardHeader>
-                    <CardContent className="pt-0 pb-8">
-                        <ScalingPulse />
-
-                        <div className="grid grid-cols-3 gap-6 mt-6 border-t border-slate-100 pt-6">
-                            <div>
-                                <span className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-1">Convergence</span>
-                                <span className="text-xl font-black text-[#326CE5]">98.2%</span>
-                            </div>
-                            <div>
-                                <span className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-1">Scale Events</span>
-                                <span className="text-xl font-black text-[#326CE5]">12 / Hr</span>
-                            </div>
-                            <div>
-                                <span className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-1">Cooldown</span>
-                                <span className="text-xl font-black text-emerald-500 italic">ACTIVE</span>
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-
-                {/* Policy Standing Card */}
-                <Card className="lg:col-span-4 border-[#326CE5]/10 shadow-sm bg-white/50 backdrop-blur-sm flex flex-col p-8 relative overflow-hidden group elevation-2">
-                    <Shield className="absolute -bottom-10 -right-10 w-48 h-48 opacity-[0.02] text-[#326CE5] -rotate-12" />
-
-                    <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-6">
-                            <div className="h-10 w-10 rounded-xl bg-[#326CE5]/10 flex items-center justify-center">
-                                <Shield className="h-5 w-5 text-[#326CE5]" />
-                            </div>
-                            <div>
-                                <h3 className="text-sm font-black text-[#326CE5] uppercase">Policy Standing</h3>
-                                <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-tighter">Disruption & Scaling</p>
-                            </div>
-                        </div>
-
-                        <div className="space-y-4">
-                            <div className="flex items-center justify-between">
-                                <span className="text-xs font-bold text-slate-500">HPAs Configured</span>
-                                <span className="text-sm font-black text-[#326CE5]">{hpaCount}</span>
-                            </div>
-                            <div className="flex items-center justify-between">
-                                <span className="text-xs font-bold text-slate-500">VPAs Active</span>
-                                <span className="text-sm font-black text-[#326CE5]">{vpaCount}</span>
-                            </div>
-                            <div className="flex items-center justify-between">
-                                <span className="text-xs font-bold text-slate-500">PDBs Enforced</span>
-                                <span className="text-sm font-black text-[#326CE5]">{pdbCount}</span>
-                            </div>
-                        </div>
-
-                        <div className="mt-8 p-4 rounded-2xl bg-[#326CE5]/5 border border-[#326CE5]/10">
-                            <div className="flex items-center gap-2 mb-2">
-                                <Activity className="h-3 w-3 text-[#326CE5]" />
-                                <span className="text-[10px] font-black text-[#326CE5] uppercase">System Disruption</span>
-                            </div>
-                            <p className="text-[11px] text-muted-foreground leading-tight">Current cluster configurations allow for 100% availability during 1-node disruptions.</p>
-                        </div>
-                    </div>
-
-                    <div className="mt-8">
-                        <Button className="w-full h-12 bg-[#326CE5] hover:bg-[#2856b3] rounded-xl font-bold shadow-lg shadow-[#326CE5]/10 press-effect">
-                            Scale Optimizer
-                        </Button>
-                    </div>
-                </Card>
-            </div>
-
-            {/* Explorer Table */}
-            <div className="bg-white border border-slate-100 rounded-[2rem] overflow-hidden shadow-sm ring-1 ring-slate-100">
-                <div className="p-8 border-b border-slate-50">
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-                        <div>
-                            <h3 className="text-xl font-bold tracking-tight text-slate-900">Scaling Explorer</h3>
-                            <p className="text-[11px] text-slate-500 font-semibold uppercase tracking-wider mt-1">HPA, VPA & Disruption Policy Registry</p>
-                        </div>
-                        <div className="relative min-w-[320px]">
-                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" aria-hidden />
-                            <Input
-                                placeholder="Search scaling resources..."
-                                className="pl-12 bg-slate-50 border-transparent transition-all rounded-xl focus:bg-white focus:ring-4 focus:ring-blue-500/5 focus:border-slate-200 h-10 font-medium text-sm"
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                aria-label="Search scaling and policy resources"
-                            />
-                        </div>
-                    </div>
-                </div>
-
-                <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse">
-                        <thead>
-                            <tr className="bg-slate-50/50">
-                                <th className="px-8 py-5 text-[10px] font-bold uppercase tracking-widest text-slate-500 border-b border-slate-100">Policy Name</th>
-                                <th className="px-8 py-5 text-[10px] font-bold uppercase tracking-widest text-slate-500 border-b border-slate-100">Kind</th>
-                                <th className="px-8 py-5 text-[10px] font-bold uppercase tracking-widest text-slate-500 border-b border-slate-100">Namespace</th>
-                                <th className="px-8 py-5 text-[10px] font-bold uppercase tracking-widest text-slate-500 border-b border-slate-100">Status</th>
-                                <th className="px-8 py-5 border-b border-slate-100"></th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-50 text-sm">
-                            {pagination.paginatedItems.map((resource, idx) => (
-                                <motion.tr
-                                    initial={{ opacity: 0, y: 5 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    transition={{ delay: idx * 0.02 }}
-                                    key={`${resource.kind}-${resource.name}`}
-                                    className="group hover:bg-slate-50 transition-colors"
-                                >
-                                    <td className="px-8 py-4">
-                                        <div className="font-bold text-slate-900 group-hover:text-blue-600 transition-colors leading-tight tracking-tight">
-                                            {resource.name}
-                                        </div>
-                                    </td>
-                                    <td className="px-8 py-4">
-                                        <Badge variant="outline" className="text-[9px] uppercase tracking-wider font-bold border-slate-100 text-slate-500">
-                                            {resource.kind}
-                                        </Badge>
-                                    </td>
-                                    <td className="px-8 py-4">
-                                        <span className="font-mono text-[10px] font-bold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-lg">
-                                            {resource.namespace}
-                                        </span>
-                                    </td>
-                                    <td className="px-8 py-4">
-                                        <div className="flex items-center gap-2">
-                                            <div className={cn("h-1.5 w-1.5 rounded-full", resource.status === 'Active' ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" : "bg-amber-500")} />
-                                            <span className="text-[12px] font-bold text-slate-700">{resource.status}</span>
-                                        </div>
-                                    </td>
-                                    <td className="px-8 py-4 text-right">
-                                        <Button variant="ghost" size="sm" className="h-9 w-9 p-0 hover:bg-white hover:text-blue-600 hover:shadow-sm rounded-xl transition-all border border-transparent hover:border-slate-100 press-effect">
-                                            <ArrowUpRight className="h-4 w-4" aria-hidden />
-                                        </Button>
-                                    </td>
-                                </motion.tr>
-                            ))}
-                            {pagination.paginatedItems.length === 0 && (
-                                <tr>
-                                    <td colSpan={5} className="px-8 py-12 text-center text-sm text-slate-400">
-                                        {searchQuery ? 'No resources match your search.' : 'No scaling resources found.'}
-                                    </td>
-                                </tr>
-                            )}
-                        </tbody>
-                    </table>
-                </div>
-
-                {pagination.totalItems > 0 && (
-                    <div className="p-6 border-t border-slate-50 bg-slate-50/30">
-                        <ListPagination
-                            hasPrev={pagination.hasPrev}
-                            hasNext={pagination.hasNext}
-                            onPrev={pagination.onPrev}
-                            onNext={pagination.onNext}
-                            rangeLabel={`Policy Registry: ${pagination.totalItems} Resources`}
-                            currentPage={pagination.currentPage}
-                            totalPages={pagination.totalPages}
-                            onPageChange={pagination.setCurrentPage}
-                        />
-                    </div>
-                )}
-            </div>
-        </div>
+  const filteredResources = useMemo(() => {
+    if (!searchQuery.trim()) return resources;
+    const q = searchQuery.toLowerCase();
+    return resources.filter(
+      (r) => r.name.toLowerCase().includes(q) || r.kind.toLowerCase().includes(q)
     );
+  }, [resources, searchQuery]);
+
+  const totalFiltered = filteredResources.length;
+  const totalPages = Math.max(1, Math.ceil(totalFiltered / pageSize));
+  const safePageIndex = Math.min(pageIndex, totalPages - 1);
+  const start = safePageIndex * pageSize;
+  const itemsOnPage = filteredResources.slice(start, start + pageSize);
+
+  useEffect(() => {
+    if (safePageIndex !== pageIndex) setPageIndex(safePageIndex);
+  }, [safePageIndex, pageIndex]);
+
+  useEffect(() => { setPageIndex(0); }, [searchQuery]);
+
+  const toggleSelection = (r: ScalingResource) => {
+    const key = getResourceKey(r);
+    setSelectedItems((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+    });
+  };
+
+  const toggleAll = () => {
+    if (selectedItems.size === itemsOnPage.length) setSelectedItems(new Set());
+    else setSelectedItems(new Set(itemsOnPage.map(getResourceKey)));
+  };
+
+  const isAllSelected = itemsOnPage.length > 0 && selectedItems.size === itemsOnPage.length;
+
+  if (isLoading) {
+    return <PageLoadingState message="Loading scaling resources..." />;
+  }
+
+  const hpaCount = resources.filter((r) => r.kind === 'HPA').length;
+  const vpaCount = resources.filter((r) => r.kind === 'VPA').length;
+  const pdbCount = resources.filter((r) => r.kind === 'PDB').length;
+
+  return (
+    <div className="flex flex-col gap-6 p-6" role="main" aria-label="Scaling & Policies Overview">
+      <ConnectionRequiredBanner />
+
+      <SectionOverviewHeader
+        title="Scaling & Policies"
+        description="Autoscalers and pod disruption budgets keeping your cluster balanced."
+        icon={Zap}
+        onSync={handleSync}
+        isSyncing={isSyncing}
+      />
+
+      {/* Hero: Scaling Pulse & Policy Summary */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <Card className="lg:col-span-8 overflow-hidden border-slate-200/80 shadow-sm bg-white" aria-live="polite">
+          <CardHeader className="pb-0 pt-8 px-8">
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-xl font-bold tracking-tight text-slate-900">Scaling Activity</CardTitle>
+                <p className="text-sm text-slate-500 mt-1">Autoscaler alignment and replica convergence</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                <span className="text-xs font-semibold text-slate-500">Active</span>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="pt-0 pb-8 px-8">
+            <ScalingPulse />
+            <div className="grid grid-cols-3 gap-6 mt-6 border-t border-slate-100 pt-6">
+              <div>
+                <span className="block text-xs font-medium text-slate-500 mb-1">HPAs</span>
+                <span className="text-xl font-bold text-slate-900 tabular-nums">{hpaCount}</span>
+              </div>
+              <div>
+                <span className="block text-xs font-medium text-slate-500 mb-1">VPAs</span>
+                <span className="text-xl font-bold text-slate-900 tabular-nums">{vpaCount}</span>
+              </div>
+              <div>
+                <span className="block text-xs font-medium text-slate-500 mb-1">PDBs</span>
+                <span className="text-xl font-bold text-slate-900 tabular-nums">{pdbCount}</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="lg:col-span-4 border-slate-200/80 shadow-sm bg-white flex flex-col p-8 overflow-hidden">
+          <div className="flex items-center gap-3 mb-5">
+            <div className="h-9 w-9 rounded-lg bg-slate-100 flex items-center justify-center">
+              <Shield className="h-4.5 w-4.5 text-slate-600" />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-slate-900">Disruption Budget</h3>
+              <p className="text-xs text-slate-500">Pod availability guarantees</p>
+            </div>
+          </div>
+
+          <div className="flex-1 space-y-3">
+            <div className="flex items-center justify-between py-2.5 px-4 rounded-xl bg-slate-50 border border-slate-100">
+              <span className="text-sm font-medium text-slate-700">HPAs Configured</span>
+              <span className="text-sm font-bold text-slate-900 tabular-nums">{hpaCount}</span>
+            </div>
+            <div className="flex items-center justify-between py-2.5 px-4 rounded-xl bg-slate-50 border border-slate-100">
+              <span className="text-sm font-medium text-slate-700">VPAs Active</span>
+              <span className="text-sm font-bold text-slate-900 tabular-nums">{vpaCount}</span>
+            </div>
+            <div className="flex items-center justify-between py-2.5 px-4 rounded-xl bg-slate-50 border border-slate-100">
+              <span className="text-sm font-medium text-slate-700">PDBs Enforced</span>
+              <span className="text-sm font-bold text-slate-900 tabular-nums">{pdbCount}</span>
+            </div>
+          </div>
+
+          <div className="mt-6">
+            <Button variant="outline" asChild className="w-full h-9 border-slate-200 text-slate-600 font-medium hover:bg-slate-50 rounded-lg">
+              <Link to="/horizontal-pod-autoscalers">Manage Autoscalers</Link>
+            </Button>
+          </div>
+        </Card>
+      </div>
+
+      {/* Resources Table */}
+      <div className="bg-white border border-slate-200/80 rounded-2xl overflow-hidden shadow-sm">
+        <div className="p-6 border-b border-slate-100">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <h3 className="text-lg font-bold tracking-tight text-slate-900">Scaling Resources</h3>
+              <p className="text-sm text-slate-500 mt-0.5">HPAs, VPAs, and disruption budgets</p>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="relative min-w-[280px]">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" aria-hidden />
+                <Input
+                  placeholder="Search scaling resources..."
+                  className="pl-10 bg-slate-50 border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500/10 focus:border-blue-300 h-10 text-sm"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  aria-label="Search scaling resources"
+                />
+              </div>
+              {selectedItems.size > 0 && (
+                <Badge variant="secondary" className="bg-blue-50 text-blue-700 border-blue-200">
+                  {selectedItems.size} selected
+                </Badge>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="bg-slate-50/80">
+                <th className="px-6 py-3.5 border-b border-slate-100 w-10">
+                  <Checkbox checked={isAllSelected} onCheckedChange={toggleAll} />
+                </th>
+                <th className="px-6 py-3.5 text-xs font-semibold uppercase tracking-wider text-slate-500 border-b border-slate-100">Name</th>
+                <th className="px-6 py-3.5 text-xs font-semibold uppercase tracking-wider text-slate-500 border-b border-slate-100">Kind</th>
+                <th className="px-6 py-3.5 text-xs font-semibold uppercase tracking-wider text-slate-500 border-b border-slate-100">Namespace</th>
+                <th className="px-6 py-3.5 text-xs font-semibold uppercase tracking-wider text-slate-500 border-b border-slate-100">Status</th>
+                <th className="px-6 py-3.5 border-b border-slate-100"></th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-50 text-sm">
+              {itemsOnPage.map((resource, idx) => {
+                const isSelected = selectedItems.has(getResourceKey(resource));
+                return (
+                  <motion.tr
+                    initial={{ opacity: 0, y: 4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: idx * 0.02 }}
+                    key={getResourceKey(resource)}
+                    className={cn('group hover:bg-slate-50/80 transition-colors', isSelected && 'bg-blue-50/40')}
+                  >
+                    <td className="px-6 py-3.5">
+                      <Checkbox checked={isSelected} onCheckedChange={() => toggleSelection(resource)} />
+                    </td>
+                    <td className="px-6 py-3.5">
+                      <span className="font-semibold text-slate-900 group-hover:text-blue-600 transition-colors">{resource.name}</span>
+                    </td>
+                    <td className="px-6 py-3.5">
+                      <Badge variant="outline" className="text-[10px] uppercase tracking-wider font-semibold border-slate-200 text-slate-500">{resource.kind}</Badge>
+                    </td>
+                    <td className="px-6 py-3.5">
+                      <span className="font-mono text-xs text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md">{resource.namespace}</span>
+                    </td>
+                    <td className="px-6 py-3.5">
+                      <div className="flex items-center gap-2">
+                        <div className={cn('h-1.5 w-1.5 rounded-full', resource.status === 'Active' ? 'bg-emerald-500' : 'bg-amber-500')} />
+                        <span className="text-xs font-medium text-slate-700">{resource.status}</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-3.5 text-right">
+                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0 hover:bg-white hover:text-blue-600 hover:shadow-sm rounded-lg transition-all border border-transparent hover:border-slate-200">
+                        <ArrowUpRight className="h-4 w-4" aria-hidden />
+                      </Button>
+                    </td>
+                  </motion.tr>
+                );
+              })}
+              {itemsOnPage.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="px-6 py-12 text-center text-sm text-slate-400">
+                    {searchQuery ? 'No resources match your search.' : 'No scaling resources found.'}
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {totalFiltered > 0 && (
+          <div className="p-4 border-t border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <ListPagination
+              rangeLabel={`${totalFiltered} ${totalFiltered === 1 ? 'resource' : 'resources'}`}
+              hasPrev={safePageIndex > 0}
+              hasNext={start + pageSize < totalFiltered}
+              onPrev={() => setPageIndex((i) => Math.max(0, i - 1))}
+              onNext={() => setPageIndex((i) => Math.min(totalPages - 1, i + 1))}
+              currentPage={safePageIndex + 1}
+              totalPages={totalPages}
+              onPageChange={(p) => setPageIndex(p - 1)}
+            />
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" asChild className="h-9 px-4 font-medium border-slate-200 text-slate-600 hover:bg-white hover:text-blue-600 rounded-lg transition-all">
+                <Link to="/horizontal-pod-autoscalers">HPAs</Link>
+              </Button>
+              <Button variant="outline" size="sm" asChild className="h-9 px-4 font-medium border-slate-200 text-slate-600 hover:bg-white hover:text-blue-600 rounded-lg transition-all">
+                <Link to="/pod-disruption-budgets">PDBs</Link>
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
 }
