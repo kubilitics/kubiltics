@@ -129,10 +129,10 @@ export const AlertsStrip = () => {
   if (!isConnected) {
     return (
       <section>
-        <h2 className="text-sm font-medium text-muted-foreground dark:text-slate-400 mb-3">Alerts & warnings</h2>
-        <Card className="border-none glass-panel overflow-hidden dark:bg-white/5">
+        <h2 className="text-sm font-medium text-muted-foreground mb-3">Alerts & warnings</h2>
+        <Card className="border-none glass-panel overflow-hidden">
           <CardContent className="p-6">
-            <span className="text-sm text-muted-foreground dark:text-slate-400">No cluster connected</span>
+            <span className="text-sm text-muted-foreground">No cluster connected</span>
           </CardContent>
         </Card>
       </section>
@@ -143,11 +143,11 @@ export const AlertsStrip = () => {
   if (isLoading && overview.isLoading && !overview.data) {
     return (
       <section>
-        <h2 className="text-sm font-medium text-muted-foreground dark:text-slate-400 mb-3">Alerts & warnings</h2>
-        <Card className="border-none glass-panel overflow-hidden dark:bg-white/5">
+        <h2 className="text-sm font-medium text-muted-foreground mb-3">Alerts & warnings</h2>
+        <Card className="border-none glass-panel overflow-hidden">
           <CardContent className="p-6 flex items-center gap-3">
-            <Loader2 className="w-4 h-4 animate-spin text-muted-foreground dark:text-slate-400" />
-            <span className="text-sm text-muted-foreground dark:text-slate-400">Loading alerts…</span>
+            <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+            <span className="text-sm text-muted-foreground">Loading alerts…</span>
           </CardContent>
         </Card>
       </section>
@@ -170,8 +170,8 @@ export const AlertsStrip = () => {
 
     return (
       <Card className={cn(
-        "border-none glass-panel overflow-hidden relative flex flex-col h-full min-h-[200px] dark:bg-white/5",
-        isCritical ? "ring-1 ring-rose-500/20 dark:ring-rose-500/10" : "ring-1 ring-amber-500/20 dark:ring-amber-500/10"
+        "border-none glass-panel overflow-hidden relative flex flex-col h-full min-h-[200px]",
+        isCritical ? "ring-1 ring-rose-500/20" : "ring-1 ring-amber-500/20"
       )}>
         <div className={cn(
           "absolute top-0 left-0 right-0 h-1",
@@ -205,16 +205,16 @@ export const AlertsStrip = () => {
                     initial={{ opacity: 0, y: 6 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: groupIdx * 0.04, duration: 0.2 }}
-                    className="rounded-lg border border-border/50 dark:border-white/10 overflow-hidden bg-card/30 dark:bg-white/5"
+                    className="rounded-lg border border-border/50 overflow-hidden bg-card/30"
                   >
-                    <div className="flex items-center gap-2 px-3 py-2 border-b border-border/40 dark:border-white/10 bg-muted/30 dark:bg-white/10">
+                    <div className="flex items-center gap-2 px-3 py-2 border-b border-border/40 bg-muted/30">
                       <div className={cn("flex items-center justify-center w-6 h-6 rounded border", color)}>
                         <ReasonIcon className="w-3 h-3" />
                       </div>
                       <span className="text-xs font-semibold text-foreground">{reason}</span>
                       <span className="text-[11px] text-muted-foreground tabular-nums">({groupItems.length})</span>
                     </div>
-                    <div className="divide-y divide-border/30 dark:divide-white/10">
+                    <div className="divide-y divide-border/30">
                       {groupItems.map((a, i) => {
                         const href = a.kind && a.name ? getDetailPath(a.kind, a.name, a.namespace) : null;
                         const content = (
@@ -222,14 +222,14 @@ export const AlertsStrip = () => {
                             className={cn(
                               "flex items-center gap-3 px-3 py-2.5 min-h-[48px] border-l-4 transition-all",
                               borderColor,
-                              href && "hover:bg-muted/30 dark:hover:bg-white/10 cursor-pointer group"
+                              href && "hover:bg-muted/30 cursor-pointer group"
                             )}
                           >
                             <div className="flex-1 min-w-0 space-y-0.5">
                               <p className="text-xs font-medium text-foreground truncate">{a.name || a.resource}</p>
                               <div className="flex items-center gap-1.5 flex-wrap">
                                 {a.namespace && (
-                                  <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-muted/80 dark:bg-white/10 text-muted-foreground dark:text-slate-400">{a.namespace}</span>
+                                  <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-muted/80 text-muted-foreground">{a.namespace}</span>
                                 )}
                                 {a.kind && (
                                   <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-primary/10 text-primary">{a.kind}</span>
@@ -289,8 +289,8 @@ export const AlertsStrip = () => {
           )}
         </div>
       ) : (
-        <div className="rounded-xl border border-border/60 dark:border-white/10 bg-card/50 dark:bg-white/5 p-6 flex items-center gap-3 glass-panel">
-          <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-emerald-500/15 dark:bg-emerald-500/20 border border-emerald-500/25 dark:border-emerald-500/30">
+        <div className="rounded-xl border border-border/60 bg-card/50 p-6 flex items-center gap-3 glass-panel">
+          <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-emerald-500/15 border border-emerald-500/25">
             <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
           </div>
           <div>

@@ -46,8 +46,8 @@ export const PodHealthSummary = () => {
 
   if (!isConnected) {
     return (
-      <div className="rounded-lg border border-border/60 dark:border-white/10 bg-muted/30 dark:bg-white/5 p-4">
-        <p className="text-sm text-muted-foreground dark:text-slate-400">No cluster connected</p>
+      <div className="rounded-lg border border-border/60 bg-muted/30 p-4">
+        <p className="text-sm text-muted-foreground">No cluster connected</p>
       </div>
     );
   }
@@ -60,7 +60,7 @@ export const PodHealthSummary = () => {
   ].filter((s) => s.count > 0);
 
   return (
-    <div className="rounded-lg border border-border/60 dark:border-white/10 bg-card/50 dark:bg-white/5 p-4 space-y-4">
+    <div className="rounded-lg border border-border/60 bg-card/50 p-4 space-y-4">
       {/* Pod status stacked bar */}
       <div>
         <div className="flex items-center justify-between mb-2">
@@ -73,7 +73,7 @@ export const PodHealthSummary = () => {
           <p className="text-sm text-muted-foreground">No pods</p>
         ) : (
           <>
-            <div className="h-2 w-full rounded-full overflow-hidden flex bg-muted/50 dark:bg-white/10">
+            <div className="h-2 w-full rounded-full overflow-hidden flex bg-muted/50">
               {segments.map((s, i) => (
                 <div
                   key={i}
@@ -97,7 +97,7 @@ export const PodHealthSummary = () => {
 
       {/* Resource utilization when available */}
       {hasUtilization && (
-        <div className="pt-3 border-t border-border/40 dark:border-white/10">
+        <div className="pt-3 border-t border-border/40">
           <div className="text-sm font-medium text-foreground mb-2">Cluster utilization</div>
           <div className="space-y-2">
             <div>
@@ -105,7 +105,7 @@ export const PodHealthSummary = () => {
                 <span className="text-muted-foreground">CPU</span>
                 <span className="font-medium tabular-nums">{utilization!.cpu_percent}%</span>
               </div>
-              <div className="h-1.5 w-full rounded-full bg-muted/50 dark:bg-white/10 overflow-hidden">
+              <div className="h-1.5 w-full rounded-full bg-muted/50 overflow-hidden">
                 <div
                   className={cn(
                     "h-full rounded-full transition-all",
@@ -120,7 +120,7 @@ export const PodHealthSummary = () => {
                 <span className="text-muted-foreground">Memory</span>
                 <span className="font-medium tabular-nums">{utilization!.memory_percent}%</span>
               </div>
-              <div className="h-1.5 w-full rounded-full bg-muted/50 dark:bg-white/10 overflow-hidden">
+              <div className="h-1.5 w-full rounded-full bg-muted/50 overflow-hidden">
                 <div
                   className={cn(
                     "h-full rounded-full transition-all",

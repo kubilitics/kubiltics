@@ -251,10 +251,10 @@ function StepTracker({
                 className={[
                   'w-7 h-7 rounded-full flex items-center justify-center border',
                   status === 'done'
-                    ? 'bg-green-500/20 border-green-500/50 text-green-400 dark:bg-green-500/30 dark:border-green-500/60'
+                    ? 'bg-green-500/20 border-green-500/50 text-green-400'
                     : status === 'active'
-                    ? 'bg-blue-500/20 border-blue-500/50 text-blue-400 dark:bg-blue-500/30 dark:border-blue-500/60'
-                    : 'bg-slate-800 border-slate-700 text-slate-600 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-500',
+                    ? 'bg-blue-500/20 border-blue-500/50 text-blue-400'
+                    : 'bg-slate-800 border-slate-700 text-slate-600',
                 ].join(' ')}
                 animate={status === 'active' ? { scale: [1, 1.1, 1] } : {}}
                 transition={{ repeat: Infinity, duration: 1.5 }}
@@ -267,7 +267,7 @@ function StepTracker({
                   <Icon className="h-3.5 w-3.5" />
                 )}
               </motion.div>
-              <span className="text-[9px] text-slate-500 dark:text-slate-400 text-center leading-tight max-w-12 truncate">
+              <span className="text-[9px] text-slate-500 text-center leading-tight max-w-12 truncate">
                 {cs.label}
               </span>
             </div>
@@ -277,8 +277,8 @@ function StepTracker({
                   'flex-1 h-0.5 mb-4 rounded-full',
                   getStepStatus(canonicalSteps[i + 1].key) !== 'pending' ||
                   status === 'done'
-                    ? 'bg-blue-500/40 dark:bg-blue-500/50'
-                    : 'bg-slate-700 dark:bg-slate-600',
+                    ? 'bg-blue-500/40'
+                    : 'bg-slate-700',
                 ].join(' ')}
               />
             )}
@@ -307,10 +307,10 @@ function ToolCallCard({ rec }: { rec: ToolCallRecord }) {
     >
       {/* Timeline dot */}
       <div className="flex flex-col items-center pt-1">
-        <div className="w-5 h-5 rounded-full bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center flex-shrink-0 dark:bg-cyan-500/30 dark:border-cyan-500/50">
+        <div className="w-5 h-5 rounded-full bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center flex-shrink-0">
           <Wrench className="h-2.5 w-2.5 text-cyan-400" />
         </div>
-        <div className="w-px flex-1 bg-slate-700/50 dark:bg-slate-600/50 mt-1" />
+        <div className="w-px flex-1 bg-slate-700/50 mt-1" />
       </div>
 
       {/* Card body */}
@@ -320,23 +320,23 @@ function ToolCallCard({ rec }: { rec: ToolCallRecord }) {
           onClick={() => setExpanded(e => !e)}
         >
           <div className="flex items-center gap-2">
-            <code className="text-[11px] font-mono text-cyan-300 bg-cyan-500/10 px-1.5 py-0.5 rounded dark:bg-cyan-500/20">
+            <code className="text-[11px] font-mono text-cyan-300 bg-cyan-500/10 px-1.5 py-0.5 rounded">
               {rec.tool_name}
             </code>
-            <span className="text-[10px] text-slate-500 dark:text-slate-400">turn {rec.turn_index}</span>
+            <span className="text-[10px] text-slate-500">turn {rec.turn_index}</span>
             {expanded ? (
-              <ChevronDown className="h-3 w-3 text-slate-600 dark:text-slate-400 ml-auto" />
+              <ChevronDown className="h-3 w-3 text-slate-600 ml-auto" />
             ) : (
-              <ChevronRight className="h-3 w-3 text-slate-600 dark:text-slate-400 ml-auto" />
+              <ChevronRight className="h-3 w-3 text-slate-600 ml-auto" />
             )}
           </div>
         </button>
 
         {/* Result preview */}
-        <div className="mt-1 text-[11px] text-slate-400 dark:text-slate-500 leading-relaxed">
+        <div className="mt-1 text-[11px] text-slate-400 leading-relaxed">
           {resultPreview}
           {hasMore && !expanded && (
-            <span className="text-slate-600 dark:text-slate-500">…</span>
+            <span className="text-slate-600">…</span>
           )}
         </div>
 
@@ -351,15 +351,15 @@ function ToolCallCard({ rec }: { rec: ToolCallRecord }) {
             >
               {argsStr && (
                 <div>
-                  <div className="text-[10px] text-slate-600 dark:text-slate-400 mb-1 uppercase tracking-wide">Arguments</div>
-                  <pre className="text-[10px] font-mono bg-slate-800/60 dark:bg-slate-700/60 rounded p-2 overflow-x-auto text-slate-300 dark:text-slate-200">
+                  <div className="text-[10px] text-slate-600 mb-1 uppercase tracking-wide">Arguments</div>
+                  <pre className="text-[10px] font-mono bg-slate-800/60 rounded p-2 overflow-x-auto text-slate-300">
                     {argsStr}
                   </pre>
                 </div>
               )}
               <div>
-                <div className="text-[10px] text-slate-600 dark:text-slate-400 mb-1 uppercase tracking-wide">Full Result</div>
-                <pre className="text-[10px] font-mono bg-slate-800/60 dark:bg-slate-700/60 rounded p-2 overflow-x-auto text-slate-300 dark:text-slate-200 max-h-40">
+                <div className="text-[10px] text-slate-600 mb-1 uppercase tracking-wide">Full Result</div>
+                <pre className="text-[10px] font-mono bg-slate-800/60 rounded p-2 overflow-x-auto text-slate-300 max-h-40">
                   {rec.result}
                 </pre>
               </div>
@@ -477,10 +477,10 @@ function StreamingTextDisplay({ text }: { text: string }) {
   if (!text) return null;
 
   return (
-    <div className="rounded-lg border border-slate-700/50 dark:border-slate-600/50 bg-slate-900/50 dark:bg-slate-800/50 p-3">
+    <div className="rounded-lg border border-slate-700/50 bg-slate-900/50 p-3">
       <div className="flex items-center gap-1.5 mb-2">
         <Brain className="h-3 w-3 text-purple-400" />
-        <span className="text-[10px] text-purple-400 dark:text-purple-300 uppercase tracking-wide font-semibold">
+        <span className="text-[10px] text-purple-400 uppercase tracking-wide font-semibold">
           AI Reasoning
         </span>
         <div className="ml-auto flex gap-0.5">
@@ -494,7 +494,7 @@ function StreamingTextDisplay({ text }: { text: string }) {
           ))}
         </div>
       </div>
-      <p className="text-[11px] text-slate-400 dark:text-slate-500 leading-relaxed font-mono whitespace-pre-wrap">
+      <p className="text-[11px] text-slate-400 leading-relaxed font-mono whitespace-pre-wrap">
         {text}
         <motion.span
           className="inline-block w-0.5 h-3 bg-purple-400 ml-0.5 align-middle"
@@ -518,7 +518,7 @@ function InvestigationHistory({
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-6 gap-2 text-slate-500 dark:text-slate-400">
+      <div className="flex items-center justify-center py-6 gap-2 text-slate-500">
         <Loader2 className="h-4 w-4 animate-spin" />
         <span className="text-xs">Loading history…</span>
       </div>
@@ -539,8 +539,8 @@ function InvestigationHistory({
   if (!investigations || investigations.length === 0) {
     return (
       <div className="text-center py-8">
-        <BookOpen className="h-8 w-8 text-slate-700 dark:text-slate-600 mx-auto mb-2" />
-        <p className="text-xs text-slate-500 dark:text-slate-400">No investigations yet</p>
+        <BookOpen className="h-8 w-8 text-slate-700 mx-auto mb-2" />
+        <p className="text-xs text-slate-500">No investigations yet</p>
       </div>
     );
   }
@@ -555,10 +555,10 @@ function InvestigationHistory({
         <button
           key={inv.id}
           onClick={() => onResume(inv.id)}
-          className="w-full text-left rounded-lg border border-slate-700/50 dark:border-slate-600/50 bg-slate-800/40 dark:bg-slate-700/40 p-3 hover:border-slate-600 dark:hover:border-slate-500 hover:bg-slate-800/60 dark:hover:bg-slate-700/60 transition-all group"
+          className="w-full text-left rounded-lg border border-slate-700/50 bg-slate-800/40 p-3 hover:border-slate-600 hover:bg-slate-800/60 transition-all group"
         >
           <div className="flex items-start justify-between gap-2">
-            <p className="text-[11px] text-slate-300 dark:text-slate-200 leading-snug line-clamp-2 flex-1">
+            <p className="text-[11px] text-slate-300 leading-snug line-clamp-2 flex-1">
               {inv.description}
             </p>
             <Badge variant={stateBadgeVariant(inv.state)} className="text-[9px] flex-shrink-0">
@@ -566,12 +566,12 @@ function InvestigationHistory({
             </Badge>
           </div>
           <div className="flex items-center gap-2 mt-1.5">
-            <span className="text-[9px] text-slate-600 dark:text-slate-500">{inv.type}</span>
-            <span className="text-[9px] text-slate-700 dark:text-slate-600">·</span>
+            <span className="text-[9px] text-slate-600">{inv.type}</span>
+            <span className="text-[9px] text-slate-700">·</span>
             {inv.findings && (
-              <span className="text-[9px] text-slate-600 dark:text-slate-500">{inv.findings.length} findings</span>
+              <span className="text-[9px] text-slate-600">{inv.findings.length} findings</span>
             )}
-            <span className="text-[9px] text-slate-700 dark:text-slate-600 ml-auto">
+            <span className="text-[9px] text-slate-700 ml-auto">
               {new Date(inv.created_at).toLocaleDateString()}
             </span>
           </div>
@@ -623,7 +623,7 @@ function ActiveInvestigation({
         </div>
         <div className="flex items-center gap-2">
           {investigation.tokens_used > 0 && (
-            <span className="text-[10px] text-slate-600 dark:text-slate-400">
+            <span className="text-[10px] text-slate-600">
               {investigation.tokens_used.toLocaleString()} tokens
             </span>
           )}
@@ -642,8 +642,8 @@ function ActiveInvestigation({
       </div>
 
       {/* Description */}
-      <div className="rounded-lg bg-slate-800/40 dark:bg-slate-700/40 border border-slate-700/50 dark:border-slate-600/50 p-3">
-        <p className="text-[11px] text-slate-400 dark:text-slate-500 italic leading-relaxed">
+      <div className="rounded-lg bg-slate-800/40 border border-slate-700/50 p-3">
+        <p className="text-[11px] text-slate-400 italic leading-relaxed">
           "{investigation.description}"
         </p>
       </div>
@@ -743,7 +743,7 @@ function LauncherForm({
                 'flex flex-col items-center gap-1 rounded-lg border p-2 text-center transition-all',
                 type === t.value
                   ? `${t.bg} ${t.border} ${t.color}`
-                  : 'border-slate-700/50 dark:border-slate-600/50 bg-slate-800/40 dark:bg-slate-700/40 text-slate-500 dark:text-slate-400 hover:border-slate-600 dark:hover:border-slate-500 hover:text-slate-400 dark:hover:text-slate-300',
+                  : 'border-slate-700/50 bg-slate-800/40 text-slate-500 hover:border-slate-600 hover:text-slate-400',
               ].join(' ')}
               title={t.description}
             >
@@ -762,14 +762,14 @@ function LauncherForm({
           onChange={e => setDescription(e.target.value)}
           onKeyDown={handleKey}
           placeholder="Describe what you want to investigate… (⌘↵ to run)"
-          className="min-h-[80px] resize-none bg-slate-800/60 dark:bg-slate-700/60 border-slate-700 dark:border-slate-600 text-slate-200 dark:text-slate-100 placeholder:text-slate-600 dark:placeholder:text-slate-500 text-sm pr-4 focus:border-blue-500/50"
+          className="min-h-[80px] resize-none bg-slate-800/60 border-slate-700 text-slate-200 placeholder:text-slate-600 text-sm pr-4 focus:border-blue-500/50"
           disabled={isLoading}
         />
       </div>
 
       {/* Suggested queries */}
       <div>
-        <p className="text-[10px] text-slate-600 dark:text-slate-400 mb-1.5 uppercase tracking-wide">Quick Start</p>
+        <p className="text-[10px] text-slate-600 mb-1.5 uppercase tracking-wide">Quick Start</p>
         <div className="flex flex-wrap gap-1.5">
           {SUGGESTED_QUERIES.slice(0, 3).map(q => (
             <button
@@ -778,7 +778,7 @@ function LauncherForm({
                 setDescription(q);
                 textareaRef.current?.focus();
               }}
-              className="text-[10px] text-slate-500 dark:text-slate-400 border border-slate-700/50 dark:border-slate-600/50 rounded-full px-2 py-0.5 hover:border-blue-500/30 dark:hover:border-blue-500/40 hover:text-blue-400 transition-colors"
+              className="text-[10px] text-slate-500 border border-slate-700/50 rounded-full px-2 py-0.5 hover:border-blue-500/30 hover:text-blue-400 transition-colors"
             >
               {q.slice(0, 40)}…
             </button>
@@ -876,16 +876,16 @@ export function InvestigationPanel({
   }, []);
 
   return (
-    <div className="flex flex-col h-full bg-slate-900 dark:bg-slate-950">
+    <div className="flex flex-col h-full bg-slate-900">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-slate-800 dark:border-slate-700 flex-shrink-0">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-slate-800 flex-shrink-0">
         <div className="flex items-center gap-2">
-          <div className="w-6 h-6 rounded-lg bg-blue-500/20 dark:bg-blue-500/30 flex items-center justify-center">
+          <div className="w-6 h-6 rounded-lg bg-blue-500/20 flex items-center justify-center">
             <Brain className="h-3.5 w-3.5 text-blue-400" />
           </div>
           <div>
-            <h3 className="text-sm font-semibold text-slate-200 dark:text-slate-100">AI Investigation</h3>
-            <p className="text-[10px] text-slate-500 dark:text-slate-400">
+            <h3 className="text-sm font-semibold text-slate-200">AI Investigation</h3>
+            <p className="text-[10px] text-slate-500">
               {investigation
                 ? `#${investigation.id.slice(-8)}`
                 : 'Autonomous root-cause analysis'}
@@ -905,8 +905,8 @@ export function InvestigationPanel({
               className={[
                 'flex items-center gap-1 px-2 py-1 rounded text-[10px] font-medium transition-colors',
                 view === tab.id
-                  ? 'bg-slate-700 dark:bg-slate-700 text-slate-200 dark:text-slate-100'
-                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-300 dark:hover:text-slate-300',
+                  ? 'bg-slate-700 text-slate-200'
+                  : 'text-slate-500 hover:text-slate-300',
               ].join(' ')}
             >
               <tab.icon className="h-3 w-3" />
@@ -919,8 +919,8 @@ export function InvestigationPanel({
               className={[
                 'flex items-center gap-1 px-2 py-1 rounded text-[10px] font-medium transition-colors',
                 view === 'active'
-                  ? 'bg-slate-700 dark:bg-slate-700 text-slate-200 dark:text-slate-100'
-                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-300 dark:hover:text-slate-300',
+                  ? 'bg-slate-700 text-slate-200'
+                  : 'text-slate-500 hover:text-slate-300',
               ].join(' ')}
             >
               <Activity className="h-3 w-3" />
@@ -1007,10 +1007,10 @@ export function InvestigationPanel({
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              className="mt-4 rounded-lg border border-red-500/30 dark:border-red-500/40 bg-red-500/10 dark:bg-red-500/15 p-3 flex items-start gap-2"
+              className="mt-4 rounded-lg border border-red-500/30 bg-red-500/10 p-3 flex items-start gap-2"
             >
-              <AlertTriangle className="h-3.5 w-3.5 text-red-400 dark:text-red-300 flex-shrink-0 mt-0.5" />
-              <p className="text-[11px] text-red-300 dark:text-red-200">{error}</p>
+              <AlertTriangle className="h-3.5 w-3.5 text-red-400 flex-shrink-0 mt-0.5" />
+              <p className="text-[11px] text-red-300">{error}</p>
             </motion.div>
           )}
         </div>
@@ -1078,17 +1078,17 @@ export function InvestigationTriggerButton({
               initial={{ scale: 0.95, y: 20 }}
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.95, y: 20 }}
-              className="w-full max-w-lg mx-4 rounded-2xl border border-slate-700 dark:border-slate-600 bg-slate-900 dark:bg-slate-950 shadow-2xl overflow-hidden"
+              className="w-full max-w-lg mx-4 rounded-2xl border border-slate-700 bg-slate-900 shadow-2xl overflow-hidden"
               style={{ maxHeight: '80vh' }}
             >
-              <div className="flex items-center justify-between px-4 py-3 border-b border-slate-800 dark:border-slate-700">
+              <div className="flex items-center justify-between px-4 py-3 border-b border-slate-800">
                 <div className="flex items-center gap-2">
                   <Brain className="h-4 w-4 text-blue-400" />
-                  <span className="text-sm font-semibold text-slate-200 dark:text-slate-100">AI Investigation</span>
+                  <span className="text-sm font-semibold text-slate-200">AI Investigation</span>
                 </div>
                 <button
                   onClick={() => setOpen(false)}
-                  className="text-slate-500 dark:text-slate-400 hover:text-slate-300 dark:hover:text-slate-300 transition-colors"
+                  className="text-slate-500 hover:text-slate-300 transition-colors"
                 >
                   <X className="h-4 w-4" />
                 </button>
@@ -1106,7 +1106,7 @@ export function InvestigationTriggerButton({
                     />
                   </div>
                 ) : (
-                  <div className="p-4 flex items-center gap-2 text-slate-400 dark:text-slate-500">
+                  <div className="p-4 flex items-center gap-2 text-slate-400">
                     <Loader2 className="h-4 w-4 animate-spin" />
                     <span className="text-sm">Starting investigation…</span>
                   </div>

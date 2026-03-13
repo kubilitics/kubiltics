@@ -15,8 +15,8 @@ import { useBackendConfigStore } from "@/stores/backendConfigStore";
 import { cn } from "@/lib/utils";
 
 const STATUS_CONFIG: Record<string, { badge: string; icon: typeof CheckCircle2 }> = {
-  excellent: { badge: "bg-success/10 dark:bg-success/20 border-success/20 dark:border-success/30 text-success dark:text-emerald-300", icon: CheckCircle2 },
-  good: { badge: "bg-success/10 dark:bg-success/20 border-success/20 dark:border-success/30 text-success dark:text-emerald-300", icon: CheckCircle2 },
+  excellent: { badge: "bg-success/10 border-success/20 text-success", icon: CheckCircle2 },
+  good: { badge: "bg-success/10 border-success/20 text-success", icon: CheckCircle2 },
   fair: { badge: "bg-amber-100 dark:bg-amber-900/30 border-amber-200 text-amber-700 dark:text-amber-400", icon: AlertTriangle },
   poor: { badge: "bg-amber-100 dark:bg-amber-900/30 border-amber-200 text-amber-700 dark:text-amber-400", icon: AlertTriangle },
   critical: { badge: "bg-rose-100 dark:bg-rose-900/30 border-rose-200 text-rose-700 dark:text-rose-400", icon: AlertCircle },
@@ -56,9 +56,9 @@ export const ClusterHealthWidget = () => {
   const hasData = activeCluster || clusterId;
 
   return (
-    <Card className="h-full min-h-[28rem] border-none soft-shadow glass-panel relative overflow-hidden group flex flex-col dark:bg-white/5">
-      <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary via-blue-500 to-cyan-500 dark:from-blue-400 dark:via-cyan-400 dark:to-cyan-300" />
-      <div className="absolute top-0 right-0 w-48 h-48 bg-primary/5 dark:bg-primary/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none" />
+    <Card className="h-full min-h-[28rem] border-none soft-shadow glass-panel relative overflow-hidden group flex flex-col">
+      <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary via-blue-500 to-cyan-500" />
+      <div className="absolute top-0 right-0 w-48 h-48 bg-primary/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none" />
 
       <CardHeader className="pb-2 pt-5 px-6 relative z-10 shrink-0">
         <div className="flex items-center justify-between gap-2">
@@ -129,7 +129,7 @@ export const ClusterHealthWidget = () => {
         </div>
 
         {/* Breakdown — 4 factors */}
-        <div className="space-y-2 pt-2 border-t border-border/50 dark:border-white/10">
+        <div className="space-y-2 pt-2 border-t border-border/50">
           <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Health factors</p>
           <div className="grid grid-cols-2 gap-x-4 gap-y-2">
             {(["podHealth", "nodeHealth", "stability", "eventHealth"] as const).map((key) => (
@@ -152,7 +152,7 @@ export const ClusterHealthWidget = () => {
 
         {/* Insight */}
         {insight && (
-          <div className="mt-4 pt-3 border-t border-border/50 dark:border-white/10">
+          <div className="mt-4 pt-3 border-t border-border/50">
             <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2">{insight}</p>
             {(status === "fair" || status === "poor" || status === "critical") && (
               <Link

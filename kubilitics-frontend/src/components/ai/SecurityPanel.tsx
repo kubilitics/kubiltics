@@ -79,7 +79,7 @@ function ScoreRing({ score, grade }: { score: number; grade: string }) {
   return (
     <div className="relative flex items-center justify-center">
       <svg width="72" height="72" viewBox="0 0 72 72">
-        <circle cx="36" cy="36" r={r} fill="none" stroke="#1e293b" strokeWidth="6" className="dark:stroke-slate-700" />
+        <circle cx="36" cy="36" r={r} fill="none" stroke="#1e293b" strokeWidth="6" />
         <motion.circle
           cx="36" cy="36" r={r} fill="none" stroke={color} strokeWidth="6"
           strokeLinecap="round"
@@ -91,7 +91,7 @@ function ScoreRing({ score, grade }: { score: number; grade: string }) {
         />
       </svg>
       <div className="absolute flex flex-col items-center">
-        <span className="text-xl font-bold text-white dark:text-slate-100">{score}</span>
+        <span className="text-xl font-bold text-white">{score}</span>
         <span className="text-xs" style={{ color }}>{grade}</span>
       </div>
     </div>
@@ -111,13 +111,13 @@ function PostureTab() {
     return (
       <div className="flex items-center justify-center py-12">
         <RefreshCw className="h-5 w-5 text-red-400 animate-spin mr-2" />
-        <span className="text-sm text-slate-400 dark:text-slate-500">Analyzing cluster security…</span>
+        <span className="text-sm text-slate-400">Analyzing cluster security…</span>
       </div>
     );
   }
   if (error) {
     return (
-      <div className="flex items-center gap-2 text-red-400 dark:text-red-300 text-sm p-4">
+      <div className="flex items-center gap-2 text-red-400 text-sm p-4">
         <AlertCircle className="h-4 w-4 shrink-0" /><span>{error}</span>
       </div>
     );
@@ -130,10 +130,10 @@ function PostureTab() {
     <div className="space-y-4">
       {/* Score + summary */}
       {posture && (
-        <div className="bg-slate-800/60 dark:bg-slate-700/60 border border-slate-700/50 dark:border-slate-600/50 rounded-xl p-4 flex items-center gap-4">
+        <div className="bg-slate-800/60 border border-slate-700/50 rounded-xl p-4 flex items-center gap-4">
           <ScoreRing score={posture.score} grade={posture.grade} />
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-white dark:text-slate-100">Security Score</p>
+            <p className="text-sm font-semibold text-white">Security Score</p>
             <div className="grid grid-cols-2 gap-1 mt-1">
               {[
                 { label: 'Critical', val: summary.critical, color: 'text-red-400' },
@@ -142,7 +142,7 @@ function PostureTab() {
                 { label: 'Low', val: summary.low, color: 'text-blue-400' },
               ].map(({ label, val, color }) => (
                 <div key={label} className="flex items-center justify-between text-xs">
-                  <span className="text-slate-400 dark:text-slate-500">{label}</span>
+                  <span className="text-slate-400">{label}</span>
                   <span className={`font-medium ${color}`}>{val}</span>
                 </div>
               ))}
@@ -154,17 +154,17 @@ function PostureTab() {
       {/* Stats row */}
       {posture && (
         <div className="grid grid-cols-3 gap-2">
-          <div className="bg-slate-800/60 dark:bg-slate-700/60 border border-slate-700/50 dark:border-slate-600/50 rounded-lg p-2 text-center">
+          <div className="bg-slate-800/60 border border-slate-700/50 rounded-lg p-2 text-center">
             <p className="text-lg font-bold text-orange-400">{posture.rbac_findings}</p>
-            <p className="text-xs text-slate-400 dark:text-slate-500">RBAC Issues</p>
+            <p className="text-xs text-slate-400">RBAC Issues</p>
           </div>
-          <div className="bg-slate-800/60 dark:bg-slate-700/60 border border-slate-700/50 dark:border-slate-600/50 rounded-lg p-2 text-center">
+          <div className="bg-slate-800/60 border border-slate-700/50 rounded-lg p-2 text-center">
             <p className="text-lg font-bold text-yellow-400">{posture.network_gaps}</p>
-            <p className="text-xs text-slate-400 dark:text-slate-500">Net Gaps</p>
+            <p className="text-xs text-slate-400">Net Gaps</p>
           </div>
-          <div className="bg-slate-800/60 dark:bg-slate-700/60 border border-slate-700/50 dark:border-slate-600/50 rounded-lg p-2 text-center">
+          <div className="bg-slate-800/60 border border-slate-700/50 rounded-lg p-2 text-center">
             <p className="text-lg font-bold text-red-400">{posture.secret_exposures}</p>
-            <p className="text-xs text-slate-400 dark:text-slate-500">Secret Risks</p>
+            <p className="text-xs text-slate-400">Secret Risks</p>
           </div>
         </div>
       )}
@@ -172,7 +172,7 @@ function PostureTab() {
       {/* Secret exposures quick list */}
       {secretsData && secretsData.total > 0 && (
         <div className="space-y-1">
-          <p className="text-xs font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+          <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">
             Secret Exposures ({secretsData.total})
           </p>
           {secretsData.exposures.slice(0, 3).map((ex: SecretExposure, i: number) => (
@@ -180,13 +180,13 @@ function PostureTab() {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 min-w-0">
                   <Key className="h-3.5 w-3.5 text-red-400 shrink-0" />
-                  <span className="text-xs font-medium text-white dark:text-slate-100 truncate">{ex.name}</span>
+                  <span className="text-xs font-medium text-white truncate">{ex.name}</span>
                 </div>
                 <span className={`text-xs font-medium shrink-0 ml-2 ${severityColor(ex.risk_level)}`}>
                   {ex.risk_level}
                 </span>
               </div>
-              <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5 truncate">{ex.namespace}</p>
+              <p className="text-xs text-slate-400 mt-0.5 truncate">{ex.namespace}</p>
             </div>
           ))}
         </div>
@@ -195,7 +195,7 @@ function PostureTab() {
       {/* Top issues */}
       {issuesData && issuesData.issues.length > 0 && (
         <div className="space-y-1">
-          <p className="text-xs font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+          <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">
             Top Issues
           </p>
           {issuesData.issues.slice(0, 4).map((iss, i) => (
@@ -209,8 +209,8 @@ function PostureTab() {
               <div className="flex items-start gap-2">
                 <AlertTriangle className={`h-3.5 w-3.5 mt-0.5 shrink-0 ${severityColor(iss.severity)}`} />
                 <div className="min-w-0">
-                  <p className="text-xs font-medium text-white dark:text-slate-100">{iss.title}</p>
-                  <p className="text-xs text-slate-400 dark:text-slate-500 truncate">{iss.resource}{iss.namespace ? ` · ${iss.namespace}` : ''}</p>
+                  <p className="text-xs font-medium text-white">{iss.title}</p>
+                  <p className="text-xs text-slate-400 truncate">{iss.resource}{iss.namespace ? ` · ${iss.namespace}` : ''}</p>
                 </div>
               </div>
             </motion.div>
@@ -219,33 +219,33 @@ function PostureTab() {
       )}
 
       {/* Image scanner */}
-      <div className="bg-slate-800/60 dark:bg-slate-700/60 border border-slate-700/50 dark:border-slate-600/50 rounded-xl p-3 space-y-2">
-        <p className="text-xs font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wider">Image Vulnerability Scan</p>
+      <div className="bg-slate-800/60 border border-slate-700/50 rounded-xl p-3 space-y-2">
+        <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">Image Vulnerability Scan</p>
         <div className="flex gap-2">
           <input
             value={scanImage}
             onChange={e => setScanImage(e.target.value)}
             placeholder="nginx:1.21 or alpine:3.18"
-            className="flex-1 bg-slate-900/60 dark:bg-slate-800/60 border border-slate-600/50 dark:border-slate-600/50 rounded-lg px-3 py-1.5 text-xs text-slate-200 dark:text-slate-100 placeholder:text-slate-500 dark:placeholder:text-slate-600 focus:outline-none focus:border-red-500/50"
+            className="flex-1 bg-slate-900/60 border border-slate-600/50 rounded-lg px-3 py-1.5 text-xs text-slate-200 placeholder:text-slate-500 focus:outline-none focus:border-red-500/50"
           />
           <button
             onClick={() => scanImage && scan(scanImage)}
             disabled={scanLoading || !scanImage}
-            className="px-3 py-1.5 bg-red-500/20 dark:bg-red-500/30 border border-red-500/30 dark:border-red-500/40 text-red-300 dark:text-red-200 text-xs rounded-lg hover:bg-red-500/30 dark:hover:bg-red-500/40 disabled:opacity-50 transition-colors"
+            className="px-3 py-1.5 bg-red-500/20 border border-red-500/30 text-red-300 text-xs rounded-lg hover:bg-red-500/30 disabled:opacity-50 transition-colors"
           >
             {scanLoading ? <RefreshCw className="h-3 w-3 animate-spin" /> : 'Scan'}
           </button>
         </div>
-        {scanError && <p className="text-xs text-red-400 dark:text-red-300">{scanError}</p>}
+        {scanError && <p className="text-xs text-red-400">{scanError}</p>}
         {scanResult && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
             className={`border rounded-lg px-3 py-2 ${scanResult.risk_level === 'CRITICAL' || scanResult.risk_level === 'HIGH' ? 'bg-red-500/10 border-red-500/30' : 'bg-yellow-500/10 border-yellow-500/30'}`}
           >
             <div className="flex justify-between text-xs">
-              <span className="text-slate-300 dark:text-slate-200 font-medium">{scanResult.image}</span>
+              <span className="text-slate-300 font-medium">{scanResult.image}</span>
               <span className={severityColor(scanResult.risk_level as Severity)}>{scanResult.risk_level}</span>
             </div>
-            <div className="flex gap-3 mt-1 text-xs text-slate-400 dark:text-slate-500">
+            <div className="flex gap-3 mt-1 text-xs text-slate-400">
               <span><span className="text-red-400 font-medium">{scanResult.critical_count}</span> CRIT</span>
               <span><span className="text-orange-400 font-medium">{scanResult.high_count}</span> HIGH</span>
               <span><span className="text-yellow-400 font-medium">{scanResult.medium_count}</span> MED</span>
@@ -257,10 +257,10 @@ function PostureTab() {
 
       {/* Meta */}
       {posture && (
-        <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+        <div className="flex items-center justify-between text-xs text-slate-500">
           <span>{posture.pod_scanned} pods · {posture.roles_audited} roles · {posture.namespaces} ns</span>
           <button onClick={refresh}
-            className="flex items-center gap-1 text-red-400 dark:text-red-300 hover:text-red-300 dark:hover:text-red-200 transition-colors">
+            className="flex items-center gap-1 text-red-400 hover:text-red-300 transition-colors">
             <RefreshCw className={`h-3 w-3 ${loading ? 'animate-spin' : ''}`} />
             {lastRefreshedAt ? lastRefreshedAt.toLocaleTimeString() : 'Refresh'}
           </button>
@@ -270,9 +270,9 @@ function PostureTab() {
       {/* Recommendations */}
       {posture?.recommendations && posture.recommendations.length > 0 && (
         <div className="space-y-1">
-          <p className="text-xs font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wider">Recommendations</p>
+          <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">Recommendations</p>
           {posture.recommendations.slice(0, 4).map((rec, i) => (
-            <div key={i} className="flex items-start gap-2 text-xs text-slate-300 dark:text-slate-200">
+            <div key={i} className="flex items-start gap-2 text-xs text-slate-300">
               <ChevronRight className="h-3.5 w-3.5 text-red-400 shrink-0 mt-0.5" />
               <span>{rec}</span>
             </div>
@@ -291,10 +291,10 @@ function RBACTab() {
   if (loading && !data) return (
     <div className="flex items-center justify-center py-12">
       <RefreshCw className="h-5 w-5 text-red-400 animate-spin mr-2" />
-      <span className="text-sm text-slate-400 dark:text-slate-500">Auditing RBAC…</span>
+      <span className="text-sm text-slate-400">Auditing RBAC…</span>
     </div>
   );
-  if (error) return <div className="flex items-center gap-2 text-red-400 dark:text-red-300 text-sm p-4"><AlertCircle className="h-4 w-4 shrink-0" /><span>{error}</span></div>;
+  if (error) return <div className="flex items-center gap-2 text-red-400 text-sm p-4"><AlertCircle className="h-4 w-4 shrink-0" /><span>{error}</span></div>;
 
   const findings: RBACFinding[] = data?.findings ?? [];
   const bySev = data?.by_severity ?? {};
@@ -314,8 +314,8 @@ function RBACTab() {
       )}
 
       <div className="flex items-center justify-between">
-        <p className="text-xs text-slate-400 dark:text-slate-500">{findings.length} findings · {data?.roles_audited ?? 0} roles audited</p>
-        <button onClick={refresh} className="flex items-center gap-1 text-xs text-red-400 dark:text-red-300 hover:text-red-300 dark:hover:text-red-200">
+        <p className="text-xs text-slate-400">{findings.length} findings · {data?.roles_audited ?? 0} roles audited</p>
+        <button onClick={refresh} className="flex items-center gap-1 text-xs text-red-400 hover:text-red-300">
           <RefreshCw className={`h-3 w-3 ${loading ? 'animate-spin' : ''}`} /> Refresh
         </button>
       </div>
@@ -338,16 +338,16 @@ function RBACTab() {
           <div className="flex items-center justify-between mb-1">
             <div className="flex items-center gap-2 min-w-0">
               <Lock className={`h-3.5 w-3.5 shrink-0 ${severityColor(f.severity)}`} />
-              <span className="text-sm font-medium text-white dark:text-slate-100 truncate">{f.name}</span>
+              <span className="text-sm font-medium text-white truncate">{f.name}</span>
             </div>
             <span className={`text-xs font-medium shrink-0 ml-2 ${severityColor(f.severity)}`}>{f.severity}</span>
           </div>
-          <p className="text-xs text-slate-400 dark:text-slate-500 mb-1">{f.resource_type}{f.namespace ? ` · ${f.namespace}` : ''}</p>
+          <p className="text-xs text-slate-400 mb-1">{f.resource_type}{f.namespace ? ` · ${f.namespace}` : ''}</p>
           {f.issues.slice(0, 2).map((issue, i) => (
-            <p key={i} className="text-xs text-slate-300 dark:text-slate-200">• {issue}</p>
+            <p key={i} className="text-xs text-slate-300">• {issue}</p>
           ))}
           {f.issues.length > 2 && (
-            <p className="text-xs text-slate-500 dark:text-slate-600">+{f.issues.length - 2} more issues</p>
+            <p className="text-xs text-slate-500">+{f.issues.length - 2} more issues</p>
           )}
         </motion.div>
       ))}
@@ -363,10 +363,10 @@ function NetworkTab() {
   if (loading && !data) return (
     <div className="flex items-center justify-center py-12">
       <RefreshCw className="h-5 w-5 text-red-400 animate-spin mr-2" />
-      <span className="text-sm text-slate-400 dark:text-slate-500">Analyzing network policies…</span>
+      <span className="text-sm text-slate-400">Analyzing network policies…</span>
     </div>
   );
-  if (error) return <div className="flex items-center gap-2 text-red-400 dark:text-red-300 text-sm p-4"><AlertCircle className="h-4 w-4 shrink-0" /><span>{error}</span></div>;
+  if (error) return <div className="flex items-center gap-2 text-red-400 text-sm p-4"><AlertCircle className="h-4 w-4 shrink-0" /><span>{error}</span></div>;
 
   const gaps: NetworkPolicyGap[] = data?.gaps ?? [];
 
@@ -392,8 +392,8 @@ function NetworkTab() {
       )}
 
       <div className="flex items-center justify-between">
-        <p className="text-xs text-slate-400 dark:text-slate-500">{gaps.length} gaps detected</p>
-        <button onClick={refresh} className="flex items-center gap-1 text-xs text-red-400 dark:text-red-300 hover:text-red-300 dark:hover:text-red-200">
+        <p className="text-xs text-slate-400">{gaps.length} gaps detected</p>
+        <button onClick={refresh} className="flex items-center gap-1 text-xs text-red-400 hover:text-red-300">
           <RefreshCw className={`h-3 w-3 ${loading ? 'animate-spin' : ''}`} /> Refresh
         </button>
       </div>
@@ -416,12 +416,12 @@ function NetworkTab() {
           <div className="flex items-center justify-between mb-1">
             <div className="flex items-center gap-2">
               <Network className="h-3.5 w-3.5 text-yellow-400 shrink-0" />
-              <span className="text-sm font-medium text-white dark:text-slate-100">{gap.namespace}</span>
+              <span className="text-sm font-medium text-white">{gap.namespace}</span>
             </div>
             <span className="text-xs text-yellow-400">{gap.pod_count} pods</span>
           </div>
-          <p className="text-xs text-slate-300 dark:text-slate-200 mb-1">{gap.description}</p>
-          <p className="text-xs text-slate-500 dark:text-slate-600">{gap.remediation}</p>
+          <p className="text-xs text-slate-300 mb-1">{gap.description}</p>
+          <p className="text-xs text-slate-500">{gap.remediation}</p>
         </motion.div>
       ))}
     </div>
@@ -437,13 +437,13 @@ function ComplianceTab() {
   if (loading && !data) return (
     <div className="flex items-center justify-center py-12">
       <RefreshCw className="h-5 w-5 text-red-400 animate-spin mr-2" />
-      <span className="text-sm text-slate-400 dark:text-slate-500">Loading CIS compliance…</span>
+      <span className="text-sm text-slate-400">Loading CIS compliance…</span>
     </div>
   );
-  if (error) return <div className="flex items-center gap-2 text-red-400 dark:text-red-300 text-sm p-4"><AlertCircle className="h-4 w-4 shrink-0" /><span>{error}</span></div>;
+  if (error) return <div className="flex items-center gap-2 text-red-400 text-sm p-4"><AlertCircle className="h-4 w-4 shrink-0" /><span>{error}</span></div>;
 
   if (!data || !data.checks) return (
-    <div className="text-center py-8 text-slate-500 dark:text-slate-400 text-sm">
+    <div className="text-center py-8 text-slate-500 text-sm">
       No compliance data yet. Run a security scan from the Posture tab.
     </div>
   );
@@ -464,11 +464,11 @@ function ComplianceTab() {
   return (
     <div className="space-y-3">
       {/* Score header */}
-      <div className="bg-slate-800/60 dark:bg-slate-700/60 border border-slate-700/50 dark:border-slate-600/50 rounded-xl p-3">
+      <div className="bg-slate-800/60 border border-slate-700/50 rounded-xl p-3">
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2">
             <FileCheck className="h-4 w-4 text-blue-400" />
-            <span className="text-sm font-semibold text-white dark:text-slate-100">CIS Kubernetes Benchmark</span>
+            <span className="text-sm font-semibold text-white">CIS Kubernetes Benchmark</span>
           </div>
           <span className={`text-lg font-bold ${score >= 80 ? 'text-emerald-400' : score >= 60 ? 'text-yellow-400' : 'text-red-400'}`}>
             {score.toFixed(0)}%
@@ -480,7 +480,7 @@ function ComplianceTab() {
           <motion.div className="bg-yellow-500 h-full" initial={{ width: '0%' }} animate={{ width: `${warnBar}%` }} transition={{ duration: 0.6 }} />
           <motion.div className="bg-red-500 h-full" initial={{ width: '0%' }} animate={{ width: `${failBar}%` }} transition={{ duration: 0.6 }} />
         </div>
-        <div className="flex gap-3 mt-1.5 text-xs text-slate-400 dark:text-slate-500">
+        <div className="flex gap-3 mt-1.5 text-xs text-slate-400">
           <span className="text-emerald-400">{data.passed_checks} pass</span>
           <span className="text-yellow-400">{data.warning_checks} warn</span>
           <span className="text-red-400">{data.failed_checks} fail</span>
@@ -489,8 +489,8 @@ function ComplianceTab() {
       </div>
 
       <div className="flex items-center justify-between">
-        <p className="text-xs text-slate-400 dark:text-slate-500 uppercase tracking-wider font-medium">Checks by Section</p>
-        <button onClick={refresh} className="flex items-center gap-1 text-xs text-red-400 dark:text-red-300 hover:text-red-300 dark:hover:text-red-200">
+        <p className="text-xs text-slate-400 uppercase tracking-wider font-medium">Checks by Section</p>
+        <button onClick={refresh} className="flex items-center gap-1 text-xs text-red-400 hover:text-red-300">
           <RefreshCw className={`h-3 w-3 ${loading ? 'animate-spin' : ''}`} />
         </button>
       </div>
@@ -499,18 +499,18 @@ function ComplianceTab() {
         const failCount = checks.filter(c => c.status === 'fail').length;
         const isExpanded = expandedSection === section;
         return (
-          <div key={section} className="bg-slate-800/60 dark:bg-slate-700/60 border border-slate-700/50 dark:border-slate-600/50 rounded-lg overflow-hidden">
+          <div key={section} className="bg-slate-800/60 border border-slate-700/50 rounded-lg overflow-hidden">
             <button
               onClick={() => setExpandedSection(isExpanded ? null : section)}
-              className="w-full flex items-center justify-between px-3 py-2 text-left hover:bg-slate-700/30 dark:hover:bg-slate-600/30 transition-colors"
+              className="w-full flex items-center justify-between px-3 py-2 text-left hover:bg-slate-700/30 transition-colors"
             >
               <div className="flex items-center gap-2 min-w-0">
                 <FileCheck className="h-3.5 w-3.5 text-blue-400 shrink-0" />
-                <span className="text-xs font-medium text-white dark:text-slate-100 truncate">{section}</span>
+                <span className="text-xs font-medium text-white truncate">{section}</span>
               </div>
               <div className="flex items-center gap-2 shrink-0 ml-2">
                 {failCount > 0 && <span className="text-xs text-red-400">{failCount} fail</span>}
-                <ChevronRight className={`h-3.5 w-3.5 text-slate-400 dark:text-slate-500 transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
+                <ChevronRight className={`h-3.5 w-3.5 text-slate-400 transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
               </div>
             </button>
             <AnimatePresence>
@@ -520,17 +520,17 @@ function ComplianceTab() {
                   animate={{ height: 'auto', opacity: 1 }}
                   exit={{ height: 0, opacity: 0 }}
                   transition={{ duration: 0.2 }}
-                  className="border-t border-slate-700/50 dark:border-slate-600/50 px-3 pb-2"
+                  className="border-t border-slate-700/50 px-3 pb-2"
                 >
                   {checks.map((check, i) => (
-                    <div key={check.id} className={`py-1.5 ${i < checks.length - 1 ? 'border-b border-slate-700/30 dark:border-slate-600/30' : ''}`}>
+                    <div key={check.id} className={`py-1.5 ${i < checks.length - 1 ? 'border-b border-slate-700/30' : ''}`}>
                       <div className="flex items-start gap-2">
                         {statusIcon(check.status)}
                         <div className="min-w-0">
-                          <p className="text-xs font-medium text-white dark:text-slate-100">{check.id} — {check.title}</p>
-                          <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">{check.details}</p>
+                          <p className="text-xs font-medium text-white">{check.id} — {check.title}</p>
+                          <p className="text-xs text-slate-400 mt-0.5">{check.details}</p>
                           {check.status === 'fail' && check.remediation && (
-                            <p className="text-xs text-slate-500 dark:text-slate-600 mt-0.5 italic">{check.remediation}</p>
+                            <p className="text-xs text-slate-500 mt-0.5 italic">{check.remediation}</p>
                           )}
                         </div>
                       </div>
@@ -561,12 +561,12 @@ export function SecurityPanel() {
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="flex items-center justify-between px-1 pb-3 border-b border-slate-700/50 dark:border-slate-600/50">
+      <div className="flex items-center justify-between px-1 pb-3 border-b border-slate-700/50">
         <div className="flex items-center gap-2">
           <Shield className="h-4 w-4 text-red-400" />
-          <span className="text-sm font-semibold text-white dark:text-slate-100">Security Analysis</span>
+          <span className="text-sm font-semibold text-white">Security Analysis</span>
         </div>
-        <span className="text-xs text-slate-500 dark:text-slate-400">A-CORE-012</span>
+        <span className="text-xs text-slate-500">A-CORE-012</span>
       </div>
 
       {/* Tab bar */}
@@ -580,8 +580,8 @@ export function SecurityPanel() {
               onClick={() => setActiveTab(tab.id)}
               className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all ${
                 active
-                  ? 'bg-red-500/20 dark:bg-red-500/30 text-red-300 dark:text-red-200 border border-red-500/40 dark:border-red-500/50'
-                  : 'text-slate-400 dark:text-slate-500 hover:text-slate-200 dark:hover:text-slate-300 hover:bg-slate-700/40 dark:hover:bg-slate-600/40'
+                  ? 'bg-red-500/20 text-red-300 border border-red-500/40'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/40'
               }`}
             >
               <Icon className="h-3 w-3" />

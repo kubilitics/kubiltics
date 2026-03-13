@@ -129,10 +129,10 @@ export const MetricCardsGrid = () => {
 
                         <div className="flex justify-between items-start relative z-10 mb-8">
                             <div className="space-y-1">
-                                <h3 className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-[0.25em]">
+                                <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.25em]">
                                     {metric.title}
                                 </h3>
-                                <div className="text-4xl font-bold tracking-tight text-slate-900 dark:text-white tabular-nums">
+                                <div className="text-4xl font-bold tracking-tight text-slate-900 tabular-nums">
                                     {metric.value}
                                 </div>
                             </div>
@@ -142,16 +142,16 @@ export const MetricCardsGrid = () => {
                             </div>
                         </div>
 
-                        <div className="flex items-center justify-between relative z-10 pt-6 border-t border-white/40 dark:border-white/10">
-                            <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">
+                        <div className="flex items-center justify-between relative z-10 pt-6 border-t border-white/40">
+                            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
                                 {isProjectScope
                                     ? CLUSTER_WIDE_COUNT_TITLES.has(metric.title)
                                         ? "Global Cluster"
                                         : "Project Context"
                                     : "Live Engine View"}
                             </p>
-                            <div className="h-9 w-9 rounded-full bg-white/50 dark:bg-white/10 flex items-center justify-center opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all duration-700 ease-spring">
-                                <ArrowRight className="h-5 w-5 text-slate-600 dark:text-slate-300" />
+                            <div className="h-9 w-9 rounded-full bg-white/50 flex items-center justify-center opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all duration-700 ease-spring">
+                                <ArrowRight className="h-5 w-5 text-slate-600" />
                             </div>
                         </div>
 

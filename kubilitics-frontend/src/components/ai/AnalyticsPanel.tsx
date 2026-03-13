@@ -78,15 +78,15 @@ function AnomalyRow({ anomaly, index }: { anomaly: Anomaly; index: number }) {
 
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="font-mono text-xs text-zinc-100 dark:text-zinc-50 truncate max-w-[120px]">
+            <span className="font-mono text-xs text-zinc-100 truncate max-w-[120px]">
               {name}
             </span>
             {kind && (
-              <span className="text-[10px] px-1.5 py-0.5 rounded bg-zinc-700/60 dark:bg-zinc-700/80 text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-zinc-700/60 text-zinc-400 uppercase tracking-wider">
                 {kind}
               </span>
             )}
-            <span className="text-[10px] px-1.5 py-0.5 rounded bg-zinc-700/60 dark:bg-zinc-700/80 text-zinc-300 dark:text-zinc-200 font-mono">
+            <span className="text-[10px] px-1.5 py-0.5 rounded bg-zinc-700/60 text-zinc-300 font-mono">
               {anomaly.metric_name}
             </span>
             <span className={`text-xs font-semibold ml-auto ${confidenceColor(anomaly.confidence)}`}>
@@ -95,10 +95,10 @@ function AnomalyRow({ anomaly, index }: { anomaly: Anomaly; index: number }) {
           </div>
 
           <div className="flex items-center gap-3 mt-1">
-            <span className="text-xs text-zinc-300 dark:text-zinc-200">
-              val: <span className="font-mono text-zinc-100 dark:text-zinc-50">{formatValue(anomaly.value)}</span>
+            <span className="text-xs text-zinc-300">
+              val: <span className="font-mono text-zinc-100">{formatValue(anomaly.value)}</span>
             </span>
-            <span className="text-[10px] text-zinc-500 dark:text-zinc-600">
+            <span className="text-[10px] text-zinc-500">
               {timeAgo(anomaly.timestamp)}
             </span>
           </div>
@@ -106,7 +106,7 @@ function AnomalyRow({ anomaly, index }: { anomaly: Anomaly; index: number }) {
 
         <ChevronRight
           size={12}
-          className={`flex-shrink-0 text-zinc-500 dark:text-zinc-600 transition-transform ${expanded ? 'rotate-90' : ''}`}
+          className={`flex-shrink-0 text-zinc-500 transition-transform ${expanded ? 'rotate-90' : ''}`}
         />
       </div>
 
@@ -119,9 +119,9 @@ function AnomalyRow({ anomaly, index }: { anomaly: Anomaly; index: number }) {
             transition={{ duration: 0.2 }}
             className="overflow-hidden"
           >
-            <div className="px-3 pb-3 border-t border-zinc-700/40 dark:border-zinc-700/60 pt-2">
-              <p className="text-xs text-zinc-400 dark:text-zinc-500 leading-relaxed">{anomaly.reason}</p>
-              <p className="text-[10px] text-zinc-600 dark:text-zinc-700 mt-1 font-mono">{anomaly.resource_id}</p>
+            <div className="px-3 pb-3 border-t border-zinc-700/40 pt-2">
+              <p className="text-xs text-zinc-400 leading-relaxed">{anomaly.reason}</p>
+              <p className="text-[10px] text-zinc-600 mt-1 font-mono">{anomaly.resource_id}</p>
             </div>
           </motion.div>
         )}
@@ -157,13 +157,13 @@ function AnomaliesTab() {
       {/* Controls */}
       <div className="flex gap-2 mb-3">
         <div className="relative flex-1">
-          <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-zinc-500 dark:text-zinc-600" />
+          <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-zinc-500" />
           <input
             type="text"
             placeholder="Filter anomalies..."
             value={filterInput}
             onChange={(e) => setFilterInput(e.target.value)}
-            className="w-full bg-zinc-800/60 dark:bg-zinc-800/80 border border-zinc-700/50 dark:border-zinc-700/60 rounded-lg pl-7 pr-3 py-1.5 text-xs text-zinc-200 dark:text-zinc-100 placeholder-zinc-600 dark:placeholder-zinc-700 focus:outline-none focus:border-violet-500/50"
+            className="w-full bg-zinc-800/60 border border-zinc-700/50 rounded-lg pl-7 pr-3 py-1.5 text-xs text-zinc-200 placeholder-zinc-600 focus:outline-none focus:border-violet-500/50"
           />
         </div>
         <input
@@ -171,19 +171,19 @@ function AnomaliesTab() {
           placeholder="namespace"
           value={namespace}
           onChange={(e) => setNamespace(e.target.value)}
-          className="w-28 bg-zinc-800/60 dark:bg-zinc-800/80 border border-zinc-700/50 dark:border-zinc-700/60 rounded-lg px-2.5 py-1.5 text-xs text-zinc-200 dark:text-zinc-100 placeholder-zinc-600 dark:placeholder-zinc-700 focus:outline-none focus:border-violet-500/50"
+          className="w-28 bg-zinc-800/60 border border-zinc-700/50 rounded-lg px-2.5 py-1.5 text-xs text-zinc-200 placeholder-zinc-600 focus:outline-none focus:border-violet-500/50"
         />
         <button
           onClick={refresh}
           disabled={loading}
-          className="p-1.5 rounded-lg bg-zinc-800/60 dark:bg-zinc-800/80 border border-zinc-700/50 dark:border-zinc-700/60 text-zinc-400 dark:text-zinc-500 hover:text-zinc-200 dark:hover:text-zinc-300 hover:border-violet-500/50 transition-colors"
+          className="p-1.5 rounded-lg bg-zinc-800/60 border border-zinc-700/50 text-zinc-400 hover:text-zinc-200 hover:border-violet-500/50 transition-colors"
         >
           <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
         </button>
       </div>
 
       {/* Stats bar */}
-      <div className="flex items-center gap-3 mb-3 text-[10px] text-zinc-500 dark:text-zinc-600">
+      <div className="flex items-center gap-3 mb-3 text-[10px] text-zinc-500">
         <span className="flex items-center gap-1">
           <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
           {anomalies.filter((a) => a.confidence >= 80).length} critical
@@ -204,26 +204,26 @@ function AnomaliesTab() {
       {/* Anomaly list */}
       <div className="flex-1 overflow-y-auto space-y-2 pr-1">
         {error ? (
-          <div className="flex items-center gap-2 p-3 rounded-lg bg-red-500/10 dark:bg-red-500/15 border border-red-500/20 dark:border-red-500/30">
-            <AlertTriangle size={13} className="text-red-400 dark:text-red-300 flex-shrink-0" />
-            <span className="text-xs text-red-300 dark:text-red-200">{error}</span>
+          <div className="flex items-center gap-2 p-3 rounded-lg bg-red-500/10 border border-red-500/20">
+            <AlertTriangle size={13} className="text-red-400 flex-shrink-0" />
+            <span className="text-xs text-red-300">{error}</span>
           </div>
         ) : loading && !data ? (
           <div className="space-y-2">
             {[1, 2, 3].map((i) => (
               <div
                 key={i}
-                className="h-16 rounded-lg bg-zinc-800/40 dark:bg-zinc-800/60 border border-zinc-700/30 dark:border-zinc-700/50 animate-pulse"
+                className="h-16 rounded-lg bg-zinc-800/40 border border-zinc-700/30 animate-pulse"
               />
             ))}
           </div>
         ) : filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-center">
-            <div className="w-12 h-12 rounded-full bg-emerald-500/10 dark:bg-emerald-500/15 flex items-center justify-center mb-3">
+            <div className="w-12 h-12 rounded-full bg-emerald-500/10 flex items-center justify-center mb-3">
               <Activity size={20} className="text-emerald-400" />
             </div>
-            <p className="text-sm font-medium text-zinc-300 dark:text-zinc-200">No anomalies detected</p>
-            <p className="text-xs text-zinc-600 dark:text-zinc-500 mt-1">
+            <p className="text-sm font-medium text-zinc-300">No anomalies detected</p>
+            <p className="text-xs text-zinc-600 mt-1">
               {namespace ? `Namespace "${namespace}" is healthy` : 'All systems nominal'}
             </p>
           </div>
@@ -235,7 +235,7 @@ function AnomaliesTab() {
       </div>
 
       {data && filtered.length > 0 && (
-        <div className="mt-2 pt-2 border-t border-zinc-800/60 dark:border-zinc-800/80 text-[10px] text-zinc-600 dark:text-zinc-700 text-center">
+        <div className="mt-2 pt-2 border-t border-zinc-800/60 text-[10px] text-zinc-600 text-center">
           Showing {filtered.length} of {data.total} anomalies
         </div>
       )}
@@ -287,17 +287,17 @@ function TrendsTab() {
     <div className="flex flex-col gap-4 h-full">
       {/* Input form */}
       <div className="space-y-2">
-        <label className="text-[10px] text-zinc-500 dark:text-zinc-600 uppercase tracking-wider">Resource ID</label>
+        <label className="text-[10px] text-zinc-500 uppercase tracking-wider">Resource ID</label>
         <input
           type="text"
           placeholder="e.g. default/Pod/my-app"
           value={resourceId}
           onChange={(e) => setResourceId(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && fetchTrend()}
-          className="w-full bg-zinc-800/60 dark:bg-zinc-800/80 border border-zinc-700/50 dark:border-zinc-700/60 rounded-lg px-3 py-2 text-xs text-zinc-200 dark:text-zinc-100 placeholder-zinc-600 dark:placeholder-zinc-700 focus:outline-none focus:border-violet-500/50"
+          className="w-full bg-zinc-800/60 border border-zinc-700/50 rounded-lg px-3 py-2 text-xs text-zinc-200 placeholder-zinc-600 focus:outline-none focus:border-violet-500/50"
         />
 
-        <label className="text-[10px] text-zinc-500 dark:text-zinc-600 uppercase tracking-wider">Metric</label>
+        <label className="text-[10px] text-zinc-500 uppercase tracking-wider">Metric</label>
         <div className="flex gap-1.5 flex-wrap">
           {METRICS.map((m) => (
             <button
@@ -305,8 +305,8 @@ function TrendsTab() {
               onClick={() => setMetric(m)}
               className={`text-[10px] px-2 py-1 rounded-md border transition-colors ${
                 metric === m
-                  ? 'bg-violet-500/20 dark:bg-violet-500/30 border-violet-500/40 dark:border-violet-500/50 text-violet-300 dark:text-violet-200'
-                  : 'bg-zinc-800/60 dark:bg-zinc-800/80 border-zinc-700/50 dark:border-zinc-700/60 text-zinc-400 dark:text-zinc-500 hover:border-violet-500/30 hover:text-zinc-300 dark:hover:text-zinc-300'
+                  ? 'bg-violet-500/20 border-violet-500/40 text-violet-300'
+                  : 'bg-zinc-800/60 border-zinc-700/50 text-zinc-400 hover:border-violet-500/30 hover:text-zinc-300'
               }`}
             >
               {m}

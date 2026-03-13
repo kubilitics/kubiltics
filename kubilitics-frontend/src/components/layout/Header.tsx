@@ -74,8 +74,8 @@ const BTN = cn(
   'h-11 px-5 rounded-xl',
   'inline-flex items-center justify-center gap-2.5',
   'text-[13px] font-semibold leading-none',
-  'border border-slate-200/50 dark:border-white/10 bg-white/40 dark:bg-white/5 text-slate-700 dark:text-slate-200',
-  'hover:bg-white dark:hover:bg-white/10 hover:border-slate-300 dark:hover:border-white/20 hover:shadow-apple hover:translate-y-[-0.5px]',
+  'border border-slate-200/50 bg-white/40 text-slate-700',
+  'hover:bg-white hover:border-slate-300 hover:shadow-apple hover:translate-y-[-0.5px]',
   'transition-all duration-300 ease-spring',
   'active:scale-[0.98]',
   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20'
@@ -86,8 +86,8 @@ const FEATURE_BTN = cn(
   'h-11 px-5 rounded-xl',
   'inline-flex items-center justify-center gap-2.5',
   'text-[13px] font-bold leading-none',
-  'border border-slate-200/40 dark:border-white/10 bg-slate-50/40 dark:bg-white/5 text-slate-800 dark:text-slate-200',
-  'hover:bg-white dark:hover:bg-white/10 hover:border-primary/20 hover:shadow-apple-lg hover:translate-y-[-0.5px]',
+  'border border-slate-200/40 bg-slate-50/40 text-slate-800',
+  'hover:bg-white hover:border-primary/20 hover:shadow-apple-lg hover:translate-y-[-0.5px]',
   'transition-all duration-300 ease-spring',
   'active:scale-[0.98]',
   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20'
@@ -97,8 +97,8 @@ const FEATURE_BTN = cn(
 const ICON_BTN = cn(
   'h-11 min-w-[2.75rem] rounded-xl',
   'inline-flex items-center justify-center gap-2.5',
-  'text-slate-500 dark:text-slate-400',
-  'hover:bg-slate-100/60 dark:hover:bg-white/10 hover:text-slate-900 dark:hover:text-white hover:translate-y-[-0.5px]',
+  'text-slate-500',
+  'hover:bg-slate-100/60 hover:text-slate-900 hover:translate-y-[-0.5px]',
   'transition-all duration-300 ease-spring',
   'active:scale-[0.98]',
   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20'
@@ -215,12 +215,12 @@ export function Header() {
 
   return (
     <>
-      <header className={cn(HEADER_HEIGHT_CLASS, 'border-b border-slate-100 dark:border-white/10 bg-white/60 dark:bg-slate-900/80 backdrop-blur-3xl shrink-0 shadow-[0_1px_3px_rgba(0,0,0,0.02)] transition-all duration-300 sticky top-0 z-50')}>
+      <header className={cn(HEADER_HEIGHT_CLASS, 'border-b border-slate-100 bg-white/60 backdrop-blur-3xl shrink-0 shadow-[0_1px_3px_rgba(0,0,0,0.02)] transition-all duration-300 sticky top-0 z-50')}>
         <div className="flex items-center h-full w-full">
 
           {/* ──── Logo zone: icon mark + wordmark, Apple-quality sizing ──── */}
           <div className={cn(
-            'shrink-0 flex items-center h-full bg-slate-50/20 dark:bg-white/5 border-r border-slate-100/60 dark:border-white/10 transition-all duration-300',
+            'shrink-0 flex items-center h-full bg-slate-50/20 border-r border-slate-100/60 transition-all duration-300',
             collapsed ? 'w-[5.5rem] justify-center px-0' : 'w-72 justify-start px-5'
           )}>
             <button
@@ -234,7 +234,7 @@ export function Header() {
                 className="shrink-0 rounded-[10px] shadow-sm group-hover:shadow-md group-hover:scale-[1.04] transition-all duration-300"
               />
               {!collapsed && (
-                <span className="text-[15px] font-semibold tracking-[0.08em] text-slate-700 dark:text-slate-200 whitespace-nowrap select-none transition-opacity duration-300">
+                <span className="text-[15px] font-semibold tracking-[0.08em] text-slate-700 whitespace-nowrap select-none transition-opacity duration-300">
                   KUBILITICS
                 </span>
               )}
@@ -249,15 +249,15 @@ export function Header() {
               onClick={() => setSearchOpen(true)}
               className={cn(
                 'flex-1 max-w-[140px] sm:max-w-xs md:max-w-md lg:max-w-xl h-11 px-3 md:px-5 flex items-center gap-3 md:gap-4 rounded-xl',
-                'bg-slate-100/40 dark:bg-white/5 border border-slate-100 dark:border-white/10 text-slate-400 dark:text-slate-500',
-                'hover:bg-slate-100/60 dark:hover:bg-white/10 hover:border-slate-200 dark:hover:border-white/20 hover:text-slate-600 dark:hover:text-slate-300',
+                'bg-slate-100/40 border border-slate-100 text-slate-400',
+                'hover:bg-slate-100/60 hover:border-slate-200 hover:text-slate-600',
                 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/10',
                 'transition-all duration-300 group'
               )}
             >
               <Search className="h-4 w-4 shrink-0 group-hover:text-primary transition-colors duration-300" />
               <span className="flex-1 text-left text-[13px] font-semibold tracking-tight hidden md:block">Search resources...</span>
-              <kbd className="hidden sm:inline-flex h-7 items-center gap-1 rounded-lg border border-slate-200/60 dark:border-white/10 bg-white dark:bg-white/10 px-2.5 font-mono text-[9px] font-bold text-slate-400 dark:text-slate-500 shrink-0 shadow-sm">
+              <kbd className="hidden sm:inline-flex h-7 items-center gap-1 rounded-lg border border-slate-200/60 bg-white px-2.5 font-mono text-[9px] font-bold text-slate-400 shrink-0 shadow-sm">
                 <Command className="h-2.5 w-2.5" />K
               </kbd>
             </button>
@@ -283,9 +283,9 @@ export function Header() {
                       <button className={cn(BTN, 'shrink-0 max-w-[160px] lg:max-w-[240px] group')}>
                         <div className="relative">
                           <span className={cn('absolute inset-0 blur-sm opacity-50 rounded-full', statusColors[activeCluster.status])} />
-                          <span className={cn('relative block w-2.5 h-2.5 rounded-full shrink-0 ring-2 ring-white dark:ring-slate-900', statusColors[activeCluster.status])} />
+                          <span className={cn('relative block w-2.5 h-2.5 rounded-full shrink-0 ring-2 ring-white', statusColors[activeCluster.status])} />
                         </div>
-                        <span className="truncate text-base font-bold tracking-tight dark:text-white">{activeCluster.name}</span>
+                        <span className="truncate text-base font-bold tracking-tight">{activeCluster.name}</span>
                         {/* Subtle backend status indicator */}
                         {backendStatus && (
                           <Tooltip>
@@ -304,12 +304,12 @@ export function Header() {
                             </TooltipContent>
                           </Tooltip>
                         )}
-                        <ChevronDown className="h-5 w-5 text-slate-400 dark:text-slate-500 group-hover:text-slate-600 dark:group-hover:text-slate-300 transition-colors shrink-0" />
+                        <ChevronDown className="h-5 w-5 text-slate-400 group-hover:text-slate-600 transition-colors shrink-0" />
                       </button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-[320px] rounded-[2.5rem] p-4 border-none shadow-2xl mt-2 animate-in fade-in zoom-in-95 duration-200">
                       <div className="px-4 py-3 mb-3">
-                        <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em]">Compute Context</p>
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Compute Context</p>
                       </div>
                       {clusters.map((cluster) => (
                         <DropdownMenuItem
@@ -318,22 +318,22 @@ export function Header() {
                             setActiveCluster(cluster);
                             if (!isDemo) setCurrentClusterId(cluster.id);
                           }}
-                          className="flex items-center gap-4 py-4 px-4 cursor-pointer rounded-2xl hover:bg-slate-50 dark:hover:bg-white/5 transition-all group"
+                          className="flex items-center gap-4 py-4 px-4 cursor-pointer rounded-2xl hover:bg-slate-50 transition-all group"
                         >
                           <div className="relative shrink-0">
                             <div className={cn('absolute inset-0 blur-[4px] opacity-40 rounded-full', statusColors[cluster.status])} />
                             <div className={cn('relative w-3 h-3 rounded-full border-2 border-white', statusColors[cluster.status])} />
                           </div>
                           <div className="flex-1 min-w-0">
-                            <div className="text-sm font-bold text-slate-800 dark:text-slate-200 tracking-tight flex items-center gap-2">
+                            <div className="text-sm font-bold text-slate-800 tracking-tight flex items-center gap-2">
                               {cluster.name}
                               {cluster.provider && (
-                                <span className="text-[9px] px-2 py-0.5 bg-slate-100 dark:bg-white/10 text-slate-500 dark:text-slate-400 font-black uppercase tracking-widest rounded-full">
+                                <span className="text-[9px] px-2 py-0.5 bg-slate-100 text-slate-500 font-black uppercase tracking-widest rounded-full">
                                   {cluster.provider.replace(/-/g, ' ')}
                                 </span>
                               )}
                             </div>
-                            <div className="text-[11px] font-bold text-slate-400 dark:text-slate-500 mt-0.5">{cluster.region} · {cluster.version}</div>
+                            <div className="text-[11px] font-bold text-slate-400 mt-0.5">{cluster.region} · {cluster.version}</div>
                           </div>
                           {cluster.id === activeCluster.id && (
                             <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
@@ -344,7 +344,7 @@ export function Header() {
                       ))}
                       <DropdownMenuSeparator className="my-2 bg-slate-100/60" />
                       <DropdownMenuItem onClick={() => navigate('/setup/kubeconfig')} className="gap-3 cursor-pointer py-4 px-4 rounded-2xl text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition-colors">
-                        <div className="h-9 w-9 rounded-xl bg-slate-100 dark:bg-white/10 flex items-center justify-center">
+                        <div className="h-9 w-9 rounded-xl bg-slate-100 flex items-center justify-center">
                           <Plus className="h-4 w-4" />
                         </div>
                         <span className="text-sm font-bold tracking-tight">Add Cluster</span>
@@ -384,7 +384,7 @@ export function Header() {
                   </Tooltip>
                   <DropdownMenuContent align="end" className="w-72 rounded-[2rem] p-3 border-none shadow-2xl mt-2">
                     <div className="px-4 py-3 mb-2">
-                      <p className="text-[11px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Download Assets</p>
+                      <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest">Download Assets</p>
                     </div>
                     {clusters.map((cluster) => (
                       <DropdownMenuItem
@@ -393,9 +393,9 @@ export function Header() {
                         className="flex items-center gap-4 py-4 px-4 cursor-pointer rounded-2xl hover:bg-slate-50 transition-colors"
                       >
                         <div className={cn('w-2 h-2 rounded-full shrink-0 shadow-sm', statusColors[cluster.status])} />
-                        <span className="flex-1 text-sm font-bold text-slate-700 dark:text-slate-200 truncate">{cluster.name}</span>
-                        <div className="h-9 w-9 rounded-xl bg-slate-100 dark:bg-white/10 flex items-center justify-center">
-                          <FileDown className="h-4 w-4 text-slate-500 dark:text-slate-400" />
+                        <span className="flex-1 text-sm font-bold text-slate-700 truncate">{cluster.name}</span>
+                        <div className="h-9 w-9 rounded-xl bg-slate-100 flex items-center justify-center">
+                          <FileDown className="h-4 w-4 text-slate-500" />
                         </div>
                       </DropdownMenuItem>
                     ))}
@@ -456,14 +456,14 @@ export function Header() {
                       aria-label={pendingCount > 0 ? `${pendingCount} pending AI actions` : 'Notifications'}
                       onClick={() => navigate('/settings?tab=autonomy')}
                     >
-                      <div className="relative shrink-0 flex items-center justify-center h-9 w-9 rounded-xl bg-slate-100 dark:bg-white/10 group-hover:bg-white dark:group-hover:bg-white/20 transition-colors">
+                      <div className="relative shrink-0 flex items-center justify-center h-9 w-9 rounded-xl bg-slate-100 group-hover:bg-white transition-colors">
                         <Bell className="h-4 w-4" />
                         {pendingCount > 0 ? (
-                          <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] rounded-full bg-amber-500 border-2 border-white dark:border-slate-900 shadow-sm flex items-center justify-center text-[9px] font-black text-white px-0.5">
+                          <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] rounded-full bg-amber-500 border-2 border-white shadow-sm flex items-center justify-center text-[9px] font-black text-white px-0.5">
                             {pendingCount > 9 ? '9+' : pendingCount}
                           </span>
                         ) : (
-                          <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-blue-500 border-2 border-white dark:border-slate-900 shadow-sm" />
+                          <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-blue-500 border-2 border-white shadow-sm" />
                         )}
                       </div>
                       <span className="hidden 2xl:inline text-sm font-bold tracking-tight">
@@ -485,21 +485,21 @@ export function Header() {
                       className={cn(
                         'h-12 pl-2 pr-4 rounded-2xl',
                         'inline-flex items-center gap-3 group',
-                        'bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 shadow-sm hover:shadow-md hover:border-primary/20',
+                        'bg-white border border-slate-200 shadow-sm hover:shadow-md hover:border-primary/20',
                         'hover:translate-y-[-1px] transition-all duration-300 ease-out',
                         'active:scale-[0.98]',
                         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20'
                       )}
                       aria-label="User menu"
                     >
-                      <Avatar className="h-9 w-9 shrink-0 rounded-[0.9rem] border border-slate-100 dark:border-white/10 shadow-sm">
+                      <Avatar className="h-9 w-9 shrink-0 rounded-[0.9rem] border border-slate-100 shadow-sm">
                         <AvatarImage src="" />
                         <AvatarFallback className="bg-primary/5 text-[10px] font-black text-primary uppercase">
                           AD
                         </AvatarFallback>
                       </Avatar>
-                      <span className="text-xs font-black tracking-widest hidden xl:inline uppercase text-slate-700 dark:text-slate-200 group-hover:text-primary transition-colors">Admin</span>
-                      <ChevronDown className="h-4 w-4 text-slate-400 dark:text-slate-500 shrink-0 group-hover:text-primary transition-colors" />
+                      <span className="text-xs font-black tracking-widest hidden xl:inline uppercase text-slate-700 group-hover:text-primary transition-colors">Admin</span>
+                      <ChevronDown className="h-4 w-4 text-slate-400 shrink-0 group-hover:text-primary transition-colors" />
                     </button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-56">

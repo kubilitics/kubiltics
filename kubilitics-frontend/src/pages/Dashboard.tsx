@@ -68,7 +68,7 @@ export default function Dashboard() {
       {showTour && (
         <DashboardTour onComplete={completeTour} onSkip={skipTour} />
       )}
-      <div className="dashboard-page p-4 md:p-6 -m-2 dark:bg-slate-950" data-tour="dashboard">
+      <div className="dashboard-page p-4 md:p-6 -m-2" data-tour="dashboard">
         <motion.div
           variants={container}
           initial="hidden"
@@ -78,26 +78,26 @@ export default function Dashboard() {
           {/* Zone 1: Page header with live indicator */}
           <motion.div variants={item} className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-br from-[hsl(var(--primary))] to-[hsl(var(--ring))] shadow-lg shadow-[hsl(var(--ring)/0.25)] dark:shadow-[hsl(var(--ring)/0.15)]">
-                <Zap className="h-5 w-5 text-white dark:text-slate-100" aria-hidden />
+              <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-br from-[hsl(var(--primary))] to-[hsl(var(--ring))] shadow-lg shadow-[hsl(var(--ring)/0.25)]">
+                <Zap className="h-5 w-5 text-white" aria-hidden />
               </div>
               <div>
-                <h1 className="font-h2 text-foreground dark:text-slate-50 tracking-tight">Gateway</h1>
-                <p className="font-caption text-muted-foreground dark:text-slate-400 mt-0.5">
-                  Command center for <span className="font-medium text-foreground dark:text-slate-100">{activeCluster.name}</span>
+                <h1 className="font-h2 text-foreground tracking-tight">Gateway</h1>
+                <p className="font-caption text-muted-foreground mt-0.5">
+                  Command center for <span className="font-medium text-foreground">{activeCluster.name}</span>
                 </p>
               </div>
             </div>
             <div
-              className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-[hsl(var(--success)/0.08)] border border-[hsl(var(--success)/0.2)] dark:bg-[hsl(var(--success)/0.1)] dark:border-[hsl(var(--success)/0.3)]"
+              className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-[hsl(var(--success)/0.08)] border border-[hsl(var(--success)/0.2)]"
               role="status"
               aria-label="Live data"
             >
               <span className="relative flex h-2.5 w-2.5">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[hsl(var(--success))] opacity-50 dark:opacity-40" />
-                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[hsl(var(--success))] dark:bg-[hsl(var(--success))]" />
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[hsl(var(--success))] opacity-50" />
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[hsl(var(--success))]" />
               </span>
-              <span className="text-xs font-medium text-[hsl(var(--success))] dark:text-[hsl(var(--success))]">Live</span>
+              <span className="text-xs font-medium text-[hsl(var(--success))]">Live</span>
             </div>
           </motion.div>
 

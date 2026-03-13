@@ -44,86 +44,6 @@
     /* Much more visible border */
     --apple-shadow: 0 8px 32px -4px rgba(0, 0, 0, 0.08), 0 4px 12px -2px rgba(0, 0, 0, 0.04);
     --apple-shadow-lg: 0 20px 64px -16px rgba(0, 0, 0, 0.12), 0 12px 24px -12px rgba(0, 0, 0, 0.08);
-
-    /* Semantic status colors */
-    --success: 142 76% 36%;
-    --warning: 38 92% 50%;
-    --error: 0 84% 60%;
-    --info: 217 91% 60%;
-
-    /* Chart palette */
-    --chart-1: 221 83% 53%;
-    --chart-2: 160 60% 45%;
-    --chart-3: 30 80% 55%;
-    --chart-4: 280 65% 60%;
-    --chart-5: 340 75% 55%;
-
-    --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 240 5.3% 26.1%;
-    --sidebar-primary: 221.2 83.2% 53.3%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 4.8% 95.9%;
-    --sidebar-accent-foreground: 240 5.9% 10%;
-    --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 221.2 83.2% 53.3%;
-  }
-
-  .dark {
-    --background: 224 71% 4%;
-    --foreground: 210 40% 96%;
-
-    --card: 222 47% 8%;
-    --card-foreground: 210 40% 96%;
-
-    --popover: 222 47% 8%;
-    --popover-foreground: 210 40% 96%;
-
-    --primary: 217.2 91.2% 59.8%;
-    --primary-foreground: 222 47% 8%;
-
-    --secondary: 215 25% 15%;
-    --secondary-foreground: 210 40% 96%;
-
-    --muted: 215 25% 15%;
-    --muted-foreground: 215 20% 60%;
-
-    --accent: 215 25% 15%;
-    --accent-foreground: 210 40% 96%;
-
-    --destructive: 0 63% 51%;
-    --destructive-foreground: 210 40% 98%;
-
-    --border: 215 25% 18%;
-    --input: 215 25% 18%;
-    --ring: 217.2 91.2% 59.8%;
-
-    /* Dark glass variables */
-    --glass-bg: rgba(15, 23, 42, 0.85);
-    --glass-border: rgba(255, 255, 255, 0.08);
-    --apple-shadow: 0 8px 32px -4px rgba(0, 0, 0, 0.4), 0 4px 12px -2px rgba(0, 0, 0, 0.3);
-    --apple-shadow-lg: 0 20px 64px -16px rgba(0, 0, 0, 0.5), 0 12px 24px -12px rgba(0, 0, 0, 0.4);
-
-    /* Semantic status colors (dark) */
-    --success: 142 71% 45%;
-    --warning: 38 92% 50%;
-    --error: 0 84% 60%;
-    --info: 217 91% 60%;
-
-    /* Chart palette (dark — slightly brighter) */
-    --chart-1: 217 91% 60%;
-    --chart-2: 160 60% 50%;
-    --chart-3: 30 80% 55%;
-    --chart-4: 280 65% 65%;
-    --chart-5: 340 75% 60%;
-
-    --sidebar-background: 224 71% 4%;
-    --sidebar-foreground: 210 40% 96%;
-    --sidebar-primary: 217.2 91.2% 59.8%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 215 25% 15%;
-    --sidebar-accent-foreground: 210 40% 96%;
-    --sidebar-border: 215 25% 18%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
   }
 
   * {
@@ -131,26 +51,8 @@
   }
 
   body {
-    @apply bg-background text-foreground antialiased;
+    @apply bg-background text-foreground antialiased selection:bg-blue-100 selection:text-blue-900;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
-  }
-
-  .dark body,
-  body.dark {
-    @apply selection:bg-blue-900/40 selection:text-blue-100;
-  }
-
-  :not(.dark) body {
-    @apply selection:bg-blue-100 selection:text-blue-900;
-  }
-
-  /* Smooth theme transitions */
-  .theme-transitioning,
-  .theme-transitioning *,
-  .theme-transitioning *::before,
-  .theme-transitioning *::after {
-    transition-duration: 250ms !important;
-    transition-property: background-color, border-color, color, fill, stroke, box-shadow !important;
   }
 }
 
@@ -174,27 +76,22 @@
     background: rgba(255, 255, 255, 0.8);
   }
 
-  .dark .glass-card-hover:hover {
-    border-color: rgba(255, 255, 255, 0.15);
-    background: rgba(15, 23, 42, 0.9);
-  }
-
   /* Design Marvel Cards */
   .premium-card {
-    @apply bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-100/60 dark:border-white/10 shadow-sm transition-all duration-500 ease-spring;
+    @apply bg-white rounded-[2rem] border border-slate-100/60 shadow-sm transition-all duration-500 ease-spring;
   }
 
   .premium-card:hover {
-    @apply shadow-xl shadow-blue-500/5 dark:shadow-blue-500/10 border-blue-200/40 dark:border-blue-400/20 -translate-y-1;
+    @apply shadow-xl shadow-blue-500/5 border-blue-200/40 -translate-y-1;
   }
 
   /* Apple-style Typography */
   .apple-title {
-    @apply text-slate-900 dark:text-slate-50 font-semibold tracking-tight leading-tight;
+    @apply text-slate-900 font-semibold tracking-tight leading-tight;
   }
 
   .apple-description {
-    @apply text-slate-500 dark:text-slate-400 font-medium leading-relaxed;
+    @apply text-slate-500 font-medium leading-relaxed;
   }
 }
 
@@ -208,11 +105,6 @@
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
     border: 1px solid rgba(255, 255, 255, 0.3);
-  }
-
-  .dark .glass-surface {
-    background: rgba(15, 23, 42, 0.5);
-    border: 1px solid rgba(255, 255, 255, 0.08);
   }
 
   /* Vibrant Gradients */

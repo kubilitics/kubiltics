@@ -116,11 +116,11 @@ export function ClusterEfficiencyCard() {
     return (
         <Card
             className={cn(
-                "h-full min-h-[28rem] border-none glass-panel relative overflow-hidden flex flex-col group dark:bg-white/5",
+                "h-full min-h-[28rem] border-none glass-panel relative overflow-hidden flex flex-col group",
                 "hover:shadow-lg transition-all duration-300"
             )}
         >
-            <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-violet-500/80 to-fuchsia-500/80 dark:from-violet-400/60 dark:to-fuchsia-400/60" />
+            <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-violet-500/80 to-fuchsia-500/80" />
 
             <CardHeader className="pb-2 pt-5 px-6">
                 <div className="flex items-center justify-between">
@@ -130,7 +130,7 @@ export function ClusterEfficiencyCard() {
                         </div>
                         <span>Cluster Efficiency</span>
                     </CardTitle>
-                    <div className={cn("text-xs font-medium px-3 py-1 rounded-full bg-background/50 dark:bg-white/10 border", status.color, "border-current opacity-80")}>
+                    <div className={cn("text-xs font-medium px-3 py-1 rounded-full bg-background/50 border", status.color, "border-current opacity-80")}>
                         {status.label}
                     </div>
                 </div>
@@ -140,14 +140,14 @@ export function ClusterEfficiencyCard() {
                 {/* Main Score Area */}
                 <div className="flex items-end justify-between">
                     <div>
-                        <div className="text-5xl font-bold tabular-nums tracking-tight dark:text-white">
-                            {efficiencyScore}<span className="text-2xl text-muted-foreground dark:text-slate-400 font-medium">%</span>
+                        <div className="text-5xl font-bold tabular-nums tracking-tight">
+                            {efficiencyScore}<span className="text-2xl text-muted-foreground font-medium">%</span>
                         </div>
                         <p className="text-sm text-muted-foreground mt-1 font-medium">Resource Allocation Score</p>
                     </div>
                     {/* Mini Sparkline visual */}
-                    <div className="flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-violet-500/20 dark:from-violet-500/30 to-fuchsia-500/20 dark:to-fuchsia-500/30">
-                        <Activity className="h-7 w-7 text-violet-500 dark:text-violet-400" />
+                    <div className="flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-violet-500/20 to-fuchsia-500/20">
+                        <Activity className="h-7 w-7 text-violet-500" />
                     </div>
                 </div>
 
@@ -183,16 +183,16 @@ export function ClusterEfficiencyCard() {
                 </div>
 
                 {/* Top Consumers */}
-                <div className="pt-4 border-t border-border/40 dark:border-white/10">
-                    <p className="text-xs uppercase tracking-wider text-muted-foreground dark:text-slate-400 font-semibold mb-4">Top Namespace Consumers</p>
+                <div className="pt-4 border-t border-border/40">
+                    <p className="text-xs uppercase tracking-wider text-muted-foreground font-semibold mb-4">Top Namespace Consumers</p>
                     <div className="space-y-3">
                         {topNamespaces.map(ns => (
                             <div key={ns.name} className="flex items-center justify-between text-sm">
                                 <div className="flex items-center gap-2.5">
-                                    <span className="w-2 h-2 rounded-full bg-violet-400/50 dark:bg-violet-400/60" />
-                                    <span className="font-medium text-foreground dark:text-white">{ns.name}</span>
+                                    <span className="w-2 h-2 rounded-full bg-violet-400/50" />
+                                    <span className="font-medium text-foreground">{ns.name}</span>
                                 </div>
-                                <span className="text-muted-foreground dark:text-slate-400 tabular-nums font-medium">
+                                <span className="text-muted-foreground tabular-nums font-medium">
                                     {Math.round(ns.cpu / 1000)}m / {(ns.mem / (1024 * 1024)).toFixed(0)}Mi
                                 </span>
                             </div>

@@ -74,8 +74,8 @@ export function DashboardHero() {
     <section
       className={cn(
         'relative w-full overflow-hidden',
-        'rounded-2xl border border-[hsl(var(--accent)/0.8)] dark:border-[hsl(var(--accent)/0.3)]',
-        'bg-gradient-to-br from-white via-[hsl(var(--accent)/0.15)] to-white dark:from-slate-900 dark:via-[hsl(var(--accent)/0.08)] dark:to-slate-900'
+        'rounded-2xl border border-[hsl(var(--accent)/0.8)]',
+        'bg-gradient-to-br from-white via-[hsl(var(--accent)/0.15)] to-white'
       )}
       aria-label="Cluster health overview"
     >
@@ -201,8 +201,8 @@ export function DashboardHero() {
 
         {/* Right: Shield icon */}
         <div className="hidden md:flex items-center justify-center shrink-0">
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[hsl(var(--accent))] to-[hsl(var(--accent)/0.3)] dark:from-[hsl(var(--accent)/0.3)] dark:to-[hsl(var(--accent)/0.1)] flex items-center justify-center">
-            <Shield className="h-8 w-8 text-[hsl(var(--primary)/0.5)] dark:text-[hsl(var(--primary)/0.4)]" aria-hidden />
+          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[hsl(var(--accent))] to-[hsl(var(--accent)/0.3)] flex items-center justify-center">
+            <Shield className="h-8 w-8 text-[hsl(var(--primary)/0.5)]" aria-hidden />
           </div>
         </div>
       </div>

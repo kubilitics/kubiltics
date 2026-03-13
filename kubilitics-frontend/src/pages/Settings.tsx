@@ -351,9 +351,9 @@ export default function Settings() {
                         {isTesting === 'backend' ? (
                           <Loader2 className="h-4 w-4 animate-spin" />
                         ) : connectionStatus.backend === 'success' ? (
-                          <CheckCircle2 className="h-4 w-4 text-green-500 dark:text-green-400" />
+                          <CheckCircle2 className="h-4 w-4 text-green-500" />
                         ) : connectionStatus.backend === 'error' ? (
-                          <XCircle className="h-4 w-4 text-red-500 dark:text-red-400" />
+                          <XCircle className="h-4 w-4 text-red-500" />
                         ) : (
                           <RotateCcw className="h-4 w-4" /> // Using RotateCcw as "Test" icon proxy or verify icon
                         )}
@@ -388,9 +388,9 @@ export default function Settings() {
                         {isTesting === 'ai' ? (
                           <Loader2 className="h-4 w-4 animate-spin" />
                         ) : connectionStatus.ai === 'success' ? (
-                          <CheckCircle2 className="h-4 w-4 text-green-500 dark:text-green-400" />
+                          <CheckCircle2 className="h-4 w-4 text-green-500" />
                         ) : connectionStatus.ai === 'error' ? (
-                          <XCircle className="h-4 w-4 text-red-500 dark:text-red-400" />
+                          <XCircle className="h-4 w-4 text-red-500" />
                         ) : (
                           <RotateCcw className="h-4 w-4" />
                         )}
@@ -446,7 +446,7 @@ export default function Settings() {
         </CardHeader>
         <CardContent className="space-y-6">
           {/* Global AI Enable/Disable */}
-          <div className="flex items-center justify-between space-x-2 rounded-lg border border-slate-200 dark:border-white/10 p-4">
+          <div className="flex items-center justify-between space-x-2 rounded-lg border p-4">
             <div className="space-y-0.5">
               <div className="text-sm font-medium">Enable AI Features</div>
               <div className="text-xs text-muted-foreground">
@@ -548,7 +548,7 @@ export default function Settings() {
               );
             })()}
             {keyValidation && (
-              <p className={`text-xs flex items-center gap-1 ${keyValidation.ok ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400'}`}>
+              <p className={`text-xs flex items-center gap-1 ${keyValidation.ok ? 'text-green-600' : 'text-red-500'}`}>
                 {keyValidation.ok ? <CheckCircle2 className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
                 {keyValidation.msg}
               </p>
@@ -616,12 +616,12 @@ export default function Settings() {
                 </>
               ) : connectionStatus['ai-config'] === 'success' ? (
                 <>
-                  <CheckCircle2 className="mr-2 h-4 w-4 text-green-500 dark:text-green-400" />
+                  <CheckCircle2 className="mr-2 h-4 w-4 text-green-500" />
                   Test Connection
                 </>
               ) : connectionStatus['ai-config'] === 'error' ? (
                 <>
-                  <XCircle className="mr-2 h-4 w-4 text-red-500 dark:text-red-400" />
+                  <XCircle className="mr-2 h-4 w-4 text-red-500" />
                   Test Connection
                 </>
               ) : (
@@ -745,7 +745,7 @@ export default function Settings() {
               <div className="space-y-2">
                 <p className="text-sm font-medium text-muted-foreground">AI Backend Status</p>
                 <div className="flex items-center gap-2">
-                  <div className={`h-2 w-2 rounded-full ${aiStatus.running ? 'bg-green-500 dark:bg-green-600' : aiStatus.available ? 'bg-yellow-500 dark:bg-yellow-600' : 'bg-gray-400 dark:bg-gray-600'}`} />
+                  <div className={`h-2 w-2 rounded-full ${aiStatus.running ? 'bg-green-500' : aiStatus.available ? 'bg-yellow-500' : 'bg-gray-400'}`} />
                   <p className="text-sm">
                     {aiStatus.running
                       ? `Running on port ${aiStatus.port}`
@@ -758,7 +758,7 @@ export default function Settings() {
             )}
 
             {/* Analytics Consent */}
-            <div className="space-y-2 pt-4 border-t dark:border-white/10">
+            <div className="space-y-2 pt-4 border-t">
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
                   <p className="text-sm font-medium">Analytics & Usage Data</p>
@@ -792,7 +792,7 @@ export default function Settings() {
             </div>
 
             {/* Actions */}
-            <div className="flex gap-2 pt-4 border-t dark:border-white/10">
+            <div className="flex gap-2 pt-4 border-t">
               <Button
                 type="button"
                 variant="outline"

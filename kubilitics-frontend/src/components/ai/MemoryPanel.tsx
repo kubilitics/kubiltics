@@ -117,7 +117,7 @@ function OverviewTab() {
   if (loading && !data) {
     return (
       <div className="flex flex-col gap-3 p-4">
-        {[1, 2, 3].map((i) => <div key={i} className="h-20 rounded-xl bg-white/5 dark:bg-white/10 animate-pulse" />)}
+        {[1, 2, 3].map((i) => <div key={i} className="h-20 rounded-xl bg-white/5 animate-pulse" />)}
       </div>
     );
   }
@@ -126,9 +126,9 @@ function OverviewTab() {
     return (
       <div className="flex flex-col items-center justify-center py-16 gap-3 text-center">
         <AlertCircle className="w-10 h-10 text-red-400" />
-        <p className="text-sm text-zinc-400 dark:text-zinc-500">Cannot reach AI server</p>
-        <p className="text-xs text-zinc-600 dark:text-zinc-500">{error}</p>
-        <Button variant="outline" size="sm" onClick={refresh} className="border-white/10 dark:border-white/20 text-xs">
+        <p className="text-sm text-zinc-400">Cannot reach AI server</p>
+        <p className="text-xs text-zinc-600">{error}</p>
+        <Button variant="outline" size="sm" onClick={refresh} className="border-white/10 text-xs">
           <RefreshCw className="w-3 h-3 mr-1.5" /> Retry
         </Button>
       </div>
@@ -143,43 +143,43 @@ function OverviewTab() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           {stats?.bootstrapped ? (
-            <Badge className="bg-emerald-500/20 dark:bg-emerald-500/30 text-emerald-400 border-emerald-500/30 dark:border-emerald-500/40 text-xs">
+            <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30 text-xs">
               <CheckCircle2 className="w-3 h-3 mr-1" /> World Model Active
             </Badge>
           ) : (
-            <Badge className="bg-amber-500/20 dark:bg-amber-500/30 text-amber-400 border-amber-500/30 dark:border-amber-500/40 text-xs">
+            <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/30 text-xs">
               <Loader2 className="w-3 h-3 mr-1 animate-spin" /> Not bootstrapped
             </Badge>
           )}
           {stats?.last_sync && (
-            <span className="text-[11px] text-zinc-600 dark:text-zinc-500">Sync: {formatTime(stats.last_sync)}</span>
+            <span className="text-[11px] text-zinc-600">Sync: {formatTime(stats.last_sync)}</span>
           )}
         </div>
-        <Button variant="ghost" size="sm" onClick={refresh} disabled={loading} className="h-7 w-7 p-0 text-zinc-400 dark:text-zinc-500 dark:hover:text-zinc-400">
+        <Button variant="ghost" size="sm" onClick={refresh} disabled={loading} className="h-7 w-7 p-0 text-zinc-400">
           <RefreshCw className={cn('w-3.5 h-3.5', loading && 'animate-spin')} />
         </Button>
       </div>
 
       {/* Stats grid */}
       <div className="grid grid-cols-3 gap-3">
-        <div className="rounded-xl bg-white/5 dark:bg-white/10 border border-white/10 dark:border-white/20 p-3 text-center">
-          <div className="text-2xl font-bold text-zinc-100 dark:text-zinc-50">{(stats?.total_resources ?? 0).toLocaleString()}</div>
-          <div className="text-xs text-zinc-500 dark:text-zinc-600 mt-0.5">Resources</div>
+        <div className="rounded-xl bg-white/5 border border-white/10 p-3 text-center">
+          <div className="text-2xl font-bold text-zinc-100">{(stats?.total_resources ?? 0).toLocaleString()}</div>
+          <div className="text-xs text-zinc-500 mt-0.5">Resources</div>
         </div>
-        <div className="rounded-xl bg-white/5 dark:bg-white/10 border border-white/10 dark:border-white/20 p-3 text-center">
-          <div className="text-2xl font-bold text-zinc-100 dark:text-zinc-50">{stats?.total_kinds ?? 0}</div>
-          <div className="text-xs text-zinc-500 dark:text-zinc-600 mt-0.5">Kinds</div>
+        <div className="rounded-xl bg-white/5 border border-white/10 p-3 text-center">
+          <div className="text-2xl font-bold text-zinc-100">{stats?.total_kinds ?? 0}</div>
+          <div className="text-xs text-zinc-500 mt-0.5">Kinds</div>
         </div>
-        <div className="rounded-xl bg-white/5 dark:bg-white/10 border border-white/10 dark:border-white/20 p-3 text-center">
-          <div className="text-2xl font-bold text-zinc-100 dark:text-zinc-50">{stats?.total_namespaces ?? 0}</div>
-          <div className="text-xs text-zinc-500 dark:text-zinc-600 mt-0.5">Namespaces</div>
+        <div className="rounded-xl bg-white/5 border border-white/10 p-3 text-center">
+          <div className="text-2xl font-bold text-zinc-100">{stats?.total_namespaces ?? 0}</div>
+          <div className="text-xs text-zinc-500 mt-0.5">Namespaces</div>
         </div>
       </div>
 
       {/* Kind distribution */}
       {topKinds.length > 0 && (
-        <div className="rounded-xl border border-white/10 dark:border-white/20 bg-white/5 dark:bg-white/10 p-4 space-y-3">
-          <p className="text-xs font-semibold text-zinc-300 dark:text-zinc-200 flex items-center gap-1.5">
+        <div className="rounded-xl border border-white/10 bg-white/5 p-4 space-y-3">
+          <p className="text-xs font-semibold text-zinc-300 flex items-center gap-1.5">
             <Layers className="w-3.5 h-3.5 text-violet-400" />
             Resource Distribution
           </p>
@@ -187,8 +187,8 @@ function OverviewTab() {
             {topKinds.map(([kind, count]) => (
               <div key={kind} className="flex items-center gap-2">
                 <KindIcon kind={kind} />
-                <span className="w-28 text-xs text-zinc-400 dark:text-zinc-500 truncate">{kind}</span>
-                <div className="flex-1 h-1.5 bg-white/10 dark:bg-white/20 rounded-full overflow-hidden">
+                <span className="w-28 text-xs text-zinc-400 truncate">{kind}</span>
+                <div className="flex-1 h-1.5 bg-white/10 rounded-full overflow-hidden">
                   <motion.div
                     className="h-full bg-violet-500 rounded-full"
                     initial={{ width: 0 }}
@@ -196,7 +196,7 @@ function OverviewTab() {
                     transition={{ duration: 0.5, ease: 'easeOut' }}
                   />
                 </div>
-                <span className="w-10 text-right text-xs text-zinc-500 dark:text-zinc-600 shrink-0">{count}</span>
+                <span className="w-10 text-right text-xs text-zinc-500 shrink-0">{count}</span>
               </div>
             ))}
           </div>
@@ -210,10 +210,10 @@ function OverviewTab() {
             .sort((a, b) => b[1] - a[1])
             .slice(0, 8)
             .map(([ns, count]) => (
-              <span key={ns} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-500/15 dark:bg-blue-500/25 text-blue-400 text-xs border border-blue-500/20 dark:border-blue-500/30">
+              <span key={ns} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-500/15 text-blue-400 text-xs border border-blue-500/20">
                 <Cpu className="w-2.5 h-2.5" />
                 {ns}
-                <span className="text-blue-500/60 dark:text-blue-500/70">({count})</span>
+                <span className="text-blue-500/60">({count})</span>
               </span>
             ))}
         </div>
@@ -222,20 +222,20 @@ function OverviewTab() {
       {/* Recent changes */}
       {changes.length > 0 && (
         <div className="space-y-2">
-          <p className="text-xs font-semibold text-zinc-300 dark:text-zinc-200 flex items-center gap-1.5">
+          <p className="text-xs font-semibold text-zinc-300 flex items-center gap-1.5">
             <Activity className="w-3.5 h-3.5 text-blue-400" />
             Recent Changes
-            <span className="text-zinc-600 dark:text-zinc-500 font-normal">({changes.length} in 10m)</span>
+            <span className="text-zinc-600 font-normal">({changes.length} in 10m)</span>
           </p>
           <div className="space-y-1">
             {changes.slice(0, 8).map((c, i) => (
-              <div key={i} className="flex items-center gap-2 py-1.5 px-2 rounded-lg hover:bg-white/5 dark:hover:bg-white/10 transition-colors">
+              <div key={i} className="flex items-center gap-2 py-1.5 px-2 rounded-lg hover:bg-white/5 transition-colors">
                 <KindIcon kind={c.kind} />
-                <span className="text-xs text-zinc-400 dark:text-zinc-500 truncate flex-1">
+                <span className="text-xs text-zinc-400 truncate flex-1">
                   {c.kind}/{c.namespace ? `${c.namespace}/` : ''}{c.name}
                 </span>
                 <UpdateTypeBadge type={c.update_type} />
-                <span className="text-[11px] text-zinc-600 dark:text-zinc-500 shrink-0">{formatTime(c.timestamp)}</span>
+                <span className="text-[11px] text-zinc-600 shrink-0">{formatTime(c.timestamp)}</span>
               </div>
             ))}
           </div>
@@ -244,9 +244,9 @@ function OverviewTab() {
 
       {!stats && !loading && (
         <div className="flex flex-col items-center py-12 gap-3 text-center">
-          <Database className="w-12 h-12 text-zinc-700 dark:text-zinc-800" />
-          <p className="text-sm text-zinc-500 dark:text-zinc-400">World model not bootstrapped</p>
-          <p className="text-xs text-zinc-600 dark:text-zinc-500">Connect to a Kubernetes cluster to populate the world model.</p>
+          <Database className="w-12 h-12 text-zinc-700" />
+          <p className="text-sm text-zinc-500">World model not bootstrapped</p>
+          <p className="text-xs text-zinc-600">Connect to a Kubernetes cluster to populate the world model.</p>
         </div>
       )}
     </div>
@@ -282,15 +282,15 @@ function ExplorerTab() {
   return (
     <div className="flex flex-col h-full">
       {/* Filter bar */}
-      <div className="p-4 space-y-3 border-b border-white/10 dark:border-white/20">
+      <div className="p-4 space-y-3 border-b border-white/10">
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-500 dark:text-zinc-600" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-500" />
           <input
             type="text"
             value={search}
             onChange={(e) => handleSearchChange(e.target.value)}
             placeholder="Search resources by name, kind, labels…"
-            className="w-full pl-9 pr-3 py-2 text-xs bg-white/5 dark:bg-white/10 border border-white/10 dark:border-white/20 rounded-lg text-zinc-200 dark:text-zinc-100 placeholder:text-zinc-600 dark:placeholder:text-zinc-700 focus:outline-none focus:border-violet-500/50"
+            className="w-full pl-9 pr-3 py-2 text-xs bg-white/5 border border-white/10 rounded-lg text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-violet-500/50"
           />
         </div>
         <div className="flex gap-2">
@@ -299,21 +299,21 @@ function ExplorerTab() {
             value={kind}
             onChange={(e) => setKind(e.target.value)}
             placeholder="Kind (Pod, Service…)"
-            className="flex-1 px-3 py-1.5 text-xs bg-white/5 dark:bg-white/10 border border-white/10 dark:border-white/20 rounded-lg text-zinc-200 dark:text-zinc-100 placeholder:text-zinc-600 dark:placeholder:text-zinc-700 focus:outline-none focus:border-violet-500/50"
+            className="flex-1 px-3 py-1.5 text-xs bg-white/5 border border-white/10 rounded-lg text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-violet-500/50"
           />
           <input
             type="text"
             value={namespace}
             onChange={(e) => setNamespace(e.target.value)}
             placeholder="Namespace"
-            className="flex-1 px-3 py-1.5 text-xs bg-white/5 dark:bg-white/10 border border-white/10 dark:border-white/20 rounded-lg text-zinc-200 dark:text-zinc-100 placeholder:text-zinc-600 dark:placeholder:text-zinc-700 focus:outline-none focus:border-violet-500/50"
+            className="flex-1 px-3 py-1.5 text-xs bg-white/5 border border-white/10 rounded-lg text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-violet-500/50"
           />
         </div>
       </div>
 
       {/* Kind summary chips */}
       {kindCounts.length > 0 && (
-        <div className="flex flex-wrap gap-1.5 px-4 py-2 border-b border-white/10 dark:border-white/20">
+        <div className="flex flex-wrap gap-1.5 px-4 py-2 border-b border-white/10">
           {kindCounts.slice(0, 6).map(([k, n]) => (
             <button
               key={k}
@@ -321,8 +321,8 @@ function ExplorerTab() {
               className={cn(
                 'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs border transition-colors',
                 kind === k
-                  ? 'bg-violet-500/30 dark:bg-violet-500/40 text-violet-300 dark:text-violet-200 border-violet-500/50 dark:border-violet-500/60'
-                  : 'bg-white/5 dark:bg-white/10 text-zinc-400 dark:text-zinc-500 border-white/10 dark:border-white/20 hover:bg-white/10 dark:hover:bg-white/20'
+                  ? 'bg-violet-500/30 text-violet-300 border-violet-500/50'
+                  : 'bg-white/5 text-zinc-400 border-white/10 hover:bg-white/10'
               )}
             >
               <KindIcon kind={k} />
@@ -336,15 +336,15 @@ function ExplorerTab() {
         <div className="p-2 space-y-0.5">
           {loading && resources.length === 0 && (
             <div className="flex items-center justify-center py-12">
-              <Loader2 className="w-5 h-5 animate-spin text-zinc-600 dark:text-zinc-700" />
+              <Loader2 className="w-5 h-5 animate-spin text-zinc-600" />
             </div>
           )}
 
           {!loading && resources.length === 0 && (
             <div className="flex flex-col items-center justify-center py-12 gap-2 text-center">
-              <Box className="w-10 h-10 text-zinc-700 dark:text-zinc-800" />
-              <p className="text-sm text-zinc-500 dark:text-zinc-400">No resources found</p>
-              <p className="text-xs text-zinc-600 dark:text-zinc-500">Try adjusting your filters or connecting a cluster.</p>
+              <Box className="w-10 h-10 text-zinc-700" />
+              <p className="text-sm text-zinc-500">No resources found</p>
+              <p className="text-xs text-zinc-600">Try adjusting your filters or connecting a cluster.</p>
             </div>
           )}
 
@@ -359,33 +359,33 @@ function ExplorerTab() {
               <KindIcon kind={r.kind} />
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1.5">
-                  <span className="text-xs font-medium text-zinc-300 dark:text-zinc-200 truncate">{r.name}</span>
+                  <span className="text-xs font-medium text-zinc-300 truncate">{r.name}</span>
                   {r.phase && (
                     <span className={cn(
                       'text-[10px] px-1.5 py-0 rounded',
-                      r.phase === 'Running' ? 'bg-emerald-500/20 dark:bg-emerald-500/30 text-emerald-400' :
-                      r.phase === 'Pending' ? 'bg-amber-500/20 dark:bg-amber-500/30 text-amber-400' :
-                      'bg-red-500/20 dark:bg-red-500/30 text-red-400'
+                      r.phase === 'Running' ? 'bg-emerald-500/20 text-emerald-400' :
+                      r.phase === 'Pending' ? 'bg-amber-500/20 text-amber-400' :
+                      'bg-red-500/20 text-red-400'
                     )}>{r.phase}</span>
                   )}
                 </div>
                 <div className="flex items-center gap-1.5 mt-0.5">
-                  <span className="text-[11px] text-zinc-600 dark:text-zinc-500">{r.kind}</span>
-                  {r.namespace && <span className="text-[11px] text-zinc-600 dark:text-zinc-500">· {r.namespace}</span>}
+                  <span className="text-[11px] text-zinc-600">{r.kind}</span>
+                  {r.namespace && <span className="text-[11px] text-zinc-600">· {r.namespace}</span>}
                   {r.labels && Object.keys(r.labels).length > 0 && (
-                    <span className="text-[11px] text-zinc-700 dark:text-zinc-600">
+                    <span className="text-[11px] text-zinc-700">
                       · {Object.entries(r.labels).slice(0, 2).map(([k, v]) => `${k}=${v}`).join(', ')}
                     </span>
                   )}
                 </div>
               </div>
-              <ChevronRight className="w-3.5 h-3.5 text-zinc-700 dark:text-zinc-800 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+              <ChevronRight className="w-3.5 h-3.5 text-zinc-700 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
             </motion.div>
           ))}
         </div>
       </ScrollArea>
 
-      <div className="px-4 py-2 border-t border-white/10 dark:border-white/20 text-xs text-zinc-600 dark:text-zinc-500">
+      <div className="px-4 py-2 border-t border-white/10 text-xs text-zinc-600">
         {count} resource{count !== 1 ? 's' : ''}
         {loading && <Loader2 className="inline w-3 h-3 ml-1.5 animate-spin" />}
       </div>
@@ -411,15 +411,15 @@ function TimelineTab() {
       {/* Retention window badge */}
       <div className="px-4 pt-4 pb-2">
         {retWindow?.available ? (
-          <div className="flex items-center gap-2 text-xs text-zinc-500 dark:text-zinc-600">
+          <div className="flex items-center gap-2 text-xs text-zinc-500">
             <Clock className="w-3.5 h-3.5 text-violet-400 shrink-0" />
             <span>Retention: {retWindow.oldest ? new Date(retWindow.oldest).toLocaleDateString() : '?'}</span>
             <span>→</span>
             <span>{retWindow.newest ? new Date(retWindow.newest).toLocaleDateString() : '?'}</span>
-            <Badge className="bg-violet-500/20 dark:bg-violet-500/30 text-violet-400 border-violet-500/30 dark:border-violet-500/40 text-[10px]">{retWindow.retention}</Badge>
+            <Badge className="bg-violet-500/20 text-violet-400 border-violet-500/30 text-[10px]">{retWindow.retention}</Badge>
           </div>
         ) : (
-          <div className="flex items-center gap-2 text-xs text-zinc-600 dark:text-zinc-500">
+          <div className="flex items-center gap-2 text-xs text-zinc-600">
             <Clock className="w-3.5 h-3.5" />
             <span>No snapshots yet — retention window not available</span>
           </div>
@@ -427,25 +427,25 @@ function TimelineTab() {
       </div>
 
       {/* Resource selector */}
-      <div className="px-4 pb-3 space-y-2 border-b border-white/10 dark:border-white/20">
+      <div className="px-4 pb-3 space-y-2 border-b border-white/10">
         <div className="flex gap-2">
           <input
             value={kind}
             onChange={(e) => setKind(e.target.value)}
             placeholder="Kind"
-            className="w-24 px-2 py-1.5 text-xs bg-white/5 dark:bg-white/10 border border-white/10 dark:border-white/20 rounded text-zinc-200 dark:text-zinc-100 placeholder:text-zinc-600 dark:placeholder:text-zinc-700 focus:outline-none focus:border-violet-500/50"
+            className="w-24 px-2 py-1.5 text-xs bg-white/5 border border-white/10 rounded text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-violet-500/50"
           />
           <input
             value={namespace}
             onChange={(e) => setNamespace(e.target.value)}
             placeholder="Namespace"
-            className="flex-1 px-2 py-1.5 text-xs bg-white/5 dark:bg-white/10 border border-white/10 dark:border-white/20 rounded text-zinc-200 dark:text-zinc-100 placeholder:text-zinc-600 dark:placeholder:text-zinc-700 focus:outline-none focus:border-violet-500/50"
+            className="flex-1 px-2 py-1.5 text-xs bg-white/5 border border-white/10 rounded text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-violet-500/50"
           />
           <input
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="Name"
-            className="flex-1 px-2 py-1.5 text-xs bg-white/5 dark:bg-white/10 border border-white/10 dark:border-white/20 rounded text-zinc-200 dark:text-zinc-100 placeholder:text-zinc-600 dark:placeholder:text-zinc-700 focus:outline-none focus:border-violet-500/50"
+            className="flex-1 px-2 py-1.5 text-xs bg-white/5 border border-white/10 rounded text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-violet-500/50"
           />
           <Button size="sm" onClick={handleSearch} disabled={!kind || !name} className="h-7 bg-violet-600 hover:bg-violet-700 text-xs px-3">
             {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Query'}
@@ -456,22 +456,22 @@ function TimelineTab() {
       <ScrollArea className="flex-1">
         <div className="p-4 space-y-3">
           {error && (
-            <div className="p-3 rounded-lg bg-red-500/10 dark:bg-red-500/15 border border-red-500/30 dark:border-red-500/40 text-xs text-red-400 dark:text-red-300">{error}</div>
+            <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-xs text-red-400">{error}</div>
           )}
 
           {!query.kind && (
             <div className="flex flex-col items-center justify-center py-12 gap-3 text-center">
-              <Clock className="w-10 h-10 text-zinc-700 dark:text-zinc-800" />
-              <p className="text-sm text-zinc-500 dark:text-zinc-400">Time-travel query</p>
-              <p className="text-xs text-zinc-600 dark:text-zinc-500">Enter a resource kind + name to query its change history.</p>
+              <Clock className="w-10 h-10 text-zinc-700" />
+              <p className="text-sm text-zinc-500">Time-travel query</p>
+              <p className="text-xs text-zinc-600">Enter a resource kind + name to query its change history.</p>
             </div>
           )}
 
           {query.kind && !loading && changes.length === 0 && (
             <div className="flex flex-col items-center justify-center py-12 gap-2 text-center">
-              <CheckCircle2 className="w-8 h-8 text-zinc-700 dark:text-zinc-800" />
-              <p className="text-sm text-zinc-500 dark:text-zinc-400">No changes found</p>
-              <p className="text-xs text-zinc-600 dark:text-zinc-500">No changes recorded for {query.kind}/{query.name} in the retention window.</p>
+              <CheckCircle2 className="w-8 h-8 text-zinc-700" />
+              <p className="text-sm text-zinc-500">No changes found</p>
+              <p className="text-xs text-zinc-600">No changes recorded for {query.kind}/{query.name} in the retention window.</p>
             </div>
           )}
 
@@ -479,7 +479,7 @@ function TimelineTab() {
           {changes.length > 0 && (
             <div className="relative pl-5">
               {/* Vertical line */}
-              <div className="absolute left-2 top-2 bottom-2 w-px bg-white/10 dark:bg-white/20" />
+              <div className="absolute left-2 top-2 bottom-2 w-px bg-white/10" />
               <div className="space-y-3">
                 {changes.map((c, i) => (
                   <motion.div
@@ -491,23 +491,23 @@ function TimelineTab() {
                   >
                     {/* Dot on timeline */}
                     <div className={cn(
-                      'absolute -left-3.5 top-1 w-2 h-2 rounded-full border border-zinc-800 dark:border-zinc-700',
+                      'absolute -left-3.5 top-1 w-2 h-2 rounded-full border border-zinc-800',
                       c.update_type === 'ADDED' ? 'bg-emerald-500' :
                       c.update_type === 'DELETED' ? 'bg-red-500' : 'bg-blue-500'
                     )} />
-                    <div className="rounded-lg border border-white/10 dark:border-white/20 bg-white/5 dark:bg-white/10 p-3 space-y-1.5">
+                    <div className="rounded-lg border border-white/10 bg-white/5 p-3 space-y-1.5">
                       <div className="flex items-center justify-between gap-2">
                         <UpdateTypeBadge type={c.update_type} />
-                        <span className="text-[11px] text-zinc-600 dark:text-zinc-500">{formatTime(c.timestamp)}</span>
+                        <span className="text-[11px] text-zinc-600">{formatTime(c.timestamp)}</span>
                       </div>
                       {c.after && (
-                        <div className="text-xs text-zinc-400 dark:text-zinc-500">
-                          {c.after.phase && <span className="mr-2">Phase: <span className="text-zinc-200 dark:text-zinc-300">{c.after.phase}</span></span>}
-                          {c.after.uid && <span className="text-zinc-600 dark:text-zinc-600 font-mono text-[10px]">{c.after.uid.slice(0, 8)}…</span>}
+                        <div className="text-xs text-zinc-400">
+                          {c.after.phase && <span className="mr-2">Phase: <span className="text-zinc-200">{c.after.phase}</span></span>}
+                          {c.after.uid && <span className="text-zinc-600 font-mono text-[10px]">{c.after.uid.slice(0, 8)}…</span>}
                         </div>
                       )}
                       {c.before && c.update_type === 'DELETED' && (
-                        <div className="text-xs text-zinc-500 dark:text-zinc-600">Previously: {c.before.phase ?? 'unknown phase'}</div>
+                        <div className="text-xs text-zinc-500">Previously: {c.before.phase ?? 'unknown phase'}</div>
                       )}
                     </div>
                   </motion.div>
@@ -540,23 +540,23 @@ function SearchTab() {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="p-4 space-y-3 border-b border-white/10 dark:border-white/20">
+      <div className="p-4 space-y-3 border-b border-white/10">
         {/* Vector store status */}
         {stats && (
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Badge className={cn('text-xs', stats.available ? 'bg-emerald-500/20 dark:bg-emerald-500/30 text-emerald-400 border-emerald-500/30 dark:border-emerald-500/40' : 'bg-zinc-500/20 dark:bg-zinc-500/30 text-zinc-400 dark:text-zinc-500 border-zinc-500/30 dark:border-zinc-500/40')}>
+              <Badge className={cn('text-xs', stats.available ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' : 'bg-zinc-500/20 text-zinc-400 border-zinc-500/30')}>
                 {stats.available ? <CheckCircle2 className="w-3 h-3 mr-1 inline" /> : <AlertCircle className="w-3 h-3 mr-1 inline" />}
                 {stats.available ? 'Vector Store Online' : 'Offline'}
               </Badge>
               {stats.stats && (
-                <span className="text-xs text-zinc-600 dark:text-zinc-500">{stats.stats.total_items} items · {stats.stats.backend}</span>
+                <span className="text-xs text-zinc-600">{stats.stats.total_items} items · {stats.stats.backend}</span>
               )}
             </div>
             {stats.stats && (
               <div className="flex items-center gap-1.5">
                 {Object.entries(stats.stats.type_counts ?? {}).map(([type, n]) => (
-                  <span key={type} className="text-[11px] text-zinc-600 dark:text-zinc-500">{type}: {n}</span>
+                  <span key={type} className="text-[11px] text-zinc-600">{type}: {n}</span>
                 ))}
               </div>
             )}
@@ -574,8 +574,8 @@ function SearchTab() {
                 className={cn(
                   'flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-medium transition-colors border',
                   searchType === t.value
-                    ? 'bg-violet-500/25 dark:bg-violet-500/35 text-violet-300 dark:text-violet-200 border-violet-500/40 dark:border-violet-500/50'
-                    : 'bg-white/5 dark:bg-white/10 text-zinc-400 dark:text-zinc-500 border-white/10 dark:border-white/20 hover:bg-white/10 dark:hover:bg-white/20'
+                    ? 'bg-violet-500/25 text-violet-300 border-violet-500/40'
+                    : 'bg-white/5 text-zinc-400 border-white/10 hover:bg-white/10'
                 )}
               >
                 <Icon className="w-3.5 h-3.5" />
@@ -588,17 +588,17 @@ function SearchTab() {
         {/* Search bar */}
         <div className="flex gap-2">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-500 dark:text-zinc-600" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-500" />
             <input
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder={`Search ${searchType.replace('_', ' ')}…`}
-              className="w-full pl-9 pr-3 py-2 text-xs bg-white/5 dark:bg-white/10 border border-white/10 dark:border-white/20 rounded-lg text-zinc-200 dark:text-zinc-100 placeholder:text-zinc-600 dark:placeholder:text-zinc-700 focus:outline-none focus:border-violet-500/50"
+              className="w-full pl-9 pr-3 py-2 text-xs bg-white/5 border border-white/10 rounded-lg text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-violet-500/50"
             />
           </div>
-          <Button size="sm" onClick={handleSearch} disabled={!query.trim() || loading} className="h-8 bg-violet-600 dark:bg-violet-700 hover:bg-violet-700 dark:hover:bg-violet-800 text-xs px-4">
+          <Button size="sm" onClick={handleSearch} disabled={!query.trim() || loading} className="h-8 bg-violet-600 hover:bg-violet-700 text-xs px-4">
             {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Search'}
           </Button>
         </div>
@@ -607,22 +607,22 @@ function SearchTab() {
       <ScrollArea className="flex-1">
         <div className="p-4 space-y-3">
           {error && (
-            <div className="p-3 rounded-lg bg-red-500/10 dark:bg-red-500/15 border border-red-500/30 dark:border-red-500/40 text-xs text-red-400 dark:text-red-300">{error}</div>
+            <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-xs text-red-400">{error}</div>
           )}
 
           {!loading && results.length === 0 && query && (
             <div className="flex flex-col items-center justify-center py-12 gap-2 text-center">
-              <Search className="w-8 h-8 text-zinc-700 dark:text-zinc-800" />
-              <p className="text-sm text-zinc-500 dark:text-zinc-400">No results found</p>
-              <p className="text-xs text-zinc-600 dark:text-zinc-500">Try different search terms or index some {searchType}.</p>
+              <Search className="w-8 h-8 text-zinc-700" />
+              <p className="text-sm text-zinc-500">No results found</p>
+              <p className="text-xs text-zinc-600">Try different search terms or index some {searchType}.</p>
             </div>
           )}
 
           {!query && (
             <div className="flex flex-col items-center justify-center py-12 gap-3 text-center">
-              <Sparkles className="w-10 h-10 text-zinc-700 dark:text-zinc-800" />
-              <p className="text-sm text-zinc-500 dark:text-zinc-400">Semantic Memory Search</p>
-              <p className="text-xs text-zinc-600 dark:text-zinc-500 max-w-52">
+              <Sparkles className="w-10 h-10 text-zinc-700" />
+              <p className="text-sm text-zinc-500">Semantic Memory Search</p>
+              <p className="text-xs text-zinc-600 max-w-52">
                 Search past investigations, error patterns, and K8s documentation using keyword similarity.
               </p>
             </div>
@@ -635,26 +635,26 @@ function SearchTab() {
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.05 }}
-                className="rounded-xl border border-white/10 dark:border-white/20 bg-white/5 dark:bg-white/10 p-4 space-y-2"
+                className="rounded-xl border border-white/10 bg-white/5 p-4 space-y-2"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-center gap-2">
                     <TrendingUp className="w-3.5 h-3.5 text-violet-400 shrink-0" />
-                    <span className="text-xs font-semibold text-zinc-200 dark:text-zinc-100">Match #{i + 1}</span>
+                    <span className="text-xs font-semibold text-zinc-200">Match #{i + 1}</span>
                   </div>
                   <div className="flex items-center gap-1 shrink-0">
-                    <span className="text-[11px] text-zinc-500 dark:text-zinc-600">Score</span>
+                    <span className="text-[11px] text-zinc-500">Score</span>
                     <span className={cn(
                       'text-xs font-bold px-1.5 py-0.5 rounded',
-                      result.score >= 2 ? 'bg-emerald-500/20 dark:bg-emerald-500/30 text-emerald-400' :
-                      result.score >= 1 ? 'bg-amber-500/20 dark:bg-amber-500/30 text-amber-400' : 'bg-white/5 dark:bg-white/10 text-zinc-400 dark:text-zinc-500'
+                      result.score >= 2 ? 'bg-emerald-500/20 text-emerald-400' :
+                      result.score >= 1 ? 'bg-amber-500/20 text-amber-400' : 'bg-white/5 text-zinc-400'
                     )}>
                       {result.score.toFixed(1)}
                     </span>
                   </div>
                 </div>
-                <p className="text-xs text-zinc-300 dark:text-zinc-200 leading-relaxed line-clamp-3">{result.text}</p>
-                <span className="text-[11px] text-zinc-600 dark:text-zinc-500">{formatTime(result.created_at)}</span>
+                <p className="text-xs text-zinc-300 leading-relaxed line-clamp-3">{result.text}</p>
+                <span className="text-[11px] text-zinc-600">{formatTime(result.created_at)}</span>
               </motion.div>
             ))}
           </AnimatePresence>
@@ -677,19 +677,19 @@ export function MemoryPanel() {
   ];
 
   return (
-    <div className="flex flex-col h-full bg-[#0f0f12] dark:bg-slate-950">
+    <div className="flex flex-col h-full bg-[#0f0f12]">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 dark:border-white/20">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
         <div className="flex items-center gap-2">
-          <div className="flex items-center justify-center w-7 h-7 rounded-lg bg-violet-500/20 dark:bg-violet-500/30">
+          <div className="flex items-center justify-center w-7 h-7 rounded-lg bg-violet-500/20">
             <Database className="w-4 h-4 text-violet-400" />
           </div>
-          <span className="text-sm font-semibold text-zinc-200 dark:text-zinc-100">Memory</span>
+          <span className="text-sm font-semibold text-zinc-200">Memory</span>
         </div>
       </div>
 
       {/* Sub-tab bar */}
-      <div className="flex items-center gap-1 px-3 py-2 border-b border-white/10 dark:border-white/20">
+      <div className="flex items-center gap-1 px-3 py-2 border-b border-white/10">
         {tabs.map((t) => {
           const Icon = t.icon;
           return (
@@ -699,8 +699,8 @@ export function MemoryPanel() {
               className={cn(
                 'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors',
                 activeTab === t.id
-                  ? 'bg-violet-500/20 dark:bg-violet-500/30 text-violet-300 dark:text-violet-200'
-                  : 'text-zinc-400 dark:text-zinc-500 hover:text-zinc-200 dark:hover:text-zinc-300 hover:bg-white/5 dark:hover:bg-white/10'
+                  ? 'bg-violet-500/20 text-violet-300'
+                  : 'text-zinc-400 hover:text-zinc-200 hover:bg-white/5'
               )}
             >
               <Icon className="w-3.5 h-3.5" />

@@ -71,7 +71,7 @@ function InsightCard({ insight }: { insight: Insight }) {
   return (
     <div
       className={cn(
-        'rounded-lg border-l-[3px] bg-white/60 dark:bg-slate-800/50 hover:bg-white/90 dark:hover:bg-slate-700/60',
+        'rounded-lg border-l-[3px] bg-white/60 hover:bg-white/90',
         'shadow-sm hover:shadow-md transition-all duration-200',
         'overflow-hidden',
         config.border
@@ -113,7 +113,7 @@ function InsightCard({ insight }: { insight: Insight }) {
         </div>
       </div>
       {expanded && (
-        <div className="px-3 pb-3 pt-0 border-t border-border/30 dark:border-white/10 mt-0 pt-2 ml-10">
+        <div className="px-3 pb-3 pt-0 border-t border-border/30 mt-0 pt-2 ml-10">
           <p className="text-xs text-muted-foreground mb-3 leading-relaxed">{insight.message}</p>
           <div className="flex flex-wrap gap-2">
             <Button
@@ -144,12 +144,12 @@ export function IntelligencePanel() {
   return (
     <section
       className={cn(
-        'rounded-2xl border border-[hsl(var(--accent)/0.8)] dark:border-[hsl(var(--accent)/0.3)] bg-gradient-to-b from-white/80 to-[hsl(var(--accent)/0.08)] dark:from-slate-900/80 dark:to-[hsl(var(--accent)/0.08)]',
+        'rounded-2xl border border-[hsl(var(--accent)/0.8)] bg-gradient-to-b from-white/80 to-[hsl(var(--accent)/0.08)]',
         'flex flex-col overflow-hidden min-h-[200px] h-full'
       )}
       aria-label="AI Insights"
     >
-      <div className="px-4 py-3 border-b border-[hsl(var(--accent)/0.5)] dark:border-[hsl(var(--accent)/0.2)]">
+      <div className="px-4 py-3 border-b border-[hsl(var(--accent)/0.5)]">
         <div className="flex items-center gap-2 mb-1">
           <div className="flex items-center justify-center w-6 h-6 rounded-md bg-[hsl(var(--cosmic-purple)/0.1)]">
             <Sparkles className="h-3.5 w-3.5 text-[hsl(var(--cosmic-purple))]" aria-hidden />

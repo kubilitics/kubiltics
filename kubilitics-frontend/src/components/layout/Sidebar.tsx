@@ -48,7 +48,6 @@ import { useMetalLBInstalled } from '@/hooks/useMetalLBInstalled';
 import { useAIStatus } from '@/hooks/useAIStatus';
 import { useUIStore } from '@/stores/uiStore';
 import { useProjectStore } from '@/stores/projectStore';
-import { ThemeToggle } from '@/components/ui/theme-toggle';
 
 interface NavItemProps {
   to: string;
@@ -85,7 +84,7 @@ function NavItem({ to, icon: Icon, label, count, onNavigate }: NavItemProps) {
         'flex items-center gap-3 px-3 py-2 rounded-xl text-[13px] font-medium transition-all duration-300 group relative overflow-hidden h-10',
         isActive
           ? 'text-primary bg-primary/5 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)]'
-          : 'text-slate-800 dark:text-slate-200 hover:bg-slate-100/60 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white border-transparent hover:translate-x-0.5'
+          : 'text-slate-800 hover:bg-slate-100/60 hover:text-slate-900 border-transparent hover:translate-x-0.5'
       )}
     >
       {/* Active Indicator Line */}
@@ -96,13 +95,13 @@ function NavItem({ to, icon: Icon, label, count, onNavigate }: NavItemProps) {
         />
       )}
 
-      <Icon className={cn("h-4 w-4 transition-colors relative z-10", isActive ? "text-primary" : "text-slate-700 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-white")} />
+      <Icon className={cn("h-4 w-4 transition-colors relative z-10", isActive ? "text-primary" : "text-slate-700 group-hover:text-slate-900")} />
       <span className={cn("flex-1 truncate relative z-10", isActive && "font-semibold")}>{label}</span>
       {count !== undefined && (
         <span
           className={cn(
             'text-[10px] font-bold px-2 py-0.5 rounded-lg min-w-[1.25rem] text-center leading-none transition-colors relative z-10',
-            isActive ? 'bg-primary text-primary-foreground' : 'bg-slate-200 dark:bg-white/10 text-slate-700 dark:text-slate-300 group-hover:bg-slate-300 dark:group-hover:bg-white/15 group-hover:text-slate-900 dark:group-hover:text-white'
+            isActive ? 'bg-primary text-primary-foreground' : 'bg-slate-200 text-slate-700 group-hover:bg-slate-300 group-hover:text-slate-900'
           )}
         >
           {count}
@@ -132,27 +131,27 @@ function NavGroup({ label, sectionId, children, icon: Icon, isSectionActive = fa
     <div className={cn(
       "flex items-center justify-between w-full px-4 py-2.5 rounded-xl transition-all duration-500 group border h-11",
       isSectionActive
-        ? "bg-white dark:bg-white/10 shadow-apple dark:shadow-none border-slate-200/40 dark:border-white/10 dark:border-white/10 text-primary"
+        ? "bg-white shadow-apple border-slate-200/40 text-primary"
         : isOpen
-          ? "bg-slate-100/40 dark:bg-white/5 text-slate-900 dark:text-white border-slate-100 dark:border-white/5"
-          : "bg-transparent hover:bg-slate-100/60 dark:hover:bg-white/5 text-slate-800 dark:text-slate-200 border-transparent hover:border-slate-100 dark:hover:border-white/5"
+          ? "bg-slate-100/40 text-slate-900 border-slate-100"
+          : "bg-transparent hover:bg-slate-100/60 text-slate-800 border-transparent hover:border-slate-100"
     )}>
       <div className="flex items-center gap-3">
         <div className={cn(
           "p-1.5 rounded-lg transition-colors",
-          isSectionActive ? "bg-primary/5 text-primary" : isOpen ? "bg-slate-200/50 dark:bg-white/10 text-slate-900 dark:text-white" : "bg-slate-200/50 dark:bg-white/10 text-slate-700 dark:text-slate-400 group-hover:bg-white dark:group-hover:bg-white/15 group-hover:text-slate-900 dark:group-hover:text-white"
+          isSectionActive ? "bg-primary/5 text-primary" : isOpen ? "bg-slate-200/50 text-slate-900" : "bg-slate-200/50 text-slate-700 group-hover:bg-white group-hover:text-slate-900"
         )}>
           <Icon className="h-4 w-4" />
         </div>
         <span className={cn(
           "text-[11px] font-bold tracking-[0.05em] uppercase",
-          isSectionActive ? "text-primary" : "text-slate-800 dark:text-slate-200 group-hover:text-slate-950 dark:group-hover:text-white"
+          isSectionActive ? "text-primary" : "text-slate-800 group-hover:text-slate-950"
         )}>
           {label}
         </span>
       </div>
       <ChevronRight
-        className={cn('h-4 w-4 transition-transform duration-500', isSectionActive ? 'text-primary' : 'text-slate-600 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-white', isOpen && 'rotate-90')}
+        className={cn('h-4 w-4 transition-transform duration-500', isSectionActive ? 'text-primary' : 'text-slate-600 group-hover:text-slate-900', isOpen && 'rotate-90')}
       />
     </div>
   );
@@ -188,7 +187,7 @@ function NavGroup({ label, sectionId, children, icon: Icon, isSectionActive = fa
             transition={{ duration: 0.3, ease: [0.23, 1, 0.32, 1] }}
             className="overflow-hidden"
           >
-            <div className="relative pl-4 ml-4 border-l-2 border-primary/20 dark:border-primary/30 my-2 space-y-1">
+            <div className="relative pl-4 ml-4 border-l-2 border-primary/20 my-2 space-y-1">
               {children}
             </div>
           </motion.div>
@@ -266,7 +265,7 @@ function SyncingIndicator({ isLoading, isInitialLoad }: { isLoading: boolean; is
   // Very subtle indicator - small dot in corner, not prominent banner
   return (
     <div className="flex items-center justify-center px-2 py-1">
-      <div className="h-1.5 w-1.5 rounded-full bg-blue-500/60 dark:bg-blue-400/60 animate-pulse" title="Loading resources..." />
+      <div className="h-1.5 w-1.5 rounded-full bg-blue-500/60 animate-pulse" title="Loading resources..." />
     </div>
   );
 }
@@ -386,11 +385,11 @@ function SidebarContent({
             <FolderKanban className="h-4 w-4 text-primary shrink-0" />
             <span className="text-sm font-medium truncate" title={activeProject.name}>{activeProject.name}</span>
           </div>
-          <p className="text-xs text-slate-700 dark:text-slate-400 font-medium">Project scope</p>
+          <p className="text-xs text-slate-700 font-medium">Project scope</p>
           <button
             type="button"
             onClick={handleExitProject}
-            className="w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-medium text-slate-800 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-white/10 hover:text-slate-900 dark:hover:text-white transition-colors"
+            className="w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-medium text-slate-800 hover:bg-slate-200 hover:text-slate-900 transition-colors"
           >
             <LogOut className="h-3.5 w-3.5" /> Exit project
           </button>
@@ -402,48 +401,48 @@ function SidebarContent({
           className={cn(
             "flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-500 group border h-12",
             isHomeActive
-              ? "bg-white dark:bg-white/10 text-primary border-slate-100 dark:border-white/10 shadow-apple dark:shadow-none"
-              : "bg-transparent text-slate-800 dark:text-slate-200 hover:bg-slate-100/60 dark:hover:bg-white/5 border-transparent hover:border-slate-100 dark:hover:border-white/5"
+              ? "bg-white text-primary border-slate-100 shadow-apple"
+              : "bg-transparent text-slate-800 hover:bg-slate-100/60 border-transparent hover:border-slate-100"
           )}
         >
-          <Home className={cn("h-5 w-5 transition-colors", isHomeActive ? "text-primary" : "text-slate-700 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-white")} />
-          <span className={cn("font-semibold text-sm", isHomeActive ? "text-slate-900 dark:text-white" : "text-slate-800 dark:text-slate-200 group-hover:text-slate-900 dark:group-hover:text-white")}>Home</span>
+          <Home className={cn("h-5 w-5 transition-colors", isHomeActive ? "text-primary" : "text-slate-700 group-hover:text-slate-900")} />
+          <span className={cn("font-semibold text-sm", isHomeActive ? "text-slate-900" : "text-slate-800 group-hover:text-slate-900")}>Home</span>
         </NavLink>
         <NavLink
           to="/dashboard"
           className={cn(
             "flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-500 group border h-12",
             isDashboardActive
-              ? "bg-white dark:bg-white/10 text-primary border-slate-100 dark:border-white/10 shadow-apple dark:shadow-none"
-              : "bg-transparent text-slate-800 dark:text-slate-200 hover:bg-slate-100/60 dark:hover:bg-white/5 border-transparent hover:border-slate-100 dark:hover:border-white/5"
+              ? "bg-white text-primary border-slate-100 shadow-apple"
+              : "bg-transparent text-slate-800 hover:bg-slate-100/60 border-transparent hover:border-slate-100"
           )}
         >
-          <LayoutDashboard className={cn("h-5 w-5 transition-colors", isDashboardActive ? "text-primary" : "text-slate-700 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-white")} />
-          <span className={cn("font-semibold text-sm", isDashboardActive ? "text-slate-900 dark:text-white" : "text-slate-800 dark:text-slate-200 group-hover:text-slate-900 dark:group-hover:text-white")}>Dashboard</span>
+          <LayoutDashboard className={cn("h-5 w-5 transition-colors", isDashboardActive ? "text-primary" : "text-slate-700 group-hover:text-slate-900")} />
+          <span className={cn("font-semibold text-sm", isDashboardActive ? "text-slate-900" : "text-slate-800 group-hover:text-slate-900")}>Dashboard</span>
         </NavLink>
         <NavLink
           to="/topology"
           className={cn(
             "flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-500 group border h-12",
             isTopologyActive
-              ? "bg-white dark:bg-white/10 text-primary border-slate-100 dark:border-white/10 shadow-apple dark:shadow-none"
-              : "bg-transparent text-slate-800 dark:text-slate-200 hover:bg-slate-100/60 dark:hover:bg-white/5 border-transparent hover:border-slate-100 dark:hover:border-white/5"
+              ? "bg-white text-primary border-slate-100 shadow-apple"
+              : "bg-transparent text-slate-800 hover:bg-slate-100/60 border-transparent hover:border-slate-100"
           )}
         >
-          <Network className={cn("h-5 w-5 transition-colors", isTopologyActive ? "text-primary" : "text-slate-700 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-white")} />
-          <span className={cn("font-semibold text-sm", isTopologyActive ? "text-slate-900 dark:text-white" : "text-slate-800 dark:text-slate-200 group-hover:text-slate-900 dark:group-hover:text-white")}>Topology</span>
+          <Network className={cn("h-5 w-5 transition-colors", isTopologyActive ? "text-primary" : "text-slate-700 group-hover:text-slate-900")} />
+          <span className={cn("font-semibold text-sm", isTopologyActive ? "text-slate-900" : "text-slate-800 group-hover:text-slate-900")}>Topology</span>
         </NavLink>
         <NavLink
           to="/addons"
           className={cn(
             "flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-500 group border h-12",
             isAddOnsActive
-              ? "bg-white dark:bg-white/10 text-primary border-slate-100 dark:border-white/10 shadow-apple dark:shadow-none"
-              : "bg-transparent text-slate-800 dark:text-slate-200 hover:bg-slate-100/60 dark:hover:bg-white/5 border-transparent hover:border-slate-100 dark:hover:border-white/5"
+              ? "bg-white text-primary border-slate-100 shadow-apple"
+              : "bg-transparent text-slate-800 hover:bg-slate-100/60 border-transparent hover:border-slate-100"
           )}
         >
-          <Puzzle className={cn("h-5 w-5 transition-colors", isAddOnsActive ? "text-primary" : "text-slate-700 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-white")} />
-          <span className={cn("font-semibold text-sm", isAddOnsActive ? "text-slate-900 dark:text-white" : "text-slate-800 dark:text-slate-200 group-hover:text-slate-900 dark:group-hover:text-white")}>Add-ons</span>
+          <Puzzle className={cn("h-5 w-5 transition-colors", isAddOnsActive ? "text-primary" : "text-slate-700 group-hover:text-slate-900")} />
+          <span className={cn("font-semibold text-sm", isAddOnsActive ? "text-slate-900" : "text-slate-800 group-hover:text-slate-900")}>Add-ons</span>
         </NavLink>
       </div>
 
@@ -655,28 +654,28 @@ export function Sidebar() {
   }, [pathname, collapsed, setCollapsed]);
 
   const fullContent = (
-    <div className="flex flex-col flex-1 min-h-0 bg-slate-50/10 dark:bg-transparent">
-      <div className="flex-1 min-h-0 overflow-y-auto px-5 py-6 scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-white/10 hover:scrollbar-thumb-slate-300 dark:hover:scrollbar-thumb-white/20">
+    <div className="flex flex-col flex-1 min-h-0 bg-slate-50/10">
+      <div className="flex-1 min-h-0 overflow-y-auto px-5 py-6 scrollbar-thin scrollbar-thumb-slate-200 hover:scrollbar-thumb-slate-300">
         <SidebarContent counts={counts} isLoading={isLoading} isInitialLoad={isInitialLoad} metallbInstalled={metallbInstalled} aiActive={aiActive} />
       </div>
 
       {/* Fixed footer: Audit Log + Settings + Collapse — always visible at bottom */}
-      <div className="shrink-0 px-5 pb-6 pt-4 border-t border-slate-100/60 dark:border-white/10 bg-white/40 dark:bg-white/5 backdrop-blur-md space-y-2">
+      <div className="shrink-0 px-5 pb-6 pt-4 border-t border-slate-100/60 bg-white/40 backdrop-blur-md space-y-2">
         <NavLink
           to="/audit-log"
           className={({ isActive }) =>
             cn(
               "flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all duration-500 group border h-11",
               isActive
-                ? "bg-white dark:bg-white/10 text-indigo-600 dark:text-indigo-400 dark:text-indigo-400 border-indigo-100 dark:border-indigo-500/20 shadow-apple dark:shadow-none"
-                : "bg-transparent text-slate-800 dark:text-slate-200 hover:bg-slate-100/60 dark:hover:bg-white/5 border-transparent hover:border-slate-100 dark:hover:border-white/5"
+                ? "bg-white text-indigo-600 border-indigo-100 shadow-apple"
+                : "bg-transparent text-slate-800 hover:bg-slate-100/60 border-transparent hover:border-slate-100"
             )
           }
         >
           {({ isActive }) => (
             <>
-              <ClipboardList className={cn("h-4 w-4 transition-colors shrink-0", isActive ? "text-indigo-600 dark:text-indigo-400" : "text-slate-700 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-white")} />
-              <span className={cn("font-semibold text-[13px]", isActive ? "text-slate-900 dark:text-white" : "text-slate-800 dark:text-slate-200 group-hover:text-slate-900 dark:group-hover:text-white")}>Audit Log</span>
+              <ClipboardList className={cn("h-4 w-4 transition-colors shrink-0", isActive ? "text-indigo-600" : "text-slate-700 group-hover:text-slate-900")} />
+              <span className={cn("font-semibold text-[13px]", isActive ? "text-slate-900" : "text-slate-800 group-hover:text-slate-900")}>Audit Log</span>
             </>
           )}
         </NavLink>
@@ -685,32 +684,27 @@ export function Sidebar() {
           className={cn(
             "flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all duration-500 group border h-11",
             isSettingsActive
-              ? "bg-white dark:bg-white/10 text-primary border-slate-100 dark:border-white/10 shadow-apple dark:shadow-none"
-              : "bg-transparent text-slate-800 dark:text-slate-200 hover:bg-slate-100/60 dark:hover:bg-white/5 border-transparent hover:border-slate-100 dark:hover:border-white/5"
+              ? "bg-white text-primary border-slate-100 shadow-apple"
+              : "bg-transparent text-slate-800 hover:bg-slate-100/60 border-transparent hover:border-slate-100"
           )}
         >
-          <Settings className={cn("h-4 w-4 transition-colors shrink-0", isSettingsActive ? "text-primary" : "text-slate-700 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-white")} />
-          <span className={cn("font-semibold text-[13px]", isSettingsActive ? "text-slate-900 dark:text-white" : "text-slate-800 dark:text-slate-200 group-hover:text-slate-900 dark:group-hover:text-white")}>Settings</span>
+          <Settings className={cn("h-4 w-4 transition-colors shrink-0", isSettingsActive ? "text-primary" : "text-slate-700 group-hover:text-slate-900")} />
+          <span className={cn("font-semibold text-[13px]", isSettingsActive ? "text-slate-900" : "text-slate-800 group-hover:text-slate-900")}>Settings</span>
         </NavLink>
-        <div className="flex items-center gap-2">
-          {!collapsed && (
-            <button
-              type="button"
-              onClick={() => setCollapsed(true)}
-              className={cn(
-                "flex-1 flex items-center justify-start gap-3 px-4 py-2.5 rounded-xl border h-11 transition-all duration-500 group",
-                "bg-transparent text-slate-800 dark:text-slate-200 hover:bg-slate-100/60 dark:hover:bg-white/5 border-transparent hover:border-slate-100 dark:hover:border-white/5"
-              )}
-              aria-label="Collapse sidebar"
-            >
-              <ChevronLeft className="h-4 w-4 transition-transform group-hover:-translate-x-0.5 shrink-0" aria-hidden />
-              <span className="font-semibold text-[13px]">Collapse</span>
-            </button>
-          )}
-          <div className="shrink-0">
-            <ThemeToggle />
-          </div>
-        </div>
+        {!collapsed && (
+          <button
+            type="button"
+            onClick={() => setCollapsed(true)}
+            className={cn(
+              "flex items-center justify-start gap-3 w-full px-4 py-2.5 rounded-xl border h-11 transition-all duration-500 group",
+              "bg-transparent text-slate-800 hover:bg-slate-100/60 border-transparent hover:border-slate-100"
+            )}
+            aria-label="Collapse sidebar"
+          >
+            <ChevronLeft className="h-4 w-4 transition-transform group-hover:-translate-x-0.5 shrink-0" aria-hidden />
+            <span className="font-semibold text-[13px]">Collapse Sidebar</span>
+          </button>
+        )}
       </div>
     </div>
   );
@@ -719,16 +713,16 @@ export function Sidebar() {
     return (
       <>
         <aside
-          className="w-[5.5rem] h-full border-r border-slate-100 dark:border-white/10 dark:border-white/10 bg-white/60 dark:bg-slate-900/95 backdrop-blur-3xl flex flex-col items-center py-6 gap-5 shrink-0 z-30 shadow-apple"
+          className="w-[5.5rem] h-full border-r border-slate-100 bg-white/60 backdrop-blur-3xl flex flex-col items-center py-6 gap-5 shrink-0 z-30 shadow-apple"
           onMouseEnter={() => setFlyoutOpen(true)}
           onMouseLeave={() => setFlyoutOpen(false)}
           aria-label="Navigation rail"
         >
           <NavItemIconOnly to="/dashboard" icon={LayoutDashboard} label="Dashboard" iconColor="text-blue-600 group-hover:text-blue-700" />
           <NavItemIconOnly to="/topology" icon={Network} label="Topology" iconColor="text-violet-600 group-hover:text-violet-700" />
-          <NavItemIconOnly to="/addons" icon={Puzzle} label="Add-ons" iconColor="text-indigo-600 dark:text-indigo-400 group-hover:text-indigo-700" />
+          <NavItemIconOnly to="/addons" icon={Puzzle} label="Add-ons" iconColor="text-indigo-600 group-hover:text-indigo-700" />
           <NavItemIconOnly to="/workloads" icon={Cpu} label="Workloads" iconColor="text-amber-600 group-hover:text-amber-700" />
-          <div className="w-12 h-px bg-border/50 dark:bg-white/10 my-2" />
+          <div className="w-12 h-px bg-border/50 my-2" />
           <NavItemIconOnly to="/pods" icon={Box} label="Pods" iconColor="text-emerald-600 group-hover:text-emerald-700" />
           <NavItemIconOnly to="/nodes" icon={Server} label="Nodes" iconColor="text-sky-600 group-hover:text-sky-700" />
           <NavItemIconOnly to="/services" icon={Globe} label="Services" iconColor="text-cyan-600 group-hover:text-cyan-700" />
@@ -736,7 +730,7 @@ export function Sidebar() {
           <NavItemIconOnly to="/resources" icon={Gauge} label="Resources & DRA" iconColor="text-blue-600 group-hover:text-blue-700" />
           {aiActive && (
             <>
-              <div className="w-12 h-px bg-border/50 dark:bg-white/10 my-2" />
+              <div className="w-12 h-px bg-border/50 my-2" />
               <NavItemIconOnly to="/analytics" icon={BarChart3} label="Analytics" iconColor="text-purple-600 group-hover:text-purple-700" />
               <NavItemIconOnly to="/ml-analytics" icon={Brain} label="ML Analytics" iconColor="text-cyan-600 group-hover:text-cyan-700" />
             </>
@@ -744,13 +738,12 @@ export function Sidebar() {
 
           <div className="flex-1" />
 
-          <NavItemIconOnly to="/audit-log" icon={ClipboardList} label="Audit Log" iconColor="text-indigo-600 dark:text-indigo-400 group-hover:text-indigo-700" />
-          <NavItemIconOnly to="/settings" icon={Settings} label="Settings" iconColor="text-slate-800 dark:text-slate-200 group-hover:text-slate-900 dark:group-hover:text-white" />
-          <ThemeToggle />
+          <NavItemIconOnly to="/audit-log" icon={ClipboardList} label="Audit Log" iconColor="text-indigo-600 group-hover:text-indigo-700" />
+          <NavItemIconOnly to="/settings" icon={Settings} label="Settings" iconColor="text-slate-800 group-hover:text-slate-900" />
           <button
             type="button"
             onClick={() => setCollapsed(false)}
-            className="flex items-center justify-center w-11 h-11 rounded-xl text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:bg-blue-50/80 dark:hover:bg-blue-500/10 transition-colors mb-2"
+            className="flex items-center justify-center w-11 h-11 rounded-xl text-blue-600 hover:text-blue-700 hover:bg-blue-50/80 transition-colors mb-2"
             title="Expand sidebar"
             aria-label="Expand sidebar"
           >
@@ -764,7 +757,7 @@ export function Sidebar() {
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -10 }}
               transition={{ duration: 0.15, ease: "easeOut" }}
-              className="fixed left-[5.5rem] top-20 bottom-0 z-40 w-72 border-r border-slate-200/40 dark:border-white/10 bg-white/70 dark:bg-slate-900/95 backdrop-blur-3xl shadow-apple-xl dark:shadow-none ring-1 ring-black/5 dark:ring-white/10"
+              className="fixed left-[5.5rem] top-20 bottom-0 z-40 w-72 border-r border-slate-200/40 bg-white/70 backdrop-blur-3xl shadow-apple-xl ring-1 ring-black/5"
               onMouseEnter={() => setFlyoutOpen(true)}
               onMouseLeave={() => setFlyoutOpen(false)}
               style={{ height: 'calc(100vh - 5rem)' }}
@@ -778,7 +771,7 @@ export function Sidebar() {
   }
 
   return (
-    <aside className="w-72 h-full flex flex-col border-r border-slate-100 dark:border-white/10 dark:border-white/10 bg-white/40 dark:bg-slate-900/95 backdrop-blur-3xl shrink-0 transition-all duration-500">
+    <aside className="w-72 h-full flex flex-col border-r border-slate-100 bg-white/40 backdrop-blur-3xl shrink-0 transition-all duration-500">
       {fullContent}
     </aside>
   );

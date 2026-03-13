@@ -39,8 +39,8 @@ export const DashboardLayout = () => {
             <div className="min-h-[24rem] flex flex-col">
               <ClusterEfficiencyCard />
             </div>
-            <div className="min-h-[24rem] flex flex-col rounded-xl border border-border/60 dark:border-white/10 bg-card dark:bg-white/5 p-6">
-              <h2 className="text-sm font-medium text-muted-foreground dark:text-slate-400 mb-4 shrink-0">Quick actions</h2>
+            <div className="min-h-[24rem] flex flex-col rounded-xl border border-border/60 bg-card p-6">
+              <h2 className="text-sm font-medium text-muted-foreground mb-4 shrink-0">Quick actions</h2>
               <QuickActionsGrid />
             </div>
           </section>
