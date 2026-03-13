@@ -1,0 +1,45 @@
+apiVersion: snapshot.storage.k8s.io/v1
+kind: VolumeSnapshotContent
+metadata:
+  name: postgres-data-snap-01-content
+  labels:
+    app.kubernetes.io/part-of: kubilitics-demo
+spec:
+  deletionPolicy: Retain
+  driver: csi.fast-ssd.example.com
+  source:
+    snapshotHandle: postgres-data-snap-01-handle
+  volumeSnapshotRef:
+    name: postgres-data-snap-01
+    namespace: kubilitics-demo
+---
+apiVersion: snapshot.storage.k8s.io/v1
+kind: VolumeSnapshotContent
+metadata:
+  name: mongo-data-snap-01-content
+  labels:
+    app.kubernetes.io/part-of: kubilitics-demo
+spec:
+  deletionPolicy: Retain
+  driver: csi.standard-hdd.example.com
+  source:
+    snapshotHandle: mongo-data-snap-01-handle
+  volumeSnapshotRef:
+    name: mongo-data-snap-01
+    namespace: ecommerce-prod
+---
+apiVersion: snapshot.storage.k8s.io/v1
+kind: VolumeSnapshotContent
+metadata:
+  name: ml-model-storage-snap-01-content
+  labels:
+    app.kubernetes.io/part-of: kubilitics-demo
+spec:
+  deletionPolicy: Retain
+  driver: csi.replicated-nvme.example.com
+  source:
+    snapshotHandle: ml-model-storage-snap-01-handle
+  volumeSnapshotRef:
+    name: ml-model-storage-snap-01
+    namespace: ml-pipeline
+

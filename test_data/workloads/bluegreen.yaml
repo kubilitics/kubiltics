@@ -1,0 +1,115 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: blue-deployment
+  namespace: blue-green-demo
+  labels:
+    app: demo-app
+    version: blue
+    app.kubernetes.io/part-of: kubilitics-demo
+    rollout-color: blue
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: demo-app
+      version: blue
+  template:
+    metadata:
+      labels:
+        app: demo-app
+        version: blue
+        app.kubernetes.io/part-of: kubilitics-demo
+        rollout-color: blue
+    spec:
+      containers:
+        - name: app
+          image: nginx:1.25-alpine
+          ports:
+            - containerPort: 80
+          env:
+            - name: RELEASE_COLOR
+              value: blue
+          resources:
+            requests:
+              cpu: 150m
+              memory: 192Mi
+            limits:
+              cpu: 400m
+              memory: 384Mi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: green-deployment
+  namespace: blue-green-demo
+  labels:
+    app: demo-app
+    version: green
+    app.kubernetes.io/part-of: kubilitics-demo
+    rollout-color: green
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: demo-app
+      version: green
+  template:
+    metadata:
+      labels:
+        app: demo-app
+        version: green
+        app.kubernetes.io/part-of: kubilitics-demo
+        rollout-color: green
+    spec:
+      containers:
+        - name: app
+          image: nginx:1.25-alpine
+          ports:
+            - containerPort: 80
+          env:
+            - name: RELEASE_COLOR
+              value: green
+          resources:
+            requests:
+              cpu: 150m
+              memory: 192Mi
+            limits:
+              cpu: 400m
+              memory: 384Mi
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: demo-app-hpa
+  namespace: blue-green-demo
+  labels:
+    app.kubernetes.io/part-of: kubilitics-demo
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: blue-deployment
+  minReplicas: 3
+  maxReplicas: 6
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: demo-app-pdb
+  namespace: blue-green-demo
+  labels:
+    app.kubernetes.io/part-of: kubilitics-demo
+spec:
+  minAvailable: 4
+  selector:
+    matchLabels:
+      app: demo-app
+

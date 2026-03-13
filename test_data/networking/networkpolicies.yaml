@@ -1,125 +1,70 @@
-# Demo NetworkPolicies for Kubilitics (3-10 objects). Apply after namespace.
+# Kubilitics Demo NetworkPolicies — 5 policies
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: demo-allow-from-same-ns
+  name: deny-all-default
   namespace: kubilitics-demo
-  labels:
-    app.kubernetes.io/part-of: kubilitics-demo
+  labels: { app.kubernetes.io/part-of: kubilitics-demo }
 spec:
   podSelector: {}
-  policyTypes:
-    - Ingress
+  policyTypes: [Ingress, Egress]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-frontend-to-api
+  namespace: kubilitics-demo
+  labels: { app.kubernetes.io/part-of: kubilitics-demo }
+spec:
+  podSelector: { matchLabels: { tier: backend } }
+  policyTypes: [Ingress]
   ingress:
     - from:
+        - podSelector: { matchLabels: { tier: frontend } }
+      ports: [{ protocol: TCP, port: 5678 }]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-api-to-db
+  namespace: kubilitics-demo
+  labels: { app.kubernetes.io/part-of: kubilitics-demo }
+spec:
+  podSelector: { matchLabels: { tier: database } }
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector: { matchLabels: { tier: backend } }
+      ports: [{ protocol: TCP, port: 5432 }, { protocol: TCP, port: 6379 }]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: ecommerce-isolation
+  namespace: ecommerce-prod
+  labels: { app.kubernetes.io/part-of: kubilitics-demo }
+spec:
+  podSelector: {}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - namespaceSelector: { matchLabels: { team: ecommerce } }
         - podSelector: {}
 ---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: demo-web-a-allow-http
-  namespace: kubilitics-demo
-  labels:
-    app.kubernetes.io/part-of: kubilitics-demo
-spec:
-  podSelector:
-    matchLabels:
-      app: demo-web-a
-  policyTypes:
-    - Ingress
-  ingress:
-    - ports:
-        - protocol: TCP
-          port: 80
-      from: []
----
-apiVersion: networking.k8s.io/v1
-kind: NetworkPolicy
-metadata:
-  name: demo-api-allow-internal
-  namespace: kubilitics-demo
-  labels:
-    app.kubernetes.io/part-of: kubilitics-demo
-spec:
-  podSelector:
-    matchLabels:
-      app: demo-api
-  policyTypes:
-    - Ingress
-  ingress:
-    - from:
-        - podSelector:
-            matchLabels:
-              app.kubernetes.io/part-of: kubilitics-demo
----
-apiVersion: networking.k8s.io/v1
-kind: NetworkPolicy
-metadata:
-  name: demo-deny-egress-external
-  namespace: kubilitics-demo
-  labels:
-    app.kubernetes.io/part-of: kubilitics-demo
-spec:
-  podSelector:
-    matchLabels:
-      app: demo-worker
-  policyTypes:
-    - Egress
-  egress:
-    - to:
-        - namespaceSelector: {}
-      ports: []
----
-apiVersion: networking.k8s.io/v1
-kind: NetworkPolicy
-metadata:
-  name: demo-frontend-allow
-  namespace: kubilitics-demo
-  labels:
-    app.kubernetes.io/part-of: kubilitics-demo
-spec:
-  podSelector:
-    matchLabels:
-      app: demo-frontend
-  policyTypes:
-    - Ingress
-  ingress:
-    - ports:
-        - protocol: TCP
-          port: 80
----
-apiVersion: networking.k8s.io/v1
-kind: NetworkPolicy
-metadata:
-  name: demo-default-deny-ingress-example
-  namespace: kubilitics-demo
-  labels:
-    app.kubernetes.io/part-of: kubilitics-demo
-spec:
-  # Example: deny all ingress for pods with this label (none in demo)
-  podSelector:
-    matchLabels:
-      demo-default-deny: "true"
-  policyTypes:
-    - Ingress
-  ingress: []
----
-apiVersion: networking.k8s.io/v1
-kind: NetworkPolicy
-metadata:
-  name: demo-allow-dns
-  namespace: kubilitics-demo
-  labels:
-    app.kubernetes.io/part-of: kubilitics-demo
+  name: payments-strict-isolation
+  namespace: payments-prod
+  labels: { app.kubernetes.io/part-of: kubilitics-demo }
 spec:
   podSelector: {}
-  policyTypes:
-    - Egress
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - namespaceSelector: { matchLabels: { team: fintech } }
+      ports: [{ protocol: TCP, port: 5678 }]
   egress:
     - to:
-        - namespaceSelector:
-            matchLabels:
-              kubernetes.io/metadata.name: kube-system
-      ports:
-        - protocol: UDP
-          port: 53
+        - namespaceSelector: { matchLabels: { team: fintech } }
+    - ports: [{ protocol: TCP, port: 443 }]

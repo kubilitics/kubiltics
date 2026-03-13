@@ -1,13 +1,14 @@
-# Demo CronJobs for Kubilitics (3-10 objects). Apply after namespace.
+# Kubilitics Demo CronJobs — 6 scheduled jobs
 apiVersion: batch/v1
 kind: CronJob
 metadata:
-  name: demo-cron-backup
+  name: nightly-db-backup
   namespace: kubilitics-demo
-  labels:
-    app.kubernetes.io/part-of: kubilitics-demo
+  labels: { app: db-backup, app.kubernetes.io/part-of: kubilitics-demo }
 spec:
   schedule: "0 2 * * *"
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 1
   jobTemplate:
     spec:
       template:
@@ -16,15 +17,68 @@ spec:
           containers:
             - name: backup
               image: busybox:1.36
-              command: ["echo", "backup run"]
+              command: ["sh", "-c", "echo 'Backing up database'; sleep 5; echo 'Backup complete'"]
 ---
 apiVersion: batch/v1
 kind: CronJob
 metadata:
-  name: demo-cron-cleanup
+  name: log-rotation
   namespace: kubilitics-demo
-  labels:
-    app.kubernetes.io/part-of: kubilitics-demo
+  labels: { app: log-rotation, app.kubernetes.io/part-of: kubilitics-demo }
+spec:
+  schedule: "0 4 * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: rotate
+              image: busybox:1.36
+              command: ["sh", "-c", "echo 'Rotating logs'; sleep 3; echo 'Done'"]
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: health-check-sweep
+  namespace: kubilitics-demo
+  labels: { app: health-check, app.kubernetes.io/part-of: kubilitics-demo }
+spec:
+  schedule: "*/10 * * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: health
+              image: busybox:1.36
+              command: ["sh", "-c", "echo 'Health check'; sleep 2"]
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: analytics-aggregation
+  namespace: analytics-staging
+  labels: { app: analytics-agg, app.kubernetes.io/part-of: kubilitics-demo }
+spec:
+  schedule: "0 */6 * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: aggregate
+              image: busybox:1.36
+              command: ["sh", "-c", "echo 'Aggregating analytics'; sleep 8; echo 'Done'"]
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: cart-cleanup
+  namespace: ecommerce-prod
+  labels: { app: cart-cleanup, app.kubernetes.io/part-of: kubilitics-demo }
 spec:
   schedule: "0 3 * * *"
   jobTemplate:
@@ -35,61 +89,22 @@ spec:
           containers:
             - name: cleanup
               image: busybox:1.36
-              command: ["echo", "cleanup run"]
+              command: ["sh", "-c", "echo 'Cleaning abandoned carts'; sleep 4; echo 'Done'"]
 ---
 apiVersion: batch/v1
 kind: CronJob
 metadata:
-  name: demo-cron-report
-  namespace: kubilitics-demo
-  labels:
-    app.kubernetes.io/part-of: kubilitics-demo
+  name: fraud-scan
+  namespace: payments-prod
+  labels: { app: fraud-scan, app.kubernetes.io/part-of: kubilitics-demo }
 spec:
-  schedule: "0 8 * * 1-5"
+  schedule: "*/30 * * * *"
   jobTemplate:
     spec:
       template:
         spec:
           restartPolicy: OnFailure
           containers:
-            - name: report
+            - name: scanner
               image: busybox:1.36
-              command: ["echo", "report run"]
----
-apiVersion: batch/v1
-kind: CronJob
-metadata:
-  name: demo-cron-sync
-  namespace: kubilitics-demo
-  labels:
-    app.kubernetes.io/part-of: kubilitics-demo
-spec:
-  schedule: "*/15 * * * *"
-  jobTemplate:
-    spec:
-      template:
-        spec:
-          restartPolicy: OnFailure
-          containers:
-            - name: sync
-              image: busybox:1.36
-              command: ["echo", "sync run"]
----
-apiVersion: batch/v1
-kind: CronJob
-metadata:
-  name: demo-cron-health
-  namespace: kubilitics-demo
-  labels:
-    app.kubernetes.io/part-of: kubilitics-demo
-spec:
-  schedule: "*/5 * * * *"
-  jobTemplate:
-    spec:
-      template:
-        spec:
-          restartPolicy: OnFailure
-          containers:
-            - name: health
-              image: busybox:1.36
-              command: ["echo", "health check"]
+              command: ["sh", "-c", "echo 'Scanning transactions for fraud'; sleep 5; echo 'Scan clear'"]

@@ -394,6 +394,6 @@ Copyright (c) 2024 Kubilitics. Licensed under the MIT License.
 
 ## Support
 
-- Documentation: https://docs.kubilitics.io
+- Documentation: https://docs.kubilitics.com
 - Issues: https://github.com/kubilitics/kubilitics-ai/issues
-- Community: https://slack.kubilitics.io
+- Community: https://slack.kubilitics.com

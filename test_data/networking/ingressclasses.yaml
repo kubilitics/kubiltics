@@ -1,45 +1,25 @@
-# Demo IngressClasses (cluster-scoped). 3-5 objects. Apply before Ingresses.
+# Kubilitics Demo IngressClasses — 3 classes (cluster-scoped)
 apiVersion: networking.k8s.io/v1
 kind: IngressClass
 metadata:
-  name: nginx
-  labels:
-    app.kubernetes.io/part-of: kubilitics-demo
+  name: nginx-external
+  labels: { app.kubernetes.io/part-of: kubilitics-demo }
+  annotations: { ingressclass.kubernetes.io/is-default-class: "true" }
 spec:
   controller: k8s.io/ingress-nginx
 ---
 apiVersion: networking.k8s.io/v1
 kind: IngressClass
 metadata:
-  name: traefik
-  labels:
-    app.kubernetes.io/part-of: kubilitics-demo
+  name: nginx-internal
+  labels: { app.kubernetes.io/part-of: kubilitics-demo }
 spec:
-  controller: traefik.io/ingress
+  controller: k8s.io/ingress-nginx
 ---
 apiVersion: networking.k8s.io/v1
 kind: IngressClass
 metadata:
-  name: haproxy
-  labels:
-    app.kubernetes.io/part-of: kubilitics-demo
+  name: traefik-mesh
+  labels: { app.kubernetes.io/part-of: kubilitics-demo }
 spec:
-  controller: haproxy.org/ingress-controller
----
-apiVersion: networking.k8s.io/v1
-kind: IngressClass
-metadata:
-  name: istio
-  labels:
-    app.kubernetes.io/part-of: kubilitics-demo
-spec:
-  controller: istio.io/ingress-controller
----
-apiVersion: networking.k8s.io/v1
-kind: IngressClass
-metadata:
-  name: kong
-  labels:
-    app.kubernetes.io/part-of: kubilitics-demo
-spec:
-  controller: ingress-controllers.konghq.com/kong
+  controller: traefik.io/ingress-controller

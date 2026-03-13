@@ -1,0 +1,132 @@
+apiVersion: kubilitics.com/v1alpha1
+kind: APIRegistry
+metadata:
+  name: api-registry-core
+  namespace: kubilitics-demo
+  labels:
+    app.kubernetes.io/part-of: kubilitics-demo
+spec:
+  ownerTeam: platform
+  priority: high
+  status: active
+  endpoints:
+    - name: gateway
+      path: /api
+      method: GET
+    - name: auth
+      path: /auth
+      method: POST
+---
+apiVersion: kubilitics.com/v1alpha1
+kind: APIRegistry
+metadata:
+  name: api-registry-ecommerce
+  namespace: ecommerce-prod
+  labels:
+    app.kubernetes.io/part-of: kubilitics-demo
+spec:
+  ownerTeam: ecommerce
+  priority: normal
+  status: active
+  endpoints:
+    - name: catalog
+      path: /catalog
+      method: GET
+    - name: checkout
+      path: /checkout
+      method: POST
+---
+apiVersion: kubilitics.com/v1alpha1
+kind: APIRegistry
+metadata:
+  name: api-registry-ml
+  namespace: ml-pipeline
+  labels:
+    app.kubernetes.io/part-of: kubilitics-demo
+spec:
+  ownerTeam: ml
+  priority: normal
+  status: draft
+  endpoints:
+    - name: training
+      path: /train
+      method: POST
+---
+apiVersion: kubilitics.com/v1alpha1
+kind: AlertPolicy
+metadata:
+  name: cpu-saturation-critical
+  namespace: kubilitics-demo
+  labels:
+    app.kubernetes.io/part-of: kubilitics-demo
+spec:
+  severity: critical
+  window: 5m
+  metric: cpu_usage
+  threshold: 0.9
+  enabled: true
+---
+apiVersion: kubilitics.com/v1alpha1
+kind: AlertPolicy
+metadata:
+  name: hpa-misconfigured-warning
+  namespace: analytics-staging
+  labels:
+    app.kubernetes.io/part-of: kubilitics-demo
+spec:
+  severity: warning
+  window: 15m
+  metric: hpa_saturation
+  threshold: 0.7
+  enabled: true
+---
+apiVersion: kubilitics.com/v1alpha1
+kind: AlertPolicy
+metadata:
+  name: payment-errors-info
+  namespace: payments-prod
+  labels:
+    app.kubernetes.io/part-of: kubilitics-demo
+spec:
+  severity: info
+  window: 30m
+  metric: payment_error_rate
+  threshold: 0.05
+  enabled: false
+---
+apiVersion: kubilitics.com/v1alpha1
+kind: DataSource
+metadata:
+  name: postgres-core
+  namespace: kubilitics-demo
+  labels:
+    app.kubernetes.io/part-of: kubilitics-demo
+spec:
+  type: postgres
+  endpoint: postgres-primary.kubilitics-demo.svc.cluster.local:5432
+  status: connected
+---
+apiVersion: kubilitics.com/v1alpha1
+kind: DataSource
+metadata:
+  name: mongo-orders
+  namespace: ecommerce-prod
+  labels:
+    app.kubernetes.io/part-of: kubilitics-demo
+spec:
+  type: mongo
+  endpoint: mongo-replica.ecommerce-prod.svc.cluster.local:27017
+  status: connected
+---
+apiVersion: kubilitics.com/v1alpha1
+kind: DataSource
+metadata:
+  name: kafka-events
+  namespace: analytics-staging
+  labels:
+    app.kubernetes.io/part-of: kubilitics-demo
+spec:
+  type: kafka
+  endpoint: kafka-broker.analytics-staging.svc.cluster.local:9092
+  status: degraded
+

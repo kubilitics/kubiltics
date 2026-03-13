@@ -460,4 +460,4 @@ Apache 2.0
 ## Support
 
 - GitHub Issues: https://github.com/kubilitics/kubilitics-os-emergent/issues
-- Documentation: https://kubilitics.io/docs
+- Documentation: https://kubilitics.com/docs

@@ -491,7 +491,7 @@ Timeline:
 Previous status updates:
 [Link to previous statuses]
 
-For support, contact support@kubilitics.io or #support-channel.
+For support, contact support@kubilitics.com or #support-channel.
 ```
 
 ### Customer Email Notification Template (Pre-Impact)
@@ -518,7 +518,7 @@ Workarounds:
 [If available: alternative methods to access features]
 
 We will provide updates every 30 minutes. For urgent support, contact
-support@kubilitics.io with reference code [INCIDENT-ID].
+support@kubilitics.com with reference code [INCIDENT-ID].
 
 We apologize for the disruption to your operations.
 
@@ -560,7 +560,7 @@ What you should do:
 Resources:
 - Full technical details: [link to security advisory]
 - FAQ: [link to FAQ]
-- Support: support@kubilitics.io
+- Support: support@kubilitics.com
 
 We take security extremely seriously and deeply regret this incident.
 

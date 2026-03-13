@@ -201,7 +201,7 @@ None
   "helm_chart": {
     "name": "kubilitics",
     "version": "1.0.0",
-    "repository": "https://charts.kubilitics.io"
+    "repository": "https://charts.kubilitics.com"
   }
 }
 ```

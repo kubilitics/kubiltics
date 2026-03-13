@@ -46,7 +46,7 @@ var trustedHelmRepos = []string{
 	"charts.crossplane.io",
 	"open-telemetry.github.io",
 	"helm.releases.hashicorp.com",
-	"charts.kubilitics.io",
+	"charts.kubilitics.com",
 }
 
 // ImageSecurityChecker implements CheckRunner for container image security policies.

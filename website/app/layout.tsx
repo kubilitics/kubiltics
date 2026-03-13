@@ -34,7 +34,7 @@ export const metadata: Metadata = {
     title: "Kubilitics — Kubernetes Relationship Intelligence Engine",
     description:
       "Map every Kubernetes dependency. Understand impact before making changes. Built for production engineering teams.",
-    url: "https://kubilitics.io",
+    url: "https://kubilitics.com",
     siteName: "Kubilitics",
     type: "website",
   },
@@ -45,7 +45,7 @@ export const metadata: Metadata = {
       "Map every Kubernetes dependency. Understand impact before making changes.",
   },
   robots: { index: true, follow: true },
-  metadataBase: new URL("https://kubilitics.io"),
+  metadataBase: new URL("https://kubilitics.com"),
 };
 
 export default function RootLayout({

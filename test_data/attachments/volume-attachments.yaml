@@ -1,0 +1,36 @@
+apiVersion: storage.k8s.io/v1
+kind: VolumeAttachment
+metadata:
+  name: pv-postgres-data-01-to-worker-1
+  labels:
+    app.kubernetes.io/part-of: kubilitics-demo
+spec:
+  attacher: csi.fast-ssd.example.com
+  nodeName: demo-worker-1
+  source:
+    persistentVolumeName: pv-postgres-data-01
+---
+apiVersion: storage.k8s.io/v1
+kind: VolumeAttachment
+metadata:
+  name: pv-redis-data-01-to-worker-1
+  labels:
+    app.kubernetes.io/part-of: kubilitics-demo
+spec:
+  attacher: csi.fast-ssd.example.com
+  nodeName: demo-worker-1
+  source:
+    persistentVolumeName: pv-redis-data-01
+---
+apiVersion: storage.k8s.io/v1
+kind: VolumeAttachment
+metadata:
+  name: pv-ml-models-01-to-gpu-node
+  labels:
+    app.kubernetes.io/part-of: kubilitics-demo
+spec:
+  attacher: csi.replicated-nvme.example.com
+  nodeName: demo-gpu-node
+  source:
+    persistentVolumeName: pv-ml-models-01
+

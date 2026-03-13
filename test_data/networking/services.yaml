@@ -1,105 +1,102 @@
-# Demo Services for Kubilitics (3-10 objects). Apply after workloads. Selectors match deployments.
+# Kubilitics Demo Services — 10 services across namespaces
 apiVersion: v1
 kind: Service
 metadata:
-  name: demo-web-a
+  name: web-gateway
   namespace: kubilitics-demo
-  labels:
-    app.kubernetes.io/part-of: kubilitics-demo
+  labels: { app: web-gateway, tier: frontend, app.kubernetes.io/part-of: kubilitics-demo }
 spec:
-  selector:
-    app: demo-web-a
-  ports:
-    - name: http
-      port: 80
-      targetPort: 80
+  type: LoadBalancer
+  selector: { app: web-gateway }
+  ports: [{ name: http, port: 80, targetPort: 80 }, { name: https, port: 443, targetPort: 443 }]
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: demo-web-b
+  name: api-server
   namespace: kubilitics-demo
-  labels:
-    app.kubernetes.io/part-of: kubilitics-demo
+  labels: { app: api-server, tier: backend, app.kubernetes.io/part-of: kubilitics-demo }
 spec:
-  selector:
-    app: demo-web-b
-  ports:
-    - name: http
-      port: 80
-      targetPort: 80
+  selector: { app: api-server }
+  ports: [{ name: http, port: 5678, targetPort: 5678 }]
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: demo-api
+  name: auth-service
   namespace: kubilitics-demo
-  labels:
-    app.kubernetes.io/part-of: kubilitics-demo
+  labels: { app: auth-service, tier: backend, app.kubernetes.io/part-of: kubilitics-demo }
 spec:
-  selector:
-    app: demo-api
-  ports:
-    - name: http
-      port: 5678
-      targetPort: 5678
+  selector: { app: auth-service }
+  ports: [{ name: http, port: 5678, targetPort: 5678 }]
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: demo-worker
+  name: notification-service
   namespace: kubilitics-demo
-  labels:
-    app.kubernetes.io/part-of: kubilitics-demo
+  labels: { app: notification-service, tier: backend, app.kubernetes.io/part-of: kubilitics-demo }
 spec:
-  selector:
-    app: demo-worker
-  ports:
-    - name: pause
-      port: 8080
-      targetPort: 8080
+  selector: { app: notification-service }
+  ports: [{ name: grpc, port: 9090, targetPort: 9090 }]
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: demo-frontend
-  namespace: kubilitics-demo
-  labels:
-    app.kubernetes.io/part-of: kubilitics-demo
+  name: product-catalog
+  namespace: ecommerce-prod
+  labels: { app: product-catalog, app.kubernetes.io/part-of: kubilitics-demo }
 spec:
-  selector:
-    app: demo-frontend
-  ports:
-    - name: http
-      port: 80
-      targetPort: 80
+  selector: { app: product-catalog }
+  ports: [{ name: http, port: 80, targetPort: 80 }]
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: demo-gateway
-  namespace: kubilitics-demo
-  labels:
-    app.kubernetes.io/part-of: kubilitics-demo
+  name: shopping-cart
+  namespace: ecommerce-prod
+  labels: { app: shopping-cart, app.kubernetes.io/part-of: kubilitics-demo }
 spec:
-  selector:
-    app: demo-web-a
-  ports:
-    - name: http
-      port: 80
-      targetPort: 80
+  selector: { app: shopping-cart }
+  ports: [{ name: redis, port: 6379, targetPort: 6379 }]
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: demo-internal
-  namespace: kubilitics-demo
-  labels:
-    app.kubernetes.io/part-of: kubilitics-demo
+  name: checkout-service
+  namespace: ecommerce-prod
+  labels: { app: checkout-service, app.kubernetes.io/part-of: kubilitics-demo }
 spec:
-  selector:
-    app: demo-api
-  ports:
-    - name: http
-      port: 5678
-      targetPort: 5678
+  type: NodePort
+  selector: { app: checkout-service }
+  ports: [{ name: http, port: 5678, targetPort: 5678, nodePort: 30080 }]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: data-collector
+  namespace: analytics-staging
+  labels: { app: data-collector, app.kubernetes.io/part-of: kubilitics-demo }
+spec:
+  selector: { app: data-collector }
+  ports: [{ name: http, port: 8080, targetPort: 8080 }]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: dashboard-ui
+  namespace: analytics-staging
+  labels: { app: dashboard-ui, app.kubernetes.io/part-of: kubilitics-demo }
+spec:
+  selector: { app: dashboard-ui }
+  ports: [{ name: http, port: 80, targetPort: 80 }]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: payment-processor
+  namespace: payments-prod
+  labels: { app: payment-processor, app.kubernetes.io/part-of: kubilitics-demo }
+spec:
+  selector: { app: payment-processor }
+  ports: [{ name: http, port: 5678, targetPort: 5678 }, { name: grpc, port: 9090, targetPort: 9090 }]
