@@ -130,7 +130,7 @@ function TLSCertCard({
         <div className="flex flex-wrap gap-2 items-center">
           {secretName && (
             <Link to={`/secrets/${namespace}/${secretName}`}>
-              <Button variant="outline" size="sm">View Secret</Button>
+              <Button variant="outline" size="sm" className="press-effect">View Secret</Button>
             </Link>
           )}
           {hasCert && (
@@ -254,7 +254,7 @@ export default function IngressDetail() {
           <CardContent className="pt-6">
             <p className="text-muted-foreground">{error ? 'Failed to load resource.' : 'Ingress not found.'}</p>
             {error && <p className="text-sm text-destructive mt-2">{String(error)}</p>}
-            <Button variant="outline" className="mt-4" onClick={() => navigate('/ingresses')}>
+            <Button variant="outline" className="mt-4 press-effect" onClick={() => navigate('/ingresses')}>
               Back to Ingresses
             </Button>
           </CardContent>
@@ -375,7 +375,7 @@ export default function IngressDetail() {
                           <span className="font-mono">
                             {path.backend?.service?.name ?? '—'}:{path.backend?.service?.port?.number ?? path.backend?.service?.port?.name ?? '—'}
                           </span>
-                          <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => toast.info('Test route: coming soon')}>Test</Button>
+                          <Button variant="ghost" size="sm" className="h-7 text-xs press-effect" onClick={() => toast.info('Test route: coming soon')}>Test</Button>
                         </div>
                       ))}
                     </div>
@@ -545,13 +545,13 @@ export default function IngressDetail() {
       label: 'Actions',
       content: (
         <ActionsSection actions={[
-          { icon: Route, label: 'Test All Routes', description: 'Test all route endpoints', onClick: () => toast.info('Test all routes: coming soon') },
-          { icon: Lock, label: 'Refresh Certificate', description: 'Refresh TLS certificate (cert-manager)', onClick: () => toast.info('Requires cert-manager') },
-          { icon: Lock, label: 'View Certificate', description: 'View TLS secret', onClick: () => tls[0]?.secretName ? navigate(`/secrets/${namespace}/${tls[0].secretName}`) : toast.info('No TLS configured') },
-          { icon: ExternalLink, label: 'Open in Browser', description: 'Open external URL', onClick: () => { const u = lbIngress[0]?.hostname || lbIngress[0]?.ip; if (u) window.open(`http://${u}`, '_blank'); else toast.info('No address'); } },
-          { icon: Download, label: 'Download YAML', description: 'Export Ingress definition', onClick: handleDownloadYaml },
-          { icon: Download, label: 'Export as JSON', description: 'Export Ingress as JSON', onClick: handleDownloadJson },
-          { icon: Trash2, label: 'Delete Ingress', description: 'Remove this ingress', variant: 'destructive', onClick: () => setShowDeleteDialog(true) },
+          { icon: Route, label: 'Test All Routes', description: 'Test all route endpoints', onClick: () => toast.info('Test all routes: coming soon'), className: 'press-effect' },
+          { icon: Lock, label: 'Refresh Certificate', description: 'Refresh TLS certificate (cert-manager)', onClick: () => toast.info('Requires cert-manager'), className: 'press-effect' },
+          { icon: Lock, label: 'View Certificate', description: 'View TLS secret', onClick: () => tls[0]?.secretName ? navigate(`/secrets/${namespace}/${tls[0].secretName}`) : toast.info('No TLS configured'), className: 'press-effect' },
+          { icon: ExternalLink, label: 'Open in Browser', description: 'Open external URL', onClick: () => { const u = lbIngress[0]?.hostname || lbIngress[0]?.ip; if (u) window.open(`http://${u}`, '_blank'); else toast.info('No address'); }, className: 'press-effect' },
+          { icon: Download, label: 'Download YAML', description: 'Export Ingress definition', onClick: handleDownloadYaml, className: 'press-effect' },
+          { icon: Download, label: 'Export as JSON', description: 'Export Ingress as JSON', onClick: handleDownloadJson, className: 'press-effect' },
+          { icon: Trash2, label: 'Delete Ingress', description: 'Remove this ingress', variant: 'destructive', onClick: () => setShowDeleteDialog(true), className: 'press-effect' },
         ]} />
       ),
     },
@@ -560,6 +560,8 @@ export default function IngressDetail() {
   return (
     <>
       <ResourceDetailLayout
+        role="main"
+        aria-label="Ingress Detail"
         resourceType="Ingress"
         resourceIcon={Globe}
         name={ingName}
@@ -569,9 +571,9 @@ export default function IngressDetail() {
         backLabel="Ingresses"
         headerMetadata={<span className="flex items-center gap-1.5 ml-2 text-sm text-muted-foreground"><Clock className="h-3.5 w-3.5" />Created {age}{isConnected && <Badge variant="outline" className="ml-2 text-xs">Live</Badge>}</span>}
         actions={[
-          { label: 'Download YAML', icon: Download, variant: 'outline', onClick: handleDownloadYaml },
-          { label: 'Export as JSON', icon: Download, variant: 'outline', onClick: handleDownloadJson },
-          { label: 'Delete', icon: Trash2, variant: 'destructive', onClick: () => setShowDeleteDialog(true) },
+          { label: 'Download YAML', icon: Download, variant: 'outline', onClick: handleDownloadYaml, className: 'press-effect' },
+          { label: 'Export as JSON', icon: Download, variant: 'outline', onClick: handleDownloadJson, className: 'press-effect' },
+          { label: 'Delete', icon: Trash2, variant: 'destructive', onClick: () => setShowDeleteDialog(true), className: 'press-effect' },
         ]}
         statusCards={statusCards}
         tabs={tabs}

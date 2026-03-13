@@ -1,7 +1,7 @@
-import { ReactNode, useCallback } from 'react';
+import { ReactNode, useCallback, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ChevronLeft, Copy, LucideIcon } from 'lucide-react';
+import { ChevronLeft, Copy, Check, LucideIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { NamespaceBadge } from '@/components/list';
@@ -59,11 +59,18 @@ export function ResourceHeader({
   createdAt,
 }: ResourceHeaderProps) {
   const statusStyle = statusConfig[status] || statusConfig.Unknown;
+  const [isCopied, setIsCopied] = useState(false);
 
   const copyDisplayName = useCallback(() => {
     const toCopy = namespace ? `${namespace}/${name}` : name;
     navigator.clipboard.writeText(toCopy);
     toast.success('Copied to clipboard');
+
+    // Show checkmark animation for 1.5s
+    setIsCopied(true);
+    setTimeout(() => {
+      setIsCopied(false);
+    }, 1500);
   }, [namespace, name]);
 
   const createdTooltip = createdAt
@@ -81,8 +88,9 @@ export function ResourceHeader({
         className="space-y-4"
       >
         {/* Back Link */}
-        <Link 
-          to={backLink} 
+        <Link
+          to={backLink}
+          aria-label={`Back to ${backLabel}`}
           className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
         >
           <ChevronLeft className="h-4 w-4" />
@@ -90,7 +98,10 @@ export function ResourceHeader({
         </Link>
 
         {/* Main Header - subtle depth */}
-        <div className="flex items-start justify-between rounded-xl border border-border/50 bg-card shadow-sm p-4">
+        <div
+          role="banner"
+          className="elevation-2 flex items-start justify-between rounded-xl border border-border/50 bg-card p-4"
+        >
           <div className="flex items-center gap-4">
             <div className="p-3 rounded-2xl bg-primary/10 shadow-sm">
               <Icon className="h-8 w-8 text-primary" />
@@ -105,14 +116,26 @@ export function ResourceHeader({
                         type="button"
                         variant="ghost"
                         size="icon"
-                        className="h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground"
+                        className="press-effect h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground"
                         onClick={copyDisplayName}
                         aria-label="Copy resource name"
                       >
-                        <Copy className="h-4 w-4" />
+                        <motion.div
+                          initial={false}
+                          animate={{ scale: isCopied ? 1 : 1, opacity: 1 }}
+                          transition={{ duration: 0.2 }}
+                        >
+                          {isCopied ? (
+                            <Check className="h-4 w-4 text-green-600" />
+                          ) : (
+                            <Copy className="h-4 w-4" />
+                          )}
+                        </motion.div>
                       </Button>
                     </TooltipTrigger>
-                    <TooltipContent>Copy {namespace ? 'namespace/name' : 'name'}</TooltipContent>
+                    <TooltipContent>
+                      {isCopied ? 'Copied!' : `Copy ${namespace ? 'namespace/name' : 'name'}`}
+                    </TooltipContent>
                   </Tooltip>
                 </div>
                 <div className={cn(
@@ -161,7 +184,8 @@ export function ResourceHeader({
                   variant={action.variant || 'outline'}
                   size="sm"
                   onClick={action.onClick}
-                  className="gap-2"
+                  aria-label={action.label}
+                  className="press-effect gap-2"
                 >
                   <action.icon className="h-4 w-4" />
                   {action.label}

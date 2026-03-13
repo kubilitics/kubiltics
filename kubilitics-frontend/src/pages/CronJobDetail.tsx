@@ -441,7 +441,7 @@ export default function CronJobDetail() {
           <CardContent className="pt-6">
             <p className="text-muted-foreground">CronJob not found.</p>
             {error && <p className="text-sm text-destructive mt-2">{String(error)}</p>}
-            <Button variant="outline" className="mt-4" onClick={() => navigate('/cronjobs')}>
+            <Button variant="outline" className="mt-4 press-effect" onClick={() => navigate('/cronjobs')}>
               Back to CronJobs
             </Button>
           </CardContent>
@@ -572,8 +572,9 @@ export default function CronJobDetail() {
                         <Play className="h-4 w-4 text-[hsl(var(--warning))]" />
                         <Button
                           variant="link"
-                          className="h-auto p-0"
+                          className="h-auto p-0 press-effect"
                           onClick={() => navigate(`/jobs/${job.namespace}/${job.name}`)}
+                          aria-label={`View job ${job.name}`}
                         >
                           {job.name}
                         </Button>
@@ -861,7 +862,7 @@ export default function CronJobDetail() {
                         </td>
                         <td className="p-3">{created}</td>
                         <td className="p-3">
-                          <Button variant="ghost" size="sm" asChild>
+                          <Button variant="ghost" size="sm" asChild className="press-effect" aria-label={`View job ${jobName}`}>
                             <Link to={`/jobs/${jobNs}/${jobName}`}>View</Link>
                           </Button>
                         </td>
@@ -1070,12 +1071,12 @@ export default function CronJobDetail() {
       icon: Settings,
       content: (
         <ActionsSection actions={[
-          { icon: Play, label: 'Trigger Now', description: 'Manually trigger a job run', variant: 'warning', onClick: handleTriggerNow },
-          { icon: isSuspended ? Play : Pause, label: isSuspended ? 'Resume' : 'Suspend', description: isSuspended ? 'Resume scheduled runs' : 'Pause scheduled runs', variant: 'warning', onClick: handleToggleSuspend },
-          { icon: History, label: 'View Job History', description: 'See all spawned jobs', onClick: () => navigate(`/jobs?cronjob=${name}`) },
-          { icon: Download, label: 'Download YAML', description: 'Export CronJob definition', onClick: handleDownloadYaml },
-          { icon: Download, label: 'Export as JSON', description: 'Export CronJob as JSON', onClick: handleDownloadJson },
-          { icon: Trash2, label: 'Delete CronJob', description: 'Permanently remove this CronJob', variant: 'destructive', onClick: () => setShowDeleteDialog(true) },
+          { icon: Play, label: 'Trigger Now', description: 'Manually trigger a job run', variant: 'warning', onClick: handleTriggerNow, className: 'press-effect' },
+          { icon: isSuspended ? Play : Pause, label: isSuspended ? 'Resume' : 'Suspend', description: isSuspended ? 'Resume scheduled runs' : 'Pause scheduled runs', variant: 'warning', onClick: handleToggleSuspend, className: 'press-effect' },
+          { icon: History, label: 'View Job History', description: 'See all spawned jobs', onClick: () => navigate(`/jobs?cronjob=${name}`), className: 'press-effect' },
+          { icon: Download, label: 'Download YAML', description: 'Export CronJob definition', onClick: handleDownloadYaml, className: 'press-effect' },
+          { icon: Download, label: 'Export as JSON', description: 'Export CronJob as JSON', onClick: handleDownloadJson, className: 'press-effect' },
+          { icon: Trash2, label: 'Delete CronJob', description: 'Permanently remove this CronJob', variant: 'destructive', onClick: () => setShowDeleteDialog(true), className: 'press-effect' },
         ]} />
       ),
     },
@@ -1084,6 +1085,8 @@ export default function CronJobDetail() {
   return (
     <>
       <ResourceDetailLayout
+        role="main"
+        aria-label="CronJob Detail"
         resourceType="CronJob"
         resourceIcon={ClockIcon}
         name={cronJob.metadata?.name || ''}
@@ -1102,11 +1105,11 @@ export default function CronJobDetail() {
           </span>
         }
         actions={[
-          { label: 'Download YAML', icon: Download, variant: 'outline', onClick: handleDownloadYaml },
-          { label: 'Export as JSON', icon: Download, variant: 'outline', onClick: handleDownloadJson },
-          { label: 'Trigger', icon: Play, variant: 'outline', onClick: handleTriggerNow },
-          { label: isSuspended ? 'Resume' : 'Suspend', icon: isSuspended ? Play : Pause, variant: 'outline', onClick: handleToggleSuspend },
-          { label: 'Delete', icon: Trash2, variant: 'destructive', onClick: () => setShowDeleteDialog(true) },
+          { label: 'Download YAML', icon: Download, variant: 'outline', onClick: handleDownloadYaml, className: 'press-effect' },
+          { label: 'Export as JSON', icon: Download, variant: 'outline', onClick: handleDownloadJson, className: 'press-effect' },
+          { label: 'Trigger', icon: Play, variant: 'outline', onClick: handleTriggerNow, className: 'press-effect' },
+          { label: isSuspended ? 'Resume' : 'Suspend', icon: isSuspended ? Play : Pause, variant: 'outline', onClick: handleToggleSuspend, className: 'press-effect' },
+          { label: 'Delete', icon: Trash2, variant: 'destructive', onClick: () => setShowDeleteDialog(true), className: 'press-effect' },
         ]}
         statusCards={statusCards}
         tabs={tabs}

@@ -500,7 +500,7 @@ export default function Nodes() {
 
  return (
  <>
- <div className="space-y-6">
+ <div className="space-y-6" role="main" aria-label="Nodes Resources">
  <ListPageHeader
  icon={<NodeIcon className="h-6 w-6 text-primary" />}
  title="Nodes"
@@ -513,19 +513,19 @@ export default function Nodes() {
  <>
  {selectedNodes.size > 0 && (
  <>
- <Button variant="outline" size="sm" className="gap-2" onClick={() => {
+ <Button variant="outline" size="sm" className="press-effect gap-2" onClick={() => {
  const names = Array.from(selectedNodes).join(', ');
  toast.info(`Cordon ${selectedNodes.size} node(s): ${names}`);
  }}>
  <Lock className="h-4 w-4" />Cordon ({selectedNodes.size})
  </Button>
- <Button variant="outline" size="sm" className="gap-2" onClick={() => {
+ <Button variant="outline" size="sm" className="press-effect gap-2" onClick={() => {
  const names = Array.from(selectedNodes).join(', ');
  toast.info(`Uncordon ${selectedNodes.size} node(s): ${names}`);
  }}>
  <Unlock className="h-4 w-4" />Uncordon ({selectedNodes.size})
  </Button>
- <Button variant="outline" size="sm" className="text-destructive hover:bg-destructive/10" onClick={() => setDeleteDialog({ open: true, item: null, bulk: true })}>
+ <Button variant="outline" size="sm" className="press-effect text-destructive hover:bg-destructive/10" onClick={() => setDeleteDialog({ open: true, item: null, bulk: true })}>
  Delete {selectedNodes.size} selected
  </Button>
  </>
@@ -759,7 +759,7 @@ export default function Nodes() {
  <ResizableTableCell columnId="age" className="text-muted-foreground whitespace-nowrap"><AgeCell age={node.age} timestamp={node.creationTimestamp} /></ResizableTableCell>
  <TableCell>
  <DropdownMenu>
- <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted/60" aria-label="Node actions"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
+ <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="press-effect h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted/60" aria-label="Node actions"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
  <DropdownMenuContent align="end" className="w-52">
  <CopyNameDropdownItem name={node.name} />
  <DropdownMenuItem onClick={() => navigate(`/nodes/${node.name}`)} className="gap-2">View Details</DropdownMenuItem>

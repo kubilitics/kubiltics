@@ -51,7 +51,7 @@ export function ColumnVisibilityDropdown({
         <Button
           variant="outline"
           size="sm"
-          className="gap-1.5 h-8 min-w-0"
+          className="gap-1.5 h-8 min-w-0 press-effect"
           aria-label={ariaLabel}
         >
           <Columns className="h-3.5 w-3.5 shrink-0" />

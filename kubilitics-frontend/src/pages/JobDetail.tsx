@@ -315,7 +315,7 @@ export default function JobDetail() {
           <CardContent className="pt-6">
             <p className="text-muted-foreground">Job not found.</p>
             {error && <p className="text-sm text-destructive mt-2">{String(error)}</p>}
-            <Button variant="outline" className="mt-4" onClick={() => navigate('/jobs')}>
+            <Button variant="outline" className="mt-4 press-effect" onClick={() => navigate('/jobs')}>
               Back to Jobs
             </Button>
           </CardContent>
@@ -735,11 +735,11 @@ export default function JobDetail() {
       icon: Settings,
       content: (
         <ActionsSection actions={[
-          { icon: RotateCw, label: 'Retry', description: 'Create a new Job with the same spec', variant: 'warning', onClick: handleRetry },
-          { icon: Play, label: 'View Pod Logs', description: 'See logs from job pod', onClick: () => setActiveTab('logs') },
-          { icon: Download, label: 'Download YAML', description: 'Export Job definition', onClick: handleDownloadYaml },
-          { icon: Download, label: 'Export as JSON', description: 'Export Job as JSON', onClick: handleDownloadJson },
-          { icon: Trash2, label: 'Delete Job', description: 'Permanently remove this Job', variant: 'destructive', onClick: () => setShowDeleteDialog(true) },
+          { icon: RotateCw, label: 'Retry', description: 'Create a new Job with the same spec', variant: 'warning', onClick: handleRetry, className: 'press-effect' },
+          { icon: Play, label: 'View Pod Logs', description: 'See logs from job pod', onClick: () => setActiveTab('logs'), className: 'press-effect' },
+          { icon: Download, label: 'Download YAML', description: 'Export Job definition', onClick: handleDownloadYaml, className: 'press-effect' },
+          { icon: Download, label: 'Export as JSON', description: 'Export Job as JSON', onClick: handleDownloadJson, className: 'press-effect' },
+          { icon: Trash2, label: 'Delete Job', description: 'Permanently remove this Job', variant: 'destructive', onClick: () => setShowDeleteDialog(true), className: 'press-effect' },
         ]} />
       ),
     },
@@ -748,6 +748,8 @@ export default function JobDetail() {
   return (
     <>
       <ResourceDetailLayout
+        role="main"
+        aria-label="Job Detail"
         resourceType="Job"
         resourceIcon={Workflow}
         name={job.metadata?.name || ''}
@@ -766,10 +768,10 @@ export default function JobDetail() {
           </span>
         }
         actions={[
-          { label: 'Retry', icon: RotateCw, variant: 'outline', onClick: handleRetry },
-          { label: 'Download YAML', icon: Download, variant: 'outline', onClick: handleDownloadYaml },
-          { label: 'Export as JSON', icon: Download, variant: 'outline', onClick: handleDownloadJson },
-          { label: 'Delete', icon: Trash2, variant: 'destructive', onClick: () => setShowDeleteDialog(true) },
+          { label: 'Retry', icon: RotateCw, variant: 'outline', onClick: handleRetry, className: 'press-effect' },
+          { label: 'Download YAML', icon: Download, variant: 'outline', onClick: handleDownloadYaml, className: 'press-effect' },
+          { label: 'Export as JSON', icon: Download, variant: 'outline', onClick: handleDownloadJson, className: 'press-effect' },
+          { label: 'Delete', icon: Trash2, variant: 'destructive', onClick: () => setShowDeleteDialog(true), className: 'press-effect' },
         ]}
         statusCards={statusCards}
         tabs={tabs}

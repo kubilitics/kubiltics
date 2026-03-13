@@ -71,7 +71,11 @@ export function ListPageLoadingShell({
   const phase = useLoadingPhase(isLoading);
 
   return (
-    <>
+    <div
+      role="status"
+      aria-busy={isLoading}
+      aria-label={`Loading ${resourceName}. Please wait.`}
+    >
       {/* Loading indicator row */}
       <TableRow className="hover:bg-transparent border-b-0">
         <TableCell colSpan={columnCount} className="py-3 text-center">
@@ -105,18 +109,22 @@ export function ListPageLoadingShell({
             <TableCell key={j} className="py-3">
               <Skeleton
                 className={cn(
-                  'h-5 min-w-[2rem]',
+                  'skeleton-shimmer h-5 min-w-[2rem]',
                   j === 0 ? 'w-3/4' : 'w-full',
                   // Staggered opacity for visual depth
                   i > 4 && 'opacity-60',
                   i > 6 && 'opacity-30',
                 )}
+                style={{
+                  // Staggered animation delay for shimmer effect
+                  animationDelay: `${i * 50}ms`,
+                }}
               />
             </TableCell>
           ))}
         </TableRow>
       ))}
-    </>
+    </div>
   );
 }
 

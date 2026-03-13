@@ -53,7 +53,7 @@ export default function NetworkingOverview() {
     const policyCount = data?.resources.filter(r => r.kind === 'NetworkPolicy').length ?? 0;
 
     return (
-        <div className="flex flex-col gap-6 p-6">
+        <div className="flex flex-col gap-6 p-6" role="main" aria-label="Networking Overview">
             {/* Header Section */}
             <SectionOverviewHeader
                 title="Networking Overview"
@@ -66,7 +66,7 @@ export default function NetworkingOverview() {
             {/* Hero Section: Traffic Pulse & Distribution */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
                 {/* Traffic Pulse Chart */}
-                <Card className="lg:col-span-8 overflow-hidden border-[#326CE5]/10 shadow-sm bg-white/50 backdrop-blur-sm">
+                <Card className="lg:col-span-8 overflow-hidden border-[#326CE5]/10 shadow-sm bg-white/50 backdrop-blur-sm elevation-2" aria-live="polite">
                     <CardHeader className="pb-0">
                         <div className="flex items-center justify-between">
                             <div>
@@ -99,7 +99,7 @@ export default function NetworkingOverview() {
                 </Card>
 
                 {/* Service Distribution Donut */}
-                <Card className="lg:col-span-4 border-[#326CE5]/10 shadow-sm bg-white/50 backdrop-blur-sm flex flex-col items-center justify-center p-6 px-0 text-center relative overflow-hidden">
+                <Card className="lg:col-span-4 border-[#326CE5]/10 shadow-sm bg-white/50 backdrop-blur-sm flex flex-col items-center justify-center p-6 px-0 text-center relative overflow-hidden elevation-2">
                     <CardHeader className="pb-0">
                         <CardTitle className="text-sm font-black uppercase text-[#326CE5]/60">Domain Allocation</CardTitle>
                     </CardHeader>
@@ -127,7 +127,7 @@ export default function NetworkingOverview() {
                     </CardContent>
 
                     <div className="mt-4 w-full px-6">
-                        <Button variant="outline" className="w-full h-10 border-[#326CE5]/20 text-[#326CE5] font-bold hover:bg-[#326CE5]/5 rounded-xl transition-all">
+                        <Button variant="outline" className="w-full h-10 border-[#326CE5]/20 text-[#326CE5] font-bold hover:bg-[#326CE5]/5 rounded-xl transition-all press-effect">
                             Manage Load Balancers
                         </Button>
                     </div>
@@ -144,12 +144,13 @@ export default function NetworkingOverview() {
                             <p className="text-[11px] text-slate-500 font-semibold uppercase tracking-wider mt-1">Services, Ingress & Policy Registry</p>
                         </div>
                         <div className="relative min-w-[320px]">
-                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" aria-hidden />
                             <Input
                                 placeholder="Search network resources..."
                                 className="pl-12 bg-slate-50 border-transparent transition-all rounded-xl focus:bg-white focus:ring-4 focus:ring-blue-500/5 focus:border-slate-200 h-10 font-medium text-sm"
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
+                                aria-label="Search network resources"
                             />
                         </div>
                     </div>
@@ -203,8 +204,8 @@ export default function NetworkingOverview() {
                                         </span>
                                     </td>
                                     <td className="px-8 py-4 text-right">
-                                        <Button variant="ghost" size="sm" className="h-9 w-9 p-0 hover:bg-white hover:text-blue-600 hover:shadow-sm rounded-xl transition-all border border-transparent hover:border-slate-100">
-                                            <ArrowUpRight className="h-4 w-4" />
+                                        <Button variant="ghost" size="sm" className="h-9 w-9 p-0 hover:bg-white hover:text-blue-600 hover:shadow-sm rounded-xl transition-all border border-transparent hover:border-slate-100 press-effect">
+                                            <ArrowUpRight className="h-4 w-4" aria-hidden />
                                         </Button>
                                     </td>
                                 </motion.tr>

@@ -23,6 +23,7 @@ export interface TableEmptyStateProps {
 /**
  * Standard empty state for list page tables. Use when the table has no rows to display.
  * Shows resource icon, title, optional subtitle, optional "Clear filters", and optional "Create" button.
+ * Apple-level UX with slide-up animation, accessible semantics, and prominent actions.
  */
 export function TableEmptyState({
   icon,
@@ -34,23 +35,42 @@ export function TableEmptyState({
   onCreate,
   className,
 }: TableEmptyStateProps) {
+  const ariaLabel = hasActiveFilters
+    ? `${title}. Clear filters to see resources`
+    : title;
+
   return (
-    <div className={cn('flex flex-col items-center justify-center gap-4 py-12', className)}>
-      <div className="rounded-full bg-muted/50 p-4 text-muted-foreground [&>svg]:h-10 [&>svg]:w-10 [&>svg]:opacity-60">
+    <div
+      className={cn('empty-state animate-slide-up', className)}
+      role="status"
+      aria-label={ariaLabel}
+    >
+      <div className="empty-state-icon [&>svg]:h-8 [&>svg]:w-8 [&>svg]:opacity-70 text-muted-foreground">
         {icon}
       </div>
-      <div className="text-center space-y-1">
-        <p className="text-base font-medium text-foreground">{title}</p>
-        {subtitle && <p className="text-sm text-muted-foreground max-w-sm mx-auto">{subtitle}</p>}
+      <div className="space-y-2">
+        <h3 className="empty-state-title">{title}</h3>
+        {subtitle && <p className="empty-state-description">{subtitle}</p>}
       </div>
-      <div className="flex flex-wrap items-center justify-center gap-3">
+      <div className="flex flex-wrap items-center justify-center gap-3 mt-6">
         {hasActiveFilters && onClearFilters && (
-          <Button variant="outline" size="sm" className="gap-2" onClick={onClearFilters}>
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-2 press-effect"
+            onClick={onClearFilters}
+            aria-label="Clear active filters"
+          >
             Clear filters
           </Button>
         )}
         {createLabel && onCreate && (
-          <Button size="sm" className="gap-2" onClick={onCreate}>
+          <Button
+            size="sm"
+            className="gap-2 press-effect"
+            onClick={onCreate}
+            aria-label={`Create new ${createLabel.toLowerCase()}`}
+          >
             <Plus className="h-4 w-4" />
             {createLabel}
           </Button>

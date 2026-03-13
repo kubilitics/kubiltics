@@ -449,7 +449,7 @@ spec:
  const isSomeSelected = selectedItems.size > 0 && selectedItems.size < filteredServices.length;
 
  return (
- <div className="space-y-6">
+ <div className="space-y-6" role="main" aria-label="Services Resources">
  {/* Page Header: title + selection hint, toolbar (Export, Download YAML, Delete, Refresh, Create) */}
  <ListPageHeader
  icon={<ServiceIcon className="h-6 w-6 text-primary" />}
@@ -607,7 +607,7 @@ spec:
  <span className="text-sm text-muted-foreground">{pagination.rangeLabel}</span>
  <DropdownMenu>
  <DropdownMenuTrigger asChild>
- <Button variant="outline" size="sm" className="gap-2">
+ <Button variant="outline" size="sm" className="press-effect gap-2">
  {pageSize} per page
  <ChevronDown className="h-4 w-4 opacity-50" />
  </Button>
@@ -920,7 +920,7 @@ spec:
  <ResizableTableCell columnId="age"><AgeCell age={svc.age} timestamp={svc.creationTimestamp} /></ResizableTableCell>
  <TableCell>
  <DropdownMenu>
- <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
+ <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="press-effect h-8 w-8"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
  <DropdownMenuContent align="end">
  <CopyNameDropdownItem name={svc.name} namespace={svc.namespace} />
  <DropdownMenuItem onClick={() => navigate(`/services/${svc.namespace}/${svc.name}`)}>View Details</DropdownMenuItem>

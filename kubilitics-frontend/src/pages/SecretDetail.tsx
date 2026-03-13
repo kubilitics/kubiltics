@@ -176,7 +176,7 @@ export default function SecretDetail() {
         <Card>
           <CardContent className="pt-6">
             <p className="text-muted-foreground">Secret not found.</p>
-            <Button variant="outline" className="mt-4" onClick={() => navigate('/secrets')}>
+            <Button variant="outline" className="mt-4 press-effect" onClick={() => navigate('/secrets')}>
               Back to Secrets
             </Button>
           </CardContent>
@@ -369,10 +369,10 @@ export default function SecretDetail() {
                       <TableCell className="text-muted-foreground text-sm">{decodedSize(value)} B</TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-1">
-                          <Button variant="ghost" size="sm" onClick={() => toggleShow(key)} aria-label={showValues[key] ? 'Hide value' : 'Reveal value'}>
+                          <Button variant="ghost" size="sm" className="press-effect" onClick={() => toggleShow(key)} aria-label={showValues[key] ? 'Hide value' : 'Reveal value'}>
                             {showValues[key] ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                           </Button>
-                          <Button variant="ghost" size="sm" onClick={() => copyDecoded(key)} aria-label="Copy value">
+                          <Button variant="ghost" size="sm" className="press-effect" onClick={() => copyDecoded(key)} aria-label="Copy value">
                             <Copy className="h-4 w-4" />
                           </Button>
                         </div>
@@ -426,11 +426,11 @@ export default function SecretDetail() {
       icon: Edit,
       content: (
         <ActionsSection actions={[
-          { icon: Edit, label: 'Edit Secret', description: 'Modify secret data' },
-          { icon: Copy, label: 'Duplicate', description: 'Create a copy of this Secret' },
-          { icon: Download, label: 'Download YAML', description: 'Export Secret definition', onClick: handleDownloadYaml },
-          { icon: Download, label: 'Export as JSON', description: 'Export Secret as JSON', onClick: handleDownloadJson },
-          { icon: Trash2, label: 'Delete Secret', description: 'Remove this Secret', variant: 'destructive', onClick: () => setShowDeleteDialog(true) },
+          { icon: Edit, label: 'Edit Secret', description: 'Modify secret data', className: 'press-effect' },
+          { icon: Copy, label: 'Duplicate', description: 'Create a copy of this Secret', className: 'press-effect' },
+          { icon: Download, label: 'Download YAML', description: 'Export Secret definition', onClick: handleDownloadYaml, className: 'press-effect' },
+          { icon: Download, label: 'Export as JSON', description: 'Export Secret as JSON', onClick: handleDownloadJson, className: 'press-effect' },
+          { icon: Trash2, label: 'Delete Secret', description: 'Remove this Secret', variant: 'destructive', onClick: () => setShowDeleteDialog(true), className: 'press-effect' },
         ]} />
       ),
     },
@@ -439,6 +439,8 @@ export default function SecretDetail() {
   return (
     <>
       <ResourceDetailLayout
+        role="main"
+        aria-label="Secret Detail"
         resourceType="Secret"
         resourceIcon={KeyRound}
         name={sName}
@@ -448,10 +450,10 @@ export default function SecretDetail() {
         backLabel="Secrets"
         headerMetadata={<span className="flex items-center gap-1.5 ml-2 text-sm text-muted-foreground"><Clock className="h-3.5 w-3.5" />Created {age}{isConnected && <Badge variant="outline" className="ml-2 text-xs">Live</Badge>}</span>}
         actions={[
-          { label: 'Download YAML', icon: Download, variant: 'outline', onClick: handleDownloadYaml },
-          { label: 'Export as JSON', icon: Download, variant: 'outline', onClick: handleDownloadJson },
-          { label: 'Edit', icon: Edit, variant: 'outline', onClick: () => { setActiveTab('yaml'); setSearchParams((p) => { const n = new URLSearchParams(p); n.set('tab', 'yaml'); return n; }, { replace: true }); } },
-          { label: 'Delete', icon: Trash2, variant: 'destructive', onClick: () => setShowDeleteDialog(true) },
+          { label: 'Download YAML', icon: Download, variant: 'outline', onClick: handleDownloadYaml, className: 'press-effect' },
+          { label: 'Export as JSON', icon: Download, variant: 'outline', onClick: handleDownloadJson, className: 'press-effect' },
+          { label: 'Edit', icon: Edit, variant: 'outline', onClick: () => { setActiveTab('yaml'); setSearchParams((p) => { const n = new URLSearchParams(p); n.set('tab', 'yaml'); return n; }, { replace: true }); }, className: 'press-effect' },
+          { label: 'Delete', icon: Trash2, variant: 'destructive', onClick: () => setShowDeleteDialog(true), className: 'press-effect' },
         ]}
         statusCards={statusCards}
         tabs={tabs}

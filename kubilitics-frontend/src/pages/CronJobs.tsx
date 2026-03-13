@@ -417,7 +417,7 @@ spec:
  const isSomeSelected = selectedItems.size > 0 && selectedItems.size < itemsOnPage.length;
 
  return (
- <div className="space-y-6">
+ <div className="space-y-6" role="main" aria-label="CronJobs Resources">
  <ListPageHeader
  icon={<CronJobIcon className="h-6 w-6 text-primary" />}
  title="CronJobs"
@@ -446,7 +446,7 @@ spec:
  leftExtra={selectedItems.size > 0 ? (
  <div className="flex items-center gap-2 ml-2 pl-2 border-l border-border">
  <span className="text-sm text-muted-foreground">{selectedItems.size} selected</span>
- <Button variant="ghost" size="sm" className="h-8" onClick={() => setSelectedItems(new Set())}>Clear</Button>
+ <Button variant="ghost" size="sm" className="press-effect h-8" onClick={() => setSelectedItems(new Set())}>Clear</Button>
  </div>
  ) : undefined}
  />
@@ -507,7 +507,7 @@ spec:
  <span className="text-sm text-muted-foreground">{pagination.rangeLabel}</span>
  <DropdownMenu>
  <DropdownMenuTrigger asChild>
- <Button variant="outline" size="sm" className="gap-2">
+ <Button variant="outline" size="sm" className="press-effect gap-2">
  {pageSize} per page
  <ChevronDown className="h-4 w-4 opacity-50" />
  </Button>
@@ -539,7 +539,7 @@ spec:
  <ResizableTableProvider tableId="cronjobs" columnConfig={CRONJOBS_TABLE_COLUMNS}>
  <Table className="table-fixed" style={{ minWidth: 1810 }}>
  <TableHeader><TableRow className="bg-muted/50 hover:bg-muted/50 border-b-2 border-border">
- <TableHead className="w-10"><Checkbox checked={isAllSelected} onCheckedChange={toggleAll} className={cn(isSomeSelected && 'data-[state=checked]:bg-primary/50')} /></TableHead>
+ <TableHead className="w-10"><Checkbox checked={isAllSelected} onCheckedChange={toggleAll} aria-label="Select all cronjobs" className={cn(isSomeSelected && 'data-[state=checked]:bg-primary/50')} /></TableHead>
  <ResizableTableHead columnId="expand">
  <span className="sr-only">Expand</span>
  </ResizableTableHead>
@@ -679,15 +679,15 @@ spec:
  </ResizableTableCell>
  <ResizableTableCell columnId="age" className="text-muted-foreground whitespace-nowrap"><AgeCell age={item.age} timestamp={item.creationTimestamp} /></ResizableTableCell>
  <TableCell>
- <DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors" aria-label="CronJob actions"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
+ <DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="press-effect h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors" aria-label="CronJob actions"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
  <DropdownMenuContent align="end" className="w-52">
  <CopyNameDropdownItem name={item.name} namespace={item.namespace} />
- <DropdownMenuItem onClick={() => navigate(`/cronjobs/${item.namespace}/${item.name}`)} className="gap-2">View Details</DropdownMenuItem>
+ <DropdownMenuItem onClick={() => navigate(`/cronjobs/${item.namespace}/${item.name}`)} className="press-effect gap-2">View Details</DropdownMenuItem>
  <DropdownMenuItem onClick={() => handleTriggerNow(item)} className="gap-2" disabled={!isConnected}><Play className="h-4 w-4" />Trigger Now</DropdownMenuItem>
  <DropdownMenuItem onClick={() => handleToggleSuspend(item)} className="gap-2" disabled={!isConnected}>{item.status === 'Active' ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}{item.status === 'Active' ? 'Suspend' : 'Resume'}</DropdownMenuItem>
- <DropdownMenuItem onClick={() => navigate(`/jobs?namespace=${item.namespace}`)} className="gap-2"><Box className="h-4 w-4" />View Jobs</DropdownMenuItem>
- <DropdownMenuItem onClick={() => navigate(`/cronjobs/${item.namespace}/${item.name}?tab=logs`)} className="gap-2"><FileText className="h-4 w-4" />View Last Job Logs</DropdownMenuItem>
- <DropdownMenuItem onClick={() => navigate(`/cronjobs/${item.namespace}/${item.name}?tab=yaml`)} className="gap-2"><FileText className="h-4 w-4" />Download YAML</DropdownMenuItem>
+ <DropdownMenuItem onClick={() => navigate(`/jobs?namespace=${item.namespace}`)} className="press-effect gap-2"><Box className="h-4 w-4" />View Jobs</DropdownMenuItem>
+ <DropdownMenuItem onClick={() => navigate(`/cronjobs/${item.namespace}/${item.name}?tab=logs`)} className="press-effect gap-2"><FileText className="h-4 w-4" />View Last Job Logs</DropdownMenuItem>
+ <DropdownMenuItem onClick={() => navigate(`/cronjobs/${item.namespace}/${item.name}?tab=yaml`)} className="press-effect gap-2"><FileText className="h-4 w-4" />Download YAML</DropdownMenuItem>
  <DropdownMenuSeparator /><DropdownMenuItem className="gap-2 text-[hsl(0,72%,51%)]" onClick={() => setDeleteDialog({ open: true, item })} disabled={!isConnected}><Trash2 className="h-4 w-4" />Delete</DropdownMenuItem>
  </DropdownMenuContent>
  </DropdownMenu>
@@ -784,15 +784,15 @@ spec:
  </ResizableTableCell>
  <ResizableTableCell columnId="age" className="text-muted-foreground whitespace-nowrap"><AgeCell age={item.age} timestamp={item.creationTimestamp} /></ResizableTableCell>
  <TableCell>
- <DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors" aria-label="CronJob actions"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
+ <DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="press-effect h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors" aria-label="CronJob actions"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
  <DropdownMenuContent align="end" className="w-52">
  <CopyNameDropdownItem name={item.name} namespace={item.namespace} />
- <DropdownMenuItem onClick={() => navigate(`/cronjobs/${item.namespace}/${item.name}`)} className="gap-2">View Details</DropdownMenuItem>
+ <DropdownMenuItem onClick={() => navigate(`/cronjobs/${item.namespace}/${item.name}`)} className="press-effect gap-2">View Details</DropdownMenuItem>
  <DropdownMenuItem onClick={() => handleTriggerNow(item)} className="gap-2" disabled={!isConnected}><Play className="h-4 w-4" />Trigger Now</DropdownMenuItem>
  <DropdownMenuItem onClick={() => handleToggleSuspend(item)} className="gap-2" disabled={!isConnected}>{item.status === 'Active' ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}{item.status === 'Active' ? 'Suspend' : 'Resume'}</DropdownMenuItem>
- <DropdownMenuItem onClick={() => navigate(`/jobs?namespace=${item.namespace}`)} className="gap-2"><Box className="h-4 w-4" />View Jobs</DropdownMenuItem>
- <DropdownMenuItem onClick={() => navigate(`/cronjobs/${item.namespace}/${item.name}?tab=logs`)} className="gap-2"><FileText className="h-4 w-4" />View Last Job Logs</DropdownMenuItem>
- <DropdownMenuItem onClick={() => navigate(`/cronjobs/${item.namespace}/${item.name}?tab=yaml`)} className="gap-2"><FileText className="h-4 w-4" />Download YAML</DropdownMenuItem>
+ <DropdownMenuItem onClick={() => navigate(`/jobs?namespace=${item.namespace}`)} className="press-effect gap-2"><Box className="h-4 w-4" />View Jobs</DropdownMenuItem>
+ <DropdownMenuItem onClick={() => navigate(`/cronjobs/${item.namespace}/${item.name}?tab=logs`)} className="press-effect gap-2"><FileText className="h-4 w-4" />View Last Job Logs</DropdownMenuItem>
+ <DropdownMenuItem onClick={() => navigate(`/cronjobs/${item.namespace}/${item.name}?tab=yaml`)} className="press-effect gap-2"><FileText className="h-4 w-4" />Download YAML</DropdownMenuItem>
  <DropdownMenuSeparator /><DropdownMenuItem className="gap-2 text-[hsl(0,72%,51%)]" onClick={() => setDeleteDialog({ open: true, item })} disabled={!isConnected}><Trash2 className="h-4 w-4" />Delete</DropdownMenuItem>
  </DropdownMenuContent>
  </DropdownMenu>

@@ -309,7 +309,7 @@ spec:
  const isSomeSelected = selectedItems.size > 0 && selectedItems.size < itemsOnPage.length;
 
  return (
- <div className="space-y-6">
+ <div className="space-y-6" role="main" aria-label="ReplicaSets Resources">
  <ListPageHeader
  icon={<ReplicaSetIcon className="h-6 w-6 text-primary" />}
  title="ReplicaSets"
@@ -330,7 +330,7 @@ spec:
  selectionLabel={selectedItems.size > 0 ? 'Selected replicasets' : 'All visible replicasets'}
  onToast={(msg, type) => (type === 'info' ? toast.info(msg) : toast.success(msg))}
  />
- <Button variant={activeOnly ? 'default' : 'outline'} size="sm" className="gap-2 h-9" onClick={() => setActiveOnly((v) => !v)} title="Show only active ReplicaSets">
+ <Button variant={activeOnly ? 'default' : 'outline'} size="sm" className="press-effect gap-2 h-9" onClick={() => setActiveOnly((v) => !v)} title="Show only active ReplicaSets">
  {activeOnly ? <EyeOff className="h-4 w-4" /> : <GitBranch className="h-4 w-4" />}
  Active Only
  </Button>
@@ -341,7 +341,7 @@ spec:
  {selectedItems.size > 0 && (
  <div className="flex items-center justify-between p-3 bg-primary/5 border border-primary/20 rounded-lg">
  <div className="flex items-center gap-3"><Badge variant="secondary" className="gap-1.5"><CheckSquare className="h-3.5 w-3.5" />{selectedItems.size} selected</Badge><Button variant="ghost" size="sm" onClick={() => setSelectedItems(new Set())}>Clear</Button></div>
- <Button variant="destructive" size="sm" className="gap-1.5" onClick={() => setDeleteDialog({ open: true, item: null, bulk: true })}><Trash2 className="h-4 w-4" />Delete</Button>
+ <Button variant="destructive" size="sm" className="press-effect gap-1.5" onClick={() => setDeleteDialog({ open: true, item: null, bulk: true })}><Trash2 className="h-4 w-4" />Delete</Button>
  </div>
  )}
 
@@ -453,7 +453,7 @@ spec:
  <Table className="table-fixed" style={{ minWidth: 1600 }}>
  <TableHeader>
  <TableRow className="bg-muted/50 hover:bg-muted/50 border-b-2 border-border">
- <TableHead className="w-10"><Checkbox checked={isAllSelected} onCheckedChange={toggleAll} className={cn(isSomeSelected && 'data-[state=checked]:bg-primary/50')} /></TableHead>
+ <TableHead className="w-10"><Checkbox checked={isAllSelected} onCheckedChange={toggleAll} aria-label="Select all replicasets" className={cn(isSomeSelected && 'data-[state=checked]:bg-primary/50')} /></TableHead>
  <ResizableTableHead columnId="name">
  <TableColumnHeaderWithFilterAndSort columnId="name" label="Name" sortKey={sortKey} sortOrder={sortOrder} onSort={setSort} filterable={false} distinctValues={[]} selectedFilterValues={new Set()} onFilterChange={() => {}} />
  </ResizableTableHead>
@@ -588,7 +588,7 @@ spec:
  </ResizableTableCell>
  <ResizableTableCell columnId="age" className="text-muted-foreground whitespace-nowrap"><AgeCell age={item.age} timestamp={item.creationTimestamp} /></ResizableTableCell>
  <TableCell>
- <DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors" aria-label="Actions"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
+ <DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="press-effect h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors" aria-label="Actions"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
  <DropdownMenuContent align="end" className="w-48">
  <DropdownMenuItem onClick={() => setScaleDialog({ open: true, item })} className="gap-2"><Scale className="h-4 w-4" />Scale</DropdownMenuItem>
  <DropdownMenuItem onClick={() => navigate(`/replicasets/${item.namespace}/${item.name}?tab=yaml`)} className="gap-2"><FileText className="h-4 w-4" />View YAML</DropdownMenuItem>
@@ -640,7 +640,7 @@ spec:
  </ResizableTableCell>
  <ResizableTableCell columnId="age" className="text-muted-foreground whitespace-nowrap"><AgeCell age={item.age} timestamp={item.creationTimestamp} /></ResizableTableCell>
  <TableCell>
- <DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors" aria-label="Actions"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
+ <DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="press-effect h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors" aria-label="Actions"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
  <DropdownMenuContent align="end" className="w-48">
  <DropdownMenuItem onClick={() => setScaleDialog({ open: true, item })} className="gap-2"><Scale className="h-4 w-4" />Scale</DropdownMenuItem>
  <DropdownMenuItem onClick={() => navigate(`/replicasets/${item.namespace}/${item.name}?tab=yaml`)} className="gap-2"><FileText className="h-4 w-4" />View YAML</DropdownMenuItem>

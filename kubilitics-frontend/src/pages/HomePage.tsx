@@ -152,45 +152,69 @@ export default function HomePage() {
         <div className="space-y-10 w-full">
           {/* Metrics strip — full-width grid like Workloads Overview */}
           {/* Metrics strip — Apple-style Glass Cards */}
-          <motion.section {...pageMotion} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4 gap-8">
-            <div className="glass-card p-8 flex items-center gap-8 group hover:translate-y-[-6px] transition-all duration-700 ease-spring">
+          <motion.section {...pageMotion} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4 gap-8" role="region" aria-live="polite" aria-label="Health metrics dashboard">
+            <motion.div
+              className="glass-card elevation-2 hover:elevation-3 p-8 flex items-center gap-8 group hover:translate-y-[-6px] transition-all duration-700 ease-spring"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0, duration: 0.4 }}
+              role="status"
+            >
               <div className="relative shrink-0">
                 <div className="absolute inset-x-0 -inset-y-4 bg-blue-500/10 blur-2xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-1000" />
-                <HealthRing score={health.score} size={72} strokeWidth={8} />
+                <HealthRing score={health.score} size={72} strokeWidth={8} aria-valuenow={health.score} aria-valuemin={0} aria-valuemax={100} />
               </div>
               <div className="min-w-0">
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.25em]">Health Index</p>
                 <p className="text-4xl font-bold tabular-nums text-slate-900 mt-1">{health.score}</p>
                 <p className="text-[11px] text-slate-500 font-semibold mt-1.5 truncate leading-relaxed">{health.insight}</p>
               </div>
-            </div>
+            </motion.div>
 
-            <div className="glass-card p-8 flex items-center gap-8 group hover:translate-y-[-6px] transition-all duration-700 ease-spring">
+            <motion.div
+              className="glass-card elevation-2 hover:elevation-3 p-8 flex items-center gap-8 group hover:translate-y-[-6px] transition-all duration-700 ease-spring"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.05, duration: 0.4 }}
+              role="status"
+            >
               <div className="h-16 w-16 rounded-[1.5rem] bg-blue-500/10 flex items-center justify-center shrink-0 group-hover:bg-blue-600 group-hover:shadow-xl group-hover:shadow-blue-500/20 transition-all duration-700 ease-spring shadow-sm border border-white">
-                <Server className="h-8 w-8 text-blue-600 group-hover:text-white transition-colors duration-500" />
+                <Server className="h-8 w-8 text-blue-600 group-hover:text-white transition-colors duration-500" aria-label="Clusters icon" />
               </div>
               <div className="min-w-0">
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.25em]">Clusters</p>
                 <p className="text-4xl font-bold tabular-nums text-slate-900 mt-1">{activeClusters}</p>
                 <p className="text-[11px] text-emerald-600 font-bold mt-1.5 flex items-center gap-1.5">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" aria-label="Distributed status indicator" />
                   Distributed
                 </p>
               </div>
-            </div>
+            </motion.div>
 
-            <div className="glass-card p-8 flex items-center gap-8 group hover:translate-y-[-6px] transition-all duration-700 ease-spring">
+            <motion.div
+              className="glass-card elevation-2 hover:elevation-3 p-8 flex items-center gap-8 group hover:translate-y-[-6px] transition-all duration-700 ease-spring"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1, duration: 0.4 }}
+              role="status"
+            >
               <div className="h-16 w-16 rounded-[1.5rem] bg-emerald-500/10 flex items-center justify-center shrink-0 group-hover:bg-emerald-600 group-hover:shadow-xl group-hover:shadow-emerald-500/20 transition-all duration-700 ease-spring shadow-sm border border-white">
-                <Activity className="h-8 w-8 text-emerald-600 group-hover:text-white transition-colors duration-500" />
+                <Activity className="h-8 w-8 text-emerald-600 group-hover:text-white transition-colors duration-500" aria-label="Nodes icon" />
               </div>
               <div className="min-w-0">
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.25em]">Nodes</p>
                 <p className="text-4xl font-bold tabular-nums text-slate-900 mt-1">{activeNodes}</p>
                 <p className="text-[11px] text-slate-500 font-semibold mt-1.5">Provisioned</p>
               </div>
-            </div>
+            </motion.div>
 
-            <div className="glass-card p-8 flex flex-col justify-center relative group overflow-hidden hover:translate-y-[-6px] transition-all duration-700 ease-spring">
+            <motion.div
+              className="glass-card elevation-2 hover:elevation-3 p-8 flex flex-col justify-center relative group overflow-hidden hover:translate-y-[-6px] transition-all duration-700 ease-spring"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.15, duration: 0.4 }}
+              role="status"
+            >
               <div className="flex justify-between items-end mb-3">
                 <div>
                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.25em]">System Load</p>
@@ -203,15 +227,20 @@ export default function HomePage() {
                   animate={{ width: `${Math.min(100, cpuUtil)}%` }}
                   transition={{ duration: 1.5, ease: "easeOut" }}
                   className="absolute inset-y-0 left-0 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full"
+                  role="progressbar"
+                  aria-valuenow={Math.round(cpuUtil)}
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                  aria-label="System load progress"
                 />
               </div>
 
               <div className="absolute top-0 right-0 p-4 opacity-0 group-hover:opacity-100 transition-all duration-500 translate-x-4 group-hover:translate-x-0">
-                <Button variant="ghost" size="sm" className="h-10 rounded-full text-[10px] font-bold tracking-[0.15em] uppercase hover:bg-white bg-white/50 shadow-sm px-6" onClick={() => navigate('/nodes')}>
+                <Button variant="ghost" size="sm" className="h-10 rounded-full text-[10px] font-bold tracking-[0.15em] uppercase hover:bg-white bg-white/50 shadow-sm px-6 press-effect" onClick={() => navigate('/nodes')} aria-label="View detailed nodes">
                   Observe <ArrowRight className="ml-2 h-3.5 w-3.5" />
                 </Button>
               </div>
-            </div>
+            </motion.div>
           </motion.section>
 
           {/* Clusters */}
@@ -227,16 +256,17 @@ export default function HomePage() {
             {filteredClusters.length === 0 ? (
               <Card className="border-dashed border-2 border-muted-foreground/20 bg-muted/30">
                 <CardContent className="py-16 px-6 text-center">
-                  <div className="h-16 w-16 rounded-2xl bg-muted flex items-center justify-center mx-auto mb-4">
-                    <Server className="h-8 w-8 text-muted-foreground" />
+                  <div className="empty-state-icon h-16 w-16 rounded-2xl bg-muted flex items-center justify-center mx-auto mb-4">
+                    <Server className="h-8 w-8 text-muted-foreground" aria-label="No clusters icon" />
                   </div>
-                  <h3 className="text-base font-semibold text-foreground">No clusters connected</h3>
-                  <p className="text-sm text-muted-foreground mt-1 max-w-sm mx-auto">
+                  <h3 className="empty-state-title text-base font-semibold text-foreground">No clusters connected</h3>
+                  <p className="empty-state-description text-sm text-muted-foreground mt-1 max-w-sm mx-auto">
                     Connect your first cluster to start monitoring workloads and health.
                   </p>
                   <Button
-                    className="mt-6 rounded-xl font-medium"
+                    className="mt-6 rounded-xl font-medium press-effect"
                     onClick={() => navigate('/setup/kubeconfig')}
+                    aria-label="Add a new cluster"
                   >
                     <Plus className="h-4 w-4 mr-2" />
                     Add Cluster
@@ -245,19 +275,36 @@ export default function HomePage() {
               </Card>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6">
-                {filteredClusters.map((cluster) => (
-                  <div key={cluster.id} className="h-full min-w-0">
+                {filteredClusters.map((cluster, idx) => (
+                  <motion.div
+                    key={cluster.id}
+                    className="h-full min-w-0"
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: idx * 0.05, duration: 0.4 }}
+                  >
                     <div
-                      className="glass-card glass-card-hover group cursor-pointer p-6 h-full flex flex-col justify-between min-h-[220px] overflow-hidden"
+                      className="glass-card elevation-2 hover:elevation-3 glass-card-hover group cursor-pointer p-6 h-full flex flex-col justify-between min-h-[220px] overflow-hidden press-effect"
                       onClick={() => {
                         setCurrentClusterId(cluster.id);
                         setActiveCluster(backendClusterToCluster(cluster));
                         navigate('/dashboard');
                       }}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          setCurrentClusterId(cluster.id);
+                          setActiveCluster(backendClusterToCluster(cluster));
+                          navigate('/dashboard');
+                        }
+                      }}
+                      aria-label={`Open cluster ${cluster.name}`}
                     >
                       <div className="flex justify-between items-start mb-6">
                         <div className="h-12 w-12 rounded-2xl bg-slate-50 group-hover:bg-blue-600 group-hover:shadow-xl group-hover:shadow-blue-500/20 flex items-center justify-center transition-all duration-700 ease-spring shadow-sm border border-white shrink-0">
-                          <Server className="h-6 w-6 text-slate-400 group-hover:text-white transition-colors duration-500" />
+                          <Server className="h-6 w-6 text-slate-400 group-hover:text-white transition-colors duration-500" aria-label="Cluster server icon" />
                         </div>
 
                         <DropdownMenu>
@@ -265,8 +312,9 @@ export default function HomePage() {
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="h-10 w-10 rounded-full text-slate-400 hover:text-slate-900 group-hover:bg-white/80 shadow-sm transition-all"
+                              className="h-10 w-10 rounded-full text-slate-400 hover:text-slate-900 group-hover:bg-white/80 shadow-sm transition-all press-effect"
                               onClick={(e) => e.stopPropagation()}
+                              aria-label={`More options for ${cluster.name}`}
                             >
                               <MoreVertical className="h-5 w-5" />
                             </Button>
@@ -305,7 +353,7 @@ export default function HomePage() {
                         </div>
                       </div>
                     </div>
-                  </div>
+                  </motion.div>
                 ))}
               </div>
             )}
@@ -321,7 +369,7 @@ export default function HomePage() {
                 </p>
               </div>
               <CreateProjectDialog>
-                <Button size="default" className="rounded-xl font-semibold shrink-0 shadow-sm">
+                <Button size="default" className="rounded-xl font-semibold shrink-0 shadow-sm press-effect" aria-label="Create a new project">
                   <Plus className="h-4 w-4 mr-2" />
                   New project
                 </Button>
@@ -330,14 +378,14 @@ export default function HomePage() {
             {isProjectsLoading ? (
               <Card className="border-border/60">
                 <CardContent className="py-20 flex items-center justify-center">
-                  <Loader2 className="h-10 w-10 animate-spin text-muted-foreground" />
+                  <Loader2 className="h-10 w-10 animate-spin text-muted-foreground skeleton-shimmer" aria-label="Loading projects" />
                 </CardContent>
               </Card>
             ) : circuitOpen ? (
               <Card className="border-amber-500/20 bg-amber-50/10">
                 <CardContent className="py-16 px-6 text-center">
                   <div className="h-16 w-16 rounded-2xl bg-amber-500/10 flex items-center justify-center mx-auto mb-4">
-                    <Activity className="h-8 w-8 text-amber-600" />
+                    <Activity className="h-8 w-8 text-amber-600" aria-label="Connection throttled warning" />
                   </div>
                   <h3 className="text-base font-semibold text-foreground">Backend connection suspended</h3>
                   <p className="text-sm text-muted-foreground mt-1 max-w-sm mx-auto">
@@ -350,7 +398,7 @@ export default function HomePage() {
               <Card className="border-destructive/20 bg-destructive/5">
                 <CardContent className="py-16 px-6 text-center">
                   <div className="h-16 w-16 rounded-2xl bg-destructive/10 flex items-center justify-center mx-auto mb-4">
-                    <Focus className="h-8 w-8 text-destructive" />
+                    <Focus className="h-8 w-8 text-destructive" aria-label="Error icon" />
                   </div>
                   <h3 className="text-base font-semibold text-foreground">Query failed</h3>
                   <p className="text-sm text-muted-foreground mt-1 max-w-sm mx-auto">
@@ -378,16 +426,16 @@ export default function HomePage() {
               </div>
             ) : (
               <Card className="border-dashed border-2 border-muted-foreground/20 bg-muted/30">
-                <CardContent className="py-16 px-6 text-center">
-                  <div className="h-16 w-16 rounded-2xl bg-muted flex items-center justify-center mx-auto mb-4">
-                    <Focus className="h-8 w-8 text-muted-foreground" />
+                <CardContent className="empty-state py-16 px-6 text-center">
+                  <div className="empty-state-icon h-16 w-16 rounded-2xl bg-muted flex items-center justify-center mx-auto mb-4">
+                    <Focus className="h-8 w-8 text-muted-foreground" aria-label="No projects icon" />
                   </div>
-                  <h3 className="text-base font-semibold text-foreground">No projects yet</h3>
-                  <p className="text-sm text-muted-foreground mt-1 max-w-sm mx-auto">
+                  <h3 className="empty-state-title text-base font-semibold text-foreground">No projects yet</h3>
+                  <p className="empty-state-description text-sm text-muted-foreground mt-1 max-w-sm mx-auto">
                     Create a project to group workloads and apply governance.
                   </p>
                   <CreateProjectDialog>
-                    <Button size="default" className="mt-6 rounded-xl font-semibold">
+                    <Button size="default" className="mt-6 rounded-xl font-semibold press-effect" aria-label="Create a new project">
                       <Plus className="h-4 w-4 mr-2" />
                       New project
                     </Button>
@@ -409,11 +457,12 @@ export default function HomePage() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleteClusterMutation.isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={deleteClusterMutation.isPending} className="press-effect">Cancel</AlertDialogCancel>
             <Button
               variant="destructive"
               onClick={() => clusterToRemove && deleteClusterMutation.mutate(clusterToRemove)}
               disabled={deleteClusterMutation.isPending}
+              className="press-effect"
             >
               {deleteClusterMutation.isPending ? 'Removing…' : 'Remove'}
             </Button>
@@ -431,13 +480,13 @@ export default function HomePage() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="mt-8 gap-3">
-            <AlertDialogCancel className="rounded-2xl h-12 px-8 font-bold border-slate-100" disabled={deleteProjectMutation.isPending}>Abort</AlertDialogCancel>
+            <AlertDialogCancel className="rounded-2xl h-12 px-8 font-bold border-slate-100 press-effect" disabled={deleteProjectMutation.isPending}>Abort</AlertDialogCancel>
             <Button
-              className="rounded-2xl h-12 px-8 font-bold bg-red-600 hover:bg-red-700 text-white shadow-lg shadow-red-200"
+              className="rounded-2xl h-12 px-8 font-bold bg-red-600 hover:bg-red-700 text-white shadow-lg shadow-red-200 press-effect"
               onClick={() => projectToRemove && deleteProjectMutation.mutate(projectToRemove)}
               disabled={deleteProjectMutation.isPending}
             >
-              {deleteProjectMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Confirm Purge"}
+              {deleteProjectMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin skeleton-shimmer" aria-label="Confirming purge" /> : "Confirm Purge"}
             </Button>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -52,7 +52,7 @@ export function ListPageHeader({
   className,
 }: ListPageHeaderProps) {
   return (
-    <div className={cn('flex items-center justify-between flex-wrap gap-4', className)}>
+    <div className={cn('flex items-center justify-between flex-wrap gap-4 elevation-1', className)}>
       <div className="flex items-center gap-3 flex-wrap">
         <div className="p-2.5 rounded-xl bg-primary/10 shrink-0">
           {icon}
@@ -82,7 +82,7 @@ export function ListPageHeader({
         <Button
           variant="outline"
           size="icon"
-          className="h-9 w-9"
+          className="h-9 w-9 press-effect"
           onClick={onRefresh}
           disabled={isLoading}
           aria-label="Refresh"
@@ -95,7 +95,7 @@ export function ListPageHeader({
         </Button>
         {columnsDropdown}
         {createLabel && onCreate && (
-          <Button className="gap-2" onClick={onCreate}>
+          <Button className="gap-2 press-effect" onClick={onCreate}>
             <Plus className="h-4 w-4" />
             {createLabel}
           </Button>

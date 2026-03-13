@@ -700,6 +700,8 @@ export default function DaemonSetDetail() {
       <ResourceDetailLayout
         resourceType="DaemonSet"
         resourceIcon={Cpu}
+        role="main"
+        aria-label="DaemonSet Detail"
         name={daemonSet.metadata?.name || ''}
         namespace={daemonSet.metadata?.namespace}
         status={status}
@@ -720,10 +722,10 @@ export default function DaemonSetDetail() {
           </span>
         }
         actions={[
-          { label: 'Download YAML', icon: Download, variant: 'outline', onClick: handleDownloadYaml },
-          { label: 'Export as JSON', icon: Download, variant: 'outline', onClick: handleDownloadJson },
-          { label: 'Restart', icon: RotateCcw, variant: 'outline', onClick: () => setShowRolloutDialog(true) },
-          { label: 'Delete', icon: Trash2, variant: 'destructive', onClick: () => setShowDeleteDialog(true) },
+          { label: 'Download YAML', icon: Download, variant: 'outline', onClick: handleDownloadYaml, className: 'press-effect' },
+          { label: 'Export as JSON', icon: Download, variant: 'outline', onClick: handleDownloadJson, className: 'press-effect' },
+          { label: 'Restart', icon: RotateCcw, variant: 'outline', onClick: () => setShowRolloutDialog(true), className: 'press-effect' },
+          { label: 'Delete', icon: Trash2, variant: 'destructive', onClick: () => setShowDeleteDialog(true), className: 'press-effect' },
         ]}
       >
         <Breadcrumbs segments={breadcrumbSegments} className="mb-2" />

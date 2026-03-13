@@ -120,6 +120,18 @@ export default {
           "0%": { opacity: "0", transform: "translateY(4px)" },
           "100%": { opacity: "1", transform: "translateY(0)" },
         },
+        "slide-up": {
+          "0%": { opacity: "0", transform: "translateY(8px)" },
+          "100%": { opacity: "1", transform: "translateY(0)" },
+        },
+        "slide-down": {
+          "0%": { opacity: "0", transform: "translateY(-8px)" },
+          "100%": { opacity: "1", transform: "translateY(0)" },
+        },
+        "scale-in": {
+          "0%": { opacity: "0", transform: "scale(0.95)" },
+          "100%": { opacity: "1", transform: "scale(1)" },
+        },
         "topbar-indeterminate": {
           "0%": { transform: "translateX(-100%)", width: "40%" },
           "50%": { transform: "translateX(100%)", width: "60%" },
@@ -129,21 +141,35 @@ export default {
           "0%": { backgroundPosition: "-200% 0" },
           "100%": { backgroundPosition: "200% 0" },
         },
+        "shimmer": {
+          "0%": { transform: "translateX(-100%)" },
+          "100%": { transform: "translateX(100%)" },
+        },
         "row-entrance": {
           "from": { opacity: "0", transform: "translateY(6px)" },
           "to": { opacity: "1", transform: "translateY(0)" },
+        },
+        "pulse-subtle": {
+          "0%, 100%": { opacity: "1" },
+          "50%": { opacity: "0.7" },
         },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
         "fade-in": "fade-in 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+        "slide-up": "slide-up 0.25s cubic-bezier(0.16, 1, 0.3, 1)",
+        "slide-down": "slide-down 0.25s cubic-bezier(0.16, 1, 0.3, 1)",
+        "scale-in": "scale-in 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275)",
         "topbar-indeterminate": "topbar-indeterminate 1.8s cubic-bezier(0.4, 0, 0.2, 1) infinite",
         "shimmer-slide": "shimmer-slide 2s linear infinite",
+        "shimmer": "shimmer 1.8s ease-in-out infinite",
         "row-entrance": "row-entrance 0.2s ease-out both",
+        "pulse-subtle": "pulse-subtle 2s ease-in-out infinite",
       },
       transitionTimingFunction: {
         'spring': 'cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+        'out-expo': 'cubic-bezier(0.16, 1, 0.3, 1)',
       }
     },
   },

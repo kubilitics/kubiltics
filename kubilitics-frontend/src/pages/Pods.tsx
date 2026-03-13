@@ -659,7 +659,7 @@ export default function Pods() {
  }, [columnVisibility]);
 
  return (
- <div className="space-y-6">
+ <div className="space-y-6" role="main" aria-label="Pods Resources">
  <ListPageHeader
  icon={<Box className="h-6 w-6 text-primary" />}
  title="Pods"
@@ -683,7 +683,7 @@ export default function Pods() {
  {selectedPods.size > 0 && (
  <DropdownMenu>
  <DropdownMenuTrigger asChild>
- <Button variant="outline" size="sm" className="gap-2">
+ <Button variant="outline" size="sm" className="press-effect gap-2">
  <RotateCcw className="h-4 w-4" />
  Actions
  <ChevronDown className="h-4 w-4 opacity-50" />
@@ -712,7 +712,7 @@ export default function Pods() {
  leftExtra={selectedPods.size > 0 ? (
  <div className="flex items-center gap-2 ml-2 pl-2 border-l border-border">
  <span className="text-sm text-muted-foreground">{selectedPods.size} selected</span>
- <Button variant="ghost" size="sm" className="h-8" onClick={() => setSelectedPods(new Set())}>Clear</Button>
+ <Button variant="ghost" size="sm" className="press-effect h-8" onClick={() => setSelectedPods(new Set())}>Clear</Button>
  </div>
  ) : undefined}
  />
@@ -825,7 +825,7 @@ export default function Pods() {
  <span className="text-sm text-muted-foreground">{pagination.rangeLabel}</span>
  <DropdownMenu>
  <DropdownMenuTrigger asChild>
- <Button variant="outline" size="sm" className="gap-2">
+ <Button variant="outline" size="sm" className="press-effect gap-2">
  {pageSize} per page
  <ChevronDown className="h-4 w-4 opacity-50" />
  </Button>
@@ -1290,7 +1290,7 @@ export default function Pods() {
  <Button
  variant="ghost"
  size="icon"
- className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
+ className="press-effect h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
  aria-label="Pod actions"
  >
  <MoreHorizontal className="h-4 w-4" />
@@ -1298,27 +1298,27 @@ export default function Pods() {
  </DropdownMenuTrigger>
  <DropdownMenuContent align="end" className="w-48">
  <CopyNameDropdownItem name={pod.name} namespace={pod.namespace} />
- <DropdownMenuItem onClick={() => navigate(`/pods/${pod.namespace}/${pod.name}`)} className="gap-2">
+ <DropdownMenuItem onClick={() => navigate(`/pods/${pod.namespace}/${pod.name}`)} className="press-effect gap-2">
  View Details
  </DropdownMenuItem>
- <DropdownMenuItem onClick={() => handleViewLogs(pod)} className="gap-2">
+ <DropdownMenuItem onClick={() => handleViewLogs(pod)} className="press-effect gap-2">
  <FileText className="h-4 w-4" />
  View Logs
  </DropdownMenuItem>
- <DropdownMenuItem onClick={() => handleExecShell(pod)} className="gap-2">
+ <DropdownMenuItem onClick={() => handleExecShell(pod)} className="press-effect gap-2">
  <Terminal className="h-4 w-4" />
  Exec Shell
  </DropdownMenuItem>
- <DropdownMenuItem onClick={() => setPortForwardDialog({ open: true, pod })} className="gap-2">
+ <DropdownMenuItem onClick={() => setPortForwardDialog({ open: true, pod })} className="press-effect gap-2">
  <ExternalLink className="h-4 w-4" />
  Port Forward
  </DropdownMenuItem>
  <DropdownMenuSeparator />
- <DropdownMenuItem onClick={() => handleDownloadYaml(pod)} className="gap-2">
+ <DropdownMenuItem onClick={() => handleDownloadYaml(pod)} className="press-effect gap-2">
  <Download className="h-4 w-4" />
  Download YAML
  </DropdownMenuItem>
- <DropdownMenuItem onClick={() => handleDownloadJson(pod)} className="gap-2">
+ <DropdownMenuItem onClick={() => handleDownloadJson(pod)} className="press-effect gap-2">
  <Download className="h-4 w-4" />
  Export as JSON
  </DropdownMenuItem>
@@ -1396,7 +1396,7 @@ export default function Pods() {
  <Button
  variant="ghost"
  size="icon"
- className="absolute right-4 top-4 z-50"
+ className="press-effect absolute right-4 top-4 z-50"
  onClick={() => setShowComparison(false)}
  >
  <X className="h-4 w-4" />

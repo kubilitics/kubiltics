@@ -213,8 +213,8 @@ export default function ConfigMapDetail() {
               </button>
             )}
             <div className="flex gap-2">
-              <Button variant="outline" onClick={() => refetch()}>Retry</Button>
-              <Button variant="outline" onClick={() => navigate('/configmaps')}>Back to ConfigMaps</Button>
+              <Button variant="outline" onClick={() => refetch()} className="press-effect">Retry</Button>
+              <Button variant="outline" onClick={() => navigate('/configmaps')} className="press-effect">Back to ConfigMaps</Button>
             </div>
           </CardContent>
         </Card>
@@ -229,7 +229,7 @@ export default function ConfigMapDetail() {
         <Card>
           <CardContent className="pt-6">
             <p className="text-muted-foreground">ConfigMap not found.</p>
-            <Button variant="outline" className="mt-4" onClick={() => navigate('/configmaps')}>
+            <Button variant="outline" className="mt-4 press-effect" onClick={() => navigate('/configmaps')}>
               Back to ConfigMaps
             </Button>
           </CardContent>
@@ -370,13 +370,13 @@ export default function ConfigMapDetail() {
                       <CardContent className="space-y-3">
                         <pre className="p-3 rounded-lg bg-muted/80 text-sm font-mono overflow-auto max-h-40 whitespace-pre-wrap break-words">{preview}</pre>
                         <div className="flex flex-wrap gap-2">
-                          <Button variant="outline" size="sm" className="gap-1.5" onClick={() => { setExpandKey(key); setExpandValue(value ?? ''); }}>
+                          <Button variant="outline" size="sm" className="gap-1.5 press-effect" onClick={() => { setExpandKey(key); setExpandValue(value ?? ''); }} aria-label={`Expand ${key}`}>
                             <Maximize2 className="h-3.5 w-3.5" /> Expand
                           </Button>
-                          <Button variant="outline" size="sm" className="gap-1.5" onClick={() => { navigator.clipboard.writeText(value ?? ''); toast.success('Value copied'); }}>
+                          <Button variant="outline" size="sm" className="gap-1.5 press-effect" onClick={() => { navigator.clipboard.writeText(value ?? ''); toast.success('Value copied'); }} aria-label={`Copy value of ${key}`}>
                             <Copy className="h-3.5 w-3.5" /> Copy Value
                           </Button>
-                          <Button variant="outline" size="sm" className="gap-1.5" onClick={() => { const blob = new Blob([value ?? ''], { type: 'text/plain' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `${key}${ext}`; a.click(); setTimeout(() => URL.revokeObjectURL(url), 30_000); toast.success('Downloaded'); }}>
+                          <Button variant="outline" size="sm" className="gap-1.5 press-effect" onClick={() => { const blob = new Blob([value ?? ''], { type: 'text/plain' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `${key}${ext}`; a.click(); setTimeout(() => URL.revokeObjectURL(url), 30_000); toast.success('Downloaded'); }} aria-label={`Download ${key} as file`}>
                             <Download className="h-3.5 w-3.5" /> Download as File
                           </Button>
                         </div>
@@ -405,7 +405,7 @@ export default function ConfigMapDetail() {
                       <span className="font-mono text-sm">{key}</span>
                       <span className="text-xs text-muted-foreground">{decodedLength} B</span>
                       <code className="text-xs font-mono text-muted-foreground break-all w-full">{hexPreview}</code>
-                      <Button variant="outline" size="sm" className="gap-1.5" onClick={() => { try { const bin = atob(b64 ?? ''); const bytes = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i); const blob = new Blob([bytes]); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = key; a.click(); setTimeout(() => URL.revokeObjectURL(url), 30_000); toast.success('Downloaded'); } catch { toast.error('Failed to decode'); } }}>
+                      <Button variant="outline" size="sm" className="gap-1.5 press-effect" onClick={() => { try { const bin = atob(b64 ?? ''); const bytes = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i); const blob = new Blob([bytes]); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = key; a.click(); setTimeout(() => URL.revokeObjectURL(url), 30_000); toast.success('Downloaded'); } catch { toast.error('Failed to decode'); } }} aria-label={`Download binary ${key}`}>
                         <Download className="h-3.5 w-3.5" /> Download
                       </Button>
                     </div>
@@ -468,11 +468,11 @@ export default function ConfigMapDetail() {
       icon: Edit,
       content: (
         <ActionsSection actions={[
-          { icon: Edit, label: 'Edit ConfigMap', description: 'Modify configuration data' },
-          { icon: Copy, label: 'Duplicate', description: 'Create a copy of this ConfigMap' },
-          { icon: Download, label: 'Download YAML', description: 'Export ConfigMap definition', onClick: handleDownloadYaml },
-          { icon: Download, label: 'Export as JSON', description: 'Export ConfigMap as JSON', onClick: handleDownloadJson },
-          { icon: Trash2, label: 'Delete ConfigMap', description: 'Remove this ConfigMap', variant: 'destructive', onClick: () => setShowDeleteDialog(true) },
+          { icon: Edit, label: 'Edit ConfigMap', description: 'Modify configuration data', className: 'press-effect' },
+          { icon: Copy, label: 'Duplicate', description: 'Create a copy of this ConfigMap', className: 'press-effect' },
+          { icon: Download, label: 'Download YAML', description: 'Export ConfigMap definition', onClick: handleDownloadYaml, className: 'press-effect' },
+          { icon: Download, label: 'Export as JSON', description: 'Export ConfigMap as JSON', onClick: handleDownloadJson, className: 'press-effect' },
+          { icon: Trash2, label: 'Delete ConfigMap', description: 'Remove this ConfigMap', variant: 'destructive', onClick: () => setShowDeleteDialog(true), className: 'press-effect' },
         ]} />
       ),
     },
@@ -481,6 +481,8 @@ export default function ConfigMapDetail() {
   return (
     <>
       <ResourceDetailLayout
+        role="main"
+        aria-label="ConfigMap Detail"
         resourceType="ConfigMap"
         resourceIcon={FileJson}
         name={cmName}
@@ -490,9 +492,9 @@ export default function ConfigMapDetail() {
         backLabel="ConfigMaps"
         headerMetadata={<span className="flex items-center gap-1.5 ml-2 text-sm text-muted-foreground"><Clock className="h-3.5 w-3.5" />Created {age}{isConnected && <Badge variant="outline" className="ml-2 text-xs">Live</Badge>}</span>}
         actions={[
-          { label: 'Download YAML', icon: Download, variant: 'outline', onClick: handleDownloadYaml },
-          { label: 'Edit', icon: Edit, variant: 'outline', onClick: () => { setActiveTab('yaml'); setSearchParams((p) => { const n = new URLSearchParams(p); n.set('tab', 'yaml'); return n; }, { replace: true }); } },
-          { label: 'Delete', icon: Trash2, variant: 'destructive', onClick: () => setShowDeleteDialog(true) },
+          { label: 'Download YAML', icon: Download, variant: 'outline', onClick: handleDownloadYaml, className: 'press-effect' },
+          { label: 'Edit', icon: Edit, variant: 'outline', onClick: () => { setActiveTab('yaml'); setSearchParams((p) => { const n = new URLSearchParams(p); n.set('tab', 'yaml'); return n; }, { replace: true }); }, className: 'press-effect' },
+          { label: 'Delete', icon: Trash2, variant: 'destructive', onClick: () => setShowDeleteDialog(true), className: 'press-effect' },
         ]}
         statusCards={statusCards}
         tabs={tabs}

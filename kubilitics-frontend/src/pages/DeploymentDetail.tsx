@@ -1183,6 +1183,8 @@ export default function DeploymentDetail() {
       <ResourceDetailLayout
         resourceType="Deployment"
         resourceIcon={Container}
+        role="main"
+        aria-label="Deployment Detail"
         name={deployment.metadata?.name || ''}
         namespace={deployment.metadata?.namespace}
         status={status}
@@ -1198,9 +1200,9 @@ export default function DeploymentDetail() {
           </span>
         }
         actions={[
-          { label: 'Scale', icon: Scale, variant: 'outline', onClick: () => setShowScaleDialog(true) },
-          { label: 'Restart', icon: RotateCcw, variant: 'outline', onClick: () => setShowRolloutDialog(true) },
-          { label: 'Delete', icon: Trash2, variant: 'destructive', onClick: () => setShowDeleteDialog(true) },
+          { label: 'Scale', icon: Scale, variant: 'outline', onClick: () => setShowScaleDialog(true), className: 'press-effect' },
+          { label: 'Restart', icon: RotateCcw, variant: 'outline', onClick: () => setShowRolloutDialog(true), className: 'press-effect' },
+          { label: 'Delete', icon: Trash2, variant: 'destructive', onClick: () => setShowDeleteDialog(true), className: 'press-effect' },
         ]}
         statusCards={statusCards}
         tabs={tabs}

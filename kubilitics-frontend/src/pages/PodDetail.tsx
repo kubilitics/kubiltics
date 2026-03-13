@@ -1112,6 +1112,8 @@ export default function PodDetail() {
       <ResourceDetailLayout
         resourceType="Pod"
         resourceIcon={Box}
+        role="main"
+        aria-label="Pod Detail"
         name={pod.metadata?.name || ''}
         namespace={pod.metadata?.namespace}
         status={status}
@@ -1128,8 +1130,8 @@ export default function PodDetail() {
           </span>
         }
         actions={[
-          { label: 'Port Forward', icon: ExternalLink, variant: 'outline', onClick: () => setShowPortForwardDialog(true) },
-          { label: 'Delete', icon: Trash2, variant: 'destructive', onClick: () => setShowDeleteDialog(true) },
+          { label: 'Port Forward', icon: ExternalLink, variant: 'outline', onClick: () => setShowPortForwardDialog(true), className: 'press-effect' },
+          { label: 'Delete', icon: Trash2, variant: 'destructive', onClick: () => setShowDeleteDialog(true), className: 'press-effect' },
         ]}
         statusCards={statusCards}
         tabs={tabs}

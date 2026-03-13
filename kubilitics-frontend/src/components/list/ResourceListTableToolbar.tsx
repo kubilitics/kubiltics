@@ -76,7 +76,11 @@ export function ResourceListTableToolbar({
         </div>
       )}
       {/* Toolbar row: table controls */}
-      <div className="flex items-center justify-between gap-3 px-4 py-2.5 border-b border-border bg-muted/30">
+      <div
+        className="flex items-center justify-between gap-3 px-4 py-2.5 border-b border-border bg-muted/30"
+        role="toolbar"
+        aria-label="Table toolbar"
+      >
         <div className="flex items-center gap-3 flex-wrap">
           <span className="text-sm font-medium text-muted-foreground">
             Table
@@ -85,7 +89,7 @@ export function ResourceListTableToolbar({
             <Button
               variant="ghost"
               size="sm"
-              className="h-8 gap-1.5 text-muted-foreground hover:text-foreground"
+              className="h-8 gap-1.5 text-muted-foreground hover:text-foreground press-effect"
               onClick={onClearAllFilters}
             >
               <X className="h-3.5 w-3.5" />
@@ -97,9 +101,10 @@ export function ResourceListTableToolbar({
           <Button
             variant="outline"
             size="sm"
-            className="gap-1.5 h-8 shrink-0"
+            className="gap-1.5 h-8 shrink-0 press-effect"
             onClick={onToggleTableFilters}
             aria-label={showTableFilters ? 'Hide table column filters' : 'Show table column filters'}
+            aria-expanded={showTableFilters}
           >
             {showTableFilters ? <Filter className="h-3.5 w-3.5" /> : <FilterX className="h-3.5 w-3.5" />}
             {showTableFilters ? 'Hide filters' : 'Show filters'}

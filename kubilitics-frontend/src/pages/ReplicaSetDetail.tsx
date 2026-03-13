@@ -294,7 +294,7 @@ export default function ReplicaSetDetail() {
           <CardContent className="pt-6">
             <p className="text-muted-foreground">ReplicaSet not found.</p>
             {error && <p className="text-sm text-destructive mt-2">{String(error)}</p>}
-            <Button variant="outline" className="mt-4" onClick={() => navigate('/replicasets')}>
+            <Button variant="outline" className="mt-4 press-effect" onClick={() => navigate('/replicasets')}>
               Back to ReplicaSets
             </Button>
           </CardContent>
@@ -342,7 +342,7 @@ export default function ReplicaSetDetail() {
                       <p className="text-muted-foreground mb-1">Owner</p>
                       <Button
                         variant="link"
-                        className="h-auto p-0 font-medium"
+                        className="h-auto p-0 font-medium press-effect"
                         onClick={() => navigate(`/deployments/${namespace}/${ownerRef.name}`)}
                       >
                         {ownerRef.kind}: {ownerRef.name}
@@ -558,10 +558,10 @@ export default function ReplicaSetDetail() {
       icon: Settings,
       content: (
         <ActionsSection actions={[
-          { icon: Scale, label: 'Scale ReplicaSet', description: 'Adjust the number of replicas', onClick: () => setShowScaleDialog(true) },
-          { icon: Download, label: 'Download YAML', description: 'Export ReplicaSet definition', onClick: handleDownloadYaml },
-          { icon: Download, label: 'Export as JSON', description: 'Export ReplicaSet as JSON', onClick: handleDownloadJson },
-          { icon: Trash2, label: 'Delete ReplicaSet', description: 'Permanently remove this ReplicaSet', variant: 'destructive', onClick: () => setShowDeleteDialog(true) },
+          { icon: Scale, label: 'Scale ReplicaSet', description: 'Adjust the number of replicas', onClick: () => setShowScaleDialog(true), className: 'press-effect' },
+          { icon: Download, label: 'Download YAML', description: 'Export ReplicaSet definition', onClick: handleDownloadYaml, className: 'press-effect' },
+          { icon: Download, label: 'Export as JSON', description: 'Export ReplicaSet as JSON', onClick: handleDownloadJson, className: 'press-effect' },
+          { icon: Trash2, label: 'Delete ReplicaSet', description: 'Permanently remove this ReplicaSet', variant: 'destructive', onClick: () => setShowDeleteDialog(true), className: 'press-effect' },
         ]} />
       ),
     },
@@ -570,6 +570,8 @@ export default function ReplicaSetDetail() {
   return (
     <>
       <ResourceDetailLayout
+        role="main"
+        aria-label="ReplicaSet Detail"
         resourceType="ReplicaSet"
         resourceIcon={Layers}
         name={replicaSet.metadata?.name || ''}
@@ -591,10 +593,10 @@ export default function ReplicaSetDetail() {
           </span>
         }
         actions={[
-          { label: 'Download YAML', icon: Download, variant: 'outline', onClick: handleDownloadYaml },
-          { label: 'Export as JSON', icon: Download, variant: 'outline', onClick: handleDownloadJson },
-          { label: 'Scale', icon: Scale, variant: 'outline', onClick: () => setShowScaleDialog(true) },
-          { label: 'Delete', icon: Trash2, variant: 'destructive', onClick: () => setShowDeleteDialog(true) },
+          { label: 'Download YAML', icon: Download, variant: 'outline', onClick: handleDownloadYaml, className: 'press-effect' },
+          { label: 'Export as JSON', icon: Download, variant: 'outline', onClick: handleDownloadJson, className: 'press-effect' },
+          { label: 'Scale', icon: Scale, variant: 'outline', onClick: () => setShowScaleDialog(true), className: 'press-effect' },
+          { label: 'Delete', icon: Trash2, variant: 'destructive', onClick: () => setShowDeleteDialog(true), className: 'press-effect' },
         ]}
         statusCards={statusCards}
         tabs={tabs}

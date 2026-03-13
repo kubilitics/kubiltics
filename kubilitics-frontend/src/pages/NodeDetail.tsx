@@ -651,6 +651,8 @@ export default function NodeDetail() {
       <ResourceDetailLayout
         resourceType="Node"
         resourceIcon={Server}
+        role="main"
+        aria-label="Node Detail"
         name={nodeName}
         status={status}
         backLink="/nodes"
@@ -665,11 +667,11 @@ export default function NodeDetail() {
           </span>
         }
         actions={[
-          { label: 'Download YAML', icon: Download, variant: 'outline', onClick: handleDownloadYaml },
-          { label: 'Export as JSON', icon: Download, variant: 'outline', onClick: handleDownloadJson },
-          { label: isCordoned ? 'Uncordon' : 'Cordon', icon: isCordoned ? Play : Pause, variant: 'outline', onClick: handleCordon },
-          { label: 'Drain', icon: Shield, variant: 'outline', onClick: handleDrain },
-          { label: 'Delete', icon: Trash2, variant: 'destructive', onClick: () => setShowDeleteDialog(true) },
+          { label: 'Download YAML', icon: Download, variant: 'outline', onClick: handleDownloadYaml, className: 'press-effect' },
+          { label: 'Export as JSON', icon: Download, variant: 'outline', onClick: handleDownloadJson, className: 'press-effect' },
+          { label: isCordoned ? 'Uncordon' : 'Cordon', icon: isCordoned ? Play : Pause, variant: 'outline', onClick: handleCordon, className: 'press-effect' },
+          { label: 'Drain', icon: Shield, variant: 'outline', onClick: handleDrain, className: 'press-effect' },
+          { label: 'Delete', icon: Trash2, variant: 'destructive', onClick: () => setShowDeleteDialog(true), className: 'press-effect' },
         ]}
         statusCards={statusCards}
         tabs={tabs}

@@ -224,7 +224,7 @@ export default function WorkloadsOverview() {
   const alerts = data?.alerts;
 
   return (
-    <div className="flex flex-col gap-6 p-6">
+    <div className="flex flex-col gap-6 p-6" role="main" aria-label="Workloads Overview">
       <ConnectionRequiredBanner />
 
       {/* Header */}
@@ -238,7 +238,7 @@ export default function WorkloadsOverview() {
 
       {/* Hero Section: Workload Health Pulse */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
-        <Card className="lg:col-span-12 overflow-hidden border-slate-100 shadow-sm bg-white ring-1 ring-slate-100">
+        <Card className="lg:col-span-12 overflow-hidden border-slate-100 shadow-sm bg-white ring-1 ring-slate-100 elevation-2" aria-live="polite">
           <CardHeader className="flex flex-row items-center justify-between pb-4 pt-10 px-12">
             <div>
               <CardTitle className="text-2xl font-bold tracking-tight text-slate-900 leading-tight">Workload Intelligence</CardTitle>
@@ -303,10 +303,10 @@ export default function WorkloadsOverview() {
 
       {/* Resources Overview: Pod Distribution & Efficiency */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        <Card className="lg:col-span-8 border-slate-100 shadow-sm overflow-hidden bg-white ring-1 ring-slate-100">
+        <Card className="lg:col-span-8 border-slate-100 shadow-sm overflow-hidden bg-white ring-1 ring-slate-100 elevation-2">
           <PodStatusDistribution />
         </Card>
-        <Card className="lg:col-span-4 border-slate-100 shadow-sm overflow-hidden bg-white ring-1 ring-slate-100">
+        <Card className="lg:col-span-4 border-slate-100 shadow-sm overflow-hidden bg-white ring-1 ring-slate-100 elevation-2">
           <ClusterEfficiencyCard />
         </Card>
       </div>
@@ -321,12 +321,13 @@ export default function WorkloadsOverview() {
             </div>
             <div className="flex items-center gap-3">
               <div className="relative flex-1 min-w-[320px]">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" aria-hidden />
                 <Input
                   placeholder="Search controllers..."
                   className="pl-12 bg-slate-50 border-transparent transition-all rounded-xl focus:bg-white focus:ring-4 focus:ring-blue-500/5 focus:border-slate-200 h-10 font-medium text-sm"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
+                  aria-label="Search workload controllers"
                 />
               </div>
               <ColumnVisibilityDropdown
@@ -405,8 +406,8 @@ export default function WorkloadsOverview() {
                       </span>
                     </td>
                     <td className="px-8 py-4 text-right">
-                      <Button variant="ghost" size="sm" className="h-9 w-9 p-0 hover:bg-white hover:text-blue-600 hover:shadow-sm rounded-xl transition-all border border-transparent hover:border-slate-100">
-                        <ArrowUpRight className="h-4 w-4" />
+                      <Button variant="ghost" size="sm" className="h-9 w-9 p-0 hover:bg-white hover:text-blue-600 hover:shadow-sm rounded-xl transition-all border border-transparent hover:border-slate-100 press-effect">
+                        <ArrowUpRight className="h-4 w-4" aria-hidden />
                       </Button>
                     </td>
                   </motion.tr>
@@ -428,13 +429,13 @@ export default function WorkloadsOverview() {
             onPageChange={(p) => setPageIndex(p - 1)}
           />
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" asChild className="h-10 px-5 font-bold border-slate-200 text-slate-600 hover:bg-white hover:text-blue-600 rounded-xl transition-all">
+            <Button variant="outline" size="sm" asChild className="h-10 px-5 font-bold border-slate-200 text-slate-600 hover:bg-white hover:text-blue-600 rounded-xl transition-all press-effect">
               <Link to="/deployments">Deployments</Link>
             </Button>
-            <Button variant="outline" size="sm" asChild className="h-10 px-5 font-bold border-slate-200 text-slate-600 hover:bg-white hover:text-blue-600 rounded-xl transition-all">
+            <Button variant="outline" size="sm" asChild className="h-10 px-5 font-bold border-slate-200 text-slate-600 hover:bg-white hover:text-blue-600 rounded-xl transition-all press-effect">
               <Link to="/statefulsets">StatefulSets</Link>
             </Button>
-            <Button variant="outline" size="sm" asChild className="h-10 px-5 font-bold border-slate-200 text-slate-600 hover:bg-white hover:text-blue-600 rounded-xl transition-all">
+            <Button variant="outline" size="sm" asChild className="h-10 px-5 font-bold border-slate-200 text-slate-600 hover:bg-white hover:text-blue-600 rounded-xl transition-all press-effect">
               <Link to="/pods">All Pods</Link>
             </Button>
           </div>

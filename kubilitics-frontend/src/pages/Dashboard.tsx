@@ -68,7 +68,7 @@ export default function Dashboard() {
       {showTour && (
         <DashboardTour onComplete={completeTour} onSkip={skipTour} />
       )}
-      <div className="dashboard-page p-4 md:p-6 -m-2" data-tour="dashboard">
+      <div className="dashboard-page p-4 md:p-6 -m-2" data-tour="dashboard" role="main" aria-label="Dashboard">
         <motion.div
           variants={container}
           initial="hidden"
@@ -92,6 +92,7 @@ export default function Dashboard() {
               className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-[hsl(var(--success)/0.08)] border border-[hsl(var(--success)/0.2)]"
               role="status"
               aria-label="Live data"
+              aria-live="polite"
             >
               <span className="relative flex h-2.5 w-2.5">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[hsl(var(--success))] opacity-50" />

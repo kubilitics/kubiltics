@@ -66,7 +66,7 @@ export function ListPagination({
   const showUpdatedAt = dataUpdatedAt != null || isFetching;
 
   return (
-    <div className={cn('flex items-center justify-between gap-4 flex-wrap', className)}>
+    <nav role="navigation" aria-label="Pagination" className={cn('flex items-center justify-between gap-4 flex-wrap', className)}>
       <div className="flex items-center gap-3 flex-wrap">
         {rangeLabel && (
           <span className="text-sm text-muted-foreground">{rangeLabel}</span>
@@ -82,7 +82,14 @@ export function ListPagination({
         )}
       </div>
       <div className="flex items-center gap-1">
-        <Button variant="outline" size="sm" className="gap-1" onClick={onPrev} disabled={!hasPrev}>
+        <Button
+          variant="outline"
+          size="sm"
+          className="gap-1 press-effect"
+          onClick={onPrev}
+          disabled={!hasPrev}
+          aria-label="Go to previous page"
+        >
           <ChevronLeft className="h-4 w-4" />
           Previous
         </Button>
@@ -97,20 +104,27 @@ export function ListPagination({
                 key={p}
                 variant={p === currentPage ? 'default' : 'outline'}
                 size="sm"
-                className="min-w-8 h-8 p-0 tabular-nums"
+                className="min-w-8 h-8 p-0 tabular-nums press-effect"
                 onClick={() => onPageChange(p)}
-                aria-label={`Page ${p}`}
+                aria-label={`Go to page ${p}`}
                 aria-current={p === currentPage ? 'page' : undefined}
               >
                 {p}
               </Button>
             )
           )}
-        <Button variant="outline" size="sm" className="gap-1" onClick={onNext} disabled={!hasNext}>
+        <Button
+          variant="outline"
+          size="sm"
+          className="gap-1 press-effect"
+          onClick={onNext}
+          disabled={!hasNext}
+          aria-label="Go to next page"
+        >
           Next
           <ChevronRight className="h-4 w-4" />
         </Button>
       </div>
-    </div>
+    </nav>
   );
 }

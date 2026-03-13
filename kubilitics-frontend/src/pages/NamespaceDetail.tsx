@@ -134,7 +134,7 @@ export default function NamespaceDetail() {
         <Folder className="h-12 w-12 text-muted-foreground" />
         <p className="text-lg font-medium">Namespace not found</p>
         <p className="text-sm text-muted-foreground">{name ? `No namespace named "${name}".` : 'Missing namespace name.'}</p>
-        <Button variant="outline" onClick={() => navigate('/namespaces')}>Back to Namespaces</Button>
+        <Button variant="outline" className="press-effect" onClick={() => navigate('/namespaces')}>Back to Namespaces</Button>
       </div>
     );
   }
@@ -257,9 +257,9 @@ export default function NamespaceDetail() {
       content: (
         <ActionsSection
           actions={[
-            { icon: Download, label: 'Download YAML', description: 'Export Namespace definition', onClick: handleDownloadYaml },
-            { icon: Download, label: 'Export as JSON', description: 'Export Namespace as JSON', onClick: handleDownloadJson },
-            { icon: Trash2, label: 'Delete Namespace', description: 'Remove namespace and all resources', variant: 'destructive', onClick: () => setShowDeleteDialog(true) },
+            { icon: Download, label: 'Download YAML', description: 'Export Namespace definition', onClick: handleDownloadYaml, className: 'press-effect' },
+            { icon: Download, label: 'Export as JSON', description: 'Export Namespace as JSON', onClick: handleDownloadJson, className: 'press-effect' },
+            { icon: Trash2, label: 'Delete Namespace', description: 'Remove namespace and all resources', variant: 'destructive', onClick: () => setShowDeleteDialog(true), className: 'press-effect' },
           ]}
         />
       ),
@@ -269,6 +269,8 @@ export default function NamespaceDetail() {
   return (
     <>
       <ResourceDetailLayout
+        role="main"
+        aria-label="Namespace Detail"
         resourceType="Namespace"
         resourceIcon={Folder}
         name={nsName}
@@ -284,9 +286,9 @@ export default function NamespaceDetail() {
           </span>
         }
         actions={[
-          { label: 'Download YAML', icon: Download, variant: 'outline', onClick: handleDownloadYaml },
-          { label: 'Export as JSON', icon: Download, variant: 'outline', onClick: handleDownloadJson },
-          { label: 'Delete', icon: Trash2, variant: 'destructive', onClick: () => setShowDeleteDialog(true) },
+          { label: 'Download YAML', icon: Download, variant: 'outline', onClick: handleDownloadYaml, className: 'press-effect' },
+          { label: 'Export as JSON', icon: Download, variant: 'outline', onClick: handleDownloadJson, className: 'press-effect' },
+          { label: 'Delete', icon: Trash2, variant: 'destructive', onClick: () => setShowDeleteDialog(true), className: 'press-effect' },
         ]}
         statusCards={statusCards}
         tabs={tabs}

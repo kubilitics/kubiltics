@@ -215,7 +215,7 @@ export function Header() {
 
   return (
     <>
-      <header className={cn(HEADER_HEIGHT_CLASS, 'border-b border-slate-100 bg-white/60 backdrop-blur-3xl shrink-0 shadow-[0_1px_3px_rgba(0,0,0,0.02)] transition-all duration-300 sticky top-0 z-50')}>
+      <header className={cn(HEADER_HEIGHT_CLASS, 'border-b border-slate-100 bg-white/60 backdrop-blur-3xl shrink-0 shadow-[0_1px_3px_rgba(0,0,0,0.02)] transition-all duration-300 sticky top-0 z-50')} role="banner">
         <div className="flex items-center h-full w-full">
 
           {/* ──── Logo zone: icon mark + wordmark, Apple-quality sizing ──── */}
@@ -225,7 +225,7 @@ export function Header() {
           )}>
             <button
               onClick={() => navigate('/home')}
-              className="flex items-center gap-3 group focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 rounded-xl p-1.5 transition-all"
+              className="flex items-center gap-3 group focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 rounded-xl p-1.5 transition-all press-effect"
               aria-label="Go to Home"
             >
               <BrandLogo
@@ -252,7 +252,7 @@ export function Header() {
                 'bg-slate-100/40 border border-slate-100 text-slate-400',
                 'hover:bg-slate-100/60 hover:border-slate-200 hover:text-slate-600',
                 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/10',
-                'transition-all duration-300 group'
+                'transition-all duration-300 group press-effect'
               )}
             >
               <Search className="h-4 w-4 shrink-0 group-hover:text-primary transition-colors duration-300" />
@@ -280,7 +280,7 @@ export function Header() {
                 {activeCluster && (
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <button className={cn(BTN, 'shrink-0 max-w-[160px] lg:max-w-[240px] group')}>
+                      <button className={cn(BTN, 'shrink-0 max-w-[160px] lg:max-w-[240px] group press-effect')} aria-label="Select cluster">
                         <div className="relative">
                           <span className={cn('absolute inset-0 blur-sm opacity-50 rounded-full', statusColors[activeCluster.status])} />
                           <span className={cn('relative block w-2.5 h-2.5 rounded-full shrink-0 ring-2 ring-white', statusColors[activeCluster.status])} />
@@ -307,7 +307,7 @@ export function Header() {
                         <ChevronDown className="h-5 w-5 text-slate-400 group-hover:text-slate-600 transition-colors shrink-0" />
                       </button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-[320px] rounded-[2.5rem] p-4 border-none shadow-2xl mt-2 animate-in fade-in zoom-in-95 duration-200">
+                    <DropdownMenuContent align="end" className="w-[320px] rounded-[2.5rem] p-4 border-none shadow-2xl mt-2 animate-in fade-in zoom-in-95 duration-200 elevation-2">
                       <div className="px-4 py-3 mb-3">
                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Compute Context</p>
                       </div>
@@ -360,7 +360,8 @@ export function Header() {
                       data-testid="shell-trigger"
                       onClick={() => setShellOpen(true)}
                       disabled={!activeCluster}
-                      className={FEATURE_BTN}
+                      className={cn(FEATURE_BTN, 'press-effect')}
+                      aria-label="Open cluster terminal (Shell)"
                     >
                       <Terminal className="h-5 w-5 shrink-0 text-primary/70" />
                       <span className="hidden xl:inline">Shell</span>
@@ -374,7 +375,7 @@ export function Header() {
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <DropdownMenuTrigger asChild>
-                        <button className={FEATURE_BTN}>
+                        <button className={cn(FEATURE_BTN, 'press-effect')} aria-label="Download kubeconfig">
                           <FileDown className="h-5 w-5 shrink-0 text-primary/70" />
                           <span className="hidden xl:inline">Kubeconfig</span>
                         </button>
@@ -382,7 +383,7 @@ export function Header() {
                     </TooltipTrigger>
                     <TooltipContent side="bottom" sideOffset={8}>Download kubeconfig</TooltipContent>
                   </Tooltip>
-                  <DropdownMenuContent align="end" className="w-72 rounded-[2rem] p-3 border-none shadow-2xl mt-2">
+                  <DropdownMenuContent align="end" className="w-72 rounded-[2rem] p-3 border-none shadow-2xl mt-2 elevation-2">
                     <div className="px-4 py-3 mb-2">
                       <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest">Download Assets</p>
                     </div>
@@ -407,14 +408,15 @@ export function Header() {
                   <TooltipTrigger asChild>
                     <button
                       className={cn(
-                        'inline-flex items-center gap-1.5 h-9 px-3 rounded-xl text-xs font-semibold transition-all duration-200 border select-none',
+                        'inline-flex items-center gap-1.5 h-9 px-3 rounded-xl text-xs font-semibold transition-all duration-200 border select-none press-effect',
                         aiStatus.status === 'active'
                           ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-800'
                           : aiStatus.status === 'unconfigured'
                             ? 'bg-slate-100 text-slate-500 border-slate-200 hover:bg-slate-200 dark:bg-slate-800/40 dark:text-slate-400 dark:border-slate-700'
                             : 'bg-red-50 text-red-600 border-red-200 hover:bg-red-100 dark:bg-red-950/30 dark:text-red-400 dark:border-red-800'
                       )}
-                      aria-label={`AI status: ${aiStatus.status}`}
+                      role="status"
+                      aria-label={`AI status: ${aiStatus.status === 'active' ? `AI Active - ${aiStatus.provider ?? 'LLM'} ${aiStatus.model ? `(${aiStatus.model})` : ''}` : aiStatus.status === 'unconfigured' ? 'AI not configured' : `AI unavailable${aiStatus.errorMessage ? ` - ${aiStatus.errorMessage}` : ''}`}`}
                       onClick={() => aiStatus.status === 'active' ? navigate('/settings') : setAiSetupOpen(true)}
                     >
                       <span
@@ -452,8 +454,8 @@ export function Header() {
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <button
-                      className={cn(ICON_BTN, 'px-4')}
-                      aria-label={pendingCount > 0 ? `${pendingCount} pending AI actions` : 'Notifications'}
+                      className={cn(ICON_BTN, 'px-4 press-effect')}
+                      aria-label={pendingCount > 0 ? `${pendingCount} pending AI action${pendingCount > 1 ? 's' : ''} awaiting approval` : 'System Notifications'}
                       onClick={() => navigate('/settings?tab=autonomy')}
                     >
                       <div className="relative shrink-0 flex items-center justify-center h-9 w-9 rounded-xl bg-slate-100 group-hover:bg-white transition-colors">
@@ -488,7 +490,7 @@ export function Header() {
                         'bg-white border border-slate-200 shadow-sm hover:shadow-md hover:border-primary/20',
                         'hover:translate-y-[-1px] transition-all duration-300 ease-out',
                         'active:scale-[0.98]',
-                        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20'
+                        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 press-effect'
                       )}
                       aria-label="User menu"
                     >
@@ -502,7 +504,7 @@ export function Header() {
                       <ChevronDown className="h-4 w-4 text-slate-400 shrink-0 group-hover:text-primary transition-colors" />
                     </button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuContent align="end" className="w-56 elevation-2">
                     <div className="px-3 py-2.5 border-b border-border/50">
                       <p className="text-sm font-medium text-foreground">Admin User</p>
                       <p className="text-xs text-muted-foreground mt-0.5">admin@kubilitics.com</p>

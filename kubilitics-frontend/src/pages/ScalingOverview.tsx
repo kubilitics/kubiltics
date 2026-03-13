@@ -53,7 +53,7 @@ export default function ScalingOverview() {
     const pdbCount = data?.resources.filter(r => r.kind === 'PDB').length ?? 0;
 
     return (
-        <div className="flex flex-col gap-6 p-6">
+        <div className="flex flex-col gap-6 p-6" role="main" aria-label="Scaling and Policies Overview">
             {/* Header Section */}
             <SectionOverviewHeader
                 title="Scaling & Policies"
@@ -66,7 +66,7 @@ export default function ScalingOverview() {
             {/* Hero Section: Scaling Pulse & Policy Matrix */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
                 {/* Elasticity Pulse */}
-                <Card className="lg:col-span-8 overflow-hidden border-[#326CE5]/10 shadow-sm bg-white/50 backdrop-blur-sm">
+                <Card className="lg:col-span-8 overflow-hidden border-[#326CE5]/10 shadow-sm bg-white/50 backdrop-blur-sm elevation-2" aria-live="polite">
                     <CardHeader className="pb-0">
                         <div className="flex items-center justify-between">
                             <div>
@@ -100,7 +100,7 @@ export default function ScalingOverview() {
                 </Card>
 
                 {/* Policy Standing Card */}
-                <Card className="lg:col-span-4 border-[#326CE5]/10 shadow-sm bg-white/50 backdrop-blur-sm flex flex-col p-8 relative overflow-hidden group">
+                <Card className="lg:col-span-4 border-[#326CE5]/10 shadow-sm bg-white/50 backdrop-blur-sm flex flex-col p-8 relative overflow-hidden group elevation-2">
                     <Shield className="absolute -bottom-10 -right-10 w-48 h-48 opacity-[0.02] text-[#326CE5] -rotate-12" />
 
                     <div className="flex-1">
@@ -139,7 +139,7 @@ export default function ScalingOverview() {
                     </div>
 
                     <div className="mt-8">
-                        <Button className="w-full h-12 bg-[#326CE5] hover:bg-[#2856b3] rounded-xl font-bold shadow-lg shadow-[#326CE5]/10">
+                        <Button className="w-full h-12 bg-[#326CE5] hover:bg-[#2856b3] rounded-xl font-bold shadow-lg shadow-[#326CE5]/10 press-effect">
                             Scale Optimizer
                         </Button>
                     </div>
@@ -155,12 +155,13 @@ export default function ScalingOverview() {
                             <p className="text-[11px] text-slate-500 font-semibold uppercase tracking-wider mt-1">HPA, VPA & Disruption Policy Registry</p>
                         </div>
                         <div className="relative min-w-[320px]">
-                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" aria-hidden />
                             <Input
                                 placeholder="Search scaling resources..."
                                 className="pl-12 bg-slate-50 border-transparent transition-all rounded-xl focus:bg-white focus:ring-4 focus:ring-blue-500/5 focus:border-slate-200 h-10 font-medium text-sm"
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
+                                aria-label="Search scaling and policy resources"
                             />
                         </div>
                     </div>
@@ -208,8 +209,8 @@ export default function ScalingOverview() {
                                         </div>
                                     </td>
                                     <td className="px-8 py-4 text-right">
-                                        <Button variant="ghost" size="sm" className="h-9 w-9 p-0 hover:bg-white hover:text-blue-600 hover:shadow-sm rounded-xl transition-all border border-transparent hover:border-slate-100">
-                                            <ArrowUpRight className="h-4 w-4" />
+                                        <Button variant="ghost" size="sm" className="h-9 w-9 p-0 hover:bg-white hover:text-blue-600 hover:shadow-sm rounded-xl transition-all border border-transparent hover:border-slate-100 press-effect">
+                                            <ArrowUpRight className="h-4 w-4" aria-hidden />
                                         </Button>
                                     </td>
                                 </motion.tr>

@@ -20,10 +20,15 @@ export interface SectionCardProps {
 }
 
 export function SectionCard({ icon: Icon, title, tooltip, children, className }: SectionCardProps) {
+  // Generate a unique id for the title for accessibility
+  const titleId = `section-card-title-${title.toLowerCase().replace(/\s+/g, '-')}`;
+
   return (
     <div
+      role="region"
+      aria-labelledby={titleId}
       className={cn(
-        'rounded-xl border border-border/50 shadow-sm overflow-hidden bg-card',
+        'elevation-2 hover:elevation-3 press-effect transition-all duration-[250ms] rounded-xl border border-border/50 overflow-hidden bg-card hover:translate-y-[-1px]',
         className
       )}
     >
@@ -31,7 +36,7 @@ export function SectionCard({ icon: Icon, title, tooltip, children, className }:
         <div className="p-1.5 rounded-lg bg-primary/10">
           <Icon className="h-4 w-4 text-primary" aria-hidden />
         </div>
-        <h4 className="text-xs font-semibold uppercase tracking-widest text-foreground/90">
+        <h4 id={titleId} className="text-xs font-semibold uppercase tracking-widest text-foreground/90">
           {title}
         </h4>
         {tooltip != null && (

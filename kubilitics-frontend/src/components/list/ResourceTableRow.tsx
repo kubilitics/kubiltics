@@ -48,6 +48,8 @@ export interface ResourceTableRowProps extends React.HTMLAttributes<HTMLTableRow
  motionIndex?: number;
  isFirst?: boolean;
  isLast?: boolean;
+ /** Whether the row is selected (for aria-selected) */
+ isSelected?: boolean;
 }
 
 /**
@@ -55,7 +57,7 @@ export interface ResourceTableRowProps extends React.HTMLAttributes<HTMLTableRow
  * Uses CSS @keyframes instead of Framer Motion for 10x better performance.
  */
 export const ResourceTableRow = forwardRef<HTMLTableRowElement, ResourceTableRowProps>(
- ({ asMotion, motionIndex = 0, isFirst, isLast, className, children, style, ...props }, ref) => {
+ ({ asMotion, motionIndex = 0, isFirst, isLast, isSelected, className, children, style, ...props }, ref) => {
  const classes = cn(
  resourceTableRowClassName,
  rowEntranceClass,
@@ -67,6 +69,8 @@ export const ResourceTableRow = forwardRef<HTMLTableRowElement, ResourceTableRow
  return (
  <tr
  ref={ref}
+ role="row"
+ aria-selected={isSelected}
  className={classes}
  style={{ ...style, ...rowEntranceStyle(motionIndex) }}
  {...props}

@@ -696,7 +696,7 @@ export function Sidebar() {
             type="button"
             onClick={() => setCollapsed(true)}
             className={cn(
-              "flex items-center justify-start gap-3 w-full px-4 py-2.5 rounded-xl border h-11 transition-all duration-500 group",
+              "flex items-center justify-start gap-3 w-full px-4 py-2.5 rounded-xl border h-11 transition-all duration-500 group press-effect",
               "bg-transparent text-slate-800 hover:bg-slate-100/60 border-transparent hover:border-slate-100"
             )}
             aria-label="Collapse sidebar"
@@ -716,7 +716,8 @@ export function Sidebar() {
           className="w-[5.5rem] h-full border-r border-slate-100 bg-white/60 backdrop-blur-3xl flex flex-col items-center py-6 gap-5 shrink-0 z-30 shadow-apple"
           onMouseEnter={() => setFlyoutOpen(true)}
           onMouseLeave={() => setFlyoutOpen(false)}
-          aria-label="Navigation rail"
+          role="navigation"
+          aria-label="Main navigation"
         >
           <NavItemIconOnly to="/dashboard" icon={LayoutDashboard} label="Dashboard" iconColor="text-blue-600 group-hover:text-blue-700" />
           <NavItemIconOnly to="/topology" icon={Network} label="Topology" iconColor="text-violet-600 group-hover:text-violet-700" />
@@ -743,7 +744,7 @@ export function Sidebar() {
           <button
             type="button"
             onClick={() => setCollapsed(false)}
-            className="flex items-center justify-center w-11 h-11 rounded-xl text-blue-600 hover:text-blue-700 hover:bg-blue-50/80 transition-colors mb-2"
+            className="flex items-center justify-center w-11 h-11 rounded-xl text-blue-600 hover:text-blue-700 hover:bg-blue-50/80 transition-colors mb-2 press-effect"
             title="Expand sidebar"
             aria-label="Expand sidebar"
           >
@@ -757,10 +758,12 @@ export function Sidebar() {
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -10 }}
               transition={{ duration: 0.15, ease: "easeOut" }}
-              className="fixed left-[5.5rem] top-20 bottom-0 z-40 w-72 border-r border-slate-200/40 bg-white/70 backdrop-blur-3xl shadow-apple-xl ring-1 ring-black/5"
+              className="fixed left-[5.5rem] top-20 bottom-0 z-40 w-72 border-r border-slate-200/40 bg-white/70 backdrop-blur-3xl shadow-apple-xl elevation-3 ring-1 ring-black/5"
               onMouseEnter={() => setFlyoutOpen(true)}
               onMouseLeave={() => setFlyoutOpen(false)}
               style={{ height: 'calc(100vh - 5rem)' }}
+              role="navigation"
+              aria-label="Main navigation"
             >
               {fullContent}
             </motion.div>
@@ -771,7 +774,7 @@ export function Sidebar() {
   }
 
   return (
-    <aside className="w-72 h-full flex flex-col border-r border-slate-100 bg-white/40 backdrop-blur-3xl shrink-0 transition-all duration-500">
+    <aside className="w-72 h-full flex flex-col border-r border-slate-100 bg-white/40 backdrop-blur-3xl shrink-0 transition-all duration-500" role="navigation" aria-label="Main navigation">
       {fullContent}
     </aside>
   );

@@ -109,7 +109,7 @@ export default function PersistentVolumeClaimDetail() {
         <Card>
           <CardContent className="pt-6">
             <p className="text-muted-foreground">PersistentVolumeClaim not found.</p>
-            <Button variant="outline" className="mt-4" onClick={() => navigate('/persistentvolumeclaims')}>
+            <Button variant="outline" className="mt-4 press-effect" onClick={() => navigate('/persistentvolumeclaims')}>
               Back to Persistent Volume Claims
             </Button>
           </CardContent>
@@ -172,9 +172,9 @@ export default function PersistentVolumeClaimDetail() {
           </SectionCard>
           {volumeName !== '—' && (
             <SectionCard icon={HardDrive} title="Bound Volume" tooltip={<p className="text-xs text-muted-foreground">PersistentVolume bound to this claim</p>}>
-              <button type="button" className="p-3 rounded-lg bg-muted/50 hover:bg-muted font-mono text-sm text-primary hover:underline w-full text-left" onClick={() => navigate(`/persistentvolumes/${volumeName}`)}>
+              <Button type="button" variant="ghost" className="p-3 rounded-lg bg-muted/50 hover:bg-muted font-mono text-sm text-primary hover:underline w-full text-left press-effect justify-start" onClick={() => navigate(`/persistentvolumes/${volumeName}`)}>
                 {volumeName}
-              </button>
+              </Button>
             </SectionCard>
           )}
           <SectionCard icon={Info} title="Labels" tooltip={<p className="text-xs text-muted-foreground">Kubernetes labels</p>}>
@@ -230,10 +230,10 @@ export default function PersistentVolumeClaimDetail() {
       icon: Edit,
       content: (
         <ActionsSection actions={[
-          { icon: Expand, label: 'Expand Volume', description: 'Increase the storage capacity', onClick: () => toast.info('Expand requires backend support') },
-          { icon: Download, label: 'Download YAML', description: 'Export PVC definition', onClick: handleDownloadYaml },
-          { icon: Download, label: 'Export as JSON', description: 'Export PVC as JSON', onClick: handleDownloadJson },
-          { icon: Trash2, label: 'Delete PVC', description: 'Remove this Persistent Volume Claim', variant: 'destructive', onClick: () => setShowDeleteDialog(true) },
+          { icon: Expand, label: 'Expand Volume', description: 'Increase the storage capacity', onClick: () => toast.info('Expand requires backend support'), className: 'press-effect' },
+          { icon: Download, label: 'Download YAML', description: 'Export PVC definition', onClick: handleDownloadYaml, className: 'press-effect' },
+          { icon: Download, label: 'Export as JSON', description: 'Export PVC as JSON', onClick: handleDownloadJson, className: 'press-effect' },
+          { icon: Trash2, label: 'Delete PVC', description: 'Remove this Persistent Volume Claim', variant: 'destructive', onClick: () => setShowDeleteDialog(true), className: 'press-effect' },
         ]} />
       ),
     },
@@ -242,6 +242,8 @@ export default function PersistentVolumeClaimDetail() {
   return (
     <>
       <ResourceDetailLayout
+        role="main"
+        aria-label="PersistentVolumeClaim Detail"
         resourceType="PersistentVolumeClaim"
         resourceIcon={Database}
         name={pvcName}
@@ -251,11 +253,11 @@ export default function PersistentVolumeClaimDetail() {
         backLabel="Persistent Volume Claims"
         headerMetadata={<span className="flex items-center gap-1.5 ml-2 text-sm text-muted-foreground"><Clock className="h-3.5 w-3.5" />Created {age}{isConnected && <Badge variant="outline" className="ml-2 text-xs">Live</Badge>}</span>}
         actions={[
-          { label: 'Download YAML', icon: Download, variant: 'outline', onClick: handleDownloadYaml },
-          { label: 'Export as JSON', icon: Download, variant: 'outline', onClick: handleDownloadJson },
-          { label: 'Edit', icon: Edit, variant: 'outline', onClick: () => { setActiveTab('yaml'); setSearchParams((p) => { const n = new URLSearchParams(p); n.set('tab', 'yaml'); return n; }, { replace: true }); } },
-          { label: 'Expand', icon: Expand, variant: 'outline', onClick: () => toast.info('Expand requires backend support') },
-          { label: 'Delete', icon: Trash2, variant: 'destructive', onClick: () => setShowDeleteDialog(true) },
+          { label: 'Download YAML', icon: Download, variant: 'outline', onClick: handleDownloadYaml, className: 'press-effect' },
+          { label: 'Export as JSON', icon: Download, variant: 'outline', onClick: handleDownloadJson, className: 'press-effect' },
+          { label: 'Edit', icon: Edit, variant: 'outline', onClick: () => { setActiveTab('yaml'); setSearchParams((p) => { const n = new URLSearchParams(p); n.set('tab', 'yaml'); return n; }, { replace: true }); }, className: 'press-effect' },
+          { label: 'Expand', icon: Expand, variant: 'outline', onClick: () => toast.info('Expand requires backend support'), className: 'press-effect' },
+          { label: 'Delete', icon: Trash2, variant: 'destructive', onClick: () => setShowDeleteDialog(true), className: 'press-effect' },
         ]}
         statusCards={statusCards}
         tabs={tabs}
