@@ -5,14 +5,12 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Activity,
   ArrowRight,
-  BarChart3,
   Focus,
   Loader2,
   MoreVertical,
   Plus,
   Server,
   Trash2,
-  Zap,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -143,9 +141,11 @@ export default function HomePage() {
     [clusters]
   );
   const cpuUtil = overview?.utilization?.cpu_percent ?? 0;
+  const memUtil = overview?.utilization?.memory_percent ?? 0;
 
   /* ─── Helpers ─── */
   const cpuColor = cpuUtil > 80 ? 'from-red-500 to-orange-500' : cpuUtil > 50 ? 'from-amber-500 to-yellow-500' : 'from-blue-500 to-indigo-500';
+  const memColor = memUtil > 80 ? 'from-red-500 to-orange-500' : memUtil > 50 ? 'from-amber-500 to-yellow-500' : 'from-violet-500 to-purple-500';
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50/80 via-white to-blue-50/20" role="main" aria-label="Systems overview page">
@@ -160,14 +160,11 @@ export default function HomePage() {
         >
           <div className="flex items-start justify-between gap-6">
             <div>
-              <p className="text-xs font-semibold text-blue-600 uppercase tracking-[0.2em] mb-3">
-                Command Center
-              </p>
               <h1 className="text-3xl font-bold text-slate-900 tracking-tight leading-tight">
-                Systems Overview
+                Welcome back
               </h1>
               <p className="text-sm text-slate-500 mt-2 max-w-lg leading-relaxed">
-                Real-time intelligence across your global infrastructure. Monitor clusters, projects, and health at a glance.
+                Here's what's happening across your clusters and projects.
               </p>
             </div>
           </div>
@@ -183,23 +180,20 @@ export default function HomePage() {
           aria-label="Health metrics dashboard"
           aria-live="polite"
         >
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-            {/* Health Index */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-5">
+            {/* Health Score */}
             <motion.div
               variants={stagger.item}
-              className="group relative bg-white rounded-2xl border border-slate-200/80 p-6 hover:border-slate-300/80 hover:shadow-apple-lg transition-all duration-500 ease-out overflow-hidden"
+              className="group relative bg-white rounded-2xl border border-slate-200/80 p-5 hover:border-slate-300/80 hover:shadow-apple-lg transition-all duration-500 ease-out overflow-hidden"
               role="status"
               aria-label={`Health score: ${health.score} out of 100`}
             >
               <div className="absolute inset-0 bg-gradient-to-br from-blue-50/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-              <div className="relative flex items-center gap-5">
-                <div className="shrink-0">
-                  <HealthRing score={health.score} size={64} strokeWidth={7} aria-valuenow={health.score} aria-valuemin={0} aria-valuemax={100} />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-[0.15em]">Health Index</p>
-                  <p className="text-3xl font-bold tabular-nums text-slate-900 mt-0.5 leading-none">{health.score}</p>
-                  <p className="text-[11px] text-slate-500 mt-1.5 truncate leading-snug">{health.insight}</p>
+              <div className="relative flex flex-col items-center text-center gap-3">
+                <HealthRing score={health.score} size={72} strokeWidth={6} aria-valuenow={health.score} aria-valuemin={0} aria-valuemax={100} />
+                <div>
+                  <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-[0.12em]">Health</p>
+                  <p className="text-[11px] text-slate-500 mt-0.5 leading-snug">{health.insight}</p>
                 </div>
               </div>
             </motion.div>
@@ -207,21 +201,21 @@ export default function HomePage() {
             {/* Clusters */}
             <motion.div
               variants={stagger.item}
-              className="group relative bg-white rounded-2xl border border-slate-200/80 p-6 hover:border-slate-300/80 hover:shadow-apple-lg transition-all duration-500 ease-out overflow-hidden"
+              className="group relative bg-white rounded-2xl border border-slate-200/80 p-5 hover:border-slate-300/80 hover:shadow-apple-lg transition-all duration-500 ease-out overflow-hidden"
               role="status"
               aria-label={`${activeClusters} active clusters`}
             >
               <div className="absolute inset-0 bg-gradient-to-br from-blue-50/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-              <div className="relative flex items-center gap-5">
-                <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shrink-0 shadow-lg shadow-blue-500/20 group-hover:shadow-xl group-hover:shadow-blue-500/30 transition-shadow duration-500">
-                  <Server className="h-6 w-6 text-white" />
+              <div className="relative flex items-center gap-4">
+                <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shrink-0 shadow-lg shadow-blue-500/20">
+                  <Server className="h-5 w-5 text-white" />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-[0.15em]">Clusters</p>
-                  <p className="text-3xl font-bold tabular-nums text-slate-900 mt-0.5 leading-none">{activeClusters}</p>
-                  <p className="text-[11px] text-emerald-600 font-semibold mt-1.5 flex items-center gap-1.5">
+                  <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-[0.12em]">Clusters</p>
+                  <p className="text-2xl font-bold tabular-nums text-slate-900 mt-0.5 leading-none">{activeClusters}</p>
+                  <p className="text-[11px] text-emerald-600 font-semibold mt-1 flex items-center gap-1.5">
                     <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                    Distributed
+                    Active
                   </p>
                 </div>
               </div>
@@ -230,55 +224,37 @@ export default function HomePage() {
             {/* Nodes */}
             <motion.div
               variants={stagger.item}
-              className="group relative bg-white rounded-2xl border border-slate-200/80 p-6 hover:border-slate-300/80 hover:shadow-apple-lg transition-all duration-500 ease-out overflow-hidden"
+              className="group relative bg-white rounded-2xl border border-slate-200/80 p-5 hover:border-slate-300/80 hover:shadow-apple-lg transition-all duration-500 ease-out overflow-hidden"
               role="status"
               aria-label={`${activeNodes} active nodes`}
             >
               <div className="absolute inset-0 bg-gradient-to-br from-emerald-50/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-              <div className="relative flex items-center gap-5">
-                <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center shrink-0 shadow-lg shadow-emerald-500/20 group-hover:shadow-xl group-hover:shadow-emerald-500/30 transition-shadow duration-500">
-                  <Activity className="h-6 w-6 text-white" />
+              <div className="relative flex items-center gap-4">
+                <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center shrink-0 shadow-lg shadow-emerald-500/20">
+                  <Activity className="h-5 w-5 text-white" />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-[0.15em]">Nodes</p>
-                  <p className="text-3xl font-bold tabular-nums text-slate-900 mt-0.5 leading-none">{activeNodes}</p>
-                  <p className="text-[11px] text-slate-500 mt-1.5">Provisioned</p>
+                  <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-[0.12em]">Nodes</p>
+                  <p className="text-2xl font-bold tabular-nums text-slate-900 mt-0.5 leading-none">{activeNodes}</p>
+                  <p className="text-[11px] text-slate-500 mt-1">Provisioned</p>
                 </div>
               </div>
             </motion.div>
 
-            {/* System Load */}
+            {/* CPU Usage */}
             <motion.div
               variants={stagger.item}
-              className="group relative bg-white rounded-2xl border border-slate-200/80 p-6 hover:border-slate-300/80 hover:shadow-apple-lg transition-all duration-500 ease-out overflow-hidden"
+              className="group relative bg-white rounded-2xl border border-slate-200/80 p-5 hover:border-slate-300/80 hover:shadow-apple-lg transition-all duration-500 ease-out overflow-hidden"
               role="status"
-              aria-label={`System load at ${Math.round(cpuUtil)} percent`}
+              aria-label={`CPU usage at ${Math.round(cpuUtil)} percent`}
             >
               <div className="absolute inset-0 bg-gradient-to-br from-indigo-50/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
               <div className="relative">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-3">
-                    <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shrink-0 shadow-lg shadow-indigo-500/20 group-hover:shadow-xl group-hover:shadow-indigo-500/30 transition-shadow duration-500">
-                      <Zap className="h-6 w-6 text-white" />
-                    </div>
-                    <div>
-                      <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-[0.15em]">System Load</p>
-                      <p className="text-3xl font-bold tabular-nums text-slate-900 mt-0.5 leading-none">
-                        {Math.round(cpuUtil)}<span className="text-lg text-slate-400 ml-0.5">%</span>
-                      </p>
-                    </div>
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-8 rounded-full text-[10px] font-semibold tracking-wide text-slate-500 hover:text-slate-700 hover:bg-slate-100 opacity-0 group-hover:opacity-100 transition-all duration-300 press-effect"
-                    onClick={() => navigate('/nodes')}
-                    aria-label="View nodes detail"
-                  >
-                    Details <ArrowRight className="ml-1.5 h-3 w-3" />
-                  </Button>
-                </div>
-                <div className="relative h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+                <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-[0.12em] mb-2">CPU</p>
+                <p className="text-2xl font-bold tabular-nums text-slate-900 leading-none">
+                  {Math.round(cpuUtil)}<span className="text-sm text-slate-400 ml-0.5">%</span>
+                </p>
+                <div className="relative h-1.5 w-full bg-slate-100 rounded-full overflow-hidden mt-3">
                   <motion.div
                     initial={{ width: 0 }}
                     animate={{ width: `${Math.min(100, cpuUtil)}%` }}
@@ -288,9 +264,38 @@ export default function HomePage() {
                     aria-valuenow={Math.round(cpuUtil)}
                     aria-valuemin={0}
                     aria-valuemax={100}
-                    aria-label="CPU utilization"
                   />
                 </div>
+                <p className="text-[10px] text-slate-400 mt-1.5">Cluster average</p>
+              </div>
+            </motion.div>
+
+            {/* Memory Usage */}
+            <motion.div
+              variants={stagger.item}
+              className="group relative bg-white rounded-2xl border border-slate-200/80 p-5 hover:border-slate-300/80 hover:shadow-apple-lg transition-all duration-500 ease-out overflow-hidden"
+              role="status"
+              aria-label={`Memory usage at ${Math.round(memUtil)} percent`}
+            >
+              <div className="absolute inset-0 bg-gradient-to-br from-violet-50/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+              <div className="relative">
+                <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-[0.12em] mb-2">Memory</p>
+                <p className="text-2xl font-bold tabular-nums text-slate-900 leading-none">
+                  {Math.round(memUtil)}<span className="text-sm text-slate-400 ml-0.5">%</span>
+                </p>
+                <div className="relative h-1.5 w-full bg-slate-100 rounded-full overflow-hidden mt-3">
+                  <motion.div
+                    initial={{ width: 0 }}
+                    animate={{ width: `${Math.min(100, memUtil)}%` }}
+                    transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
+                    className={`absolute inset-y-0 left-0 bg-gradient-to-r ${memColor} rounded-full`}
+                    role="progressbar"
+                    aria-valuenow={Math.round(memUtil)}
+                    aria-valuemin={0}
+                    aria-valuemax={100}
+                  />
+                </div>
+                <p className="text-[10px] text-slate-400 mt-1.5">Cluster average</p>
               </div>
             </motion.div>
           </div>
