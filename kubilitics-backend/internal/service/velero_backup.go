@@ -58,7 +58,7 @@ func createVeleroBackup(
 				"namespace": veleroNamespace,
 				"labels": map[string]interface{}{
 					"app.kubernetes.io/managed-by": "kubilitics",
-					"kubilitics.io/release":        releaseName,
+					"kubilitics.com/release":        releaseName,
 				},
 			},
 			"spec": map[string]interface{}{

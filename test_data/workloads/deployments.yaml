@@ -1,124 +1,188 @@
-# Demo deployments for Kubilitics (3-10 objects). Apply after namespace.
+# Kubilitics Demo Deployments — 10 deployments across 4 namespaces
+# Simulates a real microservices architecture for investor demos
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: demo-web-a
+  name: web-gateway
   namespace: kubilitics-demo
-  labels:
-    app: demo-web-a
-    app.kubernetes.io/part-of: kubilitics-demo
+  labels: { app: web-gateway, tier: frontend, app.kubernetes.io/part-of: kubilitics-demo }
 spec:
-  replicas: 2
-  selector:
-    matchLabels:
-      app: demo-web-a
+  replicas: 3
+  selector: { matchLabels: { app: web-gateway } }
   template:
-    metadata:
-      labels:
-        app: demo-web-a
-        app.kubernetes.io/part-of: kubilitics-demo
+    metadata: { labels: { app: web-gateway, tier: frontend, app.kubernetes.io/part-of: kubilitics-demo } }
     spec:
       containers:
         - name: nginx
           image: nginx:1.25-alpine
-          ports:
-            - containerPort: 80
+          ports: [{ containerPort: 80 }]
+          resources: { requests: { cpu: 100m, memory: 128Mi }, limits: { cpu: 250m, memory: 256Mi } }
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: demo-web-b
+  name: api-server
   namespace: kubilitics-demo
-  labels:
-    app: demo-web-b
-    app.kubernetes.io/part-of: kubilitics-demo
+  labels: { app: api-server, tier: backend, app.kubernetes.io/part-of: kubilitics-demo }
 spec:
   replicas: 2
-  selector:
-    matchLabels:
-      app: demo-web-b
+  selector: { matchLabels: { app: api-server } }
   template:
-    metadata:
-      labels:
-        app: demo-web-b
-        app.kubernetes.io/part-of: kubilitics-demo
-    spec:
-      containers:
-        - name: nginx
-          image: nginx:1.25-alpine
-          ports:
-            - containerPort: 80
----
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: demo-api
-  namespace: kubilitics-demo
-  labels:
-    app: demo-api
-    app.kubernetes.io/part-of: kubilitics-demo
-spec:
-  replicas: 2
-  selector:
-    matchLabels:
-      app: demo-api
-  template:
-    metadata:
-      labels:
-        app: demo-api
-        app.kubernetes.io/part-of: kubilitics-demo
+    metadata: { labels: { app: api-server, tier: backend, app.kubernetes.io/part-of: kubilitics-demo } }
     spec:
       containers:
         - name: api
           image: hashicorp/http-echo:latest
-          args: ["-text=hello"]
-          ports:
-            - containerPort: 5678
+          args: ["-text=kubilitics-api"]
+          ports: [{ containerPort: 5678 }]
+          resources: { requests: { cpu: 200m, memory: 256Mi }, limits: { cpu: 500m, memory: 512Mi } }
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: demo-worker
+  name: auth-service
   namespace: kubilitics-demo
-  labels:
-    app: demo-worker
-    app.kubernetes.io/part-of: kubilitics-demo
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: demo-worker
-  template:
-    metadata:
-      labels:
-        app: demo-worker
-        app.kubernetes.io/part-of: kubilitics-demo
-    spec:
-      containers:
-        - name: pause
-          image: registry.k8s.io/pause:3.9
----
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: demo-frontend
-  namespace: kubilitics-demo
-  labels:
-    app: demo-frontend
-    app.kubernetes.io/part-of: kubilitics-demo
+  labels: { app: auth-service, tier: backend, app.kubernetes.io/part-of: kubilitics-demo }
 spec:
   replicas: 2
-  selector:
-    matchLabels:
-      app: demo-frontend
+  selector: { matchLabels: { app: auth-service } }
   template:
-    metadata:
-      labels:
-        app: demo-frontend
-        app.kubernetes.io/part-of: kubilitics-demo
+    metadata: { labels: { app: auth-service, tier: backend, app.kubernetes.io/part-of: kubilitics-demo } }
     spec:
       containers:
-        - name: frontend
+        - name: auth
+          image: hashicorp/http-echo:latest
+          args: ["-text=auth-ok"]
+          ports: [{ containerPort: 5678 }]
+          resources: { requests: { cpu: 100m, memory: 128Mi }, limits: { cpu: 250m, memory: 256Mi } }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: notification-service
+  namespace: kubilitics-demo
+  labels: { app: notification-service, tier: backend, app.kubernetes.io/part-of: kubilitics-demo }
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: notification-service } }
+  template:
+    metadata: { labels: { app: notification-service, tier: backend, app.kubernetes.io/part-of: kubilitics-demo } }
+    spec:
+      containers:
+        - name: notifier
+          image: busybox:1.36
+          command: ["sh", "-c", "while true; do echo 'notification-check'; sleep 60; done"]
+          resources: { requests: { cpu: 50m, memory: 64Mi }, limits: { cpu: 100m, memory: 128Mi } }
+---
+# ecommerce-prod namespace deployments
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: product-catalog
+  namespace: ecommerce-prod
+  labels: { app: product-catalog, tier: backend, app.kubernetes.io/part-of: kubilitics-demo }
+spec:
+  replicas: 3
+  selector: { matchLabels: { app: product-catalog } }
+  template:
+    metadata: { labels: { app: product-catalog, tier: backend, app.kubernetes.io/part-of: kubilitics-demo } }
+    spec:
+      containers:
+        - name: catalog
           image: nginx:1.25-alpine
-          ports:
-            - containerPort: 80
+          ports: [{ containerPort: 80 }]
+          resources: { requests: { cpu: 200m, memory: 256Mi }, limits: { cpu: 500m, memory: 512Mi } }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: shopping-cart
+  namespace: ecommerce-prod
+  labels: { app: shopping-cart, tier: backend, app.kubernetes.io/part-of: kubilitics-demo }
+spec:
+  replicas: 2
+  selector: { matchLabels: { app: shopping-cart } }
+  template:
+    metadata: { labels: { app: shopping-cart, tier: backend, app.kubernetes.io/part-of: kubilitics-demo } }
+    spec:
+      containers:
+        - name: cart
+          image: redis:7-alpine
+          ports: [{ containerPort: 6379 }]
+          resources: { requests: { cpu: 150m, memory: 192Mi }, limits: { cpu: 300m, memory: 384Mi } }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: checkout-service
+  namespace: ecommerce-prod
+  labels: { app: checkout-service, tier: backend, app.kubernetes.io/part-of: kubilitics-demo }
+spec:
+  replicas: 2
+  selector: { matchLabels: { app: checkout-service } }
+  template:
+    metadata: { labels: { app: checkout-service, tier: backend, app.kubernetes.io/part-of: kubilitics-demo } }
+    spec:
+      containers:
+        - name: checkout
+          image: hashicorp/http-echo:latest
+          args: ["-text=checkout-ok"]
+          ports: [{ containerPort: 5678 }]
+          resources: { requests: { cpu: 100m, memory: 128Mi }, limits: { cpu: 250m, memory: 256Mi } }
+---
+# analytics-staging namespace
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: data-collector
+  namespace: analytics-staging
+  labels: { app: data-collector, tier: ingestion, app.kubernetes.io/part-of: kubilitics-demo }
+spec:
+  replicas: 2
+  selector: { matchLabels: { app: data-collector } }
+  template:
+    metadata: { labels: { app: data-collector, tier: ingestion, app.kubernetes.io/part-of: kubilitics-demo } }
+    spec:
+      containers:
+        - name: collector
+          image: busybox:1.36
+          command: ["sh", "-c", "while true; do echo 'collecting'; sleep 10; done"]
+          resources: { requests: { cpu: 100m, memory: 128Mi }, limits: { cpu: 200m, memory: 256Mi } }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dashboard-ui
+  namespace: analytics-staging
+  labels: { app: dashboard-ui, tier: frontend, app.kubernetes.io/part-of: kubilitics-demo }
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: dashboard-ui } }
+  template:
+    metadata: { labels: { app: dashboard-ui, tier: frontend, app.kubernetes.io/part-of: kubilitics-demo } }
+    spec:
+      containers:
+        - name: ui
+          image: nginx:1.25-alpine
+          ports: [{ containerPort: 80 }]
+          resources: { requests: { cpu: 50m, memory: 64Mi }, limits: { cpu: 150m, memory: 192Mi } }
+---
+# payments-prod namespace
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: payment-processor
+  namespace: payments-prod
+  labels: { app: payment-processor, tier: backend, app.kubernetes.io/part-of: kubilitics-demo }
+spec:
+  replicas: 3
+  selector: { matchLabels: { app: payment-processor } }
+  template:
+    metadata: { labels: { app: payment-processor, tier: backend, app.kubernetes.io/part-of: kubilitics-demo } }
+    spec:
+      containers:
+        - name: processor
+          image: hashicorp/http-echo:latest
+          args: ["-text=payment-ok"]
+          ports: [{ containerPort: 5678 }]
+          resources: { requests: { cpu: 300m, memory: 384Mi }, limits: { cpu: 1, memory: 1Gi } }

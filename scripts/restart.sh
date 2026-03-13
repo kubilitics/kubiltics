@@ -1,4 +1,125 @@
 #!/usr/bin/env bash
+
+set -euo pipefail
+
+# Restart full Kubilitics dev stack:
+# - Kill any existing dev servers on common ports
+# - Start backend-dev, kubilitics-ai, and frontend-dev
+
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+echo "▶ Restarting Kubilitics dev stack from: ${ROOT_DIR}"
+
+kill_port() {
+  local port="$1"
+  if lsof -ti tcp:"${port}" >/dev/null 2>&1; then
+    echo "  - Killing process on port ${port}"
+    # shellcheck disable=SC2046
+    kill -9 $(lsof -ti tcp:"${port}") || true
+  fi
+}
+
+echo "▶ Killing existing dev processes on common ports (819 backend, 8081 legacy, 5173 frontend, 8190 AI)..."
+kill_port 819
+kill_port 8081
+kill_port 5173
+kill_port 8190
+
+echo "▶ Starting backend-dev (Go API)..."
+(
+  cd "${ROOT_DIR}"
+  make backend-dev &
+)
+
+echo "▶ Starting kubilitics-ai..."
+(
+  cd "${ROOT_DIR}/kubilitics-ai"
+  make run &
+)
+
+echo "▶ Starting frontend-dev (Vite) ..."
+(
+  cd "${ROOT_DIR}/kubilitics-frontend"
+  if [ ! -d node_modules ]; then
+    echo "  - Installing frontend dependencies (npm install)..."
+    npm install
+  fi
+  npm run dev &
+)
+
+echo "✅ Kubilitics backend, AI, and frontend have been started in the background."
+echo "   - Backend:  http://localhost:${KUBILITICS_PORT:-819}"
+echo "   - Frontend: http://localhost:5173"
+
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+# Restart full Kubilitics dev stack:
+# - Kill any existing dev servers on common ports
+# - Build backend + kubilitics-ai
+# - Start backend, AI service, and frontend dev server
+
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+echo "▶ Restarting Kubilitics dev stack from: ${ROOT_DIR}"
+
+kill_port() {
+  local port="$1"
+  if lsof -ti tcp:"${port}" >/dev/null 2>&1; then
+    echo "  - Killing process on port ${port}"
+    # shellcheck disable=SC2046
+    kill -9 $(lsof -ti tcp:"${port}") || true
+  fi
+}
+
+echo "▶ Killing existing dev processes on common ports (8081 backend, 5173 frontend, 8190 AI)..."
+kill_port 8081
+kill_port 5173
+kill_port 8190
+
+echo "▶ Building backend binary..."
+(
+  cd "${ROOT_DIR}/kubilitics-backend"
+  mkdir -p bin
+  go build -o bin/kubilitics-backend ./cmd/server
+)
+
+echo "▶ Building kubilitics-ai binary..."
+(
+  cd "${ROOT_DIR}/kubilitics-ai"
+  make build
+)
+
+echo "▶ Starting backend on :8081..."
+(
+  cd "${ROOT_DIR}/kubilitics-backend"
+  ./bin/kubilitics-backend &
+)
+
+echo "▶ Starting kubilitics-ai on :8190..."
+(
+  cd "${ROOT_DIR}/kubilitics-ai"
+  ./bin/kubilitics-ai &
+)
+
+echo "▶ Starting frontend dev server on :5173..."
+(
+  cd "${ROOT_DIR}/kubilitics-frontend"
+  # Install dependencies on first run; subsequent runs will be fast
+  if [ ! -d node_modules ]; then
+    echo "  - Installing frontend dependencies (npm install)..."
+    npm install
+  fi
+  npm run dev &
+)
+
+echo "✅ Kubilitics backend, AI, and frontend have been started in the background."
+echo "   - Backend:     http://localhost:8081"
+echo "   - Frontend:    http://localhost:5173"
+echo "   - AI service:  http://localhost:8190"
+
+#!/usr/bin/env bash
 # Kill anything on backend/frontend/AI ports, build backend + AI, then start backend + kubilitics-ai + frontend.
 # Backend and AI are always rebuilt so the running processes include latest Go code.
 # If you see "resource topology not implemented for kind Node" (500), do a clean rebuild first: make clean && make backend, then run this script.

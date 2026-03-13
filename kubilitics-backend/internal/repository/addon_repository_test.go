@@ -75,7 +75,7 @@ func TestAddOnRepositorySeedCatalogAndGetAddOn(t *testing.T) {
 		Tier:             string(models.TierCORE),
 		Version:          "1.0.0",
 		K8sCompatMin:     "1.24",
-		HelmRepoURL:      "https://charts.kubilitics.io",
+		HelmRepoURL:      "https://charts.kubilitics.com",
 		HelmChart:        "base",
 		HelmChartVersion: "1.0.0",
 	}
@@ -86,7 +86,7 @@ func TestAddOnRepositorySeedCatalogAndGetAddOn(t *testing.T) {
 		Tier:             string(models.TierCORE),
 		Version:          "0.9.0",
 		K8sCompatMin:     "1.24",
-		HelmRepoURL:      "https://charts.kubilitics.io",
+		HelmRepoURL:      "https://charts.kubilitics.com",
 		HelmChart:        "legacy-cert",
 		HelmChartVersion: "0.9.0",
 	}

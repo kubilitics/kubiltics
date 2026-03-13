@@ -38,7 +38,7 @@ Kubilitics supports multiple deployment models: desktop application, in-cluster 
 **Installation Steps:**
 
 1. **Download Application**
-   - Visit https://releases.kubilitics.io
+   - Visit https://releases.kubilitics.com
    - Download appropriate installer for your OS
    - Verify SHA256 checksum: `sha256sum kubilitics-desktop-1.0.0-macos.dmg`
 
@@ -124,7 +124,7 @@ Kubilitics supports multiple deployment models: desktop application, in-cluster 
 
 **Add Helm Repository:**
 ```bash
-helm repo add kubilitics https://charts.kubilitics.io
+helm repo add kubilitics https://charts.kubilitics.com
 helm repo update
 helm search repo kubilitics
 ```
@@ -1391,7 +1391,7 @@ rm -rf ~/.kubilitics/
 # Reinstall will recreate with clean state
 
 # Option 2: Update to latest version
-# Visit https://releases.kubilitics.io
+# Visit https://releases.kubilitics.com
 # Download latest stable release
 
 # Option 3: Check for corrupted database
@@ -1825,7 +1825,7 @@ helm repo update
 helm search repo kubilitics --versions
 
 # Subscribe to security mailing list
-# Visit: https://kubilitics.io/security
+# Visit: https://kubilitics.com/security
 
 # Monitor CVE databases
 # https://nvd.nist.gov/
@@ -1889,10 +1889,10 @@ helm template kubilitics kubilitics/kubilitics | trivy config -
 4. Provide hourly updates until resolution
 
 **Support Channels:**
-- Email: support@kubilitics.io
+- Email: support@kubilitics.com
 - Slack: #kubilitics-support (enterprise customers)
-- Documentation: https://docs.kubilitics.io
-- Community: https://community.kubilitics.io
+- Documentation: https://docs.kubilitics.com
+- Community: https://community.kubilitics.com
 
 **Emergency Contacts:**
 - On-call: PagerDuty (kubilitics-prod)
