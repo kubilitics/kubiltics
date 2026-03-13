@@ -80,6 +80,7 @@ function NavItem({ to, icon: Icon, label, count, onNavigate }: NavItemProps) {
       ref={itemRef}
       to={to}
       onClick={onNavigate}
+      aria-current={isActive ? 'page' : undefined}
       className={cn(
         'flex items-center gap-3 px-3 py-2 rounded-xl text-[13px] font-medium transition-all duration-300 group relative overflow-hidden h-10',
         isActive
@@ -214,6 +215,7 @@ function NavItemIconOnly({
   return (
     <NavLink
       to={to}
+      aria-current={isActive ? 'page' : undefined}
       className={cn(
         'flex items-center justify-center w-11 h-11 rounded-xl transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring hover:scale-105 active:scale-95 group relative border',
         isActive

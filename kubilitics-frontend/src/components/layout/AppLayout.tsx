@@ -16,9 +16,12 @@ import { cn } from '@/lib/utils';
 import { isTauri } from '@/lib/tauri';
 import { RouteErrorBoundary } from '@/components/GlobalErrorBoundary';
 import { useSidebarAutoCollapse } from '@/stores/uiStore';
+import { useDocumentTitle } from '@/hooks/useDocumentTitle';
+import { RouteAnnouncer } from '@/components/a11y/RouteAnnouncer';
 
 export function AppLayout() {
   useRecentlyVisited();
+  useDocumentTitle(); // Auto-set page title from route
   // P0-005-T02: Auto-collapse sidebar at < 1280px, re-expand when viewport grows
   useSidebarAutoCollapse();
   const navigate = useNavigate();
@@ -87,6 +90,7 @@ export function AppLayout() {
       >
         Skip to main content
       </a>
+      <RouteAnnouncer />
       <Header />
       {isDemo && (
         <div

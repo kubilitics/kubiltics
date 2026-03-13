@@ -52,6 +52,7 @@ import { useTableFiltersAndSort, type ColumnConfig } from '@/hooks/useTableFilte
 import { useColumnVisibility } from '@/hooks/useColumnVisibility';
 import { SectionOverviewHeader } from '@/components/layout/SectionOverviewHeader';
 import { WorkloadPulse } from '@/components/workloads/WorkloadPulse';
+import { PageLoadingState } from '@/components/PageLoadingState';
 
 const KIND_ICONS: Record<string, typeof Container> = {
   Deployment: Container,
@@ -222,6 +223,10 @@ export default function WorkloadsOverview() {
 
   const pulse = data?.pulse;
   const alerts = data?.alerts;
+
+  if (isLoading) {
+    return <PageLoadingState message="Loading workload data..." />;
+  }
 
   return (
     <div className="page-container" role="main" aria-label="Workloads Overview">
@@ -414,6 +419,23 @@ export default function WorkloadsOverview() {
                     </motion.tr>
                   );
                 })}
+                {itemsOnPage.length === 0 && (
+                  <tr>
+                    <td colSpan={7} className="px-6 py-16 text-center">
+                      <div className="flex flex-col items-center gap-2">
+                        <Container className="h-8 w-8 text-muted-foreground/40" />
+                        <p className="text-sm font-medium text-muted-foreground">
+                          {searchQuery ? 'No workloads match your search.' : 'No workloads found in the cluster.'}
+                        </p>
+                        {searchQuery && (
+                          <Button variant="ghost" size="sm" onClick={() => setSearchQuery('')} className="mt-1 text-xs">
+                            Clear search
+                          </Button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
