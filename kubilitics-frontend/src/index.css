@@ -100,12 +100,75 @@
     --apple-shadow-lg: var(--shadow-5);
   }
 
+  /* ─── Dark Mode Color Palette ─── */
+  .dark {
+    --background: 228 14% 7%;
+    --foreground: 210 20% 90%;
+
+    --card: 228 14% 10%;
+    --card-foreground: 210 20% 90%;
+
+    --popover: 228 14% 12%;
+    --popover-foreground: 210 20% 90%;
+
+    --primary: 217 91% 60%;
+    --primary-foreground: 228 14% 7%;
+
+    --secondary: 228 14% 16%;
+    --secondary-foreground: 210 20% 85%;
+
+    --muted: 228 14% 16%;
+    --muted-foreground: 215 16% 56%;
+
+    --accent: 228 14% 16%;
+    --accent-foreground: 210 20% 85%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 210 20% 95%;
+
+    --border: 228 14% 20%;
+    --input: 228 14% 20%;
+    --ring: 217 91% 60%;
+
+    /* ─── Dark Elevation System ─── */
+    --shadow-1: 0 1px 3px 0 rgba(0, 0, 0, 0.2), 0 1px 2px -1px rgba(0, 0, 0, 0.15);
+    --shadow-2: 0 4px 12px -2px rgba(0, 0, 0, 0.3), 0 2px 6px -1px rgba(0, 0, 0, 0.15);
+    --shadow-3: 0 8px 32px -4px rgba(0, 0, 0, 0.35), 0 4px 12px -2px rgba(0, 0, 0, 0.2);
+    --shadow-4: 0 16px 48px -8px rgba(0, 0, 0, 0.4), 0 8px 20px -6px rgba(0, 0, 0, 0.25);
+    --shadow-5: 0 24px 64px -12px rgba(0, 0, 0, 0.5), 0 12px 28px -8px rgba(0, 0, 0, 0.3);
+
+    /* ─── Dark Glassmorphism ─── */
+    --glass-bg: rgba(15, 15, 25, 0.85);
+    --glass-border: rgba(255, 255, 255, 0.08);
+    --glass-hover: rgba(20, 20, 35, 0.92);
+
+    /* ─── Dark Focus Ring ─── */
+    --focus-ring: 0 0 0 2px hsl(var(--background)), 0 0 0 4px hsl(var(--primary));
+
+    /* ─── Dark Status Colors ─── */
+    --success: 142 71% 45%;
+    --warning: 38 92% 50%;
+    --error: 0 72% 51%;
+    --info: 217 91% 60%;
+    --cosmic-purple: 263 70% 58%;
+
+    /* ─── Dark Card System ─── */
+    --card-border: hsl(228 14% 20% / 0.8);
+
+    /* ─── Dark Sidebar ─── */
+    --sidebar-background: 228 14% 8%;
+    --sidebar-foreground: 210 20% 90%;
+    --sidebar-border: 228 14% 18%;
+    --sidebar-accent: 228 14% 16%;
+    --sidebar-accent-foreground: 210 20% 85%;
+  }
+
   * {
     @apply border-border;
   }
 
   body {
-    @apply bg-background text-foreground antialiased selection:bg-blue-100 selection:text-blue-900;
+    @apply bg-background text-foreground antialiased selection:bg-blue-100 selection:text-blue-900 dark:selection:bg-blue-900 dark:selection:text-blue-100;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
@@ -157,24 +220,24 @@
 
   /* ─── Premium Card System ─── */
   .premium-card {
-    @apply bg-white border border-slate-100/60;
+    @apply bg-white dark:bg-[hsl(228,14%,10%)] border border-slate-100/60 dark:border-slate-700/40;
     border-radius: 1.5rem;
     box-shadow: var(--shadow-1);
     transition: all var(--duration-emphasis) var(--ease-spring);
   }
 
   .premium-card:hover {
-    @apply border-blue-200/40 -translate-y-1;
+    @apply border-blue-200/40 dark:border-blue-800/40 -translate-y-1;
     box-shadow: var(--shadow-4);
   }
 
   /* ─── Apple Typography ─── */
   .apple-title {
-    @apply text-slate-900 font-semibold tracking-tight leading-tight;
+    @apply text-slate-900 dark:text-slate-100 font-semibold tracking-tight leading-tight;
   }
 
   .apple-description {
-    @apply text-slate-500 font-medium leading-relaxed;
+    @apply text-slate-500 dark:text-slate-400 font-medium leading-relaxed;
   }
 
   /* ─── Skeleton Shimmer ─── */
@@ -194,6 +257,15 @@
     );
     animation: shimmer 1.8s ease-in-out infinite;
     transform: translateX(-100%);
+  }
+
+  :is(.dark) .skeleton-shimmer::after {
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      rgba(255, 255, 255, 0.06) 50%,
+      transparent 100%
+    );
   }
 
   /* ─── Button Press Effect ─── */
@@ -251,14 +323,14 @@
 
   /* ─── Unified Metric Card ─── */
   .metric-card {
-    @apply relative bg-white border border-slate-200/80 overflow-hidden;
+    @apply relative bg-white dark:bg-[hsl(228,14%,10%)] border border-slate-200/80 dark:border-slate-700/50 overflow-hidden;
     border-radius: var(--card-radius);
     padding: var(--card-padding);
     transition: all var(--duration-emphasis) var(--ease-default);
   }
 
   .metric-card:hover {
-    @apply border-slate-300/80;
+    @apply border-slate-300/80 dark:border-slate-600/80;
     box-shadow: var(--shadow-3);
   }
 
@@ -272,7 +344,7 @@
 
   /* ─── Unified Section Card ─── */
   .section-card {
-    @apply bg-white border border-slate-200/80;
+    @apply bg-white dark:bg-[hsl(228,14%,10%)] border border-slate-200/80 dark:border-slate-700/50;
     border-radius: var(--card-radius-lg);
     padding: var(--card-padding);
     box-shadow: var(--shadow-1);
@@ -280,13 +352,13 @@
   }
 
   .section-card:hover {
-    @apply border-slate-300/80;
+    @apply border-slate-300/80 dark:border-slate-600/80;
     box-shadow: var(--shadow-3);
   }
 
   /* ─── Cluster / Project Card ─── */
   .entity-card {
-    @apply relative bg-white border border-slate-200/80 overflow-hidden cursor-pointer;
+    @apply relative bg-white dark:bg-[hsl(228,14%,10%)] border border-slate-200/80 dark:border-slate-700/50 overflow-hidden cursor-pointer;
     border-radius: var(--card-radius);
     padding: var(--card-padding);
     transition: all var(--duration-emphasis) cubic-bezier(0.16, 1, 0.3, 1);
@@ -297,7 +369,7 @@
   }
 
   .entity-card:hover {
-    @apply border-slate-300;
+    @apply border-slate-300 dark:border-slate-600;
     box-shadow: var(--shadow-4);
     transform: translateY(-2px);
   }
@@ -309,7 +381,7 @@
 
   /* ─── Unified Label Typography ─── */
   .label-xs {
-    @apply text-xs font-semibold text-slate-400 uppercase;
+    @apply text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase;
     letter-spacing: 0.08em;
   }
 
@@ -330,12 +402,12 @@
 
   /* ─── Table Standardization ─── */
   .table-header-cell {
-    @apply text-xs font-semibold text-slate-400 uppercase;
+    @apply text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase;
     letter-spacing: 0.06em;
   }
 
   .table-body-cell {
-    @apply text-sm text-slate-700;
+    @apply text-sm text-slate-700 dark:text-slate-300;
   }
 
   /* ─── Status Dot ─── */
@@ -350,7 +422,7 @@
 
   /* ─── Progress Bar ─── */
   .progress-track {
-    @apply relative h-1.5 w-full bg-slate-100 rounded-full overflow-hidden;
+    @apply relative h-1.5 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden;
   }
 
   .progress-fill {
@@ -359,12 +431,12 @@
 
   /* ─── Empty State (unified) ─── */
   .empty-state-container {
-    @apply relative border-2 border-dashed border-slate-200 bg-slate-50/50 py-16 px-6 text-center;
+    @apply relative border-2 border-dashed border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/30 py-16 px-6 text-center;
     border-radius: var(--card-radius);
   }
 
   .empty-state-icon-box {
-    @apply h-14 w-14 bg-white border border-slate-200 flex items-center justify-center mx-auto mb-4;
+    @apply h-14 w-14 bg-white dark:bg-[hsl(228,14%,14%)] border border-slate-200 dark:border-slate-700 flex items-center justify-center mx-auto mb-4;
     border-radius: var(--card-radius);
     box-shadow: var(--shadow-1);
   }
@@ -373,6 +445,10 @@
   .page-container {
     @apply min-h-screen;
     background: linear-gradient(to bottom, hsl(210 50% 98.5%), white 40%, hsl(217 100% 98% / 0.2));
+  }
+
+  :is(.dark) .page-container {
+    background: linear-gradient(to bottom, hsl(228 14% 7%), hsl(228 14% 9%) 40%, hsl(228 14% 8% / 0.8));
   }
 
   .page-inner {

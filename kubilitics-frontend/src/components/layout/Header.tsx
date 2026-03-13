@@ -22,6 +22,7 @@ import {
   Zap,
 } from 'lucide-react';
 import { BrandLogo } from '@/components/BrandLogo';
+import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { useClusterStore } from '@/stores/clusterStore';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
@@ -75,7 +76,9 @@ const BTN = cn(
   'inline-flex items-center justify-center gap-2.5',
   'text-[13px] font-semibold leading-none',
   'border border-slate-200/50 bg-white/40 text-slate-700',
+  'dark:border-slate-700/50 dark:bg-slate-800/40 dark:text-slate-200',
   'hover:bg-white hover:border-slate-300 hover:shadow-apple hover:translate-y-[-0.5px]',
+  'dark:hover:bg-slate-700/60 dark:hover:border-slate-600',
   'transition-all duration-300 ease-spring',
   'active:scale-[0.98]',
   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20'
@@ -87,7 +90,9 @@ const FEATURE_BTN = cn(
   'inline-flex items-center justify-center gap-2.5',
   'text-[13px] font-bold leading-none',
   'border border-slate-200/40 bg-slate-50/40 text-slate-800',
+  'dark:border-slate-700/40 dark:bg-slate-800/40 dark:text-slate-200',
   'hover:bg-white hover:border-primary/20 hover:shadow-apple-lg hover:translate-y-[-0.5px]',
+  'dark:hover:bg-slate-700/60 dark:hover:border-primary/30',
   'transition-all duration-300 ease-spring',
   'active:scale-[0.98]',
   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20'
@@ -97,8 +102,9 @@ const FEATURE_BTN = cn(
 const ICON_BTN = cn(
   'h-11 min-w-[2.75rem] rounded-xl',
   'inline-flex items-center justify-center gap-2.5',
-  'text-slate-500',
+  'text-slate-500 dark:text-slate-400',
   'hover:bg-slate-100/60 hover:text-slate-900 hover:translate-y-[-0.5px]',
+  'dark:hover:bg-slate-700/60 dark:hover:text-slate-100',
   'transition-all duration-300 ease-spring',
   'active:scale-[0.98]',
   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20'
@@ -215,12 +221,12 @@ export function Header() {
 
   return (
     <>
-      <header className={cn(HEADER_HEIGHT_CLASS, 'border-b border-slate-100 bg-white/60 backdrop-blur-3xl shrink-0 shadow-[0_1px_3px_rgba(0,0,0,0.02)] transition-all duration-300 sticky top-0 z-50')} role="banner">
+      <header className={cn(HEADER_HEIGHT_CLASS, 'border-b border-slate-100 dark:border-slate-800 bg-white/60 dark:bg-[hsl(228,14%,9%)]/80 backdrop-blur-3xl shrink-0 shadow-[0_1px_3px_rgba(0,0,0,0.02)] dark:shadow-[0_1px_3px_rgba(0,0,0,0.3)] transition-all duration-300 sticky top-0 z-50')} role="banner">
         <div className="flex items-center h-full w-full">
 
           {/* ──── Logo zone: icon mark + wordmark, Apple-quality sizing ──── */}
           <div className={cn(
-            'shrink-0 flex items-center h-full bg-slate-50/20 border-r border-slate-100/60 transition-all duration-300',
+            'shrink-0 flex items-center h-full bg-slate-50/20 dark:bg-slate-900/20 border-r border-slate-100/60 dark:border-slate-800/60 transition-all duration-300',
             collapsed ? 'w-[5.5rem] justify-center px-0' : 'w-72 justify-start px-5'
           )}>
             <button
@@ -234,7 +240,7 @@ export function Header() {
                 className="shrink-0 rounded-[10px] shadow-sm group-hover:shadow-md group-hover:scale-[1.04] transition-all duration-300"
               />
               {!collapsed && (
-                <span className="text-[15px] font-semibold tracking-[0.08em] text-slate-700 whitespace-nowrap select-none transition-opacity duration-300">
+                <span className="text-[15px] font-semibold tracking-[0.08em] text-slate-700 dark:text-slate-200 whitespace-nowrap select-none transition-opacity duration-300">
                   KUBILITICS
                 </span>
               )}
@@ -249,8 +255,8 @@ export function Header() {
               onClick={() => setSearchOpen(true)}
               className={cn(
                 'flex-1 max-w-[140px] sm:max-w-xs md:max-w-md lg:max-w-xl h-11 px-3 md:px-5 flex items-center gap-3 md:gap-4 rounded-xl',
-                'bg-slate-100/40 border border-slate-100 text-slate-400',
-                'hover:bg-slate-100/60 hover:border-slate-200 hover:text-slate-600',
+                'bg-slate-100/40 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-700/50 text-slate-400 dark:text-slate-500',
+                'hover:bg-slate-100/60 hover:border-slate-200 hover:text-slate-600 dark:hover:bg-slate-700/40 dark:hover:border-slate-600 dark:hover:text-slate-300',
                 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/10',
                 'transition-all duration-300 group press-effect'
               )}
@@ -450,6 +456,9 @@ export function Header() {
                   </TooltipContent>
                 </Tooltip>
 
+                {/* Theme Toggle — Light/Dark/System */}
+                <ThemeToggle />
+
                 {/* Notifications — pending AI actions badge (E-PLAT-003) */}
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -487,7 +496,7 @@ export function Header() {
                       className={cn(
                         'h-12 pl-2 pr-4 rounded-2xl',
                         'inline-flex items-center gap-3 group',
-                        'bg-white border border-slate-200 shadow-sm hover:shadow-md hover:border-primary/20',
+                        'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md hover:border-primary/20 dark:hover:border-primary/30',
                         'hover:translate-y-[-1px] transition-all duration-300 ease-out',
                         'active:scale-[0.98]',
                         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 press-effect'
@@ -500,7 +509,7 @@ export function Header() {
                           AD
                         </AvatarFallback>
                       </Avatar>
-                      <span className="text-xs font-black tracking-widest hidden xl:inline uppercase text-slate-700 group-hover:text-primary transition-colors">Admin</span>
+                      <span className="text-xs font-black tracking-widest hidden xl:inline uppercase text-slate-700 dark:text-slate-200 group-hover:text-primary transition-colors">Admin</span>
                       <ChevronDown className="h-4 w-4 text-slate-400 shrink-0 group-hover:text-primary transition-colors" />
                     </button>
                   </DropdownMenuTrigger>

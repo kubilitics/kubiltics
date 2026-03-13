@@ -83,8 +83,8 @@ function NavItem({ to, icon: Icon, label, count, onNavigate }: NavItemProps) {
       className={cn(
         'flex items-center gap-3 px-3 py-2 rounded-xl text-[13px] font-medium transition-all duration-300 group relative overflow-hidden h-10',
         isActive
-          ? 'text-primary bg-primary/5 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)]'
-          : 'text-slate-800 hover:bg-slate-100/60 hover:text-slate-900 border-transparent hover:translate-x-0.5'
+          ? 'text-primary bg-primary/5 dark:bg-primary/10 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)]'
+          : 'text-slate-800 dark:text-slate-300 hover:bg-slate-100/60 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-slate-100 border-transparent hover:translate-x-0.5'
       )}
     >
       {/* Active Indicator Line */}
@@ -95,13 +95,13 @@ function NavItem({ to, icon: Icon, label, count, onNavigate }: NavItemProps) {
         />
       )}
 
-      <Icon className={cn("h-4 w-4 transition-colors relative z-10", isActive ? "text-primary" : "text-slate-700 group-hover:text-slate-900")} />
+      <Icon className={cn("h-4 w-4 transition-colors relative z-10", isActive ? "text-primary" : "text-slate-700 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-slate-100")} />
       <span className={cn("flex-1 truncate relative z-10", isActive && "font-semibold")}>{label}</span>
       {count !== undefined && (
         <span
           className={cn(
             'text-[10px] font-bold px-2 py-0.5 rounded-lg min-w-[1.25rem] text-center leading-none transition-colors relative z-10',
-            isActive ? 'bg-primary text-primary-foreground' : 'bg-slate-200 text-slate-700 group-hover:bg-slate-300 group-hover:text-slate-900'
+            isActive ? 'bg-primary text-primary-foreground' : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 group-hover:bg-slate-300 dark:group-hover:bg-slate-600 group-hover:text-slate-900 dark:group-hover:text-slate-100'
           )}
         >
           {count}
@@ -131,21 +131,21 @@ function NavGroup({ label, sectionId, children, icon: Icon, isSectionActive = fa
     <div className={cn(
       "flex items-center justify-between w-full px-4 py-2.5 rounded-xl transition-all duration-500 group border h-11",
       isSectionActive
-        ? "bg-white shadow-apple border-slate-200/40 text-primary"
+        ? "bg-white dark:bg-slate-800 shadow-apple border-slate-200/40 dark:border-slate-700/40 text-primary"
         : isOpen
-          ? "bg-slate-100/40 text-slate-900 border-slate-100"
-          : "bg-transparent hover:bg-slate-100/60 text-slate-800 border-transparent hover:border-slate-100"
+          ? "bg-slate-100/40 dark:bg-slate-800/40 text-slate-900 dark:text-slate-100 border-slate-100 dark:border-slate-700/50"
+          : "bg-transparent hover:bg-slate-100/60 dark:hover:bg-slate-800/40 text-slate-800 dark:text-slate-300 border-transparent hover:border-slate-100 dark:hover:border-slate-700/50"
     )}>
       <div className="flex items-center gap-3">
         <div className={cn(
           "p-1.5 rounded-lg transition-colors",
-          isSectionActive ? "bg-primary/5 text-primary" : isOpen ? "bg-slate-200/50 text-slate-900" : "bg-slate-200/50 text-slate-700 group-hover:bg-white group-hover:text-slate-900"
+          isSectionActive ? "bg-primary/5 text-primary" : isOpen ? "bg-slate-200/50 dark:bg-slate-700/50 text-slate-900 dark:text-slate-100" : "bg-slate-200/50 dark:bg-slate-700/50 text-slate-700 dark:text-slate-400 group-hover:bg-white dark:group-hover:bg-slate-700 group-hover:text-slate-900 dark:group-hover:text-slate-100"
         )}>
           <Icon className="h-4 w-4" />
         </div>
         <span className={cn(
           "text-[11px] font-bold tracking-[0.05em] uppercase",
-          isSectionActive ? "text-primary" : "text-slate-800 group-hover:text-slate-950"
+          isSectionActive ? "text-primary" : "text-slate-800 dark:text-slate-300 group-hover:text-slate-950 dark:group-hover:text-slate-100"
         )}>
           {label}
         </span>
@@ -713,7 +713,7 @@ export function Sidebar() {
     return (
       <>
         <aside
-          className="w-[5.5rem] h-full border-r border-slate-100 bg-white/60 backdrop-blur-3xl flex flex-col items-center py-6 gap-5 shrink-0 z-30 shadow-apple"
+          className="w-[5.5rem] h-full border-r border-slate-100 dark:border-slate-800 bg-white/60 dark:bg-[hsl(228,14%,9%)]/80 backdrop-blur-3xl flex flex-col items-center py-6 gap-5 shrink-0 z-30 shadow-apple"
           onMouseEnter={() => setFlyoutOpen(true)}
           onMouseLeave={() => setFlyoutOpen(false)}
           role="navigation"
@@ -774,7 +774,7 @@ export function Sidebar() {
   }
 
   return (
-    <aside className="w-72 h-full flex flex-col border-r border-slate-100 bg-white/40 backdrop-blur-3xl shrink-0 transition-all duration-500" role="navigation" aria-label="Main navigation">
+    <aside className="w-72 h-full flex flex-col border-r border-slate-100 dark:border-slate-800 bg-white/40 dark:bg-[hsl(228,14%,9%)]/80 backdrop-blur-3xl shrink-0 transition-all duration-500" role="navigation" aria-label="Main navigation">
       {fullContent}
     </aside>
   );

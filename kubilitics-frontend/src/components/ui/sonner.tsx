@@ -17,10 +17,13 @@
  * rendering bug that can make fixed-position elements invisible).
  */
 import { Toaster as Sonner, toast } from "sonner";
+import { useThemeStore } from "@/stores/themeStore";
 
 type ToasterProps = React.ComponentProps<typeof Sonner>;
 
 const Toaster = ({ ...props }: ToasterProps) => {
+  const { theme, resolvedTheme } = useThemeStore();
+  const effectiveTheme = theme === 'system' ? resolvedTheme : theme;
   return (
     <>
       {/* Per-type accent stripe + dark mode overrides */}
@@ -148,7 +151,7 @@ const Toaster = ({ ...props }: ToasterProps) => {
 
       <Sonner
         position="bottom-right"
-        theme="light"
+        theme={effectiveTheme}
         offset={24}
         gap={8}
         visibleToasts={5}
