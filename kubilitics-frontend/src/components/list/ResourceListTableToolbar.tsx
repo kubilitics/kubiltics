@@ -7,6 +7,7 @@ import { Filter, FilterX, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ColumnVisibilityDropdown } from './ColumnVisibilityDropdown';
 import { TableFilterProvider } from './TableFilterContext';
+import { TopLoadingBar } from '@/components/loading';
 import type { ColumnVisibilityOption } from '@/hooks/useColumnVisibility';
 import { cn } from '@/lib/utils';
 
@@ -35,6 +36,8 @@ export interface ResourceListTableToolbarProps {
   className?: string;
   /** Optional: table container props (e.g. for keyboard nav) */
   tableContainerProps?: React.HTMLAttributes<HTMLDivElement>;
+  /** When true, shows the top loading bar (primary-colored progress indicator) */
+  isLoading?: boolean;
 }
 
 /**
@@ -56,14 +59,16 @@ export function ResourceListTableToolbar({
   footer,
   className,
   tableContainerProps,
+  isLoading = false,
 }: ResourceListTableToolbarProps) {
   return (
     <div
       className={cn(
-        'rounded-xl border border-border bg-card overflow-hidden shadow-sm',
+        'relative rounded-xl border border-border bg-card overflow-hidden shadow-sm',
         className
       )}
     >
+      <TopLoadingBar isLoading={isLoading} />
       {/* Global filter bar (search, namespace, group by) - always visible */}
       {globalFilterBar != null && (
         <div className="border-b border-border px-4 py-3">

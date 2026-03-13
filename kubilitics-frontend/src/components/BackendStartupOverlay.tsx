@@ -14,6 +14,23 @@ import { BrandLogo } from '@/components/BrandLogo';
  * - UI renders immediately, overlay only appears after delay if backend not ready
  * - Reduces perceived startup time from 30-90s to < 3s
  */
+/**
+ * BrowserStartupBanner — lightweight banner for browser / in-cluster mode.
+ * In Tauri the full BackendStartupOverlay handles startup; in the browser we
+ * just need a brief non-blocking banner that nudges the user when the backend
+ * hasn't been configured yet or is unreachable.
+ */
+export function BrowserStartupBanner() {
+  // In Tauri the full BackendStartupOverlay handles startup — this is browser-only.
+  // Never show in Tauri mode.
+  if (isTauri()) return null;
+
+  // This is a no-op placeholder. The BackendStatusBanner and CircuitBreakerBanner
+  // already handle the "backend unreachable" case for browser mode, so we don't
+  // need a duplicate banner here.
+  return null;
+}
+
 export function BackendStartupOverlay() {
   const [visible, setVisible] = useState(false);
   const [message, setMessage] = useState('Starting backend engine…');

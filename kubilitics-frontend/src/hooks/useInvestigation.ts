@@ -11,6 +11,16 @@ import type {
   LLMToolEvent
 } from '../services/aiService';
 
+// Re-export types so consumers can import from this hook module
+export type {
+  Investigation,
+  InvestigationEvent,
+  InvestigationState,
+  Finding,
+  InvestigationStep,
+  ToolCallRecord,
+};
+
 // ─── Hook state ───────────────────────────────────────────────────────────────
 
 export interface InvestigationStreamState {

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { useKubernetesConfigStore } from '@/stores/kubernetesConfigStore';
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
 import { useClusterStore } from '@/stores/clusterStore';
@@ -256,14 +256,23 @@ export function useK8sResourceList<T extends KubernetesResource>(
         return k8sRequest<ResourceList<T>>(path + (query ? `?${query}` : ''), {}, config);
       },
     enabled: !skipRequests && (useBackend ? true : config.isConnected) && (options?.enabled !== false),
-    // No background polling — resource list pages read from informer-backed
-    // backend cache. Data is pushed via informer watch events; 60s staleTime
-    // means a page load shows cached data immediately with a background refresh
-    // at most once per minute (matching Headlamp/Lens behaviour).
-    refetchInterval: options?.refetchInterval ?? 10_000,
-    staleTime: options?.staleTime ?? 60_000,
-    placeholderData: options?.placeholderData,
-    retry: useBackend ? false : 3,
+    // Poll every 60s as a safety net. Real-time updates come via WebSocket
+    // (useResourceLiveUpdates) which invalidates queries on resource changes.
+    // 10s polling was crushing the backend with 34+ resource types × constant refetches.
+    refetchInterval: options?.refetchInterval ?? 60_000,
+    // 30s staleTime: data served from cache for 30s before being considered stale.
+    // WebSocket invalidation will trigger immediate refetch when resources actually change.
+    // Navigation back to a page shows cached data instantly (no blank screen).
+    staleTime: options?.staleTime ?? 30_000,
+    // 'always' was causing full refetch on every navigation, killing cache benefits.
+    // With staleTime of 30s, 'true' means: refetch only if data is stale.
+    refetchOnMount: true,
+    // Keep previous data while refetching to avoid flash of empty state.
+    // In React Query v5, keepPreviousData is a placeholderData function.
+    placeholderData: options?.placeholderData ?? keepPreviousData,
+    // Retry failed requests with exponential backoff (1s, 2s, 4s).
+    retry: 3,
+    retryDelay: (attempt: number) => Math.min(1000 * 2 ** attempt, 8000),
   });
 }
 
@@ -326,8 +335,10 @@ export function useK8sResourceListPaginated<T extends KubernetesResource>(
       }
       : () => k8sRequest<ResourceList<T>>(path, {}, config),
     enabled: (useBackend ? true : config.isConnected) && (options?.enabled !== false),
-    staleTime: 60_000,
-    retry: useBackend ? false : 3,
+    staleTime: 5_000,
+    refetchOnMount: 'always',
+    retry: 3,
+    retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 8000),
   });
 }
 
@@ -379,6 +390,7 @@ export function usePaginatedResourceList<T extends KubernetesResource>(
     ? (fullListBackend.data?.items ?? [])
     : (fullListDirect.data?.items ?? []);
   const isLoading = useBackend ? fullListBackend.isLoading : fullListDirect.isLoading;
+  const isError = useBackend ? fullListBackend.isError : fullListDirect.isError;
   const refetch = useBackend ? fullListBackend.refetch : fullListDirect.refetch;
   const metadata = useBackend ? fullListBackend.data?.metadata : fullListDirect.data?.metadata;
   const dataUpdatedAt = useBackend ? fullListBackend.dataUpdatedAt : fullListDirect.dataUpdatedAt;
@@ -421,6 +433,7 @@ export function usePaginatedResourceList<T extends KubernetesResource>(
       metadata,
     },
     isLoading,
+    isError,
     refetch,
     pagination,
     pageSize,
@@ -457,8 +470,10 @@ export function useK8sResource<T extends KubernetesResource>(
       ? () => getResource(backendBaseUrl, clusterId!, resourceType, nsForBackend, name) as Promise<T>
       : () => k8sRequest<T>(path, {}, config),
     enabled: !isDemo && (useBackend ? true : config.isConnected) && !!name && (options?.enabled !== false),
-    staleTime: 60_000,
-    retry: useBackend ? false : true,
+    staleTime: 5_000,
+    refetchOnMount: 'always',
+    retry: 3,
+    retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 8000),
   });
 }
 

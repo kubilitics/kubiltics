@@ -25,7 +25,9 @@ export {
 } from './TableColumnHeaderWithFilterAndSort';
 export { AgeCell, type AgeCellProps } from './AgeCell';
 export { TableEmptyState, type TableEmptyStateProps } from './TableEmptyState';
+export { TableErrorState, type TableErrorStateProps } from './TableErrorState';
 export { TableSkeletonRows, type TableSkeletonRowsProps } from './TableSkeletonRows';
+export { ListPageLoadingShell, type ListPageLoadingShellProps } from './ListPageLoadingShell';
 export { NamespaceBadge, type NamespaceBadgeProps } from './NamespaceBadge';
 export {
   ResourceListTableToolbar,

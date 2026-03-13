@@ -141,9 +141,11 @@ export function useResourceCounts(): { counts: ResourceCounts; isLoading: boolea
     isBackendConfigured() && currentClusterId ? currentClusterId : undefined
   );
 
-  // Direct K8s fallback path: only enabled when K8s is connected
-  // Changed from !isBackendConfigured() to isConnected so that missing types are fetched even with backend
-  const countersEnabled = isConnected;
+  // Direct K8s fallback path: only enabled when K8s is connected AND backend is NOT configured.
+  // When backend IS configured, the summary endpoint provides all counts in ONE request.
+  // Previously this fired 46 individual queries even with backend configured — causing
+  // massive connection pool saturation and 34+ req/sec to the cluster.
+  const countersEnabled = isConnected && !isBackendConfigured();
   const directOptions = { ...DIRECT_K8S_QUERY_OPTIONS, enabled: countersEnabled };
 
   // Only fetch the resource types that are commonly shown in sidebar nav with counts

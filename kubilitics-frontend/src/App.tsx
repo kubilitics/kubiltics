@@ -10,10 +10,13 @@ import { backendClusterToCluster } from "@/lib/backendClusterAdapter";
 import { AIAssistant } from "@/components/ai";
 import { Loader2 } from "lucide-react";
 
-// Loading Fallback Component
+// Loading Fallback Component — uses a skeleton that mirrors typical list page layout
+// instead of a blank screen with a spinner, preventing the "white flash" problem.
+import { PageSkeleton } from "@/components/loading";
+
 const PageLoader = () => (
-  <div className="flex items-center justify-center min-h-[60vh] w-full" data-testid="page-loader">
-    <Loader2 className="h-8 w-8 animate-spin text-blue-500 opacity-50" />
+  <div className="p-6 w-full" data-testid="page-loader">
+    <PageSkeleton statCount={4} columnCount={6} rowCount={6} />
   </div>
 );
 
@@ -168,24 +171,27 @@ import { useResourceLiveUpdates } from "./hooks/useResourceLiveUpdates";
 // Layout
 import { AppLayout } from "./components/layout/AppLayout";
 
-// Global React Query defaults: optimistic UI, background refresh, no aggressive polling
-// Headlamp/Lens style: show cached data immediately, refresh silently in background
+// Global React Query defaults: cache-first architecture like Headlamp/Lens.
+// Real-time updates come via WebSocket (useResourceLiveUpdates) which
+// invalidates specific queries when resources change in the cluster.
+// Polling is a 60s safety net, not the primary update mechanism.
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       // Retry with exponential backoff: 1s, 2s, 4s
       retry: 3,
       retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000),
-      // Allow stale data for 60 seconds - show cached data immediately
-      staleTime: 60_000,
-      // Keep data in cache for 5 minutes
+      // 30s stale time: serve cached data immediately on navigation.
+      // WebSocket invalidation triggers refetch when data actually changes.
+      staleTime: 30_000,
+      // Keep data in cache for 5 minutes after last subscriber unmounts
       gcTime: 5 * 60_000,
       // Don't refetch on window focus (prevents refetch storms)
       refetchOnWindowFocus: false,
       // Refetch when connection restored (user reconnects)
       refetchOnReconnect: true,
-      // Don't refetch on mount if data is fresh (within staleTime)
-      refetchOnMount: false,
+      // Only refetch on mount if data is stale (>30s old)
+      refetchOnMount: true,
     },
   },
 });
@@ -287,33 +293,23 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
-// Initial navigation logic. Desktop (Tauri): landing = Connect (cluster list + add cluster). Browser/Helm: Mode Selection -> Connect -> Dashboard. See ClusterConnect.tsx for landing definition.
+// Initial navigation logic.
+// After the unified onboarding flow (Welcome → Features → Mode Selection),
+// the user always has appMode set. This entry point just routes to /connect.
+// ModeSelection page is kept as a standalone route for direct navigation / Settings.
 function ModeSelectionEntryPoint() {
-  const { appMode, activeCluster, setAppMode } = useClusterStore();
+  const { appMode, setAppMode } = useClusterStore();
 
-  // Desktop (Headlamp/Lens style): ALWAYS go to Connect on startup.
-  // P0-A: Do NOT redirect to /home based on a persisted activeCluster — the cluster
-  // must be re-validated against the live backend on every launch. A stale activeCluster
-  // (e.g. from demo mode) would cause all resource hooks to fire against a non-existent
-  // cluster ID (e.g. 'prod-us-east'), triggering CORS/404 errors and opening the circuit.
-  //
-  // FIX TASK-002: setAppMode must be called from useEffect, not during render.
-  // Calling a Zustand setter during render is a state mutation during render — React
-  // Strict Mode calls renders twice and this causes a state update loop that crashes React.
+  // Desktop (Tauri): auto-set desktop mode
   useEffect(() => {
     if (isTauri() && !appMode) setAppMode('desktop');
   }, [appMode, setAppMode]);
 
-  if (isTauri()) {
-    return <Navigate to="/connect" replace />;
-  }
-
-  // Browser/Helm: Let ClusterConnect page handle all cluster validation and navigation
-  // Don't navigate early based on activeCluster - it may be stale and needs backend validation
-  // Browser/Helm: if mode selected but not connected, go to connect page
+  // If mode is set (from onboarding or Tauri), go to connect
   if (appMode) return <Navigate to="/connect" replace />;
 
-  // Default: Choose mode (browser only)
+  // Fallback: if somehow appMode is missing (e.g. cleared storage partially),
+  // show ModeSelection as a safety net
   return <ModeSelection />;
 }
 
@@ -321,13 +317,17 @@ import { GlobalErrorBoundary, RouteErrorBoundary } from "@/components/GlobalErro
 import { ErrorTracker } from "@/lib/errorTracker";
 import { AnalyticsConsentDialog } from "@/components/AnalyticsConsentDialog";
 import { KubeconfigContextDialog } from "@/components/KubeconfigContextDialog";
-import { BackendStartupOverlay } from "@/components/BackendStartupOverlay";
+import { BackendStartupOverlay, BrowserStartupBanner } from "@/components/BackendStartupOverlay";
 import { BackendStatusBanner } from "@/components/layout/BackendStatusBanner";
+import { CircuitBreakerBanner } from "@/components/loading";
 import { BackendClusterValidator } from "@/components/BackendClusterValidator";
 import { useOverviewStream } from "@/hooks/useOverviewStream";
 import { isTauri } from "@/lib/tauri";
 import { useAiAvailableStore } from "@/stores/aiAvailableStore";
 import { invokeWithRetry } from "@/lib/tauri";
+import { ThemeProvider } from "@/providers/ThemeProvider";
+import { useOnboardingStore } from "@/stores/onboardingStore";
+import { WelcomeScreen } from "@/components/onboarding/WelcomeScreen";
 
 // Initialize Error Tracking
 ErrorTracker.init();
@@ -581,6 +581,28 @@ function KubeconfigContextWrapper({ children }: { children: React.ReactNode }) {
   );
 }
 
+/** Gate: unified onboarding flow for first-time users (Welcome → Features → Mode Selection).
+ *  Desktop (Tauri): auto-sets 'desktop' mode and skips onboarding.
+ *  In-cluster / browser: requires completing the full onboarding flow.
+ *  Fallback: if desktop mode fails to set appMode, show WelcomeScreen as recovery. */
+function OnboardingGate({ children }: { children: React.ReactNode }) {
+  const hasCompletedWelcome = useOnboardingStore((s) => s.hasCompletedWelcome);
+  const appMode = useClusterStore((s) => s.appMode);
+
+  if (isTauri()) {
+    // Desktop: skip onboarding if mode is set (normal path)
+    if (appMode) return <>{children}</>;
+    // Fallback: if appMode somehow not set (corrupted state, first launch race),
+    // show onboarding so user can recover instead of seeing a broken app
+    if (!hasCompletedWelcome) return <WelcomeScreen />;
+    return <>{children}</>;
+  }
+
+  // Browser / in-cluster: always require onboarding completion
+  if (!hasCompletedWelcome) return <WelcomeScreen />;
+  return <>{children}</>;
+}
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
@@ -597,8 +619,10 @@ const App = () => (
         <ClusterOverviewStream />
         {/* Global WebSocket for resource events — invalidates list queries */}
         <ResourceLiveUpdates />
+        <ThemeProvider />
         <SyncBackendUrl />
         <SyncAIAvailable />
+        <OnboardingGate>
         <AnalyticsConsentWrapper>
           <AppRouter>
             <AuthLogoutListener>
@@ -606,8 +630,12 @@ const App = () => (
                   useNavigate() — hooks that use Router context cannot be rendered
                   outside the Router provider or they throw with no message. */}
               <KubeconfigContextWrapper>
+                {/* Browser/in-cluster: shows banner if backend is unreachable */}
+                <BrowserStartupBanner />
                 {/* P2-3: Banner at App level so it's visible on /connect and all routes */}
                 <BackendStatusBanner className="rounded-none border-x-0 border-t-0" />
+                {/* P1: Circuit breaker countdown — shows immediately when circuit opens */}
+                <CircuitBreakerBanner compact className="rounded-none border-x-0 border-t-0" />
                 <AIAssistant />
                 <RouteErrorBoundaryWithReset>
                   <Suspense fallback={<PageLoader />}>
@@ -798,6 +826,7 @@ const App = () => (
             </AuthLogoutListener>
           </AppRouter>
         </AnalyticsConsentWrapper>
+        </OnboardingGate>
       </GlobalErrorBoundary>
     </TooltipProvider>
   </QueryClientProvider>

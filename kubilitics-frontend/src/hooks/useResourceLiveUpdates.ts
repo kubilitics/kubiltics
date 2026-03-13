@@ -1,8 +1,7 @@
-import { useCallback } from 'react';
+import { useCallback, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useBackendWebSocket } from './useBackendWebSocket';
-import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
-import { toast } from 'sonner';
+import { useBackendConfigStore } from '@/stores/backendConfigStore';
 
 export interface UseResourceLiveUpdatesOptions {
     clusterId: string | null | undefined;
@@ -38,41 +37,64 @@ export function useResourceLiveUpdates({
     enabled = true,
 }: UseResourceLiveUpdatesOptions) {
     const queryClient = useQueryClient();
-    const stored = useBackendConfigStore((s) => s.backendBaseUrl);
-    const baseUrl = getEffectiveBackendBaseUrl(stored);
+
+    // Throttle: batch rapid-fire WebSocket events and invalidate at most once per 500ms per resource type
+    const pendingInvalidations = useRef<Set<string>>(new Set());
+    const flushTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    const flushInvalidations = useCallback(() => {
+        const pending = pendingInvalidations.current;
+        if (pending.size === 0) return;
+
+        // Invalidate topology once (not per-event)
+        queryClient.invalidateQueries({ queryKey: ['topology', clusterId] });
+
+        // Invalidate each unique resource type
+        for (const normalizedKind of pending) {
+            // FIX: Match the actual queryKey pattern used in useK8sResourceList:
+            // ['backend', 'resources', clusterId, activeProjectId, resourceType, ...]
+            // Use partial matching — invalidate any query starting with ['backend', 'resources', clusterId]
+            // that matches the resource type at index 4.
+            queryClient.invalidateQueries({
+                predicate: (query) => {
+                    const key = query.queryKey;
+                    return (
+                        key[0] === 'backend' &&
+                        key[1] === 'resources' &&
+                        key[2] === clusterId &&
+                        key[4] === normalizedKind
+                    );
+                },
+            });
+        }
+
+        pending.clear();
+        flushTimer.current = null;
+    }, [clusterId, queryClient]);
 
     const onMessage = useCallback(
         (data: any) => {
             if (!clusterId) return;
 
             const type = data.type;
-            const event = data.event; // 'added', 'modified', 'deleted', 'updated'
 
-            if (type === 'resource_update' && event) {
+            if (type === 'resource_update') {
                 const resource = data.resource;
 
-                // 1. Invalidate Topology (all resources affect topology)
-                queryClient.invalidateQueries({ queryKey: ['topology', clusterId] });
-
-                // 2. Invalidate specific Resource Lists
                 if (resource && resource.type) {
-                    const kind = resource.type;
-                    const normalizedKind = normalizeKind(kind);
-                    queryClient.invalidateQueries({
-                        queryKey: ['backend', 'resourceList', baseUrl, clusterId, normalizedKind],
-                    });
+                    const normalizedKind = normalizeKind(resource.type);
+                    pendingInvalidations.current.add(normalizedKind);
                 }
 
-                // 3. Optional: Notification
-                const label = event === 'added' ? 'New resource added' : event === 'modified' ? 'Resource updated' : 'Resource deleted';
-                toast.info(label);
-
+                // Batch invalidations: wait 500ms for more events before flushing
+                if (!flushTimer.current) {
+                    flushTimer.current = setTimeout(flushInvalidations, 500);
+                }
             } else if (type === 'topology_update') {
                 queryClient.invalidateQueries({ queryKey: ['topology', clusterId] });
-                toast.info('Topology updated');
             }
         },
-        [clusterId, baseUrl, queryClient]
+        [clusterId, queryClient, flushInvalidations]
     );
 
     useBackendWebSocket({

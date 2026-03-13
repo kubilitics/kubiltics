@@ -93,6 +93,16 @@ export function isBackendCircuitOpen(clusterId?: string | null): boolean {
   return false;
 }
 
+/** Get the timestamp (ms since epoch) when the circuit will close, or 0 if already closed. */
+export function getBackendCircuitCloseTime(clusterId?: string | null): number {
+  const globalUntil = backendUnavailableUntil > Date.now() ? backendUnavailableUntil : 0;
+  if (clusterId) {
+    const clusterUntil = clusterCircuitMap.get(clusterId) ?? 0;
+    return Math.max(globalUntil, clusterUntil > Date.now() ? clusterUntil : 0);
+  }
+  return globalUntil;
+}
+
 /** Reset circuit so the next Retry can attempt the backend immediately (user-initiated recovery). */
 export function resetBackendCircuit(clusterId?: string | null): void {
   if (clusterId) {
