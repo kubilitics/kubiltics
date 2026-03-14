@@ -4,7 +4,7 @@
  * Provides three layers of filtering:
  * 1. View mode filtering (Cluster/Namespace/Workload/Resource/RBAC)
  * 2. Namespace selection (filter to specific namespaces)
- * 3. Both filters compose: e.g., "Workload" view + "default" namespace
+ * 3. Client-side node cap (MAX_VISIBLE_NODES) to prevent UI freeze
  *
  * Also extracts the full namespace list from the unfiltered data
  * so the namespace picker always has the complete set.
@@ -13,6 +13,13 @@ import { useMemo } from "react";
 import { useClusterTopology } from "@/hooks/useClusterTopology";
 import { transformGraph } from "../utils/transformGraph";
 import type { TopologyResponse, TopologyNode, TopologyEdge, ViewMode } from "../types/topology";
+
+/**
+ * Maximum nodes rendered on the canvas before truncation kicks in.
+ * Beyond this, React Flow + ELK layout cause noticeable jank / UI freeze.
+ * The limit is generous — ELK hybrid layout handles ~250 nodes smoothly.
+ */
+export const MAX_VISIBLE_NODES = 250;
 
 export interface UseTopologyDataParams {
   clusterId: string | null;
@@ -138,7 +145,7 @@ export function useTopologyData({
   const namespacesKey = Array.from(selectedNamespaces).sort().join(",");
 
   // Transform to v2 format and apply both filters
-  const topology = useMemo<TopologyResponse | null>(() => {
+  const result = useMemo<{ response: TopologyResponse; wasTruncated: boolean; totalBeforeCap: number } | null>(() => {
     if (!graph) return null;
     const response = transformGraph(graph, clusterId ?? undefined);
 
@@ -153,10 +160,28 @@ export function useTopologyData({
       effectiveNs
     );
 
-    response.nodes = afterNamespace.nodes;
-    response.edges = afterNamespace.edges;
-    response.metadata.resourceCount = afterNamespace.nodes.length;
-    response.metadata.edgeCount = afterNamespace.edges.length;
+    // Layer 3: Client-side node cap — prevent UI freeze from too many nodes.
+    // Truncate AFTER namespace filtering so the cap applies to the visible set.
+    let finalNodes = afterNamespace.nodes;
+    let finalEdges = afterNamespace.edges;
+    let wasTruncated = false;
+    const totalBeforeCap = finalNodes.length;
+
+    if (finalNodes.length > MAX_VISIBLE_NODES) {
+      wasTruncated = true;
+      // Keep the first MAX_VISIBLE_NODES nodes (they come in a stable order from
+      // the backend). Then prune edges to only those connecting kept nodes.
+      finalNodes = finalNodes.slice(0, MAX_VISIBLE_NODES);
+      const keptIds = new Set(finalNodes.map((n) => n.id));
+      finalEdges = finalEdges.filter(
+        (e) => keptIds.has(e.source) && keptIds.has(e.target)
+      );
+    }
+
+    response.nodes = finalNodes;
+    response.edges = finalEdges;
+    response.metadata.resourceCount = finalNodes.length;
+    response.metadata.edgeCount = finalEdges.length;
     response.metadata.mode = viewMode;
 
     if (selectedNamespaces.size === 1) {
@@ -164,9 +189,13 @@ export function useTopologyData({
     }
     if (resource) response.metadata.focusResource = resource;
 
-    return response;
+    return { response, wasTruncated, totalBeforeCap };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [graph, viewMode, namespacesKey, resource]);
+
+  const topology = result?.response ?? null;
+  const truncated = result?.wasTruncated ?? false;
+  const truncatedTotal = result?.totalBeforeCap ?? 0;
 
   return {
     topology,
@@ -175,5 +204,9 @@ export function useTopologyData({
     isError: !!error,
     error,
     refetch,
+    /** true when the node count exceeded MAX_VISIBLE_NODES and was capped */
+    truncated,
+    /** total node count before truncation (for the warning banner) */
+    truncatedTotal,
   };
 }
