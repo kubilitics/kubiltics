@@ -132,6 +132,11 @@ export function useTopologyData({
   // Cluster and RBAC show cluster-scoped resources (no namespace) so filtering would exclude everything.
   const NS_FILTERABLE_VIEWS = new Set<ViewMode>(["namespace", "workload", "resource"]);
 
+  // Stable key for the namespace Set so React's useMemo dependency comparison
+  // always detects changes. Set objects are compared by reference, which can
+  // cause missed updates when React batches renders or in concurrent mode.
+  const namespacesKey = Array.from(selectedNamespaces).sort().join(",");
+
   // Transform to v2 format and apply both filters
   const topology = useMemo<TopologyResponse | null>(() => {
     if (!graph) return null;
@@ -160,7 +165,8 @@ export function useTopologyData({
     if (resource) response.metadata.focusResource = resource;
 
     return response;
-  }, [graph, viewMode, selectedNamespaces, resource]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [graph, viewMode, namespacesKey, resource]);
 
   return {
     topology,

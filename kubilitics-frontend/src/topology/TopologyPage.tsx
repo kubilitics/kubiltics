@@ -152,7 +152,7 @@ export function TopologyPage() {
   }, [clusterId, setSelectedNamespaces]);
 
   // Sync to store when data arrives
-  useMemo(() => {
+  useEffect(() => {
     if (topology) storeSetData(topology);
   }, [topology, storeSetData]);
 

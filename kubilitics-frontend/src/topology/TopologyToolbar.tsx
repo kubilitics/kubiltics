@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useMemo } from "react";
 import {
   Search, Download, Maximize, ChevronDown, FileJson, FileImage, FileType, Pen,
-  Filter, X, Layers, GitBranch,
+  Filter, X, Layers, GitBranch, Check,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -16,7 +16,6 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ViewModeSelect } from "./components/ViewModeSelect";
 import type { ViewMode, TopologyResponse } from "./types/topology";
@@ -197,16 +196,21 @@ export function TopologyToolbar({
                       <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">User Namespaces</p>
                     </div>
                     <div className="space-y-0.5">
-                      {userNamespaces.map((ns) => (
+                      {userNamespaces.map((ns) => {
+                        const isChecked = selectedNamespaces.has(ns);
+                        return (
                         <div key={ns} role="button" tabIndex={0} onClick={() => toggleNamespace(ns)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleNamespace(ns); } }} className={`flex items-center gap-2.5 cursor-pointer rounded-lg px-2.5 py-2 transition-all ${
-                          selectedNamespaces.has(ns)
+                          isChecked
                             ? "bg-indigo-50/80 border border-indigo-100"
                             : "hover:bg-gray-50 border border-transparent"
                         }`}>
-                          <div className="pointer-events-none"><Checkbox checked={selectedNamespaces.has(ns)} /></div>
-                          <span className={`text-sm font-medium ${selectedNamespaces.has(ns) ? "text-indigo-700" : "text-gray-700"}`}>{ns}</span>
+                          <div className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-sm border transition-colors ${isChecked ? "border-indigo-600 bg-indigo-600 text-white" : "border-gray-300 bg-white"}`}>
+                            {isChecked && <Check className="h-3 w-3" />}
+                          </div>
+                          <span className={`text-sm font-medium ${isChecked ? "text-indigo-700" : "text-gray-700"}`}>{ns}</span>
                         </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
                 )}
@@ -217,16 +221,21 @@ export function TopologyToolbar({
                       <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">System Namespaces</p>
                     </div>
                     <div className="space-y-0.5">
-                      {systemNamespaces.map((ns) => (
+                      {systemNamespaces.map((ns) => {
+                        const isChecked = selectedNamespaces.has(ns);
+                        return (
                         <div key={ns} role="button" tabIndex={0} onClick={() => toggleNamespace(ns)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleNamespace(ns); } }} className={`flex items-center gap-2.5 cursor-pointer rounded-lg px-2.5 py-2 transition-all ${
-                          selectedNamespaces.has(ns)
+                          isChecked
                             ? "bg-indigo-50/80 border border-indigo-100"
                             : "hover:bg-gray-50 border border-transparent"
                         }`}>
-                          <div className="pointer-events-none"><Checkbox checked={selectedNamespaces.has(ns)} /></div>
-                          <span className={`text-sm font-medium ${selectedNamespaces.has(ns) ? "text-indigo-700" : "text-gray-500"}`}>{ns}</span>
+                          <div className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-sm border transition-colors ${isChecked ? "border-indigo-600 bg-indigo-600 text-white" : "border-gray-300 bg-white"}`}>
+                            {isChecked && <Check className="h-3 w-3" />}
+                          </div>
+                          <span className={`text-sm font-medium ${isChecked ? "text-indigo-700" : "text-gray-500"}`}>{ns}</span>
                         </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
                 )}
