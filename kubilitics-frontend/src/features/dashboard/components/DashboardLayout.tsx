@@ -1,7 +1,18 @@
 /**
- * Dashboard — Hero (Health + Pod Status), Resources, Efficiency + Quick actions, Pod health, Alerts at bottom.
+ * Dashboard — The main control surface.
+ *
+ * Layout hierarchy:
+ *   1. Hero band       — Cluster Health + Pod Status Distribution (tallest, most prominent)
+ *   2. Resource shelf   — 3×3 metric tiles inside a subtle container panel
+ *   3. Intelligence row — Resource Intelligence + Quick Actions (equal columns)
+ *   4. Pod health       — Utilisation stacked bar
+ *   5. Alerts           — Warning / critical event stream
+ *
+ * Each section is wrapped in a <section> with a consistent heading style.
+ * Spacing uses an 8px rhythm (gap-6 = 24px between sections).
  */
 import React from "react";
+import { Boxes, Zap, HeartPulse, AlertTriangle } from "lucide-react";
 import { ClusterHealthWidget } from "./ClusterHealthWidget";
 import { PodHealthSummary } from "./PodHealthSummary";
 import { AlertsStrip } from "./AlertsStrip";
@@ -10,15 +21,36 @@ import { PodStatusDistribution } from "./PodStatusDistribution";
 import { ClusterResourceIntelligence } from "@/components/dashboard/ClusterEfficiencyCard";
 import { MetricCardsGrid } from "./MetricCardsGrid";
 
+/* ─── Shared section-header component ─────────────────────────────────────── */
+
+function SectionHeader({
+  icon: Icon,
+  title,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  title: string;
+}) {
+  return (
+    <div className="flex items-center gap-2 mb-4">
+      <div className="h-7 w-7 rounded-lg bg-muted/80 dark:bg-muted/40 flex items-center justify-center">
+        <Icon className="h-3.5 w-3.5 text-muted-foreground" />
+      </div>
+      <h2 className="text-sm font-semibold text-foreground/80 tracking-wide uppercase">
+        {title}
+      </h2>
+    </div>
+  );
+}
+
 export const DashboardLayout = () => {
   return (
     <div className="h-full w-full flex flex-col min-h-0 bg-background text-foreground animate-fade-in">
       <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden p-6 pb-28 scroll-smooth w-full">
-        <div className="w-full space-y-6">
+        <div className="w-full space-y-8">
           {/* Page Title for A11y & Semantics */}
           <h1 className="sr-only">Dashboard</h1>
 
-          {/* Row 1: Hero — Cluster Health | Pod Status Distribution */}
+          {/* ────────────────── Row 1: Hero band ────────────────── */}
           <section className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
             <div className="lg:col-span-4 flex flex-col">
               <ClusterHealthWidget />
@@ -28,30 +60,30 @@ export const DashboardLayout = () => {
             </div>
           </section>
 
-          {/* Row 2: Resource count cards */}
+          {/* ────────────────── Row 2: Resource shelf ────────────────── */}
           <section>
-            <h2 className="text-sm font-medium text-muted-foreground mb-3">Resources</h2>
+            <SectionHeader icon={Boxes} title="Resources" />
             <MetricCardsGrid />
           </section>
 
-          {/* Row 3: Cluster efficiency | Quick actions — 2 columns */}
+          {/* ────────────────── Row 3: Intelligence + Quick Actions ────────────────── */}
           <section className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
             <div className="min-h-[24rem] flex flex-col">
               <ClusterResourceIntelligence />
             </div>
-            <div className="min-h-[24rem] flex flex-col rounded-xl border border-border/60 bg-card p-6">
-              <h2 className="text-sm font-medium text-muted-foreground mb-4 shrink-0">Quick actions</h2>
+            <div className="min-h-[24rem] flex flex-col rounded-2xl border border-border/60 bg-card p-6 shadow-[var(--shadow-1)]">
+              <SectionHeader icon={Zap} title="Quick Actions" />
               <QuickActionsGrid />
             </div>
           </section>
 
-          {/* Row 4: Pod health & utilization */}
+          {/* ────────────────── Row 4: Pod health & utilisation ────────────────── */}
           <section>
-            <h2 className="text-sm font-medium text-muted-foreground mb-2">Pod health & utilization</h2>
+            <SectionHeader icon={HeartPulse} title="Pod Health & Utilization" />
             <PodHealthSummary />
           </section>
 
-          {/* Row 5: Alerts & warnings — bottom */}
+          {/* ────────────────── Row 5: Alerts & warnings ────────────────── */}
           <section>
             <AlertsStrip />
           </section>

@@ -5,7 +5,9 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Activity,
   ArrowRight,
+  Boxes,
   Cpu,
+  FolderKanban,
   Focus,
   HardDrive,
   Loader2,
@@ -48,6 +50,7 @@ import { getProjects, deleteCluster, deleteProject, type BackendProject, type Ba
 import { CreateProjectDialog } from '@/components/projects/CreateProjectDialog';
 import { ProjectCard } from '@/components/projects/ProjectCard';
 import { ProjectSettingsDialog } from '@/components/projects/ProjectSettingsDialog';
+import { cn } from '@/lib/utils';
 
 /* ─── Animation Presets ─── */
 const stagger = {
@@ -61,11 +64,29 @@ const stagger = {
   },
 };
 
-/* ─── Utilization Color Helpers ─── */
-function utilGradient(value: number, baseFrom: string, baseTo: string) {
-  if (value > 80) return 'from-red-500 to-orange-500';
-  if (value > 50) return 'from-amber-500 to-yellow-500';
-  return `from-${baseFrom} to-${baseTo}`;
+/* ─── Section Header (matches DashboardLayout) ─── */
+function SectionHeader({
+  icon: Icon,
+  title,
+  children,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  title: string;
+  children?: React.ReactNode;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-4 mb-5">
+      <div className="flex items-center gap-2.5">
+        <div className="h-7 w-7 rounded-lg bg-muted/80 dark:bg-muted/40 flex items-center justify-center">
+          <Icon className="h-3.5 w-3.5 text-muted-foreground" />
+        </div>
+        <h2 className="text-sm font-semibold text-foreground/80 tracking-wide uppercase">
+          {title}
+        </h2>
+      </div>
+      {children}
+    </div>
+  );
 }
 
 export default function HomePage() {
@@ -154,8 +175,8 @@ export default function HomePage() {
   const memUtil = clusterUtil?.metricsAvailable ? clusterUtil.memoryPercent : null;
 
   /* ─── Color Helpers ─── */
-  const cpuColor = (cpuUtil ?? 0) > 80 ? 'from-red-500 to-orange-500' : (cpuUtil ?? 0) > 50 ? 'from-amber-500 to-yellow-500' : 'from-blue-500 to-indigo-500';
-  const memColor = (memUtil ?? 0) > 80 ? 'from-red-500 to-orange-500' : (memUtil ?? 0) > 50 ? 'from-amber-500 to-yellow-500' : 'from-violet-500 to-purple-500';
+  const cpuBarColor = (cpuUtil ?? 0) > 80 ? 'bg-rose-500' : (cpuUtil ?? 0) > 50 ? 'bg-amber-500' : 'bg-blue-500';
+  const memBarColor = (memUtil ?? 0) > 80 ? 'bg-rose-500' : (memUtil ?? 0) > 50 ? 'bg-amber-500' : 'bg-indigo-500';
 
   /* ─── Cluster card click handler ─── */
   const handleClusterClick = (cluster: BackendCluster) => {
@@ -175,16 +196,12 @@ export default function HomePage() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
         >
-          <div className="flex items-start justify-between gap-6">
-            <div>
-              <h1 className="text-h1 text-slate-900">
-                Welcome back
-              </h1>
-              <p className="text-body-sm text-slate-500 mt-2 max-w-lg">
-                Here's what's happening across your clusters and projects.
-              </p>
-            </div>
-          </div>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">
+            Welcome back
+          </h1>
+          <p className="text-sm text-muted-foreground mt-1.5 max-w-lg">
+            Here's what's happening across your clusters and projects.
+          </p>
         </motion.header>
 
         {/* ════════════ Metrics Strip ════════════ */}
@@ -197,21 +214,24 @@ export default function HomePage() {
           aria-label="Health metrics dashboard"
           aria-live="polite"
         >
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
 
             {/* ── Health Score ── */}
             <motion.div
               variants={stagger.item}
-              className="group metric-card"
+              className={cn(
+                "relative bg-white dark:bg-[hsl(228,14%,11%)]",
+                "border border-slate-200 dark:border-slate-700 rounded-2xl",
+                "shadow p-5",
+              )}
               role="status"
               aria-label={`Health score: ${health.score} out of 100`}
             >
-              <div className="metric-gradient bg-gradient-to-br from-blue-50/40 to-transparent" />
-              <div className="relative flex flex-col items-center text-center gap-3">
+              <div className="flex flex-col items-center text-center gap-3">
                 <HealthRing score={health.score} size={72} strokeWidth={6} aria-valuenow={health.score} aria-valuemin={0} aria-valuemax={100} />
                 <div>
-                  <p className="label-xs">Health</p>
-                  <p className="text-xs text-slate-500 mt-0.5 leading-snug">{health.insight}</p>
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Health</p>
+                  <p className="text-xs text-muted-foreground mt-0.5 leading-snug">{health.insight}</p>
                 </div>
               </div>
             </motion.div>
@@ -219,136 +239,140 @@ export default function HomePage() {
             {/* ── Clusters ── */}
             <motion.div
               variants={stagger.item}
-              className="group metric-card"
+              className={cn(
+                "relative bg-white dark:bg-[hsl(228,14%,11%)]",
+                "border border-slate-200 dark:border-slate-700 rounded-2xl",
+                "shadow p-5 flex items-center gap-4",
+              )}
               role="status"
               aria-label={`${activeClusters} active clusters`}
             >
-              <div className="metric-gradient bg-gradient-to-br from-blue-50/40 to-transparent" />
-              <div className="relative flex items-center gap-4">
-                <div className="icon-box-lg bg-gradient-to-br from-blue-500 to-blue-600 shadow-lg shadow-blue-500/20">
-                  <Server className="h-5 w-5 text-white" />
-                </div>
-                <div className="min-w-0">
-                  <p className="label-xs">Clusters</p>
-                  <p className="text-2xl font-bold tabular-nums text-slate-900 mt-0.5 leading-none">{activeClusters}</p>
-                  <p className="text-xs text-emerald-600 font-semibold mt-1 flex items-center gap-1.5">
-                    <span className="status-dot-live" />
-                    Active
-                  </p>
-                </div>
+              <div className="h-11 w-11 rounded-xl bg-blue-50 dark:bg-blue-500/10 flex items-center justify-center shrink-0">
+                <Server className="h-5 w-5 text-blue-500 dark:text-blue-400" strokeWidth={1.75} />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Clusters</p>
+                <p className="text-2xl font-bold tabular-nums text-foreground mt-0.5 leading-none">{activeClusters}</p>
+                <p className="text-xs text-emerald-600 dark:text-emerald-400 font-medium mt-1 flex items-center gap-1.5">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                  Active
+                </p>
               </div>
             </motion.div>
 
             {/* ── Nodes ── */}
             <motion.div
               variants={stagger.item}
-              className="group metric-card"
+              className={cn(
+                "relative bg-white dark:bg-[hsl(228,14%,11%)]",
+                "border border-slate-200 dark:border-slate-700 rounded-2xl",
+                "shadow p-5 flex items-center gap-4",
+              )}
               role="status"
               aria-label={`${activeNodes} active nodes`}
             >
-              <div className="metric-gradient bg-gradient-to-br from-emerald-50/40 to-transparent" />
-              <div className="relative flex items-center gap-4">
-                <div className="icon-box-lg bg-gradient-to-br from-emerald-500 to-emerald-600 shadow-lg shadow-emerald-500/20">
-                  <Activity className="h-5 w-5 text-white" />
-                </div>
-                <div className="min-w-0">
-                  <p className="label-xs">Nodes</p>
-                  <p className="text-2xl font-bold tabular-nums text-slate-900 mt-0.5 leading-none">{activeNodes}</p>
-                  <p className="text-xs text-slate-500 mt-1">Provisioned</p>
-                </div>
+              <div className="h-11 w-11 rounded-xl bg-teal-50 dark:bg-teal-500/10 flex items-center justify-center shrink-0">
+                <Activity className="h-5 w-5 text-teal-600 dark:text-teal-400" strokeWidth={1.75} />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Nodes</p>
+                <p className="text-2xl font-bold tabular-nums text-foreground mt-0.5 leading-none">{activeNodes}</p>
+                <p className="text-xs text-muted-foreground mt-1">Provisioned</p>
               </div>
             </motion.div>
 
             {/* ── CPU Usage ── */}
             <motion.div
               variants={stagger.item}
-              className="group metric-card"
+              className={cn(
+                "relative bg-white dark:bg-[hsl(228,14%,11%)]",
+                "border border-slate-200 dark:border-slate-700 rounded-2xl",
+                "shadow p-5",
+              )}
               role="status"
               aria-label={cpuUtil != null ? `CPU usage at ${Math.round(cpuUtil)} percent` : 'CPU usage unavailable'}
             >
-              <div className="metric-gradient bg-gradient-to-br from-indigo-50/40 to-transparent" />
-              <div className="relative">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center shadow-md shadow-blue-500/15">
-                    <Cpu className="h-3.5 w-3.5 text-white" />
-                  </div>
-                  <p className="label-xs">CPU Usage</p>
-                  {cpuUtil != null && (
-                    <span className="ml-auto text-sm font-bold tabular-nums text-slate-900">{Math.round(cpuUtil)}%</span>
-                  )}
+              <div className="flex items-center gap-3 mb-3">
+                <div className="h-8 w-8 rounded-lg bg-blue-50 dark:bg-blue-500/10 flex items-center justify-center">
+                  <Cpu className="h-3.5 w-3.5 text-blue-500 dark:text-blue-400" strokeWidth={1.75} />
                 </div>
-                {cpuUtil != null ? (
-                  <>
-                    <div className="progress-track">
-                      <motion.div
-                        initial={{ width: 0 }}
-                        animate={{ width: `${Math.min(100, cpuUtil)}%` }}
-                        transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
-                        className={`progress-fill bg-gradient-to-r ${cpuColor}`}
-                        role="progressbar"
-                        aria-valuenow={Math.round(cpuUtil)}
-                        aria-valuemin={0}
-                        aria-valuemax={100}
-                      />
-                    </div>
-                    <div className="flex justify-between text-xs text-slate-400 mt-1.5 tabular-nums">
-                      <span>{(clusterUtil!.cpuUsedMillicores / 1000).toFixed(1)} Cores</span>
-                      <span>of {(clusterUtil!.cpuTotalMillicores / 1000).toFixed(1)} Cores</span>
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <div className="progress-track" />
-                    <p className="text-xs text-slate-400 mt-1.5">No metrics available</p>
-                  </>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">CPU Usage</p>
+                {cpuUtil != null && (
+                  <span className="ml-auto text-sm font-bold tabular-nums text-foreground">{Math.round(cpuUtil)}%</span>
                 )}
               </div>
+              {cpuUtil != null ? (
+                <>
+                  <div className="h-1.5 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                    <motion.div
+                      initial={{ width: 0 }}
+                      animate={{ width: `${Math.min(100, cpuUtil)}%` }}
+                      transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
+                      className={cn("h-full rounded-full", cpuBarColor)}
+                      role="progressbar"
+                      aria-valuenow={Math.round(cpuUtil)}
+                      aria-valuemin={0}
+                      aria-valuemax={100}
+                    />
+                  </div>
+                  <div className="flex justify-between text-[11px] text-muted-foreground mt-1.5 tabular-nums">
+                    <span>{(clusterUtil!.cpuUsedMillicores / 1000).toFixed(1)} Cores</span>
+                    <span>of {(clusterUtil!.cpuTotalMillicores / 1000).toFixed(1)} Cores</span>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="h-1.5 w-full bg-slate-100 dark:bg-slate-800 rounded-full" />
+                  <p className="text-[11px] text-muted-foreground mt-1.5">No metrics available</p>
+                </>
+              )}
             </motion.div>
 
             {/* ── Memory Usage ── */}
             <motion.div
               variants={stagger.item}
-              className="group metric-card"
+              className={cn(
+                "relative bg-white dark:bg-[hsl(228,14%,11%)]",
+                "border border-slate-200 dark:border-slate-700 rounded-2xl",
+                "shadow p-5",
+              )}
               role="status"
               aria-label={memUtil != null ? `Memory usage at ${Math.round(memUtil)} percent` : 'Memory usage unavailable'}
             >
-              <div className="metric-gradient bg-gradient-to-br from-violet-50/40 to-transparent" />
-              <div className="relative">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-violet-500 to-purple-500 flex items-center justify-center shadow-md shadow-violet-500/15">
-                    <HardDrive className="h-3.5 w-3.5 text-white" />
-                  </div>
-                  <p className="label-xs">Memory Usage</p>
-                  {memUtil != null && (
-                    <span className="ml-auto text-sm font-bold tabular-nums text-slate-900">{Math.round(memUtil)}%</span>
-                  )}
+              <div className="flex items-center gap-3 mb-3">
+                <div className="h-8 w-8 rounded-lg bg-violet-50 dark:bg-violet-500/10 flex items-center justify-center">
+                  <HardDrive className="h-3.5 w-3.5 text-violet-500 dark:text-violet-400" strokeWidth={1.75} />
                 </div>
-                {memUtil != null ? (
-                  <>
-                    <div className="progress-track">
-                      <motion.div
-                        initial={{ width: 0 }}
-                        animate={{ width: `${Math.min(100, memUtil)}%` }}
-                        transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
-                        className={`progress-fill bg-gradient-to-r ${memColor}`}
-                        role="progressbar"
-                        aria-valuenow={Math.round(memUtil)}
-                        aria-valuemin={0}
-                        aria-valuemax={100}
-                      />
-                    </div>
-                    <div className="flex justify-between text-xs text-slate-400 mt-1.5 tabular-nums">
-                      <span>{(clusterUtil!.memoryUsedBytes / (1024 ** 3)).toFixed(1)} GiB</span>
-                      <span>of {(clusterUtil!.memoryTotalBytes / (1024 ** 3)).toFixed(1)} GiB</span>
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <div className="progress-track" />
-                    <p className="text-xs text-slate-400 mt-1.5">No metrics available</p>
-                  </>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Memory Usage</p>
+                {memUtil != null && (
+                  <span className="ml-auto text-sm font-bold tabular-nums text-foreground">{Math.round(memUtil)}%</span>
                 )}
               </div>
+              {memUtil != null ? (
+                <>
+                  <div className="h-1.5 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                    <motion.div
+                      initial={{ width: 0 }}
+                      animate={{ width: `${Math.min(100, memUtil)}%` }}
+                      transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
+                      className={cn("h-full rounded-full", memBarColor)}
+                      role="progressbar"
+                      aria-valuenow={Math.round(memUtil)}
+                      aria-valuemin={0}
+                      aria-valuemax={100}
+                    />
+                  </div>
+                  <div className="flex justify-between text-[11px] text-muted-foreground mt-1.5 tabular-nums">
+                    <span>{(clusterUtil!.memoryUsedBytes / (1024 ** 3)).toFixed(1)} GiB</span>
+                    <span>of {(clusterUtil!.memoryTotalBytes / (1024 ** 3)).toFixed(1)} GiB</span>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="h-1.5 w-full bg-slate-100 dark:bg-slate-800 rounded-full" />
+                  <p className="text-[11px] text-muted-foreground mt-1.5">No metrics available</p>
+                </>
+              )}
             </motion.div>
           </div>
         </motion.section>
@@ -361,22 +385,19 @@ export default function HomePage() {
           transition={{ delay: 0.15, duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
           aria-label="Clusters section"
         >
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-            <div>
-              <h2 className="text-h4 text-slate-900">Clusters</h2>
-              <p className="text-body-sm text-slate-500 mt-1">
-                Connected clusters and their status. Select one to view details.
-              </p>
-            </div>
-          </div>
+          <SectionHeader icon={Server} title="Clusters">
+            <p className="text-xs text-muted-foreground hidden sm:block">
+              Select a cluster to view its dashboard
+            </p>
+          </SectionHeader>
 
           {filteredClusters.length === 0 ? (
             <div className="empty-state-container">
               <div className="empty-state-icon-box">
                 <Server className="h-7 w-7 text-slate-400" aria-hidden="true" />
               </div>
-              <h3 className="text-base font-semibold text-slate-800">No clusters connected</h3>
-              <p className="text-body-sm text-slate-500 mt-1.5 max-w-sm mx-auto">
+              <h3 className="text-base font-semibold text-foreground">No clusters connected</h3>
+              <p className="text-sm text-muted-foreground mt-1.5 max-w-sm mx-auto">
                 Connect your first cluster to start monitoring workloads and health.
               </p>
               <Button
@@ -390,7 +411,7 @@ export default function HomePage() {
             </div>
           ) : (
             <motion.div
-              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-5"
+              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4"
               initial="initial"
               animate="animate"
               variants={stagger.container}
@@ -398,7 +419,17 @@ export default function HomePage() {
               {filteredClusters.map((cluster) => (
                 <motion.div key={cluster.id} variants={stagger.item} className="h-full min-w-0">
                   <div
-                    className="entity-card group"
+                    className={cn(
+                      "group relative flex flex-col h-full",
+                      "bg-white dark:bg-[hsl(228,14%,11%)]",
+                      "border border-slate-200 dark:border-slate-700",
+                      "rounded-2xl overflow-hidden p-5",
+                      "shadow cursor-pointer",
+                      "transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]",
+                      "hover:border-blue-200 dark:hover:border-blue-900",
+                      "hover:shadow-[var(--shadow-3)] hover:-translate-y-[2px]",
+                      "active:translate-y-0 active:shadow",
+                    )}
                     onClick={() => handleClusterClick(cluster)}
                     role="button"
                     tabIndex={0}
@@ -410,58 +441,55 @@ export default function HomePage() {
                     }}
                     aria-label={`Open cluster ${cluster.name}`}
                   >
-                    {/* Hover gradient */}
-                    <div className="absolute inset-0 bg-gradient-to-br from-blue-50/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
-
-                    <div className="relative">
-                      <div className="flex justify-between items-start mb-5">
-                        <div className="icon-box-md bg-gradient-to-br from-blue-500 to-blue-600 shadow-lg shadow-blue-500/20 group-hover:shadow-xl group-hover:shadow-blue-500/30 transition-shadow duration-500">
-                          <Server className="h-5 w-5 text-white" />
-                        </div>
-
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-9 w-9 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 opacity-0 group-hover:opacity-100 transition-all duration-300 press-effect"
-                              onClick={(e) => e.stopPropagation()}
-                              aria-label={`More options for ${cluster.name}`}
-                            >
-                              <MoreVertical className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="rounded-xl border border-slate-200 bg-white p-1.5 shadow-apple-lg min-w-[170px]" onClick={(e) => e.stopPropagation()}>
-                            <DropdownMenuItem
-                              className="text-red-600 focus:text-red-700 focus:bg-red-50 rounded-lg h-9 px-3 text-sm font-medium cursor-pointer"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setClusterToRemove(cluster);
-                              }}
-                            >
-                              <Trash2 className="h-4 w-4 mr-2.5" />
-                              Remove
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                    <div className="flex justify-between items-start mb-4">
+                      <div className="h-11 w-11 rounded-xl bg-blue-50 dark:bg-blue-500/10 flex items-center justify-center">
+                        <Server className="h-5 w-5 text-blue-500 dark:text-blue-400" strokeWidth={1.75} />
                       </div>
 
-                      <div className="flex items-center gap-2 mb-1.5">
-                        <span className="status-dot-live" />
-                        <span className="label-xs text-emerald-600 normal-case tracking-wider truncate">{cluster.provider || 'Core'}</span>
-                      </div>
-                      <h3 className="text-base font-semibold text-slate-900 leading-snug group-hover:text-blue-700 transition-colors duration-300 line-clamp-2 break-all" title={cluster.name}>
-                        {cluster.name}
-                      </h3>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted opacity-0 group-hover:opacity-100 transition-all duration-300 press-effect"
+                            onClick={(e) => e.stopPropagation()}
+                            aria-label={`More options for ${cluster.name}`}
+                          >
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="rounded-xl border border-border bg-popover p-1.5 shadow-lg min-w-[170px]" onClick={(e) => e.stopPropagation()}>
+                          <DropdownMenuItem
+                            className="text-destructive focus:text-destructive focus:bg-destructive/10 rounded-lg h-9 px-3 text-sm font-medium cursor-pointer"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setClusterToRemove(cluster);
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4 mr-2.5" />
+                            Remove
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
 
-                    <div className="relative mt-auto pt-5 flex items-end justify-between">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 shrink-0" />
+                      <span className="text-[11px] font-medium text-emerald-600 dark:text-emerald-400 uppercase tracking-wider truncate">
+                        {cluster.provider || 'Core'}
+                      </span>
+                    </div>
+                    <h3 className="text-base font-semibold text-foreground leading-snug group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors duration-300 line-clamp-2 break-all" title={cluster.name}>
+                      {cluster.name}
+                    </h3>
+
+                    <div className="mt-auto pt-4 flex items-end justify-between border-t border-border/50 mt-4">
                       <div className="flex flex-col gap-0.5">
-                        <span className="label-xs">Nodes</span>
-                        <span className="text-xl font-bold tabular-nums text-slate-900">{cluster.node_count ?? 0}</span>
+                        <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Nodes</span>
+                        <span className="text-xl font-bold tabular-nums text-foreground">{cluster.node_count ?? 0}</span>
                       </div>
-                      <div className="h-9 w-9 rounded-full bg-slate-100 flex items-center justify-center shrink-0 group-hover:bg-blue-600 group-hover:shadow-lg group-hover:shadow-blue-500/25 transition-all duration-500 ease-out">
-                        <ArrowRight className="h-4 w-4 text-slate-400 group-hover:text-white transition-colors duration-300" />
+                      <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center shrink-0 group-hover:bg-blue-500 transition-colors duration-300">
+                        <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-white transition-colors duration-300" />
                       </div>
                     </div>
                   </div>
@@ -479,52 +507,46 @@ export default function HomePage() {
           transition={{ delay: 0.2, duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
           aria-label="Projects section"
         >
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-            <div>
-              <h2 className="text-h4 text-slate-900">Projects</h2>
-              <p className="text-body-sm text-slate-500 mt-1">
-                Logical scopes for workloads and policy. Open a project to see its dashboard.
-              </p>
-            </div>
+          <SectionHeader icon={FolderKanban} title="Projects">
             <CreateProjectDialog>
-              <Button size="default" className="rounded-xl font-semibold shrink-0 shadow-sm press-effect" aria-label="Create a new project">
-                <Plus className="h-4 w-4 mr-2" />
+              <Button size="sm" className="rounded-xl font-semibold shrink-0 shadow-sm press-effect h-8 px-3 text-xs" aria-label="Create a new project">
+                <Plus className="h-3.5 w-3.5 mr-1.5" />
                 New project
               </Button>
             </CreateProjectDialog>
-          </div>
+          </SectionHeader>
 
           {isProjectsLoading ? (
-            <div className="section-card py-20 flex items-center justify-center">
+            <div className="rounded-2xl border border-border bg-card/50 py-20 flex items-center justify-center">
               <div className="flex flex-col items-center gap-3">
-                <Loader2 className="h-8 w-8 animate-spin text-slate-400" aria-label="Loading projects" />
-                <p className="text-body-sm text-slate-400">Loading projects...</p>
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" aria-label="Loading projects" />
+                <p className="text-sm text-muted-foreground">Loading projects...</p>
               </div>
             </div>
           ) : circuitOpen ? (
-            <div className="rounded-[var(--card-radius)] border border-amber-200 bg-amber-50/50 py-16 px-6 text-center">
-              <div className="h-14 w-14 rounded-2xl bg-amber-100 flex items-center justify-center mx-auto mb-4">
-                <Activity className="h-7 w-7 text-amber-600" aria-hidden="true" />
+            <div className="rounded-2xl border border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/20 py-16 px-6 text-center">
+              <div className="h-14 w-14 rounded-2xl bg-amber-100 dark:bg-amber-500/10 flex items-center justify-center mx-auto mb-4">
+                <Activity className="h-7 w-7 text-amber-600 dark:text-amber-400" aria-hidden="true" />
               </div>
-              <h3 className="text-base font-semibold text-slate-800">Backend connection suspended</h3>
-              <p className="text-body-sm text-slate-500 mt-1.5 max-w-sm mx-auto">
+              <h3 className="text-base font-semibold text-foreground">Backend connection suspended</h3>
+              <p className="text-sm text-muted-foreground mt-1.5 max-w-sm mx-auto">
                 Connectivity is currently throttled due to recent failures.
                 Project data will reappear automatically once the connection is restored.
               </p>
             </div>
           ) : isProjectsError ? (
-            <div className="rounded-[var(--card-radius)] border border-red-200 bg-red-50/50 py-16 px-6 text-center">
-              <div className="h-14 w-14 rounded-2xl bg-red-100 flex items-center justify-center mx-auto mb-4">
-                <Focus className="h-7 w-7 text-red-600" aria-hidden="true" />
+            <div className="rounded-2xl border border-red-200 dark:border-red-800 bg-red-50/50 dark:bg-red-950/20 py-16 px-6 text-center">
+              <div className="h-14 w-14 rounded-2xl bg-red-100 dark:bg-red-500/10 flex items-center justify-center mx-auto mb-4">
+                <Focus className="h-7 w-7 text-red-600 dark:text-red-400" aria-hidden="true" />
               </div>
-              <h3 className="text-base font-semibold text-slate-800">Query failed</h3>
-              <p className="text-body-sm text-slate-500 mt-1.5 max-w-sm mx-auto">
+              <h3 className="text-base font-semibold text-foreground">Query failed</h3>
+              <p className="text-sm text-muted-foreground mt-1.5 max-w-sm mx-auto">
                 {(projectsError as any)?.message || "Internal system sync failed"}
               </p>
             </div>
           ) : projects.length > 0 ? (
             <motion.div
-              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-5"
+              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4"
               initial="initial"
               animate="animate"
               variants={stagger.container}
@@ -543,10 +565,10 @@ export default function HomePage() {
           ) : (
             <div className="empty-state-container">
               <div className="empty-state-icon-box">
-                <Focus className="h-7 w-7 text-slate-400" aria-hidden="true" />
+                <Focus className="h-7 w-7 text-muted-foreground" aria-hidden="true" />
               </div>
-              <h3 className="text-base font-semibold text-slate-800">No projects yet</h3>
-              <p className="text-body-sm text-slate-500 mt-1.5 max-w-sm mx-auto">
+              <h3 className="text-base font-semibold text-foreground">No projects yet</h3>
+              <p className="text-sm text-muted-foreground mt-1.5 max-w-sm mx-auto">
                 Create a project to group workloads and apply governance.
               </p>
               <CreateProjectDialog>
@@ -562,18 +584,18 @@ export default function HomePage() {
 
       {/* ════════════ Dialogs ════════════ */}
       <AlertDialog open={!!clusterToRemove} onOpenChange={(open) => !open && setClusterToRemove(null)}>
-        <AlertDialogContent className="rounded-2xl border border-slate-200 bg-white p-8 shadow-apple-xl max-w-md">
+        <AlertDialogContent className="rounded-2xl border border-border bg-card p-8 shadow-lg max-w-md">
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-xl font-bold text-slate-900">Remove cluster?</AlertDialogTitle>
-            <AlertDialogDescription className="text-body-sm text-slate-500 mt-2 leading-relaxed">
-              This will unregister <strong className="text-slate-700">{clusterToRemove?.name ?? ''}</strong> from Kubilitics. The cluster will be
+            <AlertDialogTitle className="text-xl font-bold text-foreground">Remove cluster?</AlertDialogTitle>
+            <AlertDialogDescription className="text-sm text-muted-foreground mt-2 leading-relaxed">
+              This will unregister <strong className="text-foreground">{clusterToRemove?.name ?? ''}</strong> from Kubilitics. The cluster will be
               removed from the app and from any projects. This does not modify your kubeconfig file.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="mt-6 gap-3">
             <AlertDialogCancel
               disabled={deleteClusterMutation.isPending}
-              className="rounded-xl h-10 px-5 font-medium border-slate-200 hover:bg-slate-50 press-effect"
+              className="rounded-xl h-10 px-5 font-medium border-border hover:bg-muted press-effect"
             >
               Cancel
             </AlertDialogCancel>
@@ -592,23 +614,23 @@ export default function HomePage() {
       </AlertDialog>
 
       <AlertDialog open={!!projectToRemove} onOpenChange={(open) => !open && setProjectToRemove(null)}>
-        <AlertDialogContent className="rounded-2xl border border-slate-200 bg-white p-8 shadow-apple-xl max-w-md">
+        <AlertDialogContent className="rounded-2xl border border-border bg-card p-8 shadow-lg max-w-md">
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-xl font-bold text-slate-900">Delete project?</AlertDialogTitle>
-            <AlertDialogDescription className="text-body-sm text-slate-500 mt-2 leading-relaxed">
-              This action is <span className="text-red-600 font-semibold">irreversible</span>.
-              All cluster associations and resource links for <strong className="text-slate-700">{projectToRemove?.name}</strong> will be permanently deleted.
+            <AlertDialogTitle className="text-xl font-bold text-foreground">Delete project?</AlertDialogTitle>
+            <AlertDialogDescription className="text-sm text-muted-foreground mt-2 leading-relaxed">
+              This action is <span className="text-destructive font-semibold">irreversible</span>.
+              All cluster associations and resource links for <strong className="text-foreground">{projectToRemove?.name}</strong> will be permanently deleted.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="mt-6 gap-3">
             <AlertDialogCancel
-              className="rounded-xl h-10 px-5 font-medium border-slate-200 hover:bg-slate-50 press-effect"
+              className="rounded-xl h-10 px-5 font-medium border-border hover:bg-muted press-effect"
               disabled={deleteProjectMutation.isPending}
             >
               Cancel
             </AlertDialogCancel>
             <Button
-              className="rounded-xl h-10 px-5 font-medium bg-red-600 hover:bg-red-700 text-white shadow-sm press-effect"
+              className="rounded-xl h-10 px-5 font-medium bg-destructive hover:bg-destructive/90 text-destructive-foreground shadow-sm press-effect"
               onClick={() => projectToRemove && deleteProjectMutation.mutate(projectToRemove)}
               disabled={deleteProjectMutation.isPending}
             >
