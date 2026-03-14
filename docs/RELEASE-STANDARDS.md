@@ -466,7 +466,7 @@ GitHub does not allow deleting releases in public repos without admin access. If
 | Merge minor/patch PRs via batch | Dependabot groups them by ecosystem — merge the grouped PR, not individual ones |
 | Don't auto-merge major bumps | Always review breaking changes before merging |
 
-**Current Dependabot targets (as of v0.1.1):**
+**Current Dependabot targets (as of v1.0.0):**
 
 | Ecosystem | Directory | Cadence |
 |---|---|---|

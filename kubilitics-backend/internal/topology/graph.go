@@ -36,8 +36,9 @@ type Graph struct {
 	PodSpecCache  map[string]corev1.PodSpec         // "namespace/name" -> cached pod spec from discovery phase
 	LayoutSeed    string
 	// MaxNodes caps the number of nodes (C1.4); 0 = no limit. When reached, Truncated is set and no more nodes are added.
-	MaxNodes   int
-	Truncated  bool
+	MaxNodes      int
+	Truncated     bool
+	KindTruncated map[string]bool // tracks which resource kinds were rejected due to truncation
 }
 
 // NewGraph creates a new empty graph. Optionally pass maxNodes > 0 to cap node count (C1.4).
@@ -55,6 +56,7 @@ func NewGraph(maxNodes int) *Graph {
 		nodeExtra:     make(map[string]map[string]interface{}),
 		PodSpecCache:  make(map[string]corev1.PodSpec),
 		MaxNodes:      maxNodes,
+		KindTruncated: make(map[string]bool),
 	}
 }
 
@@ -101,6 +103,7 @@ func (g *Graph) AddNode(node models.TopologyNode) {
 	defer g.mu.Unlock()
 	if g.MaxNodes > 0 && len(g.Nodes) >= g.MaxNodes {
 		g.Truncated = true
+		g.KindTruncated[node.Kind] = true
 		return
 	}
 	if _, exists := g.NodeMap[node.ID]; exists {
@@ -175,9 +178,18 @@ func (g *Graph) ToTopologyGraph(clusterID string) models.TopologyGraph {
 	now := time.Now().UTC().Format("2006-01-02T15:04:05Z07:00")
 	warnings := []models.GraphWarning{}
 	if g.Truncated {
+		msg := "Graph was truncated at max nodes; use ?namespace= to scope or increase topology_max_nodes"
+		if len(g.KindTruncated) > 0 {
+			kinds := make([]string, 0, len(g.KindTruncated))
+			for k := range g.KindTruncated {
+				kinds = append(kinds, k)
+			}
+			sort.Strings(kinds)
+			msg += fmt.Sprintf(". Truncated kinds: %s", fmt.Sprintf("%v", kinds))
+		}
 		warnings = append(warnings, models.GraphWarning{
 			Code:    "TOPOLOGY_TRUNCATED",
-			Message: "Graph was truncated at max nodes; use ?namespace= to scope or increase topology_max_nodes",
+			Message: msg,
 		})
 	}
 	return models.TopologyGraph{

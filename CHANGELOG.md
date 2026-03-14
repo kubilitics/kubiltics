@@ -5,6 +5,66 @@ All notable changes to Kubilitics will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v1.0.0] - 2026-03-14
+
+### Highlights
+
+Kubilitics v1.0.0 is the first stable release — a major milestone with 67 commits of new features, design overhaul, and production hardening since v0.1.3.
+
+### Added
+
+**Topology v2 Engine**
+- Complete topology v2 visualization engine with React Flow, ELK layout, and semantic zoom
+- Five view modes: Cluster, Namespace, Workload, Resource-centric (BFS), and RBAC
+- Namespace selector and view mode filtering for scoped exploration
+- Resource-centric deep linking with configurable traversal depth
+- Full-resolution PNG/SVG/JSON/CSV/Draw.io export with descriptive filenames
+- Relationship inference for ConfigMaps, Secrets, ServiceAccounts, and RBAC resources
+- Per-kind truncation tracking for large clusters with warning messages
+- Performance benchmarks and determinism tests for topology builds
+
+**Design System Overhaul**
+- Unified Apple-level design system with premium light theme
+- Complete dark mode system with system preference detection and manual toggle
+- Loading states, micro-interactions, and skeleton loaders across all pages
+- WCAG accessibility audit with centralized design tokens
+- Redesigned overview pages with consistent UX and human-friendly labels
+- Redesigned ModeSelection and HomePage with cluster metrics (CPU/Memory)
+
+**UX Improvements**
+- Simulated Linux shell terminal replacing raw shell access
+- Fast mutation polling for real-time resource updates
+- List/detail page UX enhancements with reusable components
+- Settings: Appearance, Keyboard Shortcuts, and About sections
+- Auto-mode detection for streamlined onboarding (browser vs desktop)
+- Global search redesign with namespace filter integration
+- Sidebar resource counts for all resource types
+- DetailPodTable with group actions integrated across all detail pages
+
+**Performance**
+- Three-tier layout strategy preventing page freeze on large topologies
+- Adaptive ELK + category grid hybrid layout for all topology views
+- Adaptive export scaling for large namespaces
+
+### Fixed
+
+- Default browser users to desktop mode, fixing broken /connect page
+- Namespace filter double-toggle caused by label+Radix Checkbox interaction
+- CPU values display with 3 decimal precision instead of stripped zeros
+- Namespace selection persistence in URL for back-button navigation
+- Never allow empty namespace set preventing all-namespaces freeze
+- Default to "default" namespace (like kubectl) to avoid loading all resources
+- Backend topology: import cycle in v2 benchmark tests resolved
+- Backend topology: per-kind truncation tracking (KindTruncated field) added to Graph
+
+### Desktop
+
+- Version strings synchronized across tauri.conf.json (1.0.0), Cargo.toml (1.0.0), and package.json (1.0.0)
+- URL/port configuration validated: backend (819), AI (8081), frontend dev (5173) all correctly wired
+- CSP policy verified for all localhost connections
+- Sidecar binary management (backend + AI + kcli) verified
+- Tauri updater endpoint configured at releases.kubilitics.dev
+
 ## [v0.1.3] - 2026-03-07
 
 ### Fixed
@@ -116,7 +176,7 @@ Your `~/.kube/config` is auto-detected on first launch.
 **Helm (In-Cluster)**
 ```bash
 helm install kubilitics deploy/helm/kubilitics \
-  --set image.tag=0.1.1 \
+  --set image.tag=1.0.0 \
   --namespace kubilitics --create-namespace
 ```
 

@@ -140,7 +140,7 @@ These values **must** be identical across all files before tagging a release.
 | Go toolchain | `1.25.7` | `kubilitics-backend/Dockerfile` `ARG GO_VERSION` · `backend-ci.yml` · `kcli-ci.yml` · `release.yml` |
 | Alpine image | `3.21` | `kubilitics-backend/Dockerfile` `ARG ALPINE_VERSION` |
 | kubectl in Docker | `v1.33.3` | `kubilitics-backend/Dockerfile` `ARG KUBECTL_VERSION` |
-| App version | `0.1.3` | `kubilitics-frontend/package.json` · `kubilitics-desktop/src-tauri/tauri.conf.json` · `CHANGELOG.md` |
+| App version | `1.0.0` | `kubilitics-frontend/package.json` · `kubilitics-desktop/src-tauri/tauri.conf.json` · `CHANGELOG.md` |
 
 > **Rule — Go version cascade:** `kcli/go.mod` drives the minimum (`go 1.25.0` due to `k8s.io/api v0.35.x`). The Dockerfile and all CI `GO_VERSION` pins must be ≥ this value. Check with:
 > ```bash
@@ -157,7 +157,7 @@ Set your shell variables first — every snippet below uses them:
 ```bash
 # Repo root
 ROOT="$(git rev-parse --show-toplevel)"
-VERSION="0.1.3"   # no "v" prefix
+VERSION="1.0.0"   # no "v" prefix
 ```
 
 ---

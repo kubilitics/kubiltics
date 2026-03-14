@@ -19,7 +19,7 @@ func BuildGraph(ctx context.Context, opts v2.Options, bundle *v2.ResourceBundle)
 		return v2.MockTopologyResponse(opts.ClusterID, opts.ClusterID, opts.Mode), nil
 	}
 	start := time.Now()
-	nodes := nodesFromBundle(bundle)
+	nodes := NodesFromBundle(bundle)
 	edges, err := defaultRegistry.MatchAll(ctx, bundle)
 	if err != nil {
 		return nil, err
@@ -47,7 +47,8 @@ func BuildGraph(ctx context.Context, opts v2.Options, bundle *v2.ResourceBundle)
 	}, nil
 }
 
-func nodesFromBundle(b *v2.ResourceBundle) []v2.TopologyNode {
+// NodesFromBundle converts a ResourceBundle into a flat slice of TopologyNodes.
+func NodesFromBundle(b *v2.ResourceBundle) []v2.TopologyNode {
 	var out []v2.TopologyNode
 	for i := range b.Pods {
 		p := &b.Pods[i]

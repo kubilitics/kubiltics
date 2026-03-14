@@ -1,6 +1,6 @@
 # Kubilitics Deployment Guide
 
-Step-by-step instructions for deploying Kubilitics v0.1.1 across all supported modes.
+Step-by-step instructions for deploying Kubilitics v1.0.0 across all supported modes.
 
 ---
 
@@ -202,7 +202,7 @@ replicaCount: 1
 
 image:
   repository: ghcr.io/kubilitics/kubilitics-backend
-  tag: "0.1.1"
+  tag: "1.0.0"
   pullPolicy: IfNotPresent
 
 # Service configuration
@@ -235,7 +235,7 @@ ai:
   enabled: false
   image:
     repository: ghcr.io/kubilitics/kubilitics-ai
-    tag: "0.1.1"
+    tag: "1.0.0"
 
 # PostgreSQL (optional - defaults to SQLite)
 postgresql:
@@ -303,13 +303,13 @@ For running outside Kubernetes with Docker.
 
 ```bash
 # Backend
-docker build -t kubilitics-backend:0.1.1 -f kubilitics-backend/Dockerfile .
+docker build -t kubilitics-backend:1.0.0 -f kubilitics-backend/Dockerfile .
 
 # AI backend (optional)
-docker build -t kubilitics-ai:0.1.1 -f kubilitics-ai/Dockerfile .
+docker build -t kubilitics-ai:1.0.0 -f kubilitics-ai/Dockerfile .
 
 # Frontend
-docker build -t kubilitics-frontend:0.1.1 -f kubilitics-frontend/Dockerfile .
+docker build -t kubilitics-frontend:1.0.0 -f kubilitics-frontend/Dockerfile .
 ```
 
 ### Step 2: Run
@@ -321,7 +321,7 @@ docker run -d \
   -v $HOME/.kube/config:/root/.kube/config:ro \
   -e KUBILITICS_PORT=819 \
   -e KUBILITICS_LOG_LEVEL=info \
-  kubilitics-backend:0.1.1
+  kubilitics-backend:1.0.0
 ```
 
 ---
@@ -448,7 +448,7 @@ lsof -ti :819 | xargs kill -9
 
 ### Namespace switching doesn't work
 
-1. Ensure you're using kcli v0.1.1 (rebuild: `cd kcli && go build -o bin/kcli ./cmd/kcli`)
+1. Ensure you're using kcli v1.0.0 (rebuild: `cd kcli && go build -o bin/kcli ./cmd/kcli`)
 2. Restart the backend after rebuilding kcli
 3. Close and reopen the shell panel
 
@@ -477,7 +477,7 @@ rm kubilitics.db kubilitics.db-shm kubilitics.db-wal
 
 | Version | Date | Notes |
 |---------|------|-------|
-| 0.1.1 | 2026-03-02 | Production release: namespace switching, shell stability, UI hardening |
+| 1.0.0 | 2026-03-02 | Production release: namespace switching, shell stability, UI hardening |
 
 ---
 

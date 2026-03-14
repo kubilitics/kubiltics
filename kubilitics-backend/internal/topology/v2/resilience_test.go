@@ -1,16 +1,17 @@
-package v2
+package v2_test
 
 import (
 	"context"
 	"testing"
 
+	v2 "github.com/kubilitics/kubilitics-backend/internal/topology/v2"
 	"github.com/kubilitics/kubilitics-backend/internal/topology/v2/builder"
 	"github.com/kubilitics/kubilitics-backend/internal/topology/v2/relationships"
 )
 
 // TestPartialData_NoSecrets tests topology builds correctly when Secrets API fails.
 func TestPartialData_NoSecrets(t *testing.T) {
-	bundle := NewTestFixtureBundle()
+	bundle := v2.NewTestFixtureBundle()
 	bundle.Secrets = nil // Simulate Secrets API returning 403
 
 	ctx := context.Background()
@@ -31,23 +32,23 @@ func TestPartialData_NoSecrets(t *testing.T) {
 	}
 
 	// Health enricher should handle nil gracefully
-	enricher := &HealthEnricher{}
+	enricher := &v2.HealthEnricher{}
 	enricher.EnrichNodes(nodes, bundle) // Should not panic
 }
 
 // TestPartialData_NoMetrics tests topology builds correctly when metrics-server is unavailable.
 func TestPartialData_NoMetrics(t *testing.T) {
-	bundle := NewTestFixtureBundle()
+	bundle := v2.NewTestFixtureBundle()
 	ctx := context.Background()
 	registry := relationships.NewDefaultRegistry()
 	edges, _ := registry.MatchAll(ctx, bundle)
 	nodes := builder.NodesFromBundle(bundle)
 
 	// MetricsEnricher with no pod metrics (simulating metrics-server unavailable)
-	enricher := &MetricsEnricher{}
+	enricher := &v2.MetricsEnricher{}
 	enricher.EnrichNodes(nodes, bundle) // Should not panic
 
-	response := &TopologyResponse{
+	response := &v2.TopologyResponse{
 		Nodes: nodes,
 		Edges: edges,
 	}
@@ -59,7 +60,7 @@ func TestPartialData_NoMetrics(t *testing.T) {
 
 // TestPartialData_NoNodes tests topology builds correctly when Nodes API times out.
 func TestPartialData_NoNodes(t *testing.T) {
-	bundle := NewTestFixtureBundle()
+	bundle := v2.NewTestFixtureBundle()
 	bundle.Nodes = nil // Simulate Node API timeout
 
 	ctx := context.Background()
@@ -84,7 +85,7 @@ func TestPartialData_NoNodes(t *testing.T) {
 
 // TestPartialData_EmptyBundle tests behavior with completely empty ResourceBundle.
 func TestPartialData_EmptyBundle(t *testing.T) {
-	bundle := &ResourceBundle{}
+	bundle := &v2.ResourceBundle{}
 
 	ctx := context.Background()
 	registry := relationships.NewDefaultRegistry()
@@ -103,15 +104,15 @@ func TestPartialData_EmptyBundle(t *testing.T) {
 	}
 
 	// Enrichers should handle empty gracefully
-	healthEnricher := &HealthEnricher{}
+	healthEnricher := &v2.HealthEnricher{}
 	healthEnricher.EnrichNodes(nodes, bundle)
 
-	metricsEnricher := &MetricsEnricher{}
+	metricsEnricher := &v2.MetricsEnricher{}
 	metricsEnricher.EnrichNodes(nodes, bundle)
 
 	// ViewFilter should handle nil response
-	filter := &ViewFilter{}
-	result := filter.Apply(nil, Options{Mode: ViewModeNamespace})
+	filter := &v2.ViewFilter{}
+	result := filter.Filter(nil, v2.Options{Mode: v2.ViewModeNamespace})
 	if result != nil {
 		t.Fatal("expected nil result for nil response input")
 	}
@@ -119,9 +120,9 @@ func TestPartialData_EmptyBundle(t *testing.T) {
 
 // TestPartialData_NilBundle tests that all components handle nil bundle gracefully.
 func TestPartialData_NilBundle(t *testing.T) {
-	healthEnricher := &HealthEnricher{}
+	healthEnricher := &v2.HealthEnricher{}
 	healthEnricher.EnrichNodes(nil, nil) // Should not panic
 
-	metricsEnricher := &MetricsEnricher{}
+	metricsEnricher := &v2.MetricsEnricher{}
 	metricsEnricher.EnrichNodes(nil, nil) // Should not panic
 }

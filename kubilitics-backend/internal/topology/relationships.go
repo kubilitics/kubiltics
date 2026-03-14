@@ -673,20 +673,37 @@ func (ri *RelationshipInferencer) inferNetworkRelationships() error {
 }
 
 // inferStorageRelationships infers storage relationships.
-// Uses O(1) name index lookups for PV and StorageClass resolution.
+// Uses nodeExtra data when available (test mode / pre-cached), falls back to K8s API.
 func (ri *RelationshipInferencer) inferStorageRelationships(ctx context.Context) error {
-	// PVC -> PV
+	// PVC -> PV and PVC -> StorageClass
 	pvcs := ri.graph.GetNodesByType("PersistentVolumeClaim")
 
 	for _, pvc := range pvcs {
-		k8sPVC, err := ri.engine.client.Clientset.CoreV1().PersistentVolumeClaims(pvc.Namespace).Get(ctx, pvc.Name, metav1.GetOptions{})
-		if err != nil {
-			continue
+		var volumeName string
+		var storageClassName string
+
+		// Try nodeExtra first (works without K8s client)
+		extra := ri.graph.GetNodeExtra(pvc.ID)
+		if extra != nil {
+			volumeName, _ = extra["volumeName"].(string)
+			storageClassName, _ = extra["storageClassName"].(string)
 		}
 
-		if k8sPVC.Spec.VolumeName != "" {
-			// PVs are cluster-scoped (namespace="")
-			pv := ri.graph.GetNodeByName("", "PersistentVolume", k8sPVC.Spec.VolumeName)
+		// Fall back to live K8s API if available and extra didn't provide data
+		if (volumeName == "" || storageClassName == "") && ri.engine != nil && ri.engine.client != nil {
+			k8sPVC, err := ri.engine.client.Clientset.CoreV1().PersistentVolumeClaims(pvc.Namespace).Get(ctx, pvc.Name, metav1.GetOptions{})
+			if err == nil {
+				if volumeName == "" {
+					volumeName = k8sPVC.Spec.VolumeName
+				}
+				if storageClassName == "" && k8sPVC.Spec.StorageClassName != nil {
+					storageClassName = *k8sPVC.Spec.StorageClassName
+				}
+			}
+		}
+
+		if volumeName != "" {
+			pv := ri.graph.GetNodeByName("", "PersistentVolume", volumeName)
 			if pv != nil {
 				ri.graph.AddEdge(models.TopologyEdge{
 					ID:               fmt.Sprintf("%s-%s-pv", pvc.ID, pv.ID),
@@ -698,9 +715,8 @@ func (ri *RelationshipInferencer) inferStorageRelationships(ctx context.Context)
 				})
 			}
 		}
-		if k8sPVC.Spec.StorageClassName != nil {
-			// StorageClasses are cluster-scoped (namespace="")
-			sc := ri.graph.GetNodeByName("", "StorageClass", *k8sPVC.Spec.StorageClassName)
+		if storageClassName != "" {
+			sc := ri.graph.GetNodeByName("", "StorageClass", storageClassName)
 			if sc != nil {
 				ri.graph.AddEdge(models.TopologyEdge{
 					ID:               fmt.Sprintf("%s-%s-sc", pvc.ID, sc.ID),
@@ -714,14 +730,25 @@ func (ri *RelationshipInferencer) inferStorageRelationships(ctx context.Context)
 		}
 	}
 
+	// PV -> StorageClass
 	pvs := ri.graph.GetNodesByType("PersistentVolume")
 	for _, pv := range pvs {
-		k8sPV, err := ri.engine.client.Clientset.CoreV1().PersistentVolumes().Get(ctx, pv.Name, metav1.GetOptions{})
-		if err != nil {
-			continue
+		var storageClassName string
+
+		extra := ri.graph.GetNodeExtra(pv.ID)
+		if extra != nil {
+			storageClassName, _ = extra["storageClassName"].(string)
 		}
-		if k8sPV.Spec.StorageClassName != "" {
-			sc := ri.graph.GetNodeByName("", "StorageClass", k8sPV.Spec.StorageClassName)
+
+		if storageClassName == "" && ri.engine != nil && ri.engine.client != nil {
+			k8sPV, err := ri.engine.client.Clientset.CoreV1().PersistentVolumes().Get(ctx, pv.Name, metav1.GetOptions{})
+			if err == nil {
+				storageClassName = k8sPV.Spec.StorageClassName
+			}
+		}
+
+		if storageClassName != "" {
+			sc := ri.graph.GetNodeByName("", "StorageClass", storageClassName)
 			if sc != nil {
 				ri.graph.AddEdge(models.TopologyEdge{
 					ID:               fmt.Sprintf("%s-%s-sc", pv.ID, sc.ID),
