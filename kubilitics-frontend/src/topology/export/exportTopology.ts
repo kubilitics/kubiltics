@@ -13,6 +13,10 @@ export interface ExportContext {
   viewMode?: ViewMode;
   selectedNamespaces?: Set<string>;
   clusterName?: string;
+  /** Resource name for resource-scoped topology (e.g. "jenkins-0") */
+  resourceName?: string;
+  /** Resource kind for resource-scoped topology (e.g. "Pod") */
+  resourceKind?: string;
 }
 
 export function buildExportFilename(ext: string, ctx?: ExportContext): string {
@@ -29,7 +33,14 @@ export function buildExportFilename(ext: string, ctx?: ExportContext): string {
     }
   }
 
-  if (ctx?.viewMode) parts.push(ctx.viewMode);
+  // For resource-scoped exports, use kind + resource name instead of generic view mode.
+  // e.g. "docker-desktop-default-Pod-jenkins-0.png" instead of "docker-desktop-default-resource-<timestamp>.png"
+  if (ctx?.resourceName) {
+    if (ctx?.resourceKind) parts.push(ctx.resourceKind);
+    parts.push(ctx.resourceName);
+  } else if (ctx?.viewMode) {
+    parts.push(ctx.viewMode);
+  }
 
   // Timestamp for uniqueness across multiple exports
   const ts = Date.now();

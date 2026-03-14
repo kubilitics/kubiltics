@@ -149,13 +149,15 @@ function parseReadyFraction(ready: string): number {
 }
 
 // Helpers for sorting CPU/Memory strings (e.g. "100m", "256Mi")
+// parseCpu/parseMemory return `number | null`, so we coalesce null → -1
+// to ensure pods without metrics sort to the bottom.
 function parseCpuForSort(val: string): number {
  if (!val || val === '-') return -1;
- return parseCpu(val); // Returns millicores
+ return parseCpu(val) ?? -1; // Returns millicores, null → -1
 }
 function parseMemoryForSort(val: string): number {
  if (!val || val === '-') return -1;
- return parseMemory(val); // Returns bytes
+ return parseMemory(val) ?? -1; // Returns Mi, null → -1
 }
 
 function transformResource(resource: PodResource): Pod {
@@ -295,8 +297,10 @@ export default function Pods() {
  return currentFilteredPods;
  }, [currentFilteredPods]);
 
- // CPU/Memory sort: fetch metrics for first N pods so the sorted order is correct when user sorts by CPU/Memory.
- const SORT_METRICS_BATCH = 20;
+ // CPU/Memory sort: fetch metrics for ALL filtered pods so sorting is accurate
+ // across the full list, not just the first N. React Query caches these
+ // individually (staleTime 60s) so repeated queries are essentially free.
+ const SORT_METRICS_BATCH = 500; // Generous cap to prevent extreme cases
  const podsForSortMetrics = useMemo(
  () => filteredUnsorted.slice(0, SORT_METRICS_BATCH),
  [filteredUnsorted]

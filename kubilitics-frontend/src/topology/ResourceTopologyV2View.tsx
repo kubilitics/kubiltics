@@ -116,7 +116,9 @@ export function ResourceTopologyV2View({
     viewMode: "resource" as const,
     selectedNamespaces: namespace ? new Set([namespace]) : new Set<string>(),
     clusterName: activeClusterName ?? undefined,
-  }), [namespace, activeClusterName]);
+    resourceName: name ?? undefined,
+    resourceKind: kind ?? undefined,
+  }), [namespace, activeClusterName, name, kind]);
 
   const handleExportJSON = useCallback(() => {
     if (!topology) return;
