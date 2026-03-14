@@ -13,7 +13,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { PodStatusDistribution } from '@/features/dashboard/components/PodStatusDistribution';
-import { ClusterEfficiencyCard } from '@/components/dashboard/ClusterEfficiencyCard';
+import { WorkloadResourceBudget } from '@/components/dashboard/WorkloadResourceBudget';
 import {
   ListPagination,
   PAGE_SIZE_OPTIONS,
@@ -309,9 +309,9 @@ export default function WorkloadsOverview() {
           <Card className="lg:col-span-8 border-slate-200/80 overflow-hidden bg-white elevation-2">
             <PodStatusDistribution />
           </Card>
-          <Card className="lg:col-span-4 border-slate-200/80 overflow-hidden bg-white elevation-2">
-            <ClusterEfficiencyCard />
-          </Card>
+          <div className="lg:col-span-4">
+            <WorkloadResourceBudget />
+          </div>
         </div>
 
         {/* Workloads Explorer */}
