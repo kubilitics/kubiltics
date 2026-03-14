@@ -7,7 +7,7 @@ import { PodHealthSummary } from "./PodHealthSummary";
 import { AlertsStrip } from "./AlertsStrip";
 import { QuickActionsGrid } from "./QuickActionsGrid";
 import { PodStatusDistribution } from "./PodStatusDistribution";
-import { ClusterEfficiencyCard } from "@/components/dashboard/ClusterEfficiencyCard";
+import { ClusterResourceIntelligence } from "@/components/dashboard/ClusterEfficiencyCard";
 import { MetricCardsGrid } from "./MetricCardsGrid";
 
 export const DashboardLayout = () => {
@@ -37,7 +37,7 @@ export const DashboardLayout = () => {
           {/* Row 3: Cluster efficiency | Quick actions — 2 columns */}
           <section className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
             <div className="min-h-[24rem] flex flex-col">
-              <ClusterEfficiencyCard />
+              <ClusterResourceIntelligence />
             </div>
             <div className="min-h-[24rem] flex flex-col rounded-xl border border-border/60 bg-card p-6">
               <h2 className="text-sm font-medium text-muted-foreground mb-4 shrink-0">Quick actions</h2>
