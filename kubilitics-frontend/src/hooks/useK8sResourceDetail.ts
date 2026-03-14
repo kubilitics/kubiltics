@@ -143,7 +143,8 @@ export function useResourceDetail<T extends KubernetesResource>(
   resourceType: ResourceType,
   name: string | undefined,
   namespace: string | undefined,
-  _mockData: T // Kept for API compatibility; not used — we never show mock data.
+  _mockData: T, // Kept for API compatibility; not used — we never show mock data.
+  options?: { refetchInterval?: number | false; staleTime?: number }
 ) {
   const { isConnected } = useConnectionStatus();
 
@@ -151,7 +152,7 @@ export function useResourceDetail<T extends KubernetesResource>(
     resourceType,
     name || '',
     namespace,
-    { enabled: !!name }
+    { enabled: !!name, refetchInterval: options?.refetchInterval, staleTime: options?.staleTime }
   );
 
   const resource = isConnected && data ? (data as T) : undefined;

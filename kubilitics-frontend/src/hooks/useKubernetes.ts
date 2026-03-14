@@ -445,7 +445,7 @@ export function useK8sResource<T extends KubernetesResource>(
   resourceType: ResourceType,
   name: string,
   namespace?: string,
-  options?: { enabled?: boolean }
+  options?: { enabled?: boolean; refetchInterval?: number | false; staleTime?: number }
 ) {
   const { config } = useKubernetesConfigStore();
   const storedUrl = useBackendConfigStore((s) => s.backendBaseUrl);
@@ -470,7 +470,8 @@ export function useK8sResource<T extends KubernetesResource>(
       ? () => getResource(backendBaseUrl, clusterId!, resourceType, nsForBackend, name) as Promise<T>
       : () => k8sRequest<T>(path, {}, config),
     enabled: !isDemo && (useBackend ? true : config.isConnected) && !!name && (options?.enabled !== false),
-    staleTime: 5_000,
+    staleTime: options?.staleTime ?? 5_000,
+    refetchInterval: options?.refetchInterval,
     refetchOnMount: 'always',
     retry: 3,
     retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 8000),
@@ -561,6 +562,9 @@ export function useUpdateK8sResource(resourceType: ResourceType) {
   });
 }
 
+// Workload types whose mutations affect pods and replicasets
+const WORKLOAD_TYPES: ResourceType[] = ['deployments', 'replicasets', 'statefulsets', 'daemonsets', 'jobs', 'cronjobs'];
+
 // Hook for PATCH (scale, rollout restart, etc.). Only works when backend is configured.
 export function usePatchK8sResource(resourceType: ResourceType) {
   const queryClient = useQueryClient();
@@ -594,6 +598,16 @@ export function usePatchK8sResource(resourceType: ResourceType) {
       if (clusterId) {
         queryClient.invalidateQueries({ queryKey: ['backend', 'resource', clusterId, resourceType] });
         queryClient.invalidateQueries({ queryKey: ['backend', 'resources', clusterId, resourceType] });
+        // When patching workloads (scale, restart), also invalidate pods and replicasets
+        // so pod lifecycle transitions appear immediately
+        if (WORKLOAD_TYPES.includes(resourceType)) {
+          queryClient.invalidateQueries({ queryKey: ['k8s', 'pods'] });
+          queryClient.invalidateQueries({ queryKey: ['backend', 'resources', clusterId] }, { predicate: (query) => {
+            const key = query.queryKey;
+            return key[0] === 'backend' && key[1] === 'resources' && key[2] === clusterId &&
+              (key[4] === 'pods' || key[4] === 'replicasets');
+          }});
+        }
       }
     },
   });
@@ -631,6 +645,25 @@ export function useDeleteK8sResource(resourceType: ResourceType) {
       queryClient.invalidateQueries({ queryKey: ['k8s', resourceType] });
       if (clusterId) {
         queryClient.invalidateQueries({ queryKey: ['backend', 'resources', clusterId, resourceType] });
+        // When deleting pods, also invalidate parent workload queries so hero cards update
+        if (resourceType === 'pods') {
+          for (const wt of WORKLOAD_TYPES) {
+            queryClient.invalidateQueries({ queryKey: ['k8s', wt] });
+            queryClient.invalidateQueries({ queryKey: ['backend', 'resources', clusterId] }, { predicate: (query) => {
+              const key = query.queryKey;
+              return key[0] === 'backend' && key[1] === 'resources' && key[2] === clusterId && key[4] === wt;
+            }});
+            queryClient.invalidateQueries({ queryKey: ['backend', 'resource', clusterId, wt] });
+          }
+        }
+        // When deleting workloads, also invalidate pods
+        if (WORKLOAD_TYPES.includes(resourceType)) {
+          queryClient.invalidateQueries({ queryKey: ['k8s', 'pods'] });
+          queryClient.invalidateQueries({ queryKey: ['backend', 'resources', clusterId] }, { predicate: (query) => {
+            const key = query.queryKey;
+            return key[0] === 'backend' && key[1] === 'resources' && key[2] === clusterId && key[4] === 'pods';
+          }});
+        }
       }
       notifySuccess({
         action: 'delete',

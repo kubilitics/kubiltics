@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate, Link, useSearchParams } from 'react-router-dom';
 import {
   Layers,
   Clock,
@@ -22,6 +22,7 @@ import {
   Settings,
   Search,
   ChevronDown,
+  RefreshCw,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -63,6 +64,7 @@ import { useResourceDetail, useResourceEvents } from '@/hooks/useK8sResourceDeta
 import { useDeleteK8sResource, useUpdateK8sResource, usePatchK8sResource, useK8sResourceList, calculateAge, type KubernetesResource } from '@/hooks/useKubernetes';
 import { normalizeKindForTopology } from '@/utils/resourceKindMapper';
 import { useConnectionStatus } from '@/hooks/useConnectionStatus';
+import { useMutationPolling } from '@/hooks/useMutationPolling';
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
 import { useClusterStore } from '@/stores/clusterStore';
 import { useActiveClusterId } from '@/hooks/useActiveClusterId';
@@ -108,12 +110,19 @@ export default function ReplicaSetDetail() {
   const [selectedTerminalContainer, setSelectedTerminalContainer] = useState<string>('');
   const [podsTabSearch, setPodsTabSearch] = useState('');
 
+  const [searchParams, setSearchParams] = useSearchParams();
   const { isConnected } = useConnectionStatus();
+  const { refetchInterval: fastPollInterval, isFastPolling, triggerFastPolling } = useMutationPolling({
+    fastInterval: 2000,
+    fastDuration: 30000,
+    normalInterval: 60000,
+  });
   const { resource: replicaSet, isLoading, error, age, yaml, refetch } = useResourceDetail<ReplicaSetResource>(
     'replicasets',
     name,
     namespace,
-    {} as ReplicaSetResource
+    {} as ReplicaSetResource,
+    { refetchInterval: fastPollInterval, staleTime: isFastPolling ? 1000 : 5000 }
   );
   const resourceEvents = useResourceEvents('ReplicaSet', namespace ?? undefined, name ?? undefined);
   const displayEvents = resourceEvents.events;
@@ -144,7 +153,7 @@ export default function ReplicaSetDetail() {
   const { data: podsList } = useK8sResourceList<KubernetesResource & { metadata?: { name?: string; labels?: Record<string, string> }; status?: { phase?: string }; spec?: { nodeName?: string } }>(
     'pods',
     namespace ?? undefined,
-    { enabled: !!namespace && !!replicaSet?.spec?.selector?.matchLabels }
+    { enabled: !!namespace && !!replicaSet?.spec?.selector?.matchLabels, refetchInterval: fastPollInterval, staleTime: isFastPolling ? 1000 : 30000 }
   );
   const rsMatchLabels = replicaSet.spec?.selector?.matchLabels ?? {};
   const rsPods = (podsList?.items ?? []).filter((pod) => {
@@ -253,12 +262,14 @@ export default function ReplicaSetDetail() {
     try {
       await patchReplicaSet.mutateAsync({ name, namespace, patch: { spec: { replicas } } });
       toast.success(`Scaled ${name} to ${replicas} replicas`);
-      refetch();
+      triggerFastPolling();
+      setActiveTab('pods');
+      setSearchParams({ tab: 'pods' });
     } catch (err: any) {
       toast.error(err?.message ?? 'Failed to scale');
       throw err;
     }
-  }, [isConnected, name, namespace, clusterId, patchReplicaSet, refetch]);
+  }, [isConnected, name, namespace, clusterId, patchReplicaSet, triggerFastPolling, setSearchParams]);
 
   const handleSaveYaml = useCallback(async (newYaml: string) => {
     if (!isConnected || !name || !namespace) {
@@ -590,6 +601,12 @@ export default function ReplicaSetDetail() {
               </>
             )}
             {isConnected && <Badge variant="outline" className="ml-2 text-xs">Live</Badge>}
+            {isFastPolling && (
+              <Badge className="ml-2 text-xs bg-blue-500/20 text-blue-600 dark:text-blue-400 border-blue-500/30 animate-pulse gap-1">
+                <RefreshCw className="h-3 w-3 animate-spin" />
+                Syncing
+              </Badge>
+            )}
           </span>
         }
         actions={[

@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate, Link, useSearchParams } from 'react-router-dom';
 import {
   Cpu,
   Clock,
@@ -23,6 +23,7 @@ import {
   History,
   Gauge,
   ChevronDown,
+  RefreshCw,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import {
@@ -63,6 +64,7 @@ import { useResourceDetail, useResourceEvents } from '@/hooks/useK8sResourceDeta
 import { useDeleteK8sResource, useUpdateK8sResource, usePatchK8sResource, useK8sResourceList, calculateAge, type KubernetesResource } from '@/hooks/useKubernetes';
 import { normalizeKindForTopology } from '@/utils/resourceKindMapper';
 import { useConnectionStatus } from '@/hooks/useConnectionStatus';
+import { useMutationPolling } from '@/hooks/useMutationPolling';
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
 import { useClusterStore } from '@/stores/clusterStore';
 import { useActiveClusterId } from '@/hooks/useActiveClusterId';
@@ -113,14 +115,21 @@ export default function DaemonSetDetail() {
   const [selectedTerminalPod, setSelectedTerminalPod] = useState<string>('');
   const [selectedTerminalContainer, setSelectedTerminalContainer] = useState<string>('');
 
+  const [searchParams, setSearchParams] = useSearchParams();
   const { isConnected } = useConnectionStatus();
   const { activeCluster } = useClusterStore();
   const breadcrumbSegments = useDetailBreadcrumbs('DaemonSet', name ?? undefined, namespace ?? undefined, activeCluster?.name);
+  const { refetchInterval: fastPollInterval, isFastPolling, triggerFastPolling } = useMutationPolling({
+    fastInterval: 2000,
+    fastDuration: 30000,
+    normalInterval: 60000,
+  });
   const { resource: daemonSet, isLoading, error, age, yaml, refetch } = useResourceDetail<DaemonSetResource>(
     'daemonsets',
     name,
     namespace,
-    {} as DaemonSetResource
+    {} as DaemonSetResource,
+    { refetchInterval: fastPollInterval, staleTime: isFastPolling ? 1000 : 5000 }
   );
   const resourceEvents = useResourceEvents('DaemonSet', namespace ?? undefined, name ?? undefined);
   const displayEvents = resourceEvents.events;
@@ -155,7 +164,7 @@ export default function DaemonSetDetail() {
   const { data: podsList } = useK8sResourceList<KubernetesResource & { metadata?: { name?: string; labels?: Record<string, string> }; status?: { phase?: string }; spec?: { nodeName?: string } }>(
     'pods',
     namespace ?? undefined,
-    { enabled: !!namespace && !!daemonSet?.spec?.selector?.matchLabels, limit: 5000 }
+    { enabled: !!namespace && !!daemonSet?.spec?.selector?.matchLabels, limit: 5000, refetchInterval: fastPollInterval, staleTime: isFastPolling ? 1000 : 30000 }
   );
   const dsMatchLabels = daemonSet.spec?.selector?.matchLabels ?? {};
   const dsPods = (podsList?.items ?? []).filter((pod) => {
@@ -262,12 +271,14 @@ export default function DaemonSetDetail() {
         patch: { spec: { template: { metadata: { annotations: { 'kubectl.kubernetes.io/restartedAt': new Date().toISOString() } } } } },
       });
       toast.success(`Rollout restart initiated for ${name}`);
-      refetch();
+      triggerFastPolling();
+      setActiveTab('pods');
+      setSearchParams({ tab: 'pods' });
     } catch (err: any) {
       toast.error(err?.message ?? 'Failed to restart');
       throw err;
     }
-  }, [isConnected, name, namespace, patchDaemonSet, refetch]);
+  }, [isConnected, name, namespace, patchDaemonSet, triggerFastPolling, setSearchParams]);
 
   const handleSaveYaml = useCallback(async (newYaml: string) => {
     if (!isConnected || !name || !namespace) {
@@ -719,6 +730,12 @@ export default function DaemonSetDetail() {
             <Server className="h-3.5 w-3.5" />
             {desired} nodes
             {isConnected && <Badge variant="outline" className="ml-2 text-xs">Live</Badge>}
+            {isFastPolling && (
+              <Badge className="ml-2 text-xs bg-blue-500/20 text-blue-600 dark:text-blue-400 border-blue-500/30 animate-pulse gap-1">
+                <RefreshCw className="h-3 w-3 animate-spin" />
+                Syncing
+              </Badge>
+            )}
           </span>
         }
         actions={[

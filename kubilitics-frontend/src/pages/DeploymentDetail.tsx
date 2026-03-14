@@ -72,6 +72,7 @@ import {
 } from '@/components/resources';
 import { useResourceDetail, useResourceEvents } from '@/hooks/useK8sResourceDetail';
 import { useDeleteK8sResource, useUpdateK8sResource, usePatchK8sResource, useK8sResourceList, calculateAge, type KubernetesResource } from '@/hooks/useKubernetes';
+import { useMutationPolling } from '@/hooks/useMutationPolling';
 import { AgeCell, ListPagination, PAGE_SIZE_OPTIONS } from '@/components/list';
 import { normalizeKindForTopology } from '@/utils/resourceKindMapper';
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
@@ -170,11 +171,20 @@ export default function DeploymentDetail() {
   const [podsTabSearch, setPodsTabSearch] = useState('');
 
   const { isConnected } = useConnectionStatus();
+
+  // Fast polling after mutations (scale, restart, delete) for instant pod lifecycle visibility
+  const { refetchInterval: fastPollInterval, isFastPolling, triggerFastPolling } = useMutationPolling({
+    fastInterval: 2000,
+    fastDuration: 30000,
+    normalInterval: 60000,
+  });
+
   const { resource: deployment, isLoading, error, age, yaml, refetch } = useResourceDetail<DeploymentResource>(
     'deployments',
     name,
     namespace,
-    {} as DeploymentResource
+    {} as DeploymentResource,
+    { refetchInterval: fastPollInterval, staleTime: isFastPolling ? 1000 : 5000 }
   );
   const resourceEvents = useResourceEvents('Deployment', namespace ?? undefined, name ?? undefined);
   const displayEvents = resourceEvents.events;
@@ -226,7 +236,7 @@ export default function DeploymentDetail() {
   const { data: podsList } = useK8sResourceList<KubernetesResource & { metadata?: { name?: string; labels?: Record<string, string> }; status?: { phase?: string }; spec?: { nodeName?: string } }>(
     'pods',
     namespace ?? undefined,
-    { enabled: !!namespace && !!deployment?.spec?.selector?.matchLabels }
+    { enabled: !!namespace && !!deployment?.spec?.selector?.matchLabels, refetchInterval: fastPollInterval, staleTime: isFastPolling ? 1000 : 30000 }
   );
   const matchLabels = deployment.spec?.selector?.matchLabels ?? {};
   const deploymentPods = (podsList?.items ?? []).filter((pod) => {
@@ -372,10 +382,15 @@ export default function DeploymentDetail() {
           namespace,
         },
         {
-          description: `New replica count: ${replicas}.`,
+          description: `New replica count: ${replicas}. Watch the Pods tab for lifecycle updates.`,
         }
       );
       refetch();
+      // Start fast polling to show pod lifecycle transitions (Creating → Running, Terminating)
+      triggerFastPolling();
+      // Switch to Pods tab so user sees the lifecycle
+      setActiveTab('pods');
+      setSearchParams({ tab: 'pods' });
       if (clusterId && namespace && name) {
         queryClient.invalidateQueries({ queryKey: ['backend', 'deployment-rollout-history', clusterId, namespace, name] });
       }
@@ -388,7 +403,7 @@ export default function DeploymentDetail() {
       });
       throw err;
     }
-  }, [isConnected, name, namespace, clusterId, patchDeployment, refetch, queryClient]);
+  }, [isConnected, name, namespace, clusterId, patchDeployment, refetch, queryClient, triggerFastPolling, setSearchParams]);
 
   const handleRestart = useCallback(async () => {
     if (!isConnected) {
@@ -422,6 +437,9 @@ export default function DeploymentDetail() {
         namespace,
       });
       refetch();
+      triggerFastPolling();
+      setActiveTab('pods');
+      setSearchParams({ tab: 'pods' });
       if (clusterId && namespace && name) {
         queryClient.invalidateQueries({ queryKey: ['backend', 'deployment-rollout-history', clusterId, namespace, name] });
       }
@@ -434,7 +452,7 @@ export default function DeploymentDetail() {
       });
       throw err;
     }
-  }, [isConnected, name, namespace, clusterId, patchDeployment, refetch, queryClient]);
+  }, [isConnected, name, namespace, clusterId, patchDeployment, refetch, queryClient, triggerFastPolling, setSearchParams]);
 
   const handleRollback = useCallback(async (revision: number) => {
     if (!isConnected) {
@@ -460,6 +478,9 @@ export default function DeploymentDetail() {
         namespace,
       });
       refetch();
+      triggerFastPolling();
+      setActiveTab('pods');
+      setSearchParams({ tab: 'pods' });
       if (clusterId && namespace && name) {
         queryClient.invalidateQueries({ queryKey: ['backend', 'deployment-rollout-history', clusterId, namespace, name] });
       }
@@ -472,7 +493,7 @@ export default function DeploymentDetail() {
       });
       throw err;
     }
-  }, [isConnected, name, namespace, clusterId, refetch, queryClient]);
+  }, [isConnected, name, namespace, clusterId, refetch, queryClient, triggerFastPolling, setSearchParams]);
 
   const handleSaveYaml = useCallback(async (newYaml: string) => {
     if (!isConnected || !name || !namespace) {
@@ -1196,7 +1217,13 @@ export default function DeploymentDetail() {
           <span className="flex items-center gap-1.5 ml-2 text-sm text-muted-foreground">
             <Activity className="h-3.5 w-3.5" />
             {deployment.spec?.strategy?.type || 'RollingUpdate'}
-            {isConnected && <Badge variant="outline" className="ml-2 text-xs">Live</Badge>}
+            {isConnected && !isFastPolling && <Badge variant="outline" className="ml-2 text-xs">Live</Badge>}
+            {isFastPolling && (
+              <Badge className="ml-2 text-xs bg-blue-500/20 text-blue-600 dark:text-blue-400 border-blue-500/30 animate-pulse gap-1">
+                <RefreshCw className="h-3 w-3 animate-spin" />
+                Syncing
+              </Badge>
+            )}
           </span>
         }
         actions={[

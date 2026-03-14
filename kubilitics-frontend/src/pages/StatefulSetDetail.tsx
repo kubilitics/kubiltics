@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate, Link, useSearchParams } from 'react-router-dom';
 import {
   Database,
   Clock,
@@ -30,6 +30,7 @@ import {
   Hash,
   ArrowDown,
   ChevronDown,
+  RefreshCw,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import {
@@ -75,6 +76,7 @@ import { useResourceDetail, useResourceEvents } from '@/hooks/useK8sResourceDeta
 import { useDeleteK8sResource, useUpdateK8sResource, usePatchK8sResource, useK8sResourceList, calculateAge, type KubernetesResource } from '@/hooks/useKubernetes';
 import { normalizeKindForTopology } from '@/utils/resourceKindMapper';
 import { useConnectionStatus } from '@/hooks/useConnectionStatus';
+import { useMutationPolling } from '@/hooks/useMutationPolling';
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
 import { useClusterStore } from '@/stores/clusterStore';
 import { useActiveClusterId } from '@/hooks/useActiveClusterId';
@@ -130,12 +132,19 @@ export default function StatefulSetDetail() {
   const [selectedTerminalContainer, setSelectedTerminalContainer] = useState<string>('');
   const [partitionInput, setPartitionInput] = useState<string>('');
 
+  const [searchParams, setSearchParams] = useSearchParams();
   const { isConnected } = useConnectionStatus();
+  const { refetchInterval: fastPollInterval, isFastPolling, triggerFastPolling } = useMutationPolling({
+    fastInterval: 2000,
+    fastDuration: 30000,
+    normalInterval: 60000,
+  });
   const { resource: statefulSet, isLoading, error, age, yaml, refetch } = useResourceDetail<StatefulSetResource>(
     'statefulsets',
     name,
     namespace,
-    {} as StatefulSetResource
+    {} as StatefulSetResource,
+    { refetchInterval: fastPollInterval, staleTime: isFastPolling ? 1000 : 5000 }
   );
   const resourceEvents = useResourceEvents('StatefulSet', namespace ?? undefined, name ?? undefined);
   const displayEvents = resourceEvents.events;
@@ -168,7 +177,7 @@ export default function StatefulSetDetail() {
   const { data: podsList } = useK8sResourceList<KubernetesResource & { metadata?: { name?: string; labels?: Record<string, string> }; status?: { phase?: string; podIP?: string }; spec?: { nodeName?: string } }>(
     'pods',
     namespace ?? undefined,
-    { enabled: !!namespace && !!statefulSet?.spec?.selector?.matchLabels, limit: 5000 }
+    { enabled: !!namespace && !!statefulSet?.spec?.selector?.matchLabels, limit: 5000, refetchInterval: fastPollInterval, staleTime: isFastPolling ? 1000 : 30000 }
   );
   const stsMatchLabels = statefulSet.spec?.selector?.matchLabels ?? {};
   const stsPodsRaw = (podsList?.items ?? []).filter((pod) => {
@@ -296,12 +305,14 @@ export default function StatefulSetDetail() {
     try {
       await patchStatefulSet.mutateAsync({ name, namespace, patch: { spec: { replicas } } });
       toast.success(`Scaled ${name} to ${replicas} replicas`);
-      refetch();
+      triggerFastPolling();
+      setActiveTab('pods-ordinals');
+      setSearchParams({ tab: 'pods-ordinals' });
     } catch (err: any) {
       toast.error(err?.message ?? 'Failed to scale');
       throw err;
     }
-  }, [isConnected, name, namespace, patchStatefulSet, refetch]);
+  }, [isConnected, name, namespace, patchStatefulSet, triggerFastPolling, setSearchParams]);
 
   const handleRestart = useCallback(async () => {
     if (!isConnected || !name || !namespace) { toast.error('Connect cluster to restart StatefulSet'); return; }
@@ -312,12 +323,14 @@ export default function StatefulSetDetail() {
         patch: { spec: { template: { metadata: { annotations: { 'kubectl.kubernetes.io/restartedAt': new Date().toISOString() } } } } },
       });
       toast.success(`Rollout restart initiated for ${name}`);
-      refetch();
+      triggerFastPolling();
+      setActiveTab('pods-ordinals');
+      setSearchParams({ tab: 'pods-ordinals' });
     } catch (err: any) {
       toast.error(err?.message ?? 'Failed to restart');
       throw err;
     }
-  }, [isConnected, name, namespace, patchStatefulSet, refetch]);
+  }, [isConnected, name, namespace, patchStatefulSet, triggerFastPolling, setSearchParams]);
 
   const handleRollback = useCallback(async (_revision: number) => {
     toast.info('Rollback for StatefulSet is revision-specific; use detail when supported.');
@@ -899,6 +912,12 @@ export default function StatefulSetDetail() {
             <Server className="h-3.5 w-3.5" />
             {statefulSet.spec?.serviceName}
             {isConnected && <Badge variant="outline" className="ml-2 text-xs">Live</Badge>}
+            {isFastPolling && (
+              <Badge className="ml-2 text-xs bg-blue-500/20 text-blue-600 dark:text-blue-400 border-blue-500/30 animate-pulse gap-1">
+                <RefreshCw className="h-3 w-3 animate-spin" />
+                Syncing
+              </Badge>
+            )}
           </span>
         }
         actions={[

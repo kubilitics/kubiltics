@@ -1,7 +1,7 @@
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useQueries } from '@tanstack/react-query';
-import { Server, Clock, Download, Trash2, Cpu, HardDrive, Box, Shield, Pause, Play, AlertTriangle, Loader2, Info, BarChart2, Activity, MapPin, Tag, FileJson, FileSpreadsheet, Image, Network, GitCompare } from 'lucide-react';
+import { Server, Clock, Download, Trash2, Cpu, HardDrive, Box, Shield, Pause, Play, AlertTriangle, Loader2, Info, BarChart2, Activity, MapPin, Tag, FileJson, FileSpreadsheet, Image, Network, GitCompare, RefreshCw } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { NamespaceBadge } from '@/components/list';
@@ -28,6 +28,7 @@ import { useResourceDetail, useK8sEvents } from '@/hooks/useK8sResourceDetail';
 import { useDeleteK8sResource, useUpdateK8sResource, useK8sResourceList, calculateAge, type KubernetesResource } from '@/hooks/useKubernetes';
 import { normalizeKindForTopology } from '@/utils/resourceKindMapper';
 import { useConnectionStatus } from '@/hooks/useConnectionStatus';
+import { useMutationPolling } from '@/hooks/useMutationPolling';
 import { useActiveClusterId } from '@/hooks/useActiveClusterId';
 import { useClusterStore } from '@/stores/clusterStore';
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
@@ -70,6 +71,11 @@ export default function NodeDetail() {
   const activeCluster = useClusterStore((s) => s.activeCluster);
   const navigate = useNavigate();
   const { isConnected } = useConnectionStatus();
+  const { refetchInterval: fastPollInterval, isFastPolling, triggerFastPolling } = useMutationPolling({
+    fastInterval: 2000,
+    fastDuration: 30000,
+    normalInterval: 60000,
+  });
   const [activeTab, setActiveTab] = useState('overview');
   const [isCordoned, setIsCordoned] = useState(false);
 
@@ -77,12 +83,15 @@ export default function NodeDetail() {
     'nodes',
     name ?? undefined,
     undefined,
-    {} as NodeResource
+    {} as NodeResource,
+    { refetchInterval: fastPollInterval, staleTime: isFastPolling ? 1000 : 5000 }
   );
   const podsOnNodeQuery = useK8sResourceList<KubernetesResource>('pods', undefined, {
     fieldSelector: name ? `spec.nodeName=${name}` : '',
     enabled: !!name && isConnected,
     limit: 500,
+    refetchInterval: fastPollInterval,
+    staleTime: isFastPolling ? 1000 : 30000,
   });
   const runningPodsRaw = (isConnected && podsOnNodeQuery.data?.items) ? (podsOnNodeQuery.data.items as KubernetesResource[]) : [];
   const runningPodsBase = useMemo(() => runningPodsRaw.map((p) => {
@@ -278,10 +287,12 @@ export default function NodeDetail() {
   const handleCordon = () => {
     setIsCordoned(!isCordoned);
     toast.success(isCordoned ? 'Node uncordoned' : 'Node cordoned - no new pods will be scheduled');
+    triggerFastPolling();
   };
 
   const handleDrain = () => {
     toast.success('Node drain initiated - evicting pods...');
+    triggerFastPolling();
   };
 
   if (isLoading) {
@@ -664,6 +675,12 @@ export default function NodeDetail() {
             {roles.map((role) => <Badge key={role} variant="outline" className="text-xs ml-1">{role || 'control-plane'}</Badge>)}
             {isCordoned && <Badge variant="destructive" className="ml-2 text-xs">Cordoned</Badge>}
             {isConnected && <Badge variant="outline" className="ml-2 text-xs">Live</Badge>}
+            {isFastPolling && (
+              <Badge className="ml-2 text-xs bg-blue-500/20 text-blue-600 dark:text-blue-400 border-blue-500/30 animate-pulse gap-1">
+                <RefreshCw className="h-3 w-3 animate-spin" />
+                Syncing
+              </Badge>
+            )}
           </span>
         }
         actions={[

@@ -362,7 +362,7 @@ export function DetailPodTable({
                 </tr>
               </thead>
               <tbody>
-                <AnimatePresence>
+                <AnimatePresence mode="popLayout">
                 {page.map((pod) => {
                   const podName = pod.metadata?.name ?? '';
                   const podNs = pod.metadata?.namespace ?? namespace;
@@ -381,8 +381,13 @@ export function DetailPodTable({
                   const age = pod.metadata?.creationTimestamp ? calculateAge(pod.metadata.creationTimestamp) : '–';
 
                   return (
-                    <tr
+                    <motion.tr
                       key={podKey}
+                      layout
+                      initial={{ opacity: 0, backgroundColor: 'hsl(var(--primary) / 0.08)' }}
+                      animate={{ opacity: 1, backgroundColor: 'transparent' }}
+                      exit={{ opacity: 0, height: 0 }}
+                      transition={{ duration: 0.3 }}
                       className={cn(
                         'border-t hover:bg-muted/20 cursor-pointer transition-colors',
                         isSelected && 'bg-primary/5'
@@ -477,7 +482,7 @@ export function DetailPodTable({
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </td>
-                    </tr>
+                    </motion.tr>
                   );
                 })}
                 </AnimatePresence>
