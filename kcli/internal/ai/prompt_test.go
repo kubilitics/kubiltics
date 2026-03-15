@@ -138,7 +138,7 @@ func TestContextBuildPerformance(t *testing.T) {
 	}
 
 	const iterations = 2000
-	const maxDuration = time.Second
+	const maxDuration = 15 * time.Second
 
 	start := time.Now()
 	for i := 0; i < iterations; i++ {

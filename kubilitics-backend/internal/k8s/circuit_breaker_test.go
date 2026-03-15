@@ -119,10 +119,10 @@ func TestCircuitBreaker_Execute_NonRetryableError(t *testing.T) {
 
 func TestCircuitBreaker_Execute_ContextTimeout(t *testing.T) {
 	cb := NewCircuitBreaker("")
-	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Millisecond)
+	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
 	defer cancel()
 
-	time.Sleep(2 * time.Millisecond) // Ensure context is expired
+	time.Sleep(100 * time.Millisecond) // Ensure context is expired
 
 	err := cb.Execute(ctx, func() error {
 		return ctx.Err()

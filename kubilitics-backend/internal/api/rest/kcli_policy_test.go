@@ -117,7 +117,7 @@ func TestPostKCLIExec_RateLimited(t *testing.T) {
 		get:  map[string]*models.Cluster{clusterID: cluster},
 	}
 	cfg := &config.Config{
-		KCLIRateLimitPerSec: 1,
+		KCLIRateLimitPerSec: 0.01, // very low rate so token can't refill during test
 		KCLIRateLimitBurst:  1,
 	}
 	cs := service.NewClusterService(repo, cfg)
