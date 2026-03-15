@@ -52,42 +52,43 @@ export function TopologyPage() {
   const navigateBack = useTopologyStore((s) => s.navigateBack);
   const storeSetData = useTopologyStore((s) => s.setTopologyData);
 
-  // ─── Namespace selection — synced with URL search params ──────────────────
-  // Initialize from URL so browser back button restores the correct namespace.
-  const [selectedNamespaces, setSelectedNamespacesRaw] = useState<Set<string>>(
+  // ─── Namespace selection — React state as source of truth ───────────────────
+  // Plain useState guarantees re-renders. URL is updated as a side effect.
+  const [selectedNamespaces, setSelectedNamespaces] = useState<Set<string>>(
     () => namespacesFromURL(searchParams)
   );
   const [hasAutoSelectedNs, setHasAutoSelectedNs] = useState(false);
 
-  // Wrapper that also updates URL search params
-  const setSelectedNamespaces = useCallback((next: Set<string>) => {
-    setSelectedNamespacesRaw(next);
-    // Update URL without creating a new history entry for every namespace change.
-    // Use `replace` so rapid namespace switching doesn't pollute browser history.
-    setSearchParams((prev) => {
-      const updated = new URLSearchParams(prev);
-      const nsStr = namespacesToURL(next);
-      if (nsStr === "default") {
-        updated.delete("ns"); // Clean URL for default
-      } else {
-        updated.set("ns", nsStr);
-      }
-      return updated;
-    }, { replace: true });
-  }, [setSearchParams]);
-
-  // When the user navigates back, the URL changes but our state doesn't update.
-  // Sync state from URL whenever searchParams change (back/forward navigation).
+  // One-way sync: state → URL (so browser back/forward can restore namespaces)
+  const namespacesKey = useMemo(
+    () => namespacesToURL(selectedNamespaces),
+    [selectedNamespaces]
+  );
   useEffect(() => {
-    const fromURL = namespacesFromURL(searchParams);
-    // Only update if actually different to avoid loops
-    const current = namespacesToURL(selectedNamespaces);
-    const fromURLStr = namespacesToURL(fromURL);
-    if (current !== fromURLStr) {
-      setSelectedNamespacesRaw(fromURL);
+    const currentNs = searchParams.get("ns") ?? "";
+    const targetNs = namespacesKey === "default" ? "" : namespacesKey;
+    if (currentNs !== targetNs) {
+      setSearchParams((prev) => {
+        const updated = new URLSearchParams(prev);
+        if (targetNs) {
+          updated.set("ns", targetNs);
+        } else {
+          updated.delete("ns");
+        }
+        return updated;
+      }, { replace: true });
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams]);
+  }, [namespacesKey, searchParams, setSearchParams]);
+
+  // Browser back/forward: sync URL → state
+  useEffect(() => {
+    const onPopState = () => {
+      const fromURL = namespacesFromURL(new URLSearchParams(window.location.search));
+      setSelectedNamespaces(fromURL);
+    };
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, []);
 
   const [resource, setResource] = useState<string>("");
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
