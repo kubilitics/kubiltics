@@ -721,7 +721,7 @@ export default function DeploymentDetail() {
               <p>
                 A new revision is created only when the <strong>pod template</strong> changes (e.g. image, env, resources).
                 Changing replica count (e.g. 5 → 6) does <strong>not</strong> create a new revision — the same ReplicaSet scales.
-                To change replicas or revert a scale change, use the <strong>Scale deployment</strong> button or the <strong>Scaling</strong> tab.
+                To change replicas or revert a scale change, use the <strong>Scale deployment</strong> button or the scaling controls in the <strong>Pods</strong> tab.
               </p>
             </div>
             <div className="flex items-center justify-between flex-wrap gap-2">
@@ -867,158 +867,155 @@ export default function DeploymentDetail() {
       ),
     },
     {
-      id: 'scaling',
-      label: 'Scaling',
-      icon: Scale,
-      content: (
-        <SectionCard icon={Scale} title="Scaling" tooltip={<p className="text-xs text-muted-foreground">Replica count, HPA/VPA binding, scaling history</p>}>
-          <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Card>
-                <CardContent className="pt-4">
-                  <p className="text-sm font-medium text-foreground">Desired</p>
-                  <p className="text-2xl font-semibold">{desired}</p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="pt-4">
-                  <p className="text-sm font-medium text-foreground">Ready</p>
-                  <p className="text-2xl font-semibold">{ready}</p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="pt-4">
-                  <p className="text-sm font-medium text-foreground">Available</p>
-                  <p className="text-2xl font-semibold">{available}</p>
-                </CardContent>
-              </Card>
-            </div>
-
-            {hpasForDeployment.length > 0 && (
-              <div className="space-y-2">
-                <h4 className="text-sm font-semibold text-foreground">HPA binding</h4>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {hpasForDeployment.map((hpa) => {
-                    const ref = hpa.spec?.scaleTargetRef;
-                    const minR = hpa.spec?.minReplicas ?? 0;
-                    const maxR = hpa.spec?.maxReplicas ?? 0;
-                    const currentR = (hpa as { status?: { currentReplicas?: number; desiredReplicas?: number } }).status?.currentReplicas ?? 0;
-                    const desiredR = (hpa as { status?: { desiredReplicas?: number } }).status?.desiredReplicas ?? currentR;
-                    const cpuMetric = (hpa.spec as { metrics?: Array<{ resource?: { name?: string; target?: { averageUtilization?: number } } }> })?.metrics?.find((m) => m.resource?.name === 'cpu')?.resource?.target?.averageUtilization;
-                    const hpaName = (hpa.metadata as { name?: string })?.name ?? '';
-                    const hpaNs = (hpa.metadata as { namespace?: string })?.namespace ?? namespace ?? '';
-                    return (
-                      <Card key={`${hpaNs}/${hpaName}`} className="overflow-hidden">
-                        <CardHeader className="pb-2 pt-4 px-4">
-                          <div className="flex items-center justify-between">
-                            <CardTitle className="text-sm font-medium">HorizontalPodAutoscaler</CardTitle>
-                            <Link to={`/horizontalpodautoscalers/${hpaNs}/${hpaName}`} className="text-xs text-primary hover:underline">View HPA</Link>
-                          </div>
-                          <CardDescription className="text-xs font-mono">{hpaName}</CardDescription>
-                        </CardHeader>
-                        <CardContent className="px-4 pb-4 pt-0 text-sm space-y-1">
-                          <p className="flex justify-between"><span className="text-muted-foreground">Current / Desired</span><span className="font-mono">{currentR} / {desiredR}</span></p>
-                          <p className="flex justify-between"><span className="text-muted-foreground">Min / Max replicas</span><span className="font-mono">{minR} / {maxR}</span></p>
-                          {cpuMetric != null && <p className="flex justify-between"><span className="text-muted-foreground">Target CPU</span><span className="font-mono">{cpuMetric}%</span></p>}
-                        </CardContent>
-                      </Card>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {vpasForDeployment.length > 0 && (
-              <div className="space-y-2">
-                <h4 className="text-sm font-semibold text-foreground">VPA binding</h4>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {vpasForDeployment.map((vpa) => {
-                    const vpaName = (vpa.metadata as { name?: string })?.name ?? '';
-                    const vpaNs = (vpa.metadata as { namespace?: string })?.namespace ?? namespace ?? '';
-                    const mode = (vpa.spec as { updatePolicy?: { updateMode?: string } })?.updatePolicy?.updateMode ?? 'Auto';
-                    const rec = (vpa.status as { recommendation?: { containerRecommendations?: Array<{ target?: Record<string, string> }> } })?.recommendation?.containerRecommendations?.[0]?.target;
-                    const cpuRec = rec?.cpu ?? '–';
-                    const memRec = rec?.memory ?? '–';
-                    return (
-                      <Card key={`${vpaNs}/${vpaName}`} className="overflow-hidden">
-                        <CardHeader className="pb-2 pt-4 px-4">
-                          <div className="flex items-center justify-between">
-                            <CardTitle className="text-sm font-medium">VerticalPodAutoscaler</CardTitle>
-                            <Link to={`/verticalpodautoscalers/${vpaNs}/${vpaName}`} className="text-xs text-primary hover:underline">View VPA</Link>
-                          </div>
-                          <CardDescription className="text-xs font-mono">{vpaName}</CardDescription>
-                        </CardHeader>
-                        <CardContent className="px-4 pb-4 pt-0 text-sm space-y-1">
-                          <p className="flex justify-between"><span className="text-muted-foreground">Update mode</span><span className="font-mono">{mode}</span></p>
-                          <p className="flex justify-between"><span className="text-muted-foreground">CPU recommendation</span><span className="font-mono">{cpuRec}</span></p>
-                          <p className="flex justify-between"><span className="text-muted-foreground">Memory recommendation</span><span className="font-mono">{memRec}</span></p>
-                        </CardContent>
-                      </Card>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            <div className="rounded-lg border border-border bg-muted/30 p-4 flex flex-wrap items-center justify-between gap-3">
-              <p className="text-sm text-muted-foreground">
-                Set a new replica count for this deployment. Changes apply immediately.
-              </p>
-              <Button variant="default" size="sm" onClick={() => setShowScaleDialog(true)} className="gap-2 shadow-sm">
-                <Scale className="h-4 w-4" />
-                Change replica count
-              </Button>
-            </div>
-
-            <div className="space-y-2">
-              <h4 className="text-sm font-semibold text-foreground">Scaling history</h4>
-              <p className="text-xs text-muted-foreground">Replica scale events for this deployment (from cluster events).</p>
-              {!isBackendConfigured() || !clusterId ? (
-                <p className="text-sm text-muted-foreground">Configure the backend and select a cluster to load scaling history.</p>
-              ) : scalingEventsQuery.isLoading ? (
-                <div className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Loading events…</div>
-              ) : scalingHistoryEvents.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No scaling events found for this deployment.</p>
-              ) : (
-                <div className="rounded-lg border overflow-x-auto">
-                  <table className="w-full text-sm min-w-[400px]">
-                    <thead className="bg-muted/50">
-                      <tr>
-                        <th className="text-left p-3 font-medium">Time</th>
-                        <th className="text-left p-3 font-medium">Reason</th>
-                        <th className="text-left p-3 font-medium">Message</th>
-                        <th className="text-left p-3 font-medium">Type</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {scalingHistoryEvents.map((e: BackendEvent, idx: number) => (
-                        <tr key={e.id ?? idx} className="border-t hover:bg-muted/20">
-                          <td className="p-3 text-muted-foreground whitespace-nowrap">
-                            {e.last_timestamp ? new Date(e.last_timestamp).toLocaleString() : e.first_timestamp ? new Date(e.first_timestamp).toLocaleString() : '—'}
-                          </td>
-                          <td className="p-3 font-mono text-xs">{e.reason ?? '—'}</td>
-                          <td className="p-3 max-w-[320px] truncate" title={e.message}>{e.message ?? '—'}</td>
-                          <td className="p-3"><Badge variant={e.type === 'Warning' ? 'destructive' : 'secondary'} className="text-xs">{e.type ?? 'Normal'}</Badge></td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
-          </div>
-        </SectionCard>
-      ),
-    },
-    {
       id: 'pods',
       label: 'Pods',
       icon: Box,
       badge: deploymentPods.length.toString(),
       content: (
-        <SectionCard icon={Box} title="Pods" tooltip={<p className="text-xs text-muted-foreground">Pods managed by this deployment</p>}>
-          <DetailPodTable pods={deploymentPods} namespace={namespace ?? ''} />
-        </SectionCard>
+        <div className="space-y-6">
+          {/* Scaling controls */}
+          <SectionCard icon={Scale} title="Scaling" tooltip={<p className="text-xs text-muted-foreground">Replica count, HPA/VPA binding, scaling history</p>}>
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <Card>
+                  <CardContent className="pt-4">
+                    <p className="text-sm font-medium text-foreground">Desired</p>
+                    <p className="text-2xl font-semibold">{desired}</p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="pt-4">
+                    <p className="text-sm font-medium text-foreground">Ready</p>
+                    <p className="text-2xl font-semibold">{ready}</p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="pt-4">
+                    <p className="text-sm font-medium text-foreground">Available</p>
+                    <p className="text-2xl font-semibold">{available}</p>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {hpasForDeployment.length > 0 && (
+                <div className="space-y-2">
+                  <h4 className="text-sm font-semibold text-foreground">HPA binding</h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {hpasForDeployment.map((hpa) => {
+                      const minR = hpa.spec?.minReplicas ?? 0;
+                      const maxR = hpa.spec?.maxReplicas ?? 0;
+                      const currentR = (hpa as { status?: { currentReplicas?: number; desiredReplicas?: number } }).status?.currentReplicas ?? 0;
+                      const desiredR = (hpa as { status?: { desiredReplicas?: number } }).status?.desiredReplicas ?? currentR;
+                      const cpuMetric = (hpa.spec as { metrics?: Array<{ resource?: { name?: string; target?: { averageUtilization?: number } } }> })?.metrics?.find((m) => m.resource?.name === 'cpu')?.resource?.target?.averageUtilization;
+                      const hpaName = (hpa.metadata as { name?: string })?.name ?? '';
+                      const hpaNs = (hpa.metadata as { namespace?: string })?.namespace ?? namespace ?? '';
+                      return (
+                        <Card key={`${hpaNs}/${hpaName}`} className="overflow-hidden">
+                          <CardHeader className="pb-2 pt-4 px-4">
+                            <div className="flex items-center justify-between">
+                              <CardTitle className="text-sm font-medium">HorizontalPodAutoscaler</CardTitle>
+                              <Link to={`/horizontalpodautoscalers/${hpaNs}/${hpaName}`} className="text-xs text-primary hover:underline">View HPA</Link>
+                            </div>
+                            <CardDescription className="text-xs font-mono">{hpaName}</CardDescription>
+                          </CardHeader>
+                          <CardContent className="px-4 pb-4 pt-0 text-sm space-y-1">
+                            <p className="flex justify-between"><span className="text-muted-foreground">Current / Desired</span><span className="font-mono">{currentR} / {desiredR}</span></p>
+                            <p className="flex justify-between"><span className="text-muted-foreground">Min / Max replicas</span><span className="font-mono">{minR} / {maxR}</span></p>
+                            {cpuMetric != null && <p className="flex justify-between"><span className="text-muted-foreground">Target CPU</span><span className="font-mono">{cpuMetric}%</span></p>}
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {vpasForDeployment.length > 0 && (
+                <div className="space-y-2">
+                  <h4 className="text-sm font-semibold text-foreground">VPA binding</h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {vpasForDeployment.map((vpa) => {
+                      const vpaName = (vpa.metadata as { name?: string })?.name ?? '';
+                      const vpaNs = (vpa.metadata as { namespace?: string })?.namespace ?? namespace ?? '';
+                      const mode = (vpa.spec as { updatePolicy?: { updateMode?: string } })?.updatePolicy?.updateMode ?? 'Auto';
+                      const rec = (vpa.status as { recommendation?: { containerRecommendations?: Array<{ target?: Record<string, string> }> } })?.recommendation?.containerRecommendations?.[0]?.target;
+                      const cpuRec = rec?.cpu ?? '–';
+                      const memRec = rec?.memory ?? '–';
+                      return (
+                        <Card key={`${vpaNs}/${vpaName}`} className="overflow-hidden">
+                          <CardHeader className="pb-2 pt-4 px-4">
+                            <div className="flex items-center justify-between">
+                              <CardTitle className="text-sm font-medium">VerticalPodAutoscaler</CardTitle>
+                              <Link to={`/verticalpodautoscalers/${vpaNs}/${vpaName}`} className="text-xs text-primary hover:underline">View VPA</Link>
+                            </div>
+                            <CardDescription className="text-xs font-mono">{vpaName}</CardDescription>
+                          </CardHeader>
+                          <CardContent className="px-4 pb-4 pt-0 text-sm space-y-1">
+                            <p className="flex justify-between"><span className="text-muted-foreground">Update mode</span><span className="font-mono">{mode}</span></p>
+                            <p className="flex justify-between"><span className="text-muted-foreground">CPU recommendation</span><span className="font-mono">{cpuRec}</span></p>
+                            <p className="flex justify-between"><span className="text-muted-foreground">Memory recommendation</span><span className="font-mono">{memRec}</span></p>
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              <div className="rounded-lg border border-border bg-muted/30 p-4 flex flex-wrap items-center justify-between gap-3">
+                <p className="text-sm text-muted-foreground">
+                  Set a new replica count for this deployment. Changes apply immediately.
+                </p>
+                <Button variant="default" size="sm" onClick={() => setShowScaleDialog(true)} className="gap-2 shadow-sm">
+                  <Scale className="h-4 w-4" />
+                  Change replica count
+                </Button>
+              </div>
+
+              <div className="space-y-2">
+                <h4 className="text-sm font-semibold text-foreground">Scaling history</h4>
+                <p className="text-xs text-muted-foreground">Replica scale events for this deployment (from cluster events).</p>
+                {!isBackendConfigured() || !clusterId ? (
+                  <p className="text-sm text-muted-foreground">Configure the backend and select a cluster to load scaling history.</p>
+                ) : scalingEventsQuery.isLoading ? (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Loading events…</div>
+                ) : scalingHistoryEvents.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No scaling events found for this deployment.</p>
+                ) : (
+                  <div className="rounded-lg border overflow-x-auto">
+                    <table className="w-full text-sm min-w-[400px]">
+                      <thead className="bg-muted/50">
+                        <tr>
+                          <th className="text-left p-3 font-medium">Time</th>
+                          <th className="text-left p-3 font-medium">Reason</th>
+                          <th className="text-left p-3 font-medium">Message</th>
+                          <th className="text-left p-3 font-medium">Type</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {scalingHistoryEvents.map((e: BackendEvent, idx: number) => (
+                          <tr key={e.id ?? idx} className="border-t hover:bg-muted/20">
+                            <td className="p-3 text-muted-foreground whitespace-nowrap">
+                              {e.last_timestamp ? new Date(e.last_timestamp).toLocaleString() : e.first_timestamp ? new Date(e.first_timestamp).toLocaleString() : '—'}
+                            </td>
+                            <td className="p-3 font-mono text-xs">{e.reason ?? '—'}</td>
+                            <td className="p-3 max-w-[320px] truncate" title={e.message}>{e.message ?? '—'}</td>
+                            <td className="p-3"><Badge variant={e.type === 'Warning' ? 'destructive' : 'secondary'} className="text-xs">{e.type ?? 'Normal'}</Badge></td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </div>
+          </SectionCard>
+
+          {/* Pods table */}
+          <SectionCard icon={Box} title="Pods" tooltip={<p className="text-xs text-muted-foreground">Pods managed by this deployment</p>}>
+            <DetailPodTable pods={deploymentPods} namespace={namespace ?? ''} />
+          </SectionCard>
+        </div>
       ),
     },
     {
