@@ -2,6 +2,12 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ─── Design System Tokens ─── */
+@import './tokens/colors.css';
+@import './tokens/typography.css';
+@import './tokens/spacing.css';
+@import './tokens/motion.css';
+
 @layer base {
   :root {
     /* ─── Kubilitics Design System v2.0 ─── */

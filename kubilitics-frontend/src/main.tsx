@@ -3,6 +3,10 @@
 // instead of fetching from CDN (which is blocked by Tauri's CSP).
 import './lib/monacoSetup';
 
+// Self-hosted fonts (no external CDN — works offline in Tauri desktop)
+import '@fontsource-variable/inter';
+import '@fontsource-variable/jetbrains-mono';
+
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import App from "./App.tsx";

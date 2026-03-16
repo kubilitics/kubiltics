@@ -132,6 +132,12 @@ export const API_GROUPS = {
   // Admission Control
   mutatingwebhookconfigurations: '/apis/admissionregistration.k8s.io/v1',
   validatingwebhookconfigurations: '/apis/admissionregistration.k8s.io/v1',
+
+  // Gateway API (gateway.networking.k8s.io)
+  gateways: '/apis/gateway.networking.k8s.io/v1',
+  gatewayclasses: '/apis/gateway.networking.k8s.io/v1',
+  httproutes: '/apis/gateway.networking.k8s.io/v1',
+  grpcroutes: '/apis/gateway.networking.k8s.io/v1',
 } as const;
 
 export type ResourceType = keyof typeof API_GROUPS;
@@ -178,6 +184,7 @@ const CLUSTER_SCOPED_KINDS: ResourceType[] = [
   'mutatingwebhookconfigurations', 'validatingwebhookconfigurations', 'podsecuritypolicies',
   'volumesnapshotclasses', 'volumesnapshotcontents',
   'resourceslices', 'deviceclasses', 'componentstatuses',
+  'gatewayclasses',
 ];
 
 // Generic hook for fetching any K8s resource list (backend or direct K8s). Per A3.3: single code path for backend mode.

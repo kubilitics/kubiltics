@@ -1,0 +1,115 @@
+/**
+ * Kubilitics Design Token: Colors
+ *
+ * Canonical color definitions for the Kubilitics design system.
+ * All colors use HSL format for consistent manipulation.
+ *
+ * Usage: Use semantic tokens (--color-success, --color-warning, etc.)
+ * rather than raw Tailwind colors in component styles.
+ */
+
+:root {
+  /* ─── Brand Colors ─── */
+  --color-brand-primary: 221.2 83.2% 53.3%;
+  --color-brand-primary-hover: 221.2 83.2% 48%;
+  --color-brand-primary-active: 221.2 83.2% 43%;
+  --color-brand-secondary: 263 70% 50%;
+
+  /* ─── Semantic Status Colors ─── */
+  --color-success: 142 71% 45%;
+  --color-success-bg: 142 71% 95%;
+  --color-success-border: 142 71% 85%;
+  --color-success-text: 142 71% 30%;
+
+  --color-warning: 38 92% 50%;
+  --color-warning-bg: 38 92% 95%;
+  --color-warning-border: 38 92% 80%;
+  --color-warning-text: 38 92% 30%;
+
+  --color-error: 0 84% 60%;
+  --color-error-bg: 0 84% 96%;
+  --color-error-border: 0 84% 85%;
+  --color-error-text: 0 84% 35%;
+
+  --color-info: 217 91% 60%;
+  --color-info-bg: 217 91% 96%;
+  --color-info-border: 217 91% 85%;
+  --color-info-text: 217 91% 35%;
+
+  --color-neutral: 215 16% 50%;
+  --color-neutral-bg: 215 16% 96%;
+  --color-neutral-border: 215 16% 85%;
+  --color-neutral-text: 215 16% 35%;
+
+  /* ─── Surface Colors ─── */
+  --color-surface-primary: 0 0% 100%;
+  --color-surface-secondary: 210 50% 98.5%;
+  --color-surface-elevated: 0 0% 100%;
+  --color-surface-overlay: rgba(0, 0, 0, 0.5);
+
+  /* ─── Text Colors ─── */
+  --color-text-primary: 224 71% 4%;
+  --color-text-secondary: 215 16% 44%;
+  --color-text-tertiary: 215 16% 60%;
+  --color-text-disabled: 215 16% 75%;
+  --color-text-inverse: 210 40% 98%;
+
+  /* ─── Border Colors ─── */
+  --color-border-default: 214.3 31.8% 88%;
+  --color-border-strong: 214.3 31.8% 78%;
+  --color-border-subtle: 214.3 31.8% 93%;
+
+  /* ─── Kubernetes Resource Category Colors ─── */
+  --color-k8s-workload: 221 83% 53%;       /* Blue */
+  --color-k8s-networking: 190 80% 42%;     /* Cyan */
+  --color-k8s-storage: 262 52% 47%;        /* Purple */
+  --color-k8s-cluster: 142 71% 45%;        /* Green */
+  --color-k8s-security: 38 92% 50%;        /* Amber */
+  --color-k8s-config: 215 16% 47%;         /* Gray */
+}
+
+.dark {
+  /* ─── Dark Brand Colors ─── */
+  --color-brand-primary: 217 91% 60%;
+  --color-brand-primary-hover: 217 91% 65%;
+  --color-brand-primary-active: 217 91% 55%;
+
+  /* ─── Dark Status Colors ─── */
+  --color-success-bg: 142 71% 12%;
+  --color-success-border: 142 71% 25%;
+  --color-success-text: 142 71% 65%;
+
+  --color-warning-bg: 38 92% 12%;
+  --color-warning-border: 38 92% 30%;
+  --color-warning-text: 38 92% 65%;
+
+  --color-error-bg: 0 72% 12%;
+  --color-error-border: 0 72% 30%;
+  --color-error-text: 0 72% 65%;
+
+  --color-info-bg: 217 91% 12%;
+  --color-info-border: 217 91% 30%;
+  --color-info-text: 217 91% 65%;
+
+  --color-neutral-bg: 228 14% 14%;
+  --color-neutral-border: 228 14% 25%;
+  --color-neutral-text: 215 16% 65%;
+
+  /* ─── Dark Surface Colors ─── */
+  --color-surface-primary: 228 14% 10%;
+  --color-surface-secondary: 228 14% 7%;
+  --color-surface-elevated: 228 14% 12%;
+  --color-surface-overlay: rgba(0, 0, 0, 0.7);
+
+  /* ─── Dark Text Colors ─── */
+  --color-text-primary: 210 20% 90%;
+  --color-text-secondary: 215 16% 56%;
+  --color-text-tertiary: 215 16% 44%;
+  --color-text-disabled: 215 16% 32%;
+  --color-text-inverse: 228 14% 7%;
+
+  /* ─── Dark Border Colors ─── */
+  --color-border-default: 228 14% 20%;
+  --color-border-strong: 228 14% 30%;
+  --color-border-subtle: 228 14% 14%;
+}

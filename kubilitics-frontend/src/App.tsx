@@ -28,6 +28,7 @@ const ConnectedRedirect = lazy(() => import("./pages/ConnectedRedirect"));
 const KubeConfigSetup = lazy(() => import("./pages/KubeConfigSetup"));
 const ClusterSelection = lazy(() => import("./pages/ClusterSelection"));
 const DashboardPage = lazy(() => import("./pages/DashboardPage"));
+const FleetDashboard = lazy(() => import("./pages/FleetDashboard"));
 const HomePage = lazy(() => import("./pages/HomePage"));
 const ProjectDetailPage = lazy(() => import("./pages/ProjectDetailPage"));
 const ProjectDashboardPage = lazy(() => import("./pages/ProjectDashboardPage"));
@@ -663,6 +664,7 @@ const App = () => (
                         <Route path="/projects/:projectId" element={<ProjectDetailPage />} />
                         <Route path="/projects/:projectId/dashboard" element={<ProjectDashboardPage />} />
                         <Route path="/dashboard" element={<DashboardPage />} />
+                        <Route path="/fleet" element={<FleetDashboard />} />
                         <Route path="/settings" element={<SettingsPage />} />
                         <Route path="/audit-log" element={<AuditLog />} />
 

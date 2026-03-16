@@ -80,6 +80,7 @@ import { useK8sResourceList, useDeleteK8sResource, useUpdateK8sResource, calcula
 import { useMetricsSummary } from '@/hooks/useMetricsSummary';
 import { useActiveClusterId } from '@/hooks/useActiveClusterId';
 import { useConnectionStatus } from '@/hooks/useConnectionStatus';
+import { useTrackRecentResource } from '@/hooks/useTrackRecentResource';
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
 import { normalizeKindForTopology } from '@/utils/resourceKindMapper';
 import { cn } from '@/lib/utils';
@@ -178,6 +179,7 @@ interface PodResource extends KubernetesResource {
 
 export default function PodDetail() {
   const { namespace, name } = useParams();
+  useTrackRecentResource({ resourceKind: 'Pod', name, namespace });
   const { activeCluster } = useClusterStore();
   const clusterId = useActiveClusterId();
   const backendBaseUrl = getEffectiveBackendBaseUrl(useBackendConfigStore((s) => s.backendBaseUrl));

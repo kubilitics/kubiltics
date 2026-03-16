@@ -6,9 +6,15 @@ interface UIState {
     isSidebarCollapsed: boolean;
     /** Whether the sidebar was auto-collapsed by viewport resize (vs user choice) */
     isAutoCollapsed: boolean;
+    /** Which resource sub-categories are expanded in the sidebar */
+    expandedResourceCategories: string[];
+    /** Whether the top-level Resources section is expanded */
+    isResourcesSectionOpen: boolean;
     setSidebarCollapsed: (collapsed: boolean) => void;
     toggleSidebar: () => void;
     setAutoCollapsed: (auto: boolean) => void;
+    toggleResourceCategory: (categoryId: string) => void;
+    setResourcesSectionOpen: (open: boolean) => void;
 }
 
 const SIDEBAR_COLLAPSED_KEY = 'kubilitics-sidebar-collapsed';
@@ -21,13 +27,26 @@ export const useUIStore = create<UIState>()(
         (set) => ({
             isSidebarCollapsed: false,
             isAutoCollapsed: false,
+            expandedResourceCategories: [],
+            isResourcesSectionOpen: false,
             setSidebarCollapsed: (collapsed) => set({ isSidebarCollapsed: collapsed, isAutoCollapsed: false }),
             toggleSidebar: () => set((state) => ({ isSidebarCollapsed: !state.isSidebarCollapsed, isAutoCollapsed: false })),
             setAutoCollapsed: (auto) => set({ isAutoCollapsed: auto }),
+            toggleResourceCategory: (categoryId) =>
+                set((state) => ({
+                    expandedResourceCategories: state.expandedResourceCategories.includes(categoryId)
+                        ? state.expandedResourceCategories.filter((id) => id !== categoryId)
+                        : [categoryId], // Single-open: only one sub-category at a time
+                })),
+            setResourcesSectionOpen: (open) => set({ isResourcesSectionOpen: open }),
         }),
         {
             name: SIDEBAR_COLLAPSED_KEY,
-            partialize: (state) => ({ isSidebarCollapsed: state.isSidebarCollapsed }),
+            partialize: (state) => ({
+                isSidebarCollapsed: state.isSidebarCollapsed,
+                expandedResourceCategories: state.expandedResourceCategories,
+                isResourcesSectionOpen: state.isResourcesSectionOpen,
+            }),
         }
     )
 );

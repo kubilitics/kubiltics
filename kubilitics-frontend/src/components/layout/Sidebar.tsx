@@ -40,23 +40,99 @@ import {
   Brain,
   FolderKanban,
   LogOut,
+  Search,
+  ChevronDown,
+  Package,
 } from 'lucide-react';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useResourceCounts } from '@/hooks/useResourceCounts';
 import { useMetalLBInstalled } from '@/hooks/useMetalLBInstalled';
 import { useAIStatus } from '@/hooks/useAIStatus';
 import { useUIStore } from '@/stores/uiStore';
 import { useProjectStore } from '@/stores/projectStore';
+import { RecentResources } from '@/components/layout/RecentResources';
+
+// ─── Types ───────────────────────────────────────────────────────────────────
 
 interface NavItemProps {
   to: string;
   icon: React.ElementType;
   label: string;
   count?: number;
-  /** Optional callback when item is clicked to ensure parent section is expanded */
   onNavigate?: () => void;
 }
+
+interface ResourceCategory {
+  id: string;
+  label: string;
+  icon: React.ElementType;
+  items: Array<{
+    to: string;
+    icon: React.ElementType;
+    label: string;
+    countKey?: string;
+    condition?: boolean;
+  }>;
+}
+
+// ─── Path Constants ──────────────────────────────────────────────────────────
+
+const WORKLOAD_PATHS = ['/pods', '/deployments', '/replicasets', '/statefulsets', '/daemonsets', '/jobs', '/cronjobs', '/podtemplates', '/controllerrevisions'];
+const NETWORKING_PATHS = ['/networking', '/services', '/ingresses', '/ingressclasses', '/endpoints', '/endpointslices', '/networkpolicies', '/ipaddresspools', '/bgppeers'];
+const STORAGE_PATHS = ['/storage', '/configmaps', '/secrets', '/persistentvolumes', '/persistentvolumeclaims', '/storageclasses', '/volumeattachments', '/volumesnapshots', '/volume-snapshots', '/volumesnapshotclasses', '/volume-snapshot-classes', '/volumesnapshotcontents', '/volume-snapshot-contents'];
+const CLUSTER_PATHS = ['/cluster-overview', '/nodes', '/namespaces', '/events', '/apiservices', '/leases'];
+const SECURITY_PATHS = ['/serviceaccounts', '/roles', '/clusterroles', '/rolebindings', '/clusterrolebindings', '/priorityclasses'];
+const RESOURCES_PATHS = ['/resources', '/resourcequotas', '/limitranges', '/resourceslices', '/deviceclasses', '/device-classes'];
+const SCALING_PATHS = ['/scaling', '/horizontalpodautoscalers', '/verticalpodautoscalers', '/poddisruptionbudgets'];
+const CRD_PATHS = ['/crds', '/customresourcedefinitions', '/customresources'];
+const ADMISSION_PATHS = ['/admission', '/mutatingwebhooks', '/validatingwebhooks'];
+const AI_PATHS = ['/analytics', '/security', '/ml-analytics'];
+
+const ALL_RESOURCE_PATHS = [
+  '/workloads',
+  ...WORKLOAD_PATHS,
+  ...NETWORKING_PATHS,
+  ...STORAGE_PATHS,
+  ...CLUSTER_PATHS,
+  ...SECURITY_PATHS,
+  ...RESOURCES_PATHS,
+  ...SCALING_PATHS,
+  ...CRD_PATHS,
+  ...ADMISSION_PATHS,
+];
+
+// Category IDs
+const CATEGORY_IDS = {
+  WORKLOADS: 'workloads',
+  NETWORKING: 'networking',
+  STORAGE: 'storage',
+  CLUSTER: 'cluster',
+  SECURITY: 'security',
+  RESOURCES: 'resources',
+  SCALING: 'scaling',
+  CRDS: 'crds',
+  ADMISSION: 'admission',
+} as const;
+
+function isPathIn(pathname: string, prefixes: string[]) {
+  return prefixes.some((p) => pathname === p || pathname.startsWith(`${p}/`));
+}
+
+function getCategoryForPath(pathname: string): string | null {
+  if (pathname === '/workloads' || isPathIn(pathname, WORKLOAD_PATHS)) return CATEGORY_IDS.WORKLOADS;
+  if (isPathIn(pathname, NETWORKING_PATHS)) return CATEGORY_IDS.NETWORKING;
+  if (isPathIn(pathname, STORAGE_PATHS)) return CATEGORY_IDS.STORAGE;
+  if (isPathIn(pathname, CLUSTER_PATHS)) return CATEGORY_IDS.CLUSTER;
+  if (isPathIn(pathname, SECURITY_PATHS)) return CATEGORY_IDS.SECURITY;
+  if (isPathIn(pathname, RESOURCES_PATHS)) return CATEGORY_IDS.RESOURCES;
+  if (isPathIn(pathname, SCALING_PATHS)) return CATEGORY_IDS.SCALING;
+  if (isPathIn(pathname, CRD_PATHS)) return CATEGORY_IDS.CRDS;
+  if (isPathIn(pathname, ADMISSION_PATHS)) return CATEGORY_IDS.ADMISSION;
+  return null;
+}
+
+// ─── NavItem Component ───────────────────────────────────────────────────────
 
 function NavItem({ to, icon: Icon, label, count, onNavigate }: NavItemProps) {
   const location = useLocation();
@@ -65,7 +141,6 @@ function NavItem({ to, icon: Icon, label, count, onNavigate }: NavItemProps) {
 
   useEffect(() => {
     if (isActive && itemRef.current) {
-      // Small delay to ensure any accordion animation has started/completed
       const timer = setTimeout(() => {
         if (itemRef.current) {
           itemRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -88,14 +163,12 @@ function NavItem({ to, icon: Icon, label, count, onNavigate }: NavItemProps) {
           : 'text-slate-800 dark:text-slate-300 hover:bg-slate-100/60 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-slate-100 border-transparent hover:translate-x-0.5'
       )}
     >
-      {/* Active Indicator Line */}
       {isActive && (
         <motion.div
           layoutId="activeNavLine"
           className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 rounded-r-full bg-primary"
         />
       )}
-
       <Icon className={cn("h-4 w-4 transition-colors relative z-10", isActive ? "text-primary" : "text-slate-700 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-slate-100")} />
       <span className={cn("flex-1 truncate relative z-10", isActive && "font-semibold")}>{label}</span>
       {count !== undefined && (
@@ -112,91 +185,7 @@ function NavItem({ to, icon: Icon, label, count, onNavigate }: NavItemProps) {
   );
 }
 
-interface NavGroupProps {
-  label: string;
-  sectionId: string;
-  children: React.ReactNode;
-  icon: React.ElementType;
-  /** When true, show the same blue gradient highlight as Dashboard/Settings */
-  isSectionActive?: boolean;
-  /** Controlled: whether this section is currently open */
-  isOpen: boolean;
-  /** Optional route to navigate to when header is clicked */
-  to?: string;
-  /** Callback when section header is clicked */
-  onToggle: (sectionId: string) => void;
-}
-
-function NavGroup({ label, sectionId, children, icon: Icon, isSectionActive = false, isOpen, to, onToggle }: NavGroupProps) {
-  const headerContent = (
-    <div className={cn(
-      "flex items-center justify-between w-full px-4 py-2.5 rounded-xl transition-all duration-500 group border h-11",
-      isSectionActive
-        ? "bg-white dark:bg-slate-800 shadow-apple border-slate-200/40 dark:border-slate-700/40 text-primary"
-        : isOpen
-          ? "bg-slate-100/40 dark:bg-slate-800/40 text-slate-900 dark:text-slate-100 border-slate-100 dark:border-slate-700/50"
-          : "bg-transparent hover:bg-slate-100/60 dark:hover:bg-slate-800/40 text-slate-800 dark:text-slate-300 border-transparent hover:border-slate-100 dark:hover:border-slate-700/50"
-    )}>
-      <div className="flex items-center gap-3">
-        <div className={cn(
-          "p-1.5 rounded-lg transition-colors",
-          isSectionActive ? "bg-primary/5 text-primary" : isOpen ? "bg-slate-200/50 dark:bg-slate-700/50 text-slate-900 dark:text-slate-100" : "bg-slate-200/50 dark:bg-slate-700/50 text-slate-700 dark:text-slate-400 group-hover:bg-white dark:group-hover:bg-slate-700 group-hover:text-slate-900 dark:group-hover:text-slate-100"
-        )}>
-          <Icon className="h-4 w-4" />
-        </div>
-        <span className={cn(
-          "text-[11px] font-bold tracking-[0.05em] uppercase",
-          isSectionActive ? "text-primary" : "text-slate-800 dark:text-slate-300 group-hover:text-slate-950 dark:group-hover:text-slate-100"
-        )}>
-          {label}
-        </span>
-      </div>
-      <ChevronRight
-        className={cn('h-4 w-4 transition-transform duration-500', isSectionActive ? 'text-primary' : 'text-slate-600 group-hover:text-slate-900', isOpen && 'rotate-90')}
-      />
-    </div>
-  );
-
-  return (
-    <div className="space-y-1">
-      {to ? (
-        <NavLink
-          to={to}
-          onClick={() => onToggle(sectionId)}
-          className="block"
-        >
-          {headerContent}
-        </NavLink>
-      ) : (
-        <button
-          onClick={() => onToggle(sectionId)}
-          aria-expanded={isOpen}
-          aria-controls={`nav-group-${sectionId}`}
-          className="w-full"
-        >
-          {headerContent}
-        </button>
-      )}
-
-      <AnimatePresence initial={false}>
-        {isOpen && (
-          <motion.div
-            id={`nav-group-${sectionId}`}
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.3, ease: [0.23, 1, 0.32, 1] }}
-            className="overflow-hidden"
-          >
-            <div className="relative pl-4 ml-4 border-l-2 border-primary/20 my-2 space-y-1">
-              {children}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  );
-}
+// ─── NavItemIconOnly (collapsed mode) ────────────────────────────────────────
 
 function NavItemIconOnly({
   to,
@@ -207,7 +196,6 @@ function NavItemIconOnly({
   to: string;
   icon: React.ElementType;
   label: string;
-  /** Tailwind class for icon color when inactive (e.g. text-blue-600) */
   iconColor?: string;
 }) {
   const location = useLocation();
@@ -234,8 +222,6 @@ function NavItemIconOnly({
         )}
         aria-hidden
       />
-
-      {/* Tooltip-like label on hover for icon-only mode */}
       <span className="absolute left-full ml-3 px-3 py-1.5 bg-popover text-popover-foreground text-sm font-medium rounded-lg shadow-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50 border border-border">
         {label}
       </span>
@@ -243,28 +229,182 @@ function NavItemIconOnly({
   );
 }
 
-function isPathIn(pathname: string, prefixes: string[]) {
-  return prefixes.some((p) => pathname === p || pathname.startsWith(`${p}/`));
+// ─── Search Bar ──────────────────────────────────────────────────────────────
+
+function SidebarSearch({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        inputRef.current?.focus();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  return (
+    <div className="relative">
+      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 dark:text-slate-500 pointer-events-none" />
+      <input
+        ref={inputRef}
+        type="text"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder="Search resources..."
+        aria-label="Search sidebar resources"
+        className={cn(
+          "w-full pl-9 pr-10 py-2.5 rounded-xl text-[13px] font-medium",
+          "bg-slate-100/60 dark:bg-slate-800/60 border border-slate-200/50 dark:border-slate-700/50",
+          "text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500",
+          "focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/40",
+          "transition-all duration-200"
+        )}
+      />
+      {value ? (
+        <button
+          onClick={() => onChange('')}
+          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+          aria-label="Clear search"
+        >
+          <span className="text-xs font-bold">&times;</span>
+        </button>
+      ) : (
+        <kbd className="absolute right-3 top-1/2 -translate-y-1/2 hidden sm:inline-flex items-center rounded border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 px-1.5 py-0.5 text-[10px] font-mono text-slate-400 dark:text-slate-500">
+          {/Mac|iPod|iPhone|iPad/.test(navigator.userAgent) ? '⌘K' : 'Ctrl+K'}
+        </kbd>
+      )}
+    </div>
+  );
 }
 
-/** Subtle background sync indicator - only shows on initial load, not background refresh */
+// ─── Resource Sub-Category (nested accordion) ────────────────────────────────
+
+function ResourceSubCategory({
+  category,
+  counts,
+  isExpanded,
+  onToggle,
+  searchFilter,
+}: {
+  category: ResourceCategory;
+  counts: Record<string, number>;
+  isExpanded: boolean;
+  onToggle: () => void;
+  searchFilter: string;
+}) {
+  const location = useLocation();
+  const pathname = location.pathname;
+  const Icon = category.icon;
+
+  // Filter items by search
+  const visibleItems = useMemo(() => {
+    if (!searchFilter) return category.items.filter((item) => item.condition !== false);
+    const lowerFilter = searchFilter.toLowerCase();
+    return category.items.filter(
+      (item) => item.condition !== false && item.label.toLowerCase().includes(lowerFilter)
+    );
+  }, [category.items, searchFilter]);
+
+  if (visibleItems.length === 0) return null;
+
+  const isCategoryActive = category.items.some(
+    (item) => pathname === item.to || pathname.startsWith(`${item.to}/`)
+  );
+
+  // Calculate total resource count for this category
+  const totalCount = visibleItems.reduce((sum, item) => {
+    if (item.countKey && counts[item.countKey] !== undefined) {
+      return sum + counts[item.countKey];
+    }
+    return sum;
+  }, 0);
+
+  return (
+    <div>
+      <button
+        onClick={onToggle}
+        aria-expanded={isExpanded}
+        className={cn(
+          "flex items-center justify-between w-full px-3 py-2 rounded-lg transition-all duration-200 group text-left",
+          isCategoryActive
+            ? "text-primary bg-primary/5 dark:bg-primary/10"
+            : "text-slate-700 dark:text-slate-300 hover:bg-slate-100/60 dark:hover:bg-slate-800/60"
+        )}
+      >
+        <div className="flex items-center gap-2.5 min-w-0">
+          <Icon className={cn("h-3.5 w-3.5 shrink-0", isCategoryActive ? "text-primary" : "text-slate-500 dark:text-slate-400")} />
+          <span className={cn("text-[12px] font-semibold tracking-wide uppercase truncate", isCategoryActive ? "text-primary" : "text-slate-600 dark:text-slate-400 group-hover:text-slate-800 dark:group-hover:text-slate-200")}>
+            {category.label}
+          </span>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          {totalCount > 0 && !isExpanded && (
+            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 tabular-nums">
+              {totalCount}
+            </span>
+          )}
+          <ChevronRight
+            className={cn(
+              'h-3.5 w-3.5 transition-transform duration-200',
+              isCategoryActive ? 'text-primary' : 'text-slate-400 dark:text-slate-500',
+              isExpanded && 'rotate-90'
+            )}
+          />
+        </div>
+      </button>
+
+      <AnimatePresence initial={false}>
+        {isExpanded && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2, ease: [0.23, 1, 0.32, 1] }}
+            className="overflow-hidden"
+          >
+            <div className="pl-3 ml-2 border-l-2 border-primary/15 dark:border-primary/20 my-1 space-y-0.5">
+              {visibleItems.map((item) => (
+                <NavItem
+                  key={item.to}
+                  to={item.to}
+                  icon={item.icon}
+                  label={item.label}
+                  count={item.countKey ? counts[item.countKey] : undefined}
+                />
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+// ─── Syncing Indicator ───────────────────────────────────────────────────────
+
 function SyncingIndicator({ isLoading, isInitialLoad }: { isLoading: boolean; isInitialLoad: boolean }) {
-  // Hooks must be called unconditionally (Rules of Hooks)
   const [show, setShow] = useState(false);
   useEffect(() => {
     if (isLoading && isInitialLoad) {
       setShow(true);
-      const id = setTimeout(() => setShow(false), 3000); // Max 3s for initial load
+      const id = setTimeout(() => setShow(false), 3000);
       return () => clearTimeout(id);
     } else {
       setShow(false);
     }
   }, [isLoading, isInitialLoad]);
 
-  // Only show on initial load, not during background refresh
   if (!isInitialLoad || !isLoading || !show) return null;
 
-  // Very subtle indicator - small dot in corner, not prominent banner
   return (
     <div className="flex items-center justify-center px-2 py-1">
       <div className="h-1.5 w-1.5 rounded-full bg-blue-500/60 animate-pulse" title="Loading resources..." />
@@ -272,47 +412,157 @@ function SyncingIndicator({ isLoading, isInitialLoad }: { isLoading: boolean; is
   );
 }
 
-const WORKLOAD_PATHS = ['/pods', '/deployments', '/replicasets', '/statefulsets', '/daemonsets', '/jobs', '/cronjobs', '/podtemplates', '/controllerrevisions'];
-const NETWORKING_PATHS = ['/networking', '/services', '/ingresses', '/ingressclasses', '/endpoints', '/endpointslices', '/networkpolicies', '/ipaddresspools', '/bgppeers'];
-const STORAGE_PATHS = ['/storage', '/configmaps', '/secrets', '/persistentvolumes', '/persistentvolumeclaims', '/storageclasses', '/volumeattachments', '/volumesnapshots', '/volume-snapshots', '/volumesnapshotclasses', '/volume-snapshot-classes', '/volumesnapshotcontents', '/volume-snapshot-contents'];
-const CLUSTER_PATHS = ['/cluster-overview', '/nodes', '/namespaces', '/events', '/apiservices', '/leases'];
-const SECURITY_PATHS = ['/serviceaccounts', '/roles', '/clusterroles', '/rolebindings', '/clusterrolebindings', '/priorityclasses'];
-const RESOURCES_PATHS = ['/resources', '/resourcequotas', '/limitranges', '/resourceslices', '/deviceclasses', '/device-classes'];
-const SCALING_PATHS = ['/scaling', '/horizontalpodautoscalers', '/verticalpodautoscalers', '/poddisruptionbudgets'];
-const CRD_PATHS = ['/crds', '/customresourcedefinitions', '/customresources'];
-const ADMISSION_PATHS = ['/admission', '/mutatingwebhooks', '/validatingwebhooks'];
-const AI_PATHS = ['/analytics', '/security', '/ml-analytics'];
+// ─── Top-Level Nav Link ──────────────────────────────────────────────────────
 
-// Section identifiers for accordion state management
-const SECTION_IDS = {
-  WORKLOADS: 'workloads',
-  NETWORKING: 'networking',
-  STORAGE: 'storage',
-  CLUSTER: 'cluster',
-  SECURITY: 'security',
-  RESOURCES: 'resources',
-  SCALING: 'scaling',
-  CRDS: 'crds',
-  ADMISSION: 'admission',
-  AI: 'ai',
-} as const;
-
-type SectionId = typeof SECTION_IDS[keyof typeof SECTION_IDS] | null;
-
-// Map route paths to their parent section IDs
-function getSectionForPath(pathname: string): SectionId {
-  if (pathname === '/workloads' || isPathIn(pathname, WORKLOAD_PATHS)) return SECTION_IDS.WORKLOADS;
-  if (isPathIn(pathname, NETWORKING_PATHS)) return SECTION_IDS.NETWORKING;
-  if (isPathIn(pathname, STORAGE_PATHS)) return SECTION_IDS.STORAGE;
-  if (isPathIn(pathname, CLUSTER_PATHS)) return SECTION_IDS.CLUSTER;
-  if (isPathIn(pathname, SECURITY_PATHS)) return SECTION_IDS.SECURITY;
-  if (isPathIn(pathname, RESOURCES_PATHS)) return SECTION_IDS.RESOURCES;
-  if (isPathIn(pathname, SCALING_PATHS)) return SECTION_IDS.SCALING;
-  if (isPathIn(pathname, CRD_PATHS)) return SECTION_IDS.CRDS;
-  if (isPathIn(pathname, ADMISSION_PATHS)) return SECTION_IDS.ADMISSION;
-  if (isPathIn(pathname, AI_PATHS)) return SECTION_IDS.AI;
-  return null; // Dashboard, Settings, etc.
+function TopLevelNavLink({
+  to,
+  icon: Icon,
+  label,
+  isActive,
+}: {
+  to: string;
+  icon: React.ElementType;
+  label: string;
+  isActive: boolean;
+}) {
+  return (
+    <NavLink
+      to={to}
+      className={cn(
+        "flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-500 group border h-12",
+        isActive
+          ? "bg-white dark:bg-slate-800 text-primary border-slate-100 dark:border-slate-700/40 shadow-apple"
+          : "bg-transparent text-slate-800 dark:text-slate-300 hover:bg-slate-100/60 dark:hover:bg-slate-800/60 border-transparent hover:border-slate-100 dark:hover:border-slate-700/50"
+      )}
+    >
+      <Icon className={cn("h-5 w-5 transition-colors", isActive ? "text-primary" : "text-slate-700 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-slate-100")} />
+      <span className={cn("font-semibold text-sm", isActive ? "text-slate-900 dark:text-slate-100" : "text-slate-800 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-slate-100")}>{label}</span>
+    </NavLink>
+  );
 }
+
+// ─── Resource Categories Definition ──────────────────────────────────────────
+
+function useResourceCategories(metallbInstalled: boolean): ResourceCategory[] {
+  return useMemo(
+    () => [
+      {
+        id: CATEGORY_IDS.WORKLOADS,
+        label: 'Workloads',
+        icon: Cpu,
+        items: [
+          { to: '/pods', icon: Box, label: 'Pods', countKey: 'pods' },
+          { to: '/deployments', icon: Container, label: 'Deployments', countKey: 'deployments' },
+          { to: '/replicasets', icon: Layers, label: 'ReplicaSets', countKey: 'replicasets' },
+          { to: '/statefulsets', icon: Layers, label: 'StatefulSets', countKey: 'statefulsets' },
+          { to: '/daemonsets', icon: Layers, label: 'DaemonSets', countKey: 'daemonsets' },
+          { to: '/jobs', icon: Activity, label: 'Jobs', countKey: 'jobs' },
+          { to: '/cronjobs', icon: Clock, label: 'CronJobs', countKey: 'cronjobs' },
+          { to: '/podtemplates', icon: Layers, label: 'Pod Templates', countKey: 'podtemplates' },
+          { to: '/controllerrevisions', icon: History, label: 'Controller Revisions', countKey: 'controllerrevisions' },
+        ],
+      },
+      {
+        id: CATEGORY_IDS.NETWORKING,
+        label: 'Networking',
+        icon: Globe,
+        items: [
+          { to: '/services', icon: Globe, label: 'Services', countKey: 'services' },
+          { to: '/ingresses', icon: Globe, label: 'Ingresses', countKey: 'ingresses' },
+          { to: '/ingressclasses', icon: Route, label: 'Ingress Classes', countKey: 'ingressclasses' },
+          { to: '/endpoints', icon: Globe, label: 'Endpoints', countKey: 'endpoints' },
+          { to: '/endpointslices', icon: Network, label: 'Endpoint Slices', countKey: 'endpointslices' },
+          { to: '/networkpolicies', icon: Shield, label: 'Network Policies', countKey: 'networkpolicies' },
+          { to: '/ipaddresspools', icon: Network, label: 'IP Address Pools', countKey: 'ipaddresspools', condition: metallbInstalled },
+          { to: '/bgppeers', icon: Network, label: 'BGP Peers', countKey: 'bgppeers', condition: metallbInstalled },
+        ],
+      },
+      {
+        id: CATEGORY_IDS.STORAGE,
+        label: 'Storage & Config',
+        icon: StorageIcon,
+        items: [
+          { to: '/configmaps', icon: Settings, label: 'ConfigMaps', countKey: 'configmaps' },
+          { to: '/secrets', icon: Key, label: 'Secrets', countKey: 'secrets' },
+          { to: '/persistentvolumes', icon: HardDrive, label: 'Persistent Volumes', countKey: 'persistentvolumes' },
+          { to: '/persistentvolumeclaims', icon: Database, label: 'PVCs', countKey: 'persistentvolumeclaims' },
+          { to: '/storageclasses', icon: Database, label: 'Storage Classes', countKey: 'storageclasses' },
+          { to: '/volumeattachments', icon: HardDrive, label: 'Volume Attachments', countKey: 'volumeattachments' },
+          { to: '/volumesnapshots', icon: Camera, label: 'Volume Snapshots', countKey: 'volumesnapshots' },
+          { to: '/volumesnapshotclasses', icon: Camera, label: 'Snapshot Classes', countKey: 'volumesnapshotclasses' },
+          { to: '/volumesnapshotcontents', icon: HardDrive, label: 'Snapshot Contents', countKey: 'volumesnapshotcontents' },
+        ],
+      },
+      {
+        id: CATEGORY_IDS.CLUSTER,
+        label: 'Cluster',
+        icon: Server,
+        items: [
+          { to: '/nodes', icon: Server, label: 'Nodes', countKey: 'nodes' },
+          { to: '/namespaces', icon: FileText, label: 'Namespaces', countKey: 'namespaces' },
+          { to: '/events', icon: Activity, label: 'Events' },
+          { to: '/apiservices', icon: FileCode, label: 'API Services', countKey: 'apiservices' },
+          { to: '/leases', icon: Activity, label: 'Leases', countKey: 'leases' },
+        ],
+      },
+      {
+        id: CATEGORY_IDS.SECURITY,
+        label: 'Security & Access',
+        icon: Lock,
+        items: [
+          { to: '/serviceaccounts', icon: Users, label: 'Service Accounts', countKey: 'serviceaccounts' },
+          { to: '/roles', icon: Shield, label: 'Roles', countKey: 'roles' },
+          { to: '/clusterroles', icon: Shield, label: 'Cluster Roles', countKey: 'clusterroles' },
+          { to: '/rolebindings', icon: Shield, label: 'Role Bindings', countKey: 'rolebindings' },
+          { to: '/clusterrolebindings', icon: Shield, label: 'Cluster Role Bindings', countKey: 'clusterrolebindings' },
+          { to: '/priorityclasses', icon: AlertTriangle, label: 'Priority Classes', countKey: 'priorityclasses' },
+        ],
+      },
+      {
+        id: CATEGORY_IDS.RESOURCES,
+        label: 'Resources & DRA',
+        icon: Gauge,
+        items: [
+          { to: '/resourcequotas', icon: Gauge, label: 'Resource Quotas', countKey: 'resourcequotas' },
+          { to: '/limitranges', icon: Scale, label: 'Limit Ranges', countKey: 'limitranges' },
+          { to: '/resourceslices', icon: Cpu, label: 'Resource Slices (DRA)', countKey: 'resourceslices' },
+          { to: '/deviceclasses', icon: Cpu, label: 'Device Classes (DRA)', countKey: 'deviceclasses' },
+        ],
+      },
+      {
+        id: CATEGORY_IDS.SCALING,
+        label: 'Scaling & Policies',
+        icon: Zap,
+        items: [
+          { to: '/horizontalpodautoscalers', icon: Scale, label: 'HPAs', countKey: 'horizontalpodautoscalers' },
+          { to: '/verticalpodautoscalers', icon: Scale, label: 'VPAs', countKey: 'verticalpodautoscalers' },
+          { to: '/poddisruptionbudgets', icon: Shield, label: 'PDBs', countKey: 'poddisruptionbudgets' },
+        ],
+      },
+      {
+        id: CATEGORY_IDS.CRDS,
+        label: 'Custom Resources',
+        icon: FileCode,
+        items: [
+          { to: '/customresourcedefinitions', icon: FileCode, label: 'Definitions', countKey: 'customresourcedefinitions' },
+          { to: '/customresources', icon: FileCode, label: 'Instances' },
+        ],
+      },
+      {
+        id: CATEGORY_IDS.ADMISSION,
+        label: 'Admission Control',
+        icon: Webhook,
+        items: [
+          { to: '/mutatingwebhooks', icon: Webhook, label: 'Mutating Webhooks', countKey: 'mutatingwebhookconfigurations' },
+          { to: '/validatingwebhooks', icon: Webhook, label: 'Validating Webhooks', countKey: 'validatingwebhookconfigurations' },
+        ],
+      },
+    ],
+    [metallbInstalled]
+  );
+}
+
+// ─── Sidebar Content ─────────────────────────────────────────────────────────
 
 function SidebarContent({
   counts,
@@ -332,297 +582,204 @@ function SidebarContent({
   const pathname = location.pathname;
   const isHomeActive = pathname === '/home';
   const isDashboardActive = pathname === '/dashboard';
+  const isFleetActive = pathname === '/fleet';
   const isTopologyActive = pathname === '/topology';
   const isAddOnsActive = pathname.startsWith('/addons');
   const activeProject = useProjectStore((s) => s.activeProject);
   const clearActiveProject = useProjectStore((s) => s.clearActiveProject);
 
-  // Centralized state for accordion: track which section is currently open
-  const [openSection, setOpenSection] = useState<SectionId>(() => {
-    // Initialize based on current route
-    const sectionForPath = getSectionForPath(pathname);
-    return sectionForPath;
-  });
+  // Persisted state from UI store
+  const expandedCategories = useUIStore((s) => s.expandedResourceCategories);
+  const isResourcesSectionOpen = useUIStore((s) => s.isResourcesSectionOpen);
+  const toggleResourceCategory = useUIStore((s) => s.toggleResourceCategory);
+  const setResourcesSectionOpen = useUIStore((s) => s.setResourcesSectionOpen);
 
-  // Sync expansion state with route changes
+  // Search state
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // Resource categories data
+  const categories = useResourceCategories(metallbInstalled);
+
+  // Is any resource path active?
+  const isAnyResourceActive = isPathIn(pathname, ALL_RESOURCE_PATHS);
+
+  // Auto-expand Resources section and correct sub-category when navigating to a resource route
   useEffect(() => {
-    const sectionForPath = getSectionForPath(pathname);
-    // If on dashboard, close all sections; otherwise open the section for current route
-    setOpenSection(sectionForPath);
-  }, [pathname]);
-
-  // Handle section toggle: if clicking the same section, close it; otherwise open new and close others
-  const handleSectionToggle = (sectionId: string, forceOpen: boolean = false) => {
-    setOpenSection((current) => {
-      // If force open is requested (e.g. from a NavLink click), ensure it's open
-      if (forceOpen) {
-        return sectionId as SectionId;
+    const categoryForPath = getCategoryForPath(pathname);
+    if (categoryForPath) {
+      if (!isResourcesSectionOpen) {
+        setResourcesSectionOpen(true);
       }
-      // Otherwise, toggle: if clicking the already-open section, close it
-      if (current === sectionId) {
-        return null;
+      if (!expandedCategories.includes(categoryForPath)) {
+        toggleResourceCategory(categoryForPath);
       }
-      // Otherwise, open the clicked section (this closes any other open section)
-      return sectionId as SectionId;
-    });
-  };
-
-  // Handle NavItem click: ensure parent section is expanded
-  const handleNavItemClick = (sectionId: SectionId) => {
-    if (sectionId && openSection !== sectionId) {
-      setOpenSection(sectionId);
     }
-  };
+  }, [pathname]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Auto-expand Resources section when searching
+  useEffect(() => {
+    if (searchQuery && !isResourcesSectionOpen) {
+      setResourcesSectionOpen(true);
+    }
+  }, [searchQuery]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleResourcesToggle = useCallback(() => {
+    setResourcesSectionOpen(!isResourcesSectionOpen);
+  }, [isResourcesSectionOpen, setResourcesSectionOpen]);
 
   const handleExitProject = () => {
     clearActiveProject();
     navigate('/home');
   };
 
+  // Filter categories based on search
+  const filteredCategories = useMemo(() => {
+    if (!searchQuery) return categories;
+    const lowerQuery = searchQuery.toLowerCase();
+    return categories.filter((cat) => {
+      // Show category if its label matches or any item matches
+      if (cat.label.toLowerCase().includes(lowerQuery)) return true;
+      return cat.items.some(
+        (item) => item.condition !== false && item.label.toLowerCase().includes(lowerQuery)
+      );
+    });
+  }, [categories, searchQuery]);
+
   return (
-    <div className="flex flex-col gap-6 pb-6 w-full">
+    <div className="flex flex-col gap-4 pb-6 w-full">
+      {/* Project scope indicator */}
       {activeProject && (
-        <div className="rounded-xl border border-primary/20 bg-primary/5 p-3 space-y-2">
+        <div className="rounded-xl border border-primary/20 bg-primary/5 dark:bg-primary/10 p-3 space-y-2">
           <div className="flex items-center gap-2 min-w-0">
             <FolderKanban className="h-4 w-4 text-primary shrink-0" />
-            <span className="text-sm font-medium truncate" title={activeProject.name}>{activeProject.name}</span>
+            <span className="text-sm font-medium truncate dark:text-slate-100" title={activeProject.name}>{activeProject.name}</span>
           </div>
-          <p className="text-xs text-slate-700 font-medium">Project scope</p>
+          <p className="text-xs text-slate-700 dark:text-slate-400 font-medium">Project scope</p>
           <button
             type="button"
             onClick={handleExitProject}
-            className="w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-medium text-slate-800 hover:bg-slate-200 hover:text-slate-900 transition-colors"
+            className="w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-medium text-slate-800 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-slate-100 transition-colors"
           >
             <LogOut className="h-3.5 w-3.5" /> Exit project
           </button>
         </div>
       )}
-      <div className="space-y-1.5">
-        <NavLink
-          to="/home"
-          className={cn(
-            "flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-500 group border h-12",
-            isHomeActive
-              ? "bg-white text-primary border-slate-100 shadow-apple"
-              : "bg-transparent text-slate-800 hover:bg-slate-100/60 border-transparent hover:border-slate-100"
-          )}
-        >
-          <Home className={cn("h-5 w-5 transition-colors", isHomeActive ? "text-primary" : "text-slate-700 group-hover:text-slate-900")} />
-          <span className={cn("font-semibold text-sm", isHomeActive ? "text-slate-900" : "text-slate-800 group-hover:text-slate-900")}>Home</span>
-        </NavLink>
-        <NavLink
-          to="/dashboard"
-          className={cn(
-            "flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-500 group border h-12",
-            isDashboardActive
-              ? "bg-white text-primary border-slate-100 shadow-apple"
-              : "bg-transparent text-slate-800 hover:bg-slate-100/60 border-transparent hover:border-slate-100"
-          )}
-        >
-          <LayoutDashboard className={cn("h-5 w-5 transition-colors", isDashboardActive ? "text-primary" : "text-slate-700 group-hover:text-slate-900")} />
-          <span className={cn("font-semibold text-sm", isDashboardActive ? "text-slate-900" : "text-slate-800 group-hover:text-slate-900")}>Dashboard</span>
-        </NavLink>
-        <NavLink
-          to="/topology"
-          className={cn(
-            "flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-500 group border h-12",
-            isTopologyActive
-              ? "bg-white text-primary border-slate-100 shadow-apple"
-              : "bg-transparent text-slate-800 hover:bg-slate-100/60 border-transparent hover:border-slate-100"
-          )}
-        >
-          <Network className={cn("h-5 w-5 transition-colors", isTopologyActive ? "text-primary" : "text-slate-700 group-hover:text-slate-900")} />
-          <span className={cn("font-semibold text-sm", isTopologyActive ? "text-slate-900" : "text-slate-800 group-hover:text-slate-900")}>Topology</span>
-        </NavLink>
-        <NavLink
-          to="/addons"
-          className={cn(
-            "flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-500 group border h-12",
-            isAddOnsActive
-              ? "bg-white text-primary border-slate-100 shadow-apple"
-              : "bg-transparent text-slate-800 hover:bg-slate-100/60 border-transparent hover:border-slate-100"
-          )}
-        >
-          <Puzzle className={cn("h-5 w-5 transition-colors", isAddOnsActive ? "text-primary" : "text-slate-700 group-hover:text-slate-900")} />
-          <span className={cn("font-semibold text-sm", isAddOnsActive ? "text-slate-900" : "text-slate-800 group-hover:text-slate-900")}>Add-ons</span>
-        </NavLink>
-      </div>
 
-      {/* Subtle background sync indicator - only on initial load, not background refresh */}
+      {/* Search Bar */}
+      <SidebarSearch value={searchQuery} onChange={setSearchQuery} />
+
       <SyncingIndicator isLoading={isLoading} isInitialLoad={isInitialLoad} />
 
-      <div className="space-y-5">
-        {/* Workloads */}
-        <NavGroup
-          label="Workloads"
-          sectionId={SECTION_IDS.WORKLOADS}
-          to="/workloads"
-          icon={Cpu}
-          isOpen={openSection === SECTION_IDS.WORKLOADS}
-          onToggle={(id) => handleSectionToggle(id, true)}
-          isSectionActive={getSectionForPath(pathname) === SECTION_IDS.WORKLOADS}
-        >
-          <NavItem to="/pods" icon={Box} label="Pods" count={counts.pods} onNavigate={() => handleNavItemClick(SECTION_IDS.WORKLOADS)} />
-          <NavItem to="/deployments" icon={Container} label="Deployments" count={counts.deployments} onNavigate={() => handleNavItemClick(SECTION_IDS.WORKLOADS)} />
-          <NavItem to="/replicasets" icon={Layers} label="ReplicaSets" count={counts.replicasets} onNavigate={() => handleNavItemClick(SECTION_IDS.WORKLOADS)} />
-          <NavItem to="/statefulsets" icon={Layers} label="StatefulSets" count={counts.statefulsets} onNavigate={() => handleNavItemClick(SECTION_IDS.WORKLOADS)} />
-          <NavItem to="/daemonsets" icon={Layers} label="DaemonSets" count={counts.daemonsets} onNavigate={() => handleNavItemClick(SECTION_IDS.WORKLOADS)} />
-          <NavItem to="/jobs" icon={Activity} label="Jobs" count={counts.jobs} onNavigate={() => handleNavItemClick(SECTION_IDS.WORKLOADS)} />
-          <NavItem to="/cronjobs" icon={Clock} label="CronJobs" count={counts.cronjobs} onNavigate={() => handleNavItemClick(SECTION_IDS.WORKLOADS)} />
-          <NavItem to="/podtemplates" icon={Layers} label="Pod Templates" count={counts.podtemplates} onNavigate={() => handleNavItemClick(SECTION_IDS.WORKLOADS)} />
-          <NavItem to="/controllerrevisions" icon={History} label="Controller Revisions" count={counts.controllerrevisions} onNavigate={() => handleNavItemClick(SECTION_IDS.WORKLOADS)} />
-        </NavGroup>
-
-        {/* Networking */}
-        <NavGroup
-          label="Networking"
-          sectionId={SECTION_IDS.NETWORKING}
-          to="/networking"
-          icon={Globe}
-          isOpen={openSection === SECTION_IDS.NETWORKING}
-          onToggle={(id) => handleSectionToggle(id, true)}
-          isSectionActive={getSectionForPath(pathname) === SECTION_IDS.NETWORKING}
-        >
-          <NavItem to="/services" icon={Globe} label="Services" count={counts.services} onNavigate={() => handleNavItemClick(SECTION_IDS.NETWORKING)} />
-          <NavItem to="/ingresses" icon={Globe} label="Ingresses" count={counts.ingresses} onNavigate={() => handleNavItemClick(SECTION_IDS.NETWORKING)} />
-          <NavItem to="/ingressclasses" icon={Route} label="Ingress Classes" count={counts.ingressclasses} onNavigate={() => handleNavItemClick(SECTION_IDS.NETWORKING)} />
-          <NavItem to="/endpoints" icon={Globe} label="Endpoints" count={counts.endpoints} onNavigate={() => handleNavItemClick(SECTION_IDS.NETWORKING)} />
-          <NavItem to="/endpointslices" icon={Network} label="Endpoint Slices" count={counts.endpointslices} onNavigate={() => handleNavItemClick(SECTION_IDS.NETWORKING)} />
-          <NavItem to="/networkpolicies" icon={Shield} label="Network Policies" count={counts.networkpolicies} onNavigate={() => handleNavItemClick(SECTION_IDS.NETWORKING)} />
-          {metallbInstalled && (
-            <>
-              <NavItem to="/ipaddresspools" icon={Network} label="IP Address Pools" count={counts.ipaddresspools} onNavigate={() => handleNavItemClick(SECTION_IDS.NETWORKING)} />
-              <NavItem to="/bgppeers" icon={Network} label="BGP Peers" count={counts.bgppeers} onNavigate={() => handleNavItemClick(SECTION_IDS.NETWORKING)} />
-            </>
-          )}
-        </NavGroup>
-
-        {/* Storage */}
-        <NavGroup
-          label="Storage"
-          sectionId={SECTION_IDS.STORAGE}
-          to="/storage"
-          icon={StorageIcon}
-          isOpen={openSection === SECTION_IDS.STORAGE}
-          onToggle={(id) => handleSectionToggle(id, true)}
-          isSectionActive={getSectionForPath(pathname) === SECTION_IDS.STORAGE}
-        >
-          <NavItem to="/configmaps" icon={Settings} label="ConfigMaps" count={counts.configmaps} onNavigate={() => handleNavItemClick(SECTION_IDS.STORAGE)} />
-          <NavItem to="/secrets" icon={Key} label="Secrets" count={counts.secrets} onNavigate={() => handleNavItemClick(SECTION_IDS.STORAGE)} />
-          <NavItem to="/persistentvolumes" icon={HardDrive} label="Persistent Volumes" count={counts.persistentvolumes} onNavigate={() => handleNavItemClick(SECTION_IDS.STORAGE)} />
-          <NavItem to="/persistentvolumeclaims" icon={Database} label="PVCs" count={counts.persistentvolumeclaims} onNavigate={() => handleNavItemClick(SECTION_IDS.STORAGE)} />
-          <NavItem to="/storageclasses" icon={Database} label="Storage Classes" count={counts.storageclasses} onNavigate={() => handleNavItemClick(SECTION_IDS.STORAGE)} />
-          <NavItem to="/volumeattachments" icon={HardDrive} label="Volume Attachments" count={counts.volumeattachments} onNavigate={() => handleNavItemClick(SECTION_IDS.STORAGE)} />
-          <NavItem to="/volumesnapshots" icon={Camera} label="Volume Snapshots" count={counts.volumesnapshots} onNavigate={() => handleNavItemClick(SECTION_IDS.STORAGE)} />
-          <NavItem to="/volumesnapshotclasses" icon={Camera} label="Snapshot Classes" count={counts.volumesnapshotclasses} onNavigate={() => handleNavItemClick(SECTION_IDS.STORAGE)} />
-          <NavItem to="/volumesnapshotcontents" icon={HardDrive} label="Snapshot Contents" count={counts.volumesnapshotcontents} onNavigate={() => handleNavItemClick(SECTION_IDS.STORAGE)} />
-        </NavGroup>
-
-        {/* Cluster */}
-        <NavGroup
-          label="Cluster"
-          sectionId={SECTION_IDS.CLUSTER}
-          to="/cluster-overview"
-          icon={Server}
-          isOpen={openSection === SECTION_IDS.CLUSTER}
-          onToggle={(id) => handleSectionToggle(id, true)}
-          isSectionActive={getSectionForPath(pathname) === SECTION_IDS.CLUSTER}
-        >
-          <NavItem to="/nodes" icon={Server} label="Nodes" count={counts.nodes} onNavigate={() => handleNavItemClick(SECTION_IDS.CLUSTER)} />
-          <NavItem to="/namespaces" icon={FileText} label="Namespaces" count={counts.namespaces} onNavigate={() => handleNavItemClick(SECTION_IDS.CLUSTER)} />
-          <NavItem to="/events" icon={Activity} label="Events" onNavigate={() => handleNavItemClick(SECTION_IDS.CLUSTER)} />
-          <NavItem to="/apiservices" icon={FileCode} label="API Services" count={counts.apiservices} onNavigate={() => handleNavItemClick(SECTION_IDS.CLUSTER)} />
-          <NavItem to="/leases" icon={Activity} label="Leases" count={counts.leases} onNavigate={() => handleNavItemClick(SECTION_IDS.CLUSTER)} />
-        </NavGroup>
-
-        {/* Security & Access */}
-        <NavGroup
-          label="Security"
-          sectionId={SECTION_IDS.SECURITY}
-          icon={Lock}
-          isOpen={openSection === SECTION_IDS.SECURITY}
-          onToggle={(id) => handleSectionToggle(id)}
-          isSectionActive={getSectionForPath(pathname) === SECTION_IDS.SECURITY}
-        >
-          <NavItem to="/serviceaccounts" icon={Users} label="Service Accounts" count={counts.serviceaccounts} onNavigate={() => handleNavItemClick(SECTION_IDS.SECURITY)} />
-          <NavItem to="/roles" icon={Shield} label="Roles" count={counts.roles} onNavigate={() => handleNavItemClick(SECTION_IDS.SECURITY)} />
-          <NavItem to="/clusterroles" icon={Shield} label="Cluster Roles" count={counts.clusterroles} onNavigate={() => handleNavItemClick(SECTION_IDS.SECURITY)} />
-          <NavItem to="/rolebindings" icon={Shield} label="Role Bindings" count={counts.rolebindings} onNavigate={() => handleNavItemClick(SECTION_IDS.SECURITY)} />
-          <NavItem to="/clusterrolebindings" icon={Shield} label="Cluster Role Bindings" count={counts.clusterrolebindings} onNavigate={() => handleNavItemClick(SECTION_IDS.SECURITY)} />
-          <NavItem to="/priorityclasses" icon={AlertTriangle} label="Priority Classes" count={counts.priorityclasses} onNavigate={() => handleNavItemClick(SECTION_IDS.SECURITY)} />
-        </NavGroup>
-
-        {/* Resource Management & DRA */}
-        <NavGroup
-          label="Resources & DRA"
-          sectionId={SECTION_IDS.RESOURCES}
-          to="/resources"
-          icon={Gauge}
-          isOpen={openSection === SECTION_IDS.RESOURCES}
-          onToggle={(id) => handleSectionToggle(id, true)}
-          isSectionActive={getSectionForPath(pathname) === SECTION_IDS.RESOURCES}
-        >
-          <NavItem to="/resourcequotas" icon={Gauge} label="Resource Quotas" count={counts.resourcequotas} onNavigate={() => handleNavItemClick(SECTION_IDS.RESOURCES)} />
-          <NavItem to="/limitranges" icon={Scale} label="Limit Ranges" count={counts.limitranges} onNavigate={() => handleNavItemClick(SECTION_IDS.RESOURCES)} />
-          <NavItem to="/resourceslices" icon={Cpu} label="Resource Slices (DRA)" count={counts.resourceslices} onNavigate={() => handleNavItemClick(SECTION_IDS.RESOURCES)} />
-          <NavItem to="/deviceclasses" icon={Cpu} label="Device Classes (DRA)" count={counts.deviceclasses} onNavigate={() => handleNavItemClick(SECTION_IDS.RESOURCES)} />
-        </NavGroup>
-
-        {/* Scaling & Policies */}
-        <NavGroup
-          label="Scaling"
-          sectionId={SECTION_IDS.SCALING}
-          to="/scaling"
-          icon={Zap}
-          isOpen={openSection === SECTION_IDS.SCALING}
-          onToggle={(id) => handleSectionToggle(id, true)}
-          isSectionActive={getSectionForPath(pathname) === SECTION_IDS.SCALING}
-        >
-          <NavItem to="/horizontalpodautoscalers" icon={Scale} label="HPAs" count={counts.horizontalpodautoscalers} onNavigate={() => handleNavItemClick(SECTION_IDS.SCALING)} />
-          <NavItem to="/verticalpodautoscalers" icon={Scale} label="VPAs" count={counts.verticalpodautoscalers} onNavigate={() => handleNavItemClick(SECTION_IDS.SCALING)} />
-          <NavItem to="/poddisruptionbudgets" icon={Shield} label="PDBs" count={counts.poddisruptionbudgets} onNavigate={() => handleNavItemClick(SECTION_IDS.SCALING)} />
-        </NavGroup>
-
-        {/* Custom Resources */}
-        <NavGroup
-          label="CRDs"
-          sectionId={SECTION_IDS.CRDS}
-          to="/crds"
-          icon={FileCode}
-          isOpen={openSection === SECTION_IDS.CRDS}
-          onToggle={(id) => handleSectionToggle(id, true)}
-          isSectionActive={getSectionForPath(pathname) === SECTION_IDS.CRDS}
-        >
-          <NavItem to="/customresourcedefinitions" icon={FileCode} label="Definitions" count={counts.customresourcedefinitions} onNavigate={() => handleNavItemClick(SECTION_IDS.CRDS)} />
-          <NavItem to="/customresources" icon={FileCode} label="Instances" onNavigate={() => handleNavItemClick(SECTION_IDS.CRDS)} />
-        </NavGroup>
-
-        {/* Admission Control */}
-        <NavGroup
-          label="Admission"
-          sectionId={SECTION_IDS.ADMISSION}
-          to="/admission"
-          icon={Webhook}
-          isOpen={openSection === SECTION_IDS.ADMISSION}
-          onToggle={(id) => handleSectionToggle(id, true)}
-          isSectionActive={getSectionForPath(pathname) === SECTION_IDS.ADMISSION}
-        >
-          <NavItem to="/mutatingwebhooks" icon={Webhook} label="Mutating Webhooks" count={counts.mutatingwebhookconfigurations} onNavigate={() => handleNavItemClick(SECTION_IDS.ADMISSION)} />
-          <NavItem to="/validatingwebhooks" icon={Webhook} label="Validating Webhooks" count={counts.validatingwebhookconfigurations} onNavigate={() => handleNavItemClick(SECTION_IDS.ADMISSION)} />
-        </NavGroup>
+      {/* Top-level navigation */}
+      <div className="space-y-1.5">
+        <TopLevelNavLink to="/home" icon={Home} label="Home" isActive={isHomeActive} />
+        <TopLevelNavLink to="/dashboard" icon={LayoutDashboard} label="Dashboard" isActive={isDashboardActive} />
+        <TopLevelNavLink to="/fleet" icon={Layers} label="Fleet" isActive={isFleetActive} />
+        <TopLevelNavLink to="/topology" icon={Network} label="Topology" isActive={isTopologyActive} />
       </div>
+
+      {/* Recent Resources */}
+      <RecentResources />
+
+      {/* Resources — single expandable section containing all K8s resource categories */}
+      <div className="space-y-1">
+        <button
+          onClick={handleResourcesToggle}
+          aria-expanded={isResourcesSectionOpen}
+          aria-controls="nav-resources-section"
+          className={cn(
+            "flex items-center justify-between w-full px-4 py-2.5 rounded-xl transition-all duration-300 group border h-11",
+            isAnyResourceActive
+              ? "bg-white dark:bg-slate-800 shadow-apple border-slate-200/40 dark:border-slate-700/40 text-primary"
+              : isResourcesSectionOpen
+                ? "bg-slate-100/40 dark:bg-slate-800/40 text-slate-900 dark:text-slate-100 border-slate-100 dark:border-slate-700/50"
+                : "bg-transparent hover:bg-slate-100/60 dark:hover:bg-slate-800/40 text-slate-800 dark:text-slate-300 border-transparent hover:border-slate-100 dark:hover:border-slate-700/50"
+          )}
+        >
+          <div className="flex items-center gap-3">
+            <div className={cn(
+              "p-1.5 rounded-lg transition-colors",
+              isAnyResourceActive ? "bg-primary/5 text-primary" : "bg-slate-200/50 dark:bg-slate-700/50 text-slate-700 dark:text-slate-400 group-hover:bg-white dark:group-hover:bg-slate-700 group-hover:text-slate-900 dark:group-hover:text-slate-100"
+            )}>
+              <Package className="h-4 w-4" />
+            </div>
+            <span className={cn(
+              "text-[11px] font-bold tracking-[0.05em] uppercase",
+              isAnyResourceActive ? "text-primary" : "text-slate-800 dark:text-slate-300 group-hover:text-slate-950 dark:group-hover:text-slate-100"
+            )}>
+              Resources
+            </span>
+          </div>
+          <ChevronDown
+            className={cn(
+              'h-4 w-4 transition-transform duration-300',
+              isAnyResourceActive ? 'text-primary' : 'text-slate-600 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-slate-100',
+              !isResourcesSectionOpen && '-rotate-90'
+            )}
+          />
+        </button>
+
+        <AnimatePresence initial={false}>
+          {isResourcesSectionOpen && (
+            <motion.div
+              id="nav-resources-section"
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.3, ease: [0.23, 1, 0.32, 1] }}
+              className="overflow-hidden"
+            >
+              <div className="pl-2 space-y-0.5 py-1">
+                {filteredCategories.map((category) => (
+                  <ResourceSubCategory
+                    key={category.id}
+                    category={category}
+                    counts={counts as Record<string, number>}
+                    isExpanded={expandedCategories.includes(category.id) || !!searchQuery}
+                    onToggle={() => toggleResourceCategory(category.id)}
+                    searchFilter={searchQuery}
+                  />
+                ))}
+                {filteredCategories.length === 0 && searchQuery && (
+                  <div className="px-3 py-4 text-center">
+                    <p className="text-xs text-slate-400 dark:text-slate-500">No resources matching "{searchQuery}"</p>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      {/* Add-ons */}
+      <div className="space-y-1.5">
+        <TopLevelNavLink to="/addons" icon={Puzzle} label="Add-ons" isActive={isAddOnsActive} />
+      </div>
+
+      {/* AI Section (only when AI features are available) */}
+      {aiActive && (
+        <div className="space-y-1.5">
+          <div className="px-4 pt-2">
+            <span className="text-[10px] font-bold tracking-[0.08em] uppercase text-slate-400 dark:text-slate-500">AI</span>
+          </div>
+          <NavItem to="/analytics" icon={BarChart3} label="Analytics" />
+          <NavItem to="/ml-analytics" icon={Brain} label="ML Analytics" />
+        </div>
+      )}
     </div>
   );
 }
 
+// ─── Section Routes for auto-expand ──────────────────────────────────────────
+
 const SECTION_ROUTES = ['/workloads', '/topology', '/addons', ...WORKLOAD_PATHS, ...NETWORKING_PATHS, ...STORAGE_PATHS, ...CLUSTER_PATHS, ...SECURITY_PATHS, ...RESOURCES_PATHS, ...SCALING_PATHS, ...CRD_PATHS, ...ADMISSION_PATHS, ...AI_PATHS];
+
+// ─── Main Sidebar ────────────────────────────────────────────────────────────
 
 export function Sidebar() {
   const { counts, isLoading, isInitialLoad } = useResourceCounts();
   const { installed: metallbInstalled } = useMetalLBInstalled();
   const aiStatus = useAIStatus();
-  // Show AI section when AI is active (configured + reachable). Also show when unconfigured
-  // so users know AI features exist and can set them up.
   const aiActive = aiStatus.status === 'active' || aiStatus.status === 'unconfigured';
   const collapsed = useUIStore((s) => s.isSidebarCollapsed);
   const setCollapsed = useUIStore((s) => s.setSidebarCollapsed);
@@ -631,7 +788,7 @@ export function Sidebar() {
   const pathname = location.pathname;
   const isSettingsActive = pathname.startsWith('/settings');
 
-  // Auto-collapse sidebar on small viewports (< 768px) to prevent overlap
+  // Auto-collapse sidebar on small viewports
   useEffect(() => {
     const mql = window.matchMedia('(max-width: 767px)');
     const handleChange = (e: MediaQueryListEvent | MediaQueryList) => {
@@ -639,14 +796,12 @@ export function Sidebar() {
         setCollapsed(true);
       }
     };
-    // Check on mount
     handleChange(mql);
     mql.addEventListener('change', handleChange);
     return () => mql.removeEventListener('change', handleChange);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Expand sidebar when navigating to a section route (e.g. Workloads) so user sees full nav
-  // Skip auto-expand on mobile viewports to prevent sidebar overlap
+  // Expand sidebar when navigating to section routes
   useEffect(() => {
     const isMobile = window.matchMedia('(max-width: 767px)').matches;
     const isSectionRoute = SECTION_ROUTES.some((p) => pathname === p || pathname.startsWith(`${p}/`));
@@ -656,28 +811,28 @@ export function Sidebar() {
   }, [pathname, collapsed, setCollapsed]);
 
   const fullContent = (
-    <div className="flex flex-col flex-1 min-h-0 bg-slate-50/10">
-      <div className="flex-1 min-h-0 overflow-y-auto px-5 py-6 scrollbar-thin scrollbar-thumb-slate-200 hover:scrollbar-thumb-slate-300">
+    <div className="flex flex-col flex-1 min-h-0 bg-slate-50/10 dark:bg-transparent">
+      <div className="flex-1 min-h-0 overflow-y-auto px-5 py-6 scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-700 hover:scrollbar-thumb-slate-300 dark:hover:scrollbar-thumb-slate-600">
         <SidebarContent counts={counts} isLoading={isLoading} isInitialLoad={isInitialLoad} metallbInstalled={metallbInstalled} aiActive={aiActive} />
       </div>
 
-      {/* Fixed footer: Audit Log + Settings + Collapse — always visible at bottom */}
-      <div className="shrink-0 px-5 pb-6 pt-4 border-t border-slate-100/60 bg-white/40 backdrop-blur-md space-y-2">
+      {/* Fixed footer */}
+      <div className="shrink-0 px-5 pb-6 pt-4 border-t border-slate-100/60 dark:border-slate-800/60 bg-white/40 dark:bg-slate-900/40 backdrop-blur-md space-y-2">
         <NavLink
           to="/audit-log"
           className={({ isActive }) =>
             cn(
               "flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all duration-500 group border h-11",
               isActive
-                ? "bg-white text-indigo-600 border-indigo-100 shadow-apple"
-                : "bg-transparent text-slate-800 hover:bg-slate-100/60 border-transparent hover:border-slate-100"
+                ? "bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 border-indigo-100 dark:border-indigo-900/40 shadow-apple"
+                : "bg-transparent text-slate-800 dark:text-slate-300 hover:bg-slate-100/60 dark:hover:bg-slate-800/60 border-transparent hover:border-slate-100 dark:hover:border-slate-700/50"
             )
           }
         >
           {({ isActive }) => (
             <>
-              <ClipboardList className={cn("h-4 w-4 transition-colors shrink-0", isActive ? "text-indigo-600" : "text-slate-700 group-hover:text-slate-900")} />
-              <span className={cn("font-semibold text-[13px]", isActive ? "text-slate-900" : "text-slate-800 group-hover:text-slate-900")}>Audit Log</span>
+              <ClipboardList className={cn("h-4 w-4 transition-colors shrink-0", isActive ? "text-indigo-600 dark:text-indigo-400" : "text-slate-700 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-slate-100")} />
+              <span className={cn("font-semibold text-[13px]", isActive ? "text-slate-900 dark:text-slate-100" : "text-slate-800 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-slate-100")}>Audit Log</span>
             </>
           )}
         </NavLink>
@@ -686,12 +841,12 @@ export function Sidebar() {
           className={cn(
             "flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all duration-500 group border h-11",
             isSettingsActive
-              ? "bg-white text-primary border-slate-100 shadow-apple"
-              : "bg-transparent text-slate-800 hover:bg-slate-100/60 border-transparent hover:border-slate-100"
+              ? "bg-white dark:bg-slate-800 text-primary border-slate-100 dark:border-slate-700/40 shadow-apple"
+              : "bg-transparent text-slate-800 dark:text-slate-300 hover:bg-slate-100/60 dark:hover:bg-slate-800/60 border-transparent hover:border-slate-100 dark:hover:border-slate-700/50"
           )}
         >
-          <Settings className={cn("h-4 w-4 transition-colors shrink-0", isSettingsActive ? "text-primary" : "text-slate-700 group-hover:text-slate-900")} />
-          <span className={cn("font-semibold text-[13px]", isSettingsActive ? "text-slate-900" : "text-slate-800 group-hover:text-slate-900")}>Settings</span>
+          <Settings className={cn("h-4 w-4 transition-colors shrink-0", isSettingsActive ? "text-primary" : "text-slate-700 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-slate-100")} />
+          <span className={cn("font-semibold text-[13px]", isSettingsActive ? "text-slate-900 dark:text-slate-100" : "text-slate-800 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-slate-100")}>Settings</span>
         </NavLink>
         {!collapsed && (
           <button
@@ -699,7 +854,7 @@ export function Sidebar() {
             onClick={() => setCollapsed(true)}
             className={cn(
               "flex items-center justify-start gap-3 w-full px-4 py-2.5 rounded-xl border h-11 transition-all duration-500 group press-effect",
-              "bg-transparent text-slate-800 hover:bg-slate-100/60 border-transparent hover:border-slate-100"
+              "bg-transparent text-slate-800 dark:text-slate-300 hover:bg-slate-100/60 dark:hover:bg-slate-800/60 border-transparent hover:border-slate-100 dark:hover:border-slate-700/50"
             )}
             aria-label="Collapse sidebar"
           >
@@ -725,6 +880,7 @@ export function Sidebar() {
           aria-label="Main navigation"
         >
           <NavItemIconOnly to="/dashboard" icon={LayoutDashboard} label="Dashboard" iconColor="text-blue-600 group-hover:text-blue-700" />
+          <NavItemIconOnly to="/fleet" icon={Layers} label="Fleet" iconColor="text-indigo-600 group-hover:text-indigo-700" />
           <NavItemIconOnly to="/topology" icon={Network} label="Topology" iconColor="text-violet-600 group-hover:text-violet-700" />
           <NavItemIconOnly to="/addons" icon={Puzzle} label="Add-ons" iconColor="text-indigo-600 group-hover:text-indigo-700" />
           <NavItemIconOnly to="/workloads" icon={Cpu} label="Workloads" iconColor="text-amber-600 group-hover:text-amber-700" />
@@ -745,11 +901,11 @@ export function Sidebar() {
           <div className="flex-1" />
 
           <NavItemIconOnly to="/audit-log" icon={ClipboardList} label="Audit Log" iconColor="text-indigo-600 group-hover:text-indigo-700" />
-          <NavItemIconOnly to="/settings" icon={Settings} label="Settings" iconColor="text-slate-800 group-hover:text-slate-900" />
+          <NavItemIconOnly to="/settings" icon={Settings} label="Settings" iconColor="text-slate-800 dark:text-slate-200 group-hover:text-slate-900 dark:group-hover:text-slate-100" />
           <button
             type="button"
             onClick={() => setCollapsed(false)}
-            className="flex items-center justify-center w-11 h-11 rounded-xl text-blue-600 hover:text-blue-700 hover:bg-blue-50/80 transition-colors mb-2 press-effect"
+            className="flex items-center justify-center w-11 h-11 rounded-xl text-blue-600 hover:text-blue-700 hover:bg-blue-50/80 dark:hover:bg-blue-900/20 transition-colors mb-2 press-effect"
             title="Expand sidebar"
             aria-label="Expand sidebar"
           >
@@ -763,7 +919,7 @@ export function Sidebar() {
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -10 }}
               transition={{ duration: 0.15, ease: "easeOut" }}
-              className="fixed left-[5.5rem] top-20 bottom-0 z-40 w-72 border-r border-slate-200/40 bg-white/70 backdrop-blur-3xl shadow-apple-xl elevation-3 ring-1 ring-black/5"
+              className="fixed left-[5.5rem] top-20 bottom-0 z-40 w-72 border-r border-slate-200/40 dark:border-slate-700/40 bg-white/70 dark:bg-[hsl(228,14%,9%)]/90 backdrop-blur-3xl shadow-apple-xl elevation-3 ring-1 ring-black/5 dark:ring-white/5"
               onMouseEnter={() => setFlyoutOpen(true)}
               onMouseLeave={() => setFlyoutOpen(false)}
               style={{ height: 'calc(100vh - 5rem)' }}

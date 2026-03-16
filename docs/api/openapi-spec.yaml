@@ -1,0 +1,668 @@
+openapi: 3.0.3
+info:
+  title: Kubilitics API
+  description: |
+    REST API for the Kubilitics Kubernetes management platform.
+    Provides cluster management, resource proxy, topology, add-on lifecycle,
+    backup/restore, plugin registry, and real-time WebSocket endpoints.
+  version: 0.2.0
+  contact:
+    name: Kubilitics Team
+    url: https://github.com/kubilitics/kubiltics
+  license:
+    name: Apache 2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0.html
+
+servers:
+  - url: http://localhost:8080
+    description: Local development server
+  - url: "{baseUrl}"
+    description: Custom backend URL
+    variables:
+      baseUrl:
+        default: http://localhost:8080
+
+# ── Security ────────────────────────────────────────────────────────────────────
+
+security:
+  - bearerAuth: []
+  - cookieAuth: []
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        JWT token obtained from the /api/v1/auth/login endpoint.
+        Include as `Authorization: Bearer <token>` header.
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: kubilitics_session
+      description: Session cookie set after successful authentication.
+
+  # ── Reusable Schemas ────────────────────────────────────────────────────────
+
+  schemas:
+    Error:
+      type: object
+      required: [error, code]
+      properties:
+        error:
+          type: string
+          description: Human-readable error message
+          example: "Cluster not found"
+        code:
+          type: string
+          description: Machine-readable error code
+          enum:
+            - AUTH_REQUIRED
+            - FORBIDDEN
+            - NOT_FOUND
+            - CONFLICT
+            - RATE_LIMITED
+            - K8S_UNAVAILABLE
+            - VALIDATION_FAILED
+            - INTERNAL_ERROR
+          example: "NOT_FOUND"
+        detail:
+          type: string
+          description: Additional error context
+
+    ClusterInfo:
+      type: object
+      required: [id, name, status]
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: "c1a2b3c4-d5e6-7890-abcd-ef1234567890"
+        name:
+          type: string
+          example: "production-us-east"
+        context:
+          type: string
+          example: "arn:aws:eks:us-east-1:123456789012:cluster/production"
+        status:
+          type: string
+          enum: [healthy, warning, error, unknown]
+          example: "healthy"
+        version:
+          type: string
+          example: "v1.30.2"
+        provider:
+          type: string
+          enum: [eks, gke, aks, minikube, kind, on-prem, openshift, rancher, k3s, docker-desktop]
+        nodes:
+          type: integer
+          example: 6
+        region:
+          type: string
+          example: "us-east-1"
+
+    ResourceList:
+      type: object
+      properties:
+        apiVersion:
+          type: string
+        kind:
+          type: string
+        metadata:
+          type: object
+          properties:
+            continue:
+              type: string
+            resourceVersion:
+              type: string
+            remainingItemCount:
+              type: integer
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/KubernetesResource'
+
+    KubernetesResource:
+      type: object
+      properties:
+        apiVersion:
+          type: string
+          example: "apps/v1"
+        kind:
+          type: string
+          example: "Deployment"
+        metadata:
+          $ref: '#/components/schemas/ObjectMeta'
+        spec:
+          type: object
+          description: Resource specification (kind-specific)
+        status:
+          type: object
+          description: Resource status (kind-specific)
+
+    ObjectMeta:
+      type: object
+      required: [name, uid, creationTimestamp]
+      properties:
+        name:
+          type: string
+          example: "nginx-deployment"
+        namespace:
+          type: string
+          example: "default"
+        uid:
+          type: string
+          format: uuid
+        creationTimestamp:
+          type: string
+          format: date-time
+        labels:
+          type: object
+          additionalProperties:
+            type: string
+        annotations:
+          type: object
+          additionalProperties:
+            type: string
+        resourceVersion:
+          type: string
+
+    TopologyGraph:
+      type: object
+      required: [nodes, edges]
+      properties:
+        nodes:
+          type: array
+          items:
+            $ref: '#/components/schemas/TopologyNode'
+        edges:
+          type: array
+          items:
+            $ref: '#/components/schemas/TopologyEdge'
+
+    TopologyNode:
+      type: object
+      required: [id, kind, name]
+      properties:
+        id:
+          type: string
+        kind:
+          type: string
+        name:
+          type: string
+        namespace:
+          type: string
+        status:
+          type: string
+          enum: [healthy, warning, error, pending, unknown]
+
+    TopologyEdge:
+      type: object
+      required: [source, target, type]
+      properties:
+        source:
+          type: string
+        target:
+          type: string
+        type:
+          type: string
+          enum: [owner, selector, service, ingress, gateway, policy, volume, config]
+
+    Backup:
+      type: object
+      required: [id, name, status, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          example: "pre-upgrade-backup"
+        description:
+          type: string
+        status:
+          type: string
+          enum: [completed, in-progress, failed, deleting]
+        type:
+          type: string
+          enum: [manual, automatic, scheduled]
+        createdAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: string
+          format: date-time
+        sizeBytes:
+          type: integer
+          format: int64
+        itemCount:
+          type: integer
+
+    PluginInfo:
+      type: object
+      required: [id, name, version, status]
+      properties:
+        id:
+          type: string
+          example: "istio"
+        name:
+          type: string
+          example: "Istio Service Mesh"
+        description:
+          type: string
+        author:
+          type: string
+        version:
+          type: string
+        status:
+          type: string
+          enum: [available, installed, installing, uninstalling, error, update-available]
+        official:
+          type: boolean
+        downloads:
+          type: integer
+
+    HealthResponse:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [ok, degraded, error]
+        version:
+          type: string
+        uptime:
+          type: string
+
+  parameters:
+    clusterIdParam:
+      name: clusterId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Cluster UUID
+
+    namespaceParam:
+      name: namespace
+      in: query
+      schema:
+        type: string
+      description: Kubernetes namespace filter
+
+    limitParam:
+      name: limit
+      in: query
+      schema:
+        type: integer
+        default: 100
+        maximum: 5000
+      description: Maximum number of items to return
+
+# ── Paths ───────────────────────────────────────────────────────────────────────
+
+paths:
+  # ── Health ──────────────────────────────────────────────────────────────────
+
+  /api/v1/health:
+    get:
+      tags: [System]
+      summary: Health check
+      operationId: getHealth
+      security: []
+      responses:
+        '200':
+          description: Server is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+
+  # ── Authentication ──────────────────────────────────────────────────────────
+
+  /api/v1/auth/login:
+    post:
+      tags: [Authentication]
+      summary: Authenticate and obtain a JWT token
+      operationId: login
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username, password]
+              properties:
+                username:
+                  type: string
+                password:
+                  type: string
+                  format: password
+      responses:
+        '200':
+          description: Authentication successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+                  expiresAt:
+                    type: string
+                    format: date-time
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  # ── Clusters ────────────────────────────────────────────────────────────────
+
+  /api/v1/clusters:
+    get:
+      tags: [Clusters]
+      summary: List all registered clusters
+      operationId: listClusters
+      responses:
+        '200':
+          description: List of clusters
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ClusterInfo'
+    post:
+      tags: [Clusters]
+      summary: Register a new cluster
+      operationId: createCluster
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, kubeconfig]
+              properties:
+                name:
+                  type: string
+                kubeconfig:
+                  type: string
+                  description: Base64-encoded kubeconfig
+      responses:
+        '201':
+          description: Cluster registered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClusterInfo'
+
+  /api/v1/clusters/{clusterId}:
+    get:
+      tags: [Clusters]
+      summary: Get cluster details
+      operationId: getCluster
+      parameters:
+        - $ref: '#/components/parameters/clusterIdParam'
+      responses:
+        '200':
+          description: Cluster details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClusterInfo'
+        '404':
+          description: Cluster not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  # ── Resource Proxy ──────────────────────────────────────────────────────────
+
+  /api/v1/clusters/{clusterId}/resources/{apiPath}:
+    get:
+      tags: [Resources]
+      summary: Proxy GET to Kubernetes API (list or get resources)
+      operationId: proxyGetResources
+      parameters:
+        - $ref: '#/components/parameters/clusterIdParam'
+        - name: apiPath
+          in: path
+          required: true
+          schema:
+            type: string
+          description: "Full K8s API path (e.g. api/v1/pods, apis/apps/v1/namespaces/default/deployments)"
+        - $ref: '#/components/parameters/namespaceParam'
+        - $ref: '#/components/parameters/limitParam'
+        - name: labelSelector
+          in: query
+          schema:
+            type: string
+        - name: fieldSelector
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Kubernetes resource list or single resource
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResourceList'
+        '404':
+          description: Resource not found
+        '502':
+          description: Kubernetes API server unreachable
+
+  # ── Topology ────────────────────────────────────────────────────────────────
+
+  /api/v1/clusters/{clusterId}/topology:
+    get:
+      tags: [Topology]
+      summary: Get the topology graph for a cluster or namespace
+      operationId: getTopology
+      parameters:
+        - $ref: '#/components/parameters/clusterIdParam'
+        - $ref: '#/components/parameters/namespaceParam'
+        - name: depth
+          in: query
+          schema:
+            type: integer
+            default: 3
+            maximum: 5
+          description: Traversal depth for relationship resolution
+      responses:
+        '200':
+          description: Topology graph
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TopologyGraph'
+
+  # ── Backups ─────────────────────────────────────────────────────────────────
+
+  /api/v1/clusters/{clusterId}/backups:
+    get:
+      tags: [Backup & Restore]
+      summary: List backups for a cluster
+      operationId: listBackups
+      parameters:
+        - $ref: '#/components/parameters/clusterIdParam'
+      responses:
+        '200':
+          description: List of backups
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Backup'
+    post:
+      tags: [Backup & Restore]
+      summary: Create a new backup
+      operationId: createBackup
+      parameters:
+        - $ref: '#/components/parameters/clusterIdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name:
+                  type: string
+                description:
+                  type: string
+                includes:
+                  type: array
+                  items:
+                    type: string
+                  description: Resource kinds to include
+      responses:
+        '201':
+          description: Backup initiated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Backup'
+
+  /api/v1/clusters/{clusterId}/backups/{backupId}/restore:
+    post:
+      tags: [Backup & Restore]
+      summary: Restore from a backup
+      operationId: restoreBackup
+      parameters:
+        - $ref: '#/components/parameters/clusterIdParam'
+        - name: backupId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '202':
+          description: Restore initiated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  restoreId:
+                    type: string
+
+  # ── Plugins ─────────────────────────────────────────────────────────────────
+
+  /api/v1/clusters/{clusterId}/plugins:
+    get:
+      tags: [Plugins]
+      summary: List available plugins
+      operationId: listPlugins
+      parameters:
+        - $ref: '#/components/parameters/clusterIdParam'
+      responses:
+        '200':
+          description: Plugin list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  plugins:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/PluginInfo'
+                  total:
+                    type: integer
+
+  /api/v1/clusters/{clusterId}/plugins/{pluginId}/install:
+    post:
+      tags: [Plugins]
+      summary: Install a plugin
+      operationId: installPlugin
+      parameters:
+        - $ref: '#/components/parameters/clusterIdParam'
+        - name: pluginId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '202':
+          description: Plugin installation started
+        '409':
+          description: Plugin already installed
+
+  /api/v1/clusters/{clusterId}/plugins/{pluginId}/uninstall:
+    post:
+      tags: [Plugins]
+      summary: Uninstall a plugin
+      operationId: uninstallPlugin
+      parameters:
+        - $ref: '#/components/parameters/clusterIdParam'
+        - name: pluginId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '202':
+          description: Plugin uninstall started
+        '404':
+          description: Plugin not installed
+
+  # ── Events ──────────────────────────────────────────────────────────────────
+
+  /api/v1/clusters/{clusterId}/events:
+    get:
+      tags: [Resources]
+      summary: List Kubernetes events
+      operationId: listEvents
+      parameters:
+        - $ref: '#/components/parameters/clusterIdParam'
+        - $ref: '#/components/parameters/namespaceParam'
+        - $ref: '#/components/parameters/limitParam'
+        - name: involvedObjectName
+          in: query
+          schema:
+            type: string
+        - name: type
+          in: query
+          schema:
+            type: string
+            enum: [Normal, Warning]
+      responses:
+        '200':
+          description: Event list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResourceList'
+
+tags:
+  - name: System
+    description: Health and system status
+  - name: Authentication
+    description: Authentication and authorization
+  - name: Clusters
+    description: Cluster registration and management
+  - name: Resources
+    description: Kubernetes resource proxy and events
+  - name: Topology
+    description: Resource relationship topology
+  - name: Backup & Restore
+    description: Backup and restore operations
+  - name: Plugins
+    description: Plugin marketplace and lifecycle

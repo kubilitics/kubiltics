@@ -58,6 +58,8 @@ import { toast } from '@/components/ui/sonner';
 import { useQueryClient } from '@tanstack/react-query';
 import { WelcomeAddCluster } from '@/components/connect/WelcomeAddCluster';
 import { isTauri } from '@/lib/tauri';
+import { useAutoConnect } from '@/hooks/useAutoConnect';
+import { ContextPicker } from '@/components/cluster/ContextPicker';
 
 interface DetectedCluster {
   id: string;
@@ -582,6 +584,48 @@ export default function ClusterConnect() {
   // Show UI immediately - never block on loading
   // Empty states in the UI will handle no data scenarios gracefully
   // This matches Headlamp/Lens pattern - UI renders immediately, data loads progressively
+
+  // TASK-CORE-001: Auto-Connect Desktop Mode
+  // In Tauri desktop mode, auto-detect kubeconfig contexts and either auto-connect
+  // (single context) or show the ContextPicker (multiple contexts).
+  const autoConnect = useAutoConnect();
+
+  // While auto-connect is in progress (single context → auto-connecting), show a
+  // minimal loading state so the user sees immediate feedback.
+  if (autoConnect.isDesktopMode && autoConnect.isAutoConnecting && !autoConnect.isResolved) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-b from-slate-50 via-white to-blue-50/30 dark:from-[hsl(228,14%,7%)] dark:via-[hsl(228,14%,9%)] dark:to-[hsl(228,14%,11%)] gap-4">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+          className="flex flex-col items-center gap-4"
+        >
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-lg shadow-blue-500/20">
+            <Loader2 className="h-6 w-6 text-white animate-spin" />
+          </div>
+          <div className="text-center">
+            <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">Detecting clusters...</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Scanning kubeconfig</p>
+          </div>
+        </motion.div>
+      </div>
+    );
+  }
+
+  // Multiple contexts detected in desktop mode: show the ContextPicker
+  if (autoConnect.isDesktopMode && autoConnect.isResolved && autoConnect.contexts.length > 1) {
+    return (
+      <ContextPicker
+        contexts={autoConnect.contexts}
+        selectedContext={autoConnect.selectedContext}
+        onSelect={autoConnect.setSelectedContext}
+        onConnect={() => autoConnect.connect()}
+        isConnecting={autoConnect.isAutoConnecting}
+        error={autoConnect.error}
+      />
+    );
+  }
 
   // Specialized view for In-Cluster mode
   if (appMode === 'in-cluster') {
