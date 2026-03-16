@@ -9,7 +9,6 @@ import { toast } from 'sonner';
 import { downloadResourceJson } from '@/lib/exportUtils';
 import {
   ResourceDetailLayout,
-  MetadataCard,
   ResourceOverviewMetadata,
   SectionCard,
   YamlViewer,

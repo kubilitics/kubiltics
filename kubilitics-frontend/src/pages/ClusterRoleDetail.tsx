@@ -16,7 +16,8 @@ import {
 import {
   ResourceDetailLayout,
 
-  MetadataCard,
+  LabelList,
+  AnnotationList,
   YamlViewer,
   ResourceComparisonView,
   EventsSection,
@@ -223,8 +224,8 @@ export default function ClusterRoleDetail() {
               </div>
             </CardContent>
           </Card>
-          <MetadataCard title="Labels" items={labels} variant="badges" />
-          {Object.keys(annotations).length > 0 && <MetadataCard title="Annotations" items={annotations} variant="badges" />}
+          <LabelList labels={labels} />
+          <AnnotationList annotations={annotations} />
         </div>
       ),
     },

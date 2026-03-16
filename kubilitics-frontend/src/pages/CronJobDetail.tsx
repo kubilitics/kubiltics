@@ -37,7 +37,8 @@ import {
   ContainersSection,
   YamlViewer,
   EventsSection,
-  MetadataCard,
+  LabelList,
+  AnnotationList,
   ActionsSection,
   MetricsDashboard,
   DeleteConfirmDialog,
@@ -587,7 +588,8 @@ export default function CronJobDetail() {
             </Card>
           )}
 
-          <MetadataCard title="Labels" items={cronJob.metadata?.labels || {}} variant="badges" />
+          <LabelList labels={cronJob.metadata?.labels || {}} />
+          <AnnotationList annotations={cronJob.metadata?.annotations || {}} />
         </div>
       ),
     },

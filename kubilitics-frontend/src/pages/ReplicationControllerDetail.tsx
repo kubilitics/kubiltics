@@ -14,7 +14,8 @@ import {
   ResourceComparisonView,
   EventsSection,
   ActionsSection,
-  MetadataCard,
+  LabelList,
+  AnnotationList,
   ScaleDialog,
   DeleteConfirmDialog,
   ResourceTopologyView,
@@ -206,7 +207,8 @@ export default function ReplicationControllerDetail() {
               </CardContent>
             </Card>
 
-            <MetadataCard title="Labels" items={rc?.metadata?.labels ?? {}} variant="badges" />
+            <LabelList labels={rc?.metadata?.labels ?? {}} />
+            <AnnotationList annotations={rc?.metadata?.annotations ?? {}} />
 
             <Card className="lg:col-span-1">
               <CardHeader><CardTitle className="text-base flex items-center gap-2">

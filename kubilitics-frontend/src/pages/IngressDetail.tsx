@@ -15,6 +15,7 @@ import {
   DetailRow,
   ResourceTopologyView,
   ResourceComparisonView,
+  AnnotationList,
   type ResourceStatus,
   type YamlVersion,
   type EventInfo,
@@ -331,19 +332,7 @@ export default function IngressDetail() {
             </Card>
           )}
           {Object.keys(annotations).length > 0 && (
-            <Card>
-              <CardHeader><CardTitle className="text-base">Annotations</CardTitle></CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  {Object.entries(annotations).map(([key, value]) => (
-                    <div key={key} className="text-sm">
-                      <p className="text-muted-foreground">{key}</p>
-                      <p className="font-mono break-all">{String(value)}</p>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
+            <AnnotationList annotations={annotations} />
           )}
         </div>
       ),

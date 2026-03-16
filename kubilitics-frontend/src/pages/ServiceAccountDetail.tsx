@@ -9,7 +9,8 @@ import { toast } from 'sonner';
 import { downloadResourceJson } from '@/lib/exportUtils';
 import {
   ResourceDetailLayout,
-  MetadataCard,
+  LabelList,
+  AnnotationList,
   YamlViewer,
   EventsSection,
   ActionsSection,
@@ -171,8 +172,8 @@ export default function ServiceAccountDetail() {
               </div>
             </CardContent>
           </Card>
-          <MetadataCard title="Labels" items={labels} variant="badges" />
-          {Object.keys(annotations).length > 0 && <MetadataCard title="Annotations" items={annotations} variant="badges" />}
+          <LabelList labels={labels} />
+          <AnnotationList annotations={annotations} />
         </div>
       ),
     },

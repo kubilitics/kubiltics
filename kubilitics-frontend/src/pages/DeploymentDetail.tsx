@@ -55,7 +55,7 @@ import {
   ContainersSection,
   YamlViewer,
   EventsSection,
-  MetadataCard,
+  LabelList,
   ActionsSection,
   MetricsDashboard,
   ScaleDialog,
@@ -701,9 +701,10 @@ export default function DeploymentDetail() {
             </div>
           </SectionCard>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <MetadataCard title="Selector" items={deployment.spec?.selector?.matchLabels || {}} variant="default" />
-          </div>
+          <LabelList
+            labels={deployment.spec?.selector?.matchLabels || {}}
+            title="Selector"
+          />
         </div>
       ),
     },

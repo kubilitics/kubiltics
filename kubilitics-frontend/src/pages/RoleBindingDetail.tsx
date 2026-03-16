@@ -7,7 +7,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import {
   ResourceDetailLayout,
-  MetadataCard,
+  LabelList,
+  AnnotationList,
   YamlViewer,
   ResourceComparisonView,
   EventsSection,

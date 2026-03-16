@@ -10,7 +10,8 @@ import { downloadResourceJson } from '@/lib/exportUtils';
 import {
   ResourceDetailLayout,
   SectionCard,
-  MetadataCard,
+  LabelList,
+  AnnotationList,
   YamlViewer,
   EventsSection,
   ActionsSection,
@@ -209,7 +210,8 @@ export default function NamespaceDetail() {
             </SectionCard>
 
             {/* Labels */}
-            <MetadataCard title="Labels" items={labels} variant="badges" />
+            <LabelList labels={labels} />
+            <AnnotationList annotations={annotations} />
 
             {/* Resource Summary — full grid */}
             <SectionCard icon={Boxes} title="Resource Summary" tooltip="Counts of all resource types in this namespace" className="lg:col-span-2">

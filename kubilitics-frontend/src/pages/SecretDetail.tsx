@@ -9,7 +9,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import {
   ResourceDetailLayout,
   SectionCard,
-  MetadataCard,
+  LabelList,
+  AnnotationList,
   YamlViewer,
   EventsSection,
   ActionsSection,
@@ -269,17 +270,8 @@ export default function SecretDetail() {
               {Object.keys(data).length === 0 && <p className="text-muted-foreground text-sm">No keys</p>}
             </div>
           </SectionCard>
-          <SectionCard icon={Info} title="Labels" tooltip={<p className="text-xs text-muted-foreground">Kubernetes labels on this Secret</p>}>
-            {Object.keys(labels).length > 0 ? (
-              <div className="flex flex-wrap gap-1.5">
-                {Object.entries(labels).map(([k, v]) => (
-                  <Badge key={k} variant="secondary" className="font-mono text-xs">{k}={v}</Badge>
-                ))}
-              </div>
-            ) : (
-              <p className="text-muted-foreground text-sm">No labels</p>
-            )}
-          </SectionCard>
+          <LabelList labels={labels} />
+          <AnnotationList annotations={s?.metadata?.annotations || {}} />
         </div>
       ),
     },

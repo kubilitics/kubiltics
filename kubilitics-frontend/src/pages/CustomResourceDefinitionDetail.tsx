@@ -7,7 +7,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import {
   ResourceDetailLayout,
-  MetadataCard,
+  LabelList,
+  AnnotationList,
   YamlViewer,
   ResourceComparisonView,
   EventsSection,
@@ -192,7 +193,8 @@ export default function CustomResourceDefinitionDetail() {
               </div>
             </CardContent>
           </Card>
-          <MetadataCard title="Labels" items={crd?.metadata?.labels ?? {}} variant="badges" />
+          <LabelList labels={crd?.metadata?.labels ?? {}} />
+          <AnnotationList annotations={crd?.metadata?.annotations ?? {}} />
         </div>
       ),
     },

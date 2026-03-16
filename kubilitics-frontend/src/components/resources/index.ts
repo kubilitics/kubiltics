@@ -27,3 +27,23 @@ export { DetailPodTable, type DetailPodTableProps } from './DetailPodTable';
 export { ResourceComparisonView } from './ResourceComparisonView';
 export { ResourceTopologyView, type ResourceTopologyViewProps } from './ResourceTopologyView';
 export { X } from 'lucide-react'; // Export X if needed, or just let users import from lucide-react
+
+// ── Unified Metadata System ──────────────────────────────────────────────
+export {
+  MetadataSection,
+  LabelList,
+  AnnotationList,
+  TaintsList,
+  TolerationsList,
+  type MetadataSectionProps,
+  type LabelListProps,
+  type AnnotationListProps,
+  type TaintsListProps,
+  type TolerationsListProps,
+  type K8sLabel,
+  type K8sAnnotation,
+  type K8sTaint,
+  type K8sToleration,
+  type K8sOwnerReference,
+  type K8sMetadata,
+} from './metadata';

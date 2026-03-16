@@ -38,7 +38,8 @@ import {
   ContainersSection,
   YamlViewer,
   EventsSection,
-  MetadataCard,
+  LabelList,
+  AnnotationList,
   ActionsSection,
   MetricsDashboard,
   LogViewer,
@@ -453,7 +454,8 @@ export default function JobDetail() {
             </Card>
           )}
 
-          <MetadataCard title="Labels" items={job.metadata?.labels || {}} variant="badges" />
+          <LabelList labels={job.metadata?.labels || {}} />
+          <AnnotationList annotations={job.metadata?.annotations || {}} />
         </div>
       ),
     },

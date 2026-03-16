@@ -53,7 +53,8 @@ import {
   ContainersSection,
   YamlViewer,
   EventsSection,
-  MetadataCard,
+  LabelList,
+  AnnotationList,
   ActionsSection,
   MetricsDashboard,
   ScaleDialog,
@@ -532,9 +533,10 @@ export default function StatefulSetDetail() {
           )}
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <MetadataCard title="Labels" items={statefulSet.metadata?.labels || {}} variant="badges" />
-            <MetadataCard title="Selector" items={statefulSet.spec?.selector?.matchLabels || {}} variant="default" />
+            <LabelList labels={statefulSet.metadata?.labels || {}} />
+            <LabelList labels={statefulSet.spec?.selector?.matchLabels || {}} title="Selector" />
           </div>
+          <AnnotationList annotations={statefulSet.metadata?.annotations || {}} />
         </div>
       ),
     },

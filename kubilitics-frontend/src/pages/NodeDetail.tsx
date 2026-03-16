@@ -20,6 +20,9 @@ import {
   DeleteConfirmDialog,
   ResourceTopologyView,
   ResourceComparisonView,
+  LabelList,
+  AnnotationList,
+  TaintsList,
   type ResourceStatus,
   type YamlVersion,
 } from '@/components/resources';
@@ -490,22 +493,7 @@ export default function NodeDetail() {
             </SectionCard>
 
             {/* Taints */}
-            <SectionCard icon={Shield} title="Taints" tooltip={<p className="text-xs text-muted-foreground">Taints prevent pods from being scheduled on this node</p>}>
-              {taints.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No taints configured</p>
-              ) : (
-                <div className="space-y-2">
-                  {taints.map((taint, i) => (
-                    <div key={i} className="flex items-center gap-2 p-2 rounded-lg bg-muted/50">
-                      <Badge variant="outline" className="font-mono text-xs">{taint.key}</Badge>
-                      {taint.value && <span className="text-sm">=</span>}
-                      {taint.value && <Badge variant="secondary" className="font-mono text-xs">{taint.value}</Badge>}
-                      <Badge variant="destructive" className="text-xs ml-auto">{taint.effect}</Badge>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </SectionCard>
+            <TaintsList taints={taints} />
 
             {/* Roles & Labels */}
             <SectionCard icon={Tag} title="Roles & Labels" tooltip={<p className="text-xs text-muted-foreground">Node roles and Kubernetes labels</p>}>
@@ -518,21 +506,12 @@ export default function NodeDetail() {
                     )) : <span className="text-muted-foreground text-sm">worker</span>}
                   </div>
                 </div>
-                <div>
-                  <p className="text-sm text-muted-foreground mb-2">Labels ({Object.keys(labels).length})</p>
-                  <div className="flex flex-wrap gap-1 max-h-32 overflow-y-auto">
-                    {Object.entries(labels).slice(0, 8).map(([k, v]) => (
-                      <Badge key={k} variant="secondary" className="font-mono text-xs">
-                        {k.split('/').pop()}={v || 'true'}
-                      </Badge>
-                    ))}
-                    {Object.keys(labels).length > 8 && (
-                      <Badge variant="outline" className="text-xs">+{Object.keys(labels).length - 8} more</Badge>
-                    )}
-                  </div>
-                </div>
+                <LabelList labels={labels} showCard={false} title={`Labels (${Object.keys(labels).length})`} />
               </div>
             </SectionCard>
+
+            {/* Annotations */}
+            <AnnotationList annotations={n?.metadata?.annotations ?? {}} />
           </div>
         </div>
       ),

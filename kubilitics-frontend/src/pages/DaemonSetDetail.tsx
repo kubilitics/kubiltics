@@ -44,7 +44,8 @@ import {
   ContainersSection,
   YamlViewer,
   EventsSection,
-  MetadataCard,
+  LabelList,
+  AnnotationList,
   ActionsSection,
   MetricsDashboard,
   RolloutActionsDialog,
@@ -427,9 +428,10 @@ export default function DaemonSetDetail() {
           )}
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <MetadataCard title="Labels" items={daemonSet.metadata?.labels || {}} variant="badges" />
-            <MetadataCard title="Node Selector" items={nodeSelector} variant="default" />
+            <LabelList labels={daemonSet.metadata?.labels || {}} />
+            <LabelList labels={nodeSelector} title="Node Selector" />
           </div>
+          <AnnotationList annotations={daemonSet.metadata?.annotations || {}} />
         </div>
       ),
     },

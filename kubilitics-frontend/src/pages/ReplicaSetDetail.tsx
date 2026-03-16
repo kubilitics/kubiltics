@@ -45,7 +45,8 @@ import {
   ContainersSection,
   YamlViewer,
   EventsSection,
-  MetadataCard,
+  LabelList,
+  AnnotationList,
   ActionsSection,
   MetricsDashboard,
   ScaleDialog,
@@ -397,9 +398,10 @@ export default function ReplicaSetDetail() {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <MetadataCard title="Labels" items={replicaSet.metadata?.labels || {}} variant="badges" />
-            <MetadataCard title="Selector" items={replicaSet.spec?.selector?.matchLabels || {}} variant="default" />
+            <LabelList labels={replicaSet.metadata?.labels ?? {}} />
+            <LabelList labels={replicaSet.spec?.selector?.matchLabels ?? {}} title="Selector" />
           </div>
+          <AnnotationList annotations={replicaSet.metadata?.annotations ?? {}} />
         </div>
       ),
     },

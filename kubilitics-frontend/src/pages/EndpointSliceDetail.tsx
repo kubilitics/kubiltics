@@ -13,7 +13,8 @@ import {
   ActionsSection,
   DeleteConfirmDialog,
   SectionCard,
-  MetadataCard,
+  LabelList,
+  AnnotationList,
   ResourceTopologyView,
   type ResourceStatus,
   type EventInfo,
@@ -149,7 +150,8 @@ export default function EndpointSliceDetail() {
           <SectionCard title="EndpointSlice info" icon={Network}>
             <p className="text-sm text-muted-foreground mb-2">Address type: {addressType}</p>
             {serviceName && <p className="text-sm">Service: <Link to={`/services/${namespace}/${serviceName}`} className="text-primary hover:underline">{serviceName}</Link></p>}
-            <MetadataCard title="Labels" items={labels} variant="badges" />
+            <LabelList labels={labels} />
+            <AnnotationList annotations={es?.metadata?.annotations || {}} />
           </SectionCard>
           <Card>
             <CardHeader><CardTitle className="text-base">Ports</CardTitle></CardHeader>

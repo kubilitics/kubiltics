@@ -24,6 +24,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
 import { StatusPill, NamespaceBadge, type StatusPillVariant } from '@/components/list';
+import { LabelList, AnnotationList } from '@/components/resources';
 import { cn } from '@/lib/utils';
 import { useQuery } from '@tanstack/react-query';
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
@@ -315,13 +316,12 @@ export default function GatewayDetail() {
         </div>
       </div>
 
-      {/* Labels */}
+      {/* Labels & Annotations */}
       {gateway.metadata.labels && Object.keys(gateway.metadata.labels).length > 0 && (
-        <div className="flex flex-wrap gap-1.5">
-          {Object.entries(gateway.metadata.labels).map(([k, v]) => (
-            <Badge key={k} variant="secondary" className="text-xs font-mono">{k}={v}</Badge>
-          ))}
-        </div>
+        <LabelList labels={gateway.metadata.labels} showCard={false} showCopyAll={false} />
+      )}
+      {gateway.metadata.annotations && Object.keys(gateway.metadata.annotations).length > 0 && (
+        <AnnotationList annotations={gateway.metadata.annotations} showCard={false} maxVisible={5} />
       )}
 
       {/* Tabs */}

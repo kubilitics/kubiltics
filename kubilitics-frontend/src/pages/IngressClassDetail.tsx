@@ -7,7 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   ResourceDetailLayout,
-  MetadataCard,
+  LabelList,
+  AnnotationList,
   YamlViewer,
   EventsSection,
   ActionsSection,
@@ -169,7 +170,8 @@ export default function IngressClassDetail() {
               </CardContent>
             </Card>
           )}
-          <MetadataCard title="Labels" items={labels} variant="badges" />
+          <LabelList labels={labels} />
+          <AnnotationList annotations={icResource?.metadata?.annotations ?? {}} />
         </div>
       ),
     },

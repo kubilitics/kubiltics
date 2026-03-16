@@ -10,7 +10,8 @@ import { downloadResourceJson } from '@/lib/exportUtils';
 import {
   ResourceDetailLayout,
   YamlViewer,
-  MetadataCard,
+  LabelList,
+  AnnotationList,
   EventsSection,
   ActionsSection,
   DeleteConfirmDialog,
@@ -201,8 +202,8 @@ export default function PodDisruptionBudgetDetail() {
               )}
             </CardContent>
           </Card>
-          <MetadataCard title="Labels" items={labels} variant="badges" />
-          {Object.keys(annotations).length > 0 && <MetadataCard title="Annotations" items={annotations} variant="badges" />}
+          <LabelList labels={labels} />
+          <AnnotationList annotations={annotations} />
         </div>
       ),
     },

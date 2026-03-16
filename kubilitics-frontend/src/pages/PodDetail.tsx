@@ -59,6 +59,9 @@ import {
   MetricsDashboard,
   ResourceTopologyView,
   ResourceComparisonView,
+  LabelList,
+  AnnotationList,
+  TolerationsList,
   type ResourceStatus,
   type ContainerInfo,
 } from '@/components/resources';
@@ -638,14 +641,7 @@ export default function PodDetail() {
               </div>
               {pod.metadata?.labels && Object.keys(pod.metadata.labels).length > 0 && (
                 <div className="pt-2 border-t">
-                  <p className="text-sm text-muted-foreground mb-2">Labels</p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {Object.entries(pod.metadata.labels).map(([k, v]) => (
-                      <Badge key={k} variant="secondary" className="font-mono text-xs">
-                        {k}={v}
-                      </Badge>
-                    ))}
-                  </div>
+                  <LabelList labels={pod.metadata.labels} showCard={false} showCopyAll={false} />
                 </div>
               )}
             </div>
@@ -754,94 +750,12 @@ export default function PodDetail() {
 
           {/* Tolerations */}
           {pod.spec?.tolerations && pod.spec.tolerations.length > 0 && (
-            <SectionCard
-              icon={Shield}
-              title="Tolerations"
-              tooltip={
-                <>
-                  <p className="font-medium">Tolerations</p>
-                  <p className="mt-1 text-muted-foreground text-xs">Taints this pod tolerates</p>
-                </>
-              }
-            >
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b">
-                      <th className="text-left py-2 font-medium">Key</th>
-                      <th className="text-left py-2 font-medium">Value</th>
-                      <th className="text-left py-2 font-medium">Operator</th>
-                      <th className="text-left py-2 font-medium">Effect</th>
-                      <th className="text-left py-2 font-medium">Seconds</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {pod.spec.tolerations.map((t, i) => (
-                      <tr key={i} className="border-b last:border-0">
-                        <td className="py-2 font-mono text-xs">{t.key ?? '-'}</td>
-                        <td className="py-2 font-mono text-xs">{t.value ?? '-'}</td>
-                        <td className="py-2">{t.operator ?? '-'}</td>
-                        <td className="py-2">
-                          {t.effect ? (
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <span className="cursor-help underline decoration-dotted decoration-muted-foreground underline-offset-2">
-                                  {t.effect}
-                                </span>
-                              </TooltipTrigger>
-                              <TooltipContent side="top" className="max-w-xs">
-                                {TOOLTIP_TOLERATION_EFFECT[t.effect] ?? t.effect}
-                              </TooltipContent>
-                            </Tooltip>
-                          ) : (
-                            '-'
-                          )}
-                        </td>
-                        <td className="py-2">
-                          {t.tolerationSeconds != null ? (
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <span className="cursor-help underline decoration-dotted decoration-muted-foreground underline-offset-2">
-                                  {t.tolerationSeconds}
-                                </span>
-                              </TooltipTrigger>
-                              <TooltipContent side="top" className="max-w-xs">
-                                {TOOLTIP_TOLERATION_SECONDS}
-                              </TooltipContent>
-                            </Tooltip>
-                          ) : (
-                            '-'
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </SectionCard>
+            <TolerationsList tolerations={pod.spec.tolerations} />
           )}
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Labels */}
-            <SectionCard
-              icon={Tag}
-              title="Labels"
-              tooltip={
-                <p className="text-xs text-muted-foreground">Kubernetes labels on this pod</p>
-              }
-            >
-              {pod.metadata?.labels && Object.keys(pod.metadata.labels).length > 0 ? (
-                <div className="flex flex-wrap gap-1.5">
-                  {Object.entries(pod.metadata.labels).map(([k, v]) => (
-                    <Badge key={k} variant="secondary" className="font-mono text-xs">
-                      {k}={v}
-                    </Badge>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-sm text-muted-foreground">No labels</p>
-              )}
-            </SectionCard>
+            <LabelList labels={pod.metadata?.labels ?? {}} />
 
             {/* Volumes */}
             <SectionCard
@@ -898,24 +812,7 @@ export default function PodDetail() {
           </div>
 
           {/* Annotations */}
-          {pod.metadata?.annotations && Object.keys(pod.metadata.annotations).length > 0 && (
-            <SectionCard
-              icon={FileCode}
-              title="Annotations"
-              tooltip={<p className="text-xs text-muted-foreground">Custom metadata annotations on this pod</p>}
-            >
-              <div className="space-y-2">
-                {Object.entries(pod.metadata.annotations).slice(0, 5).map(([key, value]) => (
-                  <div key={key} className="p-3 rounded-lg bg-muted/50">
-                    <p className="font-mono text-xs text-primary break-all">{key}</p>
-                    <p className="text-xs text-muted-foreground mt-1 break-all">
-                      {typeof value === 'string' && value.length > 200 ? `${value.substring(0, 200)}...` : value}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </SectionCard>
-          )}
+          <AnnotationList annotations={pod.metadata?.annotations ?? {}} />
         </div>
       ),
     },

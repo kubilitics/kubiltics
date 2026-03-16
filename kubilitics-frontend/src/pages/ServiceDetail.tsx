@@ -19,6 +19,8 @@ import {
   ResourceTopologyView,
   ResourceComparisonView,
   PortForwardDialog,
+  LabelList,
+  AnnotationList,
   type ResourceStatus,
   type YamlVersion,
   type EventInfo,
@@ -328,16 +330,8 @@ export default function ServiceDetail() {
               </div>
             )}
           </SectionCard>
-          <SectionCard title="Metadata" icon={Clock}>
-            <div className="space-y-2 text-sm">
-              {svc.metadata?.labels && Object.keys(svc.metadata.labels).length > 0 && (
-                <DetailRow label="Labels" value={<div className="flex flex-wrap gap-1">{Object.entries(svc.metadata.labels).map(([k, v]) => <Badge key={k} variant="outline" className="text-xs">{k}={v}</Badge>)}</div>} />
-              )}
-              {svc.metadata?.annotations && Object.keys(svc.metadata.annotations).length > 0 && (
-                <DetailRow label="Annotations" value={<div className="flex flex-wrap gap-1">{Object.entries(svc.metadata.annotations).map(([k, v]) => <Badge key={k} variant="outline" className="text-xs">{k}={String(v).slice(0, 20)}</Badge>)}</div>} />
-              )}
-            </div>
-          </SectionCard>
+          <LabelList labels={svc.metadata?.labels ?? {}} />
+          <AnnotationList annotations={svc.metadata?.annotations ?? {}} />
         </div>
       ),
     },

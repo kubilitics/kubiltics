@@ -14,7 +14,8 @@ import {
   EventsSection,
   ActionsSection,
   DeleteConfirmDialog,
-  MetadataCard,
+  LabelList,
+  AnnotationList,
   ResourceTopologyView,
   ResourceComparisonView,
   type ResourceStatus,
@@ -284,8 +285,8 @@ export default function HorizontalPodAutoscalerDetail() {
               )}
             </CardContent>
           </Card>
-          <MetadataCard title="Labels" items={labels} variant="badges" />
-          {Object.keys(annotations).length > 0 && <MetadataCard title="Annotations" items={annotations} variant="badges" />}
+          <LabelList labels={labels} />
+          <AnnotationList annotations={annotations} />
         </div>
       ),
     },
