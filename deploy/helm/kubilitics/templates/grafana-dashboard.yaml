@@ -25,7 +25,7 @@ data:
             "targets": [
               {
                 "expr": "sum(rate(kubilitics_http_requests_total[5m])) by (method, status)",
-                "legendFormat": "{{method}} {{status}}"
+                "legendFormat": "{{ `{{method}} {{status}}` }}"
               }
             ],
             "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0}
@@ -37,7 +37,7 @@ data:
             "targets": [
               {
                 "expr": "histogram_quantile(0.95, sum(rate(kubilitics_http_request_duration_seconds_bucket[5m])) by (le, path))",
-                "legendFormat": "{{path}}"
+                "legendFormat": "{{ `{{path}}` }}"
               }
             ],
             "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0}
@@ -49,7 +49,7 @@ data:
             "targets": [
               {
                 "expr": "kubilitics_circuit_breaker_state",
-                "legendFormat": "{{cluster_id}}"
+                "legendFormat": "{{ `{{cluster_id}}` }}"
               }
             ],
             "gridPos": {"h": 8, "w": 8, "x": 0, "y": 8}
@@ -61,7 +61,7 @@ data:
             "targets": [
               {
                 "expr": "sum(rate(kubilitics_circuit_breaker_failures_total[5m])) by (cluster_id)",
-                "legendFormat": "{{cluster_id}}"
+                "legendFormat": "{{ `{{cluster_id}}` }}"
               }
             ],
             "gridPos": {"h": 8, "w": 8, "x": 8, "y": 8}
@@ -73,7 +73,7 @@ data:
             "targets": [
               {
                 "expr": "histogram_quantile(0.95, sum(rate(kubilitics_db_query_duration_seconds_bucket[5m])) by (le, operation))",
-                "legendFormat": "{{operation}}"
+                "legendFormat": "{{ `{{operation}}` }}"
               }
             ],
             "gridPos": {"h": 8, "w": 8, "x": 16, "y": 8}
@@ -113,7 +113,7 @@ data:
             "targets": [
               {
                 "expr": "sum(rate(kubilitics_auth_login_attempts_total[5m])) by (outcome)",
-                "legendFormat": "{{outcome}}"
+                "legendFormat": "{{ `{{outcome}}` }}"
               }
             ],
             "gridPos": {"h": 8, "w": 8, "x": 16, "y": 16}
@@ -137,7 +137,7 @@ data:
             "targets": [
               {
                 "expr": "sum(rate(kubilitics_kcli_exec_total[5m])) by (command, outcome)",
-                "legendFormat": "{{command}} {{outcome}}"
+                "legendFormat": "{{ `{{command}} {{outcome}}` }}"
               }
             ],
             "gridPos": {"h": 8, "w": 12, "x": 12, "y": 24}

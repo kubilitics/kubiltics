@@ -123,7 +123,11 @@ jobs:
     - name: Run golangci-lint
       uses: golangci/golangci-lint-action@v6
       with:
-        version: latest
+        # Use goinstall so golangci-lint is built with the same Go version
+        # from setup-go (read from go.mod). Pre-built binaries may lag behind
+        # the Go version in go.mod, causing "goX.Y can't lint goX.Z" errors.
+        install-mode: goinstall
+        version: v1.64.8
         working-directory: kubilitics-backend
         args: --timeout=8m
 

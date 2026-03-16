@@ -46,9 +46,9 @@ jobs:
       - name: Lint chart
         working-directory: deploy/helm/kubilitics
         run: |
-          helm lint .
           helm dependency update .
           helm dependency build .
+          helm lint .
 
       - name: Validate chart values
         working-directory: deploy/helm/kubilitics

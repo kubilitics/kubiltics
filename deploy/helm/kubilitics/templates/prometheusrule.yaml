@@ -23,7 +23,7 @@ spec:
         component: backend
       annotations:
         summary: "High error rate detected"
-        description: "Path {{ $labels.path }} has error rate > 0.1 req/s for 5 minutes"
+        description: {{ `"Path {{ $labels.path }} has error rate > 0.1 req/s for 5 minutes"` }}
 
     # Circuit breaker open
     - alert: KubiliticsCircuitBreakerOpen
@@ -35,7 +35,7 @@ spec:
         component: backend
       annotations:
         summary: "Circuit breaker is open"
-        description: "Circuit breaker for cluster {{ $labels.cluster_id }} has been open for 2 minutes"
+        description: {{ `"Circuit breaker for cluster {{ $labels.cluster_id }} has been open for 2 minutes"` }}
 
     # High latency
     - alert: KubiliticsHighLatency
@@ -47,7 +47,7 @@ spec:
         component: backend
       annotations:
         summary: "High request latency"
-        description: "95th percentile latency for {{ $labels.path }} exceeds 2 seconds"
+        description: {{ `"95th percentile latency for {{ $labels.path }} exceeds 2 seconds"` }}
 
     # Database connectivity issues
     - alert: KubiliticsDatabaseUnavailable
@@ -71,7 +71,7 @@ spec:
         component: backend
       annotations:
         summary: "High database query latency"
-        description: "95th percentile database query latency for {{ $labels.operation }} exceeds 500ms"
+        description: {{ `"95th percentile database query latency for {{ $labels.operation }} exceeds 500ms"` }}
 
     # Token cleanup failures
     - alert: KubiliticsTokenCleanupStalled
@@ -107,7 +107,7 @@ spec:
         component: backend
       annotations:
         summary: "High kcli failure rate"
-        description: "kcli command {{ $labels.command }} has failure rate > 20%"
+        description: {{ `"kcli command {{ $labels.command }} has failure rate > 20%"` }}
 
     # Topology build timeout
     - alert: KubiliticsTopologyBuildTimeout
