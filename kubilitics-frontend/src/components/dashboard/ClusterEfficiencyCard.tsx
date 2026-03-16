@@ -10,6 +10,7 @@
  * Gracefully degrades when metrics-server is unavailable (shows requested only).
  */
 import { useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   Zap,
@@ -20,6 +21,8 @@ import {
   AlertTriangle,
   Lightbulb,
   Info,
+  Download,
+  ArrowRight,
 } from "lucide-react";
 import { useK8sResourceList } from "@/hooks/useKubernetes";
 import { useClusterUtilization } from "@/hooks/useClusterUtilization";
@@ -207,6 +210,7 @@ function DualLayerBar({
 // ─── Main Component ──────────────────────────────────────────────────────────
 
 export function ClusterResourceIntelligence() {
+  const navigate = useNavigate();
   const { activeCluster } = useClusterStore();
   const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
 
@@ -388,11 +392,18 @@ export function ClusterResourceIntelligence() {
             )}
 
             {!metricsAvailable && (
-              <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-muted/50 border border-border/50">
-                <Info className="h-3 w-3 text-muted-foreground" />
-                <span className="text-[10px] text-muted-foreground">
-                  Install metrics-server for actual usage
+              <div
+                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-amber-50/80 dark:bg-amber-500/10 border border-amber-200/60 dark:border-amber-500/20 cursor-pointer hover:bg-amber-50 dark:hover:bg-amber-500/15 transition-colors group"
+                onClick={() => navigate('/addons?search=metrics-server')}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => e.key === 'Enter' && navigate('/addons?search=metrics-server')}
+              >
+                <Download className="h-3 w-3 text-amber-600 dark:text-amber-400 shrink-0" strokeWidth={2} />
+                <span className="text-[10px] font-medium text-amber-700 dark:text-amber-300">
+                  Install <span className="font-semibold">metrics-server</span> for actual usage
                 </span>
+                <ArrowRight className="h-3 w-3 text-amber-500/60 dark:text-amber-400/60 shrink-0 group-hover:translate-x-0.5 transition-transform" strokeWidth={2} />
               </div>
             )}
           </div>

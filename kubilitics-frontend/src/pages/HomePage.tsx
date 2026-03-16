@@ -8,6 +8,7 @@ import {
   Boxes,
   Cpu,
   FolderKanban,
+  Download,
   Focus,
   HardDrive,
   Loader2,
@@ -321,10 +322,24 @@ export default function HomePage() {
                   </div>
                 </>
               ) : (
-                <>
-                  <div className="h-1.5 w-full bg-slate-100 dark:bg-slate-800 rounded-full" />
-                  <p className="text-[11px] text-muted-foreground mt-1.5">No metrics available</p>
-                </>
+                <div className="mt-1 space-y-2.5">
+                  <div className="h-1.5 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                    <div className="h-full w-full bg-gradient-to-r from-slate-200 via-slate-100 to-slate-200 dark:from-slate-700 dark:via-slate-600 dark:to-slate-700 animate-pulse" />
+                  </div>
+                  <div
+                    className="flex items-center gap-2 rounded-lg bg-amber-50/80 dark:bg-amber-500/10 border border-amber-200/60 dark:border-amber-500/20 px-2.5 py-1.5 cursor-pointer hover:bg-amber-50 dark:hover:bg-amber-500/15 transition-colors group"
+                    onClick={() => navigate('/addons?search=metrics-server')}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => e.key === 'Enter' && navigate('/addons?search=metrics-server')}
+                  >
+                    <Download className="h-3 w-3 text-amber-600 dark:text-amber-400 shrink-0" strokeWidth={2} />
+                    <span className="text-[11px] font-medium text-amber-700 dark:text-amber-300 leading-tight">
+                      Install <span className="font-semibold">metrics-server</span> for live usage
+                    </span>
+                    <ArrowRight className="h-3 w-3 text-amber-500/60 dark:text-amber-400/60 ml-auto shrink-0 group-hover:translate-x-0.5 transition-transform" strokeWidth={2} />
+                  </div>
+                </div>
               )}
             </motion.div>
 
@@ -368,10 +383,24 @@ export default function HomePage() {
                   </div>
                 </>
               ) : (
-                <>
-                  <div className="h-1.5 w-full bg-slate-100 dark:bg-slate-800 rounded-full" />
-                  <p className="text-[11px] text-muted-foreground mt-1.5">No metrics available</p>
-                </>
+                <div className="mt-1 space-y-2.5">
+                  <div className="h-1.5 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                    <div className="h-full w-full bg-gradient-to-r from-slate-200 via-slate-100 to-slate-200 dark:from-slate-700 dark:via-slate-600 dark:to-slate-700 animate-pulse" />
+                  </div>
+                  <div
+                    className="flex items-center gap-2 rounded-lg bg-amber-50/80 dark:bg-amber-500/10 border border-amber-200/60 dark:border-amber-500/20 px-2.5 py-1.5 cursor-pointer hover:bg-amber-50 dark:hover:bg-amber-500/15 transition-colors group"
+                    onClick={() => navigate('/addons?search=metrics-server')}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => e.key === 'Enter' && navigate('/addons?search=metrics-server')}
+                  >
+                    <Download className="h-3 w-3 text-amber-600 dark:text-amber-400 shrink-0" strokeWidth={2} />
+                    <span className="text-[11px] font-medium text-amber-700 dark:text-amber-300 leading-tight">
+                      Install <span className="font-semibold">metrics-server</span> for live usage
+                    </span>
+                    <ArrowRight className="h-3 w-3 text-amber-500/60 dark:text-amber-400/60 ml-auto shrink-0 group-hover:translate-x-0.5 transition-transform" strokeWidth={2} />
+                  </div>
+                </div>
               )}
             </motion.div>
           </div>
