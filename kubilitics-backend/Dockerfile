@@ -6,7 +6,7 @@
 # ── Build arguments (declared before any FROM so they scope to all stages) ───
 # BuildKit automatically sets TARGETOS/TARGETARCH for multi-platform builds.
 # Provide defaults so local single-platform builds work without --platform.
-ARG GO_VERSION=1.25.7
+ARG GO_VERSION=1.25.8
 ARG ALPINE_VERSION=3.21
 # Pinned kubectl release — keep aligned with k8s.io/client-go major version in go.mod
 ARG KUBECTL_VERSION=v1.33.3

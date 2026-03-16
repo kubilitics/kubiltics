@@ -17,7 +17,7 @@ concurrency:
 
 env:
   # Keep in sync with backend-ci.yml — includes security patch fixes
-  GO_VERSION: '1.25.7'
+  GO_VERSION: '1.25.8'
   PLATFORMS: linux/amd64,linux/arm64
 
 jobs:
