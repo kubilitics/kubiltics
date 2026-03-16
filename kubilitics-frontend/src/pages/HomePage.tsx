@@ -286,15 +286,24 @@ export default function HomePage() {
             <motion.div
               variants={stagger.item}
               className={cn(
-                "relative bg-white dark:bg-[hsl(228,14%,11%)]",
-                "border border-slate-200 dark:border-slate-700 rounded-2xl",
-                "shadow p-5",
+                "relative rounded-2xl shadow overflow-hidden",
+                cpuUtil != null
+                  ? "bg-white dark:bg-[hsl(228,14%,11%)] border border-slate-200 dark:border-slate-700 p-5"
+                  : "bg-gradient-to-br from-blue-50 via-white to-sky-50 dark:from-blue-950/40 dark:via-[hsl(228,14%,11%)] dark:to-sky-950/30 border border-blue-200/50 dark:border-blue-500/20 p-5 cursor-pointer group hover:shadow-md hover:border-blue-300/60 dark:hover:border-blue-500/30 transition-all duration-300",
               )}
               role="status"
-              aria-label={cpuUtil != null ? `CPU usage at ${Math.round(cpuUtil)} percent` : 'CPU usage unavailable'}
+              aria-label={cpuUtil != null ? `CPU usage at ${Math.round(cpuUtil)} percent` : 'CPU usage unavailable — click to install metrics-server'}
+              {...(cpuUtil == null ? {
+                onClick: () => navigate('/addons?search=metrics-server'),
+                tabIndex: 0,
+                onKeyDown: (e: React.KeyboardEvent) => e.key === 'Enter' && navigate('/addons?search=metrics-server'),
+              } : {})}
             >
               <div className="flex items-center gap-3 mb-3">
-                <div className="h-8 w-8 rounded-lg bg-blue-50 dark:bg-blue-500/10 flex items-center justify-center">
+                <div className={cn(
+                  "h-8 w-8 rounded-lg flex items-center justify-center",
+                  cpuUtil != null ? "bg-blue-50 dark:bg-blue-500/10" : "bg-blue-100/80 dark:bg-blue-500/20"
+                )}>
                   <Cpu className="h-3.5 w-3.5 text-blue-500 dark:text-blue-400" strokeWidth={1.75} />
                 </div>
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">CPU Usage</p>
@@ -322,24 +331,30 @@ export default function HomePage() {
                   </div>
                 </>
               ) : (
-                <div className="mt-1 space-y-2.5">
-                  <div className="h-1.5 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                    <div className="h-full w-full bg-gradient-to-r from-slate-200 via-slate-100 to-slate-200 dark:from-slate-700 dark:via-slate-600 dark:to-slate-700 animate-pulse" />
+                <>
+                  <div className="flex items-center gap-3 mt-1">
+                    <div className="relative h-[52px] w-[52px] shrink-0">
+                      <svg viewBox="0 0 36 36" className="h-full w-full -rotate-90">
+                        <circle cx="18" cy="18" r="15.5" fill="none" stroke="currentColor" strokeWidth="3" className="text-blue-100 dark:text-blue-900/50" />
+                        <circle cx="18" cy="18" r="15.5" fill="none" stroke="currentColor" strokeWidth="3" strokeDasharray="97.4 97.4" strokeDashoffset="97.4" strokeLinecap="round" className="text-blue-300/50 dark:text-blue-600/40 animate-pulse" />
+                      </svg>
+                      <span className="absolute inset-0 flex items-center justify-center text-sm font-bold text-blue-400/60 dark:text-blue-500/50">—</span>
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400 leading-snug">
+                        Metrics server not detected
+                      </p>
+                      <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5 leading-snug">
+                        Required for live CPU data
+                      </p>
+                    </div>
                   </div>
-                  <div
-                    className="flex items-center gap-2 rounded-lg bg-amber-50/80 dark:bg-amber-500/10 border border-amber-200/60 dark:border-amber-500/20 px-2.5 py-1.5 cursor-pointer hover:bg-amber-50 dark:hover:bg-amber-500/15 transition-colors group"
-                    onClick={() => navigate('/addons?search=metrics-server')}
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={(e) => e.key === 'Enter' && navigate('/addons?search=metrics-server')}
-                  >
-                    <Download className="h-3 w-3 text-amber-600 dark:text-amber-400 shrink-0" strokeWidth={2} />
-                    <span className="text-[11px] font-medium text-amber-700 dark:text-amber-300 leading-tight">
-                      Install <span className="font-semibold">metrics-server</span> for live usage
-                    </span>
-                    <ArrowRight className="h-3 w-3 text-amber-500/60 dark:text-amber-400/60 ml-auto shrink-0 group-hover:translate-x-0.5 transition-transform" strokeWidth={2} />
+                  <div className="mt-3 flex items-center gap-1.5 text-blue-600 dark:text-blue-400 group-hover:gap-2.5 transition-all duration-300">
+                    <Download className="h-3 w-3 shrink-0" strokeWidth={2.5} />
+                    <span className="text-[11px] font-semibold">Install metrics-server</span>
+                    <ArrowRight className="h-3 w-3 shrink-0 opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300" strokeWidth={2.5} />
                   </div>
-                </div>
+                </>
               )}
             </motion.div>
 
@@ -347,15 +362,24 @@ export default function HomePage() {
             <motion.div
               variants={stagger.item}
               className={cn(
-                "relative bg-white dark:bg-[hsl(228,14%,11%)]",
-                "border border-slate-200 dark:border-slate-700 rounded-2xl",
-                "shadow p-5",
+                "relative rounded-2xl shadow overflow-hidden",
+                memUtil != null
+                  ? "bg-white dark:bg-[hsl(228,14%,11%)] border border-slate-200 dark:border-slate-700 p-5"
+                  : "bg-gradient-to-br from-violet-50 via-white to-purple-50 dark:from-violet-950/40 dark:via-[hsl(228,14%,11%)] dark:to-purple-950/30 border border-violet-200/50 dark:border-violet-500/20 p-5 cursor-pointer group hover:shadow-md hover:border-violet-300/60 dark:hover:border-violet-500/30 transition-all duration-300",
               )}
               role="status"
-              aria-label={memUtil != null ? `Memory usage at ${Math.round(memUtil)} percent` : 'Memory usage unavailable'}
+              aria-label={memUtil != null ? `Memory usage at ${Math.round(memUtil)} percent` : 'Memory usage unavailable — click to install metrics-server'}
+              {...(memUtil == null ? {
+                onClick: () => navigate('/addons?search=metrics-server'),
+                tabIndex: 0,
+                onKeyDown: (e: React.KeyboardEvent) => e.key === 'Enter' && navigate('/addons?search=metrics-server'),
+              } : {})}
             >
               <div className="flex items-center gap-3 mb-3">
-                <div className="h-8 w-8 rounded-lg bg-violet-50 dark:bg-violet-500/10 flex items-center justify-center">
+                <div className={cn(
+                  "h-8 w-8 rounded-lg flex items-center justify-center",
+                  memUtil != null ? "bg-violet-50 dark:bg-violet-500/10" : "bg-violet-100/80 dark:bg-violet-500/20"
+                )}>
                   <HardDrive className="h-3.5 w-3.5 text-violet-500 dark:text-violet-400" strokeWidth={1.75} />
                 </div>
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Memory Usage</p>
@@ -383,24 +407,30 @@ export default function HomePage() {
                   </div>
                 </>
               ) : (
-                <div className="mt-1 space-y-2.5">
-                  <div className="h-1.5 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                    <div className="h-full w-full bg-gradient-to-r from-slate-200 via-slate-100 to-slate-200 dark:from-slate-700 dark:via-slate-600 dark:to-slate-700 animate-pulse" />
+                <>
+                  <div className="flex items-center gap-3 mt-1">
+                    <div className="relative h-[52px] w-[52px] shrink-0">
+                      <svg viewBox="0 0 36 36" className="h-full w-full -rotate-90">
+                        <circle cx="18" cy="18" r="15.5" fill="none" stroke="currentColor" strokeWidth="3" className="text-violet-100 dark:text-violet-900/50" />
+                        <circle cx="18" cy="18" r="15.5" fill="none" stroke="currentColor" strokeWidth="3" strokeDasharray="97.4 97.4" strokeDashoffset="97.4" strokeLinecap="round" className="text-violet-300/50 dark:text-violet-600/40 animate-pulse" />
+                      </svg>
+                      <span className="absolute inset-0 flex items-center justify-center text-sm font-bold text-violet-400/60 dark:text-violet-500/50">—</span>
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400 leading-snug">
+                        Metrics server not detected
+                      </p>
+                      <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5 leading-snug">
+                        Required for live memory data
+                      </p>
+                    </div>
                   </div>
-                  <div
-                    className="flex items-center gap-2 rounded-lg bg-amber-50/80 dark:bg-amber-500/10 border border-amber-200/60 dark:border-amber-500/20 px-2.5 py-1.5 cursor-pointer hover:bg-amber-50 dark:hover:bg-amber-500/15 transition-colors group"
-                    onClick={() => navigate('/addons?search=metrics-server')}
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={(e) => e.key === 'Enter' && navigate('/addons?search=metrics-server')}
-                  >
-                    <Download className="h-3 w-3 text-amber-600 dark:text-amber-400 shrink-0" strokeWidth={2} />
-                    <span className="text-[11px] font-medium text-amber-700 dark:text-amber-300 leading-tight">
-                      Install <span className="font-semibold">metrics-server</span> for live usage
-                    </span>
-                    <ArrowRight className="h-3 w-3 text-amber-500/60 dark:text-amber-400/60 ml-auto shrink-0 group-hover:translate-x-0.5 transition-transform" strokeWidth={2} />
+                  <div className="mt-3 flex items-center gap-1.5 text-violet-600 dark:text-violet-400 group-hover:gap-2.5 transition-all duration-300">
+                    <Download className="h-3 w-3 shrink-0" strokeWidth={2.5} />
+                    <span className="text-[11px] font-semibold">Install metrics-server</span>
+                    <ArrowRight className="h-3 w-3 shrink-0 opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300" strokeWidth={2.5} />
                   </div>
-                </div>
+                </>
               )}
             </motion.div>
           </div>
