@@ -1,48 +1,60 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
+import { ThemeProvider } from "@/components/ThemeProvider";
 import "./globals.css";
 
 const inter = Inter({
   subsets: ["latin"],
   variable: "--font-inter",
   display: "swap",
-  weight: ["300", "400", "500", "600", "700"],
+  weight: ["300", "400", "500", "600", "700", "800"],
 });
 
 export const viewport: Viewport = {
-  themeColor: "#06080C",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#FFFFFF" },
+    { media: "(prefers-color-scheme: dark)", color: "#030712" },
+  ],
   width: "device-width",
   initialScale: 1,
 };
 
 export const metadata: Metadata = {
-  title: "Kubilitics — Kubernetes Relationship Intelligence Engine",
+  title: "Kubilitics — Unified Kubernetes Intelligence",
   description:
-    "Kubilitics maps every relationship in your Kubernetes cluster — Deployments, Services, ConfigMaps, PVCs, RBAC — and tells you what breaks if you change anything.",
+    "The complete Kubernetes management platform. Visualize clusters, analyze dependencies, manage workloads. Download the desktop app or deploy in-cluster for your team.",
   keywords: [
     "Kubernetes",
     "K8s",
-    "dependency graph",
-    "relationship visualization",
-    "impact analysis",
     "cluster management",
+    "Kubernetes dashboard",
+    "Kubernetes desktop app",
+    "workload management",
+    "multi-cluster",
     "platform engineering",
-    "DevOps",
   ],
   authors: [{ name: "Kubilitics" }],
+  icons: {
+    icon: [
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: "/apple-touch-icon.png",
+  },
   openGraph: {
-    title: "Kubilitics — Kubernetes Relationship Intelligence Engine",
+    title: "Kubilitics — Unified Kubernetes Intelligence",
     description:
-      "Map every Kubernetes dependency. Understand impact before making changes. Built for production engineering teams.",
+      "The complete Kubernetes management platform. Build once, build for life.",
     url: "https://kubilitics.com",
     siteName: "Kubilitics",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Kubilitics — Kubernetes Relationship Intelligence Engine",
+    title: "Kubilitics — Unified Kubernetes Intelligence",
     description:
-      "Map every Kubernetes dependency. Understand impact before making changes.",
+      "The complete Kubernetes management platform. Build once, build for life.",
   },
   robots: { index: true, follow: true },
   metadataBase: new URL("https://kubilitics.com"),
@@ -54,9 +66,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={`${inter.variable} dark`}>
-      <body className="bg-[#06080C] text-[#EEF2F7] antialiased selection:bg-brand-muted">
-        {children}
+    <html lang="en" className={inter.variable} suppressHydrationWarning>
+      <body className="font-sans antialiased">
+        <ThemeProvider>{children}</ThemeProvider>
       </body>
     </html>
   );

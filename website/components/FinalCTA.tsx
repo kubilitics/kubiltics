@@ -4,74 +4,50 @@ import { motion } from "framer-motion";
 import { useScrollReveal } from "@/hooks/useScrollReveal";
 
 export default function FinalCTA() {
-    const { ref, isVisible } = useScrollReveal();
+  const { ref, isVisible } = useScrollReveal();
 
-    return (
-        <section ref={ref} id="cta" className="relative py-40 bg-[#0B0E14] overflow-hidden">
-            <div className="absolute inset-0 line-grid opacity-60 pointer-events-none" />
-            <div className="absolute top-0 left-0 right-0 h-px bg-[#1D2535]" />
-            <div className="absolute bottom-0 left-0 right-0 h-px bg-[#1D2535]" />
-            {/* Glow */}
-            <div className="absolute inset-0 bg-gradient-radial from-[rgba(79,123,247,0.09)] via-transparent to-transparent pointer-events-none" />
+  return (
+    <section ref={ref} id="cta" className="relative py-32 lg:py-40 overflow-hidden">
+      {/* Background glow */}
+      <div className="absolute inset-0 pointer-events-none">
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[400px] rounded-full bg-[var(--brand)] opacity-[0.05] blur-[100px]" />
+      </div>
 
-            <div className="relative max-w-4xl mx-auto px-5 text-center">
-                <motion.div
-                    initial={{ opacity: 0, y: 32 }}
-                    animate={isVisible ? { opacity: 1, y: 0 } : {}}
-                    transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
-                >
-                    <p className="text-[11px] font-semibold tracking-[0.12em] uppercase text-[#4F7BF7] mb-6">
-                        Get Started
-                    </p>
-                    <h2 className="text-[clamp(2.5rem,7vw,5.5rem)] font-semibold leading-[1.03] tracking-[-0.045em] text-[#EEF2F7] mb-6">
-                        Understand your cluster.
-                        <br />
-                        <span className="text-[#9BAABE]">Before something breaks.</span>
-                    </h2>
-                    <p className="text-[1.125rem] leading-[1.8] text-[#9BAABE] mb-10 max-w-lg mx-auto">
-                        Connect Kubilitics to any cluster in minutes. No operators. No sidecars.
-                        No data leaves your environment. Apache 2.0.
-                    </p>
+      <div className="relative max-w-[1200px] mx-auto px-6 md:px-8 lg:px-10 text-center">
+        <motion.div
+          initial={{ opacity: 0, y: 32 }}
+          animate={isVisible ? { opacity: 1, y: 0 } : {}}
+          transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+        >
+          <h2 className="text-[clamp(2rem,5.5vw,3.5rem)] font-extrabold leading-[1.08] tracking-[-0.035em] text-[var(--text-primary)] mb-6">
+            Build once.
+            <br />
+            <span className="text-[var(--text-tertiary)]">Build for life.</span>
+          </h2>
+          <p className="text-lg leading-relaxed text-[var(--text-secondary)] mb-10 max-w-3xl mx-auto">
+            Start managing your Kubernetes clusters with confidence.
+            Download the desktop app or deploy in your cluster — free.
+          </p>
 
-                    {/* CTAs */}
-                    <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-10">
-                        <a
-                            href="https://github.com/kubilitics"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="group inline-flex items-center gap-2.5 px-7 py-4 rounded-xl bg-[#4F7BF7] text-white text-[15px] font-semibold hover:bg-[#3560D8] active:scale-[0.98] transition-all duration-200 shadow-glow-sm hover:shadow-glow-md"
-                        >
-                            Get Started Free
-                            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="group-hover:translate-x-0.5 transition-transform duration-200">
-                                <path d="M3 7h8M7.5 3.5L11 7l-3.5 3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                            </svg>
-                        </a>
-                        <a
-                            href="#"
-                            className="inline-flex items-center gap-2.5 px-7 py-4 rounded-xl bg-[#06080C] border border-[#1D2535] text-[#EEF2F7] text-[15px] font-semibold hover:border-[#263043] hover:bg-[#0B0E14] active:scale-[0.98] transition-all duration-200"
-                        >
-                            Read the Docs
-                        </a>
-                    </div>
-
-                    {/* Clusters row */}
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={isVisible ? { opacity: 1 } : {}}
-                        transition={{ duration: 0.8, delay: 0.4 }}
-                        className="flex flex-wrap items-center justify-center gap-3"
-                    >
-                        {["EKS", "GKE", "AKS", "k3s", "kind", "Talos", "Vanilla K8s"].map((k) => (
-                            <span
-                                key={k}
-                                className="px-2.5 py-1 rounded-full bg-[#06080C] border border-[#1D2535] text-[11px] font-mono font-medium text-[#5A6880]"
-                            >
-                                {k}
-                            </span>
-                        ))}
-                    </motion.div>
-                </motion.div>
-            </div>
-        </section>
-    );
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+            <a
+              href="#install"
+              className="group inline-flex items-center gap-2.5 px-7 py-4 rounded-2xl bg-[var(--brand)] text-white text-[15px] font-semibold hover:bg-[var(--brand-hover)] active:scale-[0.98] transition-all duration-200 shadow-lg shadow-blue-500/20"
+            >
+              Get Started Free
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="group-hover:translate-x-0.5 transition-transform duration-200">
+                <path d="M3 7h8M7.5 3.5L11 7l-3.5 3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </a>
+            <a
+              href="#features"
+              className="inline-flex items-center gap-2.5 px-7 py-4 rounded-2xl bg-[var(--bg-card)] border border-[var(--border-primary)] text-[var(--text-primary)] text-[15px] font-semibold hover:border-[var(--border-secondary)] hover:bg-[var(--bg-elevated)] active:scale-[0.98] transition-all duration-200"
+            >
+              Explore Features
+            </a>
+          </div>
+        </motion.div>
+      </div>
+    </section>
+  );
 }

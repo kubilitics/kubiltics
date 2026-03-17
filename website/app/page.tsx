@@ -2,28 +2,27 @@
 
 import Navbar from "@/components/Navbar";
 import Hero from "@/components/Hero";
-import Problem from "@/components/Problem";
-import ProductPreview from "@/components/ProductPreview";
+import PreviewVideo from "@/components/PreviewVideo";
 import Features from "@/components/Features";
-import Comparison from "@/components/Comparison";
 import HowItWorks from "@/components/HowItWorks";
-import Enterprise from "@/components/Enterprise";
-import OpenSource from "@/components/OpenSource";
+import Installation from "@/components/Installation";
+import Security from "@/components/Security";
 import FinalCTA from "@/components/FinalCTA";
 import Footer from "@/components/Footer";
 
 export default function Home() {
   return (
-    <main className="min-h-screen bg-[#06080C] overflow-x-hidden">
+    <main className="min-h-screen bg-[var(--bg-primary)] overflow-x-hidden">
       <Navbar />
       <Hero />
-      <Problem />
-      <ProductPreview />
+      <PreviewVideo />
+      <div className="section-divider" />
       <Features />
-      <Comparison />
       <HowItWorks />
-      <Enterprise />
-      <OpenSource />
+      <div className="section-divider" />
+      <Installation />
+      <Security />
+      <div className="section-divider" />
       <FinalCTA />
       <Footer />
     </main>

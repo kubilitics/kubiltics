@@ -4,8 +4,15 @@
     {
       "name": "frontend",
       "runtimeExecutable": "bash",
-      "runtimeArgs": ["-c", "cd kubilitics-frontend && npm run dev"],
+      "runtimeArgs": ["-c", "cd kubilitics-frontend && npx vite --port 5173 --strictPort"],
       "port": 5173,
+      "autoPort": false
+    },
+    {
+      "name": "website",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": ["-c", "cd website && npm run dev -- -p 3000"],
+      "port": 3000,
       "autoPort": false
     }
   ]
