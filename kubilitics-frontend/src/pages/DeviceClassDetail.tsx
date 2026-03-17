@@ -11,7 +11,7 @@ import {
   EventsSection,
   ActionsSection,
   DeleteConfirmDialog,
-  ResourceOverviewMetadata,
+  MetadataSection,
   SectionCard,
   YamlViewer,
   ResourceTopologyView,
@@ -158,8 +158,9 @@ export default function DeviceClassDetail() {
       icon: Info,
       content: (
         <div className="space-y-6">
-          <ResourceOverviewMetadata
+          <MetadataSection
             metadata={dc?.metadata ?? { name: dcName }}
+            showMetadataGrid
             createdLabel={age}
           />
           <SectionCard icon={Cpu} title="Device Class Spec" tooltip={<p className="text-xs text-muted-foreground">DRA device presets</p>}>

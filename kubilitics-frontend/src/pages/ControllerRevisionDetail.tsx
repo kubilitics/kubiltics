@@ -7,7 +7,7 @@ import { toast } from 'sonner';
 import { downloadResourceJson } from '@/lib/exportUtils';
 import {
   ResourceDetailLayout,
-  ResourceOverviewMetadata,
+  MetadataSection,
   SectionCard,
   YamlViewer,
   ResourceComparisonView,
@@ -151,8 +151,9 @@ export default function ControllerRevisionDetail() {
       icon: Info,
       content: (
         <div className="space-y-6">
-          <ResourceOverviewMetadata
+          <MetadataSection
             metadata={cr?.metadata ?? { name: crName, namespace: crNamespace }}
+            showMetadataGrid
             createdLabel={age}
           />
           <SectionCard icon={History} title="Revision Info" tooltip={<p className="text-xs text-muted-foreground">Controller revision metadata</p>}>

@@ -50,7 +50,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import {
   ResourceDetailLayout,
-  ResourceOverviewMetadata,
+  MetadataSection,
   SectionCard,
   ContainersSection,
   YamlViewer,
@@ -605,8 +605,9 @@ export default function DeploymentDetail() {
       icon: LayoutDashboard,
       content: (
         <div className="space-y-6">
-          <ResourceOverviewMetadata
+          <MetadataSection
             metadata={deployment.metadata}
+            showMetadataGrid
             createdLabel={age}
             namespace={deployment.metadata?.namespace}
           />

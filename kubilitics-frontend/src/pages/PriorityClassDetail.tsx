@@ -7,7 +7,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import {
   ResourceDetailLayout,
-  ResourceOverviewMetadata,
+  MetadataSection,
   YamlViewer,
   EventsSection,
   ActionsSection,
@@ -141,8 +141,9 @@ export default function PriorityClassDetail() {
       label: 'Overview',
       content: (
         <div className="space-y-6">
-          <ResourceOverviewMetadata
+          <MetadataSection
             metadata={resource?.metadata ?? { name: pcName }}
+            showMetadataGrid
             createdLabel={age}
           />
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

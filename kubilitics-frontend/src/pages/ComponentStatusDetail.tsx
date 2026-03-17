@@ -10,7 +10,7 @@ import { downloadResourceJson } from '@/lib/exportUtils';
 import { normalizeKindForTopology } from '@/utils/resourceKindMapper';
 import {
   ResourceDetailLayout,
-  ResourceOverviewMetadata,
+  MetadataSection,
   YamlViewer,
   EventsSection,
   ActionsSection,
@@ -115,7 +115,7 @@ export default function ComponentStatusDetail() {
       label: 'Overview',
       content: (
         <div className="space-y-6">
-          <ResourceOverviewMetadata metadata={cs.metadata ?? { name: csName }} />
+          <MetadataSection metadata={cs.metadata ?? { name: csName }} showMetadataGrid />
           <div className="grid grid-cols-1 gap-6">
             <Card>
               <CardHeader><CardTitle className="text-base">Component Info</CardTitle></CardHeader>

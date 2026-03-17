@@ -11,7 +11,7 @@ import { toast } from 'sonner';
 import { downloadResourceJson } from '@/lib/exportUtils';
 import {
   ResourceDetailLayout,
-  ResourceOverviewMetadata,
+  MetadataSection,
   YamlViewer,
   EventsSection,
   ActionsSection,
@@ -171,7 +171,7 @@ export default function RuntimeClassDetail() {
       label: 'Overview',
       content: (
         <div className="space-y-6">
-          <ResourceOverviewMetadata metadata={{ name: rc.name }} />
+          <MetadataSection metadata={{ name: rc.name }} showMetadataGrid />
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <Card>
               <CardHeader><CardTitle className="text-base">Runtime Info</CardTitle></CardHeader>
