@@ -11,7 +11,7 @@ import {
   EventsSection,
   ActionsSection,
   DeleteConfirmDialog,
-  ResourceOverviewMetadata,
+  MetadataSection,
   SectionCard,
   YamlViewer,
   type ResourceStatus,
@@ -145,8 +145,9 @@ export default function BGPPeerDetail() {
       icon: Info,
       content: (
         <div className="space-y-6">
-          <ResourceOverviewMetadata
+          <MetadataSection
             metadata={peer?.metadata ?? { name: peerName, namespace: namespace ?? '' }}
+            showMetadataGrid
             createdLabel={age}
           />
           <SectionCard icon={Network} title="BGP Peer Spec" tooltip={<p className="text-xs text-muted-foreground">MetalLB BGP session config</p>}>

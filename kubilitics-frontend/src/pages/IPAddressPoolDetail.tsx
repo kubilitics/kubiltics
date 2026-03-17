@@ -11,7 +11,7 @@ import {
   EventsSection,
   ActionsSection,
   DeleteConfirmDialog,
-  ResourceOverviewMetadata,
+  MetadataSection,
   SectionCard,
   YamlViewer,
   type ResourceStatus,
@@ -145,8 +145,9 @@ export default function IPAddressPoolDetail() {
       icon: Info,
       content: (
         <div className="space-y-6">
-          <ResourceOverviewMetadata
+          <MetadataSection
             metadata={pool?.metadata ?? { name: poolName, namespace: namespace ?? '' }}
+            showMetadataGrid
             createdLabel={age}
           />
           <SectionCard icon={Network} title="IP Address Pool" tooltip={<p className="text-xs text-muted-foreground">MetalLB IP ranges</p>}>

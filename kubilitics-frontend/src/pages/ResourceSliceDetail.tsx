@@ -11,7 +11,7 @@ import {
   EventsSection,
   ActionsSection,
   DeleteConfirmDialog,
-  ResourceOverviewMetadata,
+  MetadataSection,
   SectionCard,
   YamlViewer,
   ResourceTopologyView,
@@ -165,8 +165,9 @@ export default function ResourceSliceDetail() {
       icon: Info,
       content: (
         <div className="space-y-6">
-          <ResourceOverviewMetadata
+          <MetadataSection
             metadata={rs?.metadata ?? { name: rsName }}
+            showMetadataGrid
             createdLabel={age}
           />
           <SectionCard icon={Cpu} title="Resource Slice" tooltip={<p className="text-xs text-muted-foreground">DRA capacity info</p>}>

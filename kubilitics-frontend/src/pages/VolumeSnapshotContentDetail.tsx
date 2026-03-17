@@ -7,7 +7,7 @@ import { toast } from 'sonner';
 import { downloadResourceJson } from '@/lib/exportUtils';
 import {
   ResourceDetailLayout,
-  ResourceOverviewMetadata,
+  MetadataSection,
   SectionCard,
   YamlViewer,
   EventsSection,
@@ -167,8 +167,9 @@ export default function VolumeSnapshotContentDetail() {
       icon: Info,
       content: (
         <div className="space-y-6">
-          <ResourceOverviewMetadata
+          <MetadataSection
             metadata={vsc?.metadata ?? { name: vscName }}
+            showMetadataGrid
             createdLabel={age}
           />
           <SectionCard icon={Layers} title="Volume Snapshot Content" tooltip={<p className="text-xs text-muted-foreground">Actual snapshot data binding</p>}>

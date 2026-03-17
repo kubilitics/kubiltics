@@ -7,7 +7,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import {
   ResourceDetailLayout,
-  ResourceOverviewMetadata,
+  MetadataSection,
   SectionCard,
   YamlViewer,
   LabelList,
@@ -172,7 +172,7 @@ spec:
       icon: FileText,
       content: (
         <div className="space-y-6">
-          <ResourceOverviewMetadata metadata={vs?.metadata ?? { name }} createdLabel={vs?.metadata?.creationTimestamp ? `Created ${new Date(vs.metadata.creationTimestamp).toLocaleString()}` : '—'} />
+          <MetadataSection metadata={vs?.metadata ?? { name }} showMetadataGrid createdLabel={vs?.metadata?.creationTimestamp ? `Created ${new Date(vs.metadata.creationTimestamp).toLocaleString()}` : '—'} />
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <SectionCard icon={Camera} title="Source PVC">
               <Button variant="link" className="h-auto p-0 font-normal" onClick={() => navigate(`/persistentvolumeclaims/${namespace}/${sourcePVC}`)}>

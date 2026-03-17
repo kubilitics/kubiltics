@@ -18,6 +18,7 @@ export { EventsSection, type EventInfo, type EventsSectionProps } from './Events
 export { DetailRow, type DetailRowProps } from './DetailRow';
 export { SectionCard, type SectionCardProps } from './SectionCard';
 export { MetadataCard, type MetadataCardProps } from './MetadataCard';
+/** @deprecated Use MetadataSection from ./metadata instead. */
 export { ResourceOverviewMetadata, type ResourceOverviewMetadataProps } from './ResourceOverviewMetadata';
 export { ActionsSection, type ActionItem, type ActionsSectionProps } from './ActionsSection';
 export { NodeDetailPopup, type ResourceDetail } from './NodeDetailPopup';

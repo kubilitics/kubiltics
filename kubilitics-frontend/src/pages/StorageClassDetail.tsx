@@ -8,7 +8,7 @@ import { toast } from 'sonner';
 import { downloadResourceJson } from '@/lib/exportUtils';
 import {
   ResourceDetailLayout,
-  ResourceOverviewMetadata,
+  MetadataSection,
   SectionCard,
   YamlViewer,
   EventsSection,
@@ -152,8 +152,9 @@ export default function StorageClassDetail() {
       icon: Info,
       content: (
         <div className="space-y-6">
-          <ResourceOverviewMetadata
+          <MetadataSection
             metadata={sc?.metadata ?? { name: scName }}
+            showMetadataGrid
             createdLabel={age}
           />
           <SectionCard icon={Layers} title="Storage Class information" tooltip={<p className="text-xs text-muted-foreground">Provisioner and volume behavior</p>}>

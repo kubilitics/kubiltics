@@ -9,7 +9,7 @@ import { toast } from 'sonner';
 import { downloadResourceJson } from '@/lib/exportUtils';
 import {
   ResourceDetailLayout,
-  ResourceOverviewMetadata,
+  MetadataSection,
   SectionCard,
   YamlViewer,
   ResourceComparisonView,
@@ -127,8 +127,9 @@ export default function LeaseDetail() {
       label: 'Overview',
       content: (
         <div className="space-y-6">
-          <ResourceOverviewMetadata
+          <MetadataSection
             metadata={lease?.metadata ?? { name: leaseName, namespace: leaseNamespace }}
+            showMetadataGrid
             createdLabel={age}
             namespace={leaseNamespace}
           />

@@ -9,7 +9,7 @@ import { toast } from 'sonner';
 import { downloadResourceJson } from '@/lib/exportUtils';
 import {
   ResourceDetailLayout,
-  ResourceOverviewMetadata,
+  MetadataSection,
   SectionCard,
   YamlViewer,
   ResourceComparisonView,
@@ -128,8 +128,9 @@ export default function APIServiceDetail() {
       label: 'Overview',
       content: (
         <div className="space-y-6">
-          <ResourceOverviewMetadata
+          <MetadataSection
             metadata={api?.metadata ?? { name: apiName }}
+            showMetadataGrid
             createdLabel={age}
           />
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
