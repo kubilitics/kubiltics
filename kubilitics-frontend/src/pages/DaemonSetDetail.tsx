@@ -25,7 +25,7 @@ import {
   ChevronDown,
   RefreshCw,
 } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -347,12 +347,7 @@ export default function DaemonSetDetail() {
       content: (
         <div className="space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">DaemonSet Information</CardTitle>
-                <CardDescription>Configuration and update strategy</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
+            <SectionCard icon={Server} title="DaemonSet Information" tooltip={<p className="text-xs text-muted-foreground">Configuration and update strategy</p>}>
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
                     <p className="text-muted-foreground mb-1">Update Strategy</p>
@@ -371,14 +366,9 @@ export default function DaemonSetDetail() {
                     <p className="font-mono">{updated}/{desired}</p>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
+            </SectionCard>
 
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Pod Status</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
+            <SectionCard icon={Activity} title="Pod Status">
                 <div className="space-y-3">
                   <div className="flex justify-between items-center">
                     <span className="text-sm">Scheduled</span>
@@ -402,16 +392,11 @@ export default function DaemonSetDetail() {
                     </div>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
+            </SectionCard>
           </div>
 
           {tolerations.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Tolerations</CardTitle>
-              </CardHeader>
-              <CardContent>
+            <SectionCard icon={Settings} title="Tolerations">
                 <div className="space-y-2">
                   {tolerations.map((t, i) => (
                     <div key={i} className="p-3 rounded-lg bg-muted/50 font-mono text-sm">
@@ -423,10 +408,10 @@ export default function DaemonSetDetail() {
                     </div>
                   ))}
                 </div>
-              </CardContent>
-            </Card>
+            </SectionCard>
           )}
 
+          {/* Metadata */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <LabelList labels={daemonSet.metadata?.labels || {}} />
             <LabelList labels={nodeSelector} title="Node Selector" />

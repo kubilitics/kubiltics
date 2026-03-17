@@ -1,0 +1,133 @@
+# Post-release automation: update package manager manifests after a successful release
+name: Post-Release Distribution
+
+on:
+  workflow_run:
+    workflows: ["Release"]
+    types: [completed]
+
+permissions:
+  contents: read
+
+jobs:
+  # ── Update Homebrew tap ────────────────────────────────────────────────────
+  update-homebrew:
+    name: Update Homebrew Tap
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract version from tag
+        id: version
+        run: |
+          TAG="${{ github.event.workflow_run.head_branch }}"
+          VERSION="${TAG#v}"
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Download release checksums
+        run: |
+          curl -fsSL "https://github.com/${{ github.repository }}/releases/download/${{ steps.version.outputs.tag }}/checksums.txt" \
+            -o checksums.txt
+          cat checksums.txt
+
+      - name: Generate updated formula
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          TAG="${{ steps.version.outputs.tag }}"
+          REPO="${{ github.repository }}"
+
+          SHA_DARWIN_ARM64=$(grep "kcli-v${VERSION}-darwin-arm64.tar.gz" checksums.txt | awk '{print $1}')
+          SHA_DARWIN_AMD64=$(grep "kcli-v${VERSION}-darwin-amd64.tar.gz" checksums.txt | awk '{print $1}')
+          SHA_LINUX_ARM64=$(grep "kcli-v${VERSION}-linux-arm64.tar.gz" checksums.txt | awk '{print $1}')
+          SHA_LINUX_AMD64=$(grep "kcli-v${VERSION}-linux-amd64.tar.gz" checksums.txt | awk '{print $1}')
+
+          sed -e "s/PLACEHOLDER_SHA256_DARWIN_ARM64/$SHA_DARWIN_ARM64/" \
+              -e "s/PLACEHOLDER_SHA256_DARWIN_AMD64/$SHA_DARWIN_AMD64/" \
+              -e "s/PLACEHOLDER_SHA256_LINUX_ARM64/$SHA_LINUX_ARM64/" \
+              -e "s/PLACEHOLDER_SHA256_LINUX_AMD64/$SHA_LINUX_AMD64/" \
+              -e "s/version \".*\"/version \"$VERSION\"/" \
+              packaging/homebrew/kcli.rb > kcli-updated.rb
+
+          echo "Updated formula:"
+          cat kcli-updated.rb
+
+      - name: Push to Homebrew tap
+        if: ${{ secrets.HOMEBREW_TAP_TOKEN != '' }}
+        env:
+          GH_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+        run: |
+          git clone "https://x-access-token:${GH_TOKEN}@github.com/kubilitics/homebrew-tap.git" tap
+          cp kcli-updated.rb tap/Formula/kcli.rb
+          cd tap
+          git config user.name "kubilitics-bot"
+          git config user.email "bot@kubilitics.io"
+          git add Formula/kcli.rb
+          git commit -m "kcli ${{ steps.version.outputs.version }}" || echo "No changes"
+          git push
+
+  # ── Update Scoop bucket ───────────────────────────────────────────────────
+  update-scoop:
+    name: Update Scoop Bucket
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract version from tag
+        id: version
+        run: |
+          TAG="${{ github.event.workflow_run.head_branch }}"
+          VERSION="${TAG#v}"
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Download and compute Windows checksum
+        run: |
+          curl -fsSL "https://github.com/${{ github.repository }}/releases/download/${{ steps.version.outputs.tag }}/checksums.txt" \
+            -o checksums.txt
+          SHA=$(grep "kcli-v${{ steps.version.outputs.version }}-windows-amd64" checksums.txt | awk '{print $1}')
+          echo "sha=$SHA" >> $GITHUB_OUTPUT
+        id: checksum
+
+      - name: Generate updated manifest
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          TAG="${{ steps.version.outputs.tag }}"
+          SHA="${{ steps.checksum.outputs.sha }}"
+
+          jq --arg v "$VERSION" --arg s "$SHA" --arg t "$TAG" \
+            '.version = $v | .architecture."64bit".url = "https://github.com/kubilitics/kubiltics/releases/download/\($t)/kcli-v\($v)-windows-amd64.zip" | .architecture."64bit".hash = $s' \
+            packaging/scoop/kcli.json > kcli-updated.json
+
+          cat kcli-updated.json
+
+      - name: Push to Scoop bucket
+        if: ${{ secrets.SCOOP_BUCKET_TOKEN != '' }}
+        env:
+          GH_TOKEN: ${{ secrets.SCOOP_BUCKET_TOKEN }}
+        run: |
+          git clone "https://x-access-token:${GH_TOKEN}@github.com/kubilitics/scoop-bucket.git" bucket
+          cp kcli-updated.json bucket/kcli.json
+          cd bucket
+          git config user.name "kubilitics-bot"
+          git config user.email "bot@kubilitics.io"
+          git add kcli.json
+          git commit -m "kcli ${{ steps.version.outputs.version }}" || echo "No changes"
+          git push
+
+  # ── Submit winget manifest ────────────────────────────────────────────────
+  update-winget:
+    name: Submit winget Manifest
+    if: ${{ github.event.workflow_run.conclusion == 'success' && secrets.WINGET_TOKEN != '' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: vedantmgoyal9/winget-releaser@v2
+        with:
+          identifier: Kubilitics.Kubilitics
+          installers-regex: 'Kubilitics-.*-x64-setup\.exe$'
+          token: ${{ secrets.WINGET_TOKEN }}

@@ -63,12 +63,17 @@ export default function Dashboard() {
     );
   }
 
+  // Key the entire dashboard on clusterId so switching clusters forces a full
+  // remount. This guarantees every child query starts fresh for the new cluster,
+  // loading states render correctly, and framer-motion animations replay.
+  const dashboardKey = currentClusterId ?? activeCluster.id;
+
   return (
     <>
       {showTour && (
         <DashboardTour onComplete={completeTour} onSkip={skipTour} />
       )}
-      <div className="dashboard-page p-4 md:p-6 -m-2" data-tour="dashboard" role="main" aria-label="Dashboard">
+      <div key={dashboardKey} className="dashboard-page p-4 md:p-6 -m-2" data-tour="dashboard" role="main" aria-label="Dashboard">
         <motion.div
           variants={container}
           initial="hidden"

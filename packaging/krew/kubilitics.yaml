@@ -1,0 +1,65 @@
+apiVersion: krew.googlecontainertools.github.com/v1alpha2
+kind: Plugin
+metadata:
+  name: kubilitics
+spec:
+  version: v1.0.0
+  homepage: https://kubilitics.com
+  shortDescription: "Launch Kubilitics dashboard for your cluster"
+  description: |
+    Kubilitics is a production-grade Kubernetes management platform.
+    This plugin launches the Kubilitics dashboard connected to your
+    current kubectl context.
+
+    Features:
+    - Real-time cluster dashboard with topology visualization
+    - Dependency intelligence for workloads and services
+    - Multi-cluster management from a single pane
+    - Helm add-on marketplace
+    - AI-powered insights and recommendations
+    - In-browser terminal access to pods
+
+    Usage:
+      kubectl kubilitics dashboard    # Launch the dashboard
+      kubectl kubilitics status       # Show cluster health summary
+      kubectl kubilitics ai "query"   # AI-powered cluster queries
+  caveats: |
+    This plugin installs kcli (the Kubilitics CLI) as a kubectl plugin.
+    Run "kubectl kubilitics dashboard" to start the local dashboard,
+    or deploy in-cluster with Helm for team-wide access.
+  platforms:
+    - selector:
+        matchLabels:
+          os: darwin
+          arch: amd64
+      uri: https://github.com/kubilitics/kubiltics/releases/download/v1.0.0/kcli-v1.0.0-darwin-amd64.tar.gz
+      sha256: PLACEHOLDER_SHA256_DARWIN_AMD64
+      bin: kcli
+    - selector:
+        matchLabels:
+          os: darwin
+          arch: arm64
+      uri: https://github.com/kubilitics/kubiltics/releases/download/v1.0.0/kcli-v1.0.0-darwin-arm64.tar.gz
+      sha256: PLACEHOLDER_SHA256_DARWIN_ARM64
+      bin: kcli
+    - selector:
+        matchLabels:
+          os: linux
+          arch: amd64
+      uri: https://github.com/kubilitics/kubiltics/releases/download/v1.0.0/kcli-v1.0.0-linux-amd64.tar.gz
+      sha256: PLACEHOLDER_SHA256_LINUX_AMD64
+      bin: kcli
+    - selector:
+        matchLabels:
+          os: linux
+          arch: arm64
+      uri: https://github.com/kubilitics/kubiltics/releases/download/v1.0.0/kcli-v1.0.0-linux-arm64.tar.gz
+      sha256: PLACEHOLDER_SHA256_LINUX_ARM64
+      bin: kcli
+    - selector:
+        matchLabels:
+          os: windows
+          arch: amd64
+      uri: https://github.com/kubilitics/kubiltics/releases/download/v1.0.0/kcli-v1.0.0-windows-amd64.zip
+      sha256: PLACEHOLDER_SHA256_WINDOWS_AMD64
+      bin: kcli.exe

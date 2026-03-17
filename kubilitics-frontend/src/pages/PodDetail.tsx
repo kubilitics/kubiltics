@@ -639,11 +639,6 @@ export default function PodDetail() {
                   tooltip={TOOLTIP_PRIORITY}
                 />
               </div>
-              {pod.metadata?.labels && Object.keys(pod.metadata.labels).length > 0 && (
-                <div className="pt-2 border-t">
-                  <LabelList labels={pod.metadata.labels} showCard={false} showCopyAll={false} />
-                </div>
-              )}
             </div>
           </SectionCard>
 
@@ -748,11 +743,7 @@ export default function PodDetail() {
             </SectionCard>
           </div>
 
-          {/* Tolerations */}
-          {pod.spec?.tolerations && pod.spec.tolerations.length > 0 && (
-            <TolerationsList tolerations={pod.spec.tolerations} />
-          )}
-
+          {/* Metadata */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Labels */}
             <LabelList labels={pod.metadata?.labels ?? {}} />
@@ -810,6 +801,11 @@ export default function PodDetail() {
               )}
             </SectionCard>
           </div>
+
+          {/* Tolerations */}
+          {pod.spec?.tolerations && pod.spec.tolerations.length > 0 && (
+            <TolerationsList tolerations={pod.spec.tolerations} />
+          )}
 
           {/* Annotations */}
           <AnnotationList annotations={pod.metadata?.annotations ?? {}} />

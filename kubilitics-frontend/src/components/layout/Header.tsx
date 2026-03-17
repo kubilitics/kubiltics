@@ -321,8 +321,19 @@ export function Header() {
                         <DropdownMenuItem
                           key={cluster.id}
                           onClick={() => {
+                            const isSwitching = cluster.id !== (currentClusterId ?? activeCluster?.id);
                             setActiveCluster(cluster);
                             if (!isDemo) setCurrentClusterId(cluster.id);
+                            // When switching clusters: clear stale queries and navigate to
+                            // dashboard so we don't stay on a detail page referencing the
+                            // old cluster's resources (which would 404).
+                            if (isSwitching) {
+                              queryClient.removeQueries({ queryKey: ['k8s'] });
+                              queryClient.removeQueries({ queryKey: ['backend', 'resources'] });
+                              queryClient.removeQueries({ queryKey: ['backend', 'resource'] });
+                              queryClient.removeQueries({ queryKey: ['backend', 'events'] });
+                              navigate('/dashboard');
+                            }
                           }}
                           className="flex items-center gap-4 py-4 px-4 cursor-pointer rounded-2xl hover:bg-slate-50 transition-all group"
                         >

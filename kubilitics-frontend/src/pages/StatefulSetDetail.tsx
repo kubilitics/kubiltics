@@ -32,7 +32,7 @@ import {
   ChevronDown,
   RefreshCw,
 } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -407,12 +407,7 @@ export default function StatefulSetDetail() {
       content: (
         <div className="space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">StatefulSet Information</CardTitle>
-                <CardDescription>Configuration and update strategy</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
+            <SectionCard icon={Database} title="StatefulSet Information" tooltip={<p className="text-xs text-muted-foreground">Configuration and update strategy</p>}>
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
                     <p className="text-muted-foreground mb-1">Service Name</p>
@@ -445,14 +440,9 @@ export default function StatefulSetDetail() {
                     <p className="font-mono">{statefulSet.spec?.minReadySeconds ?? 0}s</p>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
+            </SectionCard>
 
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Replica Status</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
+            <SectionCard icon={Activity} title="Replica Status">
                 <div className="space-y-3">
                   <div className="flex justify-between items-center">
                     <span className="text-sm">Ready</span>
@@ -476,19 +466,11 @@ export default function StatefulSetDetail() {
                     </div>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
+            </SectionCard>
           </div>
 
           {volumeClaimTemplates.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base flex items-center gap-2">
-                  <HardDrive className="h-4 w-4" />
-                  Volume Claim Templates
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
+            <SectionCard icon={HardDrive} title="Volume Claim Templates">
                 <div className="space-y-3">
                   {volumeClaimTemplates.map((vct, i) => (
                     <div key={i} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
@@ -504,16 +486,11 @@ export default function StatefulSetDetail() {
                     </div>
                   ))}
                 </div>
-              </CardContent>
-            </Card>
+            </SectionCard>
           )}
 
           {(statefulSet.status?.conditions?.length ?? 0) > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Conditions</CardTitle>
-              </CardHeader>
-              <CardContent>
+            <SectionCard icon={Activity} title="Conditions">
                 <div className="space-y-3">
                   {statefulSet.status?.conditions?.map((c) => (
                     <div key={c.type} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
@@ -528,10 +505,10 @@ export default function StatefulSetDetail() {
                     </div>
                   ))}
                 </div>
-              </CardContent>
-            </Card>
+            </SectionCard>
           )}
 
+          {/* Metadata */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <LabelList labels={statefulSet.metadata?.labels || {}} />
             <LabelList labels={statefulSet.spec?.selector?.matchLabels || {}} title="Selector" />

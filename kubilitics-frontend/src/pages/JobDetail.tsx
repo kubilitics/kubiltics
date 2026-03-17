@@ -24,7 +24,7 @@ import {
   Network,
   Settings,
 } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -346,12 +346,7 @@ export default function JobDetail() {
       content: (
         <div className="space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Job Configuration</CardTitle>
-                <CardDescription>Execution settings and limits</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
+            <SectionCard icon={Settings} title="Job Configuration" tooltip={<p className="text-xs text-muted-foreground">Execution settings and limits</p>}>
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
                     <p className="text-muted-foreground mb-1">Completions</p>
@@ -378,14 +373,9 @@ export default function JobDetail() {
                     <Badge variant="outline">{job.spec?.template?.spec?.restartPolicy || 'Never'}</Badge>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
+            </SectionCard>
 
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Execution Status</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
+            <SectionCard icon={Activity} title="Execution Status">
                 <div className="space-y-3">
                   <div className="flex justify-between items-center">
                     <span className="text-sm">Succeeded</span>
@@ -417,16 +407,11 @@ export default function JobDetail() {
                     )}
                   </div>
                 )}
-              </CardContent>
-            </Card>
+            </SectionCard>
           </div>
 
           {conditions.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Conditions</CardTitle>
-              </CardHeader>
-              <CardContent>
+            <SectionCard icon={Activity} title="Conditions">
                 <div className="space-y-3">
                   {conditions.map((condition) => {
                     const isTrue = condition.status === 'True';
@@ -450,10 +435,10 @@ export default function JobDetail() {
                     );
                   })}
                 </div>
-              </CardContent>
-            </Card>
+            </SectionCard>
           )}
 
+          {/* Metadata */}
           <LabelList labels={job.metadata?.labels || {}} />
           <AnnotationList annotations={job.metadata?.annotations || {}} />
         </div>
