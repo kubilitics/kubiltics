@@ -27,6 +27,7 @@ type kubeContextEntry struct {
 func newContextCmd(a *app) *cobra.Command {
 	var onlyFavorites bool
 	var pick bool
+	var showCurrent bool
 
 	ctxCmd := &cobra.Command{
 		Use:     "ctx [name|-]",
@@ -34,6 +35,15 @@ func newContextCmd(a *app) *cobra.Command {
 		GroupID: "workflow",
 		Args:    cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// --current: non-interactive, scriptable output
+			if showCurrent {
+				cur, err := currentContext(a)
+				if err != nil {
+					return err
+				}
+				fmt.Fprintln(cmd.OutOrStdout(), cur)
+				return nil
+			}
 			store, err := state.Load()
 			if err != nil {
 				return err
@@ -67,6 +77,7 @@ func newContextCmd(a *app) *cobra.Command {
 	}
 	ctxCmd.Flags().BoolVarP(&onlyFavorites, "favorites", "f", false, "show favorite contexts only")
 	ctxCmd.Flags().BoolVar(&pick, "pick", false, "interactive fuzzy-like context picker")
+	ctxCmd.Flags().BoolVar(&showCurrent, "current", false, "print only the current context (for scripting)")
 
 	ctxCmd.AddCommand(newContextRenameCmd(a))
 	ctxCmd.AddCommand(newContextDeleteCmd(a))

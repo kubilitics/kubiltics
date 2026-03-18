@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/kubilitics/kcli/internal/output"
 	"github.com/spf13/cobra"
 )
 
@@ -34,14 +35,25 @@ type blameResource struct {
 }
 
 type blameEntry struct {
-	Manager   string
-	Operation string
-	When      time.Time
-	Source    string
+	Manager   string    `json:"manager"`
+	Operation string    `json:"operation"`
+	When      time.Time `json:"when"`
+	Source    string    `json:"source"`
+}
+
+// blameResult is the structured output for `kcli blame`.
+type blameResult struct {
+	Resource    string            `json:"resource"`
+	Namespace   string            `json:"namespace"`
+	HelmRelease string            `json:"helmRelease,omitempty"`
+	ArgocdApp   string            `json:"argocdApp,omitempty"`
+	FluxSource  string            `json:"fluxSource,omitempty"`
+	Entries     []blameEntry      `json:"entries"`
 }
 
 func newBlameCmd(a *app) *cobra.Command {
-	return &cobra.Command{
+	var outputFlag string
+	cmd := &cobra.Command{
 		Use:   "blame (TYPE/NAME | TYPE NAME)",
 		Short: "Show who changed a resource, when, and from which system",
 		Long: `Show change attribution for a resource — who modified it, when, and from which system.
@@ -51,7 +63,8 @@ is Helm-managed, and ArgoCD/Flux labels when present.
 
 Examples:
   kcli blame deployment/payment-api
-  kcli blame pod/crashed -n prod`,
+  kcli blame pod/crashed -n prod
+  kcli blame deployment/api -o json`,
 		GroupID: "observability",
 		Args:    cobra.RangeArgs(1, 2),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -59,12 +72,18 @@ Examples:
 			if len(args) == 2 {
 				resource = args[0] + "/" + args[1]
 			}
-			return runBlame(a, cmd, resource)
+			ofmt, err := output.ParseFlag(outputFlag)
+			if err != nil {
+				return err
+			}
+			return runBlame(a, cmd, resource, ofmt)
 		},
 	}
+	cmd.Flags().StringVarP(&outputFlag, "output", "o", "table", "output format: table|json|yaml")
+	return cmd
 }
 
-func runBlame(a *app, cmd *cobra.Command, resource string) error {
+func runBlame(a *app, cmd *cobra.Command, resource string, ofmt output.Format) error {
 	parts := strings.SplitN(resource, "/", 2)
 	if len(parts) != 2 {
 		return fmt.Errorf("resource must be TYPE/NAME (e.g. deployment/payment-api)")
@@ -117,12 +136,7 @@ func runBlame(a *app, cmd *cobra.Command, resource string) error {
 		return entries[i].When.After(entries[j].When)
 	})
 
-	// Print header
-	fmt.Fprintf(a.stdout, "\n%s%s Blame: %s/%s%s\n\n",
-		ansiBold, ansiCyan, kind, name, ansiReset)
-	fmt.Fprintf(a.stdout, "%sNamespace: %s%s\n\n", ansiGray, ns, ansiReset)
-
-	// GitOps / Helm metadata
+	// Extract GitOps / Helm metadata
 	helmRelease := ""
 	if res.Metadata.Annotations != nil {
 		if r := res.Metadata.Annotations["meta.helm.sh/release-name"]; r != "" {
@@ -147,6 +161,23 @@ func runBlame(a *app, cmd *cobra.Command, resource string) error {
 		}
 	}
 
+	// Structured output
+	if ofmt == output.FormatJSON || ofmt == output.FormatYAML {
+		return output.Render(a.stdout, ofmt, blameResult{
+			Resource:    kind + "/" + name,
+			Namespace:   ns,
+			HelmRelease: helmRelease,
+			ArgocdApp:   argocdApp,
+			FluxSource:  fluxSource,
+			Entries:     entries,
+		})
+	}
+
+	// Table output
+	fmt.Fprintf(a.stdout, "\n%s%s Blame: %s/%s%s\n\n",
+		ansiBold, ansiCyan, kind, name, ansiReset)
+	fmt.Fprintf(a.stdout, "%sNamespace: %s%s\n\n", ansiGray, ns, ansiReset)
+
 	if helmRelease != "" || argocdApp != "" || fluxSource != "" {
 		fmt.Fprintf(a.stdout, "%sSync source:%s\n", ansiBold, ansiReset)
 		if helmRelease != "" {
@@ -159,30 +190,6 @@ func runBlame(a *app, cmd *cobra.Command, resource string) error {
 			fmt.Fprintf(a.stdout, "  %s\n", fluxSource)
 		}
 		fmt.Fprintln(a.stdout)
-	}
-
-	// Helm history (if Helm-managed)
-	if helmRelease != "" {
-		histArgs := []string{"history", helmRelease, "--max", "10", "-n", ns}
-		histOut, err := a.captureHelm(histArgs)
-		if err == nil && strings.TrimSpace(histOut) != "" {
-			fmt.Fprintf(a.stdout, "%sHelm history (last 10):%s\n", ansiBold, ansiReset)
-			lines := strings.Split(strings.TrimSpace(histOut), "\n")
-			for i, line := range lines {
-				if i == 0 {
-					fmt.Fprintf(a.stdout, "  %s\n", line)
-					continue
-				}
-				fields := strings.Fields(line)
-				if len(fields) >= 4 {
-					rev, status, chart, updated := fields[0], fields[1], fields[2], strings.Join(fields[3:], " ")
-					fmt.Fprintf(a.stdout, "  %s %s %s %s\n", rev, status, chart, updated)
-				} else {
-					fmt.Fprintf(a.stdout, "  %s\n", line)
-				}
-			}
-			fmt.Fprintln(a.stdout)
-		}
 	}
 
 	// Field managers

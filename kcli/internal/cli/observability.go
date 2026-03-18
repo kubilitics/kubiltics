@@ -4,10 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
+	"github.com/kubilitics/kcli/internal/output"
 	"github.com/spf13/cobra"
 )
 
@@ -31,6 +34,11 @@ type k8sEvent struct {
 		Namespace string `json:"namespace"`
 	} `json:"involvedObject"`
 
+	Source struct {
+		Component string `json:"component"`
+		Host      string `json:"host"`
+	} `json:"source"`
+
 	Metadata struct {
 		Name              string `json:"name"`
 		Namespace         string `json:"namespace"`
@@ -46,58 +54,110 @@ type eventRecord struct {
 	Reason    string    `json:"reason"`
 	Message   string    `json:"message"`
 	Count     int       `json:"count,omitempty"`
+	Source    string    `json:"source,omitempty"`
 }
 
 type podHealthSummary struct {
-	Total         int
-	Running       int
-	Pending       int
-	Failed        int
-	Succeeded     int
-	CrashLoop     int
-	TotalRestarts int
-	RestartPods   int
+	Total         int `json:"total"`
+	Running       int `json:"running"`
+	Pending       int `json:"pending"`
+	Failed        int `json:"failed"`
+	Succeeded     int `json:"succeeded"`
+	CrashLoop     int `json:"crashLoop"`
+	TotalRestarts int `json:"totalRestarts"`
+	RestartPods   int `json:"restartPods"`
 }
 
 type nodeHealthSummary struct {
-	Total       int
-	Ready       int
-	NotReady    int
-	MemoryPress int
-	DiskPress   int
-	PIDPress    int
+	Total       int `json:"total"`
+	Ready       int `json:"ready"`
+	NotReady    int `json:"notReady"`
+	MemoryPress int `json:"memoryPressure"`
+	DiskPress   int `json:"diskPressure"`
+	PIDPress    int `json:"pidPressure"`
+}
+
+// HealthIssue describes a specific health problem detected in the cluster.
+type HealthIssue struct {
+	Severity string `json:"severity"` // "CRITICAL", "WARNING", "INFO"
+	Resource string `json:"resource"` // "pod/payment-svc-xxx"
+	Message  string `json:"message"`
+}
+
+// healthResult is the structured output for `kcli health`.
+type healthResult struct {
+	Context   string            `json:"context,omitempty"`
+	Timestamp time.Time         `json:"timestamp"`
+	Score     int               `json:"score"`
+	Pods      podHealthSummary  `json:"pods"`
+	Nodes     nodeHealthSummary `json:"nodes"`
+	Issues    []HealthIssue     `json:"issues"`
 }
 
 func newMetricsCmd(a *app) *cobra.Command {
-	return &cobra.Command{
-		Use:                "metrics [resource]",
-		Short:              "Top/metrics view for resources",
-		GroupID:            "observability",
-		DisableFlagParsing: true,
-		RunE: func(_ *cobra.Command, args []string) error {
-			if len(args) == 0 {
-				return a.runKubectl([]string{"top", "pods", "-A"})
+	cmd := &cobra.Command{
+		Use:   "metrics [pods|nodes]",
+		Short: "Resource usage metrics (wraps kubectl top)",
+		Long: `Show resource usage metrics for pods or nodes.
+
+Without arguments, shows a combined summary of both nodes and pods.
+Use 'pods' or 'nodes' subcommand for specific view.
+
+Examples:
+  kcli metrics                # combined nodes + pods overview
+  kcli metrics pods           # pod metrics, sorted by CPU
+  kcli metrics nodes          # node metrics`,
+		GroupID:   "observability",
+		Args:      cobra.MaximumNArgs(1),
+		ValidArgs: []string{"pods", "nodes"},
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) == 1 {
+				target := strings.ToLower(strings.TrimSpace(args[0]))
+				switch target {
+				case "pods", "pod":
+					return a.runKubectl([]string{"top", "pods", "-A", "--sort-by=cpu"})
+				case "nodes", "node":
+					return a.runKubectl([]string{"top", "nodes"})
+				default:
+					return fmt.Errorf("unsupported metrics target %q (use pods|nodes)", args[0])
+				}
 			}
-			return a.runKubectl(append([]string{"top"}, args...))
+			// Combined view: nodes then pods
+			fmt.Fprintln(cmd.OutOrStdout(), "=== Node Metrics ===")
+			if err := a.runKubectl([]string{"top", "nodes"}); err != nil {
+				fmt.Fprintf(cmd.ErrOrStderr(), "Warning: could not fetch node metrics: %v\n", err)
+			}
+			fmt.Fprintln(cmd.OutOrStdout(), "\n=== Pod Metrics (top by CPU) ===")
+			return a.runKubectl([]string{"top", "pods", "-A", "--sort-by=cpu"})
 		},
 	}
+	return cmd
 }
 
 func newHealthCmd(a *app) *cobra.Command {
+	var outputFlag string
 	cmd := &cobra.Command{
-		Use:     "health [pods|nodes]",
-		Short:   "Cluster and resource health summary",
-		GroupID: "observability",
-		Args:    cobra.MaximumNArgs(1),
+		Use:       "health [pods|nodes]",
+		Short:     "Cluster and resource health summary",
+		GroupID:   "observability",
+		Args:      cobra.MaximumNArgs(1),
+		ValidArgs: []string{"pods", "nodes"},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			ofmt, err := output.ParseFlag(outputFlag)
+			if err != nil {
+				return err
+			}
 			if len(args) == 0 {
-				return printOverallHealth(a, cmd)
+				return printOverallHealth(a, cmd, ofmt)
 			}
 			switch strings.ToLower(strings.TrimSpace(args[0])) {
 			case "pods", "pod":
 				s, err := fetchPodHealthSummary(cmd.Context(), a)
 				if err != nil {
 					return err
+				}
+				if ofmt == output.FormatJSON || ofmt == output.FormatYAML {
+					return output.Render(cmd.OutOrStdout(), ofmt, s)
 				}
 				printPodHealthSummary(cmd, s)
 				return nil
@@ -106,6 +166,9 @@ func newHealthCmd(a *app) *cobra.Command {
 				if err != nil {
 					return err
 				}
+				if ofmt == output.FormatJSON || ofmt == output.FormatYAML {
+					return output.Render(cmd.OutOrStdout(), ofmt, s)
+				}
 				printNodeHealthSummary(cmd, s)
 				return nil
 			default:
@@ -113,34 +176,132 @@ func newHealthCmd(a *app) *cobra.Command {
 			}
 		},
 	}
+	cmd.Flags().StringVarP(&outputFlag, "output", "o", "table", "output format: table|json|yaml")
 	return cmd
 }
 
-func printOverallHealth(a *app, cmd *cobra.Command) error {
-	pods, err := fetchPodHealthSummary(cmd.Context(), a)
-	if err != nil {
-		return err
+func printOverallHealth(a *app, cmd *cobra.Command, ofmt output.Format) error {
+	// Parallel data collection.
+	var (
+		pods    podHealthSummary
+		nodes   nodeHealthSummary
+		podErr  error
+		nodeErr error
+	)
+	var wg sync.WaitGroup
+	wg.Add(2)
+	go func() { defer wg.Done(); pods, podErr = fetchPodHealthSummary(cmd.Context(), a) }()
+	go func() { defer wg.Done(); nodes, nodeErr = fetchNodeHealthSummary(cmd.Context(), a) }()
+	wg.Wait()
+	if podErr != nil {
+		return podErr
 	}
-	nodes, err := fetchNodeHealthSummary(cmd.Context(), a)
-	if err != nil {
-		return err
+	if nodeErr != nil {
+		return nodeErr
 	}
+
 	score := healthScore(pods, nodes)
-	fmt.Fprintf(cmd.OutOrStdout(), "Health Score: %d/100\n", score)
+	issues := collectHealthIssues(cmd.Context(), a, pods, nodes)
+	result := healthResult{
+		Context:   a.context,
+		Timestamp: time.Now().UTC(),
+		Score:     score,
+		Pods:      pods,
+		Nodes:     nodes,
+		Issues:    issues,
+	}
+
+	if ofmt == output.FormatJSON || ofmt == output.FormatYAML {
+		return output.Render(cmd.OutOrStdout(), ofmt, result)
+	}
+
+	w := cmd.OutOrStdout()
+	label := "HEALTHY"
+	if score < 80 {
+		label = "DEGRADED"
+	}
+	if score < 50 {
+		label = "UNHEALTHY"
+	}
+	fmt.Fprintf(w, "Health Score: %d/100 (%s)\n", score, label)
 	printPodHealthSummary(cmd, pods)
 	printNodeHealthSummary(cmd, nodes)
+
+	if len(issues) > 0 {
+		fmt.Fprintln(w, "\nIssues:")
+		for _, iss := range issues {
+			fmt.Fprintf(w, "  [%s] %s: %s\n", iss.Severity, iss.Resource, iss.Message)
+		}
+	}
 	return nil
+}
+
+// collectHealthIssues scans pods for specific problems and returns a list of issues.
+func collectHealthIssues(ctx context.Context, a *app, pods podHealthSummary, nodes nodeHealthSummary) []HealthIssue {
+	var issues []HealthIssue
+
+	// Node issues
+	if nodes.NotReady > 0 {
+		issues = append(issues, HealthIssue{
+			Severity: "CRITICAL",
+			Resource: fmt.Sprintf("%d node(s)", nodes.NotReady),
+			Message:  "not ready",
+		})
+	}
+	if nodes.MemoryPress > 0 {
+		issues = append(issues, HealthIssue{
+			Severity: "WARNING",
+			Resource: fmt.Sprintf("%d node(s)", nodes.MemoryPress),
+			Message:  "MemoryPressure condition",
+		})
+	}
+	if nodes.DiskPress > 0 {
+		issues = append(issues, HealthIssue{
+			Severity: "WARNING",
+			Resource: fmt.Sprintf("%d node(s)", nodes.DiskPress),
+			Message:  "DiskPressure condition",
+		})
+	}
+
+	// Pod issues
+	if pods.CrashLoop > 0 {
+		issues = append(issues, HealthIssue{
+			Severity: "CRITICAL",
+			Resource: fmt.Sprintf("%d pod(s)", pods.CrashLoop),
+			Message:  "CrashLoopBackOff",
+		})
+	}
+	if pods.Failed > 0 {
+		issues = append(issues, HealthIssue{
+			Severity: "WARNING",
+			Resource: fmt.Sprintf("%d pod(s)", pods.Failed),
+			Message:  "in Failed phase",
+		})
+	}
+	if pods.Pending > 0 {
+		issues = append(issues, HealthIssue{
+			Severity: "INFO",
+			Resource: fmt.Sprintf("%d pod(s)", pods.Pending),
+			Message:  "Pending",
+		})
+	}
+
+	return issues
 }
 
 func newRestartsCmd(a *app) *cobra.Command {
 	var recent string
 	var threshold int
-	var output string
+	var outputFlag string
 	cmd := &cobra.Command{
 		Use:     "restarts",
 		Short:   "List pods sorted by restart count",
 		GroupID: "observability",
 		RunE: func(c *cobra.Command, _ []string) error {
+			ofmt, err := output.ParseFlag(outputFlag)
+			if err != nil {
+				return err
+			}
 			pods, err := fetchPods(c.Context(), a)
 			if err != nil {
 				return err
@@ -155,35 +316,28 @@ func newRestartsCmd(a *app) *cobra.Command {
 			}
 			records := buildRestartRecords(pods, threshold, cutoff)
 			sort.SliceStable(records, func(i, j int) bool { return records[i].Restarts > records[j].Restarts })
-			switch strings.ToLower(strings.TrimSpace(output)) {
-			case "table", "":
-				printRestartTable(c, records)
+			return output.Render(c.OutOrStdout(), ofmt, records, output.WithTable(func(w io.Writer, v any) error {
+				printRestartTableTo(w, v.([]restartRecord))
 				return nil
-			case "json":
-				b, err := json.MarshalIndent(records, "", "  ")
-				if err != nil {
-					return err
-				}
-				fmt.Fprintln(c.OutOrStdout(), string(b))
-				return nil
-			default:
-				return fmt.Errorf("unsupported --output %q (supported: table, json)", output)
-			}
+			}))
 		},
 	}
 	cmd.Flags().StringVar(&recent, "recent", "", "only include pods with recent restarts in this window (e.g. 1h)")
 	cmd.Flags().IntVar(&threshold, "threshold", 1, "minimum restart count to include")
-	cmd.Flags().StringVar(&output, "output", "table", "output format: table|json")
+	cmd.Flags().StringVarP(&outputFlag, "output", "o", "table", "output format: table|json|yaml")
 	return cmd
 }
 
 type restartRecord struct {
 	Namespace string    `json:"namespace"`
 	Name      string    `json:"name"`
+	Container string    `json:"container,omitempty"`
 	Node      string    `json:"node"`
 	Phase     string    `json:"phase"`
 	Restarts  int       `json:"restarts"`
 	LastAt    time.Time `json:"lastRestartTime,omitempty"`
+	Reason    string    `json:"reason,omitempty"`
+	ExitCode  int       `json:"exitCode,omitempty"`
 }
 
 func buildRestartRecords(list *k8sPodList, threshold int, cutoff time.Time) []restartRecord {
@@ -195,44 +349,59 @@ func buildRestartRecords(list *k8sPodList, threshold int, cutoff time.Time) []re
 	}
 	out := make([]restartRecord, 0, len(list.Items))
 	for _, p := range list.Items {
-		total := 0
-		last := time.Time{}
 		for _, cs := range p.Status.ContainerStatuses {
-			total += cs.RestartCount
-			if ts := parseRFC3339(cs.LastState.Terminated.FinishedAt); ts.After(last) {
-				last = ts
+			if cs.RestartCount < threshold {
+				continue
 			}
+			last := parseRFC3339(cs.LastState.Terminated.FinishedAt)
+			if !cutoff.IsZero() && !last.IsZero() && last.Before(cutoff) {
+				continue
+			}
+			reason := cs.LastState.Terminated.Reason
+			exitCode := cs.LastState.Terminated.ExitCode
+			if reason == "" {
+				reason = cs.State.Waiting.Reason // e.g. CrashLoopBackOff
+			}
+			out = append(out, restartRecord{
+				Namespace: p.Metadata.Namespace,
+				Name:      p.Metadata.Name,
+				Container: cs.Name,
+				Node:      p.Spec.NodeName,
+				Phase:     p.Status.Phase,
+				Restarts:  cs.RestartCount,
+				LastAt:    last,
+				Reason:    reason,
+				ExitCode:  exitCode,
+			})
 		}
-		if total < threshold {
-			continue
-		}
-		if !cutoff.IsZero() && !last.IsZero() && last.Before(cutoff) {
-			continue
-		}
-		out = append(out, restartRecord{
-			Namespace: p.Metadata.Namespace,
-			Name:      p.Metadata.Name,
-			Node:      p.Spec.NodeName,
-			Phase:     p.Status.Phase,
-			Restarts:  total,
-			LastAt:    last,
-		})
 	}
 	return out
 }
 
 func printRestartTable(cmd *cobra.Command, records []restartRecord) {
+	printRestartTableTo(cmd.OutOrStdout(), records)
+}
+
+func printRestartTableTo(w io.Writer, records []restartRecord) {
 	if len(records) == 0 {
-		fmt.Fprintln(cmd.OutOrStdout(), "No restarted pods found.")
+		fmt.Fprintln(w, "No restarted pods found.")
 		return
 	}
-	fmt.Fprintf(cmd.OutOrStdout(), "%-18s %-38s %-10s %-9s %-20s\n", "NAMESPACE", "NAME", "RESTARTS", "PHASE", "LAST")
+	fmt.Fprintf(w, "%-16s %-30s %-18s %-8s %-18s %-20s\n", "NAMESPACE", "POD", "CONTAINER", "COUNT", "REASON", "LAST RESTART")
 	for _, r := range records {
 		last := "-"
 		if !r.LastAt.IsZero() {
 			last = r.LastAt.Format("2006-01-02 15:04:05")
 		}
-		fmt.Fprintf(cmd.OutOrStdout(), "%-18s %-38s %-10d %-9s %-20s\n", truncateCell(r.Namespace, 18), truncateCell(r.Name, 38), r.Restarts, truncateCell(r.Phase, 9), last)
+		reason := emptyDash(r.Reason)
+		fmt.Fprintf(w, "%-16s %-30s %-18s %-8d %-18s %-20s\n",
+			truncateCell(r.Namespace, 16),
+			truncateCell(r.Name, 30),
+			truncateCell(r.Container, 18),
+			r.Restarts,
+			truncateCell(reason, 18),
+			last,
+		)
 	}
 }
 
@@ -282,9 +451,11 @@ func newInstabilityCmd(a *app) *cobra.Command {
 
 func newEventsCmd(a *app) *cobra.Command {
 	var recent string
-	var output string
+	var outputFlag string
 	var includeAll bool
 	var evType string
+	var resource string
+	var sortOrder string
 	var watch bool
 	cmd := &cobra.Command{
 		Use:     "events",
@@ -297,6 +468,10 @@ func newEventsCmd(a *app) *cobra.Command {
 					args = append(args, "--field-selector", "type="+strings.TrimSpace(evType))
 				}
 				return a.runKubectl(args)
+			}
+			ofmt, err := output.ParseFlag(outputFlag)
+			if err != nil {
+				return err
 			}
 			records, err := fetchEvents(c.Context(), a)
 			if err != nil {
@@ -316,23 +491,28 @@ func newEventsCmd(a *app) *cobra.Command {
 			if strings.TrimSpace(evType) != "" {
 				records = filterEventsByType(records, evType)
 			}
-			sort.SliceStable(records, func(i, j int) bool { return records[i].Timestamp.After(records[j].Timestamp) })
-			switch strings.ToLower(strings.TrimSpace(output)) {
-			case "table", "":
-				printEventTable(c, records)
-				return nil
-			case "json":
-				return printEventsJSON(c, records)
-			default:
-				return fmt.Errorf("unsupported --output %q (supported: table, json)", output)
+			if strings.TrimSpace(resource) != "" {
+				records = filterEventsByResource(records, resource)
 			}
+			// Sort: newest first by default, oldest first if --sort=oldest
+			if strings.EqualFold(strings.TrimSpace(sortOrder), "oldest") {
+				sort.SliceStable(records, func(i, j int) bool { return records[i].Timestamp.Before(records[j].Timestamp) })
+			} else {
+				sort.SliceStable(records, func(i, j int) bool { return records[i].Timestamp.After(records[j].Timestamp) })
+			}
+			return output.Render(c.OutOrStdout(), ofmt, records, output.WithTable(func(w io.Writer, v any) error {
+				printEventTableTo(w, v.([]eventRecord))
+				return nil
+			}))
 		},
 	}
 	cmd.Flags().StringVar(&recent, "recent", "", "only show events within this duration window (e.g. 30m, 2h); defaults to 1h unless --all")
-	cmd.Flags().StringVar(&output, "output", "table", "output format: table|json")
+	cmd.Flags().StringVarP(&outputFlag, "output", "o", "table", "output format: table|json|yaml")
 	cmd.Flags().BoolVar(&includeAll, "all", false, "show all events without recent time filter")
 	cmd.Flags().StringVar(&evType, "type", "", "event type filter (e.g. Warning, Normal)")
-	cmd.Flags().BoolVar(&watch, "watch", false, "watch events stream")
+	cmd.Flags().StringVar(&resource, "resource", "", "filter by involved object (e.g. pod/nginx, deployment/api-gateway)")
+	cmd.Flags().StringVar(&sortOrder, "sort", "newest", "sort order: newest|oldest")
+	cmd.Flags().BoolVarP(&watch, "watch", "w", false, "watch events stream")
 	return cmd
 }
 
@@ -407,13 +587,31 @@ func fetchNodeHealthSummary(ctx context.Context, a *app) (nodeHealthSummary, err
 
 func healthScore(pods podHealthSummary, nodes nodeHealthSummary) int {
 	score := 100
-	if nodes.Total > 0 {
-		nodePenalty := int(float64(nodes.NotReady) / float64(nodes.Total) * 60)
-		score -= nodePenalty
-	}
+
+	// Subtract 5 per not-ready node (max -30)
+	score -= minInt(30, nodes.NotReady*5)
+
+	// Subtract 3 per CrashLoopBackOff pod (max -20)
 	score -= minInt(20, pods.CrashLoop*3)
-	score -= minInt(12, pods.RestartPods)
-	score -= minInt(8, nodes.MemoryPress+nodes.DiskPress+nodes.PIDPress)
+
+	// Subtract 1 per Pending pod (max -10)
+	score -= minInt(10, pods.Pending)
+
+	// Subtract 2 per Failed pod (max -10)
+	score -= minInt(10, pods.Failed*2)
+
+	// Subtract 2 per node with MemoryPressure (max -10)
+	score -= minInt(10, nodes.MemoryPress*2)
+
+	// Subtract 2 per node with DiskPressure (max -10)
+	score -= minInt(10, nodes.DiskPress*2)
+
+	// Subtract 1 per node with PIDPressure (max -5)
+	score -= minInt(5, nodes.PIDPress)
+
+	// Subtract 1 per restarting pod (max -10)
+	score -= minInt(10, pods.RestartPods)
+
 	if score < 0 {
 		return 0
 	}
@@ -455,6 +653,7 @@ func fetchEvents(ctx context.Context, a *app) ([]eventRecord, error) {
 		if obj == "/" {
 			obj = "-"
 		}
+		source := strings.TrimSpace(item.Source.Component)
 		records = append(records, eventRecord{
 			Timestamp: ts,
 			Type:      strings.TrimSpace(item.Type),
@@ -463,6 +662,7 @@ func fetchEvents(ctx context.Context, a *app) ([]eventRecord, error) {
 			Reason:    strings.TrimSpace(item.Reason),
 			Message:   strings.TrimSpace(item.Message),
 			Count:     item.Count,
+			Source:    source,
 		})
 	}
 	return records, nil
@@ -511,6 +711,20 @@ func filterEventsByType(records []eventRecord, evType string) []eventRecord {
 	return out
 }
 
+func filterEventsByResource(records []eventRecord, resource string) []eventRecord {
+	resource = strings.ToLower(strings.TrimSpace(resource))
+	if resource == "" {
+		return records
+	}
+	out := make([]eventRecord, 0, len(records))
+	for _, r := range records {
+		if strings.EqualFold(r.Object, resource) || strings.Contains(strings.ToLower(r.Object), resource) {
+			out = append(out, r)
+		}
+	}
+	return out
+}
+
 func parseRFC3339(raw string) time.Time {
 	raw = strings.TrimSpace(raw)
 	if raw == "" {
@@ -521,11 +735,15 @@ func parseRFC3339(raw string) time.Time {
 }
 
 func printEventTable(cmd *cobra.Command, records []eventRecord) {
+	printEventTableTo(cmd.OutOrStdout(), records)
+}
+
+func printEventTableTo(w io.Writer, records []eventRecord) {
 	if len(records) == 0 {
-		fmt.Fprintln(cmd.OutOrStdout(), "No events found.")
+		fmt.Fprintln(w, "No events found.")
 		return
 	}
-	fmt.Fprintf(cmd.OutOrStdout(), "%-20s %-8s %-18s %-30s %-18s %s\n", "TIME", "TYPE", "NAMESPACE", "OBJECT", "REASON", "MESSAGE")
+	fmt.Fprintf(w, "%-20s %-8s %-18s %-30s %-18s %s\n", "TIME", "TYPE", "NAMESPACE", "OBJECT", "REASON", "MESSAGE")
 	for _, r := range records {
 		ts := "-"
 		if !r.Timestamp.IsZero() {
@@ -536,7 +754,7 @@ func printEventTable(cmd *cobra.Command, records []eventRecord) {
 			msg = msg[:117] + "..."
 		}
 		fmt.Fprintf(
-			cmd.OutOrStdout(),
+			w,
 			"%-20s %-8s %-18s %-30s %-18s %s\n",
 			ts,
 			emptyDash(r.Type),
@@ -546,15 +764,6 @@ func printEventTable(cmd *cobra.Command, records []eventRecord) {
 			msg,
 		)
 	}
-}
-
-func printEventsJSON(cmd *cobra.Command, records []eventRecord) error {
-	b, err := json.MarshalIndent(records, "", "  ")
-	if err != nil {
-		return err
-	}
-	fmt.Fprintln(cmd.OutOrStdout(), string(b))
-	return nil
 }
 
 func truncateCell(v string, limit int) string {

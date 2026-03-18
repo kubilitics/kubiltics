@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/url"
 	"os"
 	"path/filepath"
 	"sort"
@@ -33,6 +34,9 @@ func ptr[T any](v T) *T { return &v }
 type Store struct {
 	ActiveProfile string             `yaml:"active_profile" json:"active_profile"`
 	Profiles      map[string]*Config `yaml:"profiles" json:"profiles"`
+	// Warnings collects non-fatal validation messages produced during Load.
+	// Callers should log these but continue normally.
+	Warnings []string `yaml:"-" json:"-"`
 }
 
 type Config struct {
@@ -69,6 +73,9 @@ type IntegrationsConfig struct {
 type GeneralConfig struct {
 	Theme             string `yaml:"theme" json:"theme"`
 	StartupTimeBudget string `yaml:"startupTimeBudget" json:"startupTimeBudget"`
+	// DefaultOutputFormat controls the default output format for commands ("table", "json", "yaml").
+	// Empty string means "table".
+	DefaultOutputFormat string `yaml:"defaultOutputFormat,omitempty" json:"defaultOutputFormat,omitempty"`
 	// KubectlPath is the path to the kubectl binary (default: "kubectl"). Use for air-gapped or custom wrappers.
 	KubectlPath string `yaml:"kubectlPath" json:"kubectlPath"`
 	// AuditEnabled records mutating kubectl commands to ~/.kcli/audit.json. Nil = default enabled. Set via kcli audit enable/disable.
@@ -109,6 +116,12 @@ type ShellConfig struct {
 	Aliases      map[string]string `yaml:"aliases" json:"aliases"`
 }
 
+// AIConfig is retained for config-file backward compatibility.
+// The internal/ai package has been removed; these fields are no longer
+// used at runtime but are preserved so that existing config files
+// round-trip without data loss.
+//
+// Deprecated: AI features have been removed from kcli.
 type AIConfig struct {
 	Enabled          bool    `yaml:"enabled" json:"enabled"`
 	Provider         string  `yaml:"provider" json:"provider"`
@@ -117,8 +130,7 @@ type AIConfig struct {
 	Endpoint         string  `yaml:"endpoint,omitempty" json:"endpoint,omitempty"`
 	BudgetMonthlyUSD float64 `yaml:"budgetMonthlyUSD" json:"budgetMonthlyUSD"`
 	SoftLimitPercent float64 `yaml:"softLimitPercent" json:"softLimitPercent"`
-	// MaxInputChars caps total prompt input sent to the provider (0 = no limit). Helps avoid cost and injection surface.
-	MaxInputChars int `yaml:"maxInputChars" json:"maxInputChars"`
+	MaxInputChars    int     `yaml:"maxInputChars" json:"maxInputChars"`
 }
 
 func Default() *Config {
@@ -227,6 +239,9 @@ func LoadStore() (*Store, error) {
 	for name, cfg := range s.Profiles {
 		cfg.normalize()
 		cfg.resolveKeychain(name)
+		if err := cfg.Validate(); err != nil {
+			s.Warnings = append(s.Warnings, fmt.Sprintf("profile %q: %s", name, err))
+		}
 	}
 	return s, nil
 }
@@ -307,63 +322,171 @@ func EnsureExists() (string, error) {
 	return path, nil
 }
 
+// ValidationError collects multiple validation failures so callers can see all
+// problems at once instead of fixing them one-by-one.
+type ValidationError struct {
+	Errs []error
+}
+
+func (ve *ValidationError) Error() string {
+	msgs := make([]string, len(ve.Errs))
+	for i, e := range ve.Errs {
+		msgs[i] = e.Error()
+	}
+	return "config validation failed: " + strings.Join(msgs, "; ")
+}
+
+// Unwrap returns the list of underlying errors so errors.Is / errors.As work.
+func (ve *ValidationError) Unwrap() []error { return ve.Errs }
+
+// allowedOutputFormats lists acceptable values for General.DefaultOutputFormat.
+var allowedOutputFormats = map[string]struct{}{
+	"":      {}, // empty means default (table)
+	"table": {},
+	"json":  {},
+	"yaml":  {},
+}
+
 func (c *Config) Validate() error {
 	if c == nil {
 		return fmt.Errorf("config is nil")
 	}
+	var errs []error
+	add := func(err error) { errs = append(errs, err) }
+
+	// --- General ---
 	if err := validateTheme(c.General.Theme, "general.theme"); err != nil {
-		return err
+		add(err)
 	}
 	if _, err := parsePositiveDuration(c.General.StartupTimeBudget, "general.startupTimeBudget"); err != nil {
-		return err
+		add(err)
 	}
+	if f := strings.ToLower(strings.TrimSpace(c.General.DefaultOutputFormat)); f != "" {
+		if _, ok := allowedOutputFormats[f]; !ok {
+			add(fmt.Errorf("general.defaultOutputFormat must be one of: table, json, yaml"))
+		}
+	}
+
+	// --- Context ---
 	if c.Context.RecentLimit < 1 || c.Context.RecentLimit > 1000 {
-		return fmt.Errorf("context.recentLimit must be between 1 and 1000")
+		add(fmt.Errorf("context.recentLimit must be between 1 and 1000"))
 	}
 	if err := validateStringSlice(c.Context.Favorites, "context.favorites"); err != nil {
-		return err
+		add(err)
 	}
 	for name, members := range c.Context.Groups {
 		if strings.TrimSpace(name) == "" {
-			return fmt.Errorf("context.groups contains empty group name")
+			add(fmt.Errorf("context.groups contains empty group name"))
 		}
 		if err := validateStringSlice(members, "context.groups."+name); err != nil {
-			return err
+			add(err)
 		}
 	}
+
+	// --- TUI ---
 	if _, err := parsePositiveDuration(c.TUI.RefreshInterval, "tui.refreshInterval"); err != nil {
-		return err
+		add(err)
 	}
 	if strings.TrimSpace(c.TUI.Theme) != "" {
 		if err := validateTheme(c.TUI.Theme, "tui.theme"); err != nil {
-			return err
+			add(err)
 		}
 	}
-	if c.Logs.MaxPods < 1 || c.Logs.MaxPods > 500 {
-		return fmt.Errorf("logs.maxPods must be between 1 and 500")
+	if c.TUI.MaxListSize < 0 || c.TUI.MaxListSize > 100000 {
+		add(fmt.Errorf("tui.maxListSize must be between 0 and 100000"))
 	}
+
+	// --- Logs ---
+	if c.Logs.MaxPods < 1 || c.Logs.MaxPods > 500 {
+		add(fmt.Errorf("logs.maxPods must be between 1 and 500"))
+	}
+
+	// --- Performance ---
 	if _, err := parsePositiveDuration(c.Performance.CacheTTL, "performance.cacheTTL"); err != nil {
-		return err
+		add(err)
 	}
 	if c.Performance.MemoryLimitMB < 64 || c.Performance.MemoryLimitMB > 65536 {
-		return fmt.Errorf("performance.memoryLimitMB must be between 64 and 65536")
+		add(fmt.Errorf("performance.memoryLimitMB must be between 64 and 65536"))
 	}
+
+	// --- Shell ---
 	if strings.TrimSpace(c.Shell.PromptFormat) == "" {
-		return fmt.Errorf("shell.promptFormat cannot be empty")
+		add(fmt.Errorf("shell.promptFormat cannot be empty"))
 	}
 	for k, v := range c.Shell.Aliases {
 		if strings.TrimSpace(k) == "" {
-			return fmt.Errorf("shell.aliases contains empty alias name")
+			add(fmt.Errorf("shell.aliases contains empty alias name"))
 		}
 		if strings.TrimSpace(v) == "" {
-			return fmt.Errorf("shell.aliases.%s cannot be empty", k)
+			add(fmt.Errorf("shell.aliases.%s cannot be empty", k))
 		}
 	}
+
+	// --- AI ---
 	if c.AI.BudgetMonthlyUSD < 0 {
-		return fmt.Errorf("ai.budgetMonthlyUSD must be >= 0")
+		add(fmt.Errorf("ai.budgetMonthlyUSD must be >= 0"))
 	}
 	if c.AI.SoftLimitPercent <= 0 || c.AI.SoftLimitPercent >= 100 {
-		return fmt.Errorf("ai.softLimitPercent must be > 0 and < 100")
+		add(fmt.Errorf("ai.softLimitPercent must be > 0 and < 100"))
+	}
+	if c.AI.MaxInputChars < 0 {
+		add(fmt.Errorf("ai.maxInputChars must be >= 0"))
+	}
+	if ep := strings.TrimSpace(c.AI.Endpoint); ep != "" {
+		if err := validateURL(ep, "ai.endpoint"); err != nil {
+			add(err)
+		}
+	}
+
+	// --- Integrations (URL fields) ---
+	urlFields := []struct {
+		value string
+		key   string
+	}{
+		{c.Integrations.PrometheusEndpoint, "integrations.prometheusEndpoint"},
+		{c.Integrations.LokiEndpoint, "integrations.lokiEndpoint"},
+		{c.Integrations.OpenCostEndpoint, "integrations.opencostEndpoint"},
+		{c.Integrations.SlackWebhook, "integrations.slackWebhook"},
+		{c.Integrations.JiraURL, "integrations.jiraUrl"},
+	}
+	for _, f := range urlFields {
+		if v := strings.TrimSpace(f.value); v != "" {
+			if err := validateURL(v, f.key); err != nil {
+				add(err)
+			}
+		}
+	}
+
+	// --- Integrations (GitopsEngine enum) ---
+	if ge := strings.ToLower(strings.TrimSpace(c.Integrations.GitopsEngine)); ge != "" {
+		switch ge {
+		case "argocd", "flux":
+			// ok
+		default:
+			add(fmt.Errorf("integrations.gitopsEngine must be one of: argocd, flux"))
+		}
+	}
+
+	if len(errs) > 0 {
+		return &ValidationError{Errs: errs}
+	}
+	return nil
+}
+
+// validateURL checks that v is a well-formed absolute URL with http or https scheme.
+func validateURL(v, key string) error {
+	u, err := url.Parse(v)
+	if err != nil {
+		return fmt.Errorf("%s is not a valid URL: %w", key, err)
+	}
+	if u.Scheme == "" || u.Host == "" {
+		return fmt.Errorf("%s must be an absolute URL with scheme and host (got %q)", key, v)
+	}
+	switch u.Scheme {
+	case "http", "https":
+		// ok
+	default:
+		return fmt.Errorf("%s must use http or https scheme (got %q)", key, u.Scheme)
 	}
 	return nil
 }
@@ -397,6 +520,8 @@ func (c *Config) SetByKey(key, value string) error {
 		c.General.Theme = strings.ToLower(v)
 	case k == "general.startuptimebudget", k == "general.startup_time_budget":
 		c.General.StartupTimeBudget = v
+	case k == "general.defaultoutputformat", k == "general.default_output_format":
+		c.General.DefaultOutputFormat = strings.ToLower(v)
 	case k == "general.kubectlpath", k == "general.kubectl_path":
 		c.General.KubectlPath = strings.TrimSpace(v)
 	case k == "general.auditenabled", k == "general.audit_enabled":
@@ -552,6 +677,8 @@ func (c *Config) GetByKey(key string) (any, error) {
 		return c.General.Theme, nil
 	case k == "general.startuptimebudget", k == "general.startup_time_budget":
 		return c.General.StartupTimeBudget, nil
+	case k == "general.defaultoutputformat", k == "general.default_output_format":
+		return c.General.DefaultOutputFormat, nil
 	case k == "general.kubectlpath", k == "general.kubectl_path":
 		return c.General.KubectlPath, nil
 	case k == "general.auditenabled", k == "general.audit_enabled":
@@ -786,6 +913,7 @@ func (c *Config) normalize() {
 		c.Shell.Aliases = map[string]string{}
 	}
 	c.General.Theme = strings.ToLower(strings.TrimSpace(c.General.Theme))
+	c.General.DefaultOutputFormat = strings.ToLower(strings.TrimSpace(c.General.DefaultOutputFormat))
 	c.TUI.Theme = strings.ToLower(strings.TrimSpace(c.TUI.Theme))
 	c.General.StartupTimeBudget = strings.TrimSpace(c.General.StartupTimeBudget)
 	c.TUI.RefreshInterval = strings.TrimSpace(c.TUI.RefreshInterval)

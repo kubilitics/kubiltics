@@ -172,15 +172,12 @@ func TestInitialThemeFromOptions(t *testing.T) {
 	}
 }
 
-func TestAIToggle(t *testing.T) {
-	m := initialModel(Options{AIEnabled: true})
-	if !m.aiEnabled {
-		t.Fatal("expected AI enabled initially")
-	}
-	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyCtrlA})
+func TestAIRemovedMessage(t *testing.T) {
+	m := initialModel(Options{})
+	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'A'}})
 	m2 := updated.(model)
-	if m2.aiEnabled {
-		t.Fatal("expected AI disabled after ctrl+a")
+	if !strings.Contains(m2.detail, "no longer available") {
+		t.Fatalf("expected AI removed message, got %q", m2.detail)
 	}
 }
 
@@ -268,7 +265,7 @@ func TestFlattenXray(t *testing.T) {
 }
 
 func TestViewRendersFrameworkComponents(t *testing.T) {
-	m := initialModel(Options{Context: "docker-desktop", Namespace: "default", AIEnabled: true})
+	m := initialModel(Options{Context: "docker-desktop", Namespace: "default"})
 	m.width = 120
 	m.height = 36
 	m.filtered = []resourceRow{{Namespace: "default", Name: "api-0", Columns: []string{"default", "api-0", "1/1", "Running", "0", "2m", "n1"}}}
@@ -276,7 +273,7 @@ func TestViewRendersFrameworkComponents(t *testing.T) {
 
 	view := m.View()
 	checks := []string{
-		"kcli ui | context: docker-desktop | namespace: default | resource: pods | ai: on",
+		"kcli ui | context: docker-desktop | namespace: default | resource: pods",
 		"NAMESPACE",
 		"Details",
 		"q quit",
@@ -289,12 +286,7 @@ func TestViewRendersFrameworkComponents(t *testing.T) {
 }
 
 func TestDetailAITabLoads(t *testing.T) {
-	m := initialModel(Options{
-		AIEnabled: true,
-		AIFunc: func(target string) (string, error) {
-			return "analysis for " + target, nil
-		},
-	})
+	m := initialModel(Options{})
 	m.spec, _ = resolveResourceSpec(":pods")
 	row := resourceRow{Namespace: "default", Name: "api-0", Columns: []string{"default", "api-0", "1/1", "Running", "0", "2m", "n1"}}
 	m.enterDetailMode(row)

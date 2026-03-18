@@ -61,26 +61,6 @@ type Registry struct {
 	Plugins map[string]RegistryEntry `json:"plugins"`
 }
 
-type MarketplacePlugin struct {
-	Name        string   `json:"name" yaml:"name"`
-	Source      string   `json:"source" yaml:"source"`
-	Version     string   `json:"version" yaml:"version"`
-	Description string   `json:"description" yaml:"description"`
-	Official    bool     `json:"official" yaml:"official"`
-	Downloads   int      `json:"downloads" yaml:"downloads"`
-	Rating      float64  `json:"rating" yaml:"rating"`
-	Tags        []string `json:"tags" yaml:"tags"`
-
-	// SHA256 is the expected hex-encoded SHA-256 of the released binary.
-	// Populated for official plugins in the marketplace catalog.
-	SHA256 string `json:"sha256,omitempty" yaml:"sha256,omitempty"`
-
-	// CosignPublicKey is the hex/base64 cosign public key or a reference to a
-	// well-known key for sigstore signature verification.
-	// Reserved for future full cosign integration.
-	CosignPublicKey string `json:"cosignPublicKey,omitempty" yaml:"cosignPublicKey,omitempty"`
-}
-
 func kcliHomeDir() (string, error) {
 	if custom := strings.TrimSpace(os.Getenv("KCLI_HOME_DIR")); custom != "" {
 		return custom, nil
@@ -450,11 +430,6 @@ func InstallFromSource(source string) (RegistryEntry, error) {
 		}
 	}
 
-	if !strings.HasPrefix(source, "github.com/") && !pathExists(source) {
-		if mp, err := LookupMarketplace(source); err == nil && strings.TrimSpace(mp.Source) != "" {
-			source = mp.Source
-		}
-	}
 	var (
 		name       string
 		execPath   string
@@ -1025,88 +1000,6 @@ func recordChecksum(name, binaryPath string) error {
 	entry.SHA256 = sum
 	reg.Plugins[name] = entry
 	return SaveRegistry(reg)
-}
-
-func MarketplaceCatalog() ([]MarketplacePlugin, error) {
-	if path := strings.TrimSpace(os.Getenv("KCLI_PLUGIN_MARKETPLACE_FILE")); path != "" {
-		b, err := os.ReadFile(path)
-		if err != nil {
-			return nil, err
-		}
-		var out []MarketplacePlugin
-		if err := json.Unmarshal(b, &out); err != nil {
-			return nil, fmt.Errorf("invalid marketplace JSON: %w", err)
-		}
-		return normalizeMarketplace(out), nil
-	}
-	return normalizeMarketplace(defaultMarketplaceCatalog()), nil
-}
-
-func SearchMarketplace(keyword string) ([]MarketplacePlugin, error) {
-	catalog, err := MarketplaceCatalog()
-	if err != nil {
-		return nil, err
-	}
-	keyword = strings.ToLower(strings.TrimSpace(keyword))
-	if keyword == "" {
-		return catalog, nil
-	}
-	out := make([]MarketplacePlugin, 0, len(catalog))
-	for _, p := range catalog {
-		hay := strings.ToLower(p.Name + " " + p.Description + " " + strings.Join(p.Tags, " "))
-		if strings.Contains(hay, keyword) {
-			out = append(out, p)
-		}
-	}
-	return out, nil
-}
-
-func LookupMarketplace(name string) (MarketplacePlugin, error) {
-	catalog, err := MarketplaceCatalog()
-	if err != nil {
-		return MarketplacePlugin{}, err
-	}
-	name = strings.ToLower(strings.TrimSpace(name))
-	for _, p := range catalog {
-		if strings.ToLower(strings.TrimSpace(p.Name)) == name {
-			return p, nil
-		}
-	}
-	return MarketplacePlugin{}, fmt.Errorf("plugin %q not found in marketplace", name)
-}
-
-func normalizeMarketplace(in []MarketplacePlugin) []MarketplacePlugin {
-	out := make([]MarketplacePlugin, 0, len(in))
-	for _, p := range in {
-		p.Name = strings.TrimSpace(p.Name)
-		p.Source = strings.TrimSpace(p.Source)
-		p.Version = strings.TrimSpace(p.Version)
-		p.Description = strings.TrimSpace(p.Description)
-		p.Tags = dedupeStrings(p.Tags)
-		if p.Name == "" {
-			continue
-		}
-		out = append(out, p)
-	}
-	sort.SliceStable(out, func(i, j int) bool { return out[i].Name < out[j].Name })
-	return out
-}
-
-func defaultMarketplaceCatalog() []MarketplacePlugin {
-	return []MarketplacePlugin{
-		{Name: "argocd", Source: "./official-plugins/argocd", Version: "1.0.0", Description: "Argo CD integration commands", Official: true, Downloads: 1200, Rating: 4.8, Tags: []string{"official", "gitops", "argocd"}},
-		{Name: "backup", Source: "./official-plugins/backup", Version: "1.0.0", Description: "Velero backup and restore workflows", Official: true, Downloads: 930, Rating: 4.7, Tags: []string{"official", "backup", "velero"}},
-		{Name: "cert-manager", Source: "./official-plugins/cert-manager", Version: "1.0.0", Description: "Manage cert-manager certificates", Official: true, Downloads: 1500, Rating: 4.9, Tags: []string{"official", "tls", "cert-manager"}},
-		{Name: "istio", Source: "./official-plugins/istio", Version: "1.0.0", Description: "Istio mesh operational commands", Official: true, Downloads: 1100, Rating: 4.6, Tags: []string{"official", "mesh", "istio"}},
-	}
-}
-
-func pathExists(path string) bool {
-	if strings.TrimSpace(path) == "" {
-		return false
-	}
-	_, err := os.Stat(path)
-	return err == nil
 }
 
 func hasCommandAlias(commands []string, command string) bool {

@@ -6,6 +6,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/kubilitics/kcli/internal/filelock"
 )
 
 const (
@@ -39,19 +41,22 @@ func Load() (*Store, error) {
 	if err != nil {
 		return nil, err
 	}
-	b, err := os.ReadFile(path)
-	if err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			return &Store{}, nil
-		}
-		return nil, err
-	}
-	if len(b) == 0 {
-		return &Store{}, nil
-	}
 	var s Store
-	if err := json.Unmarshal(b, &s); err != nil {
-		return nil, err
+	loadErr := withFileLock(path, func() error {
+		b, err := os.ReadFile(path)
+		if err != nil {
+			if errors.Is(err, os.ErrNotExist) {
+				return nil // s stays zero-value
+			}
+			return err
+		}
+		if len(b) == 0 {
+			return nil
+		}
+		return json.Unmarshal(b, &s)
+	})
+	if loadErr != nil {
+		return nil, loadErr
 	}
 	return &s, nil
 }
@@ -65,11 +70,20 @@ func Save(s *Store) error {
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return err
 	}
-	b, err := json.MarshalIndent(s, "", "  ")
-	if err != nil {
-		return err
-	}
-	return os.WriteFile(path, b, 0o600)
+	return withFileLock(path, func() error {
+		b, err := json.MarshalIndent(s, "", "  ")
+		if err != nil {
+			return err
+		}
+		return os.WriteFile(path, b, 0o600)
+	})
+}
+
+// withFileLock acquires an exclusive lock on path+".lock" before running fn.
+// Uses a cross-platform lock-file approach (no syscall.Flock).
+// Falls back to running fn unlocked if lock acquisition fails.
+func withFileLock(path string, fn func() error) error {
+	return filelock.WithFileLock(path, fn)
 }
 
 func (s *Store) MarkContextSwitched(previous, current string) {

@@ -2,19 +2,18 @@ package cli
 
 import (
 	"archive/tar"
-	"bytes"
 	"compress/gzip"
 	"context"
 	"encoding/json"
 	"fmt"
 	"io"
-	"net/http"
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
 	"time"
 
+	"github.com/kubilitics/kcli/internal/output"
 	"github.com/spf13/cobra"
 )
 
@@ -41,12 +40,14 @@ type k8sPod struct {
 					Reason string `json:"reason"`
 				} `json:"waiting"`
 				Terminated struct {
-					Reason string `json:"reason"`
+					Reason   string `json:"reason"`
+					ExitCode int    `json:"exitCode"`
 				} `json:"terminated"`
 			} `json:"state"`
 			LastState struct {
 				Terminated struct {
 					Reason     string `json:"reason"`
+					ExitCode   int    `json:"exitCode"`
 					FinishedAt string `json:"finishedAt"`
 				} `json:"terminated"`
 			} `json:"lastState"`
@@ -73,6 +74,8 @@ type k8sNode struct {
 }
 
 type incidentReport struct {
+	Timestamp        time.Time           `json:"timestamp"`
+	HealthScore      int                 `json:"healthScore"`
 	CrashLoopBackOff []incidentPodEntry  `json:"crashLoopBackOff"`
 	OOMKilled        []incidentPodEntry  `json:"oomKilled"`
 	HighRestarts     []incidentPodEntry  `json:"highRestarts"`
@@ -98,23 +101,20 @@ type incidentNodeEntry struct {
 
 func newIncidentCmd(a *app) *cobra.Command {
 	var recent string
-	var output string
+	var outputFlag string
 	var restartThreshold int
 	var watch bool
 	var interval time.Duration
 	var noClear bool
-	var escalate string // "pagerduty", "slack", "jira", or comma-separated
 
 	cmd := &cobra.Command{
 		Use:     "incident",
 		Short:   "Incident mode summary (CrashLoop/OOM/restarts/node pressure/events)",
-		GroupID: "incident",
+		GroupID: "observability",
 		Example: `  kcli incident
   kcli incident --watch
   kcli incident --watch --interval=10s
   kcli incident --watch --no-clear >> incident.log
-  kcli incident --escalate=slack
-  kcli incident --escalate=pagerduty,slack,jira
   kcli incident --output=json`,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			render := func() error {
@@ -132,38 +132,18 @@ func newIncidentCmd(a *app) *cobra.Command {
 					return err
 				}
 
-				switch strings.ToLower(strings.TrimSpace(output)) {
-				case "table", "":
-					printIncidentTable(cmd, report)
-					fmt.Fprintln(cmd.OutOrStdout(), "\nQuick actions:")
-					fmt.Fprintln(cmd.OutOrStdout(), "  kcli incident logs <namespace>/<pod> --tail=200")
-					fmt.Fprintln(cmd.OutOrStdout(), "  kcli incident describe <namespace>/<pod>")
-					fmt.Fprintln(cmd.OutOrStdout(), "  kcli incident restart <namespace>/<pod>")
-					return nil
-				case "json":
-					b, err := json.MarshalIndent(report, "", "  ")
-					if err != nil {
-						return err
-					}
-					fmt.Fprintln(cmd.OutOrStdout(), string(b))
-					return nil
-				default:
-					return fmt.Errorf("unsupported --output %q (supported: table, json)", output)
-				}
-			}
-
-			if escalate != "" {
-				window := 2 * time.Hour
-				if strings.TrimSpace(recent) != "" {
-					if d, err := time.ParseDuration(strings.TrimSpace(recent)); err == nil {
-						window = d
-					}
-				}
-				report, err := buildIncidentReport(cmd.Context(), a, window, restartThreshold)
+				ofmt, err := output.ParseFlag(outputFlag)
 				if err != nil {
 					return err
 				}
-				return escalateIncident(a, report, escalate, cmd)
+				return output.Render(cmd.OutOrStdout(), ofmt, report, output.WithTable(func(w io.Writer, v any) error {
+					printIncidentTable(cmd, v.(*incidentReport))
+					fmt.Fprintln(w, "\nQuick actions:")
+					fmt.Fprintln(w, "  kcli incident logs <namespace>/<pod> --tail=200")
+					fmt.Fprintln(w, "  kcli incident describe <namespace>/<pod>")
+					fmt.Fprintln(w, "  kcli incident restart <namespace>/<pod>")
+					return nil
+				}))
 			}
 
 			if !watch {
@@ -213,7 +193,7 @@ func newIncidentCmd(a *app) *cobra.Command {
 		},
 	}
 	cmd.Flags().StringVar(&recent, "recent", "2h", "duration window for critical events (e.g. 30m, 2h)")
-	cmd.Flags().StringVar(&output, "output", "table", "output format: table|json")
+	cmd.Flags().StringVarP(&outputFlag, "output", "o", "table", "output format: table|json|yaml")
 	cmd.Flags().IntVar(&restartThreshold, "restarts-threshold", 5, "minimum restarts to classify as high-restart pod")
 	cmd.Flags().BoolVar(&watch, "watch", false, "auto-refresh incident summary continuously")
 	// --interval is the primary flag; --refresh is kept as a hidden alias for backward compat.
@@ -223,7 +203,6 @@ func newIncidentCmd(a *app) *cobra.Command {
 		_ = err // best-effort hide; non-fatal if flag doesn't exist
 	}
 	cmd.Flags().BoolVar(&noClear, "no-clear", false, "append output instead of clearing screen (useful for: --watch --no-clear >> incident.log)")
-	cmd.Flags().StringVar(&escalate, "escalate", "", "escalate incident to: pagerduty, slack, jira (comma-separated)")
 	cmd.AddCommand(newIncidentQuickActionCmd(a).Commands()...)
 	cmd.AddCommand(newIncidentExportCmd(a))
 	return cmd
@@ -244,7 +223,7 @@ type incidentExportIndex struct {
 }
 
 func newIncidentExportCmd(a *app) *cobra.Command {
-	var since, output string
+	var since, exportPath string
 	var withLogs bool
 	cmd := &cobra.Command{
 		Use:   "export",
@@ -259,7 +238,7 @@ func newIncidentExportCmd(a *app) *cobra.Command {
 				}
 				window = d
 			}
-			outPath := strings.TrimSpace(output)
+			outPath := strings.TrimSpace(exportPath)
 			if outPath == "" {
 				outPath = "incident-bundle"
 			}
@@ -267,7 +246,7 @@ func newIncidentExportCmd(a *app) *cobra.Command {
 		},
 	}
 	cmd.Flags().StringVar(&since, "since", "1h", "time window for events and report")
-	cmd.Flags().StringVar(&output, "output", "incident-bundle", "output directory or path ending in .tar.gz")
+	cmd.Flags().StringVar(&exportPath, "output", "incident-bundle", "output directory or path ending in .tar.gz")
 	cmd.Flags().BoolVar(&withLogs, "with-logs", false, "include tail of logs for each problematic pod")
 	return cmd
 }
@@ -404,216 +383,6 @@ func writeTarball(dest, srcDir string) error {
 	})
 }
 
-// ─── Escalation helpers ───────────────────────────────────────────────────────
-
-// escalateIncident sends the incident report to the configured escalation targets.
-func escalateIncident(a *app, report *incidentReport, targets string, cmd *cobra.Command) error {
-	summary := buildIncidentSummary(report)
-	errs := []string{}
-
-	for _, target := range strings.Split(targets, ",") {
-		t := strings.TrimSpace(strings.ToLower(target))
-		switch t {
-		case "pagerduty", "pd":
-			if err := escalatePagerDuty(a, summary); err != nil {
-				errs = append(errs, fmt.Sprintf("pagerduty: %v", err))
-			} else {
-				fmt.Fprintln(cmd.OutOrStdout(), ansiBold+ansiGreen+"[escalate] PagerDuty alert triggered"+ansiReset)
-			}
-		case "slack":
-			if err := escalateSlack(a, summary); err != nil {
-				errs = append(errs, fmt.Sprintf("slack: %v", err))
-			} else {
-				fmt.Fprintln(cmd.OutOrStdout(), ansiBold+ansiGreen+"[escalate] Slack message sent"+ansiReset)
-			}
-		case "jira":
-			if err := escalateJira(a, summary, report); err != nil {
-				errs = append(errs, fmt.Sprintf("jira: %v", err))
-			} else {
-				fmt.Fprintln(cmd.OutOrStdout(), ansiBold+ansiGreen+"[escalate] Jira issue created"+ansiReset)
-			}
-		default:
-			errs = append(errs, fmt.Sprintf("unknown escalation target %q (supported: pagerduty, slack, jira)", t))
-		}
-	}
-	if len(errs) > 0 {
-		return fmt.Errorf("escalation errors:\n  %s", strings.Join(errs, "\n  "))
-	}
-	return nil
-}
-
-func buildIncidentSummary(report *incidentReport) string {
-	var b strings.Builder
-	b.WriteString(fmt.Sprintf("*Kubernetes Incident Alert* — %s\n\n", time.Now().Format(time.RFC1123)))
-	if len(report.CrashLoopBackOff) > 0 {
-		b.WriteString(fmt.Sprintf("CrashLoopBackOff (%d): ", len(report.CrashLoopBackOff)))
-		pods := make([]string, 0, len(report.CrashLoopBackOff))
-		for _, p := range report.CrashLoopBackOff {
-			pods = append(pods, fmt.Sprintf("%s/%s", p.Namespace, p.Pod))
-		}
-		b.WriteString(strings.Join(pods, ", ") + "\n")
-	}
-	if len(report.OOMKilled) > 0 {
-		b.WriteString(fmt.Sprintf("OOMKilled (%d): ", len(report.OOMKilled)))
-		pods := make([]string, 0, len(report.OOMKilled))
-		for _, p := range report.OOMKilled {
-			pods = append(pods, fmt.Sprintf("%s/%s", p.Namespace, p.Pod))
-		}
-		b.WriteString(strings.Join(pods, ", ") + "\n")
-	}
-	if len(report.NodePressure) > 0 {
-		b.WriteString(fmt.Sprintf("Node Pressure (%d): ", len(report.NodePressure)))
-		nodes := make([]string, 0, len(report.NodePressure))
-		for _, n := range report.NodePressure {
-			nodes = append(nodes, fmt.Sprintf("%s(%s)", n.Node, n.Condition))
-		}
-		b.WriteString(strings.Join(nodes, ", ") + "\n")
-	}
-	return b.String()
-}
-
-// escalatePagerDuty sends a PagerDuty Events v2 trigger.
-func escalatePagerDuty(a *app, summary string) error {
-	key := ""
-	if a.cfg != nil {
-		key = a.cfg.Integrations.PagerDutyKey
-	}
-	if key == "" {
-		key = os.Getenv("PAGERDUTY_INTEGRATION_KEY")
-	}
-	if key == "" {
-		return fmt.Errorf("no PagerDuty integration key configured — set integrations.pagerDutyKey or PAGERDUTY_INTEGRATION_KEY env")
-	}
-
-	payload := map[string]interface{}{
-		"routing_key":  key,
-		"event_action": "trigger",
-		"payload": map[string]interface{}{
-			"summary":   "Kubernetes Incident: " + strings.Split(summary, "\n")[0],
-			"severity":  "critical",
-			"source":    "kcli",
-			"timestamp": time.Now().UTC().Format(time.RFC3339),
-			"custom_details": map[string]string{
-				"details": summary,
-			},
-		},
-	}
-
-	b, err := json.Marshal(payload)
-	if err != nil {
-		return err
-	}
-	resp, err := http.Post("https://events.pagerduty.com/v2/enqueue", "application/json", bytes.NewReader(b))
-	if err != nil {
-		return fmt.Errorf("HTTP request failed: %w", err)
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return fmt.Errorf("PagerDuty returned HTTP %d", resp.StatusCode)
-	}
-	return nil
-}
-
-// escalateSlack sends an incident message to Slack via incoming webhook.
-func escalateSlack(a *app, summary string) error {
-	webhook := ""
-	if a.cfg != nil {
-		webhook = a.cfg.Integrations.SlackWebhook
-	}
-	if webhook == "" {
-		webhook = os.Getenv("SLACK_WEBHOOK_URL")
-	}
-	if webhook == "" {
-		return fmt.Errorf("no Slack webhook configured — set integrations.slackWebhook or SLACK_WEBHOOK_URL env")
-	}
-
-	payload := map[string]interface{}{
-		"text": summary,
-		"blocks": []map[string]interface{}{
-			{
-				"type": "section",
-				"text": map[string]string{
-					"type": "mrkdwn",
-					"text": summary,
-				},
-			},
-		},
-	}
-
-	b, err := json.Marshal(payload)
-	if err != nil {
-		return err
-	}
-	resp, err := http.Post(webhook, "application/json", bytes.NewReader(b))
-	if err != nil {
-		return fmt.Errorf("HTTP request failed: %w", err)
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return fmt.Errorf("Slack webhook returned HTTP %d", resp.StatusCode)
-	}
-	return nil
-}
-
-// escalateJira creates a Jira issue with incident details.
-func escalateJira(a *app, summary string, report *incidentReport) error {
-	jiraURL := ""
-	token := ""
-	project := ""
-	if a.cfg != nil {
-		jiraURL = a.cfg.Integrations.JiraURL
-		token = a.cfg.Integrations.JiraToken
-		project = a.cfg.Integrations.JiraProject
-	}
-	if jiraURL == "" {
-		jiraURL = os.Getenv("JIRA_URL")
-	}
-	if token == "" {
-		token = os.Getenv("JIRA_TOKEN")
-	}
-	if project == "" {
-		project = os.Getenv("JIRA_PROJECT")
-	}
-	if jiraURL == "" || token == "" || project == "" {
-		return fmt.Errorf("Jira not fully configured — need integrations.jiraUrl, integrations.jiraToken, integrations.jiraProject (or JIRA_URL, JIRA_TOKEN, JIRA_PROJECT env vars)")
-	}
-
-	title := fmt.Sprintf("[K8s Incident] CrashLoop=%d OOM=%d NodePressure=%d",
-		len(report.CrashLoopBackOff), len(report.OOMKilled), len(report.NodePressure))
-
-	payload := map[string]interface{}{
-		"fields": map[string]interface{}{
-			"project":     map[string]string{"key": project},
-			"summary":     title,
-			"description": summary,
-			"issuetype":   map[string]string{"name": "Incident"},
-			"priority":    map[string]string{"name": "Critical"},
-		},
-	}
-
-	b, err := json.Marshal(payload)
-	if err != nil {
-		return err
-	}
-	req, err := http.NewRequest("POST", strings.TrimRight(jiraURL, "/")+"/rest/api/2/issue", bytes.NewReader(b))
-	if err != nil {
-		return err
-	}
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer "+token)
-
-	client := &http.Client{Timeout: 15 * time.Second}
-	resp, err := client.Do(req)
-	if err != nil {
-		return fmt.Errorf("HTTP request failed: %w", err)
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return fmt.Errorf("Jira returned HTTP %d", resp.StatusCode)
-	}
-	return nil
-}
-
 func newIncidentQuickActionCmd(a *app) *cobra.Command {
 	root := &cobra.Command{
 		Use:    "actions",
@@ -702,7 +471,57 @@ func buildIncidentReport(ctx context.Context, a *app, recentWindow time.Duration
 		criticalEvents = criticalEvents[:30]
 	}
 
+	// Compute health score for the report.
+	podSummary := podHealthSummary{Total: len(pods.Items)}
+	for _, p := range pods.Items {
+		switch strings.ToLower(strings.TrimSpace(p.Status.Phase)) {
+		case "running":
+			podSummary.Running++
+		case "pending":
+			podSummary.Pending++
+		case "failed":
+			podSummary.Failed++
+		case "succeeded":
+			podSummary.Succeeded++
+		}
+		tr := 0
+		for _, cs := range p.Status.ContainerStatuses {
+			tr += cs.RestartCount
+			if strings.EqualFold(cs.State.Waiting.Reason, "CrashLoopBackOff") {
+				podSummary.CrashLoop++
+			}
+		}
+		podSummary.TotalRestarts += tr
+		if tr > 0 {
+			podSummary.RestartPods++
+		}
+	}
+	nodeSummary := nodeHealthSummary{Total: len(nodes.Items)}
+	for _, n := range nodes.Items {
+		ready := false
+		for _, c := range n.Status.Conditions {
+			st := strings.EqualFold(strings.TrimSpace(c.Status), "True")
+			switch strings.TrimSpace(c.Type) {
+			case "Ready":
+				ready = st
+			case "MemoryPressure":
+				if st { nodeSummary.MemoryPress++ }
+			case "DiskPressure":
+				if st { nodeSummary.DiskPress++ }
+			case "PIDPressure":
+				if st { nodeSummary.PIDPress++ }
+			}
+		}
+		if ready {
+			nodeSummary.Ready++
+		} else {
+			nodeSummary.NotReady++
+		}
+	}
+
 	report := &incidentReport{
+		Timestamp:        time.Now().UTC(),
+		HealthScore:      healthScore(podSummary, nodeSummary),
 		CrashLoopBackOff: make([]incidentPodEntry, 0),
 		OOMKilled:        make([]incidentPodEntry, 0),
 		HighRestarts:     make([]incidentPodEntry, 0),

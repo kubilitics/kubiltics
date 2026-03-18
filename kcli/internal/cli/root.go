@@ -10,8 +10,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/kubilitics/kcli/internal/ai"
 	kcfg "github.com/kubilitics/kcli/internal/config"
+	kcerr "github.com/kubilitics/kcli/internal/errors"
 	"github.com/kubilitics/kcli/internal/runner"
 	"github.com/kubilitics/kcli/internal/ui"
 	"github.com/kubilitics/kcli/internal/version"
@@ -35,12 +35,9 @@ type app struct {
 	context           string
 	namespace         string
 	kubeconfig        string
-	aiTimeout         time.Duration
 	completionTimeout time.Duration
 	cacheMu           sync.Mutex
 	cache             map[string]cacheEntry
-	aiOnce            sync.Once
-	ai                *ai.Client
 	cfg               *kcfg.Config
 	cfgErr            error
 	stdin             io.Reader
@@ -62,7 +59,6 @@ func newRootCommand(in io.Reader, out, errOut io.Writer) *cobra.Command {
 		cfg = kcfg.Default()
 	}
 	a := &app{
-		aiTimeout:         5 * time.Second,
 		completionTimeout: 250 * time.Millisecond,
 		cache:             initCache(),
 		cfg:               cfg,
@@ -75,7 +71,7 @@ func newRootCommand(in io.Reader, out, errOut io.Writer) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "kcli",
 		Short: "Unified Kubernetes command interface",
-		Long:  "kcli provides kubectl parity (requires kubectl on PATH for get, apply, delete, logs, exec, etc.), context/namespace ergonomics (ctx, ns), observability shortcuts, incident mode, and optional AI in one CLI. client-go is used only for context/namespace listing and auth checks.",
+		Long:  "kcli provides kubectl parity (requires kubectl on PATH for get, apply, delete, logs, exec, etc.), context/namespace ergonomics (ctx, ns), observability shortcuts, and incident mode in one CLI. client-go is used only for context/namespace listing and auth checks.",
 		SilenceUsage:  true,
 		SilenceErrors: true,
 		Version:       version.Version,
@@ -91,7 +87,6 @@ func newRootCommand(in io.Reader, out, errOut io.Writer) *cobra.Command {
 	cmd.PersistentFlags().StringVar(&a.context, "context", "", "override kubectl context")
 	cmd.PersistentFlags().StringVarP(&a.namespace, "namespace", "n", "", "override namespace")
 	cmd.PersistentFlags().StringVar(&a.kubeconfig, "kubeconfig", "", "path to the kubeconfig file")
-	cmd.PersistentFlags().DurationVar(&a.aiTimeout, "ai-timeout", 5*time.Second, "AI request timeout (default 5s; use --ai-timeout=30s for slow providers)")
 	cmd.PersistentFlags().DurationVar(&a.completionTimeout, "completion-timeout", 250*time.Millisecond, "timeout for completion lookups")
 
 	cmd.AddCommand(
@@ -131,77 +126,38 @@ func newRootCommand(in io.Reader, out, errOut io.Writer) *cobra.Command {
 		newClusterInfoCmd(a),
 		newAPIResourcesCmd(a),
 		newAPIVersionsCmd(a),
-		// Debugging
+		// Debugging & auth
 		newDebugCmd(a),
-		// Certificate management
 		newCertificateCmd(a),
-		// Auth token
 		newTokenCmd(a),
-		// Config management (kustomize — ks alias defined on the command itself)
-		newKustomizeCmd(a),
 		newKGPShortcutCmd(a),
 		newAuthCmd(a),
+		// ── Navigation ──────────────────────────────────────────────────────
 		newContextCmd(a),
 		newNamespaceCmd(a),
 		newSearchCmd(a),
-		newPluginCmd(),
-		newConfigCmd(a),
-		newPromptCmd(a),
-		newKubeconfigCmd(a),
 		// ── Observability ───────────────────────────────────────────────────
 		newHealthCmd(a),
 		newMetricsCmd(a),
 		newRestartsCmd(a),
 		newInstabilityCmd(a),
 		newEventsCmd(a),
-		newReplayCmd(a),
 		newBlameCmd(a),
-		newPromCmd(a),
-		// ── Incident & cost ─────────────────────────────────────────────────
+		// ── Incident ────────────────────────────────────────────────────────
 		newIncidentCmd(a),
-		newOncallCmd(a),
-		newCostCmd(a),
-		// ── Security & policy ───────────────────────────────────────────────
-		newSecurityCmd(a),
-		newPolicyCmd(a),
-		// ── Workflow ────────────────────────────────────────────────────────
-		newAddonCmd(a),
-		newHelmCmd(a),
-		newGitopsCmd(a),
+		// ── RBAC & Audit ────────────────────────────────────────────────────
 		newRBACCmd(a),
-		newRunbookCmd(a),
-		newDriftCmd(a),
-		// ── Advanced ────────────────────────────────────────────────────────
-		newGPUCmd(a),
-		newPredictCmd(a),
-		newAnomalyCmd(a),
-		newAutohealCmd(a),
 		newAuditCmd(a),
-		newTeamCmd(a),
-		// ── UI & AI ─────────────────────────────────────────────────────────
+		// ── TUI ─────────────────────────────────────────────────────────────
 		newUICmd(a),
-		newAICmd(a),
-		newWhyCmd(a),
-		newMemoryCmd(a),
-		newSummarizeCmd(a),
-		newSuggestCmd(a),
-		newFixCmd(a),
+		// ── Config & Infrastructure ─────────────────────────────────────────
+		newPluginCmd(),
+		newConfigCmd(a),
+		newPromptCmd(a),
+		newKubeconfigCmd(a),
 		newVersionCmd(),
 		newCompletionCmd(cmd),
-		// ── Resource details ─────────────────────────────────────────────────
-		newPodCmd(a),
-		newDeploymentCmd(a),
-		newServiceCmd(a),
-		newNodeCmd(a),
-		newStatefulSetCmd(a),
-		newDaemonSetCmd(a),
-		newJobCmd(a),
-		newCronJobCmd(a),
-		newHPACmd(a),
-		newPVCCmd(a),
-		newIngressCmd(a),
-		newConfigMapCmd(a),
-		newSecretCmd(a),
+		newDoctorCmd(a),
 	)
 
 	cmd.SetVersionTemplate(fmt.Sprintf("kcli {{.Version}} (commit %s, built %s)\n", version.Commit, version.BuildDate))
@@ -209,11 +165,9 @@ func newRootCommand(in io.Reader, out, errOut io.Writer) *cobra.Command {
 
 	cmd.AddGroup(
 		&cobra.Group{ID: "core", Title: "Core Kubernetes:"},
-		&cobra.Group{ID: "workflow", Title: "Workflow:"},
+		&cobra.Group{ID: "navigation", Title: "Navigation:"},
 		&cobra.Group{ID: "observability", Title: "Observability:"},
-		&cobra.Group{ID: "incident", Title: "Incident Response:"},
-		&cobra.Group{ID: "security", Title: "Security:"},
-		&cobra.Group{ID: "ai", Title: "AI:"},
+		&cobra.Group{ID: "workflow", Title: "Workflow:"},
 	)
 
 	cmd.PersistentPreRunE = func(cmd *cobra.Command, _ []string) error {
@@ -240,7 +194,7 @@ func newRootCommand(in io.Reader, out, errOut io.Writer) *cobra.Command {
 		// Commands that never invoke kubectl — skip any cluster/kubectl setup.
 		// Kubectl is checked lazily on first RunKubectl/CaptureKubectl (P1-2).
 		switch cmd.Name() {
-		case "version", "completion", "prompt", "config":
+		case "version", "completion", "prompt", "config", "doctor":
 			return nil
 		}
 		// Config subcommands (view, get, set, reset, edit, profile) also skip.
@@ -256,9 +210,9 @@ func newRootCommand(in io.Reader, out, errOut io.Writer) *cobra.Command {
 			}
 		}
 
-		// Optional custom kubectl path from config (runner reads KCLI_KUBECTL_PATH).
+		// Optional custom kubectl path from config — set via thread-safe runner API (P1-10).
 		if a.cfg != nil && strings.TrimSpace(a.cfg.General.KubectlPath) != "" {
-			os.Setenv("KCLI_KUBECTL_PATH", strings.TrimSpace(a.cfg.General.KubectlPath))
+			runner.SetKubectlPath(strings.TrimSpace(a.cfg.General.KubectlPath))
 		}
 		// Kubectl is checked lazily on first use (runner.ensureKubectlAvailable) so version/completion/prompt start fast.
 
@@ -269,12 +223,6 @@ func newRootCommand(in io.Reader, out, errOut io.Writer) *cobra.Command {
 			return fmt.Errorf("--context '-' is not valid; use 'kcli ctx -' to switch to previous context")
 		}
 		return nil
-	}
-
-	cmd.PersistentPostRun = func(_ *cobra.Command, _ []string) {
-		if a.ai != nil {
-			a.ai.Close()
-		}
 	}
 
 	cmd.SetErrPrefix("kcli: ")
@@ -297,35 +245,22 @@ func IsBuiltinFirstArg(name string) bool {
 		"drain", "cordon", "uncordon", "taint",
 		// Cluster info
 		"cluster-info", "api-resources", "api-versions",
-		// Debugging
-		"debug", "events",
-		// Certificates & tokens
-		"certificate", "token",
-		// Kustomize
-		"kustomize", "ks",
+		// Debugging & auth
+		"debug", "events", "certificate", "token", "auth",
 		// Shortcuts
-		"kgp", "auth",
-		// Context & namespace
-		"ctx", "ns",
-		// Other core
-		"search", "plugin", "config", "kubeconfig", "prompt",
+		"kgp",
+		// Navigation
+		"ctx", "ns", "search",
+		// Config & infrastructure
+		"plugin", "config", "kubeconfig", "prompt",
 		// Observability
-		"health", "metrics", "restarts", "instability", "replay", "blame", "prom",
-		// Incident & cost
-		"incident", "oncall", "cost",
-		// Security
-		"security", "policy",
-		// Workflow
-		"helm", "gitops", "rbac", "runbook", "drift",
-		// Advanced
-		"gpu", "predict", "anomaly", "autoheal", "audit", "team",
-		// UI & AI
-		"ui", "ai", "why", "memory", "summarize", "suggest", "fix",
-		// Resource details
-		"pod", "deployment", "service", "node", "statefulset", "daemonset",
-		"job", "cronjob", "hpa", "pvc", "ingress", "configmap", "secret",
+		"health", "metrics", "restarts", "instability", "blame",
+		// Incident & RBAC
+		"incident", "rbac", "audit",
+		// TUI
+		"ui",
 		// Meta
-		"help", "completion", "version":
+		"help", "completion", "version", "doctor":
 		return true
 	default:
 		return false
@@ -333,24 +268,16 @@ func IsBuiltinFirstArg(name string) bool {
 }
 
 func (a *app) uiOptions() ui.Options {
-	client := a.aiClient()
-	opts := ui.Options{
+	return ui.Options{
 		Context:         a.context,
 		Namespace:       a.namespace,
 		Kubeconfig:      a.kubeconfig,
-		AIEnabled:       client.Enabled(),
 		RefreshInterval: a.cfg.RefreshIntervalDuration(),
 		Theme:           a.cfg.ResolvedTheme(),
 		Animations:      a.cfg.TUI.Animations,
 		MaxListSize:     a.cfg.TUI.MaxListSize,
 		ReadOnly:        a.cfg.TUI.ReadOnly,
 	}
-	if client.Enabled() {
-		opts.AIFunc = func(target string) (string, error) {
-			return client.Analyze(context.Background(), "why", target)
-		}
-	}
-	return opts
 }
 
 func (a *app) scopedArgs() []string {
@@ -382,7 +309,7 @@ func (a *app) runKubectl(args []string) error {
 	if !noAuditEnv && !auditDisabledByConfig {
 		opts.AuditFn = a.buildAuditFn()
 	}
-	return runner.RunKubectl(full, opts)
+	return kcerr.Wrap(runner.RunKubectl(full, opts))
 }
 
 // buildAuditFn returns a function that appends an auditRecord after each
@@ -468,35 +395,6 @@ func (a *app) scopeArgsFor(args []string) []string {
 	return out
 }
 
-func (a *app) aiClient() *ai.Client {
-	a.aiOnce.Do(func() {
-		if a.cfg == nil {
-			a.cfg = kcfg.Default()
-		}
-		base := ai.Config{
-			Enabled:          a.cfg.AI.Enabled,
-			Provider:         a.cfg.AI.Provider,
-			Endpoint:         a.cfg.AI.Endpoint,
-			APIKey:           a.cfg.AI.APIKey,
-			Model:            a.cfg.AI.Model,
-			Timeout:          a.aiTimeout,
-			BudgetMonthlyUSD: a.cfg.AI.BudgetMonthlyUSD,
-			SoftLimitPercent: a.cfg.AI.SoftLimitPercent,
-			MaxInputChars:    a.cfg.AI.MaxInputChars,
-		}
-		if base.MaxInputChars <= 0 {
-			base.MaxInputChars = 16384
-		}
-		a.ai = ai.New(ai.MergeEnvOverrides(base, a.aiTimeout))
-	})
-	return a.ai
-}
-
-func (a *app) resetAIClient() {
-	a.aiOnce = sync.Once{}
-	a.ai = nil
-}
-
 func hasContextFlag(args []string) bool {
 	for i := 0; i < len(args); i++ {
 		a := strings.TrimSpace(args[i])
@@ -504,6 +402,19 @@ func hasContextFlag(args []string) bool {
 			return true
 		}
 		if strings.HasPrefix(a, "--context=") {
+			return true
+		}
+	}
+	return false
+}
+
+func hasNamespaceFlag(args []string) bool {
+	for i := 0; i < len(args); i++ {
+		a := strings.TrimSpace(args[i])
+		if a == "-n" || a == "--namespace" {
+			return true
+		}
+		if strings.HasPrefix(a, "--namespace=") {
 			return true
 		}
 	}

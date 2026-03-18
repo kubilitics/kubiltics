@@ -23,6 +23,58 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// ─── K8s RBAC JSON types ──────────────────────────────────────────────────────
+
+type k8sClusterRoleBindingList struct {
+	Items []k8sClusterRoleBinding `json:"items"`
+}
+
+type k8sClusterRoleBinding struct {
+	Metadata struct {
+		Name string `json:"name"`
+	} `json:"metadata"`
+	RoleRef struct {
+		Kind string `json:"kind"`
+		Name string `json:"name"`
+	} `json:"roleRef"`
+	Subjects []k8sRBACSubject `json:"subjects"`
+}
+
+type k8sRoleBindingList struct {
+	Items []k8sRoleBinding `json:"items"`
+}
+
+type k8sRoleBinding struct {
+	Metadata struct {
+		Name      string `json:"name"`
+		Namespace string `json:"namespace"`
+	} `json:"metadata"`
+	RoleRef struct {
+		Kind string `json:"kind"`
+		Name string `json:"name"`
+	} `json:"roleRef"`
+	Subjects []k8sRBACSubject `json:"subjects"`
+}
+
+type k8sRBACSubject struct {
+	Kind      string `json:"kind"`
+	Name      string `json:"name"`
+	Namespace string `json:"namespace"`
+}
+
+type k8sClusterRole struct {
+	Metadata struct {
+		Name string `json:"name"`
+	} `json:"metadata"`
+	Rules []k8sRBACRule `json:"rules"`
+}
+
+type k8sRBACRule struct {
+	Verbs     []string `json:"verbs"`
+	Resources []string `json:"resources"`
+	APIGroups []string `json:"apiGroups"`
+}
+
 // ─── Extended RBAC types ───────────────────────────────────────────────────────
 
 type rbacSubjectSummary struct {
@@ -309,7 +361,7 @@ compare roles, and generate compliance reports.`,
 
 	// analyze
 	var namespace string
-	var jsonOut bool
+	var analyzeOutput string
 
 	analyze := &cobra.Command{
 		Use:     "analyze",
@@ -326,7 +378,7 @@ compare roles, and generate compliance reports.`,
 				return err
 			}
 
-			if jsonOut {
+			if strings.EqualFold(strings.TrimSpace(analyzeOutput), "json") {
 				b, _ := json.MarshalIndent(subjects, "", "  ")
 				fmt.Fprintln(a.stdout, string(b))
 				return nil
@@ -375,7 +427,7 @@ compare roles, and generate compliance reports.`,
 		},
 	}
 	analyze.Flags().StringVarP(&namespace, "namespace", "n", "", "Scope to namespace")
-	analyze.Flags().BoolVarP(&jsonOut, "json", "j", false, "JSON output")
+	analyze.Flags().StringVarP(&analyzeOutput, "output", "o", "table", "output format: table|json")
 
 	// who-can
 	whoCan := &cobra.Command{

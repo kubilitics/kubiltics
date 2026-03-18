@@ -1,7 +1,6 @@
 package plugin
 
 import (
-	"encoding/json"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -333,65 +332,6 @@ permissions: []
 	}
 	if infos[0].ValidationError == nil || !strings.Contains(infos[0].ValidationError.Error(), "manifest.commands") {
 		t.Fatalf("expected manifest command validation error, got: %v", infos[0].ValidationError)
-	}
-}
-
-func TestMarketplaceLookupAndSearch(t *testing.T) {
-	catalog, err := MarketplaceCatalog()
-	if err != nil {
-		t.Fatalf("catalog error: %v", err)
-	}
-	if len(catalog) == 0 {
-		t.Fatal("expected non-empty default marketplace catalog")
-	}
-	if _, err := LookupMarketplace("cert-manager"); err != nil {
-		t.Fatalf("lookup cert-manager failed: %v", err)
-	}
-	results, err := SearchMarketplace("mesh")
-	if err != nil {
-		t.Fatalf("search marketplace failed: %v", err)
-	}
-	found := false
-	for _, p := range results {
-		if p.Name == "istio" {
-			found = true
-		}
-	}
-	if !found {
-		t.Fatalf("expected istio in mesh search results: %+v", results)
-	}
-}
-
-func TestInstallFromMarketplaceName(t *testing.T) {
-	home := setupPluginHome(t)
-	src := t.TempDir()
-	writeFile(t, filepath.Join(src, "kcli-marketdemo"), "#!/bin/sh\necho market\n", 0o755)
-	writeFile(t, filepath.Join(src, "plugin.yaml"), "name: marketdemo\nversion: 1.0.0\npermissions: []\n", 0o644)
-
-	reg := []MarketplacePlugin{{
-		Name:        "marketdemo",
-		Source:      src,
-		Version:     "1.0.0",
-		Description: "market demo",
-		Official:    true,
-		Downloads:   10,
-		Rating:      4.9,
-		Tags:        []string{"official"},
-	}}
-	mpPath := filepath.Join(t.TempDir(), "market.json")
-	b, _ := json.Marshal(reg)
-	writeFile(t, mpPath, string(b), 0o644)
-	t.Setenv("KCLI_PLUGIN_MARKETPLACE_FILE", mpPath)
-
-	entry, err := InstallFromSource("marketdemo")
-	if err != nil {
-		t.Fatalf("install from marketplace name failed: %v", err)
-	}
-	if entry.Name != "marketdemo" {
-		t.Fatalf("unexpected installed entry: %+v", entry)
-	}
-	if _, err := os.Stat(filepath.Join(home, "plugins", "kcli-marketdemo")); err != nil {
-		t.Fatalf("expected installed binary: %v", err)
 	}
 }
 

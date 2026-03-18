@@ -4,6 +4,7 @@ import (
 	"archive/tar"
 	"compress/gzip"
 	"context"
+	"encoding/json"
 	"io"
 	"os"
 	"path/filepath"
@@ -61,6 +62,32 @@ func TestIncidentExportCmdFlags(t *testing.T) {
 		if exportCmd.Flags().Lookup(flag) == nil {
 			t.Errorf("incident export missing flag %q", flag)
 		}
+	}
+}
+
+func TestIncidentReportHasHealthScore(t *testing.T) {
+	report := &incidentReport{
+		Timestamp:        time.Now(),
+		HealthScore:      85,
+		CrashLoopBackOff: []incidentPodEntry{},
+		OOMKilled:        []incidentPodEntry{},
+		HighRestarts:     []incidentPodEntry{},
+		NodePressure:     []incidentNodeEntry{},
+		CriticalEvents:   []eventRecord{},
+	}
+	b, err := json.Marshal(report)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var parsed map[string]any
+	if err := json.Unmarshal(b, &parsed); err != nil {
+		t.Fatal(err)
+	}
+	if parsed["healthScore"].(float64) != 85 {
+		t.Errorf("expected healthScore 85, got %v", parsed["healthScore"])
+	}
+	if _, ok := parsed["timestamp"]; !ok {
+		t.Error("expected timestamp field in JSON")
 	}
 }
 

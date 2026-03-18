@@ -1,6 +1,10 @@
 package cli
 
-import "testing"
+import (
+	"sync"
+	"sync/atomic"
+	"testing"
+)
 
 func TestParseMultiClusterOptions(t *testing.T) {
 	t.Run("regular args", func(t *testing.T) {
@@ -38,6 +42,64 @@ func TestParseMultiClusterOptions(t *testing.T) {
 			t.Fatalf("expected error")
 		}
 	})
+}
+
+func TestDefaultMaxConcurrency(t *testing.T) {
+	if DefaultMaxConcurrency <= 0 {
+		t.Fatalf("DefaultMaxConcurrency must be positive, got %d", DefaultMaxConcurrency)
+	}
+	if DefaultMaxConcurrency != 10 {
+		t.Fatalf("expected DefaultMaxConcurrency=10, got %d", DefaultMaxConcurrency)
+	}
+}
+
+// TestSemaphoreLimitsConcurrency verifies that the channel-based semaphore
+// pattern used in runGetWithMultiCluster never allows more than
+// DefaultMaxConcurrency goroutines to run concurrently.
+func TestSemaphoreLimitsConcurrency(t *testing.T) {
+	const totalWork = 50 // simulate 50 contexts
+
+	sem := make(chan struct{}, DefaultMaxConcurrency)
+	var wg sync.WaitGroup
+
+	var peak int64 // track peak concurrency
+	var active int64
+
+	for i := 0; i < totalWork; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			sem <- struct{}{}        // acquire
+			defer func() { <-sem }() // release
+
+			cur := atomic.AddInt64(&active, 1)
+			// Update peak (simple CAS loop)
+			for {
+				old := atomic.LoadInt64(&peak)
+				if cur <= old {
+					break
+				}
+				if atomic.CompareAndSwapInt64(&peak, old, cur) {
+					break
+				}
+			}
+			// Simulate some work so goroutines overlap
+			for j := 0; j < 1000; j++ {
+				_ = j
+			}
+			atomic.AddInt64(&active, -1)
+		}()
+	}
+	wg.Wait()
+
+	observed := atomic.LoadInt64(&peak)
+	if observed > int64(DefaultMaxConcurrency) {
+		t.Fatalf("peak concurrency %d exceeded limit %d", observed, DefaultMaxConcurrency)
+	}
+	if observed == 0 {
+		t.Fatalf("expected at least 1 goroutine to run, got peak 0")
+	}
+	t.Logf("peak concurrency: %d (limit %d, workers %d)", observed, DefaultMaxConcurrency, totalWork)
 }
 
 func TestHasNamespaceFlag(t *testing.T) {

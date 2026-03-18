@@ -20,6 +20,7 @@ import (
 	"text/template"
 	"time"
 
+	"github.com/kubilitics/kcli/internal/runner"
 	"github.com/spf13/cobra"
 )
 
@@ -42,11 +43,6 @@ type logsOptions struct {
 	Grep          string
 	GrepV         string
 	Save          string
-	AIAnalyze   bool // --ai: general analysis of last 200 lines
-	AISummarize bool
-	AIErrors    bool
-	AIExplain   bool
-
 	// P4-4 / P0-7: stern-parity additions
 	ExcludePods    string // --exclude: exclude pods whose name matches this regex
 	ContainerState string // --container-state: running|waiting|terminated
@@ -114,12 +110,6 @@ SINCE
   --since 14:30         Absolute time today (converted to a duration)
   --since 14:30:00      Absolute time today with seconds
 
-AI FLAGS
-  --ai                  Collect last 200 lines, run AI root-cause analysis (no -f needed)
-  --ai-summarize        Summarise log patterns with AI
-  --ai-errors           Extract error/warn lines then run AI analysis
-  --ai-explain          Explain the log stream with AI
-
 LOKI (P1-8)
   --loki '<logql>'      Query Loki instead of kubectl logs. Requires Loki endpoint
                         (integrations.lokiEndpoint or LOKI_ENDPOINT env).
@@ -139,9 +129,6 @@ Any other flags (e.g. -f, --timestamps, --tail, -c) are forwarded to kubectl.
 			opts, err := parseLogsOptions(clean, a.namespace)
 			if err != nil {
 				return err
-			}
-			if opts.AIAnalyze || opts.AISummarize || opts.AIErrors || opts.AIExplain {
-				return runLogsAI(a, clean, opts)
 			}
 			if opts.Loki != "" {
 				return runLokiLogs(a, opts)
@@ -233,14 +220,8 @@ func parseLogsOptions(args []string, defaultNamespace string) (logsOptions, erro
 			opts.Save = strings.TrimSpace(args[i])
 		case strings.HasPrefix(a, "--save="):
 			opts.Save = strings.TrimSpace(strings.TrimPrefix(a, "--save="))
-		case a == "--ai":
-			opts.AIAnalyze = true
-		case a == "--ai-summarize":
-			opts.AISummarize = true
-		case a == "--ai-errors":
-			opts.AIErrors = true
-		case a == "--ai-explain":
-			opts.AIExplain = true
+		case a == "--ai", a == "--ai-summarize", a == "--ai-errors", a == "--ai-explain":
+			// Legacy AI flags accepted silently for backward compat (no-op).
 
 		// P4-4: stern-parity flags
 		case a == "--exclude":
@@ -825,7 +806,7 @@ func streamPodLogs(ctx context.Context, a *app, opts logsOptions, pod podRef, w 
 	}
 
 	kubectlBin := "kubectl"
-	if p := strings.TrimSpace(os.Getenv("KCLI_KUBECTL_PATH")); p != "" {
+	if p := runner.GetKubectlPath(); p != "" {
 		kubectlBin = p
 	}
 	cmd := exec.CommandContext(ctx, kubectlBin, args...)
@@ -861,90 +842,6 @@ func streamPodLogs(ctx context.Context, a *app, opts logsOptions, pod podRef, w 
 	go consume(stderr)
 	wg.Wait()
 	return cmd.Wait()
-}
-
-// ---------------------------------------------------------------------------
-// AI log analysis
-// ---------------------------------------------------------------------------
-
-func runLogsAI(a *app, cleanArgs []string, opts logsOptions) error {
-	if opts.Follow {
-		return fmt.Errorf("AI log analysis does not support follow mode; remove -f/--follow")
-	}
-	client := a.aiClient()
-	if !client.Enabled() {
-		return fmt.Errorf("AI not configured. Run: kcli config set ai.enabled true")
-	}
-
-	// P1-6: Collect at least 200 lines for AI analysis when --tail not specified.
-	if opts.Tail == "" {
-		opts.Tail = "200"
-	}
-
-	logText, err := collectLogsText(a, cleanArgs, opts)
-	if err != nil {
-		return err
-	}
-	if strings.TrimSpace(logText) == "" {
-		return fmt.Errorf("no logs available for AI analysis")
-	}
-
-	// --ai: general analysis — cap at 200 lines per the P1-6 spec.
-	if opts.AIAnalyze {
-		input := lastNLogLines(logText, 200)
-		out, err := client.Analyze(context.Background(), "why",
-			"Analyze these Kubernetes pod logs. Identify error patterns, root causes, and suggest fixes.\n\n"+input)
-		if err != nil {
-			return err
-		}
-		fmt.Fprintln(os.Stdout, "=== AI Log Analysis ===")
-		fmt.Fprintln(os.Stdout, out)
-	}
-
-	// Remaining AI modes use up to 1000 lines of context.
-	logText = lastNLogLines(logText, 1000)
-
-	if opts.AIErrors {
-		errLines := extractErrorLines(logText)
-		if len(errLines) == 0 {
-			fmt.Fprintln(os.Stdout, "No error-like log lines found.")
-		} else {
-			fmt.Fprintln(os.Stdout, "=== Extracted Errors ===")
-			for _, ln := range errLines {
-				fmt.Fprintln(os.Stdout, ln)
-			}
-			fmt.Fprintln(os.Stdout)
-		}
-		input := logText
-		if len(errLines) > 0 {
-			input = strings.Join(errLines, "\n")
-		}
-		out, err := client.Analyze(context.Background(), "why", "Analyze these Kubernetes log errors and identify root causes:\n"+input)
-		if err != nil {
-			return err
-		}
-		fmt.Fprintln(os.Stdout, "=== AI Error Analysis ===")
-		fmt.Fprintln(os.Stdout, out)
-	}
-
-	if opts.AISummarize {
-		out, err := client.Analyze(context.Background(), "summarize-events", "Summarize these Kubernetes logs and major patterns:\n"+logText)
-		if err != nil {
-			return err
-		}
-		fmt.Fprintln(os.Stdout, "=== AI Log Summary ===")
-		fmt.Fprintln(os.Stdout, out)
-	}
-
-	if opts.AIExplain {
-		out, err := client.Analyze(context.Background(), "explain", "Explain this Kubernetes log stream and what to verify next:\n"+logText)
-		if err != nil {
-			return err
-		}
-		fmt.Fprintln(os.Stdout, "=== AI Log Explanation ===")
-		fmt.Fprintln(os.Stdout, out)
-	}
-	return nil
 }
 
 // ---------------------------------------------------------------------------

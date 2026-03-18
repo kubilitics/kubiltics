@@ -21,10 +21,28 @@ func set(service, account, value string) error {
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		if strings.Contains(string(out), "could not be found") {
-			// -U with update failed; try delete then add
+			// -U flag failed; delete stale entry (ignore error) then add without -U.
+			// Do NOT recurse — a direct add prevents infinite recursion if the
+			// error persists.
 			_ = delete(service, account)
-			return set(service, account, value)
+			return addDirect(service, account, value)
 		}
+		return errors.Join(ErrUnavailable, err, errOutput(out))
+	}
+	return nil
+}
+
+// addDirect adds a keychain entry without the -U (update) flag.
+// Used as a one-shot fallback from set to avoid infinite recursion.
+func addDirect(service, account, value string) error {
+	cmd := exec.Command("security", "add-generic-password",
+		"-s", service,
+		"-a", account,
+		"-w", value,
+	)
+	cmd.Stdin = nil
+	out, err := cmd.CombinedOutput()
+	if err != nil {
 		return errors.Join(ErrUnavailable, err, errOutput(out))
 	}
 	return nil

@@ -21,6 +21,7 @@ import (
 	"time"
 
 	kcfg "github.com/kubilitics/kcli/internal/config"
+	"github.com/kubilitics/kcli/internal/filelock"
 	"github.com/kubilitics/kcli/internal/plugin"
 	"github.com/spf13/cobra"
 )
@@ -51,15 +52,18 @@ func auditLogPath() string {
 
 func loadAuditLog() (*auditLog, error) {
 	path := auditLogPath()
-	b, err := os.ReadFile(path)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return &auditLog{}, nil
-		}
-		return nil, err
-	}
 	var log auditLog
-	if err := json.Unmarshal(b, &log); err != nil {
+	err := withAuditLock(path, func() error {
+		b, err := os.ReadFile(path)
+		if err != nil {
+			if os.IsNotExist(err) {
+				return nil
+			}
+			return err
+		}
+		return json.Unmarshal(b, &log)
+	})
+	if err != nil {
 		return &auditLog{}, nil
 	}
 	return &log, nil
@@ -70,15 +74,23 @@ func saveAuditLog(log *auditLog) error {
 	if err := os.MkdirAll(filepath.Dir(path), 0o750); err != nil {
 		return err
 	}
-	// Keep last 10000 records
-	if len(log.Records) > 10000 {
-		log.Records = log.Records[:10000]
-	}
-	b, err := json.MarshalIndent(log, "", "  ")
-	if err != nil {
-		return err
-	}
-	return os.WriteFile(path, b, 0o600)
+	return withAuditLock(path, func() error {
+		// Keep last 10000 records
+		if len(log.Records) > 10000 {
+			log.Records = log.Records[:10000]
+		}
+		b, err := json.MarshalIndent(log, "", "  ")
+		if err != nil {
+			return err
+		}
+		return os.WriteFile(path, b, 0o600)
+	})
+}
+
+// withAuditLock acquires an exclusive lock before running fn.
+// Uses a cross-platform lock-file approach (no syscall.Flock).
+func withAuditLock(path string, fn func() error) error {
+	return filelock.WithFileLock(path, fn)
 }
 
 // AppendAuditRecord adds a record to the audit log (exported for use from root).
@@ -136,7 +148,7 @@ func newAuditPluginsCmd(a *app) *cobra.Command {
 	var (
 		pluginName string
 		limit      int
-		jsonOut    bool
+		outputFlag string
 	)
 	cmd := &cobra.Command{
 		Use:   "plugins",
@@ -154,10 +166,6 @@ Example output:
   kcli audit plugins --plugin argocd
   kcli audit plugins --limit 20 -o json`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if o, _ := cmd.Flags().GetString("output"); o == "json" {
-				jsonOut = true
-			}
-
 			entries, err := pluginAuditEntries()
 			if err != nil {
 				return err
@@ -185,7 +193,7 @@ Example output:
 				entries = entries[:limit]
 			}
 
-			if jsonOut {
+			if strings.EqualFold(strings.TrimSpace(outputFlag), "json") {
 				b, _ := json.MarshalIndent(map[string]interface{}{
 					"count":   len(entries),
 					"entries": entries,
@@ -230,8 +238,7 @@ Example output:
 	}
 	cmd.Flags().StringVar(&pluginName, "plugin", "", "filter by plugin name")
 	cmd.Flags().IntVar(&limit, "limit", 50, "max entries to show (0 = all)")
-	cmd.Flags().BoolVarP(&jsonOut, "json", "j", false, "JSON output")
-	cmd.Flags().StringP("output", "o", "", "output format (json)")
+	cmd.Flags().StringVarP(&outputFlag, "output", "o", "table", "output format: table|json")
 	return cmd
 }
 
@@ -246,7 +253,7 @@ func newAuditLogCmd(a *app) *cobra.Command {
 	var last string
 	var user string
 	var resource string
-	var jsonOut bool
+	var outputFlag string
 	var limit int
 
 	cmd := &cobra.Command{
@@ -291,7 +298,7 @@ func newAuditLogCmd(a *app) *cobra.Command {
 				}
 			}
 
-			if jsonOut {
+			if strings.EqualFold(strings.TrimSpace(outputFlag), "json") {
 				b, _ := json.MarshalIndent(map[string]interface{}{
 					"records": filtered,
 					"count":   len(filtered),
@@ -333,15 +340,8 @@ func newAuditLogCmd(a *app) *cobra.Command {
 	cmd.Flags().StringVar(&last, "last", "", "Show records from last duration (e.g. 24h, 7d)")
 	cmd.Flags().StringVar(&user, "user", "", "Filter by username")
 	cmd.Flags().StringVar(&resource, "resource", "", "Filter by resource name")
-	cmd.Flags().BoolVarP(&jsonOut, "json", "j", false, "JSON output")
-	cmd.Flags().StringP("output", "o", "", "Output format (json)")
+	cmd.Flags().StringVarP(&outputFlag, "output", "o", "table", "output format: table|json")
 	cmd.Flags().IntVar(&limit, "limit", 100, "Maximum records to display")
-	cmd.PreRunE = func(cmd *cobra.Command, args []string) error {
-		if o, _ := cmd.Flags().GetString("output"); o == "json" {
-			jsonOut = true
-		}
-		return nil
-	}
 	return cmd
 }
 
@@ -393,15 +393,8 @@ func newAuditExportCmd(a *app) *cobra.Command {
 			return nil
 		},
 	}
-	cmd.Flags().StringVar(&format, "format", "json", "Export format (json|csv)")
+	cmd.Flags().StringVarP(&format, "output", "o", "json", "output format: json|csv")
 	cmd.Flags().StringVar(&month, "month", "", "Filter by month (YYYY-MM)")
-	cmd.Flags().StringP("output", "o", "", "Output format (json|csv)")
-	cmd.PreRunE = func(cmd *cobra.Command, args []string) error {
-		if o, _ := cmd.Flags().GetString("output"); o != "" {
-			format = o
-		}
-		return nil
-	}
 	return cmd
 }
 

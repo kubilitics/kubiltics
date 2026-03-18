@@ -1,9 +1,0 @@
-name: argocd
-version: 1.0.0
-author: Kubilitics
-description: Argo CD integration commands
-commands:
-  - argo
-permissions:
-  - read:applications.argoproj.io
-  - write:applications.argoproj.io

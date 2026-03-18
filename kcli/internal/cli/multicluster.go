@@ -9,6 +9,11 @@ import (
 	"github.com/kubilitics/kcli/internal/state"
 )
 
+// DefaultMaxConcurrency is the maximum number of concurrent API-server
+// requests during multi-cluster fan-out.  Keeping this bounded avoids
+// overwhelming API servers when dozens of contexts are configured.
+const DefaultMaxConcurrency = 10
+
 type multiClusterOptions struct {
 	AllContexts bool
 	Group       string
@@ -70,11 +75,18 @@ func (a *app) runGetWithMultiCluster(args []string) error {
 		err     error
 	}
 	results := make([]result, len(contexts))
+
+	// Channel-based semaphore limits concurrent API-server requests.
+	sem := make(chan struct{}, DefaultMaxConcurrency)
+
 	var wg sync.WaitGroup
 	for i, ctxName := range contexts {
 		wg.Add(1)
 		go func(i int, ctxName string) {
 			defer wg.Done()
+			sem <- struct{}{}        // acquire
+			defer func() { <-sem }() // release
+
 			cmdArgs := make([]string, 0, len(opts.Args)+4)
 			cmdArgs = append(cmdArgs, "--context", ctxName, "get")
 			if a.namespace != "" && !hasNamespaceFlag(opts.Args) {
@@ -127,15 +139,4 @@ func (a *app) resolveTargetContexts(groupName string) ([]string, error) {
 	return listContexts(a)
 }
 
-func hasNamespaceFlag(args []string) bool {
-	for i := 0; i < len(args); i++ {
-		a := strings.TrimSpace(args[i])
-		if a == "-n" || a == "--namespace" {
-			return true
-		}
-		if strings.HasPrefix(a, "--namespace=") {
-			return true
-		}
-	}
-	return false
-}
+// hasNamespaceFlag is defined in root.go (canonical location).

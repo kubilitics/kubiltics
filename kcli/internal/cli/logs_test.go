@@ -13,11 +13,7 @@ import (
 )
 
 func TestMain(m *testing.M) {
-	// P1-4: Goroutine leak detection. Ignore AI client's runCacheSweeper which runs
-	// as a background goroutine for cache eviction; it is started when ai.Client is created.
-	goleak.VerifyTestMain(m,
-		goleak.IgnoreAnyFunction("github.com/kubilitics/kcli/internal/ai.(*Client).runCacheSweeper"),
-	)
+	goleak.VerifyTestMain(m)
 }
 
 func TestParseLogsOptions(t *testing.T) {
@@ -25,7 +21,7 @@ func TestParseLogsOptions(t *testing.T) {
 	if err != nil {
 		t.Fatalf("parseLogsOptions error: %v", err)
 	}
-	if opts.Target != "app=api" || !opts.Follow || !opts.Timestamps || opts.Tail != "100" || opts.Since != "30m" || opts.Grep != "error" || opts.GrepV != "debug" || opts.Save != "out.log" || opts.Namespace != "ops" || !opts.AISummarize || !opts.AIErrors || !opts.AIExplain {
+	if opts.Target != "app=api" || !opts.Follow || !opts.Timestamps || opts.Tail != "100" || opts.Since != "30m" || opts.Grep != "error" || opts.GrepV != "debug" || opts.Save != "out.log" || opts.Namespace != "ops" {
 		t.Fatalf("unexpected opts: %+v", opts)
 	}
 }

@@ -75,6 +75,25 @@ func newNamespaceCmd(a *app) *cobra.Command {
 	cmd.AddCommand(newNamespaceFavCmd(a))
 	cmd.AddCommand(newNamespaceCreateCmd(a))
 	cmd.AddCommand(newNamespaceDeleteCmd(a))
+
+	cmd.ValidArgsFunction = func(_ *cobra.Command, args []string, _ string) ([]string, cobra.ShellCompDirective) {
+		if len(args) > 0 {
+			return nil, cobra.ShellCompDirectiveNoFileComp
+		}
+		out, err := a.captureKubectl([]string{"get", "namespaces", "-o", "name"})
+		if err != nil {
+			return nil, cobra.ShellCompDirectiveNoFileComp
+		}
+		var ns []string
+		for _, l := range strings.Split(strings.TrimSpace(out), "\n") {
+			l = strings.TrimPrefix(strings.TrimSpace(l), "namespace/")
+			if l != "" {
+				ns = append(ns, l)
+			}
+		}
+		return ns, cobra.ShellCompDirectiveNoFileComp
+	}
+
 	return cmd
 }
 

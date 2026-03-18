@@ -1,9 +1,0 @@
-name: istio
-version: 1.0.0
-author: Kubilitics
-description: Istio mesh operational commands
-commands:
-  - mesh
-permissions:
-  - read:virtualservices.networking.istio.io
-  - read:destinationrules.networking.istio.io

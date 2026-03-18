@@ -49,3 +49,11 @@ func init() {
 		"\x1b[38;5;177m", "\x1b[38;5;45m", "\x1b[38;5;214m", "\x1b[38;5;141m",
 	}
 }
+
+// truncate returns s trimmed to max characters.
+func truncate(s string, max int) string {
+	if len(s) <= max {
+		return s
+	}
+	return s[:max]
+}

@@ -272,7 +272,6 @@ func newConfigProfileUseCmd(a *app) *cobra.Command {
 				return err
 			}
 			a.cfg = s.Current()
-			a.resetAIClient() // Reset AI client to pick up new profile settings
 			fmt.Fprintf(cmd.OutOrStdout(), "Switched to profile %q\n", name)
 			return nil
 		},

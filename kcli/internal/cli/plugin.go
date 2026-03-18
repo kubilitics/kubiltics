@@ -2,9 +2,11 @@ package cli
 
 import (
 	"fmt"
+	"io"
 	"sort"
 	"strings"
 
+	"github.com/kubilitics/kcli/internal/output"
 	"github.com/kubilitics/kcli/internal/plugin"
 	"github.com/spf13/cobra"
 )
@@ -28,86 +30,26 @@ allow plugins found on PATH).`,
 		GroupID: "workflow",
 	}
 	cmd.AddCommand(
-		&cobra.Command{
-			Use:   "list",
-			Short: "List installed plugins",
-			RunE: func(cmd *cobra.Command, _ []string) error {
-				plugins, err := plugin.DiscoverInfo()
-				if err != nil {
-					return err
-				}
-				if len(plugins) == 0 {
-					fmt.Fprintln(cmd.OutOrStdout(), "No plugins installed.")
-					return nil
-				}
-				for _, p := range plugins {
-					status := "ready"
-					if p.ValidationError != nil {
-						status = "invalid"
-					}
-					version := "-"
-					if p.Manifest != nil {
-						version = p.Manifest.Version
-					}
-					fmt.Fprintf(cmd.OutOrStdout(), "%s\t%s\t%s\n", p.Name, version, status)
-				}
-				return nil
-			},
-		},
+		newPluginListCmd(),
 		&cobra.Command{
 			Use:   "search <keyword>",
-			Short: "Search installed plugins and marketplace catalog",
+			Short: "Search installed plugins",
 			Args:  cobra.ExactArgs(1),
 			RunE: func(cmd *cobra.Command, args []string) error {
 				results, err := plugin.SearchInstalled(args[0])
 				if err != nil {
 					return err
 				}
-				market, merr := plugin.SearchMarketplace(args[0])
-				if merr != nil {
-					return merr
-				}
-				if len(results) == 0 && len(market) == 0 {
+				if len(results) == 0 {
 					fmt.Fprintln(cmd.OutOrStdout(), "No matching plugins.")
 					return nil
 				}
-				if len(results) > 0 {
-					fmt.Fprintln(cmd.OutOrStdout(), "Installed:")
-					for _, p := range results {
-						desc := "-"
-						if p.Manifest != nil && strings.TrimSpace(p.Manifest.Description) != "" {
-							desc = p.Manifest.Description
-						}
-						fmt.Fprintf(cmd.OutOrStdout(), "  %s\t%s\n", p.Name, desc)
+				for _, p := range results {
+					desc := "-"
+					if p.Manifest != nil && strings.TrimSpace(p.Manifest.Description) != "" {
+						desc = p.Manifest.Description
 					}
-				}
-				if len(market) > 0 {
-					fmt.Fprintln(cmd.OutOrStdout(), "Marketplace:")
-					for _, p := range market {
-						tag := "community"
-						if p.Official {
-							tag = "official"
-						}
-						fmt.Fprintf(cmd.OutOrStdout(), "  %s\t%s\tv%s\t%s\tdl=%d\trating=%.1f\n", p.Name, tag, p.Version, p.Description, p.Downloads, p.Rating)
-					}
-				}
-				return nil
-			},
-		},
-		&cobra.Command{
-			Use:   "marketplace",
-			Short: "List marketplace catalog plugins",
-			RunE: func(cmd *cobra.Command, _ []string) error {
-				catalog, err := plugin.MarketplaceCatalog()
-				if err != nil {
-					return err
-				}
-				for _, p := range catalog {
-					tag := "community"
-					if p.Official {
-						tag = "official"
-					}
-					fmt.Fprintf(cmd.OutOrStdout(), "%s\t%s\tv%s\tdl=%d\trating=%.1f\n", p.Name, tag, p.Version, p.Downloads, p.Rating)
+					fmt.Fprintf(cmd.OutOrStdout(), "%s\t%s\n", p.Name, desc)
 				}
 				return nil
 			},
@@ -227,6 +169,74 @@ allow plugins found on PATH).`,
 		newPluginInspectSandboxCmd(),
 		newPluginAllowlistCmd(),
 	)
+	return cmd
+}
+
+// pluginListEntry is the structured output for `kcli plugin list -o json`.
+type pluginListEntry struct {
+	Name        string `json:"name"`
+	Version     string `json:"version"`
+	Status      string `json:"status"`
+	Description string `json:"description,omitempty"`
+	Path        string `json:"path,omitempty"`
+}
+
+func newPluginListCmd() *cobra.Command {
+	var outputFlag string
+	cmd := &cobra.Command{
+		Use:   "list",
+		Short: "List installed plugins",
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			ofmt, err := output.ParseFlag(outputFlag)
+			if err != nil {
+				return err
+			}
+			plugins, err := plugin.DiscoverInfo()
+			if err != nil {
+				return err
+			}
+			entries := make([]pluginListEntry, 0, len(plugins))
+			for _, p := range plugins {
+				e := pluginListEntry{
+					Name:   p.Name,
+					Status: "ready",
+					Path:   p.Path,
+				}
+				if p.ValidationError != nil {
+					e.Status = "invalid"
+				}
+				if p.Manifest != nil {
+					e.Version = p.Manifest.Version
+					e.Description = p.Manifest.Description
+				}
+				if e.Version == "" {
+					e.Version = "-"
+				}
+				entries = append(entries, e)
+			}
+			if len(entries) == 0 && (ofmt == output.FormatTable || ofmt == output.FormatPlain || ofmt == output.FormatAuto) {
+				fmt.Fprintln(cmd.OutOrStdout(), "No plugins installed.")
+				return nil
+			}
+			return output.Render(cmd.OutOrStdout(), ofmt, entries, output.WithTable(func(w io.Writer, v any) error {
+				list := v.([]pluginListEntry)
+				if len(list) == 0 {
+					fmt.Fprintln(w, "No plugins installed.")
+					return nil
+				}
+				fmt.Fprintf(w, "%-20s %-10s %-8s %s\n", "NAME", "VERSION", "STATUS", "DESCRIPTION")
+				for _, e := range list {
+					desc := e.Description
+					if desc == "" {
+						desc = "-"
+					}
+					fmt.Fprintf(w, "%-20s %-10s %-8s %s\n", e.Name, e.Version, e.Status, desc)
+				}
+				return nil
+			}))
+		},
+	}
+	cmd.Flags().StringVarP(&outputFlag, "output", "o", "table", "output format: table|json|yaml")
 	return cmd
 }
 

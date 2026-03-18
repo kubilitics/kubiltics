@@ -7,7 +7,6 @@ package cli
 //
 //   - Colored unified diff output (green=added, red=removed, cyan=hunk headers)
 //   - --summary: compact "N resource(s) will change: Kind/name, ..." line
-//   - --ai:      ask the configured AI provider to explain the changes
 //   - --no-color: force plain output even on color terminals
 //
 // All kubectl diff flags (-f, -k, -R, --field-manager, --server-side, etc.)
@@ -20,7 +19,6 @@ package cli
 
 import (
 	"bytes"
-	"context"
 	"fmt"
 	"io"
 	"os"
@@ -33,7 +31,7 @@ import (
 )
 
 // newDiffCmd returns a first-class 'diff' command that enhances the output of
-// 'kubectl diff' with ANSI colors, a summary mode, and optional AI analysis.
+// 'kubectl diff' with ANSI colors, a summary mode, and cross-cluster diff.
 func newDiffCmd(a *app) *cobra.Command {
 	return &cobra.Command{
 		Use:   "diff [args...]",
@@ -41,7 +39,7 @@ func newDiffCmd(a *app) *cobra.Command {
 		Long: `Show differences between the live cluster state and the local manifests.
 
 Wraps 'kubectl diff' and enhances the output with ANSI colors, a compact
-summary, and optional AI analysis.  All kubectl diff flags are forwarded
+summary, and cross-cluster comparison.  All kubectl diff flags are forwarded
 unchanged (-f, -k, -R, --field-manager, --server-side, etc.).
 
 Cross-cluster diff (P3-4): use --against to compare two clusters:
@@ -52,7 +50,6 @@ Cross-cluster diff (P3-4): use --against to compare two clusters:
 Flags (stripped before passing to kubectl):
 
   --summary   Print a compact summary: "N resource(s) will change: Kind/name"
-  --ai        Send the diff to the AI provider for an operational explanation
   --no-color  Suppress ANSI colors even on color terminals
   --against   Compare against another cluster context (cross-cluster diff)
 
@@ -76,11 +73,11 @@ Exit codes (match kubectl diff):
 			defer restore()
 
 			// Strip our own diff-specific flags; forward the rest to kubectl.
-			summary, aiFlag, noColor, against, kArgs := parseDiffFlags(clean)
+			summary, _, noColor, against, kArgs := parseDiffFlags(clean)
 
 			// ── Cross-cluster diff (P3-4) ─────────────────────────────────────
 			if against != "" {
-				return runCrossClusterDiff(a, cmd, against, summary, aiFlag, noColor, kArgs)
+				return runCrossClusterDiff(a, cmd, against, summary, noColor, kArgs)
 			}
 
 			// ── Run kubectl diff ────────────────────────────────────────────
@@ -119,11 +116,6 @@ Exit codes (match kubectl diff):
 				return printDiffSummary(out, diffText)
 			}
 
-			// ── AI mode ─────────────────────────────────────────────────────
-			if aiFlag {
-				return runDiffAI(a, cmd, diffText)
-			}
-
 			// ── Colorized output ─────────────────────────────────────────────
 			useColor := !noColor && isColorOutput(out) && os.Getenv("NO_COLOR") == ""
 			if useColor {
@@ -137,7 +129,9 @@ Exit codes (match kubectl diff):
 }
 
 // ---------------------------------------------------------------------------
-// parseDiffFlags scans args and strips --summary, --ai, --no-color, --against flags.
+// parseDiffFlags scans args and strips --summary, --no-color, --against flags.
+// The legacy --ai flag is accepted silently for backward compatibility but has
+// no effect (AI features have been removed).
 // All other args are returned in rest for forwarding to kubectl diff.
 // ---------------------------------------------------------------------------
 
@@ -184,7 +178,7 @@ func parseDiffFlags(args []string) (summary, ai, noColor bool, against string, r
 // ---------------------------------------------------------------------------
 
 // Note: ansiReset, ansiRed, ansiGreen, ansiYellow, ansiCyan, ansiBold are
-// declared in cost.go in the same package.
+// declared in ansi.go in the same package.
 
 func colorizeDiff(diff string) string {
 	var sb strings.Builder
@@ -317,37 +311,11 @@ func printDiffSummary(w io.Writer, diff string) error {
 }
 
 // ---------------------------------------------------------------------------
-// runDiffAI sends the diff text to the AI provider for an explanation.
-// ---------------------------------------------------------------------------
-
-func runDiffAI(a *app, cmd *cobra.Command, diffText string) error {
-	client := a.aiClient()
-	if !client.Enabled() {
-		fmt.Fprintln(cmd.OutOrStdout(), "AI is disabled. Set KCLI_AI_PROVIDER (or a provider-specific env var) to enable.")
-		// Still print the raw diff so the user isn't left empty-handed.
-		fmt.Fprint(cmd.OutOrStdout(), diffText)
-		return nil
-	}
-
-	ctx, cancel := context.WithTimeout(cmd.Context(), a.aiTimeout)
-	defer cancel()
-
-	res, err := withSpinner(cmd, "AI", func() (string, error) {
-		return client.Analyze(ctx, "diff", diffText)
-	})
-	if err != nil {
-		return err
-	}
-	fmt.Fprintln(cmd.OutOrStdout(), res)
-	return nil
-}
-
-// ---------------------------------------------------------------------------
 // runCrossClusterDiff compares resources across two cluster contexts (P3-4).
 // Left cluster: a.context (or current). Right cluster: against.
 // ---------------------------------------------------------------------------
 
-func runCrossClusterDiff(a *app, cmd *cobra.Command, against string, summary, aiFlag, noColor bool, kArgs []string) error {
+func runCrossClusterDiff(a *app, cmd *cobra.Command, against string, summary, noColor bool, kArgs []string) error {
 	leftCtx := a.context
 	if leftCtx == "" {
 		out, err := runner.CaptureKubectl(buildContextArgs(a, []string{"config", "current-context"}))
@@ -413,9 +381,6 @@ func runCrossClusterDiff(a *app, cmd *cobra.Command, against string, summary, ai
 
 	if summary {
 		return printDiffSummary(out, diffText)
-	}
-	if aiFlag {
-		return runDiffAI(a, cmd, diffText)
 	}
 	useColor := !noColor && isColorOutput(out) && os.Getenv("NO_COLOR") == ""
 	if useColor {
@@ -494,41 +459,41 @@ func diffNamespaceResources(a *app, leftCtx, rightCtx, namespace string, allName
 }
 
 func unifiedDiff(left, right string, leftLabel, rightLabel, resourceLabel string) (string, error) {
-	leftFile, err := os.CreateTemp("", "kcli-diff-left-*")
+	// P0-5: Create a dedicated temp directory with 0700 (owner-only) permissions
+	// to prevent world-readable secret data on disk. The entire directory is
+	// removed on return, even if kcli crashes between individual file writes.
+	tmpDir, err := os.MkdirTemp("", "kcli-diff-*")
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("create secure temp dir: %w", err)
 	}
-	defer os.Remove(leftFile.Name())
-	defer leftFile.Close()
+	defer os.RemoveAll(tmpDir)
+	if err := os.Chmod(tmpDir, 0700); err != nil {
+		return "", fmt.Errorf("chmod temp dir: %w", err)
+	}
 
-	rightFile, err := os.CreateTemp("", "kcli-diff-right-*")
-	if err != nil {
-		return "", err
-	}
-	defer os.Remove(rightFile.Name())
-	defer rightFile.Close()
+	leftPath := filepath.Join(tmpDir, "left")
+	rightPath := filepath.Join(tmpDir, "right")
 
-	if _, err := leftFile.WriteString(left); err != nil {
-		return "", err
+	// Write files with 0600 (owner read/write only) — never world-readable.
+	if err := os.WriteFile(leftPath, []byte(left), 0600); err != nil {
+		return "", fmt.Errorf("write left temp file: %w", err)
 	}
-	if _, err := rightFile.WriteString(right); err != nil {
-		return "", err
+	if err := os.WriteFile(rightPath, []byte(right), 0600); err != nil {
+		return "", fmt.Errorf("write right temp file: %w", err)
 	}
-	leftFile.Close()
-	rightFile.Close()
 
 	// Use diff -u for unified diff; labels in header
-	leftPath := leftLabel + ":" + resourceLabel
-	rightPath := rightLabel + ":" + resourceLabel
-	cmd := exec.Command("diff", "-u", leftFile.Name(), rightFile.Name())
+	leftHdr := leftLabel + ":" + resourceLabel
+	rightHdr := rightLabel + ":" + resourceLabel
+	cmd := exec.Command("diff", "-u", leftPath, rightPath)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		if exitErr, ok := err.(*exec.ExitError); ok && exitErr.ExitCode() == 1 {
 			// diff exits 1 when files differ — that's success for us
 			diffStr := string(out)
 			// Replace temp paths with readable labels
-			diffStr = strings.Replace(diffStr, "--- "+leftFile.Name(), "--- "+leftPath, 1)
-			diffStr = strings.Replace(diffStr, "+++ "+rightFile.Name(), "+++ "+rightPath, 1)
+			diffStr = strings.Replace(diffStr, "--- "+leftPath, "--- "+leftHdr, 1)
+			diffStr = strings.Replace(diffStr, "+++ "+rightPath, "+++ "+rightHdr, 1)
 			return diffStr, nil
 		}
 		return "", fmt.Errorf("diff failed: %w", err)

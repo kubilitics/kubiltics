@@ -6,7 +6,7 @@ package cli
 // Wraps 'kubectl rollout' with UX enhancements for each subcommand:
 //
 //   status    — live progress display with readiness ratio (e.g. "3/5 ready")
-//   history   — formatted table; --ai summarizes what changed per revision
+//   history   — formatted revision table
 //   undo      — shows confirmation before rolling back; --to-revision supported
 //   pause     — clear feedback that a rollout is paused
 //   resume    — clear feedback that a rollout is resumed
@@ -38,7 +38,7 @@ func newRolloutCmd(a *app) *cobra.Command {
 Wraps 'kubectl rollout' with enhanced UX for each subcommand:
 
   status    Live readiness progress (e.g. "3/5 pods ready") on TTY
-  history   Formatted revision table; --ai summarizes changes per revision
+  history   Formatted revision table
   undo      Shows what will be rolled back before executing (--yes to skip)
   pause     Pause an in-progress rollout
   resume    Resume a paused rollout
@@ -166,7 +166,7 @@ func (a *app) pollRolloutReadiness(kArgs []string) string {
 func newRolloutHistoryCmd(a *app) *cobra.Command {
 	return &cobra.Command{
 		Use:                "history (TYPE/NAME | TYPE NAME) [flags]",
-		Short:              "View rollout revision history (--ai to summarize changes)",
+		Short:              "View rollout revision history",
 		DisableFlagParsing: true,
 		RunE: func(cmd *cobra.Command, rawArgs []string) error {
 			clean, restore, err := a.applyInlineGlobalFlags(rawArgs)
@@ -175,24 +175,16 @@ func newRolloutHistoryCmd(a *app) *cobra.Command {
 			}
 			defer restore()
 
-			// Strip --ai flag.
-			aiFlag, kArgs := stripFlag("--ai", clean)
-
 			// Capture history output.
-			histArgs := a.scopeArgsFor(append([]string{"rollout", "history"}, kArgs...))
+			histArgs := a.scopeArgsFor(append([]string{"rollout", "history"}, clean...))
 			out, err := runner.CaptureKubectl(histArgs)
 			if err != nil {
 				// Forward stderr already happened in CaptureKubectl; just return.
 				return fmt.Errorf("kubectl rollout history: %w", err)
 			}
 
-			if !aiFlag {
-				fmt.Fprint(cmd.OutOrStdout(), out)
-				return nil
-			}
-
-			// AI summary of the history.
-			return runDiffAI(a, cmd, "rollout history:\n"+out)
+			fmt.Fprint(cmd.OutOrStdout(), out)
+			return nil
 		},
 	}
 }

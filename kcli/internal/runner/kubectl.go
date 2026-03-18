@@ -14,6 +14,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/kubilitics/kcli/internal/logging"
 	"github.com/kubilitics/kcli/internal/terminal"
 )
 
@@ -47,6 +48,66 @@ const MinKubectlMinor = 28
 // exempt and run without a timeout. This prevents hung kubectl processes from blocking
 // kcli indefinitely when the kube-apiserver is unreachable.
 const defaultKubectlTimeout = 5 * time.Minute
+
+// Retry defaults for CaptureKubectl / CaptureKubectlCtx.
+const (
+	defaultMaxRetries   = 3
+	defaultBaseBackoff  = 500 * time.Millisecond
+	defaultBackoffScale = 2 // exponential multiplier
+)
+
+// transientSubstrings are error message fragments that indicate a transient
+// network or server-side failure worth retrying.
+var transientSubstrings = []string{
+	"connection refused",
+	"connection reset by peer",
+	"TLS handshake timeout",
+	"i/o timeout",
+	"dial tcp",
+	"net/http: request canceled while waiting for connection",
+	// HTTP status codes returned as kubectl stderr text
+	"429 Too Many Requests",
+	"503 Service Unavailable",
+	"504 Gateway Timeout",
+	// context deadline exceeded from the kubectl process itself
+	"context deadline exceeded",
+}
+
+// nonRetryableSubstrings are error fragments that indicate a permanent failure
+// which should NOT be retried.
+var nonRetryableSubstrings = []string{
+	"401 Unauthorized",
+	"403 Forbidden",
+	"404 Not Found",
+	"error: the server doesn't have a resource type",
+	"error: the object has been modified",
+	"invalid argument",
+	"unknown flag",
+	"validation error",
+}
+
+// isRetryableError inspects combined stderr+stdout output and the error itself
+// to decide whether the kubectl call hit a transient failure.
+func isRetryableError(output string, err error) bool {
+	if err == nil {
+		return false
+	}
+	combined := output + " " + err.Error()
+	// First check for non-retryable patterns (higher priority).
+	lower := strings.ToLower(combined)
+	for _, s := range nonRetryableSubstrings {
+		if strings.Contains(lower, strings.ToLower(s)) {
+			return false
+		}
+	}
+	// Then check for transient patterns.
+	for _, s := range transientSubstrings {
+		if strings.Contains(lower, strings.ToLower(s)) {
+			return true
+		}
+	}
+	return false
+}
 
 type ExecOptions struct {
 	Force  bool
@@ -126,8 +187,39 @@ func isSensitiveEnv(envVar string) bool {
 	return false
 }
 
-// getKubectlBinary returns the kubectl binary path (from KCLI_KUBECTL_PATH env or "kubectl").
+// kubectlPath holds the custom kubectl binary path set via SetKubectlPath.
+// Access is protected by kubectlPathMu to be safe for concurrent use.
+var (
+	kubectlPathMu sync.RWMutex
+	kubectlPath   string
+)
+
+// SetKubectlPath sets the kubectl binary path for all runner operations.
+// This is the thread-safe replacement for os.Setenv("KCLI_KUBECTL_PATH", ...).
+// It should be called once during startup (e.g. from PersistentPreRunE).
+func SetKubectlPath(p string) {
+	kubectlPathMu.Lock()
+	kubectlPath = strings.TrimSpace(p)
+	kubectlPathMu.Unlock()
+}
+
+// GetKubectlPath returns the configured kubectl binary path, or empty string
+// if none was set. Exported for use by other packages (TUI, logs) that need
+// to spawn kubectl directly instead of going through the runner.
+func GetKubectlPath() string {
+	kubectlPathMu.RLock()
+	defer kubectlPathMu.RUnlock()
+	return kubectlPath
+}
+
+// getKubectlBinary returns the kubectl binary path. It checks (in order):
+// 1. The path set via SetKubectlPath (thread-safe, preferred)
+// 2. The KCLI_KUBECTL_PATH environment variable (legacy fallback)
+// 3. "kubectl" (default)
 func getKubectlBinary() string {
+	if p := GetKubectlPath(); p != "" {
+		return p
+	}
 	if p := strings.TrimSpace(os.Getenv("KCLI_KUBECTL_PATH")); p != "" {
 		return p
 	}
@@ -228,8 +320,10 @@ func RunKubectl(args []string, opts ExecOptions) error {
 
 	// P2-5: Track timing for mutating verbs so we can write an audit record.
 	wantAudit := opts.AuditFn != nil && isMutating
+	logging.Debug("kubectl exec", "args", args)
 	start := time.Now()
 	runErr := cmd.Run()
+	logging.Debug("kubectl done", "duration", time.Since(start), "error", runErr)
 
 	if wantAudit {
 		exitCode := 0
@@ -313,6 +407,18 @@ func RunKubectlContext(ctx context.Context, args []string, opts ExecOptions) err
 	if err := ensureKubectlAvailable(); err != nil {
 		return fmt.Errorf("kubectl not available: %w", err)
 	}
+	if opts.Stderr != nil {
+		WarnKubectlVersionSkew(opts.Stderr)
+	}
+	if shouldConfirm(args, opts.Force) {
+		ok, err := askForConfirmation(args)
+		if err != nil {
+			return err
+		}
+		if !ok {
+			return fmt.Errorf("aborted")
+		}
+	}
 	cmd := exec.CommandContext(ctx, getKubectlBinary(), args...)
 	cmd.Env = kubectlEnv()
 	stdin := opts.Stdin
@@ -344,17 +450,60 @@ func CaptureKubectl(args []string) (string, error) {
 // CaptureKubectlCtx is like CaptureKubectl but kills the kubectl subprocess when
 // ctx is cancelled or its deadline is exceeded. This prevents callers from
 // blocking indefinitely when a parent operation (e.g. a watch loop) is stopped.
+//
+// P1-1: Includes automatic retry with exponential backoff for transient errors
+// (connection refused, timeouts, 429/503/504). Auth errors (401/403), not-found
+// (404), and validation errors are never retried. Retries are abandoned
+// immediately if ctx is cancelled.
 func CaptureKubectlCtx(ctx context.Context, args []string) (string, error) {
 	if err := ensureKubectlAvailable(); err != nil {
 		return "", fmt.Errorf("kubectl not available: %w", err)
 	}
-	cmd := exec.CommandContext(ctx, getKubectlBinary(), args...)
-	cmd.Env = kubectlEnv()
-	b, err := cmd.CombinedOutput()
-	if ctx.Err() != nil {
-		return string(b), ctx.Err()
+
+	var output string
+	var lastErr error
+	backoff := defaultBaseBackoff
+
+	for attempt := 0; attempt <= defaultMaxRetries; attempt++ {
+		// On retries, sleep with backoff (respecting context cancellation).
+		if attempt > 0 {
+			select {
+			case <-ctx.Done():
+				return output, ctx.Err()
+			case <-time.After(backoff):
+			}
+			backoff *= time.Duration(defaultBackoffScale)
+		}
+
+		cmd := exec.CommandContext(ctx, getKubectlBinary(), args...)
+		cmd.Env = kubectlEnv()
+		logging.Debug("kubectl capture", "args", args, "attempt", attempt)
+		captureStart := time.Now()
+		b, err := cmd.CombinedOutput()
+		output = string(b)
+		logging.Debug("kubectl capture done", "duration", time.Since(captureStart), "attempt", attempt, "error", err)
+
+		// Context cancellation is not retryable.
+		if ctx.Err() != nil {
+			return output, ctx.Err()
+		}
+
+		// Success — return immediately.
+		if err == nil {
+			return output, nil
+		}
+
+		lastErr = err
+
+		// Only retry on transient errors; bail on permanent failures.
+		if !isRetryableError(output, err) {
+			return output, err
+		}
 	}
-	return string(b), err
+
+	// Exhausted all retries.
+	return output, fmt.Errorf("kubectl %s failed after %d retries: %w",
+		strings.Join(args, " "), defaultMaxRetries, lastErr)
 }
 
 // KubectlVersionClient returns the client version (major, minor) from kubectl version --client -o json.
@@ -418,6 +567,12 @@ func CaptureKubectlWithTimeout(args []string, timeout time.Duration) (string, er
 func shouldConfirm(args []string, force bool) bool {
 	if force || len(args) == 0 {
 		return false
+	}
+	// Never prompt for confirmation on help requests
+	for _, a := range args {
+		if a == "--help" || a == "-h" {
+			return false
+		}
 	}
 	words := commandWords(args)
 	if len(words) == 0 {

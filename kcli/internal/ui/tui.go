@@ -16,14 +16,13 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/kubilitics/kcli/internal/runner"
 )
 
 type Options struct {
 	Context         string
 	Namespace       string
 	Kubeconfig      string
-	AIEnabled       bool
-	AIFunc          func(target string) (string, error)
 	RefreshInterval time.Duration
 	Theme           string
 	Animations      bool
@@ -134,7 +133,6 @@ type model struct {
 	selectedRows map[string]bool
 	wideMode     bool
 	themeIndex   int
-	aiEnabled    bool
 
 	bulkMode     bool
 	bulkInput    textinput.Model
@@ -298,7 +296,6 @@ func initialModel(opts Options) model {
 		detailCache:  map[detailTab]string{},
 		selectedRows: map[string]bool{},
 		themeIndex:   themeIdx,
-		aiEnabled:    opts.AIFunc != nil || opts.AIEnabled,
 		readOnly:     opts.ReadOnly,
 	}
 }
@@ -801,28 +798,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return m, nil
 		case "A":
-			if m.spec.SupportsAI {
-				if r, ok := m.currentRow(); ok {
-					if !m.aiEnabled || m.opts.AIFunc == nil {
-						m.detail = "AI is disabled. Set KCLI_AI_PROVIDER (or provider env vars) to enable."
-						return m, nil
-					}
-					m.detail = "AI analyzing selected resource..."
-					target := m.spec.KubectlType + "/" + r.Name
-					if r.Namespace != "" && r.Namespace != "-" {
-						target = r.Namespace + "/" + target
-					}
-					return m, aiCmd(m.opts, target)
-				}
-			}
-		case "ctrl+a":
-			m.aiEnabled = !m.aiEnabled
-			m.opts.AIEnabled = m.aiEnabled
-			if !m.aiEnabled {
-				m.detail = "AI disabled in TUI (Ctrl+A to enable)"
-			} else {
-				m.detail = "AI enabled in TUI"
-			}
+			// AI features have been removed from kcli.
+			m.detail = "AI features are no longer available."
+			return m, nil
 		case "enter":
 			if r, ok := m.currentRow(); ok {
 				// CRD list: drill to instances; other resources: detail view
@@ -1176,11 +1154,7 @@ func (m model) headerView() string {
 	if strings.TrimSpace(ns) == "" {
 		ns = "all-namespaces"
 	}
-	ai := "off"
-	if m.aiEnabled && (m.opts.AIFunc != nil || m.opts.AIEnabled) {
-		ai = "on"
-	}
-	header := fmt.Sprintf("kcli ui | context: %s | namespace: %s | resource: %s | ai: %s", ctx, ns, m.spec.Key, ai)
+	header := fmt.Sprintf("kcli ui | context: %s | namespace: %s | resource: %s", ctx, ns, m.spec.Key)
 	if m.readOnly {
 		header += " | " + readOnlyBadge
 	}
@@ -1759,18 +1733,7 @@ func loadDetailTabCmd(opts Options, spec resourceSpec, row resourceRow, tab deta
 				args = append(args, "-n", row.Namespace)
 			}
 		case tabAI:
-			if opts.AIFunc == nil || !opts.AIEnabled {
-				return detailTabLoadedMsg{tab: tab, content: "AI is disabled for this session."}
-			}
-			target := spec.KubectlType + "/" + row.Name
-			if row.Namespace != "" && row.Namespace != "-" {
-				target = row.Namespace + "/" + target
-			}
-			out, err = opts.AIFunc(target)
-			if err != nil {
-				return detailTabLoadedMsg{tab: tab, err: err}
-			}
-			return detailTabLoadedMsg{tab: tab, content: out}
+			return detailTabLoadedMsg{tab: tab, content: "AI features have been removed from kcli."}
 		default:
 			args = []string{"describe", spec.KubectlType, row.Name}
 			if spec.Namespaced && row.Namespace != "" && row.Namespace != "-" {
@@ -1785,16 +1748,9 @@ func loadDetailTabCmd(opts Options, spec resourceSpec, row resourceRow, tab deta
 	}
 }
 
-func aiCmd(opts Options, target string) tea.Cmd {
+func aiCmd(_ Options, _ string) tea.Cmd {
 	return func() tea.Msg {
-		if opts.AIFunc == nil {
-			return sideDetailLoadedMsg{detail: "AI is disabled. Set KCLI_AI_PROVIDER (or provider env vars) to enable."}
-		}
-		res, err := opts.AIFunc(target)
-		if err != nil {
-			return sideDetailLoadedMsg{err: err}
-		}
-		return sideDetailLoadedMsg{detail: res}
+		return sideDetailLoadedMsg{detail: "AI features have been removed from kcli."}
 	}
 }
 
@@ -1807,7 +1763,7 @@ func isRateLimitErr(err error) bool {
 }
 
 func kubectlBinary() string {
-	if p := strings.TrimSpace(os.Getenv("KCLI_KUBECTL_PATH")); p != "" {
+	if p := runner.GetKubectlPath(); p != "" {
 		return p
 	}
 	return "kubectl"
