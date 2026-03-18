@@ -78,22 +78,22 @@ class Kcli < Formula
 
   on_macos do
     on_arm do
-      url "https://github.com/kubilitics/kubiltics/releases/download/v#{version}/kcli-v#{version}-darwin-arm64.tar.gz"
+      url "https://github.com/kubilitics/kubilitics/releases/download/v#{version}/kcli-v#{version}-darwin-arm64.tar.gz"
       sha256 "PLACEHOLDER_SHA256_DARWIN_ARM64"
     end
     on_intel do
-      url "https://github.com/kubilitics/kubiltics/releases/download/v#{version}/kcli-v#{version}-darwin-amd64.tar.gz"
+      url "https://github.com/kubilitics/kubilitics/releases/download/v#{version}/kcli-v#{version}-darwin-amd64.tar.gz"
       sha256 "PLACEHOLDER_SHA256_DARWIN_AMD64"
     end
   end
 
   on_linux do
     on_arm do
-      url "https://github.com/kubilitics/kubiltics/releases/download/v#{version}/kcli-v#{version}-linux-arm64.tar.gz"
+      url "https://github.com/kubilitics/kubilitics/releases/download/v#{version}/kcli-v#{version}-linux-arm64.tar.gz"
       sha256 "PLACEHOLDER_SHA256_LINUX_ARM64"
     end
     on_intel do
-      url "https://github.com/kubilitics/kubiltics/releases/download/v#{version}/kcli-v#{version}-linux-amd64.tar.gz"
+      url "https://github.com/kubilitics/kubilitics/releases/download/v#{version}/kcli-v#{version}-linux-amd64.tar.gz"
       sha256 "PLACEHOLDER_SHA256_LINUX_AMD64"
     end
   end
@@ -123,7 +123,7 @@ cask "kubilitics" do
   version "1.0.0"
   sha256 "PLACEHOLDER_SHA256_DMG"
 
-  url "https://github.com/kubilitics/kubiltics/releases/download/v#{version}/Kubilitics-#{version}-universal.dmg"
+  url "https://github.com/kubilitics/kubilitics/releases/download/v#{version}/Kubilitics-#{version}-universal.dmg"
   name "Kubilitics"
   desc "Kubernetes management platform with real-time dashboard"
   homepage "https://kubilitics.com"
@@ -202,7 +202,7 @@ Tags:
 Installers:
   - Architecture: x64
     InstallerType: nsis
-    InstallerUrl: https://github.com/kubilitics/kubiltics/releases/download/v1.0.0/Kubilitics-1.0.0-x64-setup.exe
+    InstallerUrl: https://github.com/kubilitics/kubilitics/releases/download/v1.0.0/Kubilitics-1.0.0-x64-setup.exe
     InstallerSha256: PLACEHOLDER_SHA256
     UpgradeBehavior: install
 ManifestType: singleton
@@ -226,18 +226,18 @@ winget install Kubilitics.Kubilitics
   "license": "Apache-2.0",
   "architecture": {
     "64bit": {
-      "url": "https://github.com/kubilitics/kubiltics/releases/download/v1.0.0/kcli-v1.0.0-windows-amd64.zip",
+      "url": "https://github.com/kubilitics/kubilitics/releases/download/v1.0.0/kcli-v1.0.0-windows-amd64.zip",
       "hash": "PLACEHOLDER_SHA256"
     }
   },
   "bin": "kcli.exe",
   "checkver": {
-    "github": "https://github.com/kubilitics/kubiltics"
+    "github": "https://github.com/kubilitics/kubilitics"
   },
   "autoupdate": {
     "architecture": {
       "64bit": {
-        "url": "https://github.com/kubilitics/kubiltics/releases/download/v$version/kcli-v$version-windows-amd64.zip"
+        "url": "https://github.com/kubilitics/kubilitics/releases/download/v$version/kcli-v$version-windows-amd64.zip"
       }
     }
   }
@@ -327,7 +327,7 @@ curl -fsSL https://kubilitics.com/install.sh | sh
 #!/bin/sh
 set -e
 
-REPO="kubilitics/kubiltics"
+REPO="kubilitics/kubilitics"
 BINARY="kcli"
 INSTALL_DIR="${INSTALL_DIR:-/usr/local/bin}"
 
@@ -392,35 +392,35 @@ spec:
         matchLabels:
           os: darwin
           arch: amd64
-      uri: https://github.com/kubilitics/kubiltics/releases/download/v1.0.0/kcli-v1.0.0-darwin-amd64.tar.gz
+      uri: https://github.com/kubilitics/kubilitics/releases/download/v1.0.0/kcli-v1.0.0-darwin-amd64.tar.gz
       sha256: PLACEHOLDER
       bin: kcli
     - selector:
         matchLabels:
           os: darwin
           arch: arm64
-      uri: https://github.com/kubilitics/kubiltics/releases/download/v1.0.0/kcli-v1.0.0-darwin-arm64.tar.gz
+      uri: https://github.com/kubilitics/kubilitics/releases/download/v1.0.0/kcli-v1.0.0-darwin-arm64.tar.gz
       sha256: PLACEHOLDER
       bin: kcli
     - selector:
         matchLabels:
           os: linux
           arch: amd64
-      uri: https://github.com/kubilitics/kubiltics/releases/download/v1.0.0/kcli-v1.0.0-linux-amd64.tar.gz
+      uri: https://github.com/kubilitics/kubilitics/releases/download/v1.0.0/kcli-v1.0.0-linux-amd64.tar.gz
       sha256: PLACEHOLDER
       bin: kcli
     - selector:
         matchLabels:
           os: linux
           arch: arm64
-      uri: https://github.com/kubilitics/kubiltics/releases/download/v1.0.0/kcli-v1.0.0-linux-arm64.tar.gz
+      uri: https://github.com/kubilitics/kubilitics/releases/download/v1.0.0/kcli-v1.0.0-linux-arm64.tar.gz
       sha256: PLACEHOLDER
       bin: kcli
     - selector:
         matchLabels:
           os: windows
           arch: amd64
-      uri: https://github.com/kubilitics/kubiltics/releases/download/v1.0.0/kcli-v1.0.0-windows-amd64.zip
+      uri: https://github.com/kubilitics/kubilitics/releases/download/v1.0.0/kcli-v1.0.0-windows-amd64.zip
       sha256: PLACEHOLDER
       bin: kcli.exe
 ```
@@ -485,7 +485,7 @@ jobs:
           formula-name: kcli
           homebrew-tap: kubilitics/homebrew-tap
           tag-name: ${{ github.event.workflow_run.head_branch }}
-          download-url: https://github.com/kubilitics/kubiltics/releases/download/${{ github.event.workflow_run.head_branch }}/kcli-*.tar.gz
+          download-url: https://github.com/kubilitics/kubilitics/releases/download/${{ github.event.workflow_run.head_branch }}/kcli-*.tar.gz
         env:
           COMMITTER_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
 
@@ -589,7 +589,7 @@ a7ffc6f8bf1e...  Kubilitics-1.0.0-x64-setup.exe
 **User verification:**
 ```bash
 # Download checksum file
-curl -fsSLO https://github.com/kubilitics/kubiltics/releases/download/v1.0.0/checksums.txt
+curl -fsSLO https://github.com/kubilitics/kubilitics/releases/download/v1.0.0/checksums.txt
 
 # Verify
 sha256sum -c checksums.txt --ignore-missing
@@ -778,7 +778,7 @@ scoop bucket add kubilitics https://github.com/kubilitics/scoop-bucket
 scoop install kcli
 
 # Linux — Desktop App
-# Download from https://github.com/kubilitics/kubiltics/releases
+# Download from https://github.com/kubilitics/kubilitics/releases
 
 # Linux — CLI only (Debian/Ubuntu)
 curl -fsSL https://apt.kubilitics.io/gpg.key | sudo gpg --dearmor -o /usr/share/keyrings/kubilitics.gpg

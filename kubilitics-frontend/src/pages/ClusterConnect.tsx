@@ -1203,7 +1203,7 @@ function InClusterSetupView({ isBackendConfigured, health, handleConnect, naviga
   --version 1.0.0 \\
   --namespace kubilitics --create-namespace`,
     installFromSource: `# Or install directly from the source repo
-git clone https://github.com/kubilitics/kubiltics.git
+git clone https://github.com/kubilitics/kubilitics.git
 helm install kubilitics ./deploy/helm/kubilitics \\
   --namespace kubilitics --create-namespace`,
     installWithIngress: `helm install kubilitics \\

@@ -7,7 +7,7 @@ cask "kubilitics" do
   version "1.0.0"
   sha256 "PLACEHOLDER_SHA256_DMG"
 
-  url "https://github.com/kubilitics/kubiltics/releases/download/v#{version}/Kubilitics-#{version}-universal.dmg"
+  url "https://github.com/kubilitics/kubilitics/releases/download/v#{version}/Kubilitics-#{version}-universal.dmg"
   name "Kubilitics"
   desc "Kubernetes management platform with real-time dashboard and AI-powered CLI"
   homepage "https://kubilitics.com"

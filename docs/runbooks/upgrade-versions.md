@@ -37,10 +37,10 @@ Kubilitics is deployed via Helm chart at `deploy/helm/kubilitics/`. Upgrades fol
 
 ```bash
 # Check the CHANGELOG for breaking changes
-curl -s https://raw.githubusercontent.com/kubilitics/kubiltics/main/CHANGELOG.md | head -100
+curl -s https://raw.githubusercontent.com/kubilitics/kubilitics/main/CHANGELOG.md | head -100
 
 # Or view the GitHub Release page
-# https://github.com/kubilitics/kubiltics/releases
+# https://github.com/kubilitics/kubilitics/releases
 ```
 
 ### 2.2 Verify current state

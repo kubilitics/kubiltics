@@ -55,28 +55,28 @@ Host the formula in a custom tap repository: `kubilitics/homebrew-tap`.
 # Formula/kcli.rb
 class Kcli < Formula
   desc "AI-powered kubectl replacement for Kubernetes management"
-  homepage "https://github.com/kubilitics/kubiltics"
+  homepage "https://github.com/kubilitics/kubilitics"
   version "0.1.1"
   license "Apache-2.0"
 
   on_macos do
     on_arm do
-      url "https://github.com/kubilitics/kubiltics/releases/download/v#{version}/kcli-v#{version}-darwin-arm64.tar.gz"
+      url "https://github.com/kubilitics/kubilitics/releases/download/v#{version}/kcli-v#{version}-darwin-arm64.tar.gz"
       sha256 "PLACEHOLDER_SHA256_DARWIN_ARM64"
     end
     on_intel do
-      url "https://github.com/kubilitics/kubiltics/releases/download/v#{version}/kcli-v#{version}-darwin-amd64.tar.gz"
+      url "https://github.com/kubilitics/kubilitics/releases/download/v#{version}/kcli-v#{version}-darwin-amd64.tar.gz"
       sha256 "PLACEHOLDER_SHA256_DARWIN_AMD64"
     end
   end
 
   on_linux do
     on_arm do
-      url "https://github.com/kubilitics/kubiltics/releases/download/v#{version}/kcli-v#{version}-linux-arm64.tar.gz"
+      url "https://github.com/kubilitics/kubilitics/releases/download/v#{version}/kcli-v#{version}-linux-arm64.tar.gz"
       sha256 "PLACEHOLDER_SHA256_LINUX_ARM64"
     end
     on_intel do
-      url "https://github.com/kubilitics/kubiltics/releases/download/v#{version}/kcli-v#{version}-linux-amd64.tar.gz"
+      url "https://github.com/kubilitics/kubilitics/releases/download/v#{version}/kcli-v#{version}-linux-amd64.tar.gz"
       sha256 "PLACEHOLDER_SHA256_LINUX_AMD64"
     end
   end
@@ -130,7 +130,7 @@ Maintainer: Kubilitics Team <team@kubilitics.io>
 Description: Kubernetes management platform backend
  Kubilitics is a production-grade Kubernetes management platform with
  topology visualization, add-on management, and AI-powered insights.
-Homepage: https://github.com/kubilitics/kubiltics
+Homepage: https://github.com/kubilitics/kubilitics
 ```
 
 ### Systemd Service

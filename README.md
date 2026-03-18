@@ -10,9 +10,9 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/kubilitics/kubiltics/releases"><img src="https://img.shields.io/github/v/release/kubilitics/kubiltics?style=flat-square&color=blue" alt="Release" /></a>
-  <a href="https://github.com/kubilitics/kubiltics/actions"><img src="https://img.shields.io/github/actions/workflow/status/kubilitics/kubiltics/backend-ci.yml?branch=main&style=flat-square&label=CI" alt="CI" /></a>
-  <a href="https://github.com/kubilitics/kubiltics/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-green?style=flat-square" alt="License" /></a>
+  <a href="https://github.com/kubilitics/kubilitics/releases"><img src="https://img.shields.io/github/v/release/kubilitics/kubilitics?style=flat-square&color=blue" alt="Release" /></a>
+  <a href="https://github.com/kubilitics/kubilitics/actions"><img src="https://img.shields.io/github/actions/workflow/status/kubilitics/kubilitics/backend-ci.yml?branch=main&style=flat-square&label=CI" alt="CI" /></a>
+  <a href="https://github.com/kubilitics/kubilitics/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-green?style=flat-square" alt="License" /></a>
   <a href="https://kubilitics.com"><img src="https://img.shields.io/badge/website-kubilitics.com-purple?style=flat-square" alt="Website" /></a>
 </p>
 
@@ -212,7 +212,7 @@ helm install kubilitics \
 
 ```bash
 # Or install from source
-git clone https://github.com/kubilitics/kubiltics.git
+git clone https://github.com/kubilitics/kubilitics.git
 helm install kubilitics ./deploy/helm/kubilitics \
   --namespace kubilitics --create-namespace
 ```
@@ -500,8 +500,8 @@ Apache 2.0 — See [LICENSE](LICENSE) for details.
 ## 📧 Links
 
 - **Website**: [kubilitics.com](https://kubilitics.com)
-- **GitHub**: [github.com/kubilitics/kubiltics](https://github.com/kubilitics/kubiltics)
-- **Issues**: [github.com/kubilitics/kubiltics/issues](https://github.com/kubilitics/kubiltics/issues)
+- **GitHub**: [github.com/kubilitics/kubilitics](https://github.com/kubilitics/kubilitics)
+- **Issues**: [github.com/kubilitics/kubilitics/issues](https://github.com/kubilitics/kubilitics/issues)
 - **Helm Charts**: `oci://ghcr.io/kubilitics/charts/kubilitics`
 
 ---

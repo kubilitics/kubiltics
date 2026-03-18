@@ -23,7 +23,7 @@ info:
   version: 0.1.1
   contact:
     name: Kubilitics Team
-    url: https://github.com/kubilitics/kubiltics
+    url: https://github.com/kubilitics/kubilitics
   license:
     name: Apache 2.0
     url: https://www.apache.org/licenses/LICENSE-2.0
