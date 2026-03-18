@@ -1,15 +1,25 @@
 /**
- * WebSocket connection to Kubilitics backend with exponential backoff and max retries (B2.4).
+ * WebSocket connection to Kubilitics backend with exponential backoff and infinite resilience.
  * Primary for real-time updates (topology, resources); polling is fallback when disconnected.
+ *
+ * Resilience model (inspired by Lens/Headlamp):
+ *  1. Fast reconnect: exponential backoff (2s→30s) for first 20 attempts
+ *  2. Slow reconnect: periodic retry every 30s indefinitely (never gives up)
+ *  3. Tab visibility: immediate reconnect when tab becomes visible again
+ *  4. Persistent toast: stays visible until connection is restored
  */
 import { useEffect, useRef, useCallback, useState } from 'react';
 import { toast } from 'sonner';
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
 
-const DEFAULT_MAX_RETRIES = 20;
+/** Fast phase: exponential backoff for this many attempts */
+const FAST_RETRY_ATTEMPTS = 20;
 const INITIAL_RECONNECT_MS = 2000;
 const MAX_RECONNECT_MS = 30_000;
 const BACKOFF_MULTIPLIER = 1.5;
+
+/** Slow phase: retry every 30s indefinitely after fast phase exhausted */
+const SLOW_RETRY_INTERVAL_MS = 30_000;
 
 /** Stable toast ID so we never stack multiple "live updates paused" toasts. */
 const WS_TOAST_ID = 'ws-live-updates-paused';
@@ -23,7 +33,6 @@ export interface BackendWebSocketMessage {
 
 export interface UseBackendWebSocketOptions {
   clusterId?: string | null;
-  maxRetries?: number;
   onMessage?: (data: BackendWebSocketMessage) => void;
   enabled?: boolean;
 }
@@ -31,7 +40,6 @@ export interface UseBackendWebSocketOptions {
 export function useBackendWebSocket(options: UseBackendWebSocketOptions = {}) {
   const {
     clusterId = null,
-    maxRetries = DEFAULT_MAX_RETRIES,
     onMessage,
     enabled = true,
   } = options;
@@ -90,37 +98,43 @@ export function useBackendWebSocket(options: UseBackendWebSocketOptions = {}) {
       setConnected(false);
 
       if (!enabled) return;
-      if (retryCountRef.current >= maxRetries) {
-        const errorMsg = `WebSocket disconnected after ${maxRetries} retries`;
-        setError(errorMsg);
 
-        // Show a single warning toast (not error) with a reconnect action.
-        // Uses a stable ID to prevent duplicate toasts from stacking.
-        // Persistent state is surfaced via BackendStatusBanner.
-        toast.warning('Live updates paused', {
-          id: WS_TOAST_ID,
-          description: 'Real-time connection lost. Click Reconnect to try again.',
-          duration: 8000,
-          action: {
-            label: 'Reconnect',
-            onClick: () => {
-              reconnectRef.current();
+      const attempt = retryCountRef.current;
+      let delay: number;
+
+      if (attempt < FAST_RETRY_ATTEMPTS) {
+        // Fast phase: exponential backoff (2s → 30s)
+        delay = Math.min(
+          INITIAL_RECONNECT_MS * Math.pow(BACKOFF_MULTIPLIER, attempt),
+          MAX_RECONNECT_MS
+        );
+        retryCountRef.current += 1;
+        setError(`Reconnecting in ${(delay / 1000).toFixed(1)}s (attempt ${retryCountRef.current}/${FAST_RETRY_ATTEMPTS})…`);
+      } else {
+        // Slow phase: periodic retry every 30s — never gives up.
+        // Show persistent toast only once (when entering slow phase).
+        delay = SLOW_RETRY_INTERVAL_MS;
+        retryCountRef.current += 1;
+
+        if (attempt === FAST_RETRY_ATTEMPTS) {
+          // First time entering slow phase — show persistent toast
+          toast.warning('Live updates paused', {
+            id: WS_TOAST_ID,
+            description: 'Real-time connection lost. Retrying automatically…',
+            duration: Infinity, // Stays until dismissed or reconnected
+            action: {
+              label: 'Reconnect now',
+              onClick: () => {
+                reconnectRef.current();
+              },
             },
-          },
-        });
-        return;
+          });
+        }
+        setError('Connection lost. Retrying every 30s…');
       }
-
-      const delay = Math.min(
-        INITIAL_RECONNECT_MS * Math.pow(BACKOFF_MULTIPLIER, retryCountRef.current),
-        MAX_RECONNECT_MS
-      );
-      retryCountRef.current += 1;
-      setError(`Reconnecting in ${(delay / 1000).toFixed(1)}s (attempt ${retryCountRef.current}/${maxRetries})…`);
 
       reconnectTimeoutRef.current = setTimeout(() => {
         reconnectTimeoutRef.current = null;
-        // Use connectRef to avoid adding connect to deps (which would cause circular dep with reconnect)
         connectRef.current();
       }, delay);
     };
@@ -128,7 +142,7 @@ export function useBackendWebSocket(options: UseBackendWebSocketOptions = {}) {
     ws.onerror = () => {
       setError('WebSocket error');
     };
-  }, [backendBaseUrl, clusterId, enabled, isConfigured, maxRetries, onMessage]);
+  }, [backendBaseUrl, clusterId, enabled, isConfigured, onMessage]);
 
   // Keep connectRef in sync with the latest connect callback
   useEffect(() => { connectRef.current = connect; }, [connect]);
@@ -167,10 +181,11 @@ export function useBackendWebSocket(options: UseBackendWebSocketOptions = {}) {
       wsRef.current.close();
       wsRef.current = null;
     }
-    retryCountRef.current = maxRetries;
+    retryCountRef.current = 0;
     setConnected(false);
     setError(null);
-  }, [maxRetries]);
+    toast.dismiss(WS_TOAST_ID);
+  }, []);
 
   useEffect(() => {
     if (enabled && isConfigured() && backendBaseUrl) {
@@ -178,6 +193,22 @@ export function useBackendWebSocket(options: UseBackendWebSocketOptions = {}) {
     }
     return () => disconnect();
   }, [enabled, backendBaseUrl, clusterId, isConfigured]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Reconnect immediately when tab becomes visible again (user switches back).
+  // Lens and Headlamp both do this — avoids stale "paused" state sitting there.
+  useEffect(() => {
+    if (!enabled) return;
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && !wsRef.current) {
+        // Tab is visible and WS is disconnected — reconnect immediately
+        reconnectRef.current();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [enabled]);
 
   return {
     connected,
