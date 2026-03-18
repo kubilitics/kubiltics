@@ -545,6 +545,8 @@ export function LogViewer({
               return (
                 <div
                   key={virtualRow.index}
+                  data-index={virtualRow.index}
+                  ref={virtualizer.measureElement}
                   style={{
                     position: 'absolute',
                     top: 0,
