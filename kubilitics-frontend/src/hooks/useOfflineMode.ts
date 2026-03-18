@@ -24,6 +24,10 @@ export interface OfflineModeState {
   retryNow: () => void;
 }
 
+/** Require this many consecutive failures before reporting backend as unreachable.
+ *  Prevents the amber banner from flashing during startup or transient hiccups. */
+const FAILURE_THRESHOLD = 3;
+
 export function useOfflineMode(): OfflineModeState {
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
   const [aiBackendReachable, setAiBackendReachable] = useState(true);
@@ -66,8 +70,14 @@ export function useOfflineMode(): OfflineModeState {
         throw new Error(`HTTP ${res.status}`);
       }
     } catch {
-      setAiBackendReachable(false);
-      setFailureCount((c) => c + 1);
+      setFailureCount((c) => {
+        const next = c + 1;
+        // Only mark unreachable after FAILURE_THRESHOLD consecutive failures.
+        // This avoids flashing the "Backend unreachable" banner during startup
+        // or transient network hiccups (e.g. laptop waking from sleep).
+        if (next >= FAILURE_THRESHOLD) setAiBackendReachable(false);
+        return next;
+      });
       backoffFactorRef.current += 1;
 
       // Schedule retry with exponential backoff: 5s, 10s, 15s, 20s, ...
