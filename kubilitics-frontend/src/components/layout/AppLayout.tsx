@@ -32,7 +32,7 @@ export function AppLayout() {
   const reduceMotion = useReducedMotion();
   const isDemo = useClusterStore((s) => s.isDemo);
   const { isConnected } = useConnectionStatus();
-  const { isOffline, aiBackendReachable } = useOfflineMode();
+  const { isOffline, aiBackendReachable, retryNow } = useOfflineMode();
   const gPendingRef = useRef(false);
   const gTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
