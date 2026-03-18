@@ -270,6 +270,7 @@ export default function StorageClasses() {
  resourceCount={filteredItems.length}
  subtitle="Cluster-scoped"
  demoMode={!isConnected}
+ dataUpdatedAt={hookPagination?.dataUpdatedAt}
  isLoading={isLoading}
  onRefresh={() => refetch()}
  createLabel="Create"

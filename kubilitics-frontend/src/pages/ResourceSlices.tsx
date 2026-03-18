@@ -239,6 +239,7 @@ export default function ResourceSlices() {
  resourceCount={filteredItems.length}
  subtitle="Cluster-scoped · DRA (GPU/accelerator) capacity"
  demoMode={!isConnected}
+ dataUpdatedAt={hookPagination?.dataUpdatedAt}
  isLoading={isLoading}
  onRefresh={() => refetch()}
  createLabel="Create Resource Slice"

@@ -332,6 +332,7 @@ export default function Namespaces() {
  title="Namespaces"
  resourceCount={filteredItems.length}
  demoMode={!isConnected}
+ dataUpdatedAt={hookPagination?.dataUpdatedAt}
  isLoading={isLoading}
  onRefresh={() => refetch()}
  createLabel="Create"

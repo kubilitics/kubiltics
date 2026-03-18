@@ -1,4 +1,5 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, memo } from 'react';
+import { useVirtualizer } from '@tanstack/react-virtual';
 import {
   Download,
   Search,
@@ -115,7 +116,8 @@ interface LogRowProps {
   onCopy: (log: LogEntry) => void;
 }
 
-function LogRow({ log, index, showTimestamps, wrapLines, searchQuery, onCopy }: LogRowProps) {
+// PERF Area 4: Memoize log rows — prevents re-render of all rows on filter/scroll
+const LogRow = memo(function LogRow({ log, index, showTimestamps, wrapLines, searchQuery, onCopy }: LogRowProps) {
   const levelBadge: Record<string, { label: string; cls: string }> = {
     info:  { label: 'INFO', cls: 'text-blue-400/80' },
     warn:  { label: 'WARN', cls: 'text-amber-400' },
@@ -187,7 +189,7 @@ function LogRow({ log, index, showTimestamps, wrapLines, searchQuery, onCopy }: 
       </button>
     </div>
   );
-}
+});
 
 // ─── LogViewer ────────────────────────────────────────────────────────────────
 
@@ -230,18 +232,28 @@ export function LogViewer({
   const isLive = isConnected && !!podName && !!namespace;
   const displayLogs = isLive ? localLogs : (propLogs ?? EMPTY_LOGS);
 
-  // Auto-scroll when following
-  useEffect(() => {
-    if (isStreaming && logContainerRef.current) {
-      logContainerRef.current.scrollTop = logContainerRef.current.scrollHeight;
-    }
-  }, [displayLogs, isStreaming]);
-
   const filteredLogs = displayLogs.filter(log => {
     if (searchQuery && !log.message.toLowerCase().includes(searchQuery.toLowerCase())) return false;
     if (selectedLevel && log.level !== selectedLevel) return false;
     return true;
   });
+
+  // PERF Area 4: Virtualize log rows — only render visible rows + overscan buffer.
+  // Without this, 2000 log lines = 2000 DOM elements = scroll jank and high memory.
+  const LOG_ROW_HEIGHT = 20;
+  const virtualizer = useVirtualizer({
+    count: filteredLogs.length,
+    getScrollElement: () => logContainerRef.current,
+    estimateSize: () => LOG_ROW_HEIGHT,
+    overscan: 30,
+  });
+
+  // Auto-scroll when following
+  useEffect(() => {
+    if (isStreaming && filteredLogs.length > 0) {
+      virtualizer.scrollToIndex(filteredLogs.length - 1, { align: 'end' });
+    }
+  }, [filteredLogs.length, isStreaming, virtualizer]);
 
   const handleDownload = useCallback(() => {
     const content = displayLogs
@@ -520,23 +532,51 @@ export function LogViewer({
             )}
           </div>
         ) : (
-          /* Log rows */
-          <div className="py-0.5">
-            {filteredLogs.map((log, i) => (
-              <LogRow
-                key={`${log.timestamp}-${i}`}
-                log={log}
-                index={i}
-                showTimestamps={showTimestamps}
-                wrapLines={wrapLines}
-                searchQuery={searchQuery}
-                onCopy={handleCopyLine}
-              />
-            ))}
+          /* PERF Area 4: Virtualized log rows — only visible rows exist in DOM */
+          <div
+            style={{
+              height: virtualizer.getTotalSize(),
+              width: '100%',
+              position: 'relative',
+            }}
+          >
+            {virtualizer.getVirtualItems().map((virtualRow) => {
+              const log = filteredLogs[virtualRow.index];
+              return (
+                <div
+                  key={virtualRow.index}
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    width: '100%',
+                    transform: `translateY(${virtualRow.start}px)`,
+                  }}
+                >
+                  <LogRow
+                    log={log}
+                    index={virtualRow.index}
+                    showTimestamps={showTimestamps}
+                    wrapLines={wrapLines}
+                    searchQuery={searchQuery}
+                    onCopy={handleCopyLine}
+                  />
+                </div>
+              );
+            })}
 
-            {/* Streaming indicator */}
+            {/* Streaming indicator — positioned after all virtual rows */}
             {isStreaming && !error && (
-              <div className="px-3 py-1.5 flex items-center gap-2 text-white/20 text-[11px] select-none">
+              <div
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  width: '100%',
+                  transform: `translateY(${virtualizer.getTotalSize()}px)`,
+                }}
+                className="px-3 py-1.5 flex items-center gap-2 text-white/20 text-[11px] select-none"
+              >
                 <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
                 Streaming…
               </div>

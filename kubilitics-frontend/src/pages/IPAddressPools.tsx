@@ -218,6 +218,7 @@ export default function IPAddressPools() {
  resourceCount={filteredItems.length}
  subtitle="MetalLB · IP ranges for LoadBalancer services"
  demoMode={!isConnected}
+ dataUpdatedAt={dataUpdatedAt}
  isLoading={isLoading}
  onRefresh={() => refetch()}
  actions={

@@ -248,6 +248,7 @@ export default function ControllerRevisions() {
  resourceCount={filteredItems.length}
  subtitle="Namespace-scoped · StatefulSet/DaemonSet history"
  demoMode={!isConnected}
+ dataUpdatedAt={hookPagination?.dataUpdatedAt}
  isLoading={isLoading}
  onRefresh={() => refetch()}
  createLabel="Create Controller Revision"

@@ -20,6 +20,7 @@ import type { StatusPillVariant } from '@/components/list';
 import { useTableFiltersAndSort, type ColumnConfig } from '@/hooks/useTableFiltersAndSort';
 import { useColumnVisibility } from '@/hooks/useColumnVisibility';
 import { useWorkloadMetricsMap } from '@/hooks/useWorkloadMetricsMap';
+import { getRowAnimationClass } from '@/hooks/useResourceLiveUpdates';
 import { ResourceCreator, DEFAULT_YAMLS } from '@/components/editor';
 import { toast } from 'sonner';
 import { Progress } from '@/components/ui/progress';
@@ -48,6 +49,7 @@ interface StatefulSetResource extends KubernetesResource {
 }
 
 interface StatefulSet {
+ uid?: string;
  name: string;
  namespace: string;
  status: 'Healthy' | 'Progressing' | 'Degraded';
@@ -123,6 +125,7 @@ function transformResource(resource: StatefulSetResource): StatefulSet {
  const updateStrategy = resource.spec?.updateStrategy?.type ?? 'RollingUpdate';
  const partition = resource.spec?.updateStrategy?.rollingUpdate?.partition ?? 0;
  return {
+ uid: resource.metadata?.uid,
  name: resource.metadata.name,
  namespace: resource.metadata.namespace || 'default',
  status,
@@ -430,6 +433,7 @@ spec:
  resourceCount={filteredItems.length}
  subtitle={namespaces.length > 1 ? `across ${namespaces.length - 1} namespaces` : undefined}
  demoMode={!isConnected}
+ dataUpdatedAt={dataUpdatedAt}
  isLoading={isLoading}
  onRefresh={() => refetch()}
  createLabel="Create StatefulSet"
@@ -699,7 +703,7 @@ spec:
  const cpuDataPoints = cpuNum != null ? Array(12).fill(cpuNum) : undefined;
  const memDataPoints = memNum != null ? Array(12).fill(memNum) : undefined;
  return (
- <tr key={key} className={cn(resourceTableRowClassName, idx % 2 === 1 && 'bg-muted/5', isSelected && 'bg-primary/5')}>
+ <tr key={key} className={cn(resourceTableRowClassName, getRowAnimationClass(item.uid), idx % 2 === 1 && 'bg-muted/5', isSelected && 'bg-primary/5')}>
  <TableCell><Checkbox checked={isSelected} onCheckedChange={() => toggleSelection(item)} /></TableCell>
  <ResizableTableCell columnId="name"><Link to={`/statefulsets/${item.namespace}/${item.name}`} className="font-medium text-primary hover:underline flex items-center gap-2 truncate"><StatefulSetIcon className="h-4 w-4 text-muted-foreground flex-shrink-0" /><span className="truncate">{item.name}</span></Link></ResizableTableCell>
  {columnVisibility.isColumnVisible('namespace') && <ResizableTableCell columnId="namespace"><NamespaceBadge namespace={item.namespace} className="font-normal truncate block w-fit max-w-full" /></ResizableTableCell>}
@@ -788,7 +792,7 @@ spec:
  const cpuDataPoints = cpuNum != null ? Array(12).fill(cpuNum) : undefined;
  const memDataPoints = memNum != null ? Array(12).fill(memNum) : undefined;
  return (
- <tr key={key} className={cn(resourceTableRowClassName, idx % 2 === 1 && 'bg-muted/5', isSelected && 'bg-primary/5')}>
+ <tr key={key} className={cn(resourceTableRowClassName, getRowAnimationClass(item.uid), idx % 2 === 1 && 'bg-muted/5', isSelected && 'bg-primary/5')}>
  <TableCell><Checkbox checked={isSelected} onCheckedChange={() => toggleSelection(item)} /></TableCell>
  <ResizableTableCell columnId="name"><Link to={`/statefulsets/${item.namespace}/${item.name}`} className="font-medium text-primary hover:underline flex items-center gap-2 truncate"><StatefulSetIcon className="h-4 w-4 text-muted-foreground flex-shrink-0" /><span className="truncate">{item.name}</span></Link></ResizableTableCell>
  {columnVisibility.isColumnVisible('namespace') && <ResizableTableCell columnId="namespace"><NamespaceBadge namespace={item.namespace} className="font-normal truncate block w-fit max-w-full" /></ResizableTableCell>}

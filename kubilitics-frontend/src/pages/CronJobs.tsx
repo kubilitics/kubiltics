@@ -21,6 +21,7 @@ import { DeleteConfirmDialog } from '@/components/resources';
 import { ResourceExportDropdown, ListViewSegmentedControl, ListPagination, PAGE_SIZE_OPTIONS, ResourceCommandBar, resourceTableRowClassName, ROW_MOTION, StatusPill, ListPageStatCard, ListPageHeader, TableColumnHeaderWithFilterAndSort, TableFilterCell, AgeCell, TableEmptyState, TableErrorState, ListPageLoadingShell, CopyNameDropdownItem, NamespaceBadge, ResourceListTableToolbar } from '@/components/list';
 import { useTableFiltersAndSort, type ColumnConfig } from '@/hooks/useTableFiltersAndSort';
 import { useColumnVisibility } from '@/hooks/useColumnVisibility';
+import { getRowAnimationClass } from '@/hooks/useResourceLiveUpdates';
 import type { StatusPillVariant } from '@/components/list';
 import { ResourceCreator, DEFAULT_YAMLS } from '@/components/editor';
 import { toast } from 'sonner';
@@ -44,6 +45,7 @@ interface CronJobResource extends KubernetesResource {
 }
 
 interface CronJob {
+ uid?: string;
  name: string;
  namespace: string;
  status: 'Active' | 'Suspended';
@@ -163,6 +165,7 @@ function transformResource(resource: CronJobResource): CronJob {
  const hasFailedCondition = status?.conditions?.some((c) => c.type === 'Failed' && c.status === 'True');
  const lastResult = status?.active?.length ? 'Running' : hasFailedCondition ? 'Failed' : status?.lastSuccessfulTime ? 'Success' : '–';
  return {
+ uid: resource.metadata?.uid,
  name: resource.metadata.name,
  namespace: resource.metadata.namespace || 'default',
  status: spec?.suspend ? 'Suspended' : 'Active',
@@ -424,6 +427,7 @@ spec:
  resourceCount={filteredItems.length}
  subtitle={namespaces.length > 1 ? `across ${namespaces.length - 1} namespaces` : undefined}
  demoMode={!isConnected}
+ dataUpdatedAt={dataUpdatedAt}
  isLoading={isLoading}
  onRefresh={() => refetch()}
  createLabel="Create CronJob"
@@ -640,7 +644,7 @@ spec:
  const isSelected = selectedItems.has(key);
  const isExpanded = expandedRow === key;
  return [
- <tr key={key} className={cn(resourceTableRowClassName, idx % 2 === 1 && 'bg-muted/5', isSelected && 'bg-primary/5')}>
+ <tr key={key} className={cn(resourceTableRowClassName, getRowAnimationClass(item.uid), idx % 2 === 1 && 'bg-muted/5', isSelected && 'bg-primary/5')}>
  <TableCell><Checkbox checked={isSelected} onCheckedChange={() => toggleSelection(item)} /></TableCell>
  <ResizableTableCell columnId="expand">
  <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={() => setExpandedRow(isExpanded ? null : key)} aria-label={isExpanded ? 'Collapse' : 'Expand'} aria-expanded={isExpanded}>
@@ -745,7 +749,7 @@ spec:
  const isSelected = selectedItems.has(key);
  const isExpanded = expandedRow === key;
  return [
- <tr key={key} className={cn(resourceTableRowClassName, idx % 2 === 1 && 'bg-muted/5', isSelected && 'bg-primary/5')}>
+ <tr key={key} className={cn(resourceTableRowClassName, getRowAnimationClass(item.uid), idx % 2 === 1 && 'bg-muted/5', isSelected && 'bg-primary/5')}>
  <TableCell><Checkbox checked={isSelected} onCheckedChange={() => toggleSelection(item)} /></TableCell>
  <ResizableTableCell columnId="expand">
  <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={() => setExpandedRow(isExpanded ? null : key)} aria-label={isExpanded ? 'Collapse' : 'Expand'} aria-expanded={isExpanded}>

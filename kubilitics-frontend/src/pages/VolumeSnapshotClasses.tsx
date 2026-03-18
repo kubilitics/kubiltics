@@ -215,6 +215,7 @@ deletionPolicy: ${v.deletionPolicy}
  resourceCount={filteredItems.length}
  subtitle="Cluster-scoped · CSI snapshot parameters"
  demoMode={!isConnected}
+ dataUpdatedAt={dataUpdatedAt}
  isLoading={isLoading}
  onRefresh={() => refetch()}
  createLabel="Create VolumeSnapshotClass"

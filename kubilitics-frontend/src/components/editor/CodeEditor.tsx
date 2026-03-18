@@ -3,6 +3,10 @@ import Editor, { type OnMount, type OnChange } from '@monaco-editor/react';
 import type * as monacoType from 'monaco-editor';
 import { cn } from '@/lib/utils';
 
+// PERF: Monaco setup is no longer in main.tsx (saves ~4MB from initial bundle).
+// Import it here — since CodeEditor is always lazy-loaded, this runs only when needed.
+import '@/lib/monacoSetup';
+
 // ── Fallback textarea ────────────────────────────────────────────────────────
 // Rendered if Monaco fails to initialize (e.g. CSP blocks workers, stale cache).
 // Provides full editing capability — users are never blocked.

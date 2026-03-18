@@ -253,6 +253,7 @@ subsets: []
  resourceCount={filteredEndpoints.length}
  subtitle={namespaces.length > 1 ? `across ${namespaces.length - 1} namespaces` : undefined}
  demoMode={!isConnected}
+ dataUpdatedAt={dataUpdatedAt}
  isLoading={isLoading}
  onRefresh={() => refetch()}
  createLabel="Create Endpoint"

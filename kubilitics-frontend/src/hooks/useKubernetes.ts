@@ -573,6 +573,8 @@ export function useUpdateK8sResource(resourceType: ResourceType) {
 const WORKLOAD_TYPES: ResourceType[] = ['deployments', 'replicasets', 'statefulsets', 'daemonsets', 'jobs', 'cronjobs'];
 
 // Hook for PATCH (scale, rollout restart, etc.). Only works when backend is configured.
+// PERF Area 5: Optimistic scale — when patch contains spec.replicas, the detail cache
+// is updated instantly so the UI reflects the new count before the server confirms.
 export function usePatchK8sResource(resourceType: ResourceType) {
   const queryClient = useQueryClient();
   const storedUrl = useBackendConfigStore((s) => s.backendBaseUrl);
@@ -600,6 +602,61 @@ export function usePatchK8sResource(resourceType: ResourceType) {
       const ns = CLUSTER_SCOPED_KINDS.includes(resourceType) ? '' : (namespace ?? '');
       return patchResource(backendBaseUrl, clusterId, resourceType, ns, name, patch);
     },
+    // PERF: Optimistic scale — detect replica patches and update detail cache instantly
+    onMutate: async ({ name, namespace, patch }) => {
+      const replicas = (patch as any)?.spec?.replicas;
+      if (replicas == null) return {}; // Only optimize scale patches
+
+      // Cancel in-flight refetches on the detail query
+      const detailKey = ['backend', 'resource', clusterId, resourceType, namespace, name];
+      await queryClient.cancelQueries({ queryKey: detailKey });
+
+      // Snapshot & optimistically update detail cache
+      const prevDetail = queryClient.getQueryData(detailKey);
+      if (prevDetail) {
+        queryClient.setQueryData(detailKey, (old: any) => {
+          if (!old?.spec) return old;
+          return { ...old, spec: { ...old.spec, replicas } };
+        });
+      }
+
+      // Also update the item in list caches so the list view shows new count
+      const listSnapshots: [readonly unknown[], unknown][] = [];
+      const cache = queryClient.getQueryCache();
+      for (const query of cache.getAll()) {
+        const key = query.queryKey;
+        const isMatch =
+          (key[0] === 'backend' && key[1] === 'resources' && key[2] === clusterId && key[4] === resourceType);
+        if (!isMatch) continue;
+        const data = queryClient.getQueryData(key);
+        if (!data || !(data as any).items) continue;
+        listSnapshots.push([key, data]);
+        queryClient.setQueryData(key, (old: any) => {
+          if (!old?.items) return old;
+          return {
+            ...old,
+            items: old.items.map((item: any) =>
+              item.metadata?.name === name && item.metadata?.namespace === namespace
+                ? { ...item, spec: { ...item.spec, replicas } }
+                : item
+            ),
+          };
+        });
+      }
+
+      return { prevDetail, detailKey, listSnapshots };
+    },
+    onError: (_error, _vars, context) => {
+      // Rollback optimistic scale
+      if (context?.prevDetail && context?.detailKey) {
+        queryClient.setQueryData(context.detailKey, context.prevDetail);
+      }
+      if (context?.listSnapshots) {
+        for (const [key, data] of context.listSnapshots) {
+          queryClient.setQueryData(key, data);
+        }
+      }
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['k8s', resourceType] });
       if (clusterId) {
@@ -621,6 +678,8 @@ export function usePatchK8sResource(resourceType: ResourceType) {
 }
 
 // Hook for deleting resources (backend when configured + cluster selected; else direct K8s). D1.2: backend requires confirmation — UI uses DeleteConfirmDialog before calling.
+// PERF Area 5: Optimistic delete — item is removed from list cache immediately on click.
+// If the server rejects, the item reappears and an error toast is shown.
 export function useDeleteK8sResource(resourceType: ResourceType) {
   const { config } = useKubernetesConfigStore();
   const queryClient = useQueryClient();
@@ -648,6 +707,60 @@ export function useDeleteK8sResource(resourceType: ResourceType) {
         : `${apiBase}/namespaces/${namespace}/${resourceType}/${name}`;
       return k8sRequest(path, { method: 'DELETE' }, config);
     },
+    // PERF: Optimistic removal — strip the deleted item from all matching list caches
+    // before the server responds. The UI updates in <16ms (one frame).
+    onMutate: async ({ name, namespace }) => {
+      // Cancel any in-flight refetches so they don't overwrite the optimistic update
+      await queryClient.cancelQueries({ queryKey: ['k8s', resourceType] });
+      if (clusterId) {
+        await queryClient.cancelQueries({
+          predicate: (q) =>
+            q.queryKey[0] === 'backend' && q.queryKey[1] === 'resources' &&
+            q.queryKey[2] === clusterId && q.queryKey[4] === resourceType,
+        });
+      }
+
+      // Snapshot every matching list cache for rollback on error
+      const snapshots: [readonly unknown[], unknown][] = [];
+      const cache = queryClient.getQueryCache();
+      for (const query of cache.getAll()) {
+        const key = query.queryKey;
+        const isMatch =
+          (key[0] === 'k8s' && key[1] === resourceType) ||
+          (key[0] === 'backend' && key[1] === 'resources' && key[2] === clusterId && key[4] === resourceType);
+        if (!isMatch) continue;
+
+        const data = queryClient.getQueryData(key);
+        if (!data || !(data as any).items) continue;
+
+        snapshots.push([key, data]);
+        // Remove by name + namespace match (works for both UID and name lookups)
+        queryClient.setQueryData(key, (old: any) => {
+          if (!old?.items) return old;
+          return {
+            ...old,
+            items: old.items.filter((item: any) =>
+              !(item.metadata?.name === name &&
+                (item.metadata?.namespace === namespace || !namespace))
+            ),
+          };
+        });
+      }
+
+      return { snapshots };
+    },
+    onError: (error: Error, _vars, context) => {
+      // Rollback: restore all snapshotted list caches
+      if (context?.snapshots) {
+        for (const [key, data] of context.snapshots) {
+          queryClient.setQueryData(key, data);
+        }
+      }
+      notifyError(error, {
+        action: 'delete',
+        resourceType,
+      });
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['k8s', resourceType] });
       if (clusterId) {
@@ -673,12 +786,6 @@ export function useDeleteK8sResource(resourceType: ResourceType) {
         }
       }
       notifySuccess({
-        action: 'delete',
-        resourceType,
-      });
-    },
-    onError: (error: Error) => {
-      notifyError(error, {
         action: 'delete',
         resourceType,
       });

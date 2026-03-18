@@ -271,6 +271,7 @@ spec:
  resourceCount={filteredClasses.length}
  subtitle="Cluster-scoped"
  demoMode={!isConnected}
+ dataUpdatedAt={dataUpdatedAt}
  isLoading={isLoading}
  onRefresh={() => refetch()}
  createLabel="Create Class"

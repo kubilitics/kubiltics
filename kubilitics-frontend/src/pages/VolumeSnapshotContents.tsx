@@ -253,6 +253,7 @@ export default function VolumeSnapshotContents() {
  resourceCount={filteredItems.length}
  subtitle="Cluster-scoped · Actual snapshot data binding"
  demoMode={!isConnected}
+ dataUpdatedAt={dataUpdatedAt}
  isLoading={isLoading}
  onRefresh={() => refetch()}
  actions={

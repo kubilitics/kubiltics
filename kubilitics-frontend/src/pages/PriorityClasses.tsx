@@ -266,6 +266,7 @@ export default function PriorityClasses() {
  resourceCount={searchFiltered.length}
  subtitle="Cluster-scoped"
  demoMode={!isConnected}
+ dataUpdatedAt={hookPagination?.dataUpdatedAt}
  isLoading={isLoading}
  onRefresh={() => refetch()}
  createLabel="Create"

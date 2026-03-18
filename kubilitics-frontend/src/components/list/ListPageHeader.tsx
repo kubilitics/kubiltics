@@ -2,6 +2,7 @@ import { RefreshCw, Loader2, Plus, WifiOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { DataFreshnessIndicator } from './DataFreshnessIndicator';
 
 export interface ListPageHeaderProps {
   /** Resource icon (e.g. from KubernetesIcons), rendered in a rounded container */
@@ -28,6 +29,10 @@ export interface ListPageHeaderProps {
   columnsDropdown?: React.ReactNode;
   /** Optional extra content on the left (e.g. "N selected" + Clear when items selected) */
   leftExtra?: React.ReactNode;
+  /** PERF Area 5: Optional data freshness indicator node (e.g. DataFreshnessIndicator) */
+  freshness?: React.ReactNode;
+  /** PERF Area 5: Timestamp (ms) of last data update — auto-renders freshness indicator */
+  dataUpdatedAt?: number;
   className?: string;
 }
 
@@ -49,8 +54,13 @@ export function ListPageHeader({
   actions,
   columnsDropdown,
   leftExtra,
+  freshness,
+  dataUpdatedAt,
   className,
 }: ListPageHeaderProps) {
+  // Render freshness: prefer explicit freshness node, fall back to auto from dataUpdatedAt
+  const freshnessNode = freshness ?? (dataUpdatedAt ? <DataFreshnessIndicator dataUpdatedAt={dataUpdatedAt} /> : null);
+
   return (
     <div className={cn('flex items-center justify-between flex-wrap gap-4 elevation-1', className)}>
       <div className="flex items-center gap-3 flex-wrap">
@@ -76,6 +86,7 @@ export function ListPageHeader({
           )}
         </div>
         {leftExtra != null && leftExtra}
+        {freshnessNode != null && freshnessNode}
       </div>
       <div className="flex items-center gap-2 shrink-0">
         {actions}

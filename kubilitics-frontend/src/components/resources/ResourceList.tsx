@@ -53,8 +53,8 @@ export interface ResourceListPagination {
   onPageChange?: (page: number) => void;
 }
 
-/** When item count exceeds this, the table body is virtualized (C2.1) to avoid freezing the UI. */
-const VIRTUAL_THRESHOLD = 100;
+/** PERF Area 4: Lowered from 100→50 to virtualize earlier — prevents jank on mid-size clusters. */
+const VIRTUAL_THRESHOLD = 50;
 const ROW_HEIGHT_PX = 48;
 const VIRTUAL_LIST_HEIGHT = 500;
 

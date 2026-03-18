@@ -295,6 +295,7 @@ export default function Leases() {
  resourceCount={searchFiltered.length}
  subtitle={namespaces.length > 1 ? `across ${namespaces.length - 1} namespaces` : undefined}
  demoMode={!isConnected}
+ dataUpdatedAt={hookPagination?.dataUpdatedAt}
  isLoading={isLoading}
  onRefresh={() => refetch()}
  createLabel="Create"

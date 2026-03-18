@@ -27,6 +27,7 @@ import {
  type StatusPillVariant,
 } from '@/components/list';
 import { useTableFiltersAndSort, type ColumnConfig } from '@/hooks/useTableFiltersAndSort';
+import { getRowAnimationClass } from '@/hooks/useResourceLiveUpdates';
 import { useTableKeyboardNav } from '@/hooks/useTableKeyboardNav';
 import { useColumnVisibility } from '@/hooks/useColumnVisibility';
 import { ResizableTableProvider, ResizableTableHead, ResizableTableCell, type ResizableColumnConfig } from '@/components/ui/resizable-table';
@@ -78,6 +79,7 @@ interface PodResource extends KubernetesResource {
 }
 
 interface Pod {
+ uid?: string;
  name: string;
  namespace: string;
  status: 'Running' | 'Pending' | 'Succeeded' | 'Failed' | 'Unknown' | 'CrashLoopBackOff' | 'ContainerCreating' | 'Terminating';
@@ -186,6 +188,7 @@ function transformResource(resource: PodResource): Pod {
  const restarts = containerStatuses.reduce((acc, c) => acc + c.restartCount, 0);
 
  return {
+ uid: resource.metadata?.uid,
  name: resource.metadata.name,
  namespace: resource.metadata.namespace || 'default',
  status,
@@ -674,6 +677,7 @@ export default function Pods() {
  resourceCount={filteredPods.length}
  subtitle={selectedNamespaces.size > 0 ? `in ${selectedNamespaces.size} namespaces` : 'across all namespaces'}
  demoMode={!isConnected}
+ dataUpdatedAt={dataUpdatedAt}
  isLoading={isLoading}
  onRefresh={() => refetch()}
  createLabel="Create Pod"
@@ -1163,6 +1167,7 @@ export default function Pods() {
  key={podKey}
  className={cn(
  resourceTableRowClassName,
+ getRowAnimationClass(pod.uid),
  isSelected && 'bg-primary/5'
  )}
  >

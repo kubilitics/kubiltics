@@ -226,6 +226,7 @@ export default function DeviceClasses() {
  resourceCount={filteredItems.length}
  subtitle="Cluster-scoped · DRA device presets"
  demoMode={!isConnected}
+ dataUpdatedAt={hookPagination?.dataUpdatedAt}
  isLoading={isLoading}
  onRefresh={() => refetch()}
  createLabel="Create Device Class"

@@ -46,6 +46,7 @@ import { useMetalLBInstalled } from '@/hooks/useMetalLBInstalled';
 import { useUIStore } from '@/stores/uiStore';
 import { useProjectStore } from '@/stores/projectStore';
 import { RecentResources } from '@/components/layout/RecentResources';
+import { useHoverPrefetch } from '@/hooks/useHoverPrefetch';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -131,6 +132,8 @@ function NavItem({ to, icon: Icon, label, count, onNavigate }: NavItemProps) {
   const location = useLocation();
   const isActive = location.pathname === to || location.pathname.startsWith(`${to}/`);
   const itemRef = useRef<HTMLAnchorElement>(null);
+  // PERF Area 2: Prefetch resource data on hover (200-400ms head start)
+  const { onMouseEnter: hoverPrefetch, onMouseLeave: hoverCancel } = useHoverPrefetch();
 
   useEffect(() => {
     if (isActive && itemRef.current) {
@@ -148,6 +151,8 @@ function NavItem({ to, icon: Icon, label, count, onNavigate }: NavItemProps) {
       ref={itemRef}
       to={to}
       onClick={onNavigate}
+      onMouseEnter={() => hoverPrefetch(to)}
+      onMouseLeave={hoverCancel}
       aria-current={isActive ? 'page' : undefined}
       className={cn(
         'flex items-center gap-3 px-3 py-2 rounded-xl text-[13px] font-medium transition-all duration-300 group relative overflow-hidden h-10',

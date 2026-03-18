@@ -60,6 +60,7 @@ import {
 import { NodeIcon } from '@/components/icons/KubernetesIcons';
 import { useTableFiltersAndSort, type ColumnConfig } from '@/hooks/useTableFiltersAndSort';
 import { useColumnVisibility } from '@/hooks/useColumnVisibility';
+import { getRowAnimationClass } from '@/hooks/useResourceLiveUpdates';
 
 interface NodeResource extends KubernetesResource {
  spec?: {
@@ -77,6 +78,7 @@ interface NodeResource extends KubernetesResource {
 type ListView = 'flat' | 'byRole';
 
 interface Node {
+ uid?: string;
  name: string;
  status: string;
  roles: string[];
@@ -197,6 +199,7 @@ function transformNodeResource(resource: NodeResource): Node {
  .join(' ');
 
  return {
+ uid: resource.metadata?.uid,
  name: resource.metadata.name,
  status,
  roles,
@@ -507,6 +510,7 @@ export default function Nodes() {
  resourceCount={filteredItems.length}
  subtitle="Cluster-scoped"
  demoMode={!isConnected}
+ dataUpdatedAt={hookPagination?.dataUpdatedAt}
  isLoading={isLoading}
  onRefresh={() => refetch()}
  actions={
@@ -701,7 +705,7 @@ export default function Nodes() {
  return (
  <tr
  key={node.name}
- className={cn(resourceTableRowClassName, isSelected && 'bg-primary/5')}
+ className={cn(resourceTableRowClassName, getRowAnimationClass(node.uid), isSelected && 'bg-primary/5')}
  >
  <TableCell className="w-12 px-2 text-center">
  <Checkbox

@@ -663,3 +663,32 @@
   50%  { transform: translateX(100%) scaleX(1.2); }
   100% { transform: translateX(300%) scaleX(0.5); }
 }
+
+/* PERF Area 6: Row highlight pulse for real-time WebSocket updates.
+   Applied briefly when a resource row is updated via WebSocket — gives users
+   visual feedback that data changed without causing table flicker or scroll reset. */
+@keyframes row-update-pulse {
+  0%   { background-color: hsl(var(--primary) / 0.12); }
+  100% { background-color: transparent; }
+}
+.animate-row-update {
+  animation: row-update-pulse 1.5s ease-out forwards;
+}
+
+/* Row fade-in for newly added resources */
+@keyframes row-fade-in {
+  from { opacity: 0; transform: translateX(-4px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+.animate-row-added {
+  animation: row-fade-in 0.3s ease-out forwards;
+}
+
+/* Row fade-out for deleted resources */
+@keyframes row-fade-out {
+  from { opacity: 1; transform: translateX(0); }
+  to   { opacity: 0; transform: translateX(4px); }
+}
+.animate-row-deleted {
+  animation: row-fade-out 0.3s ease-out forwards;
+}

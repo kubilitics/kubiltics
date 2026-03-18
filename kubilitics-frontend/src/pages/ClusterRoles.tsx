@@ -317,6 +317,7 @@ export default function ClusterRoles() {
  resourceCount={searchFiltered.length}
  subtitle="Cluster-scoped"
  demoMode={!isConnected}
+ dataUpdatedAt={hookPagination?.dataUpdatedAt}
  isLoading={isLoading}
  onRefresh={() => refetch()}
  createLabel="Create"

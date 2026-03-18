@@ -280,6 +280,7 @@ export default function CustomResources() {
  resourceCount={filteredItems.length}
  subtitle={crdName}
  demoMode={!isConnected}
+ dataUpdatedAt={dataUpdatedAt}
  isLoading={isLoading}
  onRefresh={() => refetch()}
  actions={

@@ -245,6 +245,7 @@ template:
  resourceCount={filteredItems.length}
  subtitle="Namespaced · Pod template specs for workload controllers"
  demoMode={!isConnected}
+ dataUpdatedAt={hookPagination?.dataUpdatedAt}
  isLoading={isLoading}
  onRefresh={() => refetch()}
  createLabel="Create Pod Template"

@@ -48,6 +48,7 @@ import { buildAutoWidthColumns } from '@/lib/tableSizing';
 import { SecretIcon } from '@/components/icons/KubernetesIcons';
 import { useTableFiltersAndSort, type ColumnConfig } from '@/hooks/useTableFiltersAndSort';
 import { useColumnVisibility } from '@/hooks/useColumnVisibility';
+import { getRowAnimationClass } from '@/hooks/useResourceLiveUpdates';
 import { usePaginatedResourceList, useDeleteK8sResource, useCreateK8sResource, calculateAge, type KubernetesResource } from '@/hooks/useKubernetes';
 import { useConnectionStatus } from '@/hooks/useConnectionStatus';
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
@@ -59,6 +60,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { toast } from 'sonner';
 
 interface Secret {
+ uid?: string;
  name: string;
  namespace: string;
  type: string;
@@ -155,6 +157,7 @@ function totalSizeFromData(data: Record<string, string> | undefined): number {
 
 function mapSecret(s: K8sSecret): Secret {
  return {
+ uid: s.metadata?.uid,
  name: s.metadata?.name ?? '',
  namespace: s.metadata?.namespace || 'default',
  type: s.type || 'Opaque',
@@ -453,6 +456,7 @@ data: {}
  resourceCount={filteredItems.length}
  subtitle={namespaceCount > 0 ? `across ${namespaceCount} namespaces` : undefined}
  demoMode={!isConnected}
+ dataUpdatedAt={(data as any)?.dataUpdatedAt}
  isLoading={isLoading}
  onRefresh={() => refetch()}
  createLabel="Create"
@@ -710,7 +714,7 @@ data: {}
  return (
  <tr
  key={key}
- className={cn(resourceTableRowClassName, idx % 2 === 1 && 'bg-muted/5', selectedItems.has(key) && 'bg-primary/5')}
+ className={cn(resourceTableRowClassName, getRowAnimationClass(item.uid), idx % 2 === 1 && 'bg-muted/5', selectedItems.has(key) && 'bg-primary/5')}
  >
  <TableCell><Checkbox checked={selectedItems.has(key)} onCheckedChange={() => toggleSelection(item)} aria-label={`Select ${item.name}`} /></TableCell>
  <ResizableTableCell columnId="name">
@@ -818,7 +822,7 @@ data: {}
  return (
  <tr
  key={key}
- className={cn(resourceTableRowClassName, idx % 2 === 1 && 'bg-muted/5', selectedItems.has(key) && 'bg-primary/5')}
+ className={cn(resourceTableRowClassName, getRowAnimationClass(item.uid), idx % 2 === 1 && 'bg-muted/5', selectedItems.has(key) && 'bg-primary/5')}
  >
  <TableCell><Checkbox checked={selectedItems.has(key)} onCheckedChange={() => toggleSelection(item)} aria-label={`Select ${item.name}`} /></TableCell>
  <ResizableTableCell columnId="name">

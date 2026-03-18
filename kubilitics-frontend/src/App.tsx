@@ -7,8 +7,11 @@ import { useClusterStore } from "@/stores/clusterStore";
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from "@/stores/backendConfigStore";
 import { getClusters } from "@/services/backendApiClient";
 import { backendClusterToCluster } from "@/lib/backendClusterAdapter";
-import { AIAssistant } from "@/components/ai";
 import { Loader2 } from "lucide-react";
+
+// PERF: Lazy-load AIAssistant — pulls in framer-motion, react-markdown, remark-gfm (~120KB).
+// These are NOT needed for initial render; the AI panel opens on user interaction.
+const AIAssistant = lazy(() => import("@/components/ai/AIAssistant").then(m => ({ default: m.AIAssistant })));
 
 // Loading Fallback Component — uses a skeleton that mirrors typical list page layout
 // instead of a blank screen with a spinner, preventing the "white flash" problem.
@@ -656,7 +659,7 @@ const App = () => (
                 <BackendStatusBanner className="rounded-none border-x-0 border-t-0" />
                 {/* P1: Circuit breaker countdown — shows immediately when circuit opens */}
                 <CircuitBreakerBanner compact className="rounded-none border-x-0 border-t-0" />
-                <AIAssistant />
+                <Suspense fallback={null}><AIAssistant /></Suspense>
                 <RouteErrorBoundaryWithReset>
                   <Suspense fallback={<PageLoader />}>
                     <Routes>

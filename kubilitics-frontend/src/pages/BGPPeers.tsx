@@ -206,6 +206,7 @@ export default function BGPPeers() {
  resourceCount={filteredItems.length}
  subtitle="MetalLB · BGP router connections"
  demoMode={!isConnected}
+ dataUpdatedAt={dataUpdatedAt}
  isLoading={isLoading}
  onRefresh={() => refetch()}
  actions={

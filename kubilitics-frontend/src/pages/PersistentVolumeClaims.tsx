@@ -454,6 +454,7 @@ export default function PersistentVolumeClaims() {
  resourceCount={filteredItems.length}
  subtitle={namespaceCount > 0 ? `across ${namespaceCount} namespaces` : undefined}
  demoMode={!isConnected}
+ dataUpdatedAt={hookPagination?.dataUpdatedAt}
  isLoading={isLoading}
  onRefresh={() => refetch()}
  createLabel="Create"

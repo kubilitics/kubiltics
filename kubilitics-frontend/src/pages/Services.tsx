@@ -58,6 +58,7 @@ import { ResourceExportDropdown, ListPagination, PAGE_SIZE_OPTIONS, ResourceComm
 import { ServiceIcon } from '@/components/icons/KubernetesIcons';
 import { useTableFiltersAndSort, type ColumnConfig } from '@/hooks/useTableFiltersAndSort';
 import { useColumnVisibility } from '@/hooks/useColumnVisibility';
+import { getRowAnimationClass } from '@/hooks/useResourceLiveUpdates';
 import { ServiceWizard } from '@/components/wizards';
 import { toast } from 'sonner';
 
@@ -80,6 +81,7 @@ interface ServiceResource extends KubernetesResource {
 }
 
 interface Service {
+ uid?: string;
  name: string;
  namespace: string;
  type: 'ClusterIP' | 'NodePort' | 'LoadBalancer' | 'ExternalName';
@@ -181,6 +183,7 @@ function transformServiceResource(resource: ServiceResource): Service {
  })) || [];
 
  return {
+ uid: resource.metadata?.uid,
  name: resource.metadata.name,
  namespace: resource.metadata.namespace || 'default',
  type: (resource.spec?.type as Service['type']) || 'ClusterIP',
@@ -457,6 +460,7 @@ spec:
  resourceCount={filteredServices.length}
  subtitle={namespaces.length > 1 ? `across ${namespaces.length - 1} namespaces` : undefined}
  demoMode={!isConnected}
+ dataUpdatedAt={dataUpdatedAt}
  isLoading={isLoading}
  onRefresh={() => refetch()}
  createLabel="Create Service"
@@ -753,7 +757,7 @@ spec:
  return (
  <tr
  key={`${svc.namespace}/${svc.name}`}
- className={cn(resourceTableRowClassName, idx % 2 === 1 && 'bg-muted/5', isSelected && 'bg-primary/5')}
+ className={cn(resourceTableRowClassName, getRowAnimationClass(svc.uid), idx % 2 === 1 && 'bg-muted/5', isSelected && 'bg-primary/5')}
  >
  <TableCell>
  <Checkbox
@@ -873,7 +877,7 @@ spec:
  return (
  <tr
  key={`${svc.namespace}/${svc.name}`}
- className={cn(resourceTableRowClassName, idx % 2 === 1 && 'bg-muted/5', isSelected && 'bg-primary/5')}
+ className={cn(resourceTableRowClassName, getRowAnimationClass(svc.uid), idx % 2 === 1 && 'bg-muted/5', isSelected && 'bg-primary/5')}
  >
  <TableCell><Checkbox checked={isSelected} onCheckedChange={() => toggleSelection(svc)} aria-label={`Select ${svc.name}`} /></TableCell>
  <ResizableTableCell columnId="name"><div className="min-w-0 overflow-hidden"><Link to={`/services/${svc.namespace}/${svc.name}`} className="font-medium text-primary hover:underline truncate block w-fit max-w-full">{svc.name}</Link></div></ResizableTableCell>

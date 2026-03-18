@@ -1,7 +1,6 @@
-// Monaco local loading MUST be initialized before any Editor component renders.
-// This configures @monaco-editor/react to use the bundled monaco-editor package
-// instead of fetching from CDN (which is blocked by Tauri's CSP).
-import './lib/monacoSetup';
+// PERF: Monaco setup deferred — it imports the full monaco-editor package (~4MB).
+// Setup now lives in lib/monacoSetup.ts and is called lazily before any <Editor/>
+// renders (via the lazy-import wrapper). No longer blocks initial paint.
 
 // Self-hosted fonts (no external CDN — works offline in Tauri desktop)
 import '@fontsource-variable/inter';

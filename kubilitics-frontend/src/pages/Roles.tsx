@@ -294,6 +294,7 @@ export default function Roles() {
  resourceCount={searchFiltered.length}
  subtitle={items.length > 0 ? `across ${new Set(items.map((r) => r.namespace)).size} namespaces` : undefined}
  demoMode={!isConnected}
+ dataUpdatedAt={hookPagination?.dataUpdatedAt}
  isLoading={isLoading}
  onRefresh={() => refetch()}
  createLabel="Create"

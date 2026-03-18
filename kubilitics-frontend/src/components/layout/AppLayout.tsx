@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { Outlet, useNavigate, useLocation, Link } from 'react-router-dom';
+import { useScrollRestoration } from './KeepAlive';
 import { motion } from 'framer-motion';
 import { useReducedMotion } from 'framer-motion';
 import { Header } from './Header';
@@ -19,12 +20,15 @@ import { useSidebarAutoCollapse } from '@/stores/uiStore';
 import { useDocumentTitle } from '@/hooks/useDocumentTitle';
 import { RouteAnnouncer } from '@/components/a11y/RouteAnnouncer';
 import { usePrefetchResources } from '@/hooks/usePrefetchResources';
+import { useMemoryMonitor } from '@/hooks/useMemoryMonitor';
 
 export function AppLayout() {
   useRecentlyVisited();
   useDocumentTitle(); // Auto-set page title from route
   // PERF: Prefetch critical K8s resources on cluster connect so every page loads instantly from cache
   usePrefetchResources();
+  // PERF Area 7: Monitor memory and trim stale caches during long sessions
+  useMemoryMonitor();
   // P0-005-T02: Auto-collapse sidebar at < 1280px, re-expand when viewport grows
   useSidebarAutoCollapse();
   const navigate = useNavigate();
@@ -35,6 +39,9 @@ export function AppLayout() {
   const { isOffline, aiBackendReachable, retryNow } = useOfflineMode();
   const gPendingRef = useRef(false);
   const gTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // PERF Area 2: Restore scroll position when navigating back to a previously visited page
+  const mainRef = useRef<HTMLElement>(null);
+  useScrollRestoration(mainRef);
 
   // Track app start
   useEffect(() => {
@@ -112,7 +119,7 @@ export function AppLayout() {
       )}
       <div className="flex flex-1 min-h-0 overflow-hidden">
         <Sidebar />
-        <main id="main-content" className="flex-1 p-6 pb-28 pr-3 overflow-auto flex flex-col gap-4" role="main" aria-label="Main content">
+        <main ref={mainRef} id="main-content" className="flex-1 p-6 pb-28 pr-3 overflow-auto flex flex-col gap-4" role="main" aria-label="Main content">
           <OfflineIndicator />
           <ConnectionRequiredBanner />
           <div

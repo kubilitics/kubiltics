@@ -18,6 +18,7 @@ import { useEffect, useRef, useCallback, useState, useMemo } from 'react';
 import { useQueryClient, type QueryKey } from '@tanstack/react-query';
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
 import { useClusterStore } from '@/stores/clusterStore';
+import { trackRowAnimation } from './useResourceLiveUpdates';
 import type { KubernetesResource, ResourceList, ResourceType } from '@/hooks/useKubernetes';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -133,6 +134,12 @@ export function useKubernetesWatch<T extends KubernetesResource = KubernetesReso
 
   const applyCacheUpdate = useCallback(
     (event: WatchEvent<T>) => {
+      // PERF Area 6: Track animation for the affected row
+      const uid = event.object?.metadata?.uid;
+      if (uid && (event.type === 'ADDED' || event.type === 'MODIFIED' || event.type === 'DELETED')) {
+        trackRowAnimation(uid, event.type === 'ADDED' ? 'added' : event.type === 'DELETED' ? 'deleted' : 'modified');
+      }
+
       queryClient.setQueryData<ResourceList<T>>(queryKey, (prev) => {
         if (!prev) return prev;
         const items = [...prev.items];
