@@ -160,3 +160,19 @@ systematic-restart.sh
 # Temporary topology file
 Topology.tsx
 .vite/
+
+# Presentation files
+*.pptx
+
+# Logo assets (moved to branding repo)
+Kubilitics-logo/
+logo-kubilitics/
+
+# Test reports
+test_reports/
+
+# Claude worktrees
+.claude/worktrees/
+
+# Office documents
+*.docx

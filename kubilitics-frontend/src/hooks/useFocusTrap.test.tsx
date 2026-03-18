@@ -1,5 +1,5 @@
-import { render, screen, fireEvent } from '@testing-library/react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { render, screen, fireEvent, cleanup } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { useRef, useState } from 'react';
 import { useFocusTrap } from './useFocusTrap';
 
@@ -41,6 +41,10 @@ function EmptyTrapHarness({ onClose }: { onClose?: () => void }) {
 // ---------------------------------------------------------------------------
 
 describe('useFocusTrap', () => {
+  afterEach(() => {
+    cleanup();
+  });
+
   it('wraps Tab from last element to first', async () => {
     render(<TrapHarness />);
     const third = screen.getByTestId('btn-third');
