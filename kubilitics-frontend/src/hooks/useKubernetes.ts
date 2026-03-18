@@ -263,16 +263,16 @@ export function useK8sResourceList<T extends KubernetesResource>(
         return k8sRequest<ResourceList<T>>(path + (query ? `?${query}` : ''), {}, config);
       },
     enabled: !skipRequests && (useBackend ? true : config.isConnected) && (options?.enabled !== false),
-    // Poll every 60s as a safety net. Real-time updates come via WebSocket
+    // Poll every 5 min as a safety net only. Real-time updates come via WebSocket
     // (useResourceLiveUpdates) which invalidates queries on resource changes.
-    // 10s polling was crushing the backend with 34+ resource types × constant refetches.
-    refetchInterval: options?.refetchInterval ?? 60_000,
-    // 30s staleTime: data served from cache for 30s before being considered stale.
-    // WebSocket invalidation will trigger immediate refetch when resources actually change.
-    // Navigation back to a page shows cached data instantly (no blank screen).
-    staleTime: options?.staleTime ?? 30_000,
-    // 'always' was causing full refetch on every navigation, killing cache benefits.
-    // With staleTime of 30s, 'true' means: refetch only if data is stale.
+    // With informer cache (<1ms reads) + WebSocket invalidation, polling is just
+    // a last-resort fallback. Headlamp doesn't poll at all when watching.
+    refetchInterval: options?.refetchInterval ?? 5 * 60_000,
+    // 60s staleTime: data from informer cache is always consistent.
+    // WebSocket invalidation triggers immediate refetch when resources change.
+    // Navigation back to a page shows cached data instantly (no loading state).
+    staleTime: options?.staleTime ?? 60_000,
+    // Refetch on mount only if data is stale (>60s old)
     refetchOnMount: true,
     // Keep previous data while refetching to avoid flash of empty state.
     // In React Query v5, keepPreviousData is a placeholderData function.

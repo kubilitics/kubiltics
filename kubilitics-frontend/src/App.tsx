@@ -172,26 +172,29 @@ import { useResourceLiveUpdates } from "./hooks/useResourceLiveUpdates";
 // Layout
 import { AppLayout } from "./components/layout/AppLayout";
 
-// Global React Query defaults: cache-first architecture like Headlamp/Lens.
-// Real-time updates come via WebSocket (useResourceLiveUpdates) which
-// invalidates specific queries when resources change in the cluster.
-// Polling is a 60s safety net, not the primary update mechanism.
+// Global React Query defaults: cache-first architecture (Headlamp uses 3min staleTime).
+// With informer cache on the backend (<1ms reads) and WebSocket invalidation as the
+// primary update mechanism, we can be generous with staleTime — data is always fresh
+// from the informer cache, and WebSocket events trigger targeted refetches instantly.
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       // Retry with exponential backoff: 1s, 2s, 4s
       retry: 3,
       retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000),
-      // 30s stale time: serve cached data immediately on navigation.
-      // WebSocket invalidation triggers refetch when data actually changes.
-      staleTime: 30_000,
-      // Keep data in cache for 5 minutes after last subscriber unmounts
-      gcTime: 5 * 60_000,
-      // Don't refetch on window focus (prevents refetch storms)
+      // 60s stale time: data from informer cache is always consistent.
+      // WebSocket invalidation triggers refetch when resources actually change.
+      // Headlamp uses 3min; 60s is a good balance for Kubilitics.
+      staleTime: 60_000,
+      // Keep data in cache for 10 minutes after last subscriber unmounts
+      // (Headlamp uses 10min TTL on backend cache; align frontend GC)
+      gcTime: 10 * 60_000,
+      // Don't refetch on window focus — WebSocket handles freshness.
+      // (Headlamp also sets refetchOnWindowFocus: false)
       refetchOnWindowFocus: false,
       // Refetch when connection restored (user reconnects)
       refetchOnReconnect: true,
-      // Only refetch on mount if data is stale (>30s old)
+      // Only refetch on mount if data is stale (>60s old)
       refetchOnMount: true,
     },
   },

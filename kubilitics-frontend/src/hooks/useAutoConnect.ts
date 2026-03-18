@@ -153,6 +153,7 @@ export function useAutoConnect(): UseAutoConnectReturn {
       queryClient.invalidateQueries({ queryKey: ['backend', 'clusters'] });
 
       toast.success(`Connected to ${backendCluster.name}`, {
+        id: 'cluster-connect-status',
         description: `Context: ${target}`,
       });
 
