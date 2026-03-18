@@ -6,8 +6,10 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 
 /* ── Slow-load timeout thresholds ── */
-const SLOW_THRESHOLD_MS = 8_000;
-const VERY_SLOW_THRESHOLD_MS = 20_000;
+// With informer cache in the backend, most requests complete in <100ms.
+// If we hit 3s, something is genuinely slow (cold cache, network issue).
+const SLOW_THRESHOLD_MS = 3_000;
+const VERY_SLOW_THRESHOLD_MS = 10_000;
 
 /* ── Hook: track loading phase timing ── */
 function useLoadingPhase(isLoading: boolean) {

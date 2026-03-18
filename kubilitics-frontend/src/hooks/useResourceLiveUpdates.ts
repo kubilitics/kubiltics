@@ -86,9 +86,11 @@ export function useResourceLiveUpdates({
                     pendingInvalidations.current.add(normalizedKind);
                 }
 
-                // Batch invalidations: wait 500ms for more events before flushing
+                // Batch invalidations: wait 200ms for more events before flushing.
+                // 500ms was noticeable lag; 200ms batches rapid-fire events while
+                // keeping the UI responsive — with informer cache, refetches are <5ms.
                 if (!flushTimer.current) {
-                    flushTimer.current = setTimeout(flushInvalidations, 500);
+                    flushTimer.current = setTimeout(flushInvalidations, 200);
                 }
             } else if (type === 'topology_update') {
                 queryClient.invalidateQueries({ queryKey: ['topology', clusterId] });

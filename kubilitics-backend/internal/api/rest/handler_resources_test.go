@@ -93,6 +93,9 @@ func (m *mockClusterServiceWithClient) ReconnectCluster(ctx context.Context, id 
 func (m *mockClusterServiceWithClient) AddClusterFromBytes(_ context.Context, _ []byte, _ string) (*models.Cluster, error) {
 	return nil, nil
 }
+func (m *mockClusterServiceWithClient) GetInformerManager(_ string) *k8s.InformerManager {
+	return nil
+}
 
 func TestHandler_ListResources_Success(t *testing.T) {
 	// Create fake Kubernetes clientset with test pods

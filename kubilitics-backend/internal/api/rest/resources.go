@@ -131,71 +131,96 @@ func (h *Handler) ListResources(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var list *unstructured.UnstructuredList
-	if hasNamespacesParam && len(nsList) == 0 {
-		// Explicit empty namespaces list (e.g. project with no namespaces in this cluster).
-		list = &unstructured.UnstructuredList{Items: nil}
-	} else if len(nsList) > 0 {
-		// Multi-namespace: list per namespace and merge. Pagination: limit per-namespace (ceil(limit/len(nsList))).
-		perNsLimit := opts.Limit
-		if len(nsList) > 1 {
-			perNsLimit = (opts.Limit + int64(len(nsList)) - 1) / int64(len(nsList))
-			if perNsLimit < 1 {
-				perNsLimit = 1
+	cacheHit := false
+
+	// PERF: Try informer cache first (Lens/Headlamp model).
+	// The OverviewCache maintains a live mirror of every resource via Watch events.
+	// Reading from cache is <1ms vs 200-2000ms for a direct K8s API call.
+	// Cache is used only for simple list requests (no label/field selectors, no continue token).
+	if im := h.clusterService.GetInformerManager(clusterID); im != nil {
+		if hasNamespacesParam && len(nsList) == 0 {
+			list = &unstructured.UnstructuredList{Items: nil}
+			cacheHit = true
+		} else if len(nsList) > 0 {
+			// Multi-namespace: try cache for each namespace and merge
+			merged := &unstructured.UnstructuredList{}
+			allHit := true
+			for _, ns := range nsList {
+				part, ok := im.ListFromCache(kind, ns, opts)
+				if !ok {
+					allHit = false
+					break
+				}
+				merged.Items = append(merged.Items, part.Items...)
+			}
+			if allHit {
+				if int64(len(merged.Items)) > opts.Limit {
+					merged.Items = merged.Items[:opts.Limit]
+				}
+				list = merged
+				cacheHit = true
+			}
+		} else {
+			if cached, ok := im.ListFromCache(kind, namespace, opts); ok {
+				list = cached
+				cacheHit = true
 			}
 		}
-		merged := &unstructured.UnstructuredList{}
-		for _, ns := range nsList {
-			optsNs := opts
-			optsNs.Limit = perNsLimit
-			part, err := client.ListResources(r.Context(), kind, ns, optsNs)
-			if err != nil {
-				requestID := logger.FromContext(r.Context())
-				if errors.Is(err, k8s.ErrCircuitOpen) {
-					w.Header().Set("Retry-After", "30")
-					respondErrorWithCode(w, http.StatusServiceUnavailable, ErrCodeCircuitBreaker, "Cluster API is temporarily unavailable due to repeated failures. Circuit breaker is open. Please retry after 30 seconds.", requestID)
-					return
-				}
-				if errors.Is(err, context.DeadlineExceeded) {
-					respondErrorWithCode(w, http.StatusGatewayTimeout, ErrCodeTimeout, "Request to Kubernetes API timed out. The cluster may be slow or overloaded. Try again or use a more specific query with namespace or label selectors.", requestID)
-					return
-				}
-				if apierrors.IsNotFound(err) || apierrors.IsForbidden(err) {
-					continue
-				}
-				respondErrorWithCode(w, http.StatusInternalServerError, ErrCodeInternalError, err.Error(), requestID)
-				return
-			}
-			merged.Items = append(merged.Items, part.Items...)
+		if cacheHit {
+			w.Header().Set("X-Cache", "HIT")
 		}
-		// Truncate to requested limit to avoid returning more items than requested.
-		if int64(len(merged.Items)) > opts.Limit {
-			merged.Items = merged.Items[:opts.Limit]
-		}
-		list = merged
-	} else {
-		list, err = client.ListResources(r.Context(), kind, namespace, opts)
 	}
-	if err != nil {
-		requestID := logger.FromContext(r.Context())
-		if errors.Is(err, k8s.ErrCircuitOpen) {
-			w.Header().Set("Retry-After", "30")
-			respondErrorWithCode(w, http.StatusServiceUnavailable, ErrCodeCircuitBreaker, "Cluster API is temporarily unavailable due to repeated failures. Circuit breaker is open. Please retry after 30 seconds.", requestID)
+
+	// Cache miss: fall back to direct K8s API call
+	if !cacheHit {
+		w.Header().Set("X-Cache", "MISS")
+		if hasNamespacesParam && len(nsList) == 0 {
+			list = &unstructured.UnstructuredList{Items: nil}
+		} else if len(nsList) > 0 {
+			// Multi-namespace: list per namespace and merge.
+			perNsLimit := opts.Limit
+			if len(nsList) > 1 {
+				perNsLimit = (opts.Limit + int64(len(nsList)) - 1) / int64(len(nsList))
+				if perNsLimit < 1 {
+					perNsLimit = 1
+				}
+			}
+			merged := &unstructured.UnstructuredList{}
+			for _, ns := range nsList {
+				optsNs := opts
+				optsNs.Limit = perNsLimit
+				part, err := client.ListResources(r.Context(), kind, ns, optsNs)
+				if err != nil {
+					requestID := logger.FromContext(r.Context())
+					if errors.Is(err, k8s.ErrCircuitOpen) {
+						w.Header().Set("Retry-After", "30")
+						respondErrorWithCode(w, http.StatusServiceUnavailable, ErrCodeCircuitBreaker, "Cluster API is temporarily unavailable due to repeated failures. Circuit breaker is open. Please retry after 30 seconds.", requestID)
+						return
+					}
+					if errors.Is(err, context.DeadlineExceeded) {
+						respondErrorWithCode(w, http.StatusGatewayTimeout, ErrCodeTimeout, "Request to Kubernetes API timed out. The cluster may be slow or overloaded. Try again or use a more specific query with namespace or label selectors.", requestID)
+						return
+					}
+					if apierrors.IsNotFound(err) || apierrors.IsForbidden(err) {
+						continue
+					}
+					respondErrorWithCode(w, http.StatusInternalServerError, ErrCodeInternalError, err.Error(), requestID)
+					return
+				}
+				merged.Items = append(merged.Items, part.Items...)
+			}
+			if int64(len(merged.Items)) > opts.Limit {
+				merged.Items = merged.Items[:opts.Limit]
+			}
+			list = merged
+		} else {
+			list, err = client.ListResources(r.Context(), kind, namespace, opts)
+		}
+		if err != nil {
+			requestID := logger.FromContext(r.Context())
+			respondK8sError(w, err, requestID)
 			return
 		}
-		if errors.Is(err, context.DeadlineExceeded) {
-			respondErrorWithCode(w, http.StatusGatewayTimeout, ErrCodeTimeout, "Request to Kubernetes API timed out. The cluster may be slow or overloaded. Try again or use a more specific query with namespace or label selectors.", requestID)
-			return
-		}
-		if apierrors.IsNotFound(err) {
-			respondErrorWithCode(w, http.StatusNotFound, ErrCodeNotFound, err.Error(), requestID)
-			return
-		}
-		if apierrors.IsForbidden(err) {
-			respondErrorWithCode(w, http.StatusForbidden, ErrCodeForbidden, err.Error(), requestID)
-			return
-		}
-		respondErrorWithCode(w, http.StatusInternalServerError, ErrCodeInternalError, err.Error(), requestID)
-		return
 	}
 
 	// BE-FUNC-002: Return pagination metadata: items + metadata with continue token and total

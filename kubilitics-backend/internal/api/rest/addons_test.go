@@ -201,6 +201,9 @@ func (t *testClusterService) Subscribe(_ string) (chan *models.ClusterOverview, 
 func (t *testClusterService) ReconnectCluster(_ context.Context, _ string) (*models.Cluster, error) {
 	return nil, nil
 }
+func (t *testClusterService) GetInformerManager(_ string) *k8s.InformerManager {
+	return nil
+}
 
 var _ service.ClusterService = (*testClusterService)(nil)
 

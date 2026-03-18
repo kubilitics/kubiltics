@@ -306,6 +306,9 @@ func (s *fakeClusterService) Subscribe(clusterID string) (chan *models.ClusterOv
 func (s *fakeClusterService) ReconnectCluster(ctx context.Context, id string) (*models.Cluster, error) {
 	return nil, nil
 }
+func (s *fakeClusterService) GetInformerManager(_ string) *k8s.InformerManager {
+	return nil
+}
 
 // fakeHelmClient is a no-op implementation of helm.HelmClient used to satisfy the factory.
 type fakeHelmClient struct{}

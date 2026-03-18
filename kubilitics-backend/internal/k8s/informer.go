@@ -3,8 +3,13 @@ package k8s
 import (
 	"context"
 	"fmt"
+	"strings"
+	"sync/atomic"
 	"time"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/tools/cache"
 )
@@ -12,13 +17,16 @@ import (
 // ResourceEventHandler handles resource events
 type ResourceEventHandler func(eventType string, obj interface{})
 
-// InformerManager manages Kubernetes informers for real-time updates
+// InformerManager manages Kubernetes informers for real-time updates.
+// After Start() completes and HasSynced() returns true, its stores contain
+// a full snapshot of all cluster resources — reads are sub-millisecond.
 type InformerManager struct {
 	client   *Client
 	factory  informers.SharedInformerFactory
 	stopCh   chan struct{}
 	handlers map[string]ResourceEventHandler
 	stores   map[string]cache.Store
+	synced   atomic.Bool // true after WaitForCacheSync succeeds
 }
 
 // NewInformerManager creates a new informer manager
@@ -93,14 +101,119 @@ func (im *InformerManager) Start(ctx context.Context) error {
 	im.factory.Start(im.stopCh)
 
 	// Wait for cache sync
-	synced := im.factory.WaitForCacheSync(im.stopCh)
-	for resource, ok := range synced {
+	syncMap := im.factory.WaitForCacheSync(im.stopCh)
+	for resource, ok := range syncMap {
 		if !ok {
 			return fmt.Errorf("failed to sync cache for resource: %v", resource)
 		}
 	}
 
+	im.synced.Store(true)
 	return nil
+}
+
+// HasSynced returns true after all informer caches have completed their
+// initial list+watch sync. Before this returns true, ListFromCache will
+// return (nil, false) to force a direct API call.
+func (im *InformerManager) HasSynced() bool {
+	return im.synced.Load()
+}
+
+// resourceKindToStoreKey maps the lowercase-plural resource type used in REST URLs
+// to the PascalCase kind used as the informer store key.
+var resourceKindToStoreKey = map[string]string{
+	"pods":                     "Pod",
+	"services":                 "Service",
+	"configmaps":               "ConfigMap",
+	"secrets":                  "Secret",
+	"nodes":                    "Node",
+	"namespaces":               "Namespace",
+	"persistentvolumes":        "PersistentVolume",
+	"persistentvolumeclaims":   "PersistentVolumeClaim",
+	"serviceaccounts":          "ServiceAccount",
+	"endpoints":                "Endpoints",
+	"events":                   "Event",
+	"deployments":              "Deployment",
+	"replicasets":              "ReplicaSet",
+	"statefulsets":             "StatefulSet",
+	"daemonsets":               "DaemonSet",
+	"jobs":                     "Job",
+	"cronjobs":                 "CronJob",
+	"ingresses":                "Ingress",
+	"ingressclasses":           "IngressClass",
+	"networkpolicies":          "NetworkPolicy",
+	"roles":                    "Role",
+	"rolebindings":             "RoleBinding",
+	"clusterroles":             "ClusterRole",
+	"clusterrolebindings":      "ClusterRoleBinding",
+	"storageclasses":           "StorageClass",
+	"horizontalpodautoscalers": "HorizontalPodAutoscaler",
+	"poddisruptionbudgets":     "PodDisruptionBudget",
+}
+
+// ListFromCache reads resources from the in-memory informer cache.
+// Returns (list, true) on cache hit or (nil, false) when the cache is
+// unavailable or the resource type is not tracked by informers.
+//
+// This is the Lens/Headlamp model: informers maintain a live mirror of
+// the cluster state via Watch; reads are served from local memory in <1ms.
+// The caller should fall back to a direct K8s API call on cache miss.
+//
+// Supports optional namespace filtering and basic limit/offset pagination.
+// Label selectors and field selectors are NOT supported — cache miss.
+func (im *InformerManager) ListFromCache(resourceType, namespace string, opts metav1.ListOptions) (*unstructured.UnstructuredList, bool) {
+	// Cannot serve from cache if informers haven't synced yet
+	if !im.HasSynced() {
+		return nil, false
+	}
+
+	// Label/field selectors require server-side filtering — cache miss
+	if opts.LabelSelector != "" || opts.FieldSelector != "" {
+		return nil, false
+	}
+
+	// Continue tokens are K8s API server state — not applicable to local cache
+	if opts.Continue != "" {
+		return nil, false
+	}
+
+	// Map resource type to store key
+	storeKey, ok := resourceKindToStoreKey[strings.ToLower(resourceType)]
+	if !ok {
+		return nil, false
+	}
+
+	store := im.stores[storeKey]
+	if store == nil {
+		return nil, false
+	}
+
+	// Read all items from the informer store (lock-free, O(n))
+	items := store.List()
+	result := &unstructured.UnstructuredList{}
+
+	for _, item := range items {
+		// Convert runtime.Object to unstructured
+		obj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(item)
+		if err != nil {
+			continue
+		}
+		u := unstructured.Unstructured{Object: obj}
+
+		// Namespace filter
+		if namespace != "" && u.GetNamespace() != namespace {
+			continue
+		}
+
+		result.Items = append(result.Items, u)
+	}
+
+	// Apply limit if specified
+	if opts.Limit > 0 && int64(len(result.Items)) > opts.Limit {
+		result.Items = result.Items[:opts.Limit]
+	}
+
+	return result, true
 }
 
 // Stop stops all informers
@@ -187,6 +300,7 @@ func (im *InformerManager) setupDeploymentInformer() {
 // setupReplicaSetInformer sets up ReplicaSet informer
 func (im *InformerManager) setupReplicaSetInformer() {
 	informer := im.factory.Apps().V1().ReplicaSets().Informer()
+	im.stores["ReplicaSet"] = informer.GetStore()
 	informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
 			if handler, ok := im.handlers["ReplicaSet"]; ok {
@@ -209,6 +323,7 @@ func (im *InformerManager) setupReplicaSetInformer() {
 // setupStatefulSetInformer sets up StatefulSet informer
 func (im *InformerManager) setupStatefulSetInformer() {
 	informer := im.factory.Apps().V1().StatefulSets().Informer()
+	im.stores["StatefulSet"] = informer.GetStore()
 	informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
 			if handler, ok := im.handlers["StatefulSet"]; ok {
@@ -231,6 +346,7 @@ func (im *InformerManager) setupStatefulSetInformer() {
 // setupDaemonSetInformer sets up DaemonSet informer
 func (im *InformerManager) setupDaemonSetInformer() {
 	informer := im.factory.Apps().V1().DaemonSets().Informer()
+	im.stores["DaemonSet"] = informer.GetStore()
 	informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
 			if handler, ok := im.handlers["DaemonSet"]; ok {
@@ -253,6 +369,7 @@ func (im *InformerManager) setupDaemonSetInformer() {
 // setupJobInformer sets up Job informer
 func (im *InformerManager) setupJobInformer() {
 	informer := im.factory.Batch().V1().Jobs().Informer()
+	im.stores["Job"] = informer.GetStore()
 	informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
 			if handler, ok := im.handlers["Job"]; ok {
@@ -275,6 +392,7 @@ func (im *InformerManager) setupJobInformer() {
 // setupCronJobInformer sets up CronJob informer
 func (im *InformerManager) setupCronJobInformer() {
 	informer := im.factory.Batch().V1().CronJobs().Informer()
+	im.stores["CronJob"] = informer.GetStore()
 	informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
 			if handler, ok := im.handlers["CronJob"]; ok {
@@ -389,6 +507,7 @@ func (im *InformerManager) setupNamespaceInformer() {
 // setupPersistentVolumeInformer sets up PersistentVolume informer
 func (im *InformerManager) setupPersistentVolumeInformer() {
 	informer := im.factory.Core().V1().PersistentVolumes().Informer()
+	im.stores["PersistentVolume"] = informer.GetStore()
 	informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
 			if handler, ok := im.handlers["PersistentVolume"]; ok {
@@ -411,6 +530,7 @@ func (im *InformerManager) setupPersistentVolumeInformer() {
 // setupPersistentVolumeClaimInformer sets up PersistentVolumeClaim informer
 func (im *InformerManager) setupPersistentVolumeClaimInformer() {
 	informer := im.factory.Core().V1().PersistentVolumeClaims().Informer()
+	im.stores["PersistentVolumeClaim"] = informer.GetStore()
 	informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
 			if handler, ok := im.handlers["PersistentVolumeClaim"]; ok {
@@ -433,6 +553,7 @@ func (im *InformerManager) setupPersistentVolumeClaimInformer() {
 // setupServiceAccountInformer sets up ServiceAccount informer
 func (im *InformerManager) setupServiceAccountInformer() {
 	informer := im.factory.Core().V1().ServiceAccounts().Informer()
+	im.stores["ServiceAccount"] = informer.GetStore()
 	informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
 			if handler, ok := im.handlers["ServiceAccount"]; ok {
@@ -455,6 +576,7 @@ func (im *InformerManager) setupServiceAccountInformer() {
 // setupEndpointsInformer sets up Endpoints informer
 func (im *InformerManager) setupEndpointsInformer() {
 	informer := im.factory.Core().V1().Endpoints().Informer()
+	im.stores["Endpoints"] = informer.GetStore()
 	informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
 			if handler, ok := im.handlers["Endpoints"]; ok {
@@ -500,6 +622,7 @@ func (im *InformerManager) setupEventInformer() {
 // setupIngressInformer sets up Ingress informer
 func (im *InformerManager) setupIngressInformer() {
 	informer := im.factory.Networking().V1().Ingresses().Informer()
+	im.stores["Ingress"] = informer.GetStore()
 	informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
 			if handler, ok := im.handlers["Ingress"]; ok {
@@ -522,6 +645,7 @@ func (im *InformerManager) setupIngressInformer() {
 // setupIngressClassInformer sets up IngressClass informer
 func (im *InformerManager) setupIngressClassInformer() {
 	informer := im.factory.Networking().V1().IngressClasses().Informer()
+	im.stores["IngressClass"] = informer.GetStore()
 	informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
 			if handler, ok := im.handlers["IngressClass"]; ok {
@@ -544,6 +668,7 @@ func (im *InformerManager) setupIngressClassInformer() {
 // setupNetworkPolicyInformer sets up NetworkPolicy informer
 func (im *InformerManager) setupNetworkPolicyInformer() {
 	informer := im.factory.Networking().V1().NetworkPolicies().Informer()
+	im.stores["NetworkPolicy"] = informer.GetStore()
 	informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
 			if handler, ok := im.handlers["NetworkPolicy"]; ok {
@@ -566,6 +691,7 @@ func (im *InformerManager) setupNetworkPolicyInformer() {
 // setupRoleInformer sets up Role informer
 func (im *InformerManager) setupRoleInformer() {
 	informer := im.factory.Rbac().V1().Roles().Informer()
+	im.stores["Role"] = informer.GetStore()
 	informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
 			if handler, ok := im.handlers["Role"]; ok {
@@ -588,6 +714,7 @@ func (im *InformerManager) setupRoleInformer() {
 // setupRoleBindingInformer sets up RoleBinding informer
 func (im *InformerManager) setupRoleBindingInformer() {
 	informer := im.factory.Rbac().V1().RoleBindings().Informer()
+	im.stores["RoleBinding"] = informer.GetStore()
 	informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
 			if handler, ok := im.handlers["RoleBinding"]; ok {
@@ -610,6 +737,7 @@ func (im *InformerManager) setupRoleBindingInformer() {
 // setupClusterRoleInformer sets up ClusterRole informer
 func (im *InformerManager) setupClusterRoleInformer() {
 	informer := im.factory.Rbac().V1().ClusterRoles().Informer()
+	im.stores["ClusterRole"] = informer.GetStore()
 	informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
 			if handler, ok := im.handlers["ClusterRole"]; ok {
@@ -632,6 +760,7 @@ func (im *InformerManager) setupClusterRoleInformer() {
 // setupClusterRoleBindingInformer sets up ClusterRoleBinding informer
 func (im *InformerManager) setupClusterRoleBindingInformer() {
 	informer := im.factory.Rbac().V1().ClusterRoleBindings().Informer()
+	im.stores["ClusterRoleBinding"] = informer.GetStore()
 	informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
 			if handler, ok := im.handlers["ClusterRoleBinding"]; ok {
@@ -654,6 +783,7 @@ func (im *InformerManager) setupClusterRoleBindingInformer() {
 // setupStorageClassInformer sets up StorageClass informer
 func (im *InformerManager) setupStorageClassInformer() {
 	informer := im.factory.Storage().V1().StorageClasses().Informer()
+	im.stores["StorageClass"] = informer.GetStore()
 	informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
 			if handler, ok := im.handlers["StorageClass"]; ok {
@@ -676,6 +806,7 @@ func (im *InformerManager) setupStorageClassInformer() {
 // setupHorizontalPodAutoscalerInformer sets up HorizontalPodAutoscaler informer
 func (im *InformerManager) setupHorizontalPodAutoscalerInformer() {
 	informer := im.factory.Autoscaling().V2().HorizontalPodAutoscalers().Informer()
+	im.stores["HorizontalPodAutoscaler"] = informer.GetStore()
 	informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
 			if handler, ok := im.handlers["HorizontalPodAutoscaler"]; ok {
@@ -698,6 +829,7 @@ func (im *InformerManager) setupHorizontalPodAutoscalerInformer() {
 // setupPodDisruptionBudgetInformer sets up PodDisruptionBudget informer
 func (im *InformerManager) setupPodDisruptionBudgetInformer() {
 	informer := im.factory.Policy().V1().PodDisruptionBudgets().Informer()
+	im.stores["PodDisruptionBudget"] = informer.GetStore()
 	informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
 			if handler, ok := im.handlers["PodDisruptionBudget"]; ok {

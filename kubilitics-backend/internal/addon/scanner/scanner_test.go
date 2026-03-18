@@ -170,6 +170,9 @@ func (f *fakeClusterSvc) Subscribe(clusterID string) (chan *models.ClusterOvervi
 func (f *fakeClusterSvc) ReconnectCluster(ctx context.Context, id string) (*models.Cluster, error) {
 	return nil, nil
 }
+func (f *fakeClusterSvc) GetInformerManager(_ string) *k8s.InformerManager {
+	return nil
+}
 
 func TestClusterScanner_RunPreflight(t *testing.T) {
 	ctx := context.Background()

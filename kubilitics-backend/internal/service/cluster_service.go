@@ -63,6 +63,10 @@ type ClusterService interface {
 	// ReconnectCluster resets the circuit breaker and forces a fresh K8s client connection.
 	// Call this when the user explicitly requests reconnect or the cluster status page is opened.
 	ReconnectCluster(ctx context.Context, id string) (*models.Cluster, error)
+	// GetInformerManager returns the InformerManager for a cluster if available.
+	// Used by the REST handler to serve resource lists from in-memory cache (<1ms)
+	// instead of making direct K8s API calls (~200-2000ms). Returns nil if not started.
+	GetInformerManager(clusterID string) *k8s.InformerManager
 }
 
 // K8sClientFactory creates a k8s client from kubeconfig path and context. Used in tests to inject a fake client.
@@ -758,6 +762,10 @@ func (s *clusterService) GetOverview(clusterID string) (*models.ClusterOverview,
 
 func (s *clusterService) Subscribe(clusterID string) (chan *models.ClusterOverview, func(), error) {
 	return s.overviewCache.Subscribe(clusterID)
+}
+
+func (s *clusterService) GetInformerManager(clusterID string) *k8s.InformerManager {
+	return s.overviewCache.GetInformerManager(clusterID)
 }
 
 // DiscoverClusters scans the configured kubeconfig (or default ~/.kube/config) for contexts not yet in the repository.

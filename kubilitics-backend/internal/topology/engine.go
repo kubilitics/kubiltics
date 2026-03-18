@@ -146,7 +146,10 @@ func (e *Engine) discoverResources(ctx context.Context, graph *Graph, filters mo
 	}
 
 	g, gctx := errgroup.WithContext(ctx)
-	g.SetLimit(5) // Bound concurrent K8s API calls to avoid overloading apiserver
+	// With informer cache, most resource reads are sub-millisecond (no API call).
+	// Increase concurrency from 5 to 15 to build topology graphs much faster.
+	// For cache-miss resources (CRDs), this still bounds concurrent API calls.
+	g.SetLimit(15)
 	_ = gctx      // gctx propagated via closure captures of ctx
 
 	for _, fn := range discoveries {

@@ -18,10 +18,13 @@ import { RouteErrorBoundary } from '@/components/GlobalErrorBoundary';
 import { useSidebarAutoCollapse } from '@/stores/uiStore';
 import { useDocumentTitle } from '@/hooks/useDocumentTitle';
 import { RouteAnnouncer } from '@/components/a11y/RouteAnnouncer';
+import { usePrefetchResources } from '@/hooks/usePrefetchResources';
 
 export function AppLayout() {
   useRecentlyVisited();
   useDocumentTitle(); // Auto-set page title from route
+  // PERF: Prefetch critical K8s resources on cluster connect so every page loads instantly from cache
+  usePrefetchResources();
   // P0-005-T02: Auto-collapse sidebar at < 1280px, re-expand when viewport grows
   useSidebarAutoCollapse();
   const navigate = useNavigate();

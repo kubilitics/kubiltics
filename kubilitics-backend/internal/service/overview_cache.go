@@ -101,6 +101,15 @@ func (c *OverviewCache) StartClusterCache(ctx context.Context, clusterID string,
 	return nil
 }
 
+// GetInformerManager returns the InformerManager for a cluster, or nil if not
+// started. Used by the REST handler to serve resource lists from the informer
+// cache (sub-millisecond) instead of hitting the K8s API every time.
+func (c *OverviewCache) GetInformerManager(clusterID string) *k8s.InformerManager {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.informers[clusterID]
+}
+
 // StopClusterCache stops informers for a cluster.
 func (c *OverviewCache) StopClusterCache(clusterID string) {
 	c.mu.Lock()
