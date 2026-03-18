@@ -5,13 +5,11 @@ on:
     branches: [ main, develop ]
     paths:
       - 'kubilitics-backend/**'
-      - 'kcli/**'
       - '.github/workflows/backend-ci.yml'
   pull_request:
     branches: [ main, develop ]
     paths:
       - 'kubilitics-backend/**'
-      - 'kcli/**'
   workflow_dispatch:
 
 concurrency:
@@ -19,7 +17,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  GO_VERSION: '1.25.8'  # must be >= go directive in kcli/go.mod (1.25.0) and kubilitics-backend/go.mod (1.24.0)
+  GO_VERSION: '1.25.8'  # must be >= go directive in kubilitics-backend/go.mod
   # Pinned kubectl — keep aligned with k8s.io/client-go major version in go.mod
   # k8s.io/client-go v0.33.x → kubectl v1.33.x
   KUBECTL_VERSION: 'v1.33.3'
@@ -42,14 +40,6 @@ jobs:
       working-directory: kubilitics-backend
       run: go mod download
 
-    - name: Build kcli binary (for integration tests)
-      run: |
-        mkdir -p kubilitics-backend/bin
-        cd kcli
-        CGO_ENABLED=0 go build -ldflags="-s -w" -o ../kubilitics-backend/bin/kcli ./cmd/kcli
-        chmod +x ../kubilitics-backend/bin/kcli
-        echo "$GITHUB_WORKSPACE/kubilitics-backend/bin" >> $GITHUB_PATH
-
     - name: Install kubectl (pinned, matches client-go version)
       run: |
         curl -fsSL "https://dl.k8s.io/release/${{ env.KUBECTL_VERSION }}/bin/linux/amd64/kubectl" -o kubectl
@@ -63,15 +53,6 @@ jobs:
         cd kubilitics-backend
         go test -v -race -coverprofile=coverage.out -covermode=atomic ./... \
           2>&1 | tee $GITHUB_WORKSPACE/test_reports/backend/test.log
-
-    - name: Run kcli integration tests
-      # Requires a live backend — expected to skip gracefully in CI
-      continue-on-error: true
-      run: |
-        cd kubilitics-backend
-        go test -v -timeout 10m ./tests/integration/kcli_test.go -run TestKCLI \
-          2>&1 | tee $GITHUB_WORKSPACE/test_reports/backend/kcli-integration-test.log \
-          || echo "kcli integration tests skipped (require running backend)"
 
     - name: Run govulncheck
       working-directory: kubilitics-backend

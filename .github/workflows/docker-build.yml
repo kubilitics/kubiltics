@@ -101,7 +101,7 @@ jobs:
       - name: Build and push backend image
         uses: docker/build-push-action@v5
         with:
-          context: .
+          context: ./kubilitics-backend
           file: ./kubilitics-backend/Dockerfile
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta-backend.outputs.tags }}
@@ -112,28 +112,7 @@ jobs:
           provenance: false
           # Docker Buildx automatically provides TARGETOS and TARGETARCH for multi-platform builds
 
-      - name: Verify kcli binary in Docker image
-        if: github.event_name != 'pull_request'
-        run: |
-          IMAGE_TAG=$(echo "${{ steps.meta-backend.outputs.tags }}" | head -1 | tr -d '\n')
-          echo "Verifying kcli binary in image: $IMAGE_TAG"
-
-          # kcli version does not require kubectl in PATH (PersistentPreRunE is
-          # bypassed for the version subcommand). KCLI_CI=true disables animations.
-          for PLATFORM in linux/amd64 linux/arm64; do
-            echo "--- Checking platform: $PLATFORM ---"
-
-            if ! docker run --rm --platform "$PLATFORM" --entrypoint "" \
-                -e KCLI_CI=true "$IMAGE_TAG" \
-                sh -c "/usr/local/bin/kcli version && /usr/local/bin/kubectl version --client --output=json > /dev/null"; then
-              echo "❌ kcli/kubectl verification failed for $PLATFORM"
-              docker run --rm --platform "$PLATFORM" --entrypoint "" "$IMAGE_TAG" \
-                sh -c "ls -la /usr/local/bin/ && /usr/local/bin/kcli version || true" || true
-              exit 1
-            fi
-            echo "✅ $PLATFORM passed"
-          done
-          # Trivy scanning is handled by security-scan.yml to avoid duplication
+      # Trivy scanning is handled by security-scan.yml to avoid duplication
 
   ai:
     name: Build and Push AI Backend
