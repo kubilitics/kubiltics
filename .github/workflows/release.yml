@@ -53,41 +53,9 @@ jobs:
           retention-days: 1   # only needed during the release run
 
   # ──────────────────────────────────────────────────────────────────────────
-  # kcli — all 5 platform binaries built in PARALLEL on one ubuntu runner.
-  # Cuts job time from ~10 min → ~4 min (limited by the slowest cross-compile).
-  # ──────────────────────────────────────────────────────────────────────────
-  kcli:
-    name: kcli Binaries
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
-        with:
-          go-version: ${{ env.GO_VERSION }}
-          cache-dependency-path: kcli/go.sum
-      - name: Build all kcli binaries (parallel)
-        working-directory: kcli
-        run: |
-          CGO_ENABLED=0 GOOS=linux   GOARCH=amd64 go build -ldflags="-s -w" -o ../kcli-linux-amd64        ./cmd/kcli &
-          CGO_ENABLED=0 GOOS=linux   GOARCH=arm64 go build -ldflags="-s -w" -o ../kcli-linux-arm64        ./cmd/kcli &
-          CGO_ENABLED=0 GOOS=darwin  GOARCH=amd64 go build -ldflags="-s -w" -o ../kcli-darwin-amd64       ./cmd/kcli &
-          CGO_ENABLED=0 GOOS=darwin  GOARCH=arm64 go build -ldflags="-s -w" -o ../kcli-darwin-arm64       ./cmd/kcli &
-          CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -ldflags="-s -w" -o ../kcli-windows-amd64.exe ./cmd/kcli &
-          wait
-      - name: Make Unix binaries executable
-        run: chmod +x kcli-linux-amd64 kcli-linux-arm64 kcli-darwin-amd64 kcli-darwin-arm64 || true
-      - name: Upload kcli artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: kcli-${{ github.ref_name }}
-          path: |
-            kcli-linux-amd64
-            kcli-linux-arm64
-            kcli-darwin-amd64
-            kcli-darwin-arm64
-            kcli-windows-amd64.exe
-
+  # NOTE: kcli CLI binaries are now built and released from the standalone
+  # repo at github.com/kubilitics/kcli. Desktop sidecars clone and build
+  # kcli from source in the desktop job below.
   # ──────────────────────────────────────────────────────────────────────────
   # Docker images — backend and AI are server-side only (no standalone
   # binaries in the GitHub Release).  They are distributed via GHCR.
@@ -120,8 +88,7 @@ jobs:
       - name: Build and push backend Docker image
         uses: docker/build-push-action@v5
         with:
-          # context must be repo root: Dockerfile COPYs both kubilitics-backend/ and kcli/
-          context: .
+          context: ./kubilitics-backend
           file: ./kubilitics-backend/Dockerfile
           push: true
           tags: |
@@ -277,14 +244,13 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: ${{ env.GO_VERSION }}
-          cache-dependency-path: |
-            kubilitics-backend/go.sum
-            kcli/go.sum
+          cache-dependency-path: kubilitics-backend/go.sum
+
+      # ── Clone kcli from standalone repo ─────────────────────────────────
+      - name: Clone kcli repo
+        run: git clone --depth 1 https://github.com/kubilitics/kcli.git kcli
 
       # ── Build Go sidecar binaries IN PARALLEL ────────────────────────────
-      # macOS: 4 thin binaries launched concurrently, lipo-merged afterwards.
-      # Linux: 4 binaries (amd64+arm64 × backend+kcli) launched concurrently.
-      # Windows: single amd64 build per component (no parallel benefit).
       - name: Build Go sidecars (parallel)
         shell: bash
         run: |
@@ -292,13 +258,11 @@ jobs:
           mkdir -p "$BINS"
 
           if [ "${{ matrix.os }}" == "macos-latest" ]; then
-            # 4 thin binaries in parallel
             (cd kubilitics-backend && CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -ldflags="-s -w" -o "../$BINS/kubilitics-backend-x86_64-apple-darwin"   ./cmd/server) &
             (cd kubilitics-backend && CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -ldflags="-s -w" -o "../$BINS/kubilitics-backend-aarch64-apple-darwin"  ./cmd/server) &
             (cd kcli              && CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -ldflags="-s -w" -o "../$BINS/kcli-x86_64-apple-darwin"                  ./cmd/kcli) &
             (cd kcli              && CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -ldflags="-s -w" -o "../$BINS/kcli-aarch64-apple-darwin"                 ./cmd/kcli) &
             wait
-            # lipo-merge into universal fat binaries
             lipo -create "$BINS/kubilitics-backend-x86_64-apple-darwin" \
                          "$BINS/kubilitics-backend-aarch64-apple-darwin" \
                  -output "$BINS/kubilitics-backend-universal-apple-darwin"
@@ -316,7 +280,6 @@ jobs:
               -o "../$BINS/kcli-x86_64-pc-windows-msvc.exe" ./cmd/kcli
 
           else
-            # Linux — amd64 + arm64 for both components in parallel
             (cd kubilitics-backend && CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o "../$BINS/kubilitics-backend-x86_64-unknown-linux-gnu"   ./cmd/server) &
             (cd kubilitics-backend && CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -ldflags="-s -w" -o "../$BINS/kubilitics-backend-aarch64-unknown-linux-gnu"  ./cmd/server) &
             (cd kcli              && CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o "../$BINS/kcli-x86_64-unknown-linux-gnu"                  ./cmd/kcli) &
@@ -522,18 +485,13 @@ jobs:
           path: kubilitics-desktop/src-tauri/target/x86_64-pc-windows-msvc/release/bundle/
 
   # ──────────────────────────────────────────────────────────────────────────
-  # Create GitHub Release — desktop installers + kcli CLI only.
-  #
-  # Release assets follow the Headlamp pattern:
-  #   • Desktop installers (.dmg, .AppImage, .deb, .rpm, .exe, .msi)
-  #   • kcli CLI binaries (linux/darwin/windows × amd64/arm64)
-  #   • checksums.txt (SHA-256 of every asset)
-  #
+  # Create GitHub Release — desktop installers only.
+  # kcli CLI binaries are released from github.com/kubilitics/kcli.
   # Backend and AI are server-side — distributed via Docker (GHCR) only.
   # ──────────────────────────────────────────────────────────────────────────
   release:
     name: Create GitHub Release
-    needs: [kcli, desktop, docker-backend, docker-ai]
+    needs: [desktop, docker-backend, docker-ai]
     if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -569,13 +527,6 @@ jobs:
             -o -name "*.exe.sig"     \
             -o -name "*.msi.sig"     \
             -o -name "*.nsis.zip.sig" \
-          \) -exec cp {} release-assets/ \;
-
-          # ── kcli CLI binaries ──
-          find artifacts -type f \( \
-            -name "kcli-linux-*"     \
-            -o -name "kcli-darwin-*" \
-            -o -name "kcli-windows-*" \
           \) -exec cp {} release-assets/ \;
 
           echo "Release assets:"
