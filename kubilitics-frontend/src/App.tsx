@@ -206,9 +206,9 @@ const queryClient = new QueryClient({
 // Restore activeCluster from backend when currentClusterId is persisted (e.g. after refresh).
 // So the user stays on the current URL instead of being sent to "/".
 //
-// When multiple clusters are registered, we still redirect to the connect page so the user
-// can choose which cluster to work with — silently auto-connecting to the last-used cluster
-// is confusing when the user has multiple contexts. Single-cluster setups auto-restore as before.
+// Always restore the persisted cluster ID regardless of how many clusters are registered.
+// The user already made a choice — respect it. This prevents the jarring experience of
+// being sent to the connect page on every refresh when multiple clusters exist.
 function useRestoreClusterFromBackend() {
   const { activeCluster, setActiveCluster, setClusters, setDemo } = useClusterStore();
   const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
@@ -233,17 +233,13 @@ function useRestoreClusterFromBackend() {
       .then((list) => {
         const backendCluster = list.find((c) => c.id === currentClusterId);
         if (!backendCluster) {
+          // Persisted cluster no longer exists — redirect to connect page
           setRestoreFailed(true);
           return;
         }
 
-        // If multiple clusters are registered, don't silently auto-restore —
-        // let the user pick from the connect page instead.
-        if (list.length > 1) {
-          setRestoreFailed(true);
-          return;
-        }
-
+        // Always restore the user's last-used cluster, even with multiple clusters.
+        // The user explicitly selected this cluster — honour that choice on refresh.
         const connectedCluster = backendClusterToCluster(backendCluster);
         const connectedClusters = list.map(backendClusterToCluster);
         setClusters(connectedClusters);

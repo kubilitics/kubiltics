@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { BrandLogo } from '@/components/BrandLogo';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
+import { isTauri } from '@/lib/tauri';
 import { useClusterStore } from '@/stores/clusterStore';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
@@ -221,14 +222,16 @@ export function Header() {
 
   return (
     <>
-      <header className={cn(HEADER_HEIGHT_CLASS, 'border-b border-slate-100 dark:border-slate-800 bg-white/60 dark:bg-[hsl(228,14%,9%)]/80 backdrop-blur-3xl shrink-0 shadow-[0_1px_3px_rgba(0,0,0,0.02)] dark:shadow-[0_1px_3px_rgba(0,0,0,0.3)] transition-all duration-300 sticky top-0 z-50')} role="banner">
+      <header className={cn(HEADER_HEIGHT_CLASS, 'border-b border-slate-100 dark:border-slate-800 bg-white/60 dark:bg-[hsl(228,14%,9%)]/80 backdrop-blur-3xl shrink-0 shadow-[0_1px_3px_rgba(0,0,0,0.02)] dark:shadow-[0_1px_3px_rgba(0,0,0,0.3)] transition-all duration-300 sticky top-0 z-50')} role="banner" data-tauri-drag-region>
         <div className="flex items-center h-full w-full">
 
           {/* ──── Logo zone: icon mark + wordmark, Apple-quality sizing ──── */}
+          {/* Tauri overlay title bar: extra left padding for macOS traffic lights */}
           <div className={cn(
             'shrink-0 flex items-center h-full bg-slate-50/20 dark:bg-slate-900/20 border-r border-slate-100/60 dark:border-slate-800/60 transition-all duration-300',
-            collapsed ? 'w-[5.5rem] justify-center px-0' : 'w-72 justify-start px-5'
-          )}>
+            collapsed ? 'w-[5.5rem] justify-center px-0' : 'w-72 justify-start px-5',
+            isTauri() && 'pl-[78px]'
+          )} data-tauri-drag-region>
             <button
               onClick={() => navigate('/dashboard')}
               className="flex items-center gap-3 group focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 rounded-xl p-1.5 transition-all press-effect"

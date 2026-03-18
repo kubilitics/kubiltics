@@ -76,7 +76,9 @@
         "center": true,
         "resizable": true,
         "fullscreen": false,
-        "url": "index.html"
+        "url": "index.html",
+        "titleBarStyle": "Overlay",
+        "hiddenTitle": true
       }
     ],
     "security": {
