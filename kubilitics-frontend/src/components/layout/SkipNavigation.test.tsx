@@ -4,6 +4,10 @@ import { SkipNavigation } from './SkipNavigation';
 
 describe('SkipNavigation', () => {
   beforeEach(() => {
+    // jsdom doesn't implement scrollIntoView — stub it to prevent
+    // "scrollIntoView is not a function" uncaught exceptions.
+    Element.prototype.scrollIntoView = vi.fn();
+
     // Create the #main-content target in the test DOM
     const main = document.createElement('main');
     main.id = 'main-content';
