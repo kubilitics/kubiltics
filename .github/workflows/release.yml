@@ -54,7 +54,7 @@ jobs:
 
   # ──────────────────────────────────────────────────────────────────────────
   # NOTE: kcli CLI binaries are now built and released from the standalone
-  # repo at github.com/kubilitics/kcli. Desktop sidecars clone and build
+  # repo at github.com/kubilitics/kubilitics-kcli. Desktop sidecars clone and build
   # kcli from source in the desktop job below.
   # ──────────────────────────────────────────────────────────────────────────
   # Docker images — backend and AI are server-side only (no standalone
@@ -248,7 +248,7 @@ jobs:
 
       # ── Clone kcli from standalone repo ─────────────────────────────────
       - name: Clone kcli repo
-        run: git clone --depth 1 https://github.com/kubilitics/kcli.git kcli
+        run: git clone --depth 1 https://github.com/kubilitics/kubilitics-kcli.git kcli
 
       # ── Build Go sidecar binaries IN PARALLEL ────────────────────────────
       - name: Build Go sidecars (parallel)
@@ -486,7 +486,7 @@ jobs:
 
   # ──────────────────────────────────────────────────────────────────────────
   # Create GitHub Release — desktop installers only.
-  # kcli CLI binaries are released from github.com/kubilitics/kcli.
+  # kcli CLI binaries are released from github.com/kubilitics/kubilitics-kcli.
   # Backend and AI are server-side — distributed via Docker (GHCR) only.
   # ──────────────────────────────────────────────────────────────────────────
   release:

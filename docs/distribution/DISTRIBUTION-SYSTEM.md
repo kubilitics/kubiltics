@@ -247,7 +247,7 @@ winget install Kubilitics.Kubilitics
 **Install commands:**
 ```powershell
 scoop bucket add kubilitics https://github.com/kubilitics/scoop-bucket
-scoop install kubilitics/kcli
+scoop install kubilitics/kubilitics-kcli
 ```
 
 ### 3.3 Windows Code Signing
