@@ -1,5 +1,5 @@
-import { render, screen, fireEvent } from '@testing-library/react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { render, screen, fireEvent, cleanup } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { SkipNavigation } from './SkipNavigation';
 
 describe('SkipNavigation', () => {
@@ -13,6 +13,10 @@ describe('SkipNavigation', () => {
     return () => {
       document.body.removeChild(main);
     };
+  });
+
+  afterEach(() => {
+    cleanup();
   });
 
   it('renders a skip-nav link', () => {

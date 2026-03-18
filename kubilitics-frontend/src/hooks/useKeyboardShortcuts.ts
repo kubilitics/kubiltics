@@ -79,7 +79,8 @@ function clearPrefix() {
 let globalListenerAttached = false;
 
 function isInputTarget(e: KeyboardEvent): boolean {
-  const el = e.target as HTMLElement;
+  const el = e.target;
+  if (!(el instanceof HTMLElement)) return false;
   return (
     el.tagName === 'INPUT' ||
     el.tagName === 'TEXTAREA' ||

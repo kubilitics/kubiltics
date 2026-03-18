@@ -46,7 +46,7 @@ export function useFocusTrap<T extends HTMLElement = HTMLDivElement>(
     if (!containerRef.current) return [];
     return Array.from(
       containerRef.current.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR),
-    ).filter((el) => el.offsetParent !== null); // exclude hidden elements
+    ).filter((el) => !el.hasAttribute('hidden') && getComputedStyle(el).display !== 'none'); // exclude hidden elements
   }, []);
 
   // Auto-focus the first focusable element when the trap activates
