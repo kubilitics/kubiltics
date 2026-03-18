@@ -1,6 +1,5 @@
-# Multi-stage build for kubilitics-backend + kcli sidecar
-# Must be built from the repo root so both kubilitics-backend/ and kcli/ are in context:
-#   docker build -f kubilitics-backend/Dockerfile -t kubilitics-backend .
+# Multi-stage build for kubilitics-backend
+#   docker build -t kubilitics-backend ./kubilitics-backend
 # syntax=docker/dockerfile:1
 
 # ── Build arguments (declared before any FROM so they scope to all stages) ───
@@ -32,12 +31,12 @@ RUN mkdir -p /out
 
 # ── Backend ───────────────────────────────────────────────────────────────────
 WORKDIR /build
-COPY kubilitics-backend/go.mod kubilitics-backend/go.sum ./
+COPY go.mod go.sum ./
 RUN --mount=type=cache,target=/root/.cache/go-build \
     --mount=type=cache,target=/go/pkg/mod \
     go mod download
 
-COPY kubilitics-backend/ .
+COPY . .
 # Cross-compile: Go runs natively on amd64, produces binary for TARGETARCH.
 # CGO_ENABLED=0 is mandatory for cross-compilation (no C toolchain for target).
 RUN --mount=type=cache,target=/root/.cache/go-build \
@@ -47,22 +46,6 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
 
 RUN test -f /out/kubilitics-backend || \
     (echo "ERROR: backend binary not found (TARGETOS=${TARGETOS} TARGETARCH=${TARGETARCH})" && exit 1)
-
-# ── kcli ──────────────────────────────────────────────────────────────────────
-WORKDIR /build-kcli
-COPY kcli/go.mod kcli/go.sum ./
-RUN --mount=type=cache,target=/root/.cache/go-build \
-    --mount=type=cache,target=/go/pkg/mod \
-    go mod download
-
-COPY kcli/ .
-RUN --mount=type=cache,target=/root/.cache/go-build \
-    --mount=type=cache,target=/go/pkg/mod \
-    CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
-    go build -ldflags="-s -w" -o /out/kcli ./cmd/kcli
-
-RUN test -f /out/kcli || \
-    (echo "ERROR: kcli binary not found (TARGETOS=${TARGETOS} TARGETARCH=${TARGETARCH})" && exit 1)
 
 # ── Stage 2: kubectl downloader ───────────────────────────────────────────────
 # Download the pinned kubectl binary for the TARGET architecture.
@@ -103,14 +86,12 @@ COPY --from=kubectl-fetcher /usr/local/bin/kubectl /usr/local/bin/kubectl
 
 # Application binaries (cross-compiled natively, correct arch)
 COPY --from=builder /out/kubilitics-backend .
-COPY --from=builder /out/kcli /usr/local/bin/kcli
 
 # Create writable data directory and fix ownership before dropping to non-root
 RUN mkdir -p /data && \
     chown -R kubilitics:kubilitics /app /data && \
     # Verify binaries are present and non-empty (cannot exec cross-arch binaries
     # at image build time — smoke test happens at container startup instead)
-    test -s /usr/local/bin/kcli && \
     test -s /usr/local/bin/kubectl && \
     test -s /app/kubilitics-backend
 
@@ -118,8 +99,6 @@ USER kubilitics
 
 EXPOSE 819
 EXPOSE 50051
-
-ENV KCLI_BIN=/usr/local/bin/kcli
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
     CMD wget --quiet --tries=1 --spider http://localhost:819/health || exit 1
