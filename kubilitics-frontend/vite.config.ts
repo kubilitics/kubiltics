@@ -150,46 +150,11 @@ export default defineConfig(({ mode }) => ({
     target: "esnext",
     minify: "esbuild",
     sourcemap: mode !== "production",
-    rollupOptions: {
-      output: {
-        // For Tauri builds: disable chunk splitting entirely to avoid circular ES module
-        // import issues in WKWebView that cause React.forwardRef to be undefined.
-        // For browser builds: split into vendor chunks for better caching.
-        ...(isTauriBuild ? {} : {
-          manualChunks(id) {
-            if (id.includes('node_modules')) {
-              // React core — loaded first, small, cached aggressively
-              if (id.includes('react-dom') || (id.includes('/react/') && !id.includes('react-'))) return 'vendor-react';
-              // Icons — large but rarely change
-              if (id.includes('lucide-react')) return 'vendor-icons';
-              // Animation engine — loaded on demand
-              if (id.includes('framer-motion')) return 'vendor-animation';
-              // Radix UI primitives
-              if (id.includes('@radix-ui')) return 'vendor-ui';
-              // Topology visualization — heavy, lazy-loaded
-              if (id.includes('cytoscape') || id.includes('elkjs') || id.includes('three') || id.includes('@react-three')) return 'vendor-graph';
-              // Data layer — react-query, zustand
-              if (id.includes('@tanstack') || id.includes('zustand')) return 'vendor-data';
-              // Code editor — very heavy, lazy-loaded
-              if (id.includes('monaco') || id.includes('yaml') || id.includes('js-yaml')) return 'vendor-editor';
-              // Charting
-              if (id.includes('recharts') || id.includes('d3')) return 'vendor-charts';
-              // Markdown rendering — only needed by AI assistant (lazy-loaded)
-              if (id.includes('react-markdown') || id.includes('remark') || id.includes('rehype') || id.includes('unified') || id.includes('mdast') || id.includes('micromark') || id.includes('hast')) return 'vendor-markdown';
-              // i18n — loaded async, not critical path
-              if (id.includes('i18next') || id.includes('intl-')) return 'vendor-i18n';
-              // PDF/image export — only on export actions
-              if (id.includes('jspdf') || id.includes('html-to-image') || id.includes('html2canvas')) return 'vendor-export';
-              // xterm — only on shell access
-              if (id.includes('xterm')) return 'vendor-terminal';
-              // Router (part of core, bundle with React)
-              if (id.includes('react-router')) return 'vendor-react';
-              // Everything else
-              return 'vendor';
-            }
-          },
-        }),
-      },
-    },
+    // Manual chunk splitting disabled — Vite/Rollup handles code splitting
+    // automatically via dynamic import() boundaries. Manual manualChunks caused
+    // cross-chunk React import failures (useLayoutEffect, createContext undefined)
+    // due to nested dependencies (e.g. zustand inside @react-three/fiber) being
+    // placed in chunks where React wasn't initialized during module evaluation.
+    // Lazy-loaded routes still get their own chunks via dynamic import().
   },
 }));

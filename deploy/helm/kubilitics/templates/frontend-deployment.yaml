@@ -30,7 +30,7 @@ spec:
             capabilities:
               drop:
                 - ALL
-            readOnlyRootFilesystem: true
+            readOnlyRootFilesystem: false  # entrypoint writes config.js + patches JS bundles
             runAsNonRoot: true
             runAsUser: 101  # nginx user
           ports:
@@ -50,13 +50,17 @@ spec:
             - name: frontend-config
               mountPath: /etc/nginx/conf.d
               readOnly: true
+            {{- if .Values.frontend.staticFiles.enabled }}
             - name: frontend-static
               mountPath: /usr/share/nginx/html
               readOnly: true
+            {{- end }}
             - name: nginx-tmp
               mountPath: /var/cache/nginx
             - name: nginx-run
               mountPath: /var/run
+            - name: nginx-logs
+              mountPath: /var/log/nginx
           livenessProbe:
             httpGet:
               path: /
@@ -75,16 +79,16 @@ spec:
         - name: frontend-config
           configMap:
             name: {{ include "kubilitics.frontendConfigMapName" . }}
+        {{- if .Values.frontend.staticFiles.enabled }}
         - name: frontend-static
-          {{- if .Values.frontend.staticFiles.enabled }}
           persistentVolumeClaim:
             claimName: {{ include "kubilitics.fullname" . }}-frontend-static-pvc
-          {{- else }}
-          emptyDir: {}
-          {{- end }}
+        {{- end }}
         - name: nginx-tmp
           emptyDir: {}
         - name: nginx-run
+          emptyDir: {}
+        - name: nginx-logs
           emptyDir: {}
       {{- with .Values.frontend.nodeSelector }}
       nodeSelector:
