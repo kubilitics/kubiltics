@@ -173,12 +173,7 @@ func resolveKCLIBinary() (string, error) {
 		if st, err := os.Stat(v); err == nil && !st.IsDir() {
 			return v, nil
 		}
-		// If KCLI_BIN is an absolute path that doesn't exist, the user explicitly
-		// configured it wrong — log a warning but continue to fallback checks.
-		// Previously this was a hard error that prevented PATH and common-location
-		// resolution from ever running, which is the root cause of "kcli binary not
-		// found" errors when kcli IS installed but the sidecar path is stale/wrong.
-		fmt.Fprintf(os.Stderr, "WARN: KCLI_BIN=%q does not exist, falling back to PATH and common locations\n", v)
+		return "", fmt.Errorf("kcli binary not found: KCLI_BIN is set to %q but file does not exist or is not executable. Please verify the path is correct and the file has execute permissions.", v)
 	}
 
 	// Check 2: System PATH

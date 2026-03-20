@@ -1,0 +1,236 @@
+{{- if .Values.networkPolicy.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "kubilitics.fullname" . }}
+  labels:
+    {{- include "kubilitics.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "kubilitics.selectorLabels" . | nindent 6 }}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Allow ingress from ingress controller
+    {{- if .Values.ingress.enabled }}
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              {{- if .Values.networkPolicy.ingress.namespaceLabels }}
+              {{- toYaml .Values.networkPolicy.ingress.namespaceLabels | nindent 14 }}
+              {{- else }}
+              name: {{ .Values.networkPolicy.ingress.namespace | default "ingress-nginx" }}
+              {{- end }}
+        - podSelector:
+            matchLabels:
+              {{- if .Values.networkPolicy.ingress.podLabels }}
+              {{- toYaml .Values.networkPolicy.ingress.podLabels | nindent 14 }}
+              {{- else }}
+              app.kubernetes.io/name: ingress-nginx
+              {{- end }}
+      ports:
+        - protocol: TCP
+          port: {{ .Values.service.port }}
+    {{- end }}
+    # Allow ingress from frontend if enabled
+    {{- if .Values.frontend.enabled }}
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "kubilitics.selectorLabels" . | nindent 14 }}
+              app.kubernetes.io/component: frontend
+      ports:
+        - protocol: TCP
+          port: {{ .Values.service.port }}
+    {{- end }}
+    # Allow ingress from same namespace (for service-to-service communication)
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: {{ .Release.Namespace }}
+      ports:
+        - protocol: TCP
+          port: {{ .Values.service.port }}
+    {{- if .Values.networkPolicy.ingress.additionalRules }}
+    {{- toYaml .Values.networkPolicy.ingress.additionalRules | nindent 4 }}
+    {{- end }}
+  egress:
+    # Allow DNS resolution
+    - to:
+        - namespaceSelector: {}
+      ports:
+        - protocol: UDP
+          port: 53
+    # Allow egress to Kubernetes API server
+    - to:
+        - namespaceSelector: {}
+      ports:
+        - protocol: TCP
+          port: 443
+    # Allow egress to backend service if AI is enabled
+    {{- if .Values.ai.enabled }}
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "kubilitics.selectorLabels" . | nindent 14 }}
+              app.kubernetes.io/component: ai-backend
+      ports:
+        - protocol: TCP
+          port: {{ .Values.ai.service.port }}
+    {{- end }}
+    # Allow egress to frontend if enabled
+    {{- if .Values.frontend.enabled }}
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "kubilitics.selectorLabels" . | nindent 14 }}
+              app.kubernetes.io/component: frontend
+      ports:
+        - protocol: TCP
+          port: {{ .Values.frontend.service.port }}
+    {{- end }}
+    # Allow all egress (can be restricted further based on requirements)
+    {{- if .Values.networkPolicy.egress.allowAll }}
+    - {}
+    {{- else }}
+    {{- if .Values.networkPolicy.egress.additionalRules }}
+    {{- toYaml .Values.networkPolicy.egress.additionalRules | nindent 4 }}
+    {{- end }}
+    {{- end }}
+{{- end }}
+
+{{- if and .Values.networkPolicy.enabled .Values.ai.enabled }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "kubilitics.fullname" . }}-ai
+  labels:
+    {{- include "kubilitics.labels" . | nindent 4 }}
+    app.kubernetes.io/component: ai-backend
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "kubilitics.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: ai-backend
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Allow ingress from backend
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "kubilitics.selectorLabels" . | nindent 14 }}
+              app.kubernetes.io/component: backend
+      ports:
+        - protocol: TCP
+          port: {{ .Values.ai.service.port }}
+    # Allow ingress from same namespace
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: {{ .Release.Namespace }}
+      ports:
+        - protocol: TCP
+          port: {{ .Values.ai.service.port }}
+  egress:
+    # Allow DNS resolution
+    - to:
+        - namespaceSelector: {}
+      ports:
+        - protocol: UDP
+          port: 53
+    # Allow egress to Kubernetes API server
+    - to:
+        - namespaceSelector: {}
+      ports:
+        - protocol: TCP
+          port: 443
+    # Allow egress to backend service
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "kubilitics.selectorLabels" . | nindent 14 }}
+              app.kubernetes.io/component: backend
+      ports:
+        - protocol: TCP
+          port: {{ .Values.service.port }}
+    {{- if .Values.networkPolicy.egress.allowAll }}
+    - {}
+    {{- end }}
+{{- end }}
+
+{{- if and .Values.networkPolicy.enabled .Values.frontend.enabled }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "kubilitics.fullname" . }}-frontend
+  labels:
+    {{- include "kubilitics.labels" . | nindent 4 }}
+    app.kubernetes.io/component: frontend
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "kubilitics.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: frontend
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Allow ingress from ingress controller
+    {{- if .Values.ingress.enabled }}
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              {{- if .Values.networkPolicy.ingress.namespaceLabels }}
+              {{- toYaml .Values.networkPolicy.ingress.namespaceLabels | nindent 14 }}
+              {{- else }}
+              name: {{ .Values.networkPolicy.ingress.namespace | default "ingress-nginx" }}
+              {{- end }}
+      ports:
+        - protocol: TCP
+          port: {{ .Values.frontend.service.port }}
+    {{- end }}
+    # Allow ingress from same namespace
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: {{ .Release.Namespace }}
+      ports:
+        - protocol: TCP
+          port: {{ .Values.frontend.service.port }}
+  egress:
+    # Allow DNS resolution
+    - to:
+        - namespaceSelector: {}
+      ports:
+        - protocol: UDP
+          port: 53
+    # Allow egress to backend service
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "kubilitics.selectorLabels" . | nindent 14 }}
+              app.kubernetes.io/component: backend
+      ports:
+        - protocol: TCP
+          port: {{ .Values.service.port }}
+    # Allow egress to AI backend if enabled
+    {{- if .Values.ai.enabled }}
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "kubilitics.selectorLabels" . | nindent 14 }}
+              app.kubernetes.io/component: ai-backend
+      ports:
+        - protocol: TCP
+          port: {{ .Values.ai.service.port }}
+    {{- end }}
+    {{- if .Values.networkPolicy.egress.allowAll }}
+    - {}
+    {{- end }}
+{{- end }}

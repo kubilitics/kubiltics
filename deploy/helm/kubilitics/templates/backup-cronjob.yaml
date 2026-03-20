@@ -1,0 +1,101 @@
+{{- if .Values.backup.enabled }}
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ include "kubilitics.fullname" . }}-backup
+  namespace: {{ .Values.namespace | default .Release.Namespace }}
+  labels:
+    {{- include "kubilitics.labels" . | nindent 4 }}
+    app.kubernetes.io/component: backup
+spec:
+  schedule: {{ .Values.backup.schedule | default "0 2 * * *" }}  # Daily at 2 AM
+  successfulJobsHistoryLimit: {{ .Values.backup.successfulJobsHistoryLimit | default 3 }}
+  failedJobsHistoryLimit: {{ .Values.backup.failedJobsHistoryLimit | default 1 }}
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            {{- include "kubilitics.labels" . | nindent 12 }}
+            app.kubernetes.io/component: backup
+        spec:
+          restartPolicy: OnFailure
+          serviceAccountName: {{ include "kubilitics.serviceAccountName" . }}
+          containers:
+          - name: backup
+            image: {{ .Values.backup.image.repository }}:{{ .Values.backup.image.tag | default .Chart.AppVersion }}
+            imagePullPolicy: {{ .Values.backup.image.pullPolicy | default "IfNotPresent" }}
+            command:
+            - /bin/sh
+            - -c
+            - |
+              set -e
+              BACKUP_DIR="/backups"
+              DB_PATH="/data/kubilitics.db"
+              TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+              BACKUP_FILE="${BACKUP_DIR}/kubilitics-${TIMESTAMP}.db"
+              
+              echo "Starting SQLite backup at $(date)"
+              
+              # Create backup directory if it doesn't exist
+              mkdir -p "${BACKUP_DIR}"
+              
+              # Perform SQLite backup using .backup command
+              sqlite3 "${DB_PATH}" ".backup '${BACKUP_FILE}'"
+              
+              # Compress backup
+              gzip "${BACKUP_FILE}"
+              BACKUP_FILE="${BACKUP_FILE}.gz"
+              
+              echo "Backup completed: ${BACKUP_FILE}"
+              
+              # Cleanup old backups (keep last N days)
+              RETENTION_DAYS={{ .Values.backup.retentionDays | default 7 }}
+              find "${BACKUP_DIR}" -name "kubilitics-*.db.gz" -mtime +${RETENTION_DAYS} -delete
+              
+              echo "Cleanup completed. Backups older than ${RETENTION_DAYS} days removed."
+              
+              {{- if .Values.backup.s3.enabled }}
+              # Upload to S3 if enabled
+              if [ -n "${AWS_ACCESS_KEY_ID}" ] && [ -n "${AWS_SECRET_ACCESS_KEY}" ]; then
+                S3_PATH="s3://{{ .Values.backup.s3.bucket }}/{{ .Values.backup.s3.prefix | default "backups" }}/kubilitics-${TIMESTAMP}.db.gz"
+                aws s3 cp "${BACKUP_FILE}" "${S3_PATH}"
+                echo "Backup uploaded to S3: ${S3_PATH}"
+              fi
+              {{- end }}
+            env:
+            - name: DB_PATH
+              value: "/data/kubilitics.db"
+            {{- if .Values.backup.s3.enabled }}
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.backup.s3.secretName | default (printf "%s-backup-s3" (include "kubilitics.fullname" .)) }}
+                  key: access-key-id
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.backup.s3.secretName | default (printf "%s-backup-s3" (include "kubilitics.fullname" .)) }}
+                  key: secret-access-key
+            {{- end }}
+            volumeMounts:
+            - name: data
+              mountPath: /data
+              readOnly: true
+            - name: backups
+              mountPath: /backups
+            resources:
+              {{- toYaml .Values.backup.resources | nindent 14 }}
+          volumes:
+          - name: data
+            persistentVolumeClaim:
+              claimName: {{ include "kubilitics.fullname" . }}-data
+          - name: backups
+            {{- if .Values.backup.pvc.enabled }}
+            persistentVolumeClaim:
+              claimName: {{ .Values.backup.pvc.name | default (printf "%s-backups" (include "kubilitics.fullname" .)) }}
+            {{- else }}
+            emptyDir: {}
+            {{- end }}
+{{- end }}

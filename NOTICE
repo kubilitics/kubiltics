@@ -1,0 +1,11 @@
+Kubilitics
+
+Copyright 2026 The Kubilitics Contributors
+
+This product includes software developed at the Kubilitics project
+(https://github.com/kubilitics/kubilitics).
+
+Licensed under the Apache License, Version 2.0. See LICENSE for the full text.
+
+This software may rely on third-party packages; see the respective
+go.mod, package.json, and Cargo.toml files for dependency licenses.

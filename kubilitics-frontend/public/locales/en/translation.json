@@ -1,0 +1,19 @@
+{
+    "app": {
+        "title": "Kubilitics",
+        "loading": "Loading..."
+    },
+    "nav": {
+        "dashboard": "Dashboard",
+        "clusters": "Clusters",
+        "settings": "Settings"
+    },
+    "auth": {
+        "login": "Log In",
+        "logout": "Log Out"
+    },
+    "errors": {
+        "generic": "An error occurred",
+        "network": "Network error"
+    }
+}

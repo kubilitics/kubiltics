@@ -74,13 +74,6 @@ func (h *Handler) PostShell(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Resolve the kcli binary path once for this request
-	kcliBin, kcliResolveErr := resolveKCLIBinary()
-	if kcliResolveErr != nil {
-		// Fallback to plain "kubectl" if kcli can't be found
-		kcliBin = "kubectl"
-	}
-
 	// Bare "kcli"/"kubectl" or empty: run version so the shell always returns something useful
 	if cmdStr == "" {
 		ctx, cancel := context.WithTimeout(r.Context(), shellTimeout)
@@ -89,7 +82,7 @@ func (h *Handler) PostShell(w http.ResponseWriter, r *http.Request) {
 		if cluster.Context != "" {
 			args = append([]string{"--context", cluster.Context}, args...)
 		}
-		cmd := exec.CommandContext(ctx, kcliBin, args...)
+		cmd := exec.CommandContext(ctx, "kcli", args...)
 		cmd.Env = append(cmd.Env, "KUBECONFIG="+cluster.KubeconfigPath)
 		var stdout, stderr bytes.Buffer
 		cmd.Stdout = &stdout
@@ -134,7 +127,7 @@ func (h *Handler) PostShell(w http.ResponseWriter, r *http.Request) {
 	if cluster.Context != "" {
 		args = append([]string{"--context", cluster.Context}, parts...)
 	}
-	cmd := exec.CommandContext(ctx, kcliBin, args...)
+	cmd := exec.CommandContext(ctx, "kcli", args...)
 	cmd.Env = append(cmd.Env, "KUBECONFIG="+cluster.KubeconfigPath)
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout

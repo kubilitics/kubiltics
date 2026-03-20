@@ -144,17 +144,11 @@ impl BackendManager {
         // kubeconfig search instead of falling back to ~/.kube/config.
         let mut cmd = sidecar_command
             .env("KUBILITICS_PORT", BACKEND_PORT.to_string())
+            .env("KCLI_BIN", kcli_bin_path)
             // Allow tauri:// origin so fetch() calls from the WebView are not blocked by CORS
             .env("KUBILITICS_ALLOWED_ORIGINS", tauri_allowed_origins)
             // P0-J: Write SQLite DB to user-writable location (not read-only .app bundle)
             .env("KUBILITICS_DATABASE_PATH", db_file.to_string_lossy().as_ref());
-
-        // Only set KCLI_BIN when the sidecar actually found a real path.
-        // Setting KCLI_BIN="" or KCLI_BIN="kcli" (bare name) causes the backend to
-        // hard-fail on os.Stat() without trying system PATH or common install locations.
-        if !kcli_bin_path.is_empty() {
-            cmd = cmd.env("KCLI_BIN", &kcli_bin_path);
-        }
 
         if !kubeconfig_path.is_empty() {
             cmd = cmd.env("KUBECONFIG", &kubeconfig_path);
@@ -366,14 +360,10 @@ impl BackendManager {
                 }
             }
         }
-
-        // Last resort: return empty string to signal "not found by sidecar".
-        // The backend's resolveKCLIBinary will perform its own PATH + common-location search.
-        // IMPORTANT: Previously this returned "kcli" which caused the backend to set KCLI_BIN="kcli",
-        // then os.Stat("kcli") failed (relative path), and the backend hard-errored without
-        // trying system PATH or common install locations. Returning "" lets the backend skip the
-        // KCLI_BIN check entirely and fall through to its full resolution chain.
-        Ok(String::new())
+        
+        // Last resort: return "kcli" and let backend's resolveKCLIBinary handle PATH lookup
+        // The backend will return a clear error if kcli is not found
+        Ok("kcli".to_string())
     }
 }
 

@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Kubilitics</title>
+    <meta name="description" content="Kubilitics – Kubernetes dashboard and cluster management" />
+    <meta name="author" content="Kubilitics" />
+
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/favicon-192.png" />
+    <link rel="apple-touch-icon" href="/brand/logo.png" />
+
+    <meta property="og:title" content="Kubilitics" />
+    <meta property="og:description" content="Kubernetes dashboard and cluster management" />
+    <meta property="og:type" content="website" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Kubilitics" />
+    <meta name="twitter:description" content="Kubernetes dashboard and cluster management" />
+
+    <!-- PERF: Inline styles for the static shell. Uses prefers-color-scheme to match
+         the user's OS theme before CSS loads. No flash of wrong-theme content. -->
+    <style>
+      #app-shell {
+        --sh-bg: hsl(210 50% 98.5%);
+        --sh-border: rgba(0,0,0,0.06);
+        --sh-block: rgba(0,0,0,0.04);
+        --sh-block-subtle: rgba(0,0,0,0.03);
+        --sh-block-faint: rgba(0,0,0,0.02);
+      }
+      @media (prefers-color-scheme: dark) {
+        #app-shell {
+          --sh-bg: #09090b;
+          --sh-border: rgba(255,255,255,0.06);
+          --sh-block: rgba(255,255,255,0.04);
+          --sh-block-subtle: rgba(255,255,255,0.03);
+          --sh-block-faint: rgba(255,255,255,0.02);
+        }
+      }
+      /* Also match the .dark class that React may have set on a previous visit (localStorage) */
+      .dark #app-shell {
+        --sh-bg: #09090b;
+        --sh-border: rgba(255,255,255,0.06);
+        --sh-block: rgba(255,255,255,0.04);
+        --sh-block-subtle: rgba(255,255,255,0.03);
+        --sh-block-faint: rgba(255,255,255,0.02);
+      }
+      /* Subtle pulse animation so the skeleton feels alive */
+      @keyframes shell-pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.6; }
+      }
+      .sh-pulse { animation: shell-pulse 2s ease-in-out infinite; }
+    </style>
+  </head>
+
+  <body>
+    <!-- PERF: Static HTML shell — shows app structure in <16ms before JS loads.
+         Eliminates the blank white screen during bundle download + parse.
+         React's createRoot replaces this shell entirely on first render. -->
+    <div id="root">
+      <div id="app-shell" style="display:flex;flex-direction:column;height:100vh;background:var(--sh-bg)">
+        <!-- Header bar -->
+        <div style="height:56px;border-bottom:1px solid var(--sh-border);display:flex;align-items:center;padding:0 16px;gap:12px;flex-shrink:0">
+          <div style="width:28px;height:28px;border-radius:8px;background:var(--sh-block)" class="sh-pulse"></div>
+          <div style="width:120px;height:14px;border-radius:6px;background:var(--sh-block)" class="sh-pulse"></div>
+          <div style="flex:1"></div>
+          <div style="width:200px;height:32px;border-radius:8px;background:var(--sh-block-faint)" class="sh-pulse"></div>
+        </div>
+        <div style="display:flex;flex:1;min-height:0">
+          <!-- Sidebar skeleton -->
+          <div style="width:240px;border-right:1px solid var(--sh-border);padding:16px 12px;flex-shrink:0;display:flex;flex-direction:column;gap:8px">
+            <div style="height:36px;border-radius:10px;background:var(--sh-block)" class="sh-pulse"></div>
+            <div style="height:36px;border-radius:10px;background:var(--sh-block)" class="sh-pulse"></div>
+            <div style="height:36px;border-radius:10px;background:var(--sh-block)" class="sh-pulse"></div>
+            <div style="height:36px;border-radius:10px;background:var(--sh-block)" class="sh-pulse"></div>
+            <div style="height:1px;background:var(--sh-border);margin:8px 0"></div>
+            <div style="height:28px;border-radius:8px;background:var(--sh-block-subtle)" class="sh-pulse"></div>
+            <div style="height:28px;border-radius:8px;background:var(--sh-block-subtle)" class="sh-pulse"></div>
+            <div style="height:28px;border-radius:8px;background:var(--sh-block-subtle)" class="sh-pulse"></div>
+          </div>
+          <!-- Main content skeleton -->
+          <div style="flex:1;padding:24px;display:flex;flex-direction:column;gap:16px">
+            <div style="height:20px;width:180px;border-radius:6px;background:var(--sh-block)" class="sh-pulse"></div>
+            <div style="display:flex;gap:12px">
+              <div style="flex:1;height:80px;border-radius:12px;background:var(--sh-block-subtle)" class="sh-pulse"></div>
+              <div style="flex:1;height:80px;border-radius:12px;background:var(--sh-block-subtle)" class="sh-pulse"></div>
+              <div style="flex:1;height:80px;border-radius:12px;background:var(--sh-block-subtle)" class="sh-pulse"></div>
+              <div style="flex:1;height:80px;border-radius:12px;background:var(--sh-block-subtle)" class="sh-pulse"></div>
+            </div>
+            <div style="flex:1;border-radius:12px;background:var(--sh-block-faint)" class="sh-pulse"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

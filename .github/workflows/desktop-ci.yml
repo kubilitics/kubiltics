@@ -1,0 +1,168 @@
+name: Desktop CI
+
+# Runs only when Tauri/Rust desktop code changes.
+# Full cross-platform builds happen in release.yml on version tags.
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'kubilitics-desktop/src-tauri/**'
+      - '.github/workflows/desktop-ci.yml'
+  pull_request:
+    branches: [ main, develop ]
+    paths:
+      - 'kubilitics-desktop/src-tauri/**'
+  workflow_dispatch:
+
+concurrency:
+  group: desktop-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ── Rust unit tests (single platform – fast) ──────────────────────────────
+  test:
+    name: Rust Tests (Ubuntu)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install system deps
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            libgtk-3-dev libwebkit2gtk-4.1-dev \
+            libayatana-appindicator3-dev librsvg2-dev
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            kubilitics-desktop/src-tauri/target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('kubilitics-desktop/src-tauri/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-
+
+      - name: Create CI stubs (sidecar binaries + frontend dist)
+        # Two things Tauri validates at compile time that aren't present in CI:
+        # 1. tauri_build::build() checks every externalBin in tauri.conf.json exists for
+        #    the current target triple. Only macOS binaries are committed; create Linux stubs.
+        # 2. tauri::generate_context!() macro checks frontendDist ("../dist") exists.
+        #    The frontend isn't built in this CI job; create an empty dist placeholder.
+        run: |
+          TRIPLE="x86_64-unknown-linux-gnu"
+          mkdir -p kubilitics-desktop/src-tauri/binaries
+          for bin in kubilitics-backend kcli; do
+            stub="kubilitics-desktop/src-tauri/binaries/${bin}-${TRIPLE}"
+            if [ ! -f "$stub" ]; then
+              echo "#!/bin/sh" > "$stub"
+              chmod +x "$stub"
+              echo "Created stub: $stub"
+            fi
+          done
+          # Satisfy generate_context!() frontendDist check
+          mkdir -p kubilitics-desktop/dist
+          echo '<html></html>' > kubilitics-desktop/dist/index.html
+          echo "Created frontend dist placeholder"
+
+      - name: Run Rust tests
+        working-directory: kubilitics-desktop/src-tauri
+        run: cargo test
+
+  # ── Compile check (no bundle) – verifies Tauri builds on each OS ──────────
+  # Only runs on PRs and manual dispatch to keep push builds fast.
+  compile-check:
+    name: Compile Check (${{ matrix.os }})
+    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
+    needs: test
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest, ubuntu-latest]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install system deps (Ubuntu)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            libgtk-3-dev libwebkit2gtk-4.1-dev \
+            libayatana-appindicator3-dev librsvg2-dev
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            kubilitics-desktop/src-tauri/target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('kubilitics-desktop/src-tauri/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-
+
+      - name: Create CI stubs (Unix - macOS/Linux)
+        if: matrix.os != 'windows-latest'
+        # Tauri validates externalBin binaries exist for the current target triple at compile time.
+        # Create platform-specific stubs for all required binaries.
+        shell: bash
+        run: |
+          # Determine target triple based on OS
+          if [ "${{ matrix.os }}" == "macos-latest" ]; then
+            TRIPLE="aarch64-apple-darwin"
+          elif [ "${{ matrix.os }}" == "ubuntu-latest" ]; then
+            TRIPLE="x86_64-unknown-linux-gnu"
+          else
+            echo "Unknown OS: ${{ matrix.os }}"
+            exit 1
+          fi
+          
+          mkdir -p kubilitics-desktop/src-tauri/binaries
+          for bin in kubilitics-backend kcli; do
+            stub="kubilitics-desktop/src-tauri/binaries/${bin}-${TRIPLE}"
+            if [ ! -f "$stub" ]; then
+              echo "#!/bin/sh" > "$stub"
+              chmod +x "$stub"
+              echo "Created stub: $stub"
+            fi
+          done
+
+          # Satisfy generate_context!() frontendDist check
+          mkdir -p kubilitics-desktop/dist
+          echo '<html></html>' > kubilitics-desktop/dist/index.html
+          echo "Created frontend dist placeholder"
+
+      - name: Create CI stubs (Windows)
+        if: matrix.os == 'windows-latest'
+        # Tauri validates externalBin binaries exist for the current target triple at compile time.
+        # Create platform-specific stubs for Windows.
+        shell: pwsh
+        run: |
+          $TRIPLE = "x86_64-pc-windows-msvc"
+          $binariesDir = "kubilitics-desktop/src-tauri/binaries"
+          New-Item -ItemType Directory -Force -Path $binariesDir | Out-Null
+          
+          $bins = @("kubilitics-backend", "kcli")
+          foreach ($bin in $bins) {
+            $stub = Join-Path $binariesDir "${bin}-${TRIPLE}.exe"
+            if (-not (Test-Path $stub)) {
+              # Create empty file as stub
+              New-Item -ItemType File -Path $stub -Force | Out-Null
+              Write-Host "Created stub: $stub"
+            }
+          }
+          
+          # Satisfy generate_context!() frontendDist check
+          $distDir = "kubilitics-desktop/dist"
+          New-Item -ItemType Directory -Force -Path $distDir | Out-Null
+          Set-Content -Path (Join-Path $distDir "index.html") -Value "<html></html>"
+          Write-Host "Created frontend dist placeholder"
+
+      - name: Cargo check (no build artifacts)
+        working-directory: kubilitics-desktop/src-tauri
+        run: cargo check

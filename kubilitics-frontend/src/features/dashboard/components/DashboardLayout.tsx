@@ -47,7 +47,7 @@ function SectionHeader({
 export const DashboardLayout = () => {
   return (
     <div className="h-full w-full flex flex-col min-h-0 bg-background text-foreground animate-fade-in">
-      <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden p-6 pb-6 scroll-smooth w-full">
+      <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden p-6 pb-28 scroll-smooth w-full">
         <div className="w-full space-y-8">
           {/* Page Title for A11y & Semantics */}
           <h1 className="sr-only">Dashboard</h1>
