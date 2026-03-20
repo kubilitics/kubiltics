@@ -86,7 +86,7 @@ desktop: backend kcli
 
 # Desktop development mode (hot reload)
 # Starts backend sidecar + frontend dev server + Tauri dev window
-desktop-dev: backend
+desktop-dev: backend kcli
 	@chmod +x scripts/dev-desktop.sh
 	@./scripts/dev-desktop.sh
 

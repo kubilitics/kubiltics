@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
-	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -83,54 +82,57 @@ func (h *Handler) GetShellStream(w http.ResponseWriter, r *http.Request) {
 	if d, err := os.UserHomeDir(); err == nil && d != "" {
 		workDir = d
 	}
-	// Wrapper: source kcli completion (bash only), set context if needed, then exec interactive shell.
-	// This gives native Tab completion for kcli and aliases k/kubectl to kcli.
-	// We must ensure kcli is in the PATH. If not, we try to use the absolute path.
-	kcliPath := "kcli"
-	if _, err := exec.LookPath("kcli"); err != nil {
-		// Fallback to absolute path in dev environment
-		devPath := "/Users/koti/myFuture/Kubernetes/kubilitics-os-emergent/kcli/kcli"
-		if _, err := os.Stat(devPath); err == nil {
-			kcliPath = devPath
-		}
-	}
+	// Resolve kcli binary using the shared resolver (checks KCLI_BIN env, PATH, common locations).
+	// If kcli is not available, gracefully fall back to plain kubectl — the shell must always start.
+	kcliBin, kcliErr := resolveKCLIBinary()
 
 	ctxArg := strings.ReplaceAll(cluster.Context, "'", "'\"'\"'")
-	var wrapper string
+	var sb strings.Builder
 
-	// Phase 5: Fix Shell Instability - Strict kcli requirement.
-	// We MUST ensure kcli is runnable. If not, we fail the shell session immediately.
-	// We do NOT want to fall back to a raw zsh/bash if kcli is missing.
+	if kcliErr == nil {
+		// kcli is available — set up a rich kcli-powered shell with aliases and completion
+		sb.WriteString("export KCLI_BIN='" + strings.ReplaceAll(kcliBin, "'", "'\"'\"'") + "'\n")
 
-	// Common preamble: Check kcli, setup aliases.
-	// If kcli is missing, print error and exit immediately.
-	preamble := fmt.Sprintf(`
-		if ! command -v %s &> /dev/null; then
-			echo "❌ Critical Error: kcli binary not found at '%s'"
-			echo "The shell cannot start without the Kubilitics backend CLI."
-			exit 1
-		fi
-		alias k=%s
-		alias kubectl=%s
-		alias kcl=%s
-		alias kubectx='%s ctx'
-		alias kubens='%s ns'
-		alias k9s='%s ui'
-	`, kcliPath, kcliPath, kcliPath, kcliPath, kcliPath, kcliPath, kcliPath, kcliPath)
+		if shell == "/bin/bash" {
+			sb.WriteString("source <(\"$KCLI_BIN\" completion bash 2>/dev/null) 2>/dev/null\n")
+			sb.WriteString("source <(kubectl completion bash 2>/dev/null) 2>/dev/null\n")
+		}
+
+		// Alias common tools to kcli
+		sb.WriteString("alias k='\"$KCLI_BIN\"'\n")
+		sb.WriteString("alias kubectl='\"$KCLI_BIN\"'\n")
+		sb.WriteString("alias kcli='\"$KCLI_BIN\"'\n")
+		sb.WriteString("alias kcl='\"$KCLI_BIN\"'\n")
+		sb.WriteString("alias kubectx='\"$KCLI_BIN\" ctx'\n")
+		sb.WriteString("alias kubens='\"$KCLI_BIN\" ns'\n")
+		sb.WriteString("alias k9s='\"$KCLI_BIN\" ui'\n")
+
+		// Set Kubernetes context
+		if cluster.Context != "" {
+			sb.WriteString("\"$KCLI_BIN\" ctx '" + ctxArg + "' 2>/dev/null || kubectl config use-context '" + ctxArg + "' 2>/dev/null\n")
+		}
+
+		// Custom PS1 prompt showing kcli context
+		sb.WriteString("eval \"$(\\\"$KCLI_BIN\\\" prompt 2>/dev/null)\" 2>/dev/null || export PS1='\\[\\033[1;32m\\][kcli: $(\"$KCLI_BIN\" kubeconfig current-context 2>/dev/null)]\\[\\033[0m\\] \\$ '\n")
+	} else {
+		// kcli not available — fall back to plain kubectl shell (never block the session)
+		log.Printf("Terminal: kcli not available (%v), falling back to kubectl for cluster %s", kcliErr, clusterID)
+		if shell == "/bin/bash" {
+			sb.WriteString("source <(kubectl completion bash 2>/dev/null) 2>/dev/null\n")
+		}
+		if cluster.Context != "" {
+			sb.WriteString("kubectl config use-context '" + ctxArg + "' 2>/dev/null\n")
+		}
+		sb.WriteString("export PS1='\\[\\033[1;33m\\][kubectl]\\[\\033[0m\\] \\$ '\n")
+	}
 
 	if shell == "/bin/bash" {
-		wrapper = preamble + fmt.Sprintf("source <(%s completion bash) 2>/dev/null; ", kcliPath)
-		if cluster.Context != "" {
-			wrapper += fmt.Sprintf("%s config use-context '%s' 2>/dev/null || exit 1; ", kcliPath, ctxArg)
-		}
-		wrapper += "exec bash -i"
+		sb.WriteString("exec bash -i\n")
 	} else {
-		wrapper = preamble
-		if cluster.Context != "" {
-			wrapper += fmt.Sprintf("%s config use-context '%s' 2>/dev/null || exit 1; ", kcliPath, ctxArg)
-		}
-		wrapper += "exec sh -i"
+		sb.WriteString("exec sh -i\n")
 	}
+
+	wrapper := sb.String()
 	cmd := exec.CommandContext(ctx, shell, "-c", wrapper)
 	cmd.Env = env
 	cmd.Dir = workDir
