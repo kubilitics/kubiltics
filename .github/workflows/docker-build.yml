@@ -7,10 +7,8 @@ on:
       - develop
     paths:
       - 'kubilitics-backend/**'
-      - 'kubilitics-ai/**'
       - 'kubilitics-frontend/**'
       - 'kubilitics-backend/Dockerfile'
-      - 'kubilitics-ai/Dockerfile'
       - 'kubilitics-frontend/Dockerfile'
       - '.github/workflows/docker-build.yml'
     # NOTE: No tags trigger here. Version-tagged Docker images are built and
@@ -21,7 +19,6 @@ on:
       - develop
     paths:
       - 'kubilitics-backend/**'
-      - 'kubilitics-ai/**'
   workflow_dispatch:
     inputs:
       component:
@@ -30,7 +27,6 @@ on:
         type: choice
         options:
           - backend
-          - ai
           - all
       tag:
         description: 'Image tag (default: latest)'
@@ -41,7 +37,6 @@ on:
 env:
   REGISTRY: ghcr.io
   BACKEND_IMAGE: kubilitics-backend
-  AI_IMAGE: kubilitics-ai
   FRONTEND_IMAGE: kubilitics-frontend
   PLATFORMS: linux/amd64,linux/arm64
 
@@ -60,7 +55,7 @@ jobs:
     timeout-minutes: 25
     # Skip Docker builds for Dependabot PRs — dependency bumps don't change
     # Dockerfile logic and the full multi-platform build adds ~25 min of noise.
-    # Dependabot's own CI (backend-ci / ai-ci) validates the Go code changes.
+    # Dependabot's own CI (backend-ci) validates the Go code changes.
     if: |
       github.actor != 'dependabot[bot]' && (
         github.event_name == 'workflow_dispatch' && (github.event.inputs.component == 'backend' || github.event.inputs.component == 'all') ||
@@ -111,61 +106,6 @@ jobs:
           platforms: ${{ env.PLATFORMS }}
           provenance: false
           # Docker Buildx automatically provides TARGETOS and TARGETARCH for multi-platform builds
-
-      # Trivy scanning is handled by security-scan.yml to avoid duplication
-
-  ai:
-    name: Build and Push AI Backend
-    runs-on: ubuntu-latest
-    timeout-minutes: 25
-    if: |
-      github.actor != 'dependabot[bot]' && (
-        github.event_name == 'workflow_dispatch' && (github.event.inputs.component == 'ai' || github.event.inputs.component == 'all') ||
-        github.event_name != 'workflow_dispatch'
-      )
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Extract metadata (tags, labels) for AI
-        id: meta-ai
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ env.AI_IMAGE }}
-          tags: |
-            type=ref,event=branch
-            type=ref,event=pr
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=semver,pattern={{major}}
-            type=sha,prefix=sha-
-            type=raw,value=latest,enable={{is_default_branch}}
-            type=raw,value=${{ github.event.inputs.tag }},enable=${{ github.event_name == 'workflow_dispatch' && github.event.inputs.tag != '' }}
-
-      - name: Build and push AI image
-        uses: docker/build-push-action@v5
-        with:
-          context: ./kubilitics-ai
-          file: ./kubilitics-ai/Dockerfile
-          push: ${{ github.event_name != 'pull_request' }}
-          tags: ${{ steps.meta-ai.outputs.tags }}
-          labels: ${{ steps.meta-ai.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-          # AI uses CGO_ENABLED=1 (sqlite/pty) — cross-compilation requires a
-          # cross-compiler toolchain. Build amd64 only; arm64 support deferred.
-          platforms: linux/amd64
-          provenance: false
 
       # Trivy scanning is handled by security-scan.yml to avoid duplication
 

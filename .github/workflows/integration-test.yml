@@ -10,16 +10,10 @@ on:
       - develop
     paths:
       - 'kubilitics-backend/**'
-      - 'kubilitics-ai/**'
       - 'kubilitics-frontend/**'
       - 'docker-compose.test.yml'
   workflow_dispatch:
     inputs:
-      include_ai:
-        description: 'Include AI backend in tests'
-        required: false
-        type: boolean
-        default: false
       include_frontend:
         description: 'Include frontend in tests'
         required: false
@@ -38,7 +32,7 @@ jobs:
     name: Integration Test - Backend Only
     runs-on: ubuntu-latest
     # Skip integration tests for Dependabot PRs — dependency bumps are validated
-    # by unit tests (backend-ci / ai-ci). Integration tests require a live stack
+    # by unit tests (backend-ci). Integration tests require a live stack
     # and are too expensive to run on every automated dependency update.
     if: github.actor != 'dependabot[bot]'
     steps:
@@ -217,21 +211,19 @@ jobs:
 
       - name: Start all services
         run: |
-          docker compose -f docker-compose.test.yml --profile with-frontend --profile with-ai up -d --build
+          docker compose -f docker-compose.test.yml --profile with-frontend up -d --build
           echo "Started full stack services"
 
       - name: Wait for all services
         run: |
           timeout 180 bash -c 'until docker compose -f docker-compose.test.yml exec -T backend wget --quiet --tries=1 --spider http://localhost:819/health && \
-            docker compose -f docker-compose.test.yml exec -T frontend wget --quiet --tries=1 --spider http://localhost/ && \
-            docker compose -f docker-compose.test.yml exec -T ai wget --quiet --tries=1 --spider http://localhost:8081/health; do sleep 3; done'
+            docker compose -f docker-compose.test.yml exec -T frontend wget --quiet --tries=1 --spider http://localhost/; do sleep 3; done'
           echo "✓ All services are ready"
 
       - name: Test service connectivity
         run: |
           curl -f http://localhost:819/health && echo "✓ Backend accessible"
           curl -f http://localhost:4173/ && echo "✓ Frontend accessible"
-          curl -f http://localhost:8081/health && echo "✓ AI backend accessible"
 
       - name: Run comprehensive Playwright tests
         working-directory: kubilitics-frontend
@@ -239,7 +231,6 @@ jobs:
           npm ci
           export PLAYWRIGHT_BASE_URL=http://localhost:4173
           export PLAYWRIGHT_BACKEND_BASE_URL=http://localhost:819
-          export PLAYWRIGHT_AI_BACKEND_URL=http://localhost:8081
           npx playwright test e2e/app.spec.ts --config=playwright.config.mjs || echo "Some tests may have failed (expected without real cluster)"
           echo "✓ Full stack integration tests completed"
 
@@ -250,8 +241,6 @@ jobs:
           docker compose -f docker-compose.test.yml logs backend --tail=50 || true
           echo "=== Frontend logs ==="
           docker compose -f docker-compose.test.yml logs frontend --tail=50 || true
-          echo "=== AI Backend logs ==="
-          docker compose -f docker-compose.test.yml logs ai --tail=50 || true
 
       - name: Upload Playwright report
         if: always()

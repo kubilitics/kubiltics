@@ -23,7 +23,6 @@
     ],
     "externalBin": [
       "binaries/kubilitics-backend",
-      "binaries/kubilitics-ai",
       "binaries/kcli"
     ],
     "resources": [],

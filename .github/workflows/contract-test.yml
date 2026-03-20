@@ -7,7 +7,6 @@ on:
       - develop
     paths:
       - 'kubilitics-backend/api/swagger.yaml'
-      - 'kubilitics-ai/api/openapi.yaml'
       - 'kubilitics-frontend/src/types/api/**'
       - '.github/workflows/contract-test.yml'
   pull_request:
@@ -16,7 +15,6 @@ on:
       - develop
     paths:
       - 'kubilitics-backend/api/swagger.yaml'
-      - 'kubilitics-ai/api/openapi.yaml'
       - 'kubilitics-frontend/src/types/api/**'
   workflow_dispatch:
 

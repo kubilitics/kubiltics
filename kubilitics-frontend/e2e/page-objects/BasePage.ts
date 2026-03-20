@@ -3,7 +3,6 @@ import { Page, expect, Locator } from '@playwright/test';
 export class BasePage {
     readonly page: Page;
     readonly searchButton: Locator;
-    readonly aiAssistantButton: Locator;
     readonly navHome: Locator;
     readonly navTopology: Locator;
     readonly navResources: Locator;
@@ -12,7 +11,6 @@ export class BasePage {
     constructor(page: Page) {
         this.page = page;
         this.searchButton = page.locator('[data-testid="search-trigger"]');
-        this.aiAssistantButton = page.locator('[data-testid="ai-assistant-toggle"]');
         this.navHome = page.locator('nav').getByRole('link', { name: 'Home' });
         this.navTopology = page.locator('nav').getByRole('link', { name: 'Topology' });
         this.navResources = page.locator('nav').getByRole('link', { name: 'Resources' });
@@ -37,10 +35,5 @@ export class BasePage {
     async openSearch() {
         await this.page.keyboard.press('Meta+K');
         await expect(this.page.locator('[data-testid="search-dialog"]')).toBeVisible();
-    }
-
-    async toggleAIAssistant() {
-        await this.aiAssistantButton.click();
-        await expect(this.page.locator('[data-testid="ai-assistant-panel"]')).toBeVisible();
     }
 }

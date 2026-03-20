@@ -107,7 +107,6 @@ config:
   kcliRateLimitBurst: 24  # Burst for /kcli APIs
   kcliStreamMaxConns: 4  # Max concurrent /kcli/stream sessions per cluster
   kcliAllowShellMode: false  # Allow /kcli/stream?mode=shell (interactive shell) - conservative default for multi-tenant
-  aiBackendUrl: "http://kubilitics-ai:8081"  # AI backend URL for kcli AI commands (when AI backend is enabled)
   # TLS Configuration (BE-TLS-001)
   # Set tlsEnabled: true and mount TLS certificate from Kubernetes Secret
   # Example: Use cert-manager to create Certificate resource, then mount the secret
@@ -173,8 +172,6 @@ frontend:
   config:
     backendService: "kubilitics"  # Backend service name
     backendPort: 819  # Backend service port
-    aiBackendService: "kubilitics-ai"  # AI backend service name (optional)
-    aiBackendPort: 8081  # AI backend service port
   
   configMap:
     name: ""  # If empty, uses default name from _helpers.tpl
@@ -337,10 +334,6 @@ podDisruptionBudget:
   # Backend PDB configuration
   minAvailable: ""  # e.g., "1" or "50%" - minimum pods that must be available
   maxUnavailable: ""  # e.g., "1" or "25%" - maximum pods that can be unavailable (alternative to minAvailable)
-  # AI Backend PDB configuration
-  ai:
-    minAvailable: ""
-    maxUnavailable: ""
   # Frontend PDB configuration
   frontend:
     minAvailable: ""
@@ -355,83 +348,9 @@ serviceMonitor:
   interval: "30s"  # Scraping interval
   scrapeTimeout: "10s"  # Scraping timeout
   relabelings: []  # Prometheus relabeling rules
-  # AI Backend ServiceMonitor
-  ai:
-    create: false  # Create ServiceMonitor for AI backend
-    metricsPath: "/metrics"
-    interval: "30s"
-    scrapeTimeout: "10s"
   # Frontend ServiceMonitor
   frontend:
     create: false  # Create ServiceMonitor for frontend
     metricsPath: "/metrics"
     interval: "30s"
     scrapeTimeout: "10s"
-
-# AI Backend (kubilitics-ai) - Optional component
-ai:
-  enabled: false
-  replicaCount: 1
-  
-  image:
-    repository: ghcr.io/kubilitics/kubilitics-ai
-    tag: "1.0.0"
-    pullPolicy: IfNotPresent
-  
-  serviceAccount:
-    create: true
-    name: ""  # If empty, uses default name with -ai suffix
-  
-  service:
-    type: ClusterIP
-    port: 8081
-  
-  # AI Backend configuration
-  config:
-    serverPort: 8081
-    backendAddress: "kubilitics:50051"  # kubilitics-backend gRPC service
-    backendHttpUrl: "http://kubilitics:819"  # kubilitics-backend HTTP URL for MCP server calls
-    backendTimeout: 30
-    backendTLSEnabled: false
-    llmProvider: "anthropic"  # openai | anthropic | ollama | custom
-    llmOpenAIModel: "gpt-4"
-    llmAnthropicModel: "claude-3-5-sonnet-20241022"
-    llmOllamaBaseURL: ""  # e.g., "http://ollama-service:11434"
-    llmOllamaModel: "llama3"
-    databaseType: "sqlite"  # sqlite | postgres
-    databasePath: "/var/lib/kubilitics/kubilitics-ai.db"
-    autonomyDefaultLevel: 2  # 1-5 (1=Observe, 2=Recommend, 3=Propose, 4=Act-with-Guard, 5=Full-Autonomous)
-    autonomyAllowLevelOverride: true
-    tlsEnabled: false
-  
-  # Persistence for AI backend database
-  persistence:
-    enabled: true
-    storageClass: ""
-    size: 1Gi
-  
-  # TLS for AI backend (optional)
-  tls:
-    enabled: false
-    secretName: ""
-  
-  # AI Backend Secret for API keys
-  secret:
-    enabled: false
-    name: ""  # If empty, uses default name from _helpers.tpl
-    openaiApiKey: ""  # OpenAI API key (plaintext, will be base64 encoded)
-    anthropicApiKey: ""  # Anthropic API key (plaintext, will be base64 encoded)
-    ollamaApiKey: ""  # Ollama API key if required (plaintext, will be base64 encoded)
-    data: {}  # Additional key-value pairs
-  
-  resources:
-    limits:
-      cpu: 1000m
-      memory: 1Gi
-    requests:
-      cpu: 200m
-      memory: 256Mi
-  
-  nodeSelector: {}
-  tolerations: []
-  affinity: {}

@@ -42,10 +42,6 @@ spec:
               value: {{ .Values.frontend.config.backendService | quote }}
             - name: BACKEND_PORT
               value: {{ .Values.frontend.config.backendPort | quote }}
-            - name: AI_BACKEND_SERVICE
-              value: {{ .Values.frontend.config.aiBackendService | default "" | quote }}
-            - name: AI_BACKEND_PORT
-              value: {{ .Values.frontend.config.aiBackendPort | default "8081" | quote }}
           volumeMounts:
             - name: frontend-config
               mountPath: /etc/nginx/conf.d

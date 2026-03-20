@@ -10,12 +10,6 @@ export const DEFAULT_BACKEND_PORT = Number(import.meta.env.VITE_BACKEND_PORT) ||
 /** Default backend base URL when running on localhost (desktop or browser dev). */
 export const DEFAULT_BACKEND_BASE_URL = import.meta.env.VITE_BACKEND_URL || `http://localhost:${DEFAULT_BACKEND_PORT}`;
 
-/** Default AI backend URL. */
-export const DEFAULT_AI_BASE_URL = import.meta.env.VITE_AI_BACKEND_URL || 'http://localhost:8081';
-
-/** Default AI WebSocket URL. */
-export const DEFAULT_AI_WS_URL = import.meta.env.VITE_AI_WS_URL || 'ws://localhost:8081';
-
 /** Hostnames that are considered "local" for auto-defaulting backend URL (no Settings needed). */
 const LOCAL_HOSTNAMES = ['localhost', '127.0.0.1'];
 

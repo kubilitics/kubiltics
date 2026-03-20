@@ -18,7 +18,7 @@ import (
 	"github.com/kubilitics/kubilitics-backend/internal/service"
 )
 
-// Server represents the gRPC server for kubilitics-ai integration
+// Server represents the gRPC server
 type Server struct {
 	server           *grpc.Server
 	healthServer     *health.Server

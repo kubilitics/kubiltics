@@ -4,7 +4,7 @@ set -euo pipefail
 
 # Restart full Kubilitics dev stack:
 # - Kill any existing dev servers on common ports
-# - Start backend-dev, kubilitics-ai, and frontend-dev
+# - Start backend-dev and frontend-dev
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
@@ -19,22 +19,14 @@ kill_port() {
   fi
 }
 
-echo "▶ Killing existing dev processes on common ports (819 backend, 8081 legacy, 5173 frontend, 8190 AI)..."
+echo "▶ Killing existing dev processes on common ports (819 backend, 5173 frontend)..."
 kill_port 819
-kill_port 8081
 kill_port 5173
-kill_port 8190
 
 echo "▶ Starting backend-dev (Go API)..."
 (
   cd "${ROOT_DIR}"
   make backend-dev &
-)
-
-echo "▶ Starting kubilitics-ai..."
-(
-  cd "${ROOT_DIR}/kubilitics-ai"
-  make run &
 )
 
 echo "▶ Starting frontend-dev (Vite) ..."
@@ -47,7 +39,7 @@ echo "▶ Starting frontend-dev (Vite) ..."
   npm run dev &
 )
 
-echo "✅ Kubilitics backend, AI, and frontend have been started in the background."
+echo "✅ Kubilitics backend and frontend have been started in the background."
 echo "   - Backend:  http://localhost:${KUBILITICS_PORT:-819}"
 echo "   - Frontend: http://localhost:5173"
 
@@ -57,8 +49,8 @@ set -euo pipefail
 
 # Restart full Kubilitics dev stack:
 # - Kill any existing dev servers on common ports
-# - Build backend + kubilitics-ai
-# - Start backend, AI service, and frontend dev server
+# - Build backend
+# - Start backend and frontend dev server
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
@@ -73,10 +65,9 @@ kill_port() {
   fi
 }
 
-echo "▶ Killing existing dev processes on common ports (8081 backend, 5173 frontend, 8190 AI)..."
+echo "▶ Killing existing dev processes on common ports (8081 backend, 5173 frontend)..."
 kill_port 8081
 kill_port 5173
-kill_port 8190
 
 echo "▶ Building backend binary..."
 (
@@ -85,22 +76,10 @@ echo "▶ Building backend binary..."
   go build -o bin/kubilitics-backend ./cmd/server
 )
 
-echo "▶ Building kubilitics-ai binary..."
-(
-  cd "${ROOT_DIR}/kubilitics-ai"
-  make build
-)
-
 echo "▶ Starting backend on :8081..."
 (
   cd "${ROOT_DIR}/kubilitics-backend"
   ./bin/kubilitics-backend &
-)
-
-echo "▶ Starting kubilitics-ai on :8190..."
-(
-  cd "${ROOT_DIR}/kubilitics-ai"
-  ./bin/kubilitics-ai &
 )
 
 echo "▶ Starting frontend dev server on :5173..."
@@ -114,14 +93,13 @@ echo "▶ Starting frontend dev server on :5173..."
   npm run dev &
 )
 
-echo "✅ Kubilitics backend, AI, and frontend have been started in the background."
+echo "✅ Kubilitics backend and frontend have been started in the background."
 echo "   - Backend:     http://localhost:8081"
 echo "   - Frontend:    http://localhost:5173"
-echo "   - AI service:  http://localhost:8190"
 
 #!/usr/bin/env bash
-# Kill anything on backend/frontend/AI ports, build backend + AI, then start backend + kubilitics-ai + frontend.
-# Backend and AI are always rebuilt so the running processes include latest Go code.
+# Kill anything on backend/frontend ports, build backend, then start backend + frontend.
+# Backend is always rebuilt so the running process includes latest Go code.
 # If you see "resource topology not implemented for kind Node" (500), do a clean rebuild first: make clean && make backend, then run this script.
 # If you see ECONNREFUSED 127.0.0.1:819, the backend is not listening — run this script from repo root (./scripts/restart.sh or make restart). Do not run two copies at once.
 set -e
@@ -129,7 +107,6 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
 BACKEND_PORT=819
-AI_PORT=8081
 FRONTEND_PORT=5173
 
 kill_port() {
@@ -161,30 +138,20 @@ wait_for_port() {
   return 1
 }
 
-echo "Stopping existing processes on $BACKEND_PORT, $AI_PORT and $FRONTEND_PORT..."
-for port in $BACKEND_PORT $AI_PORT $FRONTEND_PORT; do kill_port $port; done
+echo "Stopping existing processes on $BACKEND_PORT and $FRONTEND_PORT..."
+for port in $BACKEND_PORT $FRONTEND_PORT; do kill_port $port; done
 sleep 2
-for port in $BACKEND_PORT $AI_PORT $FRONTEND_PORT; do kill_port $port; done
+for port in $BACKEND_PORT $FRONTEND_PORT; do kill_port $port; done
 sleep 1
 kill_port $BACKEND_PORT || true
-kill_port $AI_PORT || true
 sleep 1
 
 echo "Building backend (kubilitics-backend/bin/kubilitics-backend)..."
 make -C "$ROOT" backend || { echo "Backend build failed."; exit 1; }
 
-echo "Building kubilitics-ai (kubilitics-ai/bin/kubilitics-ai)..."
-make -C "$ROOT/kubilitics-ai" build || { echo "kubilitics-ai build failed."; exit 1; }
-
 BACKEND_BIN="$ROOT/kubilitics-backend/bin/kubilitics-backend"
 if [ ! -x "$BACKEND_BIN" ]; then
   echo "Backend binary missing after build. Run: make backend"
-  exit 1
-fi
-
-AI_BIN="$ROOT/kubilitics-ai/bin/kubilitics-ai"
-if [ ! -x "$AI_BIN" ]; then
-  echo "kubilitics-ai binary missing after build. Run: make -C kubilitics-ai build"
   exit 1
 fi
 
@@ -193,8 +160,7 @@ echo "Starting backend on :$BACKEND_PORT..."
 export KUBILITICS_ALLOWED_ORIGINS="tauri://localhost,tauri://,http://localhost:5173,http://localhost:$BACKEND_PORT"
 (cd "$ROOT/kubilitics-backend" && export KUBILITICS_PORT=$BACKEND_PORT && export KUBILITICS_ALLOWED_ORIGINS && exec ./bin/kubilitics-backend) &
 BACKEND_PID=$!
-AI_PID=""
-trap 'kill $BACKEND_PID 2>/dev/null || true; [ -n "$AI_PID" ] && kill $AI_PID 2>/dev/null || true' EXIT
+trap 'kill $BACKEND_PID 2>/dev/null || true' EXIT
 
 echo "Waiting for backend to listen..."
 if ! wait_for_port $BACKEND_PORT; then
@@ -202,13 +168,6 @@ if ! wait_for_port $BACKEND_PORT; then
   exit 1
 fi
 echo "Backend is ready."
-
-mkdir -p "$ROOT/kubilitics-ai/data"
-export KUBILITICS_DATABASE_PATH="$ROOT/kubilitics-ai/data/kubilitics-ai.db"
-echo "Starting kubilitics-ai on :$AI_PORT..."
-(cd "$ROOT/kubilitics-ai" && export KUBILITICS_DATABASE_PATH && exec ./bin/kubilitics-ai) &
-AI_PID=$!
-sleep 2
 
 kill_port $FRONTEND_PORT || true
 sleep 1

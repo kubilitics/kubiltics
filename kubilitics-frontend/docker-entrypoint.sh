@@ -9,7 +9,6 @@
 # Environment variables:
 #   KUBILITICS_BACKEND_URL  - Backend API base URL (default: http://backend:819)
 #   KUBILITICS_WS_URL       - WebSocket base URL (default: derived from KUBILITICS_BACKEND_URL)
-#   KUBILITICS_AI_URL       - AI service URL (default: http://kubilitics-ai:8081)
 #
 # The Vite build produces JS files with:
 #   import.meta.env.VITE_BACKEND_URL → "http://localhost:819" (build-time default)

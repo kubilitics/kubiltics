@@ -108,10 +108,6 @@ spec:
             - name: KUBILITICS_KCLI_STREAM_MAX_CONNS
               value: {{ .Values.kcli.streamMaxConns | quote }}
             {{- end }}
-            {{- if .Values.config.aiBackendUrl }}
-            - name: KUBILITICS_AI_BACKEND_URL
-              value: {{ .Values.config.aiBackendUrl | quote }}
-            {{- end }}
             {{- if eq .Values.database.type "postgresql" }}
             {{- if .Values.database.postgresql.connectionString }}
             - name: KUBILITICS_POSTGRESQL_CONNECTION_STRING

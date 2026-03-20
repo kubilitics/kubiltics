@@ -22,26 +22,6 @@ updates:
           - "minor"
           - "patch"
 
-  # Go modules - AI Backend
-  - package-ecosystem: "gomod"
-    directory: "/kubilitics-ai"
-    schedule:
-      interval: "weekly"
-      day: "monday"
-      time: "09:00"
-    open-pull-requests-limit: 5
-    labels:
-      - "dependencies"
-      - "go"
-      - "ai"
-    groups:
-      go-ai-minor-patch:
-        patterns:
-          - "*"
-        update-types:
-          - "minor"
-          - "patch"
-
   # npm - Frontend
   - package-ecosystem: "npm"
     directory: "/kubilitics-frontend"

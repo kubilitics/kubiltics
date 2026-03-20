@@ -9,10 +9,6 @@ import { getClusters } from "@/services/backendApiClient";
 import { backendClusterToCluster } from "@/lib/backendClusterAdapter";
 import { Loader2 } from "lucide-react";
 
-// PERF: Lazy-load AIAssistant — pulls in framer-motion, react-markdown, remark-gfm (~120KB).
-// These are NOT needed for initial render; the AI panel opens on user interaction.
-const AIAssistant = lazy(() => import("@/components/ai/AIAssistant").then(m => ({ default: m.AIAssistant })));
-
 // Loading Fallback Component — uses a skeleton that mirrors typical list page layout
 // instead of a blank screen with a spinner, preventing the "white flash" problem.
 import { PageSkeleton } from "@/components/loading";
@@ -163,12 +159,8 @@ const MutatingWebhooks = lazy(() => import("./pages/MutatingWebhooks"));
 const MutatingWebhookDetail = lazy(() => import("./pages/MutatingWebhookDetail"));
 const ValidatingWebhooks = lazy(() => import("./pages/ValidatingWebhooks"));
 const ValidatingWebhookDetail = lazy(() => import("./pages/ValidatingWebhookDetail"));
-const AuditLog = lazy(() => import("./pages/AuditLog"));
 const Topology = lazy(() => import("./pages/Topology"));
 
-// Analytics Dashboards
-const AnalyticsOverview = lazy(() => import("./pages/AnalyticsOverview").then(m => ({ default: m.AnalyticsOverview })));
-const MLAnalyticsDashboard = lazy(() => import("./pages/MLAnalyticsDashboard").then(m => ({ default: m.MLAnalyticsDashboard })));
 
 import { useResourceLiveUpdates } from "./hooks/useResourceLiveUpdates";
 
@@ -343,7 +335,6 @@ import { CircuitBreakerBanner } from "@/components/loading";
 import { BackendClusterValidator } from "@/components/BackendClusterValidator";
 import { useOverviewStream } from "@/hooks/useOverviewStream";
 import { isTauri } from "@/lib/tauri";
-import { useAiAvailableStore } from "@/stores/aiAvailableStore";
 import { invokeWithRetry } from "@/lib/tauri";
 import { ThemeProvider } from "@/providers/ThemeProvider";
 import { useOnboardingStore } from "@/stores/onboardingStore";
@@ -357,8 +348,6 @@ ErrorTracker.init();
 // renders nothing. MemoryRouter starts at "/" regardless of the actual URL and is the
 // correct router for embedded webviews / Electron-style apps.
 const AppRouter = isTauri() ? MemoryRouter : BrowserRouter;
-
-const AI_STATUS_POLL_MS = 30_000;
 
 /**
  * ClusterOverviewStream — mounts a single persistent WebSocket to
@@ -413,48 +402,6 @@ function SyncBackendUrl() {
     // Run once on mount — backendBaseUrl intentionally excluded to avoid re-running on every change
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [setBackendBaseUrl]);
-  return null;
-}
-
-/** P2-8: In Tauri, sync get_ai_status().available into store so aiService and useAIStatus skip requests when AI is not available. */
-function SyncAIAvailable() {
-  const setAIAvailable = useAiAvailableStore((s) => s.setAIAvailable);
-  useEffect(() => {
-    if (!isTauri()) return;
-    let earlyRetryTimer: ReturnType<typeof setTimeout> | null = null;
-    const run = async () => {
-      try {
-        const status = await invokeWithRetry<{ available: boolean }>('get_ai_status');
-        setAIAvailable(status.available);
-        // If AI is not yet available on first check, retry quickly (3s, 6s, 10s)
-        // — the sidecar adoption happens async and may take a few seconds.
-        if (!status.available && earlyRetryTimer === null) {
-          let delay = 3000;
-          const retry = () => {
-            earlyRetryTimer = setTimeout(async () => {
-              try {
-                const s = await invokeWithRetry<{ available: boolean }>('get_ai_status');
-                setAIAvailable(s.available);
-                if (!s.available && delay < 15000) {
-                  delay = Math.min(delay * 2, 15000);
-                  retry();
-                }
-              } catch { /* ignore */ }
-            }, delay);
-          };
-          retry();
-        }
-      } catch {
-        setAIAvailable(false);
-      }
-    };
-    run();
-    const t = setInterval(run, AI_STATUS_POLL_MS);
-    return () => {
-      clearInterval(t);
-      if (earlyRetryTimer) clearTimeout(earlyRetryTimer);
-    };
-  }, [setAIAvailable]);
   return null;
 }
 
@@ -640,7 +587,6 @@ const App = () => (
         <ResourceLiveUpdates />
         <ThemeProvider />
         <SyncBackendUrl />
-        <SyncAIAvailable />
         <OnboardingGate>
         <AnalyticsConsentWrapper>
           <AppRouter>
@@ -655,7 +601,6 @@ const App = () => (
                 <BackendStatusBanner className="rounded-none border-x-0 border-t-0" />
                 {/* P1: Circuit breaker countdown — shows immediately when circuit opens */}
                 <CircuitBreakerBanner compact className="rounded-none border-x-0 border-t-0" />
-                <Suspense fallback={null}><AIAssistant /></Suspense>
                 <RouteErrorBoundaryWithReset>
                   <Suspense fallback={<PageLoader />}>
                     <Routes>
@@ -682,12 +627,6 @@ const App = () => (
                         <Route path="/dashboard" element={<DashboardPage />} />
                         <Route path="/fleet" element={<FleetDashboard />} />
                         <Route path="/settings" element={<SettingsPage />} />
-                        <Route path="/audit-log" element={<AuditLog />} />
-
-                        {/* Analytics Dashboards */}
-                        <Route path="/analytics" element={<AnalyticsOverview />} />
-                        <Route path="/ml-analytics" element={<MLAnalyticsDashboard />} />
-
                         {/* Cluster Topology */}
                         <Route path="/topology" element={<Topology />} />
 

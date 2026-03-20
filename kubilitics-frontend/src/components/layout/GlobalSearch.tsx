@@ -74,8 +74,6 @@ const navigationItems: NavItem[] = [
   { id: 'dashboard', name: 'Dashboard', keywords: ['home', 'overview', 'main'], icon: LayoutDashboard, path: '/dashboard', category: 'General' },
   { id: 'topology', name: 'Topology', keywords: ['graph', 'map', 'network', 'diagram'], icon: Waypoints, path: '/topology', category: 'General' },
   { id: 'settings', name: 'Settings', keywords: ['config', 'preferences', 'options'], icon: Settings, path: '/settings', category: 'General' },
-  { id: 'audit-log', name: 'Audit Log', keywords: ['history', 'events', 'trail'], icon: ScrollText, path: '/audit-log', category: 'General' },
-  { id: 'analytics', name: 'Analytics', keywords: ['metrics', 'charts', 'reports', 'ai'], icon: BarChart3, path: '/analytics', category: 'General' },
 
   // Workloads
   { id: 'workloads', name: 'Workloads', keywords: ['overview', 'controllers'], icon: Activity, path: '/workloads', category: 'Workloads' },

@@ -33,7 +33,7 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 //
-// ClusterDataService provides real-time cluster state to kubilitics-ai
+// ClusterDataService provides real-time cluster state
 type ClusterDataServiceClient interface {
 	// StreamClusterState streams real-time cluster state updates
 	// Returns CREATE, UPDATE, DELETE events for all resources
@@ -155,7 +155,7 @@ func (c *clusterDataServiceClient) ExecuteCommand(ctx context.Context, in *Comma
 // All implementations must embed UnimplementedClusterDataServiceServer
 // for forward compatibility.
 //
-// ClusterDataService provides real-time cluster state to kubilitics-ai
+// ClusterDataService provides real-time cluster state
 type ClusterDataServiceServer interface {
 	// StreamClusterState streams real-time cluster state updates
 	// Returns CREATE, UPDATE, DELETE events for all resources

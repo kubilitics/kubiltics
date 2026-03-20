@@ -57,8 +57,8 @@ jobs:
   # repo at github.com/kubilitics/kubilitics-kcli. Desktop sidecars clone and build
   # kcli from source in the desktop job below.
   # ──────────────────────────────────────────────────────────────────────────
-  # Docker images — backend and AI are server-side only (no standalone
-  # binaries in the GitHub Release).  They are distributed via GHCR.
+  # Docker images — backend is server-side only (no standalone
+  # binaries in the GitHub Release).  It is distributed via GHCR.
   # ──────────────────────────────────────────────────────────────────────────
   docker-backend:
     name: Backend Docker Image
@@ -97,48 +97,6 @@ jobs:
             ghcr.io/${{ github.repository_owner }}/kubilitics-backend:${{ steps.version.outputs.major }}
             ghcr.io/${{ github.repository_owner }}/kubilitics-backend:latest
           platforms: ${{ env.PLATFORMS }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-          provenance: false
-
-  docker-ai:
-    name: AI Docker Image
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@v4
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-      - name: Log in to GHCR
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Extract and validate version from tag
-        id: version
-        run: |
-          VERSION=${GITHUB_REF#refs/tags/v}
-          if ! echo "$VERSION" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9._-]+)?$'; then
-            echo "ERROR: malformed tag '$VERSION' — expected semver e.g. 1.2.3"
-            exit 1
-          fi
-          echo "version=$VERSION"                        >> $GITHUB_OUTPUT
-          echo "major=$(echo $VERSION | cut -d. -f1)"   >> $GITHUB_OUTPUT
-          echo "minor=$(echo $VERSION | cut -d. -f1-2)" >> $GITHUB_OUTPUT
-      - name: Build and push AI Docker image
-        uses: docker/build-push-action@v5
-        with:
-          context: ./kubilitics-ai
-          file: ./kubilitics-ai/Dockerfile
-          push: true
-          tags: |
-            ghcr.io/${{ github.repository_owner }}/kubilitics-ai:${{ steps.version.outputs.version }}
-            ghcr.io/${{ github.repository_owner }}/kubilitics-ai:${{ steps.version.outputs.minor }}
-            ghcr.io/${{ github.repository_owner }}/kubilitics-ai:${{ steps.version.outputs.major }}
-            ghcr.io/${{ github.repository_owner }}/kubilitics-ai:latest
-          # AI uses CGO_ENABLED=1 (sqlite/pty) — amd64 only; arm64 requires cross-compiler
-          platforms: linux/amd64
           cache-from: type=gha
           cache-to: type=gha,mode=max
           provenance: false
@@ -288,36 +246,6 @@ jobs:
             chmod +x "$BINS/kubilitics-backend-"* "$BINS/kcli-"*
           fi
 
-      - name: Build AI sidecar (optional)
-        # Non-fatal: AI features degrade gracefully if this fails.
-        # Runs after the required sidecars so it never blocks them.
-        continue-on-error: true
-        shell: bash
-        run: |
-          [ -d "kubilitics-ai" ] || exit 0
-          BINS="kubilitics-desktop/src-tauri/binaries"
-
-          if [ "${{ matrix.os }}" == "macos-latest" ]; then
-            (cd kubilitics-ai && CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -ldflags="-s -w" -o "../$BINS/kubilitics-ai-x86_64-apple-darwin"  ./cmd/server/main.go) &
-            (cd kubilitics-ai && CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -ldflags="-s -w" -o "../$BINS/kubilitics-ai-aarch64-apple-darwin" ./cmd/server/main.go) &
-            wait
-            lipo -create "$BINS/kubilitics-ai-x86_64-apple-darwin" \
-                         "$BINS/kubilitics-ai-aarch64-apple-darwin" \
-                 -output "$BINS/kubilitics-ai-universal-apple-darwin"
-            chmod +x "$BINS/kubilitics-ai-"*
-
-          elif [ "${{ matrix.os }}" == "windows-latest" ]; then
-            cd kubilitics-ai
-            CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -ldflags="-s -w" \
-              -o "../$BINS/kubilitics-ai-x86_64-pc-windows-msvc.exe" ./cmd/server/main.go
-
-          else
-            (cd kubilitics-ai && CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o "../$BINS/kubilitics-ai-x86_64-unknown-linux-gnu"   ./cmd/server/main.go) &
-            (cd kubilitics-ai && CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -ldflags="-s -w" -o "../$BINS/kubilitics-ai-aarch64-unknown-linux-gnu"  ./cmd/server/main.go) &
-            wait
-            chmod +x "$BINS/kubilitics-ai-"*
-          fi
-
       - name: Verify all required binaries exist
         shell: bash
         run: |
@@ -333,15 +261,11 @@ jobs:
               "kcli-aarch64-apple-darwin"
               "kcli-universal-apple-darwin"
             )
-            [ -f "$BINS/kubilitics-ai-x86_64-apple-darwin" ] && \
-              REQUIRED+=("kubilitics-ai-x86_64-apple-darwin" "kubilitics-ai-aarch64-apple-darwin" "kubilitics-ai-universal-apple-darwin")
           elif [ "${{ matrix.os }}" == "windows-latest" ]; then
             REQUIRED=(
               "kubilitics-backend-x86_64-pc-windows-msvc.exe"
               "kcli-x86_64-pc-windows-msvc.exe"
             )
-            [ -f "$BINS/kubilitics-ai-x86_64-pc-windows-msvc.exe" ] && \
-              REQUIRED+=("kubilitics-ai-x86_64-pc-windows-msvc.exe")
           else
             REQUIRED=(
               "kubilitics-backend-x86_64-unknown-linux-gnu"
@@ -349,8 +273,6 @@ jobs:
               "kcli-x86_64-unknown-linux-gnu"
               "kcli-aarch64-unknown-linux-gnu"
             )
-            [ -f "$BINS/kubilitics-ai-x86_64-unknown-linux-gnu" ] && \
-              REQUIRED+=("kubilitics-ai-x86_64-unknown-linux-gnu" "kubilitics-ai-aarch64-unknown-linux-gnu")
           fi
 
           MISSING=()
@@ -487,11 +409,11 @@ jobs:
   # ──────────────────────────────────────────────────────────────────────────
   # Create GitHub Release — desktop installers only.
   # kcli CLI binaries are released from github.com/kubilitics/kubilitics-kcli.
-  # Backend and AI are server-side — distributed via Docker (GHCR) only.
+  # Backend is server-side — distributed via Docker (GHCR) only.
   # ──────────────────────────────────────────────────────────────────────────
   release:
     name: Create GitHub Release
-    needs: [desktop, docker-backend, docker-ai]
+    needs: [desktop, docker-backend]
     if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     timeout-minutes: 15

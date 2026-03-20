@@ -19,7 +19,6 @@ import {
   LogOut,
   Plus,
   Unplug,
-  Zap,
 } from 'lucide-react';
 import { BrandLogo } from '@/components/BrandLogo';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
@@ -37,16 +36,12 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { GlobalSearch } from './GlobalSearch';
 import { ClusterShellPanel } from '@/components/shell';
 import { DeploymentWizard, ServiceWizard, ConfigMapWizard, SecretWizard } from '@/components/wizards';
-import { AISetupModal } from '@/features/ai/AISetupModal';
 import { getClusterKubeconfig } from '@/services/backendApiClient';
 import { getEffectiveBackendBaseUrl, useBackendConfigStore } from '@/stores/backendConfigStore';
 import { useUIStore } from '@/stores/uiStore';
 import { useProjectStore } from '@/stores/projectStore';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
-import { useAIStatus } from '@/hooks/useAIStatus';
-import { useAINotifications } from '@/hooks/useAINotifications';
-import { useApprovals } from '@/hooks/useAutonomy';
 import { useBackendHealth } from '@/hooks/useBackendHealth';
 import { useQueryClient } from '@tanstack/react-query';
 import {
@@ -125,7 +120,6 @@ export function Header() {
   const [wizardOpen, setWizardOpen] = useState<'deployment' | 'service' | 'configmap' | 'secret' | null>(null);
   const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
-  const [aiSetupOpen, setAiSetupOpen] = useState(false);
   const queryClient = useQueryClient();
 
   const handleLogout = async () => {
@@ -154,13 +148,6 @@ export function Header() {
       setLogoutConfirmOpen(false);
     }
   };
-
-  // E-PLAT-004: AI status indicator
-  const aiStatus = useAIStatus();
-  // E-PLAT-005: Proactive AI anomaly notifications
-  useAINotifications();
-  // E-PLAT-003: Real pending AI action approval count
-  const { pendingCount } = useApprovals('default', 30_000);
 
   // Backend health status indicator (subtle, Headlamp/Lens style)
   const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured);
@@ -408,83 +395,28 @@ export function Header() {
                   </DropdownMenuContent>
                 </DropdownMenu>
 
-                {/* AI Status Indicator — E-PLAT-004 */}
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      className={cn(
-                        'inline-flex items-center gap-1.5 h-9 px-3 rounded-xl text-xs font-semibold transition-all duration-200 border select-none press-effect',
-                        aiStatus.status === 'active'
-                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-800'
-                          : aiStatus.status === 'unconfigured'
-                            ? 'bg-slate-100 text-slate-500 border-slate-200 hover:bg-slate-200 dark:bg-slate-800/40 dark:text-slate-400 dark:border-slate-700'
-                            : 'bg-red-50 text-red-600 border-red-200 hover:bg-red-100 dark:bg-red-950/30 dark:text-red-400 dark:border-red-800'
-                      )}
-                      role="status"
-                      aria-label={`AI status: ${aiStatus.status === 'active' ? `AI Active - ${aiStatus.provider ?? 'LLM'} ${aiStatus.model ? `(${aiStatus.model})` : ''}` : aiStatus.status === 'unconfigured' ? 'AI not configured' : `AI unavailable${aiStatus.errorMessage ? ` - ${aiStatus.errorMessage}` : ''}`}`}
-                      onClick={() => aiStatus.status === 'active' ? navigate('/settings') : setAiSetupOpen(true)}
-                    >
-                      <span
-                        className={cn(
-                          'w-2 h-2 rounded-full shrink-0',
-                          aiStatus.checking
-                            ? 'bg-slate-300 animate-pulse'
-                            : aiStatus.status === 'active'
-                              ? 'bg-emerald-500'
-                              : aiStatus.status === 'unconfigured'
-                                ? 'bg-slate-400'
-                                : 'bg-red-500'
-                        )}
-                      />
-                      <Zap className="h-3 w-3 shrink-0" />
-                      <span className="hidden sm:inline">
-                        {aiStatus.status === 'active'
-                          ? 'AI Active'
-                          : aiStatus.status === 'unconfigured'
-                            ? 'AI Setup'
-                            : 'AI Off'}
-                      </span>
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent side="bottom" sideOffset={8}>
-                    {aiStatus.status === 'active'
-                      ? `AI Active — ${aiStatus.provider ?? 'LLM'} ${aiStatus.model ? `(${aiStatus.model})` : ''}`
-                      : aiStatus.status === 'unconfigured'
-                        ? 'AI not configured — click to set up in Settings'
-                        : `AI unavailable${aiStatus.errorMessage ? `: ${aiStatus.errorMessage}` : ''}`}
-                  </TooltipContent>
-                </Tooltip>
-
                 {/* Theme Toggle — Light/Dark/System */}
                 <ThemeToggle />
 
-                {/* Notifications — pending AI actions badge (E-PLAT-003) */}
+                {/* Notifications */}
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <button
                       className={cn(ICON_BTN, 'px-4 press-effect')}
-                      aria-label={pendingCount > 0 ? `${pendingCount} pending AI action${pendingCount > 1 ? 's' : ''} awaiting approval` : 'System Notifications'}
-                      onClick={() => navigate('/settings?tab=autonomy')}
+                      aria-label="System Notifications"
+                      onClick={() => navigate('/settings')}
                     >
                       <div className="relative shrink-0 flex items-center justify-center h-9 w-9 rounded-xl bg-slate-100 group-hover:bg-white transition-colors">
                         <Bell className="h-4 w-4" />
-                        {pendingCount > 0 ? (
-                          <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] rounded-full bg-amber-500 border-2 border-white shadow-sm flex items-center justify-center text-[9px] font-black text-white px-0.5">
-                            {pendingCount > 9 ? '9+' : pendingCount}
-                          </span>
-                        ) : (
-                          <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-blue-500 border-2 border-white shadow-sm" />
-                        )}
+                        <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-blue-500 border-2 border-white shadow-sm" />
                       </div>
                       <span className="hidden 2xl:inline text-sm font-bold tracking-tight">
-                        {pendingCount > 0 ? `${pendingCount} Pending` : 'Updates'}
+                        Updates
                       </span>
                     </button>
                   </TooltipTrigger>
                   <TooltipContent side="bottom" sideOffset={8}>
-                    {pendingCount > 0
-                      ? `${pendingCount} AI action${pendingCount > 1 ? 's' : ''} awaiting approval`
-                      : 'System Notifications'}
+                    System Notifications
                   </TooltipContent>
                 </Tooltip>
 
@@ -582,12 +514,6 @@ export function Header() {
       {wizardOpen === 'configmap' && <ConfigMapWizard onClose={() => setWizardOpen(null)} onSubmit={handleWizardSubmit} />}
       {wizardOpen === 'secret' && <SecretWizard onClose={() => setWizardOpen(null)} onSubmit={handleWizardSubmit} />}
 
-      {/* AI Setup Modal — opens when user clicks AI status indicator (unconfigured/unavailable) */}
-      <AISetupModal
-        open={aiSetupOpen}
-        onOpenChange={setAiSetupOpen}
-        onComplete={aiStatus.refetch}
-      />
     </>
   );
 }

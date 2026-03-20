@@ -949,29 +949,6 @@ export function Sidebar() {
       {/* Fixed footer */}
       <div className="shrink-0 px-5 pb-6 pt-4 border-t border-slate-100/60 dark:border-slate-800/60 bg-white/40 dark:bg-slate-900/40 backdrop-blur-md space-y-1.5">
         <NavLink
-          to="/audit-log"
-          className={({ isActive }) =>
-            cn(
-              "flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-all duration-300 group border h-11",
-              isActive
-                ? "bg-white dark:bg-slate-800 text-foreground border-slate-200/60 dark:border-slate-700/40 shadow-apple"
-                : "bg-transparent text-slate-800 dark:text-slate-300 hover:bg-slate-100/60 dark:hover:bg-slate-800/60 border-transparent hover:border-slate-100 dark:hover:border-slate-700/50"
-            )
-          }
-        >
-          {({ isActive }) => (
-            <>
-              <div className={cn(
-                "h-7 w-7 rounded-lg flex items-center justify-center shrink-0 transition-colors",
-                isActive ? "bg-indigo-100 dark:bg-indigo-500/20" : "bg-slate-100/80 dark:bg-slate-800/80 group-hover:bg-slate-200/80 dark:group-hover:bg-slate-700/80"
-              )}>
-                <ClipboardList className={cn("h-4 w-4 transition-colors", isActive ? "text-indigo-600 dark:text-indigo-400" : "text-slate-600 dark:text-slate-400 group-hover:text-slate-800 dark:group-hover:text-slate-100")} />
-              </div>
-              <span className={cn("font-semibold text-[13px]", isActive ? "text-slate-900 dark:text-slate-100" : "text-slate-800 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-slate-100")}>Audit Log</span>
-            </>
-          )}
-        </NavLink>
-        <NavLink
           to="/settings"
           className={cn(
             "flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-all duration-300 group border h-11",
@@ -1033,7 +1010,6 @@ export function Sidebar() {
 
           <div className="flex-1" />
 
-          <NavItemIconOnly to="/audit-log" icon={ClipboardList} label="Audit Log" iconColor="text-indigo-600 group-hover:text-indigo-700" />
           <NavItemIconOnly to="/settings" icon={Settings} label="Settings" iconColor="text-slate-800 dark:text-slate-200 group-hover:text-slate-900 dark:group-hover:text-slate-100" />
           <button
             type="button"

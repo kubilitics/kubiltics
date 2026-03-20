@@ -103,15 +103,6 @@ export const LazyResourceMetricsChart = lazyWithMinDelay(
     ),
 );
 
-export const LazyForecastChart = lazyWithMinDelay(
-  () =>
-    import(/* webpackChunkName: "charts" */ '@/components/ForecastChart'),
-);
-
-export const LazyMLAnomalyChart = lazyWithMinDelay(
-  () =>
-    import(/* webpackChunkName: "charts" */ '@/components/MLAnomalyChart'),
-);
 
 // ─── 3D Topology (~180 kB: Three.js + R3F) ─────────────────────────────────
 
@@ -126,28 +117,9 @@ export const LazyCytoscapeTopology = lazyWithMinDelay(
     ),
 );
 
-// ─── AI Components (~30 kB: markdown + code highlighting) ───────────────────
-
-/**
- * Lazy-loaded AI Assistant panel.
- * Defers react-markdown, remark-gfm, and syntax highlighting deps.
- */
-export const LazyAIAssistant = lazyWithMinDelay(
-  () =>
-    import(/* webpackChunkName: "ai-assistant" */ '@/components/ai').then(
-      (m) => ({ default: m.AIAssistant as ComponentType<any> }),
-    ),
-);
-
 // ─── Export Utilities (~50 kB: jsPDF) ───────────────────────────────────────
 
 /**
  * Lazy-loaded PDF/image export panel.
  * Defers jspdf and html-to-image dependencies.
  */
-export const LazyComplianceReportCard = lazyWithMinDelay(
-  () =>
-    import(
-      /* webpackChunkName: "export-utils" */ '@/components/ComplianceReportCard'
-    ),
-);

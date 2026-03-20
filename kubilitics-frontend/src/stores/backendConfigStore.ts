@@ -5,7 +5,7 @@
  */
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { DEFAULT_BACKEND_BASE_URL, DEFAULT_AI_BASE_URL, DEFAULT_AI_WS_URL, isLocalHostname } from '@/lib/backendConstants';
+import { DEFAULT_BACKEND_BASE_URL, isLocalHostname } from '@/lib/backendConstants';
 
 /**
  * Build-time check: are we running inside a Tauri desktop build?
@@ -84,10 +84,6 @@ export interface BackendConfigState {
   backendBaseUrl: string;
   /** Currently selected cluster ID for backend-scoped requests (e.g. topology, resources). */
   currentClusterId: string | null;
-  /** AI backend HTTP URL (e.g. http://localhost:8081). */
-  aiBackendUrl: string;
-  /** AI backend WebSocket URL (e.g. ws://localhost:8081/ws). */
-  aiWsUrl: string;
   /** Flag to prevent session restore after explicit logout. */
   logoutFlag: boolean;
 }
@@ -95,8 +91,6 @@ export interface BackendConfigState {
 interface BackendConfigStore extends BackendConfigState {
   setBackendBaseUrl: (url: string) => void;
   setCurrentClusterId: (clusterId: string | null) => void;
-  setAiBackendUrl: (url: string) => void;
-  setAiWsUrl: (url: string) => void;
   /** Clear backend URL and cluster; call when switching to direct K8s or disconnecting. */
   clearBackend: () => void;
   /** Set logout flag to prevent session restore. */
@@ -114,8 +108,6 @@ const initialBackendUrl = isTauriBuildTime() ? DEFAULT_BACKEND_BASE_URL : '';
 const initialState: BackendConfigState = {
   backendBaseUrl: initialBackendUrl,
   currentClusterId: null,
-  aiBackendUrl: DEFAULT_AI_BASE_URL,
-  aiWsUrl: DEFAULT_AI_WS_URL,
   logoutFlag: false,
 };
 
@@ -132,23 +124,11 @@ export const useBackendConfigStore = create<BackendConfigStore>()(
       setCurrentClusterId: (clusterId) =>
         set({ currentClusterId: clusterId ?? null }),
 
-      setAiBackendUrl: (url) =>
-        set({
-          aiBackendUrl: (url || '').trim().replace(/\/+$/, ''),
-        }),
-
-      setAiWsUrl: (url) =>
-        set({
-          aiWsUrl: (url || '').trim(),
-        }),
-
       clearBackend: () =>
         set({
           backendBaseUrl: getDefaultBackendBaseUrl(),
           currentClusterId: null,
-          aiBackendUrl: DEFAULT_AI_BASE_URL,
-          aiWsUrl: DEFAULT_AI_WS_URL,
-          logoutFlag: true, // Set logout flag to prevent session restore
+          logoutFlag: true,
         }),
 
       setLogoutFlag: (flag) =>
@@ -180,29 +160,6 @@ export const useBackendConfigStore = create<BackendConfigStore>()(
           state.backendBaseUrl = DEFAULT_BACKEND_BASE_URL;
         }
 
-        try {
-          const oldSettings = localStorage.getItem('kubilitics-settings');
-          if (oldSettings) {
-            const parsed = JSON.parse(oldSettings);
-            const settingsState = parsed?.state;
-
-            // Only migrate if backendConfigStore doesn't have AI URLs yet (first migration)
-            if (settingsState && state.aiBackendUrl === DEFAULT_AI_BASE_URL && state.aiWsUrl === DEFAULT_AI_WS_URL) {
-              if (settingsState.aiBackendUrl) {
-                state.aiBackendUrl = settingsState.aiBackendUrl;
-              }
-              if (settingsState.aiWsUrl) {
-                state.aiWsUrl = settingsState.aiWsUrl;
-              }
-
-              // Clear old settingsStore after migration
-              localStorage.removeItem('kubilitics-settings');
-              console.log('[backendConfigStore] Migrated AI URLs from settingsStore');
-            }
-          }
-        } catch (error) {
-          console.warn('[backendConfigStore] Failed to migrate from settingsStore:', error);
-        }
       },
     }
   )
@@ -210,5 +167,3 @@ export const useBackendConfigStore = create<BackendConfigStore>()(
 
 // Helper functions for non-React usage
 export const getCurrentBackendUrl = () => useBackendConfigStore.getState().backendBaseUrl;
-export const getCurrentAiBackendUrl = () => useBackendConfigStore.getState().aiBackendUrl;
-export const getCurrentAiWsUrl = () => useBackendConfigStore.getState().aiWsUrl;

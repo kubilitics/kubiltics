@@ -8,7 +8,6 @@ import { Sidebar } from './Sidebar';
 import { ConnectionRequiredBanner } from './ConnectionRequiredBanner';
 import { OfflineIndicator } from '@/components/OfflineIndicator';
 import { useClusterStore } from '@/stores/clusterStore';
-// AIAssistant is rendered globally in App.tsx
 import { useConnectionStatus } from '@/hooks/useConnectionStatus';
 import { useRecentlyVisited } from '@/hooks/useRecentlyVisited';
 import { useOfflineMode } from '@/hooks/useOfflineMode';
@@ -36,7 +35,7 @@ export function AppLayout() {
   const reduceMotion = useReducedMotion();
   const isDemo = useClusterStore((s) => s.isDemo);
   const { isConnected } = useConnectionStatus();
-  const { isOffline, aiBackendReachable, retryNow } = useOfflineMode();
+  const { isOffline, backendReachable, retryNow } = useOfflineMode();
   const gPendingRef = useRef(false);
   const gTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // PERF Area 2: Restore scroll position when navigating back to a previously visited page

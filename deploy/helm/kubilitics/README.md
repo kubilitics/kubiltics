@@ -5,7 +5,6 @@ Production-ready Helm chart for deploying Kubilitics - Kubernetes API gateway, t
 ## Features
 
 - **Backend Service**: Full-featured Kubernetes API gateway with topology engine
-- **AI Backend** (Optional): AI-powered cluster analysis and recommendations
 - **Frontend** (Optional): Web UI served via nginx
 - **Database Options**: SQLite (default) or PostgreSQL (HA via Bitnami subchart)
 - **Security**: RBAC, Network Policies, Pod Security Contexts, TLS support
@@ -131,24 +130,6 @@ config:
   topologyTimeoutSec: 30
   maxClusters: 100
   k8sTimeoutSec: 15
-```
-
-### AI Backend (Optional)
-
-```yaml
-ai:
-  enabled: true
-  replicaCount: 1
-  image:
-    repository: ghcr.io/kubilitics/kubilitics-ai
-    tag: "1.0.0"
-  config:
-    serverPort: 8081
-    backendAddress: "kubilitics:50051"
-    llmProvider: "anthropic"  # openai | anthropic | ollama
-  secret:
-    enabled: true
-    anthropicApiKey: "your-api-key"
 ```
 
 ### Frontend (Optional)

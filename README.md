@@ -360,9 +360,6 @@ kubilitics/
 │   ├── src/stores/            # Zustand state management
 │   └── package.json
 │
-├── kubilitics-ai/             # AI backend service (Go)
-│   └── cmd/ai/               # Entry point (port 8081)
-│
 ├── kcli/                      # AI-powered kubectl replacement (Go)
 │   └── cmd/kcli/             # CLI entry point
 │

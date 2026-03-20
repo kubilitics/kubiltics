@@ -28,41 +28,6 @@ services:
     networks:
       - kubilitics-test
 
-  # AI Backend service (optional)
-  # Note: AI backend expects gRPC connection to backend on port 50051, but backend
-  # currently only exposes HTTP on port 819. AI backend will fail to connect in
-  # this setup, but can still be tested independently for HTTP endpoints.
-  ai:
-    build:
-      context: ./kubilitics-ai
-      dockerfile: Dockerfile
-    container_name: kubilitics-ai-test
-    ports:
-      - "8081:8081"
-    environment:
-      - KUBILITICS_SERVER_PORT=8081
-      - KUBILITICS_BACKEND_ADDRESS=backend:50051
-      - KUBILITICS_BACKEND_TIMEOUT=30
-      - KUBILITICS_LLM_PROVIDER=anthropic
-      - KUBILITICS_DATABASE_TYPE=sqlite
-      - KUBILITICS_DATABASE_PATH=/var/lib/kubilitics/kubilitics-ai.db
-      - KUBILITICS_AUTONOMY_DEFAULT_LEVEL=2
-    volumes:
-      - ai-data:/var/lib/kubilitics
-    depends_on:
-      backend:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8081/health"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 30s
-    networks:
-      - kubilitics-test
-    profiles:
-      - with-ai
-
   # Frontend service (nginx serving built static files)
   frontend:
     build:
@@ -75,7 +40,6 @@ services:
       - "4173:80"
     environment:
       - VITE_BACKEND_URL=http://backend:819
-      - VITE_AI_BACKEND_URL=http://ai:8081
     depends_on:
       backend:
         condition: service_healthy
@@ -103,8 +67,6 @@ services:
 
 volumes:
   backend-data:
-    driver: local
-  ai-data:
     driver: local
 
 networks:

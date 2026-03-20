@@ -52,7 +52,7 @@ type Config struct {
 	AuthAdminUser   string `mapstructure:"auth_admin_user"`   // Bootstrap admin username when no users exist
 	AuthAdminPass   string `mapstructure:"auth_admin_pass"`   // Bootstrap admin password (plaintext; only used on first run)
 
-	// gRPC (for kubilitics-ai integration)
+	// gRPC
 	GRPCPort     int  `mapstructure:"grpc_port"`      // gRPC server port (default: 50051)
 	GRPCTLSEnabled bool `mapstructure:"grpc_tls_enabled"` // Enable TLS for gRPC (default: false)
 

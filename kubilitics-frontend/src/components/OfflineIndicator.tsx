@@ -17,7 +17,7 @@ import { useOfflineMode } from '@/hooks/useOfflineMode';
 import { useConnectionStatus } from '@/hooks/useConnectionStatus';
 
 export function OfflineIndicator() {
-  const { isOffline, aiBackendReachable, retryNow } = useOfflineMode();
+  const { isOffline, backendReachable, retryNow } = useOfflineMode();
   const { isConnected } = useConnectionStatus();
 
   // Don't show if not connected to a cluster at all (different banner handles that)
@@ -45,7 +45,7 @@ export function OfflineIndicator() {
   }
 
   // Backend unreachable (but browser is online)
-  if (!aiBackendReachable) {
+  if (!backendReachable) {
     return (
       <div
         className="flex items-center gap-3 px-5 py-3 rounded-2xl bg-amber-50/80 dark:bg-amber-950/20 border border-amber-200/60 dark:border-amber-800/40 text-amber-900 dark:text-amber-200 text-sm backdrop-blur-sm shadow-sm"

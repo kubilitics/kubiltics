@@ -17,7 +17,7 @@ export interface OfflineModeState {
   /** Browser is offline (no network) */
   isOffline: boolean;
   /** Backend API is reachable */
-  aiBackendReachable: boolean;
+  backendReachable: boolean;
   /** Number of consecutive health check failures */
   failureCount: number;
   /** Manually trigger a health check */
@@ -30,7 +30,7 @@ const FAILURE_THRESHOLD = 3;
 
 export function useOfflineMode(): OfflineModeState {
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
-  const [aiBackendReachable, setAiBackendReachable] = useState(true);
+  const [backendReachable, setAiBackendReachable] = useState(true);
   const [failureCount, setFailureCount] = useState(0);
 
   const storedUrl = useBackendConfigStore((s) => s.backendBaseUrl);
@@ -113,7 +113,7 @@ export function useOfflineMode(): OfflineModeState {
     };
   }, [isOffline, checkHealth, isConfigured]);
 
-  return { isOffline, aiBackendReachable, failureCount, retryNow };
+  return { isOffline, backendReachable, failureCount, retryNow };
 }
 
 export default useOfflineMode;
