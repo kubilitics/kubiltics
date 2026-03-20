@@ -265,11 +265,10 @@ Key configuration options:
 
 | Parameter | Default | Description |
 |-----------|---------|-------------|
-| `image.tag` | `1.0.0` | Backend image version |
+| `image.tag` | `0.1.2` | Backend image version |
 | `service.port` | `819` | Backend service port |
 | `database.type` | `sqlite` | `sqlite` or `postgresql` |
 | `ingress.enabled` | `false` | Enable Ingress |
-| `ai.enabled` | `false` | Enable AI backend |
 | `rbac.enabled` | `true` | Create RBAC resources |
 | `persistence.enabled` | `true` | Persistent storage for SQLite |
 | `config.authMode` | `required` | `required`, `optional`, or `disabled` |
@@ -323,12 +322,12 @@ cargo tauri build
 │                             │                                      │
 │              ┌──────────────┼──────────────┐                      │
 │              │              │              │                       │
-│     ┌────────▼──────┐ ┌────▼─────┐ ┌─────▼──────┐               │
-│     │  Topology     │ │  K8s     │ │  AI Backend │               │
-│     │  Engine       │ │  Client  │ │  Port 8081  │               │
-│     │  (ELK+React   │ │  (client │ │  (Claude /  │               │
-│     │   Flow)       │ │   -go)   │ │   OpenAI)   │               │
-│     └───────────────┘ └────┬─────┘ └────────────┘               │
+│     ┌────────▼──────┐ ┌────▼─────┐                               │
+│     │  Topology     │ │  K8s     │                               │
+│     │  Engine       │ │  Client  │                               │
+│     │  (ELK+React   │ │  (client │                               │
+│     │   Flow)       │ │   -go)   │                               │
+│     └───────────────┘ └────┬─────┘                               │
 │                             │                                      │
 │                    ┌────────▼────────┐                             │
 │                    │  Kubernetes     │                             │
