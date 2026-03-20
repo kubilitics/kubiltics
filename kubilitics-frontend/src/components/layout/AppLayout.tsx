@@ -5,7 +5,6 @@ import { motion } from 'framer-motion';
 import { useReducedMotion } from 'framer-motion';
 import { Header } from './Header';
 import { Sidebar } from './Sidebar';
-import { ConnectionRequiredBanner } from './ConnectionRequiredBanner';
 import { OfflineIndicator } from '@/components/OfflineIndicator';
 import { useClusterStore } from '@/stores/clusterStore';
 import { useConnectionStatus } from '@/hooks/useConnectionStatus';
@@ -118,7 +117,8 @@ export function AppLayout() {
         <Sidebar />
         <main ref={mainRef} id="main-content" className="flex-1 p-6 pb-28 pr-3 overflow-auto flex flex-col gap-4" role="main" aria-label="Main content">
           <OfflineIndicator />
-          <ConnectionRequiredBanner />
+          {/* ConnectionRequiredBanner removed — the "Not connected to cluster" overlay
+              below already covers this case. Having both creates a redundant double-banner. */}
           <div
             className={cn(
               'flex flex-col gap-4 min-h-0 flex-1 transition-opacity duration-200',
