@@ -1,0 +1,380 @@
+syntax = "proto3";
+
+package kubilitics.ai.v1;
+
+option go_package = "github.com/kubilitics/kubilitics-ai/api/proto/v1;v1";
+
+import "google/protobuf/timestamp.proto";
+
+// ClusterDataService defines the gRPC service for kubilitics-ai to consume
+// cluster state from kubilitics-backend.
+service ClusterDataService {
+  // StreamClusterState streams real-time cluster state updates.
+  // This is the primary method for keeping the World Model synchronized.
+  rpc StreamClusterState(StateStreamRequest) returns (stream StateUpdate);
+  
+  // GetResource retrieves a specific Kubernetes resource by kind/namespace/name.
+  rpc GetResource(ResourceRequest) returns (Resource);
+  
+  // ListResources lists resources of a given kind with optional filtering.
+  rpc ListResources(ListRequest) returns (ResourceList);
+  
+  // ExecuteCommand executes a command against a resource (e.g., restart pod).
+  // This is used by the action execution system.
+  rpc ExecuteCommand(CommandRequest) returns (CommandResult);
+  
+  // GetTopologyGraph retrieves the full topology graph for visualization.
+  rpc GetTopologyGraph(TopologyRequest) returns (TopologyGraph);
+  
+  // GetClusterHealth retrieves overall cluster health metrics.
+  rpc GetClusterHealth(HealthRequest) returns (ClusterHealth);
+  
+  // GetMetrics retrieves time-series metrics for resources.
+  rpc GetMetrics(MetricsRequest) returns (MetricsResponse);
+  
+  // GetEvents retrieves Kubernetes events for a resource or namespace.
+  rpc GetEvents(EventsRequest) returns (EventsResponse);
+}
+
+// StateStreamRequest initiates a cluster state stream.
+message StateStreamRequest {
+  // List of namespaces to watch (empty = all namespaces)
+  repeated string namespaces = 1;
+  
+  // Resource kinds to watch (empty = all kinds)
+  repeated string resource_kinds = 2;
+  
+  // Label selectors for filtering
+  map<string, string> label_selector = 3;
+  
+  // Whether to include initial snapshot
+  bool include_snapshot = 4;
+}
+
+// StateUpdate represents a single cluster state update.
+message StateUpdate {
+  // Update type: ADDED, MODIFIED, DELETED, SNAPSHOT
+  string update_type = 1;
+  
+  // The resource being updated
+  Resource resource = 2;
+  
+  // Timestamp of the update
+  google.protobuf.Timestamp timestamp = 3;
+  
+  // Sequence number for ordering
+  int64 sequence = 4;
+}
+
+// ResourceRequest requests a specific resource.
+message ResourceRequest {
+  // Resource kind (e.g., "Pod", "Deployment")
+  string kind = 1;
+  
+  // Namespace (empty for cluster-scoped resources)
+  string namespace = 2;
+  
+  // Resource name
+  string name = 3;
+  
+  // Cluster ID (for multi-cluster support)
+  string cluster_id = 4;
+}
+
+// Resource represents a Kubernetes resource.
+message Resource {
+  // Resource kind
+  string kind = 1;
+  
+  // API version
+  string api_version = 2;
+  
+  // Namespace
+  string namespace = 3;
+  
+  // Name
+  string name = 4;
+  
+  // UID
+  string uid = 5;
+  
+  // Resource version
+  string resource_version = 6;
+  
+  // Labels
+  map<string, string> labels = 7;
+  
+  // Annotations
+  map<string, string> annotations = 8;
+  
+  // Raw YAML/JSON data
+  bytes data = 9;
+  
+  // Creation timestamp
+  google.protobuf.Timestamp created_at = 10;
+  
+  // Status (e.g., "Running", "Failed")
+  string status = 11;
+  
+  // Owner references
+  repeated OwnerReference owner_refs = 12;
+}
+
+// OwnerReference represents a Kubernetes owner reference.
+message OwnerReference {
+  string kind = 1;
+  string name = 2;
+  string uid = 3;
+  bool controller = 4;
+}
+
+// ListRequest lists resources with optional filtering.
+message ListRequest {
+  // Resource kind
+  string kind = 1;
+  
+  // Namespace (empty = all namespaces)
+  string namespace = 2;
+  
+  // Label selector
+  map<string, string> label_selector = 3;
+  
+  // Field selector
+  map<string, string> field_selector = 4;
+  
+  // Cluster ID
+  string cluster_id = 5;
+  
+  // Pagination limit
+  int32 limit = 6;
+  
+  // Continuation token
+  string continue_token = 7;
+}
+
+// ResourceList is a list of resources.
+message ResourceList {
+  repeated Resource items = 1;
+  string continue_token = 2;
+  int32 total_count = 3;
+}
+
+// CommandRequest executes a command against a resource.
+message CommandRequest {
+  // Operation type: "restart", "scale", "rollback", "delete", etc.
+  string operation = 1;
+  
+  // Target resource
+  Resource target = 2;
+  
+  // Operation parameters (JSON-encoded)
+  bytes params = 3;
+  
+  // Dry run mode
+  bool dry_run = 4;
+  
+  // Correlation ID for audit trail
+  string correlation_id = 5;
+}
+
+// CommandResult is the result of a command execution.
+message CommandResult {
+  // Success or failure
+  bool success = 1;
+  
+  // Result message
+  string message = 2;
+  
+  // Error details (if failed)
+  string error = 3;
+  
+  // Updated resource state (if applicable)
+  Resource updated_resource = 4;
+  
+  // Correlation ID
+  string correlation_id = 5;
+}
+
+// TopologyRequest requests a topology graph.
+message TopologyRequest {
+  // Namespace filter (empty = all)
+  string namespace = 1;
+  
+  // Root resource (for subtree queries)
+  ResourceRequest root = 2;
+  
+  // Maximum depth (0 = unlimited)
+  int32 max_depth = 3;
+  
+  // Cluster ID
+  string cluster_id = 4;
+}
+
+// TopologyGraph represents a resource dependency graph.
+message TopologyGraph {
+  repeated ResourceNode nodes = 1;
+  repeated Dependency edges = 2;
+  int32 total_nodes = 3;
+  int32 total_edges = 4;
+}
+
+// ResourceNode is a node in the topology graph.
+message ResourceNode {
+  // Resource reference
+  Resource resource = 1;
+  
+  // Node metadata
+  string node_id = 2;
+  string node_type = 3;
+  
+  // Health status
+  HealthStatus health = 4;
+  
+  // Metrics summary
+  ResourceMetrics metrics = 5;
+}
+
+// Dependency represents an edge in the topology graph.
+message Dependency {
+  string source_id = 1;
+  string target_id = 2;
+  string dependency_type = 3; // "owns", "selects", "uses", "mounts", etc.
+  map<string, string> metadata = 4;
+}
+
+// HealthRequest requests cluster health information.
+message HealthRequest {
+  string cluster_id = 1;
+  bool include_details = 2;
+}
+
+// ClusterHealth represents overall cluster health.
+message ClusterHealth {
+  // Overall status: "healthy", "degraded", "critical"
+  string status = 1;
+  
+  // Health score (0-100)
+  int32 score = 2;
+  
+  // Component health
+  repeated ComponentHealth components = 3;
+  
+  // Resource counts
+  ResourceCounts resource_counts = 4;
+  
+  // Recent issues
+  repeated HealthIssue issues = 5;
+}
+
+// ComponentHealth represents health of a cluster component.
+message ComponentHealth {
+  string name = 1;
+  string status = 2;
+  string message = 3;
+}
+
+// HealthStatus represents resource health.
+message HealthStatus {
+  string status = 1; // "healthy", "warning", "critical", "unknown"
+  string reason = 2;
+  google.protobuf.Timestamp last_check = 3;
+}
+
+// ResourceCounts holds counts of resources by type.
+message ResourceCounts {
+  int32 pods = 1;
+  int32 deployments = 2;
+  int32 services = 3;
+  int32 nodes = 4;
+  int32 namespaces = 5;
+  map<string, int32> custom_counts = 6;
+}
+
+// HealthIssue represents a health problem.
+message HealthIssue {
+  string severity = 1; // "warning", "error", "critical"
+  string component = 2;
+  string message = 3;
+  google.protobuf.Timestamp detected_at = 4;
+}
+
+// MetricsRequest requests time-series metrics.
+message MetricsRequest {
+  // Target resource
+  ResourceRequest resource = 1;
+  
+  // Metric names to retrieve
+  repeated string metric_names = 2;
+  
+  // Time range
+  google.protobuf.Timestamp start_time = 3;
+  google.protobuf.Timestamp end_time = 4;
+  
+  // Resolution (e.g., "1m", "5m", "1h")
+  string resolution = 5;
+}
+
+// MetricsResponse returns time-series metrics.
+message MetricsResponse {
+  repeated MetricSeries series = 1;
+}
+
+// MetricSeries is a time-series of metric values.
+message MetricSeries {
+  string metric_name = 1;
+  repeated DataPoint points = 2;
+  string unit = 3;
+}
+
+// DataPoint is a single metric data point.
+message DataPoint {
+  google.protobuf.Timestamp timestamp = 1;
+  double value = 2;
+}
+
+// ResourceMetrics holds current resource metrics.
+message ResourceMetrics {
+  double cpu_usage = 1;       // CPU usage (cores)
+  double memory_usage = 2;    // Memory usage (bytes)
+  double cpu_request = 3;     // CPU request (cores)
+  double memory_request = 4;  // Memory request (bytes)
+  double cpu_limit = 5;       // CPU limit (cores)
+  double memory_limit = 6;    // Memory limit (bytes)
+  int32 restart_count = 7;    // Number of restarts
+}
+
+// EventsRequest requests Kubernetes events.
+message EventsRequest {
+  // Target resource (optional)
+  ResourceRequest resource = 1;
+  
+  // Namespace filter
+  string namespace = 2;
+  
+  // Event type filter ("Normal", "Warning")
+  string event_type = 3;
+  
+  // Time range
+  google.protobuf.Timestamp start_time = 4;
+  google.protobuf.Timestamp end_time = 5;
+  
+  // Limit
+  int32 limit = 6;
+}
+
+// EventsResponse returns Kubernetes events.
+message EventsResponse {
+  repeated KubernetesEvent events = 1;
+}
+
+// KubernetesEvent represents a Kubernetes event.
+message KubernetesEvent {
+  string type = 1;              // "Normal" or "Warning"
+  string reason = 2;
+  string message = 3;
+  ResourceRequest involved_object = 4;
+  google.protobuf.Timestamp first_timestamp = 5;
+  google.protobuf.Timestamp last_timestamp = 6;
+  int32 count = 7;
+  string source = 8;
+}

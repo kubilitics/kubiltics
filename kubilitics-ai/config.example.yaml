@@ -1,0 +1,90 @@
+# Kubilitics-AI Configuration Example
+# Copy this file to /etc/kubilitics/config.yaml or specify with --config flag
+
+# Server configuration
+server:
+  port: 8081                    # HTTP server port
+  tls_enabled: false            # Enable TLS/HTTPS
+  tls_cert_path: ""            # Path to TLS certificate (required if tls_enabled)
+  tls_key_path: ""             # Path to TLS private key (required if tls_enabled)
+
+# Backend configuration (kubilitics-backend gRPC connection)
+backend:
+  address: "localhost:50051"   # kubilitics-backend gRPC address
+  timeout: 30                   # gRPC timeout in seconds
+  tls_enabled: false            # Use TLS for backend connection
+
+# LLM Provider configuration
+llm:
+  provider: "anthropic"         # LLM provider: openai | anthropic | ollama | custom
+
+  # OpenAI configuration
+  openai:
+    api_key: ""                 # OpenAI API key (or use OPENAI_API_KEY env var)
+    model: "gpt-4"              # Model: gpt-4, gpt-4o, gpt-3.5-turbo
+    max_tokens: 2048            # Maximum tokens per completion
+
+  # Anthropic configuration
+  anthropic:
+    api_key: ""                 # Anthropic API key (or use ANTHROPIC_API_KEY env var)
+    model: "claude-3-5-sonnet-20241022"  # Model: claude-3-5-sonnet-20241022, claude-3-opus-20240229
+    max_tokens: 2048            # Maximum tokens per completion
+
+  # Ollama configuration (local LLM)
+  ollama:
+    base_url: "http://localhost:11434"  # Ollama instance URL
+    model: "llama3"             # Model: llama3, mistral, neural-chat, etc.
+
+  # Custom OpenAI-compatible endpoint
+  custom:
+    base_url: ""                # Custom LLM API endpoint
+    model: ""                   # Model name
+    max_tokens: 2048            # Maximum tokens per completion
+
+# Autonomy configuration
+autonomy:
+  default_level: 2              # Default autonomy level (0-5)
+                                # 0: Observe (read-only)
+                                # 1: Diagnose (insights only)
+                                # 2: Propose (require approval for all)
+                                # 3: Simulate (dry-run before approval)
+                                # 4: Act-with-Guard (auto low-risk, approve high-risk)
+                                # 5: Full-Autonomous (auto all policy-approved)
+  allow_level_override: true    # Allow users to override their autonomy level
+
+# Safety configuration
+safety:
+  enable_immutable_rules: true  # Enforce immutable safety rules (cannot be disabled)
+  enable_custom_policies: true  # Allow custom policy creation
+  require_approval_for_deletions: true     # Always require approval for delete operations
+  require_approval_for_risky_ops: true     # Ask before high-risk operations
+
+# Database configuration
+database:
+  type: "sqlite"                # Database type: sqlite | postgres
+  sqlite_path: "/var/lib/kubilitics/kubilitics-ai.db"  # SQLite database path
+  postgres_url: ""              # PostgreSQL connection string (if type=postgres)
+                                # Example: "postgres://user:pass@localhost:5432/kubilitics_ai"
+
+# Analytics configuration
+analytics:
+  timeseries_retention_days: 7  # Keep metrics for N days
+  enable_anomaly_detection: true  # Turn on anomaly detection
+  enable_forecasting: true       # Turn on forecasting
+
+# Cache configuration
+cache:
+  enable_caching: true          # Turn on query caching
+  ttl_seconds: 300              # Default cache lifetime (5 minutes)
+  max_size_mb: 100              # Maximum cache size in MB
+
+# Logging configuration
+logging:
+  level: "info"                 # Log level: debug | info | warn | error
+  format: "json"                # Log format: json | text
+
+# Budget configuration (optional cost controls)
+budget:
+  global_monthly_budget: 0.0    # Global monthly budget in USD (0 = no limit)
+  per_user_monthly_budget: 0.0  # Per-user monthly budget in USD (0 = no limit)
+  per_investigation_limit: 0    # Max tokens per investigation (0 = no limit)
