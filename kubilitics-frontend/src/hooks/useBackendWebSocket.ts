@@ -109,25 +109,21 @@ export function useBackendWebSocket(options: UseBackendWebSocketOptions = {}) {
           MAX_RECONNECT_MS
         );
         retryCountRef.current += 1;
-        setError(`Reconnecting in ${(delay / 1000).toFixed(1)}s (attempt ${retryCountRef.current}/${FAST_RETRY_ATTEMPTS})…`);
+        // Don't set error string during fast phase — transient disconnects are normal
+        // (e.g. tab hidden, laptop sleep, backend restart). No user-facing indication needed.
       } else {
         // Slow phase: periodic retry every 30s — never gives up.
-        // Show persistent toast only once (when entering slow phase).
+        // Show a brief toast only once (when entering slow phase) — NOT persistent.
+        // BackendStatusBanner is the authoritative "backend unreachable" banner;
+        // this toast is supplementary and auto-dismisses to avoid visual duplication.
         delay = SLOW_RETRY_INTERVAL_MS;
         retryCountRef.current += 1;
 
         if (attempt === FAST_RETRY_ATTEMPTS) {
-          // First time entering slow phase — show persistent toast
           toast.warning('Live updates paused', {
             id: WS_TOAST_ID,
-            description: 'Real-time connection lost. Retrying automatically…',
-            duration: Infinity, // Stays until dismissed or reconnected
-            action: {
-              label: 'Reconnect now',
-              onClick: () => {
-                reconnectRef.current();
-              },
-            },
+            description: 'Real-time connection lost. Retrying automatically.',
+            duration: 8000, // Brief — BackendStatusBanner handles sustained outages
           });
         }
         setError('Connection lost. Retrying every 30s…');

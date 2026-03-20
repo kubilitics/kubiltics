@@ -32,6 +32,7 @@ import {
   Zap,
   Map,
   X,
+  List,
   type LucideIcon
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -291,6 +292,9 @@ export function D3TopologyCanvas({
   const [showTraffic, setShowTraffic] = useState(showTrafficProp ?? true);
   const [showMiniMap, setShowMiniMap] = useState(true);
   const [hasAutoFitted, setHasAutoFitted] = useState(false);
+  const [legendExpanded, setLegendExpanded] = useState(false);
+  const [controlsVisible, setControlsVisible] = useState(true);
+  const controlsTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const simulationRef = useRef<d3.Simulation<D3Node, D3Link> | null>(null);
   const trafficAnimationFrameRef = useRef<number | null>(null);
 
@@ -466,6 +470,27 @@ export function D3TopologyCanvas({
     updateDimensions();
     window.addEventListener('resize', updateDimensions);
     return () => window.removeEventListener('resize', updateDimensions);
+  }, []);
+
+  // Auto-hide controls hint after 5 seconds
+  useEffect(() => {
+    controlsTimerRef.current = setTimeout(() => {
+      setControlsVisible(false);
+    }, 5000);
+    return () => {
+      if (controlsTimerRef.current) clearTimeout(controlsTimerRef.current);
+    };
+  }, []);
+
+  const handleCanvasMouseEnter = useCallback(() => {
+    setControlsVisible(true);
+    if (controlsTimerRef.current) clearTimeout(controlsTimerRef.current);
+  }, []);
+
+  const handleCanvasMouseLeave = useCallback(() => {
+    controlsTimerRef.current = setTimeout(() => {
+      setControlsVisible(false);
+    }, 2000);
   }, []);
 
   const overNodeCap = d3Nodes.length > MAX_FORCE_NODES;
@@ -1253,7 +1278,11 @@ export function D3TopologyCanvas({
       </div>
 
       {/* Canvas */}
-      <div className="relative bg-gradient-to-b from-background to-muted/20 overflow-hidden">
+      <div
+        className="relative bg-gradient-to-b from-background to-muted/20 overflow-hidden"
+        onMouseEnter={handleCanvasMouseEnter}
+        onMouseLeave={handleCanvasMouseLeave}
+      >
         <Badge
           variant="secondary"
           className="absolute top-4 right-4 z-10 font-medium text-xs"
@@ -1329,24 +1358,47 @@ export function D3TopologyCanvas({
           />
         )}
 
-        {/* Resource Type Legend */}
-        <div className="absolute top-12 right-4 z-10 bg-background/90 backdrop-blur-sm border border-border rounded-lg p-3 max-h-[300px] overflow-y-auto shadow-lg">
-          <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-2">Resource Types</div>
-          <div className="grid grid-cols-2 gap-x-4 gap-y-1">
-            {Array.from(new Set(nodes.map(n => n.type))).sort().map(type => {
-              const style = resourceStyles[type];
-              return style ? (
-                <div key={type} className="flex items-center gap-1.5">
-                  <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: style.color }} />
-                  <span className="text-[10px] text-foreground/80">{resourceLabels[type]}</span>
-                </div>
-              ) : null;
-            })}
+        {/* Resource Type Legend — collapsed by default, toggle via button */}
+        {legendExpanded ? (
+          <div className="absolute top-12 right-4 z-10 bg-background/90 backdrop-blur-sm border border-border rounded-lg p-3 max-h-[300px] overflow-y-auto shadow-lg">
+            <div className="flex items-center justify-between mb-2">
+              <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Resource Types</div>
+              <button
+                onClick={() => setLegendExpanded(false)}
+                className="text-muted-foreground hover:text-foreground transition-colors p-0.5 rounded hover:bg-muted"
+                aria-label="Collapse legend"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </div>
+            <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+              {Array.from(new Set(nodes.map(n => n.type))).sort().map(type => {
+                const style = resourceStyles[type];
+                return style ? (
+                  <div key={type} className="flex items-center gap-1.5">
+                    <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: style.color }} />
+                    <span className="text-[10px] text-foreground/80">{resourceLabels[type]}</span>
+                  </div>
+                ) : null;
+              })}
+            </div>
           </div>
-        </div>
+        ) : (
+          <button
+            onClick={() => setLegendExpanded(true)}
+            className="absolute top-12 right-4 z-10 bg-background/90 backdrop-blur-sm border border-border rounded-lg p-2 shadow-lg hover:bg-muted transition-colors"
+            aria-label="Show resource type legend"
+            title="Resource Types"
+          >
+            <List className="h-4 w-4 text-muted-foreground" />
+          </button>
+        )}
 
-        {/* Instructions overlay with keyboard shortcuts */}
-        <div className="absolute bottom-4 left-4 text-xs text-muted-foreground bg-background/80 backdrop-blur-sm px-3 py-2 rounded-lg border border-border">
+        {/* Instructions overlay with keyboard shortcuts — auto-hides, reappears on hover */}
+        <div
+          className="absolute bottom-4 left-4 text-xs text-muted-foreground bg-background/90 backdrop-blur-sm px-3 py-2 rounded-lg border border-border transition-opacity duration-500 pointer-events-none"
+          style={{ opacity: controlsVisible ? 1 : 0 }}
+        >
           <span className="font-medium">Controls:</span> Drag nodes • Scroll to zoom • Click to select
           <span className="mx-2">|</span>
           <span className="font-medium">Keys:</span>

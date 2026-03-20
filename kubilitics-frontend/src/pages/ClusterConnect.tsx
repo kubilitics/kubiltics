@@ -717,27 +717,16 @@ export default function ClusterConnect() {
                       initial={{ opacity: 0, height: 0 }}
                       animate={{ opacity: 1, height: 'auto' }}
                       className="mb-6 p-4 rounded-xl border flex items-center gap-3 flex-wrap"
-                      style={isTauri() ? { background: 'rgba(59, 130, 246, 0.08)', borderColor: 'rgba(59, 130, 246, 0.2)' } : { background: 'rgba(239, 68, 68, 0.1)', borderColor: 'rgba(239, 68, 68, 0.2)' }}
+                      style={{ background: 'rgba(59, 130, 246, 0.08)', borderColor: 'rgba(59, 130, 246, 0.2)' }}
                     >
-                      {isTauri() ? (
-                        <>
-                          <AlertCircle className="h-5 w-5 shrink-0 text-blue-400" />
-                          <span className="text-sm font-medium text-foreground flex-1">Couldn&apos;t load clusters. You can add a cluster by pasting or uploading your kubeconfig below.</span>
-                          <Button variant="outline" size="sm" className="border-border hover:bg-muted" onClick={handleRefreshClusters} disabled={health.isFetching || clustersFromBackend.isFetching || discoveredClustersRes.isFetching}>
-                            <RefreshCw className={health.isFetching || clustersFromBackend.isFetching || discoveredClustersRes.isFetching ? 'h-4 w-4 animate-spin mr-1.5' : 'h-4 w-4 mr-1.5'} />
-                            Retry
-                          </Button>
-                        </>
-                      ) : (
-                        <>
-                          <AlertCircle className="h-5 w-5 shrink-0 text-red-400" />
-                          <span className="text-sm font-medium text-red-400 flex-1">Connection failed. Check that the backend is running, or add a cluster by pasting or uploading your kubeconfig below.</span>
-                          <Button variant="outline" size="sm" className="border-red-800 hover:bg-red-900/20" onClick={handleRefreshClusters} disabled={health.isFetching || clustersFromBackend.isFetching || discoveredClustersRes.isFetching}>
-                            <RefreshCw className={health.isFetching || clustersFromBackend.isFetching || discoveredClustersRes.isFetching ? 'h-4 w-4 animate-spin mr-1.5' : 'h-4 w-4 mr-1.5'} />
-                            Retry
-                          </Button>
-                        </>
-                      )}
+                      <AlertCircle className="h-5 w-5 shrink-0 text-blue-400" />
+                      <span className="text-sm font-medium text-foreground flex-1">
+                        Couldn&apos;t load clusters yet. You can add a cluster by pasting or uploading your kubeconfig below.
+                      </span>
+                      <Button variant="outline" size="sm" className="border-border hover:bg-muted" onClick={handleRefreshClusters} disabled={health.isFetching || clustersFromBackend.isFetching || discoveredClustersRes.isFetching}>
+                        <RefreshCw className={health.isFetching || clustersFromBackend.isFetching || discoveredClustersRes.isFetching ? 'h-4 w-4 animate-spin mr-1.5' : 'h-4 w-4 mr-1.5'} />
+                        Retry
+                      </Button>
                     </motion.div>
                   )}
 

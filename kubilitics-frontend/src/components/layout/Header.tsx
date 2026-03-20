@@ -42,7 +42,7 @@ import { useUIStore } from '@/stores/uiStore';
 import { useProjectStore } from '@/stores/projectStore';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
-import { useBackendHealth } from '@/hooks/useBackendHealth';
+import { useOfflineMode } from '@/hooks/useOfflineMode';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   AlertDialog,
@@ -149,20 +149,16 @@ export function Header() {
     }
   };
 
-  // Backend health status indicator (subtle, Headlamp/Lens style)
+  // Backend health status indicator — uses useOfflineMode as single source of truth.
+  // Previous approach fired a separate useBackendHealth query that showed red dots
+  // immediately on transient failures. useOfflineMode requires 6+ failures over 90s.
   const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured);
-  const backendHealth = useBackendHealth({
-    enabled: isBackendConfigured(),
-    refetchInterval: 60_000, // Check every 60s
-    retry: 3,
-  });
+  const { backendReachable } = useOfflineMode();
 
-  // Determine backend status: healthy, slow/stale, or unreachable
+  // Determine backend status: healthy or unreachable (no intermediate "warning" — avoids flicker)
   const backendStatus =
     !isBackendConfigured() ? null :
-      backendHealth.isError ? 'error' :
-        backendHealth.isFetching && !backendHealth.data ? 'warning' :
-          backendHealth.isSuccess ? 'healthy' : 'warning';
+      backendReachable ? 'healthy' : 'error';
 
   const handleWizardSubmit = (_yaml: string) => {
     toast.success('Resource YAML generated successfully!');

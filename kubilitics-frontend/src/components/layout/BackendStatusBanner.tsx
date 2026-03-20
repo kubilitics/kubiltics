@@ -18,10 +18,12 @@ import { useBackendConfigStore } from '@/stores/backendConfigStore';
 import { resetBackendCircuit } from '@/services/backendApiClient';
 import { cn } from '@/lib/utils';
 import { useOfflineMode } from '@/hooks/useOfflineMode';
+import { useBackendCircuitOpen } from '@/hooks/useBackendCircuitOpen';
 
 export function BackendStatusBanner({ className }: { className?: string }) {
   const isConfigured = useBackendConfigStore((s) => s.isBackendConfigured);
   const { backendReachable, retryNow } = useOfflineMode();
+  const circuitOpen = useBackendCircuitOpen();
   const [dismissed, setDismissed] = useState(false);
   const [retrying, setRetrying] = useState(false);
 
@@ -36,9 +38,11 @@ export function BackendStatusBanner({ className }: { className?: string }) {
   // - Backend not configured
   // - Backend is reachable (healthy)
   // - User dismissed this occurrence
+  // - Circuit breaker is open (CircuitBreakerBanner already shows — avoid duplicate)
   if (!isConfigured()) return null;
   if (backendReachable) return null;
   if (dismissed) return null;
+  if (circuitOpen) return null;
 
   const handleDismiss = () => {
     setDismissed(true);
