@@ -10,16 +10,17 @@ import (
 )
 
 type kcliTUIStateResponse struct {
-	ClusterID     string `json:"clusterId"`
-	ClusterName   string `json:"clusterName"`
-	Context       string `json:"context"`
-	Namespace     string `json:"namespace"`
-	AIEnabled     bool   `json:"aiEnabled"`
-	KCLIAvailable bool   `json:"kcliAvailable"`
+	ClusterID            string `json:"clusterId"`
+	ClusterName          string `json:"clusterName"`
+	Context              string `json:"context"`
+	Namespace            string `json:"namespace"`
+	AIEnabled            bool   `json:"aiEnabled"`
+	KCLIAvailable        bool   `json:"kcliAvailable"`
+	KCLIShellModeAllowed bool   `json:"kcliShellModeAllowed"`
 }
 
 // GetKCLITUIState handles GET /clusters/{clusterId}/kcli/tui/state.
-// Returns effective context/namespace and feature switches required by frontend terminal integration.
+// Returns effective context/namespace and feature switches required by frontend terminal/TUI integration.
 func (h *Handler) GetKCLITUIState(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	clusterID := vars["clusterId"]
@@ -61,11 +62,12 @@ func (h *Handler) GetKCLITUIState(w http.ResponseWriter, r *http.Request) {
 	_, kcliErr := resolveKCLIBinary()
 
 	respondJSON(w, http.StatusOK, kcliTUIStateResponse{
-		ClusterID:     resolvedID,
-		ClusterName:   cluster.Name,
-		Context:       contextName,
-		Namespace:     namespace,
-		AIEnabled:     isAIEnabled(),
-		KCLIAvailable: kcliErr == nil,
+		ClusterID:            resolvedID,
+		ClusterName:          cluster.Name,
+		Context:              contextName,
+		Namespace:            namespace,
+		AIEnabled:            isAIEnabled(),
+		KCLIAvailable:        kcliErr == nil,
+		KCLIShellModeAllowed: h.isKCLIShellModeAllowed(),
 	})
 }

@@ -1,0 +1,100 @@
+{
+  "addon": {
+    "id": "kubilitics/metrics-server",
+    "name": "metrics-server",
+    "display_name": "Metrics Server",
+    "description": "Scalable, efficient source of container resource metrics for Kubernetes built-in autoscaling pipelines. Required for kubectl top, HPA, and dashboard metrics.",
+    "tier": "CORE",
+    "version": "v0.7.2",
+    "k8s_compat_min": "1.19",
+    "helm_repo_url": "https://kubernetes-sigs.github.io/metrics-server/",
+    "helm_chart": "metrics-server",
+    "helm_chart_version": "3.12.2",
+    "tags": [
+      "observability",
+      "metrics",
+      "autoscaling",
+      "core-infrastructure"
+    ],
+    "home_url": "https://github.com/kubernetes-sigs/metrics-server",
+    "source_url": "https://github.com/kubernetes-sigs/metrics-server",
+    "maintainer": "kubernetes-sigs",
+    "is_deprecated": false,
+    "icon_url": "https://raw.githubusercontent.com/kubernetes/kubernetes/master/logo/logo.svg",
+    "chart_digest": "sha256:metrics-server-3-12-2"
+  },
+  "dependencies": [],
+  "conflicts": [],
+  "crds_owned": [],
+  "rbac_required": [
+    {
+      "addon_id": "kubilitics/metrics-server",
+      "api_groups": [
+        "metrics.k8s.io"
+      ],
+      "resources": [
+        "pods",
+        "nodes"
+      ],
+      "verbs": [
+        "get",
+        "list"
+      ],
+      "scope": "cluster"
+    }
+  ],
+  "cost_models": [
+    {
+      "addon_id": "kubilitics/metrics-server",
+      "cluster_tier": "dev",
+      "cpu_millicores": 50,
+      "memory_mb": 64,
+      "storage_gb": 0,
+      "monthly_cost_usd_estimate": 1,
+      "replica_count": 1
+    },
+    {
+      "addon_id": "kubilitics/metrics-server",
+      "cluster_tier": "staging",
+      "cpu_millicores": 100,
+      "memory_mb": 128,
+      "storage_gb": 0,
+      "monthly_cost_usd_estimate": 2,
+      "replica_count": 1
+    },
+    {
+      "addon_id": "kubilitics/metrics-server",
+      "cluster_tier": "production",
+      "cpu_millicores": 200,
+      "memory_mb": 256,
+      "storage_gb": 0,
+      "monthly_cost_usd_estimate": 4,
+      "replica_count": 2
+    }
+  ],
+  "versions": [
+    {
+      "addon_id": "kubilitics/metrics-server",
+      "version": "0.7.2",
+      "release_date": "2024-10-15",
+      "highlights": [
+        "Improved memory efficiency for large clusters",
+        "Support for Kubernetes 1.31",
+        "Enhanced metric resolution configuration"
+      ],
+      "breaking_changes": []
+    },
+    {
+      "addon_id": "kubilitics/metrics-server",
+      "version": "0.7.0",
+      "release_date": "2024-04-10",
+      "highlights": [
+        "New metric-resolution flag for custom scrape intervals",
+        "Reduced startup time with parallel node discovery"
+      ],
+      "breaking_changes": [
+        "Dropped support for Kubernetes 1.18 and below"
+      ]
+    }
+  ]
+}

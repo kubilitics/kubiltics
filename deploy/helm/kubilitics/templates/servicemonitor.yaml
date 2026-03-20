@@ -1,0 +1,81 @@
+{{- if and .Values.serviceMonitor.enabled .Values.serviceMonitor.create }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "kubilitics.fullname" . }}
+  labels:
+    {{- include "kubilitics.labels" . | nindent 4 }}
+    {{- if .Values.serviceMonitor.labels }}
+    {{- toYaml .Values.serviceMonitor.labels | nindent 4 }}
+    {{- end }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "kubilitics.selectorLabels" . | nindent 6 }}
+  endpoints:
+    - port: http
+      path: {{ .Values.serviceMonitor.metricsPath | default "/metrics" }}
+      interval: {{ .Values.serviceMonitor.interval | default "30s" }}
+      scrapeTimeout: {{ .Values.serviceMonitor.scrapeTimeout | default "10s" }}
+      {{- if .Values.serviceMonitor.relabelings }}
+      relabelings:
+        {{- toYaml .Values.serviceMonitor.relabelings | nindent 8 }}
+      {{- end }}
+  namespaceSelector:
+    matchNames:
+      - {{ .Release.Namespace }}
+{{- end }}
+
+{{- if and .Values.serviceMonitor.enabled .Values.ai.enabled .Values.serviceMonitor.ai.create }}
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "kubilitics.fullname" . }}-ai
+  labels:
+    {{- include "kubilitics.labels" . | nindent 4 }}
+    app.kubernetes.io/component: ai-backend
+    {{- if .Values.serviceMonitor.labels }}
+    {{- toYaml .Values.serviceMonitor.labels | nindent 4 }}
+    {{- end }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "kubilitics.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: ai-backend
+  endpoints:
+    - port: http
+      path: {{ .Values.serviceMonitor.ai.metricsPath | default "/metrics" }}
+      interval: {{ .Values.serviceMonitor.ai.interval | default "30s" }}
+      scrapeTimeout: {{ .Values.serviceMonitor.ai.scrapeTimeout | default "10s" }}
+  namespaceSelector:
+    matchNames:
+      - {{ .Release.Namespace }}
+{{- end }}
+
+{{- if and .Values.serviceMonitor.enabled .Values.frontend.enabled .Values.serviceMonitor.frontend.create }}
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "kubilitics.fullname" . }}-frontend
+  labels:
+    {{- include "kubilitics.labels" . | nindent 4 }}
+    app.kubernetes.io/component: frontend
+    {{- if .Values.serviceMonitor.labels }}
+    {{- toYaml .Values.serviceMonitor.labels | nindent 4 }}
+    {{- end }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "kubilitics.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: frontend
+  endpoints:
+    - port: http
+      path: {{ .Values.serviceMonitor.frontend.metricsPath | default "/metrics" }}
+      interval: {{ .Values.serviceMonitor.frontend.interval | default "30s" }}
+      scrapeTimeout: {{ .Values.serviceMonitor.frontend.scrapeTimeout | default "10s" }}
+  namespaceSelector:
+    matchNames:
+      - {{ .Release.Namespace }}
+{{- end }}

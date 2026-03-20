@@ -1,0 +1,65 @@
+{{- if and .Values.podDisruptionBudget.enabled (gt (int .Values.replicaCount) 1) }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "kubilitics.fullname" . }}
+  labels:
+    {{- include "kubilitics.labels" . | nindent 4 }}
+spec:
+  {{- if .Values.podDisruptionBudget.minAvailable }}
+  minAvailable: {{ .Values.podDisruptionBudget.minAvailable }}
+  {{- else if .Values.podDisruptionBudget.maxUnavailable }}
+  maxUnavailable: {{ .Values.podDisruptionBudget.maxUnavailable }}
+  {{- else }}
+  minAvailable: 1
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "kubilitics.selectorLabels" . | nindent 6 }}
+{{- end }}
+
+{{- if and .Values.podDisruptionBudget.enabled .Values.ai.enabled (gt (int .Values.ai.replicaCount) 1) }}
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "kubilitics.fullname" . }}-ai
+  labels:
+    {{- include "kubilitics.labels" . | nindent 4 }}
+    app.kubernetes.io/component: ai-backend
+spec:
+  {{- if .Values.podDisruptionBudget.ai.minAvailable }}
+  minAvailable: {{ .Values.podDisruptionBudget.ai.minAvailable }}
+  {{- else if .Values.podDisruptionBudget.ai.maxUnavailable }}
+  maxUnavailable: {{ .Values.podDisruptionBudget.ai.maxUnavailable }}
+  {{- else }}
+  minAvailable: 1
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "kubilitics.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: ai-backend
+{{- end }}
+
+{{- if and .Values.podDisruptionBudget.enabled .Values.frontend.enabled (gt (int .Values.frontend.replicaCount) 1) }}
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "kubilitics.fullname" . }}-frontend
+  labels:
+    {{- include "kubilitics.labels" . | nindent 4 }}
+    app.kubernetes.io/component: frontend
+spec:
+  {{- if .Values.podDisruptionBudget.frontend.minAvailable }}
+  minAvailable: {{ .Values.podDisruptionBudget.frontend.minAvailable }}
+  {{- else if .Values.podDisruptionBudget.frontend.maxUnavailable }}
+  maxUnavailable: {{ .Values.podDisruptionBudget.frontend.maxUnavailable }}
+  {{- else }}
+  minAvailable: 1
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "kubilitics.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: frontend
+{{- end }}

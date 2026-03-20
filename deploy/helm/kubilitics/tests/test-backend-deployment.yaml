@@ -1,0 +1,57 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "{{ include "kubilitics.fullname" . }}-test-backend-deployment"
+  labels:
+    {{- include "kubilitics.labels" . | nindent 4 }}
+    app.kubernetes.io/name: {{ include "kubilitics.name" . }}
+    helm.sh/chart: {{ include "kubilitics.chart" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+  annotations:
+    "helm.sh/hook": test
+    "helm.sh/hook-weight": "0"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  restartPolicy: Never
+  containers:
+    - name: test-backend-deployment
+      image: bitnami/kubectl:latest
+      command:
+        - /bin/bash
+        - -c
+        - |
+          set -e
+          echo "Testing backend deployment..."
+          DEPLOYMENT_NAME="{{ include "kubilitics.fullname" . }}"
+          
+          # Wait for deployment to be ready
+          echo "Waiting for deployment ${DEPLOYMENT_NAME} to be ready..."
+          if kubectl wait --for=condition=available --timeout=300s deployment/${DEPLOYMENT_NAME} > /dev/null 2>&1; then
+            echo "✓ Deployment ${DEPLOYMENT_NAME} is available"
+            
+            # Check replica count
+            REPLICAS=$(kubectl get deployment "${DEPLOYMENT_NAME}" -o jsonpath='{.spec.replicas}')
+            EXPECTED_REPLICAS="{{ .Values.replicaCount }}"
+            if [ "${REPLICAS}" = "${EXPECTED_REPLICAS}" ]; then
+              echo "✓ Replica count matches: ${REPLICAS}"
+            else
+              echo "✗ Replica count mismatch: expected ${EXPECTED_REPLICAS}, got ${REPLICAS}"
+              exit 1
+            fi
+            
+            # Check if pods are running
+            READY_REPLICAS=$(kubectl get deployment "${DEPLOYMENT_NAME}" -o jsonpath='{.status.readyReplicas}')
+            if [ "${READY_REPLICAS}" = "${EXPECTED_REPLICAS}" ]; then
+              echo "✓ All ${READY_REPLICAS} replicas are ready"
+            else
+              echo "✗ Not all replicas are ready: ${READY_REPLICAS}/${EXPECTED_REPLICAS}"
+              exit 1
+            fi
+            
+            echo "All deployment checks passed!"
+            exit 0
+          else
+            echo "✗ Deployment ${DEPLOYMENT_NAME} is not available"
+            exit 1
+          fi

@@ -111,7 +111,7 @@
     --background: 228 14% 7%;
     --foreground: 210 20% 90%;
 
-    --card: 228 14% 11%;
+    --card: 228 14% 10%;
     --card-foreground: 210 20% 90%;
 
     --popover: 228 14% 12%;
@@ -124,7 +124,7 @@
     --secondary-foreground: 210 20% 85%;
 
     --muted: 228 14% 16%;
-    --muted-foreground: 215 16% 63%;
+    --muted-foreground: 215 16% 56%;
 
     --accent: 228 14% 16%;
     --accent-foreground: 210 20% 85%;
@@ -132,8 +132,8 @@
     --destructive: 0 72% 51%;
     --destructive-foreground: 210 20% 95%;
 
-    --border: 228 14% 24%;
-    --input: 228 14% 24%;
+    --border: 228 14% 20%;
+    --input: 228 14% 20%;
     --ring: 217 91% 60%;
 
     /* ─── Dark Elevation System ─── */
@@ -164,7 +164,7 @@
     /* ─── Dark Sidebar ─── */
     --sidebar-background: 228 14% 8%;
     --sidebar-foreground: 210 20% 90%;
-    --sidebar-border: 228 14% 22%;
+    --sidebar-border: 228 14% 18%;
     --sidebar-accent: 228 14% 16%;
     --sidebar-accent-foreground: 210 20% 85%;
   }

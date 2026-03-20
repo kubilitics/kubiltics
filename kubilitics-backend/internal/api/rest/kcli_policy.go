@@ -70,6 +70,10 @@ func validateKCLIArgs(args []string, force bool) ([]string, bool, error) {
 	if !slices.Contains(allowedKCLIVerbs, verb) {
 		return nil, false, fmt.Errorf("command %q is not allowed in embedded kcli mode", verb)
 	}
+	// UI mode requires interactive PTY, so it's not supported in non-interactive exec endpoint
+	if verb == "ui" {
+		return nil, false, fmt.Errorf("command %q requires interactive PTY; use /kcli/stream?mode=ui instead", verb)
+	}
 	// Plugin commands are allowed in exec endpoint (plugins can be executed non-interactively)
 	// Note: Plugin execution via PTY stream also works for interactive plugins
 	_, mutating := mutatingKCLIVerbs[verb]
@@ -155,3 +159,9 @@ func (h *Handler) acquireKCLIStreamSlot(clusterID string) (func(), bool) {
 	return release, true
 }
 
+func (h *Handler) isKCLIShellModeAllowed() bool {
+	if h.cfg == nil {
+		return true
+	}
+	return h.cfg.KCLIAllowShellMode
+}

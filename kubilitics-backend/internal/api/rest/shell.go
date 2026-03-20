@@ -16,13 +16,13 @@ import (
 
 const shellTimeout = 60 * time.Second
 
-// blockedShellVerbs: mutating/dangerous kubectl/kcli verbs not allowed in the web shell (user must use direct kubectl).
+// blockedShellVerbs: mutating/dangerous kubectl/kcli verbs not allowed in the web shell (user must use UI or direct kubectl).
 var blockedShellVerbs = map[string]bool{
 	"delete": true, "apply": true, "edit": true, "patch": true, "replace": true,
 	"create": true, "run": true, "drain": true, "taint": true, "set": true,
 	"expose": true, "rollout": true, "scale": true, "autoscale": true,
 	"label": true, "annotate": true, "exec": true,
-	"fix": true,
+	"ui": true, "fix": true,
 }
 
 // PostShell handles POST /clusters/{clusterId}/shell

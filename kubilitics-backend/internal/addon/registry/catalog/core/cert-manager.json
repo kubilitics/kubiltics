@@ -1,0 +1,121 @@
+{
+  "addon": {
+    "id": "kubilitics/cert-manager",
+    "name": "cert-manager",
+    "display_name": "Cert Manager",
+    "description": "Automated certificate management for Kubernetes.",
+    "tier": "CORE",
+    "version": "v1.16.3",
+    "k8s_compat_min": "1.24",
+    "helm_repo_url": "https://charts.jetstack.io",
+    "helm_chart": "cert-manager",
+    "helm_chart_version": "v1.16.3",
+    "tags": [
+      "security",
+      "certificates"
+    ],
+    "home_url": "https://cert-manager.io",
+    "source_url": "https://github.com/cert-manager/cert-manager",
+    "maintainer": "jetstack",
+    "is_deprecated": false,
+    "icon_url": "https://artifacthub.io/image/6d75ecff-a328-495b-a7fc-12cd84499974",
+    "chart_digest": "sha256:4f8e6c9a7b5d3c1e8f2a4b6d8c0e9f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e"
+  },
+  "dependencies": [],
+  "conflicts": [],
+  "crds_owned": [
+    {
+      "addon_id": "kubilitics/cert-manager",
+      "crd_group": "cert-manager.io",
+      "crd_resource": "certificates",
+      "crd_version": "v1"
+    },
+    {
+      "addon_id": "kubilitics/cert-manager",
+      "crd_group": "cert-manager.io",
+      "crd_resource": "issuers",
+      "crd_version": "v1"
+    },
+    {
+      "addon_id": "kubilitics/cert-manager",
+      "crd_group": "cert-manager.io",
+      "crd_resource": "clusterissuers",
+      "crd_version": "v1"
+    }
+  ],
+  "rbac_required": [
+    {
+      "addon_id": "kubilitics/cert-manager",
+      "api_groups": [
+        "*"
+      ],
+      "resources": [
+        "*"
+      ],
+      "verbs": [
+        "get",
+        "list",
+        "watch",
+        "create",
+        "update",
+        "patch"
+      ],
+      "scope": "cluster"
+    }
+  ],
+  "cost_models": [
+    {
+      "addon_id": "kubilitics/cert-manager",
+      "cluster_tier": "dev",
+      "cpu_millicores": 100,
+      "memory_mb": 128,
+      "storage_gb": 0,
+      "monthly_cost_usd_estimate": 2,
+      "replica_count": 1
+    },
+    {
+      "addon_id": "kubilitics/cert-manager",
+      "cluster_tier": "staging",
+      "cpu_millicores": 200,
+      "memory_mb": 256,
+      "storage_gb": 0,
+      "monthly_cost_usd_estimate": 4,
+      "replica_count": 1
+    },
+    {
+      "addon_id": "kubilitics/cert-manager",
+      "cluster_tier": "production",
+      "cpu_millicores": 500,
+      "memory_mb": 512,
+      "storage_gb": 0,
+      "monthly_cost_usd_estimate": 8,
+      "replica_count": 2
+    }
+  ],
+  "versions": [
+    {
+      "addon_id": "kubilitics/cert-manager",
+      "version": "1.16.3",
+      "release_date": "2024-11-20",
+      "highlights": [
+        "Support for Gateway API v1.2",
+        "Improved issuer health monitoring",
+        "Performance optimizations in controller loop"
+      ],
+      "breaking_changes": []
+    },
+    {
+      "addon_id": "kubilitics/cert-manager",
+      "version": "1.15.0",
+      "release_date": "2024-05-15",
+      "highlights": [
+        "Introduction of namespaced issuers for ClusterSecretStore",
+        "Refactored ACME challenge solver"
+      ],
+      "breaking_changes": [
+        "Deprecated support for K8s 1.22",
+        "Removed v1beta1 API versions"
+      ]
+    }
+  ]
+}

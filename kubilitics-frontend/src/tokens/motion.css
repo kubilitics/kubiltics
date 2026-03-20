@@ -1,0 +1,86 @@
+/**
+ * Kubilitics Design Token: Motion
+ *
+ * Animation timing, durations, and easing curves.
+ * All interactive elements should use these tokens for consistent feel.
+ *
+ * Follows Apple HIG motion principles:
+ * - Fast for micro-interactions (hover, focus)
+ * - Normal for state changes (toggle, expand)
+ * - Emphasis for attention-drawing (page transitions, modals)
+ */
+
+:root {
+  /* ─── Duration Scale ─── */
+  --duration-instant: 0ms;
+  --duration-micro: 100ms;         /* Hover states, focus rings */
+  --duration-fast: 150ms;          /* Tooltips, small reveals */
+  --duration-normal: 250ms;        /* Toggles, accordion expand */
+  --duration-moderate: 350ms;      /* Panel slides, tab switches */
+  --duration-emphasis: 400ms;      /* Modal appear, significant state change */
+  --duration-dramatic: 600ms;      /* Page transitions, hero animations */
+  --duration-slow: 800ms;          /* Skeleton shimmer, loading states */
+
+  /* ─── Easing Curves ─── */
+  /* Standard: Default for most transitions */
+  --ease-default: cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* In: Entering viewport / appearing */
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
+
+  /* Out: Leaving viewport / disappearing */
+  --ease-out: cubic-bezier(0, 0, 0.2, 1);
+
+  /* In-Out: Symmetric movement */
+  --ease-in-out: cubic-bezier(0.45, 0, 0.55, 1);
+
+  /* Spring: Bouncy feel for playful interactions */
+  --ease-spring: cubic-bezier(0.175, 0.885, 0.32, 1.275);
+
+  /* Expo Out: Dramatic deceleration (Apple-style) */
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* Back: Slight overshoot for emphasis */
+  --ease-out-back: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  /* ─── Composite Transitions ─── */
+  /* Use these as shorthand for common transition patterns */
+  --transition-colors: color var(--duration-fast) var(--ease-default),
+                       background-color var(--duration-fast) var(--ease-default),
+                       border-color var(--duration-fast) var(--ease-default);
+
+  --transition-opacity: opacity var(--duration-normal) var(--ease-default);
+
+  --transition-transform: transform var(--duration-normal) var(--ease-out-expo);
+
+  --transition-shadow: box-shadow var(--duration-normal) var(--ease-default);
+
+  --transition-all: all var(--duration-normal) var(--ease-default);
+
+  /* ─── Animation Keyframes (referenced by animation utilities) ─── */
+  /* Skeleton shimmer speed */
+  --shimmer-duration: 1.5s;
+
+  /* Pulse for live indicators */
+  --pulse-duration: 2s;
+
+  /* Spin for loading spinners */
+  --spin-duration: 1s;
+
+  /* Stagger delay for sequential reveals */
+  --stagger-delay: 50ms;
+}
+
+/* ─── Reduced Motion ─── */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-micro: 0ms;
+    --duration-fast: 0ms;
+    --duration-normal: 0ms;
+    --duration-moderate: 0ms;
+    --duration-emphasis: 0ms;
+    --duration-dramatic: 0ms;
+    --duration-slow: 0ms;
+    --stagger-delay: 0ms;
+  }
+}

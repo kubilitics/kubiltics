@@ -1,0 +1,61 @@
+# Kubilitics Demo Namespaces — 6 namespaces simulating a real multi-team cluster.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kubilitics-demo
+  labels:
+    app.kubernetes.io/name: kubilitics-demo
+    app.kubernetes.io/part-of: kubilitics-demo
+    team: platform
+    environment: demo
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ecommerce-prod
+  labels:
+    app.kubernetes.io/name: ecommerce-prod
+    app.kubernetes.io/part-of: kubilitics-demo
+    team: ecommerce
+    environment: production
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: analytics-staging
+  labels:
+    app.kubernetes.io/name: analytics-staging
+    app.kubernetes.io/part-of: kubilitics-demo
+    team: data
+    environment: staging
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ml-pipeline
+  labels:
+    app.kubernetes.io/name: ml-pipeline
+    app.kubernetes.io/part-of: kubilitics-demo
+    team: ml-engineering
+    environment: production
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: payments-prod
+  labels:
+    app.kubernetes.io/name: payments-prod
+    app.kubernetes.io/part-of: kubilitics-demo
+    team: fintech
+    environment: production
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: blue-green-demo
+  labels:
+    app.kubernetes.io/name: blue-green-demo
+    app.kubernetes.io/part-of: kubilitics-demo
+    team: platform
+    environment: production
+    rollout-strategy: blue-green

@@ -1,0 +1,90 @@
+{
+  "$schema": "https://schema.tauri.app/config/2.0",
+  "productName": "Kubilitics",
+  "version": "0.1.2",
+  "identifier": "com.kubilitics.desktop",
+  "build": {
+    "beforeDevCommand": "cd ../kubilitics-frontend && npm run dev",
+    "beforeBuildCommand": "",
+    "devUrl": "http://localhost:5173",
+    "frontendDist": "../dist"
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/64x64.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "externalBin": [
+      "binaries/kubilitics-backend",
+      "binaries/kcli"
+    ],
+    "resources": [],
+    "copyright": "© 2026 Kubilitics",
+    "category": "DeveloperTool",
+    "shortDescription": "The Kubernetes OS",
+    "longDescription": "Making Kubernetes finally human-friendly",
+    "createUpdaterArtifacts": false,
+    "macOS": {
+      "signingIdentity": null,
+      "providerShortName": null,
+      "entitlements": null,
+      "frameworks": null,
+      "exceptionDomain": null,
+      "minimumSystemVersion": "10.13"
+    },
+    "windows": {
+      "certificateThumbprint": null,
+      "digestAlgorithm": "sha256",
+      "timestampUrl": "http://timestamp.comodoca.com"
+    },
+    "linux": {
+      "deb": {
+        "depends": []
+      },
+      "appimage": {
+        "bundleMediaFramework": false
+      }
+    }
+  },
+  "plugins": {
+    "updater": {
+      "active": true,
+      "endpoints": [
+        "https://releases.kubilitics.dev/update/{{target}}/{{arch}}/{{current_version}}"
+      ],
+      "dialog": true,
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXkgN0M0OTA0N0VBQzgxOTdDMgpSV1RDbDRHc2ZnUkpmRDJ6SG5xeUFiTlZkQ0xyS1lkcVd4UXBLb0FRbERMTHRYL01vbFBuc2xkOAo="
+    }
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "Kubilitics",
+        "width": 1400,
+        "height": 900,
+        "minWidth": 1024,
+        "minHeight": 768,
+        "center": true,
+        "resizable": true,
+        "fullscreen": false,
+        "url": "index.html",
+        "titleBarStyle": "Overlay",
+        "hiddenTitle": true
+      }
+    ],
+    "security": {
+      "capabilities": [
+        "default"
+      ],
+      "csp": "default-src 'self' tauri: asset: blob:; connect-src 'self' tauri: ipc: http://ipc.localhost http://localhost:819 ws://localhost:819 http://localhost:8081 ws://localhost:8081 https:; img-src 'self' data: asset: tauri: blob: https: http:; style-src 'self' 'unsafe-inline' asset: tauri:; script-src 'self' asset: tauri: blob: 'unsafe-eval'; worker-src 'self' blob:; font-src 'self' asset: tauri: data: https:"
+    }
+  }
+}

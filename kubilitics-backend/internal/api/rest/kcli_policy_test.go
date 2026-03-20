@@ -55,13 +55,10 @@ func TestValidateKCLIArgs(t *testing.T) {
 			t.Fatalf("plugin list is allowed in exec endpoint, got: %v", err)
 		}
 	})
-	t.Run("allows ui command (kcli subcommand)", func(t *testing.T) {
-		// "ui" was removed as a blocked verb — it's now a valid kcli subcommand
-		// that can be run non-interactively if kcli supports it
+	t.Run("rejects ui command (requires interactive PTY)", func(t *testing.T) {
 		_, _, err := validateKCLIArgs([]string{"ui"}, false)
-		if err == nil || !strings.Contains(err.Error(), "not allowed") {
-			// "ui" is not in allowedKCLIVerbs, so it should be rejected as unknown command
-			// This is fine — the verb allowlist already covers this
+		if err == nil || (!strings.Contains(err.Error(), "interactive") && !strings.Contains(err.Error(), "not allowed")) {
+			t.Fatalf("expected ui blocked error, got: %v", err)
 		}
 	})
 }
@@ -145,4 +142,33 @@ func TestPostKCLIExec_RateLimited(t *testing.T) {
 	}
 }
 
-// TestGetKCLIStream_ShellModeDisabled removed — shell mode is now always enabled (TUI mode removed).
+func TestGetKCLIStream_ShellModeDisabled(t *testing.T) {
+	clusterRouteID := "demo-ctx"
+	clusterID := "cluster-kcli-stream-id"
+	cluster := &models.Cluster{
+		ID:             clusterID,
+		Name:           "demo",
+		Context:        clusterRouteID,
+		KubeconfigPath: "/tmp/kubeconfig",
+	}
+	repo := &mockClusterRepo{
+		list: []*models.Cluster{cluster},
+		get:  map[string]*models.Cluster{clusterID: cluster},
+	}
+	cfg := &config.Config{
+		KCLIAllowShellMode: false,
+	}
+	cs := service.NewClusterService(repo, cfg)
+	h := NewHandler(cs, nil, cfg, nil, nil, nil, nil, nil, nil, nil)
+
+	router := mux.NewRouter()
+	api := router.PathPrefix("/api/v1").Subrouter()
+	SetupRoutes(api, h)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/clusters/"+clusterRouteID+"/kcli/stream?mode=shell", nil)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("status = %d, want 403 body=%s", rec.Code, rec.Body.String())
+	}
+}

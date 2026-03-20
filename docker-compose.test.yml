@@ -1,0 +1,74 @@
+version: '3.8'
+
+services:
+  # Backend service
+  backend:
+    build:
+      context: ./kubilitics-backend
+      dockerfile: Dockerfile
+    container_name: kubilitics-backend-test
+    ports:
+      - "819:819"
+    environment:
+      - KUBILITICS_PORT=819
+      - KUBILITICS_DATABASE_PATH=/data/kubilitics.db
+      - KUBILITICS_LOG_LEVEL=info
+      - KUBILITICS_ALLOWED_ORIGINS=http://localhost:5173,http://localhost:4173,http://frontend:80
+      - KUBILITICS_AUTH_MODE=disabled
+      - KUBECONFIG=/kubeconfig/config
+    volumes:
+      - backend-data:/data
+      - ./test_data/kubeconfig:/kubeconfig:ro
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:819/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+    networks:
+      - kubilitics-test
+
+  # Frontend service (nginx serving built static files)
+  frontend:
+    build:
+      context: ./kubilitics-frontend
+      dockerfile: Dockerfile
+      args:
+        NODE_ENV: production
+    container_name: kubilitics-frontend-test
+    ports:
+      - "4173:80"
+    environment:
+      - VITE_BACKEND_URL=http://backend:819
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 30s
+    networks:
+      - kubilitics-test
+    profiles:
+      - with-frontend
+
+  # Mock Kubernetes API server for testing (optional)
+  # Uses kindest/node image or a mock server
+  # Uncomment if needed for integration tests
+  # k8s-mock:
+  #   image: kindest/node:v1.28.0
+  #   container_name: kubilitics-k8s-mock
+  #   networks:
+  #     - kubilitics-test
+  #   profiles:
+  #     - with-k8s-mock
+
+volumes:
+  backend-data:
+    driver: local
+
+networks:
+  kubilitics-test:
+    driver: bridge

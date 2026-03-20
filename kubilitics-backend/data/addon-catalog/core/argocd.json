@@ -1,0 +1,33 @@
+{
+  "addon": {
+    "id": "kubilitics/argocd",
+    "name": "argocd",
+    "display_name": "Argo CD",
+    "description": "Declarative GitOps continuous delivery for Kubernetes.",
+    "tier": "CORE",
+    "version": "7.7.16",
+    "k8s_compat_min": "1.24",
+    "helm_repo_url": "https://argoproj.github.io/argo-helm",
+    "helm_chart": "argo-cd",
+    "helm_chart_version": "7.7.16",
+    "tags": ["gitops", "delivery"],
+    "source_url": "https://github.com/argoproj/argo-cd",
+    "maintainer": "argoproj",
+    "is_deprecated": false
+  },
+  "dependencies": [
+    {"addon_id": "kubilitics/argocd", "depends_on_id": "kubilitics/cert-manager", "dependency_type": "optional", "reason": "TLS certificates for ingress endpoints"}
+  ],
+  "conflicts": [],
+  "crds_owned": [
+    {"addon_id": "kubilitics/argocd", "crd_group": "argoproj.io", "crd_resource": "applications", "crd_version": "v1alpha1"},
+    {"addon_id": "kubilitics/argocd", "crd_group": "argoproj.io", "crd_resource": "appprojects", "crd_version": "v1alpha1"},
+    {"addon_id": "kubilitics/argocd", "crd_group": "argoproj.io", "crd_resource": "applicationsets", "crd_version": "v1alpha1"}
+  ],
+  "rbac_required": [],
+  "cost_models": [
+    {"addon_id": "kubilitics/argocd", "cluster_tier": "dev", "cpu_millicores": 500, "memory_mb": 1024, "storage_gb": 0, "monthly_cost_usd_estimate": 10, "replica_count": 1},
+    {"addon_id": "kubilitics/argocd", "cluster_tier": "staging", "cpu_millicores": 1000, "memory_mb": 2048, "storage_gb": 0, "monthly_cost_usd_estimate": 20, "replica_count": 2},
+    {"addon_id": "kubilitics/argocd", "cluster_tier": "production", "cpu_millicores": 2000, "memory_mb": 4096, "storage_gb": 0, "monthly_cost_usd_estimate": 40, "replica_count": 3}
+  ]
+}

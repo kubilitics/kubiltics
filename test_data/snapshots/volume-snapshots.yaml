@@ -1,0 +1,48 @@
+apiVersion: snapshot.storage.k8s.io/v1
+kind: VolumeSnapshot
+metadata:
+  name: postgres-data-snap-01
+  namespace: kubilitics-demo
+  labels:
+    app.kubernetes.io/part-of: kubilitics-demo
+spec:
+  volumeSnapshotClassName: fast-ssd-snap
+  source:
+    persistentVolumeClaimName: postgres-data
+---
+apiVersion: snapshot.storage.k8s.io/v1
+kind: VolumeSnapshot
+metadata:
+  name: redis-data-snap-01
+  namespace: kubilitics-demo
+  labels:
+    app.kubernetes.io/part-of: kubilitics-demo
+spec:
+  volumeSnapshotClassName: fast-ssd-snap
+  source:
+    persistentVolumeClaimName: redis-data
+---
+apiVersion: snapshot.storage.k8s.io/v1
+kind: VolumeSnapshot
+metadata:
+  name: mongo-data-snap-01
+  namespace: ecommerce-prod
+  labels:
+    app.kubernetes.io/part-of: kubilitics-demo
+spec:
+  volumeSnapshotClassName: standard-hdd-snap
+  source:
+    persistentVolumeClaimName: mongo-data
+---
+apiVersion: snapshot.storage.k8s.io/v1
+kind: VolumeSnapshot
+metadata:
+  name: ml-model-storage-snap-01
+  namespace: ml-pipeline
+  labels:
+    app.kubernetes.io/part-of: kubilitics-demo
+spec:
+  volumeSnapshotClassName: replicated-nvme-snap
+  source:
+    persistentVolumeClaimName: ml-model-storage
+

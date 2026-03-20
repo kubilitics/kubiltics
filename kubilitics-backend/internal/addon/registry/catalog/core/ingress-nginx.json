@@ -1,0 +1,84 @@
+{
+  "addon": {
+    "id": "kubilitics/ingress-nginx",
+    "name": "ingress-nginx",
+    "display_name": "Ingress NGINX",
+    "description": "Ingress controller for Kubernetes using NGINX.",
+    "tier": "CORE",
+    "version": "4.11.3",
+    "k8s_compat_min": "1.24",
+    "helm_repo_url": "https://kubernetes.github.io/ingress-nginx",
+    "helm_chart": "ingress-nginx",
+    "helm_chart_version": "4.11.3",
+    "tags": [
+      "networking",
+      "ingress"
+    ],
+    "source_url": "https://github.com/kubernetes/ingress-nginx",
+    "maintainer": "kubernetes",
+    "icon_url": "https://artifacthub.io/image/282abebe-66ad-46f7-991d-abdb72ca01b7",
+    "is_deprecated": false
+  },
+  "dependencies": [
+    {
+      "addon_id": "kubilitics/ingress-nginx",
+      "depends_on_id": "kubilitics/cert-manager",
+      "dependency_type": "optional",
+      "reason": "TLS certificate automation"
+    }
+  ],
+  "conflicts": [],
+  "crds_owned": [],
+  "rbac_required": [
+    {
+      "addon_id": "kubilitics/ingress-nginx",
+      "api_groups": [
+        ""
+      ],
+      "resources": [
+        "configmaps",
+        "endpoints",
+        "nodes",
+        "pods",
+        "secrets",
+        "services",
+        "namespaces"
+      ],
+      "verbs": [
+        "get",
+        "list",
+        "watch"
+      ],
+      "scope": "cluster"
+    }
+  ],
+  "cost_models": [
+    {
+      "addon_id": "kubilitics/ingress-nginx",
+      "cluster_tier": "dev",
+      "cpu_millicores": 200,
+      "memory_mb": 256,
+      "storage_gb": 0,
+      "monthly_cost_usd_estimate": 3,
+      "replica_count": 1
+    },
+    {
+      "addon_id": "kubilitics/ingress-nginx",
+      "cluster_tier": "staging",
+      "cpu_millicores": 500,
+      "memory_mb": 512,
+      "storage_gb": 0,
+      "monthly_cost_usd_estimate": 6,
+      "replica_count": 2
+    },
+    {
+      "addon_id": "kubilitics/ingress-nginx",
+      "cluster_tier": "production",
+      "cpu_millicores": 1000,
+      "memory_mb": 1024,
+      "storage_gb": 0,
+      "monthly_cost_usd_estimate": 14,
+      "replica_count": 3
+    }
+  ]
+}

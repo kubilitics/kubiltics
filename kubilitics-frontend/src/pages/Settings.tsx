@@ -4,7 +4,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Save, RotateCcw, CheckCircle2, XCircle, Loader2, AlertTriangle, RefreshCw, Download, Palette, Keyboard, Info, Sun, Moon, Monitor, Server, Trash2, Plus, FolderKanban, Focus, Settings } from 'lucide-react';
+import { Save, RotateCcw, CheckCircle2, XCircle, Loader2, AlertTriangle, RefreshCw, Download, Palette, Keyboard, Info, Sun, Moon, Monitor, Server, Trash2, Plus, FolderKanban, Focus } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
@@ -271,17 +271,13 @@ export default function Settings() {
   }
 
   function onSubmit(values: z.infer<typeof settingsSchema>) {
-    const isChangingBackend = values.backendBaseUrl !== effectiveBackendBaseUrl;
-    if (isChangingBackend) {
-      const confirmed = window.confirm(
-        'Changing the backend URL will reload the application and disconnect from all clusters.\n\nAre you sure you want to continue?'
-      );
-      if (!confirmed) return;
-    }
     setBackendBaseUrl(values.backendBaseUrl);
+
     toast.success('Settings saved', {
       description: 'Reloading application to apply changes...',
     });
+
+    // Force reload to ensure all sockets/singletons reconnect with new URLs
     setTimeout(() => {
       window.location.reload();
     }, 1500);
@@ -299,29 +295,21 @@ export default function Settings() {
 
   return (
     <div className="container max-w-4xl py-10 space-y-8">
-      <div className="relative overflow-hidden rounded-2xl border border-border/50 bg-gradient-to-br from-card via-card to-primary/5 dark:from-slate-900 dark:via-slate-900/80 dark:to-primary/10 p-8 shadow-sm">
-        <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 dark:bg-primary/10 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl" />
-        <div className="relative flex items-center gap-4">
-          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 dark:bg-primary/20 shadow-sm">
-            <Settings className="h-7 w-7 text-primary" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight text-foreground">Settings</h1>
-            <p className="text-sm text-muted-foreground mt-0.5">Manage connections, appearance, and application configuration</p>
-          </div>
-        </div>
+      <div>
+        <h1 className="text-3xl font-bold">Settings</h1>
+        <p className="text-muted-foreground">Configure connection endpoints for Kubilitics.</p>
       </div>
 
-      <Alert className="border-amber-200/60 bg-amber-50/50 dark:border-amber-500/20 dark:bg-amber-950/30">
-        <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-        <AlertTitle className="text-amber-800 dark:text-amber-300">Caution — Advanced Configuration</AlertTitle>
-        <AlertDescription className="text-amber-700 dark:text-amber-400/80">
-          Changing backend connection endpoints will reload the application. Only modify these if you know what you're doing.
+      <Alert>
+        <AlertTriangle className="h-4 w-4" />
+        <AlertTitle>Configuration Change</AlertTitle>
+        <AlertDescription>
+          Changing these values will reload the application. Ensure the new endpoints are reachable.
         </AlertDescription>
       </Alert>
 
       {/* ─── Clusters ─── */}
-      <Card className="dark:bg-slate-900/50 dark:border-slate-700/50">
+      <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
@@ -389,7 +377,7 @@ export default function Settings() {
       </Card>
 
       {/* ─── Projects ─── */}
-      <Card className="dark:bg-slate-900/50 dark:border-slate-700/50">
+      <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
@@ -440,14 +428,11 @@ export default function Settings() {
         </CardContent>
       </Card>
 
-      <Card className="border-amber-200/40 dark:border-amber-500/20 dark:bg-slate-900/50">
+      <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-amber-700 dark:text-amber-400">
-            <AlertTriangle className="h-5 w-5" />
-            Connection Endpoints
-          </CardTitle>
+          <CardTitle>Connection Endpoints</CardTitle>
           <CardDescription>
-            Manage the URL for the Core Backend. <span className="font-medium text-amber-600 dark:text-amber-500">Changing these will reload the app.</span>
+            Manage the URL for the Core Backend.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -511,7 +496,7 @@ export default function Settings() {
       <KeyboardShortcutsSection />
 
       {isDesktop && (
-        <Card className="dark:bg-slate-900/50 dark:border-slate-700/50">
+        <Card>
           <CardHeader>
             <CardTitle>Desktop Settings</CardTitle>
             <CardDescription>
@@ -726,7 +711,7 @@ function AppearanceSection() {
   };
 
   return (
-    <Card className="dark:bg-slate-900/50 dark:border-slate-700/50">
+    <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Palette className="h-5 w-5" />
@@ -810,7 +795,7 @@ const shortcuts: { category: string; items: { keys: string; description: string 
 
 function KeyboardShortcutsSection() {
   return (
-    <Card className="dark:bg-slate-900/50 dark:border-slate-700/50">
+    <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Keyboard className="h-5 w-5" />
@@ -845,7 +830,7 @@ function KeyboardShortcutsSection() {
 
 function AboutSection() {
   return (
-    <Card className="dark:bg-slate-900/50 dark:border-slate-700/50">
+    <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Info className="h-5 w-5" />

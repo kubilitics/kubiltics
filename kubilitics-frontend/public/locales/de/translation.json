@@ -1,0 +1,19 @@
+{
+    "app": {
+        "title": "Kubilitics",
+        "loading": "Laden..."
+    },
+    "nav": {
+        "dashboard": "Instrumententafel",
+        "clusters": "Cluster",
+        "settings": "Einstellungen"
+    },
+    "auth": {
+        "login": "Anmelden",
+        "logout": "Abmelden"
+    },
+    "errors": {
+        "generic": "Ein Fehler ist aufgetreten",
+        "network": "Netzwerkfehler"
+    }
+}
