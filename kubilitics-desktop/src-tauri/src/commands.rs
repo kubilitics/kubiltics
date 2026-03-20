@@ -8,7 +8,7 @@ use serde_json::Value;
 use std::process::Command;
 use std::fs;
 
-use crate::backend_ports::{BACKEND_PORT, AI_BACKEND_PORT};
+use crate::backend_ports::BACKEND_PORT;
 
 use aes_gcm::{
     aead::{Aead, AeadCore, KeyInit, OsRng},
@@ -578,7 +578,6 @@ pub struct DesktopInfo {
 pub struct ConnectivityStatus {
     pub is_online: bool,
     pub backend_reachable: bool,
-    pub ai_backend_reachable: bool,
     pub last_check: u64, // Unix timestamp
 }
 
@@ -597,13 +596,9 @@ pub async fn check_connectivity() -> Result<ConnectivityStatus, String> {
     // Check backend connectivity
     let backend_reachable = check_backend_connectivity().await;
     
-    // Check AI backend connectivity
-    let ai_backend_reachable = check_ai_backend_connectivity().await;
-    
     Ok(ConnectivityStatus {
         is_online,
         backend_reachable,
-        ai_backend_reachable,
         last_check: now,
     })
 }
@@ -644,23 +639,6 @@ async fn check_backend_connectivity() -> bool {
     };
     
     let url = format!("http://localhost:{}/health", BACKEND_PORT);
-    client.get(&url)
-        .send()
-        .await
-        .map(|r| r.status().is_success())
-        .unwrap_or(false)
-}
-
-async fn check_ai_backend_connectivity() -> bool {
-    let client = match reqwest::Client::builder()
-        .timeout(std::time::Duration::from_secs(2))
-        .build()
-    {
-        Ok(c) => c,
-        Err(_) => return false,
-    };
-    
-    let url = format!("http://localhost:{}/health", AI_BACKEND_PORT);
     client.get(&url)
         .send()
         .await

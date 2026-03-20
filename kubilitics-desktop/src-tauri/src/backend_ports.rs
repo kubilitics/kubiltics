@@ -5,4 +5,3 @@
 // No requirement for 4-digit ports; Docker/Kubernetes accept any valid port number.
 
 pub const BACKEND_PORT: u16 = 819;
-pub const AI_BACKEND_PORT: u16 = 8081;

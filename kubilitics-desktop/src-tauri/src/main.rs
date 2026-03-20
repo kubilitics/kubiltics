@@ -47,7 +47,6 @@ fn main() {
             commands::get_desktop_info,
             commands::restart_sidecar,
             commands::is_kcli_sidecar_available,
-            sidecar::get_ai_status,
             sidecar::get_backend_status,
         ])
         .setup(|app| {
@@ -71,7 +70,7 @@ fn main() {
                     }
                 });
             }
-            // Start Go backend sidecar (and AI backend if available)
+            // Start Go backend sidecar
             sidecar::start_backend(&handle)?;
             
             // Setup system tray
