@@ -24,19 +24,30 @@ export interface OfflineModeState {
   retryNow: () => void;
 }
 
-/** Require this many consecutive failures before reporting backend as unreachable.
- *  Prevents the amber banner from flashing during startup or transient hiccups. */
-const FAILURE_THRESHOLD = 3;
+/**
+ * Conservative failure threshold: require 6+ consecutive failures over at least
+ * 90 seconds before reporting backend as unreachable.  The previous threshold
+ * of 3 caused the amber banner to appear within ~15 seconds of any transient
+ * hiccup (backend GC pause, slow proxy, laptop wake-from-sleep) which destroyed
+ * trust in the application.  Headlamp/Lens never show connectivity banners for
+ * brief interruptions — they only surface persistent issues.
+ */
+const FAILURE_THRESHOLD = 6;
+const MIN_FAILURE_DURATION_MS = 90_000; // 90 seconds of sustained failure
+
+/** How often to check health when backend is reachable (low-frequency). */
+const HEALTHY_POLL_INTERVAL_MS = 60_000; // 60s — was 30s
 
 export function useOfflineMode(): OfflineModeState {
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
-  const [backendReachable, setAiBackendReachable] = useState(true);
+  const [backendReachable, setBackendReachable] = useState(true);
   const [failureCount, setFailureCount] = useState(0);
 
   const storedUrl = useBackendConfigStore((s) => s.backendBaseUrl);
   const isConfigured = useBackendConfigStore((s) => s.isBackendConfigured);
   const backoffFactorRef = useRef(0);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const firstFailureTimeRef = useRef<number | null>(null);
 
   // Browser online/offline events
   useEffect(() => {
@@ -55,34 +66,43 @@ export function useOfflineMode(): OfflineModeState {
     if (!isConfigured()) return;
 
     const baseUrl = getEffectiveBackendBaseUrl(storedUrl);
-    if (!baseUrl) return;
+    // Empty baseUrl means same-origin (dev proxy / in-cluster nginx) — always use relative /healthz
+    const healthUrl = baseUrl ? `${baseUrl}/healthz` : '/healthz';
 
     try {
-      const res = await fetch(`${baseUrl}/healthz`, {
+      const res = await fetch(healthUrl, {
         method: 'GET',
-        signal: AbortSignal.timeout(5000),
+        signal: AbortSignal.timeout(8000), // 8s timeout (was 5s — too aggressive for cold starts)
       });
       if (res.ok) {
-        setAiBackendReachable(true);
+        setBackendReachable(true);
         setFailureCount(0);
         backoffFactorRef.current = 0;
+        firstFailureTimeRef.current = null;
       } else {
         throw new Error(`HTTP ${res.status}`);
       }
     } catch {
+      const now = Date.now();
+      if (firstFailureTimeRef.current === null) {
+        firstFailureTimeRef.current = now;
+      }
+
       setFailureCount((c) => {
         const next = c + 1;
-        // Only mark unreachable after FAILURE_THRESHOLD consecutive failures.
-        // This avoids flashing the "Backend unreachable" banner during startup
-        // or transient network hiccups (e.g. laptop waking from sleep).
-        if (next >= FAILURE_THRESHOLD) setAiBackendReachable(false);
+        const failureDuration = now - (firstFailureTimeRef.current || now);
+        // Only mark unreachable after BOTH thresholds are met:
+        // enough consecutive failures AND enough wall-clock time.
+        if (next >= FAILURE_THRESHOLD && failureDuration >= MIN_FAILURE_DURATION_MS) {
+          setBackendReachable(false);
+        }
         return next;
       });
       backoffFactorRef.current += 1;
 
-      // Schedule retry with exponential backoff: 5s, 10s, 15s, 20s, ...
-      // Capped at 30s (Headlamp caps at similar intervals)
-      const delay = Math.min((backoffFactorRef.current + 1) * 5000, 30_000);
+      // Schedule retry with exponential backoff: 10s, 20s, 30s, ...
+      // Capped at 60s (was 30s — give the backend more breathing room)
+      const delay = Math.min((backoffFactorRef.current + 1) * 10_000, 60_000);
       timerRef.current = setTimeout(checkHealth, delay);
     }
   }, [storedUrl, isConfigured]);
@@ -90,6 +110,7 @@ export function useOfflineMode(): OfflineModeState {
   // Retry immediately (resets backoff — like Headlamp's "Try Again" button)
   const retryNow = useCallback(() => {
     backoffFactorRef.current = 0;
+    firstFailureTimeRef.current = null;
     if (timerRef.current) {
       clearTimeout(timerRef.current);
       timerRef.current = null;
@@ -97,12 +118,12 @@ export function useOfflineMode(): OfflineModeState {
     checkHealth();
   }, [checkHealth]);
 
-  // Run health check periodically when online (every 30s when healthy)
+  // Run health check periodically when online
   useEffect(() => {
     if (isOffline || !isConfigured()) return;
 
     checkHealth();
-    const interval = setInterval(checkHealth, 30_000);
+    const interval = setInterval(checkHealth, HEALTHY_POLL_INTERVAL_MS);
 
     return () => {
       clearInterval(interval);

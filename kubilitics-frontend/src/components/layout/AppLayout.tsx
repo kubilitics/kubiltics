@@ -10,7 +10,6 @@ import { OfflineIndicator } from '@/components/OfflineIndicator';
 import { useClusterStore } from '@/stores/clusterStore';
 import { useConnectionStatus } from '@/hooks/useConnectionStatus';
 import { useRecentlyVisited } from '@/hooks/useRecentlyVisited';
-import { useOfflineMode } from '@/hooks/useOfflineMode';
 import { analyticsService } from '@/services/analyticsService';
 import { cn } from '@/lib/utils';
 import { isTauri } from '@/lib/tauri';
@@ -35,7 +34,6 @@ export function AppLayout() {
   const reduceMotion = useReducedMotion();
   const isDemo = useClusterStore((s) => s.isDemo);
   const { isConnected } = useConnectionStatus();
-  const { isOffline, backendReachable, retryNow } = useOfflineMode();
   const gPendingRef = useRef(false);
   const gTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // PERF Area 2: Restore scroll position when navigating back to a previously visited page
