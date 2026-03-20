@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"os"
 	"os/exec"
 	"strings"
 	"time"
@@ -74,6 +75,19 @@ func (h *Handler) PostShell(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Resolve the kcli binary path once for this request
+	kcliBin, kcliResolveErr := resolveKCLIBinary()
+	if kcliResolveErr != nil {
+		// Fallback to plain "kubectl" if kcli can't be found
+		kcliBin = "kubectl"
+	}
+
+	// Inherit parent process env and add KUBECONFIG.
+	// IMPORTANT: cmd.Env defaults to nil (inherits parent env), but append(nil, x)
+	// creates a non-nil slice with ONLY x. That strips PATH, HOME, etc. from the
+	// child process, causing bare command names like "kubectl" to fail resolution.
+	shellEnv := append(os.Environ(), "KUBECONFIG="+cluster.KubeconfigPath)
+
 	// Bare "kcli"/"kubectl" or empty: run version so the shell always returns something useful
 	if cmdStr == "" {
 		ctx, cancel := context.WithTimeout(r.Context(), shellTimeout)
@@ -82,8 +96,8 @@ func (h *Handler) PostShell(w http.ResponseWriter, r *http.Request) {
 		if cluster.Context != "" {
 			args = append([]string{"--context", cluster.Context}, args...)
 		}
-		cmd := exec.CommandContext(ctx, "kcli", args...)
-		cmd.Env = append(cmd.Env, "KUBECONFIG="+cluster.KubeconfigPath)
+		cmd := exec.CommandContext(ctx, kcliBin, args...)
+		cmd.Env = shellEnv
 		var stdout, stderr bytes.Buffer
 		cmd.Stdout = &stdout
 		cmd.Stderr = &stderr
@@ -127,8 +141,8 @@ func (h *Handler) PostShell(w http.ResponseWriter, r *http.Request) {
 	if cluster.Context != "" {
 		args = append([]string{"--context", cluster.Context}, parts...)
 	}
-	cmd := exec.CommandContext(ctx, "kcli", args...)
-	cmd.Env = append(cmd.Env, "KUBECONFIG="+cluster.KubeconfigPath)
+	cmd := exec.CommandContext(ctx, kcliBin, args...)
+	cmd.Env = shellEnv
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
