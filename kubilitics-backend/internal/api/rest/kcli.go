@@ -166,8 +166,8 @@ func (h *Handler) PostKCLIExec(w http.ResponseWriter, r *http.Request) {
 
 func resolveKCLIBinary() (string, error) {
 	var checkedPaths []string
-	
-	// Check 1: KCLI_BIN environment variable
+
+	// Check 1: KCLI_BIN environment variable (set by Tauri sidecar or user)
 	if v := strings.TrimSpace(os.Getenv("KCLI_BIN")); v != "" {
 		checkedPaths = append(checkedPaths, fmt.Sprintf("KCLI_BIN=%s", v))
 		if st, err := os.Stat(v); err == nil && !st.IsDir() {
@@ -175,37 +175,63 @@ func resolveKCLIBinary() (string, error) {
 		}
 		return "", fmt.Errorf("kcli binary not found: KCLI_BIN is set to %q but file does not exist or is not executable. Please verify the path is correct and the file has execute permissions.", v)
 	}
-	
+
 	// Check 2: System PATH
 	if path, err := exec.LookPath("kcli"); err == nil {
 		return path, nil
 	}
 	checkedPaths = append(checkedPaths, "system PATH")
-	
-	// Check 3: Relative path (development)
-	cwd, err := os.Getwd()
-	if err == nil {
-		cand := filepath.Clean(filepath.Join(cwd, "..", "kcli", "bin", "kcli"))
-		checkedPaths = append(checkedPaths, fmt.Sprintf("relative path: %s", cand))
-		if st, serr := os.Stat(cand); serr == nil && !st.IsDir() {
+
+	// Check 3: Common install locations
+	// kcli is an external binary from https://github.com/vellankikoti/kcli
+	// Users may install it via `go install` or download a release binary.
+	home, _ := os.UserHomeDir()
+	candidates := []string{}
+	if home != "" {
+		candidates = append(candidates,
+			filepath.Join(home, "go", "bin", "kcli"),       // go install default
+			filepath.Join(home, ".local", "bin", "kcli"),    // XDG user bin
+			filepath.Join(home, "bin", "kcli"),              // ~/bin
+		)
+	}
+	if gopath := os.Getenv("GOPATH"); gopath != "" {
+		candidates = append(candidates, filepath.Join(gopath, "bin", "kcli"))
+	}
+	// Relative to backend binary (development monorepo or sibling checkout)
+	if cwd, err := os.Getwd(); err == nil {
+		candidates = append(candidates,
+			filepath.Clean(filepath.Join(cwd, "..", "kcli", "bin", "kcli")),
+			filepath.Clean(filepath.Join(cwd, "..", "kcli", "kcli")),
+		)
+	}
+	// Relative to the running executable (bundled deployments)
+	if exe, err := os.Executable(); err == nil {
+		candidates = append(candidates, filepath.Join(filepath.Dir(exe), "kcli"))
+	}
+	// System-wide locations
+	candidates = append(candidates, "/usr/local/bin/kcli", "/usr/bin/kcli")
+
+	for _, cand := range candidates {
+		checkedPaths = append(checkedPaths, cand)
+		if st, err := os.Stat(cand); err == nil && !st.IsDir() {
 			return cand, nil
 		}
 	}
-	
+
 	// Build detailed error message
 	var errMsg strings.Builder
-	errMsg.WriteString("kcli binary not found. ")
+	errMsg.WriteString("kcli binary not found at 'kcli'. ")
 	errMsg.WriteString("Searched locations:\n")
 	for _, p := range checkedPaths {
 		errMsg.WriteString(fmt.Sprintf("  - %s\n", p))
 	}
 	errMsg.WriteString("\nTo fix this issue:\n")
-	errMsg.WriteString("  1. Install kcli: https://github.com/vellankikoti/kcli#installation\n")
-	errMsg.WriteString("  2. Set KCLI_BIN environment variable to the full path of the kcli binary\n")
-	errMsg.WriteString("  3. Build kcli from source: cd kcli && go build -o bin/kcli ./cmd/kcli\n")
-	errMsg.WriteString("  4. For Docker deployments: ensure kcli is included in the container image\n")
-	errMsg.WriteString("\nSee documentation: https://github.com/kubilitics/kubilitics-os-emergent/docs/DEPLOYMENT_KCLI.md")
-	
+	errMsg.WriteString("  1. Install from source: go install github.com/vellankikoti/kcli/cmd/kcli@latest\n")
+	errMsg.WriteString("  2. Or download a release: https://github.com/vellankikoti/kcli/releases\n")
+	errMsg.WriteString("  3. Or set KCLI_BIN=/path/to/kcli environment variable\n")
+	errMsg.WriteString("  4. For Docker: add kcli to your container image\n")
+	errMsg.WriteString("\nSource: https://github.com/vellankikoti/kcli")
+
 	return "", fmt.Errorf("%s", errMsg.String())
 }
 

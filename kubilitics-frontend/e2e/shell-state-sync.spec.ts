@@ -151,7 +151,6 @@ test('cluster shell synchronizes context/namespace/AI state from backend TUI sta
         context: 'prod-us-east-1',
         namespace: 'default',
         kcliAvailable: true,
-        kcliShellModeAllowed: true,
         aiEnabled: false,
       }
       : {
@@ -160,7 +159,6 @@ test('cluster shell synchronizes context/namespace/AI state from backend TUI sta
         context: 'prod-us-east-2',
         namespace: 'kube-system',
         kcliAvailable: true,
-        kcliShellModeAllowed: true,
         aiEnabled: true,
       };
     await route.fulfill({

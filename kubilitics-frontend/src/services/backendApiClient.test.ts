@@ -167,7 +167,6 @@ describe('backendApiClient', () => {
         context: 'prod-us-east-1',
         namespace: 'default',
         kcliAvailable: true,
-        kcliShellModeAllowed: true,
         aiEnabled: true,
       };
       (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
@@ -223,7 +222,6 @@ describe('backendApiClient', () => {
         context: 'prod-us-east-1',
         namespace: 'default',
         kcliAvailable: true,
-        kcliShellModeAllowed: true,
         aiEnabled: false,
       };
       (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce(

@@ -10,7 +10,6 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Search,
-  Bell,
   ChevronDown,
   Command,
   Terminal,
@@ -36,6 +35,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { GlobalSearch } from './GlobalSearch';
 import { ClusterShellPanel } from '@/components/shell';
 import { DeploymentWizard, ServiceWizard, ConfigMapWizard, SecretWizard } from '@/components/wizards';
+import { NotificationCenter } from '@/components/notifications/NotificationCenter';
 import { getClusterKubeconfig } from '@/services/backendApiClient';
 import { getEffectiveBackendBaseUrl, useBackendConfigStore } from '@/stores/backendConfigStore';
 import { useUIStore } from '@/stores/uiStore';
@@ -306,22 +306,22 @@ export function Header() {
                               navigate('/dashboard');
                             }
                           }}
-                          className="flex items-center gap-4 py-4 px-4 cursor-pointer rounded-2xl hover:bg-slate-50 transition-all group"
+                          className="flex items-center gap-4 py-4 px-4 cursor-pointer rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-all group"
                         >
                           <div className="relative shrink-0">
                             <div className={cn('absolute inset-0 blur-[4px] opacity-40 rounded-full', statusColors[cluster.status])} />
                             <div className={cn('relative w-3 h-3 rounded-full border-2 border-white', statusColors[cluster.status])} />
                           </div>
                           <div className="flex-1 min-w-0">
-                            <div className="text-sm font-bold text-slate-800 tracking-tight flex items-center gap-2">
+                            <div className="text-sm font-bold text-slate-800 dark:text-slate-200 tracking-tight flex items-center gap-2">
                               {cluster.name}
                               {cluster.provider && (
-                                <span className="text-[9px] px-2 py-0.5 bg-slate-100 text-slate-500 font-black uppercase tracking-widest rounded-full">
+                                <span className="text-[9px] px-2 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-black uppercase tracking-widest rounded-full">
                                   {cluster.provider.replace(/-/g, ' ')}
                                 </span>
                               )}
                             </div>
-                            <div className="text-[11px] font-bold text-slate-400 mt-0.5">{cluster.region} · {cluster.version}</div>
+                            <div className="text-[11px] font-bold text-slate-400 dark:text-slate-500 mt-0.5">{cluster.region} · {cluster.version}</div>
                           </div>
                           {cluster.id === activeCluster.id && (
                             <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
@@ -330,10 +330,10 @@ export function Header() {
                           )}
                         </DropdownMenuItem>
                       ))}
-                      <DropdownMenuSeparator className="my-2 bg-slate-100/60" />
-                      <DropdownMenuItem onClick={() => navigate('/connect?addCluster=true')} className="gap-3 cursor-pointer py-4 px-4 rounded-2xl text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition-colors">
-                        <div className="h-9 w-9 rounded-xl bg-slate-100 flex items-center justify-center">
-                          <Plus className="h-4 w-4" />
+                      <DropdownMenuSeparator className="my-2 bg-slate-100/60 dark:bg-slate-700/60" />
+                      <DropdownMenuItem onClick={() => navigate('/connect?addCluster=true')} className="gap-3 cursor-pointer py-4 px-4 rounded-2xl text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+                        <div className="h-9 w-9 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+                          <Plus className="h-4 w-4 text-slate-500 dark:text-slate-400" />
                         </div>
                         <span className="text-sm font-bold tracking-tight">Add Cluster</span>
                       </DropdownMenuItem>
@@ -373,18 +373,18 @@ export function Header() {
                   </Tooltip>
                   <DropdownMenuContent align="end" className="w-72 rounded-[2rem] p-3 border-none shadow-2xl mt-2 elevation-2">
                     <div className="px-4 py-3 mb-2">
-                      <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest">Download Assets</p>
+                      <p className="text-[11px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Download Assets</p>
                     </div>
                     {clusters.map((cluster) => (
                       <DropdownMenuItem
                         key={cluster.id}
                         onClick={() => handleDownloadKubeconfig(cluster.id, cluster.name)}
-                        className="flex items-center gap-4 py-4 px-4 cursor-pointer rounded-2xl hover:bg-slate-50 transition-colors"
+                        className="flex items-center gap-4 py-4 px-4 cursor-pointer rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
                       >
                         <div className={cn('w-2 h-2 rounded-full shrink-0 shadow-sm', statusColors[cluster.status])} />
-                        <span className="flex-1 text-sm font-bold text-slate-700 truncate">{cluster.name}</span>
-                        <div className="h-9 w-9 rounded-xl bg-slate-100 flex items-center justify-center">
-                          <FileDown className="h-4 w-4 text-slate-500" />
+                        <span className="flex-1 text-sm font-bold text-slate-700 dark:text-slate-300 truncate">{cluster.name}</span>
+                        <div className="h-9 w-9 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+                          <FileDown className="h-4 w-4 text-slate-500 dark:text-slate-400" />
                         </div>
                       </DropdownMenuItem>
                     ))}
@@ -395,26 +395,7 @@ export function Header() {
                 <ThemeToggle />
 
                 {/* Notifications */}
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      className={cn(ICON_BTN, 'px-4 press-effect')}
-                      aria-label="System Notifications"
-                      onClick={() => navigate('/settings')}
-                    >
-                      <div className="relative shrink-0 flex items-center justify-center h-9 w-9 rounded-xl bg-slate-100 group-hover:bg-white transition-colors">
-                        <Bell className="h-4 w-4" />
-                        <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-blue-500 border-2 border-white shadow-sm" />
-                      </div>
-                      <span className="hidden 2xl:inline text-sm font-bold tracking-tight">
-                        Updates
-                      </span>
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent side="bottom" sideOffset={8}>
-                    System Notifications
-                  </TooltipContent>
-                </Tooltip>
+                <NotificationCenter clusterId={currentClusterId} />
 
                 {/* Profile — avatar + label + chevron, real account control */}
                 <DropdownMenu>
@@ -441,16 +422,16 @@ export function Header() {
                     </button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-56 elevation-2">
-                    <div className="px-3 py-2.5 border-b border-border/50">
+                    <div className="px-3 py-2.5 border-b border-border/50 dark:border-border/50">
                       <p className="text-sm font-medium text-foreground">Admin User</p>
-                      <p className="text-xs text-muted-foreground mt-0.5">admin@kubilitics.com</p>
+                      <p className="text-xs text-muted-foreground dark:text-slate-400 mt-0.5">admin@kubilitics.com</p>
                     </div>
                     <DropdownMenuItem onClick={() => navigate('/settings')} className="gap-2 py-2.5 cursor-pointer">
-                      <Settings className="h-4 w-4 text-muted-foreground" />
+                      <Settings className="h-4 w-4 text-muted-foreground dark:text-slate-400" />
                       <span className="text-sm">Settings</span>
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => navigate('/connect?addCluster=true')} className="gap-2 py-2.5 cursor-pointer">
-                      <Plus className="h-4 w-4 text-muted-foreground" />
+                      <Plus className="h-4 w-4 text-muted-foreground dark:text-slate-400" />
                       <span className="text-sm">Add Cluster</span>
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />

@@ -24,7 +24,7 @@ import (
 )
 
 // GetKCLIStream handles GET /clusters/{clusterId}/kcli/stream.
-// mode=query can be: ui (default) or shell.
+// Launches an interactive shell session with kcli available as the primary CLI.
 // Protocol is identical to pod exec/shell stream: stdin, resize, stdout/stderr(base64), exit, error.
 func (h *Handler) GetKCLIStream(w http.ResponseWriter, r *http.Request) {
 	start := time.Now()
@@ -49,15 +49,8 @@ func (h *Handler) GetKCLIStream(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusBadRequest, "Cluster has no kubeconfig path")
 		return
 	}
-	mode := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("mode")))
-	if mode == "" {
-		mode = "ui"
-	}
+	mode := "shell"
 	namespace := strings.TrimSpace(r.URL.Query().Get("namespace"))
-	if mode == "shell" && !h.isKCLIShellModeAllowed() {
-		respondError(w, http.StatusForbidden, "kcli shell mode is disabled by server policy")
-		return
-	}
 	if !h.allowKCLIRate(resolvedID, "stream") {
 		respondError(w, http.StatusTooManyRequests, "kcli stream rate limit exceeded")
 		return
@@ -115,7 +108,7 @@ func (h *Handler) GetKCLIStream(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Start with a default PTY size so Bubble Tea (ui mode) reads correct dimensions on init.
+	// Start with a default PTY size so the shell reads correct dimensions on init.
 	// The frontend will immediately send a resize event with the actual terminal dimensions.
 	ptmx, err := pty.StartWithSize(cmd, &pty.Winsize{Cols: execDefaultCols, Rows: execDefaultRows})
 	if err != nil {
@@ -264,7 +257,7 @@ func (h *Handler) GetKCLIStream(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) makeKCLIStreamCommand(ctx context.Context, clusterContext, kubeconfigPath, mode, namespace string) (*exec.Cmd, error) {
 	env := append(os.Environ(),
 		"KUBECONFIG="+kubeconfigPath,
-		// Ensure Bubble Tea and other TUI libraries detect a proper terminal
+		// Ensure terminal detection for color support
 		"TERM=xterm-256color",
 		"COLORTERM=truecolor",
 	)
@@ -275,98 +268,73 @@ func (h *Handler) makeKCLIStreamCommand(ctx context.Context, clusterContext, kub
 		workDir = home
 	}
 
-	switch mode {
-	case "ui":
-		kcliBin, err := resolveKCLIBinary()
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "ERROR: kcli binary resolution failed in ui stream mode: %v\n", err)
-			return nil, err
-		}
-		args := []string{"ui"}
-		if clusterContext != "" {
-			// --context must come before the subcommand for kcli persistent flags
-			args = append([]string{"--context", clusterContext}, args...)
-		}
-		if namespace != "" {
-			args = append(args, "--namespace", namespace)
-		}
-		cmd := exec.CommandContext(ctx, kcliBin, args...)
-		cmd.Env = env
-		cmd.Dir = workDir
-		return cmd, nil
+	// Shell mode: launch an interactive bash/sh session with kcli available.
+	// Use kcli as the primary kubectl-compatible CLI and alias common tools to it.
+	kcliBin, kcliErr := resolveKCLIBinary()
 
-	case "shell":
-		// Shell mode: launch an interactive bash/sh session with kcli available.
-		// Use kcli as the primary kubectl-compatible CLI and alias common tools to it.
-		kcliBin, kcliErr := resolveKCLIBinary()
+	sh := "/bin/bash"
+	if _, err := exec.LookPath("bash"); err != nil {
+		sh = "/bin/sh"
+	}
 
-		sh := "/bin/bash"
-		if _, err := exec.LookPath("bash"); err != nil {
-			sh = "/bin/sh"
-		}
+	ctxArg := strings.ReplaceAll(clusterContext, "'", "'\"'\"'")
+	var sb strings.Builder
 
-		ctxArg := strings.ReplaceAll(clusterContext, "'", "'\"'\"'")
-		var sb strings.Builder
-
-		if kcliErr == nil {
-			// kcli is available — set up a rich kcli-powered shell
-			sb.WriteString("export KCLI_BIN='" + strings.ReplaceAll(kcliBin, "'", "'\"'\"'") + "'\n")
-
-			if sh == "/bin/bash" {
-				// Source kcli shell completion
-				sb.WriteString("source <(\"$KCLI_BIN\" completion bash 2>/dev/null) 2>/dev/null\n")
-				// Also try kubectl completion as fallback
-				sb.WriteString("source <(kubectl completion bash 2>/dev/null) 2>/dev/null\n")
-			}
-
-			// Alias all common tools to kcli
-			sb.WriteString("alias k='\"$KCLI_BIN\"'\n")
-			sb.WriteString("alias kubectl='\"$KCLI_BIN\"'\n")
-			sb.WriteString("alias kcli='\"$KCLI_BIN\"'\n")
-			sb.WriteString("alias kubectx='\"$KCLI_BIN\" ctx'\n")
-			sb.WriteString("alias kubens='\"$KCLI_BIN\" ns'\n")
-			sb.WriteString("alias k9s='\"$KCLI_BIN\" ui'\n")
-
-			// Set Kubernetes context
-			if clusterContext != "" {
-				sb.WriteString("\"$KCLI_BIN\" ctx '" + ctxArg + "' 2>/dev/null || kubectl config use-context '" + ctxArg + "' 2>/dev/null\n")
-			}
-
-			// Set namespace if provided
-			if namespace != "" && namespace != "all" {
-				nsArg := strings.ReplaceAll(namespace, "'", "'\"'\"'")
-				sb.WriteString("\"$KCLI_BIN\" ns '" + nsArg + "' 2>/dev/null || kubectl config set-context --current --namespace='" + nsArg + "' 2>/dev/null\n")
-			}
-
-			// Custom PS1 prompt showing kcli context/namespace (eval kcli prompt; fallback if prompt fails)
-			sb.WriteString("eval \"$(\\\"$KCLI_BIN\\\" prompt 2>/dev/null)\" 2>/dev/null || export PS1='\\[\\033[1;32m\\][kcli: $(\"$KCLI_BIN\" kubeconfig current-context 2>/dev/null)]\\[\\033[0m\\] \\$ '\n")
-		} else {
-			// kcli not available — fall back to plain kubectl shell
-			if sh == "/bin/bash" {
-				sb.WriteString("source <(kubectl completion bash 2>/dev/null) 2>/dev/null\n")
-			}
-			if clusterContext != "" {
-				sb.WriteString("kubectl config use-context '" + ctxArg + "' 2>/dev/null\n")
-			}
-			if namespace != "" && namespace != "all" {
-				nsArg := strings.ReplaceAll(namespace, "'", "'\"'\"'")
-				sb.WriteString("kubectl config set-context --current --namespace='" + nsArg + "' 2>/dev/null\n")
-			}
-			sb.WriteString("export PS1='\\[\\033[1;33m\\][kubectl]\\[\\033[0m\\] \\$ '\n")
-		}
+	if kcliErr == nil {
+		// kcli is available — set up a rich kcli-powered shell
+		sb.WriteString("export KCLI_BIN='" + strings.ReplaceAll(kcliBin, "'", "'\"'\"'") + "'\n")
 
 		if sh == "/bin/bash" {
-			sb.WriteString("exec bash -i\n")
-		} else {
-			sb.WriteString("exec sh -i\n")
+			// Source kcli shell completion
+			sb.WriteString("source <(\"$KCLI_BIN\" completion bash 2>/dev/null) 2>/dev/null\n")
+			// Also try kubectl completion as fallback
+			sb.WriteString("source <(kubectl completion bash 2>/dev/null) 2>/dev/null\n")
 		}
 
-		cmd := exec.CommandContext(ctx, sh, "-c", sb.String())
-		cmd.Env = env
-		cmd.Dir = workDir
-		return cmd, nil
+		// Alias all common tools to kcli
+		sb.WriteString("alias k='\"$KCLI_BIN\"'\n")
+		sb.WriteString("alias kubectl='\"$KCLI_BIN\"'\n")
+		sb.WriteString("alias kcli='\"$KCLI_BIN\"'\n")
+		sb.WriteString("alias kubectx='\"$KCLI_BIN\" ctx'\n")
+		sb.WriteString("alias kubens='\"$KCLI_BIN\" ns'\n")
+		sb.WriteString("alias k9s='\"$KCLI_BIN\" ui'\n")
 
-	default:
-		return nil, fmt.Errorf("unsupported mode %q (supported: ui, shell)", mode)
+		// Set Kubernetes context
+		if clusterContext != "" {
+			sb.WriteString("\"$KCLI_BIN\" ctx '" + ctxArg + "' 2>/dev/null || kubectl config use-context '" + ctxArg + "' 2>/dev/null\n")
+		}
+
+		// Set namespace if provided
+		if namespace != "" && namespace != "all" {
+			nsArg := strings.ReplaceAll(namespace, "'", "'\"'\"'")
+			sb.WriteString("\"$KCLI_BIN\" ns '" + nsArg + "' 2>/dev/null || kubectl config set-context --current --namespace='" + nsArg + "' 2>/dev/null\n")
+		}
+
+		// Custom PS1 prompt showing kcli context/namespace (eval kcli prompt; fallback if prompt fails)
+		sb.WriteString("eval \"$(\\\"$KCLI_BIN\\\" prompt 2>/dev/null)\" 2>/dev/null || export PS1='\\[\\033[1;32m\\][kcli: $(\"$KCLI_BIN\" kubeconfig current-context 2>/dev/null)]\\[\\033[0m\\] \\$ '\n")
+	} else {
+		// kcli not available — fall back to plain kubectl shell
+		if sh == "/bin/bash" {
+			sb.WriteString("source <(kubectl completion bash 2>/dev/null) 2>/dev/null\n")
+		}
+		if clusterContext != "" {
+			sb.WriteString("kubectl config use-context '" + ctxArg + "' 2>/dev/null\n")
+		}
+		if namespace != "" && namespace != "all" {
+			nsArg := strings.ReplaceAll(namespace, "'", "'\"'\"'")
+			sb.WriteString("kubectl config set-context --current --namespace='" + nsArg + "' 2>/dev/null\n")
+		}
+		sb.WriteString("export PS1='\\[\\033[1;33m\\][kubectl]\\[\\033[0m\\] \\$ '\n")
 	}
+
+	if sh == "/bin/bash" {
+		sb.WriteString("exec bash -i\n")
+	} else {
+		sb.WriteString("exec sh -i\n")
+	}
+
+	cmd := exec.CommandContext(ctx, sh, "-c", sb.String())
+	cmd.Env = env
+	cmd.Dir = workDir
+	return cmd, nil
 }

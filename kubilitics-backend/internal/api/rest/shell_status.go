@@ -13,13 +13,12 @@ import (
 )
 
 type shellStatusResponse struct {
-	ClusterID            string `json:"clusterId"`
-	ClusterName          string `json:"clusterName"`
-	Context              string `json:"context"`
-	Namespace            string `json:"namespace"`
-	KCLIAvailable        bool   `json:"kcliAvailable"`
-	KCLIShellModeAllowed bool   `json:"kcliShellModeAllowed"`
-	AIEnabled            bool   `json:"aiEnabled"`
+	ClusterID     string `json:"clusterId"`
+	ClusterName   string `json:"clusterName"`
+	Context       string `json:"context"`
+	Namespace     string `json:"namespace"`
+	KCLIAvailable bool   `json:"kcliAvailable"`
+	AIEnabled     bool   `json:"aiEnabled"`
 }
 
 // GetShellStatus handles GET /clusters/{clusterId}/shell/status.
@@ -69,13 +68,12 @@ func (h *Handler) GetShellStatus(w http.ResponseWriter, r *http.Request) {
 	aiEnabled := isAIEnabled()
 
 	respondJSON(w, http.StatusOK, shellStatusResponse{
-		ClusterID:            resolvedID,
-		ClusterName:          cluster.Name,
-		Context:              contextName,
-		Namespace:            namespace,
-		KCLIAvailable:        kcliErr == nil,
-		KCLIShellModeAllowed: h.isKCLIShellModeAllowed(),
-		AIEnabled:            aiEnabled,
+		ClusterID:     resolvedID,
+		ClusterName:   cluster.Name,
+		Context:       contextName,
+		Namespace:     namespace,
+		KCLIAvailable: kcliErr == nil,
+		AIEnabled:     aiEnabled,
 	})
 }
 

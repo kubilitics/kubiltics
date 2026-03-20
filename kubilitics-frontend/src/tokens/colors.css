@@ -103,13 +103,13 @@
 
   /* ─── Dark Text Colors ─── */
   --color-text-primary: 210 20% 90%;
-  --color-text-secondary: 215 16% 56%;
-  --color-text-tertiary: 215 16% 44%;
+  --color-text-secondary: 215 16% 64%;
+  --color-text-tertiary: 215 16% 52%;
   --color-text-disabled: 215 16% 32%;
   --color-text-inverse: 228 14% 7%;
 
   /* ─── Dark Border Colors ─── */
-  --color-border-default: 228 14% 20%;
-  --color-border-strong: 228 14% 30%;
+  --color-border-default: 228 14% 25%;
+  --color-border-strong: 228 14% 35%;
   --color-border-subtle: 228 14% 14%;
 }

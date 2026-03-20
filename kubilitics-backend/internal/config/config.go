@@ -29,7 +29,7 @@ type Config struct {
 	KCLIRateLimitPerSec float64  `mapstructure:"kcli_rate_limit_per_sec"` // Token bucket rate per cluster for /kcli APIs; 0 = disabled
 	KCLIRateLimitBurst  int      `mapstructure:"kcli_rate_limit_burst"`   // Burst for /kcli APIs; 0 uses sane default
 	KCLIStreamMaxConns  int      `mapstructure:"kcli_stream_max_conns"`   // Max concurrent /kcli/stream sessions per cluster; 0 uses default
-	KCLIAllowShellMode  bool     `mapstructure:"kcli_allow_shell_mode"`   // Allow /kcli/stream?mode=shell (interactive shell)
+	KCLIAllowShellMode  bool     `mapstructure:"kcli_allow_shell_mode"`   // Deprecated: shell mode is now always enabled (TUI removed). Kept for config compat.
 	AIBackendURL        string   `mapstructure:"ai_backend_url"`         // AI backend URL for kcli AI commands (default: http://localhost:8081)
 
 	// Session management (Phase 4: Session Management)
