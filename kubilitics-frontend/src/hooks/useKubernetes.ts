@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tansta
 import { useKubernetesConfigStore } from '@/stores/kubernetesConfigStore';
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
 import { useClusterStore } from '@/stores/clusterStore';
-import { listResources, getResource, deleteResource, patchResource, applyManifest, getPodLogsUrl, CONFIRM_DESTRUCTIVE_HEADER, getCronJobJobs } from '@/services/backendApiClient';
+import { listResources, getResource, deleteResource, patchResource, applyManifest, getPodLogsUrl, CONFIRM_DESTRUCTIVE_HEADER, getCronJobJobs, BackendApiError } from '@/services/backendApiClient';
 import { notifyError, notifySuccess } from '@/lib/notificationFormatter';
 import yamlParser from 'js-yaml';
 import { useProjectStore } from '@/stores/projectStore';
@@ -241,7 +241,7 @@ export function useK8sResourceList<T extends KubernetesResource>(
       ? ['backend', 'resources', clusterId, activeProjectId ?? 'no-project', resourceType, namespace, projectNamespacesParam?.join(',') ?? '', limit ?? '', fieldSelector ?? '', labelSelector ?? '']
       : ['k8s', resourceType, namespace, fieldSelector ?? '', labelSelector ?? ''],
     queryFn: useBackend
-      ? () => {
+      ? async () => {
         const listParams: Parameters<typeof listResources>[3] = {
           ...(limit != null && limit > 0 ? { limit } : {}),
           ...(fieldSelector ? { fieldSelector } : {}),
@@ -254,9 +254,8 @@ export function useK8sResourceList<T extends KubernetesResource>(
             listParams.namespace = namespace || projectNamespaceParam;
           }
         }
-        return listResources(backendBaseUrl, clusterId!, resourceType, listParams).then(
-          (r) => ({ items: r.items as T[], metadata: r.metadata } as ResourceList<T>)
-        );
+        const r = await listResources(backendBaseUrl, clusterId!, resourceType, listParams);
+        return { items: r.items as T[], metadata: r.metadata } as ResourceList<T>;
       }
       : () => {
         const query = [fieldSelector && `fieldSelector=${encodeURIComponent(fieldSelector)}`, labelSelector && `labelSelector=${encodeURIComponent(labelSelector)}`].filter(Boolean).join('&');
@@ -278,7 +277,11 @@ export function useK8sResourceList<T extends KubernetesResource>(
     // In React Query v5, keepPreviousData is a placeholderData function.
     placeholderData: options?.placeholderData ?? keepPreviousData,
     // Retry failed requests with exponential backoff (1s, 2s, 4s).
-    retry: 3,
+    // Don't retry 404s — the resource type doesn't exist in the cluster.
+    retry: (failureCount: number, error: Error) => {
+      if (error instanceof BackendApiError && error.status === 404) return false;
+      return failureCount < 3;
+    },
     retryDelay: (attempt: number) => Math.min(1000 * 2 ** attempt, 8000),
   });
 }

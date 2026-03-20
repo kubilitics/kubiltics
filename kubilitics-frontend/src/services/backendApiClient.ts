@@ -920,7 +920,16 @@ export async function listResources(
   if (params?.fieldSelector) search.set('fieldSelector', params.fieldSelector);
   const query = search.toString();
   const path = `clusters/${encodeURIComponent(clusterId)}/resources/${encodeURIComponent(kind)}${query ? `?${query}` : ''}`;
-  return backendRequest<BackendResourceListResponse>(baseUrl, path);
+  try {
+    return await backendRequest<BackendResourceListResponse>(baseUrl, path);
+  } catch (err) {
+    // When a CRD/resource type doesn't exist in the cluster the backend returns 404.
+    // Return an empty list instead of throwing so callers don't flood the console with errors.
+    if (err instanceof BackendApiError && err.status === 404) {
+      return { items: [], metadata: { total: 0, resourceVersion: '' } };
+    }
+    throw err;
+  }
 }
 
 /**

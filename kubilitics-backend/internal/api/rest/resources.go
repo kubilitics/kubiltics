@@ -217,9 +217,14 @@ func (h *Handler) ListResources(w http.ResponseWriter, r *http.Request) {
 			list, err = client.ListResources(r.Context(), kind, namespace, opts)
 		}
 		if err != nil {
-			requestID := logger.FromContext(r.Context())
-			respondK8sError(w, err, requestID)
-			return
+			// CRD/API group not installed → return empty list (Headlamp/Lens pattern)
+			if apierrors.IsNotFound(err) {
+				list = &unstructured.UnstructuredList{Items: nil}
+			} else {
+				requestID := logger.FromContext(r.Context())
+				respondK8sError(w, err, requestID)
+				return
+			}
 		}
 	}
 

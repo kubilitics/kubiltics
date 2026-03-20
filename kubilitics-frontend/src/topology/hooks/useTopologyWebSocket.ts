@@ -42,6 +42,8 @@ export function useTopologyWebSocket({
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const reconnectDelayRef = useRef(INITIAL_RECONNECT_DELAY);
+  const retriesRef = useRef(0);
+  const MAX_RETRIES = 3;
   const eventBufferRef = useRef<TopologyEvent[]>([]);
   const batchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -91,6 +93,7 @@ export function useTopologyWebSocket({
       ws.onopen = () => {
         setConnected(true);
         reconnectDelayRef.current = INITIAL_RECONNECT_DELAY;
+        retriesRef.current = 0; // Reset on successful connection
       };
 
       ws.onmessage = (msg) => {
@@ -114,8 +117,9 @@ export function useTopologyWebSocket({
         setConnected(false);
         wsRef.current = null;
 
-        // Reconnect with exponential backoff
-        if (enabled && clusterId) {
+        retriesRef.current += 1;
+        // Stop reconnecting after MAX_RETRIES - endpoint may not be available
+        if (enabled && clusterId && retriesRef.current <= MAX_RETRIES) {
           reconnectTimeoutRef.current = setTimeout(() => {
             reconnectDelayRef.current = Math.min(
               reconnectDelayRef.current * 2,
