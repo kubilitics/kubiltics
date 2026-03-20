@@ -115,7 +115,7 @@ export function AppLayout() {
       )}
       <div className="flex flex-1 min-h-0 overflow-hidden">
         <Sidebar />
-        <main ref={mainRef} id="main-content" className="flex-1 p-6 pb-28 pr-3 overflow-auto flex flex-col gap-4" role="main" aria-label="Main content">
+        <main ref={mainRef} id="main-content" className="flex-1 p-6 pb-6 pr-3 overflow-auto flex flex-col gap-4" role="main" aria-label="Main content">
           <OfflineIndicator />
           {/* ConnectionRequiredBanner removed — the "Not connected to cluster" overlay
               below already covers this case. Having both creates a redundant double-banner. */}

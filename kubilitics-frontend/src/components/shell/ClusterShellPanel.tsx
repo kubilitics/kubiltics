@@ -90,10 +90,7 @@ export function ClusterShellPanel({
   const [isMaximized, setIsMaximized] = useState(false);
   const [engine, setEngine] = useState<'kcli' | 'kubectl'>(() => {
     const saved = typeof window !== 'undefined' ? localStorage.getItem(MODE_STORAGE_KEY) : null;
-    if (saved === 'kcli' || saved === 'kubectl') return saved;
-    // Default to kubectl — kcli mode will be offered when shell status confirms availability.
-    // This prevents a flash of "kcli not found" error when kcli binary isn't installed.
-    return 'kubectl';
+    return saved === 'kubectl' ? 'kubectl' : 'kcli';
   });
   const [reconnectNonce, setReconnectNonce] = useState(0);
   const [isReconnecting, setIsReconnecting] = useState(false);
@@ -773,6 +770,16 @@ export function ClusterShellPanel({
               )}
             </div>
           )}
+          <span
+            className={cn(
+              'rounded border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider',
+              shellStatus?.aiEnabled
+                ? 'border-sky-400/20 bg-sky-400/10 text-sky-300'
+                : 'border-white/10 bg-white/5 text-white/60'
+            )}
+          >
+            AI {shellStatus?.aiEnabled ? 'On' : 'Off'}
+          </span>
           <span
             className={cn(
               'rounded border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider',
