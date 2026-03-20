@@ -1,0 +1,109 @@
+# Kubilitics Demo Ingresses — 6 ingress rules
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: main-gateway
+  namespace: kubilitics-demo
+  labels: { app.kubernetes.io/part-of: kubilitics-demo }
+  annotations: { nginx.ingress.kubernetes.io/rewrite-target: / }
+spec:
+  ingressClassName: nginx-external
+  rules:
+    - host: app.kubilitics.demo
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend: { service: { name: web-gateway, port: { number: 80 } } }
+          - path: /api
+            pathType: Prefix
+            backend: { service: { name: api-server, port: { number: 5678 } } }
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: auth-ingress
+  namespace: kubilitics-demo
+  labels: { app.kubernetes.io/part-of: kubilitics-demo }
+  annotations: { nginx.ingress.kubernetes.io/ssl-redirect: "true" }
+spec:
+  ingressClassName: nginx-external
+  rules:
+    - host: auth.kubilitics.demo
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend: { service: { name: auth-service, port: { number: 5678 } } }
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ecommerce-storefront
+  namespace: ecommerce-prod
+  labels: { app.kubernetes.io/part-of: kubilitics-demo }
+spec:
+  ingressClassName: nginx-external
+  rules:
+    - host: shop.kubilitics.demo
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend: { service: { name: product-catalog, port: { number: 80 } } }
+          - path: /cart
+            pathType: Prefix
+            backend: { service: { name: shopping-cart, port: { number: 6379 } } }
+          - path: /checkout
+            pathType: Prefix
+            backend: { service: { name: checkout-service, port: { number: 5678 } } }
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: analytics-dashboard
+  namespace: analytics-staging
+  labels: { app.kubernetes.io/part-of: kubilitics-demo }
+  annotations: { nginx.ingress.kubernetes.io/auth-type: basic }
+spec:
+  ingressClassName: nginx-internal
+  rules:
+    - host: analytics.kubilitics.internal
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend: { service: { name: dashboard-ui, port: { number: 80 } } }
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: payment-api
+  namespace: payments-prod
+  labels: { app.kubernetes.io/part-of: kubilitics-demo }
+  annotations: { nginx.ingress.kubernetes.io/ssl-redirect: "true", nginx.ingress.kubernetes.io/rate-limit: "100" }
+spec:
+  ingressClassName: nginx-external
+  rules:
+    - host: pay.kubilitics.demo
+      http:
+        paths:
+          - path: /v1
+            pathType: Prefix
+            backend: { service: { name: payment-processor, port: { number: 5678 } } }
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ml-model-serving
+  namespace: ml-pipeline
+  labels: { app.kubernetes.io/part-of: kubilitics-demo }
+spec:
+  ingressClassName: nginx-internal
+  rules:
+    - host: models.kubilitics.internal
+      http:
+        paths:
+          - path: /predict
+            pathType: Prefix
+            backend: { service: { name: payment-processor, port: { number: 5678 } } }

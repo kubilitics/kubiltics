@@ -1,7 +1,7 @@
 # Kubilitics — Enterprise-grade one-command dev and test (B3)
 # Usage: make dev | desktop | desktop-dev | test | backend | frontend | clean
 
-.PHONY: dev dev-ai test backend frontend backend-test frontend-test test-reports clean env-example restart desktop desktop-dev kcli kcli-build
+.PHONY: dev dev-ai test backend frontend backend-test frontend-test test-reports clean env-example restart desktop desktop-dev
 
 # Default: run full stack (backend + frontend) via script
 dev: env-example
@@ -67,20 +67,9 @@ test-reports:
 env-example:
 	@if [ ! -f .env ]; then cp -n .env.example .env 2>/dev/null || true; echo "Created .env from .env.example (if present)"; fi
 
-# Fetch kcli binary from https://github.com/vellankikoti/kcli (latest release)
-# Places it in kubilitics-desktop/src-tauri/binaries/ with Tauri target-triple naming.
-kcli:
-	@chmod +x scripts/fetch-kcli.sh
-	@./scripts/fetch-kcli.sh
-
-# Build kcli from source (requires Go toolchain)
-kcli-build:
-	@chmod +x scripts/fetch-kcli.sh
-	@./scripts/fetch-kcli.sh --build
-
 # Build desktop app (Go backend + frontend + Tauri bundle)
 # Output: kubilitics-desktop/src-tauri/target/release/bundle/
-desktop: backend kcli
+desktop: backend
 	@chmod +x scripts/build-desktop.sh
 	@./scripts/build-desktop.sh
 

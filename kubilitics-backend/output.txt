@@ -1,0 +1,58 @@
+ERROR: Pod "debug-pod" is invalid: [metadata: Invalid value: "Burstable": Pod QoS is immutable, spec: Forbidden: pod updates may not change fields other than `spec.containers[*].image`,`spec.initContainers[*].image`,`spec.activeDeadlineSeconds`,`spec.tolerations` (only additions to existing tolerations),`spec.terminationGracePeriodSeconds` (allow it to be set to 1 if it was previously negative)
+  core.PodSpec{
+- 	Volumes: []core.Volume{
+- 		{
+- 			Name:         "kube-api-access-h227r",
+- 			VolumeSource: core.VolumeSource{Projected: &core.ProjectedVolumeSource{...}},
+- 		},
+- 	},
++ 	Volumes:        nil,
+  	InitContainers: nil,
+  	Containers: []core.Container{
+  		{
+  			... // 6 identical fields
+  			EnvFrom: nil,
+  			Env:     nil,
+  			Resources: core.ResourceRequirements{
+- 				Limits: core.ResourceList{
+- 					s"cpu":    {i: resource.int64Amount{value: 200, scale: -3}, s: "200m", Format: "DecimalSI"},
+- 					s"memory": {i: resource.int64Amount{value: 268435456}, Format: "BinarySI"},
+- 				},
++ 				Limits: nil,
+- 				Requests: core.ResourceList{
+- 					s"cpu":    {i: resource.int64Amount{value: 100, scale: -3}, s: "100m", Format: "DecimalSI"},
+- 					s"memory": {i: resource.int64Amount{value: 134217728}, Format: "BinarySI"},
+- 				},
++ 				Requests: nil,
+  				Claims:   nil,
+  			},
+  			ResizePolicy:  nil,
+  			RestartPolicy: nil,
+- 			VolumeMounts: []core.VolumeMount{
+- 				{
+- 					Name:      "kube-api-access-h227r",
+- 					ReadOnly:  true,
+- 					MountPath: "/var/run/secrets/kubernetes.io/serviceaccount",
+- 				},
+- 			},
++ 			VolumeMounts:  nil,
+  			VolumeDevices: nil,
+  			LivenessProbe: nil,
+  			... // 10 identical fields
+  		},
+  	},
+  	EphemeralContainers: nil,
+  	RestartPolicy:       "Always",
+  	... // 2 identical fields
+  	DNSPolicy:                    "ClusterFirst",
+  	NodeSelector:                 nil,
+- 	ServiceAccountName:           "default",
++ 	ServiceAccountName:           "",
+  	AutomountServiceAccountToken: nil,
+- 	NodeName:                     "desktop-worker2",
++ 	NodeName:                     "",
+  	SecurityContext:              &{},
+  	ImagePullSecrets:             nil,
+  	... // 19 identical fields
+  }
+]

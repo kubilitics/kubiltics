@@ -1,0 +1,27 @@
+{
+    "app": {
+        "title": "Kubilitics",
+        "loading": "Laden...",
+        "error": "Ein Fehler ist aufgetreten"
+    },
+    "nav": {
+        "dashboard": "Dashboard",
+        "infrastructure": "Infrastruktur",
+        "intelligence": "Intelligenz",
+        "settings": "Einstellungen",
+        "logout": "Abmelden"
+    },
+    "auth": {
+        "login": "Anmelden",
+        "username": "Benutzername",
+        "password": "Passwort",
+        "login_success": "Erfolgreich eingeloggt",
+        "login_failed": "Anmeldung fehlgeschlagen"
+    },
+    "ai": {
+        "assistant_title": "KI-Assistent",
+        "placeholder": "Frag mich alles...",
+        "status_active": "KI Aktiv",
+        "status_inactive": "KI Aus"
+    }
+}

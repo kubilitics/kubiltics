@@ -18,6 +18,7 @@ const MIN_HEIGHT_PX = 160;
 const MAX_HEIGHT_PERCENT = 85;
 const INITIAL_HEIGHT_PX = 320;
 const MODE_STORAGE_KEY = 'kubilitics-shell-engine-mode';
+const KCLI_STREAM_MODE_STORAGE_KEY = 'kubilitics-shell-kcli-stream-mode';
 const SHELL_STATE_SYNC_INTERVAL_MS = 2000;
 const SHELL_STATE_SYNC_BACKOFF_MS = 15000; // when backend unreachable, poll less often to avoid log spam
 const SHELL_STATE_SYNC_BACKOFF_MAX_MS = 60000;
@@ -92,6 +93,11 @@ export function ClusterShellPanel({
     const saved = typeof window !== 'undefined' ? localStorage.getItem(MODE_STORAGE_KEY) : null;
     return saved === 'kubectl' ? 'kubectl' : 'kcli';
   });
+  const [kcliStreamMode, setKcliStreamMode] = useState<'ui' | 'shell'>(() => {
+    const saved = typeof window !== 'undefined' ? localStorage.getItem(KCLI_STREAM_MODE_STORAGE_KEY) : null;
+    // Default to 'ui' (Bubble Tea k9s-like TUI) for the best out-of-box experience
+    return saved === 'shell' ? 'shell' : 'ui';
+  });
   const [reconnectNonce, setReconnectNonce] = useState(0);
   const [isReconnecting, setIsReconnecting] = useState(false);
   const [kcliSidecarAvailable, setKcliSidecarAvailable] = useState<boolean | null>(null);
@@ -130,7 +136,6 @@ export function ClusterShellPanel({
   const reconnectTimerRef = useRef<number | null>(null);
   const reconnectAttemptRef = useRef(0);
   const intentionalCloseRef = useRef(false);
-  const autoFallbackDoneRef = useRef(false);
   const MAX_RECONNECT_ATTEMPTS = 5;
   const RECONNECT_BASE_DELAY_MS = 1000;
 
@@ -139,6 +144,12 @@ export function ClusterShellPanel({
       localStorage.setItem(MODE_STORAGE_KEY, engine);
     }
   }, [engine]);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(KCLI_STREAM_MODE_STORAGE_KEY, kcliStreamMode);
+    }
+  }, [kcliStreamMode]);
 
   const flushPendingOutput = useCallback(() => {
     const term = termRef.current;
@@ -187,6 +198,9 @@ export function ClusterShellPanel({
       const status = await getKCLITUIState(backendBaseUrl, clusterId);
       syncBackoffRef.current = { intervalMs: SHELL_STATE_SYNC_INTERVAL_MS, failures: 0 };
       applyShellState(status);
+      if (!status.kcliShellModeAllowed && kcliStreamMode === 'shell') {
+        setKcliStreamMode('ui');
+      }
     } catch {
       const b = syncBackoffRef.current;
       b.failures += 1;
@@ -195,7 +209,7 @@ export function ClusterShellPanel({
         SHELL_STATE_SYNC_BACKOFF_MS * Math.min(b.failures, 4)
       );
     }
-  }, [applyShellState, backendBaseUrl, clusterId, open]);
+  }, [applyShellState, backendBaseUrl, clusterId, kcliStreamMode, open]);
 
   const scheduleStateSync = useCallback((delayMs = 120) => {
     if (syncTimerRef.current != null) {
@@ -219,6 +233,7 @@ export function ClusterShellPanel({
   const requestServerCompletion = useCallback(async (): Promise<boolean> => {
     if (!clusterId || !connected) return false;
     if (completionPendingRef.current) return true;
+    if (engine === 'kcli' && kcliStreamMode !== 'shell') return false;
     const line = lineBufferRef.current;
     if (!line.trim()) return false;
 
@@ -244,7 +259,7 @@ export function ClusterShellPanel({
     } finally {
       completionPendingRef.current = false;
     }
-  }, [applyCompletion, backendBaseUrl, clusterId, connected, engine]);
+  }, [applyCompletion, backendBaseUrl, clusterId, connected, engine, kcliStreamMode]);
 
   const trackLocalLineBuffer = useCallback((data: string) => {
     lineBufferRef.current = updateLineBuffer(lineBufferRef.current, data);
@@ -304,6 +319,18 @@ export function ClusterShellPanel({
     focusAndFit();
 
     term.onData((data) => {
+      // In UI mode (Bubble Tea TUI), send all input directly to the PTY without
+      // interception. Tab completion, line buffer tracking, and state sync are
+      // shell-mode concerns that interfere with Bubble Tea's own input handling.
+      const currentMode = localStorage.getItem(KCLI_STREAM_MODE_STORAGE_KEY);
+      const currentEngine = localStorage.getItem(MODE_STORAGE_KEY);
+      const isUIMode = currentEngine !== 'kubectl' && currentMode !== 'shell';
+
+      if (isUIMode) {
+        sendStdinRef.current(data);
+        return;
+      }
+
       // Shell mode: intercept Tab for server-side completion
       if (data === '\t') {
         void (async () => {
@@ -386,7 +413,7 @@ export function ClusterShellPanel({
     }
 
     const wsUrl = engine === 'kcli'
-      ? getKCLIShellStreamUrl(backendBaseUrl, clusterId, 'shell', activeNamespace ?? undefined)
+      ? getKCLIShellStreamUrl(backendBaseUrl, clusterId, kcliStreamMode, activeNamespace ?? undefined)
       : getKubectlShellStreamUrl(backendBaseUrl, clusterId);
 
     setConnecting(true);
@@ -444,15 +471,7 @@ export function ClusterShellPanel({
           // Check if this is a kcli binary not found error
           const errorMsg = msg.d.toLowerCase();
           if (errorMsg.includes('kcli binary not found') || errorMsg.includes('kcli binary resolution failed')) {
-            setError('kcli binary not found — switching to kubectl mode.');
-            // Auto-fallback to kubectl
-            if (!autoFallbackDoneRef.current) {
-              autoFallbackDoneRef.current = true;
-              setTimeout(() => {
-                setEngine('kubectl');
-                setError(null);
-              }, 1500);
-            }
+            setError('kcli binary not found. Please check backend configuration or contact administrator.');
           } else {
             setError(msg.d);
           }
@@ -503,21 +522,11 @@ export function ClusterShellPanel({
       setConnected(false);
       // Enhanced error message for kcli-specific issues
       if (engine === 'kcli') {
-        // Auto-fallback to kubectl if kcli is explicitly unavailable
-        if (shellStatus?.kcliAvailable === false && !autoFallbackDoneRef.current) {
-          autoFallbackDoneRef.current = true;
-          setError('kcli binary is missing — switching to kubectl mode.');
-          setTimeout(() => {
-            setEngine('kubectl');
-            setError(null);
-          }, 1500);
-        } else {
-          const errorMsg = 'kcli WebSocket connection failed.';
-          const detailMsg = shellStatus?.kcliAvailable === false
-            ? ' kcli binary is missing. Please install kcli or configure the backend to use the bundled sidecar.'
-            : ' This may indicate kcli binary is missing or backend configuration issue.';
-          setError(errorMsg + detailMsg);
-        }
+        const errorMsg = 'kcli WebSocket connection failed.';
+        const detailMsg = shellStatus?.kcliAvailable === false
+          ? ' kcli binary is missing. Please install kcli or configure the backend to use the bundled sidecar.'
+          : ' This may indicate kcli binary is missing or backend configuration issue.';
+        setError(errorMsg + detailMsg);
       } else {
         setError(`${engine.toUpperCase()} WebSocket connection failed.`);
       }
@@ -545,7 +554,7 @@ export function ClusterShellPanel({
         // ignore
       }
     };
-  }, [open, clusterId, backendBaseUrl, engine, reconnectNonce, circuitOpen, focusAndFit, flushPendingOutput]);
+  }, [open, clusterId, backendBaseUrl, engine, kcliStreamMode, reconnectNonce, circuitOpen, focusAndFit, flushPendingOutput]);
 
   // Fit on panel layout changes.
   useEffect(() => {
@@ -600,13 +609,16 @@ export function ClusterShellPanel({
     if (!open || !connected) return;
     if (!activeNamespace || activeNamespace === 'all') return;
     if (shellStatus?.namespace === activeNamespace) return;
-    if (engine === 'kcli') {
+    // In UI mode, Bubble Tea handles its own namespace switching via :ns command — don't inject shell commands
+    if (engine === 'kcli' && kcliStreamMode === 'ui') return;
+    // Use kcli ns for kcli shell mode, kubectl for kubectl mode
+    if (engine === 'kcli' && kcliStreamMode === 'shell') {
       sendStdin(`kcli ns ${activeNamespace}\r`);
     } else {
       sendStdin(`kubectl config set-context --current --namespace=${activeNamespace}\r`);
     }
     scheduleStateSync(90);
-  }, [activeNamespace, connected, engine, open, scheduleStateSync, sendStdin, shellStatus?.namespace]);
+  }, [activeNamespace, connected, engine, kcliStreamMode, open, scheduleStateSync, sendStdin, shellStatus?.namespace]);
 
   const handleCopySelection = useCallback(() => {
     const sel = termRef.current?.getSelection() ?? '';
@@ -645,24 +657,13 @@ export function ClusterShellPanel({
   // Only show as available if explicitly true from backend OR sidecar check (not if shellStatus is null/undefined)
   const effectiveKcliAvailable =
     shellStatus?.kcliAvailable === true || (isTauri() && kcliSidecarAvailable === true);
-
+  
   // Show "Missing" if:
   // 1. shellStatus exists and kcliAvailable is explicitly false
   // 2. shellStatus exists and kcliAvailable is undefined/null AND not Tauri sidecar
   // 3. Not Tauri OR (Tauri and sidecar check returned false/null)
   const kcliStatusKnown = shellStatus !== null || (isTauri() && kcliSidecarAvailable !== null);
   const showKcliMissing = kcliStatusKnown && !effectiveKcliAvailable;
-
-  // Auto-fallback: if kcli binary is missing, gracefully switch to kubectl
-  useEffect(() => {
-    if (showKcliMissing && engine === 'kcli' && !autoFallbackDoneRef.current) {
-      autoFallbackDoneRef.current = true;
-      setEngine('kubectl');
-      setError(null);
-      // Will trigger WS reconnect via engine dependency
-    }
-  }, [showKcliMissing, engine]);
-
   const openResourcePage = useCallback((resourcePath: string) => {
     const query = effectiveNamespace && effectiveNamespace !== 'all'
       ? `?namespace=${encodeURIComponent(effectiveNamespace)}`
@@ -719,7 +720,7 @@ export function ClusterShellPanel({
           </div>
           <TerminalIcon className="h-4 w-4 text-[hsl(142_76%_73%)]" />
           <span className="text-sm font-semibold tracking-tight text-white/90">
-            {engine === 'kcli' ? 'kcli Shell' : 'Kubectl Shell'}
+            {engine === 'kcli' ? `kcli ${kcliStreamMode === 'ui' ? 'UI' : 'Shell'}` : 'Kubectl Shell'}
           </span>
           <span className="text-xs text-white/30">|</span>
           <span className="text-xs font-medium text-white/60">
@@ -799,6 +800,16 @@ export function ClusterShellPanel({
           >
             kcli {effectiveKcliAvailable ? 'Ready' : showKcliMissing ? 'Missing' : 'Checking...'}
           </span>
+          <span
+            className={cn(
+              'rounded border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider',
+              shellStatus?.kcliShellModeAllowed
+                ? 'border-white/10 bg-white/5 text-white/60'
+                : 'border-amber-400/20 bg-amber-400/10 text-amber-300'
+            )}
+          >
+            shell {shellStatus?.kcliShellModeAllowed ? 'Enabled' : 'Restricted'}
+          </span>
         </div>
 
         <div className="flex items-center gap-1">
@@ -830,6 +841,38 @@ export function ClusterShellPanel({
               kubectl
             </Button>
           </div>
+
+          {engine === 'kcli' && (
+            <div className="mr-2 flex items-center gap-1 rounded border border-white/10 bg-white/5 p-0.5">
+              <Button
+                variant="ghost"
+                size="sm"
+                className={cn(
+                  'h-6 px-2 text-[11px] font-semibold',
+                  kcliStreamMode === 'ui' ? 'bg-white/15 text-white' : 'text-white/70 hover:text-white'
+                )}
+              onClick={() => setKcliStreamMode('ui')}
+              title="Launch kcli Bubble Tea UI"
+              aria-label="Use kcli UI mode"
+            >
+              UI
+            </Button>
+            <Button
+                variant="ghost"
+                size="sm"
+                className={cn(
+                  'h-6 px-2 text-[11px] font-semibold',
+                  kcliStreamMode === 'shell' ? 'bg-white/15 text-white' : 'text-white/70 hover:text-white'
+                )}
+              disabled={shellStatus?.kcliShellModeAllowed === false}
+              onClick={() => setKcliStreamMode('shell')}
+              title="Launch classic shell"
+              aria-label="Use kcli shell mode"
+            >
+              Shell
+            </Button>
+            </div>
+          )}
 
           <Button
             variant="ghost"

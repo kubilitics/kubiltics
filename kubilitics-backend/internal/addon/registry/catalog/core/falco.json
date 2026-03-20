@@ -1,0 +1,72 @@
+{
+  "addon": {
+    "id": "kubilitics/falco",
+    "name": "falco",
+    "display_name": "Falco",
+    "description": "Runtime security detection engine for Kubernetes and Linux.",
+    "tier": "CORE",
+    "version": "4.11.1",
+    "k8s_compat_min": "1.24",
+    "helm_repo_url": "https://falcosecurity.github.io/charts",
+    "helm_chart": "falco",
+    "helm_chart_version": "4.11.1",
+    "tags": [
+      "security",
+      "runtime"
+    ],
+    "source_url": "https://github.com/falcosecurity/falco",
+    "maintainer": "falcosecurity",
+    "icon_url": "https://artifacthub.io/image/6511a944-ec4d-49d5-9a6d-2e7479ddc3d6",
+    "is_deprecated": false
+  },
+  "dependencies": [],
+  "conflicts": [],
+  "crds_owned": [],
+  "rbac_required": [
+    {
+      "addon_id": "kubilitics/falco",
+      "api_groups": [
+        ""
+      ],
+      "resources": [
+        "nodes",
+        "pods"
+      ],
+      "verbs": [
+        "get",
+        "list",
+        "watch"
+      ],
+      "scope": "cluster"
+    }
+  ],
+  "cost_models": [
+    {
+      "addon_id": "kubilitics/falco",
+      "cluster_tier": "dev",
+      "cpu_millicores": 200,
+      "memory_mb": 512,
+      "storage_gb": 0,
+      "monthly_cost_usd_estimate": 4,
+      "replica_count": 1
+    },
+    {
+      "addon_id": "kubilitics/falco",
+      "cluster_tier": "staging",
+      "cpu_millicores": 500,
+      "memory_mb": 1024,
+      "storage_gb": 0,
+      "monthly_cost_usd_estimate": 8,
+      "replica_count": 2
+    },
+    {
+      "addon_id": "kubilitics/falco",
+      "cluster_tier": "production",
+      "cpu_millicores": 1000,
+      "memory_mb": 2048,
+      "storage_gb": 0,
+      "monthly_cost_usd_estimate": 18,
+      "replica_count": 3
+    }
+  ]
+}

@@ -1,0 +1,955 @@
+[1A[2K[2m[WebServer] [22mBrowserslist: browsers data (caniuse-lite) is 8 months old. Please run:
+[2m[WebServer] [22m  npx update-browserslist-db@latest
+[2m[WebServer] [22m  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+
+
+Running 3 tests using 3 workers
+
+[1A[2K[1/3] [chromium] › e2e/specs/a11y.spec.ts:5:5 › Accessibility › should NOT have any automatically detectable accessibility issues on Login page
+[1A[2K[2/3] [chromium] › e2e/specs/a11y.spec.ts:102:5 › Accessibility › should NOT have any automatically detectable accessibility issues on Resource List (Pods)
+[1A[2K[3/3] [chromium] › e2e/specs/a11y.spec.ts:84:5 › Accessibility › should NOT have any automatically detectable accessibility issues on Dashboard
+[1A[2K[chromium] › e2e/specs/a11y.spec.ts:84:5 › Accessibility › should NOT have any automatically detectable accessibility issues on Dashboard
+Dashboard Violations Found: [33m2[39m
+
+[1A[2KVIOLATION_DETAILS: [
+  {
+    "id": "aria-progressbar-name",
+    "impact": "serious",
+    "tags": [
+      "cat.aria",
+      "wcag2a",
+      "wcag111",
+      "EN-301-549",
+      "EN-9.1.1.1",
+      "RGAAv4",
+      "RGAA-11.1.1"
+    ],
+    "description": "Ensure every ARIA progressbar node has an accessible name",
+    "help": "ARIA progressbar nodes must have an accessible name",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/aria-progressbar-name?application=playwright",
+    "nodes": [
+      {
+        "any": [
+          {
+            "id": "aria-label",
+            "data": null,
+            "relatedNodes": [],
+            "impact": "serious",
+            "message": "aria-label attribute does not exist or is empty"
+          },
+          {
+            "id": "aria-labelledby",
+            "data": null,
+            "relatedNodes": [],
+            "impact": "serious",
+            "message": "aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty"
+          },
+          {
+            "id": "non-empty-title",
+            "data": {
+              "messageKey": "noAttr"
+            },
+            "relatedNodes": [],
+            "impact": "serious",
+            "message": "Element has no title attribute"
+          }
+        ],
+        "all": [],
+        "none": [],
+        "impact": "serious",
+        "html": "<div aria-valuemax=\"100\" aria-valuemin=\"0\" role=\"progressbar\" data-state=\"indeterminate\" data-max=\"100\" class=\"relative w-full overflow-hidden rounded-full h-1.5 bg-muted/50\">",
+        "target": [
+          ".space-y-1:nth-child(1) > .h-1\\.5.bg-muted\\/50[aria-valuemax=\"100\"]"
+        ],
+        "failureSummary": "Fix any of the following:\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty\n  Element has no title attribute"
+      },
+      {
+        "any": [
+          {
+            "id": "aria-label",
+            "data": null,
+            "relatedNodes": [],
+            "impact": "serious",
+            "message": "aria-label attribute does not exist or is empty"
+          },
+          {
+            "id": "aria-labelledby",
+            "data": null,
+            "relatedNodes": [],
+            "impact": "serious",
+            "message": "aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty"
+          },
+          {
+            "id": "non-empty-title",
+            "data": {
+              "messageKey": "noAttr"
+            },
+            "relatedNodes": [],
+            "impact": "serious",
+            "message": "Element has no title attribute"
+          }
+        ],
+        "all": [],
+        "none": [],
+        "impact": "serious",
+        "html": "<div aria-valuemax=\"100\" aria-valuemin=\"0\" role=\"progressbar\" data-state=\"indeterminate\" data-max=\"100\" class=\"relative w-full overflow-hidden rounded-full h-1.5 bg-muted/50\">",
+        "target": [
+          ".space-y-1:nth-child(2) > .h-1\\.5.bg-muted\\/50[aria-valuemax=\"100\"]"
+        ],
+        "failureSummary": "Fix any of the following:\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty\n  Element has no title attribute"
+      },
+      {
+        "any": [
+          {
+            "id": "aria-label",
+            "data": null,
+            "relatedNodes": [],
+            "impact": "serious",
+            "message": "aria-label attribute does not exist or is empty"
+          },
+          {
+            "id": "aria-labelledby",
+            "data": null,
+            "relatedNodes": [],
+            "impact": "serious",
+            "message": "aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty"
+          },
+          {
+            "id": "non-empty-title",
+            "data": {
+              "messageKey": "noAttr"
+            },
+            "relatedNodes": [],
+            "impact": "serious",
+            "message": "Element has no title attribute"
+          }
+        ],
+        "all": [],
+        "none": [],
+        "impact": "serious",
+        "html": "<div aria-valuemax=\"100\" aria-valuemin=\"0\" role=\"progressbar\" data-state=\"indeterminate\" data-max=\"100\" class=\"relative w-full overflow-hidden rounded-full h-1.5 bg-muted/50\">",
+        "target": [
+          ".space-y-1:nth-child(3) > .h-1\\.5.bg-muted\\/50[aria-valuemax=\"100\"]"
+        ],
+        "failureSummary": "Fix any of the following:\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty\n  Element has no title attribute"
+      },
+      {
+        "any": [
+          {
+            "id": "aria-label",
+            "data": null,
+            "relatedNodes": [],
+            "impact": "serious",
+            "message": "aria-label attribute does not exist or is empty"
+          },
+          {
+            "id": "aria-labelledby",
+            "data": null,
+            "relatedNodes": [],
+            "impact": "serious",
+            "message": "aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty"
+          },
+          {
+            "id": "non-empty-title",
+            "data": {
+              "messageKey": "noAttr"
+            },
+            "relatedNodes": [],
+            "impact": "serious",
+            "message": "Element has no title attribute"
+          }
+        ],
+        "all": [],
+        "none": [],
+        "impact": "serious",
+        "html": "<div aria-valuemax=\"100\" aria-valuemin=\"0\" role=\"progressbar\" data-state=\"indeterminate\" data-max=\"100\" class=\"relative w-full overflow-hidden rounded-full h-1.5 bg-muted/50\">",
+        "target": [
+          ".space-y-1:nth-child(4) > .h-1\\.5.bg-muted\\/50[aria-valuemax=\"100\"]"
+        ],
+        "failureSummary": "Fix any of the following:\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty\n  Element has no title attribute"
+      },
+      {
+        "any": [
+          {
+            "id": "aria-label",
+            "data": null,
+            "relatedNodes": [],
+            "impact": "serious",
+            "message": "aria-label attribute does not exist or is empty"
+          },
+          {
+            "id": "aria-labelledby",
+            "data": null,
+            "relatedNodes": [],
+            "impact": "serious",
+            "message": "aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty"
+          },
+          {
+            "id": "non-empty-title",
+            "data": {
+              "messageKey": "noAttr"
+            },
+            "relatedNodes": [],
+            "impact": "serious",
+            "message": "Element has no title attribute"
+          }
+        ],
+        "all": [],
+        "none": [],
+        "impact": "serious",
+        "html": "<div aria-valuemax=\"100\" aria-valuemin=\"0\" role=\"progressbar\" data-state=\"indeterminate\" data-max=\"100\" class=\"relative w-full overflow-hidden rounded-full bg-secondary h-2.5\">",
+        "target": [
+          ".space-y-2:nth-child(1) > .bg-secondary.h-2\\.5[aria-valuemax=\"100\"]"
+        ],
+        "failureSummary": "Fix any of the following:\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty\n  Element has no title attribute"
+      },
+      {
+        "any": [
+          {
+            "id": "aria-label",
+            "data": null,
+            "relatedNodes": [],
+            "impact": "serious",
+            "message": "aria-label attribute does not exist or is empty"
+          },
+          {
+            "id": "aria-labelledby",
+            "data": null,
+            "relatedNodes": [],
+            "impact": "serious",
+            "message": "aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty"
+          },
+          {
+            "id": "non-empty-title",
+            "data": {
+              "messageKey": "noAttr"
+            },
+            "relatedNodes": [],
+            "impact": "serious",
+            "message": "Element has no title attribute"
+          }
+        ],
+        "all": [],
+        "none": [],
+        "impact": "serious",
+        "html": "<div aria-valuemax=\"100\" aria-valuemin=\"0\" role=\"progressbar\" data-state=\"indeterminate\" data-max=\"100\" class=\"relative w-full overflow-hidden rounded-full bg-secondary h-2.5\">",
+        "target": [
+          ".space-y-2:nth-child(2) > .bg-secondary.h-2\\.5[aria-valuemax=\"100\"]"
+        ],
+        "failureSummary": "Fix any of the following:\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty\n  Element has no title attribute"
+      }
+    ]
+  },
+  {
+    "id": "button-name",
+    "impact": "critical",
+    "tags": [
+      "cat.name-role-value",
+      "wcag2a",
+      "wcag412",
+      "section508",
+      "section508.22.a",
+      "TTv5",
+      "TT6.a",
+      "EN-301-549",
+      "EN-9.4.1.2",
+      "ACT",
+      "RGAAv4",
+      "RGAA-11.9.1"
+    ],
+    "description": "Ensure buttons have discernible text",
+    "help": "Buttons must have discernible text",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/button-name?application=playwright",
+    "nodes": [
+      {
+        "any": [
+          {
+            "id": "button-has-visible-text",
+            "data": null,
+            "relatedNodes": [],
+            "impact": "critical",
+            "message": "Element does not have inner text that is visible to screen readers"
+          },
+          {
+            "id": "aria-label",
+            "data": null,
+            "relatedNodes": [],
+            "impact": "critical",
+            "message": "aria-label attribute does not exist or is empty"
+          },
+          {
+            "id": "aria-labelledby",
+            "data": null,
+            "relatedNodes": [],
+            "impact": "critical",
+            "message": "aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty"
+          },
+          {
+            "id": "non-empty-title",
+            "data": {
+              "messageKey": "noAttr"
+            },
+            "relatedNodes": [],
+            "impact": "critical",
+            "message": "Element has no title attribute"
+          },
+          {
+            "id": "implicit-label",
+            "data": null,
+            "relatedNodes": [],
+            "impact": "critical",
+            "message": "Element does not have an implicit (wrapped) <label>"
+          },
+          {
+            "id": "explicit-label",
+            "data": null,
+            "relatedNodes": [],
+            "impact": "critical",
+            "message": "Element does not have an explicit <label>"
+          },
+          {
+            "id": "presentational-role",
+            "data": null,
+            "relatedNodes": [],
+            "impact": "critical",
+            "message": "Element's default semantics were not overridden with role=\"none\" or role=\"presentation\""
+          }
+        ],
+        "all": [],
+        "none": [],
+        "impact": "critical",
+        "html": "<button data-state=\"closed\">",
+        "target": [
+          ".gap-2.items-center.flex > button[data-state=\"closed\"]"
+        ],
+        "failureSummary": "Fix any of the following:\n  Element does not have inner text that is visible to screen readers\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty\n  Element has no title attribute\n  Element does not have an implicit (wrapped) <label>\n  Element does not have an explicit <label>\n  Element's default semantics were not overridden with role=\"none\" or role=\"presentation\""
+      }
+    ]
+  }
+]
+
+[1A[2K[chromium] › e2e/specs/a11y.spec.ts:102:5 › Accessibility › should NOT have any automatically detectable accessibility issues on Resource List (Pods)
+Pods Violations Found: [33m1[39m
+
+[1A[2KVIOLATION_DETAILS_PODS: [
+  {
+    "id": "color-contrast",
+    "impact": "serious",
+    "tags": [
+      "cat.color",
+      "wcag2aa",
+      "wcag143",
+      "TTv5",
+      "TT13.c",
+      "EN-301-549",
+      "EN-9.1.4.3",
+      "ACT",
+      "RGAAv4",
+      "RGAA-3.2.1"
+    ],
+    "description": "Ensure the contrast between foreground and background colors meets WCAG 2 AA minimum contrast ratio thresholds",
+    "help": "Elements must meet minimum color contrast ratio thresholds",
+    "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/color-contrast?application=playwright",
+    "nodes": [
+      {
+        "any": [
+          {
+            "id": "color-contrast",
+            "data": {
+              "fgColor": "#94a3b8",
+              "bgColor": "#f7f9fb",
+              "contrastRatio": 2.42,
+              "fontSize": "10.5pt (14px)",
+              "fontWeight": "bold",
+              "messageKey": null,
+              "expectedContrastRatio": "4.5:1"
+            },
+            "relatedNodes": [
+              {
+                "html": "<button type=\"button\" class=\"flex-1 max-w-xl h-12...\">",
+                "target": [
+                  ".max-w-xl"
+                ]
+              },
+              {
+                "html": "<header class=\"h-20 border-b border-slate-100 bg-white/70 backdrop-blur-2xl sticky top-0 z-50 shadow-[0_1px_2px_rgba(0,0,0,0.02)] transition-all duration-300\">",
+                "target": [
+                  "header"
+                ]
+              },
+              {
+                "html": "<div class=\"min-h-screen bg-background\">",
+                "target": [
+                  ".min-h-screen"
+                ]
+              }
+            ],
+            "impact": "serious",
+            "message": "Element has insufficient color contrast of 2.42 (foreground color: #94a3b8, background color: #f7f9fb, font size: 10.5pt (14px), font weight: bold). Expected contrast ratio of 4.5:1"
+          }
+        ],
+        "all": [],
+        "none": [],
+        "impact": "serious",
+        "html": "<span class=\"flex-1 text-left text-sm font-bold tracking-tight\">Search resources...</span>",
+        "target": [
+          ".tracking-tight.text-left.font-bold"
+        ],
+        "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 2.42 (foreground color: #94a3b8, background color: #f7f9fb, font size: 10.5pt (14px), font weight: bold). Expected contrast ratio of 4.5:1"
+      },
+      {
+        "any": [
+          {
+            "id": "color-contrast",
+            "data": {
+              "fgColor": "#697187",
+              "bgColor": "#f2f5f9",
+              "contrastRatio": 4.45,
+              "fontSize": "9.0pt (12px)",
+              "fontWeight": "normal",
+              "messageKey": null,
+              "expectedContrastRatio": "4.5:1"
+            },
+            "relatedNodes": [
+              {
+                "html": "<button class=\"inline-flex items-ce...\" aria-label=\"AI status: unconfigu...\" data-state=\"closed\">",
+                "target": [
+                  ".hover\\:bg-slate-200"
+                ]
+              }
+            ],
+            "impact": "serious",
+            "message": "Element has insufficient color contrast of 4.45 (foreground color: #697187, background color: #f2f5f9, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1"
+          }
+        ],
+        "all": [],
+        "none": [],
+        "impact": "serious",
+        "html": "<span class=\"hidden sm:inline\">AI Setup</span>",
+        "target": [
+          ".hover\\:bg-slate-200 > .sm\\:inline.hidden"
+        ],
+        "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.45 (foreground color: #697187, background color: #f2f5f9, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1"
+      }
+    ]
+  }
+]
+
+[1A[2K  1) [chromium] › e2e/specs/a11y.spec.ts:84:5 › Accessibility › should NOT have any automatically detectable accessibility issues on Dashboard 
+
+    Error: [2mexpect([22m[31mreceived[39m[2m).[22mtoEqual[2m([22m[32mexpected[39m[2m) // deep equality[22m
+
+    [32m- Expected  -   1[39m
+    [31m+ Received  + 341[39m
+
+    [32m- Array [][39m
+    [31m+ Array [[39m
+    [31m+   Object {[39m
+    [31m+     "description": "Ensure every ARIA progressbar node has an accessible name",[39m
+    [31m+     "help": "ARIA progressbar nodes must have an accessible name",[39m
+    [31m+     "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/aria-progressbar-name?application=playwright",[39m
+    [31m+     "id": "aria-progressbar-name",[39m
+    [31m+     "impact": "serious",[39m
+    [31m+     "nodes": Array [[39m
+    [31m+       Object {[39m
+    [31m+         "all": Array [],[39m
+    [31m+         "any": Array [[39m
+    [31m+           Object {[39m
+    [31m+             "data": null,[39m
+    [31m+             "id": "aria-label",[39m
+    [31m+             "impact": "serious",[39m
+    [31m+             "message": "aria-label attribute does not exist or is empty",[39m
+    [31m+             "relatedNodes": Array [],[39m
+    [31m+           },[39m
+    [31m+           Object {[39m
+    [31m+             "data": null,[39m
+    [31m+             "id": "aria-labelledby",[39m
+    [31m+             "impact": "serious",[39m
+    [31m+             "message": "aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty",[39m
+    [31m+             "relatedNodes": Array [],[39m
+    [31m+           },[39m
+    [31m+           Object {[39m
+    [31m+             "data": Object {[39m
+    [31m+               "messageKey": "noAttr",[39m
+    [31m+             },[39m
+    [31m+             "id": "non-empty-title",[39m
+    [31m+             "impact": "serious",[39m
+    [31m+             "message": "Element has no title attribute",[39m
+    [31m+             "relatedNodes": Array [],[39m
+    [31m+           },[39m
+    [31m+         ],[39m
+    [31m+         "failureSummary": "Fix any of the following:[39m
+    [31m+   aria-label attribute does not exist or is empty[39m
+    [31m+   aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty[39m
+    [31m+   Element has no title attribute",[39m
+    [31m+         "html": "<div aria-valuemax=\"100\" aria-valuemin=\"0\" role=\"progressbar\" data-state=\"indeterminate\" data-max=\"100\" class=\"relative w-full overflow-hidden rounded-full h-1.5 bg-muted/50\">",[39m
+    [31m+         "impact": "serious",[39m
+    [31m+         "none": Array [],[39m
+    [31m+         "target": Array [[39m
+    [31m+           ".space-y-1:nth-child(1) > .h-1\\.5.bg-muted\\/50[aria-valuemax=\"100\"]",[39m
+    [31m+         ],[39m
+    [31m+       },[39m
+    [31m+       Object {[39m
+    [31m+         "all": Array [],[39m
+    [31m+         "any": Array [[39m
+    [31m+           Object {[39m
+    [31m+             "data": null,[39m
+    [31m+             "id": "aria-label",[39m
+    [31m+             "impact": "serious",[39m
+    [31m+             "message": "aria-label attribute does not exist or is empty",[39m
+    [31m+             "relatedNodes": Array [],[39m
+    [31m+           },[39m
+    [31m+           Object {[39m
+    [31m+             "data": null,[39m
+    [31m+             "id": "aria-labelledby",[39m
+    [31m+             "impact": "serious",[39m
+    [31m+             "message": "aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty",[39m
+    [31m+             "relatedNodes": Array [],[39m
+    [31m+           },[39m
+    [31m+           Object {[39m
+    [31m+             "data": Object {[39m
+    [31m+               "messageKey": "noAttr",[39m
+    [31m+             },[39m
+    [31m+             "id": "non-empty-title",[39m
+    [31m+             "impact": "serious",[39m
+    [31m+             "message": "Element has no title attribute",[39m
+    [31m+             "relatedNodes": Array [],[39m
+    [31m+           },[39m
+    [31m+         ],[39m
+    [31m+         "failureSummary": "Fix any of the following:[39m
+    [31m+   aria-label attribute does not exist or is empty[39m
+    [31m+   aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty[39m
+    [31m+   Element has no title attribute",[39m
+    [31m+         "html": "<div aria-valuemax=\"100\" aria-valuemin=\"0\" role=\"progressbar\" data-state=\"indeterminate\" data-max=\"100\" class=\"relative w-full overflow-hidden rounded-full h-1.5 bg-muted/50\">",[39m
+    [31m+         "impact": "serious",[39m
+    [31m+         "none": Array [],[39m
+    [31m+         "target": Array [[39m
+    [31m+           ".space-y-1:nth-child(2) > .h-1\\.5.bg-muted\\/50[aria-valuemax=\"100\"]",[39m
+    [31m+         ],[39m
+    [31m+       },[39m
+    [31m+       Object {[39m
+    [31m+         "all": Array [],[39m
+    [31m+         "any": Array [[39m
+    [31m+           Object {[39m
+    [31m+             "data": null,[39m
+    [31m+             "id": "aria-label",[39m
+    [31m+             "impact": "serious",[39m
+    [31m+             "message": "aria-label attribute does not exist or is empty",[39m
+    [31m+             "relatedNodes": Array [],[39m
+    [31m+           },[39m
+    [31m+           Object {[39m
+    [31m+             "data": null,[39m
+    [31m+             "id": "aria-labelledby",[39m
+    [31m+             "impact": "serious",[39m
+    [31m+             "message": "aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty",[39m
+    [31m+             "relatedNodes": Array [],[39m
+    [31m+           },[39m
+    [31m+           Object {[39m
+    [31m+             "data": Object {[39m
+    [31m+               "messageKey": "noAttr",[39m
+    [31m+             },[39m
+    [31m+             "id": "non-empty-title",[39m
+    [31m+             "impact": "serious",[39m
+    [31m+             "message": "Element has no title attribute",[39m
+    [31m+             "relatedNodes": Array [],[39m
+    [31m+           },[39m
+    [31m+         ],[39m
+    [31m+         "failureSummary": "Fix any of the following:[39m
+    [31m+   aria-label attribute does not exist or is empty[39m
+    [31m+   aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty[39m
+    [31m+   Element has no title attribute",[39m
+    [31m+         "html": "<div aria-valuemax=\"100\" aria-valuemin=\"0\" role=\"progressbar\" data-state=\"indeterminate\" data-max=\"100\" class=\"relative w-full overflow-hidden rounded-full h-1.5 bg-muted/50\">",[39m
+    [31m+         "impact": "serious",[39m
+    [31m+         "none": Array [],[39m
+    [31m+         "target": Array [[39m
+    [31m+           ".space-y-1:nth-child(3) > .h-1\\.5.bg-muted\\/50[aria-valuemax=\"100\"]",[39m
+    [31m+         ],[39m
+    [31m+       },[39m
+    [31m+       Object {[39m
+    [31m+         "all": Array [],[39m
+    [31m+         "any": Array [[39m
+    [31m+           Object {[39m
+    [31m+             "data": null,[39m
+    [31m+             "id": "aria-label",[39m
+    [31m+             "impact": "serious",[39m
+    [31m+             "message": "aria-label attribute does not exist or is empty",[39m
+    [31m+             "relatedNodes": Array [],[39m
+    [31m+           },[39m
+    [31m+           Object {[39m
+    [31m+             "data": null,[39m
+    [31m+             "id": "aria-labelledby",[39m
+    [31m+             "impact": "serious",[39m
+    [31m+             "message": "aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty",[39m
+    [31m+             "relatedNodes": Array [],[39m
+    [31m+           },[39m
+    [31m+           Object {[39m
+    [31m+             "data": Object {[39m
+    [31m+               "messageKey": "noAttr",[39m
+    [31m+             },[39m
+    [31m+             "id": "non-empty-title",[39m
+    [31m+             "impact": "serious",[39m
+    [31m+             "message": "Element has no title attribute",[39m
+    [31m+             "relatedNodes": Array [],[39m
+    [31m+           },[39m
+    [31m+         ],[39m
+    [31m+         "failureSummary": "Fix any of the following:[39m
+    [31m+   aria-label attribute does not exist or is empty[39m
+    [31m+   aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty[39m
+    [31m+   Element has no title attribute",[39m
+    [31m+         "html": "<div aria-valuemax=\"100\" aria-valuemin=\"0\" role=\"progressbar\" data-state=\"indeterminate\" data-max=\"100\" class=\"relative w-full overflow-hidden rounded-full h-1.5 bg-muted/50\">",[39m
+    [31m+         "impact": "serious",[39m
+    [31m+         "none": Array [],[39m
+    [31m+         "target": Array [[39m
+    [31m+           ".space-y-1:nth-child(4) > .h-1\\.5.bg-muted\\/50[aria-valuemax=\"100\"]",[39m
+    [31m+         ],[39m
+    [31m+       },[39m
+    [31m+       Object {[39m
+    [31m+         "all": Array [],[39m
+    [31m+         "any": Array [[39m
+    [31m+           Object {[39m
+    [31m+             "data": null,[39m
+    [31m+             "id": "aria-label",[39m
+    [31m+             "impact": "serious",[39m
+    [31m+             "message": "aria-label attribute does not exist or is empty",[39m
+    [31m+             "relatedNodes": Array [],[39m
+    [31m+           },[39m
+    [31m+           Object {[39m
+    [31m+             "data": null,[39m
+    [31m+             "id": "aria-labelledby",[39m
+    [31m+             "impact": "serious",[39m
+    [31m+             "message": "aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty",[39m
+    [31m+             "relatedNodes": Array [],[39m
+    [31m+           },[39m
+    [31m+           Object {[39m
+    [31m+             "data": Object {[39m
+    [31m+               "messageKey": "noAttr",[39m
+    [31m+             },[39m
+    [31m+             "id": "non-empty-title",[39m
+    [31m+             "impact": "serious",[39m
+    [31m+             "message": "Element has no title attribute",[39m
+    [31m+             "relatedNodes": Array [],[39m
+    [31m+           },[39m
+    [31m+         ],[39m
+    [31m+         "failureSummary": "Fix any of the following:[39m
+    [31m+   aria-label attribute does not exist or is empty[39m
+    [31m+   aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty[39m
+    [31m+   Element has no title attribute",[39m
+    [31m+         "html": "<div aria-valuemax=\"100\" aria-valuemin=\"0\" role=\"progressbar\" data-state=\"indeterminate\" data-max=\"100\" class=\"relative w-full overflow-hidden rounded-full bg-secondary h-2.5\">",[39m
+    [31m+         "impact": "serious",[39m
+    [31m+         "none": Array [],[39m
+    [31m+         "target": Array [[39m
+    [31m+           ".space-y-2:nth-child(1) > .bg-secondary.h-2\\.5[aria-valuemax=\"100\"]",[39m
+    [31m+         ],[39m
+    [31m+       },[39m
+    [31m+       Object {[39m
+    [31m+         "all": Array [],[39m
+    [31m+         "any": Array [[39m
+    [31m+           Object {[39m
+    [31m+             "data": null,[39m
+    [31m+             "id": "aria-label",[39m
+    [31m+             "impact": "serious",[39m
+    [31m+             "message": "aria-label attribute does not exist or is empty",[39m
+    [31m+             "relatedNodes": Array [],[39m
+    [31m+           },[39m
+    [31m+           Object {[39m
+    [31m+             "data": null,[39m
+    [31m+             "id": "aria-labelledby",[39m
+    [31m+             "impact": "serious",[39m
+    [31m+             "message": "aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty",[39m
+    [31m+             "relatedNodes": Array [],[39m
+    [31m+           },[39m
+    [31m+           Object {[39m
+    [31m+             "data": Object {[39m
+    [31m+               "messageKey": "noAttr",[39m
+    [31m+             },[39m
+    [31m+             "id": "non-empty-title",[39m
+    [31m+             "impact": "serious",[39m
+    [31m+             "message": "Element has no title attribute",[39m
+    [31m+             "relatedNodes": Array [],[39m
+    [31m+           },[39m
+    [31m+         ],[39m
+    [31m+         "failureSummary": "Fix any of the following:[39m
+    [31m+   aria-label attribute does not exist or is empty[39m
+    [31m+   aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty[39m
+    [31m+   Element has no title attribute",[39m
+    [31m+         "html": "<div aria-valuemax=\"100\" aria-valuemin=\"0\" role=\"progressbar\" data-state=\"indeterminate\" data-max=\"100\" class=\"relative w-full overflow-hidden rounded-full bg-secondary h-2.5\">",[39m
+    [31m+         "impact": "serious",[39m
+    [31m+         "none": Array [],[39m
+    [31m+         "target": Array [[39m
+    [31m+           ".space-y-2:nth-child(2) > .bg-secondary.h-2\\.5[aria-valuemax=\"100\"]",[39m
+    [31m+         ],[39m
+    [31m+       },[39m
+    [31m+     ],[39m
+    [31m+     "tags": Array [[39m
+    [31m+       "cat.aria",[39m
+    [31m+       "wcag2a",[39m
+    [31m+       "wcag111",[39m
+    [31m+       "EN-301-549",[39m
+    [31m+       "EN-9.1.1.1",[39m
+    [31m+       "RGAAv4",[39m
+    [31m+       "RGAA-11.1.1",[39m
+    [31m+     ],[39m
+    [31m+   },[39m
+    [31m+   Object {[39m
+    [31m+     "description": "Ensure buttons have discernible text",[39m
+    [31m+     "help": "Buttons must have discernible text",[39m
+    [31m+     "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/button-name?application=playwright",[39m
+    [31m+     "id": "button-name",[39m
+    [31m+     "impact": "critical",[39m
+    [31m+     "nodes": Array [[39m
+    [31m+       Object {[39m
+    [31m+         "all": Array [],[39m
+    [31m+         "any": Array [[39m
+    [31m+           Object {[39m
+    [31m+             "data": null,[39m
+    [31m+             "id": "button-has-visible-text",[39m
+    [31m+             "impact": "critical",[39m
+    [31m+             "message": "Element does not have inner text that is visible to screen readers",[39m
+    [31m+             "relatedNodes": Array [],[39m
+    [31m+           },[39m
+    [31m+           Object {[39m
+    [31m+             "data": null,[39m
+    [31m+             "id": "aria-label",[39m
+    [31m+             "impact": "critical",[39m
+    [31m+             "message": "aria-label attribute does not exist or is empty",[39m
+    [31m+             "relatedNodes": Array [],[39m
+    [31m+           },[39m
+    [31m+           Object {[39m
+    [31m+             "data": null,[39m
+    [31m+             "id": "aria-labelledby",[39m
+    [31m+             "impact": "critical",[39m
+    [31m+             "message": "aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty",[39m
+    [31m+             "relatedNodes": Array [],[39m
+    [31m+           },[39m
+    [31m+           Object {[39m
+    [31m+             "data": Object {[39m
+    [31m+               "messageKey": "noAttr",[39m
+    [31m+             },[39m
+    [31m+             "id": "non-empty-title",[39m
+    [31m+             "impact": "critical",[39m
+    [31m+             "message": "Element has no title attribute",[39m
+    [31m+             "relatedNodes": Array [],[39m
+    [31m+           },[39m
+    [31m+           Object {[39m
+    [31m+             "data": null,[39m
+    [31m+             "id": "implicit-label",[39m
+    [31m+             "impact": "critical",[39m
+    [31m+             "message": "Element does not have an implicit (wrapped) <label>",[39m
+    [31m+             "relatedNodes": Array [],[39m
+    [31m+           },[39m
+    [31m+           Object {[39m
+    [31m+             "data": null,[39m
+    [31m+             "id": "explicit-label",[39m
+    [31m+             "impact": "critical",[39m
+    [31m+             "message": "Element does not have an explicit <label>",[39m
+    [31m+             "relatedNodes": Array [],[39m
+    [31m+           },[39m
+    [31m+           Object {[39m
+    [31m+             "data": null,[39m
+    [31m+             "id": "presentational-role",[39m
+    [31m+             "impact": "critical",[39m
+    [31m+             "message": "Element's default semantics were not overridden with role=\"none\" or role=\"presentation\"",[39m
+    [31m+             "relatedNodes": Array [],[39m
+    [31m+           },[39m
+    [31m+         ],[39m
+    [31m+         "failureSummary": "Fix any of the following:[39m
+    [31m+   Element does not have inner text that is visible to screen readers[39m
+    [31m+   aria-label attribute does not exist or is empty[39m
+    [31m+   aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty[39m
+    [31m+   Element has no title attribute[39m
+    [31m+   Element does not have an implicit (wrapped) <label>[39m
+    [31m+   Element does not have an explicit <label>[39m
+    [31m+   Element's default semantics were not overridden with role=\"none\" or role=\"presentation\"",[39m
+    [31m+         "html": "<button data-state=\"closed\">",[39m
+    [31m+         "impact": "critical",[39m
+    [31m+         "none": Array [],[39m
+    [31m+         "target": Array [[39m
+    [31m+           ".gap-2.items-center.flex > button[data-state=\"closed\"]",[39m
+    [31m+         ],[39m
+    [31m+       },[39m
+    [31m+     ],[39m
+    [31m+     "tags": Array [[39m
+    [31m+       "cat.name-role-value",[39m
+    [31m+       "wcag2a",[39m
+    [31m+       "wcag412",[39m
+    [31m+       "section508",[39m
+    [31m+       "section508.22.a",[39m
+    [31m+       "TTv5",[39m
+    [31m+       "TT6.a",[39m
+    [31m+       "EN-301-549",[39m
+    [31m+       "EN-9.4.1.2",[39m
+    [31m+       "ACT",[39m
+    [31m+       "RGAAv4",[39m
+    [31m+       "RGAA-11.9.1",[39m
+    [31m+     ],[39m
+    [31m+   },[39m
+    [31m+ ][39m
+
+       97 |             console.log('VIOLATION_DETAILS:', JSON.stringify(results.violations, null, 2));
+       98 |         }
+    >  99 |         expect(results.violations).toEqual([]);
+          |                                    ^
+      100 |     });
+      101 |
+      102 |     test('should NOT have any automatically detectable accessibility issues on Resource List (Pods)', async ({ page }) => {
+        at /Users/koti/myFuture/Kubernetes/kubilitics-os-emergent/kubilitics-frontend/e2e/specs/a11y.spec.ts:99:36
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/specs-a11y-Accessibility-s-8fb44-ibility-issues-on-Dashboard-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/specs-a11y-Accessibility-s-8fb44-ibility-issues-on-Dashboard-chromium/video-1.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/specs-a11y-Accessibility-s-8fb44-ibility-issues-on-Dashboard-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/specs-a11y-Accessibility-s-8fb44-ibility-issues-on-Dashboard-chromium/error-context.md
+
+
+[1A[2K  2) [chromium] › e2e/specs/a11y.spec.ts:102:5 › Accessibility › should NOT have any automatically detectable accessibility issues on Resource List (Pods) 
+
+    Error: [2mexpect([22m[31mreceived[39m[2m).[22mtoEqual[2m([22m[32mexpected[39m[2m) // deep equality[22m
+
+    [32m- Expected  -   1[39m
+    [31m+ Received  + 105[39m
+
+    [32m- Array [][39m
+    [31m+ Array [[39m
+    [31m+   Object {[39m
+    [31m+     "description": "Ensure the contrast between foreground and background colors meets WCAG 2 AA minimum contrast ratio thresholds",[39m
+    [31m+     "help": "Elements must meet minimum color contrast ratio thresholds",[39m
+    [31m+     "helpUrl": "https://dequeuniversity.com/rules/axe/4.11/color-contrast?application=playwright",[39m
+    [31m+     "id": "color-contrast",[39m
+    [31m+     "impact": "serious",[39m
+    [31m+     "nodes": Array [[39m
+    [31m+       Object {[39m
+    [31m+         "all": Array [],[39m
+    [31m+         "any": Array [[39m
+    [31m+           Object {[39m
+    [31m+             "data": Object {[39m
+    [31m+               "bgColor": "#f7f9fb",[39m
+    [31m+               "contrastRatio": 2.42,[39m
+    [31m+               "expectedContrastRatio": "4.5:1",[39m
+    [31m+               "fgColor": "#94a3b8",[39m
+    [31m+               "fontSize": "10.5pt (14px)",[39m
+    [31m+               "fontWeight": "bold",[39m
+    [31m+               "messageKey": null,[39m
+    [31m+             },[39m
+    [31m+             "id": "color-contrast",[39m
+    [31m+             "impact": "serious",[39m
+    [31m+             "message": "Element has insufficient color contrast of 2.42 (foreground color: #94a3b8, background color: #f7f9fb, font size: 10.5pt (14px), font weight: bold). Expected contrast ratio of 4.5:1",[39m
+    [31m+             "relatedNodes": Array [[39m
+    [31m+               Object {[39m
+    [31m+                 "html": "<button type=\"button\" class=\"flex-1 max-w-xl h-12...\">",[39m
+    [31m+                 "target": Array [[39m
+    [31m+                   ".max-w-xl",[39m
+    [31m+                 ],[39m
+    [31m+               },[39m
+    [31m+               Object {[39m
+    [31m+                 "html": "<header class=\"h-20 border-b border-slate-100 bg-white/70 backdrop-blur-2xl sticky top-0 z-50 shadow-[0_1px_2px_rgba(0,0,0,0.02)] transition-all duration-300\">",[39m
+    [31m+                 "target": Array [[39m
+    [31m+                   "header",[39m
+    [31m+                 ],[39m
+    [31m+               },[39m
+    [31m+               Object {[39m
+    [31m+                 "html": "<div class=\"min-h-screen bg-background\">",[39m
+    [31m+                 "target": Array [[39m
+    [31m+                   ".min-h-screen",[39m
+    [31m+                 ],[39m
+    [31m+               },[39m
+    [31m+             ],[39m
+    [31m+           },[39m
+    [31m+         ],[39m
+    [31m+         "failureSummary": "Fix any of the following:[39m
+    [31m+   Element has insufficient color contrast of 2.42 (foreground color: #94a3b8, background color: #f7f9fb, font size: 10.5pt (14px), font weight: bold). Expected contrast ratio of 4.5:1",[39m
+    [31m+         "html": "<span class=\"flex-1 text-left text-sm font-bold tracking-tight\">Search resources...</span>",[39m
+    [31m+         "impact": "serious",[39m
+    [31m+         "none": Array [],[39m
+    [31m+         "target": Array [[39m
+    [31m+           ".tracking-tight.text-left.font-bold",[39m
+    [31m+         ],[39m
+    [31m+       },[39m
+    [31m+       Object {[39m
+    [31m+         "all": Array [],[39m
+    [31m+         "any": Array [[39m
+    [31m+           Object {[39m
+    [31m+             "data": Object {[39m
+    [31m+               "bgColor": "#f2f5f9",[39m
+    [31m+               "contrastRatio": 4.45,[39m
+    [31m+               "expectedContrastRatio": "4.5:1",[39m
+    [31m+               "fgColor": "#697187",[39m
+    [31m+               "fontSize": "9.0pt (12px)",[39m
+    [31m+               "fontWeight": "normal",[39m
+    [31m+               "messageKey": null,[39m
+    [31m+             },[39m
+    [31m+             "id": "color-contrast",[39m
+    [31m+             "impact": "serious",[39m
+    [31m+             "message": "Element has insufficient color contrast of 4.45 (foreground color: #697187, background color: #f2f5f9, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1",[39m
+    [31m+             "relatedNodes": Array [[39m
+    [31m+               Object {[39m
+    [31m+                 "html": "<button class=\"inline-flex items-ce...\" aria-label=\"AI status: unconfigu...\" data-state=\"closed\">",[39m
+    [31m+                 "target": Array [[39m
+    [31m+                   ".hover\\:bg-slate-200",[39m
+    [31m+                 ],[39m
+    [31m+               },[39m
+    [31m+             ],[39m
+    [31m+           },[39m
+    [31m+         ],[39m
+    [31m+         "failureSummary": "Fix any of the following:[39m
+    [31m+   Element has insufficient color contrast of 4.45 (foreground color: #697187, background color: #f2f5f9, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1",[39m
+    [31m+         "html": "<span class=\"hidden sm:inline\">AI Setup</span>",[39m
+    [31m+         "impact": "serious",[39m
+    [31m+         "none": Array [],[39m
+    [31m+         "target": Array [[39m
+    [31m+           ".hover\\:bg-slate-200 > .sm\\:inline.hidden",[39m
+    [31m+         ],[39m
+    [31m+       },[39m
+    [31m+     ],[39m
+    [31m+     "tags": Array [[39m
+    [31m+       "cat.color",[39m
+    [31m+       "wcag2aa",[39m
+    [31m+       "wcag143",[39m
+    [31m+       "TTv5",[39m
+    [31m+       "TT13.c",[39m
+    [31m+       "EN-301-549",[39m
+    [31m+       "EN-9.1.4.3",[39m
+    [31m+       "ACT",[39m
+    [31m+       "RGAAv4",[39m
+    [31m+       "RGAA-3.2.1",[39m
+    [31m+     ],[39m
+    [31m+   },[39m
+    [31m+ ][39m
+
+      111 |             console.log('VIOLATION_DETAILS_PODS:', JSON.stringify(results.violations, null, 2));
+      112 |         }
+    > 113 |         expect(results.violations).toEqual([]);
+          |                                    ^
+      114 |     });
+      115 | });
+      116 |
+        at /Users/koti/myFuture/Kubernetes/kubilitics-os-emergent/kubilitics-frontend/e2e/specs/a11y.spec.ts:113:36
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/specs-a11y-Accessibility-s-9a5b1-sues-on-Resource-List-Pods--chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/specs-a11y-Accessibility-s-9a5b1-sues-on-Resource-List-Pods--chromium/video-1.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/specs-a11y-Accessibility-s-9a5b1-sues-on-Resource-List-Pods--chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/specs-a11y-Accessibility-s-9a5b1-sues-on-Resource-List-Pods--chromium/error-context.md
+
+
+[1A[2K  2 failed
+    [chromium] › e2e/specs/a11y.spec.ts:84:5 › Accessibility › should NOT have any automatically detectable accessibility issues on Dashboard 
+    [chromium] › e2e/specs/a11y.spec.ts:102:5 › Accessibility › should NOT have any automatically detectable accessibility issues on Resource List (Pods) 
+  1 passed (9.2s)
+
+[36m  Serving HTML report at http://localhost:60205. Press Ctrl+C to quit.[39m

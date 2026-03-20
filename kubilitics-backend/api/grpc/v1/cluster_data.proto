@@ -1,0 +1,199 @@
+syntax = "proto3";
+
+package kubilitics.backend.v1;
+
+option go_package = "github.com/kubilitics/kubilitics-backend/api/grpc/v1";
+
+// ClusterDataService provides real-time cluster state to kubilitics-ai
+service ClusterDataService {
+  // StreamClusterState streams real-time cluster state updates
+  // Returns CREATE, UPDATE, DELETE events for all resources
+  rpc StreamClusterState(StreamRequest) returns (stream ClusterStateEvent);
+
+  // GetResource retrieves a single resource by type, namespace, and name
+  rpc GetResource(GetResourceRequest) returns (ResourceResponse);
+
+  // ListResources lists all resources of a given type
+  rpc ListResources(ListResourcesRequest) returns (ListResourcesResponse);
+
+  // GetTopologyGraph returns the full topology graph for a cluster
+  rpc GetTopologyGraph(TopologyRequest) returns (TopologyResponse);
+
+  // GetClusterHealth returns cluster health metrics
+  rpc GetClusterHealth(HealthRequest) returns (HealthResponse);
+
+  // GetMetrics returns resource metrics (CPU, memory, etc.)
+  rpc GetMetrics(MetricsRequest) returns (MetricsResponse);
+
+  // GetEvents returns Kubernetes events for a resource
+  rpc GetEvents(EventsRequest) returns (EventsResponse);
+
+  // ExecuteCommand executes a command in a pod (for investigation tools)
+  rpc ExecuteCommand(CommandRequest) returns (CommandResponse);
+}
+
+// StreamRequest configures the cluster state stream
+message StreamRequest {
+  string cluster_id = 1;
+  repeated string namespaces = 2; // Empty = all namespaces
+  repeated string resource_types = 3; // Empty = all types (pods, nodes, services, etc.)
+  bool include_metadata = 4; // Include full metadata or just essentials
+}
+
+// ClusterStateEvent represents a single state change
+message ClusterStateEvent {
+  enum EventType {
+    UNKNOWN = 0;
+    CREATE = 1;
+    UPDATE = 2;
+    DELETE = 3;
+  }
+
+  EventType type = 1;
+  string resource_type = 2; // "Pod", "Node", "Service", etc.
+  string namespace = 3;
+  string name = 4;
+  string uid = 5;
+  string resource_version = 6;
+  int64 timestamp = 7; // Unix timestamp
+  string data = 8; // JSON-encoded resource data
+}
+
+// GetResourceRequest requests a single resource
+message GetResourceRequest {
+  string cluster_id = 1;
+  string resource_type = 2;
+  string namespace = 3;
+  string name = 4;
+}
+
+// ResourceResponse contains a single resource
+message ResourceResponse {
+  string resource_type = 1;
+  string namespace = 2;
+  string name = 3;
+  string uid = 4;
+  string data = 5; // JSON-encoded resource
+}
+
+// ListResourcesRequest lists resources
+message ListResourcesRequest {
+  string cluster_id = 1;
+  string resource_type = 2;
+  string namespace = 3; // Empty = all namespaces
+  map<string, string> label_selector = 4;
+}
+
+// ListResourcesResponse contains multiple resources
+message ListResourcesResponse {
+  repeated ResourceResponse resources = 1;
+  int32 total_count = 2;
+}
+
+// TopologyRequest requests topology graph
+message TopologyRequest {
+  string cluster_id = 1;
+  string namespace = 2; // Empty = all namespaces
+}
+
+// TopologyResponse contains topology graph
+message TopologyResponse {
+  repeated TopologyNode nodes = 1;
+  repeated TopologyEdge edges = 2;
+}
+
+message TopologyNode {
+  string id = 1;
+  string type = 2;
+  string name = 3;
+  string namespace = 4;
+  string status = 5;
+  map<string, string> metadata = 6;
+}
+
+message TopologyEdge {
+  string source_id = 1;
+  string target_id = 2;
+  string relationship = 3; // "owns", "uses", "routes_to", etc.
+}
+
+// HealthRequest requests cluster health
+message HealthRequest {
+  string cluster_id = 1;
+}
+
+// HealthResponse contains cluster health
+message HealthResponse {
+  string status = 1; // "healthy", "degraded", "critical"
+  int32 healthy_nodes = 2;
+  int32 total_nodes = 3;
+  int32 healthy_pods = 4;
+  int32 total_pods = 5;
+  repeated HealthIssue issues = 6;
+}
+
+message HealthIssue {
+  string severity = 1; // "warning", "critical"
+  string resource_type = 2;
+  string namespace = 3;
+  string name = 4;
+  string message = 5;
+}
+
+// MetricsRequest requests resource metrics
+message MetricsRequest {
+  string cluster_id = 1;
+  string resource_type = 2;
+  string namespace = 3;
+  string name = 4;
+}
+
+// MetricsResponse contains resource metrics
+message MetricsResponse {
+  string resource_type = 1;
+  string namespace = 2;
+  string name = 3;
+  double cpu_usage = 4; // millicores
+  double memory_usage = 5; // bytes
+  double cpu_limit = 6;
+  double memory_limit = 7;
+  int64 timestamp = 8;
+}
+
+// EventsRequest requests Kubernetes events
+message EventsRequest {
+  string cluster_id = 1;
+  string resource_type = 2;
+  string namespace = 3;
+  string name = 4;
+  int32 limit = 5; // Max events to return
+}
+
+// EventsResponse contains Kubernetes events
+message EventsResponse {
+  repeated Event events = 1;
+}
+
+message Event {
+  string type = 1; // "Normal", "Warning"
+  string reason = 2;
+  string message = 3;
+  int64 timestamp = 4;
+  int32 count = 5;
+}
+
+// CommandRequest executes a command in a pod
+message CommandRequest {
+  string cluster_id = 1;
+  string namespace = 2;
+  string pod_name = 3;
+  string container = 4;
+  repeated string command = 5;
+}
+
+// CommandResponse contains command output
+message CommandResponse {
+  string stdout = 1;
+  string stderr = 2;
+  int32 exit_code = 3;
+}

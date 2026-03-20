@@ -1,0 +1,99 @@
+[1A[2K[2m[WebServer] [22mBrowserslist: browsers data (caniuse-lite) is 8 months old. Please run:
+[2m[WebServer] [22m  npx update-browserslist-db@latest
+[2m[WebServer] [22m  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+
+
+Running 1 test using 1 worker
+
+[1A[2K[1/1] [chromium] › e2e/specs/a11y.spec.ts:77:5 › Accessibility › should NOT have any automatically detectable accessibility issues on Dashboard
+[1A[2K[chromium] › e2e/specs/a11y.spec.ts:77:5 › Accessibility › should NOT have any automatically detectable accessibility issues on Dashboard
+BROWSER LOG: Warning: validateDOMNesting(...): %s cannot appear as a child of <%s>.%s%s%s <h1> h3   
+    at h1
+    at h3
+    at _c4 (http://localhost:5173/src/components/ui/card.tsx:45:59)
+    at div
+    at _c2 (http://localhost:5173/src/components/ui/card.tsx:34:60)
+    at div
+    at _c (http://localhost:5173/src/components/ui/card.tsx:23:53)
+    at main
+    at Login (http://localhost:5173/src/pages/Login.tsx:45:22)
+    at RenderedRoute (http://localhost:5173/node_modules/.vite/deps/react-router-dom.js?v=31ed0e38:4088:5)
+    at Routes (http://localhost:5173/node_modules/.vite/deps/react-router-dom.js?v=31ed0e38:4558:5)
+    at Suspense
+    at Router (http://localhost:5173/node_modules/.vite/deps/react-router-dom.js?v=31ed0e38:4501:15)
+    at BrowserRouter (http://localhost:5173/node_modules/.vite/deps/react-router-dom.js?v=31ed0e38:5247:5)
+    at KubeconfigContextWrapper (http://localhost:5173/src/App.tsx:486:37)
+    at AnalyticsConsentWrapper (http://localhost:5173/src/App.tsx:447:36)
+    at GlobalErrorBoundary (http://localhost:5173/src/components/GlobalErrorBoundary.tsx:185:9)
+    at Provider (http://localhost:5173/node_modules/.vite/deps/chunk-2M7HY3UG.js?v=31ed0e38:38:15)
+    at TooltipProvider (http://localhost:5173/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=31ed0e38:65:5)
+    at QueryClientProvider (http://localhost:5173/node_modules/.vite/deps/@tanstack_react-query.js?v=31ed0e38:2934:3)
+    at App
+
+[1A[2KBROWSER LOG: [vite] connecting...
+
+[1A[2KBROWSER LOG: [vite] connected.
+
+[1A[2KBROWSER LOG: %cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold
+
+[1A[2KBROWSER LOG: [ErrorTracker] Initialized
+
+[1A[2KBROWSER LOG: 🌐 i18next is maintained with support from Locize — consider powering your project with managed localization (AI, CDN, integrations): https://locize.com 💙
+
+[1A[2KBROWSER LOG: ⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition.
+
+[1A[2KBROWSER LOG: ⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath.
+
+[1A[2KBROWSER LOG: {name: TTFB, value: 2.0999999940395355, rating: good, delta: 2.0999999940395355, entries: Array(1)}
+
+[1A[2KBROWSER LOG: [ErrorTracker] [METRIC] TTFB: 2.0999999940395355
+
+[1A[2KBROWSER LOG: i18next::backendConnector: loaded namespace translation for language en {app: Object, nav: Object, auth: Object, errors: Object}
+
+[1A[2KBROWSER LOG: i18next::backendConnector: loading namespace translation for language en-US failed failed parsing /locales/en-US/translation.json to json
+
+[1A[2KBROWSER LOG: i18next: languageChanged en-US
+
+[1A[2KBROWSER LOG: i18next: initialized {debug: true, initAsync: true, ns: Array(1), defaultNS: Array(1), fallbackLng: Array(1)}
+
+[1A[2KBROWSER LOG: {name: FCP, value: 248, rating: good, delta: 248, entries: Array(1)}
+
+[1A[2KBROWSER LOG: [ErrorTracker] [METRIC] FCP: 248
+
+[1A[2KBROWSER LOG: Failed to load resource: net::ERR_CONNECTION_REFUSED
+
+[1A[2KBROWSER LOG: Failed to load resource: net::ERR_CONNECTION_REFUSED
+
+[1A[2K  1) [chromium] › e2e/specs/a11y.spec.ts:77:5 › Accessibility › should NOT have any automatically detectable accessibility issues on Dashboard 
+
+    [31mTest timeout of 30000ms exceeded.[39m
+
+    Error: page.waitForSelector: Test timeout of 30000ms exceeded.
+    Call log:
+    [2m  - waiting for locator('h1') to be visible[22m
+
+
+       98 |             await page.waitForSelector('main#main-content', { state: 'visible', timeout: 10000 });
+       99 |         }
+    > 100 |         await page.waitForSelector('h1', { state: 'visible' });
+          |                    ^
+      101 |
+      102 |         const results = await new AxeBuilder({ page }).analyze();
+      103 |         if (results.violations.length > 0) {
+        at /Users/koti/myFuture/Kubernetes/kubilitics-os-emergent/kubilitics-frontend/e2e/specs/a11y.spec.ts:100:20
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/specs-a11y-Accessibility-s-8fb44-ibility-issues-on-Dashboard-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/specs-a11y-Accessibility-s-8fb44-ibility-issues-on-Dashboard-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/specs-a11y-Accessibility-s-8fb44-ibility-issues-on-Dashboard-chromium/error-context.md
+
+
+[1A[2K  1 failed
+    [chromium] › e2e/specs/a11y.spec.ts:77:5 › Accessibility › should NOT have any automatically detectable accessibility issues on Dashboard 
+
+[36m  Serving HTML report at http://localhost:58178. Press Ctrl+C to quit.[39m

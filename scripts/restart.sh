@@ -1,0 +1,175 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+# Restart full Kubilitics dev stack:
+# - Kill any existing dev servers on common ports
+# - Start backend-dev and frontend-dev
+
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+echo "▶ Restarting Kubilitics dev stack from: ${ROOT_DIR}"
+
+kill_port() {
+  local port="$1"
+  if lsof -ti tcp:"${port}" >/dev/null 2>&1; then
+    echo "  - Killing process on port ${port}"
+    # shellcheck disable=SC2046
+    kill -9 $(lsof -ti tcp:"${port}") || true
+  fi
+}
+
+echo "▶ Killing existing dev processes on common ports (819 backend, 5173 frontend)..."
+kill_port 819
+kill_port 5173
+
+echo "▶ Starting backend-dev (Go API)..."
+(
+  cd "${ROOT_DIR}"
+  make backend-dev &
+)
+
+echo "▶ Starting frontend-dev (Vite) ..."
+(
+  cd "${ROOT_DIR}/kubilitics-frontend"
+  if [ ! -d node_modules ]; then
+    echo "  - Installing frontend dependencies (npm install)..."
+    npm install
+  fi
+  npm run dev &
+)
+
+echo "✅ Kubilitics backend and frontend have been started in the background."
+echo "   - Backend:  http://localhost:${KUBILITICS_PORT:-819}"
+echo "   - Frontend: http://localhost:5173"
+
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+# Restart full Kubilitics dev stack:
+# - Kill any existing dev servers on common ports
+# - Build backend
+# - Start backend and frontend dev server
+
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+echo "▶ Restarting Kubilitics dev stack from: ${ROOT_DIR}"
+
+kill_port() {
+  local port="$1"
+  if lsof -ti tcp:"${port}" >/dev/null 2>&1; then
+    echo "  - Killing process on port ${port}"
+    # shellcheck disable=SC2046
+    kill -9 $(lsof -ti tcp:"${port}") || true
+  fi
+}
+
+echo "▶ Killing existing dev processes on common ports (8081 backend, 5173 frontend)..."
+kill_port 8081
+kill_port 5173
+
+echo "▶ Building backend binary..."
+(
+  cd "${ROOT_DIR}/kubilitics-backend"
+  mkdir -p bin
+  go build -o bin/kubilitics-backend ./cmd/server
+)
+
+echo "▶ Starting backend on :8081..."
+(
+  cd "${ROOT_DIR}/kubilitics-backend"
+  ./bin/kubilitics-backend &
+)
+
+echo "▶ Starting frontend dev server on :5173..."
+(
+  cd "${ROOT_DIR}/kubilitics-frontend"
+  # Install dependencies on first run; subsequent runs will be fast
+  if [ ! -d node_modules ]; then
+    echo "  - Installing frontend dependencies (npm install)..."
+    npm install
+  fi
+  npm run dev &
+)
+
+echo "✅ Kubilitics backend and frontend have been started in the background."
+echo "   - Backend:     http://localhost:8081"
+echo "   - Frontend:    http://localhost:5173"
+
+#!/usr/bin/env bash
+# Kill anything on backend/frontend ports, build backend, then start backend + frontend.
+# Backend is always rebuilt so the running process includes latest Go code.
+# If you see "resource topology not implemented for kind Node" (500), do a clean rebuild first: make clean && make backend, then run this script.
+# If you see ECONNREFUSED 127.0.0.1:819, the backend is not listening — run this script from repo root (./scripts/restart.sh or make restart). Do not run two copies at once.
+set -e
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$ROOT"
+
+BACKEND_PORT=819
+FRONTEND_PORT=5173
+
+kill_port() {
+  local port=$1
+  local pids
+  pids=$(lsof -ti:$port 2>/dev/null) || true
+  if [ -n "$pids" ]; then
+    echo "Port $port -> killing $pids"
+    echo "$pids" | xargs kill -9 2>/dev/null || true
+  fi
+  return 0
+}
+
+# Wait for a TCP port to accept connections (backend ready). Uses nc (macOS/Linux).
+# Timeout is 60s: LoadClustersFromRepo (8s per cluster) + ListClusters enrichment (10s per cluster)
+# can exceed 30s when clusters are unreachable. Migrations and addon seed add more delay.
+wait_for_port() {
+  local port=$1
+  local max=60
+  local n=0
+  while [ $n -lt $max ]; do
+    if command -v nc >/dev/null 2>&1 && nc -z 127.0.0.1 "$port" 2>/dev/null; then
+      return 0
+    fi
+    n=$((n + 1))
+    sleep 1
+  done
+  echo "Backend did not become ready on :$port within ${max}s"
+  return 1
+}
+
+echo "Stopping existing processes on $BACKEND_PORT and $FRONTEND_PORT..."
+for port in $BACKEND_PORT $FRONTEND_PORT; do kill_port $port; done
+sleep 2
+for port in $BACKEND_PORT $FRONTEND_PORT; do kill_port $port; done
+sleep 1
+kill_port $BACKEND_PORT || true
+sleep 1
+
+echo "Building backend (kubilitics-backend/bin/kubilitics-backend)..."
+make -C "$ROOT" backend || { echo "Backend build failed."; exit 1; }
+
+BACKEND_BIN="$ROOT/kubilitics-backend/bin/kubilitics-backend"
+if [ ! -x "$BACKEND_BIN" ]; then
+  echo "Backend binary missing after build. Run: make backend"
+  exit 1
+fi
+
+echo "Starting backend on :$BACKEND_PORT..."
+# Include Tauri origins so desktop app works when it finds port already in use (e.g. make restart then open desktop).
+export KUBILITICS_ALLOWED_ORIGINS="tauri://localhost,tauri://,http://localhost:5173,http://localhost:$BACKEND_PORT"
+(cd "$ROOT/kubilitics-backend" && export KUBILITICS_PORT=$BACKEND_PORT && export KUBILITICS_ALLOWED_ORIGINS && exec ./bin/kubilitics-backend) &
+BACKEND_PID=$!
+trap 'kill $BACKEND_PID 2>/dev/null || true' EXIT
+
+echo "Waiting for backend to listen..."
+if ! wait_for_port $BACKEND_PORT; then
+  kill $BACKEND_PID 2>/dev/null || true
+  exit 1
+fi
+echo "Backend is ready."
+
+kill_port $FRONTEND_PORT || true
+sleep 1
+echo "Starting frontend on :$FRONTEND_PORT..."
+cd kubilitics-frontend && npm run dev

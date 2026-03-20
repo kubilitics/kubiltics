@@ -1508,13 +1508,13 @@ export function getKubectlShellStreamUrl(baseUrl: string, clusterId: string): st
 
 /**
  * WebSocket URL for GET /api/v1/clusters/{clusterId}/kcli/stream.
- * Always uses shell mode (interactive kcli shell with kcli on PATH).
- * namespace (optional) starts the shell in that namespace.
+ * mode can be "ui" (default) or "shell".
+ * namespace (optional) starts kcli UI in that namespace (kubens-style).
  */
 export function getKCLIShellStreamUrl(
   baseUrl: string,
   clusterId: string,
-  mode: 'shell' = 'shell',
+  mode: 'ui' | 'shell' = 'ui',
   namespace?: string
 ): string {
   const normalizedBase = (baseUrl || '').replace(/\/+$/, '');
@@ -1522,7 +1522,7 @@ export function getKCLIShellStreamUrl(
   if (!wsBase && typeof window !== 'undefined') {
     wsBase = window.location.origin.replace(/^http:/, 'ws:').replace(/^https:/, 'wss:');
   }
-  const search = new URLSearchParams({ mode: 'shell' });
+  const search = new URLSearchParams({ mode });
   if (namespace && namespace !== 'all') {
     search.set('namespace', namespace);
   }
@@ -1589,6 +1589,7 @@ export interface ShellStatusResult {
   context: string;
   namespace: string;
   kcliAvailable: boolean;
+  kcliShellModeAllowed: boolean;
   aiEnabled: boolean;
 }
 

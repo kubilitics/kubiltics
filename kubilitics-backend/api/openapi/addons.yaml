@@ -1,0 +1,188 @@
+openapi: 3.0.3
+info:
+  title: Kubilitics Add-on Platform API
+  description: REST and WebSocket API for managing Kubernetes add-ons, catalogs, and private registries.
+  version: 1.0.0
+
+servers:
+  - url: /api/v1
+    description: Base path for all add-on endpoints
+
+paths:
+  /addons/catalog:
+    get:
+      summary: List add-on catalog
+      description: Returns a list of available add-ons from all tiers (CORE, Community, Private).
+      parameters:
+        - name: tier
+          in: query
+          schema:
+            type: string
+            enum: [CORE, COMMUNITY, PRIVATE]
+        - name: q
+          in: query
+          description: Search query for name or description
+          schema:
+            type: string
+        - name: tags
+          in: query
+          description: Comma-separated list of tags
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AddOnEntry'
+
+  /addons/registries:
+    get:
+      summary: List private catalog sources
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PrivateCatalogSource'
+    post:
+      summary: Create a private catalog source
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PrivateCatalogSource'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PrivateCatalogSource'
+
+  /addons/registries/{sourceId}:
+    delete:
+      summary: Delete a private catalog source
+      parameters:
+        - name: sourceId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: No Content
+
+  /clusters/{clusterId}/addons/installed:
+    get:
+      summary: List installed add-ons in a cluster
+      parameters:
+        - name: clusterId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AddOnInstallWithHealth'
+
+  /clusters/{clusterId}/addons/execute:
+    post:
+      summary: Install an add-on
+      parameters:
+        - name: clusterId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InstallRequest'
+      responses:
+        '202':
+          description: Accepted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  install_id:
+                    type: string
+
+components:
+  schemas:
+    AddOnEntry:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        display_name: { type: string }
+        description: { type: string }
+        tier: { type: string, enum: [CORE, COMMUNITY, PRIVATE] }
+        version: { type: string }
+        helm_repo_url: { type: string }
+        helm_chart: { type: string }
+        icon_url: { type: string }
+        tags:
+          type: array
+          items: { type: string }
+
+    PrivateCatalogSource:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        url: { type: string }
+        type: { type: string, enum: [helm, oci] }
+        auth_type: { type: string, enum: [none, basic, token] }
+        sync_enabled: { type: boolean }
+        last_synced_at: { type: string, format: date-time }
+        created_at: { type: string, format: date-time }
+
+    AddOnInstallWithHealth:
+      type: object
+      properties:
+        id: { type: string }
+        addon_id: { type: string }
+        release_name: { type: string }
+        namespace: { type: string }
+        installed_version: { type: string }
+        status: { type: string }
+        health:
+          $ref: '#/components/schemas/AddOnHealth'
+
+    AddOnHealth:
+      type: object
+      properties:
+        health_status: { type: string, enum: [HEALTHY, DEGRADED, UNKNOWN] }
+        ready_pods: { type: integer }
+        total_pods: { type: integer }
+        last_error: { type: string }
+
+    InstallRequest:
+      type: object
+      required: [addon_id, release_name, namespace]
+      properties:
+        addon_id: { type: string }
+        release_name: { type: string }
+        namespace: { type: string }
+        values:
+          type: object
+          additionalProperties: true
+        create_namespace: { type: boolean }

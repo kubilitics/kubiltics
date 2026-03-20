@@ -1,0 +1,57 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "{{ include "kubilitics.fullname" . }}-test-backend-service"
+  labels:
+    {{- include "kubilitics.labels" . | nindent 4 }}
+    app.kubernetes.io/name: {{ include "kubilitics.name" . }}
+    helm.sh/chart: {{ include "kubilitics.chart" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+  annotations:
+    "helm.sh/hook": test
+    "helm.sh/hook-weight": "0"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  restartPolicy: Never
+  containers:
+    - name: test-backend-service
+      image: bitnami/kubectl:latest
+      command:
+        - /bin/bash
+        - -c
+        - |
+          set -e
+          echo "Testing backend service exists..."
+          SERVICE_NAME="{{ include "kubilitics.fullname" . }}"
+          
+          # Check if service exists
+          if kubectl get service "${SERVICE_NAME}" > /dev/null 2>&1; then
+            echo "✓ Service ${SERVICE_NAME} exists"
+            
+            # Check service port
+            SERVICE_PORT=$(kubectl get service "${SERVICE_NAME}" -o jsonpath='{.spec.ports[0].port}')
+            EXPECTED_PORT="{{ .Values.service.port }}"
+            if [ "${SERVICE_PORT}" = "${EXPECTED_PORT}" ]; then
+              echo "✓ Service port matches: ${SERVICE_PORT}"
+            else
+              echo "✗ Service port mismatch: expected ${EXPECTED_PORT}, got ${SERVICE_PORT}"
+              exit 1
+            fi
+            
+            # Check service selector
+            SELECTOR=$(kubectl get service "${SERVICE_NAME}" -o jsonpath='{.spec.selector.app\.kubernetes\.io/name}')
+            EXPECTED_SELECTOR="{{ include "kubilitics.name" . }}"
+            if [ "${SELECTOR}" = "${EXPECTED_SELECTOR}" ]; then
+              echo "✓ Service selector matches: ${SELECTOR}"
+            else
+              echo "✗ Service selector mismatch: expected ${EXPECTED_SELECTOR}, got ${SELECTOR}"
+              exit 1
+            fi
+            
+            echo "All service checks passed!"
+            exit 0
+          else
+            echo "✗ Service ${SERVICE_NAME} does not exist"
+            exit 1
+          fi

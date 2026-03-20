@@ -167,7 +167,7 @@ function NavItem({ to, icon: Icon, label, count, onNavigate }: NavItemProps) {
           className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 rounded-r-full bg-primary"
         />
       )}
-      <Icon className={cn("h-4 w-4 transition-colors relative z-10", isActive ? "text-primary" : "text-slate-700 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-slate-100")} />
+      <Icon className={cn("h-4 w-4 transition-colors relative z-10", isActive ? "text-primary" : "text-slate-700 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-slate-100")} />
       <span className={cn("flex-1 truncate relative z-10", isActive && "font-semibold")}>{label}</span>
       {count !== undefined && (
         <span
@@ -251,7 +251,7 @@ function SidebarSearch({
 
   return (
     <div className="relative">
-      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 dark:text-slate-400 pointer-events-none" />
+      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 dark:text-slate-500 pointer-events-none" />
       <input
         ref={inputRef}
         type="text"
@@ -276,7 +276,7 @@ function SidebarSearch({
           <span className="text-xs font-bold">&times;</span>
         </button>
       ) : (
-        <kbd className="absolute right-3 top-1/2 -translate-y-1/2 hidden sm:inline-flex items-center rounded border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 px-1.5 py-0.5 text-[10px] font-mono text-slate-400 dark:text-slate-400">
+        <kbd className="absolute right-3 top-1/2 -translate-y-1/2 hidden sm:inline-flex items-center rounded border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 px-1.5 py-0.5 text-[10px] font-mono text-slate-400 dark:text-slate-500">
           {/Mac|iPod|iPhone|iPad/.test(navigator.userAgent) ? '⌘K' : 'Ctrl+K'}
         </kbd>
       )}
@@ -344,22 +344,22 @@ function ResourceSubCategory({
             "h-6 w-6 rounded-md flex items-center justify-center shrink-0 transition-colors",
             isCategoryActive ? colors.iconBg : "bg-slate-100/80 dark:bg-slate-800/80 group-hover:bg-slate-200/80 dark:group-hover:bg-slate-700/80"
           )}>
-            <Icon className={cn("h-3.5 w-3.5 shrink-0 transition-colors", isCategoryActive ? colors.icon : "text-slate-500 dark:text-slate-300 group-hover:text-slate-700 dark:group-hover:text-slate-100")} />
+            <Icon className={cn("h-3.5 w-3.5 shrink-0 transition-colors", isCategoryActive ? colors.icon : "text-slate-500 dark:text-slate-400 group-hover:text-slate-700 dark:group-hover:text-slate-200")} />
           </div>
-          <span className={cn("text-[12px] font-semibold tracking-wide uppercase truncate", isCategoryActive ? "text-foreground" : "text-slate-600 dark:text-slate-300 group-hover:text-slate-800 dark:group-hover:text-slate-100")}>
+          <span className={cn("text-[12px] font-semibold tracking-wide uppercase truncate", isCategoryActive ? "text-foreground" : "text-slate-600 dark:text-slate-400 group-hover:text-slate-800 dark:group-hover:text-slate-200")}>
             {category.label}
           </span>
         </div>
         <div className="flex items-center gap-2 shrink-0">
           {totalCount > 0 && !isExpanded && (
-            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-400 tabular-nums">
+            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 tabular-nums">
               {totalCount}
             </span>
           )}
           <ChevronRight
             className={cn(
               'h-3.5 w-3.5 transition-transform duration-200',
-              isCategoryActive ? colors.icon : 'text-slate-400 dark:text-slate-400',
+              isCategoryActive ? colors.icon : 'text-slate-400 dark:text-slate-500',
               isExpanded && 'rotate-90'
             )}
           />
@@ -423,19 +423,19 @@ const TOP_NAV_COLORS: Record<string, { active: string; activeBg: string; idle: s
   '/dashboard': {
     active: 'text-blue-600 dark:text-blue-400',
     activeBg: 'bg-blue-100 dark:bg-blue-500/20',
-    idle: 'text-slate-600 dark:text-slate-300',
+    idle: 'text-slate-600 dark:text-slate-400',
     idleBg: 'bg-slate-100/80 dark:bg-slate-800/80',
   },
   '/fleet': {
     active: 'text-indigo-600 dark:text-indigo-400',
     activeBg: 'bg-indigo-100 dark:bg-indigo-500/20',
-    idle: 'text-slate-600 dark:text-slate-300',
+    idle: 'text-slate-600 dark:text-slate-400',
     idleBg: 'bg-slate-100/80 dark:bg-slate-800/80',
   },
   '/topology': {
     active: 'text-violet-600 dark:text-violet-400',
     activeBg: 'bg-violet-100 dark:bg-violet-500/20',
-    idle: 'text-slate-600 dark:text-slate-300',
+    idle: 'text-slate-600 dark:text-slate-400',
     idleBg: 'bg-slate-100/80 dark:bg-slate-800/80',
   },
 };
@@ -541,7 +541,7 @@ const CATEGORY_COLORS: Record<string, { icon: string; iconBg: string; border: st
 };
 
 const DEFAULT_CATEGORY_COLOR = {
-  icon: 'text-slate-600 dark:text-slate-300',
+  icon: 'text-slate-600 dark:text-slate-400',
   iconBg: 'bg-slate-100 dark:bg-slate-500/15',
   border: 'border-l-slate-400 dark:border-l-slate-500/60',
   activeBg: 'bg-slate-50/60 dark:bg-slate-500/5',
@@ -765,7 +765,7 @@ function SidebarContent({
             <FolderKanban className="h-4 w-4 text-primary shrink-0" />
             <span className="text-sm font-medium truncate dark:text-slate-100" title={activeProject.name}>{activeProject.name}</span>
           </div>
-          <p className="text-xs text-slate-700 dark:text-slate-300 font-medium">Project scope</p>
+          <p className="text-xs text-slate-700 dark:text-slate-400 font-medium">Project scope</p>
           <button
             type="button"
             onClick={handleExitProject}
@@ -793,7 +793,7 @@ function SidebarContent({
         {/* Section divider label */}
         <div className="flex items-center gap-2 px-2 pt-2 pb-1">
           <div className="h-px flex-1 bg-slate-200/60 dark:bg-slate-700/60" />
-          <span className="text-[9px] font-bold text-slate-400 dark:text-slate-400 uppercase tracking-[0.15em] select-none">Kubernetes</span>
+          <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-[0.15em] select-none">Kubernetes</span>
           <div className="h-px flex-1 bg-slate-200/60 dark:bg-slate-700/60" />
         </div>
         <button
@@ -816,11 +816,11 @@ function SidebarContent({
                 ? "bg-primary/10 dark:bg-primary/20"
                 : "bg-slate-200/60 dark:bg-slate-700/60 group-hover:bg-slate-300/60 dark:group-hover:bg-slate-600/60"
             )}>
-              <Package className={cn("h-4 w-4 transition-colors", isAnyResourceActive ? "text-primary" : "text-slate-600 dark:text-slate-300 group-hover:text-slate-800 dark:group-hover:text-slate-100")} />
+              <Package className={cn("h-4 w-4 transition-colors", isAnyResourceActive ? "text-primary" : "text-slate-600 dark:text-slate-400 group-hover:text-slate-800 dark:group-hover:text-slate-200")} />
             </div>
             <span className={cn(
               "text-[11px] font-bold tracking-[0.05em] uppercase",
-              isAnyResourceActive ? "text-primary" : "text-slate-800 dark:text-slate-200 group-hover:text-slate-950 dark:group-hover:text-slate-50"
+              isAnyResourceActive ? "text-primary" : "text-slate-800 dark:text-slate-300 group-hover:text-slate-950 dark:group-hover:text-slate-100"
             )}>
               Resources
             </span>
@@ -828,7 +828,7 @@ function SidebarContent({
           <ChevronDown
             className={cn(
               'h-4 w-4 transition-transform duration-300',
-              isAnyResourceActive ? 'text-primary' : 'text-slate-600 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-slate-100',
+              isAnyResourceActive ? 'text-primary' : 'text-slate-600 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-slate-100',
               !isResourcesSectionOpen && '-rotate-90'
             )}
           />
@@ -857,7 +857,7 @@ function SidebarContent({
                 ))}
                 {filteredCategories.length === 0 && searchQuery && (
                   <div className="px-3 py-4 text-center">
-                    <p className="text-xs text-slate-400 dark:text-slate-400">No resources matching "{searchQuery}"</p>
+                    <p className="text-xs text-slate-400 dark:text-slate-500">No resources matching "{searchQuery}"</p>
                   </div>
                 )}
               </div>
@@ -887,7 +887,7 @@ function SidebarContent({
               "h-4 w-4 transition-colors",
               isAddOnsActive
                 ? "text-purple-600 dark:text-purple-400"
-                : "text-slate-600 dark:text-slate-300 group-hover:text-slate-800 dark:group-hover:text-slate-100"
+                : "text-slate-600 dark:text-slate-400 group-hover:text-slate-800 dark:group-hover:text-slate-100"
             )} />
           </div>
           <span className={cn("font-semibold text-[13px]", isAddOnsActive ? "text-slate-900 dark:text-slate-100" : "text-slate-800 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-slate-100")}>Add-ons</span>
@@ -961,7 +961,7 @@ export function Sidebar() {
             "h-7 w-7 rounded-lg flex items-center justify-center shrink-0 transition-colors",
             isSettingsActive ? "bg-slate-200 dark:bg-slate-700" : "bg-slate-100/80 dark:bg-slate-800/80 group-hover:bg-slate-200/80 dark:group-hover:bg-slate-700/80"
           )}>
-            <Settings className={cn("h-4 w-4 transition-colors", isSettingsActive ? "text-slate-700 dark:text-slate-300" : "text-slate-600 dark:text-slate-300 group-hover:text-slate-800 dark:group-hover:text-slate-100")} />
+            <Settings className={cn("h-4 w-4 transition-colors", isSettingsActive ? "text-slate-700 dark:text-slate-300" : "text-slate-600 dark:text-slate-400 group-hover:text-slate-800 dark:group-hover:text-slate-100")} />
           </div>
           <span className={cn("font-semibold text-[13px]", isSettingsActive ? "text-slate-900 dark:text-slate-100" : "text-slate-800 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-slate-100")}>Settings</span>
         </NavLink>

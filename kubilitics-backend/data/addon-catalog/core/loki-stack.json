@@ -1,0 +1,29 @@
+{
+  "addon": {
+    "id": "kubilitics/loki-stack",
+    "name": "loki-stack",
+    "display_name": "Loki Stack",
+    "description": "Log aggregation stack with Loki and Promtail.",
+    "tier": "CORE",
+    "version": "2.10.2",
+    "k8s_compat_min": "1.24",
+    "helm_repo_url": "https://grafana.github.io/helm-charts",
+    "helm_chart": "loki-stack",
+    "helm_chart_version": "2.10.2",
+    "tags": ["observability", "logging"],
+    "source_url": "https://github.com/grafana/loki",
+    "maintainer": "grafana",
+    "is_deprecated": false
+  },
+  "dependencies": [
+    {"addon_id": "kubilitics/loki-stack", "depends_on_id": "kubilitics/kube-prometheus-stack", "dependency_type": "required", "reason": "Metrics and alerting integration"}
+  ],
+  "conflicts": [],
+  "crds_owned": [],
+  "rbac_required": [],
+  "cost_models": [
+    {"addon_id": "kubilitics/loki-stack", "cluster_tier": "dev", "cpu_millicores": 500, "memory_mb": 1024, "storage_gb": 20, "monthly_cost_usd_estimate": 12, "replica_count": 1},
+    {"addon_id": "kubilitics/loki-stack", "cluster_tier": "staging", "cpu_millicores": 1000, "memory_mb": 2048, "storage_gb": 50, "monthly_cost_usd_estimate": 22, "replica_count": 2},
+    {"addon_id": "kubilitics/loki-stack", "cluster_tier": "production", "cpu_millicores": 2000, "memory_mb": 4096, "storage_gb": 100, "monthly_cost_usd_estimate": 42, "replica_count": 3}
+  ]
+}

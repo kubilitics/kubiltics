@@ -1,0 +1,211 @@
+# Kubilitics Demo RBAC — ServiceAccounts, Roles, RoleBindings, ClusterRoles, ClusterRoleBindings
+# ServiceAccounts
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: api-service-account
+  namespace: kubilitics-demo
+  labels: { app.kubernetes.io/part-of: kubilitics-demo }
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: batch-runner
+  namespace: kubilitics-demo
+  labels: { app.kubernetes.io/part-of: kubilitics-demo }
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: ecommerce-app
+  namespace: ecommerce-prod
+  labels: { app.kubernetes.io/part-of: kubilitics-demo }
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: analytics-reader
+  namespace: analytics-staging
+  labels: { app.kubernetes.io/part-of: kubilitics-demo }
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: ml-trainer
+  namespace: ml-pipeline
+  labels: { app.kubernetes.io/part-of: kubilitics-demo }
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: payment-service
+  namespace: payments-prod
+  labels: { app.kubernetes.io/part-of: kubilitics-demo }
+---
+# Namespace Roles
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: app-reader
+  namespace: kubilitics-demo
+  labels: { app.kubernetes.io/part-of: kubilitics-demo }
+rules:
+  - apiGroups: [""]
+    resources: [pods, services, configmaps]
+    verbs: [get, list, watch]
+  - apiGroups: [apps]
+    resources: [deployments, replicasets]
+    verbs: [get, list, watch]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: batch-executor
+  namespace: kubilitics-demo
+  labels: { app.kubernetes.io/part-of: kubilitics-demo }
+rules:
+  - apiGroups: [batch]
+    resources: [jobs, cronjobs]
+    verbs: [get, list, watch, create, delete]
+  - apiGroups: [""]
+    resources: [pods, pods/log]
+    verbs: [get, list, watch]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: secret-reader
+  namespace: payments-prod
+  labels: { app.kubernetes.io/part-of: kubilitics-demo }
+rules:
+  - apiGroups: [""]
+    resources: [secrets]
+    verbs: [get, list]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: deployment-manager
+  namespace: ecommerce-prod
+  labels: { app.kubernetes.io/part-of: kubilitics-demo }
+rules:
+  - apiGroups: [apps]
+    resources: [deployments, replicasets]
+    verbs: [get, list, watch, create, update, patch, delete]
+  - apiGroups: [""]
+    resources: [services]
+    verbs: [get, list, watch, create, update]
+---
+# RoleBindings
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: api-reader-binding
+  namespace: kubilitics-demo
+  labels: { app.kubernetes.io/part-of: kubilitics-demo }
+subjects:
+  - kind: ServiceAccount
+    name: api-service-account
+    namespace: kubilitics-demo
+roleRef:
+  kind: Role
+  name: app-reader
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: batch-runner-binding
+  namespace: kubilitics-demo
+  labels: { app.kubernetes.io/part-of: kubilitics-demo }
+subjects:
+  - kind: ServiceAccount
+    name: batch-runner
+    namespace: kubilitics-demo
+roleRef:
+  kind: Role
+  name: batch-executor
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: payment-secrets-binding
+  namespace: payments-prod
+  labels: { app.kubernetes.io/part-of: kubilitics-demo }
+subjects:
+  - kind: ServiceAccount
+    name: payment-service
+    namespace: payments-prod
+roleRef:
+  kind: Role
+  name: secret-reader
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: ecommerce-deploy-binding
+  namespace: ecommerce-prod
+  labels: { app.kubernetes.io/part-of: kubilitics-demo }
+subjects:
+  - kind: ServiceAccount
+    name: ecommerce-app
+    namespace: ecommerce-prod
+roleRef:
+  kind: Role
+  name: deployment-manager
+  apiGroup: rbac.authorization.k8s.io
+---
+# ClusterRoles
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: kubilitics-demo-cluster-viewer
+  labels: { app.kubernetes.io/part-of: kubilitics-demo }
+rules:
+  - apiGroups: [""]
+    resources: [nodes, namespaces, persistentvolumes]
+    verbs: [get, list, watch]
+  - apiGroups: [storage.k8s.io]
+    resources: [storageclasses]
+    verbs: [get, list, watch]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: kubilitics-demo-namespace-admin
+  labels: { app.kubernetes.io/part-of: kubilitics-demo }
+rules:
+  - apiGroups: ["", apps, batch, networking.k8s.io]
+    resources: ["*"]
+    verbs: ["*"]
+---
+# ClusterRoleBindings
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: kubilitics-demo-viewer-binding
+  labels: { app.kubernetes.io/part-of: kubilitics-demo }
+subjects:
+  - kind: ServiceAccount
+    name: api-service-account
+    namespace: kubilitics-demo
+roleRef:
+  kind: ClusterRole
+  name: kubilitics-demo-cluster-viewer
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: kubilitics-demo-admin-binding
+  labels: { app.kubernetes.io/part-of: kubilitics-demo }
+subjects:
+  - kind: ServiceAccount
+    name: batch-runner
+    namespace: kubilitics-demo
+roleRef:
+  kind: ClusterRole
+  name: kubilitics-demo-namespace-admin
+  apiGroup: rbac.authorization.k8s.io

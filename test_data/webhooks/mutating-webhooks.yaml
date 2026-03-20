@@ -1,0 +1,76 @@
+apiVersion: admissionregistration.k8s.io/v1
+kind: MutatingWebhookConfiguration
+metadata:
+  name: image-rewrite.kubilitics-demo
+  labels:
+    app.kubernetes.io/part-of: kubilitics-demo
+webhooks:
+  - name: image-rewrite.kubilitics.com
+    admissionReviewVersions: ["v1"]
+    sideEffects: None
+    failurePolicy: Ignore
+    matchPolicy: Equivalent
+    clientConfig:
+      service:
+        namespace: kubilitics-demo
+        name: api-server
+        path: /mutate-images
+        port: 80
+      caBundle: "Cg==" # dummy base64
+    rules:
+      - apiGroups: [""]
+        apiVersions: ["v1"]
+        operations: ["CREATE"]
+        resources: ["pods"]
+    namespaceSelector:
+      matchLabels:
+        kubilitics.com/demo-scope: enabled
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: MutatingWebhookConfiguration
+metadata:
+  name: default-labels.kubilitics-demo
+  labels:
+    app.kubernetes.io/part-of: kubilitics-demo
+webhooks:
+  - name: default-labels.kubilitics.com
+    admissionReviewVersions: ["v1"]
+    sideEffects: None
+    failurePolicy: Ignore
+    clientConfig:
+      service:
+        namespace: kubilitics-demo
+        name: api-server
+        path: /mutate-labels
+        port: 80
+      caBundle: "Cg=="
+    rules:
+      - apiGroups: [""]
+        apiVersions: ["v1"]
+        operations: ["CREATE"]
+        resources: ["pods","services"]
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: MutatingWebhookConfiguration
+metadata:
+  name: security-defaults.kubilitics-demo
+  labels:
+    app.kubernetes.io/part-of: kubilitics-demo
+webhooks:
+  - name: security-defaults.kubilitics.com
+    admissionReviewVersions: ["v1"]
+    sideEffects: None
+    failurePolicy: Ignore
+    clientConfig:
+      service:
+        namespace: kubilitics-demo
+        name: api-server
+        path: /mutate-security
+        port: 80
+      caBundle: "Cg=="
+    rules:
+      - apiGroups: [""]
+        apiVersions: ["v1"]
+        operations: ["CREATE","UPDATE"]
+        resources: ["pods"]
+

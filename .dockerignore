@@ -1,0 +1,29 @@
+# Reduce Docker build context (backend image builds from repo root)
+# Only kubilitics-backend/ and kcli/ are COPY'd; exclude the rest.
+
+.git
+.github
+*.md
+.env
+.env.*
+*.log
+.cursor
+.vscode
+.idea
+node_modules
+**/node_modules
+**/coverage
+**/dist
+**/.next
+**/__pycache__
+project-docs
+kubilitics-frontend
+kubilitics-ai
+kubilitics-desktop
+deploy
+tests
+scripts
+*.db
+coverage.out
+**/bin/
+**/tmp/

@@ -1,0 +1,18 @@
+{
+  "name": "kubilitics-desktop",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "tauri": "tauri",
+    "build": "npm run build:frontend && npm run tauri build",
+    "build:frontend": "cd ../kubilitics-frontend && TAURI_BUILD=true npm run build:tauri && rm -rf ../kubilitics-desktop/dist && cp -r dist ../kubilitics-desktop/dist",
+    "dev": "concurrently --kill-others \"npm run dev:frontend\" \"sleep 3 && npm run tauri dev\"",
+    "dev:frontend": "cd ../kubilitics-frontend && npm run dev",
+    "tauri:dev": "tauri dev",
+    "tauri:build": "tauri build"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.0.0",
+    "concurrently": "^9.0.0"
+  }
+}

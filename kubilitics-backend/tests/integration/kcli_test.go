@@ -213,9 +213,10 @@ func TestKCLITUIStateEndpoint(t *testing.T) {
 	assert.Equal(t, http.StatusOK, w.Code)
 
 	var response struct {
-		KCLIAvailable bool   `json:"kcliAvailable"`
-		Namespace     string `json:"namespace"`
-		Context       string `json:"context"`
+		KCLIAvailable        bool   `json:"kcliAvailable"`
+		KCLIShellModeAllowed bool   `json:"kcliShellModeAllowed"`
+		Namespace            string `json:"namespace"`
+		Context              string `json:"context"`
 	}
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	require.NoError(t, err)

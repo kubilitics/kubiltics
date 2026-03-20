@@ -1,0 +1,356 @@
+# Default values for kubilitics Helm chart
+# 
+# This file contains all configurable values for the Kubilitics Helm chart.
+# For detailed documentation, see README.md
+#
+# Quick start:
+#   helm install kubilitics ./deploy/helm/kubilitics
+#
+# With custom values:
+#   helm install kubilitics ./deploy/helm/kubilitics -f my-values.yaml
+#
+# Production example:
+#   helm install kubilitics ./deploy/helm/kubilitics \
+#     --set database.type=postgresql \
+#     --set postgresql.enabled=true \
+#     --set frontend.enabled=true \
+#     --set ingress.enabled=true \
+#     --set ingress.hosts[0].host=kubilitics.example.com
+#
+# For all available options, see the comments below and README.md
+
+replicaCount: 1
+
+image:
+  repository: ghcr.io/kubilitics/kubilitics-backend
+  tag: "0.1.2"
+  pullPolicy: IfNotPresent
+
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  name: ""
+
+# RBAC configuration
+rbac:
+  enabled: true  # Set to false if using existing ServiceAccount with permissions
+  # Additional RBAC rules (optional)
+  additionalRules: []
+  # Example additionalRules:
+  # - apiGroups: ["custom.example.com"]
+  #   resources: ["*"]
+  #   verbs: ["get", "list", "watch"]
+  serviceAccount:
+    annotations: {}
+    # Example annotations for IRSA (AWS IAM Roles for Service Accounts):
+    #   eks.amazonaws.com/role-arn: "arn:aws:iam::ACCOUNT_ID:role/kubilitics-role"
+
+# Backend listens on this port
+service:
+  type: ClusterIP
+  port: 819
+
+# Database configuration
+# Option 1: SQLite (default, single-node, simple)
+# Option 2: PostgreSQL (HA, enterprise, via Bitnami subchart)
+database:
+  type: "sqlite"  # "sqlite" or "postgresql"
+  # SQLite configuration (used when type: "sqlite")
+  sqlite:
+    path: "/data/kubilitics.db"
+  # PostgreSQL configuration (used when type: "postgresql")
+  postgresql:
+    # Connection string format: postgresql://user:password@host:port/database
+    # If not provided, will be auto-generated from postgresql subchart
+    connectionString: ""
+    # Or specify individual components (will be used to build connection string)
+    host: ""  # Auto-set from postgresql subchart if not specified
+    port: 5432
+    database: ""  # Auto-set from postgresql subchart if not specified
+    username: ""  # Auto-set from postgresql subchart if not specified
+    password: ""  # Auto-set from postgresql subchart if not specified
+    secretName: ""  # Secret name for PostgreSQL credentials (default: auto-generated)
+    # SSL mode for PostgreSQL connection
+    sslMode: "require"  # disable, allow, prefer, require, verify-ca, verify-full
+
+# Persistence for SQLite database (only used when database.type: "sqlite")
+persistence:
+  enabled: true
+  storageClass: ""
+  size: 1Gi
+  # mountPath is /data in the container
+
+# Config: env vars (prefix KUBILITICS_)
+# See internal/config for all options
+config:
+  port: 819
+  databasePath: "/data/kubilitics.db"
+  logLevel: "info"
+  # Authentication mode: "required" (production default), "optional" (accepts Bearer or anonymous), "disabled" (no auth)
+  # IMPORTANT: "required" mandates JWT tokens for all API access. Set secret.authJWTSecret (>= 32 chars).
+  authMode: "required"
+  # allowedOrigins for CORS. REQUIRED in production: set to your frontend origin(s), e.g. ["https://kubilitics.example.com"].
+  # Do not use "*" in production. Development default in backend is localhost:5173, localhost:819.
+  allowedOrigins: "https://your-domain.com"
+  requestTimeoutSec: 30
+  topologyTimeoutSec: 30
+  shutdownTimeoutSec: 15
+  maxClusters: 100
+  k8sTimeoutSec: 15
+  topologyCacheTtlSec: 30
+  topologyMaxNodes: 5000
+  # kcli Configuration
+  # kcli is included in the Docker image at /usr/local/bin/kcli
+  kcliRateLimitPerSec: 12.0  # Token bucket rate per cluster for /kcli APIs
+  kcliRateLimitBurst: 24  # Burst for /kcli APIs
+  kcliStreamMaxConns: 4  # Max concurrent /kcli/stream sessions per cluster
+  kcliAllowShellMode: false  # Allow /kcli/stream?mode=shell (interactive shell) - conservative default for multi-tenant
+  # TLS Configuration (BE-TLS-001)
+  # Set tlsEnabled: true and mount TLS certificate from Kubernetes Secret
+  # Example: Use cert-manager to create Certificate resource, then mount the secret
+  tlsEnabled: false
+  tlsCertPath: "/etc/tls/tls.crt"  # Path to TLS certificate (PEM format)
+  tlsKeyPath: "/etc/tls/tls.key"   # Path to TLS private key (PEM format)
+
+# kcli Configuration
+# kcli binary is included in the Docker image at /usr/local/bin/kcli
+kcli:
+  enabled: true  # Enable kcli integration (kcli is always included in image, this controls usage)
+  binaryPath: "/usr/local/bin/kcli"  # Path to kcli binary in container (already set in Dockerfile)
+  shellModeAllowed: false  # Allow interactive shell mode (mode=shell) - conservative default for multi-tenant
+  rateLimitPerSec: 12.0  # Rate limit for kcli exec commands (requests per second)
+  rateLimitBurst: 24  # Burst limit for kcli exec commands
+  streamMaxConns: 4  # Maximum concurrent kcli stream connections per cluster
+
+# Use in-cluster kubeconfig (default). For multiple clusters, backend adds them via API.
+# kubeconfig: leave empty to use in-cluster service account
+kubeconfig: {}
+
+# Ingress (optional)
+ingress:
+  enabled: false
+  className: ""  # e.g., "nginx", "traefik", "istio"
+  annotations: {}  # Additional annotations (will override defaults if specified)
+  # Example annotations:
+  #   nginx.ingress.kubernetes.io/ssl-redirect: "true"
+  #   nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+  #   nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+  hosts:
+    - host: kubilitics.local
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+    # Example TLS configuration:
+    # - hosts:
+    #     - kubilitics.local
+    #   secretName: kubilitics-tls  # Required if certManager.enabled is false
+  # cert-manager integration for automatic TLS certificate management
+  certManager:
+    enabled: false
+    clusterIssuer: "letsencrypt-prod"  # ClusterIssuer name (for cluster-wide issuer)
+    issuer: ""  # Issuer name (for namespace-scoped issuer, takes precedence over clusterIssuer)
+    secretName: ""  # Secret name for TLS certificate (default: <release-name>-tls)
+
+# Frontend (nginx) - Optional component
+frontend:
+  enabled: false
+  replicaCount: 2
+  
+  image:
+    repository: nginx
+    tag: "1.25-alpine"
+    pullPolicy: IfNotPresent
+  
+  service:
+    type: ClusterIP
+    port: 80
+  
+  # Frontend configuration
+  config:
+    backendService: "kubilitics"  # Backend service name
+    backendPort: 819  # Backend service port
+  
+  configMap:
+    name: ""  # If empty, uses default name from _helpers.tpl
+  
+  # Static files - can be provided via PVC or init container
+  staticFiles:
+    enabled: false  # Set to true if using PVC for static files
+    # If enabled: false, use init container or build-time image with static files
+  
+  resources:
+    limits:
+      cpu: 200m
+      memory: 128Mi
+    requests:
+      cpu: 50m
+      memory: 64Mi
+  
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+# TLS Volume Mounts (BE-TLS-001)
+# Mount TLS certificate from Kubernetes Secret when tlsEnabled: true
+# Example Secret created by cert-manager:
+#   apiVersion: v1
+#   kind: Secret
+#   metadata:
+#     name: kubilitics-tls-secret
+#   type: kubernetes.io/tls
+#   data:
+#     tls.crt: <base64-encoded-cert>
+#     tls.key: <base64-encoded-key>
+tls:
+  enabled: false
+  secretName: ""  # Name of Kubernetes Secret containing tls.crt and tls.key
+  # When enabled, volumes and volumeMounts are automatically added:
+  # volumes:
+  #   - name: tls-certs
+  #     secret:
+  #       secretName: <tls.secretName>
+  # volumeMounts:
+  #   - name: tls-certs
+  #     mountPath: /etc/tls
+  #     readOnly: true
+
+# ConfigMap for non-sensitive configuration
+# When enabled, creates a ConfigMap that can be mounted or referenced
+# Note: Environment variables in deployment.yaml take precedence
+configMap:
+  enabled: false
+  name: ""  # If empty, uses default name from _helpers.tpl
+  data: {}  # Additional key-value pairs for ConfigMap
+
+# Backup configuration for SQLite database
+backup:
+  enabled: false  # Set to true to enable automatic backups
+  schedule: "0 2 * * *"  # Cron schedule (default: daily at 2 AM)
+  retentionDays: 7  # Number of days to keep backups
+  successfulJobsHistoryLimit: 3  # Number of successful backup jobs to keep
+  failedJobsHistoryLimit: 1  # Number of failed backup jobs to keep
+  image:
+    repository: alpine/sqlite
+    tag: "latest"
+    pullPolicy: IfNotPresent
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 128Mi
+  pvc:
+    enabled: false  # Set to true to use a PVC for backups
+    name: ""  # PVC name (defaults to <release-name>-backups)
+  s3:
+    enabled: false  # Set to true to upload backups to S3
+    bucket: ""  # S3 bucket name
+    prefix: "backups"  # S3 prefix/path
+    secretName: ""  # Secret containing AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY
+
+# Grafana dashboard configuration
+grafana:
+  dashboard:
+    enabled: false  # Set to true to create Grafana dashboard ConfigMap
+
+# PrometheusRule alerts (requires serviceMonitor.enabled: true)
+# Alerts are automatically created when serviceMonitor is enabled
+
+# Secret for sensitive configuration (JWT secrets, OIDC secrets, etc.)
+# When enabled, creates a Secret with sensitive data
+# Note: Environment variables in deployment.yaml take precedence
+secret:
+  enabled: false
+  name: ""  # If empty, uses default name from _helpers.tpl
+  # Sensitive values (base64 encoded automatically)
+  authJWTSecret: ""  # JWT signing secret for authentication
+  authAdminPass: ""  # Bootstrap admin password (plaintext, will be base64 encoded)
+  oidcClientSecret: ""  # OIDC client secret
+  samlCertificate: ""  # SAML certificate (PEM format)
+  samlPrivateKey: ""  # SAML private key (PEM format)
+  mfaEncryptionKey: ""  # MFA encryption key (32 bytes base64 encoded)
+  data: {}  # Additional key-value pairs (values should be plaintext, will be base64 encoded)
+
+# Horizontal Pod Autoscaler
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 80
+  targetMemoryUtilizationPercentage: 80
+  # Custom metrics (optional)
+  metrics: []
+  # Scaling behavior (optional)
+  behavior: {}
+
+# Pod Security Context
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  fsGroup: 1000
+
+# Container Security Context
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+  readOnlyRootFilesystem: false
+
+# Image pull secrets (optional)
+imagePullSecrets: []
+
+# Network Policies for pod-to-pod communication security
+networkPolicy:
+  enabled: false  # Set to true to enable network policies
+  ingress:
+    namespace: "ingress-nginx"  # Namespace where ingress controller runs
+    namespaceLabels: {}  # Alternative: use labels to match ingress namespace
+    podLabels: {}  # Alternative: use labels to match ingress pods
+    additionalRules: []  # Additional ingress rules
+  egress:
+    allowAll: true  # Set to false to restrict egress traffic
+    additionalRules: []  # Additional egress rules
+
+# Pod Disruption Budgets for high availability
+podDisruptionBudget:
+  enabled: false  # Set to true to enable PDBs (requires replicaCount > 1)
+  # Backend PDB configuration
+  minAvailable: ""  # e.g., "1" or "50%" - minimum pods that must be available
+  maxUnavailable: ""  # e.g., "1" or "25%" - maximum pods that can be unavailable (alternative to minAvailable)
+  # Frontend PDB configuration
+  frontend:
+    minAvailable: ""
+    maxUnavailable: ""
+
+# Prometheus ServiceMonitor for metrics collection (requires Prometheus Operator)
+serviceMonitor:
+  enabled: false  # Set to true to create ServiceMonitor resources
+  create: true  # Create ServiceMonitor for backend
+  labels: {}  # Additional labels for ServiceMonitor (e.g., for Prometheus selector)
+  metricsPath: "/metrics"  # Path to metrics endpoint
+  interval: "30s"  # Scraping interval
+  scrapeTimeout: "10s"  # Scraping timeout
+  relabelings: []  # Prometheus relabeling rules
+  # Frontend ServiceMonitor
+  frontend:
+    create: false  # Create ServiceMonitor for frontend
+    metricsPath: "/metrics"
+    interval: "30s"
+    scrapeTimeout: "10s"

@@ -1,0 +1,41 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "{{ include "kubilitics.fullname" . }}-test-backend-connection"
+  labels:
+    {{- include "kubilitics.labels" . | nindent 4 }}
+    app.kubernetes.io/name: {{ include "kubilitics.name" . }}
+    helm.sh/chart: {{ include "kubilitics.chart" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+  annotations:
+    "helm.sh/hook": test
+    "helm.sh/hook-weight": "1"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  restartPolicy: Never
+  containers:
+    - name: test-backend-connection
+      image: curlimages/curl:latest
+      command:
+        - /bin/sh
+        - -c
+        - |
+          set -e
+          echo "Testing backend connection..."
+          BACKEND_SERVICE="{{ include "kubilitics.fullname" . }}"
+          BACKEND_PORT="{{ .Values.service.port }}"
+          
+          # Wait for service to be ready
+          echo "Waiting for backend service to be ready..."
+          for i in $(seq 1 30); do
+            if curl -f -s "http://${BACKEND_SERVICE}:${BACKEND_PORT}/health" > /dev/null 2>&1; then
+              echo "Backend health check passed!"
+              exit 0
+            fi
+            echo "Attempt $i/30: Backend not ready yet, waiting..."
+            sleep 2
+          done
+          
+          echo "ERROR: Backend health check failed after 60 seconds"
+          exit 1

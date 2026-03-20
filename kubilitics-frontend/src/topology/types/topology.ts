@@ -1,0 +1,91 @@
+// V2 topology API types (match backend TopologyResponse)
+
+export type ViewMode =
+  | "cluster"
+  | "namespace"
+  | "workload"
+  | "resource"
+  | "rbac";
+
+export interface TopologyMetadata {
+  clusterId: string;
+  clusterName: string;
+  mode: ViewMode;
+  namespace?: string;
+  focusResource?: string;
+  resourceCount: number;
+  edgeCount: number;
+  buildTimeMs: number;
+  cachedAt?: string;
+}
+
+export interface NodeMetrics {
+  cpuUsage?: number;
+  cpuRequest?: number;
+  cpuLimit?: number;
+  memoryUsage?: number;
+  memoryRequest?: number;
+  memoryLimit?: number;
+  restartCount?: number;
+  podCount?: number;
+  readyCount?: number;
+}
+
+export interface NodeCost {
+  monthlyCostUSD: number;
+  dailyCostUSD: number;
+}
+
+export interface TopologyNode {
+  id: string;
+  kind: string;
+  name: string;
+  namespace: string;
+  apiVersion: string;
+  category: string;
+  label: string;
+  status: string;
+  statusReason?: string;
+  metrics?: NodeMetrics;
+  cost?: NodeCost;
+  layer: number;
+  group?: string;
+  labels?: Record<string, string>;
+  annotations?: Record<string, string>;
+  createdAt?: string;
+}
+
+export interface TopologyEdge {
+  id: string;
+  source: string;
+  target: string;
+  relationshipType: string;
+  relationshipCategory: string;
+  label: string;
+  detail?: string;
+  style: string;
+  animated?: boolean;
+  healthy: boolean;
+  healthReason?: string;
+}
+
+export interface GroupStyle {
+  backgroundColor: string;
+  borderColor: string;
+}
+
+export interface TopologyGroup {
+  id: string;
+  label: string;
+  type: string;
+  members: string[];
+  collapsed: boolean;
+  style: GroupStyle;
+}
+
+export interface TopologyResponse {
+  metadata: TopologyMetadata;
+  nodes: TopologyNode[];
+  edges: TopologyEdge[];
+  groups: TopologyGroup[];
+}
