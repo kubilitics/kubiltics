@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { isTauri, invokeWithRetry } from '@/lib/tauri';
 import { Loader2 } from 'lucide-react';
-import { resetBackendCircuit } from '@/services/backendApiClient';
+import { resetBackendCircuit, markBackendReady } from '@/services/backendApiClient';
 import { BrandLogo } from '@/components/BrandLogo';
 
 /**
@@ -52,6 +52,7 @@ export function BackendStartupOverlay() {
         if (status.status === 'ready') {
           // Backend is already ready - hide immediately, no overlay needed
           resetBackendCircuit();
+          markBackendReady();
           setVisible(false);
           isHiddenRef.current = true;
           return true; // Backend already ready
@@ -73,6 +74,7 @@ export function BackendStartupOverlay() {
           if (!isHiddenRef.current) {
             isHiddenRef.current = true;
             resetBackendCircuit();
+          markBackendReady();
             // Hide overlay immediately when backend becomes ready
             setVisible(false);
           }
@@ -110,6 +112,7 @@ export function BackendStartupOverlay() {
           if (status === 'ready' && !isHiddenRef.current) {
             isHiddenRef.current = true;
             resetBackendCircuit();
+          markBackendReady();
             setVisible(false);
             if (pollIntervalRef.current) {
               clearInterval(pollIntervalRef.current);

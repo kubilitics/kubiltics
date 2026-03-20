@@ -28,6 +28,21 @@ import type {
 
 const API_PREFIX = '/api/v1';
 
+/**
+ * Tauri startup grace period — suppress circuit breaker until backend has been
+ * healthy at least once. During cold start the Go sidecar needs 2-5s to boot;
+ * opening the circuit on those early failures causes a fleeting "Connection paused"
+ * banner that appears at the top and immediately disappears — terrible UX.
+ *
+ * Once backendEverReady flips to true the circuit works normally.
+ */
+let backendEverReady = !isTauri(); // browser mode: no grace period needed
+
+/** Call this when the backend first becomes healthy (e.g. health check passes). */
+export function markBackendReady(): void {
+  backendEverReady = true;
+}
+
 /** P1-3: Cooldown longer to prevent banner flashing. Increased from 15s/60s to 30s/60s. */
 const BACKEND_DOWN_COOLDOWN_MS_BROWSER = 60_000;
 const BACKEND_DOWN_COOLDOWN_MS_TAURI = 30_000;
@@ -219,7 +234,7 @@ export async function backendRequest<T>(
     // IMPORTANT: markBackendUnavailable() is ONLY called here in the network catch block, never in the
     // !response.ok path below. Any refactor that moves markBackendUnavailable() to the error path would break this.
     // Per-cluster circuit: if this was a cluster-specific request, only block that cluster.
-    if (isNetworkError(e) && !isCORSError(e)) {
+    if (isNetworkError(e) && !isCORSError(e) && backendEverReady) {
       markBackendUnavailable(clusterId);
     }
     throw e;
@@ -330,7 +345,7 @@ export async function backendRequestText(
   try {
     response = await fetch(url, { ...init, headers });
   } catch (e) {
-    if (isNetworkError(e) && !isCORSError(e)) {
+    if (isNetworkError(e) && !isCORSError(e) && backendEverReady) {
       markBackendUnavailable(clusterId);
     }
     throw e;
@@ -796,7 +811,9 @@ export async function getTopologyExportDrawio(
 export async function getHealth(
   baseUrl: string
 ): Promise<{ status: string; service?: string; version?: string }> {
-  if (isBackendCircuitOpen()) {
+  // During Tauri startup grace period, always allow health checks through
+  // so the first success can mark the backend as ready.
+  if (backendEverReady && isBackendCircuitOpen()) {
     throw new BackendApiError(
       isTauri() ? 'Connection temporarily unavailable. Try again in a moment.' : 'Backend unreachable (circuit open). Check backend URL in Settings or try again later.',
       0,
@@ -811,7 +828,8 @@ export async function getHealth(
     response = await fetch(url, { signal: AbortSignal.timeout(5000) });
   } catch (e) {
     // Don't open circuit on CORS errors - these are config issues, not backend down
-    if (isNetworkError(e) && !isCORSError(e)) {
+    // During Tauri startup, suppress circuit opening until backend has been healthy once
+    if (isNetworkError(e) && !isCORSError(e) && backendEverReady) {
       markBackendUnavailable();
     }
     throw e;
@@ -824,6 +842,10 @@ export async function getHealth(
       body
     );
   }
+  // Backend responded successfully — mark as having been ready at least once
+  // so the circuit breaker starts working normally from here on.
+  if (!backendEverReady) markBackendReady();
+
   if (!body?.trim()) return undefined as { status: string };
   try {
     return JSON.parse(body) as { status: string; service?: string; version?: string };
@@ -1689,7 +1711,7 @@ export async function getClusterKubeconfig(
   try {
     response = await fetch(url, { headers });
   } catch (e) {
-    if (isNetworkError(e)) markBackendUnavailable();
+    if (isNetworkError(e) && backendEverReady) markBackendUnavailable();
     throw e;
   }
   if (!response.ok) {
