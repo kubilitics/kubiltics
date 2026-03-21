@@ -333,8 +333,8 @@ export function MetricsDashboard({ resourceType, resourceName, namespace, podRes
   // Average rate in KB/s from chart points
   const avgRateIn = metrics?.network?.length ? metrics.network.reduce((s, d) => s + d.in, 0) / metrics.network.length : 0;
   const avgRateOut = metrics?.network?.length ? metrics.network.reduce((s, d) => s + d.out, 0) / metrics.network.length : 0;
-  const podUsageCpuDisplay = `${currentCpu.toFixed(2)}m`;
-  const podUsageMemoryDisplay = `${currentMemory.toFixed(2)}Mi`;
+  const podUsageCpuDisplay = `${currentCpu.toFixed(3)}m`;
+  const podUsageMemoryDisplay = `${currentMemory.toFixed(3)}Mi`;
   const isSingleOrFewPoints = false; // Forced false to show history by default
 
   // Stats computed from real history
@@ -468,7 +468,7 @@ export function MetricsDashboard({ resourceType, resourceName, namespace, podRes
                           cpuTrend >= 0 ? 'text-error' : 'text-success'
                         )}>
                           {cpuTrend >= 0 ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />}
-                          {cpuTrend >= 0 ? '+' : ''}{cpuTrend.toFixed(2)}m
+                          {cpuTrend >= 0 ? '+' : ''}{cpuTrend.toFixed(3)}m
                         </div>
                       )}
                     </div>
@@ -498,7 +498,7 @@ export function MetricsDashboard({ resourceType, resourceName, namespace, podRes
                           memoryTrend >= 0 ? 'text-error' : 'text-success'
                         )}>
                           {memoryTrend >= 0 ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />}
-                          {memoryTrend >= 0 ? '+' : ''}{memoryTrend.toFixed(2)}Mi
+                          {memoryTrend >= 0 ? '+' : ''}{memoryTrend.toFixed(3)}Mi
                         </div>
                       )}
                     </div>
@@ -784,7 +784,7 @@ export function MetricsDashboard({ resourceType, resourceName, namespace, podRes
                             fontSize: '11px'
                           }}
                           itemStyle={{ color: 'hsl(var(--primary))', fontWeight: 'bold' }}
-                          formatter={(value: number) => [`${value.toFixed(2)}m`, 'CPU Usage']}
+                          formatter={(value: number) => [`${value.toFixed(3)}m`, 'CPU Usage']}
                         />
                         <Area
                           type="monotone"
@@ -853,7 +853,7 @@ export function MetricsDashboard({ resourceType, resourceName, namespace, podRes
                             fontSize: '11px'
                           }}
                           itemStyle={{ color: 'hsl(270, 70%, 60%)', fontWeight: 'bold' }}
-                          formatter={(value: number) => [`${value.toFixed(2)}Mi`, 'Memory Usage']}
+                          formatter={(value: number) => [`${value.toFixed(3)}Mi`, 'Memory Usage']}
                         />
                         <Area
                           type="monotone"
@@ -875,17 +875,17 @@ export function MetricsDashboard({ resourceType, resourceName, namespace, podRes
                 {cpuStats && (
                   <div className="flex items-center gap-4 text-xs text-muted-foreground">
                     <Cpu className="h-3.5 w-3.5 text-blue-500 shrink-0" />
-                    <span>Min <strong className="text-foreground">{cpuStats.min.toFixed(1)}m</strong></span>
-                    <span>Max <strong className="text-foreground">{cpuStats.max.toFixed(1)}m</strong></span>
-                    <span>Avg <strong className="text-foreground">{cpuStats.avg.toFixed(1)}m</strong></span>
+                    <span>Min <strong className="text-foreground">{cpuStats.min.toFixed(3)}m</strong></span>
+                    <span>Max <strong className="text-foreground">{cpuStats.max.toFixed(3)}m</strong></span>
+                    <span>Avg <strong className="text-foreground">{cpuStats.avg.toFixed(3)}m</strong></span>
                   </div>
                 )}
                 {memStats && (
                   <div className="flex items-center gap-4 text-xs text-muted-foreground">
                     <HardDrive className="h-3.5 w-3.5 text-purple-500 shrink-0" />
-                    <span>Min <strong className="text-foreground">{memStats.min.toFixed(1)}Mi</strong></span>
-                    <span>Max <strong className="text-foreground">{memStats.max.toFixed(1)}Mi</strong></span>
-                    <span>Avg <strong className="text-foreground">{memStats.avg.toFixed(1)}Mi</strong></span>
+                    <span>Min <strong className="text-foreground">{memStats.min.toFixed(3)}Mi</strong></span>
+                    <span>Max <strong className="text-foreground">{memStats.max.toFixed(3)}Mi</strong></span>
+                    <span>Avg <strong className="text-foreground">{memStats.avg.toFixed(3)}Mi</strong></span>
                   </div>
                 )}
               </div>
@@ -941,7 +941,7 @@ export function MetricsDashboard({ resourceType, resourceName, namespace, podRes
                           borderRadius: '8px',
                           fontSize: '11px'
                         }}
-                        formatter={(value: number) => [`${value.toFixed(2)}m`, 'CPU Usage']}
+                        formatter={(value: number) => [`${value.toFixed(3)}m`, 'CPU Usage']}
                       />
                       <Line
                         type="monotone"
@@ -961,15 +961,15 @@ export function MetricsDashboard({ resourceType, resourceName, namespace, podRes
               <div className="grid grid-cols-3 gap-3 mt-3">
                 <div className="rounded-lg border border-border/40 bg-card/50 p-3 text-center">
                   <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Min</p>
-                  <p className="text-lg font-bold tabular-nums text-foreground">{cpuStats.min.toFixed(2)}m</p>
+                  <p className="text-lg font-bold tabular-nums text-foreground">{cpuStats.min.toFixed(3)}m</p>
                 </div>
                 <div className="rounded-lg border border-border/40 bg-card/50 p-3 text-center">
                   <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Max</p>
-                  <p className="text-lg font-bold tabular-nums text-foreground">{cpuStats.max.toFixed(2)}m</p>
+                  <p className="text-lg font-bold tabular-nums text-foreground">{cpuStats.max.toFixed(3)}m</p>
                 </div>
                 <div className="rounded-lg border border-border/40 bg-card/50 p-3 text-center">
                   <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Avg</p>
-                  <p className="text-lg font-bold tabular-nums text-foreground">{cpuStats.avg.toFixed(2)}m</p>
+                  <p className="text-lg font-bold tabular-nums text-foreground">{cpuStats.avg.toFixed(3)}m</p>
                 </div>
               </div>
             )}
@@ -1024,7 +1024,7 @@ export function MetricsDashboard({ resourceType, resourceName, namespace, podRes
                           borderRadius: '8px',
                           fontSize: '11px'
                         }}
-                        formatter={(value: number) => [`${value.toFixed(2)}Mi`, 'Memory Usage']}
+                        formatter={(value: number) => [`${value.toFixed(3)}Mi`, 'Memory Usage']}
                       />
                       <Line
                         type="monotone"
@@ -1044,15 +1044,15 @@ export function MetricsDashboard({ resourceType, resourceName, namespace, podRes
               <div className="grid grid-cols-3 gap-3 mt-3">
                 <div className="rounded-lg border border-border/40 bg-card/50 p-3 text-center">
                   <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Min</p>
-                  <p className="text-lg font-bold tabular-nums text-foreground">{memStats.min.toFixed(2)}Mi</p>
+                  <p className="text-lg font-bold tabular-nums text-foreground">{memStats.min.toFixed(3)}Mi</p>
                 </div>
                 <div className="rounded-lg border border-border/40 bg-card/50 p-3 text-center">
                   <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Max</p>
-                  <p className="text-lg font-bold tabular-nums text-foreground">{memStats.max.toFixed(2)}Mi</p>
+                  <p className="text-lg font-bold tabular-nums text-foreground">{memStats.max.toFixed(3)}Mi</p>
                 </div>
                 <div className="rounded-lg border border-border/40 bg-card/50 p-3 text-center">
                   <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Avg</p>
-                  <p className="text-lg font-bold tabular-nums text-foreground">{memStats.avg.toFixed(2)}Mi</p>
+                  <p className="text-lg font-bold tabular-nums text-foreground">{memStats.avg.toFixed(3)}Mi</p>
                 </div>
               </div>
             )}
