@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Cpu, HardDrive, Network, Activity, TrendingUp, TrendingDown, RefreshCw, Info, BarChart2, Download } from 'lucide-react';
+import { Cpu, HardDrive, Network, Activity, TrendingUp, TrendingDown, RefreshCw, Info, BarChart2, Download, Copy } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { SectionCard } from './SectionCard';
 import { Button } from '@/components/ui/button';
@@ -28,6 +28,7 @@ const TOOLTIP_MEMORY_UNIT = 'RAM allocation over time. Steady growth may indicat
 import { useMetricsSummary, type MetricsSummaryResourceType } from '@/hooks/useMetricsSummary';
 import { useMetricsHistory } from '@/hooks/useMetricsHistory';
 import { useBackendConfigStore } from '@/stores/backendConfigStore';
+import { toast } from 'sonner';
 import {
   TOOLTIP_METRICS_CPU_USAGE,
   TOOLTIP_METRICS_MEMORY_USAGE,
@@ -394,15 +395,25 @@ export function MetricsDashboard({ resourceType, resourceName, namespace, podRes
             Resolution: ensure the cluster is connected, metrics-server is installed, and the resource has running pods.
           </p>
         )}
+        {metricsServerMissing && (
+          <div className="mt-3 max-w-lg mx-auto p-3 rounded-lg bg-muted/30 border border-border/50">
+            <p className="text-xs font-medium text-foreground mb-2">Quick Install — run in your terminal:</p>
+            <div className="flex items-center gap-2 p-2 rounded-md bg-slate-900 text-slate-100 font-mono text-xs">
+              <code className="flex-1 select-all">helm repo add metrics-server https://kubernetes-sigs.github.io/metrics-server/ && helm install metrics-server metrics-server/metrics-server -n kube-system</code>
+              <button
+                className="text-muted-foreground hover:text-white shrink-0"
+                onClick={() => {
+                  navigator.clipboard.writeText('helm repo add metrics-server https://kubernetes-sigs.github.io/metrics-server/ && helm install metrics-server metrics-server/metrics-server -n kube-system');
+                  toast.success('Command copied — paste in Shell to install');
+                }}
+              >
+                <Copy className="h-3.5 w-3.5" />
+              </button>
+            </div>
+            <p className="text-[10px] text-muted-foreground mt-1.5">Or use the Shell tab above. Metrics appear within 60 seconds after install.</p>
+          </div>
+        )}
         <div className="flex items-center gap-2 mt-3">
-          {metricsServerMissing && (
-            <Button variant="default" size="sm" asChild>
-              <Link to={`/addons/${encodeURIComponent('kubilitics/metrics-server')}`}>
-                <Download className="h-4 w-4 mr-2" />
-                Install metrics-server
-              </Link>
-            </Button>
-          )}
           {summaryType && (
             <Button variant="outline" size="sm" onClick={handleRefresh}>
               <RefreshCw className="h-4 w-4 mr-2" />
