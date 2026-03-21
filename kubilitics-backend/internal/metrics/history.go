@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	defaultHistoryMaxPoints = 120               // 1h at 30s intervals
+	defaultHistoryMaxPoints = 240               // 1h at 15s intervals
 	defaultHistoryMaxAge    = 60 * time.Minute
 	pruneStaleAfter         = 10 * time.Minute  // remove buffers with no writes for 10 min
 )

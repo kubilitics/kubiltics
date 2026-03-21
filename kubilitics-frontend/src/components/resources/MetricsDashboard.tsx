@@ -130,9 +130,17 @@ function parseMemoryToBytes(s: string): number {
  * Metrics tab content for Pod, Node, and all workload detail pages.
  * Single unified API (GET .../metrics/summary); data decides rendering. Never empty without a reason.
  */
+const TIME_RANGES = [
+  { label: '5m', value: '5m' },
+  { label: '15m', value: '15m' },
+  { label: '30m', value: '30m' },
+  { label: '1h', value: '1h' },
+] as const;
+
 export function MetricsDashboard({ resourceType, resourceName, namespace, podResource }: MetricsDashboardProps) {
   const [metrics, setMetrics] = useState<ResourceMetrics | null>(null);
   const [activeTab, setActiveTab] = useState('overview');
+  const [timeRange, setTimeRange] = useState('15m');
 
   const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
   const summaryType: MetricsSummaryResourceType | null = isMetricsSummaryType(resourceType) ? resourceType : null;
@@ -147,35 +155,40 @@ export function MetricsDashboard({ resourceType, resourceName, namespace, podRes
 
   const summary = queryResult?.summary;
 
-  // Fetch real history from backend ring buffer
-  const { data: historyResult } = useMetricsHistory(summaryType ?? 'pod', namespace, resourceName, {
+  // Fetch real history from backend ring buffer (always fetch 1h, filter client-side by timeRange)
+  const { data: historyResult, refetch: refetchHistory } = useMetricsHistory(summaryType ?? 'pod', namespace, resourceName, {
     enabled: !!summaryType && !!resourceName && (resourceType === 'node' || !!namespace),
     duration: '1h',
   });
 
-  /** Chart data: uses real history when available, falls back to current-point-only. */
+  // Filter history points by selected time range
+  const filteredHistory = useMemo(() => {
+    const points = historyResult?.points ?? [];
+    if (points.length === 0) return points;
+    const rangeMs = timeRange === '5m' ? 5 * 60_000 : timeRange === '15m' ? 15 * 60_000 : timeRange === '30m' ? 30 * 60_000 : 60 * 60_000;
+    const cutoff = (Date.now() - rangeMs) / 1000;
+    return points.filter((p) => p.ts >= cutoff);
+  }, [historyResult, timeRange]);
+
+  const historyPointCount = filteredHistory.length;
+
+  /** Chart data from real history, filtered by selected time range. */
   const resourceMetrics = useMemo<ResourceMetrics | null>(() => {
     if (!summary) return null;
     const cpuVal = parseCPUToMillicores(summary.total_cpu);
     const memVal = parseMemoryToBytes(summary.total_memory) / (1024 * 1024);
-    const historyPoints = historyResult?.points ?? [];
+
+    const formatTime = (ts: number) =>
+      new Date(ts * 1000).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
     let cpuPoints: MetricDataPoint[];
     let memPoints: MetricDataPoint[];
 
-    if (historyPoints.length >= 2) {
-      // Use real history data
-      cpuPoints = historyPoints.map((p) => ({
-        time: new Date(p.ts * 1000).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
-        value: p.cpu_milli,
-      }));
-      memPoints = historyPoints.map((p) => ({
-        time: new Date(p.ts * 1000).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
-        value: p.memory_mib,
-      }));
+    if (filteredHistory.length >= 2) {
+      cpuPoints = filteredHistory.map((p) => ({ time: formatTime(p.ts), value: p.cpu_milli }));
+      memPoints = filteredHistory.map((p) => ({ time: formatTime(p.ts), value: p.memory_mib }));
     } else {
-      // Only current point available — show single data point (no fake data)
-      const timeStr = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+      const timeStr = formatTime(Date.now() / 1000);
       cpuPoints = [{ time: timeStr, value: cpuVal }];
       memPoints = [{ time: timeStr, value: memVal }];
     }
@@ -184,22 +197,20 @@ export function MetricsDashboard({ resourceType, resourceName, namespace, podRes
     const rxMB = (summary.total_network_rx ?? 0) / (1024 * 1024);
     const txMB = (summary.total_network_tx ?? 0) / (1024 * 1024);
     const networkPoints: { time: string; in: number; out: number }[] = [];
-    if (historyPoints.length >= 2) {
-      for (const p of historyPoints) {
-        const timeStr = new Date(p.ts * 1000).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+    if (filteredHistory.length >= 2) {
+      for (const p of filteredHistory) {
         networkPoints.push({
-          time: timeStr,
+          time: formatTime(p.ts),
           in: (p.network_rx ?? 0) / (1024 * 1024),
           out: (p.network_tx ?? 0) / (1024 * 1024),
         });
       }
     } else if (rxMB > 0 || txMB > 0) {
-      const timeStr = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-      networkPoints.push({ time: timeStr, in: rxMB, out: txMB });
+      networkPoints.push({ time: formatTime(Date.now() / 1000), in: rxMB, out: txMB });
     }
 
     return { cpu: cpuPoints, memory: memPoints, network: networkPoints };
-  }, [summary, historyResult]);
+  }, [summary, filteredHistory]);
 
   useEffect(() => {
     if (resourceType === 'cluster') {
@@ -224,7 +235,7 @@ export function MetricsDashboard({ resourceType, resourceName, namespace, podRes
   /** Per-pod table: same shape as before (pods from summary). */
   const podsForTable = summary?.pods ?? [];
 
-  const handleRefresh = () => refetchSummary();
+  const handleRefresh = () => { refetchSummary(); refetchHistory(); };
 
   // All hooks must be called unconditionally (before any early return) to satisfy Rules of Hooks.
   const usageVsLimits = useMemo<{ cpuPct: number; memPct: number } | null>(() => {
@@ -286,6 +297,25 @@ export function MetricsDashboard({ resourceType, resourceName, namespace, podRes
   const podUsageCpuDisplay = `${currentCpu.toFixed(2)}m`;
   const podUsageMemoryDisplay = `${currentMemory.toFixed(2)}Mi`;
   const isSingleOrFewPoints = false; // Forced false to show history by default
+
+  // Stats computed from real history
+  const cpuStats = useMemo(() => {
+    const vals = (metrics?.cpu ?? []).map(d => d.value).filter(v => typeof v === 'number' && !isNaN(v) && v >= 0);
+    if (vals.length === 0) return null;
+    const min = Math.min(...vals);
+    const max = Math.max(...vals);
+    const avg = vals.reduce((a, b) => a + b, 0) / vals.length;
+    return { min, max, avg };
+  }, [metrics?.cpu]);
+
+  const memStats = useMemo(() => {
+    const vals = (metrics?.memory ?? []).map(d => d.value).filter(v => typeof v === 'number' && !isNaN(v) && v >= 0);
+    if (vals.length === 0) return null;
+    const min = Math.min(...vals);
+    const max = Math.max(...vals);
+    const avg = vals.reduce((a, b) => a + b, 0) / vals.length;
+    return { min, max, avg };
+  }, [metrics?.memory]);
 
   const isLoading = !!summaryType && summaryLoading && !queryResult;
   const needsConnect = !currentClusterId && !!summaryType;
@@ -366,15 +396,36 @@ export function MetricsDashboard({ resourceType, resourceName, namespace, podRes
         animate={{ opacity: 1 }}
         className="space-y-6"
       >
-        <div className="flex items-center justify-end gap-2">
-          <Badge variant="outline" className="gap-1.5">
-            <Activity className="h-3 w-3" />
-            Live
-          </Badge>
-          <Button variant="outline" size="sm" onClick={handleRefresh} className="gap-1.5">
-            <RefreshCw className="h-3.5 w-3.5" />
-            Refresh
-          </Button>
+        <div className="flex items-center justify-between">
+          {/* Time range selector */}
+          <div className="flex items-center gap-1 bg-muted/30 rounded-lg p-0.5">
+            {TIME_RANGES.map((r) => (
+              <button
+                key={r.value}
+                onClick={() => setTimeRange(r.value)}
+                className={cn(
+                  'px-3 py-1 text-xs font-medium rounded-md transition-all duration-150',
+                  timeRange === r.value
+                    ? 'bg-primary text-primary-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                )}
+              >
+                {r.label}
+              </button>
+            ))}
+          </div>
+
+          <div className="flex items-center gap-2">
+            {/* Data point count indicator */}
+            <Badge variant="outline" className="gap-1.5 tabular-nums">
+              <Activity className="h-3 w-3" />
+              {historyPointCount > 0 ? `${historyPointCount} points` : 'Collecting...'}
+            </Badge>
+            <Button variant="outline" size="sm" onClick={handleRefresh} className="gap-1.5">
+              <RefreshCw className="h-3.5 w-3.5" />
+              Refresh
+            </Button>
+          </div>
         </div>
 
         {/* Intro */}
@@ -521,45 +572,113 @@ export function MetricsDashboard({ resourceType, resourceName, namespace, podRes
           ) : null}
         </div>
 
-        {/* Usage vs limits (when pod resource provided) */}
+        {/* Resource Allocation — Usage vs Requests vs Limits */}
         {usageVsLimits != null && (
           <div>
             <UiTooltip>
               <TooltipTrigger asChild>
                 <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-1.5 cursor-help">
-                  Usage vs limits
+                  Resource Allocation
                 </h3>
               </TooltipTrigger>
               <TooltipContent side="top" className="max-w-xs">{TOOLTIP_USAGE_VS_LIMITS}</TooltipContent>
             </UiTooltip>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+            {/* Allocation bars with progress */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
               <Card className="rounded-xl border border-border/50 shadow-sm overflow-hidden">
-                <CardContent className="p-4">
+                <CardContent className="p-4 space-y-3">
                   <div className="flex items-center gap-3">
                     <div className="p-2 rounded-lg bg-blue-500/10">
                       <Cpu className="h-5 w-5 text-blue-500" />
                     </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">CPU of limit</p>
-                      <p className="text-2xl font-semibold tabular-nums">{usageVsLimits.cpuPct.toFixed(2)}%</p>
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between mb-1">
+                        <p className="text-sm text-muted-foreground">CPU of limit</p>
+                        <p className="text-sm font-bold tabular-nums">{usageVsLimits.cpuPct.toFixed(1)}%</p>
+                      </div>
+                      <div className="h-2 w-full rounded-full bg-muted/50 overflow-hidden">
+                        <div
+                          className={cn(
+                            'h-full rounded-full transition-all duration-700',
+                            usageVsLimits.cpuPct < 60 ? 'bg-emerald-500' : usageVsLimits.cpuPct < 80 ? 'bg-amber-500' : 'bg-red-500'
+                          )}
+                          style={{ width: `${Math.min(usageVsLimits.cpuPct, 100)}%` }}
+                        />
+                      </div>
                     </div>
                   </div>
+                  <p className="text-xs text-muted-foreground">
+                    {podUsageCpuDisplay} used
+                    {usageVsLimits.cpuPct < 20 ? ' · Well under limit' : usageVsLimits.cpuPct > 80 ? ' · Throttling risk' : ''}
+                  </p>
                 </CardContent>
               </Card>
               <Card className="rounded-xl border border-border/50 shadow-sm overflow-hidden">
-                <CardContent className="p-4">
+                <CardContent className="p-4 space-y-3">
                   <div className="flex items-center gap-3">
                     <div className="p-2 rounded-lg bg-purple-500/10">
                       <HardDrive className="h-5 w-5 text-purple-500" />
                     </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Memory of limit</p>
-                      <p className="text-2xl font-semibold tabular-nums">{usageVsLimits.memPct.toFixed(2)}%</p>
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between mb-1">
+                        <p className="text-sm text-muted-foreground">Memory of limit</p>
+                        <p className="text-sm font-bold tabular-nums">{usageVsLimits.memPct.toFixed(1)}%</p>
+                      </div>
+                      <div className="h-2 w-full rounded-full bg-muted/50 overflow-hidden">
+                        <div
+                          className={cn(
+                            'h-full rounded-full transition-all duration-700',
+                            usageVsLimits.memPct < 60 ? 'bg-emerald-500' : usageVsLimits.memPct < 80 ? 'bg-amber-500' : 'bg-red-500'
+                          )}
+                          style={{ width: `${Math.min(usageVsLimits.memPct, 100)}%` }}
+                        />
+                      </div>
                     </div>
                   </div>
+                  <p className="text-xs text-muted-foreground">
+                    {podUsageMemoryDisplay} used
+                    {usageVsLimits.memPct < 20 ? ' · Well under limit' : usageVsLimits.memPct > 80 ? ' · OOM risk' : ''}
+                  </p>
                 </CardContent>
               </Card>
             </div>
+
+            {/* Container Resources Table */}
+            {podResource?.spec?.containers && podResource.spec.containers.length > 0 && (
+              <Card className="rounded-xl border border-border/50 shadow-sm overflow-hidden">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm">Resources by Container</CardTitle>
+                  <CardDescription>CPU and memory requests and limits configured per container.</CardDescription>
+                </CardHeader>
+                <CardContent className="p-0">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-border/50 bg-muted/30">
+                          <th className="text-left p-3 font-medium text-muted-foreground">Container</th>
+                          <th className="text-right p-3 font-medium text-blue-500">CPU Request</th>
+                          <th className="text-right p-3 font-medium text-blue-600">CPU Limit</th>
+                          <th className="text-right p-3 font-medium text-purple-500">Memory Request</th>
+                          <th className="text-right p-3 font-medium text-purple-600">Memory Limit</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {podResource.spec.containers.map((c) => (
+                          <tr key={c.name} className="border-b border-border/30 last:border-0">
+                            <td className="p-3 font-medium">{c.name}</td>
+                            <td className="p-3 text-right tabular-nums">{c.resources?.requests?.cpu ?? '—'}</td>
+                            <td className="p-3 text-right tabular-nums">{c.resources?.limits?.cpu ?? '—'}</td>
+                            <td className="p-3 text-right tabular-nums">{c.resources?.requests?.memory ?? '—'}</td>
+                            <td className="p-3 text-right tabular-nums">{c.resources?.limits?.memory ?? '—'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </div>
         )}
 
@@ -618,7 +737,7 @@ export function MetricsDashboard({ resourceType, resourceName, namespace, podRes
                           fontSize={10}
                           axisLine={false}
                           tickLine={false}
-                          interval={5}
+                          interval="preserveStartEnd"
                           tick={{ fill: 'hsl(var(--foreground))', fontSize: 10, fontWeight: 500 }}
                         />
                         <YAxis
@@ -687,7 +806,7 @@ export function MetricsDashboard({ resourceType, resourceName, namespace, podRes
                           fontSize={10}
                           axisLine={false}
                           tickLine={false}
-                          interval={5}
+                          interval="preserveStartEnd"
                           tick={{ fill: 'hsl(var(--foreground))', fontSize: 10, fontWeight: 600 }}
                         />
                         <YAxis
@@ -725,6 +844,27 @@ export function MetricsDashboard({ resourceType, resourceName, namespace, podRes
                 </CardContent>
               </Card>
             </div>
+            {/* Quick Stats below overview charts */}
+            {(cpuStats || memStats) && (
+              <div className="grid grid-cols-2 gap-6 mt-4">
+                {cpuStats && (
+                  <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                    <Cpu className="h-3.5 w-3.5 text-blue-500 shrink-0" />
+                    <span>Min <strong className="text-foreground">{cpuStats.min.toFixed(1)}m</strong></span>
+                    <span>Max <strong className="text-foreground">{cpuStats.max.toFixed(1)}m</strong></span>
+                    <span>Avg <strong className="text-foreground">{cpuStats.avg.toFixed(1)}m</strong></span>
+                  </div>
+                )}
+                {memStats && (
+                  <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                    <HardDrive className="h-3.5 w-3.5 text-purple-500 shrink-0" />
+                    <span>Min <strong className="text-foreground">{memStats.min.toFixed(1)}Mi</strong></span>
+                    <span>Max <strong className="text-foreground">{memStats.max.toFixed(1)}Mi</strong></span>
+                    <span>Avg <strong className="text-foreground">{memStats.avg.toFixed(1)}Mi</strong></span>
+                  </div>
+                )}
+              </div>
+            )}
           </TabsContent>
 
           <TabsContent value="cpu" className="mt-4">
@@ -756,7 +896,7 @@ export function MetricsDashboard({ resourceType, resourceName, namespace, podRes
                         fontSize={11}
                         axisLine={false}
                         tickLine={false}
-                        interval={2}
+                        interval="preserveStartEnd"
                         tick={{ fill: 'hsl(var(--foreground))', fontSize: 10, fontWeight: 600 }}
                       />
                       <YAxis
@@ -792,6 +932,22 @@ export function MetricsDashboard({ resourceType, resourceName, namespace, podRes
                 </div>
               </CardContent>
             </Card>
+            {cpuStats && (
+              <div className="grid grid-cols-3 gap-3 mt-3">
+                <div className="rounded-lg border border-border/40 bg-card/50 p-3 text-center">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Min</p>
+                  <p className="text-lg font-bold tabular-nums text-foreground">{cpuStats.min.toFixed(2)}m</p>
+                </div>
+                <div className="rounded-lg border border-border/40 bg-card/50 p-3 text-center">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Max</p>
+                  <p className="text-lg font-bold tabular-nums text-foreground">{cpuStats.max.toFixed(2)}m</p>
+                </div>
+                <div className="rounded-lg border border-border/40 bg-card/50 p-3 text-center">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Avg</p>
+                  <p className="text-lg font-bold tabular-nums text-foreground">{cpuStats.avg.toFixed(2)}m</p>
+                </div>
+              </div>
+            )}
           </TabsContent>
 
           <TabsContent value="memory" className="mt-4">
@@ -823,7 +979,7 @@ export function MetricsDashboard({ resourceType, resourceName, namespace, podRes
                         fontSize={11}
                         axisLine={false}
                         tickLine={false}
-                        interval={2}
+                        interval="preserveStartEnd"
                         tick={{ fill: 'hsl(var(--foreground))', fontSize: 10, fontWeight: 600 }}
                       />
                       <YAxis
@@ -859,24 +1015,57 @@ export function MetricsDashboard({ resourceType, resourceName, namespace, podRes
                 </div>
               </CardContent>
             </Card>
+            {memStats && (
+              <div className="grid grid-cols-3 gap-3 mt-3">
+                <div className="rounded-lg border border-border/40 bg-card/50 p-3 text-center">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Min</p>
+                  <p className="text-lg font-bold tabular-nums text-foreground">{memStats.min.toFixed(2)}Mi</p>
+                </div>
+                <div className="rounded-lg border border-border/40 bg-card/50 p-3 text-center">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Max</p>
+                  <p className="text-lg font-bold tabular-nums text-foreground">{memStats.max.toFixed(2)}Mi</p>
+                </div>
+                <div className="rounded-lg border border-border/40 bg-card/50 p-3 text-center">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Avg</p>
+                  <p className="text-lg font-bold tabular-nums text-foreground">{memStats.avg.toFixed(2)}Mi</p>
+                </div>
+              </div>
+            )}
           </TabsContent>
 
           <TabsContent value="network" className="mt-4">
+            {/* Network Summary Cards */}
+            <div className="grid grid-cols-4 gap-3 mb-4">
+              <div className="rounded-lg border border-border/40 bg-card/50 p-3 text-center">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Total Received</p>
+                <p className="text-lg font-bold tabular-nums text-emerald-500">↓ {totalNetworkIn.toFixed(2)} MB</p>
+              </div>
+              <div className="rounded-lg border border-border/40 bg-card/50 p-3 text-center">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Total Sent</p>
+                <p className="text-lg font-bold tabular-nums text-blue-500">↑ {totalNetworkOut.toFixed(2)} MB</p>
+              </div>
+              <div className="rounded-lg border border-border/40 bg-card/50 p-3 text-center">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Total Traffic</p>
+                <p className="text-lg font-bold tabular-nums text-foreground">{(totalNetworkIn + totalNetworkOut).toFixed(2)} MB</p>
+              </div>
+              <div className="rounded-lg border border-border/40 bg-card/50 p-3 text-center">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Direction</p>
+                <p className="text-sm font-medium text-muted-foreground mt-1">
+                  {totalNetworkIn > totalNetworkOut * 2 ? 'Mostly inbound' : totalNetworkOut > totalNetworkIn * 2 ? 'Mostly outbound' : 'Balanced'}
+                </p>
+              </div>
+            </div>
+
             <Card className="rounded-xl border border-border/50 shadow-sm overflow-hidden">
               <CardHeader className="pb-2">
-                <CardTitle className="text-base">Network I/O</CardTitle>
-                <CardDescription>How much data this pod has sent (outbound) and received (inbound) over the network. Useful for spotting traffic spikes or unusual activity.</CardDescription>
+                <CardTitle className="text-base">Network I/O Over Time</CardTitle>
+                <CardDescription>Inbound and outbound traffic patterns. Monitor for spikes or unusual activity.</CardDescription>
               </CardHeader>
               <CardContent>
                 {metrics.network.length === 0 && (
-                  <>
-                    <p className="text-sm font-semibold text-foreground mb-2 tabular-nums">
-                      Current value: {(totalNetworkIn + totalNetworkOut).toFixed(2)} MB
-                    </p>
-                    <p className="text-xs text-muted-foreground mb-3">
-                      Live value; history will build when data is available.
-                    </p>
-                  </>
+                  <p className="text-xs text-muted-foreground mb-3">
+                    Network data collecting. Charts will appear as history accumulates.
+                  </p>
                 )}
                 <div className="h-80">
                   <ResponsiveContainer width="100%" height="100%">

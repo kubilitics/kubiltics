@@ -216,7 +216,7 @@ func main() {
 		metrics.NewInMemoryMetricsCache(30*time.Second),
 	)
 	_ = service.NewExportService(topologyService)
-	unifiedMetricsService.StartCollector(ctx, 30*time.Second)
+	unifiedMetricsService.StartCollector(ctx, 15*time.Second)
 
 	log.Info("Services initialized")
 

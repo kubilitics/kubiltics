@@ -110,7 +110,7 @@ func (s *UnifiedMetricsService) GetHistory(id models.ResourceIdentity, duration 
 		ResourceType: id.ResourceType,
 		ResourceName: id.ResourceName,
 		Points:       points,
-		IntervalSec:  30,
+		IntervalSec:  15,
 		MaxDuration:  "1h",
 	}
 }
