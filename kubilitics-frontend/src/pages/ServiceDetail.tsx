@@ -78,14 +78,12 @@ function InlinePortForward({
   namespace,
   resourceType,
   baseUrl,
-  clusterId,
 }: {
   ports: Array<{ name?: string; port: number; targetPort?: number | string; protocol?: string; nodePort?: number }>;
   resourceName: string;
   namespace: string;
   resourceType: 'pod' | 'service';
   baseUrl: string;
-  clusterId?: string;
 }) {
   const [selectedPort, setSelectedPort] = useState<number>(ports[0]?.port ?? 0);
   const [localPort, setLocalPort] = useState(String(ports[0]?.port ?? ''));
@@ -94,6 +92,8 @@ function InlinePortForward({
   const forwards = usePortForwardStore((s) => s.forwards);
   const stopAndRemove = usePortForwardStore((s) => s.stopAndRemove);
   const clusterName = useClusterStore((s) => s.activeCluster?.name ?? 'cluster');
+  // Read clusterId directly from store — prop may be stale when tabs array is built
+  const clusterId = useBackendConfigStore((s) => s.currentClusterId);
 
   // Filter to forwards for this resource
   const activeForwards = forwards.filter(
@@ -761,7 +761,6 @@ export default function ServiceDetail() {
           namespace={svcNamespace}
           resourceType="service"
           baseUrl={baseUrl}
-          clusterId={clusterId ?? undefined}
         />
       ),
     },
