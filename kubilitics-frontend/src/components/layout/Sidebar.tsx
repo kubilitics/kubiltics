@@ -30,7 +30,6 @@ import {
   Lock,
   Zap,
   Camera,
-  Puzzle,
   ClipboardList,
   HardDrive as StorageIcon,
   FolderKanban,
@@ -695,7 +694,6 @@ function SidebarContent({
   const isDashboardActive = pathname === '/dashboard';
   const isFleetActive = pathname === '/fleet';
   const isTopologyActive = pathname === '/topology';
-  const isAddOnsActive = pathname.startsWith('/addons');
   const activeProject = useProjectStore((s) => s.activeProject);
   const clearActiveProject = useProjectStore((s) => s.clearActiveProject);
 
@@ -866,34 +864,6 @@ function SidebarContent({
         </AnimatePresence>
       </div>
 
-      {/* Add-ons */}
-      <div className="space-y-1">
-        <NavLink
-          to="/addons"
-          className={cn(
-            "flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-all duration-300 group border h-11",
-            isAddOnsActive
-              ? "bg-white dark:bg-slate-800 text-foreground border-slate-200/60 dark:border-slate-700/40 shadow-apple"
-              : "bg-transparent text-slate-800 dark:text-slate-300 hover:bg-slate-100/60 dark:hover:bg-slate-800/60 border-transparent hover:border-slate-100 dark:hover:border-slate-700/50"
-          )}
-        >
-          <div className={cn(
-            "h-7 w-7 rounded-lg flex items-center justify-center shrink-0 transition-colors",
-            isAddOnsActive
-              ? "bg-purple-100 dark:bg-purple-500/20"
-              : "bg-slate-100/80 dark:bg-slate-800/80 group-hover:bg-slate-200/80 dark:group-hover:bg-slate-700/80"
-          )}>
-            <Puzzle className={cn(
-              "h-4 w-4 transition-colors",
-              isAddOnsActive
-                ? "text-purple-600 dark:text-purple-400"
-                : "text-slate-600 dark:text-slate-300 group-hover:text-slate-800 dark:group-hover:text-slate-100"
-            )} />
-          </div>
-          <span className={cn("font-semibold text-[13px]", isAddOnsActive ? "text-slate-900 dark:text-slate-100" : "text-slate-800 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-slate-100")}>Add-ons</span>
-        </NavLink>
-      </div>
-
       {/* Recent Resources — bottom of scrollable area, non-intrusive */}
       <RecentResources />
 
@@ -904,7 +874,7 @@ function SidebarContent({
 
 // ─── Section Routes for auto-expand ──────────────────────────────────────────
 
-const SECTION_ROUTES = ['/workloads', '/topology', '/addons', ...WORKLOAD_PATHS, ...NETWORKING_PATHS, ...STORAGE_PATHS, ...CLUSTER_PATHS, ...SECURITY_PATHS, ...RESOURCES_PATHS, ...SCALING_PATHS, ...CRD_PATHS, ...ADMISSION_PATHS];
+const SECTION_ROUTES = ['/workloads', '/topology', ...WORKLOAD_PATHS, ...NETWORKING_PATHS, ...STORAGE_PATHS, ...CLUSTER_PATHS, ...SECURITY_PATHS, ...RESOURCES_PATHS, ...SCALING_PATHS, ...CRD_PATHS, ...ADMISSION_PATHS];
 
 // ─── Main Sidebar ────────────────────────────────────────────────────────────
 
@@ -999,7 +969,6 @@ export function Sidebar() {
           <NavItemIconOnly to="/dashboard" icon={LayoutDashboard} label="Dashboard" iconColor="text-blue-600 group-hover:text-blue-700" />
           <NavItemIconOnly to="/fleet" icon={Layers} label="Fleet" iconColor="text-indigo-600 group-hover:text-indigo-700" />
           <NavItemIconOnly to="/topology" icon={Network} label="Topology" iconColor="text-violet-600 group-hover:text-violet-700" />
-          <NavItemIconOnly to="/addons" icon={Puzzle} label="Add-ons" iconColor="text-indigo-600 group-hover:text-indigo-700" />
           <NavItemIconOnly to="/workloads" icon={Cpu} label="Workloads" iconColor="text-amber-600 group-hover:text-amber-700" />
           <div className="w-12 h-px bg-border/50 my-2" />
           <NavItemIconOnly to="/pods" icon={Box} label="Pods" iconColor="text-emerald-600 group-hover:text-emerald-700" />

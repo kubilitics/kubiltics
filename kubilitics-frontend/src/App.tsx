@@ -148,8 +148,9 @@ const LimitRanges = lazy(() => import("./pages/LimitRanges"));
 const LimitRangeDetail = lazy(() => import("./pages/LimitRangeDetail"));
 const PriorityClasses = lazy(() => import("./pages/PriorityClasses"));
 const PriorityClassDetail = lazy(() => import("./pages/PriorityClassDetail"));
-const AddOns = lazy(() => import("./pages/AddOns"));
-const AddOnDetail = lazy(() => import("./pages/AddOnDetail"));
+// Add-ons removed from UI — will be re-introduced with proper reliability plan
+// const AddOns = lazy(() => import("./pages/AddOns"));
+// const AddOnDetail = lazy(() => import("./pages/AddOnDetail"));
 
 // Custom Resources & Admission Control
 const CustomResourceDefinitions = lazy(() => import("./pages/CustomResourceDefinitions"));
@@ -773,9 +774,7 @@ const App = () => (
                         <Route path="/validatingwebhooks" element={<ValidatingWebhooks />} />
                         <Route path="/validatingwebhooks/:name" element={<ValidatingWebhookDetail />} />
 
-                        {/* Add-ons */}
-                        <Route path="/addons" element={<AddOns />} />
-                        <Route path="/addons/:addonId" element={<AddOnDetail />} />
+                        {/* Add-ons — removed from UI, will be re-introduced with reliability plan */}
 
                         {/* 404 */}
                         <Route path="*" element={<NotFound />} />
