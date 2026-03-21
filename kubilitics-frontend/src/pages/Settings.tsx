@@ -52,11 +52,9 @@ interface AISidecarStatus {
 }
 
 export default function Settings() {
-  // Backend config store (consolidated URL state)
-  const {
-    backendBaseUrl,
-    setBackendBaseUrl,
-  } = useBackendConfigStore();
+  // Backend config store — use individual selectors to avoid subscribing to entire store
+  const backendBaseUrl = useBackendConfigStore((s) => s.backendBaseUrl);
+  const setBackendBaseUrl = useBackendConfigStore((s) => s.setBackendBaseUrl);
   const effectiveBackendBaseUrl = useMemo(() => getEffectiveBackendBaseUrl(backendBaseUrl), [backendBaseUrl]);
   const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured());
   const setCurrentClusterId = useBackendConfigStore((s) => s.setCurrentClusterId);
@@ -301,77 +299,92 @@ export default function Settings() {
   };
 
   return (
-    <div className="container max-w-4xl py-10 space-y-8">
-      <div className="relative overflow-hidden rounded-2xl border border-border/50 bg-gradient-to-br from-card via-card to-primary/5 dark:from-slate-900 dark:via-slate-900/80 dark:to-primary/10 p-8 shadow-sm">
-        <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 dark:bg-primary/10 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl" />
-        <div className="relative flex items-center gap-4">
-          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 dark:bg-primary/20 shadow-sm">
-            <SettingsIcon className="h-7 w-7 text-primary" />
+    <div className="container max-w-4xl py-8 space-y-6">
+      {/* ─── Hero Header ─── */}
+      <div className="relative overflow-hidden rounded-2xl border border-border/40 bg-gradient-to-br from-slate-50 via-white to-blue-50/80 dark:from-slate-900 dark:via-slate-900/95 dark:to-blue-950/30 shadow-sm">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-blue-100/40 via-transparent to-transparent dark:from-blue-900/20" />
+        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 via-indigo-500 to-blue-400" />
+        <div className="relative px-8 py-7 flex items-center gap-5">
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 shadow-lg shadow-blue-500/20">
+            <SettingsIcon className="h-6 w-6 text-white" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-foreground">Settings</h1>
-            <p className="text-sm text-muted-foreground mt-0.5">Manage connections, appearance, and application configuration</p>
+            <h1 className="text-xl font-semibold tracking-tight text-foreground">Settings</h1>
+            <p className="text-sm text-muted-foreground mt-0.5">Manage connections, clusters, and application preferences</p>
           </div>
         </div>
       </div>
 
-      <Alert className="border-amber-200/60 bg-amber-50/50 dark:border-amber-500/20 dark:bg-amber-950/30">
-        <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-        <AlertTitle className="text-amber-800 dark:text-amber-300">Caution — Advanced Configuration</AlertTitle>
-        <AlertDescription className="text-amber-700 dark:text-amber-400/80">
-          Changing backend connection endpoints will reload the application. Only modify these if you know what you're doing.
-        </AlertDescription>
-      </Alert>
-
       {/* ─── Clusters ─── */}
-      <Card className="dark:bg-slate-900/50 dark:border-slate-700/50">
-        <CardHeader>
+      <div className="rounded-2xl border border-border/40 bg-card overflow-hidden shadow-sm dark:bg-slate-900/60 dark:border-slate-700/50">
+        <div className="px-6 py-5 border-b border-border/40 dark:border-slate-700/40">
           <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="flex items-center gap-2">
-                <Server className="h-5 w-5" />
-                Clusters
-              </CardTitle>
-              <CardDescription>Manage your connected Kubernetes clusters.</CardDescription>
+            <div className="flex items-center gap-3">
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-50 dark:bg-emerald-900/30">
+                <Server className="h-4.5 w-4.5 text-emerald-600 dark:text-emerald-400" />
+              </div>
+              <div>
+                <h2 className="text-sm font-semibold text-foreground">Clusters</h2>
+                <p className="text-xs text-muted-foreground mt-0.5">{clusters.length} connected cluster{clusters.length !== 1 ? 's' : ''}</p>
+              </div>
             </div>
-            <Button variant="outline" size="sm" onClick={() => navigate('/connect?addCluster=true')}>
-              <Plus className="h-4 w-4 mr-1.5" />
+            <Button variant="outline" size="sm" className="rounded-lg h-8 text-xs" onClick={() => navigate('/connect?addCluster=true')}>
+              <Plus className="h-3.5 w-3.5 mr-1.5" />
               Add Cluster
             </Button>
           </div>
-        </CardHeader>
-        <CardContent>
+        </div>
+        <div className="p-4">
           {clusters.length === 0 ? (
-            <div className="text-center py-8">
-              <Server className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
-              <p className="text-sm text-muted-foreground">No clusters connected</p>
-              <Button className="mt-4" onClick={() => navigate('/connect?addCluster=true')}>
-                <Plus className="h-4 w-4 mr-2" />
+            <div className="text-center py-10">
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-muted/60 mx-auto mb-3">
+                <Server className="h-6 w-6 text-muted-foreground/60" />
+              </div>
+              <p className="text-sm font-medium text-muted-foreground">No clusters connected</p>
+              <p className="text-xs text-muted-foreground/70 mt-1">Connect a Kubernetes cluster to get started</p>
+              <Button size="sm" className="mt-4 rounded-lg" onClick={() => navigate('/connect?addCluster=true')}>
+                <Plus className="h-3.5 w-3.5 mr-1.5" />
                 Connect Cluster
               </Button>
             </div>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-2">
               {clusters.map((cluster) => {
                 const isActive = cluster.id === currentClusterId;
                 return (
                   <div key={cluster.id} className={cn(
-                    "flex items-center justify-between p-4 rounded-xl border transition-colors",
-                    isActive ? "border-primary/30 bg-primary/5" : "border-border hover:border-border/80"
+                    "group flex items-center justify-between px-4 py-3.5 rounded-xl border transition-all duration-150",
+                    isActive
+                      ? "border-blue-200 bg-gradient-to-r from-blue-50/80 to-indigo-50/40 dark:border-blue-800/40 dark:from-blue-950/30 dark:to-indigo-950/20 shadow-sm"
+                      : "border-transparent hover:border-border/60 hover:bg-muted/30"
                   )}>
-                    <div className="flex items-center gap-3 min-w-0 flex-1">
-                      <div className={cn("h-2 w-2 rounded-full shrink-0", isActive ? "bg-primary" : "bg-emerald-500")} />
+                    <div className="flex items-center gap-3.5 min-w-0 flex-1">
+                      <div className={cn(
+                        "flex h-8 w-8 items-center justify-center rounded-lg shrink-0",
+                        isActive ? "bg-blue-100 dark:bg-blue-900/40" : "bg-muted/60 dark:bg-slate-800/60"
+                      )}>
+                        <Server className={cn("h-4 w-4", isActive ? "text-blue-600 dark:text-blue-400" : "text-muted-foreground")} />
+                      </div>
                       <div className="min-w-0">
                         <div className="flex items-center gap-2">
                           <span className="text-sm font-medium truncate">{cluster.name}</span>
-                          {isActive && <span className="text-[10px] font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded uppercase">Current</span>}
+                          {isActive && (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-blue-700 dark:text-blue-300 bg-blue-100 dark:bg-blue-900/50 px-1.5 py-0.5 rounded-md uppercase tracking-wider">
+                              <span className="h-1.5 w-1.5 rounded-full bg-blue-500 animate-pulse" />
+                              Active
+                            </span>
+                          )}
                         </div>
-                        <span className="text-xs text-muted-foreground">{cluster.provider || 'Kubernetes'} · {cluster.node_count ?? 0} node{(cluster.node_count ?? 0) !== 1 ? 's' : ''}</span>
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          <span className="text-xs text-muted-foreground">{cluster.provider || 'Kubernetes'}</span>
+                          <span className="text-muted-foreground/40">·</span>
+                          <span className="text-xs text-muted-foreground">{cluster.node_count ?? 0} node{(cluster.node_count ?? 0) !== 1 ? 's' : ''}</span>
+                        </div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2 shrink-0">
+                    <div className="flex items-center gap-1.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" style={isActive ? { opacity: 1 } : undefined}>
                       {!isActive && (
-                        <Button variant="outline" size="sm" onClick={() => {
+                        <Button variant="outline" size="sm" className="h-7 text-xs rounded-lg" onClick={() => {
                           setCurrentClusterId(cluster.id);
                           setActiveCluster(backendClusterToCluster(cluster));
                           toast.success(`Switched to ${cluster.name}`);
@@ -379,8 +392,8 @@ export default function Settings() {
                           Switch
                         </Button>
                       )}
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => setClusterToRemove(cluster)}>
-                        <Trash2 className="h-4 w-4" />
+                      <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground/50 hover:text-destructive" onClick={() => setClusterToRemove(cluster)}>
+                        <Trash2 className="h-3.5 w-3.5" />
                       </Button>
                     </div>
                   </div>
@@ -388,47 +401,52 @@ export default function Settings() {
               })}
             </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {/* ─── Projects ─── */}
-      <Card className="dark:bg-slate-900/50 dark:border-slate-700/50">
-        <CardHeader>
+      <div className="rounded-2xl border border-border/40 bg-card overflow-hidden shadow-sm dark:bg-slate-900/60 dark:border-slate-700/50">
+        <div className="px-6 py-5 border-b border-border/40 dark:border-slate-700/40">
           <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="flex items-center gap-2">
-                <FolderKanban className="h-5 w-5" />
-                Projects
-              </CardTitle>
-              <CardDescription>Organize workloads into logical groups with governance.</CardDescription>
+            <div className="flex items-center gap-3">
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-violet-50 dark:bg-violet-900/30">
+                <FolderKanban className="h-4.5 w-4.5 text-violet-600 dark:text-violet-400" />
+              </div>
+              <div>
+                <h2 className="text-sm font-semibold text-foreground">Projects</h2>
+                <p className="text-xs text-muted-foreground mt-0.5">Organize workloads into logical groups</p>
+              </div>
             </div>
             <CreateProjectDialog>
-              <Button variant="outline" size="sm">
-                <Plus className="h-4 w-4 mr-1.5" />
+              <Button variant="outline" size="sm" className="rounded-lg h-8 text-xs">
+                <Plus className="h-3.5 w-3.5 mr-1.5" />
                 New Project
               </Button>
             </CreateProjectDialog>
           </div>
-        </CardHeader>
-        <CardContent>
+        </div>
+        <div className="p-4">
           {isProjectsLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-              <span className="ml-2 text-sm text-muted-foreground">Loading projects...</span>
+            <div className="flex items-center justify-center py-10">
+              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground/60" />
+              <span className="ml-2.5 text-sm text-muted-foreground">Loading projects...</span>
             </div>
           ) : projects.length === 0 ? (
-            <div className="text-center py-8">
-              <Focus className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
-              <p className="text-sm text-muted-foreground">No projects yet</p>
+            <div className="text-center py-10">
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-muted/60 mx-auto mb-3">
+                <FolderKanban className="h-6 w-6 text-muted-foreground/60" />
+              </div>
+              <p className="text-sm font-medium text-muted-foreground">No projects yet</p>
+              <p className="text-xs text-muted-foreground/70 mt-1">Create a project to organize cluster workloads</p>
               <CreateProjectDialog>
-                <Button className="mt-4">
-                  <Plus className="h-4 w-4 mr-2" />
-                  New Project
+                <Button size="sm" className="mt-4 rounded-lg">
+                  <Plus className="h-3.5 w-3.5 mr-1.5" />
+                  Create Project
                 </Button>
               </CreateProjectDialog>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {projects.map((project) => (
                 <ProjectCard
                   key={project.id}
@@ -440,72 +458,74 @@ export default function Settings() {
               ))}
             </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
-      <Card className="border-amber-200/40 dark:border-amber-500/20 dark:bg-slate-900/50">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-amber-700 dark:text-amber-400">
-            <AlertTriangle className="h-5 w-5" />
-            Connection Endpoints
-          </CardTitle>
-          <CardDescription>
-            Manage the URL for the Core Backend. <span className="font-medium text-amber-600 dark:text-amber-500">Changing these will reload the app.</span>
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
+      {/* ─── Connection Endpoints ─── */}
+      <div className="rounded-2xl border border-amber-200/50 bg-card overflow-hidden shadow-sm dark:border-amber-800/30 dark:bg-slate-900/60">
+        <div className="px-6 py-5 border-b border-amber-200/40 dark:border-amber-800/20 bg-amber-50/30 dark:bg-amber-950/10">
+          <div className="flex items-center gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-amber-100 dark:bg-amber-900/40">
+              <AlertTriangle className="h-4.5 w-4.5 text-amber-600 dark:text-amber-400" />
+            </div>
+            <div>
+              <h2 className="text-sm font-semibold text-amber-800 dark:text-amber-300">Connection Endpoints</h2>
+              <p className="text-xs text-amber-600/80 dark:text-amber-400/70 mt-0.5">Changing these will reload the application</p>
+            </div>
+          </div>
+        </div>
+        <div className="p-6">
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-              {/* Backend URL */}
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
               <FormField
                 control={form.control}
                 name="backendBaseUrl"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Core Backend URL</FormLabel>
-                    <div className="flex gap-2">
+                    <FormLabel className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Core Backend URL</FormLabel>
+                    <div className="flex gap-2 mt-1.5">
                       <FormControl>
-                        <Input {...field} />
+                        <Input {...field} className="rounded-lg h-10 font-mono text-sm" />
                       </FormControl>
                       <Button
                         type="button"
                         variant="outline"
                         size="icon"
+                        className="h-10 w-10 rounded-lg shrink-0"
                         onClick={() => testConnection('backend')}
                         disabled={!!isTesting}
                       >
                         {isTesting === 'backend' ? (
                           <Loader2 className="h-4 w-4 animate-spin" />
                         ) : connectionStatus.backend === 'success' ? (
-                          <CheckCircle2 className="h-4 w-4 text-green-500" />
+                          <CheckCircle2 className="h-4 w-4 text-emerald-500" />
                         ) : connectionStatus.backend === 'error' ? (
                           <XCircle className="h-4 w-4 text-red-500" />
                         ) : (
-                          <RotateCcw className="h-4 w-4" /> // Using RotateCcw as "Test" icon proxy or verify icon
+                          <RotateCcw className="h-4 w-4" />
                         )}
                       </Button>
                     </div>
-                    <FormDescription>
+                    <FormDescription className="text-xs">
                       The URL where the Kubilitics Core Go backend is running (default port 819).
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-
-              <div className="flex justify-between pt-4">
-                <Button type="button" variant="ghost" onClick={handleReset}>
+              <div className="flex justify-between pt-3 border-t border-border/30">
+                <Button type="button" variant="ghost" size="sm" className="text-xs text-muted-foreground" onClick={handleReset}>
                   Reset to Defaults
                 </Button>
-                <Button type="submit">
-                  <Save className="mr-2 h-4 w-4" />
+                <Button type="submit" size="sm" className="rounded-lg">
+                  <Save className="mr-1.5 h-3.5 w-3.5" />
                   Save Changes
                 </Button>
               </div>
             </form>
           </Form>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {/* ─── Appearance ─── */}
       <AppearanceSection />
@@ -514,144 +534,77 @@ export default function Settings() {
       <KeyboardShortcutsSection />
 
       {isDesktop && (
-        <Card className="dark:bg-slate-900/50 dark:border-slate-700/50">
-          <CardHeader>
-            <CardTitle>Desktop Settings</CardTitle>
-            <CardDescription>
-              Desktop-specific configuration and status information.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            {/* App Version */}
+        <div className="rounded-2xl border border-border/40 bg-card overflow-hidden shadow-sm dark:bg-slate-900/60 dark:border-slate-700/50">
+          <div className="px-6 py-5 border-b border-border/40 dark:border-slate-700/40">
+            <div className="flex items-center gap-3">
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-800/60">
+                <Monitor className="h-4.5 w-4.5 text-slate-600 dark:text-slate-400" />
+              </div>
+              <div>
+                <h2 className="text-sm font-semibold text-foreground">Desktop</h2>
+                <p className="text-xs text-muted-foreground mt-0.5">Desktop-specific configuration and status</p>
+              </div>
+            </div>
+          </div>
+          <div className="p-6 space-y-5">
             {desktopInfo && (
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">App Version</p>
-                    <p className="text-sm">{desktopInfo.app_version}</p>
+              <div className="grid grid-cols-2 gap-4">
+                {[
+                  { label: 'App Version', value: desktopInfo.app_version },
+                  { label: 'Backend Port', value: String(desktopInfo.backend_port) },
+                  ...(desktopInfo.backend_version ? [{ label: 'Backend Version', value: desktopInfo.backend_version }] : []),
+                  ...(desktopInfo.backend_uptime_seconds !== null ? [{ label: 'Backend Uptime', value: formatUptime(desktopInfo.backend_uptime_seconds) }] : []),
+                ].map(({ label, value }) => (
+                  <div key={label} className="rounded-lg border border-border/40 bg-muted/20 px-4 py-3">
+                    <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">{label}</p>
+                    <p className="text-sm font-medium mt-1">{value}</p>
                   </div>
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">Backend Port</p>
-                    <p className="text-sm">{desktopInfo.backend_port}</p>
-                  </div>
-                  {desktopInfo.backend_version && (
-                    <div>
-                      <p className="text-sm font-medium text-muted-foreground">Backend Version</p>
-                      <p className="text-sm">{desktopInfo.backend_version}</p>
-                    </div>
-                  )}
-                  {desktopInfo.backend_uptime_seconds !== null && (
-                    <div>
-                      <p className="text-sm font-medium text-muted-foreground">Backend Uptime</p>
-                      <p className="text-sm">{formatUptime(desktopInfo.backend_uptime_seconds)}</p>
-                    </div>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <p className="text-sm font-medium text-muted-foreground">Kubeconfig Path</p>
-                  <p className="text-sm font-mono break-all">{desktopInfo.kubeconfig_path}</p>
-                </div>
-
-                <div className="space-y-2">
-                  <p className="text-sm font-medium text-muted-foreground">App Data Directory</p>
-                  <p className="text-sm font-mono break-all">{desktopInfo.app_data_dir}</p>
-                </div>
+                ))}
               </div>
             )}
 
-            {/* AI Backend Status */}
-            {aiStatus && (
-              <div className="space-y-2">
-                <p className="text-sm font-medium text-muted-foreground">AI Backend Status</p>
-                <div className="flex items-center gap-2">
-                  <div className={`h-2 w-2 rounded-full ${aiStatus.running ? 'bg-green-500' : aiStatus.available ? 'bg-yellow-500' : 'bg-gray-400'}`} />
-                  <p className="text-sm">
-                    {aiStatus.running
-                      ? `Running on port ${aiStatus.port}`
-                      : aiStatus.available
-                        ? 'Stopped (available)'
-                        : 'Not bundled'}
-                  </p>
-                </div>
+            {desktopInfo && (
+              <div className="space-y-3">
+                {[
+                  { label: 'Kubeconfig Path', value: desktopInfo.kubeconfig_path },
+                  { label: 'App Data Directory', value: desktopInfo.app_data_dir },
+                ].map(({ label, value }) => (
+                  <div key={label} className="rounded-lg border border-border/40 bg-muted/20 px-4 py-3">
+                    <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">{label}</p>
+                    <p className="text-xs font-mono text-foreground/80 mt-1.5 break-all">{value}</p>
+                  </div>
+                ))}
               </div>
             )}
 
             {/* Analytics Consent */}
-            <div className="space-y-2 pt-4 border-t">
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <p className="text-sm font-medium">Analytics & Usage Data</p>
-                  <p className="text-xs text-muted-foreground">
-                    Help improve Kubilitics by sharing anonymous usage data
-                  </p>
-                </div>
-                {analyticsConsent !== null && (
-                  <div className="flex items-center space-x-2">
-                    <span className="text-sm text-muted-foreground">
-                      {analyticsConsent ? 'Enabled' : 'Disabled'}
-                    </span>
-                    <Button
-                      type="button"
-                      variant={analyticsConsent ? "destructive" : "default"}
-                      size="sm"
-                      onClick={() => handleToggleAnalytics(!analyticsConsent)}
-                      disabled={isUpdatingAnalytics}
-                    >
-                      {isUpdatingAnalytics ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : analyticsConsent ? (
-                        'Disable'
-                      ) : (
-                        'Enable'
-                      )}
-                    </Button>
-                  </div>
-                )}
+            <div className="flex items-center justify-between rounded-lg border border-border/40 px-4 py-3.5">
+              <div className="space-y-0.5">
+                <p className="text-sm font-medium">Analytics & Usage Data</p>
+                <p className="text-xs text-muted-foreground">Help improve Kubilitics by sharing anonymous usage data</p>
               </div>
+              {analyticsConsent !== null && (
+                <Switch
+                  checked={analyticsConsent}
+                  onCheckedChange={(checked) => handleToggleAnalytics(checked)}
+                  disabled={isUpdatingAnalytics}
+                />
+              )}
             </div>
 
             {/* Actions */}
-            <div className="flex gap-2 pt-4 border-t">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handleRestartBackend}
-                disabled={isRestarting}
-              >
-                {isRestarting ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Restarting...
-                  </>
-                ) : (
-                  <>
-                    <RefreshCw className="mr-2 h-4 w-4" />
-                    Restart Backend
-                  </>
-                )}
+            <div className="flex gap-2 pt-3 border-t border-border/30">
+              <Button type="button" variant="outline" size="sm" className="rounded-lg text-xs" onClick={handleRestartBackend} disabled={isRestarting}>
+                {isRestarting ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="mr-1.5 h-3.5 w-3.5" />}
+                {isRestarting ? 'Restarting...' : 'Restart Backend'}
               </Button>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handleCheckForUpdates}
-                disabled={isCheckingUpdate}
-              >
-                {isCheckingUpdate ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Checking...
-                  </>
-                ) : (
-                  <>
-                    <Download className="mr-2 h-4 w-4" />
-                    Check for Updates
-                  </>
-                )}
+              <Button type="button" variant="outline" size="sm" className="rounded-lg text-xs" onClick={handleCheckForUpdates} disabled={isCheckingUpdate}>
+                {isCheckingUpdate ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Download className="mr-1.5 h-3.5 w-3.5" />}
+                {isCheckingUpdate ? 'Checking...' : 'Check for Updates'}
               </Button>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       )}
 
       {/* ─── About ─── */}
@@ -659,7 +612,7 @@ export default function Settings() {
 
       {/* Cluster Remove Dialog */}
       <AlertDialog open={!!clusterToRemove} onOpenChange={(open) => !open && setClusterToRemove(null)}>
-        <AlertDialogContent>
+        <AlertDialogContent className="rounded-2xl">
           <AlertDialogHeader>
             <AlertDialogTitle>Remove cluster?</AlertDialogTitle>
             <AlertDialogDescription>
@@ -667,8 +620,8 @@ export default function Settings() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleteClusterMutation.isPending}>Cancel</AlertDialogCancel>
-            <Button variant="destructive" onClick={() => clusterToRemove && deleteClusterMutation.mutate(clusterToRemove)} disabled={deleteClusterMutation.isPending}>
+            <AlertDialogCancel disabled={deleteClusterMutation.isPending} className="rounded-lg">Cancel</AlertDialogCancel>
+            <Button variant="destructive" className="rounded-lg" onClick={() => clusterToRemove && deleteClusterMutation.mutate(clusterToRemove)} disabled={deleteClusterMutation.isPending}>
               {deleteClusterMutation.isPending ? <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Removing...</> : 'Remove'}
             </Button>
           </AlertDialogFooter>
@@ -677,7 +630,7 @@ export default function Settings() {
 
       {/* Project Delete Dialog */}
       <AlertDialog open={!!projectToRemove} onOpenChange={(open) => !open && setProjectToRemove(null)}>
-        <AlertDialogContent>
+        <AlertDialogContent className="rounded-2xl">
           <AlertDialogHeader>
             <AlertDialogTitle>Delete project?</AlertDialogTitle>
             <AlertDialogDescription>
@@ -685,8 +638,8 @@ export default function Settings() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleteProjectMutation.isPending}>Cancel</AlertDialogCancel>
-            <Button variant="destructive" onClick={() => projectToRemove && deleteProjectMutation.mutate(projectToRemove)} disabled={deleteProjectMutation.isPending}>
+            <AlertDialogCancel disabled={deleteProjectMutation.isPending} className="rounded-lg">Cancel</AlertDialogCancel>
+            <Button variant="destructive" className="rounded-lg" onClick={() => projectToRemove && deleteProjectMutation.mutate(projectToRemove)} disabled={deleteProjectMutation.isPending}>
               {deleteProjectMutation.isPending ? <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Deleting...</> : 'Confirm Delete'}
             </Button>
           </AlertDialogFooter>
@@ -717,7 +670,6 @@ function AppearanceSection() {
   const [reduceMotion, setReduceMotion] = useState(false);
 
   useEffect(() => {
-    // Check system preference for reduced motion
     const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
     setReduceMotion(mq.matches);
   }, []);
@@ -729,20 +681,21 @@ function AppearanceSection() {
   };
 
   return (
-    <Card className="dark:bg-slate-900/50 dark:border-slate-700/50">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Palette className="h-5 w-5" />
-          Appearance
-        </CardTitle>
-        <CardDescription>
-          Customize the look and feel of Kubilitics.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        {/* Theme Selection */}
+    <div className="rounded-2xl border border-border/40 bg-card overflow-hidden shadow-sm dark:bg-slate-900/60 dark:border-slate-700/50">
+      <div className="px-6 py-5 border-b border-border/40 dark:border-slate-700/40">
+        <div className="flex items-center gap-3">
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-pink-50 dark:bg-pink-900/30">
+            <Palette className="h-4.5 w-4.5 text-pink-600 dark:text-pink-400" />
+          </div>
+          <div>
+            <h2 className="text-sm font-semibold text-foreground">Appearance</h2>
+            <p className="text-xs text-muted-foreground mt-0.5">Customize the look and feel</p>
+          </div>
+        </div>
+      </div>
+      <div className="p-6 space-y-5">
         <div className="space-y-3">
-          <label className="text-sm font-medium">Theme</label>
+          <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Theme</label>
           <div className="grid grid-cols-3 gap-3">
             {themeOptions.map(({ value, icon: Icon, label }) => (
               <button
@@ -752,36 +705,33 @@ function AppearanceSection() {
                   toast.success(`Theme set to ${label}`);
                 }}
                 className={cn(
-                  'flex flex-col items-center gap-2 rounded-xl border-2 p-4 transition-all press-effect',
+                  'flex flex-col items-center gap-2.5 rounded-xl border-2 p-5 transition-all duration-150',
                   theme === value
-                    ? 'border-primary bg-primary/5 text-primary'
-                    : 'border-border hover:border-primary/40 hover:bg-muted/50 text-muted-foreground'
+                    ? 'border-blue-400 bg-blue-50/60 text-blue-700 shadow-sm dark:border-blue-500/50 dark:bg-blue-950/30 dark:text-blue-300'
+                    : 'border-border/60 hover:border-border hover:bg-muted/40 text-muted-foreground'
                 )}
                 aria-pressed={theme === value}
                 aria-label={`Set theme to ${label}`}
               >
-                <Icon className="h-6 w-6" />
-                <span className="text-sm font-medium">{label}</span>
+                <Icon className="h-5 w-5" />
+                <span className="text-xs font-semibold">{label}</span>
               </button>
             ))}
           </div>
-          <p className="text-xs text-muted-foreground">
+          <p className="text-xs text-muted-foreground/70">
             System theme follows your operating system's light/dark preference.
           </p>
         </div>
 
-        {/* Reduce Motion */}
-        <div className="flex items-center justify-between space-x-2 rounded-lg border p-4">
+        <div className="flex items-center justify-between rounded-lg border border-border/40 px-4 py-3.5">
           <div className="space-y-0.5">
             <div className="text-sm font-medium">Reduce Motion</div>
-            <div className="text-xs text-muted-foreground">
-              Minimize animations for accessibility or preference
-            </div>
+            <div className="text-xs text-muted-foreground">Minimize animations for accessibility</div>
           </div>
           <Switch checked={reduceMotion} onCheckedChange={handleReduceMotion} />
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }
 
@@ -813,25 +763,27 @@ const shortcuts: { category: string; items: { keys: string; description: string 
 
 function KeyboardShortcutsSection() {
   return (
-    <Card className="dark:bg-slate-900/50 dark:border-slate-700/50">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Keyboard className="h-5 w-5" />
-          Keyboard Shortcuts
-        </CardTitle>
-        <CardDescription>
-          Navigate faster with keyboard shortcuts.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-6">
+    <div className="rounded-2xl border border-border/40 bg-card overflow-hidden shadow-sm dark:bg-slate-900/60 dark:border-slate-700/50">
+      <div className="px-6 py-5 border-b border-border/40 dark:border-slate-700/40">
+        <div className="flex items-center gap-3">
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-sky-50 dark:bg-sky-900/30">
+            <Keyboard className="h-4.5 w-4.5 text-sky-600 dark:text-sky-400" />
+          </div>
+          <div>
+            <h2 className="text-sm font-semibold text-foreground">Keyboard Shortcuts</h2>
+            <p className="text-xs text-muted-foreground mt-0.5">Navigate faster with keyboard shortcuts</p>
+          </div>
+        </div>
+      </div>
+      <div className="p-6 space-y-5">
         {shortcuts.map(({ category, items }) => (
-          <div key={category} className="space-y-3">
-            <h4 className="text-sm font-medium text-muted-foreground">{category}</h4>
-            <div className="space-y-2">
+          <div key={category} className="space-y-2">
+            <h4 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">{category}</h4>
+            <div className="rounded-xl border border-border/40 overflow-hidden divide-y divide-border/30">
               {items.map(({ keys, description }) => (
-                <div key={keys} className="flex items-center justify-between rounded-lg border px-4 py-2.5">
-                  <span className="text-sm">{description}</span>
-                  <kbd className="inline-flex items-center gap-1 rounded-md border bg-muted px-2 py-1 text-xs font-mono text-muted-foreground">
+                <div key={keys} className="flex items-center justify-between px-4 py-3 hover:bg-muted/20 transition-colors">
+                  <span className="text-sm text-foreground/90">{description}</span>
+                  <kbd className="inline-flex items-center gap-1 rounded-md border border-border/60 bg-muted/50 px-2 py-1 text-[11px] font-mono text-muted-foreground shadow-sm">
                     {keys}
                   </kbd>
                 </div>
@@ -839,8 +791,8 @@ function KeyboardShortcutsSection() {
             </div>
           </div>
         ))}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }
 
@@ -848,40 +800,39 @@ function KeyboardShortcutsSection() {
 
 function AboutSection() {
   return (
-    <Card className="dark:bg-slate-900/50 dark:border-slate-700/50">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Info className="h-5 w-5" />
-          About Kubilitics
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="grid grid-cols-2 gap-4 text-sm">
-          <div>
-            <p className="font-medium text-muted-foreground">Product</p>
-            <p>Kubilitics — Kubernetes, Made Human</p>
+    <div className="rounded-2xl border border-border/40 bg-card overflow-hidden shadow-sm dark:bg-slate-900/60 dark:border-slate-700/50">
+      <div className="px-6 py-5 border-b border-border/40 dark:border-slate-700/40">
+        <div className="flex items-center gap-3">
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-800/60">
+            <Info className="h-4.5 w-4.5 text-slate-600 dark:text-slate-400" />
           </div>
           <div>
-            <p className="font-medium text-muted-foreground">Version</p>
-            <p>1.0.0</p>
-          </div>
-          <div>
-            <p className="font-medium text-muted-foreground">Platform</p>
-            <p>{typeof __VITE_IS_TAURI_BUILD__ !== 'undefined' && __VITE_IS_TAURI_BUILD__ ? 'Desktop (Tauri)' : 'Browser'}</p>
-          </div>
-          <div>
-            <p className="font-medium text-muted-foreground">License</p>
-            <p>Proprietary</p>
+            <h2 className="text-sm font-semibold text-foreground">About Kubilitics</h2>
+            <p className="text-xs text-muted-foreground mt-0.5">System information</p>
           </div>
         </div>
-        <div className="pt-4 border-t">
-          <p className="text-xs text-muted-foreground leading-relaxed">
-            AI-powered Kubernetes operating system with topology visualization, intelligent
-            investigation, and offline-first desktop experience. Built for platform engineers,
-            SREs, and DevOps teams who want deep visibility into their clusters.
+      </div>
+      <div className="p-6">
+        <div className="grid grid-cols-2 gap-3">
+          {[
+            { label: 'Product', value: 'Kubilitics' },
+            { label: 'Version', value: '1.0.0' },
+            { label: 'Platform', value: typeof __VITE_IS_TAURI_BUILD__ !== 'undefined' && __VITE_IS_TAURI_BUILD__ ? 'Desktop (Tauri)' : 'Browser' },
+            { label: 'License', value: 'Proprietary' },
+          ].map(({ label, value }) => (
+            <div key={label} className="rounded-lg border border-border/40 bg-muted/20 px-4 py-3">
+              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">{label}</p>
+              <p className="text-sm font-medium mt-1">{value}</p>
+            </div>
+          ))}
+        </div>
+        <div className="mt-4 pt-4 border-t border-border/30">
+          <p className="text-xs text-muted-foreground/80 leading-relaxed">
+            Kubernetes operating system with topology visualization, intelligent investigation,
+            and offline-first desktop experience. Built for platform engineers, SREs, and DevOps teams.
           </p>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }
