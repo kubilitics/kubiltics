@@ -26,11 +26,11 @@ export function DetailRow({
 }: DetailRowProps) {
   const content = (
     <div className={cn('flex items-center justify-between gap-4 text-sm', className)}>
-      <span className="flex items-center gap-2 text-muted-foreground shrink-0">
+      <span className="flex items-center gap-2 text-foreground/60 font-medium shrink-0">
         {Icon && <Icon className="h-4 w-4" />}
         {label}
       </span>
-      <span className="font-medium text-right break-all min-w-0">{value}</span>
+      <span className="font-semibold text-foreground text-right break-all min-w-0 truncate max-w-[60%]">{value}</span>
     </div>
   );
 
@@ -40,11 +40,11 @@ export function DetailRow({
         <TooltipTrigger asChild>
           {tooltipOnValue ? (
             <div className={cn('flex items-center justify-between gap-4 text-sm', className)}>
-              <span className="flex items-center gap-2 text-muted-foreground shrink-0">
+              <span className="flex items-center gap-2 text-foreground/60 font-medium shrink-0">
                 {Icon && <Icon className="h-4 w-4" />}
                 {label}
               </span>
-              <span className="font-medium text-right break-all min-w-0 cursor-help underline decoration-dotted decoration-muted-foreground underline-offset-2">
+              <span className="font-semibold text-foreground text-right break-all min-w-0 truncate max-w-[60%] cursor-help underline decoration-dotted decoration-muted-foreground underline-offset-2">
                 {value}
               </span>
             </div>

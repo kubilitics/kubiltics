@@ -86,25 +86,25 @@ export function ResourceOverviewMetadata({
         <SectionCard icon={Info} title="Metadata" tooltip="Name, namespace, UID, created, resource version">
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 text-sm">
             <div>
-              <p className="text-muted-foreground mb-1">Name</p>
+              <p className="text-foreground/60 font-medium text-xs uppercase tracking-wide mb-1">Name</p>
               <p className="font-mono truncate" title={metadata.name}>{metadata.name ?? '—'}</p>
             </div>
             <div>
-              <p className="text-muted-foreground mb-1">Namespace</p>
+              <p className="text-foreground/60 font-medium text-xs uppercase tracking-wide mb-1">Namespace</p>
               <p className="font-mono truncate" title={metadata.namespace ?? 'Cluster-scoped'}>
                 {metadata.namespace ?? '—'}
               </p>
             </div>
             <div>
-              <p className="text-muted-foreground mb-1">UID</p>
+              <p className="text-foreground/60 font-medium text-xs uppercase tracking-wide mb-1">UID</p>
               <p className="font-mono text-xs truncate" title={metadata.uid}>{metadata.uid ?? '—'}</p>
             </div>
             <div>
-              <p className="text-muted-foreground mb-1">Created</p>
+              <p className="text-foreground/60 font-medium text-xs uppercase tracking-wide mb-1">Created</p>
               <p className="font-mono text-xs truncate" title={metadata.creationTimestamp ?? ''}>{createdDisplay}</p>
             </div>
             <div>
-              <p className="text-muted-foreground mb-1">Resource Version</p>
+              <p className="text-foreground/60 font-medium text-xs uppercase tracking-wide mb-1">Resource Version</p>
               <p className="font-mono text-xs truncate" title={metadata.resourceVersion ?? ''}>
                 {metadata.resourceVersion ?? '—'}
               </p>

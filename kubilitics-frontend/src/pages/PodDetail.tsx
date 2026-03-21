@@ -677,7 +677,7 @@ export default function PodDetail() {
                     <p className="text-muted-foreground mb-1">Host IP</p>
                     <p className="font-mono">{pod.status?.hostIP || '-'}</p>
                   </div>
-                  <DetailRow label="Node" value={pod.spec?.nodeName ? <Button variant="link" className="h-auto p-0 font-mono" onClick={() => navigate(`/nodes/${pod.spec?.nodeName}`)}>{pod.spec?.nodeName}</Button> : '-'} />
+                  <DetailRow label="Node" value={pod.spec?.nodeName ? <Button variant="link" className="h-auto p-0 font-mono truncate max-w-[240px]" title={pod.spec?.nodeName} onClick={() => navigate(`/nodes/${pod.spec?.nodeName}`)}>{pod.spec?.nodeName}</Button> : '-'} />
                   <DetailRow label="QoS Class" value={<Badge variant="outline">{pod.status?.qosClass || '-'}</Badge>} tooltip={pod.status?.qosClass ? TOOLTIP_QOS[pod.status.qosClass] ?? undefined : undefined} />
                   <DetailRow label="Service Account" value={<span className="font-mono text-xs">{pod.spec?.serviceAccountName || 'default'}</span>} />
                   <DetailRow label="Restart Policy" value={pod.spec?.restartPolicy || 'Always'} tooltip={TOOLTIP_RESTART_POLICY} />
