@@ -209,14 +209,20 @@ func main() {
 	logsService := service.NewLogsService(clusterService)
 	eventsService := service.NewEventsService(clusterService)
 	metricsService := service.NewMetricsService(clusterService)
+	metricsProvider := metrics.NewMetricsServerProvider()
 	unifiedMetricsService := service.NewUnifiedMetricsService(
 		clusterService,
-		metrics.NewMetricsServerProvider(),
+		metricsProvider,
 		metrics.NewControllerMetricsResolver(),
-		metrics.NewInMemoryMetricsCache(30*time.Second),
+		metrics.NewInMemoryMetricsCache(10*time.Second),
+		repo,
 	)
 	_ = service.NewExportService(topologyService)
 	unifiedMetricsService.StartCollector(ctx, 15*time.Second)
+
+	// Start persistent metrics collector (stores ALL pod metrics to SQLite every 30s)
+	metricsCollector := service.NewMetricsCollector(clusterService, metricsProvider, repo)
+	metricsCollector.Start(ctx)
 
 	log.Info("Services initialized")
 
