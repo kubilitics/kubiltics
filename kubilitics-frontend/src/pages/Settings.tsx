@@ -316,11 +316,12 @@ export default function Settings() {
       </div>
 
       {/* ─── Clusters ─── */}
-      <div className="rounded-2xl border border-border/40 bg-card overflow-hidden shadow-sm dark:bg-slate-900/60 dark:border-slate-700/50">
-        <div className="px-6 py-5 border-b border-border/40 dark:border-slate-700/40">
+      <div className="rounded-2xl border border-emerald-200/60 bg-card overflow-hidden shadow-sm dark:bg-slate-900/60 dark:border-emerald-800/30">
+        <div className="absolute top-0 left-0 right-0 h-0.5 bg-emerald-400/60 rounded-t-2xl" />
+        <div className="px-6 py-5 border-b border-emerald-100/60 bg-gradient-to-r from-emerald-50/40 to-transparent dark:border-emerald-900/20 dark:from-emerald-950/20">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-50 dark:bg-emerald-900/30">
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-100 dark:bg-emerald-900/40 shadow-sm shadow-emerald-200/50 dark:shadow-none">
                 <Server className="h-4.5 w-4.5 text-emerald-600 dark:text-emerald-400" />
               </div>
               <div>
@@ -356,7 +357,7 @@ export default function Settings() {
                     "group flex items-center justify-between px-4 py-3.5 rounded-xl border transition-all duration-150",
                     isActive
                       ? "border-blue-200 bg-gradient-to-r from-blue-50/80 to-indigo-50/40 dark:border-blue-800/40 dark:from-blue-950/30 dark:to-indigo-950/20 shadow-sm"
-                      : "border-transparent hover:border-border/60 hover:bg-muted/30"
+                      : "border-border/40 bg-muted/10 hover:bg-muted/30 dark:border-slate-700/40"
                   )}>
                     <div className="flex items-center gap-3.5 min-w-0 flex-1">
                       <div className={cn(
@@ -382,9 +383,9 @@ export default function Settings() {
                         </div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-1.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" style={isActive ? { opacity: 1 } : undefined}>
+                    <div className="flex items-center gap-1.5 shrink-0">
                       {!isActive && (
-                        <Button variant="outline" size="sm" className="h-7 text-xs rounded-lg" onClick={() => {
+                        <Button variant="outline" size="sm" className="h-7 text-xs rounded-lg border-blue-200 text-blue-700 hover:bg-blue-50 dark:border-blue-800 dark:text-blue-300 dark:hover:bg-blue-950/40" onClick={() => {
                           setCurrentClusterId(cluster.id);
                           setActiveCluster(backendClusterToCluster(cluster));
                           toast.success(`Switched to ${cluster.name}`);
@@ -405,11 +406,11 @@ export default function Settings() {
       </div>
 
       {/* ─── Projects ─── */}
-      <div className="rounded-2xl border border-border/40 bg-card overflow-hidden shadow-sm dark:bg-slate-900/60 dark:border-slate-700/50">
-        <div className="px-6 py-5 border-b border-border/40 dark:border-slate-700/40">
+      <div className="rounded-2xl border border-violet-200/60 bg-card overflow-hidden shadow-sm dark:bg-slate-900/60 dark:border-violet-800/30">
+        <div className="px-6 py-5 border-b border-violet-100/60 bg-gradient-to-r from-violet-50/40 to-transparent dark:border-violet-900/20 dark:from-violet-950/20">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-violet-50 dark:bg-violet-900/30">
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-violet-100 dark:bg-violet-900/40 shadow-sm shadow-violet-200/50 dark:shadow-none">
                 <FolderKanban className="h-4.5 w-4.5 text-violet-600 dark:text-violet-400" />
               </div>
               <div>
@@ -681,10 +682,10 @@ function AppearanceSection() {
   };
 
   return (
-    <div className="rounded-2xl border border-border/40 bg-card overflow-hidden shadow-sm dark:bg-slate-900/60 dark:border-slate-700/50">
-      <div className="px-6 py-5 border-b border-border/40 dark:border-slate-700/40">
+    <div className="rounded-2xl border border-pink-200/60 bg-card overflow-hidden shadow-sm dark:bg-slate-900/60 dark:border-pink-800/30">
+      <div className="px-6 py-5 border-b border-pink-100/60 bg-gradient-to-r from-pink-50/40 to-transparent dark:border-pink-900/20 dark:from-pink-950/20">
         <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-pink-50 dark:bg-pink-900/30">
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-pink-100 dark:bg-pink-900/40 shadow-sm shadow-pink-200/50 dark:shadow-none">
             <Palette className="h-4.5 w-4.5 text-pink-600 dark:text-pink-400" />
           </div>
           <div>
@@ -763,10 +764,10 @@ const shortcuts: { category: string; items: { keys: string; description: string 
 
 function KeyboardShortcutsSection() {
   return (
-    <div className="rounded-2xl border border-border/40 bg-card overflow-hidden shadow-sm dark:bg-slate-900/60 dark:border-slate-700/50">
-      <div className="px-6 py-5 border-b border-border/40 dark:border-slate-700/40">
+    <div className="rounded-2xl border border-sky-200/60 bg-card overflow-hidden shadow-sm dark:bg-slate-900/60 dark:border-sky-800/30">
+      <div className="px-6 py-5 border-b border-sky-100/60 bg-gradient-to-r from-sky-50/40 to-transparent dark:border-sky-900/20 dark:from-sky-950/20">
         <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-sky-50 dark:bg-sky-900/30">
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-sky-100 dark:bg-sky-900/40 shadow-sm shadow-sky-200/50 dark:shadow-none">
             <Keyboard className="h-4.5 w-4.5 text-sky-600 dark:text-sky-400" />
           </div>
           <div>
@@ -800,11 +801,11 @@ function KeyboardShortcutsSection() {
 
 function AboutSection() {
   return (
-    <div className="rounded-2xl border border-border/40 bg-card overflow-hidden shadow-sm dark:bg-slate-900/60 dark:border-slate-700/50">
-      <div className="px-6 py-5 border-b border-border/40 dark:border-slate-700/40">
+    <div className="rounded-2xl border border-indigo-200/50 bg-card overflow-hidden shadow-sm dark:bg-slate-900/60 dark:border-indigo-800/30">
+      <div className="px-6 py-5 border-b border-indigo-100/50 bg-gradient-to-r from-indigo-50/30 to-transparent dark:border-indigo-900/20 dark:from-indigo-950/15">
         <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-800/60">
-            <Info className="h-4.5 w-4.5 text-slate-600 dark:text-slate-400" />
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-100 dark:bg-indigo-900/40 shadow-sm shadow-indigo-200/50 dark:shadow-none">
+            <Info className="h-4.5 w-4.5 text-indigo-600 dark:text-indigo-400" />
           </div>
           <div>
             <h2 className="text-sm font-semibold text-foreground">About Kubilitics</h2>
