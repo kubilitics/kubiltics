@@ -5,11 +5,14 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"log/slog"
 	"time"
 
+	"github.com/kubilitics/kubilitics-backend/internal/k8s"
 	"github.com/kubilitics/kubilitics-backend/internal/metrics"
 	"github.com/kubilitics/kubilitics-backend/internal/repository"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 const (
@@ -97,16 +100,26 @@ func (mc *MetricsCollector) collectAll(ctx context.Context) {
 			continue
 		}
 
+		// Best-effort: fetch per-node network stats from kubelet
+		netStats := mc.fetchNetworkStats(ctx, client)
+
 		rows := make([]repository.MetricsHistoryRow, 0, len(podMetrics))
 		for _, pm := range podMetrics {
-			rows = append(rows, repository.MetricsHistoryRow{
+			row := repository.MetricsHistoryRow{
 				ClusterID: cluster.ID,
 				Namespace: pm.Namespace,
 				PodName:   pm.Name,
 				Timestamp: now,
 				CPUMilli:  pm.CPUMilli,
 				MemoryMiB: pm.MemoryMiB,
-			})
+			}
+			// Attach network stats if available
+			key := pm.Namespace + "/" + pm.Name
+			if ns, ok := netStats[key]; ok {
+				row.NetworkRx = ns.rx
+				row.NetworkTx = ns.tx
+			}
+			rows = append(rows, row)
 		}
 
 		if err := mc.repo.InsertMetricsHistory(ctx, rows); err != nil {
@@ -119,6 +132,60 @@ func (mc *MetricsCollector) collectAll(ctx context.Context) {
 	if totalPods > 0 {
 		slog.Debug("metrics collected", "pods", totalPods)
 	}
+}
+
+type podNetStats struct {
+	rx, tx int64
+}
+
+// fetchNetworkStats gets network rx/tx for all pods by calling kubelet stats/summary per node.
+func (mc *MetricsCollector) fetchNetworkStats(ctx context.Context, client *k8s.Client) map[string]podNetStats {
+	result := make(map[string]podNetStats)
+	nodes, err := client.Clientset.CoreV1().Nodes().List(ctx, metav1.ListOptions{})
+	if err != nil {
+		return result
+	}
+	for _, node := range nodes.Items {
+		statsCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+		raw, err := client.Clientset.CoreV1().RESTClient().Get().
+			AbsPath("/api/v1/nodes/" + node.Name + "/proxy/stats/summary").
+			DoRaw(statsCtx)
+		cancel()
+		if err != nil {
+			continue
+		}
+		var summary struct {
+			Pods []struct {
+				PodRef struct {
+					Name      string `json:"name"`
+					Namespace string `json:"namespace"`
+				} `json:"podRef"`
+				Network struct {
+					RxBytes    int64 `json:"rxBytes"`
+					TxBytes    int64 `json:"txBytes"`
+					Interfaces []struct {
+						RxBytes int64 `json:"rxBytes"`
+						TxBytes int64 `json:"txBytes"`
+					} `json:"interfaces"`
+				} `json:"network"`
+			} `json:"pods"`
+		}
+		if err := json.Unmarshal(raw, &summary); err != nil {
+			continue
+		}
+		for _, pod := range summary.Pods {
+			rx := pod.Network.RxBytes
+			tx := pod.Network.TxBytes
+			if rx == 0 && tx == 0 {
+				for _, iface := range pod.Network.Interfaces {
+					rx += iface.RxBytes
+					tx += iface.TxBytes
+				}
+			}
+			result[pod.PodRef.Namespace+"/"+pod.PodRef.Name] = podNetStats{rx: rx, tx: tx}
+		}
+	}
+	return result
 }
 
 func (mc *MetricsCollector) purgeOld(ctx context.Context) {

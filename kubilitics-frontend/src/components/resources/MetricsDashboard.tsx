@@ -269,16 +269,18 @@ export function MetricsDashboard({ resourceType, resourceName, namespace, podRes
 
   const cpuDomainMax = useMemo(() => {
     if (!metrics?.cpu?.length) return CPU_MIN_RANGE;
-    const values = metrics.cpu.map(d => d.value).filter(v => typeof v === 'number' && !isNaN(v));
+    // Filter out obviously bogus values (> 100 cores = 100000m is unrealistic for a single pod)
+    const values = metrics.cpu.map(d => d.value).filter(v => typeof v === 'number' && !isNaN(v) && v >= 0 && v < 100000);
     const maxVal = values.length > 0 ? Math.max(...values) : 1;
-    return Math.max(maxVal * 1.1, CPU_MIN_RANGE);
+    return Math.max(maxVal * 1.2, CPU_MIN_RANGE);
   }, [metrics?.cpu]);
 
   const memoryDomainMax = useMemo(() => {
     if (!metrics?.memory?.length) return MEMORY_MIN_RANGE;
-    const values = metrics.memory.map(d => d.value).filter(v => typeof v === 'number' && !isNaN(v));
+    // Filter out bogus values (> 100Gi = 102400Mi is unrealistic for a single pod)
+    const values = metrics.memory.map(d => d.value).filter(v => typeof v === 'number' && !isNaN(v) && v >= 0 && v < 102400);
     const maxVal = values.length > 0 ? Math.max(...values) : 1;
-    return Math.max(maxVal * 1.1, MEMORY_MIN_RANGE);
+    return Math.max(maxVal * 1.2, MEMORY_MIN_RANGE);
   }, [metrics?.memory]);
 
   // Derived values used only when metrics is non-null; computed here so hook order is fixed.
