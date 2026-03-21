@@ -392,52 +392,7 @@ export function MetricsDashboard({ resourceType, resourceName, namespace, podRes
         animate={{ opacity: 1 }}
         className="space-y-6"
       >
-        <div className="flex items-center justify-between">
-          {/* Time range selector */}
-          <div className="flex items-center gap-1 bg-muted/30 rounded-lg p-0.5">
-            {TIME_RANGES.map((r) => (
-              <button
-                key={r.value}
-                onClick={() => setTimeRange(r.value)}
-                className={cn(
-                  'px-3 py-1 text-xs font-medium rounded-md transition-all duration-150',
-                  timeRange === r.value
-                    ? 'bg-primary text-primary-foreground shadow-sm'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
-                )}
-              >
-                {r.label}
-              </button>
-            ))}
-          </div>
-
-          <div className="flex items-center gap-2">
-            {/* Data point count indicator */}
-            <Badge variant="outline" className="gap-1.5 tabular-nums">
-              <Activity className="h-3 w-3" />
-              {historyPointCount > 0 ? `${historyPointCount} points` : 'Collecting...'}
-            </Badge>
-            <Button variant="outline" size="sm" onClick={handleRefresh} className="gap-1.5">
-              <RefreshCw className="h-3.5 w-3.5" />
-              Refresh
-            </Button>
-          </div>
-        </div>
-
-        {/* Intro */}
-        <UiTooltip>
-          <TooltipTrigger asChild>
-            <p className="text-sm text-muted-foreground flex items-center gap-2 cursor-help">
-              <Info className="h-4 w-4 shrink-0" />
-              {resourceType === 'node'
-                ? 'Node usage is CPU and memory from the Metrics Server. Charts show the same data over time when available.'
-                : resourceType !== 'pod'
-                  ? 'Usage is aggregated from all pods. Charts show total CPU and memory.'
-                  : 'Live CPU and memory from Metrics Server. Usage vs limits shows how close each container is to its resource boundaries. Charts show real historical data collected every 30 seconds.'}
-            </p>
-          </TooltipTrigger>
-          <TooltipContent side="top" className="max-w-sm">{TOOLTIP_METRICS_LIST_VS_DETAIL}</TooltipContent>
-        </UiTooltip>
+        {/* No separate header — time range is integrated into chart tabs below */}
 
         {/* Usage (pod single / deployment aggregated) */}
         <div>
@@ -678,14 +633,45 @@ export function MetricsDashboard({ resourceType, resourceName, namespace, podRes
           </div>
         )}
 
-        {/* Charts */}
+        {/* Charts with integrated time range selector */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="bg-muted/50 p-1 border border-border/50 shadow-sm mb-2 h-11">
-            <TabsTrigger value="overview" className="px-5 py-2 data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-primary transition-all font-semibold text-xs">Overview</TabsTrigger>
-            <TabsTrigger value="cpu" className="px-5 py-2 data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-primary transition-all font-semibold text-xs">CPU</TabsTrigger>
-            <TabsTrigger value="memory" className="px-5 py-2 data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-primary transition-all font-semibold text-xs">Memory</TabsTrigger>
-            <TabsTrigger value="network" className="px-5 py-2 data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-primary transition-all font-semibold text-xs">Network</TabsTrigger>
-          </TabsList>
+          <div className="flex items-center justify-between gap-3 mb-3">
+            {/* Chart type tabs */}
+            <TabsList className="bg-muted/50 p-1 border border-border/50 shadow-sm h-9">
+              <TabsTrigger value="overview" className="px-4 py-1.5 data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-primary transition-all font-semibold text-xs">Overview</TabsTrigger>
+              <TabsTrigger value="cpu" className="px-4 py-1.5 data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-primary transition-all font-semibold text-xs">CPU</TabsTrigger>
+              <TabsTrigger value="memory" className="px-4 py-1.5 data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-primary transition-all font-semibold text-xs">Memory</TabsTrigger>
+              <TabsTrigger value="network" className="px-4 py-1.5 data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-primary transition-all font-semibold text-xs">Network</TabsTrigger>
+            </TabsList>
+
+            {/* Time range + controls — right-aligned, same row */}
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-0.5 bg-muted/30 rounded-lg p-0.5">
+                {TIME_RANGES.map((r) => (
+                  <button
+                    key={r.value}
+                    onClick={() => setTimeRange(r.value)}
+                    className={cn(
+                      'px-2.5 py-1 text-[11px] font-medium rounded-md transition-all duration-150',
+                      timeRange === r.value
+                        ? 'bg-primary text-primary-foreground shadow-sm'
+                        : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                    )}
+                  >
+                    {r.label}
+                  </button>
+                ))}
+              </div>
+              <Badge variant="outline" className="gap-1 tabular-nums text-[10px] h-7">
+                <Activity className="h-3 w-3" />
+                {historyPointCount > 0 ? `${historyPointCount} pts` : '...'}
+              </Badge>
+              <Button variant="outline" size="sm" onClick={handleRefresh} className="gap-1 h-7 text-[11px]">
+                <RefreshCw className="h-3 w-3" />
+                Refresh
+              </Button>
+            </div>
+          </div>
 
           <TabsContent value="overview" className="mt-4">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
