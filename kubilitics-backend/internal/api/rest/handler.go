@@ -316,6 +316,7 @@ func SetupRoutes(router *mux.Router, h *Handler) {
 
 	// Metrics routes: unified summary first (resource-agnostic), then legacy per-resource
 	router.Handle("/clusters/{clusterId}/metrics/summary", h.wrapWithRBAC(h.GetMetricsSummary, auth.RoleViewer)).Methods("GET")
+	router.Handle("/clusters/{clusterId}/metrics/history", h.wrapWithRBAC(h.GetMetricsHistory, auth.RoleViewer)).Methods("GET")
 	router.Handle("/clusters/{clusterId}/metrics", h.wrapWithRBAC(h.GetClusterMetrics, auth.RoleViewer)).Methods("GET")
 	router.Handle("/clusters/{clusterId}/metrics/nodes/{nodeName}", h.wrapWithRBAC(h.GetNodeMetrics, auth.RoleViewer)).Methods("GET")
 	router.Handle("/clusters/{clusterId}/metrics/{namespace}/deployment/{name}", h.wrapWithRBAC(h.GetDeploymentMetrics, auth.RoleViewer)).Methods("GET")

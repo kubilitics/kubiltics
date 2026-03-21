@@ -23,9 +23,10 @@ import {
 } from 'recharts';
 import { cn } from '@/lib/utils';
 
-const TOOLTIP_CPU_UNIT = 'CPU usage in millicores (m). 1000m = 1 full CPU core. A pod using 50m is using 5% of one core. The chart shows how usage changes over time.';
-const TOOLTIP_MEMORY_UNIT = 'Memory (RAM) usage in MiB. 1 MiB = ~1 MB. The chart shows how memory usage changes over time. Steady growth may indicate a memory leak.';
+const TOOLTIP_CPU_UNIT = 'Processing power over time. 1000m = 1 CPU core. Spikes may indicate heavy computation or request surges.';
+const TOOLTIP_MEMORY_UNIT = 'RAM allocation over time. Steady growth may indicate a memory leak. Sudden drops typically mean a pod restart.';
 import { useMetricsSummary, type MetricsSummaryResourceType } from '@/hooks/useMetricsSummary';
+import { useMetricsHistory } from '@/hooks/useMetricsHistory';
 import { useBackendConfigStore } from '@/stores/backendConfigStore';
 import {
   TOOLTIP_METRICS_CPU_USAGE,
@@ -146,66 +147,59 @@ export function MetricsDashboard({ resourceType, resourceName, namespace, podRes
 
   const summary = queryResult?.summary;
 
-  /** Chart data from unified summary. Generates high-fidelity mock history if only current point exists. */
+  // Fetch real history from backend ring buffer
+  const { data: historyResult } = useMetricsHistory(summaryType ?? 'pod', namespace, resourceName, {
+    enabled: !!summaryType && !!resourceName && (resourceType === 'node' || !!namespace),
+    duration: '1h',
+  });
+
+  /** Chart data: uses real history when available, falls back to current-point-only. */
   const resourceMetrics = useMemo<ResourceMetrics | null>(() => {
     if (!summary) return null;
     const cpuVal = parseCPUToMillicores(summary.total_cpu);
     const memVal = parseMemoryToBytes(summary.total_memory) / (1024 * 1024);
+    const historyPoints = historyResult?.points ?? [];
 
-    // Generate realistic history if we only have the current snapshot
-    const points = 30;
-    const cpuPoints: MetricDataPoint[] = [];
-    const memPoints: MetricDataPoint[] = [];
-    const now = new Date();
+    let cpuPoints: MetricDataPoint[];
+    let memPoints: MetricDataPoint[];
 
-    for (let i = points - 1; i >= 0; i--) {
-      const time = new Date(now.getTime() - i * 30 * 1000); // 30s intervals
-      const timeStr = time.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-
-      if (i === 0) {
-        cpuPoints.push({ time: timeStr, value: cpuVal });
-        memPoints.push({ time: timeStr, value: memVal });
-      } else {
-        // High-fidelity "Realistic" mock: jiggle around the current value with some trend
-        const jiggle = (Math.random() - 0.5) * (cpuVal * 0.1);
-        const cpuMock = Math.max(0.1, cpuVal + jiggle + Math.sin(i * 0.5) * (cpuVal * 0.05));
-
-        const memJiggle = (Math.random() - 0.5) * (memVal * 0.02);
-        const memMock = Math.max(1, memVal + memJiggle);
-
-        cpuPoints.push({ time: timeStr, value: cpuMock });
-        memPoints.push({ time: timeStr, value: memMock });
-      }
+    if (historyPoints.length >= 2) {
+      // Use real history data
+      cpuPoints = historyPoints.map((p) => ({
+        time: new Date(p.ts * 1000).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+        value: p.cpu_milli,
+      }));
+      memPoints = historyPoints.map((p) => ({
+        time: new Date(p.ts * 1000).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+        value: p.memory_mib,
+      }));
+    } else {
+      // Only current point available — show single data point (no fake data)
+      const timeStr = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+      cpuPoints = [{ time: timeStr, value: cpuVal }];
+      memPoints = [{ time: timeStr, value: memVal }];
     }
 
-    // Network I/O from kubelet stats/summary (cumulative bytes → MB)
+    // Network I/O
     const rxMB = (summary.total_network_rx ?? 0) / (1024 * 1024);
     const txMB = (summary.total_network_tx ?? 0) / (1024 * 1024);
     const networkPoints: { time: string; in: number; out: number }[] = [];
-    if (rxMB > 0 || txMB > 0) {
-      for (let i = points - 1; i >= 0; i--) {
-        const time = new Date(now.getTime() - i * 30 * 1000);
-        const timeStr = time.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-        if (i === 0) {
-          networkPoints.push({ time: timeStr, in: rxMB, out: txMB });
-        } else {
-          const rxJiggle = (Math.random() - 0.5) * (rxMB * 0.02);
-          const txJiggle = (Math.random() - 0.5) * (txMB * 0.02);
-          networkPoints.push({
-            time: timeStr,
-            in: Math.max(0, rxMB + rxJiggle),
-            out: Math.max(0, txMB + txJiggle),
-          });
-        }
+    if (historyPoints.length >= 2) {
+      for (const p of historyPoints) {
+        const timeStr = new Date(p.ts * 1000).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+        networkPoints.push({
+          time: timeStr,
+          in: (p.network_rx ?? 0) / (1024 * 1024),
+          out: (p.network_tx ?? 0) / (1024 * 1024),
+        });
       }
+    } else if (rxMB > 0 || txMB > 0) {
+      const timeStr = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+      networkPoints.push({ time: timeStr, in: rxMB, out: txMB });
     }
 
-    return {
-      cpu: cpuPoints,
-      memory: memPoints,
-      network: networkPoints,
-    };
-  }, [summary]);
+    return { cpu: cpuPoints, memory: memPoints, network: networkPoints };
+  }, [summary, historyResult]);
 
   useEffect(() => {
     if (resourceType === 'cluster') {
@@ -392,7 +386,7 @@ export function MetricsDashboard({ resourceType, resourceName, namespace, podRes
                 ? 'Node usage is CPU and memory from the Metrics Server. Charts show the same data over time when available.'
                 : resourceType !== 'pod'
                   ? 'Usage is aggregated from all pods. Charts show total CPU and memory.'
-                  : 'Pod usage (same as list) is raw CPU and memory from the cluster. Usage vs limits shows how much of each container\'s limit is used. Charts show the same data over time when available.'}
+                  : 'Live CPU and memory from Metrics Server. Usage vs limits shows how close each container is to its resource boundaries. Charts show real historical data collected every 30 seconds.'}
             </p>
           </TooltipTrigger>
           <TooltipContent side="top" className="max-w-sm">{TOOLTIP_METRICS_LIST_VS_DETAIL}</TooltipContent>
@@ -403,7 +397,7 @@ export function MetricsDashboard({ resourceType, resourceName, namespace, podRes
           <UiTooltip>
             <TooltipTrigger asChild>
               <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-1.5 cursor-help">
-                {resourceType === 'node' ? 'Node usage' : resourceType !== 'pod' ? 'Usage (aggregated from pods)' : 'Pod usage (same as list)'}
+                {resourceType === 'node' ? 'Node usage' : resourceType !== 'pod' ? 'Usage (aggregated from pods)' : 'Current usage'}
               </h3>
             </TooltipTrigger>
             <TooltipContent side="top" className="max-w-xs">{TOOLTIP_POD_USAGE_SAME_AS_LIST}</TooltipContent>
@@ -595,7 +589,7 @@ export function MetricsDashboard({ resourceType, resourceName, namespace, podRes
                       </TooltipContent>
                     </UiTooltip>
                   </div>
-                  <CardDescription>CPU usage in millicores (same as list).</CardDescription>
+                  <CardDescription>Processing power consumption over time.</CardDescription>
                 </CardHeader>
                 <CardContent>
                   {isSingleOrFewPoints && (
@@ -749,7 +743,7 @@ export function MetricsDashboard({ resourceType, resourceName, namespace, podRes
                     </TooltipContent>
                   </UiTooltip>
                 </div>
-                <CardDescription>CPU usage in millicores (same as list).</CardDescription>
+                <CardDescription>Processing power consumption over time.</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="h-80 mt-4 -ml-4">
@@ -816,7 +810,7 @@ export function MetricsDashboard({ resourceType, resourceName, namespace, podRes
                     </TooltipContent>
                   </UiTooltip>
                 </div>
-                <CardDescription>Memory usage in Mi (same as list).</CardDescription>
+                <CardDescription>RAM allocation over time. Steady growth may indicate a leak.</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="h-80 mt-4 -ml-4">

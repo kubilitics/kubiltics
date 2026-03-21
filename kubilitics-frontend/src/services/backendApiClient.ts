@@ -1487,6 +1487,35 @@ export async function getMetricsSummary(
   return backendRequest<BackendMetricsQueryResult>(baseUrl, path);
 }
 
+// --- Metrics History ---
+
+export interface MetricsHistoryPoint {
+  ts: number;
+  cpu_milli: number;
+  memory_mib: number;
+  network_rx?: number;
+  network_tx?: number;
+}
+
+export interface MetricsHistoryResponse {
+  points: MetricsHistoryPoint[];
+  interval_sec: number;
+}
+
+export async function getMetricsHistory(
+  baseUrl: string,
+  clusterId: string,
+  params: { namespace?: string; resource_type: string; resource_name: string; duration?: string }
+): Promise<MetricsHistoryResponse> {
+  const search = new URLSearchParams();
+  if (params.namespace) search.set('namespace', params.namespace);
+  search.set('resource_type', params.resource_type);
+  search.set('resource_name', params.resource_name);
+  if (params.duration) search.set('duration', params.duration);
+  const path = `clusters/${encodeURIComponent(clusterId)}/metrics/history?${search.toString()}`;
+  return backendRequest<MetricsHistoryResponse>(baseUrl, path);
+}
+
 /**
  * Returns the URL for GET /api/v1/clusters/{clusterId}/logs/{namespace}/{pod}.
  * Use with fetch() for streaming or non-streaming log read.

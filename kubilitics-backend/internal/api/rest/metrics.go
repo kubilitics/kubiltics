@@ -3,12 +3,46 @@ package rest
 import (
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/gorilla/mux"
 
 	"github.com/kubilitics/kubilitics-backend/internal/models"
 	"github.com/kubilitics/kubilitics-backend/internal/pkg/validate"
 )
+
+// GetMetricsHistory handles GET /clusters/{clusterId}/metrics/history
+func (h *Handler) GetMetricsHistory(w http.ResponseWriter, r *http.Request) {
+	if h.unifiedMetricsService == nil {
+		respondError(w, http.StatusNotImplemented, "Unified metrics service is not configured")
+		return
+	}
+	vars := mux.Vars(r)
+	clusterID := vars["clusterId"]
+	namespace := r.URL.Query().Get("namespace")
+	resourceType := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("resource_type")))
+	resourceName := strings.TrimSpace(r.URL.Query().Get("resource_name"))
+	if !validate.ClusterID(clusterID) || resourceName == "" || resourceType == "" {
+		respondError(w, http.StatusBadRequest, "Missing or invalid clusterId, resource_type, or resource_name")
+		return
+	}
+	rt := models.ResourceType(resourceType)
+	if rt != models.ResourceTypeNode && namespace == "" {
+		respondError(w, http.StatusBadRequest, "namespace is required for namespaced resource types")
+		return
+	}
+	duration := 60 * time.Minute
+	if d := r.URL.Query().Get("duration"); d != "" {
+		if parsed, err := time.ParseDuration(d); err == nil && parsed > 0 && parsed <= 60*time.Minute {
+			duration = parsed
+		}
+	}
+	id := models.ResourceIdentity{
+		ClusterID: clusterID, Namespace: namespace,
+		ResourceType: rt, ResourceName: resourceName,
+	}
+	respondJSON(w, http.StatusOK, h.unifiedMetricsService.GetHistory(id, duration))
+}
 
 // GetMetricsSummary handles GET /clusters/{clusterId}/metrics/summary?namespace=&resource_type=&resource_name=
 // Unified, resource-agnostic endpoint: works for pod, node, deployment, replicaset, statefulset, daemonset, job, cronjob.

@@ -19,6 +19,7 @@ type UnifiedMetricsService struct {
 	provider       metrics.MetricsProvider
 	resolver       *metrics.ControllerMetricsResolver
 	cache          metrics.MetricsCache
+	history        *metrics.MetricsHistoryStore
 }
 
 // NewUnifiedMetricsService builds the service with the default provider and resolver.
@@ -42,6 +43,7 @@ func NewUnifiedMetricsService(
 		provider:       provider,
 		resolver:       resolver,
 		cache:          cache,
+		history:        metrics.NewMetricsHistoryStore(),
 	}
 }
 
@@ -88,8 +90,81 @@ func (s *UnifiedMetricsService) GetSummary(ctx context.Context, id models.Resour
 	result.Summary = summary
 	result.QueryMs = time.Since(start).Milliseconds()
 	s.cache.Set(key, summary, 0)
+	// Record to history ring buffer
+	s.history.Record(key, metrics.SummaryToHistoryPoint(summary))
 	logMetricsQuery(ctx, id, result.QueryMs, false, "", "")
 	return result
+}
+
+// GetHistory returns stored history points for the given resource.
+func (s *UnifiedMetricsService) GetHistory(id models.ResourceIdentity, duration time.Duration) *models.MetricsHistoryResponse {
+	key := metrics.CacheKey(id.ClusterID, id.Namespace, id.ResourceType, id.ResourceName)
+	s.history.MarkWatched(key)
+	points := s.history.Query(key, duration)
+	if points == nil {
+		points = []models.MetricsHistoryPoint{}
+	}
+	return &models.MetricsHistoryResponse{
+		ClusterID:    id.ClusterID,
+		Namespace:    id.Namespace,
+		ResourceType: id.ResourceType,
+		ResourceName: id.ResourceName,
+		Points:       points,
+		IntervalSec:  30,
+		MaxDuration:  "1h",
+	}
+}
+
+// StartCollector starts a background goroutine that periodically re-fetches
+// metrics for watched resources to accumulate history.
+func (s *UnifiedMetricsService) StartCollector(ctx context.Context, interval time.Duration) {
+	go func() {
+		ticker := time.NewTicker(interval)
+		defer ticker.Stop()
+		pruneTicker := time.NewTicker(5 * time.Minute)
+		defer pruneTicker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				for _, key := range s.history.WatchedKeys() {
+					id := parseKeyToIdentity(key)
+					if !id.Valid() {
+						continue
+					}
+					fetchCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+					_ = s.GetSummary(fetchCtx, id)
+					cancel()
+				}
+			case <-pruneTicker.C:
+				s.history.Prune()
+			}
+		}
+	}()
+	slog.Info("metrics history collector started", "interval", interval.String())
+}
+
+func parseKeyToIdentity(key string) models.ResourceIdentity {
+	// key format: "clusterID:namespace:resourceType:resourceName"
+	parts := make([]string, 0, 4)
+	start := 0
+	count := 0
+	for i := 0; i < len(key) && count < 3; i++ {
+		if key[i] == ':' {
+			parts = append(parts, key[start:i])
+			start = i + 1
+			count++
+		}
+	}
+	parts = append(parts, key[start:])
+	if len(parts) != 4 {
+		return models.ResourceIdentity{}
+	}
+	return models.ResourceIdentity{
+		ClusterID: parts[0], Namespace: parts[1],
+		ResourceType: models.ResourceType(parts[2]), ResourceName: parts[3],
+	}
 }
 
 // resolveAndFetch builds MetricsSummary from provider (+ resolver for controllers).

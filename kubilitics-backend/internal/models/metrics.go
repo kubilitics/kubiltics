@@ -106,9 +106,47 @@ type MetricsSummary struct {
 
 // MetricsQueryResult wraps summary with query metadata for observability.
 type MetricsQueryResult struct {
-	Summary    *MetricsSummary `json:"summary"`
+	Summary   *MetricsSummary `json:"summary"`
 	QueryMs   int64           `json:"query_ms,omitempty"`
 	CacheHit  bool            `json:"cache_hit,omitempty"`
 	Error     string          `json:"error,omitempty"`
 	ErrorCode string          `json:"error_code,omitempty"` // e.g. "CLUSTER_NOT_FOUND", "METRICS_SERVER_UNAVAILABLE"
+}
+
+// ---------------------------------------------------------------------------
+// Historical metrics (ring-buffer backed, in-memory)
+// ---------------------------------------------------------------------------
+
+type ContainerHistoryPoint struct {
+	Name      string  `json:"name"`
+	CPUMilli  float64 `json:"cpu_milli"`
+	MemoryMiB float64 `json:"memory_mib"`
+}
+
+type PodHistoryPoint struct {
+	Name       string                  `json:"name"`
+	CPUMilli   float64                 `json:"cpu_milli"`
+	MemoryMiB  float64                 `json:"memory_mib"`
+	NetworkRx  int64                   `json:"network_rx,omitempty"`
+	NetworkTx  int64                   `json:"network_tx,omitempty"`
+	Containers []ContainerHistoryPoint `json:"containers,omitempty"`
+}
+
+type MetricsHistoryPoint struct {
+	Timestamp  int64              `json:"ts"`
+	CPUMilli   float64            `json:"cpu_milli"`
+	MemoryMiB  float64            `json:"memory_mib"`
+	NetworkRx  int64              `json:"network_rx,omitempty"`
+	NetworkTx  int64              `json:"network_tx,omitempty"`
+	PodPoints  []PodHistoryPoint  `json:"pods,omitempty"`
+}
+
+type MetricsHistoryResponse struct {
+	ClusterID    string               `json:"cluster_id"`
+	Namespace    string               `json:"namespace"`
+	ResourceType ResourceType         `json:"resource_type"`
+	ResourceName string               `json:"resource_name"`
+	Points       []MetricsHistoryPoint `json:"points"`
+	IntervalSec  int                  `json:"interval_sec"`
+	MaxDuration  string               `json:"max_duration"`
 }

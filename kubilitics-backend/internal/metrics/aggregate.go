@@ -59,3 +59,7 @@ func parseMemoryToMi(s string) (float64, bool) {
 	// Actually "32.00Mi" -> ToLower "32.00mi" -> TrimSuffix "i" -> "32.00m" -> TrimSuffix "m" -> "32.00". Good.
 	return n, true
 }
+
+// Exported aliases for use by history.go and service layer.
+func ParseCPUToMilli(s string) (float64, bool)  { return parseCPUToMilli(s) }
+func ParseMemoryToMi(s string) (float64, bool)  { return parseMemoryToMi(s) }
