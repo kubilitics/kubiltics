@@ -65,6 +65,8 @@ func (s *UnifiedMetricsService) GetSummary(ctx context.Context, id models.Resour
 		result.Summary = summary
 		result.QueryMs = time.Since(start).Milliseconds()
 		result.CacheHit = true
+		// Still record to history on cache hits so the ring buffer accumulates data
+		s.history.Record(key, metrics.SummaryToHistoryPoint(summary))
 		logMetricsQuery(ctx, id, result.QueryMs, true, "", "")
 		return result
 	}

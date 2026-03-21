@@ -9,7 +9,7 @@ import (
 	"github.com/kubilitics/kubilitics-backend/internal/models"
 )
 
-const defaultMetricsCacheTTL = 30 * time.Second
+const defaultMetricsCacheTTL = 10 * time.Second
 
 // MetricsCache caches MetricsSummary by a string key (e.g. clusterID:namespace:resourceType:name).
 type MetricsCache interface {
