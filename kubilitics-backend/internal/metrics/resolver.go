@@ -48,6 +48,8 @@ func (r *ControllerMetricsResolver) ResolvePods(ctx context.Context, client *k8s
 		return r.resolveJobPods(ctx, client, id.Namespace, id.ResourceName)
 	case models.ResourceTypeCronJob:
 		return r.resolveCronJobPods(ctx, client, id.Namespace, id.ResourceName)
+	case models.ResourceTypeService:
+		return r.resolveServicePods(ctx, client, id.Namespace, id.ResourceName)
 	default:
 		return nil, nil
 	}
@@ -154,6 +156,22 @@ func (r *ControllerMetricsResolver) resolveCronJobPods(ctx context.Context, clie
 		pods = append(pods, podList.Items...)
 	}
 	return podListToRefs(pods), nil
+}
+
+func (r *ControllerMetricsResolver) resolveServicePods(ctx context.Context, client *k8s.Client, namespace, name string) ([]PodRef, error) {
+	svc, err := client.Clientset.CoreV1().Services(namespace).Get(ctx, name, metav1.GetOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("service not found: %w", err)
+	}
+	if len(svc.Spec.Selector) == 0 {
+		return nil, nil // headless or ExternalName services have no selector
+	}
+	sel := metav1.FormatLabelSelector(&metav1.LabelSelector{MatchLabels: svc.Spec.Selector})
+	list, err := client.Clientset.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{LabelSelector: sel})
+	if err != nil {
+		return nil, fmt.Errorf("list service pods: %w", err)
+	}
+	return podListToRefs(list.Items), nil
 }
 
 func podListToRefs(items []corev1.Pod) []PodRef {

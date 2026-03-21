@@ -16,6 +16,7 @@ const (
 	ResourceTypeDaemonSet    ResourceType = "daemonset"
 	ResourceTypeJob          ResourceType = "job"
 	ResourceTypeCronJob      ResourceType = "cronjob"
+	ResourceTypeService      ResourceType = "service"
 	ResourceTypeNamespace   ResourceType = "namespace"
 )
 
@@ -47,7 +48,7 @@ func (r *ResourceIdentity) Valid() bool {
 	namespaced := map[ResourceType]bool{
 		ResourceTypePod: true, ResourceTypeDeployment: true, ResourceTypeReplicaSet: true,
 		ResourceTypeStatefulSet: true, ResourceTypeDaemonSet: true, ResourceTypeJob: true,
-		ResourceTypeCronJob: true, ResourceTypeNamespace: true,
+		ResourceTypeCronJob: true, ResourceTypeService: true, ResourceTypeNamespace: true,
 	}
 	if namespaced[r.ResourceType] && r.Namespace == "" {
 		return false
@@ -59,7 +60,7 @@ func (r *ResourceIdentity) Valid() bool {
 func (r ResourceType) IsController() bool {
 	switch r {
 	case ResourceTypeDeployment, ResourceTypeReplicaSet, ResourceTypeStatefulSet,
-		ResourceTypeDaemonSet, ResourceTypeJob, ResourceTypeCronJob:
+		ResourceTypeDaemonSet, ResourceTypeJob, ResourceTypeCronJob, ResourceTypeService:
 		return true
 	default:
 		return false
