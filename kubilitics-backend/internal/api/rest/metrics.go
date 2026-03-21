@@ -70,9 +70,9 @@ func (h *Handler) GetMetricsSummary(w http.ResponseWriter, r *http.Request) {
 	switch rt {
 	case models.ResourceTypePod, models.ResourceTypeNode, models.ResourceTypeDeployment,
 		models.ResourceTypeReplicaSet, models.ResourceTypeStatefulSet, models.ResourceTypeDaemonSet,
-		models.ResourceTypeJob, models.ResourceTypeCronJob:
+		models.ResourceTypeJob, models.ResourceTypeCronJob, models.ResourceTypeService:
 	default:
-		respondError(w, http.StatusBadRequest, "Unsupported resource_type for metrics; use pod, node, deployment, replicaset, statefulset, daemonset, job, cronjob")
+		respondError(w, http.StatusBadRequest, "Unsupported resource_type for metrics")
 		return
 	}
 	// Node is cluster-scoped: namespace not required
