@@ -92,10 +92,9 @@ function InlinePortForward({
   const forwards = usePortForwardStore((s) => s.forwards);
   const stopAndRemove = usePortForwardStore((s) => s.stopAndRemove);
   const clusterName = useClusterStore((s) => s.activeCluster?.name ?? 'cluster');
-  // Read clusterId from backendConfigStore, fall back to clusterStore's activeCluster
-  const backendClusterId = useBackendConfigStore((s) => s.currentClusterId);
-  const activeClusterId = useClusterStore((s) => s.activeCluster?.id);
-  const clusterId = backendClusterId || activeClusterId || null;
+  // Use activeCluster.id — always set when a cluster is shown in the top bar.
+  // backendConfigStore.currentClusterId may be null if cluster was auto-connected.
+  const clusterId = useClusterStore((s) => s.activeCluster?.id) ?? null;
 
   // Filter to forwards for this resource
   const activeForwards = forwards.filter(
