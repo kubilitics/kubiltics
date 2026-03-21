@@ -54,7 +54,10 @@ export interface PodResourceForMetrics {
   spec?: {
     containers?: Array<{
       name: string;
-      resources?: { limits?: { cpu?: string; memory?: string } };
+      resources?: {
+        requests?: { cpu?: string; memory?: string };
+        limits?: { cpu?: string; memory?: string };
+      };
     }>;
   };
 }
@@ -130,6 +133,41 @@ function parseMemoryToBytes(s: string): number {
  * Metrics tab content for Pod, Node, and all workload detail pages.
  * Single unified API (GET .../metrics/summary); data decides rendering. Never empty without a reason.
  */
+/** Format bytes into human-readable string with appropriate unit */
+function formatBytes(bytes: number): string {
+  if (bytes === 0) return '0 B';
+  const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+  const i = Math.floor(Math.log(Math.abs(bytes)) / Math.log(1024));
+  const idx = Math.min(i, units.length - 1);
+  const val = bytes / Math.pow(1024, idx);
+  return `${val < 10 ? val.toFixed(2) : val < 100 ? val.toFixed(1) : val.toFixed(0)} ${units[idx]}`;
+}
+
+/** Compute per-interval deltas from cumulative network values */
+function computeNetworkRates(
+  points: { ts: number; network_rx?: number; network_tx?: number }[]
+): { time: string; in: number; out: number }[] {
+  if (points.length < 2) return [];
+  const fmtTime = (ts: number) =>
+    new Date(ts * 1000).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  const result: { time: string; in: number; out: number }[] = [];
+  for (let i = 1; i < points.length; i++) {
+    const prev = points[i - 1];
+    const curr = points[i];
+    const dt = curr.ts - prev.ts;
+    if (dt <= 0) continue;
+    const rxDelta = Math.max(0, (curr.network_rx ?? 0) - (prev.network_rx ?? 0));
+    const txDelta = Math.max(0, (curr.network_tx ?? 0) - (prev.network_tx ?? 0));
+    // Convert to KB/s
+    result.push({
+      time: fmtTime(curr.ts),
+      in: (rxDelta / 1024) / dt,
+      out: (txDelta / 1024) / dt,
+    });
+  }
+  return result;
+}
+
 const TIME_RANGES = [
   { label: '5m', value: '5m' },
   { label: '15m', value: '15m' },
@@ -189,21 +227,8 @@ export function MetricsDashboard({ resourceType, resourceName, namespace, podRes
       memPoints = [{ time: timeStr, value: memVal }];
     }
 
-    // Network I/O
-    const rxMB = (summary.total_network_rx ?? 0) / (1024 * 1024);
-    const txMB = (summary.total_network_tx ?? 0) / (1024 * 1024);
-    const networkPoints: { time: string; in: number; out: number }[] = [];
-    if (filteredHistory.length >= 2) {
-      for (const p of filteredHistory) {
-        networkPoints.push({
-          time: formatTime(p.ts),
-          in: (p.network_rx ?? 0) / (1024 * 1024),
-          out: (p.network_tx ?? 0) / (1024 * 1024),
-        });
-      }
-    } else if (rxMB > 0 || txMB > 0) {
-      networkPoints.push({ time: formatTime(Date.now() / 1000), in: rxMB, out: txMB });
-    }
+    // Network I/O — compute rates (KB/s) from cumulative values
+    const networkPoints = computeNetworkRates(filteredHistory);
 
     return { cpu: cpuPoints, memory: memPoints, network: networkPoints };
   }, [summary, filteredHistory]);
@@ -269,10 +294,14 @@ export function MetricsDashboard({ resourceType, resourceName, namespace, podRes
 
   const cpuDomainMax = useMemo(() => {
     if (!metrics?.cpu?.length) return CPU_MIN_RANGE;
-    // Filter out obviously bogus values (> 100 cores = 100000m is unrealistic for a single pod)
     const values = metrics.cpu.map(d => d.value).filter(v => typeof v === 'number' && !isNaN(v) && v >= 0 && v < 100000);
     const maxVal = values.length > 0 ? Math.max(...values) : 1;
-    return Math.max(maxVal * 1.2, CPU_MIN_RANGE);
+    const raw = Math.max(maxVal * 1.2, CPU_MIN_RANGE);
+    // Round up to nearest nice number for clean Y-axis ticks
+    if (raw <= 10) return Math.ceil(raw);
+    if (raw <= 50) return Math.ceil(raw / 5) * 5;
+    if (raw <= 200) return Math.ceil(raw / 10) * 10;
+    return Math.ceil(raw / 50) * 50;
   }, [metrics?.cpu]);
 
   const memoryDomainMax = useMemo(() => {
@@ -280,7 +309,12 @@ export function MetricsDashboard({ resourceType, resourceName, namespace, podRes
     // Filter out bogus values (> 100Gi = 102400Mi is unrealistic for a single pod)
     const values = metrics.memory.map(d => d.value).filter(v => typeof v === 'number' && !isNaN(v) && v >= 0 && v < 102400);
     const maxVal = values.length > 0 ? Math.max(...values) : 1;
-    return Math.max(maxVal * 1.2, MEMORY_MIN_RANGE);
+    const raw = Math.max(maxVal * 1.2, MEMORY_MIN_RANGE);
+    // Round up to nearest nice number for clean Y-axis ticks
+    if (raw <= 10) return Math.ceil(raw);
+    if (raw <= 100) return Math.ceil(raw / 5) * 5;
+    if (raw <= 1000) return Math.ceil(raw / 50) * 50;
+    return Math.ceil(raw / 100) * 100;
   }, [metrics?.memory]);
 
   // Derived values used only when metrics is non-null; computed here so hook order is fixed.
@@ -290,8 +324,15 @@ export function MetricsDashboard({ resourceType, resourceName, namespace, podRes
   const prevMemory = metrics?.memory?.[metrics.memory.length - 2]?.value ?? currentMemory;
   const cpuTrend = currentCpu - prevCpu;
   const memoryTrend = currentMemory - prevMemory;
-  const totalNetworkIn = metrics?.network?.reduce((sum, d) => sum + d.in, 0) ?? 0;
-  const totalNetworkOut = metrics?.network?.reduce((sum, d) => sum + d.out, 0) ?? 0;
+  // Network: use cumulative bytes from summary for totals, rates from chart data for avg rate
+  const cumulativeRxBytes = summary?.total_network_rx ?? 0;
+  const cumulativeTxBytes = summary?.total_network_tx ?? 0;
+  const cumulativeRxFormatted = formatBytes(cumulativeRxBytes);
+  const cumulativeTxFormatted = formatBytes(cumulativeTxBytes);
+  const cumulativeTotalFormatted = formatBytes(cumulativeRxBytes + cumulativeTxBytes);
+  // Average rate in KB/s from chart points
+  const avgRateIn = metrics?.network?.length ? metrics.network.reduce((s, d) => s + d.in, 0) / metrics.network.length : 0;
+  const avgRateOut = metrics?.network?.length ? metrics.network.reduce((s, d) => s + d.out, 0) / metrics.network.length : 0;
   const podUsageCpuDisplay = `${currentCpu.toFixed(2)}m`;
   const podUsageMemoryDisplay = `${currentMemory.toFixed(2)}Mi`;
   const isSingleOrFewPoints = false; // Forced false to show history by default
@@ -478,11 +519,11 @@ export function MetricsDashboard({ resourceType, resourceName, namespace, podRes
                         </div>
                         <div>
                           <p className="text-sm text-muted-foreground">Network I/O</p>
-                          <p className="text-2xl font-semibold tabular-nums">{(totalNetworkIn + totalNetworkOut).toFixed(2)} MB</p>
+                          <p className="text-2xl font-semibold tabular-nums">{cumulativeTotalFormatted}</p>
                         </div>
                       </div>
                       <div className="text-sm text-muted-foreground">
-                        ↓{totalNetworkIn.toFixed(2)}MB ↑{totalNetworkOut.toFixed(2)}MB
+                        ↓{cumulativeRxFormatted} ↑{cumulativeTxFormatted}
                       </div>
                     </div>
                   </CardContent>
@@ -799,7 +840,7 @@ export function MetricsDashboard({ resourceType, resourceName, namespace, podRes
                           domain={[0, memoryDomainMax]}
                           axisLine={false}
                           tickLine={false}
-                          tickFormatter={(v) => (Number.isFinite(v) ? `${v}Mi` : '')}
+                          tickFormatter={(v) => (Number.isFinite(v) ? `${Math.round(v)}Mi` : '')}
                           tick={{ fill: 'hsl(var(--foreground))', fontSize: 10, fontWeight: 600 }}
                         />
                         <Tooltip
@@ -972,7 +1013,7 @@ export function MetricsDashboard({ resourceType, resourceName, namespace, podRes
                         domain={[0, memoryDomainMax]}
                         axisLine={false}
                         tickLine={false}
-                        tickFormatter={(v) => (Number.isFinite(v) ? `${v}Mi` : '')}
+                        tickFormatter={(v) => (Number.isFinite(v) ? `${Math.round(v)}Mi` : '')}
                         tick={{ fill: 'hsl(var(--foreground))', fontSize: 10, fontWeight: 600 }}
                       />
                       <Tooltip
@@ -1022,28 +1063,28 @@ export function MetricsDashboard({ resourceType, resourceName, namespace, podRes
             <div className="grid grid-cols-4 gap-3 mb-4">
               <div className="rounded-lg border border-border/40 bg-card/50 p-3 text-center">
                 <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Total Received</p>
-                <p className="text-lg font-bold tabular-nums text-emerald-500">↓ {totalNetworkIn.toFixed(2)} MB</p>
+                <p className="text-lg font-bold tabular-nums text-emerald-500">↓ {cumulativeRxFormatted}</p>
               </div>
               <div className="rounded-lg border border-border/40 bg-card/50 p-3 text-center">
                 <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Total Sent</p>
-                <p className="text-lg font-bold tabular-nums text-blue-500">↑ {totalNetworkOut.toFixed(2)} MB</p>
+                <p className="text-lg font-bold tabular-nums text-blue-500">↑ {cumulativeTxFormatted}</p>
               </div>
               <div className="rounded-lg border border-border/40 bg-card/50 p-3 text-center">
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Total Traffic</p>
-                <p className="text-lg font-bold tabular-nums text-foreground">{(totalNetworkIn + totalNetworkOut).toFixed(2)} MB</p>
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Avg Rate</p>
+                <p className="text-lg font-bold tabular-nums text-foreground">{(avgRateIn + avgRateOut).toFixed(1)} KB/s</p>
               </div>
               <div className="rounded-lg border border-border/40 bg-card/50 p-3 text-center">
                 <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Direction</p>
                 <p className="text-sm font-medium text-muted-foreground mt-1">
-                  {totalNetworkIn > totalNetworkOut * 2 ? 'Mostly inbound' : totalNetworkOut > totalNetworkIn * 2 ? 'Mostly outbound' : 'Balanced'}
+                  {cumulativeRxBytes > cumulativeTxBytes * 2 ? 'Mostly inbound' : cumulativeTxBytes > cumulativeRxBytes * 2 ? 'Mostly outbound' : 'Balanced'}
                 </p>
               </div>
             </div>
 
             <Card className="rounded-xl border border-border/50 shadow-sm overflow-hidden">
               <CardHeader className="pb-2">
-                <CardTitle className="text-base">Network I/O Over Time</CardTitle>
-                <CardDescription>Inbound and outbound traffic patterns. Monitor for spikes or unusual activity.</CardDescription>
+                <CardTitle className="text-base">Network Throughput (KB/s)</CardTitle>
+                <CardDescription>Transfer rate over time. Spikes may indicate backups, deployments, or attacks.</CardDescription>
               </CardHeader>
               <CardContent>
                 {metrics.network.length === 0 && (
