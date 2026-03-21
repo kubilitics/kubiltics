@@ -591,9 +591,12 @@ export default function ClusterOverview() {
                         <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1">
                           <Gauge className="w-3 h-3" /> Metrics
                         </span>
-                        <span className="text-xs text-muted-foreground">
+                        <Link
+                          to={`/addons/${encodeURIComponent('kubilitics/metrics-server')}`}
+                          className="text-xs text-primary hover:text-primary/80 underline underline-offset-2"
+                        >
                           Install metrics-server for live utilization
-                        </span>
+                        </Link>
                       </div>
                     </>
                   )}

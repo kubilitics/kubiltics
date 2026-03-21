@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Terminal as TerminalIcon, X, GripHorizontal, Maximize2, Minimize2, Trash2, Copy, RefreshCw, AlertCircle, ExternalLink } from 'lucide-react';
+import { Terminal as TerminalIcon, X, GripHorizontal, Maximize2, Minimize2, Trash2, RefreshCw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getKCLIComplete, getKCLIShellStreamUrl, getKCLITUIState, getKubectlShellStreamUrl, getShellComplete, isBackendCircuitOpen, type ShellStatusResult } from '@/services/backendApiClient';
 import { useNavigate } from 'react-router-dom';
@@ -91,14 +91,20 @@ export function ClusterShellPanel({
   const [engine, setEngine] = useState<'kcli' | 'kubectl'>(() => {
     const saved = typeof window !== 'undefined' ? localStorage.getItem(MODE_STORAGE_KEY) : null;
     if (saved === 'kcli' || saved === 'kubectl') return saved;
-    // Default to kubectl — kcli mode will be offered when shell status confirms availability.
-    // This prevents a flash of "kcli not found" error when kcli binary isn't installed.
+    // Start with kubectl to avoid error flash; auto-promote to kcli once availability is confirmed.
     return 'kubectl';
   });
   const [reconnectNonce, setReconnectNonce] = useState(0);
   const [isReconnecting, setIsReconnecting] = useState(false);
   const [kcliSidecarAvailable, setKcliSidecarAvailable] = useState<boolean | null>(null);
   const circuitOpen = useBackendCircuitOpen();
+  // Use a ref so the WS effect can check circuit state without re-running when it toggles.
+  const circuitOpenRef = useRef(circuitOpen);
+  circuitOpenRef.current = circuitOpen;
+
+  // Track "just connected" to avoid sending redundant namespace commands right after connection
+  // (the backend shell init script already sets the namespace).
+  const justConnectedRef = useRef(false);
 
   // P2-7: In Tauri, kcli may be bundled as sidecar; backend PATH check can be false. Treat as available if sidecar exists.
   useEffect(() => {
@@ -381,7 +387,8 @@ export function ClusterShellPanel({
     wsSessionRef.current = sessionId;
 
     // P2-4: Do not open WebSocket when circuit is open; show friendly message instead.
-    if (isBackendCircuitOpen()) {
+    // Use the ref so circuit state changes don't cause WS reconnection loops during startup.
+    if (circuitOpenRef.current) {
       setConnecting(false);
       setConnected(false);
       setError('Backend unavailable. Use Retry in the banner when the connection is back.');
@@ -401,6 +408,12 @@ export function ClusterShellPanel({
 
     ws.onopen = () => {
       if (wsSessionRef.current !== sessionId || wsRef.current !== ws) return;
+
+      // Mark as just connected BEFORE setting connected=true so the namespace effect
+      // (which fires when connected changes) sees the ref and skips the redundant command.
+      justConnectedRef.current = true;
+      setTimeout(() => { justConnectedRef.current = false; }, 3000);
+
       setConnecting(false);
       setConnected(true);
       setIsReconnecting(false);
@@ -416,7 +429,12 @@ export function ClusterShellPanel({
 
       const term = termRef.current;
       if (term) {
-        term.reset();
+        // Only full-reset on first connect; on reconnect, add a separator so user sees new session
+        if (reconnectAttemptRef.current > 0 || isReconnecting) {
+          term.write('\r\n\x1b[90m--- reconnected ---\x1b[0m\r\n');
+        } else {
+          term.reset();
+        }
         lineBufferRef.current = '';
         focusAndFit();
         flushPendingOutput();
@@ -491,40 +509,18 @@ export function ClusterShellPanel({
             setReconnectNonce((n) => n + 1);
           }, delay);
         } else {
-          console.error('Max reconnect attempts reached. Giving up.');
           setIsReconnecting(false);
-          setError('Connection lost. Please reopen the shell panel.');
+          setError('Connection lost. Click reconnect to try again.');
         }
       } else {
         setIsReconnecting(false);
       }
     };
 
-    ws.onerror = (event) => {
-      if (wsSessionRef.current !== sessionId || wsRef.current !== ws) return;
-      setConnecting(false);
-      setConnected(false);
-      // Enhanced error message for kcli-specific issues
-      if (engine === 'kcli') {
-        // Auto-fallback to kubectl if kcli is explicitly unavailable
-        if (shellStatus?.kcliAvailable === false && !autoFallbackDoneRef.current) {
-          autoFallbackDoneRef.current = true;
-          setError('kcli binary is missing — switching to kubectl mode.');
-          setTimeout(() => {
-            setEngine('kubectl');
-            setError(null);
-          }, 1500);
-        } else {
-          const errorMsg = 'kcli WebSocket connection failed.';
-          const detailMsg = shellStatus?.kcliAvailable === false
-            ? ' kcli binary is missing. Please install kcli or configure the backend to use the bundled sidecar.'
-            : ' This may indicate kcli binary is missing or backend configuration issue.';
-          setError(errorMsg + detailMsg);
-        }
-      } else {
-        setError(`${engine.toUpperCase()} WebSocket connection failed.`);
-      }
-      lineBufferRef.current = '';
+    ws.onerror = () => {
+      // Don't set error here — onclose fires right after and handles reconnection.
+      // Setting error in onerror causes a permanent "connection failed" message that
+      // blocks the reconnect flow and confuses users.
     };
 
     return () => {
@@ -548,7 +544,10 @@ export function ClusterShellPanel({
         // ignore
       }
     };
-  }, [open, clusterId, backendBaseUrl, engine, reconnectNonce, circuitOpen, focusAndFit, flushPendingOutput]);
+  // NOTE: circuitOpen intentionally NOT in deps — we read it via circuitOpenRef to avoid
+  // reconnection storms when the circuit breaker toggles during Tauri startup.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, clusterId, backendBaseUrl, engine, reconnectNonce, focusAndFit, flushPendingOutput]);
 
   // Fit on panel layout changes.
   useEffect(() => {
@@ -603,6 +602,9 @@ export function ClusterShellPanel({
     if (!open || !connected) return;
     if (!activeNamespace || activeNamespace === 'all') return;
     if (shellStatus?.namespace === activeNamespace) return;
+    // Skip during the "just connected" grace period — the backend shell init script
+    // already sets the namespace, so sending it again produces a duplicate prompt.
+    if (justConnectedRef.current) return;
     if (engine === 'kcli') {
       sendStdin(`kcli ns ${activeNamespace}\r`);
     } else {
@@ -656,15 +658,32 @@ export function ClusterShellPanel({
   const kcliStatusKnown = shellStatus !== null || (isTauri() && kcliSidecarAvailable !== null);
   const showKcliMissing = kcliStatusKnown && !effectiveKcliAvailable;
 
-  // Auto-fallback: if kcli binary is missing, gracefully switch to kubectl
+  // Auto-promote: when kcli becomes available, switch to kcli if user hasn't explicitly chosen kubectl.
+  // This makes kcli the default experience when it's installed, without the flash of "kcli not found"
+  // that happens if we default to kcli before the sidecar check completes.
+  // IMPORTANT: only promote when NOT connected — switching engine mid-session tears down the WS.
+  const autoPromoteDoneRef = useRef(false);
   useEffect(() => {
-    if (showKcliMissing && engine === 'kcli' && !autoFallbackDoneRef.current) {
+    if (effectiveKcliAvailable && engine === 'kubectl' && !autoPromoteDoneRef.current && !connected) {
+      const saved = typeof window !== 'undefined' ? localStorage.getItem(MODE_STORAGE_KEY) : null;
+      // Only auto-promote if user never explicitly chose (no saved preference)
+      if (!saved) {
+        autoPromoteDoneRef.current = true;
+        setEngine('kcli');
+      }
+    }
+  }, [effectiveKcliAvailable, engine, connected]);
+
+  // Auto-fallback: if kcli binary is missing, gracefully switch to kubectl.
+  // Only fallback when NOT connected — switching engine mid-session tears down the WS.
+  // If we get a "kcli not found" error ON the connection, the ws.onmessage handler does the fallback.
+  useEffect(() => {
+    if (showKcliMissing && engine === 'kcli' && !autoFallbackDoneRef.current && !connected) {
       autoFallbackDoneRef.current = true;
       setEngine('kubectl');
       setError(null);
-      // Will trigger WS reconnect via engine dependency
     }
-  }, [showKcliMissing, engine]);
+  }, [showKcliMissing, engine, connected]);
 
   const openResourcePage = useCallback((resourcePath: string) => {
     const query = effectiveNamespace && effectiveNamespace !== 'all'
@@ -713,210 +732,83 @@ export function ClusterShellPanel({
         </div>
       )}
 
-      <div className="flex shrink-0 items-center justify-between gap-4 border-b border-white/10 bg-white/[0.01] px-4 py-2">
-        <div className="flex items-center gap-3">
-          <div className="flex gap-1.5">
-            <div className="h-2.5 w-2.5 rounded-full bg-[#ff5f57]" />
-            <div className="h-2.5 w-2.5 rounded-full bg-[#febc2e]" />
-            <div className="h-2.5 w-2.5 rounded-full bg-[#28c840]" />
-          </div>
-          <TerminalIcon className="h-4 w-4 text-[hsl(142_76%_73%)]" />
-          <span className="text-sm font-semibold tracking-tight text-white/90">
-            {engine === 'kcli' ? 'kcli Shell' : 'Kubectl Shell'}
+      {/* Clean, minimal title bar — context + status + controls */}
+      <div className="flex shrink-0 items-center justify-between gap-2 border-b border-white/10 bg-white/[0.02] px-3 py-1.5">
+        <div className="flex items-center gap-2 min-w-0">
+          <TerminalIcon className="h-4 w-4 shrink-0 text-[hsl(142_76%_73%)]" />
+          <span className="text-xs font-medium text-white/60 truncate">
+            <span className="text-white/90">{shellStatus?.context || clusterName}</span>
+            <span className="text-white/30 mx-1">/</span>
+            <span className="text-white/80">{effectiveNamespace}</span>
           </span>
-          <span className="text-xs text-white/30">|</span>
-          <span className="text-xs font-medium text-white/60">
-            Context: <span className="text-white/90">{shellStatus?.context || clusterName}</span>
-          </span>
-          <span className="text-xs text-white/30">|</span>
-          <span className="text-xs font-medium text-white/60">
-            Namespace: <span className="text-white/90">{effectiveNamespace}</span>
-          </span>
-          {connected ? (
-            <span className="flex items-center gap-1.5 rounded border border-[hsl(142_76%_73%)/0.2] bg-[hsl(142_76%_73%)/0.1] px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[hsl(142_76%_60%)]">
-              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[hsl(142_76%_73%)]" />
-              Connected
-            </span>
-          ) : connecting ? (
-            <span className="flex items-center gap-1.5 rounded border border-amber-400/20 bg-amber-400/10 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-amber-300">
-              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-amber-300" />
-              Connecting
-            </span>
-          ) : isReconnecting ? (
-            <span className="flex items-center gap-1.5 rounded border border-blue-400/20 bg-blue-400/10 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-blue-300">
-              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-blue-300" />
-              Reconnecting...
-            </span>
-          ) : (
-            <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60">
-              <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/30" />
-              Disconnected
-            </span>
+          {connected && (
+            <span className="h-2 w-2 shrink-0 rounded-full bg-[hsl(142_76%_73%)]" title="Connected" />
+          )}
+          {(connecting || isReconnecting) && (
+            <span className="h-2 w-2 shrink-0 animate-pulse rounded-full bg-amber-400" title={isReconnecting ? 'Reconnecting' : 'Connecting'} />
+          )}
+          {!connected && !connecting && !isReconnecting && (
+            <span className="h-2 w-2 shrink-0 rounded-full bg-white/20" title="Disconnected" />
           )}
           {error && (
-            <div className="flex items-center gap-2">
-              <span className="rounded border border-red-400/20 bg-red-400/10 px-2 py-0.5 text-xs font-medium text-red-400">
-                {error}
-              </span>
-              {error.toLowerCase().includes('kcli binary') && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    window.open('https://github.com/kubilitics/kubilitics/docs/DEPLOYMENT_KCLI.md', '_blank');
-                  }}
-                  className="h-6 text-xs border-red-400/20 text-red-400 hover:bg-red-400/20"
-                >
-                  <ExternalLink className="h-3 w-3 mr-1" />
-                  Help
-                </Button>
-              )}
+            <span className="text-[10px] text-red-400 truncate max-w-[200px]" title={error}>
+              {error}
+            </span>
+          )}
+        </div>
+
+        <div className="flex items-center gap-0.5 shrink-0">
+          {/* Engine toggle — only show if kcli is available */}
+          {effectiveKcliAvailable && (
+            <div className="mr-1 flex items-center rounded border border-white/10 bg-white/5 p-0.5">
+              <button
+                className={cn(
+                  'rounded px-2 py-0.5 text-[10px] font-semibold transition-colors',
+                  engine === 'kcli' ? 'bg-white/15 text-white' : 'text-white/50 hover:text-white/80'
+                )}
+                onClick={() => setEngine('kcli')}
+              >
+                kcli
+              </button>
+              <button
+                className={cn(
+                  'rounded px-2 py-0.5 text-[10px] font-semibold transition-colors',
+                  engine === 'kubectl' ? 'bg-white/15 text-white' : 'text-white/50 hover:text-white/80'
+                )}
+                onClick={() => setEngine('kubectl')}
+              >
+                kubectl
+              </button>
             </div>
           )}
-          <span
-            className={cn(
-              'rounded border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider',
-              effectiveKcliAvailable
-                ? 'border-emerald-400/20 bg-emerald-400/10 text-emerald-300'
-                : showKcliMissing
-                ? 'border-amber-400/20 bg-amber-400/10 text-amber-300'
-                : 'border-white/10 bg-white/5 text-white/60'
-            )}
-            title={
-              effectiveKcliAvailable
-                ? 'kcli binary is available'
-                : showKcliMissing
-                ? 'kcli binary is missing. Check backend configuration or install kcli.'
-                : 'Checking kcli availability...'
-            }
-          >
-            kcli {effectiveKcliAvailable ? 'Ready' : showKcliMissing ? 'Missing' : 'Checking...'}
-          </span>
-        </div>
-
-        <div className="flex items-center gap-1">
-          <div className="mr-2 flex items-center gap-1 rounded border border-white/10 bg-white/5 p-0.5">
-            <Button
-              variant="ghost"
-              size="sm"
-              className={cn(
-                'h-6 px-2 text-[11px] font-semibold',
-                engine === 'kcli' ? 'bg-white/15 text-white' : 'text-white/70 hover:text-white'
-              )}
-              onClick={() => setEngine('kcli')}
-              title="Use kcli stream engine"
-              aria-label="Use kcli engine"
-            >
-              kcli
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              className={cn(
-                'h-6 px-2 text-[11px] font-semibold',
-                engine === 'kubectl' ? 'bg-white/15 text-white' : 'text-white/70 hover:text-white'
-              )}
-              onClick={() => setEngine('kubectl')}
-              title="Use kubectl shell stream"
-              aria-label="Use kubectl engine"
-            >
-              kubectl
-            </Button>
-          </div>
-
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7 text-muted-foreground hover:bg-white/10 hover:text-white"
+          <button
+            className="rounded p-1 text-white/40 hover:bg-white/10 hover:text-white"
             onClick={handleReconnect}
-            title="Reconnect session"
-            aria-label="Reconnect session"
+            title="Reconnect"
           >
             <RefreshCw className="h-3.5 w-3.5" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7 text-muted-foreground hover:bg-white/10 hover:text-white"
-            onClick={handleCopySelection}
-            title="Copy selected text"
-            aria-label="Copy selected text"
-          >
-            <Copy className="h-3.5 w-3.5" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7 text-muted-foreground hover:bg-white/10 hover:text-white"
-            onClick={() => {
-              termRef.current?.clear();
-              termRef.current?.focus();
-            }}
-            title="Clear terminal"
-            aria-label="Clear terminal"
+          </button>
+          <button
+            className="rounded p-1 text-white/40 hover:bg-white/10 hover:text-white"
+            onClick={() => { termRef.current?.clear(); termRef.current?.focus(); }}
+            title="Clear"
           >
             <Trash2 className="h-3.5 w-3.5" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7 text-muted-foreground hover:bg-white/10 hover:text-white"
+          </button>
+          <button
+            className="rounded p-1 text-white/40 hover:bg-white/10 hover:text-white"
             onClick={() => setIsMaximized(!isMaximized)}
-            title={isMaximized ? 'Restore size' : 'Maximize'}
-            aria-label={isMaximized ? 'Restore terminal size' : 'Maximize terminal'}
+            title={isMaximized ? 'Restore' : 'Maximize'}
           >
             {isMaximized ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
-          </Button>
-          <div className="mx-1 h-4 w-px bg-white/10" />
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7 text-muted-foreground hover:bg-white/10 hover:text-red-400"
+          </button>
+          <button
+            className="rounded p-1 text-white/40 hover:bg-white/10 hover:text-red-400"
             onClick={() => onOpenChange(false)}
-            aria-label="Close shell"
+            title="Close"
           >
             <X className="h-3.5 w-3.5" />
-          </Button>
-        </div>
-      </div>
-
-      <div className="flex shrink-0 items-center justify-between border-b border-white/5 bg-[hsl(221_39%_9%)] px-4 py-1.5">
-        <div className="text-[11px] font-medium text-white/60">
-          Quick Links
-        </div>
-        <div className="flex items-center gap-1.5">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-6 px-2 text-[11px] font-semibold text-white/80 hover:bg-white/10 hover:text-white"
-            onClick={() => openResourcePage('pods')}
-          >
-            Pods
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-6 px-2 text-[11px] font-semibold text-white/80 hover:bg-white/10 hover:text-white"
-            onClick={() => openResourcePage('deployments')}
-          >
-            Deployments
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-6 px-2 text-[11px] font-semibold text-white/80 hover:bg-white/10 hover:text-white"
-            onClick={() => openResourcePage('services')}
-          >
-            Services
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-6 px-2 text-[11px] font-semibold text-white/80 hover:bg-white/10 hover:text-white"
-            onClick={() => openResourcePage('events')}
-          >
-            Events
-          </Button>
+          </button>
         </div>
       </div>
 
@@ -928,7 +820,7 @@ export function ClusterShellPanel({
         ) : (
           <div
             ref={containerRef}
-            className="h-full w-full cursor-text p-2"
+            className="h-full w-full cursor-text px-2 pt-2 pb-4"
             onClick={() => termRef.current?.focus()}
             style={{
               fontSmooth: 'antialiased',

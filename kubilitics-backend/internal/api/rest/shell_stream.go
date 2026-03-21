@@ -77,7 +77,11 @@ func (h *Handler) GetShellStream(w http.ResponseWriter, r *http.Request) {
 	if _, err := exec.LookPath("bash"); err != nil {
 		shell = "/bin/sh"
 	}
-	env := append(os.Environ(), "KUBECONFIG="+cluster.KubeconfigPath)
+	env := append(os.Environ(),
+		"KUBECONFIG="+cluster.KubeconfigPath,
+		"TERM=xterm-256color",
+		"COLORTERM=truecolor",
+	)
 	workDir := "/tmp"
 	if d, err := os.UserHomeDir(); err == nil && d != "" {
 		workDir = d
@@ -137,7 +141,9 @@ func (h *Handler) GetShellStream(w http.ResponseWriter, r *http.Request) {
 	cmd.Env = env
 	cmd.Dir = workDir
 
-	ptmx, err := pty.Start(cmd)
+	// Start with a default PTY size so the shell reads correct dimensions on init.
+	// The frontend will immediately send a resize event with the actual terminal dimensions.
+	ptmx, err := pty.StartWithSize(cmd, &pty.Winsize{Cols: 80, Rows: 24})
 	if err != nil {
 		sendErr("Failed to start shell: " + err.Error())
 		return
@@ -189,8 +195,8 @@ func (h *Handler) GetShellStream(w http.ResponseWriter, r *http.Request) {
 		}
 	}()
 
-	// Initial size
-	_ = pty.Setsize(ptmx, &pty.Winsize{Cols: 80, Rows: 24})
+	// PTY size already set at start via StartWithSize.
+	// The frontend sends a resize message immediately after connect with actual dimensions.
 
 	const readDeadline = 60 * time.Second
 	const pingInterval = 30 * time.Second

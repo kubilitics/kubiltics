@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Cpu, HardDrive, Network, Activity, TrendingUp, TrendingDown, RefreshCw, Info, BarChart2 } from 'lucide-react';
+import { Cpu, HardDrive, Network, Activity, TrendingUp, TrendingDown, RefreshCw, Info, BarChart2, Download } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { SectionCard } from './SectionCard';
 import { Button } from '@/components/ui/button';
@@ -286,6 +287,7 @@ export function MetricsDashboard({ resourceType, resourceName, namespace, podRes
   }
 
   if (!metrics) {
+    const metricsServerMissing = !needsConnect && !isClusterNotFound && !noDataReason && resourceType !== 'cluster';
     return (
       <div className="flex flex-col items-center justify-center h-64 text-center text-muted-foreground">
         <Activity className="h-12 w-12 mb-3 opacity-50" />
@@ -299,19 +301,29 @@ export function MetricsDashboard({ resourceType, resourceName, namespace, podRes
                 ? `No data because ${noDataReason}`
                 : resourceType === 'cluster'
                   ? 'Metrics are not available for cluster scope yet.'
-                  : 'Metrics Server may not be installed or the resource may have no running pods. Install metrics-server in the cluster for live CPU/memory usage.'}
+                  : 'Metrics Server is not installed on this cluster. Install it to view real-time CPU and memory usage.'}
         </p>
         {noDataReason && (
           <p className="text-xs mt-2 max-w-sm text-muted-foreground">
             Resolution: ensure the cluster is connected, metrics-server is installed, and the resource has running pods.
           </p>
         )}
-        {summaryType && (
-          <Button variant="outline" size="sm" className="mt-3" onClick={handleRefresh}>
-            <RefreshCw className="h-4 w-4 mr-2" />
-            Retry
-          </Button>
-        )}
+        <div className="flex items-center gap-2 mt-3">
+          {metricsServerMissing && (
+            <Button variant="default" size="sm" asChild>
+              <Link to={`/addons/${encodeURIComponent('kubilitics/metrics-server')}`}>
+                <Download className="h-4 w-4 mr-2" />
+                Install metrics-server
+              </Link>
+            </Button>
+          )}
+          {summaryType && (
+            <Button variant="outline" size="sm" onClick={handleRefresh}>
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Retry
+            </Button>
+          )}
+        </div>
       </div>
     );
   }

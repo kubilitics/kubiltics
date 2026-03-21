@@ -9,6 +9,7 @@
  *   useClusterOverview   → fallback utilization %
  */
 import React, { useMemo } from "react";
+import { Link } from "react-router-dom";
 import { PieChart, Pie, Cell, ResponsiveContainer, Label } from "recharts";
 import { motion } from "framer-motion";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -21,6 +22,8 @@ import { useK8sResourceList } from "@/hooks/useKubernetes";
 import { useConnectionStatus } from "@/hooks/useConnectionStatus";
 import { Loader2, Server, Cpu, MemoryStick, Hexagon, Info, Layers } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+const METRICS_SERVER_ADDON_URL = `/addons/${encodeURIComponent('kubilitics/metrics-server')}`;
 
 /* ═══════════════════════════════════════════════════════════════════════════
    Helpers
@@ -395,7 +398,7 @@ export const ClusterCapacity = () => {
                     <p><strong>Reserved:</strong> {formatCpu(cap.reservedCpu)} ({cap.reservedCpuPct}%)</p>
                     {cap.hasMetrics
                       ? <p><strong>Used:</strong> {formatCpu(cap.usedCpu)} ({cap.usedCpuPct}%)</p>
-                      : <p className="text-muted-foreground italic">Install metrics-server for real-time usage</p>
+                      : <p className="text-muted-foreground italic">Install <Link to={METRICS_SERVER_ADDON_URL} className="underline text-primary hover:text-primary/80">metrics-server</Link> for real-time usage</p>
                     }
                   </div>
                 }
@@ -416,7 +419,7 @@ export const ClusterCapacity = () => {
                     <p><strong>Reserved:</strong> {formatMemory(cap.reservedMem)} ({cap.reservedMemPct}%)</p>
                     {cap.hasMetrics
                       ? <p><strong>Used:</strong> {formatMemory(cap.usedMem)} ({cap.usedMemPct}%)</p>
-                      : <p className="text-muted-foreground italic">Install metrics-server for real-time usage</p>
+                      : <p className="text-muted-foreground italic">Install <Link to={METRICS_SERVER_ADDON_URL} className="underline text-primary hover:text-primary/80">metrics-server</Link> for real-time usage</p>
                     }
                   </div>
                 }
@@ -509,7 +512,14 @@ export const ClusterCapacity = () => {
             {!cap.hasMetrics && (
               <div className="mt-4 pt-3 border-t border-border/50">
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                  Install <code className="bg-muted/60 px-1.5 py-0.5 rounded text-[10px] font-mono">metrics-server</code> for real-time CPU &amp; memory usage.
+                  Install{" "}
+                  <Link
+                    to={METRICS_SERVER_ADDON_URL}
+                    className="inline-flex items-center gap-1 text-primary hover:text-primary/80 underline underline-offset-2"
+                  >
+                    <code className="bg-muted/60 px-1.5 py-0.5 rounded text-[10px] font-mono">metrics-server</code>
+                  </Link>{" "}
+                  for real-time CPU &amp; memory usage.
                 </p>
               </div>
             )}
