@@ -106,13 +106,22 @@ function InlinePortForward({
       toast.error('Please select a port and local port');
       return;
     }
-    if (!baseUrl || !clusterId) {
-      toast.error('No cluster connected. Please select a cluster first.');
+    // Resolve cluster ID from multiple sources
+    const resolvedClusterId = clusterId
+      || useBackendConfigStore.getState().currentClusterId
+      || useClusterStore.getState().activeCluster?.id
+      || null;
+    if (!baseUrl) {
+      toast.error('Backend URL not configured');
+      return;
+    }
+    if (!resolvedClusterId) {
+      toast.error(`No cluster ID found. Debug: backendStore=${useBackendConfigStore.getState().currentClusterId}, clusterStore=${useClusterStore.getState().activeCluster?.id}`);
       return;
     }
     setIsStarting(true);
     try {
-      const resp = await startPortForward(baseUrl, clusterId, {
+      const resp = await startPortForward(baseUrl, resolvedClusterId, {
         resourceType,
         name: resourceName,
         namespace,
@@ -121,7 +130,7 @@ function InlinePortForward({
       });
       addForward({
         sessionId: resp.sessionId,
-        clusterId,
+        clusterId: resolvedClusterId,
         clusterName,
         resourceType,
         resourceName,
