@@ -1,6 +1,6 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom';
-import { Globe, Clock, Server, Download, Trash2, ExternalLink, Network, Loader2, Copy, Activity, Shield, Layers, Search, GitCompare } from 'lucide-react';
+import { Globe, Clock, Server, Download, Trash2, ExternalLink, Network, Loader2, Copy, Activity, Shield, Layers, Search, GitCompare, Terminal } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -33,9 +33,10 @@ import { normalizeKindForTopology } from '@/utils/resourceKindMapper';
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
 import { useActiveClusterId } from '@/hooks/useActiveClusterId';
 import { useQuery } from '@tanstack/react-query';
-import { getServiceEndpoints, getResource } from '@/services/backendApiClient';
+import { getServiceEndpoints, getResource, startPortForward } from '@/services/backendApiClient';
 import { Breadcrumbs, useDetailBreadcrumbs } from '@/components/layout/Breadcrumbs';
 import { useClusterStore } from '@/stores/clusterStore';
+import { usePortForwardStore } from '@/stores/portForwardStore';
 import { toast } from 'sonner';
 
 interface ServiceResource extends KubernetesResource {
@@ -68,6 +69,213 @@ interface EndpointsResource extends KubernetesResource {
     notReadyAddresses?: Array<{ ip: string; hostname?: string; nodeName?: string; targetRef?: { kind: string; namespace: string; name: string } }>;
     ports?: Array<{ name?: string; port: number; protocol?: string }>;
   }>;
+}
+
+/** Inline port forward form — no popup, lives inside the Port Forward tab */
+function InlinePortForward({
+  ports,
+  resourceName,
+  namespace,
+  resourceType,
+  baseUrl,
+  clusterId,
+}: {
+  ports: Array<{ name?: string; port: number; targetPort?: number | string; protocol?: string; nodePort?: number }>;
+  resourceName: string;
+  namespace: string;
+  resourceType: 'pod' | 'service';
+  baseUrl: string;
+  clusterId?: string;
+}) {
+  const [selectedPort, setSelectedPort] = useState<number>(ports[0]?.port ?? 0);
+  const [localPort, setLocalPort] = useState(String(ports[0]?.port ?? ''));
+  const [isStarting, setIsStarting] = useState(false);
+  const addForward = usePortForwardStore((s) => s.add);
+  const forwards = usePortForwardStore((s) => s.forwards);
+  const stopAndRemove = usePortForwardStore((s) => s.stopAndRemove);
+  const clusterName = useClusterStore((s) => s.activeCluster?.name ?? 'cluster');
+
+  // Filter to forwards for this resource
+  const activeForwards = forwards.filter(
+    (f) => f.resourceName === resourceName && f.namespace === namespace
+  );
+
+  const handleStart = async () => {
+    if (!selectedPort || !localPort || !baseUrl || !clusterId) return;
+    setIsStarting(true);
+    try {
+      const resp = await startPortForward(baseUrl, clusterId, {
+        resourceType,
+        name: resourceName,
+        namespace,
+        localPort: Number(localPort),
+        remotePort: selectedPort,
+      });
+      addForward({
+        sessionId: resp.sessionId,
+        clusterId,
+        clusterName,
+        resourceType,
+        resourceName,
+        namespace,
+        localPort: Number(localPort),
+        remotePort: selectedPort,
+        baseUrl,
+        startedAt: Date.now(),
+      });
+      toast.success('Port forwarding active', {
+        description: `Tunnel open at http://localhost:${localPort}`,
+      });
+      window.open(`http://localhost:${localPort}`, '_blank');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      toast.error('Port forward failed', { description: msg });
+    } finally {
+      setIsStarting(false);
+    }
+  };
+
+  const handleStop = async (sessionId: string) => {
+    await stopAndRemove(sessionId);
+    toast.info('Port forwarding stopped');
+  };
+
+  const target = resourceType === 'service' ? `svc/${resourceName}` : `pod/${resourceName}`;
+  const kubectlCmd = `kubectl port-forward ${target} ${localPort}:${selectedPort} -n ${namespace}`;
+
+  return (
+    <div className="space-y-6">
+      {/* Active forwards for this resource */}
+      {activeForwards.length > 0 && (
+        <SectionCard title="Active Forwards" icon={Activity}>
+          <div className="space-y-2">
+            {activeForwards.map((fwd) => (
+              <div key={fwd.sessionId} className="flex items-center justify-between p-3 rounded-lg border border-emerald-500/30 bg-emerald-500/5">
+                <div className="flex items-center gap-3">
+                  <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                  <div>
+                    <p className="font-medium text-sm">
+                      localhost:<span className="text-primary font-semibold">{fwd.localPort}</span>
+                      <span className="text-muted-foreground mx-1">→</span>
+                      {fwd.resourceName}:<span className="font-semibold">{fwd.remotePort}</span>
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Started {new Date(fwd.startedAt).toLocaleTimeString()}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => window.open(`http://localhost:${fwd.localPort}`, '_blank')}
+                  >
+                    <ExternalLink className="h-3.5 w-3.5 mr-1" />
+                    Open
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => handleStop(fwd.sessionId)}
+                  >
+                    Stop
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </SectionCard>
+      )}
+
+      {/* Create new forward */}
+      <SectionCard title="Create Port Forward" icon={ExternalLink}>
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Service port selection */}
+            <div>
+              <label className="text-sm font-medium mb-1.5 block">Container Port</label>
+              <select
+                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                value={selectedPort}
+                onChange={(e) => {
+                  const p = Number(e.target.value);
+                  setSelectedPort(p);
+                  setLocalPort(String(p));
+                }}
+              >
+                {ports.map((p, i) => (
+                  <option key={p.name || i} value={p.port}>
+                    {p.port} ({p.name || p.protocol || 'TCP'})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Local port */}
+            <div>
+              <label className="text-sm font-medium mb-1.5 block">Local Port</label>
+              <Input
+                type="number"
+                value={localPort}
+                onChange={(e) => setLocalPort(e.target.value)}
+                placeholder="e.g. 8080"
+              />
+            </div>
+
+            {/* Start button */}
+            <div className="flex items-end">
+              <Button
+                onClick={handleStart}
+                disabled={isStarting || !selectedPort || !localPort}
+                className="w-full"
+              >
+                {isStarting ? (
+                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Starting...</>
+                ) : (
+                  <><ExternalLink className="h-4 w-4 mr-2" />Start Forwarding</>
+                )}
+              </Button>
+            </div>
+          </div>
+
+          {/* Visual tunnel diagram */}
+          <div className="flex items-center justify-center gap-4 p-4 rounded-lg bg-muted/50 border border-border/50">
+            <div className="flex flex-col items-center gap-1">
+              <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                <Globe className="h-5 w-5 text-primary" />
+              </div>
+              <span className="text-xs font-medium">localhost:{localPort || '?'}</span>
+              <span className="text-[10px] text-muted-foreground">Your browser</span>
+            </div>
+            <div className="flex items-center gap-1 text-muted-foreground">
+              <div className="w-8 h-px bg-border" />
+              <span className="text-xs">→</span>
+              <div className="w-8 h-px bg-border" />
+            </div>
+            <div className="flex flex-col items-center gap-1">
+              <div className="h-10 w-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
+                <Server className="h-5 w-5 text-blue-500" />
+              </div>
+              <span className="text-xs font-medium">:{selectedPort}</span>
+              <span className="text-[10px] text-muted-foreground">{resourceName}</span>
+            </div>
+          </div>
+
+          {/* kubectl command */}
+          <div className="flex items-center gap-2 p-3 rounded-lg bg-slate-900 text-slate-100 font-mono text-sm">
+            <Terminal className="h-4 w-4 text-muted-foreground shrink-0" />
+            <code className="flex-1 truncate">{kubectlCmd}</code>
+            <button
+              onClick={() => { navigator.clipboard.writeText(kubectlCmd); toast.success('Command copied'); }}
+              className="text-muted-foreground hover:text-white shrink-0"
+            >
+              <Copy className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      </SectionCard>
+    </div>
+  );
 }
 
 export default function ServiceDetail() {
@@ -539,15 +747,14 @@ export default function ServiceDetail() {
       id: 'portforward',
       label: 'Port Forward',
       content: (
-        <SectionCard title="Port forward" icon={ExternalLink}>
-          <p className="text-muted-foreground text-sm mb-4">
-            Forward a local port to this service. For pod-level port forward, use the Pod detail page.
-          </p>
-          <Button onClick={() => setShowPortForwardDialog(true)}>
-            <ExternalLink className="h-4 w-4 mr-2" />
-            Create port forward
-          </Button>
-        </SectionCard>
+        <InlinePortForward
+          ports={ports}
+          resourceName={svcName}
+          namespace={svcNamespace}
+          resourceType="service"
+          baseUrl={baseUrl}
+          clusterId={clusterId ?? undefined}
+        />
       ),
     },
     {
@@ -727,7 +934,7 @@ export default function ServiceDetail() {
       label: 'Actions',
       content: (
         <ActionsSection actions={[
-          { icon: ExternalLink, label: 'Port Forward', description: 'Forward local port to this service', onClick: () => setShowPortForwardDialog(true) },
+          { icon: ExternalLink, label: 'Port Forward', description: 'Forward local port to this service', onClick: () => setActiveTab('portforward') },
           { icon: Globe, label: 'Test Connectivity', description: 'Simple connectivity check', onClick: () => toast.info('Test connectivity: requires backend support (design 3.1)') },
           ...(backingDeployment ? [{ icon: Server, label: 'Scale Backing Deployment', description: `Open Deployment ${backingDeployment.name} to scale`, onClick: () => navigate(`/deployments/${backingDeployment.namespace}/${backingDeployment.name}`) }] : []),
           { icon: Download, label: 'Download YAML', description: 'Export Service definition', onClick: handleDownloadYaml },
@@ -754,7 +961,7 @@ export default function ServiceDetail() {
         actions={[
           { label: 'Download YAML', icon: Download, variant: 'outline', onClick: handleDownloadYaml, className: 'press-effect' },
           { label: 'Export as JSON', icon: Download, variant: 'outline', onClick: handleDownloadJson, className: 'press-effect' },
-          { label: 'Port Forward', icon: ExternalLink, variant: 'outline', onClick: () => setShowPortForwardDialog(true), className: 'press-effect' },
+          { label: 'Port Forward', icon: ExternalLink, variant: 'outline', onClick: () => setActiveTab('portforward'), className: 'press-effect' },
           { label: 'Delete', icon: Trash2, variant: 'destructive', onClick: () => setShowDeleteDialog(true), className: 'press-effect' },
         ]}
         statusCards={statusCards}
