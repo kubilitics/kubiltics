@@ -98,13 +98,16 @@ export default function Settings() {
     onError: (err: Error) => toast.error(`Failed to remove cluster: ${err.message}`),
   });
 
-  // Projects query
-  const { data: projectsFromBackend, isLoading: isProjectsLoading } = useQuery({
+  // Projects query — when disabled (circuit open / not configured), force isLoading to false
+  // so the UI never gets stuck in an infinite loading spinner
+  const shouldQueryProjects = isBackendConfigured && !circuitOpen;
+  const projectsQuery = useQuery({
     queryKey: ['projects'],
     queryFn: () => getProjects(effectiveBackendBaseUrl),
-    enabled: isBackendConfigured && !circuitOpen,
+    enabled: shouldQueryProjects,
   });
-  const projects = useMemo(() => projectsFromBackend || [], [projectsFromBackend]);
+  const isProjectsLoading = shouldQueryProjects ? projectsQuery.isLoading : false;
+  const projects = useMemo(() => projectsQuery.data || [], [projectsQuery.data]);
 
   // Project delete mutation
   const deleteProjectMutation = useMutation({

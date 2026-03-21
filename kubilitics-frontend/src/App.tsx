@@ -265,6 +265,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
   const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured);
   const [isHydrated, setIsHydrated] = useState(false);
+  const [hydrationTimedOut, setHydrationTimedOut] = useState(false);
   const [restoreTimedOut, setRestoreTimedOut] = useState(false);
   const { restoreAttempted, restoreFailed } = useRestoreClusterFromBackend();
 
@@ -287,24 +288,34 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
+  // Safety timeout: if hydration takes more than 3 seconds, stop waiting
+  // This prevents a permanent skeleton if localStorage is broken or persist middleware fails
+  useEffect(() => {
+    const timer = setTimeout(() => setHydrationTimedOut(true), 3000);
+    return () => clearTimeout(timer);
+  }, []);
+
   // Safety timeout: if restore takes more than 8 seconds, stop waiting
   useEffect(() => {
     const timer = setTimeout(() => setRestoreTimedOut(true), 8000);
     return () => clearTimeout(timer);
   }, []);
 
-  // Settings page is always accessible, even without cluster
+  // Settings page is always accessible — never gated by hydration, restore, or cluster state.
+  // It's a configuration page that must render instantly regardless of app state.
   const isSettingsPage = location.pathname === '/settings';
+  if (isSettingsPage) return <>{children}</>;
 
-  if (!isHydrated) return <PageLoader />;
+  // Never block on hydration forever — if it times out, proceed with defaults
+  if (!isHydrated && !hydrationTimedOut) return <PageLoader />;
 
   // If we have a persisted cluster ID but no activeCluster yet, wait for restore (or show loader until it fails).
   const canRestore = currentClusterId && isBackendConfigured();
-  if (!activeCluster && canRestore && !restoreFailed && !restoreTimedOut && !isSettingsPage) {
+  if (!activeCluster && canRestore && !restoreFailed && !restoreTimedOut) {
     return <PageLoader />;
   }
 
-  if (!activeCluster && !isSettingsPage) {
+  if (!activeCluster) {
     const returnUrl = encodeURIComponent(location.pathname + location.search);
     return <Navigate to={returnUrl ? `/connect?returnUrl=${returnUrl}` : '/connect'} replace />;
   }
