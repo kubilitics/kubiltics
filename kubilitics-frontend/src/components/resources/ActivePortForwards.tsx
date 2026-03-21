@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { ExternalLink, Square, Cable, ChevronDown, ChevronUp } from 'lucide-react';
 import { usePortForwardStore, type ActivePortForward } from '@/stores/portForwardStore';
 import { Button } from '@/components/ui/button';
+import { openExternal } from '@/lib/tauri';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
@@ -37,15 +38,13 @@ function ForwardRow({ fwd }: { fwd: ActivePortForward }) {
           :{fwd.localPort} → :{fwd.remotePort} · {fwd.namespace} · {formatElapsed(fwd.startedAt)}
         </div>
       </div>
-      <a
-        href={`http://localhost:${fwd.localPort}`}
-        target="_blank"
-        rel="noopener noreferrer"
+      <button
+        onClick={() => void openExternal(`http://localhost:${fwd.localPort}`)}
         className="p-1 rounded hover:bg-primary/10 text-primary"
         title={`Open http://localhost:${fwd.localPort}`}
       >
         <ExternalLink className="h-3.5 w-3.5" />
-      </a>
+      </button>
       <Button
         variant="ghost"
         size="icon"

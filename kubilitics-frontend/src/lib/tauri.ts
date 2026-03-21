@@ -22,6 +22,24 @@ export function isTauri(): boolean {
  * @param opts.maxAttempts — total tries (default 5)
  * @param opts.baseDelayMs — initial delay ms, doubles each attempt (default 200)
  */
+/**
+ * Open a URL in the system's default browser.
+ * In Tauri: uses the shell plugin's open command.
+ * In browser: falls back to window.open.
+ */
+export async function openExternal(url: string): Promise<void> {
+  if (isTauri()) {
+    try {
+      const { invoke } = await import('@tauri-apps/api/core');
+      await invoke('plugin:shell|open', { path: url });
+      return;
+    } catch {
+      // Fall through to window.open
+    }
+  }
+  window.open(url, '_blank', 'noopener,noreferrer');
+}
+
 export async function invokeWithRetry<T>(
   cmd: string,
   args?: Record<string, unknown>,

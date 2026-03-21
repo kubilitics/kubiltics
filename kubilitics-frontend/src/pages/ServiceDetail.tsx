@@ -37,6 +37,7 @@ import { getServiceEndpoints, getResource, startPortForward } from '@/services/b
 import { Breadcrumbs, useDetailBreadcrumbs } from '@/components/layout/Breadcrumbs';
 import { useClusterStore } from '@/stores/clusterStore';
 import { usePortForwardStore } from '@/stores/portForwardStore';
+import { openExternal } from '@/lib/tauri';
 import { toast } from 'sonner';
 
 interface ServiceResource extends KubernetesResource {
@@ -144,7 +145,7 @@ function InlinePortForward({
       toast.success('Port forwarding active', {
         description: `Tunnel open at http://localhost:${localPort}`,
       });
-      window.open(`http://localhost:${localPort}`, '_blank');
+      void openExternal(`http://localhost:${localPort}`);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       toast.error('Port forward failed', { description: msg });
@@ -186,7 +187,7 @@ function InlinePortForward({
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => window.open(`http://localhost:${fwd.localPort}`, '_blank')}
+                    onClick={() => void openExternal(`http://localhost:${fwd.localPort}`)}
                   >
                     <ExternalLink className="h-3.5 w-3.5 mr-1" />
                     Open
