@@ -111,7 +111,8 @@ function InlinePortForward({
       || useBackendConfigStore.getState().currentClusterId
       || useClusterStore.getState().activeCluster?.id
       || null;
-    if (!baseUrl) {
+    // baseUrl can be '' in dev mode (Vite proxy) — that's valid
+    if (baseUrl == null) {
       toast.error('Backend URL not configured');
       return;
     }
