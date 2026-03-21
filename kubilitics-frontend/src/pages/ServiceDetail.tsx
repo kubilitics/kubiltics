@@ -101,7 +101,14 @@ function InlinePortForward({
   );
 
   const handleStart = async () => {
-    if (!selectedPort || !localPort || !baseUrl || !clusterId) return;
+    if (!selectedPort || !localPort) {
+      toast.error('Please select a port and local port');
+      return;
+    }
+    if (!baseUrl || !clusterId) {
+      toast.error('No cluster connected. Please select a cluster first.');
+      return;
+    }
     setIsStarting(true);
     try {
       const resp = await startPortForward(baseUrl, clusterId, {
@@ -225,6 +232,7 @@ function InlinePortForward({
             {/* Start button */}
             <div className="flex items-end">
               <Button
+                type="button"
                 onClick={handleStart}
                 disabled={isStarting || !selectedPort || !localPort}
                 className="w-full"
