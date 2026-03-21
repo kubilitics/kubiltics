@@ -293,29 +293,70 @@ export default function ServiceDetail() {
       content: (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <SectionCard title="Service info" icon={Globe}>
-            <div className="grid grid-cols-2 gap-4 text-sm">
-              <DetailRow label="Type" value={<Badge variant="secondary">{serviceType}</Badge>} />
-              <DetailRow label="Cluster IP" value={<span className="font-mono">{clusterIP}</span>} />
-              {svc.spec?.externalName != null && <DetailRow label="External Name" value={svc.spec.externalName} />}
-              <DetailRow label="Session Affinity" value={sessionAffinity} />
-              <DetailRow label="External Traffic Policy" value={svc.spec?.externalTrafficPolicy ?? '—'} />
-              <DetailRow label="Internal Traffic Policy" value={svc.spec?.internalTrafficPolicy ?? '—'} />
-              <DetailRow label="IP Families" value={svc.spec?.ipFamilies?.join(', ') ?? '—'} />
-              <DetailRow label="IP Family Policy" value={svc.spec?.ipFamilyPolicy ?? '—'} />
-              <DetailRow label="Publish Not Ready Addresses" value={svc.spec?.publishNotReadyAddresses ? 'true' : 'false'} />
-              <DetailRow label="Age" value={age} />
+            <div className="grid grid-cols-2 gap-y-3 gap-x-6 text-sm">
+              <DetailRow label="Type" value={
+                <Badge variant="secondary" className="font-semibold">{serviceType}</Badge>
+              } />
+              <DetailRow label="Cluster IP" value={
+                clusterIP !== '—' && clusterIP !== 'None' ? (
+                  <span className="inline-flex items-center gap-1.5">
+                    <span className="font-mono font-semibold text-primary bg-primary/10 px-2 py-0.5 rounded">{clusterIP}</span>
+                    <button onClick={() => { navigator.clipboard.writeText(clusterIP); toast.success('IP copied'); }} className="text-muted-foreground hover:text-primary" title="Copy IP"><Copy className="h-3 w-3" /></button>
+                  </span>
+                ) : <span className="text-muted-foreground">{clusterIP}</span>
+              } />
+              {svc.spec?.externalName != null && <DetailRow label="External Name" value={
+                <span className="font-mono text-blue-500">{svc.spec.externalName}</span>
+              } />}
+              <DetailRow label="Session Affinity" value={
+                <Badge variant={sessionAffinity === 'None' ? 'outline' : 'secondary'}>{sessionAffinity}</Badge>
+              } />
+              <DetailRow label="External Traffic Policy" value={
+                <Badge variant="outline">{svc.spec?.externalTrafficPolicy ?? 'Cluster'}</Badge>
+              } />
+              <DetailRow label="Internal Traffic Policy" value={
+                <Badge variant="outline">{svc.spec?.internalTrafficPolicy ?? 'Cluster'}</Badge>
+              } />
+              <DetailRow label="IP Families" value={
+                <span className="font-mono">{svc.spec?.ipFamilies?.join(', ') ?? '—'}</span>
+              } />
+              <DetailRow label="IP Family Policy" value={
+                <Badge variant="outline">{svc.spec?.ipFamilyPolicy ?? '—'}</Badge>
+              } />
+              <DetailRow label="Publish Not Ready Addresses" value={
+                <Badge variant={svc.spec?.publishNotReadyAddresses ? 'destructive' : 'outline'}>
+                  {svc.spec?.publishNotReadyAddresses ? 'true' : 'false'}
+                </Badge>
+              } />
+              <DetailRow label="Age" value={
+                <span className="font-medium">{age}</span>
+              } />
             </div>
           </SectionCard>
           <SectionCard title="Ports" icon={Layers}>
-            <div className="space-y-3">
+            <div className="space-y-2">
               {ports.length === 0 ? <p className="text-muted-foreground text-sm">No ports</p> : ports.map((port, idx) => (
-                <div key={port.name || idx} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
-                  <div>
-                    <p className="font-medium">{port.name || `port-${idx}`}</p>
-                    <p className="text-sm text-muted-foreground">{port.protocol || 'TCP'}</p>
+                <div key={port.name || idx} className="flex items-center justify-between p-3 rounded-lg border border-border/50 bg-card hover:bg-muted/30 transition-colors">
+                  <div className="flex items-center gap-3">
+                    <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <Layers className="h-4 w-4 text-primary" />
+                    </div>
+                    <div>
+                      <p className="font-semibold">{port.name || `port-${idx}`}</p>
+                      <p className="text-xs text-muted-foreground">{port.protocol || 'TCP'}</p>
+                    </div>
                   </div>
-                  <div className="text-right font-mono text-sm">
-                    <p>{port.port} → {port.targetPort ?? '—'}{port.nodePort != null ? ` (nodePort: ${port.nodePort})` : ''}</p>
+                  <div className="text-right">
+                    <span className="font-mono text-sm">
+                      <span className="text-primary font-semibold">{port.port}</span>
+                      <span className="text-muted-foreground mx-1">→</span>
+                      <span className="font-semibold">{port.targetPort ?? '—'}</span>
+                    </span>
+                    {port.nodePort != null && (
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        nodePort: <span className="font-mono text-amber-600 dark:text-amber-400 font-semibold">{port.nodePort}</span>
+                      </p>
+                    )}
                   </div>
                 </div>
               ))}
