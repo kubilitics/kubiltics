@@ -31,6 +31,7 @@ import { DEFAULT_BACKEND_BASE_URL } from '@/lib/backendConstants';
 import { isTauri } from '@/lib/tauri';
 import { useThemeStore, type Theme } from '@/stores/themeStore';
 import { cn } from '@/lib/utils';
+import { Badge } from '@/components/ui/badge';
 
 const settingsSchema = z.object({
   backendBaseUrl: z.string().url({ message: 'Please enter a valid URL' }),
@@ -299,155 +300,206 @@ export default function Settings() {
   };
 
   return (
-    <div className="container max-w-4xl py-8 space-y-6">
-      {/* ─── Hero Header ─── */}
-      <div className="relative overflow-hidden rounded-2xl border border-border/40 bg-gradient-to-br from-slate-50 via-white to-blue-50/80 dark:from-slate-900 dark:via-slate-900/95 dark:to-blue-950/30 shadow-sm">
+    <div className="container max-w-5xl py-8 space-y-8">
+      {/* ━━━ Hero Header ━━━ */}
+      <div className="relative overflow-hidden rounded-2xl border border-border/40 bg-gradient-to-br from-slate-50 via-white to-blue-50/80 dark:from-slate-900 dark:via-slate-900/95 dark:to-blue-950/30 shadow-lg shadow-blue-500/5">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-blue-100/40 via-transparent to-transparent dark:from-blue-900/20" />
-        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 via-indigo-500 to-blue-400" />
-        <div className="relative px-8 py-7 flex items-center gap-5">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 shadow-lg shadow-blue-500/20">
-            <SettingsIcon className="h-6 w-6 text-white" />
+        <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-blue-500 via-indigo-500 to-violet-500" />
+        <div className="relative px-8 py-8 flex items-center justify-between">
+          <div className="flex items-center gap-5">
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 shadow-xl shadow-blue-500/25 ring-4 ring-blue-500/10">
+              <SettingsIcon className="h-7 w-7 text-white" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold tracking-tight text-foreground">Settings</h1>
+              <p className="text-sm text-muted-foreground mt-1">Manage connections, clusters, and application preferences</p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-xl font-semibold tracking-tight text-foreground">Settings</h1>
-            <p className="text-sm text-muted-foreground mt-0.5">Manage connections, clusters, and application preferences</p>
+          <div className="hidden sm:flex items-center gap-2">
+            <Badge variant="outline" className="rounded-full px-3 py-1 text-xs font-medium border-blue-200 text-blue-700 dark:border-blue-800 dark:text-blue-300">
+              v1.0.0
+            </Badge>
+            <Badge variant="outline" className="rounded-full px-3 py-1 text-xs font-medium">
+              {typeof __VITE_IS_TAURI_BUILD__ !== 'undefined' && __VITE_IS_TAURI_BUILD__ ? 'Desktop' : 'Browser'}
+            </Badge>
           </div>
         </div>
       </div>
 
-      {/* ─── Clusters ─── */}
-      <div className="rounded-2xl border border-emerald-200/60 bg-card overflow-hidden shadow-sm dark:bg-slate-900/60 dark:border-emerald-800/30">
-        <div className="absolute top-0 left-0 right-0 h-0.5 bg-emerald-400/60 rounded-t-2xl" />
-        <div className="px-6 py-5 border-b border-emerald-100/60 bg-gradient-to-r from-emerald-50/40 to-transparent dark:border-emerald-900/20 dark:from-emerald-950/20">
+      {/* ━━━ Clusters ━━━ */}
+      <Card className="rounded-2xl overflow-hidden shadow-md border-border/50 dark:bg-slate-900/60">
+        <div className="h-1 bg-gradient-to-r from-emerald-400 via-emerald-500 to-teal-500" />
+        <CardHeader className="pb-4 bg-gradient-to-r from-emerald-50/50 to-transparent dark:from-emerald-950/20">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-100 dark:bg-emerald-900/40 shadow-sm shadow-emerald-200/50 dark:shadow-none">
-                <Server className="h-4.5 w-4.5 text-emerald-600 dark:text-emerald-400" />
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-100 dark:bg-emerald-900/40 shadow-sm">
+                <Server className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
               </div>
               <div>
-                <h2 className="text-sm font-semibold text-foreground">Clusters</h2>
-                <p className="text-xs text-muted-foreground mt-0.5">{clusters.length} connected cluster{clusters.length !== 1 ? 's' : ''}</p>
+                <CardTitle className="text-base">Clusters</CardTitle>
+                <CardDescription className="mt-0.5">
+                  {clusters.length} connected cluster{clusters.length !== 1 ? 's' : ''}
+                </CardDescription>
               </div>
             </div>
-            <Button variant="outline" size="sm" className="rounded-lg h-8 text-xs" onClick={() => navigate('/connect?addCluster=true')}>
-              <Plus className="h-3.5 w-3.5 mr-1.5" />
+            <Button variant="default" size="sm" className="rounded-xl h-9 bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm" onClick={() => navigate('/connect?addCluster=true')}>
+              <Plus className="h-4 w-4 mr-1.5" />
               Add Cluster
             </Button>
           </div>
-        </div>
-        <div className="p-4">
+        </CardHeader>
+        <CardContent className="pt-2 pb-6">
           {clusters.length === 0 ? (
-            <div className="text-center py-10">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-muted/60 mx-auto mb-3">
-                <Server className="h-6 w-6 text-muted-foreground/60" />
+            <div className="text-center py-12 px-4">
+              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-100 to-teal-50 dark:from-emerald-900/30 dark:to-teal-900/20 mx-auto mb-4 shadow-inner">
+                <Server className="h-7 w-7 text-emerald-400" />
               </div>
-              <p className="text-sm font-medium text-muted-foreground">No clusters connected</p>
-              <p className="text-xs text-muted-foreground/70 mt-1">Connect a Kubernetes cluster to get started</p>
-              <Button size="sm" className="mt-4 rounded-lg" onClick={() => navigate('/connect?addCluster=true')}>
-                <Plus className="h-3.5 w-3.5 mr-1.5" />
-                Connect Cluster
+              <p className="text-sm font-semibold text-foreground">No clusters connected</p>
+              <p className="text-xs text-muted-foreground mt-1.5 max-w-xs mx-auto">Connect a Kubernetes cluster to start monitoring workloads, nodes, and services</p>
+              <Button size="sm" className="mt-5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => navigate('/connect?addCluster=true')}>
+                <Plus className="h-4 w-4 mr-1.5" />
+                Connect First Cluster
               </Button>
             </div>
           ) : (
-            <div className="space-y-2">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {clusters.map((cluster) => {
                 const isActive = cluster.id === currentClusterId;
                 return (
-                  <div key={cluster.id} className={cn(
-                    "group flex items-center justify-between px-4 py-3.5 rounded-xl border transition-all duration-150",
-                    isActive
-                      ? "border-blue-200 bg-gradient-to-r from-blue-50/80 to-indigo-50/40 dark:border-blue-800/40 dark:from-blue-950/30 dark:to-indigo-950/20 shadow-sm"
-                      : "border-border/40 bg-muted/10 hover:bg-muted/30 dark:border-slate-700/40"
-                  )}>
-                    <div className="flex items-center gap-3.5 min-w-0 flex-1">
-                      <div className={cn(
-                        "flex h-8 w-8 items-center justify-center rounded-lg shrink-0",
-                        isActive ? "bg-blue-100 dark:bg-blue-900/40" : "bg-muted/60 dark:bg-slate-800/60"
-                      )}>
-                        <Server className={cn("h-4 w-4", isActive ? "text-blue-600 dark:text-blue-400" : "text-muted-foreground")} />
-                      </div>
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium truncate">{cluster.name}</span>
-                          {isActive && (
-                            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-blue-700 dark:text-blue-300 bg-blue-100 dark:bg-blue-900/50 px-1.5 py-0.5 rounded-md uppercase tracking-wider">
-                              <span className="h-1.5 w-1.5 rounded-full bg-blue-500 animate-pulse" />
-                              Active
-                            </span>
-                          )}
+                  <div
+                    key={cluster.id}
+                    className={cn(
+                      "relative rounded-xl border-2 overflow-hidden transition-all duration-200 hover:shadow-md",
+                      isActive
+                        ? "border-blue-300 bg-gradient-to-br from-blue-50/90 via-white to-indigo-50/50 dark:border-blue-700/50 dark:from-blue-950/40 dark:via-slate-900 dark:to-indigo-950/20 shadow-sm"
+                        : "border-border/50 bg-card hover:border-border dark:hover:border-slate-600"
+                    )}
+                  >
+                    {/* Colored left accent */}
+                    <div className={cn(
+                      "absolute left-0 top-0 bottom-0 w-1 rounded-l-xl",
+                      isActive ? "bg-gradient-to-b from-blue-500 to-indigo-500" : "bg-slate-300 dark:bg-slate-700"
+                    )} />
+                    <div className="pl-5 pr-4 py-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-start gap-3 min-w-0 flex-1">
+                          <div className={cn(
+                            "flex h-10 w-10 items-center justify-center rounded-xl shrink-0 shadow-sm",
+                            isActive
+                              ? "bg-gradient-to-br from-blue-500 to-indigo-500 text-white"
+                              : "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400"
+                          )}>
+                            <Server className="h-5 w-5" />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="text-sm font-semibold truncate">{cluster.name}</span>
+                              {isActive && (
+                                <Badge className="bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/50 dark:text-blue-300 dark:border-blue-800 text-[10px] px-1.5 py-0 h-5 rounded-md">
+                                  <span className="h-1.5 w-1.5 rounded-full bg-blue-500 animate-pulse mr-1" />
+                                  ACTIVE
+                                </Badge>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2 mt-1.5">
+                              <Badge variant="outline" className="text-[10px] px-2 py-0 h-5 rounded-md font-medium">
+                                {cluster.provider || 'Kubernetes'}
+                              </Badge>
+                              <span className="text-xs text-muted-foreground">
+                                {cluster.node_count ?? 0} node{(cluster.node_count ?? 0) !== 1 ? 's' : ''}
+                              </span>
+                            </div>
+                          </div>
                         </div>
-                        <div className="flex items-center gap-1.5 mt-0.5">
-                          <span className="text-xs text-muted-foreground">{cluster.provider || 'Kubernetes'}</span>
-                          <span className="text-muted-foreground/40">·</span>
-                          <span className="text-xs text-muted-foreground">{cluster.node_count ?? 0} node{(cluster.node_count ?? 0) !== 1 ? 's' : ''}</span>
-                        </div>
                       </div>
-                    </div>
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      {!isActive && (
-                        <Button variant="outline" size="sm" className="h-7 text-xs rounded-lg border-blue-200 text-blue-700 hover:bg-blue-50 dark:border-blue-800 dark:text-blue-300 dark:hover:bg-blue-950/40" onClick={() => {
-                          setCurrentClusterId(cluster.id);
-                          setActiveCluster(backendClusterToCluster(cluster));
-                          toast.success(`Switched to ${cluster.name}`);
-                        }}>
-                          Switch
+                      {/* Always-visible actions */}
+                      <div className="flex items-center gap-2 mt-3 pt-3 border-t border-border/40">
+                        {!isActive ? (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-8 text-xs rounded-lg flex-1 border-blue-200 text-blue-700 hover:bg-blue-50 dark:border-blue-800 dark:text-blue-300 dark:hover:bg-blue-950/40"
+                            onClick={() => {
+                              setCurrentClusterId(cluster.id);
+                              setActiveCluster(backendClusterToCluster(cluster));
+                              toast.success(`Switched to ${cluster.name}`);
+                            }}
+                          >
+                            <Focus className="h-3.5 w-3.5 mr-1.5" />
+                            Switch to Cluster
+                          </Button>
+                        ) : (
+                          <div className="flex-1 flex items-center gap-1.5 text-xs text-blue-600 dark:text-blue-400 font-medium">
+                            <CheckCircle2 className="h-3.5 w-3.5" />
+                            Currently active
+                          </div>
+                        )}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 rounded-lg text-muted-foreground/60 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30"
+                          onClick={() => setClusterToRemove(cluster)}
+                        >
+                          <Trash2 className="h-4 w-4" />
                         </Button>
-                      )}
-                      <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground/50 hover:text-destructive" onClick={() => setClusterToRemove(cluster)}>
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
+                      </div>
                     </div>
                   </div>
                 );
               })}
             </div>
           )}
-        </div>
-      </div>
+        </CardContent>
+      </Card>
 
-      {/* ─── Projects ─── */}
-      <div className="rounded-2xl border border-violet-200/60 bg-card overflow-hidden shadow-sm dark:bg-slate-900/60 dark:border-violet-800/30">
-        <div className="px-6 py-5 border-b border-violet-100/60 bg-gradient-to-r from-violet-50/40 to-transparent dark:border-violet-900/20 dark:from-violet-950/20">
+      {/* ━━━ Projects ━━━ */}
+      <Card className="rounded-2xl overflow-hidden shadow-md border-border/50 dark:bg-slate-900/60">
+        <div className="h-1 bg-gradient-to-r from-violet-400 via-purple-500 to-fuchsia-500" />
+        <CardHeader className="pb-4 bg-gradient-to-r from-violet-50/50 to-transparent dark:from-violet-950/20">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-violet-100 dark:bg-violet-900/40 shadow-sm shadow-violet-200/50 dark:shadow-none">
-                <FolderKanban className="h-4.5 w-4.5 text-violet-600 dark:text-violet-400" />
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-100 dark:bg-violet-900/40 shadow-sm">
+                <FolderKanban className="h-5 w-5 text-violet-600 dark:text-violet-400" />
               </div>
               <div>
-                <h2 className="text-sm font-semibold text-foreground">Projects</h2>
-                <p className="text-xs text-muted-foreground mt-0.5">Organize workloads into logical groups</p>
+                <CardTitle className="text-base">Projects</CardTitle>
+                <CardDescription className="mt-0.5">Organize workloads into logical groups</CardDescription>
               </div>
             </div>
             <CreateProjectDialog>
-              <Button variant="outline" size="sm" className="rounded-lg h-8 text-xs">
-                <Plus className="h-3.5 w-3.5 mr-1.5" />
+              <Button variant="default" size="sm" className="rounded-xl h-9 bg-violet-600 hover:bg-violet-700 text-white shadow-sm">
+                <Plus className="h-4 w-4 mr-1.5" />
                 New Project
               </Button>
             </CreateProjectDialog>
           </div>
-        </div>
-        <div className="p-4">
+        </CardHeader>
+        <CardContent className="pt-2 pb-6">
           {isProjectsLoading ? (
-            <div className="flex items-center justify-center py-10">
-              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground/60" />
-              <span className="ml-2.5 text-sm text-muted-foreground">Loading projects...</span>
+            <div className="flex flex-col items-center justify-center py-12 gap-3">
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-violet-100/50 dark:bg-violet-900/20">
+                <Loader2 className="h-6 w-6 animate-spin text-violet-500" />
+              </div>
+              <span className="text-sm text-muted-foreground">Loading projects...</span>
             </div>
           ) : projects.length === 0 ? (
-            <div className="text-center py-10">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-muted/60 mx-auto mb-3">
-                <FolderKanban className="h-6 w-6 text-muted-foreground/60" />
+            <div className="relative rounded-xl border-2 border-dashed border-violet-200 dark:border-violet-800/40 bg-gradient-to-br from-violet-50/30 to-fuchsia-50/20 dark:from-violet-950/10 dark:to-fuchsia-950/5 py-12 px-4">
+              <div className="text-center">
+                <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-100 to-fuchsia-50 dark:from-violet-900/30 dark:to-fuchsia-900/20 mx-auto mb-4 shadow-inner">
+                  <FolderKanban className="h-7 w-7 text-violet-400" />
+                </div>
+                <p className="text-sm font-semibold text-foreground">No projects yet</p>
+                <p className="text-xs text-muted-foreground mt-1.5 max-w-xs mx-auto">Projects help you organize namespaces, services, and workloads across clusters</p>
+                <CreateProjectDialog>
+                  <Button size="sm" className="mt-5 rounded-xl bg-violet-600 hover:bg-violet-700 text-white">
+                    <Plus className="h-4 w-4 mr-1.5" />
+                    Create First Project
+                  </Button>
+                </CreateProjectDialog>
               </div>
-              <p className="text-sm font-medium text-muted-foreground">No projects yet</p>
-              <p className="text-xs text-muted-foreground/70 mt-1">Create a project to organize cluster workloads</p>
-              <CreateProjectDialog>
-                <Button size="sm" className="mt-4 rounded-lg">
-                  <Plus className="h-3.5 w-3.5 mr-1.5" />
-                  Create Project
-                </Button>
-              </CreateProjectDialog>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               {projects.map((project) => (
                 <ProjectCard
                   key={project.id}
@@ -459,129 +511,230 @@ export default function Settings() {
               ))}
             </div>
           )}
-        </div>
-      </div>
+        </CardContent>
+      </Card>
 
-      {/* ─── Connection Endpoints ─── */}
-      <div className="rounded-2xl border border-amber-200/50 bg-card overflow-hidden shadow-sm dark:border-amber-800/30 dark:bg-slate-900/60">
-        <div className="px-6 py-5 border-b border-amber-200/40 dark:border-amber-800/20 bg-amber-50/30 dark:bg-amber-950/10">
+      {/* ━━━ Connection Endpoints ━━━ */}
+      <Card className="rounded-2xl overflow-hidden shadow-md border-border/50 dark:bg-slate-900/60">
+        <div className="h-1 bg-gradient-to-r from-amber-400 via-orange-500 to-amber-500" />
+        <CardHeader className="pb-4 bg-gradient-to-r from-amber-50/50 to-transparent dark:from-amber-950/15">
           <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-amber-100 dark:bg-amber-900/40">
-              <AlertTriangle className="h-4.5 w-4.5 text-amber-600 dark:text-amber-400" />
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-100 dark:bg-amber-900/40 shadow-sm">
+              <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400" />
             </div>
             <div>
-              <h2 className="text-sm font-semibold text-amber-800 dark:text-amber-300">Connection Endpoints</h2>
-              <p className="text-xs text-amber-600/80 dark:text-amber-400/70 mt-0.5">Changing these will reload the application</p>
+              <CardTitle className="text-base">Connection Endpoints</CardTitle>
+              <CardDescription className="mt-0.5">
+                <span className="inline-flex items-center gap-1.5">
+                  <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+                  Changing these will reload the application
+                </span>
+              </CardDescription>
             </div>
           </div>
-        </div>
-        <div className="p-6">
+        </CardHeader>
+        <CardContent className="pb-6">
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
-              <FormField
-                control={form.control}
-                name="backendBaseUrl"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Core Backend URL</FormLabel>
-                    <div className="flex gap-2 mt-1.5">
-                      <FormControl>
-                        <Input {...field} className="rounded-lg h-10 font-mono text-sm" />
-                      </FormControl>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="icon"
-                        className="h-10 w-10 rounded-lg shrink-0"
-                        onClick={() => testConnection('backend')}
-                        disabled={!!isTesting}
-                      >
-                        {isTesting === 'backend' ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : connectionStatus.backend === 'success' ? (
-                          <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-                        ) : connectionStatus.backend === 'error' ? (
-                          <XCircle className="h-4 w-4 text-red-500" />
-                        ) : (
-                          <RotateCcw className="h-4 w-4" />
-                        )}
-                      </Button>
-                    </div>
-                    <FormDescription className="text-xs">
-                      The URL where the Kubilitics Core Go backend is running (default port 819).
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <div className="flex justify-between pt-3 border-t border-border/30">
-                <Button type="button" variant="ghost" size="sm" className="text-xs text-muted-foreground" onClick={handleReset}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+              {/* Backend URL */}
+              <div className="rounded-xl border border-border/50 bg-muted/10 p-5 space-y-4">
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline" className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md border-amber-200 text-amber-700 dark:border-amber-800 dark:text-amber-300">
+                    Core API
+                  </Badge>
+                  {connectionStatus.backend === 'success' && (
+                    <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/50 dark:text-emerald-300 dark:border-emerald-800 text-[10px] px-2 py-0.5 h-5 rounded-md">
+                      <CheckCircle2 className="h-3 w-3 mr-1" />
+                      Connected
+                    </Badge>
+                  )}
+                  {connectionStatus.backend === 'error' && (
+                    <Badge className="bg-red-100 text-red-700 border-red-200 dark:bg-red-900/50 dark:text-red-300 dark:border-red-800 text-[10px] px-2 py-0.5 h-5 rounded-md">
+                      <XCircle className="h-3 w-3 mr-1" />
+                      Failed
+                    </Badge>
+                  )}
+                </div>
+                <FormField
+                  control={form.control}
+                  name="backendBaseUrl"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-xs font-semibold text-muted-foreground">Backend URL</FormLabel>
+                      <div className="flex gap-2 mt-1">
+                        <FormControl>
+                          <Input {...field} className="rounded-lg h-10 font-mono text-sm bg-background" placeholder="http://localhost:819" />
+                        </FormControl>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className={cn(
+                            "h-10 rounded-lg shrink-0 px-4 text-xs font-medium gap-2",
+                            connectionStatus.backend === 'success' && "border-emerald-300 text-emerald-700 dark:border-emerald-700 dark:text-emerald-400",
+                            connectionStatus.backend === 'error' && "border-red-300 text-red-700 dark:border-red-700 dark:text-red-400"
+                          )}
+                          onClick={() => testConnection('backend')}
+                          disabled={!!isTesting}
+                        >
+                          {isTesting === 'backend' ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : connectionStatus.backend === 'success' ? (
+                            <CheckCircle2 className="h-4 w-4" />
+                          ) : connectionStatus.backend === 'error' ? (
+                            <XCircle className="h-4 w-4" />
+                          ) : (
+                            <RotateCcw className="h-4 w-4" />
+                          )}
+                          Test
+                        </Button>
+                      </div>
+                      <FormDescription className="text-xs">
+                        The URL where the Kubilitics Core Go backend is running (default port 819).
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div className="flex justify-between items-center pt-2">
+                <Button type="button" variant="ghost" size="sm" className="text-xs text-muted-foreground hover:text-foreground rounded-lg gap-1.5" onClick={handleReset}>
+                  <RotateCcw className="h-3.5 w-3.5" />
                   Reset to Defaults
                 </Button>
-                <Button type="submit" size="sm" className="rounded-lg">
+                <Button type="submit" size="sm" className="rounded-xl px-5 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white shadow-sm">
                   <Save className="mr-1.5 h-3.5 w-3.5" />
                   Save Changes
                 </Button>
               </div>
             </form>
           </Form>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
 
-      {/* ─── Appearance ─── */}
+      {/* ━━━ Appearance ━━━ */}
       <AppearanceSection />
 
-      {/* ─── Keyboard Shortcuts ─── */}
+      {/* ━━━ Keyboard Shortcuts ━━━ */}
       <KeyboardShortcutsSection />
 
+      {/* ━━━ Desktop ━━━ */}
       {isDesktop && (
-        <div className="rounded-2xl border border-border/40 bg-card overflow-hidden shadow-sm dark:bg-slate-900/60 dark:border-slate-700/50">
-          <div className="px-6 py-5 border-b border-border/40 dark:border-slate-700/40">
-            <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-800/60">
-                <Monitor className="h-4.5 w-4.5 text-slate-600 dark:text-slate-400" />
+        <Card className="rounded-2xl overflow-hidden shadow-md border-border/50 dark:bg-slate-900/60">
+          <div className="h-1 bg-gradient-to-r from-cyan-400 via-sky-500 to-blue-500" />
+          <CardHeader className="pb-4 bg-gradient-to-r from-cyan-50/50 to-transparent dark:from-cyan-950/15">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-cyan-100 dark:bg-cyan-900/40 shadow-sm">
+                  <Monitor className="h-5 w-5 text-cyan-600 dark:text-cyan-400" />
+                </div>
+                <div>
+                  <CardTitle className="text-base">Desktop Application</CardTitle>
+                  <CardDescription className="mt-0.5">Desktop-specific configuration and status</CardDescription>
+                </div>
               </div>
-              <div>
-                <h2 className="text-sm font-semibold text-foreground">Desktop</h2>
-                <p className="text-xs text-muted-foreground mt-0.5">Desktop-specific configuration and status</p>
-              </div>
+              {desktopInfo && (
+                <Badge variant="outline" className="rounded-full px-3 py-1 text-xs font-medium border-cyan-200 text-cyan-700 dark:border-cyan-800 dark:text-cyan-300">
+                  v{desktopInfo.app_version}
+                </Badge>
+              )}
             </div>
-          </div>
-          <div className="p-6 space-y-5">
+          </CardHeader>
+          <CardContent className="pb-6 space-y-5">
+            {/* Stat cards in 2x2 grid */}
             {desktopInfo && (
-              <div className="grid grid-cols-2 gap-4">
-                {[
-                  { label: 'App Version', value: desktopInfo.app_version },
-                  { label: 'Backend Port', value: String(desktopInfo.backend_port) },
-                  ...(desktopInfo.backend_version ? [{ label: 'Backend Version', value: desktopInfo.backend_version }] : []),
-                  ...(desktopInfo.backend_uptime_seconds !== null ? [{ label: 'Backend Uptime', value: formatUptime(desktopInfo.backend_uptime_seconds) }] : []),
-                ].map(({ label, value }) => (
-                  <div key={label} className="rounded-lg border border-border/40 bg-muted/20 px-4 py-3">
-                    <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">{label}</p>
-                    <p className="text-sm font-medium mt-1">{value}</p>
+              <div className="grid grid-cols-2 gap-3">
+                {/* App Version */}
+                <div className="rounded-xl border border-border/50 bg-gradient-to-br from-blue-50/40 to-white dark:from-blue-950/20 dark:to-slate-900 p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-900/40">
+                      <Info className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">App Version</p>
+                      <p className="text-sm font-semibold mt-0.5">{desktopInfo.app_version}</p>
+                    </div>
                   </div>
-                ))}
+                </div>
+                {/* Backend Port */}
+                <div className="rounded-xl border border-border/50 bg-gradient-to-br from-emerald-50/40 to-white dark:from-emerald-950/20 dark:to-slate-900 p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-100 dark:bg-emerald-900/40">
+                      <Server className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Backend Port</p>
+                      <p className="text-sm font-semibold mt-0.5">{desktopInfo.backend_port}</p>
+                    </div>
+                  </div>
+                </div>
+                {/* Backend Version */}
+                {desktopInfo.backend_version && (
+                  <div className="rounded-xl border border-border/50 bg-gradient-to-br from-orange-50/40 to-white dark:from-orange-950/20 dark:to-slate-900 p-4">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-orange-100 dark:bg-orange-900/40">
+                        <SettingsIcon className="h-4 w-4 text-orange-600 dark:text-orange-400" />
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Backend Version</p>
+                        <p className="text-sm font-semibold mt-0.5">{desktopInfo.backend_version}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                {/* Backend Uptime */}
+                {desktopInfo.backend_uptime_seconds !== null && (
+                  <div className="rounded-xl border border-border/50 bg-gradient-to-br from-pink-50/40 to-white dark:from-pink-950/20 dark:to-slate-900 p-4">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-pink-100 dark:bg-pink-900/40">
+                        <RefreshCw className="h-4 w-4 text-pink-600 dark:text-pink-400" />
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Uptime</p>
+                        <p className="text-sm font-semibold mt-0.5">{formatUptime(desktopInfo.backend_uptime_seconds)}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
+            {/* Paths in monospace cards */}
             {desktopInfo && (
-              <div className="space-y-3">
+              <div className="space-y-2">
                 {[
                   { label: 'Kubeconfig Path', value: desktopInfo.kubeconfig_path },
                   { label: 'App Data Directory', value: desktopInfo.app_data_dir },
                 ].map(({ label, value }) => (
-                  <div key={label} className="rounded-lg border border-border/40 bg-muted/20 px-4 py-3">
-                    <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">{label}</p>
-                    <p className="text-xs font-mono text-foreground/80 mt-1.5 break-all">{value}</p>
+                  <div key={label} className="rounded-xl border border-border/50 bg-slate-50/50 dark:bg-slate-800/30 px-4 py-3.5 flex items-start gap-3">
+                    <div className="shrink-0 mt-0.5">
+                      <FolderKanban className="h-4 w-4 text-muted-foreground/60" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">{label}</p>
+                      <p className="text-xs font-mono text-foreground/80 mt-1 break-all leading-relaxed">{value}</p>
+                    </div>
                   </div>
                 ))}
               </div>
             )}
 
             {/* Analytics Consent */}
-            <div className="flex items-center justify-between rounded-lg border border-border/40 px-4 py-3.5">
-              <div className="space-y-0.5">
-                <p className="text-sm font-medium">Analytics & Usage Data</p>
+            <div className="rounded-xl border border-border/50 bg-gradient-to-r from-muted/20 to-transparent p-4 flex items-center justify-between">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <p className="text-sm font-semibold">Analytics & Usage Data</p>
+                  {analyticsConsent !== null && (
+                    <Badge variant="outline" className={cn(
+                      "text-[10px] px-1.5 py-0 h-5 rounded-md",
+                      analyticsConsent
+                        ? "border-emerald-200 text-emerald-700 dark:border-emerald-800 dark:text-emerald-300"
+                        : "border-border text-muted-foreground"
+                    )}>
+                      {analyticsConsent ? 'Enabled' : 'Disabled'}
+                    </Badge>
+                  )}
+                </div>
                 <p className="text-xs text-muted-foreground">Help improve Kubilitics by sharing anonymous usage data</p>
               </div>
               {analyticsConsent !== null && (
@@ -595,52 +748,58 @@ export default function Settings() {
 
             {/* Actions */}
             <div className="flex gap-2 pt-3 border-t border-border/30">
-              <Button type="button" variant="outline" size="sm" className="rounded-lg text-xs" onClick={handleRestartBackend} disabled={isRestarting}>
-                {isRestarting ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="mr-1.5 h-3.5 w-3.5" />}
+              <Button type="button" variant="outline" size="sm" className="rounded-xl text-xs h-9 gap-2" onClick={handleRestartBackend} disabled={isRestarting}>
+                {isRestarting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
                 {isRestarting ? 'Restarting...' : 'Restart Backend'}
               </Button>
-              <Button type="button" variant="outline" size="sm" className="rounded-lg text-xs" onClick={handleCheckForUpdates} disabled={isCheckingUpdate}>
-                {isCheckingUpdate ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Download className="mr-1.5 h-3.5 w-3.5" />}
+              <Button type="button" variant="outline" size="sm" className="rounded-xl text-xs h-9 gap-2" onClick={handleCheckForUpdates} disabled={isCheckingUpdate}>
+                {isCheckingUpdate ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
                 {isCheckingUpdate ? 'Checking...' : 'Check for Updates'}
               </Button>
             </div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       )}
 
-      {/* ─── About ─── */}
+      {/* ━━━ About ━━━ */}
       <AboutSection />
 
-      {/* Cluster Remove Dialog */}
+      {/* ── Cluster Remove Dialog ── */}
       <AlertDialog open={!!clusterToRemove} onOpenChange={(open) => !open && setClusterToRemove(null)}>
         <AlertDialogContent className="rounded-2xl">
           <AlertDialogHeader>
-            <AlertDialogTitle>Remove cluster?</AlertDialogTitle>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <Trash2 className="h-5 w-5 text-red-500" />
+              Remove cluster?
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              This will unregister <strong>{clusterToRemove?.name}</strong> from Kubilitics. This does not modify your kubeconfig file.
+              This will unregister <strong>{clusterToRemove?.name}</strong> from Kubilitics. Your kubeconfig file will not be modified.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleteClusterMutation.isPending} className="rounded-lg">Cancel</AlertDialogCancel>
-            <Button variant="destructive" className="rounded-lg" onClick={() => clusterToRemove && deleteClusterMutation.mutate(clusterToRemove)} disabled={deleteClusterMutation.isPending}>
-              {deleteClusterMutation.isPending ? <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Removing...</> : 'Remove'}
+            <AlertDialogCancel disabled={deleteClusterMutation.isPending} className="rounded-xl">Cancel</AlertDialogCancel>
+            <Button variant="destructive" className="rounded-xl" onClick={() => clusterToRemove && deleteClusterMutation.mutate(clusterToRemove)} disabled={deleteClusterMutation.isPending}>
+              {deleteClusterMutation.isPending ? <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Removing...</> : 'Remove Cluster'}
             </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Project Delete Dialog */}
+      {/* ── Project Delete Dialog ── */}
       <AlertDialog open={!!projectToRemove} onOpenChange={(open) => !open && setProjectToRemove(null)}>
         <AlertDialogContent className="rounded-2xl">
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete project?</AlertDialogTitle>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <Trash2 className="h-5 w-5 text-red-500" />
+              Delete project?
+            </AlertDialogTitle>
             <AlertDialogDescription>
               All cluster associations and resource links for <strong>{projectToRemove?.name}</strong> will be permanently deleted.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleteProjectMutation.isPending} className="rounded-lg">Cancel</AlertDialogCancel>
-            <Button variant="destructive" className="rounded-lg" onClick={() => projectToRemove && deleteProjectMutation.mutate(projectToRemove)} disabled={deleteProjectMutation.isPending}>
+            <AlertDialogCancel disabled={deleteProjectMutation.isPending} className="rounded-xl">Cancel</AlertDialogCancel>
+            <Button variant="destructive" className="rounded-xl" onClick={() => projectToRemove && deleteProjectMutation.mutate(projectToRemove)} disabled={deleteProjectMutation.isPending}>
               {deleteProjectMutation.isPending ? <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Deleting...</> : 'Confirm Delete'}
             </Button>
           </AlertDialogFooter>
@@ -658,12 +817,27 @@ export default function Settings() {
   );
 }
 
-/* ─── Appearance Section ──────────────────────────────────── */
+/* ━━━ Appearance Section ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 
-const themeOptions: { value: Theme; icon: typeof Sun; label: string }[] = [
-  { value: 'light', icon: Sun, label: 'Light' },
-  { value: 'dark', icon: Moon, label: 'Dark' },
-  { value: 'system', icon: Monitor, label: 'System' },
+const themeOptions: { value: Theme; icon: typeof Sun; label: string; preview: { bg: string; bar: string; text: string; desc: string } }[] = [
+  {
+    value: 'light',
+    icon: Sun,
+    label: 'Light',
+    preview: { bg: 'bg-white border-slate-200', bar: 'bg-slate-100', text: 'text-slate-800', desc: 'Clean and bright' },
+  },
+  {
+    value: 'dark',
+    icon: Moon,
+    label: 'Dark',
+    preview: { bg: 'bg-slate-900 border-slate-700', bar: 'bg-slate-800', text: 'text-slate-100', desc: 'Easy on the eyes' },
+  },
+  {
+    value: 'system',
+    icon: Monitor,
+    label: 'System',
+    preview: { bg: 'bg-gradient-to-r from-white to-slate-900 border-slate-400', bar: 'bg-gradient-to-r from-slate-100 to-slate-800', text: 'text-slate-600', desc: 'Matches your OS' },
+  },
 ];
 
 function AppearanceSection() {
@@ -682,23 +856,25 @@ function AppearanceSection() {
   };
 
   return (
-    <div className="rounded-2xl border border-pink-200/60 bg-card overflow-hidden shadow-sm dark:bg-slate-900/60 dark:border-pink-800/30">
-      <div className="px-6 py-5 border-b border-pink-100/60 bg-gradient-to-r from-pink-50/40 to-transparent dark:border-pink-900/20 dark:from-pink-950/20">
+    <Card className="rounded-2xl overflow-hidden shadow-md border-border/50 dark:bg-slate-900/60">
+      <div className="h-1 bg-gradient-to-r from-pink-400 via-rose-500 to-pink-500" />
+      <CardHeader className="pb-4 bg-gradient-to-r from-pink-50/50 to-transparent dark:from-pink-950/20">
         <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-pink-100 dark:bg-pink-900/40 shadow-sm shadow-pink-200/50 dark:shadow-none">
-            <Palette className="h-4.5 w-4.5 text-pink-600 dark:text-pink-400" />
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-pink-100 dark:bg-pink-900/40 shadow-sm">
+            <Palette className="h-5 w-5 text-pink-600 dark:text-pink-400" />
           </div>
           <div>
-            <h2 className="text-sm font-semibold text-foreground">Appearance</h2>
-            <p className="text-xs text-muted-foreground mt-0.5">Customize the look and feel</p>
+            <CardTitle className="text-base">Appearance</CardTitle>
+            <CardDescription className="mt-0.5">Customize the look and feel</CardDescription>
           </div>
         </div>
-      </div>
-      <div className="p-6 space-y-5">
+      </CardHeader>
+      <CardContent className="pb-6 space-y-5">
+        {/* Theme Picker with visual preview thumbnails */}
         <div className="space-y-3">
-          <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Theme</label>
+          <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Theme</label>
           <div className="grid grid-cols-3 gap-3">
-            {themeOptions.map(({ value, icon: Icon, label }) => (
+            {themeOptions.map(({ value, icon: Icon, label, preview }) => (
               <button
                 key={value}
                 onClick={() => {
@@ -706,44 +882,74 @@ function AppearanceSection() {
                   toast.success(`Theme set to ${label}`);
                 }}
                 className={cn(
-                  'flex flex-col items-center gap-2.5 rounded-xl border-2 p-5 transition-all duration-150',
+                  'group relative flex flex-col rounded-xl border-2 overflow-hidden transition-all duration-200',
                   theme === value
-                    ? 'border-blue-400 bg-blue-50/60 text-blue-700 shadow-sm dark:border-blue-500/50 dark:bg-blue-950/30 dark:text-blue-300'
-                    : 'border-border/60 hover:border-border hover:bg-muted/40 text-muted-foreground'
+                    ? 'border-blue-400 shadow-md shadow-blue-500/15 dark:border-blue-500/60 ring-2 ring-blue-400/20'
+                    : 'border-border/60 hover:border-border hover:shadow-sm'
                 )}
                 aria-pressed={theme === value}
                 aria-label={`Set theme to ${label}`}
               >
-                <Icon className="h-5 w-5" />
-                <span className="text-xs font-semibold">{label}</span>
+                {/* Mini preview mockup */}
+                <div className={cn("h-16 border-b relative", preview.bg)}>
+                  <div className={cn("absolute top-0 left-0 right-0 h-1", value === 'light' ? 'bg-blue-500' : value === 'dark' ? 'bg-blue-400' : 'bg-gradient-to-r from-blue-500 to-blue-400')} />
+                  <div className="absolute inset-2 top-3 flex flex-col gap-1">
+                    <div className={cn("h-1.5 w-8 rounded-full", preview.bar)} />
+                    <div className={cn("h-1 w-12 rounded-full opacity-50", preview.bar)} />
+                    <div className="flex gap-1 mt-auto">
+                      <div className={cn("h-3 w-5 rounded-sm", preview.bar)} />
+                      <div className={cn("h-3 w-5 rounded-sm", preview.bar)} />
+                    </div>
+                  </div>
+                </div>
+                {/* Label area */}
+                <div className={cn(
+                  "px-3 py-2.5 flex items-center gap-2 transition-colors",
+                  theme === value
+                    ? "bg-blue-50/80 dark:bg-blue-950/30"
+                    : "bg-card group-hover:bg-muted/30"
+                )}>
+                  <Icon className={cn("h-4 w-4", theme === value ? "text-blue-600 dark:text-blue-400" : "text-muted-foreground")} />
+                  <div className="text-left">
+                    <span className={cn("text-xs font-semibold block", theme === value ? "text-blue-700 dark:text-blue-300" : "text-foreground")}>{label}</span>
+                    <span className="text-[10px] text-muted-foreground">{preview.desc}</span>
+                  </div>
+                </div>
+                {/* Active check indicator */}
+                {theme === value && (
+                  <div className="absolute top-2 right-2">
+                    <div className="flex h-5 w-5 items-center justify-center rounded-full bg-blue-500 shadow-sm">
+                      <CheckCircle2 className="h-3.5 w-3.5 text-white" />
+                    </div>
+                  </div>
+                )}
               </button>
             ))}
           </div>
-          <p className="text-xs text-muted-foreground/70">
-            System theme follows your operating system's light/dark preference.
-          </p>
         </div>
 
-        <div className="flex items-center justify-between rounded-lg border border-border/40 px-4 py-3.5">
-          <div className="space-y-0.5">
-            <div className="text-sm font-medium">Reduce Motion</div>
-            <div className="text-xs text-muted-foreground">Minimize animations for accessibility</div>
+        {/* Reduce Motion toggle */}
+        <div className="rounded-xl border border-border/50 bg-gradient-to-r from-muted/20 to-transparent p-4 flex items-center justify-between">
+          <div className="space-y-1">
+            <div className="text-sm font-semibold">Reduce Motion</div>
+            <div className="text-xs text-muted-foreground">Minimize animations and transitions for accessibility</div>
           </div>
           <Switch checked={reduceMotion} onCheckedChange={handleReduceMotion} />
         </div>
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 }
 
-/* ─── Keyboard Shortcuts Section ──────────────────────────── */
+/* ━━━ Keyboard Shortcuts Section ━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 
 const isMac = typeof navigator !== 'undefined' && /Mac|iPod|iPhone|iPad/.test(navigator.userAgent);
-const mod = isMac ? '⌘' : 'Ctrl';
+const mod = isMac ? '\u2318' : 'Ctrl';
 
-const shortcuts: { category: string; items: { keys: string; description: string }[] }[] = [
+const shortcuts: { category: string; color: string; items: { keys: string; description: string }[] }[] = [
   {
     category: 'Navigation',
+    color: 'sky',
     items: [
       { keys: `${mod}+K`, description: 'Open command palette / search' },
       { keys: `${mod}+B`, description: 'Toggle sidebar' },
@@ -754,6 +960,7 @@ const shortcuts: { category: string; items: { keys: string; description: string 
   },
   {
     category: 'Actions',
+    color: 'violet',
     items: [
       { keys: 'Escape', description: 'Close dialog / deselect' },
       { keys: `${mod}+Enter`, description: 'Submit form / confirm action' },
@@ -764,76 +971,125 @@ const shortcuts: { category: string; items: { keys: string; description: string 
 
 function KeyboardShortcutsSection() {
   return (
-    <div className="rounded-2xl border border-sky-200/60 bg-card overflow-hidden shadow-sm dark:bg-slate-900/60 dark:border-sky-800/30">
-      <div className="px-6 py-5 border-b border-sky-100/60 bg-gradient-to-r from-sky-50/40 to-transparent dark:border-sky-900/20 dark:from-sky-950/20">
+    <Card className="rounded-2xl overflow-hidden shadow-md border-border/50 dark:bg-slate-900/60">
+      <div className="h-1 bg-gradient-to-r from-sky-400 via-blue-500 to-indigo-500" />
+      <CardHeader className="pb-4 bg-gradient-to-r from-sky-50/50 to-transparent dark:from-sky-950/20">
         <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-sky-100 dark:bg-sky-900/40 shadow-sm shadow-sky-200/50 dark:shadow-none">
-            <Keyboard className="h-4.5 w-4.5 text-sky-600 dark:text-sky-400" />
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-sky-100 dark:bg-sky-900/40 shadow-sm">
+            <Keyboard className="h-5 w-5 text-sky-600 dark:text-sky-400" />
           </div>
           <div>
-            <h2 className="text-sm font-semibold text-foreground">Keyboard Shortcuts</h2>
-            <p className="text-xs text-muted-foreground mt-0.5">Navigate faster with keyboard shortcuts</p>
+            <CardTitle className="text-base">Keyboard Shortcuts</CardTitle>
+            <CardDescription className="mt-0.5">Navigate faster with keyboard shortcuts</CardDescription>
           </div>
         </div>
-      </div>
-      <div className="p-6 space-y-5">
-        {shortcuts.map(({ category, items }) => (
-          <div key={category} className="space-y-2">
-            <h4 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">{category}</h4>
-            <div className="rounded-xl border border-border/40 overflow-hidden divide-y divide-border/30">
-              {items.map(({ keys, description }) => (
-                <div key={keys} className="flex items-center justify-between px-4 py-3 hover:bg-muted/20 transition-colors">
-                  <span className="text-sm text-foreground/90">{description}</span>
-                  <kbd className="inline-flex items-center gap-1 rounded-md border border-border/60 bg-muted/50 px-2 py-1 text-[11px] font-mono text-muted-foreground shadow-sm">
-                    {keys}
-                  </kbd>
-                </div>
-              ))}
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-/* ─── About Section ───────────────────────────────────────── */
-
-function AboutSection() {
-  return (
-    <div className="rounded-2xl border border-indigo-200/50 bg-card overflow-hidden shadow-sm dark:bg-slate-900/60 dark:border-indigo-800/30">
-      <div className="px-6 py-5 border-b border-indigo-100/50 bg-gradient-to-r from-indigo-50/30 to-transparent dark:border-indigo-900/20 dark:from-indigo-950/15">
-        <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-100 dark:bg-indigo-900/40 shadow-sm shadow-indigo-200/50 dark:shadow-none">
-            <Info className="h-4.5 w-4.5 text-indigo-600 dark:text-indigo-400" />
-          </div>
-          <div>
-            <h2 className="text-sm font-semibold text-foreground">About Kubilitics</h2>
-            <p className="text-xs text-muted-foreground mt-0.5">System information</p>
-          </div>
-        </div>
-      </div>
-      <div className="p-6">
-        <div className="grid grid-cols-2 gap-3">
-          {[
-            { label: 'Product', value: 'Kubilitics' },
-            { label: 'Version', value: '1.0.0' },
-            { label: 'Platform', value: typeof __VITE_IS_TAURI_BUILD__ !== 'undefined' && __VITE_IS_TAURI_BUILD__ ? 'Desktop (Tauri)' : 'Browser' },
-            { label: 'License', value: 'Proprietary' },
-          ].map(({ label, value }) => (
-            <div key={label} className="rounded-lg border border-border/40 bg-muted/20 px-4 py-3">
-              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">{label}</p>
-              <p className="text-sm font-medium mt-1">{value}</p>
+      </CardHeader>
+      <CardContent className="pb-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {shortcuts.map(({ category, color, items }) => (
+            <div key={category} className="space-y-2.5">
+              <Badge
+                variant="outline"
+                className={cn(
+                  "text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-lg",
+                  color === 'sky'
+                    ? "border-sky-200 text-sky-700 dark:border-sky-800 dark:text-sky-300"
+                    : "border-violet-200 text-violet-700 dark:border-violet-800 dark:text-violet-300"
+                )}
+              >
+                {category}
+              </Badge>
+              <div className="rounded-xl border border-border/50 overflow-hidden divide-y divide-border/30">
+                {items.map(({ keys, description }) => (
+                  <div key={keys} className="flex items-center justify-between px-4 py-3 hover:bg-muted/20 transition-colors">
+                    <span className="text-sm text-foreground/90">{description}</span>
+                    <div className="flex items-center gap-1">
+                      {keys.split('+').map((key, i) => (
+                        <span key={i} className="flex items-center gap-1">
+                          {i > 0 && <span className="text-muted-foreground/40 text-[10px]">+</span>}
+                          <kbd className="inline-flex items-center justify-center min-w-[24px] rounded-md border border-border/60 bg-gradient-to-b from-muted/80 to-muted/40 px-1.5 py-0.5 text-[11px] font-mono text-muted-foreground shadow-sm">
+                            {key.replace('then ', '').trim()}
+                          </kbd>
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           ))}
         </div>
-        <div className="mt-4 pt-4 border-t border-border/30">
+      </CardContent>
+    </Card>
+  );
+}
+
+/* ━━━ About Section ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
+function AboutSection() {
+  const platformLabel = typeof __VITE_IS_TAURI_BUILD__ !== 'undefined' && __VITE_IS_TAURI_BUILD__ ? 'Desktop (Tauri)' : 'Browser';
+
+  return (
+    <Card className="rounded-2xl overflow-hidden shadow-md border-border/50 dark:bg-slate-900/60">
+      <div className="h-1 bg-gradient-to-r from-indigo-400 via-purple-500 to-indigo-500" />
+      <CardHeader className="pb-4 bg-gradient-to-r from-indigo-50/50 to-transparent dark:from-indigo-950/15">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-100 dark:bg-indigo-900/40 shadow-sm">
+            <Info className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+          </div>
+          <div>
+            <CardTitle className="text-base">About Kubilitics</CardTitle>
+            <CardDescription className="mt-0.5">System information and build details</CardDescription>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="pb-6">
+        <div className="flex flex-col sm:flex-row items-start gap-5">
+          {/* Product identity */}
+          <div className="flex items-center gap-4">
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 shadow-lg shadow-indigo-500/20">
+              <SettingsIcon className="h-7 w-7 text-white" />
+            </div>
+            <div>
+              <h3 className="text-lg font-bold tracking-tight">Kubilitics</h3>
+              <div className="flex items-center gap-2 mt-1">
+                <Badge className="bg-indigo-100 text-indigo-700 border-indigo-200 dark:bg-indigo-900/50 dark:text-indigo-300 dark:border-indigo-800 text-[10px] px-2 py-0.5 h-5 rounded-md font-bold">
+                  v1.0.0
+                </Badge>
+                <Badge variant="outline" className="text-[10px] px-2 py-0.5 h-5 rounded-md">
+                  {platformLabel}
+                </Badge>
+                <Badge variant="outline" className="text-[10px] px-2 py-0.5 h-5 rounded-md border-emerald-200 text-emerald-700 dark:border-emerald-800 dark:text-emerald-300">
+                  Stable
+                </Badge>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Build info cards */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mt-5">
+          {[
+            { label: 'Product', value: 'Kubilitics' },
+            { label: 'Version', value: '1.0.0' },
+            { label: 'Platform', value: platformLabel },
+            { label: 'License', value: 'Proprietary' },
+          ].map(({ label, value }) => (
+            <div key={label} className="rounded-lg border border-border/40 bg-muted/15 px-3 py-2.5 text-center">
+              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">{label}</p>
+              <p className="text-xs font-semibold mt-1 truncate">{value}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* Description footer */}
+        <div className="mt-5 pt-4 border-t border-border/30">
           <p className="text-xs text-muted-foreground/80 leading-relaxed">
             Kubernetes operating system with topology visualization, intelligent investigation,
             and offline-first desktop experience. Built for platform engineers, SREs, and DevOps teams.
           </p>
         </div>
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 }
