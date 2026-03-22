@@ -28,19 +28,15 @@ export function SectionCard({ icon: Icon, title, tooltip, children, className }:
       role="region"
       aria-labelledby={titleId}
       className={cn(
-        'rounded-xl border border-border/50 overflow-hidden bg-card',
-        'shadow-[var(--shadow-1)] hover:shadow-[var(--shadow-2)]',
-        'transition-all duration-200',
-        'hover:border-border/70 hover:-translate-y-[1px]',
+        'elevation-2 hover:elevation-3 press-effect transition-all duration-[250ms] rounded-xl border border-border/50 overflow-hidden bg-card hover:translate-y-[-1px]',
         className
       )}
-      style={{ transitionTimingFunction: "var(--ease-default)" }}
     >
-      <div className="px-5 py-3.5 bg-gradient-to-r from-muted/30 via-muted/10 to-transparent border-b border-border/40 flex items-center gap-2.5">
-        <div className="p-1.5 rounded-lg bg-gradient-to-br from-primary/15 to-primary/5 shadow-sm">
+      <div className="px-5 py-4 bg-gradient-to-r from-muted/20 via-muted/10 to-transparent flex items-center gap-2">
+        <div className="p-1.5 rounded-lg bg-primary/10">
           <Icon className="h-4 w-4 text-primary" aria-hidden />
         </div>
-        <h4 id={titleId} className="text-[11px] font-bold uppercase tracking-[0.08em] text-foreground/80">
+        <h4 id={titleId} className="text-xs font-semibold uppercase tracking-widest text-foreground/90">
           {title}
         </h4>
         {tooltip != null && (

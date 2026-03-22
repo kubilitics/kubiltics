@@ -1,6 +1,6 @@
 import { useState, useCallback, useMemo } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { Network, Clock, Server, Download, Globe, Trash2, Activity, GitCompare } from 'lucide-react';
+import { Network, Clock, Server, Download, Globe, Trash2, Activity, GitCompare, Info } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -214,7 +214,7 @@ export default function EndpointDetail() {
     },
     { id: 'health', label: 'Health Monitoring', content: <SectionCard title="Health monitoring" icon={Activity}><p className="text-muted-foreground text-sm">Placeholder for health check results.</p></SectionCard> },
     { id: 'events', label: 'Events', content: <EventsSection events={events} /> },
-    { id: 'metrics', label: 'Metrics', content: <SectionCard title="Metrics" icon={Activity}><div className="flex items-center gap-3 p-4 rounded-lg bg-muted/30 border border-border/50"><Activity className="h-5 w-5 text-muted-foreground shrink-0" /><div><p className="text-sm font-medium text-muted-foreground">Metrics require a metrics server</p><p className="text-xs text-muted-foreground/70 mt-0.5">Install a metrics pipeline (e.g. Prometheus + kube-prometheus-stack) in your cluster to view resource metrics here.</p></div></div></SectionCard> },
+    { id: 'metrics', label: 'Metrics', content: <SectionCard title="Metrics" icon={Activity}><div className="flex items-center gap-3 p-4 rounded-lg bg-blue-50/50 dark:bg-blue-950/20 border border-blue-200/50 dark:border-blue-800/30"><Info className="h-5 w-5 text-blue-500 shrink-0" /><div><p className="text-sm font-medium text-foreground/80">Endpoints don't have direct metrics</p><p className="text-xs text-muted-foreground mt-0.5">Endpoints are network address mappings. View metrics on the associated Service or individual Pods instead.</p></div></div></SectionCard> },
     { id: 'yaml', label: 'YAML', content: <YamlViewer yaml={yaml} resourceName={epName} editable onSave={handleSaveYaml} /> },
     {
       id: 'compare',

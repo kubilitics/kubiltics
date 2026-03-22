@@ -204,7 +204,7 @@ export function MetricsDashboard({ resourceType, resourceName, namespace, podRes
     duration: timeRange,
   });
 
-  const filteredHistory = useMemo(() => historyResult?.points ?? [], [historyResult?.points]);
+  const filteredHistory = historyResult?.points ?? [];
 
   const historyPointCount = filteredHistory.length;
 
@@ -244,8 +244,10 @@ export function MetricsDashboard({ resourceType, resourceName, namespace, podRes
       setMetrics(null);
       return;
     }
+    // Don't clear metrics while loading — keep showing previous data or let the
+    // loading spinner render naturally. Clearing to null caused "Metrics unavailable"
+    // to flash on every first load before data arrived.
     if (summaryLoading && !queryResult) {
-      setMetrics(null);
       return;
     }
     if (resourceMetrics) {
