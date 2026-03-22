@@ -81,12 +81,13 @@ jobs:
 
       - name: Deploy with Helm
         run: |
+          helm repo add bitnami https://charts.bitnami.com/bitnami
           helm dependency build ./deploy/helm/kubilitics/
           kubectl create namespace kubilitics
           helm install kubilitics ./deploy/helm/kubilitics \
             --namespace kubilitics \
             -f ./deploy/helm/kubilitics/values-ci.yaml \
-            --wait --timeout 3m
+            --wait --timeout 5m
 
       - name: Wait for pods
         run: |
