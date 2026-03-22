@@ -168,7 +168,7 @@ function transformResource(resource: PodResource): Pod {
  let status: Pod['status'] = (statusPhase as Pod['status']) || 'Unknown';
 
  // Refine status based on container states
- if ((resource.metadata as unknown as Record<string, unknown>).deletionTimestamp) {
+ if ((resource.metadata as any).deletionTimestamp) {
  status = 'Terminating';
  } else {
  for (const c of containerStatuses) {
@@ -303,7 +303,7 @@ export default function Pods() {
  // CPU/Memory sort: fetch metrics for ALL filtered pods so sorting is accurate
  // across the full list, not just the first N. React Query caches these
  // individually (staleTime 60s) so repeated queries are essentially free.
- const SORT_METRICS_BATCH = 500; // Generous cap to prevent extreme cases
+ const SORT_METRICS_BATCH = 50; // Capped to prevent API storm — 500 was causing page freezes
  const podsForSortMetrics = useMemo(
  () => filteredUnsorted.slice(0, SORT_METRICS_BATCH),
  [filteredUnsorted]
@@ -505,8 +505,7 @@ export default function Pods() {
  queryKey: ['pod-metrics', clusterId, pod.namespace, pod.name],
  queryFn: () => getPodMetrics(backendBaseUrl, clusterId!, pod.namespace, pod.name),
  enabled: !!(isBackendConfigured() && clusterId),
- staleTime: 60_000,
- refetchInterval: 60_000,
+ staleTime: 120_000,
  })),
  });
 
