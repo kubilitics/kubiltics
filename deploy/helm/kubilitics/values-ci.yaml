@@ -30,9 +30,13 @@ database:
   sqlite:
     path: /data/kubilitics.db
 
+# Disable PostgreSQL subchart — CI uses SQLite only
+postgresql:
+  enabled: false
+
+# Use emptyDir instead of PVC for CI (no StorageClass binding delays in Kind)
 persistence:
-  enabled: true
-  size: 512Mi
+  enabled: false
 
 # Frontend enabled for full-stack testing
 frontend:

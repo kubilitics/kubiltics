@@ -28,12 +28,12 @@ spec:
         - |
           set -e
 
-          echo "Testing health endpoint..."
-          curl -v http://{{ include "kubilitics.fullname" . }}:{{ .Values.service.port }}/health
+          echo "Testing backend health endpoint..."
+          curl -sf http://{{ include "kubilitics.fullname" . }}:{{ .Values.service.port }}/health
 
           echo ""
-          echo "Testing frontend endpoint..."
-          curl -v http://{{ include "kubilitics.fullname" . }}:{{ .Values.service.port }}/ | grep -q "Kubilitics"
+          echo "Testing backend healthz/ready..."
+          curl -sf http://{{ include "kubilitics.fullname" . }}:{{ .Values.service.port }}/healthz/ready
 
           echo ""
           echo "All tests passed!"

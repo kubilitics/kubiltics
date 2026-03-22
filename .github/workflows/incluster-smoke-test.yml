@@ -8,6 +8,7 @@ on:
       - 'kubilitics-backend/**'
       - 'kubilitics-frontend/**'
       - '.github/workflows/incluster-smoke-test.yml'
+      - 'scripts/incluster-e2e-test.sh'
   pull_request:
     branches: [main]
     paths:
@@ -15,6 +16,7 @@ on:
       - 'kubilitics-backend/**'
       - 'kubilitics-frontend/**'
       - '.github/workflows/incluster-smoke-test.yml'
+      - 'scripts/incluster-e2e-test.sh'
   workflow_dispatch:
 
 concurrency:
@@ -81,18 +83,21 @@ jobs:
 
       - name: Deploy with Helm
         run: |
+          kubectl create namespace kubilitics
           helm repo add bitnami https://charts.bitnami.com/bitnami
           helm dependency build ./deploy/helm/kubilitics/
-          kubectl create namespace kubilitics
           helm install kubilitics ./deploy/helm/kubilitics \
             --namespace kubilitics \
             -f ./deploy/helm/kubilitics/values-ci.yaml \
             --wait --timeout 5m
 
-      - name: Wait for pods
+      - name: Wait for backend pods
         run: |
-          kubectl wait --for=condition=ready pod -l app=kubilitics \
+          # Use Helm-generated labels (app.kubernetes.io/name + app.kubernetes.io/instance)
+          kubectl wait --for=condition=ready pod \
+            -l app.kubernetes.io/name=kubilitics,app.kubernetes.io/instance=kubilitics \
             -n kubilitics --timeout=120s || true
+          echo "=== All pods ==="
           kubectl get pods -n kubilitics -o wide
 
       - name: Port forward and health check
@@ -114,14 +119,29 @@ jobs:
         if: always()
         run: helm test kubilitics -n kubilitics --timeout 60s || true
 
-      - name: Collect logs on failure
-        if: failure()
+      - name: Collect logs
+        if: always()
         run: |
-          echo "=== Pods ===" && kubectl get pods -n kubilitics -o wide
-          echo "=== Backend Logs ===" && kubectl logs -n kubilitics -l app=kubilitics-backend --tail=100 || true
-          echo "=== Frontend Logs ===" && kubectl logs -n kubilitics -l app=kubilitics-frontend --tail=100 || true
-          echo "=== Events ===" && kubectl get events -n kubilitics --sort-by='.lastTimestamp' || true
-          echo "=== Helm Values ===" && helm get values kubilitics -n kubilitics || true
+          echo "=== Pods ==="
+          kubectl get pods -n kubilitics -o wide
+          echo ""
+          echo "=== Backend Logs ==="
+          # Use Helm standard labels; backend pods do NOT have app.kubernetes.io/component
+          kubectl logs -n kubilitics -l app.kubernetes.io/name=kubilitics,app.kubernetes.io/instance=kubilitics \
+            -c backend --tail=100 2>/dev/null || \
+            kubectl logs -n kubilitics -l app.kubernetes.io/name=kubilitics --tail=100 2>/dev/null || \
+            echo "(no backend logs found)"
+          echo ""
+          echo "=== Frontend Logs ==="
+          kubectl logs -n kubilitics -l app.kubernetes.io/component=frontend --tail=100 2>/dev/null || \
+            echo "(no frontend logs found)"
+          echo ""
+          echo "=== Events ==="
+          kubectl get events -n kubilitics --sort-by='.lastTimestamp' 2>/dev/null || true
+          echo ""
+          echo "=== Describe failing pods ==="
+          kubectl get pods -n kubilitics --field-selector=status.phase!=Running -o name 2>/dev/null | \
+            xargs -I{} kubectl describe {} -n kubilitics 2>/dev/null || true
 
       - name: Cleanup
         if: always()
