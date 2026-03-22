@@ -354,6 +354,10 @@ func main() {
 	// Compliance handler (Phase 5: Compliance Reporting)
 	complianceHandler := rest.NewComplianceHandler(repo, cfg)
 
+	// Scanner handler (DevSecOps scanning engine)
+	scannerSvc := service.NewScannerService(repo, log)
+	scannerHandler := rest.NewScannerHandler(scannerSvc)
+
 	// Deployment rollout routes on main router (full path) so they always match regardless of subrouter path handling
 	router.HandleFunc("/api/v1/clusters/{clusterId}/resources/deployments/{namespace}/{name}/rollout-history", handler.GetDeploymentRolloutHistory).Methods("GET")
 	router.HandleFunc("/api/v1/clusters/{clusterId}/resources/deployments/{namespace}/{name}/rollback", handler.PostDeploymentRollback).Methods("POST")
@@ -413,6 +417,7 @@ func main() {
 	groupsHandler.RegisterRoutes(apiRouter)
 	securityHandler.RegisterRoutes(apiRouter)
 	complianceHandler.RegisterRoutes(apiRouter)
+	scannerHandler.RegisterRoutes(apiRouter)
 	rest.SetupRoutes(apiRouter, handler)
 
 	// WebSocket routes

@@ -37,6 +37,7 @@ import {
   Search,
   ChevronDown,
   Package,
+  ShieldCheck,
 } from 'lucide-react';
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -694,6 +695,7 @@ function SidebarContent({
   const isDashboardActive = pathname === '/dashboard';
   const isFleetActive = pathname === '/fleet';
   const isTopologyActive = pathname === '/topology';
+  const isScannerActive = pathname === '/security-scan';
   const activeProject = useProjectStore((s) => s.activeProject);
   const clearActiveProject = useProjectStore((s) => s.clearActiveProject);
 
@@ -784,6 +786,7 @@ function SidebarContent({
         <TopLevelNavLink to="/dashboard" icon={LayoutDashboard} label="Dashboard" isActive={isDashboardActive} />
         <TopLevelNavLink to="/fleet" icon={Layers} label="Fleet" isActive={isFleetActive} />
         <TopLevelNavLink to="/topology" icon={Network} label="Topology" isActive={isTopologyActive} />
+        <TopLevelNavLink to="/security-scan" icon={ShieldCheck} label="Security Scan" isActive={isScannerActive} />
       </div>
 
       {/* Resources — single expandable section containing all K8s resource categories */}
@@ -969,6 +972,7 @@ export function Sidebar() {
           <NavItemIconOnly to="/dashboard" icon={LayoutDashboard} label="Dashboard" iconColor="text-blue-600 group-hover:text-blue-700" />
           <NavItemIconOnly to="/fleet" icon={Layers} label="Fleet" iconColor="text-indigo-600 group-hover:text-indigo-700" />
           <NavItemIconOnly to="/topology" icon={Network} label="Topology" iconColor="text-violet-600 group-hover:text-violet-700" />
+          <NavItemIconOnly to="/security-scan" icon={ShieldCheck} label="Security Scan" iconColor="text-emerald-600 group-hover:text-emerald-700" />
           <NavItemIconOnly to="/workloads" icon={Cpu} label="Workloads" iconColor="text-amber-600 group-hover:text-amber-700" />
           <div className="w-12 h-px bg-border/50 my-2" />
           <NavItemIconOnly to="/pods" icon={Box} label="Pods" iconColor="text-emerald-600 group-hover:text-emerald-700" />
