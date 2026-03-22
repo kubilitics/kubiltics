@@ -268,7 +268,6 @@ export default function Nodes() {
  const [pageIndex, setPageIndex] = useState(0);
  const [listView, setListView] = useState<ListView>('flat');
  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
- // eslint-disable-next-line react-hooks/exhaustive-deps
  const allItems = (data?.allItems ?? []) as NodeResource[];
  const tableContainerRef = useRef<HTMLDivElement>(null);
  const nodes: Node[] = useMemo(() => (isConnected ? allItems.map(transformNodeResource) : []), [isConnected, allItems]);
@@ -298,8 +297,7 @@ export default function Nodes() {
  queryKey: ['node-metrics', clusterId, node.name],
  queryFn: () => getNodeMetrics(backendBaseUrl, clusterId!, node.name),
  enabled: !!(isBackendConfigured() && clusterId),
- staleTime: 30_000,
- refetchInterval: 30_000,
+ staleTime: 120_000,
  })),
  });
  const nodeMetricsMap = useMemo(() => {

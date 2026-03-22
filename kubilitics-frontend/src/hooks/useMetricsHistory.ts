@@ -39,7 +39,6 @@ export function useMetricsHistory(
         duration: options?.duration ?? '1h',
       }),
     enabled,
-    staleTime: 10_000,
-    refetchInterval: 15_000,
+    staleTime: 60_000,
   });
 }
