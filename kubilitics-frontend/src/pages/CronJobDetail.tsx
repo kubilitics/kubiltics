@@ -272,12 +272,6 @@ export default function CronJobDetail() {
   const patchCronJob = usePatchK8sResource('cronjobs');
 
   const isSuspended = cronJob.spec?.suspend || false;
-  const scheduleStr = cronJob?.spec?.schedule || '-';
-
-  const cronFields = useMemo(() => parseCronFields(scheduleStr), [scheduleStr]);
-  const scheduleHumanLabel = useMemo(() => cronToHuman(scheduleStr), [scheduleStr]);
-  const next10Runs = useMemo(() => (isSuspended ? [] : getNextRunTimes(scheduleStr, 10)), [scheduleStr, isSuspended]);
-
   const status: ResourceStatus = isSuspended ? 'Pending' : 'Running';
   const activeJobs = cronJob.status?.active?.length || 0;
   const lastSchedule = cronJob.status?.lastScheduleTime
@@ -395,7 +389,7 @@ export default function CronJobDetail() {
       toast.error(msg ?? 'Trigger failed');
       throw e;
     }
-  }, [isConnected, name, namespace, refetch, isBackendConfigured]);
+  }, [isConnected, name, namespace, refetch]);
 
   const handleToggleSuspend = useCallback(async () => {
     if (!isConnected || !name || !namespace) { toast.error('Connect cluster to suspend/resume CronJob'); return; }
@@ -407,8 +401,8 @@ export default function CronJobDetail() {
       });
       toast.success(isSuspended ? `Resumed ${name}` : `Suspended ${name}`);
       refetch();
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to update');
+    } catch (err: any) {
+      toast.error(err?.message ?? 'Failed to update');
       throw err;
     }
   }, [isConnected, name, namespace, isSuspended, patchCronJob, refetch]);
@@ -422,11 +416,18 @@ export default function CronJobDetail() {
       await updateCronJob.mutateAsync({ name, yaml: newYaml, namespace });
       toast.success('CronJob updated successfully');
       refetch();
-    } catch (error) {
-      toast.error(`Failed to update: ${error instanceof Error ? error.message : String(error)}`);
+    } catch (error: any) {
+      toast.error(`Failed to update: ${error.message}`);
       throw error;
     }
   }, [isConnected, name, namespace, updateCronJob, refetch]);
+
+  // These useMemo hooks MUST be called before any early return to satisfy Rules of Hooks.
+  // Moving them after conditional returns causes "Rendered more hooks" errors.
+  const scheduleStr = cronJob.spec?.schedule || '-';
+  const cronFields = useMemo(() => parseCronFields(scheduleStr), [scheduleStr]);
+  const scheduleHumanLabel = useMemo(() => cronToHuman(scheduleStr), [scheduleStr]);
+  const next10Runs = useMemo(() => (isSuspended ? [] : getNextRunTimes(scheduleStr, 10)), [scheduleStr, isSuspended]);
 
   if (isLoading) {
     return (
@@ -456,7 +457,6 @@ export default function CronJobDetail() {
       </div>
     );
   }
-
   const scheduleHuman = scheduleStr !== '-' && /^\S+\s+\S+\s+\S+\s+\S+\s+\S+$/.test(scheduleStr)
     ? (scheduleStr.startsWith('*/') ? `Every ${scheduleStr.slice(2).split(' ')[0]} min` : scheduleStr)
     : scheduleStr;
