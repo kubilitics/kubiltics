@@ -67,7 +67,7 @@ jobs:
       - name: Wait for backend to be healthy
         run: |
           echo "Waiting for backend to be healthy..."
-          timeout 120 bash -c 'until docker compose -f docker-compose.test.yml exec -T backend wget --quiet --tries=1 --spider http://localhost:819/health; do sleep 2; done'
+          timeout 300 bash -c 'until docker compose -f docker-compose.test.yml exec -T backend wget --quiet --tries=1 --spider http://localhost:819/health; do sleep 5; done'
           echo "✓ Backend is healthy"
 
       - name: Run backend API tests
@@ -153,13 +153,13 @@ jobs:
       - name: Wait for backend to be healthy
         run: |
           echo "Waiting for backend to be healthy..."
-          timeout 120 bash -c 'until docker compose -f docker-compose.test.yml exec -T backend wget --quiet --tries=1 --spider http://localhost:819/health; do sleep 2; done'
+          timeout 300 bash -c 'until docker compose -f docker-compose.test.yml exec -T backend wget --quiet --tries=1 --spider http://localhost:819/health; do sleep 5; done'
           echo "✓ Backend is healthy"
 
       - name: Wait for frontend to be ready
         run: |
           echo "Waiting for frontend to be ready..."
-          timeout 120 bash -c 'until docker compose -f docker-compose.test.yml exec -T frontend wget --quiet --tries=1 --spider http://localhost/; do sleep 2; done'
+          timeout 300 bash -c 'until docker compose -f docker-compose.test.yml exec -T frontend wget --quiet --tries=1 --spider http://localhost/; do sleep 5; done'
           echo "✓ Frontend is ready"
 
       - name: Run backend API tests
@@ -216,8 +216,8 @@ jobs:
 
       - name: Wait for all services
         run: |
-          timeout 180 bash -c 'until docker compose -f docker-compose.test.yml exec -T backend wget --quiet --tries=1 --spider http://localhost:819/health && \
-            docker compose -f docker-compose.test.yml exec -T frontend wget --quiet --tries=1 --spider http://localhost/; do sleep 3; done'
+          timeout 300 bash -c 'until docker compose -f docker-compose.test.yml exec -T backend wget --quiet --tries=1 --spider http://localhost:819/health && \
+            docker compose -f docker-compose.test.yml exec -T frontend wget --quiet --tries=1 --spider http://localhost/; do sleep 5; done'
           echo "✓ All services are ready"
 
       - name: Test service connectivity

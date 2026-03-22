@@ -235,7 +235,9 @@ func (h *ScannerHandler) GetReport(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", contentType)
 	w.Header().Set("Content-Disposition", "attachment; filename=\"scan-report-"+runID+"."+ext+"\"")
-	w.Write(data)
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write(data) //nolint:errcheck // response writer; server-generated content only
 }
 
 // ListTools handles GET /scanner/tools — lists available scanner tools.

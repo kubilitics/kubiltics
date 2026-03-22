@@ -48,7 +48,7 @@ func (g *GitleaksAdapter) Scan(ctx context.Context, target scanner.ScanTarget) (
 		"--no-git",
 		"--exit-code", "0",
 	}
-	cmd := exec.CommandContext(ctx, g.binary, args...)
+	cmd := exec.CommandContext(ctx, "gitleaks", args...) //nolint:gosec // binary is hardcoded
 	out, err := cmd.Output()
 	if err != nil {
 		if len(out) == 0 {

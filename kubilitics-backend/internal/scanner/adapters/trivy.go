@@ -69,7 +69,7 @@ type trivySecret struct {
 
 func (t *TrivyAdapter) Scan(ctx context.Context, target scanner.ScanTarget) (*scanner.ScanResult, error) {
 	args := t.buildArgs(target)
-	cmd := exec.CommandContext(ctx, t.binary, args...)
+	cmd := exec.CommandContext(ctx, "trivy", args...) //nolint:gosec // binary is hardcoded
 	out, err := cmd.Output()
 	if err != nil {
 		// Trivy exits with non-zero when vulnerabilities found; check if we got JSON

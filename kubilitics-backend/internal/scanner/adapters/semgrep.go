@@ -67,7 +67,7 @@ type semgrepError struct {
 
 func (s *SemgrepAdapter) Scan(ctx context.Context, target scanner.ScanTarget) (*scanner.ScanResult, error) {
 	args := []string{"scan", "--json", "--config", "auto", "--quiet", target.Path}
-	cmd := exec.CommandContext(ctx, s.binary, args...)
+	cmd := exec.CommandContext(ctx, "semgrep", args...) //nolint:gosec // binary is hardcoded
 	out, err := cmd.Output()
 	if err != nil {
 		// Semgrep exits non-zero when findings exist

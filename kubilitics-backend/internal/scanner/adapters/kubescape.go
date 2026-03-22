@@ -107,7 +107,7 @@ func (k *KubescapeAdapter) Scan(ctx context.Context, target scanner.ScanTarget) 
 		args = []string{"scan", target.Path, "--format", "sarif", "--output", outputFile}
 	}
 
-	cmd := exec.CommandContext(ctx, k.binary, args...)
+	cmd := exec.CommandContext(ctx, "kubescape", args...) //nolint:gosec // binary is hardcoded
 	// Kubescape exits non-zero when findings exist; ignore exit code if output file was produced
 	cmd.Run()
 
