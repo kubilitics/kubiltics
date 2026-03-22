@@ -62,10 +62,10 @@ export function getDefaultBackendBaseUrl(): string {
  * Effective backend URL for all API calls.
  *
  * Resolution order:
- *  1. Tauri build (build-time constant) → always http://localhost:819  [TIMING-INDEPENDENT]
+ *  1. Tauri build (build-time constant) → always http://localhost:8190  [TIMING-INDEPENDENT]
  *  2. Dev on localhost → '' (empty = same-origin, Vite proxy handles it)
  *  3. Stored URL (user-configured) → use as-is
- *  4. Default (getDefaultBackendBaseUrl) → http://localhost:819 or ''
+ *  4. Default (getDefaultBackendBaseUrl) → http://localhost:8190 or ''
  */
 export function getEffectiveBackendBaseUrl(stored: string): string {
   // PERMANENT FIX: build-time constant — no timing race, works on first render
@@ -80,7 +80,7 @@ export function getEffectiveBackendBaseUrl(stored: string): string {
 }
 
 export interface BackendConfigState {
-  /** Base URL of Kubilitics backend (e.g. http://localhost:819). Empty = backend not configured. */
+  /** Base URL of Kubilitics backend (e.g. http://localhost:8190). Empty = backend not configured. */
   backendBaseUrl: string;
   /** Currently selected cluster ID for backend-scoped requests (e.g. topology, resources). */
   currentClusterId: string | null;

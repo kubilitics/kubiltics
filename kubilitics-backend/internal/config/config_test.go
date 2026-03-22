@@ -19,8 +19,8 @@ func TestLoad_Defaults(t *testing.T) {
 	}
 	
 	// Check defaults
-	if cfg.Port != 819 {
-		t.Errorf("Expected default port 819, got %d", cfg.Port)
+	if cfg.Port != 8190 {
+		t.Errorf("Expected default port 8190, got %d", cfg.Port)
 	}
 	if cfg.DatabasePath != "./kubilitics.db" {
 		t.Errorf("Expected default database path './kubilitics.db', got %s", cfg.DatabasePath)

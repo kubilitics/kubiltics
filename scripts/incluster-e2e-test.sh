@@ -37,14 +37,14 @@ print_test() {
 
 print_pass() {
     echo -e "${GREEN}✓ PASS${NC}: $1"
-    ((TESTS_PASSED++))
-    ((TESTS_TOTAL++))
+    TESTS_PASSED=$((TESTS_PASSED + 1))
+    TESTS_TOTAL=$((TESTS_TOTAL + 1))
 }
 
 print_fail() {
     echo -e "${RED}✗ FAIL${NC}: $1"
-    ((TESTS_FAILED++))
-    ((TESTS_TOTAL++))
+    TESTS_FAILED=$((TESTS_FAILED + 1))
+    TESTS_TOTAL=$((TESTS_TOTAL + 1))
     FAILED_TESTS+=("$1")
 }
 

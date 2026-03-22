@@ -75,7 +75,7 @@ type Config struct {
 	OIDCIssuerURL     string `mapstructure:"oidc_issuer_url"`     // OIDC issuer URL (e.g., https://accounts.google.com)
 	OIDCClientID      string `mapstructure:"oidc_client_id"`      // OIDC client ID
 	OIDCClientSecret  string `mapstructure:"oidc_client_secret"`  // OIDC client secret
-	OIDCRedirectURL   string `mapstructure:"oidc_redirect_url"`    // OIDC redirect URL (e.g., http://localhost:819/api/v1/auth/oidc/callback)
+	OIDCRedirectURL   string `mapstructure:"oidc_redirect_url"`    // OIDC redirect URL (e.g., http://localhost:8190/api/v1/auth/oidc/callback)
 	OIDCScopes        string `mapstructure:"oidc_scopes"`         // OIDC scopes (comma-separated, default: "openid profile email")
 	OIDCGroupClaim    string `mapstructure:"oidc_group_claim"`    // OIDC group claim name (default: "groups")
 	OIDCRoleMapping   string `mapstructure:"oidc_role_mapping"`   // JSON mapping: {"group1": "admin", "group2": "operator"}
@@ -86,8 +86,8 @@ type Config struct {
 	SAMLIdpEntityID                string `mapstructure:"saml_idp_entity_id"`               // IdP entity ID (if not in metadata)
 	SAMLCertificate                string `mapstructure:"saml_certificate"`                 // SP certificate (PEM format) for signing requests
 	SAMLPrivateKey                 string `mapstructure:"saml_private_key"`                 // SP private key (PEM format) for signing requests
-	SAMLAssertionConsumerServiceURL string `mapstructure:"saml_assertion_consumer_service_url"` // ACS URL (e.g., http://localhost:819/api/v1/auth/saml/acs)
-	SAMLSingleLogoutServiceURL     string `mapstructure:"saml_single_logout_service_url"`  // SLO URL (e.g., http://localhost:819/api/v1/auth/saml/slo)
+	SAMLAssertionConsumerServiceURL string `mapstructure:"saml_assertion_consumer_service_url"` // ACS URL (e.g., http://localhost:8190/api/v1/auth/saml/acs)
+	SAMLSingleLogoutServiceURL     string `mapstructure:"saml_single_logout_service_url"`  // SLO URL (e.g., http://localhost:8190/api/v1/auth/saml/slo)
 	SAMLAttributeMapping           string `mapstructure:"saml_attribute_mapping"`           // JSON mapping: {"email": "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress", "username": "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name", "groups": "http://schemas.microsoft.com/ws/2008/06/identity/claims/groups"}
 	SAMLNameIDFormat               string `mapstructure:"saml_name_id_format"`             // NameID format (default: "urn:oasis:names:tc:SAML:2.0:nameid-format:transient")
 
@@ -105,7 +105,7 @@ func Load() (*Config, error) {
 	viper.AddConfigPath(".")
 
 	// Defaults
-	viper.SetDefault("port", 819)
+	viper.SetDefault("port", 8190)
 	viper.SetDefault("database_path", "./kubilitics.db")
 	viper.SetDefault("log_level", "info")
 	viper.SetDefault("log_format", "json") // BE-OBS-002: JSON structured logging by default
@@ -119,8 +119,8 @@ func Load() (*Config, error) {
 		"http://localhost:5173",  // Vite dev server (localhost)
 		"http://127.0.0.1:5173", // Vite dev server (IPv4 loopback — Vite binds to :: so browsers may use 127.0.0.1)
 		"http://[::1]:5173",     // Vite dev server (IPv6 loopback)
-		"http://localhost:819",  // Backend self-origin (health dashboards etc.)
-		"http://127.0.0.1:819",  // Backend self-origin (IPv4 loopback)
+		"http://localhost:8190",  // Backend self-origin (health dashboards etc.)
+		"http://127.0.0.1:8190",  // Backend self-origin (IPv4 loopback)
 	})
 	viper.SetDefault("kubeconfig_path", "")
 	viper.SetDefault("kubeconfig_auto_load", true)
@@ -224,7 +224,7 @@ func Load() (*Config, error) {
 
 	// P0-F: Always append Tauri origins AFTER env and file are applied (Unmarshal above uses
 	// viper state after AutomaticEnv and ReadInConfig). So KUBILITICS_ALLOWED_ORIGINS override
-	// still gets tauri://localhost and tauri:// appended. When port 819 is already in use (e.g.
+	// still gets tauri://localhost and tauri:// appended. When port 8190 is already in use (e.g.
 	// make restart), the desktop skips spawning the sidecar; the existing backend still allows
 	// tauri://localhost.
 	tauriOrigins := []string{"tauri://localhost", "tauri://"}

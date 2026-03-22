@@ -102,7 +102,7 @@ jobs:
 
       - name: Port forward and health check
         run: |
-          kubectl port-forward svc/kubilitics 8080:819 -n kubilitics &
+          kubectl port-forward svc/kubilitics 8080:8190 -n kubilitics &
           sleep 5
           curl -sf http://localhost:8080/health && echo " ✓ Backend healthy" || echo " ✗ Backend not ready"
 

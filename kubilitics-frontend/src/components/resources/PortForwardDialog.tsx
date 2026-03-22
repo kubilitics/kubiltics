@@ -44,7 +44,7 @@ export interface PortForwardDialogProps {
   onOpenChange: (open: boolean) => void;
   podName: string;
   namespace: string;
-  /** Backend base URL (e.g. "http://localhost:819"). Required for real port-forward. */
+  /** Backend base URL (e.g. "http://localhost:8190"). Required for real port-forward. */
   baseUrl?: string;
   /** Active cluster ID. Required for real port-forward. */
   clusterId?: string;

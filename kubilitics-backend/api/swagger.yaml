@@ -24,9 +24,9 @@ info:
     url: https://www.apache.org/licenses/LICENSE-2.0.html
 
 servers:
-  - url: http://localhost:819/api/v1
+  - url: http://localhost:8190/api/v1
     description: Development server
-  - url: http://localhost:819/api/v1
+  - url: http://localhost:8190/api/v1
     description: Production server (configured per deployment)
 
 tags:
@@ -686,7 +686,7 @@ paths:
       description: |
         Establish WebSocket connection to receive real-time Kubernetes resource updates.
         
-        **Connection URL**: `ws://localhost:819/ws/resources?cluster_id={id}&namespace={ns}`
+        **Connection URL**: `ws://localhost:8190/ws/resources?cluster_id={id}&namespace={ns}`
         
         **Message Format**:
         ```json
@@ -729,7 +729,7 @@ paths:
       description: |
         Establish WebSocket connection to receive real-time topology graph updates.
         
-        **Connection URL**: `ws://localhost:819/ws/topology?cluster_id={id}`
+        **Connection URL**: `ws://localhost:8190/ws/topology?cluster_id={id}`
         
         **Message Format**:
         ```json

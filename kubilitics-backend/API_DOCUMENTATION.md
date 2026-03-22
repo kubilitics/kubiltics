@@ -4,7 +4,7 @@
 
 The Kubilitics Backend provides a comprehensive REST API and WebSocket interface for Kubernetes cluster management, topology visualization, and real-time monitoring.
 
-**Base URL**: `http://localhost:819/api/v1`  
+**Base URL**: `http://localhost:8190/api/v1`  
 **API Version**: 1.0.0  
 **Protocol**: HTTP/HTTPS, WebSocket
 
@@ -72,7 +72,7 @@ Include the token in the `Authorization` header:
 
 ```bash
 curl -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
-  http://localhost:819/api/v1/clusters
+  http://localhost:8190/api/v1/clusters
 ```
 
 #### 3. Refresh Token
@@ -104,7 +104,7 @@ For programmatic access (e.g., kcli), use API keys:
 
 ```bash
 curl -H "X-API-Key: kubilitics_xxxxxxxxxxxxxxxxxxxx" \
-  http://localhost:819/api/v1/clusters
+  http://localhost:8190/api/v1/clusters
 ```
 
 ### Authorization Roles
@@ -1545,7 +1545,7 @@ For `format=csv`, response is CSV with `Content-Type: text/csv` and `Content-Dis
 
 ### Resource Updates
 
-**URL**: `ws://localhost:819/ws/resources?cluster_id={id}&namespace={ns}`
+**URL**: `ws://localhost:8190/ws/resources?cluster_id={id}&namespace={ns}`
 
 Receive real-time Kubernetes resource updates.
 
@@ -1620,12 +1620,12 @@ List endpoints support cursor-based pagination:
 
 ```bash
 # 1. Login (if auth enabled)
-TOKEN=$(curl -s -X POST http://localhost:819/api/v1/auth/login \
+TOKEN=$(curl -s -X POST http://localhost:8190/api/v1/auth/login \
   -H "Content-Type: application/json" \
   -d '{"username":"admin","password":"password"}' | jq -r '.access_token')
 
 # 2. Add a cluster
-CLUSTER_ID=$(curl -s -X POST http://localhost:819/api/v1/clusters \
+CLUSTER_ID=$(curl -s -X POST http://localhost:8190/api/v1/clusters \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -1634,27 +1634,27 @@ CLUSTER_ID=$(curl -s -X POST http://localhost:819/api/v1/clusters \
   }' | jq -r '.id')
 
 # 3. Get cluster summary
-curl -s http://localhost:819/api/v1/clusters/$CLUSTER_ID/summary \
+curl -s http://localhost:8190/api/v1/clusters/$CLUSTER_ID/summary \
   -H "Authorization: Bearer $TOKEN" | jq
 
 # 4. Get topology for default namespace
-curl -s "http://localhost:819/api/v1/clusters/$CLUSTER_ID/topology?namespace=default&force_refresh=true" \
+curl -s "http://localhost:8190/api/v1/clusters/$CLUSTER_ID/topology?namespace=default&force_refresh=true" \
   -H "Authorization: Bearer $TOKEN" | jq
 
 # 5. List pods with pagination
-curl -s "http://localhost:819/api/v1/clusters/$CLUSTER_ID/resources/pods?namespace=default&limit=50" \
+curl -s "http://localhost:8190/api/v1/clusters/$CLUSTER_ID/resources/pods?namespace=default&limit=50" \
   -H "Authorization: Bearer $TOKEN" | jq
 
 # 6. Get pod logs
-curl -s "http://localhost:819/api/v1/clusters/$CLUSTER_ID/logs/default/nginx-pod?tail=50" \
+curl -s "http://localhost:8190/api/v1/clusters/$CLUSTER_ID/logs/default/nginx-pod?tail=50" \
   -H "Authorization: Bearer $TOKEN"
 
 # 7. Get metrics summary
-curl -s http://localhost:819/api/v1/clusters/$CLUSTER_ID/metrics/summary \
+curl -s http://localhost:8190/api/v1/clusters/$CLUSTER_ID/metrics/summary \
   -H "Authorization: Bearer $TOKEN" | jq
 
 # 8. Get events
-curl -s "http://localhost:819/api/v1/clusters/$CLUSTER_ID/events?namespace=default&limit=10" \
+curl -s "http://localhost:8190/api/v1/clusters/$CLUSTER_ID/events?namespace=default&limit=10" \
   -H "Authorization: Bearer $TOKEN" | jq
 ```
 
@@ -1662,7 +1662,7 @@ curl -s "http://localhost:819/api/v1/clusters/$CLUSTER_ID/events?namespace=defau
 
 ```javascript
 // Connect to resource updates
-const ws = new WebSocket('ws://localhost:819/ws/resources?cluster_id=' + clusterId);
+const ws = new WebSocket('ws://localhost:8190/ws/resources?cluster_id=' + clusterId);
 
 ws.onopen = () => {
   console.log('Connected to resource updates');

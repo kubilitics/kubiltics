@@ -19,8 +19,8 @@ kill_port() {
   fi
 }
 
-echo "▶ Killing existing dev processes on common ports (819 backend, 5173 frontend)..."
-kill_port 819
+echo "▶ Killing existing dev processes on common ports (8190 backend, 5173 frontend)..."
+kill_port 8190
 kill_port 5173
 
 echo "▶ Starting backend-dev (Go API)..."
@@ -40,7 +40,7 @@ echo "▶ Starting frontend-dev (Vite) ..."
 )
 
 echo "✅ Kubilitics backend and frontend have been started in the background."
-echo "   - Backend:  http://localhost:${KUBILITICS_PORT:-819}"
+echo "   - Backend:  http://localhost:${KUBILITICS_PORT:-8190}"
 echo "   - Frontend: http://localhost:5173"
 
 #!/usr/bin/env bash
@@ -101,12 +101,12 @@ echo "   - Frontend:    http://localhost:5173"
 # Kill anything on backend/frontend ports, build backend, then start backend + frontend.
 # Backend is always rebuilt so the running process includes latest Go code.
 # If you see "resource topology not implemented for kind Node" (500), do a clean rebuild first: make clean && make backend, then run this script.
-# If you see ECONNREFUSED 127.0.0.1:819, the backend is not listening — run this script from repo root (./scripts/restart.sh or make restart). Do not run two copies at once.
+# If you see ECONNREFUSED 127.0.0.1:8190, the backend is not listening — run this script from repo root (./scripts/restart.sh or make restart). Do not run two copies at once.
 set -e
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
-BACKEND_PORT=819
+BACKEND_PORT=8190
 FRONTEND_PORT=5173
 
 kill_port() {

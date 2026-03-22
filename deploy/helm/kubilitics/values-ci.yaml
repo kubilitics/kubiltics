@@ -12,9 +12,13 @@ image:
   tag: "local"
   pullPolicy: Never  # Kind uses pre-loaded images
 
+# Service port (must be >1024 — container runs as non-root)
+service:
+  port: 8190
+
 # Backend config
 config:
-  port: 819
+  port: 8190
   databasePath: "/data/kubilitics.db"
   logLevel: "info"
   authMode: "disabled"  # No auth for CI smoke tests
@@ -50,7 +54,7 @@ frontend:
     port: 8080
   config:
     backendService: "kubilitics"
-    backendPort: 819
+    backendPort: 8190
     authRequired: "false"
   resources:
     limits:

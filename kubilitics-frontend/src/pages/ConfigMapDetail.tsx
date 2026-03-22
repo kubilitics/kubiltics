@@ -195,7 +195,7 @@ export default function ConfigMapDetail() {
             <p className="text-muted-foreground font-medium">Could not load ConfigMap.</p>
             <p className="text-sm text-muted-foreground">
               {isBackend404
-                ? 'The backend returned 404. Ensure the Kubilitics backend is running (e.g. port 819) and the cluster is registered in Settings.'
+                ? 'The backend returned 404. Ensure the Kubilitics backend is running (e.g. port 8190) and the cluster is registered in Settings.'
                 : normalized.description}
             </p>
             {normalized.details && !isBackend404 && (

@@ -1212,7 +1212,7 @@ helm install kubilitics ./deploy/helm/kubilitics \\
   --set ai.secret.anthropicApiKey="sk-ant-..."`,
     verify: `kubectl get pods -n kubilitics
 kubectl get svc -n kubilitics`,
-    portForward: `kubectl port-forward -n kubilitics svc/kubilitics 819:819`,
+    portForward: `kubectl port-forward -n kubilitics svc/kubilitics 8190:8190`,
   };
 
   const steps = [
@@ -1398,7 +1398,7 @@ kubectl get svc -n kubilitics`,
                     onCopy={copyToClipboard}
                   />
                   <p className="text-xs text-amber-600/70 dark:text-amber-400/70 mt-2">
-                    Then use <code className="bg-amber-500/10 px-1.5 py-0.5 rounded">http://localhost:819</code> as the backend URL below.
+                    Then use <code className="bg-amber-500/10 px-1.5 py-0.5 rounded">http://localhost:8190</code> as the backend URL below.
                   </p>
                 </div>
 
@@ -1408,7 +1408,7 @@ kubectl get svc -n kubilitics`,
                       type="url"
                       value={backendUrl}
                       onChange={(e) => { setBackendUrl(e.target.value); setConnectionStatus('idle'); }}
-                      placeholder="http://localhost:819 or https://kubilitics.example.com"
+                      placeholder="http://localhost:8190 or https://kubilitics.example.com"
                       className="flex-1 px-4 py-2.5 rounded-xl bg-muted/50 border border-border text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 placeholder:text-muted-foreground/50"
                     />
                     <Button
@@ -1466,8 +1466,8 @@ kubectl get svc -n kubilitics`,
                 <p className="text-sm font-medium mb-3 text-muted-foreground">Common backend URLs</p>
                 <div className="space-y-2">
                   {[
-                    { url: 'http://localhost:819', desc: 'Port-forwarded (local testing)' },
-                    { url: 'http://kubilitics.kubilitics.svc:819', desc: 'In-cluster Service DNS' },
+                    { url: 'http://localhost:8190', desc: 'Port-forwarded (local testing)' },
+                    { url: 'http://kubilitics.kubilitics.svc:8190', desc: 'In-cluster Service DNS' },
                     { url: 'https://kubilitics.example.com', desc: 'Ingress endpoint (production)' },
                   ].map((item) => (
                     <button

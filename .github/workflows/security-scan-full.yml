@@ -1,0 +1,155 @@
+name: Security Scan (Full)
+
+on:
+  pull_request:
+    branches: [main, develop]
+  schedule:
+    - cron: '0 3 * * 1' # Weekly Monday 3 AM UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+
+concurrency:
+  group: security-scan-full-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  trivy-filesystem:
+    name: Trivy Filesystem Scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run Trivy (filesystem)
+        uses: aquasecurity/trivy-action@v0.35.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          format: sarif
+          output: trivy-results.sarif
+          severity: CRITICAL,HIGH,MEDIUM
+
+      - name: Upload Trivy SARIF
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: trivy-results.sarif
+          category: trivy
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: trivy-results
+          path: trivy-results.sarif
+          retention-days: 30
+
+  semgrep:
+    name: Semgrep SAST
+    runs-on: ubuntu-latest
+    container:
+      image: semgrep/semgrep:latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run Semgrep
+        run: semgrep scan --config auto --sarif -o semgrep-results.sarif .
+        env:
+          SEMGREP_RULES: auto
+
+      - name: Upload Semgrep SARIF
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: semgrep-results.sarif
+          category: semgrep
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: semgrep-results
+          path: semgrep-results.sarif
+          retention-days: 30
+
+  gitleaks:
+    name: Gitleaks Secrets Scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install Gitleaks
+        run: |
+          GITLEAKS_VERSION="8.30.1"
+          curl -sSfL "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" -o gitleaks.tar.gz
+          tar xzf gitleaks.tar.gz gitleaks
+          sudo mv gitleaks /usr/local/bin/
+          gitleaks version
+
+      - name: Run Gitleaks
+        run: |
+          gitleaks detect --source . --report-format sarif --report-path gitleaks-results.sarif --exit-code 0
+
+      - name: Upload Gitleaks SARIF
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: gitleaks-results.sarif
+          category: gitleaks
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: gitleaks-results
+          path: gitleaks-results.sarif
+          retention-days: 30
+
+  kubescape:
+    name: Kubescape K8s Security
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Helm
+        uses: azure/setup-helm@v4
+
+      - name: Render Helm templates
+        run: |
+          helm repo add bitnami https://charts.bitnami.com/bitnami
+          helm dependency build deploy/helm/kubilitics/
+          helm template kubilitics deploy/helm/kubilitics/ \
+            --output-dir rendered-manifests \
+            --values deploy/helm/kubilitics/values.yaml \
+            --set postgresql.enabled=false \
+            --set backend.auth.jwtSecret=placeholder-for-ci-scan \
+            --skip-schema-validation
+
+      - name: Install Kubescape
+        run: |
+          curl -s https://raw.githubusercontent.com/kubescape/kubescape/master/install.sh | /bin/bash
+          echo "${HOME}/.kubescape/bin" >> "$GITHUB_PATH"
+
+      - name: Run Kubescape
+        run: |
+          kubescape scan rendered-manifests/ \
+            --format sarif \
+            --output kubescape-results.sarif \
+            --compliance-threshold 0 || true
+
+      - name: Upload Kubescape SARIF
+        uses: github/codeql-action/upload-sarif@v3
+        if: always() && hashFiles('kubescape-results.sarif') != ''
+        with:
+          sarif_file: kubescape-results.sarif
+          category: kubescape
+        continue-on-error: true
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: kubescape-results
+          path: kubescape-results.sarif
+          retention-days: 30
+          if-no-files-found: warn
