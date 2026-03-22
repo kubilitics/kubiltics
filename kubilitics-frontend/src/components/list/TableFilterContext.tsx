@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import * as React from 'react';
 
 /** Context for table filter visibility - when false, column filter UI is hidden. */

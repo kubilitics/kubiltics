@@ -248,9 +248,13 @@ export default function Gateways() {
   const httpRoutesQuery = useGatewayResources<HTTPRouteResource>('httproutes', effectiveNamespace);
   const grpcRoutesQuery = useGatewayResources<GRPCRouteResource>('grpcroutes', effectiveNamespace);
 
+ // eslint-disable-next-line react-hooks/exhaustive-deps
   const gateways = gatewaysQuery.data?.items ?? [];
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const classes = classesQuery.data?.items ?? [];
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const httpRoutes = httpRoutesQuery.data?.items ?? [];
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const grpcRoutes = grpcRoutesQuery.data?.items ?? [];
 
   const isLoading = gatewaysQuery.isLoading || classesQuery.isLoading || httpRoutesQuery.isLoading;

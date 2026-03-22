@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import { useState } from "react";
 import type { TopologyNode } from "../types/topology";
 import { healthColors, healthStatusMap } from "../nodes/nodeConfig";
@@ -86,14 +87,14 @@ export function HealthLegend({ visible }: { visible: boolean }) {
   return (
     <div className="absolute top-3 left-3 z-10 rounded-lg border border-gray-200 bg-white/80 p-2.5 text-xs shadow-sm backdrop-blur-md dark:border-gray-700 dark:bg-gray-800/80">
       <div className="mb-1.5 flex items-center justify-between gap-4">
-        <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
+        <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
           Health
         </span>
         <button
           type="button"
           onClick={() => setExpanded(false)}
           title="Collapse legend"
-          className="flex h-5 w-5 items-center justify-center rounded text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 dark:text-gray-500 dark:hover:bg-gray-700 dark:hover:text-gray-300"
+          className="flex h-5 w-5 items-center justify-center rounded text-gray-600 dark:text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-800 dark:hover:bg-gray-700 dark:hover:text-gray-300"
         >
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5">
             <path

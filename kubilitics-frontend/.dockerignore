@@ -1,0 +1,42 @@
+# ── Dependencies (rebuilt inside container with npm ci) ──────────────────────
+node_modules/
+
+# ── Build output (rebuilt inside container) ──────────────────────────────────
+dist/
+build/
+.next/
+
+# ── Test & coverage ──────────────────────────────────────────────────────────
+coverage/
+*.test.*
+__tests__/
+__mocks__/
+
+# ── Version control ──────────────────────────────────────────────────────────
+.git
+.gitignore
+
+# ── IDE / Editor ─────────────────────────────────────────────────────────────
+.cursor
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# ── Documentation ────────────────────────────────────────────────────────────
+*.md
+LICENSE
+
+# ── Environment (secrets must come from Helm/ConfigMap, never baked in) ──────
+.env
+.env.*
+.env.local
+
+# ── OS artifacts ─────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+
+# ── Storybook / misc dev tools ───────────────────────────────────────────────
+.storybook/
+storybook-static/

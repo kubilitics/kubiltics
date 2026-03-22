@@ -159,6 +159,7 @@ export default function DaemonSets() {
  const patchDaemonSet = usePatchK8sResource('daemonsets');
  const createResource = useCreateK8sResource('daemonsets');
 
+ // eslint-disable-next-line react-hooks/exhaustive-deps
  const items: DaemonSet[] = isConnected && data ? (data.items ?? []).map(transformResource) : [];
 
  const stats = useMemo(() => {
@@ -383,7 +384,7 @@ spec:
  />
 
  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
- <ListPageStatCard label="Total" value={stats.total} icon={DaemonSetIcon as any} iconColor="text-primary" selected={!columnFilters.status?.size} onClick={() => setColumnFilter('status', null)} className={cn(!columnFilters.status?.size && !isLoading && 'ring-2 ring-primary')} isLoading={isLoading} />
+ <ListPageStatCard label="Total" value={stats.total} icon={DaemonSetIcon as unknown as React.ComponentType} iconColor="text-primary" selected={!columnFilters.status?.size} onClick={() => setColumnFilter('status', null)} className={cn(!columnFilters.status?.size && !isLoading && 'ring-2 ring-primary')} isLoading={isLoading} />
  <ListPageStatCard label="Fully Deployed" value={stats.fullyDeployed} icon={CheckCircle2} iconColor="text-emerald-600" valueClassName="text-emerald-600" selected={columnFilters.status?.size === 1 && columnFilters.status.has('Healthy')} onClick={() => setColumnFilter('status', new Set(['Healthy']))} className={cn(columnFilters.status?.size === 1 && columnFilters.status.has('Healthy') && 'ring-2 ring-emerald-500')} isLoading={isLoading} />
  <ListPageStatCard label="Partially Deployed" value={stats.partiallyDeployed} icon={Clock} iconColor="text-amber-600" valueClassName="text-amber-600" selected={columnFilters.status?.size === 1 && columnFilters.status.has('Progressing')} onClick={() => setColumnFilter('status', new Set(['Progressing']))} className={cn(columnFilters.status?.size === 1 && columnFilters.status.has('Progressing') && 'ring-2 ring-amber-500')} isLoading={isLoading} />
  <ListPageStatCard label="Updating" value={stats.updating} icon={History} iconColor="text-purple-500" valueClassName="text-purple-600" isLoading={isLoading} />
@@ -738,8 +739,8 @@ spec:
  toast.success(`Restarted ${rolloutDialog.item?.name}`);
  setRolloutDialog({ open: false, item: null });
  refetch();
- } catch (e: any) {
- toast.error(e?.message ?? 'Failed to restart');
+ } catch (e) {
+ toast.error(e instanceof Error ? e.message : 'Failed to restart');
  }
  }}
  onRollback={() => { toast.info('DaemonSet does not support rollback to revision.'); setRolloutDialog({ open: false, item: null }); }}

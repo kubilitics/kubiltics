@@ -158,6 +158,7 @@ export default function CustomResourceDefinitions() {
  const { data, isLoading, isError, isFetching, dataUpdatedAt, refetch } = useK8sResourceList<CRDResource>('customresourcedefinitions', undefined, { limit: 5000 });
  const deleteResource = useDeleteK8sResource('customresourcedefinitions');
 
+ // eslint-disable-next-line react-hooks/exhaustive-deps
  const items: CustomResourceDefinition[] = isConnected && data
  ? (data.items ?? []).map(transformCRD)
  : [];

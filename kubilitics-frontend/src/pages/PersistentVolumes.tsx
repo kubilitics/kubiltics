@@ -155,7 +155,7 @@ export default function PersistentVolumes() {
  const [pageIndex, setPageIndex] = useState(0);
  const deletePV = useDeleteK8sResource('persistentvolumes');
 
- const allItems = (data?.allItems ?? []) as K8sPersistentVolume[];
+ const allItems = useMemo(() => (data?.allItems ?? []) as K8sPersistentVolume[], [data?.allItems]);
  const items: PersistentVolume[] = useMemo(() => (isConnected ? allItems.map(mapPV) : []), [isConnected, allItems]);
 
  const stats = useMemo(() => {

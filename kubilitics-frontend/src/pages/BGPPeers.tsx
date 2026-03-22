@@ -75,7 +75,7 @@ export default function BGPPeers() {
  const [pageIndex, setPageIndex] = useState(0);
  const deletePeer = useDeleteK8sResource('bgppeers');
 
- const allItems = (data?.allItems ?? []) as K8sBGPPeer[];
+ const allItems = useMemo(() => (data?.allItems ?? []) as K8sBGPPeer[], [data?.allItems]);
  const items: BGPPeer[] = useMemo(() => (isConnected ? allItems.map(mapPeer) : []), [isConnected, allItems]);
 
  const namespaces = useMemo(() => [...new Set(items.map((i) => i.namespace).filter(Boolean))].sort(), [items]);

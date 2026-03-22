@@ -99,6 +99,7 @@ export default function EndpointSlices() {
  const { data, isLoading, isError, isFetching, dataUpdatedAt, refetch } = useK8sResourceList<K8sEndpointSlice>('endpointslices', undefined, { limit: 5000 });
  const deleteResource = useDeleteK8sResource('endpointslices');
 
+ // eslint-disable-next-line react-hooks/exhaustive-deps
  const endpointslices: EndpointSlice[] = isConnected && data?.items
  ? (data.items as K8sEndpointSlice[]).map((es) => {
  const endpoints = es.endpoints ?? [];

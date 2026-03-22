@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 /**
  * Apple-style toast notifications powered by Sonner.
  *

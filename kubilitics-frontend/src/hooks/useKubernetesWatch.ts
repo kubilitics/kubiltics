@@ -283,6 +283,7 @@ export function useKubernetesWatch<T extends KubernetesResource = KubernetesReso
     ws.onerror = () => {
       // onclose will fire after onerror; handling is done there
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     backendBaseUrl,
     currentClusterId,

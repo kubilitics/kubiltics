@@ -57,7 +57,7 @@ function mapRS(rs: K8sResourceSlice): ResourceSlice {
  const driver = (raw.driver as string) ?? (raw.spec as Record<string, unknown>)?.driver ?? '—';
  const nodeName = (raw.nodeName as string) ?? (raw.spec as Record<string, unknown>)?.nodeName;
  const pool = raw.pool as { name?: string } | undefined;
- const poolName = (pool as any)?.name ?? (raw.spec as any)?.pool?.name ?? '—';
+ const poolName = (pool as unknown as Record<string, unknown>)?.name ?? (raw.spec as unknown as Record<string, unknown>)?.pool?.name ?? '—';
  const node = nodeName ?? poolName ?? '—';
  return {
  name: rs.metadata?.name ?? '',
@@ -101,6 +101,7 @@ export default function ResourceSlices() {
  const deleteRS = useDeleteK8sResource('resourceslices');
  const createRS = useCreateK8sResource('resourceslices');
 
+ // eslint-disable-next-line react-hooks/exhaustive-deps
  const allItems = (data?.allItems ?? []) as K8sResourceSlice[];
  const items: ResourceSlice[] = useMemo(() => (isConnected ? allItems.map(mapRS) : []), [isConnected, allItems]);
 

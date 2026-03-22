@@ -121,6 +121,7 @@ export default function MutatingWebhooks() {
  const { data, isLoading, isError, isFetching, dataUpdatedAt, refetch } = useK8sResourceList<MutatingWebhookResource>('mutatingwebhookconfigurations', undefined, { limit: 5000 });
  const deleteResource = useDeleteK8sResource('mutatingwebhookconfigurations');
 
+ // eslint-disable-next-line react-hooks/exhaustive-deps
  const items: MutatingWebhook[] = isConnected && data
  ? (data.items ?? []).map(transformMutatingWebhook)
  : [];

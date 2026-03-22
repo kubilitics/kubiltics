@@ -32,7 +32,7 @@ function validateYaml(yaml: string): YamlValidationError[] {
   const errors: YamlValidationError[] = [];
 
   try {
-    const doc = yamlParser.load(yaml) as any;
+    const doc = yamlParser.load(yaml) as Record<string, unknown>;
     if (!doc) return errors;
 
     if (!doc.apiVersion) {
@@ -44,15 +44,15 @@ function validateYaml(yaml: string): YamlValidationError[] {
     if (!doc.metadata) {
       errors.push({ line: 1, message: 'Missing required field: metadata' });
     }
-  } catch (err: any) {
+  } catch (err) {
     let line = 1;
     let message = 'Invalid YAML';
 
-    if (err.mark && err.mark.line !== undefined) {
-      line = err.mark.line + 1;
-      message = err.reason || err.message;
+    if (err instanceof Error && (err as unknown as Record<string, unknown>).mark && (err as unknown as Record<string, unknown>).mark.line !== undefined) {
+      line = ((err as unknown as Record<string, unknown>).mark.line as number) + 1;
+      message = ((err as unknown as Record<string, unknown>).reason as string) || err.message;
     } else {
-      message = err.message || String(err);
+      message = err instanceof Error ? err.message : String(err);
     }
 
     errors.push({ line, message });

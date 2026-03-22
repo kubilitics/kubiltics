@@ -192,9 +192,9 @@ export function ResourceList<T extends object>({
         if (typeof rendered === 'string' || typeof rendered === 'number') {
           return rendered;
         }
-        const asAny = row as any;
+        const asRecord = row as Record<string, unknown>;
         // Fallback: try the raw field on the row; otherwise, empty string.
-        return asAny?.[col.key] ?? '';
+        return asRecord?.[col.key] ?? '';
       };
     }
 

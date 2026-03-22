@@ -38,32 +38,40 @@ export function useStorageOverview() {
         const items: StorageOverviewData['resources'] = [];
 
         // PVCs
-        (pvcs.data?.items ?? []).forEach((p: any) => {
+        (pvcs.data?.items ?? []).forEach((p: Record<string, unknown>) => {
+            const metadata = p.metadata as Record<string, unknown>;
+            const status = p.status as Record<string, unknown>;
+            const capacity = status?.capacity as Record<string, unknown> | undefined;
             items.push({
                 kind: 'PersistentVolumeClaim',
-                name: p.metadata.name,
-                namespace: p.metadata.namespace,
-                status: p.status?.phase || 'Pending',
-                capacity: p.status?.capacity?.storage,
+                name: metadata.name as string,
+                namespace: metadata.namespace as string,
+                status: (status?.phase as string) || 'Pending',
+                capacity: capacity?.storage as string | undefined,
             });
         });
 
         // PVs
-        (pvs.data?.items ?? []).forEach((p: any) => {
+        (pvs.data?.items ?? []).forEach((p: Record<string, unknown>) => {
+            const metadata = p.metadata as Record<string, unknown>;
+            const status = p.status as Record<string, unknown>;
+            const spec = p.spec as Record<string, unknown>;
+            const specCapacity = spec?.capacity as Record<string, unknown> | undefined;
             items.push({
                 kind: 'PersistentVolume',
-                name: p.metadata.name,
+                name: metadata.name as string,
                 namespace: 'N/A',
-                status: p.status?.phase || 'Pending',
-                capacity: p.spec?.capacity?.storage,
+                status: (status?.phase as string) || 'Pending',
+                capacity: specCapacity?.storage as string | undefined,
             });
         });
 
         // SCs
-        (scs.data?.items ?? []).forEach((s: any) => {
+        (scs.data?.items ?? []).forEach((s: Record<string, unknown>) => {
+            const metadata = s.metadata as Record<string, unknown>;
             items.push({
                 kind: 'StorageClass',
-                name: s.metadata.name,
+                name: metadata.name as string,
                 namespace: 'N/A',
                 status: 'Active',
             });

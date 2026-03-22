@@ -137,7 +137,7 @@ export default function VolumeSnapshotDetail() {
   const errorMsg = status.error?.message;
 
   const statusCards = [
-    { label: 'Status', value: readyToUse ? 'Ready' : errorMsg ? 'Failed' : 'Pending', icon: Camera, iconColor: (readyToUse ? 'success' : errorMsg ? 'destructive' : 'warning') as any },
+    { label: 'Status', value: readyToUse ? 'Ready' : errorMsg ? 'Failed' : 'Pending', icon: Camera, iconColor: (readyToUse ? 'success' : errorMsg ? 'destructive' : 'warning') as const },
     { label: 'Source PVC', value: sourcePVC, icon: Link2, iconColor: 'info' as const },
     { label: 'Snapshot Class', value: snapshotClass, icon: FileText, iconColor: 'muted' as const },
     { label: 'Restore Size', value: restoreSize, icon: Camera, iconColor: 'primary' as const },

@@ -18,7 +18,7 @@ export function yamlValue(v: string | number): string {
     s.includes('\n') ||
     s.includes(':') ||
     s.includes('#') ||
-    /^[\s\-\[\]{}&*!|>'%@`]/.test(s);
+    /^[\s\-[\]{}&*!|>'%@`]/.test(s);
   if (!needsQuotes) return s;
   return `"${s.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
 }

@@ -322,7 +322,7 @@ const MemoUnifiedNode = React.memo(UnifiedNode, (prev, next) =>
 );
 
 const NODE_TYPES: NodeTypes = {
-  unified: MemoUnifiedNode as any,
+  unified: MemoUnifiedNode as unknown as React.ComponentType,
 };
 
 // ─── Edge Components ──────────────────────────────────────────────────────────
@@ -360,9 +360,9 @@ function getEdgeColor(rel: string): string {
 function StructuralEdge({ sourceX, sourceY, targetX, targetY, data, style }: EdgeProps) {
   injectEdgeStyles();
   const [edgePath] = getBezierPath({ sourceX, sourceY, targetX, targetY, curvature: 0.25 });
-  const rel = (data as any)?.rel ?? '';
+  const rel = (data as unknown as Record<string, unknown>)?.rel ?? '';
   const color = getEdgeColor(rel);
-  const dimmed = (data as any)?.dimmed ?? false;
+  const dimmed = (data as unknown as Record<string, unknown>)?.dimmed ?? false;
   const isTraffic = rel === 'selects' || rel === 'routes' || rel === 'exposes';
 
   return (
@@ -397,7 +397,7 @@ function StructuralEdge({ sourceX, sourceY, targetX, targetY, data, style }: Edg
 }
 
 const EDGE_TYPES: EdgeTypes = {
-  structural: StructuralEdge as any,
+  structural: StructuralEdge as unknown as React.ComponentType,
 };
 
 // ─── Layout Engine ────────────────────────────────────────────────────────────
@@ -994,11 +994,12 @@ function TopologyInner({ graph }: { graph: TopologyGraph }) {
 
       // Auto-fit after layout
       setTimeout(() => {
-        try { fitView({ padding: 0.15, maxZoom: 1.2, duration: 400 }); } catch {}
+        try { fitView({ padding: 0.15, maxZoom: 1.2, duration: 400 }); } catch { /* intentionally empty */ }
       }, 100);
     };
 
     doLayout();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rfNodes, rfEdges, activeView, focusNodeId]);
 
   // Node click → focus mode
@@ -1045,7 +1046,7 @@ function TopologyInner({ graph }: { graph: TopologyGraph }) {
     const rfNode = nodes.find(n => n.id === tNode.id);
     if (rfNode) {
       setTimeout(() => {
-        try { setCenter(rfNode.position.x + 96, rfNode.position.y + 36, { zoom: 1.2, duration: 500 }); } catch {}
+        try { setCenter(rfNode.position.x + 96, rfNode.position.y + 36, { zoom: 1.2, duration: 500 }); } catch { /* intentionally empty */ }
       }, 50);
     }
   }, [nodes, setCenter]);
@@ -1059,7 +1060,7 @@ function TopologyInner({ graph }: { graph: TopologyGraph }) {
         setSelectedNode(null);
       }
       if (e.key === 'f' && !e.metaKey && !e.ctrlKey) {
-        try { fitView({ padding: 0.15, maxZoom: 1.2, duration: 400 }); } catch {}
+        try { fitView({ padding: 0.15, maxZoom: 1.2, duration: 400 }); } catch { /* intentionally empty */ }
       }
       if (e.key === '1' && !e.metaKey) setActiveView('application');
       if (e.key === '2' && !e.metaKey) setActiveView('dependencies');
@@ -1332,10 +1333,7 @@ const FEATURE_TOPOLOGY_V2 =
   !(import.meta.env?.VITE_FEATURE_TOPOLOGY_V2 === 'false' ||
     (typeof process !== 'undefined' && process.env?.VITE_FEATURE_TOPOLOGY_V2 === 'false'));
 
-export default function Topology() {
-  if (FEATURE_TOPOLOGY_V2) {
-    return <TopologyPage />;
-  }
+function TopologyV1() {
   const { activeCluster } = useClusterStore();
   const clusterId = useActiveClusterId();
   const navigate = useNavigate();
@@ -1516,4 +1514,11 @@ export default function Topology() {
       </div>
     </motion.div>
   );
+}
+
+export default function Topology() {
+  if (FEATURE_TOPOLOGY_V2) {
+    return <TopologyPage />;
+  }
+  return <TopologyV1 />;
 }

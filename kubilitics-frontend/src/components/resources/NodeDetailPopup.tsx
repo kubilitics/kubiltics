@@ -69,8 +69,8 @@ export interface ResourceDetail {
   annotations?: Record<string, string>;
   createdAt?: string;
   uid?: string;
-  spec?: Record<string, any>;
-  statusDetails?: Record<string, any>;
+  spec?: Record<string, unknown>;
+  statusDetails?: Record<string, unknown>;
 }
 
 interface NodeDetailPopupProps {

@@ -154,7 +154,7 @@ export default function PodDisruptionBudgets() {
  const [pageSize, setPageSize] = useState(10);
  const [pageIndex, setPageIndex] = useState(0);
 
- const allItems = (data?.allItems ?? []) as PDBResource[];
+ const allItems = useMemo(() => (data?.allItems ?? []) as PDBResource[], [data?.allItems]);
  const items: PDBRow[] = useMemo(() => (isConnected ? allItems.map(transformPDB) : []), [isConnected, allItems]);
 
  const namespaces = useMemo(() => ['all', ...Array.from(new Set(items.map((i) => i.namespace)))], [items]);

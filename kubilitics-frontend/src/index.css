@@ -285,12 +285,13 @@
 
   /* ─── Interactive Row ─── */
   .interactive-row {
-    @apply transition-colors cursor-pointer;
+    @apply transition-all cursor-pointer;
     transition-duration: var(--duration-fast);
   }
 
   .interactive-row:hover {
-    @apply bg-muted/50;
+    @apply bg-muted/60;
+    box-shadow: inset 3px 0 0 hsl(var(--primary) / 0.3);
   }
 
   .interactive-row:focus-visible {
@@ -299,7 +300,7 @@
   }
 
   .interactive-row[data-selected="true"] {
-    @apply bg-primary/5 border-l-2 border-l-primary;
+    @apply bg-primary/[0.08] border-l-2 border-l-primary;
   }
 
   /* ─── Elevation Layers ─── */
@@ -311,32 +312,34 @@
 
   /* ─── Empty State Container ─── */
   .empty-state {
-    @apply flex flex-col items-center justify-center py-16 px-8 text-center;
+    @apply flex flex-col items-center justify-center py-20 px-8 text-center;
   }
 
   .empty-state-icon {
-    @apply w-16 h-16 rounded-2xl bg-muted/60 flex items-center justify-center mb-4;
-    box-shadow: var(--shadow-1);
+    @apply w-16 h-16 rounded-2xl flex items-center justify-center mb-5;
+    @apply bg-gradient-to-br from-muted/80 to-muted/40 border border-border/30;
+    box-shadow: var(--shadow-2);
   }
 
   .empty-state-title {
-    @apply text-lg font-semibold text-foreground mb-1.5;
+    @apply text-lg font-semibold text-foreground mb-1.5 tracking-tight;
   }
 
   .empty-state-description {
-    @apply text-sm text-muted-foreground max-w-sm mb-6;
+    @apply text-sm text-muted-foreground max-w-sm mb-6 leading-relaxed;
   }
 
   /* ─── Unified Metric Card ─── */
   .metric-card {
-    @apply relative bg-white dark:bg-[hsl(228,14%,10%)] border border-slate-200/80 dark:border-slate-700/50 overflow-hidden;
+    @apply relative bg-white dark:bg-[hsl(228,14%,10%)] border border-slate-200/60 dark:border-slate-700/50 overflow-hidden;
     border-radius: var(--card-radius);
     padding: var(--card-padding);
-    transition: all var(--duration-emphasis) var(--ease-default);
+    box-shadow: var(--shadow-1);
+    transition: all var(--duration-normal) var(--ease-default);
   }
 
   .metric-card:hover {
-    @apply border-slate-300/80 dark:border-slate-600/80;
+    @apply border-slate-300/80 dark:border-slate-600/80 -translate-y-0.5;
     box-shadow: var(--shadow-3);
   }
 
@@ -437,14 +440,14 @@
 
   /* ─── Empty State (unified) ─── */
   .empty-state-container {
-    @apply relative border-2 border-dashed border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/30 py-16 px-6 text-center;
+    @apply relative border-2 border-dashed border-slate-200/70 dark:border-slate-700/70 bg-gradient-to-br from-slate-50/80 to-white/50 dark:from-slate-800/30 dark:to-slate-900/20 py-20 px-8 text-center;
     border-radius: var(--card-radius);
   }
 
   .empty-state-icon-box {
-    @apply h-14 w-14 bg-white dark:bg-[hsl(228,14%,14%)] border border-slate-200 dark:border-slate-700 flex items-center justify-center mx-auto mb-4;
+    @apply h-14 w-14 bg-white dark:bg-[hsl(228,14%,14%)] border border-slate-200/80 dark:border-slate-700 flex items-center justify-center mx-auto mb-5;
     border-radius: var(--card-radius);
-    box-shadow: var(--shadow-1);
+    box-shadow: var(--shadow-2);
   }
 
   /* ─── Page Layout ─── */

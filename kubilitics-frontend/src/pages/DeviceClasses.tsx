@@ -94,7 +94,7 @@ export default function DeviceClasses() {
  const deleteDC = useDeleteK8sResource('deviceclasses');
  const createDC = useCreateK8sResource('deviceclasses');
 
- const allItems = (data?.allItems ?? []) as K8sDeviceClass[];
+ const allItems = useMemo(() => (data?.allItems ?? []) as K8sDeviceClass[], [data?.allItems]);
  const items: DeviceClass[] = useMemo(() => (isConnected ? allItems.map(mapDC) : []), [isConnected, allItems]);
 
  const stats = useMemo(() => ({

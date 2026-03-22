@@ -204,7 +204,7 @@ export function MetricsDashboard({ resourceType, resourceName, namespace, podRes
     duration: timeRange,
   });
 
-  const filteredHistory = historyResult?.points ?? [];
+  const filteredHistory = useMemo(() => historyResult?.points ?? [], [historyResult?.points]);
 
   const historyPointCount = filteredHistory.length;
 

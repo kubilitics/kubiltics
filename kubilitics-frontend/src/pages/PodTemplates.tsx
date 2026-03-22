@@ -97,6 +97,7 @@ export default function PodTemplates() {
  const deleteResource = useDeleteK8sResource('podtemplates');
  const createPT = useCreateK8sResource('podtemplates');
 
+ // eslint-disable-next-line react-hooks/exhaustive-deps
  const allItems = (data?.allItems ?? []) as K8sPodTemplate[];
  const items: PodTemplate[] = useMemo(() => (isConnected ? allItems.map(mapPodTemplate) : []), [isConnected, allItems]);
 

@@ -177,34 +177,14 @@ function walkDir(dir: string, callback: (filePath: string) => void): void {
 
 function main(): void {
   const rootDir = process.argv[2] ?? process.cwd();
-  console.log(`Scanning ${rootDir} for legacy 3D/graph dependencies...\n`);
 
   const result = scanForLegacyImports(rootDir);
 
   if (result.clean) {
-    console.log('No legacy 3D/graph dependencies found. Codebase is clean.');
     process.exit(0);
   }
 
-  if (result.packageJsonHits.length > 0) {
-    console.log('=== package.json hits ===');
-    for (const hit of result.packageJsonHits) {
-      console.log(`  ${hit.section}: "${hit.package}": "${hit.version}" -- REMOVE`);
-    }
-    console.log();
-  }
-
-  if (result.imports.length > 0) {
-    console.log('=== Source file imports ===');
-    for (const hit of result.imports) {
-      console.log(`  ${hit.file}:${hit.line}  [${hit.package}]`);
-      console.log(`    ${hit.content}`);
-    }
-    console.log();
-  }
-
   const total = result.imports.length + result.packageJsonHits.length;
-  console.log(`Found ${total} legacy reference(s). Remove these to complete migration to @xyflow/react.`);
   process.exit(1);
 }
 

@@ -36,7 +36,7 @@ export interface UseResourceHealthResult {
 }
 
 // Calculate health score based on metrics
-function calculateHealthScore(resource: any): number {
+function calculateHealthScore(resource: Record<string, unknown>): number {
   let score = 100;
 
   // Deduct for high CPU usage
@@ -56,7 +56,7 @@ function calculateHealthScore(resource: any): number {
 }
 
 // Calculate efficiency score
-function calculateEfficiency(resource: any): number {
+function calculateEfficiency(resource: Record<string, unknown>): number {
   const cpu = resource.metrics?.cpu || 0;
   const memory = resource.metrics?.memory || 0;
 
@@ -73,7 +73,7 @@ function calculateEfficiency(resource: any): number {
 }
 
 // Determine failure risk
-function calculateFailureRisk(resource: any): 'low' | 'medium' | 'high' | 'critical' {
+function calculateFailureRisk(resource: Record<string, unknown>): 'low' | 'medium' | 'high' | 'critical' {
   const restarts = resource.metrics?.restarts || 0;
   const cpu = resource.metrics?.cpu || 0;
   const memory = resource.metrics?.memory || 0;
@@ -85,7 +85,7 @@ function calculateFailureRisk(resource: any): 'low' | 'medium' | 'high' | 'criti
 }
 
 // Estimate cost per day (simplified calculation)
-function calculateCostPerDay(resource: any): number {
+function calculateCostPerDay(resource: Record<string, unknown>): number {
   const cpu = resource.metrics?.cpu || 0;
   const memory = resource.metrics?.memory || 0;
 
@@ -106,7 +106,7 @@ function determineStatus(healthScore: number, failureRisk: string): ResourceHeal
 }
 
 // Generate issues
-function generateIssues(resource: any): string[] {
+function generateIssues(resource: Record<string, unknown>): string[] {
   const issues: string[] = [];
 
   if (resource.metrics?.cpu > 80) {
@@ -125,7 +125,7 @@ function generateIssues(resource: any): string[] {
 }
 
 // Generate recommendations
-function generateRecommendations(resource: any, efficiency: number): string[] {
+function generateRecommendations(resource: Record<string, unknown>, efficiency: number): string[] {
   const recommendations: string[] = [];
 
   if (resource.metrics?.cpu > 80) {
@@ -158,7 +158,7 @@ export function useResourceHealth(options: UseResourceHealthOptions): UseResourc
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const calculateHealth = () => {
+  const calculateHealth = useCallback(() => {
     if (!enabled || resources.length === 0) {
       setHealthData(new Map());
       return;
@@ -199,7 +199,7 @@ export function useResourceHealth(options: UseResourceHealthOptions): UseResourc
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [enabled, resources]);
 
   useEffect(() => {
     calculateHealth();
@@ -208,7 +208,7 @@ export function useResourceHealth(options: UseResourceHealthOptions): UseResourc
       const interval = setInterval(calculateHealth, refreshInterval);
       return () => clearInterval(interval);
     }
-  }, [JSON.stringify(resources.map(r => r.id)), enabled, refreshInterval]);
+  }, [calculateHealth, refreshInterval]);
 
   return {
     healthData,

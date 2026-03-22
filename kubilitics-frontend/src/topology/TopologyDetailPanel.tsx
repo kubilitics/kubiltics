@@ -89,7 +89,7 @@ export function TopologyDetailPanel({
 
   return (
     <aside
-      className="hidden w-80 shrink-0 overflow-y-auto border-l border-gray-200 bg-white md:block"
+      className="hidden w-80 shrink-0 overflow-y-auto border-l border-gray-200 bg-white dark:bg-slate-800 md:block"
       aria-label={`Details for ${node.kind} ${node.name}`}
       role="complementary"
     >
@@ -111,7 +111,7 @@ export function TopologyDetailPanel({
           {onClose && (
             <button
               type="button"
-              className={`ml-1 rounded-md p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 ${A11Y.focusRing} ${A11Y.transition}`}
+              className={`ml-1 rounded-md p-1 text-gray-600 dark:text-gray-400 hover:text-gray-600 hover:bg-gray-100 ${A11Y.focusRing} ${A11Y.transition}`}
               onClick={onClose}
               aria-label="Close detail panel"
             >
@@ -256,14 +256,14 @@ function InfoRow({ label, value, highlight, copyable = true }: { label: string; 
         {copyable && (
           <button
             type="button"
-            className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 rounded hover:bg-gray-100"
+            className="opacity-50 group-hover:opacity-100 transition-opacity p-0.5 rounded hover:bg-gray-100"
             onClick={handleCopy}
             aria-label={`Copy ${label}`}
           >
             {copied ? (
               <Check className="h-3 w-3 text-emerald-500" />
             ) : (
-              <Copy className="h-3 w-3 text-gray-400" />
+              <Copy className="h-3 w-3 text-gray-600 dark:text-gray-400" />
             )}
           </button>
         )}
@@ -287,7 +287,7 @@ function ConnectionRow({
   const peerName = peer?.name ?? peerId.split("/").pop() ?? peerId;
   const peerKind = peer?.kind ?? peerId.split("/")[0] ?? "";
   const icon = peer ? categoryIcon(peer.category) : "";
-  const edgeColor = getEdgeColor((edge as any).relationshipCategory);
+  const edgeColor = getEdgeColor((edge as unknown as Record<string, unknown>).relationshipCategory as string);
 
   return (
     <button
@@ -307,15 +307,15 @@ function ConnectionRow({
       <div className="min-w-0 flex-1">
         <div className="truncate text-[11px] font-medium text-gray-900">{peerName}</div>
         <div className="flex items-center gap-1.5 mt-0.5">
-          <span className="text-[9px] text-gray-400">{peerKind}</span>
+          <span className="text-[9px] text-gray-600 dark:text-gray-400">{peerKind}</span>
           {edge.label && (
-            <span className="inline-flex items-center px-1.5 py-0 rounded text-[9px] font-medium bg-gray-100 text-gray-500">
+            <span className="inline-flex items-center px-1.5 py-0 rounded text-[9px] font-medium bg-gray-100 text-gray-600 dark:text-gray-400">
               {edge.label}
             </span>
           )}
         </div>
       </div>
-      <ChevronRight className="h-3 w-3 text-gray-300 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" aria-hidden="true" />
+      <ChevronRight className="h-3 w-3 text-gray-500 dark:text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" aria-hidden="true" />
     </button>
   );
 }

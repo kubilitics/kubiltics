@@ -5,7 +5,6 @@
  */
 
 export const invoke = async (cmd: string, _args?: unknown): Promise<unknown> => {
-    console.log(`[Mock Tauri] invoke: ${cmd}`, _args);
 
     switch (cmd) {
         // ── Sidecar status ──────────────────────────────────────────────

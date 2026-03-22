@@ -127,7 +127,7 @@ export function useAddonInstallFlow(clusterId: string) {
               if ("step" in data && "message" in data) {
                 const progressEvent = data as InstallProgressEvent;
                 // Track last event_id for WS resume on reconnect
-                const eid = (progressEvent as any).event_id;
+                const eid = (progressEvent as Record<string, unknown>).event_id;
                 if (typeof eid === 'number' && eid > lastEventId) {
                   lastEventId = eid;
                 }

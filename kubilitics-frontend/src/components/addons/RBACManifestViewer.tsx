@@ -85,6 +85,12 @@ export function RBACManifestViewer({ clusterId, addonId, namespace }: RBACManife
     );
 }
 
-function Badge({ children, className, variant }: any) {
+interface BadgeProps {
+    children?: React.ReactNode;
+    className?: string;
+    variant?: string;
+}
+
+function Badge({ children, className, variant }: BadgeProps) {
     return <span className={`px-2 py-0.5 rounded text-xs font-medium ${className}`}>{children}</span>;
 }

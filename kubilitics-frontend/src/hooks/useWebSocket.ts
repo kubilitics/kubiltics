@@ -42,7 +42,7 @@ export interface UseWebSocketOptions {
 
 export interface SendMessageOptions {
   messages: Message[];
-  tools?: any[];
+  tools?: Array<Record<string, unknown>>;
   stream?: boolean;
   context?: {
     namespace?: string;
@@ -89,7 +89,6 @@ export function useWebSocket(options: UseWebSocketOptions) {
       ws.current = new WebSocket(url);
 
       ws.current.onopen = () => {
-        console.log('WebSocket connected');
         setIsConnected(true);
         setIsConnecting(false);
         setIsReconnecting(false);
@@ -98,7 +97,6 @@ export function useWebSocket(options: UseWebSocketOptions) {
       };
 
       ws.current.onclose = () => {
-        console.log('WebSocket disconnected');
         setIsConnected(false);
         setIsConnecting(false);
         onClose?.();
@@ -114,7 +112,6 @@ export function useWebSocket(options: UseWebSocketOptions) {
             // Cap at 30s.
             const delay = Math.min(reconnectBaseDelayMs * Math.pow(2, reconnectAttempt.current), 30000);
 
-            console.log(`Attempting to reconnect (${attempt}/${maxReconnectAttempts}) in ${delay}ms...`);
             setIsReconnecting(true);
 
             reconnectTimer.current = setTimeout(() => {
@@ -207,7 +204,6 @@ export function useWebSocket(options: UseWebSocketOptions) {
               break;
 
             case 'complete':
-              console.log('Response complete');
               break;
 
             case 'heartbeat':

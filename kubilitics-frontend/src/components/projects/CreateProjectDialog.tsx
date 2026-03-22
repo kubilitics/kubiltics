@@ -40,8 +40,9 @@ export function CreateProjectDialog({ children }: { children: React.ReactNode })
             setDescription('');
             toast.success(`Project "${project.name}" initialized successfully`);
         },
-        onError: (error: any) => {
-            toast.error(`Failed to initialize project: ${error.message}`);
+        onError: (error: unknown) => {
+            const message = error instanceof Error ? error.message : String(error);
+            toast.error(`Failed to initialize project: ${message}`);
         }
     });
 

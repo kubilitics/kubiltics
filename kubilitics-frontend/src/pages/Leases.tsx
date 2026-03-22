@@ -156,7 +156,7 @@ export default function Leases() {
  const [pageSize, setPageSize] = useState(10);
  const [pageIndex, setPageIndex] = useState(0);
 
- const allItems = (data?.allItems ?? []) as LeaseResource[];
+ const allItems = useMemo(() => (data?.allItems ?? []) as LeaseResource[], [data?.allItems]);
  const items: Lease[] = useMemo(() => (isConnected ? allItems.map(transformLease) : []), [isConnected, allItems]);
 
  const namespaces = useMemo(() => ['all', ...Array.from(new Set(items.map((i) => i.namespace)))], [items]);

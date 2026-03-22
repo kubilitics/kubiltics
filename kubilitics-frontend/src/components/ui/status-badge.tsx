@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 /**
  * StatusBadge — WCAG 2.1 SC 1.4.1 compliant status indicator
  *

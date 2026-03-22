@@ -173,11 +173,12 @@ export const MetricCardsGrid = () => {
                 "flex items-center gap-5",
                 "py-6 pl-0 pr-6",
                 /* Hover */
-                "transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]",
+                "transition-all duration-300",
                 c.hoverBorder,
                 "hover:shadow-[var(--shadow-3)] hover:-translate-y-[2px]",
                 "active:translate-y-0 active:shadow",
               )}
+              style={{ transitionTimingFunction: "cubic-bezier(0.16,1,0.3,1)" }}
             >
               {/* ── Left accent stripe ── */}
               <div className={cn("w-[4px] self-stretch rounded-r-full shrink-0", c.accent)} />
@@ -186,10 +187,11 @@ export const MetricCardsGrid = () => {
               <div
                 className={cn(
                   "h-14 w-14 rounded-xl flex items-center justify-center shrink-0",
-                  "transition-transform duration-500 ease-[cubic-bezier(0.175,0.885,0.32,1.275)]",
+                  "transition-transform duration-500",
                   "group-hover:scale-110",
                   c.iconBg,
                 )}
+                style={{ transitionTimingFunction: "cubic-bezier(0.175,0.885,0.32,1.275)" }}
               >
                 <c.icon className={cn("h-6 w-6", c.iconColor)} strokeWidth={1.75} />
               </div>
@@ -203,7 +205,7 @@ export const MetricCardsGrid = () => {
                   {c.title}
                 </span>
                 {scopeTag && (
-                  <span className="text-[10px] font-medium text-muted-foreground/50 uppercase tracking-wider mt-0.5">
+                  <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider mt-0.5">
                     {scopeTag}
                   </span>
                 )}
@@ -211,7 +213,7 @@ export const MetricCardsGrid = () => {
 
               {/* ── Navigate chevron ── */}
               <ArrowUpRight
-                className="ml-auto h-4.5 w-4.5 shrink-0 text-muted-foreground/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                className="ml-auto h-4.5 w-4.5 shrink-0 text-muted-foreground/60 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
                 strokeWidth={2}
               />
             </div>

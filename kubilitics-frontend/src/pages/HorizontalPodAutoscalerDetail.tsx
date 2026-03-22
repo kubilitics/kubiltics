@@ -117,7 +117,9 @@ export default function HorizontalPodAutoscalerDetail() {
   const maxReplicas = resource?.spec?.maxReplicas ?? 1;
   const currentReplicas = resource?.status?.currentReplicas ?? 0;
   const desiredReplicas = resource?.status?.desiredReplicas ?? currentReplicas;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const metrics = resource?.spec?.metrics ?? [];
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const currentMetrics = resource?.status?.currentMetrics ?? [];
   const conditions = resource?.status?.conditions ?? [];
   const labels = resource?.metadata?.labels ?? {};

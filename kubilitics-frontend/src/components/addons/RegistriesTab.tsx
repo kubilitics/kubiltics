@@ -100,7 +100,7 @@ function RegistryFormDialog({
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-1.5">
                             <Label>Registry Type</Label>
-                            <Select value={type} onValueChange={(v: any) => setType(v)}>
+                            <Select value={type} onValueChange={(v: string) => setType(v as "helm" | "oci")}>
                                 <SelectTrigger>
                                     <SelectValue />
                                 </SelectTrigger>
@@ -112,7 +112,7 @@ function RegistryFormDialog({
                         </div>
                         <div className="space-y-1.5">
                             <Label>Authentication</Label>
-                            <Select value={authType} onValueChange={(v: any) => setAuthType(v)}>
+                            <Select value={authType} onValueChange={(v: string) => setAuthType(v as "none" | "basic" | "token")}>
                                 <SelectTrigger>
                                     <SelectValue />
                                 </SelectTrigger>

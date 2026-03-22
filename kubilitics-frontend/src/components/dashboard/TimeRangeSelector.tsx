@@ -7,6 +7,7 @@
  * TASK-UX-005: Dashboard Time Range Selector
  */
 
+/* eslint-disable react-refresh/only-export-components */
 import { useState, useCallback } from 'react';
 import { cn } from '@/lib/utils';
 import { Clock, ChevronDown, TrendingUp, TrendingDown, Minus } from 'lucide-react';

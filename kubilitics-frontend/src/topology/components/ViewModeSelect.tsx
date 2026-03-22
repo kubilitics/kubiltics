@@ -98,7 +98,7 @@ export function ViewModeSelect({ value = "namespace", onChange }: ViewModeSelect
 
   return (
     <div className="relative">
-      <div className="inline-flex items-center rounded-xl bg-gray-100/80 p-1 gap-0.5 backdrop-blur-sm border border-gray-200/60">
+      <div className="inline-flex items-center rounded-xl bg-gray-100/80 dark:bg-gray-800/80 p-1 gap-0.5 backdrop-blur-sm border border-gray-200/60 dark:border-gray-700">
         {modes.map((m) => {
           const isActive = m.value === value;
           return (
@@ -108,7 +108,7 @@ export function ViewModeSelect({ value = "namespace", onChange }: ViewModeSelect
               className={`group relative flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all duration-200 ${
                 isActive
                   ? `${m.activeBg} ${m.activeText} ${m.activeBorder} shadow-sm border`
-                  : "text-gray-500 hover:text-gray-700 hover:bg-white/70 border border-transparent"
+                  : "text-gray-600 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-white/70 dark:hover:bg-gray-700 border border-transparent"
               }`}
               onClick={() => onChange?.(m.value)}
               onMouseEnter={() => handleMouseEnter(m.value)}
@@ -135,12 +135,12 @@ export function ViewModeSelect({ value = "namespace", onChange }: ViewModeSelect
         >
           <div className="rounded-lg bg-gray-900 px-3 py-2 shadow-lg text-center whitespace-nowrap">
             <div className="text-xs font-medium text-white">{hoveredConfig.label}</div>
-            <div className="text-[11px] text-gray-300 mt-0.5">{hoveredConfig.description}</div>
+            <div className="text-[11px] text-gray-400 mt-0.5">{hoveredConfig.description}</div>
             <div className="mt-1 flex items-center justify-center gap-1">
-              <kbd className="inline-flex items-center rounded bg-gray-700 px-1.5 py-0.5 text-[10px] font-mono text-gray-300 border border-gray-600">
+              <kbd className="inline-flex items-center rounded bg-gray-700 px-1.5 py-0.5 text-[10px] font-mono text-gray-400 border border-gray-600">
                 {hoveredConfig.shortcut}
               </kbd>
-              <span className="text-[10px] text-gray-500">to switch</span>
+              <span className="text-[10px] text-gray-400">to switch</span>
             </div>
             {/* Tooltip arrow */}
             <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-gray-900 rotate-45" />

@@ -26,14 +26,17 @@ export function useSecurityAssets() {
     const assets = useMemo(() => {
         const list: SecurityAsset[] = [];
 
-        const mapResource = (items: any[], kind: string) => {
-            return items.map(item => ({
-                kind,
-                name: item.metadata?.name || '',
-                namespace: item.metadata?.namespace,
-                creationTimestamp: item.metadata?.creationTimestamp || '',
-                labels: item.metadata?.labels || {},
-            }));
+        const mapResource = (items: Array<Record<string, unknown>>, kind: string) => {
+            return items.map(item => {
+                const metadata = item.metadata as Record<string, unknown> | undefined;
+                return {
+                    kind,
+                    name: (metadata?.name as string) || '',
+                    namespace: metadata?.namespace as string | undefined,
+                    creationTimestamp: (metadata?.creationTimestamp as string) || '',
+                    labels: (metadata?.labels as Record<string, string>) || {},
+                };
+            });
         };
 
         if (serviceAccounts.data?.items) list.push(...mapResource(serviceAccounts.data.items, 'ServiceAccount'));

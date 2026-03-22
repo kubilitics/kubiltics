@@ -143,7 +143,7 @@ export default function Namespaces() {
  const [showTableFilters, setShowTableFilters] = useState(false);
  const [pageSize, setPageSize] = useState(10);
  const [pageIndex, setPageIndex] = useState(0);
- const allItems = (data?.allItems ?? []) as NamespaceResource[];
+ const allItems = useMemo(() => (data?.allItems ?? []) as NamespaceResource[], [data?.allItems]);
 
  const { data: backendNsCounts } = useQuery({
  queryKey: ['backend', 'namespace-counts', clusterId],

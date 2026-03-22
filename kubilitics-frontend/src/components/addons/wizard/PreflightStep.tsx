@@ -112,12 +112,12 @@ export function PreflightStep({ planId }: { planId: string }) {
                         <span className="text-xs font-bold uppercase tracking-widest">Resource Estimate</span>
                     </div>
                     <div className="space-y-2">
-                        {report.resource_estimates?.map((res: any, i: number) => (
+                        {report.resource_estimates?.map((res: Record<string, unknown>, i: number) => (
                             <div key={i} className="flex justify-between items-center text-[10px]">
-                                <span className="font-medium truncate max-w-[100px]">{res.resource_name}</span>
+                                <span className="font-medium truncate max-w-[100px]">{res.resource_name as string}</span>
                                 <div className="flex gap-2">
-                                    <Badge variant="outline" className="text-[9px] py-0">{res.cpu_request} CPU</Badge>
-                                    <Badge variant="outline" className="text-[9px] py-0">{res.memory_request} RAM</Badge>
+                                    <Badge variant="outline" className="text-[9px] py-0">{res.cpu_request as string} CPU</Badge>
+                                    <Badge variant="outline" className="text-[9px] py-0">{res.memory_request as string} RAM</Badge>
                                 </div>
                             </div>
                         )) || <p className="text-[10px] text-muted-foreground italic">No resource impact detected.</p>}
@@ -129,7 +129,7 @@ export function PreflightStep({ planId }: { planId: string }) {
                 <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest pl-1">Individual Checks</label>
                 <ScrollArea className="h-64 border rounded-xl bg-background">
                     <div className="p-4 space-y-4">
-                        {report.checks.map((check: any, i: number) => (
+                        {report.checks.map((check: Record<string, unknown>, i: number) => (
                             <div key={i} className="flex gap-3 pb-3 border-b last:border-0 last:pb-0">
                                 {check.passed ?
                                     <CheckCircle2 className="h-4 w-4 text-emerald-500 mt-1 shrink-0" /> :

@@ -228,6 +228,7 @@ export default function Services() {
  const { data, isLoading, isError, isFetching, dataUpdatedAt, refetch } = useK8sResourceList<ServiceResource>('services', undefined, { limit: 5000 });
  const deleteResource = useDeleteK8sResource('services');
 
+ // eslint-disable-next-line react-hooks/exhaustive-deps
  const services: Service[] = isConnected && data?.items
  ? (data.items ?? []).map(transformServiceResource)
  : [];

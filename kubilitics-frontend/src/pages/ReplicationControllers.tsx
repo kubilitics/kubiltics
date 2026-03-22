@@ -141,6 +141,7 @@ export default function ReplicationControllers() {
  const deleteResource = useDeleteK8sResource('replicationcontrollers');
  const createResource = useCreateK8sResource('replicationcontrollers');
 
+ // eslint-disable-next-line react-hooks/exhaustive-deps
  const items: ReplicationController[] = isConnected && data
  ? (data.items ?? []).map(transformRC)
  : [];

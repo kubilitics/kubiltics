@@ -209,6 +209,39 @@ export function PodWizard({ open, onClose, onSuccess }: PodWizardProps) {
     }));
   }, []);
 
+  const formatYaml = useCallback((obj: Record<string, unknown>, indent = 0): string => {
+    const spaces = '  '.repeat(indent);
+    let result = '';
+
+    for (const [key, value] of Object.entries(obj)) {
+      if (value === undefined || value === null) continue;
+
+      if (Array.isArray(value)) {
+        if (value.length === 0) continue;
+        result += `${spaces}${key}:\n`;
+        value.forEach((item) => {
+          if (typeof item === 'object') {
+            const itemYaml = formatYaml(item, indent + 2);
+            const lines = itemYaml.split('\n').filter(Boolean);
+            result += `${spaces}- ${lines[0].trim()}\n`;
+            lines.slice(1).forEach(line => {
+              result += `${spaces}  ${line}\n`;
+            });
+          } else {
+            result += `${spaces}- ${item}\n`;
+          }
+        });
+      } else if (typeof value === 'object') {
+        result += `${spaces}${key}:\n`;
+        result += formatYaml(value, indent + 1);
+      } else {
+        result += `${spaces}${key}: ${value}\n`;
+      }
+    }
+
+    return result;
+  }, []);
+
   const generateYaml = useCallback((): string => {
     const labels = spec.labels.reduce((acc, l) => {
       if (l.key) acc[l.key] = l.value;
@@ -221,7 +254,7 @@ export function PodWizard({ open, onClose, onSuccess }: PodWizardProps) {
     }, {} as Record<string, string>);
 
     const containers = spec.containers.map(c => {
-      const container: any = {
+      const container: Record<string, unknown> = {
         name: c.name,
         image: c.image,
         imagePullPolicy: c.imagePullPolicy,
@@ -276,7 +309,7 @@ export function PodWizard({ open, onClose, onSuccess }: PodWizardProps) {
     });
 
     const volumes = spec.volumes.map(v => {
-      const vol: any = { name: v.name };
+      const vol: Record<string, unknown> = { name: v.name };
       switch (v.type) {
         case 'emptyDir':
           vol.emptyDir = {};
@@ -302,7 +335,7 @@ export function PodWizard({ open, onClose, onSuccess }: PodWizardProps) {
       return acc;
     }, {} as Record<string, string>);
 
-    const podManifest: any = {
+    const podManifest: Record<string, unknown> = {
       apiVersion: 'v1',
       kind: 'Pod',
       metadata: {
@@ -333,40 +366,7 @@ export function PodWizard({ open, onClose, onSuccess }: PodWizardProps) {
     };
 
     return formatYaml(podManifest);
-  }, [spec]);
-
-  const formatYaml = (obj: any, indent = 0): string => {
-    const spaces = '  '.repeat(indent);
-    let result = '';
-
-    for (const [key, value] of Object.entries(obj)) {
-      if (value === undefined || value === null) continue;
-
-      if (Array.isArray(value)) {
-        if (value.length === 0) continue;
-        result += `${spaces}${key}:\n`;
-        value.forEach((item) => {
-          if (typeof item === 'object') {
-            const itemYaml = formatYaml(item, indent + 2);
-            const lines = itemYaml.split('\n').filter(Boolean);
-            result += `${spaces}- ${lines[0].trim()}\n`;
-            lines.slice(1).forEach(line => {
-              result += `${spaces}  ${line}\n`;
-            });
-          } else {
-            result += `${spaces}- ${item}\n`;
-          }
-        });
-      } else if (typeof value === 'object') {
-        result += `${spaces}${key}:\n`;
-        result += formatYaml(value, indent + 1);
-      } else {
-        result += `${spaces}${key}: ${value}\n`;
-      }
-    }
-
-    return result;
-  };
+  }, [spec, formatYaml]);
 
   const handleSubmit = async () => {
     if (config.isConnected) {
@@ -377,7 +377,7 @@ export function PodWizard({ open, onClose, onSuccess }: PodWizardProps) {
         });
         onSuccess?.();
         onClose();
-      } catch (error: any) {
+      } catch (error) {
         // Error toast is handled by useCreateK8sResource / notifyError
       }
     } else {
@@ -475,7 +475,7 @@ export function PodWizard({ open, onClose, onSuccess }: PodWizardProps) {
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Restart Policy</Label>
-              <Select value={spec.restartPolicy} onValueChange={(v: any) => updateSpec('restartPolicy', v)}>
+              <Select value={spec.restartPolicy} onValueChange={(v: string) => updateSpec('restartPolicy', v as 'Always' | 'OnFailure' | 'Never')}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -557,7 +557,7 @@ export function PodWizard({ open, onClose, onSuccess }: PodWizardProps) {
                     <Label>Image Pull Policy</Label>
                     <Select
                       value={activeContainer.imagePullPolicy}
-                      onValueChange={(v: any) => updateContainer(activeContainerIndex, { imagePullPolicy: v })}
+                      onValueChange={(v: string) => updateContainer(activeContainerIndex, { imagePullPolicy: v as 'Always' | 'IfNotPresent' | 'Never' })}
                     >
                       <SelectTrigger>
                         <SelectValue />
@@ -972,7 +972,7 @@ export function PodWizard({ open, onClose, onSuccess }: PodWizardProps) {
                           <Label>Type</Label>
                           <Select
                             value={volume.type}
-                            onValueChange={(v: any) => {
+                            onValueChange={(v: string) => {
                               const newVolumes = [...spec.volumes];
                               newVolumes[i] = { ...newVolumes[i], type: v };
                               updateSpec('volumes', newVolumes);

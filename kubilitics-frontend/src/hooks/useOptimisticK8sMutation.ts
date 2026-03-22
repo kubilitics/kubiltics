@@ -43,13 +43,16 @@ export function useOptimisticK8sMutation() {
       const previousData = queryClient.getQueryData(listQueryKey);
 
       // Optimistically remove the item
-      queryClient.setQueryData(listQueryKey, (old: any) => {
-        if (!old?.items) return old;
+      queryClient.setQueryData(listQueryKey, (old: unknown) => {
+        const oldObj = old as Record<string, unknown> | null | undefined;
+        if (!oldObj?.items) return old;
+        const items = oldObj.items as Array<Record<string, unknown>>;
         return {
-          ...old,
-          items: old.items.filter(
-            (item: any) => item.metadata?.uid !== uid
-          ),
+          ...oldObj,
+          items: items.filter((item: Record<string, unknown>) => {
+            const metadata = item.metadata as Record<string, unknown> | undefined;
+            return metadata?.uid !== uid;
+          }),
         };
       });
 
@@ -70,11 +73,13 @@ export function useOptimisticK8sMutation() {
     ({ detailQueryKey, replicas }: OptimisticScaleOptions) => {
       const previousData = queryClient.getQueryData(detailQueryKey);
 
-      queryClient.setQueryData(detailQueryKey, (old: any) => {
-        if (!old?.spec) return old;
+      queryClient.setQueryData(detailQueryKey, (old: unknown) => {
+        const oldObj = old as Record<string, unknown> | null | undefined;
+        if (!oldObj?.spec) return old;
+        const spec = oldObj.spec as Record<string, unknown>;
         return {
-          ...old,
-          spec: { ...old.spec, replicas },
+          ...oldObj,
+          spec: { ...spec, replicas },
         };
       });
 

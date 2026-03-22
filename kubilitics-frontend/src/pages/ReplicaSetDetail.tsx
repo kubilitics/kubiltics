@@ -266,11 +266,11 @@ export default function ReplicaSetDetail() {
       triggerFastPolling();
       setActiveTab('pods');
       setSearchParams({ tab: 'pods' });
-    } catch (err: any) {
-      toast.error(err?.message ?? 'Failed to scale');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to scale');
       throw err;
     }
-  }, [isConnected, name, namespace, clusterId, patchReplicaSet, triggerFastPolling, setSearchParams]);
+  }, [isConnected, name, namespace, clusterId, patchReplicaSet, triggerFastPolling, setSearchParams, isBackendConfigured]);
 
   const handleSaveYaml = useCallback(async (newYaml: string) => {
     if (!isConnected || !name || !namespace) {
@@ -281,8 +281,8 @@ export default function ReplicaSetDetail() {
       await updateReplicaSet.mutateAsync({ name, yaml: newYaml, namespace });
       toast.success('ReplicaSet updated successfully');
       refetch();
-    } catch (error: any) {
-      toast.error(`Failed to update: ${error.message}`);
+    } catch (error) {
+      toast.error(`Failed to update: ${error instanceof Error ? error.message : String(error)}`);
       throw error;
     }
   }, [isConnected, name, namespace, updateReplicaSet, refetch]);

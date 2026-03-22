@@ -130,10 +130,10 @@ export function useResourceLiveUpdates({
     }, [clusterId, queryClient]);
 
     const onMessage = useCallback(
-        (data: any) => {
+        (data: Record<string, unknown>) => {
             if (!clusterId) return;
 
-            const type = data.type;
+            const type = data.type as string | undefined;
 
             if (type === 'resource_update') {
                 const resource = data.resource;

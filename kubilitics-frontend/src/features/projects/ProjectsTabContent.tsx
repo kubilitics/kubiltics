@@ -120,7 +120,7 @@ export function ProjectsTabContent() {
                 {project.description ? (
                   <p className="text-sm text-muted-foreground line-clamp-2 leading-relaxed">{project.description}</p>
                 ) : (
-                  <p className="text-sm text-muted-foreground/50 italic font-light italic leading-relaxed">No description provided</p>
+                  <p className="text-sm text-muted-foreground italic font-light italic leading-relaxed">No description provided</p>
                 )}
               </div>
               <div className="flex items-center gap-4 text-xs font-medium text-muted-foreground mt-auto pt-4 border-t border-border/50">

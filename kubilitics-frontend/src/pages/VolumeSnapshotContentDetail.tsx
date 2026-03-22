@@ -125,8 +125,8 @@ export default function VolumeSnapshotContentDetail() {
   const sourceSpec = spec.source ?? {};
   const vsRef = spec.volumeSnapshotRef ?? {};
 
-  const driver = vsc?.spec?.driver ?? (vsc as any)?.driver ?? '—';
-  const deletionPolicy = vsc?.spec?.deletionPolicy ?? (vsc as any)?.deletionPolicy ?? 'Delete';
+  const driver = vsc?.spec?.driver ?? (vsc as unknown as Record<string, unknown>)?.driver ?? '—';
+  const deletionPolicy = vsc?.spec?.deletionPolicy ?? (vsc as unknown as Record<string, unknown>)?.deletionPolicy ?? 'Delete';
   const snapshotClass = spec.volumeSnapshotClassName ?? '—';
   const restoreSize = status.restoreSize ?? '—';
   const readyToUse = status.readyToUse === true;

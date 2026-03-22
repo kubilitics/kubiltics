@@ -190,12 +190,6 @@ export async function captureFullTopologyPNG(
 
   const params = computeExportParams(bounds);
 
-  console.info(
-    `[Export PNG] Content: ${params.originalSize}, Scale: ${params.scale.toFixed(3)}, ` +
-    `Capture: ${params.exportSize}, PixelRatio: ${params.pixelRatio.toFixed(2)}, ` +
-    `Final: ${params.finalPixels}`
-  );
-
   const capturePromise = toPng(viewport, {
     backgroundColor: EXPORT.backgroundColor,
     pixelRatio: params.pixelRatio,

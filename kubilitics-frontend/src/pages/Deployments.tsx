@@ -234,6 +234,7 @@ export default function Deployments() {
  const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
  const clusterId = currentClusterId ?? null;
 
+ // eslint-disable-next-line react-hooks/exhaustive-deps
  const items: Deployment[] = isConnected && data
  ? (data.items ?? []).map(transformResource)
  : [];
@@ -472,6 +473,7 @@ export default function Deployments() {
  const visibleColumnCount = useMemo(() => {
  const dataCols = DEPLOYMENTS_TABLE_COLUMNS.filter((c) => columnVisibility.isColumnVisible(c.id)).length;
  return 1 + dataCols + 1; // checkbox + data columns + actions
+ // eslint-disable-next-line react-hooks/exhaustive-deps
  }, [columnVisibility.visibleColumns]);
 
  const deploymentExportConfig = useMemo(() => {
@@ -525,6 +527,7 @@ spec:
  containers: []
 `,
  };
+ // eslint-disable-next-line react-hooks/exhaustive-deps
  }, [columnVisibility.visibleColumns]);
 
  return (
@@ -564,7 +567,7 @@ spec:
  />
 
  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
- <ListPageStatCard label="Total" value={stats.total} icon={DeploymentIcon as any} iconColor="text-primary" isLoading={isLoading} selected={!hasActiveFilters} onClick={clearAllFilters} className={cn(!hasActiveFilters && !isLoading && 'ring-2 ring-primary')} />
+ <ListPageStatCard label="Total" value={stats.total} icon={DeploymentIcon as unknown as React.ComponentType} iconColor="text-primary" isLoading={isLoading} selected={!hasActiveFilters} onClick={clearAllFilters} className={cn(!hasActiveFilters && !isLoading && 'ring-2 ring-primary')} />
  <ListPageStatCard label="Available" value={stats.available} icon={CheckCircle2} iconColor="text-emerald-600" valueClassName="text-emerald-600" isLoading={isLoading} selected={columnFilters.status?.size === 1 && columnFilters.status.has('Healthy')} onClick={() => setColumnFilter('status', new Set(['Healthy']))} className={cn(columnFilters.status?.size === 1 && columnFilters.status.has('Healthy') && 'ring-2 ring-emerald-500')} />
  <ListPageStatCard label="Progressing" value={stats.progressing} icon={Clock} iconColor="text-amber-600" valueClassName="text-amber-600" isLoading={isLoading} selected={columnFilters.status?.size === 1 && columnFilters.status.has('Progressing')} onClick={() => setColumnFilter('status', new Set(['Progressing']))} className={cn(columnFilters.status?.size === 1 && columnFilters.status.has('Progressing') && 'ring-2 ring-amber-500')} />
  <ListPageStatCard label="Degraded" value={stats.degraded} icon={XCircle} iconColor="text-rose-600" valueClassName="text-rose-600" isLoading={isLoading} selected={columnFilters.status?.size === 1 && columnFilters.status.has('Degraded')} onClick={() => setColumnFilter('status', new Set(['Degraded']))} className={cn(columnFilters.status?.size === 1 && columnFilters.status.has('Degraded') && 'ring-2 ring-rose-500')} />

@@ -53,7 +53,6 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({ cy, onAction }) => {
           if (node.length > 0) {
             const name = node.data('name') || nodeId;
             await navigator.clipboard.writeText(name);
-            console.log('Copied resource name:', name);
           }
         },
       },
@@ -65,7 +64,6 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({ cy, onAction }) => {
         icon: <ScrollText className="w-4 h-4" />,
         action: (nodeId: string) => {
           onAction?.('view-logs', nodeId);
-          console.log('View logs for:', nodeId);
         },
       },
 
@@ -76,7 +74,6 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({ cy, onAction }) => {
         icon: <FileText className="w-4 h-4" />,
         action: (nodeId: string) => {
           onAction?.('view-yaml', nodeId);
-          console.log('View YAML for:', nodeId);
         },
       },
 
@@ -87,7 +84,6 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({ cy, onAction }) => {
         icon: <Activity className="w-4 h-4" />,
         action: (nodeId: string) => {
           onAction?.('show-metrics', nodeId);
-          console.log('Show metrics for:', nodeId);
         },
       },
 
@@ -106,7 +102,6 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({ cy, onAction }) => {
         icon: <Network className="w-4 h-4" />,
         action: (nodeId: string) => {
           onAction?.('inspect-dependencies', nodeId);
-          console.log('Inspect dependencies for:', nodeId);
         },
       },
 
@@ -117,7 +112,6 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({ cy, onAction }) => {
         icon: <Bomb className="w-4 h-4" />,
         action: (nodeId: string) => {
           onAction?.('compute-blast-radius', nodeId);
-          console.log('Compute blast radius for:', nodeId);
         },
       },
 
@@ -128,7 +122,6 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({ cy, onAction }) => {
         icon: <Route className="w-4 h-4" />,
         action: (nodeId: string) => {
           onAction?.('trace-user-journey', nodeId);
-          console.log('Trace user journey from:', nodeId);
         },
       },
 
@@ -147,7 +140,6 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({ cy, onAction }) => {
         icon: <Edit className="w-4 h-4" />,
         action: (nodeId: string) => {
           onAction?.('edit-resource', nodeId);
-          console.log('Edit resource:', nodeId);
         },
       },
 
@@ -159,7 +151,6 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({ cy, onAction }) => {
         danger: true,
         action: (nodeId: string) => {
           onAction?.('delete-resource', nodeId);
-          console.log('Delete resource:', nodeId);
         },
       },
     ];

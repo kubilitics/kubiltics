@@ -125,7 +125,7 @@ export default function APIServices() {
  const [pageSize, setPageSize] = useState(10);
  const [pageIndex, setPageIndex] = useState(0);
 
- const allItems = (data?.allItems ?? []) as APIServiceResource[];
+ const allItems = useMemo(() => (data?.allItems ?? []) as APIServiceResource[], [data?.allItems]);
  const items: APIService[] = useMemo(() => (isConnected ? allItems.map(transformAPIService) : []), [isConnected, allItems]);
 
  const tableConfig: ColumnConfig<APIService>[] = useMemo(

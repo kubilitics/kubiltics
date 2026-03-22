@@ -1,0 +1,47 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "{{ include "kubilitics.fullname" . }}-test-connection"
+  labels:
+    {{- include "kubilitics.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": test
+spec:
+  serviceAccountName: {{ include "kubilitics.serviceAccountName" . }}
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    fsGroup: 1000
+  containers:
+    - name: test-connection
+      image: curlimages/curl:latest
+      imagePullPolicy: IfNotPresent
+      securityContext:
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: true
+        capabilities:
+          drop:
+            - ALL
+      command:
+        - sh
+        - -c
+        - |
+          set -e
+
+          echo "Testing health endpoint..."
+          curl -v http://{{ include "kubilitics.fullname" . }}:{{ .Values.service.port }}/health
+
+          echo ""
+          echo "Testing frontend endpoint..."
+          curl -v http://{{ include "kubilitics.fullname" . }}:{{ .Values.service.port }}/ | grep -q "Kubilitics"
+
+          echo ""
+          echo "All tests passed!"
+      resources:
+        limits:
+          cpu: 100m
+          memory: 64Mi
+        requests:
+          cpu: 50m
+          memory: 32Mi
+  restartPolicy: Never

@@ -46,7 +46,7 @@ export default function AdmissionOverview() {
     setTimeout(() => setIsSyncing(false), 1500);
   }, [queryClient]);
 
-  const resources: AdmissionResource[] = data?.resources ?? [];
+  const resources: AdmissionResource[] = useMemo(() => data?.resources ?? [], [data?.resources]);
 
   const filteredResources = useMemo(() => {
     if (!searchQuery.trim()) return resources;

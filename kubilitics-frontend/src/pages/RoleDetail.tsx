@@ -83,6 +83,7 @@ export default function RoleDetail() {
 
   const roleName = resource?.metadata?.name ?? name ?? '';
   const roleNamespace = resource?.metadata?.namespace ?? namespace ?? '';
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const rules = resource?.rules ?? [];
   const labels = resource?.metadata?.labels ?? {};
   const annotations = resource?.metadata?.annotations ?? {};

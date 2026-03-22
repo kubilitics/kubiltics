@@ -125,6 +125,7 @@ export default function VolumeSnapshotContents() {
  const [pageIndex, setPageIndex] = useState(0);
  const deleteVSC = useDeleteK8sResource('volumesnapshotcontents');
 
+ // eslint-disable-next-line react-hooks/exhaustive-deps
  const allItems = (data?.allItems ?? []) as K8sVolumeSnapshotContent[];
  const items: VolumeSnapshotContent[] = useMemo(() => (isConnected ? allItems.map(mapVSC) : []), [isConnected, allItems]);
 

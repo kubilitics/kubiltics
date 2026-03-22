@@ -73,7 +73,7 @@ export function ProjectSettingsDialog({ project, open, onOpenChange }: ProjectSe
         queryFn: async () => {
             if (!isBackendConfigured || !selectedClusterId) return [];
             const resp = await listResources(backendBaseUrl, selectedClusterId, 'namespaces');
-            return resp.items.map((i: any) => i.metadata.name as string);
+            return resp.items.map((i: Record<string, unknown>) => ((i as { metadata?: { name?: string } }).metadata?.name ?? '') as string);
         },
         enabled: !!selectedClusterId && isBackendConfigured,
     });
@@ -85,7 +85,10 @@ export function ProjectSettingsDialog({ project, open, onOpenChange }: ProjectSe
             queryClient.invalidateQueries({ queryKey: ['projects'] });
             toast.success("Cluster account attached");
         },
-        onError: (error: any) => toast.error(`Attachment failed: ${error.message}`),
+        onError: (error: unknown) => {
+            const message = error instanceof Error ? error.message : String(error);
+            toast.error(`Attachment failed: ${message}`);
+        },
     });
 
     const removeClusterMutation = useMutation({
@@ -95,7 +98,10 @@ export function ProjectSettingsDialog({ project, open, onOpenChange }: ProjectSe
             queryClient.invalidateQueries({ queryKey: ['projects'] });
             toast.success("Cluster account detached");
         },
-        onError: (error: any) => toast.error(`Detachment failed: ${error.message}`),
+        onError: (error: unknown) => {
+            const message = error instanceof Error ? error.message : String(error);
+            toast.error(`Detachment failed: ${message}`);
+        },
     });
 
     const addNamespaceMutation = useMutation({
@@ -107,7 +113,10 @@ export function ProjectSettingsDialog({ project, open, onOpenChange }: ProjectSe
             setSelectedNamespace('');
             toast.success("Resource slice linked");
         },
-        onError: (error: any) => toast.error(`Resource linkage failed: ${error.message}`),
+        onError: (error: unknown) => {
+            const message = error instanceof Error ? error.message : String(error);
+            toast.error(`Resource linkage failed: ${message}`);
+        },
     });
 
     const removeNamespaceMutation = useMutation({
@@ -118,7 +127,10 @@ export function ProjectSettingsDialog({ project, open, onOpenChange }: ProjectSe
             queryClient.invalidateQueries({ queryKey: ['projects'] });
             toast.success("Resource slice unlinked");
         },
-        onError: (error: any) => toast.error(`Resource unlinking failed: ${error.message}`),
+        onError: (error: unknown) => {
+            const message = error instanceof Error ? error.message : String(error);
+            toast.error(`Resource unlinking failed: ${message}`);
+        },
     });
 
     const deleteProjectMutation = useMutation({
@@ -128,7 +140,10 @@ export function ProjectSettingsDialog({ project, open, onOpenChange }: ProjectSe
             onOpenChange(false);
             toast.success(`Project "${project.name}" has been purged`);
         },
-        onError: (error: any) => toast.error(`Purge failed: ${error.message}`),
+        onError: (error: unknown) => {
+            const message = error instanceof Error ? error.message : String(error);
+            toast.error(`Purge failed: ${message}`);
+        },
     });
 
     const availableClusters = useMemo(() => {

@@ -37,24 +37,30 @@ export function useClusterOverviewData() {
         const items: ClusterOverviewData['resources'] = [];
 
         // Nodes
-        (nodes.data?.items ?? []).forEach((n: any) => {
-            const readyObj = (n.status?.conditions ?? []).find((c: any) => c.type === 'Ready');
+        (nodes.data?.items ?? []).forEach((n: Record<string, unknown>) => {
+            const readyObj = (n.status as Record<string, unknown>)?.conditions as Array<Record<string, unknown>> | undefined;
+            const readyCondition = (readyObj ?? []).find((c: Record<string, unknown>) => c.type === 'Ready');
+            const metadata = n.metadata as Record<string, unknown>;
+            const status = n.status as Record<string, unknown>;
+            const nodeInfo = status?.nodeInfo as Record<string, unknown>;
             items.push({
                 kind: 'Node',
-                name: n.metadata.name,
+                name: metadata?.name as string,
                 namespace: 'N/A',
-                status: readyObj?.status === 'True' ? 'Ready' : 'NotReady',
-                version: n.status?.nodeInfo?.kubeletVersion,
+                status: readyCondition?.status === 'True' ? 'Ready' : 'NotReady',
+                version: nodeInfo?.kubeletVersion as string | undefined,
             });
         });
 
         // Namespaces
-        (namespaces.data?.items ?? []).forEach((ns: any) => {
+        (namespaces.data?.items ?? []).forEach((ns: Record<string, unknown>) => {
+            const metadata = ns.metadata as Record<string, unknown>;
+            const nsStatus = ns.status as Record<string, unknown>;
             items.push({
                 kind: 'Namespace',
-                name: ns.metadata.name,
+                name: metadata?.name as string,
                 namespace: 'N/A',
-                status: ns.status?.phase || 'Active',
+                status: (nsStatus?.phase as string) || 'Active',
             });
         });
 

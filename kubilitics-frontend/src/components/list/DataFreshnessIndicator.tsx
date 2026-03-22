@@ -57,7 +57,7 @@ export function DataFreshnessIndicator({ queryKey, dataUpdatedAt: directTimestam
         'text-[11px] tabular-nums transition-colors',
         isStale
           ? 'text-amber-500 dark:text-amber-400'
-          : 'text-muted-foreground/60',
+          : 'text-muted-foreground',
         className,
       )}
       title={new Date(timestamp).toLocaleTimeString()}

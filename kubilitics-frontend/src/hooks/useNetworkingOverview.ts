@@ -39,32 +39,36 @@ export function useNetworkingOverview() {
         const items: NetworkingOverviewData['resources'] = [];
 
         // Process Services
-        (services.data?.items ?? []).forEach((s: any) => {
+        (services.data?.items ?? []).forEach((s: Record<string, unknown>) => {
+            const metadata = s.metadata as Record<string, unknown>;
+            const spec = s.spec as Record<string, unknown>;
             items.push({
                 kind: 'Service',
-                name: s.metadata.name,
-                namespace: s.metadata.namespace,
-                status: s.spec?.clusterIP ? 'Active' : 'Pending',
-                type: s.spec?.type,
+                name: metadata.name as string,
+                namespace: metadata.namespace as string,
+                status: spec?.clusterIP ? 'Active' : 'Pending',
+                type: spec?.type as string | undefined,
             });
         });
 
         // Process Ingresses
-        (ingresses.data?.items ?? []).forEach((i: any) => {
+        (ingresses.data?.items ?? []).forEach((i: Record<string, unknown>) => {
+            const metadata = i.metadata as Record<string, unknown>;
             items.push({
                 kind: 'Ingress',
-                name: i.metadata.name,
-                namespace: i.metadata.namespace,
+                name: metadata.name as string,
+                namespace: metadata.namespace as string,
                 status: 'Active',
             });
         });
 
         // Process Network Policies
-        (networkPolicies.data?.items ?? []).forEach((p: any) => {
+        (networkPolicies.data?.items ?? []).forEach((p: Record<string, unknown>) => {
+            const metadata = p.metadata as Record<string, unknown>;
             items.push({
                 kind: 'NetworkPolicy',
-                name: p.metadata.name,
-                namespace: p.metadata.namespace,
+                name: metadata.name as string,
+                namespace: metadata.namespace as string,
                 status: 'Active',
             });
         });

@@ -121,6 +121,7 @@ export default function ValidatingWebhooks() {
  const { data, isLoading, isError, isFetching, dataUpdatedAt, refetch } = useK8sResourceList<ValidatingWebhookResource>('validatingwebhookconfigurations', undefined, { limit: 5000 });
  const deleteResource = useDeleteK8sResource('validatingwebhookconfigurations');
 
+ // eslint-disable-next-line react-hooks/exhaustive-deps
  const items: ValidatingWebhook[] = isConnected && data
  ? (data.items ?? []).map(transformValidatingWebhook)
  : [];

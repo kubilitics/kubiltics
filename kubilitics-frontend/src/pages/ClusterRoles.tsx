@@ -189,7 +189,7 @@ export default function ClusterRoles() {
  const [pageSize, setPageSize] = useState(10);
  const [pageIndex, setPageIndex] = useState(0);
 
- const allItems = (data?.allItems ?? []) as ClusterRoleResource[];
+ const allItems = useMemo(() => (data?.allItems ?? []) as ClusterRoleResource[], [data?.allItems]);
  const items: ClusterRoleRow[] = useMemo(() => (isConnected ? allItems.map(transformClusterRole) : []), [isConnected, allItems]);
 
  const tableConfig: ColumnConfig<ClusterRoleRow>[] = useMemo(() => [

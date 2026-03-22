@@ -207,6 +207,7 @@ export default function CronJobs() {
  const patchCronJob = usePatchK8sResource('cronjobs');
  const createResource = useCreateK8sResource('cronjobs');
 
+ // eslint-disable-next-line react-hooks/exhaustive-deps
  const items: CronJob[] = isConnected && data ? (data.items ?? []).map(transformResource) : [];
 
  const [expandedNs, expandedName] = expandedRow ? expandedRow.split('/') : [null, null];
@@ -411,8 +412,8 @@ spec:
  });
  toast.success(item.status === 'Active' ? `Suspended ${item.name}` : `Resumed ${item.name}`);
  refetch();
- } catch (e: any) {
- toast.error(e?.message ?? 'Failed to update');
+ } catch (e) {
+ toast.error(e instanceof Error ? e.message : 'Failed to update');
  }
  };
 
@@ -456,7 +457,7 @@ spec:
  />
 
  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
- <ListPageStatCard label="Total" value={stats.total} icon={CronJobIcon as any} iconColor="text-primary" selected={!columnFilters.status?.size} onClick={() => setColumnFilter('status', null)} className={cn(!columnFilters.status?.size && !isLoading && 'ring-2 ring-primary')} isLoading={isLoading} />
+ <ListPageStatCard label="Total" value={stats.total} icon={CronJobIcon as unknown as React.ComponentType<{ className?: string }>} iconColor="text-primary" selected={!columnFilters.status?.size} onClick={() => setColumnFilter('status', null)} className={cn(!columnFilters.status?.size && !isLoading && 'ring-2 ring-primary')} isLoading={isLoading} />
  <ListPageStatCard label="Active" value={stats.active} icon={Clock} iconColor="text-cyan-500" valueClassName="text-cyan-600" selected={columnFilters.hasActiveJobs?.size === 1 && columnFilters.hasActiveJobs.has('Yes')} onClick={() => setColumnFilter('hasActiveJobs', new Set(['Yes']))} className={cn(columnFilters.hasActiveJobs?.size === 1 && columnFilters.hasActiveJobs.has('Yes') && 'ring-2 ring-cyan-500')} isLoading={isLoading} />
  <ListPageStatCard label="Suspended" value={stats.suspended} icon={Pause} iconColor="text-amber-600" valueClassName="text-amber-600" selected={columnFilters.status?.size === 1 && columnFilters.status.has('Suspended')} onClick={() => setColumnFilter('status', new Set(['Suspended']))} className={cn(columnFilters.status?.size === 1 && columnFilters.status.has('Suspended') && 'ring-2 ring-amber-500')} isLoading={isLoading} />
  <ListPageStatCard label="On Schedule" value={stats.onSchedule} icon={CalendarCheck} iconColor="text-emerald-600" valueClassName="text-emerald-600" isLoading={isLoading} />

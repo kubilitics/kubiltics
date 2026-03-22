@@ -128,6 +128,7 @@ export default function NamespaceDetail() {
       ingresses: getCount(ingressesList) ?? '–',
       pvcs: getCount(pvcList) ?? '–',
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isConnected, nsName, podsList.data, deploymentsList.data, servicesList.data, configMapsList.data, secretsList.data, replicaSetsList.data, statefulSetsList.data, daemonSetsList.data, jobsList.data, ingressesList.data, pvcList.data]);
 
   const resourceQuotas = useMemo(() => resourceQuotasList.data?.items ?? [], [resourceQuotasList.data?.items]);
@@ -162,12 +163,12 @@ export default function NamespaceDetail() {
   const totalResources = Object.values(resourceCounts).reduce((sum, v) => sum + (typeof v === 'number' ? v : 0), 0);
 
   const statusCards = [
-    { label: 'Status', value: phase, icon: Box, iconColor: (phase === 'Active' ? 'success' : 'warning') as any },
-    { label: 'Pods', value: String(resourceCounts.pods), icon: Package, iconColor: 'primary' as any },
-    { label: 'Deployments', value: String(resourceCounts.deployments), icon: Layers, iconColor: 'info' as any },
-    { label: 'Services', value: String(resourceCounts.services), icon: Globe, iconColor: 'success' as any },
-    { label: 'Total Resources', value: totalResources > 0 ? String(totalResources) : '–', icon: Boxes, iconColor: 'primary' as any },
-    { label: 'Age', value: age, icon: Clock, iconColor: 'muted' as any },
+    { label: 'Status', value: phase, icon: Box, iconColor: (phase === 'Active' ? 'success' : 'warning') as const },
+    { label: 'Pods', value: String(resourceCounts.pods), icon: Package, iconColor: 'primary' as const },
+    { label: 'Deployments', value: String(resourceCounts.deployments), icon: Layers, iconColor: 'info' as const },
+    { label: 'Services', value: String(resourceCounts.services), icon: Globe, iconColor: 'success' as const },
+    { label: 'Total Resources', value: totalResources > 0 ? String(totalResources) : '–', icon: Boxes, iconColor: 'primary' as const },
+    { label: 'Age', value: age, icon: Clock, iconColor: 'muted' as const },
   ];
 
   const tabs = [
@@ -266,7 +267,7 @@ export default function NamespaceDetail() {
                 </CardHeader>
                 <CardContent>
                   <pre className="text-xs font-mono bg-muted/50 p-4 rounded-lg overflow-auto">
-                    {JSON.stringify((rq as any).status ?? (rq as any).spec ?? {}, null, 2)}
+                    {JSON.stringify((rq as unknown as Record<string, unknown>).status ?? (rq as unknown as Record<string, unknown>).spec ?? {}, null, 2)}
                   </pre>
                 </CardContent>
               </Card>

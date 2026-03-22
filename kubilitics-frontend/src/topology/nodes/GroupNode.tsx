@@ -35,9 +35,9 @@ function GroupNodeInner({ data }: NodeProps<GroupNodeData>) {
       aria-label={`${data.type} ${data.label} — ${data.memberCount} resources`}
     >
       <div className="flex items-center gap-1.5 pb-1">
-        <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{data.type}</span>
-        <span className="text-xs font-semibold">{data.label}</span>
-        <span className="ml-auto text-[10px] text-muted-foreground">{data.memberCount} resources</span>
+        <span className="text-[10px] font-bold uppercase tracking-wider text-gray-600 dark:text-gray-400">{data.type}</span>
+        <span className="text-xs font-bold text-gray-900 dark:text-gray-100">{data.label}</span>
+        <span className="ml-auto text-[10px] font-medium text-gray-600 dark:text-gray-400">{data.memberCount} resources</span>
       </div>
     </div>
   );

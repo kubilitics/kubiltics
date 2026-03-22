@@ -163,7 +163,7 @@ export default function DeploymentDetail() {
     if (initialTab !== activeTab) {
       setActiveTab(initialTab);
     }
-  }, [initialTab]);
+  }, [initialTab, activeTab]);
   const [selectedLogPod, setSelectedLogPod] = useState<string>('');
   const [selectedLogContainer, setSelectedLogContainer] = useState<string>('');
   const [selectedTerminalPod, setSelectedTerminalPod] = useState<string>('');
@@ -198,6 +198,7 @@ export default function DeploymentDetail() {
     staleTime: 10_000,
     refetchOnWindowFocus: true,
   });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const rolloutRevisions = rolloutHistoryQuery.data?.revisions ?? [];
   const currentRevisionStr = deployment?.metadata?.annotations?.['deployment.kubernetes.io/revision'];
   const rolloutRevisionsForDialog = useMemo(() => {
@@ -394,7 +395,7 @@ export default function DeploymentDetail() {
       if (clusterId && namespace && name) {
         queryClient.invalidateQueries({ queryKey: ['backend', 'deployment-rollout-history', clusterId, namespace, name] });
       }
-    } catch (err: any) {
+    } catch (err) {
       notifyError(err, {
         action: 'scale',
         resourceType: 'deployments',
@@ -403,6 +404,7 @@ export default function DeploymentDetail() {
       });
       throw err;
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isConnected, name, namespace, clusterId, patchDeployment, refetch, queryClient, triggerFastPolling, setSearchParams]);
 
   const handleRestart = useCallback(async () => {
@@ -443,7 +445,7 @@ export default function DeploymentDetail() {
       if (clusterId && namespace && name) {
         queryClient.invalidateQueries({ queryKey: ['backend', 'deployment-rollout-history', clusterId, namespace, name] });
       }
-    } catch (err: any) {
+    } catch (err) {
       notifyError(err, {
         action: 'restart',
         resourceType: 'deployments',
@@ -452,7 +454,7 @@ export default function DeploymentDetail() {
       });
       throw err;
     }
-  }, [isConnected, name, namespace, clusterId, patchDeployment, refetch, queryClient, triggerFastPolling, setSearchParams]);
+  }, [isConnected, name, namespace, clusterId, patchDeployment, refetch, queryClient, triggerFastPolling, setSearchParams, isBackendConfigured]);
 
   const handleRollback = useCallback(async (revision: number) => {
     if (!isConnected) {
@@ -493,7 +495,7 @@ export default function DeploymentDetail() {
       });
       throw err;
     }
-  }, [isConnected, name, namespace, clusterId, refetch, queryClient, triggerFastPolling, setSearchParams]);
+  }, [isConnected, name, namespace, clusterId, refetch, queryClient, triggerFastPolling, setSearchParams, isBackendConfigured]);
 
   const handleSaveYaml = useCallback(async (newYaml: string) => {
     if (!isConnected || !name || !namespace) {
@@ -509,7 +511,7 @@ export default function DeploymentDetail() {
         namespace,
       });
       refetch();
-    } catch (error: any) {
+    } catch (error) {
       notifyError(error, {
         action: 'update',
         resourceType: 'deployments',

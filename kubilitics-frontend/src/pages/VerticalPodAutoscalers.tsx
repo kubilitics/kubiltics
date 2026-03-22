@@ -142,6 +142,7 @@ export default function VerticalPodAutoscalers() {
  const [pageSize, setPageSize] = useState(10);
  const [pageIndex, setPageIndex] = useState(0);
 
+ // eslint-disable-next-line react-hooks/exhaustive-deps
  const allItems = (data?.allItems ?? []) as VPAResource[];
  const items: VPARow[] = useMemo(() => (isConnected ? allItems.map(transformVPA) : []), [isConnected, allItems]);
 

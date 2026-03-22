@@ -116,6 +116,7 @@ export default function VolumeAttachments() {
  const [pageIndex, setPageIndex] = useState(0);
  const deleteVA = useDeleteK8sResource('volumeattachments');
 
+ // eslint-disable-next-line react-hooks/exhaustive-deps
  const allItems = (data?.allItems ?? []) as K8sVolumeAttachment[];
  const items: VolumeAttachment[] = useMemo(() => (isConnected ? allItems.map(mapVA) : []), [isConnected, allItems]);
 

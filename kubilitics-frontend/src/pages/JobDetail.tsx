@@ -264,8 +264,8 @@ export default function JobDetail() {
       await updateJob.mutateAsync({ name, yaml: newYaml, namespace });
       toast.success('Job updated successfully');
       refetch();
-    } catch (error: any) {
-      toast.error(`Failed to update: ${error.message}`);
+    } catch (error) {
+      toast.error(`Failed to update: ${error instanceof Error ? error.message : String(error)}`);
       throw error;
     }
   }, [isConnected, name, namespace, updateJob, refetch]);

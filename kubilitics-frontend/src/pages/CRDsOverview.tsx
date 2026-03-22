@@ -45,7 +45,7 @@ export default function CRDsOverview() {
     setTimeout(() => setIsSyncing(false), 1500);
   }, [queryClient]);
 
-  const resources: CRDResource[] = data?.resources ?? [];
+  const resources: CRDResource[] = useMemo(() => data?.resources ?? [], [data?.resources]);
 
   const filteredResources = useMemo(() => {
     if (!searchQuery.trim()) return resources;

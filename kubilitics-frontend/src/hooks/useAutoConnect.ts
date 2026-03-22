@@ -192,7 +192,6 @@ export function useAutoConnect(): UseAutoConnectReturn {
    * 6. If 0 -> resolved with empty (user needs to add manually)
    */
   useEffect(() => {
-    console.debug('[auto-connect] effect: isDesktopMode=', isDesktopMode, 'didRun=', didRun.current);
     if (!isDesktopMode || didRun.current) return;
     didRun.current = true;
 
@@ -218,7 +217,6 @@ export function useAutoConnect(): UseAutoConnectReturn {
     (async () => {
       try {
         const baseUrl = getEffectiveBackendBaseUrl(storedBackendUrl);
-        console.debug('[auto-connect] baseUrl:', baseUrl || '(empty, using proxy)');
 
         // Wait for backend to be ready (Tauri sidecar cold start).
         // Retry health check up to 6 times with 1s delay (covers ~6s cold start).
@@ -242,8 +240,6 @@ export function useAutoConnect(): UseAutoConnectReturn {
         const registered = Array.isArray(registeredRaw) ? registeredRaw : [] as BackendCluster[];
         const discovered = Array.isArray(discoveredRaw) ? discoveredRaw : [] as BackendCluster[];
 
-        console.debug('[auto-connect] registered:', registered.length, 'discovered:', discovered.length);
-
         if (controller.signal.aborted) return;
 
         // Merge: registered first, then unregistered discovered contexts
@@ -251,11 +247,8 @@ export function useAutoConnect(): UseAutoConnectReturn {
         const unregistered = discovered.filter((d) => !registeredContexts.has(d.context));
         const allBackend = [...registered, ...unregistered];
 
-        console.debug('[auto-connect] total contexts:', allBackend.length, allBackend.map(c => c.name));
-
         if (allBackend.length === 0) {
           // No contexts found at all
-          console.debug('[auto-connect] no contexts found, resolving empty');
           setIsAutoConnecting(false);
           setIsResolved(true);
           return;
@@ -266,13 +259,11 @@ export function useAutoConnect(): UseAutoConnectReturn {
         // Always show context picker and let the user choose — never auto-connect
         // silently, even with a single cluster. This avoids confusing error toasts
         // and gives the user control over which cluster they connect to.
-        console.debug('[auto-connect] showing context picker for', allContexts.length, 'context(s)');
         setContexts(allContexts);
 
         // Pre-select the current-context if available
         const current = allContexts.find((c) => c.isCurrent);
         const selected = current?.context ?? allContexts[0]?.context ?? null;
-        console.debug('[auto-connect] pre-selected context:', selected);
         setSelectedContext(selected);
 
         clearTimeout(timeoutId);

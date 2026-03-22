@@ -130,6 +130,7 @@ export default function VolumeSnapshots() {
  const deleteResource = useDeleteK8sResource('volumesnapshots');
  const createResource = useCreateK8sResource('volumesnapshots');
 
+ // eslint-disable-next-line react-hooks/exhaustive-deps
  const items: VolumeSnapshot[] = isConnected && data ? (data.items ?? []).map(transformVS) : [];
 
  const stats = useMemo(() => ({

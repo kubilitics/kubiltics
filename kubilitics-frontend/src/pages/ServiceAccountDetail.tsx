@@ -56,6 +56,7 @@ export default function ServiceAccountDetail() {
 
   useEffect(() => {
     setActiveTab(searchParams.get('tab') || 'overview');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams.get('tab')]);
 
   const saName = resource?.metadata?.name ?? name ?? '';

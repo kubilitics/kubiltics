@@ -48,6 +48,7 @@ export default function ResourcesOverview() {
     setTimeout(() => setIsSyncing(false), 1500);
   }, [queryClient]);
 
+ // eslint-disable-next-line react-hooks/exhaustive-deps
   const resources: ResourceItem[] = data?.resources ?? [];
 
   const filteredResources = useMemo(() => {

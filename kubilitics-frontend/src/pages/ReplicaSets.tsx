@@ -103,8 +103,8 @@ function transformResource(resource: ReplicaSetResource): ReplicaSet {
  let status: ReplicaSet['status'] = 'Healthy';
  if (ready === 0 && desired > 0) status = 'Degraded';
  else if (ready < desired) status = 'Progressing';
- const ownerRefs = (resource.metadata as any).ownerReferences;
- const deploymentOwner = ownerRefs?.find((r: any) => r.kind === 'Deployment');
+ const ownerRefs = (resource.metadata as unknown as Record<string, unknown>).ownerReferences as Array<{kind: string}> | undefined;
+ const deploymentOwner = ownerRefs?.find((r: {kind: string}) => r.kind === 'Deployment');
  const ownerRef = deploymentOwner ?? ownerRefs?.[0];
  return { name: resource.metadata.name, namespace: resource.metadata.namespace || 'default', status, desired, current, ready, owner: ownerRef?.name || '-', ownerKind: ownerRef?.kind || '', age: calculateAge(resource.metadata.creationTimestamp), creationTimestamp: resource.metadata?.creationTimestamp, cpu: '-', memory: '-' };
 }
@@ -132,6 +132,7 @@ export default function ReplicaSets() {
  const patchReplicaSet = usePatchK8sResource('replicasets');
  const createResource = useCreateK8sResource('replicasets');
 
+ // eslint-disable-next-line react-hooks/exhaustive-deps
  const items: ReplicaSet[] = isConnected && data ? (data.items ?? []).map(transformResource) : [];
 
  const stats = useMemo(() => ({
@@ -686,8 +687,8 @@ spec:
  toast.success(`Scaled ${scaleDialog.item?.name} to ${r} replicas`);
  setScaleDialog({ open: false, item: null });
  refetch();
- } catch (e: any) {
- toast.error(e?.message ?? 'Failed to scale');
+ } catch (e) {
+ toast.error(e instanceof Error ? e.message : 'Failed to scale');
  }
  }}
  />
@@ -704,8 +705,8 @@ spec:
  toast.success('ReplicaSet created successfully');
  setShowCreateWizard(false);
  refetch();
- } catch (e: any) {
- toast.error(e?.message ?? 'Failed to create');
+ } catch (e) {
+ toast.error(e instanceof Error ? e.message : 'Failed to create');
  throw e;
  }
  }}

@@ -72,7 +72,7 @@ export default function Settings() {
 
   const [clusterToRemove, setClusterToRemove] = useState<BackendCluster | null>(null);
   const [projectToRemove, setProjectToRemove] = useState<BackendProject | null>(null);
-  const [settingsProject, setSettingsProject] = useState<any>(null);
+  const [settingsProject, setSettingsProject] = useState<BackendProject | null>(null);
 
   // Cluster delete mutation
   const deleteClusterMutation = useMutation({
@@ -145,6 +145,7 @@ export default function Settings() {
       loadAIStatus();
       loadAnalyticsConsent();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isDesktop]);
 
   async function loadAnalyticsConsent() {

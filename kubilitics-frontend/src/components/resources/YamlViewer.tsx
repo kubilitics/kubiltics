@@ -28,7 +28,7 @@ function validateYaml(yaml: string): YamlValidationError[] {
   const errors: YamlValidationError[] = [];
 
   try {
-    const doc = yamlParser.load(yaml) as any;
+    const doc = yamlParser.load(yaml) as Record<string, unknown>;
     if (!doc) return errors;
 
     if (!doc.apiVersion) {
@@ -40,15 +40,15 @@ function validateYaml(yaml: string): YamlValidationError[] {
     if (!doc.metadata) {
       errors.push({ line: 1, message: 'Missing required field: metadata' });
     }
-  } catch (err: any) {
+  } catch (err) {
     let line = 1;
     let message = 'Invalid YAML';
 
-    if (err.mark && err.mark.line !== undefined) {
-      line = err.mark.line + 1;
-      message = err.reason || err.message;
+    if (err instanceof Error && (err as unknown as Record<string, unknown>).mark && (err as unknown as Record<string, unknown>).mark.line !== undefined) {
+      line = ((err as unknown as Record<string, unknown>).mark.line as number) + 1;
+      message = ((err as unknown as Record<string, unknown>).reason as string) || err.message;
     } else {
-      message = err.message || String(err);
+      message = err instanceof Error ? err.message : String(err);
     }
 
     errors.push({ line, message });
@@ -135,9 +135,9 @@ export function YamlViewer({ yaml, resourceName, editable = false, onSave, warni
   const lineCount = (isEditing ? editedYaml : yaml).split('\n').length;
 
   return (
-    <div className="rounded-xl border border-border bg-card overflow-hidden shadow-sm">
+    <div className="rounded-xl border border-border/60 bg-card overflow-hidden shadow-[var(--shadow-1)]">
       {/* ── VS Code-style title bar ── */}
-      <div className="flex items-center justify-between px-4 py-2.5 bg-[#f8fafc] border-b border-border/60">
+      <div className="flex items-center justify-between px-4 py-2.5 bg-muted/30 dark:bg-muted/20 border-b border-border/50">
         <div className="flex items-center gap-3 min-w-0">
           <div className="flex items-center gap-2">
             <FileCode className="h-4 w-4 text-primary shrink-0" />
@@ -264,7 +264,7 @@ export function YamlViewer({ yaml, resourceName, editable = false, onSave, warni
           </div>
 
           {errors.length > 0 && (
-            <div className="w-64 shrink-0 border-l border-border bg-[#fef2f2]">
+            <div className="w-64 shrink-0 border-l border-border bg-destructive/5 dark:bg-destructive/10">
               <div className="px-3 py-2 border-b border-destructive/20 flex items-center gap-2">
                 <AlertCircle className="h-3.5 w-3.5 text-destructive shrink-0" />
                 <span className="text-xs font-semibold text-destructive">

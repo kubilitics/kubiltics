@@ -385,7 +385,7 @@ export function CreateProjectForm({ onSuccess, onBack, onCancel, onStepChange }:
         <div className="space-y-4">
           <div className="transition-all duration-300">
             <p className="text-[10px] font-bold uppercase text-primary/70 mb-2">Project Name</p>
-            <p className={cn("text-lg font-bold tracking-tight", !name && "text-muted-foreground/30")}>
+            <p className={cn("text-lg font-bold tracking-tight", !name && "text-muted-foreground/70")}>
               {name || "Untitled Project"}
             </p>
           </div>
@@ -404,7 +404,7 @@ export function CreateProjectForm({ onSuccess, onBack, onCancel, onStepChange }:
                   </div>
                 );
               })}
-              {clusterIds.length === 0 && <p className="text-xs text-muted-foreground/40 italic font-light">No clusters linked</p>}
+              {clusterIds.length === 0 && <p className="text-xs text-muted-foreground/70 italic font-light">No clusters linked</p>}
             </div>
           </div>
 
@@ -420,7 +420,7 @@ export function CreateProjectForm({ onSuccess, onBack, onCancel, onStepChange }:
                 </div>
               ))}
               {namespaces.length > 5 && <p className="text-[10px] text-muted-foreground italic">+{namespaces.length - 5} more...</p>}
-              {namespaces.length === 0 && <p className="text-xs text-muted-foreground/40 italic font-light">No namespaces scoped</p>}
+              {namespaces.length === 0 && <p className="text-xs text-muted-foreground/70 italic font-light">No namespaces scoped</p>}
             </div>
           </div>
         </div>

@@ -119,7 +119,7 @@ export interface ResourceCounts {
 const DIRECT_K8S_QUERY_OPTIONS = {
   refetchInterval: false as const,
   staleTime: 5 * 60 * 1000,
-  placeholderData: (prev: any) => prev,
+  placeholderData: (prev: unknown) => prev,
   limit: 100,
 };
 
@@ -211,7 +211,7 @@ export function useResourceCounts(): { counts: ResourceCounts; isLoading: boolea
     if (isBackendConfigured() && summaryQuery.data) {
       // Use the single summary response for key counts; for the rest, use the fetched counts
       const s = summaryQuery.data;
-      const getCount = (key: keyof ResourceCounts, res: any) => {
+      const getCount = (key: keyof ResourceCounts, res: Record<string, unknown>) => {
         // Map summary keys to ResourceCounts keys
         const summaryMap: Partial<Record<keyof ResourceCounts, keyof typeof s>> = {
           pods: 'pod_count',
@@ -229,7 +229,10 @@ export function useResourceCounts(): { counts: ResourceCounts; isLoading: boolea
         if (summaryKey && s[summaryKey] !== undefined) {
           return s[summaryKey] as number;
         }
-        return res.data?.metadata?.total ?? res.data?.items?.length ?? 0;
+        const data = res.data as Record<string, unknown> | undefined;
+        const metadata = data?.metadata as Record<string, unknown> | undefined;
+        const items = data?.items as Array<unknown> | undefined;
+        return metadata?.total as number ?? items?.length ?? 0;
       };
 
       return {
@@ -283,8 +286,12 @@ export function useResourceCounts(): { counts: ResourceCounts; isLoading: boolea
     }
 
     // Generic extraction for counts from a resource list query
-    const getDirectCount = (res: any) =>
-      res.data?.metadata?.total ?? res.data?.items?.length ?? 0;
+    const getDirectCount = (res: Record<string, unknown>) => {
+      const data = res.data as Record<string, unknown> | undefined;
+      const metadata = data?.metadata as Record<string, unknown> | undefined;
+      const items = data?.items as Array<unknown> | undefined;
+      return metadata?.total as number ?? items?.length ?? 0;
+    };
 
     // Direct K8s fallback
     return {
@@ -335,6 +342,7 @@ export function useResourceCounts(): { counts: ResourceCounts; isLoading: boolea
       mutatingwebhookconfigurations: getDirectCount(mutatingwebhookconfigurations),
       validatingwebhookconfigurations: getDirectCount(validatingwebhookconfigurations),
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     isConnected,
     summaryQuery.data,
@@ -379,6 +387,7 @@ export function useResourceCounts(): { counts: ResourceCounts; isLoading: boolea
 function useResourceCount(resourceType: keyof ResourceCounts) {
   const { isConnected } = useConnectionStatus();
   const { data, isLoading, isPlaceholderData } = useK8sResourceList<KubernetesResource>(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     resourceType as any,
     undefined,
     {

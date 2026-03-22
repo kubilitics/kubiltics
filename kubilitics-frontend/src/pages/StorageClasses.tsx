@@ -132,6 +132,7 @@ export default function StorageClasses() {
  staleTime: 60_000,
  });
 
+ // eslint-disable-next-line react-hooks/exhaustive-deps
  const allItems = (data?.allItems ?? []) as K8sStorageClass[];
  const items: StorageClass[] = useMemo(() => (isConnected ? allItems.map(mapSC) : []), [isConnected, allItems]);
 

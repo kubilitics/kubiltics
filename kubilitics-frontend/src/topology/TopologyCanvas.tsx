@@ -248,9 +248,9 @@ function TopologyCanvasInner({
   );
 
   const miniMapNodeColor = useCallback((n: Node) => {
-    const category = (n.data as any)?.category ?? "custom";
-    const status = (n.data as any)?.status ?? "unknown";
-    return minimapNodeColor(category, status);
+    const category = (n.data as unknown as Record<string, unknown>)?.category ?? "custom";
+    const status = (n.data as unknown as Record<string, unknown>)?.status ?? "unknown";
+    return minimapNodeColor(category as string, status as string);
   }, []);
 
   return (

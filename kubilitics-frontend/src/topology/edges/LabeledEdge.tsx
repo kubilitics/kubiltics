@@ -36,14 +36,14 @@ function LabeledEdgeInner(props: EdgeProps<LabeledEdgeData>) {
           stroke: isHealthy ? color : STATUS_COLORS.error,
           strokeWidth: hovered ? 2.5 : 1.5,
           strokeDasharray: props.style?.strokeDasharray,
-          opacity: hovered ? 1 : 0.6,
+          opacity: hovered ? 1 : 0.75,
           transition: "stroke-width 0.15s, opacity 0.15s",
         }}
       />
       {!hideLabel && (
         <EdgeLabelRenderer>
           <div
-            className="pointer-events-auto absolute -translate-x-1/2 -translate-y-1/2 cursor-default rounded-md border bg-white/95 px-1.5 py-0.5 text-[10px] leading-tight text-gray-600 shadow-sm backdrop-blur-sm transition-all"
+            className="pointer-events-auto absolute -translate-x-1/2 -translate-y-1/2 cursor-default rounded-md border bg-white/95 dark:bg-slate-800/95 px-1.5 py-0.5 text-[10px] font-medium leading-tight text-gray-700 dark:text-gray-300 shadow-sm backdrop-blur-sm transition-all"
             style={{
               left: labelX,
               top: labelY,
@@ -58,7 +58,7 @@ function LabeledEdgeInner(props: EdgeProps<LabeledEdgeData>) {
           >
             {label}
             {hovered && data?.detail && (
-              <div className="mt-0.5 text-[9px] text-gray-500">{data.detail}</div>
+              <div className="mt-0.5 text-[9px] text-gray-600 dark:text-gray-400">{data.detail}</div>
             )}
           </div>
         </EdgeLabelRenderer>

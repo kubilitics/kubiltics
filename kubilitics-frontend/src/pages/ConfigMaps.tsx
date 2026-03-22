@@ -158,7 +158,7 @@ export default function ConfigMaps() {
  const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
  const clusterId = currentClusterId ?? null;
 
- const allItems = (data?.allItems ?? []) as K8sConfigMap[];
+ const allItems = useMemo(() => (data?.allItems ?? []) as K8sConfigMap[], [data?.allItems]);
  const items: ConfigMap[] = useMemo(() => (isConnected ? allItems.map(mapConfigMap) : []), [isConnected, allItems]);
 
  const stats = useMemo(() => {
@@ -355,7 +355,7 @@ export default function ConfigMaps() {
  currentPage: safePageIndex + 1,
  totalPages: Math.max(1, totalPages),
  onPageChange: (p: number) => setPageIndex(Math.max(0, Math.min(p - 1, totalPages - 1))),
- dataUpdatedAt: (data as any)?.dataUpdatedAt,
+ dataUpdatedAt: (data as unknown as Record<string, unknown>)?.dataUpdatedAt,
  isFetching: isLoading,
  };
 
@@ -453,7 +453,7 @@ data: {}
  resourceCount={filteredItems.length}
  subtitle={namespaceCount > 0 ? `across ${namespaceCount} namespaces` : undefined}
  demoMode={!isConnected}
- dataUpdatedAt={(data as any)?.dataUpdatedAt}
+ dataUpdatedAt={(data as unknown as Record<string, unknown>)?.dataUpdatedAt as number | undefined}
  isLoading={isLoading}
  onRefresh={() => refetch()}
  createLabel="Create"

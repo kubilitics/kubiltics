@@ -48,6 +48,7 @@ export function Breadcrumbs({ segments, className }: BreadcrumbsProps) {
 }
 
 /** Helper: build breadcrumb segments for a resource detail page */
+// eslint-disable-next-line react-refresh/only-export-components
 export function useDetailBreadcrumbs(
   resourceKind: string,
   resourceName: string | undefined,

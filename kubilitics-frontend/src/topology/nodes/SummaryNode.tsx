@@ -90,7 +90,7 @@ function SummaryNodeComponent({ data }: NodeProps) {
 
       {/* Cost */}
       {d.monthlyCost != null && (
-        <div className="border-t px-3 py-1 text-[10px] text-muted-foreground">
+        <div className="border-t px-3 py-1 text-[10px] text-gray-600 dark:text-gray-400 font-medium">
           Cost: ${d.monthlyCost.toFixed(2)}/mo
         </div>
       )}
@@ -101,7 +101,7 @@ function SummaryNodeComponent({ data }: NodeProps) {
 function CountRow({ label, count }: { label: string; count: number }) {
   return (
     <>
-      <span className="text-muted-foreground">{label}:</span>
+      <span className="text-gray-600 dark:text-gray-400">{label}:</span>
       <span className="font-medium">{count}</span>
     </>
   );

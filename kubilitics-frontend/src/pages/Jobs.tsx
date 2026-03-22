@@ -185,6 +185,7 @@ export default function Jobs() {
  const deleteResource = useDeleteK8sResource('jobs');
  const createResource = useCreateK8sResource('jobs');
 
+ // eslint-disable-next-line react-hooks/exhaustive-deps
  const items: Job[] = isConnected && data ? (data.items ?? []).map(transformResource) : [];
 
  const stats = useMemo(() => {
@@ -445,7 +446,7 @@ spec:
  />
 
  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
- <ListPageStatCard label="Total" value={stats.total} icon={JobIcon as any} iconColor="text-primary" selected={!columnFilters.status?.size} onClick={() => setColumnFilter('status', null)} className={cn(!columnFilters.status?.size && !isLoading && 'ring-2 ring-primary')} isLoading={isLoading} />
+ <ListPageStatCard label="Total" value={stats.total} icon={JobIcon as unknown as React.ComponentType} iconColor="text-primary" selected={!columnFilters.status?.size} onClick={() => setColumnFilter('status', null)} className={cn(!columnFilters.status?.size && !isLoading && 'ring-2 ring-primary')} isLoading={isLoading} />
  <ListPageStatCard label="Running" value={stats.running} icon={Clock} iconColor="text-amber-600" valueClassName="text-amber-600" selected={columnFilters.status?.size === 1 && columnFilters.status.has('Running')} onClick={() => setColumnFilter('status', new Set(['Running']))} className={cn(columnFilters.status?.size === 1 && columnFilters.status.has('Running') && 'ring-2 ring-amber-500')} isLoading={isLoading} />
  <ListPageStatCard label="Succeeded" value={stats.succeeded} icon={CheckCircle2} iconColor="text-emerald-600" valueClassName="text-emerald-600" selected={columnFilters.status?.size === 1 && columnFilters.status.has('Complete')} onClick={() => setColumnFilter('status', new Set(['Complete']))} className={cn(columnFilters.status?.size === 1 && columnFilters.status.has('Complete') && 'ring-2 ring-emerald-500')} isLoading={isLoading} />
  <ListPageStatCard label="Failed" value={stats.failed} icon={XCircle} iconColor="text-rose-600" valueClassName="text-rose-600" selected={columnFilters.status?.size === 1 && columnFilters.status.has('Failed')} onClick={() => setColumnFilter('status', new Set(['Failed']))} className={cn(columnFilters.status?.size === 1 && columnFilters.status.has('Failed') && 'ring-2 ring-rose-500')} isLoading={isLoading} />

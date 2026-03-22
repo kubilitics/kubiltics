@@ -96,6 +96,7 @@ export function ValuesEditorStep({ addonId }: { addonId: string }) {
             setValuesYaml(defaultValues);
             setYamlValidationError(validateYaml(defaultValues));
         }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [addonId, defaultValues, isLoadingValues, isFetchingValues]);
 
     const handleChange = useCallback(

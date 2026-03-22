@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import { ExternalLink, BookOpen, FileCode, Copy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';

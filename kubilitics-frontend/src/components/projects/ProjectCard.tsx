@@ -24,12 +24,13 @@ export function ProjectCard({ project, onClick, onSettingsClick, onDeleteClick }
                 'border border-slate-200 dark:border-slate-700',
                 'rounded-2xl overflow-hidden',
                 'shadow',
-                'transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]',
+                'transition-all duration-300',
                 'hover:border-indigo-200 dark:hover:border-indigo-900',
                 'hover:shadow-[var(--shadow-3)] hover:-translate-y-[2px]',
                 'active:translate-y-0 active:shadow',
                 'focus:outline-none focus:ring-2 focus:ring-primary/40 focus:ring-offset-2'
             )}
+            style={{ transitionTimingFunction: "cubic-bezier(0.16,1,0.3,1)" }}
             onClick={onClick}
             onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onClick?.(); }}
         >

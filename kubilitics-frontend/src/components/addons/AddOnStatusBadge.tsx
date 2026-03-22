@@ -3,7 +3,8 @@ import { AddOnStatus } from "@/types/api/addons";
 import { cn } from "@/lib/utils";
 import {
     CheckCircle2, AlertCircle, RefreshCw, XCircle,
-    Clock, AlertTriangle, PauseCircle, Trash2
+    Clock, AlertTriangle, PauseCircle, Trash2,
+    type LucideIcon
 } from "lucide-react";
 
 interface AddOnStatusBadgeProps {
@@ -11,7 +12,7 @@ interface AddOnStatusBadgeProps {
 }
 
 export function AddOnStatusBadge({ status }: AddOnStatusBadgeProps) {
-    const config: Record<AddOnStatus, { label: string; icon: any; className: string }> = {
+    const config: Record<AddOnStatus, { label: string; icon: LucideIcon; className: string }> = {
         INSTALLING: {
             label: "Installing",
             icon: RefreshCw,

@@ -192,6 +192,7 @@ export default function Secrets() {
  const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
  const clusterId = currentClusterId ?? null;
 
+ // eslint-disable-next-line react-hooks/exhaustive-deps
  const allItems = (data?.allItems ?? []) as K8sSecret[];
  const items: Secret[] = useMemo(() => (isConnected ? allItems.map(mapSecret) : []), [isConnected, allItems]);
 
@@ -363,7 +364,7 @@ export default function Secrets() {
  currentPage: safePageIndex + 1,
  totalPages: Math.max(1, totalPages),
  onPageChange: (p: number) => setPageIndex(Math.max(0, Math.min(p - 1, totalPages - 1))),
- dataUpdatedAt: (data as any)?.dataUpdatedAt,
+ dataUpdatedAt: (data as unknown as Record<string, unknown>)?.dataUpdatedAt,
  isFetching: isLoading,
  };
 
@@ -456,7 +457,7 @@ data: {}
  resourceCount={filteredItems.length}
  subtitle={namespaceCount > 0 ? `across ${namespaceCount} namespaces` : undefined}
  demoMode={!isConnected}
- dataUpdatedAt={(data as any)?.dataUpdatedAt}
+ dataUpdatedAt={(data as unknown as Record<string, unknown>)?.dataUpdatedAt as number | undefined}
  isLoading={isLoading}
  onRefresh={() => refetch()}
  createLabel="Create"

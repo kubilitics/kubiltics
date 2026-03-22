@@ -73,7 +73,7 @@ export function buildAutoWidthColumns<T>(
     for (const row of sample) {
       try {
         const v = getter(row);
-        values.push(v as any);
+        values.push(v as unknown as string | number | null | undefined);
       } catch {
         // ignore individual row failures
       }

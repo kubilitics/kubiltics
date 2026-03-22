@@ -17,9 +17,9 @@ export interface EventsSectionProps {
 }
 
 const eventConfig = {
-  Normal: { icon: CheckCircle2, color: 'text-muted-foreground', bg: 'bg-muted' },
-  Warning: { icon: AlertTriangle, color: 'text-[hsl(var(--warning))]', bg: 'bg-[hsl(var(--warning)/0.1)]' },
-  Error: { icon: XCircle, color: 'text-[hsl(var(--error))]', bg: 'bg-[hsl(var(--error)/0.1)]' },
+  Normal: { icon: CheckCircle2, color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-950/30', border: 'border-emerald-200/50 dark:border-emerald-800/30' },
+  Warning: { icon: AlertTriangle, color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-950/30', border: 'border-amber-200/50 dark:border-amber-800/30' },
+  Error: { icon: XCircle, color: 'text-rose-600 dark:text-rose-400', bg: 'bg-rose-50 dark:bg-rose-950/30', border: 'border-rose-200/50 dark:border-rose-800/30' },
 };
 
 export function EventsSection({ events, isLoading }: EventsSectionProps) {
@@ -53,29 +53,32 @@ export function EventsSection({ events, isLoading }: EventsSectionProps) {
             const EventIcon = config.icon;
             
             return (
-              <div key={i} className="flex items-start gap-4 pb-4 border-b border-border last:border-0 last:pb-0">
-                <div className={cn('p-1.5 rounded-full mt-0.5', config.bg)}>
+              <div key={i} className="flex items-start gap-3.5 pb-4 border-b border-border/40 last:border-0 last:pb-0 transition-colors hover:bg-muted/20 -mx-2 px-2 rounded-lg">
+                <div className={cn('p-2 rounded-xl mt-0.5 border shadow-sm', config.bg, config.border)}>
                   <EventIcon className={cn('h-3.5 w-3.5', config.color)} />
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
-                    <span className="font-medium text-sm">{event.reason}</span>
-                    <span className="text-xs text-muted-foreground">{event.time}</span>
+                    <span className="font-semibold text-sm">{event.reason}</span>
+                    <span className="text-[11px] text-muted-foreground tabular-nums">{event.time}</span>
                     {event.count && event.count > 1 && (
-                      <span className="text-xs px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
+                      <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md bg-muted/80 text-muted-foreground border border-border/30 tabular-nums">
                         ×{event.count}
                       </span>
                     )}
                   </div>
-                  <p className="text-sm text-muted-foreground">{event.message}</p>
+                  <p className="text-sm text-muted-foreground leading-relaxed">{event.message}</p>
                 </div>
               </div>
             );
           })}
           {events.length === 0 && (
-            <div className="flex items-center justify-center py-8 text-muted-foreground">
-              <Info className="h-4 w-4 mr-2" />
-              No events recorded
+            <div className="flex flex-col items-center justify-center py-10 text-muted-foreground gap-2">
+              <div className="p-3 rounded-xl bg-muted/40 border border-border/30 mb-1">
+                <Info className="h-5 w-5 opacity-70" />
+              </div>
+              <p className="text-sm font-medium">No events recorded</p>
+              <p className="text-xs text-muted-foreground/70">Events will appear here when the cluster reports changes</p>
             </div>
           )}
         </div>

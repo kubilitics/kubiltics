@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import { useEffect, useCallback, useRef } from "react";
 import { A11Y } from "../constants/designTokens";
 

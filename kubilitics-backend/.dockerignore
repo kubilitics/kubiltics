@@ -1,0 +1,46 @@
+# ── Pre-built binaries (biggest offender: 500MB+ of stale local builds) ──────
+bin/
+server
+cmd/server/kubilitics-server
+cmd/server/server_bin
+**/kubilitics-backend
+**/kubilitics-server
+**/server_bin
+
+# ── Build artifacts & caches ─────────────────────────────────────────────────
+tmp/
+*.db
+*.log
+coverage.out
+*.test
+*.prof
+*.pprof
+
+# ── Version control ──────────────────────────────────────────────────────────
+.git
+.gitignore
+
+# ── IDE / Editor ─────────────────────────────────────────────────────────────
+.cursor
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# ── Documentation (not needed in image) ──────────────────────────────────────
+*.md
+docs/
+LICENSE
+
+# ── Test fixtures ────────────────────────────────────────────────────────────
+tests/
+testdata/
+*_test.go
+
+# ── OS artifacts ─────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+
+# ── Data directory (local SQLite, etc.) ──────────────────────────────────────
+data/

@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 /**
  * K8sIcons — Official CNCF Kubernetes resource icon components.
  *

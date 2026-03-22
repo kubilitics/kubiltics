@@ -163,7 +163,7 @@ export default function PersistentVolumeClaims() {
  const [pageSize, setPageSize] = useState(10);
  const [pageIndex, setPageIndex] = useState(0);
 
- const allItems = (data?.allItems ?? []) as K8sPVC[];
+ const allItems = useMemo(() => (data?.allItems ?? []) as K8sPVC[], [data?.allItems]);
  const items: PVC[] = useMemo(() => (isConnected ? allItems.map(mapPVC) : []), [isConnected, allItems]);
 
  const stats = useMemo(() => {

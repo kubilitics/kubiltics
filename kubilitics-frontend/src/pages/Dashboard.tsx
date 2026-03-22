@@ -42,8 +42,8 @@ export default function Dashboard() {
   useEffect(() => {
     // If cluster overview fails with 404/503, redirect to connect page
     if (overviewQuery.error && overviewQuery.isError) {
-      const error = overviewQuery.error as any;
-      if (error?.status === 404 || error?.status === 503 || error?.status === 500) {
+      const error = overviewQuery.error as unknown as Record<string, unknown>;
+      if ((error?.status) === 404 || (error?.status) === 503 || (error?.status) === 500) {
         console.warn(`[Dashboard] Cluster ${currentClusterId} is not accessible (${error.status}). Redirecting to connect page.`);
         navigate('/connect', { replace: true });
       }

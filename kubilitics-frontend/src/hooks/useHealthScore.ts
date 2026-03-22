@@ -123,7 +123,7 @@ export function useHealthScore(): HealthScore {
       // Event Health (10% weight)
       const warningEvents = ov.alerts?.warnings ?? 0;
       const errorEvents = ov.alerts?.critical ?? 0;
-      let eventHealth = Math.max(0, 100 - warningEvents * 2 - errorEvents * 10);
+      const eventHealth = Math.max(0, 100 - warningEvents * 2 - errorEvents * 10);
       if (errorEvents > 0) details.push(`${errorEvents} critical alert(s)`);
       if (warningEvents > 3) details.push(`${warningEvents} warnings in cluster`);
 

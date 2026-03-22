@@ -172,6 +172,7 @@ export default function HorizontalPodAutoscalers() {
  const [pageSize, setPageSize] = useState(10);
  const [pageIndex, setPageIndex] = useState(0);
 
+ // eslint-disable-next-line react-hooks/exhaustive-deps
  const allItems = (data?.allItems ?? []) as HPAResource[];
  const items: HPARow[] = useMemo(() => (isConnected ? allItems.map(transformHPA) : []), [isConnected, allItems]);
 

@@ -106,6 +106,7 @@ export default function IngressClasses() {
  return map;
  }, [ingressesData?.items]);
 
+ // eslint-disable-next-line react-hooks/exhaustive-deps
  const ingressClasses: IngressClass[] = isConnected && data?.items
  ? (data.items as { metadata: { name: string; annotations?: Record<string, string>; creationTimestamp?: string }; spec?: { controller?: string; parameters?: { name?: string } } }[]).map((item) => ({
  name: item.metadata.name,

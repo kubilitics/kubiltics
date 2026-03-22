@@ -136,7 +136,7 @@ export default function ClusterRoleBindings() {
  const [pageSize, setPageSize] = useState(10);
  const [pageIndex, setPageIndex] = useState(0);
 
- const allItems = (data?.allItems ?? []) as ClusterRoleBindingResource[];
+ const allItems = useMemo(() => (data?.allItems ?? []) as ClusterRoleBindingResource[], [data?.allItems]);
  const items: ClusterRoleBindingRow[] = useMemo(() => (isConnected ? allItems.map(transformClusterRoleBinding) : []), [isConnected, allItems]);
 
  const tableConfig: ColumnConfig<ClusterRoleBindingRow>[] = useMemo(() => [

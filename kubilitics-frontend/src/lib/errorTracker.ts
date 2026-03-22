@@ -10,7 +10,7 @@ export interface ErrorContext {
         email?: string;
     };
     tags?: Record<string, string>;
-    extra?: Record<string, any>;
+    extra?: Record<string, unknown>;
 }
 
 /**
@@ -39,10 +39,9 @@ class ErrorTrackerService {
     /**
      * Initialize the error tracker (e.g., Sentry.init)
      */
-    public init(config?: any) {
+    public init(config?: unknown) {
         if (this.isInitialized) return;
 
-        console.log('[ErrorTracker] Initialized');
         this.isInitialized = true;
 
         // Global unhandled promise rejection handler
@@ -80,7 +79,7 @@ class ErrorTrackerService {
     /**
      * Set extra context data
      */
-    public setExtra(key: string, value: any) {
+    public setExtra(key: string, value: unknown) {
         if (!this.context.extra) this.context.extra = {};
         this.context.extra[key] = value;
         // Example: Sentry.setExtra(key, value);
@@ -89,7 +88,7 @@ class ErrorTrackerService {
     /**
      * Capture an exception
      */
-    public captureException(error: any, context?: Partial<ErrorContext>) {
+    public captureException(error: unknown, context?: Partial<ErrorContext>) {
         const errorId = uuidv4();
         const timestamp = new Date().toISOString();
 
@@ -115,7 +114,6 @@ class ErrorTrackerService {
         console.group(`🚨 [ErrorTracker] Exception Captured (${errorId})`);
         console.error(error);
         console.table(mergedContext.tags);
-        console.log('Context:', mergedContext);
         console.groupEnd();
 
         // TODO: Send to external service (Sentry, Datadog, etc.)
@@ -132,21 +130,13 @@ class ErrorTrackerService {
     public captureMessage(message: string, level: 'info' | 'warning' | 'error' = 'info') {
         const timestamp = new Date().toISOString();
 
-        console.log(`[ErrorTracker] [${level.toUpperCase()}] ${message}`, {
-            timestamp,
-            context: this.context
-        });
-
         // Example: Sentry.captureMessage(message, level);
     }
     /**
      * Capture a performance metric
      */
-    public captureMetric(metric: any) {
+    public captureMetric(metric: unknown) {
         // Log to console in dev, or send to analytics in prod
-        if (import.meta.env.DEV) {
-            console.debug(`[ErrorTracker] [METRIC] ${metric.name}:`, metric.value);
-        }
         // Example: Sentry.metrics.add(metric.name, metric.value);
     }
 }

@@ -14,9 +14,9 @@ export function useCRDOverview() {
     const crds = useK8sResourceList('customresourcedefinitions', undefined, { enabled: fallbackEnabled });
 
     const data = useMemo(() => {
-        const items: any[] = [];
+        const items: Record<string, unknown>[] = [];
 
-        (crds.data?.items ?? []).forEach((c: any) => {
+        (crds.data?.items ?? []).forEach((c: Record<string, unknown>) => {
             items.push({
                 kind: 'CRD',
                 name: c.metadata.name,

@@ -150,7 +150,7 @@ export default function LimitRanges() {
  const [pageSize, setPageSize] = useState(10);
  const [pageIndex, setPageIndex] = useState(0);
 
- const allItems = (data?.allItems ?? []) as LimitRangeResource[];
+ const allItems = useMemo(() => (data?.allItems ?? []) as LimitRangeResource[], [data?.allItems]);
  const items: LimitRangeRow[] = useMemo(() => (isConnected ? allItems.map(transformLimitRange) : []), [isConnected, allItems]);
 
  const namespaces = useMemo(() => ['all', ...Array.from(new Set(items.map((i) => i.namespace)))], [items]);

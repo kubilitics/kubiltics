@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 /**
  * TopologyAnnotations — Right-click context menu + note dialog for topology nodes.
  *

@@ -41,6 +41,7 @@ interface ResourceNotFoundErrorProps {
  * Levenshtein distance for fuzzy matching resource names.
  * Returns a value between 0 and max(a.length, b.length).
  */
+// eslint-disable-next-line react-refresh/only-export-components
 export function levenshtein(a: string, b: string): number {
   const la = a.length;
   const lb = b.length;

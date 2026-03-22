@@ -87,7 +87,8 @@ function getResourceRoute(node: TopologyNode): string | null {
 
 /**
  * Resource-scoped topology view component.
- * All hooks are called unconditionally at the top; conditional returns come after.
+ * Wrapper component that delegates to V1 or V2 based on feature flag.
+ * Has no hooks — just conditional render.
  */
 export function ResourceTopologyView({
   kind,
@@ -109,6 +110,20 @@ export function ResourceTopologyView({
     );
   }
 
+  return <ResourceTopologyViewV1 {...{ kind, namespace, name, sourceResourceType, sourceResourceName }} />;
+}
+
+/**
+ * V1 topology view component with all hooks and canvas-based rendering.
+ * All hooks are called unconditionally at the top; conditional returns come after.
+ */
+function ResourceTopologyViewV1({
+  kind,
+  namespace,
+  name,
+  sourceResourceType,
+  sourceResourceName,
+}: ResourceTopologyViewProps) {
   const navigate = useNavigate();
   const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured);
   const clusterId = useActiveClusterId();
@@ -138,7 +153,7 @@ export function ResourceTopologyView({
     return buildTopologyNodeId(kind, namespace ?? '', name);
   }, [kind, namespace, name]);
 
-  const emptyGraph = { schemaVersion: 'v1' as const, nodes: [] as TopologyNode[], edges: [] as Array<{ id: string; source: string; target: string; relationshipType: string; label: string; metadata: any }>, metadata: { clusterId: '', generatedAt: '', layoutSeed: '', isComplete: false, warnings: [] as string[] } };
+  const emptyGraph = { schemaVersion: 'v1' as const, nodes: [] as TopologyNode[], edges: [] as Array<{ id: string; source: string; target: string; relationshipType: string; label: string; metadata: Record<string, unknown> }>, metadata: { clusterId: '', generatedAt: '', layoutSeed: '', isComplete: false, warnings: [] as string[] } };
   const overlayGraph = graph ?? emptyGraph;
   const healthOverlayData = useHealthOverlay(overlayGraph);
   const costOverlayData = useCostOverlay(overlayGraph);

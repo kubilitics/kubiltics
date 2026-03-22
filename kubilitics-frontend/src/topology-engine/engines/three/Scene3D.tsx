@@ -76,12 +76,10 @@ export const Scene3D = forwardRef<EngineRef, Scene3DProps>(
         return undefined;
       },
       relayout: () => {
-        console.log('3D layout recalculation');
       },
       getNodeCount: () => graph.nodes.length,
       getEdgeCount: () => graph.edges.length,
       setOverlay: (overlayType, enabled) => {
-        console.log('Set overlay:', overlayType, enabled);
       },
       selectNode: (nodeId: string) => {
         onNodeSelect?.(nodeId);

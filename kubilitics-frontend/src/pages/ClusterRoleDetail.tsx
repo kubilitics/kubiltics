@@ -95,6 +95,7 @@ export default function ClusterRoleDetail() {
   const deleteResource = useDeleteK8sResource('clusterroles');
 
   const crName = resource?.metadata?.name ?? name ?? '';
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const rules = resource?.rules ?? [];
   const aggregationRule = resource?.aggregationRule;
   const labels = resource?.metadata?.labels ?? {};

@@ -1712,12 +1712,12 @@ function AGTInner({ graph }: { graph: TopologyGraph }) {
       }
       // 'f' = fit all nodes in view
       if (e.key === 'f' && !e.metaKey && !e.ctrlKey) {
-        try { fitView({ padding: 0.12, maxZoom: 1.2, duration: 500 }); } catch {}
+        try { fitView({ padding: 0.12, maxZoom: 1.2, duration: 500 }); } catch { /* intentionally empty */ }
       }
       // '1' = zoom to 100%
       if (e.key === '1' && (e.metaKey || e.ctrlKey)) {
         e.preventDefault();
-        try { setCenter(0, 0, { zoom: 1, duration: 300 }); } catch {}
+        try { setCenter(0, 0, { zoom: 1, duration: 300 }); } catch { /* intentionally empty */ }
       }
     };
     window.addEventListener('keydown', handler);
@@ -1777,7 +1777,7 @@ function AGTInner({ graph }: { graph: TopologyGraph }) {
     if (modeChanged || !hasAutoFit.current) {
       hasAutoFit.current = true;
       setTimeout(() => {
-        try { fitView({ padding: 0.12, maxZoom: 1.2, duration: 400 }); } catch {}
+        try { fitView({ padding: 0.12, maxZoom: 1.2, duration: 400 }); } catch { /* fitView may fail if unmounted */ }
       }, 100);
     }
   }, [nodes, viewMode, fitView]);

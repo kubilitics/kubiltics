@@ -42,10 +42,6 @@ export function useMemoryMonitor() {
       const usedMB = Math.round(memory.usedJSHeapSize / (1024 * 1024));
 
       if (memory.usedJSHeapSize > MEMORY_THRESHOLD) {
-        console.info(
-          `[perf] Memory: ${usedMB}MB (threshold: ${MEMORY_THRESHOLD / (1024 * 1024)}MB). Trimming stale caches.`
-        );
-
         // Remove queries with no active subscribers that haven't been updated recently
         const cache = queryClient.getQueryCache();
         const now = Date.now();
@@ -61,11 +57,6 @@ export function useMemoryMonitor() {
           }
         }
 
-        if (trimmed > 0) {
-          console.info(`[perf] Trimmed ${trimmed} stale queries. Memory: ${usedMB}MB.`);
-        }
-      } else if (process.env.NODE_ENV === 'development') {
-        console.debug(`[perf] Memory check: ${usedMB}MB — healthy.`);
       }
     };
 

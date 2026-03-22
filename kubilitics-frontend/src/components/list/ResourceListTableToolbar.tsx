@@ -64,7 +64,8 @@ export function ResourceListTableToolbar({
   return (
     <div
       className={cn(
-        'relative rounded-xl border border-border bg-card overflow-hidden shadow-sm',
+        'relative rounded-xl border border-border/60 bg-card overflow-hidden shadow-[var(--shadow-1)]',
+        'transition-shadow duration-200 hover:shadow-[var(--shadow-2)]',
         className
       )}
     >
@@ -77,12 +78,12 @@ export function ResourceListTableToolbar({
       )}
       {/* Toolbar row: table controls */}
       <div
-        className="flex items-center justify-between gap-3 px-4 py-2.5 border-b border-border bg-muted/30"
+        className="flex items-center justify-between gap-3 px-4 py-2.5 border-b border-border/60 bg-muted/20"
         role="toolbar"
         aria-label="Table toolbar"
       >
         <div className="flex items-center gap-3 flex-wrap">
-          <span className="text-sm font-medium text-muted-foreground">
+          <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             Table
           </span>
           {hasActiveFilters && onClearAllFilters && (

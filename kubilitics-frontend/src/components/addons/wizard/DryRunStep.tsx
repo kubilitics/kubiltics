@@ -198,7 +198,7 @@ export function DryRunStep() {
             setActiveDryRunResult(result);
         } else if (error) {
             // On error, set a synthetic result so the gate opens (user can still proceed).
-            setActiveDryRunResult({ manifest: '', notes: '', resource_count: 0, resource_diff: [] } as any);
+            setActiveDryRunResult({ manifest: '', notes: '', resource_count: 0, resource_diff: [] } as unknown as typeof result);
         }
     }, [result, error, setActiveDryRunResult]);
 

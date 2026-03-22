@@ -198,7 +198,7 @@ export default function ClusterConnect() {
     e.preventDefault();
     const file = e.dataTransfer.files[0];
     if (file) handleUploadedFile(file);
-  }, []);
+  }, [handleUploadedFile]);
 
   // If no mode selected yet, redirect to selection (browser/Helm only). Desktop always lands here with appMode set to 'desktop'.
   useEffect(() => {
@@ -326,6 +326,7 @@ export default function ClusterConnect() {
   }, [
     clustersFromBackend.data,
     clustersFromBackend.isLoading,
+    clustersFromBackend.isFetching,
     currentClusterId,
     logoutFlag,
     isAddClusterMode,
@@ -392,16 +393,16 @@ export default function ClusterConnect() {
     return btoa(binary);
   };
 
-  const submitClusterWithContext = async (base64: string, contextName: string) => {
+  const submitClusterWithContext = useCallback(async (base64: string, contextName: string) => {
     await addClusterWithUpload(backendBaseUrl, base64, contextName);
     await queryClient.invalidateQueries({ queryKey: ['backend', 'clusters'] });
     await clustersFromBackend.refetch();
     discoveredClustersRes.refetch();
     setTabMode('auto');
     toast.success('Cluster added successfully', { description: `Context: ${contextName}` });
-  };
+  }, [backendBaseUrl, queryClient, clustersFromBackend, discoveredClustersRes]);
 
-  const handleUploadedFile = async (file: File) => {
+  const handleUploadedFile = useCallback(async (file: File) => {
     const effectiveConfigured = isBackendConfigured || isTauri();
     if (!effectiveConfigured) {
       toast.error('Set backend URL in Settings first');
@@ -445,7 +446,7 @@ export default function ClusterConnect() {
       setIsUploading(false);
       setUploadProgress(0);
     }
-  };
+  }, [isBackendConfigured, submitClusterWithContext, showClusterErrorToast]);
 
   const handleAddDiscovered = async (cluster: DetectedCluster) => {
     // Same semantics as handleUploadedFile: in dev on localhost an empty
@@ -497,7 +498,7 @@ export default function ClusterConnect() {
       ? clustersFromBackend.data.map(backendClusterToCluster)
       : [backendClusterToCluster(cluster as unknown as BackendCluster)]; // Fallback for new
 
-    const targetCluster = backendItem ? backendClusterToCluster(backendItem) : (cluster as any);
+    const targetCluster = backendItem ? backendClusterToCluster(backendItem) : (cluster as unknown as BackendCluster);
 
     setCurrentClusterId(cluster.id);
     setClusters(connectedClusters);
@@ -583,7 +584,7 @@ export default function ClusterConnect() {
     } finally {
       setIsPasting(false);
     }
-  }, [pasteContent, backendBaseUrl, isBackendConfigured, queryClient, clustersFromBackend, discoveredClustersRes]);
+  }, [pasteContent, submitClusterWithContext, showClusterErrorToast, isBackendConfigured]);
 
   // P0-C: In Tauri mode, do NOT show the spinner and block the connect page based on
   // a persisted activeCluster — user must always be able to pick a (live) cluster.

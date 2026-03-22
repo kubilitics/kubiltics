@@ -118,6 +118,7 @@ export default function SecretDetail() {
       () => toast.success(`Copied value of "${key}"`),
       () => toast.error('Copy failed')
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [s.data, decodeValue]);
 
   const decodedSize = useCallback((b64: string): number => Math.round((b64?.length ?? 0) * 0.75), []);

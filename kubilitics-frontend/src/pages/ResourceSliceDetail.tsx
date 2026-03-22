@@ -36,7 +36,7 @@ interface K8sResourceSlice extends KubernetesResource {
 }
 
 function formatCapacity(rs: K8sResourceSlice): string {
-  const raw = rs as any;
+  const raw = rs as unknown as Record<string, unknown>;
   const named = raw.namedResources as { entries?: Array<{ capacity?: Record<string, string> }> } | undefined;
   const structured = raw.structuredResources as { capacity?: Record<string, string> } | undefined;
   if (named?.entries?.length) {
@@ -126,8 +126,8 @@ export default function ResourceSliceDetail() {
     );
   }
 
-  const raw = rs as any;
-  const driver = raw.driver ?? raw.spec?.driver ?? '—';
+  const raw = rs as unknown as Record<string, unknown>;
+  const driver = raw.driver ?? (raw.spec as Record<string, unknown>)?.driver ?? '—';
   const nodeName = raw.nodeName ?? raw.spec?.nodeName;
   const pool = raw.pool ?? raw.spec?.pool;
   const poolName = pool?.name ?? '—';

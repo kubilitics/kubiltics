@@ -111,8 +111,8 @@ export default function VolumeSnapshotClassDetail() {
 
   const vscName = vsc?.metadata?.name ?? '';
   const status: ResourceStatus = 'Healthy';
-  const driver = (vsc as K8sVolumeSnapshotClass & { spec?: { driver?: string } })?.driver ?? (vsc as any)?.spec?.driver ?? '—';
-  const deletionPolicy = (vsc as K8sVolumeSnapshotClass & { spec?: { deletionPolicy?: string } })?.deletionPolicy ?? (vsc as any)?.spec?.deletionPolicy ?? 'Delete';
+  const driver = (vsc as K8sVolumeSnapshotClass & { spec?: { driver?: string } })?.driver ?? (vsc as unknown as Record<string, unknown>)?.spec?.driver ?? '—';
+  const deletionPolicy = (vsc as K8sVolumeSnapshotClass & { spec?: { deletionPolicy?: string } })?.deletionPolicy ?? (vsc as unknown as Record<string, unknown>)?.spec?.deletionPolicy ?? 'Delete';
   const isDefault = vsc?.metadata?.annotations?.['snapshot.storage.kubernetes.io/is-default-class'] === 'true';
 
   const statusCards = [

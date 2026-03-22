@@ -30,8 +30,8 @@ export interface KubernetesResource {
   apiVersion?: string;
   kind?: string;
   metadata: KubernetesMetadata;
-  spec?: Record<string, any>;
-  status?: Record<string, any>;
+  spec?: Record<string, unknown>;
+  status?: Record<string, unknown>;
 }
 
 export interface ResourceList<T> {
@@ -607,8 +607,8 @@ export function usePatchK8sResource(resourceType: ResourceType) {
     },
     // PERF: Optimistic scale — detect replica patches and update detail cache instantly
     onMutate: async ({ name, namespace, patch }) => {
-      const replicas = (patch as any)?.spec?.replicas;
-      if (replicas == null) return {}; // Only optimize scale patches
+      const replicas = (patch as Record<string, unknown>)?.spec as Record<string, unknown> | undefined;
+      if (replicas?.replicas == null) return {}; // Only optimize scale patches
 
       // Cancel in-flight refetches on the detail query
       const detailKey = ['backend', 'resource', clusterId, resourceType, namespace, name];
@@ -617,9 +617,10 @@ export function usePatchK8sResource(resourceType: ResourceType) {
       // Snapshot & optimistically update detail cache
       const prevDetail = queryClient.getQueryData(detailKey);
       if (prevDetail) {
-        queryClient.setQueryData(detailKey, (old: any) => {
-          if (!old?.spec) return old;
-          return { ...old, spec: { ...old.spec, replicas } };
+        queryClient.setQueryData(detailKey, (old: unknown) => {
+          const oldObj = old as Record<string, unknown> | null | undefined;
+          if (!oldObj?.spec) return old;
+          return { ...oldObj, spec: { ...oldObj.spec, replicas: replicas.replicas } };
         });
       }
 
@@ -632,17 +633,22 @@ export function usePatchK8sResource(resourceType: ResourceType) {
           (key[0] === 'backend' && key[1] === 'resources' && key[2] === clusterId && key[4] === resourceType);
         if (!isMatch) continue;
         const data = queryClient.getQueryData(key);
-        if (!data || !(data as any).items) continue;
+        const dataObj = data as Record<string, unknown> | null | undefined;
+        if (!data || !dataObj?.items) continue;
         listSnapshots.push([key, data]);
-        queryClient.setQueryData(key, (old: any) => {
-          if (!old?.items) return old;
+        queryClient.setQueryData(key, (old: unknown) => {
+          const oldObj = old as Record<string, unknown> | null | undefined;
+          if (!oldObj?.items) return old;
+          const items = oldObj.items as Array<Record<string, unknown>>;
           return {
-            ...old,
-            items: old.items.map((item: any) =>
-              item.metadata?.name === name && item.metadata?.namespace === namespace
-                ? { ...item, spec: { ...item.spec, replicas } }
-                : item
-            ),
+            ...oldObj,
+            items: items.map((item: Record<string, unknown>) => {
+              const itemMetadata = item.metadata as Record<string, unknown> | undefined;
+              const itemSpec = item.spec as Record<string, unknown> | undefined;
+              return itemMetadata?.name === name && itemMetadata?.namespace === namespace
+                ? { ...item, spec: { ...itemSpec, replicas: replicas.replicas } }
+                : item;
+            }),
           };
         });
       }
@@ -734,18 +740,22 @@ export function useDeleteK8sResource(resourceType: ResourceType) {
         if (!isMatch) continue;
 
         const data = queryClient.getQueryData(key);
-        if (!data || !(data as any).items) continue;
+        const dataObj = data as Record<string, unknown> | null | undefined;
+        if (!data || !dataObj?.items) continue;
 
         snapshots.push([key, data]);
         // Remove by name + namespace match (works for both UID and name lookups)
-        queryClient.setQueryData(key, (old: any) => {
-          if (!old?.items) return old;
+        queryClient.setQueryData(key, (old: unknown) => {
+          const oldObj = old as Record<string, unknown> | null | undefined;
+          if (!oldObj?.items) return old;
+          const items = oldObj.items as Array<Record<string, unknown>>;
           return {
-            ...old,
-            items: old.items.filter((item: any) =>
-              !(item.metadata?.name === name &&
-                (item.metadata?.namespace === namespace || !namespace))
-            ),
+            ...oldObj,
+            items: items.filter((item: Record<string, unknown>) => {
+              const itemMetadata = item.metadata as Record<string, unknown> | undefined;
+              return !(itemMetadata?.name === name &&
+                (itemMetadata?.namespace === namespace || !namespace));
+            }),
           };
         });
       }

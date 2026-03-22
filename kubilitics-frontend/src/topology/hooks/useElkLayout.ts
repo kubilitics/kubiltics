@@ -203,7 +203,7 @@ function categoryGridLayout(
 
 async function hybridLayout(
   topology: TopologyResponse,
-  elkInstance: any,
+  elkInstance: unknown,
   viewMode: ViewMode,
   validEdges: Array<{ id: string; source: string; target: string; label: string; detail?: string }>
 ): Promise<Map<string, { x: number; y: number }>> {
@@ -344,7 +344,7 @@ async function hybridLayout(
     // Target: fill horizontally first to avoid tall vertical layouts.
     const totalIsolated = isolatedNodeIds.size;
     const targetCols = Math.max(4, Math.min(12, Math.ceil(Math.sqrt(totalIsolated * 2))));
-    let isoX = 0;
+    const isoX = 0;
     let isoY = isolatedY;
 
     for (const [, nids] of sortedCats) {
@@ -383,7 +383,7 @@ export function useElkLayout(
   const [layoutEdges, setLayoutEdges] = useState<Edge<LabeledEdgeData>[]>([]);
   const [isLayouting, setIsLayouting] = useState(false);
   const [elkReady, setElkReady] = useState(false);
-  const elkRef = useRef<any>(null);
+  const elkRef = useRef<unknown>(null);
   const layoutGenRef = useRef(0);
 
   // Lazily load ELK

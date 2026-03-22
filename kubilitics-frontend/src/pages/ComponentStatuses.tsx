@@ -105,6 +105,7 @@ export default function ComponentStatuses() {
  const { isConnected } = useConnectionStatus();
  const { data, isLoading, isError, isFetching, dataUpdatedAt, refetch } = useK8sResourceList<ComponentStatusResource>('componentstatuses', undefined, { limit: 5000 });
 
+ // eslint-disable-next-line react-hooks/exhaustive-deps
  const items: ComponentStatus[] = isConnected && data
  ? (data.items ?? []).map(transformCS)
  : [];

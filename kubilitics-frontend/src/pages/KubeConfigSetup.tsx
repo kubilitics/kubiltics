@@ -430,7 +430,7 @@ export default function KubeConfigSetup() {
                         <div className="w-full border-t border-border/60" />
                       </div>
                       <div className="relative flex justify-center">
-                        <span className="bg-background px-3 text-[10px] uppercase tracking-widest text-muted-foreground/60 font-medium">
+                        <span className="bg-background px-3 text-[10px] uppercase tracking-widest text-muted-foreground font-medium">
                           or add manually
                         </span>
                       </div>
@@ -485,7 +485,7 @@ export default function KubeConfigSetup() {
 
                   {/* Helper text */}
                   <motion.div variants={fadeUp} className="text-center pt-2 space-y-1">
-                    <p className="text-[11px] text-muted-foreground/70">
+                    <p className="text-[11px] text-muted-foreground">
                       Kubeconfig is usually at <code className="font-mono bg-muted/60 px-1 py-0.5 rounded text-[10px]">~/.kube/config</code>
                       {' · '}
                       On macOS press <kbd className="font-mono bg-muted/60 px-1 py-0.5 rounded text-[10px] border border-border/50">⌘⇧.</kbd> in file picker to show hidden folders

@@ -17,39 +17,43 @@ export function useResourcesOverview() {
     const classes = useK8sResourceList('deviceclasses', undefined, { enabled: fallbackEnabled });
 
     const data = useMemo(() => {
-        const items: any[] = [];
+        const items: Record<string, unknown>[] = [];
 
-        (quotas.data?.items ?? []).forEach((q: any) => {
+        (quotas.data?.items ?? []).forEach((q: Record<string, unknown>) => {
+            const metadata = q.metadata as Record<string, unknown>;
             items.push({
                 kind: 'ResourceQuota',
-                name: q.metadata.name,
-                namespace: q.metadata.namespace,
+                name: metadata.name,
+                namespace: metadata.namespace,
                 status: 'Active',
             });
         });
 
-        (limits.data?.items ?? []).forEach((l: any) => {
+        (limits.data?.items ?? []).forEach((l: Record<string, unknown>) => {
+            const metadata = l.metadata as Record<string, unknown>;
             items.push({
                 kind: 'LimitRange',
-                name: l.metadata.name,
-                namespace: l.metadata.namespace,
+                name: metadata.name,
+                namespace: metadata.namespace,
                 status: 'Active',
             });
         });
 
-        (slices.data?.items ?? []).forEach((s: any) => {
+        (slices.data?.items ?? []).forEach((s: Record<string, unknown>) => {
+            const metadata = s.metadata as Record<string, unknown>;
             items.push({
                 kind: 'ResourceSlice',
-                name: s.metadata.name,
-                namespace: s.metadata.namespace,
+                name: metadata.name,
+                namespace: metadata.namespace,
                 status: 'Available',
             });
         });
 
-        (classes.data?.items ?? []).forEach((c: any) => {
+        (classes.data?.items ?? []).forEach((c: Record<string, unknown>) => {
+            const metadata = c.metadata as Record<string, unknown>;
             items.push({
                 kind: 'DeviceClass',
-                name: c.metadata.name,
+                name: metadata.name,
                 namespace: undefined,
                 status: 'Configured',
             });

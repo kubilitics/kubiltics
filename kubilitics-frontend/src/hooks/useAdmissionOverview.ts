@@ -15,18 +15,18 @@ export function useAdmissionOverview() {
     const validating = useK8sResourceList('validatingwebhookconfigurations', undefined, { enabled: fallbackEnabled });
 
     const data = useMemo(() => {
-        const items: any[] = [];
+        const items: Record<string, unknown>[] = [];
 
-        (mutating.data?.items ?? []).forEach((m: any) => {
+        (mutating.data?.items ?? []).forEach((m: Record<string, unknown>) => {
             items.push({
                 kind: 'MutatingWebhook',
-                name: m.metadata.name,
+                name: (m.metadata as Record<string, unknown>)?.name,
                 namespace: 'N/A',
                 status: 'Active',
             });
         });
 
-        (validating.data?.items ?? []).forEach((v: any) => {
+        (validating.data?.items ?? []).forEach((v: Record<string, unknown>) => {
             items.push({
                 kind: 'ValidatingWebhook',
                 name: v.metadata.name,

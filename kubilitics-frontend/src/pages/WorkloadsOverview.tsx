@@ -126,6 +126,7 @@ export default function WorkloadsOverview() {
     setTimeout(() => setIsSyncing(false), 1500);
   }, [queryClient, refetch]);
 
+ // eslint-disable-next-line react-hooks/exhaustive-deps
   const workloads: WorkloadItem[] = data?.workloads ?? [];
   const itemsAfterSearch = useMemo(() => {
     if (!searchQuery.trim()) return workloads;

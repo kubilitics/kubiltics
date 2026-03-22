@@ -47,7 +47,7 @@ export function useK8sEvents(namespace?: string, fieldSelector?: string) {
     { enabled: !!namespace || !!fieldSelector, ...(fieldSelector ? { fieldSelector } : {}) }
   );
 
-  const events: EventInfo[] = (data?.items || []).map((event: any) => ({
+  const events: EventInfo[] = (data?.items || []).map((event: Record<string, unknown>) => ({
     type: (event.type === 'Warning' ? 'Warning' : 'Normal') as EventInfo['type'],
     reason: event.reason || '',
     message: event.message || '',
@@ -98,7 +98,7 @@ export function useResourceEvents(
       message: e.message ?? '',
       time: e.last_timestamp ? calculateAge(e.last_timestamp) : (e.first_timestamp ? calculateAge(e.first_timestamp) : 'unknown'),
     }))
-    : (k8sList.data?.items ?? []).map((event: any) => ({
+    : (k8sList.data?.items ?? []).map((event: Record<string, unknown>) => ({
       type: (event.type === 'Warning' ? 'Warning' : 'Normal') as EventInfo['type'],
       reason: event.reason || '',
       message: event.message || '',

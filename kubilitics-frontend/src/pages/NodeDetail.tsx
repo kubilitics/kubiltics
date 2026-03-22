@@ -96,6 +96,7 @@ export default function NodeDetail() {
     refetchInterval: fastPollInterval,
     staleTime: isFastPolling ? 1000 : 30000,
   });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const runningPodsRaw = (isConnected && podsOnNodeQuery.data?.items) ? (podsOnNodeQuery.data.items as KubernetesResource[]) : [];
   const runningPodsBase = useMemo(() => runningPodsRaw.map((p) => {
     const r = p as KubernetesResource & { name?: string; namespace?: string; status?: string };
@@ -523,7 +524,7 @@ export default function NodeDetail() {
       badge: runningPods.length.toString(),
       content: (
         <SectionCard icon={Box} title={`Pods on this node (${runningPods.length})`} tooltip={<p className="text-xs text-muted-foreground">Pods scheduled on this node (fieldSelector=spec.nodeName). Click a row to open pod detail.</p>}>
-          <DetailPodTable pods={runningPodsRaw as any} namespace="" />
+          <DetailPodTable pods={runningPodsRaw as unknown as Array<Record<string, unknown>>} namespace="" />
         </SectionCard>
       ),
     },

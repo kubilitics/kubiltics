@@ -79,10 +79,10 @@ export function TopologyLoadingSkeleton({
 
       {/* Progress text */}
       <div className="mt-8 text-center">
-        <div className="text-sm font-medium text-gray-600">
+        <div className="text-sm font-medium text-gray-700 dark:text-gray-300">
           {progress != null ? `Computing layout... ${Math.round(progress)}%` : "Building topology graph..."}
         </div>
-        <div className="text-xs text-gray-400 mt-1">
+        <div className="text-xs text-gray-600 dark:text-gray-400 mt-1">
           Arranging {isHorizontal ? "namespace" : "cluster"} resources with ELK engine
         </div>
         {progress != null && (

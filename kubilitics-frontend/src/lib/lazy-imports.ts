@@ -33,7 +33,7 @@ import { lazy, type ComponentType } from 'react';
  * @param factory - Dynamic import factory returning `{ default: ComponentType }`
  * @param minDelayMs - Minimum delay in ms (0 = no delay). Defaults to 0.
  */
-function lazyWithMinDelay<T extends ComponentType<any>>(
+function lazyWithMinDelay<T extends ComponentType<unknown>>(
   factory: () => Promise<{ default: T }>,
   minDelayMs = 0,
 ) {
@@ -59,7 +59,7 @@ function lazyWithMinDelay<T extends ComponentType<any>>(
  */
 export const LazyTopologyPage = lazyWithMinDelay(
   () => import(/* webpackChunkName: "topology" */ '@/topology/TopologyPage').then(
-    (m) => ({ default: m.TopologyPage as ComponentType<any> }),
+    (m) => ({ default: m.TopologyPage as ComponentType<unknown> }),
   ),
 );
 

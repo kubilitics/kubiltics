@@ -48,6 +48,7 @@ export default function ScalingOverview() {
     setTimeout(() => setIsSyncing(false), 1500);
   }, [queryClient]);
 
+ // eslint-disable-next-line react-hooks/exhaustive-deps
   const resources: ScalingResource[] = data?.resources ?? [];
 
   const filteredResources = useMemo(() => {

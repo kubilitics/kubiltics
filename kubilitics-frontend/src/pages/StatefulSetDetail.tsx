@@ -309,8 +309,8 @@ export default function StatefulSetDetail() {
       triggerFastPolling();
       setActiveTab('pods-ordinals');
       setSearchParams({ tab: 'pods-ordinals' });
-    } catch (err: any) {
-      toast.error(err?.message ?? 'Failed to scale');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to scale');
       throw err;
     }
   }, [isConnected, name, namespace, patchStatefulSet, triggerFastPolling, setSearchParams]);
@@ -327,8 +327,8 @@ export default function StatefulSetDetail() {
       triggerFastPolling();
       setActiveTab('pods-ordinals');
       setSearchParams({ tab: 'pods-ordinals' });
-    } catch (err: any) {
-      toast.error(err?.message ?? 'Failed to restart');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to restart');
       throw err;
     }
   }, [isConnected, name, namespace, patchStatefulSet, triggerFastPolling, setSearchParams]);
@@ -347,8 +347,8 @@ export default function StatefulSetDetail() {
       await updateStatefulSet.mutateAsync({ name, yaml: newYaml, namespace });
       toast.success('StatefulSet updated successfully');
       refetch();
-    } catch (error: any) {
-      toast.error(`Failed to update: ${error.message}`);
+    } catch (error) {
+      toast.error(`Failed to update: ${error instanceof Error ? error.message : String(error)}`);
       throw error;
     }
   }, [isConnected, name, namespace, updateStatefulSet, refetch]);
@@ -687,8 +687,8 @@ export default function StatefulSetDetail() {
                         toast.success(`Partition set to ${val}`);
                         setPartitionInput('');
                         refetch();
-                      } catch (err: any) {
-                        toast.error(err?.message ?? 'Failed to update partition');
+                      } catch (err) {
+                        toast.error(err instanceof Error ? err.message : 'Failed to update partition');
                       }
                     }}
                   >

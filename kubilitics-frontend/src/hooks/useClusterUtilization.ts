@@ -71,7 +71,7 @@ export function useClusterUtilization(clusterId: string | undefined) {
     queryKey: ['backend', 'resources', 'nodes', backendBaseUrl, clusterId],
     queryFn: async () => {
       const result = await listResources(backendBaseUrl, clusterId!, 'nodes');
-      const items: NodeInfo[] = (result.items || []).map((node: any) => ({
+      const items: NodeInfo[] = (result.items || []).map((node: Record<string, unknown>) => ({
         name: node.metadata?.name ?? '',
         allocatableCpuMillicores: parseCpuMillicores(node.status?.allocatable?.cpu ?? '0'),
         allocatableMemoryBytes: parseMemoryBytes(node.status?.allocatable?.memory ?? '0'),

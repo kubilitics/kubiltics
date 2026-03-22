@@ -52,7 +52,7 @@ const STORAGE_KEY = 'kubilitics-tracing-config';
 // ─── State ───────────────────────────────────────────────────────────────────
 
 let currentConfig: TracingConfig = DEFAULT_CONFIG;
-let activeSpans: Map<string, Span> = new Map();
+const activeSpans: Map<string, Span> = new Map();
 let spanBuffer: Span[] = [];
 let flushTimer: ReturnType<typeof setInterval> | null = null;
 

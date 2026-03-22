@@ -1,0 +1,108 @@
+{{- if and .Values.postgresql.enabled .Values.postgresql.backup.enabled }}
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ include "kubilitics.fullname" . }}-postgresql-backup
+  namespace: {{ .Values.namespace | default .Release.Namespace }}
+  labels:
+    {{- include "kubilitics.labels" . | nindent 4 }}
+    app.kubernetes.io/component: postgresql-backup
+spec:
+  schedule: {{ .Values.postgresql.backup.schedule | default "0 2 * * *" }}  # Daily at 2 AM
+  successfulJobsHistoryLimit: {{ .Values.postgresql.backup.successfulJobsHistoryLimit | default 3 }}
+  failedJobsHistoryLimit: {{ .Values.postgresql.backup.failedJobsHistoryLimit | default 1 }}
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            {{- include "kubilitics.labels" . | nindent 12 }}
+            app.kubernetes.io/component: postgresql-backup
+        spec:
+          restartPolicy: OnFailure
+          serviceAccountName: {{ include "kubilitics.serviceAccountName" . }}
+          containers:
+          - name: postgresql-backup
+            image: {{ .Values.postgresql.backup.image.repository }}:{{ .Values.postgresql.backup.image.tag | default "16-alpine" }}
+            imagePullPolicy: {{ .Values.postgresql.backup.image.pullPolicy | default "IfNotPresent" }}
+            command:
+            - /bin/sh
+            - -c
+            - |
+              set -e
+              BACKUP_DIR="/backups"
+              TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+              BACKUP_FILE="${BACKUP_DIR}/postgresql-${TIMESTAMP}.sql"
+              BACKUP_FILE_GZ="${BACKUP_FILE}.gz"
+
+              echo "Starting PostgreSQL backup at $(date)"
+
+              # Create backup directory if it doesn't exist
+              mkdir -p "${BACKUP_DIR}"
+
+              # Perform PostgreSQL backup using pg_dump
+              pg_dump \
+                -h "${PGHOST}" \
+                -p "${PGPORT}" \
+                -U "${PGUSER}" \
+                -d "${PGDATABASE}" \
+                --no-password \
+                --format=plain \
+                > "${BACKUP_FILE}"
+
+              echo "PostgreSQL dump completed: ${BACKUP_FILE}"
+
+              # Compress backup
+              gzip "${BACKUP_FILE}"
+
+              echo "Backup compressed: ${BACKUP_FILE_GZ}"
+
+              # List backups
+              ls -lh "${BACKUP_DIR}" | grep -E "postgresql-.*\.sql\.gz" || echo "No backups found yet"
+
+              # Cleanup old backups (keep last N backups)
+              RETENTION_COUNT={{ .Values.postgresql.backup.retentionBackups | default 7 }}
+              BACKUP_COUNT=$(ls "${BACKUP_DIR}"/postgresql-*.sql.gz 2>/dev/null | wc -l)
+
+              if [ "${BACKUP_COUNT}" -gt "${RETENTION_COUNT}" ]; then
+                DELETE_COUNT=$((BACKUP_COUNT - RETENTION_COUNT))
+                echo "Found ${BACKUP_COUNT} backups, keeping ${RETENTION_COUNT}, deleting ${DELETE_COUNT} old ones"
+                ls -t "${BACKUP_DIR}"/postgresql-*.sql.gz | tail -n "${DELETE_COUNT}" | xargs rm -f
+                echo "Cleanup completed."
+              else
+                echo "Backup count (${BACKUP_COUNT}) within retention limit (${RETENTION_COUNT})"
+              fi
+
+              echo "PostgreSQL backup completed successfully at $(date)"
+            env:
+            - name: PGHOST
+              value: "{{ .Values.postgresql.backup.pgHost }}"
+            - name: PGPORT
+              value: "{{ .Values.postgresql.backup.pgPort | default "5432" }}"
+            - name: PGDATABASE
+              value: "{{ .Values.postgresql.backup.pgDatabase | default "postgres" }}"
+            - name: PGUSER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.postgresql.backup.secretName | default (printf "%s-postgresql" (include "kubilitics.fullname" .)) }}
+                  key: username
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.postgresql.backup.secretName | default (printf "%s-postgresql" (include "kubilitics.fullname" .)) }}
+                  key: password
+            volumeMounts:
+            - name: backups
+              mountPath: /backups
+            resources:
+              {{- toYaml .Values.postgresql.backup.resources | nindent 14 }}
+          volumes:
+          - name: backups
+            {{- if .Values.postgresql.backup.pvc.enabled }}
+            persistentVolumeClaim:
+              claimName: {{ .Values.postgresql.backup.pvc.name | default (printf "%s-postgresql-backup" (include "kubilitics.fullname" .)) }}
+            {{- else }}
+            emptyDir: {}
+            {{- end }}
+{{- end }}

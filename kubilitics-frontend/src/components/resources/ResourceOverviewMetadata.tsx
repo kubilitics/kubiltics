@@ -85,28 +85,32 @@ export function ResourceOverviewMetadata({
       {!skipMetadataGrid && (
         <SectionCard icon={Info} title="Metadata" tooltip="Name, namespace, UID, created, resource version">
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 text-sm">
-            <div>
-              <p className="text-foreground/60 font-medium text-xs uppercase tracking-wide mb-1">Name</p>
-              <p className="font-mono truncate" title={metadata.name}>{metadata.name ?? '—'}</p>
+            <div className="space-y-1.5">
+              <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-muted-foreground">Name</p>
+              <p className="font-mono text-sm font-medium truncate" title={metadata.name}>{metadata.name ?? <span className="text-muted-foreground/50 italic">None</span>}</p>
             </div>
-            <div>
-              <p className="text-foreground/60 font-medium text-xs uppercase tracking-wide mb-1">Namespace</p>
-              <p className="font-mono truncate" title={metadata.namespace ?? 'Cluster-scoped'}>
-                {metadata.namespace ?? '—'}
+            <div className="space-y-1.5">
+              <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-muted-foreground">Namespace</p>
+              <p className="font-mono text-sm truncate" title={metadata.namespace ?? 'Cluster-scoped'}>
+                {metadata.namespace ? (
+                  <Badge variant="outline" className="font-mono text-xs px-2 py-0.5">{metadata.namespace}</Badge>
+                ) : (
+                  <span className="text-muted-foreground/50 italic text-xs">Cluster-scoped</span>
+                )}
               </p>
             </div>
-            <div>
-              <p className="text-foreground/60 font-medium text-xs uppercase tracking-wide mb-1">UID</p>
-              <p className="font-mono text-xs truncate" title={metadata.uid}>{metadata.uid ?? '—'}</p>
+            <div className="space-y-1.5">
+              <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-muted-foreground">UID</p>
+              <p className="font-mono text-xs truncate text-muted-foreground" title={metadata.uid}>{metadata.uid ?? <span className="italic">None</span>}</p>
             </div>
-            <div>
-              <p className="text-foreground/60 font-medium text-xs uppercase tracking-wide mb-1">Created</p>
-              <p className="font-mono text-xs truncate" title={metadata.creationTimestamp ?? ''}>{createdDisplay}</p>
+            <div className="space-y-1.5">
+              <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-muted-foreground">Created</p>
+              <p className="font-mono text-xs truncate tabular-nums" title={metadata.creationTimestamp ?? ''}>{createdDisplay}</p>
             </div>
-            <div>
-              <p className="text-foreground/60 font-medium text-xs uppercase tracking-wide mb-1">Resource Version</p>
-              <p className="font-mono text-xs truncate" title={metadata.resourceVersion ?? ''}>
-                {metadata.resourceVersion ?? '—'}
+            <div className="space-y-1.5">
+              <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-muted-foreground">Resource Version</p>
+              <p className="font-mono text-xs truncate tabular-nums" title={metadata.resourceVersion ?? ''}>
+                {metadata.resourceVersion ?? <span className="text-muted-foreground/50 italic">None</span>}
               </p>
             </div>
           </div>
@@ -142,17 +146,17 @@ export function ResourceOverviewMetadata({
               return (
                 <div
                   key={key}
-                  className="flex flex-col gap-1 rounded-lg bg-muted/50 p-2 text-sm"
+                  className="flex flex-col gap-1.5 rounded-xl bg-muted/30 dark:bg-muted/20 p-3 text-sm border border-border/30 transition-colors hover:bg-muted/50"
                 >
-                  <span className="font-mono text-muted-foreground text-xs">{key}</span>
+                  <span className="font-mono text-muted-foreground text-[10px] font-semibold uppercase tracking-wider">{key}</span>
                   <div className="flex items-start justify-between gap-2">
-                    <p className="font-mono text-xs break-all whitespace-pre-wrap min-w-0">{displayVal}</p>
+                    <p className="font-mono text-xs break-all whitespace-pre-wrap min-w-0 text-foreground/80">{displayVal}</p>
                     {isLong && (
                       <Button
                         type="button"
                         variant="ghost"
                         size="sm"
-                        className="shrink-0 h-7 text-xs"
+                        className="shrink-0 h-7 text-xs rounded-lg"
                         onClick={() => toggleAnnotation(key)}
                       >
                         {expanded ? 'Collapse' : 'Expand'}
@@ -164,7 +168,7 @@ export function ResourceOverviewMetadata({
             })}
           </div>
         ) : (
-          <p className="text-muted-foreground text-sm">No annotations</p>
+          <p className="text-muted-foreground text-sm italic">No annotations</p>
         )}
       </SectionCard>
 

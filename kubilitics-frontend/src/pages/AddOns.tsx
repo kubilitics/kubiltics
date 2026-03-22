@@ -8,7 +8,7 @@ import { InstalledAddOnsList } from "@/components/addons/InstalledAddOnsList";
 import { FinancialStackPrompt } from "@/components/addons/FinancialStackPrompt";
 import { ProfilesTab } from "@/components/addons/ProfilesTab";
 import { DependencyGraph } from "@/components/addons/DependencyGraph";
-// @ts-ignore - The module exists and builds cleanly; this clears a stale IDE language server error.
+// @ts-expect-error - The module exists and builds cleanly; this clears a stale IDE language server error.
 import { RegistriesTab } from "@/components/addons/RegistriesTab";
 import { useActiveClusterId } from "@/hooks/useActiveClusterId";
 import { useCatalog } from "@/hooks/useAddOnCatalog";
@@ -31,7 +31,7 @@ export default function AddOns() {
         if (isValidTab(tab) && tab !== activeTab) {
             setActiveTab(tab);
         }
-    }, [searchParams]);
+    }, [searchParams, activeTab]);
 
     const clusterId = useActiveClusterId();
     const { data: catalogPage, refetch: refetchCatalog } = useCatalog(1, 24);

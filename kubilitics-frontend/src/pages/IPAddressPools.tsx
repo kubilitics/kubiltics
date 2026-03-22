@@ -83,7 +83,7 @@ export default function IPAddressPools() {
  const [pageIndex, setPageIndex] = useState(0);
  const deletePool = useDeleteK8sResource('ipaddresspools');
 
- const allItems = (data?.allItems ?? []) as K8sIPAddressPool[];
+ const allItems = useMemo(() => (data?.allItems ?? []) as K8sIPAddressPool[], [data?.allItems]);
  const items: IPAddressPool[] = useMemo(() => (isConnected ? allItems.map(mapPool) : []), [isConnected, allItems]);
 
  const namespaces = useMemo(() => [...new Set(items.map((i) => i.namespace).filter(Boolean))].sort(), [items]);

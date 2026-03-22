@@ -87,6 +87,7 @@ export default function NetworkPolicyDetail() {
   const updateNetworkPolicy = useUpdateK8sResource('networkpolicies');
 
   const podsInNs = useK8sResourceList<KubernetesResource>('pods', namespace, { enabled: !!namespace });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const podSelector = np.spec?.podSelector?.matchLabels ?? {};
   const affectedPods = useMemo(() => {
     if (!podsInNs.data?.items?.length || !Object.keys(podSelector).length) return [];

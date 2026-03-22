@@ -16,31 +16,35 @@ export function useScalingOverview() {
     const pdbs = useK8sResourceList('poddisruptionbudgets', undefined, { enabled: fallbackEnabled });
 
     const data = useMemo(() => {
-        const items: any[] = [];
+        const items: Record<string, unknown>[] = [];
 
-        (hpas.data?.items ?? []).forEach((h: any) => {
+        (hpas.data?.items ?? []).forEach((h: Record<string, unknown>) => {
+            const metadata = h.metadata as Record<string, unknown>;
+            const status = h.status as Record<string, unknown> | undefined;
             items.push({
                 kind: 'HPA',
-                name: h.metadata.name,
-                namespace: h.metadata.namespace,
-                status: h.status?.currentReplicas ? 'Active' : 'Pending',
+                name: metadata.name,
+                namespace: metadata.namespace,
+                status: status?.currentReplicas ? 'Active' : 'Pending',
             });
         });
 
-        (vpas.data?.items ?? []).forEach((v: any) => {
+        (vpas.data?.items ?? []).forEach((v: Record<string, unknown>) => {
+            const metadata = v.metadata as Record<string, unknown>;
             items.push({
                 kind: 'VPA',
-                name: v.metadata.name,
-                namespace: v.metadata.namespace,
+                name: metadata.name,
+                namespace: metadata.namespace,
                 status: 'Active',
             });
         });
 
-        (pdbs.data?.items ?? []).forEach((p: any) => {
+        (pdbs.data?.items ?? []).forEach((p: Record<string, unknown>) => {
+            const metadata = p.metadata as Record<string, unknown>;
             items.push({
                 kind: 'PDB',
-                name: p.metadata.name,
-                namespace: p.metadata.namespace,
+                name: metadata.name,
+                namespace: metadata.namespace,
                 status: 'Active',
             });
         });

@@ -90,7 +90,7 @@ function YamlDiffView({
         if (leftLoading || rightLoading || !leftYaml || !rightYaml) return [];
         const baseDiff = computeDiff(leftYaml, rightYaml);
 
-        const processed: Array<any> = [];
+        const processed: Array<unknown> = [];
         for (let i = 0; i < baseDiff.length; i++) {
             const current = baseDiff[i];
             const next = baseDiff[i + 1];
@@ -136,7 +136,7 @@ function YamlDiffView({
         );
     }
 
-    const rows: any[] = [];
+    const rows: Array<Record<string, unknown>> = [];
     for (let i = 0; i < diffLines.length; i++) {
         const line = diffLines[i];
         if (line.type === 'unchanged') {
@@ -261,7 +261,7 @@ export function ResourceComparisonView({
         return (listData?.items ?? []).map(item => ({
             name: item.metadata.name,
             namespace: item.metadata.namespace,
-            status: (item.status?.phase as string) || (item.status?.conditions?.find((c: any) => c.type === 'Ready')?.status === 'True' ? 'Running' : 'Ready') || 'Unknown',
+            status: (item.status?.phase as string) || (item.status?.conditions?.find((c: Record<string, unknown>) => c.type === 'Ready')?.status === 'True' ? 'Running' : 'Ready') || 'Unknown',
         }));
     }, [listData]);
 
@@ -339,7 +339,7 @@ export function ResourceComparisonView({
                 dataUnavailable: !canFetch,
             };
         });
-    }, [selectedResources, availableResources, canFetch, resourceQueries, metricsQueries, logsQueries]);
+    }, [selectedResources, availableResources, canFetch, resourceQueries, metricsQueries, logsQueries, resourceType]);
 
     const handleAdd = (key: string) => {
         if (selectedResources.length >= 4) {

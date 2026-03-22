@@ -62,15 +62,15 @@ export function ListPageHeader({
   const freshnessNode = freshness ?? (dataUpdatedAt ? <DataFreshnessIndicator dataUpdatedAt={dataUpdatedAt} /> : null);
 
   return (
-    <div className={cn('flex items-center justify-between flex-wrap gap-4 elevation-1', className)}>
-      <div className="flex items-center gap-3 flex-wrap">
-        <div className="p-2.5 rounded-xl bg-primary/10 shrink-0">
+    <div className={cn('flex items-center justify-between flex-wrap gap-4', className)}>
+      <div className="flex items-center gap-3.5 flex-wrap">
+        <div className="p-2.5 rounded-xl bg-gradient-to-br from-primary/15 to-primary/5 shadow-sm shrink-0">
           {icon}
         </div>
         <div className="min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
-            <Badge variant="secondary" className="font-mono tabular-nums">
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <h1 className="text-2xl font-semibold tracking-tight bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">{title}</h1>
+            <Badge variant="secondary" className="font-mono tabular-nums text-xs px-2 py-0.5 rounded-md">
               {resourceCount}
             </Badge>
           </div>

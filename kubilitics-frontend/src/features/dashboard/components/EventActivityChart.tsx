@@ -18,7 +18,7 @@ const data = [
 
 export const EventActivityChart = () => {
 
-    const getColor = (entry: any) => {
+    const getColor = (entry: Record<string, unknown>) => {
         if (entry.events > 20) return '#f43f5e'; // Rose 500 (Critical)
         if (entry.events > 12) return '#f59e0b'; // Amber 500 (Warning)
         return '#3b82f6'; // Blue 500 (Normal)

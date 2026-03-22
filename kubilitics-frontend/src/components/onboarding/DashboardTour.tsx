@@ -1,12 +1,13 @@
+/* eslint-disable react-refresh/only-export-components */
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  X, 
-  ChevronRight, 
-  ChevronLeft, 
-  Search, 
-  Network, 
-  Box, 
+import {
+  X,
+  ChevronRight,
+  ChevronLeft,
+  Search,
+  Network,
+  Box,
   LayoutDashboard,
   Sparkles,
   Check
@@ -79,31 +80,31 @@ export function DashboardTour({ onComplete, onSkip }: DashboardTourProps) {
   const isLastStep = currentStep === tourSteps.length - 1;
   const progress = ((currentStep + 1) / tourSteps.length) * 100;
 
-  const handleNext = () => {
+  const handleComplete = useCallback(() => {
+    setIsVisible(false);
+    localStorage.setItem('kubilitics_tour_completed', 'true');
+    setTimeout(onComplete, 300);
+  }, [onComplete]);
+
+  const handleNext = useCallback(() => {
     if (isLastStep) {
       handleComplete();
     } else {
       setCurrentStep(prev => prev + 1);
     }
-  };
+  }, [isLastStep, handleComplete]);
 
-  const handlePrev = () => {
+  const handlePrev = useCallback(() => {
     if (!isFirstStep) {
       setCurrentStep(prev => prev - 1);
     }
-  };
+  }, [isFirstStep]);
 
-  const handleComplete = () => {
-    setIsVisible(false);
-    localStorage.setItem('kubilitics_tour_completed', 'true');
-    setTimeout(onComplete, 300);
-  };
-
-  const handleSkip = () => {
+  const handleSkip = useCallback(() => {
     setIsVisible(false);
     localStorage.setItem('kubilitics_tour_completed', 'true');
     setTimeout(onSkip, 300);
-  };
+  }, [onSkip]);
 
   // Keyboard navigation
   useEffect(() => {
@@ -115,7 +116,7 @@ export function DashboardTour({ onComplete, onSkip }: DashboardTourProps) {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [currentStep]);
+  }, [currentStep, handleNext, handlePrev, handleSkip]);
 
   const StepIcon = step.icon;
 

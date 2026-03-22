@@ -127,6 +127,7 @@ export default function PodSecurityPolicies() {
  const { data, isLoading, isError, isFetching, dataUpdatedAt, refetch } = useK8sResourceList<PSPResource>('podsecuritypolicies', undefined, { limit: 5000 });
  const deleteResource = useDeleteK8sResource('podsecuritypolicies');
 
+ // eslint-disable-next-line react-hooks/exhaustive-deps
  const items: PodSecurityPolicy[] = isConnected && data
  ? (data.items ?? []).map(transformPSP)
  : [];

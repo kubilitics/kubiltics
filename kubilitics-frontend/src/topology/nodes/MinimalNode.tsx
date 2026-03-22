@@ -31,8 +31,7 @@ function MinimalNodeInner({ data }: NodeProps<BaseNodeData>) {
         aria-hidden="true"
       />
       <div
-        className="mt-1.5 max-w-[80px] truncate text-center text-[9px] font-medium"
-        style={{ color: fill }}
+        className="mt-1.5 max-w-[80px] truncate text-center text-[10px] font-semibold text-gray-700 dark:text-gray-300"
         aria-hidden="true"
       >
         {data.name}

@@ -107,7 +107,7 @@ export default function ControllerRevisions() {
  const deleteCR = useDeleteK8sResource('controllerrevisions');
  const createCR = useCreateK8sResource('controllerrevisions');
 
- const allItems = (data?.allItems ?? []) as K8sControllerRevision[];
+ const allItems = useMemo(() => (data?.allItems ?? []) as K8sControllerRevision[], [data?.allItems]);
  const items: ControllerRevision[] = useMemo(() => (isConnected ? allItems.map(mapCR) : []), [isConnected, allItems]);
 
  const namespaces = useMemo(() => ['all', ...Array.from(new Set(items.map((i) => i.namespace))).sort()], [items]);

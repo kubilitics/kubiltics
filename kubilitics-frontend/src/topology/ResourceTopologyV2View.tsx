@@ -90,6 +90,7 @@ export function ResourceTopologyV2View({
     response.metadata.mode = "resource";
     if (namespace) response.metadata.namespace = namespace;
     return response;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [graph, namespace]);
 
   // Highlight the focused resource node

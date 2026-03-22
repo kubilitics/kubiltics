@@ -278,7 +278,7 @@ export function InstallWizard({ open, onClose, addonId, clusterId }: InstallWiza
                                     onPlanResolved={handleNext}
                                 />
                             )}
-                            {currentStep === 2 && <PreflightStep planId={(flow.plan as any)?.plan_id ?? ''} />}
+                            {currentStep === 2 && <PreflightStep planId={(flow.plan as unknown as Record<string, unknown>)?.plan_id ?? ''} />}
                             {currentStep === 3 && <ValuesEditorStep addonId={addonId} />}
                             {currentStep === 4 && <DryRunStep />}
                             {currentStep === 5 && <ExecuteStep />}

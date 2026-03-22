@@ -15,7 +15,10 @@ export function useNamespacesFromCluster(clusterId: string | null) {
         queryFn: async () => {
             if (!clusterId) return [];
             const response = await listResources(backendBaseUrl, clusterId, 'namespaces', { limit: 1000 });
-            return (response.items as any[]).map(item => item.metadata?.name).filter(Boolean) as string[];
+            return (response.items as Array<Record<string, unknown>>).map(item => {
+                const metadata = item.metadata as Record<string, unknown> | undefined;
+                return metadata?.name;
+            }).filter(Boolean) as string[];
         },
         enabled: isBackendConfigured() && !!clusterId,
         staleTime: 60_000,

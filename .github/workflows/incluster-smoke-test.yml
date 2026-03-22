@@ -1,0 +1,118 @@
+name: In-Cluster Smoke Test
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'deploy/**'
+      - 'kubilitics-backend/**'
+      - 'kubilitics-frontend/**'
+      - '.github/workflows/incluster-smoke-test.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'deploy/**'
+      - 'kubilitics-backend/**'
+      - 'kubilitics-frontend/**'
+      - '.github/workflows/incluster-smoke-test.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: smoke-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  smoke-test:
+    runs-on: ubuntu-latest
+    name: Kind Cluster Smoke Test
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build backend image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./kubilitics-backend
+          push: false
+          load: true
+          tags: kubilitics-backend:local
+          cache-from: type=gha,scope=smoke-backend
+          cache-to: type=gha,mode=max,scope=smoke-backend
+
+      - name: Build frontend image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./kubilitics-frontend
+          push: false
+          load: true
+          tags: kubilitics-frontend:local
+          cache-from: type=gha,scope=smoke-frontend
+          cache-to: type=gha,mode=max,scope=smoke-frontend
+
+      - name: Set up Kind cluster
+        uses: helm/kind-action@v1.9.0
+        with:
+          version: v0.20.0
+          config: |
+            kind: Cluster
+            apiVersion: kind.x-k8s.io/v1alpha4
+            nodes:
+            - role: control-plane
+              image: kindest/node:v1.30.0
+
+      - name: Install Helm
+        uses: azure/setup-helm@v4
+
+      - name: Load images into Kind
+        run: |
+          kind load docker-image kubilitics-backend:local
+          kind load docker-image kubilitics-frontend:local
+
+      - name: Deploy with Helm
+        run: |
+          kubectl create namespace kubilitics
+          helm install kubilitics ./deploy/helm/kubilitics \
+            --namespace kubilitics \
+            -f ./deploy/helm/kubilitics/values-ci.yaml \
+            --wait --timeout 3m
+
+      - name: Wait for pods
+        run: |
+          kubectl wait --for=condition=ready pod -l app=kubilitics \
+            -n kubilitics --timeout=120s || true
+          kubectl get pods -n kubilitics -o wide
+
+      - name: Port forward and health check
+        run: |
+          kubectl port-forward svc/kubilitics 8080:819 -n kubilitics &
+          sleep 5
+          curl -sf http://localhost:8080/health && echo " ✓ Backend healthy" || echo " ✗ Backend not ready"
+
+      - name: Run E2E smoke tests
+        run: |
+          chmod +x ./scripts/incluster-e2e-test.sh
+          ./scripts/incluster-e2e-test.sh \
+            --base-url "http://localhost:8080" \
+            --admin-user "admin" \
+            --admin-pass "test-admin-password-123"
+        timeout-minutes: 5
+
+      - name: Helm test
+        if: always()
+        run: helm test kubilitics -n kubilitics --timeout 60s || true
+
+      - name: Collect logs on failure
+        if: failure()
+        run: |
+          echo "=== Pods ===" && kubectl get pods -n kubilitics -o wide
+          echo "=== Backend Logs ===" && kubectl logs -n kubilitics -l app=kubilitics-backend --tail=100 || true
+          echo "=== Frontend Logs ===" && kubectl logs -n kubilitics -l app=kubilitics-frontend --tail=100 || true
+          echo "=== Events ===" && kubectl get events -n kubilitics --sort-by='.lastTimestamp' || true
+          echo "=== Helm Values ===" && helm get values kubilitics -n kubilitics || true
+
+      - name: Cleanup
+        if: always()
+        run: pkill -f "kubectl port-forward" || true

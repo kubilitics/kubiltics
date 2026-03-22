@@ -114,7 +114,7 @@ export default function HomePage() {
   const setCurrentClusterId = useBackendConfigStore((s) => s.setCurrentClusterId);
   const setActiveCluster = useClusterStore((s) => s.setActiveCluster);
 
-  const [settingsProject, setSettingsProject] = useState<any>(null);
+  const [settingsProject, setSettingsProject] = useState<BackendProject | null>(null);
   const [clusterToRemove, setClusterToRemove] = useState<BackendCluster | null>(null);
   const [projectToRemove, setProjectToRemove] = useState<BackendProject | null>(null);
   const queryClient = useQueryClient();
@@ -295,13 +295,14 @@ export default function HomePage() {
                         "bg-white dark:bg-[hsl(228,14%,11%)]",
                         "border rounded-2xl overflow-hidden",
                         "shadow-sm cursor-pointer",
-                        "transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]",
+                        "transition-all duration-300",
                         "hover:shadow-md hover:-translate-y-[2px]",
                         "active:translate-y-0 active:shadow-sm",
                         isActive
                           ? "border-primary/50 dark:border-primary/40 ring-1 ring-primary/20"
                           : "border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600",
                       )}
+                      style={{ transitionTimingFunction: "cubic-bezier(0.16,1,0.3,1)" }}
                       onClick={() => handleClusterClick(cluster)}
                       role="button"
                       tabIndex={0}
@@ -571,7 +572,7 @@ export default function HomePage() {
               </div>
               <h3 className="text-base font-semibold text-foreground">Failed to load projects</h3>
               <p className="text-sm text-muted-foreground mt-1.5 max-w-sm mx-auto">
-                {(projectsError as any)?.message || "Internal system sync failed"}
+                {(projectsError as unknown as Record<string, unknown>)?.message || "Internal system sync failed"}
               </p>
             </div>
           ) : projects.length > 0 ? (

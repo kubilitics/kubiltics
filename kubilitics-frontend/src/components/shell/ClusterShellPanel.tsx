@@ -445,7 +445,6 @@ export function ClusterShellPanel({
             30000
           );
 
-          console.log(`Shell WebSocket disconnected. Reconnecting (${attempt}/${MAX_RECONNECT_ATTEMPTS}) in ${delay}ms...`);
           setIsReconnecting(true);
           setError(null);
 

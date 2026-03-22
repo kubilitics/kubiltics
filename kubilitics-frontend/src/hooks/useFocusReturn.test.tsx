@@ -83,7 +83,8 @@ describe('useFocusReturn', () => {
       useFocusReturn({ isOpen });
       return (
         <div>
-          <button data-testid="open" onClick={() => { (detached as any).focus?.(); setIsOpen(true); }}>Open</button>
+          <button data-testid="open" onClick={() => { // eslint-disable-next-line @typescript-eslint/no-explicit-any
+(detached as any).focus?.(); setIsOpen(true); }}>Open</button>
           {isOpen && <button data-testid="close" onClick={() => setIsOpen(false)}>Close</button>}
         </div>
       );

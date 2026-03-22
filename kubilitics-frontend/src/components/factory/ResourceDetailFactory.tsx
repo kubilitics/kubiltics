@@ -180,9 +180,9 @@ function PlaceholderTab({ tab }: { tab: ResourceTabDef }) {
     <Card>
       <CardContent className="flex items-center justify-center p-12">
         <div className="text-center">
-          <tab.icon className="mx-auto h-8 w-8 text-muted-foreground/50 mb-2" />
+          <tab.icon className="mx-auto h-8 w-8 text-muted-foreground mb-2" />
           <p className="text-sm text-muted-foreground">{tab.label} tab</p>
-          <p className="text-xs text-muted-foreground/70">Content available when viewing a specific resource.</p>
+          <p className="text-xs text-muted-foreground">Content available when viewing a specific resource.</p>
         </div>
       </CardContent>
     </Card>

@@ -608,9 +608,6 @@ export const CytoscapeCanvas = forwardRef<EngineRef, CytoscapeCanvasProps>(
       // Only fit when graph actually changed (new filter, new data). Preserves user pan/zoom when parent re-renders.
       layout.one('layoutstop', () => {
         const loadTimeMs = performance.now() - loadStart;
-        if (import.meta.env?.DEV) {
-          console.log(`[Topology] Load time (layout): ${loadTimeMs.toFixed(0)}ms (${nodeCount} nodes)`);
-        }
         onLoadTime?.(loadTimeMs);
         const signatureChanged = lastFittedSignatureRef.current !== layoutSignature;
         lastFittedSignatureRef.current = layoutSignature;
@@ -831,7 +828,6 @@ export const CytoscapeCanvas = forwardRef<EngineRef, CytoscapeCanvasProps>(
           case ' ':
             // Space: Pause/Resume auto-refresh (would need parent state)
             e.preventDefault();
-            console.log('Pause/Resume auto-refresh - requires parent implementation');
             break;
 
           case 'escape':

@@ -61,6 +61,7 @@ export default function ResourceQuotaDetail() {
     if (initialTab !== activeTab) {
       setActiveTab(initialTab);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialTab]);
   const { isConnected } = useConnectionStatus();
   const clusterId = useActiveClusterId();
@@ -89,13 +90,13 @@ export default function ResourceQuotaDetail() {
       await updateResource.mutateAsync({ name, yaml: newYaml, namespace });
       toast.success('Resource updated successfully');
       refetch();
-    } catch (error: any) {
-      toast.error(`Failed to update: ${error.message}`);
+    } catch (error) {
+      toast.error(`Failed to update: ${error instanceof Error ? error.message : String(error)}`);
       throw error;
     }
   }, [isConnected, name, namespace, updateResource, refetch]);
-  const hard = resource?.status?.hard || resource?.spec?.hard || {};
-  const used = resource?.status?.used || {};
+  const hard = useMemo(() => resource?.status?.hard || resource?.spec?.hard || {}, [resource?.status?.hard, resource?.spec?.hard]);
+  const used = useMemo(() => resource?.status?.used || {}, [resource?.status?.used]);
   const labels = resource?.metadata?.labels ?? {};
   const annotations = resource?.metadata?.annotations ?? {};
   const hasScopeSelector = !!(resource?.spec?.scopeSelector && Object.keys((resource.spec.scopeSelector as Record<string, unknown>) || {}).length > 0);

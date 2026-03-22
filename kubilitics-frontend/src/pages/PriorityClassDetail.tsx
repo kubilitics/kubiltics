@@ -45,6 +45,7 @@ export default function PriorityClassDetail() {
     if (initialTab !== activeTab) {
       setActiveTab(initialTab);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialTab]);
   const { isConnected } = useConnectionStatus();
   const clusterId = useActiveClusterId();
@@ -72,8 +73,8 @@ export default function PriorityClassDetail() {
       await updateResource.mutateAsync({ name, yaml: newYaml });
       toast.success('Resource updated successfully');
       refetch();
-    } catch (error: any) {
-      toast.error(`Failed to update: ${error.message}`);
+    } catch (error) {
+      toast.error(`Failed to update: ${error instanceof Error ? error.message : String(error)}`);
       throw error;
     }
   }, [isConnected, name, updateResource, refetch]);

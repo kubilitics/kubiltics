@@ -12,7 +12,6 @@ const DEBUG_ANALYTICS = import.meta.env?.DEV === true;
 
 function debugLog(...args: unknown[]) {
   if (DEBUG_ANALYTICS) {
-    // eslint-disable-next-line no-console
     console.debug('[Analytics]', ...args);
   }
 }

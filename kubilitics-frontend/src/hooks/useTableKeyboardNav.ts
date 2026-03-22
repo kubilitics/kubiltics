@@ -97,7 +97,7 @@ export function useTableKeyboardNav({
           break;
       }
     },
-    [enabled, rowCount, focusedIndex, onOpenRow, getRowKeyAt, onToggleSelect]
+    [enabled, rowCount, focusedIndex, onOpenRow, getRowKeyAt, onToggleSelect, setFocusedIndex]
   );
 
   const getRowProps = useCallback(

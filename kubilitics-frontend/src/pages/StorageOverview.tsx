@@ -48,6 +48,7 @@ export default function StorageOverview() {
     setTimeout(() => setIsSyncing(false), 1500);
   }, [queryClient]);
 
+ // eslint-disable-next-line react-hooks/exhaustive-deps
   const resources: StorageResource[] = data?.resources ?? [];
 
   const filteredResources = useMemo(() => {

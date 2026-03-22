@@ -27,7 +27,7 @@ export function TopLoadingBar({ isLoading, className }: TopLoadingBarProps) {
       const timer = setTimeout(() => setPhase('done'), 400);
       return () => clearTimeout(timer);
     }
-  }, [isLoading]);
+  }, [isLoading, phase]);
 
   // Reset after done animation
   useEffect(() => {

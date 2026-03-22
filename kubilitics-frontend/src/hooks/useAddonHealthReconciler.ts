@@ -45,11 +45,14 @@ export function useAddonHealthReconciler(clusterId: string) {
 
     const reconcile = () => {
       // Check React Query cache for current installed addons data
-      const cachedData = queryClient.getQueryData<any[]>(ADDON_KEYS.installed(clusterId));
+      const cachedData = queryClient.getQueryData<unknown[]>(ADDON_KEYS.installed(clusterId));
       if (!cachedData) return; // No cache yet — wait for first fetch
 
       const hasTransitional = cachedData.some(
-        (addon: any) => TRANSITIONAL.has(addon.status)
+        (addon: unknown) => {
+          const addonObj = addon as Record<string, unknown>;
+          return TRANSITIONAL.has(addonObj.status as string);
+        }
       );
 
       // If the cache shows no transitional addons but the store thinks we're

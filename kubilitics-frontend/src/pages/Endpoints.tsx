@@ -101,6 +101,7 @@ export default function Endpoints() {
  const { data, isLoading, isError, isFetching, dataUpdatedAt, refetch } = useK8sResourceList<K8sEndpoint>('endpoints', undefined, { limit: 5000 });
  const deleteResource = useDeleteK8sResource('endpoints');
 
+ // eslint-disable-next-line react-hooks/exhaustive-deps
  const endpoints: Endpoint[] = isConnected && data?.items
  ? data.items.map((ep) => {
  let readyCount = 0;

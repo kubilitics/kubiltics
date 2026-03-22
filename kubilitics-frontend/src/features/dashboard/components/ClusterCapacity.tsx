@@ -354,11 +354,11 @@ export const ClusterCapacity = () => {
       <CardContent className="flex-1 flex flex-col pt-2 pb-6 px-6 relative z-10">
         {isLoading ? (
           <div className="flex-1 flex items-center justify-center">
-            <Loader2 className="h-7 w-7 animate-spin text-muted-foreground/40" />
+            <Loader2 className="h-7 w-7 animate-spin text-muted-foreground/70" />
           </div>
         ) : !hasData ? (
           <div className="flex-1 flex flex-col items-center justify-center gap-3">
-            <Server className="h-9 w-9 text-muted-foreground/25" />
+            <Server className="h-9 w-9 text-muted-foreground/60" />
             <p className="text-sm text-muted-foreground">No node data available</p>
           </div>
         ) : (

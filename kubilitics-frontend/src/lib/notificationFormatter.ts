@@ -157,15 +157,15 @@ function extractBodyError(body: string | undefined): { message?: string; details
 
   // Try JSON first
   try {
-    const parsed = JSON.parse(trimmed) as any;
+    const parsed = JSON.parse(trimmed) as unknown;
     if (typeof parsed === 'string') {
       return { message: parsed };
     }
-    if (parsed && typeof parsed.error === 'string') {
-      return { message: parsed.error, details: trimmed };
+    if (parsed && typeof (parsed as Record<string, unknown>).error === 'string') {
+      return { message: (parsed as Record<string, unknown>).error as string, details: trimmed };
     }
-    if (parsed && typeof parsed.message === 'string') {
-      return { message: parsed.message, details: trimmed };
+    if (parsed && typeof (parsed as Record<string, unknown>).message === 'string') {
+      return { message: (parsed as Record<string, unknown>).message as string, details: trimmed };
     }
   } catch {
     // Not JSON – fall through

@@ -112,6 +112,8 @@ export default function CustomResources() {
  [isConnected, rawItems]
  );
 
+ const stats = useMemo(() => ({ total: items.length }), [items]);
+
  const namespaces = useMemo(
  () => [...new Set(items.map((i) => i.namespace).filter(Boolean))].sort(),
  [items]
@@ -260,8 +262,6 @@ export default function CustomResources() {
  </div>
  );
  }
-
- const stats = useMemo(() => ({ total: items.length }), [items]);
 
  return (
  <div className="space-y-6">

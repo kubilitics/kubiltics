@@ -275,8 +275,8 @@ export default function DaemonSetDetail() {
       triggerFastPolling();
       setActiveTab('pods');
       setSearchParams({ tab: 'pods' });
-    } catch (err: any) {
-      toast.error(err?.message ?? 'Failed to restart');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to restart');
       throw err;
     }
   }, [isConnected, name, namespace, patchDaemonSet, triggerFastPolling, setSearchParams]);
@@ -290,8 +290,8 @@ export default function DaemonSetDetail() {
       await updateDaemonSet.mutateAsync({ name, yaml: newYaml, namespace });
       toast.success('DaemonSet updated successfully');
       refetch();
-    } catch (error: any) {
-      toast.error(`Failed to update: ${error.message}`);
+    } catch (error) {
+      toast.error(`Failed to update: ${error instanceof Error ? error.message : String(error)}`);
       throw error;
     }
   }, [isConnected, name, namespace, updateDaemonSet, refetch]);

@@ -130,9 +130,9 @@ export function TopologyToolbar({
                   : "bg-white text-gray-600 border-gray-200 hover:border-gray-300 hover:bg-gray-50 shadow-sm"
               }`}
             >
-              <Filter className={`h-3.5 w-3.5 ${hasNamespaceFilter ? "text-indigo-500" : "text-gray-400 group-hover:text-gray-500"}`} />
+              <Filter className={`h-3.5 w-3.5 ${hasNamespaceFilter ? "text-indigo-500" : "text-gray-600 dark:text-gray-400 group-hover:text-gray-500"}`} />
               <span className="max-w-[140px] truncate">{nsLabel}</span>
-              <ChevronDown className={`h-3 w-3 transition-colors ${hasNamespaceFilter ? "text-indigo-400" : "text-gray-400"}`} />
+              <ChevronDown className={`h-3 w-3 transition-colors ${hasNamespaceFilter ? "text-indigo-400" : "text-gray-600 dark:text-gray-400"}`} />
               {hasNamespaceFilter && (
                 <span className="flex h-4 min-w-[16px] items-center justify-center rounded-full bg-indigo-500 px-1 text-[10px] text-white font-bold shadow-sm">
                   {selectedNamespaces.size}
@@ -193,7 +193,7 @@ export function TopologyToolbar({
                   <div>
                     <div className="flex items-center gap-1.5 px-2 mb-1.5">
                       <div className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">User Namespaces</p>
+                      <p className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest">User Namespaces</p>
                     </div>
                     <div className="space-y-0.5">
                       {userNamespaces.map((ns) => {
@@ -218,7 +218,7 @@ export function TopologyToolbar({
                   <div>
                     <div className="flex items-center gap-1.5 px-2 mb-1.5">
                       <div className="h-1.5 w-1.5 rounded-full bg-orange-400" />
-                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">System Namespaces</p>
+                      <p className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest">System Namespaces</p>
                     </div>
                     <div className="space-y-0.5">
                       {systemNamespaces.map((ns) => {
@@ -265,52 +265,52 @@ export function TopologyToolbar({
 
         {/* ── Search ── */}
         <div className="relative flex-1 max-w-xs">
-          <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
+          <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-600 dark:text-gray-400" />
           <input
             ref={searchRef}
             data-topology-search
             aria-label="Search topology resources"
-            className="h-8 w-full rounded-lg border border-gray-200 bg-white pl-9 pr-8 text-sm placeholder:text-gray-400 focus:border-indigo-300 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-100 transition-all shadow-sm"
+            className="h-8 w-full rounded-lg border border-gray-200 bg-white dark:bg-slate-800 pl-9 pr-8 text-sm placeholder:text-gray-400 focus:border-indigo-300 focus:bg-white dark:focus:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-100 transition-all shadow-sm"
             placeholder="Search resources..."
             value={searchQuery}
             onChange={handleSearch}
             onFocus={() => setShowSearchResults(true)}
             onBlur={() => setTimeout(() => setShowSearchResults(false), 200)}
           />
-          <kbd className="absolute right-2.5 top-1/2 -translate-y-1/2 hidden sm:inline-flex h-5 items-center rounded border border-gray-200 bg-gray-100 px-1.5 text-[10px] font-medium text-gray-400">
+          <kbd className="absolute right-2.5 top-1/2 -translate-y-1/2 hidden sm:inline-flex h-5 items-center rounded border border-gray-200 bg-gray-100 dark:bg-gray-700 px-1.5 text-[10px] font-medium text-gray-600 dark:text-gray-400">
             /
           </kbd>
           {/* Search syntax help — shows when focused with empty query */}
           {showSearchResults && searchResults.length === 0 && !searchQuery && (
-            <div className="absolute left-0 top-full z-50 mt-1.5 w-80 rounded-xl border border-gray-200 bg-white shadow-2xl p-3">
-              <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Search syntax</div>
+            <div className="absolute left-0 top-full z-50 mt-1.5 w-80 rounded-xl border border-gray-200 bg-white dark:bg-slate-800 shadow-2xl p-3">
+              <div className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest mb-2">Search syntax</div>
               <div className="space-y-1.5 text-[11px]">
                 <div className="flex items-center gap-2">
-                  <kbd className="px-1.5 py-0.5 rounded bg-gray-100 font-mono text-[10px] text-gray-500 border border-gray-200">nginx</kbd>
-                  <span className="text-gray-500">Search by name</span>
+                  <kbd className="px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-700 font-mono text-[10px] text-gray-600 dark:text-gray-400 border border-gray-200">nginx</kbd>
+                  <span className="text-gray-600 dark:text-gray-400">Search by name</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <kbd className="px-1.5 py-0.5 rounded bg-gray-100 font-mono text-[10px] text-gray-500 border border-gray-200">kind:Pod</kbd>
-                  <span className="text-gray-500">Filter by resource type</span>
+                  <kbd className="px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-700 font-mono text-[10px] text-gray-600 dark:text-gray-400 border border-gray-200">kind:Pod</kbd>
+                  <span className="text-gray-600 dark:text-gray-400">Filter by resource type</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <kbd className="px-1.5 py-0.5 rounded bg-gray-100 font-mono text-[10px] text-gray-500 border border-gray-200">ns:default</kbd>
-                  <span className="text-gray-500">Filter by namespace</span>
+                  <kbd className="px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-700 font-mono text-[10px] text-gray-600 dark:text-gray-400 border border-gray-200">ns:default</kbd>
+                  <span className="text-gray-600 dark:text-gray-400">Filter by namespace</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <kbd className="px-1.5 py-0.5 rounded bg-gray-100 font-mono text-[10px] text-gray-500 border border-gray-200">status:error</kbd>
-                  <span className="text-gray-500">Filter by health status</span>
+                  <kbd className="px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-700 font-mono text-[10px] text-gray-600 dark:text-gray-400 border border-gray-200">status:error</kbd>
+                  <span className="text-gray-600 dark:text-gray-400">Filter by health status</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <kbd className="px-1.5 py-0.5 rounded bg-gray-100 font-mono text-[10px] text-gray-500 border border-gray-200">label:app=web</kbd>
-                  <span className="text-gray-500">Filter by label</span>
+                  <kbd className="px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-700 font-mono text-[10px] text-gray-600 dark:text-gray-400 border border-gray-200">label:app=web</kbd>
+                  <span className="text-gray-600 dark:text-gray-400">Filter by label</span>
                 </div>
               </div>
             </div>
           )}
           {showSearchResults && searchResults.length > 0 && (
-            <div className="absolute left-0 top-full z-50 mt-1.5 max-h-72 w-96 overflow-y-auto rounded-xl border border-gray-200 bg-white shadow-2xl">
-              <div className="sticky top-0 px-3 py-2 text-[10px] font-bold text-gray-400 uppercase tracking-widest border-b border-gray-100 bg-white/95 backdrop-blur-sm rounded-t-xl">
+            <div className="absolute left-0 top-full z-50 mt-1.5 max-h-72 w-96 overflow-y-auto rounded-xl border border-gray-200 bg-white dark:bg-slate-800 shadow-2xl">
+              <div className="sticky top-0 px-3 py-2 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest border-b border-gray-100 dark:border-gray-700 bg-white dark:bg-slate-800 bg-opacity-95 dark:bg-opacity-95 backdrop-blur-sm rounded-t-xl">
                 {searchResults.length} results
               </div>
               {searchResults.map((r) => (
@@ -359,7 +359,7 @@ export function TopologyToolbar({
           {/* Fit View */}
           <button
             type="button"
-            className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold text-gray-600 bg-white border border-gray-200 hover:border-gray-300 hover:bg-gray-50 transition-all shadow-sm"
+            className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold text-gray-600 dark:text-gray-400 bg-white dark:bg-slate-800 border border-gray-200 dark:border-gray-700 hover:border-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-all shadow-sm"
             onClick={onFitView}
             title="Fit to view (F)"
           >
@@ -372,12 +372,12 @@ export function TopologyToolbar({
             <DropdownMenuTrigger asChild>
               <button
                 type="button"
-                className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold text-gray-600 bg-white border border-gray-200 hover:border-gray-300 hover:bg-gray-50 transition-all shadow-sm disabled:opacity-40"
+                className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold text-gray-600 dark:text-gray-400 bg-white dark:bg-slate-800 border border-gray-200 dark:border-gray-700 hover:border-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-all shadow-sm disabled:opacity-40"
                 disabled={!topology}
               >
                 <Download className="h-3.5 w-3.5" />
                 <span className="hidden sm:inline">Export</span>
-                <ChevronDown className="h-3 w-3 text-gray-400" />
+                <ChevronDown className="h-3 w-3 text-gray-600 dark:text-gray-400" />
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-52 p-1 rounded-xl shadow-xl">
@@ -395,7 +395,7 @@ export function TopologyToolbar({
                       </div>
                       <div>
                         <div className="text-xs font-semibold">PNG</div>
-                        <div className="text-[10px] text-gray-400">Full topology image</div>
+                        <div className="text-[10px] text-gray-600 dark:text-gray-400">Full topology image</div>
                       </div>
                     </DropdownMenuItem>
                     <DropdownMenuItem className="rounded-lg gap-2.5 py-2" onClick={() => triggerExport("svg")}>
@@ -404,7 +404,7 @@ export function TopologyToolbar({
                       </div>
                       <div>
                         <div className="text-xs font-semibold">SVG</div>
-                        <div className="text-[10px] text-gray-400">Scalable vector</div>
+                        <div className="text-[10px] text-gray-600 dark:text-gray-400">Scalable vector</div>
                       </div>
                     </DropdownMenuItem>
                     <DropdownMenuItem className="rounded-lg gap-2.5 py-2" onClick={() => exportTopologyPDF(clusterName, viewMode, selectedNamespaces)}>
@@ -413,7 +413,7 @@ export function TopologyToolbar({
                       </div>
                       <div>
                         <div className="text-xs font-semibold">PDF</div>
-                        <div className="text-[10px] text-gray-400">Print-ready document</div>
+                        <div className="text-[10px] text-gray-600 dark:text-gray-400">Print-ready document</div>
                       </div>
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
@@ -423,7 +423,7 @@ export function TopologyToolbar({
                       </div>
                       <div>
                         <div className="text-xs font-semibold">JSON</div>
-                        <div className="text-[10px] text-gray-400">Raw topology data</div>
+                        <div className="text-[10px] text-gray-600 dark:text-gray-400">Raw topology data</div>
                       </div>
                     </DropdownMenuItem>
                     <DropdownMenuItem className="rounded-lg gap-2.5 py-2" onClick={() => exportTopologyDrawIO(topology ?? null, ctx)}>
@@ -432,7 +432,7 @@ export function TopologyToolbar({
                       </div>
                       <div>
                         <div className="text-xs font-semibold">Draw.io</div>
-                        <div className="text-[10px] text-gray-400">Editable diagram</div>
+                        <div className="text-[10px] text-gray-600 dark:text-gray-400">Editable diagram</div>
                       </div>
                     </DropdownMenuItem>
                   </>

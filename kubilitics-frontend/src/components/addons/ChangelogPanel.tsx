@@ -76,7 +76,19 @@ export function ChangelogPanel({ versions }: ChangelogPanelProps) {
 }
 
 // Minimal Button component if not imported from UI
-function Button({ className, variant, size, asChild, ...props }: any) {
+interface ButtonProps {
+    className?: string;
+    variant?: string;
+    size?: string;
+    asChild?: boolean;
+    children?: React.ReactNode;
+    onClick?: () => void;
+    href?: string;
+    target?: string;
+    rel?: string;
+}
+
+function Button({ className, variant, size, asChild, ...props }: ButtonProps) {
     const Component = asChild ? 'span' : 'button';
     return <Component className={className} {...props} />;
 }

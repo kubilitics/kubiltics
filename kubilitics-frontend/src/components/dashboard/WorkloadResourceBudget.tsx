@@ -106,13 +106,13 @@ export function WorkloadResourceBudget() {
 
     const pods = podsList.data?.items ?? [];
     for (const pod of pods) {
-      const phase = (pod as any)?.status?.phase;
+      const phase = (pod as unknown as Record<string, unknown>)?.status?.phase;
       if (phase === "Succeeded" || phase === "Failed") continue;
 
-      const ownerRefs = (pod as any)?.metadata?.ownerReferences ?? [];
+      const ownerRefs = (pod as unknown as Record<string, unknown>)?.metadata?.ownerReferences ?? [];
       let kind = "Standalone";
       if (ownerRefs.length > 0) {
-        const ownerKind: string = ownerRefs[0].kind;
+        const ownerKind: string = (ownerRefs[0] as Record<string, unknown>).kind as string;
         // ReplicaSets are overwhelmingly owned by Deployments
         kind = ownerKind === "ReplicaSet" ? "Deployment" : ownerKind;
       }
@@ -130,12 +130,12 @@ export function WorkloadResourceBudget() {
       typeMap[kind].count++;
       totalPods++;
 
-      const containers = (pod as any)?.spec?.containers ?? [];
+      const containers = (pod as unknown as Record<string, unknown>)?.spec?.containers ?? [];
       for (const c of containers) {
-        const requests = c.resources?.requests ?? {};
-        const limits = c.resources?.limits ?? {};
-        const cpuReq = parseCpu(requests.cpu || "0");
-        const memReq = parseMemory(requests.memory || "0");
+        const requests = (c as Record<string, unknown>).resources?.requests ?? {};
+        const limits = (c as Record<string, unknown>).resources?.limits ?? {};
+        const cpuReq = parseCpu((requests.cpu as string) || "0");
+        const memReq = parseMemory((requests.memory as string) || "0");
         typeMap[kind].cpuRequests += cpuReq;
         typeMap[kind].memRequests += memReq;
         typeMap[kind].cpuLimits += parseCpu(limits.cpu || "0");

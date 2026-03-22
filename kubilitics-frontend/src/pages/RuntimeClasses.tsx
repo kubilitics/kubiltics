@@ -120,6 +120,7 @@ export default function RuntimeClasses() {
  const { data, isLoading, isError, isFetching, dataUpdatedAt, refetch } = useK8sResourceList<RuntimeClassResource>('runtimeclasses', undefined, { limit: 5000 });
  const deleteResource = useDeleteK8sResource('runtimeclasses');
 
+ // eslint-disable-next-line react-hooks/exhaustive-deps
  const items: RuntimeClass[] = isConnected && data
  ? (data.items ?? []).map(transformRuntimeClass)
  : [];

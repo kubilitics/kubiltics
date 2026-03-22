@@ -144,6 +144,7 @@ export default function Ingresses() {
  const { data, isLoading, isError, isFetching, dataUpdatedAt, refetch } = useK8sResourceList<K8sIngress>('ingresses', undefined, { limit: 5000 });
  const deleteResource = useDeleteK8sResource('ingresses');
 
+ // eslint-disable-next-line react-hooks/exhaustive-deps
  const ingresses: Ingress[] = isConnected && data?.items
  ? (data.items as K8sIngress[]).map((ing) => {
  const hosts = ing.spec?.rules?.map((r) => r.host).filter(Boolean).join(', ') || '*';
@@ -610,7 +611,7 @@ spec:
  <ResizableTableCell columnId="requestsSec">
  <Tooltip>
  <TooltipTrigger asChild>
- <span className="text-muted-foreground/40 text-sm cursor-help">—</span>
+ <span className="text-muted-foreground text-sm cursor-help">—</span>
  </TooltipTrigger>
  <TooltipContent side="top" className="text-xs max-w-56">
  Requires ingress controller metrics (e.g. Prometheus + NGINX Ingress controller)
@@ -620,7 +621,7 @@ spec:
  <ResizableTableCell columnId="errorRate">
  <Tooltip>
  <TooltipTrigger asChild>
- <span className="text-muted-foreground/40 text-sm cursor-help">—</span>
+ <span className="text-muted-foreground text-sm cursor-help">—</span>
  </TooltipTrigger>
  <TooltipContent side="top" className="text-xs max-w-56">
  Requires ingress controller metrics (e.g. Prometheus + NGINX Ingress controller)
@@ -677,7 +678,7 @@ spec:
  <ResizableTableCell columnId="requestsSec">
  <Tooltip>
  <TooltipTrigger asChild>
- <span className="text-muted-foreground/40 text-sm cursor-help">—</span>
+ <span className="text-muted-foreground text-sm cursor-help">—</span>
  </TooltipTrigger>
  <TooltipContent side="top" className="text-xs max-w-56">
  Requires ingress controller metrics (e.g. Prometheus + NGINX Ingress controller)
@@ -687,7 +688,7 @@ spec:
  <ResizableTableCell columnId="errorRate">
  <Tooltip>
  <TooltipTrigger asChild>
- <span className="text-muted-foreground/40 text-sm cursor-help">—</span>
+ <span className="text-muted-foreground text-sm cursor-help">—</span>
  </TooltipTrigger>
  <TooltipContent side="top" className="text-xs max-w-56">
  Requires ingress controller metrics (e.g. Prometheus + NGINX Ingress controller)

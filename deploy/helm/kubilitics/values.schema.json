@@ -1,0 +1,415 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "title": "Kubilitics Helm Chart Values Schema",
+  "description": "Validation schema for Kubilitics Helm chart values",
+  "required": ["image"],
+  "properties": {
+    "replicaCount": {
+      "type": "integer",
+      "title": "Replica Count",
+      "description": "Number of pod replicas to deploy",
+      "minimum": 1,
+      "default": 1
+    },
+    "image": {
+      "type": "object",
+      "title": "Container Image Configuration",
+      "description": "Docker image settings for Kubilitics backend",
+      "required": ["repository", "tag"],
+      "properties": {
+        "repository": {
+          "type": "string",
+          "title": "Image Repository",
+          "description": "Container image repository",
+          "minLength": 1
+        },
+        "tag": {
+          "type": "string",
+          "title": "Image Tag",
+          "description": "Container image tag/version",
+          "minLength": 1
+        },
+        "pullPolicy": {
+          "type": "string",
+          "title": "Image Pull Policy",
+          "description": "Kubernetes image pull policy",
+          "enum": ["Always", "IfNotPresent", "Never"],
+          "default": "IfNotPresent"
+        }
+      }
+    },
+    "service": {
+      "type": "object",
+      "title": "Kubernetes Service Configuration",
+      "description": "Service settings for exposing Kubilitics",
+      "properties": {
+        "type": {
+          "type": "string",
+          "title": "Service Type",
+          "description": "Kubernetes service type",
+          "enum": ["ClusterIP", "NodePort", "LoadBalancer"],
+          "default": "ClusterIP"
+        },
+        "port": {
+          "type": "integer",
+          "title": "Service Port",
+          "description": "Port exposed by the service",
+          "minimum": 1,
+          "maximum": 65535,
+          "default": 819
+        }
+      }
+    },
+    "config": {
+      "type": "object",
+      "title": "Kubilitics Configuration",
+      "description": "Application configuration (env var prefixed with KUBILITICS_)",
+      "properties": {
+        "port": {
+          "type": "integer",
+          "title": "Application Port",
+          "description": "Port the Kubilitics backend listens on",
+          "minimum": 1,
+          "maximum": 65535,
+          "default": 819
+        },
+        "logLevel": {
+          "type": "string",
+          "title": "Log Level",
+          "description": "Logging verbosity level",
+          "enum": ["debug", "info", "warn", "error"],
+          "default": "info"
+        },
+        "authMode": {
+          "type": "string",
+          "title": "Authentication Mode",
+          "description": "Authentication requirement level: disabled (no auth), optional (Bearer or anonymous), required (JWT mandatory)",
+          "enum": ["disabled", "optional", "required"],
+          "default": "required"
+        },
+        "allowedOrigins": {
+          "type": "string",
+          "title": "Allowed CORS Origins",
+          "description": "Comma-separated list of allowed origins for CORS. Do not use '*' in production. Do not use the placeholder 'https://your-domain.com'.",
+          "not": {
+            "const": "https://your-domain.com"
+          }
+        },
+        "requestTimeoutSec": {
+          "type": "integer",
+          "title": "Request Timeout",
+          "description": "HTTP request timeout in seconds",
+          "minimum": 1,
+          "default": 30
+        },
+        "topologyTimeoutSec": {
+          "type": "integer",
+          "title": "Topology Timeout",
+          "description": "Topology collection timeout in seconds",
+          "minimum": 1,
+          "default": 30
+        },
+        "shutdownTimeoutSec": {
+          "type": "integer",
+          "title": "Shutdown Timeout",
+          "description": "Graceful shutdown timeout in seconds",
+          "minimum": 1,
+          "default": 15
+        },
+        "maxClusters": {
+          "type": "integer",
+          "title": "Maximum Clusters",
+          "description": "Maximum number of clusters to manage",
+          "minimum": 1,
+          "default": 100
+        },
+        "databasePath": {
+          "type": "string",
+          "title": "Database Path",
+          "description": "Path to SQLite database file (used when database.type=sqlite)",
+          "default": "/data/kubilitics.db"
+        },
+        "database": {
+          "type": "object",
+          "title": "Database Configuration",
+          "description": "Database backend settings",
+          "properties": {
+            "type": {
+              "type": "string",
+              "title": "Database Type",
+              "description": "Database backend: sqlite or postgresql",
+              "enum": ["sqlite", "postgresql"],
+              "default": "sqlite"
+            },
+            "sqlite": {
+              "type": "object",
+              "title": "SQLite Configuration",
+              "description": "SQLite-specific settings",
+              "properties": {
+                "path": {
+                  "type": "string",
+                  "title": "SQLite Database Path",
+                  "description": "File path for SQLite database",
+                  "default": "/data/kubilitics.db"
+                }
+              }
+            },
+            "postgresql": {
+              "type": "object",
+              "title": "PostgreSQL Configuration",
+              "description": "PostgreSQL-specific settings",
+              "properties": {
+                "host": {
+                  "type": "string",
+                  "title": "PostgreSQL Host",
+                  "description": "PostgreSQL server hostname"
+                },
+                "port": {
+                  "type": "integer",
+                  "title": "PostgreSQL Port",
+                  "description": "PostgreSQL server port",
+                  "minimum": 1,
+                  "maximum": 65535,
+                  "default": 5432
+                },
+                "database": {
+                  "type": "string",
+                  "title": "PostgreSQL Database Name",
+                  "description": "Database name"
+                },
+                "username": {
+                  "type": "string",
+                  "title": "PostgreSQL Username",
+                  "description": "Database user"
+                },
+                "password": {
+                  "type": "string",
+                  "title": "PostgreSQL Password",
+                  "description": "Database password"
+                },
+                "connectionString": {
+                  "type": "string",
+                  "title": "PostgreSQL Connection String",
+                  "description": "Full connection string (overrides individual host/port/user/pass)"
+                },
+                "sslMode": {
+                  "type": "string",
+                  "title": "PostgreSQL SSL Mode",
+                  "description": "SSL connection mode",
+                  "enum": ["disable", "allow", "prefer", "require", "verify-ca", "verify-full"],
+                  "default": "require"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "secret": {
+      "type": "object",
+      "title": "Secret Configuration",
+      "description": "Sensitive credentials and secrets",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "title": "Create Secret",
+          "description": "Whether to create a Kubernetes Secret. Auto-enabled when authMode=required.",
+          "default": false
+        },
+        "authJWTSecret": {
+          "type": "string",
+          "title": "JWT Secret",
+          "description": "Secret key for JWT signing. Required when authMode=required. Should be at least 32 characters.",
+          "minLength": 0
+        },
+        "authAdminPass": {
+          "type": "string",
+          "title": "Admin Password",
+          "description": "Initial admin password. Auto-generated if not provided.",
+          "minLength": 0
+        },
+        "oidcClientSecret": {
+          "type": "string",
+          "title": "OIDC Client Secret",
+          "description": "OAuth2/OIDC client secret if using external identity provider"
+        },
+        "samlCertificate": {
+          "type": "string",
+          "title": "SAML Certificate",
+          "description": "X.509 certificate for SAML authentication"
+        },
+        "samlPrivateKey": {
+          "type": "string",
+          "title": "SAML Private Key",
+          "description": "Private key for SAML authentication"
+        },
+        "mfaEncryptionKey": {
+          "type": "string",
+          "title": "MFA Encryption Key",
+          "description": "Encryption key for MFA-related data"
+        },
+        "data": {
+          "type": "object",
+          "title": "Additional Secrets",
+          "description": "Additional key-value pairs to include in the Secret",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "persistence": {
+      "type": "object",
+      "title": "Persistence Configuration",
+      "description": "Storage settings for SQLite database",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "title": "Enable Persistence",
+          "description": "Whether to use persistent volume for database",
+          "default": true
+        },
+        "storageClass": {
+          "type": "string",
+          "title": "Storage Class",
+          "description": "Kubernetes storage class name (empty string uses default)"
+        },
+        "size": {
+          "type": "string",
+          "title": "Storage Size",
+          "description": "Size of persistent volume",
+          "default": "1Gi"
+        }
+      }
+    },
+    "resources": {
+      "type": "object",
+      "title": "Kubernetes Resource Requirements",
+      "description": "CPU and memory requests/limits",
+      "properties": {
+        "limits": {
+          "type": "object",
+          "title": "Resource Limits",
+          "description": "Maximum CPU and memory the pod can use",
+          "properties": {
+            "cpu": {
+              "type": "string",
+              "title": "CPU Limit",
+              "description": "Maximum CPU (e.g., 500m, 1)"
+            },
+            "memory": {
+              "type": "string",
+              "title": "Memory Limit",
+              "description": "Maximum memory (e.g., 512Mi, 1Gi)"
+            }
+          }
+        },
+        "requests": {
+          "type": "object",
+          "title": "Resource Requests",
+          "description": "Minimum CPU and memory the pod needs",
+          "properties": {
+            "cpu": {
+              "type": "string",
+              "title": "CPU Request",
+              "description": "Requested CPU (e.g., 100m, 250m)"
+            },
+            "memory": {
+              "type": "string",
+              "title": "Memory Request",
+              "description": "Requested memory (e.g., 256Mi, 512Mi)"
+            }
+          }
+        }
+      }
+    },
+    "rbac": {
+      "type": "object",
+      "title": "RBAC Configuration",
+      "description": "Role-based access control settings",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "title": "Enable RBAC",
+          "description": "Whether to create RBAC resources",
+          "default": true
+        },
+        "additionalRules": {
+          "type": "array",
+          "title": "Additional RBAC Rules",
+          "description": "Extra ClusterRole rules for custom resources"
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "config": {
+            "properties": {
+              "database": {
+                "properties": {
+                  "type": {
+                    "const": "postgresql"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "config": {
+            "properties": {
+              "database": {
+                "properties": {
+                  "postgresql": {
+                    "properties": {
+                      "host": {
+                        "minLength": 1,
+                        "errorMessage": "When database.type is 'postgresql', database.postgresql.host is required and cannot be empty"
+                      }
+                    },
+                    "required": ["host"]
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "config": {
+            "properties": {
+              "authMode": {
+                "const": "required"
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "secret": {
+            "properties": {
+              "enabled": {
+                "const": true,
+                "errorMessage": "When authMode is 'required', secret.enabled must be true"
+              }
+            }
+          }
+        }
+      }
+    }
+  ],
+  "errorMessage": {
+    "required": "Missing required properties: ${missingProperty}",
+    "type": "Expected an object"
+  }
+}

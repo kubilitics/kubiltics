@@ -80,6 +80,7 @@ export default function VolumeSnapshotClasses() {
  const deleteVSC = useDeleteK8sResource('volumesnapshotclasses');
  const createVSC = useCreateK8sResource('volumesnapshotclasses');
 
+ // eslint-disable-next-line react-hooks/exhaustive-deps
  const allItems = (data?.allItems ?? []) as K8sVolumeSnapshotClass[];
  const items: VolumeSnapshotClass[] = useMemo(() => (isConnected ? allItems.map(mapVSC) : []), [isConnected, allItems]);
 

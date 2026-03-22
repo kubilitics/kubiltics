@@ -168,7 +168,7 @@ function transformResource(resource: PodResource): Pod {
  let status: Pod['status'] = (statusPhase as Pod['status']) || 'Unknown';
 
  // Refine status based on container states
- if ((resource.metadata as any).deletionTimestamp) {
+ if ((resource.metadata as unknown as Record<string, unknown>).deletionTimestamp) {
  status = 'Terminating';
  } else {
  for (const c of containerStatuses) {
