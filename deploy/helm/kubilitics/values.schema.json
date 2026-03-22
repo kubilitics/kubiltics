@@ -57,7 +57,7 @@
           "description": "Port exposed by the service",
           "minimum": 1,
           "maximum": 65535,
-          "default": 819
+          "default": 8190
         }
       }
     },
@@ -72,7 +72,7 @@
           "description": "Port the Kubilitics backend listens on",
           "minimum": 1,
           "maximum": 65535,
-          "default": 819
+          "default": 8190
         },
         "logLevel": {
           "type": "string",

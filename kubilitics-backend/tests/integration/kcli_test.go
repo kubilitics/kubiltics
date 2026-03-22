@@ -451,7 +451,7 @@ func TestKCLIBinaryNotFoundError(t *testing.T) {
 func setupTestHandler(t *testing.T) *rest.Handler {
 	cfg := &config.Config{
 		DatabasePath: ":memory:",
-		Port:         819,
+		Port:         8190,
 	}
 
 	repo, err := repository.NewSQLiteRepository(cfg.DatabasePath)

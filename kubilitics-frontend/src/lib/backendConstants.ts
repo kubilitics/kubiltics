@@ -1,11 +1,11 @@
 /**
  * Single source of truth for Kubilitics backend URL and port.
- * Aligns with: backend (config default 819), desktop sidecar (BACKEND_PORT 819).
+ * Aligns with: backend (config default 8190), desktop sidecar (BACKEND_PORT 8190).
  * Use these constants so port/URL changes happen in one place.
  */
 
 /** Default port the Kubilitics backend listens on (desktop sidecar and standalone server). */
-export const DEFAULT_BACKEND_PORT = Number(import.meta.env.VITE_BACKEND_PORT) || 819;
+export const DEFAULT_BACKEND_PORT = Number(import.meta.env.VITE_BACKEND_PORT) || 8190;
 
 /** Default backend base URL when running on localhost (desktop or browser dev). */
 export const DEFAULT_BACKEND_BASE_URL = import.meta.env.VITE_BACKEND_URL || `http://localhost:${DEFAULT_BACKEND_PORT}`;

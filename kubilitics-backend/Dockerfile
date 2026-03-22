@@ -120,10 +120,10 @@ RUN mkdir -p /data && \
 
 USER kubilitics
 
-EXPOSE 819
+EXPOSE 8190
 EXPOSE 50051
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-    CMD wget --quiet --tries=1 --spider http://localhost:819/health || exit 1
+    CMD wget --quiet --tries=1 --spider http://localhost:8190/health || exit 1
 
 ENTRYPOINT ["./kubilitics-backend"]

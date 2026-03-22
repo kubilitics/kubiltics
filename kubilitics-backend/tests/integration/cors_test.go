@@ -16,7 +16,7 @@ import (
 func TestCORS_TauriOriginAlwaysPresent(t *testing.T) {
 	// Simulate env var override: KUBILITICS_ALLOWED_ORIGINS=http://localhost:5173
 	cfg := &config.Config{
-		Port:           819,
+		Port:           8190,
 		DatabasePath:   ":memory:",
 		AllowedOrigins: []string{"http://localhost:5173"}, // Custom origin, no tauri://
 	}
@@ -95,7 +95,7 @@ func TestCORS_TauriOriginAlwaysPresent(t *testing.T) {
 // per-request (Headlamp/Lens model).
 func TestCORS_XKubeconfigHeaderAllowed(t *testing.T) {
 	cfg := &config.Config{
-		Port:           819,
+		Port:           8190,
 		DatabasePath:   ":memory:",
 		AllowedOrigins: []string{"tauri://localhost"},
 	}

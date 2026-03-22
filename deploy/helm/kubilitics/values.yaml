@@ -50,7 +50,7 @@ rbac:
 # Backend listens on this port
 service:
   type: ClusterIP
-  port: 819
+  port: 8190
 
 # Database configuration
 # Option 1: SQLite (default, single-node, simple)
@@ -85,15 +85,15 @@ persistence:
 # Config: env vars (prefix KUBILITICS_)
 # See internal/config for all options
 config:
-  port: 819
+  port: 8190
   databasePath: "/data/kubilitics.db"
   logLevel: "info"
   # Authentication mode: "required" (production default), "optional" (accepts Bearer or anonymous), "disabled" (no auth)
   # IMPORTANT: "required" mandates JWT tokens for all API access. Set secret.authJWTSecret (>= 32 chars).
   authMode: "optional"
   # allowedOrigins for CORS. REQUIRED in production: set to your frontend origin(s), e.g. "https://kubilitics.example.com".
-  # Do not use "*" in production. Development default in backend is localhost:5173, localhost:819.
-  allowedOrigins: "http://localhost:5173,http://localhost:819"
+  # Do not use "*" in production. Development default in backend is localhost:5173, localhost:8190.
+  allowedOrigins: "https://kubilitics.com"
   requestTimeoutSec: 30
   topologyTimeoutSec: 30
   shutdownTimeoutSec: 15
@@ -171,7 +171,7 @@ frontend:
   # Frontend configuration
   config:
     backendService: "kubilitics"  # Backend service name
-    backendPort: 819  # Backend service port
+    backendPort: 8190  # Backend service port
   
   configMap:
     name: ""  # If empty, uses default name from _helpers.tpl

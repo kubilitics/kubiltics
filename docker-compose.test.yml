@@ -8,9 +8,9 @@ services:
       dockerfile: Dockerfile
     container_name: kubilitics-backend-test
     ports:
-      - "819:819"
+      - "8190:8190"
     environment:
-      - KUBILITICS_PORT=819
+      - KUBILITICS_PORT=8190
       - KUBILITICS_DATABASE_PATH=/data/kubilitics.db
       - KUBILITICS_LOG_LEVEL=info
       - KUBILITICS_ALLOWED_ORIGINS=http://localhost:5173,http://localhost:4173,http://frontend:80
@@ -20,7 +20,7 @@ services:
       - backend-data:/data
       - ./test_data/kubeconfig:/kubeconfig:ro
     healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:819/health"]
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8190/health"]
       interval: 10s
       timeout: 5s
       retries: 18
@@ -39,7 +39,7 @@ services:
     ports:
       - "4173:80"
     environment:
-      - VITE_BACKEND_URL=http://backend:819
+      - VITE_BACKEND_URL=http://backend:8190
     depends_on:
       backend:
         condition: service_healthy

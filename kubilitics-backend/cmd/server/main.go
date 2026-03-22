@@ -51,7 +51,7 @@ func main() {
 	if err != nil {
 		// Use defaults and create logger with defaults
 		cfg = &config.Config{
-			Port:           819,
+			Port:           8190,
 			DatabasePath:   "./kubilitics.db",
 			LogLevel:       "info",
 			LogFormat:      "json",
@@ -59,7 +59,7 @@ func main() {
 			"tauri://localhost",     // Tauri v2 WebView (desktop app)
 			"tauri://",             // Tauri origin without host
 			"http://localhost:5173", // Vite dev server
-			"http://localhost:819",  // Backend self-origin
+			"http://localhost:8190",  // Backend self-origin
 		},
 		}
 	}
@@ -493,7 +493,7 @@ func main() {
 		shutdownTimeout = time.Duration(cfg.ShutdownTimeoutSec) * time.Second
 	}
 
-	// Bind strictly to configured port (default 819) on all interfaces
+	// Bind strictly to configured port (default 8190) on all interfaces
 	// Phase 2: Enforce Proper Port Strategy - No port hunting, no random ports.
 	addr := fmt.Sprintf("0.0.0.0:%d", cfg.Port)
 	listener, err := net.Listen("tcp", addr)

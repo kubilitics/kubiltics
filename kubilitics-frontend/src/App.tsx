@@ -397,7 +397,7 @@ function ResourceLiveUpdates() {
 /**
  * PERMANENT FIX (TASK-NET-001 + P0-B):
  *
- * Two-layer defense to ensure backendBaseUrl is always http://localhost:819 in Tauri:
+ * Two-layer defense to ensure backendBaseUrl is always http://localhost:8190 in Tauri:
  *
  * Layer 1 (build-time, in backendConfigStore.ts):
  *   __VITE_IS_TAURI_BUILD__ constant baked by vite.config.ts → initialState uses
@@ -415,7 +415,7 @@ function SyncBackendUrl() {
     // Use build-time constant OR runtime check — belt-and-suspenders
     const isDesktop = (typeof __VITE_IS_TAURI_BUILD__ !== 'undefined' && __VITE_IS_TAURI_BUILD__) || isTauri();
     if (!isDesktop) return;
-    const expectedUrl = `http://localhost:${import.meta.env.VITE_BACKEND_PORT || 819}`;
+    const expectedUrl = `http://localhost:${import.meta.env.VITE_BACKEND_PORT || 8190}`;
     // Always ensure the stored URL is correct for Tauri — heal persisted '' values
     if (!backendBaseUrl || backendBaseUrl === '') {
       setBackendBaseUrl(expectedUrl);

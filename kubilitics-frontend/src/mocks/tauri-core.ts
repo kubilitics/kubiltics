@@ -87,7 +87,7 @@ export const invoke = async (cmd: string, _args?: unknown): Promise<unknown> => 
         case 'get_desktop_info':
             return {
                 app_version: '0.0.0-browser',
-                backend_port: 819,
+                backend_port: 8190,
                 backend_version: null,
                 backend_uptime_seconds: null,
                 kubeconfig_path: '~/.kube/config',

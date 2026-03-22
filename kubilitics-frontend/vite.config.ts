@@ -84,10 +84,10 @@ export default defineConfig(({ mode }) => ({
     // Use 5173 only; fail if port is in use instead of trying another
     port: 5173,
     strictPort: true,
-    // Proxy API, WebSocket, and health to the backend (port 819).
+    // Proxy API, WebSocket, and health to the backend (port 8190).
     // Override with VITE_BACKEND_PORT env var if main backend runs on a different port.
     proxy: (() => {
-      const port = process.env.VITE_BACKEND_PORT || "819";
+      const port = process.env.VITE_BACKEND_PORT || "8190";
       const target = `http://127.0.0.1:${port}`;
       const proxyOptions = (path: string) => ({
         target,

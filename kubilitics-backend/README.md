@@ -54,14 +54,14 @@ go build -o bin/kubilitics-backend cmd/server/main.go
 #### Option 1: Development Mode (No Authentication, HTTP)
 
 ```bash
-# Run with defaults (HTTP on port 819, no auth)
+# Run with defaults (HTTP on port 8190, no auth)
 go run cmd/server/main.go
 
 # Or use compiled binary
 ./bin/kubilitics-backend
 
-# Backend runs on http://localhost:819
-# Health check: curl http://localhost:819/health
+# Backend runs on http://localhost:8190
+# Health check: curl http://localhost:8190/health
 ```
 
 #### Option 2: With Authentication
@@ -77,7 +77,7 @@ export KUBILITICS_AUTH_ADMIN_PASS=changeme123
 go run cmd/server/main.go
 
 # Login to get token
-curl -X POST http://localhost:819/api/v1/auth/login \
+curl -X POST http://localhost:8190/api/v1/auth/login \
   -H "Content-Type: application/json" \
   -d '{"username":"admin","password":"changeme123"}'
 ```
@@ -96,23 +96,23 @@ export KUBILITICS_TLS_CERT_PATH=./tls-cert.pem
 export KUBILITICS_TLS_KEY_PATH=./tls-key.pem
 go run cmd/server/main.go
 
-# Backend runs on https://localhost:819
+# Backend runs on https://localhost:8190
 ```
 
 ### Verify Installation
 
 ```bash
 # Check health
-curl http://localhost:819/health
+curl http://localhost:8190/health
 
 # Expected response:
 # {"status":"healthy","service":"kubilitics-backend","version":"1.0.0"}
 
 # List clusters (if auth disabled)
-curl http://localhost:819/api/v1/clusters
+curl http://localhost:8190/api/v1/clusters
 
 # With authentication
-curl http://localhost:819/api/v1/clusters \
+curl http://localhost:8190/api/v1/clusters \
   -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
 ```
 
@@ -124,7 +124,7 @@ See [CONFIGURATION.md](./CONFIGURATION.md) for complete configuration reference.
 
 ```bash
 # Using environment variables
-export KUBILITICS_PORT=819
+export KUBILITICS_PORT=8190
 export KUBILITICS_DATABASE_PATH=/var/lib/kubilitics/kubilitics.db
 export KUBILITICS_LOG_LEVEL=info
 export KUBILITICS_LOG_FORMAT=json
@@ -134,7 +134,7 @@ export KUBILITICS_ALLOWED_ORIGINS="http://localhost:5173,https://kubilitics.exam
 Or create `config.yaml`:
 
 ```yaml
-port: 819
+port: 8190
 database_path: ./kubilitics.db
 log_level: info
 log_format: json
@@ -167,7 +167,7 @@ KUBILITICS_TLS_CERT_PATH=./tls-cert.pem \
 KUBILITICS_TLS_KEY_PATH=./tls-key.pem \
 go run cmd/server/main.go
 
-# Backend runs on https://localhost:819
+# Backend runs on https://localhost:8190
 # Note: Browser will show security warning for self-signed cert (expected)
 ```
 
@@ -254,7 +254,7 @@ See [CONFIGURATION.md](./CONFIGURATION.md) for complete configuration reference.
 
 Create `config.yaml`:
 ```yaml
-port: 819
+port: 8190
 database_path: ./kubilitics.db
 log_level: info
 log_format: json
@@ -264,7 +264,7 @@ allowed_origins:
 
 Or use environment variables:
 ```bash
-export KUBILITICS_PORT=819
+export KUBILITICS_PORT=8190
 export KUBILITICS_DATABASE_PATH=./kubilitics.db
 export KUBILITICS_LOG_LEVEL=info
 export KUBILITICS_LOG_FORMAT=json
@@ -286,7 +286,7 @@ See [API_DOCUMENTATION.md](./API_DOCUMENTATION.md) for complete API reference in
 - **Topology**: `GET /api/v1/clusters/{id}/topology`
 - **Resources**: `GET /api/v1/clusters/{id}/resources/{kind}`
 - **Metrics**: `GET /api/v1/clusters/{id}/metrics/summary`
-- **WebSocket**: `ws://localhost:819/ws/resources`
+- **WebSocket**: `ws://localhost:8190/ws/resources`
 
 ## Testing
 
@@ -320,7 +320,7 @@ go test -v ./tests/integration/...
 docker build -t kubilitics-backend .
 
 # Run container
-docker run -p 819:819 \
+docker run -p 8190:8190 \
   -v ~/.kube/config:/root/.kube/config \
   kubilitics-backend
 ```

@@ -1,17 +1,17 @@
 #!/bin/sh
 # docker-entrypoint.sh — Runtime configuration injection for Kubilitics frontend.
 #
-# In desktop mode, API URLs are known at build time (localhost:819).
+# In desktop mode, API URLs are known at build time (localhost:8190).
 # In-cluster mode, the backend Service hostname varies per deployment.
 # This script replaces build-time placeholder strings in the compiled JS bundle
 # with runtime values from environment variables BEFORE nginx starts.
 #
 # Environment variables:
-#   KUBILITICS_BACKEND_URL  - Backend API base URL (default: http://backend:819)
+#   KUBILITICS_BACKEND_URL  - Backend API base URL (default: http://backend:8190)
 #   KUBILITICS_WS_URL       - WebSocket base URL (default: derived from KUBILITICS_BACKEND_URL)
 #
 # The Vite build produces JS files with:
-#   import.meta.env.VITE_BACKEND_URL → "http://localhost:819" (build-time default)
+#   import.meta.env.VITE_BACKEND_URL → "http://localhost:8190" (build-time default)
 #
 # This script replaces those hardcoded localhost URLs with the actual service URLs.
 
@@ -61,11 +61,11 @@ fi
 # Additionally, replace any hardcoded localhost URLs in JS bundles
 # This catches any VITE_* env vars that were baked in at build time
 if [ -n "${BACKEND_URL}" ]; then
-  echo "[entrypoint] Replacing localhost:819 references in JS bundles..."
+  echo "[entrypoint] Replacing localhost:8190 references in JS bundles..."
   find "${STATIC_DIR}" -name '*.js' -exec \
-    sed -i "s|http://localhost:819|${BACKEND_URL}|g" {} + 2>/dev/null || true
+    sed -i "s|http://localhost:8190|${BACKEND_URL}|g" {} + 2>/dev/null || true
   find "${STATIC_DIR}" -name '*.js' -exec \
-    sed -i "s|http://127.0.0.1:819|${BACKEND_URL}|g" {} + 2>/dev/null || true
+    sed -i "s|http://127.0.0.1:8190|${BACKEND_URL}|g" {} + 2>/dev/null || true
 fi
 
 if [ -n "${AI_URL}" ]; then

@@ -29,7 +29,7 @@ type Handler struct {
 func NewHandler(ctx context.Context, hub *Hub, informerMgr *k8s.InformerManager, cfg *config.Config, repo *repository.SQLiteRepository) *Handler {
 	allowedOrigins := cfg.AllowedOrigins
 	if len(allowedOrigins) == 0 {
-		allowedOrigins = []string{"http://localhost:5173", "http://localhost:819"}
+		allowedOrigins = []string{"http://localhost:5173", "http://localhost:8190"}
 	}
 	
 	originMap := make(map[string]bool)

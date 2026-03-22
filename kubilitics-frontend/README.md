@@ -13,18 +13,18 @@ make restart
 # or: ./scripts/restart.sh
 ```
 
-Or run them separately: start the backend first on port 819 (`cd kubilitics-backend && go run ./cmd/server`), then in another terminal run `npm run dev`. If your backend runs on a different port, set `VITE_BACKEND_PORT` (e.g. in `.env`: `VITE_BACKEND_PORT=9000`) so the Vite proxy targets it.
+Or run them separately: start the backend first on port 8190 (`cd kubilitics-backend && go run ./cmd/server`), then in another terminal run `npm run dev`. If your backend runs on a different port, set `VITE_BACKEND_PORT` (e.g. in `.env`: `VITE_BACKEND_PORT=9000`) so the Vite proxy targets it.
 
 ```sh
 npm install
 npm run dev
 ```
 
-### Why do I see ECONNREFUSED 127.0.0.1:819 in the terminal?
+### Why do I see ECONNREFUSED 127.0.0.1:8190 in the terminal?
 
-The frontend proxies API and WebSocket traffic to the backend at `127.0.0.1:819`. If the backend is not running, every request fails and Vite logs a proxy error. **The backend must be running** for the app to work.
+The frontend proxies API and WebSocket traffic to the backend at `127.0.0.1:8190`. If the backend is not running, every request fails and Vite logs a proxy error. **The backend must be running** for the app to work.
 
-- **Fix:** From the **repo root** run `make restart` (or `./scripts/restart.sh`). That builds and starts the backend on 819, then starts the frontend. Do not run only `npm run dev` from the frontend folder without starting the backend first.
+- **Fix:** From the **repo root** run `make restart` (or `./scripts/restart.sh`). That builds and starts the backend on 8190, then starts the frontend. Do not run only `npm run dev` from the frontend folder without starting the backend first.
 - **Circuit breaker:** After the first few connection failures, the frontend stops sending requests for 60 seconds so the terminal is not filled with errors. The UI will show "Backend unreachable"; start the backend and the app will recover.
 
 ## Tech stack
@@ -56,7 +56,7 @@ Run the live integration spec only when you have a reachable backend and a known
 PLAYWRIGHT_CLUSTER_ID="<cluster-id>" \
 PLAYWRIGHT_POD_NAMESPACE="<namespace>" \
 PLAYWRIGHT_POD_NAME="<pod-name>" \
-PLAYWRIGHT_BACKEND_BASE_URL="http://localhost:819" \
+PLAYWRIGHT_BACKEND_BASE_URL="http://localhost:8190" \
 npx playwright test e2e/pod-terminal-live-backend.spec.ts --config=playwright.config.mjs
 ```
 
@@ -67,6 +67,6 @@ PLAYWRIGHT_TEST_CLUSTER_SHELL=1 \
 PLAYWRIGHT_CLUSTER_ID="<cluster-id>" \
 PLAYWRIGHT_POD_NAMESPACE="<namespace>" \
 PLAYWRIGHT_POD_NAME="<pod-name>" \
-PLAYWRIGHT_BACKEND_BASE_URL="http://localhost:819" \
+PLAYWRIGHT_BACKEND_BASE_URL="http://localhost:8190" \
 npx playwright test e2e/pod-terminal-live-backend.spec.ts --config=playwright.config.mjs
 ```

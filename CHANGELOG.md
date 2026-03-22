@@ -66,7 +66,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Kubilitics
 ├── kubilitics-desktop  (Tauri 2.0 host, Rust)
 ├── kubilitics-frontend (React + TypeScript + Vite SPA)
-├── kubilitics-backend  (Go REST API + WebSocket, SQLite, port 819)
+├── kubilitics-backend  (Go REST API + WebSocket, SQLite, port 8190)
 └── kcli                (AI-powered kubectl CLI replacement, Go)
 ```
 

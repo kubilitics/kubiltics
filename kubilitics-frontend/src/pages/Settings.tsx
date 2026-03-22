@@ -564,7 +564,7 @@ export default function Settings() {
                       <FormLabel className="text-xs font-semibold text-muted-foreground">Backend URL</FormLabel>
                       <div className="flex gap-2 mt-1">
                         <FormControl>
-                          <Input {...field} className="rounded-lg h-10 font-mono text-sm bg-background" placeholder="http://localhost:819" />
+                          <Input {...field} className="rounded-lg h-10 font-mono text-sm bg-background" placeholder="http://localhost:8190" />
                         </FormControl>
                         <Button
                           type="button"
@@ -590,7 +590,7 @@ export default function Settings() {
                         </Button>
                       </div>
                       <FormDescription className="text-xs">
-                        The URL where the Kubilitics Core Go backend is running (default port 819).
+                        The URL where the Kubilitics Core Go backend is running (default port 8190).
                       </FormDescription>
                       <FormMessage />
                     </FormItem>

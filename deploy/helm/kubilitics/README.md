@@ -77,7 +77,7 @@ helm install kubilitics ./deploy/helm/kubilitics \
 | `image.tag` | Image tag | `1.0.0` |
 | `image.pullPolicy` | Image pull policy | `IfNotPresent` |
 | `service.type` | Kubernetes service type | `ClusterIP` |
-| `service.port` | Service port | `819` |
+| `service.port` | Service port | `8190` |
 
 ### Database Configuration
 
@@ -123,7 +123,7 @@ postgresql:
 
 ```yaml
 config:
-  port: 819
+  port: 8190
   logLevel: "info"
   allowedOrigins: "https://your-domain.com"  # REQUIRED in production
   requestTimeoutSec: 30
@@ -278,7 +278,7 @@ tolerations:
 helm install kubilitics ./deploy/helm/kubilitics \
   --namespace kubilitics-dev \
   --create-namespace \
-  --set config.allowedOrigins="http://localhost:5173,http://localhost:819" \
+  --set config.allowedOrigins="http://localhost:5173,http://localhost:8190" \
   --set replicaCount=1 \
   --set persistence.enabled=false
 ```
@@ -399,10 +399,10 @@ kubectl logs -n kubilitics-system -l app.kubernetes.io/name=postgresql
 kubectl get svc -n kubilitics-system
 
 # Port forward for testing
-kubectl port-forward -n kubilitics-system svc/kubilitics 819:819
+kubectl port-forward -n kubilitics-system svc/kubilitics 8190:8190
 
 # Test health endpoint
-curl http://localhost:819/health
+curl http://localhost:8190/health
 ```
 
 ### RBAC Issues
