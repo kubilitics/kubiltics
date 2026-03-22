@@ -48,7 +48,7 @@ export function ResourceTabs({ tabs, activeTab, onTabChange, className }: Resour
                 {isActive && (
                   <motion.div
                     layoutId={`tab-pill-${instanceId}`}
-                    className="absolute inset-0 bg-white dark:bg-slate-700 rounded-lg shadow-sm"
+                    className="absolute inset-0 bg-white dark:bg-slate-700 rounded-lg shadow-sm border-b-2 border-primary"
                     transition={{ type: 'spring', stiffness: 400, damping: 30 }}
                     style={{ zIndex: 0 }}
                   />
