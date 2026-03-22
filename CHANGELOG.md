@@ -5,6 +5,54 @@ All notable changes to Kubilitics will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.2.0] - 2026-03-22
+
+### Added
+
+**DevSecOps Scanning Engine**
+- Trivy filesystem vulnerability scanning with SARIF output
+- Semgrep SAST analysis for Go, TypeScript, and Dockerfile
+- Gitleaks secrets detection with pre-commit integration
+- Kubescape Kubernetes security scanning against NSA/CISA framework
+- Full CI workflow for automated security scanning on every PR
+
+**Enterprise Settings Page Redesign**
+- Complete visual overhaul with SectionCard-based layout
+- Cluster management with switch/delete actions always visible
+- Desktop engine info, analytics toggle, and system diagnostics
+- About section with product/version/platform/license metadata
+
+**Unified Detail Page UX**
+- SectionCard pattern applied to all 51 resource detail pages
+- Labels, Annotations, Selector sections on all 18 detail pages
+- Apple-grade segmented-control tab bar with spring animation
+- Consistent hero stat cards across Pod, Deployment, ReplicaSet, StatefulSet, DaemonSet
+
+### Fixed
+
+**Performance**
+- Eliminated 500+ concurrent API requests on page load via staleTime/gcTime
+- Resource sidebar counts use 10-minute staleTime to prevent re-fetching
+- Deployment Pods tab now shows only owner-filtered pods (not label-matched strays)
+
+**Stability**
+- Settings page no longer freezes or shows infinite skeleton loading
+- CronJobDetail hooks violation fixed (useMemo after early return)
+- All addon/AI traces removed (8,187 lines cleaned)
+- ESLint errors and warnings resolved for production readiness
+
+**CI/CD**
+- Helm chart schema if/then conditionals fixed for all Helm versions
+- Kind smoke test: PostgreSQL disabled, label selectors corrected, E2E auth-mode detection
+- HEAD method support on health endpoints for Docker/CI health checks
+- CORS integration tests fixed to use GET with header dump
+- Backend port migrated from 819 to 8190 across entire codebase
+
+### Changed
+- Default Helm authMode changed from "required" to "optional" (dev-friendly)
+- Helm chart version bumped to 0.2.0
+- Frontend version bumped to 0.2.0
+
 ## [v0.1.2] - 2026-03-20
 
 ### Breaking Changes
