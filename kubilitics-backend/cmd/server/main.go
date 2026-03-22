@@ -369,13 +369,13 @@ func main() {
 	// previously called /healthz (not /healthz/live) and got 404 on every poll, which
 	// caused the "Backend unreachable" banner to appear permanently. Register this
 	// as defense-in-depth so any client calling /healthz gets a valid response.
-	router.HandleFunc("/healthz", healthzHandler.Live).Methods("GET")
+	router.HandleFunc("/healthz", healthzHandler.Live).Methods("GET", "HEAD")
 
 	// Liveness probe: /healthz/live - process is alive (no dependency checks)
-	router.HandleFunc("/healthz/live", healthzHandler.Live).Methods("GET")
+	router.HandleFunc("/healthz/live", healthzHandler.Live).Methods("GET", "HEAD")
 
 	// Readiness probe: /healthz/ready - dependencies are healthy (database connectivity)
-	router.HandleFunc("/healthz/ready", healthzHandler.Ready).Methods("GET")
+	router.HandleFunc("/healthz/ready", healthzHandler.Ready).Methods("GET", "HEAD")
 	
 	// Legacy health endpoint (backward compatibility); delegates to readiness
 	router.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
@@ -391,7 +391,7 @@ func main() {
 			body["port"] = actualPort
 		}
 		_ = json.NewEncoder(w).Encode(body)
-	}).Methods("GET")
+	}).Methods("GET", "HEAD")
 
 	// Prometheus metrics (enterprise observability)
 	router.Handle("/metrics", promhttp.Handler()).Methods("GET")
