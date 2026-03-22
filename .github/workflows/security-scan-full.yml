@@ -117,6 +117,7 @@ jobs:
 
       - name: Render Helm templates
         run: |
+          helm repo add bitnami https://charts.bitnami.com/bitnami
           helm dependency build deploy/helm/kubilitics/
           helm template kubilitics deploy/helm/kubilitics/ \
             --output-dir rendered-manifests \
