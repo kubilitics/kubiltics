@@ -163,7 +163,7 @@ export default function DeploymentDetail() {
     if (initialTab !== activeTab) {
       setActiveTab(initialTab);
     }
-  }, [initialTab, activeTab]);
+  }, [initialTab]);
   const [selectedLogPod, setSelectedLogPod] = useState<string>('');
   const [selectedLogContainer, setSelectedLogContainer] = useState<string>('');
   const [selectedTerminalPod, setSelectedTerminalPod] = useState<string>('');
@@ -198,7 +198,6 @@ export default function DeploymentDetail() {
     staleTime: 10_000,
     refetchOnWindowFocus: true,
   });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   const rolloutRevisions = rolloutHistoryQuery.data?.revisions ?? [];
   const currentRevisionStr = deployment?.metadata?.annotations?.['deployment.kubernetes.io/revision'];
   const rolloutRevisionsForDialog = useMemo(() => {
@@ -239,13 +238,19 @@ export default function DeploymentDetail() {
     namespace ?? undefined,
     { enabled: !!namespace && !!deployment?.spec?.selector?.matchLabels, refetchInterval: fastPollInterval, staleTime: isFastPolling ? 1000 : 30000 }
   );
+  // Filter pods that are actually owned by this deployment (via ReplicaSet ownerRef).
+  // Label-only matching is wrong — it catches standalone pods with the same labels.
+  const deploymentName = deployment?.metadata?.name ?? name;
   const matchLabels = deployment.spec?.selector?.matchLabels ?? {};
   const deploymentPods = (podsList?.items ?? []).filter((pod) => {
     const labels = pod.metadata?.labels ?? {};
-    return Object.entries(matchLabels).every(([k, v]) => labels[k] === v);
+    if (!Object.entries(matchLabels).every(([k, v]) => labels[k] === v)) return false;
+    // Check ownerReferences: pod must be owned by a ReplicaSet whose name starts with this deployment's name
+    const owners = (pod.metadata as any)?.ownerReferences as Array<{ kind?: string; name?: string }> | undefined;
+    if (!owners || owners.length === 0) return false;
+    return owners.some((ref) => ref.kind === 'ReplicaSet' && ref.name?.startsWith(deploymentName + '-'));
   });
 
-  const deploymentName = deployment?.metadata?.name ?? name;
   const { data: hpaList } = useK8sResourceList<HpaListItem>(
     'horizontalpodautoscalers',
     namespace ?? undefined,
@@ -395,7 +400,7 @@ export default function DeploymentDetail() {
       if (clusterId && namespace && name) {
         queryClient.invalidateQueries({ queryKey: ['backend', 'deployment-rollout-history', clusterId, namespace, name] });
       }
-    } catch (err) {
+    } catch (err: any) {
       notifyError(err, {
         action: 'scale',
         resourceType: 'deployments',
@@ -404,7 +409,6 @@ export default function DeploymentDetail() {
       });
       throw err;
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isConnected, name, namespace, clusterId, patchDeployment, refetch, queryClient, triggerFastPolling, setSearchParams]);
 
   const handleRestart = useCallback(async () => {
@@ -445,7 +449,7 @@ export default function DeploymentDetail() {
       if (clusterId && namespace && name) {
         queryClient.invalidateQueries({ queryKey: ['backend', 'deployment-rollout-history', clusterId, namespace, name] });
       }
-    } catch (err) {
+    } catch (err: any) {
       notifyError(err, {
         action: 'restart',
         resourceType: 'deployments',
@@ -454,7 +458,7 @@ export default function DeploymentDetail() {
       });
       throw err;
     }
-  }, [isConnected, name, namespace, clusterId, patchDeployment, refetch, queryClient, triggerFastPolling, setSearchParams, isBackendConfigured]);
+  }, [isConnected, name, namespace, clusterId, patchDeployment, refetch, queryClient, triggerFastPolling, setSearchParams]);
 
   const handleRollback = useCallback(async (revision: number) => {
     if (!isConnected) {
@@ -495,7 +499,7 @@ export default function DeploymentDetail() {
       });
       throw err;
     }
-  }, [isConnected, name, namespace, clusterId, refetch, queryClient, triggerFastPolling, setSearchParams, isBackendConfigured]);
+  }, [isConnected, name, namespace, clusterId, refetch, queryClient, triggerFastPolling, setSearchParams]);
 
   const handleSaveYaml = useCallback(async (newYaml: string) => {
     if (!isConnected || !name || !namespace) {
@@ -511,7 +515,7 @@ export default function DeploymentDetail() {
         namespace,
       });
       refetch();
-    } catch (error) {
+    } catch (error: any) {
       notifyError(error, {
         action: 'update',
         resourceType: 'deployments',
