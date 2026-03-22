@@ -81,6 +81,7 @@ jobs:
 
       - name: Deploy with Helm
         run: |
+          helm dependency build ./deploy/helm/kubilitics/
           kubectl create namespace kubilitics
           helm install kubilitics ./deploy/helm/kubilitics \
             --namespace kubilitics \
