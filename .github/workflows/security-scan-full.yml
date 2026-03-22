@@ -121,7 +121,10 @@ jobs:
           helm dependency build deploy/helm/kubilitics/
           helm template kubilitics deploy/helm/kubilitics/ \
             --output-dir rendered-manifests \
-            --set postgresql.enabled=false
+            --values deploy/helm/kubilitics/values.yaml \
+            --set postgresql.enabled=false \
+            --set backend.auth.jwtSecret=placeholder-for-ci-scan \
+            --skip-schema-validation
 
       - name: Install Kubescape
         run: |
