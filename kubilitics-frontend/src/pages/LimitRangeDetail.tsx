@@ -1,12 +1,12 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { Scale, Clock, Cpu, HardDrive, Download, Trash2, Network, GitCompare } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Scale, Clock, Cpu, HardDrive, Download, Trash2, Network, GitCompare, Sliders, List } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import {
   ResourceDetailLayout,
+  SectionCard,
   YamlViewer,
   EventsSection,
   ActionsSection,
@@ -52,7 +52,6 @@ export default function LimitRangeDetail() {
     if (initialTab !== activeTab) {
       setActiveTab(initialTab);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialTab]);
   const { isConnected } = useConnectionStatus();
   const clusterId = useActiveClusterId();
@@ -81,8 +80,8 @@ export default function LimitRangeDetail() {
       await updateResource.mutateAsync({ name, yaml: newYaml, namespace });
       toast.success('Resource updated successfully');
       refetch();
-    } catch (error) {
-      toast.error(`Failed to update: ${error instanceof Error ? error.message : String(error)}`);
+    } catch (error: any) {
+      toast.error(`Failed to update: ${error.message}`);
       throw error;
     }
   }, [isConnected, name, namespace, updateResource, refetch]);
@@ -154,14 +153,7 @@ export default function LimitRangeDetail() {
       content: (
         <div className="space-y-6">
           {limits.map((limit, idx) => (
-            <Card key={idx}>
-              <CardHeader>
-                <CardTitle className="text-base flex items-center gap-2">
-                  <Badge variant="outline">{limit.type}</Badge>
-                  Limits
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
+            <SectionCard key={idx} icon={Sliders} title={`${limit.type} Limits`}>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                   {limit.default && Object.keys(limit.default).length > 0 && (
                     <div className="p-4 rounded-lg bg-muted/50">
@@ -214,8 +206,7 @@ export default function LimitRangeDetail() {
                     </div>
                   )}
                 </div>
-              </CardContent>
-            </Card>
+            </SectionCard>
           ))}
           {limits.length === 0 && <p className="text-muted-foreground text-sm">No limits defined.</p>}
           <LabelList labels={labels} />
@@ -227,12 +218,9 @@ export default function LimitRangeDetail() {
       id: 'limit-details',
       label: 'Limit Details',
       content: (
-        <Card>
-          <CardHeader><CardTitle className="text-base">Per-Type Limits</CardTitle></CardHeader>
-          <CardContent>
+        <SectionCard icon={List} title="Per-Type Limits">
             <p className="text-muted-foreground text-sm">Same as Overview — limits array with default, defaultRequest, min, max per type (Container, Pod, PVC).</p>
-          </CardContent>
-        </Card>
+        </SectionCard>
       ),
     },
     { id: 'events', label: 'Events', content: <EventsSection events={events} /> },

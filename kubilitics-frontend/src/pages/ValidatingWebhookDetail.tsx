@@ -1,12 +1,12 @@
 import { useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Webhook, Clock, Shield, Download, Trash2, AlertTriangle, Network, GitCompare } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import {
   ResourceDetailLayout,
+  SectionCard,
   YamlViewer,
   ResourceComparisonView,
   EventsSection,
@@ -128,17 +128,10 @@ export default function ValidatingWebhookDetail() {
       content: (
         <div className="space-y-6">
           {webhooks.length === 0 ? (
-            <Card><CardContent className="p-4 text-muted-foreground">No webhooks configured</CardContent></Card>
+            <SectionCard icon={Webhook} title="Webhooks"><p className="text-muted-foreground">No webhooks configured</p></SectionCard>
           ) : (
             webhooks.map((webhook, idx) => (
-              <Card key={idx}>
-                <CardHeader>
-                  <CardTitle className="text-base flex items-center gap-2">
-                    <Webhook className="h-4 w-4" />
-                    {webhook.name}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
+              <SectionCard key={idx} icon={Webhook} title={webhook.name}>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                     <div>
                       <p className="text-muted-foreground mb-1">Failure Policy</p>
@@ -197,8 +190,7 @@ export default function ValidatingWebhookDetail() {
                       )}
                     </div>
                   </div>
-                </CardContent>
-              </Card>
+              </SectionCard>
             ))
           )}
           <ResourceOverviewMetadata metadata={wh?.metadata} skipMetadataGrid />

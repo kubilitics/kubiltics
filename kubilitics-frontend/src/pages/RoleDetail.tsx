@@ -1,7 +1,6 @@
 import { useState, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Shield, Clock, Download, Trash2, Edit, Users, Network, GitCompare } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Shield, Clock, Download, Trash2, Edit, Users, Network, GitCompare, List, Link2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
@@ -15,7 +14,7 @@ import {
 } from '@/components/ui/table';
 import {
   ResourceDetailLayout,
-
+  SectionCard,
   LabelList,
   AnnotationList,
   YamlViewer,
@@ -83,7 +82,6 @@ export default function RoleDetail() {
 
   const roleName = resource?.metadata?.name ?? name ?? '';
   const roleNamespace = resource?.metadata?.namespace ?? namespace ?? '';
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   const rules = resource?.rules ?? [];
   const labels = resource?.metadata?.labels ?? {};
   const annotations = resource?.metadata?.annotations ?? {};
@@ -159,9 +157,7 @@ export default function RoleDetail() {
       label: 'Overview',
       content: (
         <div className="grid grid-cols-1 gap-6">
-          <Card>
-            <CardHeader><CardTitle className="text-base">Rules</CardTitle></CardHeader>
-            <CardContent>
+          <SectionCard icon={Shield} title="Rules">
               <div className="space-y-4">
                 {rules.length === 0 ? (
                   <p className="text-muted-foreground text-sm">No rules</p>
@@ -198,8 +194,7 @@ export default function RoleDetail() {
                   ))
                 )}
               </div>
-            </CardContent>
-          </Card>
+          </SectionCard>
           <LabelList labels={labels} />
           <AnnotationList annotations={annotations} />
         </div>
@@ -209,9 +204,7 @@ export default function RoleDetail() {
       id: 'permission-matrix',
       label: 'Permission Matrix',
       content: (
-        <Card>
-          <CardHeader><CardTitle className="text-base">Resources × Verbs</CardTitle></CardHeader>
-          <CardContent>
+        <SectionCard icon={List} title="Resources x Verbs">
             {permissionMatrix.size === 0 ? (
               <p className="text-muted-foreground text-sm">No rules to display.</p>
             ) : (
@@ -240,33 +233,26 @@ export default function RoleDetail() {
                 </Table>
               </div>
             )}
-          </CardContent>
-        </Card>
+        </SectionCard>
       ),
     },
     {
       id: 'bindings',
       label: 'Bindings',
       content: (
-        <Card>
-          <CardHeader><CardTitle className="text-base">RoleBindings</CardTitle></CardHeader>
-          <CardContent>
+        <SectionCard icon={Link2} title="RoleBindings">
             <p className="text-muted-foreground text-sm">RoleBindings that reference this Role can be listed by viewing RoleBindings in this namespace and filtering by role.</p>
             <Button variant="outline" size="sm" className="mt-2" onClick={() => navigate(`/rolebindings?namespace=${roleNamespace}`)}>View RoleBindings in {roleNamespace}</Button>
-          </CardContent>
-        </Card>
+        </SectionCard>
       ),
     },
     {
       id: 'effective-subjects',
       label: 'Effective Subjects',
       content: (
-        <Card>
-          <CardHeader><CardTitle className="text-base">Subjects</CardTitle></CardHeader>
-          <CardContent>
+        <SectionCard icon={Users} title="Subjects">
             <p className="text-muted-foreground text-sm">Subjects are derived from RoleBindings that reference this Role. View Bindings tab and open each RoleBinding to see subjects.</p>
-          </CardContent>
-        </Card>
+        </SectionCard>
       ),
     },
     { id: 'events', label: 'Events', content: <EventsSection events={events} /> },

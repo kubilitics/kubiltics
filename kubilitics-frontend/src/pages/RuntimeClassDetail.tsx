@@ -1,8 +1,7 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { normalizeKindForTopology } from '@/utils/resourceKindMapper';
-import { FolderCog, Clock, Cpu, Download, Trash2, Settings, Package, Box, Network, Loader2, GitCompare } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { FolderCog, Clock, Cpu, Download, Trash2, Settings, Package, Box, Network, Loader2, GitCompare, Info, Target } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { NamespaceBadge } from '@/components/list';
 import { Button } from '@/components/ui/button';
@@ -12,6 +11,7 @@ import { downloadResourceJson } from '@/lib/exportUtils';
 import { ResourceOverviewMetadata } from '@/components/resources/ResourceOverviewMetadata';
 import {
   ResourceDetailLayout,
+  SectionCard,
   MetadataSection,
   YamlViewer,
   EventsSection,
@@ -174,9 +174,7 @@ export default function RuntimeClassDetail() {
         <div className="space-y-6">
           <MetadataSection metadata={{ name: rc.name }} showMetadataGrid />
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader><CardTitle className="text-base">Runtime Info</CardTitle></CardHeader>
-              <CardContent className="space-y-4">
+            <SectionCard icon={Info} title="Runtime Info">
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
                     <p className="text-muted-foreground mb-1">Handler</p>
@@ -193,14 +191,8 @@ export default function RuntimeClassDetail() {
                     run with the configured isolation and overhead.
                   </p>
                 </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Overhead</CardTitle>
-                <CardDescription>Additional resources consumed by the runtime</CardDescription>
-              </CardHeader>
-              <CardContent>
+            </SectionCard>
+            <SectionCard icon={Cpu} title="Overhead" tooltip="Additional resources consumed by the runtime">
                 {rc.overhead?.podFixed ? (
                   <div className="grid grid-cols-2 gap-4">
                     <div className="p-4 rounded-lg bg-muted/50">
@@ -215,13 +207,10 @@ export default function RuntimeClassDetail() {
                 ) : (
                   <p className="text-muted-foreground">No overhead defined</p>
                 )}
-              </CardContent>
-            </Card>
+            </SectionCard>
             {rc.scheduling && (
               <>
-                <Card>
-                  <CardHeader><CardTitle className="text-base">Node Selector</CardTitle></CardHeader>
-                  <CardContent>
+                <SectionCard icon={Target} title="Node Selector">
                     {rc.scheduling.nodeSelector && Object.keys(rc.scheduling.nodeSelector).length > 0 ? (
                       <div className="flex flex-wrap gap-2">
                         {Object.entries(rc.scheduling.nodeSelector).map(([key, value]) => (
@@ -231,11 +220,8 @@ export default function RuntimeClassDetail() {
                     ) : (
                       <p className="text-muted-foreground">No node selector defined</p>
                     )}
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardHeader><CardTitle className="text-base">Tolerations</CardTitle></CardHeader>
-                  <CardContent>
+                </SectionCard>
+                <SectionCard icon={Settings} title="Tolerations">
                     {rc.scheduling.tolerations && rc.scheduling.tolerations.length > 0 ? (
                       <div className="space-y-2">
                         {rc.scheduling.tolerations.map((tol, idx) => (
@@ -252,19 +238,10 @@ export default function RuntimeClassDetail() {
                     ) : (
                       <p className="text-muted-foreground">No tolerations defined</p>
                     )}
-                  </CardContent>
-                </Card>
+                </SectionCard>
               </>
             )}
-            <Card className="lg:col-span-2">
-              <CardHeader>
-                <CardTitle className="text-base flex items-center gap-2">
-                  <Package className="h-4 w-4" />
-                  Pods Using This RuntimeClass
-                </CardTitle>
-                <CardDescription>{podsUsingRuntime.length} pods are using this runtime class</CardDescription>
-              </CardHeader>
-              <CardContent>
+            <SectionCard icon={Package} title="Pods Using This RuntimeClass" tooltip={`${podsUsingRuntime.length} pods are using this runtime class`} className="lg:col-span-2">
                 {podsUsingRuntime.length === 0 ? (
                   <p className="text-muted-foreground">No pods are using this RuntimeClass.</p>
                 ) : (
@@ -284,8 +261,7 @@ export default function RuntimeClassDetail() {
                     ))}
                   </div>
                 )}
-              </CardContent>
-            </Card>
+            </SectionCard>
           </div>
           <ResourceOverviewMetadata metadata={k8sRc?.metadata} skipMetadataGrid />
         </div>

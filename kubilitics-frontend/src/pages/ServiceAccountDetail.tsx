@@ -1,7 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { UserCircle, Clock, Download, Trash2, KeyRound, Shield, Network, GitCompare } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { UserCircle, Clock, Download, Trash2, KeyRound, Shield, Network, GitCompare, Info, Key, Image, Server } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
@@ -9,6 +8,7 @@ import { toast } from 'sonner';
 import { downloadResourceJson } from '@/lib/exportUtils';
 import {
   ResourceDetailLayout,
+  SectionCard,
   LabelList,
   AnnotationList,
   YamlViewer,
@@ -56,7 +56,6 @@ export default function ServiceAccountDetail() {
 
   useEffect(() => {
     setActiveTab(searchParams.get('tab') || 'overview');
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams.get('tab')]);
 
   const saName = resource?.metadata?.name ?? name ?? '';
@@ -127,19 +126,14 @@ export default function ServiceAccountDetail() {
       label: 'Overview',
       content: (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <Card>
-            <CardHeader><CardTitle className="text-base">Service Account Info</CardTitle></CardHeader>
-            <CardContent className="space-y-4">
+          <SectionCard icon={Info} title="Service Account Info">
               <div className="flex justify-between p-2 rounded-lg bg-muted/50">
                 <span>Automount Token</span>
                 <Badge variant={automount ? 'default' : 'secondary'}>{automount ? 'Yes' : 'No'}</Badge>
               </div>
               <div className="text-sm text-muted-foreground">Age: {age}</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader><CardTitle className="text-base">Secrets</CardTitle></CardHeader>
-            <CardContent>
+          </SectionCard>
+          <SectionCard icon={Key} title="Secrets">
               <div className="space-y-2">
                 {secrets.length === 0 ? (
                   <p className="text-muted-foreground text-sm">No secrets</p>
@@ -155,11 +149,8 @@ export default function ServiceAccountDetail() {
                   ))
                 )}
               </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader><CardTitle className="text-base">Image Pull Secrets</CardTitle></CardHeader>
-            <CardContent>
+          </SectionCard>
+          <SectionCard icon={Image} title="Image Pull Secrets">
               <div className="flex flex-wrap gap-2">
                 {imagePullSecrets.length === 0 ? (
                   <p className="text-muted-foreground text-sm">None</p>
@@ -171,8 +162,7 @@ export default function ServiceAccountDetail() {
                   ))
                 )}
               </div>
-            </CardContent>
-          </Card>
+          </SectionCard>
           <LabelList labels={labels} />
           <AnnotationList annotations={annotations} />
         </div>
@@ -182,25 +172,19 @@ export default function ServiceAccountDetail() {
       id: 'permissions',
       label: 'Permissions',
       content: (
-        <Card>
-          <CardHeader><CardTitle className="text-base">RoleBindings / ClusterRoleBindings</CardTitle></CardHeader>
-          <CardContent>
+        <SectionCard icon={Shield} title="RoleBindings / ClusterRoleBindings">
             <p className="text-muted-foreground text-sm">Bindings that reference this ServiceAccount would be listed here. Use the cluster RBAC APIs or list RoleBindings/ClusterRoleBindings and filter by subject to see them.</p>
-          </CardContent>
-        </Card>
+        </SectionCard>
       ),
     },
     {
       id: 'usedby',
       label: 'Used By',
       content: (
-        <Card>
-          <CardHeader><CardTitle className="text-base">Pods / Workloads</CardTitle></CardHeader>
-          <CardContent>
+        <SectionCard icon={Server} title="Pods / Workloads">
             <p className="text-muted-foreground text-sm">Pods and workloads using this ServiceAccount (e.g. <code>spec.serviceAccountName</code>) can be listed when backend supports it or by listing pods in this namespace.</p>
             <Button variant="outline" size="sm" className="mt-2" onClick={() => navigate(`/pods?namespace=${saNamespace}`)}>View Pods in {saNamespace}</Button>
-          </CardContent>
-        </Card>
+        </SectionCard>
       ),
     },
     { id: 'events', label: 'Events', content: <EventsSection events={events} /> },

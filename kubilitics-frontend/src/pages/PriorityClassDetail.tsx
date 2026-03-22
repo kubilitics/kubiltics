@@ -1,12 +1,12 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { AlertTriangle, Clock, ArrowUpDown, Download, Trash2, Shield, Network, GitCompare } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { AlertTriangle, Clock, ArrowUpDown, Download, Trash2, Shield, Network, GitCompare, Info, FileText, Scale, Server } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import {
   ResourceDetailLayout,
+  SectionCard,
   MetadataSection,
   YamlViewer,
   EventsSection,
@@ -148,9 +148,7 @@ export default function PriorityClassDetail() {
             createdLabel={age}
           />
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader><CardTitle className="text-base">Priority Class Info</CardTitle></CardHeader>
-              <CardContent className="space-y-4">
+            <SectionCard icon={Info} title="Priority Class Info">
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
                     <p className="text-muted-foreground mb-1">Priority Value</p>
@@ -171,17 +169,11 @@ export default function PriorityClassDetail() {
                     <p>{age}</p>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader><CardTitle className="text-base">Description</CardTitle></CardHeader>
-              <CardContent>
+            </SectionCard>
+            <SectionCard icon={FileText} title="Description">
                 <p className="text-sm text-muted-foreground">{description || '–'}</p>
-              </CardContent>
-            </Card>
-            <Card className="lg:col-span-2">
-              <CardHeader><CardTitle className="text-base">Priority Scale</CardTitle></CardHeader>
-              <CardContent>
+            </SectionCard>
+            <SectionCard icon={Scale} title="Priority Scale" className="lg:col-span-2">
                 <div className="flex items-center gap-4">
                   <div className="flex-1 h-4 bg-muted rounded-full overflow-hidden">
                     <div
@@ -195,8 +187,7 @@ export default function PriorityClassDetail() {
                   <span>0 (Lowest)</span>
                   <span>2,000,001,000 (Highest)</span>
                 </div>
-              </CardContent>
-            </Card>
+            </SectionCard>
           </div>
           <ResourceOverviewMetadata metadata={resource?.metadata} skipMetadataGrid />
         </div>
@@ -206,13 +197,10 @@ export default function PriorityClassDetail() {
       id: 'pod-distribution',
       label: 'Pod Distribution',
       content: (
-        <Card>
-          <CardHeader><CardTitle className="text-base">Pods Using This Priority Class</CardTitle></CardHeader>
-          <CardContent>
+        <SectionCard icon={Server} title="Pods Using This Priority Class">
             <p className="text-muted-foreground text-sm">Pods with <code>spec.priorityClassName: {pcName}</code> can be listed by viewing Pods and filtering by priority class.</p>
             <Button variant="outline" size="sm" className="mt-2" onClick={() => navigate('/pods')}>View Pods</Button>
-          </CardContent>
-        </Card>
+        </SectionCard>
       ),
     },
     { id: 'events', label: 'Events', content: <EventsSection events={events} /> },

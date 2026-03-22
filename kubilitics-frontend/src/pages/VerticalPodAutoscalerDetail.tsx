@@ -1,7 +1,6 @@
 import { useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Scale, Clock, Download, Trash2, Cpu, MemoryStick, TrendingUp, Network, GitCompare } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Scale, Clock, Download, Trash2, Cpu, MemoryStick, TrendingUp, Network, GitCompare, Target, Activity } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -9,6 +8,7 @@ import { toast } from 'sonner';
 import { downloadResourceJson } from '@/lib/exportUtils';
 import {
   ResourceDetailLayout,
+  SectionCard,
   YamlViewer,
   ResourceComparisonView,
   EventsSection,
@@ -142,9 +142,7 @@ export default function VerticalPodAutoscalerDetail() {
       label: 'Overview',
       content: (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <Card>
-            <CardHeader><CardTitle className="text-base">Target Reference</CardTitle></CardHeader>
-            <CardContent className="space-y-4">
+          <SectionCard icon={Target} title="Target Reference">
               <div className="p-3 rounded-lg bg-muted/50">
                 <p className="text-muted-foreground text-sm mb-1">Reference</p>
                 {targetName !== '–' ? (
@@ -157,11 +155,8 @@ export default function VerticalPodAutoscalerDetail() {
                 <p className="text-muted-foreground text-sm mb-1">Update Mode</p>
                 <Badge variant={updateMode === 'Auto' ? 'default' : 'secondary'}>{updateMode}</Badge>
               </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader><CardTitle className="text-base">Recommendations</CardTitle></CardHeader>
-            <CardContent className="space-y-4">
+          </SectionCard>
+          <SectionCard icon={TrendingUp} title="Recommendations">
               {recommendations.length === 0 ? (
                 <p className="text-muted-foreground text-sm">No recommendations yet.</p>
               ) : (
@@ -189,11 +184,8 @@ export default function VerticalPodAutoscalerDetail() {
                   </div>
                 ))
               )}
-            </CardContent>
-          </Card>
-          <Card className="lg:col-span-2">
-            <CardHeader><CardTitle className="text-base">Conditions</CardTitle></CardHeader>
-            <CardContent>
+          </SectionCard>
+          <SectionCard icon={Activity} title="Conditions" className="lg:col-span-2">
               {conditions.length === 0 ? (
                 <p className="text-muted-foreground text-sm">No conditions.</p>
               ) : (
@@ -209,8 +201,7 @@ export default function VerticalPodAutoscalerDetail() {
                   ))}
                 </div>
               )}
-            </CardContent>
-          </Card>
+          </SectionCard>
           <LabelList labels={labels} />
           <AnnotationList annotations={annotations} />
         </div>
@@ -220,9 +211,7 @@ export default function VerticalPodAutoscalerDetail() {
       id: 'recommendations',
       label: 'Recommendations',
       content: (
-        <Card>
-          <CardHeader><CardTitle className="text-base">Container Recommendations</CardTitle></CardHeader>
-          <CardContent>
+        <SectionCard icon={Cpu} title="Container Recommendations">
             {recommendations.length === 0 ? (
               <p className="text-muted-foreground text-sm">No recommendations available.</p>
             ) : (
@@ -239,8 +228,7 @@ export default function VerticalPodAutoscalerDetail() {
                 ))}
               </div>
             )}
-          </CardContent>
-        </Card>
+        </SectionCard>
       ),
     },
     { id: 'events', label: 'Events', content: <EventsSection events={events} /> },

@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Activity, Clock, CheckCircle, AlertTriangle, Download, Trash2, Network, Server, GitCompare } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Activity, Clock, CheckCircle, AlertTriangle, Download, Trash2, Network, Server, GitCompare, Info } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -11,6 +11,7 @@ import { ResourceOverviewMetadata } from '@/components/resources/ResourceOvervie
 import { normalizeKindForTopology } from '@/utils/resourceKindMapper';
 import {
   ResourceDetailLayout,
+  SectionCard,
   MetadataSection,
   YamlViewer,
   EventsSection,
@@ -118,9 +119,7 @@ export default function ComponentStatusDetail() {
         <div className="space-y-6">
           <MetadataSection metadata={cs.metadata ?? { name: csName }} showMetadataGrid />
           <div className="grid grid-cols-1 gap-6">
-            <Card>
-              <CardHeader><CardTitle className="text-base">Component Info</CardTitle></CardHeader>
-              <CardContent className="space-y-4">
+            <SectionCard icon={Info} title="Component Info">
                 <div className="flex items-center gap-4">
                   <div className={`p-4 rounded-full ${isHealthy ? 'bg-green-500/10' : 'bg-red-500/10'}`}>
                     {isHealthy ? (
@@ -136,11 +135,8 @@ export default function ComponentStatusDetail() {
                     </p>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader><CardTitle className="text-base">Conditions</CardTitle></CardHeader>
-              <CardContent>
+            </SectionCard>
+            <SectionCard icon={Activity} title="Conditions">
                 {conditions.length === 0 ? (
                   <p className="text-muted-foreground text-sm">No conditions reported.</p>
                 ) : (
@@ -167,8 +163,7 @@ export default function ComponentStatusDetail() {
                     ))}
                   </div>
                 )}
-              </CardContent>
-            </Card>
+            </SectionCard>
           </div>
           <ResourceOverviewMetadata metadata={cs?.metadata} skipMetadataGrid />
         </div>

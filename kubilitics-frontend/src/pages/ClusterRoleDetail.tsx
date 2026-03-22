@@ -1,7 +1,6 @@
 import { useState, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ShieldCheck, Clock, Download, Trash2, Edit, Users, Globe, Network, GitCompare } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { ShieldCheck, Clock, Download, Trash2, Edit, Users, Globe, Network, GitCompare, Layers, List, Link2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
@@ -15,7 +14,7 @@ import {
 } from '@/components/ui/table';
 import {
   ResourceDetailLayout,
-
+  SectionCard,
   LabelList,
   AnnotationList,
   YamlViewer,
@@ -95,7 +94,6 @@ export default function ClusterRoleDetail() {
   const deleteResource = useDeleteK8sResource('clusterroles');
 
   const crName = resource?.metadata?.name ?? name ?? '';
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   const rules = resource?.rules ?? [];
   const aggregationRule = resource?.aggregationRule;
   const labels = resource?.metadata?.labels ?? {};
@@ -160,9 +158,7 @@ export default function ClusterRoleDetail() {
       content: (
         <div className="grid grid-cols-1 gap-6">
           {aggregationRule?.clusterRoleSelectors?.length ? (
-            <Card>
-              <CardHeader><CardTitle className="text-base">Aggregation Rule</CardTitle></CardHeader>
-              <CardContent>
+            <SectionCard icon={Layers} title="Aggregation Rule">
                 <div className="space-y-2">
                   {aggregationRule.clusterRoleSelectors.map((sel, i) => (
                     <div key={i} className="p-3 rounded-lg bg-muted/50 text-sm">
@@ -178,12 +174,9 @@ export default function ClusterRoleDetail() {
                     </div>
                   ))}
                 </div>
-              </CardContent>
-            </Card>
+            </SectionCard>
           ) : null}
-          <Card>
-            <CardHeader><CardTitle className="text-base">Rules</CardTitle></CardHeader>
-            <CardContent>
+          <SectionCard icon={ShieldCheck} title="Rules">
               <div className="space-y-4">
                 {rules.length === 0 ? (
                   <p className="text-muted-foreground text-sm">No rules (aggregated role may inherit from others).</p>
@@ -223,8 +216,7 @@ export default function ClusterRoleDetail() {
                   ))
                 )}
               </div>
-            </CardContent>
-          </Card>
+          </SectionCard>
           <LabelList labels={labels} />
           <AnnotationList annotations={annotations} />
         </div>
@@ -234,9 +226,7 @@ export default function ClusterRoleDetail() {
       id: 'permission-matrix',
       label: 'Permission Matrix',
       content: (
-        <Card>
-          <CardHeader><CardTitle className="text-base">Resources × Verbs</CardTitle></CardHeader>
-          <CardContent>
+        <SectionCard icon={List} title="Resources x Verbs">
             {permissionMatrix.size === 0 ? (
               <p className="text-muted-foreground text-sm">No rules to display.</p>
             ) : (
@@ -265,30 +255,24 @@ export default function ClusterRoleDetail() {
                 </Table>
               </div>
             )}
-          </CardContent>
-        </Card>
+        </SectionCard>
       ),
     },
     {
       id: 'bindings',
       label: 'Bindings',
       content: (
-        <Card>
-          <CardHeader><CardTitle className="text-base">ClusterRoleBindings / RoleBindings</CardTitle></CardHeader>
-          <CardContent>
+        <SectionCard icon={Link2} title="ClusterRoleBindings / RoleBindings">
             <p className="text-muted-foreground text-sm">Bindings that reference this ClusterRole. View Cluster Role Bindings to see cluster-wide bindings.</p>
             <Button variant="outline" size="sm" className="mt-2" onClick={() => navigate('/clusterrolebindings')}>View Cluster Role Bindings</Button>
-          </CardContent>
-        </Card>
+        </SectionCard>
       ),
     },
     {
       id: 'aggregation',
       label: 'Aggregation',
       content: (
-        <Card>
-          <CardHeader><CardTitle className="text-base">Aggregation</CardTitle></CardHeader>
-          <CardContent>
+        <SectionCard icon={Layers} title="Aggregation">
             {aggregationRule?.clusterRoleSelectors?.length ? (
               <div className="space-y-2">
                 {aggregationRule.clusterRoleSelectors.map((sel, i) => (
@@ -302,20 +286,16 @@ export default function ClusterRoleDetail() {
             ) : (
               <p className="text-muted-foreground text-sm">This ClusterRole is not aggregated.</p>
             )}
-          </CardContent>
-        </Card>
+        </SectionCard>
       ),
     },
     {
       id: 'effective-subjects',
       label: 'Effective Subjects',
       content: (
-        <Card>
-          <CardHeader><CardTitle className="text-base">Subjects</CardTitle></CardHeader>
-          <CardContent>
+        <SectionCard icon={Users} title="Subjects">
             <p className="text-muted-foreground text-sm">Subjects are derived from ClusterRoleBindings (and namespaced RoleBindings) that reference this ClusterRole.</p>
-          </CardContent>
-        </Card>
+        </SectionCard>
       ),
     },
     { id: 'events', label: 'Events', content: <EventsSection events={events} /> },

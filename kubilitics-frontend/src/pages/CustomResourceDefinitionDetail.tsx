@@ -1,12 +1,12 @@
 import { useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { FileCode, Clock, Layers, Download, Trash2, Package, GitCompare, Network } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { FileCode, Clock, Layers, Download, Trash2, Package, GitCompare, Network, Info, Activity } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import {
   ResourceDetailLayout,
+  SectionCard,
   LabelList,
   AnnotationList,
   YamlViewer,
@@ -124,9 +124,7 @@ export default function CustomResourceDefinitionDetail() {
       label: 'Overview',
       content: (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <Card>
-            <CardHeader><CardTitle className="text-base">CRD Info</CardTitle></CardHeader>
-            <CardContent className="space-y-4">
+          <SectionCard icon={Info} title="CRD Info">
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
                   <p className="text-muted-foreground mb-1">Group</p>
@@ -157,11 +155,8 @@ export default function CustomResourceDefinitionDetail() {
                   </div>
                 </div>
               </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader><CardTitle className="text-base">Versions</CardTitle></CardHeader>
-            <CardContent>
+          </SectionCard>
+          <SectionCard icon={Layers} title="Versions">
               <div className="space-y-2">
                 {versions.map((ver) => (
                   <div key={ver.name} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
@@ -175,11 +170,8 @@ export default function CustomResourceDefinitionDetail() {
                   </div>
                 ))}
               </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader><CardTitle className="text-base">Conditions</CardTitle></CardHeader>
-            <CardContent>
+          </SectionCard>
+          <SectionCard icon={Activity} title="Conditions">
               <div className="space-y-2">
                 {conditions.map((condition) => (
                   <div key={condition.type} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
@@ -191,8 +183,7 @@ export default function CustomResourceDefinitionDetail() {
                 ))}
                 {conditions.length === 0 && <p className="text-sm text-muted-foreground">No conditions</p>}
               </div>
-            </CardContent>
-          </Card>
+          </SectionCard>
           <LabelList labels={crd?.metadata?.labels ?? {}} />
           <AnnotationList annotations={crd?.metadata?.annotations ?? {}} />
         </div>

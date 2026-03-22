@@ -1,7 +1,6 @@
 import { useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Layers, Clock, Server, Download, Trash2, Scale, AlertTriangle, Package, Network, GitCompare } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Layers, Clock, Server, Download, Trash2, Scale, AlertTriangle, Package, Network, GitCompare, Target } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -10,6 +9,7 @@ import { toast } from 'sonner';
 import { downloadResourceJson } from '@/lib/exportUtils';
 import {
   ResourceDetailLayout,
+  SectionCard,
   YamlViewer,
   ResourceComparisonView,
   EventsSection,
@@ -163,9 +163,7 @@ export default function ReplicationControllerDetail() {
           </Alert>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader><CardTitle className="text-base">Replica Status</CardTitle></CardHeader>
-              <CardContent className="space-y-4">
+            <SectionCard icon={Server} title="Replica Status">
                 <div className="grid grid-cols-3 gap-4 text-sm">
                   <div className="text-center p-4 rounded-lg bg-muted/50">
                     <p className="text-2xl font-bold text-primary">{desired}</p>
@@ -192,30 +190,21 @@ export default function ReplicationControllerDetail() {
                     />
                   </div>
                 </div>
-              </CardContent>
-            </Card>
+            </SectionCard>
 
-            <Card>
-              <CardHeader><CardTitle className="text-base">Selector</CardTitle></CardHeader>
-              <CardContent>
+            <SectionCard icon={Target} title="Selector">
                 <div className="flex flex-wrap gap-2">
                   {Object.entries(selector).map(([key, value]) => (
                     <Badge key={key} variant="outline" className="font-mono text-xs">{key}={value}</Badge>
                   ))}
                 </div>
                 {Object.keys(selector).length === 0 && <p className="text-sm text-muted-foreground">No selectors</p>}
-              </CardContent>
-            </Card>
+            </SectionCard>
 
             <LabelList labels={rc?.metadata?.labels ?? {}} />
             <AnnotationList annotations={rc?.metadata?.annotations ?? {}} />
 
-            <Card className="lg:col-span-1">
-              <CardHeader><CardTitle className="text-base flex items-center gap-2">
-                <Package className="h-4 w-4" />
-                Pod Template
-              </CardTitle></CardHeader>
-              <CardContent>
+            <SectionCard icon={Package} title="Pod Template" className="lg:col-span-1">
                 <div className="space-y-3">
                   {containers.map((container, idx) => (
                     <div key={idx} className="p-4 rounded-lg bg-muted/50 space-y-3">
@@ -259,8 +248,7 @@ export default function ReplicationControllerDetail() {
                   ))}
                   {containers.length === 0 && <p className="text-sm text-muted-foreground">No containers defined</p>}
                 </div>
-              </CardContent>
-            </Card>
+            </SectionCard>
           </div>
         </div>
       ),

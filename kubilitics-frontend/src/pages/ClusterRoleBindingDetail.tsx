@@ -1,12 +1,12 @@
 import { useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Link2, Clock, Download, Trash2, Edit, ShieldCheck, UserCircle, Globe, Network, GitCompare } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Link2, Clock, Download, Trash2, Edit, ShieldCheck, UserCircle, Globe, Network, GitCompare, Users } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import {
   ResourceDetailLayout,
+  SectionCard,
   LabelList,
   AnnotationList,
   YamlViewer,
@@ -120,9 +120,7 @@ export default function ClusterRoleBindingDetail() {
       label: 'Overview',
       content: (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <Card>
-            <CardHeader><CardTitle className="text-base">Cluster Role Reference</CardTitle></CardHeader>
-            <CardContent>
+          <SectionCard icon={ShieldCheck} title="Cluster Role Reference">
               <div
                 className="p-4 rounded-lg bg-muted/50 cursor-pointer hover:bg-muted"
                 onClick={() => clusterRoleName !== '–' && navigate(`/clusterroles/${clusterRoleName}`)}
@@ -133,11 +131,8 @@ export default function ClusterRoleBindingDetail() {
                 </div>
                 <p className="text-xs text-muted-foreground font-mono">{roleRef.apiGroup ?? 'rbac.authorization.k8s.io'}</p>
               </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader><CardTitle className="text-base">Subjects</CardTitle></CardHeader>
-            <CardContent>
+          </SectionCard>
+          <SectionCard icon={Users} title="Subjects">
               <div className="space-y-3">
                 {subjects.length === 0 ? (
                   <p className="text-muted-foreground text-sm">No subjects</p>
@@ -153,8 +148,7 @@ export default function ClusterRoleBindingDetail() {
                   ))
                 )}
               </div>
-            </CardContent>
-          </Card>
+          </SectionCard>
         </div>
       ),
     },
@@ -162,9 +156,7 @@ export default function ClusterRoleBindingDetail() {
       id: 'subjects',
       label: 'Subjects',
       content: (
-        <Card>
-          <CardHeader><CardTitle className="text-base">Subject Details</CardTitle></CardHeader>
-          <CardContent>
+        <SectionCard icon={Users} title="Subject Details">
             <div className="space-y-3">
               {subjects.length === 0 ? (
                 <p className="text-muted-foreground text-sm">No subjects</p>
@@ -185,23 +177,19 @@ export default function ClusterRoleBindingDetail() {
                 ))
               )}
             </div>
-          </CardContent>
-        </Card>
+        </SectionCard>
       ),
     },
     {
       id: 'clusterrole-details',
       label: 'ClusterRole Details',
       content: (
-        <Card>
-          <CardHeader><CardTitle className="text-base">Referenced ClusterRole</CardTitle></CardHeader>
-          <CardContent>
+        <SectionCard icon={ShieldCheck} title="Referenced ClusterRole">
             <p className="text-muted-foreground text-sm mb-2">This binding references the following ClusterRole.</p>
             <Button variant="outline" onClick={() => clusterRoleName !== '–' && navigate(`/clusterroles/${clusterRoleName}`)}>
               View ClusterRole: {clusterRoleName}
             </Button>
-          </CardContent>
-        </Card>
+        </SectionCard>
       ),
     },
     { id: 'events', label: 'Events', content: <EventsSection events={events} /> },

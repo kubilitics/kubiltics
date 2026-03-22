@@ -1,7 +1,6 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { Gauge, Clock, Download, Trash2, Box, Network, AlertTriangle, GitCompare } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Gauge, Clock, Download, Trash2, Box, Network, AlertTriangle, GitCompare, Database } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -10,6 +9,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import {
   ResourceDetailLayout,
+  SectionCard,
   YamlViewer,
   EventsSection,
   ActionsSection,
@@ -61,7 +61,6 @@ export default function ResourceQuotaDetail() {
     if (initialTab !== activeTab) {
       setActiveTab(initialTab);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialTab]);
   const { isConnected } = useConnectionStatus();
   const clusterId = useActiveClusterId();
@@ -90,13 +89,13 @@ export default function ResourceQuotaDetail() {
       await updateResource.mutateAsync({ name, yaml: newYaml, namespace });
       toast.success('Resource updated successfully');
       refetch();
-    } catch (error) {
-      toast.error(`Failed to update: ${error instanceof Error ? error.message : String(error)}`);
+    } catch (error: any) {
+      toast.error(`Failed to update: ${error.message}`);
       throw error;
     }
   }, [isConnected, name, namespace, updateResource, refetch]);
-  const hard = useMemo(() => resource?.status?.hard || resource?.spec?.hard || {}, [resource?.status?.hard, resource?.spec?.hard]);
-  const used = useMemo(() => resource?.status?.used || {}, [resource?.status?.used]);
+  const hard = resource?.status?.hard || resource?.spec?.hard || {};
+  const used = resource?.status?.used || {};
   const labels = resource?.metadata?.labels ?? {};
   const annotations = resource?.metadata?.annotations ?? {};
   const hasScopeSelector = !!(resource?.spec?.scopeSelector && Object.keys((resource.spec.scopeSelector as Record<string, unknown>) || {}).length > 0);
@@ -183,9 +182,7 @@ export default function ResourceQuotaDetail() {
       label: 'Overview',
       content: (
         <div className="grid grid-cols-1 gap-6">
-          <Card className="lg:col-span-2">
-            <CardHeader><CardTitle className="text-base">Resource Usage</CardTitle></CardHeader>
-            <CardContent>
+          <SectionCard icon={Database} title="Resource Usage" className="lg:col-span-2">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {Object.entries(hard).map(([key, hardVal]) => {
                   const usedVal = used[key] ?? '0';
@@ -211,8 +208,7 @@ export default function ResourceQuotaDetail() {
               {Object.keys(hard).length === 0 && (
                 <p className="text-muted-foreground text-sm">No hard limits defined.</p>
               )}
-            </CardContent>
-          </Card>
+          </SectionCard>
           <LabelList labels={labels} />
           <AnnotationList annotations={annotations} />
         </div>
@@ -233,12 +229,7 @@ export default function ResourceQuotaDetail() {
               </AlertDescription>
             </Alert>
           )}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Per-resource usage</CardTitle>
-              <p className="text-sm text-muted-foreground">Used vs hard limit for each quota resource. Bars are green (&lt;80%), amber (80–99%), or red (≥100%).</p>
-            </CardHeader>
-            <CardContent>
+          <SectionCard icon={Gauge} title="Per-Resource Usage" tooltip="Used vs hard limit for each quota resource. Bars are green (<80%), amber (80-99%), or red (>=100%).">
               {usageRows.length === 0 ? (
                 <p className="text-muted-foreground text-sm">No hard limits defined.</p>
               ) : (
@@ -281,8 +272,7 @@ export default function ResourceQuotaDetail() {
                   </TableBody>
                 </Table>
               )}
-            </CardContent>
-          </Card>
+          </SectionCard>
         </div>
       ),
     },

@@ -1,7 +1,6 @@
 import { useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Shield, Clock, Download, Trash2, Server, AlertTriangle, Network, GitCompare } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Shield, Clock, Download, Trash2, Server, AlertTriangle, Network, GitCompare, Settings, Activity, Target } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -9,6 +8,7 @@ import { toast } from 'sonner';
 import { downloadResourceJson } from '@/lib/exportUtils';
 import {
   ResourceDetailLayout,
+  SectionCard,
   YamlViewer,
   LabelList,
   AnnotationList,
@@ -134,9 +134,7 @@ export default function PodDisruptionBudgetDetail() {
       label: 'Overview',
       content: (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <Card>
-            <CardHeader><CardTitle className="text-base">Budget Configuration</CardTitle></CardHeader>
-            <CardContent className="space-y-4">
+          <SectionCard icon={Settings} title="Budget Configuration">
               <div className="grid grid-cols-2 gap-4">
                 <div className="p-3 rounded-lg bg-muted/50">
                   <p className="text-muted-foreground text-sm mb-1">Min Available</p>
@@ -147,11 +145,8 @@ export default function PodDisruptionBudgetDetail() {
                   <p className="text-xl font-bold">{maxUnavailable != null && maxUnavailable !== '' ? String(maxUnavailable) : '–'}</p>
                 </div>
               </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader><CardTitle className="text-base">Current Status</CardTitle></CardHeader>
-            <CardContent className="space-y-4">
+          </SectionCard>
+          <SectionCard icon={Activity} title="Current Status">
               <div className="grid grid-cols-3 gap-3 text-center">
                 <div className="p-3 rounded-lg bg-muted/50">
                   <p className="text-xl font-bold">{expectedPods > 0 ? expectedPods : desiredHealthy}</p>
@@ -166,11 +161,8 @@ export default function PodDisruptionBudgetDetail() {
                   <p className="text-xs text-muted-foreground">Allowed</p>
                 </div>
               </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader><CardTitle className="text-base">Pod Selector</CardTitle></CardHeader>
-            <CardContent>
+          </SectionCard>
+          <SectionCard icon={Target} title="Pod Selector">
               {Object.keys(selector).length === 0 ? (
                 <p className="text-muted-foreground text-sm">No selector.</p>
               ) : (
@@ -180,11 +172,8 @@ export default function PodDisruptionBudgetDetail() {
                   ))}
                 </div>
               )}
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader><CardTitle className="text-base">Conditions</CardTitle></CardHeader>
-            <CardContent>
+          </SectionCard>
+          <SectionCard icon={AlertTriangle} title="Conditions">
               {conditions.length === 0 ? (
                 <p className="text-muted-foreground text-sm">No conditions.</p>
               ) : (
@@ -200,8 +189,7 @@ export default function PodDisruptionBudgetDetail() {
                   ))}
                 </div>
               )}
-            </CardContent>
-          </Card>
+          </SectionCard>
           <LabelList labels={labels} />
           <AnnotationList annotations={annotations} />
         </div>

@@ -1,7 +1,6 @@
 import { useState, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Scale, Clock, Download, Trash2, TrendingUp, TrendingDown, Server, Cpu, Network, GitCompare } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Scale, Clock, Download, Trash2, TrendingUp, TrendingDown, Server, Cpu, Network, GitCompare, Target, Activity } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -10,6 +9,7 @@ import { toast } from 'sonner';
 import { downloadResourceJson } from '@/lib/exportUtils';
 import {
   ResourceDetailLayout,
+  SectionCard,
   YamlViewer,
   EventsSection,
   ActionsSection,
@@ -117,9 +117,7 @@ export default function HorizontalPodAutoscalerDetail() {
   const maxReplicas = resource?.spec?.maxReplicas ?? 1;
   const currentReplicas = resource?.status?.currentReplicas ?? 0;
   const desiredReplicas = resource?.status?.desiredReplicas ?? currentReplicas;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   const metrics = resource?.spec?.metrics ?? [];
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   const currentMetrics = resource?.status?.currentMetrics ?? [];
   const conditions = resource?.status?.conditions ?? [];
   const labels = resource?.metadata?.labels ?? {};
@@ -200,9 +198,7 @@ export default function HorizontalPodAutoscalerDetail() {
       label: 'Overview',
       content: (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <Card>
-            <CardHeader><CardTitle className="text-base">Scale Target</CardTitle></CardHeader>
-            <CardContent className="space-y-4">
+          <SectionCard icon={Target} title="Scale Target">
               <div className="p-3 rounded-lg bg-muted/50">
                 <p className="text-muted-foreground text-sm mb-1">Reference</p>
                 {targetName !== '–' ? (
@@ -230,11 +226,8 @@ export default function HorizontalPodAutoscalerDetail() {
                 </div>
                 <p className="text-sm text-muted-foreground">Desired replicas: <span className="font-mono font-medium">{desiredReplicas}</span></p>
               </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader><CardTitle className="text-base">Current metrics</CardTitle></CardHeader>
-            <CardContent>
+          </SectionCard>
+          <SectionCard icon={Cpu} title="Current Metrics">
               {currentMetricsWithTarget.length === 0 ? (
                 <p className="text-muted-foreground text-sm">No current metrics reported yet.</p>
               ) : (
@@ -265,11 +258,8 @@ export default function HorizontalPodAutoscalerDetail() {
                   </TableBody>
                 </Table>
               )}
-            </CardContent>
-          </Card>
-          <Card className="lg:col-span-2">
-            <CardHeader><CardTitle className="text-base">Conditions</CardTitle></CardHeader>
-            <CardContent>
+          </SectionCard>
+          <SectionCard icon={Activity} title="Conditions" className="lg:col-span-2">
               {conditions.length === 0 ? (
                 <p className="text-muted-foreground text-sm">No conditions.</p>
               ) : (
@@ -285,8 +275,7 @@ export default function HorizontalPodAutoscalerDetail() {
                   ))}
                 </div>
               )}
-            </CardContent>
-          </Card>
+          </SectionCard>
           <LabelList labels={labels} />
           <AnnotationList annotations={annotations} />
         </div>
@@ -298,9 +287,7 @@ export default function HorizontalPodAutoscalerDetail() {
       content: (
         <div className="space-y-6">
           {scalingEvents.length > 0 && (
-            <Card>
-              <CardHeader><CardTitle className="text-base">Scaling events</CardTitle></CardHeader>
-              <CardContent>
+            <SectionCard icon={TrendingUp} title="Scaling Events">
                 <div className="space-y-3">
                   {scalingEvents.map((ev, i) => (
                     <div key={i} className="flex items-center gap-4 p-3 rounded-lg bg-muted/50">
@@ -319,8 +306,7 @@ export default function HorizontalPodAutoscalerDetail() {
                     </div>
                   ))}
                 </div>
-              </CardContent>
-            </Card>
+            </SectionCard>
           )}
           <EventsSection events={events} />
         </div>
