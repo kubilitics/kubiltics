@@ -52,24 +52,32 @@ jobs:
           cache-from: type=gha,scope=smoke-frontend
           cache-to: type=gha,mode=max,scope=smoke-frontend
 
+      - name: Write Kind config
+        run: |
+          cat > /tmp/kind-config.yaml << 'EOF'
+          kind: Cluster
+          apiVersion: kind.x-k8s.io/v1alpha4
+          nodes:
+          - role: control-plane
+            image: kindest/node:v1.30.0
+          EOF
+          sed -i 's/^          //' /tmp/kind-config.yaml
+          echo "--- Kind config ---"
+          cat /tmp/kind-config.yaml
+
       - name: Set up Kind cluster
         uses: helm/kind-action@v1.9.0
         with:
           version: v0.20.0
-          config: |
-            kind: Cluster
-            apiVersion: kind.x-k8s.io/v1alpha4
-            nodes:
-            - role: control-plane
-              image: kindest/node:v1.30.0
+          config: /tmp/kind-config.yaml
 
       - name: Install Helm
         uses: azure/setup-helm@v4
 
       - name: Load images into Kind
         run: |
-          kind load docker-image kubilitics-backend:local
-          kind load docker-image kubilitics-frontend:local
+          kind load docker-image kubilitics-backend:local --name chart-testing
+          kind load docker-image kubilitics-frontend:local --name chart-testing
 
       - name: Deploy with Helm
         run: |
