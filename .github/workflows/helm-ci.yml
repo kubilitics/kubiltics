@@ -41,7 +41,7 @@ jobs:
       - name: Install Helm
         uses: azure/setup-helm@v4
         with:
-          version: '3.14.0'
+          version: '3.16.0'
 
       - name: Add Helm repositories
         run: |
@@ -95,7 +95,7 @@ jobs:
       - name: Install Helm
         uses: azure/setup-helm@v4
         with:
-          version: '3.14.0'
+          version: '3.16.0'
 
       - name: Install kind
         uses: helm/kind-action@v1
@@ -176,7 +176,7 @@ jobs:
       - name: Install Helm
         uses: azure/setup-helm@v4
         with:
-          version: '3.14.0'
+          version: '3.16.0'
 
       - name: Extract chart version
         id: chart-version
@@ -219,7 +219,7 @@ jobs:
       - name: Install Helm
         uses: azure/setup-helm@v4
         with:
-          version: '3.14.0'
+          version: '3.16.0'
 
       - name: Download chart artifact
         uses: actions/download-artifact@v4
