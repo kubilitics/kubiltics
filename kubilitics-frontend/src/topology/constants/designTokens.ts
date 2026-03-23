@@ -73,9 +73,9 @@ export function statusDotClass(status: string): string {
 
 export const NODE_DIMS: Record<string, { width: number; height: number }> = {
   minimal:  { width: 80,  height: 60  },
-  compact:  { width: 220, height: 55  },
-  base:     { width: 320, height: 130 },
-  expanded: { width: 400, height: 200 },
+  compact:  { width: 200, height: 50  },
+  base:     { width: 280, height: 120 },
+  expanded: { width: 380, height: 190 },
 };
 
 export function getNodeDims(nodeType: string) {
@@ -124,10 +124,11 @@ export const ZOOM_THRESHOLDS = {
 // Used by: TopologyCanvas auto-fit
 
 export function fitViewMinZoom(nodeCount: number): number {
-  if (nodeCount > 300) return 0.12;
-  if (nodeCount > 150) return 0.20;
-  if (nodeCount > 50)  return 0.25;
-  return 0.35;
+  if (nodeCount > 300) return 0.15;
+  if (nodeCount > 150) return 0.25;
+  if (nodeCount > 50)  return 0.35;
+  if (nodeCount > 20)  return 0.45;
+  return 0.55;
 }
 
 // ─── Export Constants ────────────────────────────────────────────────────────

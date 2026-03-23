@@ -103,7 +103,7 @@ function TopologyCanvasInner({
   useEffect(() => {
     if (fitViewRef) {
       fitViewRef.current = () =>
-        reactFlow.fitView({ padding: 0.06, duration: 400 });
+        reactFlow.fitView({ padding: 0.08, duration: 400, minZoom: fitViewMinZoom(nodeCount) });
     }
   }, [reactFlow, fitViewRef]);
 
@@ -321,7 +321,7 @@ function TopologyCanvasInner({
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         fitView
-        fitViewOptions={{ padding: 0.06 }}
+        fitViewOptions={{ padding: 0.08, minZoom: fitViewMinZoom(nodeCount) }}
         onlyRenderVisibleElements={!isExporting}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
