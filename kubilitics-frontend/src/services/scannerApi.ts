@@ -26,7 +26,7 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
       'Content-Type': 'application/json',
       ...init?.headers,
     },
-    signal: init?.signal ?? AbortSignal.timeout(30_000),
+    signal: init?.signal,
   });
   if (!res.ok) {
     const body = await res.text().catch(() => '');
