@@ -253,32 +253,6 @@ export default function Pods() {
  }, [searchParams, selectedNamespaces.size]);
 
  // Calculate resource max values from pod spec (for sparklines)
- // Dynamic max: when pods don't have resource limits, compute max from actual usage
- // across all visible pods. This makes bars proportional to each other instead of
- // invisible against a 1000m default.
- const { dynamicCpuMax, dynamicMemoryMax } = useMemo(() => {
-   let maxCpu = 0;
-   let maxMem = 0;
-   const allMetrics = { ...metricsMap, ...sortMetricsMap };
-   for (const key of Object.keys(allMetrics)) {
-     const m = allMetrics[key];
-     if (m?.cpu) {
-       const val = parseCpu(m.cpu);
-       if (val !== null && val > maxCpu) maxCpu = val;
-     }
-     if (m?.memory) {
-       const val = parseMemory(m.memory);
-       if (val !== null && val > maxMem) maxMem = val;
-     }
-   }
-   // Use 1.5x the highest observed usage as the bar max (gives headroom)
-   // Minimum: 10m CPU, 32Mi memory (so even tiny usage shows a visible bar)
-   return {
-     dynamicCpuMax: Math.max(maxCpu * 1.5, 10),
-     dynamicMemoryMax: Math.max(maxMem * 1.5, 32),
-   };
- }, [metricsMap, sortMetricsMap]);
-
  const podResourceMaxMap = useMemo(() => {
  const m: Record<string, { cpuMax?: number; memoryMax?: number }> = {};
  if (data?.items) {
@@ -546,6 +520,29 @@ export default function Pods() {
  });
  return m;
  }, [metricsQueries, visiblePodsForMetrics]);
+
+ // Dynamic max: when pods don't have resource limits, compute max from actual usage
+ // across all visible pods so bars are proportional (not invisible against 1000m default)
+ const { dynamicCpuMax, dynamicMemoryMax } = useMemo(() => {
+   let maxCpu = 0;
+   let maxMem = 0;
+   const allMetrics = { ...metricsMap, ...sortMetricsMap };
+   for (const key of Object.keys(allMetrics)) {
+     const m = allMetrics[key];
+     if (m?.cpu) {
+       const val = parseCpu(m.cpu);
+       if (val !== null && val > maxCpu) maxCpu = val;
+     }
+     if (m?.memory) {
+       const val = parseMemory(m.memory);
+       if (val !== null && val > maxMem) maxMem = val;
+     }
+   }
+   return {
+     dynamicCpuMax: Math.max(maxCpu * 1.5, 10),
+     dynamicMemoryMax: Math.max(maxMem * 1.5, 32),
+   };
+ }, [metricsMap, sortMetricsMap]);
 
  const handleDelete = async () => {
  if (!isConnected) return;
