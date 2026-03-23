@@ -8,7 +8,7 @@ import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { ResourceWizard, type WizardStep } from './ResourceWizard';
 import { useCreateK8sResource } from '@/hooks/useKubernetes';
 import { useKubernetesConfigStore } from '@/stores/kubernetesConfigStore';
@@ -777,8 +777,7 @@ export function PodWizard({ open, onClose, onSuccess }: PodWizardProps) {
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
                   <h4 className="font-medium">Liveness Probe</h4>
-                  <TooltipProvider>
-                    <Tooltip>
+                  <Tooltip>
                       <TooltipTrigger>
                         <Info className="h-4 w-4 text-muted-foreground" />
                       </TooltipTrigger>
@@ -786,7 +785,6 @@ export function PodWizard({ open, onClose, onSuccess }: PodWizardProps) {
                         <p className="max-w-xs">Determines if the container is running. If the probe fails, the container will be restarted.</p>
                       </TooltipContent>
                     </Tooltip>
-                  </TooltipProvider>
                 </div>
                 <Switch
                   checked={activeContainer.livenessProbe.enabled}
@@ -854,8 +852,7 @@ export function PodWizard({ open, onClose, onSuccess }: PodWizardProps) {
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
                   <h4 className="font-medium">Readiness Probe</h4>
-                  <TooltipProvider>
-                    <Tooltip>
+                  <Tooltip>
                       <TooltipTrigger>
                         <Info className="h-4 w-4 text-muted-foreground" />
                       </TooltipTrigger>
@@ -863,7 +860,6 @@ export function PodWizard({ open, onClose, onSuccess }: PodWizardProps) {
                         <p className="max-w-xs">Determines if the container is ready to receive traffic. Traffic will only be routed to this pod when ready.</p>
                       </TooltipContent>
                     </Tooltip>
-                  </TooltipProvider>
                 </div>
                 <Switch
                   checked={activeContainer.readinessProbe.enabled}

@@ -2,7 +2,7 @@ import { motion } from 'framer-motion';
 import { AlertTriangle, CheckCircle2, Info } from 'lucide-react';
 import { useHealthScore } from '@/hooks/useHealthScore';
 import { cn } from '@/lib/utils';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Progress } from '@/components/ui/progress';
 
 const statusConfig = {
@@ -92,8 +92,7 @@ export function HealthScoreCard() {
       <div className="px-6 pt-5 pb-3 flex items-center justify-between gap-4">
         <h2 className="text-base font-semibold tracking-tight text-foreground flex items-center gap-2">
           Cluster Health Score
-          <TooltipProvider>
-            <Tooltip>
+          <Tooltip>
               <TooltipTrigger asChild>
                 <button type="button" className="text-muted-foreground hover:text-foreground transition-colors">
                   <Info className="h-4 w-4" />
@@ -105,7 +104,6 @@ export function HealthScoreCard() {
                 </p>
               </TooltipContent>
             </Tooltip>
-          </TooltipProvider>
         </h2>
         <span
           className={cn(

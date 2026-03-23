@@ -29,7 +29,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import type { TopologyNode, TopologyEdge, ResourceType } from './D3TopologyCanvas';
 
@@ -607,8 +607,7 @@ export function D3HierarchicalTopologyCanvas({
 
       {/* Zoom controls */}
       <div className="absolute bottom-4 right-4 flex flex-col items-center gap-1 p-1 bg-white/95 backdrop-blur-sm border border-gray-200 rounded-lg shadow-lg z-10">
-        <TooltipProvider>
-          <Tooltip>
+        <Tooltip>
             <TooltipTrigger asChild>
               <Button
                 variant="ghost"
@@ -621,11 +620,11 @@ export function D3HierarchicalTopologyCanvas({
             </TooltipTrigger>
             <TooltipContent side="left">Zoom In</TooltipContent>
           </Tooltip>
-          
+
           <div className="text-xs text-gray-600 font-medium min-w-[3rem] text-center">
             {zoomLevel}%
           </div>
-          
+
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
@@ -639,7 +638,7 @@ export function D3HierarchicalTopologyCanvas({
             </TooltipTrigger>
             <TooltipContent side="left">Zoom Out</TooltipContent>
           </Tooltip>
-          
+
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
@@ -653,7 +652,6 @@ export function D3HierarchicalTopologyCanvas({
             </TooltipTrigger>
             <TooltipContent side="left">Reset Zoom</TooltipContent>
           </Tooltip>
-        </TooltipProvider>
       </div>
     </div>
   );

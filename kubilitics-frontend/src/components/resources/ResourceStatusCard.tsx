@@ -5,7 +5,6 @@ import { cn } from '@/lib/utils';
 import {
   Tooltip,
   TooltipContent,
-  TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 
@@ -80,14 +79,12 @@ export function ResourceStatusCard({
       <div className="space-y-1 min-w-0 flex-1">
         <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide truncate">{label}</p>
         {isTruncated ? (
-          <TooltipProvider delayDuration={200}>
-            <Tooltip>
+          <Tooltip>
               <TooltipTrigger asChild>{valueEl}</TooltipTrigger>
               <TooltipContent side="bottom" className="max-w-sm font-mono text-xs break-all">
                 {strValue}
               </TooltipContent>
             </Tooltip>
-          </TooltipProvider>
         ) : (
           valueEl
         )}

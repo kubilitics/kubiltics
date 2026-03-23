@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Textarea } from '@/components/ui/textarea';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { toast } from 'sonner';
 
 export interface WizardStep {
@@ -276,13 +276,12 @@ export function ResourceWizard({
                     Download
                   </Button>
                   <div className="w-px h-4 bg-border mx-1" />
-                  <TooltipProvider delayDuration={200}>
-                    <Tooltip>
+                  <Tooltip>
                       <TooltipTrigger asChild>
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          className="h-7 w-7 p-0" 
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 w-7 p-0"
                           onClick={() => setIsYamlExpanded(!isYamlExpanded)}
                         >
                           {isYamlExpanded ? (
@@ -296,7 +295,6 @@ export function ResourceWizard({
                         {isYamlExpanded ? 'Exit fullscreen' : 'Expand editor'}
                       </TooltipContent>
                     </Tooltip>
-                  </TooltipProvider>
                 </div>
               </div>
               <div className="flex-1 p-4 overflow-hidden">

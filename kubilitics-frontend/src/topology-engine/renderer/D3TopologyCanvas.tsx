@@ -37,7 +37,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
@@ -1128,7 +1128,6 @@ export function D3TopologyCanvas({
 
           {groupingMode !== 'none' && (
             <div className="flex items-center gap-1">
-              <TooltipProvider delayDuration={200}>
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button variant="ghost" size="icon" className="h-8 w-8" onClick={collapseAll}>
@@ -1145,7 +1144,6 @@ export function D3TopologyCanvas({
                   </TooltipTrigger>
                   <TooltipContent>Expand all groups</TooltipContent>
                 </Tooltip>
-              </TooltipProvider>
             </div>
           )}
 
@@ -1168,8 +1166,7 @@ export function D3TopologyCanvas({
           <div className="w-px h-4 bg-border" />
 
           {/* Simulation controls */}
-          <TooltipProvider delayDuration={200}>
-            <Tooltip>
+          <Tooltip>
               <TooltipTrigger asChild>
                 <Button
                   variant="ghost"
@@ -1202,13 +1199,11 @@ export function D3TopologyCanvas({
               </TooltipTrigger>
               <TooltipContent>Reset simulation</TooltipContent>
             </Tooltip>
-          </TooltipProvider>
 
           <div className="w-px h-4 bg-border" />
 
           {/* Export buttons */}
-          <TooltipProvider delayDuration={200}>
-            <Tooltip>
+          <Tooltip>
               <TooltipTrigger asChild>
                 <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-xs text-muted-foreground hover:text-foreground">
                   <FileJson className="h-3.5 w-3.5" />
@@ -1235,7 +1230,6 @@ export function D3TopologyCanvas({
               </TooltipTrigger>
               <TooltipContent>Export as PNG</TooltipContent>
             </Tooltip>
-          </TooltipProvider>
 
           <div className="w-px h-4 bg-border" />
 
@@ -1259,8 +1253,7 @@ export function D3TopologyCanvas({
             </Button>
           </div>
 
-          <TooltipProvider delayDuration={200}>
-            <Tooltip>
+          <Tooltip>
               <TooltipTrigger asChild>
                 <Button
                   variant="ghost"
@@ -1273,7 +1266,6 @@ export function D3TopologyCanvas({
               </TooltipTrigger>
               <TooltipContent>Fit to screen</TooltipContent>
             </Tooltip>
-          </TooltipProvider>
         </div>
       </div>
 

@@ -31,7 +31,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { GlobalSearch } from './GlobalSearch';
 import { ClusterShellPanel } from '@/components/shell';
 import { DeploymentWizard, ServiceWizard, ConfigMapWizard, SecretWizard } from '@/components/wizards';
@@ -267,7 +267,6 @@ export function Header() {
 
             {/* Right group: pushed to the edge with even spacing between items */}
             <div className="flex items-center gap-2 lg:gap-4 shrink-0 ml-auto">
-              <TooltipProvider delayDuration={300}>
 
                 {/* Cluster selector — single status dot (unified cluster + backend) */}
                 {activeCluster && (
@@ -450,7 +449,6 @@ export function Header() {
                   </DropdownMenuContent>
                 </DropdownMenu>
 
-              </TooltipProvider>
             </div>
           </div>
         </div>

@@ -34,7 +34,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -576,8 +576,7 @@ export function NodeDetailPopup({
           <div className="flex items-center justify-between px-6 py-4 border-t border-border bg-muted/20">
             <div className="flex items-center gap-2">
               {isNavigatingAway && (
-                <TooltipProvider delayDuration={200}>
-                  <Tooltip>
+                <Tooltip>
                     <TooltipTrigger asChild>
                       <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-amber-500/10 border border-amber-500/20">
                         <Info className="h-3.5 w-3.5 text-amber-600" />
@@ -590,7 +589,6 @@ export function NodeDetailPopup({
                       <p>This will take you to the {resourceLabels[resource.type]} detail page. Use "Open in New Tab" to keep your current view.</p>
                     </TooltipContent>
                   </Tooltip>
-                </TooltipProvider>
               )}
               {!isNavigatingAway && (
                 <p className="text-xs text-muted-foreground">
@@ -603,8 +601,7 @@ export function NodeDetailPopup({
                 Close
               </Button>
               {isNavigatingAway && (
-                <TooltipProvider delayDuration={200}>
-                  <Tooltip>
+                <Tooltip>
                     <TooltipTrigger asChild>
                       <Button variant="outline" onClick={handleOpenInNewTab} className="gap-2">
                         <ArrowUpRight className="h-4 w-4" />
@@ -613,7 +610,6 @@ export function NodeDetailPopup({
                     </TooltipTrigger>
                     <TooltipContent>Open in new tab (keeps current view)</TooltipContent>
                   </Tooltip>
-                </TooltipProvider>
               )}
               <Button onClick={handleViewDetails} className="gap-2">
                 <ExternalLink className="h-4 w-4" />

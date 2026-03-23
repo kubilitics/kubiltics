@@ -19,7 +19,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { toast } from 'sonner';
 import { CodeEditor } from '@/components/editor/CodeEditor';
 import { ResourceDocumentation, K8S_DOCS } from '@/components/editor/ResourceDocumentation';
@@ -165,8 +165,7 @@ export function ResourceCreator({
         <div className="flex items-center gap-2">
           {/* Font Size Selector */}
           <div className="flex items-center gap-1 border border-border rounded-md p-0.5">
-            <TooltipProvider delayDuration={200}>
-              <Tooltip>
+            <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
                     variant={fontSize === 'small' ? 'secondary' : 'ghost'}
@@ -179,9 +178,7 @@ export function ResourceCreator({
                 </TooltipTrigger>
                 <TooltipContent>Small font</TooltipContent>
               </Tooltip>
-            </TooltipProvider>
-            <TooltipProvider delayDuration={200}>
-              <Tooltip>
+            <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
                     variant={fontSize === 'medium' ? 'secondary' : 'ghost'}
@@ -194,9 +191,7 @@ export function ResourceCreator({
                 </TooltipTrigger>
                 <TooltipContent>Medium font</TooltipContent>
               </Tooltip>
-            </TooltipProvider>
-            <TooltipProvider delayDuration={200}>
-              <Tooltip>
+            <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
                     variant={fontSize === 'large' ? 'secondary' : 'ghost'}
@@ -209,7 +204,6 @@ export function ResourceCreator({
                 </TooltipTrigger>
                 <TooltipContent>Large font</TooltipContent>
               </Tooltip>
-            </TooltipProvider>
           </div>
 
           {/* Upload Button */}
@@ -277,8 +271,7 @@ export function ResourceCreator({
                     )}
                   </div>
                   <div className="flex items-center gap-1">
-                    <TooltipProvider delayDuration={200}>
-                      <Tooltip>
+                    <Tooltip>
                         <TooltipTrigger asChild>
                           <Button variant="ghost" size="sm" onClick={handleCopy} className="h-7 w-7 p-0">
                             <Copy className="h-3.5 w-3.5" />
@@ -286,9 +279,7 @@ export function ResourceCreator({
                         </TooltipTrigger>
                         <TooltipContent>Copy YAML</TooltipContent>
                       </Tooltip>
-                    </TooltipProvider>
-                    <TooltipProvider delayDuration={200}>
-                      <Tooltip>
+                    <Tooltip>
                         <TooltipTrigger asChild>
                           <Button variant="ghost" size="sm" onClick={handleDownload} className="h-7 w-7 p-0">
                             <Download className="h-3.5 w-3.5" />
@@ -296,7 +287,6 @@ export function ResourceCreator({
                         </TooltipTrigger>
                         <TooltipContent>Download YAML</TooltipContent>
                       </Tooltip>
-                    </TooltipProvider>
                   </div>
                 </div>
 

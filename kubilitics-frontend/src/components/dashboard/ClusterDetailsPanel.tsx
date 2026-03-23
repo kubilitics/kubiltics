@@ -8,7 +8,7 @@ import { useClusterStore } from '@/stores/clusterStore';
 import { useBackendConfigStore } from '@/stores/backendConfigStore';
 import { useClusterSummary } from '@/hooks/useClusterSummary';
 import { cn } from '@/lib/utils';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 const PROVIDER_LABELS: Record<string, string> = {
   eks: 'EKS',
@@ -71,8 +71,7 @@ export function ClusterDetailsPanel() {
             </div>
           ))}
         </div>
-        <TooltipProvider>
-          <Tooltip>
+        <Tooltip>
             <TooltipTrigger asChild>
               <Link
                 to="/settings"
@@ -91,7 +90,6 @@ export function ClusterDetailsPanel() {
               Cluster settings
             </TooltipContent>
           </Tooltip>
-        </TooltipProvider>
       </div>
     </section>
   );
