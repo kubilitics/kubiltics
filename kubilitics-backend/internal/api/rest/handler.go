@@ -25,6 +25,7 @@ import (
 	"github.com/kubilitics/kubilitics-backend/internal/pkg/metrics"
 	"github.com/kubilitics/kubilitics-backend/internal/pkg/validate"
 	"github.com/kubilitics/kubilitics-backend/internal/repository"
+	"github.com/kubilitics/kubilitics-backend/internal/pkg/topologyexport"
 	"github.com/kubilitics/kubilitics-backend/internal/service"
 	"github.com/kubilitics/kubilitics-backend/internal/topology"
 	topologyv2 "github.com/kubilitics/kubilitics-backend/internal/topology/v2"
@@ -913,11 +914,30 @@ func (h *Handler) ExportTopology(w http.ResponseWriter, r *http.Request) {
 		format = "json"
 	}
 
+	// Architecture diagram: handled separately (needs namespace + kubeconfig path)
+	if format == service.ExportFormatArchitecture {
+		if !topologyexport.IsKubeDiagramsAvailable() {
+			respondError(w, http.StatusServiceUnavailable, "kube-diagrams not installed. Install with: pip install KubeDiagrams && brew install graphviz")
+			return
+		}
+		namespace := r.URL.Query().Get("namespace")
+		data, err := topologyexport.GraphToArchitecturePNG(r.Context(), client.KubeconfigPath(), namespace, "")
+		if err != nil {
+			respondError(w, http.StatusInternalServerError, "Architecture diagram generation failed: "+err.Error())
+			return
+		}
+		w.Header().Set("Content-Type", "image/png")
+		w.Header().Set("Content-Disposition", `attachment; filename="architecture-diagram.png"`)
+		w.WriteHeader(http.StatusOK)
+		w.Write(data)
+		return
+	}
+
 	// getClientFromRequest returns client (from kubeconfig or stored cluster); use it for export
 	data, err := h.topologyService.ExportTopologyWithClient(r.Context(), client, clusterID, format)
 	if err != nil {
 		if errors.Is(err, service.ErrExportNotImplemented) {
-			respondError(w, http.StatusBadRequest, "Unsupported format. Use format=json|svg|drawio|png")
+			respondError(w, http.StatusBadRequest, "Unsupported format. Use format=json|svg|png|architecture")
 			return
 		}
 		respondError(w, http.StatusInternalServerError, err.Error())

@@ -114,6 +114,11 @@ func (c *Client) SetTimeout(d time.Duration) {
 	c.Timeout = d
 }
 
+// KubeconfigPath returns the kubeconfig file path used by this client.
+func (c *Client) KubeconfigPath() string {
+	return c.kubeconfigPath
+}
+
 // SetClusterID sets the cluster ID for circuit breaker metrics labeling.
 func (c *Client) SetClusterID(clusterID string) {
 	if c.circuitBreaker != nil {

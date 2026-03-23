@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useMemo } from "react";
 import {
   Search, Download, Maximize, ChevronDown, FileJson, FileImage, FileType,
-  Filter, X, Layers, GitBranch, Check, Monitor, RefreshCw,
+  Filter, X, Layers, GitBranch, Check, Monitor, RefreshCw, Network,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -28,6 +28,9 @@ import type { ExportFormat } from "./TopologyCanvas";
 import { exportTopologyPDF } from "./export/exportPDF";
 import type { SearchResult } from "./hooks/useTopologySearch";
 import { K8sIcon } from "./icons/K8sIcon";
+import { toast } from "sonner";
+import { useBackendConfigStore, getEffectiveBackendBaseUrl } from "@/stores/backendConfigStore";
+import { useActiveClusterId } from "@/hooks/useActiveClusterId";
 
 export interface TopologyToolbarProps {
   viewMode?: ViewMode;
@@ -72,6 +75,10 @@ export function TopologyToolbar({
   exportRef,
   getExportCtx,
 }: TopologyToolbarProps) {
+  const backendBaseUrl = useBackendConfigStore((s) => s.backendBaseUrl);
+  const effectiveBaseUrl = getEffectiveBackendBaseUrl(backendBaseUrl);
+  const clusterId = useActiveClusterId();
+  const [isExportingArch, setIsExportingArch] = useState(false);
   const [showSearchResults, setShowSearchResults] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
 
@@ -452,6 +459,45 @@ export function TopologyToolbar({
                       <div>
                         <div className="text-xs font-semibold">JSON</div>
                         <div className="text-[10px] text-gray-600 dark:text-gray-400">Raw topology data</div>
+                      </div>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      className="rounded-lg gap-2.5 py-2"
+                      disabled={isExportingArch}
+                      onClick={async () => {
+                        if (!clusterId) return;
+                        setIsExportingArch(true);
+                        toast.info("Generating architecture diagram...", { duration: 10000 });
+                        try {
+                          const ns = selectedNamespaces?.size ? Array.from(selectedNamespaces)[0] : "";
+                          const url = `${effectiveBaseUrl}/api/v1/clusters/${encodeURIComponent(clusterId)}/topology/export?format=architecture${ns ? `&namespace=${encodeURIComponent(ns)}` : ""}`;
+                          const res = await fetch(url, { method: "POST" });
+                          if (!res.ok) {
+                            const text = await res.text();
+                            throw new Error(text || res.statusText);
+                          }
+                          const blob = await res.blob();
+                          const a = document.createElement("a");
+                          a.href = URL.createObjectURL(blob);
+                          a.download = `architecture-${clusterName || "cluster"}-${ns || "all"}.png`;
+                          a.click();
+                          URL.revokeObjectURL(a.href);
+                          toast.success("Architecture diagram exported!");
+                        } catch (err: unknown) {
+                          const msg = err instanceof Error ? err.message : "Export failed";
+                          toast.error(msg);
+                        } finally {
+                          setIsExportingArch(false);
+                        }
+                      }}
+                    >
+                      <div className="flex items-center justify-center h-7 w-7 rounded-md bg-indigo-50">
+                        <Network className={`h-3.5 w-3.5 text-indigo-600 ${isExportingArch ? "animate-spin" : ""}`} />
+                      </div>
+                      <div>
+                        <div className="text-xs font-semibold">{isExportingArch ? "Generating..." : "Architecture Diagram"}</div>
+                        <div className="text-[10px] text-gray-600 dark:text-gray-400">Professional K8s icons (KubeDiagrams)</div>
                       </div>
                     </DropdownMenuItem>
                   </>
