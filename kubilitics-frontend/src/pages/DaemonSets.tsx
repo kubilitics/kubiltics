@@ -14,7 +14,7 @@ import { cn } from '@/lib/utils';
 import { Link, useNavigate } from 'react-router-dom';
 import { useK8sResourceList, useDeleteK8sResource, usePatchK8sResource, useCreateK8sResource, calculateAge, type KubernetesResource } from '@/hooks/useKubernetes';
 import { useConnectionStatus } from '@/hooks/useConnectionStatus';
-import { DeleteConfirmDialog, RolloutActionsDialog, UsageBar, parseCpu, parseMemory, calculatePodResourceMax } from '@/components/resources';
+import { DeleteConfirmDialog, RolloutActionsDialog, MetricBar, parseCpu, parseMemory, calculatePodResourceMax } from '@/components/resources';
 import { ResourceExportDropdown, ListViewSegmentedControl, ListPagination, PAGE_SIZE_OPTIONS, ResourceCommandBar, resourceTableRowClassName, ROW_MOTION, StatusPill, ListPageStatCard, ListPageHeader, TableColumnHeaderWithFilterAndSort, TableFilterCell, AgeCell, TableEmptyState, TableErrorState, ListPageLoadingShell, NamespaceBadge, ResourceListTableToolbar } from '@/components/list';
 import type { StatusPillVariant } from '@/components/list';
 import { useTableFiltersAndSort, type ColumnConfig } from '@/hooks/useTableFiltersAndSort';
@@ -607,14 +607,10 @@ spec:
  </ResizableTableCell>
  <ResizableTableCell columnId="updateStrategy"><Badge variant="secondary" className="font-mono text-xs truncate block w-fit max-w-full">{item.updateStrategy}</Badge></ResizableTableCell>
  <ResizableTableCell columnId="cpu">
- <div className="min-w-0 overflow-hidden">
- <UsageBar variant="sparkline" value={cpuVal} kind="cpu" displayFormat="compact" width={56} max={daemonsetResourceMaxMap[key]?.cpuMax} />
- </div>
+ <MetricBar value={cpuVal} kind="cpu" max={daemonsetResourceMaxMap[key]?.cpuMax} />
  </ResizableTableCell>
  <ResizableTableCell columnId="memory">
- <div className="min-w-0 overflow-hidden">
- <UsageBar variant="sparkline" value={memVal} kind="memory" displayFormat="compact" width={56} max={daemonsetResourceMaxMap[key]?.memoryMax} />
- </div>
+ <MetricBar value={memVal} kind="memory" max={daemonsetResourceMaxMap[key]?.memoryMax} />
  </ResizableTableCell>
  <ResizableTableCell columnId="age" className="text-muted-foreground whitespace-nowrap"><AgeCell age={item.age} timestamp={item.creationTimestamp} /></ResizableTableCell>
  <TableCell>
@@ -672,14 +668,10 @@ spec:
  </ResizableTableCell>
  <ResizableTableCell columnId="updateStrategy"><Badge variant="secondary" className="font-mono text-xs truncate block w-fit max-w-full">{item.updateStrategy}</Badge></ResizableTableCell>
  <ResizableTableCell columnId="cpu">
- <div className="min-w-0 overflow-hidden">
- <UsageBar variant="sparkline" value={cpuVal} kind="cpu" displayFormat="compact" width={56} max={daemonsetResourceMaxMap[key]?.cpuMax} />
- </div>
+ <MetricBar value={cpuVal} kind="cpu" max={daemonsetResourceMaxMap[key]?.cpuMax} />
  </ResizableTableCell>
  <ResizableTableCell columnId="memory">
- <div className="min-w-0 overflow-hidden">
- <UsageBar variant="sparkline" value={memVal} kind="memory" displayFormat="compact" width={56} max={daemonsetResourceMaxMap[key]?.memoryMax} />
- </div>
+ <MetricBar value={memVal} kind="memory" max={daemonsetResourceMaxMap[key]?.memoryMax} />
  </ResizableTableCell>
  <ResizableTableCell columnId="age" className="text-muted-foreground whitespace-nowrap"><AgeCell age={item.age} timestamp={item.creationTimestamp} /></ResizableTableCell>
  <TableCell>

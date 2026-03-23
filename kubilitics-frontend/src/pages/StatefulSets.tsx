@@ -14,7 +14,7 @@ import { cn } from '@/lib/utils';
 import { Link, useNavigate } from 'react-router-dom';
 import { useK8sResourceList, useDeleteK8sResource, usePatchK8sResource, useCreateK8sResource, calculateAge, type KubernetesResource } from '@/hooks/useKubernetes';
 import { useConnectionStatus } from '@/hooks/useConnectionStatus';
-import { DeleteConfirmDialog, ScaleDialog, RolloutActionsDialog, UsageBar, parseCpu, parseMemory, calculatePodResourceMax } from '@/components/resources';
+import { DeleteConfirmDialog, ScaleDialog, RolloutActionsDialog, MetricBar, parseCpu, parseMemory, calculatePodResourceMax } from '@/components/resources';
 import { ResourceExportDropdown, ListViewSegmentedControl, ListPagination, PAGE_SIZE_OPTIONS, ResourceCommandBar, resourceTableRowClassName, ROW_MOTION, StatusPill, ListPageStatCard, ListPageHeader, TableColumnHeaderWithFilterAndSort, TableFilterCell, AgeCell, TableEmptyState, TableErrorState, ListPageLoadingShell, NamespaceBadge, ResourceListTableToolbar } from '@/components/list';
 import type { StatusPillVariant } from '@/components/list';
 import { useTableFiltersAndSort, type ColumnConfig } from '@/hooks/useTableFiltersAndSort';
@@ -739,16 +739,12 @@ spec:
  )}
  {columnVisibility.isColumnVisible('cpu') && (
  <ResizableTableCell columnId="cpu">
- <div className="min-w-0 overflow-hidden">
- <UsageBar variant="sparkline" value={cpuVal} kind="cpu" dataPoints={cpuDataPoints} displayFormat="compact" width={56} />
- </div>
+ <MetricBar value={cpuVal} kind="cpu" />
  </ResizableTableCell>
  )}
  {columnVisibility.isColumnVisible('memory') && (
  <ResizableTableCell columnId="memory">
- <div className="min-w-0 overflow-hidden">
- <UsageBar variant="sparkline" value={memVal} kind="memory" dataPoints={memDataPoints} displayFormat="compact" width={56} />
- </div>
+ <MetricBar value={memVal} kind="memory" />
  </ResizableTableCell>
  )}
  {columnVisibility.isColumnVisible('age') && <ResizableTableCell columnId="age" className="text-muted-foreground whitespace-nowrap"><AgeCell age={item.age} timestamp={item.creationTimestamp} /></ResizableTableCell>}
@@ -824,16 +820,12 @@ spec:
  )}
  {columnVisibility.isColumnVisible('cpu') && (
  <ResizableTableCell columnId="cpu">
- <div className="min-w-0 overflow-hidden">
- <UsageBar variant="sparkline" value={cpuVal} kind="cpu" displayFormat="compact" width={56} max={statefulsetResourceMaxMap[key]?.cpuMax} />
- </div>
+ <MetricBar value={cpuVal} kind="cpu" max={statefulsetResourceMaxMap[key]?.cpuMax} />
  </ResizableTableCell>
  )}
  {columnVisibility.isColumnVisible('memory') && (
  <ResizableTableCell columnId="memory">
- <div className="min-w-0 overflow-hidden">
- <UsageBar variant="sparkline" value={memVal} kind="memory" displayFormat="compact" width={56} max={statefulsetResourceMaxMap[key]?.memoryMax} />
- </div>
+ <MetricBar value={memVal} kind="memory" max={statefulsetResourceMaxMap[key]?.memoryMax} />
  </ResizableTableCell>
  )}
  {columnVisibility.isColumnVisible('age') && <ResizableTableCell columnId="age" className="text-muted-foreground whitespace-nowrap"><AgeCell age={item.age} timestamp={item.creationTimestamp} /></ResizableTableCell>}

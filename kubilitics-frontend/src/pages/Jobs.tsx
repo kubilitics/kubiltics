@@ -17,7 +17,7 @@ import { useConnectionStatus } from '@/hooks/useConnectionStatus';
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
 import { useClusterStore } from '@/stores/clusterStore';
 import { postJobRetry } from '@/services/backendApiClient';
-import { DeleteConfirmDialog, UsageBar, parseCpu, parseMemory, calculatePodResourceMax } from '@/components/resources';
+import { DeleteConfirmDialog, MetricBar, parseCpu, parseMemory, calculatePodResourceMax } from '@/components/resources';
 import { ResourceExportDropdown, ListViewSegmentedControl, ListPagination, PAGE_SIZE_OPTIONS, ResourceCommandBar, resourceTableRowClassName, ROW_MOTION, StatusPill, ListPageStatCard, ListPageHeader, TableColumnHeaderWithFilterAndSort, TableFilterCell, AgeCell, TableEmptyState, TableErrorState, ListPageLoadingShell, CopyNameDropdownItem, NamespaceBadge, ResourceListTableToolbar } from '@/components/list';
 import { useTableFiltersAndSort, type ColumnConfig } from '@/hooks/useTableFiltersAndSort';
 import { useColumnVisibility } from '@/hooks/useColumnVisibility';
@@ -666,14 +666,10 @@ spec:
  )}
  </ResizableTableCell>
  <ResizableTableCell columnId="cpu">
- <div className="min-w-0 overflow-hidden">
- <UsageBar variant="sparkline" value={cpuVal} kind="cpu" displayFormat="compact" width={56} max={jobResourceMaxMap[key]?.cpuMax} />
- </div>
+ <MetricBar value={cpuVal} kind="cpu" max={jobResourceMaxMap[key]?.cpuMax} />
  </ResizableTableCell>
  <ResizableTableCell columnId="memory">
- <div className="min-w-0 overflow-hidden">
- <UsageBar variant="sparkline" value={memVal} kind="memory" displayFormat="compact" width={56} max={jobResourceMaxMap[key]?.memoryMax} />
- </div>
+ <MetricBar value={memVal} kind="memory" max={jobResourceMaxMap[key]?.memoryMax} />
  </ResizableTableCell>
  <ResizableTableCell columnId="age" className="text-muted-foreground whitespace-nowrap"><AgeCell age={item.age} timestamp={item.creationTimestamp} /></ResizableTableCell>
  <TableCell>
@@ -740,14 +736,10 @@ spec:
  )}
  </ResizableTableCell>
  <ResizableTableCell columnId="cpu">
- <div className="min-w-0 overflow-hidden">
- <UsageBar variant="sparkline" value={cpuVal} kind="cpu" displayFormat="compact" width={56} max={jobResourceMaxMap[key]?.cpuMax} />
- </div>
+ <MetricBar value={cpuVal} kind="cpu" max={jobResourceMaxMap[key]?.cpuMax} />
  </ResizableTableCell>
  <ResizableTableCell columnId="memory">
- <div className="min-w-0 overflow-hidden">
- <UsageBar variant="sparkline" value={memVal} kind="memory" displayFormat="compact" width={56} max={jobResourceMaxMap[key]?.memoryMax} />
- </div>
+ <MetricBar value={memVal} kind="memory" max={jobResourceMaxMap[key]?.memoryMax} />
  </ResizableTableCell>
  <ResizableTableCell columnId="age" className="text-muted-foreground whitespace-nowrap"><AgeCell age={item.age} timestamp={item.creationTimestamp} /></ResizableTableCell>
  <TableCell>

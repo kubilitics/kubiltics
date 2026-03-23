@@ -24,7 +24,7 @@ import { useConnectionStatus } from '@/hooks/useConnectionStatus';
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
 import { useClusterStore } from '@/stores/clusterStore';
 import { applyManifest, CONFIRM_DESTRUCTIVE_HEADER, getDeploymentRolloutHistory, getEvents, postDeploymentRollback } from '@/services/backendApiClient';
-import { DeleteConfirmDialog, ScaleDialog, RolloutActionsDialog, UsageBar, parseCpu, parseMemory, calculatePodResourceMax } from '@/components/resources';
+import { DeleteConfirmDialog, ScaleDialog, RolloutActionsDialog, MetricBar, parseCpu, parseMemory, calculatePodResourceMax } from '@/components/resources';
 import { ResourceCommandBar, ResourceExportDropdown, ListViewSegmentedControl } from '@/components/list';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { ResourceCreator, DEFAULT_YAMLS } from '@/components/editor';
@@ -905,16 +905,12 @@ spec:
  {columnVisibility.isColumnVisible('images') && <ResizableTableCell columnId="images" className="text-xs truncate max-w-[180px]" title={item.images.join(', ')}>{item.images.length ? item.images.join(', ') : '-'}</ResizableTableCell>}
  {columnVisibility.isColumnVisible('cpu') && (
  <ResizableTableCell columnId="cpu">
- <div className="min-w-0 overflow-hidden">
- <UsageBar variant="sparkline" value={cpuVal} kind="cpu" displayFormat="compact" width={56} max={deploymentResourceMaxMap[key]?.cpuMax} />
- </div>
+ <MetricBar value={cpuVal} kind="cpu" max={deploymentResourceMaxMap[key]?.cpuMax} />
  </ResizableTableCell>
  )}
  {columnVisibility.isColumnVisible('memory') && (
  <ResizableTableCell columnId="memory">
- <div className="min-w-0 overflow-hidden">
- <UsageBar variant="sparkline" value={memVal} kind="memory" displayFormat="compact" width={56} max={deploymentResourceMaxMap[key]?.memoryMax} />
- </div>
+ <MetricBar value={memVal} kind="memory" max={deploymentResourceMaxMap[key]?.memoryMax} />
  </ResizableTableCell>
  )}
  {columnVisibility.isColumnVisible('age') && <ResizableTableCell columnId="age" className="text-muted-foreground whitespace-nowrap"><AgeCell age={item.age} timestamp={item.creationTimestamp} /></ResizableTableCell>}
@@ -1025,16 +1021,12 @@ spec:
  {columnVisibility.isColumnVisible('images') && <ResizableTableCell columnId="images" className="text-xs truncate max-w-[180px]" title={item.images.join(', ')}>{item.images.length ? item.images.join(', ') : '-'}</ResizableTableCell>}
  {columnVisibility.isColumnVisible('cpu') && (
  <ResizableTableCell columnId="cpu">
- <div className="min-w-0 overflow-hidden">
- <UsageBar variant="sparkline" value={cpuVal} kind="cpu" displayFormat="compact" width={56} />
- </div>
+ <MetricBar value={cpuVal} kind="cpu" />
  </ResizableTableCell>
  )}
  {columnVisibility.isColumnVisible('memory') && (
  <ResizableTableCell columnId="memory">
- <div className="min-w-0 overflow-hidden">
- <UsageBar variant="sparkline" value={memVal} kind="memory" displayFormat="compact" width={56} />
- </div>
+ <MetricBar value={memVal} kind="memory" />
  </ResizableTableCell>
  )}
  {columnVisibility.isColumnVisible('age') && <ResizableTableCell columnId="age" className="text-muted-foreground whitespace-nowrap"><AgeCell age={item.age} timestamp={item.creationTimestamp} /></ResizableTableCell>}
