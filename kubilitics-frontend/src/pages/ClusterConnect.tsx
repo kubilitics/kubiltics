@@ -60,7 +60,7 @@ import { DEFAULT_BACKEND_BASE_URL } from '@/lib/backendConstants';
 import { useClustersFromBackend } from '@/hooks/useClustersFromBackend';
 import { useDiscoverClusters } from '@/hooks/useDiscoverClusters';
 import { useBackendHealth } from '@/hooks/useBackendHealth';
-import { addCluster, addClusterWithUpload, resetBackendCircuit, type BackendCluster } from '@/services/backendApiClient';
+import { addCluster, addClusterWithUpload, resetBackendCircuit, getClusterOverview, type BackendCluster } from '@/services/backendApiClient';
 import { backendClusterToCluster } from '@/lib/backendClusterAdapter';
 import { toast } from '@/components/ui/sonner';
 import { useQueryClient } from '@tanstack/react-query';
@@ -266,7 +266,7 @@ export default function ClusterConnect() {
         setAutoConnectTimeout(true);
       }, 5_000); // 5 second timeout for cluster check
 
-      import('@/services/backendApiClient').then(({ getClusterOverview }) => {
+      Promise.resolve().then(() => {
         const backendBaseUrl = getEffectiveBackendBaseUrl(storedBackendUrl);
         return Promise.race([
           getClusterOverview(backendBaseUrl, backendItem.id),
@@ -301,7 +301,7 @@ export default function ClusterConnect() {
 
       if (backendItem) {
         // Test cluster accessibility before restoring
-        import('@/services/backendApiClient').then(({ getClusterOverview }) => {
+        Promise.resolve().then(() => {
           const backendBaseUrl = getEffectiveBackendBaseUrl(storedBackendUrl);
           return getClusterOverview(backendBaseUrl, cid);
         }).then(() => {
