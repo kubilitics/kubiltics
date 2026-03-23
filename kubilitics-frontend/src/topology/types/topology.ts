@@ -53,6 +53,14 @@ export interface TopologyNode {
   labels?: Record<string, string>;
   annotations?: Record<string, string>;
   createdAt?: string;
+  // Debugging fields — resource-specific
+  podIP?: string;
+  nodeName?: string;
+  internalIP?: string;
+  externalIP?: string;
+  clusterIP?: string;
+  serviceType?: string;
+  containers?: number;
 }
 
 export interface TopologyEdge {
