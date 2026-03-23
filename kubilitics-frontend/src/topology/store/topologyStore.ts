@@ -54,6 +54,10 @@ export interface TopologyState {
   error: string | null;
   warnings: string[];
 
+  // Presentation
+  presentationMode: boolean;
+  focusDimming: boolean;
+
   // WebSocket
   wsConnected: boolean;
   lastUpdateTime: string | null;
@@ -74,6 +78,8 @@ export interface TopologyState {
   setKindFilter: (kinds: string[]) => void;
   setStatusFilter: (statuses: string[]) => void;
   toggleOverlay: (name: "health" | "cost" | "traffic" | "security") => void;
+  togglePresentationMode: () => void;
+  toggleFocusDimming: () => void;
   setZoom: (zoom: number) => void;
   setPosition: (pos: { x: number; y: number }) => void;
   setLoading: (loading: boolean) => void;
@@ -143,6 +149,8 @@ export const useTopologyStore = create<TopologyState>()(
       isLoading: false,
       error: null,
       warnings: [],
+      presentationMode: false,
+      focusDimming: true,
       wsConnected: false,
       lastUpdateTime: null,
 
@@ -246,6 +254,9 @@ export const useTopologyStore = create<TopologyState>()(
           [`${name}Overlay`]: !s[`${name}Overlay` as keyof TopologyState],
         } as Partial<TopologyState>)),
 
+      togglePresentationMode: () => set((s) => ({ presentationMode: !s.presentationMode })),
+      toggleFocusDimming: () => set((s) => ({ focusDimming: !s.focusDimming })),
+
       setZoom: (zoom) => set({ zoom }),
       setPosition: (position) => set({ position }),
       setLoading: (isLoading) => set({ isLoading }),
@@ -262,6 +273,7 @@ export const useTopologyStore = create<TopologyState>()(
         costOverlay: state.costOverlay,
         trafficOverlay: state.trafficOverlay,
         securityOverlay: state.securityOverlay,
+        focusDimming: state.focusDimming,
       }),
     }
   )
