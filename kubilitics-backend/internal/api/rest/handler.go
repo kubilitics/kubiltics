@@ -921,13 +921,13 @@ func (h *Handler) ExportTopology(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		namespace := r.URL.Query().Get("namespace")
-		data, err := topologyexport.GraphToArchitectureSVG(r.Context(), client.KubeconfigPath(), namespace, "")
+		data, err := topologyexport.GraphToArchitecturePNG(r.Context(), client.KubeconfigPath(), namespace, "")
 		if err != nil {
 			respondError(w, http.StatusInternalServerError, "Architecture diagram generation failed: "+err.Error())
 			return
 		}
-		w.Header().Set("Content-Type", "image/svg+xml")
-		w.Header().Set("Content-Disposition", `attachment; filename="architecture-diagram.svg"`)
+		w.Header().Set("Content-Type", "image/png")
+		w.Header().Set("Content-Disposition", `attachment; filename="architecture-diagram.png"`)
 		w.WriteHeader(http.StatusOK)
 		w.Write(data)
 		return

@@ -443,7 +443,7 @@ export function TopologyToolbar({
                           const blob = await res.blob();
                           const a = document.createElement("a");
                           a.href = URL.createObjectURL(blob);
-                          a.download = `architecture-${clusterName || "cluster"}-${ns || "all"}.svg`;
+                          a.download = `architecture-${clusterName || "cluster"}-${ns || "all"}.png`;
                           a.click();
                           URL.revokeObjectURL(a.href);
                           toast.success("Architecture diagram exported!");

@@ -23,7 +23,7 @@ const KubeDiagramsBinaryName = "kube-diagrams"
 // Install: pip install KubeDiagrams && brew install graphviz (macOS)
 //
 // Returns ErrKubeDiagramsNotInstalled if kube-diagrams is not on PATH.
-func GraphToArchitectureSVG(ctx context.Context, kubeconfigPath, namespace, kubectlPath string) ([]byte, error) {
+func GraphToArchitecturePNG(ctx context.Context, kubeconfigPath, namespace, kubectlPath string) ([]byte, error) {
 	// Resolve kube-diagrams binary
 	kubeDiagramsPath, err := resolveKubeDiagrams()
 	if err != nil {
@@ -44,7 +44,7 @@ func GraphToArchitectureSVG(ctx context.Context, kubeconfigPath, namespace, kube
 	}
 
 	// Generate unique output path
-	outputPath := filepath.Join(os.TempDir(), fmt.Sprintf("kubilitics-arch-%s.svg", uuid.New().String()))
+	outputPath := filepath.Join(os.TempDir(), fmt.Sprintf("kubilitics-arch-%s.png", uuid.New().String()))
 	defer os.Remove(outputPath)
 
 	// For namespace-scoped exports: fetch only namespace-scoped resources (keeps diagram compact).
