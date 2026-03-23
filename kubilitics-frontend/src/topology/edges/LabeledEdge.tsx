@@ -63,9 +63,15 @@ function LabeledEdgeInner(props: EdgeProps<LabeledEdgeData>) {
             onMouseEnter={onMouseEnter}
             onMouseLeave={onMouseLeave}
           >
-            {label}
+            <span className="inline-flex items-center gap-1">
+              <span className="inline-block w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: effectiveColor }} />
+              {label}
+            </span>
             {hovered && data?.detail && (
               <div className="mt-0.5 text-[9px] text-gray-500 dark:text-gray-400">{data.detail}</div>
+            )}
+            {hovered && category && (
+              <div className="mt-0.5 text-[9px] font-medium capitalize" style={{ color: effectiveColor }}>{category}</div>
             )}
           </div>
         </EdgeLabelRenderer>

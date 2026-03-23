@@ -26,7 +26,14 @@ function CompactNodeInner({ data }: NodeProps<BaseNodeData>) {
       <K8sIcon kind={data.kind} size={26} className="shrink-0" />
       <div className="min-w-0 flex-1">
         <div className="text-[11px] font-semibold text-gray-900 dark:text-gray-100 leading-tight break-all">{data.name}</div>
-        <div className="text-[10px] text-gray-600 dark:text-gray-400 font-medium mt-0.5">{data.kind}</div>
+        <div className="flex items-center gap-1.5 mt-0.5">
+          <span className="text-[10px] text-gray-600 dark:text-gray-400 font-medium">{data.kind}</span>
+          {data.metrics?.podCount != null && (
+            <span className="text-[9px] font-semibold text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-slate-700 px-1 rounded">
+              {data.metrics.readyCount ?? 0}/{data.metrics.podCount}
+            </span>
+          )}
+        </div>
       </div>
       <div className={`h-2.5 w-2.5 rounded-full shrink-0 ring-2 ring-white dark:ring-slate-800 ${color}`} title={data.statusReason ?? data.status} aria-hidden="true" />
       <Handle type="source" position={Position.Right} className="!w-2 !h-2 !bg-gray-400 dark:!bg-gray-500 !border-white dark:!border-slate-800 !border-2" />
