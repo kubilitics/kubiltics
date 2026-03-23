@@ -21,6 +21,7 @@ export interface UseResourceTopologyOptions {
 export interface UseResourceTopologyResult {
   graph: TopologyGraph | undefined;
   isLoading: boolean;
+  isFetching: boolean;
   error: Error | null;
   refetch: () => void;
 }
@@ -59,6 +60,7 @@ export function useResourceTopology({
   const {
     data: graph,
     isLoading,
+    isFetching,
     error,
     refetch,
   } = useQuery<TopologyGraph, Error>({
@@ -105,6 +107,7 @@ export function useResourceTopology({
   return {
     graph,
     isLoading,
+    isFetching,
     error: error || null,
     refetch: () => { refetch(); },
   };

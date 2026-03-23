@@ -16,6 +16,7 @@ export interface UseClusterTopologyOptions {
 export interface UseClusterTopologyResult {
   graph: TopologyGraph | undefined;
   isLoading: boolean;
+  isFetching: boolean;
   error: Error | null;
   refetch: () => void;
 }
@@ -44,6 +45,7 @@ export function useClusterTopology({
   const {
     data: graph,
     isLoading,
+    isFetching,
     error,
     refetch,
   } = useQuery<TopologyGraph, Error>({
@@ -78,6 +80,7 @@ export function useClusterTopology({
   return {
     graph,
     isLoading,
+    isFetching,
     error: error || null,
     refetch: () => { refetch(); },
   };

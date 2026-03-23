@@ -78,7 +78,7 @@ export function ResourceTopologyV2View({
   ).join(", ");
 
   // Fetch resource-scoped topology (same hook as old component)
-  const { graph, isLoading, error, refetch } = useResourceTopology({
+  const { graph, isLoading, isFetching, error, refetch } = useResourceTopology({
     kind,
     namespace,
     name,
@@ -285,10 +285,11 @@ export function ResourceTopologyV2View({
             variant="ghost"
             size="sm"
             onClick={() => refetch()}
+            disabled={isFetching}
             className="h-8 px-3 text-xs text-gray-600 hover:text-gray-900"
           >
-            <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
-            Refresh
+            <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${isFetching ? "animate-spin" : ""}`} />
+            {isFetching ? "Refreshing..." : "Refresh"}
           </Button>
 
           <Separator orientation="vertical" className="h-6" />

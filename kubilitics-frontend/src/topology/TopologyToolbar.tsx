@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useMemo } from "react";
 import {
   Search, Download, Maximize, ChevronDown, FileJson, FileImage, FileType, Pen,
-  Filter, X, Layers, GitBranch, Check, Monitor,
+  Filter, X, Layers, GitBranch, Check, Monitor, RefreshCw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -47,6 +47,8 @@ export interface TopologyToolbarProps {
   onSearchChange?: (query: string) => void;
   onSearchSelect?: (nodeId: string) => void;
   onFitView?: () => void;
+  onRefresh?: () => void;
+  isFetching?: boolean;
   onTogglePresentationMode?: () => void;
 }
 
@@ -65,6 +67,8 @@ export function TopologyToolbar({
   onSearchChange,
   onSearchSelect,
   onFitView,
+  onRefresh,
+  isFetching,
   onTogglePresentationMode,
   exportRef,
   getExportCtx,
@@ -367,6 +371,18 @@ export function TopologyToolbar({
           >
             <Maximize className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">Fit</span>
+          </button>
+
+          {/* Refresh */}
+          <button
+            type="button"
+            className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold text-gray-600 dark:text-gray-400 bg-white dark:bg-slate-800 border border-gray-200 dark:border-gray-700 hover:border-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-all shadow-sm disabled:opacity-50"
+            onClick={onRefresh}
+            disabled={isFetching}
+            title="Refresh topology data"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${isFetching ? "animate-spin" : ""}`} />
+            <span className="hidden sm:inline">{isFetching ? "Refreshing..." : "Refresh"}</span>
           </button>
 
           {/* Present */}

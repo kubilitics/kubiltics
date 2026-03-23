@@ -138,7 +138,7 @@ export function useTopologyData({
   resource = "",
   enabled = true,
 }: UseTopologyDataParams) {
-  const { graph, isLoading, error, refetch } = useClusterTopology({
+  const { graph, isLoading, isFetching, error, refetch } = useClusterTopology({
     clusterId,
     enabled: enabled && !!clusterId,
   });
@@ -219,6 +219,7 @@ export function useTopologyData({
     topology,
     allNamespaces,
     isLoading,
+    isFetching,
     isError: !!error,
     error,
     refetch,

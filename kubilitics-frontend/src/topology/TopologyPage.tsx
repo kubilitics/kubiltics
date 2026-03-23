@@ -118,7 +118,7 @@ export function TopologyPage() {
   }), [viewMode, selectedNamespaces, clusterName]);
 
   // Data fetching — pass selected namespaces for filtering
-  const { topology, allNamespaces, isLoading, isError, error, refetch, truncated, truncatedTotal } = useTopologyData({
+  const { topology, allNamespaces, isLoading, isFetching, isError, error, refetch, truncated, truncatedTotal } = useTopologyData({
     clusterId,
     viewMode,
     selectedNamespaces,
@@ -310,6 +310,8 @@ export function TopologyPage() {
         onSearchChange={setSearchQuery}
         onSearchSelect={handleSearchSelect}
         onFitView={handleFitView}
+        onRefresh={() => refetch()}
+        isFetching={isFetching}
         onTogglePresentationMode={togglePresentationMode}
       />}
 
