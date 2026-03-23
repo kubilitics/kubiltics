@@ -5,9 +5,14 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, MemoryRouter, Routes, Route, Navigate, useNavigate, useLocation } from "react-router-dom";
 import { useClusterStore } from "@/stores/clusterStore";
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from "@/stores/backendConfigStore";
-import { getClusters, addCluster } from "@/services/backendApiClient";
-import { backendClusterToCluster } from "@/lib/backendClusterAdapter";
 import { Loader2 } from "lucide-react";
+
+// Lazy-load heavy API modules to prevent TDZ (Temporal Dead Zone) crashes.
+// backendApiClient pulls in topology-engine, stores, and other heavy deps —
+// eagerly importing it into the root chunk causes initialization order issues
+// in Rollup's bundled output.
+const lazyBackendApi = () => import("@/services/backendApiClient");
+const lazyAdapter = () => import("@/lib/backendClusterAdapter");
 
 // Loading Fallback Component — uses a skeleton that mirrors typical list page layout
 // instead of a blank screen with a spinner, preventing the "white flash" problem.
@@ -221,23 +226,21 @@ function useRestoreClusterFromBackend() {
       return;
     }
     setRestoreAttempted(true);
-    getClusters(baseUrl)
-      .then((list) => {
-        const backendCluster = list.find((c) => c.id === currentClusterId);
-        if (!backendCluster) {
-          // Persisted cluster no longer exists — redirect to connect page
-          setRestoreFailed(true);
-          return;
-        }
-
-        // Always restore the user's last-used cluster, even with multiple clusters.
-        // The user explicitly selected this cluster — honour that choice on refresh.
-        const connectedCluster = backendClusterToCluster(backendCluster);
-        const connectedClusters = list.map(backendClusterToCluster);
-        setClusters(connectedClusters);
-        setActiveCluster(connectedCluster);
-        setDemo(false);
-      })
+    Promise.all([lazyBackendApi(), lazyAdapter()])
+      .then(([{ getClusters }, { backendClusterToCluster }]) =>
+        getClusters(baseUrl).then((list) => {
+          const backendCluster = list.find((c) => c.id === currentClusterId);
+          if (!backendCluster) {
+            setRestoreFailed(true);
+            return;
+          }
+          const connectedCluster = backendClusterToCluster(backendCluster);
+          const connectedClusters = list.map(backendClusterToCluster);
+          setClusters(connectedClusters);
+          setActiveCluster(connectedCluster);
+          setDemo(false);
+        })
+      )
       .catch(() => setRestoreFailed(true));
   }, [
     activeCluster,
@@ -532,6 +535,7 @@ function KubeconfigContextWrapper({ children }: { children: React.ReactNode }) {
       const baseUrl = getEffectiveBackendBaseUrl(storedBackendUrl);
       const path = kubeconfigPath || '';
       for (const contextName of selectedContexts) {
+        const { addCluster } = await lazyBackendApi();
         await addCluster(baseUrl, path, contextName);
       }
       const { invoke } = await import('@tauri-apps/api/core');
