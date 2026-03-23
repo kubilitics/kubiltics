@@ -14,6 +14,8 @@ export interface UseResourceTopologyOptions {
   namespace?: string | null;
   name?: string | null;
   enabled?: boolean;
+  /** BFS traversal depth from focus resource (1-5, default 3) */
+  depth?: number;
 }
 
 export interface UseResourceTopologyResult {
@@ -34,6 +36,7 @@ export function useResourceTopology({
   namespace,
   name,
   enabled = true,
+  depth = 3,
 }: UseResourceTopologyOptions): UseResourceTopologyResult {
   const clusterId = useActiveClusterId();
   const backendBaseUrl = useBackendConfigStore((s) => s.backendBaseUrl);
@@ -59,7 +62,7 @@ export function useResourceTopology({
     error,
     refetch,
   } = useQuery<TopologyGraph, Error>({
-    queryKey: ['resource-topology', clusterId, normalizedKind, normalizedNamespace, normalizedName],
+    queryKey: ['resource-topology', clusterId, normalizedKind, normalizedNamespace, normalizedName, depth],
     queryFn: async () => {
       if (!clusterId) {
         throw new Error('Cluster not selected');
@@ -77,7 +80,8 @@ export function useResourceTopology({
         clusterId,
         normalizedKind,
         normalizedNamespace,
-        normalizedName
+        normalizedName,
+        depth
       );
 
       if (!result) {

@@ -9,7 +9,7 @@ import { useState, useMemo, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Network, Loader2, AlertCircle, RefreshCw, ZoomIn, ZoomOut, Maximize,
-  FileJson, FileImage, Layers, ExternalLink, ChevronDown, Map as MapIcon, Monitor, X,
+  FileJson, FileImage, Layers, ExternalLink, ChevronDown, Map as MapIcon, Monitor, X, GitBranch,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -65,6 +65,7 @@ export function ResourceTopologyV2View({
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [viewMode] = useState<ViewMode>("resource");
   const [presentationMode, setPresentationMode] = useState(false);
+  const [depth, setDepth] = useState(3);
 
   const backendConfigured = isBackendConfigured();
   const hasClusterId = !!clusterId;
@@ -82,6 +83,7 @@ export function ResourceTopologyV2View({
     namespace,
     name,
     enabled: backendConfigured && hasClusterId && hasKind && hasName && topologySupported,
+    depth,
   });
 
   // Transform engine graph to v2 format
@@ -288,6 +290,24 @@ export function ResourceTopologyV2View({
             <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
             Refresh
           </Button>
+
+          <Separator orientation="vertical" className="h-6" />
+
+          {/* Dependency Depth */}
+          <div className="flex items-center gap-2">
+            <GitBranch className="h-3.5 w-3.5 text-gray-500" />
+            <span className="text-[10px] font-medium text-gray-500 whitespace-nowrap">Depth</span>
+            <input
+              type="range"
+              min={1}
+              max={5}
+              value={depth}
+              onChange={(e) => setDepth(Number(e.target.value))}
+              className="w-16 h-1 accent-blue-600"
+              title={`Dependency depth: ${depth} hops`}
+            />
+            <span className="text-[11px] font-bold text-gray-700 w-3 text-center">{depth}</span>
+          </div>
 
           <Separator orientation="vertical" className="h-6" />
 

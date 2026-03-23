@@ -174,7 +174,11 @@ export function TopologyDetailPanel({
         )}
 
         {/* Connections */}
-        <Section title={`Connections (${connections.length})`}>
+        <Section title={(() => {
+          const up = connections.filter(e => e.target === selectedNodeId).length;
+          const down = connections.filter(e => e.source === selectedNodeId).length;
+          return `Connections (${connections.length}) — ${up} upstream · ${down} downstream`;
+        })()}>
           {connections.length === 0 ? (
             <p className="text-muted-foreground italic">No connections</p>
           ) : (
