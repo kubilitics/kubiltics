@@ -21,12 +21,15 @@ function GroupNodeInner({ data }: NodeProps<GroupNodeData>) {
   const bg = data.style?.backgroundColor ?? "#f1f5f9";
   const border = data.style?.borderColor ?? "#94a3b8";
 
+  const isDark = typeof document !== "undefined" && document.documentElement.classList.contains("dark");
+  const effectiveBg = isDark ? `${bg}40` : bg; // 25% opacity in dark mode
+
   return (
     <div
       className="rounded-lg border-2 border-dashed"
       style={{
-        backgroundColor: bg,
-        borderColor: border,
+        backgroundColor: effectiveBg,
+        borderColor: isDark ? `${border}80` : border,
         minWidth: 300,
         minHeight: 200,
         padding: "8px",

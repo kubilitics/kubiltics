@@ -22,10 +22,10 @@ function MinimalNodeInner({ data }: NodeProps<BaseNodeData>) {
     >
       <Handle type="target" position={Position.Left} className="!w-1 !h-1 !bg-transparent !border-0" />
       <div
-        className={`h-8 w-8 rounded-full shadow-sm ${A11Y.transition} hover:scale-125`}
+        className={`h-8 w-8 rounded-full shadow-sm ${A11Y.transition} hover:scale-125 ring-[2.5px] ring-white dark:ring-slate-900`}
         style={{
           backgroundColor: fill,
-          boxShadow: `0 0 0 2.5px white, 0 0 0 4px ${ring}`,
+          boxShadow: `0 0 0 4px ${ring}`,
         }}
         title={`${data.kind}: ${data.name}`}
         aria-hidden="true"

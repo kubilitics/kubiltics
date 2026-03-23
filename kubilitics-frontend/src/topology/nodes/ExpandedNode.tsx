@@ -61,13 +61,13 @@ function ExpandedNodeInner({ data }: NodeProps<ExpandedNodeData>) {
         <div>
           <div className="text-sm font-bold text-gray-900 dark:text-gray-100 break-all leading-snug">{data.name}</div>
           {data.namespace && (
-            <div className="text-xs text-gray-700 dark:text-gray-300 dark:text-gray-700 dark:text-gray-300 dark:text-gray-400 mt-0.5">{data.namespace}</div>
+            <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{data.namespace}</div>
           )}
         </div>
 
         <div className="flex items-center gap-2">
           <div className={`h-2 w-2 rounded-full ${badge.dotClass}`} aria-hidden="true" />
-          <span className="text-xs font-medium text-gray-900 dark:text-gray-100 dark:text-gray-200">{data.statusReason ?? badge.text}</span>
+          <span className="text-xs font-medium text-gray-900 dark:text-gray-200">{data.statusReason ?? badge.text}</span>
         </div>
 
         {metrics && (
@@ -89,7 +89,7 @@ function ExpandedNodeInner({ data }: NodeProps<ExpandedNodeData>) {
 
         {data.labels && Object.keys(data.labels).length > 0 && (
           <div className="border-t border-gray-100 dark:border-gray-700 pt-2" role="group" aria-label={`Labels: ${Object.keys(data.labels).length} total`}>
-            <div className="text-[10px] font-semibold uppercase tracking-wider text-gray-700 dark:text-gray-300 dark:text-gray-400 mb-1">Labels</div>
+            <div className="text-[10px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">Labels</div>
             <div className="flex flex-wrap gap-1">
               {Object.entries(data.labels).slice(0, 3).map(([k, v]) => (
                 <span key={k} className="inline-flex px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-[10px] text-gray-700 dark:text-gray-300 font-mono break-all">
@@ -97,7 +97,7 @@ function ExpandedNodeInner({ data }: NodeProps<ExpandedNodeData>) {
                 </span>
               ))}
               {Object.keys(data.labels).length > 3 && (
-                <span className="text-[10px] text-gray-700 dark:text-gray-300 dark:text-gray-400 px-1">+{Object.keys(data.labels).length - 3}</span>
+                <span className="text-[10px] text-gray-500 dark:text-gray-400 px-1">+{Object.keys(data.labels).length - 3}</span>
               )}
             </div>
           </div>
@@ -111,8 +111,8 @@ function ExpandedNodeInner({ data }: NodeProps<ExpandedNodeData>) {
 
 function MetricCard({ label, value, warning }: { label: string; value: string; warning?: boolean }) {
   return (
-    <div className={`rounded-md px-2.5 py-1.5 ${warning ? "bg-amber-50" : "bg-gray-50 dark:bg-gray-750"}`} aria-label={`${label}: ${value}`}>
-      <div className="text-[10px] text-gray-700 dark:text-gray-300 dark:text-gray-400 font-medium uppercase tracking-wider">{label}</div>
+    <div className={`rounded-md px-2.5 py-1.5 ${warning ? "bg-amber-50 dark:bg-amber-950/30" : "bg-gray-50 dark:bg-slate-700"}`} aria-label={`${label}: ${value}`}>
+      <div className="text-[10px] text-gray-500 dark:text-gray-400 font-medium uppercase tracking-wider">{label}</div>
       <div className={`text-xs font-semibold font-mono mt-0.5 ${warning ? "text-amber-600" : "text-gray-900 dark:text-gray-100"}`}>{value}</div>
     </div>
   );

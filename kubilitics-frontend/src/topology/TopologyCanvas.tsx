@@ -276,14 +276,14 @@ function TopologyCanvasInner({
         maxZoom={4}
         minZoom={0.01}
         proOptions={{ hideAttribution: true }}
-        className="!bg-[#f8f9fb]"
+        className="!bg-[#f8f9fb] dark:!bg-slate-950"
       >
-        <Background variant={BackgroundVariant.Dots} gap={CANVAS.gridGap} size={CANVAS.gridSize} color={CANVAS.gridColor} />
+        <Background variant={BackgroundVariant.Dots} gap={CANVAS.gridGap} size={CANVAS.gridSize} className="!text-gray-300 dark:!text-slate-800" />
         <MiniMap
           nodeColor={miniMapNodeColor}
           nodeStrokeWidth={0}
           maskColor="rgba(0, 0, 0, 0.06)"
-          className="!bg-white !border !border-gray-200 !rounded-lg !shadow-md"
+          className="!bg-white dark:!bg-slate-900 !border !border-gray-200 dark:!border-slate-700 !rounded-lg !shadow-md"
           style={{ width: 180, height: 120 }}
           pannable
           zoomable
@@ -293,7 +293,7 @@ function TopologyCanvasInner({
           showZoom
           showFitView
           showInteractive={false}
-          className="!bg-white !border !border-gray-200 !rounded-lg !shadow-md"
+          className="!bg-white dark:!bg-slate-800 !border !border-gray-200 dark:!border-slate-700 !rounded-lg !shadow-md [&>button]:dark:!bg-slate-800 [&>button]:dark:!border-slate-700 [&>button]:dark:!fill-gray-300 [&>button:hover]:dark:!bg-slate-700"
           aria-label="Zoom and fit controls"
         />
       </ReactFlow>
