@@ -415,7 +415,7 @@ export function TopologyToolbar({
                 <ChevronDown className="h-3 w-3 text-gray-600 dark:text-gray-400" />
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-52 p-1 rounded-xl shadow-xl">
+            <DropdownMenuContent align="end" className="w-56 p-1 rounded-xl shadow-xl max-h-[70vh] overflow-y-auto">
               {(() => {
                 const ctx = getExportCtx?.() ?? { viewMode, selectedNamespaces, clusterName };
                 const triggerExport = (format: ExportFormat) => {
@@ -424,6 +424,46 @@ export function TopologyToolbar({
                 };
                 return (
                   <>
+                    {/* Architecture Diagram — premium feature, shown first */}
+                    <DropdownMenuItem
+                      className="rounded-lg gap-2.5 py-2"
+                      disabled={isExportingArch}
+                      onClick={async () => {
+                        if (!clusterId) return;
+                        setIsExportingArch(true);
+                        toast.info("Generating architecture diagram with official K8s icons...", { duration: 15000 });
+                        try {
+                          const ns = selectedNamespaces?.size ? Array.from(selectedNamespaces)[0] : "";
+                          const url = `${effectiveBaseUrl}/api/v1/clusters/${encodeURIComponent(clusterId)}/topology/export?format=architecture${ns ? `&namespace=${encodeURIComponent(ns)}` : ""}`;
+                          const res = await fetch(url, { method: "POST" });
+                          if (!res.ok) {
+                            const text = await res.text();
+                            throw new Error(text || res.statusText);
+                          }
+                          const blob = await res.blob();
+                          const a = document.createElement("a");
+                          a.href = URL.createObjectURL(blob);
+                          a.download = `architecture-${clusterName || "cluster"}-${ns || "all"}.png`;
+                          a.click();
+                          URL.revokeObjectURL(a.href);
+                          toast.success("Architecture diagram exported!");
+                        } catch (err: unknown) {
+                          const msg = err instanceof Error ? err.message : "Export failed";
+                          toast.error(msg);
+                        } finally {
+                          setIsExportingArch(false);
+                        }
+                      }}
+                    >
+                      <div className="flex items-center justify-center h-7 w-7 rounded-md bg-indigo-50">
+                        <Network className={`h-3.5 w-3.5 text-indigo-600 ${isExportingArch ? "animate-spin" : ""}`} />
+                      </div>
+                      <div>
+                        <div className="text-xs font-semibold">{isExportingArch ? "Generating..." : "Architecture Diagram"}</div>
+                        <div className="text-[10px] text-gray-600 dark:text-gray-400">Professional K8s icons (KubeDiagrams)</div>
+                      </div>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
                     <DropdownMenuItem className="rounded-lg gap-2.5 py-2" onClick={() => triggerExport("png")}>
                       <div className="flex items-center justify-center h-7 w-7 rounded-md bg-emerald-50">
                         <FileImage className="h-3.5 w-3.5 text-emerald-600" />
@@ -459,45 +499,6 @@ export function TopologyToolbar({
                       <div>
                         <div className="text-xs font-semibold">JSON</div>
                         <div className="text-[10px] text-gray-600 dark:text-gray-400">Raw topology data</div>
-                      </div>
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem
-                      className="rounded-lg gap-2.5 py-2"
-                      disabled={isExportingArch}
-                      onClick={async () => {
-                        if (!clusterId) return;
-                        setIsExportingArch(true);
-                        toast.info("Generating architecture diagram...", { duration: 10000 });
-                        try {
-                          const ns = selectedNamespaces?.size ? Array.from(selectedNamespaces)[0] : "";
-                          const url = `${effectiveBaseUrl}/api/v1/clusters/${encodeURIComponent(clusterId)}/topology/export?format=architecture${ns ? `&namespace=${encodeURIComponent(ns)}` : ""}`;
-                          const res = await fetch(url, { method: "POST" });
-                          if (!res.ok) {
-                            const text = await res.text();
-                            throw new Error(text || res.statusText);
-                          }
-                          const blob = await res.blob();
-                          const a = document.createElement("a");
-                          a.href = URL.createObjectURL(blob);
-                          a.download = `architecture-${clusterName || "cluster"}-${ns || "all"}.png`;
-                          a.click();
-                          URL.revokeObjectURL(a.href);
-                          toast.success("Architecture diagram exported!");
-                        } catch (err: unknown) {
-                          const msg = err instanceof Error ? err.message : "Export failed";
-                          toast.error(msg);
-                        } finally {
-                          setIsExportingArch(false);
-                        }
-                      }}
-                    >
-                      <div className="flex items-center justify-center h-7 w-7 rounded-md bg-indigo-50">
-                        <Network className={`h-3.5 w-3.5 text-indigo-600 ${isExportingArch ? "animate-spin" : ""}`} />
-                      </div>
-                      <div>
-                        <div className="text-xs font-semibold">{isExportingArch ? "Generating..." : "Architecture Diagram"}</div>
-                        <div className="text-[10px] text-gray-600 dark:text-gray-400">Professional K8s icons (KubeDiagrams)</div>
                       </div>
                     </DropdownMenuItem>
                   </>
