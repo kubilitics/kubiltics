@@ -60,6 +60,7 @@ func NodesFromBundle(b *v2.ResourceBundle) []v2.TopologyNode {
 			ID: v2.NodeID("Pod", p.Namespace, p.Name), Kind: "Pod", Name: p.Name, Namespace: p.Namespace, APIVersion: "v1",
 			Category: "workload", Label: p.Name, Status: status, Layer: 4, Group: groupIDForNamespace(p.Namespace),
 			Labels: p.Labels, Annotations: p.Annotations, CreatedAt: formatTime(p.CreationTimestamp),
+			PodIP: p.Status.PodIP, NodeName: p.Spec.NodeName, Containers: len(p.Spec.Containers),
 		})
 	}
 	for i := range b.Deployments {
@@ -96,7 +97,7 @@ func NodesFromBundle(b *v2.ResourceBundle) []v2.TopologyNode {
 	}
 	for i := range b.Services {
 		s := &b.Services[i]
-		out = append(out, v2.TopologyNode{ID: v2.NodeID("Service", s.Namespace, s.Name), Kind: "Service", Name: s.Name, Namespace: s.Namespace, APIVersion: "v1", Category: "networking", Label: s.Name, Status: "healthy", Layer: 1, Group: groupIDForNamespace(s.Namespace), Labels: s.Labels, Annotations: s.Annotations, CreatedAt: formatTime(s.CreationTimestamp)})
+		out = append(out, v2.TopologyNode{ID: v2.NodeID("Service", s.Namespace, s.Name), Kind: "Service", Name: s.Name, Namespace: s.Namespace, APIVersion: "v1", Category: "networking", Label: s.Name, Status: "healthy", Layer: 1, Group: groupIDForNamespace(s.Namespace), Labels: s.Labels, Annotations: s.Annotations, CreatedAt: formatTime(s.CreationTimestamp), ClusterIP: s.Spec.ClusterIP, ServiceType: string(s.Spec.Type)})
 	}
 	for i := range b.Endpoints {
 		e := &b.Endpoints[i]
@@ -143,7 +144,8 @@ func NodesFromBundle(b *v2.ResourceBundle) []v2.TopologyNode {
 				break
 			}
 		}
-		out = append(out, v2.TopologyNode{ID: v2.NodeID("Node", "", n.Name), Kind: "Node", Name: n.Name, Namespace: "", APIVersion: "v1", Category: "cluster", Label: n.Name, Status: status, Layer: 5, Labels: n.Labels, Annotations: n.Annotations, CreatedAt: formatTime(n.CreationTimestamp)})
+		internalIP, externalIP := nodeAddresses(n)
+		out = append(out, v2.TopologyNode{ID: v2.NodeID("Node", "", n.Name), Kind: "Node", Name: n.Name, Namespace: "", APIVersion: "v1", Category: "cluster", Label: n.Name, Status: status, Layer: 5, Labels: n.Labels, Annotations: n.Annotations, CreatedAt: formatTime(n.CreationTimestamp), InternalIP: internalIP, ExternalIP: externalIP})
 	}
 	for i := range b.Namespaces {
 		ns := &b.Namespaces[i]
@@ -240,4 +242,21 @@ func formatTime(t metav1.Time) string {
 		return ""
 	}
 	return t.Format(time.RFC3339)
+}
+
+// nodeAddresses extracts InternalIP and ExternalIP from a Node's status.
+func nodeAddresses(n *corev1.Node) (internalIP, externalIP string) {
+	for _, addr := range n.Status.Addresses {
+		switch addr.Type {
+		case corev1.NodeInternalIP:
+			if internalIP == "" {
+				internalIP = addr.Address
+			}
+		case corev1.NodeExternalIP:
+			if externalIP == "" {
+				externalIP = addr.Address
+			}
+		}
+	}
+	return
 }
