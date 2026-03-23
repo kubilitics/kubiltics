@@ -200,22 +200,21 @@ function TopologyCanvasInner({
     return () => { cancelled = true; };
   }, [isExporting, reactFlow]);
 
-  // Focus dimming — dims unconnected nodes when a node is selected
+  // Focus dimming — dims unconnected nodes when a node is selected.
+  // Uses the selectedNodeId PROP (not store) so it works in both
+  // TopologyPage (store-driven) and ResourceTopologyV2View (local state).
   const focusDimming = useTopologyStore((s) => s.focusDimming);
-  const storeEdges = useTopologyStore((s) => s.edges);
-  const storeSelectedNodeId = useTopologyStore((s) => s.selectedNodeId);
 
-  // Compute dimmed node IDs with useMemo to avoid creating new Set on every render
   const dimmedNodeIds = useMemo(() => {
-    if (!focusDimming || !storeSelectedNodeId) return null;
+    if (!focusDimming || !selectedNodeId) return null;
     const connectedIds = new Set<string>();
-    connectedIds.add(storeSelectedNodeId);
-    for (const edge of storeEdges) {
-      if (edge.source === storeSelectedNodeId) connectedIds.add(edge.target);
-      if (edge.target === storeSelectedNodeId) connectedIds.add(edge.source);
+    connectedIds.add(selectedNodeId);
+    for (const edge of edges) {
+      if (edge.source === selectedNodeId) connectedIds.add(edge.target);
+      if (edge.target === selectedNodeId) connectedIds.add(edge.source);
     }
     return connectedIds;
-  }, [focusDimming, storeSelectedNodeId, storeEdges]);
+  }, [focusDimming, selectedNodeId, edges]);
 
   // Selection/highlight/dimming styling
   const styledNodes = useMemo(() => {

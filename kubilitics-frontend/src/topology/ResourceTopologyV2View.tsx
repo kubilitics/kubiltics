@@ -9,7 +9,7 @@ import { useState, useMemo, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Network, Loader2, AlertCircle, RefreshCw, ZoomIn, ZoomOut, Maximize,
-  FileJson, FileImage, Layers, ExternalLink, ChevronDown, Map as MapIcon,
+  FileJson, FileImage, Layers, ExternalLink, ChevronDown, Map as MapIcon, Monitor, X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -64,6 +64,7 @@ export function ResourceTopologyV2View({
 
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [viewMode] = useState<ViewMode>("resource");
+  const [presentationMode, setPresentationMode] = useState(false);
 
   const backendConfigured = isBackendConfigured();
   const hasClusterId = !!clusterId;
@@ -216,11 +217,11 @@ export function ResourceTopologyV2View({
   return (
     <div
       className="relative w-full bg-white rounded-lg border border-gray-200 shadow-sm"
-      style={{ height: "calc(100vh - 18rem)", minHeight: "500px" }}
+      style={{ height: presentationMode ? "100vh" : "calc(100vh - 18rem)", minHeight: "500px", ...(presentationMode ? { position: "fixed", inset: 0, zIndex: 50, borderRadius: 0 } : {}) }}
       data-topology-container
     >
-      {/* Header Bar */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 bg-white rounded-t-lg">
+      {/* Header Bar — hidden in presentation mode */}
+      {!presentationMode && <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 bg-white rounded-t-lg">
         {/* Left Section */}
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
@@ -287,11 +288,24 @@ export function ResourceTopologyV2View({
             <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
             Refresh
           </Button>
+
+          <Separator orientation="vertical" className="h-6" />
+
+          {/* Present */}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setPresentationMode(true)}
+            className="h-8 px-3 text-xs text-gray-600 hover:text-gray-900"
+          >
+            <Monitor className="h-3.5 w-3.5 mr-1.5" />
+            Present
+          </Button>
         </div>
-      </div>
+      </div>}
 
       {/* Canvas + Detail Panel */}
-      <div className="flex h-[calc(100%-3.5rem)]">
+      <div className={presentationMode ? "flex h-full" : "flex h-[calc(100%-3.5rem)]"}>
         {/* React Flow Canvas */}
         <div className="relative flex-1 min-h-0">
           <TopologyCanvas
@@ -310,14 +324,28 @@ export function ResourceTopologyV2View({
               {topology.nodes.length} Resources &middot; {topology.edges.length} Connections
             </span>
           </div>
+
+          {/* Presentation mode exit button */}
+          {presentationMode && (
+            <button
+              type="button"
+              onClick={() => setPresentationMode(false)}
+              className="absolute top-4 right-4 z-50 flex items-center gap-1.5 rounded-lg border border-white/20 bg-white/80 backdrop-blur-md px-3 py-1.5 text-xs font-medium text-gray-700 shadow-md hover:bg-white transition-colors"
+            >
+              <X className="h-3.5 w-3.5" />
+              Exit
+            </button>
+          )}
         </div>
 
-        {/* Detail Panel */}
-        <TopologyDetailPanel
-          selectedNodeId={selectedNodeId}
-          topology={topology}
-          onNavigateToResource={handleNavigateToResource}
-        />
+        {/* Detail Panel — hidden in presentation mode */}
+        {!presentationMode && (
+          <TopologyDetailPanel
+            selectedNodeId={selectedNodeId}
+            topology={topology}
+            onNavigateToResource={handleNavigateToResource}
+          />
+        )}
       </div>
     </div>
   );
