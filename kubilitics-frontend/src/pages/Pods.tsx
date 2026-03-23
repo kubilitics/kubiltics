@@ -1276,24 +1276,19 @@ export default function Pods() {
  <ResizableTableCell columnId="cpu">
  {(() => {
    const val = parseCpu(cpuVal);
-   const limit = podResourceMaxMap[podKey]?.cpuMax;
-   const maxVal = limit ?? dynamicCpuMax;
-   const hasLimit = limit !== undefined;
+   const maxVal = podResourceMaxMap[podKey]?.cpuMax ?? dynamicCpuMax;
    const ratio = val !== null && maxVal > 0 ? Math.min(val / maxVal, 1) : 0;
    const pct = Math.round(ratio * 100);
    const barColor = ratio < 0.4 ? '#10b981' : ratio < 0.7 ? '#f59e0b' : ratio < 0.9 ? '#f97316' : '#ef4444';
-   const display = val !== null ? (val >= 1000 ? `${(val/1000).toFixed(1)}` : val >= 1 ? `${val.toFixed(1)}m` : `${(val*1000).toFixed(0)}u`) : '-';
+   const display = val !== null ? (val >= 1000 ? `${(val/1000).toFixed(1)} cores` : `${val.toFixed(1)}m`) : '-';
    return (
-     <div className="flex items-center gap-2.5 min-w-[120px]" title={`CPU: ${display}${hasLimit ? ` / ${limit >= 1000 ? (limit/1000).toFixed(1) + ' cores' : limit + 'm'} (${pct}%)` : ` (${pct}% relative)`}`}>
-       <div className="flex-1 min-w-[48px]">
-         <div className="h-[6px] rounded-full bg-gray-100 dark:bg-gray-700/50 overflow-hidden shadow-inner">
-           <div className="h-full rounded-full transition-all duration-500 ease-out" style={{ width: `${Math.max(pct, val !== null && val > 0 ? 3 : 0)}%`, background: `linear-gradient(90deg, ${barColor}cc, ${barColor})` }} />
+     <div className="flex items-center gap-2" title={`CPU: ${display}`}>
+       <div className="w-[52px] shrink-0">
+         <div className="h-[5px] rounded-full bg-gray-200/80 dark:bg-gray-700/60 overflow-hidden">
+           <div className="h-full rounded-full transition-all duration-500 ease-out" style={{ width: `${Math.max(pct, val !== null && val > 0 ? 4 : 0)}%`, background: barColor }} />
          </div>
        </div>
-       <div className="flex items-baseline gap-1 shrink-0">
-         <span className="text-[11px] font-semibold tabular-nums text-gray-800 dark:text-gray-200">{display}</span>
-         {hasLimit && <span className="text-[9px] font-medium tabular-nums text-gray-400 dark:text-gray-500">{pct}%</span>}
-       </div>
+       <span className="text-[11px] font-medium tabular-nums text-gray-700 dark:text-gray-300 whitespace-nowrap">{display}</span>
      </div>
    );
  })()}
@@ -1303,24 +1298,19 @@ export default function Pods() {
  <ResizableTableCell columnId="memory">
  {(() => {
    const val = parseMemory(memVal);
-   const limit = podResourceMaxMap[podKey]?.memoryMax;
-   const maxVal = limit ?? dynamicMemoryMax;
-   const hasLimit = limit !== undefined;
+   const maxVal = podResourceMaxMap[podKey]?.memoryMax ?? dynamicMemoryMax;
    const ratio = val !== null && maxVal > 0 ? Math.min(val / maxVal, 1) : 0;
    const pct = Math.round(ratio * 100);
    const barColor = ratio < 0.4 ? '#3b82f6' : ratio < 0.7 ? '#f59e0b' : ratio < 0.9 ? '#f97316' : '#ef4444';
-   const display = val !== null ? (val >= 1024 ? `${(val/1024).toFixed(1)} Gi` : val >= 1 ? `${val.toFixed(0)} Mi` : `${(val*1024).toFixed(0)} Ki`) : '-';
+   const display = val !== null ? (val >= 1024 ? `${(val/1024).toFixed(1)} Gi` : `${val.toFixed(0)} Mi`) : '-';
    return (
-     <div className="flex items-center gap-2.5 min-w-[120px]" title={`Memory: ${display}${hasLimit ? ` / ${limit >= 1024 ? (limit/1024).toFixed(1) + ' Gi' : limit.toFixed(0) + ' Mi'} (${pct}%)` : ` (${pct}% relative)`}`}>
-       <div className="flex-1 min-w-[48px]">
-         <div className="h-[6px] rounded-full bg-gray-100 dark:bg-gray-700/50 overflow-hidden shadow-inner">
-           <div className="h-full rounded-full transition-all duration-500 ease-out" style={{ width: `${Math.max(pct, val !== null && val > 0 ? 3 : 0)}%`, background: `linear-gradient(90deg, ${barColor}cc, ${barColor})` }} />
+     <div className="flex items-center gap-2" title={`Memory: ${display}`}>
+       <div className="w-[52px] shrink-0">
+         <div className="h-[5px] rounded-full bg-gray-200/80 dark:bg-gray-700/60 overflow-hidden">
+           <div className="h-full rounded-full transition-all duration-500 ease-out" style={{ width: `${Math.max(pct, val !== null && val > 0 ? 4 : 0)}%`, background: barColor }} />
          </div>
        </div>
-       <div className="flex items-baseline gap-1 shrink-0">
-         <span className="text-[11px] font-semibold tabular-nums text-gray-800 dark:text-gray-200">{display}</span>
-         {hasLimit && <span className="text-[9px] font-medium tabular-nums text-gray-400 dark:text-gray-500">{pct}%</span>}
-       </div>
+       <span className="text-[11px] font-medium tabular-nums text-gray-700 dark:text-gray-300 whitespace-nowrap">{display}</span>
      </div>
    );
  })()}
