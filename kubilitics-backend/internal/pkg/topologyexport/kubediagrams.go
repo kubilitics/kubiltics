@@ -47,14 +47,25 @@ func GraphToArchitecturePNG(ctx context.Context, kubeconfigPath, namespace, kube
 	outputPath := filepath.Join(os.TempDir(), fmt.Sprintf("kubilitics-arch-%s.png", uuid.New().String()))
 	defer os.Remove(outputPath)
 
-	// Build kubectl command: kubectl get all -n {namespace} -o yaml
-	kubectlArgs := []string{"get", "all"}
+	// Build kubectl command with ALL resource types (not just "all" which misses ConfigMaps, Secrets, etc.)
+	// This comma-separated list ensures every topology-relevant resource is included.
+	resourceTypes := strings.Join([]string{
+		"pods", "deployments", "replicasets", "statefulsets", "daemonsets",
+		"jobs", "cronjobs", "services", "endpoints", "endpointslices",
+		"configmaps", "secrets", "ingresses", "serviceaccounts",
+		"roles", "rolebindings", "clusterroles", "clusterrolebindings",
+		"persistentvolumeclaims", "persistentvolumes", "storageclasses",
+		"horizontalpodautoscalers", "networkpolicies", "poddisruptionbudgets",
+		"nodes", "namespaces",
+	}, ",")
+
+	kubectlArgs := []string{"get", resourceTypes}
 	if nsFlag == "-A" {
 		kubectlArgs = append(kubectlArgs, "-A")
 	} else {
 		kubectlArgs = append(kubectlArgs, nsFlag, nsValue)
 	}
-	kubectlArgs = append(kubectlArgs, "-o", "yaml")
+	kubectlArgs = append(kubectlArgs, "-o", "yaml", "--ignore-not-found")
 	if kubeconfigPath != "" {
 		kubectlArgs = append(kubectlArgs, "--kubeconfig", kubeconfigPath)
 	}
