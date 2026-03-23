@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef, useMemo } from "react";
 import {
-  Search, Download, Maximize, ChevronDown, FileJson, FileImage, FileType, Pen,
+  Search, Download, Maximize, ChevronDown, FileJson, FileImage, FileType,
   Filter, X, Layers, GitBranch, Check, Monitor, RefreshCw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -21,7 +21,6 @@ import { ViewModeSelect } from "./components/ViewModeSelect";
 import type { ViewMode, TopologyResponse } from "./types/topology";
 import {
   exportTopologyJSON,
-  exportTopologyDrawIO,
   buildExportFilename,
   type ExportContext,
 } from "./export/exportTopology";
@@ -453,15 +452,6 @@ export function TopologyToolbar({
                       <div>
                         <div className="text-xs font-semibold">JSON</div>
                         <div className="text-[10px] text-gray-600 dark:text-gray-400">Raw topology data</div>
-                      </div>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem className="rounded-lg gap-2.5 py-2" onClick={() => exportTopologyDrawIO(topology ?? null, ctx)}>
-                      <div className="flex items-center justify-center h-7 w-7 rounded-md bg-blue-50">
-                        <Pen className="h-3.5 w-3.5 text-blue-600" />
-                      </div>
-                      <div>
-                        <div className="text-xs font-semibold">Draw.io</div>
-                        <div className="text-[10px] text-gray-600 dark:text-gray-400">Editable diagram</div>
                       </div>
                     </DropdownMenuItem>
                   </>
