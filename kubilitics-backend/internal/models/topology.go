@@ -32,6 +32,14 @@ type TopologyNode struct {
 	Metadata  NodeMetadata `json:"metadata"`
 	Computed  NodeComputed  `json:"computed"`
 	Position  *Position     `json:"position,omitempty"`
+	// Debugging fields — resource-specific info for detail panel
+	PodIP       string `json:"podIP,omitempty"`
+	NodeName    string `json:"nodeName,omitempty"`
+	InternalIP  string `json:"internalIP,omitempty"`
+	ExternalIP  string `json:"externalIP,omitempty"`
+	ClusterIP   string `json:"clusterIP,omitempty"`
+	ServiceType string `json:"serviceType,omitempty"`
+	Containers  int    `json:"containers,omitempty"`
 }
 
 // TopologyEdge represents a relationship between nodes (contract: relationshipType, source, target, metadata).

@@ -94,6 +94,14 @@ export function transformGraph(graph: TopologyGraph, clusterName?: string): Topo
     labels: n.metadata?.labels,
     annotations: n.metadata?.annotations,
     createdAt: n.metadata?.createdAt,
+    // Debugging fields — passed through from backend
+    podIP: (n as Record<string, unknown>).podIP as string | undefined,
+    nodeName: (n as Record<string, unknown>).nodeName as string | undefined,
+    internalIP: (n as Record<string, unknown>).internalIP as string | undefined,
+    externalIP: (n as Record<string, unknown>).externalIP as string | undefined,
+    clusterIP: (n as Record<string, unknown>).clusterIP as string | undefined,
+    serviceType: (n as Record<string, unknown>).serviceType as string | undefined,
+    containers: (n as Record<string, unknown>).containers as number | undefined,
   }));
 
   const edges: TopologyEdge[] = graph.edges.map((e: EngineEdge) => ({

@@ -223,6 +223,10 @@ func (e *Engine) discoverPods(ctx context.Context, graph *Graph, namespace strin
 		if totalRestarts > 0 {
 			node.Computed.RestartCount = &totalRestarts
 		}
+		// Debugging fields for detail panel
+		node.PodIP = pod.Status.PodIP
+		node.NodeName = pod.Spec.NodeName
+		node.Containers = len(pod.Spec.Containers)
 
 		graph.AddNode(node)
 		graph.SetOwnerRefs(node.ID, convertOwnerRefs(pod.OwnerReferences))
@@ -251,6 +255,8 @@ func (e *Engine) discoverServices(ctx context.Context, graph *Graph, namespace s
 	}
 	for _, svc := range services.Items {
 		node := buildNode("Service", svc.Namespace, svc.Name, "Active", svc.ObjectMeta)
+		node.ClusterIP = svc.Spec.ClusterIP
+		node.ServiceType = string(svc.Spec.Type)
 		graph.AddNode(node)
 		// Store spec.selector for relationship inference (Service->Pod matching).
 		if len(svc.Spec.Selector) > 0 {
@@ -542,6 +548,14 @@ func (e *Engine) discoverNodes(ctx context.Context, graph *Graph) error {
 
 		graphNode := buildNode("Node", "", node.Name, status, node.ObjectMeta)
 		graphNode.Computed.Health = health
+		for _, addr := range node.Status.Addresses {
+			if string(addr.Type) == "InternalIP" && graphNode.InternalIP == "" {
+				graphNode.InternalIP = addr.Address
+			}
+			if string(addr.Type) == "ExternalIP" && graphNode.ExternalIP == "" {
+				graphNode.ExternalIP = addr.Address
+			}
+		}
 		graph.AddNode(graphNode)
 	}
 	return nil
