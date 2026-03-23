@@ -211,6 +211,29 @@ function TopologyCanvasInner({
   const exportIncludeTitle = useTopologyStore((s) => s.exportIncludeTitle);
   const exportIncludeLegend = useTopologyStore((s) => s.exportIncludeLegend);
 
+  // Health chain — nodes connected to error nodes via ownership edges get a warning tint.
+  // This propagates visibility: "this Deployment is unhealthy → its RS and Pods are in the error chain"
+  const errorChainNodeIds = useMemo(() => {
+    const errorNodes = nodes.filter((n) => {
+      const status = (n.data as Record<string, unknown>)?.status;
+      return status === "error";
+    });
+    if (errorNodes.length === 0) return new Set<string>();
+    const chain = new Set<string>();
+    for (const en of errorNodes) {
+      chain.add(en.id);
+      // Walk ownership edges from error nodes
+      for (const edge of edges) {
+        const cat = (edge.data as Record<string, unknown>)?.relationshipCategory;
+        if (cat === "ownership" || !cat) {
+          if (edge.source === en.id) chain.add(edge.target);
+          if (edge.target === en.id) chain.add(edge.source);
+        }
+      }
+    }
+    return chain;
+  }, [nodes, edges]);
+
   // Focus dimming — dims unconnected nodes when a node is selected.
   // Uses the selectedNodeId PROP (not store) so it works in both
   // TopologyPage (store-driven) and ResourceTopologyV2View (local state).
@@ -227,20 +250,23 @@ function TopologyCanvasInner({
     return connectedIds;
   }, [focusDimming, selectedNodeId, edges]);
 
-  // Selection/highlight/dimming styling
+  // Selection/highlight/dimming/health-chain styling
   const styledNodes = useMemo(() => {
     const hasDimming = dimmedNodeIds != null;
-    if (!selectedNodeId && highlightNodeIds.length === 0 && !hasDimming) return nodes;
+    const hasErrorChain = errorChainNodeIds.size > 0;
+    if (!selectedNodeId && highlightNodeIds.length === 0 && !hasDimming && !hasErrorChain) return nodes;
     return nodes.map((n) => {
       const isHighlighted = highlightNodeIds.includes(n.id);
       const isSelected = n.id === selectedNodeId;
       const isDimmed = hasDimming && !dimmedNodeIds.has(n.id);
-      if (!isHighlighted && !isSelected && !isDimmed) return n;
+      const isInErrorChain = hasErrorChain && errorChainNodeIds.has(n.id) && !isSelected;
+      if (!isHighlighted && !isSelected && !isDimmed && !isInErrorChain) return n;
       return {
         ...n,
         className: [
           isSelected ? "ring-2 ring-blue-500 ring-offset-2 rounded-lg" : "",
           isHighlighted ? "ring-2 ring-amber-400 ring-offset-1 rounded-lg" : "",
+          isInErrorChain ? "ring-1 ring-red-400/60 rounded-lg" : "",
         ].filter(Boolean).join(" "),
         style: {
           ...n.style,
@@ -248,7 +274,7 @@ function TopologyCanvasInner({
         },
       };
     });
-  }, [nodes, selectedNodeId, highlightNodeIds, dimmedNodeIds]);
+  }, [nodes, selectedNodeId, highlightNodeIds, dimmedNodeIds, errorChainNodeIds]);
 
   // Edge styling — ALWAYS show edges, just hide labels at low zoom
   const styledEdges = useMemo(() => {
