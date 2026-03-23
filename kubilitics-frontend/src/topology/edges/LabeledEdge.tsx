@@ -51,12 +51,11 @@ function LabeledEdgeInner(props: EdgeProps<LabeledEdgeData>) {
       {!hideLabel && (
         <EdgeLabelRenderer>
           <div
-            className="pointer-events-auto absolute -translate-x-1/2 cursor-default rounded-md border bg-white/95 dark:bg-slate-800/95 px-1.5 py-0.5 text-[10px] font-medium leading-tight text-gray-700 dark:text-gray-300 shadow-sm backdrop-blur-sm transition-all"
+            className="pointer-events-auto absolute -translate-x-1/2 cursor-default rounded-md border bg-white dark:bg-slate-800 px-2 py-0.5 text-[11px] font-semibold leading-tight text-gray-900 dark:text-gray-100 shadow-md backdrop-blur-sm transition-all"
             style={{
               left: labelX,
               top: labelY - 12,
-              borderColor: hovered ? effectiveColor : "#e5e7eb",
-              opacity: hovered ? 1 : 0.8,
+              borderColor: hovered ? effectiveColor : effectiveColor + "60",
             }}
             title={data?.detail}
             role="note"
@@ -66,7 +65,7 @@ function LabeledEdgeInner(props: EdgeProps<LabeledEdgeData>) {
           >
             {label}
             {hovered && data?.detail && (
-              <div className="mt-0.5 text-[9px] text-gray-600 dark:text-gray-400">{data.detail}</div>
+              <div className="mt-0.5 text-[9px] text-gray-500 dark:text-gray-400">{data.detail}</div>
             )}
           </div>
         </EdgeLabelRenderer>

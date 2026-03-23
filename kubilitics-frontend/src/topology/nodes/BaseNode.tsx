@@ -53,7 +53,7 @@ function BaseNodeInner({ data }: NodeProps<BaseNodeData>) {
 
       {/* Header with category color */}
       <div className={`flex items-center gap-2 ${headerBg} px-3 py-1.5`}>
-        <K8sIcon kind={data.kind} size={16} />
+        <K8sIcon kind={data.kind} size={18} backdrop />
         <span className="flex-1 text-[11px] font-semibold text-white tracking-wide uppercase">{data.kind}</span>
         <div className={`h-2 w-2 rounded-full ${badge.dotClass} ring-1 ring-white/40`} aria-hidden="true" />
       </div>

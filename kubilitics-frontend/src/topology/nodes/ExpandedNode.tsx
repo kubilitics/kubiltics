@@ -49,7 +49,7 @@ function ExpandedNodeInner({ data }: NodeProps<ExpandedNodeData>) {
 
       {/* Header */}
       <div className={`flex items-center gap-2.5 ${headerBg} px-4 py-2`}>
-        <K8sIcon kind={data.kind} size={18} />
+        <K8sIcon kind={data.kind} size={22} backdrop />
         <div className="flex-1 min-w-0">
           <span className="text-[11px] font-semibold text-white tracking-wide uppercase">{data.kind}</span>
         </div>

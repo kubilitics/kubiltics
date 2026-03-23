@@ -23,7 +23,7 @@ function CompactNodeInner({ data }: NodeProps<BaseNodeData>) {
       tabIndex={0}
     >
       <Handle type="target" position={Position.Left} className="!w-2 !h-2 !bg-gray-400 dark:!bg-gray-500 !border-white dark:!border-slate-800 !border-2" />
-      <K8sIcon kind={data.kind} size={22} className="shrink-0" />
+      <K8sIcon kind={data.kind} size={26} className="shrink-0" />
       <div className="min-w-0 flex-1">
         <div className="text-[11px] font-semibold text-gray-900 dark:text-gray-100 leading-tight break-all">{data.name}</div>
         <div className="text-[10px] text-gray-600 dark:text-gray-400 font-medium mt-0.5">{data.kind}</div>
