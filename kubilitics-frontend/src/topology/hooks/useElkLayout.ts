@@ -52,13 +52,13 @@ function getLayerConstraint(layer: number | undefined): Record<string, string> {
 const ELK_LAYERED_BASE: Record<string, string> = {
   "elk.algorithm": "layered",
   "elk.direction": "RIGHT",
-  "elk.spacing.nodeNode": "80",
-  "elk.layered.spacing.nodeNodeBetweenLayers": "180",
-  "elk.layered.spacing.edgeNodeBetweenLayers": "40",
+  "elk.spacing.nodeNode": "50",
+  "elk.layered.spacing.nodeNodeBetweenLayers": "120",
+  "elk.layered.spacing.edgeNodeBetweenLayers": "25",
   "elk.layered.crossingMinimization.strategy": "LAYER_SWEEP",
   "elk.layered.nodePlacement.strategy": "NETWORK_SIMPLEX",
   "elk.separateConnectedComponents": "true",
-  "elk.spacing.componentComponent": "140",
+  "elk.spacing.componentComponent": "100",
 };
 
 const ELK_OPTIONS: Record<ViewMode, Record<string, string>> = {
@@ -170,8 +170,8 @@ function categoryGridLayout(
   topology: TopologyResponse
 ): Map<string, { x: number; y: number }> {
   const positions = new Map<string, { x: number; y: number }>();
-  const nodeW = 340;
-  const nodeH = 160;
+  const nodeW = 300;
+  const nodeH = 150;
   const groupGapX = 160; // horizontal gap between category columns
   const groupGapY = 80;  // vertical gap between rows within a group
 
@@ -301,14 +301,14 @@ async function hybridLayout(
       const cols = Math.max(2, Math.ceil(Math.sqrt(compNodeIds.length)));
       compNodeIds.forEach((nid, idx) => {
         compPositions.set(nid, {
-          x: (idx % cols) * 340,
-          y: Math.floor(idx / cols) * 160,
+          x: (idx % cols) * 300,
+          y: Math.floor(idx / cols) * 150,
         });
       });
       componentBounds.push({
         positions: compPositions,
-        width: cols * 340,
-        height: Math.ceil(compNodeIds.length / cols) * 160,
+        width: cols * 300,
+        height: Math.ceil(compNodeIds.length / cols) * 150,
       });
     }
   }
@@ -378,13 +378,13 @@ async function hybridLayout(
       const cols = Math.max(2, Math.min(targetCols, Math.ceil(Math.sqrt(nids.length * 2.5))));
       nids.forEach((nid, idx) => {
         positions.set(nid, {
-          x: isoX + (idx % cols) * 340,
-          y: isoY + Math.floor(idx / cols) * 160,
+          x: isoX + (idx % cols) * 300,
+          y: isoY + Math.floor(idx / cols) * 150,
         });
       });
       // Stack categories vertically within the same column block
       const rows = Math.ceil(nids.length / cols);
-      isoY += rows * 160 + 60;
+      isoY += rows * 150 + 60;
     }
   }
 
