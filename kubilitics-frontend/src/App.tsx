@@ -164,8 +164,6 @@ const MutatingWebhookDetail = lazy(() => import("./pages/MutatingWebhookDetail")
 const ValidatingWebhooks = lazy(() => import("./pages/ValidatingWebhooks"));
 const ValidatingWebhookDetail = lazy(() => import("./pages/ValidatingWebhookDetail"));
 const Topology = lazy(() => import("./pages/Topology"));
-// ScanDashboard removed from production — backend scanner APIs not yet implemented.
-// Kept in codebase for feature branch development.
 
 
 import { useResourceLiveUpdates } from "./hooks/useResourceLiveUpdates";
