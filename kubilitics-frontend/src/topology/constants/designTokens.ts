@@ -74,7 +74,7 @@ export function statusDotClass(status: string): string {
 export const NODE_DIMS: Record<string, { width: number; height: number }> = {
   minimal:  { width: 80,  height: 60  },
   compact:  { width: 200, height: 50  },
-  base:     { width: 280, height: 120 },
+  base:     { width: 320, height: 130 },
   expanded: { width: 380, height: 190 },
 };
 

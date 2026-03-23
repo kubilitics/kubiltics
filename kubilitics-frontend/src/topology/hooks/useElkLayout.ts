@@ -52,13 +52,14 @@ function getLayerConstraint(layer: number | undefined): Record<string, string> {
 const ELK_LAYERED_BASE: Record<string, string> = {
   "elk.algorithm": "layered",
   "elk.direction": "RIGHT",
-  "elk.spacing.nodeNode": "50",
-  "elk.layered.spacing.nodeNodeBetweenLayers": "160",
-  "elk.layered.spacing.edgeNodeBetweenLayers": "40",
+  "elk.spacing.nodeNode": "40",
+  "elk.layered.spacing.nodeNodeBetweenLayers": "140",
+  "elk.layered.spacing.edgeNodeBetweenLayers": "30",
   "elk.layered.crossingMinimization.strategy": "LAYER_SWEEP",
-  "elk.layered.nodePlacement.strategy": "NETWORK_SIMPLEX",
+  "elk.layered.nodePlacement.strategy": "BRANDES_KOEPF",
+  "elk.layered.thoroughness": "20",
   "elk.separateConnectedComponents": "true",
-  "elk.spacing.componentComponent": "100",
+  "elk.spacing.componentComponent": "80",
 };
 
 const ELK_OPTIONS: Record<ViewMode, Record<string, string>> = {
