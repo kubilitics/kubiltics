@@ -3,7 +3,7 @@ import { useQueries } from '@tanstack/react-query';
 import { Server, Search, MoreHorizontal,
  Layers, Lock, Unlock, List, ChevronDown, ChevronRight } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
-import { DeleteConfirmDialog, UsageBar } from '@/components/resources';
+import { DeleteConfirmDialog, MetricBar } from '@/components/resources';
 import { StatusPill, type StatusPillVariant } from '@/components/list';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -732,28 +732,10 @@ export default function Nodes() {
  </div>
  </ResizableTableCell>
  <ResizableTableCell columnId="cpu">
- <div className="min-w-0 overflow-hidden">
- <UsageBar
- variant="sparkline"
- value={node.cpuRaw}
- kind="cpu"
- displayFormat="compact"
- width={56}
- max={parseCpuCapacityToMilli(node.cpuCapacity) ?? undefined}
- />
- </div>
+ <MetricBar value={node.cpuRaw} kind="cpu" max={parseCpuCapacityToMilli(node.cpuCapacity) ?? undefined} />
  </ResizableTableCell>
  <ResizableTableCell columnId="memory">
- <div className="min-w-0 overflow-hidden">
- <UsageBar
- variant="sparkline"
- value={node.memoryRaw}
- kind="memory"
- displayFormat="compact"
- width={56}
- max={parseMemoryCapacityToMi(node.memoryCapacity) ?? undefined}
- />
- </div>
+ <MetricBar value={node.memoryRaw} kind="memory" max={parseMemoryCapacityToMi(node.memoryCapacity) ?? undefined} />
  </ResizableTableCell>
  <ResizableTableCell columnId="pods" className="font-mono text-sm">{node.pods}</ResizableTableCell>
  <ResizableTableCell columnId="version"><Badge variant="secondary" className="font-mono text-xs">{node.version}</Badge></ResizableTableCell>
