@@ -194,11 +194,7 @@ export default function ClusterConnect() {
     }
   }, []);
 
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    const file = e.dataTransfer.files[0];
-    if (file) handleUploadedFile(file);
-  }, [handleUploadedFile]);
+  // handleDrop moved after handleUploadedFile to avoid TDZ
 
   // If no mode selected yet, redirect to selection (browser/Helm only). Desktop always lands here with appMode set to 'desktop'.
   useEffect(() => {
@@ -447,6 +443,12 @@ export default function ClusterConnect() {
       setUploadProgress(0);
     }
   }, [isBackendConfigured, submitClusterWithContext, showClusterErrorToast]);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    const file = e.dataTransfer.files[0];
+    if (file) handleUploadedFile(file);
+  }, [handleUploadedFile]);
 
   const handleAddDiscovered = async (cluster: DetectedCluster) => {
     // Same semantics as handleUploadedFile: in dev on localhost an empty
