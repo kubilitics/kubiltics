@@ -72,9 +72,62 @@ jobs:
         working-directory: kubilitics-frontend
         run: npm ci
 
-      - name: Build
+      - name: Circular dependency check
         working-directory: kubilitics-frontend
-        run: npm run build
+        run: |
+          echo "Checking for circular imports..."
+          npx madge --circular --extensions ts,tsx src/
+          if [ $? -ne 0 ]; then
+            echo "FAIL: Circular imports detected — these cause TDZ crashes in production builds"
+            exit 1
+          fi
+          echo "No circular dependencies found"
+
+      - name: Build (with Rollup warning check)
+        working-directory: kubilitics-frontend
+        run: |
+          npm run build 2>&1 | tee build-output.txt
+          BUILD_EXIT=${PIPESTATUS[0]}
+          if [ $BUILD_EXIT -ne 0 ]; then
+            echo "FAIL: Vite build failed"
+            exit 1
+          fi
+          if grep -q "dynamically imported but also statically imported" build-output.txt; then
+            echo "FAIL: Mixed dynamic/static imports detected — this causes TDZ crashes in production"
+            exit 1
+          fi
+          if grep -q "Circular dependency" build-output.txt; then
+            echo "FAIL: Rollup detected circular dependency during bundling"
+            exit 1
+          fi
+          echo "Build passed with no dangerous warnings"
+
+      - name: Production build smoke test
+        working-directory: kubilitics-frontend
+        run: |
+          npx serve dist -l 4173 &
+          SERVER_PID=$!
+          sleep 3
+          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:4173/)
+          if [ "$HTTP_STATUS" != "200" ]; then
+            echo "FAIL: Build smoke test failed with HTTP $HTTP_STATUS"
+            kill $SERVER_PID 2>/dev/null || true
+            exit 1
+          fi
+          # Check that the HTML contains the root div and script tag (React app mounts)
+          PAGE_CONTENT=$(curl -s http://localhost:4173/)
+          if ! echo "$PAGE_CONTENT" | grep -q 'id="root"'; then
+            echo "FAIL: index.html missing root element — React app cannot mount"
+            kill $SERVER_PID 2>/dev/null || true
+            exit 1
+          fi
+          if ! echo "$PAGE_CONTENT" | grep -q '<script'; then
+            echo "FAIL: index.html missing script tags — JS bundle not loaded"
+            kill $SERVER_PID 2>/dev/null || true
+            exit 1
+          fi
+          echo "BUILD SMOKE TEST PASSED"
+          kill $SERVER_PID 2>/dev/null || true
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4

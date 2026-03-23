@@ -22,12 +22,60 @@ env:
 
 jobs:
   # ──────────────────────────────────────────────────────────────────────────
+  # Version consistency gate — fail fast if version files are out of sync.
+  # All version files must match before any build or release artifact is
+  # created.  Catches forgotten bumps before they reach production.
+  # ──────────────────────────────────────────────────────────────────────────
+  version-check:
+    name: Version Consistency Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify all version files match
+        run: |
+          set -euo pipefail
+          echo "Checking version consistency across all version files..."
+
+          TAG_VERSION=${GITHUB_REF#refs/tags/v}
+          echo "Release tag version: $TAG_VERSION"
+
+          FRONTEND_VERSION=$(jq -r '.version' kubilitics-frontend/package.json)
+          TAURI_VERSION=$(jq -r '.version' kubilitics-desktop/src-tauri/tauri.conf.json)
+          CARGO_VERSION=$(grep '^version' kubilitics-desktop/src-tauri/Cargo.toml | head -1 | sed 's/.*"\(.*\)".*/\1/')
+          CHART_VERSION=$(grep '^version:' deploy/helm/kubilitics/Chart.yaml | awk '{print $2}')
+          APP_VERSION=$(grep '^appVersion:' deploy/helm/kubilitics/Chart.yaml | sed 's/appVersion: *"\(.*\)"/\1/')
+
+          echo "  kubilitics-frontend/package.json:            $FRONTEND_VERSION"
+          echo "  kubilitics-desktop/src-tauri/tauri.conf.json: $TAURI_VERSION"
+          echo "  kubilitics-desktop/src-tauri/Cargo.toml:      $CARGO_VERSION"
+          echo "  deploy/helm/kubilitics/Chart.yaml version:    $CHART_VERSION"
+          echo "  deploy/helm/kubilitics/Chart.yaml appVersion: $APP_VERSION"
+
+          ERRORS=0
+          for FILE_VERSION in "$FRONTEND_VERSION" "$TAURI_VERSION" "$CARGO_VERSION" "$CHART_VERSION" "$APP_VERSION"; do
+            if [ "$FILE_VERSION" != "$TAG_VERSION" ]; then
+              echo "MISMATCH: expected $TAG_VERSION but found $FILE_VERSION"
+              ERRORS=$((ERRORS + 1))
+            fi
+          done
+
+          if [ $ERRORS -gt 0 ]; then
+            echo ""
+            echo "FAIL: $ERRORS version file(s) do not match tag v$TAG_VERSION"
+            echo "All version files must be bumped together before tagging a release."
+            exit 1
+          fi
+          echo "All version files match v$TAG_VERSION"
+
+  # ──────────────────────────────────────────────────────────────────────────
   # Build the frontend dist ONCE (Tauri mode) and share across all desktop
   # platforms.  Saves ~5 min × 3 platforms = ~15 min total vs. building it
   # inside each platform runner.
   # ──────────────────────────────────────────────────────────────────────────
   frontend-dist:
     name: Frontend Dist (Tauri)
+    needs: [version-check]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -62,6 +110,7 @@ jobs:
   # ──────────────────────────────────────────────────────────────────────────
   docker-backend:
     name: Backend Docker Image
+    needs: [version-check]
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
