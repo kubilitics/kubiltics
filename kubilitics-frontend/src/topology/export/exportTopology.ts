@@ -333,8 +333,10 @@ export function exportTopologyDrawIO(
 </diagram>
 </mxfile>`;
 
-  const blob = new Blob([xml], { type: "application/xml" });
-  downloadBlob(blob, buildExportFilename("drawio", ctx));
+  // Open directly in draw.io web editor instead of downloading a file.
+  // Uses the create URL API: https://www.drawio.com/doc/faq/embed-mode
+  const encodedXml = encodeURIComponent(xml);
+  window.open(`https://app.diagrams.net/#R${encodedXml}`, "_blank");
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
