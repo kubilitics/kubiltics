@@ -194,8 +194,8 @@ export function TopologyPage() {
       }
     }, [selectedNodeId, navigateBack]),
     onViewMode: useCallback((n: number) => {
-      const modes: ViewMode[] = ["cluster", "namespace", "workload", "resource", "rbac"];
-      if (n >= 1 && n <= 5) setViewModeStore(modes[n - 1]);
+      const modes: ViewMode[] = ["namespace", "cluster", "rbac"];
+      if (n >= 1 && n <= 3) setViewModeStore(modes[n - 1]);
     }, [setViewModeStore]),
     onToggleHealthOverlay: useCallback(() => toggleOverlay("health"), [toggleOverlay]),
     onScreenshot: useCallback(() => {

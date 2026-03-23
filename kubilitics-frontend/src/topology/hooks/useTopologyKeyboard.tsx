@@ -21,7 +21,7 @@ export interface TopologyKeyboardHandlers {
 /**
  * All keyboard shortcuts per PRD Section 8.2:
  * F = fit to screen
- * 1-5 = view modes (Cluster, Namespace, Workload, Resource, RBAC)
+ * 1-3 = view modes (Namespace, Cluster, RBAC)
  * +/- = zoom in/out
  * Escape = back/deselect/close panel
  * / = open search
@@ -58,7 +58,7 @@ export function useTopologyKeyboard(handlers: TopologyKeyboardHandlers) {
           }
           break;
 
-        case "1": case "2": case "3": case "4": case "5":
+        case "1": case "2": case "3":
           if (noMod) {
             handlers.onViewMode?.(parseInt(key, 10));
           }
@@ -185,7 +185,7 @@ export function TopologyShortcutsOverlay({
 
   const shortcuts = [
     { key: "F", description: "Fit to screen" },
-    { key: "1-5", description: "Switch view mode" },
+    { key: "1-3", description: "Switch view mode (Namespace, Cluster, RBAC)" },
     { key: "/", description: "Open search" },
     { key: "+/-", description: "Zoom in/out" },
     { key: "Esc", description: "Deselect / Close panel / Back" },

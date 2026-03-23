@@ -31,37 +31,27 @@ export interface UseTopologyDataParams {
 
 /** Kinds visible per view mode */
 const VIEW_MODE_KINDS: Record<ViewMode, string[] | null> = {
-  namespace: null, // Show all
+  namespace: null, // Show all namespace-scoped + connected cluster-scoped (smart filter below)
   cluster: [
     "Node", "Namespace", "PersistentVolume", "StorageClass",
-    "ClusterRole", "ClusterRoleBinding", "IngressClass",
-    "PriorityClass", "RuntimeClass",
+    "IngressClass", "PriorityClass", "RuntimeClass",
     "MutatingWebhookConfiguration", "ValidatingWebhookConfiguration",
     "ResourceQuota", "LimitRange",
   ],
-  workload: [
-    "Deployment", "StatefulSet", "DaemonSet", "ReplicaSet",
-    "Pod", "Job", "CronJob", "ReplicationController",
-    "Service", "Ingress", "Endpoints", "EndpointSlice",
-    "ConfigMap", "Secret",
-    "HorizontalPodAutoscaler", "PodDisruptionBudget",
-    "NetworkPolicy",
-  ],
-  resource: null, // Resource mode uses BFS — show all
   rbac: [
     "ServiceAccount", "Role", "ClusterRole",
     "RoleBinding", "ClusterRoleBinding",
     "Namespace",
   ],
+  resource: null, // Resource view (per-resource detail tab) — show all via BFS
 };
 
 /** Category-based filtering as fallback */
 const VIEW_MODE_CATEGORIES: Record<ViewMode, string[] | null> = {
   namespace: null,
   cluster: ["scheduling", "storage"],
-  workload: ["compute", "networking", "config", "scaling"],
-  resource: null,
   rbac: ["security"],
+  resource: null,
 };
 
 function filterByViewMode(
@@ -90,6 +80,13 @@ function filterByViewMode(
   return { nodes: filteredNodes, edges: filteredEdges };
 }
 
+/**
+ * Smart namespace filter — two-pass algorithm:
+ * Pass 1: Keep all namespace-scoped resources in selected namespaces
+ * Pass 2: Keep cluster-scoped resources ONLY if they have an edge to a Pass 1 node
+ * This prevents dumping all ClusterRoles into namespace view while keeping
+ * Nodes/PVs that are actually connected to namespace resources.
+ */
 function filterByNamespaces(
   nodes: TopologyNode[],
   edges: TopologyEdge[],
@@ -97,20 +94,41 @@ function filterByNamespaces(
 ): { nodes: TopologyNode[]; edges: TopologyEdge[] } {
   if (selectedNamespaces.size === 0) return { nodes, edges };
 
-  const filteredNodes = nodes.filter((n) => {
-    // Keep cluster-scoped resources (empty namespace) — PVs, Nodes, StorageClasses,
-    // ClusterRoles etc. must remain visible so edges connecting to them aren't severed.
-    // Only filter out resources from non-selected namespaces.
-    if (!n.namespace) return true;
-    return selectedNamespaces.has(n.namespace);
-  });
+  // Pass 1: Keep namespace-scoped resources in selected namespaces
+  const namespacedNodeIds = new Set<string>();
+  const namespacedNodes: TopologyNode[] = [];
+  const clusterScopedNodes: TopologyNode[] = [];
 
-  const nodeIds = new Set(filteredNodes.map((n) => n.id));
-  const filteredEdges = edges.filter(
-    (e) => nodeIds.has(e.source) && nodeIds.has(e.target)
+  for (const n of nodes) {
+    if (n.namespace) {
+      if (selectedNamespaces.has(n.namespace)) {
+        namespacedNodes.push(n);
+        namespacedNodeIds.add(n.id);
+      }
+    } else {
+      clusterScopedNodes.push(n);
+    }
+  }
+
+  // Pass 2: Keep cluster-scoped nodes ONLY if they have an edge to a namespace-scoped node
+  const connectedClusterNodeIds = new Set<string>();
+  for (const e of edges) {
+    if (namespacedNodeIds.has(e.source) && !namespacedNodeIds.has(e.target)) {
+      connectedClusterNodeIds.add(e.target);
+    }
+    if (namespacedNodeIds.has(e.target) && !namespacedNodeIds.has(e.source)) {
+      connectedClusterNodeIds.add(e.source);
+    }
+  }
+
+  const connectedClusterNodes = clusterScopedNodes.filter((n) => connectedClusterNodeIds.has(n.id));
+  const finalNodes = [...namespacedNodes, ...connectedClusterNodes];
+  const finalNodeIds = new Set(finalNodes.map((n) => n.id));
+  const finalEdges = edges.filter(
+    (e) => finalNodeIds.has(e.source) && finalNodeIds.has(e.target)
   );
 
-  return { nodes: filteredNodes, edges: filteredEdges };
+  return { nodes: finalNodes, edges: finalEdges };
 }
 
 export function useTopologyData({
@@ -137,7 +155,7 @@ export function useTopologyData({
 
   // View modes where namespace filtering makes sense.
   // Cluster and RBAC show cluster-scoped resources (no namespace) so filtering would exclude everything.
-  const NS_FILTERABLE_VIEWS = new Set<ViewMode>(["namespace", "workload", "resource"]);
+  const NS_FILTERABLE_VIEWS = new Set<ViewMode>(["namespace"]);
 
   // Stable key for the namespace Set so React's useMemo dependency comparison
   // always detects changes. Set objects are compared by reference, which can

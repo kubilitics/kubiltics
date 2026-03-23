@@ -118,7 +118,7 @@ export function TopologyToolbar({
         <ViewModeSelect value={viewMode} onChange={onViewModeChange} />
 
         {/* Separator + Namespace Filter — only for namespace-aware views */}
-        {(viewMode === "namespace" || viewMode === "workload" || viewMode === "resource") && (<>
+        {viewMode === "namespace" && (<>
         <div className="h-7 w-px bg-gradient-to-b from-transparent via-gray-300 to-transparent" />
 
         {/* ── Namespace Filter ── */}

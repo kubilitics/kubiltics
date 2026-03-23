@@ -1,7 +1,7 @@
 import { useState, useCallback } from "react";
 import type { ViewMode } from "../types/topology";
 import {
-  Globe, Layers, Box, Target, Shield,
+  Globe, Layers, Shield,
 } from "lucide-react";
 
 export interface ViewModeSelectProps {
@@ -22,23 +22,11 @@ const modes: {
   dotColor: string;
 }[] = [
   {
-    value: "cluster",
-    label: "Cluster",
-    icon: <Globe className="h-3.5 w-3.5" />,
-    shortcut: "1",
-    description: "Cluster-scoped resources like Nodes, Namespaces, and PVs",
-    gradient: "from-blue-500 to-blue-600",
-    activeBg: "bg-gradient-to-r from-blue-50 to-blue-100/60",
-    activeText: "text-blue-700",
-    activeBorder: "border-blue-200 ring-1 ring-blue-100",
-    dotColor: "bg-blue-500",
-  },
-  {
     value: "namespace",
     label: "Namespace",
     icon: <Layers className="h-3.5 w-3.5" />,
-    shortcut: "2",
-    description: "All resources within the selected namespace",
+    shortcut: "1",
+    description: "All resources in selected namespace + connected cluster resources",
     gradient: "from-emerald-500 to-emerald-600",
     activeBg: "bg-gradient-to-r from-emerald-50 to-emerald-100/60",
     activeText: "text-emerald-700",
@@ -46,35 +34,23 @@ const modes: {
     dotColor: "bg-emerald-500",
   },
   {
-    value: "workload",
-    label: "Workload",
-    icon: <Box className="h-3.5 w-3.5" />,
-    shortcut: "3",
-    description: "Deployments, StatefulSets, Pods, and their Services",
-    gradient: "from-violet-500 to-violet-600",
-    activeBg: "bg-gradient-to-r from-violet-50 to-violet-100/60",
-    activeText: "text-violet-700",
-    activeBorder: "border-violet-200 ring-1 ring-violet-100",
-    dotColor: "bg-violet-500",
-  },
-  {
-    value: "resource",
-    label: "Resource",
-    icon: <Target className="h-3.5 w-3.5" />,
-    shortcut: "4",
-    description: "Focus on a specific resource and its connections",
-    gradient: "from-amber-500 to-amber-600",
-    activeBg: "bg-gradient-to-r from-amber-50 to-amber-100/60",
-    activeText: "text-amber-700",
-    activeBorder: "border-amber-200 ring-1 ring-amber-100",
-    dotColor: "bg-amber-500",
+    value: "cluster",
+    label: "Cluster",
+    icon: <Globe className="h-3.5 w-3.5" />,
+    shortcut: "2",
+    description: "Infrastructure: Nodes, Namespaces, PVs, StorageClasses",
+    gradient: "from-blue-500 to-blue-600",
+    activeBg: "bg-gradient-to-r from-blue-50 to-blue-100/60",
+    activeText: "text-blue-700",
+    activeBorder: "border-blue-200 ring-1 ring-blue-100",
+    dotColor: "bg-blue-500",
   },
   {
     value: "rbac",
     label: "RBAC",
     icon: <Shield className="h-3.5 w-3.5" />,
-    shortcut: "5",
-    description: "Roles, ClusterRoles, Bindings, and ServiceAccounts",
+    shortcut: "3",
+    description: "Security: Roles, ClusterRoles, Bindings, ServiceAccounts",
     gradient: "from-pink-500 to-pink-600",
     activeBg: "bg-gradient-to-r from-pink-50 to-pink-100/60",
     activeText: "text-pink-700",
@@ -127,7 +103,7 @@ export function ViewModeSelect({ value = "namespace", onChange }: ViewModeSelect
         })}
       </div>
 
-      {/* Hover tooltip — shows description + shortcut below the pill bar */}
+      {/* Hover tooltip */}
       {hoveredConfig && (
         <div
           className="absolute left-1/2 -translate-x-1/2 top-full mt-2 z-30 pointer-events-none animate-in fade-in duration-150"
@@ -142,7 +118,6 @@ export function ViewModeSelect({ value = "namespace", onChange }: ViewModeSelect
               </kbd>
               <span className="text-[10px] text-gray-400">to switch</span>
             </div>
-            {/* Tooltip arrow */}
             <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-gray-900 rotate-45" />
           </div>
         </div>

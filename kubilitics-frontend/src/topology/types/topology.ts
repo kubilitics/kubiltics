@@ -1,11 +1,10 @@
 // V2 topology API types (match backend TopologyResponse)
 
 export type ViewMode =
-  | "cluster"
   | "namespace"
-  | "workload"
-  | "resource"
-  | "rbac";
+  | "cluster"
+  | "rbac"
+  | "resource";  // Used by ResourceTopologyV2View (per-resource detail tab), not shown in main topology tab bar
 
 export interface TopologyMetadata {
   clusterId: string;
