@@ -198,7 +198,6 @@ export function TopologyPage() {
       if (n >= 1 && n <= 5) setViewModeStore(modes[n - 1]);
     }, [setViewModeStore]),
     onToggleHealthOverlay: useCallback(() => toggleOverlay("health"), [toggleOverlay]),
-    onToggleCostOverlay: useCallback(() => toggleOverlay("cost"), [toggleOverlay]),
     onScreenshot: useCallback(() => {
       const filename = buildExportFilename("png", getExportCtx());
       exportRef.current?.("png", filename);

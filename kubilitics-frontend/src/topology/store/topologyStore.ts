@@ -41,9 +41,6 @@ export interface TopologyState {
 
   // Overlays
   healthOverlay: boolean;
-  costOverlay: boolean;
-  trafficOverlay: boolean;
-  securityOverlay: boolean;
 
   // Viewport
   zoom: number;
@@ -81,7 +78,7 @@ export interface TopologyState {
   setNamespaceFilter: (ns: string | null) => void;
   setKindFilter: (kinds: string[]) => void;
   setStatusFilter: (statuses: string[]) => void;
-  toggleOverlay: (name: "health" | "cost" | "traffic" | "security") => void;
+  toggleOverlay: (name: "health") => void;
   togglePresentationMode: () => void;
   toggleFocusDimming: () => void;
   toggleExportTitle: () => void;
@@ -147,9 +144,6 @@ export const useTopologyStore = create<TopologyState>()(
       statusFilter: [],
       searchQuery: "",
       healthOverlay: true,
-      costOverlay: false,
-      trafficOverlay: false,
-      securityOverlay: false,
       zoom: 1,
       position: { x: 0, y: 0 },
       isLoading: false,
@@ -280,9 +274,6 @@ export const useTopologyStore = create<TopologyState>()(
       partialize: (state) => ({
         viewMode: state.viewMode,
         healthOverlay: state.healthOverlay,
-        costOverlay: state.costOverlay,
-        trafficOverlay: state.trafficOverlay,
-        securityOverlay: state.securityOverlay,
         focusDimming: state.focusDimming,
         exportIncludeTitle: state.exportIncludeTitle,
         exportIncludeLegend: state.exportIncludeLegend,

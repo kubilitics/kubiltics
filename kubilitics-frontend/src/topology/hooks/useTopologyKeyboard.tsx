@@ -13,7 +13,6 @@ export interface TopologyKeyboardHandlers {
   onToggleEdgeLabels?: () => void;
   onToggleMinimap?: () => void;
   onToggleHealthOverlay?: () => void;
-  onToggleCostOverlay?: () => void;
   onScreenshot?: () => void;
   onShowHelp?: () => void;
   onNavigateBack?: () => void;
@@ -99,13 +98,6 @@ export function useTopologyKeyboard(handlers: TopologyKeyboardHandlers) {
           if (noMod) {
             e.preventDefault();
             handlers.onToggleHealthOverlay?.();
-          }
-          break;
-
-        case "c": case "C":
-          if (noMod) {
-            e.preventDefault();
-            handlers.onToggleCostOverlay?.();
           }
           break;
 
@@ -200,7 +192,6 @@ export function TopologyShortcutsOverlay({
     { key: "E", description: "Toggle edge labels" },
     { key: "M", description: "Toggle minimap" },
     { key: "H", description: "Toggle health overlay" },
-    { key: "C", description: "Toggle cost overlay" },
     { key: "S", description: "Screenshot to clipboard" },
     { key: "?", description: "Show shortcuts" },
     { key: "Backspace", description: "Navigate back" },
