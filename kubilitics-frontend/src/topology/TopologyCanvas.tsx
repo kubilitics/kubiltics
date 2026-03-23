@@ -20,6 +20,7 @@ import { edgeTypes } from "./edges/edgeTypes";
 import { useElkLayout } from "./hooks/useElkLayout";
 import { captureFullTopologyPNG, captureFullTopologySVG, type ExportBounds } from "./export/exportTopology";
 import { ZOOM_THRESHOLDS, CANVAS, EDGE_COLORS, fitViewMinZoom, minimapNodeColor } from "./constants/designTokens";
+import { useTopologyStore, selectDimmedNodeIds } from "./store/topologyStore";
 import type { TopologyResponse, ViewMode } from "./types/topology";
 
 export type ExportFormat = "png" | "svg";
@@ -199,22 +200,32 @@ function TopologyCanvasInner({
     return () => { cancelled = true; };
   }, [isExporting, reactFlow]);
 
-  // Selection/highlight styling
+  // Focus dimming — dims unconnected nodes when a node is selected
+  const focusDimming = useTopologyStore((s) => s.focusDimming);
+  const dimmedNodeIds = useTopologyStore(selectDimmedNodeIds);
+
+  // Selection/highlight/dimming styling
   const styledNodes = useMemo(() => {
-    if (!selectedNodeId && highlightNodeIds.length === 0) return nodes;
+    const hasDimming = focusDimming && selectedNodeId && dimmedNodeIds.size > 0;
+    if (!selectedNodeId && highlightNodeIds.length === 0 && !hasDimming) return nodes;
     return nodes.map((n) => {
       const isHighlighted = highlightNodeIds.includes(n.id);
       const isSelected = n.id === selectedNodeId;
-      if (!isHighlighted && !isSelected) return n;
+      const isDimmed = hasDimming && dimmedNodeIds.has(n.id);
+      if (!isHighlighted && !isSelected && !isDimmed) return n;
       return {
         ...n,
         className: [
           isSelected ? "ring-2 ring-blue-500 ring-offset-2 rounded-lg" : "",
           isHighlighted ? "ring-2 ring-amber-400 ring-offset-1 rounded-lg" : "",
         ].filter(Boolean).join(" "),
+        style: {
+          ...n.style,
+          ...(isDimmed ? { opacity: 0.2, filter: "saturate(0.3)", transition: "opacity 0.15s, filter 0.15s" } : { transition: "opacity 0.15s, filter 0.15s" }),
+        },
       };
     });
-  }, [nodes, selectedNodeId, highlightNodeIds]);
+  }, [nodes, selectedNodeId, highlightNodeIds, focusDimming, dimmedNodeIds]);
 
   // Edge styling — ALWAYS show edges, just hide labels at low zoom
   const styledEdges = useMemo(() => {
