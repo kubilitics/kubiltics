@@ -1281,8 +1281,10 @@ export default function Pods() {
    const pct = Math.round(ratio * 100);
    const barColor = ratio < 0.4 ? '#10b981' : ratio < 0.7 ? '#f59e0b' : ratio < 0.9 ? '#f97316' : '#ef4444';
    const display = val !== null ? (val >= 1000 ? `${(val/1000).toFixed(1)} cores` : `${val.toFixed(1)}m`) : '-';
+   const limit = podResourceMaxMap[podKey]?.cpuMax;
+   const limitDisplay = limit ? (limit >= 1000 ? `${(limit/1000).toFixed(1)} cores` : `${limit}m`) : 'no limit';
    return (
-     <div className="flex items-center gap-2" title={`CPU: ${display}`}>
+     <div className="flex items-center gap-2" title={`CPU: ${display} / ${limitDisplay} (${pct}% used)`}>
        <div className="w-[52px] shrink-0">
          <div className="h-[5px] rounded-full bg-gray-200/80 dark:bg-gray-700/60 overflow-hidden">
            <div className="h-full rounded-full transition-all duration-500 ease-out" style={{ width: `${Math.max(pct, val !== null && val > 0 ? 4 : 0)}%`, background: barColor }} />
@@ -1303,8 +1305,10 @@ export default function Pods() {
    const pct = Math.round(ratio * 100);
    const barColor = ratio < 0.4 ? '#3b82f6' : ratio < 0.7 ? '#f59e0b' : ratio < 0.9 ? '#f97316' : '#ef4444';
    const display = val !== null ? (val >= 1024 ? `${(val/1024).toFixed(1)} Gi` : `${val.toFixed(0)} Mi`) : '-';
+   const limit = podResourceMaxMap[podKey]?.memoryMax;
+   const limitDisplay = limit ? (limit >= 1024 ? `${(limit/1024).toFixed(1)} Gi` : `${limit.toFixed(0)} Mi`) : 'no limit';
    return (
-     <div className="flex items-center gap-2" title={`Memory: ${display}`}>
+     <div className="flex items-center gap-2" title={`Memory: ${display} / ${limitDisplay} (${pct}% used)`}>
        <div className="w-[52px] shrink-0">
          <div className="h-[5px] rounded-full bg-gray-200/80 dark:bg-gray-700/60 overflow-hidden">
            <div className="h-full rounded-full transition-all duration-500 ease-out" style={{ width: `${Math.max(pct, val !== null && val > 0 ? 4 : 0)}%`, background: barColor }} />
