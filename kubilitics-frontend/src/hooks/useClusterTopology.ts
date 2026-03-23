@@ -2,7 +2,7 @@
  * Hook for fetching cluster-wide topology from backend
  * Uses react-query for caching and error handling
  */
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getTopology } from '@/services/backendApiClient';
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
 import type { TopologyGraph } from '@/topology-engine';
@@ -30,6 +30,7 @@ export function useClusterTopology({
   namespace,
   enabled = true,
 }: UseClusterTopologyOptions): UseClusterTopologyResult {
+  const queryClient = useQueryClient();
   const backendBaseUrl = useBackendConfigStore((s) => s.backendBaseUrl);
   const effectiveBaseUrl = getEffectiveBackendBaseUrl(backendBaseUrl);
   const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured);
@@ -77,11 +78,18 @@ export function useClusterTopology({
     // Retry uses global defaults (3 retries with exponential backoff)
   });
 
+  const queryKey = ['topology', clusterId, namespaceParam];
+
   return {
     graph,
     isLoading,
     isFetching,
     error: error || null,
-    refetch: () => { refetch(); },
+    refetch: () => {
+      // Invalidate cache first so react-query ignores staleTime and
+      // makes a real network request. Without this, refetch() on
+      // "fresh" data (within 60s staleTime) is a no-op.
+      queryClient.invalidateQueries({ queryKey });
+    },
   };
 }
