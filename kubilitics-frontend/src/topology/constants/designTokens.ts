@@ -168,6 +168,34 @@ export function getEdgeColor(relationshipCategory?: string): string {
   return EDGE_COLORS[relationshipCategory ?? ""] ?? EDGE_COLORS.containment;
 }
 
+// ─── Edge Styles (per relationship category) ────────────────────────────────
+// Used by: LabeledEdge — conveys relationship semantics visually
+
+export type MarkerType = "arrow-filled" | "arrow-open" | "arrow-diamond" | "none";
+
+export interface EdgeStyleConfig {
+  strokeWidth: number;
+  dashArray?: string;
+  markerEnd: MarkerType;
+  opacity: number;
+}
+
+export const EDGE_STYLES: Record<string, EdgeStyleConfig> = {
+  ownership:      { strokeWidth: 2.0,               markerEnd: "arrow-filled",  opacity: 0.85 },
+  networking:     { strokeWidth: 1.8,               markerEnd: "arrow-open",    opacity: 0.80 },
+  configuration:  { strokeWidth: 1.2, dashArray: "6 4", markerEnd: "arrow-diamond", opacity: 0.70 },
+  storage:        { strokeWidth: 1.5, dashArray: "4 2", markerEnd: "arrow-filled",  opacity: 0.75 },
+  rbac:           { strokeWidth: 1.0, dashArray: "2 3", markerEnd: "arrow-open",    opacity: 0.65 },
+  scheduling:     { strokeWidth: 1.0, dashArray: "8 4", markerEnd: "none",          opacity: 0.60 },
+  scaling:        { strokeWidth: 1.5,               markerEnd: "arrow-filled",  opacity: 0.75 },
+  policy:         { strokeWidth: 1.2, dashArray: "4 4", markerEnd: "arrow-open",    opacity: 0.70 },
+  containment:    { strokeWidth: 1.0, dashArray: "3 3", markerEnd: "none",          opacity: 0.50 },
+};
+
+export function getEdgeStyle(relationshipCategory?: string): EdgeStyleConfig {
+  return EDGE_STYLES[relationshipCategory ?? ""] ?? EDGE_STYLES.containment;
+}
+
 // ─── Tailwind Class Helpers ─────────────────────────────────────────────────
 // Used by: BaseNode, ExpandedNode (for Tailwind bg-* and border-* classes)
 

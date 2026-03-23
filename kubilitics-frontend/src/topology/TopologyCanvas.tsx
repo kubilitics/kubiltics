@@ -19,7 +19,7 @@ import { nodeTypes } from "./nodes/nodeTypes";
 import { edgeTypes } from "./edges/edgeTypes";
 import { useElkLayout } from "./hooks/useElkLayout";
 import { captureFullTopologyPNG, captureFullTopologySVG, type ExportBounds } from "./export/exportTopology";
-import { ZOOM_THRESHOLDS, CANVAS, fitViewMinZoom, minimapNodeColor } from "./constants/designTokens";
+import { ZOOM_THRESHOLDS, CANVAS, EDGE_COLORS, fitViewMinZoom, minimapNodeColor } from "./constants/designTokens";
 import type { TopologyResponse, ViewMode } from "./types/topology";
 
 export type ExportFormat = "png" | "svg";
@@ -278,6 +278,27 @@ function TopologyCanvasInner({
         proOptions={{ hideAttribution: true }}
         className="!bg-[#f8f9fb] dark:!bg-slate-950"
       >
+        {/* SVG marker definitions for edge arrowheads */}
+        <svg style={{ position: "absolute", width: 0, height: 0 }}>
+          <defs>
+            {Object.entries(EDGE_COLORS).map(([category, color]) => (
+              <g key={category}>
+                {/* Filled triangle arrowhead */}
+                <marker id={`arrow-filled-${category}`} viewBox="0 0 10 10" refX="10" refY="5" markerWidth={8} markerHeight={8} orient="auto-start-reverse">
+                  <path d="M 0 0 L 10 5 L 0 10 z" fill={color} />
+                </marker>
+                {/* Open triangle arrowhead */}
+                <marker id={`arrow-open-${category}`} viewBox="0 0 10 10" refX="10" refY="5" markerWidth={8} markerHeight={8} orient="auto-start-reverse">
+                  <path d="M 0 0 L 10 5 L 0 10" fill="none" stroke={color} strokeWidth={1.5} />
+                </marker>
+                {/* Diamond arrowhead */}
+                <marker id={`arrow-diamond-${category}`} viewBox="0 0 12 12" refX="12" refY="6" markerWidth={8} markerHeight={8} orient="auto-start-reverse">
+                  <path d="M 0 6 L 6 0 L 12 6 L 6 12 z" fill={color} />
+                </marker>
+              </g>
+            ))}
+          </defs>
+        </svg>
         <Background variant={BackgroundVariant.Dots} gap={CANVAS.gridGap} size={CANVAS.gridSize} className="!text-gray-300 dark:!text-slate-800" />
         <MiniMap
           nodeColor={miniMapNodeColor}
