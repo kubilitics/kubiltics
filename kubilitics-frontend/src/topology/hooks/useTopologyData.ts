@@ -98,10 +98,10 @@ function filterByNamespaces(
   if (selectedNamespaces.size === 0) return { nodes, edges };
 
   const filteredNodes = nodes.filter((n) => {
-    // Only include resources that belong to one of the selected namespaces.
-    // Cluster-scoped resources (no namespace) are EXCLUDED — when the user
-    // picks a specific namespace they want to see only that namespace's resources.
-    if (!n.namespace) return false;
+    // Keep cluster-scoped resources (empty namespace) — PVs, Nodes, StorageClasses,
+    // ClusterRoles etc. must remain visible so edges connecting to them aren't severed.
+    // Only filter out resources from non-selected namespaces.
+    if (!n.namespace) return true;
     return selectedNamespaces.has(n.namespace);
   });
 
