@@ -164,7 +164,8 @@ const MutatingWebhookDetail = lazy(() => import("./pages/MutatingWebhookDetail")
 const ValidatingWebhooks = lazy(() => import("./pages/ValidatingWebhooks"));
 const ValidatingWebhookDetail = lazy(() => import("./pages/ValidatingWebhookDetail"));
 const Topology = lazy(() => import("./pages/Topology"));
-const ScanDashboard = lazy(() => import("./pages/ScanDashboard"));
+// ScanDashboard removed from production — backend scanner APIs not yet implemented.
+// Kept in codebase for feature branch development.
 
 
 import { useResourceLiveUpdates } from "./hooks/useResourceLiveUpdates";
@@ -653,8 +654,7 @@ const App = () => (
                         <Route path="/settings" element={<SettingsPage />} />
                         {/* Cluster Topology */}
                         <Route path="/topology" element={<Topology />} />
-                        {/* Security Scanner */}
-                        <Route path="/security-scan" element={<ScanDashboard />} />
+                        {/* Security Scanner — disabled until backend APIs are implemented */}
 
                         {/* Workloads */}
                         <Route path="/workloads" element={<WorkloadsOverview />} />
