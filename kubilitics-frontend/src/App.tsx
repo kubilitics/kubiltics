@@ -5,7 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, MemoryRouter, Routes, Route, Navigate, useNavigate, useLocation } from "react-router-dom";
 import { useClusterStore } from "@/stores/clusterStore";
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from "@/stores/backendConfigStore";
-import { getClusters } from "@/services/backendApiClient";
+import { getClusters, addCluster } from "@/services/backendApiClient";
 import { backendClusterToCluster } from "@/lib/backendClusterAdapter";
 import { Loader2 } from "lucide-react";
 
@@ -530,7 +530,6 @@ function KubeconfigContextWrapper({ children }: { children: React.ReactNode }) {
     if (!isTauri() || selectedContexts.length === 0) return;
     try {
       const baseUrl = getEffectiveBackendBaseUrl(storedBackendUrl);
-      const { addCluster } = await import('@/services/backendApiClient');
       const path = kubeconfigPath || '';
       for (const contextName of selectedContexts) {
         await addCluster(baseUrl, path, contextName);
