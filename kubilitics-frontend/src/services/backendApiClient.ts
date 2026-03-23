@@ -6,6 +6,7 @@
 import type { TopologyGraph } from '@/topology-engine';
 import { adaptTopologyGraph, validateTopologyGraph } from '@/topology-engine';
 import { useAuthStore } from '@/stores/authStore';
+import { useClusterStore } from '@/stores/clusterStore';
 import { isTauri } from '@/lib/tauri';
 
 const API_PREFIX = '/api/v1';
@@ -193,7 +194,6 @@ export async function backendRequest<T>(
 
   // Desktop mode (Tauri): Send kubeconfig with each request (Headlamp/Lens model)
   if (isTauri()) {
-    const { useClusterStore } = await import('@/stores/clusterStore');
     const { activeCluster, kubeconfigContent } = useClusterStore.getState();
 
     if (kubeconfigContent) {
@@ -316,7 +316,6 @@ export async function backendRequestText(
   };
 
   if (isTauri()) {
-    const { useClusterStore } = await import('@/stores/clusterStore');
     const { activeCluster, kubeconfigContent } = useClusterStore.getState();
 
     if (kubeconfigContent) {
@@ -1725,7 +1724,6 @@ export async function getClusterKubeconfig(
 
   const headers: Record<string, string> = {};
   if (isTauri()) {
-    const { useClusterStore } = await import('@/stores/clusterStore');
     const { activeCluster, kubeconfigContent } = useClusterStore.getState();
     if (kubeconfigContent) {
       headers['X-Kubeconfig'] = btoa(kubeconfigContent);
