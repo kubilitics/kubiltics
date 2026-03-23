@@ -29,6 +29,7 @@ import type { ExportFormat } from "./TopologyCanvas";
 import { exportTopologyPDF } from "./export/exportPDF";
 import type { SearchResult } from "./hooks/useTopologySearch";
 import { K8sIcon } from "./icons/K8sIcon";
+import { useTopologyStore } from "./store/topologyStore";
 
 export interface TopologyToolbarProps {
   viewMode?: ViewMode;
@@ -69,6 +70,10 @@ export function TopologyToolbar({
   exportRef,
   getExportCtx,
 }: TopologyToolbarProps) {
+  const exportIncludeTitle = useTopologyStore((s) => s.exportIncludeTitle);
+  const exportIncludeLegend = useTopologyStore((s) => s.exportIncludeLegend);
+  const toggleExportTitle = useTopologyStore((s) => s.toggleExportTitle);
+  const toggleExportLegend = useTopologyStore((s) => s.toggleExportLegend);
   const [showSearchResults, setShowSearchResults] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
 
@@ -448,6 +453,18 @@ export function TopologyToolbar({
                         <div className="text-[10px] text-gray-600 dark:text-gray-400">Editable diagram</div>
                       </div>
                     </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <div className="px-2 py-1.5">
+                      <div className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-1">Export Settings</div>
+                      <label className="flex items-center gap-2 py-1 cursor-pointer">
+                        <input type="checkbox" checked={exportIncludeTitle} onChange={toggleExportTitle} className="rounded border-gray-300 text-blue-600 h-3.5 w-3.5" />
+                        <span className="text-[11px] text-gray-600 dark:text-gray-400">Include title</span>
+                      </label>
+                      <label className="flex items-center gap-2 py-1 cursor-pointer">
+                        <input type="checkbox" checked={exportIncludeLegend} onChange={toggleExportLegend} className="rounded border-gray-300 text-blue-600 h-3.5 w-3.5" />
+                        <span className="text-[11px] text-gray-600 dark:text-gray-400">Include legend</span>
+                      </label>
+                    </div>
                   </>
                 );
               })()}
