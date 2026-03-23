@@ -35,6 +35,14 @@ interface BackendTopologyNode {
     replicas?: { desired: number; ready: number; available: number };
   };
   position?: { x: number; y: number };
+  // Debugging fields from backend
+  podIP?: string;
+  nodeName?: string;
+  internalIP?: string;
+  externalIP?: string;
+  clusterIP?: string;
+  serviceType?: string;
+  containers?: number;
 }
 
 interface BackendTopologyEdge {
@@ -145,7 +153,7 @@ function normalizeHealth(health?: string): HealthStatus {
 
 /* ── Per-element transformers ──────────────────────────────────── */
 
-function transformNode(n: BackendTopologyNode): TopologyNode {
+function transformNode(n: BackendTopologyNode): TopologyNode & Record<string, unknown> {
   return {
     id: n.id,
     kind: n.kind as KubernetesKind,
@@ -165,6 +173,14 @@ function transformNode(n: BackendTopologyNode): TopologyNode {
       restartCount: n.computed?.restartCount,
       replicas: n.computed?.replicas,
     },
+    // Debugging fields — pass through for detail panel
+    podIP: n.podIP,
+    nodeName: n.nodeName,
+    internalIP: n.internalIP,
+    externalIP: n.externalIP,
+    clusterIP: n.clusterIP,
+    serviceType: n.serviceType,
+    containers: n.containers,
   };
 }
 
