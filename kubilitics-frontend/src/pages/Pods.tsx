@@ -1274,32 +1274,42 @@ export default function Pods() {
  )}
  {columnVisibility.isColumnVisible('cpu') && (
  <ResizableTableCell columnId="cpu">
- <div className="min-w-0 overflow-hidden">
- <UsageBar
- variant="bar"
- value={cpuVal}
- kind="cpu"
- displayFormat="compact"
- width={80}
- max={podResourceMaxMap[podKey]?.cpuMax ?? dynamicCpuMax}
- showThresholds
- />
- </div>
+ {(() => {
+   const val = parseCpu(cpuVal);
+   const maxVal = podResourceMaxMap[podKey]?.cpuMax ?? dynamicCpuMax;
+   const ratio = val !== null && maxVal > 0 ? Math.min(val / maxVal, 1) : 0;
+   const pct = Math.round(ratio * 100);
+   const color = ratio < 0.5 ? 'bg-emerald-500' : ratio < 0.8 ? 'bg-amber-500' : 'bg-red-500';
+   const display = val !== null ? (val >= 1000 ? `${(val/1000).toFixed(1)}` : `${val.toFixed(0)}m`) : '-';
+   return (
+     <div className="flex items-center gap-2 min-w-[100px]" title={`${display} CPU (${pct}% of ${maxVal >= 1000 ? (maxVal/1000).toFixed(1) + ' cores' : maxVal + 'm'})`}>
+       <div className="flex-1 h-2 rounded-full bg-gray-100 dark:bg-gray-800 overflow-hidden">
+         <div className={`h-full rounded-full ${color} transition-all duration-300`} style={{ width: `${Math.max(pct, val !== null ? 2 : 0)}%` }} />
+       </div>
+       <span className="text-[11px] font-mono font-medium text-gray-700 dark:text-gray-300 w-10 text-right tabular-nums">{display}</span>
+     </div>
+   );
+ })()}
  </ResizableTableCell>
  )}
  {columnVisibility.isColumnVisible('memory') && (
  <ResizableTableCell columnId="memory">
- <div className="min-w-0 overflow-hidden">
- <UsageBar
- variant="bar"
- value={memVal}
- kind="memory"
- displayFormat="compact"
- width={80}
- max={podResourceMaxMap[podKey]?.memoryMax ?? dynamicMemoryMax}
- showThresholds
- />
- </div>
+ {(() => {
+   const val = parseMemory(memVal);
+   const maxVal = podResourceMaxMap[podKey]?.memoryMax ?? dynamicMemoryMax;
+   const ratio = val !== null && maxVal > 0 ? Math.min(val / maxVal, 1) : 0;
+   const pct = Math.round(ratio * 100);
+   const color = ratio < 0.5 ? 'bg-blue-500' : ratio < 0.8 ? 'bg-amber-500' : 'bg-red-500';
+   const display = val !== null ? (val >= 1024 ? `${(val/1024).toFixed(1)} Gi` : `${val.toFixed(0)} Mi`) : '-';
+   return (
+     <div className="flex items-center gap-2 min-w-[100px]" title={`${display} Memory (${pct}% of ${maxVal >= 1024 ? (maxVal/1024).toFixed(1) + ' Gi' : maxVal.toFixed(0) + ' Mi'})`}>
+       <div className="flex-1 h-2 rounded-full bg-gray-100 dark:bg-gray-800 overflow-hidden">
+         <div className={`h-full rounded-full ${color} transition-all duration-300`} style={{ width: `${Math.max(pct, val !== null ? 2 : 0)}%` }} />
+       </div>
+       <span className="text-[11px] font-mono font-medium text-gray-700 dark:text-gray-300 w-12 text-right tabular-nums">{display}</span>
+     </div>
+   );
+ })()}
  </ResizableTableCell>
  )}
  {columnVisibility.isColumnVisible('age') && (
