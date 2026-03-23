@@ -22,10 +22,11 @@ var ErrExportNotImplemented = errors.New("topology export not yet implemented")
 
 // Supported export formats for POST /topology/export
 const (
-	ExportFormatJSON   = "json"
-	ExportFormatSVG    = "svg"
-	ExportFormatDrawio = "drawio"
-	ExportFormatPNG    = "png"
+	ExportFormatJSON         = "json"
+	ExportFormatSVG          = "svg"
+	ExportFormatDrawio       = "drawio"
+	ExportFormatPNG          = "png"
+	ExportFormatArchitecture = "architecture"
 )
 
 // TopologyService generates topology graphs (with optional TTL cache; C1.3).
@@ -190,6 +191,6 @@ func (s *topologyService) ExportTopologyWithClient(ctx context.Context, client *
 	case ExportFormatPNG:
 		return topologyexport.GraphToPNG(graph)
 	default:
-		return nil, fmt.Errorf("%w: use format=json|svg|drawio|png", ErrExportNotImplemented)
+		return nil, fmt.Errorf("%w: use format=json|svg|png|architecture", ErrExportNotImplemented)
 	}
 }
