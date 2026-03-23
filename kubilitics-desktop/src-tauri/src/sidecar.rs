@@ -43,7 +43,7 @@ impl BackendManager {
             "message": "Starting backend engine…"
         }));
 
-        // Check for port conflicts — if 819 already responds to /health, the backend
+        // Check for port conflicts — if 8190 already responds to /health, the backend
         // may already be running (e.g. user restarted the app quickly). Treat it as ready.
         // Delay so the JS event listener in BackendStartupOverlay has time to register
         // before we emit "ready" (the JS setup() runs after the first render tick).
@@ -200,11 +200,11 @@ impl BackendManager {
             sleep(Duration::from_millis(500)).await;
         }
 
-        Err("Backend failed to become ready within 60 seconds. Check that port 819 is not blocked by another application.".into())
+        Err("Backend failed to become ready within 60 seconds. Check that port 8190 is not blocked by another application.".into())
     }
 
     /// P1-11: Only treat port as "in use by our backend" if the health response is from kubilitics-backend.
-    /// Another HTTP server on 819 would otherwise be treated as ready and we'd skip spawning.
+    /// Another HTTP server on 8190 would otherwise be treated as ready and we'd skip spawning.
     async fn is_port_in_use(&self, port: u16) -> bool {
         let url = format!("http://localhost:{}/health", port);
         let Ok(response) = reqwest::get(&url).await else {

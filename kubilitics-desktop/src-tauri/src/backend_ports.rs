@@ -1,7 +1,6 @@
-// Single source of truth for backend ports (aligns with kubilitics-backend default 819).
+// Single source of truth for backend ports (aligns with kubilitics-backend default 8190).
 // Used by sidecar (spawn env, health checks) and commands (connectivity, get_desktop_info).
 //
-// Port 819 is valid: IANA/RFC 6335 allow 0-65535; 3-digit ports (e.g. 80, 443, 819) are valid.
-// No requirement for 4-digit ports; Docker/Kubernetes accept any valid port number.
+// Port 8190 is unprivileged (>1024), allowing the backend to run as non-root in containers.
 
-pub const BACKEND_PORT: u16 = 819;
+pub const BACKEND_PORT: u16 = 8190;
