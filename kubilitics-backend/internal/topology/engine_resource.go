@@ -52,6 +52,25 @@ func ensureNode(g *Graph, kind, namespace, name, status string, meta metav1.Obje
 	return node.ID
 }
 
+// ensurePodNode adds a Pod node with debugging fields (IP, node name, container count).
+func ensurePodNode(g *Graph, pod corev1.Pod) string {
+	node := buildNode("Pod", pod.Namespace, pod.Name, string(pod.Status.Phase), pod.ObjectMeta)
+	node.PodIP = pod.Status.PodIP
+	node.NodeName = pod.Spec.NodeName
+	node.Containers = len(pod.Spec.Containers)
+	g.AddNode(node)
+	return node.ID
+}
+
+// ensureServiceNode adds a Service node with debugging fields (cluster IP, type).
+func ensureServiceNode(g *Graph, svc corev1.Service) string {
+	node := buildNode("Service", svc.Namespace, svc.Name, "Active", svc.ObjectMeta)
+	node.ClusterIP = svc.Spec.ClusterIP
+	node.ServiceType = string(svc.Spec.Type)
+	g.AddNode(node)
+	return node.ID
+}
+
 // NormalizeResourceKind maps API kind (e.g. "jobs", "pods", "nodes") to canonical Kind (e.g. "Job", "Pod", "Node").
 // Exported so the REST handler can pass a canonical kind to the topology service.
 func NormalizeResourceKind(kind string) string {
@@ -299,7 +318,7 @@ func (e *Engine) buildDeploymentSubgraph(ctx context.Context, namespace, name st
 		}
 		for j := range podList.Items {
 			pod := &podList.Items[j]
-			podID := ensureNode(g, "Pod", pod.Namespace, pod.Name, string(pod.Status.Phase), pod.ObjectMeta)
+			podID := ensurePodNode(g, *pod)
 			addResourceEdge(g, rsID, podID, "Manages")
 			podIDs = append(podIDs, podID)
 		}
@@ -311,7 +330,7 @@ func (e *Engine) buildDeploymentSubgraph(ctx context.Context, namespace, name st
 		if err == nil {
 			for i := range podList.Items {
 				pod := &podList.Items[i]
-				podID := ensureNode(g, "Pod", pod.Namespace, pod.Name, string(pod.Status.Phase), pod.ObjectMeta)
+				podID := ensurePodNode(g, *pod)
 				addResourceEdge(g, depID, podID, "Manages")
 				podIDs = append(podIDs, podID)
 			}
@@ -330,7 +349,7 @@ func (e *Engine) buildDeploymentSubgraph(ctx context.Context, namespace, name st
 					continue
 				}
 				if labels.SelectorFromSet(svc.Spec.Selector).Matches(depLabels) {
-					svcID := ensureNode(g, "Service", svc.Namespace, svc.Name, "Active", svc.ObjectMeta)
+					svcID := ensureServiceNode(g, *svc)
 					addResourceEdge(g, svcID, depID, "Selects")
 					deploymentServiceNames = append(deploymentServiceNames, svc.Name)
 				}
@@ -434,7 +453,7 @@ func (e *Engine) buildReplicaSetSubgraph(ctx context.Context, namespace, name st
 		if err == nil {
 			for i := range podList.Items {
 				pod := &podList.Items[i]
-				podID := ensureNode(g, "Pod", pod.Namespace, pod.Name, string(pod.Status.Phase), pod.ObjectMeta)
+				podID := ensurePodNode(g, *pod)
 				addResourceEdge(g, rsID, podID, "Manages")
 			}
 		}
@@ -475,7 +494,7 @@ func (e *Engine) buildStatefulSetSubgraph(ctx context.Context, namespace, name s
 				// Only include pods owned by this StatefulSet
 				for _, ref := range pod.OwnerReferences {
 					if ref.Kind == "StatefulSet" && ref.Name == sts.Name {
-						podID := ensureNode(g, "Pod", pod.Namespace, pod.Name, string(pod.Status.Phase), pod.ObjectMeta)
+						podID := ensurePodNode(g, *pod)
 						addResourceEdge(g, stsID, podID, "Manages")
 						podIDs = append(podIDs, podID)
 						break
@@ -496,7 +515,7 @@ func (e *Engine) buildStatefulSetSubgraph(ctx context.Context, namespace, name s
 					continue
 				}
 				if labels.SelectorFromSet(svc.Spec.Selector).Matches(stsLabels) {
-					svcID := ensureNode(g, "Service", svc.Namespace, svc.Name, "Active", svc.ObjectMeta)
+					svcID := ensureServiceNode(g, *svc)
 					addResourceEdge(g, svcID, stsID, "Selects")
 				}
 			}
@@ -568,7 +587,7 @@ func (e *Engine) buildDaemonSetSubgraph(ctx context.Context, namespace, name str
 			pod := &podList.Items[i]
 			for _, ref := range pod.OwnerReferences {
 				if ref.Kind == "DaemonSet" && ref.Name == ds.Name {
-					podID := ensureNode(g, "Pod", pod.Namespace, pod.Name, string(pod.Status.Phase), pod.ObjectMeta)
+					podID := ensurePodNode(g, *pod)
 					addResourceEdge(g, dsID, podID, "Manages")
 					break
 				}
@@ -587,7 +606,7 @@ func (e *Engine) buildDaemonSetSubgraph(ctx context.Context, namespace, name str
 					continue
 				}
 				if labels.SelectorFromSet(svc.Spec.Selector).Matches(dsLabels) {
-					svcID := ensureNode(g, "Service", svc.Namespace, svc.Name, "Active", svc.ObjectMeta)
+					svcID := ensureServiceNode(g, *svc)
 					addResourceEdge(g, svcID, dsID, "Selects")
 				}
 			}
@@ -625,7 +644,7 @@ func (e *Engine) buildJobSubgraph(ctx context.Context, namespace, name string) (
 			pod := &podList.Items[i]
 			for _, ref := range pod.OwnerReferences {
 				if ref.Kind == "Job" && ref.Name == job.Name {
-					podID := ensureNode(g, "Pod", pod.Namespace, pod.Name, string(pod.Status.Phase), pod.ObjectMeta)
+					podID := ensurePodNode(g, *pod)
 					addResourceEdge(g, jobID, podID, "Manages")
 					break
 				}
@@ -686,7 +705,7 @@ func (e *Engine) buildCronJobSubgraph(ctx context.Context, namespace, name strin
 							pod := &podList.Items[j]
 							for _, pref := range pod.OwnerReferences {
 								if pref.Kind == "Job" && pref.Name == job.Name {
-									podID := ensureNode(g, "Pod", pod.Namespace, pod.Name, string(pod.Status.Phase), pod.ObjectMeta)
+									podID := ensurePodNode(g, *pod)
 									addResourceEdge(g, jobID, podID, "Manages")
 									break
 								}
@@ -768,7 +787,7 @@ func (e *Engine) buildServiceSubgraph(ctx context.Context, namespace, name strin
 
 	g := NewGraph(resourceSubgraphMaxNodes)
 	ns := svc.Namespace
-	svcID := ensureNode(g, "Service", ns, svc.Name, "Active", svc.ObjectMeta)
+	svcID := ensureServiceNode(g, *svc)
 
 	// Endpoints (same name as service)
 	ep, err := e.client.Clientset.CoreV1().Endpoints(ns).Get(ctx, name, metav1.GetOptions{})
@@ -783,7 +802,7 @@ func (e *Engine) buildServiceSubgraph(ctx context.Context, namespace, name strin
 				if addr.TargetRef != nil && addr.TargetRef.Kind == "Pod" && addr.TargetRef.Namespace == ns {
 					pod, err := e.client.Clientset.CoreV1().Pods(ns).Get(ctx, addr.TargetRef.Name, metav1.GetOptions{})
 					if err == nil {
-						podID := ensureNode(g, "Pod", pod.Namespace, pod.Name, string(pod.Status.Phase), pod.ObjectMeta)
+						podID := ensurePodNode(g, *pod)
 						addResourceEdge(g, epID, podID, "Targets")
 					}
 				}
@@ -805,7 +824,7 @@ func (e *Engine) buildServiceSubgraph(ctx context.Context, namespace, name strin
 				if epa.TargetRef != nil && epa.TargetRef.Kind == "Pod" && epa.TargetRef.Namespace == ns {
 					pod, err := e.client.Clientset.CoreV1().Pods(ns).Get(ctx, epa.TargetRef.Name, metav1.GetOptions{})
 					if err == nil && g.GetNode("Pod/"+ns+"/"+pod.Name) == nil {
-						podID := ensureNode(g, "Pod", pod.Namespace, pod.Name, string(pod.Status.Phase), pod.ObjectMeta)
+						podID := ensurePodNode(g, *pod)
 						addResourceEdge(g, sliceID, podID, "Targets")
 					}
 				}
@@ -820,7 +839,7 @@ func (e *Engine) buildServiceSubgraph(ctx context.Context, namespace, name strin
 		if err == nil {
 			for i := range podList.Items {
 				pod := &podList.Items[i]
-				podID := ensureNode(g, "Pod", pod.Namespace, pod.Name, string(pod.Status.Phase), pod.ObjectMeta)
+				podID := ensurePodNode(g, *pod)
 				addResourceEdge(g, svcID, podID, "Selects")
 			}
 		}
@@ -894,7 +913,7 @@ func (e *Engine) buildIngressSubgraph(ctx context.Context, namespace, name strin
 	for svcName := range svcNames {
 		svc, err := e.client.Clientset.CoreV1().Services(ns).Get(ctx, svcName, metav1.GetOptions{})
 		if err == nil {
-			svcID := ensureNode(g, "Service", svc.Namespace, svc.Name, "Active", svc.ObjectMeta)
+			svcID := ensureServiceNode(g, *svc)
 			addResourceEdge(g, ingID, svcID, "Exposes")
 		}
 	}
@@ -968,7 +987,7 @@ func (e *Engine) buildEndpointsSubgraph(ctx context.Context, namespace, name str
 
 	svc, err := e.client.Clientset.CoreV1().Services(ns).Get(ctx, name, metav1.GetOptions{})
 	if err == nil {
-		svcID := ensureNode(g, "Service", svc.Namespace, svc.Name, "Active", svc.ObjectMeta)
+		svcID := ensureServiceNode(g, *svc)
 		addResourceEdge(g, svcID, epID, "Creates")
 	}
 
@@ -979,7 +998,7 @@ func (e *Engine) buildEndpointsSubgraph(ctx context.Context, namespace, name str
 			if addr.TargetRef != nil && addr.TargetRef.Kind == "Pod" && addr.TargetRef.Namespace == ns {
 				pod, err := e.client.Clientset.CoreV1().Pods(ns).Get(ctx, addr.TargetRef.Name, metav1.GetOptions{})
 				if err == nil {
-					podID := ensureNode(g, "Pod", pod.Namespace, pod.Name, string(pod.Status.Phase), pod.ObjectMeta)
+					podID := ensurePodNode(g, *pod)
 					addResourceEdge(g, epID, podID, "Targets")
 				}
 			}
@@ -1011,7 +1030,7 @@ func (e *Engine) buildEndpointSliceSubgraph(ctx context.Context, namespace, name
 	if svcName != "" {
 		svc, err := e.client.Clientset.CoreV1().Services(ns).Get(ctx, svcName, metav1.GetOptions{})
 		if err == nil {
-			svcID := ensureNode(g, "Service", svc.Namespace, svc.Name, "Active", svc.ObjectMeta)
+			svcID := ensureServiceNode(g, *svc)
 			addResourceEdge(g, svcID, sliceID, "Backed by")
 		}
 	}
@@ -1021,7 +1040,7 @@ func (e *Engine) buildEndpointSliceSubgraph(ctx context.Context, namespace, name
 		if epa.TargetRef != nil && epa.TargetRef.Kind == "Pod" && epa.TargetRef.Namespace == ns {
 			pod, err := e.client.Clientset.CoreV1().Pods(ns).Get(ctx, epa.TargetRef.Name, metav1.GetOptions{})
 			if err == nil {
-				podID := ensureNode(g, "Pod", pod.Namespace, pod.Name, string(pod.Status.Phase), pod.ObjectMeta)
+				podID := ensurePodNode(g, *pod)
 				addResourceEdge(g, sliceID, podID, "Targets")
 			}
 		}
@@ -1054,7 +1073,7 @@ func (e *Engine) buildNetworkPolicySubgraph(ctx context.Context, namespace, name
 		if err == nil {
 			for i := range podList.Items {
 				pod := &podList.Items[i]
-				podID := ensureNode(g, "Pod", pod.Namespace, pod.Name, string(pod.Status.Phase), pod.ObjectMeta)
+				podID := ensurePodNode(g, *pod)
 				addResourceEdge(g, npID, podID, "Restricts")
 			}
 		}
@@ -1079,7 +1098,7 @@ func (e *Engine) buildPodSubgraph(ctx context.Context, namespace, name string) (
 
 	g := NewGraph(resourceSubgraphMaxNodes)
 	ns := pod.Namespace
-	podID := ensureNode(g, "Pod", ns, pod.Name, string(pod.Status.Phase), pod.ObjectMeta)
+	podID := ensurePodNode(g, *pod)
 
 	// Owner (ReplicaSet, Deployment, StatefulSet, DaemonSet, Job, CronJob)
 	if len(pod.OwnerReferences) > 0 {
@@ -1159,7 +1178,7 @@ func (e *Engine) buildPodSubgraph(ctx context.Context, namespace, name string) (
 			}
 			selector := labels.SelectorFromSet(svc.Spec.Selector)
 			if selector.Matches(podLabels) {
-				svcID := ensureNode(g, "Service", svc.Namespace, svc.Name, "Active", svc.ObjectMeta)
+				svcID := ensureServiceNode(g, *svc)
 				addResourceEdge(g, svcID, podID, "Selects")
 			}
 		}
@@ -1392,7 +1411,7 @@ func (e *Engine) buildNodeSubgraph(ctx context.Context, name string) (*Graph, er
 	for i := range podList.Items {
 		pod := &podList.Items[i]
 		ns := pod.Namespace
-		podID := ensureNode(g, "Pod", ns, pod.Name, string(pod.Status.Phase), pod.ObjectMeta)
+		podID := ensurePodNode(g, *pod)
 		addResourceEdge(g, podID, nodeID, "Runs on")
 
 		// Owner (ReplicaSet, Deployment, StatefulSet, DaemonSet, Job, ReplicationController)
@@ -1830,7 +1849,7 @@ func (e *Engine) buildConfigMapSubgraph(ctx context.Context, namespace, name str
 		if !podReferencesConfigMap(pod, name) {
 			continue
 		}
-		podID := ensureNode(g, "Pod", pod.Namespace, pod.Name, string(pod.Status.Phase), pod.ObjectMeta)
+		podID := ensurePodNode(g, *pod)
 		addResourceEdge(g, cmID, podID, "Used by")
 		e.addPodOwnerToGraph(ctx, g, pod, podID)
 	}
@@ -1857,7 +1876,7 @@ func (e *Engine) buildConfigMapSubgraph(ctx context.Context, namespace, name str
 					continue
 				}
 				if labels.SelectorFromSet(svc.Spec.Selector).Matches(podLabels) {
-					svcID := ensureNode(g, "Service", svc.Namespace, svc.Name, "Active", svc.ObjectMeta)
+					svcID := ensureServiceNode(g, *svc)
 					addResourceEdge(g, svcID, podID, "Selects")
 				}
 			}
@@ -1893,7 +1912,7 @@ func (e *Engine) buildSecretSubgraph(ctx context.Context, namespace, name string
 			if !podReferencesSecret(pod, name) {
 				continue
 			}
-			podID := ensureNode(g, "Pod", pod.Namespace, pod.Name, string(pod.Status.Phase), pod.ObjectMeta)
+			podID := ensurePodNode(g, *pod)
 			addResourceEdge(g, secID, podID, "Used by")
 			e.addPodOwnerToGraph(ctx, g, pod, podID)
 		}
@@ -1968,7 +1987,7 @@ func (e *Engine) buildPersistentVolumeClaimSubgraph(ctx context.Context, namespa
 			if !podUsesPVC(pod, name) {
 				continue
 			}
-			podID := ensureNode(g, "Pod", pod.Namespace, pod.Name, string(pod.Status.Phase), pod.ObjectMeta)
+			podID := ensurePodNode(g, *pod)
 			addResourceEdge(g, pvcID, podID, "Used by")
 			e.addPodOwnerToGraph(ctx, g, pod, podID)
 		}
@@ -2015,7 +2034,7 @@ func (e *Engine) buildPersistentVolumeSubgraph(ctx context.Context, _, name stri
 					if !podUsesPVC(pod, claimName) {
 						continue
 					}
-					podID := ensureNode(g, "Pod", pod.Namespace, pod.Name, string(pod.Status.Phase), pod.ObjectMeta)
+					podID := ensurePodNode(g, *pod)
 					addResourceEdge(g, pvcID, podID, "Used by")
 					e.addPodOwnerToGraph(ctx, g, pod, podID)
 				}
@@ -2233,7 +2252,7 @@ func (e *Engine) buildPriorityClassSubgraph(ctx context.Context, name string) (*
 			}
 			pod := &podList.Items[i]
 			if pod.Spec.PriorityClassName == name {
-				podID := ensureNode(g, "Pod", pod.Namespace, pod.Name, string(pod.Status.Phase), pod.ObjectMeta)
+				podID := ensurePodNode(g, *pod)
 				addResourceEdge(g, podID, pcID, "References")
 			}
 		}
@@ -2426,7 +2445,7 @@ func (e *Engine) buildNamespaceSubgraph(ctx context.Context, name string) (*Grap
 				break
 			}
 			svc := &svcList.Items[i]
-			svcID := ensureNode(g, "Service", svc.Namespace, svc.Name, "Active", svc.ObjectMeta)
+			svcID := ensureServiceNode(g, *svc)
 			addResourceEdge(g, nsID, svcID, "Contains")
 			svcIDs[svc.Name] = svcID
 
@@ -2656,7 +2675,7 @@ func (e *Engine) buildServiceAccountSubgraph(ctx context.Context, namespace, nam
 			if pod.Spec.ServiceAccountName != name {
 				continue
 			}
-			podID := ensureNode(g, "Pod", pod.Namespace, pod.Name, string(pod.Status.Phase), pod.ObjectMeta)
+			podID := ensurePodNode(g, *pod)
 			addResourceEdge(g, saID, podID, "Used by")
 			e.addPodOwnerToGraph(ctx, g, pod, podID)
 		}
@@ -2779,7 +2798,7 @@ func (e *Engine) buildHorizontalPodAutoscalerSubgraph(ctx context.Context, names
 							}
 							pod := &podList.Items[j]
 							if isOwnedBy(pod.OwnerReferences, "ReplicaSet", rs.Name) {
-								podID := ensureNode(g, "Pod", pod.Namespace, pod.Name, string(pod.Status.Phase), pod.ObjectMeta)
+								podID := ensurePodNode(g, *pod)
 								addResourceEdge(g, rsID, podID, "Owns")
 							}
 						}
@@ -2800,7 +2819,7 @@ func (e *Engine) buildHorizontalPodAutoscalerSubgraph(ctx context.Context, names
 					}
 					pod := &podList.Items[i]
 					if isOwnedBy(pod.OwnerReferences, "StatefulSet", sts.Name) {
-						podID := ensureNode(g, "Pod", pod.Namespace, pod.Name, string(pod.Status.Phase), pod.ObjectMeta)
+						podID := ensurePodNode(g, *pod)
 						addResourceEdge(g, stsID, podID, "Owns")
 					}
 				}
@@ -2819,7 +2838,7 @@ func (e *Engine) buildHorizontalPodAutoscalerSubgraph(ctx context.Context, names
 					}
 					pod := &podList.Items[i]
 					if isOwnedBy(pod.OwnerReferences, "ReplicaSet", rs.Name) {
-						podID := ensureNode(g, "Pod", pod.Namespace, pod.Name, string(pod.Status.Phase), pod.ObjectMeta)
+						podID := ensurePodNode(g, *pod)
 						addResourceEdge(g, rsID, podID, "Owns")
 					}
 				}
@@ -2855,7 +2874,7 @@ func (e *Engine) buildReplicationControllerSubgraph(ctx context.Context, namespa
 			}
 			pod := &podList.Items[i]
 			if isOwnedBy(pod.OwnerReferences, "ReplicationController", name) {
-				podID := ensureNode(g, "Pod", pod.Namespace, pod.Name, string(pod.Status.Phase), pod.ObjectMeta)
+				podID := ensurePodNode(g, *pod)
 				addResourceEdge(g, rcID, podID, "Owns")
 			}
 		}
@@ -2876,7 +2895,7 @@ func (e *Engine) buildReplicationControllerSubgraph(ctx context.Context, namespa
 				// Service selects RC pods when its selector matches the RC's pod selector labels
 				svcSel := labels.SelectorFromSet(svc.Spec.Selector)
 				if svcSel.Matches(labels.Set(rc.Spec.Selector)) {
-					svcID := ensureNode(g, "Service", svc.Namespace, svc.Name, "Active", svc.ObjectMeta)
+					svcID := ensureServiceNode(g, *svc)
 					addResourceEdge(g, svcID, rcID, "Selects")
 				}
 			}
@@ -3116,7 +3135,7 @@ func (e *Engine) buildPodDisruptionBudgetSubgraph(ctx context.Context, namespace
 						break
 					}
 					pod := &podList.Items[i]
-					podID := ensureNode(g, "Pod", pod.Namespace, pod.Name, string(pod.Status.Phase), pod.ObjectMeta)
+					podID := ensurePodNode(g, *pod)
 					addResourceEdge(g, pdbID, podID, "Protects")
 					e.addPodOwnerToGraph(ctx, g, pod, podID)
 				}
@@ -3150,7 +3169,7 @@ func (e *Engine) buildRuntimeClassSubgraph(ctx context.Context, name string) (*G
 			if pod.Spec.RuntimeClassName == nil || *pod.Spec.RuntimeClassName != name {
 				continue
 			}
-			podID := ensureNode(g, "Pod", pod.Namespace, pod.Name, string(pod.Status.Phase), pod.ObjectMeta)
+			podID := ensurePodNode(g, *pod)
 			addResourceEdge(g, podID, rcID, "Uses")
 			e.addPodOwnerToGraph(ctx, g, pod, podID)
 		}
@@ -3196,7 +3215,7 @@ func (e *Engine) buildLeaseSubgraph(ctx context.Context, namespace, name string)
 				for i := range podList.Items {
 					pod := &podList.Items[i]
 					if pod.Name == holderName {
-						podID := ensureNode(g, "Pod", pod.Namespace, pod.Name, string(pod.Status.Phase), pod.ObjectMeta)
+						podID := ensurePodNode(g, *pod)
 						addResourceEdge(g, leaseID, podID, "Held by")
 						e.addPodOwnerToGraph(ctx, g, pod, podID)
 						break
@@ -3316,7 +3335,7 @@ func (e *Engine) buildMutatingWebhookConfigurationSubgraph(ctx context.Context, 
 		if wh.ClientConfig.Service != nil {
 			svc, err := e.client.Clientset.CoreV1().Services(wh.ClientConfig.Service.Namespace).Get(ctx, wh.ClientConfig.Service.Name, metav1.GetOptions{})
 			if err == nil {
-				svcID := ensureNode(g, "Service", svc.Namespace, svc.Name, "Active", svc.ObjectMeta)
+				svcID := ensureServiceNode(g, *svc)
 				addResourceEdge(g, mwcID, svcID, "Calls")
 			}
 		}
@@ -3346,7 +3365,7 @@ func (e *Engine) buildValidatingWebhookConfigurationSubgraph(ctx context.Context
 		if wh.ClientConfig.Service != nil {
 			svc, err := e.client.Clientset.CoreV1().Services(wh.ClientConfig.Service.Namespace).Get(ctx, wh.ClientConfig.Service.Name, metav1.GetOptions{})
 			if err == nil {
-				svcID := ensureNode(g, "Service", svc.Namespace, svc.Name, "Active", svc.ObjectMeta)
+				svcID := ensureServiceNode(g, *svc)
 				addResourceEdge(g, vwcID, svcID, "Calls")
 			}
 		}
