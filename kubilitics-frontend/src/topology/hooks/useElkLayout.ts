@@ -5,6 +5,25 @@ import type { LabeledEdgeData } from "../edges/LabeledEdge";
 import type { TopologyResponse, ViewMode, TopologyNode } from "../types/topology";
 import { getNodeDims } from "../constants/designTokens";
 
+// ─── Layer Constraints ─────────────────────────────────────────────────────
+// Map backend `layer` field (0-5) to ELK layer constraint properties.
+// This helps ELK place nodes in the correct tier for architecture diagrams.
+
+const LAYER_LABELS: Record<number, string> = {
+  0: "Infrastructure",
+  1: "Services",
+  2: "Workloads",
+  3: "Controllers",
+  4: "Pods",
+  5: "Nodes",
+};
+
+function getLayerConstraint(layer: number | undefined): Record<string, string> {
+  if (layer == null) return {};
+  // ELK uses integer layer IDs; lower = leftmost in LEFT-RIGHT direction
+  return { "elk.layered.layerConstraint": String(layer) };
+}
+
 /**
  * useElkLayout — Topology layout engine.
  *
@@ -205,11 +224,17 @@ async function hybridLayout(
   topology: TopologyResponse,
   elkInstance: unknown,
   viewMode: ViewMode,
-  validEdges: Array<{ id: string; source: string; target: string; label: string; detail?: string }>
+  validEdges: Array<{ id: string; source: string; target: string; label: string; detail?: string; relationshipCategory?: string; healthy?: boolean }>
 ): Promise<Map<string, { x: number; y: number }>> {
   const positions = new Map<string, { x: number; y: number }>();
   const dims = getNodeDims("base");
   const elkOptions = ELK_OPTIONS[viewMode];
+
+  // Build node lookup for layer constraints
+  const nodeLayerMap = new Map<string, number>();
+  for (const n of topology.nodes) {
+    if (n.layer != null) nodeLayerMap.set(n.id, n.layer);
+  }
 
   // Find connected components
   const nodeIds = topology.nodes.map((n) => n.id);
@@ -245,6 +270,7 @@ async function hybridLayout(
         id: nid,
         width: dims.width,
         height: dims.height,
+        layoutOptions: getLayerConstraint(nodeLayerMap.get(nid)),
       })),
       edges: compEdges.map((e) => ({
         id: e.id,
@@ -503,7 +529,12 @@ export function useElkLayout(
         target: e.target,
         type: "labeled",
         animated: e.animated ?? false,
-        data: { label: e.label, detail: e.detail },
+        data: {
+          label: e.label,
+          detail: e.detail,
+          relationshipCategory: e.relationshipCategory,
+          healthy: e.healthy,
+        },
       }));
 
       setPositionedNodes(positioned);
@@ -539,7 +570,12 @@ export function useElkLayout(
             source: e.source,
             target: e.target,
             type: "labeled",
-            data: { label: e.label, detail: e.detail },
+            data: {
+              label: e.label,
+              detail: e.detail,
+              relationshipCategory: e.relationshipCategory,
+              healthy: e.healthy,
+            },
           }))
       );
     } finally {

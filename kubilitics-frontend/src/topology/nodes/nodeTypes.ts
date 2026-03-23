@@ -6,6 +6,7 @@ import { ExpandedNode } from "./ExpandedNode";
 import { MinimalNode } from "./MinimalNode";
 import { GroupNode } from "./GroupNode";
 import { SummaryNode } from "./SummaryNode";
+import { LayerLabel } from "./LayerLabel";
 
 export const nodeTypes: NodeTypes = {
   base: BaseNode,
@@ -14,5 +15,6 @@ export const nodeTypes: NodeTypes = {
   minimal: MinimalNode,
   group: GroupNode,
   summary: SummaryNode,
+  layerLabel: LayerLabel,
 };
 

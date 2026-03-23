@@ -280,6 +280,18 @@ export const NODE_CARD = {
   handleClass: "!bg-gray-300 !border-white !border-2",
 } as const;
 
+// ─── Layer / Tier Configuration ────────────────────────────────────────────
+// Used by: useElkLayout (layer constraints), LayerLabel nodes
+
+export const LAYER_CONFIG: Record<number, { label: string; bgTint: string }> = {
+  0: { label: "Infrastructure", bgTint: "#4755690a" },
+  1: { label: "Services",       bgTint: "#7C3AED0a" },
+  2: { label: "Workloads",      bgTint: "#2563EB0a" },
+  3: { label: "Controllers",    bgTint: "#0D94880a" },
+  4: { label: "Pods",           bgTint: "#2563EB06" },
+  5: { label: "Nodes",          bgTint: "#4755690a" },
+};
+
 // ─── Accessibility Constants ────────────────────────────────────────────────
 // Used by: all interactive topology components
 
