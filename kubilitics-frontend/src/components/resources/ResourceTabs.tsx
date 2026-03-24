@@ -40,8 +40,8 @@ export function ResourceTabs({ tabs, activeTab, onTabChange, className }: Resour
                   'relative flex items-center gap-1.5 shrink-0 px-3.5 py-2 rounded-lg text-[13px] font-medium transition-colors duration-150',
                   'focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40',
                   isActive
-                    ? 'text-foreground'
-                    : 'text-muted-foreground hover:text-foreground/80'
+                    ? 'text-foreground font-semibold'
+                    : 'text-foreground/60 hover:text-foreground/90'
                 )}
               >
                 {/* Animated background pill for active tab */}
@@ -62,7 +62,7 @@ export function ResourceTabs({ tabs, activeTab, onTabChange, className }: Resour
                         'shrink-0 min-w-[1.125rem] h-[1.125rem] px-1 rounded-full text-[10px] font-semibold flex items-center justify-center leading-none',
                         isActive
                           ? 'bg-primary text-primary-foreground'
-                          : 'bg-muted-foreground/15 text-muted-foreground'
+                          : 'bg-foreground/10 text-foreground/60'
                       )}
                     >
                       {typeof tab.badge === 'number' && tab.badge > 99 ? '99+' : tab.badge}

@@ -146,7 +146,7 @@ export function ResourceHeader({
                   {status}
                 </div>
               </div>
-              <div className="flex items-center gap-3 mt-1.5 text-sm text-muted-foreground flex-wrap">
+              <div className="flex items-center gap-3 mt-1.5 text-sm text-foreground/60 flex-wrap">
                 <span className="flex items-center gap-1.5">
                   {resourceType}
                   {namespace ? (
