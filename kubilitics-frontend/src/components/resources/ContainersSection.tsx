@@ -41,7 +41,7 @@ import {
   TOOLTIP_LAST_EXIT,
 } from '@/lib/k8sTooltips';
 import { cn } from '@/lib/utils';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
 import { usePortForwardStore } from '@/stores/portForwardStore';
 import { Square } from 'lucide-react';
 

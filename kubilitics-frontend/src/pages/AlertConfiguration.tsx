@@ -40,7 +40,7 @@ import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 

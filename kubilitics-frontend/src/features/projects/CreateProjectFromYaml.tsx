@@ -17,7 +17,7 @@ import {
 import { useClustersFromBackend } from '@/hooks/useClustersFromBackend';
 import { useProjectMutations } from '@/hooks/useProjects';
 import { cn } from '@/lib/utils';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
 
 interface CreateProjectFromYamlProps {
   onSuccess: () => void;

@@ -3,7 +3,7 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { Cpu, Clock, Download, Trash2, Info, FileCode, GitCompare, Network } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
 import { downloadResourceJson } from '@/lib/exportUtils';
 import { ResourceOverviewMetadata } from '@/components/resources/ResourceOverviewMetadata';
 import {

@@ -31,7 +31,7 @@ import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/back
 import { useClusterStore } from '@/stores/clusterStore';
 import { calculateAge, type KubernetesResource } from '@/hooks/useKubernetes';
 import { listResources } from '@/services/backendApiClient';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 

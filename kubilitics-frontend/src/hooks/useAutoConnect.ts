@@ -24,7 +24,7 @@ import {
   type BackendCluster,
 } from '@/services/backendApiClient';
 import { backendClusterToCluster } from '@/lib/backendClusterAdapter';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
 
 /** Context info surfaced to the UI for the context picker. */
 export interface DiscoveredContext {

@@ -25,7 +25,7 @@ import { useDeleteK8sResource, useUpdateK8sResource, calculateAge, type Kubernet
 import { normalizeKindForTopology } from '@/utils/resourceKindMapper';
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
 import { useActiveClusterId } from '@/hooks/useActiveClusterId';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
 import { downloadResourceJson } from '@/lib/exportUtils';
 
 interface EndpointSliceResource extends KubernetesResource {

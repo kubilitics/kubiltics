@@ -38,7 +38,7 @@ import { useBackendConfigStore } from '@/stores/backendConfigStore';
 import { computeDiff, YamlLineContent, getIntraLineDiff } from './YamlDiffUtils';
 import { useK8sResourceList, type KubernetesResource, type ResourceType } from '@/hooks/useKubernetes';
 import { cn } from '@/lib/utils';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
 import { useThemeStore } from '@/stores/themeStore';
 
 const LazyDiffEditor = lazy(() => import('@monaco-editor/react').then(m => ({ default: m.DiffEditor })));

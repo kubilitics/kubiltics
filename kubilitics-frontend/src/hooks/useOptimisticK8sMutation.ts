@@ -10,7 +10,7 @@
  */
 import { useCallback } from 'react';
 import { useQueryClient, type QueryKey } from '@tanstack/react-query';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
 
 interface OptimisticDeleteOptions {
   /** Query key of the list to remove the item from */

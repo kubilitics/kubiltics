@@ -37,7 +37,7 @@ import { useClustersFromBackend } from '@/hooks/useClustersFromBackend';
 import { useClusterStore } from '@/stores/clusterStore';
 import { useBackendConfigStore } from '@/stores/backendConfigStore';
 import { backendClusterToCluster } from '@/lib/backendClusterAdapter';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
 import { AddClusterDialog } from '@/features/projects/AddClusterDialog';
 import { AddNamespaceDialog } from '@/features/projects/AddNamespaceDialog';
 import { EditProjectDialog } from '@/features/projects/EditProjectDialog';

@@ -20,7 +20,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
 import {
   TopologyCanvas,
   ABSTRACTION_LEVELS,

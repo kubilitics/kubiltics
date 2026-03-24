@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Shield, Clock, Lock, Download, Trash2, AlertTriangle, Network, GitCompare } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
 import { downloadResourceJson } from '@/lib/exportUtils';
 import { normalizeKindForTopology } from '@/utils/resourceKindMapper';
 import {

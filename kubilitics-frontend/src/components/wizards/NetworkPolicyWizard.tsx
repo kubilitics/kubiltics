@@ -11,7 +11,7 @@ import { useClusterStore } from '@/stores/clusterStore';
 import { useQueryClient } from '@tanstack/react-query';
 import { applyManifest } from '@/services/backendApiClient';
 import { useK8sResourceList, type KubernetesResource } from '@/hooks/useKubernetes';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
 import { notifyError, notifySuccess } from '@/lib/notificationFormatter';
 
 function podMatchesMatchLabels(podLabels: Record<string, string> | undefined, matchLabels: Record<string, string>): boolean {

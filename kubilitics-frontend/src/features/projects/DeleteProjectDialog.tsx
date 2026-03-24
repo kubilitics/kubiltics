@@ -14,7 +14,7 @@ import {
 import { useProjectMutations } from '@/hooks/useProjects';
 import { useNavigate } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
 
 interface DeleteProjectDialogProps {
   projectId: string;

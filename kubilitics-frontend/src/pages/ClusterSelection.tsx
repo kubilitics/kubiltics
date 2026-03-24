@@ -24,7 +24,7 @@ import { useClustersFromBackend } from '@/hooks/useClustersFromBackend';
 import { addCluster, getClusterSummary, type BackendCluster } from '@/services/backendApiClient';
 import { backendClusterToCluster as adapterBackendClusterToCluster, inferRegion } from '@/lib/backendClusterAdapter';
 import { cn } from '@/lib/utils';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
 import { useQueryClient } from '@tanstack/react-query';
 
 /** Display shape for cluster list (kubeconfig or backend). */

@@ -33,7 +33,7 @@ import { addClusterWithUpload, discoverClusters, type BackendCluster } from '@/s
 import { backendClusterToCluster } from '@/lib/backendClusterAdapter';
 import { useClustersFromBackend } from '@/hooks/useClustersFromBackend';
 import { useQueryClient } from '@tanstack/react-query';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
 import { isTauri } from '@/lib/tauri';
 import { cn } from '@/lib/utils';
 

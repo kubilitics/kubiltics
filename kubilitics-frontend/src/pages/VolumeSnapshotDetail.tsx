@@ -23,7 +23,7 @@ import { Breadcrumbs, useDetailBreadcrumbs } from '@/components/layout/Breadcrum
 import { useClusterStore } from '@/stores/clusterStore';
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
 import { useActiveClusterId } from '@/hooks/useActiveClusterId';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
 import { downloadResourceJson } from '@/lib/exportUtils';
 
 interface VolumeSnapshotResource extends KubernetesResource {

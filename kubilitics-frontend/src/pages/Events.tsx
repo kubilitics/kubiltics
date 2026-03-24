@@ -31,7 +31,7 @@ import { useClusterStore } from '@/stores/clusterStore';
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
 import { usePaginatedResourceList } from '@/hooks/useKubernetes';
 import { getEvents, type BackendEvent } from '@/services/backendApiClient';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
 import { cn } from '@/lib/utils';
 import {
  ResourceCommandBar,

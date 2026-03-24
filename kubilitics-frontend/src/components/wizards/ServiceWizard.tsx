@@ -13,7 +13,7 @@ import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/back
 import { useClusterStore } from '@/stores/clusterStore';
 import { useQueryClient } from '@tanstack/react-query';
 import { applyManifest } from '@/services/backendApiClient';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
 
 interface ServiceWizardProps {
   onClose: () => void;

@@ -27,7 +27,7 @@ import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/back
 import { useQuery } from '@tanstack/react-query';
 import { getSecretTLSInfo } from '@/services/backendApiClient';
 import { cn } from '@/lib/utils';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
 import { downloadResourceJson } from '@/lib/exportUtils';
 
 interface IngressResource extends KubernetesResource {

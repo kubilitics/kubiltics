@@ -38,7 +38,7 @@ import { cn } from '@/lib/utils';
 import { Link, useNavigate } from 'react-router-dom';
 import { useK8sResourceList, useDeleteK8sResource, calculateAge, type KubernetesResource } from '@/hooks/useKubernetes';
 import { useConnectionStatus } from '@/hooks/useConnectionStatus';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
 import { ResourceCreator, DEFAULT_YAMLS } from '@/components/editor';
 import { ResourceExportDropdown, ResourceCommandBar, ListPageStatCard, ListPageHeader, TableColumnHeaderWithFilterAndSort, TableFilterCell, ListPagination, PAGE_SIZE_OPTIONS, resourceTableRowClassName, ROW_MOTION, AgeCell, TableEmptyState, ListPageLoadingShell, TableErrorState, NamespaceBadge, ResourceListTableToolbar } from '@/components/list';
 import { DeleteConfirmDialog } from '@/components/resources';

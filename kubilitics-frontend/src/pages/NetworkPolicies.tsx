@@ -45,7 +45,7 @@ import { NetworkPolicyWizard } from '@/components/wizards';
 import { ResourceExportDropdown, ResourceCommandBar, ListPageStatCard, ListPageHeader, TableColumnHeaderWithFilterAndSort, TableFilterCell, ListPagination, PAGE_SIZE_OPTIONS, resourceTableRowClassName, ROW_MOTION, AgeCell, TableEmptyState, ListPageLoadingShell, TableErrorState, CopyNameDropdownItem, NamespaceBadge, ResourceListTableToolbar } from '@/components/list';
 import { useTableFiltersAndSort, type ColumnConfig } from '@/hooks/useTableFiltersAndSort';
 import { useColumnVisibility } from '@/hooks/useColumnVisibility';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
 
 interface K8sNetworkPolicy extends KubernetesResource {
  spec?: {

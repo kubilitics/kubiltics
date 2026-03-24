@@ -4,7 +4,7 @@ import { Database, Clock, Server, Download, Trash2, HardDrive, Info, Network, Lo
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
 import { downloadResourceJson } from '@/lib/exportUtils';
 import { ResourceOverviewMetadata } from '@/components/resources/ResourceOverviewMetadata';
 import {

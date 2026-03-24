@@ -39,7 +39,7 @@ import { Breadcrumbs, useDetailBreadcrumbs } from '@/components/layout/Breadcrum
 import { useClusterStore } from '@/stores/clusterStore';
 import { usePortForwardStore } from '@/stores/portForwardStore';
 import { openExternal } from '@/lib/tauri';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
 
 interface ServiceResource extends KubernetesResource {
   spec?: {

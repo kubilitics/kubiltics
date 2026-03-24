@@ -5,7 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Save, RotateCcw, CheckCircle2, XCircle, Loader2, AlertTriangle, RefreshCw, Download, Palette, Keyboard, Info, Sun, Moon, Monitor, Server, Trash2, Plus, FolderKanban, Focus, Settings as SettingsIcon } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';

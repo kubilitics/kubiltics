@@ -24,7 +24,7 @@ import { normalizeKindForTopology } from '@/utils/resourceKindMapper';
 import { useConnectionStatus } from '@/hooks/useConnectionStatus';
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
 import { useActiveClusterId } from '@/hooks/useActiveClusterId';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
 import { downloadResourceJson } from '@/lib/exportUtils';
 
 interface Subject {

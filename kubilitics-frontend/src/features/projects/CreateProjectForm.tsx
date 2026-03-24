@@ -19,7 +19,7 @@ import { useClustersFromBackend } from '@/hooks/useClustersFromBackend';
 import { useNamespacesFromCluster } from '@/hooks/useNamespacesFromCluster';
 import { useProjectMutations } from '@/hooks/useProjects';
 import { cn } from '@/lib/utils';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
 import {
   Command,
   CommandEmpty,

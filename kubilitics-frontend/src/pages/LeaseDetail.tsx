@@ -4,7 +4,7 @@ import { Activity, Clock, User, Download, Trash2, Timer, Network, GitCompare } f
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
 import { downloadResourceJson } from '@/lib/exportUtils';
 import { ResourceOverviewMetadata } from '@/components/resources/ResourceOverviewMetadata';
 import {

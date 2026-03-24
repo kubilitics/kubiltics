@@ -28,7 +28,7 @@ import { Badge } from '@/components/ui/badge';
 import { NamespaceBadge } from '@/components/list';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { CodeEditor } from '@/components/editor/CodeEditor';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
 import yamlParser from 'js-yaml';
 import type * as monacoType from 'monaco-editor';
 

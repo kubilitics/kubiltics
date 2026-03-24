@@ -33,7 +33,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import { useConnectionStatus } from '@/hooks/useConnectionStatus';
 import { usePluginRegistry, type PluginCategory, type PluginInfo } from '@/hooks/usePluginRegistry';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 

@@ -57,7 +57,7 @@ import { getSecretConsumers, getSecretTLSInfo, type TLSSecretInfo } from '@/serv
 import { ResourceCreator, DEFAULT_YAMLS } from '@/components/editor';
 import { DeleteConfirmDialog } from '@/components/resources';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
 
 interface Secret {
  uid?: string;

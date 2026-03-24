@@ -21,7 +21,7 @@ import { cn } from '@/lib/utils';
 import { parseRawLogs, type LogEntry } from '@/lib/logParser';
 import { useK8sPodLogs } from '@/hooks/useKubernetes';
 import { useConnectionStatus } from '@/hooks/useConnectionStatus';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
 
 export type { LogEntry };
 

@@ -48,7 +48,7 @@ import {
 } from '@/hooks/useKubernetes';
 import { useConnectionStatus } from '@/hooks/useConnectionStatus';
 import { useClusterStore } from '@/stores/clusterStore';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
 import type {
   ResourceKindConfig, ResourceColumnDef, ResourceActionDef,
 } from '@/lib/resourceKindConfig';

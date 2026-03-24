@@ -35,7 +35,7 @@ import {
   initTracing,
   type TracingConfig,
 } from '@/lib/tracing';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
 
 // ─── Component ───────────────────────────────────────────────────────────────
 

@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { NamespaceBadge } from '@/components/list';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
 import { downloadResourceJson } from '@/lib/exportUtils';
 import { ResourceOverviewMetadata } from '@/components/resources/ResourceOverviewMetadata';
 import {

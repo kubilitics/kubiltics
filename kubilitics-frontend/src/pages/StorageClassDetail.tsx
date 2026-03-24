@@ -4,7 +4,7 @@ import { Layers, Clock, Download, Trash2, Server, Settings, Star, Info, Network,
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
 import { downloadResourceJson } from '@/lib/exportUtils';
 import { ResourceOverviewMetadata } from '@/components/resources/ResourceOverviewMetadata';
 import {

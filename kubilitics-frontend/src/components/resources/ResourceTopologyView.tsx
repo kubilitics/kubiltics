@@ -48,7 +48,7 @@ import { TopologyNodePanel } from '@/topology-engine/components/TopologyNodePane
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
 import { useActiveClusterId } from '@/hooks/useActiveClusterId';
 import { getTopologyExportDrawio } from '@/services/backendApiClient';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
 import {
   DropdownMenu,
   DropdownMenuContent,

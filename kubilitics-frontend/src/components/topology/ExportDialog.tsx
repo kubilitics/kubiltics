@@ -9,7 +9,7 @@
  */
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { Download, FileImage, FileCode2, Loader2 } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
 import {
   Dialog,
   DialogContent,

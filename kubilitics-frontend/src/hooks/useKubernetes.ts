@@ -7,7 +7,7 @@ import { listResources, getResource, deleteResource, patchResource, applyManifes
 import { notifyError, notifySuccess } from '@/lib/notificationFormatter';
 import yamlParser from 'js-yaml';
 import { useProjectStore } from '@/stores/projectStore';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
 
 // Types for Kubernetes resources
 export interface KubernetesMetadata {

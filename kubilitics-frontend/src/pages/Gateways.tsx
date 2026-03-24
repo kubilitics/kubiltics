@@ -42,7 +42,7 @@ import { useClusterStore } from '@/stores/clusterStore';
 import { useConnectionStatus } from '@/hooks/useConnectionStatus';
 import { calculateAge, type KubernetesResource } from '@/hooks/useKubernetes';
 import { listResources } from '@/services/backendApiClient';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 

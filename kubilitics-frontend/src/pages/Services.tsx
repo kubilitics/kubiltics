@@ -60,7 +60,7 @@ import { useTableFiltersAndSort, type ColumnConfig } from '@/hooks/useTableFilte
 import { useColumnVisibility } from '@/hooks/useColumnVisibility';
 import { getRowAnimationClass } from '@/hooks/useResourceLiveUpdates';
 import { ServiceWizard } from '@/components/wizards';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
 
 interface ServiceResource extends KubernetesResource {
  spec: {

@@ -26,7 +26,7 @@ import {
 import { useTableFiltersAndSort, type ColumnConfig } from '@/hooks/useTableFiltersAndSort';
 import { useColumnVisibility } from '@/hooks/useColumnVisibility';
 import { ResourceCreator } from '@/components/editor';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
 
 interface RuntimeClassResource extends KubernetesResource {
  handler?: string;

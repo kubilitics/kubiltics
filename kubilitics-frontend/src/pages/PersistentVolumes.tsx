@@ -47,7 +47,7 @@ import { useColumnVisibility } from '@/hooks/useColumnVisibility';
 import { usePaginatedResourceList, useDeleteK8sResource, calculateAge, type KubernetesResource } from '@/hooks/useKubernetes';
 import { useConnectionStatus } from '@/hooks/useConnectionStatus';
 import { ResourceCreator, DEFAULT_YAMLS } from '@/components/editor';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
 
 interface PersistentVolume {
  name: string;

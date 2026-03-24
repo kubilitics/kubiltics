@@ -17,7 +17,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { createProject } from '@/services/backendApiClient';
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
 import { useMemo } from 'react';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
 
 export function CreateProjectDialog({ children }: { children: React.ReactNode }) {
     const [open, setOpen] = useState(false);

@@ -18,7 +18,7 @@ import { usePaginatedResourceList, useDeleteK8sResource, useCreateK8sResource, c
 import { useConnectionStatus } from '@/hooks/useConnectionStatus';
 import { DeleteConfirmDialog } from '@/components/resources';
 import { ResourceCreator, DEFAULT_YAMLS } from '@/components/editor/ResourceCreator';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
 
 interface ResourceSlice {
  name: string;

@@ -26,7 +26,7 @@ import { useDeleteK8sResource, useUpdateK8sResource, useK8sResourceList, calcula
 import { normalizeKindForTopology } from '@/utils/resourceKindMapper';
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
 import { useActiveClusterId } from '@/hooks/useActiveClusterId';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
 import { downloadResourceJson } from '@/lib/exportUtils';
 
 interface IngressClassResource extends KubernetesResource {

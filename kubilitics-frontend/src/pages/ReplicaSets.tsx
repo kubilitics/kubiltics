@@ -21,7 +21,7 @@ import { useTableFiltersAndSort, type ColumnConfig } from '@/hooks/useTableFilte
 import { useColumnVisibility } from '@/hooks/useColumnVisibility';
 import { useWorkloadMetricsMap } from '@/hooks/useWorkloadMetricsMap';
 import { ResourceCreator, DEFAULT_YAMLS } from '@/components/editor';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
 import { Card, CardContent } from '@/components/ui/card';
 import { ReplicaSetIcon } from '@/components/icons/KubernetesIcons';
 

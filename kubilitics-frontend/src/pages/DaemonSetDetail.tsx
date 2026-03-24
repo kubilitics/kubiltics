@@ -38,7 +38,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Progress } from '@/components/ui/progress';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
 import {
   ResourceDetailLayout,
   ContainersSection,

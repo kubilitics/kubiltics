@@ -34,7 +34,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { cn } from '@/lib/utils';
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
 import { downloadBlob } from '@/lib/exportUtils';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 

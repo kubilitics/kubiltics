@@ -29,7 +29,7 @@ import {
     BackendProject,
 } from '@/services/backendApiClient';
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
 import {
     AlertDialog,
     AlertDialogAction,

@@ -30,7 +30,7 @@ import { Breadcrumbs, useDetailBreadcrumbs } from '@/components/layout/Breadcrum
 import { downloadResourceJson } from '@/lib/exportUtils';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
 import { normalizeError, notifyError, notifySuccess } from '@/lib/notificationFormatter';
 
 interface ConfigMapResource extends KubernetesResource {

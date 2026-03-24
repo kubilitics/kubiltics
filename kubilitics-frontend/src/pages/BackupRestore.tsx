@@ -40,7 +40,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
 import { useClusterStore } from '@/stores/clusterStore';
 import { useConnectionStatus } from '@/hooks/useConnectionStatus';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 

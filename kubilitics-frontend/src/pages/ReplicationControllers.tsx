@@ -28,7 +28,7 @@ import {
 import { useTableFiltersAndSort, type ColumnConfig } from '@/hooks/useTableFiltersAndSort';
 import { useColumnVisibility } from '@/hooks/useColumnVisibility';
 import { ResourceCreator, DEFAULT_YAMLS } from '@/components/editor';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
 
 interface RCResource extends KubernetesResource {
  spec: {

@@ -60,7 +60,7 @@ import { useConnectionStatus } from '@/hooks/useConnectionStatus';
 import { useBackendConfigStore } from '@/stores/backendConfigStore';
 import { calculateAge } from '@/hooks/useKubernetes';
 import type { KubernetesResource } from '@/hooks/useKubernetes';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
 
 interface CRInstance {
  name: string;

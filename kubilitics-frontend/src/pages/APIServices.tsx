@@ -31,7 +31,7 @@ import { usePaginatedResourceList, useDeleteK8sResource, calculateAge, type Kube
 import { useConnectionStatus } from '@/hooks/useConnectionStatus';
 import { DeleteConfirmDialog } from '@/components/resources';
 import { StatusPill } from '@/components/list';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
 import { cn } from '@/lib/utils';
 import {
  ResourceCommandBar,

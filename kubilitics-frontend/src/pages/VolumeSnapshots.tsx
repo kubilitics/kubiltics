@@ -23,7 +23,7 @@ import { useTableFiltersAndSort, type ColumnConfig } from '@/hooks/useTableFilte
 import { useColumnVisibility } from '@/hooks/useColumnVisibility';
 import type { StatusPillVariant } from '@/components/list';
 import { ResourceCreator, DEFAULT_YAMLS } from '@/components/editor';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
 import { VolumeSnapshotIcon } from '@/components/icons/KubernetesIcons';
 
 interface VolumeSnapshotResource extends KubernetesResource {

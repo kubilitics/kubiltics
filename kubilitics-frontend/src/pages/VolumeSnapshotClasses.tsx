@@ -20,7 +20,7 @@ import { usePaginatedResourceList, useDeleteK8sResource, useCreateK8sResource, c
 import { useConnectionStatus } from '@/hooks/useConnectionStatus';
 import { ResourceCreator, DEFAULT_YAMLS } from '@/components/editor';
 import { DeleteConfirmDialog } from '@/components/resources';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
 
 interface VolumeSnapshotClass {
  name: string;

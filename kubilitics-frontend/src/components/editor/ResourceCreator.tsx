@@ -20,7 +20,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
 import { CodeEditor } from '@/components/editor/CodeEditor';
 import { ResourceDocumentation, K8S_DOCS } from '@/components/editor/ResourceDocumentation';
 import { cn } from '@/lib/utils';

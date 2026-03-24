@@ -28,7 +28,7 @@ const TOOLTIP_MEMORY_UNIT = 'RAM allocation over time. Steady growth may indicat
 import { useMetricsSummary, type MetricsSummaryResourceType } from '@/hooks/useMetricsSummary';
 import { useMetricsHistory } from '@/hooks/useMetricsHistory';
 import { useBackendConfigStore } from '@/stores/backendConfigStore';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
 import {
   TOOLTIP_METRICS_CPU_USAGE,
   TOOLTIP_METRICS_MEMORY_USAGE,

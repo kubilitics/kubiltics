@@ -3,7 +3,7 @@ import { ExternalLink, Square, Cable, ChevronDown, ChevronUp } from 'lucide-reac
 import { usePortForwardStore, type ActivePortForward } from '@/stores/portForwardStore';
 import { Button } from '@/components/ui/button';
 import { openExternal } from '@/lib/tauri';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
 import { cn } from '@/lib/utils';
 
 function formatElapsed(startedAt: number): string {

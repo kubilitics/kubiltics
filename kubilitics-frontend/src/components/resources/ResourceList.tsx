@@ -37,7 +37,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Link } from 'react-router-dom';
 import { cn } from '@/lib/utils';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
 import { ResourceExportDropdown, ResourceTableRow, resourceTableRowClassName, ListPagination, ResourceCommandBar, type ResourceExportConfig } from '@/components/list';
 import { buildAutoWidthColumns } from '@/lib/tableSizing';
 

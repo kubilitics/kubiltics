@@ -29,7 +29,7 @@ import { ResourceCommandBar, ResourceExportDropdown, ListViewSegmentedControl } 
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { ResourceCreator, DEFAULT_YAMLS } from '@/components/editor';
 import { useQuery } from '@tanstack/react-query';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
 import { Card, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { DeploymentIcon } from '@/components/icons/KubernetesIcons';

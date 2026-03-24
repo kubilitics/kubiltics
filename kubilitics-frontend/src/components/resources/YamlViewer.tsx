@@ -7,7 +7,7 @@ import { Separator } from '@/components/ui/separator';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { CodeEditor } from '@/components/editor/CodeEditor';
 import { cn } from '@/lib/utils';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
 import yamlParser from 'js-yaml';
 
 export interface YamlValidationError {

@@ -9,7 +9,7 @@
  *  4. Persistent toast: stays visible until connection is restored
  */
 import { useEffect, useRef, useCallback, useState } from 'react';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
 
 /** Fast phase: exponential backoff for this many attempts */

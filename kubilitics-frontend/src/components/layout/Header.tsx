@@ -41,7 +41,7 @@ import { getClusterKubeconfig } from '@/services/backendApiClient';
 import { getEffectiveBackendBaseUrl, useBackendConfigStore } from '@/stores/backendConfigStore';
 import { useUIStore } from '@/stores/uiStore';
 import { useProjectStore } from '@/stores/projectStore';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
 import { cn } from '@/lib/utils';
 import { useOfflineMode } from '@/hooks/useOfflineMode';
 import { useQueryClient } from '@tanstack/react-query';

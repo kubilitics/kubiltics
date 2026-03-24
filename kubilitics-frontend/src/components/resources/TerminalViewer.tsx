@@ -13,7 +13,7 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 // DropdownMenu removed — container selector now uses inline segmented control
 import { cn } from '@/lib/utils';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */

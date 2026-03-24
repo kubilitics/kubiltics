@@ -28,7 +28,7 @@ import { useClusterStore } from '@/stores/clusterStore';
 import { useActiveClusterId } from '@/hooks/useActiveClusterId';
 import { getSecretConsumers, getSecretTLSInfo } from '@/services/backendApiClient';
 import { Breadcrumbs, useDetailBreadcrumbs } from '@/components/layout/Breadcrumbs';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
 import { downloadResourceJson } from '@/lib/exportUtils';
 import { cn } from '@/lib/utils';
 import {

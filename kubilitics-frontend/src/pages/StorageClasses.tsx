@@ -51,7 +51,7 @@ import { getStorageClassPVCounts } from '@/services/backendApiClient';
 import { ResourceCreator, DEFAULT_YAMLS } from '@/components/editor';
 import { DeleteConfirmDialog } from '@/components/resources';
 import { Star } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
 
 interface StorageClass {
  name: string;

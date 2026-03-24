@@ -47,7 +47,7 @@ import {
 import ELK from 'elkjs/lib/elk.bundled.js';
 import { useClusterStore } from '@/stores/clusterStore';
 import { useNavigate } from 'react-router-dom';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
 import { useClusterTopology } from '@/hooks/useClusterTopology';
 import { useActiveClusterId } from '@/hooks/useActiveClusterId';
 import { useNamespacesFromCluster } from '@/hooks/useNamespacesFromCluster';

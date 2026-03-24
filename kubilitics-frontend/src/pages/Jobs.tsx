@@ -25,7 +25,7 @@ import { useWorkloadMetricsMap } from '@/hooks/useWorkloadMetricsMap';
 import { getRowAnimationClass } from '@/hooks/useResourceLiveUpdates';
 import type { StatusPillVariant } from '@/components/list';
 import { ResourceCreator, DEFAULT_YAMLS } from '@/components/editor';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
 import { Progress } from '@/components/ui/progress';
 import { JobIcon } from '@/components/icons/KubernetesIcons';
 

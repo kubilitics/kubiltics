@@ -35,7 +35,7 @@ import { getNamespaceCounts } from '@/services/backendApiClient';
 import { ResourceCreator, DEFAULT_YAMLS } from '@/components/editor';
 import { DeleteConfirmDialog } from '@/components/resources';
 import { StatusPill, type StatusPillVariant } from '@/components/list';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
 import { cn } from '@/lib/utils';
 import {
  ResourceCommandBar,

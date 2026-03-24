@@ -62,7 +62,7 @@ import { useDiscoverClusters } from '@/hooks/useDiscoverClusters';
 import { useBackendHealth } from '@/hooks/useBackendHealth';
 import { addCluster, addClusterWithUpload, resetBackendCircuit, getClusterOverview, type BackendCluster } from '@/services/backendApiClient';
 import { backendClusterToCluster } from '@/lib/backendClusterAdapter';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
 import { useQueryClient } from '@tanstack/react-query';
 import { WelcomeAddCluster } from '@/components/connect/WelcomeAddCluster';
 import { isTauri } from '@/lib/tauri';

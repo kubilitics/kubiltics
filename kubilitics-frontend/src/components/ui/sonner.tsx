@@ -16,7 +16,7 @@
  * toast renders. This is critical for Tauri's WKWebView where component-
  * injected <style> tags can race with toast rendering.
  */
-import { Toaster as Sonner, toast } from "sonner";
+import { Toaster as Sonner, toast as sonnerToast } from "sonner";
 import { useThemeStore } from "@/stores/themeStore";
 
 type ToasterProps = React.ComponentProps<typeof Sonner>;
@@ -30,11 +30,11 @@ const Toaster = ({ ...props }: ToasterProps) => {
       theme={effectiveTheme}
       offset={24}
       gap={8}
-      visibleToasts={3}
+      visibleToasts={1}
       closeButton
       richColors={false}
       toastOptions={{
-        duration: 3500,
+        duration: 2500,
         classNames: {
           toast: "apple-toast",
         },
@@ -43,6 +43,31 @@ const Toaster = ({ ...props }: ToasterProps) => {
       {...props}
     />
   );
+};
+
+/**
+ * Deduplicated toast wrapper — prevents stacking of identical messages.
+ *
+ * Uses the message text as a stable ID so firing the same toast multiple
+ * times (e.g., from WebSocket reconnect + auto-connect + notification
+ * formatter) only shows one. Errors get a longer duration (4s vs 2.5s).
+ */
+const toast = {
+  success: (message: string, opts?: Parameters<typeof sonnerToast.success>[1]) =>
+    sonnerToast.success(message, { id: `s:${message}`, ...opts }),
+  error: (message: string, opts?: Parameters<typeof sonnerToast.error>[1]) =>
+    sonnerToast.error(message, { id: `e:${message}`, duration: 4000, ...opts }),
+  warning: (message: string, opts?: Parameters<typeof sonnerToast.warning>[1]) =>
+    sonnerToast.warning(message, { id: `w:${message}`, duration: 3500, ...opts }),
+  info: (message: string, opts?: Parameters<typeof sonnerToast.info>[1]) =>
+    sonnerToast.info(message, { id: `i:${message}`, ...opts }),
+  message: (message: string, opts?: Parameters<typeof sonnerToast>[1]) =>
+    sonnerToast(message, { id: `m:${message}`, ...opts }),
+  dismiss: sonnerToast.dismiss,
+  loading: (message: string, opts?: Parameters<typeof sonnerToast.loading>[1]) =>
+    sonnerToast.loading(message, { id: `l:${message}`, ...opts }),
+  promise: sonnerToast.promise,
+  custom: sonnerToast.custom,
 };
 
 export { Toaster, toast };

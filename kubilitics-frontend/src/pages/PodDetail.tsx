@@ -41,7 +41,7 @@ import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
 import {
   ResourceDetailLayout,
   ResourceTabs,

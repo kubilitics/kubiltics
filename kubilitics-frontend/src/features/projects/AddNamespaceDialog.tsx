@@ -22,7 +22,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useProjectMutations } from '@/hooks/useProjects';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
 
 interface ClusterOption {
   cluster_id: string;

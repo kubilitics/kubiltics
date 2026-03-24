@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { NamespaceBadge } from '@/components/list';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
 import { cn } from '@/lib/utils';
 
 export type ResourceStatus = 'Running' | 'Pending' | 'Succeeded' | 'Failed' | 'Unknown' | 'Healthy' | 'Warning' | 'Error';

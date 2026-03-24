@@ -19,7 +19,7 @@ import { useResourceDetail, useResourceEvents } from '@/hooks/useK8sResourceDeta
 import type { KubernetesResource } from '@/hooks/useKubernetes';
 import { normalizeKindForTopology } from '@/utils/resourceKindMapper';
 import { useConnectionStatus } from '@/hooks/useConnectionStatus';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
 import { downloadResourceJson } from '@/lib/exportUtils';
 
 interface EventResource extends KubernetesResource {

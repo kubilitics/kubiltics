@@ -24,7 +24,7 @@ import { useColumnVisibility } from '@/hooks/useColumnVisibility';
 import { getRowAnimationClass } from '@/hooks/useResourceLiveUpdates';
 import type { StatusPillVariant } from '@/components/list';
 import { ResourceCreator, DEFAULT_YAMLS } from '@/components/editor';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
 import { CronJobIcon } from '@/components/icons/KubernetesIcons';
 
 interface CronJobResource extends KubernetesResource {

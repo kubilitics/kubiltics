@@ -4,7 +4,7 @@ import { Shield, Clock, Download, Trash2, Server, AlertTriangle, Network, GitCom
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
 import { downloadResourceJson } from '@/lib/exportUtils';
 import {
   ResourceDetailLayout,

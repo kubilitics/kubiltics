@@ -49,7 +49,7 @@ import { ResourceExportDropdown, ListPageStatCard, ListPageHeader, TableColumnHe
 import { IngressIcon } from '@/components/icons/KubernetesIcons';
 import { useTableFiltersAndSort, type ColumnConfig } from '@/hooks/useTableFiltersAndSort';
 import { useColumnVisibility } from '@/hooks/useColumnVisibility';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
 
 interface IngressClass {
  name: string;

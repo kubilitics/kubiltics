@@ -46,7 +46,7 @@ import { usePaginatedResourceList, useDeleteK8sResource, calculateAge } from '@/
 import { useConnectionStatus } from '@/hooks/useConnectionStatus';
 import { ResourceCreator, DEFAULT_YAMLS } from '@/components/editor';
 import { DeleteConfirmDialog } from '@/components/resources';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
 
 interface VolumeAttachment {
  id: string;

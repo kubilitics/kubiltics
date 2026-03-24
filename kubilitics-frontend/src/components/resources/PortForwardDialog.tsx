@@ -19,7 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
 import { startPortForward, stopPortForward } from '@/services/backendApiClient';
 import { usePortForwardStore } from '@/stores/portForwardStore';
 import { useClusterStore } from '@/stores/clusterStore';

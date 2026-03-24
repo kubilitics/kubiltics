@@ -10,7 +10,7 @@ import { useState, useMemo, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
 import { useActiveClusterId } from '@/hooks/useActiveClusterId';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
 
 /** Status of a plugin in the registry. */
 export type PluginStatus = 'available' | 'installed' | 'installing' | 'uninstalling' | 'error' | 'update-available';

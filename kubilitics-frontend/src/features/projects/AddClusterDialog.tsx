@@ -21,7 +21,7 @@ import {
 } from '@/components/ui/select';
 import { useClustersFromBackend } from '@/hooks/useClustersFromBackend';
 import { useProjectMutations } from '@/hooks/useProjects';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
 
 interface AddClusterDialogProps {
   projectId: string;

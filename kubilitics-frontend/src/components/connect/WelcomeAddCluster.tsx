@@ -28,7 +28,7 @@ import {
 } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { addClusterWithUpload } from '@/services/backendApiClient';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
 import { useQueryClient } from '@tanstack/react-query';
 
 interface WelcomeAddClusterProps {

@@ -23,7 +23,7 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
   DropdownMenuSeparator, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
 import { useDeleteK8sResource, calculateAge, type KubernetesResource } from '@/hooks/useKubernetes';
 import { getPodMetrics, type BackendDeploymentMetrics } from '@/services/backendApiClient';

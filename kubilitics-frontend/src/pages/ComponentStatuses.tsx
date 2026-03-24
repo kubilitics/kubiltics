@@ -23,7 +23,7 @@ import {
 } from '@/components/list';
 import { useTableFiltersAndSort, type ColumnConfig } from '@/hooks/useTableFiltersAndSort';
 import { useColumnVisibility } from '@/hooks/useColumnVisibility';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
 
 interface ComponentStatusCondition {
  type: string;
