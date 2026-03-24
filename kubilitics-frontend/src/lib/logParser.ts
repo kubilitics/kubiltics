@@ -7,6 +7,10 @@ export interface LogEntry {
   level: 'info' | 'warn' | 'error' | 'debug';
   message: string;
   raw?: string;
+  /** True when the message body is valid JSON */
+  isJson?: boolean;
+  /** Parsed JSON value when isJson is true */
+  jsonData?: unknown;
 }
 
 export function detectLevel(message: string): 'info' | 'warn' | 'error' | 'debug' {
@@ -23,6 +27,19 @@ export function detectLevel(message: string): 'info' | 'warn' | 'error' | 'debug
   return 'info';
 }
 
+/** Attempt to parse `text` as JSON. Returns { isJson, jsonData }. */
+function tryParseJson(text: string): { isJson: boolean; jsonData?: unknown } {
+  const trimmed = text.trim();
+  if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+    try {
+      return { isJson: true, jsonData: JSON.parse(trimmed) };
+    } catch {
+      return { isJson: false };
+    }
+  }
+  return { isJson: false };
+}
+
 export function parseLogLine(line: string): LogEntry {
   const trimmed = line.trim();
   if (!trimmed) {
@@ -32,30 +49,39 @@ export function parseLogLine(line: string): LogEntry {
   const isoMatch = trimmed.match(/^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[^\s]*)\s+(.*)$/);
   if (isoMatch) {
     const [, timestamp, rest] = isoMatch;
+    const { isJson, jsonData } = tryParseJson(rest);
     return {
       timestamp: timestamp || '',
       level: detectLevel(rest),
       message: rest,
       raw: line,
+      isJson,
+      jsonData,
     };
   }
 
   const bracketMatch = trimmed.match(/^\[([^\]]+)\]\s*(.*)$/);
   if (bracketMatch) {
     const [, timestamp, rest] = bracketMatch;
+    const { isJson, jsonData } = tryParseJson(rest);
     return {
       timestamp: timestamp || '',
       level: detectLevel(rest),
       message: rest,
       raw: line,
+      isJson,
+      jsonData,
     };
   }
 
+  const { isJson, jsonData } = tryParseJson(trimmed);
   return {
     timestamp: new Date().toISOString(),
     level: detectLevel(trimmed),
     message: trimmed,
     raw: line,
+    isJson,
+    jsonData,
   };
 }
 
