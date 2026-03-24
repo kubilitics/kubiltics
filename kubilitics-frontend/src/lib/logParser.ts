@@ -7,6 +7,8 @@ export interface LogEntry {
   level: 'info' | 'warn' | 'error' | 'debug';
   message: string;
   raw?: string;
+  isJson?: boolean;
+  jsonData?: unknown;
 }
 
 export function detectLevel(message: string): 'info' | 'warn' | 'error' | 'debug' {
@@ -23,6 +25,18 @@ export function detectLevel(message: string): 'info' | 'warn' | 'error' | 'debug
   return 'info';
 }
 
+function tryParseJson(text: string): { isJson: boolean; jsonData?: unknown } {
+  const trimmed = text.trim();
+  if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+    try {
+      return { isJson: true, jsonData: JSON.parse(trimmed) };
+    } catch {
+      return { isJson: false };
+    }
+  }
+  return { isJson: false };
+}
+
 export function parseLogLine(line: string): LogEntry {
   const trimmed = line.trim();
   if (!trimmed) {
@@ -37,6 +51,7 @@ export function parseLogLine(line: string): LogEntry {
       level: detectLevel(rest),
       message: rest,
       raw: line,
+      ...tryParseJson(rest),
     };
   }
 
@@ -48,6 +63,7 @@ export function parseLogLine(line: string): LogEntry {
       level: detectLevel(rest),
       message: rest,
       raw: line,
+      ...tryParseJson(rest),
     };
   }
 
@@ -56,6 +72,7 @@ export function parseLogLine(line: string): LogEntry {
     level: detectLevel(trimmed),
     message: trimmed,
     raw: line,
+    ...tryParseJson(trimmed),
   };
 }
 
