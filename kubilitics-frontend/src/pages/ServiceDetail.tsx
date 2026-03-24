@@ -577,7 +577,6 @@ export default function ServiceDetail() {
                   { label: 'IP Family Policy', value: svc.spec?.ipFamilyPolicy ?? '—', color: '' },
                   { label: 'IP Families', value: svc.spec?.ipFamilies?.join(', ') ?? '—', color: '', mono: true },
                   { label: 'Publish Not Ready', value: svc.spec?.publishNotReadyAddresses ? 'Yes' : 'No', color: svc.spec?.publishNotReadyAddresses ? 'bg-red-500/10 text-red-700 dark:text-red-300 border-red-500/20' : '' },
-                  { label: 'Age', value: age, color: '', bold: true },
                 ].map((row) => (
                   <div key={row.label} className="flex items-center justify-between py-2.5 px-1">
                     <span className="text-sm text-muted-foreground">{row.label}</span>

@@ -491,30 +491,12 @@ export default function PodDetail() {
             tooltip={
               <>
                 <p className="font-medium">Pod overview</p>
-                <p className="mt-1 text-muted-foreground text-xs">Identity, state, and key networking</p>
+                <p className="mt-1 text-muted-foreground text-xs">Scheduling, networking, and ownership</p>
               </>
             }
           >
             <div className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                <DetailRow label="Name" value={<span className="font-mono">{pod.metadata?.name || '-'}</span>} />
-                <DetailRow
-                  label="Namespace"
-                  value={
-                    pod.metadata?.namespace ? (
-                      <Button variant="link" className="h-auto p-0 font-mono" onClick={() => navigate(`/namespaces/${pod.metadata?.namespace}`)}>
-                        {pod.metadata.namespace}
-                      </Button>
-                    ) : (
-                      '-'
-                    )
-                  }
-                />
-                <DetailRow
-                  label="Creation"
-                  value={age}
-                  tooltip={creationTimestamp ? `Created: ${creationTimestamp}` : undefined}
-                />
                 {ownerRef && ownerPath && (
                   <div className="min-w-0 overflow-hidden">
                     <DetailRow
@@ -541,20 +523,6 @@ export default function PodDetail() {
                     />
                   </div>
                 )}
-                <div className="flex items-center justify-between gap-4 text-sm md:col-span-2 lg:col-span-1">
-                  <span className="flex items-center gap-2 text-muted-foreground shrink-0">State</span>
-                  <Badge
-                    variant="outline"
-                    className={cn(
-                      status === 'Running' && 'bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/30',
-                      status === 'Pending' && 'bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/30',
-                      (status === 'Failed' || status === 'Unknown') && 'bg-red-500/10 text-red-700 dark:text-red-400 border-red-500/30',
-                      status === 'Succeeded' && 'bg-muted text-muted-foreground'
-                    )}
-                  >
-                    {status}
-                  </Badge>
-                </div>
                 <DetailRow
                   label="Node"
                   value={
@@ -630,11 +598,6 @@ export default function PodDetail() {
                   />
                 </div>
                 <DetailRow
-                  label="QoS Class"
-                  value={<Badge variant="outline">{pod.status?.qosClass || '-'}</Badge>}
-                  tooltip={pod.status?.qosClass ? TOOLTIP_QOS[pod.status.qosClass] ?? undefined : undefined}
-                />
-                <DetailRow
                   label="Priority"
                   value={pod.spec?.priority ?? 0}
                   tooltip={TOOLTIP_PRIORITY}
@@ -654,7 +617,6 @@ export default function PodDetail() {
                 <DetailRow label="Restart Policy" value={<Badge variant="outline">{pod.spec?.restartPolicy || 'Always'}</Badge>} tooltip={TOOLTIP_RESTART_POLICY} />
                 <DetailRow label="DNS Policy" value={<Badge variant="outline">{pod.spec?.dnsPolicy || 'ClusterFirst'}</Badge>} tooltip={TOOLTIP_DNS_POLICY} />
                 <DetailRow label="Termination Grace" value={`${pod.spec?.terminationGracePeriodSeconds ?? 30}s`} tooltip={TOOLTIP_TERMINATION_GRACE} />
-                <DetailRow label="QoS Class" value={<Badge variant="outline">{pod.status?.qosClass || '-'}</Badge>} tooltip={pod.status?.qosClass ? TOOLTIP_QOS[pod.status.qosClass] ?? undefined : undefined} />
               </div>
             </SectionCard>
 
