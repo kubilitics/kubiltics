@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import {
   Edit3,
   AlertCircle,
@@ -117,23 +117,28 @@ export function YamlEditorDialog({
   const [showDiff, setShowDiff] = useState(false);
   const editorRef = useRef<monacoType.editor.IStandaloneCodeEditor | null>(null);
 
-  const displayYaml = showManagedFields ? yaml : stripManagedFields(yaml);
+  // Strip managed fields once (not per-render) — avoids load/dump round-trip on every keystroke
+  const strippedInitialYaml = useMemo(() => stripManagedFields(initialYaml), [initialYaml]);
 
+  // When dialog opens or managed fields toggle changes, reset the editor content
   useEffect(() => {
     if (open) {
-      setYaml(initialYaml);
+      setYaml(showManagedFields ? initialYaml : strippedInitialYaml);
       setErrors([]);
       setHasChanges(false);
       setShowDiff(false);
     }
-  }, [open, initialYaml]);
+  }, [open, initialYaml, showManagedFields, strippedInitialYaml]);
+
+  // Correct baseline for change detection — depends on managed fields toggle
+  const baseline = showManagedFields ? initialYaml : strippedInitialYaml;
 
   const handleYamlChange = useCallback((value: string) => {
     setYaml(value);
-    setHasChanges(value !== initialYaml);
+    setHasChanges(value !== baseline);
     const validationErrors = validateYaml(value);
     setErrors(validationErrors);
-  }, [initialYaml]);
+  }, [baseline]);
 
   const handleSave = async () => {
     if (errors.length > 0) return;
@@ -170,7 +175,7 @@ export function YamlEditorDialog({
   };
 
   const handleReset = () => {
-    setYaml(initialYaml);
+    setYaml(baseline);
     setErrors([]);
     setHasChanges(false);
   };
@@ -335,10 +340,10 @@ export function YamlEditorDialog({
           <div className="flex-1 flex gap-4 min-h-0">
             <div className="flex-1 min-h-0">
               {showDiff ? (
-                <YamlDiffPanel original={initialYaml} modified={displayYaml} fontSize={fontSize} />
+                <YamlDiffPanel original={baseline} modified={yaml} fontSize={fontSize} />
               ) : (
                 <CodeEditor
-                  value={displayYaml}
+                  value={yaml}
                   onChange={handleYamlChange}
                   minHeight="100%"
                   className="h-full rounded-lg"
@@ -451,7 +456,10 @@ function YamlDiffPanel({
 
     return () => {
       disposed = true;
+      const model = editorRef.current?.getModel();
       editorRef.current?.dispose();
+      model?.original?.dispose();
+      model?.modified?.dispose();
       editorRef.current = null;
     };
     // Re-create on content or fontSize change
