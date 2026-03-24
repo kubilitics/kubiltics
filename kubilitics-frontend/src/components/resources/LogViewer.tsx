@@ -424,7 +424,7 @@ export function LogViewer({
           <Tooltip>
             <TooltipTrigger asChild>
               <button
-                onClick={() => refetch()}
+                onClick={() => queryClient.invalidateQueries({ queryKey: ['k8s', 'pods', namespace, podName, 'logs'] })}
                 className="h-7 w-7 flex items-center justify-center rounded-md text-white/60 hover:text-white hover:bg-white/15 transition-colors"
               >
                 <RefreshCw className="h-3.5 w-3.5" />
@@ -515,7 +515,7 @@ export function LogViewer({
             <p className="text-red-400/80 text-sm font-medium">Failed to fetch logs</p>
             <p className="text-white/30 text-xs max-w-sm text-center">{error.message}</p>
             <button
-              onClick={() => refetch()}
+              onClick={() => queryClient.invalidateQueries({ queryKey: ['k8s', 'pods', namespace, podName, 'logs'] })}
               className="px-3 py-1.5 rounded-md border border-white/15 text-white/50 text-xs hover:text-white hover:border-white/30 transition-colors"
             >
               Retry

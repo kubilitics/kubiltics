@@ -77,7 +77,7 @@ export function ResourceStatusCard({
       )}
     >
       <div className="space-y-1 min-w-0 flex-1">
-        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide truncate">{label}</p>
+        <p className="text-xs font-semibold text-foreground/70 uppercase tracking-wide truncate">{label}</p>
         {isTruncated ? (
           <Tooltip>
               <TooltipTrigger asChild>{valueEl}</TooltipTrigger>
