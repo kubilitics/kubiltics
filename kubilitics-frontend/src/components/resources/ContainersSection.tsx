@@ -59,7 +59,7 @@ export interface ContainerInfo {
     requests?: { cpu?: string; memory?: string };
     limits?: { cpu?: string; memory?: string };
   };
-  currentUsage?: { cpu: number; memory: number };
+  currentUsage?: { cpu: number; memory: number; cpuRaw?: number; memoryRaw?: number };
   /** Status (from pod.status.containerStatuses) */
   startedAt?: string;
   lastState?: { reason: string; exitCode?: number; startedAt?: string; finishedAt?: string };
@@ -275,7 +275,11 @@ export function ContainersSection({ containers, className, resourceName, namespa
                               {(container.currentUsage?.cpu ?? 0) > 80 && <AlertCircle className="inline h-3.5 w-3.5 ml-1 text-destructive" />}
                             </span>
                           ) : (
-                            <span className="text-xs font-medium text-amber-600">No limit set</span>
+                            <span className="font-semibold tabular-nums text-foreground">
+                              {container.currentUsage?.cpuRaw != null && container.currentUsage.cpuRaw > 0
+                                ? `${container.currentUsage.cpuRaw.toFixed(1)}m`
+                                : '—'}
+                            </span>
                           )}
                         </div>
                         {(container.currentUsage?.cpu ?? -1) >= 0 ? (
@@ -287,10 +291,10 @@ export function ContainersSection({ containers, className, resourceName, namespa
                           <Tooltip>
                             <TooltipTrigger asChild>
                               <p className="text-[11px] text-amber-600 cursor-help flex items-center gap-1">
-                                <AlertCircle className="h-3 w-3" /> CPU limit not specified — set limits in your manifest to prevent resource contention
+                                <AlertCircle className="h-3 w-3" /> No CPU limit — set limits to prevent resource contention
                               </p>
                             </TooltipTrigger>
-                            <TooltipContent side="top" className="max-w-xs">Without CPU limits, this container can consume unlimited CPU on the node, potentially starving other workloads. Add spec.containers[].resources.limits.cpu to your Pod manifest.</TooltipContent>
+                            <TooltipContent side="top" className="max-w-xs">Without CPU limits, this container can consume unlimited CPU on the node. Add spec.containers[].resources.limits.cpu to your Pod manifest.</TooltipContent>
                           </Tooltip>
                         )}
                       </div>
@@ -304,7 +308,11 @@ export function ContainersSection({ containers, className, resourceName, namespa
                               {(container.currentUsage?.memory ?? 0) > 80 && <AlertCircle className="inline h-3.5 w-3.5 ml-1 text-destructive" />}
                             </span>
                           ) : (
-                            <span className="text-xs font-medium text-amber-600">No limit set</span>
+                            <span className="font-semibold tabular-nums text-foreground">
+                              {container.currentUsage?.memoryRaw != null && container.currentUsage.memoryRaw > 0
+                                ? `${(container.currentUsage.memoryRaw / (1024 * 1024)).toFixed(1)} Mi`
+                                : '—'}
+                            </span>
                           )}
                         </div>
                         {(container.currentUsage?.memory ?? -1) >= 0 ? (
@@ -316,10 +324,10 @@ export function ContainersSection({ containers, className, resourceName, namespa
                           <Tooltip>
                             <TooltipTrigger asChild>
                               <p className="text-[11px] text-amber-600 cursor-help flex items-center gap-1">
-                                <AlertCircle className="h-3 w-3" /> Memory limit not specified — without limits, OOM kills can happen unexpectedly
+                                <AlertCircle className="h-3 w-3" /> No memory limit — OOM kills can happen unexpectedly
                               </p>
                             </TooltipTrigger>
-                            <TooltipContent side="top" className="max-w-xs">Without memory limits, this container can consume unlimited memory and may be OOM-killed by the kernel without warning. Add spec.containers[].resources.limits.memory to your Pod manifest.</TooltipContent>
+                            <TooltipContent side="top" className="max-w-xs">Without memory limits, this container may be OOM-killed by the kernel without warning. Add spec.containers[].resources.limits.memory to your Pod manifest.</TooltipContent>
                           </Tooltip>
                         )}
                       </div>

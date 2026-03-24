@@ -283,10 +283,11 @@ export default function PodDetail() {
 
       const usageCpuMc = cm ? parseCPUToMillicores(cm.cpu) : containerCount > 0 ? podCpuMc / containerCount : 0;
       const usageMemBytes = cm ? parseMemoryToBytes(cm.memory) : containerCount > 0 ? podMemBytes / containerCount : 0;
-      // Only show percentage when actual limits are set — never fabricate data
+      // Show percentage only when actual limits are set. -1 = no limit.
+      // Always pass real usage values separately so UI can display them.
       const limitCpuMc = c.resources?.limits?.cpu ? parseCPUToMillicores(c.resources.limits.cpu) : 0;
       const limitMemBytes = c.resources?.limits?.memory ? parseMemoryToBytes(c.resources.limits.memory) : 0;
-      const cpuPct = limitCpuMc > 0 ? Math.min(100, Math.round((usageCpuMc / limitCpuMc) * 100)) : -1; // -1 = no limit set
+      const cpuPct = limitCpuMc > 0 ? Math.min(100, Math.round((usageCpuMc / limitCpuMc) * 100)) : -1;
       const memPct = limitMemBytes > 0 ? Math.min(100, Math.round((usageMemBytes / limitMemBytes) * 100)) : -1;
 
       const lastState = containerStatus?.lastState?.terminated ?? containerStatus?.lastState?.waiting;
@@ -299,7 +300,7 @@ export default function PodDetail() {
         stateReason: containerStatus?.state?.waiting?.reason ?? containerStatus?.state?.terminated?.reason,
         ports: c.ports ?? [],
         resources: c.resources ?? {},
-        currentUsage: { cpu: cpuPct, memory: memPct },
+        currentUsage: { cpu: cpuPct, memory: memPct, cpuRaw: usageCpuMc, memoryRaw: usageMemBytes },
         startedAt: containerStatus?.state?.running?.startedAt,
         lastState: lastState
           ? {
