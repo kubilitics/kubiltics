@@ -496,7 +496,7 @@ export default function PodDetail() {
             }
           >
             <div className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-3">
                 {ownerRef && ownerPath && (
                   <div className="min-w-0 overflow-hidden">
                     <DetailRow
