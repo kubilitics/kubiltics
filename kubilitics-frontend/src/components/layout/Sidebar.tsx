@@ -961,7 +961,7 @@ export function Sidebar() {
     return (
       <>
         <aside
-          className="w-[5.5rem] h-full border-r border-slate-100 dark:border-slate-800 bg-white/60 dark:bg-[hsl(228,14%,9%)]/80 backdrop-blur-3xl flex flex-col items-center py-6 gap-5 shrink-0 z-30 shadow-apple"
+          className="w-[5.5rem] h-full border-r border-slate-100 dark:border-slate-800 bg-white/95 dark:bg-[hsl(228,14%,9%)] backdrop-blur-3xl flex flex-col items-center py-6 gap-5 shrink-0 z-[70] shadow-apple"
           onMouseEnter={() => setFlyoutOpen(true)}
           onMouseLeave={() => setFlyoutOpen(false)}
           role="navigation"
@@ -1014,7 +1014,7 @@ export function Sidebar() {
   }
 
   return (
-    <aside className="w-72 h-full flex flex-col border-r border-slate-100 dark:border-slate-800 bg-white/40 dark:bg-[hsl(228,14%,9%)]/80 backdrop-blur-3xl shrink-0 transition-all duration-500" role="navigation" aria-label="Main navigation">
+    <aside className="w-72 h-full flex flex-col border-r border-slate-100 dark:border-slate-800 bg-white/95 dark:bg-[hsl(228,14%,9%)] backdrop-blur-3xl shrink-0 z-[70] transition-all duration-500" role="navigation" aria-label="Main navigation">
       {fullContent}
     </aside>
   );

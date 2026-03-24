@@ -10,11 +10,17 @@ interface UIState {
     expandedResourceCategories: string[];
     /** Whether the top-level Resources section is expanded */
     isResourcesSectionOpen: boolean;
+    /** Whether the bottom shell panel is open */
+    isShellOpen: boolean;
+    /** Height of the shell panel in pixels */
+    shellHeightPx: number;
     setSidebarCollapsed: (collapsed: boolean) => void;
     toggleSidebar: () => void;
     setAutoCollapsed: (auto: boolean) => void;
     toggleResourceCategory: (categoryId: string) => void;
     setResourcesSectionOpen: (open: boolean) => void;
+    setShellOpen: (open: boolean) => void;
+    setShellHeightPx: (height: number) => void;
 }
 
 const SIDEBAR_COLLAPSED_KEY = 'kubilitics-sidebar-collapsed';
@@ -29,6 +35,8 @@ export const useUIStore = create<UIState>()(
             isAutoCollapsed: false,
             expandedResourceCategories: ['workloads'],
             isResourcesSectionOpen: true,
+            isShellOpen: false,
+            shellHeightPx: 320,
             setSidebarCollapsed: (collapsed) => set({ isSidebarCollapsed: collapsed, isAutoCollapsed: false }),
             toggleSidebar: () => set((state) => ({ isSidebarCollapsed: !state.isSidebarCollapsed, isAutoCollapsed: false })),
             setAutoCollapsed: (auto) => set({ isAutoCollapsed: auto }),
@@ -39,6 +47,8 @@ export const useUIStore = create<UIState>()(
                         : [categoryId], // Single-open: only one sub-category at a time
                 })),
             setResourcesSectionOpen: (open) => set({ isResourcesSectionOpen: open }),
+            setShellOpen: (open) => set({ isShellOpen: open }),
+            setShellHeightPx: (height) => set({ shellHeightPx: height }),
         }),
         {
             name: SIDEBAR_COLLAPSED_KEY,

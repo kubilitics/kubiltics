@@ -6,6 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import { applyCompletionToLine, updateLineBuffer } from './completionEngine';
 import { useClusterStore } from '@/stores/clusterStore';
 import { useBackendCircuitOpen } from '@/hooks/useBackendCircuitOpen';
+import { useUIStore } from '@/stores/uiStore';
 import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import '@xterm/xterm/css/xterm.css';
@@ -88,6 +89,7 @@ export function ClusterShellPanel({
   const circuitOpen = useBackendCircuitOpen();
   const circuitOpenRef = useRef(circuitOpen);
   circuitOpenRef.current = circuitOpen;
+  const setShellHeightPx = useUIStore((s) => s.setShellHeightPx);
 
   // Track "just connected" to avoid sending redundant namespace commands
   const justConnectedRef = useRef(false);
@@ -247,6 +249,8 @@ export function ClusterShellPanel({
       cursorBlink: true,
       fontSize: 13,
       fontFamily: "'JetBrains Mono', 'Fira Code', 'Roboto Mono', Monaco, 'Courier New', monospace",
+      scrollback: 5000,
+      convertEol: true,
       theme: {
         background: '#0d1117',
         foreground: '#f0f6fc',
@@ -522,7 +526,8 @@ export function ClusterShellPanel({
     let next = dragStartHeight.current + deltaY;
     next = Math.max(MIN_HEIGHT_PX, Math.min((MAX_HEIGHT_PERCENT / 100) * vh, next));
     setHeightPx(next);
-  }, [dragging]);
+    setShellHeightPx(next);
+  }, [dragging, setShellHeightPx]);
 
   const handleResizePointerUp = useCallback((e: React.PointerEvent) => {
     setDragging(false);

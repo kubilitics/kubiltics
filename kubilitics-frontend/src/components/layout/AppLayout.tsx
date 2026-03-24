@@ -13,7 +13,7 @@ import { analyticsService } from '@/services/analyticsService';
 import { cn } from '@/lib/utils';
 import { isTauri } from '@/lib/tauri';
 import { RouteErrorBoundary } from '@/components/GlobalErrorBoundary';
-import { useSidebarAutoCollapse } from '@/stores/uiStore';
+import { useSidebarAutoCollapse, useUIStore } from '@/stores/uiStore';
 import { useDocumentTitle } from '@/hooks/useDocumentTitle';
 import { RouteAnnouncer } from '@/components/a11y/RouteAnnouncer';
 import { usePrefetchResources } from '@/hooks/usePrefetchResources';
@@ -39,6 +39,8 @@ export function AppLayout() {
   // PERF Area 2: Restore scroll position when navigating back to a previously visited page
   const mainRef = useRef<HTMLElement>(null);
   useScrollRestoration(mainRef);
+  const isShellOpen = useUIStore((s) => s.isShellOpen);
+  const shellHeightPx = useUIStore((s) => s.shellHeightPx);
 
   // Track app start
   useEffect(() => {
@@ -117,7 +119,14 @@ export function AppLayout() {
       )}
       <div className="flex flex-1 min-h-0 overflow-hidden">
         <Sidebar />
-        <main ref={mainRef} id="main-content" className="flex-1 p-6 pb-6 pr-3 overflow-auto flex flex-col gap-4" role="main" aria-label="Main content">
+        <main
+          ref={mainRef}
+          id="main-content"
+          className="flex-1 p-6 pr-3 overflow-auto flex flex-col gap-4"
+          style={{ paddingBottom: isShellOpen ? `${shellHeightPx + 24}px` : '24px' }}
+          role="main"
+          aria-label="Main content"
+        >
           <OfflineIndicator />
           {/* ConnectionRequiredBanner removed — the "Not connected to cluster" overlay
               below already covers this case. Having both creates a redundant double-banner. */}

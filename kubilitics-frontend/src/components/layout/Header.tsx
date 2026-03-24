@@ -6,7 +6,7 @@
  * - Search resources: always-visible trigger in header (core feature)
  * - All controls sized for clarity; labels visible; Notifications and Profile are real controls
  */
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Search,
@@ -117,7 +117,12 @@ export function Header() {
   const clearBackend = useBackendConfigStore((s) => s.clearBackend);
   const setLogoutFlag = useBackendConfigStore((s) => s.setLogoutFlag);
   const [searchOpen, setSearchOpen] = useState(false);
-  const [shellOpen, setShellOpen] = useState(false);
+  const setShellOpenStore = useUIStore((s) => s.setShellOpen);
+  const [shellOpen, _setShellOpen] = useState(false);
+  const setShellOpen = useCallback((open: boolean) => {
+    _setShellOpen(open);
+    setShellOpenStore(open);
+  }, [setShellOpenStore]);
   const [wizardOpen, setWizardOpen] = useState<'deployment' | 'service' | 'configmap' | 'secret' | null>(null);
   const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
