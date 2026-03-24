@@ -70,7 +70,8 @@ export function useResourceEvents(
   namespace: string | undefined,
   name: string | undefined
 ) {
-  const baseUrl = getEffectiveBackendBaseUrl();
+  const storedUrl = useBackendConfigStore((s) => s.backendBaseUrl);
+  const baseUrl = getEffectiveBackendBaseUrl(storedUrl);
   const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured());
   const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
   const clusterId = currentClusterId ?? null;
@@ -80,7 +81,8 @@ export function useResourceEvents(
     queryKey: ['resource-events', clusterId, namespace ?? '', kind, name ?? ''],
     queryFn: () => getResourceEvents(baseUrl!, clusterId!, namespace ?? '', kind, name!, 20),
     enabled: useBackend && !!baseUrl,
-    staleTime: 60_000,
+    staleTime: 0,
+    refetchOnMount: 'always' as const,
   });
 
   const fieldSelector = name && kind ? `involvedObject.name=${name},involvedObject.kind=${kind}` : undefined;
