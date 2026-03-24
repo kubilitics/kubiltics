@@ -1876,6 +1876,25 @@ export async function startPortForward(
   );
 }
 
+/** POST /api/v1/clusters/{clusterId}/resources/pods/{namespace}/{pod}/debug — creates an ephemeral debug container. */
+export async function createDebugContainer(
+  baseUrl: string,
+  clusterId: string,
+  namespace: string,
+  pod: string,
+  image: string,
+  targetContainer: string,
+): Promise<{ name: string; status: string }> {
+  return backendRequest<{ name: string; status: string }>(
+    baseUrl,
+    `clusters/${encodeURIComponent(clusterId)}/resources/pods/${encodeURIComponent(namespace)}/${encodeURIComponent(pod)}/debug`,
+    {
+      method: 'POST',
+      body: JSON.stringify({ image, targetContainer, command: ['/bin/sh'] }),
+    },
+  );
+}
+
 /** DELETE /api/v1/clusters/{clusterId}/port-forward/{sessionId} — stops the subprocess. */
 export async function stopPortForward(
   baseUrl: string,

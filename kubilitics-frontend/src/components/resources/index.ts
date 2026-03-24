@@ -4,6 +4,7 @@ export { LogViewer, type LogEntry, type LogViewerProps } from './LogViewer';
 export { TerminalViewer, type TerminalLine, type TerminalViewerProps } from './TerminalViewer';
 export { DeleteConfirmDialog, type DeleteConfirmDialogProps } from './DeleteConfirmDialog';
 export { PortForwardDialog, type PortInfo, type PortForwardDialogProps } from './PortForwardDialog';
+export { DebugContainerDialog, type DebugContainerDialogProps } from './DebugContainerDialog';
 export { ScaleDialog, type ScaleDialogProps } from './ScaleDialog';
 export { RolloutActionsDialog, type RolloutRevision, type RolloutActionsDialogProps } from './RolloutActionsDialog';
 export { YamlEditorDialog, type YamlEditorDialogProps } from './YamlEditorDialog';

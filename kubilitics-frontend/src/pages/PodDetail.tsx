@@ -3,6 +3,7 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   Box,
+  Bug,
   Clock,
   Server,
   RotateCcw,
@@ -33,6 +34,7 @@ import {
   FileCode,
   GitCompare,
   FolderOpen,
+  Bug,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -56,6 +58,7 @@ import {
   DeleteConfirmDialog,
   PortForwardDialog,
   FileTransferDialog,
+  DebugContainerDialog,
   MetricsDashboard,
   ResourceTopologyView,
   ResourceComparisonView,
@@ -211,6 +214,7 @@ export default function PodDetail() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showPortForwardDialog, setShowPortForwardDialog] = useState(false);
   const [showFileTransferDialog, setShowFileTransferDialog] = useState(false);
+  const [showDebugContainerDialog, setShowDebugContainerDialog] = useState(false);
   const [portForwardInitial, setPortForwardInitial] = useState<{ containerName: string; port: number } | null>(null);
 
   const { isConnected } = useConnectionStatus();
@@ -927,6 +931,12 @@ export default function PodDetail() {
             onClick: () => setShowFileTransferDialog(true),
           },
           {
+            icon: Bug,
+            label: 'Debug Container',
+            description: 'Attach an ephemeral debug container',
+            onClick: () => setShowDebugContainerDialog(true),
+          },
+          {
             icon: RotateCcw,
             label: 'Restart Pod',
             description: 'Delete and recreate the pod',
@@ -1039,6 +1049,18 @@ export default function PodDetail() {
         baseUrl={backendBaseUrl ?? ''}
         clusterId={clusterId ?? ''}
         containers={(pod.spec?.containers || []).map(c => ({ name: c.name }))}
+      />
+
+      {/* Debug Container Dialog */}
+      <DebugContainerDialog
+        open={showDebugContainerDialog}
+        onOpenChange={setShowDebugContainerDialog}
+        podName={pod.metadata?.name || ''}
+        namespace={pod.metadata?.namespace || ''}
+        baseUrl={backendBaseUrl ?? ''}
+        clusterId={clusterId ?? ''}
+        containers={(pod.spec?.containers || []).map(c => c.name)}
+        onCreated={() => setActiveTab('terminal')}
       />
     </>
   );
