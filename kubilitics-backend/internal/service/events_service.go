@@ -9,6 +9,7 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"github.com/kubilitics/kubilitics-backend/internal/models"
+	"github.com/kubilitics/kubilitics-backend/internal/repository"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -23,12 +24,22 @@ type EventsService interface {
 
 type eventsService struct {
 	clusterService *clusterService
+	repo           *repository.SQLiteRepository // optional — nil if no DB
 }
 
-// NewEventsService creates a new events service
+// NewEventsService creates a new events service (no persistence)
 func NewEventsService(cs ClusterService) EventsService {
 	return &eventsService{
 		clusterService: cs.(*clusterService),
+	}
+}
+
+// NewEventsServiceWithRepo creates an events service with SQLite persistence.
+// Events are stored so they survive K8s event TTL (~1 hour).
+func NewEventsServiceWithRepo(cs ClusterService, repo *repository.SQLiteRepository) EventsService {
+	return &eventsService{
+		clusterService: cs.(*clusterService),
+		repo:           repo,
 	}
 }
 
@@ -174,8 +185,24 @@ func (s *eventsService) GetResourceEvents(ctx context.Context, clusterID, namesp
 		events = append(events, k8sEventToModel(&eventList.Items[i]))
 	}
 
+	// Persist live events to SQLite for future reference (non-blocking)
+	if s.repo != nil && len(events) > 0 {
+		go func() {
+			_ = s.repo.UpsertEvents(clusterID, events)
+		}()
+	}
+
+	// If K8s returned no events (expired), fall back to stored events
+	if len(events) == 0 && s.repo != nil {
+		stored, err := s.repo.GetStoredEvents(clusterID, namespace, resourceKind, resourceName, 10)
+		if err == nil && len(stored) > 0 {
+			return stored, nil
+		}
+	}
+
 	return events, nil
 }
+
 
 func (s *eventsService) WatchEvents(ctx context.Context, clusterID, namespace string, eventChan chan<- *models.Event, errChan chan<- error) {
 	client, err := s.clusterService.GetClient(clusterID)

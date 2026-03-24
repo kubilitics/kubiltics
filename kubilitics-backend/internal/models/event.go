@@ -17,6 +17,7 @@ type Event struct {
 	LastTimestamp    time.Time `json:"last_timestamp"`
 	Count            int32     `json:"count"`
 	SourceComponent  string   `json:"source_component,omitempty"`
+	Historical       bool     `json:"historical,omitempty"` // true when loaded from Kubilitics DB (K8s events expired)
 }
 
 // WebSocketMessage represents a message sent via WebSocket

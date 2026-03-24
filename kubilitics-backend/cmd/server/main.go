@@ -207,7 +207,7 @@ func main() {
 	}
 	topologyService := service.NewTopologyService(clusterService, topologyCache)
 	logsService := service.NewLogsService(clusterService)
-	eventsService := service.NewEventsService(clusterService)
+	eventsService := service.NewEventsServiceWithRepo(clusterService, repo)
 	metricsService := service.NewMetricsService(clusterService)
 	metricsProvider := metrics.NewMetricsServerProvider()
 	unifiedMetricsService := service.NewUnifiedMetricsService(

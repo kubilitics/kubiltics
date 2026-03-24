@@ -18,6 +18,7 @@ export interface EventInfo {
   reason: string;
   message: string;
   time: string;
+  historical?: boolean;
 }
 
 // Convert a K8s resource object to YAML string
@@ -99,6 +100,7 @@ export function useResourceEvents(
       reason: e.reason ?? '',
       message: e.message ?? '',
       time: e.last_timestamp ? calculateAge(e.last_timestamp) : (e.first_timestamp ? calculateAge(e.first_timestamp) : 'unknown'),
+      historical: e.historical ?? false,
     }))
     : (k8sList.data?.items ?? []).map((event: Record<string, unknown>) => ({
       type: (event.type === 'Warning' ? 'Warning' : 'Normal') as EventInfo['type'],

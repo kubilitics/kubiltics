@@ -1248,6 +1248,7 @@ export interface BackendEvent {
   last_timestamp: string;
   count: number;
   source_component?: string;
+  historical?: boolean;
 }
 
 /**
