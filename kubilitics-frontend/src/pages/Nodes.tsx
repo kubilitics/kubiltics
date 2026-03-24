@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { useQueries } from '@tanstack/react-query';
 import { Server, Search, MoreHorizontal,
- Layers, Lock, Unlock, List, ChevronDown, ChevronRight } from 'lucide-react';
+ Layers, Lock, Unlock, List, ChevronDown, ChevronRight, Trash2 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { DeleteConfirmDialog, MetricBar } from '@/components/resources';
 import { StatusPill, type StatusPillVariant } from '@/components/list';
@@ -55,6 +55,7 @@ import {
  TableErrorState, ListPageLoadingShell,
  CopyNameDropdownItem,
  ResourceListTableToolbar,
+ BulkActionToolbar,
  VirtualTableBody,
 } from '@/components/list';
 import { NodeIcon } from '@/components/icons/KubernetesIcons';
@@ -625,6 +626,31 @@ export default function Nodes() {
  className={cn(columnFilters.status?.size === 1 && columnFilters.status.has('SchedulingDisabled') && 'ring-2 ring-amber-500')}
  isLoading={isLoading} />
  </div>
+
+ <BulkActionToolbar
+ selectedCount={selectedNodes.size}
+ resourceName="node"
+ onClearSelection={() => setSelectedNodes(new Set())}
+ >
+ <Button variant="outline" size="sm" className="gap-2" onClick={() => {
+ const names = Array.from(selectedNodes).join(', ');
+ toast.info(`Cordon ${selectedNodes.size} node(s): ${names}`);
+ }}>
+ <Lock className="h-4 w-4" />
+ Cordon
+ </Button>
+ <Button variant="outline" size="sm" className="gap-2" onClick={() => {
+ const names = Array.from(selectedNodes).join(', ');
+ toast.info(`Uncordon ${selectedNodes.size} node(s): ${names}`);
+ }}>
+ <Unlock className="h-4 w-4" />
+ Uncordon
+ </Button>
+ <Button variant="destructive" size="sm" className="gap-2" onClick={() => setDeleteDialog({ open: true, item: null, bulk: true })}>
+ <Trash2 className="h-4 w-4" />
+ Delete
+ </Button>
+ </BulkActionToolbar>
 
  <ResourceListTableToolbar
  globalFilterBar={

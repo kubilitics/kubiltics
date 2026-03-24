@@ -15,7 +15,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useK8sResourceList, useDeleteK8sResource, usePatchK8sResource, useCreateK8sResource, calculateAge, type KubernetesResource } from '@/hooks/useKubernetes';
 import { useConnectionStatus } from '@/hooks/useConnectionStatus';
 import { DeleteConfirmDialog, RolloutActionsDialog, MetricBar, parseCpu, parseMemory, calculatePodResourceMax } from '@/components/resources';
-import { ResourceExportDropdown, ListViewSegmentedControl, ListPagination, PAGE_SIZE_OPTIONS, ResourceCommandBar, resourceTableRowClassName, ROW_MOTION, StatusPill, ListPageStatCard, ListPageHeader, TableColumnHeaderWithFilterAndSort, TableFilterCell, AgeCell, TableEmptyState, TableErrorState, ListPageLoadingShell, NamespaceBadge, ResourceListTableToolbar } from '@/components/list';
+import { ResourceExportDropdown, ListViewSegmentedControl, ListPagination, PAGE_SIZE_OPTIONS, ResourceCommandBar, resourceTableRowClassName, ROW_MOTION, StatusPill, ListPageStatCard, ListPageHeader, TableColumnHeaderWithFilterAndSort, TableFilterCell, AgeCell, TableEmptyState, TableErrorState, ListPageLoadingShell, NamespaceBadge, ResourceListTableToolbar, BulkActionToolbar } from '@/components/list';
 import type { StatusPillVariant } from '@/components/list';
 import { useTableFiltersAndSort, type ColumnConfig } from '@/hooks/useTableFiltersAndSort';
 import { useColumnVisibility } from '@/hooks/useColumnVisibility';
@@ -390,6 +390,17 @@ spec:
  <ListPageStatCard label="Updating" value={stats.updating} icon={History} iconColor="text-purple-500" valueClassName="text-purple-600" isLoading={isLoading} />
  <ListPageStatCard label="Node Coverage" value={stats.nodeCoverageAvg + '%'} icon={Gauge} iconColor="text-cyan-500" valueClassName="text-cyan-600" isLoading={isLoading} />
  </div>
+
+ <BulkActionToolbar
+ selectedCount={selectedItems.size}
+ resourceName="daemonset"
+ onClearSelection={() => setSelectedItems(new Set())}
+ >
+ <Button variant="outline" size="sm" className="gap-2" onClick={handleBulkRestart}>
+ <RotateCcw className="h-4 w-4" />
+ Restart
+ </Button>
+ </BulkActionToolbar>
 
  <ResourceListTableToolbar
  globalFilterBar={

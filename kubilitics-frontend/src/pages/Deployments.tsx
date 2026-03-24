@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { resourceTableRowClassName, ROW_MOTION, StatusPill, ListPagination, PAGE_SIZE_OPTIONS, ListPageStatCard, ListPageHeader, TableColumnHeaderWithFilterAndSort, TableFilterCell, AgeCell, TableEmptyState, TableErrorState, ListPageLoadingShell, CopyNameDropdownItem, NamespaceBadge, ResourceListTableToolbar, type StatusPillVariant } from '@/components/list';
+import { resourceTableRowClassName, ROW_MOTION, StatusPill, ListPagination, PAGE_SIZE_OPTIONS, ListPageStatCard, ListPageHeader, TableColumnHeaderWithFilterAndSort, TableFilterCell, AgeCell, TableEmptyState, TableErrorState, ListPageLoadingShell, CopyNameDropdownItem, NamespaceBadge, ResourceListTableToolbar, BulkActionToolbar, type StatusPillVariant } from '@/components/list';
 import { useTableFiltersAndSort, type ColumnConfig } from '@/hooks/useTableFiltersAndSort';
 import { getRowAnimationClass } from '@/hooks/useResourceLiveUpdates';
 import { useTableKeyboardNav } from '@/hooks/useTableKeyboardNav';
@@ -444,6 +444,14 @@ export default function Deployments() {
  setSelectedItems(new Set());
  };
 
+ const handleBulkScale = () => {
+ if (!isConnected) {
+ toast.error('Connect cluster to scale deployments');
+ return;
+ }
+ toast.info(`Scale ${selectedItems.size} deployment(s): use row-level scale for per-deployment replica control.`);
+ };
+
  const isAllSelected = itemsOnPage.length > 0 && selectedItems.size === itemsOnPage.length;
  const isSomeSelected = selectedItems.size > 0 && selectedItems.size < itemsOnPage.length;
 
@@ -574,6 +582,25 @@ spec:
  <ListPageStatCard label="Paused" value={stats.paused} icon={PauseCircle} iconColor="text-blue-500" valueClassName="text-blue-500" isLoading={isLoading} selected={columnFilters.status?.size === 1 && columnFilters.status.has('Paused')} onClick={() => setColumnFilter('status', new Set(['Paused']))} className={cn(columnFilters.status?.size === 1 && columnFilters.status.has('Paused') && 'ring-2 ring-blue-500')} />
  <ListPageStatCard label="Scale Events (24h)" value={stats.scaleEvents24h} icon={Activity} iconColor="text-cyan-500" valueClassName="text-cyan-600" isLoading={isLoading} selected={columnFilters.hadScaleEvent24h?.size === 1 && columnFilters.hadScaleEvent24h?.has('Yes')} onClick={() => { if (columnFilters.hadScaleEvent24h?.size === 1 && columnFilters.hadScaleEvent24h?.has('Yes')) setColumnFilter('hadScaleEvent24h', null); else setColumnFilter('hadScaleEvent24h', new Set(['Yes'])); }} className={cn(columnFilters.hadScaleEvent24h?.size === 1 && columnFilters.hadScaleEvent24h?.has('Yes') && 'ring-2 ring-cyan-500')} />
  </div>
+
+ <BulkActionToolbar
+ selectedCount={selectedItems.size}
+ resourceName="deployment"
+ onClearSelection={() => setSelectedItems(new Set())}
+ >
+ <Button variant="outline" size="sm" className="gap-2" onClick={handleBulkRestart}>
+ <RotateCcw className="h-4 w-4" />
+ Restart
+ </Button>
+ <Button variant="outline" size="sm" className="gap-2" onClick={handleBulkScale}>
+ <Scale className="h-4 w-4" />
+ Scale
+ </Button>
+ <Button variant="destructive" size="sm" className="gap-2" onClick={() => setDeleteDialog({ open: true, item: null, bulk: true })}>
+ <Trash2 className="h-4 w-4" />
+ Delete
+ </Button>
+ </BulkActionToolbar>
 
  <ResourceListTableToolbar
  globalFilterBar={

@@ -15,7 +15,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useK8sResourceList, useDeleteK8sResource, usePatchK8sResource, useCreateK8sResource, calculateAge, type KubernetesResource } from '@/hooks/useKubernetes';
 import { useConnectionStatus } from '@/hooks/useConnectionStatus';
 import { DeleteConfirmDialog, ScaleDialog, RolloutActionsDialog, MetricBar, parseCpu, parseMemory, calculatePodResourceMax } from '@/components/resources';
-import { ResourceExportDropdown, ListViewSegmentedControl, ListPagination, PAGE_SIZE_OPTIONS, ResourceCommandBar, resourceTableRowClassName, ROW_MOTION, StatusPill, ListPageStatCard, ListPageHeader, TableColumnHeaderWithFilterAndSort, TableFilterCell, AgeCell, TableEmptyState, TableErrorState, ListPageLoadingShell, NamespaceBadge, ResourceListTableToolbar } from '@/components/list';
+import { ResourceExportDropdown, ListViewSegmentedControl, ListPagination, PAGE_SIZE_OPTIONS, ResourceCommandBar, resourceTableRowClassName, ROW_MOTION, StatusPill, ListPageStatCard, ListPageHeader, TableColumnHeaderWithFilterAndSort, TableFilterCell, AgeCell, TableEmptyState, TableErrorState, ListPageLoadingShell, NamespaceBadge, ResourceListTableToolbar, BulkActionToolbar } from '@/components/list';
 import type { StatusPillVariant } from '@/components/list';
 import { useTableFiltersAndSort, type ColumnConfig } from '@/hooks/useTableFiltersAndSort';
 import { useColumnVisibility } from '@/hooks/useColumnVisibility';
@@ -423,6 +423,11 @@ spec:
  setSelectedItems(new Set());
  };
 
+ const handleBulkScale = () => {
+ if (!isConnected) { toast.error('Connect cluster to scale statefulsets'); return; }
+ toast.info(`Scale ${selectedItems.size} statefulset(s): use row-level scale for per-resource replica control.`);
+ };
+
  const isAllSelected = itemsOnPage.length > 0 && selectedItems.size === itemsOnPage.length;
  const isSomeSelected = selectedItems.size > 0 && selectedItems.size < itemsOnPage.length;
 
@@ -469,6 +474,21 @@ spec:
  <ListPageStatCard label="Degraded" value={stats.degraded} icon={XCircle} iconColor="text-rose-600" valueClassName="text-rose-600" selected={columnFilters.status?.size === 1 && columnFilters.status.has('Degraded')} onClick={() => setColumnFilter('status', new Set(['Degraded']))} className={cn(columnFilters.status?.size === 1 && columnFilters.status.has('Degraded') && 'ring-2 ring-rose-500')} isLoading={isLoading} />
  <ListPageStatCard label="PVC Bound" value={selectedNamespace === 'all' ? '—' : stats.pvcBound} icon={HardDrive} iconColor="text-cyan-500" valueClassName="text-cyan-600" isLoading={isLoading} />
  </div>
+
+ <BulkActionToolbar
+ selectedCount={selectedItems.size}
+ resourceName="statefulset"
+ onClearSelection={() => setSelectedItems(new Set())}
+ >
+ <Button variant="outline" size="sm" className="gap-2" onClick={handleBulkRestart}>
+ <RotateCcw className="h-4 w-4" />
+ Restart
+ </Button>
+ <Button variant="outline" size="sm" className="gap-2" onClick={handleBulkScale}>
+ <Scale className="h-4 w-4" />
+ Scale
+ </Button>
+ </BulkActionToolbar>
 
  <ResourceListTableToolbar
  globalFilterBar={

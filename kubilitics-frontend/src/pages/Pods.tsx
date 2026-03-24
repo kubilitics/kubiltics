@@ -24,6 +24,7 @@ import {
  CopyNameDropdownItem,
  ResourceListTableToolbar,
  NamespaceBadge,
+ BulkActionToolbar,
  type StatusPillVariant,
 } from '@/components/list';
 import { useTableFiltersAndSort, type ColumnConfig } from '@/hooks/useTableFiltersAndSort';
@@ -797,6 +798,21 @@ export default function Pods() {
  className={cn(columnFilters.status?.size === 2 && columnFilters.status?.has('Failed') && columnFilters.status?.has('CrashLoopBackOff') && 'ring-2 ring-rose-500')}
  />
  </div>
+
+ <BulkActionToolbar
+ selectedCount={selectedPods.size}
+ resourceName="pod"
+ onClearSelection={() => setSelectedPods(new Set())}
+ >
+ <Button variant="outline" size="sm" className="gap-2" onClick={handleBulkRestart}>
+ <RotateCcw className="h-4 w-4" />
+ Restart
+ </Button>
+ <Button variant="destructive" size="sm" className="gap-2" onClick={() => setDeleteDialog({ open: true, pod: null, bulk: true })}>
+ <Trash2 className="h-4 w-4" />
+ Delete
+ </Button>
+ </BulkActionToolbar>
 
  <ResourceListTableToolbar
  globalFilterBar={
