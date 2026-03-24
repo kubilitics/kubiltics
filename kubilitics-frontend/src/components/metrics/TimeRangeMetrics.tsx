@@ -290,7 +290,7 @@ export function TimeRangeMetrics({
       return res.json() as Promise<ResourceMetricsSummary[]>;
     },
     refetchInterval: rangeConfig.step * 1000,
-    enabled: !!baseUrl,
+    enabled: !!clusterId,  // baseUrl='' is valid in dev (Vite proxy)
     staleTime: rangeConfig.step * 500,
   });
 

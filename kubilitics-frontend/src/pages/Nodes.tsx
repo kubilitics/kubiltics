@@ -85,7 +85,7 @@ interface Node {
  version: string;
  cpuUsage: number | null;
  memoryUsage: number | null;
- /** Raw usage from metrics (e.g. "250m", "512Mi") for UsageBar display. */
+ /** Raw usage from metrics (e.g. "250m", "512Mi") for MetricBar display. */
  cpuRaw: string;
  memoryRaw: string;
  pods: string;

@@ -40,7 +40,7 @@ import { useConnectionStatus } from '@/hooks/useConnectionStatus';
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
 import { useClusterStore } from '@/stores/clusterStore';
 import { getPodMetrics, postShellCommand } from '@/services/backendApiClient';
-import { DeleteConfirmDialog, PortForwardDialog, UsageBar, parseCpu, parseMemory, calculatePodResourceMax, ResourceComparisonView } from '@/components/resources';
+import { DeleteConfirmDialog, PortForwardDialog, parseCpu, parseMemory, calculatePodResourceMax, ResourceComparisonView } from '@/components/resources';
 import { ResourceCommandBar, ResourceExportDropdown, ListViewSegmentedControl, NamespaceFilter } from '@/components/list';
 import { ResourceCreator, DEFAULT_YAMLS } from '@/components/editor';
 import { useQuery, useQueries } from '@tanstack/react-query';
@@ -252,7 +252,7 @@ export default function Pods() {
  setSelectedNamespaces(new Set([nsFromQuery]));
  }, [searchParams, selectedNamespaces.size]);
 
- // Calculate resource max values from pod spec (for sparklines)
+ // Calculate resource max values from pod spec (for CPU/Memory bars)
  const podResourceMaxMap = useMemo(() => {
  const m: Record<string, { cpuMax?: number; memoryMax?: number }> = {};
  if (data?.items) {

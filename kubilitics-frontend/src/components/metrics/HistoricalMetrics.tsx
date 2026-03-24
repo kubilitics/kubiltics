@@ -157,7 +157,7 @@ export function HistoricalMetrics({
         namespace,
       }),
     staleTime: GRANULARITY_MS,
-    enabled: !!baseUrl,
+    enabled: !!clusterId,  // baseUrl='' is valid in dev (Vite proxy)
   });
 
   // Chart data

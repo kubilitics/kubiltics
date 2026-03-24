@@ -159,7 +159,7 @@ export function useGitOpsStatus({
   );
 
   // If annotations provided and detected, skip API call
-  const shouldQuery = enabled && !localStatus.managed && !!clusterId && !!baseUrl;
+  const shouldQuery = enabled && !localStatus.managed && !!clusterId;  // baseUrl='' is valid in dev (Vite proxy)
 
   const query = useQuery<GitOpsResourceStatus>({
     queryKey: ['gitops-status', clusterId, kind, namespace, name],
