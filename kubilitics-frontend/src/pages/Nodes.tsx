@@ -34,8 +34,8 @@ import { usePaginatedResourceList, useDeleteK8sResource, useK8sResourceList, cal
 import { useConnectionStatus } from '@/hooks/useConnectionStatus';
 import { useClusterStore } from '@/stores/clusterStore';
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
-import { getNodeMetrics } from '@/services/backendApiClient';
-import { toast } from '@/components/ui/sonner';
+import { getNodeMetrics, postNodeCordon, postNodeDrain } from '@/services/backendApiClient';
+import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import {
  ResourceCommandBar,
@@ -476,12 +476,40 @@ export default function Nodes() {
  }
  };
 
- const handleCordon = (item: Node) => {
- toast.info(item.status === 'SchedulingDisabled' ? `Uncordon ${item.name} (not implemented)` : `Cordon ${item.name} (not implemented)`);
+ const handleCordon = async (item: Node) => {
+ if (!isBackendConfigured() || !clusterId || !backendBaseUrl) {
+   toast.error('Connect to a cluster to cordon/uncordon nodes');
+   return;
+ }
+ const newUnschedulable = item.status !== 'SchedulingDisabled';
+ try {
+   await postNodeCordon(backendBaseUrl, clusterId, item.name, newUnschedulable);
+   toast.success(newUnschedulable ? `Node ${item.name} cordoned` : `Node ${item.name} uncordoned`);
+   refetch();
+ } catch (e) {
+   toast.error(e instanceof Error ? e.message : 'Failed to cordon/uncordon node');
+ }
  };
 
- const handleDrain = (item: Node) => {
- toast.info(`Drain ${item.name} (not implemented)`);
+ const handleDrain = async (item: Node) => {
+ if (!isBackendConfigured() || !clusterId || !backendBaseUrl) {
+   toast.error('Connect to a cluster to drain nodes');
+   return;
+ }
+ toast.info(`Draining node ${item.name}…`);
+ try {
+   const result = await postNodeDrain(backendBaseUrl, clusterId, item.name, { ignoreDaemonSets: true });
+   const evicted = result.evicted.length;
+   const errs = result.errors.length;
+   if (errs > 0) {
+     toast.warning(`Drain complete: ${evicted} evicted, ${errs} errors`);
+   } else {
+     toast.success(`Drain complete: ${evicted} pod(s) evicted, ${result.skipped.length} skipped`);
+   }
+   refetch();
+ } catch (e) {
+   toast.error(e instanceof Error ? e.message : 'Failed to drain node');
+ }
  };
 
  const exportConfig = {
@@ -516,15 +544,25 @@ export default function Nodes() {
  <>
  {selectedNodes.size > 0 && (
  <>
- <Button variant="outline" size="sm" className="press-effect gap-2" onClick={() => {
- const names = Array.from(selectedNodes).join(', ');
- toast.info(`Cordon ${selectedNodes.size} node(s): ${names}`);
+ <Button variant="outline" size="sm" className="press-effect gap-2" onClick={async () => {
+ if (!isBackendConfigured() || !clusterId || !backendBaseUrl) { toast.error('Connect to a cluster to cordon nodes'); return; }
+ let succeeded = 0;
+ for (const nodeName of selectedNodes) {
+   try { await postNodeCordon(backendBaseUrl, clusterId, nodeName, true); succeeded++; } catch { toast.error(`Failed to cordon ${nodeName}`); }
+ }
+ if (succeeded > 0) toast.success(`Cordoned ${succeeded} node(s)`);
+ refetch();
  }}>
  <Lock className="h-4 w-4" />Cordon ({selectedNodes.size})
  </Button>
- <Button variant="outline" size="sm" className="press-effect gap-2" onClick={() => {
- const names = Array.from(selectedNodes).join(', ');
- toast.info(`Uncordon ${selectedNodes.size} node(s): ${names}`);
+ <Button variant="outline" size="sm" className="press-effect gap-2" onClick={async () => {
+ if (!isBackendConfigured() || !clusterId || !backendBaseUrl) { toast.error('Connect to a cluster to uncordon nodes'); return; }
+ let succeeded = 0;
+ for (const nodeName of selectedNodes) {
+   try { await postNodeCordon(backendBaseUrl, clusterId, nodeName, false); succeeded++; } catch { toast.error(`Failed to uncordon ${nodeName}`); }
+ }
+ if (succeeded > 0) toast.success(`Uncordoned ${succeeded} node(s)`);
+ refetch();
  }}>
  <Unlock className="h-4 w-4" />Uncordon ({selectedNodes.size})
  </Button>

@@ -7,7 +7,7 @@ import { NamespaceBadge } from '@/components/list';
 import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
-import { toast } from '@/components/ui/sonner';
+import { toast } from 'sonner';
 import { downloadResourceJson } from '@/lib/exportUtils';
 import {
   ResourceDetailLayout,
@@ -34,7 +34,7 @@ import { useMutationPolling } from '@/hooks/useMutationPolling';
 import { useActiveClusterId } from '@/hooks/useActiveClusterId';
 import { useClusterStore } from '@/stores/clusterStore';
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
-import { getNodeMetrics, getPodMetrics, getResource } from '@/services/backendApiClient';
+import { getNodeMetrics, getPodMetrics, getResource, postNodeCordon, postNodeDrain } from '@/services/backendApiClient';
 import {
   Table,
   TableBody,
@@ -286,15 +286,43 @@ export default function NodeDetail() {
     }
   };
 
-  const handleCordon = () => {
-    setIsCordoned(!isCordoned);
-    toast.success(isCordoned ? 'Node uncordoned' : 'Node cordoned - no new pods will be scheduled');
-    triggerFastPolling();
+  const handleCordon = async () => {
+    if (!isConnected || !backendBaseUrl || !clusterId || !name) {
+      toast.error('Connect to a cluster to cordon/uncordon nodes');
+      return;
+    }
+    const newUnschedulable = !isCordoned;
+    try {
+      await postNodeCordon(backendBaseUrl, clusterId, name, newUnschedulable);
+      setIsCordoned(newUnschedulable);
+      toast.success(newUnschedulable ? `Node ${name} cordoned — no new pods will be scheduled` : `Node ${name} uncordoned`);
+      triggerFastPolling();
+      refetch();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Failed to cordon/uncordon node');
+    }
   };
 
-  const handleDrain = () => {
-    toast.success('Node drain initiated - evicting pods...');
-    triggerFastPolling();
+  const handleDrain = async () => {
+    if (!isConnected || !backendBaseUrl || !clusterId || !name) {
+      toast.error('Connect to a cluster to drain nodes');
+      return;
+    }
+    toast.info(`Draining node ${name}…`);
+    try {
+      const result = await postNodeDrain(backendBaseUrl, clusterId, name, { ignoreDaemonSets: true });
+      const evicted = result.evicted.length;
+      const errs = result.errors.length;
+      if (errs > 0) {
+        toast.warning(`Drain complete: ${evicted} evicted, ${errs} errors`);
+      } else {
+        toast.success(`Drain complete: ${evicted} pod(s) evicted, ${result.skipped.length} skipped`);
+      }
+      triggerFastPolling();
+      refetch();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Failed to drain node');
+    }
   };
 
   if (isLoading) {

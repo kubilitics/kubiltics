@@ -328,6 +328,11 @@ func SetupRoutes(router *mux.Router, h *Handler) {
 	router.Handle("/clusters/{clusterId}/metrics/{namespace}/cronjob/{name}", h.wrapWithRBAC(h.GetCronJobMetrics, auth.RoleViewer)).Methods("GET")
 	router.Handle("/clusters/{clusterId}/metrics/{namespace}/{pod}", h.wrapWithRBAC(h.GetPodMetrics, auth.RoleViewer)).Methods("GET")
 
+	// Node operations routes (CordonNode handles both cordon and uncordon via unschedulable flag)
+	router.Handle("/clusters/{clusterId}/resources/nodes/{name}/cordon", h.wrapWithRBAC(h.CordonNode, auth.RoleOperator)).Methods("POST")
+	router.Handle("/clusters/{clusterId}/resources/nodes/{name}/uncordon", h.wrapWithRBAC(h.CordonNode, auth.RoleOperator)).Methods("POST")
+	router.Handle("/clusters/{clusterId}/resources/nodes/{name}/drain", h.wrapWithRBAC(h.DrainNode, auth.RoleOperator)).Methods("POST")
+
 	// Events routes
 	router.Handle("/clusters/{clusterId}/events", h.wrapWithRBAC(h.GetEvents, auth.RoleViewer)).Methods("GET")
 

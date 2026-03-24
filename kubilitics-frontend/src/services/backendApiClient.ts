@@ -1190,6 +1190,53 @@ export async function postDeploymentRollback(
 }
 
 /**
+ * POST /api/v1/clusters/{clusterId}/resources/nodes/{name}/cordon
+ * Cordons or uncordons a node by setting spec.unschedulable.
+ */
+export async function postNodeCordon(
+  baseUrl: string,
+  clusterId: string,
+  name: string,
+  unschedulable: boolean
+): Promise<Record<string, unknown>> {
+  const path = `clusters/${encodeURIComponent(clusterId)}/resources/nodes/${encodeURIComponent(name)}/cordon`;
+  return backendRequest<Record<string, unknown>>(baseUrl, path, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ unschedulable }),
+  });
+}
+
+/** Result type for node drain. */
+export interface NodeDrainResult {
+  evicted: string[];
+  skipped: string[];
+  errors: string[];
+}
+
+/**
+ * POST /api/v1/clusters/{clusterId}/resources/nodes/{name}/drain
+ * Cordons then evicts all eligible pods from the node.
+ */
+export async function postNodeDrain(
+  baseUrl: string,
+  clusterId: string,
+  name: string,
+  options?: { gracePeriodSeconds?: number; force?: boolean; ignoreDaemonSets?: boolean }
+): Promise<NodeDrainResult> {
+  const path = `clusters/${encodeURIComponent(clusterId)}/resources/nodes/${encodeURIComponent(name)}/drain`;
+  return backendRequest<NodeDrainResult>(baseUrl, path, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      gracePeriodSeconds: options?.gracePeriodSeconds ?? -1,
+      force: options?.force ?? false,
+      ignoreDaemonSets: options?.ignoreDaemonSets ?? true,
+    }),
+  });
+}
+
+/**
  * POST /api/v1/clusters/{clusterId}/resources/cronjobs/{namespace}/{name}/trigger
  * Creates a one-off Job from the CronJob's jobTemplate.
  */
