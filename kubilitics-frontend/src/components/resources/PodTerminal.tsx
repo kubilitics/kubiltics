@@ -45,6 +45,7 @@ export function PodTerminal({
   const xtermRef = useRef<Terminal | null>(null);
   const fitRef = useRef<FitAddon | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
+  const dataDisposableRef = useRef<{ dispose: () => void } | null>(null);
   const [selectedContainer, setSelectedContainer] = useState(containerName);
   const [isConnected, setIsConnected] = useState(false);
   const [isMaximized, setIsMaximized] = useState(false);
@@ -106,20 +107,22 @@ export function PodTerminal({
     const ws = new WebSocket(wsUrl);
     wsRef.current = ws;
 
+    // Dispose previous onData listener before creating new one
+    dataDisposableRef.current?.dispose();
+
+    // Wire xterm input → WebSocket (check ws state on each keystroke)
+    const dataDisposable = term.onData((data) => {
+      if (wsRef.current?.readyState === WebSocket.OPEN) {
+        wsRef.current.send(JSON.stringify({ t: 'stdin', d: base64Encode(data) }));
+      }
+    });
+
     ws.onopen = () => {
       setIsConnected(true);
       term.writeln(`\x1b[32mConnected.\x1b[0m\r\n`);
-
       // Send initial resize
       const { cols, rows } = term;
       ws.send(JSON.stringify({ t: 'resize', r: { cols, rows } }));
-
-      // Wire xterm input → WebSocket
-      term.onData((data) => {
-        if (ws.readyState === WebSocket.OPEN) {
-          ws.send(JSON.stringify({ t: 'stdin', d: base64Encode(data) }));
-        }
-      });
     };
 
     ws.onmessage = (evt) => {
@@ -133,22 +136,27 @@ export function PodTerminal({
           setIsConnected(false);
         } else if (msg.t === 'error') {
           term.writeln(`\r\n\x1b[31mError: ${msg.d}\x1b[0m`);
+          setIsConnected(false);
         }
       } catch {
-        // Non-JSON message — write as-is
         term.write(evt.data);
       }
     };
 
-    ws.onclose = () => {
+    ws.onclose = (evt) => {
       setIsConnected(false);
-      term.writeln(`\r\n\x1b[33mDisconnected. Click Reconnect to start a new session.\x1b[0m`);
+      // Only show disconnect message if it wasn't a clean close (e.g., user navigated away)
+      if (evt.code !== 1000) {
+        term.writeln(`\r\n\x1b[33mDisconnected (code: ${evt.code}). Click Reconnect.\x1b[0m`);
+      }
     };
 
     ws.onerror = () => {
       setIsConnected(false);
-      term.writeln(`\r\n\x1b[31mConnection error. Check that the backend is running.\x1b[0m`);
+      term.writeln(`\r\n\x1b[31mConnection failed. Is the backend running?\x1b[0m`);
     };
+
+    dataDisposableRef.current = dataDisposable;
   }, [clusterId, podName, namespace, selectedContainer, baseUrl]);
 
   // Connect on mount
