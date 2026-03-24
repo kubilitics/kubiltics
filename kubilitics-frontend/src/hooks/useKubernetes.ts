@@ -837,7 +837,7 @@ export function useK8sPodLogs(
   namespace: string,
   podName: string,
   containerName?: string,
-  options?: { enabled?: boolean; tailLines?: number }
+  options?: { enabled?: boolean; tailLines?: number; follow?: boolean }
 ) {
   const { config } = useKubernetesConfigStore();
   const storedUrl = useBackendConfigStore((s) => s.backendBaseUrl);
@@ -878,9 +878,9 @@ export function useK8sPodLogs(
       !!podName &&
       (options?.enabled !== false) &&
       (useBackend ? true : config.isConnected),
-    // Removed aggressive 5s polling - rely on global defaults (refetchOnWindowFocus/reconnect)
-    // Pod logs can be refreshed manually if needed
-    refetchInterval: false,
+    // Poll every 3s when follow mode is active — gives near-real-time log tailing.
+    // When paused, no polling — user controls refresh manually.
+    refetchInterval: options?.follow ? 3000 : false,
   });
 }
 

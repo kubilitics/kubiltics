@@ -220,8 +220,9 @@ export function LogViewer({
     podName || '',
     selectedContainer,
     {
-      enabled: isConnected && !!podName && !!namespace && isStreaming,
+      enabled: isConnected && !!podName && !!namespace,
       tailLines,
+      follow: isStreaming,
     }
   );
 
