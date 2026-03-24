@@ -2,8 +2,8 @@ apiVersion: v2
 name: kubilitics
 description: Kubilitics backend — Kubernetes API gateway, topology, and observability
 type: application
-version: 0.2.2
-appVersion: "0.2.2"
+version: 0.2.3
+appVersion: "0.2.3"
 kubeVersion: ">=1.24.0"
 keywords:
   - kubernetes
