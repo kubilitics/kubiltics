@@ -34,6 +34,8 @@ import {
   Waypoints,
   MonitorCheck,
   Cpu,
+  X,
+  Trash2,
 } from 'lucide-react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
@@ -41,6 +43,7 @@ import { searchResources, type SearchResultItem as ApiSearchResult } from '@/ser
 import { getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
 import { useBackendConfigStore } from '@/stores/backendConfigStore';
 import { useClusterStore } from '@/stores/clusterStore';
+import { useSearchHistory } from '@/hooks/useSearchHistory';
 
 const SEARCH_DEBOUNCE_MS = 250;
 
@@ -204,11 +207,16 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
 
+  // Search history
+  const { history: searchHistory, addSearch, removeSearch, clearHistory } = useSearchHistory();
+
   // Cluster / backend state
   const backendBaseUrl = getEffectiveBackendBaseUrl(useBackendConfigStore((s) => s.backendBaseUrl));
   const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured);
   const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
   const activeCluster = useClusterStore((s) => s.activeCluster);
+  const setActiveNamespace = useClusterStore((s) => s.setActiveNamespace);
+  const activeNamespace = useClusterStore((s) => s.activeNamespace);
 
   const clusterId = currentClusterId ?? activeCluster?.id ?? null;
   const canSearchLive = isBackendConfigured() && !!clusterId && !!backendBaseUrl;
@@ -274,27 +282,45 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
 
   // Flatten all selectable items for keyboard navigation
   const allItems = useMemo(() => {
-    const items: { type: 'nav' | 'live' | 'quick'; path: string; id: string }[] = [];
+    const items: { type: 'nav' | 'live' | 'quick' | 'history'; path: string; id: string; query?: string; namespace?: string; resultType?: string }[] = [];
     if (!search.trim()) {
+      // Show history entries first, then quick navigation
+      searchHistory.forEach((h, i) => items.push({ type: 'history', path: '', id: `history-${i}`, query: h.query, resultType: h.resultType }));
       navigationItems.slice(0, 8).forEach((n) => items.push({ type: 'quick', path: n.path, id: n.id }));
     } else {
       filteredNav.forEach((n) => items.push({ type: 'nav', path: n.path, id: n.id }));
-      liveResults.forEach((r) => items.push({ type: 'live', path: r.path, id: r.id }));
+      liveResults.forEach((r) => items.push({ type: 'live', path: r.path, id: r.id, namespace: r.namespace, resultType: r.type }));
     }
     return items;
-  }, [search, filteredNav, liveResults]);
+  }, [search, filteredNav, liveResults, searchHistory]);
 
   useEffect(() => {
     setSelectedIndex(0);
   }, [allItems.length]);
 
   const handleSelect = useCallback(
-    (path: string) => {
+    (path: string, resultType?: string, namespace?: string) => {
+      // Record search in history
+      if (search.trim()) {
+        addSearch(search.trim(), resultType);
+      }
+      // Switch namespace if the result is in a different namespace
+      if (namespace && namespace !== activeNamespace) {
+        setActiveNamespace(namespace);
+      }
       navigate(path);
       onOpenChange(false);
       setSearch('');
     },
-    [navigate, onOpenChange]
+    [navigate, onOpenChange, search, addSearch, activeNamespace, setActiveNamespace]
+  );
+
+  const handleHistorySelect = useCallback(
+    (query: string) => {
+      setSearch(query);
+      inputRef.current?.focus();
+    },
+    []
   );
 
   // Keyboard navigation
@@ -308,10 +334,18 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
         setSelectedIndex((i) => Math.max(i - 1, 0));
       } else if (e.key === 'Enter' && allItems[selectedIndex]) {
         e.preventDefault();
-        handleSelect(allItems[selectedIndex].path);
+        const item = allItems[selectedIndex];
+        if (item.type === 'history') {
+          handleHistorySelect(item.query!);
+        } else {
+          handleSelect(item.path, item.resultType, item.namespace);
+        }
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        onOpenChange(false);
       }
     },
-    [allItems, selectedIndex, handleSelect]
+    [allItems, selectedIndex, handleSelect, handleHistorySelect, onOpenChange]
   );
 
   // Scroll selected item into view
@@ -337,7 +371,7 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
       <button
         key={item.id}
         data-index={idx}
-        onClick={() => handleSelect(item.path)}
+        onClick={() => handleSelect(item.path, item.id)}
         onMouseEnter={() => setSelectedIndex(idx)}
         className={cn(
           'flex items-center gap-3 w-full px-3 py-2 mx-1 rounded-xl text-left transition-all duration-150',
@@ -390,9 +424,67 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
 
         {/* Results */}
         <div ref={listRef} className="max-h-[400px] overflow-y-auto overscroll-contain py-2">
-          {/* Default state: popular pages */}
+          {/* Default state: search history + popular pages */}
           {!hasSearchText && (
             <>
+              {/* Recent searches */}
+              {searchHistory.length > 0 && (
+                <>
+                  <div className="flex items-center justify-between px-4 pb-1 pt-0.5">
+                    <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Recent searches</p>
+                    <button
+                      onClick={clearHistory}
+                      className="flex items-center gap-1 text-[10px] text-slate-400 hover:text-red-500 transition-colors"
+                    >
+                      <Trash2 className="h-3 w-3" />
+                      Clear
+                    </button>
+                  </div>
+                  {searchHistory.map((entry, i) => {
+                    const isSelected = flatIndex === selectedIndex;
+                    const idx = flatIndex++;
+                    return (
+                      <button
+                        key={`history-${i}`}
+                        data-index={idx}
+                        onClick={() => handleHistorySelect(entry.query)}
+                        onMouseEnter={() => setSelectedIndex(idx)}
+                        className={cn(
+                          'flex items-center gap-3 w-full px-3 py-2 mx-1 rounded-xl text-left transition-all duration-150 group',
+                          isSelected
+                            ? 'bg-blue-50 shadow-[0_0_0_1px_rgba(59,130,246,0.15)]'
+                            : 'hover:bg-slate-50'
+                        )}
+                        style={{ width: 'calc(100% - 8px)' }}
+                      >
+                        <div className={cn(
+                          'flex items-center justify-center w-8 h-8 rounded-lg transition-colors',
+                          isSelected ? 'bg-slate-200' : 'bg-slate-100'
+                        )}>
+                          <Clock className="h-4 w-4 text-slate-400" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <span className={cn('text-[13px] font-medium', isSelected ? 'text-blue-700' : 'text-slate-700')}>
+                            {entry.query}
+                          </span>
+                          {entry.resultType && (
+                            <span className="text-[10px] text-slate-400 ml-2">{entry.resultType}</span>
+                          )}
+                        </div>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); removeSearch(entry.query); }}
+                          className="opacity-0 group-hover:opacity-100 p-1 hover:bg-slate-200 rounded-md transition-all"
+                          title="Remove from history"
+                        >
+                          <X className="h-3 w-3 text-slate-400" />
+                        </button>
+                      </button>
+                    );
+                  })}
+                  <div className="h-px bg-slate-100 mx-3 my-2" />
+                </>
+              )}
+
               <div className="px-4 pb-1 pt-0.5">
                 <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Quick navigation</p>
               </div>
@@ -443,7 +535,7 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
                         <button
                           key={resource.id}
                           data-index={idx}
-                          onClick={() => handleSelect(resource.path)}
+                          onClick={() => handleSelect(resource.path, resource.type, resource.namespace)}
                           onMouseEnter={() => setSelectedIndex(idx)}
                           className={cn(
                             'flex items-center gap-3 w-full px-3 py-2 mx-1 rounded-xl text-left transition-all duration-150',
