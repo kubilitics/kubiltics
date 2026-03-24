@@ -54,6 +54,8 @@ interface CodeEditorProps {
   minHeight?: string;
   placeholder?: string;
   fontSize?: 'small' | 'medium' | 'large';
+  /** Called after Monaco mounts, exposing the editor instance for external control. */
+  onEditorReady?: (editor: monacoType.editor.IStandaloneCodeEditor) => void;
   /** @deprecated Ignored — extensions are CodeMirror-specific. */
   extensions?: unknown[];
 }
@@ -70,6 +72,7 @@ export function CodeEditor({
   className,
   minHeight = '400px',
   fontSize = 'small',
+  onEditorReady,
 }: CodeEditorProps) {
   const editorRef = useRef<monacoType.editor.IStandaloneCodeEditor | null>(null);
   const [monacoReady, setMonacoReady] = useState(false);
@@ -148,7 +151,10 @@ export function CodeEditor({
 
     // Focus the editor
     editor.focus();
-  }, []);
+
+    // Expose editor instance to parent
+    onEditorReady?.(editor);
+  }, [onEditorReady]);
 
   const handleChange: OnChange = useCallback((val) => {
     if (onChange && val !== undefined) {
