@@ -35,7 +35,7 @@ export function QuotaPulse({ title, percent, color = "#326CE5" }: QuotaPulseProp
                 </PieChart>
             </ResponsiveContainer>
             <div className="mt-2 text-center">
-                <span className="block text-lg font-black text-[#326CE5]">{percent}%</span>
+                <span className="block text-lg font-black text-[#326CE5] dark:text-blue-400">{percent}%</span>
                 <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">{title}</span>
             </div>
         </div>

@@ -32,6 +32,7 @@ import { isTauri } from '@/lib/tauri';
 import { useThemeStore, type Theme } from '@/stores/themeStore';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
+import { ClusterAppearanceSettings } from '@/components/settings/ClusterAppearance';
 
 const settingsSchema = z.object({
   backendBaseUrl: z.string().url({ message: 'Please enter a valid URL' }),
@@ -452,6 +453,9 @@ export default function Settings() {
           )}
         </CardContent>
       </Card>
+
+      {/* ━━━ Cluster Appearance ━━━ */}
+      <ClusterAppearanceSettings />
 
       {/* ━━━ Projects ━━━ */}
       <Card className="rounded-2xl overflow-hidden shadow-md border-border/50 dark:bg-slate-900/60">

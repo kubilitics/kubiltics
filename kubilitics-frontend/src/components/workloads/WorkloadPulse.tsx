@@ -82,12 +82,12 @@ export function WorkloadPulse({ data }: WorkloadPulseProps) {
             </ResponsiveContainer>
 
             {/* Central Intelligence Score - Sized to fit within innerRadius */}
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center justify-center w-[140px] h-[140px] rounded-full bg-white shadow-xl shadow-blue-500/5 border border-slate-50 z-20 overflow-hidden">
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center justify-center w-[140px] h-[140px] rounded-full bg-white dark:bg-slate-900 shadow-xl shadow-blue-500/5 border border-slate-50 dark:border-slate-700 z-20 overflow-hidden">
                 {/* Visual pulse ring */}
                 <motion.div
                     animate={{ scale: [1, 1.05, 1], opacity: [0.3, 0.1, 0.3] }}
                     transition={{ duration: 3, repeat: Infinity }}
-                    className="absolute inset-2 border-2 border-blue-100 rounded-full"
+                    className="absolute inset-2 border-2 border-blue-100 dark:border-blue-900 rounded-full"
                 />
 
                 <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1 z-10">Cluster Health</span>
@@ -98,7 +98,7 @@ export function WorkloadPulse({ data }: WorkloadPulseProps) {
                         animate={{ opacity: 1, y: 0 }}
                         className="flex items-baseline z-10"
                     >
-                        <span className="text-4xl font-bold text-slate-900 tracking-tighter">
+                        <span className="text-4xl font-bold text-slate-900 dark:text-slate-100 tracking-tighter">
                             {score.toFixed(0)}
                         </span>
                         <span className="text-lg font-bold text-blue-500 ml-0.5">%</span>
@@ -114,11 +114,11 @@ export function WorkloadPulse({ data }: WorkloadPulseProps) {
             {/* Clean Segment Labels - Positioned at corners to avoid overlap */}
             <div className="absolute inset-0 pointer-events-none text-[9px] font-bold text-slate-400 uppercase tracking-widest flex flex-col justify-between p-2">
                 <div className="flex justify-between items-start">
-                    <span className="bg-white/80 backdrop-blur-sm px-2 py-1 rounded-md border border-slate-100/50">Liveness Pulse</span>
-                    <span className="bg-white/80 backdrop-blur-sm px-2 py-1 rounded-md border border-slate-100/50">Controller State</span>
+                    <span className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm px-2 py-1 rounded-md border border-slate-100/50 dark:border-slate-700/50">Liveness Pulse</span>
+                    <span className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm px-2 py-1 rounded-md border border-slate-100/50 dark:border-slate-700/50">Controller State</span>
                 </div>
                 <div className="flex justify-center">
-                    <span className="bg-slate-900/5 backdrop-blur-sm px-3 py-1 rounded-full text-blue-600 border border-blue-100/30">Autonomous Intelligence</span>
+                    <span className="bg-slate-900/5 dark:bg-slate-100/5 backdrop-blur-sm px-3 py-1 rounded-full text-blue-600 dark:text-blue-400 border border-blue-100/30 dark:border-blue-800/30">Autonomous Intelligence</span>
                 </div>
             </div>
         </div>

@@ -790,7 +790,7 @@ export function MetricsDashboard({ resourceType, resourceName, namespace, podRes
                         />
                         <Tooltip
                           contentStyle={{
-                            backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                            backgroundColor: 'var(--chart-tooltip-bg)',
                             backdropFilter: 'blur(4px)',
                             border: '1px solid hsl(var(--border))',
                             borderRadius: '8px',
@@ -859,7 +859,7 @@ export function MetricsDashboard({ resourceType, resourceName, namespace, podRes
                         />
                         <Tooltip
                           contentStyle={{
-                            backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                            backgroundColor: 'var(--chart-tooltip-bg)',
                             backdropFilter: 'blur(4px)',
                             border: '1px solid hsl(var(--border))',
                             borderRadius: '8px',
@@ -983,7 +983,7 @@ export function MetricsDashboard({ resourceType, resourceName, namespace, podRes
                       />
                       <Tooltip
                         contentStyle={{
-                          backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                          backgroundColor: 'var(--chart-tooltip-bg)',
                           backdropFilter: 'blur(4px)',
                           border: '1px solid hsl(var(--border))',
                           borderRadius: '8px',
@@ -1066,7 +1066,7 @@ export function MetricsDashboard({ resourceType, resourceName, namespace, podRes
                       />
                       <Tooltip
                         contentStyle={{
-                          backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                          backgroundColor: 'var(--chart-tooltip-bg)',
                           backdropFilter: 'blur(4px)',
                           border: '1px solid hsl(var(--border))',
                           borderRadius: '8px',

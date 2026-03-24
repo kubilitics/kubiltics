@@ -353,8 +353,8 @@ export function HistoricalMetrics({
                   />
                   <Tooltip
                     contentStyle={{
-                      backgroundColor: 'var(--color-card, #fff)',
-                      borderColor: 'var(--color-border, #e2e8f0)',
+                      backgroundColor: 'var(--chart-tooltip-bg)',
+                      borderColor: 'var(--chart-tooltip-border)',
                       borderRadius: '0.75rem',
                       fontSize: '12px',
                     }}

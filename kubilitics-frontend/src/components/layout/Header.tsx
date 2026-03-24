@@ -22,7 +22,7 @@ import {
 import { BrandLogo } from '@/components/BrandLogo';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { isTauri } from '@/lib/tauri';
-import { useClusterStore } from '@/stores/clusterStore';
+import { useClusterStore, getClusterAppearance, getEnvBadgeLabel, getEnvBadgeClasses } from '@/stores/clusterStore';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   DropdownMenu,
@@ -122,6 +122,20 @@ export function Header() {
   const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const queryClient = useQueryClient();
+
+  // Week 7: Cluster appearance — re-read on change events
+  const [appearanceTick, setAppearanceTick] = useState(0);
+  useEffect(() => {
+    const onChanged = () => setAppearanceTick((t) => t + 1);
+    window.addEventListener('cluster-appearance-changed', onChanged);
+    return () => window.removeEventListener('cluster-appearance-changed', onChanged);
+  }, []);
+  const activeAppearance = activeCluster ? getClusterAppearance(activeCluster.id) : null;
+  // Suppress unused-var lint — appearanceTick is read implicitly to trigger re-render
+  void appearanceTick;
+  const activeDisplayName = activeAppearance?.alias || activeCluster?.name;
+  const activeEnvLabel = activeAppearance ? getEnvBadgeLabel(activeAppearance.environment) : null;
+  const activeEnvClasses = activeAppearance ? getEnvBadgeClasses(activeAppearance.environment) : '';
 
   const handleLogout = async () => {
     setIsLoggingOut(true);
@@ -272,15 +286,21 @@ export function Header() {
                 {activeCluster && (
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <button className={cn(BTN, 'shrink-0 max-w-[160px] lg:max-w-[240px] group press-effect')} aria-label="Select cluster">
-                        <span className={cn(
-                          'block w-2 h-2 rounded-full shrink-0',
-                          // If backend is unhealthy, show that; otherwise show cluster status
-                          backendStatus === 'error' ? 'bg-red-500' :
-                            backendStatus === 'warning' ? 'bg-amber-500' :
-                              statusColors[activeCluster.status]
-                        )} />
-                        <span className="truncate text-base font-bold tracking-tight">{activeCluster.name}</span>
+                      <button className={cn(BTN, 'shrink-0 max-w-[160px] lg:max-w-[300px] group press-effect')} aria-label="Select cluster">
+                        <span
+                          className="block w-2.5 h-2.5 rounded-full shrink-0 ring-2 ring-white dark:ring-slate-800"
+                          style={{
+                            backgroundColor: backendStatus === 'error' ? '#ef4444' :
+                              backendStatus === 'warning' ? '#f59e0b' :
+                              (activeAppearance?.color ?? undefined),
+                          }}
+                        />
+                        <span className="truncate text-base font-bold tracking-tight">{activeDisplayName}</span>
+                        {activeEnvLabel && (
+                          <span className={cn('text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-full border shrink-0', activeEnvClasses)}>
+                            {activeEnvLabel}
+                          </span>
+                        )}
                         <ChevronDown className="h-5 w-5 text-slate-400 group-hover:text-slate-600 transition-colors shrink-0" />
                       </button>
                     </DropdownMenuTrigger>
@@ -288,7 +308,12 @@ export function Header() {
                       <div className="px-4 py-3 mb-3">
                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Compute Context</p>
                       </div>
-                      {clusters.map((cluster) => (
+                      {clusters.map((cluster) => {
+                        const clusterAppearance = getClusterAppearance(cluster.id);
+                        const clusterEnvLabel = getEnvBadgeLabel(clusterAppearance.environment);
+                        const clusterEnvClasses = getEnvBadgeClasses(clusterAppearance.environment);
+                        const clusterDisplayName = clusterAppearance.alias || cluster.name;
+                        return (
                         <DropdownMenuItem
                           key={cluster.id}
                           onClick={() => {
@@ -309,12 +334,17 @@ export function Header() {
                           className="flex items-center gap-4 py-4 px-4 cursor-pointer rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-all group"
                         >
                           <div className="relative shrink-0">
-                            <div className={cn('absolute inset-0 blur-[4px] opacity-40 rounded-full', statusColors[cluster.status])} />
-                            <div className={cn('relative w-3 h-3 rounded-full border-2 border-white', statusColors[cluster.status])} />
+                            <div className="absolute inset-0 blur-[4px] opacity-40 rounded-full" style={{ backgroundColor: clusterAppearance.color }} />
+                            <div className="relative w-3 h-3 rounded-full border-2 border-white" style={{ backgroundColor: clusterAppearance.color }} />
                           </div>
                           <div className="flex-1 min-w-0">
-                            <div className="text-sm font-bold text-slate-800 dark:text-slate-200 tracking-tight flex items-center gap-2">
-                              {cluster.name}
+                            <div className="text-sm font-bold text-slate-800 dark:text-slate-200 tracking-tight flex items-center gap-2 flex-wrap">
+                              {clusterDisplayName}
+                              {clusterEnvLabel && (
+                                <span className={cn('text-[8px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-full border', clusterEnvClasses)}>
+                                  {clusterEnvLabel}
+                                </span>
+                              )}
                               {cluster.provider && (
                                 <span className="text-[9px] px-2 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-black uppercase tracking-widest rounded-full">
                                   {cluster.provider.replace(/-/g, ' ')}
@@ -329,7 +359,8 @@ export function Header() {
                             </div>
                           )}
                         </DropdownMenuItem>
-                      ))}
+                        );
+                      })}
                       <DropdownMenuSeparator className="my-2 bg-slate-100/60 dark:bg-slate-700/60" />
                       <DropdownMenuItem onClick={() => navigate('/connect?addCluster=true')} className="gap-3 cursor-pointer py-4 px-4 rounded-2xl text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
                         <div className="h-9 w-9 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center">

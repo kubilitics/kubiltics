@@ -163,23 +163,23 @@ export function ResourceMetricsChart({
                   <stop offset="95%" stopColor={color} stopOpacity={0} />
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" />
               <XAxis
                 dataKey="time"
-                stroke="#6b7280"
+                stroke="var(--chart-axis)"
                 fontSize={11}
                 tickLine={false}
               />
               <YAxis
-                stroke="#6b7280"
+                stroke="var(--chart-axis)"
                 fontSize={11}
                 tickLine={false}
                 domain={[0, limit ? limit * 1.1 : 'auto']}
               />
               <Tooltip
                 contentStyle={{
-                  backgroundColor: 'white',
-                  border: '1px solid #e5e7eb',
+                  backgroundColor: 'var(--chart-tooltip-bg)',
+                  border: '1px solid var(--chart-tooltip-border)',
                   borderRadius: '6px',
                   fontSize: '12px'
                 }}
@@ -205,23 +205,23 @@ export function ResourceMetricsChart({
             </AreaChart>
           ) : (
             <LineChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" />
               <XAxis
                 dataKey="time"
-                stroke="#6b7280"
+                stroke="var(--chart-axis)"
                 fontSize={11}
                 tickLine={false}
               />
               <YAxis
-                stroke="#6b7280"
+                stroke="var(--chart-axis)"
                 fontSize={11}
                 tickLine={false}
                 domain={[0, limit ? limit * 1.1 : 'auto']}
               />
               <Tooltip
                 contentStyle={{
-                  backgroundColor: 'white',
-                  border: '1px solid #e5e7eb',
+                  backgroundColor: 'var(--chart-tooltip-bg)',
+                  border: '1px solid var(--chart-tooltip-border)',
                   borderRadius: '6px',
                   fontSize: '12px'
                 }}

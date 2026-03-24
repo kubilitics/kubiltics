@@ -31,7 +31,7 @@ export function ComplianceMedal({ grade, score, className }: ComplianceMedalProp
                     animate={{ scale: 1, opacity: 1 }}
                     transition={{ type: 'spring', damping: 15 }}
                     className={cn(
-                        "relative w-32 h-32 rounded-full flex flex-col items-center justify-center border-4 border-white shadow-2xl bg-gradient-to-br",
+                        "relative w-32 h-32 rounded-full flex flex-col items-center justify-center border-4 border-white dark:border-slate-700 shadow-2xl bg-gradient-to-br",
                         getGradeStyles(grade)
                     )}
                 >
@@ -48,14 +48,14 @@ export function ComplianceMedal({ grade, score, className }: ComplianceMedalProp
                     initial={{ x: 20, opacity: 0 }}
                     animate={{ x: 0, opacity: 1 }}
                     transition={{ delay: 0.3 }}
-                    className="absolute -bottom-2 -right-2 bg-white text-[#326CE5] px-3 py-1 rounded-full border border-blue-100 shadow-lg text-sm font-black"
+                    className="absolute -bottom-2 -right-2 bg-white dark:bg-slate-800 text-[#326CE5] dark:text-blue-400 px-3 py-1 rounded-full border border-blue-100 dark:border-blue-800 shadow-lg text-sm font-black"
                 >
                     {score}%
                 </motion.div>
             </div>
 
             <div className="text-center">
-                <p className="text-[#326CE5] font-bold text-sm">Compliance Standing</p>
+                <p className="text-[#326CE5] dark:text-blue-400 font-bold text-sm">Compliance Standing</p>
                 <p className="text-xs text-muted-foreground font-medium">CIS Benchmark v1.23</p>
             </div>
         </div>

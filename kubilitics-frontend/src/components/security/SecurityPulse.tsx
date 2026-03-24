@@ -96,11 +96,11 @@ export function SecurityPulse({ score = 0, summary }: SecurityPulseProps) {
             </ResponsiveContainer>
 
             {/* Central Score Node */}
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center justify-center w-[160px] h-[160px] rounded-full bg-white shadow-2xl border border-slate-50 z-20">
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center justify-center w-[160px] h-[160px] rounded-full bg-white dark:bg-slate-900 shadow-2xl border border-slate-50 dark:border-slate-700 z-20">
                 <motion.div
                     animate={{ scale: [1, 1.03, 1], opacity: [0.4, 0.2, 0.4] }}
                     transition={{ duration: 4, repeat: Infinity }}
-                    className="absolute inset-3 border border-slate-100 rounded-full"
+                    className="absolute inset-3 border border-slate-100 dark:border-slate-700 rounded-full"
                 />
 
                 <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1 z-10">Posture Score</span>
@@ -112,16 +112,16 @@ export function SecurityPulse({ score = 0, summary }: SecurityPulseProps) {
                         animate={{ opacity: 1, scale: 1 }}
                         className="flex items-baseline z-10"
                     >
-                        <span className="text-5xl font-black text-slate-900 tracking-tighter">
+                        <span className="text-5xl font-black text-slate-900 dark:text-slate-100 tracking-tighter">
                             {score}
                         </span>
                         <span className={`text-xl font-black ml-1 ${getStatusColor()}`}>/100</span>
                     </motion.div>
                 </AnimatePresence>
 
-                <div className="flex items-center gap-2 mt-3 z-10 px-4 py-1.5 rounded-full bg-slate-50 border border-slate-100">
+                <div className="flex items-center gap-2 mt-3 z-10 px-4 py-1.5 rounded-full bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700">
                     <StatusIcon className={`h-3.5 w-3.5 ${getStatusColor()}`} />
-                    <span className="text-[10px] font-bold text-slate-600 uppercase tracking-tight">
+                    <span className="text-[10px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-tight">
                         {score >= 90 ? 'Hardened' : score >= 70 ? 'Resilient' : score >= 50 ? 'Warning' : 'Critical'}
                     </span>
                 </div>
@@ -140,7 +140,7 @@ export function SecurityPulse({ score = 0, summary }: SecurityPulseProps) {
                     </div>
                 </div>
                 <div className="flex justify-center pb-2">
-                    <span className="text-[10px] font-black text-slate-300 uppercase tracking-[0.3em]">Kubilitics Intelligence Unit</span>
+                    <span className="text-[10px] font-black text-slate-300 dark:text-slate-600 uppercase tracking-[0.3em]">Kubilitics Intelligence Unit</span>
                 </div>
             </div>
         </div>

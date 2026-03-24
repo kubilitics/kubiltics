@@ -101,6 +101,13 @@
     --sidebar-accent: 210 40% 96.1%;
     --sidebar-accent-foreground: 222.2 47.4% 11.2%;
 
+    /* ─── Chart System ─── */
+    --chart-tooltip-bg: #ffffff;
+    --chart-tooltip-border: #e5e7eb;
+    --chart-grid: #e5e7eb;
+    --chart-axis: #6b7280;
+    --chart-bg-track: rgba(0, 0, 0, 0.04);
+
     /* Legacy aliases */
     --apple-shadow: var(--shadow-3);
     --apple-shadow-lg: var(--shadow-5);
@@ -157,6 +164,13 @@
     --error: 0 72% 51%;
     --info: 217 91% 60%;
     --cosmic-purple: 263 70% 58%;
+
+    /* ─── Dark Chart System ─── */
+    --chart-tooltip-bg: hsl(228 14% 14%);
+    --chart-tooltip-border: hsl(228 14% 24%);
+    --chart-grid: hsl(228 14% 22%);
+    --chart-axis: hsl(215 16% 55%);
+    --chart-bg-track: rgba(255, 255, 255, 0.06);
 
     /* ─── Dark Card System ─── */
     --card-border: hsl(228 14% 20% / 0.8);

@@ -39,7 +39,7 @@ export function HealthRing({
                     cx={size / 2}
                     cy={size / 2}
                     r={radius}
-                    stroke="rgba(0, 0, 0, 0.04)"
+                    stroke="var(--chart-bg-track)"
                     strokeWidth={strokeWidth}
                     fill="none"
                 />
@@ -61,7 +61,7 @@ export function HealthRing({
             {showText && (
                 <div className="absolute inset-0 flex items-center justify-center flex-col leading-none">
                     <span
-                        className="font-bold tracking-tight tabular-nums text-slate-900"
+                        className="font-bold tracking-tight tabular-nums text-slate-900 dark:text-slate-100"
                         style={{ fontSize: `${Math.max(12, size * 0.28)}px` }}
                     >
                         {score}

@@ -51,7 +51,7 @@ export function StorageRadial({ title, value, subtext }: StorageRadialProps) {
                     </Text>
                 </PieChart>
             </ResponsiveContainer>
-            <span className="text-xs font-black text-[#326CE5] uppercase tracking-tighter mt-2">{title}</span>
+            <span className="text-xs font-black text-[#326CE5] dark:text-blue-400 uppercase tracking-tighter mt-2">{title}</span>
         </div>
     );
 }

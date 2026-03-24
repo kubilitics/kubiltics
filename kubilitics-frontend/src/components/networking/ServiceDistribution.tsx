@@ -38,9 +38,9 @@ export function ServiceDistribution({ data }: ServiceDistributionProps) {
                     </Pie>
                     <Tooltip
                         contentStyle={{
-                            backgroundColor: '#FFFFFF',
+                            backgroundColor: 'var(--chart-tooltip-bg)',
                             borderRadius: '12px',
-                            border: '1px solid #E2E8F0',
+                            border: '1px solid var(--chart-tooltip-border)',
                             boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'
                         }}
                     />

@@ -18,6 +18,7 @@ import { useDocumentTitle } from '@/hooks/useDocumentTitle';
 import { RouteAnnouncer } from '@/components/a11y/RouteAnnouncer';
 import { usePrefetchResources } from '@/hooks/usePrefetchResources';
 import { useMemoryMonitor } from '@/hooks/useMemoryMonitor';
+import { ProductionBanner } from './ProductionBanner';
 
 export function AppLayout() {
   useRecentlyVisited();
@@ -97,6 +98,7 @@ export function AppLayout() {
         Skip to main content
       </a>
       <RouteAnnouncer />
+      <ProductionBanner />
       <Header />
       {isDemo && (
         <div
