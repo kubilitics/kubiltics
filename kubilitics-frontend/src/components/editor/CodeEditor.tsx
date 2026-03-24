@@ -216,12 +216,7 @@ export function CodeEditor({
           lineHeight: 22,
           letterSpacing: 0.3,
           // VS Code experience
-          minimap: {
-            enabled: true,
-            scale: 2,
-            showSlider: 'mouseover',
-            renderCharacters: false,
-          },
+          minimap: { enabled: false },
           // Scrollbar styling
           scrollbar: {
             vertical: 'auto',
@@ -258,10 +253,11 @@ export function CodeEditor({
             autoFindInSelection: 'multiline',
             seedSearchStringFromSelection: 'selection',
           },
-          // Smooth scrolling
-          smoothScrolling: true,
-          cursorBlinking: 'smooth',
-          cursorSmoothCaretAnimation: 'on',
+          // Smooth scrolling disabled — WKWebView has rendering artifacts with CSS
+          // scroll-behavior:smooth on position:absolute elements inside the editor.
+          smoothScrolling: false,
+          cursorBlinking: 'blink',
+          cursorSmoothCaretAnimation: 'off',
           cursorStyle: 'line',
           cursorWidth: 2,
           // Padding
@@ -286,8 +282,9 @@ export function CodeEditor({
           occurrencesHighlight: 'singleFile',
           // Hover
           hover: { enabled: false },
-          // Sticky scroll (VS Code-like breadcrumbs for nested YAML)
-          stickyScroll: { enabled: true, maxLineCount: 3 },
+          // Sticky scroll disabled — WKWebView (Tauri) renders it incorrectly,
+          // causing overlapping line numbers and garbled text during scroll.
+          stickyScroll: { enabled: false },
         }}
       />
     </div>
