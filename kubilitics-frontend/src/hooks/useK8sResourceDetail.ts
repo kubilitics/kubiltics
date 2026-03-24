@@ -80,7 +80,7 @@ export function useResourceEvents(
   const backendQuery = useQuery({
     queryKey: ['resource-events', clusterId, namespace ?? '', kind, name ?? ''],
     queryFn: () => getResourceEvents(baseUrl!, clusterId!, namespace ?? '', kind, name!, 20),
-    enabled: useBackend && !!baseUrl,
+    enabled: useBackend,  // baseUrl='' is valid (Vite proxy in dev mode)
     staleTime: 0,
     refetchOnMount: 'always' as const,
   });
