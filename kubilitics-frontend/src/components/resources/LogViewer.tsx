@@ -1,4 +1,11 @@
-import { useState, useRef, useEffect, useCallback, useMemo, memo } from 'react';
+import {
+  useState,
+  useRef,
+  useEffect,
+  useCallback,
+  useMemo,
+  memo,
+} from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import {
@@ -13,6 +20,16 @@ import {
   WifiOff,
   Clock,
   AlignJustify,
+  Regex,
+  FlipHorizontal,
+  Braces,
+  ChevronDown,
+  ChevronRight,
+  Pin,
+  PinOff,
+  History,
+  X,
+  AlertTriangle,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -21,6 +38,9 @@ import { cn } from '@/lib/utils';
 import { parseRawLogs, type LogEntry } from '@/lib/logParser';
 import { useK8sPodLogs } from '@/hooks/useKubernetes';
 import { useConnectionStatus } from '@/hooks/useConnectionStatus';
+import { useLogFilterStore } from '@/stores/logFilterStore';
+import { useLogFilterHistory } from '@/hooks/useLogFilterHistory';
+import { useTheme } from '@/hooks/useTheme';
 import { toast } from '@/components/ui/sonner';
 
 export type { LogEntry };
@@ -31,6 +51,8 @@ export interface LogViewerProps {
   namespace?: string;
   containerName?: string;
   containers?: string[];
+  /** Map of container name to status (e.g. "running", "terminated", "waiting") */
+  containerStatuses?: Record<string, string>;
   onContainerChange?: (container: string) => void;
   className?: string;
   tailLines?: number;
@@ -47,23 +69,33 @@ const LEVEL_PILLS: Array<{ key: string | null; label: string }> = [
 ];
 
 const TAIL_OPTIONS = [50, 100, 250, 500, 1000, 2000];
-
+const CONTEXT_OPTIONS = [0, 2, 3, 5, 10];
 const EMPTY_LOGS: LogEntry[] = [];
+
+// Exponential backoff config for auto-reconnect
+const RECONNECT_BASE_MS = 1000;
+const RECONNECT_MAX_MS = 30_000;
+const RECONNECT_MAX_ATTEMPTS = 8;
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function getLevelPillClass(key: string | null, isActive: boolean): string {
-  if (!isActive) {
-    return 'text-white/35 border border-transparent hover:text-white/60 hover:bg-white/[0.06] hover:border-white/10';
+function getLevelPillClass(key: string | null, isActive: boolean, isDark: boolean): string {
+  const inactive = isDark
+    ? 'text-white/35 border border-transparent hover:text-white/60 hover:bg-white/[0.06] hover:border-white/10'
+    : 'text-black/35 border border-transparent hover:text-black/60 hover:bg-black/[0.06] hover:border-black/10';
+  if (!isActive) return inactive;
+  if (key === null) {
+    return isDark
+      ? 'bg-white/15 text-white border border-white/25'
+      : 'bg-black/10 text-black border border-black/20';
   }
-  if (key === null) return 'bg-white/15 text-white border border-white/25';
   const map: Record<string, string> = {
-    info: 'bg-blue-500/20 text-blue-300 border border-blue-500/30',
-    warn: 'bg-amber-500/20 text-amber-300 border border-amber-500/30',
-    error: 'bg-red-500/20 text-red-300 border border-red-500/30',
-    debug: 'bg-purple-500/20 text-purple-300 border border-purple-500/30',
+    info:  'bg-blue-500/20 text-blue-600 dark:text-blue-300 border border-blue-500/30',
+    warn:  'bg-amber-500/20 text-amber-600 dark:text-amber-300 border border-amber-500/30',
+    error: 'bg-red-500/20 text-red-600 dark:text-red-300 border border-red-500/30',
+    debug: 'bg-purple-500/20 text-purple-600 dark:text-purple-300 border border-purple-500/30',
   };
-  return map[key] ?? 'bg-white/15 text-white border border-white/25';
+  return map[key] ?? (isDark ? 'bg-white/15 text-white border border-white/25' : 'bg-black/10 text-black border border-black/20');
 }
 
 function getLevelCount(logs: LogEntry[], key: string | null): number {
@@ -85,25 +117,140 @@ function formatTimestamp(ts: string): string {
   }
 }
 
+function buildRegex(query: string, useRegex: boolean): RegExp | null {
+  if (!query.trim()) return null;
+  if (!useRegex) {
+    return new RegExp(query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+  }
+  try {
+    return new RegExp(query, 'gi');
+  } catch {
+    return null;
+  }
+}
+
+/** Expand a set of match indices to include +/-contextLines neighbours. */
+function expandWithContext(
+  matchIndices: Set<number>,
+  total: number,
+  contextLines: number
+): Set<number> {
+  if (contextLines === 0) return matchIndices;
+  const expanded = new Set<number>();
+  for (const idx of matchIndices) {
+    for (let i = Math.max(0, idx - contextLines); i <= Math.min(total - 1, idx + contextLines); i++) {
+      expanded.add(i);
+    }
+  }
+  return expanded;
+}
+
 // ─── HighlightedText ──────────────────────────────────────────────────────────
 
-function HighlightedText({ text, query }: { text: string; query: string }) {
-  if (!query.trim()) return <>{text}</>;
-  const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const parts = text.split(new RegExp(`(${escaped})`, 'gi'));
+function HighlightedText({
+  text,
+  regex,
+}: {
+  text: string;
+  regex: RegExp | null;
+}) {
+  if (!regex) return <>{text}</>;
+  // Clone to avoid mutating shared regex state across cells
+  const re = new RegExp(regex.source, regex.flags);
+  const parts: { text: string; match: boolean }[] = [];
+  let last = 0;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(text)) !== null) {
+    if (m.index > last) parts.push({ text: text.slice(last, m.index), match: false });
+    parts.push({ text: m[0], match: true });
+    last = m.index + m[0].length;
+    if (m[0].length === 0) { re.lastIndex++; }
+  }
+  if (last < text.length) parts.push({ text: text.slice(last), match: false });
+
   return (
     <>
-      {parts.map((part, i) =>
-        part.toLowerCase() === query.toLowerCase() ? (
+      {parts.map((p, i) =>
+        p.match ? (
           <mark key={i} className="bg-amber-400/30 text-amber-200 rounded-sm not-italic">
-            {part}
+            {p.text}
           </mark>
         ) : (
-          <span key={i}>{part}</span>
+          <span key={i}>{p.text}</span>
         )
       )}
     </>
   );
+}
+
+// ─── JsonTree ─────────────────────────────────────────────────────────────────
+
+function JsonTree({ data, depth = 0 }: { data: unknown; depth?: number }) {
+  const [collapsed, setCollapsed] = useState(depth > 1);
+
+  if (data === null) return <span className="text-slate-400">null</span>;
+  if (typeof data === 'boolean') return <span className="text-purple-400">{String(data)}</span>;
+  if (typeof data === 'number') return <span className="text-amber-300">{String(data)}</span>;
+  if (typeof data === 'string') return <span className="text-emerald-300">&quot;{data}&quot;</span>;
+
+  if (Array.isArray(data)) {
+    if (data.length === 0) return <span className="text-white/50">[]</span>;
+    return (
+      <span>
+        <button onClick={() => setCollapsed(v => !v)} className="text-white/40 hover:text-white/70">
+          {collapsed ? <ChevronRight className="inline h-3 w-3" /> : <ChevronDown className="inline h-3 w-3" />}
+        </button>
+        {collapsed ? (
+          <span className="text-white/50">[{data.length}]</span>
+        ) : (
+          <span>
+            {'['}
+            <div style={{ marginLeft: 16 }}>
+              {data.map((item, i) => (
+                <div key={i}>
+                  <JsonTree data={item} depth={depth + 1} />
+                  {i < data.length - 1 && <span className="text-white/30">,</span>}
+                </div>
+              ))}
+            </div>
+            {']'}
+          </span>
+        )}
+      </span>
+    );
+  }
+
+  if (typeof data === 'object') {
+    const entries = Object.entries(data as Record<string, unknown>);
+    if (entries.length === 0) return <span className="text-white/50">{'{}'}</span>;
+    return (
+      <span>
+        <button onClick={() => setCollapsed(v => !v)} className="text-white/40 hover:text-white/70">
+          {collapsed ? <ChevronRight className="inline h-3 w-3" /> : <ChevronDown className="inline h-3 w-3" />}
+        </button>
+        {collapsed ? (
+          <span className="text-white/50">{'{'}{entries.length} keys{'}'}</span>
+        ) : (
+          <span>
+            {'{'}
+            <div style={{ marginLeft: 16 }}>
+              {entries.map(([k, v], i) => (
+                <div key={k}>
+                  <span className="text-blue-300">&quot;{k}&quot;</span>
+                  <span className="text-white/50">: </span>
+                  <JsonTree data={v} depth={depth + 1} />
+                  {i < entries.length - 1 && <span className="text-white/30">,</span>}
+                </div>
+              ))}
+            </div>
+            {'}'}
+          </span>
+        )}
+      </span>
+    );
+  }
+
+  return <span className="text-white/70">{String(data)}</span>;
 }
 
 // ─── LogRow ───────────────────────────────────────────────────────────────────
@@ -111,50 +258,100 @@ function HighlightedText({ text, query }: { text: string; query: string }) {
 interface LogRowProps {
   log: LogEntry;
   index: number;
+  isContext: boolean;
   showTimestamps: boolean;
   wrapLines: boolean;
-  searchQuery: string;
+  prettifyJson: boolean;
+  searchRegex: RegExp | null;
+  isDark: boolean;
   onCopy: (log: LogEntry) => void;
 }
 
 // PERF Area 4: Memoize log rows — prevents re-render of all rows on filter/scroll
-const LogRow = memo(function LogRow({ log, index, showTimestamps, wrapLines, searchQuery, onCopy }: LogRowProps) {
+const LogRow = memo(function LogRow({
+  log,
+  index,
+  isContext,
+  showTimestamps,
+  wrapLines,
+  prettifyJson,
+  searchRegex,
+  isDark,
+  onCopy,
+}: LogRowProps) {
   const levelBadge: Record<string, { label: string; cls: string }> = {
     info:  { label: 'INFO', cls: 'text-blue-400/80' },
     warn:  { label: 'WARN', cls: 'text-amber-400' },
     error: { label: 'ERR!', cls: 'text-red-400' },
     debug: { label: 'DBG ', cls: 'text-purple-400/55' },
   };
-  const msgCls: Record<string, string> = {
+
+  const darkMsgCls: Record<string, string> = {
     info:  'text-[hsl(142_76%_73%/0.85)]',
     warn:  'text-amber-100/85',
     error: 'text-red-300',
     debug: 'text-white/45',
   };
-  const rowBg: Record<string, string> = {
+  const lightMsgCls: Record<string, string> = {
+    info:  'text-emerald-700',
+    warn:  'text-amber-700',
+    error: 'text-red-600',
+    debug: 'text-slate-400',
+  };
+
+  const darkRowBg: Record<string, string> = {
     error: 'bg-red-500/[0.06]',
     warn:  'bg-amber-500/[0.04]',
     info:  '',
     debug: '',
   };
+  const lightRowBg: Record<string, string> = {
+    error: 'bg-red-50',
+    warn:  'bg-amber-50',
+    info:  '',
+    debug: '',
+  };
 
   const badge = levelBadge[log.level] ?? levelBadge.info;
+  const msgCls = isDark ? darkMsgCls : lightMsgCls;
+  const rowBg = isDark ? darkRowBg : lightRowBg;
+
+  // Alternating row shading (even rows get a subtle tint)
+  const altShade = index % 2 === 0
+    ? isDark ? 'bg-white/[0.015]' : 'bg-black/[0.015]'
+    : '';
+
+  const hoverCls = isDark ? 'hover:bg-white/[0.04]' : 'hover:bg-black/[0.04]';
+
+  // Context lines get a left border indicator
+  const contextCls = isContext ? (isDark ? 'border-l-2 border-white/10 opacity-60' : 'border-l-2 border-black/10 opacity-60') : '';
+
+  const showJson = prettifyJson && log.isJson && log.jsonData !== undefined;
 
   return (
     <div
       className={cn(
-        'group flex items-start px-3 py-[1px] hover:bg-white/[0.04] relative',
+        'group flex items-start px-3 py-[1px] relative transition-colors',
         rowBg[log.level],
+        altShade,
+        hoverCls,
+        contextCls,
       )}
     >
       {/* Line number */}
-      <span className="select-none text-white/15 text-right tabular-nums w-8 shrink-0 mr-2 text-[11px] leading-5 pt-px">
+      <span className={cn(
+        'select-none text-right tabular-nums w-8 shrink-0 mr-2 text-[11px] leading-5 pt-px',
+        isDark ? 'text-white/15' : 'text-black/25',
+      )}>
         {index + 1}
       </span>
 
       {/* Timestamp */}
       {showTimestamps && (
-        <span className="shrink-0 mr-3 text-white/25 tabular-nums text-[11px] leading-5 pt-px min-w-[52px]">
+        <span className={cn(
+          'shrink-0 mr-3 tabular-nums text-[11px] leading-5 pt-px min-w-[52px]',
+          isDark ? 'text-white/25' : 'text-black/35',
+        )}>
           {formatTimestamp(log.timestamp)}
         </span>
       )}
@@ -173,16 +370,25 @@ const LogRow = memo(function LogRow({ log, index, showTimestamps, wrapLines, sea
       <span
         className={cn(
           'flex-1 min-w-0 text-[12px] leading-5 font-mono',
-          msgCls[log.level] ?? 'text-white/80',
-          wrapLines ? 'whitespace-pre-wrap break-words' : 'whitespace-nowrap overflow-hidden text-ellipsis',
+          msgCls[log.level] ?? (isDark ? 'text-white/80' : 'text-black/80'),
+          wrapLines || showJson ? 'whitespace-pre-wrap break-words' : 'whitespace-nowrap overflow-hidden text-ellipsis',
         )}
       >
-        <HighlightedText text={log.message} query={searchQuery} />
+        {showJson ? (
+          <span className="text-[11px] leading-relaxed">
+            <JsonTree data={log.jsonData} depth={0} />
+          </span>
+        ) : (
+          <HighlightedText text={log.message} regex={searchRegex} />
+        )}
       </span>
 
       {/* Copy on hover */}
       <button
-        className="opacity-0 group-hover:opacity-100 shrink-0 ml-1.5 text-white/25 hover:text-white/70 p-0.5 rounded transition-opacity"
+        className={cn(
+          'opacity-0 group-hover:opacity-100 shrink-0 ml-1.5 p-0.5 rounded transition-opacity',
+          isDark ? 'text-white/25 hover:text-white/70' : 'text-black/25 hover:text-black/70',
+        )}
         onClick={() => onCopy(log)}
         title="Copy line"
       >
@@ -192,6 +398,92 @@ const LogRow = memo(function LogRow({ log, index, showTimestamps, wrapLines, sea
   );
 });
 
+// ─── FilterHistoryDropdown ────────────────────────────────────────────────────
+
+interface FilterHistoryDropdownProps {
+  open: boolean;
+  onClose: () => void;
+  history: ReturnType<typeof useLogFilterHistory>['history'];
+  onSelect: (query: string) => void;
+  onTogglePin: (query: string) => void;
+  onRemove: (query: string) => void;
+  onClear: () => void;
+  isDark: boolean;
+}
+
+function FilterHistoryDropdown({
+  open,
+  onClose,
+  history,
+  onSelect,
+  onTogglePin,
+  onRemove,
+  onClear,
+  isDark,
+}: FilterHistoryDropdownProps) {
+  if (!open) return null;
+  const bg = isDark ? 'bg-[hsl(221_39%_11%)] border-white/15' : 'bg-white border-black/15';
+  const textCls = isDark ? 'text-white/80' : 'text-black/80';
+  const hoverRow = isDark ? 'hover:bg-white/[0.06]' : 'hover:bg-black/[0.04]';
+
+  return (
+    <div
+      className={cn(
+        'absolute top-full left-0 mt-1 z-50 rounded-lg border shadow-xl min-w-[280px] max-h-64 overflow-y-auto',
+        bg,
+      )}
+    >
+      {history.length === 0 ? (
+        <div className={cn('px-3 py-6 text-center text-xs', isDark ? 'text-white/30' : 'text-black/30')}>
+          No filter history yet
+        </div>
+      ) : (
+        <>
+          {history.map(entry => (
+            <div
+              key={entry.query}
+              className={cn('flex items-center gap-1 px-2 py-1 group/row', hoverRow)}
+            >
+              <button
+                className={cn('flex-1 text-left text-[12px] font-mono truncate', textCls)}
+                onClick={() => { onSelect(entry.query); onClose(); }}
+              >
+                {entry.pinned && <Pin className="inline h-2.5 w-2.5 mr-1 text-amber-400" />}
+                {entry.query}
+              </button>
+              <button
+                onClick={() => onTogglePin(entry.query)}
+                title={entry.pinned ? 'Unpin' : 'Pin'}
+                className={cn(
+                  'opacity-0 group-hover/row:opacity-100 p-0.5 rounded',
+                  entry.pinned ? 'text-amber-400' : (isDark ? 'text-white/30 hover:text-white/70' : 'text-black/30 hover:text-black/70'),
+                )}
+              >
+                {entry.pinned ? <PinOff className="h-3 w-3" /> : <Pin className="h-3 w-3" />}
+              </button>
+              <button
+                onClick={() => onRemove(entry.query)}
+                className={cn('opacity-0 group-hover/row:opacity-100 p-0.5 rounded', isDark ? 'text-white/30 hover:text-red-400' : 'text-black/30 hover:text-red-500')}
+                title="Remove"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </div>
+          ))}
+          <div className={cn('border-t px-2 py-1', isDark ? 'border-white/10' : 'border-black/10')}>
+            <button
+              onClick={onClear}
+              className={cn('text-[11px] w-full text-left', isDark ? 'text-white/30 hover:text-white/60' : 'text-black/30 hover:text-black/60')}
+            >
+              Clear unpinned history
+            </button>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 // ─── LogViewer ────────────────────────────────────────────────────────────────
 
 export function LogViewer({
@@ -200,52 +492,176 @@ export function LogViewer({
   namespace,
   containerName = 'main',
   containers = [],
+  containerStatuses = {},
   onContainerChange,
   className,
   tailLines: initialTailLines = 50,
 }: LogViewerProps) {
   const { isConnected } = useConnectionStatus();
   const queryClient = useQueryClient();
+  const { isDark } = useTheme();
 
+  // ── Persisted filter state ───────────────────────────────────────────────
+  const {
+    searchQuery, setSearchQuery,
+    levelFilter, setLevelFilter,
+    regexMode, toggleRegexMode,
+    inverseFilter, toggleInverseFilter,
+    contextLines, setContextLines,
+    prettifyJson, togglePrettifyJson,
+    hideTerminated, toggleHideTerminated,
+  } = useLogFilterStore();
+
+  // ── Filter history ───────────────────────────────────────────────────────
+  const { history, addFilter, togglePin, removeFilter, clearHistory } = useLogFilterHistory();
+  const [historyOpen, setHistoryOpen] = useState(false);
+
+  // ── Local UI state ───────────────────────────────────────────────────────
   const [isStreaming, setIsStreaming] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedLevel, setSelectedLevel] = useState<string | null>(null);
   const [selectedContainer, setSelectedContainer] = useState(containerName);
   const [tailLines, setTailLines] = useState(initialTailLines);
   const [showTimestamps, setShowTimestamps] = useState(true);
   const [wrapLines, setWrapLines] = useState(false);
+
+  // ── Auto-reconnect state ─────────────────────────────────────────────────
+  const [reconnectAttempt, setReconnectAttempt] = useState(0);
+  const [isReconnecting, setIsReconnecting] = useState(false);
+  const reconnectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const logContainerRef = useRef<HTMLDivElement>(null);
 
-  const { data: rawLogs, isLoading, error, refetch, dataUpdatedAt } = useK8sPodLogs(
-    namespace || '',
-    podName || '',
-    selectedContainer,
-    {
-      enabled: isConnected && !!podName && !!namespace,
-      tailLines,
-      follow: isStreaming,
-    }
-  );
+  // Map store's levelFilter to selectedLevel for internal use
+  const selectedLevel = levelFilter === 'all' ? null : levelFilter;
+  const setSelectedLevel = useCallback((key: string | null) => {
+    setLevelFilter(key === null ? 'all' : key as 'info' | 'warn' | 'error' | 'debug');
+  }, [setLevelFilter]);
 
-  // Parse logs directly from rawLogs — no intermediate state that can get stale
+  // ── Regex compilation (memoized) ─────────────────────────────────────────
+  const [regexError, setRegexError] = useState<string | null>(null);
+  const searchRegex = useMemo(() => {
+    if (!searchQuery.trim()) { setRegexError(null); return null; }
+    if (regexMode) {
+      try {
+        const re = new RegExp(searchQuery, 'gi');
+        setRegexError(null);
+        return re;
+      } catch (e) {
+        setRegexError((e as Error).message);
+        return null;
+      }
+    }
+    setRegexError(null);
+    return new RegExp(searchQuery.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+  }, [searchQuery, regexMode]);
+
+  // ── Fetch logs ───────────────────────────────────────────────────────────
+  const {
+    data: rawLogs,
+    isLoading,
+    error,
+    refetch,
+    dataUpdatedAt,
+  } = useK8sPodLogs(namespace || '', podName || '', selectedContainer, {
+    enabled: isConnected && !!podName && !!namespace,
+    tailLines,
+    follow: isStreaming,
+  });
+
+  // ── Auto-reconnect on error ──────────────────────────────────────────────
+  useEffect(() => {
+    if (!error || !isStreaming) {
+      setReconnectAttempt(0);
+      setIsReconnecting(false);
+      if (reconnectTimer.current) clearTimeout(reconnectTimer.current);
+      return;
+    }
+    if (reconnectAttempt >= RECONNECT_MAX_ATTEMPTS) {
+      setIsReconnecting(false);
+      return;
+    }
+    setIsReconnecting(true);
+    const delay = Math.min(RECONNECT_BASE_MS * 2 ** reconnectAttempt, RECONNECT_MAX_MS);
+    reconnectTimer.current = setTimeout(() => {
+      setReconnectAttempt(n => n + 1);
+      refetch();
+    }, delay);
+    return () => {
+      if (reconnectTimer.current) clearTimeout(reconnectTimer.current);
+    };
+  }, [error, isStreaming, reconnectAttempt, refetch]);
+
+  // ── Parsed logs ──────────────────────────────────────────────────────────
   const parsedLogs = useMemo(() => {
     if (!rawLogs) return EMPTY_LOGS;
     return parseRawLogs(rawLogs);
-  // dataUpdatedAt ensures re-parse even when rawLogs string is identical
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rawLogs, dataUpdatedAt]);
 
   const isLive = isConnected && !!podName && !!namespace;
   const displayLogs = isLive ? parsedLogs : (propLogs ?? EMPTY_LOGS);
 
-  const filteredLogs = displayLogs.filter(log => {
-    if (searchQuery && !log.message.toLowerCase().includes(searchQuery.toLowerCase())) return false;
-    if (selectedLevel && log.level !== selectedLevel) return false;
-    return true;
-  });
+  // ── Filtered container list (hide terminated) ────────────────────────────
+  const visibleContainers = useMemo(() => {
+    if (!hideTerminated || Object.keys(containerStatuses).length === 0) return containers;
+    return containers.filter(c => {
+      const status = containerStatuses[c]?.toLowerCase() ?? '';
+      return status !== 'terminated' && status !== 'completed';
+    });
+  }, [containers, containerStatuses, hideTerminated]);
 
-  // PERF Area 4: Virtualize log rows — only render visible rows + overscan buffer.
-  // Without this, 2000 log lines = 2000 DOM elements = scroll jank and high memory.
+  // ── Filter logs ──────────────────────────────────────────────────────────
+  const filteredIndices = useMemo(() => {
+    const matchSet = new Set<number>();
+    displayLogs.forEach((log, i) => {
+      const levelOk = !selectedLevel || log.level === selectedLevel;
+      if (!levelOk) return;
+
+      if (searchRegex && !regexError) {
+        searchRegex.lastIndex = 0;
+        const matches = searchRegex.test(log.message);
+        searchRegex.lastIndex = 0;
+        const include = inverseFilter ? !matches : matches;
+        if (!include) return;
+      } else if (searchQuery.trim() && regexError) {
+        // Invalid regex — show nothing for safety
+        return;
+      }
+      matchSet.add(i);
+    });
+
+    // If there's no text search or no context, just return match indices
+    if (!searchQuery.trim() || contextLines === 0) return matchSet;
+
+    return expandWithContext(matchSet, displayLogs.length, contextLines);
+  }, [displayLogs, selectedLevel, searchRegex, searchQuery, regexError, inverseFilter, contextLines]);
+
+  const filteredLogs = useMemo(() => {
+    if (!searchQuery.trim() && !selectedLevel) return displayLogs;
+    return displayLogs.filter((_, i) => filteredIndices.has(i));
+  }, [displayLogs, filteredIndices, searchQuery, selectedLevel]);
+
+  // Context lines: track which indices are context (not a direct match)
+  const directMatchIndices = useMemo(() => {
+    if (contextLines === 0 || !searchQuery.trim()) return filteredIndices;
+    // Recompute without context expansion to get pure matches
+    const matchSet = new Set<number>();
+    displayLogs.forEach((log, i) => {
+      const levelOk = !selectedLevel || log.level === selectedLevel;
+      if (!levelOk) return;
+      if (searchRegex && !regexError) {
+        searchRegex.lastIndex = 0;
+        const matches = searchRegex.test(log.message);
+        searchRegex.lastIndex = 0;
+        const include = inverseFilter ? !matches : matches;
+        if (include) matchSet.add(i);
+      } else {
+        matchSet.add(i);
+      }
+    });
+    return matchSet;
+  }, [displayLogs, selectedLevel, searchRegex, regexError, inverseFilter, contextLines, searchQuery, filteredIndices]);
+
+  // ── Virtualizer ──────────────────────────────────────────────────────────
   const LOG_ROW_HEIGHT = 20;
   const virtualizer = useVirtualizer({
     count: filteredLogs.length,
@@ -261,6 +677,12 @@ export function LogViewer({
     }
   }, [filteredLogs.length, isStreaming, virtualizer]);
 
+  // ── Commit search to history on Enter/blur ───────────────────────────────
+  const commitSearchToHistory = useCallback(() => {
+    if (searchQuery.trim()) addFilter(searchQuery.trim());
+  }, [searchQuery, addFilter]);
+
+  // ── Handlers ─────────────────────────────────────────────────────────────
   const handleDownload = useCallback(() => {
     const content = displayLogs
       .map(l => `${l.timestamp} [${l.level.toUpperCase()}] ${l.message}`)
@@ -275,7 +697,6 @@ export function LogViewer({
   }, [displayLogs, podName, selectedContainer]);
 
   const handleClear = useCallback(() => {
-    // Remove cached data entirely then refetch — guarantees fresh logs
     queryClient.removeQueries({ queryKey: ['k8s', 'pods', namespace, podName, 'logs'] });
     queryClient.invalidateQueries({ queryKey: ['k8s', 'pods', namespace, podName, 'logs'] });
   }, [queryClient, namespace, podName]);
@@ -287,69 +708,222 @@ export function LogViewer({
     toast.success('Line copied');
   }, []);
 
+  // ── Theme-aware surface classes ───────────────────────────────────────────
+  const toolbar   = isDark ? 'bg-[hsl(221_39%_13%)] border-white/10'  : 'bg-slate-100 border-black/10';
+  const filterBar = isDark ? 'bg-[hsl(221_39%_11%)] border-white/[0.06]' : 'bg-slate-50 border-black/[0.06]';
+  const logArea   = isDark ? 'bg-[hsl(221_39%_9%)]'  : 'bg-white';
+  const footer    = isDark ? 'bg-[hsl(221_39%_13%)] border-white/[0.06]' : 'bg-slate-100 border-black/[0.06]';
+  const inputCls  = isDark
+    ? 'bg-white/5 border-white/10 text-white/80 placeholder-white/25 focus:border-white/25'
+    : 'bg-black/5 border-black/10 text-black/80 placeholder-black/25 focus:border-black/25';
+  const btnCls    = isDark
+    ? 'text-white/60 hover:text-white hover:bg-white/15'
+    : 'text-black/50 hover:text-black hover:bg-black/10';
+  const activeBtnCls = isDark ? 'bg-white/10 text-white' : 'bg-black/10 text-black';
+
   return (
-    <div className={cn('flex flex-col rounded-xl overflow-hidden border border-white/10', className)}>
+    <div className={cn('flex flex-col rounded-xl overflow-hidden border', isDark ? 'border-white/10' : 'border-black/10', className)}>
 
-      {/* ── Primary toolbar ─────────────────────────────────────────────────── */}
-      <div className="bg-[hsl(221_39%_13%)] border-b border-white/10 px-4 py-2 flex flex-wrap items-center gap-2">
+      {/* ── Primary toolbar ───────────────────────────────────────────────── */}
+      <div className={cn('border-b px-4 py-2 flex flex-wrap items-center gap-2', toolbar)}>
 
-        {/* Connection badge */}
-        {isLive ? (
+        {/* Connection / reconnecting badge */}
+        {isReconnecting ? (
+          <Badge className="gap-1.5 text-[11px] bg-amber-600/20 text-amber-400 border border-amber-500/30 hover:bg-amber-600/20 font-medium shrink-0 h-6 animate-pulse">
+            <RefreshCw className="h-2.5 w-2.5 animate-spin" />
+            Reconnecting&hellip;{reconnectAttempt > 0 ? ` (${reconnectAttempt})` : ''}
+          </Badge>
+        ) : isLive ? (
           <Badge className="gap-1.5 text-[11px] bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-600/20 font-medium shrink-0 h-6">
             <Wifi className="h-2.5 w-2.5" /> Live
           </Badge>
         ) : (
-          <Badge className="gap-1.5 text-[11px] bg-white/5 text-white/40 border border-white/15 hover:bg-white/5 font-medium shrink-0 h-6">
+          <Badge className={cn('gap-1.5 text-[11px] border font-medium shrink-0 h-6', isDark ? 'bg-white/5 text-white/40 border-white/15 hover:bg-white/5' : 'bg-black/5 text-black/40 border-black/15 hover:bg-black/5')}>
             <WifiOff className="h-2.5 w-2.5" />
             {!podName || !namespace ? 'No pod' : 'Offline'}
           </Badge>
         )}
 
-        {/* Container selector pills (when multiple) */}
-        {containers.length > 1 && (
-          <div className="flex items-center gap-0.5 rounded-md border border-white/10 bg-white/5 p-0.5">
-            {containers.map(c => (
+        {/* Container selector */}
+        {visibleContainers.length > 1 && (
+          <div className={cn('flex items-center gap-0.5 rounded-md border p-0.5', isDark ? 'border-white/10 bg-white/5' : 'border-black/10 bg-black/5')}>
+            {visibleContainers.map(c => (
               <button
                 key={c}
                 onClick={() => { setSelectedContainer(c); onContainerChange?.(c); }}
                 className={cn(
                   'h-6 px-2.5 text-[11px] font-medium rounded-sm transition-all',
                   selectedContainer === c
-                    ? 'bg-white/15 text-white'
-                    : 'text-white/40 hover:text-white hover:bg-white/[0.08]',
+                    ? (isDark ? 'bg-white/15 text-white' : 'bg-black/10 text-black')
+                    : (isDark ? 'text-white/40 hover:text-white hover:bg-white/[0.08]' : 'text-black/40 hover:text-black hover:bg-black/[0.08]'),
                 )}
               >
                 {c}
+                {containerStatuses[c] && (
+                  <span className={cn(
+                    'ml-1 text-[9px]',
+                    containerStatuses[c]?.toLowerCase() === 'running' ? 'text-emerald-400' : 'text-white/30',
+                  )}>
+                    {'\u25CF'}
+                  </span>
+                )}
               </button>
             ))}
           </div>
         )}
 
-        {/* Search */}
+        {/* Hide terminated toggle (only shown when containerStatuses provided) */}
+        {Object.keys(containerStatuses).length > 0 && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={toggleHideTerminated}
+                className={cn(
+                  'h-6 px-2 text-[11px] rounded-md border transition-colors font-medium',
+                  hideTerminated
+                    ? 'bg-emerald-600/20 text-emerald-400 border-emerald-500/30'
+                    : (isDark ? 'border-white/10 text-white/40 hover:text-white hover:border-white/20' : 'border-black/10 text-black/40 hover:text-black hover:border-black/20'),
+                )}
+              >
+                Running only
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">
+              {hideTerminated ? 'Showing running containers only' : 'Show running containers only'}
+            </TooltipContent>
+          </Tooltip>
+        )}
+
+        {/* Search + history */}
         <div className="relative min-w-0 flex-1 max-w-sm">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-white/30 pointer-events-none" />
+          <Search className={cn('absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 pointer-events-none', isDark ? 'text-white/30' : 'text-black/30')} />
           <input
             type="text"
-            placeholder="Search logs…"
+            placeholder={regexMode ? 'Regex filter\u2026' : 'Search logs\u2026'}
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
-            className="w-full h-7 bg-white/5 border border-white/10 rounded-md pl-8 pr-8 text-xs text-white/80 placeholder-white/25 outline-none focus:border-white/25 transition-colors"
+            onKeyDown={e => { if (e.key === 'Enter') { commitSearchToHistory(); setHistoryOpen(false); } }}
+            onBlur={() => { commitSearchToHistory(); setTimeout(() => setHistoryOpen(false), 150); }}
+            onFocus={() => setHistoryOpen(true)}
+            className={cn(
+              'w-full h-7 border rounded-md pl-8 pr-16 text-xs outline-none transition-colors',
+              inputCls,
+              regexError && 'border-red-500/50',
+            )}
           />
-          {searchQuery && (
-            <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-white/35 tabular-nums pointer-events-none">
+          {/* Regex error indicator */}
+          {regexError && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="absolute right-8 top-1/2 -translate-y-1/2">
+                  <AlertTriangle className="h-3 w-3 text-red-400" />
+                </span>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="text-red-400 max-w-xs text-[11px]">
+                Invalid regex: {regexError}
+              </TooltipContent>
+            </Tooltip>
+          )}
+          {searchQuery && !regexError && (
+            <span className={cn('absolute right-2 top-1/2 -translate-y-1/2 text-[10px] tabular-nums pointer-events-none', isDark ? 'text-white/35' : 'text-black/35')}>
               {filteredLogs.length}
             </span>
           )}
+
+          <FilterHistoryDropdown
+            open={historyOpen && history.length > 0}
+            onClose={() => setHistoryOpen(false)}
+            history={history}
+            onSelect={q => { setSearchQuery(q); }}
+            onTogglePin={togglePin}
+            onRemove={removeFilter}
+            onClear={clearHistory}
+            isDark={isDark}
+          />
         </div>
+
+        {/* Regex toggle */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              onClick={toggleRegexMode}
+              className={cn(
+                'h-7 w-7 flex items-center justify-center rounded-md transition-colors',
+                regexMode ? activeBtnCls : btnCls,
+              )}
+            >
+              <Regex className="h-3.5 w-3.5" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom">{regexMode ? 'Disable regex' : 'Enable regex filter'}</TooltipContent>
+        </Tooltip>
+
+        {/* Inverse filter toggle */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              onClick={toggleInverseFilter}
+              className={cn(
+                'h-7 w-7 flex items-center justify-center rounded-md transition-colors',
+                inverseFilter ? 'bg-red-500/20 text-red-400' : btnCls,
+              )}
+            >
+              <FlipHorizontal className="h-3.5 w-3.5" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom">{inverseFilter ? 'Exclude mode: ON' : 'Enable exclude mode'}</TooltipContent>
+        </Tooltip>
+
+        {/* Context lines */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <select
+              value={contextLines}
+              onChange={e => setContextLines(Number(e.target.value))}
+              className={cn(
+                'h-7 border rounded-md px-1.5 text-[11px] outline-none cursor-pointer shrink-0',
+                inputCls,
+                contextLines > 0 ? (isDark ? 'border-blue-500/40 text-blue-300' : 'border-blue-500/40 text-blue-600') : '',
+              )}
+              title="Context lines (grep -C)"
+            >
+              {CONTEXT_OPTIONS.map(n => (
+                <option key={n} value={n} style={{ background: isDark ? 'hsl(221,39%,11%)' : 'white' }}>
+                  {n === 0 ? 'No ctx' : `\u00B1${n} ctx`}
+                </option>
+              ))}
+            </select>
+          </TooltipTrigger>
+          <TooltipContent side="bottom">Context lines around matches (like grep -C)</TooltipContent>
+        </Tooltip>
+
+        {/* History button */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              onClick={() => setHistoryOpen(v => !v)}
+              className={cn(
+                'h-7 w-7 flex items-center justify-center rounded-md transition-colors relative',
+                historyOpen ? activeBtnCls : btnCls,
+              )}
+            >
+              <History className="h-3.5 w-3.5" />
+              {history.filter(e => e.pinned).length > 0 && (
+                <span className="absolute top-0.5 right-0.5 w-1.5 h-1.5 bg-amber-400 rounded-full" />
+              )}
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom">Filter history</TooltipContent>
+        </Tooltip>
 
         {/* Tail-lines select */}
         <select
           value={tailLines}
           onChange={e => setTailLines(Number(e.target.value))}
-          className="h-7 bg-white/5 border border-white/10 rounded-md px-2 text-[11px] text-white/55 outline-none focus:border-white/25 cursor-pointer shrink-0"
+          className={cn('h-7 border rounded-md px-2 text-[11px] outline-none cursor-pointer shrink-0', inputCls)}
         >
           {TAIL_OPTIONS.map(n => (
-            <option key={n} value={n} style={{ background: 'hsl(221,39%,11%)' }}>
+            <option key={n} value={n} style={{ background: isDark ? 'hsl(221,39%,11%)' : 'white' }}>
               {n} lines
             </option>
           ))}
@@ -358,6 +932,24 @@ export function LogViewer({
         {/* Right controls */}
         <div className="flex items-center gap-1 ml-auto shrink-0">
 
+          {/* JSON prettify */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={togglePrettifyJson}
+                className={cn(
+                  'h-7 w-7 flex items-center justify-center rounded-md transition-colors',
+                  prettifyJson ? activeBtnCls : btnCls,
+                )}
+              >
+                <Braces className="h-3.5 w-3.5" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">
+              {prettifyJson ? 'Show raw JSON' : 'Prettify JSON logs'}
+            </TooltipContent>
+          </Tooltip>
+
           {/* Timestamps toggle */}
           <Tooltip>
             <TooltipTrigger asChild>
@@ -365,9 +957,7 @@ export function LogViewer({
                 onClick={() => setShowTimestamps(v => !v)}
                 className={cn(
                   'h-7 w-7 flex items-center justify-center rounded-md transition-colors',
-                  showTimestamps
-                    ? 'bg-white/10 text-white'
-                    : 'text-white/60 hover:text-white hover:bg-white/15',
+                  showTimestamps ? activeBtnCls : btnCls,
                 )}
               >
                 <Clock className="h-3.5 w-3.5" />
@@ -385,9 +975,7 @@ export function LogViewer({
                 onClick={() => setWrapLines(v => !v)}
                 className={cn(
                   'h-7 w-7 flex items-center justify-center rounded-md transition-colors',
-                  wrapLines
-                    ? 'bg-white/10 text-white'
-                    : 'text-white/60 hover:text-white hover:bg-white/15',
+                  wrapLines ? activeBtnCls : btnCls,
                 )}
               >
                 <AlignJustify className="h-3.5 w-3.5" />
@@ -404,10 +992,10 @@ export function LogViewer({
               <button
                 onClick={() => setIsStreaming(v => !v)}
                 className={cn(
-                  'h-7 flex items-center gap-1.5 px-2.5 rounded-md text-[11px] font-medium transition-colors',
+                  'h-7 flex items-center gap-1.5 px-2.5 rounded-md text-[11px] font-medium transition-colors border',
                   isStreaming
-                    ? 'bg-emerald-600/20 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-600/30'
-                    : 'bg-white/5 text-white/60 border border-white/15 hover:text-white hover:bg-white/[0.08]',
+                    ? 'bg-emerald-600/20 text-emerald-300 border-emerald-500/30 hover:bg-emerald-600/30'
+                    : (isDark ? 'bg-white/5 text-white/60 border-white/15 hover:text-white hover:bg-white/[0.08]' : 'bg-black/5 text-black/60 border-black/15 hover:text-black hover:bg-black/[0.08]'),
                 )}
               >
                 {isStreaming ? <Pause className="h-3 w-3" /> : <Play className="h-3 w-3" />}
@@ -423,7 +1011,7 @@ export function LogViewer({
             <TooltipTrigger asChild>
               <button
                 onClick={() => queryClient.invalidateQueries({ queryKey: ['k8s', 'pods', namespace, podName, 'logs'] })}
-                className="h-7 w-7 flex items-center justify-center rounded-md text-white/60 hover:text-white hover:bg-white/15 transition-colors"
+                className={cn('h-7 w-7 flex items-center justify-center rounded-md transition-colors', btnCls)}
               >
                 <RefreshCw className="h-3.5 w-3.5" />
               </button>
@@ -433,10 +1021,7 @@ export function LogViewer({
 
           <Tooltip>
             <TooltipTrigger asChild>
-              <button
-                onClick={handleDownload}
-                className="h-7 w-7 flex items-center justify-center rounded-md text-white/60 hover:text-white hover:bg-white/15 transition-colors"
-              >
+              <button onClick={handleDownload} className={cn('h-7 w-7 flex items-center justify-center rounded-md transition-colors', btnCls)}>
                 <Download className="h-3.5 w-3.5" />
               </button>
             </TooltipTrigger>
@@ -447,7 +1032,10 @@ export function LogViewer({
             <TooltipTrigger asChild>
               <button
                 onClick={handleClear}
-                className="h-7 w-7 flex items-center justify-center rounded-md text-white/30 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                className={cn(
+                  'h-7 w-7 flex items-center justify-center rounded-md transition-colors',
+                  isDark ? 'text-white/30 hover:text-red-400 hover:bg-red-500/10' : 'text-black/30 hover:text-red-500 hover:bg-red-50',
+                )}
               >
                 <Trash2 className="h-3.5 w-3.5" />
               </button>
@@ -457,9 +1045,11 @@ export function LogViewer({
         </div>
       </div>
 
-      {/* ── Level filter bar ─────────────────────────────────────────────────── */}
-      <div className="bg-[hsl(221_39%_11%)] border-b border-white/[0.06] px-4 py-1.5 flex items-center gap-2 flex-wrap">
-        <span className="text-[11px] text-white/50 shrink-0 font-medium tracking-wide">Filter:</span>
+      {/* ── Level filter bar ──────────────────────────────────────────────── */}
+      <div className={cn('border-b px-4 py-1.5 flex items-center gap-2 flex-wrap', filterBar)}>
+        <span className={cn('text-[11px] shrink-0 font-medium tracking-wide', isDark ? 'text-white/50' : 'text-black/50')}>
+          {inverseFilter ? 'Exclude:' : 'Filter:'}
+        </span>
         <div className="flex items-center gap-1.5 flex-wrap flex-1">
           {LEVEL_PILLS.map(({ key, label }) => (
             <button
@@ -467,7 +1057,7 @@ export function LogViewer({
               onClick={() => setSelectedLevel(key)}
               className={cn(
                 'px-2.5 py-0.5 rounded-full text-[11px] font-medium transition-all',
-                getLevelPillClass(key, selectedLevel === key),
+                getLevelPillClass(key, selectedLevel === key, isDark),
               )}
             >
               {label}
@@ -479,66 +1069,84 @@ export function LogViewer({
             </button>
           ))}
         </div>
-        <span className="text-[11px] text-white/60 font-medium shrink-0 tabular-nums">
+
+        {/* Active filter indicators */}
+        <div className="flex items-center gap-1.5 shrink-0">
+          {regexMode && (
+            <span className="px-1.5 py-0.5 rounded text-[10px] bg-blue-500/20 text-blue-400 border border-blue-500/30">
+              regex
+            </span>
+          )}
+          {inverseFilter && (
+            <span className="px-1.5 py-0.5 rounded text-[10px] bg-red-500/20 text-red-400 border border-red-500/30">
+              exclude
+            </span>
+          )}
+          {contextLines > 0 && (
+            <span className="px-1.5 py-0.5 rounded text-[10px] bg-blue-500/20 text-blue-400 border border-blue-500/30">
+              {'\u00B1'}{contextLines}
+            </span>
+          )}
+        </div>
+
+        <span className={cn('text-[11px] font-medium shrink-0 tabular-nums', isDark ? 'text-white/60' : 'text-black/60')}>
           {filteredLogs.length !== displayLogs.length
             ? `${filteredLogs.length} / ${displayLogs.length} lines`
             : `${displayLogs.length} lines`}
         </span>
       </div>
 
-      {/* ── Log content area ──────────────────────────────────────────────────── */}
+      {/* ── Log content area ─────────────────────────────────────────────── */}
       <div
         ref={logContainerRef}
-        className="bg-[hsl(221_39%_9%)] font-mono text-xs overflow-auto flex-1"
+        className={cn('font-mono text-xs overflow-auto flex-1', logArea)}
         style={{ minHeight: '320px', maxHeight: '520px' }}
       >
         {isLoading && isLive ? (
-          /* Loading skeletons */
           <div className="p-4 space-y-1.5">
             {Array.from({ length: 8 }).map((_, i) => (
               <div key={i} className="flex gap-3 items-center">
-                <Skeleton className="h-3.5 w-6 bg-white/5 rounded shrink-0" />
-                <Skeleton className="h-3.5 w-20 bg-white/5 rounded shrink-0" />
-                <Skeleton className="h-3.5 w-8 bg-white/5 rounded shrink-0" />
+                <Skeleton className={cn('h-3.5 w-6 rounded shrink-0', isDark ? 'bg-white/5' : 'bg-black/5')} />
+                <Skeleton className={cn('h-3.5 w-20 rounded shrink-0', isDark ? 'bg-white/5' : 'bg-black/5')} />
+                <Skeleton className={cn('h-3.5 w-8 rounded shrink-0', isDark ? 'bg-white/5' : 'bg-black/5')} />
                 <Skeleton className={cn(
-                  'h-3.5 bg-white/5 rounded',
+                  'h-3.5 rounded',
+                  isDark ? 'bg-white/5' : 'bg-black/5',
                   ['w-2/3', 'w-1/2', 'w-full', 'w-3/4', 'w-4/5', 'w-1/3', 'w-5/6', 'w-2/5'][i % 8]
                 )} />
               </div>
             ))}
           </div>
-        ) : error ? (
-          /* Error state */
+        ) : error && reconnectAttempt >= RECONNECT_MAX_ATTEMPTS ? (
           <div className="flex flex-col items-center justify-center h-48 gap-3">
-            <p className="text-red-400/80 text-sm font-medium">Failed to fetch logs</p>
-            <p className="text-white/30 text-xs max-w-sm text-center">{error.message}</p>
+            <p className={cn('text-sm font-medium', isDark ? 'text-red-400/80' : 'text-red-500')}>Failed to fetch logs</p>
+            <p className={cn('text-xs max-w-sm text-center', isDark ? 'text-white/30' : 'text-black/40')}>{error.message}</p>
             <button
-              onClick={() => queryClient.invalidateQueries({ queryKey: ['k8s', 'pods', namespace, podName, 'logs'] })}
-              className="px-3 py-1.5 rounded-md border border-white/15 text-white/50 text-xs hover:text-white hover:border-white/30 transition-colors"
+              onClick={() => { setReconnectAttempt(0); refetch(); }}
+              className={cn('px-3 py-1.5 rounded-md border text-xs transition-colors', isDark ? 'border-white/15 text-white/50 hover:text-white hover:border-white/30' : 'border-black/15 text-black/50 hover:text-black hover:border-black/30')}
             >
               Retry
             </button>
           </div>
         ) : filteredLogs.length === 0 ? (
-          /* Empty state */
-          <div className="flex flex-col items-center justify-center h-48 text-white/30 text-sm gap-2">
+          <div className={cn('flex flex-col items-center justify-center h-48 text-sm gap-2', isDark ? 'text-white/30' : 'text-black/30')}>
             {searchQuery || selectedLevel ? (
               <>
-                <span className="text-2xl">⚡</span>
+                <span className="text-2xl">{'\u26A1'}</span>
                 <span>No logs match your filters</span>
                 <button
                   onClick={() => { setSearchQuery(''); setSelectedLevel(null); }}
-                  className="text-xs text-white/40 hover:text-white/70 underline underline-offset-2 mt-1"
+                  className={cn('text-xs underline underline-offset-2 mt-1', isDark ? 'text-white/40 hover:text-white/70' : 'text-black/40 hover:text-black/70')}
                 >
                   Clear filters
                 </button>
               </>
             ) : !podName || !namespace ? (
-              <><span className="text-2xl">📋</span><span>Select a pod to view logs</span></>
+              <><span className="text-2xl">{'\uD83D\uDCCB'}</span><span>Select a pod to view logs</span></>
             ) : !isConnected ? (
-              <><span className="text-2xl">🔌</span><span>Disconnected — reconnect to stream logs</span></>
+              <><span className="text-2xl">{'\uD83D\uDD0C'}</span><span>Disconnected — reconnect to stream logs</span></>
             ) : (
-              <><span className="text-2xl">📄</span><span>No logs yet — they will appear here as they stream in</span></>
+              <><span className="text-2xl">{'\uD83D\uDCC4'}</span><span>No logs yet — they will appear here as they stream in</span></>
             )}
           </div>
         ) : (
@@ -552,6 +1160,12 @@ export function LogViewer({
           >
             {virtualizer.getVirtualItems().map((virtualRow) => {
               const log = filteredLogs[virtualRow.index];
+              // Find the original index in displayLogs to determine if context row
+              const originalIndex = displayLogs.indexOf(log);
+              const isContext = contextLines > 0 && searchQuery.trim()
+                ? !directMatchIndices.has(originalIndex)
+                : false;
+
               return (
                 <div
                   key={virtualRow.index}
@@ -568,16 +1182,19 @@ export function LogViewer({
                   <LogRow
                     log={log}
                     index={virtualRow.index}
+                    isContext={isContext}
                     showTimestamps={showTimestamps}
                     wrapLines={wrapLines}
-                    searchQuery={searchQuery}
+                    prettifyJson={prettifyJson}
+                    searchRegex={searchRegex}
+                    isDark={isDark}
                     onCopy={handleCopyLine}
                   />
                 </div>
               );
             })}
 
-            {/* Streaming indicator — positioned after all virtual rows */}
+            {/* Streaming indicator */}
             {isStreaming && !error && (
               <div
                 style={{
@@ -587,28 +1204,28 @@ export function LogViewer({
                   width: '100%',
                   transform: `translateY(${virtualizer.getTotalSize()}px)`,
                 }}
-                className="px-3 py-1.5 flex items-center gap-2 text-white/20 text-[11px] select-none"
+                className={cn('px-3 py-1.5 flex items-center gap-2 text-[11px] select-none', isDark ? 'text-white/20' : 'text-black/30')}
               >
                 <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
-                Streaming…
+                Streaming&hellip;
               </div>
             )}
           </div>
         )}
       </div>
 
-      {/* ── Footer ───────────────────────────────────────────────────────────── */}
-      <div className="bg-[hsl(221_39%_13%)] border-t border-white/[0.06] px-4 py-1.5 text-[11px] text-white/50 flex items-center justify-between">
+      {/* ── Footer ──────────────────────────────────────────────────────── */}
+      <div className={cn('border-t px-4 py-1.5 text-[11px] flex items-center justify-between', footer, isDark ? 'text-white/50' : 'text-black/50')}>
         <span className="font-mono">
           {isLive
-            ? `${namespace}/${podName} · ${selectedContainer}`
+            ? `${namespace}/${podName} \u00B7 ${selectedContainer}`
             : 'Demo mode'}
         </span>
         <span className="tabular-nums">
           {filteredLogs.length !== displayLogs.length
             ? `${filteredLogs.length} of ${displayLogs.length} lines`
             : `${displayLogs.length} lines`}
-          {` · tail ${tailLines}`}
+          {` \u00B7 tail ${tailLines}`}
         </span>
       </div>
     </div>
