@@ -283,8 +283,11 @@ export default function PodDetail() {
 
       const usageCpuMc = cm ? parseCPUToMillicores(cm.cpu) : containerCount > 0 ? podCpuMc / containerCount : 0;
       const usageMemBytes = cm ? parseMemoryToBytes(cm.memory) : containerCount > 0 ? podMemBytes / containerCount : 0;
-      const limitCpuMc = c.resources?.limits?.cpu ? parseCPUToMillicores(c.resources.limits.cpu) : 0;
-      const limitMemBytes = c.resources?.limits?.memory ? parseMemoryToBytes(c.resources.limits.memory) : 0;
+      // Use limit if set, otherwise fall back to request (×1.5 as estimate), otherwise 0
+      const limitCpuMc = c.resources?.limits?.cpu ? parseCPUToMillicores(c.resources.limits.cpu)
+        : c.resources?.requests?.cpu ? parseCPUToMillicores(c.resources.requests.cpu) * 1.5 : 0;
+      const limitMemBytes = c.resources?.limits?.memory ? parseMemoryToBytes(c.resources.limits.memory)
+        : c.resources?.requests?.memory ? parseMemoryToBytes(c.resources.requests.memory) * 1.5 : 0;
       const cpuPct = limitCpuMc > 0 ? Math.min(100, Math.round((usageCpuMc / limitCpuMc) * 100)) : 0;
       const memPct = limitMemBytes > 0 ? Math.min(100, Math.round((usageMemBytes / limitMemBytes) * 100)) : 0;
 
