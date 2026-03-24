@@ -93,12 +93,15 @@ export function useResourceEvents(
     { enabled: !useBackend && !!name, fieldSelector: fieldSelector ?? '' }
   );
 
+  // Kubernetes zero time — means timestamp wasn't recorded
+  const isZeroTime = (t: string | undefined) => !t || t.startsWith('0001-01-01');
+
   const events: EventInfo[] = useBackend
     ? (backendQuery.data ?? []).map((e) => ({
       type: (e.type === 'Warning' ? 'Warning' : 'Normal') as EventInfo['type'],
       reason: e.reason ?? '',
       message: e.message ?? '',
-      time: e.last_timestamp ? calculateAge(e.last_timestamp) : (e.first_timestamp ? calculateAge(e.first_timestamp) : 'unknown'),
+      time: !isZeroTime(e.last_timestamp) ? calculateAge(e.last_timestamp!) : !isZeroTime(e.first_timestamp) ? calculateAge(e.first_timestamp!) : 'just now',
     }))
     : (k8sList.data?.items ?? []).map((event: Record<string, unknown>) => ({
       type: (event.type === 'Warning' ? 'Warning' : 'Normal') as EventInfo['type'],
