@@ -1123,6 +1123,7 @@ export default function DeploymentDetail() {
                 </div>
               </div>
               <PodTerminal
+                key={`${terminalPod}-${selectedTerminalContainer || terminalPodContainers[0]}`}
                 podName={terminalPod}
                 namespace={namespace ?? undefined}
                 containerName={selectedTerminalContainer || terminalPodContainers[0]}
