@@ -65,6 +65,13 @@ func (m *TaintTolerationMatcher) Match(ctx context.Context, bundle *v2.ResourceB
 func findMatchingToleration(tolerations []corev1.Toleration, taint *corev1.Taint) *corev1.Toleration {
 	for i := range tolerations {
 		tol := &tolerations[i]
+		// Wildcard toleration: empty key with Exists operator matches any taint.
+		if tol.Key == "" && tol.Operator == corev1.TolerationOpExists {
+			if tol.Effect == "" || tol.Effect == taint.Effect {
+				return tol
+			}
+			continue
+		}
 		if tol.Key != taint.Key {
 			continue
 		}

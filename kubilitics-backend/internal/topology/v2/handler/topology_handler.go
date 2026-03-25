@@ -186,26 +186,39 @@ func (h *TopologyHandler) HandleGetImpact(w http.ResponseWriter, r *http.Request
 
 	resourceID := v2.NodeID(kind, ns, name)
 
-	ctx := r.Context()
-	var bundle *v2.ResourceBundle
-	if h.collector != nil {
-		var err error
-		bundle, err = h.collector.Collect(ctx, clusterID, "")
-		if err != nil {
-			writeError(w, http.StatusInternalServerError, "failed to collect resources: "+err.Error())
-			return
-		}
-	}
-
-	// Build the full graph to get all edges
-	opts := v2.Options{
+	// Check cache for the full cluster graph (shared across impact queries for the same cluster)
+	graphCacheKey := v2.CacheKey{
 		ClusterID: clusterID,
 		Mode:      v2.ViewModeCluster,
+		Namespace: "",
+		Resource:  "__impact_graph__",
 	}
-	resp, err := builder.BuildGraph(ctx, opts, bundle)
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, "failed to build topology: "+err.Error())
-		return
+
+	resp, cached := h.cache.Get(graphCacheKey)
+	if !cached {
+		ctx := r.Context()
+		var bundle *v2.ResourceBundle
+		if h.collector != nil {
+			var err error
+			bundle, err = h.collector.Collect(ctx, clusterID, "")
+			if err != nil {
+				writeError(w, http.StatusInternalServerError, "failed to collect resources: "+err.Error())
+				return
+			}
+		}
+
+		// Build the full graph to get all edges
+		opts := v2.Options{
+			ClusterID: clusterID,
+			Mode:      v2.ViewModeCluster,
+		}
+		var err error
+		resp, err = builder.BuildGraph(ctx, opts, bundle)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "failed to build topology: "+err.Error())
+			return
+		}
+		h.cache.Set(graphCacheKey, resp, v2.DefaultCacheTTL)
 	}
 
 	// Build reverse index and compute impact

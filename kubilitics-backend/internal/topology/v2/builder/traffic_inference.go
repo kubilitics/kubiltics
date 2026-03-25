@@ -4,6 +4,9 @@ import (
 	"fmt"
 	"strings"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
+
 	"github.com/kubilitics/kubilitics-backend/internal/topology/v2"
 )
 
@@ -219,7 +222,7 @@ func extractServiceDNS(value string, podNamespace string, svcByNsName map[string
 		}
 	}
 	// Simple name reference within same namespace
-	for _, sep := range []string{"://", "://"} {
+	for _, sep := range []string{"://"} {
 		if idx := strings.Index(value, sep); idx >= 0 {
 			hostPort := value[idx+len(sep):]
 			host := strings.SplitN(hostPort, "/", 2)[0]
@@ -245,7 +248,7 @@ func inferNetworkPolicyTraffic(bundle *v2.ResourceBundle, nodeByID map[string]*v
 		targetNS := np.Namespace
 
 		// Find pods matched by this NetworkPolicy's podSelector in the target namespace
-		targetPods := matchPodsByLabels(bundle, targetNS, np.Spec.PodSelector.MatchLabels)
+		targetPods := matchPodsBySelector(bundle, targetNS, &np.Spec.PodSelector)
 
 		for _, ingressRule := range np.Spec.Ingress {
 			for _, from := range ingressRule.From {
@@ -254,15 +257,11 @@ func inferNetworkPolicyTraffic(bundle *v2.ResourceBundle, nodeByID map[string]*v
 				}
 
 				// Find source namespaces matching the selector
-				sourceNamespaces := matchNamespaces(bundle, from.NamespaceSelector.MatchLabels)
+				sourceNamespaces := matchNamespacesBySelector(bundle, from.NamespaceSelector)
 
 				for _, srcNS := range sourceNamespaces {
 					// Get pods in source namespace (optionally filtered by podSelector)
-					var srcLabels map[string]string
-					if from.PodSelector != nil {
-						srcLabels = from.PodSelector.MatchLabels
-					}
-					srcPods := matchPodsByLabels(bundle, srcNS, srcLabels)
+					srcPods := matchPodsBySelector(bundle, srcNS, from.PodSelector)
 
 					for _, srcPod := range srcPods {
 						srcID := v2.NodeID("Pod", srcNS, srcPod)
@@ -371,48 +370,47 @@ func inferEndpointSliceTraffic(bundle *v2.ResourceBundle, nodeByID map[string]*v
 	return result
 }
 
-// matchPodsByLabels returns pod names in a given namespace that match ALL of
-// the specified labels. If labels is nil/empty, all pods in the namespace match.
-func matchPodsByLabels(bundle *v2.ResourceBundle, namespace string, labels map[string]string) []string {
+// matchPodsBySelector returns pod names in a given namespace that match the
+// label selector. If selector is nil, all pods in the namespace match.
+func matchPodsBySelector(bundle *v2.ResourceBundle, namespace string, selector *metav1.LabelSelector) []string {
+	sel, err := selectorFromLabelSelector(selector)
+	if err != nil {
+		return nil
+	}
 	var result []string
 	for i := range bundle.Pods {
 		pod := &bundle.Pods[i]
 		if pod.Namespace != namespace {
 			continue
 		}
-		if labelsMatch(pod.Labels, labels) {
+		if sel.Matches(labels.Set(pod.Labels)) {
 			result = append(result, pod.Name)
 		}
 	}
 	return result
 }
 
-// matchNamespaces returns namespace names whose labels match ALL specified labels.
-func matchNamespaces(bundle *v2.ResourceBundle, labels map[string]string) []string {
-	if len(labels) == 0 {
-		// Empty selector matches all namespaces
-		result := make([]string, 0, len(bundle.Namespaces))
-		for i := range bundle.Namespaces {
-			result = append(result, bundle.Namespaces[i].Name)
-		}
-		return result
+// matchNamespacesBySelector returns namespace names whose labels match the selector.
+func matchNamespacesBySelector(bundle *v2.ResourceBundle, selector *metav1.LabelSelector) []string {
+	sel, err := selectorFromLabelSelector(selector)
+	if err != nil {
+		return nil
 	}
 	var result []string
 	for i := range bundle.Namespaces {
 		ns := &bundle.Namespaces[i]
-		if labelsMatch(ns.Labels, labels) {
+		if sel.Matches(labels.Set(ns.Labels)) {
 			result = append(result, ns.Name)
 		}
 	}
 	return result
 }
 
-// labelsMatch returns true if the resource labels contain all selector labels.
-func labelsMatch(resourceLabels, selectorLabels map[string]string) bool {
-	for k, v := range selectorLabels {
-		if resourceLabels[k] != v {
-			return false
-		}
+// selectorFromLabelSelector converts a metav1.LabelSelector to a labels.Selector.
+// A nil LabelSelector returns labels.Everything() (matches all).
+func selectorFromLabelSelector(ls *metav1.LabelSelector) (labels.Selector, error) {
+	if ls == nil {
+		return labels.Everything(), nil
 	}
-	return true
+	return metav1.LabelSelectorAsSelector(ls)
 }
