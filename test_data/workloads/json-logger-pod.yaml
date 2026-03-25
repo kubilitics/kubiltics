@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: json-logger
+  labels:
+    app: json-logger
+spec:
+  containers:
+    - name: logger
+      image: busybox:1.36
+      command:
+        - sh
+        - -c
+        - |
+          while true; do
+            echo "{\"level\":\"info\",\"ts\":\"$(date +%Y-%m-%dT%H:%M:%S)\",\"msg\":\"health check passed\",\"status\":200,\"latency_ms\":$((RANDOM % 100))}"
+            sleep 3
+          done

@@ -599,6 +599,7 @@ export function LogViewer({
 
   const isLive = isConnected && !!podName && !!namespace;
   const displayLogs = isLive ? parsedLogs : (propLogs ?? EMPTY_LOGS);
+  const hasJsonLogs = displayLogs.some(l => l.isJson);
 
   // ── Filtered container list (hide terminated) ────────────────────────────
   const visibleContainers = useMemo(() => {
@@ -818,7 +819,7 @@ export function LogViewer({
         <div className={cn('w-px h-5 mx-0.5 shrink-0', isDark ? 'bg-white/10' : 'bg-slate-300')} />
 
         {/* Display toggles */}
-        <button onClick={togglePrettifyJson} className={cn('h-8 flex items-center gap-1.5 px-2.5 rounded-lg text-xs font-medium shrink-0 transition-colors', prettifyJson ? activeBtnCls : btnCls)} title="JSON"><Braces className="h-4 w-4" /> JSON</button>
+        <button onClick={togglePrettifyJson} disabled={!hasJsonLogs} className={cn('h-8 flex items-center gap-1.5 px-2.5 rounded-lg text-xs font-medium shrink-0 transition-colors', !hasJsonLogs ? 'opacity-30 cursor-not-allowed' : prettifyJson ? activeBtnCls : btnCls)} title={hasJsonLogs ? 'Prettify JSON logs' : 'No JSON logs detected'}><Braces className="h-4 w-4" /> JSON</button>
         <button onClick={() => setShowTimestamps(v => !v)} className={cn('h-8 flex items-center gap-1.5 px-2.5 rounded-lg text-xs font-medium shrink-0 transition-colors', showTimestamps ? activeBtnCls : btnCls)} title="Timestamps"><Clock className="h-4 w-4" /> Time</button>
         <button onClick={() => setWrapLines(v => !v)} className={cn('h-8 flex items-center gap-1.5 px-2.5 rounded-lg text-xs font-medium shrink-0 transition-colors', wrapLines ? activeBtnCls : btnCls)} title="Wrap"><AlignJustify className="h-4 w-4" /> Wrap</button>
 

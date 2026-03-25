@@ -124,7 +124,6 @@ export function PodTerminal({
 
     const term = xtermRef.current;
     term.clear();
-    term.writeln(`\x1b[36m# Connecting to ${selectedContainer} in ${namespace}/${podName}...\x1b[0m`);
     setConnState('connecting');
 
     const ws = new WebSocket(wsUrl);
@@ -142,9 +141,7 @@ export function PodTerminal({
 
     ws.onopen = () => {
       setConnState('connected');
-      // Refit terminal now that connection is open
       fitRef.current?.fit();
-      term.writeln(`\x1b[32mConnected.\x1b[0m\r\n`);
       // Send initial resize with actual terminal dimensions
       requestAnimationFrame(() => {
         const { cols, rows } = term;
@@ -245,10 +242,9 @@ export function PodTerminal({
           <div className="w-3 h-3 rounded-full bg-[#febc2e]" />
           <div className="w-3 h-3 rounded-full bg-[#28c840]" />
         </div>
-        <span className="text-xs text-slate-400 font-mono ml-2">
-          {namespace}/{podName}:{selectedContainer}
+        <span className="text-xs text-slate-400 font-mono ml-2 truncate">
+          {podName}:{selectedContainer}
         </span>
-        <span className="text-xs font-mono ml-1 text-slate-500">/bin/bash</span>
         {connState === 'connected' ? (
           <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">Connected</span>
         ) : connState === 'connecting' ? (
