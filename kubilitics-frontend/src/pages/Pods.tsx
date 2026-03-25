@@ -1442,6 +1442,7 @@ export default function Pods() {
  resourceName={deleteDialog.bulk ? `${selectedPods.size} pods` : (deleteDialog.pod?.name || '')}
  namespace={deleteDialog.bulk ? undefined : deleteDialog.pod?.namespace}
  onConfirm={handleDelete}
+ requireNameConfirmation={!deleteDialog.bulk}
  />
 
  {/* Port Forward Dialog */}

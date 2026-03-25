@@ -532,7 +532,7 @@ export default function RBACManagement() {
                             className="text-destructive hover:text-destructive"
                             onClick={() => setDeleteDialog({ open: true, role })}
                           >
-                            <Trash2 className="h-3.5 w-3.5" />
+                            <Trash2 className="h-4 w-4" />
                           </Button>
                         )}
                       </div>

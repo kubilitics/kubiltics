@@ -392,7 +392,7 @@ spec:
  className="gap-1.5"
  onClick={() => setDeleteDialog({ open: true, item: null, bulk: true })}
  >
- <Trash2 className="h-3.5 w-3.5" />
+ <Trash2 className="h-4 w-4" />
  Delete Selected
  </Button>
  <Button variant="ghost" size="sm" onClick={() => setSelectedItems(new Set())}>
@@ -738,8 +738,9 @@ spec:
  onOpenChange={(open) => setDeleteDialog({ open, item: open ? deleteDialog.item : null })}
  resourceType="Ingress"
  resourceName={deleteDialog.bulk ? `${selectedItems.size} ingresses` : deleteDialog.item?.name || ''}
- namespace={deleteDialog.item?.namespace}
+ namespace={deleteDialog.bulk ? undefined : deleteDialog.item?.namespace}
  onConfirm={handleDelete}
+ requireNameConfirmation={!deleteDialog.bulk}
  />
  </div>
  );

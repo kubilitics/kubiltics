@@ -327,7 +327,7 @@ spec:
  className="gap-1.5"
  onClick={() => setDeleteDialog({ open: true, item: null, bulk: true })}
  >
- <Trash2 className="h-3.5 w-3.5" />
+ <Trash2 className="h-4 w-4" />
  Delete Selected
  </Button>
  <Button variant="ghost" size="sm" onClick={() => setSelectedItems(new Set())}>

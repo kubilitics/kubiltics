@@ -722,7 +722,7 @@ spec:
  }}
  />
  )}
- <DeleteConfirmDialog open={deleteDialog.open} onOpenChange={(open) => setDeleteDialog({ open, item: open ? deleteDialog.item : null })} resourceType="DaemonSet" resourceName={deleteDialog.bulk ? `${selectedItems.size} daemonsets` : (deleteDialog.item?.name || '')} namespace={deleteDialog.bulk ? undefined : deleteDialog.item?.namespace} onConfirm={handleDelete} />
+ <DeleteConfirmDialog open={deleteDialog.open} onOpenChange={(open) => setDeleteDialog({ open, item: open ? deleteDialog.item : null })} resourceType="DaemonSet" resourceName={deleteDialog.bulk ? `${selectedItems.size} daemonsets` : (deleteDialog.item?.name || '')} namespace={deleteDialog.bulk ? undefined : deleteDialog.item?.namespace} onConfirm={handleDelete} requireNameConfirmation={!deleteDialog.bulk} />
  {rolloutDialog.item && (
  <RolloutActionsDialog
  open={rolloutDialog.open}

@@ -271,8 +271,8 @@ subsets: []
  />
  {selectedItems.size > 0 && (
  <Button variant="destructive" size="sm" className="gap-2" onClick={() => setDeleteDialog({ open: true, item: null, bulk: true })}>
- <Trash2 className="h-3.5 w-3.5" />
- Delete {selectedItems.size} selected
+ <Trash2 className="h-4 w-4" />
+ Delete
  </Button>
  )}
  </>
@@ -298,8 +298,8 @@ subsets: []
  triggerLabel={selectedItems.size > 0 ? `Export (${selectedItems.size})` : 'Export'}
  />
  <Button variant="destructive" size="sm" className="gap-2" onClick={() => setDeleteDialog({ open: true, item: null, bulk: true })}>
- <Trash2 className="h-3.5 w-3.5" />
- Delete selected
+ <Trash2 className="h-4 w-4" />
+ Delete
  </Button>
  <Button variant="ghost" size="sm" onClick={() => setSelectedItems(new Set())}>
  Clear

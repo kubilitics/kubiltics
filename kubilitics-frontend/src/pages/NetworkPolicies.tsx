@@ -342,8 +342,8 @@ spec:
  />
  {selectedItems.size > 0 && (
  <Button variant="destructive" size="sm" className="gap-2" onClick={() => setDeleteDialog({ open: true, item: null, bulk: true })}>
- <Trash2 className="h-3.5 w-3.5" />
- Delete {selectedItems.size} selected
+ <Trash2 className="h-4 w-4" />
+ Delete
  </Button>
  )}
  </>
@@ -374,7 +374,7 @@ spec:
  className="gap-1.5"
  onClick={() => setDeleteDialog({ open: true, item: null, bulk: true })}
  >
- <Trash2 className="h-3.5 w-3.5" />
+ <Trash2 className="h-4 w-4" />
  Delete Selected
  </Button>
  <Button variant="ghost" size="sm" onClick={() => setSelectedItems(new Set())}>
@@ -587,8 +587,9 @@ spec:
  onOpenChange={(open) => setDeleteDialog({ open, item: open ? deleteDialog.item : null })}
  resourceType="NetworkPolicy"
  resourceName={deleteDialog.bulk ? `${selectedItems.size} policies` : deleteDialog.item?.name || ''}
- namespace={deleteDialog.item?.namespace}
+ namespace={deleteDialog.bulk ? undefined : deleteDialog.item?.namespace}
  onConfirm={handleDelete}
+ requireNameConfirmation={!deleteDialog.bulk}
  />
 
  {showCreateWizard && (

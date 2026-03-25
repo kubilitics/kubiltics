@@ -1134,7 +1134,7 @@ spec:
  clusterName={activeCluster?.name}
  />
  )}
- <DeleteConfirmDialog open={deleteDialog.open} onOpenChange={(open) => setDeleteDialog({ open, item: open ? deleteDialog.item : null })} resourceType="Deployment" resourceName={deleteDialog.bulk ? `${selectedItems.size} deployments` : (deleteDialog.item?.name || '')} namespace={deleteDialog.bulk ? undefined : deleteDialog.item?.namespace} onConfirm={handleDelete} />
+ <DeleteConfirmDialog open={deleteDialog.open} onOpenChange={(open) => setDeleteDialog({ open, item: open ? deleteDialog.item : null })} resourceType="Deployment" resourceName={deleteDialog.bulk ? `${selectedItems.size} deployments` : (deleteDialog.item?.name || '')} namespace={deleteDialog.bulk ? undefined : deleteDialog.item?.namespace} onConfirm={handleDelete} requireNameConfirmation={!deleteDialog.bulk} />
  {scaleDialog.item && (
  <ScaleDialog
  open={scaleDialog.open}

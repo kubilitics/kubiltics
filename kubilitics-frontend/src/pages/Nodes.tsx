@@ -567,8 +567,9 @@ export default function Nodes() {
  }}>
  <Unlock className="h-4 w-4" />Uncordon ({selectedNodes.size})
  </Button>
- <Button variant="outline" size="sm" className="press-effect text-destructive hover:bg-destructive/10" onClick={() => setDeleteDialog({ open: true, item: null, bulk: true })}>
- Delete {selectedNodes.size} selected
+ <Button variant="destructive" size="sm" className="gap-2" onClick={() => setDeleteDialog({ open: true, item: null, bulk: true })}>
+ <Trash2 className="h-4 w-4" />
+ Delete
  </Button>
  </>
  )}
@@ -838,7 +839,7 @@ export default function Nodes() {
  <DeleteConfirmDialog
  open={deleteDialog.open}
  onOpenChange={(open) => setDeleteDialog({ open, item: open ? deleteDialog.item : null, bulk: open ? deleteDialog.bulk : false })}
- resourceType={deleteDialog.bulk ? 'nodes' : 'Node'}
+ resourceType="Node"
  resourceName={deleteDialog.bulk ? `${selectedNodes.size} selected` : (deleteDialog.item?.name || '')}
  onConfirm={handleDelete}
  requireNameConfirmation={!deleteDialog.bulk}

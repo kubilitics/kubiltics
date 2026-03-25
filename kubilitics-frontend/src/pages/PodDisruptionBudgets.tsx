@@ -295,9 +295,9 @@ export default function PodDisruptionBudgets() {
  <>
  <ResourceExportDropdown items={searchFiltered} selectedKeys={selectedItems} getKey={(r) => `${r.namespace}/${r.name}`} config={exportConfig} selectionLabel={selectedItems.size > 0 ? 'Selected PDBs' : 'All visible'} onToast={(msg, type) => (type === 'info' ? toast.info(msg) : toast.success(msg))} />
  {selectedItems.size > 0 && (
- <Button variant="destructive" size="sm" className="gap-1.5" onClick={() => setDeleteDialog({ open: true, item: null, bulk: true })}>
- <Trash2 className="h-3.5 w-3.5" />
- Delete {selectedItems.size} selected
+ <Button variant="destructive" size="sm" className="gap-2" onClick={() => setDeleteDialog({ open: true, item: null, bulk: true })}>
+ <Trash2 className="h-4 w-4" />
+ Delete
  </Button>
  )}
  </>
@@ -320,9 +320,9 @@ export default function PodDisruptionBudgets() {
  </Badge>
  <div className="flex items-center gap-2">
  <ResourceExportDropdown items={searchFiltered} selectedKeys={selectedItems} getKey={(r) => `${r.namespace}/${r.name}`} config={exportConfig} selectionLabel="Selected PDBs" onToast={(msg, type) => (type === 'info' ? toast.info(msg) : toast.success(msg))} triggerLabel={`Export (${selectedItems.size})`} />
- <Button variant="destructive" size="sm" className="gap-1.5" onClick={() => setDeleteDialog({ open: true, item: null, bulk: true })}>
- <Trash2 className="h-3.5 w-3.5" />
- Delete selected
+ <Button variant="destructive" size="sm" className="gap-2" onClick={() => setDeleteDialog({ open: true, item: null, bulk: true })}>
+ <Trash2 className="h-4 w-4" />
+ Delete
  </Button>
  <Button variant="ghost" size="sm" onClick={() => setSelectedItems(new Set())}>
  Clear

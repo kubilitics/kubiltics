@@ -213,9 +213,9 @@ export default function BGPPeers() {
  <>
  <ResourceExportDropdown items={filteredItems} selectedKeys={selectedItems} getKey={itemKey} config={exportConfig} selectionLabel={selectedItems.size > 0 ? 'Selected peers' : 'All visible'} onToast={(msg, type) => (type === 'info' ? toast.info(msg) : toast.success(msg))} />
  {selectedItems.size > 0 && (
- <Button variant="destructive" size="sm" className="gap-1.5" onClick={() => setDeleteDialog({ open: true, item: null, bulk: true })}>
- <Trash2 className="h-3.5 w-3.5" />
- Delete {selectedItems.size} selected
+ <Button variant="destructive" size="sm" className="gap-2" onClick={() => setDeleteDialog({ open: true, item: null, bulk: true })}>
+ <Trash2 className="h-4 w-4" />
+ Delete
  </Button>
  )}
  </>
@@ -234,9 +234,9 @@ export default function BGPPeers() {
  </Badge>
  <div className="flex items-center gap-2">
  <ResourceExportDropdown items={filteredItems} selectedKeys={selectedItems} getKey={itemKey} config={exportConfig} selectionLabel="Selected peers" onToast={(msg, type) => (type === 'info' ? toast.info(msg) : toast.success(msg))} triggerLabel={`Export (${selectedItems.size})`} />
- <Button variant="destructive" size="sm" className="gap-1.5" onClick={() => setDeleteDialog({ open: true, item: null, bulk: true })}>
- <Trash2 className="h-3.5 w-3.5" />
- Delete selected
+ <Button variant="destructive" size="sm" className="gap-2" onClick={() => setDeleteDialog({ open: true, item: null, bulk: true })}>
+ <Trash2 className="h-4 w-4" />
+ Delete
  </Button>
  <Button variant="ghost" size="sm" onClick={() => setSelectedItems(new Set())}>Clear</Button>
  </div>
