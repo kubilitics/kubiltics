@@ -122,7 +122,7 @@ export function AppLayout() {
         <main
           ref={mainRef}
           id="main-content"
-          className="flex-1 p-6 pr-3 overflow-auto flex flex-col gap-4"
+          className="flex-1 p-6 pr-3 overflow-auto flex flex-col gap-4 relative"
           style={{ paddingBottom: isShellOpen ? `${shellHeightPx + 24}px` : '24px' }}
           role="main"
           aria-label="Main content"
@@ -156,7 +156,7 @@ export function AppLayout() {
               initial={reduceMotion ? false : { opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: reduceMotion ? 0 : 0.25, ease: 'easeOut' }}
-              className="flex flex-col gap-4 min-h-0 flex-1"
+              className="flex flex-col gap-4 min-h-0 flex-1 relative"
             >
               <RouteErrorBoundary
                 routeName={location.pathname.split('/').pop()?.replace(/-/g, ' ')}

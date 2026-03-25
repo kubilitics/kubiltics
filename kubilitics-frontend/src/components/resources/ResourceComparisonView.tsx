@@ -661,38 +661,23 @@ export function ResourceComparisonView({
     isConnected = false,
     embedded = false,
 }: ResourceComparisonViewProps) {
-    // ── Persist comparison state across parent tab switches ──
-    // When the user navigates away from Compare tab (e.g., to Metrics) and back,
-    // this component remounts. We persist selection in sessionStorage so the
-    // user's comparison journey is preserved until they explicitly clear it.
-    const storageKey = `compare:${clusterId}:${resourceType}:${namespace ?? ''}`;
+    // ── Fresh state per resource — no cross-resource bleed ──
+    // initialSelectedResources is the source of truth for which resource we're comparing.
+    // When the user navigates to a different resource, this prop changes and we reset.
+    const initialKey = JSON.stringify(initialSelectedResources ?? []);
 
-    const [selectedResources, setSelectedResources] = useState<string[]>(() => {
-      try {
-        const saved = sessionStorage.getItem(`${storageKey}:sel`);
-        if (saved) return JSON.parse(saved) as string[];
-      } catch { /* ignore */ }
-      return initialSelectedResources ?? [];
-    });
-    const [activeTab, setActiveTab] = useState(() => {
-      return sessionStorage.getItem(`${storageKey}:tab`) ?? 'yaml';
-    });
-    const [compareMode, setCompareMode] = useState<CompareMode>(() => {
-      const saved = sessionStorage.getItem(`${storageKey}:mode`);
-      return (saved as CompareMode) || 'resources';
-    });
-    const [customYaml, setCustomYaml] = useState<string>(() => {
-      return sessionStorage.getItem(`${storageKey}:yaml`) ?? '';
-    });
+    const [selectedResources, setSelectedResources] = useState<string[]>(initialSelectedResources ?? []);
+    const [activeTab, setActiveTab] = useState('yaml');
+    const [compareMode, setCompareMode] = useState<CompareMode>('resources');
+    const [customYaml, setCustomYaml] = useState<string>('');
 
-    // Save state on every change
+    // Reset all state when navigating to a different resource
     useEffect(() => {
-      sessionStorage.setItem(`${storageKey}:sel`, JSON.stringify(selectedResources));
-      sessionStorage.setItem(`${storageKey}:tab`, activeTab);
-      sessionStorage.setItem(`${storageKey}:mode`, compareMode);
-      // Only persist custom YAML if under 50KB (avoid bloating sessionStorage)
-      if (customYaml.length < 50_000) sessionStorage.setItem(`${storageKey}:yaml`, customYaml);
-    }, [storageKey, selectedResources, activeTab, compareMode, customYaml]);
+      setSelectedResources(initialSelectedResources ?? []);
+      setActiveTab('yaml');
+      setCompareMode('resources');
+      setCustomYaml('');
+    }, [initialKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured);
     const canList = Boolean(clusterId && isBackendConfigured() && backendBaseUrl);

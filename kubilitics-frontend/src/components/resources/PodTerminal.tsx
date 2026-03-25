@@ -47,7 +47,8 @@ export function PodTerminal({
   const wsRef = useRef<WebSocket | null>(null);
   const dataDisposableRef = useRef<{ dispose: () => void } | null>(null);
   const [selectedContainer, setSelectedContainer] = useState(containerName);
-  const [isConnected, setIsConnected] = useState(false);
+  const [connState, setConnState] = useState<'disconnected' | 'connecting' | 'connected'>('disconnected');
+  const isConnected = connState === 'connected';
   const [isMaximized, setIsMaximized] = useState(false);
 
   const storedUrl = useBackendConfigStore((s) => s.backendBaseUrl);
@@ -123,7 +124,8 @@ export function PodTerminal({
 
     const term = xtermRef.current;
     term.clear();
-    term.writeln(`\x1b[36mConnecting to ${selectedContainer} in ${namespace}/${podName}...\x1b[0m`);
+    term.writeln(`\x1b[36m# Connecting to ${selectedContainer} in ${namespace}/${podName}...\x1b[0m`);
+    setConnState('connecting');
 
     const ws = new WebSocket(wsUrl);
     wsRef.current = ws;
@@ -139,7 +141,7 @@ export function PodTerminal({
     });
 
     ws.onopen = () => {
-      setIsConnected(true);
+      setConnState('connected');
       // Refit terminal now that connection is open
       fitRef.current?.fit();
       term.writeln(`\x1b[32mConnected.\x1b[0m\r\n`);
@@ -158,10 +160,10 @@ export function PodTerminal({
           term.write(bytes);
         } else if (msg.t === 'exit') {
           term.writeln(`\r\n\x1b[33mSession ended (exit code: ${msg.d || '0'})\x1b[0m`);
-          setIsConnected(false);
+          setConnState('disconnected');
         } else if (msg.t === 'error') {
           term.writeln(`\r\n\x1b[31mError: ${msg.d}\x1b[0m`);
-          setIsConnected(false);
+          setConnState('disconnected');
         }
       } catch {
         term.write(evt.data);
@@ -169,26 +171,35 @@ export function PodTerminal({
     };
 
     ws.onclose = (evt) => {
-      setIsConnected(false);
-      // Only show disconnect message if it wasn't a clean close (e.g., user navigated away)
-      if (evt.code !== 1000) {
+      setConnState('disconnected');
+      // 1000 = clean close, 1005 = no status (tab switch / unmount) — both are normal
+      if (evt.code !== 1000 && evt.code !== 1005) {
         term.writeln(`\r\n\x1b[33mDisconnected (code: ${evt.code}). Click Reconnect.\x1b[0m`);
       }
     };
 
     ws.onerror = () => {
-      setIsConnected(false);
+      setConnState('disconnected');
       term.writeln(`\r\n\x1b[31mConnection failed. Is the backend running?\x1b[0m`);
     };
 
     dataDisposableRef.current = dataDisposable;
   }, [clusterId, podName, namespace, selectedContainer, baseUrl]);
 
-  // Connect on mount
+  // Connect on mount, auto-reconnect on tab visibility
   useEffect(() => {
     connect();
+
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible' && wsRef.current?.readyState !== WebSocket.OPEN) {
+        connect();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+
     return () => {
-      wsRef.current?.close();
+      document.removeEventListener('visibilitychange', handleVisibility);
+      wsRef.current?.close(1000, 'unmount');
     };
   }, [connect]);
 
@@ -238,11 +249,11 @@ export function PodTerminal({
           {namespace}/{podName}:{selectedContainer}
         </span>
         <span className="text-xs font-mono ml-1 text-slate-500">/bin/bash</span>
-        {isConnected ? (
+        {connState === 'connected' ? (
           <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">Connected</span>
-        ) : (
-          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-red-500/20 text-red-400 border border-red-500/30">Disconnected</span>
-        )}
+        ) : connState === 'connecting' ? (
+          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30 animate-pulse">Connecting</span>
+        ) : null}
 
         {/* Container selector */}
         {containers.length > 1 && (

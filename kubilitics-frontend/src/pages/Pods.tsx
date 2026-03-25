@@ -1429,7 +1429,7 @@ export default function Pods() {
  // Error toast is handled by useCreateK8sResource
  }
  }}
- clusterName="docker-desktop"
+ clusterName={useClusterStore.getState().activeCluster?.name}
  />
  )
  }

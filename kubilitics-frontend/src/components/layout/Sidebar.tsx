@@ -34,11 +34,18 @@ import {
   HardDrive as StorageIcon,
   FolderKanban,
   LogOut,
-  Search,
   ChevronDown,
   Package,
   ShieldCheck,
 } from 'lucide-react';
+import {
+  K8sPodIcon, K8sDeploymentIcon, K8sReplicaSetIcon, K8sStatefulSetIcon,
+  K8sDaemonSetIcon, K8sJobIcon, K8sCronJobIcon, K8sServiceIcon, K8sIngressIcon,
+  K8sEndpointsIcon, K8sNetworkPolicyIcon, K8sConfigMapIcon, K8sSecretIcon,
+  K8sPVIcon, K8sPVCIcon, K8sStorageClassIcon, K8sNodeIcon, K8sNamespaceIcon,
+  K8sServiceAccountIcon, K8sRoleIcon, K8sClusterRoleIcon, K8sRoleBindingIcon,
+  K8sClusterRoleBindingIcon, K8sHPAIcon, K8sLimitRangeIcon,
+} from '@/components/icons/k8sSidebarIcons';
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useResourceCounts } from '@/hooks/useResourceCounts';
@@ -157,8 +164,8 @@ function NavItem({ to, icon: Icon, label, count, onNavigate }: NavItemProps) {
       className={cn(
         'flex items-center gap-3 px-3 py-2 rounded-xl text-[13px] font-medium transition-all duration-300 group relative overflow-hidden h-10',
         isActive
-          ? 'text-primary bg-primary/5 dark:bg-primary/10 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)]'
-          : 'text-slate-800 dark:text-slate-300 hover:bg-slate-100/60 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-slate-100 border-transparent hover:translate-x-0.5'
+          ? 'text-primary bg-primary/8 dark:bg-primary/15 border border-primary/15 dark:border-primary/25 shadow-sm'
+          : 'text-slate-800 dark:text-slate-300 hover:bg-slate-100/60 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-slate-100 border border-transparent hover:translate-x-0.5'
       )}
     >
       {isActive && (
@@ -167,7 +174,7 @@ function NavItem({ to, icon: Icon, label, count, onNavigate }: NavItemProps) {
           className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 rounded-r-full bg-primary"
         />
       )}
-      <Icon className={cn("h-4 w-4 transition-colors relative z-10", isActive ? "text-primary" : "text-slate-700 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-slate-100")} />
+      <Icon className={cn("h-5 w-5 transition-colors relative z-10 shrink-0", isActive ? "text-primary" : "text-slate-700 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-slate-100")} />
       <span className={cn("flex-1 truncate relative z-10", isActive && "font-semibold")}>{label}</span>
       {count !== undefined && (
         <span
@@ -227,62 +234,7 @@ function NavItemIconOnly({
   );
 }
 
-// ─── Search Bar ──────────────────────────────────────────────────────────────
-
-function SidebarSearch({
-  value,
-  onChange,
-}: {
-  value: string;
-  onChange: (value: string) => void;
-}) {
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-        e.preventDefault();
-        inputRef.current?.focus();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
-
-  return (
-    <div className="relative">
-      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 dark:text-slate-400 pointer-events-none" />
-      <input
-        ref={inputRef}
-        type="text"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder="Search resources..."
-        aria-label="Search sidebar resources"
-        className={cn(
-          "w-full pl-9 pr-10 py-2.5 rounded-xl text-[13px] font-medium",
-          "bg-slate-100/60 dark:bg-slate-800/60 border border-slate-200/50 dark:border-slate-700/50",
-          "text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500",
-          "focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/40",
-          "transition-all duration-200"
-        )}
-      />
-      {value ? (
-        <button
-          onClick={() => onChange('')}
-          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
-          aria-label="Clear search"
-        >
-          <span className="text-xs font-bold">&times;</span>
-        </button>
-      ) : (
-        <kbd className="absolute right-3 top-1/2 -translate-y-1/2 hidden sm:inline-flex items-center rounded border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 px-1.5 py-0.5 text-[10px] font-mono text-slate-400 dark:text-slate-400">
-          {/Mac|iPod|iPhone|iPad/.test(navigator.userAgent) ? '⌘K' : 'Ctrl+K'}
-        </kbd>
-      )}
-    </div>
-  );
-}
+// Search bar removed — global search in header (Cmd+K) handles resource search
 
 // ─── Resource Sub-Category (nested accordion) ────────────────────────────────
 
@@ -558,15 +510,15 @@ function useResourceCategories(metallbInstalled: boolean): ResourceCategory[] {
         icon: Cpu,
         items: [
           { to: '/workloads', icon: LayoutDashboard, label: 'Overview' },
-          { to: '/pods', icon: Box, label: 'Pods', countKey: 'pods' },
-          { to: '/deployments', icon: Container, label: 'Deployments', countKey: 'deployments' },
-          { to: '/replicasets', icon: Layers, label: 'ReplicaSets', countKey: 'replicasets' },
-          { to: '/statefulsets', icon: Layers, label: 'StatefulSets', countKey: 'statefulsets' },
-          { to: '/daemonsets', icon: Layers, label: 'DaemonSets', countKey: 'daemonsets' },
-          { to: '/jobs', icon: Activity, label: 'Jobs', countKey: 'jobs' },
-          { to: '/cronjobs', icon: Clock, label: 'CronJobs', countKey: 'cronjobs' },
-          { to: '/podtemplates', icon: Layers, label: 'Pod Templates', countKey: 'podtemplates' },
-          { to: '/controllerrevisions', icon: History, label: 'Controller Revisions', countKey: 'controllerrevisions' },
+          { to: '/pods', icon: K8sPodIcon, label: 'Pods', countKey: 'pods' },
+          { to: '/deployments', icon: K8sDeploymentIcon, label: 'Deployments', countKey: 'deployments' },
+          { to: '/replicasets', icon: K8sReplicaSetIcon, label: 'ReplicaSets', countKey: 'replicasets' },
+          { to: '/statefulsets', icon: K8sStatefulSetIcon, label: 'StatefulSets', countKey: 'statefulsets' },
+          { to: '/daemonsets', icon: K8sDaemonSetIcon, label: 'DaemonSets', countKey: 'daemonsets' },
+          { to: '/jobs', icon: K8sJobIcon, label: 'Jobs', countKey: 'jobs' },
+          { to: '/cronjobs', icon: K8sCronJobIcon, label: 'CronJobs', countKey: 'cronjobs' },
+          { to: '/podtemplates', icon: K8sPodIcon, label: 'Pod Templates', countKey: 'podtemplates' },
+          { to: '/controllerrevisions', icon: K8sStatefulSetIcon, label: 'Controller Revisions', countKey: 'controllerrevisions' },
         ],
       },
       {
@@ -575,14 +527,14 @@ function useResourceCategories(metallbInstalled: boolean): ResourceCategory[] {
         icon: Globe,
         items: [
           { to: '/networking', icon: LayoutDashboard, label: 'Overview' },
-          { to: '/services', icon: Globe, label: 'Services', countKey: 'services' },
-          { to: '/ingresses', icon: Globe, label: 'Ingresses', countKey: 'ingresses' },
-          { to: '/ingressclasses', icon: Route, label: 'Ingress Classes', countKey: 'ingressclasses' },
-          { to: '/endpoints', icon: Globe, label: 'Endpoints', countKey: 'endpoints' },
-          { to: '/endpointslices', icon: Network, label: 'Endpoint Slices', countKey: 'endpointslices' },
-          { to: '/networkpolicies', icon: Shield, label: 'Network Policies', countKey: 'networkpolicies' },
-          { to: '/ipaddresspools', icon: Network, label: 'IP Address Pools', countKey: 'ipaddresspools', condition: metallbInstalled },
-          { to: '/bgppeers', icon: Network, label: 'BGP Peers', countKey: 'bgppeers', condition: metallbInstalled },
+          { to: '/services', icon: K8sServiceIcon, label: 'Services', countKey: 'services' },
+          { to: '/ingresses', icon: K8sIngressIcon, label: 'Ingresses', countKey: 'ingresses' },
+          { to: '/ingressclasses', icon: K8sIngressIcon, label: 'Ingress Classes', countKey: 'ingressclasses' },
+          { to: '/endpoints', icon: K8sEndpointsIcon, label: 'Endpoints', countKey: 'endpoints' },
+          { to: '/endpointslices', icon: K8sEndpointsIcon, label: 'Endpoint Slices', countKey: 'endpointslices' },
+          { to: '/networkpolicies', icon: K8sNetworkPolicyIcon, label: 'Network Policies', countKey: 'networkpolicies' },
+          { to: '/ipaddresspools', icon: K8sServiceIcon, label: 'IP Address Pools', countKey: 'ipaddresspools', condition: metallbInstalled },
+          { to: '/bgppeers', icon: K8sEndpointsIcon, label: 'BGP Peers', countKey: 'bgppeers', condition: metallbInstalled },
         ],
       },
       {
@@ -591,15 +543,15 @@ function useResourceCategories(metallbInstalled: boolean): ResourceCategory[] {
         icon: StorageIcon,
         items: [
           { to: '/storage', icon: LayoutDashboard, label: 'Overview' },
-          { to: '/configmaps', icon: Settings, label: 'ConfigMaps', countKey: 'configmaps' },
-          { to: '/secrets', icon: Key, label: 'Secrets', countKey: 'secrets' },
-          { to: '/persistentvolumes', icon: HardDrive, label: 'Persistent Volumes', countKey: 'persistentvolumes' },
-          { to: '/persistentvolumeclaims', icon: Database, label: 'PVCs', countKey: 'persistentvolumeclaims' },
-          { to: '/storageclasses', icon: Database, label: 'Storage Classes', countKey: 'storageclasses' },
-          { to: '/volumeattachments', icon: HardDrive, label: 'Volume Attachments', countKey: 'volumeattachments' },
-          { to: '/volumesnapshots', icon: Camera, label: 'Volume Snapshots', countKey: 'volumesnapshots' },
-          { to: '/volumesnapshotclasses', icon: Camera, label: 'Snapshot Classes', countKey: 'volumesnapshotclasses' },
-          { to: '/volumesnapshotcontents', icon: HardDrive, label: 'Snapshot Contents', countKey: 'volumesnapshotcontents' },
+          { to: '/configmaps', icon: K8sConfigMapIcon, label: 'ConfigMaps', countKey: 'configmaps' },
+          { to: '/secrets', icon: K8sSecretIcon, label: 'Secrets', countKey: 'secrets' },
+          { to: '/persistentvolumes', icon: K8sPVIcon, label: 'Persistent Volumes', countKey: 'persistentvolumes' },
+          { to: '/persistentvolumeclaims', icon: K8sPVCIcon, label: 'PVCs', countKey: 'persistentvolumeclaims' },
+          { to: '/storageclasses', icon: K8sStorageClassIcon, label: 'Storage Classes', countKey: 'storageclasses' },
+          { to: '/volumeattachments', icon: K8sPVIcon, label: 'Volume Attachments', countKey: 'volumeattachments' },
+          { to: '/volumesnapshots', icon: K8sPVCIcon, label: 'Volume Snapshots', countKey: 'volumesnapshots' },
+          { to: '/volumesnapshotclasses', icon: K8sStorageClassIcon, label: 'Snapshot Classes', countKey: 'volumesnapshotclasses' },
+          { to: '/volumesnapshotcontents', icon: K8sPVIcon, label: 'Snapshot Contents', countKey: 'volumesnapshotcontents' },
         ],
       },
       {
@@ -608,11 +560,11 @@ function useResourceCategories(metallbInstalled: boolean): ResourceCategory[] {
         icon: Server,
         items: [
           { to: '/cluster', icon: LayoutDashboard, label: 'Overview' },
-          { to: '/nodes', icon: Server, label: 'Nodes', countKey: 'nodes' },
-          { to: '/namespaces', icon: FileText, label: 'Namespaces', countKey: 'namespaces' },
-          { to: '/events', icon: Activity, label: 'Events' },
-          { to: '/apiservices', icon: FileCode, label: 'API Services', countKey: 'apiservices' },
-          { to: '/leases', icon: Activity, label: 'Leases', countKey: 'leases' },
+          { to: '/nodes', icon: K8sNodeIcon, label: 'Nodes', countKey: 'nodes' },
+          { to: '/namespaces', icon: K8sNamespaceIcon, label: 'Namespaces', countKey: 'namespaces' },
+          { to: '/events', icon: K8sPodIcon, label: 'Events' },
+          { to: '/apiservices', icon: K8sServiceIcon, label: 'API Services', countKey: 'apiservices' },
+          { to: '/leases', icon: K8sNodeIcon, label: 'Leases', countKey: 'leases' },
         ],
       },
       {
@@ -620,12 +572,12 @@ function useResourceCategories(metallbInstalled: boolean): ResourceCategory[] {
         label: 'Security & Access',
         icon: Lock,
         items: [
-          { to: '/serviceaccounts', icon: Users, label: 'Service Accounts', countKey: 'serviceaccounts' },
-          { to: '/roles', icon: Shield, label: 'Roles', countKey: 'roles' },
-          { to: '/clusterroles', icon: Shield, label: 'Cluster Roles', countKey: 'clusterroles' },
-          { to: '/rolebindings', icon: Shield, label: 'Role Bindings', countKey: 'rolebindings' },
-          { to: '/clusterrolebindings', icon: Shield, label: 'Cluster Role Bindings', countKey: 'clusterrolebindings' },
-          { to: '/priorityclasses', icon: AlertTriangle, label: 'Priority Classes', countKey: 'priorityclasses' },
+          { to: '/serviceaccounts', icon: K8sServiceAccountIcon, label: 'Service Accounts', countKey: 'serviceaccounts' },
+          { to: '/roles', icon: K8sRoleIcon, label: 'Roles', countKey: 'roles' },
+          { to: '/clusterroles', icon: K8sClusterRoleIcon, label: 'Cluster Roles', countKey: 'clusterroles' },
+          { to: '/rolebindings', icon: K8sRoleBindingIcon, label: 'Role Bindings', countKey: 'rolebindings' },
+          { to: '/clusterrolebindings', icon: K8sClusterRoleBindingIcon, label: 'Cluster Role Bindings', countKey: 'clusterrolebindings' },
+          { to: '/priorityclasses', icon: K8sLimitRangeIcon, label: 'Priority Classes', countKey: 'priorityclasses' },
         ],
       },
       {
@@ -634,10 +586,10 @@ function useResourceCategories(metallbInstalled: boolean): ResourceCategory[] {
         icon: Gauge,
         items: [
           { to: '/resources', icon: LayoutDashboard, label: 'Overview' },
-          { to: '/resourcequotas', icon: Gauge, label: 'Resource Quotas', countKey: 'resourcequotas' },
-          { to: '/limitranges', icon: Scale, label: 'Limit Ranges', countKey: 'limitranges' },
-          { to: '/resourceslices', icon: Cpu, label: 'Resource Slices (DRA)', countKey: 'resourceslices' },
-          { to: '/deviceclasses', icon: Cpu, label: 'Device Classes (DRA)', countKey: 'deviceclasses' },
+          { to: '/resourcequotas', icon: K8sLimitRangeIcon, label: 'Resource Quotas', countKey: 'resourcequotas' },
+          { to: '/limitranges', icon: K8sLimitRangeIcon, label: 'Limit Ranges', countKey: 'limitranges' },
+          { to: '/resourceslices', icon: K8sNodeIcon, label: 'Resource Slices (DRA)', countKey: 'resourceslices' },
+          { to: '/deviceclasses', icon: K8sStorageClassIcon, label: 'Device Classes (DRA)', countKey: 'deviceclasses' },
         ],
       },
       {
@@ -646,9 +598,9 @@ function useResourceCategories(metallbInstalled: boolean): ResourceCategory[] {
         icon: Zap,
         items: [
           { to: '/scaling', icon: LayoutDashboard, label: 'Overview' },
-          { to: '/horizontalpodautoscalers', icon: Scale, label: 'HPAs', countKey: 'horizontalpodautoscalers' },
-          { to: '/verticalpodautoscalers', icon: Scale, label: 'VPAs', countKey: 'verticalpodautoscalers' },
-          { to: '/poddisruptionbudgets', icon: Shield, label: 'PDBs', countKey: 'poddisruptionbudgets' },
+          { to: '/horizontalpodautoscalers', icon: K8sHPAIcon, label: 'HPAs', countKey: 'horizontalpodautoscalers' },
+          { to: '/verticalpodautoscalers', icon: K8sHPAIcon, label: 'VPAs', countKey: 'verticalpodautoscalers' },
+          { to: '/poddisruptionbudgets', icon: K8sPodIcon, label: 'PDBs', countKey: 'poddisruptionbudgets' },
         ],
       },
       {
@@ -657,8 +609,8 @@ function useResourceCategories(metallbInstalled: boolean): ResourceCategory[] {
         icon: FileCode,
         items: [
           { to: '/crds', icon: LayoutDashboard, label: 'Overview' },
-          { to: '/customresourcedefinitions', icon: FileCode, label: 'Definitions', countKey: 'customresourcedefinitions' },
-          { to: '/customresources', icon: FileCode, label: 'Instances' },
+          { to: '/customresourcedefinitions', icon: K8sConfigMapIcon, label: 'Definitions', countKey: 'customresourcedefinitions' },
+          { to: '/customresources', icon: K8sPodIcon, label: 'Instances' },
         ],
       },
       {
@@ -667,8 +619,8 @@ function useResourceCategories(metallbInstalled: boolean): ResourceCategory[] {
         icon: Webhook,
         items: [
           { to: '/admission', icon: LayoutDashboard, label: 'Overview' },
-          { to: '/mutatingwebhooks', icon: Webhook, label: 'Mutating Webhooks', countKey: 'mutatingwebhookconfigurations' },
-          { to: '/validatingwebhooks', icon: Webhook, label: 'Validating Webhooks', countKey: 'validatingwebhookconfigurations' },
+          { to: '/mutatingwebhooks', icon: K8sServiceAccountIcon, label: 'Mutating Webhooks', countKey: 'mutatingwebhookconfigurations' },
+          { to: '/validatingwebhooks', icon: K8sServiceAccountIcon, label: 'Validating Webhooks', countKey: 'validatingwebhookconfigurations' },
         ],
       },
     ],
@@ -704,8 +656,7 @@ function SidebarContent({
   const toggleResourceCategory = useUIStore((s) => s.toggleResourceCategory);
   const setResourcesSectionOpen = useUIStore((s) => s.setResourcesSectionOpen);
 
-  // Search state
-  const [searchQuery, setSearchQuery] = useState('');
+  // Search state removed — global search in header handles this
 
   // Resource categories data
   const categories = useResourceCategories(metallbInstalled);
@@ -726,12 +677,6 @@ function SidebarContent({
     }
   }, [pathname]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Auto-expand Resources section when searching
-  useEffect(() => {
-    if (searchQuery && !isResourcesSectionOpen) {
-      setResourcesSectionOpen(true);
-    }
-  }, [searchQuery]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleResourcesToggle = useCallback(() => {
     setResourcesSectionOpen(!isResourcesSectionOpen);
@@ -742,18 +687,7 @@ function SidebarContent({
     navigate('/dashboard');
   };
 
-  // Filter categories based on search
-  const filteredCategories = useMemo(() => {
-    if (!searchQuery) return categories;
-    const lowerQuery = searchQuery.toLowerCase();
-    return categories.filter((cat) => {
-      // Show category if its label matches or any item matches
-      if (cat.label.toLowerCase().includes(lowerQuery)) return true;
-      return cat.items.some(
-        (item) => item.condition !== false && item.label.toLowerCase().includes(lowerQuery)
-      );
-    });
-  }, [categories, searchQuery]);
+  const filteredCategories = categories;
 
   return (
     <div className="flex flex-col gap-4 pb-6 w-full">
@@ -775,8 +709,7 @@ function SidebarContent({
         </div>
       )}
 
-      {/* Search Bar */}
-      <SidebarSearch value={searchQuery} onChange={setSearchQuery} />
+      {/* Search removed — use the global search in the header (Cmd+K) */}
 
       <SyncingIndicator isLoading={isLoading} isInitialLoad={isInitialLoad} />
 
@@ -849,16 +782,11 @@ function SidebarContent({
                     key={category.id}
                     category={category}
                     counts={counts as Record<string, number>}
-                    isExpanded={expandedCategories.includes(category.id) || !!searchQuery}
+                    isExpanded={expandedCategories.includes(category.id)}
                     onToggle={() => toggleResourceCategory(category.id)}
-                    searchFilter={searchQuery}
+                    searchFilter=""
                   />
                 ))}
-                {filteredCategories.length === 0 && searchQuery && (
-                  <div className="px-3 py-4 text-center">
-                    <p className="text-xs text-slate-400 dark:text-slate-400">No resources matching "{searchQuery}"</p>
-                  </div>
-                )}
               </div>
             </motion.div>
           )}

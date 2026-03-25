@@ -39,14 +39,17 @@ spec:
 kind: Pod
 metadata:
   name: multi-container
+  labels:
+    app: multi-container
 spec:
   containers:
-    - name: app
-      image: app:latest
+    - name: nginx
+      image: nginx:1.25
       ports:
-        - containerPort: 8080
-    - name: sidecar
-      image: sidecar:latest`
+        - containerPort: 80
+    - name: debug
+      image: busybox:1.36
+      command: ["sh", "-c", "while true; do echo healthy; sleep 30; done"]`
       }
     ]
   },
@@ -76,7 +79,7 @@ spec:
     spec:
       containers:
       - name: php-redis
-        image: gcr.io/google_samples/gb-frontend:v3`
+        image: nginx:1.25`
       }
     ]
   },
@@ -202,20 +205,24 @@ spec:
         yaml: `apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: resource-deployment
+  name: httpd-deployment
+  labels:
+    app: httpd
 spec:
   replicas: 2
   selector:
     matchLabels:
-      app: myapp
+      app: httpd
   template:
     metadata:
       labels:
-        app: myapp
+        app: httpd
     spec:
       containers:
-        - name: myapp
-          image: myapp:latest
+        - name: httpd
+          image: httpd:2.4
+          ports:
+            - containerPort: 80
           resources:
             requests:
               memory: "64Mi"
@@ -236,30 +243,30 @@ spec:
         yaml: `apiVersion: v1
 kind: Service
 metadata:
-  name: my-service
+  name: nginx-service
 spec:
   type: ClusterIP
   selector:
-    app: myapp
+    app: nginx
   ports:
     - protocol: TCP
       port: 80
-      targetPort: 8080`
+      targetPort: 80`
       },
       {
         name: 'LoadBalancer Service',
         yaml: `apiVersion: v1
 kind: Service
 metadata:
-  name: my-loadbalancer
+  name: nginx-loadbalancer
 spec:
   type: LoadBalancer
   selector:
-    app: myapp
+    app: nginx
   ports:
     - protocol: TCP
       port: 80
-      targetPort: 8080`
+      targetPort: 80`
       }
     ]
   },
@@ -484,7 +491,7 @@ spec:
         yaml: `apiVersion: batch/v1
 kind: CronJob
 metadata:
-  name: hourly-backup
+  name: hourly-hello
 spec:
   schedule: "0 * * * *"
   jobTemplate:
@@ -492,8 +499,9 @@ spec:
       template:
         spec:
           containers:
-            - name: backup
-              image: backup:latest
+            - name: hello
+              image: busybox:1.36
+              command: ["sh", "-c", "echo Hello from CronJob at $(date)"]
           restartPolicy: OnFailure`
       }
     ]
@@ -508,17 +516,19 @@ spec:
         yaml: `apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: minimal-ingress
+  name: nginx-ingress
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
 spec:
   rules:
-    - host: myapp.example.com
+    - host: nginx.example.com
       http:
         paths:
           - path: /
             pathType: Prefix
             backend:
               service:
-                name: myapp
+                name: nginx-service
                 port:
                   number: 80`
       }
@@ -725,12 +735,12 @@ spec:
         yaml: `apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
-  name: cpu-hpa
+  name: nginx-hpa
 spec:
   scaleTargetRef:
     apiVersion: apps/v1
     kind: Deployment
-    name: myapp
+    name: nginx-deployment
   minReplicas: 1
   maxReplicas: 10
   metrics:
@@ -774,12 +784,12 @@ spec:
         yaml: `apiVersion: autoscaling.k8s.io/v1
 kind: VerticalPodAutoscaler
 metadata:
-  name: my-app-vpa
+  name: nginx-vpa
 spec:
   targetRef:
     apiVersion: "apps/v1"
     kind: Deployment
-    name: my-app
+    name: nginx-deployment
   updatePolicy:
     updateMode: "Auto"`
       }
@@ -920,76 +930,72 @@ export function ResourceDocumentation({ resourceKind, className }: ResourceDocum
   return (
     <ScrollArea className={cn('h-full', className)}>
       <div className="p-6 space-y-6">
-        {/* Header */}
-        <div>
-          <h2 className="text-lg font-semibold flex items-center gap-2">
-            <BookOpen className="h-5 w-5 text-primary" />
-            {resourceKind} Documentation
-          </h2>
-          <p className="text-sm text-muted-foreground mt-2">
-            {docs.description}
-          </p>
-        </div>
-
-        {/* Official Links */}
-        <div className="flex flex-wrap gap-3">
-          <Button variant="outline" size="sm" asChild className="gap-2">
-            <a href={docs.docUrl} target="_blank" rel="noopener noreferrer">
-              <BookOpen className="h-4 w-4" />
-              Concepts Guide
-              <ExternalLink className="h-3 w-3" />
-            </a>
-          </Button>
-          <Button variant="outline" size="sm" asChild className="gap-2">
-            <a href={docs.apiRef} target="_blank" rel="noopener noreferrer">
-              <FileCode className="h-4 w-4" />
-              API Reference
-              <ExternalLink className="h-3 w-3" />
-            </a>
-          </Button>
-        </div>
-
-        {/* Examples */}
-        {docs.examples.length > 0 && (
-          <div className="space-y-4">
-            <h3 className="text-sm font-medium flex items-center gap-2">
-              <FileCode className="h-4 w-4" />
-              Examples
-            </h3>
-
-            {docs.examples.map((example, idx) => (
-              <div key={idx} className="rounded-lg border border-border overflow-hidden">
-                <div className="flex items-center justify-between px-4 py-2 bg-muted/50 border-b border-border">
-                  <div className="flex items-center gap-2">
-                    <Badge variant="outline" className="text-xs">{example.name}</Badge>
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleCopyExample(example.yaml)}
-                    className="h-7 gap-1.5"
-                  >
-                    <Copy className="h-3.5 w-3.5" />
-                    Copy
-                  </Button>
+        {/* Two-column layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Left column — description, links, tips */}
+          <div className="space-y-5">
+            {/* Header card */}
+            <div className="rounded-xl border border-slate-200/60 dark:border-slate-700/60 bg-gradient-to-br from-slate-50 to-white dark:from-slate-800/80 dark:to-slate-900 p-5">
+              <div className="flex items-start gap-3">
+                <div className="h-10 w-10 rounded-xl bg-primary/10 dark:bg-primary/20 flex items-center justify-center shrink-0">
+                  <BookOpen className="h-5 w-5 text-primary" />
                 </div>
-                <pre className="p-4 text-xs font-mono overflow-x-auto bg-background">
-                  <code className="text-foreground">{example.yaml}</code>
-                </pre>
+                <div>
+                  <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">{resourceKind}</h2>
+                  <p className="text-sm text-muted-foreground mt-1 leading-relaxed">{docs.description}</p>
+                </div>
               </div>
-            ))}
-          </div>
-        )}
+              <div className="flex flex-wrap gap-2 mt-4 pl-[52px]">
+                <a href={docs.docUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border border-primary/30 text-primary bg-primary/5 hover:bg-primary/10 transition-colors">
+                  <BookOpen className="h-3.5 w-3.5" />
+                  Concepts Guide
+                  <ExternalLink className="h-3 w-3 opacity-60" />
+                </a>
+                <a href={docs.apiRef} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:border-primary/30 hover:text-primary transition-colors">
+                  <FileCode className="h-3.5 w-3.5" />
+                  API Reference
+                  <ExternalLink className="h-3 w-3 opacity-60" />
+                </a>
+              </div>
+            </div>
 
-        {/* Quick Tips */}
-        <div className="rounded-lg border border-primary/20 bg-primary/5 p-4">
-          <h4 className="text-sm font-medium text-primary mb-2">Quick Tips</h4>
-          <ul className="text-xs text-muted-foreground space-y-1.5">
-            <li>• Use <code className="text-foreground bg-muted px-1 py-0.5 rounded">metadata.labels</code> for organizing resources</li>
-            <li>• Always specify <code className="text-foreground bg-muted px-1 py-0.5 rounded">resources.requests</code> and <code className="text-foreground bg-muted px-1 py-0.5 rounded">limits</code> where applicable</li>
-            <li>• Use namespaces to isolate environments</li>
-            <li>• Add descriptive names to all containers if applicable</li>
-          </ul>
+            {/* Quick Tips */}
+            <div className="rounded-xl border border-amber-200 dark:border-amber-800/40 bg-amber-50/50 dark:bg-amber-900/10 p-4">
+              <h4 className="text-sm font-semibold text-amber-800 dark:text-amber-300 mb-2.5">Quick Tips</h4>
+              <ul className="text-xs text-amber-900/70 dark:text-amber-200/70 space-y-2">
+                <li className="flex items-start gap-2"><span className="text-amber-500 mt-0.5">•</span> Use <code className="text-amber-900 dark:text-amber-200 bg-amber-100 dark:bg-amber-900/30 px-1 py-0.5 rounded">metadata.labels</code> for organizing resources</li>
+                <li className="flex items-start gap-2"><span className="text-amber-500 mt-0.5">•</span> Always specify <code className="text-amber-900 dark:text-amber-200 bg-amber-100 dark:bg-amber-900/30 px-1 py-0.5 rounded">resources.requests</code> and <code className="text-amber-900 dark:text-amber-200 bg-amber-100 dark:bg-amber-900/30 px-1 py-0.5 rounded">limits</code></li>
+                <li className="flex items-start gap-2"><span className="text-amber-500 mt-0.5">•</span> Use namespaces to isolate environments</li>
+                <li className="flex items-start gap-2"><span className="text-amber-500 mt-0.5">•</span> Run <code className="text-amber-900 dark:text-amber-200 bg-amber-100 dark:bg-amber-900/30 px-1 py-0.5 rounded">kubectl explain {resourceKind.toLowerCase()}</code> for full field reference</li>
+              </ul>
+            </div>
+          </div>
+
+          {/* Right column — examples */}
+          <div className="space-y-3">
+            {docs.examples.length > 0 && (
+              <>
+                <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                  <FileCode className="h-4 w-4 text-primary" />
+                  Examples
+                </h3>
+                {docs.examples.map((example, idx) => (
+                  <div key={idx} className="rounded-xl border border-slate-200/60 dark:border-slate-700/60 overflow-hidden">
+                    <div className="flex items-center justify-between px-4 py-2.5 bg-slate-50/80 dark:bg-slate-800/50 border-b border-slate-200/60 dark:border-slate-700/60">
+                      <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">{example.name}</span>
+                      <Button variant="ghost" size="sm" onClick={() => handleCopyExample(example.yaml)} className="h-7 gap-1.5 text-xs">
+                        <Copy className="h-3.5 w-3.5" />
+                        Copy
+                      </Button>
+                    </div>
+                    <pre className="p-4 text-xs font-mono overflow-x-auto bg-white dark:bg-slate-900 leading-relaxed">
+                      <code className="text-slate-800 dark:text-slate-200">{example.yaml}</code>
+                    </pre>
+                  </div>
+                ))}
+              </>
+            )}
+          </div>
         </div>
       </div>
     </ScrollArea>

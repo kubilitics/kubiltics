@@ -1,7 +1,7 @@
 /* eslint-disable react-refresh/only-export-components */
 import { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   Plus,
   Upload,
@@ -14,7 +14,10 @@ import {
   BookOpen,
   AlertCircle,
   Sparkles,
-  ExternalLink,
+  Loader2,
+  ChevronLeft,
+  CheckCircle2,
+  Rocket,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -22,7 +25,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { toast } from '@/components/ui/sonner';
 import { CodeEditor } from '@/components/editor/CodeEditor';
-import { ResourceDocumentation, K8S_DOCS } from '@/components/editor/ResourceDocumentation';
+import { ResourceDocumentation } from '@/components/editor/ResourceDocumentation';
 import { cn } from '@/lib/utils';
 
 interface ResourceCreatorProps {
@@ -47,7 +50,6 @@ function validateYaml(yaml: string): YamlValidationResult {
     return { isValid: false, errors };
   }
 
-  // Check for required fields
   if (!yaml.includes('apiVersion:')) {
     errors.push('Missing required field: apiVersion');
   }
@@ -61,7 +63,6 @@ function validateYaml(yaml: string): YamlValidationResult {
     errors.push('Missing required field: metadata.name');
   }
 
-  // Check for tabs
   if (yaml.includes('\t')) {
     errors.push('Tabs are not allowed in YAML, use spaces');
   }
@@ -75,7 +76,7 @@ export function ResourceCreator({
   onClose,
   onApply,
   isApplying = false,
-  clusterName = 'docker-desktop',
+  clusterName,
 }: ResourceCreatorProps) {
   const navigate = useNavigate();
   const [yaml, setYaml] = useState(defaultYaml);
@@ -140,205 +141,207 @@ export function ResourceCreator({
     }
     onApply(yaml);
   };
+
   return (
     <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 bg-background flex flex-col"
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: 12 }}
+      transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+      className="fixed z-[60] flex flex-col bg-white dark:bg-slate-900 overflow-hidden"
+      style={{ top: 0, right: 0, bottom: 0, left: 0 }}
+      ref={(el) => {
+        // Position to cover exactly the main content area (right of sidebar, below header)
+        if (el) {
+          const main = document.getElementById('main-content');
+          if (main) {
+            const rect = main.getBoundingClientRect();
+            el.style.top = `${rect.top}px`;
+            el.style.left = `${rect.left}px`;
+            el.style.right = '0px';
+            el.style.bottom = '0px';
+          }
+        }
+      }}
     >
-      {/* Header */}
-      <header className="flex items-center justify-between px-4 py-3 border-b border-border bg-muted/30">
-        <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8">
-            <X className="h-4 w-4" />
-          </Button>
-          <div className="flex items-center gap-2">
-            <Plus className="h-4 w-4 text-primary" />
-            <span className="font-semibold">Create {resourceKind}</span>
-          </div>
-          <Badge variant="outline" className="text-xs font-mono">
-            {clusterName}
-          </Badge>
-        </div>
+        {/* ─── Header — title + tabs + close ──────────────────────────────── */}
+        <div className="flex items-center gap-3 px-4 py-2.5 border-b border-slate-200/60 dark:border-slate-700/60 bg-slate-50/80 dark:bg-slate-800/50 shrink-0">
+          <Plus className="h-4 w-4 text-primary shrink-0" />
+          <span className="text-sm font-semibold text-slate-900 dark:text-slate-100 truncate">Create {resourceKind}</span>
+          {clusterName && <span className="text-xs text-muted-foreground font-mono shrink-0">{clusterName}</span>}
 
-        <div className="flex items-center gap-2">
-          {/* Font Size Selector */}
-          <div className="flex items-center gap-1 border border-border rounded-md p-0.5">
-            <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant={fontSize === 'small' ? 'secondary' : 'ghost'}
-                    size="sm"
-                    onClick={() => setFontSize('small')}
-                    className="h-7 w-7 p-0 text-xs"
-                  >
-                    A
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Small font</TooltipContent>
-              </Tooltip>
-            <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant={fontSize === 'medium' ? 'secondary' : 'ghost'}
-                    size="sm"
-                    onClick={() => setFontSize('medium')}
-                    className="h-7 w-7 p-0 text-sm"
-                  >
-                    A
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Medium font</TooltipContent>
-              </Tooltip>
-            <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant={fontSize === 'large' ? 'secondary' : 'ghost'}
-                    size="sm"
-                    onClick={() => setFontSize('large')}
-                    className="h-7 w-7 p-0 text-base font-medium"
-                  >
-                    A
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Large font</TooltipContent>
-              </Tooltip>
+          <div className="flex items-center gap-1 ml-3 shrink-0">
+            <button
+              onClick={() => setActiveTab('editor')}
+              className={cn(
+                "flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-sm font-medium transition-all border",
+                activeTab === 'editor'
+                  ? "bg-primary text-primary-foreground border-primary shadow-sm shadow-primary/25"
+                  : "bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:border-primary/50 hover:text-primary"
+              )}
+            >
+              <FileCode className="h-4 w-4" />
+              Editor
+            </button>
+            <button
+              onClick={() => setActiveTab('docs')}
+              className={cn(
+                "flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-sm font-medium transition-all border",
+                activeTab === 'docs'
+                  ? "bg-primary text-primary-foreground border-primary shadow-sm shadow-primary/25"
+                  : "bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:border-primary/50 hover:text-primary"
+              )}
+            >
+              <BookOpen className="h-4 w-4" />
+              Documentation
+            </button>
           </div>
 
-          {/* Upload Button */}
-          <Button variant="outline" size="sm" onClick={handleUpload} className="h-8 gap-2">
-            <Upload className="h-3.5 w-3.5" />
-            Upload File/URL
-          </Button>
-        </div>
-      </header>
+          <div className="flex-1" />
 
-      {/* Main Content */}
-      <div className="flex-1 flex overflow-hidden">
-        {/* Editor/Docs Tabs */}
-        <div className="flex-1 flex flex-col overflow-hidden">
-          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'editor' | 'docs')} className="flex-1 flex flex-col overflow-hidden">
-            <div className="border-b border-border px-4">
-              <TabsList className="h-10 bg-transparent p-0 gap-0">
-                <TabsTrigger
-                  value="editor"
-                  className="h-10 px-4 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none gap-2"
-                >
-                  <FileCode className="h-4 w-4" />
-                  Editor
-                </TabsTrigger>
-                <TabsTrigger
-                  value="docs"
-                  className="h-10 px-4 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none gap-2"
-                >
-                  <BookOpen className="h-4 w-4" />
-                  Documentation
-                </TabsTrigger>
-              </TabsList>
+          {/* Editor-only toolbar */}
+          {activeTab === 'editor' && (
+            <div className="flex items-center gap-1 shrink-0">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button onClick={handleCopy} className="h-7 w-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                    <Copy className="h-3.5 w-3.5" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>Copy</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button onClick={handleDownload} className="h-7 w-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                    <Download className="h-3.5 w-3.5" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>Download</TooltipContent>
+              </Tooltip>
+              <button
+                onClick={handleUpload}
+                className="h-7 rounded-lg border border-slate-200/80 dark:border-slate-700/60 px-2 flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
+              >
+                <Upload className="h-3 w-3" />
+                Import
+              </button>
+              <div className="w-px h-4 bg-slate-200 dark:bg-slate-700 mx-0.5" />
             </div>
+          )}
 
-            <TabsContent value="editor" className="flex-1 m-0 overflow-hidden">
-              <div className="h-full flex flex-col">
-                {/* Validation Errors */}
-                {!validation.isValid && (
-                  <div className="px-4 py-2 bg-destructive/10 border-b border-destructive/20">
-                    <div className="flex items-start gap-2">
-                      <AlertCircle className="h-4 w-4 text-destructive mt-0.5 shrink-0" />
-                      <div className="flex-1">
-                        {validation.errors.map((error, i) => (
-                          <p key={i} className="text-xs text-destructive">{error}</p>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                )}
+          <button
+            onClick={onClose}
+            className="h-7 w-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
 
-                {/* Status Bar */}
-                <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-muted/20">
-                  <div className="flex items-center gap-2">
-                    {validation.isValid && yaml.trim() && (
-                      <Badge variant="outline" className="text-xs text-primary border-primary/30 bg-primary/10">
-                        <Check className="h-3 w-3 mr-1" />
-                        Valid YAML
-                      </Badge>
-                    )}
-                    {hasChanges && (
-                      <Badge variant="outline" className="text-xs text-accent-foreground border-accent/30 bg-accent/50">
-                        <Sparkles className="h-3 w-3 mr-1" />
-                        Modified
-                      </Badge>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button variant="ghost" size="sm" onClick={handleCopy} className="h-7 w-7 p-0">
-                            <Copy className="h-3.5 w-3.5" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>Copy YAML</TooltipContent>
-                      </Tooltip>
-                    <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button variant="ghost" size="sm" onClick={handleDownload} className="h-7 w-7 p-0">
-                            <Download className="h-3.5 w-3.5" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>Download YAML</TooltipContent>
-                      </Tooltip>
-                  </div>
-                </div>
-
-                {/* Code Editor */}
-                <div className="flex-1 overflow-hidden">
-                  <CodeEditor
-                    value={yaml}
-                    onChange={handleYamlChange}
-                    className="h-full rounded-none border-0"
-                    minHeight="100%"
-                    fontSize={fontSize}
-                  />
+        {/* ─── Editor: validation errors ──────────────────────────────────── */}
+        <AnimatePresence>
+          {activeTab === 'editor' && !validation.isValid && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.15 }}
+              className="overflow-hidden"
+            >
+              <div className="px-6 py-2.5 bg-red-50/80 dark:bg-red-900/10 border-b border-red-100 dark:border-red-900/20">
+                <div className="space-y-1">
+                  {validation.errors.map((error, i) => (
+                    <p key={i} className="text-xs text-red-600 dark:text-red-400 flex items-center gap-1.5">
+                      <span className="h-1 w-1 rounded-full bg-red-400 shrink-0" />
+                      {error}
+                    </p>
+                  ))}
                 </div>
               </div>
-            </TabsContent>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
-            <TabsContent value="docs" className="flex-1 m-0 overflow-hidden">
-              <ResourceDocumentation
-                resourceKind={resourceKind}
-                className="h-full"
-              />
-            </TabsContent>
-          </Tabs>
+        {/* ─── Main Content ───────────────────────────────────────────────── */}
+        <div className="flex-1 min-h-0 overflow-hidden">
+          {activeTab === 'editor' ? (
+            <CodeEditor
+              value={yaml}
+              onChange={handleYamlChange}
+              className="h-full rounded-none border-0"
+              minHeight="100%"
+              fontSize={fontSize}
+            />
+          ) : (
+            <ResourceDocumentation
+              resourceKind={resourceKind}
+              className="h-full"
+            />
+          )}
         </div>
-      </div>
 
-      {/* Footer */}
-      <footer className="flex items-center justify-between px-4 py-3 border-t border-border bg-muted/30">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handleUndo}
-          disabled={!hasChanges}
-          className="gap-2"
-        >
-          <Undo2 className="h-4 w-4" />
-          Undo Changes
-        </Button>
+        {/* ─── Footer — Editor only ──────────────────────────────────────── */}
+        {activeTab === 'editor' && <div className="grid grid-cols-3 items-center px-6 py-4 border-t border-slate-200/60 dark:border-slate-700/60 bg-white dark:bg-slate-900 shadow-[0_-4px_16px_rgba(0,0,0,0.04)] dark:shadow-[0_-4px_16px_rgba(0,0,0,0.2)] shrink-0">
+          {/* Left — Cancel + Reset */}
+          <div className="flex items-center gap-3">
+            <button
+              onClick={onClose}
+              className="flex items-center gap-2 h-10 px-5 rounded-lg text-sm font-semibold border border-red-200 dark:border-red-800/60 text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/15 hover:bg-red-100 dark:hover:bg-red-900/30 hover:border-red-300 dark:hover:border-red-700 transition-colors"
+            >
+              <X className="h-4 w-4" />
+              Cancel
+            </button>
+            {hasChanges && (
+              <button
+                onClick={handleUndo}
+                className="flex items-center gap-1.5 h-10 px-4 rounded-lg text-sm font-medium text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+              >
+                <Undo2 className="h-4 w-4" />
+                Reset
+              </button>
+            )}
+          </div>
 
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={onClose}>
-            Close
-          </Button>
-          <Button
-            size="sm"
-            onClick={handleApply}
-            disabled={!validation.isValid || isApplying}
-          >
-            {isApplying ? 'Applying...' : 'Apply'}
-          </Button>
-        </div>
-      </footer>
+          {/* Center — Validation status */}
+          <div className="flex justify-center">
+            {validation.isValid && yaml.trim() ? (
+              <span className="flex items-center gap-2 h-10 px-5 rounded-lg text-sm font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800">
+                <CheckCircle2 className="h-5 w-5" />
+                Valid YAML
+              </span>
+            ) : !yaml.trim() ? null : (
+              <span className="flex items-center gap-2 h-10 px-5 rounded-lg text-sm font-semibold text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800">
+                <AlertCircle className="h-5 w-5" />
+                {validation.errors.length} error{validation.errors.length !== 1 ? 's' : ''}
+              </span>
+            )}
+          </div>
+
+          {/* Right — Create */}
+          <div className="flex justify-end">
+            <button
+              onClick={handleApply}
+              disabled={!validation.isValid || isApplying}
+              className={cn(
+                "flex items-center gap-2 h-10 px-6 rounded-lg text-sm font-semibold transition-all",
+                validation.isValid && !isApplying
+                  ? "bg-primary text-primary-foreground hover:bg-primary/90 shadow-md shadow-primary/30"
+                  : "bg-slate-200 dark:bg-slate-700 text-slate-400 dark:text-slate-500 cursor-not-allowed"
+              )}
+            >
+              {isApplying ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Applying...
+                </>
+              ) : (
+                <>
+                  <Rocket className="h-4 w-4" />
+                  Create {resourceKind}
+                </>
+              )}
+            </button>
+          </div>
+        </div>}
     </motion.div>
   );
 }

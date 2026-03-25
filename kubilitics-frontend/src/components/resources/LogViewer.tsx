@@ -708,95 +708,79 @@ export function LogViewer({
     toast.success('Line copied');
   }, []);
 
+  const handleCopyAll = useCallback(() => {
+    const content = filteredLogs
+      .map(l => `${l.timestamp} [${l.level.toUpperCase()}] ${l.message}`)
+      .join('\n');
+    navigator.clipboard.writeText(content);
+    toast.success(`Copied ${filteredLogs.length} log lines`);
+  }, [filteredLogs]);
+
   // ── Theme-aware surface classes ───────────────────────────────────────────
-  const toolbar   = isDark ? 'bg-[hsl(221_39%_13%)] border-white/10'  : 'bg-slate-100 border-black/10';
-  const filterBar = isDark ? 'bg-[hsl(221_39%_11%)] border-white/[0.06]' : 'bg-slate-50 border-black/[0.06]';
+  const toolbar   = isDark ? 'bg-[hsl(221_39%_13%)] border-white/10'  : 'bg-slate-100 border-slate-200';
+  const filterBar = isDark ? 'bg-[hsl(221_39%_11%)] border-white/[0.06]' : 'bg-slate-50 border-slate-200/60';
   const logArea   = isDark ? 'bg-[hsl(221_39%_9%)]'  : 'bg-white';
-  const footer    = isDark ? 'bg-[hsl(221_39%_13%)] border-white/[0.06]' : 'bg-slate-100 border-black/[0.06]';
+  const footer    = isDark ? 'bg-[hsl(221_39%_13%)] border-white/[0.06]' : 'bg-slate-100 border-slate-200/60';
   const inputCls  = isDark
     ? 'bg-white/5 border-white/10 text-white/80 placeholder-white/25 focus:border-white/25'
-    : 'bg-black/5 border-black/10 text-black/80 placeholder-black/25 focus:border-black/25';
+    : 'bg-white border-slate-300 text-slate-800 placeholder-slate-400 focus:border-primary/50';
   const btnCls    = isDark
     ? 'text-white/60 hover:text-white hover:bg-white/15'
-    : 'text-black/50 hover:text-black hover:bg-black/10';
-  const activeBtnCls = isDark ? 'bg-white/10 text-white' : 'bg-black/10 text-black';
+    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200';
+  const activeBtnCls = isDark ? 'bg-white/10 text-white' : 'bg-primary/10 text-primary border border-primary/20';
 
   return (
-    <div className={cn('flex flex-col rounded-xl overflow-hidden border', isDark ? 'border-white/10' : 'border-black/10', className)}>
+    <div className={cn('flex flex-col rounded-xl overflow-hidden border', isDark ? 'border-white/10' : 'border-slate-200', className)}>
 
       {/* ── Primary toolbar ───────────────────────────────────────────────── */}
-      <div className={cn('border-b px-4 py-2 flex flex-wrap items-center gap-2', toolbar)}>
+      {/* ── Toolbar — single row, everything uniform h-8 ────────────────── */}
+      <div className={cn('border-b px-3 py-2 flex items-center gap-1.5', toolbar)}>
 
-        {/* Connection / reconnecting badge */}
+        {/* Status badge */}
         {isReconnecting ? (
-          <Badge className="gap-1.5 text-[11px] bg-amber-600/20 text-amber-400 border border-amber-500/30 hover:bg-amber-600/20 font-medium shrink-0 h-6 animate-pulse">
-            <RefreshCw className="h-2.5 w-2.5 animate-spin" />
-            Reconnecting&hellip;{reconnectAttempt > 0 ? ` (${reconnectAttempt})` : ''}
+          <Badge className="gap-1.5 text-xs bg-amber-600/20 text-amber-400 border border-amber-500/30 font-medium shrink-0 h-8 px-3 animate-pulse">
+            <RefreshCw className="h-3.5 w-3.5 animate-spin" /> Reconnecting
           </Badge>
         ) : isLive ? (
-          <Badge className="gap-1.5 text-[11px] bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-600/20 font-medium shrink-0 h-6">
-            <Wifi className="h-2.5 w-2.5" /> Live
+          <Badge className={cn("gap-1.5 text-xs border font-medium shrink-0 h-8 px-2.5", isDark ? "bg-emerald-600/20 text-emerald-400 border-emerald-500/30" : "bg-emerald-50 text-emerald-700 border-emerald-300")}>
+            <Wifi className="h-3.5 w-3.5" /> Live
           </Badge>
         ) : (
-          <Badge className={cn('gap-1.5 text-[11px] border font-medium shrink-0 h-6', isDark ? 'bg-white/5 text-white/40 border-white/15 hover:bg-white/5' : 'bg-black/5 text-black/40 border-black/15 hover:bg-black/5')}>
-            <WifiOff className="h-2.5 w-2.5" />
-            {!podName || !namespace ? 'No pod' : 'Offline'}
+          <Badge className={cn('gap-1.5 text-xs border font-medium shrink-0 h-8 px-2.5', isDark ? 'bg-white/5 text-white/40 border-white/15' : 'bg-slate-50 text-slate-500 border-slate-300')}>
+            <WifiOff className="h-3.5 w-3.5" /> {!podName || !namespace ? 'No pod' : 'Offline'}
           </Badge>
         )}
 
-        {/* Container selector */}
+        {/* Containers — highlighted, bigger */}
         {visibleContainers.length > 1 && (
-          <div className={cn('flex items-center gap-0.5 rounded-md border p-0.5', isDark ? 'border-white/10 bg-white/5' : 'border-black/10 bg-black/5')}>
+          <div className={cn('flex items-center gap-0.5 rounded-lg border p-0.5 shrink-0', isDark ? 'border-primary/30 bg-primary/5' : 'border-primary/30 bg-primary/5')}>
             {visibleContainers.map(c => (
               <button
                 key={c}
                 onClick={() => { setSelectedContainer(c); onContainerChange?.(c); }}
                 className={cn(
-                  'h-6 px-2.5 text-[11px] font-medium rounded-sm transition-all',
+                  'h-8 px-5 text-sm font-semibold rounded-md transition-all',
                   selectedContainer === c
-                    ? (isDark ? 'bg-white/15 text-white' : 'bg-black/10 text-black')
-                    : (isDark ? 'text-white/40 hover:text-white hover:bg-white/[0.08]' : 'text-black/40 hover:text-black hover:bg-black/[0.08]'),
+                    ? 'bg-primary text-primary-foreground shadow-sm'
+                    : (isDark ? 'text-white/50 hover:text-white hover:bg-white/[0.08]' : 'text-slate-500 hover:text-slate-900 hover:bg-white'),
                 )}
               >
                 {c}
-                {containerStatuses[c] && (
-                  <span className={cn(
-                    'ml-1 text-[9px]',
-                    containerStatuses[c]?.toLowerCase() === 'running' ? 'text-emerald-400' : 'text-white/30',
-                  )}>
-                    {'\u25CF'}
-                  </span>
-                )}
+                {containerStatuses[c]?.toLowerCase() === 'running' && <span className="ml-1.5 text-[10px] text-emerald-400">{'\u25CF'}</span>}
               </button>
             ))}
           </div>
         )}
 
-        {/* Hide terminated toggle (only shown when containerStatuses provided) */}
         {Object.keys(containerStatuses).length > 0 && (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                onClick={toggleHideTerminated}
-                className={cn(
-                  'h-6 px-2 text-[11px] rounded-md border transition-colors font-medium',
-                  hideTerminated
-                    ? 'bg-emerald-600/20 text-emerald-400 border-emerald-500/30'
-                    : (isDark ? 'border-white/10 text-white/40 hover:text-white hover:border-white/20' : 'border-black/10 text-black/40 hover:text-black hover:border-black/20'),
-                )}
-              >
-                Running only
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom">
-              {hideTerminated ? 'Showing running containers only' : 'Show running containers only'}
-            </TooltipContent>
-          </Tooltip>
+          <button onClick={toggleHideTerminated} className={cn('h-8 px-2.5 text-xs rounded-lg border font-medium shrink-0 transition-colors', hideTerminated ? (isDark ? 'bg-emerald-600/20 text-emerald-400 border-emerald-500/30' : 'bg-emerald-50 text-emerald-700 border-emerald-300') : (isDark ? 'border-white/10 text-white/40 hover:text-white' : 'border-slate-300 text-slate-500 hover:text-slate-900'))} title="Running only">
+            Running only
+          </button>
         )}
 
-        {/* Search + history */}
-        <div className="relative min-w-0 flex-1 max-w-sm">
-          <Search className={cn('absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 pointer-events-none', isDark ? 'text-white/30' : 'text-black/30')} />
+        {/* Search */}
+        <div className="relative shrink-0 w-72">
+          <Search className={cn('absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 pointer-events-none', isDark ? 'text-white/30' : 'text-slate-400')} />
           <input
             type="text"
             placeholder={regexMode ? 'Regex filter\u2026' : 'Search logs\u2026'}
@@ -805,244 +789,50 @@ export function LogViewer({
             onKeyDown={e => { if (e.key === 'Enter') { commitSearchToHistory(); setHistoryOpen(false); } }}
             onBlur={() => { commitSearchToHistory(); setTimeout(() => setHistoryOpen(false), 150); }}
             onFocus={() => setHistoryOpen(true)}
-            className={cn(
-              'w-full h-7 border rounded-md pl-8 pr-16 text-xs outline-none transition-colors',
-              inputCls,
-              regexError && 'border-red-500/50',
-            )}
+            className={cn('w-full h-8 border rounded-lg pl-9 pr-10 text-sm outline-none transition-colors', inputCls, regexError && 'border-red-500/50')}
           />
-          {/* Regex error indicator */}
-          {regexError && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span className="absolute right-8 top-1/2 -translate-y-1/2">
-                  <AlertTriangle className="h-3 w-3 text-red-400" />
-                </span>
-              </TooltipTrigger>
-              <TooltipContent side="bottom" className="text-red-400 max-w-xs text-[11px]">
-                Invalid regex: {regexError}
-              </TooltipContent>
-            </Tooltip>
-          )}
+          {regexError && <span className="absolute right-7 top-1/2 -translate-y-1/2"><AlertTriangle className="h-3 w-3 text-red-400" /></span>}
           {searchQuery && !regexError && (
-            <span className={cn('absolute right-2 top-1/2 -translate-y-1/2 text-[10px] tabular-nums pointer-events-none', isDark ? 'text-white/35' : 'text-black/35')}>
-              {filteredLogs.length}
-            </span>
+            <span className={cn('absolute right-2 top-1/2 -translate-y-1/2 text-[10px] tabular-nums pointer-events-none', isDark ? 'text-white/35' : 'text-slate-400')}>{filteredLogs.length}</span>
           )}
-
-          <FilterHistoryDropdown
-            open={historyOpen && history.length > 0}
-            onClose={() => setHistoryOpen(false)}
-            history={history}
-            onSelect={q => { setSearchQuery(q); }}
-            onTogglePin={togglePin}
-            onRemove={removeFilter}
-            onClear={clearHistory}
-            isDark={isDark}
-          />
+          <FilterHistoryDropdown open={historyOpen && history.length > 0} onClose={() => setHistoryOpen(false)} history={history} onSelect={q => { setSearchQuery(q); }} onTogglePin={togglePin} onRemove={removeFilter} onClear={clearHistory} isDark={isDark} />
         </div>
 
-        {/* Regex toggle */}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button
-              onClick={toggleRegexMode}
-              className={cn(
-                'h-7 w-7 flex items-center justify-center rounded-md transition-colors',
-                regexMode ? activeBtnCls : btnCls,
-              )}
-            >
-              <Regex className="h-3.5 w-3.5" />
-            </button>
-          </TooltipTrigger>
-          <TooltipContent side="bottom">{regexMode ? 'Disable regex' : 'Enable regex filter'}</TooltipContent>
-        </Tooltip>
+        {/* Search modifiers — labeled like JSON/Time/Wrap */}
+        <button onClick={toggleRegexMode} className={cn('h-8 flex items-center gap-1.5 px-2.5 rounded-lg text-xs font-medium shrink-0 transition-colors', regexMode ? activeBtnCls : btnCls)} title="Regex"><Regex className="h-4 w-4" /> Regex</button>
+        <button onClick={toggleInverseFilter} className={cn('h-8 flex items-center gap-1.5 px-2.5 rounded-lg text-xs font-medium shrink-0 transition-colors', inverseFilter ? (isDark ? 'bg-red-500/20 text-red-400' : 'bg-red-50 text-red-600 border border-red-200') : btnCls)} title="Exclude"><FlipHorizontal className="h-4 w-4" /> Exclude</button>
 
-        {/* Inverse filter toggle */}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button
-              onClick={toggleInverseFilter}
-              className={cn(
-                'h-7 w-7 flex items-center justify-center rounded-md transition-colors',
-                inverseFilter ? 'bg-red-500/20 text-red-400' : btnCls,
-              )}
-            >
-              <FlipHorizontal className="h-3.5 w-3.5" />
-            </button>
-          </TooltipTrigger>
-          <TooltipContent side="bottom">{inverseFilter ? 'Exclude mode: ON' : 'Enable exclude mode'}</TooltipContent>
-        </Tooltip>
-
-        {/* Context lines */}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <select
-              value={contextLines}
-              onChange={e => setContextLines(Number(e.target.value))}
-              className={cn(
-                'h-7 border rounded-md px-1.5 text-[11px] outline-none cursor-pointer shrink-0',
-                inputCls,
-                contextLines > 0 ? (isDark ? 'border-blue-500/40 text-blue-300' : 'border-blue-500/40 text-blue-600') : '',
-              )}
-              title="Context lines (grep -C)"
-            >
-              {CONTEXT_OPTIONS.map(n => (
-                <option key={n} value={n} style={{ background: isDark ? 'hsl(221,39%,11%)' : 'white' }}>
-                  {n === 0 ? 'No ctx' : `\u00B1${n} ctx`}
-                </option>
-              ))}
-            </select>
-          </TooltipTrigger>
-          <TooltipContent side="bottom">Context lines around matches (like grep -C)</TooltipContent>
-        </Tooltip>
-
-        {/* History button */}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button
-              onClick={() => setHistoryOpen(v => !v)}
-              className={cn(
-                'h-7 w-7 flex items-center justify-center rounded-md transition-colors relative',
-                historyOpen ? activeBtnCls : btnCls,
-              )}
-            >
-              <History className="h-3.5 w-3.5" />
-              {history.filter(e => e.pinned).length > 0 && (
-                <span className="absolute top-0.5 right-0.5 w-1.5 h-1.5 bg-amber-400 rounded-full" />
-              )}
-            </button>
-          </TooltipTrigger>
-          <TooltipContent side="bottom">Filter history</TooltipContent>
-        </Tooltip>
-
-        {/* Tail-lines select */}
-        <select
-          value={tailLines}
-          onChange={e => setTailLines(Number(e.target.value))}
-          className={cn('h-7 border rounded-md px-2 text-[11px] outline-none cursor-pointer shrink-0', inputCls)}
-        >
-          {TAIL_OPTIONS.map(n => (
-            <option key={n} value={n} style={{ background: isDark ? 'hsl(221,39%,11%)' : 'white' }}>
-              {n} lines
-            </option>
-          ))}
+        <select value={contextLines} onChange={e => setContextLines(Number(e.target.value))} className={cn('h-8 border rounded-lg px-2 text-xs font-medium outline-none cursor-pointer shrink-0', inputCls, contextLines > 0 ? (isDark ? 'border-blue-500/40 text-blue-300' : 'border-blue-500/40 text-blue-600') : '')} title="Context lines">
+          {CONTEXT_OPTIONS.map(n => (<option key={n} value={n} style={{ background: isDark ? 'hsl(221,39%,11%)' : 'white' }}>{n === 0 ? 'No ctx' : `\u00B1${n} ctx`}</option>))}
         </select>
 
-        {/* Right controls */}
-        <div className="flex items-center gap-1 ml-auto shrink-0">
+        <button onClick={() => setHistoryOpen(v => !v)} className={cn('h-8 flex items-center gap-1.5 px-2.5 rounded-lg text-xs font-medium shrink-0 transition-colors', historyOpen ? activeBtnCls : btnCls)} title="History">
+          <History className="h-4 w-4" /> History
+          {history.filter(e => e.pinned).length > 0 && <span className="w-1.5 h-1.5 bg-amber-400 rounded-full" />}
+        </button>
 
-          {/* JSON prettify */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                onClick={togglePrettifyJson}
-                className={cn(
-                  'h-7 w-7 flex items-center justify-center rounded-md transition-colors',
-                  prettifyJson ? activeBtnCls : btnCls,
-                )}
-              >
-                <Braces className="h-3.5 w-3.5" />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom">
-              {prettifyJson ? 'Show raw JSON' : 'Prettify JSON logs'}
-            </TooltipContent>
-          </Tooltip>
+        <select value={tailLines} onChange={e => setTailLines(Number(e.target.value))} className={cn('h-8 border rounded-lg px-2 text-xs font-medium outline-none cursor-pointer shrink-0', inputCls)}>
+          {TAIL_OPTIONS.map(n => (<option key={n} value={n} style={{ background: isDark ? 'hsl(221,39%,11%)' : 'white' }}>{n} lines</option>))}
+        </select>
 
-          {/* Timestamps toggle */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                onClick={() => setShowTimestamps(v => !v)}
-                className={cn(
-                  'h-7 w-7 flex items-center justify-center rounded-md transition-colors',
-                  showTimestamps ? activeBtnCls : btnCls,
-                )}
-              >
-                <Clock className="h-3.5 w-3.5" />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom">
-              {showTimestamps ? 'Hide timestamps' : 'Show timestamps'}
-            </TooltipContent>
-          </Tooltip>
+        <div className={cn('w-px h-5 mx-0.5 shrink-0', isDark ? 'bg-white/10' : 'bg-slate-300')} />
 
-          {/* Wrap toggle */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                onClick={() => setWrapLines(v => !v)}
-                className={cn(
-                  'h-7 w-7 flex items-center justify-center rounded-md transition-colors',
-                  wrapLines ? activeBtnCls : btnCls,
-                )}
-              >
-                <AlignJustify className="h-3.5 w-3.5" />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom">
-              {wrapLines ? 'Disable line wrap' : 'Wrap long lines'}
-            </TooltipContent>
-          </Tooltip>
+        {/* Display toggles */}
+        <button onClick={togglePrettifyJson} className={cn('h-8 flex items-center gap-1.5 px-2.5 rounded-lg text-xs font-medium shrink-0 transition-colors', prettifyJson ? activeBtnCls : btnCls)} title="JSON"><Braces className="h-4 w-4" /> JSON</button>
+        <button onClick={() => setShowTimestamps(v => !v)} className={cn('h-8 flex items-center gap-1.5 px-2.5 rounded-lg text-xs font-medium shrink-0 transition-colors', showTimestamps ? activeBtnCls : btnCls)} title="Timestamps"><Clock className="h-4 w-4" /> Time</button>
+        <button onClick={() => setWrapLines(v => !v)} className={cn('h-8 flex items-center gap-1.5 px-2.5 rounded-lg text-xs font-medium shrink-0 transition-colors', wrapLines ? activeBtnCls : btnCls)} title="Wrap"><AlignJustify className="h-4 w-4" /> Wrap</button>
 
-          {/* Follow / pause */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                onClick={() => setIsStreaming(v => !v)}
-                className={cn(
-                  'h-7 flex items-center gap-1.5 px-2.5 rounded-md text-[11px] font-medium transition-colors border',
-                  isStreaming
-                    ? 'bg-emerald-600/20 text-emerald-300 border-emerald-500/30 hover:bg-emerald-600/30'
-                    : (isDark ? 'bg-white/5 text-white/60 border-white/15 hover:text-white hover:bg-white/[0.08]' : 'bg-black/5 text-black/60 border-black/15 hover:text-black hover:bg-black/[0.08]'),
-                )}
-              >
-                {isStreaming ? <Pause className="h-3 w-3" /> : <Play className="h-3 w-3" />}
-                {isStreaming ? 'Follow' : 'Paused'}
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom">
-              {isStreaming ? 'Pause auto-scroll & streaming' : 'Resume streaming'}
-            </TooltipContent>
-          </Tooltip>
+        <div className={cn('w-px h-5 mx-0.5 shrink-0', isDark ? 'bg-white/10' : 'bg-slate-300')} />
 
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                onClick={() => queryClient.invalidateQueries({ queryKey: ['k8s', 'pods', namespace, podName, 'logs'] })}
-                className={cn('h-7 w-7 flex items-center justify-center rounded-md transition-colors', btnCls)}
-              >
-                <RefreshCw className="h-3.5 w-3.5" />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom">Refresh logs</TooltipContent>
-          </Tooltip>
-
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button onClick={handleDownload} className={cn('h-7 w-7 flex items-center justify-center rounded-md transition-colors', btnCls)}>
-                <Download className="h-3.5 w-3.5" />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom">Download as .log file</TooltipContent>
-          </Tooltip>
-
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                onClick={handleClear}
-                className={cn(
-                  'h-7 w-7 flex items-center justify-center rounded-md transition-colors',
-                  isDark ? 'text-white/30 hover:text-red-400 hover:bg-red-500/10' : 'text-black/30 hover:text-red-500 hover:bg-red-50',
-                )}
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom">Clear log view</TooltipContent>
-          </Tooltip>
-        </div>
+        {/* Streaming + actions */}
+        <button onClick={() => setIsStreaming(v => !v)} className={cn('h-8 flex items-center gap-1.5 px-3 rounded-lg text-xs font-semibold shrink-0 transition-colors border', isStreaming ? (isDark ? 'bg-emerald-600/20 text-emerald-300 border-emerald-500/30' : 'bg-emerald-50 text-emerald-700 border-emerald-300') : (isDark ? 'bg-white/5 text-white/60 border-white/15 hover:text-white' : 'bg-white text-slate-600 border-slate-300 hover:text-slate-900'))} title={isStreaming ? 'Pause' : 'Resume'}>
+          {isStreaming ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+          {isStreaming ? 'Follow' : 'Paused'}
+        </button>
+        <button onClick={handleCopyAll} className={cn('h-8 flex items-center gap-1.5 px-2.5 rounded-lg text-xs font-medium shrink-0 transition-colors', btnCls)} title="Copy filtered logs"><Copy className="h-4 w-4" /> Copy</button>
+        <button onClick={handleDownload} className={cn('h-8 w-8 flex items-center justify-center rounded-lg shrink-0 transition-colors', btnCls)} title="Download"><Download className="h-4 w-4" /></button>
+        <button onClick={() => queryClient.invalidateQueries({ queryKey: ['k8s', 'pods', namespace, podName, 'logs'] })} className={cn('h-8 w-8 flex items-center justify-center rounded-lg shrink-0 transition-colors', btnCls)} title="Refresh"><RefreshCw className="h-4 w-4" /></button>
+        <button onClick={handleClear} className={cn('h-8 w-8 flex items-center justify-center rounded-lg shrink-0 transition-colors', isDark ? 'text-white/40 hover:text-red-400 hover:bg-red-500/10' : 'text-slate-400 hover:text-red-600 hover:bg-red-50')} title="Clear"><Trash2 className="h-4 w-4" /></button>
       </div>
 
       {/* ── Level filter bar ──────────────────────────────────────────────── */}

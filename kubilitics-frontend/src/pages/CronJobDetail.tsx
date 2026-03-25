@@ -1,7 +1,6 @@
 import { useState, useCallback, useMemo } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
-  Clock as ClockIcon,
   Clock,
   Play,
   Pause,
@@ -1092,7 +1091,7 @@ export default function CronJobDetail() {
         role="main"
         aria-label="CronJob Detail"
         resourceType="CronJob"
-        resourceIcon={ClockIcon}
+        resourceIcon={Clock}
         name={cronJob.metadata?.name || ''}
         namespace={cronJob.metadata?.namespace}
         status={status}

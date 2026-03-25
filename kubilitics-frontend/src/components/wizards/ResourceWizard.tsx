@@ -156,42 +156,58 @@ export function ResourceWizard({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4"
+      className="absolute inset-0 z-40 flex flex-col bg-white dark:bg-slate-900 overflow-hidden"
     >
       <motion.div
         initial={{ scale: 0.95, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         exit={{ scale: 0.95, opacity: 0 }}
-        className={`flex flex-col bg-background border rounded-xl shadow-2xl overflow-hidden transition-all duration-300 ${
-          isYamlExpanded 
-            ? 'fixed inset-4 z-50 max-w-none max-h-none' 
-            : 'w-full max-w-4xl max-h-[90vh]'
-        }`}
+        className="flex-1 flex flex-col bg-white dark:bg-slate-900 overflow-hidden"
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b bg-muted/30">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200/60 dark:border-slate-700/60 bg-gradient-to-b from-slate-50/80 to-white dark:from-slate-800/80 dark:to-slate-900">
           <div className="flex items-center gap-3">
-            <Badge variant="outline" className="font-mono text-xs">
-              {resourceType}
-            </Badge>
-            <h2 className="text-lg font-semibold">{title}</h2>
+            <div className="h-9 w-9 rounded-xl bg-primary/10 dark:bg-primary/20 flex items-center justify-center">
+              <Code className="h-4 w-4 text-primary" />
+            </div>
+            <div>
+              <h2 className="text-base font-semibold text-slate-900 dark:text-slate-100">{title}</h2>
+              <p className="text-xs text-muted-foreground">
+                <span className="font-mono font-medium text-slate-600 dark:text-slate-300">{resourceType}</span>
+              </p>
+            </div>
           </div>
           <div className="flex items-center gap-2">
-            <Tabs value={previewMode} onValueChange={(v) => setPreviewMode(v as 'form' | 'yaml')}>
-              <TabsList className="h-8">
-                <TabsTrigger value="form" className="text-xs gap-1.5 h-7">
-                  <Eye className="h-3.5 w-3.5" />
-                  Form
-                </TabsTrigger>
-                <TabsTrigger value="yaml" className="text-xs gap-1.5 h-7">
-                  <Code className="h-3.5 w-3.5" />
-                  YAML
-                </TabsTrigger>
-              </TabsList>
-            </Tabs>
-            <Button variant="ghost" size="icon" onClick={onClose}>
+            <div className="flex items-center gap-1 bg-slate-100/80 dark:bg-slate-800/80 rounded-lg p-0.5">
+              <button
+                onClick={() => setPreviewMode('form')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                  previewMode === 'form'
+                    ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 shadow-sm'
+                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
+                }`}
+              >
+                <Eye className="h-3.5 w-3.5" />
+                Form
+              </button>
+              <button
+                onClick={() => setPreviewMode('yaml')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                  previewMode === 'yaml'
+                    ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 shadow-sm'
+                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
+                }`}
+              >
+                <Code className="h-3.5 w-3.5" />
+                YAML
+              </button>
+            </div>
+            <button
+              onClick={onClose}
+              className="h-8 w-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+            >
               <X className="h-4 w-4" />
-            </Button>
+            </button>
           </div>
         </div>
 
@@ -325,31 +341,47 @@ export function ResourceWizard({
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between px-6 py-4 border-t bg-muted/30">
-          <Button
-            variant="outline"
-            onClick={handlePrev}
-            disabled={currentStep === 0 || previewMode === 'yaml'}
-            className="gap-1.5"
+        <div className="flex items-center justify-between px-6 py-4 border-t border-slate-200/60 dark:border-slate-700/60 bg-slate-50/80 dark:bg-slate-800/50">
+          <button
+            onClick={currentStep === 0 || previewMode === 'yaml' ? onClose : handlePrev}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
           >
             <ChevronLeft className="h-4 w-4" />
-            Previous
-          </Button>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" onClick={onClose}>
-              Cancel
-            </Button>
-            {isLastStep || previewMode === 'yaml' ? (
-              <Button onClick={handleSubmit} disabled={!canSubmit || isSubmitting}>
-                {isSubmitting ? 'Creating...' : 'Create Resource'}
-              </Button>
-            ) : (
-              <Button onClick={handleNext} disabled={!canProceed} className="gap-1.5">
-                Next
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            )}
-          </div>
+            {currentStep === 0 || previewMode === 'yaml' ? 'Cancel' : 'Previous'}
+          </button>
+          {isLastStep || previewMode === 'yaml' ? (
+            <button
+              onClick={handleSubmit}
+              disabled={!canSubmit || isSubmitting}
+              className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-semibold transition-all shadow-sm ${
+                canSubmit && !isSubmitting
+                  ? 'bg-primary text-primary-foreground hover:bg-primary/90 shadow-primary/25 hover:shadow-md hover:shadow-primary/20'
+                  : 'bg-slate-200 dark:bg-slate-700 text-slate-400 dark:text-slate-500 cursor-not-allowed shadow-none'
+              }`}
+            >
+              {isSubmitting ? (
+                <>Creating...</>
+              ) : (
+                <>
+                  <Check className="h-4 w-4" />
+                  Create Resource
+                </>
+              )}
+            </button>
+          ) : (
+            <button
+              onClick={handleNext}
+              disabled={!canProceed}
+              className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all shadow-sm ${
+                canProceed
+                  ? 'bg-primary text-primary-foreground hover:bg-primary/90 shadow-primary/25'
+                  : 'bg-slate-200 dark:bg-slate-700 text-slate-400 dark:text-slate-500 cursor-not-allowed shadow-none'
+              }`}
+            >
+              Next
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          )}
         </div>
       </motion.div>
     </motion.div>
