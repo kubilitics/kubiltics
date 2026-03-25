@@ -34,6 +34,7 @@ import { cn } from '@/lib/utils';
 import { useConnectionStatus } from '@/hooks/useConnectionStatus';
 import { usePluginRegistry, type PluginCategory, type PluginInfo } from '@/hooks/usePluginRegistry';
 import { toast } from '@/components/ui/sonner';
+import { openExternal } from '@/lib/tauri';
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -188,7 +189,7 @@ function PluginCard({ plugin, onInstall, onUninstall, isOperating }: PluginCardP
                     size="sm"
                     variant="ghost"
                     className="h-7 w-7 p-0"
-                    onClick={() => window.open(plugin.homepageUrl!, '_blank')}
+                    onClick={() => void openExternal(plugin.homepageUrl!)}
                   >
                     <ExternalLink className="h-3 w-3" />
                   </Button>

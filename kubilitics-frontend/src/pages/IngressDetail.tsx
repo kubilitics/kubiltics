@@ -28,6 +28,7 @@ import { useQuery } from '@tanstack/react-query';
 import { getSecretTLSInfo } from '@/services/backendApiClient';
 import { cn } from '@/lib/utils';
 import { toast } from '@/components/ui/sonner';
+import { openExternal } from '@/lib/tauri';
 import { downloadResourceJson } from '@/lib/exportUtils';
 
 interface IngressResource extends KubernetesResource {
@@ -537,7 +538,7 @@ export default function IngressDetail() {
           { icon: Route, label: 'Test All Routes', description: 'Test all route endpoints', onClick: () => toast.info('Test all routes: coming soon'), className: 'press-effect' },
           { icon: Lock, label: 'Refresh Certificate', description: 'Refresh TLS certificate (cert-manager)', onClick: () => toast.info('Requires cert-manager'), className: 'press-effect' },
           { icon: Lock, label: 'View Certificate', description: 'View TLS secret', onClick: () => tls[0]?.secretName ? navigate(`/secrets/${namespace}/${tls[0].secretName}`) : toast.info('No TLS configured'), className: 'press-effect' },
-          { icon: ExternalLink, label: 'Open in Browser', description: 'Open external URL', onClick: () => { const u = lbIngress[0]?.hostname || lbIngress[0]?.ip; if (u) window.open(`http://${u}`, '_blank'); else toast.info('No address'); }, className: 'press-effect' },
+          { icon: ExternalLink, label: 'Open in Browser', description: 'Open external URL', onClick: () => { const u = lbIngress[0]?.hostname || lbIngress[0]?.ip; if (u) void openExternal(`http://${u}`); else toast.info('No address'); }, className: 'press-effect' },
           { icon: Download, label: 'Download YAML', description: 'Export Ingress definition', onClick: handleDownloadYaml, className: 'press-effect' },
           { icon: Download, label: 'Export as JSON', description: 'Export Ingress as JSON', onClick: handleDownloadJson, className: 'press-effect' },
           { icon: Trash2, label: 'Delete Ingress', description: 'Remove this ingress', variant: 'destructive', onClick: () => setShowDeleteDialog(true), className: 'press-effect' },

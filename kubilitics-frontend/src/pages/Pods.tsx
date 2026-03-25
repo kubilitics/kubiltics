@@ -1460,7 +1460,20 @@ export default function Pods() {
  {/* Resource Comparison View Modal */}
  <AnimatePresence>
  {showComparison && (
- <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4"
+ <div className="fixed z-[60] flex items-center justify-center bg-background/80 backdrop-blur-sm p-4"
+  style={{ top: 0, right: 0, bottom: 0, left: 0 }}
+  ref={(el) => {
+    if (el) {
+      const main = document.getElementById('main-content');
+      if (main) {
+        const rect = main.getBoundingClientRect();
+        el.style.top = `${rect.top}px`;
+        el.style.left = `${rect.left}px`;
+        el.style.right = '0px';
+        el.style.bottom = '0px';
+      }
+    }
+  }}
  >
  <div className="w-full h-full max-w-[min(96vw,1680px)] max-h-[95vh] flex flex-col bg-background border rounded-xl shadow-2xl overflow-hidden relative"
  >

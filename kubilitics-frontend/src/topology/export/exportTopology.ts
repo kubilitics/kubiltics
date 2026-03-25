@@ -1,5 +1,6 @@
 import type { TopologyResponse, ViewMode } from "../types/topology";
 import { EXPORT, CANVAS, getCategoryColor, STATUS_COLORS } from "../constants/designTokens";
+import { openExternal } from "@/lib/tauri";
 
 // ─── Export bounds — computed from React Flow state or DOM ──────────────────
 
@@ -336,7 +337,7 @@ export function exportTopologyDrawIO(
   // Open directly in draw.io web editor instead of downloading a file.
   // Uses the create URL API: https://www.drawio.com/doc/faq/embed-mode
   const encodedXml = encodeURIComponent(xml);
-  window.open(`https://app.diagrams.net/#R${encodedXml}`, "_blank");
+  void openExternal(`https://app.diagrams.net/#R${encodedXml}`);
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────

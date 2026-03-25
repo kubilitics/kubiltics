@@ -112,6 +112,7 @@ export function ClusterShellPanel({
   const reconnectTimerRef = useRef<number | null>(null);
   const reconnectAttemptRef = useRef(0);
   const intentionalCloseRef = useRef(false);
+  const gotFirstOutputRef = useRef(false);
   const MAX_RECONNECT_ATTEMPTS = 5;
   const RECONNECT_BASE_DELAY_MS = 1000;
 
@@ -370,6 +371,7 @@ export function ClusterShellPanel({
     setConnecting(true);
     setConnected(false);
     setError(null);
+    gotFirstOutputRef.current = false;
 
     const ws = new WebSocket(wsUrl);
     wsRef.current = ws;
@@ -381,7 +383,10 @@ export function ClusterShellPanel({
       setTimeout(() => { justConnectedRef.current = false; }, 3000);
 
       setConnecting(false);
-      setConnected(true);
+      // NOTE: setConnected(true) is deferred until the first stdout/stderr
+      // message arrives, matching PodTerminal's pattern. This avoids a
+      // brief "connected" flash when the WebSocket opens but the shell
+      // process hasn't started yet.
       setIsReconnecting(false);
       setError(null);
       reconnectAttemptRef.current = 0;
@@ -413,6 +418,11 @@ export function ClusterShellPanel({
       try {
         const msg = JSON.parse(event.data) as { t?: string; d?: string };
         if ((msg.t === 'stdout' || msg.t === 'stderr') && msg.d) {
+          // Mark connected on first real output from the shell process
+          if (!gotFirstOutputRef.current) {
+            gotFirstOutputRef.current = true;
+            setConnected(true);
+          }
           if (termRef.current) {
             termRef.current.write(base64DecodeToUint8Array(msg.d));
           } else {

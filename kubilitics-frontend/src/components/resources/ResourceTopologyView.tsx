@@ -49,6 +49,7 @@ import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/back
 import { useActiveClusterId } from '@/hooks/useActiveClusterId';
 import { getTopologyExportDrawio } from '@/services/backendApiClient';
 import { toast } from '@/components/ui/sonner';
+import { openExternal } from '@/lib/tauri';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -283,7 +284,7 @@ function ResourceTopologyViewV1({
     const t = toast.loading('Opening in draw.io...');
     try {
       const { url } = await getTopologyExportDrawio(effectiveBaseUrl, clusterId, { format: 'mermaid' });
-      window.open(url, '_blank', 'noopener,noreferrer');
+      void openExternal(url);
       toast.success('Opened in draw.io', { id: t });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Failed to export to draw.io', { id: t });

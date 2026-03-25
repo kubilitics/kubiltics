@@ -56,6 +56,7 @@ import { IngressIcon } from '@/components/icons/KubernetesIcons';
 import { useTableFiltersAndSort, type ColumnConfig } from '@/hooks/useTableFiltersAndSort';
 import { useColumnVisibility } from '@/hooks/useColumnVisibility';
 import { toast } from '@/components/ui/sonner';
+import { openExternal } from '@/lib/tauri';
 
 interface K8sIngress extends KubernetesResource {
  spec?: {
@@ -637,7 +638,7 @@ spec:
  <DropdownMenuItem onClick={() => navigate(`/ingresses/${ing.namespace}/${ing.name}`)} className="gap-2">View Details</DropdownMenuItem>
  <DropdownMenuItem onClick={() => navigate(`/ingresses/${ing.namespace}/${ing.name}?tab=routing`)} className="gap-2"><Route className="h-4 w-4" />Test Routes</DropdownMenuItem>
  {ing.tls && <DropdownMenuItem onClick={() => navigate(`/ingresses/${ing.namespace}/${ing.name}?tab=tls`)} className="gap-2"><Lock className="h-4 w-4" />View Certificate</DropdownMenuItem>}
- <DropdownMenuItem onClick={() => { const u = ing.address !== '<pending>' ? `https://${ing.hosts.split(',')[0]?.trim() || ing.address}` : null; if (u) window.open(u, '_blank'); else toast.info('No address yet'); }} className="gap-2"><ExternalLink className="h-4 w-4" />Open in Browser</DropdownMenuItem>
+ <DropdownMenuItem onClick={() => { const u = ing.address !== '<pending>' ? `https://${ing.hosts.split(',')[0]?.trim() || ing.address}` : null; if (u) void openExternal(u); else toast.info('No address yet'); }} className="gap-2"><ExternalLink className="h-4 w-4" />Open in Browser</DropdownMenuItem>
  <DropdownMenuItem onClick={() => navigate(`/ingresses/${ing.namespace}/${ing.name}?tab=yaml`)} className="gap-2"><FileText className="h-4 w-4" />Download YAML</DropdownMenuItem>
  <DropdownMenuSeparator />
  <DropdownMenuItem className="gap-2 text-rose-600" onClick={() => setDeleteDialog({ open: true, item: ing })} disabled={!isConnected}><Trash2 className="h-4 w-4" />Delete</DropdownMenuItem>
@@ -704,7 +705,7 @@ spec:
  <DropdownMenuItem onClick={() => navigate(`/ingresses/${ing.namespace}/${ing.name}`)} className="gap-2">View Details</DropdownMenuItem>
  <DropdownMenuItem onClick={() => navigate(`/ingresses/${ing.namespace}/${ing.name}?tab=routing`)} className="gap-2"><Route className="h-4 w-4" />Test Routes</DropdownMenuItem>
  {ing.tls && <DropdownMenuItem onClick={() => navigate(`/ingresses/${ing.namespace}/${ing.name}?tab=tls`)} className="gap-2"><Lock className="h-4 w-4" />View Certificate</DropdownMenuItem>}
- <DropdownMenuItem onClick={() => { const u = ing.address !== '<pending>' ? `https://${ing.hosts.split(',')[0]?.trim() || ing.address}` : null; if (u) window.open(u, '_blank'); else toast.info('No address yet'); }} className="gap-2"><ExternalLink className="h-4 w-4" />Open in Browser</DropdownMenuItem>
+ <DropdownMenuItem onClick={() => { const u = ing.address !== '<pending>' ? `https://${ing.hosts.split(',')[0]?.trim() || ing.address}` : null; if (u) void openExternal(u); else toast.info('No address yet'); }} className="gap-2"><ExternalLink className="h-4 w-4" />Open in Browser</DropdownMenuItem>
  <DropdownMenuItem onClick={() => navigate(`/ingresses/${ing.namespace}/${ing.name}?tab=yaml`)} className="gap-2"><FileText className="h-4 w-4" />Download YAML</DropdownMenuItem>
  <DropdownMenuSeparator />
  <DropdownMenuItem className="gap-2 text-rose-600" onClick={() => setDeleteDialog({ open: true, item: ing })} disabled={!isConnected}><Trash2 className="h-4 w-4" />Delete</DropdownMenuItem>
