@@ -219,6 +219,7 @@ func SetupRoutes(router *mux.Router, h *Handler) {
 	// Topology routes (BE-AUTHZ-001: GET = viewer, POST export = operator)
 	router.Handle("/clusters/{clusterId}/topology", h.wrapWithRBAC(h.GetTopology, auth.RoleViewer)).Methods("GET")
 	router.Handle("/clusters/{clusterId}/topology/v2", h.wrapWithRBAC(h.GetTopologyV2, auth.RoleViewer)).Methods("GET")
+	router.Handle("/clusters/{clusterId}/topology/v2/traffic", h.wrapWithRBAC(h.GetTopologyV2Traffic, auth.RoleViewer)).Methods("GET")
 	router.Handle("/clusters/{clusterId}/topology/resource/{kind}/{namespace}/{name}", h.wrapWithRBAC(h.GetResourceTopology, auth.RoleViewer)).Methods("GET")
 	router.Handle("/clusters/{clusterId}/topology/export", h.wrapWithRBAC(h.ExportTopology, auth.RoleOperator)).Methods("POST")
 	router.Handle("/clusters/{clusterId}/topology/export/drawio", h.wrapWithRBAC(h.GetTopologyExportDrawio, auth.RoleViewer)).Methods("GET")
@@ -836,6 +837,54 @@ func (h *Handler) GetTopologyV2(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	respondJSON(w, http.StatusOK, resp)
+}
+
+// GetTopologyV2Traffic handles GET /clusters/{clusterId}/topology/v2/traffic.
+// Returns inferred traffic edges and criticality scores for every topology node.
+func (h *Handler) GetTopologyV2Traffic(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	clusterID := vars["clusterId"]
+	if !validate.ClusterID(clusterID) {
+		respondError(w, http.StatusBadRequest, "Invalid clusterId")
+		return
+	}
+	clusterName := clusterID
+	if c, err := h.clusterService.GetCluster(r.Context(), clusterID); err == nil && c != nil && c.Name != "" {
+		clusterName = c.Name
+	}
+	namespace := r.URL.Query().Get("namespace")
+	opts := topologyv2.Options{
+		ClusterID:   clusterID,
+		ClusterName: clusterName,
+		Mode:        topologyv2.ViewModeNamespace,
+		Namespace:   namespace,
+	}
+
+	client, _ := h.getClientFromRequest(r.Context(), r, clusterID, h.cfg)
+	resp, err := topologyv2builder.BuildTopology(r.Context(), opts, client)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	// Collect the resource bundle for traffic inference (nil when no live cluster)
+	var bundle *topologyv2.ResourceBundle
+	if client != nil {
+		bundle, _ = topologyv2.CollectFromClient(r.Context(), client, namespace)
+	}
+
+	trafficEdges := topologyv2builder.InferTraffic(resp.Nodes, resp.Edges, bundle)
+	criticalityScores := topologyv2builder.ScoreNodes(resp.Nodes, resp.Edges)
+
+	respondJSON(w, http.StatusOK, map[string]interface{}{
+		"clusterId":   clusterID,
+		"clusterName": clusterName,
+		"namespace":   namespace,
+		"traffic":     trafficEdges,
+		"criticality": criticalityScores,
+		"nodeCount":   len(resp.Nodes),
+		"edgeCount":   len(resp.Edges),
+	})
 }
 
 // GetResourceTopology handles GET /clusters/{clusterId}/topology/resource/{kind}/{namespace}/{name}.
