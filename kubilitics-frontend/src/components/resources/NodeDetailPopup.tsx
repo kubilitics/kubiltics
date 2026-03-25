@@ -380,15 +380,15 @@ export function NodeDetailPopup({
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-50 flex items-center justify-center bg-background/60 backdrop-blur-sm"
+        className="fixed inset-0 z-50"
         onClick={onClose}
       >
         <motion.div
-          initial={{ scale: 0.9, opacity: 0, y: 20 }}
-          animate={{ scale: 1, opacity: 1, y: 0 }}
-          exit={{ scale: 0.9, opacity: 0, y: 20 }}
-          transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-          className="w-full max-w-2xl max-h-[80vh] bg-background border border-border rounded-2xl shadow-2xl overflow-hidden"
+          initial={{ x: '100%', opacity: 0 }}
+          animate={{ x: 0, opacity: 1 }}
+          exit={{ x: '100%', opacity: 0 }}
+          transition={{ type: 'spring', damping: 30, stiffness: 300 }}
+          className="absolute right-0 top-0 h-full w-full max-w-xl bg-background border-l border-border shadow-2xl overflow-hidden flex flex-col"
           onClick={(e) => e.stopPropagation()}
         >
         {/* Breadcrumb Trail */}
@@ -463,7 +463,7 @@ export function NodeDetailPopup({
           </div>
 
           {/* Content */}
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
             <div className="px-6 pt-2 border-b border-border">
               <TabsList className="h-9 bg-transparent p-0 gap-4">
                 <TabsTrigger 
@@ -487,7 +487,7 @@ export function NodeDetailPopup({
               </TabsList>
             </div>
 
-            <ScrollArea className="h-[400px]">
+            <ScrollArea className="flex-1 overflow-auto">
               <TabsContent value="overview" className="m-0 p-6 space-y-4">
                 {/* Basic Info */}
                 <div className="grid grid-cols-2 gap-4">

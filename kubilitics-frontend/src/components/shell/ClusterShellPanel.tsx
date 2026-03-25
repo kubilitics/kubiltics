@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Terminal as TerminalIcon, X, GripHorizontal, Maximize2, Minimize2, Trash2, RefreshCw } from 'lucide-react';
+import { Terminal as TerminalIcon, X, GripHorizontal, Maximize2, Minimize2, Trash2, RefreshCw, ClipboardCopy } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getKCLIComplete, getKCLITUIState, getKubectlShellStreamUrl, getShellComplete, type ShellStatusResult } from '@/services/backendApiClient';
 import { useNavigate } from 'react-router-dom';
 import { applyCompletionToLine, updateLineBuffer } from './completionEngine';
 import { useClusterStore } from '@/stores/clusterStore';
 import { useBackendCircuitOpen } from '@/hooks/useBackendCircuitOpen';
+import { isTauri } from '@/lib/tauri';
+import { toast } from '@/components/ui/sonner';
 import { useUIStore } from '@/stores/uiStore';
 import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
@@ -656,6 +658,26 @@ export function ClusterShellPanel({
         </div>
 
         <div className="flex items-center gap-0.5 shrink-0">
+          {isTauri() && (
+            <button
+              className="flex items-center gap-1 rounded px-1.5 py-1 text-[11px] font-medium text-white/50 hover:bg-white/10 hover:text-white transition-colors"
+              onClick={() => {
+                const ctx = shellStatus?.context || clusterName;
+                const ns = effectiveNamespace;
+                const cmd = `kubectl --context ${ctx} -n ${ns}`;
+                navigator.clipboard.writeText(cmd).then(() => {
+                  toast.success('Copied to clipboard — paste in your terminal', {
+                    description: cmd,
+                    duration: 4000,
+                  });
+                });
+              }}
+              title="Copy kubectl command to clipboard"
+            >
+              <ClipboardCopy className="h-3.5 w-3.5" />
+              <span>Copy kubectl</span>
+            </button>
+          )}
           <button
             className="rounded p-1 text-white/40 hover:bg-white/10 hover:text-white"
             onClick={handleReconnect}

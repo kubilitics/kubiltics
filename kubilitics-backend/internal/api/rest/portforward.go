@@ -1,14 +1,17 @@
 package rest
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"os/exec"
 	"sync"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
@@ -147,10 +150,66 @@ func (h *Handler) PostPortForward(w http.ResponseWriter, r *http.Request) {
 		cmd.Env = append(cmd.Env, "KUBECONFIG="+cluster.KubeconfigPath)
 	}
 
+	// Capture stderr so we can surface kubectl errors in the response.
+	var stderrBuf bytes.Buffer
+	cmd.Stderr = &stderrBuf
+
 	if err := cmd.Start(); err != nil {
 		cancel()
 		log.Printf("[port-forward] failed to start kubectl: %v", err)
 		respondError(w, http.StatusInternalServerError, "Failed to start port-forward: "+err.Error())
+		return
+	}
+
+	// Monitor for early process exit while we probe the port.
+	procExited := make(chan error, 1)
+	go func() {
+		procExited <- cmd.Wait()
+	}()
+
+	// Wait up to 2s (10 attempts × 200ms) for the local port to become reachable.
+	addr := fmt.Sprintf("localhost:%d", req.LocalPort)
+	var portReady bool
+	for i := 0; i < 10; i++ {
+		// If the process already exited, no point retrying.
+		select {
+		case exitErr := <-procExited:
+			stderrMsg := stderrBuf.String()
+			cancel()
+			errMsg := fmt.Sprintf("kubectl port-forward exited prematurely: %v", exitErr)
+			if stderrMsg != "" {
+				errMsg += "; stderr: " + stderrMsg
+			}
+			log.Printf("[port-forward] %s", errMsg)
+			respondError(w, http.StatusInternalServerError, errMsg)
+			return
+		default:
+		}
+
+		conn, dialErr := net.DialTimeout("tcp", addr, 200*time.Millisecond)
+		if dialErr == nil {
+			_ = conn.Close()
+			portReady = true
+			break
+		}
+		time.Sleep(200 * time.Millisecond)
+	}
+
+	if !portReady {
+		// Port never opened — kill the subprocess and return an error.
+		stderrMsg := stderrBuf.String()
+		cancel()
+		if cmd.Process != nil {
+			_ = cmd.Process.Kill()
+		}
+		// Drain the wait goroutine.
+		<-procExited
+		errMsg := fmt.Sprintf("port-forward: local port %d did not open within 2s", req.LocalPort)
+		if stderrMsg != "" {
+			errMsg += "; stderr: " + stderrMsg
+		}
+		log.Printf("[port-forward] %s", errMsg)
+		respondError(w, http.StatusInternalServerError, errMsg)
 		return
 	}
 
@@ -160,7 +219,7 @@ func (h *Handler) PostPortForward(w http.ResponseWriter, r *http.Request) {
 
 	// Reap subprocess in background; remove session when the process exits naturally.
 	go func() {
-		_ = cmd.Wait()
+		<-procExited
 		pfDelete(clusterID, sessionID)
 	}()
 

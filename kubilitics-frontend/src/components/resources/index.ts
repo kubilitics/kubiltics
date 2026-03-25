@@ -1,7 +1,6 @@
 export { ResourceStatusCard, ResourceStatusCards, type ResourceStatusCardProps, type ResourceStatusCardsProps } from './ResourceStatusCard';
 export { ResourceTabs, type TabConfig, type ResourceTabsProps } from './ResourceTabs';
 export { LogViewer, type LogEntry, type LogViewerProps } from './LogViewer';
-export { TerminalViewer, type TerminalLine, type TerminalViewerProps } from './TerminalViewer';
 export { DeleteConfirmDialog, type DeleteConfirmDialogProps } from './DeleteConfirmDialog';
 export { PortForwardDialog, type PortInfo, type PortForwardDialogProps } from './PortForwardDialog';
 export { DebugContainerDialog, type DebugContainerDialogProps } from './DebugContainerDialog';
