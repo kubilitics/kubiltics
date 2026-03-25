@@ -26,7 +26,7 @@ export function ResourceTabs({ tabs, activeTab, onTabChange, className }: Resour
   return (
     <div className={cn('space-y-6 w-full', className)}>
       {/* Tab bar */}
-      <div className="w-full rounded-xl bg-muted/40 dark:bg-slate-800/40 p-1 overflow-x-auto scrollbar-thin scrollbar-thumb-border/30 scrollbar-track-transparent" style={{ scrollbarWidth: 'thin' }}>
+      <div className="w-full rounded-xl bg-muted/40 dark:bg-slate-800/40 p-1 overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
         <nav className="flex items-center gap-0.5" aria-label="Tabs">
           {tabs.map((tab) => {
             const isActive = activeTab === tab.id;

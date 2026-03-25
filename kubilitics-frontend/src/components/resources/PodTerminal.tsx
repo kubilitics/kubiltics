@@ -140,7 +140,7 @@ export function PodTerminal({
     });
 
     ws.onopen = () => {
-      setConnState('connected');
+      // Don't set 'connected' yet — wait for first stdout to confirm end-to-end exec works
       fitRef.current?.fit();
       // Send initial resize with actual terminal dimensions
       requestAnimationFrame(() => {
@@ -153,6 +153,7 @@ export function PodTerminal({
       try {
         const msg = JSON.parse(evt.data);
         if (msg.t === 'stdout' || msg.t === 'stderr') {
+          setConnState('connected');
           const bytes = atob(msg.d);
           term.write(bytes);
         } else if (msg.t === 'exit') {
