@@ -319,6 +319,46 @@ func NodesFromBundle(b *v2.ResourceBundle) []v2.TopologyNode {
 		w := &b.ValidatingWebhooks[i]
 		out = append(out, v2.TopologyNode{ID: v2.NodeID("ValidatingWebhookConfiguration", "", w.Name), Kind: "ValidatingWebhookConfiguration", Name: w.Name, Namespace: "", APIVersion: "admissionregistration.k8s.io/v1", Category: "policy", Label: w.Name, Status: "healthy", Layer: 0, Labels: w.Labels, Annotations: w.Annotations, CreatedAt: formatTime(w.CreationTimestamp)})
 	}
+	for i := range b.Events {
+		ev := &b.Events[i]
+		status := "healthy"
+		if ev.Type == "Warning" {
+			status = "warning"
+		}
+		out = append(out, v2.TopologyNode{ID: v2.NodeID("Event", ev.Namespace, ev.Name), Kind: "Event", Name: ev.Name, Namespace: ev.Namespace, APIVersion: "v1", Category: "cluster", Label: ev.Reason, Status: status, Layer: 5, Group: groupIDForNamespace(ev.Namespace), Labels: ev.Labels, Annotations: ev.Annotations, CreatedAt: formatTime(ev.CreationTimestamp)})
+	}
+	for i := range b.ResourceQuotas {
+		rq := &b.ResourceQuotas[i]
+		out = append(out, v2.TopologyNode{ID: v2.NodeID("ResourceQuota", rq.Namespace, rq.Name), Kind: "ResourceQuota", Name: rq.Name, Namespace: rq.Namespace, APIVersion: "v1", Category: "policy", Label: rq.Name, Status: "healthy", Layer: 1, Group: groupIDForNamespace(rq.Namespace), Labels: rq.Labels, Annotations: rq.Annotations, CreatedAt: formatTime(rq.CreationTimestamp)})
+	}
+	for i := range b.LimitRanges {
+		lr := &b.LimitRanges[i]
+		out = append(out, v2.TopologyNode{ID: v2.NodeID("LimitRange", lr.Namespace, lr.Name), Kind: "LimitRange", Name: lr.Name, Namespace: lr.Namespace, APIVersion: "v1", Category: "policy", Label: lr.Name, Status: "healthy", Layer: 1, Group: groupIDForNamespace(lr.Namespace), Labels: lr.Labels, Annotations: lr.Annotations, CreatedAt: formatTime(lr.CreationTimestamp)})
+	}
+	// Synthetic User and Group nodes from RBAC bindings (external identities, not K8s resources).
+	seenSubjects := make(map[string]bool)
+	for i := range b.RoleBindings {
+		for _, subj := range b.RoleBindings[i].Subjects {
+			if subj.Kind == "User" || subj.Kind == "Group" {
+				id := v2.NodeID(subj.Kind, subj.Namespace, subj.Name)
+				if !seenSubjects[id] {
+					seenSubjects[id] = true
+					out = append(out, v2.TopologyNode{ID: id, Kind: subj.Kind, Name: subj.Name, Namespace: subj.Namespace, APIVersion: "rbac.authorization.k8s.io/v1", Category: "rbac", Label: subj.Name, Status: "healthy", Layer: 2, Group: groupIDForNamespace(subj.Namespace)})
+				}
+			}
+		}
+	}
+	for i := range b.ClusterRoleBindings {
+		for _, subj := range b.ClusterRoleBindings[i].Subjects {
+			if subj.Kind == "User" || subj.Kind == "Group" {
+				id := v2.NodeID(subj.Kind, "", subj.Name)
+				if !seenSubjects[id] {
+					seenSubjects[id] = true
+					out = append(out, v2.TopologyNode{ID: id, Kind: subj.Kind, Name: subj.Name, Namespace: "", APIVersion: "rbac.authorization.k8s.io/v1", Category: "rbac", Label: subj.Name, Status: "healthy", Layer: 2})
+				}
+			}
+		}
+	}
 	return out
 }
 
