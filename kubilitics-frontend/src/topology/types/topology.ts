@@ -61,6 +61,17 @@ export interface TopologyNode {
   clusterIP?: string;
   serviceType?: string;
   containers?: number;
+  criticality?: {
+    score: number;
+    level: 'critical' | 'high' | 'medium' | 'low';
+    pageRank: number;
+    fanIn: number;
+    fanOut: number;
+    blastRadius: number;
+    dependencyDepth: number;
+    isSPOF: boolean;
+    confidence: string;
+  };
 }
 
 export interface TopologyEdge {

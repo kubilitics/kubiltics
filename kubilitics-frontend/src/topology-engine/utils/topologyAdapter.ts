@@ -43,6 +43,8 @@ interface BackendTopologyNode {
   clusterIP?: string;
   serviceType?: string;
   containers?: number;
+  // Criticality scores
+  extra?: Record<string, unknown>;
 }
 
 interface BackendTopologyEdge {
@@ -181,6 +183,8 @@ function transformNode(n: BackendTopologyNode): TopologyNode & Record<string, un
     clusterIP: n.clusterIP,
     serviceType: n.serviceType,
     containers: n.containers,
+    // Criticality scores from backend (computed on full cluster graph)
+    extra: (n as Record<string, unknown>).extra as Record<string, unknown> | undefined,
   };
 }
 

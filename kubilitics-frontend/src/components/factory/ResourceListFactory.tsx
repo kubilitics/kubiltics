@@ -37,9 +37,10 @@ import {
   StatusPill, ListPagination, PAGE_SIZE_OPTIONS,
   resourceTableRowClassName, ROW_MOTION, ListPageHeader,
   TableEmptyState, TableErrorState, ListPageLoadingShell,
-  NamespaceBadge, CopyNameDropdownItem,
+  NamespaceBadge, CopyNameDropdownItem, CriticalityBadge,
   type StatusPillVariant,
 } from '@/components/list';
+import { useCriticalityScores, type CriticalityEntry } from '@/hooks/useCriticalityScores';
 import { cn } from '@/lib/utils';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import {
@@ -142,6 +143,21 @@ export function ResourceListPage({
 
   const items = useMemo(() => data?.items ?? [], [data]);
 
+  // ── Criticality Scores ──────────────────────────────────────────────────
+  const { data: criticalityMap } = useCriticalityScores(effectiveNamespace);
+
+  const getCriticality = useCallback(
+    (resource: KubernetesResource): CriticalityEntry | undefined => {
+      if (!criticalityMap) return undefined;
+      const kind = resource.kind ?? config.kind;
+      const ns = resource.metadata.namespace;
+      const name = resource.metadata.name;
+      // Try namespaced key first, then simple key
+      return criticalityMap.get(`${kind}/${ns}/${name}`) ?? criticalityMap.get(`${kind}/${name}`);
+    },
+    [criticalityMap, config.kind],
+  );
+
   const deleteMutation = useDeleteK8sResource();
 
   // ── Filter & Sort ────────────────────────────────────────────────────────
@@ -158,6 +174,17 @@ export function ResourceListPage({
 
   const sorted = useMemo(() => {
     if (!sortKey) return filtered;
+    // Special handling for criticality sort
+    if (sortKey === 'criticality') {
+      return [...filtered].sort((a, b) => {
+        const ca = getCriticality(a);
+        const cb = getCriticality(b);
+        const sa = ca?.score ?? -1;
+        const sb = cb?.score ?? -1;
+        const cmp = sa - sb;
+        return sortDir === 'asc' ? cmp : -cmp;
+      });
+    }
     const col = config.columns.find((c) => c.id === sortKey);
     if (!col) return filtered;
     return [...filtered].sort((a, b) => {
@@ -168,7 +195,7 @@ export function ResourceListPage({
       const cmp = sa.localeCompare(sb, undefined, { numeric: true });
       return sortDir === 'asc' ? cmp : -cmp;
     });
-  }, [filtered, sortKey, sortDir, config.columns]);
+  }, [filtered, sortKey, sortDir, config.columns, getCriticality]);
 
   const totalPages = Math.max(1, Math.ceil(sorted.length / pageSize));
   const paginated = sorted.slice((page - 1) * pageSize, page * pageSize);
@@ -347,6 +374,19 @@ export function ResourceListPage({
                       </span>
                     </ResizableTableHead>
                   ))}
+                  {criticalityMap && criticalityMap.size > 0 && (
+                    <TableHead
+                      className="cursor-pointer select-none text-xs font-medium text-muted-foreground uppercase tracking-wider min-w-[100px] w-[120px]"
+                      onClick={() => handleSort('criticality')}
+                    >
+                      <span className="flex items-center gap-1">
+                        Criticality
+                        {sortKey === 'criticality' && (
+                          <span className="text-foreground">{sortDir === 'asc' ? '\u2191' : '\u2193'}</span>
+                        )}
+                      </span>
+                    </TableHead>
+                  )}
                   <TableHead className="w-10" />
                 </TableRow>
               </TableHeader>
@@ -385,6 +425,21 @@ export function ResourceListPage({
                           </ResizableTableCell>
                         );
                       })}
+                      {criticalityMap && criticalityMap.size > 0 && (
+                        <TableCell className="min-w-[100px] w-[120px]">
+                          {(() => {
+                            const entry = getCriticality(resource);
+                            if (!entry) return null;
+                            return (
+                              <CriticalityBadge
+                                level={entry.level}
+                                blastRadius={entry.blastRadius}
+                                isSPOF={entry.isSPOF}
+                              />
+                            );
+                          })()}
+                        </TableCell>
+                      )}
                       <TableCell className="w-10" onClick={(e) => e.stopPropagation()}>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>

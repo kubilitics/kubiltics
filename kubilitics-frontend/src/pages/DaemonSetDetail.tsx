@@ -24,6 +24,7 @@ import {
   Gauge,
   ChevronDown,
   RefreshCw,
+  Zap,
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import {
@@ -64,6 +65,7 @@ import { ListPagination, PAGE_SIZE_OPTIONS } from '@/components/list';
 import { useResourceDetail, useResourceEvents } from '@/hooks/useK8sResourceDetail';
 import { useDeleteK8sResource, useUpdateK8sResource, usePatchK8sResource, useK8sResourceList, calculateAge, type KubernetesResource } from '@/hooks/useKubernetes';
 import { normalizeKindForTopology } from '@/utils/resourceKindMapper';
+import { BlastRadiusTab } from '@/components/resources/BlastRadiusTab';
 import { useConnectionStatus } from '@/hooks/useConnectionStatus';
 import { useMutationPolling } from '@/hooks/useMutationPolling';
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
@@ -675,6 +677,18 @@ export default function DaemonSetDetail() {
           name={name || daemonSet?.metadata?.name || ''}
           sourceResourceType="DaemonSet"
           sourceResourceName={daemonSet?.metadata?.name ?? name ?? ''}
+        />
+      ),
+    },
+    {
+      id: 'blast-radius',
+      label: 'Blast Radius',
+      icon: Zap,
+      content: (
+        <BlastRadiusTab
+          kind={normalizeKindForTopology('DaemonSet')}
+          namespace={namespace || daemonSet?.metadata?.namespace || ''}
+          name={name || daemonSet?.metadata?.name || ''}
         />
       ),
     },

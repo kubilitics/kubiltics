@@ -34,6 +34,7 @@ import {
   FileCode,
   GitCompare,
   FolderOpen,
+  Zap,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -89,6 +90,7 @@ import { useConnectionStatus } from '@/hooks/useConnectionStatus';
 import { useTrackRecentResource } from '@/hooks/useTrackRecentResource';
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
 import { normalizeKindForTopology } from '@/utils/resourceKindMapper';
+import { BlastRadiusTab } from '@/components/resources/BlastRadiusTab';
 import { cn } from '@/lib/utils';
 import { downloadResourceJson } from '@/lib/exportUtils';
 
@@ -896,6 +898,18 @@ export default function PodDetail() {
           name={name || pod?.metadata?.name || ''}
           sourceResourceType="Pod"
           sourceResourceName={pod?.metadata?.name ?? name ?? ''}
+        />
+      ),
+    },
+    {
+      id: 'blast-radius',
+      label: 'Blast Radius',
+      icon: Zap,
+      content: (
+        <BlastRadiusTab
+          kind={normalizeKindForTopology('Pod')}
+          namespace={namespace || pod?.metadata?.namespace || ''}
+          name={name || pod?.metadata?.name || ''}
         />
       ),
     },

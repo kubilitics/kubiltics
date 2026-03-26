@@ -45,6 +45,10 @@ export interface TopologyCanvasProps {
   namespace?: string;
   /** Called when user clicks "Try simpler view" after layout timeout */
   onRequestSimplify?: () => void;
+  /** Blast radius simulation: set of affected node IDs (used by BlastRadiusTab) */
+  simulationAffectedNodes?: Set<string> | null;
+  /** The node being simulated as failed */
+  simulatedFailureNodeId?: string | null;
 }
 
 /** Semantic zoom — uses centralized thresholds from designTokens */
@@ -68,6 +72,8 @@ function TopologyCanvasInner({
   clusterName,
   namespace,
   onRequestSimplify,
+  simulationAffectedNodes,
+  simulatedFailureNodeId,
 }: TopologyCanvasProps) {
   const [currentZoom, setCurrentZoom] = useState(0.5);
 
@@ -302,18 +308,40 @@ function TopologyCanvasInner({
   const styledNodes = useMemo(() => {
     const hasDimming = dimmedNodeIds != null;
     const hasErrorChain = errorChainNodeIds.size > 0;
-    if (!selectedNodeId && highlightNodeIds.length === 0 && !hasDimming && !hasErrorChain) return nodes;
+    const hasSimulation = simulationAffectedNodes != null && simulationAffectedNodes.size > 0;
+
+    if (!selectedNodeId && highlightNodeIds.length === 0 && !hasDimming && !hasErrorChain && !hasSimulation) return nodes;
+
     return nodes.map((n) => {
       const isHighlighted = highlightNodeIds.includes(n.id);
       const isSelected = n.id === selectedNodeId;
       const isDimmed = hasDimming && !dimmedNodeIds.has(n.id);
       const isInErrorChain = hasErrorChain && errorChainNodeIds.has(n.id) && !isSelected;
+
+      // Blast radius simulation styling (takes priority)
+      if (hasSimulation) {
+        const isFailureOrigin = n.id === simulatedFailureNodeId;
+        const isAffected = simulationAffectedNodes.has(n.id);
+        return {
+          ...n,
+          className: isFailureOrigin
+            ? "ring-[3px] ring-red-600 ring-offset-2 rounded-lg shadow-[0_0_20px_rgba(220,38,38,0.5)]"
+            : isAffected
+              ? "ring-2 ring-orange-500 ring-offset-1 rounded-lg animate-pulse"
+              : "rounded-lg",
+          style: {
+            ...n.style,
+            ...(isFailureOrigin ? { zIndex: 100 } : {}),
+            ...(!isAffected && !isFailureOrigin ? { opacity: 0.15, filter: "saturate(0.2)", transition: "opacity 0.15s" } : { transition: "opacity 0.15s" }),
+          },
+        };
+      }
+
       if (!isHighlighted && !isSelected && !isDimmed && !isInErrorChain) return n;
       return {
         ...n,
         className: [
           isSelected ? "ring-2 ring-blue-500 ring-offset-2 rounded-lg" : "",
-          // Central/focus node: prominent ring + scale so it's always visible
           isHighlighted && !isSelected
             ? "ring-[3px] ring-blue-500 ring-offset-2 rounded-lg shadow-[0_0_16px_rgba(59,130,246,0.5)] scale-[1.03]"
             : "",
@@ -321,13 +349,12 @@ function TopologyCanvasInner({
         ].filter(Boolean).join(" "),
         style: {
           ...n.style,
-          // Central node gets a z-index boost so it sits on top
           ...(isHighlighted && !isSelected ? { zIndex: 100 } : {}),
           ...(isDimmed ? { opacity: 0.2, filter: "saturate(0.3)", transition: "opacity 0.15s, filter 0.15s" } : { transition: "opacity 0.15s, filter 0.15s" }),
         },
       };
     });
-  }, [nodes, selectedNodeId, highlightNodeIds, dimmedNodeIds, errorChainNodeIds]);
+  }, [nodes, selectedNodeId, highlightNodeIds, dimmedNodeIds, errorChainNodeIds, simulationAffectedNodes, simulatedFailureNodeId]);
 
   // Traffic-related relationship types — highlighted in traffic view mode
   const TRAFFIC_EDGE_TYPES = new Set([
@@ -336,6 +363,22 @@ function TopologyCanvasInner({
 
   // Edge styling — ALWAYS show edges, just hide labels at low zoom
   const styledEdges = useMemo(() => {
+    // Blast radius simulation: affected edges red + animated, others nearly invisible
+    if (simulationAffectedNodes && simulationAffectedNodes.size > 0) {
+      return edges.map((e) => {
+        const bothAffected = simulationAffectedNodes.has(e.source) && simulationAffectedNodes.has(e.target);
+        return {
+          ...e,
+          animated: bothAffected,
+          style: {
+            ...(e.style ?? {}),
+            stroke: bothAffected ? "#dc2626" : undefined,
+            strokeWidth: bothAffected ? 2.5 : 1,
+            opacity: bothAffected ? 1 : 0.08,
+          },
+        };
+      });
+    }
     // Traffic view mode: emphasize traffic edges, dim the rest
     if (viewMode === "traffic") {
       return edges.map((e) => {
@@ -364,7 +407,7 @@ function TopologyCanvasInner({
       }));
     }
     return edges;
-  }, [edges, currentZoom, isExporting, viewMode]);
+  }, [edges, currentZoom, isExporting, viewMode, simulationAffectedNodes]);
 
   const onNodeClick = useCallback(
     (_: React.MouseEvent, node: { id: string }) => onSelectNode(node.id),

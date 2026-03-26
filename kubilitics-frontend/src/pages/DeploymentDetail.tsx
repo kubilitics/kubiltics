@@ -30,6 +30,7 @@ import {
   Settings,
   Search,
   ChevronDown,
+  Zap,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -76,6 +77,7 @@ import { useDeleteK8sResource, useUpdateK8sResource, usePatchK8sResource, useK8s
 import { useMutationPolling } from '@/hooks/useMutationPolling';
 import { AgeCell, ListPagination, PAGE_SIZE_OPTIONS } from '@/components/list';
 import { normalizeKindForTopology } from '@/utils/resourceKindMapper';
+import { BlastRadiusTab } from '@/components/resources/BlastRadiusTab';
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
 import { Breadcrumbs, useDetailBreadcrumbs } from '@/components/layout/Breadcrumbs';
 import { useClusterStore } from '@/stores/clusterStore';
@@ -1180,6 +1182,18 @@ export default function DeploymentDetail() {
           name={name || deployment?.metadata?.name || ''}
           sourceResourceType="Deployment"
           sourceResourceName={deployment?.metadata?.name ?? name ?? ''}
+        />
+      ),
+    },
+    {
+      id: 'blast-radius',
+      label: 'Blast Radius',
+      icon: Zap,
+      content: (
+        <BlastRadiusTab
+          kind={normalizeKindForTopology('Deployment')}
+          namespace={namespace || deployment?.metadata?.namespace || ''}
+          name={name || deployment?.metadata?.name || ''}
         />
       ),
     },

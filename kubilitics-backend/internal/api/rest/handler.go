@@ -290,6 +290,7 @@ func SetupRoutes(router *mux.Router, h *Handler) {
 	router.Handle("/clusters/{clusterId}/topology/v2", h.wrapWithRBAC(h.GetTopologyV2, auth.RoleViewer)).Methods("GET")
 	router.Handle("/clusters/{clusterId}/topology/v2/traffic", h.wrapWithRBAC(h.GetTopologyV2Traffic, auth.RoleViewer)).Methods("GET")
 	router.Handle("/clusters/{clusterId}/topology/v2/impact/{kind}/{namespace}/{name}", h.wrapWithRBAC(h.GetTopologyV2Impact, auth.RoleViewer)).Methods("GET")
+	router.Handle("/clusters/{clusterId}/topology/v2/criticality", h.wrapWithRBAC(h.GetCriticality, auth.RoleViewer)).Methods("GET")
 	router.Handle("/clusters/{clusterId}/topology/resource/{kind}/{namespace}/{name}", h.wrapWithRBAC(h.GetResourceTopology, auth.RoleViewer)).Methods("GET")
 	router.Handle("/clusters/{clusterId}/topology/export", h.wrapWithRBAC(h.ExportTopology, auth.RoleOperator)).Methods("POST")
 	router.Handle("/clusters/{clusterId}/topology/export/drawio", h.wrapWithRBAC(h.GetTopologyExportDrawio, auth.RoleViewer)).Methods("GET")
@@ -1307,6 +1308,9 @@ func (h *Handler) GetResourceTopology(w http.ResponseWriter, r *http.Request) {
 	} else {
 		v2Resp, buildErr = topologyv2builder.BuildTopology(ctx, v2Opts, client)
 		if buildErr == nil && v2Resp != nil && len(v2Resp.Nodes) > 0 {
+			// Score all nodes on the FULL graph before caching.
+			// Scores are computed once and carried through BFS filtering via node.Extra.
+			attachCriticalityScores(v2Resp)
 			topologyCacheSet(resCacheKey, v2Resp)
 		}
 	}
@@ -1547,6 +1551,150 @@ func (h *Handler) GetResourceTopology(w http.ResponseWriter, r *http.Request) {
 	}
 
 	respondJSON(w, http.StatusOK, graph)
+}
+
+// attachCriticalityScores runs ScoreNodes on the full topology and writes
+// the results into each node's Extra["criticality"] map. This must be
+// called ONCE on the full graph before caching so that scores survive
+// BFS filtering (Extra is carried through).
+func attachCriticalityScores(resp *topologyv2.TopologyResponse) {
+	scores := topologyv2builder.ScoreNodes(resp.Nodes, resp.Edges)
+	scoreMap := make(map[string]topologyv2builder.CriticalityScore, len(scores))
+	for _, s := range scores {
+		scoreMap[s.NodeID] = s
+	}
+	var matched int
+	for i := range resp.Nodes {
+		if score, ok := scoreMap[resp.Nodes[i].ID]; ok {
+			if resp.Nodes[i].Extra == nil {
+				resp.Nodes[i].Extra = make(map[string]interface{})
+			}
+			resp.Nodes[i].Extra["criticality"] = map[string]interface{}{
+				"score":           score.Score,
+				"level":           score.Level,
+				"pageRank":        score.PageRank,
+				"fanIn":           score.FanIn,
+				"fanOut":          score.FanOut,
+				"blastRadius":     score.BlastRadius,
+				"dependencyDepth": score.DependencyDepth,
+				"isSPOF":          score.IsSPOF,
+				"confidence":      score.Confidence,
+			}
+			matched++
+		}
+	}
+	_ = matched // scored all nodes
+}
+
+// criticalitySummary is the lightweight response type for the /criticality endpoint.
+type criticalitySummary struct {
+	NodeID      string  `json:"nodeId"`
+	Kind        string  `json:"kind"`
+	Namespace   string  `json:"namespace"`
+	Name        string  `json:"name"`
+	Level       string  `json:"level"`
+	BlastRadius int     `json:"blastRadius"`
+	IsSPOF      bool    `json:"isSPOF"`
+	Score       float64 `json:"score"`
+}
+
+// GetCriticality handles GET /clusters/{clusterId}/topology/v2/criticality.
+// Returns a flat JSON array of criticality scores for every resource in the topology.
+// Optional query param: namespace (filter results to a single namespace).
+func (h *Handler) GetCriticality(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	clusterID := vars["clusterId"]
+	if !validate.ClusterID(clusterID) {
+		respondError(w, http.StatusBadRequest, "Invalid clusterId")
+		return
+	}
+
+	nsFilter := strings.TrimSpace(r.URL.Query().Get("namespace"))
+
+	client, err := h.getClientFromRequest(r.Context(), r, clusterID, h.cfg)
+	if err != nil {
+		requestID := logger.FromContext(r.Context())
+		respondErrorWithCode(w, http.StatusNotFound, ErrCodeNotFound, err.Error(), requestID)
+		return
+	}
+
+	timeoutSec := 30
+	if h.cfg != nil && h.cfg.TopologyTimeoutSec > 0 {
+		timeoutSec = h.cfg.TopologyTimeoutSec
+	}
+	ctx, cancel := context.WithTimeout(r.Context(), time.Duration(timeoutSec)*time.Second)
+	defer cancel()
+
+	// Use the same cache as resource topology (full cluster-mode build)
+	cacheKey := topologyCacheKey(clusterID, "resource", "", 0)
+
+	var resp *topologyv2.TopologyResponse
+	if cached, ok := topologyCacheGet(cacheKey); ok {
+		resp = cached
+	} else {
+		clusterName := clusterID
+		if c, err := h.clusterService.GetCluster(ctx, clusterID); err == nil && c != nil && c.Name != "" {
+			clusterName = c.Name
+		}
+		opts := topologyv2.Options{
+			ClusterID:   clusterID,
+			ClusterName: clusterName,
+			Mode:        topologyv2.ViewModeCluster,
+		}
+		built, buildErr := topologyv2builder.BuildTopology(ctx, opts, client)
+		if buildErr != nil {
+			if errors.Is(buildErr, context.DeadlineExceeded) {
+				respondError(w, http.StatusServiceUnavailable, "Topology build timed out")
+				return
+			}
+			respondError(w, http.StatusInternalServerError, buildErr.Error())
+			return
+		}
+		if built != nil && len(built.Nodes) > 0 {
+			attachCriticalityScores(built)
+			topologyCacheSet(cacheKey, built)
+		}
+		resp = built
+	}
+
+	if resp == nil || len(resp.Nodes) == 0 {
+		respondJSON(w, http.StatusOK, []criticalitySummary{})
+		return
+	}
+
+	// Score from cached Extra (already attached by attachCriticalityScores)
+	// If Extra["criticality"] is missing (old cache entry), recompute
+	if _, hasCrit := resp.Nodes[0].Extra["criticality"]; !hasCrit {
+		attachCriticalityScores(resp)
+	}
+
+	results := make([]criticalitySummary, 0, len(resp.Nodes))
+	for _, n := range resp.Nodes {
+		if nsFilter != "" && n.Namespace != nsFilter {
+			continue
+		}
+		crit, ok := n.Extra["criticality"].(map[string]interface{})
+		if !ok {
+			continue
+		}
+		score, _ := crit["score"].(float64)
+		level, _ := crit["level"].(string)
+		blastRadius, _ := crit["blastRadius"].(int)
+		isSPOF, _ := crit["isSPOF"].(bool)
+
+		results = append(results, criticalitySummary{
+			NodeID:      n.ID,
+			Kind:        n.Kind,
+			Namespace:   n.Namespace,
+			Name:        n.Name,
+			Level:       level,
+			BlastRadius: blastRadius,
+			IsSPOF:      isSPOF,
+			Score:       score,
+		})
+	}
+
+	respondJSON(w, http.StatusOK, results)
 }
 
 // ExportTopology handles POST /clusters/{clusterId}/topology/export (BE-FUNC-001).

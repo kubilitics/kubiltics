@@ -39,6 +39,7 @@ export { TableFilterProvider, useTableFilterVisible } from './TableFilterContext
 export { SearchHighlight, type SearchHighlightProps } from './SearchHighlight';
 export { BulkActionToolbar, type BulkActionToolbarProps } from './BulkActionToolbar';
 export { DataFreshnessIndicator } from './DataFreshnessIndicator';
+export { CriticalityBadge, type CriticalityBadgeProps } from './CriticalityBadge';
 // ...
 export * from './VirtualDataTable';
 export const PAGE_SIZE_OPTIONS = [10, 25, 50] as const;

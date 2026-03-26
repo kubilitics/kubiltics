@@ -23,6 +23,7 @@ import {
   Search,
   ChevronDown,
   RefreshCw,
+  Zap,
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -64,6 +65,7 @@ import { DetailPodTable } from '@/components/resources/DetailPodTable';
 import { useResourceDetail, useResourceEvents } from '@/hooks/useK8sResourceDetail';
 import { useDeleteK8sResource, useUpdateK8sResource, usePatchK8sResource, useK8sResourceList, calculateAge, type KubernetesResource } from '@/hooks/useKubernetes';
 import { normalizeKindForTopology } from '@/utils/resourceKindMapper';
+import { BlastRadiusTab } from '@/components/resources/BlastRadiusTab';
 import { useConnectionStatus } from '@/hooks/useConnectionStatus';
 import { useMutationPolling } from '@/hooks/useMutationPolling';
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
@@ -552,6 +554,18 @@ export default function ReplicaSetDetail() {
           name={name || replicaSet?.metadata?.name || ''}
           sourceResourceType="ReplicaSet"
           sourceResourceName={replicaSet?.metadata?.name ?? name ?? ''}
+        />
+      ),
+    },
+    {
+      id: 'blast-radius',
+      label: 'Blast Radius',
+      icon: Zap,
+      content: (
+        <BlastRadiusTab
+          kind={normalizeKindForTopology('ReplicaSet')}
+          namespace={namespace || replicaSet?.metadata?.namespace || ''}
+          name={name || replicaSet?.metadata?.name || ''}
         />
       ),
     },

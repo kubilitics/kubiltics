@@ -179,6 +179,9 @@ export function transformGraph(graph: TopologyGraph, clusterName?: string): Topo
     clusterIP: (n as Record<string, unknown>).clusterIP as string | undefined,
     serviceType: (n as Record<string, unknown>).serviceType as string | undefined,
     containers: (n as Record<string, unknown>).containers as number | undefined,
+    criticality: ((n as Record<string, unknown>).extra as Record<string, unknown> | undefined)?.criticality as TopologyNode["criticality"]
+      ?? (n as Record<string, unknown>).criticality as TopologyNode["criticality"]
+      ?? undefined,
   }));
 
   // ── Deduplicate parallel edges ────────────────────────────────────────
