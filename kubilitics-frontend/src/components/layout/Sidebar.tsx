@@ -813,6 +813,15 @@ export function Sidebar() {
   const collapsed = useUIStore((s) => s.isSidebarCollapsed);
   const setCollapsed = useUIStore((s) => s.setSidebarCollapsed);
   const [flyoutOpen, setFlyoutOpen] = useState(false);
+  const mountedTime = useRef(Date.now());
+
+  // Prevent flyout from opening during initial render
+  const handleFlyoutEnter = useCallback(() => {
+    if (Date.now() - mountedTime.current > 500) {
+      setFlyoutOpen(true);
+    }
+  }, []);
+
   const location = useLocation();
   const pathname = location.pathname;
   const isSettingsActive = pathname.startsWith('/settings');
@@ -890,7 +899,7 @@ export function Sidebar() {
       <>
         <aside
           className="w-[5.5rem] h-full border-r border-slate-100 dark:border-slate-800 bg-white/95 dark:bg-[hsl(228,14%,9%)] backdrop-blur-3xl flex flex-col items-center py-6 gap-5 shrink-0 z-[70] shadow-apple"
-          onMouseEnter={() => setFlyoutOpen(true)}
+          onMouseEnter={handleFlyoutEnter}
           onMouseLeave={() => setFlyoutOpen(false)}
           role="navigation"
           aria-label="Main navigation"
@@ -927,7 +936,7 @@ export function Sidebar() {
               exit={{ opacity: 0, x: -10 }}
               transition={{ duration: 0.15, ease: "easeOut" }}
               className="fixed left-[5.5rem] top-20 bottom-0 z-40 w-72 border-r border-slate-200/40 dark:border-slate-700/40 bg-white/70 dark:bg-[hsl(228,14%,9%)]/90 backdrop-blur-3xl shadow-apple-xl elevation-3 ring-1 ring-black/5 dark:ring-white/5"
-              onMouseEnter={() => setFlyoutOpen(true)}
+              onMouseEnter={handleFlyoutEnter}
               onMouseLeave={() => setFlyoutOpen(false)}
               style={{ height: 'calc(100vh - 5rem)' }}
               role="navigation"

@@ -60,7 +60,7 @@ export function AnalyticsConsentDialog({ open, onConsent }: AnalyticsConsentDial
 
   return (
     <Dialog open={open}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[500px] z-[60]" overlayClassName="bg-black/30 z-[60]">
         <DialogHeader>
           <DialogTitle>Help Improve Kubilitics</DialogTitle>
           <DialogDescription>
