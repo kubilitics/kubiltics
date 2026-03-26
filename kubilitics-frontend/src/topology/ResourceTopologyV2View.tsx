@@ -366,6 +366,7 @@ export function ResourceTopologyV2View({
           <TopologyDetailPanel
             selectedNodeId={selectedNodeId}
             topology={topology}
+            clusterId={clusterId ?? undefined}
             onNavigateToResource={handleNavigateToResource}
           />
         )}

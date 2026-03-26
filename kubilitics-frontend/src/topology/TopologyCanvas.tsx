@@ -272,8 +272,29 @@ function TopologyCanvasInner({
     });
   }, [nodes, selectedNodeId, highlightNodeIds, dimmedNodeIds, errorChainNodeIds]);
 
+  // Traffic-related relationship types — highlighted in traffic view mode
+  const TRAFFIC_EDGE_TYPES = new Set([
+    "selector", "endpoint_target", "ingress_backend", "endpoints",
+  ]);
+
   // Edge styling — ALWAYS show edges, just hide labels at low zoom
   const styledEdges = useMemo(() => {
+    // Traffic view mode: emphasize traffic edges, dim the rest
+    if (viewMode === "traffic") {
+      return edges.map((e) => {
+        const relType = (e.data as Record<string, unknown>)?.relationshipType as string | undefined;
+        const isTrafficEdge = relType ? TRAFFIC_EDGE_TYPES.has(relType) : false;
+        return {
+          ...e,
+          animated: isTrafficEdge ? true : (e.animated ?? false),
+          style: {
+            ...(e.style ?? {}),
+            strokeWidth: isTrafficEdge ? 2.5 : 1,
+            opacity: isTrafficEdge ? 1 : 0.25,
+          },
+        };
+      });
+    }
     if (currentZoom < 0.25 && !isExporting) {
       return edges.map((e) => ({
         ...e,
@@ -286,7 +307,7 @@ function TopologyCanvasInner({
       }));
     }
     return edges;
-  }, [edges, currentZoom, isExporting]);
+  }, [edges, currentZoom, isExporting, viewMode]);
 
   const onNodeClick = useCallback(
     (_: React.MouseEvent, node: { id: string }) => onSelectNode(node.id),

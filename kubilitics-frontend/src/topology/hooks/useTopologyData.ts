@@ -45,6 +45,10 @@ const VIEW_MODE_KINDS: Record<ViewMode, string[] | null> = {
     "RoleBinding", "ClusterRoleBinding",
     "Namespace",
   ],
+  traffic: [
+    "Service", "Ingress", "Pod", "Endpoints", "EndpointSlice",
+    "Node", "Namespace",
+  ],
   resource: null, // Resource view (per-resource detail tab) — show all via BFS
 };
 
@@ -53,6 +57,7 @@ const VIEW_MODE_CATEGORIES: Record<ViewMode, string[] | null> = {
   namespace: null,
   cluster: ["scheduling", "storage"],
   rbac: ["security"],
+  traffic: ["networking"],
   resource: null,
 };
 
@@ -159,7 +164,7 @@ export function useTopologyData({
 
   // View modes where namespace filtering makes sense.
   // Cluster and RBAC show cluster-scoped resources (no namespace) so filtering would exclude everything.
-  const NS_FILTERABLE_VIEWS = new Set<ViewMode>(["namespace"]);
+  const NS_FILTERABLE_VIEWS = new Set<ViewMode>(["namespace", "traffic"]);
 
   // Stable keys for Set dependencies so React's useMemo comparison
   // always detects changes. Set objects are compared by reference.

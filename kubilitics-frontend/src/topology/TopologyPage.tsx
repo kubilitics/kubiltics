@@ -391,6 +391,7 @@ export function TopologyPage() {
           <TopologyDetailPanel
             selectedNodeId={selectedNodeId}
             topology={topology ?? null}
+            clusterId={clusterId ?? undefined}
             onNavigateToResource={handleNavigateToResource}
             onClose={() => setSelectedNodeId(null)}
           />

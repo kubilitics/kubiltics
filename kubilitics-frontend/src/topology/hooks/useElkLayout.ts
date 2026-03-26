@@ -534,6 +534,7 @@ export function useElkLayout(
           label: e.label,
           detail: e.detail,
           relationshipCategory: e.relationshipCategory,
+          relationshipType: e.relationshipType,
           healthy: e.healthy,
         },
       }));
@@ -575,6 +576,7 @@ export function useElkLayout(
               label: e.label,
               detail: e.detail,
               relationshipCategory: e.relationshipCategory,
+              relationshipType: e.relationshipType,
               healthy: e.healthy,
             },
           }))
