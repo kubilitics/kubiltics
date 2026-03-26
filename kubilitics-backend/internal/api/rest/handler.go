@@ -1341,7 +1341,9 @@ func (h *Handler) GetResourceTopology(w http.ResponseWriter, r *http.Request) {
 			}
 
 			if hops >= 2 {
-				// Hop 2: expand each Direct node's dependencies (parents/children only)
+				// Hop 2: expand each Direct node's connections (both directions)
+				// This captures: RS → Pod (dependency) AND Pod ← Service (dependent)
+				// For Deployment: RS's pods AND services that select those pods
 				directNodes := make([]string, 0)
 				for id := range connected {
 					if id != targetID {
@@ -1352,7 +1354,9 @@ func (h *Handler) GetResourceTopology(w http.ResponseWriter, r *http.Request) {
 					for _, dep := range ri.GetDependencies(id) {
 						connected[dep] = true
 					}
-					// Don't follow dependents of direct nodes — that pulls in siblings
+					for _, dep := range ri.GetDependents(id) {
+						connected[dep] = true
+					}
 				}
 			}
 		}
