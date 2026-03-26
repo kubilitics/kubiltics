@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Cell } from 'recharts';
+import { K8S_BLUE } from '@/lib/colors';
 
 export function ScalingPulse() {
     const data = useMemo(() => [
@@ -31,7 +32,7 @@ export function ScalingPulse() {
                         {data.map((entry, index) => (
                             <Cell
                                 key={`cell-${index}`}
-                                fill={entry.current < entry.desired ? "#326CE5" : "#326CE5"}
+                                fill={entry.current < entry.desired ? K8S_BLUE : K8S_BLUE}
                                 fillOpacity={entry.current < entry.desired ? 0.4 : 1}
                             />
                         ))}

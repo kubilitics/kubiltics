@@ -113,7 +113,7 @@ export function LabelList({
               type="button"
               variant="ghost"
               size="sm"
-              className="h-7 text-xs gap-1.5 text-muted-foreground"
+              className="h-7 text-xs gap-2 text-muted-foreground"
               onClick={handleCopyAll}
             >
               {copied ? <Check className="h-3 w-3 text-emerald-500" /> : <Copy className="h-3 w-3" />}

@@ -79,7 +79,7 @@ export function AnnotationList({
             return (
               <div
                 key={key}
-                className="flex flex-col gap-1.5 rounded-xl border border-border/40 bg-gradient-to-r from-muted/30 to-transparent p-3.5 text-sm group hover:border-border/60 transition-colors"
+                className="flex flex-col gap-2 rounded-xl border border-border/40 bg-gradient-to-r from-muted/30 to-transparent p-4 text-sm group hover:border-border/60 transition-colors"
               >
                 <div className="flex items-center justify-between gap-2">
                   <Badge variant="outline" className="font-mono text-[10px] bg-violet-500/5 text-violet-700 dark:text-violet-300 border-violet-500/20 max-w-full truncate shrink">

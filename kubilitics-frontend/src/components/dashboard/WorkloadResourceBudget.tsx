@@ -168,7 +168,7 @@ export function WorkloadResourceBudget() {
 
       {/* Header */}
       <CardHeader className="pb-1 pt-5 px-6">
-        <CardTitle className="flex items-center gap-2.5 text-base font-semibold text-foreground">
+        <CardTitle className="flex items-center gap-2 text-base font-semibold text-foreground">
           <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500/15 to-violet-500/15 text-blue-600">
             <BarChart3 className="h-4.5 w-4.5" />
           </div>
@@ -205,13 +205,13 @@ export function WorkloadResourceBudget() {
             return (
               <motion.div
                 key={wt.kind}
-                className="rounded-lg border border-border/30 bg-muted/5 px-3.5 py-3 hover:bg-muted/10 transition-colors"
+                className="rounded-lg border border-border/30 bg-muted/5 px-4 py-3 hover:bg-muted/10 transition-colors"
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.06, duration: 0.3 }}
               >
                 {/* Row 1: Kind name + pod count + metrics */}
-                <div className="flex items-center gap-2.5 mb-2">
+                <div className="flex items-center gap-2 mb-2">
                   <div
                     className="flex h-7 w-7 items-center justify-center rounded-md flex-shrink-0"
                     style={{ backgroundColor: `${color}15` }}
@@ -267,7 +267,7 @@ export function WorkloadResourceBudget() {
         {/* ── Summary Footer ── */}
         {workloadTypes.length > 0 && (
           <div className="mt-4 pt-3 border-t border-border/30">
-            <div className="flex items-center justify-between text-[11px] text-muted-foreground font-medium">
+            <div className="flex items-center justify-between text-xs text-muted-foreground font-medium">
               <span>
                 Total: <span className="text-foreground font-semibold tabular-nums">{totals.pods}</span> pods
               </span>

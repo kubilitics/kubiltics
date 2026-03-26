@@ -33,7 +33,7 @@ export function SectionCard({ icon: Icon, title, tooltip, children, className }:
       )}
     >
       <div className="px-5 py-4 bg-gradient-to-r from-muted/20 via-muted/10 to-transparent flex items-center gap-2">
-        <div className="p-1.5 rounded-lg bg-primary/10">
+        <div className="p-2 rounded-lg bg-primary/10">
           <Icon className="h-4 w-4 text-primary" aria-hidden />
         </div>
         <h4 id={titleId} className="text-xs font-semibold uppercase tracking-widest text-foreground/90">

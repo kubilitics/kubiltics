@@ -1012,7 +1012,7 @@ function KeyboardShortcutsSection() {
                       {keys.split('+').map((key, i) => (
                         <span key={i} className="flex items-center gap-1">
                           {i > 0 && <span className="text-muted-foreground/40 text-[10px]">+</span>}
-                          <kbd className="inline-flex items-center justify-center min-w-[24px] rounded-md border border-border/60 bg-gradient-to-b from-muted/80 to-muted/40 px-1.5 py-0.5 text-[11px] font-mono text-muted-foreground shadow-sm">
+                          <kbd className="inline-flex items-center justify-center min-w-[24px] rounded-md border border-border/60 bg-gradient-to-b from-muted/80 to-muted/40 px-1.5 py-0.5 text-xs font-mono text-muted-foreground shadow-sm">
                             {key.replace('then ', '').trim()}
                           </kbd>
                         </span>

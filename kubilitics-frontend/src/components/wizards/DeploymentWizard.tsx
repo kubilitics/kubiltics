@@ -208,21 +208,21 @@ ${containersYaml}`;
                     <Input value={container.port} onChange={(e) => updateContainer(index, 'port', e.target.value)} placeholder="80" />
                   </div>
                   <div className="space-y-2">
-                    <Label className="flex items-center gap-1">CPU <span className="text-[10px] text-muted-foreground font-normal">(req=limit)</span></Label>
+                    <Label className="flex items-center gap-1">CPU <span className="text-xs text-muted-foreground font-normal">(req=limit)</span></Label>
                     <Input
                       value={container.cpu}
                       onChange={(e) => updateContainer(index, 'cpu', e.target.value)}
                       placeholder="100m"
-                      className={container.cpu !== '100m' ? 'border-indigo-300 bg-indigo-50/30' : ''}
+                      className={container.cpu !== '100m' ? 'border-primary/30 bg-primary/5' : ''}
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label className="flex items-center gap-1">Memory <span className="text-[10px] text-muted-foreground font-normal">(req=limit)</span></Label>
+                    <Label className="flex items-center gap-1">Memory <span className="text-xs text-muted-foreground font-normal">(req=limit)</span></Label>
                     <Input
                       value={container.memory}
                       onChange={(e) => updateContainer(index, 'memory', e.target.value)}
                       placeholder="128Mi"
-                      className={container.memory !== '128Mi' ? 'border-indigo-300 bg-indigo-50/30' : ''}
+                      className={container.memory !== '128Mi' ? 'border-primary/30 bg-primary/5' : ''}
                     />
                   </div>
                 </div>

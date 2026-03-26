@@ -90,7 +90,7 @@ export function ResourceHeader({
         <Link
           to={backLink}
           aria-label={`Back to ${backLabel}`}
-          className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+          className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
         >
           <ChevronLeft className="h-4 w-4" />
           Back to {backLabel}
@@ -138,7 +138,7 @@ export function ResourceHeader({
                   </Tooltip>
                 </div>
                 <div className={cn(
-                  'flex items-center gap-1.5 px-2.5 py-1 rounded-full text-sm font-medium',
+                  'flex items-center gap-2 px-2 py-1 rounded-full text-sm font-medium',
                   statusStyle.bg,
                   statusStyle.text
                 )}>
@@ -146,8 +146,8 @@ export function ResourceHeader({
                   {status}
                 </div>
               </div>
-              <div className="flex items-center gap-3 mt-1.5 text-sm text-foreground/60 flex-wrap">
-                <span className="flex items-center gap-1.5">
+              <div className="flex items-center gap-3 mt-2 text-sm text-foreground/60 flex-wrap">
+                <span className="flex items-center gap-2">
                   {resourceType}
                   {namespace ? (
                     <>
@@ -162,7 +162,7 @@ export function ResourceHeader({
                 {(createdLabel ?? createdAt) && (
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <span className="flex items-center gap-1.5">
+                      <span className="flex items-center gap-2">
                         Created {createdLabel ?? (createdAt ? new Date(createdAt).toLocaleString() : '')}
                       </span>
                     </TooltipTrigger>

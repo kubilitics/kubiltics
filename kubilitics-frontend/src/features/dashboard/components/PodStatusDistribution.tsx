@@ -106,7 +106,7 @@ export const PodStatusDistribution = () => {
                     {hasAnyPods && (
                         <div
                             className={cn(
-                                "shrink-0 px-2.5 py-1 rounded-full text-xs font-bold",
+                                "shrink-0 px-2 py-1 rounded-full text-xs font-bold",
                                 healthScore >= 95 ? "bg-emerald-500/20 text-emerald-700 dark:text-emerald-400" :
                                 healthScore >= 80 ? "bg-amber-500/20 text-amber-700 dark:text-amber-400" :
                                 "bg-rose-500/20 text-rose-700 dark:text-rose-400"
@@ -117,7 +117,7 @@ export const PodStatusDistribution = () => {
                     )}
                 </div>
             </CardHeader>
-            <CardContent className="flex-1 flex flex-col gap-5 px-6 pb-6 pt-4">
+            <CardContent className="flex-1 flex flex-col gap-4 px-6 pb-6 pt-4">
                 {podsLoading ? (
                     <div className="flex-1 flex items-center justify-center min-h-[220px]">
                         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -128,7 +128,7 @@ export const PodStatusDistribution = () => {
                     </div>
                 ) : (
                     <>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             {/* Donut chart */}
                             <div className="h-[200px] flex items-center">
                                 <ResponsiveContainer width="100%" height="100%">
@@ -210,7 +210,7 @@ export const PodStatusDistribution = () => {
                                         <Link
                                             key={name}
                                             to={`/pods?namespace=${encodeURIComponent(name)}`}
-                                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-muted/60 hover:bg-muted text-sm font-medium transition-colors"
+                                            className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-muted/60 hover:bg-muted text-sm font-medium transition-colors"
                                         >
                                             <span className="text-foreground">{name}</span>
                                             <span className="text-muted-foreground tabular-nums">{count}</span>

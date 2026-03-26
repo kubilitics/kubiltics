@@ -159,7 +159,7 @@ export function ContainersSection({ containers, className, resourceName, namespa
               <CardHeader className="pb-3 border-b border-border/40 bg-muted/5 px-6 py-5">
                 <div className="flex flex-wrap items-center justify-between gap-4">
                   <div className="flex items-center gap-4 min-w-0">
-                    <div className={cn('p-2.5 rounded-xl shrink-0', state.bg)}>
+                    <div className={cn('p-2 rounded-xl shrink-0', state.bg)}>
                       <Container className={cn('h-5 w-5', state.color)} />
                     </div>
                     <div className="min-w-0">
@@ -168,7 +168,7 @@ export function ContainersSection({ containers, className, resourceName, namespa
                     </div>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
-                    <Badge variant="secondary" className={cn('gap-1.5 px-2.5 py-0.5', state.bg, state.color)}>
+                    <Badge variant="secondary" className={cn('gap-2 px-2 py-0.5', state.bg, state.color)}>
                       <StateIcon className="h-3 w-3" />
                       {state.label}
                       {container.stateReason && ` (${container.stateReason})`}
@@ -178,7 +178,7 @@ export function ContainersSection({ containers, className, resourceName, namespa
               </CardHeader>
               <CardContent className="p-6 space-y-6">
                 {/* 1. Status (left) + Resources & Usage (right) at top */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <SectionCard
                     icon={Box}
                     title="Status"
@@ -193,7 +193,7 @@ export function ContainersSection({ containers, className, resourceName, namespa
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <div className="flex items-center justify-between rounded-lg bg-muted/30 border border-border/40 px-4 py-3 cursor-help">
-                            <span className="flex items-center gap-2.5 text-sm text-muted-foreground">
+                            <span className="flex items-center gap-2 text-sm text-muted-foreground">
                               <CheckCircle2 className={cn('h-4 w-4', container.ready ? 'text-[hsl(var(--success))]' : 'text-muted-foreground/70')} />
                               Ready
                             </span>
@@ -217,10 +217,10 @@ export function ContainersSection({ containers, className, resourceName, namespa
                       {container.lastState && (
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 space-y-1.5 cursor-help">
+                            <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 space-y-2 cursor-help">
                               <div className="flex items-center gap-2">
                                 <AlertCircle className="h-4 w-4 text-destructive shrink-0" />
-                                <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Last exit</span>
+                                <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Last exit</span>
                               </div>
                               <span className="text-sm font-semibold text-destructive">
                                 {container.lastState.reason}
@@ -248,7 +248,7 @@ export function ContainersSection({ containers, className, resourceName, namespa
                     <div className="space-y-4">
                       {/* CPU Usage */}
                       <div className="space-y-2">
-                        <div className="flex items-center justify-between text-sm mb-1.5">
+                        <div className="flex items-center justify-between text-sm mb-2">
                           <span className="flex items-center gap-2 text-foreground/70"><Cpu className="h-4 w-4" /> CPU</span>
                           {(container.currentUsage?.cpu ?? -1) >= 0 ? (
                             <span className={cn('font-semibold tabular-nums', (container.currentUsage?.cpu ?? 0) > 80 && 'text-destructive')}>
@@ -265,8 +265,8 @@ export function ContainersSection({ containers, className, resourceName, namespa
                         </div>
                         {(container.currentUsage?.cpu ?? -1) >= 0 ? (
                           <>
-                            <Progress value={container.currentUsage?.cpu ?? 0} className="h-2.5 rounded-full bg-muted/60" />
-                            <p className="text-[12px] text-foreground/70">
+                            <Progress value={container.currentUsage?.cpu ?? 0} className="h-2 rounded-full bg-muted/60" />
+                            <p className="text-xs text-foreground/70">
                               {(container.currentUsage?.cpu ?? 0).toFixed(1)}% of limit
                               {container.currentUsage?.cpuRaw != null && container.resources?.limits?.cpu && (
                                 <span className="font-semibold text-foreground ml-1">
@@ -278,7 +278,7 @@ export function ContainersSection({ containers, className, resourceName, namespa
                         ) : (
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              <p className="text-[11px] text-amber-600 cursor-help flex items-center gap-1">
+                              <p className="text-xs text-amber-600 cursor-help flex items-center gap-1">
                                 <AlertCircle className="h-3 w-3" /> No CPU limit — set limits to prevent resource contention
                               </p>
                             </TooltipTrigger>
@@ -288,7 +288,7 @@ export function ContainersSection({ containers, className, resourceName, namespa
                       </div>
                       {/* Memory Usage */}
                       <div className="space-y-2">
-                        <div className="flex items-center justify-between text-sm mb-1.5">
+                        <div className="flex items-center justify-between text-sm mb-2">
                           <span className="flex items-center gap-2 text-foreground/70"><MemoryStick className="h-4 w-4" /> Memory</span>
                           {(container.currentUsage?.memory ?? -1) >= 0 ? (
                             <span className={cn('font-semibold tabular-nums', (container.currentUsage?.memory ?? 0) > 80 && 'text-destructive')}>
@@ -305,8 +305,8 @@ export function ContainersSection({ containers, className, resourceName, namespa
                         </div>
                         {(container.currentUsage?.memory ?? -1) >= 0 ? (
                           <>
-                            <Progress value={container.currentUsage?.memory ?? 0} className="h-2.5 rounded-full bg-muted/60" />
-                            <p className="text-[12px] text-foreground/70">
+                            <Progress value={container.currentUsage?.memory ?? 0} className="h-2 rounded-full bg-muted/60" />
+                            <p className="text-xs text-foreground/70">
                               {(container.currentUsage?.memory ?? 0).toFixed(1)}% of limit
                               {container.currentUsage?.memoryRaw != null && container.resources?.limits?.memory && (
                                 <span className="font-semibold text-foreground ml-1">
@@ -318,7 +318,7 @@ export function ContainersSection({ containers, className, resourceName, namespa
                         ) : (
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              <p className="text-[11px] text-amber-600 cursor-help flex items-center gap-1">
+                              <p className="text-xs text-amber-600 cursor-help flex items-center gap-1">
                                 <AlertCircle className="h-3 w-3" /> No memory limit — OOM kills can happen unexpectedly
                               </p>
                             </TooltipTrigger>
@@ -328,7 +328,7 @@ export function ContainersSection({ containers, className, resourceName, namespa
                       </div>
                       {/* Only show resource request/limit rows that have actual values */}
                       {(container.resources?.requests?.cpu || container.resources?.limits?.cpu || container.resources?.requests?.memory || container.resources?.limits?.memory) && (
-                        <div className="pt-2 border-t border-border/40 space-y-1.5">
+                        <div className="pt-2 border-t border-border/40 space-y-2">
                           {container.resources?.requests?.cpu && <DetailRow label="CPU Request" value={container.resources.requests.cpu} tooltip={TOOLTIP_CPU_M} />}
                           {container.resources?.limits?.cpu && <DetailRow label="CPU Limit" value={container.resources.limits.cpu} tooltip={TOOLTIP_CPU_M} />}
                           {container.resources?.requests?.memory && <DetailRow label="Memory Request" value={container.resources.requests.memory} tooltip={TOOLTIP_MEMORY_MIB} />}
@@ -354,7 +354,7 @@ export function ContainersSection({ containers, className, resourceName, namespa
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                       <div className="space-y-4">
                         <div className="group relative">
-                          <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/80 mb-1.5 block">Container ID</span>
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/80 mb-2 block">Container ID</span>
                           <div className="flex items-center gap-2 rounded-xl bg-muted/30 border border-border/40 p-3 font-mono text-xs transition-colors hover:bg-muted/50 group-hover:border-primary/20">
                             <span className="truncate flex-1 text-foreground/80">{container.containerID || '—'}</span>
                             {container.containerID && (
@@ -371,12 +371,12 @@ export function ContainersSection({ containers, className, resourceName, namespa
                         </div>
 
                         <div className="group relative">
-                          <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/80 mb-1.5 block">Image Reference</span>
-                          <div className="rounded-xl border border-primary/20 bg-primary/5 p-3.5 space-y-2">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/80 mb-2 block">Image Reference</span>
+                          <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 space-y-2">
                             <div className="flex items-center justify-between gap-4">
                               <div className="font-mono text-sm font-semibold text-primary/90 truncate">{container.image || '—'}</div>
                               {container.imagePullPolicy && (
-                                <Badge variant="outline" className="text-[9px] uppercase tracking-tighter bg-background/50 border-primary/20">{container.imagePullPolicy}</Badge>
+                                <Badge variant="outline" className="text-[10px] uppercase tracking-tighter bg-background/50 border-primary/20">{container.imagePullPolicy}</Badge>
                               )}
                             </div>
                             {container.imageID && (
@@ -387,7 +387,7 @@ export function ContainersSection({ containers, className, resourceName, namespa
                       </div>
 
                       <div className="space-y-4">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/80 mb-1.5 block">Exposed Ports</span>
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/80 mb-2 block">Exposed Ports</span>
                         {container.ports && container.ports.length > 0 ? (
                           <div className="rounded-xl border border-border/40 bg-muted/10 divide-y divide-border/30 overflow-hidden">
                             {container.ports.map((p, pIdx) => {
@@ -408,7 +408,7 @@ export function ContainersSection({ containers, className, resourceName, namespa
                                       <Button
                                         variant="outline"
                                         size="sm"
-                                        className="h-8 gap-1.5 text-[10px] font-bold uppercase tracking-tight border-primary/20 hover:bg-primary/10 hover:border-primary/40 text-primary"
+                                        className="h-8 gap-2 text-[10px] font-bold uppercase tracking-tight border-primary/20 hover:bg-primary/10 hover:border-primary/40 text-primary"
                                         onClick={() => onForwardPort(container.name, p.containerPort)}
                                       >
                                         <ExternalLink className="h-3 w-3" />
@@ -424,7 +424,7 @@ export function ContainersSection({ containers, className, resourceName, namespa
                                           localhost:{activeFwd.localPort} → {activeFwd.remotePort}
                                         </span>
                                       </div>
-                                      <div className="flex items-center gap-1.5">
+                                      <div className="flex items-center gap-2">
                                         <Button
                                           variant="ghost"
                                           size="sm"
@@ -477,7 +477,7 @@ export function ContainersSection({ containers, className, resourceName, namespa
                       <div className="space-y-2">
                         <div className="flex items-center gap-2">
                           <Variable className="h-4 w-4 text-primary/80" />
-                          <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Environment</span>
+                          <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Environment</span>
                         </div>
                         <div className="grid gap-2 sm:grid-cols-2">
                           {container.env.map((e) => (
@@ -497,7 +497,7 @@ export function ContainersSection({ containers, className, resourceName, namespa
                     )}
                     {(container.livenessProbe || container.readinessProbe) && (
                       <div className="space-y-2">
-                        <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Health probes</span>
+                        <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Health probes</span>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                           {container.livenessProbe && (
                             <Tooltip>
@@ -506,9 +506,9 @@ export function ContainersSection({ containers, className, resourceName, namespa
                                   <div className="px-3 py-2 border-b border-border/40 bg-[hsl(var(--success)/0.08)]">
                                     <span className="text-xs font-semibold text-[hsl(var(--success))]">Liveness</span>
                                   </div>
-                                  <div className="p-3 flex flex-wrap gap-1.5">
+                                  <div className="p-3 flex flex-wrap gap-2">
                                     {probeToChips(container.livenessProbe).map((chip, i) => (
-                                      <span key={i} className="inline-flex rounded-md bg-background/80 border border-border/40 px-2 py-0.5 font-mono text-[11px] font-medium">
+                                      <span key={i} className="inline-flex rounded-md bg-background/80 border border-border/40 px-2 py-0.5 font-mono text-xs font-medium">
                                         {chip}
                                       </span>
                                     ))}
@@ -525,9 +525,9 @@ export function ContainersSection({ containers, className, resourceName, namespa
                                   <div className="px-3 py-2 border-b border-border/40 bg-[hsl(var(--primary)/0.1)]">
                                     <span className="text-xs font-semibold text-primary">Readiness</span>
                                   </div>
-                                  <div className="p-3 flex flex-wrap gap-1.5">
+                                  <div className="p-3 flex flex-wrap gap-2">
                                     {probeToChips(container.readinessProbe).map((chip, i) => (
-                                      <span key={i} className="inline-flex rounded-md bg-background/80 border border-border/40 px-2 py-0.5 font-mono text-[11px] font-medium">
+                                      <span key={i} className="inline-flex rounded-md bg-background/80 border border-border/40 px-2 py-0.5 font-mono text-xs font-medium">
                                         {chip}
                                       </span>
                                     ))}
@@ -544,23 +544,23 @@ export function ContainersSection({ containers, className, resourceName, namespa
                       <div className="space-y-2">
                         <div className="flex items-center gap-2">
                           <HardDrive className="h-4 w-4 text-primary/80" />
-                          <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Volume mounts</span>
+                          <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Volume mounts</span>
                         </div>
                         <div className="overflow-hidden rounded-lg border border-border/50">
                           <table className="w-full text-sm">
                             <thead>
                               <tr className="bg-muted/40 border-b border-border/50">
-                                <th className="text-left py-3 px-4 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Mount path</th>
-                                <th className="text-left py-3 px-4 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Source</th>
-                                <th className="text-left py-3 px-4 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">I/O</th>
+                                <th className="text-left py-3 px-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Mount path</th>
+                                <th className="text-left py-3 px-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Source</th>
+                                <th className="text-left py-3 px-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground">I/O</th>
                               </tr>
                             </thead>
                             <tbody>
                               {container.volumeMounts.map((vm, i) => (
                                 <tr key={vm.mountPath} className={cn('border-b border-border/30 last:border-0 transition-colors hover:bg-muted/20', i % 2 === 1 && 'bg-muted/5')}>
-                                  <td className="py-2.5 px-4 font-mono text-xs text-foreground">{vm.mountPath}</td>
-                                  <td className="py-2.5 px-4 font-mono text-xs text-foreground">{vm.name}</td>
-                                  <td className="py-2.5 px-4">
+                                  <td className="py-2 px-4 font-mono text-xs text-foreground">{vm.mountPath}</td>
+                                  <td className="py-2 px-4 font-mono text-xs text-foreground">{vm.name}</td>
+                                  <td className="py-2 px-4">
                                     {vm.readOnly ? (
                                       <Tooltip>
                                         <TooltipTrigger asChild>

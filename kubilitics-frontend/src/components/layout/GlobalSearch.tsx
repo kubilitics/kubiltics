@@ -389,7 +389,7 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
           <item.icon className="h-4 w-4" />
         </div>
         <div className="flex-1 min-w-0">
-          <span className={cn('text-[13px] font-medium', isSelected ? 'text-blue-700' : 'text-slate-700')}>
+          <span className={cn('text-sm font-medium', isSelected ? 'text-blue-700' : 'text-slate-700')}>
             <HighlightMatch text={item.name} query={search.trim()} />
           </span>
           {showCategory && (
@@ -431,7 +431,7 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
               {searchHistory.length > 0 && (
                 <>
                   <div className="flex items-center justify-between px-4 pb-1 pt-0.5">
-                    <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Recent searches</p>
+                    <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Recent searches</p>
                     <button
                       onClick={clearHistory}
                       className="flex items-center gap-1 text-[10px] text-slate-400 hover:text-red-500 transition-colors"
@@ -464,7 +464,7 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
                           <Clock className="h-4 w-4 text-slate-400" />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <span className={cn('text-[13px] font-medium', isSelected ? 'text-blue-700' : 'text-slate-700')}>
+                          <span className={cn('text-sm font-medium', isSelected ? 'text-blue-700' : 'text-slate-700')}>
                             {entry.query}
                           </span>
                           {entry.resultType && (
@@ -486,7 +486,7 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
               )}
 
               <div className="px-4 pb-1 pt-0.5">
-                <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Quick navigation</p>
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Quick navigation</p>
               </div>
               {navigationItems.slice(0, 8).map((item) => renderNavItem(item))}
             </>
@@ -552,11 +552,11 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
                             <ResIcon className="h-4 w-4" />
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className={cn('text-[13px] truncate font-medium', isSelected ? 'text-blue-700' : 'text-slate-700')}>
+                            <p className={cn('text-sm truncate font-medium', isSelected ? 'text-blue-700' : 'text-slate-700')}>
                               <HighlightMatch text={resource.name} query={search.trim()} />
                             </p>
                             {resource.namespace && (
-                              <p className="text-[11px] text-slate-400 truncate">{resource.namespace}</p>
+                              <p className="text-xs text-slate-400 truncate">{resource.namespace}</p>
                             )}
                           </div>
                           <ArrowRight className={cn('h-3.5 w-3.5 shrink-0', isSelected ? 'text-blue-400' : 'text-slate-200')} />
@@ -591,7 +591,7 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
 
         {/* Footer */}
         <div className="flex items-center justify-between px-4 py-2.5 border-t border-slate-100 bg-slate-50/60">
-          <div className="flex items-center gap-4 text-[11px] text-slate-400">
+          <div className="flex items-center gap-4 text-xs text-slate-400">
             <span className="flex items-center gap-1.5">
               <kbd className="px-1.5 py-0.5 bg-white rounded-md border border-slate-200 text-[10px] font-semibold shadow-sm">↵</kbd>
               Open
@@ -601,7 +601,7 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
               Navigate
             </span>
           </div>
-          <span className="flex items-center gap-1 text-[11px] text-slate-400">
+          <span className="flex items-center gap-1 text-xs text-slate-400">
             <Command className="h-3 w-3" />K
           </span>
         </div>

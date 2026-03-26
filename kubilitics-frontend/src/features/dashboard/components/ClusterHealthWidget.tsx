@@ -66,7 +66,7 @@ export const ClusterHealthWidget = () => {
             Cluster Health
           </h2>
           <div className="flex items-center gap-2">
-            <div className={cn("inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[11px] font-semibold shadow-sm backdrop-blur-sm", config.badge)}>
+            <div className={cn("inline-flex items-center gap-1.5 px-2 py-1 rounded-full border text-xs font-semibold shadow-sm backdrop-blur-sm", config.badge)}>
               <StatusIcon className="w-3 h-3" />
               <span>{statusLabel}</span>
             </div>
@@ -137,7 +137,7 @@ export const ClusterHealthWidget = () => {
               const Icon = key === "podHealth" ? Boxes : key === "nodeHealth" ? Server : key === "stability" ? RefreshCw : ShieldAlert;
               return (
                 <div key={key} className="space-y-1">
-                  <div className="flex justify-between text-[11px]">
+                  <div className="flex justify-between text-xs">
                     <span className="text-muted-foreground flex items-center gap-1.5">
                       <Icon className="w-3 h-3" /> {BREAKDOWN_LABELS[key]}
                     </span>

@@ -245,7 +245,7 @@ function NotificationItem({
           <div className="flex items-start justify-between gap-2">
             <p
               className={cn(
-                'text-[13px] font-semibold leading-snug truncate',
+                'text-sm font-semibold leading-snug truncate',
                 notification.read
                   ? 'text-slate-500 dark:text-slate-400'
                   : 'text-slate-900 dark:text-slate-100',
@@ -259,7 +259,7 @@ function NotificationItem({
           </div>
 
           {notification.description && (
-            <p className="text-[11px] text-muted-foreground mt-0.5 leading-relaxed line-clamp-2">
+            <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed line-clamp-2">
               {notification.description}
             </p>
           )}
@@ -269,7 +269,7 @@ function NotificationItem({
               {timeAgo}
             </span>
             {notification.resourceKind && (
-              <span className="text-[9px] px-1.5 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-muted-foreground font-semibold uppercase tracking-wider">
+              <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-muted-foreground font-semibold uppercase tracking-wider">
                 {notification.resourceKind}
               </span>
             )}
@@ -418,7 +418,7 @@ export function NotificationCenter({ className, clusterId }: NotificationCenterP
               key={currentUnreadCount}
               initial={{ scale: 0.5, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              className="absolute -top-1 -right-1 min-w-[18px] h-[18px] rounded-full bg-red-500 border-2 border-white dark:border-slate-900 shadow-sm flex items-center justify-center text-[9px] font-black text-white px-0.5"
+              className="absolute -top-1 -right-1 min-w-[18px] h-[18px] rounded-full bg-red-500 border-2 border-white dark:border-slate-900 shadow-sm flex items-center justify-center text-[10px] font-black text-white px-0.5"
             >
               {currentUnreadCount > 99 ? '99+' : currentUnreadCount}
             </motion.span>
@@ -461,7 +461,7 @@ export function NotificationCenter({ className, clusterId }: NotificationCenterP
                   {currentUnreadCount > 0 && (
                     <button
                       onClick={markAllAsRead}
-                      className="h-7 px-2 rounded-lg text-[11px] font-semibold text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors flex items-center gap-1"
+                      className="h-7 px-2 rounded-lg text-xs font-semibold text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors flex items-center gap-1"
                       title="Mark all as read"
                     >
                       <CheckCheck className="h-3 w-3" />
@@ -471,7 +471,7 @@ export function NotificationCenter({ className, clusterId }: NotificationCenterP
                   {notifications.length > 0 && (
                     <button
                       onClick={clearAll}
-                      className="h-7 px-2 rounded-lg text-[11px] font-semibold text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors flex items-center gap-1"
+                      className="h-7 px-2 rounded-lg text-xs font-semibold text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors flex items-center gap-1"
                       title="Clear all notifications"
                     >
                       <Trash2 className="h-3 w-3" />
@@ -490,7 +490,7 @@ export function NotificationCenter({ className, clusterId }: NotificationCenterP
                     aria-selected={activeFilter === tab.id}
                     onClick={() => setActiveFilter(tab.id)}
                     className={cn(
-                      'h-7 px-2.5 rounded-lg text-[11px] font-semibold transition-all duration-150 flex items-center gap-1.5',
+                      'h-7 px-2.5 rounded-lg text-xs font-semibold transition-all duration-150 flex items-center gap-1.5',
                       activeFilter === tab.id
                         ? 'bg-primary/10 text-primary dark:bg-primary/20'
                         : 'text-muted-foreground hover:text-foreground hover:bg-slate-100 dark:hover:bg-slate-800',

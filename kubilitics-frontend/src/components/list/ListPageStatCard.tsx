@@ -31,7 +31,7 @@ export function ListPageStatCard({
   size = 'default',
 }: ListPageStatCardProps) {
   const labelClass = size === 'sm'
-    ? 'text-[11px] font-semibold uppercase tracking-wider text-muted-foreground'
+    ? 'text-xs font-semibold uppercase tracking-wider text-muted-foreground'
     : 'text-xs font-semibold uppercase tracking-wider text-muted-foreground';
 
   return (

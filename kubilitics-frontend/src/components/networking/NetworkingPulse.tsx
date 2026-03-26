@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import { AreaChart, Area, ResponsiveContainer, YAxis } from 'recharts';
+import { K8S_BLUE } from '@/lib/colors';
 
 export function NetworkingPulse() {
     // Generate synthetic pulse data that looks organic
@@ -16,15 +17,15 @@ export function NetworkingPulse() {
                 <AreaChart data={data}>
                     <defs>
                         <linearGradient id="pulseGradient" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#326CE5" stopOpacity={0.3} />
-                            <stop offset="95%" stopColor="#326CE5" stopOpacity={0} />
+                            <stop offset="5%" stopColor={K8S_BLUE} stopOpacity={0.3} />
+                            <stop offset="95%" stopColor={K8S_BLUE} stopOpacity={0} />
                         </linearGradient>
                     </defs>
                     <YAxis hide domain={[0, 120]} />
                     <Area
                         type="monotone"
                         dataKey="value"
-                        stroke="#326CE5"
+                        stroke={K8S_BLUE}
                         strokeWidth={2}
                         fillOpacity={1}
                         fill="url(#pulseGradient)"

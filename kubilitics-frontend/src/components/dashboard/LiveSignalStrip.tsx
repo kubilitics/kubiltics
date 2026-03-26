@@ -60,7 +60,7 @@ function MetricChip({
     <Link
       to={link}
       className={cn(
-        'group flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl shrink-0 relative z-10',
+        'group flex items-center gap-2 px-4 py-2 rounded-xl shrink-0 relative z-10',
         'transition-all duration-200 hover:shadow-md cursor-pointer',
         'border bg-white/60 backdrop-blur-sm',
         'focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
@@ -154,7 +154,7 @@ export function LiveSignalStrip() {
         <Link
           to="/dashboard"
           className={cn(
-            'flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all duration-200 cursor-pointer relative z-10',
+            'flex items-center gap-3 px-4 py-2 rounded-xl transition-all duration-200 cursor-pointer relative z-10',
             'border bg-white/60 backdrop-blur-sm hover:shadow-md',
             healthSemantic === 'success' && 'border-[hsl(var(--success)/0.2)] hover:bg-[hsl(var(--success)/0.04)]',
             healthSemantic === 'warning' && 'border-[hsl(var(--warning)/0.3)] bg-[hsl(var(--warning)/0.04)]',

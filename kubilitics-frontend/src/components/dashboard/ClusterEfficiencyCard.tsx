@@ -197,7 +197,7 @@ function DualLayerBar({
       </div>
 
       {/* Caption */}
-      <div className="flex justify-between text-[11px] text-muted-foreground font-medium">
+      <div className="flex justify-between text-xs text-muted-foreground font-medium">
         <span>{metricsAvailable ? actualLabel : requestedLabel}</span>
         <span>{capacityLabel}</span>
       </div>
@@ -340,7 +340,7 @@ export function ClusterResourceIntelligence() {
       {/* Header */}
       <CardHeader className="pb-1 pt-5 px-6">
         <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center gap-2.5 text-base font-semibold text-foreground">
+          <CardTitle className="flex items-center gap-2 text-base font-semibold text-foreground">
             <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-violet-500/15 to-fuchsia-500/15 text-violet-600">
               <Zap className="h-4.5 w-4.5" />
             </div>
@@ -348,7 +348,7 @@ export function ClusterResourceIntelligence() {
           </CardTitle>
           <div
             className={cn(
-              "text-[11px] font-semibold px-2.5 py-1 rounded-full border",
+              "text-xs font-semibold px-2 py-1 rounded-full border",
               status.bgColor,
               status.color,
               status.borderColor
@@ -359,12 +359,12 @@ export function ClusterResourceIntelligence() {
         </div>
       </CardHeader>
 
-      <CardContent className="flex-1 px-6 pb-5 pt-3 flex flex-col gap-5">
+      <CardContent className="flex-1 px-6 pb-5 pt-3 flex flex-col gap-4">
         {/* ── Gauge + Overprovisioning ── */}
-        <div className="flex items-center gap-5">
+        <div className="flex items-center gap-4">
           <RadialGauge score={efficiencyScore} color={gaugeColor} />
 
-          <div className="flex-1 min-w-0 space-y-2.5">
+          <div className="flex-1 min-w-0 space-y-2">
             <p className="text-xs text-muted-foreground font-medium">
               Resource Allocation Score
             </p>
@@ -372,9 +372,9 @@ export function ClusterResourceIntelligence() {
             {metricsAvailable && avgOverprov > 0 && (
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 cursor-help">
+                  <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 cursor-help">
                     <TrendingDown className="h-3 w-3 text-amber-600 dark:text-amber-400" />
-                    <span className="text-[11px] font-semibold text-amber-700 dark:text-amber-400 tabular-nums">
+                    <span className="text-xs font-semibold text-amber-700 dark:text-amber-400 tabular-nums">
                       {avgOverprov}% overprovisioned
                     </span>
                   </div>
@@ -390,12 +390,12 @@ export function ClusterResourceIntelligence() {
 
             {!metricsAvailable && (
               <div
-                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-amber-50/80 dark:bg-amber-500/10 border border-amber-200/60 dark:border-amber-500/20"
+                className="inline-flex items-center gap-1.5 px-2 py-2 rounded-lg bg-amber-50/80 dark:bg-amber-500/10 border border-amber-200/60 dark:border-amber-500/20"
               >
                 <Download className="h-3 w-3 text-amber-600 dark:text-amber-400 shrink-0" strokeWidth={2} />
                 <span className="text-[10px] font-medium text-amber-700 dark:text-amber-300">
                   Install <span className="font-semibold">metrics-server</span> for actual usage:
-                  <code className="ml-1 text-[9px] font-mono">helm install metrics-server metrics-server/metrics-server -n kube-system</code>
+                  <code className="ml-1 text-[10px] font-mono">helm install metrics-server metrics-server/metrics-server -n kube-system</code>
                 </span>
               </div>
             )}
@@ -434,11 +434,11 @@ export function ClusterResourceIntelligence() {
           <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-semibold mb-3">
             Top Namespace Consumers
           </p>
-          <div className="space-y-2.5">
+          <div className="space-y-2">
             {topNamespaces.map((ns, i) => {
               const barWidth = maxNsCpu > 0 ? (ns.cpu / maxNsCpu) * 100 : 0;
               return (
-                <div key={ns.name} className="flex items-center gap-2.5">
+                <div key={ns.name} className="flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full flex-shrink-0 bg-gradient-to-br from-violet-400 to-fuchsia-400" />
                   <span className="text-xs font-medium text-foreground w-28 truncate">{ns.name}</span>
                   <div className="flex-1 h-1.5 rounded-full bg-muted/25 overflow-hidden">
@@ -474,7 +474,7 @@ export function ClusterResourceIntelligence() {
                 <motion.div
                   key={i}
                   className={cn(
-                    "flex items-start gap-2 px-2.5 py-2 rounded-lg border text-[11px] leading-relaxed",
+                    "flex items-start gap-2 px-2 py-2 rounded-lg border text-xs leading-relaxed",
                     style.bg,
                     style.border,
                     style.text

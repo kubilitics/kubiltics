@@ -251,7 +251,7 @@ export function PodTerminal({
       className,
     )}>
       {/* Header */}
-      <div className="bg-[#0d1117] border-b border-slate-700/50 px-4 py-2 flex items-center gap-2">
+      <div className="bg-slate-950 border-b border-slate-700/50 px-4 py-2 flex items-center gap-2">
         <div className="flex gap-1.5">
           <div className="w-3 h-3 rounded-full bg-[#ff5f57]" />
           <div className="w-3 h-3 rounded-full bg-[#febc2e]" />
@@ -310,7 +310,7 @@ export function PodTerminal({
            padding-left prevents text from touching the container edge. */}
       <div
         ref={termRef}
-        className="bg-[#0d1117] text-slate-200 pl-2 flex-1 min-h-0 [&_.xterm]:!bg-[#0d1117] [&_.xterm-viewport]:!bg-[#0d1117] [&_.xterm-viewport]:!overflow-y-auto"
+        className="bg-slate-950 text-slate-200 pl-2 flex-1 min-h-0 [&_.xterm]:!bg-slate-950 [&_.xterm-viewport]:!bg-slate-950 [&_.xterm-viewport]:!overflow-y-auto"
         style={{
           minHeight: isMaximized ? 'calc(100vh - 120px)' : '300px',
           WebkitTextSizeAdjust: '100%',

@@ -415,7 +415,7 @@ function TopologyCanvasInner({
         maxZoom={4}
         minZoom={0.01}
         proOptions={{ hideAttribution: true }}
-        className="!bg-[#f8f9fb] dark:!bg-slate-950"
+        className="!bg-slate-50 dark:!bg-slate-950"
       >
         {/* SVG marker definitions for edge arrowheads — must be in DOM for url(#id) references */}
         <svg style={{ position: "absolute", width: 0, height: 0, overflow: "visible" }}>

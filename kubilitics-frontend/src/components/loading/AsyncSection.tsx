@@ -37,7 +37,7 @@ function SectionError({ title, message, onRetry, compact }: SectionErrorProps) {
           {title ? `Failed to load ${title}` : 'Section failed to load'}
         </p>
         {message && (
-          <p className={cn('text-muted-foreground max-w-sm', compact ? 'text-[11px]' : 'text-xs')}>
+          <p className={cn('text-muted-foreground max-w-sm', compact ? 'text-xs' : 'text-xs')}>
             {message}
           </p>
         )}

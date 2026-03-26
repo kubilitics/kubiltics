@@ -1,5 +1,6 @@
 import React from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
+import { K8S_BLUE } from '@/lib/colors';
 
 interface ServiceDistributionProps {
     data: {
@@ -16,7 +17,7 @@ export function ServiceDistribution({ data }: ServiceDistributionProps) {
         { name: 'Policies', value: data.policies },
     ];
 
-    const COLORS = ['#326CE5', '#60A5FA', '#93C5FD'];
+    const COLORS = [K8S_BLUE, '#60A5FA', '#93C5FD'];
 
     return (
         <div className="h-[200px] w-full">

@@ -388,18 +388,18 @@ export function NodeDetailPopup({
           animate={{ x: 0, opacity: 1 }}
           exit={{ x: '100%', opacity: 0 }}
           transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-          className="absolute right-0 top-0 h-full w-full max-w-xl bg-background border-l border-border shadow-2xl overflow-hidden flex flex-col"
+          className="absolute right-0 top-0 h-full w-full max-w-xl bg-background border-l border-border shadow-lg overflow-hidden flex flex-col"
           onClick={(e) => e.stopPropagation()}
         >
         {/* Breadcrumb Trail */}
           {breadcrumbTrail.length > 1 && (
-            <div className="flex items-center gap-1.5 px-6 py-2.5 border-b border-border bg-muted/50 text-xs">
+            <div className="flex items-center gap-2 px-6 py-2 border-b border-border bg-muted/50 text-xs">
               {breadcrumbTrail.map((item, index) => {
                 const ItemIcon = item.type ? resourceIcons[item.type] : null;
                 return (
-                  <div key={index} className="flex items-center gap-1.5">
+                  <div key={index} className="flex items-center gap-2">
                     {index > 0 && <ChevronRight className="h-3 w-3 text-muted-foreground" />}
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-2">
                       {ItemIcon && (
                         <ItemIcon 
                           className="h-3.5 w-3.5" 
@@ -518,7 +518,7 @@ export function NodeDetailPopup({
                 {details.labels && Object.keys(details.labels).length > 0 && (
                   <div>
                     <p className="text-sm text-muted-foreground mb-2">Labels</p>
-                    <div className="flex flex-wrap gap-1.5">
+                    <div className="flex flex-wrap gap-2">
                       {Object.entries(details.labels).map(([key, value]) => (
                         <Badge key={key} variant="secondary" className="font-mono text-xs">
                           {key}={value}
@@ -578,7 +578,7 @@ export function NodeDetailPopup({
               {isNavigatingAway && (
                 <Tooltip>
                     <TooltipTrigger asChild>
-                      <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-amber-500/10 border border-amber-500/20">
+                      <div className="flex items-center gap-2 px-2 py-1 rounded-md bg-amber-500/10 border border-amber-500/20">
                         <Info className="h-3.5 w-3.5 text-amber-600" />
                         <span className="text-xs text-amber-700 font-medium">
                           Navigates to {resourceLabels[resource.type]}

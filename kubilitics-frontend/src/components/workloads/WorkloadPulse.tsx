@@ -90,7 +90,7 @@ export function WorkloadPulse({ data }: WorkloadPulseProps) {
                     className="absolute inset-2 border-2 border-blue-100 dark:border-blue-900 rounded-full"
                 />
 
-                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1 z-10">Cluster Health</span>
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 z-10">Cluster Health</span>
                 <AnimatePresence mode="wait">
                     <motion.div
                         key={score}
@@ -112,7 +112,7 @@ export function WorkloadPulse({ data }: WorkloadPulseProps) {
             </div>
 
             {/* Clean Segment Labels - Positioned at corners to avoid overlap */}
-            <div className="absolute inset-0 pointer-events-none text-[9px] font-bold text-slate-400 uppercase tracking-widest flex flex-col justify-between p-2">
+            <div className="absolute inset-0 pointer-events-none text-[10px] font-bold text-slate-400 uppercase tracking-widest flex flex-col justify-between p-2">
                 <div className="flex justify-between items-start">
                     <span className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm px-2 py-1 rounded-md border border-slate-100/50 dark:border-slate-700/50">Liveness Pulse</span>
                     <span className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm px-2 py-1 rounded-md border border-slate-100/50 dark:border-slate-700/50">Controller State</span>

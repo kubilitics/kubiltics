@@ -56,7 +56,7 @@ export class GlobalErrorBoundary extends Component<Props, State> {
     render() {
         if (this.state.hasError) {
             return (
-                <div className="min-h-screen w-full flex items-center justify-center bg-gray-50 dark:bg-gray-900 p-4">
+                <div className="min-h-screen w-full flex items-center justify-center bg-slate-50 dark:bg-slate-900 p-4">
                     <Card className="w-full max-w-md shadow-lg border-red-200 dark:border-red-900">
                         <CardHeader className="text-center pb-2">
                             <div className="mx-auto w-12 h-12 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mb-4">
@@ -72,16 +72,16 @@ export class GlobalErrorBoundary extends Component<Props, State> {
                             </p>
 
                             {this.state.error && (
-                                <div className="text-left bg-gray-100 dark:bg-gray-800 p-3 rounded-md overflow-auto max-h-48 text-xs font-mono text-red-900 dark:text-red-300 border border-gray-200 dark:border-gray-700 space-y-1">
+                                <div className="text-left bg-slate-100 dark:bg-slate-800 p-3 rounded-md overflow-auto max-h-48 text-xs font-mono text-red-900 dark:text-red-300 border border-slate-200 dark:border-slate-700 space-y-1">
                                     <div className="font-bold">{this.state.error.name}: {this.state.error.message || '(no message)'}</div>
                                     {this.state.error.stack && (
-                                        <div className="text-gray-600 dark:text-gray-400 text-[10px] whitespace-pre-wrap">{this.state.error.stack.split('\n').slice(1, 5).join('\n')}</div>
+                                        <div className="text-slate-600 dark:text-slate-400 text-[10px] whitespace-pre-wrap">{this.state.error.stack.split('\n').slice(1, 5).join('\n')}</div>
                                     )}
                                 </div>
                             )}
 
                             {this.state.errorId && (
-                                <p className="text-xs text-gray-400">
+                                <p className="text-xs text-slate-400">
                                     Error ID: <span className="font-mono select-all">{this.state.errorId}</span>
                                 </p>
                             )}
@@ -151,7 +151,7 @@ export class RouteErrorBoundary extends Component<RouteErrorBoundaryProps, Route
                     <div className="w-12 h-12 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mb-4">
                         <AlertCircle className="h-6 w-6 text-red-500 dark:text-red-400" />
                     </div>
-                    <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">
+                    <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-1">
                         {this.props.routeName ? `Failed to load ${this.props.routeName}` : 'Page error'}
                     </h2>
                     <p className="text-sm text-muted-foreground mb-2 max-w-sm">

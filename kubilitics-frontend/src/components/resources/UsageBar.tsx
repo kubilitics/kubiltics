@@ -483,7 +483,7 @@ export function UsageBar({
               <motion.span
                 key={displayValue}
                 className={cn(
-                  'text-[11px] font-bold tabular-nums tracking-tight',
+                  'text-xs font-bold tabular-nums tracking-tight',
                   hasValue ? 'text-foreground/90' : 'text-muted-foreground'
                 )}
                 initial={shouldAnimate && valueChanged ? { opacity: 0, y: -2 } : false}
@@ -504,7 +504,7 @@ export function UsageBar({
           </div>
         </motion.div>
       </TooltipTrigger>
-      <TooltipContent side="top" className="w-48 p-0 overflow-hidden shadow-xl border-border/50 backdrop-blur-md">
+      <TooltipContent side="top" className="w-48 p-0 overflow-hidden shadow-lg border-border/50 backdrop-blur-md">
         {tooltipContent}
       </TooltipContent>
     </Tooltip>

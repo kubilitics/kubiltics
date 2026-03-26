@@ -86,7 +86,7 @@ export function getNodeDims(nodeType: string) {
 // Used by: TopologyCanvas, exports, minimap
 
 export const CANVAS = {
-  background: "#f8f9fb",
+  background: "#f8fafc", // slate-50
   backgroundDark: "#0f172a",
   gridColor: "#d4d4d8",
   gridColorDark: "#1e293b",

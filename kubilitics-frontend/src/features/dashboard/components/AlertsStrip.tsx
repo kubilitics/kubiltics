@@ -212,7 +212,7 @@ export const AlertsStrip = () => {
                         <ReasonIcon className="w-3 h-3" />
                       </div>
                       <span className="text-xs font-semibold text-foreground">{reason}</span>
-                      <span className="text-[11px] text-muted-foreground tabular-nums">({groupItems.length})</span>
+                      <span className="text-xs text-muted-foreground tabular-nums">({groupItems.length})</span>
                     </div>
                     <div className="divide-y divide-border/30">
                       {groupItems.map((a, i) => {
@@ -220,7 +220,7 @@ export const AlertsStrip = () => {
                         const content = (
                           <div
                             className={cn(
-                              "flex items-center gap-3 px-3 py-2.5 min-h-[48px] border-l-4 transition-all",
+                              "flex items-center gap-3 px-3 py-2 min-h-[48px] border-l-4 transition-all",
                               borderColor,
                               href && "hover:bg-muted/30 cursor-pointer group"
                             )}

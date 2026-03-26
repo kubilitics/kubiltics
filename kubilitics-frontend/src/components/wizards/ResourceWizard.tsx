@@ -344,7 +344,7 @@ export function ResourceWizard({
         <div className="flex items-center justify-between px-6 py-4 border-t border-slate-200/60 dark:border-slate-700/60 bg-slate-50/80 dark:bg-slate-800/50">
           <button
             onClick={currentStep === 0 || previewMode === 'yaml' ? onClose : handlePrev}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+            className="flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
           >
             <ChevronLeft className="h-4 w-4" />
             {currentStep === 0 || previewMode === 'yaml' ? 'Cancel' : 'Previous'}
@@ -353,7 +353,7 @@ export function ResourceWizard({
             <button
               onClick={handleSubmit}
               disabled={!canSubmit || isSubmitting}
-              className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-semibold transition-all shadow-sm ${
+              className={`flex items-center gap-2 px-6 py-2 rounded-md text-sm font-semibold transition-all shadow-sm ${
                 canSubmit && !isSubmitting
                   ? 'bg-primary text-primary-foreground hover:bg-primary/90 shadow-primary/25 hover:shadow-md hover:shadow-primary/20'
                   : 'bg-slate-200 dark:bg-slate-700 text-slate-400 dark:text-slate-500 cursor-not-allowed shadow-none'
@@ -372,7 +372,7 @@ export function ResourceWizard({
             <button
               onClick={handleNext}
               disabled={!canProceed}
-              className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all shadow-sm ${
+              className={`flex items-center gap-2 px-5 py-2 rounded-md text-sm font-semibold transition-all shadow-sm ${
                 canProceed
                   ? 'bg-primary text-primary-foreground hover:bg-primary/90 shadow-primary/25'
                   : 'bg-slate-200 dark:bg-slate-700 text-slate-400 dark:text-slate-500 cursor-not-allowed shadow-none'

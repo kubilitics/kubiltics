@@ -455,7 +455,7 @@ export function MetricsDashboard({ resourceType, resourceName, namespace, podRes
         <div>
           <UiTooltip>
             <TooltipTrigger asChild>
-              <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-1.5 cursor-help">
+              <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2 cursor-help">
                 {resourceType === 'node' ? 'Node usage' : resourceType !== 'pod' ? 'Usage (aggregated from pods)' : 'Current usage'}
               </h3>
             </TooltipTrigger>
@@ -585,7 +585,7 @@ export function MetricsDashboard({ resourceType, resourceName, namespace, podRes
           <div>
             <UiTooltip>
               <TooltipTrigger asChild>
-                <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-1.5 cursor-help">
+                <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2 cursor-help">
                   Resource Allocation
                 </h3>
               </TooltipTrigger>
@@ -709,7 +709,7 @@ export function MetricsDashboard({ resourceType, resourceName, namespace, podRes
                     key={r.value}
                     onClick={() => setTimeRange(r.value)}
                     className={cn(
-                      'px-2.5 py-1 text-[11px] font-medium rounded-md transition-all duration-150',
+                      'px-2 py-1 text-xs font-medium rounded-md transition-all duration-150',
                       timeRange === r.value
                         ? 'bg-primary text-primary-foreground shadow-sm'
                         : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
@@ -723,7 +723,7 @@ export function MetricsDashboard({ resourceType, resourceName, namespace, podRes
                 <Activity className="h-3 w-3" />
                 {historyPointCount > 0 ? `${historyPointCount} pts` : '...'}
               </Badge>
-              <Button variant="outline" size="sm" onClick={handleRefresh} className="gap-1 h-7 text-[11px]">
+              <Button variant="outline" size="sm" onClick={handleRefresh} className="gap-1 h-7 text-xs">
                 <RefreshCw className="h-3 w-3" />
                 Refresh
               </Button>

@@ -291,7 +291,7 @@ function ResourceSubCategory({
             : "text-slate-700 dark:text-slate-300 hover:bg-slate-100/60 dark:hover:bg-slate-800/60"
         )}
       >
-        <div className="flex items-center gap-2.5 min-w-0">
+        <div className="flex items-center gap-2 min-w-0">
           <div className={cn(
             "h-6 w-6 rounded-md flex items-center justify-center shrink-0 transition-colors",
             isCategoryActive ? colors.iconBg : "bg-slate-100/80 dark:bg-slate-800/80 group-hover:bg-slate-200/80 dark:group-hover:bg-slate-700/80"
@@ -408,7 +408,7 @@ function TopLevelNavLink({
     <NavLink
       to={to}
       className={cn(
-        "flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-all duration-300 group border h-11",
+        "flex items-center gap-3 px-4 py-2 rounded-xl transition-all duration-300 group border h-11",
         isActive
           ? "bg-white dark:bg-slate-800 text-foreground border-slate-200/60 dark:border-slate-700/40 shadow-apple"
           : "bg-transparent text-slate-800 dark:text-slate-300 hover:bg-slate-100/60 dark:hover:bg-slate-800/60 border-transparent hover:border-slate-100 dark:hover:border-slate-700/50"
@@ -702,7 +702,7 @@ function SidebarContent({
           <button
             type="button"
             onClick={handleExitProject}
-            className="w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-medium text-slate-800 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-slate-100 transition-colors"
+            className="w-full flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-medium text-slate-800 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-slate-100 transition-colors"
           >
             <LogOut className="h-3.5 w-3.5" /> Exit project
           </button>
@@ -855,11 +855,11 @@ export function Sidebar() {
       </div>
 
       {/* Fixed footer */}
-      <div className="shrink-0 px-5 pb-6 pt-4 border-t border-slate-100/60 dark:border-slate-800/60 bg-white/40 dark:bg-slate-900/40 backdrop-blur-md space-y-1.5">
+      <div className="shrink-0 px-5 pb-6 pt-4 border-t border-slate-100/60 dark:border-slate-800/60 bg-white/40 dark:bg-slate-900/40 backdrop-blur-md space-y-2">
         <NavLink
           to="/settings"
           className={cn(
-            "flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-all duration-300 group border h-11",
+            "flex items-center gap-3 px-4 py-2 rounded-xl transition-all duration-300 group border h-11",
             isSettingsActive
               ? "bg-white dark:bg-slate-800 text-foreground border-slate-200/60 dark:border-slate-700/40 shadow-apple"
               : "bg-transparent text-slate-800 dark:text-slate-300 hover:bg-slate-100/60 dark:hover:bg-slate-800/60 border-transparent hover:border-slate-100 dark:hover:border-slate-700/50"
@@ -878,7 +878,7 @@ export function Sidebar() {
             type="button"
             onClick={() => setCollapsed(true)}
             className={cn(
-              "flex items-center justify-start gap-3 w-full px-4 py-2.5 rounded-xl border h-11 transition-all duration-500 group press-effect",
+              "flex items-center justify-start gap-3 w-full px-4 py-2 rounded-xl border h-11 transition-all duration-500 group press-effect",
               "bg-transparent text-slate-800 dark:text-slate-300 hover:bg-slate-100/60 dark:hover:bg-slate-800/60 border-transparent hover:border-slate-100 dark:hover:border-slate-700/50"
             )}
             aria-label="Collapse sidebar"
@@ -898,7 +898,7 @@ export function Sidebar() {
     return (
       <>
         <aside
-          className="w-[5.5rem] h-full border-r border-slate-100 dark:border-slate-800 bg-white/95 dark:bg-[hsl(228,14%,9%)] backdrop-blur-3xl flex flex-col items-center py-6 gap-5 shrink-0 z-[70] shadow-apple"
+          className="w-[5.5rem] h-full border-r border-slate-100 dark:border-slate-800 bg-white/95 dark:bg-[hsl(228,14%,9%)] backdrop-blur-3xl flex flex-col items-center py-6 gap-4 shrink-0 z-[70] shadow-apple"
           onMouseEnter={handleFlyoutEnter}
           onMouseLeave={() => setFlyoutOpen(false)}
           role="navigation"

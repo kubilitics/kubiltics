@@ -1,5 +1,6 @@
 import React from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Text } from 'recharts';
+import { K8S_BLUE } from '@/lib/colors';
 
 interface StorageRadialProps {
     title: string;
@@ -28,15 +29,15 @@ export function StorageRadial({ title, value, subtext }: StorageRadialProps) {
                         dataKey="value"
                         stroke="none"
                     >
-                        <Cell key="cell-0" fill="#326CE5" />
-                        <Cell key="cell-1" fill="#326CE5" fillOpacity={0.1} />
+                        <Cell key="cell-0" fill={K8S_BLUE} />
+                        <Cell key="cell-1" fill={K8S_BLUE} fillOpacity={0.1} />
                     </Pie>
                     <Text
                         x="50%"
                         y="45%"
                         textAnchor="middle"
                         dominantBaseline="middle"
-                        className="text-2xl font-black fill-[#326CE5]"
+                        className="text-2xl font-black fill-blue-600"
                     >
                         {`${Math.round(value)}%`}
                     </Text>
@@ -51,7 +52,7 @@ export function StorageRadial({ title, value, subtext }: StorageRadialProps) {
                     </Text>
                 </PieChart>
             </ResponsiveContainer>
-            <span className="text-xs font-black text-[#326CE5] dark:text-blue-400 uppercase tracking-tighter mt-2">{title}</span>
+            <span className="text-xs font-black text-blue-600 dark:text-blue-400 uppercase tracking-tighter mt-2">{title}</span>
         </div>
     );
 }

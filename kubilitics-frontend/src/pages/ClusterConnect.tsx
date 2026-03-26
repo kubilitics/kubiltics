@@ -610,7 +610,7 @@ export default function ClusterConnect() {
   // minimal loading state so the user sees immediate feedback.
   if (autoConnect.isDesktopMode && autoConnect.isAutoConnecting && !autoConnect.isResolved) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-b from-slate-50 via-white to-blue-50/30 dark:from-[hsl(228,14%,7%)] dark:via-[hsl(228,14%,9%)] dark:to-[hsl(228,14%,11%)] gap-4">
+      <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-b from-slate-50 via-white to-blue-50/30 dark:from-slate-950 dark:via-slate-950 dark:to-slate-900 gap-4">
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -1593,7 +1593,7 @@ function InClusterCodeBlock({
     <div>
       {label && <p className="text-sm font-medium mb-1.5 text-foreground">{label}</p>}
       <div className="relative group">
-        <pre className="p-4 rounded-xl bg-slate-950 dark:bg-slate-900/80 text-slate-200 text-[13px] leading-relaxed overflow-x-auto border border-slate-800/60 font-mono">
+        <pre className="p-4 rounded-xl bg-slate-950 dark:bg-slate-900/80 text-slate-200 text-sm leading-relaxed overflow-x-auto border border-slate-800/60 font-mono">
           {code}
         </pre>
         <button

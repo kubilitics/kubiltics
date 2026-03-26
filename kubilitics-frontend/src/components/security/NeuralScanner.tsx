@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { Shield } from 'lucide-react';
+import { K8S_BLUE } from '@/lib/colors';
 
 interface NeuralScannerProps {
     statusText?: string;
@@ -34,7 +35,7 @@ export const NeuralScanner: React.FC<NeuralScannerProps> = ({
                                     y1={node.y}
                                     x2={target.x}
                                     y2={target.y}
-                                    stroke="#326CE5"
+                                    stroke={K8S_BLUE}
                                     strokeWidth="0.1"
                                     initial={{ opacity: 0 }}
                                     animate={{
@@ -51,7 +52,7 @@ export const NeuralScanner: React.FC<NeuralScannerProps> = ({
                                 cx={node.x}
                                 cy={node.y}
                                 r={node.size / 20}
-                                fill="#326CE5"
+                                fill={K8S_BLUE}
                                 initial={{ opacity: 0, scale: 0 }}
                                 animate={{
                                     opacity: [0, 0.8, 0],
@@ -82,9 +83,9 @@ export const NeuralScanner: React.FC<NeuralScannerProps> = ({
                     }}
                     className="relative z-10"
                 >
-                    <div className="w-24 h-24 rounded-full bg-gradient-to-br from-[#326CE5] to-blue-400 p-[2px] shadow-[0_0_50px_rgba(50,108,229,0.3)]">
+                    <div className="w-24 h-24 rounded-full bg-gradient-to-br from-blue-600 to-blue-400 p-[2px] shadow-[0_0_50px_rgba(50,108,229,0.3)]">
                         <div className="w-full h-full rounded-full bg-slate-900 flex items-center justify-center backdrop-blur-xl">
-                            <Shield className="w-10 h-10 text-[#326CE5] drop-shadow-[0_0_8px_rgba(50,108,229,0.8)]" />
+                            <Shield className="w-10 h-10 text-blue-600 drop-shadow-[0_0_8px_rgba(50,108,229,0.8)]" />
                         </div>
                     </div>
                 </motion.div>
@@ -104,7 +105,7 @@ export const NeuralScanner: React.FC<NeuralScannerProps> = ({
                             delay: i * 0.8,
                             ease: "easeOut"
                         }}
-                        className="absolute top-0 left-0 w-24 h-24 rounded-full border border-[#326CE5]/30 z-0"
+                        className="absolute top-0 left-0 w-24 h-24 rounded-full border border-blue-600/30 z-0"
                     />
                 ))}
             </div>
@@ -116,7 +117,7 @@ export const NeuralScanner: React.FC<NeuralScannerProps> = ({
                 transition={{ delay: 0.5 }}
                 className="mt-12 text-center z-20"
             >
-                <h3 className="text-2xl font-black tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-[#326CE5] to-blue-400">
+                <h3 className="text-2xl font-black tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-blue-400">
                     {statusText}
                 </h3>
                 <p className="text-slate-400 font-medium mt-2 max-w-md mx-auto">

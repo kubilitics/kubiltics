@@ -1306,7 +1306,7 @@ export default function Pods() {
            <div className="h-full rounded-full transition-all duration-500 ease-out" style={{ width: `${Math.max(pct, val !== null && val > 0 ? 4 : 0)}%`, background: barColor }} />
          </div>
        </div>
-       <span className="text-[11px] font-medium tabular-nums text-gray-700 dark:text-gray-300 whitespace-nowrap">{display}</span>
+       <span className="text-xs font-medium tabular-nums text-gray-700 dark:text-gray-300 whitespace-nowrap">{display}</span>
      </div>
    );
  })()}
@@ -1330,7 +1330,7 @@ export default function Pods() {
            <div className="h-full rounded-full transition-all duration-500 ease-out" style={{ width: `${Math.max(pct, val !== null && val > 0 ? 4 : 0)}%`, background: barColor }} />
          </div>
        </div>
-       <span className="text-[11px] font-medium tabular-nums text-gray-700 dark:text-gray-300 whitespace-nowrap">{display}</span>
+       <span className="text-xs font-medium tabular-nums text-gray-700 dark:text-gray-300 whitespace-nowrap">{display}</span>
      </div>
    );
  })()}

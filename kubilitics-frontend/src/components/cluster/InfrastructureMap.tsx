@@ -2,6 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Server, Activity, ShieldCheck, Cpu, HardDrive } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { K8S_BLUE } from '@/lib/colors';
 
 interface NodeStatus {
     name: string;
@@ -47,7 +48,7 @@ export function InfrastructureMap({ nodes }: InfrastructureMapProps) {
             {/* Background Grid Pattern - Adaptive */}
             <div className="absolute inset-0 opacity-[0.04] pointer-events-none"
                 style={{
-                    backgroundImage: 'radial-gradient(#326CE5 1.5px, transparent 1.5px)',
+                    backgroundImage: `radial-gradient(${K8S_BLUE} 1.5px, transparent 1.5px)`,
                     backgroundSize: s.gridSize
                 }} />
 
@@ -74,13 +75,13 @@ export function InfrastructureMap({ nodes }: InfrastructureMapProps) {
                                     "relative rounded-3xl flex flex-col items-center justify-center border-2 transition-all duration-700 cursor-pointer overflow-hidden bg-white/80 backdrop-blur-sm shadow-xl shadow-slate-200/50",
                                     s.container,
                                     node.status === 'Ready'
-                                        ? "border-[#326CE5]/10 group-hover:shadow-blue-500/30 group-hover:border-[#326CE5]/60 group-hover:-translate-y-2"
+                                        ? "border-blue-600/10 group-hover:shadow-blue-500/30 group-hover:border-blue-600/60 group-hover:-translate-y-2"
                                         : "border-amber-200 bg-amber-50 group-hover:border-amber-400 group-hover:-translate-y-2"
                                 )}
                             >
                                 {/* Active Glow Layer */}
                                 {node.status === 'Ready' && (
-                                    <div className="absolute inset-0 bg-gradient-to-br from-[#326CE5]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
+                                    <div className="absolute inset-0 bg-gradient-to-br from-blue-600/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
                                 )}
 
                                 {/* Status Orb Corner */}
@@ -95,7 +96,7 @@ export function InfrastructureMap({ nodes }: InfrastructureMapProps) {
                                 <Server className={cn(
                                     "transition-all duration-700",
                                     s.icon,
-                                    node.status === 'Ready' ? "text-[#326CE5] group-hover:scale-110" : "text-amber-600 opacity-60"
+                                    node.status === 'Ready' ? "text-blue-600 group-hover:scale-110" : "text-amber-600 opacity-60"
                                 )} />
 
                                 {/* DYNAMIC TELEMETRY BARS */}
@@ -200,10 +201,10 @@ export function InfrastructureMap({ nodes }: InfrastructureMapProps) {
                     <motion.div
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
-                        className="h-40 w-full flex flex-col items-center justify-center border-2 border-dashed border-[#326CE5]/10 rounded-3xl bg-white/40"
+                        className="h-40 w-full flex flex-col items-center justify-center border-2 border-dashed border-blue-600/10 rounded-3xl bg-white/40"
                     >
-                        <Activity className="h-8 w-8 text-[#326CE5] opacity-20 mb-3 animate-pulse" />
-                        <span className="text-[11px] font-black text-[#326CE5]/40 uppercase tracking-[0.4em]">Discovery Stream Initializing...</span>
+                        <Activity className="h-8 w-8 text-blue-600 opacity-20 mb-3 animate-pulse" />
+                        <span className="text-[11px] font-black text-blue-600/40 uppercase tracking-[0.4em]">Discovery Stream Initializing...</span>
                     </motion.div>
                 )}
             </div>

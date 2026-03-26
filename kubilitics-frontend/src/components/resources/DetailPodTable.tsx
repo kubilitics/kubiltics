@@ -301,7 +301,7 @@ export function DetailPodTable({
             <span className="text-sm text-muted-foreground">{selectedPods.size} selected</span>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="gap-1.5">
+                <Button variant="outline" size="sm" className="gap-2">
                   <RotateCcw className="h-3.5 w-3.5" />
                   Actions
                   <ChevronDown className="h-3.5 w-3.5 opacity-50" />
@@ -317,7 +317,7 @@ export function DetailPodTable({
             <Button
               variant="destructive"
               size="sm"
-              className="gap-1.5"
+              className="gap-2"
               onClick={() => setDeleteDialog({ open: true, podKey: null, bulk: true })}
             >
               <Trash2 className="h-3.5 w-3.5" />
@@ -411,7 +411,7 @@ export function DetailPodTable({
                         </Link>
                       </td>
                       <td className="p-3">
-                        <span className={cn('inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium', statusStyle.className)}>
+                        <span className={cn('inline-flex items-center gap-2 rounded-full px-2 py-0.5 text-xs font-medium', statusStyle.className)}>
                           <span className={cn('h-1.5 w-1.5 rounded-full shrink-0', statusStyle.dotColor)} />
                           {displayPhase}
                         </span>

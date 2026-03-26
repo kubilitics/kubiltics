@@ -58,7 +58,7 @@ export function StatusPill({ label, variant, icon: CustomIcon, className }: Stat
       role="status"
       aria-label={`${label} status`}
       className={cn(
-        'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold',
+        'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold',
         'min-w-0 max-w-full shadow-sm backdrop-blur-sm',
         'animate-fade-in',
         style.bg,

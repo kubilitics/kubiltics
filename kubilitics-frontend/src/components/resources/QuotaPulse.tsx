@@ -1,5 +1,6 @@
 import React from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
+import { K8S_BLUE } from '@/lib/colors';
 
 interface QuotaPulseProps {
     title: string;
@@ -7,7 +8,7 @@ interface QuotaPulseProps {
     color?: string;
 }
 
-export function QuotaPulse({ title, percent, color = "#326CE5" }: QuotaPulseProps) {
+export function QuotaPulse({ title, percent, color = K8S_BLUE }: QuotaPulseProps) {
     const data = [
         { value: percent },
         { value: 100 - percent },
@@ -35,7 +36,7 @@ export function QuotaPulse({ title, percent, color = "#326CE5" }: QuotaPulseProp
                 </PieChart>
             </ResponsiveContainer>
             <div className="mt-2 text-center">
-                <span className="block text-lg font-black text-[#326CE5] dark:text-blue-400">{percent}%</span>
+                <span className="block text-lg font-black text-blue-600 dark:text-blue-400">{percent}%</span>
                 <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">{title}</span>
             </div>
         </div>

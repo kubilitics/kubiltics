@@ -70,7 +70,7 @@ export const HEADER_HEIGHT_CLASS = 'h-20';
 /** Secondary action — Cluster (same treatment) */
 const BTN = cn(
   'h-11 px-5 rounded-xl',
-  'inline-flex items-center justify-center gap-2.5',
+  'inline-flex items-center justify-center gap-2',
   'text-[13px] font-semibold leading-none',
   'border border-slate-200/50 bg-white/40 text-slate-700',
   'dark:border-slate-700/50 dark:bg-slate-800/40 dark:text-slate-200',
@@ -84,7 +84,7 @@ const BTN = cn(
 /** Feature actions — Shell, Kubeconfig: clear button treatment and value proposition */
 const FEATURE_BTN = cn(
   'h-11 px-5 rounded-xl',
-  'inline-flex items-center justify-center gap-2.5',
+  'inline-flex items-center justify-center gap-2',
   'text-[13px] font-bold leading-none',
   'border border-slate-200/40 bg-slate-50/40 text-slate-800',
   'dark:border-slate-700/40 dark:bg-slate-800/40 dark:text-slate-200',
@@ -98,7 +98,7 @@ const FEATURE_BTN = cn(
 /** Icon or labelled button (Notifications, etc.) */
 const ICON_BTN = cn(
   'h-11 min-w-[2.75rem] rounded-xl',
-  'inline-flex items-center justify-center gap-2.5',
+  'inline-flex items-center justify-center gap-2',
   'text-slate-500 dark:text-slate-400',
   'hover:bg-slate-100/60 hover:text-slate-900 hover:translate-y-[-0.5px]',
   'dark:hover:bg-slate-700/60 dark:hover:text-slate-100',

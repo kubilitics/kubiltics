@@ -108,33 +108,33 @@ function MonacoDiffView({ original, modified, originalLabel, modifiedLabel }: {
   return (
     <div className="space-y-3">
       {/* Diff header bar */}
-      <div className="flex items-center justify-between rounded-xl bg-muted/30 dark:bg-muted/15 border border-border/40 px-4 py-2.5">
+      <div className="flex items-center justify-between rounded-xl bg-muted/30 dark:bg-muted/15 border border-border/40 px-4 py-2">
         <div className="flex items-center gap-3 min-w-0">
           <div className="flex items-center gap-2 min-w-0">
             <div className="h-2 w-2 rounded-full bg-red-400/80 shrink-0" />
-            <span className="text-[13px] font-medium text-foreground truncate">{originalLabel}</span>
+            <span className="text-sm font-medium text-foreground truncate">{originalLabel}</span>
           </div>
           <ArrowRight className="h-3.5 w-3.5 text-muted-foreground/40 shrink-0" />
           <div className="flex items-center gap-2 min-w-0">
             <div className="h-2 w-2 rounded-full bg-emerald-400/80 shrink-0" />
-            <span className="text-[13px] font-medium text-foreground truncate">{modifiedLabel}</span>
+            <span className="text-sm font-medium text-foreground truncate">{modifiedLabel}</span>
           </div>
         </div>
-        <div className="flex items-center gap-1.5 shrink-0 ml-4">
+        <div className="flex items-center gap-2 shrink-0 ml-4">
           {stats.identical ? (
-            <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-[13px] font-semibold text-emerald-700 dark:text-emerald-300">
+            <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-sm font-semibold text-emerald-700 dark:text-emerald-300">
               <CheckCircle2 className="h-4 w-4" />
               Identical
             </div>
           ) : (
             <>
               {stats.added > 0 && (
-                <div className="flex items-center gap-1 px-2.5 py-1 rounded-md bg-emerald-500/10 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
+                <div className="flex items-center gap-1 px-2 py-1 rounded-md bg-emerald-500/10 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
                   <Plus className="h-3 w-3" />{stats.added}
                 </div>
               )}
               {stats.removed > 0 && (
-                <div className="flex items-center gap-1 px-2.5 py-1 rounded-md bg-red-500/10 text-[11px] font-semibold text-red-600 dark:text-red-400">
+                <div className="flex items-center gap-1 px-2 py-1 rounded-md bg-red-500/10 text-xs font-semibold text-red-600 dark:text-red-400">
                   <Minus className="h-3 w-3" />{stats.removed}
                 </div>
               )}
@@ -148,8 +148,8 @@ function MonacoDiffView({ original, modified, originalLabel, modifiedLabel }: {
         <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800">
           <CheckCircle2 className="h-5 w-5 text-emerald-500 shrink-0" />
           <div>
-            <p className="text-[13px] font-semibold text-emerald-700 dark:text-emerald-300">No differences detected</p>
-            <p className="text-[11px] text-emerald-600/70 dark:text-emerald-400/60 mt-0.5">
+            <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">No differences detected</p>
+            <p className="text-xs text-emerald-600/70 dark:text-emerald-400/60 mt-0.5">
               Both YAML configurations are identical — {original.split('\n').length} lines match exactly.
             </p>
           </div>
@@ -190,7 +190,7 @@ function MonacoDiffView({ original, modified, originalLabel, modifiedLabel }: {
    ───────────────────────────────────────────────────────────────────────────── */
 function CompareModePillBar({ value, onChange }: { value: CompareMode; onChange: (m: CompareMode) => void }) {
   return (
-    <div className="flex items-center gap-1.5">
+    <div className="flex items-center gap-2">
       {(Object.keys(COMPARE_MODES) as CompareMode[]).map((modeKey) => {
         const mode = COMPARE_MODES[modeKey];
         const Icon = mode.icon;
@@ -202,7 +202,7 @@ function CompareModePillBar({ value, onChange }: { value: CompareMode; onChange:
             onClick={() => onChange(modeKey)}
             aria-pressed={isActive}
             className={cn(
-              'group relative flex items-center gap-2 px-4 py-2.5 rounded-xl text-[13px] font-medium transition-all duration-200 border',
+              'group relative flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 border',
               isActive
                 ? cn(mode.activeBg, mode.activeText, mode.activeBorder, 'shadow-sm')
                 : 'bg-transparent border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/40',
@@ -246,7 +246,7 @@ function CompareEmptyState({ icon: Icon, title, description, accentGradient, chi
           <Icon className="h-7 w-7 text-muted-foreground/50" />
         </div>
       </div>
-      <p className="text-[13px] font-semibold text-foreground/80 mb-1.5">{title}</p>
+      <p className="text-sm font-semibold text-foreground/80 mb-2">{title}</p>
       {description && (
         <p className="text-xs text-muted-foreground/60 max-w-md text-center leading-relaxed">
           {description}
@@ -271,7 +271,7 @@ function DiffLoadingSkeleton() {
           <div className="h-2 w-2 rounded-full bg-muted/60" />
           <div className="h-4 w-32 rounded bg-muted/50" />
         </div>
-        <div className="flex gap-1.5">
+        <div className="flex gap-2">
           <div className="h-6 w-12 rounded-md bg-muted/40" />
           <div className="h-6 w-12 rounded-md bg-muted/40" />
         </div>
@@ -358,14 +358,14 @@ function YamlDropZone({ onYamlLoaded, customYaml, onCustomYamlChange, resourceNa
       className="space-y-0"
     >
       {/* Toolbar above editor */}
-      <div className="flex items-center justify-between px-4 py-2.5 bg-muted/20 dark:bg-muted/10 border border-border/40 border-b-0 rounded-t-xl">
+      <div className="flex items-center justify-between px-4 py-2 bg-muted/20 dark:bg-muted/10 border border-border/40 border-b-0 rounded-t-xl">
         <div className="flex items-center gap-3">
           <span className="text-xs font-medium text-muted-foreground">Your YAML</span>
           <div className="h-3.5 w-px bg-border/50" />
           <Button
             variant="ghost"
             size="sm"
-            className="h-7 px-2.5 text-[11px] gap-1.5 text-muted-foreground hover:text-foreground"
+            className="h-7 px-2 text-xs gap-2 text-muted-foreground hover:text-foreground"
             onClick={() => fileInputRef.current?.click()}
           >
             <FileUp className="h-3 w-3" />
@@ -381,7 +381,7 @@ function YamlDropZone({ onYamlLoaded, customYaml, onCustomYamlChange, resourceNa
             <Button
               variant="ghost"
               size="sm"
-              className="h-7 px-2 text-[11px] gap-1 text-muted-foreground hover:text-destructive"
+              className="h-7 px-2 text-xs gap-1 text-muted-foreground hover:text-destructive"
               onClick={() => onCustomYamlChange('')}
             >
               <Trash2 className="h-3 w-3" />
@@ -456,7 +456,7 @@ function YamlDropZone({ onYamlLoaded, customYaml, onCustomYamlChange, resourceNa
         <div className="pt-4 flex items-center gap-3">
           <Button
             size="sm"
-            className="gap-2 px-5 h-9 text-[13px] font-medium shadow-sm"
+            className="gap-2 px-5 h-9 text-sm font-medium shadow-sm"
             onClick={() => {
               // Scroll up to show the diff (the parent will show MonacoDiffView)
               // This is a visual cue — the diff auto-renders once customYaml is set
@@ -466,7 +466,7 @@ function YamlDropZone({ onYamlLoaded, customYaml, onCustomYamlChange, resourceNa
             <Sparkles className="h-3.5 w-3.5" />
             Compare
           </Button>
-          <span className="text-[11px] text-muted-foreground/50">
+          <span className="text-xs text-muted-foreground/50">
             {customYaml.split('\n').length} lines vs {resourceName}
           </span>
         </div>
@@ -616,7 +616,7 @@ function YamlDiffView({
                 </div>
             </div>
             <div className={cn("rounded-xl border border-border bg-card shadow-sm overflow-hidden", scrollClass)}>
-                <table className="w-full border-collapse font-mono text-[13px] leading-relaxed table-fixed">
+                <table className="w-full border-collapse font-mono text-sm leading-relaxed table-fixed">
                     <thead className="sticky top-0 z-20 bg-muted/90 backdrop-blur border-b border-border shadow-sm">
                         <tr>
                             <th className="w-12 py-2 border-r border-border/10"></th>
@@ -628,11 +628,11 @@ function YamlDiffView({
                     <tbody>
                         {rows.map((row, i) => (
                             <tr key={i} className="hover:bg-muted/5 transition-colors">
-                                <td className={cn("w-12 text-right pr-2 text-[11px] select-none py-0.5", row.leftType?.includes('removed') ? "bg-red-500/15" : "bg-muted/10")}>{row.leftNum || ''}</td>
+                                <td className={cn("w-12 text-right pr-2 text-xs select-none py-0.5", row.leftType?.includes('removed') ? "bg-red-500/15" : "bg-muted/10")}>{row.leftNum || ''}</td>
                                 <td className={cn("px-3 py-0.5 whitespace-pre overflow-x-auto", row.leftType?.includes('removed') ? "bg-red-500/10" : "opacity-80")}>
                                     {row.leftContent != null ? <YamlLineContent line={row.leftContent} segments={row.leftSegments} /> : null}
                                 </td>
-                                <td className={cn("w-12 text-right pr-2 text-[11px] select-none py-0.5 border-l", row.rightType?.includes('added') ? "bg-emerald-500/15" : "bg-muted/10")}>{row.rightNum || ''}</td>
+                                <td className={cn("w-12 text-right pr-2 text-xs select-none py-0.5 border-l", row.rightType?.includes('added') ? "bg-emerald-500/15" : "bg-muted/10")}>{row.rightNum || ''}</td>
                                 <td className={cn("px-3 py-0.5 whitespace-pre overflow-x-auto", row.rightType?.includes('added') ? "bg-emerald-500/10" : "opacity-80")}>
                                     {row.rightContent != null ? <YamlLineContent line={row.rightContent} segments={row.rightSegments} /> : null}
                                 </td>
@@ -812,19 +812,19 @@ export function ResourceComparisonView({
                             <GitCompare className="h-[18px] w-[18px] text-primary" />
                         </div>
                         <div>
-                            <h2 className="text-[15px] font-semibold tracking-tight text-foreground">{resourceKind} Comparison</h2>
-                            <p className="text-[11px] text-muted-foreground/60 mt-0.5">{activeMode.shortDesc}</p>
+                            <h2 className="text-sm font-semibold tracking-tight text-foreground">{resourceKind} Comparison</h2>
+                            <p className="text-xs text-muted-foreground/60 mt-0.5">{activeMode.shortDesc}</p>
                         </div>
                     </div>
                     {selectedResources.length > 0 && (
-                      <div className="text-[11px] font-medium text-muted-foreground/60 tabular-nums">
+                      <div className="text-xs font-medium text-muted-foreground/60 tabular-nums">
                         {selectedResources.length} of 4
                       </div>
                     )}
                 </div>
 
                 {/* Resource selector row */}
-                <div className="flex items-center gap-2.5">
+                <div className="flex items-center gap-2">
                     <Select onValueChange={handleAdd}>
                         <SelectTrigger className="w-56 h-8 text-xs bg-background border-border/50">
                             <SelectValue placeholder={`Add ${resourceKind}...`} />
@@ -848,12 +848,12 @@ export function ResourceComparisonView({
 
                     {selectedResources.length > 0 && <div className="h-4 w-px bg-border/30" />}
 
-                    <div className="flex items-center gap-1.5 overflow-x-auto flex-1 min-w-0">
+                    <div className="flex items-center gap-2 overflow-x-auto flex-1 min-w-0">
                         {selectedResources.map((key, idx) => (
                             <div
                               key={key}
                               className={cn(
-                                'group flex items-center gap-1.5 pl-2 pr-1 py-1 rounded-lg border transition-all duration-150 shrink-0',
+                                'group flex items-center gap-2 pl-2 pr-1 py-1 rounded-lg border transition-all duration-150 shrink-0',
                                 'bg-background hover:shadow-sm',
                                 idx === 0 ? 'border-red-200 dark:border-red-900/50' : 'border-emerald-200 dark:border-emerald-900/50',
                               )}
@@ -866,7 +866,7 @@ export function ResourceComparisonView({
                                   {key.split('/').pop()}
                                 </span>
                                 {key.includes('/') && (
-                                  <span className="text-[11px] text-muted-foreground font-mono">{key.split('/')[0]}</span>
+                                  <span className="text-xs text-muted-foreground font-mono">{key.split('/')[0]}</span>
                                 )}
                                 <button
                                   onClick={() => setSelectedResources(selectedResources.filter(k => k !== key))}
@@ -895,7 +895,7 @@ export function ResourceComparisonView({
                           key={t.id}
                           onClick={() => setActiveTab(t.id)}
                           className={cn(
-                            'inline-flex items-center justify-center whitespace-nowrap rounded-lg px-3.5 py-1.5 text-sm font-medium transition-all duration-200',
+                            'inline-flex items-center justify-center whitespace-nowrap rounded-lg px-4 py-2 text-sm font-medium transition-all duration-200',
                             activeTab === t.id
                               ? 'bg-background text-foreground shadow-sm font-semibold'
                               : 'text-muted-foreground hover:text-foreground/80',
@@ -911,7 +911,7 @@ export function ResourceComparisonView({
                 {activeTab === 'yaml' && (
                   <div>
                     {/* ═══ Compare Mode Pill Bar ═══ */}
-                    <div className="px-6 py-2.5 border-b bg-background">
+                    <div className="px-6 py-2 border-b bg-background">
                       <CompareModePillBar value={compareMode} onChange={setCompareMode} />
                     </div>
 
@@ -977,7 +977,7 @@ export function ResourceComparisonView({
                             accentGradient="bg-amber-500"
                           >
                             <div className="mt-5 px-4 py-3 rounded-xl bg-muted/30 dark:bg-muted/15 border border-border/30 max-w-md">
-                              <p className="text-[11px] text-muted-foreground/70 font-mono leading-relaxed">
+                              <p className="text-xs text-muted-foreground/70 font-mono leading-relaxed">
                                 <span className="text-emerald-500">$</span> kubectl apply -f {firstResource.name}.yaml
                               </p>
                               <p className="text-[10px] text-muted-foreground/40 mt-1">
@@ -1047,7 +1047,7 @@ export function ResourceComparisonView({
                                 <FileText className="h-3.5 w-3.5" />
                                 <span>Cluster resource</span>
                               </div>
-                              <Badge variant="secondary" className="text-[11px] font-semibold gap-1.5 px-2.5">
+                              <Badge variant="secondary" className="text-xs font-semibold gap-2 px-2">
                                 {firstResource.name}
                               </Badge>
                               <ArrowRight className="h-3 w-3 text-muted-foreground/30" />
@@ -1061,8 +1061,8 @@ export function ResourceComparisonView({
                               <div className="space-y-4">
                                 {/* Toolbar */}
                                 <div className="flex items-center justify-between">
-                                  <div className="flex items-center gap-2.5">
-                                    <Badge variant="outline" className="gap-1.5 text-[11px] bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800">
+                                  <div className="flex items-center gap-2">
+                                    <Badge variant="outline" className="gap-2 text-xs bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800">
                                       <FileCode2 className="h-3 w-3" />
                                       Custom YAML
                                     </Badge>
@@ -1070,11 +1070,11 @@ export function ResourceComparisonView({
                                       {customYaml.split('\n').length} lines
                                     </span>
                                   </div>
-                                  <div className="flex items-center gap-1.5">
+                                  <div className="flex items-center gap-2">
                                     <Button
                                       variant="ghost"
                                       size="sm"
-                                      className="h-7 px-2.5 text-[11px] gap-1.5 text-muted-foreground hover:text-foreground"
+                                      className="h-7 px-2 text-xs gap-2 text-muted-foreground hover:text-foreground"
                                       onClick={() => setCustomYaml('')}
                                     >
                                       <Trash2 className="h-3 w-3" />
@@ -1118,7 +1118,7 @@ export function ResourceComparisonView({
                             {/* CPU */}
                             <Card className="shadow-sm overflow-hidden">
                                 <CardHeader className="bg-muted/10 dark:bg-muted/5 border-b py-3">
-                                  <CardTitle className="text-[13px] font-semibold flex items-center gap-2">
+                                  <CardTitle className="text-sm font-semibold flex items-center gap-2">
                                     <div className="h-2 w-2 rounded-full bg-blue-500" /> CPU Usage
                                   </CardTitle>
                                 </CardHeader>
@@ -1127,8 +1127,8 @@ export function ResourceComparisonView({
                                         {resourcesData.map(res => (
                                             <div key={res.name} className="p-4 bg-muted/15 dark:bg-muted/8 rounded-xl border border-border/20 space-y-3">
                                                 <div className="flex items-start justify-between gap-2">
-                                                    <span className="text-[12px] font-medium truncate text-foreground/80 leading-tight">{res.name}</span>
-                                                    <span className="text-[13px] font-semibold tabular-nums text-foreground shrink-0">{res.metrics?.cpu.value ?? '—'}</span>
+                                                    <span className="text-xs font-medium truncate text-foreground/80 leading-tight">{res.name}</span>
+                                                    <span className="text-sm font-semibold tabular-nums text-foreground shrink-0">{res.metrics?.cpu.value ?? '—'}</span>
                                                 </div>
                                                 {res.metrics && <Sparkline data={res.metrics.cpu.data} width={200} height={40} color="hsl(217 91% 60%)" showLive />}
                                             </div>
@@ -1140,7 +1140,7 @@ export function ResourceComparisonView({
                             {/* Memory */}
                             <Card className="shadow-sm overflow-hidden">
                                 <CardHeader className="bg-muted/10 dark:bg-muted/5 border-b py-3">
-                                  <CardTitle className="text-[13px] font-semibold flex items-center gap-2">
+                                  <CardTitle className="text-sm font-semibold flex items-center gap-2">
                                     <div className="h-2 w-2 rounded-full bg-violet-500" /> Memory Usage
                                   </CardTitle>
                                 </CardHeader>
@@ -1149,8 +1149,8 @@ export function ResourceComparisonView({
                                         {resourcesData.map(res => (
                                             <div key={res.name} className="p-4 bg-muted/15 dark:bg-muted/8 rounded-xl border border-border/20 space-y-3">
                                                 <div className="flex items-start justify-between gap-2">
-                                                    <span className="text-[12px] font-medium truncate text-foreground/80 leading-tight">{res.name}</span>
-                                                    <span className="text-[13px] font-semibold tabular-nums text-foreground shrink-0">{res.metrics?.memory.value ?? '—'}</span>
+                                                    <span className="text-xs font-medium truncate text-foreground/80 leading-tight">{res.name}</span>
+                                                    <span className="text-sm font-semibold tabular-nums text-foreground shrink-0">{res.metrics?.memory.value ?? '—'}</span>
                                                 </div>
                                                 {res.metrics && <Sparkline data={res.metrics.memory.data} width={200} height={40} color="hsl(263 70% 50%)" showLive />}
                                             </div>
@@ -1163,7 +1163,7 @@ export function ResourceComparisonView({
                             {resourceType === 'pods' && (
                               <Card className="shadow-sm overflow-hidden">
                                   <CardHeader className="bg-muted/10 dark:bg-muted/5 border-b py-3">
-                                    <CardTitle className="text-[13px] font-semibold flex items-center gap-2">
+                                    <CardTitle className="text-sm font-semibold flex items-center gap-2">
                                       <div className="h-2 w-2 rounded-full bg-cyan-500" /> Network Received (Rx)
                                     </CardTitle>
                                   </CardHeader>
@@ -1174,8 +1174,8 @@ export function ResourceComparisonView({
                                               return (
                                                 <div key={res.name} className="p-4 bg-muted/15 dark:bg-muted/8 rounded-xl border border-border/20 space-y-3">
                                                     <div className="flex items-start justify-between gap-2">
-                                                      <span className="text-[12px] font-medium truncate text-foreground/80 leading-tight">{res.name}</span>
-                                                      <span className="text-[13px] font-semibold tabular-nums text-foreground shrink-0">{formatBytes(rx)}</span>
+                                                      <span className="text-xs font-medium truncate text-foreground/80 leading-tight">{res.name}</span>
+                                                      <span className="text-sm font-semibold tabular-nums text-foreground shrink-0">{formatBytes(rx)}</span>
                                                     </div>
                                                     <Sparkline data={valueToSparklineData(String(rx / 1024))} width={200} height={40} color="hsl(187 80% 42%)" showLive />
                                                 </div>
@@ -1190,7 +1190,7 @@ export function ResourceComparisonView({
                             {resourceType === 'pods' && (
                               <Card className="shadow-sm overflow-hidden">
                                   <CardHeader className="bg-muted/10 dark:bg-muted/5 border-b py-3">
-                                    <CardTitle className="text-[13px] font-semibold flex items-center gap-2">
+                                    <CardTitle className="text-sm font-semibold flex items-center gap-2">
                                       <div className="h-2 w-2 rounded-full bg-orange-500" /> Network Transmitted (Tx)
                                     </CardTitle>
                                   </CardHeader>
@@ -1201,8 +1201,8 @@ export function ResourceComparisonView({
                                               return (
                                                 <div key={res.name} className="p-4 bg-muted/15 dark:bg-muted/8 rounded-xl border border-border/20 space-y-3">
                                                     <div className="flex items-start justify-between gap-2">
-                                                      <span className="text-[12px] font-medium truncate text-foreground/80 leading-tight">{res.name}</span>
-                                                      <span className="text-[13px] font-semibold tabular-nums text-foreground shrink-0">{formatBytes(tx)}</span>
+                                                      <span className="text-xs font-medium truncate text-foreground/80 leading-tight">{res.name}</span>
+                                                      <span className="text-sm font-semibold tabular-nums text-foreground shrink-0">{formatBytes(tx)}</span>
                                                     </div>
                                                     <Sparkline data={valueToSparklineData(String(tx / 1024))} width={200} height={40} color="hsl(25 95% 53%)" showLive />
                                                 </div>
@@ -1231,8 +1231,8 @@ export function ResourceComparisonView({
                                 return (
                                   <Card key={res.name} className="flex flex-col overflow-hidden min-h-[400px] shadow-sm">
                                       {/* Log header with stats */}
-                                      <CardHeader className="py-2.5 px-4 border-b bg-[#0d1117] flex-row items-center justify-between space-y-0">
-                                        <CardTitle className="text-[13px] font-semibold text-zinc-200 flex items-center gap-2">
+                                      <CardHeader className="py-2 px-4 border-b bg-slate-950 flex-row items-center justify-between space-y-0">
+                                        <CardTitle className="text-sm font-semibold text-zinc-200 flex items-center gap-2">
                                           <ScrollText className="h-3.5 w-3.5 text-zinc-500" />
                                           {res.name}
                                         </CardTitle>
@@ -1250,7 +1250,7 @@ export function ResourceComparisonView({
                                           <span className="text-[10px] text-zinc-600 tabular-nums">{entries.length} lines</span>
                                         </div>
                                       </CardHeader>
-                                      <CardContent className="flex-1 bg-[#0d1117] text-zinc-100 p-0 overflow-auto">
+                                      <CardContent className="flex-1 bg-slate-950 text-zinc-100 p-0 overflow-auto">
                                           {res.logsLoading ? (
                                               <div className="p-6 flex flex-col items-center justify-center gap-2 text-zinc-500 h-full">
                                                 <Loader2 className="h-5 w-5 animate-spin" />
@@ -1262,7 +1262,7 @@ export function ResourceComparisonView({
                                                 <span className="text-xs">No log entries</span>
                                               </div>
                                           ) : (
-                                              <div className="font-mono text-[11px] leading-[1.6]">
+                                              <div className="font-mono text-xs leading-[1.6]">
                                                   {entries.map((entry, idx) => {
                                                     const levelDot = entry.level === 'error' ? 'bg-red-400'
                                                       : entry.level === 'warn' ? 'bg-amber-400'

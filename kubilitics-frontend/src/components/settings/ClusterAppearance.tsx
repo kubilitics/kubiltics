@@ -168,7 +168,7 @@ export function ClusterAppearanceSettings() {
             className="max-w-xs rounded-lg h-10 text-sm"
             maxLength={32}
           />
-          <p className="text-[11px] text-muted-foreground mt-1.5">Shown in the header instead of the full cluster name</p>
+          <p className="text-xs text-muted-foreground mt-1.5">Shown in the header instead of the full cluster name</p>
         </div>
 
         {/* Preview */}
@@ -178,7 +178,7 @@ export function ClusterAppearanceSettings() {
             <span className="block w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: appearance.color }} />
             <span className="text-sm font-bold tracking-tight truncate">{displayName}</span>
             {envLabel && (
-              <span className={cn('text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-full border', envClasses)}>
+              <span className={cn('text-[10px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-full border', envClasses)}>
                 {envLabel}
               </span>
             )}
@@ -186,7 +186,7 @@ export function ClusterAppearanceSettings() {
           {appearance.environment === 'production' && (
             <div className="mt-3">
               <div className="h-[3px] w-48 bg-gradient-to-r from-red-500 via-red-600 to-red-500 rounded-full" />
-              <p className="text-[11px] text-muted-foreground mt-1.5">Production clusters show a red warning bar at the top of the page</p>
+              <p className="text-xs text-muted-foreground mt-1.5">Production clusters show a red warning bar at the top of the page</p>
             </div>
           )}
         </div>

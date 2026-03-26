@@ -149,7 +149,7 @@ export const MetricCardsGrid = () => {
   ];
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 gap-5">
+    <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
       {cards.map((c, i) => {
         const scopeTag = isProjectScope
           ? CLUSTER_WIDE.has(c.title) ? "Cluster" : "Project"
@@ -170,7 +170,7 @@ export const MetricCardsGrid = () => {
                 "rounded-2xl overflow-hidden",
                 "shadow",
                 /* Layout — taller cards with more padding */
-                "flex items-center gap-5",
+                "flex items-center gap-4",
                 "py-6 pl-0 pr-6",
                 /* Hover */
                 "transition-all duration-300",

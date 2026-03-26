@@ -7,6 +7,7 @@ import {
     ResponsiveContainer,
     PolarRadiusAxis
 } from 'recharts';
+import { K8S_BLUE } from '@/lib/colors';
 
 interface SecurityRadarProps {
     data: {
@@ -29,10 +30,10 @@ export function SecurityRadar({ data }: SecurityRadarProps) {
         <div className="h-[300px] w-full flex items-center justify-center">
             <ResponsiveContainer width="100%" height="100%">
                 <RadarChart cx="50%" cy="50%" outerRadius="80%" data={chartData}>
-                    <PolarGrid stroke="#326CE5" strokeOpacity={0.15} />
+                    <PolarGrid stroke={K8S_BLUE} strokeOpacity={0.15} />
                     <PolarAngleAxis
                         dataKey="subject"
-                        tick={{ fill: '#326CE5', fontSize: 12, fontWeight: 600 }}
+                        tick={{ fill: K8S_BLUE, fontSize: 12, fontWeight: 600 }}
                     />
                     <PolarRadiusAxis
                         angle={30}
@@ -43,9 +44,9 @@ export function SecurityRadar({ data }: SecurityRadarProps) {
                     <Radar
                         name="Vulnerabilities"
                         dataKey="value"
-                        stroke="#326CE5"
+                        stroke={K8S_BLUE}
                         strokeWidth={2}
-                        fill="#326CE5"
+                        fill={K8S_BLUE}
                         fillOpacity={0.3}
                     />
                 </RadarChart>

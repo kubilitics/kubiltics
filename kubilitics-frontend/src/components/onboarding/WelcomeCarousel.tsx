@@ -126,7 +126,7 @@ function MeetIllustration({ className }: { className?: string }) {
             >
               <Icon className={cn('h-6 w-6', color)} />
             </div>
-            <span className="text-[11px] font-semibold text-muted-foreground">{label}</span>
+            <span className="text-xs font-semibold text-muted-foreground">{label}</span>
           </motion.div>
         ))}
       </div>
@@ -232,7 +232,7 @@ function ModeIllustration({ className }: { className?: string }) {
           <Monitor className="h-9 w-9 text-blue-600 dark:text-blue-400" />
         </div>
         <span className="text-sm font-bold text-slate-700 dark:text-slate-200">Desktop</span>
-        <span className="text-[11px] text-muted-foreground text-center max-w-[100px]">
+        <span className="text-xs text-muted-foreground text-center max-w-[100px]">
           Local kubeconfig
         </span>
       </motion.div>
@@ -263,7 +263,7 @@ function ModeIllustration({ className }: { className?: string }) {
           <Cloud className="h-9 w-9 text-purple-600 dark:text-purple-400" />
         </div>
         <span className="text-sm font-bold text-slate-700 dark:text-slate-200">In-Cluster</span>
-        <span className="text-[11px] text-muted-foreground text-center max-w-[100px]">
+        <span className="text-xs text-muted-foreground text-center max-w-[100px]">
           Service account
         </span>
       </motion.div>
@@ -357,7 +357,7 @@ export function WelcomeCarousel({ onComplete, className }: WelcomeCarouselProps)
       className={cn(
         'fixed inset-0 z-[100] flex items-center justify-center',
         'bg-gradient-to-b from-slate-50 via-white to-blue-50/30',
-        'dark:from-[hsl(228,14%,7%)] dark:via-[hsl(228,14%,9%)] dark:to-[hsl(228,14%,11%)]',
+        'dark:from-slate-950 dark:via-slate-950 dark:to-slate-900',
         className,
       )}
       role="dialog"

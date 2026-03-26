@@ -178,7 +178,7 @@ export function LogConfiguration({ className }: { className?: string }) {
                   <SelectItem value="logfmt">logfmt (key=value)</SelectItem>
                 </SelectContent>
               </Select>
-              <p className="text-[10px] text-muted-foreground">
+              <p className="text-xs text-muted-foreground">
                 JSON is recommended for log aggregation systems.
               </p>
             </div>
@@ -202,14 +202,14 @@ export function LogConfiguration({ className }: { className?: string }) {
             <div className="flex items-center justify-between rounded-lg border p-3">
               <div>
                 <p className="text-sm font-medium">Include Caller Info</p>
-                <p className="text-[10px] text-muted-foreground">Add file:line to each log entry</p>
+                <p className="text-xs text-muted-foreground">Add file:line to each log entry</p>
               </div>
               <Switch checked={config.includeCaller} onCheckedChange={(v) => update({ includeCaller: v })} />
             </div>
             <div className="flex items-center justify-between rounded-lg border p-3">
               <div>
                 <p className="text-sm font-medium">Include Stack Traces</p>
-                <p className="text-[10px] text-muted-foreground">Attach stack traces on error-level entries</p>
+                <p className="text-xs text-muted-foreground">Attach stack traces on error-level entries</p>
               </div>
               <Switch checked={config.includeStackTrace} onCheckedChange={(v) => update({ includeStackTrace: v })} />
             </div>
@@ -232,7 +232,7 @@ export function LogConfiguration({ className }: { className?: string }) {
           <div className="flex items-center justify-between rounded-lg border p-3">
             <div>
               <p className="text-sm font-medium">Enable Log Shipping</p>
-              <p className="text-[10px] text-muted-foreground">Push logs to Loki in real-time</p>
+              <p className="text-xs text-muted-foreground">Push logs to Loki in real-time</p>
             </div>
             <Switch checked={config.shippingEnabled} onCheckedChange={(v) => update({ shippingEnabled: v })} />
           </div>
@@ -310,7 +310,7 @@ export function LogConfiguration({ className }: { className?: string }) {
                     {doc.title}
                     <ExternalLink className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" />
                   </p>
-                  <p className="text-[10px] text-muted-foreground line-clamp-2">{doc.description}</p>
+                  <p className="text-xs text-muted-foreground line-clamp-2">{doc.description}</p>
                 </div>
               </a>
             ))}

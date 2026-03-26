@@ -248,7 +248,7 @@ export function AuditLogExport({ className }: { className?: string }) {
                 <Filter className="h-3 w-3" />
                 Filters
                 {activeFilterCount > 0 && (
-                  <Badge variant="secondary" className="h-4 w-4 p-0 flex items-center justify-center text-[9px]">
+                  <Badge variant="secondary" className="h-4 w-4 p-0 flex items-center justify-center text-[10px]">
                     {activeFilterCount}
                   </Badge>
                 )}

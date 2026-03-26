@@ -611,7 +611,7 @@ export function ClusterShellPanel({
     <div
       data-shell-panel
       className={cn(
-        'fixed bottom-0 left-0 right-0 z-[60] flex flex-col border-t border-border bg-[#0d1117] shadow-[0_-4px_30px_rgba(0,0,0,0.4)] transition-[height] duration-200 ease-in-out',
+        'fixed bottom-0 left-0 right-0 z-[60] flex flex-col border-t border-border bg-slate-950 shadow-[0_-4px_30px_rgba(0,0,0,0.4)] transition-[height] duration-200 ease-in-out',
         isMaximized && 'h-[calc(100vh-64px)]'
       )}
       style={isMaximized ? {} : { height: heightPx }}
@@ -711,7 +711,7 @@ export function ClusterShellPanel({
 
       {/* Terminal area — outer div has padding, inner div is where xterm mounts (no padding)
           so FitAddon correctly measures available space without clipping the last line */}
-      <div className="relative flex-1 min-h-0 bg-[#0d1117]">
+      <div className="relative flex-1 min-h-0 bg-slate-950">
         {!clusterId ? (
           <div className="flex h-full items-center justify-center text-sm font-medium italic text-muted-foreground">
             Select a cluster to activate terminal.

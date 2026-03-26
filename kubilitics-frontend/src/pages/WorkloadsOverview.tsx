@@ -66,7 +66,7 @@ const STATUS_COLORS: Record<string, string> = {
   Running: 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20',
   Healthy: 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20',
   Optimal: 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20',
-  Completed: 'bg-[#326CE5]/10 text-[#326CE5] border-[#326CE5]/20',
+  Completed: 'bg-blue-600/10 text-blue-600 border-blue-600/20',
   Scheduled: 'bg-slate-500/10 text-slate-600 border-slate-500/20',
   'Scaled to Zero': 'bg-slate-500/10 text-slate-600 border-slate-500/20',
   Pending: 'bg-amber-500/10 text-amber-600 border-amber-500/20',

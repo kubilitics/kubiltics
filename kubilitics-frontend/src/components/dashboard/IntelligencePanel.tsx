@@ -77,7 +77,7 @@ function InsightCard({ insight }: { insight: Insight }) {
         config.border
       )}
     >
-      <div className="flex items-start gap-2.5 py-3 px-3">
+      <div className="flex items-start gap-2 py-3 px-3">
         <button
           type="button"
           onClick={() => setExpanded((v) => !v)}

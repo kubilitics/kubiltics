@@ -54,15 +54,15 @@ function BaseNodeInner({ data }: NodeProps<BaseNodeData>) {
       {/* Header with category color */}
       <div className={`flex items-center gap-2 ${headerBg} px-3 py-1.5`}>
         <K8sIcon kind={data.kind} size={18} backdrop />
-        <span className="flex-1 text-[11px] font-semibold text-white tracking-wide uppercase">{data.kind}</span>
+        <span className="flex-1 text-xs font-semibold text-white tracking-wide uppercase">{data.kind}</span>
         <div className={`h-2 w-2 rounded-full ${badge.dotClass} ring-1 ring-white/40`} aria-hidden="true" />
       </div>
 
       {/* Body */}
-      <div className="px-3 py-2.5 space-y-1.5">
+      <div className="px-3 py-2 space-y-1.5">
         <div className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate leading-snug" title={data.name}>{data.name}</div>
         {data.namespace && (
-          <div className="text-[11px] text-gray-600 dark:text-gray-400 break-all">{data.namespace}</div>
+          <div className="text-xs text-gray-600 dark:text-gray-400 break-all">{data.namespace}</div>
         )}
 
         {/* Status badge */}
@@ -77,22 +77,22 @@ function BaseNodeInner({ data }: NodeProps<BaseNodeData>) {
         {(data.metrics?.podCount != null || data.metrics?.cpuUsage != null || data.metrics?.cpuRequest != null) && (
           <div className="flex items-center gap-3 pt-1 border-t border-gray-100 dark:border-gray-700 mt-1.5 flex-wrap" aria-label="Resource metrics">
             {data.metrics?.podCount != null && (
-              <div className="text-[11px] text-gray-600 dark:text-gray-400">
+              <div className="text-xs text-gray-600 dark:text-gray-400">
                 <span className="font-semibold text-gray-800 dark:text-gray-200">{data.metrics.readyCount ?? 0}/{data.metrics.podCount}</span> pods
               </div>
             )}
             {(data.metrics?.cpuUsage != null || data.metrics?.cpuRequest != null) && (
-              <div className="text-[11px] text-gray-600 dark:text-gray-400">
+              <div className="text-xs text-gray-600 dark:text-gray-400">
                 <span className="font-semibold text-gray-800 dark:text-gray-200">{formatCPU(data.metrics.cpuUsage ?? data.metrics.cpuRequest ?? 0)}</span> CPU
               </div>
             )}
             {(data.metrics?.memoryUsage != null || data.metrics?.memoryRequest != null) && (data.metrics.memoryUsage ?? data.metrics.memoryRequest ?? 0) > 0 && (
-              <div className="text-[11px] text-gray-600 dark:text-gray-400">
+              <div className="text-xs text-gray-600 dark:text-gray-400">
                 <span className="font-semibold text-gray-800 dark:text-gray-200">{formatBytes(data.metrics.memoryUsage ?? data.metrics.memoryRequest ?? 0)}</span> Mem
               </div>
             )}
             {data.metrics?.restartCount != null && data.metrics.restartCount > 0 && (
-              <div className="text-[11px] text-amber-600 font-medium" role="status">
+              <div className="text-xs text-amber-600 font-medium" role="status">
                 {data.metrics.restartCount} restarts
               </div>
             )}

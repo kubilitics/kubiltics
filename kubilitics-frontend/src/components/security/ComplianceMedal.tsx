@@ -12,7 +12,7 @@ export function ComplianceMedal({ grade, score, className }: ComplianceMedalProp
     const getGradeStyles = (g: string) => {
         const grade = g?.toUpperCase() || 'F';
         switch (grade) {
-            case 'A': return 'from-[#326CE5] to-blue-400 text-white shadow-[#326CE5]/20';
+            case 'A': return 'from-blue-600 to-blue-400 text-white shadow-blue-600/20';
             case 'B': return 'from-blue-500 to-blue-300 text-white shadow-blue-500/20';
             case 'C': return 'from-blue-600 to-blue-400 text-white shadow-blue-600/20';
             default: return 'from-slate-400 to-slate-200 text-slate-700 shadow-slate-400/20';
@@ -23,7 +23,7 @@ export function ComplianceMedal({ grade, score, className }: ComplianceMedalProp
         <div className={cn("flex flex-col items-center justify-center gap-4", className)}>
             <div className="relative group">
                 {/* Outer Glow Ring */}
-                <div className="absolute inset-0 rounded-full bg-[#326CE5]/10 animate-pulse blur-xl transition-all group-hover:bg-[#326CE5]/20" />
+                <div className="absolute inset-0 rounded-full bg-blue-600/10 animate-pulse blur-xl transition-all group-hover:bg-blue-600/20" />
 
                 {/* The Medal */}
                 <motion.div
@@ -48,14 +48,14 @@ export function ComplianceMedal({ grade, score, className }: ComplianceMedalProp
                     initial={{ x: 20, opacity: 0 }}
                     animate={{ x: 0, opacity: 1 }}
                     transition={{ delay: 0.3 }}
-                    className="absolute -bottom-2 -right-2 bg-white dark:bg-slate-800 text-[#326CE5] dark:text-blue-400 px-3 py-1 rounded-full border border-blue-100 dark:border-blue-800 shadow-lg text-sm font-black"
+                    className="absolute -bottom-2 -right-2 bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 px-3 py-1 rounded-full border border-blue-100 dark:border-blue-800 shadow-lg text-sm font-black"
                 >
                     {score}%
                 </motion.div>
             </div>
 
             <div className="text-center">
-                <p className="text-[#326CE5] dark:text-blue-400 font-bold text-sm">Compliance Standing</p>
+                <p className="text-blue-600 dark:text-blue-400 font-bold text-sm">Compliance Standing</p>
                 <p className="text-xs text-muted-foreground font-medium">CIS Benchmark v1.23</p>
             </div>
         </div>

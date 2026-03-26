@@ -616,29 +616,29 @@ export default function DeploymentDetail() {
             <SectionCard icon={Info} title="Deployment Information" tooltip={<p className="text-xs text-muted-foreground">Configuration and status details</p>}>
               <div className="grid grid-cols-2 gap-x-8 gap-y-3">
                 <div className="flex flex-col gap-0.5 py-2 border-b border-border/30">
-                  <span className="text-[11px] font-semibold text-foreground/50 uppercase tracking-wider">Strategy</span>
+                  <span className="text-xs font-semibold text-foreground/50 uppercase tracking-wider">Strategy</span>
                   <span className="text-sm font-semibold text-foreground"><Badge variant="outline">{deployment.spec?.strategy?.type || 'RollingUpdate'}</Badge></span>
                 </div>
                 <div className="flex flex-col gap-0.5 py-2 border-b border-border/30">
-                  <span className="text-[11px] font-semibold text-foreground/50 uppercase tracking-wider">Min Ready Seconds</span>
+                  <span className="text-xs font-semibold text-foreground/50 uppercase tracking-wider">Min Ready Seconds</span>
                   <span className="text-sm font-semibold text-foreground font-mono">{deployment.spec?.minReadySeconds || 0}s</span>
                 </div>
                 <div className="flex flex-col gap-0.5 py-2 border-b border-border/30">
-                  <span className="text-[11px] font-semibold text-foreground/50 uppercase tracking-wider">Revision History Limit</span>
+                  <span className="text-xs font-semibold text-foreground/50 uppercase tracking-wider">Revision History Limit</span>
                   <span className="text-sm font-semibold text-foreground font-mono">{deployment.spec?.revisionHistoryLimit || 10}</span>
                 </div>
                 <div className="flex flex-col gap-0.5 py-2 border-b border-border/30">
-                  <span className="text-[11px] font-semibold text-foreground/50 uppercase tracking-wider">Progress Deadline</span>
+                  <span className="text-xs font-semibold text-foreground/50 uppercase tracking-wider">Progress Deadline</span>
                   <span className="text-sm font-semibold text-foreground font-mono">{deployment.spec?.progressDeadlineSeconds || 600}s</span>
                 </div>
                 {deployment.spec?.strategy?.rollingUpdate && (
                   <>
                     <div className="flex flex-col gap-0.5 py-2 border-b border-border/30">
-                      <span className="text-[11px] font-semibold text-foreground/50 uppercase tracking-wider">Max Surge</span>
+                      <span className="text-xs font-semibold text-foreground/50 uppercase tracking-wider">Max Surge</span>
                       <span className="text-sm font-semibold text-foreground font-mono">{deployment.spec.strategy.rollingUpdate.maxSurge || '25%'}</span>
                     </div>
                     <div className="flex flex-col gap-0.5 py-2 border-b border-border/30">
-                      <span className="text-[11px] font-semibold text-foreground/50 uppercase tracking-wider">Max Unavailable</span>
+                      <span className="text-xs font-semibold text-foreground/50 uppercase tracking-wider">Max Unavailable</span>
                       <span className="text-sm font-semibold text-foreground font-mono">{deployment.spec.strategy.rollingUpdate.maxUnavailable || '25%'}</span>
                     </div>
                   </>

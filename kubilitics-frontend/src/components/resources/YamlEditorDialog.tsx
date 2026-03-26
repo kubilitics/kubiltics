@@ -468,7 +468,7 @@ function YamlDiffPanel({
   return (
     <div
       ref={containerRef}
-      className="h-full w-full rounded-xl border border-border overflow-hidden bg-background"
+      className="h-full w-full rounded-lg border border-border overflow-hidden bg-background"
     />
   );
 }

@@ -222,7 +222,7 @@ function CacheHitGauge({ ratio }: { ratio: number }) {
           <span className="text-lg font-bold text-slate-900 dark:text-slate-100 tabular-nums">
             {percent}%
           </span>
-          <span className="text-[9px] text-muted-foreground">hit ratio</span>
+          <span className="text-[10px] text-muted-foreground">hit ratio</span>
         </div>
       </div>
     </div>
@@ -284,7 +284,7 @@ export function PlatformMetrics({ className }: { className?: string }) {
       {/* Header */}
       <div className="flex items-start justify-between">
         <div className="flex items-center gap-3">
-          <div className="p-2.5 rounded-xl bg-violet-100 dark:bg-violet-950/40">
+          <div className="p-2 rounded-xl bg-violet-100 dark:bg-violet-950/40">
             <Activity className="h-6 w-6 text-violet-600 dark:text-violet-400" />
           </div>
           <div>

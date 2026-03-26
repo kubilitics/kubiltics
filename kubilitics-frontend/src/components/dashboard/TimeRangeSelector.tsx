@@ -187,7 +187,7 @@ export function TimeRangeSelector({ className }: { className?: string }) {
                 key={option.value}
                 onClick={() => handleSelect(option.value)}
                 className={cn(
-                  'w-full flex items-center justify-between px-4 py-2.5 text-sm transition-colors',
+                  'w-full flex items-center justify-between px-4 py-2 text-sm transition-colors',
                   timeRange.preset === option.value
                     ? 'bg-primary/5 dark:bg-primary/10 text-primary font-semibold'
                     : 'text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/60'

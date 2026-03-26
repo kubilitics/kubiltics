@@ -37,7 +37,7 @@ function TextareaFallback({
         spellCheck={false}
         className={cn(
           'flex-1 w-full resize-none font-mono p-4 border-0 outline-none leading-relaxed',
-          isDark ? 'bg-[#0d1117] text-[#e6edf3]' : 'bg-[#FAFCFF] text-[#1b1f23]',
+          isDark ? 'bg-slate-950 text-slate-200' : 'bg-slate-50 text-slate-900',
           readOnly && 'cursor-default opacity-80',
         )}
         style={{ minHeight, fontSize: sizeMap[fontSize] }}
@@ -226,7 +226,7 @@ export function CodeEditor({
       <div
         className={cn(
           'rounded-xl border border-border overflow-hidden shadow-sm',
-          isDark ? 'bg-[#0d1117]' : 'bg-[#FAFCFF]',
+          isDark ? 'bg-slate-950' : 'bg-slate-50',
           className,
         )}
         style={{ minHeight }}
@@ -247,7 +247,7 @@ export function CodeEditor({
     <div
       className={cn(
         'rounded-xl border border-border overflow-hidden shadow-sm',
-        isDark ? 'bg-[#0d1117]' : 'bg-[#FAFCFF]',
+        isDark ? 'bg-slate-950' : 'bg-slate-50',
         className,
       )}
       style={{ minHeight }}

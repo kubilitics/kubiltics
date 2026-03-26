@@ -107,7 +107,7 @@ export function HealthScoreCard() {
         </h2>
         <span
           className={cn(
-            'capitalize gap-1.5 font-medium px-2.5 py-0.5 rounded-full text-xs flex items-center',
+            'capitalize gap-1.5 font-medium px-2 py-0.5 rounded-full text-xs flex items-center',
             config.badgeBg,
             config.color
           )}
@@ -183,7 +183,7 @@ export function HealthScoreCard() {
             </h4>
             <ul className="space-y-2">
               {healthScore.details.map((detail, i) => (
-                <li key={i} className="text-sm flex items-start gap-2.5 text-muted-foreground">
+                <li key={i} className="text-sm flex items-start gap-2 text-muted-foreground">
                   <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-[hsl(var(--ring)/0.5)] shrink-0" />
                   <span>{detail}</span>
                 </li>

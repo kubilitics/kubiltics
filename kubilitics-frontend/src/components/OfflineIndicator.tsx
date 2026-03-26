@@ -37,8 +37,8 @@ export function OfflineIndicator() {
         <WifiOff className="h-4 w-4 text-red-600 dark:text-red-400" />
       </div>
       <div className="flex items-center gap-1.5 min-w-0">
-        <span className="font-semibold text-[13px] tracking-tight">You're offline</span>
-        <span className="text-red-700/60 dark:text-red-300/50 text-[13px]">
+        <span className="font-semibold text-sm tracking-tight">You're offline</span>
+        <span className="text-red-700/60 dark:text-red-300/50 text-sm">
           — Check your network connection. Showing cached data.
         </span>
       </div>

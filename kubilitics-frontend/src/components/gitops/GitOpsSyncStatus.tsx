@@ -170,7 +170,7 @@ export function GitOpsSyncStatus({
 
   const Icon = config.icon;
   const iconSize = size === 'lg' ? 'h-4 w-4' : size === 'md' ? 'h-3.5 w-3.5' : 'h-3 w-3';
-  const textSize = size === 'lg' ? 'text-sm' : size === 'md' ? 'text-xs' : 'text-[11px]';
+  const textSize = size === 'lg' ? 'text-sm' : size === 'md' ? 'text-xs' : 'text-xs';
 
   const badgeContent = (
     <motion.div

@@ -331,7 +331,7 @@ const LogRow = memo(function LogRow({
   return (
     <div
       className={cn(
-        'group flex items-start px-3 py-[1px] relative transition-colors',
+        'group flex items-start px-3 py-px relative transition-colors',
         rowBg[log.level],
         altShade,
         hoverCls,

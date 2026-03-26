@@ -529,7 +529,7 @@ export default function ServiceDetail() {
                 <div className="h-6 w-6 rounded-md bg-blue-500/10 flex items-center justify-center">
                   <Network className="h-3 w-3 text-blue-500" />
                 </div>
-                <span className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">Cluster IP</span>
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Cluster IP</span>
               </div>
               {clusterIP !== '—' && clusterIP !== 'None' ? (
                 <div className="flex items-center gap-1.5">
@@ -546,7 +546,7 @@ export default function ServiceDetail() {
                 <div className="h-6 w-6 rounded-md bg-emerald-500/10 flex items-center justify-center">
                   <Globe className="h-3 w-3 text-emerald-500" />
                 </div>
-                <span className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">External IP</span>
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">External IP</span>
               </div>
               <p className="text-sm font-mono font-bold text-foreground">{externalIP ?? '—'}</p>
             </div>
@@ -556,7 +556,7 @@ export default function ServiceDetail() {
                 <div className="h-6 w-6 rounded-md bg-violet-500/10 flex items-center justify-center">
                   <Globe className="h-3 w-3 text-violet-500" />
                 </div>
-                <span className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">DNS Name</span>
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">DNS Name</span>
               </div>
               <div className="flex items-center gap-1.5 min-w-0">
                 <code className="text-xs font-mono font-semibold text-violet-600 dark:text-violet-400 truncate min-w-0" title={dnsName || '—'}>{dnsName || '—'}</code>
@@ -842,7 +842,7 @@ export default function ServiceDetail() {
               <div className="p-4 hover:bg-amber-500/3 transition-colors">
                 <div className="flex items-center gap-2 mb-2">
                   <div className="h-5 w-5 rounded-full bg-emerald-500/10 flex items-center justify-center">
-                    <span className="text-[8px] font-bold text-emerald-500">1</span>
+                    <span className="text-[10px] font-bold text-emerald-500">1</span>
                   </div>
                   <p className="text-xs font-bold">Same Namespace</p>
                 </div>
@@ -852,7 +852,7 @@ export default function ServiceDetail() {
               <div className="p-4 hover:bg-amber-500/3 transition-colors">
                 <div className="flex items-center gap-2 mb-2">
                   <div className="h-5 w-5 rounded-full bg-blue-500/10 flex items-center justify-center">
-                    <span className="text-[8px] font-bold text-blue-500">2</span>
+                    <span className="text-[10px] font-bold text-blue-500">2</span>
                   </div>
                   <p className="text-xs font-bold">Cross Namespace</p>
                 </div>
@@ -862,7 +862,7 @@ export default function ServiceDetail() {
               <div className="p-4 hover:bg-amber-500/3 transition-colors">
                 <div className="flex items-center gap-2 mb-2">
                   <div className="h-5 w-5 rounded-full bg-violet-500/10 flex items-center justify-center">
-                    <span className="text-[8px] font-bold text-violet-500">3</span>
+                    <span className="text-[10px] font-bold text-violet-500">3</span>
                   </div>
                   <p className="text-xs font-bold">Full FQDN</p>
                 </div>

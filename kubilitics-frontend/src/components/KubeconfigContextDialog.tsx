@@ -72,7 +72,7 @@ export function KubeconfigContextDialog({
 
     return (
         <Dialog open={open} onOpenChange={(val) => !val && onCancel()}>
-            <DialogContent className="sm:max-w-[600px] border-slate-800 bg-[#020617] text-slate-50">
+            <DialogContent className="sm:max-w-[600px] border-slate-800 bg-slate-950 text-slate-50">
                 <DialogHeader>
                     <div className="flex items-center gap-3 mb-2">
                         <div className="p-2 rounded-lg bg-blue-500/10">
@@ -124,7 +124,7 @@ export function KubeconfigContextDialog({
                                                 {ctx.name}
                                             </span>
                                             {ctx.namespace && (
-                                                <Badge variant="outline" className="text-[10px] h-5 border-slate-700 text-slate-400">
+                                                <Badge variant="outline" className="text-xs h-5 border-slate-700 text-slate-400">
                                                     {ctx.namespace}
                                                 </Badge>
                                             )}

@@ -172,7 +172,7 @@ function WelcomeStep({
  initial={{ opacity: 0, y: 10 }}
  animate={{ opacity: 1, y: 0 }}
  transition={{ delay: 0.2, duration: 0.4 }}
- className="text-5xl font-bold tracking-tighter text-foreground mb-4"
+ className="text-2xl font-bold tracking-tighter text-foreground mb-4"
  >
  Kubilitics
  </motion.h1>
@@ -239,7 +239,7 @@ function FeaturesStep({
  transition={{ duration: 0.4, ease }}
  >
  <div className="text-center mb-10">
- <h2 className="text-3xl font-bold tracking-tight text-foreground mb-3">
+ <h2 className="text-xl font-bold tracking-tight text-foreground mb-3">
  What makes Kubilitics different
  </h2>
  <p className="text-muted-foreground font-medium">

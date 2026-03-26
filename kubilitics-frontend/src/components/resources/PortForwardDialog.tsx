@@ -231,7 +231,7 @@ export function PortForwardDialog({
             <CardContent className="p-3">
               <div className="flex items-center gap-2 text-sm">
                 <Server className="h-4 w-4 text-muted-foreground" />
-                <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                   {isServiceMode ? 'Service' : 'Pod'}
                 </span>
                 <span className="font-mono">{podName}</span>
@@ -339,11 +339,11 @@ export function PortForwardDialog({
 
           {/* Active Status */}
           {isForwarding && (
-            <Card className="border-[hsl(var(--success))] bg-[hsl(var(--success)/0.1)]">
+            <Card className="border-success bg-success/10">
               <CardContent className="p-3">
                 <div className="flex items-center gap-2">
-                  <span className="inline-block w-2 h-2 bg-[hsl(var(--success))] rounded-full animate-pulse" />
-                  <span className="text-sm font-medium text-[hsl(var(--success))]">
+                  <span className="inline-block w-2 h-2 bg-success rounded-full animate-pulse" />
+                  <span className="text-sm font-medium text-success">
                     Port forwarding active
                   </span>
                 </div>
@@ -387,7 +387,7 @@ export function PortForwardDialog({
                 )}
               </Button>
             </div>
-            <div className="p-3 rounded-lg bg-[hsl(221_39%_11%)] font-mono text-sm text-[hsl(142_76%_73%)] overflow-x-auto">
+            <div className="p-3 rounded-lg bg-slate-900 font-mono text-sm text-emerald-400 overflow-x-auto">
               {kubectlCommand}
             </div>
           </div>

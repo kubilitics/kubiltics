@@ -131,7 +131,7 @@ export function MetadataSection({
                       type="button"
                       variant="outline"
                       size="sm"
-                      className="gap-1.5 font-mono text-xs"
+                      className="gap-2 font-mono text-xs"
                       onClick={() => navigate(path)}
                     >
                       <GitBranch className="h-3.5 w-3.5" />

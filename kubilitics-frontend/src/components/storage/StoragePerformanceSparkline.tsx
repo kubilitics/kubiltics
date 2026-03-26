@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import { AreaChart, Area, ResponsiveContainer } from 'recharts';
+import { K8S_BLUE } from '@/lib/colors';
 
 export function StoragePerformanceSparkline() {
     const data = useMemo(() => {
@@ -16,9 +17,9 @@ export function StoragePerformanceSparkline() {
                     <Area
                         type="monotone"
                         dataKey="iops"
-                        stroke="#326CE5"
+                        stroke={K8S_BLUE}
                         strokeWidth={2}
-                        fill="#326CE5"
+                        fill={K8S_BLUE}
                         fillOpacity={0.05}
                     />
                 </AreaChart>
