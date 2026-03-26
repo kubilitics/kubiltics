@@ -14,7 +14,7 @@ export interface UseResourceTopologyOptions {
   namespace?: string | null;
   name?: string | null;
   enabled?: boolean;
-  /** BFS traversal depth from focus resource (1-5, default 3) */
+  /** BFS traversal depth: 1=direct, 2=extended, 3=full (default 1) */
   depth?: number;
 }
 
@@ -37,7 +37,7 @@ export function useResourceTopology({
   namespace,
   name,
   enabled = true,
-  depth = 3,
+  depth = 1,
 }: UseResourceTopologyOptions): UseResourceTopologyResult {
   const queryClient = useQueryClient();
   const clusterId = useActiveClusterId();

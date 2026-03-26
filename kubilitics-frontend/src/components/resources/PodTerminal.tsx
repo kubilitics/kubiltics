@@ -46,6 +46,8 @@ export function PodTerminal({
   const fitRef = useRef<FitAddon | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const dataDisposableRef = useRef<{ dispose: () => void } | null>(null);
+  const gotFirstOutput = useRef(false);
+  const mountedRef = useRef(true);
   const [selectedContainer, setSelectedContainer] = useState(containerName);
   const [connState, setConnState] = useState<'disconnected' | 'connecting' | 'connected'>('disconnected');
   const isConnected = connState === 'connected';
@@ -124,6 +126,7 @@ export function PodTerminal({
 
     const term = xtermRef.current;
     term.clear();
+    gotFirstOutput.current = false;
     setConnState('connecting');
 
     const ws = new WebSocket(wsUrl);
@@ -153,6 +156,10 @@ export function PodTerminal({
       try {
         const msg = JSON.parse(evt.data);
         if (msg.t === 'stdout' || msg.t === 'stderr') {
+          if (!gotFirstOutput.current) {
+            term.clear();
+            gotFirstOutput.current = true;
+          }
           setConnState('connected');
           const bytes = atob(msg.d);
           term.write(bytes);
@@ -170,15 +177,20 @@ export function PodTerminal({
 
     ws.onclose = (evt) => {
       setConnState('disconnected');
-      // 1000 = clean close, 1005 = no status (tab switch / unmount) — both are normal
-      if (evt.code !== 1000 && evt.code !== 1005) {
+      // Suppress close messages entirely when the component is still mounted
+      // (auto-reconnect via visibility change will handle it) and for normal
+      // close codes (1000 = clean, 1005 = no status, 1006 = abnormal).
+      // Only show a message if unmounted won't reconnect AND it's an unexpected code.
+      if (!mountedRef.current && evt.code !== 1000 && evt.code !== 1005 && evt.code !== 1006) {
         term.writeln(`\r\n\x1b[33mDisconnected (code: ${evt.code}). Click Reconnect.\x1b[0m`);
       }
     };
 
     ws.onerror = () => {
+      // Don't write error text to the terminal — the header badge shows
+      // "Connecting..." which is sufficient. Auto-reconnect on visibility
+      // change will retry silently.
       setConnState('disconnected');
-      term.writeln(`\r\n\x1b[31mConnection failed. Is the backend running?\x1b[0m`);
     };
 
     dataDisposableRef.current = dataDisposable;
@@ -186,6 +198,7 @@ export function PodTerminal({
 
   // Connect on mount, auto-reconnect on tab visibility
   useEffect(() => {
+    mountedRef.current = true;
     connect();
 
     const handleVisibility = () => {
@@ -196,6 +209,7 @@ export function PodTerminal({
     document.addEventListener('visibilitychange', handleVisibility);
 
     return () => {
+      mountedRef.current = false;
       document.removeEventListener('visibilitychange', handleVisibility);
       wsRef.current?.close(1000, 'unmount');
     };
@@ -249,8 +263,10 @@ export function PodTerminal({
         {connState === 'connected' ? (
           <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">Connected</span>
         ) : connState === 'connecting' ? (
-          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30 animate-pulse">Connecting</span>
-        ) : null}
+          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30 animate-pulse">Connecting...</span>
+        ) : (
+          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-500/20 text-slate-400 border border-slate-500/30">Disconnected</span>
+        )}
 
         {/* Container selector */}
         {containers.length > 1 && (

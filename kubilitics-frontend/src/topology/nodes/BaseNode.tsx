@@ -43,7 +43,7 @@ function BaseNodeInner({ data }: NodeProps<BaseNodeData>) {
 
   return (
     <div
-      className={`min-w-[230px] max-w-[320px] rounded-lg border ${borderColor} bg-white dark:bg-slate-800 shadow-sm ${A11Y.transition} hover:shadow-md ${A11Y.focusRing} overflow-hidden`}
+      className={`w-[260px] rounded-lg border ${borderColor} bg-white dark:bg-slate-800 shadow-sm ${A11Y.transition} hover:shadow-md ${A11Y.focusRing} overflow-hidden`}
       role="treeitem"
       aria-roledescription="topology node"
       aria-label={`${data.kind}: ${data.name}, status ${data.statusReason ?? data.status}${data.namespace ? `, namespace ${data.namespace}` : ""}${data.metrics?.podCount != null ? `, ${data.metrics.readyCount ?? 0} of ${data.metrics.podCount} pods ready` : ""}`}
@@ -60,7 +60,7 @@ function BaseNodeInner({ data }: NodeProps<BaseNodeData>) {
 
       {/* Body */}
       <div className="px-3 py-2.5 space-y-1.5">
-        <div className="text-sm font-semibold text-gray-900 dark:text-gray-100 break-all leading-snug">{data.name}</div>
+        <div className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate leading-snug" title={data.name}>{data.name}</div>
         {data.namespace && (
           <div className="text-[11px] text-gray-600 dark:text-gray-400 break-all">{data.namespace}</div>
         )}

@@ -4,6 +4,7 @@ import { A11Y } from "./constants/designTokens";
 export interface TopologyErrorStateProps {
   error: string;
   onRetry?: () => void;
+  onTryOverview?: () => void;
   lastSuccessTime?: string;
   partialWarnings?: string[];
 }
@@ -15,6 +16,7 @@ export interface TopologyErrorStateProps {
 export function TopologyErrorState({
   error,
   onRetry,
+  onTryOverview,
   lastSuccessTime,
   partialWarnings,
 }: TopologyErrorStateProps) {
@@ -51,15 +53,26 @@ export function TopologyErrorState({
           </div>
         )}
 
-        {onRetry && (
-          <button
-            type="button"
-            className={`rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary/90 ${A11Y.focusRing} ${A11Y.transition}`}
-            onClick={onRetry}
-          >
-            Retry
-          </button>
-        )}
+        <div className="flex items-center gap-3">
+          {onRetry && (
+            <button
+              type="button"
+              className={`rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary/90 ${A11Y.focusRing} ${A11Y.transition}`}
+              onClick={onRetry}
+            >
+              Retry
+            </button>
+          )}
+          {onTryOverview && (
+            <button
+              type="button"
+              className={`rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-5 py-2.5 text-sm font-semibold text-foreground hover:bg-gray-50 dark:hover:bg-slate-700 ${A11Y.focusRing} ${A11Y.transition}`}
+              onClick={onTryOverview}
+            >
+              Try Overview mode
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -102,6 +115,47 @@ export function TopologyPartialErrorBanner({
           Dismiss
         </button>
       )}
+    </div>
+  );
+}
+
+/**
+ * Simplified view info banner — shown when depth < 3 and totalNodes is available.
+ * "Showing overview (15 of 528 resources). Increase depth for more detail."
+ * Dismissible.
+ */
+export function TopologySimplifiedBanner({
+  visibleCount,
+  totalCount,
+  depthLabel,
+  onDismiss,
+}: {
+  visibleCount: number;
+  totalCount: number;
+  depthLabel: string;
+  onDismiss: () => void;
+}) {
+  return (
+    <div
+      className="flex items-center gap-2 border-b border-blue-200 bg-blue-50 px-4 py-2 text-xs text-blue-800 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-200"
+      role="status"
+    >
+      <svg className="h-4 w-4 shrink-0 text-blue-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" aria-hidden="true">
+        <path strokeLinecap="round" strokeLinejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" />
+      </svg>
+      <span className="flex-1">
+        Showing <strong>{depthLabel}</strong> ({visibleCount} of {totalCount} resources). Increase depth for more detail.
+      </span>
+      <button
+        type="button"
+        className={`shrink-0 rounded p-0.5 hover:bg-blue-100 dark:hover:bg-blue-900 text-blue-500 ${A11Y.focusRing}`}
+        onClick={onDismiss}
+        aria-label="Dismiss info banner"
+      >
+        <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
     </div>
   );
 }

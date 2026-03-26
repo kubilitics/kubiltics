@@ -32,10 +32,12 @@ const DialogContent = React.forwardRef<
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> & {
     /** Pass true when the consumer renders its own close button to avoid two X icons. */
     hideCloseButton?: boolean;
+    /** Extra classes for the backdrop overlay (e.g. reduced opacity). */
+    overlayClassName?: string;
   }
->(({ className, children, hideCloseButton, ...props }, ref) => (
+>(({ className, children, hideCloseButton, overlayClassName, ...props }, ref) => (
   <DialogPortal>
-    <DialogOverlay />
+    <DialogOverlay className={overlayClassName} />
     <DialogPrimitive.Content
       ref={ref}
       className={cn(

@@ -304,6 +304,34 @@ func CollectFromClient(ctx context.Context, client *k8s.Client, namespace string
 		return nil
 	})
 
+	g.Go(func() error {
+		list, err := cs.CoreV1().Events(nsOpts).List(gctx, opts)
+		if err != nil {
+			slog.Warn("topology v2 collect events", "error", err)
+			return nil
+		}
+		bundle.Events = list.Items
+		return nil
+	})
+	g.Go(func() error {
+		list, err := cs.CoreV1().ResourceQuotas(nsOpts).List(gctx, opts)
+		if err != nil {
+			slog.Warn("topology v2 collect resourcequotas", "error", err)
+			return nil
+		}
+		bundle.ResourceQuotas = list.Items
+		return nil
+	})
+	g.Go(func() error {
+		list, err := cs.CoreV1().LimitRanges(nsOpts).List(gctx, opts)
+		if err != nil {
+			slog.Warn("topology v2 collect limitranges", "error", err)
+			return nil
+		}
+		bundle.LimitRanges = list.Items
+		return nil
+	})
+
 	if err := g.Wait(); err != nil {
 		return nil, err
 	}

@@ -456,7 +456,6 @@ function AuthLogoutListener({ children }: { children: React.ReactNode }) {
 
 function AnalyticsConsentWrapper({ children }: { children: React.ReactNode }) {
   const [showConsent, setShowConsent] = useState(false);
-  const [checked, setChecked] = useState(false);
 
   useEffect(() => {
     if (!isTauri()) return;

@@ -1,7 +1,7 @@
 import { useState, useCallback } from "react";
 import type { ViewMode } from "../types/topology";
 import {
-  Globe, Layers, Shield,
+  Activity, Globe, Layers, Shield,
 } from "lucide-react";
 
 export interface ViewModeSelectProps {
@@ -56,6 +56,18 @@ const modes: {
     activeText: "text-pink-700",
     activeBorder: "border-pink-200 ring-1 ring-pink-100",
     dotColor: "bg-pink-500",
+  },
+  {
+    value: "traffic",
+    label: "Traffic",
+    icon: <Activity className="h-3.5 w-3.5" />,
+    shortcut: "4",
+    description: "Inferred service communication",
+    gradient: "from-violet-500 to-violet-600",
+    activeBg: "bg-gradient-to-r from-violet-50 to-violet-100/60",
+    activeText: "text-violet-700",
+    activeBorder: "border-violet-200 ring-1 ring-violet-100",
+    dotColor: "bg-violet-500",
   },
 ];
 

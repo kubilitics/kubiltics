@@ -87,6 +87,21 @@ func (m *NamespaceMatcher) Match(ctx context.Context, bundle *v2.ResourceBundle)
 	for i := range bundle.CronJobs {
 		addContainment("CronJob", bundle.CronJobs[i].Namespace, bundle.CronJobs[i].Name)
 	}
+	for i := range bundle.Roles {
+		addContainment("Role", bundle.Roles[i].Namespace, bundle.Roles[i].Name)
+	}
+	for i := range bundle.RoleBindings {
+		addContainment("RoleBinding", bundle.RoleBindings[i].Namespace, bundle.RoleBindings[i].Name)
+	}
+	for i := range bundle.HPAs {
+		addContainment("HorizontalPodAutoscaler", bundle.HPAs[i].Namespace, bundle.HPAs[i].Name)
+	}
+	for i := range bundle.PDBs {
+		addContainment("PodDisruptionBudget", bundle.PDBs[i].Namespace, bundle.PDBs[i].Name)
+	}
+	for i := range bundle.NetworkPolicies {
+		addContainment("NetworkPolicy", bundle.NetworkPolicies[i].Namespace, bundle.NetworkPolicies[i].Name)
+	}
 
 	return edges, nil
 }

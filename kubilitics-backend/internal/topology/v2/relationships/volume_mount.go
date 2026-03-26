@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/kubilitics/kubilitics-backend/internal/topology/v2"
+	corev1 "k8s.io/api/core/v1"
 )
 
 // VolumeMountMatcher produces Pod→ConfigMap, Pod→Secret, Pod→PVC edges from spec.volumes and container volumeMounts.
@@ -23,7 +24,9 @@ func (m *VolumeMountMatcher) Match(ctx context.Context, bundle *v2.ResourceBundl
 		pod := &bundle.Pods[i]
 		podID := v2.NodeID("Pod", pod.Namespace, pod.Name)
 		volumeMountPaths := make(map[string]string) // volume name -> mount path (from any container)
-		allContainers := pod.Spec.Containers
+		// Build a local list of all containers to check (don't modify pod.Spec)
+		allContainers := make([]corev1.Container, 0, len(pod.Spec.Containers)+len(pod.Spec.InitContainers))
+		allContainers = append(allContainers, pod.Spec.Containers...)
 		allContainers = append(allContainers, pod.Spec.InitContainers...)
 		for c := range allContainers {
 			for _, vm := range allContainers[c].VolumeMounts {

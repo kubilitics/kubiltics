@@ -257,6 +257,14 @@ jobs:
       - name: Clone kcli repo
         run: git clone --depth 1 https://github.com/kubilitics/kubilitics-kcli.git kcli
 
+      # ── Embed Windows version resources (reduces AV false positives) ─────
+      - name: Embed Windows version resources
+        if: matrix.os == 'windows-latest'
+        shell: bash
+        run: |
+          go install github.com/tc-hib/go-winres@latest
+          bash scripts/embed-winres.sh "${{ github.ref_name }}"
+
       # ── Build Go sidecar binaries IN PARALLEL ────────────────────────────
       - name: Build Go sidecars (parallel)
         shell: bash
@@ -279,11 +287,14 @@ jobs:
             chmod +x "$BINS/kubilitics-backend-"* "$BINS/kcli-"*
 
           elif [ "${{ matrix.os }}" == "windows-latest" ]; then
+            # Windows: Do NOT use -s -w (strip flags) — stripped Go binaries
+            # trigger false-positive malware detections by Windows Defender/SmartScreen.
+            # The ~30% size increase is worth avoiding AV flagging.
             cd kubilitics-backend
-            CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -ldflags="-s -w" \
+            CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build \
               -o "../$BINS/kubilitics-backend-x86_64-pc-windows-msvc.exe" ./cmd/server
             cd ../kcli
-            CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -ldflags="-s -w" \
+            CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build \
               -o "../$BINS/kcli-x86_64-pc-windows-msvc.exe" ./cmd/kcli
 
           else

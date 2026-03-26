@@ -32,7 +32,6 @@ import {
   type TopologyGraph,
   type OverlayType,
   OVERLAY_LABELS,
-  TopologyViewer,
 } from '@/topology-engine';
 import type {
   TopologyNode,

@@ -39,6 +39,10 @@ type TopologyNode struct {
 	ClusterIP  string `json:"clusterIP,omitempty"`   // Service: spec.clusterIP
 	ServiceType string `json:"serviceType,omitempty"` // Service: spec.type
 	Containers int    `json:"containers,omitempty"`   // Pod: container count
+
+	// Extra carries resource-specific operational data (conditions, ports, allocatable, etc.)
+	// so new fields can be added without changing the struct signature.
+	Extra map[string]interface{} `json:"extra,omitempty"`
 }
 
 // NodeMetrics captures the metrics section from the PRD.

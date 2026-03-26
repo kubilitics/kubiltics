@@ -2,7 +2,9 @@ import { useState, useCallback, useRef, useMemo } from "react";
 import {
   Search, Download, Maximize, ChevronDown, FileJson, FileImage, FileType,
   Filter, X, Layers, GitBranch, Check, Monitor, RefreshCw, Network,
+  Box, Route, LayoutDashboard, Settings,
 } from "lucide-react";
+import { DEPTH_LABELS, type DepthLevel } from "./hooks/useTopologyData";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -34,18 +36,27 @@ import { useActiveClusterId } from "@/hooks/useActiveClusterId";
 
 export interface TopologyToolbarProps {
   viewMode?: ViewMode;
+  depth?: DepthLevel;
+  totalUnfiltered?: number;
   namespace?: string;
   clusterName?: string;
   selectedNamespaces?: Set<string>;
   availableNamespaces?: string[];
+  selectedKinds?: Set<string>;
+  availableKinds?: string[];
+  hiddenEdgeCategories?: Set<string>;
+  availableEdgeCategories?: string[];
   topology?: TopologyResponse | null;
   searchQuery?: string;
   searchResults?: SearchResult[];
   exportRef?: React.MutableRefObject<((format: ExportFormat, filename: string) => void) | null>;
   getExportCtx?: () => ExportContext;
   onViewModeChange?: (mode: ViewMode) => void;
+  onDepthChange?: (depth: DepthLevel) => void;
   onNamespaceChange?: (ns: string) => void;
   onNamespaceSelectionChange?: (selected: Set<string>) => void;
+  onKindSelectionChange?: (selected: Set<string>) => void;
+  onEdgeCategoryToggle?: (hidden: Set<string>) => void;
   onSearchChange?: (query: string) => void;
   onSearchSelect?: (nodeId: string) => void;
   onFitView?: () => void;
@@ -58,14 +69,23 @@ const SYSTEM_NAMESPACES = new Set(["kube-system", "kube-public", "kube-node-leas
 
 export function TopologyToolbar({
   viewMode = "namespace",
+  depth = 0,
+  totalUnfiltered = 0,
   clusterName,
   selectedNamespaces = new Set(),
   availableNamespaces = [],
+  selectedKinds = new Set(),
+  availableKinds = [],
+  hiddenEdgeCategories = new Set(),
+  availableEdgeCategories = [],
   topology,
   searchQuery = "",
   searchResults = [],
   onViewModeChange,
+  onDepthChange,
   onNamespaceSelectionChange,
+  onKindSelectionChange,
+  onEdgeCategoryToggle,
   onSearchChange,
   onSearchSelect,
   onFitView,
@@ -113,11 +133,41 @@ export function TopologyToolbar({
     onNamespaceSelectionChange?.(next);
   }, [selectedNamespaces, onNamespaceSelectionChange]);
 
+  const toggleKind = useCallback((kind: string) => {
+    const next = new Set(selectedKinds);
+    if (next.has(kind)) {
+      next.delete(kind);
+    } else {
+      next.add(kind);
+    }
+    onKindSelectionChange?.(next);
+  }, [selectedKinds, onKindSelectionChange]);
+
+  const toggleEdgeCategory = useCallback((cat: string) => {
+    const next = new Set(hiddenEdgeCategories);
+    if (next.has(cat)) {
+      next.delete(cat);
+    } else {
+      next.add(cat);
+    }
+    onEdgeCategoryToggle?.(next);
+  }, [hiddenEdgeCategories, onEdgeCategoryToggle]);
+
   const nsLabel = selectedNamespaces.size === 1
     ? Array.from(selectedNamespaces)[0]
     : `${selectedNamespaces.size} namespaces`;
 
   const hasNamespaceFilter = selectedNamespaces.size > 0;
+  const hasKindFilter = selectedKinds.size > 0;
+  const kindLabel = selectedKinds.size === 0
+    ? "All kinds"
+    : selectedKinds.size === 1
+      ? Array.from(selectedKinds)[0]
+      : `${selectedKinds.size} kinds`;
+  const hasEdgeFilter = hiddenEdgeCategories.size > 0;
+  const edgeLabel = hiddenEdgeCategories.size === 0
+    ? "All edges"
+    : `${availableEdgeCategories.length - hiddenEdgeCategories.size}/${availableEdgeCategories.length} categories`;
 
   return (
     <div className="border-b border-gray-200/80 bg-gradient-to-r from-white via-gray-50/30 to-white">
@@ -126,6 +176,32 @@ export function TopologyToolbar({
 
         {/* ── View Mode Selector ── */}
         <ViewModeSelect value={viewMode} onChange={onViewModeChange} />
+
+        {/* ── Depth Selector (progressive disclosure) ── */}
+        <div className="h-7 w-px bg-gradient-to-b from-transparent via-gray-300 to-transparent" />
+        <div className="flex items-center rounded-lg border border-gray-200 bg-white shadow-sm overflow-hidden">
+          {([0, 1, 2, 3] as DepthLevel[]).map((d) => {
+            const isActive = depth === d;
+            const Icon = d === 0 ? LayoutDashboard : d === 1 ? Box : d === 2 ? Settings : Network;
+            return (
+              <button
+                key={d}
+                type="button"
+                title={`${DEPTH_LABELS[d].label} — ${DEPTH_LABELS[d].description}`}
+                className={`flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-semibold transition-all ${
+                  isActive
+                    ? "bg-gradient-to-b from-blue-500 to-blue-600 text-white shadow-inner"
+                    : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
+                } ${d > 0 ? "border-l border-gray-200" : ""}`}
+                onClick={() => onDepthChange?.(d)}
+              >
+                <Icon className="h-3 w-3" />
+                <span className="hidden lg:inline">{DEPTH_LABELS[d].label}</span>
+                <span className="lg:hidden">L{d}</span>
+              </button>
+            );
+          })}
+        </div>
 
         {/* Separator + Namespace Filter — only for namespace-aware views */}
         {viewMode === "namespace" && (<>
@@ -272,6 +348,174 @@ export function TopologyToolbar({
         )}
         </>)}
 
+        {/* ── Kind Filter ── */}
+        {availableKinds.length > 0 && (<>
+        <div className="h-7 w-px bg-gradient-to-b from-transparent via-gray-300 to-transparent" />
+        <Popover>
+          <PopoverTrigger asChild>
+            <button
+              type="button"
+              className={`group flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all duration-200 border ${
+                hasKindFilter
+                  ? "bg-gradient-to-r from-emerald-50 to-teal-50 text-emerald-700 border-emerald-200 ring-1 ring-emerald-100 shadow-sm"
+                  : "bg-white text-gray-600 border-gray-200 hover:border-gray-300 hover:bg-gray-50 shadow-sm"
+              }`}
+            >
+              <Box className={`h-3.5 w-3.5 ${hasKindFilter ? "text-emerald-500" : "text-gray-600 dark:text-gray-400 group-hover:text-gray-500"}`} />
+              <span className="max-w-[140px] truncate">{kindLabel}</span>
+              <ChevronDown className={`h-3 w-3 transition-colors ${hasKindFilter ? "text-emerald-400" : "text-gray-600 dark:text-gray-400"}`} />
+              {hasKindFilter && (
+                <span className="flex h-4 min-w-[16px] items-center justify-center rounded-full bg-emerald-500 px-1 text-[10px] text-white font-bold shadow-sm">
+                  {selectedKinds.size}
+                </span>
+              )}
+            </button>
+          </PopoverTrigger>
+          <PopoverContent align="start" className="w-72 p-0 rounded-xl shadow-xl border-gray-200" sideOffset={6}>
+            <div className="p-3 border-b border-gray-100 bg-gradient-to-r from-gray-50 to-white rounded-t-xl">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center justify-center h-6 w-6 rounded-md bg-emerald-100">
+                    <Box className="h-3.5 w-3.5 text-emerald-600" />
+                  </div>
+                  <p className="text-xs font-bold text-gray-700">Kind Filter</p>
+                </div>
+                {hasKindFilter && (
+                  <button
+                    type="button"
+                    className="text-[10px] text-emerald-600 font-medium hover:underline"
+                    onClick={() => onKindSelectionChange?.(new Set())}
+                  >
+                    Show all
+                  </button>
+                )}
+              </div>
+              <div className="flex gap-1.5">
+                <button
+                  type="button"
+                  className={`flex-1 h-7 rounded-md text-[11px] font-semibold transition-all border ${
+                    !hasKindFilter
+                      ? "bg-emerald-500 text-white border-emerald-500 shadow-sm"
+                      : "bg-white text-gray-600 border-gray-200 hover:border-emerald-200 hover:text-emerald-600"
+                  }`}
+                  onClick={() => onKindSelectionChange?.(new Set())}
+                >
+                  All
+                </button>
+                <button
+                  type="button"
+                  className="flex-1 h-7 rounded-md text-[11px] font-semibold transition-all border bg-white text-gray-600 border-gray-200 hover:border-emerald-200 hover:text-emerald-600"
+                  onClick={() => onKindSelectionChange?.(new Set(["Pod", "Deployment", "ReplicaSet", "Service"]))}
+                >
+                  Workloads
+                </button>
+                <button
+                  type="button"
+                  className="flex-1 h-7 rounded-md text-[11px] font-semibold transition-all border bg-white text-gray-600 border-gray-200 hover:border-emerald-200 hover:text-emerald-600"
+                  onClick={() => onKindSelectionChange?.(new Set(["ConfigMap", "Secret"]))}
+                >
+                  Config
+                </button>
+              </div>
+            </div>
+            <ScrollArea className="h-[280px]">
+              <div className="p-2 space-y-0.5">
+                {availableKinds.map((kind) => {
+                  const isChecked = !hasKindFilter || selectedKinds.has(kind);
+                  return (
+                    <div key={kind} role="button" tabIndex={0} onClick={() => {
+                      if (!hasKindFilter) {
+                        // Switching from "all visible" to "only this kind unchecked" — select all except this one
+                        const allExcept = new Set(availableKinds.filter((k) => k !== kind));
+                        onKindSelectionChange?.(allExcept);
+                      } else {
+                        toggleKind(kind);
+                      }
+                    }} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); if (!hasKindFilter) { const allExcept = new Set(availableKinds.filter((k) => k !== kind)); onKindSelectionChange?.(allExcept); } else { toggleKind(kind); } } }} className={`flex items-center gap-2.5 cursor-pointer rounded-lg px-2.5 py-2 transition-all ${
+                      isChecked
+                        ? "bg-emerald-50/80 border border-emerald-100"
+                        : "hover:bg-gray-50 border border-transparent"
+                    }`}>
+                      <div className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-sm border transition-colors ${isChecked ? "border-emerald-600 bg-emerald-600 text-white" : "border-gray-300 bg-white"}`}>
+                        {isChecked && <Check className="h-3 w-3" />}
+                      </div>
+                      <K8sIcon kind={kind} size={16} className="shrink-0" />
+                      <span className={`text-sm font-medium ${isChecked ? "text-emerald-700" : "text-gray-700"}`}>{kind}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </ScrollArea>
+          </PopoverContent>
+        </Popover>
+        </>)}
+
+        {/* ── Edge Type Filter ── */}
+        {availableEdgeCategories.length > 0 && (<>
+        <div className="h-7 w-px bg-gradient-to-b from-transparent via-gray-300 to-transparent" />
+        <Popover>
+          <PopoverTrigger asChild>
+            <button
+              type="button"
+              className={`group flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all duration-200 border ${
+                hasEdgeFilter
+                  ? "bg-gradient-to-r from-purple-50 to-violet-50 text-purple-700 border-purple-200 ring-1 ring-purple-100 shadow-sm"
+                  : "bg-white text-gray-600 border-gray-200 hover:border-gray-300 hover:bg-gray-50 shadow-sm"
+              }`}
+            >
+              <Route className={`h-3.5 w-3.5 ${hasEdgeFilter ? "text-purple-500" : "text-gray-600 dark:text-gray-400 group-hover:text-gray-500"}`} />
+              <span className="max-w-[140px] truncate">{edgeLabel}</span>
+              <ChevronDown className={`h-3 w-3 transition-colors ${hasEdgeFilter ? "text-purple-400" : "text-gray-600 dark:text-gray-400"}`} />
+              {hasEdgeFilter && (
+                <span className="flex h-4 min-w-[16px] items-center justify-center rounded-full bg-purple-500 px-1 text-[10px] text-white font-bold shadow-sm">
+                  {hiddenEdgeCategories.size}
+                </span>
+              )}
+            </button>
+          </PopoverTrigger>
+          <PopoverContent align="start" className="w-72 p-0 rounded-xl shadow-xl border-gray-200" sideOffset={6}>
+            <div className="p-3 border-b border-gray-100 bg-gradient-to-r from-gray-50 to-white rounded-t-xl">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center justify-center h-6 w-6 rounded-md bg-purple-100">
+                    <Route className="h-3.5 w-3.5 text-purple-600" />
+                  </div>
+                  <p className="text-xs font-bold text-gray-700">Edge Relationships</p>
+                </div>
+                {hasEdgeFilter && (
+                  <button
+                    type="button"
+                    className="text-[10px] text-purple-600 font-medium hover:underline"
+                    onClick={() => onEdgeCategoryToggle?.(new Set())}
+                  >
+                    Show all
+                  </button>
+                )}
+              </div>
+            </div>
+            <ScrollArea className="h-[240px]">
+              <div className="p-2 space-y-0.5">
+                {availableEdgeCategories.map((cat) => {
+                  const isVisible = !hiddenEdgeCategories.has(cat);
+                  return (
+                    <div key={cat} role="button" tabIndex={0} onClick={() => toggleEdgeCategory(cat)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleEdgeCategory(cat); } }} className={`flex items-center gap-2.5 cursor-pointer rounded-lg px-2.5 py-2 transition-all ${
+                      isVisible
+                        ? "bg-purple-50/80 border border-purple-100"
+                        : "hover:bg-gray-50 border border-transparent"
+                    }`}>
+                      <div className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-sm border transition-colors ${isVisible ? "border-purple-600 bg-purple-600 text-white" : "border-gray-300 bg-white"}`}>
+                        {isVisible && <Check className="h-3 w-3" />}
+                      </div>
+                      <span className={`text-sm font-medium capitalize ${isVisible ? "text-purple-700" : "text-gray-500"}`}>{cat}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </ScrollArea>
+          </PopoverContent>
+        </Popover>
+        </>)}
+
         {/* Separator */}
         <div className="h-7 w-px bg-gradient-to-b from-transparent via-gray-300 to-transparent" />
 
@@ -356,6 +600,9 @@ export function TopologyToolbar({
             <div className="flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-blue-50 to-cyan-50 px-3 py-1.5 border border-blue-100 shadow-sm">
               <Layers className="h-3 w-3 text-blue-500" />
               <span className="text-xs font-bold text-blue-700 tabular-nums">{topology.metadata.resourceCount}</span>
+              {depth < 3 && totalUnfiltered > 0 ? (
+                <span className="text-[10px] text-blue-500 font-medium">of {totalUnfiltered}</span>
+              ) : null}
               <span className="text-[10px] text-blue-500 font-medium">resources</span>
             </div>
             <div className="flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-purple-50 to-violet-50 px-3 py-1.5 border border-purple-100 shadow-sm">

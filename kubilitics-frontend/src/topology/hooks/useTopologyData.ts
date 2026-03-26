@@ -1,7 +1,13 @@
 /**
  * useTopologyData — Bridges the existing useClusterTopology hook to v2 TopologyResponse format.
  *
- * Provides three layers of filtering:
+ * Provides progressive disclosure via depth levels:
+ * - L0 (Overview): Namespaces, Nodes, top-level workloads, Services, Ingress (~10-20 nodes)
+ * - L1 (Workloads): + ReplicaSets, Endpoints, PVCs, ServiceAccounts
+ * - L2 (Configuration): + ConfigMaps, Secrets, PVs, RBAC resources
+ * - L3 (Full Graph): Everything — no filtering
+ *
+ * Plus existing filtering layers:
  * 1. View mode filtering (Cluster/Namespace/Workload/Resource/RBAC)
  * 2. Namespace selection (filter to specific namespaces)
  * 3. Client-side node cap (MAX_VISIBLE_NODES) to prevent UI freeze
@@ -14,17 +20,30 @@ import { useClusterTopology } from "@/hooks/useClusterTopology";
 import { transformGraph } from "../utils/transformGraph";
 import type { TopologyResponse, TopologyNode, TopologyEdge, ViewMode } from "../types/topology";
 
+/** Depth levels for progressive disclosure */
+export type DepthLevel = 0 | 1 | 2 | 3;
+
+export const DEPTH_LABELS: Record<DepthLevel, { label: string; description: string }> = {
+  0: { label: "Overview", description: "Top-level resources" },
+  1: { label: "Workloads", description: "Workload internals" },
+  2: { label: "Configuration", description: "Config & RBAC" },
+  3: { label: "Full Graph", description: "All resources" },
+};
+
 /**
  * Maximum nodes rendered on the canvas before truncation kicks in.
- * Beyond this, React Flow + ELK layout cause noticeable jank / UI freeze.
- * The limit is generous — ELK hybrid layout handles ~250 nodes smoothly.
+ * Backend pod aggregation (>3 pods collapse to 1 node) keeps real node counts
+ * well below this limit. ELK hybrid layout handles ~1000 nodes smoothly.
  */
-export const MAX_VISIBLE_NODES = 250;
+export const MAX_VISIBLE_NODES = 1000;
 
 export interface UseTopologyDataParams {
   clusterId: string | null;
   viewMode?: ViewMode;
+  depth?: DepthLevel;
   selectedNamespaces?: Set<string>;
+  selectedKinds?: Set<string>;
+  hiddenEdgeCategories?: Set<string>;
   resource?: string;
   enabled?: boolean;
 }
@@ -43,6 +62,10 @@ const VIEW_MODE_KINDS: Record<ViewMode, string[] | null> = {
     "RoleBinding", "ClusterRoleBinding",
     "Namespace",
   ],
+  traffic: [
+    "Service", "Ingress", "Pod", "Endpoints", "EndpointSlice",
+    "Node", "Namespace",
+  ],
   resource: null, // Resource view (per-resource detail tab) — show all via BFS
 };
 
@@ -51,6 +74,7 @@ const VIEW_MODE_CATEGORIES: Record<ViewMode, string[] | null> = {
   namespace: null,
   cluster: ["scheduling", "storage"],
   rbac: ["security"],
+  traffic: ["networking"],
   resource: null,
 };
 
@@ -134,12 +158,16 @@ function filterByNamespaces(
 export function useTopologyData({
   clusterId,
   viewMode = "namespace",
+  depth = 0,
   selectedNamespaces = new Set(),
+  selectedKinds = new Set(),
+  hiddenEdgeCategories = new Set(),
   resource = "",
   enabled = true,
 }: UseTopologyDataParams) {
   const { graph, isLoading, isFetching, error, refetch } = useClusterTopology({
     clusterId,
+    depth,
     enabled: enabled && !!clusterId,
   });
 
@@ -155,17 +183,42 @@ export function useTopologyData({
 
   // View modes where namespace filtering makes sense.
   // Cluster and RBAC show cluster-scoped resources (no namespace) so filtering would exclude everything.
-  const NS_FILTERABLE_VIEWS = new Set<ViewMode>(["namespace"]);
+  const NS_FILTERABLE_VIEWS = new Set<ViewMode>(["namespace", "traffic"]);
 
-  // Stable key for the namespace Set so React's useMemo dependency comparison
-  // always detects changes. Set objects are compared by reference, which can
-  // cause missed updates when React batches renders or in concurrent mode.
+  // Stable keys for Set dependencies so React's useMemo comparison
+  // always detects changes. Set objects are compared by reference.
   const namespacesKey = Array.from(selectedNamespaces).sort().join(",");
+  const kindsKey = Array.from(selectedKinds).sort().join(",");
+  const edgeCategoriesKey = Array.from(hiddenEdgeCategories).sort().join(",");
 
-  // Transform to v2 format and apply both filters
-  const result = useMemo<{ response: TopologyResponse; wasTruncated: boolean; totalBeforeCap: number } | null>(() => {
+  // Extract ALL unique kinds from unfiltered graph (for the kind picker)
+  const allKinds = useMemo<string[]>(() => {
+    if (!graph?.nodes) return [];
+    const kindSet = new Set<string>();
+    for (const n of graph.nodes) {
+      if (n.kind) kindSet.add(n.kind);
+    }
+    return Array.from(kindSet).sort();
+  }, [graph]);
+
+  // Extract ALL unique edge relationship categories (for the edge filter)
+  const allEdgeCategories = useMemo<string[]>(() => {
+    if (!graph?.edges) return [];
+    const catSet = new Set<string>();
+    for (const e of graph.edges) {
+      if (e.relationshipCategory) catSet.add(e.relationshipCategory);
+    }
+    return Array.from(catSet).sort();
+  }, [graph]);
+
+  // Transform to v2 format and apply all filters
+  const result = useMemo<{ response: TopologyResponse; wasTruncated: boolean; totalBeforeCap: number; totalUnfiltered: number } | null>(() => {
     if (!graph) return null;
     const response = transformGraph(graph, clusterId ?? undefined);
+    const totalUnfiltered = response.nodes.length;
+
+    // Layer 0: Progressive disclosure — depth filtering is now handled by the backend.
+    // The backend returns only the nodes/edges for the requested depth level.
 
     // Layer 1: View mode filtering
     const afterViewMode = filterByViewMode(response.nodes, response.edges, viewMode);
@@ -178,10 +231,29 @@ export function useTopologyData({
       effectiveNs
     );
 
-    // Layer 3: Client-side node cap — prevent UI freeze from too many nodes.
-    // Truncate AFTER namespace filtering so the cap applies to the visible set.
-    let finalNodes = afterNamespace.nodes;
-    let finalEdges = afterNamespace.edges;
+    // Layer 3: Kind filtering — when selectedKinds is non-empty, only show those kinds
+    let afterKindNodes = afterNamespace.nodes;
+    let afterKindEdges = afterNamespace.edges;
+    if (selectedKinds.size > 0) {
+      afterKindNodes = afterKindNodes.filter((n) => selectedKinds.has(n.kind));
+      const keptKindIds = new Set(afterKindNodes.map((n) => n.id));
+      afterKindEdges = afterKindEdges.filter(
+        (e) => keptKindIds.has(e.source) && keptKindIds.has(e.target)
+      );
+    }
+
+    // Layer 4: Edge category filtering — hide edges of hidden categories (nodes stay)
+    let afterEdgeFilter = afterKindEdges;
+    if (hiddenEdgeCategories.size > 0) {
+      afterEdgeFilter = afterKindEdges.filter(
+        (e) => !hiddenEdgeCategories.has(e.relationshipCategory)
+      );
+    }
+
+    // Layer 5: Client-side node cap — prevent UI freeze from too many nodes.
+    // Truncate AFTER all filtering so the cap applies to the visible set.
+    let finalNodes = afterKindNodes;
+    let finalEdges = afterEdgeFilter;
     let wasTruncated = false;
     const totalBeforeCap = finalNodes.length;
 
@@ -207,17 +279,20 @@ export function useTopologyData({
     }
     if (resource) response.metadata.focusResource = resource;
 
-    return { response, wasTruncated, totalBeforeCap };
+    return { response, wasTruncated, totalBeforeCap, totalUnfiltered };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [graph, viewMode, namespacesKey, resource]);
+  }, [graph, viewMode, depth, namespacesKey, kindsKey, edgeCategoriesKey, resource]);
 
   const topology = result?.response ?? null;
   const truncated = result?.wasTruncated ?? false;
   const truncatedTotal = result?.totalBeforeCap ?? 0;
+  const totalUnfiltered = result?.totalUnfiltered ?? 0;
 
   return {
     topology,
     allNamespaces,
+    allKinds,
+    allEdgeCategories,
     isLoading,
     isFetching,
     isError: !!error,
@@ -227,5 +302,7 @@ export function useTopologyData({
     truncated,
     /** total node count before truncation (for the warning banner) */
     truncatedTotal,
+    /** total node count before any filtering (depth, view mode, etc.) — for "X of Y" display */
+    totalUnfiltered,
   };
 }

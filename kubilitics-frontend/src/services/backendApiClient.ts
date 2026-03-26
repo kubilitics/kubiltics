@@ -676,17 +676,18 @@ export async function deleteCluster(
 
 /**
  * GET /api/v1/clusters/{clusterId}/topology — get topology graph.
- * Optional query: namespace, resource_types.
+ * Optional query: namespace, resource_types, depth.
  */
 export async function getTopology(
   baseUrl: string,
   clusterId: string,
-  params?: { namespace?: string; resource_types?: string[] }
+  params?: { namespace?: string; resource_types?: string[]; depth?: number }
 ): Promise<TopologyGraph> {
   const search = new URLSearchParams();
   if (params?.namespace) search.set('namespace', params.namespace);
   if (params?.resource_types?.length)
     params.resource_types.forEach((t) => search.append('resource_types', t));
+  if (params?.depth !== undefined && params.depth >= 0) search.set('depth', String(params.depth));
   const query = search.toString();
   const path = `clusters/${encodeURIComponent(clusterId)}/topology${query ? `?${query}` : ''}`;
 

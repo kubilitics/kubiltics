@@ -4,6 +4,7 @@ export type ViewMode =
   | "namespace"
   | "cluster"
   | "rbac"
+  | "traffic"
   | "resource";  // Used by ResourceTopologyV2View (per-resource detail tab), not shown in main topology tab bar
 
 export interface TopologyMetadata {

@@ -39,7 +39,7 @@ function ExpandedNodeInner({ data }: NodeProps<ExpandedNodeData>) {
 
   return (
     <div
-      className={`min-w-[300px] max-w-[420px] rounded-lg border ${borderColor} bg-white dark:bg-slate-800 shadow-sm ${A11Y.transition} hover:shadow-md ${A11Y.focusRing} overflow-hidden`}
+      className={`w-[380px] rounded-lg border ${borderColor} bg-white dark:bg-slate-800 shadow-sm ${A11Y.transition} hover:shadow-md ${A11Y.focusRing} overflow-hidden`}
       role="treeitem"
       aria-roledescription="topology node"
       aria-label={`${data.kind}: ${data.name}, status ${data.statusReason ?? data.status}${data.namespace ? `, namespace ${data.namespace}` : ""}${metrics?.podCount != null ? `, ${metrics.readyCount ?? 0} of ${metrics.podCount} pods ready` : ""}`}

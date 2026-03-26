@@ -34,25 +34,51 @@ func (m *RBACMatcher) Match(ctx context.Context, bundle *v2.ResourceBundle) ([]v
 			Healthy:              true,
 		})
 		for _, subj := range rb.Subjects {
-			if subj.Kind != rbacv1.ServiceAccountKind {
-				continue
+			switch subj.Kind {
+			case rbacv1.ServiceAccountKind:
+				ns := subj.Namespace
+				if ns == "" {
+					ns = rb.Namespace
+				}
+				saID := v2.NodeID("ServiceAccount", ns, subj.Name)
+				edges = append(edges, v2.TopologyEdge{
+					ID:                   v2.EdgeID(saID, rbID, "bound by"),
+					Source:               saID,
+					Target:               rbID,
+					RelationshipType:     "role_binding",
+					RelationshipCategory: "rbac",
+					Label:                "bound by",
+					Detail:               "subjects",
+					Style:                "solid",
+					Healthy:              true,
+				})
+			case rbacv1.UserKind:
+				userID := v2.NodeID("User", "", subj.Name)
+				edges = append(edges, v2.TopologyEdge{
+					ID:                   v2.EdgeID(userID, rbID, "bound by"),
+					Source:               userID,
+					Target:               rbID,
+					RelationshipType:     "role_binding",
+					RelationshipCategory: "rbac",
+					Label:                "bound by",
+					Detail:               "subjects",
+					Style:                "solid",
+					Healthy:              true,
+				})
+			case rbacv1.GroupKind:
+				groupID := v2.NodeID("Group", "", subj.Name)
+				edges = append(edges, v2.TopologyEdge{
+					ID:                   v2.EdgeID(groupID, rbID, "bound by"),
+					Source:               groupID,
+					Target:               rbID,
+					RelationshipType:     "role_binding",
+					RelationshipCategory: "rbac",
+					Label:                "bound by",
+					Detail:               "subjects",
+					Style:                "solid",
+					Healthy:              true,
+				})
 			}
-			ns := subj.Namespace
-			if ns == "" {
-				ns = rb.Namespace
-			}
-			saID := v2.NodeID("ServiceAccount", ns, subj.Name)
-			edges = append(edges, v2.TopologyEdge{
-				ID:                   v2.EdgeID(saID, rbID, "bound by"),
-				Source:               saID,
-				Target:               rbID,
-				RelationshipType:     "role_binding",
-				RelationshipCategory: "rbac",
-				Label:                "bound by",
-				Detail:               "subjects",
-				Style:                "solid",
-				Healthy:              true,
-			})
 		}
 	}
 	for i := range bundle.ClusterRoleBindings {
@@ -71,25 +97,51 @@ func (m *RBACMatcher) Match(ctx context.Context, bundle *v2.ResourceBundle) ([]v
 			Healthy:              true,
 		})
 		for _, subj := range crb.Subjects {
-			if subj.Kind != rbacv1.ServiceAccountKind {
-				continue
+			switch subj.Kind {
+			case rbacv1.ServiceAccountKind:
+				ns := subj.Namespace
+				if ns == "" {
+					ns = "default"
+				}
+				saID := v2.NodeID("ServiceAccount", ns, subj.Name)
+				edges = append(edges, v2.TopologyEdge{
+					ID:                   v2.EdgeID(saID, crbID, "bound by"),
+					Source:               saID,
+					Target:               crbID,
+					RelationshipType:     "cluster_role_binding",
+					RelationshipCategory: "rbac",
+					Label:                "bound by",
+					Detail:               "subjects",
+					Style:                "solid",
+					Healthy:              true,
+				})
+			case rbacv1.UserKind:
+				userID := v2.NodeID("User", "", subj.Name)
+				edges = append(edges, v2.TopologyEdge{
+					ID:                   v2.EdgeID(userID, crbID, "bound by"),
+					Source:               userID,
+					Target:               crbID,
+					RelationshipType:     "cluster_role_binding",
+					RelationshipCategory: "rbac",
+					Label:                "bound by",
+					Detail:               "subjects",
+					Style:                "solid",
+					Healthy:              true,
+				})
+			case rbacv1.GroupKind:
+				groupID := v2.NodeID("Group", "", subj.Name)
+				edges = append(edges, v2.TopologyEdge{
+					ID:                   v2.EdgeID(groupID, crbID, "bound by"),
+					Source:               groupID,
+					Target:               crbID,
+					RelationshipType:     "cluster_role_binding",
+					RelationshipCategory: "rbac",
+					Label:                "bound by",
+					Detail:               "subjects",
+					Style:                "solid",
+					Healthy:              true,
+				})
 			}
-			ns := subj.Namespace
-			if ns == "" {
-				ns = "default"
-			}
-			saID := v2.NodeID("ServiceAccount", ns, subj.Name)
-			edges = append(edges, v2.TopologyEdge{
-				ID:                   v2.EdgeID(saID, crbID, "bound by"),
-				Source:               saID,
-				Target:               crbID,
-				RelationshipType:     "cluster_role_binding",
-				RelationshipCategory: "rbac",
-				Label:                "bound by",
-				Detail:               "subjects",
-				Style:                "solid",
-				Healthy:              true,
-			})
 		}
 	}
 	return edges, nil

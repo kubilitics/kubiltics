@@ -1,0 +1,278 @@
+##############################################################################
+# Topology Test Resources — Storage + Networking scenarios
+# Namespace: ecommerce-prod
+#
+# Storage:
+#   Group A: 1 Pod → 1 PVC → PV (gp2 dynamic)
+#   Group B: 2 Pods → 1 shared PVC (gp2, ReadWriteOnce, co-located)
+#   Group C: StatefulSet (3 replicas) → 3 PVCs → 3 PVs (gp2 dynamic)
+#
+# Networking:
+#   NodePort:  topo-test-nodeport-a (port 30080)
+#   NodePort:  topo-test-nodeport-b (port 30081)
+#   LoadBalancer: topo-test-lb (delete after testing!)
+#
+# Cleanup: kubectl delete -f scripts/topology-test-resources.yaml
+##############################################################################
+
+---
+# ═══════════════════════════════════════════════════════════════════════════
+# GROUP A: 1 Pod → 1 PVC → PV (simple 1:1 storage chain)
+# ═══════════════════════════════════════════════════════════════════════════
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: topo-test-data-single
+  namespace: ecommerce-prod
+  labels:
+    app: topo-test
+    group: group-a
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: gp2
+  resources:
+    requests:
+      storage: 1Gi
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: topo-test-single-pvc
+  namespace: ecommerce-prod
+  labels:
+    app: topo-test
+    group: group-a
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: topo-test-single
+  template:
+    metadata:
+      labels:
+        app: topo-test-single
+        group: group-a
+    spec:
+      containers:
+        - name: app
+          image: nginx:1.27-alpine
+          ports:
+            - containerPort: 80
+          volumeMounts:
+            - name: data
+              mountPath: /data
+          resources:
+            requests:
+              cpu: 10m
+              memory: 16Mi
+            limits:
+              cpu: 50m
+              memory: 32Mi
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: topo-test-data-single
+
+---
+# ═══════════════════════════════════════════════════════════════════════════
+# GROUP B: 2 Pods → 1 shared PVC (co-located on same node via podAffinity)
+# ═══════════════════════════════════════════════════════════════════════════
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: topo-test-data-shared
+  namespace: ecommerce-prod
+  labels:
+    app: topo-test
+    group: group-b
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: gp2
+  resources:
+    requests:
+      storage: 1Gi
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: topo-test-shared-pvc
+  namespace: ecommerce-prod
+  labels:
+    app: topo-test
+    group: group-b
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: topo-test-shared
+  template:
+    metadata:
+      labels:
+        app: topo-test-shared
+        group: group-b
+    spec:
+      # Force co-location so both pods can use the same RWO EBS volume
+      affinity:
+        podAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchLabels:
+                  app: topo-test-shared
+              topologyKey: kubernetes.io/hostname
+      containers:
+        - name: app
+          image: nginx:1.27-alpine
+          ports:
+            - containerPort: 80
+          volumeMounts:
+            - name: shared-data
+              mountPath: /shared
+          resources:
+            requests:
+              cpu: 10m
+              memory: 16Mi
+            limits:
+              cpu: 50m
+              memory: 32Mi
+      volumes:
+        - name: shared-data
+          persistentVolumeClaim:
+            claimName: topo-test-data-shared
+
+---
+# ═══════════════════════════════════════════════════════════════════════════
+# GROUP C: StatefulSet (3 replicas) → 3 PVCs → 3 PVs via volumeClaimTemplate
+# This shows the full chain: Pod → PVC → PV → StorageClass
+# ═══════════════════════════════════════════════════════════════════════════
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: topo-test-sts-headless
+  namespace: ecommerce-prod
+  labels:
+    app: topo-test
+    group: group-c
+spec:
+  clusterIP: None
+  selector:
+    app: topo-test-sts
+  ports:
+    - port: 80
+      targetPort: 80
+
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: topo-test-sts
+  namespace: ecommerce-prod
+  labels:
+    app: topo-test
+    group: group-c
+spec:
+  serviceName: topo-test-sts-headless
+  replicas: 3
+  selector:
+    matchLabels:
+      app: topo-test-sts
+  template:
+    metadata:
+      labels:
+        app: topo-test-sts
+        group: group-c
+    spec:
+      containers:
+        - name: app
+          image: nginx:1.27-alpine
+          ports:
+            - containerPort: 80
+          volumeMounts:
+            - name: sts-data
+              mountPath: /data
+          resources:
+            requests:
+              cpu: 10m
+              memory: 16Mi
+            limits:
+              cpu: 50m
+              memory: 32Mi
+  volumeClaimTemplates:
+    - metadata:
+        name: sts-data
+      spec:
+        accessModes: [ReadWriteOnce]
+        storageClassName: gp2
+        resources:
+          requests:
+            storage: 1Gi
+
+---
+# ═══════════════════════════════════════════════════════════════════════════
+# NETWORKING: 2 NodePort services + 1 LoadBalancer
+# ═══════════════════════════════════════════════════════════════════════════
+
+# NodePort A — exposes Group A (single PVC deployment)
+apiVersion: v1
+kind: Service
+metadata:
+  name: topo-test-nodeport-a
+  namespace: ecommerce-prod
+  labels:
+    app: topo-test
+    group: group-a
+spec:
+  type: NodePort
+  selector:
+    app: topo-test-single
+  ports:
+    - port: 80
+      targetPort: 80
+      nodePort: 30080
+      name: http
+
+---
+# NodePort B — exposes Group B (shared PVC deployment)
+apiVersion: v1
+kind: Service
+metadata:
+  name: topo-test-nodeport-b
+  namespace: ecommerce-prod
+  labels:
+    app: topo-test
+    group: group-b
+spec:
+  type: NodePort
+  selector:
+    app: topo-test-shared
+  ports:
+    - port: 80
+      targetPort: 80
+      nodePort: 30081
+      name: http
+
+---
+# LoadBalancer — exposes Group C StatefulSet (DELETE AFTER TESTING to save cost!)
+apiVersion: v1
+kind: Service
+metadata:
+  name: topo-test-lb
+  namespace: ecommerce-prod
+  labels:
+    app: topo-test
+    group: group-c
+  annotations:
+    # Keep internal to avoid public exposure
+    service.beta.kubernetes.io/aws-load-balancer-internal: "true"
+spec:
+  type: LoadBalancer
+  selector:
+    app: topo-test-sts
+  ports:
+    - port: 80
+      targetPort: 80
+      name: http

@@ -49,6 +49,34 @@ func (m *SchedulingMatcher) Match(ctx context.Context, bundle *v2.ResourceBundle
 				Healthy:              true,
 			})
 		}
+		if pod.Spec.PriorityClassName != "" {
+			tgt := v2.NodeID("PriorityClass", "", pod.Spec.PriorityClassName)
+			edges = append(edges, v2.TopologyEdge{
+				ID:                   v2.EdgeID(podID, tgt, "priority_class"),
+				Source:               podID,
+				Target:               tgt,
+				RelationshipType:     "priority_class",
+				RelationshipCategory: "scheduling",
+				Label:                "priority",
+				Detail:               "spec.priorityClassName",
+				Style:                "dashed",
+				Healthy:              true,
+			})
+		}
+		if pod.Spec.RuntimeClassName != nil && *pod.Spec.RuntimeClassName != "" {
+			tgt := v2.NodeID("RuntimeClass", "", *pod.Spec.RuntimeClassName)
+			edges = append(edges, v2.TopologyEdge{
+				ID:                   v2.EdgeID(podID, tgt, "runtime_class"),
+				Source:               podID,
+				Target:               tgt,
+				RelationshipType:     "runtime_class",
+				RelationshipCategory: "scheduling",
+				Label:                "runtime",
+				Detail:               "spec.runtimeClassName",
+				Style:                "dashed",
+				Healthy:              true,
+			})
+		}
 	}
 	return edges, nil
 }

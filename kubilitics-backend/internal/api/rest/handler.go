@@ -6,7 +6,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -33,6 +35,73 @@ import (
 	"golang.org/x/time/rate"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
+
+// topologyCacheEntry stores a cached topology response with an expiration time.
+type topologyCacheEntry struct {
+	data      *topologyv2.TopologyResponse
+	expiresAt time.Time
+}
+
+// topologyCache is a package-level in-memory cache for topology responses.
+// Key format: "clusterID|mode|namespace|depth"
+var topologyCache sync.Map
+
+const topologyCacheTTL = 30 * time.Second
+
+// MaxTopologyNodes is the maximum number of nodes allowed in a topology response.
+// If exceeded, depth=0 filtering is applied automatically and the response is marked as truncated.
+const MaxTopologyNodes = 500
+
+// topologyCacheKey builds a cache key from the request parameters.
+func topologyCacheKey(clusterID, mode, namespace string, depth int) string {
+	return clusterID + "|" + mode + "|" + namespace + "|" + strconv.Itoa(depth)
+}
+
+// topologyCacheGet returns a cached entry if it exists and has not expired.
+func topologyCacheGet(key string) (*topologyv2.TopologyResponse, bool) {
+	v, ok := topologyCache.Load(key)
+	if !ok {
+		return nil, false
+	}
+	entry := v.(*topologyCacheEntry)
+	if time.Now().After(entry.expiresAt) {
+		topologyCache.Delete(key)
+		return nil, false
+	}
+	return entry.data, true
+}
+
+// topologyCacheSet stores a topology response in the cache.
+func topologyCacheSet(key string, data *topologyv2.TopologyResponse) {
+	topologyCache.Store(key, &topologyCacheEntry{
+		data:      data,
+		expiresAt: time.Now().Add(topologyCacheTTL),
+	})
+}
+
+// expandableCategories defines edge categories that represent meaningful
+// resource relationships. Direct/Extended modes ONLY expand through these.
+var expandableCategories = map[string]bool{
+	"ownership":     true,
+	"networking":    true,
+	"configuration": true,
+	"storage":       true,
+	"rbac":          true,
+	"policy":        true,
+	"scaling":       true,
+	// "cluster" (Events) intentionally excluded — operational telemetry, not infrastructure
+}
+
+// hubKinds are shared infrastructure nodes that fan out to many unrelated
+// resources. They are included as leaf nodes but never expanded through.
+var hubKinds = map[string]bool{
+	"Namespace":     true,
+	"Node":          true,
+	"LimitRange":    true,
+	"ResourceQuota": true,
+	"PriorityClass": true,
+	"RuntimeClass":  true,
+}
 
 // Handler manages HTTP request handlers
 type Handler struct {
@@ -219,6 +288,8 @@ func SetupRoutes(router *mux.Router, h *Handler) {
 	// Topology routes (BE-AUTHZ-001: GET = viewer, POST export = operator)
 	router.Handle("/clusters/{clusterId}/topology", h.wrapWithRBAC(h.GetTopology, auth.RoleViewer)).Methods("GET")
 	router.Handle("/clusters/{clusterId}/topology/v2", h.wrapWithRBAC(h.GetTopologyV2, auth.RoleViewer)).Methods("GET")
+	router.Handle("/clusters/{clusterId}/topology/v2/traffic", h.wrapWithRBAC(h.GetTopologyV2Traffic, auth.RoleViewer)).Methods("GET")
+	router.Handle("/clusters/{clusterId}/topology/v2/impact/{kind}/{namespace}/{name}", h.wrapWithRBAC(h.GetTopologyV2Impact, auth.RoleViewer)).Methods("GET")
 	router.Handle("/clusters/{clusterId}/topology/resource/{kind}/{namespace}/{name}", h.wrapWithRBAC(h.GetResourceTopology, auth.RoleViewer)).Methods("GET")
 	router.Handle("/clusters/{clusterId}/topology/export", h.wrapWithRBAC(h.ExportTopology, auth.RoleOperator)).Methods("POST")
 	router.Handle("/clusters/{clusterId}/topology/export/drawio", h.wrapWithRBAC(h.GetTopologyExportDrawio, auth.RoleViewer)).Methods("GET")
@@ -774,6 +845,14 @@ func (h *Handler) GetTopology(w http.ResponseWriter, r *http.Request) {
 	namespace := r.URL.Query().Get("namespace")
 	filters := models.TopologyFilters{Namespace: namespace}
 
+	// Parse depth parameter for progressive disclosure (0-3, default 3 = all)
+	depth := 3
+	if d := r.URL.Query().Get("depth"); d != "" {
+		if parsed, err := strconv.Atoi(d); err == nil && parsed >= 0 && parsed <= 3 {
+			depth = parsed
+		}
+	}
+
 	// BE-SCALE-002: Support force_refresh query param to bypass cache
 	forceRefresh := r.URL.Query().Get("force_refresh") == "true"
 
@@ -803,10 +882,67 @@ func (h *Handler) GetTopology(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Apply progressive disclosure depth filtering (same kind-set as V2 depth_filter.go)
+	if depth < 3 && topology != nil {
+		topology.Nodes, topology.Edges = filterTopologyByDepth(topology.Nodes, topology.Edges, depth)
+	}
+
 	respondJSON(w, http.StatusOK, topology)
 }
 
-// GetTopologyV2 handles GET /clusters/{clusterId}/topology/v2. Builds topology from cluster when client is available, otherwise returns mock.
+// filterTopologyByDepth applies progressive disclosure to V1 TopologyGraph.
+// Uses the same depth-kind mapping as the V2 builder's FilterByDepth.
+func filterTopologyByDepth(nodes []models.TopologyNode, edges []models.TopologyEdge, depth int) ([]models.TopologyNode, []models.TopologyEdge) {
+	// Cumulative kind sets per depth level (same as v2/builder/depth_filter.go)
+	depthKinds := []map[string]bool{
+		// depth 0: executive view
+		{"Deployment": true, "StatefulSet": true, "DaemonSet": true, "CronJob": true, "Service": true, "Ingress": true, "Node": true, "Namespace": true},
+		// depth 1: + intermediary controllers
+		{"ReplicaSet": true, "Job": true, "Endpoints": true, "EndpointSlice": true, "HorizontalPodAutoscaler": true, "PodDisruptionBudget": true},
+		// depth 2: + workload units, configuration, storage
+		{"Pod": true, "ConfigMap": true, "Secret": true, "PersistentVolumeClaim": true, "PersistentVolume": true, "StorageClass": true, "ServiceAccount": true},
+	}
+	allowed := make(map[string]bool)
+	for level := 0; level <= depth && level < len(depthKinds); level++ {
+		for k := range depthKinds[level] {
+			allowed[k] = true
+		}
+	}
+	if depth >= 3 {
+		return nodes, edges
+	}
+
+	var filteredNodes []models.TopologyNode
+	visibleIDs := make(map[string]bool)
+	for _, n := range nodes {
+		if allowed[n.Kind] {
+			filteredNodes = append(filteredNodes, n)
+			visibleIDs[n.ID] = true
+		}
+	}
+
+	var filteredEdges []models.TopologyEdge
+	for _, e := range edges {
+		if visibleIDs[e.Source] && visibleIDs[e.Target] {
+			filteredEdges = append(filteredEdges, e)
+		}
+	}
+
+	return filteredNodes, filteredEdges
+}
+
+// GetTopologyV2 handles GET /clusters/{clusterId}/topology/v2. Builds topology from live cluster data.
+//
+// Query parameters:
+//   - mode: view mode (cluster, namespace, workload, resource, rbac). Default: namespace
+//   - namespace: filter by namespace
+//   - depth: progressive disclosure level (0-3). Default: 0
+//     0 = executive view (Deployments, StatefulSets, DaemonSets, CronJobs, Services, Ingresses, Nodes, Namespaces)
+//     1 = above + ReplicaSets, Jobs, Endpoints, EndpointSlices, HPAs, PDBs
+//     2 = above + Pods, ConfigMaps, Secrets, PVCs, PVs, StorageClasses, ServiceAccounts
+//     3 = everything (Roles, RoleBindings, ClusterRoles, NetworkPolicies, Events, etc.)
+//   - expand: node ID to expand (e.g. "Deployment/default/nginx"). Adds all direct
+//     neighbors of that node to the depth-filtered result.
 func (h *Handler) GetTopologyV2(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	clusterID := vars["clusterId"]
@@ -823,19 +959,281 @@ func (h *Handler) GetTopologyV2(w http.ResponseWriter, r *http.Request) {
 		mode = string(topologyv2.ViewModeNamespace)
 	}
 	namespace := r.URL.Query().Get("namespace")
+
+	// Parse depth parameter (default 0 = executive view)
+	depth := 0
+	if d := r.URL.Query().Get("depth"); d != "" {
+		if parsed, err := strconv.Atoi(d); err == nil && parsed >= 0 && parsed <= 3 {
+			depth = parsed
+		}
+	}
+
+	// Parse expand parameter
+	expandNodeID := r.URL.Query().Get("expand")
+
 	opts := topologyv2.Options{
 		ClusterID:   clusterID,
 		ClusterName: clusterName,
 		Mode:        topologyv2.ViewMode(mode),
 		Namespace:   namespace,
 	}
-	client, _ := h.getClientFromRequest(r.Context(), r, clusterID, h.cfg)
+	// Apply request timeout (10s default, configurable)
+	timeoutSec := 10
+	if h.cfg != nil && h.cfg.TopologyTimeoutSec > 0 {
+		timeoutSec = h.cfg.TopologyTimeoutSec
+	}
+	ctx, cancel := context.WithTimeout(r.Context(), time.Duration(timeoutSec)*time.Second)
+	defer cancel()
+
+	client, err := h.getClientFromRequest(ctx, r, clusterID, h.cfg)
+	if err != nil {
+		respondError(w, http.StatusServiceUnavailable, "Cluster not connected")
+		return
+	}
+
+	// Check cache (key includes expand so expanded views aren't confused with base views)
+	cacheKey := topologyCacheKey(clusterID, mode, namespace, depth)
+	if expandNodeID != "" {
+		cacheKey += "|expand=" + expandNodeID
+	}
+
+	var resp *topologyv2.TopologyResponse
+	if cached, ok := topologyCacheGet(cacheKey); ok {
+		resp = cached
+	} else {
+		// Cache miss — build topology
+		built, buildErr := topologyv2builder.BuildTopology(ctx, opts, client)
+		if buildErr != nil {
+			if errors.Is(buildErr, context.DeadlineExceeded) {
+				respondError(w, http.StatusServiceUnavailable, "Topology build timed out")
+				return
+			}
+			respondError(w, http.StatusInternalServerError, buildErr.Error())
+			return
+		}
+
+		// Apply progressive disclosure depth filtering
+		totalNodes := len(built.Nodes)
+
+		// Truncation guard: if too many nodes, force depth=0
+		truncated := false
+		effectiveDepth := depth
+		if totalNodes > MaxTopologyNodes && depth > 0 {
+			effectiveDepth = 0
+			truncated = true
+		}
+
+		filteredNodes, filteredEdges, expandable := topologyv2builder.FilterByDepth(built.Nodes, built.Edges, effectiveDepth)
+
+		// If still too many after depth=0, mark truncated
+		if len(filteredNodes) > MaxTopologyNodes {
+			truncated = true
+		}
+
+		// If expand parameter is set, expand that node's neighbors
+		if expandNodeID != "" {
+			filteredNodes, filteredEdges = topologyv2builder.ExpandNode(built.Nodes, built.Edges, filteredNodes, expandNodeID)
+			// Recalculate expandable after expansion
+			visibleIDs := make(map[string]bool, len(filteredNodes))
+			for _, n := range filteredNodes {
+				visibleIDs[n.ID] = true
+			}
+			expandable = nil
+			for _, e := range built.Edges {
+				if visibleIDs[e.Source] && !visibleIDs[e.Target] {
+					expandable = append(expandable, e.Source)
+				}
+				if visibleIDs[e.Target] && !visibleIDs[e.Source] {
+					expandable = append(expandable, e.Target)
+				}
+			}
+			// Deduplicate
+			seen := make(map[string]bool)
+			deduped := expandable[:0]
+			for _, id := range expandable {
+				if !seen[id] {
+					seen[id] = true
+					deduped = append(deduped, id)
+				}
+			}
+			expandable = deduped
+		}
+
+		built.Nodes = filteredNodes
+		built.Edges = filteredEdges
+		built.Metadata.Depth = effectiveDepth
+		built.Metadata.TotalNodes = totalNodes
+		built.Metadata.Expandable = expandable
+		built.Metadata.ResourceCount = len(filteredNodes)
+		built.Metadata.EdgeCount = len(filteredEdges)
+		if truncated {
+			built.Metadata.Truncated = true
+			built.Metadata.TruncateReason = fmt.Sprintf("response exceeded %d nodes; auto-filtered to depth=0", MaxTopologyNodes)
+		}
+
+		resp = built
+		topologyCacheSet(cacheKey, resp)
+	}
+
+	respondJSON(w, http.StatusOK, resp)
+}
+
+// GetTopologyV2Traffic handles GET /clusters/{clusterId}/topology/v2/traffic.
+// Returns inferred traffic edges and criticality scores for every topology node.
+func (h *Handler) GetTopologyV2Traffic(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	clusterID := vars["clusterId"]
+	if !validate.ClusterID(clusterID) {
+		respondError(w, http.StatusBadRequest, "Invalid clusterId")
+		return
+	}
+	clusterName := clusterID
+	if c, err := h.clusterService.GetCluster(r.Context(), clusterID); err == nil && c != nil && c.Name != "" {
+		clusterName = c.Name
+	}
+	namespace := r.URL.Query().Get("namespace")
+	opts := topologyv2.Options{
+		ClusterID:   clusterID,
+		ClusterName: clusterName,
+		Mode:        topologyv2.ViewModeNamespace,
+		Namespace:   namespace,
+	}
+
+	// Apply request timeout
+	timeoutSec := 10
+	if h.cfg != nil && h.cfg.TopologyTimeoutSec > 0 {
+		timeoutSec = h.cfg.TopologyTimeoutSec
+	}
+	ctx, cancel := context.WithTimeout(r.Context(), time.Duration(timeoutSec)*time.Second)
+	defer cancel()
+
+	client, err := h.getClientFromRequest(ctx, r, clusterID, h.cfg)
+	if err != nil {
+		respondError(w, http.StatusServiceUnavailable, "Cluster not connected")
+		return
+	}
+
+	// Check cache for the underlying topology
+	cacheKey := topologyCacheKey(clusterID, "traffic", namespace, 0)
+
+	var resp *topologyv2.TopologyResponse
+	if cached, ok := topologyCacheGet(cacheKey); ok {
+		resp = cached
+	} else {
+		built, buildErr := topologyv2builder.BuildTopology(ctx, opts, client)
+		if buildErr != nil {
+			if errors.Is(buildErr, context.DeadlineExceeded) {
+				respondError(w, http.StatusServiceUnavailable, "Topology build timed out")
+				return
+			}
+			respondError(w, http.StatusInternalServerError, buildErr.Error())
+			return
+		}
+
+		// Truncation guard
+		if len(built.Nodes) > MaxTopologyNodes {
+			filteredNodes, filteredEdges, _ := topologyv2builder.FilterByDepth(built.Nodes, built.Edges, 0)
+			built.Nodes = filteredNodes
+			built.Edges = filteredEdges
+			built.Metadata.Truncated = true
+			built.Metadata.TruncateReason = fmt.Sprintf("response exceeded %d nodes; auto-filtered to depth=0", MaxTopologyNodes)
+		}
+
+		resp = built
+		topologyCacheSet(cacheKey, resp)
+	}
+
+	// Collect the resource bundle for traffic inference
+	bundle, _ := topologyv2.CollectFromClient(ctx, client, namespace)
+
+	trafficEdges := topologyv2builder.InferTraffic(resp.Nodes, resp.Edges, bundle)
+	criticalityScores := topologyv2builder.ScoreNodes(resp.Nodes, resp.Edges)
+
+	result := map[string]interface{}{
+		"clusterId":   clusterID,
+		"clusterName": clusterName,
+		"namespace":   namespace,
+		"traffic":     trafficEdges,
+		"criticality": criticalityScores,
+		"nodeCount":   len(resp.Nodes),
+		"edgeCount":   len(resp.Edges),
+	}
+	if resp.Metadata.Truncated {
+		result["truncated"] = true
+		result["truncateReason"] = resp.Metadata.TruncateReason
+	}
+
+	respondJSON(w, http.StatusOK, result)
+}
+
+// GetTopologyV2Impact handles GET /clusters/{clusterId}/topology/v2/impact/{kind}/{namespace}/{name}.
+// Returns blast radius: all resources transitively impacted if the given resource fails.
+func (h *Handler) GetTopologyV2Impact(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	clusterID := vars["clusterId"]
+	kind := strings.TrimSpace(vars["kind"])
+	namespace := strings.TrimSpace(vars["namespace"])
+	name := strings.TrimSpace(vars["name"])
+	if !validate.ClusterID(clusterID) {
+		respondError(w, http.StatusBadRequest, "Invalid clusterId")
+		return
+	}
+	if kind == "" || name == "" {
+		respondError(w, http.StatusBadRequest, "kind and name are required")
+		return
+	}
+	// Cluster-scoped resources use "-" or "_" for namespace
+	if namespace == "-" || namespace == "_" {
+		namespace = ""
+	}
+	depth := 3
+	if d := r.URL.Query().Get("depth"); d != "" {
+		if v, err := strconv.Atoi(d); err == nil && v > 0 && v <= 10 {
+			depth = v
+		}
+	}
+
+	clusterName := clusterID
+	if c, err := h.clusterService.GetCluster(r.Context(), clusterID); err == nil && c != nil && c.Name != "" {
+		clusterName = c.Name
+	}
+	client, err := h.getClientFromRequest(r.Context(), r, clusterID, h.cfg)
+	if err != nil {
+		respondError(w, http.StatusServiceUnavailable, "Cluster not connected")
+		return
+	}
+	opts := topologyv2.Options{
+		ClusterID:   clusterID,
+		ClusterName: clusterName,
+		Mode:        topologyv2.ViewModeCluster,
+	}
 	resp, err := topologyv2builder.BuildTopology(r.Context(), opts, client)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	respondJSON(w, http.StatusOK, resp)
+
+	// Build resource ID in the format used by topology nodes
+	var resourceID string
+	if namespace == "" {
+		resourceID = kind + "/" + name
+	} else {
+		resourceID = kind + "/" + namespace + "/" + name
+	}
+
+	// Build reverse index and compute impact
+	ri := topologyv2builder.BuildReverseIndex(resp.Edges)
+	impacted := ri.GetImpactDetailed(resourceID, depth)
+
+	respondJSON(w, http.StatusOK, map[string]interface{}{
+		"resourceId": resourceID,
+		"kind":       kind,
+		"namespace":  namespace,
+		"name":       name,
+		"depth":      depth,
+		"impacted":   impacted,
+		"count":      len(impacted),
+	})
 }
 
 // GetResourceTopology handles GET /clusters/{clusterId}/topology/resource/{kind}/{namespace}/{name}.
@@ -876,7 +1274,264 @@ func (h *Handler) GetResourceTopology(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), time.Duration(timeoutSec)*time.Second)
 	defer cancel()
 
-	// getClientFromRequest returns client (from kubeconfig or stored cluster); use it for resource topology
+	// Use v2 topology engine (24 matchers) for resource-scoped graph
+	clusterName := clusterID
+	if c, err := h.clusterService.GetCluster(ctx, clusterID); err == nil && c != nil && c.Name != "" {
+		clusterName = c.Name
+	}
+	v2Opts := topologyv2.Options{
+		ClusterID:   clusterID,
+		ClusterName: clusterName,
+		Mode:        topologyv2.ViewModeCluster, // Use cluster mode to get ALL nodes; handler does its own BFS filtering
+	}
+	// Parse hop depth from query (default 1 = direct connections only).
+	// Accept both "depth" (frontend convention) and "hops" (backend legacy) — "depth" takes precedence.
+	hops := 1
+	if d := r.URL.Query().Get("depth"); d != "" {
+		if v, err := strconv.Atoi(d); err == nil && v >= 1 && v <= 5 {
+			hops = v
+		}
+	} else if d := r.URL.Query().Get("hops"); d != "" {
+		if v, err := strconv.Atoi(d); err == nil && v >= 1 && v <= 5 {
+			hops = v
+		}
+	}
+
+	// Cache key for the full topology build (before BFS filtering)
+	resCacheKey := topologyCacheKey(clusterID, "resource", namespace, 0)
+
+	var v2Resp *topologyv2.TopologyResponse
+	var buildErr error
+	if cached, ok := topologyCacheGet(resCacheKey); ok {
+		v2Resp = cached
+	} else {
+		v2Resp, buildErr = topologyv2builder.BuildTopology(ctx, v2Opts, client)
+		if buildErr == nil && v2Resp != nil && len(v2Resp.Nodes) > 0 {
+			topologyCacheSet(resCacheKey, v2Resp)
+		}
+	}
+
+	if buildErr == nil && v2Resp != nil && len(v2Resp.Nodes) > 0 {
+		// v2 succeeded — filter to connected subgraph around the target resource
+		var targetID string
+		if namespace == "" {
+			targetID = kind + "/" + name
+		} else {
+			targetID = kind + "/" + namespace + "/" + name
+		}
+		ri := topologyv2builder.BuildReverseIndex(v2Resp.Edges)
+
+		// ── Edge-type-aware traversal ────────────────────────────────
+		//
+		// expandableCategories and hubKinds are defined at package level.
+		// Infra categories — included as leaf context but NOT traversed through.
+		// containment = Namespace edges, scheduling = Node/Affinity/Taint edges.
+		// These fan out to every resource in the namespace or node.
+		//   Pod → Namespace ✅ (show)    Namespace → other Pods ❌ (block)
+		//   Pod → Node ✅ (show)         Node → other Pods ❌ (block)
+		isExpandableEdge := func(category string) bool {
+			return expandableCategories[category]
+		}
+
+		// Hub kinds — additional safety net. Even if a hub node is reached
+		// via an expandable edge, we never expand THROUGH it because hubs
+		// connect to too many unrelated resources.
+		nodeKind := func(id string) string {
+			if idx := strings.IndexByte(id, '/'); idx > 0 {
+				return id[:idx]
+			}
+			return id
+		}
+		isHub := func(id string) bool { return hubKinds[nodeKind(id)] }
+
+		// Resource-focused traversal:
+		// Direct   (depth=1): target + immediate meaningful connections (hubs as leaves)
+		// Extended (depth=2): expand non-hub Direct nodes via meaningful edges
+		// Full     (depth=3): unrestricted BFS — entire reachable graph
+		connected := make(map[string]bool)
+		connected[targetID] = true
+
+		if hops >= 3 {
+			// ── Full mode ────────────────────────────────────────────
+			// Unrestricted BFS — traverse ALL edge types, ALL directions.
+			// No hub filtering, no edge-type filtering.
+			frontier := []string{targetID}
+			visited := make(map[string]bool)
+			visited[targetID] = true
+			for len(frontier) > 0 {
+				var next []string
+				for _, id := range frontier {
+					for _, dep := range ri.GetDependencies(id) {
+						if !visited[dep] {
+							visited[dep] = true
+							connected[dep] = true
+							next = append(next, dep)
+						}
+					}
+					for _, dep := range ri.GetDependents(id) {
+						if !visited[dep] {
+							visited[dep] = true
+							connected[dep] = true
+							next = append(next, dep)
+						}
+					}
+				}
+				frontier = next
+			}
+		} else {
+			// ── Direct / Extended ────────────────────────────────────
+			//
+			// Hop 1: ALL direct connections of the target.
+			//   - Meaningful edges (ownership, networking, etc.): include neighbor
+			//   - Infra edges (containment, scheduling): include neighbor as LEAF
+			//   Both types are added to `connected`, but only non-hub,
+			//   expandable-edge neighbors are eligible for hop-2 expansion.
+			expandableHop1 := make([]string, 0) // nodes eligible for hop-2 expansion
+			for _, en := range ri.GetDependenciesEdgeAware(targetID) {
+				connected[en.ID] = true
+				if isExpandableEdge(en.Category) && !isHub(en.ID) {
+					expandableHop1 = append(expandableHop1, en.ID)
+				}
+			}
+			for _, en := range ri.GetDependentsEdgeAware(targetID) {
+				connected[en.ID] = true
+				if isExpandableEdge(en.Category) && !isHub(en.ID) {
+					expandableHop1 = append(expandableHop1, en.ID)
+				}
+			}
+
+			if hops >= 2 {
+				// Hop 2: expand ONLY non-hub hop-1 nodes that were reached
+				// via meaningful edges. For each, follow ONLY expandable edges.
+				// Hub neighbors discovered at hop 2 are included as leaves.
+				//
+				// This produces meaningful chains:
+				//   Deployment → RS → Pods (ownership)
+				//   Pods → Service → Endpoints → Ingress (networking)
+				//   Pods → PVC → PV (storage)
+				//   Pods → SA → RoleBinding → Role (rbac)
+				// Without cross-service leakage:
+				//   Pod → Namespace → other Pods ❌ (containment blocked)
+				//   Pod → Node → other Pods ❌ (scheduling blocked)
+				for _, id := range expandableHop1 {
+					for _, en := range ri.GetDependenciesEdgeAware(id) {
+						if isExpandableEdge(en.Category) {
+							connected[en.ID] = true
+						}
+					}
+					for _, en := range ri.GetDependentsEdgeAware(id) {
+						if isExpandableEdge(en.Category) {
+							connected[en.ID] = true
+						}
+					}
+				}
+			}
+		}
+
+		// ── Orphan node detection ────────────────────────────────────
+		// The BFS produces a connected component by definition (everything
+		// reachable from targetID). If a node has no edges within the
+		// connected set, that indicates a missing edge in a relationship
+		// matcher — log it for debugging rather than silently removing it.
+		if len(connected) > 1 {
+			hasEdge := make(map[string]bool)
+			for _, e := range v2Resp.Edges {
+				if connected[e.Source] && connected[e.Target] {
+					hasEdge[e.Source] = true
+					hasEdge[e.Target] = true
+				}
+			}
+			for id := range connected {
+				if id != targetID && !hasEdge[id] {
+					slog.Warn("topology orphan node detected — likely missing edge in relationship matcher",
+						"orphanNode", id,
+						"focusResource", targetID,
+						"hops", hops,
+						"clusterID", clusterID,
+					)
+				}
+			}
+		}
+
+		// Filter nodes and edges to connected set
+		var filteredNodes []topologyv2.TopologyNode
+		for _, n := range v2Resp.Nodes {
+			if connected[n.ID] {
+				// Mark the central node
+				if n.ID == targetID {
+					if n.Extra == nil {
+						n.Extra = make(map[string]interface{})
+					}
+					n.Extra["isCentral"] = true
+				}
+				filteredNodes = append(filteredNodes, n)
+			}
+		}
+		var filteredEdges []topologyv2.TopologyEdge
+		for _, e := range v2Resp.Edges {
+			if connected[e.Source] && connected[e.Target] {
+				filteredEdges = append(filteredEdges, e)
+			}
+		}
+
+		result := &topologyv2.TopologyResponse{
+			Metadata: v2Resp.Metadata,
+			Nodes:    filteredNodes,
+			Edges:    filteredEdges,
+			Groups:   v2Resp.Groups,
+		}
+		result.Metadata.ResourceCount = len(filteredNodes)
+		result.Metadata.EdgeCount = len(filteredEdges)
+		result.Metadata.TotalNodes = len(v2Resp.Nodes)
+		result.Metadata.FocusResource = targetID
+
+		// Resource topology safety: if BFS returned too many nodes, redo with fewer hops
+		if len(filteredNodes) > 50 && hops > 1 {
+			// Too many nodes — redo BFS with hops=1 (hubs included as leaves)
+			connected = make(map[string]bool)
+			connected[targetID] = true
+			for _, en := range ri.GetDependenciesEdgeAware(targetID) {
+				connected[en.ID] = true
+			}
+			for _, en := range ri.GetDependentsEdgeAware(targetID) {
+				connected[en.ID] = true
+			}
+			filteredNodes = nil
+			for _, n := range v2Resp.Nodes {
+				if connected[n.ID] {
+					if n.ID == targetID {
+						if n.Extra == nil {
+							n.Extra = make(map[string]interface{})
+						}
+						n.Extra["isCentral"] = true
+					}
+					filteredNodes = append(filteredNodes, n)
+				}
+			}
+			filteredEdges = nil
+			for _, e := range v2Resp.Edges {
+				if connected[e.Source] && connected[e.Target] {
+					filteredEdges = append(filteredEdges, e)
+				}
+			}
+			result.Nodes = filteredNodes
+			result.Edges = filteredEdges
+			result.Metadata.ResourceCount = len(filteredNodes)
+			result.Metadata.EdgeCount = len(filteredEdges)
+			result.Metadata.Truncated = true
+			result.Metadata.TruncateReason = "auto-reduced to 1 hop (too many nodes at requested depth)"
+		}
+
+		respondJSON(w, http.StatusOK, result)
+		return
+	}
+
+	if buildErr != nil && errors.Is(buildErr, context.DeadlineExceeded) {
+		respondError(w, http.StatusServiceUnavailable, "Topology build timed out")
+		return
+	}
+
+	// Fallback to v1 if v2 fails
 	graph, err := h.topologyService.GetResourceTopologyWithClient(ctx, client, clusterID, kind, namespace, name)
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {

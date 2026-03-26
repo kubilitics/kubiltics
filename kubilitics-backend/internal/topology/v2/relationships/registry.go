@@ -49,6 +49,18 @@ func NewDefaultRegistry() *Registry {
 	r.Register(&StorageMatcher{})
 	r.Register(&WebhookMatcher{})
 	r.Register(&NamespaceMatcher{})
+	r.Register(&AffinityMatcher{})
+	r.Register(&WorkloadRBACMatcher{})
+	r.Register(&ProjectedVolumeMatcher{})
+	r.Register(&NetworkPolicyRuleMatcher{})
+	r.Register(&StatefulSetServiceMatcher{})
+	r.Register(&StatefulSetPVCMatcher{})
+	r.Register(&ServiceAccountSecretMatcher{})
+	r.Register(&EventMatcher{})
+	r.Register(&ResourceQuotaMatcher{})
+	r.Register(&ImagePullSecretMatcher{})
+	r.Register(&TaintTolerationMatcher{})
+	r.Register(&WebhookTargetMatcher{})
 	return r
 }
 

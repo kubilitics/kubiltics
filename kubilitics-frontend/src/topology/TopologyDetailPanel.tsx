@@ -1,14 +1,16 @@
 import { useMemo, useCallback, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Copy, Check, ChevronRight, X } from "lucide-react";
+import { Copy, Check, ChevronRight, X, AlertTriangle, Zap, EyeOff, ArrowDownLeft, ArrowUpRight, Loader2 } from "lucide-react";
 import type { TopologyResponse, TopologyNode, TopologyEdge, NodeMetrics } from "./types/topology";
 import { formatBytes, formatCPU } from "./nodes/nodeUtils";
 import { K8sIcon } from "./icons/K8sIcon";
 import { getStatusBadge, getCategoryColor, getEdgeColor, A11Y } from "./constants/designTokens";
+import { useNodeTrafficImpact, type CriticalityLevel, type TrafficEdge as TrafficEdgeType, type ImpactedResource } from "./hooks/useNodeTrafficImpact";
 
 export interface TopologyDetailPanelProps {
   selectedNodeId: string | null;
   topology: TopologyResponse | null;
+  clusterId?: string;
   onNavigateToResource?: (nodeId: string) => void;
   onClose?: () => void;
 }
@@ -41,10 +43,20 @@ function kindToRouteSegment(kind: string): string {
 export function TopologyDetailPanel({
   selectedNodeId,
   topology,
+  clusterId,
   onNavigateToResource,
   onClose,
 }: TopologyDetailPanelProps) {
   const navigate = useNavigate();
+  const [showImpactList, setShowImpactList] = useState(false);
+
+  const {
+    criticality,
+    trafficEdges,
+    impactedResources,
+    blastRadius,
+    isLoading: isTrafficImpactLoading,
+  } = useNodeTrafficImpact(clusterId ?? null, selectedNodeId);
 
   const node = useMemo(
     () => selectedNodeId ? topology?.nodes?.find((n) => n.id === selectedNodeId) ?? null : null,
@@ -200,6 +212,30 @@ export function TopologyDetailPanel({
             </div>
           )}
         </Section>
+
+        {/* Criticality */}
+        {clusterId && (
+          <CriticalitySection
+            criticality={criticality}
+            isLoading={isTrafficImpactLoading}
+          />
+        )}
+
+        {/* Impact */}
+        {clusterId && (
+          <ImpactSection
+            blastRadius={blastRadius}
+            impactedResources={impactedResources}
+            showList={showImpactList}
+            onToggleList={() => setShowImpactList((v) => !v)}
+            isLoading={isTrafficImpactLoading}
+          />
+        )}
+
+        {/* Traffic */}
+        {clusterId && trafficEdges.length > 0 && (
+          <TrafficSection trafficEdges={trafficEdges} />
+        )}
 
         {/* Labels */}
         {node.labels && Object.keys(node.labels).length > 0 && (
@@ -383,6 +419,242 @@ function ResourceSpecificSection({ node }: { node: TopologyNode }) {
     default:
       return null;
   }
+}
+
+// ─── Criticality Badge ────────────────────────────────────────────────────────
+
+const CRITICALITY_COLORS: Record<CriticalityLevel, { bg: string; text: string; dot: string }> = {
+  critical: { bg: "bg-red-100 dark:bg-red-900/30", text: "text-red-700 dark:text-red-400", dot: "bg-red-500" },
+  high:     { bg: "bg-orange-100 dark:bg-orange-900/30", text: "text-orange-700 dark:text-orange-400", dot: "bg-orange-500" },
+  medium:   { bg: "bg-amber-100 dark:bg-amber-900/30", text: "text-amber-700 dark:text-amber-400", dot: "bg-amber-500" },
+  low:      { bg: "bg-emerald-100 dark:bg-emerald-900/30", text: "text-emerald-700 dark:text-emerald-400", dot: "bg-emerald-500" },
+};
+
+function CriticalityBadge({ level }: { level: CriticalityLevel }) {
+  const c = CRITICALITY_COLORS[level];
+  return (
+    <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${c.bg} ${c.text}`}>
+      <span className={`h-1.5 w-1.5 rounded-full ${c.dot}`} aria-hidden="true" />
+      {level.charAt(0).toUpperCase() + level.slice(1)}
+    </span>
+  );
+}
+
+function CriticalitySection({
+  criticality,
+  isLoading,
+}: {
+  criticality: import("./hooks/useNodeTrafficImpact").NodeCriticality | null;
+  isLoading: boolean;
+}) {
+  if (isLoading) {
+    return (
+      <Section title="Criticality">
+        <div className="flex items-center gap-2 text-muted-foreground">
+          <Loader2 className="h-3 w-3 animate-spin" />
+          <span>Analyzing...</span>
+        </div>
+      </Section>
+    );
+  }
+
+  if (!criticality) return null;
+
+  const pageRankPct = Math.min(100, Math.max(0, criticality.pageRank));
+
+  return (
+    <Section title="Criticality">
+      <div className="flex justify-between py-0.5 items-center">
+        <span className="text-muted-foreground">Level</span>
+        <CriticalityBadge level={criticality.level} />
+      </div>
+      <div className="py-0.5">
+        <div className="flex justify-between items-center mb-1">
+          <span className="text-muted-foreground">PageRank</span>
+          <span className="font-medium tabular-nums">{pageRankPct.toFixed(0)}</span>
+        </div>
+        <div className="h-1 w-full rounded-full bg-gray-200 dark:bg-slate-700" aria-hidden="true">
+          <div
+            className={`h-1 rounded-full ${CRITICALITY_COLORS[criticality.level].dot}`}
+            style={{ width: `${pageRankPct}%` }}
+          />
+        </div>
+      </div>
+      <div className="flex justify-between py-0.5">
+        <span className="text-muted-foreground">Fan-in / Fan-out</span>
+        <span className="font-medium tabular-nums">{criticality.fanIn} / {criticality.fanOut}</span>
+      </div>
+      {criticality.isSpof && (
+        <div className="mt-1 flex items-center gap-1.5 rounded-md bg-red-50 dark:bg-red-900/20 px-2 py-1.5">
+          <AlertTriangle className="h-3.5 w-3.5 text-red-500 flex-shrink-0" />
+          <span className="text-[10px] font-semibold text-red-700 dark:text-red-400">Single Point of Failure</span>
+        </div>
+      )}
+      <div className="mt-1 text-[9px] text-muted-foreground italic">Inferred from K8s metadata</div>
+    </Section>
+  );
+}
+
+// ─── Impact Section ───────────────────────────────────────────────────────────
+
+function ImpactSection({
+  blastRadius,
+  impactedResources,
+  showList,
+  onToggleList,
+  isLoading,
+}: {
+  blastRadius: number;
+  impactedResources: ImpactedResource[];
+  showList: boolean;
+  onToggleList: () => void;
+  isLoading: boolean;
+}) {
+  if (isLoading) {
+    return (
+      <Section title="Impact">
+        <div className="flex items-center gap-2 text-muted-foreground">
+          <Loader2 className="h-3 w-3 animate-spin" />
+          <span>Calculating blast radius...</span>
+        </div>
+      </Section>
+    );
+  }
+
+  // Group impacted resources by kind
+  const groupedByKind = useMemo(() => {
+    const map = new Map<string, ImpactedResource[]>();
+    for (const r of impactedResources) {
+      const list = map.get(r.kind) ?? [];
+      list.push(r);
+      map.set(r.kind, list);
+    }
+    return map;
+  }, [impactedResources]);
+
+  return (
+    <Section title="Impact">
+      <div className="flex items-center gap-2 py-0.5">
+        <Zap className="h-3.5 w-3.5 text-amber-500 flex-shrink-0" />
+        <span className="font-medium">
+          {blastRadius === 0
+            ? "No downstream impact detected"
+            : `${blastRadius} resource${blastRadius === 1 ? "" : "s"} affected if this fails`}
+        </span>
+      </div>
+      {blastRadius > 0 && (
+        <button
+          type="button"
+          className={showList
+            ? "w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+            : "w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800 hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
+          }
+          onClick={onToggleList}
+        >
+          {showList ? <><EyeOff className="h-4 w-4" /> Hide Results</> : <><Zap className="h-4 w-4" /> Simulate Failure</>}
+        </button>
+      )}
+      {showList && impactedResources.length > 0 && (
+        <div className="mt-2 space-y-2" role="list" aria-label="Impacted resources">
+          {Array.from(groupedByKind.entries()).map(([kind, resources]) => (
+            <div key={kind}>
+              <div className="flex items-center gap-1.5 mb-1">
+                <K8sIcon kind={kind} size={14} />
+                <span className="inline-flex items-center rounded px-1.5 py-0 text-[9px] font-semibold bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-gray-400">
+                  {kind}
+                </span>
+                <span className="text-[9px] text-muted-foreground">({resources.length})</span>
+              </div>
+              <div className="space-y-0.5 pl-5">
+                {resources.map((r) => (
+                  <div key={`${r.kind}/${r.namespace}/${r.name}`} className="flex items-center gap-1.5" role="listitem">
+                    <span className="truncate text-[10px]">{r.name}</span>
+                    {r.namespace && (
+                      <span className="text-[9px] text-muted-foreground">{r.namespace}</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </Section>
+  );
+}
+
+// ─── Traffic Section ──────────────────────────────────────────────────────────
+
+function ConfidenceBadge({ confidence }: { confidence: number }) {
+  const pct = Math.round(confidence * 100);
+  let color = "bg-gray-100 text-gray-600 dark:bg-slate-700 dark:text-gray-400";
+  if (pct >= 80) color = "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400";
+  else if (pct >= 50) color = "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400";
+  return (
+    <span className={`inline-flex items-center rounded px-1 py-0 text-[8px] font-medium ${color}`}>
+      {pct}%
+    </span>
+  );
+}
+
+function TrafficSection({ trafficEdges }: { trafficEdges: TrafficEdgeType[] }) {
+  const incoming = trafficEdges.filter((e) => e.direction === "incoming");
+  const outgoing = trafficEdges.filter((e) => e.direction === "outgoing");
+
+  return (
+    <Section title={`Traffic (${trafficEdges.length})`}>
+      {incoming.length > 0 && (
+        <div className="mb-2">
+          <div className="flex items-center gap-1 mb-1 text-[10px] text-muted-foreground font-medium">
+            <ArrowDownLeft className="h-3 w-3" />
+            Incoming ({incoming.length})
+          </div>
+          <div className="space-y-1" role="list" aria-label="Incoming traffic">
+            {incoming.map((edge) => (
+              <TrafficEdgeRow key={edge.id} edge={edge} />
+            ))}
+          </div>
+        </div>
+      )}
+      {outgoing.length > 0 && (
+        <div>
+          <div className="flex items-center gap-1 mb-1 text-[10px] text-muted-foreground font-medium">
+            <ArrowUpRight className="h-3 w-3" />
+            Outgoing ({outgoing.length})
+          </div>
+          <div className="space-y-1" role="list" aria-label="Outgoing traffic">
+            {outgoing.map((edge) => (
+              <TrafficEdgeRow key={edge.id} edge={edge} />
+            ))}
+          </div>
+        </div>
+      )}
+    </Section>
+  );
+}
+
+function TrafficEdgeRow({ edge }: { edge: TrafficEdgeType }) {
+  const peerName = edge.direction === "incoming" ? edge.sourceName : edge.targetName;
+  const peerKind = edge.direction === "incoming" ? edge.sourceKind : edge.targetKind;
+
+  return (
+    <div
+      className="flex items-center gap-2 rounded-md px-2 py-1.5 border border-transparent hover:bg-gray-50 dark:hover:bg-slate-700/50"
+      role="listitem"
+    >
+      <K8sIcon kind={peerKind} size={14} className="flex-shrink-0" />
+      <div className="min-w-0 flex-1">
+        <div className="truncate text-[10px] font-medium">{peerName}</div>
+        <div className="flex items-center gap-1.5 mt-0.5">
+          <span className="text-[9px] text-muted-foreground">{peerKind}</span>
+          {edge.port > 0 && (
+            <span className="text-[9px] text-muted-foreground">:{edge.port}</span>
+          )}
+        </div>
+      </div>
+      <ConfidenceBadge confidence={edge.confidence} />
+    </div>
+  );
 }
 
 /** Returns true if metrics object has any displayable data */

@@ -50,6 +50,75 @@ export function relToCategory(rel: string): string {
   return map[rel] ?? "ownership";
 }
 
+// ── Edge label & deduplication ────────────────────────────────────────────
+// Category priority: when multiple edges connect the same two nodes, keep
+// the one from the highest-priority category (ownership > networking > etc).
+// Lower number = higher priority.
+const CATEGORY_PRIORITY: Record<string, number> = {
+  ownership: 0,
+  networking: 1,
+  scaling: 2,
+  storage: 3,
+  configuration: 4,
+  rbac: 5,
+  policy: 6,
+  scheduling: 7,
+  containment: 8,
+  cluster: 9,
+};
+
+/**
+ * Clean an edge label for canvas display.
+ * Strips filesystem paths, long selectors, and IPs — keeps short, human-readable text.
+ * Verbose details stay in the `detail` field for the side panel.
+ */
+function cleanEdgeLabel(label: string, relationshipType: string): string {
+  // Static short labels by relationship type (override verbose matcher output)
+  const shortLabels: Record<string, string> = {
+    ownerRef: "owned by",
+    namespace: "in namespace",
+    scheduling: "runs on",
+    service_account: "uses SA",
+    priority_class: "priority",
+    runtime_class: "runtime",
+    endpoint_target: "target",
+    endpoints: "endpoints",
+    endpoint_slice: "endpoints",
+    ingress_backend: "routes to",
+    ingress_class: "class",
+    ingress_tls: "TLS cert",
+    ingress_default: "default backend",
+    resource_quota: "quota",
+    taint_toleration: "tolerates",
+  };
+  if (shortLabels[relationshipType]) return shortLabels[relationshipType];
+
+  // Strip filesystem paths: "mounts → /var/run/secrets/..." → "mounts"
+  // "projects → /var/run/secrets/..." → "projects"
+  // "token → /var/run/secrets/..." → "token"
+  if (label.includes("→")) {
+    const action = label.split("→")[0].trim();
+    return action;
+  }
+
+  // Strip long selector strings: "selects (app=checkout, version=v1)" → "selects"
+  if (label.includes("(") && label.length > 30) {
+    return label.split("(")[0].trim();
+  }
+
+  // Strip IP addresses in parentheses: "target (10.20.1.160)" → "target"
+  if (/\(\d+\.\d+\.\d+\.\d+\)/.test(label)) {
+    return label.replace(/\s*\(\d+\.\d+\.\d+\.\d+\)/, "").trim();
+  }
+
+  // Truncate anything over 25 chars
+  if (label.length > 25) {
+    return label.slice(0, 22) + "…";
+  }
+
+  return label;
+}
+
 /** Assign layer for layout ordering */
 export function kindToLayer(kind: string): number {
   const map: Record<string, number> = {
@@ -68,9 +137,17 @@ export function kindToLayer(kind: string): number {
   return map[kind] ?? 3;
 }
 
+// Kinds that are operational telemetry, not infrastructure relationships.
+// These belong in the Events/Logs tabs, not in the topology graph.
+const EXCLUDED_KINDS = new Set(["Event"]);
+
 /** Convert engine TopologyGraph → v2 TopologyResponse */
 export function transformGraph(graph: TopologyGraph, clusterName?: string): TopologyResponse {
-  const nodes: TopologyNode[] = graph.nodes.map((n: EngineNode) => ({
+  // Filter out operational telemetry nodes (Events) — they add noise, not insight
+  const filteredNodes = graph.nodes.filter((n) => !EXCLUDED_KINDS.has(n.kind));
+  const filteredNodeIds = new Set(filteredNodes.map((n) => n.id));
+
+  const nodes: TopologyNode[] = filteredNodes.map((n: EngineNode) => ({
     id: n.id,
     kind: n.kind,
     name: n.name,
@@ -104,18 +181,65 @@ export function transformGraph(graph: TopologyGraph, clusterName?: string): Topo
     containers: (n as Record<string, unknown>).containers as number | undefined,
   }));
 
-  const edges: TopologyEdge[] = graph.edges.map((e: EngineEdge) => ({
-    id: e.id,
-    source: e.source,
-    target: e.target,
-    relationshipType: e.relationshipType,
-    relationshipCategory: relToCategory(e.relationshipType),
-    label: e.label ?? e.relationshipType,
-    detail: e.metadata?.sourceField,
-    style: "solid",
-    animated: e.relationshipType === "selects" || e.relationshipType === "routes",
-    healthy: true,
-  }));
+  // ── Deduplicate parallel edges ────────────────────────────────────────
+  // Skip edges that connect to excluded nodes (Events, etc.).
+  // Then merge parallel edges between the same source→target pair into one,
+  // keeping the highest-priority edge and merging verbose details.
+  const edgePairMap = new Map<string, {
+    best: EngineEdge;
+    bestCategory: string;
+    bestPriority: number;
+    allDetails: string[];
+    allLabels: string[];
+  }>();
+
+  for (const e of graph.edges) {
+    // Skip edges connected to excluded nodes
+    if (!filteredNodeIds.has(e.source) || !filteredNodeIds.has(e.target)) continue;
+    const pairKey = `${e.source}|${e.target}`;
+    const cat = relToCategory(e.relationshipType);
+    const priority = CATEGORY_PRIORITY[cat] ?? 99;
+    const existing = edgePairMap.get(pairKey);
+
+    if (!existing) {
+      edgePairMap.set(pairKey, {
+        best: e,
+        bestCategory: cat,
+        bestPriority: priority,
+        allDetails: [e.metadata?.sourceField, e.label].filter(Boolean) as string[],
+        allLabels: [e.label ?? e.relationshipType],
+      });
+    } else {
+      // Collect all details for the side panel
+      if (e.metadata?.sourceField) existing.allDetails.push(e.metadata.sourceField);
+      if (e.label) existing.allLabels.push(e.label);
+      // Keep the higher-priority edge
+      if (priority < existing.bestPriority) {
+        existing.best = e;
+        existing.bestCategory = cat;
+        existing.bestPriority = priority;
+      }
+    }
+  }
+
+  const edges: TopologyEdge[] = Array.from(edgePairMap.values()).map(({ best, bestCategory, allDetails }) => {
+    const rawLabel = best.label ?? best.relationshipType;
+    return {
+      id: best.id,
+      source: best.source,
+      target: best.target,
+      relationshipType: best.relationshipType,
+      relationshipCategory: bestCategory,
+      label: cleanEdgeLabel(rawLabel, best.relationshipType),
+      // Preserve ALL details from merged edges for the detail panel
+      detail: allDetails.length > 1
+        ? allDetails.filter((v, i, a) => a.indexOf(v) === i).join(" · ")
+        : allDetails[0] ?? best.metadata?.sourceField,
+      style: "solid",
+      animated: best.relationshipType === "selects" || best.relationshipType === "routes",
+      healthy: true,
+    };
+  });
 
   return {
     metadata: {

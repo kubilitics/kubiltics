@@ -42,9 +42,6 @@ export {
   getStylesheet, CANVAS_BG, CANVAS_BG_DARK, EXPORT_BG,
 } from './renderer/styles';
 
-// ─── Three.js 3D Engine ───────────────────────────────────────
-export { Scene3D } from './engines/three/Scene3D';
-
 // ─── Interaction ──────────────────────────────────────────────
 export { useHighlightEngine } from './interaction/useHighlightEngine';
 export { useSelectionEngine } from './interaction/useSelectionEngine';
@@ -105,21 +102,6 @@ export type { ExportOptions as TopologyExportOptions } from './utils/exportUtils
 export { useTopologyEngine } from './hooks/useTopologyEngine';
 export { useInsightOverlay } from './hooks/useInsightOverlay';
 export type { RendererEngine, EngineRef, EngineState } from './types/engine.types';
-
-// ─── Enhanced Cytoscape Components ───────────────────────────
-export { CytoscapeCanvas } from './engines/cytoscape/CytoscapeCanvas';
-export { HighlightManager, getHighlightStylesheet } from './engines/cytoscape/HighlightManager';
-export type { HighlightLevel } from './engines/cytoscape/HighlightManager';
-export { ContextMenu } from './engines/cytoscape/ContextMenu';
-
-// ─── Three.js Components ──────────────────────────────────────
-export { NodesRenderer } from './engines/three/NodesRenderer';
-export { EdgesRenderer } from './engines/three/EdgesRenderer';
-export { TrafficParticles, TrafficPulse, TrafficHeatMap } from './engines/three/TrafficParticles';
-
-// ─── Integrated Topology Viewer ───────────────────────────────
-export { TopologyViewer } from './TopologyViewer';
-export type { TopologyViewerProps } from './TopologyViewer';
 
 // ─── UI Components ────────────────────────────────────────────
 export { TopologyNodePanel } from './components/TopologyNodePanel';

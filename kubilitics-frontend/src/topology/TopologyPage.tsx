@@ -8,14 +8,14 @@ import { TopologyCanvas } from "./TopologyCanvas";
 import { TopologyDetailPanel } from "./TopologyDetailPanel";
 import { TopologyBreadcrumbs } from "./TopologyBreadcrumbs";
 import { TopologyLoadingSkeleton } from "./TopologyLoadingSkeleton";
-import { TopologyErrorState, TopologyPartialErrorBanner, TopologyWsDisconnectBanner } from "./TopologyErrorState";
+import { TopologyErrorState, TopologyPartialErrorBanner, TopologyWsDisconnectBanner, TopologySimplifiedBanner } from "./TopologyErrorState";
 import { TopologyEmptyState } from "./TopologyEmptyState";
 import { HealthLegend } from "./overlays/HealthOverlay";
 import {
   useTopologyKeyboard,
   TopologyShortcutsOverlay,
 } from "./hooks/useTopologyKeyboard";
-import { useTopologyData, MAX_VISIBLE_NODES } from "./hooks/useTopologyData";
+import { useTopologyData, DEPTH_LABELS, MAX_VISIBLE_NODES, type DepthLevel } from "./hooks/useTopologyData";
 import { useTopologySearch } from "./hooks/useTopologySearch";
 import { useTopologyWebSocket } from "./hooks/useTopologyWebSocket";
 import { useTopologyStore } from "./store/topologyStore";
@@ -93,10 +93,19 @@ export function TopologyPage() {
     return () => window.removeEventListener("popstate", onPopState);
   }, []);
 
+  // Progressive disclosure depth — 0 = overview (~15 nodes), 3 = full graph
+  const [depth, setDepth] = useState<DepthLevel>(0);
+
+  // Kind filter — empty set means "all kinds visible"
+  const [selectedKinds, setSelectedKinds] = useState<Set<string>>(new Set());
+  // Edge category filter — hidden categories (empty = all visible)
+  const [hiddenEdgeCategories, setHiddenEdgeCategories] = useState<Set<string>>(new Set());
+
   const [resource, setResource] = useState<string>("");
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [showHelp, setShowHelp] = useState(false);
   const [warnings, setWarnings] = useState<string[]>([]);
+  const [simplifiedBannerDismissed, setSimplifiedBannerDismissed] = useState(false);
   const fitViewRef = useRef<(() => void) | null>(null);
   const exportRef = useRef<((format: ExportFormat, filename: string) => void) | null>(null);
 
@@ -118,10 +127,13 @@ export function TopologyPage() {
   }), [viewMode, selectedNamespaces, clusterName]);
 
   // Data fetching — pass selected namespaces for filtering
-  const { topology, allNamespaces, isLoading, isFetching, isError, error, refetch, truncated, truncatedTotal } = useTopologyData({
+  const { topology, allNamespaces, allKinds, allEdgeCategories, isLoading, isFetching, isError, error, refetch, truncated, truncatedTotal, totalUnfiltered } = useTopologyData({
     clusterId,
     viewMode,
+    depth,
     selectedNamespaces,
+    selectedKinds,
+    hiddenEdgeCategories,
     resource: viewMode === "resource" ? resource : undefined,
     enabled: !!clusterId,
   });
@@ -149,11 +161,20 @@ export function TopologyPage() {
     }
   }, [allNamespaces, hasAutoSelectedNs, searchParams, setSelectedNamespaces]);
 
-  // Reset namespace selection when cluster changes
+  // Reset filters when cluster changes
   useEffect(() => {
     setSelectedNamespaces(new Set(["default"]));
+    setDepth(0);
+    setSelectedKinds(new Set());
+    setHiddenEdgeCategories(new Set());
     setHasAutoSelectedNs(false);
+    setSimplifiedBannerDismissed(false);
   }, [clusterId, setSelectedNamespaces]);
+
+  // Reset simplified banner when depth changes
+  useEffect(() => {
+    setSimplifiedBannerDismissed(false);
+  }, [depth]);
 
   // Sync to store when data arrives
   useEffect(() => {
@@ -228,6 +249,16 @@ export function TopologyPage() {
     setSelectedNodeId(null);
   }, [setViewModeStore]);
 
+  // Double-click a node → increase depth by 1 to reveal children
+  const handleNodeExpand = useCallback(() => {
+    setDepth((prev) => Math.min(prev + 1, 3) as DepthLevel);
+  }, []);
+
+  // "Try simpler view" / "Try Overview mode" — reset depth to 0
+  const handleRequestSimplify = useCallback(() => {
+    setDepth(0);
+  }, []);
+
   // Highlight node IDs from search
   const highlightNodeIds = useMemo(
     () => searchResults.map((r) => r.node.id),
@@ -246,6 +277,7 @@ export function TopologyPage() {
         <TopologyErrorState
           error={error?.message ?? "Failed to load topology"}
           onRetry={() => refetch()}
+          onTryOverview={depth > 0 ? handleRequestSimplify : undefined}
         />
       );
     }
@@ -284,6 +316,8 @@ export function TopologyPage() {
         highlightNodeIds={highlightNodeIds}
         viewMode={viewMode}
         onSelectNode={setSelectedNodeId}
+        onNodeExpand={handleNodeExpand}
+        onRequestSimplify={handleRequestSimplify}
         exportRef={exportRef}
         fitViewRef={fitViewRef}
         clusterName={clusterName ?? undefined}
@@ -297,16 +331,25 @@ export function TopologyPage() {
       {/* Toolbar — hidden in presentation mode */}
       {!presentationMode && <TopologyToolbar
         viewMode={viewMode}
+        depth={depth}
+        totalUnfiltered={totalUnfiltered}
         clusterName={clusterName ?? undefined}
         selectedNamespaces={selectedNamespaces}
         availableNamespaces={allNamespaces}
+        selectedKinds={selectedKinds}
+        availableKinds={allKinds}
+        hiddenEdgeCategories={hiddenEdgeCategories}
+        availableEdgeCategories={allEdgeCategories}
         topology={topology}
         exportRef={exportRef}
         getExportCtx={getExportCtx}
         searchQuery={searchQuery}
         searchResults={searchResults}
         onViewModeChange={handleViewModeChange}
+        onDepthChange={setDepth}
         onNamespaceSelectionChange={handleNamespaceSelectionChange}
+        onKindSelectionChange={setSelectedKinds}
+        onEdgeCategoryToggle={setHiddenEdgeCategories}
         onSearchChange={setSearchQuery}
         onSearchSelect={handleSearchSelect}
         onFitView={handleFitView}
@@ -353,6 +396,16 @@ export function TopologyPage() {
         </div>
       )}
 
+      {/* Simplified view info banner — shown when depth < 3 and we have data */}
+      {!simplifiedBannerDismissed && !truncated && depth < 3 && topology && totalUnfiltered > 0 && topology.nodes.length < totalUnfiltered && (
+        <TopologySimplifiedBanner
+          visibleCount={topology.nodes.length}
+          totalCount={totalUnfiltered}
+          depthLabel={DEPTH_LABELS[depth].label.toLowerCase()}
+          onDismiss={() => setSimplifiedBannerDismissed(true)}
+        />
+      )}
+
       {/* Main content */}
       <div className="flex min-h-0 flex-1 overflow-hidden">
         <div className="relative flex min-h-0 flex-1">
@@ -376,6 +429,7 @@ export function TopologyPage() {
           <TopologyDetailPanel
             selectedNodeId={selectedNodeId}
             topology={topology ?? null}
+            clusterId={clusterId ?? undefined}
             onNavigateToResource={handleNavigateToResource}
             onClose={() => setSelectedNodeId(null)}
           />

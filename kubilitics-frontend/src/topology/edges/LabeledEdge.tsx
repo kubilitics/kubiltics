@@ -7,6 +7,7 @@ export type LabeledEdgeData = {
   label: string;
   detail?: string;
   relationshipCategory?: string;
+  relationshipType?: string;
   healthy?: boolean;
   hideLabel?: boolean;
 };

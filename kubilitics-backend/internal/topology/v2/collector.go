@@ -50,6 +50,9 @@ type ResourceBundle struct {
 	RuntimeClasses        []nodev1.RuntimeClass
 	MutatingWebhooks      []admissionv1.MutatingWebhookConfiguration
 	ValidatingWebhooks    []admissionv1.ValidatingWebhookConfiguration
+	Events                []corev1.Event
+	ResourceQuotas        []corev1.ResourceQuota
+	LimitRanges           []corev1.LimitRange
 }
 
 // Collector defines the interface for collecting resources from a cluster.

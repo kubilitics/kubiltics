@@ -14,6 +14,7 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 
+import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { nodeTypes } from "./nodes/nodeTypes";
 import { edgeTypes } from "./edges/edgeTypes";
@@ -31,13 +32,19 @@ export interface TopologyCanvasProps {
   highlightNodeIds?: string[];
   viewMode?: ViewMode;
   onSelectNode: (id: string | null) => void;
+  /** Called when a user double-clicks a node to expand deeper */
+  onNodeExpand?: (nodeId: string) => void;
   fitViewRef?: React.MutableRefObject<(() => void) | null>;
   /** Ref that parent sets to trigger an export. Call with (format, filename). */
   exportRef?: React.MutableRefObject<((format: ExportFormat, filename: string) => void) | null>;
+  /** Ref that parent sets to center on a specific node by id */
+  centerOnNodeRef?: React.MutableRefObject<((nodeId: string) => void) | null>;
   /** Cluster name for export title */
   clusterName?: string;
   /** Namespace for export title */
   namespace?: string;
+  /** Called when user clicks "Try simpler view" after layout timeout */
+  onRequestSimplify?: () => void;
 }
 
 /** Semantic zoom — uses centralized thresholds from designTokens */
@@ -54,10 +61,13 @@ function TopologyCanvasInner({
   highlightNodeIds = [],
   viewMode = "namespace",
   onSelectNode,
+  onNodeExpand,
   fitViewRef,
   exportRef,
+  centerOnNodeRef,
   clusterName,
   namespace,
+  onRequestSimplify,
 }: TopologyCanvasProps) {
   const [currentZoom, setCurrentZoom] = useState(0.5);
 
@@ -72,6 +82,17 @@ function TopologyCanvasInner({
 
   const { nodes: elkNodes, edges: elkEdges, isLayouting } =
     useElkLayout(topology, viewMode, nodeType);
+
+  // Layout timeout — 5 seconds max, then show "taking too long" state
+  const [layoutTimedOut, setLayoutTimedOut] = useState(false);
+  useEffect(() => {
+    if (!isLayouting) {
+      setLayoutTimedOut(false);
+      return;
+    }
+    const t = setTimeout(() => setLayoutTimedOut(true), 5_000);
+    return () => clearTimeout(t);
+  }, [isLayouting]);
   const [nodes, setNodes, onNodesChange] = useNodesState(elkNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(elkEdges);
   const reactFlow = useReactFlow();
@@ -84,20 +105,37 @@ function TopologyCanvasInner({
     setEdges(elkEdges);
   }, [elkNodes, elkEdges, setNodes, setEdges]);
 
-  // Auto-fit after layout — with smart zoom floor so nodes are readable
+  // Auto-fit after layout — first fit all, then center on focus node if one exists
   useEffect(() => {
     if (!isLayouting && elkNodes.length > 0) {
       const t = setTimeout(() => {
+        // First fit everything so the graph is visible
         reactFlow.fitView({
           padding: 0.06,
           duration: 350,
           maxZoom: 1.0,
           minZoom: fitViewMinZoom(nodeCount),
         });
+        // Then center on the focus/highlighted node if present
+        if (highlightNodeIds.length > 0) {
+          const focusId = highlightNodeIds[0];
+          setTimeout(() => {
+            const node = reactFlow.getNode(focusId);
+            if (node) {
+              const w = node.measured?.width ?? node.width ?? 260;
+              const h = node.measured?.height ?? node.height ?? 110;
+              reactFlow.setCenter(
+                node.position.x + w / 2,
+                node.position.y + h / 2,
+                { zoom: Math.max(0.5, reactFlow.getViewport().zoom), duration: 400 }
+              );
+            }
+          }, 400);
+        }
       }, 100);
       return () => clearTimeout(t);
     }
-  }, [isLayouting, elkNodes.length, reactFlow, nodeCount]);
+  }, [isLayouting, elkNodes.length, reactFlow, nodeCount, highlightNodeIds]);
 
   // Expose fitView to parent toolbar "Fit" button
   useEffect(() => {
@@ -106,6 +144,21 @@ function TopologyCanvasInner({
         reactFlow.fitView({ padding: 0.08, duration: 400, minZoom: fitViewMinZoom(nodeCount) });
     }
   }, [reactFlow, fitViewRef]);
+
+  // Expose centerOnNode to parent — zooms + pans to center a specific node
+  useEffect(() => {
+    if (centerOnNodeRef) {
+      centerOnNodeRef.current = (nodeId: string) => {
+        const node = reactFlow.getNode(nodeId);
+        if (!node) return;
+        const w = node.measured?.width ?? node.width ?? 260;
+        const h = node.measured?.height ?? node.height ?? 110;
+        const x = node.position.x + w / 2;
+        const y = node.position.y + h / 2;
+        reactFlow.setCenter(x, y, { zoom: 0.8, duration: 500 });
+      };
+    }
+  }, [reactFlow, centerOnNodeRef]);
 
   // ── Export flow ─────────────────────────────────────────────────────────────
   // Step 1: Parent calls exportRef → sets isExporting=true (renders ALL nodes)
@@ -260,19 +313,45 @@ function TopologyCanvasInner({
         ...n,
         className: [
           isSelected ? "ring-2 ring-blue-500 ring-offset-2 rounded-lg" : "",
-          isHighlighted ? "ring-2 ring-amber-400 ring-offset-1 rounded-lg" : "",
+          // Central/focus node: prominent ring + scale so it's always visible
+          isHighlighted && !isSelected
+            ? "ring-[3px] ring-blue-500 ring-offset-2 rounded-lg shadow-[0_0_16px_rgba(59,130,246,0.5)] scale-[1.03]"
+            : "",
           isInErrorChain ? "ring-1 ring-red-400/60 rounded-lg" : "",
         ].filter(Boolean).join(" "),
         style: {
           ...n.style,
+          // Central node gets a z-index boost so it sits on top
+          ...(isHighlighted && !isSelected ? { zIndex: 100 } : {}),
           ...(isDimmed ? { opacity: 0.2, filter: "saturate(0.3)", transition: "opacity 0.15s, filter 0.15s" } : { transition: "opacity 0.15s, filter 0.15s" }),
         },
       };
     });
   }, [nodes, selectedNodeId, highlightNodeIds, dimmedNodeIds, errorChainNodeIds]);
 
+  // Traffic-related relationship types — highlighted in traffic view mode
+  const TRAFFIC_EDGE_TYPES = new Set([
+    "selector", "endpoint_target", "ingress_backend", "endpoints",
+  ]);
+
   // Edge styling — ALWAYS show edges, just hide labels at low zoom
   const styledEdges = useMemo(() => {
+    // Traffic view mode: emphasize traffic edges, dim the rest
+    if (viewMode === "traffic") {
+      return edges.map((e) => {
+        const relType = (e.data as Record<string, unknown>)?.relationshipType as string | undefined;
+        const isTrafficEdge = relType ? TRAFFIC_EDGE_TYPES.has(relType) : false;
+        return {
+          ...e,
+          animated: isTrafficEdge ? true : (e.animated ?? false),
+          style: {
+            ...(e.style ?? {}),
+            strokeWidth: isTrafficEdge ? 2.5 : 1,
+            opacity: isTrafficEdge ? 1 : 0.25,
+          },
+        };
+      });
+    }
     if (currentZoom < 0.25 && !isExporting) {
       return edges.map((e) => ({
         ...e,
@@ -285,11 +364,15 @@ function TopologyCanvasInner({
       }));
     }
     return edges;
-  }, [edges, currentZoom, isExporting]);
+  }, [edges, currentZoom, isExporting, viewMode]);
 
   const onNodeClick = useCallback(
     (_: React.MouseEvent, node: { id: string }) => onSelectNode(node.id),
     [onSelectNode]
+  );
+  const onNodeDoubleClick = useCallback(
+    (_: React.MouseEvent, node: { id: string }) => onNodeExpand?.(node.id),
+    [onNodeExpand]
   );
   const onPaneClick = useCallback(() => onSelectNode(null), [onSelectNode]);
   // Freeze zoom updates during export so fitView doesn't trigger semantic zoom changes
@@ -326,6 +409,7 @@ function TopologyCanvasInner({
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onNodeClick={onNodeClick}
+        onNodeDoubleClick={onNodeDoubleClick}
         onPaneClick={onPaneClick}
         onMoveEnd={onMoveEnd}
         maxZoom={4}
@@ -373,6 +457,33 @@ function TopologyCanvasInner({
           aria-label="Zoom and fit controls"
         />
       </ReactFlow>
+
+      {/* Layout progress overlay */}
+      {isLayouting && (
+        <div
+          className="absolute inset-0 flex items-center justify-center bg-background/60 backdrop-blur-sm z-10"
+          role="status"
+          aria-live="polite"
+        >
+          <div className="flex flex-col items-center gap-3 rounded-lg bg-white/95 dark:bg-slate-900/95 px-6 py-4 shadow-lg border border-gray-200 dark:border-slate-700">
+            <div className="flex items-center gap-2">
+              <Loader2 className="h-5 w-5 animate-spin text-blue-500" />
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                {layoutTimedOut ? "Layout taking too long..." : "Laying out topology..."}
+              </span>
+            </div>
+            {layoutTimedOut && onRequestSimplify && (
+              <button
+                type="button"
+                className="rounded-md bg-blue-600 px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-blue-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                onClick={onRequestSimplify}
+              >
+                Try simpler view
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Live region for export status */}
       {isExporting && (

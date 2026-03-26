@@ -700,16 +700,16 @@ pub async fn set_analytics_consent(consent: bool) -> Result<(), String> {
     let mut settings = load_analytics_settings().await?;
     settings.consent_given = consent;
     settings.opt_out = !consent;
-    
-    if consent {
-        settings.consent_timestamp = Some(
-            SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .unwrap()
-                .as_secs()
-        );
-    }
-    
+
+    // Always set timestamp — records that the user has been asked,
+    // regardless of whether they accepted or declined.
+    settings.consent_timestamp = Some(
+        SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_secs()
+    );
+
     save_analytics_settings(&settings).await
 }
 

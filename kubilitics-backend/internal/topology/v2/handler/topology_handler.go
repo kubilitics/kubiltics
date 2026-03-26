@@ -52,14 +52,14 @@ func (h *TopologyHandler) HandleGetTopology(w http.ResponseWriter, r *http.Reque
 	}
 
 	ctx := r.Context()
-	var bundle *v2.ResourceBundle
-	if h.collector != nil {
-		var err error
-		bundle, err = h.collector.Collect(ctx, clusterID, opts.Namespace)
-		if err != nil {
-			writeError(w, http.StatusInternalServerError, "failed to collect resources: "+err.Error())
-			return
-		}
+	if h.collector == nil {
+		writeError(w, http.StatusServiceUnavailable, "no resource collector configured: cannot build topology")
+		return
+	}
+	bundle, err := h.collector.Collect(ctx, clusterID, opts.Namespace)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to collect resources: "+err.Error())
+		return
 	}
 
 	resp, err := builder.BuildGraph(ctx, opts, bundle)
@@ -73,16 +73,19 @@ func (h *TopologyHandler) HandleGetTopology(w http.ResponseWriter, r *http.Reque
 	resp = filter.Filter(resp, opts)
 
 	// Apply health enrichment
-	if opts.IncludeHealth && bundle != nil {
+	if opts.IncludeHealth {
 		enricher := &v2.HealthEnricher{}
 		enricher.EnrichNodes(resp.Nodes, bundle)
 	}
 
 	// Apply metrics enrichment
-	if opts.IncludeMetrics && bundle != nil {
+	if opts.IncludeMetrics {
 		enricher := &v2.MetricsEnricher{}
 		enricher.EnrichNodes(resp.Nodes, bundle)
 	}
+
+	// Aggregate pods into summary nodes when a single owner has >3 pods
+	resp.Nodes, resp.Edges = builder.AggregatePods(resp.Nodes, resp.Edges)
 
 	// Update metadata counts after filtering
 	resp.Metadata.ResourceCount = len(resp.Nodes)
@@ -123,14 +126,14 @@ func (h *TopologyHandler) HandleGetResource(w http.ResponseWriter, r *http.Reque
 	}
 
 	ctx := r.Context()
-	var bundle *v2.ResourceBundle
-	if h.collector != nil {
-		var err error
-		bundle, err = h.collector.Collect(ctx, clusterID, ns)
-		if err != nil {
-			writeError(w, http.StatusInternalServerError, "failed to collect resources: "+err.Error())
-			return
-		}
+	if h.collector == nil {
+		writeError(w, http.StatusServiceUnavailable, "no resource collector configured: cannot build topology")
+		return
+	}
+	bundle, err := h.collector.Collect(ctx, clusterID, ns)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to collect resources: "+err.Error())
+		return
 	}
 
 	resp, err := builder.BuildGraph(ctx, opts, bundle)
@@ -142,17 +145,90 @@ func (h *TopologyHandler) HandleGetResource(w http.ResponseWriter, r *http.Reque
 	filter := &v2.ViewFilter{}
 	resp = filter.Filter(resp, opts)
 
-	if bundle != nil {
-		enricher := &v2.HealthEnricher{}
-		enricher.EnrichNodes(resp.Nodes, bundle)
-		metricsEnricher := &v2.MetricsEnricher{}
-		metricsEnricher.EnrichNodes(resp.Nodes, bundle)
-	}
+	enricher := &v2.HealthEnricher{}
+	enricher.EnrichNodes(resp.Nodes, bundle)
+	metricsEnricher := &v2.MetricsEnricher{}
+	metricsEnricher.EnrichNodes(resp.Nodes, bundle)
+
+	// Aggregate pods into summary nodes when a single owner has >3 pods
+	resp.Nodes, resp.Edges = builder.AggregatePods(resp.Nodes, resp.Edges)
 
 	resp.Metadata.ResourceCount = len(resp.Nodes)
 	resp.Metadata.EdgeCount = len(resp.Edges)
 
 	writeJSON(w, http.StatusOK, resp)
+}
+
+// HandleGetImpact handles GET /api/v1/clusters/{id}/topology/v2/impact/{kind}/{ns}/{name}
+// It returns all resources that transitively depend on the specified resource,
+// enabling "what breaks if I delete this?" analysis.
+// Query param: depth (default 3, max 10)
+func (h *TopologyHandler) HandleGetImpact(w http.ResponseWriter, r *http.Request) {
+	clusterID := extractPathParam(r, "id")
+	kind := extractPathParam(r, "kind")
+	ns := extractPathParam(r, "ns")
+	name := extractPathParam(r, "name")
+
+	if clusterID == "" || kind == "" || name == "" {
+		writeError(w, http.StatusBadRequest, "missing required path parameters")
+		return
+	}
+
+	depth := 3
+	if d, err := strconv.Atoi(r.URL.Query().Get("depth")); err == nil && d > 0 {
+		if d > 10 {
+			d = 10
+		}
+		depth = d
+	}
+
+	resourceID := v2.NodeID(kind, ns, name)
+
+	// Check cache for the full cluster graph (shared across impact queries for the same cluster)
+	graphCacheKey := v2.CacheKey{
+		ClusterID: clusterID,
+		Mode:      v2.ViewModeCluster,
+		Namespace: "",
+		Resource:  "__impact_graph__",
+	}
+
+	resp, cached := h.cache.Get(graphCacheKey)
+	if !cached {
+		if h.collector == nil {
+			writeError(w, http.StatusServiceUnavailable, "no resource collector configured: cannot build topology")
+			return
+		}
+		ctx := r.Context()
+		bundle, err := h.collector.Collect(ctx, clusterID, "")
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "failed to collect resources: "+err.Error())
+			return
+		}
+
+		// Build the full graph to get all edges
+		opts := v2.Options{
+			ClusterID: clusterID,
+			Mode:      v2.ViewModeCluster,
+		}
+		var buildErr error
+		resp, buildErr = builder.BuildGraph(ctx, opts, bundle)
+		if buildErr != nil {
+			writeError(w, http.StatusInternalServerError, "failed to build topology: "+buildErr.Error())
+			return
+		}
+		h.cache.Set(graphCacheKey, resp, v2.DefaultCacheTTL)
+	}
+
+	// Build reverse index and compute impact
+	ri := builder.BuildReverseIndex(resp.Edges)
+	impacted := ri.GetImpactDetailed(resourceID, depth)
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"resourceId": resourceID,
+		"depth":      depth,
+		"impacted":   impacted,
+		"count":      len(impacted),
+	})
 }
 
 // HandleExport handles GET /api/v1/clusters/{id}/topology/v2/export/{format}
@@ -167,14 +243,14 @@ func (h *TopologyHandler) HandleExport(w http.ResponseWriter, r *http.Request) {
 
 	opts := parseQueryOptions(r, clusterID)
 	ctx := r.Context()
-	var bundle *v2.ResourceBundle
-	if h.collector != nil {
-		var err error
-		bundle, err = h.collector.Collect(ctx, clusterID, opts.Namespace)
-		if err != nil {
-			writeError(w, http.StatusInternalServerError, "failed to collect resources: "+err.Error())
-			return
-		}
+	if h.collector == nil {
+		writeError(w, http.StatusServiceUnavailable, "no resource collector configured: cannot build topology")
+		return
+	}
+	bundle, err := h.collector.Collect(ctx, clusterID, opts.Namespace)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to collect resources: "+err.Error())
+		return
 	}
 
 	resp, err := builder.BuildGraph(ctx, opts, bundle)

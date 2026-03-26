@@ -66,7 +66,19 @@ const ELK_OPTIONS: Record<ViewMode, Record<string, string>> = {
   namespace: { ...ELK_LAYERED_BASE },
   cluster:   { ...ELK_LAYERED_BASE, "elk.spacing.nodeNode": "70", "elk.layered.spacing.nodeNodeBetweenLayers": "160" },
   rbac:      { ...ELK_LAYERED_BASE, "elk.spacing.nodeNode": "70" },
-  resource:  { ...ELK_LAYERED_BASE },
+  resource:  {
+    ...ELK_LAYERED_BASE,
+    // Resource topology: tighter layout centered around the focus resource.
+    // Higher thoroughness for fewer edge crossings in smaller graphs.
+    "elk.layered.thoroughness": "40",
+    "elk.layered.nodePlacement.strategy": "NETWORK_SIMPLEX",
+    "elk.spacing.nodeNode": "50",
+    "elk.layered.spacing.nodeNodeBetweenLayers": "160",
+    "elk.layered.crossingMinimization.strategy": "LAYER_SWEEP",
+    // Compact layout to avoid visual fragmentation
+    "elk.layered.compaction.connectedComponents": "true",
+    "elk.separateConnectedComponents": "false",
+  },
 };
 
 // ─── Types ──────────────────────────────────────────────────────────────────
@@ -213,6 +225,24 @@ function categoryGridLayout(
   return positions;
 }
 
+// ─── Focus-Node Anchoring ────────────────────────────────────────────────────
+
+/** Shift all positions so focusNodeId sits at (0,0) — makes it the visual center */
+function anchorOnFocusNode(
+  positions: Map<string, { x: number; y: number }>,
+  focusNodeId: string | undefined,
+  nodeWidth: number,
+  nodeHeight: number
+): void {
+  if (!focusNodeId || !positions.has(focusNodeId)) return;
+  const fp = positions.get(focusNodeId)!;
+  const offsetX = fp.x + nodeWidth / 2;
+  const offsetY = fp.y + nodeHeight / 2;
+  for (const [id, pos] of positions) {
+    positions.set(id, { x: pos.x - offsetX, y: pos.y - offsetY });
+  }
+}
+
 // ─── Hybrid Layout: ELK for components, grid for arrangement ────────────────
 // This is the main layout strategy. It combines:
 // 1. ELK layered for connected subgraphs (proper edge routing)
@@ -220,12 +250,16 @@ function categoryGridLayout(
 //
 // This prevents the "vertical strip" problem where ELK stacks all
 // disconnected nodes in a single 30,000px tall column.
+//
+// focusNodeId: if provided, the layout is shifted so this node is at (0,0),
+// making it the visual anchor/center of the topology.
 
 async function hybridLayout(
   topology: TopologyResponse,
   elkInstance: unknown,
   viewMode: ViewMode,
-  validEdges: Array<{ id: string; source: string; target: string; label: string; detail?: string; relationshipCategory?: string; healthy?: boolean }>
+  validEdges: Array<{ id: string; source: string; target: string; label: string; detail?: string; relationshipCategory?: string; healthy?: boolean }>,
+  focusNodeId?: string
 ): Promise<Map<string, { x: number; y: number }>> {
   const positions = new Map<string, { x: number; y: number }>();
   const dims = getNodeDims("base");
@@ -389,6 +423,9 @@ async function hybridLayout(
     }
   }
 
+  // Shift the entire layout so the focus node sits at the visual center (0,0).
+  anchorOnFocusNode(positions, focusNodeId, dims.width, dims.height);
+
   return positions;
 }
 
@@ -449,6 +486,11 @@ export function useElkLayout(
     // Compute graph density to choose algorithm
     const density = validEdges.length / Math.max(1, nodeCount);
 
+    // Focus node for resource-scoped topology (anchor at center)
+    const focusNodeId = viewMode === "resource"
+      ? topology.metadata?.focusResource
+      : undefined;
+
     try {
       let positions: Map<string, { x: number; y: number }>;
 
@@ -490,12 +532,14 @@ export function useElkLayout(
         for (const child of result.children ?? []) {
           positions.set(child.id, { x: child.x, y: child.y });
         }
+        // Anchor focus node at center for resource topology
+        anchorOnFocusNode(positions, focusNodeId, dims.width, dims.height);
       } else if (elkRef.current) {
         // ─── HYBRID: ELK per component + grid arrangement ──────────────
         // This is the sweet spot: use ELK for connected subgraphs (proper
         // edge routing), but arrange components in a 2D grid instead of
         // letting ELK stack them vertically.
-        positions = await hybridLayout(topology, elkRef.current, viewMode, validEdges);
+        positions = await hybridLayout(topology, elkRef.current, viewMode, validEdges, focusNodeId);
       } else {
         // ─── FALLBACK: category grid ────────────────────────────────────
         positions = categoryGridLayout(topology);
@@ -534,6 +578,7 @@ export function useElkLayout(
           label: e.label,
           detail: e.detail,
           relationshipCategory: e.relationshipCategory,
+          relationshipType: e.relationshipType,
           healthy: e.healthy,
         },
       }));
@@ -575,6 +620,7 @@ export function useElkLayout(
               label: e.label,
               detail: e.detail,
               relationshipCategory: e.relationshipCategory,
+              relationshipType: e.relationshipType,
               healthy: e.healthy,
             },
           }))

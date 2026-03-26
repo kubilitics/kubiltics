@@ -3,6 +3,8 @@ package relationships
 import (
 	"context"
 	"fmt"
+	"sort"
+	"strings"
 
 	"github.com/kubilitics/kubilitics-backend/internal/topology/v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -35,9 +37,18 @@ func (m *SelectorMatcher) Match(ctx context.Context, bundle *v2.ResourceBundle) 
 			if sel.Matches(labels.Set(pod.Labels)) {
 				src := v2.NodeID("Service", svc.Namespace, svc.Name)
 				tgt := v2.NodeID("Pod", pod.Namespace, pod.Name)
-				label := fmt.Sprintf("selects (app=%s)", svc.Spec.Selector["app"])
-				if svc.Spec.Selector["app"] == "" {
-					label = "selects"
+				label := "selects"
+				if len(svc.Spec.Selector) > 0 {
+					keys := make([]string, 0, len(svc.Spec.Selector))
+					for k := range svc.Spec.Selector {
+						keys = append(keys, k)
+					}
+					sort.Strings(keys)
+					pairs := make([]string, 0, len(keys))
+					for _, k := range keys {
+						pairs = append(pairs, fmt.Sprintf("%s=%s", k, svc.Spec.Selector[k]))
+					}
+					label = fmt.Sprintf("selects (%s)", strings.Join(pairs, ", "))
 				}
 				edges = append(edges, v2.TopologyEdge{
 					ID:                   v2.EdgeID(src, tgt, "selector"),
