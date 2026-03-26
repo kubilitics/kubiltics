@@ -123,7 +123,7 @@ func NodesFromBundle(b *v2.ResourceBundle) []v2.TopologyNode {
 		out = append(out, v2.TopologyNode{
 			ID: v2.NodeID("Pod", p.Namespace, p.Name), Kind: "Pod", Name: p.Name, Namespace: p.Namespace, APIVersion: "v1",
 			Category: "workload", Label: p.Name, Status: status, Layer: 4, Group: groupIDForNamespace(p.Namespace),
-			Labels: p.Labels, Annotations: p.Annotations, CreatedAt: formatTime(p.CreationTimestamp),
+			Labels: p.Labels, Annotations: stripHeavyAnnotations(p.Annotations), CreatedAt: formatTime(p.CreationTimestamp),
 			PodIP: p.Status.PodIP, NodeName: p.Spec.NodeName, Containers: len(p.Spec.Containers),
 			Extra: extra,
 		})
@@ -139,7 +139,7 @@ func NodesFromBundle(b *v2.ResourceBundle) []v2.TopologyNode {
 		out = append(out, v2.TopologyNode{
 			ID: v2.NodeID("Deployment", d.Namespace, d.Name), Kind: "Deployment", Name: d.Name, Namespace: d.Namespace, APIVersion: "apps/v1",
 			Category: "workload", Label: d.Name, Status: status, Layer: 2, Group: groupIDForNamespace(d.Namespace),
-			Labels: d.Labels, Annotations: d.Annotations, CreatedAt: formatTime(d.CreationTimestamp),
+			Labels: d.Labels, Annotations: stripHeavyAnnotations(d.Annotations), CreatedAt: formatTime(d.CreationTimestamp),
 		})
 	}
 	for i := range b.ReplicaSets {
@@ -147,7 +147,7 @@ func NodesFromBundle(b *v2.ResourceBundle) []v2.TopologyNode {
 		out = append(out, v2.TopologyNode{
 			ID: v2.NodeID("ReplicaSet", rs.Namespace, rs.Name), Kind: "ReplicaSet", Name: rs.Name, Namespace: rs.Namespace, APIVersion: "apps/v1",
 			Category: "workload", Label: rs.Name, Status: "healthy", Layer: 3, Group: groupIDForNamespace(rs.Namespace),
-			Labels: rs.Labels, Annotations: rs.Annotations, CreatedAt: formatTime(rs.CreationTimestamp),
+			Labels: rs.Labels, Annotations: stripHeavyAnnotations(rs.Annotations), CreatedAt: formatTime(rs.CreationTimestamp),
 		})
 	}
 	for i := range b.StatefulSets {
@@ -159,7 +159,7 @@ func NodesFromBundle(b *v2.ResourceBundle) []v2.TopologyNode {
 		if s.Spec.Replicas != nil && s.Status.ReadyReplicas == 0 && *s.Spec.Replicas > 0 {
 			status = "degraded"
 		}
-		out = append(out, v2.TopologyNode{ID: v2.NodeID("StatefulSet", s.Namespace, s.Name), Kind: "StatefulSet", Name: s.Name, Namespace: s.Namespace, APIVersion: "apps/v1", Category: "workload", Label: s.Name, Status: status, Layer: 2, Group: groupIDForNamespace(s.Namespace), Labels: s.Labels, Annotations: s.Annotations, CreatedAt: formatTime(s.CreationTimestamp)})
+		out = append(out, v2.TopologyNode{ID: v2.NodeID("StatefulSet", s.Namespace, s.Name), Kind: "StatefulSet", Name: s.Name, Namespace: s.Namespace, APIVersion: "apps/v1", Category: "workload", Label: s.Name, Status: status, Layer: 2, Group: groupIDForNamespace(s.Namespace), Labels: s.Labels, Annotations: stripHeavyAnnotations(s.Annotations), CreatedAt: formatTime(s.CreationTimestamp)})
 	}
 	for i := range b.DaemonSets {
 		ds := &b.DaemonSets[i]
@@ -170,15 +170,15 @@ func NodesFromBundle(b *v2.ResourceBundle) []v2.TopologyNode {
 		if ds.Status.DesiredNumberScheduled > 0 && ds.Status.NumberReady == 0 {
 			status = "degraded"
 		}
-		out = append(out, v2.TopologyNode{ID: v2.NodeID("DaemonSet", ds.Namespace, ds.Name), Kind: "DaemonSet", Name: ds.Name, Namespace: ds.Namespace, APIVersion: "apps/v1", Category: "workload", Label: ds.Name, Status: status, Layer: 2, Group: groupIDForNamespace(ds.Namespace), Labels: ds.Labels, Annotations: ds.Annotations, CreatedAt: formatTime(ds.CreationTimestamp)})
+		out = append(out, v2.TopologyNode{ID: v2.NodeID("DaemonSet", ds.Namespace, ds.Name), Kind: "DaemonSet", Name: ds.Name, Namespace: ds.Namespace, APIVersion: "apps/v1", Category: "workload", Label: ds.Name, Status: status, Layer: 2, Group: groupIDForNamespace(ds.Namespace), Labels: ds.Labels, Annotations: stripHeavyAnnotations(ds.Annotations), CreatedAt: formatTime(ds.CreationTimestamp)})
 	}
 	for i := range b.Jobs {
 		j := &b.Jobs[i]
-		out = append(out, v2.TopologyNode{ID: v2.NodeID("Job", j.Namespace, j.Name), Kind: "Job", Name: j.Name, Namespace: j.Namespace, APIVersion: "batch/v1", Category: "workload", Label: j.Name, Status: "healthy", Layer: 3, Group: groupIDForNamespace(j.Namespace), Labels: j.Labels, Annotations: j.Annotations, CreatedAt: formatTime(j.CreationTimestamp)})
+		out = append(out, v2.TopologyNode{ID: v2.NodeID("Job", j.Namespace, j.Name), Kind: "Job", Name: j.Name, Namespace: j.Namespace, APIVersion: "batch/v1", Category: "workload", Label: j.Name, Status: "healthy", Layer: 3, Group: groupIDForNamespace(j.Namespace), Labels: j.Labels, Annotations: stripHeavyAnnotations(j.Annotations), CreatedAt: formatTime(j.CreationTimestamp)})
 	}
 	for i := range b.CronJobs {
 		cj := &b.CronJobs[i]
-		out = append(out, v2.TopologyNode{ID: v2.NodeID("CronJob", cj.Namespace, cj.Name), Kind: "CronJob", Name: cj.Name, Namespace: cj.Namespace, APIVersion: "batch/v1", Category: "workload", Label: cj.Name, Status: "healthy", Layer: 2, Group: groupIDForNamespace(cj.Namespace), Labels: cj.Labels, Annotations: cj.Annotations, CreatedAt: formatTime(cj.CreationTimestamp)})
+		out = append(out, v2.TopologyNode{ID: v2.NodeID("CronJob", cj.Namespace, cj.Name), Kind: "CronJob", Name: cj.Name, Namespace: cj.Namespace, APIVersion: "batch/v1", Category: "workload", Label: cj.Name, Status: "healthy", Layer: 2, Group: groupIDForNamespace(cj.Namespace), Labels: cj.Labels, Annotations: stripHeavyAnnotations(cj.Annotations), CreatedAt: formatTime(cj.CreationTimestamp)})
 	}
 	for i := range b.Services {
 		s := &b.Services[i]
@@ -197,43 +197,43 @@ func NodesFromBundle(b *v2.ResourceBundle) []v2.TopologyNode {
 		if s.Spec.SessionAffinity != "" {
 			extra["sessionAffinity"] = string(s.Spec.SessionAffinity)
 		}
-		out = append(out, v2.TopologyNode{ID: v2.NodeID("Service", s.Namespace, s.Name), Kind: "Service", Name: s.Name, Namespace: s.Namespace, APIVersion: "v1", Category: "networking", Label: s.Name, Status: "healthy", Layer: 1, Group: groupIDForNamespace(s.Namespace), Labels: s.Labels, Annotations: s.Annotations, CreatedAt: formatTime(s.CreationTimestamp), ClusterIP: s.Spec.ClusterIP, ServiceType: string(s.Spec.Type), Extra: extra})
+		out = append(out, v2.TopologyNode{ID: v2.NodeID("Service", s.Namespace, s.Name), Kind: "Service", Name: s.Name, Namespace: s.Namespace, APIVersion: "v1", Category: "networking", Label: s.Name, Status: "healthy", Layer: 1, Group: groupIDForNamespace(s.Namespace), Labels: s.Labels, Annotations: stripHeavyAnnotations(s.Annotations), CreatedAt: formatTime(s.CreationTimestamp), ClusterIP: s.Spec.ClusterIP, ServiceType: string(s.Spec.Type), Extra: extra})
 	}
 	for i := range b.Endpoints {
 		e := &b.Endpoints[i]
-		out = append(out, v2.TopologyNode{ID: v2.NodeID("Endpoints", e.Namespace, e.Name), Kind: "Endpoints", Name: e.Name, Namespace: e.Namespace, APIVersion: "v1", Category: "networking", Label: e.Name, Status: "healthy", Layer: 1, Group: groupIDForNamespace(e.Namespace), Labels: e.Labels, Annotations: e.Annotations, CreatedAt: formatTime(e.CreationTimestamp)})
+		out = append(out, v2.TopologyNode{ID: v2.NodeID("Endpoints", e.Namespace, e.Name), Kind: "Endpoints", Name: e.Name, Namespace: e.Namespace, APIVersion: "v1", Category: "networking", Label: e.Name, Status: "healthy", Layer: 1, Group: groupIDForNamespace(e.Namespace), Labels: e.Labels, Annotations: stripHeavyAnnotations(e.Annotations), CreatedAt: formatTime(e.CreationTimestamp)})
 	}
 	for i := range b.EndpointSlices {
 		es := &b.EndpointSlices[i]
-		out = append(out, v2.TopologyNode{ID: v2.NodeID("EndpointSlice", es.Namespace, es.Name), Kind: "EndpointSlice", Name: es.Name, Namespace: es.Namespace, APIVersion: "discovery.k8s.io/v1", Category: "networking", Label: es.Name, Status: "healthy", Layer: 1, Group: groupIDForNamespace(es.Namespace), Labels: es.Labels, Annotations: es.Annotations, CreatedAt: formatTime(es.CreationTimestamp)})
+		out = append(out, v2.TopologyNode{ID: v2.NodeID("EndpointSlice", es.Namespace, es.Name), Kind: "EndpointSlice", Name: es.Name, Namespace: es.Namespace, APIVersion: "discovery.k8s.io/v1", Category: "networking", Label: es.Name, Status: "healthy", Layer: 1, Group: groupIDForNamespace(es.Namespace), Labels: es.Labels, Annotations: stripHeavyAnnotations(es.Annotations), CreatedAt: formatTime(es.CreationTimestamp)})
 	}
 	for i := range b.Ingresses {
 		ing := &b.Ingresses[i]
-		out = append(out, v2.TopologyNode{ID: v2.NodeID("Ingress", ing.Namespace, ing.Name), Kind: "Ingress", Name: ing.Name, Namespace: ing.Namespace, APIVersion: "networking.k8s.io/v1", Category: "networking", Label: ing.Name, Status: "healthy", Layer: 0, Group: groupIDForNamespace(ing.Namespace), Labels: ing.Labels, Annotations: ing.Annotations, CreatedAt: formatTime(ing.CreationTimestamp)})
+		out = append(out, v2.TopologyNode{ID: v2.NodeID("Ingress", ing.Namespace, ing.Name), Kind: "Ingress", Name: ing.Name, Namespace: ing.Namespace, APIVersion: "networking.k8s.io/v1", Category: "networking", Label: ing.Name, Status: "healthy", Layer: 0, Group: groupIDForNamespace(ing.Namespace), Labels: ing.Labels, Annotations: stripHeavyAnnotations(ing.Annotations), CreatedAt: formatTime(ing.CreationTimestamp)})
 	}
 	for i := range b.IngressClasses {
 		ic := &b.IngressClasses[i]
-		out = append(out, v2.TopologyNode{ID: v2.NodeID("IngressClass", "", ic.Name), Kind: "IngressClass", Name: ic.Name, Namespace: "", APIVersion: "networking.k8s.io/v1", Category: "networking", Label: ic.Name, Status: "healthy", Layer: 0, Labels: ic.Labels, Annotations: ic.Annotations, CreatedAt: formatTime(ic.CreationTimestamp)})
+		out = append(out, v2.TopologyNode{ID: v2.NodeID("IngressClass", "", ic.Name), Kind: "IngressClass", Name: ic.Name, Namespace: "", APIVersion: "networking.k8s.io/v1", Category: "networking", Label: ic.Name, Status: "healthy", Layer: 0, Labels: ic.Labels, Annotations: stripHeavyAnnotations(ic.Annotations), CreatedAt: formatTime(ic.CreationTimestamp)})
 	}
 	for i := range b.ConfigMaps {
 		c := &b.ConfigMaps[i]
-		out = append(out, v2.TopologyNode{ID: v2.NodeID("ConfigMap", c.Namespace, c.Name), Kind: "ConfigMap", Name: c.Name, Namespace: c.Namespace, APIVersion: "v1", Category: "configuration", Label: c.Name, Status: "healthy", Layer: 2, Group: groupIDForNamespace(c.Namespace), Labels: c.Labels, Annotations: c.Annotations, CreatedAt: formatTime(c.CreationTimestamp)})
+		out = append(out, v2.TopologyNode{ID: v2.NodeID("ConfigMap", c.Namespace, c.Name), Kind: "ConfigMap", Name: c.Name, Namespace: c.Namespace, APIVersion: "v1", Category: "configuration", Label: c.Name, Status: "healthy", Layer: 2, Group: groupIDForNamespace(c.Namespace), Labels: c.Labels, Annotations: stripHeavyAnnotations(c.Annotations), CreatedAt: formatTime(c.CreationTimestamp)})
 	}
 	for i := range b.Secrets {
 		s := &b.Secrets[i]
-		out = append(out, v2.TopologyNode{ID: v2.NodeID("Secret", s.Namespace, s.Name), Kind: "Secret", Name: s.Name, Namespace: s.Namespace, APIVersion: "v1", Category: "configuration", Label: s.Name, Status: "healthy", Layer: 2, Group: groupIDForNamespace(s.Namespace), Labels: s.Labels, Annotations: s.Annotations, CreatedAt: formatTime(s.CreationTimestamp)})
+		out = append(out, v2.TopologyNode{ID: v2.NodeID("Secret", s.Namespace, s.Name), Kind: "Secret", Name: s.Name, Namespace: s.Namespace, APIVersion: "v1", Category: "configuration", Label: s.Name, Status: "healthy", Layer: 2, Group: groupIDForNamespace(s.Namespace), Labels: s.Labels, Annotations: stripHeavyAnnotations(s.Annotations), CreatedAt: formatTime(s.CreationTimestamp)})
 	}
 	for i := range b.PVCs {
 		pvc := &b.PVCs[i]
-		out = append(out, v2.TopologyNode{ID: v2.NodeID("PersistentVolumeClaim", pvc.Namespace, pvc.Name), Kind: "PersistentVolumeClaim", Name: pvc.Name, Namespace: pvc.Namespace, APIVersion: "v1", Category: "storage", Label: pvc.Name, Status: string(pvc.Status.Phase), Layer: 2, Group: groupIDForNamespace(pvc.Namespace), Labels: pvc.Labels, Annotations: pvc.Annotations, CreatedAt: formatTime(pvc.CreationTimestamp)})
+		out = append(out, v2.TopologyNode{ID: v2.NodeID("PersistentVolumeClaim", pvc.Namespace, pvc.Name), Kind: "PersistentVolumeClaim", Name: pvc.Name, Namespace: pvc.Namespace, APIVersion: "v1", Category: "storage", Label: pvc.Name, Status: string(pvc.Status.Phase), Layer: 2, Group: groupIDForNamespace(pvc.Namespace), Labels: pvc.Labels, Annotations: stripHeavyAnnotations(pvc.Annotations), CreatedAt: formatTime(pvc.CreationTimestamp)})
 	}
 	for i := range b.PVs {
 		pv := &b.PVs[i]
-		out = append(out, v2.TopologyNode{ID: v2.NodeID("PersistentVolume", "", pv.Name), Kind: "PersistentVolume", Name: pv.Name, Namespace: "", APIVersion: "v1", Category: "storage", Label: pv.Name, Status: string(pv.Status.Phase), Layer: 2, Labels: pv.Labels, Annotations: pv.Annotations, CreatedAt: formatTime(pv.CreationTimestamp)})
+		out = append(out, v2.TopologyNode{ID: v2.NodeID("PersistentVolume", "", pv.Name), Kind: "PersistentVolume", Name: pv.Name, Namespace: "", APIVersion: "v1", Category: "storage", Label: pv.Name, Status: string(pv.Status.Phase), Layer: 2, Labels: pv.Labels, Annotations: stripHeavyAnnotations(pv.Annotations), CreatedAt: formatTime(pv.CreationTimestamp)})
 	}
 	for i := range b.StorageClasses {
 		sc := &b.StorageClasses[i]
-		out = append(out, v2.TopologyNode{ID: v2.NodeID("StorageClass", "", sc.Name), Kind: "StorageClass", Name: sc.Name, Namespace: "", APIVersion: "storage.k8s.io/v1", Category: "storage", Label: sc.Name, Status: "healthy", Layer: 0, Labels: sc.Labels, Annotations: sc.Annotations, CreatedAt: formatTime(sc.CreationTimestamp)})
+		out = append(out, v2.TopologyNode{ID: v2.NodeID("StorageClass", "", sc.Name), Kind: "StorageClass", Name: sc.Name, Namespace: "", APIVersion: "storage.k8s.io/v1", Category: "storage", Label: sc.Name, Status: "healthy", Layer: 0, Labels: sc.Labels, Annotations: stripHeavyAnnotations(sc.Annotations), CreatedAt: formatTime(sc.CreationTimestamp)})
 	}
 	for i := range b.Nodes {
 		n := &b.Nodes[i]
@@ -273,51 +273,51 @@ func NodesFromBundle(b *v2.ResourceBundle) []v2.TopologyNode {
 		if n.Status.NodeInfo.KubeletVersion != "" {
 			extra["kubeletVersion"] = n.Status.NodeInfo.KubeletVersion
 		}
-		out = append(out, v2.TopologyNode{ID: v2.NodeID("Node", "", n.Name), Kind: "Node", Name: n.Name, Namespace: "", APIVersion: "v1", Category: "cluster", Label: n.Name, Status: status, Layer: 5, Labels: n.Labels, Annotations: n.Annotations, CreatedAt: formatTime(n.CreationTimestamp), InternalIP: internalIP, ExternalIP: externalIP, Extra: extra})
+		out = append(out, v2.TopologyNode{ID: v2.NodeID("Node", "", n.Name), Kind: "Node", Name: n.Name, Namespace: "", APIVersion: "v1", Category: "cluster", Label: n.Name, Status: status, Layer: 5, Labels: n.Labels, Annotations: stripHeavyAnnotations(n.Annotations), CreatedAt: formatTime(n.CreationTimestamp), InternalIP: internalIP, ExternalIP: externalIP, Extra: extra})
 	}
 	for i := range b.Namespaces {
 		ns := &b.Namespaces[i]
-		out = append(out, v2.TopologyNode{ID: v2.NodeID("Namespace", "", ns.Name), Kind: "Namespace", Name: ns.Name, Namespace: "", APIVersion: "v1", Category: "cluster", Label: ns.Name, Status: "Active", Layer: 0, Labels: ns.Labels, Annotations: ns.Annotations, CreatedAt: formatTime(ns.CreationTimestamp)})
+		out = append(out, v2.TopologyNode{ID: v2.NodeID("Namespace", "", ns.Name), Kind: "Namespace", Name: ns.Name, Namespace: "", APIVersion: "v1", Category: "cluster", Label: ns.Name, Status: "Active", Layer: 0, Labels: ns.Labels, Annotations: stripHeavyAnnotations(ns.Annotations), CreatedAt: formatTime(ns.CreationTimestamp)})
 	}
 	for i := range b.ServiceAccounts {
 		sa := &b.ServiceAccounts[i]
-		out = append(out, v2.TopologyNode{ID: v2.NodeID("ServiceAccount", sa.Namespace, sa.Name), Kind: "ServiceAccount", Name: sa.Name, Namespace: sa.Namespace, APIVersion: "v1", Category: "rbac", Label: sa.Name, Status: "healthy", Layer: 2, Group: groupIDForNamespace(sa.Namespace), Labels: sa.Labels, Annotations: sa.Annotations, CreatedAt: formatTime(sa.CreationTimestamp)})
+		out = append(out, v2.TopologyNode{ID: v2.NodeID("ServiceAccount", sa.Namespace, sa.Name), Kind: "ServiceAccount", Name: sa.Name, Namespace: sa.Namespace, APIVersion: "v1", Category: "rbac", Label: sa.Name, Status: "healthy", Layer: 2, Group: groupIDForNamespace(sa.Namespace), Labels: sa.Labels, Annotations: stripHeavyAnnotations(sa.Annotations), CreatedAt: formatTime(sa.CreationTimestamp)})
 	}
 	for i := range b.Roles {
 		r := &b.Roles[i]
-		out = append(out, v2.TopologyNode{ID: v2.NodeID("Role", r.Namespace, r.Name), Kind: "Role", Name: r.Name, Namespace: r.Namespace, APIVersion: "rbac.authorization.k8s.io/v1", Category: "rbac", Label: r.Name, Status: "healthy", Layer: 1, Group: groupIDForNamespace(r.Namespace), Labels: r.Labels, Annotations: r.Annotations, CreatedAt: formatTime(r.CreationTimestamp)})
+		out = append(out, v2.TopologyNode{ID: v2.NodeID("Role", r.Namespace, r.Name), Kind: "Role", Name: r.Name, Namespace: r.Namespace, APIVersion: "rbac.authorization.k8s.io/v1", Category: "rbac", Label: r.Name, Status: "healthy", Layer: 1, Group: groupIDForNamespace(r.Namespace), Labels: r.Labels, Annotations: stripHeavyAnnotations(r.Annotations), CreatedAt: formatTime(r.CreationTimestamp)})
 	}
 	for i := range b.RoleBindings {
 		rb := &b.RoleBindings[i]
-		out = append(out, v2.TopologyNode{ID: v2.NodeID("RoleBinding", rb.Namespace, rb.Name), Kind: "RoleBinding", Name: rb.Name, Namespace: rb.Namespace, APIVersion: "rbac.authorization.k8s.io/v1", Category: "rbac", Label: rb.Name, Status: "healthy", Layer: 1, Group: groupIDForNamespace(rb.Namespace), Labels: rb.Labels, Annotations: rb.Annotations, CreatedAt: formatTime(rb.CreationTimestamp)})
+		out = append(out, v2.TopologyNode{ID: v2.NodeID("RoleBinding", rb.Namespace, rb.Name), Kind: "RoleBinding", Name: rb.Name, Namespace: rb.Namespace, APIVersion: "rbac.authorization.k8s.io/v1", Category: "rbac", Label: rb.Name, Status: "healthy", Layer: 1, Group: groupIDForNamespace(rb.Namespace), Labels: rb.Labels, Annotations: stripHeavyAnnotations(rb.Annotations), CreatedAt: formatTime(rb.CreationTimestamp)})
 	}
 	for i := range b.ClusterRoles {
 		cr := &b.ClusterRoles[i]
-		out = append(out, v2.TopologyNode{ID: v2.NodeID("ClusterRole", "", cr.Name), Kind: "ClusterRole", Name: cr.Name, Namespace: "", APIVersion: "rbac.authorization.k8s.io/v1", Category: "rbac", Label: cr.Name, Status: "healthy", Layer: 0, Labels: cr.Labels, Annotations: cr.Annotations, CreatedAt: formatTime(cr.CreationTimestamp)})
+		out = append(out, v2.TopologyNode{ID: v2.NodeID("ClusterRole", "", cr.Name), Kind: "ClusterRole", Name: cr.Name, Namespace: "", APIVersion: "rbac.authorization.k8s.io/v1", Category: "rbac", Label: cr.Name, Status: "healthy", Layer: 0, Labels: cr.Labels, Annotations: stripHeavyAnnotations(cr.Annotations), CreatedAt: formatTime(cr.CreationTimestamp)})
 	}
 	for i := range b.ClusterRoleBindings {
 		crb := &b.ClusterRoleBindings[i]
-		out = append(out, v2.TopologyNode{ID: v2.NodeID("ClusterRoleBinding", "", crb.Name), Kind: "ClusterRoleBinding", Name: crb.Name, Namespace: "", APIVersion: "rbac.authorization.k8s.io/v1", Category: "rbac", Label: crb.Name, Status: "healthy", Layer: 0, Labels: crb.Labels, Annotations: crb.Annotations, CreatedAt: formatTime(crb.CreationTimestamp)})
+		out = append(out, v2.TopologyNode{ID: v2.NodeID("ClusterRoleBinding", "", crb.Name), Kind: "ClusterRoleBinding", Name: crb.Name, Namespace: "", APIVersion: "rbac.authorization.k8s.io/v1", Category: "rbac", Label: crb.Name, Status: "healthy", Layer: 0, Labels: crb.Labels, Annotations: stripHeavyAnnotations(crb.Annotations), CreatedAt: formatTime(crb.CreationTimestamp)})
 	}
 	for i := range b.HPAs {
 		h := &b.HPAs[i]
-		out = append(out, v2.TopologyNode{ID: v2.NodeID("HorizontalPodAutoscaler", h.Namespace, h.Name), Kind: "HorizontalPodAutoscaler", Name: h.Name, Namespace: h.Namespace, APIVersion: "autoscaling/v2", Category: "scaling", Label: h.Name, Status: "healthy", Layer: 1, Group: groupIDForNamespace(h.Namespace), Labels: h.Labels, Annotations: h.Annotations, CreatedAt: formatTime(h.CreationTimestamp)})
+		out = append(out, v2.TopologyNode{ID: v2.NodeID("HorizontalPodAutoscaler", h.Namespace, h.Name), Kind: "HorizontalPodAutoscaler", Name: h.Name, Namespace: h.Namespace, APIVersion: "autoscaling/v2", Category: "scaling", Label: h.Name, Status: "healthy", Layer: 1, Group: groupIDForNamespace(h.Namespace), Labels: h.Labels, Annotations: stripHeavyAnnotations(h.Annotations), CreatedAt: formatTime(h.CreationTimestamp)})
 	}
 	for i := range b.PDBs {
 		pdb := &b.PDBs[i]
-		out = append(out, v2.TopologyNode{ID: v2.NodeID("PodDisruptionBudget", pdb.Namespace, pdb.Name), Kind: "PodDisruptionBudget", Name: pdb.Name, Namespace: pdb.Namespace, APIVersion: "policy/v1", Category: "policy", Label: pdb.Name, Status: "healthy", Layer: 1, Group: groupIDForNamespace(pdb.Namespace), Labels: pdb.Labels, Annotations: pdb.Annotations, CreatedAt: formatTime(pdb.CreationTimestamp)})
+		out = append(out, v2.TopologyNode{ID: v2.NodeID("PodDisruptionBudget", pdb.Namespace, pdb.Name), Kind: "PodDisruptionBudget", Name: pdb.Name, Namespace: pdb.Namespace, APIVersion: "policy/v1", Category: "policy", Label: pdb.Name, Status: "healthy", Layer: 1, Group: groupIDForNamespace(pdb.Namespace), Labels: pdb.Labels, Annotations: stripHeavyAnnotations(pdb.Annotations), CreatedAt: formatTime(pdb.CreationTimestamp)})
 	}
 	for i := range b.NetworkPolicies {
 		np := &b.NetworkPolicies[i]
-		out = append(out, v2.TopologyNode{ID: v2.NodeID("NetworkPolicy", np.Namespace, np.Name), Kind: "NetworkPolicy", Name: np.Name, Namespace: np.Namespace, APIVersion: "networking.k8s.io/v1", Category: "policy", Label: np.Name, Status: "healthy", Layer: 1, Group: groupIDForNamespace(np.Namespace), Labels: np.Labels, Annotations: np.Annotations, CreatedAt: formatTime(np.CreationTimestamp)})
+		out = append(out, v2.TopologyNode{ID: v2.NodeID("NetworkPolicy", np.Namespace, np.Name), Kind: "NetworkPolicy", Name: np.Name, Namespace: np.Namespace, APIVersion: "networking.k8s.io/v1", Category: "policy", Label: np.Name, Status: "healthy", Layer: 1, Group: groupIDForNamespace(np.Namespace), Labels: np.Labels, Annotations: stripHeavyAnnotations(np.Annotations), CreatedAt: formatTime(np.CreationTimestamp)})
 	}
 	for i := range b.MutatingWebhooks {
 		w := &b.MutatingWebhooks[i]
-		out = append(out, v2.TopologyNode{ID: v2.NodeID("MutatingWebhookConfiguration", "", w.Name), Kind: "MutatingWebhookConfiguration", Name: w.Name, Namespace: "", APIVersion: "admissionregistration.k8s.io/v1", Category: "policy", Label: w.Name, Status: "healthy", Layer: 0, Labels: w.Labels, Annotations: w.Annotations, CreatedAt: formatTime(w.CreationTimestamp)})
+		out = append(out, v2.TopologyNode{ID: v2.NodeID("MutatingWebhookConfiguration", "", w.Name), Kind: "MutatingWebhookConfiguration", Name: w.Name, Namespace: "", APIVersion: "admissionregistration.k8s.io/v1", Category: "policy", Label: w.Name, Status: "healthy", Layer: 0, Labels: w.Labels, Annotations: stripHeavyAnnotations(w.Annotations), CreatedAt: formatTime(w.CreationTimestamp)})
 	}
 	for i := range b.ValidatingWebhooks {
 		w := &b.ValidatingWebhooks[i]
-		out = append(out, v2.TopologyNode{ID: v2.NodeID("ValidatingWebhookConfiguration", "", w.Name), Kind: "ValidatingWebhookConfiguration", Name: w.Name, Namespace: "", APIVersion: "admissionregistration.k8s.io/v1", Category: "policy", Label: w.Name, Status: "healthy", Layer: 0, Labels: w.Labels, Annotations: w.Annotations, CreatedAt: formatTime(w.CreationTimestamp)})
+		out = append(out, v2.TopologyNode{ID: v2.NodeID("ValidatingWebhookConfiguration", "", w.Name), Kind: "ValidatingWebhookConfiguration", Name: w.Name, Namespace: "", APIVersion: "admissionregistration.k8s.io/v1", Category: "policy", Label: w.Name, Status: "healthy", Layer: 0, Labels: w.Labels, Annotations: stripHeavyAnnotations(w.Annotations), CreatedAt: formatTime(w.CreationTimestamp)})
 	}
 	for i := range b.Events {
 		ev := &b.Events[i]
@@ -325,15 +325,15 @@ func NodesFromBundle(b *v2.ResourceBundle) []v2.TopologyNode {
 		if ev.Type == "Warning" {
 			status = "warning"
 		}
-		out = append(out, v2.TopologyNode{ID: v2.NodeID("Event", ev.Namespace, ev.Name), Kind: "Event", Name: ev.Name, Namespace: ev.Namespace, APIVersion: "v1", Category: "cluster", Label: ev.Reason, Status: status, Layer: 5, Group: groupIDForNamespace(ev.Namespace), Labels: ev.Labels, Annotations: ev.Annotations, CreatedAt: formatTime(ev.CreationTimestamp)})
+		out = append(out, v2.TopologyNode{ID: v2.NodeID("Event", ev.Namespace, ev.Name), Kind: "Event", Name: ev.Name, Namespace: ev.Namespace, APIVersion: "v1", Category: "cluster", Label: ev.Reason, Status: status, Layer: 5, Group: groupIDForNamespace(ev.Namespace), Labels: ev.Labels, Annotations: stripHeavyAnnotations(ev.Annotations), CreatedAt: formatTime(ev.CreationTimestamp)})
 	}
 	for i := range b.ResourceQuotas {
 		rq := &b.ResourceQuotas[i]
-		out = append(out, v2.TopologyNode{ID: v2.NodeID("ResourceQuota", rq.Namespace, rq.Name), Kind: "ResourceQuota", Name: rq.Name, Namespace: rq.Namespace, APIVersion: "v1", Category: "policy", Label: rq.Name, Status: "healthy", Layer: 1, Group: groupIDForNamespace(rq.Namespace), Labels: rq.Labels, Annotations: rq.Annotations, CreatedAt: formatTime(rq.CreationTimestamp)})
+		out = append(out, v2.TopologyNode{ID: v2.NodeID("ResourceQuota", rq.Namespace, rq.Name), Kind: "ResourceQuota", Name: rq.Name, Namespace: rq.Namespace, APIVersion: "v1", Category: "policy", Label: rq.Name, Status: "healthy", Layer: 1, Group: groupIDForNamespace(rq.Namespace), Labels: rq.Labels, Annotations: stripHeavyAnnotations(rq.Annotations), CreatedAt: formatTime(rq.CreationTimestamp)})
 	}
 	for i := range b.LimitRanges {
 		lr := &b.LimitRanges[i]
-		out = append(out, v2.TopologyNode{ID: v2.NodeID("LimitRange", lr.Namespace, lr.Name), Kind: "LimitRange", Name: lr.Name, Namespace: lr.Namespace, APIVersion: "v1", Category: "policy", Label: lr.Name, Status: "healthy", Layer: 1, Group: groupIDForNamespace(lr.Namespace), Labels: lr.Labels, Annotations: lr.Annotations, CreatedAt: formatTime(lr.CreationTimestamp)})
+		out = append(out, v2.TopologyNode{ID: v2.NodeID("LimitRange", lr.Namespace, lr.Name), Kind: "LimitRange", Name: lr.Name, Namespace: lr.Namespace, APIVersion: "v1", Category: "policy", Label: lr.Name, Status: "healthy", Layer: 1, Group: groupIDForNamespace(lr.Namespace), Labels: lr.Labels, Annotations: stripHeavyAnnotations(lr.Annotations), CreatedAt: formatTime(lr.CreationTimestamp)})
 	}
 	// Synthetic User and Group nodes from RBAC bindings (external identities, not K8s resources).
 	seenSubjects := make(map[string]bool)
@@ -427,4 +427,32 @@ func nodeAddresses(n *corev1.Node) (internalIP, externalIP string) {
 		}
 	}
 	return
+}
+
+// stripHeavyAnnotations removes large annotations (like kubectl last-applied-config)
+// from topology nodes to reduce JSON payload size. Topology nodes don't need the
+// full resource YAML embedded in annotations.
+func stripHeavyAnnotations(ann map[string]string) map[string]string {
+	if len(ann) == 0 {
+		return nil
+	}
+	clean := make(map[string]string, len(ann))
+	for k, v := range ann {
+		// Skip annotations that embed full resource YAML (10KB+ each)
+		if k == "kubectl.kubernetes.io/last-applied-configuration" {
+			continue
+		}
+		if k == "control-plane.alpha.kubernetes.io/leader" {
+			continue
+		}
+		// Skip any annotation value > 500 bytes (topology doesn't need long values)
+		if len(v) > 500 {
+			continue
+		}
+		clean[k] = v
+	}
+	if len(clean) == 0 {
+		return nil
+	}
+	return clean
 }
