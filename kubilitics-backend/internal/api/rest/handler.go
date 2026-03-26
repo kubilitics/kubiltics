@@ -810,6 +810,17 @@ func (h *Handler) GetTopology(w http.ResponseWriter, r *http.Request) {
 }
 
 // GetTopologyV2 handles GET /clusters/{clusterId}/topology/v2. Builds topology from live cluster data.
+//
+// Query parameters:
+//   - mode: view mode (cluster, namespace, workload, resource, rbac). Default: namespace
+//   - namespace: filter by namespace
+//   - depth: progressive disclosure level (0-3). Default: 0
+//     0 = executive view (Deployments, StatefulSets, DaemonSets, CronJobs, Services, Ingresses, Nodes, Namespaces)
+//     1 = above + ReplicaSets, Jobs, Endpoints, EndpointSlices, HPAs, PDBs
+//     2 = above + Pods, ConfigMaps, Secrets, PVCs, PVs, StorageClasses, ServiceAccounts
+//     3 = everything (Roles, RoleBindings, ClusterRoles, NetworkPolicies, Events, etc.)
+//   - expand: node ID to expand (e.g. "Deployment/default/nginx"). Adds all direct
+//     neighbors of that node to the depth-filtered result.
 func (h *Handler) GetTopologyV2(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	clusterID := vars["clusterId"]
@@ -826,6 +837,18 @@ func (h *Handler) GetTopologyV2(w http.ResponseWriter, r *http.Request) {
 		mode = string(topologyv2.ViewModeNamespace)
 	}
 	namespace := r.URL.Query().Get("namespace")
+
+	// Parse depth parameter (default 0 = executive view)
+	depth := 0
+	if d := r.URL.Query().Get("depth"); d != "" {
+		if parsed, err := strconv.Atoi(d); err == nil && parsed >= 0 && parsed <= 3 {
+			depth = parsed
+		}
+	}
+
+	// Parse expand parameter
+	expandNodeID := r.URL.Query().Get("expand")
+
 	opts := topologyv2.Options{
 		ClusterID:   clusterID,
 		ClusterName: clusterName,
@@ -837,11 +860,55 @@ func (h *Handler) GetTopologyV2(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusServiceUnavailable, "Cluster not connected")
 		return
 	}
+
+	// Build the full graph first
 	resp, err := topologyv2builder.BuildTopology(r.Context(), opts, client)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
+
+	// Apply progressive disclosure depth filtering
+	totalNodes := len(resp.Nodes)
+	filteredNodes, filteredEdges, expandable := topologyv2builder.FilterByDepth(resp.Nodes, resp.Edges, depth)
+
+	// If expand parameter is set, expand that node's neighbors
+	if expandNodeID != "" {
+		filteredNodes, filteredEdges = topologyv2builder.ExpandNode(resp.Nodes, resp.Edges, filteredNodes, expandNodeID)
+		// Recalculate expandable after expansion
+		visibleIDs := make(map[string]bool, len(filteredNodes))
+		for _, n := range filteredNodes {
+			visibleIDs[n.ID] = true
+		}
+		expandable = nil
+		for _, e := range resp.Edges {
+			if visibleIDs[e.Source] && !visibleIDs[e.Target] {
+				expandable = append(expandable, e.Source)
+			}
+			if visibleIDs[e.Target] && !visibleIDs[e.Source] {
+				expandable = append(expandable, e.Target)
+			}
+		}
+		// Deduplicate
+		seen := make(map[string]bool)
+		deduped := expandable[:0]
+		for _, id := range expandable {
+			if !seen[id] {
+				seen[id] = true
+				deduped = append(deduped, id)
+			}
+		}
+		expandable = deduped
+	}
+
+	resp.Nodes = filteredNodes
+	resp.Edges = filteredEdges
+	resp.Metadata.Depth = depth
+	resp.Metadata.TotalNodes = totalNodes
+	resp.Metadata.Expandable = expandable
+	resp.Metadata.ResourceCount = len(filteredNodes)
+	resp.Metadata.EdgeCount = len(filteredEdges)
+
 	respondJSON(w, http.StatusOK, resp)
 }
 

@@ -1,7 +1,13 @@
 /**
  * useTopologyData — Bridges the existing useClusterTopology hook to v2 TopologyResponse format.
  *
- * Provides three layers of filtering:
+ * Provides progressive disclosure via depth levels:
+ * - L0 (Overview): Namespaces, Nodes, top-level workloads, Services, Ingress (~10-20 nodes)
+ * - L1 (Workloads): + ReplicaSets, Endpoints, PVCs, ServiceAccounts
+ * - L2 (Configuration): + ConfigMaps, Secrets, PVs, RBAC resources
+ * - L3 (Full Graph): Everything — no filtering
+ *
+ * Plus existing filtering layers:
  * 1. View mode filtering (Cluster/Namespace/Workload/Resource/RBAC)
  * 2. Namespace selection (filter to specific namespaces)
  * 3. Client-side node cap (MAX_VISIBLE_NODES) to prevent UI freeze
@@ -14,6 +20,44 @@ import { useClusterTopology } from "@/hooks/useClusterTopology";
 import { transformGraph } from "../utils/transformGraph";
 import type { TopologyResponse, TopologyNode, TopologyEdge, ViewMode } from "../types/topology";
 
+/** Depth levels for progressive disclosure */
+export type DepthLevel = 0 | 1 | 2 | 3;
+
+export const DEPTH_LABELS: Record<DepthLevel, { label: string; description: string }> = {
+  0: { label: "Overview", description: "Top-level resources" },
+  1: { label: "Workloads", description: "Workload internals" },
+  2: { label: "Configuration", description: "Config & RBAC" },
+  3: { label: "Full Graph", description: "All resources" },
+};
+
+/** Kinds visible at each depth level (cumulative — L1 includes L0, etc.) */
+const DEPTH_KINDS: Record<DepthLevel, string[] | null> = {
+  0: [
+    "Namespace", "Node",
+    "Deployment", "StatefulSet", "DaemonSet", "Job", "CronJob",
+    "Service", "Ingress", "IngressClass",
+  ],
+  1: [
+    "Namespace", "Node",
+    "Deployment", "StatefulSet", "DaemonSet", "Job", "CronJob",
+    "Service", "Ingress", "IngressClass",
+    "ReplicaSet", "Endpoints", "EndpointSlice",
+    "PersistentVolumeClaim", "ServiceAccount",
+  ],
+  2: [
+    "Namespace", "Node",
+    "Deployment", "StatefulSet", "DaemonSet", "Job", "CronJob",
+    "Service", "Ingress", "IngressClass",
+    "ReplicaSet", "Endpoints", "EndpointSlice",
+    "PersistentVolumeClaim", "ServiceAccount",
+    "ConfigMap", "Secret",
+    "PersistentVolume", "StorageClass",
+    "Role", "ClusterRole", "RoleBinding", "ClusterRoleBinding",
+    "ResourceQuota", "LimitRange",
+  ],
+  3: null, // Show everything
+};
+
 /**
  * Maximum nodes rendered on the canvas before truncation kicks in.
  * Backend pod aggregation (>3 pods collapse to 1 node) keeps real node counts
@@ -24,6 +68,7 @@ export const MAX_VISIBLE_NODES = 1000;
 export interface UseTopologyDataParams {
   clusterId: string | null;
   viewMode?: ViewMode;
+  depth?: DepthLevel;
   selectedNamespaces?: Set<string>;
   selectedKinds?: Set<string>;
   hiddenEdgeCategories?: Set<string>;
@@ -60,6 +105,28 @@ const VIEW_MODE_CATEGORIES: Record<ViewMode, string[] | null> = {
   traffic: ["networking"],
   resource: null,
 };
+
+/**
+ * Progressive disclosure — filter by depth level.
+ * L3 = everything, L0-L2 = only kinds in the cumulative set.
+ * Edges are pruned to only connect kept nodes.
+ */
+function filterByDepth(
+  nodes: TopologyNode[],
+  edges: TopologyEdge[],
+  depth: DepthLevel
+): { nodes: TopologyNode[]; edges: TopologyEdge[] } {
+  const allowedKinds = DEPTH_KINDS[depth];
+  if (!allowedKinds) return { nodes, edges }; // L3 = no filter
+
+  const allowedSet = new Set(allowedKinds);
+  const filteredNodes = nodes.filter((n) => allowedSet.has(n.kind));
+  const nodeIds = new Set(filteredNodes.map((n) => n.id));
+  const filteredEdges = edges.filter(
+    (e) => nodeIds.has(e.source) && nodeIds.has(e.target)
+  );
+  return { nodes: filteredNodes, edges: filteredEdges };
+}
 
 function filterByViewMode(
   nodes: TopologyNode[],
@@ -141,6 +208,7 @@ function filterByNamespaces(
 export function useTopologyData({
   clusterId,
   viewMode = "namespace",
+  depth = 0,
   selectedNamespaces = new Set(),
   selectedKinds = new Set(),
   hiddenEdgeCategories = new Set(),
@@ -193,12 +261,16 @@ export function useTopologyData({
   }, [graph]);
 
   // Transform to v2 format and apply all filters
-  const result = useMemo<{ response: TopologyResponse; wasTruncated: boolean; totalBeforeCap: number } | null>(() => {
+  const result = useMemo<{ response: TopologyResponse; wasTruncated: boolean; totalBeforeCap: number; totalUnfiltered: number } | null>(() => {
     if (!graph) return null;
     const response = transformGraph(graph, clusterId ?? undefined);
+    const totalUnfiltered = response.nodes.length;
+
+    // Layer 0: Progressive disclosure — depth-based filtering
+    const afterDepth = filterByDepth(response.nodes, response.edges, depth);
 
     // Layer 1: View mode filtering
-    const afterViewMode = filterByViewMode(response.nodes, response.edges, viewMode);
+    const afterViewMode = filterByViewMode(afterDepth.nodes, afterDepth.edges, viewMode);
 
     // Layer 2: Namespace filtering — only for namespace-aware views
     const effectiveNs = NS_FILTERABLE_VIEWS.has(viewMode) ? selectedNamespaces : new Set<string>();
@@ -256,13 +328,14 @@ export function useTopologyData({
     }
     if (resource) response.metadata.focusResource = resource;
 
-    return { response, wasTruncated, totalBeforeCap };
+    return { response, wasTruncated, totalBeforeCap, totalUnfiltered };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [graph, viewMode, namespacesKey, kindsKey, edgeCategoriesKey, resource]);
+  }, [graph, viewMode, depth, namespacesKey, kindsKey, edgeCategoriesKey, resource]);
 
   const topology = result?.response ?? null;
   const truncated = result?.wasTruncated ?? false;
   const truncatedTotal = result?.totalBeforeCap ?? 0;
+  const totalUnfiltered = result?.totalUnfiltered ?? 0;
 
   return {
     topology,
@@ -278,5 +351,7 @@ export function useTopologyData({
     truncated,
     /** total node count before truncation (for the warning banner) */
     truncatedTotal,
+    /** total node count before any filtering (depth, view mode, etc.) — for "X of Y" display */
+    totalUnfiltered,
   };
 }

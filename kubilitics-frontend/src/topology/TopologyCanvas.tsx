@@ -32,6 +32,8 @@ export interface TopologyCanvasProps {
   highlightNodeIds?: string[];
   viewMode?: ViewMode;
   onSelectNode: (id: string | null) => void;
+  /** Called when a user double-clicks a node to expand deeper */
+  onNodeExpand?: (nodeId: string) => void;
   fitViewRef?: React.MutableRefObject<(() => void) | null>;
   /** Ref that parent sets to trigger an export. Call with (format, filename). */
   exportRef?: React.MutableRefObject<((format: ExportFormat, filename: string) => void) | null>;
@@ -55,6 +57,7 @@ function TopologyCanvasInner({
   highlightNodeIds = [],
   viewMode = "namespace",
   onSelectNode,
+  onNodeExpand,
   fitViewRef,
   exportRef,
   clusterName,
@@ -313,6 +316,10 @@ function TopologyCanvasInner({
     (_: React.MouseEvent, node: { id: string }) => onSelectNode(node.id),
     [onSelectNode]
   );
+  const onNodeDoubleClick = useCallback(
+    (_: React.MouseEvent, node: { id: string }) => onNodeExpand?.(node.id),
+    [onNodeExpand]
+  );
   const onPaneClick = useCallback(() => onSelectNode(null), [onSelectNode]);
   // Freeze zoom updates during export so fitView doesn't trigger semantic zoom changes
   const onMoveEnd = useCallback(
@@ -348,6 +355,7 @@ function TopologyCanvasInner({
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onNodeClick={onNodeClick}
+        onNodeDoubleClick={onNodeDoubleClick}
         onPaneClick={onPaneClick}
         onMoveEnd={onMoveEnd}
         maxZoom={4}

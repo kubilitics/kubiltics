@@ -2,8 +2,9 @@ import { useState, useCallback, useRef, useMemo } from "react";
 import {
   Search, Download, Maximize, ChevronDown, FileJson, FileImage, FileType,
   Filter, X, Layers, GitBranch, Check, Monitor, RefreshCw, Network,
-  Box, Route,
+  Box, Route, LayoutDashboard, Settings,
 } from "lucide-react";
+import { DEPTH_LABELS, type DepthLevel } from "./hooks/useTopologyData";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -35,6 +36,8 @@ import { useActiveClusterId } from "@/hooks/useActiveClusterId";
 
 export interface TopologyToolbarProps {
   viewMode?: ViewMode;
+  depth?: DepthLevel;
+  totalUnfiltered?: number;
   namespace?: string;
   clusterName?: string;
   selectedNamespaces?: Set<string>;
@@ -49,6 +52,7 @@ export interface TopologyToolbarProps {
   exportRef?: React.MutableRefObject<((format: ExportFormat, filename: string) => void) | null>;
   getExportCtx?: () => ExportContext;
   onViewModeChange?: (mode: ViewMode) => void;
+  onDepthChange?: (depth: DepthLevel) => void;
   onNamespaceChange?: (ns: string) => void;
   onNamespaceSelectionChange?: (selected: Set<string>) => void;
   onKindSelectionChange?: (selected: Set<string>) => void;
@@ -65,6 +69,8 @@ const SYSTEM_NAMESPACES = new Set(["kube-system", "kube-public", "kube-node-leas
 
 export function TopologyToolbar({
   viewMode = "namespace",
+  depth = 0,
+  totalUnfiltered = 0,
   clusterName,
   selectedNamespaces = new Set(),
   availableNamespaces = [],
@@ -76,6 +82,7 @@ export function TopologyToolbar({
   searchQuery = "",
   searchResults = [],
   onViewModeChange,
+  onDepthChange,
   onNamespaceSelectionChange,
   onKindSelectionChange,
   onEdgeCategoryToggle,
@@ -169,6 +176,32 @@ export function TopologyToolbar({
 
         {/* ── View Mode Selector ── */}
         <ViewModeSelect value={viewMode} onChange={onViewModeChange} />
+
+        {/* ── Depth Selector (progressive disclosure) ── */}
+        <div className="h-7 w-px bg-gradient-to-b from-transparent via-gray-300 to-transparent" />
+        <div className="flex items-center rounded-lg border border-gray-200 bg-white shadow-sm overflow-hidden">
+          {([0, 1, 2, 3] as DepthLevel[]).map((d) => {
+            const isActive = depth === d;
+            const Icon = d === 0 ? LayoutDashboard : d === 1 ? Box : d === 2 ? Settings : Network;
+            return (
+              <button
+                key={d}
+                type="button"
+                title={`${DEPTH_LABELS[d].label} — ${DEPTH_LABELS[d].description}`}
+                className={`flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-semibold transition-all ${
+                  isActive
+                    ? "bg-gradient-to-b from-blue-500 to-blue-600 text-white shadow-inner"
+                    : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
+                } ${d > 0 ? "border-l border-gray-200" : ""}`}
+                onClick={() => onDepthChange?.(d)}
+              >
+                <Icon className="h-3 w-3" />
+                <span className="hidden lg:inline">{DEPTH_LABELS[d].label}</span>
+                <span className="lg:hidden">L{d}</span>
+              </button>
+            );
+          })}
+        </div>
 
         {/* Separator + Namespace Filter — only for namespace-aware views */}
         {viewMode === "namespace" && (<>
@@ -567,6 +600,9 @@ export function TopologyToolbar({
             <div className="flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-blue-50 to-cyan-50 px-3 py-1.5 border border-blue-100 shadow-sm">
               <Layers className="h-3 w-3 text-blue-500" />
               <span className="text-xs font-bold text-blue-700 tabular-nums">{topology.metadata.resourceCount}</span>
+              {depth < 3 && totalUnfiltered > 0 ? (
+                <span className="text-[10px] text-blue-500 font-medium">of {totalUnfiltered}</span>
+              ) : null}
               <span className="text-[10px] text-blue-500 font-medium">resources</span>
             </div>
             <div className="flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-purple-50 to-violet-50 px-3 py-1.5 border border-purple-100 shadow-sm">

@@ -15,7 +15,7 @@ import {
   useTopologyKeyboard,
   TopologyShortcutsOverlay,
 } from "./hooks/useTopologyKeyboard";
-import { useTopologyData, MAX_VISIBLE_NODES } from "./hooks/useTopologyData";
+import { useTopologyData, MAX_VISIBLE_NODES, type DepthLevel } from "./hooks/useTopologyData";
 import { useTopologySearch } from "./hooks/useTopologySearch";
 import { useTopologyWebSocket } from "./hooks/useTopologyWebSocket";
 import { useTopologyStore } from "./store/topologyStore";
@@ -93,6 +93,9 @@ export function TopologyPage() {
     return () => window.removeEventListener("popstate", onPopState);
   }, []);
 
+  // Progressive disclosure depth — 0 = overview (~15 nodes), 3 = full graph
+  const [depth, setDepth] = useState<DepthLevel>(0);
+
   // Kind filter — empty set means "all kinds visible"
   const [selectedKinds, setSelectedKinds] = useState<Set<string>>(new Set());
   // Edge category filter — hidden categories (empty = all visible)
@@ -123,9 +126,10 @@ export function TopologyPage() {
   }), [viewMode, selectedNamespaces, clusterName]);
 
   // Data fetching — pass selected namespaces for filtering
-  const { topology, allNamespaces, allKinds, allEdgeCategories, isLoading, isFetching, isError, error, refetch, truncated, truncatedTotal } = useTopologyData({
+  const { topology, allNamespaces, allKinds, allEdgeCategories, isLoading, isFetching, isError, error, refetch, truncated, truncatedTotal, totalUnfiltered } = useTopologyData({
     clusterId,
     viewMode,
+    depth,
     selectedNamespaces,
     selectedKinds,
     hiddenEdgeCategories,
@@ -159,6 +163,7 @@ export function TopologyPage() {
   // Reset filters when cluster changes
   useEffect(() => {
     setSelectedNamespaces(new Set(["default"]));
+    setDepth(0);
     setSelectedKinds(new Set());
     setHiddenEdgeCategories(new Set());
     setHasAutoSelectedNs(false);
@@ -237,6 +242,11 @@ export function TopologyPage() {
     setSelectedNodeId(null);
   }, [setViewModeStore]);
 
+  // Double-click a node → increase depth by 1 to reveal children
+  const handleNodeExpand = useCallback(() => {
+    setDepth((prev) => Math.min(prev + 1, 3) as DepthLevel);
+  }, []);
+
   // Highlight node IDs from search
   const highlightNodeIds = useMemo(
     () => searchResults.map((r) => r.node.id),
@@ -293,6 +303,7 @@ export function TopologyPage() {
         highlightNodeIds={highlightNodeIds}
         viewMode={viewMode}
         onSelectNode={setSelectedNodeId}
+        onNodeExpand={handleNodeExpand}
         exportRef={exportRef}
         fitViewRef={fitViewRef}
         clusterName={clusterName ?? undefined}
@@ -306,6 +317,8 @@ export function TopologyPage() {
       {/* Toolbar — hidden in presentation mode */}
       {!presentationMode && <TopologyToolbar
         viewMode={viewMode}
+        depth={depth}
+        totalUnfiltered={totalUnfiltered}
         clusterName={clusterName ?? undefined}
         selectedNamespaces={selectedNamespaces}
         availableNamespaces={allNamespaces}
@@ -319,6 +332,7 @@ export function TopologyPage() {
         searchQuery={searchQuery}
         searchResults={searchResults}
         onViewModeChange={handleViewModeChange}
+        onDepthChange={setDepth}
         onNamespaceSelectionChange={handleNamespaceSelectionChange}
         onKindSelectionChange={setSelectedKinds}
         onEdgeCategoryToggle={setHiddenEdgeCategories}
