@@ -1,4 +1,5 @@
-import { Suspense, lazy, useState, useEffect } from "react";
+import { Suspense, lazy, useState, useEffect, type ReactNode } from "react";
+import { useAppZoom } from "@/hooks/useAppZoom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -591,9 +592,15 @@ function OnboardingGate({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+function AppZoom({ children }: { children: ReactNode }) {
+  useAppZoom();
+  return <>{children}</>;
+}
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
+      <AppZoom>
       <Sonner />
       <GlobalErrorBoundary>
         {/* Startup overlay: shown while the Go sidecar is starting up.
@@ -810,6 +817,7 @@ const App = () => (
         </AnalyticsConsentWrapper>
         </OnboardingGate>
       </GlobalErrorBoundary>
+      </AppZoom>
     </TooltipProvider>
   </QueryClientProvider>
 );
