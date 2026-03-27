@@ -195,10 +195,14 @@ export default function NamespaceDetail() {
             </SectionCard>
 
             {/* Labels */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <LabelList labels={labels} />
+            <div className="lg:col-span-2">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <LabelList labels={labels} />
+              </div>
             </div>
-            <AnnotationList annotations={annotations} />
+            <div className="lg:col-span-2">
+              <AnnotationList annotations={annotations} />
+            </div>
 
             {/* Resource Summary — full grid */}
             <SectionCard icon={Boxes} title="Resource Summary" tooltip="Counts of all resource types in this namespace" className="lg:col-span-2">

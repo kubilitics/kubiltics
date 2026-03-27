@@ -173,10 +173,14 @@ export default function EventDetail() {
           <SectionCard icon={Bell} title="Message">
             <p className="text-sm font-semibold">{ev?.message ?? '–'}</p>
           </SectionCard>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <LabelList labels={ev?.metadata?.labels ?? {}} />
+          <div className="lg:col-span-2">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <LabelList labels={ev?.metadata?.labels ?? {}} />
+            </div>
           </div>
-          <AnnotationList annotations={ev?.metadata?.annotations ?? {}} />
+          <div className="lg:col-span-2">
+            <AnnotationList annotations={ev?.metadata?.annotations ?? {}} />
+          </div>
         </div>
       ),
     },

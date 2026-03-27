@@ -191,10 +191,14 @@ export default function ReplicationControllerDetail() {
                 {Object.keys(selector).length === 0 && <p className="text-sm text-muted-foreground">No selectors</p>}
             </SectionCard>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <LabelList labels={rc?.metadata?.labels ?? {}} />
+            <div className="lg:col-span-2">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <LabelList labels={rc?.metadata?.labels ?? {}} />
+              </div>
             </div>
-            <AnnotationList annotations={rc?.metadata?.annotations ?? {}} />
+            <div className="lg:col-span-2">
+              <AnnotationList annotations={rc?.metadata?.annotations ?? {}} />
+            </div>
 
             <SectionCard icon={Package} title="Pod Template" className="lg:col-span-1">
                 <div className="space-y-3">

@@ -688,10 +688,14 @@ export default function PodDetail() {
           </div>
 
           {/* Metadata */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Labels */}
-            <LabelList labels={pod.metadata?.labels ?? {}} />
+          <div className="lg:col-span-2">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Labels */}
+              <LabelList labels={pod.metadata?.labels ?? {}} />
+            </div>
+          </div>
 
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Volumes */}
             <SectionCard
               icon={HardDrive}
@@ -752,7 +756,9 @@ export default function PodDetail() {
           )}
 
           {/* Annotations */}
-          <AnnotationList annotations={pod.metadata?.annotations ?? {}} />
+          <div className="lg:col-span-2">
+            <AnnotationList annotations={pod.metadata?.annotations ?? {}} />
+          </div>
         </div>
       ),
     },

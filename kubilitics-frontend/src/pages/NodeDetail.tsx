@@ -522,22 +522,26 @@ export default function NodeDetail() {
             <TaintsList taints={taints} />
 
             {/* Roles & Labels */}
-            <SectionCard icon={Tag} title="Roles & Labels" tooltip={<p className="text-xs text-muted-foreground">Node roles and Kubernetes labels</p>}>
-              <div className="space-y-4">
-                <div>
-                  <p className="text-sm text-muted-foreground mb-2">Roles</p>
-                  <div className="flex flex-wrap gap-2">
-                    {roles.length > 0 ? roles.map((role) => (
-                      <Badge key={role} variant="outline">{role || 'control-plane'}</Badge>
-                    )) : <span className="text-muted-foreground text-sm">worker</span>}
+            <div className="lg:col-span-2">
+              <SectionCard icon={Tag} title="Roles & Labels" tooltip={<p className="text-xs text-muted-foreground">Node roles and Kubernetes labels</p>}>
+                <div className="space-y-4">
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-2">Roles</p>
+                    <div className="flex flex-wrap gap-2">
+                      {roles.length > 0 ? roles.map((role) => (
+                        <Badge key={role} variant="outline">{role || 'control-plane'}</Badge>
+                      )) : <span className="text-muted-foreground text-sm">worker</span>}
+                    </div>
                   </div>
+                  <LabelList labels={labels} showCard={false} title={`Labels (${Object.keys(labels).length})`} />
                 </div>
-                <LabelList labels={labels} showCard={false} title={`Labels (${Object.keys(labels).length})`} />
-              </div>
-            </SectionCard>
+              </SectionCard>
+            </div>
 
             {/* Annotations */}
-            <AnnotationList annotations={n?.metadata?.annotations ?? {}} />
+            <div className="lg:col-span-2">
+              <AnnotationList annotations={n?.metadata?.annotations ?? {}} />
+            </div>
           </div>
         </div>
       ),

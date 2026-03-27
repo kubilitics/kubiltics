@@ -319,12 +319,16 @@ export default function GatewayDetail() {
 
       {/* Labels & Annotations */}
       {gateway.metadata.labels && Object.keys(gateway.metadata.labels).length > 0 && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <LabelList labels={gateway.metadata.labels} showCard={false} showCopyAll={false} />
+        <div className="lg:col-span-2">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <LabelList labels={gateway.metadata.labels} showCard={false} showCopyAll={false} />
+          </div>
         </div>
       )}
       {gateway.metadata.annotations && Object.keys(gateway.metadata.annotations).length > 0 && (
-        <AnnotationList annotations={gateway.metadata.annotations} showCard={false} maxVisible={5} />
+        <div className="lg:col-span-2">
+          <AnnotationList annotations={gateway.metadata.annotations} showCard={false} maxVisible={5} />
+        </div>
       )}
 
       {/* Tabs */}

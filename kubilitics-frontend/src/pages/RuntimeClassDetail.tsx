@@ -252,10 +252,14 @@ export default function RuntimeClassDetail() {
                 )}
             </SectionCard>
           </div>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <LabelList labels={k8sRc?.metadata?.labels ?? {}} />
+          <div className="lg:col-span-2">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <LabelList labels={k8sRc?.metadata?.labels ?? {}} />
+            </div>
           </div>
-          <AnnotationList annotations={k8sRc?.metadata?.annotations ?? {}} />
+          <div className="lg:col-span-2">
+            <AnnotationList annotations={k8sRc?.metadata?.annotations ?? {}} />
+          </div>
         </div>
       ),
     },

@@ -387,11 +387,15 @@ export default function ReplicaSetDetail() {
           </div>
 
           {/* Metadata */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <LabelList labels={replicaSet.metadata?.labels ?? {}} />
-            <LabelList labels={replicaSet.spec?.selector?.matchLabels ?? {}} title="Selector" />
+          <div className="lg:col-span-2">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <LabelList labels={replicaSet.metadata?.labels ?? {}} />
+              <LabelList labels={replicaSet.spec?.selector?.matchLabels ?? {}} title="Selector" />
+            </div>
           </div>
-          <AnnotationList annotations={replicaSet.metadata?.annotations ?? {}} />
+          <div className="lg:col-span-2">
+            <AnnotationList annotations={replicaSet.metadata?.annotations ?? {}} />
+          </div>
         </div>
       ),
     },

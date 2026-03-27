@@ -143,10 +143,14 @@ export default function LeaseDetail() {
               <DetailRow label="Status" value={<Badge variant={isExpired ? 'destructive' : 'default'}>{isExpired ? 'Expired' : 'Active'}</Badge>} />
             </div>
           </SectionCard>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <LabelList labels={lease?.metadata?.labels ?? {}} />
+          <div className="lg:col-span-2">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <LabelList labels={lease?.metadata?.labels ?? {}} />
+            </div>
           </div>
-          <AnnotationList annotations={lease?.metadata?.annotations ?? {}} />
+          <div className="lg:col-span-2">
+            <AnnotationList annotations={lease?.metadata?.annotations ?? {}} />
+          </div>
         </div>
       ),
     },

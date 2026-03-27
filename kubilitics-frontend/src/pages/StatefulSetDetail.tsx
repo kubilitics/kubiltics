@@ -499,11 +499,15 @@ export default function StatefulSetDetail() {
           )}
 
           {/* Metadata */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <LabelList labels={statefulSet.metadata?.labels || {}} />
-            <LabelList labels={statefulSet.spec?.selector?.matchLabels || {}} title="Selector" />
+          <div className="lg:col-span-2">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <LabelList labels={statefulSet.metadata?.labels || {}} />
+              <LabelList labels={statefulSet.spec?.selector?.matchLabels || {}} title="Selector" />
+            </div>
           </div>
-          <AnnotationList annotations={statefulSet.metadata?.annotations || {}} />
+          <div className="lg:col-span-2">
+            <AnnotationList annotations={statefulSet.metadata?.annotations || {}} />
+          </div>
         </div>
       ),
     },

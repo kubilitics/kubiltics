@@ -221,10 +221,14 @@ export default function ResourceQuotaDetail() {
                 <p className="text-muted-foreground text-sm">No hard limits defined.</p>
               )}
           </SectionCard>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <LabelList labels={labels} />
+          <div className="lg:col-span-2">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <LabelList labels={labels} />
+            </div>
           </div>
-          <AnnotationList annotations={annotations} />
+          <div className="lg:col-span-2">
+            <AnnotationList annotations={annotations} />
+          </div>
         </div>
       ),
     },

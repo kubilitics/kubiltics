@@ -195,10 +195,14 @@ export default function VolumeSnapshotContentDetail() {
               </Link>
             </SectionCard>
           )}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <LabelList labels={vsc?.metadata?.labels ?? {}} />
+          <div className="lg:col-span-2">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <LabelList labels={vsc?.metadata?.labels ?? {}} />
+            </div>
           </div>
-          <AnnotationList annotations={vsc?.metadata?.annotations ?? {}} />
+          <div className="lg:col-span-2">
+            <AnnotationList annotations={vsc?.metadata?.annotations ?? {}} />
+          </div>
         </div>
       ),
     },

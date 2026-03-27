@@ -177,10 +177,14 @@ export default function ResourceSliceDetail() {
               <DetailRow label="Age" value={age} />
             </div>
           </SectionCard>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <LabelList labels={rs?.metadata?.labels ?? {}} />
+          <div className="lg:col-span-2">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <LabelList labels={rs?.metadata?.labels ?? {}} />
+            </div>
           </div>
-          <AnnotationList annotations={rs?.metadata?.annotations ?? {}} />
+          <div className="lg:col-span-2">
+            <AnnotationList annotations={rs?.metadata?.annotations ?? {}} />
+          </div>
         </div>
       ),
     },

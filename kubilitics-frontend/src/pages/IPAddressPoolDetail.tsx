@@ -158,10 +158,14 @@ export default function IPAddressPoolDetail() {
               <DetailRow label="Age" value={age} />
             </div>
           </SectionCard>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <LabelList labels={pool?.metadata?.labels ?? {}} />
+          <div className="lg:col-span-2">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <LabelList labels={pool?.metadata?.labels ?? {}} />
+            </div>
           </div>
-          <AnnotationList annotations={pool?.metadata?.annotations ?? {}} />
+          <div className="lg:col-span-2">
+            <AnnotationList annotations={pool?.metadata?.annotations ?? {}} />
+          </div>
         </div>
       ),
     },

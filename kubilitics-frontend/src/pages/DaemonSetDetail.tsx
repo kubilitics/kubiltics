@@ -403,11 +403,15 @@ export default function DaemonSetDetail() {
           )}
 
           {/* Metadata */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <LabelList labels={daemonSet.metadata?.labels || {}} />
-            <LabelList labels={nodeSelector} title="Node Selector" />
+          <div className="lg:col-span-2">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <LabelList labels={daemonSet.metadata?.labels || {}} />
+              <LabelList labels={nodeSelector} title="Node Selector" />
+            </div>
           </div>
-          <AnnotationList annotations={daemonSet.metadata?.annotations || {}} />
+          <div className="lg:col-span-2">
+            <AnnotationList annotations={daemonSet.metadata?.annotations || {}} />
+          </div>
         </div>
       ),
     },

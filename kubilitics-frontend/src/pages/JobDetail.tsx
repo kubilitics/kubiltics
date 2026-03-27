@@ -424,10 +424,14 @@ export default function JobDetail() {
           )}
 
           {/* Metadata */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <LabelList labels={job.metadata?.labels || {}} />
+          <div className="lg:col-span-2">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <LabelList labels={job.metadata?.labels || {}} />
+            </div>
           </div>
-          <AnnotationList annotations={job.metadata?.annotations || {}} />
+          <div className="lg:col-span-2">
+            <AnnotationList annotations={job.metadata?.annotations || {}} />
+          </div>
         </div>
       ),
     },

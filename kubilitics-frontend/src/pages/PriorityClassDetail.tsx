@@ -172,10 +172,14 @@ export default function PriorityClassDetail() {
                 </div>
             </SectionCard>
           </div>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <LabelList labels={resource?.metadata?.labels ?? {}} />
+          <div className="lg:col-span-2">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <LabelList labels={resource?.metadata?.labels ?? {}} />
+            </div>
           </div>
-          <AnnotationList annotations={resource?.metadata?.annotations ?? {}} />
+          <div className="lg:col-span-2">
+            <AnnotationList annotations={resource?.metadata?.annotations ?? {}} />
+          </div>
         </div>
       ),
     },

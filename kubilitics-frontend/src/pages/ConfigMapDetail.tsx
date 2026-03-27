@@ -336,10 +336,14 @@ export default function ConfigMapDetail() {
               {dataKeysCount === 0 && <p className="text-muted-foreground text-sm">No keys</p>}
             </div>
           </SectionCard>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <LabelList labels={labels} />
+          <div className="lg:col-span-2">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <LabelList labels={labels} />
+            </div>
           </div>
-          <AnnotationList annotations={cm?.metadata?.annotations || {}} />
+          <div className="lg:col-span-2">
+            <AnnotationList annotations={cm?.metadata?.annotations || {}} />
+          </div>
         </div>
       ),
     },
