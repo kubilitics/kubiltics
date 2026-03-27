@@ -200,6 +200,22 @@ export function TopologyPage() {
     }, []),
   });
 
+  // Escape key for presentation mode — capture phase so it fires before React Flow
+  // can stopPropagation(). React Flow intercepts Escape in bubble phase to deselect
+  // nodes, which prevents the window-level listener in useTopologyKeyboard from firing.
+  useEffect(() => {
+    if (!presentationMode) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        e.stopPropagation();
+        togglePresentationMode();
+      }
+    };
+    window.addEventListener("keydown", handler, { capture: true });
+    return () => window.removeEventListener("keydown", handler, { capture: true });
+  }, [presentationMode, togglePresentationMode]);
+
   // Keyboard shortcuts — full PRD set
   useTopologyKeyboard({
     onFitView: useCallback(() => fitViewRef.current?.(), []),
@@ -208,12 +224,14 @@ export function TopologyPage() {
       input?.focus();
     }, []),
     onClearSelection: useCallback(() => {
-      if (selectedNodeId) {
+      if (presentationMode) {
+        togglePresentationMode();
+      } else if (selectedNodeId) {
         setSelectedNodeId(null);
       } else {
         navigateBack();
       }
-    }, [selectedNodeId, navigateBack]),
+    }, [presentationMode, togglePresentationMode, selectedNodeId, navigateBack]),
     onViewMode: useCallback((n: number) => {
       const modes: ViewMode[] = ["namespace", "cluster", "rbac"];
       if (n >= 1 && n <= 3) setViewModeStore(modes[n - 1]);

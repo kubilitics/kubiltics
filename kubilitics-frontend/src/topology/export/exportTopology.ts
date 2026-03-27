@@ -73,6 +73,61 @@ function exportFilter(node: HTMLElement): boolean {
   return true;
 }
 
+// ─── Pre-inline images for html-to-image ─────────────────────────────────────
+//
+// html-to-image serializes the DOM into an SVG <foreignObject>. External image
+// URLs (including Vite asset URLs like /assets/pod-abc123.svg) fail to load
+// inside this serialized context. This causes topology nodes to render as blank
+// rectangles in PNG/SVG/PDF exports.
+//
+// Fix: Before capturing, fetch every <img> src and replace it with a data URI.
+// After capture, restore the original sources so the live UI is unaffected.
+
+interface InlinedImage {
+  el: HTMLImageElement;
+  originalSrc: string;
+}
+
+export async function inlineAllImages(container: HTMLElement): Promise<InlinedImage[]> {
+  const imgs = container.querySelectorAll("img");
+  const inlined: InlinedImage[] = [];
+  const cache = new Map<string, string>();
+
+  await Promise.allSettled(
+    Array.from(imgs).map(async (img) => {
+      const src = img.src;
+      if (!src || src.startsWith("data:")) return; // Already inline
+
+      try {
+        let dataUri = cache.get(src);
+        if (!dataUri) {
+          const response = await fetch(src);
+          const blob = await response.blob();
+          dataUri = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result as string);
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+          });
+          cache.set(src, dataUri);
+        }
+        inlined.push({ el: img, originalSrc: src });
+        img.src = dataUri;
+      } catch {
+        // If fetch fails, leave original src — html-to-image may still handle it
+      }
+    })
+  );
+
+  return inlined;
+}
+
+export function restoreInlinedImages(inlined: InlinedImage[]) {
+  for (const { el, originalSrc } of inlined) {
+    el.src = originalSrc;
+  }
+}
+
 // ─── Compute content bounds from all nodes in flow coordinates ───────────────
 
 /**
@@ -191,29 +246,37 @@ export async function captureFullTopologyPNG(
 
   const params = computeExportParams(bounds);
 
-  const capturePromise = toPng(viewport, {
-    backgroundColor: EXPORT.backgroundColor,
-    pixelRatio: params.pixelRatio,
-    width: params.captureWidth,
-    height: params.captureHeight,
-    quality: 1.0,
-    style: {
-      transform: `translate(${-bounds.minX * params.scale + params.scaledPadding}px, ${-bounds.minY * params.scale + params.scaledPadding}px) scale(${params.scale})`,
-      transformOrigin: "top left",
-    },
-    filter: exportFilter,
-  });
+  // Inline all images as data URIs so html-to-image can embed them
+  const inlined = await inlineAllImages(viewport);
 
-  const timeoutPromise = new Promise<never>((_, reject) =>
-    setTimeout(() => reject(new Error("Export timed out")), EXPORT.timeoutMs)
-  );
+  try {
+    const capturePromise = toPng(viewport, {
+      backgroundColor: EXPORT.backgroundColor,
+      pixelRatio: params.pixelRatio,
+      width: params.captureWidth,
+      height: params.captureHeight,
+      quality: 1.0,
+      style: {
+        transform: `translate(${-bounds.minX * params.scale + params.scaledPadding}px, ${-bounds.minY * params.scale + params.scaledPadding}px) scale(${params.scale})`,
+        transformOrigin: "top left",
+      },
+      filter: exportFilter,
+    });
 
-  const dataUrl = await Promise.race([capturePromise, timeoutPromise]);
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error("Export timed out")), EXPORT.timeoutMs)
+    );
 
-  const link = document.createElement("a");
-  link.download = filename;
-  link.href = dataUrl;
-  link.click();
+    const dataUrl = await Promise.race([capturePromise, timeoutPromise]);
+
+    const link = document.createElement("a");
+    link.download = filename;
+    link.href = dataUrl;
+    link.click();
+  } finally {
+    // Always restore original image sources so live UI is unaffected
+    restoreInlinedImages(inlined);
+  }
 }
 
 // ─── SVG Export — same adaptive approach ─────────────────────────────────────
@@ -235,27 +298,34 @@ export async function captureFullTopologySVG(
 
   const params = computeExportParams(bounds);
 
-  const capturePromise = toSvg(viewport, {
-    backgroundColor: EXPORT.backgroundColor,
-    width: params.captureWidth,
-    height: params.captureHeight,
-    style: {
-      transform: `translate(${-bounds.minX * params.scale + params.scaledPadding}px, ${-bounds.minY * params.scale + params.scaledPadding}px) scale(${params.scale})`,
-      transformOrigin: "top left",
-    },
-    filter: exportFilter,
-  });
+  // Inline all images as data URIs so html-to-image can embed them
+  const inlined = await inlineAllImages(viewport);
 
-  const timeoutPromise = new Promise<never>((_, reject) =>
-    setTimeout(() => reject(new Error("Export timed out")), EXPORT.timeoutMs)
-  );
+  try {
+    const capturePromise = toSvg(viewport, {
+      backgroundColor: EXPORT.backgroundColor,
+      width: params.captureWidth,
+      height: params.captureHeight,
+      style: {
+        transform: `translate(${-bounds.minX * params.scale + params.scaledPadding}px, ${-bounds.minY * params.scale + params.scaledPadding}px) scale(${params.scale})`,
+        transformOrigin: "top left",
+      },
+      filter: exportFilter,
+    });
 
-  const dataUrl = await Promise.race([capturePromise, timeoutPromise]);
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error("Export timed out")), EXPORT.timeoutMs)
+    );
 
-  const link = document.createElement("a");
-  link.download = filename;
-  link.href = dataUrl;
-  link.click();
+    const dataUrl = await Promise.race([capturePromise, timeoutPromise]);
+
+    const link = document.createElement("a");
+    link.download = filename;
+    link.href = dataUrl;
+    link.click();
+  } finally {
+    restoreInlinedImages(inlined);
+  }
 }
 
 // ─── Draw.io Export — Uses actual topology positions and edges ─────────────────

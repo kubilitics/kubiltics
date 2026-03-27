@@ -8,6 +8,11 @@
  * and the existing adaptive-scaling logic from topology/export/exportTopology.ts.
  */
 
+import {
+  inlineAllImages,
+  restoreInlinedImages,
+} from '@/topology/export/exportTopology';
+
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 export type ExportFormat = 'png' | 'svg';
@@ -288,25 +293,32 @@ export async function exportTopologyAsPNG(
 
   const params = computeExportParams(bounds, options.resolution);
 
-  // Step 1: Capture the raw topology as a data URL
-  const capturePromise = toPng(viewport, {
-    backgroundColor: '#ffffff',
-    pixelRatio: params.pixelRatio,
-    width: params.captureWidth,
-    height: params.captureHeight,
-    quality: 1.0,
-    style: {
-      transform: `translate(${-bounds.minX * params.scale + params.scaledPadding}px, ${-bounds.minY * params.scale + params.scaledPadding}px) scale(${params.scale})`,
-      transformOrigin: 'top left',
-    },
-    filter: exportFilter,
-  });
+  // Step 1: Inline all images as data URIs for html-to-image compatibility
+  const inlined = await inlineAllImages(viewport);
 
-  const timeoutPromise = new Promise<never>((_, reject) =>
-    setTimeout(() => reject(new Error('PNG export timed out after 30s')), 30_000)
-  );
+  let topologyDataUrl: string;
+  try {
+    const capturePromise = toPng(viewport, {
+      backgroundColor: '#ffffff',
+      pixelRatio: params.pixelRatio,
+      width: params.captureWidth,
+      height: params.captureHeight,
+      quality: 1.0,
+      style: {
+        transform: `translate(${-bounds.minX * params.scale + params.scaledPadding}px, ${-bounds.minY * params.scale + params.scaledPadding}px) scale(${params.scale})`,
+        transformOrigin: 'top left',
+      },
+      filter: exportFilter,
+    });
 
-  const topologyDataUrl = await Promise.race([capturePromise, timeoutPromise]);
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('PNG export timed out after 30s')), 30_000)
+    );
+
+    topologyDataUrl = await Promise.race([capturePromise, timeoutPromise]);
+  } finally {
+    restoreInlinedImages(inlined);
+  }
 
   // Step 2: Composite the final image with header, legend, footer
   return compositeImage(topologyDataUrl, options, params);
@@ -534,22 +546,30 @@ export async function exportTopologyAsSVG(
 
   const params = computeExportParams(bounds, options.resolution);
 
-  const capturePromise = toSvg(viewport, {
-    backgroundColor: '#ffffff',
-    width: params.captureWidth,
-    height: params.captureHeight,
-    style: {
-      transform: `translate(${-bounds.minX * params.scale + params.scaledPadding}px, ${-bounds.minY * params.scale + params.scaledPadding}px) scale(${params.scale})`,
-      transformOrigin: 'top left',
-    },
-    filter: exportFilter,
-  });
+  // Inline all images as data URIs for html-to-image compatibility
+  const inlined = await inlineAllImages(viewport);
 
-  const timeoutPromise = new Promise<never>((_, reject) =>
-    setTimeout(() => reject(new Error('SVG export timed out after 30s')), 30_000)
-  );
+  let svgDataUrl: string;
+  try {
+    const capturePromise = toSvg(viewport, {
+      backgroundColor: '#ffffff',
+      width: params.captureWidth,
+      height: params.captureHeight,
+      style: {
+        transform: `translate(${-bounds.minX * params.scale + params.scaledPadding}px, ${-bounds.minY * params.scale + params.scaledPadding}px) scale(${params.scale})`,
+        transformOrigin: 'top left',
+      },
+      filter: exportFilter,
+    });
 
-  const svgDataUrl = await Promise.race([capturePromise, timeoutPromise]);
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('SVG export timed out after 30s')), 30_000)
+    );
+
+    svgDataUrl = await Promise.race([capturePromise, timeoutPromise]);
+  } finally {
+    restoreInlinedImages(inlined);
+  }
 
   // html-to-image returns a data URL — extract the SVG XML
   const svgXml = decodeURIComponent(svgDataUrl.split(',')[1] ?? '');

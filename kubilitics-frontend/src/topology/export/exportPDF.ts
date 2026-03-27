@@ -5,6 +5,7 @@
  */
 import { EXPORT } from "../constants/designTokens";
 import type { ExportBounds } from "./exportTopology";
+import { inlineAllImages, restoreInlinedImages } from "./exportTopology";
 
 export async function exportTopologyPDF(
   clusterName?: string,
@@ -68,25 +69,32 @@ export async function exportTopologyPDF(
   const captureHeight = Math.ceil(rawHeight * scale);
   const scaledPadding = padding * scale;
 
-  // Capture
-  const pngDataUrl = await toPng(viewport, {
-    backgroundColor: EXPORT.backgroundColor,
-    pixelRatio: 1.5, // Good quality for PDF without hitting canvas limits
-    width: captureWidth,
-    height: captureHeight,
-    quality: 1.0,
-    style: {
-      transform: `translate(${-minX * scale + scaledPadding}px, ${-minY * scale + scaledPadding}px) scale(${scale})`,
-      transformOrigin: "top left",
-    },
-    filter: (node: HTMLElement) => {
-      const cn = node.className?.toString() ?? "";
-      if (cn.includes("react-flow__minimap")) return false;
-      if (cn.includes("react-flow__controls")) return false;
-      if (cn.includes("react-flow__background")) return false;
-      return true;
-    },
-  });
+  // Inline all images as data URIs so html-to-image can embed them
+  const inlined = await inlineAllImages(viewport);
+
+  let pngDataUrl: string;
+  try {
+    pngDataUrl = await toPng(viewport, {
+      backgroundColor: EXPORT.backgroundColor,
+      pixelRatio: 1.5, // Good quality for PDF without hitting canvas limits
+      width: captureWidth,
+      height: captureHeight,
+      quality: 1.0,
+      style: {
+        transform: `translate(${-minX * scale + scaledPadding}px, ${-minY * scale + scaledPadding}px) scale(${scale})`,
+        transformOrigin: "top left",
+      },
+      filter: (node: HTMLElement) => {
+        const cn = node.className?.toString() ?? "";
+        if (cn.includes("react-flow__minimap")) return false;
+        if (cn.includes("react-flow__controls")) return false;
+        if (cn.includes("react-flow__background")) return false;
+        return true;
+      },
+    });
+  } finally {
+    restoreInlinedImages(inlined);
+  }
 
   // Dynamic page size — fit content with margin for header/footer
   const headerHeight = 50;
