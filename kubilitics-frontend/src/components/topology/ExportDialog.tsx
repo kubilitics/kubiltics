@@ -30,7 +30,7 @@ import {
   type ExportFormat,
   type ExportResolution,
 } from '@/lib/topologyExport';
-import { downloadFile } from '@/topology-engine';
+import { downloadFile } from '@/topology/graph';
 
 // ─── Props ───────────────────────────────────────────────────────────────────
 

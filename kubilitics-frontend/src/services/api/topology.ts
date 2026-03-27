@@ -1,7 +1,7 @@
 /**
  * Topology endpoints (getTopology, getResourceTopology, getTopologyV2, getTopologyExportDrawio).
  */
-import { adaptTopologyGraph, validateTopologyGraph } from '@/topology-engine';
+import { adaptTopologyGraph, validateTopologyGraph } from '@/topology/graph';
 import { backendRequest } from './client';
 import type { TopologyGraph } from './types';
 

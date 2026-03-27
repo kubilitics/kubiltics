@@ -12,7 +12,7 @@ import { getResourceTopology } from '@/services/backendApiClient';
 import { useActiveClusterId } from './useActiveClusterId';
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
 import { normalizeKindForTopology } from '@/utils/resourceKindMapper';
-import type { TopologyGraph } from '@/topology-engine';
+import type { TopologyGraph } from '@/topology/graph';
 
 // ─── Public types ───────────────────────────────────────────────────────────
 

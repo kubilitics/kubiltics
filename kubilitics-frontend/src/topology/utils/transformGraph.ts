@@ -9,7 +9,7 @@ import type {
   TopologyGraph,
   TopologyNode as EngineNode,
   TopologyEdge as EngineEdge,
-} from "@/topology-engine/types/topology.types";
+} from "@/topology/graph/types/topology.types";
 import type {
   TopologyResponse,
   TopologyNode,

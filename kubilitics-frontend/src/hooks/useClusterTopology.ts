@@ -5,7 +5,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getTopology } from '@/services/backendApiClient';
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
-import type { TopologyGraph } from '@/topology-engine';
+import type { TopologyGraph } from '@/topology/graph';
 
 export interface UseClusterTopologyOptions {
   clusterId?: string | null;

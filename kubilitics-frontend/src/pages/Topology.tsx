@@ -63,15 +63,15 @@ import {
   DropdownMenuTrigger, DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { GraphModel } from '@/topology-engine/core/graphModel';
-import { AdjacencyMap } from '@/topology-engine/core/adjacencyMap';
-import { getUpstreamChain, getDownstreamChain } from '@/topology-engine/core/graphTraversal';
+import { GraphModel } from '@/topology/graph/core/graphModel';
+import { AdjacencyMap } from '@/topology/graph/core/adjacencyMap';
+import { getUpstreamChain, getDownstreamChain } from '@/topology/graph/core/graphTraversal';
 import type {
   TopologyGraph, TopologyNode, TopologyEdge, KubernetesKind,
-} from '@/topology-engine/types/topology.types';
+} from '@/topology/graph/types/topology.types';
 import {
   downloadJSON, downloadCSVSummary, downloadFile, generateTestGraph,
-} from '@/topology-engine';
+} from '@/topology/graph';
 
 // ─── View Types ───────────────────────────────────────────────────────────────
 

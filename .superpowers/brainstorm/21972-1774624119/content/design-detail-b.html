@@ -1,0 +1,303 @@
+<h2>Approach B: Detailed Design</h2>
+<p class="subtitle">Insightful Resource Tiles — each card earns its space with health data</p>
+
+<div class="section">
+  <h3>Card Anatomy</h3>
+  <div class="mockup">
+    <div class="mockup-header">Single Resource Tile — Expanded View</div>
+    <div class="mockup-body" style="padding: 32px; background: #f8fafc;">
+      <div style="max-width: 320px; margin: 0 auto;">
+        <div style="background: white; border-radius: 16px; padding: 20px; border: 1px solid #e2e8f0; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
+          <!-- Row 1: Icon + Label + Count -->
+          <div style="display: flex; align-items: center; gap: 14px; margin-bottom: 14px;">
+            <div style="width: 44px; height: 44px; background: linear-gradient(145deg, #dbeafe 0%, #bfdbfe 100%); border-radius: 13px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 1px 2px rgba(59,130,246,0.15), inset 0 1px 0 rgba(255,255,255,0.6);">
+              <div style="font-size: 13px; font-weight: 700; color: #326ce5;">K8s</div>
+            </div>
+            <div style="flex: 1;">
+              <div style="font-size: 12px; font-weight: 600; color: #64748b; letter-spacing: 0.01em;">Pods</div>
+              <div style="font-size: 26px; font-weight: 800; color: #0f172a; line-height: 1.15; letter-spacing: -0.02em;">88</div>
+            </div>
+            <div style="font-size: 11px; color: #94a3b8;">&#8250;</div>
+          </div>
+          <!-- Row 2: Health bar -->
+          <div style="height: 4px; background: #f1f5f9; border-radius: 2px; overflow: hidden; margin-bottom: 8px;">
+            <div style="display: flex; height: 100%;">
+              <div style="width: 95%; background: #22c55e; border-radius: 2px;"></div>
+              <div style="width: 5%; background: #f59e0b;"></div>
+            </div>
+          </div>
+          <!-- Row 3: Status summary -->
+          <div style="display: flex; align-items: center; gap: 12px; font-size: 11px; color: #64748b;">
+            <span><span style="display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #22c55e; margin-right: 4px;"></span>84 Running</span>
+            <span><span style="display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #f59e0b; margin-right: 4px;"></span>4 Pending</span>
+          </div>
+        </div>
+      </div>
+      <div style="text-align: center; margin-top: 16px; font-size: 11px; color: #94a3b8;">
+        &uarr; Icon well (44px) &bull; Label above count &bull; Segmented health bar &bull; Status dots
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Full Grid — 3 Categories</h3>
+  <div class="mockup">
+    <div class="mockup-header">Dashboard Resources Section</div>
+    <div class="mockup-body" style="padding: 24px; background: #f8fafc;">
+
+      <!-- INFRASTRUCTURE -->
+      <div style="font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: #94a3b8; margin-bottom: 8px; padding-left: 2px;">Infrastructure</div>
+      <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px;">
+
+        <!-- Nodes -->
+        <div style="background: white; border-radius: 14px; padding: 16px; border: 1px solid #e2e8f0; box-shadow: 0 1px 3px rgba(0,0,0,0.04); cursor: pointer; transition: all 0.2s;">
+          <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+            <div style="width: 40px; height: 40px; background: linear-gradient(145deg, #dbeafe, #bfdbfe); border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 1px 2px rgba(59,130,246,0.12);">
+              <div style="font-size: 11px; font-weight: 700; color: #326ce5;">N</div>
+            </div>
+            <div style="flex: 1;">
+              <div style="font-size: 11.5px; font-weight: 600; color: #64748b;">Nodes</div>
+              <div style="font-size: 24px; font-weight: 800; color: #0f172a; line-height: 1.15; letter-spacing: -0.02em;">3</div>
+            </div>
+          </div>
+          <div style="height: 3px; background: #f1f5f9; border-radius: 2px; overflow: hidden; margin-bottom: 6px;">
+            <div style="width: 100%; height: 100%; background: #22c55e; border-radius: 2px;"></div>
+          </div>
+          <div style="font-size: 10.5px; color: #64748b;">
+            <span style="display: inline-block; width: 5px; height: 5px; border-radius: 50%; background: #22c55e; margin-right: 3px; vertical-align: middle;"></span>3 Ready
+          </div>
+        </div>
+
+        <!-- Pods -->
+        <div style="background: white; border-radius: 14px; padding: 16px; border: 1px solid #e2e8f0; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
+          <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+            <div style="width: 40px; height: 40px; background: linear-gradient(145deg, #e0e7ff, #c7d2fe); border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 1px 2px rgba(79,70,229,0.12);">
+              <div style="font-size: 11px; font-weight: 700; color: #4f46e5;">P</div>
+            </div>
+            <div style="flex: 1;">
+              <div style="font-size: 11.5px; font-weight: 600; color: #64748b;">Pods</div>
+              <div style="font-size: 24px; font-weight: 800; color: #0f172a; line-height: 1.15; letter-spacing: -0.02em;">88</div>
+            </div>
+          </div>
+          <div style="height: 3px; background: #f1f5f9; border-radius: 2px; overflow: hidden; margin-bottom: 6px;">
+            <div style="display: flex; height: 100%;">
+              <div style="width: 95%; background: #22c55e; border-radius: 2px;"></div>
+              <div style="width: 5%; background: #f59e0b;"></div>
+            </div>
+          </div>
+          <div style="font-size: 10.5px; color: #64748b; display: flex; gap: 8px;">
+            <span><span style="display: inline-block; width: 5px; height: 5px; border-radius: 50%; background: #22c55e; margin-right: 3px; vertical-align: middle;"></span>84 Running</span>
+            <span><span style="display: inline-block; width: 5px; height: 5px; border-radius: 50%; background: #f59e0b; margin-right: 3px; vertical-align: middle;"></span>4 Pending</span>
+          </div>
+        </div>
+
+        <!-- Deployments -->
+        <div style="background: white; border-radius: 14px; padding: 16px; border: 1px solid #e2e8f0; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
+          <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+            <div style="width: 40px; height: 40px; background: linear-gradient(145deg, #ede9fe, #ddd6fe); border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 1px 2px rgba(124,58,237,0.12);">
+              <div style="font-size: 11px; font-weight: 700; color: #7c3aed;">D</div>
+            </div>
+            <div style="flex: 1;">
+              <div style="font-size: 11.5px; font-weight: 600; color: #64748b;">Deployments</div>
+              <div style="font-size: 24px; font-weight: 800; color: #0f172a; line-height: 1.15; letter-spacing: -0.02em;">15</div>
+            </div>
+          </div>
+          <div style="height: 3px; background: #f1f5f9; border-radius: 2px; overflow: hidden; margin-bottom: 6px;">
+            <div style="width: 100%; height: 100%; background: #22c55e; border-radius: 2px;"></div>
+          </div>
+          <div style="font-size: 10.5px; color: #64748b;">
+            <span style="display: inline-block; width: 5px; height: 5px; border-radius: 50%; background: #22c55e; margin-right: 3px; vertical-align: middle;"></span>15/15 Available
+          </div>
+        </div>
+      </div>
+
+      <!-- NETWORKING -->
+      <div style="font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: #94a3b8; margin-bottom: 8px; padding-left: 2px;">Networking</div>
+      <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px;">
+
+        <div style="background: white; border-radius: 14px; padding: 16px; border: 1px solid #e2e8f0; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
+          <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+            <div style="width: 40px; height: 40px; background: linear-gradient(145deg, #cffafe, #a5f3fc); border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 1px 2px rgba(8,145,178,0.12);">
+              <div style="font-size: 11px; font-weight: 700; color: #0891b2;">S</div>
+            </div>
+            <div style="flex: 1;">
+              <div style="font-size: 11.5px; font-weight: 600; color: #64748b;">Services</div>
+              <div style="font-size: 24px; font-weight: 800; color: #0f172a; line-height: 1.15; letter-spacing: -0.02em;">22</div>
+            </div>
+          </div>
+          <div style="height: 3px; background: #f1f5f9; border-radius: 2px; overflow: hidden; margin-bottom: 6px;">
+            <div style="display: flex; height: 100%;">
+              <div style="width: 64%; background: #3b82f6; border-radius: 2px;"></div>
+              <div style="width: 27%; background: #8b5cf6;"></div>
+              <div style="width: 9%; background: #f59e0b;"></div>
+            </div>
+          </div>
+          <div style="font-size: 10.5px; color: #64748b; display: flex; gap: 8px;">
+            <span><span style="display: inline-block; width: 5px; height: 5px; border-radius: 50%; background: #3b82f6; margin-right: 3px; vertical-align: middle;"></span>14 ClusterIP</span>
+            <span><span style="display: inline-block; width: 5px; height: 5px; border-radius: 50%; background: #8b5cf6; margin-right: 3px; vertical-align: middle;"></span>6 NodePort</span>
+            <span><span style="display: inline-block; width: 5px; height: 5px; border-radius: 50%; background: #f59e0b; margin-right: 3px; vertical-align: middle;"></span>2 LB</span>
+          </div>
+        </div>
+
+        <div style="background: white; border-radius: 14px; padding: 16px; border: 1px solid #e2e8f0; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
+          <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+            <div style="width: 40px; height: 40px; background: linear-gradient(145deg, #ccfbf1, #99f6e4); border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 1px 2px rgba(13,148,136,0.12);">
+              <div style="font-size: 11px; font-weight: 700; color: #0d9488;">DS</div>
+            </div>
+            <div style="flex: 1;">
+              <div style="font-size: 11.5px; font-weight: 600; color: #64748b;">DaemonSets</div>
+              <div style="font-size: 24px; font-weight: 800; color: #0f172a; line-height: 1.15; letter-spacing: -0.02em;">5</div>
+            </div>
+          </div>
+          <div style="height: 3px; background: #f1f5f9; border-radius: 2px; overflow: hidden; margin-bottom: 6px;">
+            <div style="width: 100%; height: 100%; background: #22c55e; border-radius: 2px;"></div>
+          </div>
+          <div style="font-size: 10.5px; color: #64748b;">
+            <span style="display: inline-block; width: 5px; height: 5px; border-radius: 50%; background: #22c55e; margin-right: 3px; vertical-align: middle;"></span>5/5 Scheduled
+          </div>
+        </div>
+
+        <div style="background: white; border-radius: 14px; padding: 16px; border: 1px solid #e2e8f0; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
+          <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+            <div style="width: 40px; height: 40px; background: linear-gradient(145deg, #e0f2fe, #bae6fd); border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 1px 2px rgba(2,132,199,0.12);">
+              <div style="font-size: 11px; font-weight: 700; color: #0284c7;">NS</div>
+            </div>
+            <div style="flex: 1;">
+              <div style="font-size: 11.5px; font-weight: 600; color: #64748b;">Namespaces</div>
+              <div style="font-size: 24px; font-weight: 800; color: #0f172a; line-height: 1.15; letter-spacing: -0.02em;">11</div>
+            </div>
+          </div>
+          <div style="height: 3px; background: #f1f5f9; border-radius: 2px; overflow: hidden; margin-bottom: 6px;">
+            <div style="display: flex; height: 100%;">
+              <div style="width: 91%; background: #22c55e; border-radius: 2px;"></div>
+              <div style="width: 9%; background: #94a3b8;"></div>
+            </div>
+          </div>
+          <div style="font-size: 10.5px; color: #64748b; display: flex; gap: 8px;">
+            <span><span style="display: inline-block; width: 5px; height: 5px; border-radius: 50%; background: #22c55e; margin-right: 3px; vertical-align: middle;"></span>10 Active</span>
+            <span><span style="display: inline-block; width: 5px; height: 5px; border-radius: 50%; background: #94a3b8; margin-right: 3px; vertical-align: middle;"></span>1 Term.</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- CONFIGURATION -->
+      <div style="font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: #94a3b8; margin-bottom: 8px; padding-left: 2px;">Configuration</div>
+      <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;">
+
+        <div style="background: white; border-radius: 14px; padding: 16px; border: 1px solid #e2e8f0; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
+          <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+            <div style="width: 40px; height: 40px; background: linear-gradient(145deg, #fef3c7, #fde68a); border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 1px 2px rgba(217,119,6,0.12);">
+              <div style="font-size: 11px; font-weight: 700; color: #d97706;">CM</div>
+            </div>
+            <div style="flex: 1;">
+              <div style="font-size: 11.5px; font-weight: 600; color: #64748b;">ConfigMaps</div>
+              <div style="font-size: 24px; font-weight: 800; color: #0f172a; line-height: 1.15; letter-spacing: -0.02em;">27</div>
+            </div>
+          </div>
+          <div style="height: 3px; background: #f1f5f9; border-radius: 2px; overflow: hidden; margin-bottom: 6px;">
+            <div style="display: flex; height: 100%;">
+              <div style="width: 44%; background: #6366f1; border-radius: 2px;"></div>
+              <div style="width: 56%; background: #a5b4fc;"></div>
+            </div>
+          </div>
+          <div style="font-size: 10.5px; color: #64748b; display: flex; gap: 8px;">
+            <span><span style="display: inline-block; width: 5px; height: 5px; border-radius: 50%; background: #6366f1; margin-right: 3px; vertical-align: middle;"></span>12 In Use</span>
+            <span><span style="display: inline-block; width: 5px; height: 5px; border-radius: 50%; background: #a5b4fc; margin-right: 3px; vertical-align: middle;"></span>15 Unused</span>
+          </div>
+        </div>
+
+        <div style="background: white; border-radius: 14px; padding: 16px; border: 1px solid #e2e8f0; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
+          <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+            <div style="width: 40px; height: 40px; background: linear-gradient(145deg, #ffe4e6, #fecdd3); border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 1px 2px rgba(225,29,72,0.12);">
+              <div style="font-size: 11px; font-weight: 700; color: #e11d48;">Sc</div>
+            </div>
+            <div style="flex: 1;">
+              <div style="font-size: 11.5px; font-weight: 600; color: #64748b;">Secrets</div>
+              <div style="font-size: 24px; font-weight: 800; color: #0f172a; line-height: 1.15; letter-spacing: -0.02em;">7</div>
+            </div>
+          </div>
+          <div style="height: 3px; background: #f1f5f9; border-radius: 2px; overflow: hidden; margin-bottom: 6px;">
+            <div style="display: flex; height: 100%;">
+              <div style="width: 57%; background: #6366f1; border-radius: 2px;"></div>
+              <div style="width: 29%; background: #f59e0b;"></div>
+              <div style="width: 14%; background: #94a3b8;"></div>
+            </div>
+          </div>
+          <div style="font-size: 10.5px; color: #64748b; display: flex; gap: 8px;">
+            <span><span style="display: inline-block; width: 5px; height: 5px; border-radius: 50%; background: #6366f1; margin-right: 3px; vertical-align: middle;"></span>4 Opaque</span>
+            <span><span style="display: inline-block; width: 5px; height: 5px; border-radius: 50%; background: #f59e0b; margin-right: 3px; vertical-align: middle;"></span>2 TLS</span>
+            <span><span style="display: inline-block; width: 5px; height: 5px; border-radius: 50%; background: #94a3b8; margin-right: 3px; vertical-align: middle;"></span>1 SA</span>
+          </div>
+        </div>
+
+        <div style="background: white; border-radius: 14px; padding: 16px; border: 1px solid #e2e8f0; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
+          <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+            <div style="width: 40px; height: 40px; background: linear-gradient(145deg, #ffedd5, #fed7aa); border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 1px 2px rgba(234,88,12,0.12);">
+              <div style="font-size: 11px; font-weight: 700; color: #ea580c;">CJ</div>
+            </div>
+            <div style="flex: 1;">
+              <div style="font-size: 11.5px; font-weight: 600; color: #64748b;">CronJobs</div>
+              <div style="font-size: 24px; font-weight: 800; color: #0f172a; line-height: 1.15; letter-spacing: -0.02em;">6</div>
+            </div>
+          </div>
+          <div style="height: 3px; background: #f1f5f9; border-radius: 2px; overflow: hidden; margin-bottom: 6px;">
+            <div style="display: flex; height: 100%;">
+              <div style="width: 83%; background: #22c55e; border-radius: 2px;"></div>
+              <div style="width: 17%; background: #f59e0b;"></div>
+            </div>
+          </div>
+          <div style="font-size: 10.5px; color: #64748b; display: flex; gap: 8px;">
+            <span><span style="display: inline-block; width: 5px; height: 5px; border-radius: 50%; background: #22c55e; margin-right: 3px; vertical-align: middle;"></span>5 Active</span>
+            <span><span style="display: inline-block; width: 5px; height: 5px; border-radius: 50%; background: #f59e0b; margin-right: 3px; vertical-align: middle;"></span>1 Suspended</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Design Decisions</h3>
+  <div class="options">
+    <div class="option" data-choice="approve" onclick="toggleSelect(this)">
+      <div class="letter" style="background: #22c55e; color: white;">&#10003;</div>
+      <div class="content">
+        <h3>Approve this design</h3>
+        <p>Proceed with implementation — icon wells with K8s SVGs, label-above-count, segmented health bars, status dots</p>
+      </div>
+    </div>
+    <div class="option" data-choice="revise" onclick="toggleSelect(this)">
+      <div class="letter" style="background: #f59e0b; color: white;">&#8634;</div>
+      <div class="content">
+        <h3>Needs changes</h3>
+        <p>Tell me what to adjust — layout, spacing, health bar style, status info, etc.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Data Sources (already available)</h3>
+  <table style="width: 100%; font-size: 12px; border-collapse: collapse;">
+    <thead>
+      <tr style="border-bottom: 2px solid #e2e8f0;">
+        <th style="text-align: left; padding: 6px 10px; color: #64748b;">Resource</th>
+        <th style="text-align: left; padding: 6px 10px; color: #64748b;">Health Bar Shows</th>
+        <th style="text-align: left; padding: 6px 10px; color: #64748b;">Source</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr style="border-bottom: 1px solid #f1f5f9;"><td style="padding: 6px 10px;">Nodes</td><td style="padding: 6px 10px;">Ready vs NotReady</td><td style="padding: 6px 10px;">K8s node conditions</td></tr>
+      <tr style="border-bottom: 1px solid #f1f5f9;"><td style="padding: 6px 10px;">Pods</td><td style="padding: 6px 10px;">Running / Pending / Failed</td><td style="padding: 6px 10px;">useClusterOverview pod_status</td></tr>
+      <tr style="border-bottom: 1px solid #f1f5f9;"><td style="padding: 6px 10px;">Deployments</td><td style="padding: 6px 10px;">Available / Progressing / Degraded</td><td style="padding: 6px 10px;">K8s deployment conditions</td></tr>
+      <tr style="border-bottom: 1px solid #f1f5f9;"><td style="padding: 6px 10px;">Services</td><td style="padding: 6px 10px;">Type distribution (ClusterIP/NodePort/LB)</td><td style="padding: 6px 10px;">K8s service spec.type</td></tr>
+      <tr style="border-bottom: 1px solid #f1f5f9;"><td style="padding: 6px 10px;">DaemonSets</td><td style="padding: 6px 10px;">Desired vs Scheduled vs Ready</td><td style="padding: 6px 10px;">K8s daemonset status</td></tr>
+      <tr style="border-bottom: 1px solid #f1f5f9;"><td style="padding: 6px 10px;">Namespaces</td><td style="padding: 6px 10px;">Active vs Terminating</td><td style="padding: 6px 10px;">K8s namespace phase</td></tr>
+      <tr style="border-bottom: 1px solid #f1f5f9;"><td style="padding: 6px 10px;">ConfigMaps</td><td style="padding: 6px 10px;">Count only (no health axis)</td><td style="padding: 6px 10px;">Namespace distribution bar</td></tr>
+      <tr style="border-bottom: 1px solid #f1f5f9;"><td style="padding: 6px 10px;">Secrets</td><td style="padding: 6px 10px;">Type distribution (Opaque/TLS/SA)</td><td style="padding: 6px 10px;">K8s secret type</td></tr>
+      <tr><td style="padding: 6px 10px;">CronJobs</td><td style="padding: 6px 10px;">Active vs Suspended</td><td style="padding: 6px 10px;">K8s cronjob spec.suspend</td></tr>
+    </tbody>
+  </table>
+</div>

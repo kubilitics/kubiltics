@@ -14,7 +14,7 @@ vi.mock('./client', () => ({
 const mockAdaptTopologyGraph = vi.fn();
 const mockValidateTopologyGraph = vi.fn();
 
-vi.mock('@/topology-engine', () => ({
+vi.mock('@/topology/graph', () => ({
   adaptTopologyGraph: (...args: unknown[]) => mockAdaptTopologyGraph(...args),
   validateTopologyGraph: (...args: unknown[]) => mockValidateTopologyGraph(...args),
 }));

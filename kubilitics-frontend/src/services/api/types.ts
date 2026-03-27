@@ -3,7 +3,7 @@
  * All domain modules import from here.
  */
 
-import type { TopologyGraph } from '@/topology-engine';
+import type { TopologyGraph } from '@/topology/graph';
 
 // Re-export TopologyGraph so domain modules can reference it without importing topology-engine directly
 export type { TopologyGraph };

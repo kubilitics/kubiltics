@@ -1,0 +1,231 @@
+<h2>Dashboard Resources - Design Approaches</h2>
+<p class="subtitle">Which layout best serves a Kubernetes operator landing on the dashboard?</p>
+
+<div class="cards">
+
+  <!-- APPROACH A: Icon-Led Vertical Cards -->
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding: 24px; background: #f8fafc;">
+      <!-- Mockup of Approach A -->
+      <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;">
+        <!-- Infrastructure group -->
+        <div style="grid-column: 1 / -1; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: #94a3b8; margin-bottom: -4px;">Infrastructure</div>
+
+        <div style="background: white; border-radius: 16px; padding: 20px 16px; text-align: center; border: 1px solid #e2e8f0; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
+          <div style="width: 48px; height: 48px; margin: 0 auto 12px; background: linear-gradient(135deg, #dbeafe, #eff6ff); border-radius: 14px; display: flex; align-items: center; justify-content: center;">
+            <div style="width: 32px; height: 32px; background: #326ce5; mask: url('data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22><rect x=%224%22 y=%224%22 width=%2216%22 height=%2216%22 rx=%222%22/></svg>') center/contain no-repeat; -webkit-mask: url('data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22><rect x=%224%22 y=%224%22 width=%2216%22 height=%2216%22 rx=%222%22/></svg>') center/contain no-repeat;"></div>
+          </div>
+          <div style="font-size: 11px; color: #64748b; font-weight: 500; margin-bottom: 4px;">Nodes</div>
+          <div style="font-size: 28px; font-weight: 700; color: #0f172a; line-height: 1;">3</div>
+        </div>
+
+        <div style="background: white; border-radius: 16px; padding: 20px 16px; text-align: center; border: 1px solid #e2e8f0; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
+          <div style="width: 48px; height: 48px; margin: 0 auto 12px; background: linear-gradient(135deg, #e0e7ff, #eef2ff); border-radius: 14px; display: flex; align-items: center; justify-content: center;">
+            <div style="width: 28px; height: 28px; background: #4f46e5; border-radius: 6px;"></div>
+          </div>
+          <div style="font-size: 11px; color: #64748b; font-weight: 500; margin-bottom: 4px;">Pods</div>
+          <div style="font-size: 28px; font-weight: 700; color: #0f172a; line-height: 1;">88</div>
+        </div>
+
+        <div style="background: white; border-radius: 16px; padding: 20px 16px; text-align: center; border: 1px solid #e2e8f0; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
+          <div style="width: 48px; height: 48px; margin: 0 auto 12px; background: linear-gradient(135deg, #ede9fe, #f5f3ff); border-radius: 14px; display: flex; align-items: center; justify-content: center;">
+            <div style="width: 28px; height: 28px; background: #7c3aed; border-radius: 6px;"></div>
+          </div>
+          <div style="font-size: 11px; color: #64748b; font-weight: 500; margin-bottom: 4px;">Deployments</div>
+          <div style="font-size: 28px; font-weight: 700; color: #0f172a; line-height: 1;">15</div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A: Icon-Led Vertical Cards</h3>
+      <p>Large centered icons on top, label below icon, count at bottom. Apple widget style. Icons are the hero. Grouped by category with subtle labels.</p>
+    </div>
+  </div>
+
+  <!-- APPROACH B: Compact Resource Tiles -->
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding: 24px; background: #f8fafc;">
+      <!-- Mockup of Approach B - Compact vertical with icon prominent -->
+      <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;">
+        <div style="grid-column: 1 / -1; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: #94a3b8; margin-bottom: -2px;">Infrastructure</div>
+
+        <div style="background: white; border-radius: 14px; padding: 16px; border: 1px solid #e2e8f0; box-shadow: 0 1px 3px rgba(0,0,0,0.04); display: flex; flex-direction: column; align-items: center; gap: 8px;">
+          <div style="display: flex; align-items: center; gap: 10px; width: 100%;">
+            <div style="width: 40px; height: 40px; background: linear-gradient(135deg, #dbeafe, #bfdbfe); border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+              <div style="width: 24px; height: 24px; background: #326ce5; border-radius: 5px;"></div>
+            </div>
+            <div>
+              <div style="font-size: 12px; font-weight: 600; color: #475569;">Nodes</div>
+              <div style="font-size: 22px; font-weight: 800; color: #0f172a; line-height: 1.1;">3</div>
+            </div>
+          </div>
+          <div style="width: 100%; height: 3px; background: #e2e8f0; border-radius: 2px; overflow: hidden;">
+            <div style="width: 33%; height: 100%; background: #3b82f6; border-radius: 2px;"></div>
+          </div>
+          <div style="font-size: 10px; color: #94a3b8; width: 100%;">1 Ready, 2 NotReady</div>
+        </div>
+
+        <div style="background: white; border-radius: 14px; padding: 16px; border: 1px solid #e2e8f0; box-shadow: 0 1px 3px rgba(0,0,0,0.04); display: flex; flex-direction: column; align-items: center; gap: 8px;">
+          <div style="display: flex; align-items: center; gap: 10px; width: 100%;">
+            <div style="width: 40px; height: 40px; background: linear-gradient(135deg, #e0e7ff, #c7d2fe); border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+              <div style="width: 24px; height: 24px; background: #4f46e5; border-radius: 5px;"></div>
+            </div>
+            <div>
+              <div style="font-size: 12px; font-weight: 600; color: #475569;">Pods</div>
+              <div style="font-size: 22px; font-weight: 800; color: #0f172a; line-height: 1.1;">88</div>
+            </div>
+          </div>
+          <div style="width: 100%; height: 3px; background: #e2e8f0; border-radius: 2px; overflow: hidden;">
+            <div style="width: 95%; height: 100%; background: #22c55e; border-radius: 2px;"></div>
+          </div>
+          <div style="font-size: 10px; color: #94a3b8; width: 100%;">84 Running, 4 Pending</div>
+        </div>
+
+        <div style="background: white; border-radius: 14px; padding: 16px; border: 1px solid #e2e8f0; box-shadow: 0 1px 3px rgba(0,0,0,0.04); display: flex; flex-direction: column; align-items: center; gap: 8px;">
+          <div style="display: flex; align-items: center; gap: 10px; width: 100%;">
+            <div style="width: 40px; height: 40px; background: linear-gradient(135deg, #ede9fe, #ddd6fe); border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+              <div style="width: 24px; height: 24px; background: #7c3aed; border-radius: 5px;"></div>
+            </div>
+            <div>
+              <div style="font-size: 12px; font-weight: 600; color: #475569;">Deploys</div>
+              <div style="font-size: 22px; font-weight: 800; color: #0f172a; line-height: 1.1;">15</div>
+            </div>
+          </div>
+          <div style="width: 100%; height: 3px; background: #e2e8f0; border-radius: 2px; overflow: hidden;">
+            <div style="width: 100%; height: 100%; background: #22c55e; border-radius: 2px;"></div>
+          </div>
+          <div style="font-size: 10px; color: #94a3b8; width: 100%;">15/15 Available</div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B: Insightful Tiles with Health Bars</h3>
+      <p>Icon + label on top, count below, plus a mini health bar and status hint per resource. Makes the dashboard actually <strong>insightful</strong> - not just counts, but health at a glance. Uses vertical space well.</p>
+    </div>
+  </div>
+
+  <!-- APPROACH C: Grouped Panel Rows -->
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding: 24px; background: #f8fafc;">
+      <!-- Mockup of Approach C - Grouped panels like Apple Settings -->
+      <div style="display: flex; flex-direction: column; gap: 12px;">
+        <!-- Infrastructure panel -->
+        <div style="background: white; border-radius: 14px; border: 1px solid #e2e8f0; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
+          <div style="padding: 8px 16px; background: #f8fafc; border-bottom: 1px solid #f1f5f9;">
+            <span style="font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: #94a3b8;">Infrastructure</span>
+          </div>
+          <div style="display: flex; divide: 1px;">
+            <div style="flex: 1; padding: 14px 16px; display: flex; align-items: center; gap: 12px; border-right: 1px solid #f1f5f9;">
+              <div style="width: 36px; height: 36px; background: linear-gradient(135deg, #dbeafe, #eff6ff); border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                <div style="width: 22px; height: 22px; background: #326ce5; border-radius: 4px;"></div>
+              </div>
+              <div>
+                <div style="font-size: 11px; color: #64748b; font-weight: 500;">Nodes</div>
+                <div style="font-size: 20px; font-weight: 700; color: #0f172a; line-height: 1.2;">3</div>
+              </div>
+            </div>
+            <div style="flex: 1; padding: 14px 16px; display: flex; align-items: center; gap: 12px; border-right: 1px solid #f1f5f9;">
+              <div style="width: 36px; height: 36px; background: linear-gradient(135deg, #e0e7ff, #eef2ff); border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                <div style="width: 22px; height: 22px; background: #4f46e5; border-radius: 4px;"></div>
+              </div>
+              <div>
+                <div style="font-size: 11px; color: #64748b; font-weight: 500;">Pods</div>
+                <div style="font-size: 20px; font-weight: 700; color: #0f172a; line-height: 1.2;">88</div>
+              </div>
+            </div>
+            <div style="flex: 1; padding: 14px 16px; display: flex; align-items: center; gap: 12px;">
+              <div style="width: 36px; height: 36px; background: linear-gradient(135deg, #ede9fe, #f5f3ff); border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                <div style="width: 22px; height: 22px; background: #7c3aed; border-radius: 4px;"></div>
+              </div>
+              <div>
+                <div style="font-size: 11px; color: #64748b; font-weight: 500;">Deployments</div>
+                <div style="font-size: 20px; font-weight: 700; color: #0f172a; line-height: 1.2;">15</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- Networking panel -->
+        <div style="background: white; border-radius: 14px; border: 1px solid #e2e8f0; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
+          <div style="padding: 8px 16px; background: #f8fafc; border-bottom: 1px solid #f1f5f9;">
+            <span style="font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: #94a3b8;">Networking</span>
+          </div>
+          <div style="display: flex;">
+            <div style="flex: 1; padding: 14px 16px; display: flex; align-items: center; gap: 12px; border-right: 1px solid #f1f5f9;">
+              <div style="width: 36px; height: 36px; background: linear-gradient(135deg, #cffafe, #ecfeff); border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                <div style="width: 22px; height: 22px; background: #0891b2; border-radius: 4px;"></div>
+              </div>
+              <div>
+                <div style="font-size: 11px; color: #64748b; font-weight: 500;">Services</div>
+                <div style="font-size: 20px; font-weight: 700; color: #0f172a; line-height: 1.2;">22</div>
+              </div>
+            </div>
+            <div style="flex: 1; padding: 14px 16px; display: flex; align-items: center; gap: 12px; border-right: 1px solid #f1f5f9;">
+              <div style="width: 36px; height: 36px; background: linear-gradient(135deg, #ccfbf1, #f0fdfa); border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                <div style="width: 22px; height: 22px; background: #0d9488; border-radius: 4px;"></div>
+              </div>
+              <div>
+                <div style="font-size: 11px; color: #64748b; font-weight: 500;">DaemonSets</div>
+                <div style="font-size: 20px; font-weight: 700; color: #0f172a; line-height: 1.2;">5</div>
+              </div>
+            </div>
+            <div style="flex: 1; padding: 14px 16px; display: flex; align-items: center; gap: 12px;">
+              <div style="width: 36px; height: 36px; background: linear-gradient(135deg, #e0f2fe, #f0f9ff); border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                <div style="width: 22px; height: 22px; background: #0284c7; border-radius: 4px;"></div>
+              </div>
+              <div>
+                <div style="font-size: 11px; color: #64748b; font-weight: 500;">Namespaces</div>
+                <div style="font-size: 20px; font-weight: 700; color: #0f172a; line-height: 1.2;">11</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C: Grouped Panels (Apple Settings)</h3>
+      <p>Each category is a single rounded panel with items side-by-side inside. Compact, grouped, minimal chrome. Like macOS System Settings sections. Very space-efficient.</p>
+    </div>
+  </div>
+</div>
+
+<div class="section" style="margin-top: 24px;">
+  <h3>Key differences</h3>
+  <table style="width: 100%; font-size: 13px; border-collapse: collapse;">
+    <thead>
+      <tr style="border-bottom: 2px solid #e2e8f0;">
+        <th style="text-align: left; padding: 8px 12px; color: #64748b;">Aspect</th>
+        <th style="text-align: left; padding: 8px 12px; color: #64748b;">A: Icon-Led</th>
+        <th style="text-align: left; padding: 8px 12px; color: #64748b;">B: Insightful</th>
+        <th style="text-align: left; padding: 8px 12px; color: #64748b;">C: Panels</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr style="border-bottom: 1px solid #f1f5f9;">
+        <td style="padding: 8px 12px; font-weight: 500;">Icon prominence</td>
+        <td style="padding: 8px 12px;">Largest, centered hero</td>
+        <td style="padding: 8px 12px;">Medium, inline</td>
+        <td style="padding: 8px 12px;">Medium, inline</td>
+      </tr>
+      <tr style="border-bottom: 1px solid #f1f5f9;">
+        <td style="padding: 8px 12px; font-weight: 500;">Insight level</td>
+        <td style="padding: 8px 12px;">Count only</td>
+        <td style="padding: 8px 12px; color: #16a34a; font-weight: 600;">Health bar + status</td>
+        <td style="padding: 8px 12px;">Count only</td>
+      </tr>
+      <tr style="border-bottom: 1px solid #f1f5f9;">
+        <td style="padding: 8px 12px; font-weight: 500;">Space usage</td>
+        <td style="padding: 8px 12px;">More vertical</td>
+        <td style="padding: 8px 12px;">Balanced</td>
+        <td style="padding: 8px 12px; color: #16a34a; font-weight: 600;">Most compact</td>
+      </tr>
+      <tr>
+        <td style="padding: 8px 12px; font-weight: 500;">Text/number order</td>
+        <td style="padding: 8px 12px; color: #16a34a; font-weight: 600;">Label first, number below</td>
+        <td style="padding: 8px 12px; color: #16a34a; font-weight: 600;">Label first, number below</td>
+        <td style="padding: 8px 12px; color: #16a34a; font-weight: 600;">Label first, number below</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<p class="subtitle" style="margin-top: 16px;">My recommendation: <strong>B (Insightful Tiles)</strong> - it answers your "insightful and truth" requirement by showing health status, not just counts. A dashboard that only shows numbers is a list page; one that shows health is a control surface.</p>
