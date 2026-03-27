@@ -1,225 +1,231 @@
 /**
- * MetricCardsGrid — 3 × 3 resource count tiles.
+ * MetricCardsGrid — Insightful resource tiles for the dashboard.
  *
- * Each card has:
- *   • A solid visible border + default shadow for card definition
- *   • A thin 2px left accent stripe for colour identity (grouped palette)
- *   • A tinted icon container matching the accent
- *   • Bold count as the hero element
+ * Each tile shows:
+ *   1. Official K8s icon in a gradient well + resource label + count
+ *   2. Segmented health bar showing proportional status
+ *   3. Status dot legend with breakdown counts
  *
- * Colour palette grouped by function:
- *   Infrastructure (Nodes, Pods, Deployments)  → blue family
- *   Networking     (Services, DS, Namespaces)  → teal/cyan family
- *   Configuration  (ConfigMaps, Secrets, CJ)   → warm amber/rose family
+ * Grouped into Infrastructure / Networking / Configuration categories.
  */
 import React from "react";
 import { Link } from "react-router-dom";
-import {
-  Server,
-  Activity,
-  Layers,
-  Globe,
-  Shield,
-  FolderKanban,
-  FileText,
-  KeyRound,
-  Timer,
-  ArrowUpRight,
-} from "lucide-react";
+import { ChevronRight } from "lucide-react";
+import k8sIconMap from "@/topology/icons/k8sIconMap";
 import { useResourceCounts } from "@/hooks/useResourceCounts";
+import { useDashboardResourceHealth, type HealthSegment } from "@/hooks/useDashboardResourceHealth";
 import { useProjectStore } from "@/stores/projectStore";
 import { cn } from "@/lib/utils";
 
+/* ─── Constants ───────────────────────────────────────────────────────────── */
+
 const CLUSTER_WIDE = new Set(["Nodes"]);
 
-interface CardConfig {
+interface TileDef {
   title: string;
-  value: number;
+  kind: string;       // k8sIconMap key
+  countKey: string;    // key in ResourceCounts
+  healthKey: string;   // key in health record
   href: string;
-  icon: typeof Server;
-  /** Left accent stripe */
-  accent: string;
-  /** Tinted icon background */
-  iconBg: string;
-  /** Icon stroke */
-  iconColor: string;
-  /** Hover border tint */
-  hoverBorder: string;
+  gradient: string;    // icon well gradient
+  shadowTint: string;  // subtle shadow color for the well
 }
+
+interface CategoryDef {
+  label: string;
+  tiles: TileDef[];
+}
+
+const CATEGORIES: CategoryDef[] = [
+  {
+    label: "Infrastructure",
+    tiles: [
+      { title: "Nodes", kind: "node", countKey: "nodes", healthKey: "nodes", href: "/nodes", gradient: "from-blue-100 to-blue-200 dark:from-blue-500/20 dark:to-blue-600/15", shadowTint: "shadow-blue-200/40 dark:shadow-blue-500/10" },
+      { title: "Pods", kind: "pod", countKey: "pods", healthKey: "pods", href: "/pods", gradient: "from-indigo-100 to-indigo-200 dark:from-indigo-500/20 dark:to-indigo-600/15", shadowTint: "shadow-indigo-200/40 dark:shadow-indigo-500/10" },
+      { title: "Deployments", kind: "deployment", countKey: "deployments", healthKey: "deployments", href: "/deployments", gradient: "from-violet-100 to-violet-200 dark:from-violet-500/20 dark:to-violet-600/15", shadowTint: "shadow-violet-200/40 dark:shadow-violet-500/10" },
+    ],
+  },
+  {
+    label: "Networking",
+    tiles: [
+      { title: "Services", kind: "service", countKey: "services", healthKey: "services", href: "/services", gradient: "from-cyan-100 to-cyan-200 dark:from-cyan-500/20 dark:to-cyan-600/15", shadowTint: "shadow-cyan-200/40 dark:shadow-cyan-500/10" },
+      { title: "DaemonSets", kind: "daemonset", countKey: "daemonsets", healthKey: "daemonsets", href: "/daemonsets", gradient: "from-teal-100 to-teal-200 dark:from-teal-500/20 dark:to-teal-600/15", shadowTint: "shadow-teal-200/40 dark:shadow-teal-500/10" },
+      { title: "Namespaces", kind: "namespace", countKey: "namespaces", healthKey: "namespaces", href: "/namespaces", gradient: "from-sky-100 to-sky-200 dark:from-sky-500/20 dark:to-sky-600/15", shadowTint: "shadow-sky-200/40 dark:shadow-sky-500/10" },
+    ],
+  },
+  {
+    label: "Configuration",
+    tiles: [
+      { title: "ConfigMaps", kind: "configmap", countKey: "configmaps", healthKey: "configmaps", href: "/configmaps", gradient: "from-amber-100 to-amber-200 dark:from-amber-500/20 dark:to-amber-600/15", shadowTint: "shadow-amber-200/40 dark:shadow-amber-500/10" },
+      { title: "Secrets", kind: "secret", countKey: "secrets", healthKey: "secrets", href: "/secrets", gradient: "from-rose-100 to-rose-200 dark:from-rose-500/20 dark:to-rose-600/15", shadowTint: "shadow-rose-200/40 dark:shadow-rose-500/10" },
+      { title: "CronJobs", kind: "cronjob", countKey: "cronjobs", healthKey: "cronjobs", href: "/cronjobs", gradient: "from-orange-100 to-orange-200 dark:from-orange-500/20 dark:to-orange-600/15", shadowTint: "shadow-orange-200/40 dark:shadow-orange-500/10" },
+    ],
+  },
+];
+
+/* ─── K8s Icon ────────────────────────────────────────────────────────────── */
+
+function K8sIcon({ kind, className }: { kind: string; className?: string }) {
+  const url = k8sIconMap[kind];
+  if (!url) return null;
+  return <img src={url} alt="" aria-hidden="true" draggable={false} className={className} />;
+}
+
+/* ─── Health Bar ──────────────────────────────────────────────────────────── */
+
+function HealthBar({ segments, total }: { segments: HealthSegment[]; total: number }) {
+  if (!segments.length || total === 0) {
+    return (
+      <div className="h-[3px] rounded-full bg-slate-200/60 dark:bg-white/[0.06]" />
+    );
+  }
+
+  return (
+    <div className="h-[3px] rounded-full bg-slate-200/60 dark:bg-white/[0.06] overflow-hidden flex">
+      {segments.map((s, i) => (
+        <div
+          key={s.label}
+          className="h-full first:rounded-l-full last:rounded-r-full transition-all duration-500"
+          style={{
+            width: `${(s.count / total) * 100}%`,
+            backgroundColor: s.barColor,
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
+/* ─── Status Legend ───────────────────────────────────────────────────────── */
+
+function StatusLegend({ segments }: { segments: HealthSegment[] }) {
+  if (!segments.length) {
+    return (
+      <span className="text-[10.5px] text-muted-foreground/50">No data</span>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-x-3 gap-y-0.5 flex-wrap">
+      {segments.map((s) => (
+        <span key={s.label} className="inline-flex items-center gap-1 text-[10.5px] text-muted-foreground whitespace-nowrap">
+          <span className={cn("h-[5px] w-[5px] rounded-full shrink-0", s.color)} />
+          {s.count} {s.label}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+/* ─── Main Component ──────────────────────────────────────────────────────── */
 
 export const MetricCardsGrid = () => {
   const { counts } = useResourceCounts();
+  const { health } = useDashboardResourceHealth();
   const activeProject = useProjectStore((s) => s.activeProject);
   const isProjectScope = !!activeProject;
 
-  const cards: CardConfig[] = [
-    // ── Infrastructure ──────────────────────────────
-    {
-      title: "Nodes",
-      value: counts.nodes,
-      href: "/nodes",
-      icon: Server,
-      accent: "bg-blue-400",
-      iconBg: "bg-blue-50 dark:bg-blue-500/10",
-      iconColor: "text-blue-500 dark:text-blue-400",
-      hoverBorder: "hover:border-blue-200 dark:hover:border-blue-900",
-    },
-    {
-      title: "Pods",
-      value: counts.pods,
-      href: "/pods",
-      icon: Activity,
-      accent: "bg-indigo-400",
-      iconBg: "bg-indigo-50 dark:bg-indigo-500/10",
-      iconColor: "text-indigo-500 dark:text-indigo-400",
-      hoverBorder: "hover:border-indigo-200 dark:hover:border-indigo-900",
-    },
-    {
-      title: "Deployments",
-      value: counts.deployments,
-      href: "/deployments",
-      icon: Layers,
-      accent: "bg-violet-400",
-      iconBg: "bg-violet-50 dark:bg-violet-500/10",
-      iconColor: "text-violet-500 dark:text-violet-400",
-      hoverBorder: "hover:border-violet-200 dark:hover:border-violet-900",
-    },
-    // ── Networking & Organisation ────────────────────
-    {
-      title: "Services",
-      value: counts.services,
-      href: "/services",
-      icon: Globe,
-      accent: "bg-cyan-400",
-      iconBg: "bg-cyan-50 dark:bg-cyan-500/10",
-      iconColor: "text-cyan-600 dark:text-cyan-400",
-      hoverBorder: "hover:border-cyan-200 dark:hover:border-cyan-900",
-    },
-    {
-      title: "DaemonSets",
-      value: counts.daemonsets,
-      href: "/daemonsets",
-      icon: Shield,
-      accent: "bg-teal-400",
-      iconBg: "bg-teal-50 dark:bg-teal-500/10",
-      iconColor: "text-teal-600 dark:text-teal-400",
-      hoverBorder: "hover:border-teal-200 dark:hover:border-teal-900",
-    },
-    {
-      title: "Namespaces",
-      value: counts.namespaces,
-      href: "/namespaces",
-      icon: FolderKanban,
-      accent: "bg-sky-400",
-      iconBg: "bg-sky-50 dark:bg-sky-500/10",
-      iconColor: "text-sky-600 dark:text-sky-400",
-      hoverBorder: "hover:border-sky-200 dark:hover:border-sky-900",
-    },
-    // ── Configuration & Security ────────────────────
-    {
-      title: "ConfigMaps",
-      value: counts.configmaps,
-      href: "/configmaps",
-      icon: FileText,
-      accent: "bg-amber-400",
-      iconBg: "bg-amber-50 dark:bg-amber-500/10",
-      iconColor: "text-amber-600 dark:text-amber-400",
-      hoverBorder: "hover:border-amber-200 dark:hover:border-amber-900",
-    },
-    {
-      title: "Secrets",
-      value: counts.secrets,
-      href: "/secrets",
-      icon: KeyRound,
-      accent: "bg-rose-400",
-      iconBg: "bg-rose-50 dark:bg-rose-500/10",
-      iconColor: "text-rose-500 dark:text-rose-400",
-      hoverBorder: "hover:border-rose-200 dark:hover:border-rose-900",
-    },
-    {
-      title: "CronJobs",
-      value: counts.cronjobs,
-      href: "/cronjobs",
-      icon: Timer,
-      accent: "bg-orange-400",
-      iconBg: "bg-orange-50 dark:bg-orange-500/10",
-      iconColor: "text-orange-600 dark:text-orange-400",
-      hoverBorder: "hover:border-orange-200 dark:hover:border-orange-900",
-    },
-  ];
+  let globalIndex = 0;
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-      {cards.map((c, i) => {
-        const scopeTag = isProjectScope
-          ? CLUSTER_WIDE.has(c.title) ? "Cluster" : "Project"
-          : null;
+    <div className="space-y-5">
+      {CATEGORIES.map((cat) => (
+        <div key={cat.label}>
+          {/* Category label */}
+          <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground/60 mb-2.5 pl-1">
+            {cat.label}
+          </p>
 
-        return (
-          <Link
-            key={c.title}
-            to={c.href}
-            className="group block focus-visible:outline-none focus-glow"
-            style={{ animationDelay: `${i * 40}ms` }}
-          >
-            <div
-              className={cn(
-                /* Card — visible border + resting shadow */
-                "relative bg-white dark:bg-[hsl(228,14%,11%)]",
-                "border border-slate-200 dark:border-slate-700",
-                "rounded-2xl overflow-hidden",
-                "shadow",
-                /* Layout — taller cards with more padding */
-                "flex items-center gap-4",
-                "py-6 pl-0 pr-6",
-                /* Hover */
-                "transition-all duration-300",
-                c.hoverBorder,
-                "hover:shadow-[var(--shadow-3)] hover:-translate-y-[2px]",
-                "active:translate-y-0 active:shadow",
-              )}
-              style={{ transitionTimingFunction: "cubic-bezier(0.16,1,0.3,1)" }}
-            >
-              {/* ── Left accent stripe ── */}
-              <div className={cn("w-[4px] self-stretch rounded-r-full shrink-0", c.accent)} />
+          {/* Tiles row */}
+          <div className="grid grid-cols-3 gap-3">
+            {cat.tiles.map((tile) => {
+              const idx = globalIndex++;
+              const count = (counts as any)[tile.countKey] ?? 0;
+              const rh = health[tile.healthKey];
+              const segments = rh?.segments ?? [];
+              const total = rh?.total ?? count;
+              const scopeTag = isProjectScope
+                ? CLUSTER_WIDE.has(tile.title) ? "Cluster" : "Project"
+                : null;
 
-              {/* ── Icon — larger ── */}
-              <div
-                className={cn(
-                  "h-14 w-14 rounded-xl flex items-center justify-center shrink-0",
-                  "transition-transform duration-500",
-                  "group-hover:scale-110",
-                  c.iconBg,
-                )}
-                style={{ transitionTimingFunction: "cubic-bezier(0.175,0.885,0.32,1.275)" }}
-              >
-                <c.icon className={cn("h-6 w-6", c.iconColor)} strokeWidth={1.75} />
-              </div>
+              return (
+                <Link
+                  key={tile.title}
+                  to={tile.href}
+                  className="group block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40 focus-visible:ring-offset-2 rounded-2xl"
+                  style={{ animationDelay: `${idx * 50}ms` }}
+                >
+                  <div
+                    className={cn(
+                      /* Surface */
+                      "relative rounded-2xl overflow-hidden",
+                      "bg-white dark:bg-[hsl(225,15%,12%)]",
+                      "border border-slate-200/80 dark:border-white/[0.06]",
+                      /* Layered shadow */
+                      "shadow-[0_1px_2px_rgba(0,0,0,0.04),0_4px_12px_rgba(0,0,0,0.03)]",
+                      "dark:shadow-[0_1px_2px_rgba(0,0,0,0.2),0_4px_12px_rgba(0,0,0,0.15)]",
+                      /* Layout */
+                      "p-4 flex flex-col gap-3",
+                      /* Hover — spring lift */
+                      "transition-all duration-300 ease-[cubic-bezier(0.25,0.46,0.45,0.94)]",
+                      "hover:-translate-y-[2px]",
+                      "hover:shadow-[0_2px_4px_rgba(0,0,0,0.06),0_8px_24px_rgba(0,0,0,0.06)]",
+                      "dark:hover:shadow-[0_2px_4px_rgba(0,0,0,0.3),0_8px_24px_rgba(0,0,0,0.2)]",
+                      "hover:border-slate-300/80 dark:hover:border-white/[0.1]",
+                      "active:translate-y-0 active:shadow-[0_1px_2px_rgba(0,0,0,0.04)]",
+                    )}
+                  >
+                    {/* Row 1: Icon + Label/Count + Chevron */}
+                    <div className="flex items-center gap-3">
+                      {/* Icon well */}
+                      <div
+                        className={cn(
+                          "h-11 w-11 rounded-[13px] flex items-center justify-center shrink-0",
+                          "bg-gradient-to-br", tile.gradient,
+                          "shadow-sm", tile.shadowTint,
+                          "transition-transform duration-500 ease-[cubic-bezier(0.175,0.885,0.32,1.275)]",
+                          "group-hover:scale-110",
+                        )}
+                      >
+                        <K8sIcon kind={tile.kind} className="h-6 w-6" />
+                      </div>
 
-              {/* ── Content — larger numbers ── */}
-              <div className="flex flex-col min-w-0">
-                <span className="text-3xl font-extrabold tracking-tight text-foreground tabular-nums leading-none">
-                  {c.value}
-                </span>
-                <span className="text-sm font-medium text-muted-foreground mt-1.5 leading-tight truncate">
-                  {c.title}
-                </span>
-                {scopeTag && (
-                  <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider mt-0.5">
-                    {scopeTag}
-                  </span>
-                )}
-              </div>
+                      {/* Text: label on top, count below */}
+                      <div className="flex flex-col min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[12px] font-semibold text-muted-foreground leading-tight truncate">
+                            {tile.title}
+                          </span>
+                          {scopeTag && (
+                            <span className="text-[9px] font-medium text-muted-foreground/50 uppercase tracking-wider">
+                              {scopeTag}
+                            </span>
+                          )}
+                        </div>
+                        <span className="text-[24px] font-extrabold tracking-tight text-foreground tabular-nums leading-none mt-0.5">
+                          {count}
+                        </span>
+                      </div>
 
-              {/* ── Navigate chevron ── */}
-              <ArrowUpRight
-                className="ml-auto h-4.5 w-4.5 shrink-0 text-muted-foreground/60 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-                strokeWidth={2}
-              />
-            </div>
-          </Link>
-        );
-      })}
+                      {/* Chevron */}
+                      <ChevronRight
+                        className="h-4 w-4 shrink-0 text-muted-foreground/25 group-hover:text-muted-foreground/50 transition-all duration-300 group-hover:translate-x-0.5"
+                        strokeWidth={2.5}
+                      />
+                    </div>
+
+                    {/* Row 2: Health bar */}
+                    <HealthBar segments={segments} total={total} />
+
+                    {/* Row 3: Status legend */}
+                    <StatusLegend segments={segments} />
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      ))}
     </div>
   );
 };

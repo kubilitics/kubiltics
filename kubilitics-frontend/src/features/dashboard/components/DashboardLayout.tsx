@@ -13,11 +13,11 @@
  * Spacing uses an 8px rhythm (gap-6 = 24px between sections).
  */
 import React from "react";
-import { Boxes, Zap, HeartPulse, AlertTriangle } from "lucide-react";
+import { Boxes, Activity, HeartPulse, AlertTriangle } from "lucide-react";
 import { ClusterHealthWidget } from "./ClusterHealthWidget";
 import { PodHealthSummary } from "./PodHealthSummary";
 import { AlertsStrip } from "./AlertsStrip";
-import { QuickActionsGrid } from "./QuickActionsGrid";
+import { RecentActivityPanel } from "./RecentActivityPanel";
 import { PodStatusDistribution } from "./PodStatusDistribution";
 import { ClusterCapacity } from "./ClusterCapacity";
 import { ClusterResourceIntelligence } from "@/components/dashboard/ClusterEfficiencyCard";
@@ -79,8 +79,8 @@ export const DashboardLayout = () => {
               <ClusterResourceIntelligence />
             </div>
             <div className="min-h-[24rem] flex flex-col rounded-2xl border border-border/60 bg-card p-6 shadow">
-              <SectionHeader icon={Zap} title="Quick Actions" />
-              <QuickActionsGrid />
+              <SectionHeader icon={Activity} title="Recent Activity" />
+              <RecentActivityPanel />
             </div>
           </section>
 
