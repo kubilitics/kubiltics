@@ -309,7 +309,7 @@ subsets: []
  )}
 
  {/* Stats Cards - Design 3.4: Total, Healthy, Degraded, Empty */}
- <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+ <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
  <ListPageStatCard size="sm" label="Total Endpoints" value={stats.total} selected={!hasActiveFilters} onClick={clearAllFilters} className={cn(!hasActiveFilters && !isLoading && 'ring-2 ring-primary')} isLoading={isLoading} />
  <ListPageStatCard size="sm" label="Healthy" value={stats.healthy} valueClassName="text-emerald-600" selected={columnFilters.healthStatus?.size === 1 && columnFilters.healthStatus.has('Healthy')} onClick={() => setColumnFilter('healthStatus', new Set(['Healthy']))} className={cn(columnFilters.healthStatus?.size === 1 && columnFilters.healthStatus.has('Healthy') && 'ring-2 ring-emerald-500')} isLoading={isLoading} />
  <ListPageStatCard size="sm" label="Degraded" value={stats.degraded} valueClassName="text-amber-600" selected={columnFilters.healthStatus?.size === 1 && columnFilters.healthStatus.has('Degraded')} onClick={() => setColumnFilter('healthStatus', new Set(['Degraded']))} className={cn(columnFilters.healthStatus?.size === 1 && columnFilters.healthStatus.has('Degraded') && 'ring-2 ring-amber-500')} isLoading={isLoading} />
@@ -366,7 +366,7 @@ subsets: []
  isLoading={isLoading && isConnected}
  footer={
  <div className="flex items-center justify-between flex-wrap gap-2">
- <div className="flex items-center gap-3">
+ <div className="flex items-center gap-4">
  <span className="text-sm text-muted-foreground">{totalFiltered > 0 ? `Showing ${start + 1}–${Math.min(start + pageSize, totalFiltered)} of ${totalFiltered}` : 'No endpoints'}</span>
  <DropdownMenu>
  <DropdownMenuTrigger asChild>

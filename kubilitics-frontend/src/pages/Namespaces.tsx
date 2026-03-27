@@ -350,7 +350,7 @@ export default function Namespaces() {
  }
  />
 
- <div className={cn('grid grid-cols-1 sm:grid-cols-3 gap-4', !isConnected && 'opacity-60')}>
+ <div className={cn('grid grid-cols-2 sm:grid-cols-3 gap-4', !isConnected && 'opacity-60')}>
  <ListPageStatCard
  label="Total"
  value={stats.total}

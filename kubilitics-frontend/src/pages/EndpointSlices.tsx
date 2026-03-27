@@ -298,7 +298,7 @@ ports: []
  )}
 
  {/* Stats Cards - Design 3.5: Total Slices, IPv4, IPv6, FQDN */}
- <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+ <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
  <ListPageStatCard size="sm" label="Total Slices" value={stats.total} selected={!hasActiveFilters} onClick={clearAllFilters} className={cn(!hasActiveFilters && !isLoading && 'ring-2 ring-primary')} isLoading={isLoading} />
  <ListPageStatCard size="sm" label="IPv4 Slices" value={stats.ipv4} valueClassName="text-blue-600" selected={columnFilters.addressType?.size === 1 && columnFilters.addressType?.has('IPv4')} onClick={() => setColumnFilter('addressType', new Set(['IPv4']))} className={cn(columnFilters.addressType?.size === 1 && columnFilters.addressType?.has('IPv4') && 'ring-2 ring-primary')} isLoading={isLoading} />
  <ListPageStatCard size="sm" label="IPv6 Slices" value={stats.ipv6} valueClassName="text-purple-600" selected={columnFilters.addressType?.size === 1 && columnFilters.addressType?.has('IPv6')} onClick={() => setColumnFilter('addressType', new Set(['IPv6']))} className={cn(columnFilters.addressType?.size === 1 && columnFilters.addressType?.has('IPv6') && 'ring-2 ring-primary')} isLoading={isLoading} />
@@ -355,7 +355,7 @@ ports: []
  isLoading={isLoading && isConnected}
  footer={
  <div className="flex items-center justify-between flex-wrap gap-2">
- <div className="flex items-center gap-3">
+ <div className="flex items-center gap-4">
  <span className="text-sm text-muted-foreground">{totalFiltered > 0 ? `Showing ${start + 1}–${Math.min(start + pageSize, totalFiltered)} of ${totalFiltered}` : 'No endpoint slices'}</span>
  <DropdownMenu>
  <DropdownMenuTrigger asChild><Button variant="outline" size="sm" className="gap-2">{pageSize} per page<ChevronDown className="h-4 w-4 opacity-50" /></Button></DropdownMenuTrigger>

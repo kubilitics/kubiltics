@@ -536,7 +536,7 @@ spec:
  )}
 
  {/* Stats Cards */}
- <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
+ <div className="grid grid-cols-2 sm:grid-cols-6 gap-4">
  <ListPageStatCard size="sm" label="Total Services" value={stats.total} selected={!hasActiveFilters} onClick={clearAllFilters} className={cn(!hasActiveFilters && !isLoading && 'ring-2 ring-primary')} isLoading={isLoading} />
  <ListPageStatCard size="sm" label="ClusterIP" value={stats.clusterIP} valueClassName="text-blue-600" selected={columnFilters.type?.size === 1 && columnFilters.type?.has('ClusterIP')} onClick={() => setColumnFilter('type', new Set(['ClusterIP']))} className={cn(columnFilters.type?.size === 1 && columnFilters.type?.has('ClusterIP') && 'ring-2 ring-primary')} isLoading={isLoading} />
  <ListPageStatCard size="sm" label="NodePort" value={stats.nodePort} valueClassName="text-orange-600" selected={columnFilters.type?.size === 1 && columnFilters.type?.has('NodePort')} onClick={() => setColumnFilter('type', new Set(['NodePort']))} className={cn(columnFilters.type?.size === 1 && columnFilters.type?.has('NodePort') && 'ring-2 ring-primary')} isLoading={isLoading} />
@@ -608,7 +608,7 @@ spec:
  isLoading={isLoading && isConnected}
  footer={
  <div className="flex items-center justify-between flex-wrap gap-2">
- <div className="flex items-center gap-3">
+ <div className="flex items-center gap-4">
  <span className="text-sm text-muted-foreground">{pagination.rangeLabel}</span>
  <DropdownMenu>
  <DropdownMenuTrigger asChild>

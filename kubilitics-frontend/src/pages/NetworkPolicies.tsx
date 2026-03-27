@@ -385,7 +385,7 @@ spec:
  )}
 
  {/* Stats Cards - Design 3.6: Total, Ingress Rules, Egress Rules, Default Deny, Unprotected Pods */}
- <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+ <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
  <ListPageStatCard size="sm" label="Total Policies" value={stats.total} selected={!hasActiveFilters} onClick={clearAllFilters} className={cn(!hasActiveFilters && !isLoading && 'ring-2 ring-primary')} isLoading={isLoading} />
  <ListPageStatCard size="sm" label="Ingress Rules" value={stats.withIngress} valueClassName="text-blue-600" icon={ArrowDownToLine} iconColor="text-blue-600" selected={columnFilters.policyTypes?.size === 1 && columnFilters.policyTypes.has('Ingress')} onClick={() => setColumnFilter('policyTypes', new Set(['Ingress']))} className={cn(columnFilters.policyTypes?.size === 1 && columnFilters.policyTypes.has('Ingress') && 'ring-2 ring-blue-600')} isLoading={isLoading} />
  <ListPageStatCard size="sm" label="Egress Rules" value={stats.withEgress} valueClassName="text-orange-600" icon={ArrowUpFromLine} iconColor="text-orange-600" selected={columnFilters.policyTypes?.size === 1 && columnFilters.policyTypes.has('Egress')} onClick={() => setColumnFilter('policyTypes', new Set(['Egress']))} className={cn(columnFilters.policyTypes?.size === 1 && columnFilters.policyTypes.has('Egress') && 'ring-2 ring-orange-600')} isLoading={isLoading} />
@@ -443,7 +443,7 @@ spec:
  isLoading={isLoading && isConnected}
  footer={
  <div className="flex items-center justify-between flex-wrap gap-2">
- <div className="flex items-center gap-3">
+ <div className="flex items-center gap-4">
  <span className="text-sm text-muted-foreground">{pagination.rangeLabel}</span>
  <DropdownMenu>
  <DropdownMenuTrigger asChild><Button variant="outline" size="sm" className="gap-2">{pageSize} per page<ChevronDown className="h-4 w-4 opacity-50" /></Button></DropdownMenuTrigger>

@@ -347,7 +347,7 @@ spec:
  </div>
  )}
 
- <div className="grid grid-cols-4 gap-4">
+ <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
  <ListPageStatCard label="Total ReplicaSets" value={stats.total} icon={ReplicaSetIcon} iconColor="text-primary" selected={!hasActiveFilters} onClick={clearAllFilters} className={cn(!hasActiveFilters && !isLoading && 'ring-2 ring-primary')} isLoading={isLoading} />
  <ListPageStatCard label="Active" value={stats.active} icon={CheckCircle2} iconColor="text-emerald-600" valueClassName="text-emerald-600" selected={columnFilters.scale?.size === 1 && columnFilters.scale.has('Active')} onClick={() => setColumnFilter('scale', new Set(['Active']))} className={cn(columnFilters.scale?.size === 1 && columnFilters.scale.has('Active') && 'ring-2 ring-emerald-500')} isLoading={isLoading} />
  <ListPageStatCard label="Scaled to Zero" value={stats.scaledToZero} icon={Clock} iconColor="text-amber-600" valueClassName="text-amber-600" selected={columnFilters.scale?.size === 1 && columnFilters.scale.has('Scaled to zero')} onClick={() => setColumnFilter('scale', new Set(['Scaled to zero']))} className={cn(columnFilters.scale?.size === 1 && columnFilters.scale.has('Scaled to zero') && 'ring-2 ring-amber-500')} isLoading={isLoading} />

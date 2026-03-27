@@ -753,7 +753,7 @@ export default function Pods() {
  />
 
  {/* Stats Cards — quick filters for Status column */}
- <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+ <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
  <ListPageStatCard
  label="Total Pods"
  value={stats.total}
@@ -871,7 +871,7 @@ export default function Pods() {
  tableContainerProps={keyboardNav.tableContainerProps}
  footer={
  <div className="flex items-center justify-between flex-wrap gap-2">
- <div className="flex items-center gap-3">
+ <div className="flex items-center gap-4">
  <span className="text-sm text-muted-foreground">{pagination.rangeLabel}</span>
  <DropdownMenu>
  <DropdownMenuTrigger asChild>
