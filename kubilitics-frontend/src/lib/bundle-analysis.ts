@@ -124,17 +124,9 @@ export async function loadElk() {
  * ```
  */
 export async function loadCytoscape() {
-  const [cyModule, fcoseModule, dagreModule, colaModule] = await Promise.all([
-    import('cytoscape'),
-    import('cytoscape-fcose'),
-    import('cytoscape-dagre'),
-    import('cytoscape-cola'),
-  ]);
+  const cyModule = await import('cytoscape');
   return {
     cytoscape: cyModule.default,
-    fcose: fcoseModule.default,
-    dagre: dagreModule.default,
-    cola: colaModule.default,
   };
 }
 

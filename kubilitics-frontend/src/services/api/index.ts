@@ -1,10 +1,6 @@
 /**
- * Kubilitics backend API client.
- *
- * THIS FILE IS A THIN RE-EXPORT BARREL.
- * All implementations live in src/services/api/ domain modules.
- * This file exists for backward compatibility — all existing imports
- * from '@/services/backendApiClient' continue to work unchanged.
+ * Barrel file: re-exports all API modules for convenience.
+ * Import from '@/services/api' or from individual domain files.
  */
 
 // ── Client infrastructure ─────────────────────────────────────────────────────
@@ -16,13 +12,19 @@ export {
   backendRequestText,
   getHealth,
   markBackendReady,
+  isBackendEverReady,
   isBackendCircuitOpen,
   getBackendCircuitCloseTime,
   resetBackendCircuit,
-} from './api/client';
+  markBackendUnavailable,
+  isNetworkError,
+  isCORSError,
+  extractClusterIdFromPath,
+} from './client';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 export type {
+  TopologyGraph,
   BackendCluster,
   BackendClusterSummary,
   ClusterOverview,
@@ -56,7 +58,7 @@ export type {
   PortForwardStartRequest,
   PortForwardStartResponse,
   ContainerFileEntry,
-} from './api/types';
+} from './types';
 
 // ── Clusters ──────────────────────────────────────────────────────────────────
 export {
@@ -72,7 +74,7 @@ export {
   reconnectCluster,
   deleteCluster,
   getClusterKubeconfig,
-} from './api/clusters';
+} from './clusters';
 
 // ── Topology ──────────────────────────────────────────────────────────────────
 export {
@@ -80,7 +82,7 @@ export {
   getResourceTopology,
   getTopologyV2,
   getTopologyExportDrawio,
-} from './api/topology';
+} from './topology';
 
 // ── Resources ─────────────────────────────────────────────────────────────────
 export {
@@ -106,13 +108,13 @@ export {
   postCronJobTrigger,
   getCronJobJobs,
   postJobRetry,
-} from './api/resources';
+} from './resources';
 
 // ── Events ────────────────────────────────────────────────────────────────────
 export {
   getEvents,
   getResourceEvents,
-} from './api/events';
+} from './events';
 
 // ── Metrics ───────────────────────────────────────────────────────────────────
 export {
@@ -126,7 +128,7 @@ export {
   getCronJobMetrics,
   getMetricsSummary,
   getMetricsHistory,
-} from './api/metrics';
+} from './metrics';
 
 // ── Shell ─────────────────────────────────────────────────────────────────────
 export {
@@ -140,7 +142,7 @@ export {
   getShellStatus,
   getKCLITUIState,
   getKCLIComplete,
-} from './api/shell';
+} from './shell';
 
 // ── Projects ──────────────────────────────────────────────────────────────────
 export {
@@ -153,7 +155,7 @@ export {
   removeClusterFromProject,
   addNamespaceToProject,
   removeNamespaceFromProject,
-} from './api/projects';
+} from './projects';
 
 // ── Port Forward / File Transfer ──────────────────────────────────────────────
 export {
@@ -163,7 +165,7 @@ export {
   listContainerFiles,
   getContainerFileDownloadUrl,
   uploadContainerFile,
-} from './api/portforward';
+} from './portforward';
 
 // ── Factory ───────────────────────────────────────────────────────────────────
-export { createBackendApiClient } from './api/factory';
+export { createBackendApiClient } from './factory';

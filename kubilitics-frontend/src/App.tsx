@@ -350,7 +350,6 @@ function ModeSelectionEntryPoint() {
 }
 
 import { GlobalErrorBoundary, RouteErrorBoundary } from "@/components/GlobalErrorBoundary";
-import { ErrorTracker } from "@/lib/errorTracker";
 import { AnalyticsConsentDialog } from "@/components/AnalyticsConsentDialog";
 import { KubeconfigContextDialog } from "@/components/KubeconfigContextDialog";
 import { BackendStartupOverlay, BrowserStartupBanner } from "@/components/BackendStartupOverlay";
@@ -364,8 +363,7 @@ import { ThemeProvider } from "@/providers/ThemeProvider";
 import { useOnboardingStore } from "@/stores/onboardingStore";
 import { WelcomeScreen } from "@/components/onboarding/WelcomeScreen";
 
-// Initialize Error Tracking
-ErrorTracker.init();
+// Error tracking is initialized in main.tsx (before React mounts).
 
 // Tauri uses tauri://localhost/index.html as its origin, so window.location.pathname
 // is "/index.html" — BrowserRouter's HTML5 history routing sees a non-root path and

@@ -15,6 +15,10 @@ import reportWebVitals from './reportWebVitals';
 import { ErrorTracker } from './lib/errorTracker';
 import { GlobalErrorBoundary } from './components/GlobalErrorBoundary';
 
+// Initialize error tracking BEFORE React mounts so global handlers catch
+// any errors thrown during QueryClientProvider / App initialization.
+ErrorTracker.init();
+
 // FIX TASK-001: GlobalErrorBoundary must wrap the entire app at the root level.
 // Without this, errors thrown during QueryClientProvider or App initialization are
 // uncaught and produce a blank white screen rather than the user-friendly error card.
