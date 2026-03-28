@@ -291,6 +291,26 @@ func (h *Handler) GetResource(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Try informer cache first for sub-millisecond response (Headlamp/Lens model).
+	// The informer maintains a live mirror via Watch — reads are instant.
+	if im := h.clusterService.GetInformerManager(clusterID); im != nil && im.HasSynced() {
+		opts := metav1.ListOptions{}
+		if cached, ok := im.ListFromCache(kind, namespace, opts); ok {
+			for _, item := range cached.Items {
+				if item.GetName() == name {
+					payload := item.Object
+					if redact.IsSecretKind(kind) {
+						redact.SecretData(payload)
+					}
+					w.Header().Set("X-Cache", "HIT")
+					respondJSON(w, http.StatusOK, payload)
+					return
+				}
+			}
+		}
+	}
+
+	// Cache miss — direct K8s API call
 	obj, err := client.GetResource(r.Context(), kind, namespace, name)
 	if err != nil {
 		requestID := logger.FromContext(r.Context())
@@ -302,6 +322,7 @@ func (h *Handler) GetResource(w http.ResponseWriter, r *http.Request) {
 	if redact.IsSecretKind(kind) {
 		redact.SecretData(payload)
 	}
+	w.Header().Set("X-Cache", "MISS")
 	respondJSON(w, http.StatusOK, payload)
 }
 
