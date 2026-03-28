@@ -24,7 +24,7 @@ reqwest = { version = "0.12", features = ["json"] }
 aes-gcm = "0.10"
 base64 = "0.22"
 rand = "0.8"
-sha2 = "0.10"
+sha2 = "0.11"
 
 # devtools only in debug builds (cargo build vs cargo build --release)
 [target.'cfg(debug_assertions)'.dependencies]
