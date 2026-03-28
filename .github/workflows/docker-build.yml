@@ -107,7 +107,15 @@ jobs:
           provenance: false
           # Docker Buildx automatically provides TARGETOS and TARGETARCH for multi-platform builds
 
-      # Trivy scanning is handled by security-scan.yml to avoid duplication
+      - name: Trivy scan backend image
+        if: github.event_name == 'pull_request'
+        uses: aquasecurity/trivy-action@v0.35.0
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ env.BACKEND_IMAGE }}:pr-${{ github.event.pull_request.number }}
+          format: 'table'
+          severity: 'CRITICAL,HIGH'
+          exit-code: '0'
+          ignore-unfixed: true
 
   frontend:
     name: Build Frontend (if Dockerfile exists)
