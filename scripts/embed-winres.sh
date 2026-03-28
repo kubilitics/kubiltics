@@ -49,14 +49,14 @@ generate_syso() {
   tmp_dir="$(mktemp -d)"
   trap "rm -rf '$tmp_dir'" RETURN
 
-  # Copy and patch the winres.json with real version numbers
-  local patched="$tmp_dir/winres.json"
+  # go-winres expects winres/winres.json relative to the working directory
+  mkdir -p "$tmp_dir/winres"
   sed -e "s/0\\.0\\.0\\.0/$WIN_VER/g" \
       -e "s/\"0\\.0\\.0\"/\"$SEMVER\"/g" \
-      "$winres_json" > "$patched"
+      "$winres_json" > "$tmp_dir/winres/winres.json"
 
-  # Copy icon next to the manifest (go-winres expects it there)
-  cp "$ICON" "$tmp_dir/icon.ico"
+  # Copy icon next to the manifest (go-winres expects it in winres/)
+  cp "$ICON" "$tmp_dir/winres/icon.ico"
 
   echo "  → $label ($target_dir)"
   (cd "$tmp_dir" && go-winres make --arch amd64 --out "$target_dir/rsrc_windows_amd64.syso")
