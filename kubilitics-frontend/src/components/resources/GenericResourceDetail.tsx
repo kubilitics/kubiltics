@@ -384,15 +384,19 @@ export function GenericResourceDetail<T extends KubernetesResource>({
 
   // --- Handlers ---
   const handleDownloadYaml = useCallback(async () => {
-    if (!yaml) return;
+    if (!yaml) {
+      toast.error('No YAML available — resource may still be loading');
+      return;
+    }
     const blob = new Blob([yaml], { type: 'application/yaml' });
     const filename = `${ctx.name || resourceType}.yaml`;
-    // Use Tauri-aware download (save dialog in desktop, anchor click in browser)
     try {
+      // Tauri-aware: save dialog in desktop, anchor click in browser
       const { downloadFile } = await import('@/topology/graph/utils/exportUtils');
       await downloadFile(blob, filename);
+      toast.success(`Downloaded ${filename}`);
     } catch {
-      // Fallback to basic download
+      // Fallback to basic browser download
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
