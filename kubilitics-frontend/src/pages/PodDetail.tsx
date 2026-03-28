@@ -632,17 +632,16 @@ export default function PodDetail() {
           { icon: ExternalLink, label: 'Port Forward', description: 'Forward local port to container', onClick: () => setShowPortForwardDialog(true) },
           { icon: FolderOpen, label: 'Browse Files', description: 'Browse, upload, and download container files', onClick: () => setShowFileTransferDialog(true) },
           { icon: Bug, label: 'Debug Container', description: 'Attach an ephemeral debug container', onClick: () => setShowDebugContainerDialog(true) },
-          { icon: RotateCcw, label: 'Restart Pod', description: 'Delete and recreate the pod', variant: 'warning', onClick: async () => {
-            if (isConnected && name && namespace) {
+          { icon: RotateCcw, label: 'Restart Pod', description: 'Delete and recreate the pod (controller will recreate)', variant: 'warning', onClick: async () => {
+            if (ctx.isConnected && ctx.name && ctx.namespace) {
               try {
-                const { useDeleteK8sResource } = await import('@/hooks/useKubernetes');
-                // Can't call hooks here - use the ctx refetch approach
-                toast.success('Pod restart initiated (delete for recreation by controller)');
-              } catch (error: any) {
-                toast.error(`Failed to restart: ${error.message}`);
+                const { deleteResource } = await import('@/services/api/resources');
+                await deleteResource(ctx.backendBaseUrl, ctx.clusterId || '', 'pods', ctx.namespace, ctx.name);
+                toast.success(`Pod ${ctx.name} deleted — controller will recreate it`);
+                ctx.refetch();
+              } catch (error: unknown) {
+                toast.error(`Failed to restart: ${error instanceof Error ? error.message : String(error)}`);
               }
-            } else {
-              toast.success('Pod restart initiated (demo mode)');
             }
           }},
         ];

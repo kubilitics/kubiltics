@@ -144,7 +144,7 @@ function OverviewTab({ resource: rc }: ResourceContext<RCResource>) {
 export default function ReplicationControllerDetail() {
   const [showScaleDialog, setShowScaleDialog] = useState(false);
   // We need these values for the ScaleDialog; they'll be populated once the resource loads
-  const [scaleInfo, setScaleInfo] = useState({ name: '', namespace: '', replicas: 0 });
+  // Scale info derived from ctx in extraDialogs — no state needed
 
   const customTabs: CustomTab[] = [
     { id: 'overview', label: 'Overview', render: (ctx) => <OverviewTab {...ctx} /> },
@@ -152,7 +152,7 @@ export default function ReplicationControllerDetail() {
 
   const handleScale = async (replicas: number) => {
     try {
-      toast.success(`Scaled ${scaleInfo.name} to ${replicas} replicas`);
+      toast.success(`Scaled to ${replicas} replicas`);
     } catch {
       toast.error('Failed to scale');
     }
@@ -176,28 +176,12 @@ export default function ReplicationControllerDetail() {
             <span className="flex items-center gap-1.5 ml-2 text-sm text-muted-foreground"><Clock className="h-3.5 w-3.5" />Created {ctx.age}</span>
           </div>
         )}
-        extraHeaderActions={(ctx) => {
-          // Update scale info for the dialog whenever we render actions
-          const rc = ctx.resource;
-          const desired = rc?.spec?.replicas ?? 0;
-          if (ctx.name !== scaleInfo.name || ctx.namespace !== scaleInfo.namespace || desired !== scaleInfo.replicas) {
-            // Use setTimeout to avoid setState during render
-            setTimeout(() => setScaleInfo({ name: ctx.name, namespace: ctx.namespace, replicas: desired }), 0);
-          }
-          return [
-            { label: 'Scale', icon: Scale, variant: 'outline', onClick: () => setShowScaleDialog(true), className: 'press-effect' },
-          ];
-        }}
-        extraActionItems={(ctx) => {
-          const rc = ctx.resource;
-          const desired = rc?.spec?.replicas ?? 0;
-          if (ctx.name !== scaleInfo.name || ctx.namespace !== scaleInfo.namespace || desired !== scaleInfo.replicas) {
-            setTimeout(() => setScaleInfo({ name: ctx.name, namespace: ctx.namespace, replicas: desired }), 0);
-          }
-          return [
-            { icon: Scale, label: 'Scale', description: 'Adjust replica count', onClick: () => setShowScaleDialog(true), className: 'press-effect' },
-          ];
-        }}
+        extraHeaderActions={() => [
+          { label: 'Scale', icon: Scale, variant: 'outline', onClick: () => setShowScaleDialog(true), className: 'press-effect' },
+        ]}
+        extraActionItems={() => [
+          { icon: Scale, label: 'Scale', description: 'Adjust replica count', onClick: () => setShowScaleDialog(true), className: 'press-effect' },
+        ]}
         deriveStatus={(rc) => {
           const desired = rc?.spec?.replicas ?? 0;
           const ready = rc?.status?.readyReplicas ?? 0;
