@@ -907,41 +907,7 @@ function LoadBalancerTab({ resource: svc }: ResourceContext<ServiceResource>) {
 // ---------------------------------------------------------------------------
 
 export default function ServiceDetail() {
-  const { namespace: nsParam, name } = useParams();
-  const navigate = useNavigate();
-  const namespace = nsParam ?? '';
-  const storedUrl = useBackendConfigStore((s) => s.backendBaseUrl);
-  const baseUrl = getEffectiveBackendBaseUrl(storedUrl);
-  const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured());
-  const clusterId = useActiveClusterId();
   const [showPortForwardDialog, setShowPortForwardDialog] = useState(false);
-
-  // Pre-fetch endpoints for status cards
-  const useBackendEndpoints = !!(isBackendConfigured && clusterId && baseUrl && namespace && name);
-  const endpointsQuery = useQuery({
-    queryKey: ['service-endpoints', clusterId, namespace, name],
-    queryFn: () => getServiceEndpoints(baseUrl!, clusterId!, namespace, name!),
-    enabled: useBackendEndpoints,
-  });
-  const endpointsFromK8s = useK8sResource<EndpointsResource>(
-    'endpoints',
-    name ?? '',
-    namespace,
-    { enabled: !!(name && namespace && !useBackendEndpoints) }
-  );
-  const endpointsResource = useBackendEndpoints ? endpointsQuery.data : endpointsFromK8s.data;
-
-  const { endpointsReady, endpointsTotal } = useMemo(() => {
-    const ep = endpointsResource as EndpointsResource | undefined;
-    if (!ep?.subsets?.length) return { endpointsReady: 0, endpointsTotal: 0 };
-    let ready = 0;
-    let total = 0;
-    for (const sub of ep.subsets) {
-      ready += sub.addresses?.length ?? 0;
-      total += (sub.addresses?.length ?? 0) + (sub.notReadyAddresses?.length ?? 0);
-    }
-    return { endpointsReady: ready, endpointsTotal: total };
-  }, [endpointsResource]);
 
   const customTabs: CustomTab[] = [
     { id: 'overview', label: 'Overview', render: (ctx) => <OverviewTab {...ctx} /> },
@@ -964,9 +930,7 @@ export default function ServiceDetail() {
         resourceIcon={Globe}
         loadingCardCount={4}
         customTabs={customTabs}
-        deriveStatus={() => {
-          return (endpointsTotal > 0 && endpointsReady === 0) ? 'Degraded' as const : 'Healthy' as const;
-        }}
+        deriveStatus={() => 'Healthy' as const}
         buildStatusCards={(ctx) => {
           const svc = ctx.resource;
           const serviceType = svc.spec?.type || 'ClusterIP';
@@ -984,7 +948,7 @@ export default function ServiceDetail() {
             { label: 'Type', value: serviceType, icon: Globe, iconColor: 'primary' as const },
             { label: 'Cluster IP', value: clusterIP, icon: Network, iconColor: 'info' as const },
             { label: 'External IP', value: externalIP ?? '—', icon: Globe, iconColor: 'muted' as const },
-            { label: 'Endpoints', value: endpointsTotal > 0 ? `${endpointsReady}/${endpointsTotal}` : '—', icon: Server, iconColor: 'success' as const },
+            { label: 'Endpoints', value: '—', icon: Server, iconColor: 'success' as const },
             { label: 'Ports', value: String(ports.length), icon: Layers, iconColor: 'muted' as const },
             { label: 'Session Affinity', value: sessionAffinity, icon: Clock, iconColor: 'muted' as const },
           ];
