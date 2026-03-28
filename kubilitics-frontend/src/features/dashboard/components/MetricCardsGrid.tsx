@@ -140,9 +140,11 @@ export const MetricCardsGrid = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {cat.tiles.map((tile) => {
               const idx = globalIndex++;
-              const count = (counts as any)[tile.countKey] ?? 0;
+              const countFromHook = (counts as any)[tile.countKey] ?? 0;
               const rh = health[tile.healthKey];
               const segments = rh?.segments ?? [];
+              // Prefer health total (fetches with limit:500) over count hook (limit:100, may undercount)
+              const count = rh?.total ?? countFromHook;
               const total = rh?.total ?? count;
               const scopeTag = isProjectScope
                 ? CLUSTER_WIDE.has(tile.title) ? "Cluster" : "Project"
