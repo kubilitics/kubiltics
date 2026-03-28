@@ -167,7 +167,20 @@ export function PodTerminal({
           term.writeln(`\r\n\x1b[33mSession ended (exit code: ${msg.d || '0'})\x1b[0m`);
           setConnState('disconnected');
         } else if (msg.t === 'error') {
-          term.writeln(`\r\n\x1b[31mError: ${msg.d}\x1b[0m`);
+          const errMsg = msg.d || 'Unknown error';
+          if (errMsg.includes('no such file or directory') || errMsg.includes('executable file not found')) {
+            term.writeln(`\r\n\x1b[33m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\x1b[0m`);
+            term.writeln(`\r\n\x1b[31m  Shell not available in this container\x1b[0m`);
+            term.writeln(`\r\n\x1b[37m  This container uses a minimal/distroless image`);
+            term.writeln(`  that doesn't include /bin/sh or /bin/bash.\x1b[0m`);
+            term.writeln(`\r\n\x1b[36m  Solutions:\x1b[0m`);
+            term.writeln(`\x1b[37m  1. Use a debug container:\x1b[0m`);
+            term.writeln(`\x1b[32m     kubectl debug -it <pod> --image=busybox --target=<container>\x1b[0m`);
+            term.writeln(`\x1b[37m  2. Use the Kubilitics Debug Container feature (Actions tab)\x1b[0m`);
+            term.writeln(`\r\n\x1b[33m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\x1b[0m`);
+          } else {
+            term.writeln(`\r\n\x1b[31mError: ${errMsg}\x1b[0m`);
+          }
           setConnState('disconnected');
         }
       } catch {

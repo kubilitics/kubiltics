@@ -239,27 +239,22 @@ func (h *Handler) GetPodExec(w http.ResponseWriter, r *http.Request) {
 	stdoutW := &chanWriter{ch: outChan, typ: wsMsgStdout}
 	stderrW := &chanWriter{ch: outChan, typ: wsMsgStderr}
 
-	// Prefer a richer interactive shell with filename completion and typical colorized `ls`
-	// when the client did not explicitly request a custom shell.
-	// For safety, we only wrap when the shell is the default "/bin/sh" (or empty in query),
-	// so any explicit shell choice is honored exactly.
+	// Build command: try multiple shells for distroless/minimal containers.
+	// The wrapper script tries bash → sh → ash in order within a single exec.
+	// If the user specified a custom shell, use that directly.
 	command := []string{shell}
 	if shell == "/bin/sh" {
-		// Wrapper runs inside /bin/sh and prefers bash when available, with interactive mode.
-		// Basic logic:
-		//   - If bash exists, exec bash -il (interactive login shell: enables readline + default rc)
-		//   - Else, fall back to sh -i
-		//
-		// This improves UX in pod terminals:
-		//   - Tab-based filename completion (built-in to bash)
-		//   - Typical distro defaults like colored `ls` when configured in bashrc.
 		wrapperScript := `
-if command -v bash >/dev/null 2>&1; then
-  exec bash -il
-elif command -v sh >/dev/null 2>&1; then
-  exec sh -i
+if [ -x /bin/bash ]; then
+  exec /bin/bash -il
+elif [ -x /bin/sh ]; then
+  exec /bin/sh -i
+elif [ -x /bin/ash ]; then
+  exec /bin/ash -i
 else
-  echo "No interactive shell found (bash/sh) in this container."
+  echo "No interactive shell found in this container."
+  echo "This is likely a distroless/minimal image."
+  echo "Try using a debug container: kubectl debug -it <pod> --image=busybox"
   sleep 3600
 fi
 `
