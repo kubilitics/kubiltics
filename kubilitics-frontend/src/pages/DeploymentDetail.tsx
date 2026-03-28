@@ -20,6 +20,7 @@ import {
   LayoutDashboard,
   BarChart2,
   Settings,
+  Radio,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -39,10 +40,12 @@ import {
   SectionCard,
   DetailRow,
   LogViewer,
+  MultiPodLogViewer,
   DetailPodTable,
   type CustomTab,
   type ResourceContext,
   type ContainerInfo,
+  type PodTarget,
 } from '@/components/resources';
 import { PodTerminal } from '@/components/resources/PodTerminal';
 import { useK8sResourceList, usePatchK8sResource, type KubernetesResource } from '@/hooks/useKubernetes';
@@ -749,6 +752,43 @@ export default function DeploymentDetail() {
                 </div>
                 <LogViewer podName={logPod} namespace={namespace ?? undefined} containerName={selectedLogContainer || logPodContainers[0]} containers={logPodContainers} onContainerChange={setSelectedLogContainer} />
               </div>
+            )}
+          </SectionCard>
+        );
+      },
+    },
+    {
+      id: 'stream-logs',
+      label: 'Stream Logs',
+      icon: Radio,
+      render: (ctx) => {
+        const deployment = ctx.resource;
+        const deploymentName = deployment?.metadata?.name ?? name;
+        const matchLabels = deployment.spec?.selector?.matchLabels ?? {};
+        const deploymentPods = (podsList?.items ?? []).filter((pod) => {
+          const labels = pod.metadata?.labels ?? {};
+          if (!Object.entries(matchLabels).every(([k, v]) => labels[k] === v)) return false;
+          const owners = (pod.metadata as any)?.ownerReferences as Array<{ kind?: string; name?: string }> | undefined;
+          if (!owners || owners.length === 0) return false;
+          return owners.some((ref) => ref.kind === 'ReplicaSet' && ref.name?.startsWith(deploymentName + '-'));
+        });
+
+        const podTargets: PodTarget[] = deploymentPods.map((pod) => {
+          const containers = ((pod as any)?.spec?.containers as Array<{ name: string }> | undefined)?.map((c) => c.name)
+            ?? (deployment.spec?.template?.spec?.containers || []).map((c) => c.name);
+          return {
+            name: pod.metadata?.name ?? '',
+            namespace: namespace ?? '',
+            containers,
+          };
+        }).filter((p) => p.name);
+
+        return (
+          <SectionCard icon={Radio} title="Multi-Pod Log Stream" tooltip={<p className="text-xs text-muted-foreground">Stern-like streaming from all deployment pods simultaneously</p>}>
+            {podTargets.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No pods available. Deploy replicas to stream logs from multiple pods.</p>
+            ) : (
+              <MultiPodLogViewer pods={podTargets} />
             )}
           </SectionCard>
         );

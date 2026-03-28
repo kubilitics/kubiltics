@@ -11,9 +11,10 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
 import { Link, useNavigate } from 'react-router-dom';
-import { useK8sResourceList, useDeleteK8sResource, useCreateK8sResource, calculateAge, type KubernetesResource } from '@/hooks/useKubernetes';
+import { useK8sResourceList, useDeleteK8sResource, useCreateK8sResource, usePatchK8sResource, calculateAge, type KubernetesResource } from '@/hooks/useKubernetes';
 import { useConnectionStatus } from '@/hooks/useConnectionStatus';
-import { DeleteConfirmDialog } from '@/components/resources';
+import { DeleteConfirmDialog, BulkActionBar, executeBulkOperation } from '@/components/resources';
+import { useMultiSelect } from '@/hooks/useMultiSelect';
 import {
  ResourceCommandBar, ResourceExportDropdown, ListViewSegmentedControl, ListPagination, PAGE_SIZE_OPTIONS,
  ListPageStatCard, ListPageHeader, TableColumnHeaderWithFilterAndSort, TableFilterCell, AgeCell, TableEmptyState, TableErrorState, ListPageLoadingShell,
@@ -120,7 +121,8 @@ export default function VolumeSnapshots() {
  const [showCreateWizard, setShowCreateWizard] = useState(false);
  const [listView, setListView] = useState<ListView>('flat');
  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
- const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
+ const multiSelect = useMultiSelect();
+ const selectedItems = multiSelect.selectedIds;
  const [showTableFilters, setShowTableFilters] = useState(false);
  const [pageSize, setPageSize] = useState(10);
  const [pageIndex, setPageIndex] = useState(0);
@@ -129,6 +131,7 @@ export default function VolumeSnapshots() {
  const { data, isLoading, isError, isFetching, dataUpdatedAt, refetch } = useK8sResourceList<VolumeSnapshotResource>('volumesnapshots', undefined, { limit: 5000 });
  const deleteResource = useDeleteK8sResource('volumesnapshots');
  const createResource = useCreateK8sResource('volumesnapshots');
+ const patchResource = usePatchK8sResource('volumesnapshots');
 
  // eslint-disable-next-line react-hooks/exhaustive-deps
  const items: VolumeSnapshot[] = isConnected && data ? (data.items ?? []).map(transformVS) : [];
@@ -197,21 +200,40 @@ export default function VolumeSnapshots() {
  });
  };
 
- const toggleSelection = (item: VolumeSnapshot) => {
+ const allKeys = useMemo(() => itemsOnPage.map(i => `${i.namespace}/${i.name}`), [itemsOnPage]);
+
+ const toggleSelection = (item: VolumeSnapshot, event?: React.MouseEvent) => {
  const key = `${item.namespace}/${item.name}`;
- const newSel = new Set(selectedItems);
- if (newSel.has(key)) newSel.delete(key);
- else newSel.add(key);
- setSelectedItems(newSel);
+ if (event?.shiftKey) {
+ multiSelect.toggleRange(key, allKeys);
+ } else {
+ multiSelect.toggle(key);
+ }
  };
 
  const toggleAll = () => {
- if (selectedItems.size === itemsOnPage.length) setSelectedItems(new Set());
- else setSelectedItems(new Set(itemsOnPage.map((i) => `${i.namespace}/${i.name}`)));
+ if (multiSelect.isAllSelected(allKeys)) multiSelect.clearSelection();
+ else multiSelect.selectAll(allKeys);
  };
 
- const isAllSelected = itemsOnPage.length > 0 && selectedItems.size === itemsOnPage.length;
- const isSomeSelected = selectedItems.size > 0 && selectedItems.size < itemsOnPage.length;
+ const isAllSelected = multiSelect.isAllSelected(allKeys);
+ const isSomeSelected = multiSelect.isSomeSelected(allKeys);
+
+ const handleBulkDelete = async () => {
+ return executeBulkOperation(Array.from(selectedItems), async (_key, ns, name) => {
+ await deleteResource.mutateAsync({ name, namespace: ns });
+ });
+ };
+
+ const handleBulkLabel = async (label: string) => {
+ return executeBulkOperation(Array.from(selectedItems), async (_key, ns, name) => {
+ await patchResource.mutateAsync({
+ name,
+ namespace: ns,
+ patch: { metadata: { labels: { [label.split("=")[0]]: label.split("=")[1] } } },
+ });
+ });
+ };
 
  const handleDelete = async () => {
  if (!isConnected) { toast.error('Connect cluster to delete volume snapshots'); return; }
@@ -221,7 +243,7 @@ export default function VolumeSnapshots() {
  if (ns && n) await deleteResource.mutateAsync({ name: n, namespace: ns });
  }
  toast.success(`Deleted ${selectedItems.size} volume snapshot(s)`);
- setSelectedItems(new Set());
+ multiSelect.clearSelection();
  } else if (deleteDialog.item) {
  await deleteResource.mutateAsync({ name: deleteDialog.item.name, namespace: deleteDialog.item.namespace });
  toast.success(`VolumeSnapshot ${deleteDialog.item.name} deleted`);
@@ -273,7 +295,7 @@ spec:
  const sourceIsPVC = item.sourcePVC !== '-' && !item.sourcePVC.includes('snapshotcontent');
  return (
  <tr key={key} className={cn(resourceTableRowClassName, idx % 2 === 1 && 'bg-muted/5', isSelected && 'bg-primary/5')}>
- <TableCell><Checkbox checked={isSelected} onCheckedChange={() => toggleSelection(item)} /></TableCell>
+ <TableCell onClick={(e) => { e.stopPropagation(); toggleSelection(item, e); }}><Checkbox checked={isSelected} tabIndex={-1} /></TableCell>
  <ResizableTableCell columnId="name">
  <Link to={`/volumesnapshots/${item.namespace}/${item.name}`} className="font-medium text-primary hover:underline flex items-center gap-2 truncate">
  <VolumeSnapshotIcon className="h-4 w-4 text-muted-foreground flex-shrink-0" />
@@ -358,6 +380,15 @@ spec:
  <ListPageStatCard label="Pending" value={stats.pending} icon={Clock} iconColor="text-amber-600" valueClassName="text-amber-600" selected={columnFilters.status?.size === 1 && columnFilters.status.has('Pending')} onClick={() => setColumnFilter('status', new Set(['Pending']))} className={cn(columnFilters.status?.size === 1 && columnFilters.status.has('Pending') && 'ring-2 ring-amber-500')} isLoading={isLoading} />
  <ListPageStatCard label="Failed" value={stats.failed} icon={XCircle} iconColor="text-rose-600" valueClassName="text-rose-600" selected={columnFilters.status?.size === 1 && columnFilters.status.has('Failed')} onClick={() => setColumnFilter('status', new Set(['Failed']))} className={cn(columnFilters.status?.size === 1 && columnFilters.status.has('Failed') && 'ring-2 ring-rose-500')} isLoading={isLoading} />
  </div>
+
+ <BulkActionBar
+ selectedCount={selectedItems.size}
+ resourceName="volume snapshot"
+ resourceType="volumesnapshots"
+ onClearSelection={() => multiSelect.clearSelection()}
+ onBulkDelete={handleBulkDelete}
+ onBulkLabel={handleBulkLabel}
+ />
 
  <ResourceListTableToolbar
  globalFilterBar={

@@ -27,10 +27,11 @@ import {
  DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Checkbox } from '@/components/ui/checkbox';
-import { usePaginatedResourceList, useDeleteK8sResource, calculateAge, type KubernetesResource } from '@/hooks/useKubernetes';
+import { usePaginatedResourceList, useDeleteK8sResource, usePatchK8sResource, calculateAge, type KubernetesResource } from '@/hooks/useKubernetes';
 import { useConnectionStatus } from '@/hooks/useConnectionStatus';
 import { ResourceCreator, DEFAULT_YAMLS } from '@/components/editor';
-import { DeleteConfirmDialog } from '@/components/resources';
+import { DeleteConfirmDialog, BulkActionBar, executeBulkOperation } from '@/components/resources';
+import { useMultiSelect } from '@/hooks/useMultiSelect';
 import { toast } from '@/components/ui/sonner';
 import { cn } from '@/lib/utils';
 import {
@@ -145,9 +146,11 @@ export default function Leases() {
  const { isConnected } = useConnectionStatus();
  const { data, isLoading, isError, refetch, pagination: hookPagination } = usePaginatedResourceList<LeaseResource>('leases');
  const deleteResource = useDeleteK8sResource('leases');
+ const patchResource = usePatchK8sResource('leases');
 
  const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; item: Lease | null; bulk?: boolean }>({ open: false, item: null });
- const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
+ const multiSelect = useMultiSelect();
+ const selectedItems = multiSelect.selectedIds;
  const [showCreator, setShowCreator] = useState(false);
  const [searchQuery, setSearchQuery] = useState('');
  const [selectedNamespace, setSelectedNamespace] = useState<string>('all');
@@ -233,7 +236,7 @@ export default function Leases() {
  if (n && ns) await deleteResource.mutateAsync({ name: n, namespace: ns });
  }
  toast.success(`Deleted ${selectedItems.size} lease(s)`);
- setSelectedItems(new Set());
+ multiSelect.clearSelection();
  } else if (deleteDialog.item) {
  await deleteResource.mutateAsync({ name: deleteDialog.item.name, namespace: deleteDialog.item.namespace });
  toast.success(`Lease ${deleteDialog.item.name} deleted`);
@@ -242,19 +245,38 @@ export default function Leases() {
  refetch();
  };
 
- const toggleSelection = (item: Lease) => {
+ const allKeys = useMemo(() => itemsOnPage.map(i => `${i.namespace}/${i.name}`), [itemsOnPage]);
+
+ const toggleSelection = (item: Lease, event?: React.MouseEvent) => {
  const key = `${item.namespace}/${item.name}`;
- const next = new Set(selectedItems);
- if (next.has(key)) next.delete(key);
- else next.add(key);
- setSelectedItems(next);
+ if (event?.shiftKey) {
+ multiSelect.toggleRange(key, allKeys);
+ } else {
+ multiSelect.toggle(key);
+ }
  };
  const toggleAll = () => {
- if (selectedItems.size === itemsOnPage.length) setSelectedItems(new Set());
- else setSelectedItems(new Set(itemsOnPage.map((i) => `${i.namespace}/${i.name}`)));
+ if (multiSelect.isAllSelected(allKeys)) multiSelect.clearSelection();
+ else multiSelect.selectAll(allKeys);
  };
- const isAllSelected = itemsOnPage.length > 0 && selectedItems.size === itemsOnPage.length;
- const isSomeSelected = selectedItems.size > 0 && selectedItems.size < itemsOnPage.length;
+ const isAllSelected = multiSelect.isAllSelected(allKeys);
+ const isSomeSelected = multiSelect.isSomeSelected(allKeys);
+
+ const handleBulkDelete = async () => {
+ return executeBulkOperation(Array.from(selectedItems), async (_key, ns, name) => {
+ await deleteResource.mutateAsync({ name, namespace: ns });
+ });
+ };
+
+ const handleBulkLabel = async (label: string) => {
+ return executeBulkOperation(Array.from(selectedItems), async (_key, ns, name) => {
+ await patchResource.mutateAsync({
+ name,
+ namespace: ns,
+ patch: { metadata: { labels: { [label.split("=")[0]]: label.split("=")[1] } } },
+ });
+ });
+ };
 
  const exportConfig = {
  filenamePrefix: 'leases',
@@ -339,6 +361,15 @@ export default function Leases() {
  </div>
  </div>
  )}
+
+ <BulkActionBar
+ selectedCount={selectedItems.size}
+ resourceName="lease"
+ resourceType="leases"
+ onClearSelection={() => multiSelect.clearSelection()}
+ onBulkDelete={handleBulkDelete}
+ onBulkLabel={handleBulkLabel}
+ />
 
  <ResourceListTableToolbar
  globalFilterBar={
@@ -466,7 +497,7 @@ export default function Leases() {
  ) : (
  itemsOnPage.map((item, idx) => (
  <tr key={item.id} className={cn(resourceTableRowClassName, idx % 2 === 1 && 'bg-muted/5', selectedItems.has(`${item.namespace}/${item.name}`) && 'bg-primary/5')}>
- <TableCell><Checkbox checked={selectedItems.has(`${item.namespace}/${item.name}`)} onCheckedChange={() => toggleSelection(item)} aria-label={`Select ${item.name}`} /></TableCell>
+ <TableCell onClick={(e) => { e.stopPropagation(); toggleSelection(item, e); }}><Checkbox checked={selectedItems.has(`${item.namespace}/${item.name}`)} tabIndex={-1} aria-label={`Select ${item.name}`} /></TableCell>
  <ResizableTableCell columnId="name">
  <Link to={`/leases/${item.namespace}/${item.name}`} className="font-medium text-primary hover:underline flex items-center gap-2 truncate">
  <Activity className="h-4 w-4 text-muted-foreground flex-shrink-0" />

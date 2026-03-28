@@ -42,10 +42,11 @@ import { ResourceCommandBar, ClusterScopedScope, ResourceExportDropdown, ListPag
 import { StorageIcon } from '@/components/icons/KubernetesIcons';
 import { useTableFiltersAndSort, type ColumnConfig } from '@/hooks/useTableFiltersAndSort';
 import { useColumnVisibility } from '@/hooks/useColumnVisibility';
-import { usePaginatedResourceList, useDeleteK8sResource, calculateAge } from '@/hooks/useKubernetes';
+import { usePaginatedResourceList, useDeleteK8sResource, usePatchK8sResource, calculateAge } from '@/hooks/useKubernetes';
 import { useConnectionStatus } from '@/hooks/useConnectionStatus';
 import { ResourceCreator, DEFAULT_YAMLS } from '@/components/editor';
-import { DeleteConfirmDialog } from '@/components/resources';
+import { DeleteConfirmDialog, BulkActionBar, executeBulkOperation } from '@/components/resources';
+import { useMultiSelect } from '@/hooks/useMultiSelect';
 import { toast } from '@/components/ui/sonner';
 
 interface VolumeAttachment {
@@ -111,12 +112,14 @@ export default function VolumeAttachments() {
  const { data, isLoading, isError, refetch, pagination: hookPagination } = usePaginatedResourceList<K8sVolumeAttachment>('volumeattachments');
  const [showCreateWizard, setShowCreateWizard] = useState(false);
  const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; item: VolumeAttachment | null; bulk?: boolean }>({ open: false, item: null });
- const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
+ const multiSelect = useMultiSelect();
+ const selectedItems = multiSelect.selectedIds;
  const [searchQuery, setSearchQuery] = useState('');
  const [showTableFilters, setShowTableFilters] = useState(false);
  const [pageSize, setPageSize] = useState(10);
  const [pageIndex, setPageIndex] = useState(0);
  const deleteVA = useDeleteK8sResource('volumeattachments');
+ const patchResource = usePatchK8sResource('volumeattachments');
 
  // eslint-disable-next-line react-hooks/exhaustive-deps
  const allItems = (data?.allItems ?? []) as K8sVolumeAttachment[];
@@ -225,7 +228,7 @@ export default function VolumeAttachments() {
  if (item?.name) await deleteVA.mutateAsync({ name: item.name });
  }
  toast.success(`Deleted ${selectedItems.size} volume attachment(s)`);
- setSelectedItems(new Set());
+ multiSelect.clearSelection();
  } else if (deleteDialog.item) {
  await deleteVA.mutateAsync({ name: deleteDialog.item.name });
  toast.success(`VolumeAttachment ${deleteDialog.item.name} deleted`);
@@ -234,18 +237,38 @@ export default function VolumeAttachments() {
  refetch();
  };
 
- const toggleSelection = (item: VolumeAttachment) => {
- const next = new Set(selectedItems);
- if (next.has(item.id)) next.delete(item.id);
- else next.add(item.id);
- setSelectedItems(next);
+ const allKeys = useMemo(() => itemsOnPage.map(i => i.name), [itemsOnPage]);
+
+ const toggleSelection = (item: VolumeAttachment, event?: React.MouseEvent) => {
+ const key = item.name;
+ if (event?.shiftKey) {
+ multiSelect.toggleRange(key, allKeys);
+ } else {
+ multiSelect.toggle(key);
+ }
  };
  const toggleAll = () => {
- if (selectedItems.size === itemsOnPage.length) setSelectedItems(new Set());
- else setSelectedItems(new Set(itemsOnPage.map((i) => i.id)));
+ if (multiSelect.isAllSelected(allKeys)) multiSelect.clearSelection();
+ else multiSelect.selectAll(allKeys);
  };
- const isAllSelected = itemsOnPage.length > 0 && selectedItems.size === itemsOnPage.length;
- const isSomeSelected = selectedItems.size > 0 && selectedItems.size < itemsOnPage.length;
+ const isAllSelected = multiSelect.isAllSelected(allKeys);
+ const isSomeSelected = multiSelect.isSomeSelected(allKeys);
+
+ const handleBulkDelete = async () => {
+ return executeBulkOperation(Array.from(selectedItems), async (key) => {
+ await deleteVA.mutateAsync({ name: key });
+ });
+ };
+
+ const handleBulkLabel = async (label: string) => {
+ return executeBulkOperation(Array.from(selectedItems), async (key) => {
+ await patchResource.mutateAsync({
+ name: key,
+ namespace: '',
+ patch: { metadata: { labels: { [label.split("=")[0]]: label.split("=")[1] } } },
+ });
+ });
+ };
 
  const exportConfig = {
  filenamePrefix: 'volumeattachments',
@@ -277,7 +300,7 @@ export default function VolumeAttachments() {
  onCreate={() => setShowCreateWizard(true)}
  actions={
  <>
- <ResourceExportDropdown items={filteredItems} selectedKeys={selectedItems} getKey={(item) => item.id} config={exportConfig} selectionLabel={selectedItems.size > 0 ? 'Selected volume attachments' : 'All visible'} onToast={(msg, type) => (type === 'info' ? toast.info(msg) : toast.success(msg))} />
+ <ResourceExportDropdown items={filteredItems} selectedKeys={selectedItems} getKey={(item) => item.name} config={exportConfig} selectionLabel={selectedItems.size > 0 ? 'Selected volume attachments' : 'All visible'} onToast={(msg, type) => (type === 'info' ? toast.info(msg) : toast.success(msg))} />
  {selectedItems.size > 0 && (
  <Button variant="destructive" size="sm" className="gap-2" onClick={() => setDeleteDialog({ open: true, item: null, bulk: true })}>
  <Trash2 className="h-4 w-4" />
@@ -337,7 +360,7 @@ export default function VolumeAttachments() {
  {selectedItems.size} selected
  </Badge>
  <div className="flex items-center gap-2">
- <ResourceExportDropdown items={filteredItems} selectedKeys={selectedItems} getKey={(i) => i.id} config={exportConfig} selectionLabel="Selected volume attachments" onToast={(msg, type) => (type === 'info' ? toast.info(msg) : toast.success(msg))} triggerLabel={`Export (${selectedItems.size})`} />
+ <ResourceExportDropdown items={filteredItems} selectedKeys={selectedItems} getKey={(i) => i.name} config={exportConfig} selectionLabel="Selected volume attachments" onToast={(msg, type) => (type === 'info' ? toast.info(msg) : toast.success(msg))} triggerLabel={`Export (${selectedItems.size})`} />
  <Button variant="destructive" size="sm" className="gap-2" onClick={() => setDeleteDialog({ open: true, item: null, bulk: true })}>
  <Trash2 className="h-4 w-4" />
  Delete
@@ -348,6 +371,15 @@ export default function VolumeAttachments() {
  </div>
  </div>
  )}
+
+ <BulkActionBar
+ selectedCount={selectedItems.size}
+ resourceName="volume attachment"
+ resourceType="volumeattachments"
+ onClearSelection={() => multiSelect.clearSelection()}
+ onBulkDelete={handleBulkDelete}
+ onBulkLabel={handleBulkLabel}
+ />
 
  <ResourceListTableToolbar
  globalFilterBar={
@@ -439,8 +471,8 @@ export default function VolumeAttachments() {
  </TableRow>
  ) : (
  itemsOnPage.map((item, idx) => (
- <tr key={item.id} className={cn(resourceTableRowClassName, idx % 2 === 1 && 'bg-muted/5', selectedItems.has(item.id) && 'bg-primary/5')}>
- <TableCell><Checkbox checked={selectedItems.has(item.id)} onCheckedChange={() => toggleSelection(item)} aria-label={`Select ${item.name}`} /></TableCell>
+ <tr key={item.id} className={cn(resourceTableRowClassName, idx % 2 === 1 && 'bg-muted/5', selectedItems.has(item.name) && 'bg-primary/5')}>
+ <TableCell onClick={(e) => { e.stopPropagation(); toggleSelection(item, e); }}><Checkbox checked={selectedItems.has(item.name)} tabIndex={-1} aria-label={`Select ${item.name}`} /></TableCell>
  <ResizableTableCell columnId="name">
  <Link to={`/volumeattachments/${item.name}`} className="font-medium text-primary hover:underline flex items-center gap-2 truncate">
  <Database className="h-4 w-4 text-muted-foreground flex-shrink-0" />

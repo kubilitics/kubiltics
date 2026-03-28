@@ -27,9 +27,10 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { usePaginatedResourceList, useDeleteK8sResource, calculateAge, type KubernetesResource } from '@/hooks/useKubernetes';
+import { usePaginatedResourceList, useDeleteK8sResource, usePatchK8sResource, calculateAge, type KubernetesResource } from '@/hooks/useKubernetes';
 import { useConnectionStatus } from '@/hooks/useConnectionStatus';
-import { DeleteConfirmDialog } from '@/components/resources';
+import { DeleteConfirmDialog, BulkActionBar, executeBulkOperation } from '@/components/resources';
+import { useMultiSelect } from '@/hooks/useMultiSelect';
 import { StatusPill } from '@/components/list';
 import { toast } from '@/components/ui/sonner';
 import { cn } from '@/lib/utils';
@@ -116,9 +117,11 @@ export default function APIServices() {
  const { isConnected } = useConnectionStatus();
  const { data, isLoading, isError, refetch, pagination: hookPagination } = usePaginatedResourceList<APIServiceResource>('apiservices');
  const deleteResource = useDeleteK8sResource('apiservices');
+ const patchResource = usePatchK8sResource('apiservices');
 
  const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; item: APIService | null; bulk?: boolean }>({ open: false, item: null });
- const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
+ const multiSelect = useMultiSelect();
+ const selectedItems = multiSelect.selectedIds;
  const [showCreateWizard, setShowCreateWizard] = useState(false);
  const [searchQuery, setSearchQuery] = useState('');
  const [showTableFilters, setShowTableFilters] = useState(false);
@@ -196,7 +199,7 @@ export default function APIServices() {
  await deleteResource.mutateAsync({ name });
  }
  toast.success(`Deleted ${selectedItems.size} API service(s)`);
- setSelectedItems(new Set());
+ multiSelect.clearSelection();
  } else if (deleteDialog.item) {
  await deleteResource.mutateAsync({ name: deleteDialog.item.name });
  toast.success(`API service ${deleteDialog.item.name} deleted`);
@@ -205,18 +208,38 @@ export default function APIServices() {
  refetch();
  };
 
- const toggleSelection = (item: APIService) => {
- const next = new Set(selectedItems);
- if (next.has(item.name)) next.delete(item.name);
- else next.add(item.name);
- setSelectedItems(next);
+ const allKeys = useMemo(() => itemsOnPage.map(i => i.name), [itemsOnPage]);
+
+ const toggleSelection = (item: APIService, event?: React.MouseEvent) => {
+ const key = item.name;
+ if (event?.shiftKey) {
+ multiSelect.toggleRange(key, allKeys);
+ } else {
+ multiSelect.toggle(key);
+ }
  };
  const toggleAll = () => {
- if (selectedItems.size === itemsOnPage.length) setSelectedItems(new Set());
- else setSelectedItems(new Set(itemsOnPage.map((i) => i.name)));
+ if (multiSelect.isAllSelected(allKeys)) multiSelect.clearSelection();
+ else multiSelect.selectAll(allKeys);
  };
- const isAllSelected = itemsOnPage.length > 0 && selectedItems.size === itemsOnPage.length;
- const isSomeSelected = selectedItems.size > 0 && selectedItems.size < itemsOnPage.length;
+ const isAllSelected = multiSelect.isAllSelected(allKeys);
+ const isSomeSelected = multiSelect.isSomeSelected(allKeys);
+
+ const handleBulkDelete = async () => {
+ return executeBulkOperation(Array.from(selectedItems), async (key) => {
+ await deleteResource.mutateAsync({ name: key });
+ });
+ };
+
+ const handleBulkLabel = async (label: string) => {
+ return executeBulkOperation(Array.from(selectedItems), async (key) => {
+ await patchResource.mutateAsync({
+ name: key,
+ namespace: '',
+ patch: { metadata: { labels: { [label.split("=")[0]]: label.split("=")[1] } } },
+ });
+ });
+ };
 
  const exportConfig = {
  filenamePrefix: 'apiservices',
@@ -286,6 +309,15 @@ export default function APIServices() {
  </div>
  </div>
  )}
+
+ <BulkActionBar
+ selectedCount={selectedItems.size}
+ resourceName="API service"
+ resourceType="apiservices"
+ onClearSelection={() => multiSelect.clearSelection()}
+ onBulkDelete={handleBulkDelete}
+ onBulkLabel={handleBulkLabel}
+ />
 
  <ResourceListTableToolbar
  globalFilterBar={
@@ -380,7 +412,7 @@ export default function APIServices() {
  ) : (
  itemsOnPage.map((item, idx) => (
  <tr key={item.id} className={cn(resourceTableRowClassName, idx % 2 === 1 && 'bg-muted/5', selectedItems.has(item.name) && 'bg-primary/5')}>
- <TableCell><Checkbox checked={selectedItems.has(item.name)} onCheckedChange={() => toggleSelection(item)} aria-label={`Select ${item.name}`} /></TableCell>
+ <TableCell onClick={(e) => { e.stopPropagation(); toggleSelection(item, e); }}><Checkbox checked={selectedItems.has(item.name)} tabIndex={-1} aria-label={`Select ${item.name}`} /></TableCell>
  <ResizableTableCell columnId="name">
  <Link to={`/apiservices/${item.name}`} className="font-medium text-primary hover:underline flex items-center gap-2 truncate">
  <FileCode className="h-4 w-4 text-muted-foreground flex-shrink-0" />

@@ -14,11 +14,12 @@ import { Link, useNavigate } from 'react-router-dom';
 import { ResourceCommandBar, ClusterScopedScope, ResourceExportDropdown, ListPagination, PAGE_SIZE_OPTIONS, ListPageStatCard, ListPageHeader, TableColumnHeaderWithFilterAndSort, TableFilterCell, resourceTableRowClassName, ROW_MOTION, AgeCell, TableEmptyState, TableErrorState, ListPageLoadingShell, CopyNameDropdownItem, ResourceListTableToolbar } from '@/components/list';
 import { useTableFiltersAndSort, type ColumnConfig } from '@/hooks/useTableFiltersAndSort';
 import { useColumnVisibility } from '@/hooks/useColumnVisibility';
-import { usePaginatedResourceList, useDeleteK8sResource, useCreateK8sResource, calculateAge, type KubernetesResource } from '@/hooks/useKubernetes';
+import { usePaginatedResourceList, useDeleteK8sResource, useCreateK8sResource, usePatchK8sResource, calculateAge, type KubernetesResource } from '@/hooks/useKubernetes';
 import { useConnectionStatus } from '@/hooks/useConnectionStatus';
-import { DeleteConfirmDialog } from '@/components/resources';
+import { DeleteConfirmDialog, BulkActionBar, executeBulkOperation } from '@/components/resources';
 import { ResourceCreator, DEFAULT_YAMLS } from '@/components/editor/ResourceCreator';
 import { toast } from '@/components/ui/sonner';
+import { useMultiSelect } from '@/hooks/useMultiSelect';
 
 interface DeviceClass {
  name: string;
@@ -86,7 +87,9 @@ export default function DeviceClasses() {
  const { data, isLoading, isError, refetch, pagination: hookPagination } = usePaginatedResourceList<K8sDeviceClass>('deviceclasses');
  const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; item: DeviceClass | null; bulk?: boolean }>({ open: false, item: null });
  const [showCreateWizard, setShowCreateWizard] = useState(false);
- const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
+ const multiSelect = useMultiSelect();
+ const selectedItems = multiSelect.selectedIds;
+ const patchResource = usePatchK8sResource('deviceclasses');
  const [searchQuery, setSearchQuery] = useState('');
  const [showTableFilters, setShowTableFilters] = useState(false);
  const [pageSize, setPageSize] = useState(10);
@@ -172,7 +175,7 @@ export default function DeviceClasses() {
  await deleteDC.mutateAsync({ name, namespace: '' });
  }
  toast.success(`Deleted ${selectedItems.size} device class(es)`);
- setSelectedItems(new Set());
+ multiSelect.clearSelection();
  } else if (deleteDialog.item) {
  await deleteDC.mutateAsync({ name: deleteDialog.item.name, namespace: '' });
  toast.success(`DeviceClass ${deleteDialog.item.name} deleted`);
@@ -181,18 +184,33 @@ export default function DeviceClasses() {
  refetch();
  };
 
- const toggleSelection = (dc: DeviceClass) => {
- const next = new Set(selectedItems);
- if (next.has(dc.name)) next.delete(dc.name);
- else next.add(dc.name);
- setSelectedItems(next);
+ const allKeys = useMemo(() => itemsOnPage.map((v) => v.name), [itemsOnPage]);
+
+ const toggleSelection = (dc: DeviceClass, event?: React.MouseEvent) => {
+ if (event?.shiftKey) {
+ multiSelect.toggleRange(dc.name, allKeys);
+ } else {
+ multiSelect.toggle(dc.name);
+ }
  };
  const toggleAll = () => {
- if (selectedItems.size === itemsOnPage.length) setSelectedItems(new Set());
- else setSelectedItems(new Set(itemsOnPage.map((v) => v.name)));
+ if (multiSelect.isAllSelected(allKeys)) multiSelect.clearSelection();
+ else multiSelect.selectAll(allKeys);
  };
- const isAllSelected = itemsOnPage.length > 0 && selectedItems.size === itemsOnPage.length;
- const isSomeSelected = selectedItems.size > 0 && selectedItems.size < itemsOnPage.length;
+ const isAllSelected = multiSelect.isAllSelected(allKeys);
+ const isSomeSelected = multiSelect.isSomeSelected(allKeys);
+
+ const handleBulkDelete = async () => {
+ return executeBulkOperation(Array.from(selectedItems).map((n) => `/${n}`), async (_key, _ns, name) => {
+ await deleteDC.mutateAsync({ name, namespace: '' });
+ });
+ };
+
+ const handleBulkLabel = async (label: string) => {
+ return executeBulkOperation(Array.from(selectedItems).map((n) => `/${n}`), async (_key, _ns, name) => {
+ await patchResource.mutateAsync({ name, namespace: '', patch: { metadata: { labels: { [label.split('=')[0]]: label.split('=')[1] } } } });
+ });
+ };
 
  const pagination = {
  rangeLabel: totalFiltered > 0 ? `Showing ${start + 1}–${Math.min(start + pageSize, totalFiltered)} of ${totalFiltered}` : 'No device classes',
@@ -250,22 +268,14 @@ export default function DeviceClasses() {
  <ListPageStatCard label="With Config" value={stats.withConfig} icon={Cpu} iconColor="text-muted-foreground" selected={false} onClick={() => { }} isLoading={isLoading} />
  </div>
 
- {selectedItems.size > 0 && (
- <div className="flex items-center justify-between p-3 bg-primary/5 border border-primary/20 rounded-lg">
- <Badge variant="secondary" className="gap-1.5">
- <CheckSquare className="h-3.5 w-3.5" />
- {selectedItems.size} selected
- </Badge>
- <div className="flex items-center gap-2">
- <ResourceExportDropdown items={filteredItems} selectedKeys={selectedItems} getKey={(v) => v.name} config={exportConfig} selectionLabel="Selected classes" onToast={(msg, type) => (type === 'info' ? toast.info(msg) : toast.success(msg))} triggerLabel={`Export (${selectedItems.size})`} />
- <Button variant="destructive" size="sm" className="gap-2" onClick={() => setDeleteDialog({ open: true, item: null, bulk: true })}>
- <Trash2 className="h-4 w-4" />
- Delete
- </Button>
- <Button variant="ghost" size="sm" onClick={() => setSelectedItems(new Set())}>Clear</Button>
- </div>
- </div>
- )}
+ <BulkActionBar
+ selectedCount={selectedItems.size}
+ resourceName="device class"
+ resourceType="deviceclasses"
+ onClearSelection={() => multiSelect.clearSelection()}
+ onBulkDelete={handleBulkDelete}
+ onBulkLabel={handleBulkLabel}
+ />
 
  <ResourceListTableToolbar
  globalFilterBar={
@@ -360,7 +370,7 @@ export default function DeviceClasses() {
  ) : (
  itemsOnPage.map((item, idx) => (
  <tr key={item.name} className={cn(resourceTableRowClassName, idx % 2 === 1 && 'bg-muted/5', selectedItems.has(item.name) && 'bg-primary/5')}>
- <TableCell><Checkbox checked={selectedItems.has(item.name)} onCheckedChange={() => toggleSelection(item)} /></TableCell>
+ <TableCell onClick={(e) => { e.stopPropagation(); toggleSelection(item, e); }}><Checkbox checked={selectedItems.has(item.name)} tabIndex={-1} aria-label={`Select ${item.name}`} /></TableCell>
  <ResizableTableCell columnId="name">
  <Link to={`/deviceclasses/${item.name}`} className="font-medium text-primary hover:underline flex items-center gap-2 truncate">
  <Cpu className="h-4 w-4 text-muted-foreground flex-shrink-0" />

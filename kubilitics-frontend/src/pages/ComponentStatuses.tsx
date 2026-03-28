@@ -11,7 +11,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
-import { useK8sResourceList, calculateAge, type KubernetesResource } from '@/hooks/useKubernetes';
+import { useK8sResourceList, useDeleteK8sResource, usePatchK8sResource, calculateAge, type KubernetesResource } from '@/hooks/useKubernetes';
 import { useConnectionStatus } from '@/hooks/useConnectionStatus';
 import {
  ResourceCommandBar, ClusterScopedScope, ResourceExportDropdown,
@@ -24,6 +24,8 @@ import {
 import { useTableFiltersAndSort, type ColumnConfig } from '@/hooks/useTableFiltersAndSort';
 import { useColumnVisibility } from '@/hooks/useColumnVisibility';
 import { toast } from '@/components/ui/sonner';
+import { BulkActionBar, executeBulkOperation } from '@/components/resources';
+import { useMultiSelect } from '@/hooks/useMultiSelect';
 
 interface ComponentStatusCondition {
  type: string;
@@ -97,13 +99,16 @@ const csStatusIcon: Record<ComponentStatus['status'], React.ComponentType<{ clas
 export default function ComponentStatuses() {
  const navigate = useNavigate();
  const [searchQuery, setSearchQuery] = useState('');
- const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
+ const multiSelect = useMultiSelect();
+ const selectedItems = multiSelect.selectedIds;
  const [showTableFilters, setShowTableFilters] = useState(false);
  const [pageSize, setPageSize] = useState(10);
  const [pageIndex, setPageIndex] = useState(0);
 
  const { isConnected } = useConnectionStatus();
  const { data, isLoading, isError, isFetching, dataUpdatedAt, refetch } = useK8sResourceList<ComponentStatusResource>('componentstatuses', undefined, { limit: 5000 });
+ const deleteResource = useDeleteK8sResource('componentstatuses');
+ const patchResource = usePatchK8sResource('componentstatuses');
 
  // eslint-disable-next-line react-hooks/exhaustive-deps
  const items: ComponentStatus[] = isConnected && data
@@ -142,19 +147,35 @@ export default function ComponentStatuses() {
  if (safePageIndex !== pageIndex) setPageIndex(safePageIndex);
  }, [safePageIndex, pageIndex]);
 
- const toggleSelection = (item: ComponentStatus) => {
- const newSel = new Set(selectedItems);
- if (newSel.has(item.name)) newSel.delete(item.name); else newSel.add(item.name);
- setSelectedItems(newSel);
+ const allKeys = useMemo(() => itemsOnPage.map((i) => i.name), [itemsOnPage]);
+
+ const toggleSelection = (item: ComponentStatus, event?: React.MouseEvent) => {
+ if (event?.shiftKey) {
+ multiSelect.toggleRange(item.name, allKeys);
+ } else {
+ multiSelect.toggle(item.name);
+ }
  };
 
  const toggleAll = () => {
- if (selectedItems.size === itemsOnPage.length) setSelectedItems(new Set());
- else setSelectedItems(new Set(itemsOnPage.map((i) => i.name)));
+ if (multiSelect.isAllSelected(allKeys)) multiSelect.clearSelection();
+ else multiSelect.selectAll(allKeys);
  };
 
- const isAllSelected = itemsOnPage.length > 0 && selectedItems.size === itemsOnPage.length;
- const isSomeSelected = selectedItems.size > 0 && selectedItems.size < itemsOnPage.length;
+ const isAllSelected = multiSelect.isAllSelected(allKeys);
+ const isSomeSelected = multiSelect.isSomeSelected(allKeys);
+
+ const handleBulkDelete = async () => {
+ return executeBulkOperation(Array.from(selectedItems).map((n) => `/${n}`), async (_key, _ns, name) => {
+ await deleteResource.mutateAsync({ name, namespace: '' });
+ });
+ };
+
+ const handleBulkLabel = async (label: string) => {
+ return executeBulkOperation(Array.from(selectedItems).map((n) => `/${n}`), async (_key, _ns, name) => {
+ await patchResource.mutateAsync({ name, namespace: '', patch: { metadata: { labels: { [label.split('=')[0]]: label.split('=')[1] } } } });
+ });
+ };
 
  const exportConfig = {
  filenamePrefix: 'componentstatuses',
@@ -200,12 +221,6 @@ metadata:
  {!isConnected && <span className="ml-2 inline-flex items-center gap-1 text-amber-600"><WifiOff className="h-3 w-3" /> Connect cluster</span>}
  </p>
  </div>
- {selectedItems.size > 0 && (
- <div className="flex items-center gap-2 ml-2 pl-2 border-l border-border">
- <span className="text-sm text-muted-foreground">{selectedItems.size} selected</span>
- <Button variant="ghost" size="sm" className="h-8" onClick={() => setSelectedItems(new Set())}>Clear</Button>
- </div>
- )}
  </div>
  <div className="flex items-center gap-2">
  <ResourceExportDropdown
@@ -226,6 +241,15 @@ metadata:
  <ListPageStatCard label="Unhealthy" value={stats.unhealthy} icon={XCircle} iconColor="text-rose-600" valueClassName="text-rose-600" selected={columnFilters.status?.size === 1 && columnFilters.status.has('Unhealthy')} onClick={() => setColumnFilter('status', new Set(['Unhealthy']))} className={cn(columnFilters.status?.size === 1 && columnFilters.status.has('Unhealthy') && 'ring-2 ring-rose-500')} isLoading={isLoading} />
  <ListPageStatCard label="Unknown" value={stats.unknown} icon={Clock} iconColor="text-muted-foreground" valueClassName="text-muted-foreground" selected={columnFilters.status?.size === 1 && columnFilters.status.has('Unknown')} onClick={() => setColumnFilter('status', new Set(['Unknown']))} className={cn(columnFilters.status?.size === 1 && columnFilters.status.has('Unknown') && 'ring-2 ring-muted-foreground')} isLoading={isLoading} />
  </div>
+
+ <BulkActionBar
+ selectedCount={selectedItems.size}
+ resourceName="component status"
+ resourceType="componentstatuses"
+ onClearSelection={() => multiSelect.clearSelection()}
+ onBulkDelete={handleBulkDelete}
+ onBulkLabel={handleBulkLabel}
+ />
 
  <ResourceListTableToolbar
  hasActiveFilters={hasActiveFilters}
@@ -319,7 +343,7 @@ metadata:
  const StatusIcon = csStatusIcon[item.status];
  return (
  <tr key={item.name} className={cn(resourceTableRowClassName, idx % 2 === 1 && 'bg-muted/5', isSelected && 'bg-primary/5')}>
- <TableCell><Checkbox checked={isSelected} onCheckedChange={() => toggleSelection(item)} /></TableCell>
+ <TableCell onClick={(e) => { e.stopPropagation(); toggleSelection(item, e); }}><Checkbox checked={isSelected} tabIndex={-1} aria-label={`Select ${item.name}`} /></TableCell>
  <ResizableTableCell columnId="name">
  <span className="font-medium flex items-center gap-2 truncate cursor-pointer text-primary hover:underline" onClick={() => navigate(`/componentstatuses/${item.name}`)}>
  <Gauge className="h-4 w-4 text-muted-foreground flex-shrink-0" />

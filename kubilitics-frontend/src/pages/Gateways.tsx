@@ -40,9 +40,12 @@ import { useQuery } from '@tanstack/react-query';
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
 import { useClusterStore } from '@/stores/clusterStore';
 import { useConnectionStatus } from '@/hooks/useConnectionStatus';
-import { calculateAge, type KubernetesResource } from '@/hooks/useKubernetes';
+import { calculateAge, useDeleteK8sResource, usePatchK8sResource, type KubernetesResource } from '@/hooks/useKubernetes';
 import { listResources } from '@/services/backendApiClient';
 import { toast } from '@/components/ui/sonner';
+import { Checkbox } from '@/components/ui/checkbox';
+import { BulkActionBar, executeBulkOperation } from '@/components/resources';
+import { useMultiSelect } from '@/hooks/useMultiSelect';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -240,6 +243,10 @@ export default function Gateways() {
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const pageSize = 25;
+  const multiSelect = useMultiSelect();
+  const selectedItems = multiSelect.selectedIds;
+  const deleteGateway = useDeleteK8sResource('gateways');
+  const patchGateway = usePatchK8sResource('gateways');
 
   // ── Data ─────────────────────────────────────────────────────────────────
 
@@ -275,6 +282,41 @@ export default function Gateways() {
   const filteredClasses = useMemo(() => filterItems(classes), [filterItems, classes]);
   const filteredHttpRoutes = useMemo(() => filterItems(httpRoutes), [filterItems, httpRoutes]);
   const filteredGrpcRoutes = useMemo(() => filterItems(grpcRoutes), [filterItems, grpcRoutes]);
+
+  // ── Multi-select for Gateways tab ──────────────────────────────────────
+
+  const gwItemKey = useCallback((gw: GatewayResource) => `${gw.metadata.namespace ?? ''}/${gw.metadata.name}`, []);
+  const paginatedGateways = useMemo(() => filteredGateways.slice((page - 1) * pageSize, page * pageSize), [filteredGateways, page, pageSize]);
+  const allGwKeys = useMemo(() => paginatedGateways.map(gwItemKey), [paginatedGateways, gwItemKey]);
+
+  const toggleGwSelection = useCallback((gw: GatewayResource, event?: React.MouseEvent) => {
+    const key = gwItemKey(gw);
+    if (event?.shiftKey) {
+      multiSelect.toggleRange(key, allGwKeys);
+    } else {
+      multiSelect.toggle(key);
+    }
+  }, [gwItemKey, multiSelect, allGwKeys]);
+
+  const toggleAllGw = useCallback(() => {
+    if (multiSelect.isAllSelected(allGwKeys)) multiSelect.clearSelection();
+    else multiSelect.selectAll(allGwKeys);
+  }, [multiSelect, allGwKeys]);
+
+  const isAllGwSelected = multiSelect.isAllSelected(allGwKeys);
+  const isSomeGwSelected = multiSelect.isSomeSelected(allGwKeys);
+
+  const handleBulkDeleteGw = useCallback(async () => {
+    return executeBulkOperation(Array.from(selectedItems), async (_key, ns, name) => {
+      await deleteGateway.mutateAsync({ name, namespace: ns });
+    });
+  }, [selectedItems, deleteGateway]);
+
+  const handleBulkLabelGw = useCallback(async (label: string) => {
+    return executeBulkOperation(Array.from(selectedItems), async (_key, ns, name) => {
+      await patchGateway.mutateAsync({ name, namespace: ns, patch: { metadata: { labels: { [label.split('=')[0]]: label.split('=')[1] } } } });
+    });
+  }, [selectedItems, patchGateway]);
 
   // ── Pagination ───────────────────────────────────────────────────────────
 
@@ -354,8 +396,19 @@ export default function Gateways() {
         />
       </div>
 
+      {activeTab === 'gateways' && (
+        <BulkActionBar
+          selectedCount={selectedItems.size}
+          resourceName="gateway"
+          resourceType="gateways"
+          onClearSelection={() => multiSelect.clearSelection()}
+          onBulkDelete={handleBulkDeleteGw}
+          onBulkLabel={handleBulkLabelGw}
+        />
+      )}
+
       {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v as GatewayResourceTab); setPage(1); }}>
+      <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v as GatewayResourceTab); setPage(1); multiSelect.clearSelection(); }}>
         <TabsList>
           <TabsTrigger value="gateways" className="flex items-center gap-1.5">
             <Network className="h-3.5 w-3.5" /> Gateways
@@ -384,6 +437,7 @@ export default function Gateways() {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-10"><Checkbox checked={isAllGwSelected} onCheckedChange={toggleAllGw} aria-label="Select all" className={cn(isSomeGwSelected && 'data-[state=checked]:bg-primary/50')} /></TableHead>
                     <TableHead>Name</TableHead>
                     <TableHead>Namespace</TableHead>
                     <TableHead>Class</TableHead>
@@ -400,9 +454,10 @@ export default function Gateways() {
                     <motion.tr
                       key={gw.metadata.uid}
                       {...ROW_MOTION}
-                      className={resourceTableRowClassName}
+                      className={cn(resourceTableRowClassName, selectedItems.has(gwItemKey(gw)) && 'bg-primary/5')}
                       onClick={() => navigate(`/gateways/${gw.metadata.namespace}/${gw.metadata.name}`)}
                     >
+                      <TableCell onClick={(e) => { e.stopPropagation(); toggleGwSelection(gw, e); }}><Checkbox checked={selectedItems.has(gwItemKey(gw))} tabIndex={-1} aria-label={`Select ${gw.metadata.name}`} /></TableCell>
                       <TableCell className="font-medium">{gw.metadata.name}</TableCell>
                       <TableCell><NamespaceBadge namespace={gw.metadata.namespace ?? '-'} /></TableCell>
                       <TableCell>{gw.spec.gatewayClassName ?? '-'}</TableCell>

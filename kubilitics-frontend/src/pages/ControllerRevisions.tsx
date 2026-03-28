@@ -31,11 +31,12 @@ import {
 } from '@/components/list';
 import { useTableFiltersAndSort, type ColumnConfig } from '@/hooks/useTableFiltersAndSort';
 import { useColumnVisibility } from '@/hooks/useColumnVisibility';
-import { usePaginatedResourceList, useDeleteK8sResource, useCreateK8sResource, calculateAge, type KubernetesResource } from '@/hooks/useKubernetes';
+import { usePaginatedResourceList, useDeleteK8sResource, useCreateK8sResource, usePatchK8sResource, calculateAge, type KubernetesResource } from '@/hooks/useKubernetes';
 import { useConnectionStatus } from '@/hooks/useConnectionStatus';
-import { DeleteConfirmDialog } from '@/components/resources';
+import { DeleteConfirmDialog, BulkActionBar, executeBulkOperation } from '@/components/resources';
 import { ResourceCreator, DEFAULT_YAMLS } from '@/components/editor/ResourceCreator';
 import { toast } from '@/components/ui/sonner';
+import { useMultiSelect } from '@/hooks/useMultiSelect';
 
 interface ControllerRevision {
  name: string;
@@ -98,7 +99,9 @@ export default function ControllerRevisions() {
  const { data, isLoading, isError, refetch, pagination: hookPagination } = usePaginatedResourceList<K8sControllerRevision>('controllerrevisions');
  const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; item: ControllerRevision | null; bulk?: boolean }>({ open: false, item: null });
  const [showCreateWizard, setShowCreateWizard] = useState(false);
- const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
+ const multiSelect = useMultiSelect();
+ const selectedItems = multiSelect.selectedIds;
+ const patchResource = usePatchK8sResource('controllerrevisions');
  const [searchQuery, setSearchQuery] = useState('');
  const [selectedNamespace, setSelectedNamespace] = useState<string>('all');
  const [showTableFilters, setShowTableFilters] = useState(false);
@@ -179,7 +182,7 @@ export default function ControllerRevisions() {
  if (n && ns) await deleteCR.mutateAsync({ name: n, namespace: ns });
  }
  toast.success(`Deleted ${selectedItems.size} controller revision(s)`);
- setSelectedItems(new Set());
+ multiSelect.clearSelection();
  } else if (deleteDialog.item) {
  await deleteCR.mutateAsync({ name: deleteDialog.item.name, namespace: deleteDialog.item.namespace });
  toast.success(`ControllerRevision ${deleteDialog.item.name} deleted`);
@@ -199,19 +202,34 @@ export default function ControllerRevisions() {
  };
 
  const getItemKey = (item: ControllerRevision) => `${item.namespace}/${item.name}`;
- const toggleSelection = (item: ControllerRevision) => {
+ const allKeys = useMemo(() => itemsOnPage.map(getItemKey), [itemsOnPage]);
+
+ const toggleSelection = (item: ControllerRevision, event?: React.MouseEvent) => {
  const key = getItemKey(item);
- const next = new Set(selectedItems);
- if (next.has(key)) next.delete(key);
- else next.add(key);
- setSelectedItems(next);
+ if (event?.shiftKey) {
+ multiSelect.toggleRange(key, allKeys);
+ } else {
+ multiSelect.toggle(key);
+ }
  };
  const toggleAll = () => {
- if (selectedItems.size === itemsOnPage.length) setSelectedItems(new Set());
- else setSelectedItems(new Set(itemsOnPage.map(getItemKey)));
+ if (multiSelect.isAllSelected(allKeys)) multiSelect.clearSelection();
+ else multiSelect.selectAll(allKeys);
  };
- const isAllSelected = itemsOnPage.length > 0 && selectedItems.size === itemsOnPage.length;
- const isSomeSelected = selectedItems.size > 0 && selectedItems.size < itemsOnPage.length;
+ const isAllSelected = multiSelect.isAllSelected(allKeys);
+ const isSomeSelected = multiSelect.isSomeSelected(allKeys);
+
+ const handleBulkDelete = async () => {
+ return executeBulkOperation(Array.from(selectedItems), async (_key, ns, name) => {
+ await deleteCR.mutateAsync({ name, namespace: ns });
+ });
+ };
+
+ const handleBulkLabel = async (label: string) => {
+ return executeBulkOperation(Array.from(selectedItems), async (_key, ns, name) => {
+ await patchResource.mutateAsync({ name, namespace: ns, patch: { metadata: { labels: { [label.split('=')[0]]: label.split('=')[1] } } } });
+ });
+ };
 
  const pagination = {
  rangeLabel: totalFiltered > 0 ? `Showing ${start + 1}–${Math.min(start + pageSize, totalFiltered)} of ${totalFiltered}` : 'No controller revisions',
@@ -272,22 +290,14 @@ export default function ControllerRevisions() {
  <ListPageStatCard label="DaemonSets" value={stats.daemonSets} icon={History} iconColor="text-muted-foreground" selected={false} onClick={() => { }} isLoading={isLoading} />
  </div>
 
- {selectedItems.size > 0 && (
- <div className="flex items-center justify-between p-3 bg-primary/5 border border-primary/20 rounded-lg">
- <Badge variant="secondary" className="gap-1.5">
- <CheckSquare className="h-3.5 w-3.5" />
- {selectedItems.size} selected
- </Badge>
- <div className="flex items-center gap-2">
- <ResourceExportDropdown items={filteredItems} selectedKeys={selectedItems} getKey={getItemKey} config={exportConfig} selectionLabel="Selected revisions" onToast={(msg, type) => (type === 'info' ? toast.info(msg) : toast.success(msg))} triggerLabel={`Export (${selectedItems.size})`} />
- <Button variant="destructive" size="sm" className="gap-2" onClick={() => setDeleteDialog({ open: true, item: null, bulk: true })}>
- <Trash2 className="h-4 w-4" />
- Delete
- </Button>
- <Button variant="ghost" size="sm" onClick={() => setSelectedItems(new Set())}>Clear</Button>
- </div>
- </div>
- )}
+ <BulkActionBar
+ selectedCount={selectedItems.size}
+ resourceName="controller revision"
+ resourceType="controllerrevisions"
+ onClearSelection={() => multiSelect.clearSelection()}
+ onBulkDelete={handleBulkDelete}
+ onBulkLabel={handleBulkLabel}
+ />
 
  <ResourceListTableToolbar
  globalFilterBar={
@@ -405,7 +415,7 @@ export default function ControllerRevisions() {
  const link = ownerLink(item);
  return (
  <tr key={getItemKey(item)} className={cn(resourceTableRowClassName, idx % 2 === 1 && 'bg-muted/5', selectedItems.has(getItemKey(item)) && 'bg-primary/5')}>
- <TableCell><Checkbox checked={selectedItems.has(getItemKey(item))} onCheckedChange={() => toggleSelection(item)} /></TableCell>
+ <TableCell onClick={(e) => { e.stopPropagation(); toggleSelection(item, e); }}><Checkbox checked={selectedItems.has(getItemKey(item))} tabIndex={-1} aria-label={`Select ${item.name}`} /></TableCell>
  <ResizableTableCell columnId="name">
  <Link to={`/controllerrevisions/${item.namespace}/${item.name}`} className="font-medium text-primary hover:underline flex items-center gap-2 truncate">
  <History className="h-4 w-4 text-muted-foreground flex-shrink-0" />

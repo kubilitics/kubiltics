@@ -16,9 +16,10 @@ import { ResourceCommandBar, ClusterScopedScope, ResourceExportDropdown, ListPag
 import type { StatusPillVariant } from '@/components/list';
 import { useTableFiltersAndSort, type ColumnConfig } from '@/hooks/useTableFiltersAndSort';
 import { useColumnVisibility } from '@/hooks/useColumnVisibility';
-import { usePaginatedResourceList, useDeleteK8sResource, calculateAge, type KubernetesResource } from '@/hooks/useKubernetes';
+import { usePaginatedResourceList, useDeleteK8sResource, usePatchK8sResource, calculateAge, type KubernetesResource } from '@/hooks/useKubernetes';
 import { useConnectionStatus } from '@/hooks/useConnectionStatus';
-import { DeleteConfirmDialog } from '@/components/resources';
+import { DeleteConfirmDialog, BulkActionBar, executeBulkOperation } from '@/components/resources';
+import { useMultiSelect } from '@/hooks/useMultiSelect';
 import { toast } from '@/components/ui/sonner';
 
 interface VolumeSnapshotContent {
@@ -118,12 +119,14 @@ export default function VolumeSnapshotContents() {
  const { isConnected } = useConnectionStatus();
  const { data, isLoading, isError, isFetching, dataUpdatedAt, refetch } = usePaginatedResourceList<K8sVolumeSnapshotContent>('volumesnapshotcontents');
  const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; item: VolumeSnapshotContent | null; bulk?: boolean }>({ open: false, item: null });
- const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
+ const multiSelect = useMultiSelect();
+ const selectedItems = multiSelect.selectedIds;
  const [searchQuery, setSearchQuery] = useState('');
  const [showTableFilters, setShowTableFilters] = useState(false);
  const [pageSize, setPageSize] = useState(10);
  const [pageIndex, setPageIndex] = useState(0);
  const deleteVSC = useDeleteK8sResource('volumesnapshotcontents');
+ const patchResource = usePatchK8sResource('volumesnapshotcontents');
 
  // eslint-disable-next-line react-hooks/exhaustive-deps
  const allItems = (data?.allItems ?? []) as K8sVolumeSnapshotContent[];
@@ -197,7 +200,7 @@ export default function VolumeSnapshotContents() {
  await deleteVSC.mutateAsync({ name, namespace: '' });
  }
  toast.success(`Deleted ${selectedItems.size} volume snapshot content(s)`);
- setSelectedItems(new Set());
+ multiSelect.clearSelection();
  } else if (deleteDialog.item) {
  await deleteVSC.mutateAsync({ name: deleteDialog.item.name, namespace: '' });
  toast.success(`VolumeSnapshotContent ${deleteDialog.item.name} deleted`);
@@ -206,18 +209,38 @@ export default function VolumeSnapshotContents() {
  refetch();
  };
 
- const toggleSelection = (vsc: VolumeSnapshotContent) => {
- const next = new Set(selectedItems);
- if (next.has(vsc.name)) next.delete(vsc.name);
- else next.add(vsc.name);
- setSelectedItems(next);
+ const allKeys = useMemo(() => itemsOnPage.map(v => v.name), [itemsOnPage]);
+
+ const toggleSelection = (vsc: VolumeSnapshotContent, event?: React.MouseEvent) => {
+ const key = vsc.name;
+ if (event?.shiftKey) {
+ multiSelect.toggleRange(key, allKeys);
+ } else {
+ multiSelect.toggle(key);
+ }
  };
  const toggleAll = () => {
- if (selectedItems.size === itemsOnPage.length) setSelectedItems(new Set());
- else setSelectedItems(new Set(itemsOnPage.map((v) => v.name)));
+ if (multiSelect.isAllSelected(allKeys)) multiSelect.clearSelection();
+ else multiSelect.selectAll(allKeys);
  };
- const isAllSelected = itemsOnPage.length > 0 && selectedItems.size === itemsOnPage.length;
- const isSomeSelected = selectedItems.size > 0 && selectedItems.size < itemsOnPage.length;
+ const isAllSelected = multiSelect.isAllSelected(allKeys);
+ const isSomeSelected = multiSelect.isSomeSelected(allKeys);
+
+ const handleBulkDelete = async () => {
+ return executeBulkOperation(Array.from(selectedItems), async (key) => {
+ await deleteVSC.mutateAsync({ name: key, namespace: '' });
+ });
+ };
+
+ const handleBulkLabel = async (label: string) => {
+ return executeBulkOperation(Array.from(selectedItems), async (key) => {
+ await patchResource.mutateAsync({
+ name: key,
+ namespace: '',
+ patch: { metadata: { labels: { [label.split("=")[0]]: label.split("=")[1] } } },
+ });
+ });
+ };
 
  const pagination = {
  rangeLabel: totalFiltered > 0 ? `Showing ${start + 1}–${Math.min(start + pageSize, totalFiltered)} of ${totalFiltered}` : 'No volume snapshot contents',
@@ -293,6 +316,15 @@ export default function VolumeSnapshotContents() {
  </div>
  </div>
  )}
+
+ <BulkActionBar
+ selectedCount={selectedItems.size}
+ resourceName="volume snapshot content"
+ resourceType="volumesnapshotcontents"
+ onClearSelection={() => multiSelect.clearSelection()}
+ onBulkDelete={handleBulkDelete}
+ onBulkLabel={handleBulkLabel}
+ />
 
  <ResourceListTableToolbar
  globalFilterBar={
@@ -385,7 +417,7 @@ export default function VolumeSnapshotContents() {
  ) : (
  itemsOnPage.map((item, idx) => (
  <tr key={item.name} className={cn(resourceTableRowClassName, idx % 2 === 1 && 'bg-muted/5', selectedItems.has(item.name) && 'bg-primary/5')}>
- <TableCell><Checkbox checked={selectedItems.has(item.name)} onCheckedChange={() => toggleSelection(item)} /></TableCell>
+ <TableCell onClick={(e) => { e.stopPropagation(); toggleSelection(item, e); }}><Checkbox checked={selectedItems.has(item.name)} tabIndex={-1} /></TableCell>
  <ResizableTableCell columnId="name">
  <Link to={`/volumesnapshotcontents/${item.name}`} className="font-medium text-primary hover:underline flex items-center gap-2 truncate">
  <Camera className="h-4 w-4 text-muted-foreground flex-shrink-0" />

@@ -41,9 +41,10 @@ import {
 import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
 import { Link, useNavigate } from 'react-router-dom';
-import { useK8sResourceList, useDeleteK8sResource, calculateAge } from '@/hooks/useKubernetes';
+import { useK8sResourceList, useDeleteK8sResource, usePatchK8sResource, calculateAge } from '@/hooks/useKubernetes';
 import { useConnectionStatus } from '@/hooks/useConnectionStatus';
-import { DeleteConfirmDialog } from '@/components/resources';
+import { DeleteConfirmDialog, BulkActionBar, executeBulkOperation } from '@/components/resources';
+import { useMultiSelect } from '@/hooks/useMultiSelect';
 import { IngressClassWizard } from '@/components/wizards';
 import { ResourceExportDropdown, ListPageStatCard, ListPageHeader, TableColumnHeaderWithFilterAndSort, TableFilterCell, resourceTableRowClassName, ResourceCommandBar, ClusterScopedScope, ListPagination, PAGE_SIZE_OPTIONS, ListViewSegmentedControl, ROW_MOTION, AgeCell, TableEmptyState, ListPageLoadingShell, TableErrorState, CopyNameDropdownItem, ResourceListTableToolbar, StatusPill } from '@/components/list';
 import { IngressIcon } from '@/components/icons/KubernetesIcons';
@@ -86,7 +87,8 @@ export default function IngressClasses() {
  const navigate = useNavigate();
  const [searchQuery, setSearchQuery] = useState('');
  const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; item: IngressClass | null; bulk?: boolean }>({ open: false, item: null });
- const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
+ const multiSelect = useMultiSelect();
+ const selectedItems = multiSelect.selectedIds;
  const [showCreateWizard, setShowCreateWizard] = useState(false);
  const [showTableFilters, setShowTableFilters] = useState(false);
  const [pageSize, setPageSize] = useState(10);
@@ -98,6 +100,7 @@ export default function IngressClasses() {
  const { data, isLoading, isError, isFetching, dataUpdatedAt, refetch } = useK8sResourceList('ingressclasses', undefined, { limit: 5000 });
  const { data: ingressesData } = useK8sResourceList<{ spec?: { ingressClassName?: string }; metadata?: { name: string } }>('ingresses', undefined, { limit: 5000 });
  const deleteResource = useDeleteK8sResource('ingressclasses');
+ const patchResource = usePatchK8sResource('ingressclasses');
 
  const ingressCountByClass = useMemo(() => {
  const map = new Map<string, number>();
@@ -194,7 +197,7 @@ export default function IngressClasses() {
  }
  }
  toast.success(`Deleted ${selectedItems.size} ingress classes`);
- setSelectedItems(new Set());
+ multiSelect.clearSelection();
  } else if (deleteDialog.item) {
  if (isConnected) {
  await deleteResource.mutateAsync({ name: deleteDialog.item.name, namespace: '' });
@@ -226,32 +229,40 @@ spec:
 `,
  };
 
- const toggleSelection = (item: IngressClass) => {
- const newSelection = new Set(selectedItems);
- if (newSelection.has(item.name)) {
- newSelection.delete(item.name);
- } else {
- newSelection.add(item.name);
- }
- setSelectedItems(newSelection);
- };
+ const allKeys = useMemo(() => itemsOnPage.map(ic => ic.name), [itemsOnPage]);
 
- const toggleAllSelection = () => {
- const names = itemsOnPage.map((ic) => ic.name);
- const allSelected = names.length > 0 && names.every((n) => selectedItems.has(n));
- if (allSelected) {
- const next = new Set(selectedItems);
- names.forEach((n) => next.delete(n));
- setSelectedItems(next);
+ const toggleSelection = (item: IngressClass, event?: React.MouseEvent) => {
+ const key = item.name;
+ if (event?.shiftKey) {
+ multiSelect.toggleRange(key, allKeys);
  } else {
- const next = new Set(selectedItems);
- names.forEach((n) => next.add(n));
- setSelectedItems(next);
+ multiSelect.toggle(key);
  }
  };
 
- const isAllSelected = itemsOnPage.length > 0 && itemsOnPage.every((ic) => selectedItems.has(ic.name));
- const isSomeSelected = selectedItems.size > 0 && !isAllSelected;
+ const toggleAll = () => {
+ if (multiSelect.isAllSelected(allKeys)) multiSelect.clearSelection();
+ else multiSelect.selectAll(allKeys);
+ };
+
+ const isAllSelected = multiSelect.isAllSelected(allKeys);
+ const isSomeSelected = multiSelect.isSomeSelected(allKeys);
+
+ const handleBulkDelete = async () => {
+ return executeBulkOperation(Array.from(selectedItems), async (key) => {
+ await deleteResource.mutateAsync({ name: key, namespace: '' });
+ });
+ };
+
+ const handleBulkLabel = async (label: string) => {
+ return executeBulkOperation(Array.from(selectedItems), async (key) => {
+ await patchResource.mutateAsync({
+ name: key,
+ namespace: '',
+ patch: { metadata: { labels: { [label.split("=")[0]]: label.split("=")[1] } } },
+ });
+ });
+ };
 
  const pagination = {
  rangeLabel: totalFiltered > 0 ? `Showing ${start + 1}–${Math.min(start + pageSize, totalFiltered)} of ${totalFiltered}` : 'No ingress classes',
@@ -347,6 +358,15 @@ spec:
  <ListPageStatCard label="Controllers" value={stats.controllers} valueClassName="text-blue-600" isLoading={isLoading} />
  </div>
 
+ <BulkActionBar
+ selectedCount={selectedItems.size}
+ resourceName="ingress class"
+ resourceType="ingressclasses"
+ onClearSelection={() => multiSelect.clearSelection()}
+ onBulkDelete={handleBulkDelete}
+ onBulkLabel={handleBulkLabel}
+ />
+
  <ResourceListTableToolbar
  globalFilterBar={
  <ResourceCommandBar
@@ -419,9 +439,9 @@ spec:
  <TableHead className="w-12">
  <Checkbox
  checked={isAllSelected}
- onCheckedChange={toggleAllSelection}
+ onCheckedChange={toggleAll}
  aria-label="Select all"
- className={isSomeSelected ? 'opacity-50' : ''}
+ className={cn(isSomeSelected && 'data-[state=checked]:bg-primary/50')}
  />
  </TableHead>
  <ResizableTableHead columnId="name">
@@ -492,7 +512,7 @@ spec:
  key={ic.name}
  className={cn(resourceTableRowClassName, idx % 2 === 1 && 'bg-muted/5', isSelected && 'bg-primary/5')}
  >
- <TableCell><Checkbox checked={isSelected} onCheckedChange={() => toggleSelection(ic)} aria-label={`Select ${ic.name}`} /></TableCell>
+ <TableCell onClick={(e) => { e.stopPropagation(); toggleSelection(ic, e); }}><Checkbox checked={isSelected} tabIndex={-1} aria-label={`Select ${ic.name}`} /></TableCell>
  <ResizableTableCell columnId="name">
  <Link to={`/ingressclasses/${ic.name}`} className="font-medium text-primary hover:underline flex items-center gap-2 truncate"><Route className="h-4 w-4 text-muted-foreground flex-shrink-0" /><span className="truncate">{ic.name}</span></Link>
  </ResizableTableCell>
@@ -536,7 +556,7 @@ spec:
  const isSelected = selectedItems.has(ic.name);
  return (
  <tr key={ic.name} className={cn(resourceTableRowClassName, idx % 2 === 1 && 'bg-muted/5', isSelected && 'bg-primary/5')}>
- <TableCell><Checkbox checked={isSelected} onCheckedChange={() => toggleSelection(ic)} aria-label={`Select ${ic.name}`} /></TableCell>
+ <TableCell onClick={(e) => { e.stopPropagation(); toggleSelection(ic, e); }}><Checkbox checked={isSelected} tabIndex={-1} aria-label={`Select ${ic.name}`} /></TableCell>
  <ResizableTableCell columnId="name"><Link to={`/ingressclasses/${ic.name}`} className="font-medium text-primary hover:underline flex items-center gap-2 truncate"><Route className="h-4 w-4 text-muted-foreground flex-shrink-0" /><span className="truncate">{ic.name}</span></Link></ResizableTableCell>
  <ResizableTableCell columnId="status"><StatusPill variant={ic.isDefault ? 'info' : 'success'} label={ic.isDefault ? 'Default' : 'Active'} /></ResizableTableCell>
  <ResizableTableCell columnId="controller"><span className="font-mono text-sm truncate block">{ic.controller}</span></ResizableTableCell>

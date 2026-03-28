@@ -36,12 +36,13 @@ import {
 import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
 import { Link, useNavigate } from 'react-router-dom';
-import { useK8sResourceList, useDeleteK8sResource, calculateAge, type KubernetesResource } from '@/hooks/useKubernetes';
+import { useK8sResourceList, useDeleteK8sResource, usePatchK8sResource, calculateAge, type KubernetesResource } from '@/hooks/useKubernetes';
 import { useConnectionStatus } from '@/hooks/useConnectionStatus';
 import { toast } from '@/components/ui/sonner';
 import { ResourceCreator, DEFAULT_YAMLS } from '@/components/editor';
 import { ResourceExportDropdown, ResourceCommandBar, ListPageStatCard, ListPageHeader, TableColumnHeaderWithFilterAndSort, TableFilterCell, ListPagination, PAGE_SIZE_OPTIONS, resourceTableRowClassName, ROW_MOTION, AgeCell, TableEmptyState, ListPageLoadingShell, TableErrorState, NamespaceBadge, ResourceListTableToolbar, StatusPill } from '@/components/list';
-import { DeleteConfirmDialog } from '@/components/resources';
+import { DeleteConfirmDialog, BulkActionBar, executeBulkOperation } from '@/components/resources';
+import { useMultiSelect } from '@/hooks/useMultiSelect';
 import { ResizableTableProvider, ResizableTableHead, ResizableTableCell, type ResizableColumnConfig } from '@/components/ui/resizable-table';
 import { useTableFiltersAndSort, type ColumnConfig } from '@/hooks/useTableFiltersAndSort';
 import { useColumnVisibility } from '@/hooks/useColumnVisibility';
@@ -90,7 +91,8 @@ export default function EndpointSlices() {
  const navigate = useNavigate();
  const [searchQuery, setSearchQuery] = useState('');
  const [selectedNamespace, setSelectedNamespace] = useState<string>('all');
- const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
+ const multiSelect = useMultiSelect();
+ const selectedItems = multiSelect.selectedIds;
  const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; item: EndpointSlice | null; bulk?: boolean }>({ open: false, item: null });
  const [showCreateWizard, setShowCreateWizard] = useState(false);
  const [pageSize, setPageSize] = useState(10);
@@ -100,6 +102,7 @@ export default function EndpointSlices() {
  const { isConnected } = useConnectionStatus();
  const { data, isLoading, isError, isFetching, dataUpdatedAt, refetch } = useK8sResourceList<K8sEndpointSlice>('endpointslices', undefined, { limit: 5000 });
  const deleteResource = useDeleteK8sResource('endpointslices');
+ const patchResource = usePatchK8sResource('endpointslices');
 
  // eslint-disable-next-line react-hooks/exhaustive-deps
  const endpointslices: EndpointSlice[] = isConnected && data?.items
@@ -195,27 +198,40 @@ ports: []
 `,
  };
 
- const toggleSelection = (item: EndpointSlice) => {
+ const allKeys = useMemo(() => itemsOnPage.map(es => `${es.namespace}/${es.name}`), [itemsOnPage]);
+
+ const toggleSelection = (item: EndpointSlice, event?: React.MouseEvent) => {
  const key = `${item.namespace}/${item.name}`;
- const newSelection = new Set(selectedItems);
- if (newSelection.has(key)) {
- newSelection.delete(key);
+ if (event?.shiftKey) {
+ multiSelect.toggleRange(key, allKeys);
  } else {
- newSelection.add(key);
- }
- setSelectedItems(newSelection);
- };
-
- const toggleAllSelection = () => {
- if (selectedItems.size === filteredSlices.length) {
- setSelectedItems(new Set());
- } else {
- setSelectedItems(new Set(filteredSlices.map(es => `${es.namespace}/${es.name}`)));
+ multiSelect.toggle(key);
  }
  };
 
- const isAllSelected = filteredSlices.length > 0 && selectedItems.size === filteredSlices.length;
- const isSomeSelected = selectedItems.size > 0 && selectedItems.size < filteredSlices.length;
+ const toggleAll = () => {
+ if (multiSelect.isAllSelected(allKeys)) multiSelect.clearSelection();
+ else multiSelect.selectAll(allKeys);
+ };
+
+ const isAllSelected = multiSelect.isAllSelected(allKeys);
+ const isSomeSelected = multiSelect.isSomeSelected(allKeys);
+
+ const handleBulkDelete = async () => {
+ return executeBulkOperation(Array.from(selectedItems), async (_key, ns, name) => {
+ await deleteResource.mutateAsync({ name, namespace: ns });
+ });
+ };
+
+ const handleBulkLabel = async (label: string) => {
+ return executeBulkOperation(Array.from(selectedItems), async (_key, ns, name) => {
+ await patchResource.mutateAsync({
+ name,
+ namespace: ns,
+ patch: { metadata: { labels: { [label.split("=")[0]]: label.split("=")[1] } } },
+ });
+ });
+ };
 
  const handleDelete = async () => {
  try {
@@ -225,7 +241,7 @@ ports: []
  if (n && ns) await deleteResource.mutateAsync({ name: n, namespace: ns });
  }
  toast.success(`Deleted ${selectedItems.size} endpoint slice(s)`);
- setSelectedItems(new Set());
+ multiSelect.clearSelection();
  } else if (deleteDialog.item) {
  await deleteResource.mutateAsync({ name: deleteDialog.item.name, namespace: deleteDialog.item.namespace });
  toast.success('EndpointSlice deleted');
@@ -308,6 +324,15 @@ ports: []
  <ListPageStatCard size="sm" label="FQDN Slices" value={stats.fqdn} valueClassName="text-cyan-600" selected={columnFilters.addressType?.size === 1 && columnFilters.addressType?.has('FQDN')} onClick={() => setColumnFilter('addressType', new Set(['FQDN']))} className={cn(columnFilters.addressType?.size === 1 && columnFilters.addressType?.has('FQDN') && 'ring-2 ring-primary')} isLoading={isLoading} />
  </div>
 
+ <BulkActionBar
+ selectedCount={selectedItems.size}
+ resourceName="endpoint slice"
+ resourceType="endpointslices"
+ onClearSelection={() => multiSelect.clearSelection()}
+ onBulkDelete={handleBulkDelete}
+ onBulkLabel={handleBulkLabel}
+ />
+
  <ResourceListTableToolbar
  globalFilterBar={
  <ResourceCommandBar
@@ -379,7 +404,7 @@ ports: []
  <TableHeader>
  <TableRow className="bg-muted/50 hover:bg-muted/50 border-b-2 border-border">
  <TableHead className="w-12">
- <Checkbox checked={isAllSelected} onCheckedChange={toggleAllSelection} aria-label="Select all" className={isSomeSelected ? 'opacity-50' : ''} />
+ <Checkbox checked={isAllSelected} onCheckedChange={toggleAll} aria-label="Select all" className={cn(isSomeSelected && 'data-[state=checked]:bg-primary/50')} />
  </TableHead>
  <ResizableTableHead columnId="name">
  <TableColumnHeaderWithFilterAndSort columnId="name" label="Name" sortKey={sortKey} sortOrder={sortOrder} onSort={setSort} filterable={false} distinctValues={[]} selectedFilterValues={new Set()} onFilterChange={() => {}} />
@@ -459,7 +484,7 @@ ports: []
  key={`${es.namespace}/${es.name}`}
  className={cn(resourceTableRowClassName, idx % 2 === 1 && 'bg-muted/5', isSelected && 'bg-primary/5')}
  >
- <TableCell><Checkbox checked={isSelected} onCheckedChange={() => toggleSelection(es)} aria-label={`Select ${es.name}`} /></TableCell>
+ <TableCell onClick={(e) => { e.stopPropagation(); toggleSelection(es, e); }}><Checkbox checked={isSelected} tabIndex={-1} aria-label={`Select ${es.name}`} /></TableCell>
  <ResizableTableCell columnId="name"><Link to={`/endpointslices/${es.namespace}/${es.name}`} className="font-medium text-primary hover:underline truncate block">{es.name}</Link></ResizableTableCell>
  <ResizableTableCell columnId="namespace"><NamespaceBadge namespace={es.namespace} /></ResizableTableCell>
  <ResizableTableCell columnId="status">

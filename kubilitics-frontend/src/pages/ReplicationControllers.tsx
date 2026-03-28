@@ -14,9 +14,9 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
 import { Link, useNavigate } from 'react-router-dom';
-import { useK8sResourceList, useDeleteK8sResource, useCreateK8sResource, calculateAge, type KubernetesResource } from '@/hooks/useKubernetes';
+import { useK8sResourceList, useDeleteK8sResource, useCreateK8sResource, usePatchK8sResource, calculateAge, type KubernetesResource } from '@/hooks/useKubernetes';
 import { useConnectionStatus } from '@/hooks/useConnectionStatus';
-import { DeleteConfirmDialog } from '@/components/resources';
+import { DeleteConfirmDialog, BulkActionBar, executeBulkOperation } from '@/components/resources';
 import {
  ResourceCommandBar, ResourceExportDropdown, ListViewSegmentedControl, ListPageHeader,
  StatusPill, resourceTableRowClassName, ROW_MOTION, ListPagination, ListPageStatCard,
@@ -29,6 +29,7 @@ import { useTableFiltersAndSort, type ColumnConfig } from '@/hooks/useTableFilte
 import { useColumnVisibility } from '@/hooks/useColumnVisibility';
 import { ResourceCreator, DEFAULT_YAMLS } from '@/components/editor';
 import { toast } from '@/components/ui/sonner';
+import { useMultiSelect } from '@/hooks/useMultiSelect';
 
 interface RCResource extends KubernetesResource {
  spec: {
@@ -132,7 +133,8 @@ export default function ReplicationControllers() {
  const [showCreateWizard, setShowCreateWizard] = useState(false);
  const [listView, setListView] = useState<ListView>('flat');
  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
- const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
+ const multiSelect = useMultiSelect();
+ const selectedItems = multiSelect.selectedIds;
  const [pageSize, setPageSize] = useState(10);
  const [pageIndex, setPageIndex] = useState(0);
 
@@ -140,6 +142,7 @@ export default function ReplicationControllers() {
  const { data, isLoading, isError, isFetching, dataUpdatedAt, refetch } = useK8sResourceList<RCResource>('replicationcontrollers', undefined, { limit: 5000 });
  const deleteResource = useDeleteK8sResource('replicationcontrollers');
  const createResource = useCreateK8sResource('replicationcontrollers');
+ const patchResource = usePatchK8sResource('replicationcontrollers');
 
  // eslint-disable-next-line react-hooks/exhaustive-deps
  const items: ReplicationController[] = isConnected && data
@@ -208,20 +211,24 @@ export default function ReplicationControllers() {
  });
  };
 
- const toggleSelection = (item: ReplicationController) => {
+ const allKeys = useMemo(() => itemsOnPage.map((i) => `${i.namespace}/${i.name}`), [itemsOnPage]);
+
+ const toggleSelection = (item: ReplicationController, event?: React.MouseEvent) => {
  const key = `${item.namespace}/${item.name}`;
- const newSel = new Set(selectedItems);
- if (newSel.has(key)) newSel.delete(key); else newSel.add(key);
- setSelectedItems(newSel);
+ if (event?.shiftKey) {
+ multiSelect.toggleRange(key, allKeys);
+ } else {
+ multiSelect.toggle(key);
+ }
  };
 
  const toggleAll = () => {
- if (selectedItems.size === itemsOnPage.length) setSelectedItems(new Set());
- else setSelectedItems(new Set(itemsOnPage.map((i) => `${i.namespace}/${i.name}`)));
+ if (multiSelect.isAllSelected(allKeys)) multiSelect.clearSelection();
+ else multiSelect.selectAll(allKeys);
  };
 
- const isAllSelected = itemsOnPage.length > 0 && selectedItems.size === itemsOnPage.length;
- const isSomeSelected = selectedItems.size > 0 && selectedItems.size < itemsOnPage.length;
+ const isAllSelected = multiSelect.isAllSelected(allKeys);
+ const isSomeSelected = multiSelect.isSomeSelected(allKeys);
 
  const handleDelete = async () => {
  if (!isConnected) { toast.error('Connect cluster to delete replication controllers'); return; }
@@ -230,11 +237,35 @@ export default function ReplicationControllers() {
  const [ns, n] = key.split('/');
  await deleteResource.mutateAsync({ name: n, namespace: ns });
  }
- setSelectedItems(new Set());
+ multiSelect.clearSelection();
  } else if (deleteDialog.item) {
  await deleteResource.mutateAsync({ name: deleteDialog.item.name, namespace: deleteDialog.item.namespace });
  }
  setDeleteDialog({ open: false, item: null });
+ };
+
+ const handleBulkDelete = async () => {
+ return executeBulkOperation(Array.from(selectedItems), async (_key, ns, name) => {
+ await deleteResource.mutateAsync({ name, namespace: ns });
+ });
+ };
+
+ const handleBulkRestart = async () => {
+ return executeBulkOperation(Array.from(selectedItems), async (_key, ns, name) => {
+ await patchResource.mutateAsync({ name, namespace: ns, patch: { spec: { template: { metadata: { annotations: { 'kubectl.kubernetes.io/restartedAt': new Date().toISOString() } } } } } });
+ });
+ };
+
+ const handleBulkScale = async (replicas: number) => {
+ return executeBulkOperation(Array.from(selectedItems), async (_key, ns, name) => {
+ await patchResource.mutateAsync({ name, namespace: ns, patch: { spec: { replicas } } });
+ });
+ };
+
+ const handleBulkLabel = async (label: string) => {
+ return executeBulkOperation(Array.from(selectedItems), async (_key, ns, name) => {
+ await patchResource.mutateAsync({ name, namespace: ns, patch: { metadata: { labels: { [label.split('=')[0]]: label.split('=')[1] } } } });
+ });
  };
 
  const exportConfig = {
@@ -284,7 +315,7 @@ spec:
  const StatusIcon = rcStatusIcon[item.status];
  return (
  <tr key={key} className={cn(resourceTableRowClassName, idx % 2 === 1 && 'bg-muted/5', isSelected && 'bg-primary/5')}>
- <TableCell><Checkbox checked={isSelected} onCheckedChange={() => toggleSelection(item)} /></TableCell>
+ <TableCell onClick={(e) => { e.stopPropagation(); toggleSelection(item, e); }}><Checkbox checked={isSelected} tabIndex={-1} aria-label={`Select ${item.name}`} /></TableCell>
  <ResizableTableCell columnId="name">
  <Link to={`/replicationcontrollers/${item.namespace}/${item.name}`} className="font-medium text-primary hover:underline flex items-center gap-2 truncate">
  <Layers className="h-4 w-4 text-muted-foreground flex-shrink-0" />
@@ -363,9 +394,20 @@ spec:
  leftExtra={selectedItems.size > 0 ? (
  <div className="flex items-center gap-2 ml-2 pl-2 border-l border-border">
  <span className="text-sm text-muted-foreground">{selectedItems.size} selected</span>
- <Button variant="ghost" size="sm" className="h-8" onClick={() => setSelectedItems(new Set())}>Clear</Button>
+ <Button variant="ghost" size="sm" className="h-8" onClick={() => multiSelect.clearSelection()}>Clear</Button>
  </div>
  ) : undefined}
+ />
+
+ <BulkActionBar
+ selectedCount={selectedItems.size}
+ resourceName="replication controller"
+ resourceType="replicationcontrollers"
+ onClearSelection={() => multiSelect.clearSelection()}
+ onBulkDelete={handleBulkDelete}
+ onBulkRestart={handleBulkRestart}
+ onBulkScale={handleBulkScale}
+ onBulkLabel={handleBulkLabel}
  />
 
  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">

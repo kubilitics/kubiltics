@@ -58,9 +58,11 @@ import { useColumnVisibility } from '@/hooks/useColumnVisibility';
 import { useCRDInstances } from '@/hooks/useCRDInstances';
 import { useConnectionStatus } from '@/hooks/useConnectionStatus';
 import { useBackendConfigStore } from '@/stores/backendConfigStore';
-import { calculateAge } from '@/hooks/useKubernetes';
+import { calculateAge, useDeleteK8sResource, usePatchK8sResource } from '@/hooks/useKubernetes';
 import type { KubernetesResource } from '@/hooks/useKubernetes';
 import { toast } from '@/components/ui/sonner';
+import { BulkActionBar, executeBulkOperation } from '@/components/resources';
+import { useMultiSelect } from '@/hooks/useMultiSelect';
 
 interface CRInstance {
  name: string;
@@ -102,9 +104,13 @@ export default function CustomResources() {
  const [showTableFilters, setShowTableFilters] = useState(false);
  const [pageSize, setPageSize] = useState(10);
  const [pageIndex, setPageIndex] = useState(0);
- const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
+ const multiSelect = useMultiSelect();
+ const selectedItems = multiSelect.selectedIds;
 
  const { items: rawItems, isLoading, isFetching, dataUpdatedAt, error, refetch } = useCRDInstances(crdName, namespaceFilter || undefined, { limit: 5000 });
+ const crdPlural = crdName ? crdName.split('.')[0] : 'customresources';
+ const deleteResource = useDeleteK8sResource(crdPlural);
+ const patchResource = usePatchK8sResource(crdPlural);
  const isError = !!error;
 
  const items: CRInstance[] = useMemo(
@@ -171,20 +177,35 @@ export default function CustomResources() {
  setPageIndex(0);
  };
 
- const itemKey = (i: CRInstance) => (i.namespace ? `${i.namespace}::${i.name}` : `::${i.name}`);
- const toggleSelection = (i: CRInstance) => {
- const next = new Set(selectedItems);
- const k = itemKey(i);
- if (next.has(k)) next.delete(k);
- else next.add(k);
- setSelectedItems(next);
+ const itemKey = (i: CRInstance) => `${i.namespace}/${i.name}`;
+ const allKeys = useMemo(() => itemsOnPage.map(itemKey), [itemsOnPage]);
+
+ const toggleSelection = (i: CRInstance, event?: React.MouseEvent) => {
+ const key = itemKey(i);
+ if (event?.shiftKey) {
+ multiSelect.toggleRange(key, allKeys);
+ } else {
+ multiSelect.toggle(key);
+ }
  };
  const toggleAll = () => {
- if (selectedItems.size === itemsOnPage.length) setSelectedItems(new Set());
- else setSelectedItems(new Set(itemsOnPage.map(itemKey)));
+ if (multiSelect.isAllSelected(allKeys)) multiSelect.clearSelection();
+ else multiSelect.selectAll(allKeys);
  };
- const isAllSelected = itemsOnPage.length > 0 && selectedItems.size === itemsOnPage.length;
- const isSomeSelected = selectedItems.size > 0 && selectedItems.size < itemsOnPage.length;
+ const isAllSelected = multiSelect.isAllSelected(allKeys);
+ const isSomeSelected = multiSelect.isSomeSelected(allKeys);
+
+ const handleBulkDelete = async () => {
+ return executeBulkOperation(Array.from(selectedItems), async (_key, ns, name) => {
+ await deleteResource.mutateAsync({ name, namespace: ns });
+ });
+ };
+
+ const handleBulkLabel = async (label: string) => {
+ return executeBulkOperation(Array.from(selectedItems), async (_key, ns, name) => {
+ await patchResource.mutateAsync({ name, namespace: ns, patch: { metadata: { labels: { [label.split('=')[0]]: label.split('=')[1] } } } });
+ });
+ };
 
  const pagination = {
  rangeLabel:
@@ -313,6 +334,15 @@ export default function CustomResources() {
  onClick={clearAllFilters}
  className={cn(!hasActiveFilters && !isLoading && 'ring-2 ring-primary')} isLoading={isLoading} />
  </div>
+
+ <BulkActionBar
+ selectedCount={selectedItems.size}
+ resourceName={displayKind}
+ resourceType={crdPlural}
+ onClearSelection={() => multiSelect.clearSelection()}
+ onBulkDelete={handleBulkDelete}
+ onBulkLabel={handleBulkLabel}
+ />
 
  <ResourceListTableToolbar
  hasActiveFilters={hasActiveFilters}
@@ -531,10 +561,11 @@ export default function CustomResources() {
  selectedItems.has(itemKey(item)) && 'bg-primary/5'
  )}
  >
- <TableCell>
+ <TableCell onClick={(e) => { e.stopPropagation(); toggleSelection(item, e); }}>
  <Checkbox
  checked={selectedItems.has(itemKey(item))}
- onCheckedChange={() => toggleSelection(item)}
+ tabIndex={-1}
+ aria-label={`Select ${item.name}`}
  />
  </TableCell>
  <ResizableTableCell columnId="name">

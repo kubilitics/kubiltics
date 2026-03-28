@@ -75,12 +75,14 @@ const RESTARTABLE: Set<string> = new Set([
   'deployments',
   'statefulsets',
   'daemonsets',
+  'replicationcontrollers',
 ]);
 
 const SCALABLE: Set<string> = new Set([
   'deployments',
   'statefulsets',
   'replicasets',
+  'replicationcontrollers',
 ]);
 
 function plural(count: number, singular: string): string {

@@ -14,10 +14,11 @@ import { Link, useNavigate } from 'react-router-dom';
 import { ResourceCommandBar, ResourceExportDropdown, ListPagination, PAGE_SIZE_OPTIONS, ListPageStatCard, ListPageHeader, TableColumnHeaderWithFilterAndSort, TableFilterCell, resourceTableRowClassName, ROW_MOTION, AgeCell, TableEmptyState, TableErrorState, ListPageLoadingShell, CopyNameDropdownItem, NamespaceBadge, ResourceListTableToolbar } from '@/components/list';
 import { useTableFiltersAndSort, type ColumnConfig } from '@/hooks/useTableFiltersAndSort';
 import { useColumnVisibility } from '@/hooks/useColumnVisibility';
-import { usePaginatedResourceList, useDeleteK8sResource, calculateAge, type KubernetesResource } from '@/hooks/useKubernetes';
+import { usePaginatedResourceList, useDeleteK8sResource, usePatchK8sResource, calculateAge, type KubernetesResource } from '@/hooks/useKubernetes';
 import { useConnectionStatus } from '@/hooks/useConnectionStatus';
-import { DeleteConfirmDialog } from '@/components/resources';
+import { DeleteConfirmDialog, BulkActionBar, executeBulkOperation } from '@/components/resources';
 import { toast } from '@/components/ui/sonner';
+import { useMultiSelect } from '@/hooks/useMultiSelect';
 
 interface IPAddressPool {
  name: string;
@@ -75,7 +76,9 @@ export default function IPAddressPools() {
  const { isConnected } = useConnectionStatus();
  const { data, isLoading, isError, isFetching, dataUpdatedAt, refetch } = usePaginatedResourceList<K8sIPAddressPool>('ipaddresspools');
  const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; item: IPAddressPool | null; bulk?: boolean }>({ open: false, item: null });
- const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
+ const multiSelect = useMultiSelect();
+ const selectedItems = multiSelect.selectedIds;
+ const patchResource = usePatchK8sResource('ipaddresspools');
  const [searchQuery, setSearchQuery] = useState('');
  const [namespaceFilter, setNamespaceFilter] = useState<string>('');
  const [showTableFilters, setShowTableFilters] = useState(false);
@@ -156,11 +159,11 @@ export default function IPAddressPools() {
  }
  if (deleteDialog.bulk && selectedItems.size > 0) {
  for (const key of selectedItems) {
- const [ns, name] = key.split('::');
+ const [ns, name] = key.split('/');
  await deletePool.mutateAsync({ name, namespace: ns });
  }
  toast.success(`Deleted ${selectedItems.size} IP address pool(s)`);
- setSelectedItems(new Set());
+ multiSelect.clearSelection();
  } else if (deleteDialog.item) {
  await deletePool.mutateAsync({ name: deleteDialog.item.name, namespace: deleteDialog.item.namespace });
  toast.success(`IPAddressPool ${deleteDialog.item.name} deleted`);
@@ -169,20 +172,35 @@ export default function IPAddressPools() {
  refetch();
  };
 
- const itemKey = (i: IPAddressPool) => `${i.namespace}::${i.name}`;
- const toggleSelection = (i: IPAddressPool) => {
- const next = new Set(selectedItems);
- const k = itemKey(i);
- if (next.has(k)) next.delete(k);
- else next.add(k);
- setSelectedItems(next);
+ const itemKey = (i: IPAddressPool) => `${i.namespace}/${i.name}`;
+ const allKeys = useMemo(() => itemsOnPage.map(itemKey), [itemsOnPage]);
+
+ const toggleSelection = (i: IPAddressPool, event?: React.MouseEvent) => {
+ const key = itemKey(i);
+ if (event?.shiftKey) {
+ multiSelect.toggleRange(key, allKeys);
+ } else {
+ multiSelect.toggle(key);
+ }
  };
  const toggleAll = () => {
- if (selectedItems.size === itemsOnPage.length) setSelectedItems(new Set());
- else setSelectedItems(new Set(itemsOnPage.map(itemKey)));
+ if (multiSelect.isAllSelected(allKeys)) multiSelect.clearSelection();
+ else multiSelect.selectAll(allKeys);
  };
- const isAllSelected = itemsOnPage.length > 0 && selectedItems.size === itemsOnPage.length;
- const isSomeSelected = selectedItems.size > 0 && selectedItems.size < itemsOnPage.length;
+ const isAllSelected = multiSelect.isAllSelected(allKeys);
+ const isSomeSelected = multiSelect.isSomeSelected(allKeys);
+
+ const handleBulkDelete = async () => {
+ return executeBulkOperation(Array.from(selectedItems), async (_key, ns, name) => {
+ await deletePool.mutateAsync({ name, namespace: ns });
+ });
+ };
+
+ const handleBulkLabel = async (label: string) => {
+ return executeBulkOperation(Array.from(selectedItems), async (_key, ns, name) => {
+ await patchResource.mutateAsync({ name, namespace: ns, patch: { metadata: { labels: { [label.split('=')[0]]: label.split('=')[1] } } } });
+ });
+ };
 
  const pagination = {
  rangeLabel: totalFiltered > 0 ? `Showing ${start + 1}–${Math.min(start + pageSize, totalFiltered)} of ${totalFiltered}` : 'No IP address pools',
@@ -253,22 +271,14 @@ export default function IPAddressPools() {
  isLoading={isLoading} />
  </div>
 
- {selectedItems.size > 0 && (
- <div className="flex items-center justify-between p-3 bg-primary/5 border border-primary/20 rounded-lg">
- <Badge variant="secondary" className="gap-1.5">
- <CheckSquare className="h-3.5 w-3.5" />
- {selectedItems.size} selected
- </Badge>
- <div className="flex items-center gap-2">
- <ResourceExportDropdown items={filteredItems} selectedKeys={selectedItems} getKey={itemKey} config={exportConfig} selectionLabel="Selected pools" onToast={(msg, type) => (type === 'info' ? toast.info(msg) : toast.success(msg))} triggerLabel={`Export (${selectedItems.size})`} />
- <Button variant="destructive" size="sm" className="gap-2" onClick={() => setDeleteDialog({ open: true, item: null, bulk: true })}>
- <Trash2 className="h-4 w-4" />
- Delete
- </Button>
- <Button variant="ghost" size="sm" onClick={() => setSelectedItems(new Set())}>Clear</Button>
- </div>
- </div>
- )}
+ <BulkActionBar
+ selectedCount={selectedItems.size}
+ resourceName="IP address pool"
+ resourceType="ipaddresspools"
+ onClearSelection={() => multiSelect.clearSelection()}
+ onBulkDelete={handleBulkDelete}
+ onBulkLabel={handleBulkLabel}
+ />
 
  <ResourceListTableToolbar
  globalFilterBar={
@@ -373,7 +383,7 @@ export default function IPAddressPools() {
  ) : (
  itemsOnPage.map((item, idx) => (
  <tr key={itemKey(item)} className={cn(resourceTableRowClassName, idx % 2 === 1 && 'bg-muted/5', selectedItems.has(itemKey(item)) && 'bg-primary/5')}>
- <TableCell><Checkbox checked={selectedItems.has(itemKey(item))} onCheckedChange={() => toggleSelection(item)} /></TableCell>
+ <TableCell onClick={(e) => { e.stopPropagation(); toggleSelection(item, e); }}><Checkbox checked={selectedItems.has(itemKey(item))} tabIndex={-1} aria-label={`Select ${item.name}`} /></TableCell>
  <ResizableTableCell columnId="name">
  <Link to={`/ipaddresspools/${item.namespace}/${item.name}`} className="font-medium text-primary hover:underline flex items-center gap-2 truncate">
  <Network className="h-4 w-4 text-muted-foreground flex-shrink-0" />
