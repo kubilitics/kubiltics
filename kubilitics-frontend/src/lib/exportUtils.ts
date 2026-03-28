@@ -42,14 +42,21 @@ export function objectsToYaml(items: Record<string, unknown>[]): string {
   return lines.join('\n');
 }
 
-export function downloadBlob(blob: Blob, filename: string): void {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  a.click();
-  // Delay revoke — immediate revoke causes zero-byte downloads for large files
-  setTimeout(() => URL.revokeObjectURL(url), 30_000);
+export async function downloadBlob(blob: Blob, filename: string): Promise<void> {
+  // Use Tauri-aware download (save dialog in desktop, anchor click in browser)
+  try {
+    const { downloadFile } = await import('@/topology/graph/utils/exportUtils');
+    await downloadFile(blob, filename);
+  } catch {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 30_000);
+  }
 }
 
 /** Build CSV string from headers and row arrays (values already escaped). */

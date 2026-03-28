@@ -378,20 +378,20 @@ const TOP_NAV_COLORS: Record<string, { active: string; activeBg: string; idle: s
   '/dashboard': {
     active: 'text-blue-600 dark:text-blue-400',
     activeBg: 'bg-blue-100 dark:bg-blue-500/20',
-    idle: 'text-slate-600 dark:text-slate-300',
-    idleBg: 'bg-slate-100/80 dark:bg-slate-800/80',
+    idle: 'text-blue-500 dark:text-blue-400',
+    idleBg: 'bg-blue-50 dark:bg-blue-500/10',
   },
   '/fleet': {
     active: 'text-indigo-600 dark:text-indigo-400',
     activeBg: 'bg-indigo-100 dark:bg-indigo-500/20',
-    idle: 'text-slate-600 dark:text-slate-300',
-    idleBg: 'bg-slate-100/80 dark:bg-slate-800/80',
+    idle: 'text-indigo-500 dark:text-indigo-400',
+    idleBg: 'bg-indigo-50 dark:bg-indigo-500/10',
   },
   '/topology': {
     active: 'text-violet-600 dark:text-violet-400',
     activeBg: 'bg-violet-100 dark:bg-violet-500/20',
-    idle: 'text-slate-600 dark:text-slate-300',
-    idleBg: 'bg-slate-100/80 dark:bg-slate-800/80',
+    idle: 'text-violet-500 dark:text-violet-400',
+    idleBg: 'bg-violet-50 dark:bg-violet-500/10',
   },
 };
 
@@ -418,17 +418,17 @@ function TopLevelNavLink({
       )}
     >
       <div className={cn(
-        "h-8 w-8 rounded-lg flex items-center justify-center shrink-0 transition-colors",
+        "h-9 w-9 rounded-xl flex items-center justify-center shrink-0 transition-colors",
         isActive
-          ? navColors?.activeBg ?? 'bg-primary/10'
-          : cn(navColors?.idleBg ?? 'bg-slate-100/80 dark:bg-slate-800/80', "group-hover:bg-slate-200/80 dark:group-hover:bg-slate-700/80")
+          ? navColors?.activeBg ?? 'bg-primary/15'
+          : cn(navColors?.idleBg ?? 'bg-slate-200/80 dark:bg-slate-700/60', "group-hover:bg-slate-300/80 dark:group-hover:bg-slate-600/80")
       )}>
         <Icon className={cn(
-          "h-[18px] w-[18px] transition-colors",
+          "h-5 w-5 transition-colors",
           isActive
             ? navColors?.active ?? 'text-primary'
-            : cn(navColors?.idle ?? 'text-slate-600 dark:text-slate-400', "group-hover:text-slate-800 dark:group-hover:text-slate-100")
-        )} />
+            : cn(navColors?.idle ?? 'text-slate-700 dark:text-slate-300', "group-hover:text-slate-900 dark:group-hover:text-slate-100")
+        )} strokeWidth={2} />
       </div>
       <span className={cn("font-bold text-sm tracking-[-0.01em]", isActive ? "text-slate-900 dark:text-slate-100" : "text-slate-800 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-slate-100")}>{label}</span>
     </NavLink>

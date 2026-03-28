@@ -198,14 +198,25 @@ export function GenericResourceDetail<T extends KubernetesResource>({
   };
 
   // --- Handlers ---
-  const handleDownloadYaml = useCallback(() => {
+  const handleDownloadYaml = useCallback(async () => {
+    if (!yaml) return;
     const blob = new Blob([yaml], { type: 'application/yaml' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${ctx.name || resourceType}.yaml`;
-    a.click();
-    setTimeout(() => URL.revokeObjectURL(url), 30_000);
+    const filename = `${ctx.name || resourceType}.yaml`;
+    // Use Tauri-aware download (save dialog in desktop, anchor click in browser)
+    try {
+      const { downloadFile } = await import('@/topology/graph/utils/exportUtils');
+      await downloadFile(blob, filename);
+    } catch {
+      // Fallback to basic download
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
   }, [yaml, ctx.name, resourceType]);
 
   const handleDownloadJson = useCallback(() => {
