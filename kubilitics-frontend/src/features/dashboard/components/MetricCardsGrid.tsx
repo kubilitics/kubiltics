@@ -137,7 +137,7 @@ export const MetricCardsGrid = () => {
           </p>
 
           {/* Tiles row */}
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {cat.tiles.map((tile) => {
               const idx = globalIndex++;
               const count = (counts as any)[tile.countKey] ?? 0;

@@ -391,7 +391,7 @@ export function ResourceList<T extends object>({
       />
 
       {/* Table: virtualized body when item count > VIRTUAL_THRESHOLD (C2.1) */}
-      <div className="border border-border rounded-xl overflow-hidden bg-card">
+      <div className="border border-border rounded-xl overflow-x-auto bg-card">
         {useVirtual ? (
           <div
             ref={parentRef}

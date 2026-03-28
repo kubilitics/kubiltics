@@ -47,7 +47,7 @@ function SectionHeader({
 export const DashboardLayout = () => {
   return (
     <div className="h-full w-full flex flex-col min-h-0 bg-background text-foreground animate-fade-in">
-      <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden p-6 pb-6 scroll-smooth w-full">
+      <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden p-4 sm:p-6 pb-6 scroll-smooth w-full">
         <div className="w-full space-y-6">
           {/* Page Title for A11y & Semantics */}
           <h1 className="sr-only">Dashboard</h1>
@@ -57,7 +57,7 @@ export const DashboardLayout = () => {
             <div className="lg:col-span-4 flex flex-col">
               <ClusterHealthWidget />
             </div>
-            <div className="lg:col-span-8 flex flex-col min-h-[28rem]">
+            <div className="lg:col-span-8 flex flex-col min-h-[20rem] lg:min-h-[28rem]">
               <ClusterCapacity />
             </div>
           </section>
@@ -75,10 +75,10 @@ export const DashboardLayout = () => {
 
           {/* ────────────────── Row 3: Intelligence + Quick Actions ────────────────── */}
           <section className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
-            <div className="min-h-[24rem] flex flex-col">
+            <div className="min-h-[20rem] lg:min-h-[24rem] flex flex-col">
               <ClusterResourceIntelligence />
             </div>
-            <div className="min-h-[24rem] flex flex-col rounded-2xl border border-border/60 bg-card p-6 shadow">
+            <div className="min-h-[20rem] lg:min-h-[24rem] flex flex-col rounded-2xl border border-border/60 bg-card p-4 sm:p-6 shadow">
               <SectionHeader icon={Activity} title="Recent Activity" />
               <RecentActivityPanel />
             </div>

@@ -122,7 +122,7 @@ export function AppLayout() {
         <main
           ref={mainRef}
           id="main-content"
-          className="flex-1 p-6 pr-3 overflow-auto flex flex-col gap-4 relative"
+          className="flex-1 p-4 sm:p-6 sm:pr-3 overflow-auto flex flex-col gap-4 relative"
           style={{ paddingBottom: isShellOpen ? `${shellHeightPx + 24}px` : '24px' }}
           role="main"
           aria-label="Main content"

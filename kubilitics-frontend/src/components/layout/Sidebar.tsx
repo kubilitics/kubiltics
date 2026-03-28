@@ -828,7 +828,7 @@ export function Sidebar() {
 
   // Auto-collapse sidebar on small viewports
   useEffect(() => {
-    const mql = window.matchMedia('(max-width: 767px)');
+    const mql = window.matchMedia('(max-width: 1023px)');
     const handleChange = (e: MediaQueryListEvent | MediaQueryList) => {
       if (e.matches && !collapsed) {
         setCollapsed(true);
@@ -841,7 +841,7 @@ export function Sidebar() {
 
   // Expand sidebar when navigating to section routes
   useEffect(() => {
-    const isMobile = window.matchMedia('(max-width: 767px)').matches;
+    const isMobile = window.matchMedia('(max-width: 1023px)').matches;
     const isSectionRoute = SECTION_ROUTES.some((p) => pathname === p || pathname.startsWith(`${p}/`));
     if (isSectionRoute && collapsed && !isMobile) {
       setCollapsed(false);

@@ -215,8 +215,11 @@ export function PodTerminal({
     };
   }, [connect]);
 
-  // Handle window resize
+  // Handle container resize via ResizeObserver (works when sidebar collapses, etc.)
   useEffect(() => {
+    const container = termRef.current;
+    if (!container) return;
+
     const handleResize = () => {
       fitRef.current?.fit();
       if (xtermRef.current && wsRef.current?.readyState === WebSocket.OPEN) {
@@ -224,8 +227,19 @@ export function PodTerminal({
         wsRef.current.send(JSON.stringify({ t: 'resize', r: { cols, rows } }));
       }
     };
+
+    const ro = new ResizeObserver(() => {
+      // Debounce slightly to avoid fitting during rapid layout shifts
+      requestAnimationFrame(handleResize);
+    });
+    ro.observe(container);
+
+    // Also listen on window resize as fallback
     window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener('resize', handleResize);
+    };
   }, []);
 
   // Refit on maximize toggle

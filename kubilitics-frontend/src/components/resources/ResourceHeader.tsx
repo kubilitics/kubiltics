@@ -99,7 +99,7 @@ export function ResourceHeader({
         {/* Main Header - subtle depth */}
         <div
           role="banner"
-          className="elevation-2 flex items-start justify-between rounded-xl border border-border/50 bg-card p-4"
+          className="elevation-2 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between rounded-xl border border-border/50 bg-card p-3 sm:p-4"
         >
           <div className="flex items-center gap-4">
             <div className="p-3 rounded-2xl bg-primary/10 shadow-sm">
@@ -108,7 +108,7 @@ export function ResourceHeader({
             <div>
               <div className="flex items-center gap-3 flex-wrap">
                 <div className="flex items-center gap-2">
-                  <h1 className="text-2xl font-semibold tracking-tight">{name}</h1>
+                  <h1 className="text-xl sm:text-2xl font-semibold tracking-tight break-all">{name}</h1>
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <Button
@@ -176,7 +176,7 @@ export function ResourceHeader({
 
           {/* Actions */}
           {actions.length > 0 && (
-            <div className="flex items-center gap-2 flex-shrink-0">
+            <div className="flex items-center gap-2 flex-shrink-0 flex-wrap">
               {actions.map((action) => (
                 <Button
                   key={action.label}
