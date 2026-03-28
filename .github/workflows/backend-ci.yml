@@ -29,9 +29,9 @@ jobs:
     timeout-minutes: 20
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
 
-    - uses: actions/setup-go@v5
+    - uses: actions/setup-go@v6
       with:
         go-version: ${{ env.GO_VERSION }}
         cache-dependency-path: kubilitics-backend/go.sum
@@ -72,14 +72,14 @@ jobs:
         fi
 
     - name: Upload test report
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       if: always()
       with:
         name: backend-test-report
         path: ${{ github.workspace }}/test_reports/backend/
 
     - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v4
+      uses: codecov/codecov-action@v6
       with:
         files: ./kubilitics-backend/coverage.out
         flags: backend
@@ -91,18 +91,18 @@ jobs:
     timeout-minutes: 10
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
 
     # Read the exact Go version from go.mod so golangci-lint and the module
     # always agree — avoids "golangci-lint built with goX.Y can't lint goX.Z"
     # errors that appear when Dependabot bumps the `go` directive in go.mod.
-    - uses: actions/setup-go@v5
+    - uses: actions/setup-go@v6
       with:
         go-version-file: kubilitics-backend/go.mod
         cache: false
 
     - name: Run golangci-lint
-      uses: golangci/golangci-lint-action@v6
+      uses: golangci/golangci-lint-action@v9
       with:
         # Use goinstall so golangci-lint is built with the same Go version
         # from setup-go (read from go.mod). Pre-built binaries may lag behind
@@ -119,9 +119,9 @@ jobs:
     needs: [test, lint]
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
 
-    - uses: actions/setup-go@v5
+    - uses: actions/setup-go@v6
       with:
         go-version: ${{ env.GO_VERSION }}
 
@@ -130,7 +130,7 @@ jobs:
       run: CGO_ENABLED=0 go build -v -ldflags="-s -w" -o bin/kubilitics-backend ./cmd/server
 
     - name: Upload artifact
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: kubilitics-backend-linux
         path: kubilitics-backend/bin/kubilitics-backend

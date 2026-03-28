@@ -29,7 +29,7 @@ jobs:
     name: Trivy Scan - Backend
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Build Docker image
         # Dockerfile is self-contained: it clones kcli from GitHub during build
@@ -47,7 +47,7 @@ jobs:
     name: Trivy Scan - Frontend
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Build Docker image
         run: docker build -t kubilitics-frontend:test kubilitics-frontend/
