@@ -257,7 +257,9 @@ export function useResourceCounts(): { counts: ResourceCounts; isLoading: boolea
         if (summaryKey && s[summaryKey] !== undefined) {
           return s[summaryKey] as number;
         }
-        return res.data?.metadata?.total ?? res.data?.items?.length ?? 0;
+        const items = res.data?.items?.length ?? 0;
+        const remaining = res.data?.metadata?.remainingItemCount ?? 0;
+        return res.data?.metadata?.total ?? (items + remaining);
       };
 
       return {
@@ -310,9 +312,14 @@ export function useResourceCounts(): { counts: ResourceCounts; isLoading: boolea
       };
     }
 
-    // Generic extraction for counts from a resource list query
-    const getDirectCount = (res: any) =>
-      res.data?.metadata?.total ?? res.data?.items?.length ?? 0;
+    // Generic extraction for counts from a resource list query.
+    // K8s returns remainingItemCount when limit is set, so total = items.length + remaining.
+    const getDirectCount = (res: any) => {
+      const items = res.data?.items?.length ?? 0;
+      const remaining = res.data?.metadata?.remainingItemCount ?? 0;
+      const total = res.data?.metadata?.total;
+      return total ?? (items + remaining);
+    };
 
     // Direct K8s fallback
     return {
