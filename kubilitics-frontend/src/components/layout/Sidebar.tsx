@@ -694,12 +694,6 @@ function SidebarContent({
 
   return (
     <div className="flex flex-col gap-5 pb-6 w-full">
-      {/* Kubilitics logo + brand */}
-      <NavLink to="/dashboard" className="flex items-center gap-3 px-1 group">
-        <img src="/brand/logo-mark-rounded.png" alt="Kubilitics" className="h-9 w-9 rounded-lg shrink-0" draggable={false} />
-        <span className="text-[15px] font-extrabold tracking-tight text-slate-900 dark:text-slate-100">KUBILITICS</span>
-      </NavLink>
-
       {/* Project scope indicator */}
       {activeProject && (
         <div className="rounded-xl border border-primary/20 bg-primary/5 dark:bg-primary/10 p-3 space-y-2">
