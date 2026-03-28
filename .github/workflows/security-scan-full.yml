@@ -19,7 +19,7 @@ jobs:
     name: Trivy Filesystem Scan
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
 
       - name: Run Trivy (filesystem)
         uses: aquasecurity/trivy-action@v0.35.0
@@ -37,7 +37,7 @@ jobs:
           sarif_file: trivy-results.sarif
           category: trivy
 
-      - uses: actions/upload-artifact@v5
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: trivy-results
@@ -50,7 +50,7 @@ jobs:
     container:
       image: semgrep/semgrep:latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
 
       - name: Run Semgrep
         run: semgrep scan --config auto --sarif -o semgrep-results.sarif .
@@ -64,7 +64,7 @@ jobs:
           sarif_file: semgrep-results.sarif
           category: semgrep
 
-      - uses: actions/upload-artifact@v5
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: semgrep-results
@@ -75,7 +75,7 @@ jobs:
     name: Gitleaks Secrets Scan
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
@@ -98,7 +98,7 @@ jobs:
           sarif_file: gitleaks-results.sarif
           category: gitleaks
 
-      - uses: actions/upload-artifact@v5
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: gitleaks-results
@@ -109,10 +109,10 @@ jobs:
     name: Kubescape K8s Security
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
 
       - name: Install Helm
-        uses: azure/setup-helm@v4.3.0
+        uses: azure/setup-helm@v5.0.0
 
       - name: Render Helm templates
         run: |
@@ -145,7 +145,7 @@ jobs:
           category: kubescape
         continue-on-error: true
 
-      - uses: actions/upload-artifact@v5
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: kubescape-results

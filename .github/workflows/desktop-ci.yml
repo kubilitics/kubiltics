@@ -24,7 +24,7 @@ jobs:
     name: Rust Tests (Ubuntu)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
 
       - name: Install system deps
         run: |
@@ -84,7 +84,7 @@ jobs:
         os: [macos-latest, windows-latest, ubuntu-latest]
 
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
 
       - name: Install system deps (Ubuntu)
         if: matrix.os == 'ubuntu-latest'
