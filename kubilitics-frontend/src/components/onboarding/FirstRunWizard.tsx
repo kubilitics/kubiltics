@@ -61,13 +61,15 @@ export function FirstRunWizard() {
   const completeFirstRun = useOnboardingStore((s) => s.completeFirstRun);
   const completeWelcome = useOnboardingStore((s) => s.completeWelcome);
   const setAppMode = useClusterStore((s) => s.setAppMode);
-
   const stepIndex = STEPS.indexOf(currentStep);
 
   const handleComplete = useCallback(() => {
     setAppMode('desktop');
     completeWelcome();
     completeFirstRun();
+    // After wizard completes, the OnboardingGate unmounts this component and
+    // the Router mounts. ClusterConnect will check for activeCluster and redirect
+    // to dashboard automatically — no navigation needed here.
   }, [setAppMode, completeWelcome, completeFirstRun]);
 
   const handleNext = useCallback(() => {

@@ -10,7 +10,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { cn } from '@/lib/utils';
 import yaml from 'js-yaml';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   Upload,
@@ -588,18 +588,11 @@ export default function ClusterConnect() {
     }
   }, [pasteContent, submitClusterWithContext, showClusterErrorToast, isBackendConfigured]);
 
-  // P0-C: In Tauri mode, do NOT show the spinner and block the connect page based on
-  // a persisted activeCluster — user must always be able to pick a (live) cluster.
-  // In browser mode, remove blocking spinner - let redirect happen in background
-  // Show UI immediately instead of blocking
-
-  // P2-1: Don't block UI during auto-connect - show cluster list immediately
-  // Auto-connect happens in background, user can see clusters and manually connect if needed
-  // This matches Headlamp/Lens pattern - never block the UI
-
-  // Show UI immediately - never block on loading
-  // Empty states in the UI will handle no data scenarios gracefully
-  // This matches Headlamp/Lens pattern - UI renders immediately, data loads progressively
+  // If already connected (e.g., after wizard or page refresh), go straight to dashboard.
+  // The user can always switch clusters from Settings > Clusters.
+  if (activeCluster && !isAddClusterMode) {
+    return <Navigate to={postConnectPath} replace />;
+  }
 
   // TASK-CORE-001: Auto-Connect Desktop Mode
   // In Tauri desktop mode, auto-detect kubeconfig contexts and either auto-connect
