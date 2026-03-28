@@ -343,7 +343,7 @@ export function GenericResourceDetail<T extends KubernetesResource>({
   const { activeCluster } = useClusterStore();
   const breadcrumbSegments = useDetailBreadcrumbs(kind, name ?? undefined, namespace ?? undefined, activeCluster?.name);
   const clusterId = useActiveClusterId();
-  const isBackendConfiguredFn = useBackendConfigStore((s) => s.isBackendConfigured)();
+  const isBackendConfiguredVal = useBackendConfigStore((s) => s.isBackendConfigured)();
   const backendBaseUrl = useBackendConfigStore((s) => s.backendBaseUrl);
   const baseUrl = getEffectiveBackendBaseUrl(backendBaseUrl);
 
@@ -379,7 +379,7 @@ export function GenericResourceDetail<T extends KubernetesResource>({
     refetch,
     clusterId: clusterId ?? null,
     backendBaseUrl: baseUrl ?? '',
-    isBackendConfigured: isBackendConfiguredFn(),
+    isBackendConfigured: isBackendConfiguredVal,
   };
 
   // --- Handlers ---
@@ -428,12 +428,12 @@ export function GenericResourceDetail<T extends KubernetesResource>({
   /** Fetch the latest YAML from the server — used by the editor for conflict resolution. */
   const handleFetchLatestYaml = useCallback(async (): Promise<string> => {
     if (!name) throw new Error('Resource name is required');
-    if (isBackendConfiguredFn() && clusterId) {
+    if (isBackendConfiguredVal && clusterId) {
       const latest = await getResource(baseUrl, clusterId, resourceType, namespace || '', name);
       return yamlParser.dump(latest, { lineWidth: -1, noRefs: true });
     }
     throw new Error('Cannot fetch latest: backend not configured');
-  }, [name, namespace, resourceType, clusterId, baseUrl, isBackendConfiguredFn]);
+  }, [name, namespace, resourceType, clusterId, baseUrl, isBackendConfiguredVal]);
 
   const handleTabChange = useCallback((tabId: string) => {
     setActiveTab(tabId);
@@ -678,7 +678,7 @@ export function GenericResourceDetail<T extends KubernetesResource>({
         kind={kind}
         clusterId={clusterId ?? null}
         backendBaseUrl={baseUrl ?? ''}
-        isBackendConfigured={isBackendConfiguredFn()}
+        isBackendConfigured={isBackendConfiguredVal}
       />
       {extraDialogs?.({ ...ctx, showDeleteDialog, setShowDeleteDialog })}
     </>

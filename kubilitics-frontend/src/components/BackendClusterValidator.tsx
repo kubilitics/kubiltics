@@ -19,7 +19,7 @@ import { getClusterOverview, reconnectCluster, BackendApiError } from '@/service
 export function BackendClusterValidator() {
   const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
   const setCurrentClusterId = useBackendConfigStore((s) => s.setCurrentClusterId);
-  const isBackendConfiguredFn = useBackendConfigStore((s) => s.isBackendConfigured)();
+  const isBackendConfiguredVal = useBackendConfigStore((s) => s.isBackendConfigured)();
   const validatedRef = useRef(false);
   const originalClusterIdRef = useRef<string | null>(null);
   
@@ -30,7 +30,7 @@ export function BackendClusterValidator() {
 
   useEffect(() => {
     // Extend validation to browser mode as well (not just Tauri)
-    if (!isBackendConfiguredFn()) return;
+    if (!isBackendConfiguredVal) return;
     if (validatedRef.current) return;
     
     // Check logout flag to prevent validation after logout
@@ -59,7 +59,7 @@ export function BackendClusterValidator() {
           }
         } else {
           // Browser mode: assume ready if backend is configured (health check happens elsewhere)
-          backendReady = isBackendConfiguredFn();
+          backendReady = isBackendConfiguredVal;
         }
         
         if (!backendReady) {
@@ -178,7 +178,7 @@ export function BackendClusterValidator() {
       unlisten?.();
     };
   }, [
-    isBackendConfiguredFn,
+    isBackendConfiguredVal,
     currentClusterId,
     setCurrentClusterId,
     clustersQuery.data,
