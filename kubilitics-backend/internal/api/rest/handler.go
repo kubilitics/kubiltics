@@ -19,6 +19,7 @@ import (
 	"github.com/kubilitics/kubilitics-backend/internal/api/middleware"
 	"github.com/kubilitics/kubilitics-backend/internal/auth"
 	"github.com/kubilitics/kubilitics-backend/internal/config"
+	"github.com/kubilitics/kubilitics-backend/internal/graph"
 	"github.com/kubilitics/kubilitics-backend/internal/k8s"
 	"github.com/kubilitics/kubilitics-backend/internal/models"
 	"github.com/kubilitics/kubilitics-backend/internal/pkg/drawio"
@@ -130,10 +131,11 @@ type Handler struct {
 	k8sClientCache        *expirable.LRU[string, *k8s.Client] // Cache for stateless requests
 	wsConnMu              sync.Mutex
 	wsConns               map[string]int // "clusterId:userIdentity" -> active WS connection count
+	graphEngines          map[string]*graph.ClusterGraphEngine // clusterId -> engine
 }
 
 // NewHandler creates a new HTTP handler. unifiedMetricsService can be nil; then metrics summary uses legacy per-resource endpoints. projSvc can be nil; then project routes return 501. addonService can be nil; then addon routes return 404 or 501. repo can be nil if auth is disabled.
-func NewHandler(cs service.ClusterService, ts service.TopologyService, cfg *config.Config, logsService service.LogsService, eventsService service.EventsService, metricsService service.MetricsService, unifiedMetricsService *service.UnifiedMetricsService, projSvc service.ProjectService, addonService service.AddOnService, repo *repository.SQLiteRepository) *Handler {
+func NewHandler(cs service.ClusterService, ts service.TopologyService, cfg *config.Config, logsService service.LogsService, eventsService service.EventsService, metricsService service.MetricsService, unifiedMetricsService *service.UnifiedMetricsService, projSvc service.ProjectService, addonService service.AddOnService, repo *repository.SQLiteRepository, graphEngines map[string]*graph.ClusterGraphEngine) *Handler {
 	if cfg == nil {
 		cfg = &config.Config{}
 	}
@@ -152,6 +154,7 @@ func NewHandler(cs service.ClusterService, ts service.TopologyService, cfg *conf
 		kcliStreamActive:      map[string]int{},
 		k8sClientCache:        expirable.NewLRU[string, *k8s.Client](100, nil, time.Minute*10),
 		wsConns:               map[string]int{},
+		graphEngines:          graphEngines,
 	}
 }
 
@@ -304,6 +307,10 @@ func SetupRoutes(router *mux.Router, h *Handler) {
 	router.Handle("/clusters/{clusterId}/topology/export/drawio", h.wrapWithRBAC(h.GetTopologyExportDrawio, auth.RoleViewer)).Methods("GET")
 
 	// Blast radius analysis (USP #2): dependency inference + criticality scoring
+	router.Handle("/clusters/{clusterId}/blast-radius/summary",
+		h.wrapWithRBAC(h.GetBlastRadiusSummary, auth.RoleViewer)).Methods("GET")
+	router.Handle("/clusters/{clusterId}/blast-radius/graph-status",
+		h.wrapWithRBAC(h.GetGraphStatus, auth.RoleViewer)).Methods("GET")
 	router.Handle("/clusters/{clusterId}/blast-radius/{namespace}/{kind}/{name}", h.wrapWithRBAC(h.GetBlastRadius, auth.RoleViewer)).Methods("GET")
 
 	// Global search (command palette): GET /clusters/{clusterId}/search?q=...&limit=25

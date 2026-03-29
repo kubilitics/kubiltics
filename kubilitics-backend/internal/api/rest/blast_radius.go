@@ -1,20 +1,18 @@
 package rest
 
 import (
-	"context"
-	"errors"
 	"net/http"
-	"time"
 
 	"github.com/gorilla/mux"
 
+	"github.com/kubilitics/kubilitics-backend/internal/graph"
+	"github.com/kubilitics/kubilitics-backend/internal/models"
 	"github.com/kubilitics/kubilitics-backend/internal/pkg/logger"
 	"github.com/kubilitics/kubilitics-backend/internal/pkg/validate"
-	"github.com/kubilitics/kubilitics-backend/internal/service"
 )
 
 // GetBlastRadius handles GET /clusters/{clusterId}/blast-radius/{namespace}/{kind}/{name}.
-// It computes the dependency graph and criticality score for the specified resource.
+// It reads from the pre-built graph engine snapshot instead of computing per-request.
 func (h *Handler) GetBlastRadius(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	clusterID := vars["clusterId"]
@@ -24,7 +22,7 @@ func (h *Handler) GetBlastRadius(w http.ResponseWriter, r *http.Request) {
 	}
 
 	namespace := vars["namespace"]
-	kind := vars["kind"]
+	kind := normalizeKind(vars["kind"])
 	name := vars["name"]
 
 	if namespace == "" || kind == "" || name == "" {
@@ -32,39 +30,75 @@ func (h *Handler) GetBlastRadius(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Normalize kind to title case (e.g. "deployments" -> "Deployment")
-	kind = normalizeKind(kind)
-	if kind == "" {
-		respondError(w, http.StatusBadRequest, "Unsupported resource kind")
+	engine := h.getGraphEngine(clusterID)
+	if engine == nil {
+		respondError(w, http.StatusServiceUnavailable, "Blast radius graph not available for this cluster")
 		return
 	}
 
-	client, err := h.getClientFromRequest(r.Context(), r, clusterID, h.cfg)
+	snap := engine.Snapshot()
+	if !snap.Status().Ready {
+		respondError(w, http.StatusServiceUnavailable, "Dependency graph is still building")
+		return
+	}
+
+	target := models.ResourceRef{Kind: kind, Name: name, Namespace: namespace}
+	result, err := snap.ComputeBlastRadius(target)
 	if err != nil {
 		requestID := logger.FromContext(r.Context())
 		respondErrorWithCode(w, http.StatusNotFound, ErrCodeNotFound, err.Error(), requestID)
 		return
 	}
 
-	timeoutSec := 30
-	if h.cfg != nil && h.cfg.TopologyTimeoutSec > 0 {
-		timeoutSec = h.cfg.TopologyTimeoutSec
-	}
-	ctx, cancel := context.WithTimeout(r.Context(), time.Duration(timeoutSec)*time.Second)
-	defer cancel()
+	respondJSON(w, http.StatusOK, result)
+}
 
-	brService := service.NewBlastRadiusService()
-	result, err := brService.ComputeBlastRadius(ctx, client, namespace, kind, name)
-	if err != nil {
-		if errors.Is(err, context.DeadlineExceeded) {
-			respondError(w, http.StatusServiceUnavailable, "Blast radius computation timed out")
-			return
-		}
-		respondError(w, http.StatusInternalServerError, err.Error())
+// GetBlastRadiusSummary handles GET /clusters/{clusterId}/blast-radius/summary.
+// Returns the top-N highest blast-radius resources from the graph snapshot.
+func (h *Handler) GetBlastRadiusSummary(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	clusterID := vars["clusterId"]
+	if !validate.ClusterID(clusterID) {
+		respondError(w, http.StatusBadRequest, "Invalid clusterId")
 		return
 	}
 
-	respondJSON(w, http.StatusOK, result)
+	engine := h.getGraphEngine(clusterID)
+	if engine == nil {
+		respondError(w, http.StatusServiceUnavailable, "Blast radius graph not available for this cluster")
+		return
+	}
+
+	snap := engine.Snapshot()
+	summary := snap.GetSummary(20)
+	respondJSON(w, http.StatusOK, summary)
+}
+
+// GetGraphStatus handles GET /clusters/{clusterId}/blast-radius/graph-status.
+// Returns the current status of the dependency graph engine.
+func (h *Handler) GetGraphStatus(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	clusterID := vars["clusterId"]
+	if !validate.ClusterID(clusterID) {
+		respondError(w, http.StatusBadRequest, "Invalid clusterId")
+		return
+	}
+
+	engine := h.getGraphEngine(clusterID)
+	if engine == nil {
+		respondJSON(w, http.StatusOK, models.GraphStatus{Error: "graph engine not initialized"})
+		return
+	}
+
+	respondJSON(w, http.StatusOK, engine.Status())
+}
+
+// getGraphEngine returns the graph engine for a cluster, or nil if not available.
+func (h *Handler) getGraphEngine(clusterID string) *graph.ClusterGraphEngine {
+	if h.graphEngines == nil {
+		return nil
+	}
+	return h.graphEngines[clusterID]
 }
 
 // normalizeKind converts plural/lowercase resource kind strings to their

@@ -29,6 +29,7 @@ import (
 	"github.com/kubilitics/kubilitics-backend/internal/addon/scanner"
 	"github.com/kubilitics/kubilitics-backend/internal/auth"
 	"github.com/kubilitics/kubilitics-backend/internal/config"
+	"github.com/kubilitics/kubilitics-backend/internal/graph"
 	"github.com/kubilitics/kubilitics-backend/internal/models"
 	"github.com/kubilitics/kubilitics-backend/internal/k8s"
 	"github.com/kubilitics/kubilitics-backend/internal/metrics"
@@ -207,6 +208,23 @@ func main() {
 		topologyCache = topologycache.New(0)
 	}
 	topologyService := service.NewTopologyService(clusterService, topologyCache)
+
+	// Initialize blast radius graph engines
+	graphEngines := make(map[string]*graph.ClusterGraphEngine)
+	if clusters, err := clusterService.ListClusters(ctx); err == nil {
+		for _, cluster := range clusters {
+			client, clientErr := clusterService.GetClient(cluster.ID)
+			if clientErr != nil {
+				log.Warn("Failed to get client for graph engine", "cluster", cluster.ID, "error", clientErr)
+				continue
+			}
+			engine := graph.NewClusterGraphEngine(cluster.ID, client.Clientset, log)
+			engine.Start(ctx)
+			graphEngines[cluster.ID] = engine
+			log.Info("Started blast radius graph engine", "cluster", cluster.ID)
+		}
+	}
+
 	logsService := service.NewLogsService(clusterService)
 	eventsService := service.NewEventsServiceWithRepo(clusterService, repo)
 	metricsService := service.NewMetricsService(clusterService)
@@ -331,7 +349,7 @@ func main() {
 	}
 	router := mux.NewRouter()
 	router.UseEncodedPath()
-	handler := rest.NewHandler(clusterService, topologyService, cfg, logsService, eventsService, metricsService, unifiedMetricsService, projectService, addonSvc, repo)
+	handler := rest.NewHandler(clusterService, topologyService, cfg, logsService, eventsService, metricsService, unifiedMetricsService, projectService, addonSvc, repo, graphEngines)
 	authHandler := rest.NewAuthHandler(repo, cfg)
 	
 	// OIDC handler (Phase 2: Enterprise Authentication)
