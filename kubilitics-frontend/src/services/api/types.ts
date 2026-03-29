@@ -366,31 +366,88 @@ export interface ContainerFileEntry {
 
 // ── Blast Radius ─────────────────────────────────────────────────────────
 
-/** An affected resource in the blast radius result. */
-export interface BlastRadiusAffectedResource {
+// --- Cluster-Wide Blast Radius (V2) ---
+
+export interface ResourceRef {
   kind: string;
   name: string;
   namespace: string;
-  /** How this resource is affected: "direct" | "transitive" */
-  impact: string;
 }
 
-/** Response from GET /api/v1/clusters/{clusterId}/blast-radius/{namespace}/{kind}/{name} */
 export interface BlastRadiusResult {
-  /** Criticality score 0-100. */
-  criticalityScore: number;
-  /** Criticality level: critical | high | medium | low. */
-  level: 'critical' | 'high' | 'medium' | 'low';
-  /** Blast radius percentage (0-100). */
-  blastRadiusPercent: number;
-  /** Number of resources that depend on this resource (incoming edges). */
-  fanIn: number;
-  /** Number of resources this resource depends on (outgoing edges). */
-  fanOut: number;
-  /** Single Point of Failure — true if removing this resource would disconnect the graph. */
-  isSPOF: boolean;
-  /** Resources affected if this resource fails. */
-  affectedResources: BlastRadiusAffectedResource[];
-  /** Dependency chain from this resource outward (ordered list of kind/name strings). */
-  dependencyChain: string[];
+  target_resource: ResourceRef;
+  criticality_score: number;
+  criticality_level: 'critical' | 'high' | 'medium' | 'low';
+  blast_radius_percent: number;
+  fan_in: number;
+  fan_out: number;
+  total_affected: number;
+  affected_namespaces: number;
+  is_spof: boolean;
+  has_hpa: boolean;
+  has_pdb: boolean;
+  is_ingress_exposed: boolean;
+  ingress_hosts?: string[];
+  replica_count: number;
+  waves: BlastWave[];
+  dependency_chain: BlastDependencyEdge[];
+  risk_indicators: RiskIndicator[];
+  graph_node_count: number;
+  graph_edge_count: number;
+  graph_staleness_ms: number;
+}
+
+export interface BlastWave {
+  depth: number;
+  resources: AffectedResource[];
+}
+
+export interface AffectedResource {
+  kind: string;
+  name: string;
+  namespace: string;
+  impact: 'direct' | 'transitive';
+  wave_depth: number;
+  failure_path: PathHop[];
+}
+
+export interface PathHop {
+  from: ResourceRef;
+  to: ResourceRef;
+  edge_type: string;
+  detail: string;
+}
+
+export interface RiskIndicator {
+  severity: 'critical' | 'warning' | 'info';
+  title: string;
+  detail: string;
+}
+
+export interface BlastDependencyEdge {
+  source: ResourceRef;
+  target: ResourceRef;
+  type: string;
+  detail?: string;
+}
+
+export interface GraphStatus {
+  ready: boolean;
+  node_count: number;
+  edge_count: number;
+  namespace_count: number;
+  last_rebuild_ms: number;
+  staleness_ms: number;
+  rebuild_count: number;
+  error?: string;
+}
+
+export interface BlastRadiusSummaryEntry {
+  resource: ResourceRef;
+  criticality_score: number;
+  criticality_level: string;
+  blast_radius_percent: number;
+  fan_in: number;
+  is_spof: boolean;
+  affected_namespaces: number;
 }
