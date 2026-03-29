@@ -369,10 +369,12 @@ func (s *blastRadiusService) ComputeBlastRadius(ctx context.Context, client *k8s
 		CriticalityScore:   score,
 		CriticalityLevel:   level,
 		BlastRadiusPercent: math.Round(blastRadiusPercent*100) / 100,
-		AffectedResources:  affectedRefs,
+		TotalAffected:      len(affectedRefs),
 		FanIn:              fanIn,
 		FanOut:             fanOut,
 		IsSPOF:             isSPOF,
+		IsIngressExposed:   hasIngress,
+		ReplicaCount:       int(replicaCount),
 		DependencyChain:    relevantEdges,
 	}, nil
 }
