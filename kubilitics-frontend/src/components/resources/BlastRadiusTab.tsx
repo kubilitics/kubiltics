@@ -126,50 +126,107 @@ export function BlastRadiusTab({ kind, namespace, name }: BlastRadiusTabProps) {
   }, []);
 
   const handleSimulate = useCallback(() => {
-    if (!blastData?.waves?.length || !focusNode) return;
+    if (!focusNode || !topology) return;
 
-    const engine = new SimulationEngine(blastData.waves);
-    engineRef.current = engine;
+    // If we have blast data with waves, use the SimulationEngine for wave-by-wave animation
+    if (blastData?.waves?.length) {
+      const engine = new SimulationEngine(blastData.waves);
+      engineRef.current = engine;
+
+      setSimulatedFailureNodeId(focusNode.id);
+      setIsSimulating(true);
+      setCurrentWave(-1);
+
+      const waveDepthMap = new Map<string, number>();
+
+      engine.onWave((wave, affected) => {
+        setCurrentWave(wave);
+        const canvasAffected = new Set<string>();
+        canvasAffected.add(focusNode.id);
+        for (const nodeId of affected) {
+          const parts = nodeId.split('/');
+          if (parts.length >= 3) {
+            const [rKind, rNs, ...rest] = parts;
+            const rName = rest.join('/');
+            const match = topology.nodes.find(
+              (n) => n.kind === rKind && n.namespace === rNs && n.name === rName,
+            );
+            if (match) {
+              canvasAffected.add(match.id);
+              if (!waveDepthMap.has(match.id)) {
+                waveDepthMap.set(match.id, wave + 1);
+              }
+            }
+          }
+        }
+        setSimulationAffectedNodes(canvasAffected);
+        setSimulationWaveDepths(new Map(waveDepthMap));
+      });
+
+      engine.onComplete(() => {});
+      engine.start();
+      return;
+    }
+
+    // Fallback: BFS from topology edges (no blast data needed)
+    const adj = new Map<string, Set<string>>();
+    for (const edge of topology.edges) {
+      if (!adj.has(edge.source)) adj.set(edge.source, new Set());
+      if (!adj.has(edge.target)) adj.set(edge.target, new Set());
+      adj.get(edge.source)!.add(edge.target);
+      adj.get(edge.target)!.add(edge.source);
+    }
+
+    // BFS from focus node — animate wave by wave
+    const visited = new Map<string, number>();
+    visited.set(focusNode.id, 0);
+    let queue = [focusNode.id];
+    let wave = 0;
+    const waveGroups: string[][] = [];
+
+    while (queue.length > 0) {
+      wave++;
+      const nextQueue: string[] = [];
+      const waveNodes: string[] = [];
+      for (const nodeId of queue) {
+        for (const neighbor of adj.get(nodeId) ?? []) {
+          if (!visited.has(neighbor)) {
+            visited.set(neighbor, wave);
+            nextQueue.push(neighbor);
+            waveNodes.push(neighbor);
+          }
+        }
+      }
+      if (waveNodes.length > 0) waveGroups.push(waveNodes);
+      queue = nextQueue;
+    }
 
     setSimulatedFailureNodeId(focusNode.id);
     setIsSimulating(true);
     setCurrentWave(-1);
 
-    // Track which wave each node was first affected in (wave depth = wave index + 1)
-    const waveDepthMap = new Map<string, number>();
+    // Animate wave by wave at 800ms intervals
+    const totalWavesCount = waveGroups.length;
+    const allAffected = new Set<string>([focusNode.id]);
+    const depthMap = new Map<string, number>();
+    let currentIdx = 0;
 
-    engine.onWave((wave, affected) => {
-      setCurrentWave(wave);
-      // Build canvas-compatible node IDs: match topology node IDs
-      const canvasAffected = new Set<string>();
-      canvasAffected.add(focusNode.id);
-      for (const nodeId of affected) {
-        // SimulationEngine uses kind/namespace/name — find matching topology node
-        const parts = nodeId.split('/');
-        if (parts.length >= 3) {
-          const [rKind, rNs, ...rest] = parts;
-          const rName = rest.join('/');
-          const match = topology?.nodes.find(
-            (n) => n.kind === rKind && n.namespace === rNs && n.name === rName,
-          );
-          if (match) {
-            canvasAffected.add(match.id);
-            // Record wave depth (1-indexed) — only first time seen
-            if (!waveDepthMap.has(match.id)) {
-              waveDepthMap.set(match.id, wave + 1);
-            }
-          }
-        }
+    const animateWave = () => {
+      if (currentIdx >= totalWavesCount) return;
+      for (const nodeId of waveGroups[currentIdx]) {
+        allAffected.add(nodeId);
+        if (!depthMap.has(nodeId)) depthMap.set(nodeId, currentIdx + 1);
       }
-      setSimulationAffectedNodes(canvasAffected);
-      setSimulationWaveDepths(new Map(waveDepthMap));
-    });
+      setCurrentWave(currentIdx);
+      setSimulationAffectedNodes(new Set(allAffected));
+      setSimulationWaveDepths(new Map(depthMap));
+      currentIdx++;
+      if (currentIdx < totalWavesCount) {
+        setTimeout(animateWave, 800);
+      }
+    };
 
-    engine.onComplete(() => {
-      // Keep final state visible — don't auto-clear
-    });
-
-    engine.start();
+    setTimeout(animateWave, 800);
   }, [blastData, focusNode, topology]);
 
   const handleClearSimulation = useCallback(() => {
@@ -230,7 +287,8 @@ export function BlastRadiusTab({ kind, namespace, name }: BlastRadiusTabProps) {
   }
 
   const targetName = `${kind}/${name}`;
-  const totalWaves = blastData?.waves?.length ?? 0;
+  // Total waves = from blast data, or from simulation wave depths (BFS fallback)
+  const totalWaves = blastData?.waves?.length ?? (simulationWaveDepths ? Math.max(...Array.from(simulationWaveDepths.values()), 0) : 0);
 
   return (
     <div className="flex flex-col gap-4 p-4 w-full">
