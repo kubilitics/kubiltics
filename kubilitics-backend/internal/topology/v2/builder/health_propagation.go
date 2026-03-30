@@ -91,7 +91,10 @@ func PropagateHealth(nodes []v2.TopologyNode, edges []v2.TopologyEdge) []v2.Topo
 			return s
 		}
 		node, exists := nodeByID[id]
-		if !exists || !propagationKinds[node.Kind] {
+		if !exists {
+			return statusUnknown // missing node — treat as unknown, not healthy
+		}
+		if !propagationKinds[node.Kind] {
 			return statusHealthy
 		}
 		children := childrenOf[id]
@@ -130,39 +133,49 @@ func PropagateHealth(nodes []v2.TopologyNode, edges []v2.TopologyEdge) []v2.Topo
 	return result
 }
 
-// aggregateChildHealth determines a parent's status from its children's resolved statuses.
+// aggregateChildHealth determines a parent's status from its children's resolved
+// statuses using weighted aggregation. Instead of the binary "any degraded =
+// parent degraded" approach, it considers the ratio of healthy children.
 //
-// Rules (applied in priority order):
-//  1. ANY child is "degraded" → parent is "degraded"
-//  2. ANY child is "progressing" → parent is "progressing"
-//  3. ANY child is "unknown" → parent is "unknown"
-//  4. ALL children are "healthy" → parent is "healthy"
+// Rules:
+//  1. All children healthy → parent is "healthy"
+//  2. Any children not fully healthy but some progressing → "progressing"
+//  3. Some children degraded/unknown → "degraded"
+//  4. No children → "healthy"
 func aggregateChildHealth(childIDs []string, resolve func(string) string) string {
-	hasDegraded := false
-	hasProgressing := false
-	hasUnknown := false
+	if len(childIDs) == 0 {
+		return statusHealthy
+	}
+
+	total := 0
+	healthy := 0
+	progressing := 0
 
 	for _, cid := range childIDs {
-		switch resolve(cid) {
-		case statusDegraded:
-			hasDegraded = true
+		h := resolve(cid)
+		total++
+		switch h {
+		case statusHealthy:
+			healthy++
 		case statusProgressing:
-			hasProgressing = true
-		case statusUnknown:
-			hasUnknown = true
+			progressing++
 		}
 	}
 
-	if hasDegraded {
+	if total == 0 {
+		return statusHealthy
+	}
+
+	ratio := float64(healthy) / float64(total)
+
+	switch {
+	case ratio == 1.0:
+		return statusHealthy
+	case progressing > 0 && healthy+progressing == total:
+		return statusProgressing
+	default:
 		return statusDegraded
 	}
-	if hasProgressing {
-		return statusProgressing
-	}
-	if hasUnknown {
-		return statusUnknown
-	}
-	return statusHealthy
 }
 
 // normalisePodStatus maps Kubernetes Pod.Status.Phase strings (and the graph
