@@ -128,7 +128,7 @@ func TestHandler_ListResources_Success(t *testing.T) {
 	}
 
 	cfg := &config.Config{}
-	h := NewHandler(mockService, nil, cfg, nil, nil, nil, nil, nil, nil, nil)
+	h := NewHandler(mockService, nil, cfg, nil, nil, nil, nil, nil, nil, nil, nil)
 
 	router := mux.NewRouter()
 	api := router.PathPrefix("/api/v1").Subrouter()
@@ -172,7 +172,7 @@ func TestHandler_ListResources_InvalidClusterID(t *testing.T) {
 	}
 
 	cfg := &config.Config{}
-	h := NewHandler(mockService, nil, cfg, nil, nil, nil, nil, nil, nil, nil)
+	h := NewHandler(mockService, nil, cfg, nil, nil, nil, nil, nil, nil, nil, nil)
 
 	router := mux.NewRouter()
 	api := router.PathPrefix("/api/v1").Subrouter()
@@ -193,7 +193,7 @@ func TestHandler_ListResources_ClusterNotFound(t *testing.T) {
 	}
 
 	cfg := &config.Config{}
-	h := NewHandler(mockService, nil, cfg, nil, nil, nil, nil, nil, nil, nil)
+	h := NewHandler(mockService, nil, cfg, nil, nil, nil, nil, nil, nil, nil, nil)
 
 	router := mux.NewRouter()
 	api := router.PathPrefix("/api/v1").Subrouter()
@@ -236,7 +236,7 @@ func TestHandler_ListResources_WithPagination(t *testing.T) {
 	}
 
 	cfg := &config.Config{}
-	h := NewHandler(mockService, nil, cfg, nil, nil, nil, nil, nil, nil, nil)
+	h := NewHandler(mockService, nil, cfg, nil, nil, nil, nil, nil, nil, nil, nil)
 
 	router := mux.NewRouter()
 	api := router.PathPrefix("/api/v1").Subrouter()
@@ -304,7 +304,7 @@ func TestHandler_GetResource_Success(t *testing.T) {
 	}
 
 	cfg := &config.Config{}
-	h := NewHandler(mockService, nil, cfg, nil, nil, nil, nil, nil, nil, nil)
+	h := NewHandler(mockService, nil, cfg, nil, nil, nil, nil, nil, nil, nil, nil)
 
 	router := mux.NewRouter()
 	api := router.PathPrefix("/api/v1").Subrouter()
@@ -360,7 +360,7 @@ func TestHandler_GetResource_NotFound(t *testing.T) {
 	}
 
 	cfg := &config.Config{}
-	h := NewHandler(mockService, nil, cfg, nil, nil, nil, nil, nil, nil, nil)
+	h := NewHandler(mockService, nil, cfg, nil, nil, nil, nil, nil, nil, nil, nil)
 
 	router := mux.NewRouter()
 	api := router.PathPrefix("/api/v1").Subrouter()
@@ -414,7 +414,7 @@ func TestHandler_DeleteResource_RequiresDestructiveHeader(t *testing.T) {
 	}
 
 	cfg := &config.Config{}
-	h := NewHandler(mockService, nil, cfg, nil, nil, nil, nil, nil, nil, nil)
+	h := NewHandler(mockService, nil, cfg, nil, nil, nil, nil, nil, nil, nil, nil)
 
 	router := mux.NewRouter()
 	api := router.PathPrefix("/api/v1").Subrouter()
@@ -454,7 +454,7 @@ func TestHandler_DeleteResource_WithDestructiveHeader(t *testing.T) {
 	}
 
 	cfg := &config.Config{}
-	h := NewHandler(mockService, nil, cfg, nil, nil, nil, nil, nil, nil, nil)
+	h := NewHandler(mockService, nil, cfg, nil, nil, nil, nil, nil, nil, nil, nil)
 
 	router := mux.NewRouter()
 	api := router.PathPrefix("/api/v1").Subrouter()

@@ -237,7 +237,7 @@ func setupClusterHandlerTest(t *testing.T) (*Handler, *mockClusterService) {
 		AuthMode: "disabled",
 	}
 	mockEventsSvc := &mockEventsService{}
-	handler := NewHandler(mockSvc, nil, cfg, nil, mockEventsSvc, nil, nil, nil, nil, nil)
+	handler := NewHandler(mockSvc, nil, cfg, nil, mockEventsSvc, nil, nil, nil, nil, nil, nil)
 	return handler, mockSvc
 }
 
@@ -254,7 +254,7 @@ func setupClusterHandlerTestWithAuth(t *testing.T) (*Handler, *mockClusterServic
 		AuthJWTSecret: "test-secret-key-minimum-32-characters-long",
 	}
 	mockEventsSvc := &mockEventsService{}
-	handler := NewHandler(mockSvc, nil, cfg, nil, mockEventsSvc, nil, nil, nil, nil, repo)
+	handler := NewHandler(mockSvc, nil, cfg, nil, mockEventsSvc, nil, nil, nil, nil, repo, nil)
 	return handler, mockSvc, repo
 }
 

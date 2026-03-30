@@ -242,7 +242,7 @@ func buildHandler(t *testing.T, addonSvc service.AddOnService) *Handler {
 		&testClusterService{},
 		nil, cfg, nil, nil, nil, nil, nil,
 		addonSvc,
-		repo,
+		repo, nil,
 	)
 }
 
@@ -254,7 +254,7 @@ func buildHandlerNoAuth(t *testing.T, addonSvc service.AddOnService) *Handler {
 		&testClusterService{},
 		nil, cfg, nil, nil, nil, nil, nil,
 		addonSvc,
-		nil, // nil repo → auth disabled
+		nil, nil, // nil repo → auth disabled
 	)
 }
 

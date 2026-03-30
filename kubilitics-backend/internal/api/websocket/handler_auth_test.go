@@ -172,14 +172,20 @@ func TestHandler_CheckOrigin_NoOriginHeader(t *testing.T) {
 	}
 	hub := NewHub(context.Background())
 	handler := NewHandler(context.Background(), hub, nil, cfg, nil)
-	
+
+	// No Origin and no auth credentials: should be rejected (CSRF protection)
 	req := httptest.NewRequest(http.MethodGet, "/ws/resources", nil)
-	// No Origin header
-	
 	allowed := handler.upgrader.CheckOrigin(req)
-	// Should allow if no origin (for native apps)
-	if !allowed {
-		t.Error("Should allow connection when no Origin header")
+	if allowed {
+		t.Error("Should reject connection when no Origin header and no auth credentials")
+	}
+
+	// No Origin but with auth credentials: should be allowed (native app)
+	reqWithAuth := httptest.NewRequest(http.MethodGet, "/ws/resources", nil)
+	reqWithAuth.Header.Set("Authorization", "Bearer test-token")
+	allowedWithAuth := handler.upgrader.CheckOrigin(reqWithAuth)
+	if !allowedWithAuth {
+		t.Error("Should allow connection when no Origin header but auth credentials present")
 	}
 }
 
