@@ -17,6 +17,7 @@ export interface TopologyMetadata {
   edgeCount: number;
   buildTimeMs: number;
   cachedAt?: string;
+  failed_resources?: string[];
 }
 
 export interface NodeMetrics {

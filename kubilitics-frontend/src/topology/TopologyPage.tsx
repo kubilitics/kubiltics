@@ -23,6 +23,8 @@ import { PresentationOverlay } from "./components/PresentationOverlay";
 import { buildExportFilename } from "./export/exportTopology";
 import type { ExportFormat } from "./TopologyCanvas";
 import { TopologyWelcomeTips } from "./TopologyWelcomeTips";
+import { AlertTriangle } from "lucide-react";
+import { cn } from "@/lib/utils";
 import type { ViewMode } from "./types/topology";
 
 // ─── URL Search Params helpers ───────────────────────────────────────────────
@@ -384,6 +386,20 @@ export function TopologyPage() {
         onNavigate={handleViewModeChange}
         onClearNamespace={() => setSelectedNamespaces(new Set(["default"]))}
       />}
+
+      {/* Failed resources warning banner */}
+      {topology?.metadata?.failed_resources && topology.metadata.failed_resources.length > 0 && (
+        <div className={cn(
+          "flex items-center gap-2 px-4 py-2 text-sm rounded-lg mx-4 mt-2",
+          "bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800",
+          "text-amber-800 dark:text-amber-200"
+        )}>
+          <AlertTriangle className="h-4 w-4 flex-shrink-0" />
+          <span>
+            Partial topology — failed to fetch: {topology.metadata.failed_resources.join(', ')}
+          </span>
+        </div>
+      )}
 
       {/* Partial error banner */}
       {warnings.length > 0 && (
