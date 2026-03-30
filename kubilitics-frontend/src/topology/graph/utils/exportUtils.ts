@@ -18,25 +18,19 @@ export async function downloadFile(blob: Blob, filename: string): Promise<string
 
   if (isTauriEnv) {
     try {
-      const { save } = await import('@tauri-apps/plugin-dialog');
-      const { writeFile } = await import('@tauri-apps/plugin-fs');
-
-      // Show native save dialog
-      const savePath = await save({
-        defaultPath: safeFilename,
-        title: `Save ${safeFilename}`,
-      });
-      if (!savePath) return null; // User cancelled
-
-      // Write file to disk
+      const { invoke } = await import('@tauri-apps/api/core');
       const arrayBuffer = await blob.arrayBuffer();
-      await writeFile(savePath, new Uint8Array(arrayBuffer));
-      return savePath;
+      const data = Array.from(new Uint8Array(arrayBuffer));
+      // Use Tauri command to save file with native dialog
+      const savedPath = await invoke<string | null>('save_file_dialog', { data, filename: safeFilename });
+      if (savedPath) return savedPath;
+      // If command doesn't exist, fall through to web download
     } catch {
       // Fall through to web download
     }
   }
 
+  // Web/fallback: anchor-click download
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
@@ -50,20 +44,14 @@ export async function downloadFile(blob: Blob, filename: string): Promise<string
 
 /**
  * Open the parent folder of a file path in Finder/Explorer.
+ * Uses Tauri shell plugin if available.
  */
 export async function showInFolder(filePath: string) {
   try {
-    const { revealItemInDir } = await import('@tauri-apps/plugin-opener');
-    await revealItemInDir(filePath);
+    const { invoke } = await import('@tauri-apps/api/core');
+    await invoke('show_in_folder', { path: filePath });
   } catch {
-    // Fallback: try shell open on the parent directory
-    try {
-      const parentDir = filePath.substring(0, filePath.lastIndexOf('/')) || filePath.substring(0, filePath.lastIndexOf('\\'));
-      const { openPath } = await import('@tauri-apps/plugin-opener');
-      await openPath(parentDir);
-    } catch {
-      // Not in Tauri or plugins unavailable — ignore
-    }
+    // Not in Tauri or command unavailable — ignore silently
   }
 }
 

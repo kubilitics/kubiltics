@@ -135,8 +135,8 @@ export function BlastRadiusTab({ kind, namespace, name }: BlastRadiusTabProps) {
     depth: 3,
   });
 
-  const isLoading = brLoading || topoLoading;
-  const error = brError || topoError;
+  const isLoading = topoLoading || (brLoading && !brError);
+  const error = topoError; // Only show error if topology fails — V2 blast errors are handled gracefully
 
   // Transform engine graph to ReactFlow topology format
   const topology = useMemo<TopologyResponse | null>(() => {
@@ -271,22 +271,11 @@ export function BlastRadiusTab({ kind, namespace, name }: BlastRadiusTabProps) {
     );
   }
 
-  // Error
-  if (error) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[400px] text-center p-6">
-        <AlertTriangle className="h-12 w-12 text-red-500 dark:text-red-400 mb-4" />
-        <p className="text-red-600 dark:text-red-400 font-medium mb-2">
-          Failed to load blast radius data
-        </p>
-        <p className="text-sm text-slate-500 dark:text-slate-400">
-          {error.message || String(error)}
-        </p>
-      </div>
-    );
-  }
+  // When V2 API fails (graph engine not running), show topology-only view
+  // Don't show error — just skip the V2 components and show the graph
+  const hasBlastData = !!blastData && !brError;
 
-  // No data
+  // No data at all
   if (!topology || topology.nodes.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px] text-center p-6">
@@ -307,7 +296,7 @@ export function BlastRadiusTab({ kind, namespace, name }: BlastRadiusTabProps) {
   return (
     <div className="flex flex-col gap-4 p-4 w-full">
       {/* 1. Criticality Banner */}
-      {blastData && (
+      {hasBlastData && blastData && (
         <CriticalityBanner
           criticalityScore={blastData.criticality_score}
           criticalityLevel={blastData.criticality_level}
@@ -319,7 +308,7 @@ export function BlastRadiusTab({ kind, namespace, name }: BlastRadiusTabProps) {
       )}
 
       {/* 2. Risk Indicator Cards */}
-      {blastData && (
+      {hasBlastData && blastData && (
         <RiskIndicatorCards
           isSPOF={blastData.is_spof}
           blastRadiusPercent={blastData.blast_radius_percent}
@@ -368,7 +357,7 @@ export function BlastRadiusTab({ kind, namespace, name }: BlastRadiusTabProps) {
       </div>
 
       {/* 5. Bottom split panel: WaveBreakdown | RiskPanel */}
-      {blastData && (
+      {hasBlastData && blastData && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <div
             className={cn(
