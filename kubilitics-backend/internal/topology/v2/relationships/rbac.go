@@ -101,7 +101,7 @@ func (m *RBACMatcher) Match(ctx context.Context, bundle *v2.ResourceBundle) ([]v
 			case rbacv1.ServiceAccountKind:
 				ns := subj.Namespace
 				if ns == "" {
-					ns = "default"
+					continue // Skip — namespace is required for SA subjects
 				}
 				saID := v2.NodeID("ServiceAccount", ns, subj.Name)
 				edges = append(edges, v2.TopologyEdge{
