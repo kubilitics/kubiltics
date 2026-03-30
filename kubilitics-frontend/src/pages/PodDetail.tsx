@@ -42,7 +42,7 @@ import {
   type CustomTab,
 } from '@/components/resources';
 import { PodTerminal } from '@/components/resources/PodTerminal';
-import { PodWorkspace } from '@/components/resources/PodWorkspace';
+import { InlineFileBrowser } from '@/components/resources/InlineFileBrowser';
 import {
   TOOLTIP_RESTART_POLICY,
   TOOLTIP_DNS_POLICY,
@@ -585,12 +585,31 @@ export default function PodDetail() {
           ...(pod.spec?.ephemeralContainers || []).map(c => c.name),
         ];
         return (
-          <PodWorkspace
+          <PodTerminal
             podName={name || ''}
             namespace={namespace || ''}
             containerName={selectedTerminalContainer || allContainers[0]}
             containers={allContainers}
             onContainerChange={setSelectedTerminalContainer}
+          />
+        );
+      },
+    },
+    {
+      id: 'files',
+      label: 'File Explorer',
+      icon: FolderOpen,
+      render: (ctx) => {
+        const pod = ctx.resource;
+        const allContainers = [
+          ...(pod.spec?.containers || []).map(c => c.name),
+          ...(pod.spec?.ephemeralContainers || []).map(c => c.name),
+        ];
+        return (
+          <InlineFileBrowser
+            podName={name || ''}
+            namespace={namespace || ''}
+            containerName={selectedTerminalContainer || allContainers[0]}
             baseUrl={backendBaseUrl ?? ''}
             clusterId={clusterId ?? ''}
           />
