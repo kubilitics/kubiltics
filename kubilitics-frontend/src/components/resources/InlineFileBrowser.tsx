@@ -72,9 +72,12 @@ export function InlineFileBrowser({
   className,
 }: InlineFileBrowserProps) {
   const storedUrl = useBackendConfigStore((s) => s.backendBaseUrl);
-  const storedClusterId = useClusterStore((s) => s.activeCluster?.id);
-  const baseUrl = baseUrlProp || getEffectiveBackendBaseUrl(storedUrl) || '';
+  const isConfigured = useBackendConfigStore((s) => s.isBackendConfigured());
+  const storedClusterId = useClusterStore((s) => s.activeCluster?.id) || useBackendConfigStore((s) => s.currentClusterId);
+  const baseUrl = baseUrlProp ?? getEffectiveBackendBaseUrl(storedUrl);
   const clusterId = clusterIdProp || storedClusterId || '';
+  // baseUrl can legitimately be '' (empty string = same-origin proxy in dev)
+  const hasBackend = baseUrlProp != null ? true : isConfigured;
   const [currentPath, setCurrentPath] = useState('/');
   const [entries, setEntries] = useState<ContainerFileEntry[]>([]);
   const [loading, setLoading] = useState(false);
@@ -85,7 +88,7 @@ export function InlineFileBrowser({
 
   const loadDirectory = useCallback(
     async (dirPath: string) => {
-      if (!baseUrl || !clusterId) {
+      if (!hasBackend || !clusterId) {
         setError('Missing backend URL or cluster ID');
         return;
       }
@@ -102,7 +105,7 @@ export function InlineFileBrowser({
         setLoading(false);
       }
     },
-    [baseUrl, clusterId, namespace, podName, containerName]
+    [baseUrl, clusterId, namespace, podName, containerName, hasBackend]
   );
 
   // Load root on mount and when container changes
@@ -136,7 +139,7 @@ export function InlineFileBrowser({
   };
 
   const handleDownload = (entry: ContainerFileEntry) => {
-    if (!baseUrl || !clusterId) return;
+    if (!hasBackend || !clusterId) return;
     const filePath = currentPath === '/' ? `/${entry.name}` : `${currentPath}/${entry.name}`;
     const url = getContainerFileDownloadUrl(baseUrl, clusterId, namespace, podName, filePath, containerName);
     window.open(url, '_blank');
@@ -144,7 +147,7 @@ export function InlineFileBrowser({
   };
 
   const handleUploadFiles = async (files: FileList | File[]) => {
-    if (!baseUrl || !clusterId) return;
+    if (!hasBackend || !clusterId) return;
     setUploading(true);
     let successCount = 0;
 
