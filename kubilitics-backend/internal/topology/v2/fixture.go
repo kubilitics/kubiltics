@@ -167,9 +167,9 @@ func NewTestFixtureBundle() *ResourceBundle {
 		{ObjectMeta: metav1.ObjectMeta{Name: "node-3"}, Status: corev1.NodeStatus{Conditions: []corev1.NodeCondition{{Type: corev1.NodeReady, Status: corev1.ConditionTrue}}}},
 	}
 
-	endpoints := []corev1.Endpoints{{
+	endpoints := []corev1.Endpoints{{ //nolint:staticcheck // TODO: migrate to EndpointSlice
 		ObjectMeta: metav1.ObjectMeta{Name: "svc-a", Namespace: "default"},
-		Subsets:   []corev1.EndpointSubset{{Addresses: []corev1.EndpointAddress{{TargetRef: &corev1.ObjectReference{Kind: "Pod", Namespace: "default", Name: "app-a-rs-pod-0"}}}}},
+		Subsets:   []corev1.EndpointSubset{{Addresses: []corev1.EndpointAddress{{TargetRef: &corev1.ObjectReference{Kind: "Pod", Namespace: "default", Name: "app-a-rs-pod-0"}}}}}, //nolint:staticcheck // TODO: migrate to EndpointSlice
 	}}
 	endpointSlices := []discoveryv1.EndpointSlice{{
 		ObjectMeta: metav1.ObjectMeta{Name: "svc-a-xyz", Namespace: "default", Labels: map[string]string{"kubernetes.io/service-name": "svc-a"}},

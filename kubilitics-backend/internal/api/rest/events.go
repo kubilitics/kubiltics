@@ -107,8 +107,12 @@ func (h *Handler) GetEvents(w http.ResponseWriter, r *http.Request) {
 	if listMeta != nil && listMeta.GetRemainingItemCount() != nil {
 		total = int64(len(events)) + *listMeta.GetRemainingItemCount()
 	}
+	continueToken := ""
+	if listMeta != nil {
+		continueToken = listMeta.GetContinue()
+	}
 	meta := map[string]interface{}{
-		"continue": listMeta.GetContinue(),
+		"continue": continueToken,
 		"total":    total,
 	}
 	if listMeta != nil && listMeta.GetRemainingItemCount() != nil {

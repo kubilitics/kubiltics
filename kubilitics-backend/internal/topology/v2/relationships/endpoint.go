@@ -81,7 +81,7 @@ func (m *EndpointMatcher) Match(ctx context.Context, bundle *v2.ResourceBundle) 
 					if ep.TargetRef != nil && ep.TargetRef.Kind == "Pod" {
 						tgt := v2.NodeID("Pod", ep.TargetRef.Namespace, ep.TargetRef.Name)
 						label := "target"
-						if ep.Addresses != nil && len(ep.Addresses) > 0 {
+						if len(ep.Addresses) > 0 {
 							label = fmt.Sprintf("target (%s)", ep.Addresses[0])
 						}
 						edges = append(edges, v2.TopologyEdge{

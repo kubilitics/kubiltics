@@ -20,7 +20,7 @@ func (r *SQLiteRepository) ListProfiles(ctx context.Context) ([]models.ClusterPr
 	if err != nil {
 		return nil, fmt.Errorf("list profiles: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var profiles []models.ClusterProfile
 	for rows.Next() {

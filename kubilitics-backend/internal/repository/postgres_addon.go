@@ -453,13 +453,13 @@ func (r *PostgresRepository) GetAddOn(ctx context.Context, id string) (*models.A
 	vQuery := `SELECT version, release_date, changelog_url, breaking_changes, highlights FROM addon_versions WHERE addon_id = $1 ORDER BY release_date DESC`
 	vRows, err := r.db.QueryxContext(ctx, vQuery, id)
 	if err == nil {
-		defer vRows.Close()
+		defer func() { _ = vRows.Close() }()
 		for vRows.Next() {
 			var v models.VersionChangelog
 			var breakingJSON, highlightsJSON string
 			if err := vRows.Scan(&v.Version, &v.ReleaseDate, &v.ChangelogURL, &breakingJSON, &highlightsJSON); err == nil {
-				json.Unmarshal([]byte(breakingJSON), &v.BreakingChanges)
-				json.Unmarshal([]byte(highlightsJSON), &v.Highlights)
+				_ = json.Unmarshal([]byte(breakingJSON), &v.BreakingChanges)
+				_ = json.Unmarshal([]byte(highlightsJSON), &v.Highlights)
 				versions = append(versions, v)
 			}
 		}
@@ -499,7 +499,6 @@ func (r *PostgresRepository) ListAddOns(ctx context.Context, tier string, tags [
 		searchTerm := "%" + strings.ToLower(strings.TrimSpace(search)) + "%"
 		whereParts = append(whereParts, fmt.Sprintf("(LOWER(name) ILIKE $%d OR LOWER(display_name) ILIKE $%d OR LOWER(COALESCE(description, '')) ILIKE $%d)", paramCount, paramCount+1, paramCount+2))
 		args = append(args, searchTerm, searchTerm, searchTerm)
-		paramCount += 3
 	}
 
 	query := baseQuery
@@ -825,13 +824,13 @@ func (r *PostgresRepository) ListProfiles(ctx context.Context) ([]models.Cluster
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	for rows.Next() {
 		var p models.ClusterProfile
 		var addonsJSON string
 		if err := rows.Scan(&p.ID, &p.Name, &p.Description, &addonsJSON, &p.CreatedAt, &p.UpdatedAt); err == nil {
-			json.Unmarshal([]byte(addonsJSON), &p.Addons)
+			_ = json.Unmarshal([]byte(addonsJSON), &p.Addons)
 			profiles = append(profiles, p)
 		}
 	}
@@ -850,7 +849,7 @@ func (r *PostgresRepository) GetProfile(ctx context.Context, id string) (*models
 	if err != nil {
 		return nil, err
 	}
-	json.Unmarshal([]byte(addonsJSON), &p.Addons)
+	_ = json.Unmarshal([]byte(addonsJSON), &p.Addons)
 	return &p, nil
 }
 
@@ -965,7 +964,7 @@ func (r *PostgresRepository) GetNotificationChannel(ctx context.Context, id stri
 	if err != nil {
 		return nil, err
 	}
-	json.Unmarshal([]byte(ch.EventsRaw), &ch.Events)
+	_ = json.Unmarshal([]byte(ch.EventsRaw), &ch.Events)
 	ch.Enabled = ch.EnabledDB == 1
 	return &ch, nil
 }
@@ -978,12 +977,12 @@ func (r *PostgresRepository) ListNotificationChannels(ctx context.Context) ([]mo
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	for rows.Next() {
 		var ch models.NotificationChannel
 		if err := rows.Scan(&ch.ID, &ch.Name, &ch.Type, &ch.URL, &ch.EventsRaw, &ch.EnabledDB, &ch.CreatedAt, &ch.UpdatedAt); err == nil {
-			json.Unmarshal([]byte(ch.EventsRaw), &ch.Events)
+			_ = json.Unmarshal([]byte(ch.EventsRaw), &ch.Events)
 			ch.Enabled = ch.EnabledDB == 1
 			channels = append(channels, ch)
 		}

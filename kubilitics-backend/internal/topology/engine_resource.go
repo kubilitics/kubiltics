@@ -485,7 +485,6 @@ func (e *Engine) buildStatefulSetSubgraph(ctx context.Context, namespace, name s
 		selector = labels.Nothing()
 	}
 
-	var podIDs []string
 	if selector != nil && !selector.Empty() {
 		podList, err := e.client.Clientset.CoreV1().Pods(ns).List(ctx, metav1.ListOptions{LabelSelector: selector.String()})
 		if err == nil {
@@ -496,7 +495,6 @@ func (e *Engine) buildStatefulSetSubgraph(ctx context.Context, namespace, name s
 					if ref.Kind == "StatefulSet" && ref.Name == sts.Name {
 						podID := ensurePodNode(g, *pod)
 						addResourceEdge(g, stsID, podID, "Manages")
-						podIDs = append(podIDs, podID)
 						break
 					}
 				}

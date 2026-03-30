@@ -166,10 +166,11 @@ func (h *Handler) ListContainerFiles(w http.ResponseWriter, r *http.Request) {
 	// Execute ls -la in the container; use --time-style=long-iso for parseable timestamps.
 	// Fall back to plain ls -la if --time-style is not supported (busybox).
 	command := []string{"ls", "-la", "--time-style=long-iso", dirPath}
-	stdout, stderr, err := execInContainer(ctx, client, namespace, podName, container, command, nil)
+	stdout, _, err := execInContainer(ctx, client, namespace, podName, container, command, nil)
 	if err != nil {
 		// Retry without --time-style for busybox environments
 		command = []string{"ls", "-la", dirPath}
+		var stderr string
 		stdout, stderr, err = execInContainer(ctx, client, namespace, podName, container, command, nil)
 		if err != nil {
 			respondError(w, http.StatusInternalServerError, fmt.Sprintf("exec failed: %s — %s", err.Error(), stderr))

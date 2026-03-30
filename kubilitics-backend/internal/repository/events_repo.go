@@ -16,7 +16,7 @@ func (r *SQLiteRepository) UpsertEvents(clusterID string, events []*models.Event
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 
 	stmt, err := tx.Preparex(`
 		INSERT OR REPLACE INTO events (id, cluster_id, type, reason, message, resource_kind, resource_name, namespace, first_timestamp, last_timestamp, count, created_at)
@@ -25,7 +25,7 @@ func (r *SQLiteRepository) UpsertEvents(clusterID string, events []*models.Event
 	if err != nil {
 		return err
 	}
-	defer stmt.Close()
+	defer func() { _ = stmt.Close() }()
 
 	now := time.Now()
 	for _, e := range events {
@@ -64,7 +64,7 @@ func (r *SQLiteRepository) GetStoredEvents(clusterID, namespace, kind, name stri
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var events []*models.Event
 	for rows.Next() {

@@ -59,7 +59,7 @@ type ClusterDiscovery struct {
 	clientset kubernetes.Interface
 	namespace string
 	informer  corev1informers.SecretInformer
-	workqueue workqueue.RateLimitingInterface
+	workqueue workqueue.RateLimitingInterface //nolint:staticcheck // TODO: migrate to TypedRateLimitingInterface
 
 	// Callbacks
 	onAdd    func(clusterName string, kubeconfig []byte, annotations map[string]string)
@@ -85,7 +85,7 @@ func NewClusterDiscovery(
 		onAdd:     onAdd,
 		onUpdate:  onUpdate,
 		onDelete:  onDelete,
-		workqueue: workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter()),
+		workqueue: workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter()), //nolint:staticcheck // TODO: migrate to NewTypedRateLimitingQueue
 		stopChan:  make(chan struct{}),
 		doneChan:  make(chan struct{}),
 	}

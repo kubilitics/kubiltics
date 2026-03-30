@@ -182,7 +182,7 @@ func (c *ArtifactHubClient) Search(ctx context.Context, query, kind string, limi
 	if err != nil {
 		return nil, fmt.Errorf("artifacthub search request failed: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	var out ArtifactHubSearchResponse
 	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
@@ -228,7 +228,7 @@ func (c *ArtifactHubClient) GetChart(ctx context.Context, repoName, chartName st
 	if err != nil {
 		return nil, fmt.Errorf("artifacthub get chart request failed: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	var out ArtifactHubChart
 	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
@@ -314,7 +314,7 @@ func (c *ArtifactHubClient) GetChartValues(ctx context.Context, repoName, chartN
 	if err != nil {
 		return "", fmt.Errorf("artifacthub values request failed: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode == http.StatusNotFound {
 		// Chart exists but has no published values.yaml — cache the empty result.

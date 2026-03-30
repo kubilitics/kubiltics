@@ -10,6 +10,11 @@ import (
 	"github.com/kubilitics/kubilitics-backend/internal/repository"
 )
 
+// contextKey is a custom type for context keys to avoid SA1029.
+type contextKey string
+
+const clusterPermissionsKey contextKey = "cluster_permissions"
+
 // RequireRole returns middleware that enforces minimum role requirement (BE-AUTHZ-001).
 // Phase 3: Checks namespace permission first (most specific), then cluster permission, then user's default role.
 func RequireRole(repo *repository.SQLiteRepository, minRole string) func(http.Handler) http.Handler {
@@ -81,12 +86,12 @@ func WithUserPermissions(ctx context.Context, repo *repository.SQLiteRepository,
 	for _, p := range perms {
 		permMap[p.ClusterID] = p.Role
 	}
-	return context.WithValue(ctx, "cluster_permissions", permMap)
+	return context.WithValue(ctx, clusterPermissionsKey, permMap)
 }
 
 // GetClusterPermissions returns cluster permissions map from context.
 func GetClusterPermissions(ctx context.Context) map[string]string {
-	v := ctx.Value("cluster_permissions")
+	v := ctx.Value(clusterPermissionsKey)
 	if v == nil {
 		return nil
 	}

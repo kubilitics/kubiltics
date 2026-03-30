@@ -359,15 +359,6 @@ func findConnectedNodes(edges []TopologyEdge, seeds map[string]bool) map[string]
 	return connected
 }
 
-func buildAdjacency(edges []TopologyEdge) map[string][]string {
-	adj := make(map[string][]string)
-	for _, e := range edges {
-		adj[e.Source] = append(adj[e.Source], e.Target)
-		adj[e.Target] = append(adj[e.Target], e.Source)
-	}
-	return adj
-}
-
 func matchesResourceQuery(n TopologyNode, resource, ns string) bool {
 	parts := strings.Split(resource, "/")
 	switch len(parts) {

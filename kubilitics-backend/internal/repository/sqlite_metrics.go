@@ -34,7 +34,7 @@ func (r *SQLiteRepository) InsertMetricsHistory(ctx context.Context, rows []Metr
 	if err != nil {
 		return err
 	}
-	defer stmt.Close()
+	defer func() { _ = stmt.Close() }()
 
 	for _, row := range rows {
 		if _, err := stmt.ExecContext(ctx, row.ClusterID, row.Namespace, row.PodName,

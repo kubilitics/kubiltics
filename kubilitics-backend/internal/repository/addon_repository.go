@@ -424,13 +424,13 @@ func (r *SQLiteRepository) GetAddOn(ctx context.Context, id string) (*models.Add
 	vQuery := `SELECT version, release_date, changelog_url, breaking_changes, highlights FROM addon_versions WHERE addon_id = ? ORDER BY release_date DESC`
 	vRows, err := r.db.QueryxContext(ctx, vQuery, id)
 	if err == nil {
-		defer vRows.Close()
+		defer func() { _ = vRows.Close() }()
 		for vRows.Next() {
 			var v models.VersionChangelog
 			var breakingJSON, highlightsJSON string
 			if err := vRows.Scan(&v.Version, &v.ReleaseDate, &v.ChangelogURL, &breakingJSON, &highlightsJSON); err == nil {
-				json.Unmarshal([]byte(breakingJSON), &v.BreakingChanges)
-				json.Unmarshal([]byte(highlightsJSON), &v.Highlights)
+				_ = json.Unmarshal([]byte(breakingJSON), &v.BreakingChanges)
+				_ = json.Unmarshal([]byte(highlightsJSON), &v.Highlights)
 				versions = append(versions, v)
 			}
 		}

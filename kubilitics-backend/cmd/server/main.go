@@ -654,9 +654,6 @@ func recoveryMiddleware(log *slog.Logger) func(http.Handler) http.Handler {
 func rolloutPathInterceptor(restHandler *rest.Handler, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		path := r.URL.Path
-		if strings.Contains(path, "shell/stream") {
-			// Logged via StructuredLog middleware
-		}
 		if path == "" {
 			path = "/"
 		}

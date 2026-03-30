@@ -86,7 +86,7 @@ func (r *SQLiteRepository) ListScanRuns(ctx context.Context, limit, offset int) 
 	if err != nil {
 		return nil, 0, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var runs []*models.ScanRun
 	for rows.Next() {
@@ -111,7 +111,7 @@ func (r *SQLiteRepository) CreateScanFindings(ctx context.Context, findings []mo
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 
 	stmt, err := tx.PrepareContext(ctx, `
 		INSERT INTO scan_findings (id, run_id, tool, rule_id, severity, title, description,
@@ -122,7 +122,7 @@ func (r *SQLiteRepository) CreateScanFindings(ctx context.Context, findings []mo
 	if err != nil {
 		return err
 	}
-	defer stmt.Close()
+	defer func() { _ = stmt.Close() }()
 
 	for _, f := range findings {
 		_, err := stmt.ExecContext(ctx,
@@ -222,7 +222,7 @@ func (r *SQLiteRepository) queryScanFindings(ctx context.Context, query string, 
 	if err != nil {
 		return nil, 0, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var findings []models.ScanFinding
 	for rows.Next() {
@@ -260,7 +260,7 @@ func (r *SQLiteRepository) GetScanStats(ctx context.Context) (*models.ScanStats,
 	if err != nil {
 		return nil, fmt.Errorf("findings by severity: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	for rows.Next() {
 		var sev string
 		var count int
@@ -274,7 +274,7 @@ func (r *SQLiteRepository) GetScanStats(ctx context.Context) (*models.ScanStats,
 	if err != nil {
 		return nil, fmt.Errorf("findings by tool: %w", err)
 	}
-	defer rows2.Close()
+	defer func() { _ = rows2.Close() }()
 	for rows2.Next() {
 		var tool string
 		var count int
@@ -303,7 +303,7 @@ func (r *SQLiteRepository) GetScanTrend(ctx context.Context, days int) ([]models
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var trends []models.ScanTrend
 	for rows.Next() {

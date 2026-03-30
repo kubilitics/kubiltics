@@ -232,7 +232,7 @@ func (im *InformerManager) GetStore(resourceType string) cache.Store {
 func (im *InformerManager) setupPodInformer() {
 	informer := im.factory.Core().V1().Pods().Informer()
 	im.stores["Pod"] = informer.GetStore()
-	informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+	_, _ = informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
 			if handler, ok := im.handlers["Pod"]; ok {
 				handler("ADDED", obj)
@@ -255,7 +255,7 @@ func (im *InformerManager) setupPodInformer() {
 func (im *InformerManager) setupServiceInformer() {
 	informer := im.factory.Core().V1().Services().Informer()
 	im.stores["Service"] = informer.GetStore()
-	informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+	_, _ = informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
 			if handler, ok := im.handlers["Service"]; ok {
 				handler("ADDED", obj)
@@ -278,7 +278,7 @@ func (im *InformerManager) setupServiceInformer() {
 func (im *InformerManager) setupDeploymentInformer() {
 	informer := im.factory.Apps().V1().Deployments().Informer()
 	im.stores["Deployment"] = informer.GetStore()
-	informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+	_, _ = informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
 			if handler, ok := im.handlers["Deployment"]; ok {
 				handler("ADDED", obj)

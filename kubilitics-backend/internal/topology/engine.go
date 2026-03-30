@@ -179,7 +179,7 @@ func (e *Engine) discoverPods(ctx context.Context, graph *Graph, namespace strin
 		node := buildNode("Pod", pod.Namespace, pod.Name, string(pod.Status.Phase), pod.ObjectMeta)
 
 		// Infer health from actual container statuses and pod phase (P1 topology data model fix).
-		health := "healthy"
+		var health string
 		totalRestarts := 0
 		unhealthy := false
 		for _, cs := range pod.Status.ContainerStatuses {

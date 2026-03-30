@@ -27,7 +27,7 @@ type ResourceBundle struct {
 	Jobs                  []batchv1.Job
 	CronJobs              []batchv1.CronJob
 	Services              []corev1.Service
-	Endpoints             []corev1.Endpoints
+	Endpoints             []corev1.Endpoints //nolint:staticcheck // TODO: migrate to EndpointSlice
 	EndpointSlices        []discoveryv1.EndpointSlice
 	Ingresses             []networkingv1.Ingress
 	IngressClasses        []networkingv1.IngressClass

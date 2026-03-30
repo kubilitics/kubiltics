@@ -80,37 +80,6 @@ func topologyCacheSet(key string, data *topologyv2.TopologyResponse) {
 	})
 }
 
-// expandableCategories defines edge categories that represent meaningful
-// resource relationships. Direct/Extended modes ONLY expand through these.
-var expandableCategories = map[string]bool{
-	"ownership":     true,
-	"networking":    true,
-	"configuration": true,
-	"storage":       true,
-	"rbac":          true,
-	"policy":        true,
-	"scaling":       true,
-	// "cluster" (Events) intentionally excluded — operational telemetry, not infrastructure
-}
-
-// hubKinds are shared infrastructure nodes that fan out to many unrelated
-// resources. They are included as leaf nodes but never expanded through.
-var hubKinds = map[string]bool{
-	"Namespace":                        true,
-	"Node":                             true,
-	"LimitRange":                       true,
-	"ResourceQuota":                    true,
-	"PriorityClass":                    true,
-	"RuntimeClass":                     true,
-	"IngressClass":                     true,
-	"StorageClass":                     true,
-	"MutatingWebhookConfiguration":     true,
-	"ValidatingWebhookConfiguration":   true,
-	"NetworkPolicy":                    true,
-	"ServiceAccount":                   true,
-	"Ingress":                          true,
-}
-
 // Handler manages HTTP request handlers
 type Handler struct {
 	clusterService        service.ClusterService

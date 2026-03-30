@@ -68,25 +68,25 @@ func (e *ClusterGraphEngine) Start(ctx context.Context) {
 	}
 
 	// Core
-	e.factory.Core().V1().Pods().Informer().AddEventHandler(handler)
-	e.factory.Core().V1().Services().Informer().AddEventHandler(handler)
-	e.factory.Core().V1().ConfigMaps().Informer().AddEventHandler(handler)
-	e.factory.Core().V1().Secrets().Informer().AddEventHandler(handler)
-	e.factory.Core().V1().ServiceAccounts().Informer().AddEventHandler(handler)
-	e.factory.Core().V1().PersistentVolumeClaims().Informer().AddEventHandler(handler)
+	_, _ = e.factory.Core().V1().Pods().Informer().AddEventHandler(handler)
+	_, _ = e.factory.Core().V1().Services().Informer().AddEventHandler(handler)
+	_, _ = e.factory.Core().V1().ConfigMaps().Informer().AddEventHandler(handler)
+	_, _ = e.factory.Core().V1().Secrets().Informer().AddEventHandler(handler)
+	_, _ = e.factory.Core().V1().ServiceAccounts().Informer().AddEventHandler(handler)
+	_, _ = e.factory.Core().V1().PersistentVolumeClaims().Informer().AddEventHandler(handler)
 
 	// Apps
-	e.factory.Apps().V1().Deployments().Informer().AddEventHandler(handler)
-	e.factory.Apps().V1().ReplicaSets().Informer().AddEventHandler(handler)
-	e.factory.Apps().V1().StatefulSets().Informer().AddEventHandler(handler)
-	e.factory.Apps().V1().DaemonSets().Informer().AddEventHandler(handler)
+	_, _ = e.factory.Apps().V1().Deployments().Informer().AddEventHandler(handler)
+	_, _ = e.factory.Apps().V1().ReplicaSets().Informer().AddEventHandler(handler)
+	_, _ = e.factory.Apps().V1().StatefulSets().Informer().AddEventHandler(handler)
+	_, _ = e.factory.Apps().V1().DaemonSets().Informer().AddEventHandler(handler)
 
 	// Batch
-	e.factory.Batch().V1().Jobs().Informer().AddEventHandler(handler)
-	e.factory.Batch().V1().CronJobs().Informer().AddEventHandler(handler)
+	_, _ = e.factory.Batch().V1().Jobs().Informer().AddEventHandler(handler)
+	_, _ = e.factory.Batch().V1().CronJobs().Informer().AddEventHandler(handler)
 
 	// Networking
-	e.factory.Networking().V1().Ingresses().Informer().AddEventHandler(handler)
+	_, _ = e.factory.Networking().V1().Ingresses().Informer().AddEventHandler(handler)
 	e.factory.Networking().V1().NetworkPolicies().Informer().AddEventHandler(handler)
 
 	// Autoscaling

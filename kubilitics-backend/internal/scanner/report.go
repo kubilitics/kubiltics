@@ -55,7 +55,7 @@ func (r *Report) GenerateMarkdown() ([]byte, error) {
 	})
 
 	var buf bytes.Buffer
-	buf.WriteString(fmt.Sprintf("# Security Scan Report\n\n"))
+	buf.WriteString("# Security Scan Report\n\n")
 	buf.WriteString(fmt.Sprintf("**Run ID:** %s  \n", r.RunID))
 	buf.WriteString(fmt.Sprintf("**Target:** %s (`%s`)  \n", r.Target.Type, r.Target.Path))
 	buf.WriteString(fmt.Sprintf("**Generated:** %s  \n", r.GeneratedAt.Format(time.RFC3339)))

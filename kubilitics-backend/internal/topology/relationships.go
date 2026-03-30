@@ -811,17 +811,3 @@ func (ri *RelationshipInferencer) inferJobRelationships() error {
 	return nil
 }
 
-// matchesSelector checks if labels match a selector
-func (ri *RelationshipInferencer) matchesSelector(podLabels, selector map[string]string) bool {
-	if len(selector) == 0 {
-		return false
-	}
-
-	for key, value := range selector {
-		if podLabels[key] != value {
-			return false
-		}
-	}
-
-	return true
-}

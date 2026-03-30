@@ -99,7 +99,7 @@ func Init(serviceName, endpoint string, samplingRate float64) (func(), error) {
 func Tracer() trace.Tracer {
 	if tracer == nil {
 		// Return no-op tracer if not initialized
-		return trace.NewNoopTracerProvider().Tracer("noop")
+		return trace.NewNoopTracerProvider().Tracer("noop") //nolint:staticcheck // TODO: use noop package when available
 	}
 	return tracer
 }
