@@ -42,6 +42,7 @@ import {
   type CustomTab,
 } from '@/components/resources';
 import { PodTerminal } from '@/components/resources/PodTerminal';
+import { PodWorkspace } from '@/components/resources/PodWorkspace';
 import {
   TOOLTIP_RESTART_POLICY,
   TOOLTIP_DNS_POLICY,
@@ -579,17 +580,19 @@ export default function PodDetail() {
       icon: Terminal,
       render: (ctx) => {
         const pod = ctx.resource;
-        const containers = [
+        const allContainers = [
           ...(pod.spec?.containers || []).map(c => c.name),
           ...(pod.spec?.ephemeralContainers || []).map(c => c.name),
         ];
         return (
-          <PodTerminal
-            podName={name}
-            namespace={namespace}
-            containerName={selectedTerminalContainer || containers[0]}
-            containers={containers}
+          <PodWorkspace
+            podName={name || ''}
+            namespace={namespace || ''}
+            containerName={selectedTerminalContainer || allContainers[0]}
+            containers={allContainers}
             onContainerChange={setSelectedTerminalContainer}
+            baseUrl={backendBaseUrl ?? ''}
+            clusterId={clusterId ?? ''}
           />
         );
       },
