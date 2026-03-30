@@ -25,6 +25,7 @@ import type { ExportFormat } from "./TopologyCanvas";
 import { TopologyWelcomeTips } from "./TopologyWelcomeTips";
 import { AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { FilterIndicator } from "./FilterIndicator";
 import type { ViewMode } from "./types/topology";
 
 // ─── URL Search Params helpers ───────────────────────────────────────────────
@@ -386,6 +387,20 @@ export function TopologyPage() {
         onNavigate={handleViewModeChange}
         onClearNamespace={() => setSelectedNamespaces(new Set(["default"]))}
       />}
+
+      {/* Filter visibility indicators */}
+      {!presentationMode && topology && (
+        <FilterIndicator
+          depth={depth}
+          maxDepth={3}
+          viewMode={viewMode}
+          selectedNamespaces={Array.from(selectedNamespaces)}
+          totalNamespaces={allNamespaces.length}
+          visibleNodeCount={topology.nodes.length}
+          totalNodeCount={totalUnfiltered}
+          truncated={truncated}
+        />
+      )}
 
       {/* Failed resources warning banner */}
       {topology?.metadata?.failed_resources && topology.metadata.failed_resources.length > 0 && (
