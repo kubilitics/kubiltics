@@ -80,8 +80,8 @@ export {
   getResourceTopology,
   getTopologyV2,
   getTopologyExportDrawio,
-  getBlastRadius,
 } from './api/topology';
+export { getBlastRadius } from './api/blastRadius';
 
 // ── Resources ─────────────────────────────────────────────────────────────────
 export {

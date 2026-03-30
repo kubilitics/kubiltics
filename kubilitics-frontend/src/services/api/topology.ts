@@ -3,7 +3,7 @@
  */
 import { adaptTopologyGraph, validateTopologyGraph } from '@/topology/graph';
 import { backendRequest } from './client';
-import type { TopologyGraph, BlastRadiusResult } from './types';
+import type { TopologyGraph } from './types';
 
 /**
  * GET /api/v1/clusters/{clusterId}/topology — get topology graph.
@@ -121,18 +121,4 @@ export async function getTopologyExportDrawio(
   return result;
 }
 
-/**
- * GET /api/v1/clusters/{clusterId}/blast-radius/{namespace}/{kind}/{name}
- * Returns blast radius analysis for a specific resource.
- */
-export async function getBlastRadius(
-  baseUrl: string,
-  clusterId: string,
-  namespace: string,
-  kind: string,
-  name: string
-): Promise<BlastRadiusResult> {
-  const ns = namespace === '' ? '-' : namespace;
-  const path = `clusters/${encodeURIComponent(clusterId)}/blast-radius/${encodeURIComponent(ns)}/${encodeURIComponent(kind)}/${encodeURIComponent(name)}`;
-  return backendRequest<BlastRadiusResult>(baseUrl, path);
-}
+// Blast radius API moved to @/services/api/blastRadius.ts

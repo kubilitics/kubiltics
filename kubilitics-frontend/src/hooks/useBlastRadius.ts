@@ -1,12 +1,12 @@
 /**
- * Hook for fetching blast radius analysis from backend API.
- * Uses React Query with 60s staleTime. Falls back gracefully if API unavailable.
+ * Hook for fetching cluster-wide blast radius analysis.
+ * Polls graph-status until the graph is ready, then fetches the blast radius result.
  */
 import { useQuery } from '@tanstack/react-query';
-import { getBlastRadius } from '@/services/backendApiClient';
+import { getBlastRadius, getGraphStatus } from '@/services/api/blastRadius';
 import { useActiveClusterId } from './useActiveClusterId';
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
-import type { BlastRadiusResult } from '@/services/api/types';
+import type { BlastRadiusResult, GraphStatus } from '@/services/api/types';
 
 export interface UseBlastRadiusOptions {
   kind: string;
@@ -17,17 +17,20 @@ export interface UseBlastRadiusOptions {
 
 export interface UseBlastRadiusReturn {
   data: BlastRadiusResult | undefined;
+  graphStatus: GraphStatus | undefined;
   isLoading: boolean;
   isFetching: boolean;
   error: Error | null;
-  /** True when the API returned a 404 — the endpoint does not exist yet. */
-  isUnavailable: boolean;
+  /** True while the cluster dependency graph is still being built. */
+  isGraphBuilding: boolean;
 }
 
 /**
- * Fetches blast radius analysis for a specific resource.
- * Falls back gracefully: if the API returns 404 the hook surfaces
- * `isUnavailable = true` so the component can keep using topology-derived data.
+ * Fetches blast radius analysis for a specific resource (V2 — cluster-wide graph).
+ *
+ * Strategy:
+ *  1. Poll graph-status every 2 s until the graph reports ready.
+ *  2. Once the graph is ready, issue the blast-radius query for the target resource.
  */
 export function useBlastRadius({
   kind,
@@ -43,20 +46,47 @@ export function useBlastRadius({
   const normalizedNamespace = namespace ?? '';
   const normalizedName = name ?? '';
 
-  const queryEnabled =
-    enabled &&
-    !!clusterId &&
-    isBackendConfigured &&
+  const baseEnabled = enabled && !!clusterId && isBackendConfigured;
+
+  // --- Step 1: poll graph-status until graph is ready ---
+  const {
+    data: graphStatus,
+    isLoading: isGraphStatusLoading,
+    error: graphStatusError,
+  } = useQuery<GraphStatus, Error>({
+    queryKey: ['blast-radius-graph-status', clusterId],
+    queryFn: async () => {
+      if (!clusterId) throw new Error('Cluster not selected');
+      return getGraphStatus(effectiveBaseUrl, clusterId);
+    },
+    enabled: baseEnabled,
+    // Poll every 2 s while the graph is not yet ready; stop polling once ready.
+    refetchInterval: (query) => {
+      const data = query.state.data;
+      return data?.ready ? false : 2_000;
+    },
+    staleTime: 0,
+    retry: 2,
+    retryDelay: 1_000,
+  });
+
+  const graphReady = graphStatus?.ready === true;
+  const isGraphBuilding = baseEnabled && !graphReady && !graphStatusError;
+
+  // --- Step 2: fetch blast radius once graph is ready ---
+  const blastEnabled =
+    baseEnabled &&
+    graphReady &&
     !!kind &&
     !!normalizedName;
 
   const {
     data,
-    isLoading,
+    isLoading: isBlastLoading,
     isFetching,
-    error,
+    error: blastError,
   } = useQuery<BlastRadiusResult, Error>({
-    queryKey: ['blast-radius', clusterId, kind, normalizedNamespace, normalizedName],
+    queryKey: ['blast-radius-v2', clusterId, kind, normalizedNamespace, normalizedName],
     queryFn: async () => {
       if (!clusterId) throw new Error('Cluster not selected');
       if (!normalizedName) throw new Error('Resource name is required');
@@ -68,26 +98,25 @@ export function useBlastRadius({
         normalizedName,
       );
     },
-    enabled: queryEnabled,
+    enabled: blastEnabled,
     staleTime: 60_000,
     retry: (failureCount, err) => {
-      // Don't retry on 404 — the endpoint doesn't exist
+      // Don't retry on 404 — endpoint does not exist
       if (err && 'status' in err && (err as { status: number }).status === 404) return false;
       return failureCount < 2;
     },
-    retryDelay: 1000,
+    retryDelay: 1_000,
   });
 
-  const isUnavailable =
-    !!error &&
-    'status' in error &&
-    (error as { status: number }).status === 404;
+  const isLoading = isGraphStatusLoading || (graphReady && isBlastLoading);
+  const error = (blastError ?? graphStatusError) ?? null;
 
   return {
     data,
+    graphStatus,
     isLoading,
     isFetching,
-    error: isUnavailable ? null : (error ?? null),
-    isUnavailable,
+    error,
+    isGraphBuilding,
   };
 }

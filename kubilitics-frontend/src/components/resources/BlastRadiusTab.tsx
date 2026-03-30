@@ -11,7 +11,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { AlertTriangle, Shield } from 'lucide-react';
 
-import { useBlastRadiusV2 } from '@/hooks/useBlastRadiusV2';
+import { useBlastRadius } from '@/hooks/useBlastRadius';
 import { useResourceTopology } from '@/hooks/useResourceTopology';
 import { useActiveClusterId } from '@/hooks/useActiveClusterId';
 import { kindToRoutePath } from '@/utils/resourceKindMapper';
@@ -124,7 +124,7 @@ export function BlastRadiusTab({ kind, namespace, name }: BlastRadiusTabProps) {
     isLoading: brLoading,
     error: brError,
     isGraphBuilding,
-  } = useBlastRadiusV2({ kind, namespace, name, enabled: canFetch });
+  } = useBlastRadius({ kind, namespace, name, enabled: canFetch });
 
   // ── Topology graph (for the canvas visualization) ──────────────────────
   const { graph, isLoading: topoLoading, error: topoError } = useResourceTopology({
