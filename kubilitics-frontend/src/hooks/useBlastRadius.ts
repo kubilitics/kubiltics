@@ -1,6 +1,7 @@
 /**
  * Hook for fetching cluster-wide blast radius analysis.
- * Polls graph-status until the graph is ready, then fetches the blast radius result.
+ * Checks if graph engine is ready, fetches blast radius if so.
+ * Never blocks UI — falls back gracefully if graph engine isn't available.
  */
 import { useQuery } from '@tanstack/react-query';
 import { getBlastRadius, getGraphStatus } from '@/services/api/blastRadius';
@@ -21,17 +22,10 @@ export interface UseBlastRadiusReturn {
   isLoading: boolean;
   isFetching: boolean;
   error: Error | null;
-  /** True while the cluster dependency graph is still being built. */
-  isGraphBuilding: boolean;
+  /** True when graph engine is available and data is being fetched */
+  isGraphReady: boolean;
 }
 
-/**
- * Fetches blast radius analysis for a specific resource (V2 — cluster-wide graph).
- *
- * Strategy:
- *  1. Poll graph-status every 2 s until the graph reports ready.
- *  2. Once the graph is ready, issue the blast-radius query for the target resource.
- */
 export function useBlastRadius({
   kind,
   namespace,
@@ -45,40 +39,25 @@ export function useBlastRadius({
 
   const normalizedNamespace = namespace ?? '';
   const normalizedName = name ?? '';
-
   const baseEnabled = enabled && !!clusterId && isBackendConfigured;
 
-  // --- Step 1: poll graph-status until graph is ready ---
+  // Check graph status once (no polling). If ready, proceed. If not, give up.
   const {
     data: graphStatus,
-    isLoading: isGraphStatusLoading,
-    error: graphStatusError,
+    isLoading: isStatusLoading,
   } = useQuery<GraphStatus, Error>({
     queryKey: ['blast-radius-graph-status', clusterId],
-    queryFn: async () => {
-      if (!clusterId) throw new Error('Cluster not selected');
-      return getGraphStatus(effectiveBaseUrl, clusterId);
-    },
-    enabled: baseEnabled,
-    // Poll every 2 s while the graph is not yet ready; stop polling once ready.
-    refetchInterval: (query) => {
-      const data = query.state.data;
-      return data?.ready ? false : 2_000;
-    },
-    staleTime: 0,
-    retry: 2,
+    queryFn: () => getGraphStatus(effectiveBaseUrl, clusterId!),
+    enabled: baseEnabled && !!clusterId,
+    staleTime: 30_000,
+    retry: 1,
     retryDelay: 1_000,
   });
 
   const graphReady = graphStatus?.ready === true;
-  const isGraphBuilding = baseEnabled && !graphReady && !graphStatusError;
 
-  // --- Step 2: fetch blast radius once graph is ready ---
-  const blastEnabled =
-    baseEnabled &&
-    graphReady &&
-    !!kind &&
-    !!normalizedName;
+  // Fetch blast radius only when graph is ready
+  const blastEnabled = baseEnabled && graphReady && !!kind && !!normalizedName;
 
   const {
     data,
@@ -86,37 +65,19 @@ export function useBlastRadius({
     isFetching,
     error: blastError,
   } = useQuery<BlastRadiusResult, Error>({
-    queryKey: ['blast-radius-v2', clusterId, kind, normalizedNamespace, normalizedName],
-    queryFn: async () => {
-      if (!clusterId) throw new Error('Cluster not selected');
-      if (!normalizedName) throw new Error('Resource name is required');
-      return getBlastRadius(
-        effectiveBaseUrl,
-        clusterId,
-        normalizedNamespace,
-        kind,
-        normalizedName,
-      );
-    },
+    queryKey: ['blast-radius', clusterId, kind, normalizedNamespace, normalizedName],
+    queryFn: () => getBlastRadius(effectiveBaseUrl, clusterId!, normalizedNamespace, kind, normalizedName),
     enabled: blastEnabled,
     staleTime: 60_000,
-    retry: (failureCount, err) => {
-      // Don't retry on 404 — endpoint does not exist
-      if (err && 'status' in err && (err as { status: number }).status === 404) return false;
-      return failureCount < 2;
-    },
-    retryDelay: 1_000,
+    retry: 1,
   });
-
-  const isLoading = isGraphStatusLoading || (graphReady && isBlastLoading);
-  const error = (blastError ?? graphStatusError) ?? null;
 
   return {
     data,
     graphStatus,
-    isLoading,
+    isLoading: isStatusLoading || (graphReady && isBlastLoading),
     isFetching,
-    error,
-    isGraphBuilding,
+    error: blastError ?? null,
+    isGraphReady: graphReady,
   };
 }

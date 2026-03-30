@@ -49,54 +49,6 @@ function buildResourceDetailPath(
 
 // ── Graph Building Skeleton ──────────────────────────────────────────────
 
-function GraphBuildingSkeleton({
-  nodeCount,
-  namespaceCount,
-}: {
-  nodeCount: number;
-  namespaceCount: number;
-}) {
-  return (
-    <motion.div
-      className="flex flex-col items-center justify-center min-h-[400px] gap-4"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.3 }}
-    >
-      {/* Animated pulse rings */}
-      <div className="relative h-16 w-16">
-        <div className="absolute inset-0 rounded-full border-2 border-blue-400 dark:border-blue-500 animate-ping opacity-25" />
-        <div className="absolute inset-2 rounded-full border-2 border-blue-400 dark:border-blue-500 animate-ping opacity-25 animation-delay-200" />
-        <div className="absolute inset-0 flex items-center justify-center">
-          <div className="h-8 w-8 rounded-full border-4 border-slate-200 dark:border-slate-700 border-t-blue-500 dark:border-t-blue-400 animate-spin" />
-        </div>
-      </div>
-
-      <div className="text-center space-y-2">
-        <p className="text-base font-semibold text-slate-900 dark:text-slate-100">
-          Building dependency graph...
-        </p>
-        {(nodeCount > 0 || namespaceCount > 0) && (
-          <p className="text-sm text-slate-500 dark:text-slate-400">
-            Analyzing{' '}
-            <span className="font-medium text-slate-700 dark:text-slate-300">{nodeCount}</span>{' '}
-            resources across{' '}
-            <span className="font-medium text-slate-700 dark:text-slate-300">{namespaceCount}</span>{' '}
-            namespaces
-          </p>
-        )}
-        {/* Progress shimmer */}
-        <div className="mx-auto max-w-xs h-1.5 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
-          <div className="h-full w-1/3 rounded-full bg-blue-500 dark:bg-blue-400 animate-shimmer" />
-        </div>
-        <p className="text-xs text-slate-400 dark:text-slate-500 pt-2">
-          This only happens once. Future queries are instant.
-        </p>
-      </div>
-    </motion.div>
-  );
-}
-
 // ── Main Component ───────────────────────────────────────────────────────
 
 export function BlastRadiusTab({ kind, namespace, name }: BlastRadiusTabProps) {
@@ -120,10 +72,9 @@ export function BlastRadiusTab({ kind, namespace, name }: BlastRadiusTabProps) {
   // ── V2 blast radius API ────────────────────────────────────────────────
   const {
     data: blastData,
-    graphStatus,
     isLoading: brLoading,
     error: brError,
-    isGraphBuilding,
+    isGraphReady,
   } = useBlastRadius({ kind, namespace, name, enabled: canFetch });
 
   // ── Topology graph (for the canvas visualization) ──────────────────────
@@ -249,19 +200,7 @@ export function BlastRadiusTab({ kind, namespace, name }: BlastRadiusTabProps) {
 
   // ── Render States ──────────────────────────────────────────────────────
 
-  // Graph building state
-  if (isGraphBuilding) {
-    return (
-      <div className="flex flex-col gap-4 p-4 w-full">
-        <GraphBuildingSkeleton
-          nodeCount={graphStatus?.node_count ?? 0}
-          namespaceCount={graphStatus?.namespace_count ?? 0}
-        />
-      </div>
-    );
-  }
-
-  // Loading
+  // Loading (only block on topology loading, not blast radius)
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px]">
