@@ -15,6 +15,7 @@ services:
       - KUBILITICS_LOG_LEVEL=info
       - KUBILITICS_ALLOWED_ORIGINS=http://localhost:5173,http://localhost:4173,http://frontend:80
       - KUBILITICS_AUTH_MODE=disabled
+      - KUBILITICS_BIND_ADDRESS=0.0.0.0
       - KUBECONFIG=/kubeconfig/config
     volumes:
       - backend-data:/data
