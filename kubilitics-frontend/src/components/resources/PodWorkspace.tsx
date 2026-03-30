@@ -1,14 +1,12 @@
 /**
  * PodWorkspace — unified Terminal + File Browser workspace.
  *
- * Combines the terminal (xterm.js) and file browser into a single tabbed
- * workspace with a shared container selector. The mode toggle sits in the
- * toolbar header, keeping both tools instantly accessible without hunting
- * through menus or action dropdowns.
+ * Adds a Terminal/Files mode toggle inside the terminal's existing header bar
+ * (right after the traffic lights). No extra bars, no visual clutter.
+ * The terminal header stays clean and consistent with the original design.
  */
 import { useState } from 'react';
 import { Terminal, FolderOpen } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { PodTerminal } from './PodTerminal';
 import { InlineFileBrowser } from './InlineFileBrowser';
@@ -22,8 +20,6 @@ interface PodWorkspaceProps {
   baseUrl?: string;
   clusterId?: string;
   className?: string;
-  /** Start in file browser mode instead of terminal */
-  initialMode?: 'terminal' | 'files';
 }
 
 export function PodWorkspace({
@@ -35,119 +31,99 @@ export function PodWorkspace({
   baseUrl,
   clusterId,
   className,
-  initialMode = 'terminal',
 }: PodWorkspaceProps) {
-  const [mode, setMode] = useState<'terminal' | 'files'>(initialMode);
-  const [selectedContainer, setSelectedContainer] = useState(containerName);
+  const [mode, setMode] = useState<'terminal' | 'files'>('terminal');
 
-  const handleContainerChange = (c: string) => {
-    setSelectedContainer(c);
-    onContainerChange?.(c);
-  };
+  // Mode toggle pills — injected into PodTerminal's header via headerLeft prop
+  const modeToggle = (
+    <div className="flex items-center bg-slate-800/60 rounded-md p-0.5 ml-1">
+      <button
+        onClick={() => setMode('terminal')}
+        className={cn(
+          'flex items-center gap-1 h-6 px-2 text-[11px] font-medium rounded-sm transition-all',
+          mode === 'terminal'
+            ? 'bg-slate-600 text-white'
+            : 'text-slate-400 hover:text-white hover:bg-slate-700',
+        )}
+      >
+        <Terminal className="h-3 w-3" />
+        Terminal
+      </button>
+      <button
+        onClick={() => setMode('files')}
+        className={cn(
+          'flex items-center gap-1 h-6 px-2 text-[11px] font-medium rounded-sm transition-all',
+          mode === 'files'
+            ? 'bg-slate-600 text-white'
+            : 'text-slate-400 hover:text-white hover:bg-slate-700',
+        )}
+      >
+        <FolderOpen className="h-3 w-3" />
+        Files
+      </button>
+    </div>
+  );
 
-  return (
-    <div className={cn('flex flex-col min-h-0 flex-1', className)}>
-      {/* Mode toggle bar — sits above the terminal/browser content */}
+  if (mode === 'files') {
+    // File browser mode — keep the same terminal-style chrome around it
+    return (
       <div className={cn(
-        'flex items-center gap-2 px-4 py-2',
-        'bg-slate-900 dark:bg-slate-900 border-b border-slate-700/50',
+        'flex flex-col rounded-xl overflow-hidden border border-slate-700/50 min-h-0 flex-1',
+        className,
       )}>
-        {/* Mode toggle pills */}
-        <div className="flex items-center bg-slate-800/80 rounded-lg p-0.5">
-          <button
-            onClick={() => setMode('terminal')}
-            className={cn(
-              'flex items-center gap-1.5 h-7 px-3 text-[12px] font-medium rounded-md transition-all duration-200',
-              mode === 'terminal'
-                ? 'bg-slate-600 text-white shadow-sm'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/50',
-            )}
-          >
-            <Terminal className="h-3.5 w-3.5" />
-            Terminal
-          </button>
-          <button
-            onClick={() => setMode('files')}
-            className={cn(
-              'flex items-center gap-1.5 h-7 px-3 text-[12px] font-medium rounded-md transition-all duration-200',
-              mode === 'files'
-                ? 'bg-slate-600 text-white shadow-sm'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/50',
-            )}
-          >
-            <FolderOpen className="h-3.5 w-3.5" />
-            Files
-          </button>
-        </div>
-
-        {/* Container selector (shared between terminal and files) */}
-        {containers.length > 1 && (
-          <>
-            <div className="h-4 w-px bg-slate-700/50" />
-            <div className="flex items-center gap-0.5 bg-slate-800/60 rounded-md p-0.5">
+        {/* Reuse terminal-style header for visual consistency */}
+        <div className="bg-slate-950 border-b border-slate-700/50 px-4 py-2 flex items-center gap-2">
+          <div className="flex gap-1.5">
+            <div className="w-3 h-3 rounded-full bg-[#ff5f57]" />
+            <div className="w-3 h-3 rounded-full bg-[#febc2e]" />
+            <div className="w-3 h-3 rounded-full bg-[#28c840]" />
+          </div>
+          {modeToggle}
+          {/* Container selector */}
+          {containers.length > 1 && (
+            <div className="flex items-center gap-0.5 ml-2 bg-slate-800/60 rounded-md p-0.5">
               {containers.map(c => (
                 <button
                   key={c}
-                  onClick={() => handleContainerChange(c)}
+                  onClick={() => onContainerChange?.(c)}
                   className={cn(
                     'h-6 px-2.5 text-[11px] font-medium rounded-sm transition-all',
-                    selectedContainer === c
+                    containerName === c
                       ? 'bg-slate-600 text-white'
                       : 'text-slate-400 hover:text-white hover:bg-slate-700',
                   )}
                 >{c}</button>
               ))}
             </div>
-          </>
-        )}
-
-        {/* Active mode indicator */}
-        <span className="text-[10px] text-slate-500 ml-auto font-mono">
-          {podName}:{selectedContainer}
-        </span>
-      </div>
-
-      {/* Content area */}
-      <div className="flex-1 min-h-0 relative">
-        <AnimatePresence mode="wait">
-          {mode === 'terminal' ? (
-            <motion.div
-              key="terminal"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.15 }}
-              className="absolute inset-0 flex flex-col"
-            >
-              <PodTerminal
-                podName={podName}
-                namespace={namespace}
-                containerName={selectedContainer}
-                containers={containers}
-                onContainerChange={handleContainerChange}
-                className="flex-1 min-h-0 rounded-none border-0"
-              />
-            </motion.div>
-          ) : (
-            <motion.div
-              key="files"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.15 }}
-              className="absolute inset-0 flex flex-col overflow-auto"
-            >
-              <InlineFileBrowser
-                podName={podName}
-                namespace={namespace}
-                containerName={selectedContainer}
-                baseUrl={baseUrl || ''}
-                clusterId={clusterId || ''}
-              />
-            </motion.div>
           )}
-        </AnimatePresence>
+          <span className="text-xs text-slate-400 font-mono ml-auto truncate">
+            {podName}:{containerName}
+          </span>
+        </div>
+        {/* Inline file browser fills the content area */}
+        <div className="flex-1 min-h-0 overflow-auto">
+          <InlineFileBrowser
+            podName={podName}
+            namespace={namespace}
+            containerName={containerName}
+            baseUrl={baseUrl || ''}
+            clusterId={clusterId || ''}
+          />
+        </div>
       </div>
-    </div>
+    );
+  }
+
+  // Terminal mode — PodTerminal with mode toggle injected into its header
+  return (
+    <PodTerminal
+      podName={podName}
+      namespace={namespace}
+      containerName={containerName}
+      containers={containers}
+      onContainerChange={onContainerChange}
+      className={className}
+      headerLeft={modeToggle}
+    />
   );
 }

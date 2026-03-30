@@ -21,6 +21,8 @@ interface PodTerminalProps {
   containers?: string[];
   onContainerChange?: (container: string) => void;
   className?: string;
+  /** Optional element rendered in the header after the traffic lights (e.g., mode toggle) */
+  headerLeft?: React.ReactNode;
 }
 
 function base64Encode(str: string): string {
@@ -40,6 +42,7 @@ export function PodTerminal({
   containers = [],
   onContainerChange,
   className,
+  headerLeft,
 }: PodTerminalProps) {
   const termRef = useRef<HTMLDivElement>(null);
   const xtermRef = useRef<Terminal | null>(null);
@@ -284,6 +287,7 @@ export function PodTerminal({
           <div className="w-3 h-3 rounded-full bg-[#febc2e]" />
           <div className="w-3 h-3 rounded-full bg-[#28c840]" />
         </div>
+        {headerLeft}
         <span className="text-xs text-slate-400 font-mono ml-2 truncate">
           {podName}:{selectedContainer}
         </span>
