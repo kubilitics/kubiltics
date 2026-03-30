@@ -44,8 +44,8 @@ func (c *helmClientImpl) AddOrUpdateRepo(ctx context.Context, repoName, repoURL 
 	// Helm's NewChartRepository uses helmpath.CachePath("repository").
 	// Use per-client cache by setting HELM_CACHE_HOME for this call.
 	oldCache := os.Getenv(helmpath.CacheHomeEnvVar)
-	os.Setenv(helmpath.CacheHomeEnvVar, c.repoCachePath)
-	defer os.Setenv(helmpath.CacheHomeEnvVar, oldCache)
+	_ = os.Setenv(helmpath.CacheHomeEnvVar, c.repoCachePath)
+	defer func() { _ = os.Setenv(helmpath.CacheHomeEnvVar, oldCache) }()
 
 	chartRepo, err := repo.NewChartRepository(entry, getter.All(c.envSettings))
 	if err != nil {

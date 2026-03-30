@@ -255,7 +255,7 @@ func (h *Handler) UploadContainerFile(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusBadRequest, "Missing 'file' in form data: "+err.Error())
 		return
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	destPath := r.FormValue("path")
 	container := r.FormValue("container")

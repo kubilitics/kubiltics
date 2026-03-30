@@ -136,7 +136,7 @@ func (h *Handler) GetPodExec(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		return
 	}
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 	log.Printf(
 		"pod exec: connected requestedCluster=%s ns=%s pod=%s container=%s",
 		clusterID,

@@ -36,7 +36,7 @@ func (h *Handler) GetClusterOverviewStream(w http.ResponseWriter, r *http.Reques
 		log.Printf("overview stream: upgrade failed: %v", err)
 		return
 	}
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	ctx := r.Context()
 	log.Printf("overview stream: connected cluster=%s", clusterID)

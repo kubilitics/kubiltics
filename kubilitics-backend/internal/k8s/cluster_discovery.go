@@ -109,7 +109,7 @@ func (cd *ClusterDiscovery) Start(ctx context.Context) error {
 	cd.informer = informerFactory.Core().V1().Secrets()
 
 	// Register event handlers
-	cd.informer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+	_, _ = cd.informer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc:    cd.enqueueSecret,
 		UpdateFunc: cd.enqueueSecretUpdate,
 		DeleteFunc: cd.enqueueSecret,

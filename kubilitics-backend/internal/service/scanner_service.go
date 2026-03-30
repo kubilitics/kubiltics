@@ -128,7 +128,7 @@ func (s *scannerServiceImpl) executeScan(runID string, cfg scanner.ScanConfig) {
 		run.ErrorMessage = err.Error()
 		run.CompletedAt = &completedAt
 		run.DurationMs = duration.Milliseconds()
-		s.repo.UpdateScanRun(ctx, run)
+		_ = s.repo.UpdateScanRun(ctx, run)
 		s.logger.Error("scan failed", "run_id", runID, "error", err)
 		return
 	}
@@ -266,9 +266,9 @@ func (s *scannerServiceImpl) GetReport(ctx context.Context, runID, format string
 			Remediation: f.Remediation,
 			Confidence:  f.Confidence,
 		}
-		json.Unmarshal([]byte(f.CWE), &sf.CWE)
-		json.Unmarshal([]byte(f.CVE), &sf.CVE)
-		json.Unmarshal([]byte(f.MetadataRaw), &sf.Metadata)
+		_ = json.Unmarshal([]byte(f.CWE), &sf.CWE)
+		_ = json.Unmarshal([]byte(f.CVE), &sf.CVE)
+		_ = json.Unmarshal([]byte(f.MetadataRaw), &sf.Metadata)
 		scanFindings = append(scanFindings, sf)
 	}
 

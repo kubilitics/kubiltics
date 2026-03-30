@@ -87,13 +87,13 @@ func (e *ClusterGraphEngine) Start(ctx context.Context) {
 
 	// Networking
 	_, _ = e.factory.Networking().V1().Ingresses().Informer().AddEventHandler(handler)
-	e.factory.Networking().V1().NetworkPolicies().Informer().AddEventHandler(handler)
+	_, _ = e.factory.Networking().V1().NetworkPolicies().Informer().AddEventHandler(handler)
 
 	// Autoscaling
-	e.factory.Autoscaling().V1().HorizontalPodAutoscalers().Informer().AddEventHandler(handler)
+	_, _ = e.factory.Autoscaling().V1().HorizontalPodAutoscalers().Informer().AddEventHandler(handler)
 
 	// Policy
-	e.factory.Policy().V1().PodDisruptionBudgets().Informer().AddEventHandler(handler)
+	_, _ = e.factory.Policy().V1().PodDisruptionBudgets().Informer().AddEventHandler(handler)
 
 	// Start factory and wait for sync in a goroutine.
 	e.factory.Start(ctx.Done())

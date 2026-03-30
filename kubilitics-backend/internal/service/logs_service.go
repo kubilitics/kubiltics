@@ -55,7 +55,7 @@ func (s *logsService) StreamPodLogs(ctx context.Context, clusterID, namespace, p
 		errChan <- err
 		return
 	}
-	defer stream.Close()
+	defer func() { _ = stream.Close() }()
 
 	buf := make([]byte, 2048)
 	for {

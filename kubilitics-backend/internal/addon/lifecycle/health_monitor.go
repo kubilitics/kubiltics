@@ -82,7 +82,7 @@ func (m *HealthMonitor) Start(ctx context.Context, handler LifecycleEventHandler
 	defer m.Stop()
 
 	m.podStore = podInformer.GetStore()
-	podInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+	_, _ = podInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
 			select {
 			case <-ctx.Done():

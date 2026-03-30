@@ -119,7 +119,7 @@ func main() {
 		log.Error("Failed to initialize database", "error", err)
 		os.Exit(1)
 	}
-	defer repo.Close()
+	defer func() { _ = repo.Close() }()
 
 	// Run migrations from embedded FS in lexicographic order.
 	// Using ReadDir instead of a hardcoded list so newly added migration files
@@ -525,7 +525,7 @@ func main() {
 		os.Exit(1)
 	}
 	actualPort = cfg.Port
-	defer listener.Close()
+	defer func() { _ = listener.Close() }()
 
 	srv := &http.Server{
 		Handler:      handlerWithCORS,

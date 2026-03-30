@@ -71,7 +71,7 @@ func (h *Handler) StreamInstall(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		return
 	}
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	// Ping-pong heartbeat: detect dead clients during long installs
 	_ = conn.SetReadDeadline(time.Now().Add(addonPongWait))

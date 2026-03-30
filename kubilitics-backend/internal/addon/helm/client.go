@@ -90,7 +90,7 @@ func NewHelmClient(kubeconfig []byte, _ string, logger *slog.Logger) (HelmClient
 	envSettings.RepositoryCache = filepath.Join(repoCachePath, "repository")
 	envSettings.RepositoryConfig = filepath.Join(repoCachePath, "repositories.yaml")
 	if err := os.MkdirAll(envSettings.RepositoryCache, 0755); err != nil {
-		os.RemoveAll(repoCachePath)
+		_ = os.RemoveAll(repoCachePath)
 		return nil, fmt.Errorf("create repository cache: %w", err)
 	}
 	ociClient, _ := NewOCIClient(logger) // optional; nil if OCI unavailable

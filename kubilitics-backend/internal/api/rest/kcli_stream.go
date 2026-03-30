@@ -75,7 +75,7 @@ func (h *Handler) GetKCLIStream(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		return
 	}
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	log.Printf(
 		"kcli stream: connected requestedCluster=%s resolvedCluster=%s context=%s mode=%s",

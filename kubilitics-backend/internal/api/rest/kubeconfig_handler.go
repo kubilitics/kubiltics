@@ -50,7 +50,7 @@ func (h *Handler) getKubeconfigFromRequest(r *http.Request) ([]byte, string, err
 		if err != nil {
 			return nil, "", fmt.Errorf("failed to read request body: %w", err)
 		}
-		r.Body.Close()
+		_ = r.Body.Close()
 		r.Body = io.NopCloser(bytes.NewReader(bodyBytes))
 
 		var req KubeconfigRequest

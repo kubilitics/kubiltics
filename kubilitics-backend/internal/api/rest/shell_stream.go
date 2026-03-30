@@ -64,7 +64,7 @@ func (h *Handler) GetShellStream(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	log.Printf("Terminal: WebSocket upgraded for %s", clusterID)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	ctx, cancel := context.WithCancel(r.Context())
 	defer cancel()
@@ -145,12 +145,12 @@ func (h *Handler) GetShellStream(w http.ResponseWriter, r *http.Request) {
 	rcfile := tmpFile.Name()
 	defer func() { _ = os.Remove(rcfile) }()
 	if _, err := tmpFile.Write([]byte(sb.String())); err != nil {
-		tmpFile.Close()
+		_ = tmpFile.Close()
 		log.Printf("Terminal: failed to write rcfile: %v", err)
 		sendErr("Failed to start shell")
 		return
 	}
-	tmpFile.Close()
+	_ = tmpFile.Close()
 
 	var cmd *exec.Cmd
 	if shell == "/bin/bash" {
@@ -199,7 +199,7 @@ func (h *Handler) GetShellStream(w http.ResponseWriter, r *http.Request) {
 		defer close(writerDone)
 		for m := range outChan {
 			b, _ := json.Marshal(m)
-			conn.SetWriteDeadline(time.Now().Add(30 * time.Second))
+			_ = conn.SetWriteDeadline(time.Now().Add(30 * time.Second))
 			if err := conn.WriteMessage(websocket.TextMessage, b); err != nil {
 				return
 			}
@@ -234,7 +234,7 @@ func (h *Handler) GetShellStream(w http.ResponseWriter, r *http.Request) {
 			case <-pingDone:
 				return
 			case <-ticker.C:
-				conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
+				_ = conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
 				if err := conn.WriteMessage(websocket.PingMessage, nil); err != nil {
 					return
 				}
@@ -248,7 +248,7 @@ func (h *Handler) GetShellStream(w http.ResponseWriter, r *http.Request) {
 		return conn.SetReadDeadline(time.Now().Add(readDeadline))
 	})
 	for {
-		conn.SetReadDeadline(time.Now().Add(readDeadline))
+		_ = conn.SetReadDeadline(time.Now().Add(readDeadline))
 		_, data, err := conn.ReadMessage()
 		if err != nil {
 			cancel()
