@@ -82,8 +82,15 @@ func FilterByDepth(nodes []v2.TopologyNode, edges []v2.TopologyEdge, depth int) 
 		}
 	}
 
-	// Collapse edges through hidden nodes to their nearest visible ancestor
-	// instead of simply deleting edges to hidden nodes.
+	// At depth=0, synthesize direct edges between visible resources that are
+	// connected through hidden intermediaries (e.g., Service → Deployment via
+	// hidden Pods and ReplicaSets). Without this, Services and Deployments
+	// appear disconnected at the executive view.
+	if depth == 0 {
+		edges = synthesizeServiceToWorkloadEdges(edges)
+	}
+
+	// Collapse remaining edges through hidden nodes to their nearest visible ancestor
 	ownerOf := buildOwnerMap(edges)
 	filteredEdges := collapseEdges(edges, visibleIDs, ownerOf)
 
@@ -271,4 +278,80 @@ func findExpandable(allNodes []v2.TopologyNode, allEdges []v2.TopologyEdge, visi
 		expandable = append(expandable, id)
 	}
 	return expandable
+}
+
+// synthesizeServiceToWorkloadEdges creates direct Service → Workload edges
+// by resolving the Service → Pod → ReplicaSet → Deployment chain.
+// This makes depth=0 show meaningful connections instead of disconnected islands.
+func synthesizeServiceToWorkloadEdges(edges []v2.TopologyEdge) []v2.TopologyEdge {
+	// Build ownership chain: child → parent (Pod→RS→Deployment)
+	ownerOf := make(map[string]string)
+	for _, e := range edges {
+		if e.RelationshipType == "ownerRef" {
+			srcDepth := kindDepthLevel(kindFromID(e.Source))
+			tgtDepth := kindDepthLevel(kindFromID(e.Target))
+			if srcDepth > tgtDepth {
+				ownerOf[e.Source] = e.Target
+			} else if tgtDepth > srcDepth {
+				ownerOf[e.Target] = e.Source
+			}
+		}
+	}
+
+	// Resolve to top-level workload (depth=0 kind)
+	resolveToWorkload := func(id string) string {
+		visited := map[string]bool{}
+		for {
+			if visited[id] {
+				break
+			}
+			visited[id] = true
+			if kindDepthLevel(kindFromID(id)) == 0 {
+				return id // reached a depth-0 resource
+			}
+			next, ok := ownerOf[id]
+			if !ok {
+				break
+			}
+			id = next
+		}
+		// Only return if we ended up at a depth-0 kind
+		if kindDepthLevel(kindFromID(id)) == 0 {
+			return id
+		}
+		return ""
+	}
+
+	// For each selector/endpoint edge from Service to Pod, create Service → Workload
+	seen := make(map[string]bool)
+	var synthetic []v2.TopologyEdge
+	for _, e := range edges {
+		if e.RelationshipType != "selector" && e.RelationshipType != "endpoint_target" {
+			continue
+		}
+		svcKind := kindFromID(e.Source)
+		if svcKind != "Service" {
+			continue
+		}
+		workloadID := resolveToWorkload(e.Target)
+		if workloadID == "" || workloadID == e.Source {
+			continue
+		}
+		key := e.Source + "|" + workloadID
+		if seen[key] {
+			continue
+		}
+		seen[key] = true
+
+		synthetic = append(synthetic, v2.TopologyEdge{
+			ID:                   "synth:" + e.Source + "→" + workloadID,
+			Source:               e.Source,
+			Target:               workloadID,
+			RelationshipType:     "routes_to",
+			RelationshipCategory: "networking",
+			Label:                "routes to",
+			Detail:               "via pod selector",
+		})
+	}
+	return append(edges, synthetic...)
 }
