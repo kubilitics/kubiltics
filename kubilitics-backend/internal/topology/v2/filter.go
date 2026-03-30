@@ -100,7 +100,7 @@ var leafOnlyCategories = map[string]bool{
 
 // dynamicHubThreshold — any non-workload node with more than this many connections
 // in the full graph is treated as a dynamic hub (included but not expanded).
-const dynamicHubThreshold = 5
+const dynamicHubThreshold = 15
 
 // filterResource builds a resource-centric view using edge-type-aware, hub-aware
 // BFS traversal. This is the core USP topology per the final specification.
@@ -215,7 +215,21 @@ func (f *ViewFilter) filterResource(resp *TopologyResponse, resource, ns string,
 				visited[neighbor.nodeID] = neighborDepth
 				included[neighbor.nodeID] = true
 
-				if leafOnlyCategories[neighbor.category] || isHub(neighbor.nodeID) {
+				// Leaf-only edges (containment, scheduling) normally produce leaf
+				// nodes that are never expanded further. BUT when the focus
+				// resource IS the hub (e.g., user clicked a Node, Namespace, or
+				// StorageClass), the neighbors reached via these edges MUST be
+				// expandable — otherwise the topology is useless for the focus
+				// resource. Example: StorageClass → PV → PVC → Pod → Deployment
+				// must be fully traversable when StorageClass is the focus.
+				isLeafEdge := leafOnlyCategories[neighbor.category]
+				neighborIsHub := isHub(neighbor.nodeID)
+				if current.id == focusID && isLeafEdge {
+					// Focus node's direct neighbors via leaf-only edges: expand them
+					queue = append(queue, bfsEntry{id: neighbor.nodeID, depth: neighborDepth})
+					continue
+				}
+				if isLeafEdge || neighborIsHub {
 					continue
 				}
 				queue = append(queue, bfsEntry{id: neighbor.nodeID, depth: neighborDepth})
