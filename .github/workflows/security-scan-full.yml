@@ -19,7 +19,7 @@ jobs:
     name: Trivy Filesystem Scan
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
 
       - name: Run Trivy (filesystem)
         uses: aquasecurity/trivy-action@v0.35.0
@@ -50,7 +50,7 @@ jobs:
     container:
       image: semgrep/semgrep:latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
 
       - name: Run Semgrep
         run: semgrep scan --config auto --sarif -o semgrep-results.sarif .
@@ -75,7 +75,7 @@ jobs:
     name: Gitleaks Secrets Scan
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
@@ -109,10 +109,10 @@ jobs:
     name: Kubescape K8s Security
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
 
       - name: Install Helm
-        uses: azure/setup-helm@v4.3.0
+        uses: azure/setup-helm@v5.0.0
 
       - name: Render Helm templates
         run: |
