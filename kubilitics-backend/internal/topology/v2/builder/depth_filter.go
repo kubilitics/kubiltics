@@ -1,6 +1,8 @@
 package builder
 
 import (
+	"strings"
+
 	v2 "github.com/kubilitics/kubilitics-backend/internal/topology/v2"
 )
 
@@ -80,8 +82,10 @@ func FilterByDepth(nodes []v2.TopologyNode, edges []v2.TopologyEdge, depth int) 
 		}
 	}
 
-	// Prune edges to only connect visible nodes
-	filteredEdges := pruneEdges(edges, visibleIDs)
+	// Collapse edges through hidden nodes to their nearest visible ancestor
+	// instead of simply deleting edges to hidden nodes.
+	ownerOf := buildOwnerMap(edges)
+	filteredEdges := collapseEdges(edges, visibleIDs, ownerOf)
 
 	// Find expandable nodes: visible nodes that have at least one hidden neighbor
 	expandable := findExpandable(nodes, edges, visibleIDs)
@@ -138,6 +142,105 @@ func pruneEdges(edges []v2.TopologyEdge, visibleIDs map[string]bool) []v2.Topolo
 		if visibleIDs[e.Source] && visibleIDs[e.Target] {
 			out = append(out, e)
 		}
+	}
+	return out
+}
+
+// kindFromID extracts the Kind portion from a node ID ("Kind/namespace/name" or "Kind/name").
+func kindFromID(id string) string {
+	if idx := strings.IndexByte(id, '/'); idx >= 0 {
+		return id[:idx]
+	}
+	return id
+}
+
+// buildOwnerMap builds a child->owner map from ownerRef edges.
+// It handles both edge directions (Source=child,Target=parent and
+// Source=parent,Target=child) by comparing depth levels.
+func buildOwnerMap(edges []v2.TopologyEdge) map[string]string {
+	ownerOf := make(map[string]string)
+	for _, e := range edges {
+		if e.RelationshipType != "ownerRef" {
+			continue
+		}
+		srcDepth := kindDepthLevel(kindFromID(e.Source))
+		tgtDepth := kindDepthLevel(kindFromID(e.Target))
+		if srcDepth > tgtDepth {
+			// Source is deeper (child), Target is shallower (owner)
+			ownerOf[e.Source] = e.Target
+		} else if tgtDepth > srcDepth {
+			// Target is deeper (child), Source is shallower (owner)
+			ownerOf[e.Target] = e.Source
+		}
+		// If same depth, skip — ambiguous ownership
+	}
+	return ownerOf
+}
+
+// collapseEdges reroutes edges through hidden nodes to their nearest visible ancestor.
+// If A->B->C and B is hidden, creates A->C with metadata indicating the collapse.
+func collapseEdges(edges []v2.TopologyEdge, visibleIDs map[string]bool, ownerOf map[string]string) []v2.TopologyEdge {
+	// Build a map: nodeID -> nearest visible ancestor
+	visibleAncestor := make(map[string]string)
+	for id := range visibleIDs {
+		visibleAncestor[id] = id // visible nodes map to themselves
+	}
+
+	// For hidden nodes, walk up the ownership chain to find visible ancestor
+	var findAncestor func(id string) string
+	findAncestor = func(id string) string {
+		if a, ok := visibleAncestor[id]; ok {
+			return a
+		}
+		owner, hasOwner := ownerOf[id]
+		if !hasOwner || owner == "" {
+			visibleAncestor[id] = "" // no visible ancestor
+			return ""
+		}
+		ancestor := findAncestor(owner)
+		visibleAncestor[id] = ancestor
+		return ancestor
+	}
+
+	// Reroute edges
+	seen := make(map[string]bool)
+	var out []v2.TopologyEdge
+	for _, e := range edges {
+		src := e.Source
+		tgt := e.Target
+
+		// Remap hidden endpoints to visible ancestors
+		if !visibleIDs[src] {
+			src = findAncestor(src)
+		}
+		if !visibleIDs[tgt] {
+			tgt = findAncestor(tgt)
+		}
+
+		// Skip if either endpoint has no visible ancestor, or self-loop
+		if src == "" || tgt == "" || src == tgt {
+			continue
+		}
+
+		// Dedup
+		key := src + "|" + tgt + "|" + string(e.RelationshipType)
+		if seen[key] {
+			continue
+		}
+		seen[key] = true
+
+		collapsed := e
+		collapsed.Source = src
+		collapsed.Target = tgt
+		if src != e.Source || tgt != e.Target {
+			// Mark as collapsed edge
+			if collapsed.Detail == "" {
+				collapsed.Detail = "via hidden resources"
+			} else {
+				collapsed.Detail += " (collapsed)"
+			}
+		}
+		out = append(out, collapsed)
 	}
 	return out
 }
