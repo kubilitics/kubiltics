@@ -163,9 +163,16 @@ export function FileTransferDialog({
       const resp = await fetch(url);
       if (!resp.ok) throw new Error(`Download failed: ${resp.statusText}`);
       const blob = await resp.blob();
-      const { downloadFile } = await import('@/topology/graph/utils/exportUtils');
-      await downloadFile(blob, entry.name);
-      toast.success(`Downloaded ${entry.name}`, { description: 'File saved successfully' });
+      const { downloadFile, showInFolder } = await import('@/topology/graph/utils/exportUtils');
+      const savedPath = await downloadFile(blob, entry.name);
+      if (savedPath) {
+        toast.success(`Downloaded ${entry.name}`, {
+          description: savedPath,
+          action: { label: 'Show in Folder', onClick: () => showInFolder(savedPath) },
+        });
+      } else {
+        toast.success(`Downloaded ${entry.name}`);
+      }
     } catch {
       window.open(url, '_blank');
       toast.info(`Downloading ${entry.name}`);

@@ -148,14 +148,17 @@ export function InlineFileBrowser({
       if (!resp.ok) throw new Error(`Download failed: ${resp.statusText}`);
       const blob = await resp.blob();
 
-      // Use Tauri save dialog if available, otherwise anchor-click download
-      const { downloadFile } = await import('@/topology/graph/utils/exportUtils');
-      await downloadFile(blob, entry.name);
-      toast.success(`Downloaded ${entry.name}`, {
-        description: 'File saved successfully',
-      });
-    } catch (e) {
-      // Fallback: open URL directly (works in browser, may not in Tauri)
+      const { downloadFile, showInFolder } = await import('@/topology/graph/utils/exportUtils');
+      const savedPath = await downloadFile(blob, entry.name);
+      if (savedPath) {
+        toast.success(`Downloaded ${entry.name}`, {
+          description: savedPath,
+          action: { label: 'Show in Folder', onClick: () => showInFolder(savedPath) },
+        });
+      } else {
+        toast.success(`Downloaded ${entry.name}`);
+      }
+    } catch {
       window.open(url, '_blank');
       toast.info(`Downloading ${entry.name}`);
     }

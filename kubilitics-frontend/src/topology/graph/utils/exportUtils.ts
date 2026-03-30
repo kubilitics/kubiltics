@@ -8,7 +8,7 @@ import type { TopologyGraph, TopologyNode, TopologyEdge } from '../types/topolog
  * Download a Blob as a file. Uses Tauri save dialog when in desktop app,
  * falls back to anchor click for web.
  */
-export async function downloadFile(blob: Blob, filename: string) {
+export async function downloadFile(blob: Blob, filename: string): Promise<string | null> {
   // Sanitize filename — remove colons and other characters illegal on Windows/macOS
   const safeFilename = filename.replace(/[<>:"/\\|?*]/g, '-');
 
@@ -18,11 +18,20 @@ export async function downloadFile(blob: Blob, filename: string) {
 
   if (isTauriEnv) {
     try {
-      const { invoke } = await import('@tauri-apps/api/core');
+      const { save } = await import('@tauri-apps/plugin-dialog');
+      const { writeFile } = await import('@tauri-apps/plugin-fs');
+
+      // Show native save dialog
+      const savePath = await save({
+        defaultPath: safeFilename,
+        title: `Save ${safeFilename}`,
+      });
+      if (!savePath) return null; // User cancelled
+
+      // Write file to disk
       const arrayBuffer = await blob.arrayBuffer();
-      const data = Array.from(new Uint8Array(arrayBuffer));
-      await invoke('save_file', { data, filename: safeFilename });
-      return;
+      await writeFile(savePath, new Uint8Array(arrayBuffer));
+      return savePath;
     } catch {
       // Fall through to web download
     }
@@ -36,6 +45,26 @@ export async function downloadFile(blob: Blob, filename: string) {
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
+  return null;
+}
+
+/**
+ * Open the parent folder of a file path in Finder/Explorer.
+ */
+export async function showInFolder(filePath: string) {
+  try {
+    const { revealItemInDir } = await import('@tauri-apps/plugin-opener');
+    await revealItemInDir(filePath);
+  } catch {
+    // Fallback: try shell open on the parent directory
+    try {
+      const parentDir = filePath.substring(0, filePath.lastIndexOf('/')) || filePath.substring(0, filePath.lastIndexOf('\\'));
+      const { openPath } = await import('@tauri-apps/plugin-opener');
+      await openPath(parentDir);
+    } catch {
+      // Not in Tauri or plugins unavailable — ignore
+    }
+  }
 }
 
 /**
