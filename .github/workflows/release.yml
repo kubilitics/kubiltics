@@ -336,8 +336,8 @@ jobs:
         working-directory: kubilitics-desktop/src-tauri
         env:
           TAURI_SKIP_DEVSERVER_CHECK: "true"
-          # Do NOT set APPLE_ID/APPLE_PASSWORD here — Tauri's built-in
-          # notarization times out. We sign here, notarize separately below.
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ""
         shell: bash
         run: |
           [ -d "../dist" ] && [ -n "$(ls -A ../dist)" ] || { echo "❌ dist missing"; exit 1; }
@@ -346,7 +346,7 @@ jobs:
           else
             CONFIG='{"bundle":{"macOS":{"signingIdentity":null}}}'
           fi
-          TAURI_SIGNING_PRIVATE_KEY="${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}" TAURI_SIGNING_PRIVATE_KEY_PASSWORD="" CI=true cargo tauri build --target universal-apple-darwin --bundles app,dmg --config "$CONFIG"
+          CI=true cargo tauri build --target universal-apple-darwin --bundles app,dmg --config "$CONFIG"
 
       - name: Notarize macOS DMG
         if: matrix.os == 'macos-latest'
@@ -375,18 +375,22 @@ jobs:
         shell: bash
         env:
           TAURI_SKIP_DEVSERVER_CHECK: "true"
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ""
         run: |
           [ -d "../dist" ] && [ -n "$(ls -A ../dist)" ] || { echo "❌ dist missing"; exit 1; }
-          TAURI_SIGNING_PRIVATE_KEY="${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}" TAURI_SIGNING_PRIVATE_KEY_PASSWORD="" cargo tauri build --target x86_64-pc-windows-msvc --bundles nsis,msi
+          cargo tauri build --target x86_64-pc-windows-msvc --bundles nsis,msi
 
       - name: Build Tauri app (Linux AppImage + DEB + RPM)
         if: matrix.os == 'ubuntu-latest'
         working-directory: kubilitics-desktop/src-tauri
         env:
           TAURI_SKIP_DEVSERVER_CHECK: "true"
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ""
         run: |
           [ -d "../dist" ] && [ -n "$(ls -A ../dist)" ] || { echo "❌ dist missing"; exit 1; }
-          TAURI_SIGNING_PRIVATE_KEY="${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}" TAURI_SIGNING_PRIVATE_KEY_PASSWORD="" cargo tauri build --target x86_64-unknown-linux-gnu --bundles appimage,deb,rpm
+          cargo tauri build --target x86_64-unknown-linux-gnu --bundles appimage,deb,rpm
 
       # ── Upload artifacts ────────────────────────────────────────────────
       - name: Upload desktop artifacts (macOS)
