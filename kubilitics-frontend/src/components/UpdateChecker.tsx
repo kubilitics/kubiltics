@@ -71,29 +71,37 @@ async function downloadAndInstall(
       duration: Infinity,
     });
 
+    let downloadedBytes = 0;
+    let totalBytes = 0;
     let lastPercent = 0;
 
     await update.downloadAndInstall((event) => {
       if (event.event === 'Started' && event.data.contentLength) {
-        const totalMB = (event.data.contentLength / 1_048_576).toFixed(1);
-        toast.loading(`Downloading v${version} (${totalMB} MB)...`, {
+        totalBytes = event.data.contentLength;
+        const totalMB = (totalBytes / 1_048_576).toFixed(1);
+        toast.loading(`Downloading v${version} (${totalMB} MB) — 0%`, {
           id: progressToastId,
           duration: Infinity,
         });
-      } else if (event.event === 'Progress' && event.data.contentLength) {
-        const percent = Math.round(
-          (event.data.chunkLength / event.data.contentLength) * 100,
-        );
-        // Only update the toast every 10% to avoid over-rendering
-        if (percent >= lastPercent + 10) {
-          lastPercent = percent;
-          toast.loading(`Downloading v${version}... ${percent}%`, {
-            id: progressToastId,
-            duration: Infinity,
-          });
+      } else if (event.event === 'Progress') {
+        downloadedBytes += event.data.chunkLength;
+        if (totalBytes > 0) {
+          const percent = Math.min(Math.round((downloadedBytes / totalBytes) * 100), 100);
+          if (percent >= lastPercent + 5) {
+            lastPercent = percent;
+            const downloadedMB = (downloadedBytes / 1_048_576).toFixed(1);
+            const totalMB = (totalBytes / 1_048_576).toFixed(1);
+            toast.loading(`Downloading v${version} — ${percent}% (${downloadedMB}/${totalMB} MB)`, {
+              id: progressToastId,
+              duration: Infinity,
+            });
+          }
         }
       } else if (event.event === 'Finished') {
-        toast.dismiss(progressToastId);
+        toast.loading(`Installing v${version}...`, {
+          id: progressToastId,
+          duration: Infinity,
+        });
       }
     });
 
