@@ -149,8 +149,13 @@ export async function exportTopologyCSV(
 
     // Build CSV rows
     const rows: string[][] = [];
-    rows.push([...baseHeaders, ...extraHeaders]);
 
+    // Section 1: Resources
+    const resourceCount = topology.nodes.length;
+    rows.push([`RESOURCES (${resourceCount})`]);
+    rows.push(['#', ...baseHeaders, ...extraHeaders]);
+
+    let resourceNum = 1;
     for (const node of topology.nodes) {
       const baseRow = [
         node.kind,
@@ -169,19 +174,24 @@ export async function exportTopologyCSV(
         return getNestedValue(fullResource, field.path);
       });
 
-      rows.push([...baseRow, ...extraValues]);
+      rows.push([String(resourceNum++), ...baseRow, ...extraValues]);
     }
 
-    // Also add edges sheet as a second section
-    rows.push([]); // blank separator
-    rows.push(['--- RELATIONSHIPS ---']);
-    rows.push(['Source Kind', 'Source Name', 'Source Namespace', 'Relationship', 'Target Kind', 'Target Name', 'Target Namespace']);
+    // Section 2: Relationships
+    rows.push([]);
+    const relationshipCount = topology.edges.filter((e) => {
+      return topology.nodes.some((n) => n.id === e.source) && topology.nodes.some((n) => n.id === e.target);
+    }).length;
+    rows.push([`RELATIONSHIPS (${relationshipCount})`]);
+    rows.push(['#', 'Source Kind', 'Source Name', 'Source Namespace', 'Relationship', 'Target Kind', 'Target Name', 'Target Namespace']);
 
+    let relNum = 1;
     for (const edge of topology.edges) {
       const srcNode = topology.nodes.find((n) => n.id === edge.source);
       const tgtNode = topology.nodes.find((n) => n.id === edge.target);
       if (!srcNode || !tgtNode) continue;
       rows.push([
+        String(relNum++),
         srcNode.kind, srcNode.name, srcNode.namespace || '',
         edge.relationshipType || edge.label || '',
         tgtNode.kind, tgtNode.name, tgtNode.namespace || '',
