@@ -1,130 +1,275 @@
 /**
- * UpdateChecker -- checks for app updates on startup via Tauri's updater plugin.
+ * UpdateChecker — Slack/Docker-style auto-update experience.
  *
- * Renders nothing visible by itself; it uses sonner toasts for user communication:
- *  - Non-intrusive info toast when an update is available
- *  - Progress toast during download
- *  - Success/error toasts for completion states
- *
- * Only runs inside the Tauri desktop shell (no-ops in the browser).
+ * Shows a persistent bottom-right banner when updates are available.
+ * States: checking → available (with release notes) → downloading (progress bar) → ready → restarting
  */
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { isTauri } from '@/lib/tauri';
-import { toast } from '@/components/ui/sonner';
+import { cn } from '@/lib/utils';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Download, RefreshCw, X, Sparkles, Check, Loader2 } from 'lucide-react';
 
-// Delay before checking (let the app finish booting)
 const CHECK_DELAY_MS = 5_000;
+
+type UpdateState =
+  | 'idle'
+  | 'available'
+  | 'downloading'
+  | 'ready'
+  | 'restarting'
+  | 'error'
+  | 'dismissed';
+
+interface UpdateInfo {
+  version: string;
+  notes: string;
+  update: unknown;
+}
 
 export function UpdateChecker() {
   const hasChecked = useRef(false);
+  const [state, setState] = useState<UpdateState>('idle');
+  const [info, setInfo] = useState<UpdateInfo | null>(null);
+  const [progress, setProgress] = useState(0);
+  const [downloadedMB, setDownloadedMB] = useState('0');
+  const [totalMB, setTotalMB] = useState('0');
+  const [error, setError] = useState('');
 
   useEffect(() => {
     if (!isTauri() || hasChecked.current) return;
     hasChecked.current = true;
 
-    const timer = setTimeout(() => {
-      checkForUpdate();
+    const timer = setTimeout(async () => {
+      try {
+        const { check } = await import('@tauri-apps/plugin-updater');
+        const update = await check();
+        if (!update) return;
+
+        // Parse release notes from the update body or use version
+        const notes = (update as { body?: string }).body || `Bug fixes and improvements`;
+
+        setInfo({ version: update.version, notes, update });
+        setState('available');
+      } catch (err) {
+        console.warn('[UpdateChecker] Failed to check:', err);
+      }
     }, CHECK_DELAY_MS);
 
     return () => clearTimeout(timer);
   }, []);
 
-  return null;
-}
+  const handleUpdate = useCallback(async () => {
+    if (!info?.update) return;
+    const update = info.update as Awaited<ReturnType<typeof import('@tauri-apps/plugin-updater')['check']>> & object;
 
-async function checkForUpdate() {
-  try {
-    const { check } = await import('@tauri-apps/plugin-updater');
-    const update = await check();
+    setState('downloading');
+    setProgress(0);
 
-    if (!update) return; // Already on the latest version
+    try {
+      let downloaded = 0;
+      let total = 0;
 
-    const version = update.version;
-    const toastId = `update-available-${version}`;
-
-    toast.info(`Update available: v${version}`, {
-      id: toastId,
-      duration: Infinity,
-      action: {
-        label: 'Install',
-        onClick: () => downloadAndInstall(update, version),
-      },
-      description: 'A new version of Kubilitics is ready.',
-    });
-  } catch (err) {
-    // Silently ignore update check failures -- the user should not be
-    // bothered if the update server is unreachable or signing keys are
-    // not yet configured.
-    console.warn('[UpdateChecker] Failed to check for updates:', err);
-  }
-}
-
-async function downloadAndInstall(
-  update: Awaited<ReturnType<typeof import('@tauri-apps/plugin-updater')['check']>> & object,
-  version: string,
-) {
-  const progressToastId = `update-progress-${version}`;
-
-  try {
-    toast.loading(`Downloading v${version}...`, {
-      id: progressToastId,
-      duration: Infinity,
-    });
-
-    let downloadedBytes = 0;
-    let totalBytes = 0;
-    let lastPercent = 0;
-
-    await update.downloadAndInstall((event) => {
-      if (event.event === 'Started' && event.data.contentLength) {
-        totalBytes = event.data.contentLength;
-        const totalMB = (totalBytes / 1_048_576).toFixed(1);
-        toast.loading(`Downloading v${version} (${totalMB} MB) — 0%`, {
-          id: progressToastId,
-          duration: Infinity,
-        });
-      } else if (event.event === 'Progress') {
-        downloadedBytes += event.data.chunkLength;
-        if (totalBytes > 0) {
-          const percent = Math.min(Math.round((downloadedBytes / totalBytes) * 100), 100);
-          if (percent >= lastPercent + 5) {
-            lastPercent = percent;
-            const downloadedMB = (downloadedBytes / 1_048_576).toFixed(1);
-            const totalMB = (totalBytes / 1_048_576).toFixed(1);
-            toast.loading(`Downloading v${version} — ${percent}% (${downloadedMB}/${totalMB} MB)`, {
-              id: progressToastId,
-              duration: Infinity,
-            });
+      await update.downloadAndInstall((event) => {
+        if (event.event === 'Started' && event.data.contentLength) {
+          total = event.data.contentLength;
+          setTotalMB((total / 1_048_576).toFixed(1));
+        } else if (event.event === 'Progress') {
+          downloaded += event.data.chunkLength;
+          if (total > 0) {
+            setProgress(Math.min(Math.round((downloaded / total) * 100), 100));
+            setDownloadedMB((downloaded / 1_048_576).toFixed(1));
           }
+        } else if (event.event === 'Finished') {
+          setProgress(100);
         }
-      } else if (event.event === 'Finished') {
-        toast.loading(`Installing v${version}...`, {
-          id: progressToastId,
-          duration: Infinity,
-        });
-      }
-    });
+      });
 
-    toast.success(`v${version} installed -- restart to apply.`, {
-      id: `update-done-${version}`,
-      duration: 8_000,
-      action: {
-        label: 'Restart now',
-        onClick: async () => {
-          try {
-            const { relaunch } = await import('@tauri-apps/plugin-process');
-            await relaunch();
-          } catch {
-            toast.info('Please restart the app manually.');
-          }
-        },
-      },
-    });
-  } catch (err) {
-    toast.dismiss(progressToastId);
-    console.error('[UpdateChecker] Download/install failed:', err);
-    toast.error('Update failed. Please try again later.', {
-      id: `update-error-${version}`,
-    });
-  }
+      setState('ready');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Download failed');
+      setState('error');
+    }
+  }, [info]);
+
+  const handleRestart = useCallback(async () => {
+    setState('restarting');
+    try {
+      const { relaunch } = await import('@tauri-apps/plugin-process');
+      await relaunch();
+    } catch {
+      setError('Please restart the app manually');
+      setState('error');
+    }
+  }, []);
+
+  const handleDismiss = useCallback(() => {
+    setState('dismissed');
+  }, []);
+
+  if (state === 'idle' || state === 'dismissed' || !info) return null;
+
+  return (
+    <AnimatePresence>
+      <motion.div
+        initial={{ opacity: 0, y: 20, scale: 0.95 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={{ opacity: 0, y: 20, scale: 0.95 }}
+        transition={{ duration: 0.3, ease: 'easeOut' }}
+        className={cn(
+          'fixed bottom-5 right-5 z-[9999] w-[360px]',
+          'rounded-xl shadow-2xl',
+          'border border-slate-200 dark:border-slate-700',
+          'bg-white dark:bg-slate-900',
+          'overflow-hidden',
+        )}
+      >
+        {/* Header */}
+        <div className={cn(
+          'flex items-center justify-between px-4 py-3',
+          'border-b border-slate-100 dark:border-slate-800',
+          state === 'ready' ? 'bg-emerald-50 dark:bg-emerald-950/30' : 'bg-slate-50 dark:bg-slate-800/50',
+        )}>
+          <div className="flex items-center gap-2">
+            {state === 'available' && <Sparkles className="h-4 w-4 text-blue-500" />}
+            {state === 'downloading' && <Loader2 className="h-4 w-4 text-blue-500 animate-spin" />}
+            {state === 'ready' && <Check className="h-4 w-4 text-emerald-500" />}
+            {state === 'restarting' && <RefreshCw className="h-4 w-4 text-blue-500 animate-spin" />}
+            {state === 'error' && <X className="h-4 w-4 text-red-500" />}
+            <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+              {state === 'available' && `Update Available — v${info.version}`}
+              {state === 'downloading' && `Downloading v${info.version}...`}
+              {state === 'ready' && `Ready to Update`}
+              {state === 'restarting' && `Restarting...`}
+              {state === 'error' && `Update Failed`}
+            </span>
+          </div>
+          {(state === 'available' || state === 'error') && (
+            <button
+              onClick={handleDismiss}
+              className="p-1 rounded-md text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          )}
+        </div>
+
+        {/* Body */}
+        <div className="px-4 py-3">
+          {/* Release notes */}
+          {state === 'available' && (
+            <div className="space-y-3">
+              <div className="text-xs text-slate-500 dark:text-slate-400 font-medium uppercase tracking-wider">
+                What's new
+              </div>
+              <div className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed max-h-[120px] overflow-y-auto">
+                {info.notes.split('\n').filter(Boolean).map((line, i) => (
+                  <p key={i} className={line.startsWith('-') || line.startsWith('*') ? 'pl-2' : ''}>
+                    {line}
+                  </p>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Download progress */}
+          {state === 'downloading' && (
+            <div className="space-y-2">
+              <div className="flex justify-between text-xs text-slate-500 dark:text-slate-400">
+                <span>{downloadedMB} / {totalMB} MB</span>
+                <span>{progress}%</span>
+              </div>
+              <div className="h-2 w-full rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
+                <motion.div
+                  className="h-full rounded-full bg-blue-500"
+                  initial={{ width: 0 }}
+                  animate={{ width: `${progress}%` }}
+                  transition={{ duration: 0.3, ease: 'easeOut' }}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Ready to restart */}
+          {state === 'ready' && (
+            <p className="text-sm text-slate-600 dark:text-slate-400">
+              v{info.version} has been downloaded and is ready to install. Restart to apply the update.
+            </p>
+          )}
+
+          {/* Restarting */}
+          {state === 'restarting' && (
+            <p className="text-sm text-slate-500 dark:text-slate-400">
+              Restarting Kubilitics...
+            </p>
+          )}
+
+          {/* Error */}
+          {state === 'error' && (
+            <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+          )}
+        </div>
+
+        {/* Actions */}
+        {(state === 'available' || state === 'ready' || state === 'error') && (
+          <div className={cn(
+            'flex items-center gap-2 px-4 py-3',
+            'border-t border-slate-100 dark:border-slate-800',
+          )}>
+            {state === 'available' && (
+              <>
+                <button
+                  onClick={handleUpdate}
+                  className={cn(
+                    'flex-1 flex items-center justify-center gap-2 h-9 rounded-lg text-sm font-semibold',
+                    'bg-blue-600 text-white hover:bg-blue-700 active:bg-blue-800',
+                    'transition-colors',
+                  )}
+                >
+                  <Download className="h-3.5 w-3.5" />
+                  Update Now
+                </button>
+                <button
+                  onClick={handleDismiss}
+                  className={cn(
+                    'h-9 px-4 rounded-lg text-sm font-medium',
+                    'text-slate-600 dark:text-slate-400',
+                    'hover:bg-slate-100 dark:hover:bg-slate-800',
+                    'transition-colors',
+                  )}
+                >
+                  Later
+                </button>
+              </>
+            )}
+            {state === 'ready' && (
+              <button
+                onClick={handleRestart}
+                className={cn(
+                  'flex-1 flex items-center justify-center gap-2 h-9 rounded-lg text-sm font-semibold',
+                  'bg-emerald-600 text-white hover:bg-emerald-700 active:bg-emerald-800',
+                  'transition-colors',
+                )}
+              >
+                <RefreshCw className="h-3.5 w-3.5" />
+                Restart Now
+              </button>
+            )}
+            {state === 'error' && (
+              <button
+                onClick={handleUpdate}
+                className={cn(
+                  'flex-1 flex items-center justify-center gap-2 h-9 rounded-lg text-sm font-semibold',
+                  'bg-slate-600 text-white hover:bg-slate-700',
+                  'transition-colors',
+                )}
+              >
+                Try Again
+              </button>
+            )}
+          </div>
+        )}
+      </motion.div>
+    </AnimatePresence>
+  );
 }
