@@ -433,7 +433,7 @@ Without a shared message bus:
 Configure a Redis instance for cross-pod WebSocket event broadcasting:
 
 ```yaml
-# values.yaml (future feature -- not yet in v0.1.1)
+# values.yaml
 redis:
   enabled: true
   host: "redis-master.kubilitics.svc.cluster.local"

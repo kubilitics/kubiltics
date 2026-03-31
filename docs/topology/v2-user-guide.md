@@ -60,7 +60,6 @@ Press `/` to focus the search bar. Type to filter resources by name, kind, or na
 - **PNG** — Screenshot to clipboard (press S)
 - **PDF** — Full topology with header/footer
 - **JSON** — Raw topology data (nodes + edges)
-- **DrawIO** — Import into draw.io/diagrams.net
 
 ## Deep Linking
 Every view state is reflected in the URL. Share URLs to link directly to specific views:

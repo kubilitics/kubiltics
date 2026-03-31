@@ -26,7 +26,7 @@ Kubilitics needed a production-grade Kubernetes topology visualization engine to
 - **WebSocket** real-time updates with 100ms batching and exponential backoff (1s→30s)
 - **URL Sync** via react-router searchParams for deep linking
 - **Design System**: 8 category color tokens with light/dark mode support
-- **Export**: PNG (clipboard), SVG, PDF (jspdf), JSON, DrawIO XML
+- **Export**: PNG (clipboard), SVG, PDF (jspdf), JSON
 
 ### Key Patterns
 - All node components wrapped in `React.memo` for render optimization

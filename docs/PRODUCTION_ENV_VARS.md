@@ -6,7 +6,6 @@ This document provides a comprehensive reference for all environment variables u
 
 Kubilitics consists of three main services:
 - **Backend** (`kubilitics-backend`) - Core Kubernetes API proxy and data layer
-- **AI Backend** (`kubilitics-ai`) - AI-powered analysis and recommendations
 - **Frontend** (`kubilitics-frontend`) - Web UI (React/Vite)
 
 Each service has its own set of environment variables for configuration.
