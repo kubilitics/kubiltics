@@ -42,6 +42,7 @@ import {
 } from "./export/exportTopology";
 import type { ExportFormat } from "./TopologyCanvas";
 import type { TopologyResponse, ViewMode } from "./types/topology";
+import { exportTopologyCSV } from "./export/exportCSV";
 
 export interface ResourceTopologyV2ViewProps {
   kind: string;
@@ -160,6 +161,13 @@ export function ResourceTopologyV2View({
     const filename = buildExportFilename("png", exportCtx);
     exportCanvasRef.current?.("png", filename);
   }, [exportCtx]);
+
+  const handleExportCSV = useCallback(async () => {
+    if (!topology || !clusterId) return;
+    const { getEffectiveBackendBaseUrl, useBackendConfigStore } = await import('@/stores/backendConfigStore');
+    const baseUrl = getEffectiveBackendBaseUrl(useBackendConfigStore.getState().backendBaseUrl);
+    await exportTopologyCSV(topology, baseUrl, clusterId, exportCtx);
+  }, [topology, clusterId, exportCtx]);
 
   const handleExportSVG = useCallback(() => {
     const filename = buildExportFilename("svg", exportCtx);
@@ -293,6 +301,9 @@ export function ResourceTopologyV2View({
               </DropdownMenuItem>
               <DropdownMenuItem onClick={handleExportJSON}>
                 <FileJson className="h-3.5 w-3.5 mr-2" /> JSON
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleExportCSV}>
+                <FileJson className="h-3.5 w-3.5 mr-2" /> CSV (with resource details)
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
