@@ -154,6 +154,11 @@ func GetGVRForType(resourceType string) (schema.GroupVersionResource, error) {
 		"priorityclasses": {Group: "scheduling.k8s.io", Version: "v1", Resource: "priorityclasses"},
 	}
 
+	// Node resources
+	nodeResources := map[string]schema.GroupVersionResource{
+		"runtimeclasses": {Group: "node.k8s.io", Version: "v1", Resource: "runtimeclasses"},
+	}
+
 	// Coordination resources
 	coordinationResources := map[string]schema.GroupVersionResource{
 		"leases": {Group: "coordination.k8s.io", Version: "v1", Resource: "leases"},
@@ -213,6 +218,9 @@ func GetGVRForType(resourceType string) (schema.GroupVersionResource, error) {
 		return gvr, nil
 	}
 	if gvr, ok := schedulingResources[resourceType]; ok {
+		return gvr, nil
+	}
+	if gvr, ok := nodeResources[resourceType]; ok {
 		return gvr, nil
 	}
 	if gvr, ok := coordinationResources[resourceType]; ok {

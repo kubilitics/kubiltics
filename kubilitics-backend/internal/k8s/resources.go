@@ -295,13 +295,24 @@ func IsNamespaced(kind string) bool {
 	}
 	// Cluster-scoped: nodes, namespaces, persistentvolumes, storageclasses, clusterroles, clusterrolebindings
 	clusterScoped := map[string]bool{
-		"nodes":                  true,
-		"namespaces":             true,
-		"persistentvolumes":      true,
-		"storageclasses":         true,
-		"clusterroles":           true,
-		"clusterrolebindings":    true,
-		"ingressclasses":         true,
+		"nodes":                             true,
+		"namespaces":                        true,
+		"persistentvolumes":                 true,
+		"storageclasses":                    true,
+		"clusterroles":                      true,
+		"clusterrolebindings":               true,
+		"ingressclasses":                    true,
+		"priorityclasses":                   true,
+		"runtimeclasses":                    true,
+		"customresourcedefinitions":          true,
+		"apiservices":                       true,
+		"mutatingwebhookconfigurations":     true,
+		"validatingwebhookconfigurations":   true,
+		"csidrivers":                        true,
+		"csinodes":                          true,
+		"volumeattachments":                 true,
+		"flowschemas":                       true,
+		"prioritylevelconfigurations":       true,
 	}
 	_, ok := clusterScoped[gvr.Resource]
 	return !ok
