@@ -851,6 +851,7 @@ export default function ClusterConnect() {
                         </motion.div>
                       ))}
 
+                      {/* Empty state: prominent cards */}
                       {registeredClusters.length === 0 && discoveredClusters.length === 0 && (
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 py-8">
                           <Card
@@ -887,6 +888,33 @@ export default function ClusterConnect() {
                               </Button>
                             </div>
                           </Card>
+                        </div>
+                      )}
+
+                      {/* When clusters exist: always show add-cluster actions */}
+                      {(registeredClusters.length > 0 || discoveredClusters.length > 0) && (
+                        <div className="mt-4 pt-4 border-t border-border/50">
+                          <p className="text-xs font-medium text-muted-foreground mb-3 uppercase tracking-wider">Add from different kubeconfig</p>
+                          <div className="flex items-center gap-3">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="gap-2"
+                              onClick={() => setPasteDialogOpen(true)}
+                            >
+                              <ClipboardPaste className="h-4 w-4" />
+                              Paste kubeconfig
+                            </Button>
+                            <label className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md border border-input bg-background hover:bg-muted text-sm font-medium transition-colors cursor-pointer h-9">
+                              <FolderOpen className="h-4 w-4" />
+                              Upload file
+                              <input
+                                type="file"
+                                className="hidden"
+                                onChange={(e) => e.target.files?.[0] && handleUploadedFile(e.target.files[0])}
+                              />
+                            </label>
+                          </div>
                         </div>
                       )}
                     </div>

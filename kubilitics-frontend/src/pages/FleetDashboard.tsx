@@ -30,6 +30,7 @@ import {
   Clock,
   X,
   Check,
+  Plus,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from '@/components/ui/sonner';
@@ -767,6 +768,10 @@ export default function FleetDashboard() {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <Button size="sm" variant="default" onClick={() => navigate('/connect?addCluster=true')} className="gap-1.5">
+              <Plus className="h-3.5 w-3.5" />
+              Add Cluster
+            </Button>
             <Button size="sm" variant="outline" onClick={() => { setShowGroupForm(true); setSelectedClusterIds(new Set()); setNewGroupName(''); }} className="gap-1.5">
               <Layers className="h-3.5 w-3.5" />
               New Group
