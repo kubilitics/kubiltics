@@ -249,13 +249,23 @@ export function ContextPicker({
         )}
 
         {/* Action Buttons */}
-        <motion.div variants={item} className="flex flex-col items-center gap-4">
+        <motion.div variants={item} className="flex items-center justify-center gap-3">
+          {onCancel && (
+            <Button
+              size="lg"
+              variant="outline"
+              onClick={onCancel}
+              className="min-w-[140px] rounded-xl h-12 text-sm font-semibold"
+            >
+              Cancel
+            </Button>
+          )}
           <Button
             size="lg"
             disabled={!selectedContext || isConnecting}
             onClick={onConnect}
             className={cn(
-              'min-w-[260px] bg-blue-600 hover:bg-blue-700 text-white rounded-xl h-12 text-sm font-semibold',
+              'min-w-[200px] bg-blue-600 hover:bg-blue-700 text-white rounded-xl h-12 text-sm font-semibold',
               'transition-all duration-300 shadow-md shadow-blue-600/20 hover:shadow-lg hover:shadow-blue-600/30',
               'disabled:opacity-50 disabled:cursor-not-allowed border-0',
             )}
@@ -272,14 +282,6 @@ export function ContextPicker({
               </>
             )}
           </Button>
-          {onCancel && (
-            <button
-              onClick={onCancel}
-              className="text-sm text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors font-medium"
-            >
-              Skip — continue to dashboard
-            </button>
-          )}
         </motion.div>
       </motion.div>
     </div>
