@@ -255,7 +255,7 @@ export function ContextPicker({
               size="lg"
               variant="outline"
               onClick={onCancel}
-              className="min-w-[140px] rounded-xl h-12 text-sm font-semibold"
+              className="min-w-[200px] rounded-xl h-12 text-sm font-semibold"
             >
               Cancel
             </Button>
