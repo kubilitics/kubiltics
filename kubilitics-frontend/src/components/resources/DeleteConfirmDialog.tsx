@@ -15,6 +15,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { NamespaceBadge } from '@/components/list';
 import { cn } from '@/lib/utils';
+import { toast } from '@/components/ui/sonner';
 
 export interface DeleteConfirmDialogProps {
   open: boolean;
@@ -49,6 +50,9 @@ export function DeleteConfirmDialog({
       onOpenChange(false);
     } catch (error) {
       console.error('Delete failed:', error);
+      toast.error('Delete failed', {
+        description: error instanceof Error ? error.message : String(error),
+      });
     } finally {
       setIsDeleting(false);
       setConfirmInput('');

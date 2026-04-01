@@ -182,11 +182,13 @@ function WebhookTargetEditor({
   onChange,
   onRemove,
   onTest,
+  isTesting = false,
 }: {
   target: WebhookConfig;
   onChange: (t: WebhookConfig) => void;
   onRemove: () => void;
   onTest: () => void;
+  isTesting?: boolean;
 }) {
   const TargetIcon = targetIcons[target.type];
 
@@ -215,8 +217,8 @@ function WebhookTargetEditor({
           />
         </div>
         <div className="flex items-center gap-1">
-          <Button variant="ghost" size="sm" className="h-7 gap-1 text-xs" onClick={onTest}>
-            <TestTube className="h-3 w-3" />
+          <Button variant="ghost" size="sm" className="h-7 gap-1 text-xs" onClick={onTest} disabled={isTesting}>
+            {isTesting ? <Loader2 className="h-3 w-3 animate-spin" /> : <TestTube className="h-3 w-3" />}
             Test
           </Button>
           <Button variant="ghost" size="sm" className="h-7 text-red-500" onClick={onRemove}>
@@ -281,10 +283,12 @@ function RuleEditor({
   rule,
   onSave,
   onCancel,
+  isSaving = false,
 }: {
   rule: Partial<AlertRule>;
   onSave: (r: Partial<AlertRule>) => void;
   onCancel: () => void;
+  isSaving?: boolean;
 }) {
   const [draft, setDraft] = useState<Partial<AlertRule>>({
     name: '',
@@ -475,6 +479,7 @@ function RuleEditor({
                   onChange={(t) => handleTargetChange(idx, t)}
                   onRemove={() => handleTargetRemove(idx)}
                   onTest={() => handleTestWebhook(idx)}
+                  isTesting={isTesting === target.id}
                 />
               ))}
             </div>
@@ -488,9 +493,9 @@ function RuleEditor({
             size="sm"
             className="gap-1.5"
             onClick={() => onSave(draft)}
-            disabled={!draft.name?.trim()}
+            disabled={isSaving || !draft.name?.trim()}
           >
-            <Save className="h-3.5 w-3.5" />
+            {isSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
             {rule.id ? 'Update Rule' : 'Create Rule'}
           </Button>
         </div>
@@ -580,6 +585,7 @@ export default function AlertConfiguration() {
               rule={editingRule}
               onSave={(r) => saveMutation.mutate(r as Partial<AlertRule>)}
               onCancel={() => setEditingRule(null)}
+              isSaving={saveMutation.isPending}
             />
           </motion.div>
         )}
