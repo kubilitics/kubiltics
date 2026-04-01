@@ -10,7 +10,6 @@
  *  - Paste / upload kubeconfig for clusters not in default kubeconfig
  */
 import { useState, useCallback } from 'react';
-import yaml from 'js-yaml';
 import { motion, type Variants } from 'framer-motion';
 import {
   Server,
@@ -39,6 +38,7 @@ import { toast } from '@/components/ui/sonner';
 import { useQueryClient } from '@tanstack/react-query';
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
 import { addClusterWithUpload } from '@/services/backendApiClient';
+import { extractContextFromKubeconfig, stringToBase64, bytesToBase64 } from '@/lib/kubeconfigUtils';
 import type { DiscoveredContext } from '@/hooks/useAutoConnect';
 
 const container: Variants = {
@@ -127,21 +127,6 @@ export interface ContextPickerProps {
   error: string | null;
 }
 
-/** Extract context name from kubeconfig YAML. */
-function extractContextFromKubeconfig(text: string): string {
-  try {
-    const doc = yaml.load(text) as Record<string, unknown> | null;
-    if (!doc || typeof doc !== 'object') return '';
-    if (typeof doc['current-context'] === 'string' && doc['current-context']) return doc['current-context'];
-    const ctxs = doc['contexts'];
-    if (Array.isArray(ctxs) && ctxs.length > 0) {
-      const first = ctxs[0] as Record<string, unknown>;
-      if (typeof first['name'] === 'string') return first['name'];
-    }
-    return '';
-  } catch { return ''; }
-}
-
 export function ContextPicker({
   contexts,
   selectedContext,
@@ -165,17 +150,11 @@ export function ContextPicker({
     if (!trimmed) { toast.error('Paste your kubeconfig content first'); return; }
     setIsPasting(true);
     try {
-      const bytes = new TextEncoder().encode(trimmed);
-      let binary = '';
-      const chunkSize = 8192;
-      for (let i = 0; i < bytes.length; i += chunkSize) {
-        binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
-      }
-      const base64 = btoa(binary);
+      const base64 = stringToBase64(trimmed);
       const contextName = extractContextFromKubeconfig(trimmed);
       await addClusterWithUpload(backendBaseUrl, base64, contextName);
       queryClient.invalidateQueries({ queryKey: ['backend', 'clusters'] });
-      toast.success('Cluster added — please refresh to see it', { description: `Context: ${contextName}` });
+      toast.success('Cluster added', { description: `Context: ${contextName}` });
       setPasteDialogOpen(false);
       setPasteContent('');
     } catch (err) {
@@ -187,17 +166,12 @@ export function ContextPicker({
     setIsUploading(true);
     try {
       const bytes = new Uint8Array(await file.arrayBuffer());
-      let binary = '';
-      const chunkSize = 8192;
-      for (let i = 0; i < bytes.length; i += chunkSize) {
-        binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
-      }
-      const base64 = btoa(binary);
+      const base64 = bytesToBase64(bytes);
       const text = new TextDecoder('utf-8', { fatal: false }).decode(bytes);
       const contextName = extractContextFromKubeconfig(text);
       await addClusterWithUpload(backendBaseUrl, base64, contextName);
       queryClient.invalidateQueries({ queryKey: ['backend', 'clusters'] });
-      toast.success('Cluster added — please refresh to see it', { description: `Context: ${contextName}` });
+      toast.success('Cluster added', { description: `Context: ${contextName}` });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to add cluster');
     } finally { setIsUploading(false); }

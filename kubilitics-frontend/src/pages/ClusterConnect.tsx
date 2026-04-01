@@ -9,7 +9,6 @@
  */
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { cn } from '@/lib/utils';
-import yaml from 'js-yaml';
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
@@ -62,6 +61,7 @@ import { useDiscoverClusters } from '@/hooks/useDiscoverClusters';
 import { useBackendHealth } from '@/hooks/useBackendHealth';
 import { addCluster, addClusterWithUpload, resetBackendCircuit, getClusterOverview, type BackendCluster } from '@/services/backendApiClient';
 import { backendClusterToCluster } from '@/lib/backendClusterAdapter';
+import { extractContextFromKubeconfig, parseKubeconfigContexts, bytesToBase64 } from '@/lib/kubeconfigUtils';
 import { toast } from '@/components/ui/sonner';
 import { useQueryClient } from '@tanstack/react-query';
 import { WelcomeAddCluster } from '@/components/connect/WelcomeAddCluster';
@@ -120,17 +120,6 @@ const kubeconfigLocations = [
   { path: '$KUBECONFIG', desc: 'Environment variable' },
   { path: '~/.kube/config.d/*', desc: 'Config directory' },
 ];
-
-function extractContextFromKubeconfig(text: string): string {
-  try {
-    const currentMatch = text.match(/current-context:\s*(\S+)/);
-    if (currentMatch) return currentMatch[1].trim();
-    const nameMatch = text.match(/contexts:\s*[\s\S]*?name:\s*(\S+)/);
-    return nameMatch ? nameMatch[1].trim() : 'default';
-  } catch {
-    return 'default';
-  }
-}
 
 /** Safe target after connect: use returnUrl only if it's a relative app path (no open redirect). */
 function getPostConnectPath(returnUrl: string | null): string {
@@ -349,53 +338,13 @@ export default function ClusterConnect() {
       ? discoveredClustersRes.data.map(backendToDetected)
       : [];
 
-  /**
-   * Extract context names from kubeconfig YAML text.
-   * Uses js-yaml to parse the document properly so only the `contexts[].name`
-   * fields are returned — not cluster names or user names, which share the same
-   * `- name: ...` YAML structure and would confuse the regex approach.
-   */
-  const parseKubeconfigContexts = (text: string): { contexts: string[]; currentContext: string } => {
-    try {
-      const doc = yaml.load(text) as Record<string, unknown> | null;
-      if (!doc || typeof doc !== 'object') return { contexts: [], currentContext: '' };
-
-      const currentContext = typeof doc['current-context'] === 'string' ? doc['current-context'] : '';
-
-      const contextsRaw = doc['contexts'];
-      const contexts: string[] = [];
-      if (Array.isArray(contextsRaw)) {
-        for (const entry of contextsRaw) {
-          if (entry && typeof entry === 'object' && typeof (entry as Record<string, unknown>)['name'] === 'string') {
-            const name = ((entry as Record<string, unknown>)['name'] as string).trim();
-            if (name && !contexts.includes(name)) contexts.push(name);
-          }
-        }
-      }
-      return { contexts, currentContext };
-    } catch {
-      // Fallback: kubeconfig is not valid YAML — return empty so backend handles it
-      return { contexts: [], currentContext: '' };
-    }
-  };
-
-  /** Encode bytes to standard base64 (with padding). Compatible with Go's base64.StdEncoding. */
-  const bytesToBase64 = (bytes: Uint8Array): string => {
-    let binary = '';
-    const chunkSize = 8192;
-    for (let i = 0; i < bytes.length; i += chunkSize) {
-      binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
-    }
-    return btoa(binary);
-  };
-
   const submitClusterWithContext = useCallback(async (base64: string, contextName: string) => {
     await addClusterWithUpload(backendBaseUrl, base64, contextName);
     await queryClient.invalidateQueries({ queryKey: ['backend', 'clusters'] });
     await clustersFromBackend.refetch();
     discoveredClustersRes.refetch();
     setTabMode('auto');
-    toast.success('Cluster added successfully', { description: `Context: ${contextName}` });
+    toast.success('Cluster added', { description: `Context: ${contextName}` });
   }, [backendBaseUrl, queryClient, clustersFromBackend, discoveredClustersRes]);
 
   const handleUploadedFile = useCallback(async (file: File) => {
@@ -1043,62 +992,34 @@ export default function ClusterConnect() {
       </div>
 
       <Dialog open={pasteDialogOpen} onOpenChange={setPasteDialogOpen}>
-        <DialogContent className="w-[90vw] max-w-3xl max-h-[90vh] flex flex-col gap-0 p-0 overflow-hidden">
-          {/* Header */}
-          <div className="px-6 pt-6 pb-4 border-b border-border shrink-0">
-            <DialogTitle className="text-lg font-semibold flex items-center gap-2">
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
               <ClipboardPaste className="h-5 w-5 text-blue-500" />
               Paste kubeconfig
             </DialogTitle>
-            <DialogDescription className="mt-1 text-sm text-muted-foreground">
-              Paste the full contents of your kubeconfig file below. Run{' '}
+            <DialogDescription>
+              Paste the full contents of your kubeconfig YAML below. Run{' '}
               <code className="bg-muted px-1.5 py-0.5 rounded text-xs font-mono">kubectl config view --raw</code>{' '}
-              to get it, or open <code className="bg-muted px-1.5 py-0.5 rounded text-xs font-mono">~/.kube/config</code> directly.
+              to get it.
             </DialogDescription>
-          </div>
+          </DialogHeader>
 
-          {/* Textarea — fills available space */}
-          <div className="flex-1 px-6 py-4 min-h-0">
-            <Textarea
-              placeholder={`apiVersion: v1
-kind: Config
-clusters:
-  - cluster:
-      server: https://your-cluster-endpoint
-      certificate-authority-data: DATA+OMITTED
-    name: my-cluster
-contexts:
-  - context:
-      cluster: my-cluster
-      user: my-user
-    name: my-cluster
-current-context: my-cluster
-users:
-  - name: my-user
-    user:
-      token: your-token`}
-              value={pasteContent}
-              onChange={(e) => setPasteContent(e.target.value)}
-              className="h-[42vh] min-h-[280px] w-full font-mono text-xs resize-none leading-relaxed"
-              autoFocus
-            />
-          </div>
-
-          {/* Footer */}
-          <div className="px-6 pb-6 pt-2 border-t border-border shrink-0 flex items-center justify-between gap-3">
-            <p className="text-xs text-muted-foreground">
-              Supports EKS, GKE, AKS, k3s, Kind, Rancher, and any CNCF-compliant cluster.
-            </p>
-            <div className="flex items-center gap-2 shrink-0">
-              <Button variant="outline" onClick={() => { setPasteDialogOpen(false); setPasteContent(''); }}>
-                Cancel
-              </Button>
-              <Button onClick={handlePasteSubmit} disabled={isPasting || !pasteContent.trim()} className="min-w-[120px]">
-                {isPasting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                {isPasting ? 'Adding…' : 'Add Cluster'}
-              </Button>
-            </div>
-          </div>
+          <Textarea
+            placeholder={`apiVersion: v1\nkind: Config\nclusters:\n  - cluster:\n      server: https://...\n    name: my-cluster\ncontexts:\n  - context:\n      cluster: my-cluster\n      user: admin\n    name: my-cluster\ncurrent-context: my-cluster`}
+            value={pasteContent}
+            onChange={(e) => setPasteContent(e.target.value)}
+            className="font-mono text-xs min-h-[220px] resize-y"
+            autoFocus
+          />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setPasteDialogOpen(false); setPasteContent(''); }}>
+              Cancel
+            </Button>
+            <Button onClick={handlePasteSubmit} disabled={isPasting || !pasteContent.trim()}>
+              {isPasting ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Add Cluster'}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
