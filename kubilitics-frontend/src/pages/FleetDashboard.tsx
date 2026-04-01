@@ -697,7 +697,7 @@ export default function FleetDashboard() {
   const [selectedClusterIds, setSelectedClusterIds] = useState<Set<string>>(new Set());
   const addGroup = useClusterOrganizationStore((s) => s.addGroup);
   const removeGroup = useClusterOrganizationStore((s) => s.removeGroup);
-  const addClusterToGroup = useClusterOrganizationStore((s) => s.addClusterToGroup);
+  const addClusterToGroup = useClusterOrganizationStore((s) => s.addToGroup);
   const groups = useClusterOrganizationStore((s) => s.groups);
 
   const handleCreateGroup = () => {
