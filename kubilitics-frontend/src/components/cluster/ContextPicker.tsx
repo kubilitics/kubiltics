@@ -7,7 +7,10 @@
  *  - Dark mode via CSS variables / Tailwind dark: prefix
  *  - Selected state with blue ring accent
  *  - Connect button triggers auto-connect flow
+ *  - Paste / upload kubeconfig for clusters not in default kubeconfig
  */
+import { useState, useCallback } from 'react';
+import yaml from 'js-yaml';
 import { motion, type Variants } from 'framer-motion';
 import {
   Server,
@@ -17,10 +20,25 @@ import {
   Loader2,
   ArrowRight,
   Monitor,
+  ClipboardPaste,
+  FolderOpen,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { BrandLogo } from '@/components/BrandLogo';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
+import { toast } from '@/components/ui/sonner';
+import { useQueryClient } from '@tanstack/react-query';
+import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
+import { addClusterWithUpload } from '@/services/backendApiClient';
 import type { DiscoveredContext } from '@/hooks/useAutoConnect';
 
 const container: Variants = {
@@ -109,6 +127,21 @@ export interface ContextPickerProps {
   error: string | null;
 }
 
+/** Extract context name from kubeconfig YAML. */
+function extractContextFromKubeconfig(text: string): string {
+  try {
+    const doc = yaml.load(text) as Record<string, unknown> | null;
+    if (!doc || typeof doc !== 'object') return '';
+    if (typeof doc['current-context'] === 'string' && doc['current-context']) return doc['current-context'];
+    const ctxs = doc['contexts'];
+    if (Array.isArray(ctxs) && ctxs.length > 0) {
+      const first = ctxs[0] as Record<string, unknown>;
+      if (typeof first['name'] === 'string') return first['name'];
+    }
+    return '';
+  } catch { return ''; }
+}
+
 export function ContextPicker({
   contexts,
   selectedContext,
@@ -118,6 +151,58 @@ export function ContextPicker({
   isConnecting,
   error,
 }: ContextPickerProps) {
+  const queryClient = useQueryClient();
+  const storedBackendUrl = useBackendConfigStore((s) => s.backendBaseUrl);
+  const backendBaseUrl = getEffectiveBackendBaseUrl(storedBackendUrl);
+
+  const [pasteDialogOpen, setPasteDialogOpen] = useState(false);
+  const [pasteContent, setPasteContent] = useState('');
+  const [isPasting, setIsPasting] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+
+  const handlePasteSubmit = useCallback(async () => {
+    const trimmed = pasteContent.trim();
+    if (!trimmed) { toast.error('Paste your kubeconfig content first'); return; }
+    setIsPasting(true);
+    try {
+      const bytes = new TextEncoder().encode(trimmed);
+      let binary = '';
+      const chunkSize = 8192;
+      for (let i = 0; i < bytes.length; i += chunkSize) {
+        binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
+      }
+      const base64 = btoa(binary);
+      const contextName = extractContextFromKubeconfig(trimmed);
+      await addClusterWithUpload(backendBaseUrl, base64, contextName);
+      queryClient.invalidateQueries({ queryKey: ['backend', 'clusters'] });
+      toast.success('Cluster added — please refresh to see it', { description: `Context: ${contextName}` });
+      setPasteDialogOpen(false);
+      setPasteContent('');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to add cluster');
+    } finally { setIsPasting(false); }
+  }, [pasteContent, backendBaseUrl, queryClient]);
+
+  const handleFileUpload = useCallback(async (file: File) => {
+    setIsUploading(true);
+    try {
+      const bytes = new Uint8Array(await file.arrayBuffer());
+      let binary = '';
+      const chunkSize = 8192;
+      for (let i = 0; i < bytes.length; i += chunkSize) {
+        binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
+      }
+      const base64 = btoa(binary);
+      const text = new TextDecoder('utf-8', { fatal: false }).decode(bytes);
+      const contextName = extractContextFromKubeconfig(text);
+      await addClusterWithUpload(backendBaseUrl, base64, contextName);
+      queryClient.invalidateQueries({ queryKey: ['backend', 'clusters'] });
+      toast.success('Cluster added — please refresh to see it', { description: `Context: ${contextName}` });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to add cluster');
+    } finally { setIsUploading(false); }
+  }, [backendBaseUrl, queryClient]);
+
   return (
     <div className="relative min-h-screen bg-gradient-to-b from-slate-50 via-white to-blue-50/30 dark:from-[hsl(228,14%,7%)] dark:via-[hsl(228,14%,9%)] dark:to-[hsl(228,14%,11%)] text-foreground overflow-hidden flex flex-col items-center justify-center px-6 py-8">
       {/* Ambient light orbs */}
@@ -283,7 +368,71 @@ export function ContextPicker({
             )}
           </Button>
         </motion.div>
+
+        {/* Add cluster from different kubeconfig */}
+        <motion.div variants={item} className="mt-8 pt-6 border-t border-slate-200/60 dark:border-slate-700/40">
+          <p className="text-center text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-4">
+            Kubeconfig not listed above?
+          </p>
+          <div className="flex items-center justify-center gap-3">
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2 rounded-lg border-slate-200 dark:border-slate-700 hover:border-blue-400 dark:hover:border-blue-500 hover:bg-blue-50/50 dark:hover:bg-blue-950/30"
+              onClick={() => setPasteDialogOpen(true)}
+            >
+              <ClipboardPaste size={15} />
+              Paste kubeconfig
+            </Button>
+            <label className={cn(
+              'inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border text-sm font-medium transition-all cursor-pointer h-9',
+              'border-slate-200 dark:border-slate-700 hover:border-blue-400 dark:hover:border-blue-500',
+              'bg-background hover:bg-blue-50/50 dark:hover:bg-blue-950/30',
+              isUploading && 'opacity-60 pointer-events-none',
+            )}>
+              {isUploading ? <Loader2 size={15} className="animate-spin" /> : <FolderOpen size={15} />}
+              Upload kubeconfig
+              <input
+                type="file"
+                className="hidden"
+                onChange={(e) => e.target.files?.[0] && handleFileUpload(e.target.files[0])}
+              />
+            </label>
+          </div>
+        </motion.div>
       </motion.div>
+
+      {/* Paste kubeconfig dialog */}
+      <Dialog open={pasteDialogOpen} onOpenChange={setPasteDialogOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ClipboardPaste className="h-5 w-5 text-blue-500" />
+              Paste kubeconfig
+            </DialogTitle>
+            <DialogDescription>
+              Paste the full contents of your kubeconfig YAML below. Run{' '}
+              <code className="bg-muted px-1.5 py-0.5 rounded text-xs font-mono">kubectl config view --raw</code>{' '}
+              to get it.
+            </DialogDescription>
+          </DialogHeader>
+          <Textarea
+            placeholder={`apiVersion: v1\nkind: Config\nclusters:\n  - cluster:\n      server: https://...\n    name: my-cluster\ncontexts:\n  - context:\n      cluster: my-cluster\n      user: admin\n    name: my-cluster\ncurrent-context: my-cluster`}
+            value={pasteContent}
+            onChange={(e) => setPasteContent(e.target.value)}
+            className="font-mono text-xs min-h-[220px] resize-y"
+            autoFocus
+          />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPasteDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handlePasteSubmit} disabled={!pasteContent.trim() || isPasting}>
+              {isPasting ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Add Cluster'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
