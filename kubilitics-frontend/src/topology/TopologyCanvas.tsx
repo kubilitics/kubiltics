@@ -485,6 +485,10 @@ function TopologyCanvasInner({
         onMoveEnd={onMoveEnd}
         maxZoom={4}
         minZoom={0.01}
+        panOnScroll
+        panOnScrollSpeed={1.5}
+        zoomOnScroll={false}
+        zoomOnPinch
         proOptions={{ hideAttribution: true }}
         className="!bg-slate-50 dark:!bg-slate-950"
       >
