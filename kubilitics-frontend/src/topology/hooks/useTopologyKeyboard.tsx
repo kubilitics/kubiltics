@@ -215,8 +215,8 @@ export function TopologyShortcutsOverlay({
       >
         <div className="mb-5 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="flex items-center justify-center h-8 w-8 rounded-lg bg-gray-100">
-              <svg className="w-4 h-4 text-gray-500" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" aria-hidden="true">
+            <div className="flex items-center justify-center h-8 w-8 rounded-lg bg-gray-100 dark:bg-slate-800">
+              <svg className="w-4 h-4 text-gray-500 dark:text-gray-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" aria-hidden="true">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 7.5l3 2.25-3 2.25m4.5 0h3m-9 8.25h13.5A2.25 2.25 0 0021 18V6a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 6v12a2.25 2.25 0 002.25 2.25z" />
               </svg>
             </div>
@@ -238,13 +238,13 @@ export function TopologyShortcutsOverlay({
           {shortcuts.map((s) => (
             <div key={s.key} className="flex items-center justify-between py-1.5 text-sm">
               <span className="text-muted-foreground">{s.description}</span>
-              <kbd className="rounded-md bg-muted px-2.5 py-1 font-mono text-xs font-medium text-foreground border border-gray-200 shadow-sm">
+              <kbd className="rounded-md bg-muted px-2.5 py-1 font-mono text-xs font-medium text-foreground border border-gray-200 dark:border-slate-600 shadow-sm">
                 {s.key}
               </kbd>
             </div>
           ))}
         </div>
-        <div className="mt-5 pt-4 border-t border-gray-100 text-center">
+        <div className="mt-5 pt-4 border-t border-gray-100 dark:border-slate-700 text-center">
           <p className="text-[11px] text-muted-foreground">Press <kbd className="rounded bg-muted px-1 py-0.5 text-[10px] font-mono border">Esc</kbd> to close</p>
         </div>
       </div>

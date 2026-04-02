@@ -86,7 +86,7 @@ export function ViewModeSelect({ value = "namespace", onChange }: ViewModeSelect
 
   return (
     <div className="relative">
-      <div className="inline-flex items-center rounded-xl bg-gray-100/80 dark:bg-gray-800/80 p-1 gap-0.5 backdrop-blur-sm border border-gray-200/60 dark:border-gray-700">
+      <div className="inline-flex items-center rounded-xl bg-slate-200/80 dark:bg-slate-800/80 p-1 gap-0.5 backdrop-blur-sm border border-gray-200/60 dark:border-gray-700">
         {modes.map((m) => {
           const isActive = m.value === value;
           return (

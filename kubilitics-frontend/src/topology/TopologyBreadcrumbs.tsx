@@ -68,7 +68,7 @@ export function TopologyBreadcrumbs({
 
   return (
     <nav
-      className="flex items-center gap-1 border-b border-gray-100 dark:border-gray-700 bg-gray-50/80 dark:bg-slate-800 px-4 py-2 text-xs"
+      className="flex items-center gap-1 border-b border-gray-100 dark:border-gray-700 bg-gray-50/80 dark:bg-slate-800/80 px-4 py-2 text-xs"
       aria-label="Topology breadcrumb navigation"
     >
       {parts.map((p, i) => (

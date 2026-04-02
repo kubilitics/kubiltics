@@ -96,7 +96,7 @@ export function TopologyDetailPanel({
 
   return (
     <aside
-      className="hidden w-80 shrink-0 overflow-y-auto border-l border-gray-200 bg-white dark:bg-slate-800 md:block"
+      className="hidden w-80 shrink-0 overflow-y-auto border-l border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 md:block"
       aria-label={`Details for ${node.kind} ${node.name}`}
       role="complementary"
     >
@@ -118,7 +118,7 @@ export function TopologyDetailPanel({
           {onClose && (
             <button
               type="button"
-              className={`ml-1 rounded-md p-1 text-gray-600 dark:text-gray-400 hover:text-gray-600 hover:bg-gray-100 ${A11Y.focusRing} ${A11Y.transition}`}
+              className={`ml-1 rounded-md p-1 text-gray-600 dark:text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-slate-700 ${A11Y.focusRing} ${A11Y.transition}`}
               onClick={onClose}
               aria-label="Close detail panel"
             >
@@ -311,7 +311,7 @@ function InfoRow({ label, value, highlight, copyable = true }: { label: string; 
         {copyable && (
           <button
             type="button"
-            className="opacity-50 group-hover:opacity-100 transition-opacity p-0.5 rounded hover:bg-gray-100"
+            className="opacity-50 group-hover:opacity-100 transition-opacity p-0.5 rounded hover:bg-gray-100 dark:hover:bg-slate-700"
             onClick={handleCopy}
             aria-label={`Copy ${label}`}
           >
@@ -359,11 +359,11 @@ function ConnectionRow({
       />
       {peer && <K8sIcon kind={peer.kind} size={16} className="flex-shrink-0" />}
       <div className="min-w-0 flex-1">
-        <div className="truncate text-[11px] font-medium text-gray-900">{peerName}</div>
+        <div className="truncate text-[11px] font-medium text-gray-900 dark:text-slate-200">{peerName}</div>
         <div className="flex items-center gap-1.5 mt-0.5">
           <span className="text-[9px] text-gray-600 dark:text-gray-400">{peerKind}</span>
           {edge.label && (
-            <span className="inline-flex items-center px-1.5 py-0 rounded text-[9px] font-medium bg-gray-100 text-gray-600 dark:text-gray-400">
+            <span className="inline-flex items-center px-1.5 py-0 rounded text-[9px] font-medium bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-gray-400">
               {edge.label}
             </span>
           )}
