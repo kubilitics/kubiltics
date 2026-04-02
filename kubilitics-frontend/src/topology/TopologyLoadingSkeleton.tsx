@@ -66,10 +66,9 @@ export function TopologyLoadingSkeleton({
                 y1={180 + 130 * Math.sin(a1)}
                 x2={300 + 220 * Math.cos(a2)}
                 y2={180 + 130 * Math.sin(a2)}
-                stroke="#e5e7eb"
+                className="stroke-slate-300 dark:stroke-slate-600 motion-safe:animate-pulse"
                 strokeWidth="1.5"
                 strokeDasharray="6 4"
-                className="motion-safe:animate-pulse"
                 style={{ animationDelay: `${i * 100 + 60}ms` }}
               />
             );

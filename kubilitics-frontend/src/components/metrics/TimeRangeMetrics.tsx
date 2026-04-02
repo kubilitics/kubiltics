@@ -168,8 +168,8 @@ function Sparkline({
       <AreaChart data={data} margin={{ top: 2, right: 2, bottom: 2, left: 2 }}>
         <Tooltip
           contentStyle={{
-            backgroundColor: 'var(--color-card, #fff)',
-            borderColor: 'var(--color-border, #e2e8f0)',
+            backgroundColor: 'var(--chart-tooltip-bg)',
+            borderColor: 'var(--chart-tooltip-border)',
             borderRadius: '0.5rem',
             fontSize: '10px',
             padding: '4px 8px',

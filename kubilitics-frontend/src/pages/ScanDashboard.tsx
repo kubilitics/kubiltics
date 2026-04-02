@@ -319,10 +319,10 @@ export default function ScanDashboard() {
                           </Pie>
                           <RechartsTooltip
                             contentStyle={{
-                              backgroundColor: 'var(--color-card, #fff)',
-                              borderColor: 'var(--color-border, #e2e8f0)',
+                              backgroundColor: 'var(--chart-tooltip-bg)',
+                              borderColor: 'var(--chart-tooltip-border)',
                               borderRadius: '8px',
-                              color: 'var(--color-card-foreground, #0f172a)',
+                              color: 'hsl(var(--card-foreground))',
                             }}
                           />
                         </PieChart>
@@ -374,10 +374,10 @@ export default function ScanDashboard() {
                           <YAxis className="text-slate-500 dark:text-slate-400" tick={{ fontSize: 11 }} />
                           <RechartsTooltip
                             contentStyle={{
-                              backgroundColor: 'var(--color-card, #fff)',
-                              borderColor: 'var(--color-border, #e2e8f0)',
+                              backgroundColor: 'var(--chart-tooltip-bg)',
+                              borderColor: 'var(--chart-tooltip-border)',
                               borderRadius: '8px',
-                              color: 'var(--color-card-foreground, #0f172a)',
+                              color: 'hsl(var(--card-foreground))',
                             }}
                           />
                           <Area

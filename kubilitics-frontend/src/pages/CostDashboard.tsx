@@ -380,8 +380,8 @@ export default function CostDashboard() {
                     <YAxis tick={{ fontSize: 10 }} className="text-slate-500 dark:text-slate-400" width={50} tickFormatter={(v) => formatCostCompact(v)} />
                     <Tooltip
                       contentStyle={{
-                        backgroundColor: 'var(--color-card, #fff)',
-                        borderColor: 'var(--color-border, #e2e8f0)',
+                        backgroundColor: 'var(--chart-tooltip-bg)',
+                        borderColor: 'var(--chart-tooltip-border)',
                         borderRadius: '0.75rem',
                         fontSize: '11px',
                       }}
@@ -430,8 +430,8 @@ export default function CostDashboard() {
                     </Pie>
                     <Tooltip
                       contentStyle={{
-                        backgroundColor: 'var(--color-card, #fff)',
-                        borderColor: 'var(--color-border, #e2e8f0)',
+                        backgroundColor: 'var(--chart-tooltip-bg)',
+                        borderColor: 'var(--chart-tooltip-border)',
                         borderRadius: '0.75rem',
                         fontSize: '11px',
                       }}
