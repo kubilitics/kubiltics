@@ -49,17 +49,17 @@ const SEARCH_DEBOUNCE_MS = 250;
 
 // --- Category colors ---
 const categoryColors: Record<string, { bg: string; text: string; selectedBg: string }> = {
-  'General':            { bg: 'bg-blue-50',    text: 'text-blue-500',    selectedBg: 'bg-blue-100' },
-  'Workloads':          { bg: 'bg-emerald-50', text: 'text-emerald-500', selectedBg: 'bg-emerald-100' },
-  'Networking':         { bg: 'bg-violet-50',  text: 'text-violet-500',  selectedBg: 'bg-violet-100' },
-  'Storage & Config':   { bg: 'bg-amber-50',   text: 'text-amber-500',   selectedBg: 'bg-amber-100' },
-  'Cluster':            { bg: 'bg-sky-50',     text: 'text-sky-500',     selectedBg: 'bg-sky-100' },
-  'Access Control':     { bg: 'bg-rose-50',    text: 'text-rose-500',    selectedBg: 'bg-rose-100' },
-  'Scaling & Resources':{ bg: 'bg-orange-50',  text: 'text-orange-500',  selectedBg: 'bg-orange-100' },
-  'Extensions':         { bg: 'bg-indigo-50',  text: 'text-indigo-500',  selectedBg: 'bg-indigo-100' },
+  'General':            { bg: 'bg-blue-50 dark:bg-blue-900/30',    text: 'text-blue-500 dark:text-blue-400',    selectedBg: 'bg-blue-100 dark:bg-blue-800/40' },
+  'Workloads':          { bg: 'bg-emerald-50 dark:bg-emerald-900/30', text: 'text-emerald-500 dark:text-emerald-400', selectedBg: 'bg-emerald-100 dark:bg-emerald-800/40' },
+  'Networking':         { bg: 'bg-violet-50 dark:bg-violet-900/30',  text: 'text-violet-500 dark:text-violet-400',  selectedBg: 'bg-violet-100 dark:bg-violet-800/40' },
+  'Storage & Config':   { bg: 'bg-amber-50 dark:bg-amber-900/30',   text: 'text-amber-500 dark:text-amber-400',   selectedBg: 'bg-amber-100 dark:bg-amber-800/40' },
+  'Cluster':            { bg: 'bg-sky-50 dark:bg-sky-900/30',     text: 'text-sky-500 dark:text-sky-400',     selectedBg: 'bg-sky-100 dark:bg-sky-800/40' },
+  'Access Control':     { bg: 'bg-rose-50 dark:bg-rose-900/30',    text: 'text-rose-500 dark:text-rose-400',    selectedBg: 'bg-rose-100 dark:bg-rose-800/40' },
+  'Scaling & Resources':{ bg: 'bg-orange-50 dark:bg-orange-900/30',  text: 'text-orange-500 dark:text-orange-400',  selectedBg: 'bg-orange-100 dark:bg-orange-800/40' },
+  'Extensions':         { bg: 'bg-indigo-50 dark:bg-indigo-900/30',  text: 'text-indigo-500 dark:text-indigo-400',  selectedBg: 'bg-indigo-100 dark:bg-indigo-800/40' },
 };
 
-const defaultCatColor = { bg: 'bg-slate-50', text: 'text-slate-500', selectedBg: 'bg-slate-100' };
+const defaultCatColor = { bg: 'bg-slate-50 dark:bg-slate-800', text: 'text-slate-500 dark:text-slate-400', selectedBg: 'bg-slate-100 dark:bg-slate-700' };
 
 // --- Navigation catalog ---
 
@@ -376,8 +376,8 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
         className={cn(
           'flex items-center gap-3 w-full px-3 py-2 mx-1 rounded-xl text-left transition-all duration-150',
           isSelected
-            ? 'bg-blue-50 shadow-[0_0_0_1px_rgba(59,130,246,0.15)]'
-            : 'hover:bg-slate-50'
+            ? 'bg-blue-50 dark:bg-blue-900/30 shadow-[0_0_0_1px_rgba(59,130,246,0.15)]'
+            : 'hover:bg-slate-50 dark:hover:bg-slate-800'
         )}
         style={{ width: 'calc(100% - 8px)' }}
       >
@@ -389,14 +389,14 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
           <item.icon className="h-4 w-4" />
         </div>
         <div className="flex-1 min-w-0">
-          <span className={cn('text-sm font-medium', isSelected ? 'text-blue-700' : 'text-slate-700')}>
+          <span className={cn('text-sm font-medium', isSelected ? 'text-blue-700 dark:text-blue-300' : 'text-slate-700 dark:text-slate-300')}>
             <HighlightMatch text={item.name} query={search.trim()} />
           </span>
           {showCategory && (
-            <span className="text-[10px] text-slate-400 ml-2">{item.category}</span>
+            <span className="text-[10px] text-slate-400 dark:text-slate-500 ml-2">{item.category}</span>
           )}
         </div>
-        <ArrowRight className={cn('h-3.5 w-3.5 transition-colors', isSelected ? 'text-blue-400' : 'text-slate-200')} />
+        <ArrowRight className={cn('h-3.5 w-3.5 transition-colors', isSelected ? 'text-blue-400' : 'text-slate-200 dark:text-slate-600')} />
       </button>
     );
   };

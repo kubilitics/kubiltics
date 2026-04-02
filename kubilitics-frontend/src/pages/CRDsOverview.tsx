@@ -105,21 +105,21 @@ export default function CRDsOverview() {
         <Card className="lg:col-span-8 overflow-hidden border-slate-200/80 dark:border-slate-700/80 shadow-sm bg-white dark:bg-slate-900">
           <CardHeader className="pt-8 px-8 pb-4">
             <CardTitle className="text-xl font-bold tracking-tight text-slate-900 dark:text-slate-100">API Extensions</CardTitle>
-            <p className="text-sm text-slate-500 mt-1">Custom resource definitions registered in your cluster</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Custom resource definitions registered in your cluster</p>
           </CardHeader>
           <CardContent className="pb-8 px-8">
             <div className="flex items-end gap-8 mt-2">
               <div>
-                <span className="block text-5xl font-bold text-slate-900 tabular-nums">{resources.length}</span>
-                <span className="text-xs font-medium text-slate-500 mt-1 block">Definitions</span>
+                <span className="block text-5xl font-bold text-slate-900 dark:text-slate-100 tabular-nums">{resources.length}</span>
+                <span className="text-xs font-medium text-slate-500 dark:text-slate-400 mt-1 block">Definitions</span>
               </div>
-              <div className="h-12 w-px bg-slate-100" />
+              <div className="h-12 w-px bg-slate-100 dark:bg-slate-700" />
               <div>
                 <div className="flex items-center gap-2">
                   <div className="h-2 w-2 rounded-full bg-emerald-500" />
                   <span className="text-sm font-semibold text-emerald-600">All Established</span>
                 </div>
-                <span className="text-xs font-medium text-slate-500 mt-1 block">Schema validation passing</span>
+                <span className="text-xs font-medium text-slate-500 dark:text-slate-400 mt-1 block">Schema validation passing</span>
               </div>
             </div>
           </CardContent>
@@ -127,13 +127,13 @@ export default function CRDsOverview() {
 
         <Card className="lg:col-span-4 border-slate-200/80 dark:border-slate-700/80 shadow-sm bg-white dark:bg-slate-900 flex flex-col p-8 overflow-hidden">
           <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 mb-2">Quick Actions</h3>
-          <p className="text-xs text-slate-500 mb-6">Browse and manage custom API extensions.</p>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mb-6">Browse and manage custom API extensions.</p>
 
           <div className="flex-1 space-y-3">
-            <Button variant="outline" asChild className="w-full h-9 border-slate-200 text-slate-600 font-medium hover:bg-slate-50 rounded-lg justify-start">
+            <Button variant="outline" asChild className="w-full h-9 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 font-medium hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg justify-start">
               <Link to="/customresourcedefinitions">Browse All CRDs</Link>
             </Button>
-            <Button variant="outline" asChild className="w-full h-9 border-slate-200 text-slate-600 font-medium hover:bg-slate-50 rounded-lg justify-start">
+            <Button variant="outline" asChild className="w-full h-9 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 font-medium hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg justify-start">
               <Link to="/custom-resources">View Custom Resources</Link>
             </Button>
           </div>
@@ -145,8 +145,8 @@ export default function CRDsOverview() {
         <div className="p-6 border-b border-slate-100 dark:border-slate-800">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
-              <h3 className="text-lg font-bold tracking-tight text-slate-900">Custom Resource Definitions</h3>
-              <p className="text-sm text-slate-500 mt-0.5">All CRDs registered in the cluster</p>
+              <h3 className="text-lg font-bold tracking-tight text-slate-900 dark:text-slate-100">Custom Resource Definitions</h3>
+              <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">All CRDs registered in the cluster</p>
             </div>
             <div className="flex items-center gap-3">
               <div className="relative min-w-[280px]">

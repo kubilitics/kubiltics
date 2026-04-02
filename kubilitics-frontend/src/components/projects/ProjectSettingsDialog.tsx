@@ -152,12 +152,12 @@ export function ProjectSettingsDialog({ project, open, onOpenChange }: ProjectSe
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-[800px] max-h-[85vh] overflow-hidden rounded-[3rem] p-0 border-none bg-slate-50 shadow-2xl flex flex-col">
+            <DialogContent className="sm:max-w-[800px] max-h-[85vh] overflow-hidden rounded-[3rem] p-0 border-none bg-slate-50 dark:bg-slate-900 shadow-2xl flex flex-col">
                 {/* Header Section */}
-                <div className="p-10 pb-8 bg-white border-b border-slate-100 relative">
+                <div className="p-10 pb-8 bg-white dark:bg-slate-800 border-b border-slate-100 dark:border-slate-700 relative">
                     <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 via-purple-500 to-emerald-500" />
                     <DialogHeader>
-                        <DialogTitle className="text-3xl font-extrabold tracking-tight text-slate-900">
+                        <DialogTitle className="text-3xl font-extrabold tracking-tight text-slate-900 dark:text-slate-100">
                             Logical Governance
                         </DialogTitle>
                         <DialogDescription className="text-slate-400 font-medium text-sm mt-1">
@@ -170,7 +170,7 @@ export function ProjectSettingsDialog({ project, open, onOpenChange }: ProjectSe
                     {isDetailsLoading ? (
                         <div className="flex flex-col items-center justify-center py-24 space-y-4">
                             <div className="relative h-12 w-12">
-                                <div className="absolute inset-0 rounded-full border-4 border-slate-100" />
+                                <div className="absolute inset-0 rounded-full border-4 border-slate-100 dark:border-slate-700" />
                                 <div className="absolute inset-0 rounded-full border-4 border-t-blue-500 animate-spin" />
                             </div>
                             <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Synchronizing state...</span>
@@ -181,18 +181,18 @@ export function ProjectSettingsDialog({ project, open, onOpenChange }: ProjectSe
                             <section className="space-y-6">
                                 <div className="space-y-1">
                                     <h4 className="text-xs font-bold uppercase tracking-[0.2em] text-slate-400">Resource Allocation</h4>
-                                    <p className="text-sm font-semibold text-slate-800">Provision Infrastructure</p>
+                                    <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">Provision Infrastructure</p>
                                 </div>
 
-                                <div className="bg-white/70 backdrop-blur-sm rounded-[2.5rem] p-8 border border-white shadow-sm space-y-8">
+                                <div className="bg-white/70 dark:bg-slate-800/50 backdrop-blur-sm rounded-[2.5rem] p-8 border border-white dark:border-slate-700 shadow-sm space-y-8">
                                     <div className="flex flex-col sm:flex-row gap-4 items-end">
                                         <div className="flex-1 space-y-2">
                                             <label className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.1em] ml-2">Source Context</label>
                                             <Select onValueChange={(val) => { setSelectedClusterId(val); setSelectedNamespace(''); }} value={selectedClusterId}>
-                                                <SelectTrigger className="h-12 rounded-2xl border-slate-100 bg-slate-50 text-sm font-bold tracking-tight">
+                                                <SelectTrigger className="h-12 rounded-2xl border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-sm font-bold tracking-tight">
                                                     <SelectValue placeholder="Select Cluster..." />
                                                 </SelectTrigger>
-                                                <SelectContent className="rounded-2xl shadow-2xl border-slate-100 p-2">
+                                                <SelectContent className="rounded-2xl shadow-2xl border-slate-100 dark:border-slate-700 p-2">
                                                     {availableClusters.map(c => (
                                                         <SelectItem key={c.id} value={c.id} className="rounded-xl py-3 font-semibold">
                                                             {c.name}
@@ -205,14 +205,14 @@ export function ProjectSettingsDialog({ project, open, onOpenChange }: ProjectSe
                                         <div className="flex-1 space-y-2">
                                             <label className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.1em] ml-2">Governance Scope</label>
                                             <Select onValueChange={setSelectedNamespace} value={selectedNamespace} disabled={!selectedClusterId}>
-                                                <SelectTrigger className="h-12 rounded-2xl border-slate-100 bg-slate-50 text-sm font-bold tracking-tight">
+                                                <SelectTrigger className="h-12 rounded-2xl border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-sm font-bold tracking-tight">
                                                     <SelectValue placeholder="Select Depth..." />
                                                 </SelectTrigger>
-                                                <SelectContent className="rounded-2xl shadow-2xl border-slate-100 p-2">
-                                                    <SelectItem value="__ENTIRE_CLUSTER__" className="rounded-xl py-2 font-bold text-blue-600 focus:bg-blue-50">
+                                                <SelectContent className="rounded-2xl shadow-2xl border-slate-100 dark:border-slate-700 p-2">
+                                                    <SelectItem value="__ENTIRE_CLUSTER__" className="rounded-xl py-2 font-bold text-blue-600 focus:bg-blue-50 dark:focus:bg-blue-900/30">
                                                         Entire Cluster
                                                     </SelectItem>
-                                                    <div className="h-px bg-slate-100 my-2 mx-2" />
+                                                    <div className="h-px bg-slate-100 dark:bg-slate-700 my-2 mx-2" />
                                                     {namespacesForSelectedCluster?.map(ns => (
                                                         <SelectItem key={ns} value={ns} className="rounded-xl py-2 font-semibold">
                                                             {ns}
@@ -243,21 +243,21 @@ export function ProjectSettingsDialog({ project, open, onOpenChange }: ProjectSe
                             <section className="space-y-6">
                                 <div className="space-y-1">
                                     <h4 className="text-xs font-bold uppercase tracking-[0.2em] text-slate-400">Inventory</h4>
-                                    <p className="text-sm font-semibold text-slate-800">Active Allocations</p>
+                                    <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">Active Allocations</p>
                                 </div>
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     {/* Full Cluster Associations */}
                                     {projectDetails?.clusters.map((pc) => (
-                                        <div key={`cluster-${pc.cluster_id}`} className="group relative bg-white p-5 rounded-[2rem] border border-blue-100 shadow-sm hover:shadow-xl hover:shadow-blue-500/5 transition-all duration-300">
+                                        <div key={`cluster-${pc.cluster_id}`} className="group relative bg-white dark:bg-slate-800 p-5 rounded-[2rem] border border-blue-100 dark:border-blue-900/50 shadow-sm hover:shadow-xl hover:shadow-blue-500/5 transition-all duration-300">
                                             <div className="flex items-center justify-between">
                                                 <div className="flex items-center gap-4">
-                                                    <div className="h-12 w-12 bg-blue-50 rounded-2xl flex items-center justify-center border border-blue-100">
+                                                    <div className="h-12 w-12 bg-blue-50 dark:bg-blue-900/30 rounded-2xl flex items-center justify-center border border-blue-100 dark:border-blue-800/50">
                                                         <Server className="h-6 w-6 text-blue-500" />
                                                     </div>
                                                     <div>
-                                                        <div className="text-base font-extrabold text-slate-900 tracking-tight">{pc.cluster_name}</div>
-                                                        <Badge variant="outline" className="mt-1 h-5 text-[9px] border-blue-100 bg-blue-50/50 font-bold uppercase tracking-widest text-blue-600">
+                                                        <div className="text-base font-extrabold text-slate-900 dark:text-slate-100 tracking-tight">{pc.cluster_name}</div>
+                                                        <Badge variant="outline" className="mt-1 h-5 text-[9px] border-blue-100 dark:border-blue-800/50 bg-blue-50/50 dark:bg-blue-900/30 font-bold uppercase tracking-widest text-blue-600 dark:text-blue-400">
                                                             Entire Context
                                                         </Badge>
                                                     </div>
@@ -265,7 +265,7 @@ export function ProjectSettingsDialog({ project, open, onOpenChange }: ProjectSe
                                                 <Button
                                                     variant="ghost"
                                                     size="icon"
-                                                    className="h-10 w-10 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-2xl transition-all"
+                                                    className="h-10 w-10 text-slate-300 dark:text-slate-600 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-2xl transition-all"
                                                     onClick={() => removeClusterMutation.mutate(pc.cluster_id)}
                                                 >
                                                     {removeClusterMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-5 w-5" />}
@@ -278,21 +278,21 @@ export function ProjectSettingsDialog({ project, open, onOpenChange }: ProjectSe
                                     {projectDetails?.namespaces.map((pn) => (
                                         <div
                                             key={`ns-${pn.cluster_id}-${pn.namespace_name}`}
-                                            className="bg-white border border-slate-100 p-5 rounded-[2rem] flex items-center justify-between group/ns transition-all hover:shadow-md hover:border-slate-200"
+                                            className="bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 p-5 rounded-[2rem] flex items-center justify-between group/ns transition-all hover:shadow-md hover:border-slate-200 dark:hover:border-slate-600"
                                         >
                                             <div className="flex items-center gap-4">
-                                                <div className="h-12 w-12 bg-slate-50 rounded-2xl flex items-center justify-center border border-slate-50 group-hover/ns:bg-blue-50">
+                                                <div className="h-12 w-12 bg-slate-50 dark:bg-slate-700 rounded-2xl flex items-center justify-center border border-slate-50 dark:border-slate-600 group-hover/ns:bg-blue-50 dark:group-hover/ns:bg-blue-900/30">
                                                     <Hash className="h-6 w-6 text-slate-400 group-hover/ns:text-blue-500" />
                                                 </div>
                                                 <div>
-                                                    <div className="text-base font-extrabold text-slate-900 tracking-tight">{pn.namespace_name}</div>
+                                                    <div className="text-base font-extrabold text-slate-900 dark:text-slate-100 tracking-tight">{pn.namespace_name}</div>
                                                     <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none mt-1">{pn.cluster_name}</div>
                                                 </div>
                                             </div>
                                             <Button
                                                 variant="ghost"
                                                 size="icon"
-                                                className="h-10 w-10 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-2xl transition-all"
+                                                className="h-10 w-10 text-slate-300 dark:text-slate-600 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-2xl transition-all"
                                                 onClick={() => removeNamespaceMutation.mutate({ clusterId: pn.cluster_id, ns: pn.namespace_name })}
                                             >
                                                 <Trash2 className="h-5 w-5" />
@@ -301,9 +301,9 @@ export function ProjectSettingsDialog({ project, open, onOpenChange }: ProjectSe
                                     ))}
 
                                     {projectDetails?.clusters.length === 0 && projectDetails?.namespaces.length === 0 && (
-                                        <div className="col-span-full py-16 bg-white rounded-[2.5rem] border-2 border-dashed border-slate-100 flex flex-col items-center justify-center space-y-4">
-                                            <div className="p-4 bg-slate-50 rounded-full">
-                                                <Server className="h-8 w-8 text-slate-200" />
+                                        <div className="col-span-full py-16 bg-white dark:bg-slate-800 rounded-[2.5rem] border-2 border-dashed border-slate-100 dark:border-slate-700 flex flex-col items-center justify-center space-y-4">
+                                            <div className="p-4 bg-slate-50 dark:bg-slate-700 rounded-full">
+                                                <Server className="h-8 w-8 text-slate-200 dark:text-slate-500" />
                                             </div>
                                             <div className="text-center">
                                                 <p className="text-sm font-bold text-slate-400 uppercase tracking-widest">Awaiting Provisining</p>
@@ -317,12 +317,12 @@ export function ProjectSettingsDialog({ project, open, onOpenChange }: ProjectSe
                     )}
                 </div>
 
-                <div className="p-8 bg-white border-t border-slate-100 flex justify-between items-center">
+                <div className="p-8 bg-white dark:bg-slate-800 border-t border-slate-100 dark:border-slate-700 flex justify-between items-center">
                     <AlertDialog>
                         <AlertDialogTrigger asChild>
                             <Button
                                 variant="ghost"
-                                className="rounded-2xl h-12 px-6 font-bold text-red-400 hover:text-red-600 hover:bg-red-50 transition-all"
+                                className="rounded-2xl h-12 px-6 font-bold text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 transition-all"
                             >
                                 <Trash2 className="h-4 w-4 mr-2" />
                                 Purge Project
@@ -330,16 +330,16 @@ export function ProjectSettingsDialog({ project, open, onOpenChange }: ProjectSe
                         </AlertDialogTrigger>
                         <AlertDialogContent className="rounded-[2.5rem] p-10 border-none shadow-2xl">
                             <AlertDialogHeader>
-                                <AlertDialogTitle className="text-2xl font-bold text-slate-900">Purge logical environment?</AlertDialogTitle>
-                                <AlertDialogDescription className="text-slate-500 font-medium">
+                                <AlertDialogTitle className="text-2xl font-bold text-slate-900 dark:text-slate-100">Purge logical environment?</AlertDialogTitle>
+                                <AlertDialogDescription className="text-slate-500 dark:text-slate-400 font-medium">
                                     This action is <span className="text-red-600 font-bold uppercase tracking-widest text-[10px]">irreversible</span>.
-                                    All cluster associations and resource links for <span className="font-bold text-slate-900">{project.name}</span> will be permanently deleted.
+                                    All cluster associations and resource links for <span className="font-bold text-slate-900 dark:text-slate-100">{project.name}</span> will be permanently deleted.
                                 </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter className="mt-8 gap-3">
-                                <AlertDialogCancel className="rounded-2xl h-12 px-8 font-bold border-slate-100">Abort</AlertDialogCancel>
+                                <AlertDialogCancel className="rounded-2xl h-12 px-8 font-bold border-slate-100 dark:border-slate-700">Abort</AlertDialogCancel>
                                 <AlertDialogAction
-                                    className="rounded-2xl h-12 px-8 font-bold bg-red-600 hover:bg-red-700 text-white shadow-lg shadow-red-200"
+                                    className="rounded-2xl h-12 px-8 font-bold bg-red-600 hover:bg-red-700 text-white shadow-lg shadow-red-200 dark:shadow-red-900/50"
                                     onClick={() => deleteProjectMutation.mutate()}
                                     disabled={deleteProjectMutation.isPending}
                                 >
@@ -351,7 +351,7 @@ export function ProjectSettingsDialog({ project, open, onOpenChange }: ProjectSe
 
                     <Button
                         variant="ghost"
-                        className="rounded-2xl h-12 px-8 font-bold text-slate-500 hover:text-slate-900"
+                        className="rounded-2xl h-12 px-8 font-bold text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100"
                         onClick={() => onOpenChange(false)}
                     >
                         Done

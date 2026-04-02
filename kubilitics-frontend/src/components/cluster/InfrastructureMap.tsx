@@ -44,7 +44,7 @@ export function InfrastructureMap({ nodes }: InfrastructureMapProps) {
     const s = getUnitStyles(nodes.length);
 
     return (
-        <div className="w-full relative min-h-[220px] p-8 rounded-[2rem] bg-slate-50/30 border border-slate-100/50 overflow-hidden flex items-center justify-center">
+        <div className="w-full relative min-h-[220px] p-8 rounded-[2rem] bg-slate-50/30 dark:bg-slate-800/30 border border-slate-100/50 dark:border-slate-700/50 overflow-hidden flex items-center justify-center">
             {/* Background Grid Pattern - Adaptive */}
             <div className="absolute inset-0 opacity-[0.04] pointer-events-none"
                 style={{
@@ -72,7 +72,7 @@ export function InfrastructureMap({ nodes }: InfrastructureMapProps) {
                             <button
                                 onClick={() => navigate(`/nodes/${node.name}`)}
                                 className={cn(
-                                    "relative rounded-3xl flex flex-col items-center justify-center border-2 transition-all duration-700 cursor-pointer overflow-hidden bg-white/80 backdrop-blur-sm shadow-xl shadow-slate-200/50",
+                                    "relative rounded-3xl flex flex-col items-center justify-center border-2 transition-all duration-700 cursor-pointer overflow-hidden bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm shadow-xl shadow-slate-200/50 dark:shadow-slate-900/50",
                                     s.container,
                                     node.status === 'Ready'
                                         ? "border-blue-600/10 group-hover:shadow-blue-500/30 group-hover:border-blue-600/60 group-hover:-translate-y-2"
@@ -102,7 +102,7 @@ export function InfrastructureMap({ nodes }: InfrastructureMapProps) {
                                 {/* Decorative animation — not real metrics */}
                                 {s.telemetry !== 'hidden' && (
                                     <div className="flex flex-col gap-1 mt-2">
-                                        <div className={cn("bg-slate-100 rounded-full overflow-hidden", s.telemetry)}>
+                                        <div className={cn("bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden", s.telemetry)}>
                                             <motion.div
                                                 initial={{ width: 0 }}
                                                 animate={{ width: '50%' }}
@@ -110,7 +110,7 @@ export function InfrastructureMap({ nodes }: InfrastructureMapProps) {
                                                 className="h-full bg-blue-500/60"
                                             />
                                         </div>
-                                        <div className={cn("bg-slate-100 rounded-full overflow-hidden", s.telemetry)}>
+                                        <div className={cn("bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden", s.telemetry)}>
                                             <motion.div
                                                 initial={{ width: 0 }}
                                                 animate={{ width: '35%' }}
@@ -123,7 +123,7 @@ export function InfrastructureMap({ nodes }: InfrastructureMapProps) {
 
                                 {/* Subtle ID Label */}
                                 {s.label !== 'hidden' && (
-                                    <span className={cn("font-black uppercase text-slate-400 mt-1.5 tracking-tighter opacity-70 group-hover:opacity-100 group-hover:text-slate-900 transition-all", s.label)}>
+                                    <span className={cn("font-black uppercase text-slate-400 dark:text-slate-500 mt-1.5 tracking-tighter opacity-70 group-hover:opacity-100 group-hover:text-slate-900 dark:group-hover:text-slate-100 transition-all", s.label)}>
                                         {node.name.split('-').pop()?.toUpperCase()}
                                     </span>
                                 )}
@@ -200,7 +200,7 @@ export function InfrastructureMap({ nodes }: InfrastructureMapProps) {
                     <motion.div
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
-                        className="h-40 w-full flex flex-col items-center justify-center border-2 border-dashed border-blue-600/10 rounded-3xl bg-white/40"
+                        className="h-40 w-full flex flex-col items-center justify-center border-2 border-dashed border-blue-600/10 dark:border-blue-400/10 rounded-3xl bg-white/40 dark:bg-slate-800/40"
                     >
                         <Activity className="h-8 w-8 text-blue-600 opacity-20 mb-3 animate-pulse" />
                         <span className="text-[11px] font-black text-blue-600/40 uppercase tracking-[0.4em]">Discovery Stream Initializing...</span>
