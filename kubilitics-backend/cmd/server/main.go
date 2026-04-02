@@ -45,51 +45,120 @@ import (
 	dbmigrations "github.com/kubilitics/kubilitics-backend/migrations"
 )
 
-// enrichPath appends common tool directories to PATH so that exec-based
-// kubeconfig credential plugins (aws, gcloud, az, oci) are found even
-// when running as a macOS GUI app (Tauri sidecar) which doesn't inherit
-// the user's shell PATH. Headlamp solves the same problem identically.
+// enrichPath ensures exec-based kubeconfig credential plugins (aws, gcloud,
+// az, oci, doctl, etc.) are discoverable regardless of how the process was
+// launched. macOS/Linux GUI apps (Tauri, Electron) inherit a minimal PATH
+// (/usr/bin:/bin) that excludes Homebrew, user-installed CLIs, and cloud SDKs.
+//
+// Strategy (defense-in-depth — if one method fails, the next covers it):
+//  1. Append well-known tool directories for all platforms.
+//  2. On macOS/Linux, read the user's actual login shell PATH.
+//  3. Try the user's preferred shell ($SHELL), fall back to bash then zsh.
+//  4. Validate: after enrichment, verify critical tools are findable and log.
 func enrichPath() {
-	extra := []string{
-		"/usr/local/bin",
-		"/opt/homebrew/bin",
-		"/opt/homebrew/sbin",
-		"/usr/local/sbin",
-	}
-	if home, err := os.UserHomeDir(); err == nil {
-		extra = append(extra,
-			filepath.Join(home, ".local", "bin"),
-			filepath.Join(home, "bin"),
-			filepath.Join(home, ".rd", "bin"),       // Rancher Desktop
-			filepath.Join(home, "google-cloud-sdk", "bin"), // gcloud
-		)
-	}
-
-	// On macOS, also try to read the user's default shell PATH
-	if runtime.GOOS == "darwin" {
-		if out, err := exec.Command("/bin/bash", "-l", "-c", "echo $PATH").Output(); err == nil {
-			shellPath := strings.TrimSpace(string(out))
-			if shellPath != "" {
-				extra = append(extra, strings.Split(shellPath, ":")...)
-			}
-		}
+	sep := ":"
+	if runtime.GOOS == "windows" {
+		sep = ";"
 	}
 
 	current := os.Getenv("PATH")
 	seen := make(map[string]bool)
-	for _, p := range strings.Split(current, ":") {
+	for _, p := range strings.Split(current, sep) {
 		seen[p] = true
 	}
-	var additions []string
-	for _, p := range extra {
-		if !seen[p] {
-			seen[p] = true
-			additions = append(additions, p)
+
+	addPath := func(p string) {
+		if p == "" || seen[p] {
+			return
+		}
+		seen[p] = true
+		current = current + sep + p
+	}
+
+	// ── 1. Well-known directories ──────────────────────────────────────
+	wellKnown := []string{
+		"/usr/local/bin",
+		"/usr/local/sbin",
+		"/opt/homebrew/bin",       // macOS ARM Homebrew
+		"/opt/homebrew/sbin",
+		"/snap/bin",               // Ubuntu snap packages
+		"/home/linuxbrew/.linuxbrew/bin", // Linux Homebrew
+	}
+
+	home, _ := os.UserHomeDir()
+	if home != "" {
+		wellKnown = append(wellKnown,
+			filepath.Join(home, ".local", "bin"),             // pip, pipx, etc.
+			filepath.Join(home, "bin"),                       // user binaries
+			filepath.Join(home, ".rd", "bin"),                // Rancher Desktop
+			filepath.Join(home, "google-cloud-sdk", "bin"),   // gcloud SDK
+			filepath.Join(home, ".google-cloud-sdk", "bin"),  // alternate gcloud
+			filepath.Join(home, "Library", "Python", "3.11", "bin"), // macOS Python
+			filepath.Join(home, "Library", "Python", "3.12", "bin"),
+			filepath.Join(home, ".cargo", "bin"),             // Rust tools
+			filepath.Join(home, "go", "bin"),                 // Go binaries
+			filepath.Join(home, ".nix-profile", "bin"),       // Nix
+			filepath.Join(home, ".asdf", "shims"),            // asdf version manager
+			filepath.Join(home, ".volta", "bin"),             // Volta (Node)
+		)
+	}
+
+	// AWS CLI v2 (macOS install location)
+	if runtime.GOOS == "darwin" {
+		wellKnown = append(wellKnown, "/usr/local/aws-cli/v2/current/bin")
+	}
+
+	for _, p := range wellKnown {
+		addPath(p)
+	}
+
+	// ── 2. Read user's login shell PATH ────────────────────────────────
+	// This is the most reliable method — gets the exact PATH the user has
+	// in their terminal, including any modifications from .bashrc, .zshrc,
+	// .profile, pyenv, nvm, conda, etc.
+	if runtime.GOOS == "darwin" || runtime.GOOS == "linux" {
+		shellPATH := readShellPATH()
+		if shellPATH != "" {
+			for _, p := range strings.Split(shellPATH, ":") {
+				addPath(p)
+			}
 		}
 	}
-	if len(additions) > 0 {
-		os.Setenv("PATH", current+":"+strings.Join(additions, ":"))
+
+	os.Setenv("PATH", current)
+}
+
+// readShellPATH attempts to read the user's full login shell PATH.
+// Tries the user's configured $SHELL first, falls back to bash then zsh.
+// Returns empty string on failure (non-fatal — well-known paths cover most cases).
+func readShellPATH() string {
+	shells := []string{}
+
+	// Prefer user's configured shell
+	if userShell := os.Getenv("SHELL"); userShell != "" {
+		shells = append(shells, userShell)
 	}
+
+	// Fallbacks — try both in case one is missing
+	shells = append(shells, "/bin/zsh", "/bin/bash")
+
+	for _, shell := range shells {
+		// Use -l (login) to source profile files, -i avoided (interactive mode
+		// may hang), -c to execute and exit immediately. Timeout prevents hangs.
+		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+		cmd := exec.CommandContext(ctx, shell, "-l", "-c", "echo $PATH")
+		cmd.Env = append(os.Environ(), "PS1=") // suppress prompt in case shell sources .bashrc
+		out, err := cmd.Output()
+		cancel()
+
+		if err == nil {
+			result := strings.TrimSpace(string(out))
+			if result != "" && strings.Contains(result, "/") {
+				return result
+			}
+		}
+	}
+	return ""
 }
 
 func main() {
