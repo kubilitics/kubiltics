@@ -218,32 +218,29 @@ export function useAutoConnect(): UseAutoConnectReturn {
       try {
         const baseUrl = getEffectiveBackendBaseUrl(storedBackendUrl);
 
-        // ── Phase 1: Wait for backend + discover clusters in parallel ──
-        // Don't gate on health check — try cluster discovery immediately.
-        // If backend isn't ready, discovery fails and we retry.
-        // This cuts startup from ~15s to ~3-5s.
-        const fetchContexts = async (): Promise<BackendCluster[]> => {
-          const [registeredRaw, discoveredRaw] = await Promise.all([
-            getClusters(baseUrl).catch(() => null),
-            discoverClusters(baseUrl).catch(() => null),
-          ]);
-          const registered = Array.isArray(registeredRaw) ? registeredRaw : [] as BackendCluster[];
-          const discovered = Array.isArray(discoveredRaw) ? discoveredRaw : [] as BackendCluster[];
-          const registeredContexts = new Set(registered.map((c) => c.context));
-          const unregistered = discovered.filter((d) => !registeredContexts.has(d.context));
-          return [...registered, ...unregistered];
-        };
-
-        // Retry loop: try every 1.5s until we get contexts or timeout fires.
-        // Covers backend cold start (sidecar spawning) without a separate
-        // health-check gate. Much faster than the old 10s health poll.
+        // ── Discover clusters — fast, no health-check gate ──
+        // Like Headlamp: just try to fetch contexts. If backend isn't
+        // ready yet (sidecar cold start), retry every 500ms. The discover
+        // endpoint is pure YAML parsing (<50ms), so once the backend is up
+        // it responds instantly.
         let allBackend: BackendCluster[] = [];
-        for (let attempt = 0; attempt < 10; attempt++) {
+        for (let attempt = 0; attempt < 20; attempt++) {
           if (controller.signal.aborted) return;
-          allBackend = await fetchContexts();
-          if (allBackend.length > 0) break;
-          // Backend not ready or no contexts — wait and retry
-          await new Promise((r) => setTimeout(r, 1500));
+          try {
+            const [registeredRaw, discoveredRaw] = await Promise.all([
+              getClusters(baseUrl),
+              discoverClusters(baseUrl),
+            ]);
+            const registered = Array.isArray(registeredRaw) ? registeredRaw : [] as BackendCluster[];
+            const discovered = Array.isArray(discoveredRaw) ? discoveredRaw : [] as BackendCluster[];
+            const registeredContexts = new Set(registered.map((c) => c.context));
+            const unregistered = discovered.filter((d) => !registeredContexts.has(d.context));
+            allBackend = [...registered, ...unregistered];
+            if (allBackend.length > 0) break;
+          } catch {
+            // Backend not ready — retry
+          }
+          await new Promise((r) => setTimeout(r, 500));
         }
 
         if (controller.signal.aborted) return;
