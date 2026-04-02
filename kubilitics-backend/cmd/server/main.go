@@ -8,8 +8,10 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"os/exec"
 	"os/signal"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"syscall"
 	"time"
@@ -43,8 +45,60 @@ import (
 	dbmigrations "github.com/kubilitics/kubilitics-backend/migrations"
 )
 
+// enrichPath appends common tool directories to PATH so that exec-based
+// kubeconfig credential plugins (aws, gcloud, az, oci) are found even
+// when running as a macOS GUI app (Tauri sidecar) which doesn't inherit
+// the user's shell PATH. Headlamp solves the same problem identically.
+func enrichPath() {
+	extra := []string{
+		"/usr/local/bin",
+		"/opt/homebrew/bin",
+		"/opt/homebrew/sbin",
+		"/usr/local/sbin",
+	}
+	if home, err := os.UserHomeDir(); err == nil {
+		extra = append(extra,
+			filepath.Join(home, ".local", "bin"),
+			filepath.Join(home, "bin"),
+			filepath.Join(home, ".rd", "bin"),       // Rancher Desktop
+			filepath.Join(home, "google-cloud-sdk", "bin"), // gcloud
+		)
+	}
+
+	// On macOS, also try to read the user's default shell PATH
+	if runtime.GOOS == "darwin" {
+		if out, err := exec.Command("/bin/bash", "-l", "-c", "echo $PATH").Output(); err == nil {
+			shellPath := strings.TrimSpace(string(out))
+			if shellPath != "" {
+				extra = append(extra, strings.Split(shellPath, ":")...)
+			}
+		}
+	}
+
+	current := os.Getenv("PATH")
+	seen := make(map[string]bool)
+	for _, p := range strings.Split(current, ":") {
+		seen[p] = true
+	}
+	var additions []string
+	for _, p := range extra {
+		if !seen[p] {
+			seen[p] = true
+			additions = append(additions, p)
+		}
+	}
+	if len(additions) > 0 {
+		os.Setenv("PATH", current+":"+strings.Join(additions, ":"))
+	}
+}
 
 func main() {
+	// Enrich PATH for macOS GUI apps (Tauri sidecar).
+	// macOS GUI apps don't inherit the user's shell PATH, so exec-based
+	// credential plugins (aws, gcloud, azure) are not found.
+	// Append common tool locations so client-go's exec provider works.
+	enrichPath()
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
