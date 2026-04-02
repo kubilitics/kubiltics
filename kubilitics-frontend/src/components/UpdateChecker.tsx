@@ -59,6 +59,22 @@ export function UpdateChecker() {
     return () => clearTimeout(timer);
   }, []);
 
+  const handleRestart = useCallback(async () => {
+    setState('restarting');
+    try {
+      const { relaunch } = await import('@tauri-apps/plugin-process');
+      await relaunch();
+    } catch {
+      try {
+        const { exit } = await import('@tauri-apps/plugin-process');
+        await exit(0);
+      } catch {
+        setError('Please quit (Cmd+Q) and reopen the app to apply the update.');
+        setState('error');
+      }
+    }
+  }, []);
+
   const handleUpdate = useCallback(async () => {
     if (!info?.update) return;
     const update = info.update as Awaited<ReturnType<typeof import('@tauri-apps/plugin-updater')['check']>> & object;
@@ -86,22 +102,13 @@ export function UpdateChecker() {
       });
 
       setState('ready');
+      // Auto-restart after download — seamless like Slack/Docker
+      setTimeout(() => handleRestart(), 1500);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Download failed');
       setState('error');
     }
-  }, [info]);
-
-  const handleRestart = useCallback(async () => {
-    setState('restarting');
-    try {
-      const { relaunch } = await import('@tauri-apps/plugin-process');
-      await relaunch();
-    } catch {
-      setError('Please restart the app manually');
-      setState('error');
-    }
-  }, []);
+  }, [info, handleRestart]);
 
   const handleDismiss = useCallback(() => {
     setState('dismissed');
@@ -217,13 +224,13 @@ export function UpdateChecker() {
             'border-t border-slate-100 dark:border-slate-800',
           )}>
             {state === 'available' && (
-              <>
+              <div className="flex items-center gap-2 w-full">
                 <button
                   onClick={handleUpdate}
                   className={cn(
-                    'flex-1 flex items-center justify-center gap-2 h-9 rounded-lg text-sm font-semibold',
+                    'flex-1 flex items-center justify-center gap-2 h-10 rounded-lg text-sm font-semibold',
                     'bg-blue-600 text-white hover:bg-blue-700 active:bg-blue-800',
-                    'transition-colors',
+                    'transition-colors shadow-sm',
                   )}
                 >
                   <Download className="h-3.5 w-3.5" />
@@ -232,15 +239,16 @@ export function UpdateChecker() {
                 <button
                   onClick={handleDismiss}
                   className={cn(
-                    'h-9 px-4 rounded-lg text-sm font-medium',
-                    'text-slate-600 dark:text-slate-400',
+                    'h-10 px-5 rounded-lg text-sm font-semibold',
+                    'border border-slate-200 dark:border-slate-700',
+                    'text-slate-700 dark:text-slate-300',
                     'hover:bg-slate-100 dark:hover:bg-slate-800',
                     'transition-colors',
                   )}
                 >
                   Later
                 </button>
-              </>
+              </div>
             )}
             {state === 'ready' && (
               <button
