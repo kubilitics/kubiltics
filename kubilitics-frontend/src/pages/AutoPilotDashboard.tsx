@@ -113,7 +113,8 @@ const AutoPilotDashboard = () => {
   const isLoading = findingsLoading || pendingLoading || recentLoading;
 
   return (
-    <div className="p-6 space-y-6 max-w-7xl mx-auto">
+    <div className="page-container" role="main" aria-label="Auto-Pilot Dashboard">
+      <div className="page-inner p-6 gap-6 flex flex-col">
       {/* Page Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -409,6 +410,7 @@ const AutoPilotDashboard = () => {
           setDetailOpen(false);
         }}
       />
+      </div>
     </div>
   );
 };
