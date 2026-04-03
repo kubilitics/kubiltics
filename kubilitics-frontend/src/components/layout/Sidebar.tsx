@@ -38,7 +38,7 @@ import {
   Package,
   ShieldCheck,
   LayoutTemplate,
-  FlaskConical,
+  Bot,
 } from 'lucide-react';
 import {
   K8sPodIcon, K8sDeploymentIcon, K8sReplicaSetIcon, K8sStatefulSetIcon,
@@ -56,6 +56,7 @@ import { useUIStore } from '@/stores/uiStore';
 import { useProjectStore } from '@/stores/projectStore';
 import { RecentResources } from '@/components/layout/RecentResources';
 import { useHoverPrefetch } from '@/hooks/useHoverPrefetch';
+import { useAutoPilotActions } from '@/hooks/useAutoPilot';
 import { BrandLogo } from '@/components/BrandLogo';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -393,12 +394,7 @@ const TOP_NAV_COLORS: Record<string, { active: string; activeBg: string; idle: s
     active: 'text-violet-600 dark:text-violet-400',
     activeBg: 'bg-violet-100 dark:bg-violet-500/20',
     idle: 'text-violet-500 dark:text-violet-400',
-  },
-  '/simulation': {
-    active: 'text-fuchsia-600 dark:text-fuchsia-400',
-    activeBg: 'bg-fuchsia-100 dark:bg-fuchsia-500/20',
-    idle: 'text-fuchsia-500 dark:text-fuchsia-400',
-    idleBg: 'bg-fuchsia-50 dark:bg-fuchsia-500/10',
+    idleBg: 'bg-violet-50 dark:bg-violet-500/10',
   },
   '/templates': {
     active: 'text-emerald-600 dark:text-emerald-400',
@@ -664,8 +660,9 @@ function SidebarContent({
   const isDashboardActive = pathname === '/dashboard';
   const isFleetActive = pathname === '/fleet';
   const isTopologyActive = pathname === '/topology';
-  const isSimulationActive = pathname === '/simulation';
   const isTemplatesActive = pathname === '/templates';
+  const { data: pendingAutoPilotActions } = useAutoPilotActions('pending', 100, 0);
+  const autoPilotPendingCount = pendingAutoPilotActions?.length ?? 0;
   const activeProject = useProjectStore((s) => s.activeProject);
   const clearActiveProject = useProjectStore((s) => s.clearActiveProject);
 
@@ -737,7 +734,6 @@ function SidebarContent({
         <TopLevelNavLink to="/dashboard" icon={LayoutDashboard} label="Dashboard" isActive={isDashboardActive} />
         <TopLevelNavLink to="/fleet" icon={Layers} label="Fleet" isActive={isFleetActive} />
         <TopLevelNavLink to="/topology" icon={Network} label="Topology" isActive={isTopologyActive} />
-        <TopLevelNavLink to="/simulation" icon={FlaskConical} label="Simulation" isActive={isSimulationActive} />
         <TopLevelNavLink to="/templates" icon={LayoutTemplate} label="Templates" isActive={isTemplatesActive} />
       </div>
 
@@ -814,17 +810,25 @@ function SidebarContent({
         </AnimatePresence>
       </div>
 
+      {/* Intelligence Section */}
+      <div className="space-y-1">
+        <div className="flex items-center gap-2.5 px-2 pt-3 pb-1.5">
+          <div className="h-px flex-1 bg-gradient-to-r from-transparent via-slate-200/80 to-slate-200/80 dark:via-slate-700/80 dark:to-slate-700/80" />
+          <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-[0.18em] select-none">Intelligence</span>
+          <div className="h-px flex-1 bg-gradient-to-l from-transparent via-slate-200/80 to-slate-200/80 dark:via-slate-700/80 dark:to-slate-700/80" />
+        </div>
+        <NavItem to="/auto-pilot" icon={Bot} label="Auto-Pilot" count={autoPilotPendingCount > 0 ? autoPilotPendingCount : undefined} />
+      </div>
+
       {/* Recent Resources — bottom of scrollable area, non-intrusive */}
       <RecentResources />
-
-      {/* AI section removed — will be redesigned in a future version */}
     </div>
   );
 }
 
 // ─── Section Routes for auto-expand ──────────────────────────────────────────
 
-const SECTION_ROUTES = ['/workloads', '/topology', ...WORKLOAD_PATHS, ...NETWORKING_PATHS, ...STORAGE_PATHS, ...CLUSTER_PATHS, ...SECURITY_PATHS, ...RESOURCES_PATHS, ...SCALING_PATHS, ...CRD_PATHS, ...ADMISSION_PATHS];
+const SECTION_ROUTES = ['/workloads', '/topology', '/auto-pilot', ...WORKLOAD_PATHS, ...NETWORKING_PATHS, ...STORAGE_PATHS, ...CLUSTER_PATHS, ...SECURITY_PATHS, ...RESOURCES_PATHS, ...SCALING_PATHS, ...CRD_PATHS, ...ADMISSION_PATHS];
 
 // ─── Main Sidebar ────────────────────────────────────────────────────────────
 
@@ -951,7 +955,6 @@ export function Sidebar() {
           <NavItemIconOnly to="/dashboard" icon={LayoutDashboard} label="Dashboard" iconColor="text-blue-600 group-hover:text-blue-700" />
           <NavItemIconOnly to="/fleet" icon={Layers} label="Fleet" iconColor="text-indigo-600 group-hover:text-indigo-700" />
           <NavItemIconOnly to="/topology" icon={Network} label="Topology" iconColor="text-violet-600 group-hover:text-violet-700" />
-          <NavItemIconOnly to="/simulation" icon={FlaskConical} label="Simulation" iconColor="text-fuchsia-600 group-hover:text-fuchsia-700" />
           <NavItemIconOnly to="/workloads" icon={Cpu} label="Workloads" iconColor="text-amber-600 group-hover:text-amber-700" />
           <div className="w-12 h-px bg-border/50 my-2" />
           <NavItemIconOnly to="/pods" icon={Box} label="Pods" iconColor="text-emerald-600 group-hover:text-emerald-700" />
@@ -959,6 +962,8 @@ export function Sidebar() {
           <NavItemIconOnly to="/services" icon={Globe} label="Services" iconColor="text-cyan-600 group-hover:text-cyan-700" />
           <NavItemIconOnly to="/events" icon={Activity} label="Events" iconColor="text-amber-600 group-hover:text-amber-700" />
           <NavItemIconOnly to="/resources" icon={Gauge} label="Resources & DRA" iconColor="text-blue-600 group-hover:text-blue-700" />
+          <div className="w-12 h-px bg-border/50 my-2" />
+          <NavItemIconOnly to="/auto-pilot" icon={Bot} label="Auto-Pilot" iconColor="text-purple-600 group-hover:text-purple-700" />
 
           <div className="flex-1" />
 

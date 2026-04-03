@@ -327,6 +327,19 @@ func SetupRoutes(router *mux.Router, h *Handler) {
 	router.Handle("/clusters/{clusterId}/autopilot/scan", h.wrapWithRBAC(h.PostAutoPilotScan, auth.RoleOperator)).Methods("POST")
 	router.Handle("/clusters/{clusterId}/autopilot/rules", h.wrapWithRBAC(h.GetAutoPilotRules, auth.RoleViewer)).Methods("GET")
 
+	// Fleet X-Ray (Pillar 5)
+	router.Handle("/fleet/xray/dashboard", h.wrapWithRBAC(h.FleetXRayDashboard, auth.RoleViewer)).Methods("GET")
+	router.Handle("/fleet/xray/clusters/{clusterId}/metrics", h.wrapWithRBAC(h.FleetXRayClusterMetrics, auth.RoleViewer)).Methods("GET")
+	router.Handle("/fleet/xray/compare", h.wrapWithRBAC(h.FleetXRayCompare, auth.RoleViewer)).Methods("GET")
+	router.Handle("/fleet/xray/templates", h.wrapWithRBAC(h.FleetXRayListTemplates, auth.RoleViewer)).Methods("GET")
+	router.Handle("/fleet/xray/templates", h.wrapWithRBAC(h.FleetXRayCreateTemplate, auth.RoleOperator)).Methods("POST")
+	router.Handle("/fleet/xray/templates/{templateId}", h.wrapWithRBAC(h.FleetXRayGetTemplate, auth.RoleViewer)).Methods("GET")
+	router.Handle("/fleet/xray/templates/{templateId}", h.wrapWithRBAC(h.FleetXRayUpdateTemplate, auth.RoleOperator)).Methods("PUT")
+	router.Handle("/fleet/xray/templates/{templateId}", h.wrapWithRBAC(h.FleetXRayDeleteTemplate, auth.RoleOperator)).Methods("DELETE")
+	router.Handle("/fleet/xray/templates/{templateId}/scores", h.wrapWithRBAC(h.FleetXRayTemplateScores, auth.RoleViewer)).Methods("GET")
+	router.Handle("/fleet/xray/dr", h.wrapWithRBAC(h.FleetXRayDRAssessment, auth.RoleViewer)).Methods("GET")
+	router.Handle("/fleet/xray/history/{clusterId}", h.wrapWithRBAC(h.FleetXRayHistory, auth.RoleViewer)).Methods("GET")
+
 	// Global search (command palette): GET /clusters/{clusterId}/search?q=...&limit=25
 	router.Handle("/clusters/{clusterId}/search", h.wrapWithRBAC(h.GetSearch, auth.RoleViewer)).Methods("GET")
 

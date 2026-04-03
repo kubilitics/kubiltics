@@ -167,8 +167,10 @@ const ValidatingWebhooks = lazy(() => import("./pages/ValidatingWebhooks"));
 const ValidatingWebhookDetail = lazy(() => import("./pages/ValidatingWebhookDetail"));
 const Topology = lazy(() => import("./pages/Topology"));
 const ResourceTemplates = lazy(() => import("./pages/ResourceTemplates"));
-const SimulationPage = lazy(() => import("./pages/SimulationPage"));
 
+// Auto-Pilot
+const AutoPilotDashboard = lazy(() => import("./pages/AutoPilotDashboard"));
+const AutoPilotConfig = lazy(() => import("./pages/AutoPilotConfig"));
 
 import { useResourceLiveUpdates } from "./hooks/useResourceLiveUpdates";
 
@@ -704,11 +706,13 @@ const App = () => (
                         <Route path="/settings" element={<SettingsPage />} />
                         {/* Cluster Topology */}
                         <Route path="/topology" element={<Topology />} />
-                        {/* What-If Simulation */}
-                        <Route path="/simulation" element={<SimulationPage />} />
                         {/* Resource Templates */}
                         <Route path="/templates" element={<ResourceTemplates />} />
                         {/* Security Scanner — disabled until backend APIs are implemented */}
+
+                        {/* Auto-Pilot */}
+                        <Route path="/auto-pilot" element={<AutoPilotDashboard />} />
+                        <Route path="/auto-pilot/config" element={<AutoPilotConfig />} />
 
                         {/* Workloads */}
                         <Route path="/workloads" element={<WorkloadsOverview />} />
