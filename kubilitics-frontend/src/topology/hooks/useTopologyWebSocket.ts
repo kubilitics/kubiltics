@@ -18,7 +18,7 @@ export interface UseTopologyWebSocketOptions {
   onEdgeRemoved?: (id: string) => void;
 }
 
-const MAX_RECONNECT_DELAY = 30000;
+const MAX_RECONNECT_DELAY = 60000;
 const INITIAL_RECONNECT_DELAY = 1000;
 const BATCH_INTERVAL = 100;
 
@@ -26,7 +26,7 @@ const BATCH_INTERVAL = 100;
  * useTopologyWebSocket: Real-time topology updates with auto-reconnect.
  * - Connects to WS /api/v1/ws/topology/{clusterId}
  * - Batches events in 100ms windows to prevent render flooding
- * - Reconnects with exponential backoff (1s, 2s, 4s, 8s... max 30s)
+ * - Reconnects with exponential backoff (1s, 2s, 4s, 8s... max 60s, up to 15 retries)
  */
 export function useTopologyWebSocket({
   clusterId,
@@ -38,12 +38,13 @@ export function useTopologyWebSocket({
   onEdgeRemoved,
 }: UseTopologyWebSocketOptions) {
   const [connected, setConnected] = useState(false);
+  const [connectionLost, setConnectionLost] = useState(false);
   const [lastUpdateTime, setLastUpdateTime] = useState<string | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const reconnectDelayRef = useRef(INITIAL_RECONNECT_DELAY);
   const retriesRef = useRef(0);
-  const MAX_RETRIES = 3;
+  const MAX_RETRIES = 15;
   const eventBufferRef = useRef<TopologyEvent[]>([]);
   const batchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -92,6 +93,7 @@ export function useTopologyWebSocket({
 
       ws.onopen = () => {
         setConnected(true);
+        setConnectionLost(false);
         reconnectDelayRef.current = INITIAL_RECONNECT_DELAY;
         retriesRef.current = 0; // Reset on successful connection
       };
@@ -118,15 +120,17 @@ export function useTopologyWebSocket({
         wsRef.current = null;
 
         retriesRef.current += 1;
+        // Show persistent "Connection lost" banner while retrying
+        if (retriesRef.current > 0) {
+          setConnectionLost(true);
+        }
         // Stop reconnecting after MAX_RETRIES - endpoint may not be available
         if (enabled && clusterId && retriesRef.current <= MAX_RETRIES) {
+          // Exponential backoff: 1s, 2s, 4s, 8s, ... capped at 60s
+          const delay = Math.min(MAX_RECONNECT_DELAY, 1000 * Math.pow(2, retriesRef.current));
           reconnectTimeoutRef.current = setTimeout(() => {
-            reconnectDelayRef.current = Math.min(
-              reconnectDelayRef.current * 2,
-              MAX_RECONNECT_DELAY
-            );
             connect();
-          }, reconnectDelayRef.current);
+          }, delay);
         }
       };
 
@@ -169,5 +173,5 @@ export function useTopologyWebSocket({
     [sendMessage]
   );
 
-  return { connected, lastUpdateTime, sendMessage, changeViewMode };
+  return { connected, connectionLost, lastUpdateTime, sendMessage, changeViewMode };
 }

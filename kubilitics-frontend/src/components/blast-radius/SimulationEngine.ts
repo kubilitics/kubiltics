@@ -102,7 +102,9 @@ export class SimulationEngine {
     // Add resources from this wave to cumulative set
     const wave = this.waves[this.currentWave];
     for (const resource of wave.resources) {
-      const nodeId = `${resource.kind}/${resource.namespace}/${resource.name}`;
+      const nodeId = resource.namespace
+        ? `${resource.kind}/${resource.namespace}/${resource.name}`
+        : `${resource.kind}/${resource.name}`;
       this.cumulativeAffected.add(nodeId);
     }
 
