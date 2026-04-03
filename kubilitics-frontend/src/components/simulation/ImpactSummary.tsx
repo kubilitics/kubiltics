@@ -23,7 +23,9 @@ interface ImpactSummaryProps {
 }
 
 function DeltaIndicator({ before, after, higherIsBetter = true }: { before: number; after: number; higherIsBetter?: boolean }) {
-  const delta = after - before;
+  const rawDelta = after - before;
+  // Round to 1 decimal and treat near-zero as zero (floating point noise)
+  const delta = Math.abs(rawDelta) < 0.05 ? 0 : Math.round(rawDelta * 10) / 10;
   const improved = higherIsBetter ? delta > 0 : delta < 0;
   const degraded = higherIsBetter ? delta < 0 : delta > 0;
 
@@ -59,7 +61,7 @@ function HealthGauge({ label, value, color }: { label: string; value: number; co
         />
       </div>
       <span className="text-xs font-semibold text-slate-700 dark:text-slate-200 w-8 text-right">
-        {value}
+        {Math.round(value * 10) / 10}
       </span>
     </div>
   );

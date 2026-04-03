@@ -57,7 +57,12 @@ func computeDiff(original, mutated *graph.GraphSnapshot) diffResult {
 		wasSPOF := isSPOF(original, key)
 		nowSPOF := isSPOF(mutated, key)
 
-		if scoreBefore != scoreAfter || wasSPOF != nowSPOF {
+		// Only report as modified if score changed by > 0.1 or SPOF status flipped
+		scoreDelta := scoreAfter - scoreBefore
+		if scoreDelta < 0 {
+			scoreDelta = -scoreDelta
+		}
+		if scoreDelta > 0.1 || wasSPOF != nowSPOF {
 			result.ModifiedNodes = append(result.ModifiedNodes, NodeDiff{
 				NodeInfo: NodeInfo{
 					Key:       key,

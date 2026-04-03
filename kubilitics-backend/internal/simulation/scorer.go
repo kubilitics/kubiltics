@@ -113,9 +113,17 @@ func computeHealthScore(snap *graph.GraphSnapshot) float64 {
 }
 
 // countSPOFs returns the total number of single-points-of-failure in the snapshot.
+// Only workload controllers (Deployment, StatefulSet, DaemonSet) are candidates —
+// Pods, Services, ConfigMaps etc. are not workloads that have replicas.
 func countSPOFs(snap *graph.GraphSnapshot) int {
 	count := 0
-	for key := range snap.Nodes {
+	for key, ref := range snap.Nodes {
+		switch ref.Kind {
+		case "Deployment", "StatefulSet", "DaemonSet":
+			// Only workload types can be SPOFs
+		default:
+			continue
+		}
 		fanIn := len(snap.Reverse[key])
 		replicas := snap.NodeReplicas[key]
 		hasHPA := snap.NodeHasHPA[key]
@@ -127,7 +135,18 @@ func countSPOFs(snap *graph.GraphSnapshot) int {
 }
 
 // isSPOF returns whether the given node key is a single-point-of-failure.
+// Only workload controllers can be SPOFs.
 func isSPOF(snap *graph.GraphSnapshot, key string) bool {
+	ref, ok := snap.Nodes[key]
+	if !ok {
+		return false
+	}
+	switch ref.Kind {
+	case "Deployment", "StatefulSet", "DaemonSet":
+		// Only workload types
+	default:
+		return false
+	}
 	fanIn := len(snap.Reverse[key])
 	replicas := snap.NodeReplicas[key]
 	hasHPA := snap.NodeHasHPA[key]
