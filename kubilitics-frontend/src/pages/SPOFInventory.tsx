@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Shield,
@@ -35,8 +35,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from '@/components/ui/dropdown-menu';
 import { SPOFSummaryCards } from '@/components/spof/SPOFSummaryCards';
 import { useSPOFInventory } from '@/hooks/useSPOFInventory';
+import { ListPagination } from '@/components/list/ListPagination';
+import { cn } from '@/lib/utils';
 import type { SPOFItem } from '@/services/api/spof';
 
 // ── Constants ──────────────────────────────────────────────────────────────────
@@ -61,7 +69,7 @@ const KIND_ICONS: Record<string, React.ElementType> = {
   DaemonSet: Server,
 };
 
-const ITEMS_PER_PAGE = 50;
+const PAGE_SIZE_OPTIONS = [10, 25, 50];
 
 type SortField = 'name' | 'namespace' | 'reason' | 'blast_radius_score' | 'dependent_count';
 type SortDir = 'asc' | 'desc';
@@ -276,7 +284,8 @@ export default function SPOFInventory() {
   const [sortDir, setSortDir] = useState<SortDir>('desc');
 
   // Pagination
-  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(10);
+  const [pageIndex, setPageIndex] = useState(0);
 
   // Expanded rows
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
@@ -326,9 +335,34 @@ export default function SPOFInventory() {
     return sorted;
   }, [filteredItems, sortField, sortDir]);
 
-  // Pagination
-  const totalPages = Math.max(1, Math.ceil(sortedItems.length / ITEMS_PER_PAGE));
-  const pagedItems = sortedItems.slice(page * ITEMS_PER_PAGE, (page + 1) * ITEMS_PER_PAGE);
+  // Calculate pagination
+  const totalFiltered = sortedItems.length;
+  const totalPages = Math.max(1, Math.ceil(totalFiltered / pageSize));
+  const safePageIndex = Math.min(pageIndex, totalPages - 1);
+  const start = safePageIndex * pageSize;
+  const pagedItems = sortedItems.slice(start, start + pageSize);
+
+  useEffect(() => {
+    if (safePageIndex !== pageIndex) setPageIndex(safePageIndex);
+  }, [safePageIndex, pageIndex]);
+
+  const handlePageSizeChange = (size: number) => {
+    setPageSize(size);
+    setPageIndex(0);
+  };
+
+  const paginationProps = {
+    rangeLabel: totalFiltered > 0
+      ? `Showing ${start + 1}\u2013${Math.min(start + pageSize, totalFiltered)} of ${totalFiltered}`
+      : 'No items',
+    hasPrev: safePageIndex > 0,
+    hasNext: start + pageSize < totalFiltered,
+    onPrev: () => setPageIndex((i) => Math.max(0, i - 1)),
+    onNext: () => setPageIndex((i) => Math.min(totalPages - 1, i + 1)),
+    currentPage: safePageIndex + 1,
+    totalPages: Math.max(1, totalPages),
+    onPageChange: (p: number) => setPageIndex(Math.max(0, Math.min(p - 1, totalPages - 1))),
+  };
 
   // Unique values for filter dropdowns (derived from full data, not filtered)
   const allItems = data?.items ?? [];
@@ -345,7 +379,7 @@ export default function SPOFInventory() {
       setSortDir('desc');
       return field;
     });
-    setPage(0);
+    setPageIndex(0);
   }, []);
 
   const toggleRow = useCallback((key: string) => {
@@ -364,7 +398,7 @@ export default function SPOFInventory() {
     setNamespaceFilter('all');
     setKindFilter('all');
     setSeverityFilter('all');
-    setPage(0);
+    setPageIndex(0);
   }, []);
 
   const hasFilters = namespaceFilter !== 'all' || kindFilter !== 'all' || severityFilter !== 'all';
@@ -415,7 +449,7 @@ export default function SPOFInventory() {
           {/* Filters Bar */}
           <div className="flex items-center gap-3 flex-wrap">
             <Filter className="h-4 w-4 text-muted-foreground" />
-            <Select value={namespaceFilter} onValueChange={(v) => { setNamespaceFilter(v); setPage(0); }}>
+            <Select value={namespaceFilter} onValueChange={(v) => { setNamespaceFilter(v); setPageIndex(0); }}>
               <SelectTrigger className="w-[160px] h-8 text-xs">
                 <SelectValue placeholder="Namespace" />
               </SelectTrigger>
@@ -426,7 +460,7 @@ export default function SPOFInventory() {
                 ))}
               </SelectContent>
             </Select>
-            <Select value={kindFilter} onValueChange={(v) => { setKindFilter(v); setPage(0); }}>
+            <Select value={kindFilter} onValueChange={(v) => { setKindFilter(v); setPageIndex(0); }}>
               <SelectTrigger className="w-[160px] h-8 text-xs">
                 <SelectValue placeholder="Kind" />
               </SelectTrigger>
@@ -437,7 +471,7 @@ export default function SPOFInventory() {
                 ))}
               </SelectContent>
             </Select>
-            <Select value={severityFilter} onValueChange={(v) => { setSeverityFilter(v); setPage(0); }}>
+            <Select value={severityFilter} onValueChange={(v) => { setSeverityFilter(v); setPageIndex(0); }}>
               <SelectTrigger className="w-[140px] h-8 text-xs">
                 <SelectValue placeholder="Severity" />
               </SelectTrigger>
@@ -563,31 +597,40 @@ export default function SPOFInventory() {
           </Card>
 
           {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="flex items-center justify-between">
-              <p className="text-xs text-muted-foreground">
-                Page {page + 1} of {totalPages} ({sortedItems.length} items)
-              </p>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setPage((p) => Math.max(0, p - 1))}
-                  disabled={page === 0}
-                  className="h-8 text-xs"
-                >
-                  Previous
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
-                  disabled={page >= totalPages - 1}
-                  className="h-8 text-xs"
-                >
-                  Next
-                </Button>
+          {sortedItems.length > 0 && (
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <div className="flex items-center gap-4">
+                <span className="text-sm text-muted-foreground">{paginationProps.rangeLabel}</span>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm" className="press-effect gap-2">
+                      {pageSize} per page
+                      <ChevronDown className="h-4 w-4 opacity-50" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start">
+                    {PAGE_SIZE_OPTIONS.map((size) => (
+                      <DropdownMenuItem
+                        key={size}
+                        onClick={() => handlePageSizeChange(size)}
+                        className={cn(pageSize === size && 'bg-accent')}
+                      >
+                        {size} per page
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
+              <ListPagination
+                hasPrev={paginationProps.hasPrev}
+                hasNext={paginationProps.hasNext}
+                onPrev={paginationProps.onPrev}
+                onNext={paginationProps.onNext}
+                rangeLabel={undefined}
+                currentPage={paginationProps.currentPage}
+                totalPages={paginationProps.totalPages}
+                onPageChange={paginationProps.onPageChange}
+              />
             </div>
           )}
         </div>
