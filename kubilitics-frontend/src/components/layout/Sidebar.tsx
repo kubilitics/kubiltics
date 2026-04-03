@@ -38,7 +38,9 @@ import {
   Package,
   ShieldCheck,
   LayoutTemplate,
-  Bot,
+  Scan,
+  GitCompareArrows,
+  ShieldAlert,
 } from 'lucide-react';
 import {
   K8sPodIcon, K8sDeploymentIcon, K8sReplicaSetIcon, K8sStatefulSetIcon,
@@ -56,7 +58,6 @@ import { useUIStore } from '@/stores/uiStore';
 import { useProjectStore } from '@/stores/projectStore';
 import { RecentResources } from '@/components/layout/RecentResources';
 import { useHoverPrefetch } from '@/hooks/useHoverPrefetch';
-import { useAutoPilotActions } from '@/hooks/useAutoPilot';
 import { BrandLogo } from '@/components/BrandLogo';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -658,11 +659,10 @@ function SidebarContent({
   const navigate = useNavigate();
   const pathname = location.pathname;
   const isDashboardActive = pathname === '/dashboard';
-  const isFleetActive = pathname === '/fleet';
+  const isFleetActive = pathname === '/fleet' || pathname.startsWith('/fleet/');
+  const isFleetXrayActive = pathname.startsWith('/fleet/xray');
   const isTopologyActive = pathname === '/topology';
   const isTemplatesActive = pathname === '/templates';
-  const { data: pendingAutoPilotActions } = useAutoPilotActions('pending', 100, 0);
-  const autoPilotPendingCount = pendingAutoPilotActions?.length ?? 0;
   const activeProject = useProjectStore((s) => s.activeProject);
   const clearActiveProject = useProjectStore((s) => s.clearActiveProject);
 
@@ -737,6 +737,16 @@ function SidebarContent({
         <TopLevelNavLink to="/templates" icon={LayoutTemplate} label="Templates" isActive={isTemplatesActive} />
       </div>
 
+      {/* Fleet X-Ray sub-navigation */}
+      {isFleetXrayActive && (
+        <div className="space-y-0.5 pl-3 ml-3 border-l-2 border-l-indigo-400 dark:border-l-indigo-500/60">
+          <NavItem to="/fleet/xray" icon={Scan} label="X-Ray Dashboard" />
+          <NavItem to="/fleet/xray/compare" icon={GitCompareArrows} label="Compare" />
+          <NavItem to="/fleet/xray/templates" icon={ShieldCheck} label="Golden Templates" />
+          <NavItem to="/fleet/xray/dr" icon={ShieldAlert} label="DR Readiness" />
+        </div>
+      )}
+
       {/* Resources — single expandable section containing all K8s resource categories */}
       <div className="space-y-1">
         {/* Section divider label */}
@@ -810,25 +820,17 @@ function SidebarContent({
         </AnimatePresence>
       </div>
 
-      {/* Intelligence Section */}
-      <div className="space-y-1">
-        <div className="flex items-center gap-2.5 px-2 pt-3 pb-1.5">
-          <div className="h-px flex-1 bg-gradient-to-r from-transparent via-slate-200/80 to-slate-200/80 dark:via-slate-700/80 dark:to-slate-700/80" />
-          <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-[0.18em] select-none">Intelligence</span>
-          <div className="h-px flex-1 bg-gradient-to-l from-transparent via-slate-200/80 to-slate-200/80 dark:via-slate-700/80 dark:to-slate-700/80" />
-        </div>
-        <NavItem to="/auto-pilot" icon={Bot} label="Auto-Pilot" count={autoPilotPendingCount > 0 ? autoPilotPendingCount : undefined} />
-      </div>
-
       {/* Recent Resources — bottom of scrollable area, non-intrusive */}
       <RecentResources />
+
+      {/* AI section removed — will be redesigned in a future version */}
     </div>
   );
 }
 
 // ─── Section Routes for auto-expand ──────────────────────────────────────────
 
-const SECTION_ROUTES = ['/workloads', '/topology', '/auto-pilot', ...WORKLOAD_PATHS, ...NETWORKING_PATHS, ...STORAGE_PATHS, ...CLUSTER_PATHS, ...SECURITY_PATHS, ...RESOURCES_PATHS, ...SCALING_PATHS, ...CRD_PATHS, ...ADMISSION_PATHS];
+const SECTION_ROUTES = ['/workloads', '/topology', ...WORKLOAD_PATHS, ...NETWORKING_PATHS, ...STORAGE_PATHS, ...CLUSTER_PATHS, ...SECURITY_PATHS, ...RESOURCES_PATHS, ...SCALING_PATHS, ...CRD_PATHS, ...ADMISSION_PATHS];
 
 // ─── Main Sidebar ────────────────────────────────────────────────────────────
 
@@ -954,6 +956,7 @@ export function Sidebar() {
 
           <NavItemIconOnly to="/dashboard" icon={LayoutDashboard} label="Dashboard" iconColor="text-blue-600 group-hover:text-blue-700" />
           <NavItemIconOnly to="/fleet" icon={Layers} label="Fleet" iconColor="text-indigo-600 group-hover:text-indigo-700" />
+          <NavItemIconOnly to="/fleet/xray" icon={Scan} label="Fleet X-Ray" iconColor="text-indigo-500 group-hover:text-indigo-600" />
           <NavItemIconOnly to="/topology" icon={Network} label="Topology" iconColor="text-violet-600 group-hover:text-violet-700" />
           <NavItemIconOnly to="/workloads" icon={Cpu} label="Workloads" iconColor="text-amber-600 group-hover:text-amber-700" />
           <div className="w-12 h-px bg-border/50 my-2" />
@@ -962,8 +965,6 @@ export function Sidebar() {
           <NavItemIconOnly to="/services" icon={Globe} label="Services" iconColor="text-cyan-600 group-hover:text-cyan-700" />
           <NavItemIconOnly to="/events" icon={Activity} label="Events" iconColor="text-amber-600 group-hover:text-amber-700" />
           <NavItemIconOnly to="/resources" icon={Gauge} label="Resources & DRA" iconColor="text-blue-600 group-hover:text-blue-700" />
-          <div className="w-12 h-px bg-border/50 my-2" />
-          <NavItemIconOnly to="/auto-pilot" icon={Bot} label="Auto-Pilot" iconColor="text-purple-600 group-hover:text-purple-700" />
 
           <div className="flex-1" />
 

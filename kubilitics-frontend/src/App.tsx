@@ -35,6 +35,10 @@ const KubeConfigSetup = lazy(() => import("./pages/KubeConfigSetup"));
 const ClusterSelection = lazy(() => import("./pages/ClusterSelection"));
 const DashboardPage = lazy(() => import("./pages/DashboardPage"));
 const FleetDashboard = lazy(() => import("./pages/FleetDashboard"));
+const FleetXRayDashboard = lazy(() => import("./pages/FleetXRayDashboard"));
+const ComparisonView = lazy(() => import("./pages/ComparisonView"));
+const GoldenTemplateConfig = lazy(() => import("./pages/GoldenTemplateConfig"));
+const DRReadinessView = lazy(() => import("./pages/DRReadinessView"));
 // HomePage removed — cluster/project management moved to Settings; Dashboard is the landing page
 const ProjectDetailPage = lazy(() => import("./pages/ProjectDetailPage"));
 const ProjectDashboardPage = lazy(() => import("./pages/ProjectDashboardPage"));
@@ -168,9 +172,6 @@ const ValidatingWebhookDetail = lazy(() => import("./pages/ValidatingWebhookDeta
 const Topology = lazy(() => import("./pages/Topology"));
 const ResourceTemplates = lazy(() => import("./pages/ResourceTemplates"));
 
-// Auto-Pilot
-const AutoPilotDashboard = lazy(() => import("./pages/AutoPilotDashboard"));
-const AutoPilotConfig = lazy(() => import("./pages/AutoPilotConfig"));
 
 import { useResourceLiveUpdates } from "./hooks/useResourceLiveUpdates";
 
@@ -703,16 +704,16 @@ const App = () => (
                         <Route path="/projects/:projectId/dashboard" element={<ProjectDashboardPage />} />
                         <Route path="/dashboard" element={<DashboardPage />} />
                         <Route path="/fleet" element={<FleetDashboard />} />
+                        <Route path="/fleet/xray" element={<FleetXRayDashboard />} />
+                        <Route path="/fleet/xray/compare" element={<ComparisonView />} />
+                        <Route path="/fleet/xray/templates" element={<GoldenTemplateConfig />} />
+                        <Route path="/fleet/xray/dr" element={<DRReadinessView />} />
                         <Route path="/settings" element={<SettingsPage />} />
                         {/* Cluster Topology */}
                         <Route path="/topology" element={<Topology />} />
                         {/* Resource Templates */}
                         <Route path="/templates" element={<ResourceTemplates />} />
                         {/* Security Scanner — disabled until backend APIs are implemented */}
-
-                        {/* Auto-Pilot */}
-                        <Route path="/auto-pilot" element={<AutoPilotDashboard />} />
-                        <Route path="/auto-pilot/config" element={<AutoPilotConfig />} />
 
                         {/* Workloads */}
                         <Route path="/workloads" element={<WorkloadsOverview />} />
