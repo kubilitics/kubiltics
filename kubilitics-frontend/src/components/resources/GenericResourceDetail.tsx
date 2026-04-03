@@ -19,7 +19,7 @@
 
 import { useState, useCallback, useEffect, ReactNode } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { LucideIcon, Clock, Download, Trash2, Edit, FileCode, GitCompare, Network, Zap, Copy, Loader2 } from 'lucide-react';
+import { LucideIcon, Clock, Download, Trash2, Edit, FileCode, GitCompare, Network, Zap, Copy, Loader2, FlaskConical } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -58,6 +58,7 @@ import { useResourceDetail, useResourceEvents } from '@/hooks/useK8sResourceDeta
 import { useDeleteK8sResource, useUpdateK8sResource, type KubernetesResource, type ResourceType } from '@/hooks/useKubernetes';
 import { normalizeKindForTopology } from '@/utils/resourceKindMapper';
 import { BlastRadiusTab } from '@/components/resources/BlastRadiusTab';
+import { PreApplyPanel } from '@/components/blast-radius/PreApplyPanel';
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
 import { useClusterStore } from '@/stores/clusterStore';
 import { useActiveClusterId } from '@/hooks/useActiveClusterId';
@@ -649,6 +650,12 @@ export function GenericResourceDetail<T extends KubernetesResource>({
           name={name ?? ''}
         />
       ),
+    },
+    {
+      id: 'what-if',
+      label: 'What-If',
+      icon: FlaskConical,
+      content: <PreApplyPanel />,
     },
     {
       id: 'actions',

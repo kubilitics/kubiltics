@@ -38,6 +38,10 @@ import {
   Package,
   ShieldCheck,
   LayoutTemplate,
+  HeartPulse,
+  BarChart3,
+  FileWarning,
+  CalendarClock,
 } from 'lucide-react';
 import {
   K8sPodIcon, K8sDeploymentIcon, K8sReplicaSetIcon, K8sStatefulSetIcon,
@@ -659,6 +663,11 @@ function SidebarContent({
   const isFleetActive = pathname === '/fleet';
   const isTopologyActive = pathname === '/topology';
   const isTemplatesActive = pathname === '/templates';
+  const isHealthActive = pathname === '/health';
+  const isRiskRankingActive = pathname === '/risk-ranking';
+  const isSPOFActive = pathname === '/spof-inventory';
+  const isReportSchedulesActive = pathname === '/report-schedules';
+  const isIntelligenceActive = isHealthActive || isRiskRankingActive || isSPOFActive || isReportSchedulesActive;
   const activeProject = useProjectStore((s) => s.activeProject);
   const clearActiveProject = useProjectStore((s) => s.clearActiveProject);
 
@@ -731,6 +740,21 @@ function SidebarContent({
         <TopLevelNavLink to="/fleet" icon={Layers} label="Fleet" isActive={isFleetActive} />
         <TopLevelNavLink to="/topology" icon={Network} label="Topology" isActive={isTopologyActive} />
         <TopLevelNavLink to="/templates" icon={LayoutTemplate} label="Templates" isActive={isTemplatesActive} />
+      </div>
+
+      {/* Intelligence — structural health, risk, SPOF, reports */}
+      <div className="space-y-1">
+        <div className="flex items-center gap-2.5 px-2 pt-3 pb-1.5">
+          <div className="h-px flex-1 bg-gradient-to-r from-transparent via-slate-200/80 to-slate-200/80 dark:via-slate-700/80 dark:to-slate-700/80" />
+          <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-[0.18em] select-none">Intelligence</span>
+          <div className="h-px flex-1 bg-gradient-to-l from-transparent via-slate-200/80 to-slate-200/80 dark:via-slate-700/80 dark:to-slate-700/80" />
+        </div>
+        <div className="space-y-0.5 px-1">
+          <NavItem to="/health" icon={HeartPulse} label="Health Scores" onNavigate={() => {}} />
+          <NavItem to="/risk-ranking" icon={BarChart3} label="Risk Ranking" onNavigate={() => {}} />
+          <NavItem to="/spof-inventory" icon={FileWarning} label="SPOF Inventory" onNavigate={() => {}} />
+          <NavItem to="/report-schedules" icon={CalendarClock} label="Reports" onNavigate={() => {}} />
+        </div>
       </div>
 
       {/* Resources — single expandable section containing all K8s resource categories */}

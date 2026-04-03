@@ -27,6 +27,8 @@ import { AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { FilterIndicator } from "./FilterIndicator";
 import type { ViewMode } from "./types/topology";
+import { TopologyDiffTab } from "./TopologyDiffTab";
+import { GitCompareArrows } from "lucide-react";
 
 // ─── URL Search Params helpers ───────────────────────────────────────────────
 // Namespace selection is persisted in URL as ?ns=default or ?ns=blue-green-demo,foo
@@ -49,6 +51,7 @@ export function TopologyPage() {
   const [searchParams, setSearchParams] = useSearchParams();
 
   // Store state
+  const [showDiffView, setShowDiffView] = useState(false);
   const viewMode = useTopologyStore((s) => s.viewMode);
   const healthOverlay = useTopologyStore((s) => s.healthOverlay);
   const presentationMode = useTopologyStore((s) => s.presentationMode);
@@ -379,6 +382,43 @@ export function TopologyPage() {
         onTogglePresentationMode={togglePresentationMode}
       />}
 
+      {/* View toggle: Topology / Changes */}
+      {!presentationMode && (
+        <div className="flex items-center gap-1 px-4 pt-2">
+          <button
+            onClick={() => setShowDiffView(false)}
+            className={cn(
+              "px-3 py-1.5 text-xs font-medium rounded-lg transition-colors",
+              !showDiffView
+                ? "bg-primary text-white"
+                : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+            )}
+          >
+            Topology
+          </button>
+          <button
+            onClick={() => setShowDiffView(true)}
+            className={cn(
+              "px-3 py-1.5 text-xs font-medium rounded-lg transition-colors flex items-center gap-1.5",
+              showDiffView
+                ? "bg-primary text-white"
+                : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+            )}
+          >
+            <GitCompareArrows className="h-3.5 w-3.5" />
+            Changes
+          </button>
+        </div>
+      )}
+
+      {/* Diff view — replaces main topology when active */}
+      {showDiffView && clusterId ? (
+        <div className="flex-1" style={{ height: 'calc(100vh - 12rem)' }}>
+          <TopologyDiffTab clusterId={clusterId} />
+        </div>
+      ) : (
+      <>
+
       {/* Breadcrumbs — hidden in presentation mode */}
       {!presentationMode && <TopologyBreadcrumbs
         viewMode={viewMode}
@@ -496,6 +536,8 @@ export function TopologyPage() {
 
       {/* First-time welcome tips */}
       <TopologyWelcomeTips />
+      </>
+      )}
     </div>
   );
 }
