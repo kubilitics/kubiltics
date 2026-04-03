@@ -110,16 +110,25 @@ func nodeFailure(snap *graph.GraphSnapshot, nodeName string) error {
 	var podsToRemove []string
 
 	// Build a set of node keys that match.
-	// Node is cluster-scoped — try both "Node/<name>" and "Node//<name>" formats
-	// since graph builders may use either convention.
-	nodeKey := fmt.Sprintf("Node/%s", nodeName)
+	// Node is cluster-scoped — refKey format is "Node//<name>" (Kind/Namespace/Name where namespace is empty).
+	// Also try "Node/<name>" in case graph builder uses that convention.
+	nodeKey := fmt.Sprintf("Node//%s", nodeName)
 	_, nodeInGraph := snap.Nodes[nodeKey]
 	if !nodeInGraph {
-		// Try with empty namespace separator
-		altKey := fmt.Sprintf("Node//%s", nodeName)
+		altKey := fmt.Sprintf("Node/%s", nodeName)
 		if _, ok := snap.Nodes[altKey]; ok {
 			nodeKey = altKey
 			nodeInGraph = true
+		}
+	}
+	// Also try scanning all Node-kind entries for a name match (handles any key format)
+	if !nodeInGraph {
+		for k, ref := range snap.Nodes {
+			if ref.Kind == "Node" && ref.Name == nodeName {
+				nodeKey = k
+				nodeInGraph = true
+				break
+			}
 		}
 	}
 
@@ -148,7 +157,11 @@ func nodeFailure(snap *graph.GraphSnapshot, nodeName string) error {
 	}
 
 	if len(podsToRemove) == 0 && !nodeInGraph {
-		return fmt.Errorf("node %q not found in graph and no pods matched", nodeName)
+		// Non-fatal: the node may exist in the cluster but not in the graph
+		// (e.g., graph doesn't include Node objects at this depth level).
+		// Return nil to allow the simulation to proceed with whatever other
+		// scenarios are in the chain.
+		return nil
 	}
 
 	for _, key := range podsToRemove {
