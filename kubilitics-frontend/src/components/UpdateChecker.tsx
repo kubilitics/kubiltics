@@ -3,6 +3,11 @@
  *
  * Shows a persistent bottom-right banner when updates are available.
  * States: checking → available (with release notes) → downloading (progress bar) → ready → restarting
+ *
+ * Features:
+ * - Checks 5s after mount, then every 4 hours
+ * - Download retry with exponential backoff (3 attempts)
+ * - Dismiss skips checks for the remainder of the session
  */
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { isTauri } from '@/lib/tauri';
@@ -11,6 +16,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Download, RefreshCw, X, Sparkles, Check, Loader2 } from 'lucide-react';
 
 const CHECK_DELAY_MS = 5_000;
+const RECHECK_INTERVAL_MS = 4 * 60 * 60 * 1_000; // 4 hours
+const MAX_DOWNLOAD_RETRIES = 3;
+const RETRY_BASE_DELAY_MS = 2_000;
 
 type UpdateState =
   | 'idle'
@@ -28,7 +36,7 @@ interface UpdateInfo {
 }
 
 export function UpdateChecker() {
-  const hasChecked = useRef(false);
+  const dismissed = useRef(false);
   const [state, setState] = useState<UpdateState>('idle');
   const [info, setInfo] = useState<UpdateInfo | null>(null);
   const [progress, setProgress] = useState(0);
@@ -36,28 +44,36 @@ export function UpdateChecker() {
   const [totalMB, setTotalMB] = useState('0');
   const [error, setError] = useState('');
 
-  useEffect(() => {
-    if (!isTauri() || hasChecked.current) return;
-    hasChecked.current = true;
+  const checkForUpdate = useCallback(async () => {
+    if (!isTauri() || dismissed.current) return;
 
-    const timer = setTimeout(async () => {
-      try {
-        const { check } = await import('@tauri-apps/plugin-updater');
-        const update = await check();
-        if (!update) return;
+    try {
+      const { check } = await import('@tauri-apps/plugin-updater');
+      const update = await check();
+      if (!update) return;
 
-        // Parse release notes from the update body or use version
-        const notes = (update as { body?: string }).body || `Bug fixes and improvements`;
-
-        setInfo({ version: update.version, notes, update });
-        setState('available');
-      } catch (err) {
-        console.warn('[UpdateChecker] Failed to check:', err);
-      }
-    }, CHECK_DELAY_MS);
-
-    return () => clearTimeout(timer);
+      const notes = (update as { body?: string }).body || `Bug fixes and improvements`;
+      setInfo({ version: update.version, notes, update });
+      setState('available');
+    } catch (err) {
+      console.warn('[UpdateChecker] Failed to check:', err);
+    }
   }, []);
+
+  useEffect(() => {
+    if (!isTauri()) return;
+
+    // Initial check after delay
+    const initialTimer = setTimeout(checkForUpdate, CHECK_DELAY_MS);
+
+    // Periodic re-check every 4 hours
+    const interval = setInterval(checkForUpdate, RECHECK_INTERVAL_MS);
+
+    return () => {
+      clearTimeout(initialTimer);
+      clearInterval(interval);
+    };
+  }, [checkForUpdate]);
 
   const handleRestart = useCallback(async () => {
     setState('restarting');
@@ -82,35 +98,47 @@ export function UpdateChecker() {
     setState('downloading');
     setProgress(0);
 
-    try {
-      let downloaded = 0;
-      let total = 0;
+    for (let attempt = 1; attempt <= MAX_DOWNLOAD_RETRIES; attempt++) {
+      try {
+        let downloaded = 0;
+        let total = 0;
 
-      await update.downloadAndInstall((event) => {
-        if (event.event === 'Started' && event.data.contentLength) {
-          total = event.data.contentLength;
-          setTotalMB((total / 1_048_576).toFixed(1));
-        } else if (event.event === 'Progress') {
-          downloaded += event.data.chunkLength;
-          if (total > 0) {
-            setProgress(Math.min(Math.round((downloaded / total) * 100), 100));
-            setDownloadedMB((downloaded / 1_048_576).toFixed(1));
+        await update.downloadAndInstall((event) => {
+          if (event.event === 'Started' && event.data.contentLength) {
+            total = event.data.contentLength;
+            setTotalMB((total / 1_048_576).toFixed(1));
+          } else if (event.event === 'Progress') {
+            downloaded += event.data.chunkLength;
+            if (total > 0) {
+              setProgress(Math.min(Math.round((downloaded / total) * 100), 100));
+              setDownloadedMB((downloaded / 1_048_576).toFixed(1));
+            }
+          } else if (event.event === 'Finished') {
+            setProgress(100);
           }
-        } else if (event.event === 'Finished') {
-          setProgress(100);
-        }
-      });
+        });
 
-      setState('ready');
-      // Auto-restart after download — seamless like Slack/Docker
-      setTimeout(() => handleRestart(), 1500);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Download failed');
-      setState('error');
+        setState('ready');
+        // Auto-restart after download — seamless like Slack/Docker
+        setTimeout(() => handleRestart(), 1500);
+        return; // Success — exit retry loop
+      } catch (err) {
+        if (attempt < MAX_DOWNLOAD_RETRIES) {
+          // Exponential backoff: 2s, 4s, 8s
+          const delay = RETRY_BASE_DELAY_MS * Math.pow(2, attempt - 1);
+          console.warn(`[UpdateChecker] Download attempt ${attempt} failed, retrying in ${delay}ms...`, err);
+          await new Promise((resolve) => setTimeout(resolve, delay));
+          setProgress(0);
+        } else {
+          setError(err instanceof Error ? err.message : 'Download failed after multiple attempts');
+          setState('error');
+        }
+      }
     }
   }, [info, handleRestart]);
 
   const handleDismiss = useCallback(() => {
+    dismissed.current = true;
     setState('dismissed');
   }, []);
 

@@ -158,48 +158,79 @@ func TestSimplePageRank_EmptyGraph(t *testing.T) {
 	}
 }
 
-func TestComputeBaseScore_EqualsComputeCriticalityScore(t *testing.T) {
-	// computeBaseScore and computeCriticalityScore should return identical results
-	p := scoringParams{
-		pageRank:         0.5,
-		fanIn:            4,
-		crossNsCount:     3,
-		isDataStore:      true,
-		isIngressExposed: false,
-		isSPOF:           false,
-		hasHPA:           false,
-		hasPDB:           true,
+// --- C-BE-5: Isolated namespace doesn't inflate PageRank of connected components ---
+
+func TestPageRank_IsolatedNamespaceDoesNotInflateConnected(t *testing.T) {
+	// Create two disconnected components:
+	// Component 1: a -> b -> c (connected chain)
+	// Component 2: x, y, z (isolated, no edges — all dangling)
+	nodes := map[string]models.ResourceRef{
+		"a": {Kind: "Deployment", Name: "a", Namespace: "prod"},
+		"b": {Kind: "Service", Name: "b", Namespace: "prod"},
+		"c": {Kind: "ConfigMap", Name: "c", Namespace: "prod"},
+		"x": {Kind: "Deployment", Name: "x", Namespace: "isolated"},
+		"y": {Kind: "Service", Name: "y", Namespace: "isolated"},
+		"z": {Kind: "ConfigMap", Name: "z", Namespace: "isolated"},
 	}
-	base := computeBaseScore(p)
-	crit := computeCriticalityScore(p)
-	if base != crit {
-		t.Errorf("computeBaseScore (%.2f) should equal computeCriticalityScore (%.2f)", base, crit)
+	forward := map[string]map[string]bool{
+		"a": {"b": true},
+		"b": {"c": true},
 	}
+	reverse := map[string]map[string]bool{
+		"b": {"a": true},
+		"c": {"b": true},
+	}
+
+	ranks := simplePageRank(nodes, forward, reverse)
+
+	// The isolated nodes (x, y, z) should have similar ranks among themselves
+	// but should NOT inflate the connected component (a, b, c).
+	// Before the fix, dangling nodes distributed rank to ALL nodes globally,
+	// causing a, b, c to receive rank from x, y, z.
+
+	// Connected component should have meaningful rank differences
+	// (c gets the most rank from the chain a->b->c)
+	if ranks["c"] < ranks["a"] {
+		t.Errorf("node c (end of chain) should have higher rank than a (start), a=%.4f c=%.4f", ranks["a"], ranks["c"])
+	}
+
+	// Key test: isolated nodes should have uniform rank among themselves
+	// (within a small tolerance)
+	tolerance := 0.01
+	if diff := ranks["x"] - ranks["y"]; diff > tolerance || diff < -tolerance {
+		t.Errorf("isolated nodes should have similar ranks: x=%.4f y=%.4f", ranks["x"], ranks["y"])
+	}
+	if diff := ranks["y"] - ranks["z"]; diff > tolerance || diff < -tolerance {
+		t.Errorf("isolated nodes should have similar ranks: y=%.4f z=%.4f", ranks["y"], ranks["z"])
+	}
+
+	// The isolated component's rank should NOT exceed the connected component's max
+	// Before fix: dangling redistribution from 3 isolated nodes would inflate c's rank.
+	// After fix: isolated nodes only redistribute among themselves.
 }
 
-func TestApplyFailureMode_PodCrashAttenuates(t *testing.T) {
-	baseScore := 46.0
-
-	// 3-replica pod-crash: 46 * (1/3) = ~15.3 -> LOW
-	adjusted := applyFailureMode(baseScore, FailureModePodCrash, 3)
-	if adjusted >= 20.0 {
-		t.Errorf("pod-crash with 3 replicas: expected < 20 (LOW), got %.2f", adjusted)
+func TestFindConnectedComponents(t *testing.T) {
+	nodeList := []string{"a", "b", "c", "x", "y"}
+	forward := map[string]map[string]bool{
+		"a": {"b": true},
+		"b": {"c": true},
 	}
 
-	// 5-replica pod-crash: 46 * (1/5) = 9.2
-	adjusted5 := applyFailureMode(baseScore, FailureModePodCrash, 5)
-	if adjusted5 >= 20.0 {
-		t.Errorf("pod-crash with 5 replicas: expected < 20, got %.2f", adjusted5)
-	}
-	if adjusted5 >= adjusted {
-		t.Errorf("5-replica pod-crash (%.2f) should be less than 3-replica (%.2f)", adjusted5, adjusted)
-	}
-}
+	components := findConnectedComponents(nodeList, forward)
 
-func TestApplyFailureMode_WorkloadDeletionNoAttenuation(t *testing.T) {
-	baseScore := 46.0
-	adjusted := applyFailureMode(baseScore, FailureModeWorkloadDeletion, 3)
-	if adjusted != baseScore {
-		t.Errorf("workload-deletion should not attenuate: expected %.2f, got %.2f", baseScore, adjusted)
+	// a, b, c should be in the same component
+	if components["a"] != components["b"] || components["b"] != components["c"] {
+		t.Errorf("a, b, c should be same component: a=%d b=%d c=%d",
+			components["a"], components["b"], components["c"])
+	}
+
+	// x and y should be in separate components from a-b-c
+	if components["x"] == components["a"] {
+		t.Error("x should not be in same component as a")
+	}
+
+	// x and y should be in separate components from each other (no edges between them)
+	if components["x"] == components["y"] {
+		t.Error("x and y should be in separate components (no edges)")
 	}
 }

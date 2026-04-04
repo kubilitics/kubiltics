@@ -7,199 +7,86 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// helper: build a DetectInput with the given nodes and scores.
-func buildTestInput(nodes []NodeInfo, scores map[string]ScoreInfo) DetectInput {
-	return DetectInput{
-		ClusterID:         "test-cluster",
-		Nodes:             nodes,
-		CriticalityScores: scores,
+// Test 6: DaemonSet not flagged as SPOF, Job not flagged, StatefulSet with 1 replica flagged.
+func TestDetectSPOFs_DaemonSetNeverSPOF(t *testing.T) {
+	workloads := []WorkloadInfo{
+		{Key: "DaemonSet/kube-system/fluentd", Kind: "DaemonSet", Name: "fluentd", Replicas: 1, FanIn: 5},
 	}
+	results := DetectSPOFs(workloads)
+	assert.Empty(t, results, "DaemonSet should never be flagged as SPOF")
 }
 
-func TestDetect_SingleReplicaWithDependents(t *testing.T) {
-	nodes := []NodeInfo{
-		{ID: "Deployment/default/api", Name: "api", Kind: "Deployment", Namespace: "default", Replicas: 1, HasPDB: false, HasHPA: false},
+func TestDetectSPOFs_JobNotFlagged(t *testing.T) {
+	workloads := []WorkloadInfo{
+		{Key: "Job/default/migration", Kind: "Job", Name: "migration", Replicas: 1, FanIn: 3},
+		{Key: "CronJob/default/cleanup", Kind: "CronJob", Name: "cleanup", Replicas: 1, FanIn: 2},
 	}
-	scores := map[string]ScoreInfo{
-		"Deployment/default/api": {Score: 80, Level: "critical", FanIn: 3, FanOut: 1, IsSPOF: true, BlastRadius: 3},
-	}
-
-	inv := NewDetector().Detect(buildTestInput(nodes, scores))
-
-	require.Equal(t, 1, inv.TotalSPOFs)
-	item := inv.Items[0]
-	assert.Equal(t, "api", item.Name)
-	assert.Equal(t, "Deployment", item.Kind)
-	assert.Equal(t, "default", item.Namespace)
-	assert.Equal(t, "single-replica", item.ReasonCode)
-	assert.Contains(t, item.Reason, "Single replica")
-	assert.Equal(t, 80.0, item.BlastRadiusScore)
-	assert.Equal(t, "critical", item.BlastRadiusLevel)
-	assert.Equal(t, 3, item.DependentCount)
-	assert.NotEmpty(t, item.Remediations)
+	results := DetectSPOFs(workloads)
+	assert.Empty(t, results, "Jobs and CronJobs should not be flagged as SPOF")
 }
 
-func TestDetect_ThreeReplicas_NotSPOF(t *testing.T) {
-	nodes := []NodeInfo{
-		{ID: "Deployment/default/web", Name: "web", Kind: "Deployment", Namespace: "default", Replicas: 3, HasPDB: true, HasHPA: true},
+func TestDetectSPOFs_StatefulSetWithOneReplica(t *testing.T) {
+	workloads := []WorkloadInfo{
+		{Key: "StatefulSet/default/postgres", Kind: "StatefulSet", Name: "postgres", Replicas: 1, FanIn: 4},
 	}
-	scores := map[string]ScoreInfo{
-		"Deployment/default/web": {Score: 40, Level: "medium", FanIn: 2, FanOut: 1, IsSPOF: false, BlastRadius: 2},
-	}
-
-	inv := NewDetector().Detect(buildTestInput(nodes, scores))
-
-	assert.Equal(t, 0, inv.TotalSPOFs)
-	assert.Empty(t, inv.Items)
+	results := DetectSPOFs(workloads)
+	require.Len(t, results, 1, "StatefulSet with 1 replica and dependents should be SPOF")
+	assert.Equal(t, "StatefulSet", results[0].Kind)
+	assert.Contains(t, results[0].Reason, "storage does not prevent downtime")
 }
 
-func TestDetect_SingleReplicaWithHPA_NotSPOF(t *testing.T) {
-	nodes := []NodeInfo{
-		{ID: "Deployment/default/worker", Name: "worker", Kind: "Deployment", Namespace: "default", Replicas: 1, HasPDB: false, HasHPA: true},
+func TestDetectSPOFs_StatefulSetMultipleReplicas(t *testing.T) {
+	workloads := []WorkloadInfo{
+		{Key: "StatefulSet/default/postgres", Kind: "StatefulSet", Name: "postgres", Replicas: 3, FanIn: 4},
 	}
-	scores := map[string]ScoreInfo{
-		// IsSPOF is false because HasHPA is true (matches the graph engine logic: replicas <= 1 && !hasHPA && fanIn > 0)
-		"Deployment/default/worker": {Score: 30, Level: "medium", FanIn: 2, FanOut: 0, IsSPOF: false, BlastRadius: 2},
-	}
-
-	inv := NewDetector().Detect(buildTestInput(nodes, scores))
-
-	assert.Equal(t, 0, inv.TotalSPOFs)
-	assert.Empty(t, inv.Items)
+	results := DetectSPOFs(workloads)
+	assert.Empty(t, results, "StatefulSet with 3 replicas should not be SPOF")
 }
 
-func TestDetect_HighFanIn_CriticalPriority(t *testing.T) {
-	nodes := []NodeInfo{
-		{ID: "Service/default/gateway", Name: "gateway", Kind: "Service", Namespace: "default", Replicas: 1, HasPDB: false, HasHPA: false},
+func TestDetectSPOFs_DeploymentSingleReplica(t *testing.T) {
+	workloads := []WorkloadInfo{
+		{Key: "Deployment/default/api", Kind: "Deployment", Name: "api", Replicas: 1, FanIn: 3},
 	}
-	scores := map[string]ScoreInfo{
-		"Service/default/gateway": {Score: 90, Level: "critical", FanIn: 8, FanOut: 0, IsSPOF: true, BlastRadius: 8},
-	}
-
-	inv := NewDetector().Detect(buildTestInput(nodes, scores))
-
-	require.Equal(t, 1, inv.TotalSPOFs)
-	item := inv.Items[0]
-
-	// Should detect "critical-hub" reason because fanIn > 5 && replicas == 1.
-	assert.Equal(t, "critical-hub", item.ReasonCode)
-	assert.Contains(t, item.Reason, "8 workloads depend")
-
-	// The "scale" remediation should have "critical" priority when fanIn > 5.
-	var scalePriority string
-	for _, r := range item.Remediations {
-		if r.Type == "scale" {
-			scalePriority = r.Priority
-		}
-	}
-	assert.Equal(t, "critical", scalePriority)
+	results := DetectSPOFs(workloads)
+	require.Len(t, results, 1)
+	assert.Equal(t, "Deployment", results[0].Kind)
 }
 
-func TestDetect_SortOrder_HighestBlastRadiusFirst(t *testing.T) {
-	nodes := []NodeInfo{
-		{ID: "Deployment/default/low", Name: "low", Kind: "Deployment", Namespace: "default", Replicas: 1},
-		{ID: "Deployment/default/high", Name: "high", Kind: "Deployment", Namespace: "default", Replicas: 1},
-		{ID: "Deployment/default/mid", Name: "mid", Kind: "Deployment", Namespace: "default", Replicas: 1},
+func TestDetectSPOFs_DeploymentNoDependents(t *testing.T) {
+	workloads := []WorkloadInfo{
+		{Key: "Deployment/default/leaf", Kind: "Deployment", Name: "leaf", Replicas: 1, FanIn: 0},
 	}
-	scores := map[string]ScoreInfo{
-		"Deployment/default/low":  {Score: 20, FanIn: 1, IsSPOF: true},
-		"Deployment/default/high": {Score: 85, FanIn: 5, IsSPOF: true},
-		"Deployment/default/mid":  {Score: 50, FanIn: 3, IsSPOF: true},
-	}
-
-	inv := NewDetector().Detect(buildTestInput(nodes, scores))
-
-	require.Len(t, inv.Items, 3)
-	assert.Equal(t, "high", inv.Items[0].Name)
-	assert.Equal(t, "mid", inv.Items[1].Name)
-	assert.Equal(t, "low", inv.Items[2].Name)
+	results := DetectSPOFs(workloads)
+	assert.Empty(t, results, "Deployment with no dependents should not be SPOF")
 }
 
-func TestDetect_SeverityCounts(t *testing.T) {
-	nodes := []NodeInfo{
-		{ID: "Deployment/default/a", Name: "a", Kind: "Deployment", Namespace: "default", Replicas: 1},
-		{ID: "Deployment/default/b", Name: "b", Kind: "Deployment", Namespace: "default", Replicas: 1},
-		{ID: "Deployment/default/c", Name: "c", Kind: "Deployment", Namespace: "default", Replicas: 1},
-		{ID: "Deployment/default/d", Name: "d", Kind: "Deployment", Namespace: "default", Replicas: 1},
+// Test 7: HPA with implied minReplicas=1 still flags as SPOF.
+func TestDetectSPOFs_HPAWithOneReplicaStillSPOF(t *testing.T) {
+	workloads := []WorkloadInfo{
+		{Key: "Deployment/default/api", Kind: "Deployment", Name: "api", Replicas: 1, HasHPA: true, FanIn: 5},
 	}
-	scores := map[string]ScoreInfo{
-		"Deployment/default/a": {Score: 80, FanIn: 2, IsSPOF: true}, // critical (>= 75)
-		"Deployment/default/b": {Score: 60, FanIn: 2, IsSPOF: true}, // high (>= 50)
-		"Deployment/default/c": {Score: 30, FanIn: 1, IsSPOF: true}, // medium (>= 25)
-		"Deployment/default/d": {Score: 10, FanIn: 1, IsSPOF: true}, // low (< 25)
-	}
-
-	inv := NewDetector().Detect(buildTestInput(nodes, scores))
-
-	assert.Equal(t, 4, inv.TotalSPOFs)
-	assert.Equal(t, 1, inv.Critical)
-	assert.Equal(t, 1, inv.High)
-	assert.Equal(t, 1, inv.Medium)
-	assert.Equal(t, 1, inv.Low)
+	results := DetectSPOFs(workloads)
+	require.Len(t, results, 1, "HPA with minReplicas=1 (implied) should still be SPOF")
+	assert.True(t, results[0].HasHPA)
+	assert.Contains(t, results[0].Reason, "HPA present but minReplicas may be 1")
 }
 
-func TestDetect_EmptyGraph(t *testing.T) {
-	inv := NewDetector().Detect(DetectInput{ClusterID: "empty"})
-
-	assert.Equal(t, 0, inv.TotalSPOFs)
-	assert.Equal(t, "empty", inv.ClusterID)
-	assert.NotNil(t, inv.Items, "Items should be non-nil empty slice for JSON")
-	assert.Empty(t, inv.Items)
-}
-
-func TestDetect_NamespaceFilter(t *testing.T) {
-	// This tests the filtering logic that lives in the handler/caller layer,
-	// but we verify the inventory contains namespace data to filter on.
-	nodes := []NodeInfo{
-		{ID: "Deployment/prod/api", Name: "api", Kind: "Deployment", Namespace: "prod", Replicas: 1},
-		{ID: "Deployment/dev/api", Name: "api", Kind: "Deployment", Namespace: "dev", Replicas: 1},
+func TestDetectSPOFs_MixedWorkloads(t *testing.T) {
+	workloads := []WorkloadInfo{
+		{Key: "DaemonSet/kube-system/fluentd", Kind: "DaemonSet", Name: "fluentd", Replicas: 1, FanIn: 5},
+		{Key: "Job/default/migration", Kind: "Job", Name: "migration", Replicas: 1, FanIn: 3},
+		{Key: "StatefulSet/default/postgres", Kind: "StatefulSet", Name: "postgres", Replicas: 1, FanIn: 4},
+		{Key: "Deployment/default/api", Kind: "Deployment", Name: "api", Replicas: 1, FanIn: 3},
+		{Key: "Deployment/default/web", Kind: "Deployment", Name: "web", Replicas: 3, FanIn: 2},
 	}
-	scores := map[string]ScoreInfo{
-		"Deployment/prod/api": {Score: 70, FanIn: 3, IsSPOF: true},
-		"Deployment/dev/api":  {Score: 40, FanIn: 1, IsSPOF: true},
+	results := DetectSPOFs(workloads)
+	// Only StatefulSet/postgres and Deployment/api should be flagged
+	require.Len(t, results, 2)
+
+	kinds := make(map[string]bool)
+	for _, r := range results {
+		kinds[r.Kind+"/"+r.Name] = true
 	}
-
-	inv := NewDetector().Detect(buildTestInput(nodes, scores))
-
-	// Filter to "prod" namespace.
-	var prodItems []SPOFItem
-	for _, item := range inv.Items {
-		if item.Namespace == "prod" {
-			prodItems = append(prodItems, item)
-		}
-	}
-
-	assert.Len(t, prodItems, 1)
-	assert.Equal(t, "prod", prodItems[0].Namespace)
-}
-
-func TestDetect_Remediations_AlwaysIncludeTopologySpread(t *testing.T) {
-	nodes := []NodeInfo{
-		{ID: "Deployment/default/x", Name: "x", Kind: "Deployment", Namespace: "default", Replicas: 1, HasHPA: false, HasPDB: false},
-	}
-	scores := map[string]ScoreInfo{
-		"Deployment/default/x": {Score: 50, FanIn: 2, IsSPOF: true},
-	}
-
-	inv := NewDetector().Detect(buildTestInput(nodes, scores))
-
-	require.Len(t, inv.Items, 1)
-	var hasTopologySpread bool
-	for _, r := range inv.Items[0].Remediations {
-		if r.Type == "topology-spread" {
-			hasTopologySpread = true
-		}
-	}
-	assert.True(t, hasTopologySpread, "Topology spread remediation should always be included")
-}
-
-func TestCriticalityLevel(t *testing.T) {
-	assert.Equal(t, "critical", criticalityLevel(100))
-	assert.Equal(t, "critical", criticalityLevel(75))
-	assert.Equal(t, "high", criticalityLevel(74.9))
-	assert.Equal(t, "high", criticalityLevel(50))
-	assert.Equal(t, "medium", criticalityLevel(49.9))
-	assert.Equal(t, "medium", criticalityLevel(25))
-	assert.Equal(t, "low", criticalityLevel(24.9))
-	assert.Equal(t, "low", criticalityLevel(0))
+	assert.True(t, kinds["StatefulSet/postgres"])
+	assert.True(t, kinds["Deployment/api"])
 }

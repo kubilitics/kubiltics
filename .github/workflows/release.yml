@@ -104,6 +104,15 @@ jobs:
         working-directory: kubilitics-frontend
         env:
           TAURI_BUILD: "true"
+      - name: Upload source maps to Sentry
+        if: ${{ vars.SENTRY_ORG != '' }}
+        run: npx @sentry/cli sourcemaps upload --release=kubilitics@${{ needs.version-check.outputs.version }} dist/
+        working-directory: kubilitics-frontend
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: ${{ vars.SENTRY_ORG }}
+          SENTRY_PROJECT: ${{ vars.SENTRY_PROJECT }}
+
       - uses: actions/upload-artifact@v7
         with:
           name: frontend-dist-tauri-${{ github.ref_name }}

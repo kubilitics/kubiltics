@@ -1,0 +1,43 @@
+name: Semgrep PR Scan
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+  security-events: write
+
+concurrency:
+  group: semgrep-ci-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  semgrep:
+    name: Semgrep SAST (diff-aware)
+    runs-on: ubuntu-latest
+    container:
+      image: semgrep/semgrep:latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Run Semgrep (diff-aware)
+        run: |
+          semgrep scan \
+            --config auto \
+            --config .semgrep/ \
+            --sarif \
+            -o semgrep-pr-results.sarif \
+            --baseline-commit ${{ github.event.pull_request.base.sha }} \
+            .
+        env:
+          SEMGREP_RULES: auto
+
+      - name: Upload Semgrep SARIF
+        uses: github/codeql-action/upload-sarif@v4
+        if: always()
+        with:
+          sarif_file: semgrep-pr-results.sarif
+          category: semgrep-pr

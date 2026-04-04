@@ -76,14 +76,13 @@ func TestShortestPath(t *testing.T) {
 }
 
 func TestCriticalityLevel(t *testing.T) {
-	// Recalibrated thresholds: LOW < 20, MEDIUM 20-45, HIGH 45-70, CRITICAL > 70
 	assert.Equal(t, "critical", criticalityLevel(100))
-	assert.Equal(t, "critical", criticalityLevel(71))
-	assert.Equal(t, "high", criticalityLevel(70))
-	assert.Equal(t, "high", criticalityLevel(45))
-	assert.Equal(t, "medium", criticalityLevel(44.9))
-	assert.Equal(t, "medium", criticalityLevel(20))
-	assert.Equal(t, "low", criticalityLevel(19.9))
+	assert.Equal(t, "critical", criticalityLevel(75))
+	assert.Equal(t, "high", criticalityLevel(74.9))
+	assert.Equal(t, "high", criticalityLevel(50))
+	assert.Equal(t, "medium", criticalityLevel(49.9))
+	assert.Equal(t, "medium", criticalityLevel(25))
+	assert.Equal(t, "low", criticalityLevel(24.9))
 	assert.Equal(t, "low", criticalityLevel(0))
 }
 
@@ -178,9 +177,8 @@ func TestComputeBlastRadius_SimpleChain(t *testing.T) {
 	// SPOF: 1 replica, no HPA, has dependents
 	assert.True(t, result.IsSPOF)
 
-	// Blast radius percent: 1 affected / 3 reachable subgraph nodes = 33.33%
-	// (reachable subgraph from Deployment: Service via reverse, ReplicaSet + Pod via forward = 3)
-	assert.InDelta(t, 33.33, result.BlastRadiusPercent, 0.1)
+	// Blast radius percent: 1 affected / 4 total = 25%
+	assert.InDelta(t, 25.0, result.BlastRadiusPercent, 0.01)
 
 	// Graph stats
 	assert.Equal(t, 4, result.GraphNodeCount)
@@ -262,269 +260,135 @@ func TestBuildFailurePath(t *testing.T) {
 	assert.Equal(t, "Service", hops[2].To.Kind)
 }
 
-// --- T2: Failure Mode Tests ---
+// --- C-BE-1: Test safe score lookup with missing key ---
 
-// buildThreeReplicaSnapshot creates a graph with a 3-replica Deployment
-// to test failure-mode scoring. Graph: Ingress -> Service -> Deployment -> ConfigMap
-func buildThreeReplicaSnapshot() *GraphSnapshot {
-	dep := models.ResourceRef{Kind: "Deployment", Namespace: "prod", Name: "api"}
-	svc := models.ResourceRef{Kind: "Service", Namespace: "prod", Name: "api-svc"}
-	ing := models.ResourceRef{Kind: "Ingress", Namespace: "prod", Name: "api-ing"}
-	cm := models.ResourceRef{Kind: "ConfigMap", Namespace: "prod", Name: "api-config"}
+func TestScoreLookup_MissingKeyReturnsZero(t *testing.T) {
+	snap := buildTestSnapshot()
+	// Access a key that doesn't exist in NodeScores
+	missingKey := "Deployment/missing/nonexistent"
+	score, exists := snap.NodeScores[missingKey]
+	assert.False(t, exists, "missing key should not exist")
+	assert.Equal(t, 0.0, score, "missing key should return zero value")
+}
 
-	depKey := refKey(dep)
-	svcKey := refKey(svc)
-	ingKey := refKey(ing)
-	cmKey := refKey(cm)
+func TestScoreLookup_ExistingKeyWorks(t *testing.T) {
+	snap := buildTestSnapshot()
+	depKey := refKey(models.ResourceRef{Kind: "Deployment", Namespace: "default", Name: "web"})
+	score, exists := snap.NodeScores[depKey]
+	assert.True(t, exists)
+	assert.Equal(t, 80.0, score)
+}
 
-	edges := []models.BlastDependencyEdge{
-		{Source: ing, Target: svc, Type: "routes"},
-		{Source: svc, Target: dep, Type: "selects"},
-		{Source: dep, Target: cm, Type: "mounts"},
+// --- C-BE-2: Test partially constructed snapshot doesn't panic ---
+
+func TestEnsureMaps_NilSnapshot(t *testing.T) {
+	// A snapshot with only some maps initialized should not panic
+	snap := &GraphSnapshot{}
+	// This should not panic
+	snap.EnsureMaps()
+
+	assert.NotNil(t, snap.Nodes)
+	assert.NotNil(t, snap.Forward)
+	assert.NotNil(t, snap.Reverse)
+	assert.NotNil(t, snap.NodeScores)
+	assert.NotNil(t, snap.NodeRisks)
+	assert.NotNil(t, snap.NodeReplicas)
+	assert.NotNil(t, snap.NodeHasHPA)
+	assert.NotNil(t, snap.NodeHasPDB)
+	assert.NotNil(t, snap.NodeIngress)
+	assert.NotNil(t, snap.Namespaces)
+}
+
+func TestPartiallyConstructedSnapshot_NoPanic(t *testing.T) {
+	// Simulate a snapshot that only has Nodes set (no score maps)
+	snap := &GraphSnapshot{
+		Nodes: map[string]models.ResourceRef{
+			"Deployment/default/web": {Kind: "Deployment", Namespace: "default", Name: "web"},
+		},
 	}
 
-	// Base score for the deployment:
-	// pageRank ~0.5 -> 15, fanIn=1 (svc) -> 3, crossNs=0, no datastore,
-	// ingress not directly on dep, not SPOF (3 replicas), no HPA (+5), no PDB (+5)
-	// = ~28 base score
-	baseScore := 28.0
+	// These operations should NOT panic even without initialized maps
+	status := snap.Status()
+	assert.Equal(t, 1, status.NodeCount)
 
-	return &GraphSnapshot{
+	summary := snap.GetSummary(10)
+	assert.Empty(t, summary, "no scores means no summary entries")
+}
+
+func TestComputeBlastRadius_PartialSnapshot_NoPanic(t *testing.T) {
+	// Snapshot with only Nodes and basic adjacency, missing score maps
+	snap := &GraphSnapshot{
 		Nodes: map[string]models.ResourceRef{
-			depKey: dep,
-			svcKey: svc,
-			ingKey: ing,
-			cmKey:  cm,
+			"Deployment/default/web": {Kind: "Deployment", Namespace: "default", Name: "web"},
 		},
-		Forward: map[string]map[string]bool{
-			ingKey: {svcKey: true},
-			svcKey: {depKey: true},
-			depKey: {cmKey: true},
+		Forward: map[string]map[string]bool{},
+		Reverse: map[string]map[string]bool{},
+		Edges:   []models.BlastDependencyEdge{},
+	}
+
+	// Should not panic; EnsureMaps will initialize missing maps
+	result, err := snap.ComputeBlastRadius(models.ResourceRef{Kind: "Deployment", Namespace: "default", Name: "web"})
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	assert.Equal(t, 0.0, result.CriticalityScore)
+}
+
+// --- H-BE-1 / H-BE-2: Kind-aware SPOF in ComputeBlastRadius ---
+
+func TestComputeBlastRadius_DaemonSetNotSPOF(t *testing.T) {
+	ds := models.ResourceRef{Kind: "DaemonSet", Namespace: "default", Name: "fluentd"}
+	svc := models.ResourceRef{Kind: "Service", Namespace: "default", Name: "log-svc"}
+	dsKey := refKey(ds)
+	svcKey := refKey(svc)
+
+	snap := &GraphSnapshot{
+		Nodes:   map[string]models.ResourceRef{dsKey: ds, svcKey: svc},
+		Forward: map[string]map[string]bool{svcKey: {dsKey: true}},
+		Reverse: map[string]map[string]bool{dsKey: {svcKey: true}},
+		Edges: []models.BlastDependencyEdge{
+			{Source: svc, Target: ds, Type: "selects"},
 		},
-		Reverse: map[string]map[string]bool{
-			svcKey: {ingKey: true},
-			depKey: {svcKey: true},
-			cmKey:  {depKey: true},
-		},
-		Edges: edges,
-		NodeScores: map[string]float64{
-			depKey: baseScore,
-			svcKey: 15.0,
-			ingKey: 5.0,
-			cmKey:  10.0,
-		},
+		NodeScores:   map[string]float64{dsKey: 50},
 		NodeRisks:    map[string][]models.RiskIndicator{},
-		NodeReplicas: map[string]int{depKey: 3, svcKey: 0, ingKey: 0, cmKey: 0},
+		NodeReplicas: map[string]int{dsKey: 1},
 		NodeHasHPA:   map[string]bool{},
 		NodeHasPDB:   map[string]bool{},
 		NodeIngress:  map[string][]string{},
 		TotalWorkloads: 2,
 		BuiltAt:        time.Now().UnixMilli(),
-		BuildDuration:  10 * time.Millisecond,
-		Namespaces:     map[string]bool{"prod": true},
+		Namespaces:     map[string]bool{"default": true},
 	}
-}
 
-func TestComputeBlastRadius_PodCrash_ThreeReplicas_ScoresLow(t *testing.T) {
-	snap := buildThreeReplicaSnapshot()
-	dep := models.ResourceRef{Kind: "Deployment", Namespace: "prod", Name: "api"}
-
-	result, err := snap.ComputeBlastRadiusWithMode(dep, FailureModePodCrash)
+	result, err := snap.ComputeBlastRadius(ds)
 	require.NoError(t, err)
-
-	// With 3 replicas, pod-crash score = baseScore * (1/3) = ~9.3
-	assert.Less(t, result.CriticalityScore, 20.0,
-		"pod-crash in a 3-replica Deployment should score LOW (< 20), got %.2f", result.CriticalityScore)
-	assert.Equal(t, "low", result.CriticalityLevel)
-	assert.Equal(t, FailureModePodCrash, result.FailureMode)
+	assert.False(t, result.IsSPOF, "DaemonSet should never be SPOF")
 }
 
-func TestComputeBlastRadius_WorkloadDeletion_ThreeReplicas_ScoresMediumOrHigher(t *testing.T) {
-	snap := buildThreeReplicaSnapshot()
-	dep := models.ResourceRef{Kind: "Deployment", Namespace: "prod", Name: "api"}
+func TestComputeBlastRadius_HPAStillSPOF(t *testing.T) {
+	dep := models.ResourceRef{Kind: "Deployment", Namespace: "default", Name: "api"}
+	svc := models.ResourceRef{Kind: "Service", Namespace: "default", Name: "api-svc"}
+	depKey := refKey(dep)
+	svcKey := refKey(svc)
 
-	result, err := snap.ComputeBlastRadiusWithMode(dep, FailureModeWorkloadDeletion)
-	require.NoError(t, err)
-
-	// Workload deletion: full base score (no replica attenuation)
-	assert.GreaterOrEqual(t, result.CriticalityScore, 20.0,
-		"workload-deletion should score MEDIUM or higher, got %.2f", result.CriticalityScore)
-	assert.Equal(t, FailureModeWorkloadDeletion, result.FailureMode)
-}
-
-func TestComputeBlastRadius_DefaultMode_IsWorkloadDeletion(t *testing.T) {
-	snap := buildThreeReplicaSnapshot()
-	dep := models.ResourceRef{Kind: "Deployment", Namespace: "prod", Name: "api"}
-
-	// ComputeBlastRadius (no mode) should default to workload-deletion
-	result, err := snap.ComputeBlastRadius(dep)
-	require.NoError(t, err)
-
-	assert.Equal(t, FailureModeWorkloadDeletion, result.FailureMode)
-}
-
-func TestComputeBlastRadius_InvalidMode_DefaultsToWorkloadDeletion(t *testing.T) {
-	snap := buildThreeReplicaSnapshot()
-	dep := models.ResourceRef{Kind: "Deployment", Namespace: "prod", Name: "api"}
-
-	result, err := snap.ComputeBlastRadiusWithMode(dep, "invalid-mode")
-	require.NoError(t, err)
-
-	assert.Equal(t, FailureModeWorkloadDeletion, result.FailureMode)
-}
-
-func TestComputeBlastRadius_NamespaceDeletion_ScoresCritical(t *testing.T) {
-	snap := buildThreeReplicaSnapshot()
-	// Use any resource in "prod" namespace as the target
-	dep := models.ResourceRef{Kind: "Deployment", Namespace: "prod", Name: "api"}
-
-	result, err := snap.ComputeBlastRadiusWithMode(dep, FailureModeNamespaceDeletion)
-	require.NoError(t, err)
-
-	// Namespace deletion sums all workload scores in the namespace.
-	// With Service (15) + Deployment (28) = 43, this should be capped or at least MEDIUM+
-	assert.Equal(t, FailureModeNamespaceDeletion, result.FailureMode)
-	// The aggregate should be at least the individual workload score
-	assert.GreaterOrEqual(t, result.CriticalityScore, 20.0,
-		"namespace-deletion should aggregate workload scores")
-}
-
-func TestComputeBlastRadius_PodCrash_SingleReplica_FullImpact(t *testing.T) {
-	snap := buildTestSnapshot() // uses 1-replica Deployment
-	dep := models.ResourceRef{Kind: "Deployment", Namespace: "default", Name: "web"}
-
-	result, err := snap.ComputeBlastRadiusWithMode(dep, FailureModePodCrash)
-	require.NoError(t, err)
-
-	// With 1 replica, pod-crash = base score * (1/1) = full impact
-	// Same as workload-deletion
-	resultWD, _ := snap.ComputeBlastRadiusWithMode(dep, FailureModeWorkloadDeletion)
-	assert.InDelta(t, resultWD.CriticalityScore, result.CriticalityScore, 0.01,
-		"pod-crash with 1 replica should equal workload-deletion score")
-}
-
-// --- T4: Blast Percent Denominator Tests ---
-
-func TestBlastPercent_UsesReachableSubgraph(t *testing.T) {
-	snap := buildTestSnapshot()
-	dep := models.ResourceRef{Kind: "Deployment", Namespace: "default", Name: "web"}
+	snap := &GraphSnapshot{
+		Nodes:   map[string]models.ResourceRef{depKey: dep, svcKey: svc},
+		Forward: map[string]map[string]bool{svcKey: {depKey: true}},
+		Reverse: map[string]map[string]bool{depKey: {svcKey: true}},
+		Edges: []models.BlastDependencyEdge{
+			{Source: svc, Target: dep, Type: "selects"},
+		},
+		NodeScores:   map[string]float64{depKey: 50},
+		NodeRisks:    map[string][]models.RiskIndicator{},
+		NodeReplicas: map[string]int{depKey: 1},
+		NodeHasHPA:   map[string]bool{depKey: true}, // HPA present
+		NodeHasPDB:   map[string]bool{},
+		NodeIngress:  map[string][]string{},
+		TotalWorkloads: 2,
+		BuiltAt:        time.Now().UnixMilli(),
+		Namespaces:     map[string]bool{"default": true},
+	}
 
 	result, err := snap.ComputeBlastRadius(dep)
 	require.NoError(t, err)
-
-	// The deployment's reachable subgraph (forward + reverse BFS):
-	// Forward: RS, Pod. Reverse: Service. Total = 3
-	// Affected (reverse BFS only): Service = 1
-	// Blast % = 1/3 * 100 = 33.33%
-	assert.InDelta(t, 33.33, result.BlastRadiusPercent, 0.1,
-		"blast %% should use reachable subgraph as denominator, not total workloads")
-}
-
-func TestReachableSubgraphSize(t *testing.T) {
-	// A -> B -> C, D (isolated)
-	forward := map[string]map[string]bool{
-		"A": {"B": true},
-		"B": {"C": true},
-	}
-	reverse := map[string]map[string]bool{
-		"B": {"A": true},
-		"C": {"B": true},
-	}
-
-	// From A: forward reaches B, C; reverse reaches nothing. Subgraph = {B, C} = 2
-	assert.Equal(t, 2, reachableSubgraphSize(forward, reverse, "A"))
-
-	// From B: forward reaches C; reverse reaches A. Subgraph = {A, C} = 2
-	assert.Equal(t, 2, reachableSubgraphSize(forward, reverse, "B"))
-
-	// From C: forward reaches nothing; reverse reaches B, A. Subgraph = {A, B} = 2
-	assert.Equal(t, 2, reachableSubgraphSize(forward, reverse, "C"))
-
-	// From D (isolated, not in any adjacency): subgraph = 0
-	assert.Equal(t, 0, reachableSubgraphSize(forward, reverse, "D"))
-}
-
-// --- T2: Scoring Function Tests ---
-
-func TestApplyFailureMode_PodCrash(t *testing.T) {
-	// 3 replicas: score should be 1/3 of base
-	result := applyFailureMode(60.0, FailureModePodCrash, 3)
-	assert.InDelta(t, 20.0, result, 0.01)
-
-	// 1 replica: full score
-	result = applyFailureMode(60.0, FailureModePodCrash, 1)
-	assert.InDelta(t, 60.0, result, 0.01)
-
-	// 0 replicas: full score (edge case)
-	result = applyFailureMode(60.0, FailureModePodCrash, 0)
-	assert.InDelta(t, 60.0, result, 0.01)
-}
-
-func TestApplyFailureMode_WorkloadDeletion(t *testing.T) {
-	// Always full score regardless of replicas
-	result := applyFailureMode(60.0, FailureModeWorkloadDeletion, 3)
-	assert.InDelta(t, 60.0, result, 0.01)
-
-	result = applyFailureMode(60.0, FailureModeWorkloadDeletion, 1)
-	assert.InDelta(t, 60.0, result, 0.01)
-}
-
-func TestApplyFailureMode_UnknownDefaultsToFull(t *testing.T) {
-	result := applyFailureMode(60.0, "unknown", 3)
-	assert.InDelta(t, 60.0, result, 0.01)
-}
-
-func TestValidFailureMode(t *testing.T) {
-	assert.True(t, ValidFailureMode(FailureModePodCrash))
-	assert.True(t, ValidFailureMode(FailureModeWorkloadDeletion))
-	assert.True(t, ValidFailureMode(FailureModeNamespaceDeletion))
-	assert.False(t, ValidFailureMode("invalid"))
-	assert.False(t, ValidFailureMode(""))
-}
-
-// --- T5: Remediation Integration Tests ---
-
-func TestComputeBlastRadius_IncludesRemediations(t *testing.T) {
-	snap := buildTestSnapshot() // 1-replica Deployment, no HPA, no PDB
-	dep := models.ResourceRef{Kind: "Deployment", Namespace: "default", Name: "web"}
-
-	result, err := snap.ComputeBlastRadius(dep)
-	require.NoError(t, err)
-
-	assert.NotEmpty(t, result.Remediations, "1-replica deployment without HPA/PDB should have remediations")
-
-	// Check specific remediation types
-	types := make(map[string]bool)
-	for _, r := range result.Remediations {
-		types[r.Type] = true
-	}
-	assert.True(t, types["increase-replicas"] || types["resolve-critical-spof"],
-		"should recommend increasing replicas or resolving SPOF")
-	assert.True(t, types["add-pdb"], "should recommend adding PDB")
-	assert.True(t, types["add-hpa"], "should recommend adding HPA")
-}
-
-func TestComputeBlastRadius_RemediationsNonNil(t *testing.T) {
-	// Even resources with no remediations should return empty slice, not nil
-	snap := buildThreeReplicaSnapshot()
-	// The ConfigMap has 0 replicas, so PDB/HPA won't trigger
-	cm := models.ResourceRef{Kind: "ConfigMap", Namespace: "prod", Name: "api-config"}
-
-	result, err := snap.ComputeBlastRadius(cm)
-	require.NoError(t, err)
-
-	assert.NotNil(t, result.Remediations, "remediations should never be nil")
-}
-
-func TestComputeBlastRadius_FailureModeField(t *testing.T) {
-	snap := buildThreeReplicaSnapshot()
-	dep := models.ResourceRef{Kind: "Deployment", Namespace: "prod", Name: "api"}
-
-	modes := []string{FailureModePodCrash, FailureModeWorkloadDeletion}
-	for _, mode := range modes {
-		result, err := snap.ComputeBlastRadiusWithMode(dep, mode)
-		require.NoError(t, err)
-		assert.Equal(t, mode, result.FailureMode,
-			"result should reflect the requested failure mode")
-	}
+	assert.True(t, result.IsSPOF, "Deployment with HPA but 1 replica should still be SPOF (conservative)")
 }

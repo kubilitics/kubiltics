@@ -571,7 +571,7 @@ function TemplateEditorDialog({
       } catch {
         // YAML parse failed — fall back to inserting after metadata.name
         finalYaml = finalYaml.replace(
-          /^(  name:\s*.+)$/m,
+          /^( {2}name:\s*.+)$/m,
           `$1\n  namespace: ${selectedNamespace}`,
         );
       }

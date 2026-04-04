@@ -1,0 +1,57 @@
+rules:
+  # ── Go rules ──────────────────────────────────────────────────────────
+
+  - id: go-no-log-fatal
+    patterns:
+      - pattern-either:
+          - pattern: log.Fatal(...)
+          - pattern: log.Fatalf(...)
+          - pattern: log.Fatalln(...)
+          - pattern: log.Panic(...)
+          - pattern: log.Panicf(...)
+          - pattern: log.Panicln(...)
+    message: >
+      Use structured logging via slog instead of log.Fatal/Panic.
+      Fatal/Panic calls os.Exit or panics without cleanup.
+      Import "kubilitics-backend/internal/pkg/logger" and use slog.Error() instead.
+    languages: [go]
+    severity: WARNING
+    metadata:
+      category: best-practice
+
+  - id: go-no-raw-listen-and-serve
+    pattern: http.ListenAndServe(...)
+    message: >
+      Use the internal HTTP server from internal/pkg/ instead of raw http.ListenAndServe.
+      The internal server includes graceful shutdown, middleware, and metrics.
+    languages: [go]
+    severity: WARNING
+    metadata:
+      category: best-practice
+
+  # ── TypeScript/JavaScript rules ────────────────────────────────────────
+
+  - id: ts-no-direct-location-assign
+    patterns:
+      - pattern-either:
+          - pattern: window.location.href = $X
+          - pattern: window.location = $X
+          - pattern: window.location.assign($X)
+          - pattern: window.location.replace($X)
+    message: >
+      Use React Router navigation (useNavigate) instead of direct window.location mutation.
+      Direct location changes bypass client-side routing and cause full page reloads.
+    languages: [typescript, javascript]
+    severity: WARNING
+    metadata:
+      category: best-practice
+
+  - id: ts-no-hardcoded-api-url
+    pattern: fetch("http://localhost:$PORT/...")
+    message: >
+      Don't hardcode API URLs. Use the API client from @/services/api/ or
+      reference VITE_API_BASE / VITE_BACKEND_PORT environment variables.
+    languages: [typescript, javascript]
+    severity: WARNING
+    metadata:
+      category: best-practice

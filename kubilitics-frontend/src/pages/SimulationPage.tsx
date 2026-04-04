@@ -15,6 +15,8 @@ import { useTopologyData } from '@/topology/hooks/useTopologyData';
 import { useActiveClusterId } from '@/hooks/useActiveClusterId';
 import { useSimulationStore } from '@/stores/simulationStore';
 import { useRunSimulation } from '@/hooks/useSimulation';
+import { SectionOverviewHeader } from '@/components/layout/SectionOverviewHeader';
+import { ConnectionRequiredBanner } from '@/components/layout/ConnectionRequiredBanner';
 import SimulationToolbar from '@/components/simulation/SimulationToolbar';
 import ScenarioList from '@/components/simulation/ScenarioList';
 import ImpactSummary from '@/components/simulation/ImpactSummary';
@@ -142,94 +144,102 @@ export default function SimulationPage() {
   const simulationDiff = useMemo(() => buildSimulationDiff(result), [result]);
   const simulationAffectedNodes = useMemo(() => buildAffectedNodes(result), [result]);
 
-  // No cluster connected
-  if (!clusterId) {
-    return (
-      <div className="flex flex-col items-center justify-center h-full text-center px-4">
-        <FlaskConical className="h-12 w-12 text-slate-300 dark:text-slate-600 mb-4" />
-        <h2 className="text-lg font-semibold text-slate-700 dark:text-slate-200 mb-2">
-          What-If Simulation
-        </h2>
-        <p className="text-sm text-slate-500 dark:text-slate-400">
-          Connect a cluster to start simulating failure scenarios.
-        </p>
-      </div>
-    );
-  }
-
   return (
-    <div className="flex flex-col h-full overflow-hidden">
-      {/* Toolbar */}
-      <div className="flex-shrink-0 px-3 pt-3 pb-2">
-        <SimulationToolbar
-          onRunSimulation={handleRunSimulation}
-          isRunning={isRunning}
-          nodeNames={nodeNames}
-          namespaces={allNamespaces}
-          resourceKeys={resourceKeys}
-        />
-      </div>
+    <div className="page-container" role="main" aria-label="What-If Simulation">
+      <div className="page-inner p-6 gap-6 flex flex-col h-screen">
+        <ConnectionRequiredBanner />
 
-      {/* Three-panel layout */}
-      <div className="flex-1 flex min-h-0">
-        {/* Left panel: Scenario List */}
-        <div className="w-64 flex-shrink-0 border-r border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-950/50 overflow-hidden">
-          <div className="flex items-center gap-2 px-3 py-2 border-b border-slate-200 dark:border-slate-700">
-            <FlaskConical className="h-4 w-4 text-violet-500" />
-            <h2 className="text-xs font-semibold text-slate-700 dark:text-slate-200 uppercase tracking-wider">
-              Scenarios
-            </h2>
-            {scenarios.length > 0 && (
-              <span className="ml-auto text-xs text-slate-500 dark:text-slate-400">
-                {scenarios.length}
-              </span>
+        {/* Header */}
+        <SectionOverviewHeader
+          title="What-If Simulation"
+          description="Simulate failure scenarios and visualise blast radius impact."
+          icon={FlaskConical}
+          showAiButton={false}
+        />
+
+        {/* Toolbar */}
+        {clusterId && (
+          <div className="flex-shrink-0">
+            <SimulationToolbar
+              onRunSimulation={handleRunSimulation}
+              isRunning={isRunning}
+              nodeNames={nodeNames}
+              namespaces={allNamespaces}
+              resourceKeys={resourceKeys}
+            />
+          </div>
+        )}
+
+        {/* Three-panel layout */}
+        <div className="flex-1 flex min-h-0 rounded-xl border border-border/50 overflow-hidden soft-shadow">
+          {/* Left panel: Scenario List */}
+          <div className="w-64 flex-shrink-0 border-r border-border/50 bg-muted/30 overflow-hidden">
+            <div className="flex items-center gap-2 px-3 py-2 border-b border-border/50">
+              <FlaskConical className="h-4 w-4 text-violet-500" />
+              <h2 className="text-xs font-semibold text-foreground uppercase tracking-wider">
+                Scenarios
+              </h2>
+              {scenarios.length > 0 && (
+                <span className="ml-auto text-xs text-muted-foreground">
+                  {scenarios.length}
+                </span>
+              )}
+            </div>
+            <ScenarioList />
+          </div>
+
+          {/* Center: Topology Canvas */}
+          <div className="flex-1 relative min-w-0">
+            {!clusterId ? (
+              <div className="flex items-center justify-center h-full">
+                <div className="flex flex-col items-center gap-3">
+                  <FlaskConical className="h-10 w-10 text-muted-foreground/40" />
+                  <p className="text-sm text-muted-foreground">
+                    Connect a cluster to start simulating failure scenarios.
+                  </p>
+                </div>
+              </div>
+            ) : isTopoLoading && !topology ? (
+              <div className="flex items-center justify-center h-full">
+                <div className="flex flex-col items-center gap-2">
+                  <div className="h-8 w-8 rounded-full border-2 border-blue-500 border-t-transparent animate-spin" />
+                  <p className="text-sm text-muted-foreground">Loading topology...</p>
+                  {loadingLong && <p className="text-xs text-amber-500 mt-2">Taking longer than usual. Try refreshing.</p>}
+                </div>
+              </div>
+            ) : (
+              <TopologyCanvas
+                topology={topology}
+                selectedNodeId={selectedNodeId}
+                onSelectNode={setSelectedNodeId}
+                simulationAffectedNodes={simulationAffectedNodes}
+                simulationDiff={simulationDiff}
+              />
+            )}
+
+            {/* Error banner */}
+            {error && (
+              <div className="absolute top-3 left-1/2 -translate-x-1/2 z-20 bg-red-50 dark:bg-red-900/50 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 rounded-lg px-4 py-2 text-sm shadow-lg">
+                {error}
+              </div>
             )}
           </div>
-          <ScenarioList />
-        </div>
 
-        {/* Center: Topology Canvas */}
-        <div className="flex-1 relative min-w-0">
-          {isTopoLoading && !topology ? (
-            <div className="flex items-center justify-center h-full">
-              <div className="flex flex-col items-center gap-2">
-                <div className="h-8 w-8 rounded-full border-2 border-blue-500 border-t-transparent animate-spin" />
-                <p className="text-sm text-slate-500 dark:text-slate-400">Loading topology...</p>
-                {loadingLong && <p className="text-xs text-amber-500 mt-2">Taking longer than usual. Try refreshing.</p>}
-              </div>
+          {/* Right panel: Impact Summary */}
+          <div className="w-72 flex-shrink-0 border-l border-border/50 bg-muted/30 overflow-hidden">
+            <div className="flex items-center gap-2 px-3 py-2 border-b border-border/50">
+              <h2 className="text-xs font-semibold text-foreground uppercase tracking-wider">
+                Impact Analysis
+              </h2>
             </div>
-          ) : (
-            <TopologyCanvas
-              topology={topology}
-              selectedNodeId={selectedNodeId}
-              onSelectNode={setSelectedNodeId}
-              simulationAffectedNodes={simulationAffectedNodes}
-              simulationDiff={simulationDiff}
-            />
-          )}
-
-          {/* Error banner */}
-          {error && (
-            <div className="absolute top-3 left-1/2 -translate-x-1/2 z-20 bg-red-50 dark:bg-red-900/50 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 rounded-lg px-4 py-2 text-sm shadow-lg">
-              {error}
-            </div>
-          )}
-        </div>
-
-        {/* Right panel: Impact Summary */}
-        <div className="w-72 flex-shrink-0 border-l border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-950/50 overflow-hidden">
-          <div className="flex items-center gap-2 px-3 py-2 border-b border-slate-200 dark:border-slate-700">
-            <h2 className="text-xs font-semibold text-slate-700 dark:text-slate-200 uppercase tracking-wider">
-              Impact Analysis
-            </h2>
+            <ImpactSummary result={result} />
           </div>
-          <ImpactSummary result={result} />
         </div>
-      </div>
 
-      {/* Bottom drawer: Diff Breakdown */}
-      <div className="flex-shrink-0">
-        <DiffBreakdown result={result} />
+        {/* Bottom drawer: Diff Breakdown */}
+        <div className="flex-shrink-0">
+          <DiffBreakdown result={result} />
+        </div>
       </div>
     </div>
   );

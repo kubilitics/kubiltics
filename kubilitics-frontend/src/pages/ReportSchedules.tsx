@@ -16,8 +16,11 @@ import {
   CheckCircle2,
   XCircle,
   Clock,
+  RefreshCcw,
 } from 'lucide-react';
 import { toast } from '@/components/ui/sonner';
+import { SectionOverviewHeader } from '@/components/layout/SectionOverviewHeader';
+import { ConnectionRequiredBanner } from '@/components/layout/ConnectionRequiredBanner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -205,29 +208,31 @@ export default function ReportSchedules() {
   const isSaving = createMutation.isPending || updateMutation.isPending;
 
   return (
-    <div className="p-6 space-y-6 max-w-6xl mx-auto">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <CalendarClock className="h-6 w-6 text-primary" />
-          <div>
-            <h1 className="text-2xl font-semibold tracking-tight">Report Schedules</h1>
-            <p className="text-sm text-muted-foreground mt-0.5">
-              Automated resilience reports delivered to your team on a recurring basis.
-            </p>
-          </div>
-        </div>
-        <Button onClick={openCreate} size="sm" className="gap-1.5">
-          <Plus className="h-4 w-4" /> New Schedule
-        </Button>
-      </div>
+    <div className="page-container" role="main" aria-label="Report Schedules">
+      <div className="page-inner p-6 gap-6 flex flex-col">
+        <ConnectionRequiredBanner />
 
-      {/* Content */}
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base">Configured Schedules</CardTitle>
-        </CardHeader>
-        <CardContent>
+        {/* Header */}
+        <SectionOverviewHeader
+          title="Report Schedules"
+          description="Automated resilience reports delivered to your team on a recurring basis."
+          icon={CalendarClock}
+          onSync={() => refetch()}
+          isSyncing={isLoading}
+          showAiButton={false}
+          extraActions={
+            <Button onClick={openCreate} size="sm" className="gap-1.5">
+              <Plus className="h-4 w-4" /> New Schedule
+            </Button>
+          }
+        />
+
+        {/* Content */}
+        <Card className="border-none soft-shadow glass-panel">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">Configured Schedules</CardTitle>
+          </CardHeader>
+          <CardContent>
           {isLoading && (
             <div className="flex items-center justify-center py-12 text-muted-foreground">
               <Loader2 className="h-5 w-5 animate-spin mr-2" /> Loading schedules...
@@ -401,6 +406,7 @@ export default function ReportSchedules() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      </div>
     </div>
   );
 }

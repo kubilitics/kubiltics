@@ -73,7 +73,9 @@ export function InlineFileBrowser({
 }: InlineFileBrowserProps) {
   const storedUrl = useBackendConfigStore((s) => s.backendBaseUrl);
   const isConfigured = useBackendConfigStore((s) => s.isBackendConfigured());
-  const storedClusterId = useClusterStore((s) => s.activeCluster?.id) || useBackendConfigStore((s) => s.currentClusterId);
+  const activeClusterId = useClusterStore((s) => s.activeCluster?.id);
+  const backendClusterId = useBackendConfigStore((s) => s.currentClusterId);
+  const storedClusterId = activeClusterId || backendClusterId;
   const baseUrl = baseUrlProp ?? getEffectiveBackendBaseUrl(storedUrl);
   const clusterId = clusterIdProp || storedClusterId || '';
   // baseUrl can legitimately be '' (empty string = same-origin proxy in dev)

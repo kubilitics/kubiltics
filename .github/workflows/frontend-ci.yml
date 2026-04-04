@@ -30,6 +30,10 @@ jobs:
         working-directory: kubilitics-frontend
         run: npm ci
 
+      - name: Lint
+        working-directory: kubilitics-frontend
+        run: npm run lint
+
       - name: NPM audit
         working-directory: kubilitics-frontend
         run: npm audit --audit-level=critical

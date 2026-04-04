@@ -542,16 +542,17 @@ export default function ClusterConnect() {
     }
   }, [pasteContent, submitClusterWithContext, showClusterErrorToast, isBackendConfigured]);
 
+  // TASK-CORE-001: Auto-Connect Desktop Mode
+  // In Tauri desktop mode, auto-detect kubeconfig contexts and either auto-connect
+  // (single context) or show the ContextPicker (multiple contexts).
+  // NOTE: Hook must be called before any early returns to satisfy rules-of-hooks.
+  const autoConnect = useAutoConnect();
+
   // If already connected (e.g., after wizard or page refresh), go straight to dashboard.
   // The user can always switch clusters from Settings > Clusters.
   if (activeCluster && !isAddClusterMode) {
     return <Navigate to={postConnectPath} replace />;
   }
-
-  // TASK-CORE-001: Auto-Connect Desktop Mode
-  // In Tauri desktop mode, auto-detect kubeconfig contexts and either auto-connect
-  // (single context) or show the ContextPicker (multiple contexts).
-  const autoConnect = useAutoConnect();
 
   // While auto-connect is in progress, show branded loading.
   if (autoConnect.isDesktopMode && autoConnect.isAutoConnecting && !autoConnect.isResolved) {

@@ -365,7 +365,7 @@ export default function SPOFInventory() {
   };
 
   // Unique values for filter dropdowns (derived from full data, not filtered)
-  const allItems = data?.items ?? [];
+  const allItems = useMemo(() => data?.items ?? [], [data?.items]);
   const namespaces = useMemo(() => getUniqueValues(allItems, 'namespace'), [allItems]);
   const kinds = useMemo(() => getUniqueValues(allItems, 'kind'), [allItems]);
 

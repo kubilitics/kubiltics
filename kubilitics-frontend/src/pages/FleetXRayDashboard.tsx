@@ -113,7 +113,7 @@ export default function FleetXRayDashboard() {
   const [sortDir, setSortDir] = useState<SortDir>('asc');
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
-  const clusters = data?.clusters ?? [];
+  const clusters = useMemo(() => data?.clusters ?? [], [data?.clusters]);
 
   const sorted = useMemo(() => {
     const copy = [...clusters];

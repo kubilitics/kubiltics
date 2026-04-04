@@ -15,6 +15,8 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { SectionOverviewHeader } from '@/components/layout/SectionOverviewHeader';
+import { ConnectionRequiredBanner } from '@/components/layout/ConnectionRequiredBanner';
 import {
   useAutoPilotFindings,
   useAutoPilotActions,
@@ -116,39 +118,36 @@ const AutoPilotDashboard = () => {
   return (
     <div className="page-container" role="main" aria-label="Auto-Pilot Dashboard">
       <div className="page-inner p-6 gap-6 flex flex-col">
+      <ConnectionRequiredBanner />
+
       {/* Page Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center">
-            <Bot className="h-5 w-5 text-primary" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight">Auto-Pilot</h1>
-            <p className="text-sm text-muted-foreground">
-              Autonomous architectural remediation
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <Link to="/auto-pilot/config">
-            <Button variant="outline" size="sm">
-              Configure
+      <SectionOverviewHeader
+        title="Auto-Pilot"
+        description="Autonomous architectural remediation powered by graph intelligence."
+        icon={Bot}
+        showAiButton={false}
+        extraActions={
+          <>
+            <Link to="/auto-pilot/config">
+              <Button variant="outline" size="sm">
+                Configure
+              </Button>
+            </Link>
+            <Button
+              size="sm"
+              onClick={handleScan}
+              disabled={triggerScan.isPending}
+            >
+              {triggerScan.isPending ? (
+                <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
+              ) : (
+                <Search className="h-4 w-4 mr-1.5" />
+              )}
+              Scan Now
             </Button>
-          </Link>
-          <Button
-            size="sm"
-            onClick={handleScan}
-            disabled={triggerScan.isPending}
-          >
-            {triggerScan.isPending ? (
-              <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
-            ) : (
-              <Search className="h-4 w-4 mr-1.5" />
-            )}
-            Scan Now
-          </Button>
-        </div>
-      </div>
+          </>
+        }
+      />
 
       {/* Error banners */}
       {findingsError && (
@@ -170,7 +169,7 @@ const AutoPilotDashboard = () => {
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* Mode Card */}
-        <Card>
+        <Card className="border-none soft-shadow glass-panel">
           <CardContent className="p-5">
             <div className="flex items-center gap-3">
               <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center">
@@ -190,7 +189,7 @@ const AutoPilotDashboard = () => {
         </Card>
 
         {/* Findings Card */}
-        <Card>
+        <Card className="border-none soft-shadow glass-panel">
           <CardContent className="p-5">
             <div className="flex items-center gap-3">
               <div className="h-9 w-9 rounded-lg bg-amber-500/10 flex items-center justify-center">
@@ -229,7 +228,7 @@ const AutoPilotDashboard = () => {
         </Card>
 
         {/* Remediations Card */}
-        <Card>
+        <Card className="border-none soft-shadow glass-panel">
           <CardContent className="p-5">
             <div className="flex items-center gap-3">
               <div className="h-9 w-9 rounded-lg bg-emerald-500/10 flex items-center justify-center">
@@ -262,7 +261,7 @@ const AutoPilotDashboard = () => {
       </div>
 
       {/* Pending Approvals */}
-      <Card>
+      <Card className="border-none soft-shadow glass-panel">
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <CardTitle className="text-base font-semibold">Pending Approvals</CardTitle>
@@ -349,7 +348,7 @@ const AutoPilotDashboard = () => {
       </Card>
 
       {/* Recent Actions Table */}
-      <Card>
+      <Card className="border-none soft-shadow glass-panel">
         <CardHeader className="pb-3">
           <CardTitle className="text-base font-semibold">Recent Actions</CardTitle>
         </CardHeader>

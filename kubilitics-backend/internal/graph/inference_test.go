@@ -504,6 +504,40 @@ func TestBuildIngressHostMap(t *testing.T) {
 	assert.Contains(t, hostMap["Service/default/api-svc"], "example.com/api")
 }
 
+// --- C-BE-3: After addEdge(A, B), both A and B exist as keys in forward AND reverse ---
+
+func TestAddEdge_SymmetricMapKeys(t *testing.T) {
+	nodes, forward, reverse, edges := newGraphState()
+
+	a := models.ResourceRef{Kind: "Service", Namespace: "ns", Name: "a"}
+	b := models.ResourceRef{Kind: "Deployment", Namespace: "ns", Name: "b"}
+
+	addEdge(nodes, forward, reverse, edges, a, b, "selects", "test")
+
+	aKey := refKey(a)
+	bKey := refKey(b)
+
+	// Both A and B must exist as keys in BOTH forward and reverse maps.
+	_, aInForward := forward[aKey]
+	assert.True(t, aInForward, "source A must exist as key in forward map")
+	_, bInForward := forward[bKey]
+	assert.True(t, bInForward, "target B must also exist as key in forward map")
+
+	_, aInReverse := reverse[aKey]
+	assert.True(t, aInReverse, "source A must also exist as key in reverse map")
+	_, bInReverse := reverse[bKey]
+	assert.True(t, bInReverse, "target B must exist as key in reverse map")
+
+	// The actual edge: A->B in forward, B<-A in reverse
+	assert.True(t, forward[aKey][bKey], "forward[A][B] should be true")
+	assert.True(t, reverse[bKey][aKey], "reverse[B][A] should be true")
+
+	// A should have empty set in reverse (no one depends on A yet)
+	assert.Empty(t, reverse[aKey], "reverse[A] should be empty (no incoming edges to A)")
+	// B should have empty set in forward (B has no outgoing edges yet)
+	assert.Empty(t, forward[bKey], "forward[B] should be empty (no outgoing edges from B)")
+}
+
 func TestInferNetworkPolicyDeps(t *testing.T) {
 	nodes, forward, reverse, edges := newGraphState()
 

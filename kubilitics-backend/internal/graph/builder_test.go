@@ -131,6 +131,50 @@ func TestBuildSnapshot_ReplicaCount(t *testing.T) {
 	}
 }
 
+// --- C-BE-4: collectResources nil response doesn't crash BuildSnapshot ---
+
+func TestBuildSnapshot_NilResources(t *testing.T) {
+	// BuildSnapshot should not panic when passed nil ClusterResources
+	snap := BuildSnapshot(nil, false, nil, nil)
+
+	if snap == nil {
+		t.Fatal("expected non-nil snapshot from nil resources")
+	}
+	if snap.Nodes == nil {
+		t.Error("expected Nodes map to be initialized")
+	}
+	if snap.Forward == nil {
+		t.Error("expected Forward map to be initialized")
+	}
+	if snap.Reverse == nil {
+		t.Error("expected Reverse map to be initialized")
+	}
+	if snap.NodeScores == nil {
+		t.Error("expected NodeScores map to be initialized")
+	}
+	if snap.NodeRisks == nil {
+		t.Error("expected NodeRisks map to be initialized")
+	}
+	if snap.NodeReplicas == nil {
+		t.Error("expected NodeReplicas map to be initialized")
+	}
+	if snap.NodeHasHPA == nil {
+		t.Error("expected NodeHasHPA map to be initialized")
+	}
+	if snap.NodeHasPDB == nil {
+		t.Error("expected NodeHasPDB map to be initialized")
+	}
+	if snap.NodeIngress == nil {
+		t.Error("expected NodeIngress map to be initialized")
+	}
+	if snap.BuiltAt == 0 {
+		t.Error("expected BuiltAt to be non-zero")
+	}
+	if len(snap.Nodes) != 0 {
+		t.Errorf("expected 0 nodes, got %d", len(snap.Nodes))
+	}
+}
+
 func TestGetReplicaCountFromResources(t *testing.T) {
 	replicas := int32(5)
 	res := &ClusterResources{

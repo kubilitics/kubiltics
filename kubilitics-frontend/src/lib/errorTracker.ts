@@ -1,3 +1,4 @@
+import * as Sentry from '@sentry/react';
 import { v4 as uuidv4 } from 'uuid';
 
 /**
@@ -57,10 +58,11 @@ export interface CrashReport {
  * Singleton class for tracking frontend errors.
  *
  * Features:
- *  - Console-based tracking for development
- *  - If VITE_ERROR_TRACKING_URL is set, POSTs error payloads to that URL
- *  - Global window.onerror + unhandledrejection handlers
+ *  - Sentry integration when VITE_SENTRY_DSN is configured
+ *  - Graceful fallback to console-only when DSN is absent
  *  - Ring buffer of last 50 errors inspectable via window.__kubilitics_errors
+ *  - Legacy remote endpoint support via VITE_ERROR_TRACKING_URL
+ *  - Global window.onerror + unhandledrejection handlers
  */
 class ErrorTrackerService {
     private static instance: ErrorTrackerService;
@@ -69,11 +71,12 @@ class ErrorTrackerService {
         extra: {},
     };
     private isInitialized = false;
+    private sentryEnabled = false;
 
     /** Circular ring buffer of recent errors. */
     private ringBuffer: ErrorEntry[] = [];
 
-    /** Remote endpoint (from VITE_ERROR_TRACKING_URL). Empty string = disabled. */
+    /** Legacy remote endpoint (from VITE_ERROR_TRACKING_URL). Empty string = disabled. */
     private remoteUrl = '';
 
     private constructor() {
@@ -95,12 +98,35 @@ class ErrorTrackerService {
         if (this.isInitialized) return;
         this.isInitialized = true;
 
-        // Read the optional remote endpoint from Vite env vars.
+        // Read env vars
+        let sentryDsn = '';
         try {
-            this.remoteUrl = (import.meta as unknown as { env?: { VITE_ERROR_TRACKING_URL?: string } }).env?.VITE_ERROR_TRACKING_URL ?? '';
+            const env = (import.meta as unknown as { env?: Record<string, string | undefined> }).env;
+            sentryDsn = env?.VITE_SENTRY_DSN ?? '';
+            this.remoteUrl = env?.VITE_ERROR_TRACKING_URL ?? '';
         } catch {
             // import.meta may not exist in test environments; ignore.
-            this.remoteUrl = '';
+        }
+
+        // Initialize Sentry if DSN is configured
+        if (sentryDsn) {
+            const isTauri = typeof __VITE_IS_TAURI_BUILD__ !== 'undefined' && __VITE_IS_TAURI_BUILD__;
+            Sentry.init({
+                dsn: sentryDsn,
+                release: `kubilitics@${getAppVersion()}`,
+                environment: import.meta.env?.MODE ?? 'production',
+                integrations: [
+                    Sentry.browserTracingIntegration(),
+                ],
+                tracesSampleRate: 0.1,
+                // Don't send PII by default
+                sendDefaultPii: false,
+                // Tag the platform
+                initialScope: {
+                    tags: { platform: isTauri ? 'desktop' : 'browser' },
+                },
+            });
+            this.sentryEnabled = true;
         }
 
         // Expose the ring buffer on the window for debugging / support.
@@ -133,6 +159,9 @@ class ErrorTrackerService {
      */
     public setUser(user: ErrorContext['user']) {
         this.context.user = user;
+        if (this.sentryEnabled && user) {
+            Sentry.setUser({ id: user.id, username: user.username, email: user.email });
+        }
     }
 
     /**
@@ -141,6 +170,9 @@ class ErrorTrackerService {
     public setTag(key: string, value: string) {
         if (!this.context.tags) this.context.tags = {};
         this.context.tags[key] = value;
+        if (this.sentryEnabled) {
+            Sentry.setTag(key, value);
+        }
     }
 
     /**
@@ -149,6 +181,9 @@ class ErrorTrackerService {
     public setExtra(key: string, value: unknown) {
         if (!this.context.extra) this.context.extra = {};
         this.context.extra[key] = value;
+        if (this.sentryEnabled) {
+            Sentry.setExtra(key, value);
+        }
     }
 
     // ── Capture methods ────────────────────────────────────────────────
@@ -166,6 +201,15 @@ class ErrorTrackerService {
             console.table(entry.context.tags);
         }
         console.groupEnd();
+
+        // Send to Sentry
+        if (this.sentryEnabled) {
+            const sentryId = Sentry.captureException(error, {
+                tags: context?.tags,
+                extra: context?.extra,
+            });
+            entry.id = sentryId;
+        }
 
         this.pushToBuffer(entry);
         this.sendToRemote(entry);
@@ -188,6 +232,13 @@ class ErrorTrackerService {
             console.warn(`[ErrorTracker] ${message}`);
         } else {
             console.info(`[ErrorTracker] ${message}`);
+        }
+
+        // Send to Sentry
+        if (this.sentryEnabled) {
+            const sentryLevel = level === 'warning' ? 'warning' : level;
+            const sentryId = Sentry.captureMessage(message, sentryLevel);
+            entry.id = sentryId;
         }
 
         this.pushToBuffer(entry);
@@ -226,10 +277,10 @@ class ErrorTrackerService {
     }
 
     /**
-     * Whether a remote error-tracking endpoint is configured.
+     * Whether a remote error-tracking endpoint is configured (Sentry or legacy URL).
      */
     public hasRemoteEndpoint(): boolean {
-        return !!this.remoteUrl;
+        return this.sentryEnabled || !!this.remoteUrl;
     }
 
     /**
@@ -261,18 +312,27 @@ class ErrorTrackerService {
      * Returns true if the report was sent, false if no endpoint is configured.
      */
     public async submitCrashReport(report: CrashReport): Promise<boolean> {
-        if (!this.remoteUrl) return false;
-        try {
-            await fetch(this.remoteUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ type: 'crash_report', ...report }),
-                keepalive: true,
+        // Send to Sentry as a special event
+        if (this.sentryEnabled) {
+            Sentry.captureMessage('Crash Report Submitted', {
+                level: 'fatal',
+                extra: { report },
             });
-            return true;
-        } catch {
-            return false;
         }
+        // Also send to legacy endpoint if configured
+        if (this.remoteUrl) {
+            try {
+                await fetch(this.remoteUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ type: 'crash_report', ...report }),
+                    keepalive: true,
+                });
+            } catch {
+                // Silently fail — Sentry already has the report if configured
+            }
+        }
+        return this.sentryEnabled || !!this.remoteUrl;
     }
 
     // ── Internal helpers ───────────────────────────────────────────────
@@ -311,7 +371,7 @@ class ErrorTrackerService {
         this.ringBuffer.push(entry);
     }
 
-    /** POST a payload to the configured remote URL (fire-and-forget). */
+    /** POST a payload to the configured legacy remote URL (fire-and-forget). */
     private sendToRemote(entry: ErrorEntry) {
         if (!this.remoteUrl) return;
         this.postPayload(entry).catch(() => {

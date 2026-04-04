@@ -1,0 +1,28 @@
+# Build output
+dist/
+build/
+.next/
+target/
+
+# Dependencies
+node_modules/
+vendor/
+
+# Test files
+*.test.*
+*.spec.*
+*_test.go
+test_data/
+e2e/
+__tests__/
+*.snap
+
+# Generated files
+*.generated.*
+*.pb.go
+
+# Config & docs
+*.md
+*.yml
+*.yaml
+!.semgrep/*.yml

@@ -23,8 +23,22 @@ jobs:
         if: env.HAS_WINGET_TOKEN != 'true'
         run: echo "WINGET_TOKEN not set — skipping winget submission"
 
+      - name: Wait for release assets to propagate
+        if: env.HAS_WINGET_TOKEN == 'true'
+        run: sleep 60
+
       - uses: vedantmgoyal9/winget-releaser@v2
         if: env.HAS_WINGET_TOKEN == 'true'
+        id: winget-attempt
+        continue-on-error: true
+        with:
+          identifier: Kubilitics.Kubilitics
+          installers-regex: 'Kubilitics[_-].*x64[-_]setup\.exe$'
+          token: ${{ secrets.WINGET_TOKEN }}
+
+      - name: Retry winget submission
+        if: env.HAS_WINGET_TOKEN == 'true' && steps.winget-attempt.outcome == 'failure'
+        uses: vedantmgoyal9/winget-releaser@v2
         with:
           identifier: Kubilitics.Kubilitics
           installers-regex: 'Kubilitics[_-].*x64[-_]setup\.exe$'
@@ -56,9 +70,14 @@ jobs:
         run: |
           VERSION="${{ steps.version.outputs.version }}"
 
-          # Download release checksums
-          curl -fsSL "https://github.com/${{ github.repository }}/releases/download/${{ steps.version.outputs.tag }}/checksums.txt" \
-            -o checksums.txt || { echo "No checksums found — skipping"; exit 0; }
+          # Download release checksums (retry up to 3 times with 60s wait)
+          for i in 1 2 3; do
+            curl -fsSL "https://github.com/${{ github.repository }}/releases/download/${{ steps.version.outputs.tag }}/checksums.txt" \
+              -o checksums.txt && break
+            echo "Attempt $i failed, retrying in 60s..."
+            sleep 60
+          done
+          [ -f checksums.txt ] || { echo "No checksums found after retries — skipping"; exit 0; }
 
           # Update kubilitics formula version
           if [ -f "packaging/homebrew/kubilitics.rb" ]; then
