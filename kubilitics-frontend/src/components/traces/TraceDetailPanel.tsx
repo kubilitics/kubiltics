@@ -94,7 +94,7 @@ export function TraceDetailPanel() {
   return (
     <Sheet open={open} onOpenChange={(o) => { if (!o) { selectTrace(null); selectSpan(null); } }}>
       <SheetContent
-        className="w-full sm:max-w-3xl lg:max-w-4xl p-0 flex flex-col border-l border-border/50 shadow-2xl !top-14 !h-[calc(100vh-3.5rem)] rounded-tl-xl"
+        className="w-full sm:max-w-3xl lg:max-w-4xl p-0 flex flex-col border-l border-border/50 shadow-2xl !top-[60px] !h-[calc(100vh-60px)] rounded-tl-xl"
         side="right"
       >
         {/* Header */}

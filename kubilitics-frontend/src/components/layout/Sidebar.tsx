@@ -1014,10 +1014,10 @@ export function Sidebar() {
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -10 }}
               transition={{ duration: 0.15, ease: "easeOut" }}
-              className="fixed left-[5.5rem] top-14 bottom-0 z-40 w-72 border-r border-slate-200/40 dark:border-slate-700/40 bg-white/70 dark:bg-[hsl(228,14%,9%)]/90 backdrop-blur-3xl shadow-apple-xl elevation-3 ring-1 ring-black/5 dark:ring-white/5"
+              className="fixed left-[5.5rem] top-[60px] bottom-0 z-40 w-72 border-r border-slate-200/40 dark:border-slate-700/40 bg-white/70 dark:bg-[hsl(228,14%,9%)]/90 backdrop-blur-3xl shadow-apple-xl elevation-3 ring-1 ring-black/5 dark:ring-white/5"
               onMouseEnter={handleFlyoutEnter}
               onMouseLeave={() => setFlyoutOpen(false)}
-              style={{ height: 'calc(100vh - 3.5rem)' }}
+              style={{ height: 'calc(100vh - 60px)' }}
               role="navigation"
               aria-label="Main navigation"
             >

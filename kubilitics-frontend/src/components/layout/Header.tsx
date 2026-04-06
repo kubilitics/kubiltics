@@ -77,8 +77,8 @@ const statusColors: Record<string, string> = {
   error: 'bg-red-500',
 };
 
-/** Header height — keep in sync with Sidebar's calc(100vh - 3.5rem) */
-export const HEADER_HEIGHT_CLASS = 'h-14';
+/** Header height — keep in sync with Sidebar's top offset */
+export const HEADER_HEIGHT_CLASS = 'h-[60px]';
 
 /* ─── Design tokens: balanced, readable controls ─── */
 
@@ -312,30 +312,26 @@ export function Header() {
       <header className={cn(HEADER_HEIGHT_CLASS, 'border-b border-border/40 bg-white/60 dark:bg-[hsl(228,14%,9%)]/80 backdrop-blur-3xl shrink-0 shadow-[0_1px_3px_rgba(0,0,0,0.02)] dark:shadow-[0_1px_3px_rgba(0,0,0,0.3)] transition-all duration-300 sticky top-0 z-[var(--z-sticky,50)]')} role="banner" data-tauri-drag-region>
         <div className="flex items-center h-full w-full">
 
-          {/* ──── Logo zone: icon mark + wordmark (Datadog/Grafana enterprise pattern) ──── */}
-          {/* Tauri overlay title bar: extra left padding for macOS traffic lights */}
-          <div className={cn(
-            'shrink-0 flex items-center h-full border-r border-slate-200/50 dark:border-slate-700/50 transition-all duration-300',
-            collapsed ? 'w-[5.5rem] justify-center px-0' : 'w-72 justify-start pr-4',
-            'pl-[100px]'
-          )} data-tauri-drag-region>
+          {/* ──── Logo zone: Docker Desktop pattern — generous spacing after traffic lights ──── */}
+          <div className="shrink-0 flex items-center h-full pl-[88px] pr-6" data-tauri-drag-region>
             <button
               onClick={() => navigate('/dashboard')}
-              className="flex items-center gap-3 group focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 rounded-xl py-1.5 transition-all press-effect"
+              className="flex items-center gap-3.5 group focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 rounded-xl py-1.5 transition-all press-effect"
               aria-label="Go to Dashboard"
             >
               <BrandLogo
                 mark
-                height={38}
-                className="shrink-0 rounded-[10px] shadow-md group-hover:shadow-lg group-hover:scale-[1.04] transition-all duration-300"
+                height={36}
+                className="shrink-0 rounded-[10px] shadow-sm group-hover:shadow-md group-hover:scale-[1.03] transition-all duration-200"
               />
-              {!collapsed && (
-                <span className="text-lg font-extrabold tracking-wide text-foreground whitespace-nowrap select-none transition-opacity duration-300">
-                  KUBILITICS
-                </span>
-              )}
+              <span className="text-[18px] font-bold tracking-[0.04em] text-foreground whitespace-nowrap select-none">
+                KUBILITICS
+              </span>
             </button>
           </div>
+
+          {/* Subtle separator */}
+          <div className="w-px h-7 bg-border/40 shrink-0" />
 
           {/* ──── Main bar ──── */}
           <div className="flex-1 min-w-0 flex items-center gap-2 md:gap-4 px-3 md:px-6">
