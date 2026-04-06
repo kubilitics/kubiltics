@@ -328,6 +328,14 @@ export function MetricsDashboard({ resourceType, resourceName, namespace, podRes
   const prevMemory = metrics?.memory?.[metrics.memory.length - 2]?.value ?? currentMemory;
   const cpuTrend = currentCpu - prevCpu;
   const memoryTrend = currentMemory - prevMemory;
+
+  // Time delta between last two data points for helper text
+  const lastCpuTime = (metrics?.cpu?.[metrics.cpu.length - 1] as any)?.timestamp ?? 0;
+  const prevCpuTime = (metrics?.cpu?.[metrics.cpu.length - 2] as any)?.timestamp ?? 0;
+  const trendTimeDeltaSec = lastCpuTime && prevCpuTime ? Math.round((lastCpuTime - prevCpuTime) / 1000) : 0;
+  const trendTimeLabel = trendTimeDeltaSec > 0
+    ? trendTimeDeltaSec < 60 ? `vs ${trendTimeDeltaSec}s ago` : `vs ${Math.round(trendTimeDeltaSec / 60)}m ago`
+    : '';
   // Network: use cumulative bytes from summary for totals, rates from chart data for avg rate
   const cumulativeRxBytes = summary?.total_network_rx ?? 0;
   const cumulativeTxBytes = summary?.total_network_tx ?? 0;
@@ -477,12 +485,15 @@ export function MetricsDashboard({ resourceType, resourceName, namespace, podRes
                         </div>
                       </div>
                       {metrics.cpu.length >= 2 && (
-                        <div className={cn(
-                          'flex items-center gap-1 text-sm',
-                          cpuTrend >= 0 ? 'text-error' : 'text-success'
-                        )}>
-                          {cpuTrend >= 0 ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />}
-                          {cpuTrend >= 0 ? '+' : ''}{cpuTrend.toFixed(3)}m
+                        <div className="flex flex-col items-end">
+                          <div className={cn(
+                            'flex items-center gap-1 text-sm',
+                            cpuTrend >= 0 ? 'text-error' : 'text-success'
+                          )}>
+                            {cpuTrend >= 0 ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />}
+                            {cpuTrend >= 0 ? '+' : ''}{cpuTrend.toFixed(3)}m
+                          </div>
+                          {trendTimeLabel && <span className="text-[10px] text-muted-foreground/60">{trendTimeLabel}</span>}
                         </div>
                       )}
                     </div>
@@ -507,12 +518,15 @@ export function MetricsDashboard({ resourceType, resourceName, namespace, podRes
                         </div>
                       </div>
                       {metrics.memory.length >= 2 && (
-                        <div className={cn(
-                          'flex items-center gap-1 text-sm',
-                          memoryTrend >= 0 ? 'text-error' : 'text-success'
-                        )}>
-                          {memoryTrend >= 0 ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />}
-                          {memoryTrend >= 0 ? '+' : ''}{memoryTrend.toFixed(3)}Mi
+                        <div className="flex flex-col items-end">
+                          <div className={cn(
+                            'flex items-center gap-1 text-sm',
+                            memoryTrend >= 0 ? 'text-error' : 'text-success'
+                          )}>
+                            {memoryTrend >= 0 ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />}
+                            {memoryTrend >= 0 ? '+' : ''}{memoryTrend.toFixed(3)}Mi
+                          </div>
+                          {trendTimeLabel && <span className="text-[10px] text-muted-foreground/60">{trendTimeLabel}</span>}
                         </div>
                       )}
                     </div>
