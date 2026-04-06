@@ -312,10 +312,10 @@ export function Header() {
       <header className={cn(HEADER_HEIGHT_CLASS, 'border-b border-border/40 bg-white/60 dark:bg-[hsl(228,14%,9%)]/80 backdrop-blur-3xl shrink-0 shadow-[0_1px_3px_rgba(0,0,0,0.02)] dark:shadow-[0_1px_3px_rgba(0,0,0,0.3)] transition-all duration-300 sticky top-0 z-[var(--z-sticky,50)]')} role="banner" data-tauri-drag-region>
         <div className="flex items-center h-full w-full">
 
-          {/* ──── Logo zone: icon mark + wordmark, Apple-quality sizing ──── */}
+          {/* ──── Logo zone: icon mark + wordmark (Datadog/Grafana enterprise pattern) ──── */}
           {/* Tauri overlay title bar: extra left padding for macOS traffic lights */}
           <div className={cn(
-            'shrink-0 flex items-center h-full bg-slate-50/20 dark:bg-slate-900/20 border-r border-slate-100/60 dark:border-slate-800/60 transition-all duration-300',
+            'shrink-0 flex items-center h-full border-r border-slate-200/50 dark:border-slate-700/50 transition-all duration-300',
             collapsed ? 'w-[5.5rem] justify-center px-0' : 'w-72 justify-start pr-4',
             'pl-[100px]'
           )} data-tauri-drag-region>
@@ -326,11 +326,11 @@ export function Header() {
             >
               <BrandLogo
                 mark
-                height={40}
+                height={38}
                 className="shrink-0 rounded-[10px] shadow-md group-hover:shadow-lg group-hover:scale-[1.04] transition-all duration-300"
               />
               {!collapsed && (
-                <span className="text-[17px] font-bold tracking-[0.06em] text-foreground whitespace-nowrap select-none transition-opacity duration-300">
+                <span className="text-lg font-extrabold tracking-wide text-foreground whitespace-nowrap select-none transition-opacity duration-300">
                   KUBILITICS
                 </span>
               )}

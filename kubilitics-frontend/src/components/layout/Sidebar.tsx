@@ -978,7 +978,7 @@ export function Sidebar() {
         >
           {/* Logo icon — always visible in collapsed state */}
           <NavLink to="/dashboard" className="mb-2 flex items-center justify-center group/logo border-b border-border/30 pb-4" title="Kubilitics — Go to Dashboard">
-            <BrandLogo mark height={36} className="rounded-lg transition-transform duration-200 group-hover/logo:scale-105 group-active/logo:scale-95" draggable={false} />
+            <BrandLogo mark height={38} className="rounded-[10px] shadow-md transition-all duration-200 group-hover/logo:scale-105 group-hover/logo:shadow-lg group-active/logo:scale-95" draggable={false} />
           </NavLink>
           <div className="w-12 h-px bg-border/30 mb-1" />
 
