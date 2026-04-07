@@ -99,7 +99,12 @@ func (e *InsightsEngine) Stop() {
 	}
 }
 
+// maxActivePerRule caps how many active insights of each rule type are kept.
+// Older ones are auto-resolved to prevent unbounded accumulation.
+const maxActivePerRule = 3
+
 // RunRules executes all rules and returns any new insights.
+// Also auto-resolves stale insights that exceed the per-rule cap.
 func (e *InsightsEngine) RunRules(ctx context.Context) []Insight {
 	var results []Insight
 	for _, rule := range e.rules {
@@ -108,7 +113,33 @@ func (e *InsightsEngine) RunRules(ctx context.Context) []Insight {
 			results = append(results, *insight)
 		}
 	}
+
+	// Auto-resolve excess insights: keep only the newest maxActivePerRule per rule.
+	e.pruneStaleInsights(ctx)
+
 	return results
+}
+
+// pruneStaleInsights resolves old active insights beyond the per-rule cap.
+func (e *InsightsEngine) pruneStaleInsights(ctx context.Context) {
+	active, err := e.store.GetActiveInsights(ctx, e.clusterID)
+	if err != nil || len(active) == 0 {
+		return
+	}
+	// Count per rule, dismiss oldest beyond cap
+	byRule := make(map[string][]string) // rule -> []insightID (newest first from DB)
+	for _, ins := range active {
+		byRule[ins.Rule] = append(byRule[ins.Rule], ins.InsightID)
+	}
+	for _, ids := range byRule {
+		if len(ids) <= maxActivePerRule {
+			continue
+		}
+		// Dismiss all beyond the cap (ids are newest-first from query)
+		for _, id := range ids[maxActivePerRule:] {
+			_ = e.store.DismissInsight(ctx, id)
+		}
+	}
 }
 
 // ---------------------------------------------------------------------------

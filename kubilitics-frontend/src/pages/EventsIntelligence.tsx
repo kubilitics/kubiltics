@@ -72,7 +72,8 @@ export default function EventsIntelligence() {
 
   const handleInvestigate = useCallback(
     (insight: Insight) => {
-      store.setMode('analyze');
+      // Switch to Incidents tab — shows grouped incident cards with related events
+      store.setMode('incidents');
     },
     [store],
   );
