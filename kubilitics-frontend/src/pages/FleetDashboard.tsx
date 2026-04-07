@@ -277,20 +277,20 @@ function ClusterCard({ cluster, onClick }: { cluster: FleetCluster; onClick: () 
             {/* Favorite star */}
             <button
               onClick={(e) => { e.stopPropagation(); toggleFavorite(cluster.id); }}
-              className="p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+              className="p-1 rounded-lg hover:bg-muted transition-colors"
               aria-label={isFav ? 'Remove from favorites' : 'Add to favorites'}
             >
-              <Star className={cn('h-4 w-4', isFav ? 'fill-amber-400 text-amber-400' : 'text-slate-300 dark:text-slate-600 hover:text-amber-400')} />
+              <Star className={cn('h-4 w-4', isFav ? 'fill-amber-400 text-amber-400' : 'text-muted-foreground/50 hover:text-amber-400')} />
             </button>
             {/* Context menu */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button
                   onClick={(e) => e.stopPropagation()}
-                  className="p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                  className="p-1 rounded-lg hover:bg-muted transition-colors"
                   aria-label="Cluster actions"
                 >
-                  <MoreVertical className="h-4 w-4 text-slate-400" />
+                  <MoreVertical className="h-4 w-4 text-muted-foreground" />
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-52">
@@ -885,8 +885,8 @@ export default function FleetDashboard() {
       {/* Create Group Dialog */}
       {showGroupForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-          <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-700 w-full max-w-md mx-4 overflow-hidden">
-            <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-800">
+          <div className="bg-card rounded-xl shadow-2xl border border-border w-full max-w-md mx-4 overflow-hidden">
+            <div className="px-5 py-4 border-b border-border/50">
               <h2 className="text-base font-semibold text-foreground">Create Group</h2>
               <p className="text-xs text-muted-foreground mt-0.5">Select clusters to organize into a group</p>
             </div>
@@ -899,7 +899,7 @@ export default function FleetDashboard() {
                   value={newGroupName}
                   onChange={(e) => setNewGroupName(e.target.value)}
                   placeholder="e.g. Production, Staging, US-East"
-                  className="w-full h-9 px-3 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  className="w-full h-9 px-3 rounded-lg bg-muted border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
                   autoFocus
                 />
               </div>
@@ -915,14 +915,14 @@ export default function FleetDashboard() {
                         'w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-all text-sm',
                         selectedClusterIds.has(c.id)
                           ? 'bg-blue-50 dark:bg-blue-950/30 border border-blue-300 dark:border-blue-700'
-                          : 'bg-slate-50 dark:bg-slate-800/50 border border-transparent hover:bg-slate-100 dark:hover:bg-slate-800',
+                          : 'bg-muted/50 border border-transparent hover:bg-muted',
                       )}
                     >
                       <div className={cn(
                         'h-4 w-4 rounded border-2 flex items-center justify-center shrink-0',
                         selectedClusterIds.has(c.id)
                           ? 'bg-blue-600 border-blue-600'
-                          : 'border-slate-300 dark:border-slate-600',
+                          : 'border-border',
                       )}>
                         {selectedClusterIds.has(c.id) && <Check className="h-3 w-3 text-white" />}
                       </div>

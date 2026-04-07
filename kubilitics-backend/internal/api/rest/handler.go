@@ -66,7 +66,11 @@ func topologyCacheGet(key string) (*topologyv2.TopologyResponse, bool) {
 	if !ok {
 		return nil, false
 	}
-	entry := v.(*topologyCacheEntry)
+	entry, ok2 := v.(*topologyCacheEntry)
+	if !ok2 {
+		topologyCache.Delete(key)
+		return nil, false
+	}
 	if time.Now().After(entry.expiresAt) {
 		topologyCache.Delete(key)
 		return nil, false

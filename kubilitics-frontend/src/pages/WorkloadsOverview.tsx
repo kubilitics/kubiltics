@@ -244,7 +244,7 @@ export default function WorkloadsOverview() {
         />
 
         {/* Hero Section: Workload Health Pulse */}
-        <Card className="overflow-hidden border-none bg-card elevation-2" aria-live="polite">
+        <Card className="overflow-hidden border-none soft-shadow glass-panel" aria-live="polite">
           <CardHeader className="flex flex-row items-center justify-between pb-4 pt-8 px-8">
             <div>
               <CardTitle className="text-h4 text-foreground">Workload Health</CardTitle>
@@ -307,7 +307,7 @@ export default function WorkloadsOverview() {
 
         {/* Resources Overview: Pod Distribution & Efficiency */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          <Card className="lg:col-span-8 border-none overflow-hidden bg-card elevation-2">
+          <Card className="lg:col-span-8 border-none overflow-hidden soft-shadow glass-panel">
             <PodStatusDistribution />
           </Card>
           <div className="lg:col-span-4">

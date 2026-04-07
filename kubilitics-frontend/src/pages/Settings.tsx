@@ -355,7 +355,7 @@ export default function Settings() {
       </div>
 
       {/* ━━━ Clusters ━━━ */}
-      <Card className="rounded-2xl overflow-hidden shadow-md border-border/50 dark:bg-slate-900/60">
+      <Card className="overflow-hidden border-none soft-shadow glass-panel">
         <div className="h-1 bg-gradient-to-r from-emerald-400 via-emerald-500 to-teal-500" />
         <CardHeader className="pb-4 bg-gradient-to-r from-emerald-50/50 to-transparent dark:from-emerald-950/20">
           <div className="flex items-center justify-between">
@@ -415,7 +415,7 @@ export default function Settings() {
                             "flex h-10 w-10 items-center justify-center rounded-xl shrink-0 shadow-sm",
                             isActive
                               ? "bg-gradient-to-br from-blue-500 to-indigo-500 text-white"
-                              : "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400"
+                              : "bg-muted text-muted-foreground"
                           )}>
                             <Server className="h-5 w-5" />
                           </div>
@@ -484,7 +484,7 @@ export default function Settings() {
       <ClusterAppearanceSettings />
 
       {/* ━━━ Projects ━━━ */}
-      <Card className="rounded-2xl overflow-hidden shadow-md border-border/50 dark:bg-slate-900/60">
+      <Card className="overflow-hidden border-none soft-shadow glass-panel">
         <div className="h-1 bg-gradient-to-r from-violet-400 via-purple-500 to-fuchsia-500" />
         <CardHeader className="pb-4 bg-gradient-to-r from-violet-50/50 to-transparent dark:from-violet-950/20">
           <div className="flex items-center justify-between">
@@ -546,7 +546,7 @@ export default function Settings() {
       </Card>
 
       {/* ━━━ Connection Endpoints — hidden in desktop (sidecar manages backend) ━━━ */}
-      {!isDesktop && <Card className="rounded-2xl overflow-hidden shadow-md border-border/50 dark:bg-slate-900/60">
+      {!isDesktop && <Card className="overflow-hidden border-none soft-shadow glass-panel">
         <div className="h-1 bg-gradient-to-r from-amber-400 via-orange-500 to-amber-500" />
         <CardHeader className="pb-4 bg-gradient-to-r from-amber-50/50 to-transparent dark:from-amber-950/15">
           <div className="flex items-center gap-3">
@@ -651,7 +651,7 @@ export default function Settings() {
 
       {/* ━━━ Desktop ━━━ */}
       {isDesktop && (
-        <Card className="rounded-2xl overflow-hidden shadow-md border-border/50 dark:bg-slate-900/60">
+        <Card className="overflow-hidden border-none soft-shadow glass-panel">
           <div className="h-1 bg-gradient-to-r from-cyan-400 via-sky-500 to-blue-500" />
           <CardHeader className="pb-4 bg-gradient-to-r from-cyan-50/50 to-transparent dark:from-cyan-950/15">
             <div className="flex items-center justify-between">
@@ -737,7 +737,7 @@ export default function Settings() {
                   { label: 'Kubeconfig Path', value: desktopInfo.kubeconfig_path },
                   { label: 'App Data Directory', value: desktopInfo.app_data_dir },
                 ].map(({ label, value }) => (
-                  <div key={label} className="rounded-xl border border-border/50 bg-slate-50/50 dark:bg-slate-800/30 px-4 py-3.5 flex items-start gap-3">
+                  <div key={label} className="rounded-xl border border-border/50 bg-muted/30 px-4 py-3.5 flex items-start gap-3">
                     <div className="shrink-0 mt-0.5">
                       <FolderKanban className="h-4 w-4 text-muted-foreground/60" />
                     </div>
@@ -887,7 +887,7 @@ function AppearanceSection() {
   };
 
   return (
-    <Card className="rounded-2xl overflow-hidden shadow-md border-border/50 dark:bg-slate-900/60">
+    <Card className="overflow-hidden border-none soft-shadow glass-panel">
       <div className="h-1 bg-gradient-to-r from-pink-400 via-rose-500 to-pink-500" />
       <CardHeader className="pb-4 bg-gradient-to-r from-pink-50/50 to-transparent dark:from-pink-950/20">
         <div className="flex items-center gap-3">
@@ -1002,7 +1002,7 @@ const shortcuts: { category: string; color: string; items: { keys: string; descr
 
 function KeyboardShortcutsSection() {
   return (
-    <Card className="rounded-2xl overflow-hidden shadow-md border-border/50 dark:bg-slate-900/60">
+    <Card className="overflow-hidden border-none soft-shadow glass-panel">
       <div className="h-1 bg-gradient-to-r from-sky-400 via-blue-500 to-indigo-500" />
       <CardHeader className="pb-4 bg-gradient-to-r from-sky-50/50 to-transparent dark:from-sky-950/20">
         <div className="flex items-center gap-3">
@@ -1112,7 +1112,7 @@ function AboutSection() {
   };
 
   return (
-    <Card className="rounded-2xl overflow-hidden shadow-md border-border/50 dark:bg-slate-900/60">
+    <Card className="overflow-hidden border-none soft-shadow glass-panel">
       <div className="h-1 bg-gradient-to-r from-indigo-400 via-purple-500 to-indigo-500" />
       <CardHeader className="pb-4 bg-gradient-to-r from-indigo-50/50 to-transparent dark:from-indigo-950/15">
         <div className="flex items-center gap-3">

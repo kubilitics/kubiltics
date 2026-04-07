@@ -286,7 +286,7 @@ export default function ScanDashboard() {
             <TabsContent value="overview" className="space-y-6 mt-4">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Severity Distribution */}
-                <Card>
+                <Card className="border-none soft-shadow glass-panel">
                   <CardHeader>
                     <CardTitle className="text-sm font-semibold">
                       Severity Distribution
@@ -341,7 +341,7 @@ export default function ScanDashboard() {
                 </Card>
 
                 {/* Trend Chart */}
-                <Card>
+                <Card className="border-none soft-shadow glass-panel">
                   <CardHeader>
                     <CardTitle className="text-sm font-semibold">
                       Findings Trend (30 days)
@@ -419,7 +419,7 @@ export default function ScanDashboard() {
               {/* Tool Breakdown */}
               {stats?.findings_by_tool &&
                 Object.keys(stats.findings_by_tool).length > 0 && (
-                  <Card>
+                  <Card className="border-none soft-shadow glass-panel">
                     <CardHeader>
                       <CardTitle className="text-sm font-semibold">
                         Findings by Tool
@@ -486,7 +486,7 @@ export default function ScanDashboard() {
               </div>
 
               {/* Findings Table */}
-              <Card>
+              <Card className="border-none soft-shadow glass-panel">
                 <CardContent className="p-0">
                   <Table>
                     <TableHeader>
@@ -555,7 +555,7 @@ export default function ScanDashboard() {
 
             {/* ── Runs Tab ── */}
             <TabsContent value="runs" className="space-y-4 mt-4">
-              <Card>
+              <Card className="border-none soft-shadow glass-panel">
                 <CardContent className="p-0">
                   <Table>
                     <TableHeader>
@@ -650,7 +650,7 @@ export default function ScanDashboard() {
               </Card>
               {/* Running scan progress */}
               {runs.some((r) => r.status === 'running') && (
-                <Card className="border-blue-500/30">
+                <Card className="border-none soft-shadow glass-panel">
                   <CardContent className="py-4">
                     <div className="flex items-center gap-3">
                       <RefreshCw className="h-4 w-4 text-blue-500 animate-spin" />

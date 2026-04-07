@@ -207,13 +207,13 @@ export default function DRReadinessView() {
         <>
           {/* Readiness overview */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <Card className="border-0 shadow-sm md:col-span-1">
+            <Card className="border-none soft-shadow glass-panel md:col-span-1">
               <CardContent className="p-6 flex flex-col items-center justify-center">
                 <ReadinessGauge score={assessment.readiness_score} />
               </CardContent>
             </Card>
 
-            <Card className="border-0 shadow-sm md:col-span-2">
+            <Card className="border-none soft-shadow glass-panel md:col-span-2">
               <CardContent className="p-6 space-y-4">
                 <div className="flex items-center gap-3 text-sm">
                   <span className="font-medium">{assessment.primary_name}</span>
@@ -240,7 +240,7 @@ export default function DRReadinessView() {
           </div>
 
           {/* Coverage breakdown */}
-          <Card className="border-0 shadow-sm">
+          <Card className="border-none soft-shadow glass-panel">
             <CardContent className="p-0">
               <div className="p-4 border-b border-border/50">
                 <h3 className="text-sm font-semibold">Resource Coverage</h3>
@@ -280,7 +280,7 @@ export default function DRReadinessView() {
           </Card>
 
           {/* Recommendations */}
-          <Card className="border-0 shadow-sm">
+          <Card className="border-none soft-shadow glass-panel">
             <CardContent className="p-4 space-y-3">
               <h3 className="text-sm font-semibold">
                 Recommendations ({assessment.recommendations?.length ?? 0})

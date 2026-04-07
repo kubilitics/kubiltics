@@ -87,6 +87,20 @@ type clusterService struct {
 	clientFactory      K8sClientFactory // optional; tests only
 }
 
+// clusterInfoString safely extracts a string value from a GetClusterInfo result map.
+// Returns "" if the key is absent or the value is not a string.
+func clusterInfoString(info map[string]interface{}, key string) string {
+	v, _ := info[key].(string)
+	return v
+}
+
+// clusterInfoInt safely extracts an int value from a GetClusterInfo result map.
+// Returns 0 if the key is absent or the value is not an int.
+func clusterInfoInt(info map[string]interface{}, key string) int {
+	v, _ := info[key].(int)
+	return v
+}
+
 func NewClusterService(repo repository.ClusterRepository, cfg *config.Config) ClusterService {
 	return newClusterService(repo, cfg, nil)
 }
@@ -168,10 +182,10 @@ func (s *clusterService) ListClusters(ctx context.Context) ([]*models.Cluster, e
 					_ = s.repo.Update(ctx, c)
 					return
 				}
-				c.ServerURL = info["server_url"].(string)
-				c.Version = info["version"].(string)
-				c.NodeCount = info["node_count"].(int)
-				c.NamespaceCount = info["namespace_count"].(int)
+				c.ServerURL = clusterInfoString(info, "server_url")
+				c.Version = clusterInfoString(info, "version")
+				c.NodeCount = clusterInfoInt(info, "node_count")
+				c.NamespaceCount = clusterInfoInt(info, "namespace_count")
 				c.Status = "connected"
 				c.LastConnected = time.Now()
 				if p, err := client.DetectProvider(clusterCtx); err == nil && p != "" {
@@ -192,10 +206,10 @@ func (s *clusterService) ListClusters(ctx context.Context) ([]*models.Cluster, e
 					if client != nil {
 						info, _ := client.GetClusterInfo(clusterCtx)
 						if info != nil {
-							c.ServerURL = info["server_url"].(string)
-							c.Version = info["version"].(string)
-							c.NodeCount = info["node_count"].(int)
-							c.NamespaceCount = info["namespace_count"].(int)
+							c.ServerURL = clusterInfoString(info, "server_url")
+							c.Version = clusterInfoString(info, "version")
+							c.NodeCount = clusterInfoInt(info, "node_count")
+							c.NamespaceCount = clusterInfoInt(info, "namespace_count")
 						}
 						c.Status = "connected"
 						c.LastConnected = time.Now()
@@ -232,10 +246,10 @@ func (s *clusterService) GetCluster(ctx context.Context, id string) (*models.Clu
 		ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 		defer cancel()
 		if info, err := client.GetClusterInfo(ctx); err == nil {
-			c.ServerURL = info["server_url"].(string)
-			c.Version = info["version"].(string)
-			c.NodeCount = info["node_count"].(int)
-			c.NamespaceCount = info["namespace_count"].(int)
+			c.ServerURL = clusterInfoString(info, "server_url")
+			c.Version = clusterInfoString(info, "version")
+			c.NodeCount = clusterInfoInt(info, "node_count")
+			c.NamespaceCount = clusterInfoInt(info, "namespace_count")
 			c.Status = "connected"
 			c.LastConnected = time.Now()
 			if p, err := client.DetectProvider(ctx); err == nil && p != "" {
@@ -254,10 +268,10 @@ func (s *clusterService) GetCluster(ctx context.Context, id string) (*models.Clu
 			if ok {
 				info, _ := client.GetClusterInfo(ctx)
 				if info != nil {
-					c.ServerURL = info["server_url"].(string)
-					c.Version = info["version"].(string)
-					c.NodeCount = info["node_count"].(int)
-					c.NamespaceCount = info["namespace_count"].(int)
+					c.ServerURL = clusterInfoString(info, "server_url")
+					c.Version = clusterInfoString(info, "version")
+					c.NodeCount = clusterInfoInt(info, "node_count")
+					c.NamespaceCount = clusterInfoInt(info, "namespace_count")
 				}
 				c.Status = "connected"
 				c.LastConnected = time.Now()
@@ -336,8 +350,8 @@ func (s *clusterService) AddCluster(ctx context.Context, kubeconfigPath, context
 	} else {
 		fmt.Printf("[AddCluster] Connection test successful for %s\n", contextName)
 		if info, err := client.GetClusterInfo(regCtx); err == nil {
-			serverURL = info["server_url"].(string)
-			version = info["version"].(string)
+			serverURL = clusterInfoString(info, "server_url")
+			version = clusterInfoString(info, "version")
 			if p, err := client.DetectProvider(regCtx); err == nil && p != "" {
 				provider = p
 			}
@@ -531,8 +545,8 @@ func (s *clusterService) GetClusterSummary(ctx context.Context, id string) (*mod
 	return &models.ClusterSummary{
 		ID:              id,
 		Name:            id,
-		NodeCount:       info["node_count"].(int),
-		NamespaceCount:  info["namespace_count"].(int),
+		NodeCount:       clusterInfoInt(info, "node_count"),
+		NamespaceCount:  clusterInfoInt(info, "namespace_count"),
 		PodCount:        len(pods.Items),
 		DeploymentCount: len(deployments.Items),
 		ServiceCount:    len(services.Items),
@@ -748,10 +762,10 @@ func (s *clusterService) ReconnectCluster(ctx context.Context, id string) (*mode
 	_ = s.overviewCache.StartClusterCache(ctx, id, client)
 
 	if info, err := client.GetClusterInfo(ctx); err == nil {
-		c.ServerURL = info["server_url"].(string)
-		c.Version = info["version"].(string)
-		c.NodeCount = info["node_count"].(int)
-		c.NamespaceCount = info["namespace_count"].(int)
+		c.ServerURL = clusterInfoString(info, "server_url")
+		c.Version = clusterInfoString(info, "version")
+		c.NodeCount = clusterInfoInt(info, "node_count")
+		c.NamespaceCount = clusterInfoInt(info, "namespace_count")
 	}
 	if p, err := client.DetectProvider(ctx); err == nil && p != "" {
 		c.Provider = p

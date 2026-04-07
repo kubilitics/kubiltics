@@ -82,7 +82,11 @@ func (h *Handler) PostCronJobTrigger(w http.ResponseWriter, r *http.Request) {
 		},
 		"spec": jobSpec,
 	}
-	meta := jobObj["metadata"].(map[string]interface{})
+	meta, _ := jobObj["metadata"].(map[string]interface{})
+	if meta == nil {
+		meta = map[string]interface{}{}
+		jobObj["metadata"] = meta
+	}
 	if labels, ok := jobMeta["labels"].(map[string]interface{}); ok && len(labels) > 0 {
 		meta["labels"] = labels
 	}

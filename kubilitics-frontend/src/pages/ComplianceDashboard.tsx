@@ -32,6 +32,7 @@ import { PageLayout } from '@/components/layout/PageLayout';
 import { ApiError } from '@/components/ui/error-state';
 import { SectionOverviewHeader } from '@/components/layout/SectionOverviewHeader';
 import { useBackendConfigStore } from '@/stores/backendConfigStore';
+import { PageSkeleton } from '@/components/loading';
 
 // ─── Types ───────────────────────────────────────────────────
 
@@ -134,6 +135,10 @@ export default function ComplianceDashboard() {
   const totalPassed = categories.reduce((sum, c) => sum + c.passed, 0);
   const totalFailed = categories.reduce((sum, c) => sum + c.failed, 0);
   const totalWarnings = categories.reduce((sum, c) => sum + c.warnings, 0);
+
+  if (isLoading) {
+    return <PageSkeleton statCount={4} columnCount={2} rowCount={4} />;
+  }
 
   if (fetchError) {
     return (

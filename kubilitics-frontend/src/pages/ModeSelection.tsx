@@ -111,7 +111,7 @@ export default function ModeSelection() {
                             tabIndex={0}
                             aria-label="Launch Personal desktop mode — runs locally on your machine"
                             className={cn(
-                                "group relative h-full bg-white dark:bg-card border border-slate-200/80 dark:border-slate-700/60 cursor-pointer overflow-hidden p-6 md:p-7 rounded-2xl transition-all duration-500",
+                                "group relative h-full bg-card border border-border/80 cursor-pointer overflow-hidden p-6 md:p-7 rounded-2xl transition-all duration-500",
                                 "hover:border-blue-300/60 dark:hover:border-blue-500/40 hover:-translate-y-1",
                                 "focus-visible:ring-2 focus-visible:ring-blue-500/50 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-background",
                                 hoveredCard === 'desktop' ? 'shadow-[0_16px_48px_-12px_rgba(59,130,246,0.15)] dark:shadow-[0_16px_48px_-12px_rgba(59,130,246,0.25)]' : 'shadow-[0_4px_24px_-4px_rgba(0,0,0,0.06)] dark:shadow-[0_4px_24px_-4px_rgba(0,0,0,0.3)]',
@@ -125,11 +125,11 @@ export default function ModeSelection() {
                                     <Monitor className="text-white" size={22} />
                                 </div>
 
-                                <h3 className="text-xl md:text-2xl font-bold mb-1 tracking-tight text-slate-900 dark:text-slate-100">
+                                <h3 className="text-xl md:text-2xl font-bold mb-1 tracking-tight text-foreground">
                                     Personal
                                 </h3>
                                 <p className="text-xs font-semibold uppercase tracking-widest text-blue-500 dark:text-blue-400 mb-3">Runs locally on your machine</p>
-                                <p className="text-slate-500 dark:text-slate-400 mb-5 leading-relaxed text-[13px] font-medium">
+                                <p className="text-muted-foreground mb-5 leading-relaxed text-[13px] font-medium">
                                     Auto-detects your kubeconfig, connects to your clusters, and runs entirely on your machine. No server deployment required.
                                 </p>
 
@@ -140,7 +140,7 @@ export default function ModeSelection() {
                                         'Private — data stays on your machine',
                                         'Instant startup — no deployment needed',
                                     ].map((feature) => (
-                                        <li key={feature} className="flex items-center gap-2.5 text-[13px] text-slate-600 dark:text-slate-400 font-medium">
+                                        <li key={feature} className="flex items-center gap-2.5 text-[13px] text-muted-foreground font-medium">
                                             <div className="flex-shrink-0 w-4.5 h-4.5 rounded-full bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center">
                                                 <CheckCircle2 size={11} className="text-blue-600 dark:text-blue-400" />
                                             </div>
@@ -168,7 +168,7 @@ export default function ModeSelection() {
                             tabIndex={0}
                             aria-label="Deploy Team Server mode — deployed to your Kubernetes cluster"
                             className={cn(
-                                "group relative h-full bg-white dark:bg-card border border-slate-200/80 dark:border-slate-700/60 cursor-pointer overflow-hidden p-6 md:p-7 rounded-2xl transition-all duration-500",
+                                "group relative h-full bg-card border border-border/80 cursor-pointer overflow-hidden p-6 md:p-7 rounded-2xl transition-all duration-500",
                                 "hover:border-purple-300/60 dark:hover:border-purple-500/40 hover:-translate-y-1",
                                 "focus-visible:ring-2 focus-visible:ring-purple-500/50 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-background",
                                 hoveredCard === 'cluster' ? 'shadow-[0_16px_48px_-12px_rgba(147,51,234,0.15)] dark:shadow-[0_16px_48px_-12px_rgba(147,51,234,0.25)]' : 'shadow-[0_4px_24px_-4px_rgba(0,0,0,0.06)] dark:shadow-[0_4px_24px_-4px_rgba(0,0,0,0.3)]',
@@ -182,11 +182,11 @@ export default function ModeSelection() {
                                     <Cloud className="text-white" size={22} />
                                 </div>
 
-                                <h3 className="text-xl md:text-2xl font-bold mb-1 tracking-tight text-slate-900 dark:text-slate-100">
+                                <h3 className="text-xl md:text-2xl font-bold mb-1 tracking-tight text-foreground">
                                     Team Server
                                 </h3>
                                 <p className="text-xs font-semibold uppercase tracking-widest text-purple-500 dark:text-purple-400 mb-3">Deployed to your cluster</p>
-                                <p className="text-slate-500 dark:text-slate-400 mb-5 leading-relaxed text-[13px] font-medium">
+                                <p className="text-muted-foreground mb-5 leading-relaxed text-[13px] font-medium">
                                     Server-side deployment via Helm. Shared by your team with SSO authentication, RBAC governance, and persistent monitoring.
                                 </p>
 
@@ -197,7 +197,7 @@ export default function ModeSelection() {
                                         'Persistent monitoring & analytics',
                                         'Role-based access control (RBAC)',
                                     ].map((feature) => (
-                                        <li key={feature} className="flex items-center gap-2.5 text-[13px] text-slate-600 dark:text-slate-400 font-medium">
+                                        <li key={feature} className="flex items-center gap-2.5 text-[13px] text-muted-foreground font-medium">
                                             <div className="flex-shrink-0 w-4.5 h-4.5 rounded-full bg-purple-100 dark:bg-purple-900/40 flex items-center justify-center">
                                                 <CheckCircle2 size={11} className="text-purple-600 dark:text-purple-400" />
                                             </div>
@@ -219,7 +219,7 @@ export default function ModeSelection() {
                 <motion.div variants={item} className="flex flex-col items-center gap-5">
                     <button
                         onClick={() => setShowComparison(true)}
-                        className="flex items-center gap-2 text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 transition-colors duration-300 text-xs font-semibold tracking-wide press-effect"
+                        className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors duration-300 text-xs font-semibold tracking-wide press-effect"
                         aria-label="Compare Personal and Team Server modes"
                     >
                         <Info size={14} className="text-blue-500" />
@@ -227,23 +227,23 @@ export default function ModeSelection() {
                     </button>
 
                     {/* Stats strip */}
-                    <div className="flex items-center gap-6 md:gap-10 py-3.5 px-8 md:px-12 rounded-xl bg-white/60 dark:bg-white/5 border border-slate-200/60 dark:border-slate-700/40 backdrop-blur-sm shadow-sm">
+                    <div className="flex items-center gap-6 md:gap-10 py-3.5 px-8 md:px-12 rounded-xl bg-card/60 border border-border/60 backdrop-blur-sm shadow-sm">
                         <div className="flex flex-col items-center text-center">
-                            <span className="text-xl md:text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100">70+</span>
-                            <span className="text-xs uppercase tracking-[0.2em] text-slate-400 font-bold mt-0.5">Resources</span>
+                            <span className="text-xl md:text-2xl font-bold tracking-tight text-foreground">70+</span>
+                            <span className="text-xs uppercase tracking-[0.2em] text-muted-foreground font-bold mt-0.5">Resources</span>
                         </div>
-                        <div className="w-px h-7 bg-slate-200 dark:bg-slate-700" aria-hidden="true" />
+                        <div className="w-px h-7 bg-border" aria-hidden="true" />
                         <div className="flex flex-col items-center text-center">
-                            <span className="text-xl md:text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100">Real-Time</span>
-                            <span className="text-xs uppercase tracking-[0.2em] text-slate-400 font-bold mt-0.5">Discovery</span>
+                            <span className="text-xl md:text-2xl font-bold tracking-tight text-foreground">Real-Time</span>
+                            <span className="text-xs uppercase tracking-[0.2em] text-muted-foreground font-bold mt-0.5">Discovery</span>
                         </div>
-                        <div className="w-px h-7 bg-slate-200 dark:bg-slate-700" aria-hidden="true" />
+                        <div className="w-px h-7 bg-border" aria-hidden="true" />
                         <div className="flex flex-col items-center text-center">
                             <span className="text-xl md:text-2xl font-bold tracking-tight bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent flex items-center gap-1.5">
                                 <Sparkles size={16} className="text-blue-500" />
                                 AI
                             </span>
-                            <span className="text-xs uppercase tracking-[0.2em] text-slate-400 font-bold mt-0.5">Augmented</span>
+                            <span className="text-xs uppercase tracking-[0.2em] text-muted-foreground font-bold mt-0.5">Augmented</span>
                         </div>
                     </div>
                 </motion.div>
@@ -251,21 +251,21 @@ export default function ModeSelection() {
 
             {/* Comparison Dialog */}
             <Dialog open={showComparison} onOpenChange={setShowComparison}>
-                <DialogContent className="max-w-4xl bg-white dark:bg-card border-slate-200 dark:border-slate-700 text-foreground rounded-3xl p-8 md:p-12 shadow-2xl overflow-hidden">
+                <DialogContent className="max-w-4xl bg-card border-border text-foreground rounded-3xl p-8 md:p-12 shadow-2xl overflow-hidden">
                     <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 via-purple-500 to-blue-500 opacity-60" aria-hidden="true" />
 
                     <DialogHeader className="mb-8">
-                        <DialogTitle className="text-3xl md:text-4xl font-bold tracking-tight text-slate-900 dark:text-slate-100 mb-3">Compare Modes</DialogTitle>
-                        <DialogDescription className="text-base text-slate-500 dark:text-slate-400 font-medium">
+                        <DialogTitle className="text-3xl md:text-4xl font-bold tracking-tight text-foreground mb-3">Compare Modes</DialogTitle>
+                        <DialogDescription className="text-base text-muted-foreground font-medium">
                             Choose the mode that matches your team size and infrastructure requirements.
                         </DialogDescription>
                     </DialogHeader>
 
-                    <div className="overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/50">
+                    <div className="overflow-hidden rounded-2xl border border-border bg-muted/30">
                         <table className="w-full text-sm">
                             <thead>
-                                <tr className="border-b border-slate-200 dark:border-slate-700 bg-slate-100/80 dark:bg-slate-800/80">
-                                    <th className="p-5 text-left font-bold text-slate-500 dark:text-slate-400 uppercase text-xs tracking-widest">Dimension</th>
+                                <tr className="border-b border-border bg-muted/80">
+                                    <th className="p-5 text-left font-bold text-muted-foreground uppercase text-xs tracking-widest">Dimension</th>
                                     <th className="p-5 text-center font-bold text-blue-600 dark:text-blue-400">
                                         <span className="flex items-center justify-center gap-2">
                                             <Monitor size={15} /> Personal
@@ -278,7 +278,7 @@ export default function ModeSelection() {
                                     </th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                            <tbody className="divide-y divide-border/50">
                                 {[
                                     { name: 'Installation', desktop: 'Download & run', cluster: 'helm install kubilitics' },
                                     { name: 'Who uses it', desktop: 'Individual developer', cluster: 'Engineering team (5-500+)' },
@@ -287,10 +287,10 @@ export default function ModeSelection() {
                                     { name: 'Collaboration', desktop: 'Private workstation', cluster: 'Shared team dashboards' },
                                     { name: 'Updates', desktop: 'Auto-update (desktop)', cluster: 'Helm upgrade / GitOps' },
                                 ].map((row) => (
-                                    <tr key={row.name} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors duration-200">
-                                        <td className="p-5 font-semibold text-slate-700 dark:text-slate-300">{row.name}</td>
-                                        <td className="p-5 text-center text-slate-500 dark:text-slate-400 font-medium">{row.desktop}</td>
-                                        <td className="p-5 text-center text-slate-500 dark:text-slate-400 font-medium">{row.cluster}</td>
+                                    <tr key={row.name} className="hover:bg-muted/50 transition-colors duration-200">
+                                        <td className="p-5 font-semibold text-foreground/80">{row.name}</td>
+                                        <td className="p-5 text-center text-muted-foreground font-medium">{row.desktop}</td>
+                                        <td className="p-5 text-center text-muted-foreground font-medium">{row.cluster}</td>
                                     </tr>
                                 ))}
                             </tbody>
@@ -300,15 +300,15 @@ export default function ModeSelection() {
                     <div className="mt-8 grid grid-cols-3 gap-4">
                         <div className="p-5 rounded-2xl bg-blue-50/60 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-800/40 flex flex-col items-center text-center group transition-all hover:bg-blue-50 dark:hover:bg-blue-950/50">
                             <Zap className="text-blue-500 mb-2.5 group-hover:scale-110 transition-transform" size={22} />
-                            <span className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">Performance</span>
+                            <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Performance</span>
                         </div>
                         <div className="p-5 rounded-2xl bg-purple-50/60 dark:bg-purple-950/30 border border-purple-100 dark:border-purple-800/40 flex flex-col items-center text-center group transition-all hover:bg-purple-50 dark:hover:bg-purple-950/50">
                             <Shield className="text-purple-500 mb-2.5 group-hover:scale-110 transition-transform" size={22} />
-                            <span className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">Security</span>
+                            <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Security</span>
                         </div>
                         <div className="p-5 rounded-2xl bg-emerald-50/60 dark:bg-emerald-950/30 border border-emerald-100 dark:border-emerald-800/40 flex flex-col items-center text-center group transition-all hover:bg-emerald-50 dark:hover:bg-emerald-950/50">
                             <BarChart3 className="text-emerald-500 mb-2.5 group-hover:scale-110 transition-transform" size={22} />
-                            <span className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">Scale</span>
+                            <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Scale</span>
                         </div>
                     </div>
                 </DialogContent>

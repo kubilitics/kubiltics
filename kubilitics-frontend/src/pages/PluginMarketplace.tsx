@@ -94,7 +94,7 @@ function PluginCard({ plugin, onInstall, onUninstall, isOperating }: PluginCardP
       exit={{ opacity: 0, y: -8 }}
       transition={{ duration: 0.2 }}
     >
-      <Card className="h-full flex flex-col hover:border-primary/30 transition-colors">
+      <Card className="h-full flex flex-col border-none soft-shadow glass-panel hover:shadow-lg transition-all">
         <CardHeader className="pb-2">
           <div className="flex items-start justify-between gap-2">
             <div className="flex items-center gap-2.5">
