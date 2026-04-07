@@ -484,7 +484,7 @@ export default function DeploymentDetail() {
                                   {formatRolloutDuration(rev.durationSeconds)}
                                 </td>
                                 <td className="p-3 font-mono align-top">{rev.ready} / {rev.desired}</td>
-                                <td className="p-3 font-mono text-xs align-top truncate max-w-[120px]" title={rev.name}>{rev.name}</td>
+                                <td className="p-3 font-mono text-xs align-top truncate max-w-[240px]" title={rev.name}>{rev.name}</td>
                                 <td className="p-3 text-right align-top">
                                   {!isCurrent && (
                                     <Button

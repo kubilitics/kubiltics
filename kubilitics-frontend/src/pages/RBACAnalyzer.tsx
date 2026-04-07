@@ -635,7 +635,7 @@ export default function RBACAnalyzer() {
                                 <TableCell rowSpan={resourceEntries.length} className="font-medium text-sm">
                                   <div className="flex items-center gap-1.5">
                                     {subjectIcon(row.subjectKind)}
-                                    <span className="truncate max-w-[200px]">{subjectLabel(row)}</span>
+                                    <span className="truncate max-w-[200px]" title={subjectLabel(row)}>{subjectLabel(row)}</span>
                                   </div>
                                 </TableCell>
                                 <TableCell rowSpan={resourceEntries.length}>
@@ -672,7 +672,7 @@ export default function RBACAnalyzer() {
                                 })}
                               </div>
                             </TableCell>
-                            <TableCell className="text-xs text-muted-foreground truncate max-w-[200px]">
+                            <TableCell className="text-xs text-muted-foreground truncate max-w-[200px]" title={resData.roleName}>
                               {resData.roleName}
                             </TableCell>
                           </TableRow>

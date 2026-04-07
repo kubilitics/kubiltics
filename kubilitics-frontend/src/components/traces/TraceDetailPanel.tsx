@@ -151,7 +151,7 @@ export function TraceDetailPanel() {
                           className={cn('flex items-center h-7 rounded cursor-pointer transition-colors', isSel ? 'bg-primary/[0.06]' : 'hover:bg-muted/40')}
                           onClick={() => selectSpan(isSel ? null : s.span_id)}
                         >
-                          <div className="w-[140px] shrink-0 truncate text-[11px] font-medium px-2" style={{ paddingLeft: `${8 + node.depth * 14}px`, color: c.text }}>
+                          <div className="w-[180px] shrink-0 truncate text-[11px] font-medium px-2" title={s.service_name} style={{ paddingLeft: `${8 + node.depth * 14}px`, color: c.text }}>
                             {s.service_name}
                           </div>
                           <div className="flex-1 relative h-full flex items-center">

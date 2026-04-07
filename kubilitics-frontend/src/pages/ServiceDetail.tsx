@@ -830,7 +830,7 @@ function PodsTab({ resource: svc }: ResourceContext<ServiceResource>) {
                       <td className="p-3"><Badge variant={phase === 'Running' ? 'default' : 'secondary'} className="text-xs">{phase}</Badge></td>
                       <td className="p-3 font-mono text-xs">{readyStr}</td>
                       <td className="p-3 font-mono text-xs">{restarts}</td>
-                      <td className="p-3 font-mono text-xs truncate max-w-[140px]" title={nodeName}>{nodeName}</td>
+                      <td className="p-3 font-mono text-xs truncate max-w-[240px]" title={nodeName}>{nodeName}</td>
                       <td className="p-3 font-mono text-xs text-muted-foreground">–</td>
                       <td className="p-3 font-mono text-xs text-muted-foreground">–</td>
                       <td className="p-3"><AgeCell age={p.metadata?.creationTimestamp ? calculateAge(p.metadata.creationTimestamp) : '–'} timestamp={p.metadata?.creationTimestamp} /></td>

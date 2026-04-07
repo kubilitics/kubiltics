@@ -268,7 +268,7 @@ function TraceRow({ trace, onClick }: { trace: TraceSummary; onClick: () => void
           {trace.root_service}
         </Badge>
       </td>
-      <td className="px-4 py-3 font-mono text-xs truncate max-w-[200px]">
+      <td className="px-4 py-3 font-mono text-xs truncate max-w-[200px]" title={trace.root_operation}>
         {trace.root_operation}
       </td>
       <td className="px-4 py-3 text-right font-mono text-xs font-medium">

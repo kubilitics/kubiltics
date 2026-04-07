@@ -220,7 +220,7 @@ export function TopologyToolbar({
               }`}
             >
               <Filter className={`h-3.5 w-3.5 ${hasNamespaceFilter ? "text-indigo-500" : "text-gray-600 dark:text-gray-400 group-hover:text-gray-500"}`} />
-              <span className="max-w-[140px] truncate">{nsLabel}</span>
+              <span className="max-w-[200px] truncate" title={nsLabel}>{nsLabel}</span>
               <ChevronDown className={`h-3 w-3 transition-colors ${hasNamespaceFilter ? "text-indigo-400" : "text-gray-600 dark:text-gray-400"}`} />
               {hasNamespaceFilter && (
                 <span className="flex h-4 min-w-[16px] items-center justify-center rounded-full bg-indigo-500 px-1 text-[10px] text-white font-bold shadow-sm">
@@ -363,7 +363,7 @@ export function TopologyToolbar({
               }`}
             >
               <Box className={`h-3.5 w-3.5 ${hasKindFilter ? "text-emerald-500" : "text-gray-600 dark:text-gray-400 group-hover:text-gray-500"}`} />
-              <span className="max-w-[140px] truncate">{kindLabel}</span>
+              <span className="max-w-[200px] truncate" title={kindLabel}>{kindLabel}</span>
               <ChevronDown className={`h-3 w-3 transition-colors ${hasKindFilter ? "text-emerald-400" : "text-gray-600 dark:text-gray-400"}`} />
               {hasKindFilter && (
                 <span className="flex h-4 min-w-[16px] items-center justify-center rounded-full bg-emerald-500 px-1 text-[10px] text-white font-bold shadow-sm">
@@ -465,7 +465,7 @@ export function TopologyToolbar({
               }`}
             >
               <Route className={`h-3.5 w-3.5 ${hasEdgeFilter ? "text-purple-500" : "text-gray-600 dark:text-gray-400 group-hover:text-gray-500"}`} />
-              <span className="max-w-[140px] truncate">{edgeLabel}</span>
+              <span className="max-w-[200px] truncate" title={edgeLabel}>{edgeLabel}</span>
               <ChevronDown className={`h-3 w-3 transition-colors ${hasEdgeFilter ? "text-purple-400" : "text-gray-600 dark:text-gray-400"}`} />
               {hasEdgeFilter && (
                 <span className="flex h-4 min-w-[16px] items-center justify-center rounded-full bg-purple-500 px-1 text-[10px] text-white font-bold shadow-sm">

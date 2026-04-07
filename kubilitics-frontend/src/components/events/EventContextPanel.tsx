@@ -147,7 +147,7 @@ export function EventContextPanel() {
                       )}>
                         {re.event_type}
                       </Badge>
-                      <span className="truncate">{re.resource_kind}/{re.resource_name}</span>
+                      <span className="truncate" title={`${re.resource_kind}/${re.resource_name}`}>{re.resource_kind}/{re.resource_name}</span>
                       <span className="text-muted-foreground/60 shrink-0">{re.reason}</span>
                     </div>
                   ))}

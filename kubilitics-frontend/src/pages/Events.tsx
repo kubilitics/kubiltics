@@ -476,7 +476,7 @@ export default function Events() {
  </Link>
  </ResizableTableCell>
  <ResizableTableCell columnId="reason" className="font-medium">{ev.reason}</ResizableTableCell>
- <ResizableTableCell columnId="message" className="text-muted-foreground truncate max-w-[200px]" title={ev.message}>{ev.message}</ResizableTableCell>
+ <ResizableTableCell columnId="message" className="text-muted-foreground truncate max-w-[400px]" title={ev.message}>{ev.message}</ResizableTableCell>
  <ResizableTableCell columnId="involved">
  {detailPath ? (
  <Link to={detailPath} className="font-mono text-sm text-primary hover:underline flex items-center gap-1 truncate">

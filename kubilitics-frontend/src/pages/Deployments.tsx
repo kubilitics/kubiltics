@@ -934,7 +934,7 @@ spec:
  <div className="flex flex-col gap-0.5">
  <StatusPill label={item.status} variant={deploymentStatusToVariant[item.status]} icon={StatusIcon} />
  {item.statusReason && (
- <span className="text-xs text-muted-foreground truncate max-w-[200px] leading-tight" title={item.statusReason}>
+ <span className="text-xs text-muted-foreground truncate max-w-[300px] leading-tight" title={item.statusReason}>
  {item.statusReason}
  </span>
  )}
@@ -955,7 +955,7 @@ spec:
  {columnVisibility.isColumnVisible('maxSurge') && <ResizableTableCell columnId="maxSurge" className="font-mono text-xs">{item.maxSurge}</ResizableTableCell>}
  {columnVisibility.isColumnVisible('maxUnavailable') && <ResizableTableCell columnId="maxUnavailable" className="font-mono text-xs">{item.maxUnavailable}</ResizableTableCell>}
  {columnVisibility.isColumnVisible('revision') && <ResizableTableCell columnId="revision" className="font-mono text-xs">{item.revision}</ResizableTableCell>}
- {columnVisibility.isColumnVisible('images') && <ResizableTableCell columnId="images" className="text-xs truncate max-w-[180px]" title={item.images.join(', ')}>{item.images.length ? item.images.join(', ') : '-'}</ResizableTableCell>}
+ {columnVisibility.isColumnVisible('images') && <ResizableTableCell columnId="images" className="text-xs truncate max-w-[300px]" title={item.images.join(', ')}>{item.images.length ? item.images.join(', ') : '-'}</ResizableTableCell>}
  {columnVisibility.isColumnVisible('cpu') && (
  <ResizableTableCell columnId="cpu">
  <MetricBar value={cpuVal} kind="cpu" max={deploymentResourceMaxMap[key]?.cpuMax} />
@@ -1057,7 +1057,7 @@ spec:
  <div className="flex flex-col gap-0.5">
  <div className={cn('inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium truncate w-fit max-w-full', style.bg, style.color)}><StatusIcon className="h-3.5 w-3.5 flex-shrink-0" /><span className="truncate">{item.status}</span></div>
  {item.statusReason && (
- <span className="text-xs text-muted-foreground truncate max-w-[200px] leading-tight" title={item.statusReason}>
+ <span className="text-xs text-muted-foreground truncate max-w-[300px] leading-tight" title={item.statusReason}>
  {item.statusReason}
  </span>
  )}
@@ -1071,7 +1071,7 @@ spec:
  {columnVisibility.isColumnVisible('maxSurge') && <ResizableTableCell columnId="maxSurge" className="font-mono text-xs">{item.maxSurge}</ResizableTableCell>}
  {columnVisibility.isColumnVisible('maxUnavailable') && <ResizableTableCell columnId="maxUnavailable" className="font-mono text-xs">{item.maxUnavailable}</ResizableTableCell>}
  {columnVisibility.isColumnVisible('revision') && <ResizableTableCell columnId="revision" className="font-mono text-xs">{item.revision}</ResizableTableCell>}
- {columnVisibility.isColumnVisible('images') && <ResizableTableCell columnId="images" className="text-xs truncate max-w-[180px]" title={item.images.join(', ')}>{item.images.length ? item.images.join(', ') : '-'}</ResizableTableCell>}
+ {columnVisibility.isColumnVisible('images') && <ResizableTableCell columnId="images" className="text-xs truncate max-w-[300px]" title={item.images.join(', ')}>{item.images.length ? item.images.join(', ') : '-'}</ResizableTableCell>}
  {columnVisibility.isColumnVisible('cpu') && (
  <ResizableTableCell columnId="cpu">
  <MetricBar value={cpuVal} kind="cpu" />

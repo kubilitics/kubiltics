@@ -427,7 +427,7 @@ export function DetailPodTable({
                           </span>
                         </td>
                       )}
-                      <td className="p-3 font-mono text-xs truncate max-w-[140px]" title={nodeName}>{nodeName}</td>
+                      <td className="p-3 font-mono text-xs truncate max-w-[240px]" title={nodeName}>{nodeName}</td>
                       <td className="p-3 font-mono text-xs text-muted-foreground">{metrics?.cpu ?? '–'}</td>
                       <td className="p-3 font-mono text-xs text-muted-foreground">{metrics?.memory ?? '–'}</td>
                       {extraColumns?.map((col) => (

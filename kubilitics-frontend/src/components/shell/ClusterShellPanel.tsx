@@ -216,7 +216,7 @@ export function ClusterShellPanel({
                 title={session.label}
               >
                 <TerminalIcon className="h-3 w-3 shrink-0" />
-                <span className="truncate max-w-[80px]">{session.label}</span>
+                <span className="truncate max-w-[180px]">{session.label}</span>
                 {/* Connection indicator dot */}
                 {isConnected && (
                   <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[hsl(142_76%_73%)]" />
