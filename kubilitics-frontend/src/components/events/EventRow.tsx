@@ -96,14 +96,14 @@ export function EventRow({ event, onViewContext }: EventRowProps) {
           {kindInfo.abbr}
         </span>
 
-        {/* Resource name (primary visual weight) */}
-        <span className="text-sm font-medium text-foreground truncate min-w-0 max-w-[220px]">
+        {/* Resource name (primary visual weight) — flex-shrink so it yields to reason */}
+        <span className="text-sm font-medium text-foreground truncate min-w-0 flex-1" title={event.resource_name}>
           {event.resource_name}
         </span>
 
-        {/* Reason + namespace */}
-        <div className="flex items-center gap-1 min-w-0 flex-1 hidden md:flex">
-          <span className="text-sm text-muted-foreground truncate">
+        {/* Reason */}
+        <div className="flex items-center gap-1 shrink-0 hidden md:flex">
+          <span className="text-sm text-muted-foreground">
             {event.reason}
           </span>
           {event.resource_namespace && (
