@@ -65,7 +65,7 @@ export function useResourceTraces(
   const { clusterId, effectiveBaseUrl, enabled } = useBackendContext();
 
   return useQuery<TraceSummary[], Error>({
-    queryKey: ['traces', 'resource', clusterId, kind, name, namespace, options],
+    queryKey: ['traces', 'resource', clusterId, kind, name, namespace, options?.from, options?.to, options?.limit],
     queryFn: () =>
       getResourceTraces(effectiveBaseUrl, clusterId!, {
         kind,

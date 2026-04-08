@@ -67,16 +67,15 @@ export function ResourceTracesTab({
   const [timeRange, setTimeRange] = useState('24h');
 
   const timeRangeMs = TIME_RANGES.find((t) => t.value === timeRange)?.ms ?? 86_400_000;
-  const now = Date.now();
-  // OTel times are nanoseconds on the backend
-  const fromNs = (now - timeRangeMs) * 1_000_000;
-  const toNs = now * 1_000_000;
+  // Stabilize the time window — only recalculate when timeRange changes,
+  // not on every render (prevents infinite query key changes → skeleton flicker).
+  const fromNs = useMemo(() => (Date.now() - timeRangeMs) * 1_000_000, [timeRangeMs]);
 
   const { data: traces, isLoading: queryLoading, isFetching, fetchStatus } = useResourceTraces(
     resourceKind,
     resourceName,
     namespace,
-    { from: fromNs, to: toNs, limit: 50 },
+    { from: fromNs, limit: 50 },
   );
   // React Query v5: disabled queries stay isLoading=true forever (pending state).
   // Show skeleton only when actually fetching, not when disabled/idle.
