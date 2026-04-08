@@ -112,6 +112,14 @@ export function TraceList() {
   // Direct fetch
   const [traces, setTraces] = useState<TraceSummary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [fetchTick, setFetchTick] = useState(0);
+
+  // Auto-refresh every 10s when tracing is enabled but no traces yet
+  useEffect(() => {
+    if (!tracingStatusData?.enabled || traces.length > 0) return;
+    const interval = setInterval(() => setFetchTick((t) => t + 1), 10_000);
+    return () => clearInterval(interval);
+  }, [tracingStatusData?.enabled, traces.length]);
 
   useEffect(() => {
     let cancelled = false;
@@ -136,7 +144,7 @@ export function TraceList() {
     }
     load();
     return () => { cancelled = true; };
-  }, [queryParams.from, queryParams.service, queryParams.status, queryParams.min_duration]);
+  }, [queryParams.from, queryParams.service, queryParams.status, queryParams.min_duration, fetchTick]);
 
   // Reset page when filters change
   useEffect(() => { setPage(1); }, [queryParams.from, queryParams.service, queryParams.status, queryParams.min_duration]);
@@ -303,20 +311,27 @@ function EnableTracingPrompt({ onSetupClick }: { onSetupClick: () => void }) {
 
 /** Shown when tracing IS enabled but no traces have arrived yet */
 function WaitingForTraces({ onInstrumentClick }: { onInstrumentClick: () => void }) {
+  const [dots, setDots] = useState('');
+
+  // Animate ellipsis to show activity
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setDots((prev) => (prev.length >= 3 ? '' : prev + '.'));
+    }, 600);
+    return () => clearInterval(interval);
+  }, []);
+
   return (
     <div className="flex flex-col items-center justify-center py-16 text-center max-w-lg mx-auto px-4">
       <div className="h-14 w-14 rounded-full bg-primary/10 flex items-center justify-center mb-4">
-        <GitBranch className="h-7 w-7 text-primary/60" />
+        <Radio className="h-7 w-7 text-primary/60 animate-pulse" />
       </div>
-      <h3 className="text-lg font-semibold mb-2">Trace Agent Running</h3>
+      <h3 className="text-lg font-semibold mb-2">Traces Arriving Shortly{dots}</h3>
       <p className="text-sm text-muted-foreground mb-6 leading-relaxed max-w-md">
-        The trace agent is collecting data. Select which applications to auto-instrument
-        with OpenTelemetry — no code changes required.
+        The trace agent and demo application are running. The traffic generator sends
+        requests every few seconds — traces typically appear within 60 seconds.
+        This page auto-refreshes.
       </p>
-      <Button onClick={onInstrumentClick}>
-        <Radio className="h-4 w-4 mr-2" />
-        Instrument Applications
-      </Button>
     </div>
   );
 }

@@ -7,10 +7,16 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
+
+	coltracepb "go.opentelemetry.io/proto/otlp/collector/trace/v1"
+	commonpb "go.opentelemetry.io/proto/otlp/common/v1"
+	"google.golang.org/protobuf/proto"
 
 	"github.com/kubilitics/kubilitics-trace-agent/internal/store"
 )
@@ -94,16 +100,43 @@ func NewReceiver(s *store.Store) *Receiver {
 	return &Receiver{store: s}
 }
 
-// HandleTraces is an http.HandlerFunc that accepts POST /v1/traces (OTLP JSON).
+// HandleTraces is an http.HandlerFunc that accepts POST /v1/traces.
+// It supports both OTLP/HTTP protobuf (application/x-protobuf) and
+// OTLP/HTTP JSON (application/json) payloads.
 func (r *Receiver) HandleTraces(w http.ResponseWriter, req *http.Request) {
 	// Limit request body to 10 MB to prevent OOM from oversized payloads.
 	req.Body = http.MaxBytesReader(w, req.Body, 10*1024*1024)
 
-	var otlpReq OTLPTraceRequest
-	if err := json.NewDecoder(req.Body).Decode(&otlpReq); err != nil {
+	ct := req.Header.Get("Content-Type")
+
+	if strings.Contains(ct, "application/x-protobuf") || strings.Contains(ct, "application/protobuf") {
+		r.handleProtobuf(w, req)
+		return
+	}
+
+	// Default: try JSON, and if it fails try protobuf as fallback
+	// (some SDKs don't set Content-Type correctly).
+	body, err := io.ReadAll(req.Body)
+	if err != nil {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusBadRequest)
-		_, _ = w.Write([]byte(`{"error":"invalid JSON or payload too large"}`))
+		_, _ = w.Write([]byte(`{"error":"failed to read request body"}`))
+		return
+	}
+
+	var otlpReq OTLPTraceRequest
+	if err := json.Unmarshal(body, &otlpReq); err != nil {
+		// JSON parse failed — try protobuf
+		if pbErr := r.processProtobufBody(req.Context(), body); pbErr != nil {
+			log.Printf("[receiver] both JSON and protobuf decode failed: json=%v proto=%v", err, pbErr)
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusBadRequest)
+			_, _ = w.Write([]byte(`{"error":"invalid payload — expected OTLP JSON or protobuf"}`))
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("{}"))
 		return
 	}
 
@@ -118,6 +151,105 @@ func (r *Receiver) HandleTraces(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write([]byte("{}"))
+}
+
+// handleProtobuf handles explicit protobuf content type.
+func (r *Receiver) handleProtobuf(w http.ResponseWriter, req *http.Request) {
+	body, err := io.ReadAll(req.Body)
+	if err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		_, _ = w.Write([]byte(`{"error":"failed to read request body"}`))
+		return
+	}
+
+	if err := r.processProtobufBody(req.Context(), body); err != nil {
+		log.Printf("[receiver] protobuf ProcessTraces error: %v", err)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		_, _ = w.Write([]byte(`{"error":"failed to process traces"}`))
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/x-protobuf")
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write([]byte{})
+}
+
+// processProtobufBody decodes an OTLP protobuf trace request and processes it.
+func (r *Receiver) processProtobufBody(ctx context.Context, body []byte) error {
+	var pbReq coltracepb.ExportTraceServiceRequest
+	if err := proto.Unmarshal(body, &pbReq); err != nil {
+		return fmt.Errorf("unmarshal protobuf: %w", err)
+	}
+
+	// Convert protobuf to our internal OTLPTraceRequest struct
+	otlpReq := convertProtoToJSON(&pbReq)
+	return r.ProcessTraces(ctx, otlpReq)
+}
+
+// convertProtoToJSON translates a protobuf ExportTraceServiceRequest to
+// the receiver's internal OTLPTraceRequest format for unified processing.
+func convertProtoToJSON(pb *coltracepb.ExportTraceServiceRequest) *OTLPTraceRequest {
+	req := &OTLPTraceRequest{}
+	for _, rs := range pb.ResourceSpans {
+		rspans := ResourceSpans{}
+		if rs.Resource != nil {
+			rspans.Resource.Attributes = convertPBAttributes(rs.Resource.Attributes)
+		}
+		for _, ss := range rs.ScopeSpans {
+			scopeSpans := ScopeSpans{}
+			for _, s := range ss.Spans {
+				span := OTLPSpan{
+					TraceID:           fmt.Sprintf("%x", s.TraceId),
+					SpanID:            fmt.Sprintf("%x", s.SpanId),
+					ParentSpanID:      fmt.Sprintf("%x", s.ParentSpanId),
+					Name:              s.Name,
+					Kind:              int(s.Kind),
+					StartTimeUnixNano: fmt.Sprintf("%d", s.StartTimeUnixNano),
+					EndTimeUnixNano:   fmt.Sprintf("%d", s.EndTimeUnixNano),
+					Attributes:        convertPBAttributes(s.Attributes),
+					Status: SpanStatus{
+						Message: s.Status.GetMessage(),
+						Code:    int(s.Status.GetCode()),
+					},
+				}
+				for _, e := range s.Events {
+					span.Events = append(span.Events, SpanEvent{
+						Name:         e.Name,
+						TimeUnixNano: fmt.Sprintf("%d", e.TimeUnixNano),
+						Attributes:   convertPBAttributes(e.Attributes),
+					})
+				}
+				scopeSpans.Spans = append(scopeSpans.Spans, span)
+			}
+			rspans.ScopeSpans = append(rspans.ScopeSpans, scopeSpans)
+		}
+		req.ResourceSpans = append(req.ResourceSpans, rspans)
+	}
+	return req
+}
+
+// convertPBAttributes converts protobuf KeyValue attributes to the receiver's Attribute slice.
+func convertPBAttributes(attrs []*commonpb.KeyValue) []Attribute {
+	result := make([]Attribute, 0, len(attrs))
+	for _, kv := range attrs {
+		a := Attribute{Key: kv.Key}
+		if kv.Value != nil {
+			switch v := kv.Value.Value.(type) {
+			case *commonpb.AnyValue_StringValue:
+				a.Value.StringValue = v.StringValue
+			case *commonpb.AnyValue_IntValue:
+				a.Value.IntValue = fmt.Sprintf("%d", v.IntValue)
+			case *commonpb.AnyValue_BoolValue:
+				a.Value.BoolValue = v.BoolValue
+			case *commonpb.AnyValue_DoubleValue:
+				a.Value.StringValue = fmt.Sprintf("%g", v.DoubleValue)
+			}
+		}
+		result = append(result, a)
+	}
+	return result
 }
 
 // ProcessTraces parses an OTLP JSON request and stores the spans.

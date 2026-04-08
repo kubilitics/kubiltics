@@ -58,6 +58,15 @@ func (th *TracingHandler) EnableTracing(w http.ResponseWriter, r *http.Request) 
 	}
 	log.Printf("[tracing] trace-agent deployed")
 
+	// Step 1b: Deploy demo app that generates real traces
+	_, err = client.ApplyYAML(ctx, otel.DemoAppManifestYAML("v0.2.0"))
+	if err != nil {
+		// Non-fatal — agent is deployed, demo app is optional
+		log.Printf("[tracing] demo app deploy failed (non-fatal): %v", err)
+	} else {
+		log.Printf("[tracing] demo app + traffic generator deployed")
+	}
+
 	// Step 2: Install cert-manager + OTel Operator + Instrumentation CRs ASYNC
 	// These are large manifests (1.8MB+) that take minutes to download and apply.
 	// We return success immediately so the UI doesn't hang.
@@ -381,6 +390,18 @@ func (th *TracingHandler) DisableTracing(w http.ResponseWriter, r *http.Request)
 	}
 	if err := client.Clientset.CoreV1().Services(ns).Delete(ctx, svcName, deleteOpts); err != nil && !apierrors.IsNotFound(err) {
 		log.Printf("[tracing] failed to delete agent service: %v", err)
+	}
+
+	// Step 3b: Delete demo app resources
+	demoNs, demoDep, demoSvc, demoCron := otel.DemoAppResourceNames()
+	if err := client.Clientset.AppsV1().Deployments(demoNs).Delete(ctx, demoDep, deleteOpts); err != nil && !apierrors.IsNotFound(err) {
+		log.Printf("[tracing] failed to delete demo app deployment: %v", err)
+	}
+	if err := client.Clientset.CoreV1().Services(demoNs).Delete(ctx, demoSvc, deleteOpts); err != nil && !apierrors.IsNotFound(err) {
+		log.Printf("[tracing] failed to delete demo app service: %v", err)
+	}
+	if err := client.Clientset.BatchV1().CronJobs(demoNs).Delete(ctx, demoCron, deleteOpts); err != nil && !apierrors.IsNotFound(err) {
+		log.Printf("[tracing] failed to delete demo traffic cronjob: %v", err)
 	}
 
 	// Step 4: Stop puller for this cluster
