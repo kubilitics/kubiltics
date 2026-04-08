@@ -133,7 +133,7 @@ type Handler struct {
 	graphEngines          map[string]*graph.ClusterGraphEngine // clusterId -> engine
 	snapshotStore         diff.SnapshotStore                   // topology diff snapshot persistence
 	scheduleHandler       *ScheduleHandler                     // optional: report schedule CRUD (nil = disabled)
-	lifecycleHooks        []ClusterLifecycleHook               // optional: lifecycle hooks (events pipeline, trace generator, etc.)
+	lifecycleHooks        []ClusterLifecycleHook               // optional: lifecycle hooks (events pipeline, etc.)
 }
 
 // NewHandler creates a new HTTP handler. unifiedMetricsService can be nil; then metrics summary uses legacy per-resource endpoints. projSvc can be nil; then project routes return 501. addonService can be nil; then addon routes return 404 or 501. repo can be nil if auth is disabled. snapshotStore can be nil; then topology snapshot endpoints return 503.
@@ -762,7 +762,7 @@ func (h *Handler) RemoveCluster(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Stop lifecycle hooks (events pipeline, trace generator, etc.) before removing the cluster.
+	// Stop lifecycle hooks (events pipeline, etc.) before removing the cluster.
 	for _, hook := range h.lifecycleHooks {
 		hook.OnClusterDisconnected(resolvedID)
 	}

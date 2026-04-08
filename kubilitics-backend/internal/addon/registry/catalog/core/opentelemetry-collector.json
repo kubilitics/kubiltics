@@ -1,0 +1,168 @@
+{
+  "addon": {
+    "id": "kubilitics/opentelemetry-collector",
+    "name": "opentelemetry-collector",
+    "display_name": "OpenTelemetry Collector",
+    "description": "Vendor-agnostic telemetry collector that receives, processes, and exports traces, metrics, and logs. Pre-configured to forward OTLP traces to the Kubilitics backend for distributed tracing.",
+    "tier": "CORE",
+    "version": "v0.88.0",
+    "k8s_compat_min": "1.24",
+    "helm_repo_url": "https://open-telemetry.github.io/opentelemetry-helm-charts",
+    "helm_chart": "opentelemetry-collector",
+    "helm_chart_version": "0.88.0",
+    "tags": [
+      "observability",
+      "tracing",
+      "opentelemetry",
+      "otlp",
+      "core-infrastructure"
+    ],
+    "home_url": "https://opentelemetry.io/docs/collector/",
+    "source_url": "https://github.com/open-telemetry/opentelemetry-collector",
+    "maintainer": "open-telemetry",
+    "is_deprecated": false,
+    "icon_url": "https://raw.githubusercontent.com/open-telemetry/opentelemetry.io/main/iconography/32x32/OpenTelemetry_Icon_Color.png",
+    "chart_digest": "sha256:otel-collector-0-88-0",
+    "default_values": {
+      "mode": "deployment",
+      "replicaCount": 1,
+      "image": {
+        "repository": "otel/opentelemetry-collector-contrib"
+      },
+      "config": {
+        "receivers": {
+          "otlp": {
+            "protocols": {
+              "grpc": {
+                "endpoint": "0.0.0.0:4317"
+              },
+              "http": {
+                "endpoint": "0.0.0.0:4318"
+              }
+            }
+          }
+        },
+        "processors": {
+          "batch": {
+            "timeout": "5s",
+            "send_batch_size": 512
+          },
+          "memory_limiter": {
+            "check_interval": "5s",
+            "limit_mib": 256,
+            "spike_limit_mib": 64
+          }
+        },
+        "exporters": {
+          "otlphttp": {
+            "endpoint": "http://host.docker.internal:8190",
+            "tls": {
+              "insecure": true
+            }
+          }
+        },
+        "service": {
+          "pipelines": {
+            "traces": {
+              "receivers": ["otlp"],
+              "processors": ["memory_limiter", "batch"],
+              "exporters": ["otlphttp"]
+            }
+          }
+        }
+      },
+      "ports": {
+        "otlp": {
+          "enabled": true,
+          "containerPort": 4317,
+          "servicePort": 4317,
+          "protocol": "TCP"
+        },
+        "otlp-http": {
+          "enabled": true,
+          "containerPort": 4318,
+          "servicePort": 4318,
+          "protocol": "TCP"
+        }
+      },
+      "resources": {
+        "limits": {
+          "cpu": "250m",
+          "memory": "512Mi"
+        },
+        "requests": {
+          "cpu": "50m",
+          "memory": "128Mi"
+        }
+      }
+    },
+    "default_namespace": "otel-system"
+  },
+  "dependencies": [],
+  "conflicts": [],
+  "crds_owned": [],
+  "rbac_required": [
+    {
+      "addon_id": "kubilitics/opentelemetry-collector",
+      "api_groups": [""],
+      "resources": ["pods", "namespaces", "nodes"],
+      "verbs": ["get", "list", "watch"],
+      "scope": "cluster"
+    }
+  ],
+  "cost_models": [
+    {
+      "addon_id": "kubilitics/opentelemetry-collector",
+      "cluster_tier": "dev",
+      "cpu_millicores": 50,
+      "memory_mb": 128,
+      "storage_gb": 0,
+      "monthly_cost_usd_estimate": 2,
+      "replica_count": 1
+    },
+    {
+      "addon_id": "kubilitics/opentelemetry-collector",
+      "cluster_tier": "staging",
+      "cpu_millicores": 100,
+      "memory_mb": 256,
+      "storage_gb": 0,
+      "monthly_cost_usd_estimate": 4,
+      "replica_count": 1
+    },
+    {
+      "addon_id": "kubilitics/opentelemetry-collector",
+      "cluster_tier": "production",
+      "cpu_millicores": 250,
+      "memory_mb": 512,
+      "storage_gb": 0,
+      "monthly_cost_usd_estimate": 8,
+      "replica_count": 2
+    }
+  ],
+  "versions": [
+    {
+      "addon_id": "kubilitics/opentelemetry-collector",
+      "version": "0.88.0",
+      "release_date": "2024-10-22",
+      "highlights": [
+        "Improved OTLP receiver performance",
+        "Enhanced memory limiter processor",
+        "New debug exporter for troubleshooting"
+      ],
+      "breaking_changes": []
+    },
+    {
+      "addon_id": "kubilitics/opentelemetry-collector",
+      "version": "0.85.0",
+      "release_date": "2024-08-15",
+      "highlights": [
+        "Added filelog receiver for log collection",
+        "Improved batch processor throughput",
+        "Support for Kubernetes 1.30"
+      ],
+      "breaking_changes": [
+        "Deprecated jaeger receiver — use otlp receiver instead"
+      ]
+    }
+  ]
+}

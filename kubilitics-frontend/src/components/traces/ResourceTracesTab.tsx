@@ -147,12 +147,19 @@ export function ResourceTracesTab({
             ))}
           </div>
         ) : sortedTraces.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+          <div className="flex flex-col items-center justify-center py-12 px-4 text-muted-foreground">
             <GitBranch className="h-10 w-10 mb-3 opacity-30" />
-            <p className="text-sm font-medium">No traces found for this resource</p>
-            <p className="text-xs mt-1">
-              Try expanding the time range or check that your services are instrumented with OpenTelemetry
+            <p className="text-sm font-medium mb-1">No traces found for this resource</p>
+            <p className="text-xs mt-1 max-w-sm text-center leading-relaxed">
+              Traces appear when your apps send OpenTelemetry data through a collector.
             </p>
+            <Link
+              to="/traces"
+              className="mt-3 inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:text-primary/80 transition-colors"
+            >
+              View setup instructions
+              <ExternalLink className="h-3 w-3" />
+            </Link>
           </div>
         ) : (
           <div className="max-h-[600px] overflow-y-auto">

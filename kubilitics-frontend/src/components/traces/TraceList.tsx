@@ -3,7 +3,8 @@
  * Shows trace summaries with service badges, duration, span/error counts.
  */
 import { useMemo, useState, useEffect, useCallback } from 'react';
-import { Search, Clock, Filter, Plug } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Search, Clock, Filter, GitBranch, RefreshCw, Copy, Check, ArrowRight } from 'lucide-react';
 import { ListPagination } from '@/components/list/ListPagination';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -215,13 +216,13 @@ export function TraceList() {
               ))}
               {!isLoading && traces?.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="px-4 py-16 text-center">
-                    <Plug className="h-10 w-10 mx-auto mb-3 text-muted-foreground/40" />
-                    <p className="text-sm font-medium text-foreground/80 mb-1">No traces yet</p>
-                    <p className="text-xs text-muted-foreground max-w-md mx-auto leading-relaxed">
-                      Traces appear when your applications send data via OpenTelemetry.
-                      Point your OTLP exporter to <code className="text-xs bg-muted px-1.5 py-0.5 rounded font-mono">http://localhost:8190/v1/traces</code>
-                    </p>
+                  <td colSpan={8} className="p-0">
+                    <OTelSetupGuide onRefresh={() => {
+                      setIsLoading(true);
+                      // Re-trigger the fetch by forcing a state change
+                      setTraces([]);
+                      setTimeout(() => setIsLoading(false), 100);
+                    }} />
                   </td>
                 </tr>
               )}
@@ -246,6 +247,102 @@ export function TraceList() {
         )}
       </CardContent>
     </Card>
+  );
+}
+
+/* ─── Setup Guide (shown when no traces exist) ────────────────────────── */
+
+function CopyableCode({ children }: { children: string }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <div className="relative group">
+      <pre className="bg-muted/60 dark:bg-muted/30 rounded-md px-3 py-2 text-xs font-mono overflow-x-auto whitespace-pre-wrap break-all border border-border/40">
+        {children}
+      </pre>
+      <Button
+        variant="ghost"
+        size="sm"
+        className="absolute top-1.5 right-1.5 h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+        onClick={() => {
+          navigator.clipboard.writeText(children);
+          setCopied(true);
+          setTimeout(() => setCopied(false), 2000);
+        }}
+      >
+        {copied ? <Check className="h-3 w-3 text-green-500" /> : <Copy className="h-3 w-3" />}
+      </Button>
+    </div>
+  );
+}
+
+function SetupStep({ number, title, children }: { number: number; title: string; children: React.ReactNode }) {
+  return (
+    <div className="flex gap-3">
+      <div className="flex-shrink-0 w-7 h-7 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-bold">
+        {number}
+      </div>
+      <div className="flex-1 min-w-0">
+        <h4 className="text-sm font-semibold mb-1.5">{title}</h4>
+        <div className="space-y-2 text-sm text-muted-foreground">{children}</div>
+      </div>
+    </div>
+  );
+}
+
+function OTelSetupGuide({ onRefresh }: { onRefresh: () => void }) {
+  return (
+    <div className="flex flex-col items-center justify-center py-16 text-center max-w-lg mx-auto px-4">
+      <div className="h-14 w-14 rounded-full bg-primary/10 flex items-center justify-center mb-4">
+        <GitBranch className="h-7 w-7 text-primary/60" />
+      </div>
+      <h3 className="text-lg font-semibold mb-2">Enable Distributed Tracing</h3>
+      <p className="text-sm text-muted-foreground mb-8 leading-relaxed">
+        Traces show request flows across your services. Install the OpenTelemetry Collector
+        to start collecting traces from your applications.
+      </p>
+
+      <div className="w-full text-left space-y-6 mb-8">
+        <SetupStep number={1} title="Install OTel Collector">
+          <p>
+            Go to{' '}
+            <Link to="/addons" className="text-primary hover:text-primary/80 font-medium underline underline-offset-2">
+              Add-ons
+            </Link>{' '}
+            and install "OpenTelemetry Collector", or run:
+          </p>
+          <CopyableCode>
+            {`helm repo add open-telemetry https://open-telemetry.github.io/opentelemetry-helm-charts\nhelm install otel-collector open-telemetry/opentelemetry-collector -n otel-system --create-namespace`}
+          </CopyableCode>
+        </SetupStep>
+
+        <SetupStep number={2} title="Configure your apps">
+          <p>Add these environment variables to your deployments:</p>
+          <CopyableCode>
+            {`OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector.otel-system:4317\nOTEL_SERVICE_NAME=your-service-name`}
+          </CopyableCode>
+        </SetupStep>
+
+        <SetupStep number={3} title="Traces appear automatically">
+          <p>
+            Once configured, traces flow from your apps through the collector into Kubilitics.
+            They will appear here within seconds.
+          </p>
+        </SetupStep>
+      </div>
+
+      <div className="flex items-center gap-3">
+        <Button variant="outline" size="sm" onClick={onRefresh}>
+          <RefreshCw className="h-4 w-4 mr-2" />
+          Check for traces
+        </Button>
+        <Link to="/addons">
+          <Button variant="default" size="sm">
+            Install Collector
+            <ArrowRight className="h-4 w-4 ml-2" />
+          </Button>
+        </Link>
+      </div>
+    </div>
   );
 }
 

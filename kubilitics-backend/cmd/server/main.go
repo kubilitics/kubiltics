@@ -682,10 +682,6 @@ func main() {
 	// Wire events pipeline lifecycle into cluster add/remove/reconnect handlers.
 	handler.SetLifecycleHook(pipelineManager)
 
-	// Built-in trace generator: produces realistic OpenTelemetry traces from
-	// actual running pods/services — no cluster modification needed.
-	traceGen := otel.NewTraceGenerator(otelReceiver)
-	handler.SetLifecycleHook(traceGen)
 
 	rest.SetupRoutes(apiRouter, handler)
 
@@ -727,9 +723,6 @@ func main() {
 			pipelineManager.StartLogCollector(logsService, client.Clientset, cl.ID)
 			log.Info("Started log collector", "cluster", cl.Name, "id", cl.ID)
 
-			// Start built-in trace generator for this cluster.
-			traceGen.Start(client.Clientset, cl.ID)
-			log.Info("Started trace generator", "cluster", cl.Name, "id", cl.ID)
 		}
 	}()
 
