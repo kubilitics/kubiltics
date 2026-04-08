@@ -72,12 +72,15 @@ export function ResourceTracesTab({
   const fromNs = (now - timeRangeMs) * 1_000_000;
   const toNs = now * 1_000_000;
 
-  const { data: traces, isLoading, isFetching } = useResourceTraces(
+  const { data: traces, isLoading: queryLoading, isFetching, fetchStatus } = useResourceTraces(
     resourceKind,
     resourceName,
     namespace,
     { from: fromNs, to: toNs, limit: 50 },
   );
+  // React Query v5: disabled queries stay isLoading=true forever (pending state).
+  // Show skeleton only when actually fetching, not when disabled/idle.
+  const isLoading = queryLoading && fetchStatus !== 'idle';
 
   const sortedTraces = useMemo(
     () => (traces ?? []).slice().sort((a, b) => b.start_time - a.start_time),
