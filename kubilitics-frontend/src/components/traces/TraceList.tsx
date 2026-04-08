@@ -3,7 +3,7 @@
  * Shows trace summaries with service badges, duration, span/error counts.
  */
 import { useMemo, useState, useEffect, useCallback } from 'react';
-import { Search, Clock, Filter, GitBranch, RefreshCw, Copy, Check, ArrowRight } from 'lucide-react';
+import { Clock, Filter, GitBranch, Radio } from 'lucide-react';
 import { ListPagination } from '@/components/list/ListPagination';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -14,6 +14,12 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { useTracesStore } from '@/stores/tracesStore';
 import { getBackendBase } from '@/lib/backendUrl';
+import { useActiveClusterId } from '@/hooks/useActiveClusterId';
+import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
+import { useQuery } from '@tanstack/react-query';
+import { getTracingStatus } from '@/services/api/tracing';
+import { TracingStatus } from './TracingStatus';
+import { TracingSetup } from './TracingSetup';
 import type { TraceSummary, TraceQueryParams } from '@/services/api/traces';
 
 /* ─── Helpers ──────────────────────────────────────────────────────────── */
@@ -69,6 +75,20 @@ function serviceColorIndex(name: string): number {
 
 export function TraceList() {
   const store = useTracesStore();
+  const [setupOpen, setSetupOpen] = useState(false);
+
+  // Get tracing status to know if tracing is enabled
+  const clusterId = useActiveClusterId();
+  const storedUrl = useBackendConfigStore((s) => s.backendBaseUrl);
+  const baseUrl = getEffectiveBackendBaseUrl(storedUrl);
+  const { data: tracingStatusData } = useQuery({
+    queryKey: ['tracing-status', clusterId],
+    queryFn: () => getTracingStatus(baseUrl, clusterId!),
+    enabled: !!clusterId && !!baseUrl,
+    staleTime: 15_000,
+    refetchInterval: 30_000,
+    retry: false,
+  });
 
   const timeRangeMs = TIME_RANGES.find((t) => t.value === store.timeRange)?.ms ?? 3_600_000;
   const fromNs = (Date.now() - timeRangeMs) * 1_000_000;
@@ -216,12 +236,11 @@ export function TraceList() {
               {!isLoading && traces?.length === 0 && (
                 <tr>
                   <td colSpan={8} className="p-0">
-                    <OTelSetupGuide onRefresh={() => {
-                      setIsLoading(true);
-                      // Re-trigger the fetch by forcing a state change
-                      setTraces([]);
-                      setTimeout(() => setIsLoading(false), 100);
-                    }} />
+                    {tracingStatusData?.enabled ? (
+                      <WaitingForTraces />
+                    ) : (
+                      <EnableTracingPrompt onSetupClick={() => setSetupOpen(true)} />
+                    )}
                   </td>
                 </tr>
               )}
@@ -245,96 +264,53 @@ export function TraceList() {
           </div>
         )}
       </CardContent>
+
+      <TracingSetup
+        open={setupOpen}
+        onOpenChange={setSetupOpen}
+        onComplete={() => {
+          setSetupOpen(false);
+        }}
+      />
     </Card>
   );
 }
 
-/* ─── Setup Guide (shown when no traces exist) ────────────────────────── */
+/* ─── Empty States ────────────────────────────────────────────────────── */
 
-function CopyableCode({ children }: { children: string }) {
-  const [copied, setCopied] = useState(false);
+/** Shown when tracing is NOT yet enabled — prompts user to set it up */
+function EnableTracingPrompt({ onSetupClick }: { onSetupClick: () => void }) {
   return (
-    <div className="relative group">
-      <pre className="bg-muted/60 dark:bg-muted/30 rounded-md px-3 py-2 text-xs font-mono overflow-x-auto whitespace-pre-wrap break-all border border-border/40">
-        {children}
-      </pre>
-      <Button
-        variant="ghost"
-        size="sm"
-        className="absolute top-1.5 right-1.5 h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-        onClick={() => {
-          navigator.clipboard.writeText(children);
-          setCopied(true);
-          setTimeout(() => setCopied(false), 2000);
-        }}
-      >
-        {copied ? <Check className="h-3 w-3 text-green-500" /> : <Copy className="h-3 w-3" />}
+    <div className="flex flex-col items-center justify-center py-16 text-center max-w-lg mx-auto px-4">
+      <div className="h-14 w-14 rounded-full bg-purple-500/10 flex items-center justify-center mb-4">
+        <GitBranch className="h-7 w-7 text-purple-500/60" />
+      </div>
+      <h3 className="text-lg font-semibold mb-2">Distributed Tracing</h3>
+      <p className="text-sm text-muted-foreground mb-6 leading-relaxed max-w-md">
+        Traces show how requests flow across your services — which service called which,
+        how long each step took, and where errors originated.
+      </p>
+      <Button onClick={onSetupClick}>
+        <Radio className="h-4 w-4 mr-2" />
+        Enable Distributed Tracing
       </Button>
     </div>
   );
 }
 
-function SetupStep({ number, title, children }: { number: number; title: string; children: React.ReactNode }) {
-  return (
-    <div className="flex gap-3">
-      <div className="flex-shrink-0 w-7 h-7 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-bold">
-        {number}
-      </div>
-      <div className="flex-1 min-w-0">
-        <h4 className="text-sm font-semibold mb-1.5">{title}</h4>
-        <div className="space-y-2 text-sm text-muted-foreground">{children}</div>
-      </div>
-    </div>
-  );
-}
-
-function OTelSetupGuide({ onRefresh }: { onRefresh: () => void }) {
+/** Shown when tracing IS enabled but no traces have arrived yet */
+function WaitingForTraces() {
   return (
     <div className="flex flex-col items-center justify-center py-16 text-center max-w-lg mx-auto px-4">
       <div className="h-14 w-14 rounded-full bg-primary/10 flex items-center justify-center mb-4">
         <GitBranch className="h-7 w-7 text-primary/60" />
       </div>
-      <h3 className="text-lg font-semibold mb-2">Distributed Tracing</h3>
-      <p className="text-sm text-muted-foreground mb-6 leading-relaxed max-w-md">
-        Traces show how requests flow across your services — which service called which,
-        how long each step took, and where failures happened.
+      <h3 className="text-lg font-semibold mb-2">Waiting for Traces</h3>
+      <p className="text-sm text-muted-foreground mb-4 leading-relaxed max-w-md">
+        The trace agent is running and collecting data. Traces will appear here once
+        your applications start handling traffic.
       </p>
-
-      <div className="w-full text-left space-y-5 mb-8">
-        <div className="rounded-lg border border-border/50 bg-muted/20 p-4">
-          <h4 className="text-sm font-semibold mb-2">How to enable</h4>
-          <p className="text-sm text-muted-foreground mb-3">
-            Your applications need an OpenTelemetry SDK. Most languages have zero-code
-            auto-instrumentation — no code changes required.
-          </p>
-          <a
-            href="https://opentelemetry.io/docs/zero-code/"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:text-primary/80 transition-colors"
-          >
-            OpenTelemetry Auto-Instrumentation Guide
-            <ArrowRight className="h-3.5 w-3.5" />
-          </a>
-        </div>
-
-        <div className="rounded-lg border border-border/50 bg-muted/20 p-4">
-          <h4 className="text-sm font-semibold mb-2">Kubilitics OTLP endpoint</h4>
-          <p className="text-sm text-muted-foreground mb-2">
-            Point your OTel exporter to:
-          </p>
-          <CopyableCode>{`http://localhost:8190/v1/traces`}</CopyableCode>
-          <p className="text-xs text-muted-foreground/60 mt-2">
-            Accepts standard OTLP/HTTP JSON. Service names are auto-detected from
-            K8s pod labels — no manual configuration per service.
-          </p>
-        </div>
-      </div>
-
-      <Button variant="outline" size="sm" onClick={onRefresh}>
-        <RefreshCw className="h-4 w-4 mr-2" />
-        Check for traces
-      </Button>
+      <TracingStatus onSetupClick={() => {}} />
     </div>
   );
 }

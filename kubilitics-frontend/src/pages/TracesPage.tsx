@@ -2,7 +2,7 @@
  * TracesPage — Distributed Traces via OpenTelemetry.
  * Two modes: Trace List (filterable table) and Service Map (dependency graph).
  */
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import { GitBranch, List, Network } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
@@ -13,6 +13,8 @@ import { useTracesStore, type TracesMode } from '@/stores/tracesStore';
 import { TraceList } from '@/components/traces/TraceList';
 import { ServiceMapView } from '@/components/traces/ServiceMapView';
 import { TraceDetailPanel } from '@/components/traces/TraceDetailPanel';
+import { TracingStatus } from '@/components/traces/TracingStatus';
+import { TracingSetup } from '@/components/traces/TracingSetup';
 import { ComponentErrorBoundary } from '@/components/ui/component-error-boundary';
 
 /* ─── Mode tabs ──────────────────────────────────────────────────────────── */
@@ -55,6 +57,7 @@ function ModeTabs({ mode, onChange }: { mode: TracesMode; onChange: (m: TracesMo
 export default function TracesPage() {
   const store = useTracesStore();
   const queryClient = useQueryClient();
+  const [setupOpen, setSetupOpen] = useState(false);
 
   const handleSync = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ['traces'] });
@@ -68,7 +71,12 @@ export default function TracesPage() {
         icon={GitBranch}
         iconClassName="from-purple-500/20 to-purple-500/5 text-purple-500 border-purple-500/10"
         onSync={handleSync}
-        extraActions={<ModeTabs mode={store.mode} onChange={store.setMode} />}
+        extraActions={
+          <div className="flex items-center gap-2">
+            <TracingStatus onSetupClick={() => setSetupOpen(true)} />
+            <ModeTabs mode={store.mode} onChange={store.setMode} />
+          </div>
+        }
       />
 
       <ComponentErrorBoundary name="Trace List">
@@ -81,6 +89,15 @@ export default function TracesPage() {
       <ComponentErrorBoundary name="Trace Detail">
         <TraceDetailPanel />
       </ComponentErrorBoundary>
+
+      <TracingSetup
+        open={setupOpen}
+        onOpenChange={setSetupOpen}
+        onComplete={() => {
+          setSetupOpen(false);
+          queryClient.invalidateQueries({ queryKey: ['traces'] });
+        }}
+      />
     </PageLayout>
   );
 }
