@@ -70,10 +70,11 @@ func (th *TracingHandler) EnableTracing(w http.ResponseWriter, r *http.Request) 
 
 // TracingStatusResponse is the response for GET /clusters/{clusterId}/tracing/status.
 type TracingStatusResponse struct {
-	Enabled          bool                   `json:"enabled"`
-	AgentHealthy     bool                   `json:"agent_healthy"`
-	AgentDeployed    bool                   `json:"agent_deployed"`
-	Instrumented     []InstrumentedWorkload `json:"instrumented"`
+	Enabled              bool                   `json:"enabled"`
+	AgentHealthy         bool                   `json:"agent_healthy"`
+	AgentDeployed        bool                   `json:"agent_deployed"`
+	Instrumented         []InstrumentedWorkload `json:"instrumented"`
+	AvailableDeployments []AvailableDeployment  `json:"available_deployments"`
 }
 
 // InstrumentedWorkload describes a deployment that has OTel auto-instrumentation enabled.
@@ -81,6 +82,16 @@ type InstrumentedWorkload struct {
 	Name      string `json:"name"`
 	Namespace string `json:"namespace"`
 	Language  string `json:"language"`
+}
+
+// AvailableDeployment describes a deployment that can be instrumented.
+type AvailableDeployment struct {
+	Name             string `json:"name"`
+	Namespace        string `json:"namespace"`
+	Image            string `json:"image"`
+	DetectedLanguage string `json:"detected_language"`
+	Replicas         int32  `json:"replicas"`
+	Instrumented     bool   `json:"instrumented"`
 }
 
 // GetTracingStatus handles GET /clusters/{clusterId}/tracing/status
@@ -117,25 +128,56 @@ func (th *TracingHandler) GetTracingStatus(w http.ResponseWriter, r *http.Reques
 	// Check agent health via proxy
 	status.AgentHealthy = th.puller.IsAgentReachable(ctx, client.Clientset)
 
-	// Find instrumented deployments across all namespaces
+	// List all deployments across all namespaces
+	systemNamespaces := map[string]bool{
+		"kube-system": true, "kube-public": true, "kube-node-lease": true,
+		"kubilitics-system": true, "cert-manager": true, "local-path-storage": true,
+	}
 	deployments, err := client.Clientset.AppsV1().Deployments("").List(ctx, metav1.ListOptions{})
 	if err == nil {
 		for _, d := range deployments.Items {
+			// Check if instrumented
+			isInstrumented := false
+			instrLang := ""
 			annotations := d.GetAnnotations()
-			if annotations == nil {
-				continue
-			}
-			for key, val := range annotations {
-				if strings.HasPrefix(key, "instrumentation.opentelemetry.io/inject-") && val != "" && val != "false" {
-					lang := strings.TrimPrefix(key, "instrumentation.opentelemetry.io/inject-")
-					status.Instrumented = append(status.Instrumented, InstrumentedWorkload{
-						Name:      d.Name,
-						Namespace: d.Namespace,
-						Language:  lang,
-					})
-					break // only count once per deployment
+			if annotations != nil {
+				for key, val := range annotations {
+					if strings.HasPrefix(key, "instrumentation.opentelemetry.io/inject-") && val != "" && val != "false" {
+						instrLang = strings.TrimPrefix(key, "instrumentation.opentelemetry.io/inject-")
+						isInstrumented = true
+						status.Instrumented = append(status.Instrumented, InstrumentedWorkload{
+							Name:      d.Name,
+							Namespace: d.Namespace,
+							Language:  instrLang,
+						})
+						break
+					}
 				}
 			}
+
+			// Skip system namespaces for available list
+			if systemNamespaces[d.Namespace] {
+				continue
+			}
+
+			// Get container image for language detection
+			image := ""
+			if len(d.Spec.Template.Spec.Containers) > 0 {
+				image = d.Spec.Template.Spec.Containers[0].Image
+			}
+			detectedLang := instrLang
+			if detectedLang == "" {
+				detectedLang = detectLanguage(image)
+			}
+
+			status.AvailableDeployments = append(status.AvailableDeployments, AvailableDeployment{
+				Name:             d.Name,
+				Namespace:        d.Namespace,
+				Image:            image,
+				DetectedLanguage: detectedLang,
+				Replicas:         d.Status.ReadyReplicas,
+				Instrumented:     isInstrumented,
+			})
 		}
 	}
 
