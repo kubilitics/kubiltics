@@ -301,14 +301,24 @@ function OTelSetupGuide({ onRefresh }: { onRefresh: () => void }) {
       </p>
 
       <div className="w-full text-left space-y-6 mb-8">
-        <SetupStep number={1} title="Install OpenTelemetry Collector in your cluster">
-          <p>Run these commands from your terminal:</p>
+        <SetupStep number={1} title="Install OpenTelemetry Collector">
+          <p>Deploy the OTel Collector in your cluster:</p>
           <CopyableCode>
-            {`helm repo add open-telemetry https://open-telemetry.github.io/opentelemetry-helm-charts\nhelm install otel-collector open-telemetry/opentelemetry-collector \\\n  --set mode=deployment \\\n  --set config.exporters.otlphttp.endpoint=http://host.docker.internal:8190 \\\n  -n otel-system --create-namespace`}
+            {`helm repo add open-telemetry https://open-telemetry.github.io/opentelemetry-helm-charts\nhelm install otel-collector open-telemetry/opentelemetry-collector \\\n  --set mode=deployment \\\n  -n otel-system --create-namespace`}
           </CopyableCode>
         </SetupStep>
 
-        <SetupStep number={2} title="Instrument your applications">
+        <SetupStep number={2} title="Configure the collector to export to Kubilitics">
+          <p>Set the OTLP exporter endpoint to your machine&apos;s IP where Kubilitics is running:</p>
+          <CopyableCode>
+            {`# Find your machine's IP (the host running Kubilitics):\nhostname -I   # Linux\nipconfig getifaddr en0   # macOS\n\n# Then configure the collector:\nhelm upgrade otel-collector open-telemetry/opentelemetry-collector \\\n  --set config.exporters.otlphttp.endpoint=http://<YOUR_IP>:8190 \\\n  -n otel-system`}
+          </CopyableCode>
+          <p className="text-xs text-muted-foreground/70 mt-1">
+            Replace <code className="bg-muted px-1 rounded text-[11px]">&lt;YOUR_IP&gt;</code> with your machine&apos;s network IP (e.g. 192.168.1.5)
+          </p>
+        </SetupStep>
+
+        <SetupStep number={3} title="Instrument your applications">
           <p>Add these environment variables to your deployment manifests:</p>
           <CopyableCode>
             {`OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector.otel-system:4317\nOTEL_SERVICE_NAME=your-service-name`}
@@ -321,7 +331,7 @@ function OTelSetupGuide({ onRefresh }: { onRefresh: () => void }) {
           </p>
         </SetupStep>
 
-        <SetupStep number={3} title="Traces appear automatically">
+        <SetupStep number={4} title="Traces appear automatically">
           <p>
             Once configured, traces flow from your apps → collector → Kubilitics.
             They will appear here within seconds.
