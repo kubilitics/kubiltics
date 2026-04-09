@@ -59,24 +59,8 @@ func BuildSnapshot(res *ClusterResources, hasIstio bool, virtualServices, destin
 	inferSelectorDeps(nodes, forward, reverse, &edges,
 		res.Services, res.Pods, podOwners)
 
-	// Env var references to services
-	inferEnvVarDeps(nodes, forward, reverse, &edges,
-		res.Pods, podOwners, res.Services)
-
-	// Volume mount deps: ConfigMap, Secret, PVC
-	inferVolumeMountDeps(nodes, forward, reverse, &edges,
-		res.Deployments, res.StatefulSets, res.DaemonSets)
-
 	// Ingress -> Service
 	inferIngressDeps(nodes, forward, reverse, &edges, res.Ingresses)
-
-	// NetworkPolicy -> workloads
-	inferNetworkPolicyDeps(nodes, forward, reverse, &edges,
-		res.NetworkPolicies, res.Pods, podOwners)
-
-	// Istio CRDs
-	inferIstioDeps(nodes, forward, reverse, &edges,
-		virtualServices, destinationRules, hasIstio)
 
 	// Build PodOwners: pod key → ultimate workload owner key
 	// Resolves RS → Deployment chain via the reverse adjacency
