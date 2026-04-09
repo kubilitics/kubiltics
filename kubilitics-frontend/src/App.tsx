@@ -1,4 +1,4 @@
-import { Suspense, lazy, useState, useEffect, type ReactNode } from "react";
+import { Suspense, lazy, useState, useEffect, useCallback, type ReactNode } from "react";
 import { useAppZoom } from "@/hooks/useAppZoom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -232,9 +232,11 @@ const queryClient = new QueryClient({
 // Restore activeCluster from backend when currentClusterId is persisted (e.g. after refresh).
 // So the user stays on the current URL instead of being sent to "/".
 //
-// Always restore the persisted cluster ID regardless of how many clusters are registered.
-// The user already made a choice — respect it. This prevents the jarring experience of
-// being sent to the connect page on every refresh when multiple clusters exist.
+// Headlamp-style cluster sync: always fetch cluster list from backend on startup.
+// If persisted currentClusterId matches a backend cluster, restore it.
+// If not (stale/deleted), auto-select the first available cluster.
+// If no clusters exist, show the connect page.
+// Polls every 30s so external changes (CLI, API) propagate without refresh.
 function useRestoreClusterFromBackend() {
   const { activeCluster, setActiveCluster, setClusters, setDemo } = useClusterStore();
   const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
@@ -244,52 +246,64 @@ function useRestoreClusterFromBackend() {
   const [restoreAttempted, setRestoreAttempted] = useState(false);
   const [restoreFailed, setRestoreFailed] = useState(false);
 
-  useEffect(() => {
-    if (activeCluster != null || restoreAttempted || !currentClusterId || !isBackendConfigured) {
-      if (activeCluster == null && restoreAttempted && currentClusterId) setRestoreFailed(true);
-      return;
-    }
+  // Core sync function — fetches cluster list and reconciles with store
+  const syncClusters = useCallback(async (isInitial: boolean) => {
     const baseUrl = getEffectiveBackendBaseUrl(backendBaseUrl);
-    if (!baseUrl) {
-      setRestoreAttempted(true);
-      setRestoreFailed(true);
+    if (!baseUrl || !isBackendConfigured) {
+      if (isInitial) setRestoreFailed(true);
       return;
     }
-    setRestoreAttempted(true);
-    Promise.all([lazyBackendApi(), lazyAdapter()])
-      .then(([{ getClusters }, { backendClusterToCluster }]) =>
-        getClusters(baseUrl).then((list) => {
-          const connectedClusters = list.map(backendClusterToCluster);
-          setClusters(connectedClusters);
 
-          // Try to restore the persisted cluster; if it was deleted, fall back to first available
-          const backendCluster = list.find((c) => c.id === currentClusterId);
-          const target = backendCluster ?? list[0];
-          if (!target) {
-            setRestoreFailed(true);
-            return;
-          }
-          // If we fell back to a different cluster, update the persisted ID
-          if (!backendCluster && target) {
-            setCurrentClusterId(target.id);
-          }
-          const connectedCluster = backendClusterToCluster(target);
-          setActiveCluster(connectedCluster);
-          setDemo(false);
-        })
-      )
-      .catch(() => setRestoreFailed(true));
-  }, [
-    activeCluster,
-    currentClusterId,
-    backendBaseUrl,
-    isBackendConfigured,
-    restoreAttempted,
-    setClusters,
-    setActiveCluster,
-    setCurrentClusterId,
-    setDemo,
-  ]);
+    try {
+      const [{ getClusters }, { backendClusterToCluster }] = await Promise.all([
+        lazyBackendApi(),
+        lazyAdapter(),
+      ]);
+      const list = await getClusters(baseUrl);
+      const connectedClusters = list.map(backendClusterToCluster);
+      setClusters(connectedClusters);
+
+      // Determine which cluster to activate
+      const currentActive = useClusterStore.getState().activeCluster;
+      const storedId = useBackendConfigStore.getState().currentClusterId;
+
+      // If we already have an active cluster that still exists in the list, keep it
+      if (currentActive && list.some((c) => c.id === currentActive.id)) {
+        return;
+      }
+
+      // Try persisted ID first, then fall back to first available
+      const target = list.find((c) => c.id === storedId) ?? list[0];
+      if (!target) {
+        if (isInitial) setRestoreFailed(true);
+        return;
+      }
+
+      // Update persisted ID if it changed
+      if (target.id !== storedId) {
+        setCurrentClusterId(target.id);
+      }
+
+      setActiveCluster(backendClusterToCluster(target));
+      setDemo(false);
+    } catch {
+      if (isInitial) setRestoreFailed(true);
+    }
+  }, [backendBaseUrl, isBackendConfigured, setClusters, setActiveCluster, setCurrentClusterId, setDemo]);
+
+  // Initial sync on mount
+  useEffect(() => {
+    if (restoreAttempted || !isBackendConfigured) return;
+    setRestoreAttempted(true);
+    syncClusters(true);
+  }, [isBackendConfigured, restoreAttempted, syncClusters]);
+
+  // Poll every 30s to pick up external changes (cluster add/delete via API/CLI)
+  useEffect(() => {
+    if (!isBackendConfigured) return;
+    const interval = setInterval(() => syncClusters(false), 30_000);
+    return () => clearInterval(interval);
+  }, [isBackendConfigured, syncClusters]);
 
   return { restoreAttempted, restoreFailed };
 }
