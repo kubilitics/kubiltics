@@ -382,11 +382,11 @@ export function BlastRadiusTab({ kind, namespace, name }: BlastRadiusTabProps) {
       {/* 1. Criticality Banner */}
       {hasBlastData && blastData && (
         <CriticalityBanner
-          criticalityScore={blastData.criticality_score}
-          criticalityLevel={blastData.criticality_level}
-          blastRadiusPercent={blastData.blast_radius_percent}
-          totalAffected={blastData.total_affected}
-          affectedNamespaces={blastData.affected_namespaces}
+          criticalityScore={blastData.criticalityScore}
+          criticalityLevel={blastData.criticalityLevel}
+          blastRadiusPercent={blastData.blastRadiusPercent}
+          totalAffected={blastData.totalAffected}
+          affectedNamespaces={blastData.affectedNamespaces}
           targetName={targetName}
         />
       )}
@@ -394,13 +394,13 @@ export function BlastRadiusTab({ kind, namespace, name }: BlastRadiusTabProps) {
       {/* 2. Risk Indicator Cards */}
       {hasBlastData && blastData && (
         <RiskIndicatorCards
-          isSPOF={blastData.is_spof}
-          blastRadiusPercent={blastData.blast_radius_percent}
-          criticalityLevel={blastData.criticality_level}
-          fanIn={blastData.fan_in}
-          fanOut={blastData.fan_out}
-          affectedNamespaces={blastData.affected_namespaces}
-          replicaCount={blastData.replica_count}
+          isSPOF={blastData.isSPOF}
+          blastRadiusPercent={blastData.blastRadiusPercent}
+          criticalityLevel={blastData.criticalityLevel}
+          fanIn={blastData.fanIn}
+          fanOut={blastData.fanOut}
+          affectedNamespaces={blastData.affectedNamespaces}
+          replicaCount={blastData.replicaCount}
         />
       )}
 
@@ -462,7 +462,7 @@ export function BlastRadiusTab({ kind, namespace, name }: BlastRadiusTabProps) {
               'bg-white dark:bg-slate-900',
             )}
           >
-            <RiskPanel risks={blastData.risk_indicators ?? []} />
+            <RiskPanel risks={blastData.riskIndicators ?? []} />
           </div>
         </div>
       )}

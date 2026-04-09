@@ -364,9 +364,7 @@ export interface ContainerFileEntry {
   modified: string;
 }
 
-// ── Blast Radius ─────────────────────────────────────────────────────────
-
-// --- Cluster-Wide Blast Radius (V2) ---
+// ---- Blast Radius Types (v2 — camelCase) ----
 
 export interface ResourceRef {
   kind: string;
@@ -374,27 +372,134 @@ export interface ResourceRef {
   namespace: string;
 }
 
+export interface ScoringFactor {
+  name: string;
+  value: string;
+  effect: number;
+  note: string;
+}
+
+export interface SubScoreDetail {
+  score: number;
+  factors: ScoringFactor[];
+  source?: string;
+  confidence?: string;
+}
+
+export interface SubScores {
+  resilience: SubScoreDetail;
+  exposure: SubScoreDetail;
+  recovery: SubScoreDetail;
+  impact: SubScoreDetail;
+}
+
+export interface ScoreBreakdown {
+  resilience: SubScoreDetail;
+  exposure: SubScoreDetail;
+  recovery: SubScoreDetail;
+  impact: SubScoreDetail;
+  overall: number;
+  level: string;
+}
+
+export interface ImpactSummary {
+  brokenCount: number;
+  degradedCount: number;
+  selfHealingCount: number;
+  totalWorkloads: number;
+  capacityNotes: string[];
+}
+
+export interface ServiceImpact {
+  service: ResourceRef;
+  classification: 'broken' | 'degraded' | 'self-healing';
+  totalEndpoints: number;
+  remainingEndpoints: number;
+  threshold: number;
+  thresholdSource: string;
+  note: string;
+}
+
+export interface IngressImpact {
+  ingress: ResourceRef;
+  classification: string;
+  host: string;
+  backendService: string;
+  note: string;
+}
+
+export interface ConsumerImpact {
+  workload: ResourceRef;
+  classification: string;
+  dependsOn: string;
+  note: string;
+}
+
+export interface ServiceImpactAudit {
+  service: string;
+  totalEndpoints: number;
+  lostEndpoints: number;
+  remainingPercent: number;
+  threshold: number;
+  thresholdSource: string;
+  classification: string;
+}
+
+export interface AuditTrail {
+  timestamp: string;
+  targetResource: ResourceRef;
+  failureMode: string;
+  graphStalenessMs: number;
+  traceDataAgeMs?: number;
+  lostPods: ResourceRef[];
+  serviceImpacts: ServiceImpactAudit[];
+  ingressImpacts: IngressImpact[];
+  consumerImpacts?: ConsumerImpact[];
+  scoreBreakdown: ScoreBreakdown;
+  clusterWorkloadCount: number;
+  coverageLevel: string;
+}
+
+export interface Remediation {
+  type: string;
+  description: string;
+  priority: 'critical' | 'high' | 'medium' | 'low';
+  impact: string;
+}
+
 export interface BlastRadiusResult {
-  target_resource: ResourceRef;
-  criticality_score: number;
-  criticality_level: 'critical' | 'high' | 'medium' | 'low';
-  blast_radius_percent: number;
-  fan_in: number;
-  fan_out: number;
-  total_affected: number;
-  affected_namespaces: number;
-  is_spof: boolean;
-  has_hpa: boolean;
-  has_pdb: boolean;
-  is_ingress_exposed: boolean;
-  ingress_hosts?: string[];
-  replica_count: number;
+  targetResource: ResourceRef;
+  failureMode: string;
+  blastRadiusPercent: number;
+  criticalityScore: number;
+  criticalityLevel: 'critical' | 'high' | 'medium' | 'low';
+  subScores: SubScores;
+  impactSummary: ImpactSummary;
+  affectedServices: ServiceImpact[];
+  affectedIngresses?: IngressImpact[];
+  affectedConsumers?: ConsumerImpact[];
+  scoreBreakdown: ScoreBreakdown;
+  verdict: string;
+  auditTrail?: AuditTrail;
+  coverageLevel: string;
+  coverageNote?: string;
+  replicaCount: number;
+  isSPOF: boolean;
+  hasHPA: boolean;
+  hasPDB: boolean;
+  isIngressExposed: boolean;
+  ingressHosts: string[];
+  remediations: Remediation[];
+  fanIn: number;
+  fanOut: number;
+  totalAffected: number;
+  affectedNamespaces: number;
   waves: BlastWave[];
-  dependency_chain: BlastDependencyEdge[];
-  risk_indicators: RiskIndicator[];
-  graph_node_count: number;
-  graph_edge_count: number;
-  graph_staleness_ms: number;
+  dependencyChain: BlastDependencyEdge[];
+  riskIndicators: RiskIndicator[];
+  graphNodeCount: number;
+  graphEdgeCount: number;
+  graphStalenessMs: number;
 }
 
 export interface BlastWave {
@@ -407,14 +512,14 @@ export interface AffectedResource {
   name: string;
   namespace: string;
   impact: 'direct' | 'transitive';
-  wave_depth: number;
-  failure_path: PathHop[];
+  waveDepth: number;
+  failurePath: PathHop[];
 }
 
 export interface PathHop {
   from: ResourceRef;
   to: ResourceRef;
-  edge_type: string;
+  edgeType: string;
   detail: string;
 }
 
@@ -433,21 +538,21 @@ export interface BlastDependencyEdge {
 
 export interface GraphStatus {
   ready: boolean;
-  node_count: number;
-  edge_count: number;
-  namespace_count: number;
-  last_rebuild_ms: number;
-  staleness_ms: number;
-  rebuild_count: number;
+  nodeCount: number;
+  edgeCount: number;
+  namespaceCount: number;
+  lastRebuildMs: number;
+  stalenessMs: number;
+  rebuildCount: number;
   error?: string;
 }
 
 export interface BlastRadiusSummaryEntry {
   resource: ResourceRef;
-  criticality_score: number;
-  criticality_level: string;
-  blast_radius_percent: number;
-  fan_in: number;
-  is_spof: boolean;
-  affected_namespaces: number;
+  criticalityScore: number;
+  criticalityLevel: string;
+  blastRadiusPercent: number;
+  fanIn: number;
+  isSPOF: boolean;
+  affectedNamespaces: number;
 }

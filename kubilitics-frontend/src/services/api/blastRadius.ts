@@ -21,13 +21,15 @@ export async function getBlastRadius(
   // Defensive: backend Go serializes nil slices as "null" in JSON.
   // Normalize all array fields to empty arrays to prevent frontend crashes.
   result.waves = result.waves ?? [];
-  result.dependency_chain = result.dependency_chain ?? [];
-  result.risk_indicators = result.risk_indicators ?? [];
-  result.ingress_hosts = result.ingress_hosts ?? [];
+  result.dependencyChain = result.dependencyChain ?? [];
+  result.riskIndicators = result.riskIndicators ?? [];
+  result.ingressHosts = result.ingressHosts ?? [];
+  result.remediations = result.remediations ?? [];
+  result.affectedServices = result.affectedServices ?? [];
   for (const wave of result.waves) {
     wave.resources = wave.resources ?? [];
     for (const res of wave.resources) {
-      res.failure_path = res.failure_path ?? [];
+      res.failurePath = res.failurePath ?? [];
     }
   }
   return result;

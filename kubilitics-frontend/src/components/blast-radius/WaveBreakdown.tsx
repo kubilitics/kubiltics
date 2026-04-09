@@ -48,7 +48,7 @@ function FailurePath({ hops }: { hops: PathHop[] }) {
           <span className="font-mono">
             {hop.to.kind}/{hop.to.name}
           </span>
-          <span className="text-slate-400 dark:text-slate-600 ml-1">({hop.edge_type})</span>
+          <span className="text-slate-400 dark:text-slate-600 ml-1">({hop.edgeType})</span>
         </div>
       ))}
     </div>
@@ -65,7 +65,7 @@ function ResourceRow({
   onResourceClick: (kind: string, namespace: string, name: string) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
-  const hasPath = resource.failure_path && resource.failure_path.length > 0;
+  const hasPath = resource.failurePath && resource.failurePath.length > 0;
 
   return (
     <div className="group">
@@ -121,7 +121,7 @@ function ResourceRow({
             transition={{ duration: 0.2 }}
             className="overflow-hidden"
           >
-            <FailurePath hops={resource.failure_path} />
+            <FailurePath hops={resource.failurePath} />
           </motion.div>
         )}
       </AnimatePresence>
