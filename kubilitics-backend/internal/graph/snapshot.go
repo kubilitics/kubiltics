@@ -279,7 +279,7 @@ func (s *GraphSnapshot) computeNamespaceDeletion(target models.ResourceRef) (*mo
 	return &models.BlastRadiusResult{
 		TargetResource:     target,
 		CriticalityScore:   totalScore,
-		CriticalityLevel:   criticalityLevel(totalScore),
+		CriticalityLevel:   criticalityLevelV2(totalScore),
 		BlastRadiusPercent: 100.0, // namespace deletion affects everything in it
 		FailureMode:        FailureModeNamespaceDeletion,
 		TotalAffected:      allAffected,
@@ -634,7 +634,7 @@ func (s *GraphSnapshot) GetSummary(limit int) []models.BlastRadiusSummaryEntry {
 		result = append(result, models.BlastRadiusSummaryEntry{
 			Resource:           ref,
 			CriticalityScore:   e.score,
-			CriticalityLevel:   criticalityLevel(e.score),
+			CriticalityLevel:   criticalityLevelV2(e.score),
 			BlastRadiusPercent: blastPct,
 			FanIn:              fanIn,
 			IsSPOF:             isSPOF,
