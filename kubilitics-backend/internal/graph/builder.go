@@ -1,6 +1,7 @@
 package graph
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/kubilitics/kubilitics-backend/internal/models"
@@ -31,12 +32,16 @@ type ClusterResources struct {
 	PVCs             []corev1.PersistentVolumeClaim
 	HPAs             []autoscalingv1.HorizontalPodAutoscaler
 	PDBs             []policyv1.PodDisruptionBudget
+	Endpoints        []corev1.Endpoints
 }
 
 // BuildSnapshot constructs a complete GraphSnapshot from cluster resources.
 // It runs all inference functions, registers every resource as a node,
 // computes PageRank and criticality scores, and returns the immutable snapshot.
 func BuildSnapshot(res *ClusterResources, hasIstio bool, virtualServices, destinationRules []map[string]interface{}) *GraphSnapshot {
+	if res == nil {
+		res = &ClusterResources{}
+	}
 	start := time.Now()
 
 	nodes := make(map[string]models.ResourceRef)
@@ -72,6 +77,28 @@ func BuildSnapshot(res *ClusterResources, hasIstio bool, virtualServices, destin
 	// Istio CRDs
 	inferIstioDeps(nodes, forward, reverse, &edges,
 		virtualServices, destinationRules, hasIstio)
+
+	// Build PodOwners: pod key → ultimate workload owner key
+	// Resolves RS → Deployment chain via the reverse adjacency
+	podOwnersMap := make(map[string]string)
+	for podKey, ownerRef := range podOwners {
+		ownerKey := refKey(ownerRef)
+		// If owner is a ReplicaSet, check if it's owned by a Deployment
+		if ownerRef.Kind == "ReplicaSet" {
+			for grandOwnerKey := range reverse[ownerKey] {
+				grandOwner := nodes[grandOwnerKey]
+				if grandOwner.Kind == "Deployment" {
+					podOwnersMap[podKey] = grandOwnerKey
+					break
+				}
+			}
+			if _, resolved := podOwnersMap[podKey]; !resolved {
+				podOwnersMap[podKey] = ownerKey // RS with no Deployment parent
+			}
+		} else {
+			podOwnersMap[podKey] = ownerKey
+		}
+	}
 
 	// --- Step 2: Register ALL resources as first-class nodes (even without edges) ---
 
@@ -212,6 +239,15 @@ func BuildSnapshot(res *ClusterResources, hasIstio bool, virtualServices, destin
 		}
 	}
 
+	// --- Step 5b: Build Service -> ready endpoints map ---
+	serviceEndpoints := make(map[string][]corev1.EndpointAddress)
+	for _, ep := range res.Endpoints {
+		svcKey := fmt.Sprintf("Service/%s/%s", ep.Namespace, ep.Name)
+		for _, subset := range ep.Subsets {
+			serviceEndpoints[svcKey] = append(serviceEndpoints[svcKey], subset.Addresses...)
+		}
+	}
+
 	// --- Step 6: Count total workloads ---
 
 	totalWorkloads := len(res.Deployments) + len(res.StatefulSets) + len(res.DaemonSets) +
@@ -231,6 +267,10 @@ func BuildSnapshot(res *ClusterResources, hasIstio bool, virtualServices, destin
 		NodeHasHPA:   nodeHasHPA,
 		NodeHasPDB:   nodeHasPDB,
 		NodeIngress:  nodeIngress,
+
+		PodOwners:        podOwnersMap,
+		ServiceEndpoints: serviceEndpoints,
+		PDBs:             res.PDBs,
 
 		TotalWorkloads: totalWorkloads,
 		BuiltAt:        time.Now().UnixMilli(),

@@ -73,6 +73,7 @@ func (e *ClusterGraphEngine) Start(ctx context.Context) {
 	// Core
 	_, _ = e.factory.Core().V1().Pods().Informer().AddEventHandler(handler)
 	_, _ = e.factory.Core().V1().Services().Informer().AddEventHandler(handler)
+	_, _ = e.factory.Core().V1().Endpoints().Informer().AddEventHandler(handler)
 	_, _ = e.factory.Core().V1().ConfigMaps().Informer().AddEventHandler(handler)
 	_, _ = e.factory.Core().V1().Secrets().Informer().AddEventHandler(handler)
 	_, _ = e.factory.Core().V1().ServiceAccounts().Informer().AddEventHandler(handler)
@@ -200,6 +201,15 @@ func (e *ClusterGraphEngine) collectResources() *ClusterResources {
 	}
 	for _, s := range services {
 		res.Services = append(res.Services, *s)
+	}
+
+	endpointsList, err := e.factory.Core().V1().Endpoints().Lister().List(sel)
+	if err != nil {
+		e.log.Error("failed to list endpoints", "error", err)
+		return nil
+	}
+	for _, ep := range endpointsList {
+		res.Endpoints = append(res.Endpoints, *ep)
 	}
 
 	configMaps, err := e.factory.Core().V1().ConfigMaps().Lister().List(sel)
