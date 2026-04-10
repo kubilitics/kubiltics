@@ -46,8 +46,24 @@ func (m *CrossNamespaceDNSMatcher) Match(ctx context.Context, bundle *v2.Resourc
 			return
 		}
 		for dns, svcNodeID := range svcByDNS {
-			if !strings.Contains(value, dns) {
+			idx := strings.Index(value, dns)
+			if idx < 0 {
 				continue
+			}
+			// Check left boundary: must be start of string or non-alphanumeric/non-hyphen
+			if idx > 0 {
+				ch := value[idx-1]
+				if (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9') || ch == '-' {
+					continue
+				}
+			}
+			// Check right boundary: must be end of string or non-alphanumeric/non-hyphen
+			endIdx := idx + len(dns)
+			if endIdx < len(value) {
+				ch := value[endIdx]
+				if (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9') || ch == '-' {
+					continue
+				}
 			}
 			// Extract the service's namespace from the DNS pattern
 			parts := strings.SplitN(dns, ".", 3)
