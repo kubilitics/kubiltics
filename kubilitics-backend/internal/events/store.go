@@ -235,6 +235,37 @@ func (s *Store) GetCausalChain(ctx context.Context, clusterID, insightID string)
 	return &chain, nil
 }
 
+// GetActiveCausalChains returns all causal chains with status 'active' for the
+// given cluster. Rows whose chain_json cannot be unmarshalled are silently
+// skipped so that a single corrupt row cannot block the rest.
+func (s *Store) GetActiveCausalChains(ctx context.Context, clusterID string) ([]CausalChain, error) {
+	rows, err := s.db.QueryContext(ctx,
+		`SELECT chain_json FROM causal_chains WHERE cluster_id = ? AND status = 'active'`,
+		clusterID)
+	if err != nil {
+		return nil, fmt.Errorf("get active causal chains (cluster=%s): %w", clusterID, err)
+	}
+	defer rows.Close()
+
+	var chains []CausalChain
+	for rows.Next() {
+		var raw string
+		if err := rows.Scan(&raw); err != nil {
+			return nil, fmt.Errorf("scan causal chain row: %w", err)
+		}
+		var chain CausalChain
+		if err := json.Unmarshal([]byte(raw), &chain); err != nil {
+			// Skip corrupt entries.
+			continue
+		}
+		chains = append(chains, chain)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate causal chain rows: %w", err)
+	}
+	return chains, nil
+}
+
 // ---------------------------------------------------------------------------
 // Wide Events
 // ---------------------------------------------------------------------------
