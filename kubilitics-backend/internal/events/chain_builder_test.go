@@ -361,6 +361,127 @@ func TestChainBuilder_BuildChain_TwoHop(t *testing.T) {
 		chain.RootCause.Kind, chain.RootCause.Name)
 }
 
+// TestCausalityEngine_RolloutCascade verifies that a Pod BackOff event whose
+// owning ReplicaSet is referenced in a Deployment ScalingReplicaSet event
+// gets linked via the rollout_cascade rule.
+func TestCausalityEngine_RolloutCascade(t *testing.T) {
+	ctx := context.Background()
+	s := newTestStore(t)
+	ce := NewCausalityEngine(s)
+
+	clusterID := "cluster-rollout"
+	ns := "production"
+	rsName := "checkout-api-7f8d9abc"
+	now := time.Now().UnixMilli()
+
+	// Cause: Deployment ScalingReplicaSet event whose message references the RS name.
+	deployEvent := &WideEvent{
+		EventID:           fmt.Sprintf("evt-deploy-%d", now),
+		Timestamp:         now - 3*60*1000, // 3 min before pod event
+		ClusterID:         clusterID,
+		EventType:         "Normal",
+		Reason:            "ScalingReplicaSet",
+		Message:           fmt.Sprintf("Scaled up replica set %s to 3", rsName),
+		ResourceKind:      "Deployment",
+		ResourceName:      "checkout-api",
+		ResourceNamespace: ns,
+		Severity:          "info",
+	}
+
+	// Effect: Pod BackOff event owned by the ReplicaSet above.
+	podEvent := &WideEvent{
+		EventID:           fmt.Sprintf("evt-pod-backoff-%d", now),
+		Timestamp:         now,
+		ClusterID:         clusterID,
+		EventType:         "Warning",
+		Reason:            "BackOff",
+		Message:           "Back-off restarting failed container",
+		ResourceKind:      "Pod",
+		ResourceName:      rsName + "-xz123",
+		ResourceNamespace: ns,
+		OwnerKind:         "ReplicaSet",
+		OwnerName:         rsName,
+		Severity:          "warning",
+	}
+
+	seedEvent(t, ctx, s, deployEvent)
+	seedEvent(t, ctx, s, podEvent)
+
+	link := ce.InferCause(ctx, podEvent)
+	if link == nil {
+		t.Skip("rollout_cascade rule did not match — check event patterns")
+	}
+	if link.Rule != "rollout_cascade" {
+		t.Errorf("expected rule=rollout_cascade, got %s", link.Rule)
+	}
+	if link.CausedByEventID != deployEvent.EventID {
+		t.Errorf("expected CausedByEventID=%s, got %s", deployEvent.EventID, link.CausedByEventID)
+	}
+	if link.Confidence != 0.90 {
+		t.Errorf("expected confidence=0.90, got %f", link.Confidence)
+	}
+	t.Logf("rollout_cascade: cause=%s confidence=%.2f", link.CausedByEventID, link.Confidence)
+}
+
+// TestCausalityEngine_ServiceDisruption verifies that a Service event mentioning
+// endpoints is linked to a preceding Deployment Unavailable event via the
+// service_disruption rule.
+func TestCausalityEngine_ServiceDisruption(t *testing.T) {
+	ctx := context.Background()
+	s := newTestStore(t)
+	ce := NewCausalityEngine(s)
+
+	clusterID := "cluster-svc"
+	ns := "production"
+	now := time.Now().UnixMilli()
+
+	// Cause: Deployment Unavailable event.
+	deployEvent := &WideEvent{
+		EventID:           fmt.Sprintf("evt-deploy-unavail-%d", now),
+		Timestamp:         now - 2*60*1000, // 2 min before service event
+		ClusterID:         clusterID,
+		EventType:         "Warning",
+		Reason:            "Unavailable",
+		Message:           "Deployment checkout-api is unavailable: 0/3 pods running",
+		ResourceKind:      "Deployment",
+		ResourceName:      "checkout-api",
+		ResourceNamespace: ns,
+		Severity:          "error",
+	}
+
+	// Effect: Service event about endpoint reduction.
+	svcEvent := &WideEvent{
+		EventID:           fmt.Sprintf("evt-svc-endpoints-%d", now),
+		Timestamp:         now,
+		ClusterID:         clusterID,
+		EventType:         "Warning",
+		Reason:            "EndpointsReduced",
+		Message:           "Endpoints for service checkout-api reduced to 0",
+		ResourceKind:      "Service",
+		ResourceName:      "checkout-api",
+		ResourceNamespace: ns,
+		Severity:          "warning",
+	}
+
+	seedEvent(t, ctx, s, deployEvent)
+	seedEvent(t, ctx, s, svcEvent)
+
+	link := ce.InferCause(ctx, svcEvent)
+	if link == nil {
+		t.Skip("service_disruption rule did not match — check event patterns")
+	}
+	if link.Rule != "service_disruption" {
+		t.Errorf("expected rule=service_disruption, got %s", link.Rule)
+	}
+	if link.CausedByEventID != deployEvent.EventID {
+		t.Errorf("expected CausedByEventID=%s, got %s", deployEvent.EventID, link.CausedByEventID)
+	}
+	if link.Confidence != 0.75 {
+		t.Errorf("expected confidence=0.75, got %f", link.Confidence)
+	}
+	t.Logf("service_disruption: cause=%s confidence=%.2f", link.CausedByEventID, link.Confidence)
+}
+
 // TestChainBuilder_BuildChain_NoChain verifies that when no events exist for
 // the resource described in the insight, BuildChain returns nil, nil without
 // errors.

@@ -70,6 +70,11 @@ func (ce *CausalityEngine) InferCause(ctx context.Context, event *WideEvent) *Ca
 		ce.ruleScaleDownCausesSPOF,   // scaling
 		ce.ruleQuotaCausesScheduling, // quota
 	}
+	transitiveRules := []func(context.Context, *WideEvent) *CausalLink{
+		ce.ruleRolloutCascade,    // Deployment ScalingReplicaSet → Pod BackOff/Failed
+		ce.ruleOwnerPropagation,  // child resource failing → owner resource degraded
+		ce.ruleServiceDisruption, // Deployment/RS degraded → Service endpoints reduced
+	}
 
 	// Run node-level rules first; if matched, skip pod-level for this event.
 	for _, rule := range nodeRules {
@@ -85,6 +90,12 @@ func (ce *CausalityEngine) InferCause(ctx context.Context, event *WideEvent) *Ca
 		}
 	}
 	for _, rule := range otherRules {
+		if link := rule(ctx, event); link != nil {
+			ce.recordAssignment(event)
+			return link
+		}
+	}
+	for _, rule := range transitiveRules {
 		if link := rule(ctx, event); link != nil {
 			ce.recordAssignment(event)
 			return link
@@ -429,6 +440,151 @@ func (ce *CausalityEngine) ruleQuotaCausesScheduling(ctx context.Context, event 
 		Confidence:      0.85,
 		Rule:            "quota_causes_scheduling",
 	}
+}
+
+// ---------------------------------------------------------------------------
+// Transitive ownership rules — enable multi-hop chain walking
+// ---------------------------------------------------------------------------
+
+// Rule: Rollout cascade — Deployment ScalingReplicaSet → Pod BackOff/Failed
+// A Pod BackOff or Failed event whose owner is a ReplicaSet is linked to the
+// Deployment ScalingReplicaSet event that triggered the rollout, if the
+// Deployment event message contains the ReplicaSet name (OwnerName).
+func (ce *CausalityEngine) ruleRolloutCascade(ctx context.Context, event *WideEvent) *CausalLink {
+	if event.ResourceKind != "Pod" {
+		return nil
+	}
+	if event.Reason != "BackOff" && event.Reason != "Failed" {
+		return nil
+	}
+	if event.OwnerKind != "ReplicaSet" || event.OwnerName == "" {
+		return nil
+	}
+
+	rsName := event.OwnerName
+	since := event.Timestamp - (10 * time.Minute).Milliseconds()
+
+	// Query Deployment ScalingReplicaSet events in the same namespace within 10 min.
+	candidates, err := ce.store.QueryEvents(ctx, EventQuery{
+		ClusterID:    event.ClusterID,
+		Namespace:    event.ResourceNamespace,
+		ResourceKind: "Deployment",
+		Reason:       "ScalingReplicaSet",
+		Since:        &since,
+		Until:        &event.Timestamp,
+		Limit:        20,
+	})
+	if err != nil {
+		return nil
+	}
+
+	// Find a Deployment event whose message references this ReplicaSet.
+	for i := range candidates {
+		if strings.Contains(candidates[i].Message, rsName) {
+			return &CausalLink{
+				CausedByEventID: candidates[i].EventID,
+				Confidence:      0.90,
+				Rule:            "rollout_cascade",
+			}
+		}
+	}
+	return nil
+}
+
+// Rule: Owner propagation — child resource failing → owner resource degraded
+// A ReplicaSet or Deployment event signalling unavailability is linked to a
+// preceding child event whose OwnerKind/OwnerName matches this resource.
+func (ce *CausalityEngine) ruleOwnerPropagation(ctx context.Context, event *WideEvent) *CausalLink {
+	var childKind string
+	switch event.ResourceKind {
+	case "ReplicaSet":
+		childKind = "Pod"
+	case "Deployment":
+		childKind = "ReplicaSet"
+	default:
+		return nil
+	}
+
+	switch event.Reason {
+	case "Unavailable", "FailedCreate", "MinimumReplicasUnavailable":
+		// proceed
+	default:
+		return nil
+	}
+
+	since := event.Timestamp - (5 * time.Minute).Milliseconds()
+
+	// Query child events in the 5 min before this event.
+	children, err := ce.store.QueryEvents(ctx, EventQuery{
+		ClusterID:    event.ClusterID,
+		Namespace:    event.ResourceNamespace,
+		ResourceKind: childKind,
+		Since:        &since,
+		Until:        &event.Timestamp,
+		Limit:        50,
+	})
+	if err != nil {
+		return nil
+	}
+
+	// Find a child event whose OwnerKind+OwnerName match this resource.
+	for _, childEvent := range children {
+		if childEvent.OwnerKind == event.ResourceKind && childEvent.OwnerName == event.ResourceName {
+			return &CausalLink{
+				CausedByEventID: childEvent.EventID,
+				Confidence:      0.80,
+				Rule:            "owner_propagation",
+			}
+		}
+	}
+	return nil
+}
+
+// Rule: Service disruption — Deployment/RS degraded → Service endpoints reduced
+// A Service event mentioning endpoints is linked to a recent Deployment or
+// ReplicaSet event in the same namespace that is degraded/unavailable.
+func (ce *CausalityEngine) ruleServiceDisruption(ctx context.Context, event *WideEvent) *CausalLink {
+	if event.ResourceKind != "Service" {
+		return nil
+	}
+	// Match Service events that mention endpoint changes.
+	hasEndpoint := strings.Contains(event.Reason, "Endpoint") ||
+		strings.Contains(event.Message, "Endpoint") ||
+		strings.Contains(event.Message, "endpoint") ||
+		strings.Contains(event.Message, "Endpoints")
+	if !hasEndpoint {
+		return nil
+	}
+
+	since := event.Timestamp - (5 * time.Minute).Milliseconds()
+
+	// Look for Deployment or ReplicaSet events that are degraded/unavailable.
+	for _, ownerKind := range []string{"Deployment", "ReplicaSet"} {
+		candidates, err := ce.store.QueryEvents(ctx, EventQuery{
+			ClusterID:    event.ClusterID,
+			Namespace:    event.ResourceNamespace,
+			ResourceKind: ownerKind,
+			Since:        &since,
+			Until:        &event.Timestamp,
+			Limit:        20,
+		})
+		if err != nil {
+			continue
+		}
+		for i := range candidates {
+			c := &candidates[i]
+			isDegraded := c.Severity == "error" || c.Severity == "degraded" ||
+				c.Reason == "Unavailable" || c.Reason == "MinimumReplicasUnavailable"
+			if isDegraded {
+				return &CausalLink{
+					CausedByEventID: c.EventID,
+					Confidence:      0.75,
+					Rule:            "service_disruption",
+				}
+			}
+		}
+	}
+	return nil
 }
 
 // ---------------------------------------------------------------------------
