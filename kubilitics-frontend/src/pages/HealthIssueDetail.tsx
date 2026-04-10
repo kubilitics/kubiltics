@@ -127,9 +127,20 @@ function LogsTab({ pod, clusterId, effectiveBaseUrl }: LogsTabProps) {
   }
 
   if (error) {
+    const isNotFound = error.message.includes('404') || error.message.includes('500');
     return (
-      <div className="p-4 text-sm text-destructive">
-        Failed to fetch logs: {error.message}
+      <div className="flex flex-col items-center justify-center h-48 gap-2 text-muted-foreground">
+        <AlertTriangle className="h-8 w-8 text-amber-500" />
+        <p className="text-sm font-medium">
+          {isNotFound
+            ? 'Pod no longer exists or has been recreated'
+            : `Failed to fetch logs: ${error.message}`}
+        </p>
+        {isNotFound && (
+          <p className="text-xs text-center max-w-md">
+            Kubernetes has likely recreated this pod with a new name. Check the current pods in the namespace for the replacement.
+          </p>
+        )}
       </div>
     );
   }
@@ -445,9 +456,11 @@ export default function HealthIssueDetail() {
 
   // Auto-select first pod when data loads
   const pods = investigateData?.pods ?? [];
-  if (pods.length > 0 && !selectedPod) {
-    setSelectedPod(pods[0]);
-  }
+  useEffect(() => {
+    if (pods.length > 0 && !selectedPod) {
+      setSelectedPod(pods[0]);
+    }
+  }, [pods]); // eslint-disable-line react-hooks/exhaustive-deps
 
   /* Loading state */
   if (insightsLoading) {
@@ -638,13 +651,19 @@ export default function HealthIssueDetail() {
                           }}
                         >
                           <td className="px-4 py-3 font-mono text-xs">
-                            <Link
-                              to={`/pods/${pod.namespace}/${pod.name}`}
-                              className="text-primary hover:underline"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              {pod.name}
-                            </Link>
+                            {pod.phase !== 'Unknown' ? (
+                              <Link
+                                to={`/pods/${pod.namespace}/${pod.name}`}
+                                className="text-primary hover:underline"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                {pod.name}
+                              </Link>
+                            ) : (
+                              <span className="text-muted-foreground" title="Pod no longer exists">
+                                {pod.name}
+                              </span>
+                            )}
                           </td>
                           <td className="px-4 py-3 text-muted-foreground">{pod.namespace}</td>
                           <td className="px-4 py-3">

@@ -469,6 +469,13 @@ export default function IntelligenceWorkspace() {
         {topology && <GraphLegend mode={workspace.mode} />}
       </div>
 
+      {/* ── Blast radius error ────────────────────────────────────────── */}
+      {workspace.blastError && !workspace.blastLoading && (
+        <div className="shrink-0 px-4 py-2 bg-amber-900/30 border-t border-amber-500/20 text-amber-300 text-xs flex items-center gap-2">
+          <span>Impact analysis unavailable: {workspace.blastError.message}</span>
+        </div>
+      )}
+
       {/* ── Impact Bar ──────────────────────────────────────────────────── */}
       <ImpactBar
         mode={workspace.mode}
