@@ -20,6 +20,9 @@ func (m *ScalingMatcher) Match(ctx context.Context, bundle *v2.ResourceBundle) (
 	for i := range bundle.HPAs {
 		hpa := &bundle.HPAs[i]
 		ref := hpa.Spec.ScaleTargetRef
+		if ref.Kind == "" && ref.Name == "" {
+			continue
+		}
 		src := v2.NodeID("HorizontalPodAutoscaler", hpa.Namespace, hpa.Name)
 		var tgt string
 		switch ref.Kind {

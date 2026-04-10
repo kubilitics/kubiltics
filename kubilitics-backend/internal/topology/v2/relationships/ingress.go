@@ -42,9 +42,13 @@ func (m *IngressMatcher) Match(ctx context.Context, bundle *v2.ResourceBundle) (
 			for _, path := range rule.HTTP.Paths {
 				if path.Backend.Service != nil {
 					tgt := v2.NodeID("Service", ing.Namespace, path.Backend.Service.Name)
-					label := fmt.Sprintf("routes /%s → :%d", path.Path, path.Backend.Service.Port.Number)
+					var label string
 					if path.Backend.Service.Port.Name != "" {
 						label = fmt.Sprintf("routes /%s → %s", path.Path, path.Backend.Service.Port.Name)
+					} else if path.Backend.Service.Port.Number != 0 {
+						label = fmt.Sprintf("routes /%s → :%d", path.Path, path.Backend.Service.Port.Number)
+					} else {
+						label = fmt.Sprintf("routes /%s", path.Path)
 					}
 					edges = append(edges, v2.TopologyEdge{
 						ID:                   v2.EdgeID(ingID, tgt, "ingress_backend"),

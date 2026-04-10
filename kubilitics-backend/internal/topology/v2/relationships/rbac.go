@@ -20,6 +20,9 @@ func (m *RBACMatcher) Match(ctx context.Context, bundle *v2.ResourceBundle) ([]v
 
 	for i := range bundle.RoleBindings {
 		rb := &bundle.RoleBindings[i]
+		if rb.RoleRef.Name == "" {
+			continue
+		}
 		rbID := v2.NodeID("RoleBinding", rb.Namespace, rb.Name)
 		roleID := v2.NodeID("Role", rb.Namespace, rb.RoleRef.Name)
 		edges = append(edges, v2.TopologyEdge{
@@ -83,6 +86,9 @@ func (m *RBACMatcher) Match(ctx context.Context, bundle *v2.ResourceBundle) ([]v
 	}
 	for i := range bundle.ClusterRoleBindings {
 		crb := &bundle.ClusterRoleBindings[i]
+		if crb.RoleRef.Name == "" {
+			continue
+		}
 		crbID := v2.NodeID("ClusterRoleBinding", "", crb.Name)
 		crID := v2.NodeID("ClusterRole", "", crb.RoleRef.Name)
 		edges = append(edges, v2.TopologyEdge{
