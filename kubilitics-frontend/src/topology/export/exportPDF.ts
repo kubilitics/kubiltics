@@ -117,13 +117,16 @@ export async function exportTopologyPDF(
   // Add captured image
   const img = new Image();
   img.src = pngDataUrl;
-  await new Promise<void>((resolve) => {
-    img.onload = () => {
-      pdf.addImage(pngDataUrl, "PNG", 40, headerHeight, captureWidth, captureHeight);
-      resolve();
-    };
-    img.onerror = () => resolve();
-  });
+  const imageLoaded = await Promise.race([
+    new Promise<boolean>((resolve) => {
+      img.onload = () => resolve(true);
+      img.onerror = () => resolve(false);
+    }),
+    new Promise<boolean>((resolve) => setTimeout(() => resolve(false), 5000)),
+  ]);
+  if (imageLoaded) {
+    pdf.addImage(pngDataUrl, "PNG", 40, headerHeight, captureWidth, captureHeight);
+  }
 
   // Footer
   const nodeCount = viewport.querySelectorAll(".react-flow__node").length;

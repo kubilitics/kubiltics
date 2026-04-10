@@ -335,8 +335,9 @@ function TopologyCanvasInner({
 
     if (!selectedNodeId && highlightNodeIds.length === 0 && !hasDimming && !hasErrorChain && !hasSimulation && !hasDiff) return nodes;
 
+    const highlightSet = new Set(highlightNodeIds);
     return nodes.map((n) => {
-      const isHighlighted = highlightNodeIds.includes(n.id);
+      const isHighlighted = highlightSet.has(n.id);
       const isSelected = n.id === selectedNodeId;
       const isDimmed = hasDimming && !dimmedNodeIds.has(n.id);
       const isInErrorChain = hasErrorChain && errorChainNodeIds.has(n.id) && !isSelected;

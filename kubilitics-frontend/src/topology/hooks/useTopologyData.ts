@@ -214,7 +214,13 @@ export function useTopologyData({
   // Transform to v2 format and apply all filters
   const result = useMemo<{ response: TopologyResponse; wasTruncated: boolean; totalBeforeCap: number; totalUnfiltered: number } | null>(() => {
     if (!graph) return null;
-    const response = transformGraph(graph, clusterId ?? undefined);
+    let response;
+    try {
+      response = transformGraph(graph, clusterId ?? undefined);
+    } catch (err) {
+      console.error('transformGraph failed:', err);
+      return null;
+    }
     const totalUnfiltered = response.nodes.length;
 
     // Layer 0: Progressive disclosure — depth filtering is now handled by the backend.
