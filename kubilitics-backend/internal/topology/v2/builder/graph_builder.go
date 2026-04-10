@@ -62,7 +62,9 @@ func NodesFromBundle(b *v2.ResourceBundle) []v2.TopologyNode {
 	for i := range b.Pods {
 		p := &b.Pods[i]
 		status := "unknown"
-		if p.Status.Phase != "" {
+		if p.DeletionTimestamp != nil {
+			status = "terminating"
+		} else if p.Status.Phase != "" {
 			status = string(p.Status.Phase)
 		}
 		extra := make(map[string]interface{})
