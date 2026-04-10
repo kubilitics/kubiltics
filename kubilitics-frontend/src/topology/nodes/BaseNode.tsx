@@ -1,4 +1,4 @@
-import { memo } from "react";
+import { memo, useCallback } from "react";
 import type { NodeProps } from "@xyflow/react";
 import { Handle, Position } from "@xyflow/react";
 import { formatCPU, formatBytes } from "./nodeUtils";
@@ -36,10 +36,21 @@ export type BaseNodeData = {
  * BaseNode: Default node displayed at zoom 0.30x-1.5x.
  * Card with category header, name, namespace, status badge, and optional metrics.
  */
-function BaseNodeInner({ data }: NodeProps<BaseNodeData>) {
+function BaseNodeInner({ id, data }: NodeProps<BaseNodeData>) {
   const headerBg = categoryHeaderClass(data.category);
   const borderColor = categoryBorderClass(data.category);
   const badge = getStatusBadge(data.status);
+
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      window.dispatchEvent(new CustomEvent('topology-node-activate', { detail: { nodeId: id } }));
+    }
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      window.dispatchEvent(new CustomEvent('topology-node-activate', { detail: { nodeId: null } }));
+    }
+  }, [id]);
 
   return (
     <div
@@ -48,6 +59,7 @@ function BaseNodeInner({ data }: NodeProps<BaseNodeData>) {
       aria-roledescription="topology node"
       aria-label={`${data.kind}: ${data.name}, status ${data.statusReason ?? data.status}${data.namespace ? `, namespace ${data.namespace}` : ""}${data.metrics?.podCount != null ? `, ${data.metrics.readyCount ?? 0} of ${data.metrics.podCount} pods ready` : ""}`}
       tabIndex={0}
+      onKeyDown={handleKeyDown}
     >
       <Handle type="target" position={Position.Left} className="!w-2.5 !h-2.5 !bg-gray-400 dark:!bg-gray-500 !border-white !border-2" />
 
