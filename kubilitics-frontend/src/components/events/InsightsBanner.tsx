@@ -84,13 +84,16 @@ function HighlightedSnippet({ text }: { text: string }) {
 }
 
 function WhyButton({ insight }: { insight: Insight }) {
+  const [enabled, setEnabled] = useState(false);
+  const causalChainQuery = useCausalChain(enabled ? insight.insight_id : null);
   const navigate = useNavigate();
-  const causalChainQuery = useCausalChain(insight.insight_id ?? null);
 
   return (
     <button
+      onMouseEnter={() => setEnabled(true)}
       onClick={(e) => {
         e.stopPropagation();
+        setEnabled(true);
         const chain = causalChainQuery.data;
         if (chain) {
           useCausalChainStore.getState().setActiveChain(chain);
@@ -99,8 +102,7 @@ function WhyButton({ insight }: { insight: Insight }) {
           );
         }
       }}
-      disabled={!causalChainQuery.data}
-      className="text-[10px] font-semibold text-amber-500 hover:text-amber-400 bg-amber-500/10 hover:bg-amber-500/15 px-2 py-0.5 rounded transition-colors disabled:opacity-40"
+      className="text-[10px] font-semibold text-amber-500 hover:text-amber-400 bg-amber-500/10 hover:bg-amber-500/15 px-2 py-0.5 rounded transition-colors"
     >
       Why?
     </button>
@@ -176,13 +178,19 @@ function InvestigatePanel({ insight }: { insight: Insight }) {
             {displayPods.map((pod) => (
               <tr key={`${pod.namespace}/${pod.name}`} className="border-t border-border/30 hover:bg-muted/20 transition-colors">
                 <td className="px-3 py-2">
-                  <button
-                    onClick={() => navigate(`/pods/${pod.namespace}/${pod.name}`)}
-                    className="font-mono text-[11px] text-primary hover:underline truncate block max-w-[200px]"
-                    title={`${pod.namespace}/${pod.name}`}
-                  >
-                    {pod.name}
-                  </button>
+                  {pod.phase !== 'Unknown' ? (
+                    <button
+                      onClick={() => navigate(`/pods/${pod.namespace}/${pod.name}`)}
+                      className="font-mono text-[11px] text-primary hover:underline truncate block max-w-[200px]"
+                      title={`${pod.namespace}/${pod.name}`}
+                    >
+                      {pod.name}
+                    </button>
+                  ) : (
+                    <span className="font-mono text-[11px] text-muted-foreground truncate block max-w-[200px]" title="Pod no longer exists">
+                      {pod.name}
+                    </span>
+                  )}
                   <span className="text-[10px] text-muted-foreground">{pod.namespace}</span>
                 </td>
                 <td className="px-3 py-2">

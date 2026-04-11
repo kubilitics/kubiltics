@@ -9,6 +9,7 @@
  * Only one section is expanded at a time; clicking the same pill collapses it.
  */
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   Activity,
@@ -130,6 +131,7 @@ interface LiveImpactBarProps {
 function LiveImpactBar({ data }: LiveImpactBarProps) {
   const [expanded, setExpanded] = useState<string | null>(null);
   const toggle = (id: string) => setExpanded(prev => (prev === id ? null : id));
+  const navigate = useNavigate();
 
   const { chainData, overlayEnabled, isTimelineExpanded, highlightedStep, toggleTimeline, setHighlightedStep } = useCausalChainStore();
 
@@ -293,6 +295,16 @@ function LiveImpactBar({ data }: LiveImpactBarProps) {
                 <span className="text-[11px] text-slate-500">
                   Overall confidence: <span className="text-amber-500 font-semibold">{(chainData.confidence * 100).toFixed(0)}%</span>
                 </span>
+                <button
+                  onClick={() => {
+                    if (chainData?.insightId) {
+                      navigate(`/health/issues/${chainData.insightId}`);
+                    }
+                  }}
+                  className="text-[11px] text-indigo-400 hover:text-indigo-300 bg-indigo-500/8 hover:bg-indigo-500/15 px-2.5 py-1 rounded transition-colors"
+                >
+                  Investigate →
+                </button>
               </div>
             </div>
           </motion.div>
