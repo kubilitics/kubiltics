@@ -156,7 +156,7 @@ function LiveImpactBar({ data }: LiveImpactBarProps) {
           label="Blast score"
           value={
             <span className={cn('font-bold', levelColors.text)}>
-              {data.criticalityScore}
+              {typeof data.criticalityScore === 'number' ? data.criticalityScore.toFixed(2) : data.criticalityScore}
               <span className="text-[10px] font-medium ml-1 capitalize">({data.criticalityLevel})</span>
             </span>
           }
@@ -241,6 +241,7 @@ function LiveImpactBar({ data }: LiveImpactBarProps) {
                         isHighlighted && 'bg-slate-700/50',
                         isRoot && 'bg-amber-500/5 ring-1 ring-amber-500/10'
                       )}
+                      onClick={() => setHighlightedStep(stepIndex)}
                       onMouseEnter={() => setHighlightedStep(stepIndex)}
                       onMouseLeave={() => setHighlightedStep(null)}
                     >
@@ -424,7 +425,7 @@ function PreviewImpactBar({ data, manifestFilename }: PreviewImpactBarProps) {
           label="Blast score"
           value={
             <span className={cn('font-bold', levelColors.text)}>
-              {data.blast_radius_score}
+              {typeof data.blast_radius_score === 'number' ? data.blast_radius_score.toFixed(2) : data.blast_radius_score}
               <span className="text-[10px] font-medium ml-1 capitalize">({data.blast_radius_level})</span>
             </span>
           }
