@@ -89,7 +89,7 @@ export function PipelineHealthIndicator() {
           <span className={cn('relative block w-2 h-2 rounded-full', dotColor)} />
         </span>
       </TooltipTrigger>
-      <TooltipContent side="bottom" sideOffset={8} className="max-w-xs">
+      <TooltipContent side="bottom" sideOffset={8} className="max-w-xs z-[100]">
         <div className="space-y-1.5">
           <p className="text-xs font-semibold">
             Events Pipeline: <span className="capitalize">{health.status}</span>

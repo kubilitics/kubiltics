@@ -34,6 +34,13 @@ export interface BackendClusterSummary {
   node_count: number;
   namespace_count: number;
   pod_count: number;
+  pod_status?: {
+    running: number;
+    pending: number;
+    failed: number;
+    succeeded: number;
+    total_restarts: number;
+  };
   deployment_count: number;
   service_count: number;
   statefulset_count?: number;

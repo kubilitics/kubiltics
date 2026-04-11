@@ -919,6 +919,25 @@ func (h *Handler) GetClusterSummary(w http.ResponseWriter, r *http.Request) {
 
 	// Compute counts — nil-safe
 	podCount := 0; if pods != nil { podCount = len(pods.Items) }
+	// Pod status breakdown
+	podStatus := models.OverviewPodStatus{}
+	if pods != nil {
+		for _, p := range pods.Items {
+			switch p.Status.Phase {
+			case "Running":
+				podStatus.Running++
+			case "Pending":
+				podStatus.Pending++
+			case "Failed":
+				podStatus.Failed++
+			case "Succeeded":
+				podStatus.Succeeded++
+			}
+			for _, cs := range p.Status.ContainerStatuses {
+				podStatus.TotalRestarts += int(cs.RestartCount)
+			}
+		}
+	}
 	deploymentCount := 0; if deployments != nil { deploymentCount = len(deployments.Items) }
 	serviceCount := 0; if services != nil { serviceCount = len(services.Items) }
 	statefulsetCount := 0; if statefulsets != nil { statefulsetCount = len(statefulsets.Items) }
@@ -951,7 +970,13 @@ func (h *Handler) GetClusterSummary(w http.ResponseWriter, r *http.Request) {
 
 	// Project namespace filtering for namespaced resources
 	if projectNSSet != nil {
-		podCount = 0; for _, p := range pods.Items { if _, ok := projectNSSet[p.Namespace]; ok { podCount++ } }
+		podCount = 0; podStatus = models.OverviewPodStatus{}
+		for _, p := range pods.Items {
+			if _, ok := projectNSSet[p.Namespace]; !ok { continue }
+			podCount++
+			switch p.Status.Phase { case "Running": podStatus.Running++; case "Pending": podStatus.Pending++; case "Failed": podStatus.Failed++; case "Succeeded": podStatus.Succeeded++ }
+			for _, cs := range p.Status.ContainerStatuses { podStatus.TotalRestarts += int(cs.RestartCount) }
+		}
 		deploymentCount = 0; for _, d := range deployments.Items { if _, ok := projectNSSet[d.Namespace]; ok { deploymentCount++ } }
 		serviceCount = 0; for _, s := range services.Items { if _, ok := projectNSSet[s.Namespace]; ok { serviceCount++ } }
 		statefulsetCount = 0; for _, sts := range statefulsets.Items { if _, ok := projectNSSet[sts.Namespace]; ok { statefulsetCount++ } }
@@ -985,6 +1010,7 @@ func (h *Handler) GetClusterSummary(w http.ResponseWriter, r *http.Request) {
 		NodeCount:        nodeCount,
 		NamespaceCount:   namespaceCount,
 		PodCount:         podCount,
+		PodStatus:        podStatus,
 		DeploymentCount:  deploymentCount,
 		ServiceCount:     serviceCount,
 		StatefulSetCount: statefulsetCount,

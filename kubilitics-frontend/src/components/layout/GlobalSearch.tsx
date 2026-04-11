@@ -403,27 +403,31 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="overflow-hidden p-0 shadow-2xl border border-slate-200/60 dark:border-slate-700/60 max-w-[540px] rounded-2xl gap-0 bg-white dark:bg-slate-900">
+      <DialogContent
+        hideCloseButton
+        overlayClassName="bg-black/60 dark:bg-black/70"
+        className="overflow-hidden p-0 shadow-2xl border border-slate-200 dark:border-slate-700 max-w-[640px] rounded-2xl gap-0 bg-white dark:bg-slate-900"
+      >
         {/* Search input */}
-        <div className="flex items-center gap-3 px-4 border-b border-slate-100 dark:border-slate-700" onKeyDown={handleKeyDown}>
-          <Search className="h-[18px] w-[18px] shrink-0 text-blue-500" />
+        <div className="flex items-center gap-3 px-5 border-b border-slate-200 dark:border-slate-800" onKeyDown={handleKeyDown}>
+          <Search className="h-5 w-5 shrink-0 text-slate-400 dark:text-slate-500" />
           <input
             ref={inputRef}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search pages, resources..."
-            className="flex h-13 w-full bg-transparent text-sm font-medium text-slate-900 dark:text-slate-100 outline-none placeholder:text-slate-400 dark:placeholder:text-slate-500 placeholder:font-normal"
+            className="flex h-12 w-full bg-transparent text-[15px] font-medium text-slate-900 dark:text-slate-100 outline-none ring-0 border-none focus:outline-none focus:ring-0 placeholder:text-slate-400 dark:placeholder:text-slate-500 placeholder:font-normal"
             autoComplete="off"
             spellCheck={false}
           />
           {isLoading && <Loader2 className="h-4 w-4 animate-spin text-blue-400" />}
-          <kbd className="hidden sm:inline-flex items-center px-1.5 py-0.5 text-[10px] font-semibold text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-slate-800 rounded-md border border-slate-200/80 dark:border-slate-700">
+          <kbd className="hidden sm:inline-flex items-center px-2 py-1 text-[10px] font-semibold text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-slate-800 rounded-md border border-slate-200/80 dark:border-slate-700">
             ESC
           </kbd>
         </div>
 
         {/* Results */}
-        <div ref={listRef} className="max-h-[400px] overflow-y-auto overscroll-contain py-2">
+        <div ref={listRef} className="max-h-[420px] overflow-y-auto overscroll-contain py-2 px-1.5">
           {/* Default state: search history + popular pages */}
           {!hasSearchText && (
             <>
@@ -590,18 +594,18 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between px-4 py-2.5 border-t border-slate-100 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-800/60">
-          <div className="flex items-center gap-4 text-xs text-slate-400 dark:text-slate-500">
+        <div className="flex items-center justify-between px-5 py-2.5 border-t border-slate-100 dark:border-slate-800">
+          <div className="flex items-center gap-5 text-[11px] text-slate-400 dark:text-slate-500">
             <span className="flex items-center gap-1.5">
-              <kbd className="px-1.5 py-0.5 bg-white dark:bg-slate-800 rounded-md border border-slate-200 dark:border-slate-700 text-[10px] font-semibold shadow-sm">↵</kbd>
+              <kbd className="px-1.5 py-0.5 bg-slate-100 dark:bg-slate-800 rounded border border-slate-200/80 dark:border-slate-700 text-[10px] font-medium">↵</kbd>
               Open
             </span>
             <span className="flex items-center gap-1.5">
-              <kbd className="px-1.5 py-0.5 bg-white dark:bg-slate-800 rounded-md border border-slate-200 dark:border-slate-700 text-[10px] font-semibold shadow-sm">↑↓</kbd>
+              <kbd className="px-1.5 py-0.5 bg-slate-100 dark:bg-slate-800 rounded border border-slate-200/80 dark:border-slate-700 text-[10px] font-medium">↑↓</kbd>
               Navigate
             </span>
           </div>
-          <span className="flex items-center gap-1 text-xs text-slate-400">
+          <span className="flex items-center gap-1 text-[11px] text-slate-400">
             <Command className="h-3 w-3" />K
           </span>
         </div>

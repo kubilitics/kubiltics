@@ -27,6 +27,7 @@ type ClusterSummary struct {
 	NodeCount          int    `json:"node_count"`
 	NamespaceCount     int    `json:"namespace_count"`
 	PodCount           int    `json:"pod_count"`
+	PodStatus          OverviewPodStatus `json:"pod_status"`
 	DeploymentCount    int    `json:"deployment_count"`
 	ServiceCount       int    `json:"service_count"`
 	StatefulSetCount   int    `json:"statefulset_count"`

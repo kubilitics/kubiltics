@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
+import { useClusterSummaryWithProject } from '@/hooks/useClusterSummary';
 import { motion, AnimatePresence } from 'framer-motion';
 import { PageLayout } from '@/components/layout/PageLayout';
 import {
@@ -272,6 +273,7 @@ export default function Pods() {
  const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured());
  const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
  const clusterId = currentClusterId ?? null;
+ const { data: summaryData } = useClusterSummaryWithProject(clusterId ?? undefined);
 
  // In backend mode, serverItems is the current page from the server (already paginated + searched).
  // In fallback mode, fallbackData.items is the full fetched list for client-side processing.
@@ -334,17 +336,28 @@ export default function Pods() {
 
  // High-level stats aligned with the current global scope (search + namespace filter)
  // In backend mode, serverTotal is the real count (pre-pagination); page data is just one page.
- const stats = useMemo(
- () => ({
- total: isBackendAvailable ? serverTotal : currentFilteredPods.length,
- running: currentFilteredPods.filter((p) => p.status === 'Running').length,
- pending: currentFilteredPods.filter((p) => p.status === 'Pending').length,
- failed: currentFilteredPods.filter(
- (p) => p.status === 'Failed' || p.status === 'CrashLoopBackOff'
- ).length,
- }),
- [currentFilteredPods, isBackendAvailable, serverTotal]
- );
+ // Stats: use backend summary counts (accurate across all pages) when available,
+ // fall back to counting from loaded page data.
+ const stats = useMemo(() => {
+ if (isBackendAvailable && summaryData?.pod_status) {
+ const ps = summaryData.pod_status;
+ return {
+ total: summaryData.pod_count,
+ running: ps.running,
+ succeeded: ps.succeeded,
+ pending: ps.pending,
+ failed: ps.failed,
+ };
+ }
+ const pods = currentFilteredPods;
+ return {
+ total: pods.length,
+ running: pods.filter((p) => p.status === 'Running').length,
+ succeeded: pods.filter((p) => p.status === 'Succeeded').length,
+ pending: pods.filter((p) => p.status === 'Pending').length,
+ failed: pods.filter((p) => p.status === 'Failed' || p.status === 'CrashLoopBackOff').length,
+ };
+ }, [isBackendAvailable, summaryData, currentFilteredPods]);
 
  // Use raw data for initial filter/sort to avoid expensive metrics merging on every render
  const filteredUnsorted = useMemo(() => {
@@ -841,7 +854,7 @@ export default function Pods() {
  />
 
  {/* Stats Cards — quick filters for Status column */}
- <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+ <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
  <ListPageStatCard
  label="Total Pods"
  value={stats.total}
@@ -862,6 +875,17 @@ export default function Pods() {
  selected={columnFilters.status?.size === 1 && columnFilters.status.has('Running')}
  onClick={() => setColumnFilter('status', new Set(['Running']))}
  className={cn(columnFilters.status?.size === 1 && columnFilters.status.has('Running') && 'ring-2 ring-emerald-500')}
+ />
+ <ListPageStatCard
+ label="Succeeded"
+ value={stats.succeeded}
+ icon={CheckCircle2}
+ iconColor="text-blue-600"
+ valueClassName="text-blue-600"
+ isLoading={isLoading}
+ selected={columnFilters.status?.size === 1 && columnFilters.status.has('Succeeded')}
+ onClick={() => setColumnFilter('status', new Set(['Succeeded']))}
+ className={cn(columnFilters.status?.size === 1 && columnFilters.status.has('Succeeded') && 'ring-2 ring-blue-500')}
  />
  <ListPageStatCard
  label="Pending"

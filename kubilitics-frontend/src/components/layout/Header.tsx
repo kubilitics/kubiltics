@@ -78,46 +78,41 @@ const statusColors: Record<string, string> = {
 };
 
 /** Header height — keep in sync with Sidebar's top offset */
-export const HEADER_HEIGHT_CLASS = 'h-[60px]';
+export const HEADER_HEIGHT_CLASS = 'h-16';
 
-/* ─── Design tokens: balanced, readable controls ─── */
+/* ─── Design tokens: Docker Desktop–inspired flat controls ─── */
 
-/** Secondary action — Cluster (same treatment) */
+/** Cluster selector — ghost by default, subtle bg on hover */
 const BTN = cn(
-  'h-9 px-4 rounded-xl',
+  'h-8 px-3 rounded-lg',
   'inline-flex items-center justify-center gap-2',
-  'text-[13px] font-semibold leading-none',
-  'border border-slate-200/50 bg-white/40 text-slate-700',
-  'dark:border-slate-700/50 dark:bg-slate-800/40 dark:text-slate-200',
-  'hover:bg-white hover:border-slate-300 hover:shadow-apple hover:translate-y-[-0.5px]',
-  'dark:hover:bg-slate-700/60 dark:hover:border-slate-600',
-  'transition-all duration-300 ease-spring',
+  'text-[13px] font-medium leading-none',
+  'text-slate-600 dark:text-slate-300',
+  'hover:bg-slate-100 dark:hover:bg-slate-800',
+  'transition-colors duration-150',
   'active:scale-[0.98]',
   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20'
 );
 
-/** Feature actions — Shell, Kubeconfig: clear button treatment and value proposition */
+/** Feature actions — Shell, Kubeconfig: ghost with icon emphasis */
 const FEATURE_BTN = cn(
-  'h-9 px-4 rounded-xl',
+  'h-8 px-3 rounded-lg',
   'inline-flex items-center justify-center gap-2',
-  'text-[13px] font-bold leading-none',
-  'border border-slate-200/40 bg-slate-50/40 text-slate-800',
-  'dark:border-slate-700/40 dark:bg-slate-800/40 dark:text-slate-200',
-  'hover:bg-white hover:border-primary/20 hover:shadow-apple-lg hover:translate-y-[-0.5px]',
-  'dark:hover:bg-slate-700/60 dark:hover:border-primary/30',
-  'transition-all duration-300 ease-spring',
+  'text-[13px] font-medium leading-none',
+  'text-slate-600 dark:text-slate-300',
+  'hover:bg-slate-100 dark:hover:bg-slate-800',
+  'transition-colors duration-150',
   'active:scale-[0.98]',
   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20'
 );
 
-/** Icon or labelled button (Notifications, etc.) */
+/** Icon button (Notifications, theme, etc.) */
 const ICON_BTN = cn(
-  'h-9 min-w-[2.25rem] rounded-xl',
-  'inline-flex items-center justify-center gap-2',
-  'text-muted-foreground',
-  'hover:bg-slate-100/60 hover:text-slate-900 hover:translate-y-[-0.5px]',
-  'dark:hover:bg-slate-700/60 dark:hover:text-slate-100',
-  'transition-all duration-300 ease-spring',
+  'h-8 w-8 rounded-lg',
+  'inline-flex items-center justify-center',
+  'text-slate-500 dark:text-slate-400',
+  'hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200',
+  'transition-colors duration-150',
   'active:scale-[0.98]',
   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20'
 );
@@ -310,17 +305,15 @@ export function Header() {
   return (
     <>
       <header
-        className={cn(HEADER_HEIGHT_CLASS, 'border-b border-border/40 bg-white/60 dark:bg-[hsl(228,14%,9%)]/80 backdrop-blur-3xl shrink-0 shadow-[0_1px_3px_rgba(0,0,0,0.02)] dark:shadow-[0_1px_3px_rgba(0,0,0,0.3)] transition-all duration-300 sticky top-0 z-[var(--z-sticky,50)]')}
+        className={cn(HEADER_HEIGHT_CLASS, 'border-b border-slate-200/60 dark:border-slate-800 bg-white dark:bg-[hsl(228,14%,9%)] shrink-0 sticky top-0 z-[var(--z-sticky,50)] select-none')}
         role="banner"
         data-tauri-drag-region
         onDoubleClick={(e) => {
-          // macOS: double-click empty header area toggles maximize.
-          // Only trigger when clicking directly on the header or its drag-region divs,
-          // not on any interactive child (button, input, dropdown, etc.)
+          // macOS: double-click anywhere on header toggles maximize,
+          // UNLESS the click target is an interactive element.
           const target = e.target as HTMLElement;
-          const isDragRegion = target.hasAttribute('data-tauri-drag-region') ||
-            target.tagName === 'HEADER';
-          if (!isDragRegion) return;
+          const interactive = target.closest('button, input, a, [role="menuitem"], [role="combobox"], [data-no-drag]');
+          if (interactive) return;
           if (isTauri()) {
             import('@tauri-apps/api/window').then(({ getCurrentWindow }) => {
               getCurrentWindow().toggleMaximize();
@@ -331,7 +324,7 @@ export function Header() {
         <div className="flex items-center h-full w-full" data-tauri-drag-region>
 
           {/* ──── Logo zone: Docker Desktop pattern — generous spacing after traffic lights ──── */}
-          <div className="shrink-0 flex items-center h-full pl-[88px] pr-6" data-tauri-drag-region>
+          <div className="shrink-0 flex items-center h-full pl-[80px] pr-4" data-tauri-drag-region>
             <button
               onClick={() => navigate('/dashboard')}
               className="flex items-center gap-3.5 group focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 rounded-xl py-1.5 transition-all press-effect"
@@ -339,30 +332,30 @@ export function Header() {
             >
               <BrandLogo
                 mark
-                height={36}
-                className="shrink-0 rounded-[10px] shadow-sm group-hover:shadow-md group-hover:scale-[1.03] transition-all duration-200"
+                height={32}
+                className="shrink-0 rounded-[9px] shadow-sm group-hover:shadow-md group-hover:scale-[1.03] transition-all duration-200"
               />
-              <span className="text-[18px] font-bold tracking-[0.04em] text-foreground whitespace-nowrap select-none">
+              <span className="text-[16px] font-bold tracking-[0.05em] text-foreground whitespace-nowrap select-none">
                 KUBILITICS
               </span>
             </button>
           </div>
 
-          {/* Subtle separator */}
-          <div className="w-px h-7 bg-border/40 shrink-0" />
+          {/* Separator */}
+          <div className="w-px h-5 bg-slate-200 dark:bg-slate-700 shrink-0" />
 
-          {/* ──── Main bar ──── */}
-          <div className="flex-1 min-w-0 flex items-center gap-2 md:gap-4 px-3 md:px-6" data-tauri-drag-region>
+          {/* ──── Main bar — gaps between items act as drag regions ──── */}
+          <div className="flex-1 min-w-0 flex items-center gap-4 md:gap-6 px-4 md:px-8" data-tauri-drag-region>
             {/* Search resources — global search: refined command palette trigger */}
             <button
               type="button"
               onClick={() => setSearchOpen(true)}
               className={cn(
-                'flex-1 max-w-[140px] sm:max-w-xs md:max-w-md lg:max-w-xl h-9 px-3 md:px-4 flex items-center gap-3 md:gap-4 rounded-xl',
-                'bg-slate-100/40 dark:bg-slate-800/40 backdrop-blur-sm border border-slate-100 dark:border-slate-700/50 text-muted-foreground',
-                'hover:bg-slate-100/60 hover:border-slate-200 hover:text-slate-600 dark:hover:bg-slate-700/40 dark:hover:border-slate-600 dark:hover:text-slate-300',
-                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/10',
-                'transition-all duration-300 group press-effect'
+                'w-[140px] sm:w-48 md:w-56 lg:w-64 shrink-0 h-8 px-3 md:px-3.5 flex items-center gap-2.5 rounded-lg',
+                'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500',
+                'hover:bg-slate-200/70 hover:text-slate-500 dark:hover:bg-slate-700 dark:hover:text-slate-400',
+                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20',
+                'transition-colors duration-150 group'
               )}
             >
               <Search className="h-4 w-4 shrink-0 group-hover:text-primary transition-colors duration-300" />
@@ -383,7 +376,7 @@ export function Header() {
             )}
 
             {/* Right group: pushed to the edge with even spacing between items */}
-            <div className="flex items-center gap-2 lg:gap-4 shrink-0 ml-auto">
+            <div className="flex items-center gap-3 lg:gap-4 shrink-0 ml-auto">
 
                 {/* Cluster selector — with favorites, env badges, fuzzy search, production confirmation */}
                 {activeCluster && (
@@ -399,7 +392,7 @@ export function Header() {
                               (activeAppearance?.color ?? undefined),
                           }}
                         />
-                        <span className="truncate text-base font-bold tracking-tight">{activeDisplayName}</span>
+                        <span className="truncate text-sm font-semibold tracking-tight">{activeDisplayName}</span>
                         {(orgEnvTags[activeCluster.id] || activeEnvLabel) && (
                           <span className={cn(
                             'text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-full border shrink-0',
@@ -410,7 +403,7 @@ export function Header() {
                             {orgEnvTags[activeCluster.id] ? ENV_LABELS[orgEnvTags[activeCluster.id]] : activeEnvLabel}
                           </span>
                         )}
-                        <ChevronDown className="h-5 w-5 text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-300 transition-colors shrink-0" />
+                        <ChevronDown className="h-4 w-4 text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-300 transition-colors shrink-0" />
                       </button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-[360px] rounded-[2.5rem] p-4 border-none shadow-2xl mt-2 animate-in fade-in zoom-in-95 duration-200 elevation-2 max-h-[70vh] overflow-hidden flex flex-col">
