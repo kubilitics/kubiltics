@@ -18,7 +18,7 @@ spec:
     spec:
       containers:
         - name: app
-          image: ghcr.io/open-telemetry/demo:1.11.1-recommendationservice
+          image: python:3.12-slim
           command: ["/bin/sh", "-c"]
           args:
             - |
@@ -152,7 +152,7 @@ spec:
     spec:
       containers:
         - name: app
-          image: ghcr.io/open-telemetry/demo:1.11.1-recommendationservice
+          image: python:3.12-slim
           command: ["/bin/sh", "-c"]
           args:
             - |
@@ -273,7 +273,7 @@ spec:
     spec:
       containers:
         - name: app
-          image: ghcr.io/open-telemetry/demo:1.11.1-recommendationservice
+          image: python:3.12-slim
           command: ["/bin/sh", "-c"]
           args:
             - |
