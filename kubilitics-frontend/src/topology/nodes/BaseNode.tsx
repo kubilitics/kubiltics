@@ -9,6 +9,7 @@ import {
   getStatusBadge,
   A11Y,
 } from "../constants/designTokens";
+import { cn } from "@/lib/utils";
 
 export type BaseNodeData = {
   kind: string;
@@ -68,6 +69,17 @@ function BaseNodeInner({ id, data }: NodeProps<BaseNodeData>) {
         <K8sIcon kind={data.kind} size={18} backdrop />
         <span className="flex-1 text-xs font-semibold text-white tracking-wide uppercase">{data.kind}</span>
         <div className={`h-2 w-2 rounded-full ${badge.dotClass} ring-1 ring-white/40`} aria-hidden="true" />
+        {(data as any).chainStepIndex != null && (data as any).chainStepIndex >= 0 && (
+          <div
+            className={cn(
+              'ml-auto min-w-[18px] h-[18px] rounded-full flex items-center justify-center text-[10px] font-bold',
+              (data as any).chainStepColor ?? 'bg-amber-500',
+              (data as any).chainStepIndex === 0 ? 'text-black' : 'text-white'
+            )}
+          >
+            {(data as any).chainStepIndex + 1}
+          </div>
+        )}
       </div>
 
       {/* Body */}
