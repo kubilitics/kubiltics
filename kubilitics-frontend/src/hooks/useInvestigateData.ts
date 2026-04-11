@@ -65,11 +65,11 @@ function extractPodInfo(pod: Record<string, unknown>): Omit<PodInvestigateInfo, 
       containerName = (cs.name as string) ?? null;
     } else if (terminated?.reason) {
       worstReason = worstReason || (terminated.reason as string);
-      containerName = containerName || (cs.name as string) ?? null;
+      containerName = containerName || ((cs.name as string) ?? null);
     }
 
     const lastTerminated = lastState?.terminated as Record<string, unknown> | undefined;
-    const finishedAt = (lastTerminated?.finishedAt as string) ?? (terminated?.finishedAt as string) ?? null;
+    const finishedAt = ((lastTerminated?.finishedAt as string) ?? (terminated?.finishedAt as string)) ?? null;
     if (finishedAt && (!lastRestart || finishedAt > lastRestart)) {
       lastRestart = finishedAt;
     }
@@ -79,7 +79,7 @@ function extractPodInfo(pod: Record<string, unknown>): Omit<PodInvestigateInfo, 
     namespace: (metadata.namespace as string) ?? '',
     name: (metadata.name as string) ?? '',
     phase: (status.phase as string) ?? 'Unknown',
-    reason: worstReason || (status.phase as string) ?? 'Unknown',
+    reason: worstReason || ((status.phase as string) ?? 'Unknown'),
     restartCount: totalRestarts,
     lastRestartTime: lastRestart,
     containerName,
@@ -114,23 +114,30 @@ async function fetchInvestigateData(
   const podNames = new Set(podRefs.map((r) => `${r.namespace}/${r.name}`));
 
   for (const [ns, refs] of byNamespace) {
+    const matchedInNs = new Set<string>();
     try {
       const result = await listResources(baseUrl, clusterId, 'pods', { namespace: ns });
       for (const item of result.items) {
         const meta = (item.metadata ?? {}) as Record<string, unknown>;
         const key = `${meta.namespace}/${meta.name}`;
         if (podNames.has(key)) {
+          matchedInNs.add(key);
           const info = extractPodInfo(item);
           allPodInfos.push({ ...info, logSnippet: null, errorSnippet: null });
         }
       }
     } catch {
-      for (const ref of refs) {
+      // API error — fall through, all refs become stubs below
+    }
+    // For any pods not found in the API (deleted/recreated), add stubs from the insight
+    for (const ref of refs) {
+      const key = `${ref.namespace}/${ref.name}`;
+      if (!matchedInNs.has(key)) {
         allPodInfos.push({
           namespace: ref.namespace,
           name: ref.name,
           phase: 'Unknown',
-          reason: 'Unable to fetch',
+          reason: insight.title.includes('CrashLoopBackOff') ? 'CrashLoopBackOff' : 'Unknown',
           restartCount: 0,
           lastRestartTime: null,
           logSnippet: null,
@@ -148,7 +155,8 @@ async function fetchInvestigateData(
     return bTime - aTime;
   });
 
-  let rootCause: RootCauseResult = { cause: 'Investigate logs for root cause', keyword: null };
+  // Infer root cause: try logs first, fall back to insight title/detail
+  let rootCause: RootCauseResult = inferRootCause(insight.title + '\n' + insight.detail);
 
   if (allPodInfos.length > 0) {
     const worst = allPodInfos[0];

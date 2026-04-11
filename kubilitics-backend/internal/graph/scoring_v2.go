@@ -76,7 +76,7 @@ func computeResilience(in ResilienceInput) models.SubScoreDetail {
 		if !in.HasController {
 			score -= 20
 			factors = append(factors, models.ScoringFactor{
-				Name: "controller", Value: "none", Effect: -20, Note: "Naked pod — no self-healing",
+				Name: "controller", Value: "none", Effect: -20, Note: "Standalone pod — no self-healing",
 			})
 		}
 	case "Service":

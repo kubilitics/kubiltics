@@ -19,7 +19,7 @@
 
 import { useState, useCallback, useEffect, ReactNode } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { LucideIcon, Clock, Download, Trash2, Edit, FileCode, GitCompare, Zap, Copy, Loader2, Activity, GitBranch } from 'lucide-react';
+import { LucideIcon, Clock, Download, Trash2, Edit, FileCode, GitCompare, Network, Zap, Copy, Loader2, Activity, GitBranch } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -48,6 +48,7 @@ import {
   EventsSection,
   ActionsSection,
   DeleteConfirmDialog,
+  ResourceTopologyView,
   ResourceComparisonView,
   type ResourceStatus,
   type ResourceAction,
@@ -658,6 +659,20 @@ export function GenericResourceDetail<T extends KubernetesResource>({
       ),
     },
     {
+      id: 'topology',
+      label: 'Topology',
+      icon: Network,
+      content: (
+        <ResourceTopologyView
+          kind={normalizeKindForTopology(kind)}
+          namespace={namespace ?? ''}
+          name={name ?? ''}
+          sourceResourceType={kind}
+          sourceResourceName={resource?.metadata?.name ?? name ?? ''}
+        />
+      ),
+    },
+    {
       id: 'actions',
       label: 'Actions',
       icon: Edit,
@@ -692,10 +707,13 @@ export function GenericResourceDetail<T extends KubernetesResource>({
     { label: 'Delete', icon: Trash2, variant: 'destructive', onClick: () => setShowDeleteDialog(true), className: 'press-effect' },
   ];
 
+  const analyzeImpactAction: ResourceAction = { label: 'Analyze Impact', icon: Zap, variant: 'outline', onClick: () => navigate(`/intelligence/${namespace}/${normalizeKindForTopology(kind)}/${name}`) };
+  const deleteAction: ResourceAction = { label: 'Delete', icon: Trash2, variant: 'destructive', onClick: () => setShowDeleteDialog(true), className: 'press-effect' };
+
   const actions = headerActionsFn
-    ? headerActionsFn(ctx)
+    ? [...headerActionsFn(ctx), analyzeImpactAction, deleteAction]
     : extraHeaderActions
-      ? [...defaultHeaderActions.slice(0, -1), ...extraHeaderActions(ctx), defaultHeaderActions[defaultHeaderActions.length - 1]]
+      ? [defaultHeaderActions[0], analyzeImpactAction, ...extraHeaderActions(ctx), deleteAction]
       : defaultHeaderActions;
 
   // --- Header metadata ---

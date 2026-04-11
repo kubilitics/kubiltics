@@ -10,7 +10,7 @@ import {
 const gradientMap: Record<string, string> = {
   critical: 'from-red-600 to-red-900',
   high: 'from-orange-500 to-orange-800',
-  medium: 'from-yellow-500 to-yellow-700',
+  medium: 'from-amber-600 to-amber-800',
   low: 'from-blue-500 to-blue-700',
 };
 
