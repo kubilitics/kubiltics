@@ -218,6 +218,9 @@ export default function IntelligenceWorkspace() {
 
     const blastData = workspace.blastData;
 
+    // Mutual exclusion: activating blast radius clears the root cause chain overlay.
+    useCausalChainStore.getState().clearActiveChain();
+
     setSimulatedFailureNodeId(focusNode.id);
     setCurrentWave(-1);
 
@@ -257,6 +260,16 @@ export default function IntelligenceWorkspace() {
     setSimulationWaveDepths(null);
     setCurrentWave(-1);
   }, [workspace.mode]);
+
+  // ── Mutual exclusion: overlays are mutually exclusive ─────────────────────
+  // When the root cause chain overlay becomes active, clear blast radius state.
+  useEffect(() => {
+    if (!overlayEnabled) return;
+    setSimulatedFailureNodeId(null);
+    setSimulationAffectedNodes(null);
+    setSimulationWaveDepths(null);
+    setCurrentWave(-1);
+  }, [overlayEnabled]);
 
   // Escape key clears root cause chain overlay
   useEffect(() => {
