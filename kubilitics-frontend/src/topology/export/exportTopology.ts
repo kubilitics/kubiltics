@@ -1,6 +1,8 @@
 import type { TopologyResponse, ViewMode } from "../types/topology";
 import { EXPORT, CANVAS, getCategoryColor, STATUS_COLORS } from "../constants/designTokens";
 import { openExternal } from "@/lib/tauri";
+import { getCloudContext } from '@/topology/hooks/useCloudContext';
+import { useClusterStore } from '@/stores/clusterStore';
 
 // ─── Export bounds — computed from React Flow state or DOM ──────────────────
 
@@ -336,6 +338,8 @@ export function exportTopologyDrawIO(
 ) {
   if (!topology) return;
 
+  const provider = useClusterStore.getState().activeCluster?.provider ?? 'on-prem';
+
   const viewport = document.querySelector(".react-flow__viewport");
   const positionMap = new Map<
     string,
@@ -384,7 +388,13 @@ export function exportTopologyDrawIO(
     const fill = getCategoryBg(n.category);
     const border = statusBorderColors[n.status as keyof typeof statusBorderColors] ?? "#9ca3af";
 
-    const label = `${n.kind}&#xa;${n.name}${n.namespace ? "&#xa;(" + n.namespace + ")" : ""}`;
+    const cloud = getCloudContext(provider, n.kind, {
+      serviceType: n.serviceType,
+      annotations: n.annotations,
+      labels: n.labels,
+    });
+    const providerPrefix = cloud.providerLabel !== provider ? `[${cloud.providerLabel}] ` : '';
+    const label = `${providerPrefix}${n.kind}&#xa;${n.name}${n.namespace ? "&#xa;(" + n.namespace + ")" : ""}`;
     xml += `<mxCell id="${escXml(n.id)}" value="${escXml(label)}" style="rounded=1;whiteSpace=wrap;html=0;fillColor=${fill};strokeColor=${border};strokeWidth=2;fontSize=11;fontFamily=Inter;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;" vertex="1" parent="1">
 <mxGeometry x="${Math.round(x)}" y="${Math.round(y)}" width="${Math.round(w)}" height="${Math.round(h)}" as="geometry"/>
 </mxCell>

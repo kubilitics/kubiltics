@@ -23,6 +23,7 @@ import { ViewModeSelect } from "./components/ViewModeSelect";
 import type { ViewMode, TopologyResponse } from "./types/topology";
 import {
   exportTopologyJSON,
+  exportTopologyDrawIO,
   buildExportFilename,
   type ExportContext,
 } from "./export/exportTopology";
@@ -757,6 +758,19 @@ export function TopologyToolbar({
                       <div>
                         <div className="text-xs font-semibold">CSV</div>
                         <div className="text-[10px] text-gray-600 dark:text-gray-400">Enriched data with resource details (NFS paths, capacity, etc.)</div>
+                      </div>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      className="rounded-lg gap-2.5 py-2"
+                      onClick={() => exportTopologyDrawIO(topology ?? null, ctx)}
+                    >
+                      <div className="flex items-center justify-center h-7 w-7 rounded-md bg-orange-50 dark:bg-orange-900/30">
+                        <FileType className="h-3.5 w-3.5 text-orange-600 dark:text-orange-400" />
+                      </div>
+                      <div>
+                        <div className="text-xs font-semibold">Draw.io</div>
+                        <div className="text-[10px] text-gray-600 dark:text-gray-400">Editable architecture diagram</div>
                       </div>
                     </DropdownMenuItem>
                   </>
