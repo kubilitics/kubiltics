@@ -249,6 +249,12 @@ func displayCountResults(resourceType string, counts map[string]int, total int, 
 		return nil
 	}
 
+	if total == 0 {
+		theme := output.GetTheme()
+		fmt.Println(theme.Muted.Render(fmt.Sprintf("No %s found.", strings.ToLower(resourceType))))
+		return nil
+	}
+
 	table := output.NewTable()
 	table.Style = output.Rounded
 	table.AddColumn(output.Column{

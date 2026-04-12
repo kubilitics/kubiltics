@@ -90,7 +90,7 @@ func listByAge(ctx context.Context, clientset kubernetes.Interface, namespace, r
 		for _, d := range list.Items {
 			resources = append(resources, resourceWithAge{
 				namespace: d.Namespace, name: d.Name,
-				age: d.CreationTimestamp.Time, status: fmt.Sprintf("%d/%d", d.Status.ReadyReplicas, d.Status.Replicas), kind: "Deployment",
+				age: d.CreationTimestamp.Time, status: readyStatus(int(d.Status.ReadyReplicas), int(d.Status.Replicas)), kind: "Deployment",
 			})
 		}
 
@@ -114,7 +114,7 @@ func listByAge(ctx context.Context, clientset kubernetes.Interface, namespace, r
 		for _, s := range list.Items {
 			resources = append(resources, resourceWithAge{
 				namespace: s.Namespace, name: s.Name,
-				age: s.CreationTimestamp.Time, status: fmt.Sprintf("%d/%d", s.Status.ReadyReplicas, s.Status.Replicas), kind: "StatefulSet",
+				age: s.CreationTimestamp.Time, status: readyStatus(int(s.Status.ReadyReplicas), int(s.Status.Replicas)), kind: "StatefulSet",
 			})
 		}
 
@@ -126,7 +126,7 @@ func listByAge(ctx context.Context, clientset kubernetes.Interface, namespace, r
 		for _, d := range list.Items {
 			resources = append(resources, resourceWithAge{
 				namespace: d.Namespace, name: d.Name,
-				age: d.CreationTimestamp.Time, status: fmt.Sprintf("%d/%d", d.Status.NumberReady, d.Status.DesiredNumberScheduled), kind: "DaemonSet",
+				age: d.CreationTimestamp.Time, status: readyStatus(int(d.Status.NumberReady), int(d.Status.DesiredNumberScheduled)), kind: "DaemonSet",
 			})
 		}
 
@@ -204,6 +204,12 @@ func listByAge(ctx context.Context, clientset kubernetes.Interface, namespace, r
 		return fmt.Errorf("age not supported for resource type: %s", resourceType)
 	}
 
+	if len(resources) == 0 {
+		theme := output.GetTheme()
+		fmt.Println(theme.Muted.Render(fmt.Sprintf("No %s found.", resourceType)))
+		return nil
+	}
+
 	// Sort by age
 	if oldest {
 		sort.Slice(resources, func(i, j int) bool { return resources[i].age.Before(resources[j].age) })
@@ -227,4 +233,15 @@ func listByAge(ctx context.Context, clientset kubernetes.Interface, namespace, r
 
 	table.Print()
 	return nil
+}
+
+// readyStatus returns "Ready" or "Not Ready" based on ready vs desired counts.
+func readyStatus(ready, desired int) string {
+	if desired > 0 && ready >= desired {
+		return "Ready"
+	}
+	if desired == 0 {
+		return "Scaled to 0"
+	}
+	return "Not Ready"
 }
