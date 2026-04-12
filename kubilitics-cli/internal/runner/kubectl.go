@@ -47,7 +47,7 @@ const MinKubectlMinor = 28
 // Streaming/interactive commands (exec, attach, port-forward, proxy, edit, logs -f) are
 // exempt and run without a timeout. This prevents hung kubectl processes from blocking
 // kcli indefinitely when the kube-apiserver is unreachable.
-const defaultKubectlTimeout = 5 * time.Minute
+const defaultKubectlTimeout = 15 * time.Second
 
 // Retry defaults for CaptureKubectl / CaptureKubectlCtx.
 const (
