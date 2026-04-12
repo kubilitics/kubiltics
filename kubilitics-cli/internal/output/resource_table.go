@@ -62,7 +62,7 @@ func NewResourceTable(opts ResourceTableOpts) *Table {
 			MaxWidth: 25,
 			Align:    Left,
 			ColorFunc: func(string) lipgloss.Style {
-				return GetTheme().Muted
+				return GetTheme().Info
 			},
 		})
 	case ScopeCluster:
