@@ -163,9 +163,15 @@ func (t *Table) Render(width int) string {
 			if !t.ShowFooter && len(t.Rows) > 0 {
 				footer := make([]string, len(t.Columns))
 				footer[numColIdx] = fmt.Sprintf("%d", len(t.Rows))
-				// Put "Total" in the next column after #
-				if numColIdx+1 < len(footer) {
-					footer[numColIdx+1] = fmt.Sprintf("Total: %d resources", len(t.Rows))
+				// Put label in the NAME column if set, otherwise in the column after #
+				totalIdx := -1
+				if t.NameColIdx > numColIdx {
+					totalIdx = t.NameColIdx
+				} else if numColIdx+1 < len(footer) {
+					totalIdx = numColIdx + 1
+				}
+				if totalIdx >= 0 && totalIdx < len(footer) {
+					footer[totalIdx] = fmt.Sprintf("Total: %d resources", len(t.Rows))
 				}
 				t.FooterRow = footer
 				t.ShowFooter = true
@@ -174,7 +180,7 @@ func (t *Table) Render(width int) string {
 	}
 
 	visibleCols := adaptColumns(t.Columns, width)
-	colWidths := calculateColumnWidths(visibleCols, t.Rows, width)
+	colWidths := calculateColumnWidths(visibleCols, t.Rows, t.FooterRow, width)
 
 	var result strings.Builder
 
@@ -244,29 +250,7 @@ func (t *Table) renderRounded(cols []Column, widths []int) string {
 	}
 
 	if t.ShowFooter && len(t.FooterRow) > 0 {
-		result.WriteString(theme.Border.Render("├"))
-		for i := range cols {
-			result.WriteString(strings.Repeat("─", widths[i]+2))
-			if i < len(cols)-1 {
-				result.WriteString(theme.Border.Render("┼"))
-			}
-		}
-		result.WriteString(theme.Border.Render("┤"))
-		result.WriteString("\n")
-
-		result.WriteString(theme.Border.Render("│"))
-		for i, col := range cols {
-			cell := rowCell(t.FooterRow, col)
-			if cell != "" {
-				cellText := truncateText(cell, widths[i])
-				cellText = padText(cellText, widths[i], col.Align)
-				result.WriteString(" " + theme.Muted.Render(cellText) + " ")
-			} else {
-				result.WriteString(" " + strings.Repeat(" ", widths[i]) + " ")
-			}
-			result.WriteString(theme.Border.Render("│"))
-		}
-		result.WriteString("\n")
+		t.renderFooterMerged(&result, cols, widths, theme, "├", "┼", "─", "┤", "│")
 	}
 
 	result.WriteString(theme.Border.Render("╰"))
@@ -328,25 +312,7 @@ func (t *Table) renderSharp(cols []Column, widths []int) string {
 	}
 
 	if t.ShowFooter && len(t.FooterRow) > 0 {
-		result.WriteString(theme.Border.Render("├"))
-		for i := range cols {
-			result.WriteString(strings.Repeat("─", widths[i]+2))
-			if i < len(cols)-1 {
-				result.WriteString(theme.Border.Render("┼"))
-			}
-		}
-		result.WriteString(theme.Border.Render("┤"))
-		result.WriteString("\n")
-
-		result.WriteString(theme.Border.Render("│"))
-		for i, col := range cols {
-			cell := rowCell(t.FooterRow, col)
-			cellText := truncateText(cell, widths[i])
-			cellText = padText(cellText, widths[i], col.Align)
-			result.WriteString(" " + theme.Muted.Render(cellText) + " ")
-			result.WriteString(theme.Border.Render("│"))
-		}
-		result.WriteString("\n")
+		t.renderFooterMerged(&result, cols, widths, theme, "├", "┼", "─", "┤", "│")
 	}
 
 	result.WriteString(theme.Border.Render("└"))
@@ -398,24 +364,7 @@ func (t *Table) renderMinimal(cols []Column, widths []int) string {
 	}
 
 	if t.ShowFooter && len(t.FooterRow) > 0 {
-		for i := range cols {
-			result.WriteString(strings.Repeat("─", widths[i]))
-			if i < len(cols)-1 {
-				result.WriteString("  ")
-			}
-		}
-		result.WriteString("\n")
-
-		for i, col := range cols {
-			cell := rowCell(t.FooterRow, col)
-			cellText := truncateText(cell, widths[i])
-			cellText = padText(cellText, widths[i], col.Align)
-			result.WriteString(theme.Muted.Render(cellText))
-			if i < len(cols)-1 {
-				result.WriteString("  ")
-			}
-		}
-		result.WriteString("\n")
+		t.renderFooterMerged(&result, cols, widths, theme, "", "", "─", "", "")
 	}
 
 	return result.String()
@@ -447,16 +396,8 @@ func (t *Table) renderNone(cols []Column, widths []int) string {
 	}
 
 	if t.ShowFooter && len(t.FooterRow) > 0 {
-		for i, col := range cols {
-			cell := rowCell(t.FooterRow, col)
-			cellText := truncateText(cell, widths[i])
-			cellText = padText(cellText, widths[i], col.Align)
-			result.WriteString(cellText)
-			if i < len(cols)-1 {
-				result.WriteString("  ")
-			}
-		}
-		result.WriteString("\n")
+		theme := GetTheme()
+		t.renderFooterMerged(&result, cols, widths, theme, "", "", "", "", "")
 	}
 
 	return result.String()
@@ -472,7 +413,93 @@ func rowCell(row []string, col Column) string {
 	return ""
 }
 
-func calculateColumnWidths(cols []Column, rows [][]string, termWidth int) []int {
+// renderFooterMerged renders a footer row where the label text spans all columns
+// after the # column, preventing truncation. Border chars are empty for borderless styles.
+func (t *Table) renderFooterMerged(result *strings.Builder, cols []Column, widths []int, theme *Theme,
+	leftJoin, midJoin, hLine, rightJoin, vLine string) {
+
+	if len(t.FooterRow) == 0 {
+		return
+	}
+
+	hasBorder := vLine != ""
+
+	// Separator line
+	if hLine != "" {
+		if hasBorder {
+			result.WriteString(theme.Border.Render(leftJoin))
+		}
+		for i := range cols {
+			result.WriteString(strings.Repeat(hLine, widths[i]+2))
+			if i < len(cols)-1 {
+				if hasBorder {
+					result.WriteString(theme.Border.Render(midJoin))
+				} else {
+					result.WriteString("  ")
+				}
+			}
+		}
+		if hasBorder {
+			result.WriteString(theme.Border.Render(rightJoin))
+		}
+		result.WriteString("\n")
+	}
+
+	// Find which cells have content
+	var numCell string // the # count cell
+	var labelCell string
+	numColVisible := -1
+
+	for i, col := range cols {
+		cell := rowCell(t.FooterRow, col)
+		if cell == "" {
+			continue
+		}
+		if col.isAutoNum || col.Name == "#" {
+			numCell = cell
+			numColVisible = i
+		} else if labelCell == "" {
+			labelCell = cell
+		}
+	}
+
+	// Render the row
+	if hasBorder {
+		result.WriteString(theme.Border.Render(vLine))
+	}
+
+	for i := range cols {
+		w := widths[i]
+		if i == numColVisible && numCell != "" {
+			// Render # count cell normally
+			cellText := padText(numCell, w, Right)
+			result.WriteString(" " + theme.Muted.Render(cellText) + " ")
+		} else if i == numColVisible+1 && labelCell != "" {
+			// Merge remaining columns for the label
+			mergedWidth := w
+			for j := i + 1; j < len(cols); j++ {
+				mergedWidth += widths[j] + 3 // +3 for " │ " border
+			}
+			cellText := truncateText(labelCell, mergedWidth)
+			cellText = padText(cellText, mergedWidth, Left)
+			result.WriteString(" " + theme.Muted.Render(cellText) + " ")
+			if hasBorder {
+				result.WriteString(theme.Border.Render(vLine))
+			}
+			break // done — we merged all remaining columns
+		} else {
+			result.WriteString(" " + strings.Repeat(" ", w) + " ")
+		}
+		if hasBorder {
+			result.WriteString(theme.Border.Render(vLine))
+		} else if i < len(cols)-1 {
+			result.WriteString("  ")
+		}
+	}
+	result.WriteString("\n")
+}
+
+func calculateColumnWidths(cols []Column, rows [][]string, footerRow []string, termWidth int) []int {
 	widths := make([]int, len(cols))
 
 	for i, col := range cols {
@@ -480,6 +507,15 @@ func calculateColumnWidths(cols []Column, rows [][]string, termWidth int) []int 
 
 		for _, row := range rows {
 			cell := rowCell(row, col)
+			cellWidth := runewidth.StringWidth(cell)
+			if cellWidth > widths[i] {
+				widths[i] = cellWidth
+			}
+		}
+
+		// Include footer row in width calculation
+		if len(footerRow) > 0 {
+			cell := rowCell(footerRow, col)
 			cellWidth := runewidth.StringWidth(cell)
 			if cellWidth > widths[i] {
 				widths[i] = cellWidth

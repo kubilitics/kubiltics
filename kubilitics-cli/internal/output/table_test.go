@@ -92,6 +92,25 @@ func TestTableStyles(t *testing.T) {
 	}
 }
 
+func TestTableFooterBoundsCheck(t *testing.T) {
+	table := NewTable()
+	table.Style = Rounded
+	table.AddColumn(Column{Name: "A", Priority: 1, MinWidth: 5, MaxWidth: 10, Align: Left})
+	table.AddColumn(Column{Name: "B", Priority: 1, MinWidth: 5, MaxWidth: 10, Align: Left})
+	table.AddRow([]string{"hello", "world"})
+
+	// Set a footer shorter than the column count — should not panic
+	table.SetFooter([]string{"total"})
+
+	result := table.Render(80)
+	if result == "" {
+		t.Error("Render with short footer should not return empty or panic")
+	}
+	if !strings.Contains(result, "total") {
+		t.Error("Short footer should still render available cells")
+	}
+}
+
 func TestTableEmptyRows(t *testing.T) {
 	table := NewTable()
 	table.AddColumn(Column{Name: "NAME", Priority: 10, MinWidth: 10, MaxWidth: 30, Align: Left})
