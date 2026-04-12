@@ -44,16 +44,22 @@ Examples:
 				kindsArg = "all"
 			}
 
-			var matches int
-			var hadFailure bool
+			var (
+				totalContexts  int
+				failedContexts int
+				failedNames    []string
+				totalMatches   int
+			)
 			for _, ctxName := range contexts {
+				totalContexts++
 				getArgs := []string{"--context", ctxName, "get", kindsArg, "-A", "--no-headers"}
 				if a.namespace != "" {
 					getArgs = append(getArgs, "-n", a.namespace)
 				}
 				out, runErr := runner.CaptureKubectl(getArgs)
 				if runErr != nil {
-					hadFailure = true
+					failedContexts++
+					failedNames = append(failedNames, ctxName)
 					fmt.Fprintf(cmd.ErrOrStderr(), "warning: context %s failed: %v\n", ctxName, runErr)
 					continue
 				}
@@ -64,18 +70,22 @@ Examples:
 						continue
 					}
 					if strings.Contains(strings.ToLower(line), query) {
-						matches++
+						totalMatches++
 						fmt.Fprintf(cmd.OutOrStdout(), "[%s] %s\n", ctxName, line)
 					}
 				}
 			}
-			if matches == 0 {
+			if totalMatches == 0 && failedContexts == 0 {
 				fmt.Fprintln(cmd.OutOrStdout(), "No matching resources found.")
-			} else {
-				fmt.Fprintf(cmd.OutOrStdout(), "\nTotal matches: %d\n", matches)
 			}
-			if hadFailure {
-				return fmt.Errorf("one or more contexts failed")
+			if failedContexts > 0 {
+				fmt.Fprintf(cmd.OutOrStdout(), "\nSearched %d/%d contexts (%d unreachable: %s). Results may be incomplete.\n",
+					totalContexts-failedContexts, totalContexts, failedContexts, strings.Join(failedNames, ", "))
+			} else {
+				fmt.Fprintf(cmd.OutOrStdout(), "\nTotal matches: %d\n", totalMatches)
+			}
+			if failedContexts == totalContexts && totalContexts > 0 {
+				return fmt.Errorf("all %d contexts were unreachable", totalContexts)
 			}
 			return nil
 		},
