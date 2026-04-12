@@ -29,6 +29,10 @@ type BlastRadiusResult struct {
 	CoverageLevel string `json:"coverageLevel"`
 	CoverageNote  string `json:"coverageNote,omitempty"`
 
+	// Confidence
+	ConfidenceScore int    `json:"confidenceScore"` // 0-100: how much to trust this result
+	ConfidenceNote  string `json:"confidenceNote"`  // human-readable explanation
+
 	// Resource characteristics
 	ReplicaCount     int           `json:"replicaCount"`
 	IsSPOF           bool          `json:"isSPOF"`

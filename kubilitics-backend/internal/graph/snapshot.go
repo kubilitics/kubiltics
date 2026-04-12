@@ -289,6 +289,8 @@ func (s *GraphSnapshot) computeNamespaceDeletion(target models.ResourceRef) (*mo
 		totalScore = 100.0
 	}
 
+	confidenceScore, confidenceNote := computeConfidence(s)
+
 	return &models.BlastRadiusResult{
 		TargetResource:     target,
 		CriticalityScore:   totalScore,
@@ -297,6 +299,8 @@ func (s *GraphSnapshot) computeNamespaceDeletion(target models.ResourceRef) (*mo
 		FailureMode:        FailureModeNamespaceDeletion,
 		TotalAffected:      allAffected,
 		AffectedNamespaces: len(affectedNS),
+		ConfidenceScore:    confidenceScore,
+		ConfidenceNote:     confidenceNote,
 		Waves:              ensureSlice(allWaves),
 		DependencyChain:    []models.BlastDependencyEdge{},
 		RiskIndicators:     []models.RiskIndicator{},
@@ -356,6 +360,8 @@ func (s *GraphSnapshot) computeNodeDrain(target models.ResourceRef) (*models.Bla
 		ImpactSummary:      cr.ImpactSummary,
 		CoverageLevel:      cr.CoverageLevel,
 		CoverageNote:       cr.CoverageNote,
+		ConfidenceScore:    cr.ConfidenceScore,
+		ConfidenceNote:     cr.ConfidenceNote,
 		Waves:              ensureSlice(waves),
 		DependencyChain:    []models.BlastDependencyEdge{},
 		RiskIndicators:     []models.RiskIndicator{},
@@ -561,6 +567,9 @@ func (s *GraphSnapshot) computeSingleResourceBlast(target models.ResourceRef, fa
 		},
 		CoverageLevel: cr.CoverageLevel,
 		CoverageNote:  cr.CoverageNote,
+
+		ConfidenceScore: cr.ConfidenceScore,
+		ConfidenceNote:  cr.ConfidenceNote,
 
 		ReplicaCount:     replicas,
 		IsSPOF:           isSPOF,

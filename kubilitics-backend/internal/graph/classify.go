@@ -22,6 +22,8 @@ type ClassificationResult struct {
 	ImpactSummary   models.ImpactSummary
 	CoverageLevel   string
 	CoverageNote    string
+	ConfidenceScore int
+	ConfidenceNote  string
 }
 
 // classifyImpact is the top-level entry point for the impact classification engine.
@@ -55,6 +57,9 @@ func classifyImpact(snap *GraphSnapshot, target models.ResourceRef, failureMode 
 	// Determine coverage level
 	coverageLevel, coverageNote := determineCoverage(snap)
 
+	// Compute confidence score based on data sources
+	confidenceScore, confidenceNote := computeConfidence(snap)
+
 	return &ClassificationResult{
 		LostPods:        lostPods,
 		ServiceImpacts:  svcImpacts,
@@ -64,6 +69,8 @@ func classifyImpact(snap *GraphSnapshot, target models.ResourceRef, failureMode 
 		ImpactSummary:   summary,
 		CoverageLevel:   coverageLevel,
 		CoverageNote:    coverageNote,
+		ConfidenceScore: confidenceScore,
+		ConfidenceNote:  confidenceNote,
 	}
 }
 
@@ -565,4 +572,56 @@ func findMatchingPDBByLabels(
 		}
 	}
 	return nil, false
+}
+
+// computeConfidence scores how much to trust the blast-radius result based on
+// which data sources were available during classification.
+func computeConfidence(snap *GraphSnapshot) (int, string) {
+	score := 0
+	var sources []string
+
+	hasEndpoints := len(snap.ServiceEndpoints) > 0
+	hasTraces := snap.OTelServiceMap != nil && len(snap.OTelServiceMap.Edges) > 0
+	hasPDBs := len(snap.PDBs) > 0
+	hasHPAs := false
+	for _, v := range snap.NodeHasHPA {
+		if v {
+			hasHPAs = true
+			break
+		}
+	}
+
+	if hasEndpoints {
+		score += 30
+		sources = append(sources, "endpoints")
+	}
+	if hasTraces {
+		score += 30
+		sources = append(sources, "traces")
+	}
+	if hasPDBs {
+		score += 15
+		sources = append(sources, "PDBs")
+	}
+	if hasHPAs {
+		score += 10
+		sources = append(sources, "HPAs")
+	}
+	if snap.TotalWorkloads > 10 {
+		score += 15
+		sources = append(sources, "large cluster")
+	}
+
+	if score > 100 {
+		score = 100
+	}
+
+	note := ""
+	if len(sources) == 0 {
+		note = "Graph topology only — no runtime data available"
+	} else {
+		note = fmt.Sprintf("Based on: %s", strings.Join(sources, ", "))
+	}
+
+	return score, note
 }

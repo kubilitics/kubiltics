@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/kubilitics/kubilitics-backend/internal/models"
+	policyv1 "k8s.io/api/policy/v1"
 )
 
 func TestComputeResilience_WellProtected(t *testing.T) {
@@ -170,5 +171,34 @@ func TestComputeExposure_TrafficWeighted_NoCallData(t *testing.T) {
 	})
 	if detail.Score < 20 {
 		t.Errorf("fallback to consumer count should give decent score, got %d", detail.Score)
+	}
+}
+
+func TestComputeConfidence_FullData(t *testing.T) {
+	snap := buildSnapshotScenario1()
+	snap.PDBs = []policyv1.PodDisruptionBudget{{}} // just need non-empty
+	snap.NodeHasHPA["Deployment/default/app"] = true
+	snap.TotalWorkloads = 15
+
+	score, note := computeConfidence(snap)
+	// endpoints(30) + PDBs(15) + HPAs(10) + large cluster(15) = 70 (no traces)
+	if score < 60 {
+		t.Errorf("full data minus traces should score >= 60, got %d", score)
+	}
+	if note == "" {
+		t.Error("note should not be empty")
+	}
+}
+
+func TestComputeConfidence_GraphOnly(t *testing.T) {
+	snap := &GraphSnapshot{}
+	snap.EnsureMaps()
+
+	score, note := computeConfidence(snap)
+	if score != 0 {
+		t.Errorf("empty snapshot should have 0 confidence, got %d", score)
+	}
+	if note != "Graph topology only — no runtime data available" {
+		t.Errorf("unexpected note for empty snapshot: %s", note)
 	}
 }
