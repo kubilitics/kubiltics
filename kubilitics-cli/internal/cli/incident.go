@@ -81,6 +81,7 @@ type incidentReport struct {
 	HighRestarts     []incidentPodEntry  `json:"highRestarts"`
 	NodePressure     []incidentNodeEntry `json:"nodePressure"`
 	CriticalEvents   []eventRecord       `json:"criticalEvents"`
+	DataComplete     bool                `json:"dataComplete"`
 }
 
 type incidentPodEntry struct {
@@ -444,17 +445,25 @@ func parseNamespacedPod(v string) (namespace, pod string, err error) {
 }
 
 func buildIncidentReport(ctx context.Context, a *app, recentWindow time.Duration, restartThreshold int) (*incidentReport, error) {
+	dataComplete := true
+
 	pods, err := fetchPods(ctx, a)
 	if err != nil {
-		return nil, err
+		fmt.Fprintf(os.Stderr, "⚠ Warning: could not fetch pod data — incident report may be incomplete\n")
+		dataComplete = false
+		pods = &k8sPodList{}
 	}
 	nodes, err := fetchNodes(ctx, a)
 	if err != nil {
-		return nil, err
+		fmt.Fprintf(os.Stderr, "⚠ Warning: could not fetch node data — incident report may be incomplete\n")
+		dataComplete = false
+		nodes = &k8sNodeList{}
 	}
 	events, err := fetchEvents(ctx, a)
 	if err != nil {
-		return nil, err
+		fmt.Fprintf(os.Stderr, "⚠ Warning: could not fetch event data — incident report may be incomplete\n")
+		dataComplete = false
+		events = nil
 	}
 	now := time.Now()
 	recentEvents := filterEventsByRecent(events, recentWindow, now)
@@ -527,6 +536,7 @@ func buildIncidentReport(ctx context.Context, a *app, recentWindow time.Duration
 		HighRestarts:     make([]incidentPodEntry, 0),
 		NodePressure:     make([]incidentNodeEntry, 0),
 		CriticalEvents:   criticalEvents,
+		DataComplete:     dataComplete,
 	}
 
 	for _, p := range pods.Items {
@@ -612,6 +622,10 @@ func fetchNodes(ctx context.Context, a *app) (*k8sNodeList, error) {
 }
 
 func printIncidentTable(cmd *cobra.Command, report *incidentReport) {
+	if !report.DataComplete {
+		fmt.Fprintln(cmd.OutOrStdout(), output.GetTheme().Error.Render("⚠ WARNING: API data incomplete — some issues may not be shown"))
+		fmt.Fprintln(cmd.OutOrStdout())
+	}
 	fmt.Fprintln(cmd.OutOrStdout(), "=== CrashLoopBackOff ===")
 	if len(report.CrashLoopBackOff) == 0 {
 		fmt.Fprintln(cmd.OutOrStdout(), "None")
