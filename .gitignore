@@ -197,3 +197,12 @@ kubilitics-backend/server_new
 docs/superpowers/
 kubilitics-backend/test_output.txt
 .worktrees/
+
+# kcli build artifacts
+/kubilitics-cli/bin/
+/kubilitics-cli/kcli
+/kubilitics-cli/kcli.exe
+/kubilitics-cli/dist/
+/kubilitics-cli/coverage.txt
+/kubilitics-cli/coverage.html
+/kubilitics-cli/*.db
