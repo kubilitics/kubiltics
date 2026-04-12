@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
 import { listResources } from '@/services/backendApiClient';
 import { getPodLogsUrl } from '@/services/backendApiClient';
-import { parseInsightPods, type PodReference } from '@/lib/parseInsightPods';
+import { parseInsightDetail, type PodReference } from '@/lib/parseInsightPods';
 import { inferRootCause, extractErrorSnippet, type RootCauseResult } from '@/lib/rootCauseHeuristic';
 import type { Insight } from '@/services/api/eventsIntelligence';
 
@@ -91,7 +91,27 @@ async function fetchInvestigateData(
   clusterId: string,
   insight: Insight,
 ): Promise<InvestigateData> {
-  const podRefs = parseInsightPods(insight.detail);
+  const parsed = parseInsightDetail(insight.detail);
+  let podRefs = parsed.pods;
+
+  // Fallback: if no individual pod names but a namespace is mentioned (e.g. "restart storm in namespace X"),
+  // list all pods in that namespace with restarts > 0
+  if (podRefs.length === 0 && parsed.namespace) {
+    try {
+      const result = await listResources(baseUrl, clusterId, 'pods', { namespace: parsed.namespace });
+      for (const item of result.items) {
+        const meta = (item.metadata ?? {}) as Record<string, unknown>;
+        const status = (item.status ?? {}) as Record<string, unknown>;
+        const containerStatuses = (status.containerStatuses ?? []) as Array<Record<string, unknown>>;
+        const totalRestarts = containerStatuses.reduce((sum: number, cs: Record<string, unknown>) => sum + ((cs.restartCount as number) ?? 0), 0);
+        if (totalRestarts > 0) {
+          podRefs.push({ namespace: (meta.namespace as string) ?? parsed.namespace, name: (meta.name as string) ?? '' });
+        }
+      }
+    } catch {
+      // API error — fall through to empty
+    }
+  }
 
   if (podRefs.length === 0) {
     return {
