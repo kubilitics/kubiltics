@@ -10,7 +10,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/kubilitics/kcli/internal/cli"
+	"github.com/kubilitics/kubilitics/kubilitics-cli/internal/cli"
 )
 
 type Config struct {

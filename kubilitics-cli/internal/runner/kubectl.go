@@ -14,8 +14,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/kubilitics/kcli/internal/logging"
-	"github.com/kubilitics/kcli/internal/terminal"
+	"github.com/kubilitics/kubilitics/kubilitics-cli/internal/logging"
+	"github.com/kubilitics/kubilitics/kubilitics-cli/internal/terminal"
 )
 
 // KubectlError wraps a kubectl exit error with the captured stderr content,

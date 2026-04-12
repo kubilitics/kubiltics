@@ -8,7 +8,7 @@ import (
 	"text/template"
 	"time"
 
-	kcfg "github.com/kubilitics/kcli/internal/config"
+	kcfg "github.com/kubilitics/kubilitics/kubilitics-cli/internal/config"
 	"go.uber.org/goleak"
 )
 

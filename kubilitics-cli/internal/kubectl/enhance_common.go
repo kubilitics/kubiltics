@@ -9,7 +9,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
 
-	"github.com/kubilitics/kcli/internal/output"
+	"github.com/kubilitics/kubilitics/kubilitics-cli/internal/output"
 )
 
 // newEnhanceClient creates a kubernetes clientset from kubeconfig parameters.

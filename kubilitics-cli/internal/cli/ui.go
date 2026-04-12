@@ -4,9 +4,9 @@ import (
 	"context"
 	"time"
 
-	"github.com/kubilitics/kcli/internal/informer"
-	"github.com/kubilitics/kcli/internal/k8sclient"
-	"github.com/kubilitics/kcli/internal/ui"
+	"github.com/kubilitics/kubilitics/kubilitics-cli/internal/informer"
+	"github.com/kubilitics/kubilitics/kubilitics-cli/internal/k8sclient"
+	"github.com/kubilitics/kubilitics/kubilitics-cli/internal/ui"
 	"github.com/spf13/cobra"
 )
 

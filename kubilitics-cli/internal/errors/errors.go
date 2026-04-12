@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/kubilitics/kcli/internal/runner"
+	"github.com/kubilitics/kubilitics/kubilitics-cli/internal/runner"
 )
 
 // Code identifies a class of error for programmatic handling and Desktop integration.

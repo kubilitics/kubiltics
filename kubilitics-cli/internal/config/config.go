@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/kubilitics/kcli/internal/keychain"
+	"github.com/kubilitics/kubilitics/kubilitics-cli/internal/keychain"
 	"gopkg.in/yaml.v3"
 )
 

@@ -16,7 +16,7 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/kubilitics/kcli/internal/runner"
+	"github.com/kubilitics/kubilitics/kubilitics-cli/internal/runner"
 )
 
 type Options struct {

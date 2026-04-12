@@ -13,7 +13,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/kubilitics/kcli/internal/output"
+	"github.com/kubilitics/kubilitics/kubilitics-cli/internal/output"
 	"github.com/spf13/cobra"
 )
 

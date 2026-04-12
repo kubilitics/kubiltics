@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/kubilitics/kcli/internal/filelock"
+	"github.com/kubilitics/kubilitics/kubilitics-cli/internal/filelock"
 )
 
 const (

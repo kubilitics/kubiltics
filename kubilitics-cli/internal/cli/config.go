@@ -7,8 +7,8 @@ import (
 	"sort"
 	"strings"
 
-	kcfg "github.com/kubilitics/kcli/internal/config"
-	"github.com/kubilitics/kcli/internal/keychain"
+	kcfg "github.com/kubilitics/kubilitics/kubilitics-cli/internal/config"
+	"github.com/kubilitics/kubilitics/kubilitics-cli/internal/keychain"
 	"github.com/spf13/cobra"
 )
 

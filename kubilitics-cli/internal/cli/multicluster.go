@@ -5,8 +5,8 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/kubilitics/kcli/internal/runner"
-	"github.com/kubilitics/kcli/internal/state"
+	"github.com/kubilitics/kubilitics/kubilitics-cli/internal/runner"
+	"github.com/kubilitics/kubilitics/kubilitics-cli/internal/state"
 )
 
 // DefaultMaxConcurrency is the maximum number of concurrent API-server

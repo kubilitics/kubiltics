@@ -10,11 +10,11 @@ import (
 	"sync"
 	"time"
 
-	kcfg "github.com/kubilitics/kcli/internal/config"
-	kcerr "github.com/kubilitics/kcli/internal/errors"
-	"github.com/kubilitics/kcli/internal/runner"
-	"github.com/kubilitics/kcli/internal/ui"
-	"github.com/kubilitics/kcli/internal/version"
+	kcfg "github.com/kubilitics/kubilitics/kubilitics-cli/internal/config"
+	kcerr "github.com/kubilitics/kubilitics/kubilitics-cli/internal/errors"
+	"github.com/kubilitics/kubilitics/kubilitics-cli/internal/runner"
+	"github.com/kubilitics/kubilitics/kubilitics-cli/internal/ui"
+	"github.com/kubilitics/kubilitics/kubilitics-cli/internal/version"
 	"github.com/spf13/cobra"
 )
 

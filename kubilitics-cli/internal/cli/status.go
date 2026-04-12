@@ -10,8 +10,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 
-	"github.com/kubilitics/kcli/internal/k8sclient"
-	"github.com/kubilitics/kcli/internal/output"
+	"github.com/kubilitics/kubilitics/kubilitics-cli/internal/k8sclient"
+	"github.com/kubilitics/kubilitics/kubilitics-cli/internal/output"
 )
 
 func newStatusCmd(a *app) *cobra.Command {

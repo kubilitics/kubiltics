@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/kubilitics/kcli/internal/runner"
+	"github.com/kubilitics/kubilitics/kubilitics-cli/internal/runner"
 )
 
 func TestWrap_KubectlNotFound(t *testing.T) {

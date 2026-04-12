@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/kubilitics/kcli/internal/output"
+	"github.com/kubilitics/kubilitics/kubilitics-cli/internal/output"
 )
 
 // resourceAction defines an action that can be performed on a resource.

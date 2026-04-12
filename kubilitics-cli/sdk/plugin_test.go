@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	sdk "github.com/kubilitics/kcli/sdk"
-	"github.com/kubilitics/kcli/sdk/testutil"
+	sdk "github.com/kubilitics/kubilitics/kubilitics-cli/sdk"
+	"github.com/kubilitics/kubilitics/kubilitics-cli/sdk/testutil"
 )
 
 // ---------------------------------------------------------------------------

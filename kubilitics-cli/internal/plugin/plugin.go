@@ -17,7 +17,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/kubilitics/kcli/internal/version"
+	"github.com/kubilitics/kubilitics/kubilitics-cli/internal/version"
 	"gopkg.in/yaml.v3"
 )
 

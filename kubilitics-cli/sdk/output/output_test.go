@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/kubilitics/kcli/sdk/output"
+	"github.com/kubilitics/kubilitics/kubilitics-cli/sdk/output"
 )
 
 func TestPrinter_Println(t *testing.T) {

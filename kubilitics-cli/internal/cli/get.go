@@ -36,7 +36,7 @@ import (
 	"github.com/spf13/cobra"
 	"k8s.io/client-go/tools/clientcmd"
 
-	kubectlpkg "github.com/kubilitics/kcli/internal/kubectl"
+	kubectlpkg "github.com/kubilitics/kubilitics/kubilitics-cli/internal/kubectl"
 )
 
 // crashHintEntry holds one pod that needs attention.

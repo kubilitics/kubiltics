@@ -2,7 +2,7 @@
 package cli
 
 import (
-	"github.com/kubilitics/kcli/internal/terminal"
+	"github.com/kubilitics/kubilitics/kubilitics-cli/internal/terminal"
 )
 
 // ANSI escape sequences. Empty when ColorDisabled() (e.g. Windows cmd.exe).

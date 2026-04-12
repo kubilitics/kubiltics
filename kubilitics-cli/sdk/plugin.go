@@ -8,7 +8,7 @@
 //	    "context"
 //	    "fmt"
 //
-//	    sdk "github.com/kubilitics/kcli/sdk"
+//	    sdk "github.com/kubilitics/kubilitics/kubilitics-cli/sdk"
 //	)
 //
 //	func main() {

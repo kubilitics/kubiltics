@@ -8,7 +8,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	"github.com/kubilitics/kcli/internal/output"
+	"github.com/kubilitics/kubilitics/kubilitics-cli/internal/output"
 )
 
 // ── ServiceAccounts (namespace-scoped) ───────────────────────────────────────

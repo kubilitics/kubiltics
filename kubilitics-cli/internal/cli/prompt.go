@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/kubilitics/kcli/internal/k8sclient"
+	"github.com/kubilitics/kubilitics/kubilitics-cli/internal/k8sclient"
 	"github.com/spf13/cobra"
 )
 

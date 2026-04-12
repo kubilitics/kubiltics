@@ -21,10 +21,10 @@ import (
 	"time"
 
 	"github.com/charmbracelet/lipgloss"
-	kcfg "github.com/kubilitics/kcli/internal/config"
-	"github.com/kubilitics/kcli/internal/filelock"
-	"github.com/kubilitics/kcli/internal/output"
-	"github.com/kubilitics/kcli/internal/plugin"
+	kcfg "github.com/kubilitics/kubilitics/kubilitics-cli/internal/config"
+	"github.com/kubilitics/kubilitics/kubilitics-cli/internal/filelock"
+	"github.com/kubilitics/kubilitics/kubilitics-cli/internal/output"
+	"github.com/kubilitics/kubilitics/kubilitics-cli/internal/plugin"
 	"github.com/spf13/cobra"
 )
 

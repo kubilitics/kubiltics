@@ -6,8 +6,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/kubilitics/kcli/internal/output"
-	"github.com/kubilitics/kcli/internal/plugin"
+	"github.com/kubilitics/kubilitics/kubilitics-cli/internal/output"
+	"github.com/kubilitics/kubilitics/kubilitics-cli/internal/plugin"
 	"github.com/spf13/cobra"
 )
 

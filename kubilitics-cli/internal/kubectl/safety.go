@@ -5,7 +5,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/kubilitics/kcli/internal/output"
+	"github.com/kubilitics/kubilitics/kubilitics-cli/internal/output"
 )
 
 // RiskLevel represents the danger level of an operation

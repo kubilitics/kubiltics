@@ -12,9 +12,9 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/spf13/cobra"
 
-	"github.com/kubilitics/kcli/internal/k8sclient"
-	"github.com/kubilitics/kcli/internal/output"
-	"github.com/kubilitics/kcli/internal/state"
+	"github.com/kubilitics/kubilitics/kubilitics-cli/internal/k8sclient"
+	"github.com/kubilitics/kubilitics/kubilitics-cli/internal/output"
+	"github.com/kubilitics/kubilitics/kubilitics-cli/internal/state"
 )
 
 // kubeconfig view output for context extraction

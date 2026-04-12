@@ -5,7 +5,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/kubilitics/kcli/internal/state"
+	"github.com/kubilitics/kubilitics/kubilitics-cli/internal/state"
 	"github.com/spf13/cobra"
 )
 

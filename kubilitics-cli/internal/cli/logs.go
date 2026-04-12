@@ -20,7 +20,7 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/kubilitics/kcli/internal/runner"
+	"github.com/kubilitics/kubilitics/kubilitics-cli/internal/runner"
 	"github.com/spf13/cobra"
 )
 
