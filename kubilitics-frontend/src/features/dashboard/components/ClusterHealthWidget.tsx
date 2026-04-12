@@ -4,7 +4,7 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { PieChart, Pie, Cell, ResponsiveContainer, Label } from "recharts";
-import { Info, CheckCircle2, AlertTriangle, AlertCircle, ChevronRight, Boxes, Server, RefreshCw, ShieldAlert } from "lucide-react";
+import { Info, CheckCircle2, AlertTriangle, AlertCircle, ChevronRight, Boxes, Server, Layers, RefreshCw, ShieldAlert } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Progress } from "@/components/ui/progress";
@@ -24,8 +24,9 @@ const STATUS_CONFIG: Record<string, { badge: string; icon: typeof CheckCircle2 }
 };
 
 const BREAKDOWN_LABELS: Record<string, string> = {
-  podHealth: "Pods",
   nodeHealth: "Nodes",
+  workloadHealth: "Workloads",
+  podHealth: "Pods",
   stability: "Stability",
   eventHealth: "Events",
 };
@@ -138,13 +139,13 @@ export const ClusterHealthWidget = () => {
               </ResponsiveContainer>
             </div>
 
-            {/* Breakdown — 4 factors (matches Resource Allocation vertical style) */}
+            {/* Breakdown — 5 factors (matches Resource Allocation vertical style) */}
             <div className="space-y-2 pt-3 mt-auto border-t border-border/50">
               <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Health factors</p>
               <div className="space-y-3">
-                {(["podHealth", "nodeHealth", "stability", "eventHealth"] as const).map((key) => {
+                {(["nodeHealth", "workloadHealth", "podHealth", "stability", "eventHealth"] as const).map((key) => {
                   const val = Math.min(100, Math.max(0, breakdown[key]));
-                  const Icon = key === "podHealth" ? Boxes : key === "nodeHealth" ? Server : key === "stability" ? RefreshCw : ShieldAlert;
+                  const Icon = key === "podHealth" ? Boxes : key === "nodeHealth" ? Server : key === "workloadHealth" ? Layers : key === "stability" ? RefreshCw : ShieldAlert;
                   return (
                     <div key={key} className="space-y-1">
                       <div className="flex justify-between text-xs">

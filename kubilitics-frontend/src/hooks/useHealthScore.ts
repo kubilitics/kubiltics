@@ -14,6 +14,7 @@ export interface HealthScore {
   breakdown: {
     podHealth: number;
     nodeHealth: number;
+    workloadHealth: number;
     stability: number;
     eventHealth: number;
   };
@@ -71,88 +72,29 @@ export function useHealthScore(): HealthScore {
         score: 0,
         grade: 'F',
         status: 'critical',
-        breakdown: { podHealth: 0, nodeHealth: 0, stability: 0, eventHealth: 0 },
+        breakdown: { podHealth: 0, nodeHealth: 0, workloadHealth: 0, stability: 0, eventHealth: 0 },
         details: ['No cluster connected'],
         insight: 'No cluster connected. Connect a cluster to begin monitoring.',
       };
     }
 
     if (isBackendConfigured && overviewQuery.data) {
-      // Use cluster overview for health score — already cached by Dashboard
+      // Use backend's enterprise health scoring — already cached by Dashboard
       const ov = overviewQuery.data;
-      const ps = ov.pod_status;
-      const totalPods = summaryQuery.data?.pod_count ?? ov.counts.pods ?? 0;
-      const totalNodes = summaryQuery.data?.node_count ?? ov.counts.nodes ?? 0;
-
-      const details: string[] = [];
-
-      // Pod Health (40% weight)
-      const podsHealthy = (ps?.running ?? 0) + (ps?.succeeded ?? 0);
-      const podsFailed = ps?.failed ?? 0;
-      const podsPending = ps?.pending ?? 0;
-      const podHealthRatio = totalPods > 0 ? (podsHealthy / totalPods) * 100 : 100;
-      const pendingPenalty = totalPods > 0 && podsPending > 0 ? (podsPending / totalPods) * 20 : 0;
-      const failedPenalty = totalPods > 0 && podsFailed > 0 ? (podsFailed / totalPods) * 50 : 0;
-      const podHealth = Math.max(0, Math.min(100, podHealthRatio - pendingPenalty - failedPenalty));
-
-      if (podsFailed > 0) details.push(`${podsFailed} pod(s) in failed state`);
-      if (podsPending > 2) details.push(`${podsPending} pod(s) pending`);
-
-      // Node Health (30% weight) — compute from real node conditions
-      const nodeItems = nodesList.data?.items ?? [];
-      let nodeHealthPct: number;
-      if (nodeItems.length > 0) {
-        const readyNodes = nodeItems.filter((n) => isNodeReady(n as Parameters<typeof isNodeReady>[0])).length;
-        nodeHealthPct = Math.round((readyNodes / nodeItems.length) * 100);
-      } else {
-        nodeHealthPct = ov.health?.score ? Math.min(100, ov.health.score) : 100;
-      }
-      const nodeHealth = totalNodes > 0 ? nodeHealthPct : 100;
-      if (totalNodes > 0 && nodeHealth < 100) details.push(`${Math.round((1 - nodeHealth / 100) * totalNodes)} node(s) not ready`);
-
-      // Stability (20% weight) — compute from REAL pod restart counts
-      const podItems = podsList.data?.items ?? [];
-      let restartCount = 0;
-      for (const pod of podItems) {
-        restartCount += getRestartCount(pod as Parameters<typeof getRestartCount>[0]);
-      }
-      let stability = 100;
-      if (restartCount > 0) stability = Math.max(0, 100 - restartCount * 2);
-      if (restartCount > 10) details.push(`High restart count: ${restartCount} restarts across pods`);
-
-      // Event Health (10% weight)
-      const warningEvents = ov.alerts?.warnings ?? 0;
-      const errorEvents = ov.alerts?.critical ?? 0;
-      const eventHealth = Math.max(0, 100 - warningEvents * 2 - errorEvents * 10);
-      if (errorEvents > 0) details.push(`${errorEvents} critical alert(s)`);
-      if (warningEvents > 3) details.push(`${warningEvents} warnings in cluster`);
-
-      const score = Math.round(podHealth * 0.4 + nodeHealth * 0.3 + stability * 0.2 + eventHealth * 0.1);
-
-      let grade: HealthScore['grade'];
-      let status: HealthScore['status'];
-      if (score >= 90) { grade = 'A'; status = 'excellent'; if (details.length === 0) details.push('All systems operating normally'); }
-      else if (score >= 80) { grade = 'B'; status = 'good'; }
-      else if (score >= 70) { grade = 'C'; status = 'fair'; }
-      else if (score >= 60) { grade = 'D'; status = 'poor'; }
-      else { grade = 'F'; status = 'critical'; }
-
-      const insight = score >= 90
-        ? (details.length > 0 ? details[0] : 'All systems operating normally.')
-        : details.slice(0, 2).join('. ') + (score < 70 ? '. Investigate recommended.' : '.');
-
+      const bd = (ov.health as any)?.breakdown ?? {};
       return {
-        score,
-        grade,
-        status,
+        score: ov.health.score,
+        grade: ov.health.grade as HealthScore['grade'],
+        status: ov.health.status as HealthScore['status'],
         breakdown: {
-          podHealth: Math.round(podHealth),
-          nodeHealth: Math.round(nodeHealth),
-          stability: Math.round(stability),
-          eventHealth: Math.round(eventHealth),
+          podHealth: bd.pods ?? 100,
+          nodeHealth: bd.nodes ?? 100,
+          workloadHealth: bd.workloads ?? 100,
+          stability: bd.stability ?? 100,
+          eventHealth: bd.events ?? 100,
         },
-        details,
-        insight,
+        details: ((ov.health as any)?.findings ?? []).map((f: any) => f.message),
+        insight: (ov.health as any)?.insight ?? 'No data available.',
       };
     }
 
@@ -237,6 +179,7 @@ export function useHealthScore(): HealthScore {
       breakdown: {
         podHealth: Math.round(podHealth),
         nodeHealth: Math.round(nodeHealth),
+        workloadHealth: 100,
         stability: Math.round(stability),
         eventHealth: Math.round(eventHealth),
       },
