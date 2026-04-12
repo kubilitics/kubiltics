@@ -466,6 +466,8 @@ func newHealthCmd(a *app) *cobra.Command {
 Without arguments, computes a 0-100 health score based on node readiness,
 pod phases, CrashLoopBackOff counts, and pressure conditions.
 
+Note: health always checks all namespaces for a complete cluster view.
+
 Examples:
   kcli health              # overall cluster health score + issues
   kcli health pods         # pod-specific health summary
@@ -826,6 +828,8 @@ func newInstabilityCmd(a *app) *cobra.Command {
 This is a convenience command that combines 'kcli restarts' and 'kcli events --type=Warning'
 into a single view for rapid triage.
 
+Note: instability always checks all namespaces for a complete cluster view.
+
 Examples:
   kcli instability          # restart leaders + recent warning events
   kcli instability pods     # pod-only instability (restart leaders only)`,
@@ -883,6 +887,8 @@ func newEventsCmd(a *app) *cobra.Command {
 		Long: `View Kubernetes cluster events with filtering, sorting, and watch support.
 
 By default, shows events from the last hour. Use --all to remove the time filter.
+
+Note: events always fetches across all namespaces; the -n flag has no effect here.
 
 Examples:
   kcli events                          # events from last hour (newest first)
