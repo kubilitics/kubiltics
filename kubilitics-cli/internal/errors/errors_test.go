@@ -112,6 +112,22 @@ func TestKcliError_JSON(t *testing.T) {
 	}
 }
 
+func TestNewParseError(t *testing.T) {
+	err := NewParseError("pods", fmt.Errorf("unexpected EOF"))
+	if err.ErrCode != ErrParseFailed {
+		t.Errorf("code = %s, want PARSE_FAILED", err.ErrCode)
+	}
+	if !strings.Contains(err.Error(), "pods") {
+		t.Error("message should mention the resource")
+	}
+	if !strings.Contains(err.Hint, "kubectl get pods") {
+		t.Error("hint should suggest kubectl fallback")
+	}
+	if err.Unwrap() == nil {
+		t.Error("cause should be preserved")
+	}
+}
+
 func TestSuggestResourceType(t *testing.T) {
 	cases := []struct {
 		input string

@@ -22,6 +22,7 @@ const (
 	ErrMutationAborted    Code = "MUTATION_ABORTED"
 	ErrTimeout            Code = "TIMEOUT"
 	ErrConfigInvalid      Code = "CONFIG_INVALID"
+	ErrParseFailed        Code = "PARSE_FAILED"
 )
 
 // KcliError is a user-friendly error with an optional hint.
@@ -143,6 +144,16 @@ func Wrap(err error) error {
 	}
 
 	return ke
+}
+
+// NewParseError creates a KcliError for when API returned data that can't be parsed.
+func NewParseError(context string, cause error) *KcliError {
+	return &KcliError{
+		ErrCode: ErrParseFailed,
+		Message: fmt.Sprintf("failed to parse API response for %s", context),
+		Hint:    "The cluster may have returned unexpected data. Try: kubectl get " + context + " -o json",
+		Cause:   cause,
+	}
 }
 
 // extractQuoted returns the first double-quoted substring from s, or empty string.
