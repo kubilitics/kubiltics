@@ -32,6 +32,7 @@ import {
   X,
   Check,
   Plus,
+  Trash2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from '@/components/ui/sonner';
@@ -64,6 +65,23 @@ import {
   GROUP_COLORS,
   type EnvironmentTag,
 } from '@/stores/clusterOrganizationStore';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { deleteCluster } from '@/services/backendApiClient';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { useQueryClient } from '@tanstack/react-query';
 import { PageLayout } from '@/components/layout/PageLayout';
 
@@ -211,7 +229,7 @@ const statusConfig = {
   },
 };
 
-function ClusterCard({ cluster, onClick }: { cluster: FleetCluster; onClick: () => void }) {
+function ClusterCard({ cluster, onClick, onDelete }: { cluster: FleetCluster; onClick: () => void; onDelete: () => void }) {
   const cfg = statusConfig[cluster.status];
   const favorites = useClusterOrganizationStore((s) => s.favorites);
   const envTags = useClusterOrganizationStore((s) => s.envTags);
@@ -371,10 +389,31 @@ function ClusterCard({ cluster, onClick }: { cluster: FleetCluster; onClick: () 
                   <Star className={cn('h-3.5 w-3.5', isFav ? 'fill-amber-400 text-amber-400' : '')} />
                   <span>{isFav ? 'Remove from favorites' : 'Add to favorites'}</span>
                 </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={(e) => { e.stopPropagation(); onDelete(); }}
+                  className="gap-2 text-destructive focus:text-destructive"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  <span>Remove cluster</span>
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
 
-            <StatusBadge variant={cfg.variant} label={cfg.label} size="sm" dot />
+            {cluster.healthReason ? (
+              <TooltipProvider delayDuration={200}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span><StatusBadge variant={cfg.variant} label={cfg.label} size="sm" dot /></span>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="max-w-xs text-xs">
+                    {cluster.healthReason}
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            ) : (
+              <StatusBadge variant={cfg.variant} label={cfg.label} size="sm" dot />
+            )}
           </div>
         </div>
 
@@ -757,6 +796,27 @@ export default function FleetDashboard() {
     navigate(`/dashboard?cluster=${encodeURIComponent(cluster.id)}`);
   }
 
+  // ── Delete cluster ──────────────────────────────────────────────────────────
+  const stored = useBackendConfigStore((s) => s.backendBaseUrl);
+  const backendBaseUrl = getEffectiveBackendBaseUrl(stored);
+  const [clusterToDelete, setClusterToDelete] = useState<FleetCluster | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleDeleteCluster = async () => {
+    if (!clusterToDelete) return;
+    setIsDeleting(true);
+    try {
+      await deleteCluster(backendBaseUrl, clusterToDelete.id);
+      queryClient.invalidateQueries({ queryKey: ['fleet'] });
+      toast.success(`Cluster "${clusterToDelete.name}" removed from fleet`);
+    } catch (err) {
+      toast.error(`Failed to remove cluster: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    } finally {
+      setIsDeleting(false);
+      setClusterToDelete(null);
+    }
+  };
+
   return (
     <PageLayout label="Fleet Dashboard" showBanner={false}>
       <motion.div
@@ -854,7 +914,7 @@ export default function FleetDashboard() {
                     )}
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                       {ungrouped.map((cluster) => (
-                        <ClusterCard key={cluster.id} cluster={cluster} onClick={() => handleClusterClick(cluster)} />
+                        <ClusterCard key={cluster.id} cluster={cluster} onClick={() => handleClusterClick(cluster)} onDelete={() => setClusterToDelete(cluster)} />
                       ))}
                     </div>
                   </div>
@@ -880,7 +940,7 @@ export default function FleetDashboard() {
                       </div>
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 pl-5 border-l-2" style={{ borderColor: g.color || '#6366f1' }}>
                         {groupClusters.map((cluster) => (
-                          <ClusterCard key={cluster.id} cluster={cluster} onClick={() => handleClusterClick(cluster)} />
+                          <ClusterCard key={cluster.id} cluster={cluster} onClick={() => handleClusterClick(cluster)} onDelete={() => setClusterToDelete(cluster)} />
                         ))}
                       </div>
                     </div>
@@ -961,6 +1021,28 @@ export default function FleetDashboard() {
           </div>
         </div>
       )}
+      {/* Delete cluster confirmation dialog */}
+      <AlertDialog open={!!clusterToDelete} onOpenChange={(open) => { if (!open) setClusterToDelete(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove cluster from fleet?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will remove <span className="font-semibold text-foreground">{clusterToDelete?.name}</span> from Kubilitics.
+              The cluster itself will not be affected — only the connection is removed.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteCluster}
+              disabled={isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeleting ? 'Removing…' : 'Remove cluster'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </PageLayout>
   );
 }

@@ -465,6 +465,7 @@ export function useServerPaginatedResourceList<T extends KubernetesResource>(
     search?: string;
     sortBy?: string;
     sortOrder?: 'asc' | 'desc';
+    fieldSelector?: string;
   }
 ) {
   const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured());
@@ -484,19 +485,21 @@ export function useServerPaginatedResourceList<T extends KubernetesResource>(
   const pageSize = Math.max(1, Math.min(100, options?.pageSize ?? 10));
   const [currentPage, setCurrentPage] = useState(1);
 
-  // Reset to page 1 when search, sort, or pageSize changes
+  // Reset to page 1 when search, sort, pageSize, or fieldSelector changes
   const searchRef = useRef(options?.search);
   const sortRef = useRef(`${options?.sortBy}-${options?.sortOrder}`);
   const pageSizeRef = useRef(pageSize);
+  const fieldSelectorRef = useRef(options?.fieldSelector);
   useEffect(() => {
     const newSort = `${options?.sortBy}-${options?.sortOrder}`;
-    if (searchRef.current !== options?.search || sortRef.current !== newSort || pageSizeRef.current !== pageSize) {
+    if (searchRef.current !== options?.search || sortRef.current !== newSort || pageSizeRef.current !== pageSize || fieldSelectorRef.current !== options?.fieldSelector) {
       searchRef.current = options?.search;
       sortRef.current = newSort;
       pageSizeRef.current = pageSize;
+      fieldSelectorRef.current = options?.fieldSelector;
       setCurrentPage(1);
     }
-  }, [options?.search, options?.sortBy, options?.sortOrder, pageSize]);
+  }, [options?.search, options?.sortBy, options?.sortOrder, pageSize, options?.fieldSelector]);
 
   const offset = (currentPage - 1) * pageSize;
 
@@ -506,6 +509,7 @@ export function useServerPaginatedResourceList<T extends KubernetesResource>(
       resourceType, namespace ?? '',
       pageSize, offset,
       options?.search ?? '', options?.sortBy ?? '', options?.sortOrder ?? '',
+      options?.fieldSelector ?? '',
     ],
     queryFn: () => {
       const params: ResourceListParams = {
@@ -514,6 +518,7 @@ export function useServerPaginatedResourceList<T extends KubernetesResource>(
         search: options?.search || undefined,
         sortBy: options?.sortBy || undefined,
         sortOrder: options?.sortOrder || undefined,
+        fieldSelector: options?.fieldSelector || undefined,
       };
       // Apply project namespace scoping
       const projectNamespacesParam = projectNamespaces && projectNamespaces.length !== 1 ? projectNamespaces : undefined;

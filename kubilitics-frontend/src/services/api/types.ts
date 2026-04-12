@@ -49,6 +49,7 @@ export interface BackendClusterSummary {
   job_count?: number;
   cronjob_count?: number;
   health_status: string;
+  health_reason?: string;
 }
 
 /** Cluster overview shape from GET /api/v1/clusters/{clusterId}/overview (dashboard snapshot). */

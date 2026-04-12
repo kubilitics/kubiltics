@@ -76,13 +76,13 @@ function K8sIcon({ kind, className }: { kind: string; className?: string }) {
 function HealthBar({ segments, total }: { segments: HealthSegment[]; total: number }) {
   if (!segments.length || total === 0) {
     return (
-      <div className="h-[3px] rounded-full bg-slate-200/60 dark:bg-white/[0.06]" />
+      <div className="h-1.5 rounded-full bg-slate-200/60 dark:bg-white/[0.06]" />
     );
   }
 
   return (
-    <div className="h-[3px] rounded-full bg-slate-200/60 dark:bg-white/[0.06] overflow-hidden flex">
-      {segments.map((s, i) => (
+    <div className="h-1.5 rounded-full bg-slate-200/60 dark:bg-white/[0.06] overflow-hidden flex">
+      {segments.map((s) => (
         <div
           key={s.label}
           className="h-full first:rounded-l-full last:rounded-r-full transition-all duration-500"
@@ -94,6 +94,11 @@ function HealthBar({ segments, total }: { segments: HealthSegment[]; total: numb
       ))}
     </div>
   );
+}
+
+/** Returns true if any segment has a "bad" color (red or amber). */
+function hasHealthIssue(segments: HealthSegment[]): boolean {
+  return segments.some((s) => s.barColor === '#ef4444' || s.barColor === '#f59e0b');
 }
 
 /* ─── Status Legend ───────────────────────────────────────────────────────── */
@@ -149,6 +154,7 @@ export const MetricCardsGrid = () => {
               const scopeTag = isProjectScope
                 ? CLUSTER_WIDE.has(tile.title) ? "Cluster" : "Project"
                 : null;
+              const unhealthy = hasHealthIssue(segments);
 
               return (
                 <Link
@@ -162,7 +168,9 @@ export const MetricCardsGrid = () => {
                       /* Surface */
                       "relative rounded-2xl overflow-hidden",
                       "bg-white dark:bg-[hsl(225,15%,12%)]",
-                      "border border-slate-200/80 dark:border-white/[0.06]",
+                      unhealthy
+                        ? "border-l-[3px] border-l-red-500 border border-red-200/60 dark:border-red-500/20"
+                        : "border border-slate-200/80 dark:border-white/[0.06]",
                       /* Layered shadow */
                       "shadow-[0_1px_2px_rgba(0,0,0,0.04),0_4px_12px_rgba(0,0,0,0.03)]",
                       "dark:shadow-[0_1px_2px_rgba(0,0,0,0.2),0_4px_12px_rgba(0,0,0,0.15)]",

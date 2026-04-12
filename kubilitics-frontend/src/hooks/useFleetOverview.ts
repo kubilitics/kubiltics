@@ -29,6 +29,7 @@ export interface FleetCluster {
   deploymentCount: number;
   serviceCount: number;
   lastConnected?: string;
+  healthReason?: string;
 }
 
 /** Aggregate metrics across the fleet. */
@@ -91,6 +92,7 @@ function mergeCluster(
     deploymentCount: summary?.deployment_count ?? 0,
     serviceCount: summary?.service_count ?? 0,
     lastConnected: cluster.last_connected,
+    healthReason: summary?.health_reason,
   };
 }
 

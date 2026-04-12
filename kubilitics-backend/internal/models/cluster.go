@@ -36,6 +36,7 @@ type ClusterSummary struct {
 	JobCount           int    `json:"job_count"`
 	CronJobCount       int    `json:"cronjob_count"`
 	HealthStatus       string `json:"health_status"`
+	HealthReason       string `json:"health_reason,omitempty"`
 
 	// Networking
 	IngressCount       int `json:"ingress_count"`

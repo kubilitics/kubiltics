@@ -25,6 +25,7 @@ import {
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { BrandLogo } from '@/components/BrandLogo';
+import { getProviderLogo } from '@/topology/icons/providerLogoMap';
 import {
   Dialog,
   DialogContent,
@@ -115,6 +116,23 @@ function displayServer(server: string, context: string): string {
   } catch {
     return server.length > 35 ? server.slice(0, 32) + '...' : server;
   }
+}
+
+/** Detect cloud/local provider from context name + server URL (mirrors backend DetectProvider). */
+function detectProviderFromContext(context: string, server: string): string | null {
+  const ctx = context.toLowerCase();
+  const srv = server.toLowerCase();
+  // Cloud providers by server URL
+  if (srv.includes('eks.') || srv.includes('amazonaws.com')) return 'eks';
+  if (srv.includes('gke.') || srv.includes('googleapis.com')) return 'gke';
+  if (srv.includes('azmk8s.io') || srv.includes('azure.com')) return 'aks';
+  // Local providers by context name
+  if (ctx.includes('docker-desktop') || ctx.includes('docker-for-desktop')) return 'docker-desktop';
+  if (ctx.includes('minikube')) return 'minikube';
+  if (ctx.startsWith('kind-') || ctx === 'kind') return 'kind';
+  if (ctx.includes('rancher')) return 'rancher';
+  if (ctx.includes('k3s') || srv.includes('k3s')) return 'k3s';
+  return null;
 }
 
 export interface ContextPickerProps {
@@ -243,23 +261,33 @@ export function ContextPicker({
                       aria-label={`Select context ${ctx.name || ctx.context}`}
                     >
                       <div className="flex items-center gap-3">
-                        {/* Icon */}
-                        <div className={cn(
-                          'w-8 h-8 rounded-md flex items-center justify-center shrink-0 transition-all duration-200',
-                          isSelected
-                            ? 'bg-gradient-to-br from-blue-500 to-blue-600 shadow-sm shadow-blue-500/20'
-                            : 'bg-slate-100 dark:bg-slate-800 group-hover:bg-blue-50 dark:group-hover:bg-blue-950/30',
-                        )}>
-                          <Server
-                            size={14}
-                            className={cn(
-                              'transition-colors duration-200',
+                        {/* Icon — show provider logo when detected */}
+                        {(() => {
+                          const provider = detectProviderFromContext(ctx.context, ctx.server);
+                          const logo = provider ? getProviderLogo(provider) : null;
+                          return (
+                            <div className={cn(
+                              'w-8 h-8 rounded-md flex items-center justify-center shrink-0 transition-all duration-200',
                               isSelected
-                                ? 'text-white'
-                                : 'text-slate-500 dark:text-slate-400 group-hover:text-blue-500',
-                            )}
-                          />
-                        </div>
+                                ? logo ? 'bg-white dark:bg-slate-800 ring-1 ring-blue-400 shadow-sm shadow-blue-500/20' : 'bg-gradient-to-br from-blue-500 to-blue-600 shadow-sm shadow-blue-500/20'
+                                : 'bg-slate-100 dark:bg-slate-800 group-hover:bg-blue-50 dark:group-hover:bg-blue-950/30',
+                            )}>
+                              {logo ? (
+                                <img src={logo} alt="" className="w-5 h-5" draggable={false} />
+                              ) : (
+                                <Server
+                                  size={14}
+                                  className={cn(
+                                    'transition-colors duration-200',
+                                    isSelected
+                                      ? 'text-white'
+                                      : 'text-slate-500 dark:text-slate-400 group-hover:text-blue-500',
+                                  )}
+                                />
+                              )}
+                            </div>
+                          );
+                        })()}
 
                         {/* Name + server */}
                         <div className="flex-1 min-w-0">

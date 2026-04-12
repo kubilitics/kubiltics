@@ -10,6 +10,7 @@
 import { useMemo } from 'react';
 import { useK8sResourceList, type KubernetesResource, type ResourceList } from './useKubernetes';
 import { useClusterOverview } from './useClusterOverview';
+import { useClusterSummaryWithProject } from './useClusterSummary';
 import { useBackendConfigStore } from '@/stores/backendConfigStore';
 import { useConnectionStatus } from './useConnectionStatus';
 

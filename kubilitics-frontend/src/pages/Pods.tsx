@@ -233,6 +233,9 @@ export default function Pods() {
  const [pageSize, setPageSize] = useState(10);
  const [pageIndex, setPageIndex] = useState(0);
 
+ // Status phase filter — drives server-side fieldSelector so pagination works with status cards
+ const [statusPhaseFilter, setStatusPhaseFilter] = useState<string | null>(null);
+
  const { isConnected } = useConnectionStatus();
 
  // Server-side pagination path (backend + informer cache)
@@ -252,6 +255,7 @@ export default function Pods() {
    search: debouncedSearch || undefined,
    sortBy: 'name',
    sortOrder: 'asc',
+   fieldSelector: statusPhaseFilter ? `status.phase=${statusPhaseFilter}` : undefined,
  });
 
  // Fallback: direct K8s / non-backend mode (limit 500, client-side pagination)
@@ -866,9 +870,9 @@ export default function Pods() {
  icon={Box}
  iconColor="text-primary"
  isLoading={isLoading}
- selected={!columnFilters.status?.size}
- onClick={() => setColumnFilter('status', null)}
- className={cn(!columnFilters.status?.size && !isLoading && 'ring-2 ring-primary')}
+ selected={!statusPhaseFilter}
+ onClick={() => { setStatusPhaseFilter(null); setColumnFilter('status', null); }}
+ className={cn(!statusPhaseFilter && !isLoading && 'ring-2 ring-primary')}
  />
  <ListPageStatCard
  label="Running"
@@ -877,9 +881,9 @@ export default function Pods() {
  iconColor="text-emerald-600"
  valueClassName="text-emerald-600"
  isLoading={isLoading}
- selected={columnFilters.status?.size === 1 && columnFilters.status.has('Running')}
- onClick={() => setColumnFilter('status', new Set(['Running']))}
- className={cn(columnFilters.status?.size === 1 && columnFilters.status.has('Running') && 'ring-2 ring-emerald-500')}
+ selected={statusPhaseFilter === 'Running'}
+ onClick={() => { setStatusPhaseFilter(statusPhaseFilter === 'Running' ? null : 'Running'); setColumnFilter('status', statusPhaseFilter === 'Running' ? null : new Set(['Running'])); }}
+ className={cn(statusPhaseFilter === 'Running' && 'ring-2 ring-emerald-500')}
  />
  <ListPageStatCard
  label="Succeeded"
@@ -888,9 +892,9 @@ export default function Pods() {
  iconColor="text-blue-600"
  valueClassName="text-blue-600"
  isLoading={isLoading}
- selected={columnFilters.status?.size === 1 && columnFilters.status.has('Succeeded')}
- onClick={() => setColumnFilter('status', new Set(['Succeeded']))}
- className={cn(columnFilters.status?.size === 1 && columnFilters.status.has('Succeeded') && 'ring-2 ring-blue-500')}
+ selected={statusPhaseFilter === 'Succeeded'}
+ onClick={() => { setStatusPhaseFilter(statusPhaseFilter === 'Succeeded' ? null : 'Succeeded'); setColumnFilter('status', statusPhaseFilter === 'Succeeded' ? null : new Set(['Succeeded'])); }}
+ className={cn(statusPhaseFilter === 'Succeeded' && 'ring-2 ring-blue-500')}
  />
  <ListPageStatCard
  label="Pending"
@@ -899,9 +903,9 @@ export default function Pods() {
  iconColor="text-amber-600"
  valueClassName="text-amber-600"
  isLoading={isLoading}
- selected={columnFilters.status?.size === 1 && columnFilters.status.has('Pending')}
- onClick={() => setColumnFilter('status', new Set(['Pending']))}
- className={cn(columnFilters.status?.size === 1 && columnFilters.status.has('Pending') && 'ring-2 ring-amber-500')}
+ selected={statusPhaseFilter === 'Pending'}
+ onClick={() => { setStatusPhaseFilter(statusPhaseFilter === 'Pending' ? null : 'Pending'); setColumnFilter('status', statusPhaseFilter === 'Pending' ? null : new Set(['Pending'])); }}
+ className={cn(statusPhaseFilter === 'Pending' && 'ring-2 ring-amber-500')}
  />
  <ListPageStatCard
  label="Failed"
@@ -910,9 +914,9 @@ export default function Pods() {
  iconColor="text-rose-600"
  valueClassName="text-rose-600"
  isLoading={isLoading}
- selected={columnFilters.status?.size !== undefined && columnFilters.status?.size > 0 && ['Failed', 'CrashLoopBackOff'].every((s) => columnFilters.status?.has(s)) && columnFilters.status.size === 2}
- onClick={() => setColumnFilter('status', new Set(['Failed', 'CrashLoopBackOff']))}
- className={cn(columnFilters.status?.size === 2 && columnFilters.status?.has('Failed') && columnFilters.status?.has('CrashLoopBackOff') && 'ring-2 ring-rose-500')}
+ selected={statusPhaseFilter === 'Failed'}
+ onClick={() => { setStatusPhaseFilter(statusPhaseFilter === 'Failed' ? null : 'Failed'); setColumnFilter('status', statusPhaseFilter === 'Failed' ? null : new Set(['Failed', 'CrashLoopBackOff'])); }}
+ className={cn(statusPhaseFilter === 'Failed' && 'ring-2 ring-rose-500')}
  />
  </div>
 
@@ -975,7 +979,7 @@ export default function Pods() {
  showTableFilters={showTableFilters}
  onToggleTableFilters={() => setShowTableFilters((v) => !v)}
  hasActiveFilters={hasActiveFilters}
- onClearAllFilters={clearAllFilters}
+ onClearAllFilters={() => { clearAllFilters(); setStatusPhaseFilter(null); }}
  columns={PODS_COLUMNS_FOR_VISIBILITY}
  visibleColumns={columnVisibility.visibleColumns}
  onColumnToggle={columnVisibility.setColumnVisible}
@@ -1273,8 +1277,8 @@ export default function Pods() {
  icon={<Box className="h-8 w-8" />}
  title="No Pods found"
  subtitle={searchQuery || hasActiveFilters ? 'Clear filters to see resources.' : 'Get started by creating a Pod.'}
- hasActiveFilters={!!(searchQuery || hasActiveFilters)}
- onClearFilters={() => { setSearchQuery(''); clearAllFilters(); }}
+ hasActiveFilters={!!(searchQuery || hasActiveFilters || statusPhaseFilter)}
+ onClearFilters={() => { setSearchQuery(''); clearAllFilters(); setStatusPhaseFilter(null); }}
  createLabel="Create Pod"
  onCreate={() => setShowCreateWizard(true)}
  />
