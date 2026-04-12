@@ -39,6 +39,13 @@ Examples:
 		Args:               cobra.MinimumNArgs(1),
 		DisableFlagParsing: true,
 		RunE: func(c *cobra.Command, rawArgs []string) error {
+			// Handle --help manually since DisableFlagParsing is true
+			for _, a := range rawArgs {
+				if a == "--help" || a == "-h" {
+					return c.Help()
+				}
+			}
+
 			clean, restore, err := a.applyInlineGlobalFlags(rawArgs)
 			if err != nil {
 				return err

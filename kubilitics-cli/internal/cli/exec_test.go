@@ -2,8 +2,34 @@ package cli
 
 import (
 	"reflect"
+	"strings"
 	"testing"
 )
+
+func TestIsDestructiveExecCmd(t *testing.T) {
+	tests := []struct {
+		cmd  []string
+		want bool
+	}{
+		{[]string{"rm", "-rf", "/data"}, true},
+		{[]string{"ls", "-la"}, false},
+		{[]string{"sh", "-c", "rm -rf /data"}, true},
+		{[]string{"bash", "-c", "rm -rf /"}, true},
+		{[]string{"/bin/sh", "-c", "dd if=/dev/zero of=/dev/sda"}, true},
+		{[]string{"sh", "-c", "echo hello"}, false},
+		{[]string{"cat", "/etc/passwd"}, false},
+		{[]string{"kubectl", "delete", "pod", "test"}, true},
+	}
+	for _, tc := range tests {
+		name := strings.Join(tc.cmd, " ")
+		t.Run(name, func(t *testing.T) {
+			got := isDestructiveExecCmd(tc.cmd)
+			if got != tc.want {
+				t.Errorf("isDestructiveExecCmd(%v) = %v, want %v", tc.cmd, got, tc.want)
+			}
+		})
+	}
+}
 
 func TestHasContainerFlag(t *testing.T) {
 	tests := []struct {
