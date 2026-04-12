@@ -6,13 +6,17 @@ import (
 	"fmt"
 	"io"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/charmbracelet/lipgloss"
+	"github.com/kubilitics/kubilitics/kubilitics-cli/internal/k8sclient"
 	"github.com/kubilitics/kubilitics/kubilitics-cli/internal/output"
 	"github.com/spf13/cobra"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 type k8sEventList struct {
@@ -96,43 +100,359 @@ type healthResult struct {
 }
 
 func newMetricsCmd(a *app) *cobra.Command {
+	var allNamespaces bool
+
 	cmd := &cobra.Command{
-		Use:   "metrics [pods|nodes]",
-		Short: "Resource usage metrics (wraps kubectl top)",
+		Use:   "metrics [pods [NAME]|nodes [NAME]]",
+		Short: "Resource usage metrics with used/limits",
 		Long: `Show resource usage metrics for pods or nodes.
 
 Without arguments, shows a combined summary of both nodes and pods.
-Use 'pods' or 'nodes' subcommand for specific view.
+Pod metrics show used/limit and utilization percentage.
 
 Examples:
-  kcli metrics                # combined nodes + pods overview
-  kcli metrics pods           # pod metrics, sorted by CPU
-  kcli metrics nodes          # node metrics`,
+  kcli metrics                    # combined nodes + pods (current namespace)
+  kcli metrics pods               # pod metrics in current namespace
+  kcli metrics po -A              # pod metrics across all namespaces
+  kcli metrics po coredns-abc     # single pod metrics
+  kcli metrics nodes              # node metrics
+  kcli metrics no ip-10-20-23     # single node metrics`,
 		GroupID:   "observability",
-		Args:      cobra.MaximumNArgs(1),
+		Args:      cobra.MaximumNArgs(2),
 		ValidArgs: []string{"pods", "nodes"},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if len(args) == 1 {
+			if len(args) >= 1 {
 				target := strings.ToLower(strings.TrimSpace(args[0]))
+				var podName string
+				if len(args) >= 2 {
+					podName = args[1]
+				}
 				switch target {
-				case "pods", "pod":
-					return a.runKubectl([]string{"top", "pods", "-A", "--sort-by=cpu"})
-				case "nodes", "node":
-					return a.runKubectl([]string{"top", "nodes"})
+				case "pods", "pod", "po":
+					return printPodMetricsTable(a, cmd, allNamespaces, podName)
+				case "nodes", "node", "no":
+					return printNodeMetricsTable(a, cmd, podName)
 				default:
 					return fmt.Errorf("unsupported metrics target %q (use pods|nodes)", args[0])
 				}
 			}
-			// Combined view: nodes then pods
+			// Combined view: nodes then current-namespace pods
 			fmt.Fprintln(cmd.OutOrStdout(), output.GetTheme().Header.Render("── Node Metrics ──"))
-			if err := a.runKubectl([]string{"top", "nodes"}); err != nil {
+			if err := printNodeMetricsTable(a, cmd, ""); err != nil {
 				fmt.Fprintf(cmd.ErrOrStderr(), "Warning: could not fetch node metrics: %v\n", err)
 			}
 			fmt.Fprintln(cmd.OutOrStdout(), "\n"+output.GetTheme().Header.Render("── Pod Metrics (top by CPU) ──"))
-			return a.runKubectl([]string{"top", "pods", "-A", "--sort-by=cpu"})
+			return printPodMetricsTable(a, cmd, allNamespaces, "")
 		},
 	}
+	cmd.Flags().BoolVarP(&allNamespaces, "all-namespaces", "A", false, "show pods across all namespaces")
 	return cmd
+}
+
+// printNodeMetricsTable captures kubectl top nodes output and renders it as an enhanced table.
+func printNodeMetricsTable(a *app, cmd *cobra.Command, nodeName string) error {
+	topArgs := []string{"top", "nodes", "--no-headers"}
+	if nodeName != "" {
+		topArgs = append(topArgs, nodeName)
+	}
+	raw, err := a.captureKubectl(topArgs)
+	if err != nil {
+		return fmt.Errorf("failed to fetch node metrics: %w", err)
+	}
+
+	table := output.NewTable()
+	table.Style = output.Rounded
+	table.AddColumn(output.Column{Name: "NAME", Priority: output.PriorityAlways, MinWidth: 20, MaxWidth: 45, Align: output.Left,
+		ColorFunc: func(string) lipgloss.Style { return output.GetTheme().Primary }})
+	table.AddColumn(output.Column{Name: "CPU", Priority: output.PriorityCritical, MinWidth: 8, MaxWidth: 12, Align: output.Right,
+		ColorFunc: func(string) lipgloss.Style { return output.GetTheme().Warning }})
+	table.AddColumn(output.Column{Name: "CPU%", Priority: output.PriorityCritical, MinWidth: 5, MaxWidth: 8, Align: output.Right,
+		ColorFunc: metricsPercentColorFunc()})
+	table.AddColumn(output.Column{Name: "MEMORY", Priority: output.PriorityCritical, MinWidth: 10, MaxWidth: 14, Align: output.Right,
+		ColorFunc: func(string) lipgloss.Style { return output.GetTheme().Warning }})
+	table.AddColumn(output.Column{Name: "MEM%", Priority: output.PriorityCritical, MinWidth: 5, MaxWidth: 8, Align: output.Right,
+		ColorFunc: metricsPercentColorFunc()})
+
+	for _, line := range strings.Split(strings.TrimSpace(raw), "\n") {
+		fields := strings.Fields(line)
+		if len(fields) >= 5 {
+			table.AddRow(fields[:5])
+		}
+	}
+
+	table.Print()
+	return nil
+}
+
+// printPodMetricsTable captures kubectl top pods output and enriches it with
+// resource requests/limits from the pod spec for a complete utilization view.
+func printPodMetricsTable(a *app, cmd *cobra.Command, allNamespaces bool, podName string) error {
+	// Build kubectl top args
+	topArgs := []string{"top", "pods", "--sort-by=cpu", "--no-headers"}
+	if allNamespaces {
+		topArgs = append(topArgs, "-A")
+	}
+	if podName != "" {
+		topArgs = append(topArgs, podName)
+	}
+
+	raw, err := a.captureKubectl(topArgs)
+	if err != nil {
+		return fmt.Errorf("failed to fetch pod metrics: %w", err)
+	}
+
+	trimmed := strings.TrimSpace(raw)
+	if trimmed == "" || strings.HasPrefix(trimmed, "No resources") || strings.HasPrefix(trimmed, "error:") {
+		fmt.Fprintln(cmd.OutOrStdout(), "No pod metrics found.")
+		return nil
+	}
+
+	// Determine namespace for pod spec lookup
+	ns := ""
+	if allNamespaces {
+		ns = "" // all namespaces
+	}
+
+	// Fetch pod specs for requests/limits
+	bundle, err := k8sclient.NewBundle(a.kubeconfig, a.context)
+	if err != nil {
+		return printPodMetricsSimple(raw, allNamespaces)
+	}
+
+	podList, err := bundle.Clientset.CoreV1().Pods(ns).List(cmd.Context(), metav1.ListOptions{})
+	if err != nil {
+		return printPodMetricsSimple(raw, allNamespaces)
+	}
+
+	// Build lookup: namespace/name → aggregated requests & limits
+	type podResources struct {
+		cpuReq, cpuLim     int64 // millicores
+		memReq, memLim     int64 // bytes
+	}
+	podRes := make(map[string]*podResources)
+	for _, pod := range podList.Items {
+		key := pod.Namespace + "/" + pod.Name
+		r := &podResources{}
+		for _, c := range pod.Spec.Containers {
+			if req, ok := c.Resources.Requests[corev1.ResourceCPU]; ok {
+				r.cpuReq += req.MilliValue()
+			}
+			if lim, ok := c.Resources.Limits[corev1.ResourceCPU]; ok {
+				r.cpuLim += lim.MilliValue()
+			}
+			if req, ok := c.Resources.Requests[corev1.ResourceMemory]; ok {
+				r.memReq += req.Value()
+			}
+			if lim, ok := c.Resources.Limits[corev1.ResourceMemory]; ok {
+				r.memLim += lim.Value()
+			}
+		}
+		podRes[key] = r
+	}
+
+	// Build table — include NAMESPACE column only with -A
+	var table *output.Table
+	if allNamespaces {
+		table = output.NewResourceTable(output.ResourceTableOpts{Scope: output.ScopeNamespaced})
+		table.AddNameColumn()
+	} else {
+		table = output.NewTable()
+		table.Style = output.Rounded
+		table.AutoNumber = true
+		table.AddColumn(output.Column{Name: "#", Priority: output.PriorityAlways, MinWidth: 3, MaxWidth: 5, Align: output.Right,
+			ColorFunc: func(string) lipgloss.Style { return output.GetTheme().Muted }})
+		table.NameColIdx = 1
+		table.AddColumn(output.Column{Name: "NAME", Priority: output.PriorityAlways, MinWidth: 20, MaxWidth: 55, Align: output.Left,
+			ColorFunc: func(string) lipgloss.Style { return output.GetTheme().Primary }})
+	}
+	table.AddColumn(output.Column{Name: "CPU", Priority: output.PriorityCritical, MinWidth: 12, MaxWidth: 18, Align: output.Right,
+		ColorFunc: func(string) lipgloss.Style { return output.GetTheme().Warning }})
+	table.AddColumn(output.Column{Name: "CPU%", Priority: output.PriorityCritical, MinWidth: 5, MaxWidth: 8, Align: output.Right,
+		ColorFunc: metricsPercentColorFunc()})
+	table.AddColumn(output.Column{Name: "MEMORY", Priority: output.PriorityCritical, MinWidth: 10, MaxWidth: 20, Align: output.Right,
+		ColorFunc: func(string) lipgloss.Style { return output.GetTheme().Warning }})
+	table.AddColumn(output.Column{Name: "MEM%", Priority: output.PriorityCritical, MinWidth: 5, MaxWidth: 8, Align: output.Right,
+		ColorFunc: metricsPercentColorFunc()})
+
+	// Resolve the effective namespace for pod spec lookup key
+	effectiveNS := a.namespace
+	if effectiveNS == "" {
+		effectiveNS = "default"
+		// Try to read the namespace from kubeconfig context
+		if bundle != nil {
+			if ctx, ok := bundle.RawConfig.Contexts[bundle.EffectiveContext]; ok && ctx.Namespace != "" {
+				effectiveNS = ctx.Namespace
+			}
+		}
+	}
+
+	for _, line := range strings.Split(strings.TrimSpace(raw), "\n") {
+		fields := strings.Fields(line)
+
+		var ns, name, cpuUsed, memUsed string
+		if allNamespaces {
+			// -A format: NAMESPACE NAME CPU MEMORY
+			if len(fields) < 4 {
+				continue
+			}
+			ns, name, cpuUsed, memUsed = fields[0], fields[1], fields[2], fields[3]
+		} else {
+			// Single-namespace format: NAME CPU MEMORY
+			if len(fields) < 3 {
+				continue
+			}
+			ns = effectiveNS
+			name, cpuUsed, memUsed = fields[0], fields[1], fields[2]
+		}
+		key := ns + "/" + name
+
+		// Format CPU as "used/limit" (e.g. "11m/200m")
+		cpuStr := cpuUsed
+		cpuPct := "—"
+		memStr := memUsed
+		memPct := "—"
+
+		if r, ok := podRes[key]; ok {
+			if r.cpuLim > 0 {
+				cpuStr = fmt.Sprintf("%s/%s", cpuUsed, formatMillicores(r.cpuLim))
+				usedM := parseMillicores(cpuUsed)
+				if usedM > 0 {
+					cpuPct = fmt.Sprintf("%d%%", usedM*100/r.cpuLim)
+				}
+			} else if r.cpuReq > 0 {
+				cpuStr = fmt.Sprintf("%s/%s", cpuUsed, formatMillicores(r.cpuReq))
+			}
+			if r.memLim > 0 {
+				memStr = fmt.Sprintf("%s/%s", memUsed, formatBytes(r.memLim))
+				usedB := parseMiBytes(memUsed)
+				if usedB > 0 {
+					memPct = fmt.Sprintf("%d%%", usedB*100/r.memLim)
+				}
+			} else if r.memReq > 0 {
+				memStr = fmt.Sprintf("%s/%s", memUsed, formatBytes(r.memReq))
+			}
+		}
+
+		if allNamespaces {
+			table.AddRow([]string{ns, name, cpuStr, cpuPct, memStr, memPct})
+		} else {
+			table.AddRow([]string{name, cpuStr, cpuPct, memStr, memPct})
+		}
+	}
+
+	table.Print()
+	return nil
+}
+
+// printPodMetricsSimple renders metrics without limits (fallback when client-go unavailable).
+func printPodMetricsSimple(raw string, allNamespaces bool) error {
+	table := output.NewResourceTable(output.ResourceTableOpts{Scope: output.ScopeNamespaced})
+	table.AddNameColumn()
+	table.AddColumn(output.Column{Name: "CPU", Priority: output.PriorityCritical, MinWidth: 8, MaxWidth: 12, Align: output.Right,
+		ColorFunc: func(string) lipgloss.Style { return output.GetTheme().Warning }})
+	table.AddColumn(output.Column{Name: "MEMORY", Priority: output.PriorityCritical, MinWidth: 10, MaxWidth: 14, Align: output.Right,
+		ColorFunc: func(string) lipgloss.Style { return output.GetTheme().Warning }})
+
+	minFields := 3
+	if allNamespaces {
+		minFields = 4
+	}
+	for _, line := range strings.Split(strings.TrimSpace(raw), "\n") {
+		fields := strings.Fields(line)
+		if len(fields) >= minFields {
+			if allNamespaces {
+				table.AddRow(fields[:4])
+			} else {
+				table.AddRow(fields[:3])
+			}
+		}
+	}
+
+	table.Print()
+	return nil
+}
+
+// parseMillicores parses "42m" → 42, "1" → 1000.
+func parseMillicores(s string) int64 {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return 0
+	}
+	if strings.HasSuffix(s, "m") {
+		v, err := strconv.ParseInt(strings.TrimSuffix(s, "m"), 10, 64)
+		if err != nil {
+			return 0
+		}
+		return v
+	}
+	v, err := strconv.ParseInt(s, 10, 64)
+	if err != nil {
+		return 0
+	}
+	return v * 1000
+}
+
+// formatMillicores formats millicores: 250 → "250m", 1000 → "1".
+func formatMillicores(m int64) string {
+	if m >= 1000 && m%1000 == 0 {
+		return fmt.Sprintf("%d", m/1000)
+	}
+	return fmt.Sprintf("%dm", m)
+}
+
+// parseMiBytes parses "128Mi" → bytes.
+func parseMiBytes(s string) int64 {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return 0
+	}
+	type suffix struct {
+		s string
+		m int64
+	}
+	for _, sfx := range []suffix{
+		{"Gi", 1024 * 1024 * 1024},
+		{"Mi", 1024 * 1024},
+		{"Ki", 1024},
+	} {
+		if strings.HasSuffix(s, sfx.s) {
+			v, err := strconv.ParseInt(strings.TrimSuffix(s, sfx.s), 10, 64)
+			if err != nil {
+				return 0
+			}
+			return v * sfx.m
+		}
+	}
+	v, err := strconv.ParseInt(s, 10, 64)
+	if err != nil {
+		return 0
+	}
+	return v
+}
+
+// formatBytes formats bytes to human-readable: Mi, Gi.
+func formatBytes(b int64) string {
+	if b >= 1024*1024*1024 {
+		return fmt.Sprintf("%dGi", b/(1024*1024*1024))
+	}
+	return fmt.Sprintf("%dMi", b/(1024*1024))
+}
+
+// metricsPercentColorFunc colors percentage values — green <50%, yellow 50-80%, red >80%.
+func metricsPercentColorFunc() func(string) lipgloss.Style {
+	return func(value string) lipgloss.Style {
+		v := strings.TrimSuffix(value, "%")
+		var n int
+		fmt.Sscanf(v, "%d", &n)
+		switch {
+		case n >= 80:
+			return output.GetTheme().Error
+		case n >= 50:
+			return output.GetTheme().Warning
+		default:
+			return output.GetTheme().StatusReady
+		}
+	}
 }
 
 func newHealthCmd(a *app) *cobra.Command {

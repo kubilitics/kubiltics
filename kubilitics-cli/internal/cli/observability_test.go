@@ -305,3 +305,49 @@ func TestPrintEventTableTo_Empty(t *testing.T) {
 		t.Errorf("unexpected output for empty: %q", buf.String())
 	}
 }
+
+func TestParseMillicores(t *testing.T) {
+	tests := []struct {
+		input string
+		want  int64
+	}{
+		{"42m", 42},
+		{"1", 1000},
+		{"0m", 0},
+		{"250m", 250},
+		{"", 0},
+		{"bogus", 0},
+		{"1024Xi", 0},
+	}
+	for _, tc := range tests {
+		t.Run(tc.input, func(t *testing.T) {
+			got := parseMillicores(tc.input)
+			if got != tc.want {
+				t.Errorf("parseMillicores(%q) = %d, want %d", tc.input, got, tc.want)
+			}
+		})
+	}
+}
+
+func TestParseMiBytes(t *testing.T) {
+	tests := []struct {
+		input string
+		want  int64
+	}{
+		{"128Mi", 128 * 1024 * 1024},
+		{"1Gi", 1024 * 1024 * 1024},
+		{"512Ki", 512 * 1024},
+		{"0Mi", 0},
+		{"", 0},
+		{"bogus", 0},
+		{"1024Xi", 0},
+	}
+	for _, tc := range tests {
+		t.Run(tc.input, func(t *testing.T) {
+			got := parseMiBytes(tc.input)
+			if got != tc.want {
+				t.Errorf("parseMiBytes(%q) = %d, want %d", tc.input, got, tc.want)
+			}
+		})
+	}
+}
