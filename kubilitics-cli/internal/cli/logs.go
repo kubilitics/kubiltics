@@ -733,12 +733,27 @@ func runMultiPodLogs(a *app, opts logsOptions) error {
 	}
 
 	if !opts.Follow {
+		timeout := time.After(60 * time.Second)
 		for {
-			time.Sleep(100 * time.Millisecond)
 			mu.Lock()
 			left := len(active)
 			mu.Unlock()
 			if left == 0 {
+				return nil
+			}
+			select {
+			case <-time.After(100 * time.Millisecond):
+				// poll again
+			case <-timeout:
+				mu.Lock()
+				remaining := len(active)
+				for _, stop := range active {
+					stop()
+				}
+				mu.Unlock()
+				if remaining > 0 {
+					fmt.Fprintf(os.Stderr, "Warning: %d log stream(s) did not finish within 60s and were cancelled\n", remaining)
+				}
 				return nil
 			}
 		}
