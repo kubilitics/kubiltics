@@ -9,12 +9,13 @@ const (
 	FailureModePodCrash           = "pod-crash"
 	FailureModeWorkloadDeletion   = "workload-deletion"
 	FailureModeNamespaceDeletion  = "namespace-deletion"
+	FailureModeNodeDrain          = "node-drain"
 )
 
 // ValidFailureMode returns true if mode is a recognized failure mode string.
 func ValidFailureMode(mode string) bool {
 	switch mode {
-	case FailureModePodCrash, FailureModeWorkloadDeletion, FailureModeNamespaceDeletion:
+	case FailureModePodCrash, FailureModeWorkloadDeletion, FailureModeNamespaceDeletion, FailureModeNodeDrain:
 		return true
 	default:
 		return false

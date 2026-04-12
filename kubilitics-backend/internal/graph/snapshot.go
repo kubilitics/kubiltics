@@ -35,6 +35,7 @@ type GraphSnapshot struct {
 	NodeHasPDB   map[string]bool
 	NodeIngress  map[string][]string // refKey -> ingress hosts
 
+	PodNodes         map[string]string                  // podKey -> nodeName (from pod.Spec.NodeName)
 	PodOwners        map[string]string                  // podKey -> owning workload key (resolved through RS)
 	ServiceEndpoints map[string][]corev1.EndpointAddress // svcKey -> ready addresses
 	ServicePodLabels map[string]map[string]string        // svcKey -> representative pod labels
@@ -80,6 +81,9 @@ func (s *GraphSnapshot) EnsureMaps() {
 	}
 	if s.Namespaces == nil {
 		s.Namespaces = make(map[string]bool)
+	}
+	if s.PodNodes == nil {
+		s.PodNodes = make(map[string]string)
 	}
 	if s.PodOwners == nil {
 		s.PodOwners = make(map[string]string)
@@ -219,6 +223,11 @@ func (s *GraphSnapshot) ComputeBlastRadiusWithMode(target models.ResourceRef, fa
 		failureMode = FailureModeWorkloadDeletion
 	}
 
+	// For node-drain, delegate to the node-level aggregation.
+	if failureMode == FailureModeNodeDrain && target.Kind == "Node" {
+		return s.computeNodeDrain(target)
+	}
+
 	// For namespace-deletion, delegate to the namespace-level aggregation.
 	if failureMode == FailureModeNamespaceDeletion {
 		return s.computeNamespaceDeletion(target)
@@ -292,6 +301,66 @@ func (s *GraphSnapshot) computeNamespaceDeletion(target models.ResourceRef) (*mo
 		DependencyChain:    []models.BlastDependencyEdge{},
 		RiskIndicators:     []models.RiskIndicator{},
 		Remediations:       ensureRemediationSlice(allRemediations),
+		GraphNodeCount:     len(s.Nodes),
+		GraphEdgeCount:     len(s.Edges),
+		GraphStalenessMs:   time.Now().UnixMilli() - s.BuiltAt,
+	}, nil
+}
+
+// computeNodeDrain computes the blast radius when a node is drained/cordoned,
+// evicting all pods scheduled on it.
+func (s *GraphSnapshot) computeNodeDrain(target models.ResourceRef) (*models.BlastRadiusResult, error) {
+	cr := classifyImpact(s, target, FailureModeNodeDrain)
+
+	affectedNS := make(map[string]bool)
+	for podKey := range cr.LostPods {
+		if ref, ok := s.Nodes[podKey]; ok {
+			affectedNS[ref.Namespace] = true
+		}
+	}
+
+	// Build waves from affected workloads
+	affectedWorkloads := make(map[string]bool)
+	for podKey := range cr.LostPods {
+		if ownerKey, ok := s.PodOwners[podKey]; ok {
+			affectedWorkloads[ownerKey] = true
+		}
+	}
+
+	var waves []models.BlastWave
+	if len(affectedWorkloads) > 0 {
+		wave := models.BlastWave{Depth: 0}
+		for wKey := range affectedWorkloads {
+			if ref, ok := s.Nodes[wKey]; ok {
+				wave.Resources = append(wave.Resources, models.AffectedResource{
+					Kind:      ref.Kind,
+					Name:      ref.Name,
+					Namespace: ref.Namespace,
+					Impact:    "direct",
+					WaveDepth: 0,
+				})
+			}
+		}
+		waves = append(waves, wave)
+	}
+
+	return &models.BlastRadiusResult{
+		TargetResource:     target,
+		FailureMode:        FailureModeNodeDrain,
+		BlastRadiusPercent: cr.BlastRadiusPct,
+		TotalAffected:      len(cr.LostPods),
+		AffectedNamespaces: len(affectedNS),
+		AffectedServices:   cr.ServiceImpacts,
+		AffectedIngresses:  cr.IngressImpacts,
+		AffectedConsumers:  cr.ConsumerImpacts,
+		ImpactSummary:      cr.ImpactSummary,
+		CoverageLevel:      cr.CoverageLevel,
+		CoverageNote:       cr.CoverageNote,
+		Waves:              ensureSlice(waves),
+		DependencyChain:    []models.BlastDependencyEdge{},
+		RiskIndicators:     []models.RiskIndicator{},
+		Remediations:       []models.Remediation{},
+		IngressHosts:       []string{},
 		GraphNodeCount:     len(s.Nodes),
 		GraphEdgeCount:     len(s.Edges),
 		GraphStalenessMs:   time.Now().UnixMilli() - s.BuiltAt,

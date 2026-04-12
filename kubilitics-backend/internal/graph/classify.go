@@ -98,6 +98,15 @@ func computeLostPods(snap *GraphSnapshot, target models.ResourceRef, failureMode
 				lost[key] = true
 			}
 		}
+
+	case FailureModeNodeDrain:
+		// All pods scheduled on the target node are evicted
+		nodeName := target.Name
+		for podKey, podNode := range snap.PodNodes {
+			if podNode == nodeName {
+				lost[podKey] = true
+			}
+		}
 	}
 
 	return lost

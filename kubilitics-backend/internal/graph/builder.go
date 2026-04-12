@@ -100,6 +100,15 @@ func BuildSnapshot(res *ClusterResources, hasIstio bool, virtualServices, destin
 	for _, p := range res.Pods {
 		registerNode("Pod", p.Namespace, p.Name)
 	}
+
+	// Build PodNodes: podKey -> nodeName (from pod.Spec.NodeName)
+	podNodes := make(map[string]string)
+	for _, p := range res.Pods {
+		if p.Spec.NodeName != "" {
+			podKey := fmt.Sprintf("Pod/%s/%s", p.Namespace, p.Name)
+			podNodes[podKey] = p.Spec.NodeName
+		}
+	}
 	for _, d := range res.Deployments {
 		registerNode("Deployment", d.Namespace, d.Name)
 	}
@@ -270,6 +279,7 @@ func BuildSnapshot(res *ClusterResources, hasIstio bool, virtualServices, destin
 		NodeHasPDB:   nodeHasPDB,
 		NodeIngress:  nodeIngress,
 
+		PodNodes:         podNodes,
 		PodOwners:        podOwnersMap,
 		ServiceEndpoints: serviceEndpoints,
 		ServicePodLabels: servicePodLabels,
