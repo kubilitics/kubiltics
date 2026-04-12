@@ -458,13 +458,22 @@ func restartStorm(ctx context.Context, store *Store, clusterID string) *Insight 
 		return nil
 	}
 
-	// Group by namespace.
+	// Group by namespace, collecting unique pod names.
 	nsCounts := make(map[string]int)
+	nsPods := make(map[string]map[string]bool) // ns -> set of pod names
 	for _, e := range backoffEvents {
 		nsCounts[e.ResourceNamespace]++
+		if nsPods[e.ResourceNamespace] == nil {
+			nsPods[e.ResourceNamespace] = make(map[string]bool)
+		}
+		nsPods[e.ResourceNamespace][e.ResourceName] = true
 	}
 	for _, e := range startedEvents {
 		nsCounts[e.ResourceNamespace]++
+		if nsPods[e.ResourceNamespace] == nil {
+			nsPods[e.ResourceNamespace] = make(map[string]bool)
+		}
+		nsPods[e.ResourceNamespace][e.ResourceName] = true
 	}
 
 	for ns, count := range nsCounts {
@@ -474,6 +483,14 @@ func restartStorm(ctx context.Context, store *Store, clusterID string) *Insight 
 				return nil
 			}
 
+			// Build "ns/pod1, ns/pod2, ..." list so the frontend parser can find them
+			var podRefs []string
+			for podName := range nsPods[ns] {
+				podRefs = append(podRefs, fmt.Sprintf("%s/%s", ns, podName))
+			}
+			detail := fmt.Sprintf("%d pod restart events in 5 minutes in namespace %s: %s",
+				count, ns, strings.Join(podRefs, ", "))
+
 			return &Insight{
 				InsightID: fmt.Sprintf("ins_%d_restartStorm", time.Now().UnixNano()),
 				Timestamp: UnixMillis(),
@@ -481,7 +498,7 @@ func restartStorm(ctx context.Context, store *Store, clusterID string) *Insight 
 				Rule:      "restartStorm",
 				Severity:  "warning",
 				Title:     fmt.Sprintf("Restart storm in namespace %s", ns),
-				Detail:    fmt.Sprintf("%d pod restart events in 5 minutes in namespace %s", count, ns),
+				Detail:    detail,
 				Status:    "active",
 			}
 		}
