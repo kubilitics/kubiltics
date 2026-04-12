@@ -40,7 +40,7 @@ func computeResilience(in ResilienceInput) models.SubScoreDetail {
 
 	switch in.Kind {
 	case "Deployment", "StatefulSet":
-		penalty := 40.0 * (1.0 / math.Max(float64(in.Replicas), 1.0))
+		penalty := 40.0 * (1.0 / math.Max(float64(in.Replicas)+1.0, 1.0))
 		score -= penalty
 		factors = append(factors, models.ScoringFactor{
 			Name: "replica_count", Value: fmt.Sprintf("%d", in.Replicas),
@@ -123,7 +123,7 @@ func computeExposure(in ExposureInput) models.SubScoreDetail {
 		})
 	}
 	if in.CrossNsCount > 1 {
-		crossNsScore := math.Min(float64(in.CrossNsCount-1)*5, 15)
+		crossNsScore := math.Min(float64(in.CrossNsCount)*5, 15)
 		score += crossNsScore
 		factors = append(factors, models.ScoringFactor{
 			Name: "cross_namespace", Value: fmt.Sprintf("%d", in.CrossNsCount),
@@ -163,7 +163,7 @@ func computeRecovery(in RecoveryInput) models.SubScoreDetail {
 			Name: "kind", Value: "DaemonSet", Effect: -5, Note: "Node-scoped recovery",
 		})
 	}
-	headroomPenalty := 20.0 * (1.0 / math.Max(float64(in.Replicas), 1.0))
+	headroomPenalty := 20.0 * (1.0 / math.Max(float64(in.Replicas)+1.0, 1.0))
 	score -= headroomPenalty
 	factors = append(factors, models.ScoringFactor{
 		Name: "headroom", Value: fmt.Sprintf("%d replicas", in.Replicas),
@@ -193,8 +193,12 @@ func computeOverallCriticality(scores models.SubScores) float64 {
 	impact := float64(scores.Impact.Score)
 
 	failureDimension := math.Max((100-resilience)*0.25, impact*0.30)
-	criticality := failureDimension + exposure*0.30 + (100-recovery)*0.15
-	criticality = criticality / 0.75
+	rest := exposure*0.30 + (100-recovery)*0.15
+	criticality := failureDimension + rest
+	weightSum := 0.30 + 0.30 + 0.15 // exposure + max(resilience,impact) + recovery
+	if weightSum > 0 {
+		criticality = criticality / weightSum
+	}
 	return math.Round(math.Min(math.Max(criticality, 0), 100)*100) / 100
 }
 

@@ -19,8 +19,8 @@ func TestComputeResilience_SingleReplica(t *testing.T) {
 	detail := computeResilience(ResilienceInput{
 		Kind: "Deployment", Replicas: 1, HasHPA: false, HasPDB: false, HasController: true,
 	})
-	if detail.Score > 45 {
-		t.Errorf("expected resilience <= 45 for single replica no HPA/PDB, got %d", detail.Score)
+	if detail.Score > 70 {
+		t.Errorf("expected resilience <= 70 for single replica no HPA/PDB, got %d", detail.Score)
 	}
 }
 
@@ -109,5 +109,27 @@ func TestCriticalityLevelV2(t *testing.T) {
 		if got != tt.want {
 			t.Errorf("criticalityLevelV2(%.0f) = %s, want %s", tt.score, got, tt.want)
 		}
+	}
+}
+
+func TestComputeResilience_ZeroReplicas(t *testing.T) {
+	zero := computeResilience(ResilienceInput{
+		Kind: "Deployment", Replicas: 0, HasHPA: false, HasPDB: false, HasController: true,
+	})
+	one := computeResilience(ResilienceInput{
+		Kind: "Deployment", Replicas: 1, HasHPA: false, HasPDB: false, HasController: true,
+	})
+	if zero.Score >= one.Score {
+		t.Errorf("expected 0 replicas (%d) to score lower than 1 replica (%d)", zero.Score, one.Score)
+	}
+}
+
+func TestComputeExposure_CrossNamespace(t *testing.T) {
+	detail := computeExposure(ExposureInput{
+		IsIngressExposed: false, ConsumerCount: 0, CrossNsCount: 2,
+		K8sFanIn: 0, TraceDataAvailable: false, IsCriticalSystem: false,
+	})
+	if detail.Score < 10 {
+		t.Errorf("expected CrossNsCount=2 to give exposure >= 10, got %d", detail.Score)
 	}
 }
