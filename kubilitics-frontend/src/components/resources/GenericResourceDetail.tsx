@@ -54,7 +54,7 @@ import {
   type TabConfig,
 } from '@/components/resources';
 import { ResourceStatusCardProps } from '@/components/resources/ResourceStatusCard';
-import { useResourceDetail, useResourceEvents } from '@/hooks/useK8sResourceDetail';
+import { useResourceDetail } from '@/hooks/useK8sResourceDetail';
 import { useDeleteK8sResource, useUpdateK8sResource, type KubernetesResource, type ResourceType } from '@/hooks/useKubernetes';
 import { normalizeKindForTopology } from '@/utils/resourceKindMapper';
 import { ResourceEventsTab } from '@/components/events/ResourceEventsTab';
@@ -429,7 +429,6 @@ export function GenericResourceDetail<T extends KubernetesResource>({
     refetch,
   } = useResourceDetail<T>(resourceType, name, namespace, undefined as unknown as T, detailOptions);
 
-  const { events } = useResourceEvents(kind, namespace, name ?? undefined);
   const deleteResource = useDeleteK8sResource(resourceType);
   const updateResource = useUpdateK8sResource(resourceType);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -605,7 +604,9 @@ export function GenericResourceDetail<T extends KubernetesResource>({
       id: 'events',
       label: 'Events',
       icon: Activity,
-      badge: events?.length || undefined,
+      // Badge intentionally omitted — the tab content shows its own count from the
+      // wide-events store query, which differs from the legacy passthrough count.
+      // Showing a misleading "99+" badge from a different data source confuses users.
       content: (
         <ResourceEventsTab
           resourceKind={kind}
