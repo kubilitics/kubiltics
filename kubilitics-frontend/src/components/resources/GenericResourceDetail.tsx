@@ -45,7 +45,6 @@ import { applyManifest } from '@/services/api/resources';
 import {
   ResourceDetailLayout,
   YamlViewer,
-  EventsSection,
   ActionsSection,
   DeleteConfirmDialog,
   ResourceTopologyView,
@@ -605,14 +604,8 @@ export function GenericResourceDetail<T extends KubernetesResource>({
     {
       id: 'events',
       label: 'Events',
-      icon: Clock,
-      badge: events?.length || undefined,
-      content: <EventsSection events={events} />,
-    },
-    {
-      id: 'events-intelligence',
-      label: 'Events Intelligence',
       icon: Activity,
+      badge: events?.length || undefined,
       content: (
         <ResourceEventsTab
           resourceKind={kind}

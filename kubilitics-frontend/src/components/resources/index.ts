@@ -17,7 +17,6 @@ export { ContainersSection, type ContainerInfo, type ContainersSectionProps } fr
 export { ResourceList, type Column, type ResourceListProps, type ResourceListPagination } from './ResourceList';
 export { YamlViewer, type YamlViewerProps, type YamlValidationError } from './YamlViewer';
 export { computeDiff, YamlLineContent, getIntraLineDiff, type DiffLine, type YamlVersion } from './YamlDiffUtils';
-export { EventsSection, type EventInfo, type EventsSectionProps } from './EventsSection';
 export { DetailRow, type DetailRowProps } from './DetailRow';
 export { SectionCard, type SectionCardProps } from './SectionCard';
 export { MetadataCard, type MetadataCardProps } from './MetadataCard';

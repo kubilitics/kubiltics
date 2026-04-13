@@ -3,7 +3,7 @@
  * data for a specific Kubernetes resource. Designed to be embedded inside
  * GenericResourceDetail's tab system.
  */
-import { useState, useMemo, useCallback } from 'react';
+import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Activity, ExternalLink, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -12,7 +12,9 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { useEventsQuery } from '@/hooks/useEventsIntelligence';
+import { useEventsStore } from '@/stores/eventsStore';
 import { EventRow } from './EventRow';
+import { EventContextPanel } from './EventContextPanel';
 import type { EventQueryParams } from '@/services/api/eventsIntelligence';
 
 /* ─── Time range presets ─────────────────────────────────────────────────── */
@@ -64,9 +66,10 @@ export function ResourceEventsTab({
     [events],
   );
 
-  const handleViewContext = useCallback((_eventId: string) => {
-    // No-op in this tab — users can navigate to Events Intelligence for full context
-  }, []);
+  const selectEvent = useEventsStore((s) => s.selectEvent);
+  const handleViewContext = (eventId: string) => {
+    selectEvent(eventId);
+  };
 
   // Build link to Events Intelligence page with pre-applied filters
   const eventsIntelligenceLink = useMemo(() => {
@@ -79,6 +82,7 @@ export function ResourceEventsTab({
   }, [namespace, resourceKind, resourceName]);
 
   return (
+    <>
     <Card className="border-none soft-shadow glass-panel">
       {/* Header */}
       <CardHeader className="pb-2">
@@ -98,19 +102,33 @@ export function ResourceEventsTab({
             </CardTitle>
           </div>
 
-          {/* Time range selector */}
-          <div className="flex items-center gap-1">
-            {TIME_RANGES.map((t) => (
-              <Button
-                key={t.value}
-                variant={timeRange === t.value ? 'default' : 'outline'}
-                size="sm"
-                className="h-7 text-xs px-2.5"
-                onClick={() => setTimeRange(t.value)}
-              >
-                {t.label}
-              </Button>
-            ))}
+          <div className="flex items-center gap-3">
+            {/* Time range selector */}
+            <div className="flex items-center gap-1">
+              {TIME_RANGES.map((t) => (
+                <Button
+                  key={t.value}
+                  variant={timeRange === t.value ? 'default' : 'outline'}
+                  size="sm"
+                  className="h-7 text-xs px-2.5"
+                  onClick={() => setTimeRange(t.value)}
+                >
+                  {t.label}
+                </Button>
+              ))}
+            </div>
+            {/* Cluster-wide investigation entry point */}
+            <Link
+              to={eventsIntelligenceLink}
+              className={cn(
+                'inline-flex items-center gap-1.5 text-xs font-medium whitespace-nowrap',
+                'text-primary hover:text-primary/80 transition-colors',
+              )}
+              title="Investigate this resource cluster-wide"
+            >
+              Open in Events Intelligence
+              <ExternalLink className="h-3 w-3" />
+            </Link>
           </div>
         </div>
       </CardHeader>
@@ -148,19 +166,9 @@ export function ResourceEventsTab({
         )}
       </CardContent>
 
-      {/* Footer link */}
-      <div className="px-4 py-3 border-t border-border/40">
-        <Link
-          to={eventsIntelligenceLink}
-          className={cn(
-            'inline-flex items-center gap-1.5 text-xs font-medium',
-            'text-primary hover:text-primary/80 transition-colors',
-          )}
-        >
-          View in Events Intelligence
-          <ExternalLink className="h-3 w-3" />
-        </Link>
-      </div>
     </Card>
+    {/* Slide-out context panel — driven by useEventsStore */}
+    <EventContextPanel />
+    </>
   );
 }
