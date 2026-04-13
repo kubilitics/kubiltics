@@ -58,7 +58,9 @@ import {
  ResourceListTableToolbar,
  BulkActionToolbar,
  VirtualTableBody,
+ ListSearchInput,
 } from '@/components/list';
+import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 import { NodeIcon } from '@/components/icons/KubernetesIcons';
 import { useTableFiltersAndSort, type ColumnConfig } from '@/hooks/useTableFiltersAndSort';
 import { useColumnVisibility } from '@/hooks/useColumnVisibility';
@@ -269,6 +271,7 @@ export default function Nodes() {
  const selectedNodes = multiSelect.selectedIds;
  const setSelectedNodes = (s: Set<string>) => { if (s.size === 0) multiSelect.clearSelection(); else multiSelect.selectAll(Array.from(s)); };
  const [searchQuery, setSearchQuery] = useState('');
+ const debouncedSearch = useDebouncedValue(searchQuery, 250);
  const [showTableFilters, setShowTableFilters] = useState(false);
  const [pageSize, setPageSize] = useState(10);
  const [pageIndex, setPageIndex] = useState(0);
@@ -364,8 +367,8 @@ export default function Nodes() {
  const columnVisibility = useColumnVisibility({ tableId: 'nodes', columns: NODES_COLUMNS_FOR_VISIBILITY, alwaysVisible: ['name'] });
 
  const searchFiltered = useMemo(() => {
- if (!searchQuery.trim()) return filteredItems;
- const q = searchQuery.toLowerCase();
+ if (!debouncedSearch.trim()) return filteredItems;
+ const q = debouncedSearch.toLowerCase();
  return filteredItems.filter(
  (n) =>
  n.name.toLowerCase().includes(q) ||
@@ -373,7 +376,7 @@ export default function Nodes() {
  n.version.toLowerCase().includes(q) ||
  (n.labelsString && n.labelsString.toLowerCase().includes(q))
  );
- }, [filteredItems, searchQuery]);
+ }, [filteredItems, debouncedSearch]);
 
  const stats = useMemo(() => {
  const total = nodesWithMetrics.length;
@@ -668,10 +671,12 @@ export default function Nodes() {
  <ResourceCommandBar
  scope={<ClusterScopedScope />}
  search={
- <div className="relative w-full min-w-0">
- <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
- <Input placeholder="Search by name or labels..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full h-10 pl-9 rounded-lg border border-border bg-background text-sm font-medium shadow-sm placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-primary/20" aria-label="Search nodes" />
- </div>
+ <ListSearchInput
+ value={searchQuery}
+ onChange={setSearchQuery}
+ placeholder="Search by name or labels..."
+ ariaLabel="Search nodes"
+ />
  }
  structure={
  <ListViewSegmentedControl

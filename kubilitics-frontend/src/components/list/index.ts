@@ -1,5 +1,6 @@
 export { NamespaceFilter, type NamespaceFilterProps } from './NamespaceFilter';
 export { ResourceCommandBar, ClusterScopedScope, type ResourceCommandBarProps } from './ResourceCommandBar';
+export { ListSearchInput, type ListSearchInputProps } from './ListSearchInput';
 export {
   ResourceExportDropdown,
   type ResourceExportConfig,

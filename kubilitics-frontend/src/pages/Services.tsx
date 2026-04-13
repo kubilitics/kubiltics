@@ -55,7 +55,8 @@ import { useClusterStore } from '@/stores/clusterStore';
 import { useQueries } from '@tanstack/react-query';
 import { getServiceEndpoints } from '@/services/backendApiClient';
 import { DeleteConfirmDialog, PortForwardDialog, BulkActionBar, executeBulkOperation } from '@/components/resources';
-import { ResourceExportDropdown, ListPagination, PAGE_SIZE_OPTIONS, ResourceCommandBar, resourceTableRowClassName, ROW_MOTION, ListPageStatCard, ListPageHeader, TableColumnHeaderWithFilterAndSort, TableFilterCell, StatusPill, ListViewSegmentedControl, AgeCell, TableEmptyState, ListPageLoadingShell, TableErrorState, CopyNameDropdownItem, NamespaceBadge, ResourceListTableToolbar, type StatusPillVariant } from '@/components/list';
+import { ResourceExportDropdown, ListPagination, PAGE_SIZE_OPTIONS, ResourceCommandBar, resourceTableRowClassName, ROW_MOTION, ListPageStatCard, ListPageHeader, TableColumnHeaderWithFilterAndSort, TableFilterCell, StatusPill, ListViewSegmentedControl, AgeCell, TableEmptyState, ListPageLoadingShell, TableErrorState, CopyNameDropdownItem, NamespaceBadge, ResourceListTableToolbar, ListSearchInput, type StatusPillVariant } from '@/components/list';
+import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 import { ServiceIcon } from '@/components/icons/KubernetesIcons';
 import { useTableFiltersAndSort, type ColumnConfig } from '@/hooks/useTableFiltersAndSort';
 import { useColumnVisibility } from '@/hooks/useColumnVisibility';
@@ -209,6 +210,7 @@ export default function Services() {
  const navigate = useNavigate();
  const [searchParams] = useSearchParams();
  const [searchQuery, setSearchQuery] = useState('');
+ const debouncedSearch = useDebouncedValue(searchQuery, 250);
  const [selectedNamespace, setSelectedNamespace] = useState<string>('all');
  const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; item: Service | null; bulk?: boolean }>({ open: false, item: null });
  const [portForwardDialog, setPortForwardDialog] = useState<{ open: boolean; item: Service | null }>({ open: false, item: null });
@@ -273,13 +275,14 @@ export default function Services() {
 
  const itemsAfterSearchAndNs = useMemo(() => {
  return services.filter(svc => {
- const matchesSearch = svc.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
- svc.namespace.toLowerCase().includes(searchQuery.toLowerCase()) ||
- svc.clusterIP.includes(searchQuery);
+ const q = debouncedSearch.toLowerCase();
+ const matchesSearch = !q || svc.name.toLowerCase().includes(q) ||
+ svc.namespace.toLowerCase().includes(q) ||
+ svc.clusterIP.includes(debouncedSearch);
  const matchesNamespace = selectedNamespace === 'all' || svc.namespace === selectedNamespace;
  return matchesSearch && matchesNamespace;
  });
- }, [services, searchQuery, selectedNamespace]);
+ }, [services, debouncedSearch, selectedNamespace]);
 
  const servicesTableConfig: ColumnConfig<Service>[] = useMemo(() => [
  { columnId: 'name', getValue: (i) => i.name, sortable: true, filterable: true },
@@ -568,16 +571,12 @@ spec:
  </div>
  }
  search={
- <div className="relative w-full min-w-0">
- <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
- <Input
- placeholder="Search services by name, namespace, or IP..."
+ <ListSearchInput
  value={searchQuery}
- onChange={(e) => setSearchQuery(e.target.value)}
- className="w-full h-10 pl-9 rounded-lg border border-border bg-background text-sm font-medium shadow-sm placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/50 transition-all"
- aria-label="Search services"
+ onChange={setSearchQuery}
+ placeholder="Search services by name, namespace, or IP..."
+ ariaLabel="Search services"
  />
- </div>
  }
  structure={
  <ListViewSegmentedControl

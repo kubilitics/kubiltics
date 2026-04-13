@@ -28,6 +28,7 @@ import {
  ResourceListTableToolbar,
  NamespaceBadge,
  BulkActionToolbar,
+ ListSearchInput,
  type StatusPillVariant,
 } from '@/components/list';
 import { useTableFiltersAndSort, type ColumnConfig } from '@/hooks/useTableFiltersAndSort';
@@ -214,8 +215,8 @@ type ListView = 'flat' | 'byNamespace' | 'byNode';
 
 export default function Pods() {
  const navigate = useNavigate();
- const [searchParams] = useSearchParams();
- const [searchQuery, setSearchQuery] = useState('');
+ const [searchParams, setSearchParams] = useSearchParams();
+ const [searchQuery, setSearchQuery] = useState(() => searchParams.get('q') ?? '');
  const debouncedSearch = useDebouncedValue(searchQuery, 250);
  const [selectedNamespaces, setSelectedNamespaces] = useState<Set<string>>(new Set());
  const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; pod: Pod | null; bulk?: boolean }>({ open: false, pod: null });
@@ -234,7 +235,19 @@ export default function Pods() {
  const [pageIndex, setPageIndex] = useState(0);
 
  // Status phase filter — drives server-side fieldSelector so pagination works with status cards
- const [statusPhaseFilter, setStatusPhaseFilter] = useState<string | null>(null);
+ const [statusPhaseFilter, setStatusPhaseFilter] = useState<string | null>(() => searchParams.get('status'));
+
+ // Persist search + status filter to URL so navigating away/back preserves them
+ useEffect(() => {
+ const next = new URLSearchParams(searchParams);
+ if (searchQuery) next.set('q', searchQuery); else next.delete('q');
+ if (statusPhaseFilter) next.set('status', statusPhaseFilter); else next.delete('status');
+ // Avoid rewriting history if nothing changed
+ if (next.toString() !== searchParams.toString()) {
+ setSearchParams(next, { replace: true });
+ }
+ // eslint-disable-next-line react-hooks/exhaustive-deps
+ }, [searchQuery, statusPhaseFilter]);
 
  const { isConnected } = useConnectionStatus();
 
@@ -953,16 +966,12 @@ export default function Pods() {
  />
  }
  search={
- <div className="relative w-full min-w-0">
- <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
- <Input
- placeholder="Search pods..."
+ <ListSearchInput
  value={searchQuery}
- onChange={(e) => setSearchQuery(e.target.value)}
- className="w-full h-10 pl-9 pr-3 rounded-lg border border-border bg-background text-sm font-medium shadow-sm placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/50 transition-all"
- aria-label="Search pods by name or namespace"
+ onChange={setSearchQuery}
+ placeholder="Search pods..."
+ ariaLabel="Search pods by name or namespace"
  />
- </div>
  }
  structure={
  <ListViewSegmentedControl

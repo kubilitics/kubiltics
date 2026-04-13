@@ -9,7 +9,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { resourceTableRowClassName, ROW_MOTION, StatusPill, ListPagination, PAGE_SIZE_OPTIONS, ListPageStatCard, ListPageHeader, TableColumnHeaderWithFilterAndSort, TableFilterCell, AgeCell, TableEmptyState, TableErrorState, ListPageLoadingShell, CopyNameDropdownItem, NamespaceBadge, ResourceListTableToolbar, BulkActionToolbar, type StatusPillVariant } from '@/components/list';
+import { resourceTableRowClassName, ROW_MOTION, StatusPill, ListPagination, PAGE_SIZE_OPTIONS, ListPageStatCard, ListPageHeader, TableColumnHeaderWithFilterAndSort, TableFilterCell, AgeCell, TableEmptyState, TableErrorState, ListPageLoadingShell, CopyNameDropdownItem, NamespaceBadge, ResourceListTableToolbar, BulkActionToolbar, ListSearchInput, type StatusPillVariant } from '@/components/list';
+import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 import { useTableFiltersAndSort, type ColumnConfig } from '@/hooks/useTableFiltersAndSort';
 import { getRowAnimationClass } from '@/hooks/useResourceLiveUpdates';
 import { useTableKeyboardNav } from '@/hooks/useTableKeyboardNav';
@@ -212,6 +213,7 @@ export default function Deployments() {
  const navigate = useNavigate();
  const [searchParams] = useSearchParams();
  const [searchQuery, setSearchQuery] = useState('');
+ const debouncedSearch = useDebouncedValue(searchQuery, 250);
  const [selectedNamespace, setSelectedNamespace] = useState<string>('all');
  const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; item: Deployment | null; bulk?: boolean }>({ open: false, item: null });
  const [scaleDialog, setScaleDialog] = useState<{ open: boolean; item: Deployment | null }>({ open: false, item: null });
@@ -300,11 +302,12 @@ export default function Deployments() {
 
  const itemsAfterSearchAndNs = useMemo(() => {
  return items.filter((item) => {
- const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) || item.namespace.toLowerCase().includes(searchQuery.toLowerCase());
+ const q = debouncedSearch.toLowerCase();
+ const matchesSearch = !q || item.name.toLowerCase().includes(q) || item.namespace.toLowerCase().includes(q);
  const matchesNamespace = selectedNamespace === 'all' || item.namespace === selectedNamespace;
  return matchesSearch && matchesNamespace;
  });
- }, [items, searchQuery, selectedNamespace]);
+ }, [items, debouncedSearch, selectedNamespace]);
 
  const deploymentsTableConfig: ColumnConfig<Deployment>[] = useMemo(() => {
  const parseReady = (ready: string): number => {
@@ -370,7 +373,7 @@ export default function Deployments() {
  // Reset to first page when namespace/search filter changes
  useEffect(() => {
  setPageIndex(0);
- }, [selectedNamespace, searchQuery]);
+ }, [selectedNamespace, debouncedSearch]);
 
  const handlePageSizeChange = (size: number) => {
  setPageSize(size);
@@ -661,16 +664,12 @@ spec:
  </div>
  }
  search={
- <div className="relative w-full min-w-0">
- <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
- <Input
- placeholder="Search deployments..."
+ <ListSearchInput
  value={searchQuery}
- onChange={(e) => setSearchQuery(e.target.value)}
- className="w-full h-10 pl-9 rounded-lg border border-border bg-background text-sm font-medium shadow-sm placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/50 transition-all"
- aria-label="Search deployments"
+ onChange={setSearchQuery}
+ placeholder="Search deployments..."
+ ariaLabel="Search deployments"
  />
- </div>
  }
  structure={
  <ListViewSegmentedControl

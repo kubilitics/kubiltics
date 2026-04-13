@@ -49,7 +49,9 @@ import {
  PAGE_SIZE_OPTIONS,
  ResourceListTableToolbar,
  VirtualTableBody,
+ ListSearchInput,
 } from '@/components/list';
+import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 import { useTableFiltersAndSort, type ColumnConfig } from '@/hooks/useTableFiltersAndSort';
 import { useColumnVisibility } from '@/hooks/useColumnVisibility';
 import { getDetailPath, normalizeKindForTopology } from '@/utils/resourceKindMapper';
@@ -148,6 +150,7 @@ export default function Events() {
 
  const [namespaceFilter, setNamespaceFilter] = useState<string>('all');
  const [searchQuery, setSearchQuery] = useState('');
+ const debouncedSearch = useDebouncedValue(searchQuery, 250);
  const [showTableFilters, setShowTableFilters] = useState(false);
  const [autoRefresh, setAutoRefresh] = useState(false);
  const [pageSize, setPageSize] = useState(10);
@@ -170,8 +173,8 @@ export default function Events() {
  const rawRows: EventRow[] = useMemo(() => (eventsQuery.data ?? []).map(backendEventToRow), [eventsQuery.data]);
 
  const searchFiltered = useMemo(() => {
- if (!searchQuery.trim()) return rawRows;
- const q = searchQuery.toLowerCase();
+ if (!debouncedSearch.trim()) return rawRows;
+ const q = debouncedSearch.toLowerCase();
  return rawRows.filter(
  (e) =>
  e.reason.toLowerCase().includes(q) ||
@@ -179,7 +182,7 @@ export default function Events() {
  e.objectName.toLowerCase().includes(q) ||
  e.objectKind.toLowerCase().includes(q)
  );
- }, [rawRows, searchQuery]);
+ }, [rawRows, debouncedSearch]);
 
  const tableConfig: ColumnConfig<EventRow>[] = useMemo(
  () => [
@@ -204,7 +207,7 @@ export default function Events() {
  const clearAllFilters = useCallback(() => { setPageIndex(0); clearAllFiltersRaw(); }, [clearAllFiltersRaw]);
 
  // Reset page index when search or namespace changes
- useEffect(() => { setPageIndex(0); }, [searchQuery, namespaceFilter]);
+ useEffect(() => { setPageIndex(0); }, [debouncedSearch, namespaceFilter]);
 
  const typeFilterActive = columnFilters.type != null && columnFilters.type.size > 0;
  const typeFilterValue = typeFilterActive && columnFilters.type!.size === 1 ? Array.from(columnFilters.type!)[0] as 'Normal' | 'Warning' | 'Error' : 'all';
@@ -348,16 +351,12 @@ export default function Events() {
  </Select>
  }
  search={
- <div className="relative w-full min-w-0">
- <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
- <Input
- placeholder="Search events..."
+ <ListSearchInput
  value={searchQuery}
- onChange={(e) => setSearchQuery(e.target.value)}
- className="w-full h-10 pl-9 rounded-lg border border-border bg-background text-sm font-medium shadow-sm placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-primary/20"
- aria-label="Search events"
+ onChange={setSearchQuery}
+ placeholder="Search events..."
+ ariaLabel="Search events"
  />
- </div>
  }
  />
  <div className="flex flex-wrap gap-2 items-center px-4 py-2">

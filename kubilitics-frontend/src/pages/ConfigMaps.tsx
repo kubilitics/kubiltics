@@ -45,7 +45,8 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQueries } from '@tanstack/react-query';
-import { ResourceCommandBar, ResourceExportDropdown, ListViewSegmentedControl, ListPagination, PAGE_SIZE_OPTIONS, ListPageStatCard, ListPageHeader, TableColumnHeaderWithFilterAndSort, TableFilterCell, resourceTableRowClassName, ROW_MOTION, AgeCell, TableEmptyState, ListPageLoadingShell, TableErrorState, CopyNameDropdownItem, ResourceListTableToolbar, NamespaceBadge, StatusPill } from '@/components/list';
+import { ResourceCommandBar, ResourceExportDropdown, ListViewSegmentedControl, ListPagination, PAGE_SIZE_OPTIONS, ListPageStatCard, ListPageHeader, TableColumnHeaderWithFilterAndSort, TableFilterCell, resourceTableRowClassName, ROW_MOTION, AgeCell, TableEmptyState, ListPageLoadingShell, TableErrorState, CopyNameDropdownItem, ResourceListTableToolbar, NamespaceBadge, StatusPill, ListSearchInput } from '@/components/list';
+import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 import { buildAutoWidthColumns } from '@/lib/tableSizing';
 import { ConfigMapIcon } from '@/components/icons/KubernetesIcons';
 import { useTableFiltersAndSort, type ColumnConfig } from '@/hooks/useTableFiltersAndSort';
@@ -153,6 +154,7 @@ export default function ConfigMaps() {
  const [showCreateWizard, setShowCreateWizard] = useState(false);
  const [cloneInitialYaml, setCloneInitialYaml] = useState<string | null>(null);
  const [searchQuery, setSearchQuery] = useState('');
+ const debouncedSearch = useDebouncedValue(searchQuery, 250);
  const [selectedNamespace, setSelectedNamespace] = useState<string>('all');
  const [listView, setListView] = useState<ListView>('flat');
  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
@@ -241,13 +243,14 @@ export default function ConfigMaps() {
 
  const itemsAfterSearchAndNs = useMemo(() => {
  return items.filter((item) => {
- const matchesSearch =
- item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
- item.namespace.toLowerCase().includes(searchQuery.toLowerCase());
+ const q = debouncedSearch.toLowerCase();
+ const matchesSearch = !q ||
+ item.name.toLowerCase().includes(q) ||
+ item.namespace.toLowerCase().includes(q);
  const matchesNamespace = selectedNamespace === 'all' || item.namespace === selectedNamespace;
  return matchesSearch && matchesNamespace;
  });
- }, [items, searchQuery, selectedNamespace]);
+ }, [items, debouncedSearch, selectedNamespace]);
 
  const tableConfig: ColumnConfig<ConfigMap>[] = useMemo(
  () => [
@@ -599,16 +602,12 @@ data: {}
  </div>
  }
  search={
- <div className="relative w-full min-w-0">
- <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
- <Input
- placeholder="Search configmaps..."
+ <ListSearchInput
  value={searchQuery}
- onChange={(e) => setSearchQuery(e.target.value)}
- className="w-full h-10 pl-9 rounded-lg border border-border bg-background text-sm font-medium shadow-sm placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/50 transition-all"
- aria-label="Search configmaps"
+ onChange={setSearchQuery}
+ placeholder="Search configmaps..."
+ ariaLabel="Search configmaps"
  />
- </div>
  }
  structure={
  <ListViewSegmentedControl
