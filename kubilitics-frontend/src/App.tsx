@@ -49,6 +49,7 @@ const SPOFInventory = lazy(() => import("./pages/SPOFInventory"));
 const ReportSchedules = lazy(() => import("./pages/ReportSchedules"));
 const EventsIntelligence = lazy(() => import("./pages/EventsIntelligence"));
 const TracesPage = lazy(() => import("./pages/TracesPage"));
+const SetupObservability = lazy(() => import("./pages/SetupObservability"));
 
 // Pillar 3: What-If Simulation
 const SimulationPage = lazy(() => import("./pages/SimulationPage"));
@@ -762,6 +763,7 @@ const App = () => (
                         <Route path="/report-schedules" element={<ReportSchedules />} />
                         <Route path="/events-intelligence" element={<EventsIntelligence />} />
                         <Route path="/traces" element={<TracesPage />} />
+                        <Route path="/clusters/:clusterId/setup/observability" element={<SetupObservability />} />
                         <Route path="/intelligence/:namespace/:kind/:name" element={<IntelligenceWorkspace />} />
 
                         {/* Pillar 3: What-If Simulation */}

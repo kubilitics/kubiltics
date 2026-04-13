@@ -52,6 +52,7 @@ const ClusterShellPanel = lazy(() =>
 import { NotificationCenter } from '@/components/notifications/NotificationCenter';
 import { ActivePortForwardsIndicator } from '@/components/resources/ActivePortForwards';
 import { PipelineHealthIndicator } from '@/components/events/PipelineHealthIndicator';
+import { TracingStatusPill } from '@/components/observability/TracingStatusPill';
 import { getClusterKubeconfig } from '@/services/backendApiClient';
 import { getEffectiveBackendBaseUrl, useBackendConfigStore } from '@/stores/backendConfigStore';
 import { useUIStore } from '@/stores/uiStore';
@@ -672,6 +673,9 @@ export function Header() {
                     ))}
                   </DropdownMenuContent>
                 </DropdownMenu>
+
+                {/* Tracing pipeline status — click to open setup page */}
+                <TracingStatusPill />
 
                 {/* Events Pipeline Health — colored dot with tooltip */}
                 <PipelineHealthIndicator />
