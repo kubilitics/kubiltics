@@ -166,6 +166,15 @@ func (p *TracePuller) IsAgentReachable(ctx context.Context, clientset kubernetes
 
 // pollLoop runs the pull cycle every pullInterval until ctx is cancelled.
 func (p *TracePuller) pollLoop(ctx context.Context, clientset kubernetes.Interface, clusterID string) {
+	// If the legacy trace-agent service isn't reachable, this cluster is
+	// using direct OTLP push (standard otel-collector → POST /v1/traces),
+	// so we skip polling entirely. The puller is kept for backwards compat
+	// with any clusters still running the proprietary kubilitics-trace-agent.
+	if !p.IsAgentReachable(ctx, clientset) {
+		log.Printf("[otel/puller] cluster %s: legacy trace-agent not reachable, skipping pull (using direct OTLP push)", clusterID)
+		return
+	}
+
 	// Start with "pull everything" — use 0 as the initial since timestamp.
 	var lastPullNs int64
 

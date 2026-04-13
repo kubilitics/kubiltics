@@ -50,13 +50,21 @@ func (th *TracingHandler) EnableTracing(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	// Step 1: Deploy trace agent first (fast, no dependencies)
-	_, err = client.ApplyYAML(ctx, otel.AgentManifestYAML("v0.2.0"))
+	// Step 1: Deploy the standard OpenTelemetry Collector as the in-cluster
+	// trace ingestion agent. It receives OTLP from instrumented apps and pushes
+	// to the Kubilitics backend. For Docker Desktop kind clusters, traffic
+	// reaches the host backend via host.docker.internal.
+	//
+	// TODO(cluster-aware): backendURL should be derived from how the cluster
+	// reaches the backend (host.docker.internal vs ingress vs nodeport).
+	// For now we hardcode the Docker Desktop case — improve in a follow-up.
+	backendURL := "http://host.docker.internal:8190/v1/traces"
+	_, err = client.ApplyYAML(ctx, otel.AgentManifestYAML(clusterID, backendURL))
 	if err != nil {
-		respondErrorWithCode(w, http.StatusInternalServerError, ErrCodeInternalError, "Failed to deploy trace agent: "+err.Error(), requestID)
+		respondErrorWithCode(w, http.StatusInternalServerError, ErrCodeInternalError, "Failed to deploy otel-collector: "+err.Error(), requestID)
 		return
 	}
-	log.Printf("[tracing] trace-agent deployed")
+	log.Printf("[tracing] otel-collector deployed (cluster=%s backend=%s)", clusterID, backendURL)
 
 	// Step 1b: Deploy demo app that generates real traces
 	_, err = client.ApplyYAML(ctx, otel.DemoAppManifestYAML("v0.2.0"))
@@ -200,15 +208,11 @@ func (th *TracingHandler) GetTracingStatus(w http.ResponseWriter, r *http.Reques
 
 	status.AgentDeployed = true
 	status.Enabled = dep.Status.ReadyReplicas > 0
-
-	// Check agent health via proxy
-	status.AgentHealthy = th.puller.IsAgentReachable(ctx, client.Clientset)
-
-	// Trigger immediate pull so traces are fresh when user opens the page.
-	// Also ensures the poll loop is started for this cluster.
-	if status.AgentHealthy {
-		go th.puller.PullNow(context.Background(), client.Clientset, clusterID)
-	}
+	// With the standard otel-collector path, traces are pushed directly to
+	// the backend's POST /v1/traces — there is no longer a custom HTTP query
+	// API on the agent to probe. If the collector deployment has at least one
+	// ready replica, we treat the agent as healthy.
+	status.AgentHealthy = status.Enabled
 
 	// List all deployments across all namespaces
 	systemNamespaces := map[string]bool{

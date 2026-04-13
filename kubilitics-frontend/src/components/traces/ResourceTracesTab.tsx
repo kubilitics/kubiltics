@@ -9,13 +9,20 @@
  */
 import { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { GitBranch, ExternalLink, Loader2 } from 'lucide-react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { GitBranch, ExternalLink, Loader2, AlertCircle, Hourglass, Radio } from 'lucide-react';
+import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { useResourceTraces } from '@/hooks/useTraces';
+import { getTracingStatus, enableTracing } from '@/services/api/tracing';
+import {
+  getEffectiveBackendBaseUrl,
+  useBackendConfigStore,
+} from '@/stores/backendConfigStore';
 
 /* ---- Time range presets ------------------------------------------------- */
 
@@ -63,8 +70,32 @@ export function ResourceTracesTab({
   resourceKind,
   resourceName,
   namespace,
+  clusterId,
 }: ResourceTracesTabProps) {
   const [timeRange, setTimeRange] = useState('24h');
+  const storedUrl = useBackendConfigStore((s) => s.backendBaseUrl);
+  const baseUrl = getEffectiveBackendBaseUrl(storedUrl);
+  const queryClient = useQueryClient();
+
+  // Tracing status — drives the intelligent empty state below.
+  const { data: tracingStatus } = useQuery({
+    queryKey: ['tracing-status', clusterId],
+    queryFn: () => getTracingStatus(baseUrl, clusterId!),
+    enabled: !!clusterId && !!baseUrl,
+    staleTime: 30_000,
+    retry: 1,
+  });
+
+  const enableMutation = useMutation({
+    mutationFn: () => enableTracing(baseUrl, clusterId!),
+    onSuccess: (res) => {
+      toast.success('Tracing enabled', { description: res.message });
+      queryClient.invalidateQueries({ queryKey: ['tracing-status', clusterId] });
+    },
+    onError: (err: Error) => {
+      toast.error('Failed to enable tracing', { description: err.message });
+    },
+  });
 
   const timeRangeMs = TIME_RANGES.find((t) => t.value === timeRange)?.ms ?? 86_400_000;
   // Stabilize the time window — only recalculate when timeRange changes,
@@ -152,20 +183,74 @@ export function ResourceTracesTab({
             ))}
           </div>
         ) : sortedTraces.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-12 px-4 text-muted-foreground">
-            <GitBranch className="h-10 w-10 mb-3 opacity-30" />
-            <p className="text-sm font-medium mb-1">No traces found for this resource</p>
-            <p className="text-xs mt-1 max-w-sm text-center leading-relaxed">
-              Traces appear when your apps send OpenTelemetry data through a collector.
-            </p>
-            <Link
-              to="/traces"
-              className="mt-3 inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:text-primary/80 transition-colors"
-            >
-              View setup instructions
-              <ExternalLink className="h-3 w-3" />
-            </Link>
-          </div>
+          tracingStatus && tracingStatus.enabled ? (
+            // State 2: collector deployed and ready, but no spans for this resource yet.
+            <div className="flex flex-col items-center justify-center py-12 px-4 text-muted-foreground">
+              <Hourglass className="h-10 w-10 mb-3 text-primary/40" />
+              <p className="text-sm font-medium mb-1 text-foreground">
+                Waiting for traces from {resourceName}
+              </p>
+              <p className="text-xs mt-1 max-w-md text-center leading-relaxed">
+                The OpenTelemetry Collector is running. Traces will appear here
+                once {resourceName} sends them.
+              </p>
+              <div className="mt-4 w-full max-w-md rounded-md border border-border/60 bg-muted/40 p-3 text-left">
+                <p className="text-[11px] font-medium text-foreground/80 mb-1.5">
+                  To send traces, set these env vars on your container:
+                </p>
+                <pre className="font-mono text-[11px] leading-relaxed text-muted-foreground whitespace-pre-wrap break-all">
+{`OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector.kubilitics-system:4318
+OTEL_SERVICE_NAME=${resourceName}`}
+                </pre>
+              </div>
+              <Link
+                to="/traces"
+                className="mt-3 inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:text-primary/80 transition-colors"
+              >
+                Auto-instrumentation guide
+                <ExternalLink className="h-3 w-3" />
+              </Link>
+            </div>
+          ) : (
+            // State 1: collector not deployed — offer one-click enable.
+            <div className="flex flex-col items-center justify-center py-12 px-4 text-muted-foreground">
+              <AlertCircle className="h-10 w-10 mb-3 text-amber-500/70" />
+              <p className="text-sm font-medium mb-1 text-foreground">
+                Tracing not enabled
+              </p>
+              <p className="text-xs mt-1 max-w-md text-center leading-relaxed">
+                Install the OpenTelemetry Collector to start collecting traces
+                from instrumented apps in this cluster.
+              </p>
+              <div className="mt-4 flex items-center gap-3">
+                <Button
+                  size="sm"
+                  className="h-8 gap-1.5 text-xs"
+                  disabled={!clusterId || enableMutation.isPending}
+                  onClick={() => enableMutation.mutate()}
+                >
+                  {enableMutation.isPending ? (
+                    <>
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      Installing...
+                    </>
+                  ) : (
+                    <>
+                      <Radio className="h-3.5 w-3.5" />
+                      Enable Tracing
+                    </>
+                  )}
+                </Button>
+                <Link
+                  to="/traces"
+                  className="inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:text-primary/80 transition-colors"
+                >
+                  Learn more
+                  <ExternalLink className="h-3 w-3" />
+                </Link>
+              </div>
+            </div>
+          )
         ) : (
           <div>
             {pagedTraces.map((trace) => (

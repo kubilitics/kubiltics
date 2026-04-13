@@ -2,9 +2,25 @@ package otel
 
 import "fmt"
 
-// AgentManifestYAML returns multi-doc K8s YAML for deploying the kubilitics
-// trace agent into a cluster. It creates a namespace, deployment, and service.
-func AgentManifestYAML(imageTag string) string {
+// otelCollectorImage is the standard OpenTelemetry Collector contrib image.
+// We pin to a known-good version for reproducibility. Bump when validating
+// against a newer release.
+const otelCollectorImage = "otel/opentelemetry-collector-contrib:0.119.0"
+
+// AgentManifestYAML returns multi-doc K8s YAML for deploying the standard
+// OpenTelemetry Collector into a cluster as the Kubilitics trace ingestion
+// agent. The collector receives OTLP traces from in-cluster apps, enriches
+// them with k8sattributes, and pushes them via OTLP/HTTP to the Kubilitics
+// backend.
+//
+// clusterID is injected as the resource attribute "kubilitics.cluster.id"
+// so the backend's OTLP receiver can attribute spans to the right cluster.
+//
+// backendURL must be the full URL the collector should POST to, e.g.
+// "http://host.docker.internal:8190/v1/traces" for Docker Desktop kind
+// clusters where the collector is inside the cluster but the backend runs
+// on the host.
+func AgentManifestYAML(clusterID string, backendURL string) string {
 	return fmt.Sprintf(`apiVersion: v1
 kind: Namespace
 metadata:
@@ -12,28 +28,138 @@ metadata:
   labels:
     app.kubernetes.io/managed-by: kubilitics
 ---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: otel-collector
+  namespace: kubilitics-system
+  labels:
+    app.kubernetes.io/name: otel-collector
+    app.kubernetes.io/managed-by: kubilitics
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: kubilitics-otel-collector
+  labels:
+    app.kubernetes.io/managed-by: kubilitics
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "namespaces", "nodes"]
+    verbs: ["get", "watch", "list"]
+  - apiGroups: ["apps"]
+    resources: ["replicasets", "deployments"]
+    verbs: ["get", "watch", "list"]
+  - apiGroups: ["extensions"]
+    resources: ["replicasets"]
+    verbs: ["get", "watch", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: kubilitics-otel-collector
+  labels:
+    app.kubernetes.io/managed-by: kubilitics
+subjects:
+  - kind: ServiceAccount
+    name: otel-collector
+    namespace: kubilitics-system
+roleRef:
+  kind: ClusterRole
+  name: kubilitics-otel-collector
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: otel-collector-config
+  namespace: kubilitics-system
+  labels:
+    app.kubernetes.io/name: otel-collector
+    app.kubernetes.io/managed-by: kubilitics
+data:
+  config.yaml: |
+    receivers:
+      otlp:
+        protocols:
+          http:
+            endpoint: 0.0.0.0:4318
+          grpc:
+            endpoint: 0.0.0.0:4317
+
+    processors:
+      batch:
+        timeout: 5s
+        send_batch_size: 100
+      k8sattributes:
+        auth_type: serviceAccount
+        extract:
+          metadata:
+            - k8s.namespace.name
+            - k8s.pod.name
+            - k8s.pod.uid
+            - k8s.deployment.name
+            - k8s.node.name
+            - k8s.container.name
+        pod_association:
+          - sources:
+              - from: resource_attribute
+                name: k8s.pod.ip
+          - sources:
+              - from: resource_attribute
+                name: k8s.pod.uid
+          - sources:
+              - from: connection
+      resource:
+        attributes:
+          - key: kubilitics.cluster.id
+            value: ${env:KUBILITICS_CLUSTER_ID}
+            action: upsert
+
+    exporters:
+      otlphttp:
+        endpoint: ${env:KUBILITICS_BACKEND_URL}
+        tls:
+          insecure: true
+      debug:
+        verbosity: basic
+
+    service:
+      pipelines:
+        traces:
+          receivers: [otlp]
+          processors: [k8sattributes, resource, batch]
+          exporters: [otlphttp, debug]
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: kubilitics-trace-agent
+  name: otel-collector
   namespace: kubilitics-system
   labels:
-    app.kubernetes.io/name: kubilitics-trace-agent
+    app.kubernetes.io/name: otel-collector
     app.kubernetes.io/managed-by: kubilitics
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app.kubernetes.io/name: kubilitics-trace-agent
+      app.kubernetes.io/name: otel-collector
   template:
     metadata:
       labels:
-        app.kubernetes.io/name: kubilitics-trace-agent
+        app.kubernetes.io/name: otel-collector
     spec:
+      serviceAccountName: otel-collector
       containers:
-        - name: trace-agent
-          image: ghcr.io/kubilitics/trace-agent:%s
+        - name: otel-collector
+          image: %s
           imagePullPolicy: IfNotPresent
+          args: ["--config=/etc/otel/config.yaml"]
+          env:
+            - name: KUBILITICS_CLUSTER_ID
+              value: %q
+            - name: KUBILITICS_BACKEND_URL
+              value: %q
           ports:
             - name: otlp-grpc
               containerPort: 4317
@@ -41,47 +167,36 @@ spec:
             - name: otlp-http
               containerPort: 4318
               protocol: TCP
-            - name: query
-              containerPort: 9417
-              protocol: TCP
           resources:
             requests:
-              memory: "64Mi"
+              memory: "128Mi"
               cpu: "50m"
             limits:
-              memory: "128Mi"
-              cpu: "200m"
+              memory: "512Mi"
+              cpu: "500m"
           volumeMounts:
-            - name: data
-              mountPath: /data
-          livenessProbe:
-            httpGet:
-              path: /health
-              port: 9417
-            initialDelaySeconds: 5
-            periodSeconds: 15
-          readinessProbe:
-            httpGet:
-              path: /health
-              port: 9417
-            initialDelaySeconds: 3
-            periodSeconds: 10
+            - name: config
+              mountPath: /etc/otel
       volumes:
-        - name: data
-          emptyDir: {}
+        - name: config
+          configMap:
+            name: otel-collector-config
+            items:
+              - key: config.yaml
+                path: config.yaml
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: kubilitics-trace-agent
+  name: otel-collector
   namespace: kubilitics-system
   labels:
-    app.kubernetes.io/name: kubilitics-trace-agent
+    app.kubernetes.io/name: otel-collector
     app.kubernetes.io/managed-by: kubilitics
 spec:
   type: ClusterIP
   selector:
-    app.kubernetes.io/name: kubilitics-trace-agent
+    app.kubernetes.io/name: otel-collector
   ports:
     - name: otlp-grpc
       port: 4317
@@ -91,16 +206,16 @@ spec:
       port: 4318
       targetPort: 4318
       protocol: TCP
-    - name: query
-      port: 9417
-      targetPort: 9417
-      protocol: TCP
-`, imageTag)
+`, otelCollectorImage, clusterID, backendURL)
 }
 
 // InstrumentationCRsYAML returns YAML for the OpenTelemetry Instrumentation
 // custom resource. This requires the OTel Operator to be installed in the
 // cluster; application is best-effort.
+//
+// The exporter endpoint points at the in-cluster otel-collector Service
+// (deployed by AgentManifestYAML), so auto-instrumented apps push spans
+// to the collector, which forwards them to the Kubilitics backend.
 func InstrumentationCRsYAML() string {
 	return `apiVersion: opentelemetry.io/v1alpha1
 kind: Instrumentation
@@ -109,7 +224,7 @@ metadata:
   namespace: kubilitics-system
 spec:
   exporter:
-    endpoint: http://kubilitics-trace-agent.kubilitics-system:4318
+    endpoint: http://otel-collector.kubilitics-system:4318
   propagators:
     - tracecontext
     - baggage
@@ -118,7 +233,7 @@ spec:
     argument: "1"
   env:
     - name: OTEL_EXPORTER_OTLP_PROTOCOL
-      value: http/json
+      value: http/protobuf
   java:
     image: ghcr.io/open-telemetry/opentelemetry-operator/autoinstrumentation-java:latest
   nodejs:
@@ -135,6 +250,10 @@ spec:
 // DemoAppManifestYAML returns multi-doc K8s YAML for deploying a demo
 // application that generates real OTel traces. It includes a Deployment,
 // Service, and a CronJob that sends traffic to produce continuous traces.
+//
+// NOTE: this still references a Kubilitics-published image. With the new
+// standard otel-collector path, the demo app is optional — failures are
+// non-fatal. Real users instrument their own apps to point at the collector.
 func DemoAppManifestYAML(imageTag string) string {
 	return fmt.Sprintf(`apiVersion: apps/v1
 kind: Deployment
@@ -164,7 +283,7 @@ spec:
               protocol: TCP
           env:
             - name: OTEL_EXPORTER_OTLP_ENDPOINT
-              value: "kubilitics-trace-agent.kubilitics-system:4318"
+              value: "http://otel-collector.kubilitics-system:4318"
             - name: OTEL_SERVICE_NAME
               value: "demo-order-service"
             - name: POD_NAMESPACE
@@ -245,10 +364,10 @@ spec:
 `, imageTag, imageTag)
 }
 
-// CleanupManifestNames returns the resource names used by the trace agent
+// CleanupManifestNames returns the resource names used by the otel-collector
 // deployment so they can be located for deletion during disable.
 func CleanupManifestNames() (namespace, deploymentName, serviceName, instrumentationName string) {
-	return "kubilitics-system", "kubilitics-trace-agent", "kubilitics-trace-agent", "kubilitics-auto"
+	return "kubilitics-system", "otel-collector", "otel-collector", "kubilitics-auto"
 }
 
 // DemoAppResourceNames returns the resource names for the demo app so they
