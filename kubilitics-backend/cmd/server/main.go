@@ -685,10 +685,8 @@ func main() {
 	// Wire events pipeline lifecycle into cluster add/remove/reconnect handlers.
 	handler.SetLifecycleHook(pipelineManager)
 
-	// Distributed tracing: puller polls in-cluster trace-agent via K8s service proxy.
-	tracePuller := otel.NewTracePuller(otelStore)
-	handler.SetLifecycleHook(tracePuller)
-	tracingHandler := rest.NewTracingHandler(clusterService, tracePuller)
+	// Distributed tracing: Helm-based install model — no in-cluster puller needed.
+	tracingHandler := rest.NewTracingHandler(clusterService)
 	handler.SetTracingHandler(tracingHandler)
 
 	rest.SetupRoutes(apiRouter, handler)
@@ -730,13 +728,6 @@ func main() {
 			// Start log collector for this cluster.
 			pipelineManager.StartLogCollector(logsService, client.Clientset, cl.ID)
 			log.Info("Started log collector", "cluster", cl.Name, "id", cl.ID)
-
-			// Start trace puller for this cluster.
-			if err := tracePuller.OnClusterConnected(client.Clientset, cl.ID); err != nil {
-				log.Warn("Failed to start trace puller", "cluster", cl.Name, "id", cl.ID, "error", err)
-			} else {
-				log.Info("Started trace puller", "cluster", cl.Name, "id", cl.ID)
-			}
 		}
 	}()
 

@@ -23,15 +23,13 @@ import (
 // Users run the install commands themselves with their own credentials.
 type TracingHandler struct {
 	clusterService service.ClusterService
-	puller         *otel.TracePuller
 	helmRenderer   *otel.HelmRenderer
 }
 
 // NewTracingHandler creates a new TracingHandler.
-func NewTracingHandler(cs service.ClusterService, puller *otel.TracePuller) *TracingHandler {
+func NewTracingHandler(cs service.ClusterService) *TracingHandler {
 	return &TracingHandler{
 		clusterService: cs,
-		puller:         puller,
 		helmRenderer:   otel.NewHelmRenderer("../charts/kubilitics-otel"),
 	}
 }
