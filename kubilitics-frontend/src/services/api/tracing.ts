@@ -62,6 +62,58 @@ export async function instrumentDeployments(
   );
 }
 
+export interface InstrumentationStatus {
+  instrumented: boolean;
+  language?: string;
+  detected_language: string;
+  annotation?: string;
+  otel_operator_ready: boolean;
+  supports_language: boolean;
+}
+
+export async function getInstrumentationStatus(
+  baseUrl: string,
+  clusterId: string,
+  namespace: string,
+  deployment: string,
+): Promise<InstrumentationStatus> {
+  return backendRequest(
+    baseUrl,
+    `clusters/${encodeURIComponent(clusterId)}/deployments/${encodeURIComponent(namespace)}/${encodeURIComponent(deployment)}/instrumentation-status`,
+  );
+}
+
+export async function instrumentDeployment(
+  baseUrl: string,
+  clusterId: string,
+  namespace: string,
+  deployment: string,
+  language?: string,
+): Promise<{ instrumented: boolean; language: string; rollout_started: boolean; already?: boolean }> {
+  return backendRequest(
+    baseUrl,
+    `clusters/${encodeURIComponent(clusterId)}/deployments/${encodeURIComponent(namespace)}/${encodeURIComponent(deployment)}/instrument`,
+    {
+      method: 'POST',
+      body: JSON.stringify(language ? { language } : {}),
+      headers: { 'Content-Type': 'application/json' },
+    },
+  );
+}
+
+export async function uninstrumentDeployment(
+  baseUrl: string,
+  clusterId: string,
+  namespace: string,
+  deployment: string,
+): Promise<{ instrumented: boolean }> {
+  return backendRequest(
+    baseUrl,
+    `clusters/${encodeURIComponent(clusterId)}/deployments/${encodeURIComponent(namespace)}/${encodeURIComponent(deployment)}/uninstrument`,
+    { method: 'POST' },
+  );
+}
+
 export async function disableTracing(
   baseUrl: string,
   clusterId: string,

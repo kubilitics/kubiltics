@@ -10,7 +10,18 @@
 import { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { GitBranch, ExternalLink, Loader2, AlertCircle, Hourglass, Radio } from 'lucide-react';
+import {
+  GitBranch,
+  ExternalLink,
+  Loader2,
+  AlertCircle,
+  Hourglass,
+  Radio,
+  Zap,
+  CheckCircle2,
+  AlertTriangle,
+  Clock,
+} from 'lucide-react';
 import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -18,7 +29,13 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { useResourceTraces } from '@/hooks/useTraces';
-import { getTracingStatus, enableTracing } from '@/services/api/tracing';
+import {
+  getTracingStatus,
+  enableTracing,
+  getInstrumentationStatus,
+  instrumentDeployment,
+  uninstrumentDeployment,
+} from '@/services/api/tracing';
 import {
   getEffectiveBackendBaseUrl,
   useBackendConfigStore,
@@ -73,6 +90,51 @@ export function ResourceTracesTab({
     },
     onError: (err: Error) => {
       toast.error('Failed to enable tracing', { description: err.message });
+    },
+  });
+
+  // Per-deployment instrumentation status (only fetched for Deployments).
+  const isDeployment = resourceKind.toLowerCase() === 'deployment';
+  const instrStatusKey = ['instrumentation-status', clusterId, namespace, resourceName];
+  const { data: instrStatus } = useQuery({
+    queryKey: instrStatusKey,
+    queryFn: () =>
+      getInstrumentationStatus(baseUrl, clusterId!, namespace, resourceName),
+    enabled: !!clusterId && !!baseUrl && isDeployment && !!tracingStatus?.enabled,
+    staleTime: 30_000,
+    refetchInterval: 30_000,
+    retry: 1,
+  });
+
+  const instrumentMutation = useMutation({
+    mutationFn: () =>
+      instrumentDeployment(baseUrl, clusterId!, namespace, resourceName),
+    onSuccess: (res) => {
+      if (res.already) {
+        toast.info('Already instrumented', {
+          description: `Language: ${res.language}`,
+        });
+      } else {
+        toast.success('Instrumentation enabled', {
+          description: `Injecting OTel SDK (${res.language}). Pods will roll out.`,
+        });
+      }
+      queryClient.invalidateQueries({ queryKey: instrStatusKey });
+    },
+    onError: (err: Error) => {
+      toast.error('Failed to instrument', { description: err.message });
+    },
+  });
+
+  const uninstrumentMutation = useMutation({
+    mutationFn: () =>
+      uninstrumentDeployment(baseUrl, clusterId!, namespace, resourceName),
+    onSuccess: () => {
+      toast.success('Instrumentation disabled');
+      queryClient.invalidateQueries({ queryKey: instrStatusKey });
+    },
+    onError: (err: Error) => {
+      toast.error('Failed to disable instrumentation', { description: err.message });
     },
   });
 
@@ -142,6 +204,94 @@ export function ResourceTracesTab({
           </div>
         </div>
       </CardHeader>
+
+      {/* Instrumentation status panel (Deployments only, cluster tracing on) */}
+      {isDeployment && tracingStatus?.enabled && instrStatus && (
+        <div className="px-4 pt-3">
+          {!instrStatus.otel_operator_ready ? (
+            <div className="flex items-center gap-2 rounded-md border border-border/60 bg-muted/40 px-3 py-2 text-xs">
+              <Clock className="h-4 w-4 text-muted-foreground shrink-0" />
+              <span className="text-muted-foreground">
+                OpenTelemetry Operator is still installing...
+              </span>
+            </div>
+          ) : instrStatus.instrumented ? (
+            <div className="flex items-center justify-between gap-3 rounded-md border border-emerald-500/30 bg-emerald-500/5 px-3 py-2 text-xs">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />
+                <span className="text-foreground font-medium">
+                  Instrumented
+                  {instrStatus.language && (
+                    <span className="text-muted-foreground font-normal">
+                      {' '}({instrStatus.language})
+                    </span>
+                  )}
+                </span>
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 text-xs"
+                disabled={uninstrumentMutation.isPending}
+                onClick={() => uninstrumentMutation.mutate()}
+              >
+                {uninstrumentMutation.isPending ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : (
+                  'Disable instrumentation'
+                )}
+              </Button>
+            </div>
+          ) : !instrStatus.supports_language ? (
+            <div className="flex items-start gap-2 rounded-md border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-xs">
+              <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
+              <div className="text-muted-foreground leading-relaxed">
+                <div className="text-foreground font-medium">
+                  Auto-instrumentation not available for this image
+                </div>
+                Manually set{' '}
+                <code className="font-mono text-[10px] px-1 py-0.5 rounded bg-muted">
+                  OTEL_EXPORTER_OTLP_ENDPOINT
+                </code>{' '}
+                in your container.
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center justify-between gap-3 rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-xs">
+              <div className="flex items-center gap-2">
+                <Zap className="h-4 w-4 text-primary shrink-0" />
+                <span className="text-foreground">
+                  This deployment is not instrumented
+                  <span className="text-muted-foreground">
+                    {' '}• detected language:{' '}
+                    <span className="font-medium text-foreground">
+                      {instrStatus.detected_language}
+                    </span>
+                  </span>
+                </span>
+              </div>
+              <Button
+                size="sm"
+                className="h-7 gap-1.5 text-xs"
+                disabled={instrumentMutation.isPending}
+                onClick={() => instrumentMutation.mutate()}
+              >
+                {instrumentMutation.isPending ? (
+                  <>
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                    Instrumenting...
+                  </>
+                ) : (
+                  <>
+                    <Zap className="h-3 w-3" />
+                    Instrument with OpenTelemetry
+                  </>
+                )}
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Trace list */}
       <CardContent className="p-0">

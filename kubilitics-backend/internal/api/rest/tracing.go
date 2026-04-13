@@ -11,8 +11,10 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	appsv1 "k8s.io/api/apps/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 
 	k8s "github.com/kubilitics/kubilitics-backend/internal/k8s"
@@ -442,6 +444,289 @@ func detectLanguage(image string) string {
 	default:
 		return "java"
 	}
+}
+
+// supportedLanguages lists the languages the OTel Operator Instrumentation
+// CR can auto-inject via annotations.
+var supportedLanguages = []string{"java", "python", "nodejs", "go", "dotnet"}
+
+// detectLanguageFromImage returns one of: "java", "python", "nodejs", "go",
+// "dotnet", or "unknown" based on substring matching of a container image.
+func detectLanguageFromImage(image string) string {
+	img := strings.ToLower(image)
+	switch {
+	case strings.Contains(img, "openjdk"),
+		strings.Contains(img, "/java"),
+		strings.Contains(img, "jre"),
+		strings.Contains(img, "jdk"),
+		strings.Contains(img, "tomcat"),
+		strings.Contains(img, "maven"),
+		strings.Contains(img, "gradle"):
+		return "java"
+	case strings.Contains(img, "python"),
+		strings.Contains(img, "py-"),
+		strings.Contains(img, "/py"):
+		return "python"
+	case strings.Contains(img, "node:"),
+		strings.Contains(img, "nodejs"),
+		strings.Contains(img, "/node-"):
+		return "nodejs"
+	case strings.Contains(img, "golang"),
+		strings.Contains(img, "/go-"):
+		return "go"
+	case strings.Contains(img, "dotnet"),
+		strings.Contains(img, "aspnet"),
+		strings.Contains(img, "/dotnet-"):
+		return "dotnet"
+	default:
+		return "unknown"
+	}
+}
+
+// detectLanguageFromDeployment walks the deployment's containers and returns
+// the first detected language, or "unknown".
+func detectLanguageFromDeployment(dep *appsv1.Deployment) string {
+	for _, c := range dep.Spec.Template.Spec.Containers {
+		if lang := detectLanguageFromImage(c.Image); lang != "unknown" {
+			return lang
+		}
+	}
+	return "unknown"
+}
+
+// findInjectAnnotation looks for an existing
+// instrumentation.opentelemetry.io/inject-* annotation on the pod template
+// and returns (language, fullAnnotationKey, found).
+func findInjectAnnotation(dep *appsv1.Deployment) (string, string, bool) {
+	ann := dep.Spec.Template.GetAnnotations()
+	for key, val := range ann {
+		if strings.HasPrefix(key, "instrumentation.opentelemetry.io/inject-") && val != "" && val != "false" {
+			return strings.TrimPrefix(key, "instrumentation.opentelemetry.io/inject-"), key, true
+		}
+	}
+	return "", "", false
+}
+
+// isOTelOperatorReady returns true if the OpenTelemetry Operator controller
+// manager deployment has at least one ready replica.
+func isOTelOperatorReady(ctx context.Context, clientset kubernetes.Interface) bool {
+	dep, err := clientset.AppsV1().Deployments("opentelemetry-operator-system").
+		Get(ctx, "opentelemetry-operator-controller-manager", metav1.GetOptions{})
+	if err != nil {
+		return false
+	}
+	return dep.Status.ReadyReplicas > 0
+}
+
+// InstrumentationStatus is the response for GET instrumentation-status.
+type InstrumentationStatus struct {
+	Instrumented      bool   `json:"instrumented"`
+	Language          string `json:"language,omitempty"`
+	DetectedLanguage  string `json:"detected_language"`
+	Annotation        string `json:"annotation,omitempty"`
+	OTelOperatorReady bool   `json:"otel_operator_ready"`
+	SupportsLanguage  bool   `json:"supports_language"`
+}
+
+// GetInstrumentationStatus handles
+// GET /clusters/{clusterId}/deployments/{namespace}/{deployment}/instrumentation-status
+func (th *TracingHandler) GetInstrumentationStatus(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	clusterID := vars["clusterId"]
+	ns := vars["namespace"]
+	name := vars["deployment"]
+	requestID := logger.FromContext(r.Context())
+	ctx := r.Context()
+
+	client, err := th.clusterService.GetClient(clusterID)
+	if err != nil {
+		respondErrorWithCode(w, http.StatusNotFound, ErrCodeNotFound, "Cluster not found: "+err.Error(), requestID)
+		return
+	}
+
+	dep, err := client.Clientset.AppsV1().Deployments(ns).Get(ctx, name, metav1.GetOptions{})
+	if err != nil {
+		if apierrors.IsNotFound(err) {
+			respondErrorWithCode(w, http.StatusNotFound, ErrCodeNotFound, "Deployment not found", requestID)
+			return
+		}
+		respondErrorWithCode(w, http.StatusInternalServerError, ErrCodeInternalError, "Failed to get deployment: "+err.Error(), requestID)
+		return
+	}
+
+	lang, annKey, instrumented := findInjectAnnotation(dep)
+	detected := detectLanguageFromDeployment(dep)
+
+	status := InstrumentationStatus{
+		Instrumented:      instrumented,
+		Language:          lang,
+		DetectedLanguage:  detected,
+		OTelOperatorReady: isOTelOperatorReady(ctx, client.Clientset),
+		SupportsLanguage:  detected != "unknown",
+	}
+	if instrumented {
+		status.Annotation = fmt.Sprintf("%s=%s", annKey, dep.Spec.Template.GetAnnotations()[annKey])
+	}
+
+	respondJSON(w, http.StatusOK, status)
+}
+
+// instrumentOneRequest is the body for POST instrument.
+type instrumentOneRequest struct {
+	Language string `json:"language,omitempty"`
+}
+
+// InstrumentDeployment handles
+// POST /clusters/{clusterId}/deployments/{namespace}/{deployment}/instrument
+func (th *TracingHandler) InstrumentDeployment(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	clusterID := vars["clusterId"]
+	ns := vars["namespace"]
+	name := vars["deployment"]
+	requestID := logger.FromContext(r.Context())
+	ctx := r.Context()
+
+	client, err := th.clusterService.GetClient(clusterID)
+	if err != nil {
+		respondErrorWithCode(w, http.StatusNotFound, ErrCodeNotFound, "Cluster not found: "+err.Error(), requestID)
+		return
+	}
+
+	var req instrumentOneRequest
+	if r.Body != nil {
+		_ = json.NewDecoder(r.Body).Decode(&req)
+	}
+
+	dep, err := client.Clientset.AppsV1().Deployments(ns).Get(ctx, name, metav1.GetOptions{})
+	if err != nil {
+		if apierrors.IsNotFound(err) {
+			respondErrorWithCode(w, http.StatusNotFound, ErrCodeNotFound, "Deployment not found", requestID)
+			return
+		}
+		respondErrorWithCode(w, http.StatusInternalServerError, ErrCodeInternalError, "Failed to get deployment: "+err.Error(), requestID)
+		return
+	}
+
+	// Idempotent — if an inject-* annotation already exists, return success
+	// without patching (don't trigger a needless rolling restart).
+	if existingLang, _, already := findInjectAnnotation(dep); already {
+		respondJSON(w, http.StatusOK, map[string]interface{}{
+			"instrumented":    true,
+			"language":        existingLang,
+			"rollout_started": false,
+			"already":         true,
+		})
+		return
+	}
+
+	lang := strings.ToLower(strings.TrimSpace(req.Language))
+	if lang == "" {
+		lang = detectLanguageFromDeployment(dep)
+	}
+	if lang == "unknown" || lang == "" {
+		respondErrorWithCode(w, http.StatusBadRequest, ErrCodeInvalidRequest,
+			"Could not auto-detect language; provide 'language' explicitly (java|python|nodejs|go|dotnet)", requestID)
+		return
+	}
+	valid := false
+	for _, s := range supportedLanguages {
+		if s == lang {
+			valid = true
+			break
+		}
+	}
+	if !valid {
+		respondErrorWithCode(w, http.StatusBadRequest, ErrCodeInvalidRequest,
+			"Unsupported language: "+lang, requestID)
+		return
+	}
+
+	// Strategic merge patch on the pod template annotations only.
+	patch := map[string]interface{}{
+		"spec": map[string]interface{}{
+			"template": map[string]interface{}{
+				"metadata": map[string]interface{}{
+					"annotations": map[string]string{
+						"instrumentation.opentelemetry.io/inject-" + lang: "kubilitics-system/kubilitics-auto",
+					},
+				},
+			},
+		},
+	}
+	patchBytes, err := json.Marshal(patch)
+	if err != nil {
+		respondErrorWithCode(w, http.StatusInternalServerError, ErrCodeInternalError, "Failed to marshal patch: "+err.Error(), requestID)
+		return
+	}
+
+	if _, err := client.Clientset.AppsV1().Deployments(ns).Patch(
+		ctx, name, types.StrategicMergePatchType, patchBytes, metav1.PatchOptions{},
+	); err != nil {
+		respondErrorWithCode(w, http.StatusInternalServerError, ErrCodeInternalError, "Failed to patch deployment: "+err.Error(), requestID)
+		return
+	}
+
+	log.Printf("[tracing] instrumented %s/%s with language=%s", ns, name, lang)
+	respondJSON(w, http.StatusOK, map[string]interface{}{
+		"instrumented":    true,
+		"language":        lang,
+		"rollout_started": true,
+	})
+}
+
+// UninstrumentDeployment handles
+// POST /clusters/{clusterId}/deployments/{namespace}/{deployment}/uninstrument
+func (th *TracingHandler) UninstrumentDeployment(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	clusterID := vars["clusterId"]
+	ns := vars["namespace"]
+	name := vars["deployment"]
+	requestID := logger.FromContext(r.Context())
+	ctx := r.Context()
+
+	client, err := th.clusterService.GetClient(clusterID)
+	if err != nil {
+		respondErrorWithCode(w, http.StatusNotFound, ErrCodeNotFound, "Cluster not found: "+err.Error(), requestID)
+		return
+	}
+
+	// Use a strategic merge patch that sets each known inject-* annotation
+	// to null, which removes it. We remove all supported languages so a
+	// single call cleans up no matter what was set.
+	nullAnn := map[string]interface{}{}
+	for _, l := range supportedLanguages {
+		nullAnn["instrumentation.opentelemetry.io/inject-"+l] = nil
+	}
+	patch := map[string]interface{}{
+		"spec": map[string]interface{}{
+			"template": map[string]interface{}{
+				"metadata": map[string]interface{}{
+					"annotations": nullAnn,
+				},
+			},
+		},
+	}
+	patchBytes, err := json.Marshal(patch)
+	if err != nil {
+		respondErrorWithCode(w, http.StatusInternalServerError, ErrCodeInternalError, "Failed to marshal patch: "+err.Error(), requestID)
+		return
+	}
+
+	if _, err := client.Clientset.AppsV1().Deployments(ns).Patch(
+		ctx, name, types.StrategicMergePatchType, patchBytes, metav1.PatchOptions{},
+	); err != nil {
+		if apierrors.IsNotFound(err) {
+			respondErrorWithCode(w, http.StatusNotFound, ErrCodeNotFound, "Deployment not found", requestID)
+			return
+		}
+		respondErrorWithCode(w, http.StatusInternalServerError, ErrCodeInternalError, "Failed to patch deployment: "+err.Error(), requestID)
+		return
+	}
+
+	log.Printf("[tracing] uninstrumented %s/%s", ns, name)
+	respondJSON(w, http.StatusOK, map[string]interface{}{
+		"instrumented": false,
+	})
 }
 
 // containsAny returns true if s contains any of the given substrings.
