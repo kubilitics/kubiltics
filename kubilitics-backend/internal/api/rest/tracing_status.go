@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/gorilla/mux"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -136,18 +137,36 @@ func (h *TracingHandler) computeTracingStatus(
 	})
 
 	// Component 4: Trace ingestion (data-plane health)
-	// "ready" only if collector is ready AND we've seen a span recently.
-	// Real span tracking is wired up in a follow-up. For now: "no-data" if
-	// collector is ready, "missing" otherwise.
 	ingestionStatus := "missing"
+	var spansPerMin *int
+	var lastSpanAt *int64
+
 	if collectorStatus == "ready" {
-		ingestionStatus = "no-data"
-		// TODO(future): plumb real last-span timestamp from the receiver and flip to "ready".
+		if h.otelReceiver != nil {
+			if last, ok := h.otelReceiver.LastSpanAt(clusterID); ok {
+				lastSpanAt = &last
+				// "ready" iff a span has been seen in the last 5 minutes.
+				ageMs := time.Now().UnixMilli() - last
+				if ageMs <= 5*60*1000 {
+					ingestionStatus = "ready"
+					spm := h.otelReceiver.SpansPerMinute(clusterID)
+					spansPerMin = &spm
+				} else {
+					ingestionStatus = "no-data"
+				}
+			} else {
+				ingestionStatus = "no-data"
+			}
+		} else {
+			ingestionStatus = "no-data"
+		}
 	}
 	resp.Components = append(resp.Components, TracingComponent{
-		Key:    "trace-ingestion",
-		Name:   "Trace ingestion",
-		Status: ingestionStatus,
+		Key:            "trace-ingestion",
+		Name:           "Trace ingestion",
+		Status:         ingestionStatus,
+		SpansPerMinute: spansPerMin,
+		LastSpanSeenAt: lastSpanAt,
 	})
 
 	// Compute all_ready. "no-data" is acceptable — it means the install

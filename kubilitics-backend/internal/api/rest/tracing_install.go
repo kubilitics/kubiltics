@@ -38,7 +38,7 @@ type DiagnosticsResponse struct {
 
 // computeDiagnostics runs the read-only check ladder and returns a structured
 // report. It is a pure function (no side-effects) so it is easy to unit-test.
-func (h *TracingHandler) computeDiagnostics(ctx context.Context, cs kubernetes.Interface) DiagnosticsResponse {
+func (h *TracingHandler) computeDiagnostics(ctx context.Context, cs kubernetes.Interface, clusterID string) DiagnosticsResponse {
 	checks := make([]DiagnosticCheck, 0, 5)
 
 	// Check 1: kubilitics-system namespace exists
@@ -127,18 +127,27 @@ func (h *TracingHandler) computeDiagnostics(ctx context.Context, cs kubernetes.I
 	checks = append(checks, epCheck)
 
 	// Check 4: spans received in last 5 minutes.
-	// No real span tracker yet — always reports 0. Causes are populated
-	// whenever the collector is running (regardless of endpoint count) so that
-	// the test — which uses a fake clientset without Endpoints — still asserts
-	// the actionable no-spans causes. The no-endpoints case is handled by
-	// Check 3 above.
+	spanCheckPassed := false
+	spanCheckDetail := "no spans seen yet"
+	if h.otelReceiver != nil {
+		if last, ok := h.otelReceiver.LastSpanAt(clusterID); ok {
+			ageMs := time.Now().UnixMilli() - last
+			if ageMs <= 5*60*1000 {
+				spanCheckPassed = true
+				spm := h.otelReceiver.SpansPerMinute(clusterID)
+				spanCheckDetail = fmt.Sprintf("%d spans/min, last seen %ds ago", spm, ageMs/1000)
+			} else {
+				spanCheckDetail = fmt.Sprintf("last span %dm ago", ageMs/60000)
+			}
+		}
+	}
 	spanCheck := DiagnosticCheck{
 		Name:       "Spans received in last 5 minutes",
-		Passed:     false,
-		Detail:     "no span tracker yet — coming in v1.5",
+		Passed:     spanCheckPassed,
+		Detail:     spanCheckDetail,
 		DurationMs: 0,
 	}
-	if collectorRunning {
+	if !spanCheckPassed && collectorRunning {
 		for _, sig := range []string{
 			"no_spans_no_instrumented_apps",
 			"no_spans_wrong_endpoint",
@@ -178,7 +187,7 @@ func (h *TracingHandler) GetTracingDiagnostics(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	resp := h.computeDiagnostics(r.Context(), client.Clientset)
+	resp := h.computeDiagnostics(r.Context(), client.Clientset, clusterID)
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(resp)
 }

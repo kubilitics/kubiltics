@@ -6,9 +6,12 @@ import (
 	"strings"
 	"testing"
 
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/fake"
+
+	"github.com/kubilitics/kubilitics-backend/internal/otel"
 )
 
 func TestGetTracingStatus_AllMissing(t *testing.T) {
@@ -59,6 +62,44 @@ func TestGetTracingStatus_RendersInstallCommand(t *testing.T) {
 	}
 	if !strings.Contains(resp.Install.Helm, "my-backend") {
 		t.Errorf("helm command should embed backend URL, got: %s", resp.Install.Helm)
+	}
+}
+
+func TestComputeTracingStatus_TraceIngestionWithRecentSpans(t *testing.T) {
+	// Build a fake clientset with the collector ready, and a real receiver
+	// that we'll prime with a recent span.
+	one := int32(1)
+	clientset := fake.NewSimpleClientset(
+		&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "kubilitics-system"}},
+		&appsv1.Deployment{
+			ObjectMeta: metav1.ObjectMeta{Name: "otel-collector", Namespace: "kubilitics-system"},
+			Spec:       appsv1.DeploymentSpec{Replicas: &one},
+			Status:     appsv1.DeploymentStatus{Replicas: 1, ReadyReplicas: 1},
+		},
+	)
+	receiver := otel.NewReceiver(nil, "")
+	receiver.RecordSpansForClusterTest("test-cluster", 42)
+
+	h := &TracingHandler{otelReceiver: receiver}
+	resp := h.computeTracingStatus(context.Background(), clientset, "test-cluster", "test-cluster", "http://example.com")
+
+	var ingestion *TracingComponent
+	for i := range resp.Components {
+		if resp.Components[i].Key == "trace-ingestion" {
+			ingestion = &resp.Components[i]
+		}
+	}
+	if ingestion == nil {
+		t.Fatal("trace-ingestion component missing")
+	}
+	if ingestion.Status != "ready" {
+		t.Errorf("expected status=ready, got %q", ingestion.Status)
+	}
+	if ingestion.SpansPerMinute == nil || *ingestion.SpansPerMinute != 42 {
+		t.Errorf("expected SpansPerMinute=42, got %v", ingestion.SpansPerMinute)
+	}
+	if ingestion.LastSpanSeenAt == nil {
+		t.Error("expected LastSpanSeenAt to be set")
 	}
 }
 

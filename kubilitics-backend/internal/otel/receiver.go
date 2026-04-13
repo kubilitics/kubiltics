@@ -99,6 +99,13 @@ type SpanEvent struct {
 // ErrRateLimited is returned when span ingestion massively exceeds the rate limit (10x).
 var ErrRateLimited = fmt.Errorf("span rate limit exceeded")
 
+// clusterSpanStats holds per-cluster span counters updated by ProcessTraces.
+type clusterSpanStats struct {
+	lastSeenAt   atomic.Int64 // unix milliseconds of the most recent span
+	countLastMin atomic.Int64 // spans seen in the current 60-second window
+	windowStart  atomic.Int64 // unix seconds when the current window started
+}
+
 // Receiver accepts OTLP trace data and persists it.
 type Receiver struct {
 	store            *Store
@@ -108,6 +115,9 @@ type Receiver struct {
 	spanCount      int64 // counter for current second
 	lastReset      int64 // unix second of last reset
 	maxSpansPerSec int64 // default 1000
+	// Per-cluster span statistics (protected by spanStatsMu)
+	spanStatsMu sync.RWMutex
+	spanStats   map[string]*clusterSpanStats // keyed by clusterID
 }
 
 // NewReceiver creates a new OTLP trace receiver. The defaultClusterID is used
@@ -117,9 +127,81 @@ func NewReceiver(store *Store, defaultClusterID string) *Receiver {
 	r := &Receiver{
 		store:          store,
 		maxSpansPerSec: 1000,
+		spanStats:      make(map[string]*clusterSpanStats),
 	}
 	r.defaultClusterID.Store(defaultClusterID)
 	return r
+}
+
+// recordSpansForCluster updates the per-cluster span counters. Called from
+// ProcessTraces with the total span count attributed to a given cluster ID.
+func (r *Receiver) recordSpansForCluster(clusterID string, count int) {
+	if clusterID == "" || count == 0 {
+		return
+	}
+	nowSec := time.Now().Unix()
+	nowMs := time.Now().UnixMilli()
+
+	r.spanStatsMu.RLock()
+	stats, ok := r.spanStats[clusterID]
+	r.spanStatsMu.RUnlock()
+	if !ok {
+		r.spanStatsMu.Lock()
+		// Re-check under write lock (double-checked init).
+		stats, ok = r.spanStats[clusterID]
+		if !ok {
+			stats = &clusterSpanStats{}
+			r.spanStats[clusterID] = stats
+		}
+		r.spanStatsMu.Unlock()
+	}
+
+	stats.lastSeenAt.Store(nowMs)
+	// Reset the rolling 60-second window if we've crossed into a new minute.
+	if last := stats.windowStart.Load(); nowSec-last >= 60 {
+		stats.windowStart.Store(nowSec)
+		stats.countLastMin.Store(int64(count))
+	} else {
+		stats.countLastMin.Add(int64(count))
+	}
+}
+
+// LastSpanAt returns the unix-millisecond timestamp of the most recent span
+// seen for the given cluster, and a bool indicating whether any span has
+// ever been observed for that cluster.
+func (r *Receiver) LastSpanAt(clusterID string) (int64, bool) {
+	r.spanStatsMu.RLock()
+	stats, ok := r.spanStats[clusterID]
+	r.spanStatsMu.RUnlock()
+	if !ok {
+		return 0, false
+	}
+	last := stats.lastSeenAt.Load()
+	return last, last > 0
+}
+
+// SpansPerMinute returns the count of spans seen for the cluster in the
+// current rolling 60-second window. Returns 0 if no spans have been seen,
+// or if the window has rolled over without new spans.
+func (r *Receiver) SpansPerMinute(clusterID string) int {
+	r.spanStatsMu.RLock()
+	stats, ok := r.spanStats[clusterID]
+	r.spanStatsMu.RUnlock()
+	if !ok {
+		return 0
+	}
+	// If the window is older than 60s, treat the count as stale → 0.
+	if time.Now().Unix()-stats.windowStart.Load() >= 60 {
+		return 0
+	}
+	return int(stats.countLastMin.Load())
+}
+
+// RecordSpansForClusterTest is a test-only helper that bumps the per-cluster
+// span counter directly. NOT for production use — the production path is
+// ProcessTraces calling recordSpansForCluster internally.
+func (r *Receiver) RecordSpansForClusterTest(clusterID string, count int) {
+	r.recordSpansForCluster(clusterID, count)
 }
 
 // checkRateLimit increments the span counter under a mutex and returns true if
@@ -301,6 +383,15 @@ func (r *Receiver) ProcessTraces(ctx context.Context, req *OTLPTraceRequest, clu
 				}
 			}
 		}
+	}
+
+	// Update per-cluster span statistics (batched by cluster — not per span).
+	clusterCounts := make(map[string]int)
+	for _, s := range allSpans {
+		clusterCounts[s.ClusterID]++
+	}
+	for cid, n := range clusterCounts {
+		r.recordSpansForCluster(cid, n)
 	}
 
 	// Rate limiting: check if we're over the per-second span budget.

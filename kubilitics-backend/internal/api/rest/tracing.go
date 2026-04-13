@@ -26,6 +26,7 @@ import (
 type TracingHandler struct {
 	clusterService service.ClusterService
 	helmRenderer   *otel.HelmRenderer
+	otelReceiver   *otel.Receiver
 }
 
 // NewTracingHandler creates a new TracingHandler.
@@ -42,10 +43,11 @@ type TracingHandler struct {
 //
 // If everything fails (shouldn't happen — embedded chart is always there),
 // Render() returns a helpful error.
-func NewTracingHandler(cs service.ClusterService) *TracingHandler {
+func NewTracingHandler(cs service.ClusterService, receiver *otel.Receiver) *TracingHandler {
 	return &TracingHandler{
 		clusterService: cs,
 		helmRenderer:   otel.NewHelmRenderer(resolveChartPath()),
+		otelReceiver:   receiver,
 	}
 }
 

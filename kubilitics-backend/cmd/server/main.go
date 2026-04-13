@@ -686,7 +686,7 @@ func main() {
 	handler.SetLifecycleHook(pipelineManager)
 
 	// Distributed tracing: Helm-based install model — no in-cluster puller needed.
-	tracingHandler := rest.NewTracingHandler(clusterService)
+	tracingHandler := rest.NewTracingHandler(clusterService, otelReceiver)
 	handler.SetTracingHandler(tracingHandler)
 
 	rest.SetupRoutes(apiRouter, handler)

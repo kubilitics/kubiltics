@@ -14,7 +14,7 @@ import (
 func TestGetTracingDiagnostics_NoNamespace(t *testing.T) {
 	clientset := fake.NewSimpleClientset()
 	h := &TracingHandler{}
-	resp := h.computeDiagnostics(context.Background(), clientset)
+	resp := h.computeDiagnostics(context.Background(), clientset, "test-cluster")
 
 	foundNs := false
 	for _, c := range resp.Checks {
@@ -41,7 +41,7 @@ func TestGetTracingDiagnostics_CollectorReadyNoSpans(t *testing.T) {
 		},
 	)
 	h := &TracingHandler{}
-	resp := h.computeDiagnostics(context.Background(), clientset)
+	resp := h.computeDiagnostics(context.Background(), clientset, "test-cluster")
 
 	for _, c := range resp.Checks {
 		if c.Name == "Collector deployment running" && !c.Passed {
