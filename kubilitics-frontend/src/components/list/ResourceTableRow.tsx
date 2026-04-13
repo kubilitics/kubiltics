@@ -37,6 +37,7 @@ export function rowEntranceStyle(index: number): React.CSSProperties | undefined
  */
 export const resourceTableRowClassName = cn(
  'border-b border-border/60 transition-all duration-150',
+ '[&>td]:py-2', // tighten row density vs. shadcn default py-3
  'hover:bg-muted/50 hover:shadow-[inset_3px_0_0_hsl(var(--primary)/0.3)]',
  'group cursor-pointer',
  'data-[selected]:bg-primary/5 data-[selected]:shadow-[inset_3px_0_0_hsl(var(--primary)/0.5)]',

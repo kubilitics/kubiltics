@@ -581,7 +581,7 @@ spec:
 
  return (
  <PageLayout label="Deployments">
- <div className="space-y-6">
+ <div className={cn('space-y-6', selectedItems.size > 0 && 'pb-24')}>
  <ListPageHeader
  icon={<DeploymentIcon className="h-6 w-6 text-primary" />}
  title="Deployments"
@@ -608,12 +608,6 @@ spec:
  )}
  </>
  }
- leftExtra={selectedItems.size > 0 ? (
- <div className="flex items-center gap-2 ml-2 pl-2 border-l border-border">
- <span className="text-sm text-muted-foreground">{selectedItems.size} selected</span>
- <Button variant="ghost" size="sm" className="press-effect h-8" onClick={() => setSelectedItems(new Set())}>Clear</Button>
- </div>
- ) : undefined}
  />
 
  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
