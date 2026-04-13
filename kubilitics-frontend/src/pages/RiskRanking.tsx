@@ -280,6 +280,7 @@ export default function RiskRanking() {
       else next.add(level);
       return next;
     });
+    setPageIndex(0);
   }, []);
 
   const handleSort = useCallback(
@@ -290,6 +291,7 @@ export default function RiskRanking() {
         setSortKey(key);
         setSortDir(key === 'namespace' ? 'asc' : 'desc');
       }
+      setPageIndex(0);
     },
     [sortKey],
   );

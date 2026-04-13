@@ -304,6 +304,7 @@ export default function HealthDashboard() {
         setSortKey(key);
         setSortDir(key === 'namespace' ? 'asc' : 'desc');
       }
+      setPageIndex(0);
     },
     [sortKey],
   );

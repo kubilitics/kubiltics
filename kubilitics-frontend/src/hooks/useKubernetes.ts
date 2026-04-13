@@ -466,6 +466,7 @@ export function useServerPaginatedResourceList<T extends KubernetesResource>(
     sortBy?: string;
     sortOrder?: 'asc' | 'desc';
     fieldSelector?: string;
+    namespaces?: string[];
   }
 ) {
   const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured());
@@ -491,17 +492,20 @@ export function useServerPaginatedResourceList<T extends KubernetesResource>(
   const pageSizeRef = useRef(pageSize);
   const fieldSelectorRef = useRef(options?.fieldSelector);
   const namespaceRef = useRef(namespace);
+  const namespacesKey = options?.namespaces ? [...options.namespaces].sort().join(',') : '';
+  const namespacesRef = useRef(namespacesKey);
   useEffect(() => {
     const newSort = `${options?.sortBy}-${options?.sortOrder}`;
-    if (searchRef.current !== options?.search || sortRef.current !== newSort || pageSizeRef.current !== pageSize || fieldSelectorRef.current !== options?.fieldSelector || namespaceRef.current !== namespace) {
+    if (searchRef.current !== options?.search || sortRef.current !== newSort || pageSizeRef.current !== pageSize || fieldSelectorRef.current !== options?.fieldSelector || namespaceRef.current !== namespace || namespacesRef.current !== namespacesKey) {
       searchRef.current = options?.search;
       sortRef.current = newSort;
       pageSizeRef.current = pageSize;
       fieldSelectorRef.current = options?.fieldSelector;
       namespaceRef.current = namespace;
+      namespacesRef.current = namespacesKey;
       setCurrentPage(1);
     }
-  }, [options?.search, options?.sortBy, options?.sortOrder, pageSize, options?.fieldSelector, namespace]);
+  }, [options?.search, options?.sortBy, options?.sortOrder, pageSize, options?.fieldSelector, namespace, namespacesKey]);
 
   const offset = (currentPage - 1) * pageSize;
 
@@ -512,6 +516,7 @@ export function useServerPaginatedResourceList<T extends KubernetesResource>(
       pageSize, offset,
       options?.search ?? '', options?.sortBy ?? '', options?.sortOrder ?? '',
       options?.fieldSelector ?? '',
+      namespacesKey,
     ],
     queryFn: () => {
       const params: ResourceListParams = {
@@ -525,7 +530,16 @@ export function useServerPaginatedResourceList<T extends KubernetesResource>(
       // Apply project namespace scoping
       const projectNamespacesParam = projectNamespaces && projectNamespaces.length !== 1 ? projectNamespaces : undefined;
       const projectNamespaceParam = projectNamespaces && projectNamespaces.length === 1 ? projectNamespaces[0] : undefined;
-      if (projectNamespacesParam) {
+      if (options?.namespaces && options.namespaces.length > 0) {
+        // Caller-provided multi-namespace filter; intersect with project scope if present
+        const caller = options.namespaces;
+        const scoped = projectNamespacesParam
+          ? caller.filter((n) => projectNamespacesParam.includes(n))
+          : projectNamespaceParam
+            ? caller.filter((n) => n === projectNamespaceParam)
+            : caller;
+        params.namespaces = scoped;
+      } else if (projectNamespacesParam) {
         params.namespaces = projectNamespacesParam;
       } else if (namespace || projectNamespaceParam) {
         params.namespace = namespace || projectNamespaceParam;

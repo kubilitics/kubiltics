@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { useClusterSummaryWithProject } from '@/hooks/useClusterSummary';
 import { useNamespacesFromCluster } from '@/hooks/useNamespacesFromCluster';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -256,7 +256,18 @@ export default function Pods() {
    sortBy: 'name',
    sortOrder: 'asc',
    fieldSelector: statusPhaseFilter ? `status.phase=${statusPhaseFilter}` : undefined,
+   namespaces: selectedNamespaces.size > 1 ? Array.from(selectedNamespaces) : undefined,
  });
+
+ // Wrapped setters that also reset fallback pageIndex (status cards, namespace filter)
+ const handleNamespaceChange = useCallback((ns: Set<string>) => {
+   setSelectedNamespaces(ns);
+   setPageIndex(0);
+ }, []);
+ const setStatusPhaseAndResetPage = useCallback((next: string | null) => {
+   setStatusPhaseFilter(next);
+   setPageIndex(0);
+ }, []);
 
  // Fallback: direct K8s / non-backend mode (limit 500, client-side pagination)
  const { data: fallbackData, isLoading: fallbackIsLoading, isError: fallbackIsError, isFetching: fallbackIsFetching, dataUpdatedAt: fallbackDataUpdatedAt, refetch: fallbackRefetch } = useK8sResourceList<PodResource>('pods', undefined, {
@@ -871,7 +882,7 @@ export default function Pods() {
  iconColor="text-primary"
  isLoading={isLoading}
  selected={!statusPhaseFilter}
- onClick={() => { setStatusPhaseFilter(null); setColumnFilter('status', null); }}
+ onClick={() => { setStatusPhaseAndResetPage(null); setColumnFilter('status', null); }}
  className={cn(!statusPhaseFilter && !isLoading && 'ring-2 ring-primary')}
  />
  <ListPageStatCard
@@ -882,7 +893,7 @@ export default function Pods() {
  valueClassName="text-emerald-600"
  isLoading={isLoading}
  selected={statusPhaseFilter === 'Running'}
- onClick={() => { setStatusPhaseFilter(statusPhaseFilter === 'Running' ? null : 'Running'); setColumnFilter('status', statusPhaseFilter === 'Running' ? null : new Set(['Running'])); }}
+ onClick={() => { setStatusPhaseAndResetPage(statusPhaseFilter === 'Running' ? null : 'Running'); setColumnFilter('status', statusPhaseFilter === 'Running' ? null : new Set(['Running'])); }}
  className={cn(statusPhaseFilter === 'Running' && 'ring-2 ring-emerald-500')}
  />
  <ListPageStatCard
@@ -893,7 +904,7 @@ export default function Pods() {
  valueClassName="text-blue-600"
  isLoading={isLoading}
  selected={statusPhaseFilter === 'Succeeded'}
- onClick={() => { setStatusPhaseFilter(statusPhaseFilter === 'Succeeded' ? null : 'Succeeded'); setColumnFilter('status', statusPhaseFilter === 'Succeeded' ? null : new Set(['Succeeded'])); }}
+ onClick={() => { setStatusPhaseAndResetPage(statusPhaseFilter === 'Succeeded' ? null : 'Succeeded'); setColumnFilter('status', statusPhaseFilter === 'Succeeded' ? null : new Set(['Succeeded'])); }}
  className={cn(statusPhaseFilter === 'Succeeded' && 'ring-2 ring-blue-500')}
  />
  <ListPageStatCard
@@ -904,7 +915,7 @@ export default function Pods() {
  valueClassName="text-amber-600"
  isLoading={isLoading}
  selected={statusPhaseFilter === 'Pending'}
- onClick={() => { setStatusPhaseFilter(statusPhaseFilter === 'Pending' ? null : 'Pending'); setColumnFilter('status', statusPhaseFilter === 'Pending' ? null : new Set(['Pending'])); }}
+ onClick={() => { setStatusPhaseAndResetPage(statusPhaseFilter === 'Pending' ? null : 'Pending'); setColumnFilter('status', statusPhaseFilter === 'Pending' ? null : new Set(['Pending'])); }}
  className={cn(statusPhaseFilter === 'Pending' && 'ring-2 ring-amber-500')}
  />
  <ListPageStatCard
@@ -915,7 +926,7 @@ export default function Pods() {
  valueClassName="text-rose-600"
  isLoading={isLoading}
  selected={statusPhaseFilter === 'Failed'}
- onClick={() => { setStatusPhaseFilter(statusPhaseFilter === 'Failed' ? null : 'Failed'); setColumnFilter('status', statusPhaseFilter === 'Failed' ? null : new Set(['Failed', 'CrashLoopBackOff'])); }}
+ onClick={() => { setStatusPhaseAndResetPage(statusPhaseFilter === 'Failed' ? null : 'Failed'); setColumnFilter('status', statusPhaseFilter === 'Failed' ? null : new Set(['Failed', 'CrashLoopBackOff'])); }}
  className={cn(statusPhaseFilter === 'Failed' && 'ring-2 ring-rose-500')}
  />
  </div>
@@ -937,7 +948,7 @@ export default function Pods() {
  <NamespaceFilter
  namespaces={namespaceList}
  selected={selectedNamespaces}
- onSelectionChange={setSelectedNamespaces}
+ onSelectionChange={handleNamespaceChange}
  triggerVariant="bar"
  />
  }
@@ -967,7 +978,7 @@ export default function Pods() {
  }
  footer={
  <p className="text-xs text-muted-foreground tabular-nums">
- {filteredPods.length} pods
+ {isBackendAvailable ? serverTotal : filteredPods.length} pods
  {' · '}
  {selectedNamespaces.size === 0 ? 'all namespaces' : `${selectedNamespaces.size} namespace${selectedNamespaces.size === 1 ? '' : 's'}`}
  {' · '}
@@ -979,7 +990,7 @@ export default function Pods() {
  showTableFilters={showTableFilters}
  onToggleTableFilters={() => setShowTableFilters((v) => !v)}
  hasActiveFilters={hasActiveFilters}
- onClearAllFilters={() => { clearAllFilters(); setStatusPhaseFilter(null); }}
+ onClearAllFilters={() => { clearAllFilters(); setStatusPhaseFilter(null); setSearchQuery(''); setSelectedNamespaces(new Set()); setPageIndex(0); }}
  columns={PODS_COLUMNS_FOR_VISIBILITY}
  visibleColumns={columnVisibility.visibleColumns}
  onColumnToggle={columnVisibility.setColumnVisible}

@@ -367,6 +367,11 @@ export default function Deployments() {
  if (safePageIndex !== pageIndex) setPageIndex(safePageIndex);
  }, [safePageIndex, pageIndex]);
 
+ // Reset to first page when namespace/search filter changes
+ useEffect(() => {
+ setPageIndex(0);
+ }, [selectedNamespace, searchQuery]);
+
  const handlePageSizeChange = (size: number) => {
  setPageSize(size);
  setPageIndex(0);
@@ -610,10 +615,10 @@ spec:
 
  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
  <ListPageStatCard label="Total" value={stats.total} icon={DeploymentIcon as unknown as React.ComponentType} iconColor="text-primary" isLoading={isLoading} selected={!hasActiveFilters} onClick={clearAllFilters} className={cn(!hasActiveFilters && !isLoading && 'ring-2 ring-primary')} />
- <ListPageStatCard label="Available" value={stats.available} icon={CheckCircle2} iconColor="text-emerald-600" valueClassName="text-emerald-600" isLoading={isLoading} selected={columnFilters.status?.size === 1 && columnFilters.status.has('Healthy')} onClick={() => setColumnFilter('status', new Set(['Healthy']))} className={cn(columnFilters.status?.size === 1 && columnFilters.status.has('Healthy') && 'ring-2 ring-emerald-500')} />
- <ListPageStatCard label="Progressing" value={stats.progressing} icon={Clock} iconColor="text-amber-600" valueClassName="text-amber-600" isLoading={isLoading} selected={columnFilters.status?.size === 1 && columnFilters.status.has('Progressing')} onClick={() => setColumnFilter('status', new Set(['Progressing']))} className={cn(columnFilters.status?.size === 1 && columnFilters.status.has('Progressing') && 'ring-2 ring-amber-500')} />
- <ListPageStatCard label="Degraded" value={stats.degraded} icon={XCircle} iconColor="text-rose-600" valueClassName="text-rose-600" isLoading={isLoading} selected={columnFilters.status?.size === 1 && columnFilters.status.has('Degraded')} onClick={() => setColumnFilter('status', new Set(['Degraded']))} className={cn(columnFilters.status?.size === 1 && columnFilters.status.has('Degraded') && 'ring-2 ring-rose-500')} />
- <ListPageStatCard label="Paused" value={stats.paused} icon={PauseCircle} iconColor="text-blue-500" valueClassName="text-blue-500" isLoading={isLoading} selected={columnFilters.status?.size === 1 && columnFilters.status.has('Paused')} onClick={() => setColumnFilter('status', new Set(['Paused']))} className={cn(columnFilters.status?.size === 1 && columnFilters.status.has('Paused') && 'ring-2 ring-blue-500')} />
+ <ListPageStatCard label="Available" value={stats.available} icon={CheckCircle2} iconColor="text-emerald-600" valueClassName="text-emerald-600" isLoading={isLoading} selected={columnFilters.status?.size === 1 && columnFilters.status.has('Healthy')} onClick={() => { const isOn = columnFilters.status?.size === 1 && columnFilters.status.has('Healthy'); setColumnFilter('status', isOn ? null : new Set(['Healthy'])); setPageIndex(0); }} className={cn(columnFilters.status?.size === 1 && columnFilters.status.has('Healthy') && 'ring-2 ring-emerald-500')} />
+ <ListPageStatCard label="Progressing" value={stats.progressing} icon={Clock} iconColor="text-amber-600" valueClassName="text-amber-600" isLoading={isLoading} selected={columnFilters.status?.size === 1 && columnFilters.status.has('Progressing')} onClick={() => { const isOn = columnFilters.status?.size === 1 && columnFilters.status.has('Progressing'); setColumnFilter('status', isOn ? null : new Set(['Progressing'])); setPageIndex(0); }} className={cn(columnFilters.status?.size === 1 && columnFilters.status.has('Progressing') && 'ring-2 ring-amber-500')} />
+ <ListPageStatCard label="Degraded" value={stats.degraded} icon={XCircle} iconColor="text-rose-600" valueClassName="text-rose-600" isLoading={isLoading} selected={columnFilters.status?.size === 1 && columnFilters.status.has('Degraded')} onClick={() => { const isOn = columnFilters.status?.size === 1 && columnFilters.status.has('Degraded'); setColumnFilter('status', isOn ? null : new Set(['Degraded'])); setPageIndex(0); }} className={cn(columnFilters.status?.size === 1 && columnFilters.status.has('Degraded') && 'ring-2 ring-rose-500')} />
+ <ListPageStatCard label="Paused" value={stats.paused} icon={PauseCircle} iconColor="text-blue-500" valueClassName="text-blue-500" isLoading={isLoading} selected={columnFilters.status?.size === 1 && columnFilters.status.has('Paused')} onClick={() => { const isOn = columnFilters.status?.size === 1 && columnFilters.status.has('Paused'); setColumnFilter('status', isOn ? null : new Set(['Paused'])); setPageIndex(0); }} className={cn(columnFilters.status?.size === 1 && columnFilters.status.has('Paused') && 'ring-2 ring-blue-500')} />
  <ListPageStatCard label="Scale Events (24h)" value={stats.scaleEvents24h} icon={Activity} iconColor="text-cyan-500" valueClassName="text-cyan-600" isLoading={isLoading} selected={columnFilters.hadScaleEvent24h?.size === 1 && columnFilters.hadScaleEvent24h?.has('Yes')} onClick={() => { if (columnFilters.hadScaleEvent24h?.size === 1 && columnFilters.hadScaleEvent24h?.has('Yes')) setColumnFilter('hadScaleEvent24h', null); else setColumnFilter('hadScaleEvent24h', new Set(['Yes'])); }} className={cn(columnFilters.hadScaleEvent24h?.size === 1 && columnFilters.hadScaleEvent24h?.has('Yes') && 'ring-2 ring-cyan-500')} />
  </div>
 
@@ -684,7 +689,7 @@ spec:
  />
  }
  hasActiveFilters={hasActiveFilters}
- onClearAllFilters={clearAllFilters}
+ onClearAllFilters={() => { clearAllFilters(); setSearchQuery(''); setSelectedNamespace('all'); setPageIndex(0); }}
  showTableFilters={showTableFilters}
  onToggleTableFilters={() => setShowTableFilters((v) => !v)}
  columns={DEPLOYMENTS_COLUMNS_FOR_VISIBILITY}
