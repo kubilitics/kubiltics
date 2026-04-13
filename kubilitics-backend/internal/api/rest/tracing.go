@@ -39,6 +39,7 @@ const (
 type TracingHandler struct {
 	clusterService service.ClusterService
 	puller         *otel.TracePuller
+	helmRenderer   *otel.HelmRenderer
 
 	// operatorState tracks the cert-manager + OTel Operator install state
 	// per cluster ID. Values are strings: OperatorState* constants.
@@ -83,6 +84,7 @@ func NewTracingHandler(cs service.ClusterService, puller *otel.TracePuller) *Tra
 	return &TracingHandler{
 		clusterService: cs,
 		puller:         puller,
+		helmRenderer:   otel.NewHelmRenderer("../charts/kubilitics-otel"),
 	}
 }
 
