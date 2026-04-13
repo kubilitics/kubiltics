@@ -54,26 +54,53 @@ func respondK8sError(w http.ResponseWriter, err error, requestID string) {
 // DestructiveConfirmHeader (D1.2): clients must send this for DELETE resource and POST /apply.
 const DestructiveConfirmHeader = "X-Confirm-Destructive"
 
+// canSortUnstructured reports whether sortUnstructuredList knows how to handle
+// the given sort key. Unknown keys must not be re-sorted in the merge step —
+// doing so would scramble whatever order the per-namespace cache already applied.
+func canSortUnstructured(sortBy string) bool {
+	switch sortBy {
+	case "", "name", "namespace", "creationTimestamp":
+		return true
+	default:
+		return false
+	}
+}
+
 // sortUnstructuredList sorts a slice of unstructured items in-place by the given
 // field and order. Used to re-sort merged multi-namespace results before pagination.
+// Uses a stable sort so equal primary keys preserve relative input order.
 func sortUnstructuredList(items []unstructured.Unstructured, sortBy, sortOrder string) {
-	sort.Slice(items, func(i, j int) bool {
-		var vi, vj string
+	desc := sortOrder == "desc"
+	sort.SliceStable(items, func(i, j int) bool {
+		var less bool
 		switch sortBy {
 		case "namespace":
-			vi = items[i].GetNamespace()
-			vj = items[j].GetNamespace()
+			ni, nj := items[i].GetNamespace(), items[j].GetNamespace()
+			if ni == nj {
+				less = items[i].GetName() < items[j].GetName()
+			} else {
+				less = ni < nj
+			}
 		case "creationTimestamp":
-			vi = items[i].GetCreationTimestamp().String()
-			vj = items[j].GetCreationTimestamp().String()
-		default: // "name" or empty
-			vi = items[i].GetName()
-			vj = items[j].GetName()
+			ti := items[i].GetCreationTimestamp()
+			tj := items[j].GetCreationTimestamp()
+			if ti.Equal(&tj) {
+				less = items[i].GetName() < items[j].GetName()
+			} else {
+				less = ti.Before(&tj)
+			}
+		default: // "" or "name"
+			ni, nj := items[i].GetName(), items[j].GetName()
+			if ni == nj {
+				less = items[i].GetNamespace() < items[j].GetNamespace()
+			} else {
+				less = ni < nj
+			}
 		}
-		if sortOrder == "desc" {
-			return vi > vj
+		if desc {
+			return !less
 		}
-		return vi < vj
+		return less
 	})
 }
 
@@ -207,8 +234,10 @@ func (h *Handler) ListResources(w http.ResponseWriter, r *http.Request) {
 					merged.Items = append(merged.Items, result.Items...)
 				}
 				if allHit {
-					// Re-sort merged results across all namespaces
-					if len(merged.Items) > 1 {
+					// Re-sort merged results across all namespaces.
+					// Only re-sort when we know how to handle the key — otherwise we'd
+					// scramble the per-namespace order the cache already produced.
+					if len(merged.Items) > 1 && canSortUnstructured(sortBy) {
 						sortUnstructuredList(merged.Items, sortBy, sortOrder)
 					}
 					// Apply global limit/offset across merged results
@@ -286,8 +315,9 @@ func (h *Handler) ListResources(w http.ResponseWriter, r *http.Request) {
 				}
 				merged.Items = append(merged.Items, part.Items...)
 			}
-			// Re-sort merged results across all namespaces
-			if len(merged.Items) > 1 && (sortBy != "" || sortOrder != "") {
+			// Re-sort merged results across all namespaces.
+			// Only when the caller actually requested a sort AND we know the key.
+			if len(merged.Items) > 1 && (sortBy != "" || sortOrder != "") && canSortUnstructured(sortBy) {
 				sortUnstructuredList(merged.Items, sortBy, sortOrder)
 			}
 			if int64(len(merged.Items)) > opts.Limit {

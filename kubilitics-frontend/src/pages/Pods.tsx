@@ -382,6 +382,7 @@ export default function Pods() {
  succeeded: ps.succeeded,
  pending: ps.pending,
  failed: ps.failed,
+ isPageOnly: false,
  };
  }
  // Filter-aware: compute per-status from the loaded pods. In backend mode
@@ -394,6 +395,7 @@ export default function Pods() {
  succeeded: pods.filter((p) => p.status === 'Succeeded').length,
  pending: pods.filter((p) => p.status === 'Pending').length,
  failed: pods.filter((p) => p.status === 'Failed' || p.status === 'CrashLoopBackOff').length,
+ isPageOnly: isBackendAvailable && hasFilter,
  };
  }, [isBackendAvailable, summaryData, currentFilteredPods, debouncedSearch, selectedNamespaces, statusPhaseFilter, serverTotal]);
 
@@ -904,7 +906,7 @@ export default function Pods() {
  className={cn(!statusPhaseFilter && !isLoading && 'ring-2 ring-primary')}
  />
  <ListPageStatCard
- label="Running"
+ label={stats.isPageOnly ? "Running (page)" : "Running"}
  value={stats.running}
  icon={CheckCircle2}
  iconColor="text-emerald-600"
@@ -915,7 +917,7 @@ export default function Pods() {
  className={cn(statusPhaseFilter === 'Running' && 'ring-2 ring-emerald-500')}
  />
  <ListPageStatCard
- label="Succeeded"
+ label={stats.isPageOnly ? "Succeeded (page)" : "Succeeded"}
  value={stats.succeeded}
  icon={CheckCircle2}
  iconColor="text-blue-600"
@@ -926,7 +928,7 @@ export default function Pods() {
  className={cn(statusPhaseFilter === 'Succeeded' && 'ring-2 ring-blue-500')}
  />
  <ListPageStatCard
- label="Pending"
+ label={stats.isPageOnly ? "Pending (page)" : "Pending"}
  value={stats.pending}
  icon={Clock}
  iconColor="text-amber-600"
@@ -937,7 +939,7 @@ export default function Pods() {
  className={cn(statusPhaseFilter === 'Pending' && 'ring-2 ring-amber-500')}
  />
  <ListPageStatCard
- label="Failed"
+ label={stats.isPageOnly ? "Failed (page)" : "Failed"}
  value={stats.failed}
  icon={XCircle}
  iconColor="text-rose-600"
