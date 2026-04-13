@@ -1,0 +1,25 @@
+apiVersion: v2
+name: kubilitics-otel
+description: |
+  Kubilitics OpenTelemetry Collector — receives traces from instrumented apps in
+  your cluster and forwards them to the Kubilitics backend.
+
+  Prerequisites (NOT bundled — install separately if missing):
+    - cert-manager v1.11+
+    - OpenTelemetry Operator v0.85+
+
+type: application
+version: 0.1.0
+appVersion: "0.119.0"
+keywords:
+  - opentelemetry
+  - tracing
+  - kubilitics
+  - observability
+home: https://kubilitics.io
+sources:
+  - https://github.com/kubilitics/kubilitics
+maintainers:
+  - name: Kubilitics
+    email: hello@kubilitics.io
+icon: https://kubilitics.io/icon.png

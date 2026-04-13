@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "kubilitics-otel.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "kubilitics-otel.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.service.type }}
+  selector:
+    {{- include "kubilitics-otel.selectorLabels" . | nindent 4 }}
+  ports:
+    - name: otlp-grpc
+      port: {{ .Values.service.grpcPort }}
+      targetPort: 4317
+      protocol: TCP
+    - name: otlp-http
+      port: {{ .Values.service.httpPort }}
+      targetPort: 4318
+      protocol: TCP

@@ -1,6 +1,7 @@
 package otel
 
 import (
+	"os"
 	"strings"
 	"testing"
 )
@@ -159,5 +160,62 @@ func TestRender_AcceptsUUIDClusterID(t *testing.T) {
 	})
 	if err != nil {
 		t.Fatalf("expected UUID cluster ID to be valid, got error: %v", err)
+	}
+}
+
+// --- Embedded chart tests --------------------------------------------------
+
+func TestExtractedChartPath_ReturnsUsableChart(t *testing.T) {
+	path, err := ExtractedChartPath()
+	if err != nil {
+		t.Fatalf("ExtractedChartPath failed: %v", err)
+	}
+	if path == "" {
+		t.Fatal("ExtractedChartPath returned empty string")
+	}
+	// Chart.yaml must exist at the extracted path.
+	chartYamlPath := path + "/Chart.yaml"
+	if _, err := os.Stat(chartYamlPath); err != nil {
+		t.Errorf("Chart.yaml not found at %s: %v", chartYamlPath, err)
+	}
+	// templates/ subdir must exist.
+	if _, err := os.Stat(path + "/templates"); err != nil {
+		t.Errorf("templates/ not found at %s: %v", path+"/templates", err)
+	}
+}
+
+func TestExtractedChartPath_RenderableByHelm(t *testing.T) {
+	path, err := ExtractedChartPath()
+	if err != nil {
+		t.Fatalf("ExtractedChartPath failed: %v", err)
+	}
+	r := NewHelmRenderer(path)
+	out, err := r.Render(RenderOptions{
+		ClusterID:  "embedded-test",
+		BackendURL: "http://example.com",
+	})
+	if err != nil {
+		t.Fatalf("render from extracted path failed: %v", err)
+	}
+	if !strings.Contains(out, "embedded-test") {
+		t.Error("expected cluster ID in rendered output from embedded chart")
+	}
+	if !strings.Contains(out, "kind: Deployment") {
+		t.Error("expected Deployment kind in rendered output from embedded chart")
+	}
+}
+
+func TestExtractedChartPath_IsStable(t *testing.T) {
+	// Called twice should return the same path (cached via sync.Once).
+	p1, err := ExtractedChartPath()
+	if err != nil {
+		t.Fatal(err)
+	}
+	p2, err := ExtractedChartPath()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if p1 != p2 {
+		t.Errorf("expected stable path across calls, got %s then %s", p1, p2)
 	}
 }

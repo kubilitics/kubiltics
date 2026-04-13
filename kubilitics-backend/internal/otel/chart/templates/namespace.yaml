@@ -1,0 +1,7 @@
+{{- include "kubilitics-otel.validate" . -}}
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ .Release.Namespace }}
+  labels:
+    {{- include "kubilitics-otel.labels" . | nindent 4 }}

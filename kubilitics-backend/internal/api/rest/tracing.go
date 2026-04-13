@@ -30,11 +30,18 @@ type TracingHandler struct {
 
 // NewTracingHandler creates a new TracingHandler.
 //
-// The helm chart path is resolved at construction time via resolveChartPath,
-// which tries (in order): the KUBILITICS_CHART_PATH env var, then several
-// common locations relative to CWD and the backend binary. If no chart is
-// found, the renderer is still constructed with a best-effort fallback so the
-// handler can return a helpful error at request time instead of a nil panic.
+// Chart path resolution strategy, in order:
+//
+//  1. $KUBILITICS_CHART_PATH env var (explicit operator override)
+//  2. Walk up from CWD or the executable's directory looking for a
+//     charts/kubilitics-otel/Chart.yaml — useful for dev workflows where
+//     you're iterating on the chart without rebuilding the binary
+//  3. Extract the embedded chart (compiled into the binary via go:embed)
+//     to a temp directory — this is how the sidecar works in production:
+//     the chart travels with the binary
+//
+// If everything fails (shouldn't happen — embedded chart is always there),
+// Render() returns a helpful error.
 func NewTracingHandler(cs service.ClusterService) *TracingHandler {
 	return &TracingHandler{
 		clusterService: cs,
@@ -42,42 +49,57 @@ func NewTracingHandler(cs service.ClusterService) *TracingHandler {
 	}
 }
 
-// resolveChartPath returns the first directory containing a Chart.yaml for the
-// kubilitics-otel chart that it can find. Order:
-//
-//  1. $KUBILITICS_CHART_PATH (explicit operator override, highest priority)
-//  2. ./charts/kubilitics-otel            (running from repo root)
-//  3. ../charts/kubilitics-otel           (running from kubilitics-backend/)
-//  4. ../../charts/kubilitics-otel        (running from a test subdirectory)
-//  5. <executable dir>/charts/kubilitics-otel   (bundled sidecar next to binary)
-//  6. <executable dir>/../charts/kubilitics-otel (sidecar one level below)
-//
-// If none match, the first candidate is returned as a fallback so Render()
-// produces a helpful "chart not found at X" error rather than a silent failure.
+// resolveChartPath returns the first usable chart directory. See
+// NewTracingHandler for the resolution order.
 func resolveChartPath() string {
-	candidates := []string{}
+	// 1. Env override.
 	if env := strings.TrimSpace(os.Getenv("KUBILITICS_CHART_PATH")); env != "" {
-		candidates = append(candidates, env)
+		return env
 	}
-	candidates = append(candidates,
-		"./charts/kubilitics-otel",
-		"../charts/kubilitics-otel",
-		"../../charts/kubilitics-otel",
-	)
-	if exe, err := os.Executable(); err == nil {
-		exeDir := filepath.Dir(exe)
-		candidates = append(candidates,
-			filepath.Join(exeDir, "charts", "kubilitics-otel"),
-			filepath.Join(exeDir, "..", "charts", "kubilitics-otel"),
-		)
-	}
-	for _, c := range candidates {
-		if _, err := os.Stat(filepath.Join(c, "Chart.yaml")); err == nil {
-			return c
+
+	// 2. Walk up from CWD or executable directory. Dev loop: edit the chart
+	// in-repo, the backend picks it up on next request — no rebuild needed.
+	if cwd, err := os.Getwd(); err == nil {
+		if found := walkUpForChart(cwd); found != "" {
+			return found
 		}
 	}
-	// Fallback so Render() produces a useful error instead of panicking.
-	return candidates[0]
+	if exe, err := os.Executable(); err == nil {
+		if found := walkUpForChart(filepath.Dir(exe)); found != "" {
+			return found
+		}
+	}
+
+	// 3. Fall back to the embedded chart. This is the production path:
+	// the binary ships with the chart compiled in, so it works regardless
+	// of CWD, repo layout, or deployment target.
+	if extracted, err := otel.ExtractedChartPath(); err == nil {
+		return extracted
+	}
+
+	// Last-resort fallback so Render() produces a helpful error instead
+	// of panicking. Embedded extraction shouldn't fail in practice.
+	return "./charts/kubilitics-otel"
+}
+
+// walkUpForChart walks up from start, checking each ancestor (up to 8 levels)
+// for a `charts/kubilitics-otel/Chart.yaml` file. Returns the directory path
+// containing Chart.yaml on success, or "" if not found.
+func walkUpForChart(start string) string {
+	const maxLevels = 8
+	dir := start
+	for i := 0; i < maxLevels; i++ {
+		candidate := filepath.Join(dir, "charts", "kubilitics-otel")
+		if _, err := os.Stat(filepath.Join(candidate, "Chart.yaml")); err == nil {
+			return candidate
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			break // filesystem root
+		}
+		dir = parent
+	}
+	return ""
 }
 
 // languageSupportsAuto reports whether the OTel Operator can auto-inject

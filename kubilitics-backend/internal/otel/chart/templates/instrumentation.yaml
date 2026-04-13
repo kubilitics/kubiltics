@@ -1,0 +1,44 @@
+{{- if .Values.instrumentation.enabled }}
+# OTel Operator Instrumentation CR — referenced by the
+# instrumentation.opentelemetry.io/inject-<lang> annotation that users add to
+# their deployments. Languages are configurable via .Values.instrumentation.languages.
+apiVersion: opentelemetry.io/v1alpha1
+kind: Instrumentation
+metadata:
+  name: kubilitics-auto
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "kubilitics-otel.labels" . | nindent 4 }}
+spec:
+  exporter:
+    endpoint: http://{{ include "kubilitics-otel.fullname" . }}.{{ .Release.Namespace }}:4318
+  propagators:
+    - tracecontext
+    - baggage
+  sampler:
+    type: parentbased_traceidratio
+    argument: "1"
+  env:
+    - name: OTEL_EXPORTER_OTLP_PROTOCOL
+      value: http/json
+  {{- if has "java" .Values.instrumentation.languages }}
+  java:
+    image: ghcr.io/open-telemetry/opentelemetry-operator/autoinstrumentation-java:latest
+  {{- end }}
+  {{- if has "python" .Values.instrumentation.languages }}
+  python:
+    image: ghcr.io/open-telemetry/opentelemetry-operator/autoinstrumentation-python:latest
+  {{- end }}
+  {{- if has "nodejs" .Values.instrumentation.languages }}
+  nodejs:
+    image: ghcr.io/open-telemetry/opentelemetry-operator/autoinstrumentation-nodejs:latest
+  {{- end }}
+  {{- if has "go" .Values.instrumentation.languages }}
+  go:
+    image: ghcr.io/open-telemetry/opentelemetry-operator/autoinstrumentation-go:latest
+  {{- end }}
+  {{- if has "dotnet" .Values.instrumentation.languages }}
+  dotnet:
+    image: ghcr.io/open-telemetry/opentelemetry-operator/autoinstrumentation-dotnet:latest
+  {{- end }}
+{{- end }}

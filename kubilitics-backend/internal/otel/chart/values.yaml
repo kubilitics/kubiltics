@@ -1,0 +1,70 @@
+# kubilitics-otel — default values
+#
+# REQUIRED values that callers must override:
+#   kubilitics.clusterId — the cluster ID Kubilitics uses to attribute spans
+#   kubilitics.backendUrl — where the collector ships traces (e.g. https://kubilitics.example.com)
+#
+# All other values have sensible defaults and rarely need overriding.
+
+kubilitics:
+  # Cluster identifier injected as resource attribute on every span.
+  # Required. Get this from the Kubilitics setup page for your cluster.
+  clusterId: ""
+  # Backend URL where the collector POSTs OTLP traces.
+  # Required. The /v1/traces suffix is appended automatically by otlphttp exporter.
+  backendUrl: ""
+
+# Image override for air-gap / mirrored registries.
+image:
+  repository: otel/opentelemetry-collector-contrib
+  tag: "0.119.0"
+  pullPolicy: IfNotPresent
+  # imagePullSecrets only used if non-empty
+  imagePullSecrets: []
+
+# Resource limits for the collector deployment.
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+# Number of collector replicas. Increase for production HA.
+replicaCount: 1
+
+# Service ports — usually no need to change.
+service:
+  type: ClusterIP
+  grpcPort: 4317
+  httpPort: 4318
+
+# Languages the OTel Operator will inject when an annotation is added.
+# Keep all five — disabling them won't reduce footprint and limits future use.
+instrumentation:
+  enabled: true
+  languages:
+    - java
+    - python
+    - nodejs
+    - go
+    - dotnet
+
+# Pod security context for the collector. Defaults are restrictive.
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 10001
+  fsGroup: 10001
+
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+  readOnlyRootFilesystem: false  # collector needs to write to /tmp
+
+# Node placement — usually no need to change.
+nodeSelector: {}
+tolerations: []
+affinity: {}
