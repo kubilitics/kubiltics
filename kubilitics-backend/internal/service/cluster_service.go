@@ -16,6 +16,7 @@ import (
 	"github.com/kubilitics/kubilitics-backend/internal/k8s"
 	"github.com/kubilitics/kubilitics-backend/internal/models"
 	"github.com/kubilitics/kubilitics-backend/internal/repository"
+	"golang.org/x/sync/singleflight"
 	"golang.org/x/time/rate"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -53,6 +54,11 @@ type ClusterService interface {
 	LoadClustersFromRepo(ctx context.Context) error
 	// GetClient returns the K8s client for a cluster (for internal use by topology, resources, etc.).
 	GetClient(id string) (*k8s.Client, error)
+	// GetOrReconnectClient is like GetClient, but if the pool is cold for this
+	// cluster it will lazily call ReconnectCluster (coalesced via singleflight,
+	// bounded by a short timeout, with a negative cache for recent failures).
+	// This is the client lookup that HTTP handlers should use on the fallback path.
+	GetOrReconnectClient(ctx context.Context, id string) (*k8s.Client, error)
 	// HasMetalLB returns true if MetalLB CRDs (ipaddresspools, bgppeers) are installed in the cluster.
 	HasMetalLB(ctx context.Context, id string) (bool, error)
 	// DiscoverClusters scans the configured kubeconfig for contexts not yet in the repository.
@@ -85,6 +91,75 @@ type clusterService struct {
 	k8sRateLimitPerSec float64
 	k8sRateLimitBurst  int
 	clientFactory      K8sClientFactory // optional; tests only
+
+	// reconnectSF coalesces parallel lazy-reconnect attempts for the same cluster id.
+	// Without it, a single page load (which fires ~10 parallel API requests) would
+	// start ~10 parallel ReconnectCluster calls — each runs TestConnection, creates
+	// a client, and starts informers. The losers of the map-write race leak their
+	// client handles and informer watches against the apiserver.
+	reconnectSF singleflight.Group
+	// reconnectFailCache remembers recent failures so we don't retry a known-broken
+	// cluster on every request; keys are cluster ids, values are failure timestamps.
+	reconnectFailCache sync.Map
+}
+
+// reconnectNegativeCacheTTL is how long a failed lazy-reconnect is remembered
+// before we're willing to try again. Keeps offline clusters from hanging every
+// request for 8 seconds each.
+const reconnectNegativeCacheTTL = 10 * time.Second
+
+// reconnectTimeout bounds the per-attempt wall clock when lazy-reconnecting a
+// cluster from the request hot path. Shorter than the startup load budget on
+// purpose: a user is waiting on the other end of this call.
+const reconnectTimeout = 3 * time.Second
+
+// GetOrReconnectClient returns a live k8s client for id, building one on demand
+// if the cluster has no client in the pool (e.g. it was persisted but offline
+// when the backend started, or became reachable after startup).
+//
+// Safe to call from many request goroutines concurrently — singleflight ensures
+// only one reconnect runs at a time per cluster, and a short negative cache
+// prevents hammering a known-broken cluster.
+func (s *clusterService) GetOrReconnectClient(ctx context.Context, id string) (*k8s.Client, error) {
+	if client, err := s.GetClient(id); err == nil {
+		return client, nil
+	}
+
+	// Honor the negative cache: if a recent reconnect failed, fail fast with the
+	// cached error instead of paying the timeout cost again.
+	if v, ok := s.reconnectFailCache.Load(id); ok {
+		if entry, ok := v.(reconnectFailure); ok {
+			if time.Since(entry.at) < reconnectNegativeCacheTTL {
+				return nil, entry.err
+			}
+			s.reconnectFailCache.Delete(id)
+		}
+	}
+
+	// Coalesce parallel callers so the expensive reconnect only runs once per id.
+	_, err, _ := s.reconnectSF.Do(id, func() (interface{}, error) {
+		// Double-check under singleflight: another caller may have populated the
+		// pool while we were queued. Avoid re-reconnecting.
+		if client, err := s.GetClient(id); err == nil {
+			return client, nil
+		}
+		rctx, cancel := context.WithTimeout(ctx, reconnectTimeout)
+		defer cancel()
+		if _, rerr := s.ReconnectCluster(rctx, id); rerr != nil {
+			s.reconnectFailCache.Store(id, reconnectFailure{at: time.Now(), err: rerr})
+			return nil, rerr
+		}
+		return s.GetClient(id)
+	})
+	if err != nil {
+		return nil, err
+	}
+	return s.GetClient(id)
+}
+
+type reconnectFailure struct {
+	at  time.Time
+	err error
 }
 
 // clusterInfoString safely extracts a string value from a GetClusterInfo result map.
@@ -699,7 +774,10 @@ func (s *clusterService) tryReconnectCluster(ctx context.Context, c *models.Clus
 	if err := client.TestConnection(ctx); err != nil {
 		return false
 	}
+	// Map write must hold the lock — GetClient reads under RLock concurrently.
+	s.mu.Lock()
 	s.clients[c.ID] = client
+	s.mu.Unlock()
 	_ = s.overviewCache.StartClusterCache(ctx, c.ID, client)
 	return true
 }
@@ -713,7 +791,10 @@ func (s *clusterService) ReconnectCluster(ctx context.Context, id string) (*mode
 	}
 
 	// Reset the circuit breaker on any existing client so it doesn't block the TestConnection below.
-	if existing, ok := s.clients[id]; ok {
+	s.mu.RLock()
+	existing, existed := s.clients[id]
+	s.mu.RUnlock()
+	if existed {
 		existing.ResetCircuitBreaker()
 	}
 
@@ -757,9 +838,15 @@ func (s *clusterService) ReconnectCluster(ctx context.Context, id string) (*mode
 	}
 
 	// Success: replace client and restart overview cache.
+	// Map write must hold the lock — GetClient reads it under RLock from other
+	// goroutines; unlocked writes race the runtime map rehash and can segfault.
 	s.overviewCache.StopClusterCache(id)
+	s.mu.Lock()
 	s.clients[id] = client
+	s.mu.Unlock()
 	_ = s.overviewCache.StartClusterCache(ctx, id, client)
+	// Clear any negative-cache entry now that we have a live client again.
+	s.reconnectFailCache.Delete(id)
 
 	if info, err := client.GetClusterInfo(ctx); err == nil {
 		c.ServerURL = clusterInfoString(info, "server_url")
