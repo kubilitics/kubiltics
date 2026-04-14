@@ -285,6 +285,20 @@ func Load() (*Config, error) {
 		}
 	}
 
+	// Validate an explicit override. Empty is valid (auto-detect below) but
+	// any non-empty value must be one of the three known modes; we reject
+	// typos like "dekstop" early with a clear error instead of silently
+	// accepting and confusing the operator.
+	if cfg.DeploymentMode != "" {
+		switch cfg.DeploymentMode {
+		case ModeDesktop, ModeBrowser, ModeInCluster:
+			// ok
+		default:
+			return nil, fmt.Errorf("invalid deployment_mode %q; must be one of: %q, %q, %q",
+				cfg.DeploymentMode, ModeDesktop, ModeBrowser, ModeInCluster)
+		}
+	}
+
 	// Auto-detect deployment mode unless an explicit KUBILITICS_DEPLOYMENT_MODE
 	// override was supplied. Auto-detection is heuristic: the pod-service env
 	// var is only set by the downward API when running inside a cluster, and

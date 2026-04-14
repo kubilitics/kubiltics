@@ -1,7 +1,7 @@
 package config
 
 import (
-	"os"
+	"strings"
 	"testing"
 )
 
@@ -90,8 +90,6 @@ func TestLoad_DeploymentMode_ExplicitOverride(t *testing.T) {
 	if cfg.DeploymentMode != ModeDesktop {
 		t.Errorf("DeploymentMode: got %q, want %q (explicit override should win)", cfg.DeploymentMode, ModeDesktop)
 	}
-	_ = os.Unsetenv("KUBILITICS_DEPLOYMENT_MODE")
-	_ = os.Unsetenv("KUBERNETES_SERVICE_HOST")
 }
 
 func TestLoad_KubeconfigSyncEnabled_EnvOverride(t *testing.T) {
@@ -118,5 +116,21 @@ func TestLoad_InvalidThresholds_ClampedToDefaults(t *testing.T) {
 	}
 	if cfg.KubeconfigSyncMaxAbsoluteRemovals != 10 {
 		t.Errorf("MaxAbsoluteRemovals clamp: got %d, want 10", cfg.KubeconfigSyncMaxAbsoluteRemovals)
+	}
+}
+
+func TestLoad_InvalidDeploymentMode_Rejected(t *testing.T) {
+	t.Setenv("KUBILITICS_DEPLOYMENT_MODE", "garbage")
+
+	_, err := Load()
+	if err == nil {
+		t.Fatalf("Load: got nil error, want rejection of invalid deployment_mode")
+	}
+	// The error message should mention the invalid value and the valid options.
+	// We check for the word "invalid" and "deployment_mode" to be resilient to
+	// wording changes.
+	msg := err.Error()
+	if !strings.Contains(msg, "invalid") || !strings.Contains(msg, "deployment_mode") {
+		t.Errorf("error message: got %q, want something mentioning invalid deployment_mode", msg)
 	}
 }
