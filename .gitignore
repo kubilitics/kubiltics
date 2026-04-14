@@ -186,8 +186,7 @@ android-sdk/
 next-env.d.ts
 *.tsbuildinfo
 
-# ── Legacy paths (kcli and website moved to own repos) ─────────────────────
-kcli/
+# ── Legacy paths (website/kcli-sdk live in other repos) ────────────────────
 website/
 kcli-sdk/
 .buildcache/
