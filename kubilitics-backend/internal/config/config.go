@@ -8,6 +8,17 @@ import (
 	"github.com/spf13/viper"
 )
 
+// DeploymentMode describes where the Kubilitics backend is running. Certain
+// features (the kubeconfig sync watcher, for example) are only meaningful in
+// desktop/browser modes where a user kubeconfig exists on the host filesystem.
+type DeploymentMode string
+
+const (
+	ModeDesktop   DeploymentMode = "desktop"    // Tauri shell on an end-user machine
+	ModeBrowser   DeploymentMode = "browser"    // headless backend serving a browser UI
+	ModeInCluster DeploymentMode = "in-cluster" // running as a pod inside a Kubernetes cluster
+)
+
 type Config struct {
 	BindAddress         string   `mapstructure:"bind_address"`            // Listen address: 127.0.0.1 (desktop default) or 0.0.0.0 (in-cluster)
 	Port                int      `mapstructure:"port"`
@@ -96,6 +107,19 @@ type Config struct {
 	MFARequired      bool   `mapstructure:"mfa_required"`       // Require MFA for all users
 	MFAEnforcedRoles string `mapstructure:"mfa_enforced_roles"` // Comma-separated roles that require MFA (e.g., "admin,operator")
 	MFAEncryptionKey string `mapstructure:"mfa_encryption_key"` // AES-GCM key for encrypting TOTP secrets (32 bytes base64 encoded)
+
+	// Deployment mode, auto-detected in Load() or overridden via
+	// KUBILITICS_DEPLOYMENT_MODE. See the DeploymentMode const block.
+	DeploymentMode DeploymentMode `mapstructure:"deployment_mode"`
+
+	// Kubeconfig sync — Headlamp-style watcher that auto-removes clusters
+	// from the registry when their context disappears from the watched
+	// kubeconfig file. Gated off in ModeInCluster.
+	KubeconfigSyncEnabled             bool    `mapstructure:"kubeconfig_sync_enabled"`
+	KubeconfigSyncPollIntervalSec     int     `mapstructure:"kubeconfig_sync_poll_interval_sec"`
+	KubeconfigSyncHealthIntervalSec   int     `mapstructure:"kubeconfig_sync_health_interval_sec"`
+	KubeconfigSyncMaxAbsoluteRemovals int     `mapstructure:"kubeconfig_sync_max_absolute_removals"`
+	KubeconfigSyncMaxRemovalRatio     float64 `mapstructure:"kubeconfig_sync_max_removal_ratio"`
 }
 
 func Load() (*Config, error) {
@@ -186,6 +210,16 @@ func Load() (*Config, error) {
 	viper.SetDefault("oidc_group_claim", "groups")
 	viper.SetDefault("oidc_role_mapping", "")
 
+	// Deployment mode default (empty string = auto-detect in post-unmarshal block)
+	viper.SetDefault("deployment_mode", "")
+
+	// Kubeconfig sync defaults
+	viper.SetDefault("kubeconfig_sync_enabled", true)
+	viper.SetDefault("kubeconfig_sync_poll_interval_sec", 60)
+	viper.SetDefault("kubeconfig_sync_health_interval_sec", 10)
+	viper.SetDefault("kubeconfig_sync_max_absolute_removals", 10)
+	viper.SetDefault("kubeconfig_sync_max_removal_ratio", 0.5)
+
 	// Environment variables
 	viper.SetEnvPrefix("KUBILITICS")
 	viper.AutomaticEnv()
@@ -249,6 +283,41 @@ func Load() (*Config, error) {
 		if cfg.TracingEndpoint == "" {
 			cfg.TracingEndpoint = os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT")
 		}
+	}
+
+	// Auto-detect deployment mode unless an explicit KUBILITICS_DEPLOYMENT_MODE
+	// override was supplied. Auto-detection is heuristic: the pod-service env
+	// var is only set by the downward API when running inside a cluster, and
+	// Tauri sets TAURI_ENABLED=1 when the backend is spawned as a sidecar.
+	if cfg.DeploymentMode == "" {
+		switch {
+		case os.Getenv("KUBERNETES_SERVICE_HOST") != "":
+			cfg.DeploymentMode = ModeInCluster
+		case os.Getenv("TAURI_ENABLED") != "":
+			cfg.DeploymentMode = ModeDesktop
+		default:
+			cfg.DeploymentMode = ModeBrowser
+		}
+	}
+
+	// Validate the kubeconfig sync thresholds and fall back to safe defaults
+	// with a warning if the user supplied a nonsense value. We never auto-disable
+	// sync from a bad value; we clamp to a known-good range instead.
+	if cfg.KubeconfigSyncMaxRemovalRatio <= 0 || cfg.KubeconfigSyncMaxRemovalRatio > 1.0 {
+		fmt.Fprintf(os.Stderr, "[config] kubeconfig_sync_max_removal_ratio %v out of range (0,1]; using 0.5\n",
+			cfg.KubeconfigSyncMaxRemovalRatio)
+		cfg.KubeconfigSyncMaxRemovalRatio = 0.5
+	}
+	if cfg.KubeconfigSyncMaxAbsoluteRemovals < 1 {
+		fmt.Fprintf(os.Stderr, "[config] kubeconfig_sync_max_absolute_removals %d invalid; using 10\n",
+			cfg.KubeconfigSyncMaxAbsoluteRemovals)
+		cfg.KubeconfigSyncMaxAbsoluteRemovals = 10
+	}
+	if cfg.KubeconfigSyncPollIntervalSec < 1 {
+		cfg.KubeconfigSyncPollIntervalSec = 60
+	}
+	if cfg.KubeconfigSyncHealthIntervalSec < 1 {
+		cfg.KubeconfigSyncHealthIntervalSec = 10
 	}
 
 	return &cfg, nil
