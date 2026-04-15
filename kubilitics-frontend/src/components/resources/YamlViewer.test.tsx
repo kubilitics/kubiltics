@@ -424,3 +424,35 @@ describe('YamlViewer — breadcrumb', () => {
     expect(breadcrumb).toBeInTheDocument();
   });
 });
+
+describe('YamlViewer — large-resource guard', () => {
+  beforeEach(() => {
+    capturedMenuProps = null;
+    copyMenuOnCopySpy.mockClear();
+    fakeEditorCalls = {
+      foldAllCalled: 0,
+      unfoldAllCalled: 0,
+      foldSelectedCalled: 0,
+      cursorListeners: [],
+    };
+  });
+
+  it('renders banner when displayYaml exceeds 1 MB', () => {
+    const bigYaml = 'x'.repeat(1_500_000);
+    renderViewer({ yaml: bigYaml, resource: undefined });
+    expect(screen.getByText(/large resource/i)).toBeInTheDocument();
+  });
+
+  it('banner is dismissable', async () => {
+    const user = userEvent.setup();
+    const bigYaml = 'x'.repeat(1_500_000);
+    renderViewer({ yaml: bigYaml, resource: undefined });
+    await user.click(screen.getByRole('button', { name: /dismiss large resource warning/i }));
+    expect(screen.queryByText(/large resource/i)).not.toBeInTheDocument();
+  });
+
+  it('does not render banner when yaml is small', () => {
+    renderViewer();
+    expect(screen.queryByText(/large resource/i)).not.toBeInTheDocument();
+  });
+});

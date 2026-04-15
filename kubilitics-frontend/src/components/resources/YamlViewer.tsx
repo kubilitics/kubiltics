@@ -16,7 +16,7 @@ import { CodeEditor } from '@/components/editor/CodeEditor';
 import { cn } from '@/lib/utils';
 import { toast } from '@/components/ui/sonner';
 import yamlParser from 'js-yaml';
-import { filterYaml, toJson, wellKnownFoldPaths, type YamlPreset } from '@/lib/yaml/filterYaml';
+import { filterYaml, toJson, wellKnownFoldPaths, isLargeResource, type YamlPreset } from '@/lib/yaml/filterYaml';
 import { isConflictError } from '@/lib/conflictDetection';
 import { YamlCopyMenu } from './YamlCopyMenu';
 import { findFoldRange } from './yamlFoldRanges';
@@ -146,6 +146,7 @@ export function YamlViewer({ yaml, resource, resourceName, editable = false, onS
   const previousModeRef = useRef<'yaml' | 'json'>('yaml');
   const editorInstanceRef = useRef<monacoEditor.IStandaloneCodeEditor | null>(null);
   const [breadcrumbPath, setBreadcrumbPath] = useState('');
+  const [isLargeBannerDismissed, setIsLargeBannerDismissed] = useState(false);
 
   const displayYaml = useMemo(() => {
     if (!resource) return yaml;
@@ -166,6 +167,8 @@ export function YamlViewer({ yaml, resource, resourceName, editable = false, onS
       return yaml;
     }
   }, [preset, mode, resource, yaml]);
+
+  const showLargeBanner = !isEditing && !isLargeBannerDismissed && isLargeResource(displayYaml);
 
   const foldLineRange = useCallback(
     (range: { startLine: number; endLine: number } | null) => {
@@ -233,6 +236,18 @@ export function YamlViewer({ yaml, resource, resourceName, editable = false, onS
     });
     return () => disposable.dispose();
   }, [displayYaml]);
+
+  useEffect(() => {
+    if (!showLargeBanner) return;
+    // Fire once per large state entry. We intentionally omit foldLineRange and
+    // displayYaml from deps because we want a single auto-fold when the banner
+    // first appears — not on every displayYaml change.
+    const statusRange = findFoldRange(displayYaml, 'status');
+    const templateRange = findFoldRange(displayYaml, 'spec.template');
+    if (statusRange) foldLineRange(statusRange);
+    if (templateRange) foldLineRange(templateRange);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showLargeBanner]);
 
   // Auto-enter edit mode when ?edit=1 is in URL (triggered by header Edit button)
   useEffect(() => {
@@ -588,6 +603,29 @@ export function YamlViewer({ yaml, resource, resourceName, editable = false, onS
       {!isEditing && preset === 'raw' && resource && (
         <div className="px-4 py-1.5 text-[11px] text-muted-foreground bg-muted/20 border-b border-border">
           Showing full YAML including <code className="font-mono">managedFields</code>.
+        </div>
+      )}
+
+      {showLargeBanner && (
+        <div className="px-4 py-2 text-xs bg-amber-500/10 border-b border-amber-500/30 flex items-start gap-3">
+          <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+          <div className="flex-1 min-w-0">
+            <p className="font-medium text-amber-800 dark:text-amber-400">
+              Large resource ({Math.round(displayYaml.length / 1024)} KB).
+            </p>
+            <p className="text-[11px] text-muted-foreground mt-0.5">
+              <code className="font-mono">status</code> and <code className="font-mono">spec.template</code> auto-folded for performance.
+            </p>
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 text-[11px] px-2 shrink-0"
+            onClick={() => setIsLargeBannerDismissed(true)}
+            aria-label="Dismiss large resource warning"
+          >
+            Dismiss
+          </Button>
         </div>
       )}
 
