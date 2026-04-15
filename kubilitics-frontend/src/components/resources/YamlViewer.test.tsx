@@ -121,4 +121,64 @@ describe('YamlViewer — Clean/Raw filter', () => {
     const editorAfter = screen.getByTestId('code-editor') as HTMLTextAreaElement;
     expect(editorAfter.value).not.toContain('managedFields');
   });
+
+  it("'Apply-ready' preset hides status, uid, resourceVersion", () => {
+    renderViewer({
+      resource: {
+        ...podResource,
+        metadata: {
+          ...podResource.metadata,
+          uid: 'abc',
+          resourceVersion: '42',
+        },
+      },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /apply-ready/i }));
+    const editor = screen.getByTestId('code-editor') as HTMLTextAreaElement;
+    expect(editor.value).not.toContain('status:');
+    expect(editor.value).not.toContain('uid:');
+    expect(editor.value).not.toContain('resourceVersion:');
+    expect(editor.value).toContain('name: nginx');
+    expect(editor.value).toContain('image: nginx:1.25');
+  });
+
+  it('JSON mode with Clean preset produces valid JSON without managedFields', () => {
+    renderViewer();
+    fireEvent.click(screen.getByRole('button', { name: /^json$/i }));
+    const editor = screen.getByTestId('code-editor') as HTMLTextAreaElement;
+    const parsed = JSON.parse(editor.value);
+    expect(parsed.kind).toBe('Pod');
+    expect(parsed.metadata).not.toHaveProperty('managedFields');
+    expect(parsed.status).toBeDefined();
+  });
+
+  it('JSON mode with Apply-ready preset strips status and uid', () => {
+    renderViewer({
+      resource: {
+        ...podResource,
+        metadata: { ...podResource.metadata, uid: 'abc' },
+      },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /apply-ready/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^json$/i }));
+    const editor = screen.getByTestId('code-editor') as HTMLTextAreaElement;
+    const parsed = JSON.parse(editor.value);
+    expect(parsed).not.toHaveProperty('status');
+    expect(parsed.metadata).not.toHaveProperty('uid');
+  });
+
+  it('Edit mode forces preset=Raw and mode=YAML; Cancel restores both', () => {
+    renderViewer({ editable: true, onSave: vi.fn() });
+    fireEvent.click(screen.getByRole('button', { name: /apply-ready/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^json$/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^edit$/i }));
+    expect(screen.getByRole('button', { name: /clean/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /apply-ready/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /^raw$/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /^yaml$/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /^json$/i })).toBeDisabled();
+    fireEvent.click(screen.getByRole('button', { name: /cancel/i }));
+    expect(screen.getByRole('button', { name: /apply-ready/i })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: /^json$/i })).toHaveAttribute('aria-pressed', 'true');
+  });
 });

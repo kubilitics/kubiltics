@@ -9,7 +9,7 @@ import { CodeEditor } from '@/components/editor/CodeEditor';
 import { cn } from '@/lib/utils';
 import { toast } from '@/components/ui/sonner';
 import yamlParser from 'js-yaml';
-import { filterYaml, type YamlPreset } from '@/lib/yaml/filterYaml';
+import { filterYaml, toJson, type YamlPreset } from '@/lib/yaml/filterYaml';
 import { isConflictError } from '@/lib/conflictDetection';
 
 export interface YamlValidationError {
@@ -73,22 +73,28 @@ export function YamlViewer({ yaml, resource, resourceName, editable = false, onS
   const [conflictDetected, setConflictDetected] = useState(false);
   const [preset, setPreset] = useState<YamlPreset>('clean');
   const previousPresetRef = useRef<YamlPreset>('clean');
+  const [mode, setMode] = useState<'yaml' | 'json'>('yaml');
+  const previousModeRef = useRef<'yaml' | 'json'>('yaml');
 
   const displayYaml = useMemo(() => {
-    if (!resource || preset === 'raw') return yaml;
+    if (!resource) return yaml;
+    if (preset === 'raw' && mode === 'yaml') return yaml;
     try {
-      return yamlParser.dump(filterYaml(resource, 'clean'), {
-        indent: 2,
-        noArrayIndent: false,
-        skipInvalid: true,
-        flowLevel: -1,
-        noRefs: true,
-        lineWidth: -1,
-      });
+      const filtered = filterYaml(resource, preset);
+      return mode === 'json'
+        ? toJson(filtered, { indent: 2 })
+        : yamlParser.dump(filtered, {
+            indent: 2,
+            noArrayIndent: false,
+            skipInvalid: true,
+            flowLevel: -1,
+            noRefs: true,
+            lineWidth: -1,
+          });
     } catch {
       return yaml;
     }
-  }, [preset, resource, yaml]);
+  }, [preset, mode, resource, yaml]);
 
   // Auto-enter edit mode when ?edit=1 is in URL (triggered by header Edit button)
   useEffect(() => {
@@ -132,10 +138,12 @@ export function YamlViewer({ yaml, resource, resourceName, editable = false, onS
 
   const handleEdit = () => {
     previousPresetRef.current = preset;
+    previousModeRef.current = mode;
     setEditedYaml(yaml);
     setErrors([]);
     setEditorKey((k) => k + 1);
     setPreset('raw');
+    setMode('yaml');
     setIsEditing(true);
   };
 
@@ -144,6 +152,7 @@ export function YamlViewer({ yaml, resource, resourceName, editable = false, onS
     setErrors([]);
     setIsEditing(false);
     setPreset(previousPresetRef.current);
+    setMode(previousModeRef.current);
   };
 
   const handleReset = () => {
@@ -165,6 +174,7 @@ export function YamlViewer({ yaml, resource, resourceName, editable = false, onS
       await onSave(editedYaml);
       setIsEditing(false);
       setPreset(previousPresetRef.current);
+      setMode(previousModeRef.current);
       setConflictDetected(false);
       toast.success('Changes applied successfully');
     } catch (error) {
@@ -191,6 +201,7 @@ export function YamlViewer({ yaml, resource, resourceName, editable = false, onS
       await onSave(forcedYaml);
       setIsEditing(false);
       setPreset(previousPresetRef.current);
+      setMode(previousModeRef.current);
       setConflictDetected(false);
       toast.success('Changes force-applied successfully');
     } catch (error) {
@@ -273,9 +284,20 @@ export function YamlViewer({ yaml, resource, resourceName, editable = false, onS
                   onClick={() => setPreset('clean')}
                   disabled={isEditing}
                   aria-pressed={preset === 'clean'}
-                  aria-label="Clean (hide managedFields)"
+                  title="Hide managedFields"
                 >
                   Clean
+                </Button>
+                <Button
+                  variant={preset === 'apply-ready' ? 'secondary' : 'ghost'}
+                  size="sm"
+                  className="h-6 text-[11px] font-medium px-2.5 rounded-sm"
+                  onClick={() => setPreset('apply-ready')}
+                  disabled={isEditing}
+                  aria-pressed={preset === 'apply-ready'}
+                  title="Remove server-managed fields"
+                >
+                  Apply-ready
                 </Button>
                 <Button
                   variant={preset === 'raw' ? 'secondary' : 'ghost'}
@@ -284,9 +306,31 @@ export function YamlViewer({ yaml, resource, resourceName, editable = false, onS
                   onClick={() => setPreset('raw')}
                   disabled={isEditing}
                   aria-pressed={preset === 'raw'}
-                  aria-label="Raw (show full YAML)"
+                  title="Show full YAML"
                 >
                   Raw
+                </Button>
+              </div>
+              <div className="inline-flex items-center rounded-md border border-border bg-background p-0.5 mr-1">
+                <Button
+                  variant={mode === 'yaml' ? 'secondary' : 'ghost'}
+                  size="sm"
+                  className="h-6 text-[11px] font-medium px-2.5 rounded-sm"
+                  onClick={() => setMode('yaml')}
+                  disabled={isEditing}
+                  aria-pressed={mode === 'yaml'}
+                >
+                  YAML
+                </Button>
+                <Button
+                  variant={mode === 'json' ? 'secondary' : 'ghost'}
+                  size="sm"
+                  className="h-6 text-[11px] font-medium px-2.5 rounded-sm"
+                  onClick={() => setMode('json')}
+                  disabled={isEditing}
+                  aria-pressed={mode === 'json'}
+                >
+                  JSON
                 </Button>
               </div>
               <Separator orientation="vertical" className="h-4 mx-1" />
@@ -469,6 +513,7 @@ export function YamlViewer({ yaml, resource, resourceName, editable = false, onS
       ) : (
         <CodeEditor
           value={displayYaml}
+          language={mode}
           readOnly
           minHeight="600px"
           className="rounded-none border-0"
