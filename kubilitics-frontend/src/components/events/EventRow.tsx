@@ -3,7 +3,7 @@
  */
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronRight, Eye, GitBranch, AlertTriangle, Shield } from 'lucide-react';
+import { ChevronRight, Eye, GitBranch, AlertTriangle, Shield, Info } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -71,6 +71,7 @@ export function EventRow({ event, onViewContext }: EventRowProps) {
         onClick={() => setExpanded(!expanded)}
         className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-muted/40 transition-colors cursor-pointer group"
       >
+        {/* Expand chevron */}
         <ChevronRight
           className={cn(
             'h-3.5 w-3.5 text-muted-foreground/50 transition-transform duration-200 shrink-0',
@@ -78,42 +79,47 @@ export function EventRow({ event, onViewContext }: EventRowProps) {
           )}
         />
 
-        {/* Timestamp */}
-        <span className="text-xs text-muted-foreground tabular-nums font-mono w-16 shrink-0">
-          {relativeTime(event.timestamp)}
-        </span>
+        {/* Leading type icon */}
+        {isWarning ? (
+          <AlertTriangle className="h-4 w-4 text-rose-500 shrink-0" />
+        ) : (
+          <Info className="h-4 w-4 text-slate-500 shrink-0" />
+        )}
 
-        {/* Type badge */}
-        <Badge variant="outline" className={cn('text-[10px] px-1.5 py-0 h-4.5 shrink-0 font-medium border', typeStyle)}>
-          {event.event_type}
-        </Badge>
-
-        {/* Kind badge */}
-        <span className={cn(
-          'inline-flex items-center justify-center h-5 rounded-md px-1.5 text-[10px] font-semibold shrink-0',
-          kindInfo.color,
-        )}>
-          {kindInfo.abbr}
-        </span>
-
-        {/* Resource name (primary visual weight) — flex-shrink so it yields to reason */}
-        <span className="text-sm font-medium text-foreground truncate min-w-0 flex-1" title={event.resource_name}>
-          {event.resource_name}
-        </span>
-
-        {/* Reason */}
-        <div className="flex items-center gap-1 shrink-0 hidden md:flex">
-          <span className="text-sm text-muted-foreground">
-            {event.reason}
+        {/* Primary + secondary lines */}
+        <div className="flex flex-col min-w-0 flex-1">
+          {/* Primary line: the human-readable message */}
+          <span
+            className="text-sm font-medium text-foreground truncate"
+            title={event.message}
+          >
+            {event.message}
           </span>
-          {event.resource_namespace && (
-            <>
-              <span className="text-muted-foreground/40 shrink-0">&middot;</span>
-              <span className="text-xs text-muted-foreground/60 truncate shrink-0">
-                {event.resource_namespace}
-              </span>
-            </>
-          )}
+
+          {/* Secondary line: kind · resource · age · count · reason */}
+          <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
+            <span className={cn(
+              'inline-flex items-center justify-center rounded px-1 text-[10px] font-semibold shrink-0',
+              kindInfo.color,
+            )}>
+              {kindInfo.abbr}
+            </span>
+            <span className="truncate shrink-0 max-w-[200px]">{event.resource_name}</span>
+            <span className="text-muted-foreground/40 shrink-0">·</span>
+            <span className="tabular-nums font-mono shrink-0">{relativeTime(event.timestamp)}</span>
+            {event.event_count > 1 && (
+              <>
+                <span className="text-muted-foreground/40 shrink-0">·</span>
+                <span className="shrink-0">x{event.event_count}</span>
+              </>
+            )}
+            {event.reason && (
+              <>
+                <span className="text-muted-foreground/40 shrink-0">·</span>
+                <span className="truncate hidden md:inline">{event.reason}</span>
+              </>
+            )}
+          </div>
         </div>
 
         {/* Health delta */}
