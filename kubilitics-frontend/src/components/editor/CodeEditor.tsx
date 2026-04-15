@@ -56,6 +56,8 @@ interface CodeEditorProps {
   minHeight?: string;
   placeholder?: string;
   fontSize?: 'small' | 'medium' | 'large';
+  /** Editor language. Defaults to 'yaml'. */
+  language?: 'yaml' | 'json';
   /** Called after Monaco mounts, exposing the editor instance for external control. */
   onEditorReady?: (editor: monacoType.editor.IStandaloneCodeEditor) => void;
   /** @deprecated Ignored — extensions are CodeMirror-specific. */
@@ -74,6 +76,7 @@ export function CodeEditor({
   className,
   minHeight = '400px',
   fontSize = 'small',
+  language = 'yaml',
   onEditorReady,
 }: CodeEditorProps) {
   const editorRef = useRef<monacoType.editor.IStandaloneCodeEditor | null>(null);
@@ -254,7 +257,7 @@ export function CodeEditor({
     >
       <Editor
         height={minHeight}
-        defaultLanguage="yaml"
+        language={language}
         value={value}
         onChange={readOnly ? undefined : handleChange}
         onMount={handleMount}
