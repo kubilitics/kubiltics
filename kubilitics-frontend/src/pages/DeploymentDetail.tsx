@@ -549,10 +549,8 @@ export default function DeploymentDetail() {
         const matchLabels = deployment.spec?.selector?.matchLabels ?? {};
         const deploymentPods = (podsList?.items ?? []).filter((pod) => {
           const labels = pod.metadata?.labels ?? {};
-          if (!Object.entries(matchLabels).every(([k, v]) => labels[k] === v)) return false;
-          const owners = pod.metadata?.ownerReferences;
-          if (!owners || owners.length === 0) return false;
-          return owners.some((ref) => ref.kind === 'ReplicaSet' && ref.name?.startsWith(deploymentName + '-'));
+          return Object.keys(matchLabels).length > 0 &&
+            Object.entries(matchLabels).every(([k, v]) => labels[k] === v);
         });
         const desired = deployment.spec?.replicas || 0;
         const ready = deployment.status?.readyReplicas || 0;
@@ -739,10 +737,8 @@ export default function DeploymentDetail() {
         const matchLabels = deployment.spec?.selector?.matchLabels ?? {};
         const deploymentPods = (podsList?.items ?? []).filter((pod) => {
           const labels = pod.metadata?.labels ?? {};
-          if (!Object.entries(matchLabels).every(([k, v]) => labels[k] === v)) return false;
-          const owners = pod.metadata?.ownerReferences;
-          if (!owners || owners.length === 0) return false;
-          return owners.some((ref) => ref.kind === 'ReplicaSet' && ref.name?.startsWith(deploymentName + '-'));
+          return Object.keys(matchLabels).length > 0 &&
+            Object.entries(matchLabels).every(([k, v]) => labels[k] === v);
         });
         const templateContainers = (deployment.spec?.template?.spec?.containers || []).map(c => c.name);
 
@@ -766,10 +762,8 @@ export default function DeploymentDetail() {
         const matchLabels = deployment.spec?.selector?.matchLabels ?? {};
         const deploymentPods = (podsList?.items ?? []).filter((pod) => {
           const labels = pod.metadata?.labels ?? {};
-          if (!Object.entries(matchLabels).every(([k, v]) => labels[k] === v)) return false;
-          const owners = pod.metadata?.ownerReferences;
-          if (!owners || owners.length === 0) return false;
-          return owners.some((ref) => ref.kind === 'ReplicaSet' && ref.name?.startsWith(deploymentName + '-'));
+          return Object.keys(matchLabels).length > 0 &&
+            Object.entries(matchLabels).every(([k, v]) => labels[k] === v);
         });
 
         const podTargets: PodTarget[] = deploymentPods.map((pod) => {
@@ -803,10 +797,8 @@ export default function DeploymentDetail() {
         const matchLabels = deployment.spec?.selector?.matchLabels ?? {};
         const deploymentPods = (podsList?.items ?? []).filter((pod) => {
           const labels = pod.metadata?.labels ?? {};
-          if (!Object.entries(matchLabels).every(([k, v]) => labels[k] === v)) return false;
-          const owners = pod.metadata?.ownerReferences;
-          if (!owners || owners.length === 0) return false;
-          return owners.some((ref) => ref.kind === 'ReplicaSet' && ref.name?.startsWith(deploymentName + '-'));
+          return Object.keys(matchLabels).length > 0 &&
+            Object.entries(matchLabels).every(([k, v]) => labels[k] === v);
         });
         const containers: ContainerInfo[] = (deployment.spec?.template?.spec?.containers || []).map(c => ({
           name: c.name, image: c.image, ready: true, restartCount: 0, state: 'running', ports: c.ports || [], resources: c.resources || {},
