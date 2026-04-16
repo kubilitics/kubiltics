@@ -96,12 +96,16 @@ export function diagnosePod(pod: PodLike, events: WarningEvent[] = []): Diagnosi
 
     if (waitingReason) reasons.push(lookupReason(waitingReason));
     // Include lastTerminated reason when it adds diagnostic value — specifically
-    // when the current waiting reason is a known K8s reason (not unknown/novel).
-    // This surfaces OOMKilled as the root cause of a CrashLoopBackOff, but avoids
-    // inflating severity when the waiting reason itself is unrecognised.
+    // when the container is NOT currently running-and-ready. A running+ready
+    // container with a past crash in lastState is healthy now; surfacing the old
+    // termination reason as a live severity signal is wrong (it marks a recovered
+    // pod as "broken" or "unknown" when the user can see READY 1/1). The
+    // lastTerminated info is still shown in the container-details card for
+    // debugging, just not used to drive severity.
+    const isRunningAndReady = !!cs.state?.running && cs.ready;
     const lastTermReason = cs.lastState?.terminated?.reason;
     const waitingIsKnown = waitingReason ? waitingReason in REASONS : true;
-    if (lastTermReason && (!hasCurrentStateReason || waitingIsKnown) && lastTermReason !== waitingReason) {
+    if (lastTermReason && !isRunningAndReady && (!hasCurrentStateReason || waitingIsKnown) && lastTermReason !== waitingReason) {
       reasons.push(lookupReason(lastTermReason));
     }
     if (termReason && cs.state?.terminated?.exitCode !== 0) reasons.push(lookupReason(termReason));

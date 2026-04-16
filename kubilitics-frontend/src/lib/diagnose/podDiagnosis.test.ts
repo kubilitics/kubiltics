@@ -113,6 +113,73 @@ describe('diagnosePod', () => {
     expect(d.namespace).toBe('default');
   });
 
+  it('running+ready pod with past crashes is healthy, not broken', () => {
+    // kube-scheduler pattern: currently running and ready (1/1) but has 9
+    // restarts and lastState.terminated.reason='Error'. The old code marked
+    // this "broken" because it read lastState as a live signal. A recovered
+    // pod should be healthy.
+    const pod = {
+      kind: 'Pod',
+      metadata: { name: 'scheduler', namespace: 'kube-system', uid: 'uid-1', resourceVersion: '1' },
+      status: {
+        phase: 'Running',
+        containerStatuses: [{
+          name: 'scheduler',
+          ready: true,
+          restartCount: 9,
+          state: { running: { startedAt: '2026-04-10T00:00:00Z' } },
+          lastState: {
+            terminated: { reason: 'Error', exitCode: 1, finishedAt: '2026-04-09T23:59:00Z' },
+          },
+        }],
+        conditions: [
+          { type: 'Ready', status: 'True' },
+          { type: 'ContainersReady', status: 'True' },
+        ],
+      },
+    };
+    const d = diagnosePod(pod);
+    expect(d.severity).toBe('healthy');
+    expect(d.reasons).toHaveLength(0);
+  });
+
+  it('running+ready pod with lastState.terminated.reason=Unknown is healthy', () => {
+    // OTel ad pod pattern: running 1/1 with 4 restarts, lastState Unknown
+    // exit 255. Should be healthy, not "unknown".
+    const pod = {
+      kind: 'Pod',
+      metadata: { name: 'ad', namespace: 'otel-demo', uid: 'uid-2', resourceVersion: '1' },
+      status: {
+        phase: 'Running',
+        containerStatuses: [{
+          name: 'ad',
+          ready: true,
+          restartCount: 4,
+          state: { running: { startedAt: '2026-04-13T17:28:02Z' } },
+          lastState: {
+            terminated: { reason: 'Unknown', exitCode: 255, finishedAt: '2026-04-13T17:27:57Z' },
+          },
+        }],
+        conditions: [
+          { type: 'Ready', status: 'True' },
+          { type: 'ContainersReady', status: 'True' },
+        ],
+      },
+    };
+    const d = diagnosePod(pod);
+    expect(d.severity).toBe('healthy');
+    expect(d.reasons).toHaveLength(0);
+  });
+
+  it('waiting pod with lastState.terminated still surfaces the root cause', () => {
+    // CrashLoopBackOff + OOMKilled in lastState — this SHOULD still surface
+    // OOMKilled because the container is NOT running+ready. Regression guard.
+    const d = diagnosePod(oomKilledPod());
+    expect(d.severity).toBe('broken');
+    const codes = d.reasons.map(r => r.code);
+    expect(codes).toContain('OOMKilled');
+  });
+
   it('conditions are copied into the result', () => {
     const d = diagnosePod(crashLoopPod());
     expect(d.conditions.length).toBeGreaterThan(0);
