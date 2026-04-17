@@ -92,3 +92,27 @@ func TestHashAndVerifyRefresh(t *testing.T) {
 		t.Fatal("verify succeeded for wrong token")
 	}
 }
+
+func TestVerifyRefresh_EmptyToken(t *testing.T) {
+	tok, _ := NewRefreshToken()
+	h, _ := HashRefreshToken(tok)
+	if VerifyRefreshToken("", h) {
+		t.Fatal("empty token should not verify")
+	}
+}
+
+func TestVerifyRefresh_MalformedEncoded(t *testing.T) {
+	tok, _ := NewRefreshToken()
+	cases := []string{
+		"",
+		"onlytwoparts",
+		"argon2id$notHex$alsoNotHex",
+		"bcrypt$00$00",
+		"argon2id$00$00", // wrong byte length
+	}
+	for _, e := range cases {
+		if VerifyRefreshToken(tok, e) {
+			t.Fatalf("expected false for %q", e)
+		}
+	}
+}

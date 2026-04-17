@@ -5,7 +5,6 @@ import (
 	"crypto/subtle"
 	"encoding/base64"
 	"encoding/hex"
-	"errors"
 	"fmt"
 	"strings"
 
@@ -43,19 +42,11 @@ func HashRefreshToken(tok string) (string, error) {
 
 func VerifyRefreshToken(tok, encoded string) bool {
 	parts := strings.Split(encoded, "$")
-	if len(parts) != 3 || parts[0] != "argon2id" {
-		return false
-	}
+	if len(parts) != 3 || parts[0] != "argon2id" { return false }
 	salt, err := hex.DecodeString(parts[1])
-	if err != nil {
-		return false
-	}
+	if err != nil || len(salt) != saltLen { return false }
 	want, err := hex.DecodeString(parts[2])
-	if err != nil {
-		return false
-	}
+	if err != nil || len(want) != argonKeyLen { return false }
 	got := argon2.IDKey([]byte(tok), salt, argonTime, argonMemory, argonThreads, argonKeyLen)
 	return subtle.ConstantTimeCompare(got, want) == 1
 }
-
-var ErrRefreshFormat = errors.New("invalid refresh token format")
