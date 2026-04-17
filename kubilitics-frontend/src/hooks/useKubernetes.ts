@@ -249,10 +249,18 @@ export function useK8sResourceList<T extends KubernetesResource>(
           ...(labelSelector ? { labelSelector } : {}),
         };
         if (!isClusterScoped) {
-          if (projectNamespacesParam !== undefined) {
+          // When the caller explicitly passes a namespace (detail pages,
+          // resource-scoped queries), honor it — do NOT override with the
+          // active project's namespace list. Project filtering only applies
+          // when namespace is undefined (list/overview pages). Without this,
+          // a persisted activeProjectId whose namespaces don't include the
+          // detail page's namespace silently returns empty pod/event lists.
+          if (namespace) {
+            listParams.namespace = namespace;
+          } else if (projectNamespacesParam !== undefined) {
             listParams.namespaces = projectNamespacesParam;
-          } else if (namespace || projectNamespaceParam) {
-            listParams.namespace = namespace || projectNamespaceParam;
+          } else if (projectNamespaceParam) {
+            listParams.namespace = projectNamespaceParam;
           }
         }
         const r = await listResources(backendBaseUrl, clusterId!, resourceType, listParams);
@@ -334,10 +342,12 @@ export function useK8sResourceListPaginated<T extends KubernetesResource>(
       ? () => {
         const listParams: Parameters<typeof listResources>[3] = { limit, ...(continueToken ? { continue: continueToken } : {}) };
         if (!isClusterScoped) {
-          if (projectNamespacesParam !== undefined) {
+          if (namespace) {
+            listParams.namespace = namespace;
+          } else if (projectNamespacesParam !== undefined) {
             listParams.namespaces = projectNamespacesParam;
-          } else if (namespace || projectNamespaceParam) {
-            listParams.namespace = namespace || projectNamespaceParam;
+          } else if (projectNamespaceParam) {
+            listParams.namespace = projectNamespaceParam;
           }
         }
         return listResources(backendBaseUrl, clusterId!, resourceType, listParams).then(

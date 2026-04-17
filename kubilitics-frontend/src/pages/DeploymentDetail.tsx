@@ -274,7 +274,10 @@ export default function DeploymentDetail() {
   });
   const rolloutRevisions = useMemo(() => rolloutHistoryQuery.data?.revisions ?? [], [rolloutHistoryQuery.data?.revisions]);
 
-  // Pods
+  // Pods — fetch all pods in this deployment's namespace. The core hook
+  // (useK8sResourceList) now correctly honors the explicit namespace param
+  // even when an active project is set, so pods for this namespace are always
+  // returned regardless of project scope.
   const { data: podsList } = useK8sResourceList<KubernetesResource & { metadata?: { name?: string; labels?: Record<string, string>; ownerReferences?: Array<{ kind?: string; name?: string }> }; status?: { phase?: string }; spec?: { nodeName?: string } }>(
     'pods',
     namespace ?? undefined,
