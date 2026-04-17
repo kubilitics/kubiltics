@@ -205,6 +205,10 @@ func (t *testClusterService) GetInformerManager(_ string) *k8s.InformerManager {
 	return nil
 }
 
+func (t *testClusterService) GetOrReconnectClient(_ context.Context, id string) (*k8s.Client, error) {
+	return t.GetClient(id)
+}
+
 var _ service.ClusterService = (*testClusterService)(nil)
 
 // ──────────────────────────────────────────────────────────────────────────────

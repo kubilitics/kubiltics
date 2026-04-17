@@ -178,6 +178,10 @@ func (m *mockClusterService) GetInformerManager(_ string) *k8s.InformerManager {
 	return nil
 }
 
+func (m *mockClusterService) GetOrReconnectClient(_ context.Context, id string) (*k8s.Client, error) {
+	return m.GetClient(id)
+}
+
 // makeMockClientWithCounts returns a k8s.Client backed by fakes with the given node and namespace counts.
 // Used by summary/overview tests where the handler builds counts from the client.
 func makeMockClientWithCounts(nodeCount, namespaceCount int) *k8s.Client {

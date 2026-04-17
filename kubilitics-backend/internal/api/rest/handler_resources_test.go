@@ -97,6 +97,10 @@ func (m *mockClusterServiceWithClient) GetInformerManager(_ string) *k8s.Informe
 	return nil
 }
 
+func (m *mockClusterServiceWithClient) GetOrReconnectClient(_ context.Context, id string) (*k8s.Client, error) {
+	return m.GetClient(id)
+}
+
 func TestHandler_ListResources_Success(t *testing.T) {
 	// Create fake Kubernetes clientset with test pods
 	pod := &corev1.Pod{
