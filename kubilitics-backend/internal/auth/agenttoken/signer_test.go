@@ -72,3 +72,23 @@ func TestVerifyBootstrap_RejectsAccessToken(t *testing.T) {
 		t.Fatal("expected wrong token type error")
 	}
 }
+
+func TestNewRefreshTokenFormat(t *testing.T) {
+	tok, err := NewRefreshToken()
+	if err != nil { t.Fatal(err) }
+	if len(tok) < 40 || tok[:8] != "rk_live_" {
+		t.Fatalf("unexpected format: %s", tok)
+	}
+}
+
+func TestHashAndVerifyRefresh(t *testing.T) {
+	tok, _ := NewRefreshToken()
+	h, err := HashRefreshToken(tok)
+	if err != nil { t.Fatal(err) }
+	if !VerifyRefreshToken(tok, h) {
+		t.Fatal("verify failed for correct token")
+	}
+	if VerifyRefreshToken("rk_live_wrongtoken_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx", h) {
+		t.Fatal("verify succeeded for wrong token")
+	}
+}
