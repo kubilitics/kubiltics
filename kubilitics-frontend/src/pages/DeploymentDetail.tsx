@@ -51,7 +51,7 @@ import {
   type PodTarget,
 } from '@/components/resources';
 import { PodTerminal } from '@/components/resources/PodTerminal';
-import { useK8sResourceList, usePatchK8sResource, type KubernetesResource } from '@/hooks/useKubernetes';
+import { useK8sResource, useK8sResourceList, usePatchK8sResource, type KubernetesResource } from '@/hooks/useKubernetes';
 import { useMutationPolling } from '@/hooks/useMutationPolling';
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
 import { useConnectionStatus } from '@/hooks/useConnectionStatus';
@@ -274,14 +274,25 @@ export default function DeploymentDetail() {
   });
   const rolloutRevisions = useMemo(() => rolloutHistoryQuery.data?.revisions ?? [], [rolloutHistoryQuery.data?.revisions]);
 
-  // Pods — fetch all pods in this deployment's namespace. The core hook
-  // (useK8sResourceList) now correctly honors the explicit namespace param
-  // even when an active project is set, so pods for this namespace are always
-  // returned regardless of project scope.
+  // Fetch the deployment resource at this level so we can derive the label
+  // selector for the pods query. useK8sResource shares the same React Query
+  // cache key as GenericResourceDetail's internal fetch — zero extra network call.
+  const { data: deploymentResource } = useK8sResource<DeploymentResource>(
+    'deployments', name ?? '', namespace, { enabled: !!name },
+  );
+  const deploymentMatchLabels = deploymentResource?.spec?.selector?.matchLabels ?? {};
+  const deploymentLabelSelector = Object.entries(deploymentMatchLabels).map(([k, v]) => `${k}=${v}`).join(',');
+
+  // Pods — query with the deployment's label selector at the API level.
+  // This is the same pattern ReplicaSetDetail uses and is proven reliable
+  // in both dev and release builds. The alternative (fetch ALL pods in the
+  // namespace then filter client-side) fails in release builds because
+  // the broad query returns empty before the deployment's matchLabels are
+  // available, or gets scoped by a persisted project namespace filter.
   const { data: podsList } = useK8sResourceList<KubernetesResource & { metadata?: { name?: string; labels?: Record<string, string>; ownerReferences?: Array<{ kind?: string; name?: string }> }; status?: { phase?: string }; spec?: { nodeName?: string } }>(
     'pods',
     namespace ?? undefined,
-    { enabled: !!namespace, refetchInterval: fastPollInterval, staleTime: isFastPolling ? 1000 : 30000 }
+    { enabled: !!namespace && !!deploymentLabelSelector, labelSelector: deploymentLabelSelector, refetchInterval: fastPollInterval, staleTime: isFastPolling ? 1000 : 30000 }
   );
 
   // HPA / VPA
