@@ -183,6 +183,62 @@ func (r *AgentRepo) TouchAgentCredential(ctx context.Context, id string, ts time
 	return err
 }
 
+// FindActiveCredentialByToken scans all non-revoked, non-expired credentials and
+// returns the (credential, cluster) pair whose stored hash verifies against the
+// supplied refresh token. Linear scan is acceptable for typical fleets (one
+// active credential per cluster). Returns ErrAgentNotFound if none match.
+func (r *AgentRepo) FindActiveCredentialByToken(
+	ctx context.Context,
+	token string,
+	verify func(tok, hash string) bool,
+) (*models.AgentCredential, *models.AgentCluster, error) {
+	rows, err := r.db.QueryContext(ctx, `
+SELECT ac.id, ac.cluster_id, ac.refresh_token_hash, ac.issued_at, ac.expires_at,
+       ac.last_used_at, ac.revoked_at, ac.credential_epoch,
+       c.id, c.organization_id, c.cluster_uid, c.name, c.k8s_version, c.agent_version,
+       c.node_count, c.status, c.credential_epoch, c.registered_at, c.last_heartbeat_at
+FROM agent_credentials ac
+JOIN agent_clusters c ON c.id = ac.cluster_id
+WHERE ac.revoked_at IS NULL AND ac.expires_at > CURRENT_TIMESTAMP`)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var cred models.AgentCredential
+		var cluster models.AgentCluster
+		var lastUsed, revoked, lastHB sql.NullTime
+		if err := rows.Scan(
+			&cred.ID, &cred.ClusterID, &cred.RefreshTokenHash, &cred.IssuedAt,
+			&cred.ExpiresAt, &lastUsed, &revoked, &cred.CredentialEpoch,
+			&cluster.ID, &cluster.OrganizationID, &cluster.ClusterUID, &cluster.Name,
+			&cluster.K8sVersion, &cluster.AgentVersion, &cluster.NodeCount, &cluster.Status,
+			&cluster.CredentialEpoch, &cluster.RegisteredAt, &lastHB,
+		); err != nil {
+			return nil, nil, err
+		}
+		if lastUsed.Valid {
+			t := lastUsed.Time
+			cred.LastUsedAt = &t
+		}
+		if revoked.Valid {
+			t := revoked.Time
+			cred.RevokedAt = &t
+		}
+		if lastHB.Valid {
+			t := lastHB.Time
+			cluster.LastHeartbeatAt = &t
+		}
+		if verify(token, cred.RefreshTokenHash) {
+			return &cred, &cluster, nil
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return nil, nil, err
+	}
+	return nil, nil, ErrAgentNotFound
+}
+
 // scanAgentCluster scans a single row into an AgentCluster.
 func scanAgentCluster(row *sql.Row) (*models.AgentCluster, error) {
 	var c models.AgentCluster
