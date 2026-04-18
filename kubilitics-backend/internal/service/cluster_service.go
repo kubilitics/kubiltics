@@ -669,6 +669,31 @@ func (s *clusterService) HasMetalLB(ctx context.Context, id string) (bool, error
 	return true, nil
 }
 
+// buildClientForCluster returns a fresh K8s client for the given cluster row.
+// Three modes:
+//   - Source == "in-cluster": use rest.InClusterConfig (k8s.NewClient with empty path).
+//     This handles the seamless `helm install kubilitics` flow where the hub auto-
+//     registers itself with no kubeconfig.
+//   - KubeconfigPath != "": load that kubeconfig file with the stored Context.
+//   - KubeconfigPath == "" (legacy): caller decides fallback (e.g. ~/.kube/config).
+//
+// Single source of truth so all three connect/reconnect/load paths stay in lockstep.
+func (s *clusterService) buildClientForCluster(c *models.Cluster) (*k8s.Client, error) {
+	if c.Source == "in-cluster" {
+		if s.clientFactory != nil {
+			return s.clientFactory("", "")
+		}
+		return k8s.NewClient("", "")
+	}
+	if c.KubeconfigPath == "" {
+		return nil, fmt.Errorf("cluster %s has no stored kubeconfig path — reconnect or remove it", c.ID)
+	}
+	if s.clientFactory != nil {
+		return s.clientFactory(c.KubeconfigPath, c.Context)
+	}
+	return k8s.NewClient(c.KubeconfigPath, c.Context)
+}
+
 // loadStartupTimeout is the per-cluster timeout for connection tests during startup.
 // Keep it short so the backend starts promptly even when clusters are offline or require
 // slow exec-based auth (aws eks get-token, gke-gcloud-auth-plugin, etc.).
@@ -684,19 +709,14 @@ func (s *clusterService) LoadClustersFromRepo(ctx context.Context) error {
 		return err
 	}
 	for _, c := range clusters {
-		if c.KubeconfigPath == "" {
+		// in-cluster rows have empty KubeconfigPath but build a client via
+		// rest.InClusterConfig — handled inside buildClientForCluster.
+		if c.KubeconfigPath == "" && c.Source != "in-cluster" {
 			c.Status = "disconnected"
 			_ = s.repo.Update(ctx, c)
 			continue
 		}
-		// New client for each cluster
-		var client *k8s.Client
-		var clientErr error
-		if s.clientFactory != nil {
-			client, clientErr = s.clientFactory(c.KubeconfigPath, c.Context)
-		} else {
-			client, clientErr = k8s.NewClient(c.KubeconfigPath, c.Context)
-		}
+		client, clientErr := s.buildClientForCluster(c)
 
 		if clientErr != nil {
 			fmt.Printf("[LoadClustersFromRepo] Skipping cluster %s (%s): failed to create client: %v\n", c.ID, c.Context, clientErr)
@@ -757,6 +777,12 @@ func (s *clusterService) LoadClustersFromRepo(ctx context.Context) error {
 // so clusters like docker-desktop work when kubectl works on the same machine.
 // Returns true if a client was created and stored.
 func (s *clusterService) tryReconnectCluster(ctx context.Context, c *models.Cluster) bool {
+	// In-cluster rows take the dedicated InClusterConfig path; no kubeconfig file ever.
+	if c.Source == "in-cluster" {
+		client, err := s.buildClientForCluster(c)
+		if err != nil { return false }
+		return s.applyAndStoreClient(ctx, c, client)
+	}
 	path := c.KubeconfigPath
 	if path != "" {
 		if _, err := os.Stat(path); err != nil {
@@ -776,6 +802,13 @@ func (s *clusterService) tryReconnectCluster(ctx context.Context, c *models.Clus
 	if err != nil {
 		return false
 	}
+	return s.applyAndStoreClient(ctx, c, client)
+}
+
+// applyAndStoreClient applies the configured timeout + rate limiter to a freshly
+// built client, runs a connection test, and stores it in the in-memory client map.
+// Returns false if the connection test fails — the cluster row is left unchanged.
+func (s *clusterService) applyAndStoreClient(ctx context.Context, c *models.Cluster, client *k8s.Client) bool {
 	if s.k8sTimeout > 0 {
 		client.SetTimeout(s.k8sTimeout)
 	}
@@ -807,6 +840,26 @@ func (s *clusterService) ReconnectCluster(ctx context.Context, id string) (*mode
 	s.mu.RUnlock()
 	if existed {
 		existing.ResetCircuitBreaker()
+	}
+
+	// In-cluster rows go through buildClientForCluster (rest.InClusterConfig).
+	// They have no kubeconfig file by design and must skip path validation entirely.
+	if c.Source == "in-cluster" {
+		client, err := s.buildClientForCluster(c)
+		if err != nil {
+			c.Status = "error"
+			_ = s.repo.Update(ctx, c)
+			return c, fmt.Errorf("in-cluster reconnect failed: %w", err)
+		}
+		if !s.applyAndStoreClient(ctx, c, client) {
+			c.Status = "error"
+			_ = s.repo.Update(ctx, c)
+			return c, fmt.Errorf("in-cluster connection test failed for %s", id)
+		}
+		c.Status = "connected"
+		c.LastConnected = time.Now()
+		_ = s.repo.Update(ctx, c)
+		return c, nil
 	}
 
 	// Build a fresh client (re-reads kubeconfig, fresh TLS handshake, new circuit breaker).
