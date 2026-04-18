@@ -19,8 +19,12 @@ describe('backendConfigStore', () => {
     });
   });
 
-  it('isBackendConfigured returns false when URL is empty', () => {
-    // Mock window.location to be non-local so it doesn't auto-configure to true in dev
+  it('isBackendConfigured returns true in any browser context (empty URL = same-origin)', () => {
+    // In-cluster Helm install serves the frontend via nginx that proxies /api/*
+    // to the backend Service. The frontend's "backend URL" is therefore empty
+    // (same-origin) and that IS valid configuration. Without this contract the
+    // production browser routes every user to /connect because syncClusters
+    // refuses to fire when "backend not configured".
     Object.defineProperty(window, 'location', {
       writable: true,
       value: {
@@ -30,8 +34,7 @@ describe('backendConfigStore', () => {
     });
 
     useBackendConfigStore.getState().setBackendBaseUrl('');
-    // Ensure we are testing the non-auto-configured path
-    expect(useBackendConfigStore.getState().isBackendConfigured()).toBe(false);
+    expect(useBackendConfigStore.getState().isBackendConfigured()).toBe(true);
   });
 
   it('isBackendConfigured returns true when URL is set', () => {

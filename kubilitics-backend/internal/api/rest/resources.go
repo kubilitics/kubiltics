@@ -437,7 +437,31 @@ func (h *Handler) ListResources(w http.ResponseWriter, r *http.Request) {
 			}
 			list = merged
 		} else {
+			// Single-namespace direct-K8s path: the K8s API only sorts by name. For
+			// any non-name sort key we must over-fetch (raise opts.Limit so the
+			// API gives us the full set within the safety cap), sort the response,
+			// then truncate to the page the user actually asked for. Without this,
+			// the API returns the alphabetically-first 10 items, we sort those 10,
+			// and the user never sees the "real" top 10 (e.g. the highest-restart
+			// pod stays on a later page). When sortBy is empty or 'name', the API
+			// already does the right thing — leave the limit alone.
+			origLimit := opts.Limit
+			// The K8s API returns items in resource-version order (no real sort).
+			// Any request that picked a sort key — even 'name' descending — needs
+			// us to over-fetch and sort locally; otherwise the API gives us a
+			// page-sized slice in arbitrary order and we sort that slice, which
+			// makes "top by X" never see items past page 1.
+			needsLocalSort := canSortUnstructured(sortBy) && (sortBy != "" || sortOrder != "")
+			if needsLocalSort {
+				opts.Limit = maxLimitAPI // 500 — bounded; large clusters hit the cache anyway
+			}
 			list, err = client.ListResources(r.Context(), kind, namespace, opts)
+			if err == nil && list != nil && len(list.Items) > 1 && needsLocalSort {
+				sortUnstructuredList(list.Items, sortBy, sortOrder)
+				if origLimit > 0 && int64(len(list.Items)) > origLimit {
+					list.Items = list.Items[:origLimit]
+				}
+			}
 		}
 		if err != nil {
 			// CRD/API group not installed → return empty list (Headlamp/Lens pattern)
