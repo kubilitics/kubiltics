@@ -14,6 +14,13 @@ import (
 	"github.com/kubilitics/kubilitics-backend/internal/models"
 )
 
+func decodeErrCode(t *testing.T, body []byte) string {
+	t.Helper()
+	var resp struct{ Code string `json:"code"` }
+	if err := json.Unmarshal(body, &resp); err != nil { t.Fatalf("decode: %v", err) }
+	return resp.Code
+}
+
 func TestRefresh_HappyPath(t *testing.T) {
 	repo := newTestAgentRepo(t)
 	signer := agenttoken.NewSigner([]byte("test-secret-min-32-bytes-aaaaaaaa"))
@@ -60,6 +67,9 @@ func TestRefresh_Unknown(t *testing.T) {
 	if rr.Code != 401 {
 		t.Fatalf("got %d", rr.Code)
 	}
+	if c := decodeErrCode(t, rr.Body.Bytes()); c != "refresh_invalid" {
+		t.Fatalf("expected refresh_invalid, got %q", c)
+	}
 }
 
 func TestRefresh_EpochMismatch(t *testing.T) {
@@ -89,5 +99,8 @@ func TestRefresh_EpochMismatch(t *testing.T) {
 	h.ServeHTTP(rr, httptest.NewRequest("POST", "/x", bytes.NewReader(body)))
 	if rr.Code != 401 {
 		t.Fatalf("expected 401, got %d body=%s", rr.Code, rr.Body.String())
+	}
+	if c := decodeErrCode(t, rr.Body.Bytes()); c != "epoch_mismatch" {
+		t.Fatalf("expected epoch_mismatch, got %q", c)
 	}
 }

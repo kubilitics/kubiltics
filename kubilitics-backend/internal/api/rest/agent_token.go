@@ -43,6 +43,10 @@ func (h *AgentTokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		writeAgentErr(w, 500, "db_error", err.Error())
 		return
 	}
+	// Defense-in-depth: FindActiveCredentialByToken pre-filters expired
+	// credentials in SQL (expires_at > CURRENT_TIMESTAMP), so under normal
+	// operation this branch is unreachable. The check stays as a guard in
+	// case the SQL filter is ever relaxed for analytics.
 	if cred.ExpiresAt.Before(time.Now()) {
 		writeAgentErr(w, 401, "refresh_expired", "refresh expired")
 		return
