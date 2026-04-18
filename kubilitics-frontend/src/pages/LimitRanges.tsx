@@ -174,7 +174,13 @@ export default function LimitRanges() {
  { columnId: 'defaultMemory', getValue: (i) => i.defaultMemory, sortable: true, filterable: false },
  { columnId: 'maxCpu', getValue: (i) => i.maxCpu, sortable: true, filterable: false },
  { columnId: 'maxMemory', getValue: (i) => i.maxMemory, sortable: true, filterable: false },
- { columnId: 'age', getValue: (i) => i.age, sortable: true, filterable: false },
+ {
+   columnId: 'age',
+   getValue: (i) => i.age,
+   sortValue: (i) => -(i.creationTimestamp ? Date.parse(i.creationTimestamp) : 0),
+   sortable: true,
+   filterable: false,
+ },
  ], []);
 
  const { filteredAndSortedItems: filteredItems, distinctValuesByColumn, valueCountsByColumn, columnFilters, setColumnFilter, sortKey, sortOrder, setSort, clearAllFilters, hasActiveFilters } = useTableFiltersAndSort(itemsAfterNs, { columns: tableConfig, defaultSortKey: 'name', defaultSortOrder: 'asc' });

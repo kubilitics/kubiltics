@@ -205,7 +205,13 @@ export default function ResourceQuotas() {
  { columnId: 'services', getValue: (i) => i.services, sortable: true, filterable: false },
  { columnId: 'pvcs', getValue: (i) => i.pvcs, sortable: true, filterable: false },
  { columnId: 'overallUsage', getValue: (i) => i.overallUsagePct ?? -1, sortable: true, filterable: false, compare: (a, b) => (a.overallUsagePct ?? -1) - (b.overallUsagePct ?? -1) },
- { columnId: 'age', getValue: (i) => i.age, sortable: true, filterable: false },
+ {
+   columnId: 'age',
+   getValue: (i) => i.age,
+   sortValue: (i) => -(i.creationTimestamp ? Date.parse(i.creationTimestamp) : 0),
+   sortable: true,
+   filterable: false,
+ },
  ], []);
 
  const { filteredAndSortedItems: filteredItems, distinctValuesByColumn, valueCountsByColumn, columnFilters, setColumnFilter, sortKey, sortOrder, setSort, clearAllFilters, hasActiveFilters } = useTableFiltersAndSort(itemsAfterNs, { columns: tableConfig, defaultSortKey: 'name', defaultSortOrder: 'asc' });

@@ -152,7 +152,13 @@ export default function PodSecurityPolicies() {
  { columnId: 'hostPID', getValue: (i) => String(i.hostPID), sortable: true, filterable: false },
  { columnId: 'runAsUser', getValue: (i) => i.runAsUser, sortable: true, filterable: true },
  { columnId: 'hasHostAccess', getValue: (i) => (i.hasHostAccess ? 'Yes' : 'No'), sortable: false, filterable: true },
- { columnId: 'age', getValue: (i) => i.age, sortable: true, filterable: false },
+ {
+   columnId: 'age',
+   getValue: (i) => i.age,
+   sortValue: (i) => -(i.creationTimestamp ? Date.parse(i.creationTimestamp) : 0),
+   sortable: true,
+   filterable: false,
+ },
  ], []);
 
  const { filteredAndSortedItems: filteredItems, distinctValuesByColumn, valueCountsByColumn, columnFilters, setColumnFilter, sortKey, sortOrder, setSort, clearAllFilters, hasActiveFilters } = useTableFiltersAndSort(itemsAfterSearch, { columns: pspColumnConfig, defaultSortKey: 'name', defaultSortOrder: 'asc' });

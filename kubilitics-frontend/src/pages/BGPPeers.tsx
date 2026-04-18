@@ -107,7 +107,13 @@ export default function BGPPeers() {
  { columnId: 'peerAddress', getValue: (i) => i.peerAddress, sortable: true, filterable: false },
  { columnId: 'peerASN', getValue: (i) => i.peerASN, sortable: true, filterable: false },
  { columnId: 'myASN', getValue: (i) => i.myASN, sortable: true, filterable: false },
- { columnId: 'age', getValue: (i) => i.age, sortable: true, filterable: false },
+ {
+   columnId: 'age',
+   getValue: (i) => i.age,
+   sortValue: (i) => -(i.creationTimestamp ? Date.parse(i.creationTimestamp) : 0),
+   sortable: true,
+   filterable: false,
+ },
  ],
  []
  );

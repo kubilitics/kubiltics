@@ -209,7 +209,13 @@ export default function ClusterRoles() {
  { columnId: 'nonResourceURLs', getValue: (i) => i.nonResourceURLsCount, sortable: true, filterable: false, compare: (a, b) => a.nonResourceURLsCount - b.nonResourceURLsCount },
  { columnId: 'aggregation', getValue: (i) => i.aggregation, sortable: true, filterable: false },
  { columnId: 'bindings', getValue: (i) => i.bindings, sortable: true, filterable: false },
- { columnId: 'age', getValue: (i) => i.age, sortable: true, filterable: false },
+ {
+   columnId: 'age',
+   getValue: (i) => i.age,
+   sortValue: (i) => -(i.creationTimestamp ? Date.parse(i.creationTimestamp) : 0),
+   sortable: true,
+   filterable: false,
+ },
  ], []);
 
  const { filteredAndSortedItems: filteredItems, distinctValuesByColumn, valueCountsByColumn, columnFilters, setColumnFilter, sortKey, sortOrder, setSort, clearAllFilters, hasActiveFilters } = useTableFiltersAndSort(items, { columns: tableConfig, defaultSortKey: 'name', defaultSortOrder: 'asc' });

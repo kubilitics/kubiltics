@@ -148,7 +148,13 @@ export default function MutatingWebhooks() {
  { columnId: 'sideEffects', getValue: (i) => i.sideEffects, sortable: true, filterable: true },
  { columnId: 'matchPolicy', getValue: (i) => i.matchPolicy, sortable: true, filterable: true },
  { columnId: 'hasMultipleWebhooks', getValue: (i) => (i.hasMultipleWebhooks ? 'Yes' : 'No'), sortable: false, filterable: true },
- { columnId: 'age', getValue: (i) => i.age, sortable: true, filterable: false },
+ {
+   columnId: 'age',
+   getValue: (i) => i.age,
+   sortValue: (i) => -(i.creationTimestamp ? Date.parse(i.creationTimestamp) : 0),
+   sortable: true,
+   filterable: false,
+ },
  ], []);
 
  const { filteredAndSortedItems: filteredItems, distinctValuesByColumn, valueCountsByColumn, columnFilters, setColumnFilter, sortKey, sortOrder, setSort, clearAllFilters, hasActiveFilters } = useTableFiltersAndSort(itemsAfterSearch, { columns: mwColumnConfig, defaultSortKey: 'name', defaultSortOrder: 'asc' });

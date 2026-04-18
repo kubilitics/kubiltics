@@ -260,7 +260,13 @@ export default function CronJobs() {
  { columnId: 'suspend', getValue: (c: CronJob) => c.suspend, sortable: true, filterable: false },
  { columnId: 'historyLimit', getValue: (c: CronJob) => c.historyLimit, sortable: true, filterable: false },
  { columnId: 'lastResult', getValue: (c: CronJob) => c.lastResult, sortable: true, filterable: false },
- { columnId: 'age', getValue: (c: CronJob) => c.age, sortable: true, filterable: false },
+ {
+   columnId: 'age',
+   getValue: (c) => c.age,
+   sortValue: (c) => -(c.creationTimestamp ? Date.parse(c.creationTimestamp) : 0),
+   sortable: true,
+   filterable: false,
+ },
  ] as ColumnConfig<CronJob>[],
  }), []);
 

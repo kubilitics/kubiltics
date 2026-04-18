@@ -119,7 +119,13 @@ export default function IPAddressPools() {
  { columnId: 'assigned', getValue: (i) => i.assigned, sortable: true, filterable: false },
  { columnId: 'hasAssigned', getValue: (i) => (i.assigned !== '—' && i.assigned !== '0' ? 'Yes' : 'No'), sortable: false, filterable: true },
  { columnId: 'available', getValue: (i) => i.available, sortable: true, filterable: false },
- { columnId: 'age', getValue: (i) => i.age, sortable: true, filterable: false },
+ {
+   columnId: 'age',
+   getValue: (i) => i.age,
+   sortValue: (i) => -(i.creationTimestamp ? Date.parse(i.creationTimestamp) : 0),
+   sortable: true,
+   filterable: false,
+ },
  ],
  []
  );

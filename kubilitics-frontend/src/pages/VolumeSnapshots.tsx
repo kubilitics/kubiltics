@@ -163,7 +163,13 @@ export default function VolumeSnapshots() {
  { columnId: 'snapshotClass', getValue: (i) => i.snapshotClass, sortable: true, filterable: false },
  { columnId: 'restoreSize', getValue: (i) => i.restoreSize, sortable: true, filterable: false },
  { columnId: 'creationTime', getValue: (i) => i.creationTime, sortable: true, filterable: false },
- { columnId: 'age', getValue: (i) => i.age, sortable: true, filterable: false },
+ {
+   columnId: 'age',
+   getValue: (i) => i.age,
+   sortValue: (i) => -(i.creationTimestamp ? Date.parse(i.creationTimestamp) : 0),
+   sortable: true,
+   filterable: false,
+ },
  ], []);
 
  const { filteredAndSortedItems: filteredItems, distinctValuesByColumn, valueCountsByColumn, columnFilters, setColumnFilter, sortKey, sortOrder, setSort, clearAllFilters, hasActiveFilters } = useTableFiltersAndSort(itemsAfterSearchAndNs, { columns: vsColumnConfig, defaultSortKey: 'name', defaultSortOrder: 'asc' });

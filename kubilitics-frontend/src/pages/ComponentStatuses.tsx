@@ -132,7 +132,13 @@ export default function ComponentStatuses() {
  { columnId: 'status', getValue: (i) => i.status, sortable: true, filterable: true },
  { columnId: 'message', getValue: (i) => i.message, sortable: true, filterable: false },
  { columnId: 'error', getValue: (i) => i.error, sortable: true, filterable: false },
- { columnId: 'age', getValue: (i) => i.age, sortable: true, filterable: false },
+ {
+   columnId: 'age',
+   getValue: (i) => i.age,
+   sortValue: (i) => -(i.creationTimestamp ? Date.parse(i.creationTimestamp) : 0),
+   sortable: true,
+   filterable: false,
+ },
  ], []);
 
  const { filteredAndSortedItems: filteredItems, distinctValuesByColumn, valueCountsByColumn, columnFilters, setColumnFilter, sortKey, sortOrder, setSort, clearAllFilters, hasActiveFilters } = useTableFiltersAndSort(itemsAfterSearch, { columns: csColumnConfig, defaultSortKey: 'name', defaultSortOrder: 'asc' });

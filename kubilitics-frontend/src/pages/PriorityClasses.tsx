@@ -144,7 +144,13 @@ export default function PriorityClasses() {
  { columnId: 'preemptionEnabled', getValue: (i) => (i.preemptionEnabled ? 'Yes' : 'No'), sortable: false, filterable: true },
  { columnId: 'podsUsing', getValue: (i) => i.podsUsing, sortable: true, filterable: false },
  { columnId: 'description', getValue: (i) => i.description, sortable: true, filterable: false },
- { columnId: 'age', getValue: (i) => i.age, sortable: true, filterable: false },
+ {
+   columnId: 'age',
+   getValue: (i) => i.age,
+   sortValue: (i) => -(i.creationTimestamp ? Date.parse(i.creationTimestamp) : 0),
+   sortable: true,
+   filterable: false,
+ },
  ], []);
 
  const { filteredAndSortedItems: filteredItems, distinctValuesByColumn, valueCountsByColumn, columnFilters, setColumnFilter, sortKey, sortOrder, setSort, clearAllFilters, hasActiveFilters } = useTableFiltersAndSort(items, { columns: tableConfig, defaultSortKey: 'name', defaultSortOrder: 'asc' });

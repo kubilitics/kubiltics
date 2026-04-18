@@ -297,7 +297,13 @@ export default function Services() {
  { columnId: 'sessionAffinity', getValue: (i) => i.sessionAffinity, sortable: true, filterable: true },
  { columnId: 'trafficPolicy', getValue: (i) => i.trafficPolicy, sortable: true, filterable: true },
  { columnId: 'hasUnhealthyEndpoints', getValue: () => 'No', sortable: false, filterable: true },
- { columnId: 'age', getValue: (i) => i.age, sortable: true, filterable: false },
+ {
+   columnId: 'age',
+   getValue: (i) => i.age,
+   sortValue: (i) => -(i.creationTimestamp ? Date.parse(i.creationTimestamp) : 0),
+   sortable: true,
+   filterable: false,
+ },
  ], []);
 
  const { filteredAndSortedItems: filteredServices, distinctValuesByColumn, valueCountsByColumn, columnFilters, setColumnFilter, sortKey, sortOrder, setSort, clearAllFilters, hasActiveFilters } = useTableFiltersAndSort(itemsAfterSearchAndNs, { columns: servicesTableConfig, defaultSortKey: 'name', defaultSortOrder: 'asc' });

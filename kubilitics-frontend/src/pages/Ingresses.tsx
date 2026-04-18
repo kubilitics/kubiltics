@@ -212,7 +212,13 @@ export default function Ingresses() {
  { columnId: 'tlsExpiring', getValue: () => 'No', sortable: false, filterable: true },
  { columnId: 'rulesCount', getValue: (i) => i.rulesCount, sortable: true, filterable: false },
  { columnId: 'defaultBackend', getValue: (i) => i.defaultBackend, sortable: true, filterable: false },
- { columnId: 'age', getValue: (i) => i.age, sortable: true, filterable: false },
+ {
+   columnId: 'age',
+   getValue: (i) => i.age,
+   sortValue: (i) => -(i.creationTimestamp ? Date.parse(i.creationTimestamp) : 0),
+   sortable: true,
+   filterable: false,
+ },
  ], []);
 
  const { filteredAndSortedItems: filteredIngresses, distinctValuesByColumn, valueCountsByColumn, columnFilters, setColumnFilter, sortKey, sortOrder, setSort, clearAllFilters, hasActiveFilters } = useTableFiltersAndSort(itemsAfterSearchAndNs, { columns: ingressesTableConfig, defaultSortKey: 'name', defaultSortOrder: 'asc' });

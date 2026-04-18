@@ -133,7 +133,13 @@ export default function ResourceSlices() {
  { columnId: 'driver', getValue: (i) => i.driver, sortable: true, filterable: true },
  { columnId: 'pool', getValue: (i) => i.pool, sortable: true, filterable: true },
  { columnId: 'capacity', getValue: (i) => i.capacity, sortable: true, filterable: false },
- { columnId: 'age', getValue: (i) => i.age, sortable: true, filterable: false },
+ {
+   columnId: 'age',
+   getValue: (i) => i.age,
+   sortValue: (i) => -(i.creationTimestamp ? Date.parse(i.creationTimestamp) : 0),
+   sortable: true,
+   filterable: false,
+ },
  ],
  []
  );

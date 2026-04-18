@@ -175,7 +175,13 @@ export default function ReplicationControllers() {
  { columnId: 'current', getValue: (i) => i.current, sortable: true, filterable: false },
  { columnId: 'available', getValue: (i) => i.available, sortable: true, filterable: false },
  { columnId: 'selector', getValue: (i) => i.selector, sortable: true, filterable: false },
- { columnId: 'age', getValue: (i) => i.age, sortable: true, filterable: false },
+ {
+   columnId: 'age',
+   getValue: (i) => i.age,
+   sortValue: (i) => -(i.creationTimestamp ? Date.parse(i.creationTimestamp) : 0),
+   sortable: true,
+   filterable: false,
+ },
  ], []);
 
  const { filteredAndSortedItems: filteredItems, distinctValuesByColumn, valueCountsByColumn, columnFilters, setColumnFilter, sortKey, sortOrder, setSort, clearAllFilters, hasActiveFilters } = useTableFiltersAndSort(itemsAfterSearchAndNs, { columns: rcColumnConfig, defaultSortKey: 'name', defaultSortOrder: 'asc' });

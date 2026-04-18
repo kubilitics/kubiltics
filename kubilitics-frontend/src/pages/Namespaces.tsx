@@ -211,7 +211,13 @@ export default function Namespaces() {
  { columnId: 'configmaps', getValue: (i) => i.configmaps, sortable: true, filterable: false },
  { columnId: 'secrets', getValue: (i) => i.secrets, sortable: true, filterable: false },
  { columnId: 'labels', getValue: (i) => Object.entries(i.labels).map(([k, v]) => `${k}=${v}`).join(', '), sortable: true, filterable: false },
- { columnId: 'age', getValue: (i) => i.age, sortable: true, filterable: false },
+ {
+   columnId: 'age',
+   getValue: (i) => i.age,
+   sortValue: (i) => -(i.creationTimestamp ? Date.parse(i.creationTimestamp) : 0),
+   sortable: true,
+   filterable: false,
+ },
  ], []);
 
  const { filteredAndSortedItems: filteredItems, distinctValuesByColumn, valueCountsByColumn, columnFilters, setColumnFilter, sortKey, sortOrder, setSort, clearAllFilters, hasActiveFilters } = useTableFiltersAndSort(namespaces, { columns: tableConfig, defaultSortKey: 'name', defaultSortOrder: 'asc' });

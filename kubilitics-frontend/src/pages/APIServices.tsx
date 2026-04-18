@@ -140,7 +140,13 @@ export default function APIServices() {
  { columnId: 'version', getValue: (i) => i.version, sortable: true, filterable: false },
  { columnId: 'status', getValue: (i) => i.status, sortable: true, filterable: true },
  { columnId: 'insecureSkipTLS', getValue: (i) => (i.insecureSkipTLS ? 'Yes' : 'No'), sortable: true, filterable: false },
- { columnId: 'age', getValue: (i) => i.age, sortable: true, filterable: false },
+ {
+   columnId: 'age',
+   getValue: (i) => i.age,
+   sortValue: (i) => -(i.creationTimestamp ? Date.parse(i.creationTimestamp) : 0),
+   sortable: true,
+   filterable: false,
+ },
  ],
  []
  );

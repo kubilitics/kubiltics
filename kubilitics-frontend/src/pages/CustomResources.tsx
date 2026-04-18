@@ -144,7 +144,13 @@ export default function CustomResources() {
  () => [
  { columnId: 'name', getValue: (i) => i.name, sortable: true, filterable: true },
  { columnId: 'namespace', getValue: (i) => i.namespace, sortable: true, filterable: true },
- { columnId: 'age', getValue: (i) => i.age, sortable: true, filterable: false },
+ {
+   columnId: 'age',
+   getValue: (i) => i.age,
+   sortValue: (i) => -(i.creationTimestamp ? Date.parse(i.creationTimestamp) : 0),
+   sortable: true,
+   filterable: false,
+ },
  ],
  []
  );

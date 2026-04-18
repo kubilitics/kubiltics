@@ -264,7 +264,13 @@ export default function ConfigMaps() {
  { columnId: 'immutable', getValue: (i) => (i.immutable ? 'Yes' : 'No'), sortable: true, filterable: true },
  { columnId: 'usage', getValue: (i) => (inUseKeys.has(`${i.namespace}/${i.name}`) ? 'In Use' : 'Unused'), sortable: false, filterable: true },
  { columnId: 'isLarge', getValue: (i) => (i.totalSizeBytes > 1024 * 1024 ? 'Yes' : 'No'), sortable: false, filterable: true },
- { columnId: 'age', getValue: (i) => i.age, sortable: true, filterable: false },
+ {
+   columnId: 'age',
+   getValue: (i) => i.age,
+   sortValue: (i) => -(i.creationTimestamp ? Date.parse(i.creationTimestamp) : 0),
+   sortable: true,
+   filterable: false,
+ },
  { columnId: 'lastModified', getValue: (i) => i.age, sortable: true, filterable: false },
  ],
  [inUseKeys]

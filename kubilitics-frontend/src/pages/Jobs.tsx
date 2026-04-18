@@ -242,7 +242,13 @@ export default function Jobs() {
  { columnId: 'owner', getValue: (j: Job) => j.owner, sortable: true, filterable: true },
  { columnId: 'cpu', getValue: (j: Job) => j.cpu, sortable: true, filterable: false },
  { columnId: 'memory', getValue: (j: Job) => j.memory, sortable: true, filterable: false },
- { columnId: 'age', getValue: (j: Job) => j.age, sortable: true, filterable: false },
+ {
+   columnId: 'age',
+   getValue: (j) => j.age,
+   sortValue: (j) => -(j.creationTimestamp ? Date.parse(j.creationTimestamp) : 0),
+   sortable: true,
+   filterable: false,
+ },
  ] as ColumnConfig<Job>[],
  };
  }, []);

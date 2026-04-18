@@ -172,7 +172,13 @@ export default function Endpoints() {
  { columnId: 'healthStatus', getValue: (e) => e.notReadyCount === 0 && e.readyCount > 0 ? 'Healthy' : e.notReadyCount > 0 && e.readyCount > 0 ? 'Degraded' : 'Empty', sortable: true, filterable: true },
  { columnId: 'readyCount', getValue: (e) => e.readyCount, sortable: true, filterable: false },
  { columnId: 'notReadyCount', getValue: (e) => e.notReadyCount, sortable: true, filterable: false },
- { columnId: 'age', getValue: (e) => e.age, sortable: true, filterable: false },
+ {
+   columnId: 'age',
+   getValue: (e) => e.age,
+   sortValue: (e) => -(e.creationTimestamp ? Date.parse(e.creationTimestamp) : 0),
+   sortable: true,
+   filterable: false,
+ },
  ], []);
 
  const { filteredAndSortedItems: filteredEndpoints, distinctValuesByColumn, valueCountsByColumn, columnFilters, setColumnFilter, sortKey, sortOrder, setSort, clearAllFilters, hasActiveFilters } = useTableFiltersAndSort(itemsAfterSearchAndNs, { columns: endpointsTableConfig, defaultSortKey: 'name', defaultSortOrder: 'asc' });

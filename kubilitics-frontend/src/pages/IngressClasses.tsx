@@ -151,7 +151,13 @@ export default function IngressClasses() {
  { columnId: 'hasIngresses', getValue: (i) => i.ingressesCount > 0 ? 'Yes' : 'No', sortable: true, filterable: true },
  { columnId: 'ingresses', getValue: (i) => i.ingressesCount, sortable: true, filterable: false },
  { columnId: 'parameters', getValue: (i) => i.parameters, sortable: true, filterable: false },
- { columnId: 'age', getValue: (i) => i.age, sortable: true, filterable: false },
+ {
+   columnId: 'age',
+   getValue: (i) => i.age,
+   sortValue: (i) => -(i.creationTimestamp ? Date.parse(i.creationTimestamp) : 0),
+   sortable: true,
+   filterable: false,
+ },
  ], []);
 
  const { filteredAndSortedItems: filteredClasses, distinctValuesByColumn, valueCountsByColumn, columnFilters, setColumnFilter, sortKey, sortOrder, setSort, clearAllFilters, hasActiveFilters } = useTableFiltersAndSort(itemsAfterSearch, { columns: ingressClassesTableConfig, defaultSortKey: 'name', defaultSortOrder: 'asc' });

@@ -169,7 +169,13 @@ export default function RoleBindings() {
  { columnId: 'subjects', getValue: (i) => i.subjectsSummary, sortable: true, filterable: false },
  { columnId: 'subjectKinds', getValue: (i) => i.subjectKinds.join(', '), sortable: true, filterable: false },
  { columnId: 'subjectCount', getValue: (i) => i.subjectCount, sortable: true, filterable: false, compare: (a, b) => a.subjectCount - b.subjectCount },
- { columnId: 'age', getValue: (i) => i.age, sortable: true, filterable: false },
+ {
+   columnId: 'age',
+   getValue: (i) => i.age,
+   sortValue: (i) => -(i.creationTimestamp ? Date.parse(i.creationTimestamp) : 0),
+   sortable: true,
+   filterable: false,
+ },
  ], []);
 
  const { filteredAndSortedItems: filteredItems, distinctValuesByColumn, valueCountsByColumn, columnFilters, setColumnFilter, sortKey, sortOrder, setSort, clearAllFilters, hasActiveFilters } = useTableFiltersAndSort(itemsAfterNs, { columns: tableConfig, defaultSortKey: 'name', defaultSortOrder: 'asc' });

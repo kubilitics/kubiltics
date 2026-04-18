@@ -360,7 +360,13 @@ export default function Nodes() {
  { columnId: 'version', getValue: (i) => i.version, sortable: true, filterable: true },
  { columnId: 'osArch', getValue: (i) => i.osArch, sortable: true, filterable: false },
  { columnId: 'taints', getValue: (i) => String(i.taintsCount), sortable: true, filterable: false, compare: (a, b) => a.taintsCount - b.taintsCount },
- { columnId: 'age', getValue: (i) => i.age, sortable: true, filterable: false },
+ {
+   columnId: 'age',
+   getValue: (i) => i.age,
+   sortValue: (i) => -(i.creationTimestamp ? Date.parse(i.creationTimestamp) : 0),
+   sortable: true,
+   filterable: false,
+ },
  ], []);
 
  const { filteredAndSortedItems: filteredItems, distinctValuesByColumn, valueCountsByColumn, columnFilters, setColumnFilter, sortKey, sortOrder, setSort, clearAllFilters, hasActiveFilters } = useTableFiltersAndSort(nodesWithMetrics, { columns: tableConfig, defaultSortKey: 'name', defaultSortOrder: 'asc' });

@@ -166,7 +166,13 @@ export default function StorageClasses() {
  { columnId: 'pvCount', getValue: () => '', sortable: false, filterable: false },
  { columnId: 'hasPVs', getValue: (i) => (pvCounts && (pvCounts[i.name] ?? 0) > 0 ? 'Yes' : 'No'), sortable: false, filterable: true },
  { columnId: 'isDefault', getValue: (i) => (i.isDefault ? 'Yes' : 'No'), sortable: true, filterable: true },
- { columnId: 'age', getValue: (i) => i.age, sortable: true, filterable: false },
+ {
+   columnId: 'age',
+   getValue: (i) => i.age,
+   sortValue: (i) => -(i.creationTimestamp ? Date.parse(i.creationTimestamp) : 0),
+   sortable: true,
+   filterable: false,
+ },
  ],
  [pvCounts]
  );

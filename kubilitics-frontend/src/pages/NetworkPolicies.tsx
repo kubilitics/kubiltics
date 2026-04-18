@@ -221,7 +221,13 @@ export default function NetworkPolicies() {
  { columnId: 'egressRules', getValue: (np) => np.egressRules, sortable: true, filterable: false },
  { columnId: 'allowedSources', getValue: (np) => np.allowedSources, sortable: true, filterable: false },
  { columnId: 'allowedDestinations', getValue: (np) => np.allowedDestinations, sortable: true, filterable: false },
- { columnId: 'age', getValue: (np) => np.age, sortable: true, filterable: false },
+ {
+   columnId: 'age',
+   getValue: (np) => np.age,
+   sortValue: (np) => -(np.creationTimestamp ? Date.parse(np.creationTimestamp) : 0),
+   sortable: true,
+   filterable: false,
+ },
  ], []);
 
  const { filteredAndSortedItems: filteredPolicies, distinctValuesByColumn, valueCountsByColumn, columnFilters, setColumnFilter, sortKey, sortOrder, setSort, clearAllFilters, hasActiveFilters } = useTableFiltersAndSort(itemsAfterSearchAndNs, { columns: networkPoliciesTableConfig, defaultSortKey: 'name', defaultSortOrder: 'asc' });

@@ -205,7 +205,13 @@ export default function DaemonSets() {
  { columnId: 'updateStrategy', getValue: (i) => i.updateStrategy, sortable: true, filterable: true },
  { columnId: 'cpu', getValue: (i) => i.cpu, sortable: true, filterable: false },
  { columnId: 'memory', getValue: (i) => i.memory, sortable: true, filterable: false },
- { columnId: 'age', getValue: (i) => i.age, sortable: true, filterable: false },
+ {
+   columnId: 'age',
+   getValue: (i) => i.age,
+   sortValue: (i) => -(i.creationTimestamp ? Date.parse(i.creationTimestamp) : 0),
+   sortable: true,
+   filterable: false,
+ },
  ], []);
 
  const { filteredAndSortedItems: filteredItems, distinctValuesByColumn, valueCountsByColumn, columnFilters, setColumnFilter, sortKey, sortOrder, setSort, clearAllFilters, hasActiveFilters } = useTableFiltersAndSort(itemsAfterSearchAndNs, { columns: daemonSetsTableConfig, defaultSortKey: 'name', defaultSortOrder: 'asc' });

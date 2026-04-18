@@ -121,7 +121,13 @@ export default function DeviceClasses() {
  { columnId: 'name', getValue: (i) => i.name, sortable: true, filterable: false },
  { columnId: 'selectors', getValue: (i) => i.selectors, sortable: true, filterable: true },
  { columnId: 'config', getValue: (i) => i.config, sortable: true, filterable: true },
- { columnId: 'age', getValue: (i) => i.age, sortable: true, filterable: false },
+ {
+   columnId: 'age',
+   getValue: (i) => i.age,
+   sortValue: (i) => -(i.creationTimestamp ? Date.parse(i.creationTimestamp) : 0),
+   sortable: true,
+   filterable: false,
+ },
  ],
  []
  );

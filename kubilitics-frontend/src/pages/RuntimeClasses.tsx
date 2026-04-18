@@ -150,7 +150,13 @@ export default function RuntimeClasses() {
  { columnId: 'overheadMemory', getValue: (i) => i.overheadMemory, sortable: false, filterable: false },
  { columnId: 'scheduling', getValue: (i) => i.schedulingCount, sortable: true, filterable: false },
  { columnId: 'category', getValue: (i) => i.category, sortable: false, filterable: true },
- { columnId: 'age', getValue: (i) => i.age, sortable: true, filterable: false },
+ {
+   columnId: 'age',
+   getValue: (i) => i.age,
+   sortValue: (i) => -(i.creationTimestamp ? Date.parse(i.creationTimestamp) : 0),
+   sortable: true,
+   filterable: false,
+ },
  ], []);
 
  const { filteredAndSortedItems: filteredItems, distinctValuesByColumn, valueCountsByColumn, columnFilters, setColumnFilter, sortKey, sortOrder, setSort, clearAllFilters, hasActiveFilters } = useTableFiltersAndSort(itemsAfterSearch, { columns: rcColumnConfig, defaultSortKey: 'name', defaultSortOrder: 'asc' });

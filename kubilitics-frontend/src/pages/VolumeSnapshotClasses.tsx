@@ -106,7 +106,13 @@ export default function VolumeSnapshotClasses() {
  { columnId: 'driver', getValue: (i) => i.driver, sortable: true, filterable: true },
  { columnId: 'deletionPolicy', getValue: (i) => i.deletionPolicy, sortable: true, filterable: true },
  { columnId: 'isDefault', getValue: (i) => (i.isDefault ? 'Yes' : 'No'), sortable: true, filterable: true },
- { columnId: 'age', getValue: (i) => i.age, sortable: true, filterable: false },
+ {
+   columnId: 'age',
+   getValue: (i) => i.age,
+   sortValue: (i) => -(i.creationTimestamp ? Date.parse(i.creationTimestamp) : 0),
+   sortable: true,
+   filterable: false,
+ },
  ],
  []
  );

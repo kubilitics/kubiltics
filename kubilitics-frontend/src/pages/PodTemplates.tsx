@@ -122,7 +122,13 @@ export default function PodTemplates() {
  { columnId: 'name', getValue: (i) => i.name, sortable: true, filterable: false },
  { columnId: 'namespace', getValue: (i) => i.namespace, sortable: true, filterable: true },
  { columnId: 'labels', getValue: (i) => i.labels, sortable: true, filterable: false },
- { columnId: 'age', getValue: (i) => i.age, sortable: true, filterable: false },
+ {
+   columnId: 'age',
+   getValue: (i) => i.age,
+   sortValue: (i) => -(i.creationTimestamp ? Date.parse(i.creationTimestamp) : 0),
+   sortable: true,
+   filterable: false,
+ },
  ],
  []
  );

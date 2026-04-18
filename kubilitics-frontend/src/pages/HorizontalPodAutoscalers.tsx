@@ -200,7 +200,13 @@ export default function HorizontalPodAutoscalers() {
  { columnId: 'cpuTarget', getValue: (i) => i.cpuTarget, sortable: true, filterable: false },
  { columnId: 'cpuCurrent', getValue: (i) => i.cpuCurrent, sortable: true, filterable: false },
  { columnId: 'lastScale', getValue: (i) => i.lastScale, sortable: true, filterable: false },
- { columnId: 'age', getValue: (i) => i.age, sortable: true, filterable: false },
+ {
+   columnId: 'age',
+   getValue: (i) => i.age,
+   sortValue: (i) => -(i.creationTimestamp ? Date.parse(i.creationTimestamp) : 0),
+   sortable: true,
+   filterable: false,
+ },
  ], []);
 
  const { filteredAndSortedItems: filteredItems, distinctValuesByColumn, valueCountsByColumn, columnFilters, setColumnFilter, sortKey, sortOrder, setSort, clearAllFilters, hasActiveFilters } = useTableFiltersAndSort(itemsAfterNs, { columns: tableConfig, defaultSortKey: 'name', defaultSortOrder: 'asc' });

@@ -176,7 +176,13 @@ export default function Leases() {
  { columnId: 'leaseType', getValue: (i) => i.leaseType, sortable: true, filterable: true },
  { columnId: 'leaseState', getValue: (i) => i.isExpired ? 'Expired' : i.isHeld ? 'Held' : 'Free', sortable: true, filterable: true },
  { columnId: 'duration', getValue: (i) => i.duration, sortable: true, filterable: false },
- { columnId: 'age', getValue: (i) => i.age, sortable: true, filterable: false },
+ {
+   columnId: 'age',
+   getValue: (i) => i.age,
+   sortValue: (i) => -(i.creationTimestamp ? Date.parse(i.creationTimestamp) : 0),
+   sortable: true,
+   filterable: false,
+ },
  ],
  []
  );

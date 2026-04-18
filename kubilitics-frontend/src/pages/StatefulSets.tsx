@@ -277,7 +277,13 @@ export default function StatefulSets() {
  { columnId: 'pvcCount', getValue: (i) => i.pvcCount, sortable: true, filterable: false },
  { columnId: 'cpu', getValue: (i) => i.cpu, sortable: true, filterable: false },
  { columnId: 'memory', getValue: (i) => i.memory, sortable: true, filterable: false },
- { columnId: 'age', getValue: (i) => i.age, sortable: true, filterable: false },
+ {
+   columnId: 'age',
+   getValue: (i) => i.age,
+   sortValue: (i) => -(i.creationTimestamp ? Date.parse(i.creationTimestamp) : 0),
+   sortable: true,
+   filterable: false,
+ },
  ];
  }, []);
 

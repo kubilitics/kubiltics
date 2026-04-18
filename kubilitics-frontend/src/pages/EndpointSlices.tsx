@@ -155,7 +155,13 @@ export default function EndpointSlices() {
  { columnId: 'status', getValue: (es) => es.ready > 0 ? 'Ready' : es.terminating > 0 ? 'Not Ready' : 'Empty', sortable: true, filterable: true },
  { columnId: 'addressType', getValue: (es) => es.addressType, sortable: true, filterable: true },
  { columnId: 'endpoints', getValue: (es) => es.endpoints, sortable: true, filterable: false },
- { columnId: 'age', getValue: (es) => es.age, sortable: true, filterable: false },
+ {
+   columnId: 'age',
+   getValue: (es) => es.age,
+   sortValue: (es) => -(es.creationTimestamp ? Date.parse(es.creationTimestamp) : 0),
+   sortable: true,
+   filterable: false,
+ },
  ], []);
 
  const { filteredAndSortedItems: filteredSlices, distinctValuesByColumn, valueCountsByColumn, columnFilters, setColumnFilter, sortKey, sortOrder, setSort, clearAllFilters, hasActiveFilters } = useTableFiltersAndSort(itemsAfterSearchAndNs, { columns: endpointSlicesTableConfig, defaultSortKey: 'name', defaultSortOrder: 'asc' });

@@ -160,7 +160,13 @@ export default function VerticalPodAutoscalers() {
  { columnId: 'updateMode', getValue: (i) => i.updateMode, sortable: true, filterable: true },
  { columnId: 'cpuRec', getValue: (i) => i.cpuTarget, sortable: true, filterable: false },
  { columnId: 'memoryRec', getValue: (i) => i.memoryTarget, sortable: true, filterable: false },
- { columnId: 'age', getValue: (i) => i.age, sortable: true, filterable: false },
+ {
+   columnId: 'age',
+   getValue: (i) => i.age,
+   sortValue: (i) => -(i.creationTimestamp ? Date.parse(i.creationTimestamp) : 0),
+   sortable: true,
+   filterable: false,
+ },
  ], []);
 
  const { filteredAndSortedItems: filteredItems, distinctValuesByColumn, valueCountsByColumn, columnFilters, setColumnFilter, sortKey, sortOrder, setSort, clearAllFilters, hasActiveFilters } = useTableFiltersAndSort(itemsAfterNs, { columns: tableConfig, defaultSortKey: 'name', defaultSortOrder: 'asc' });

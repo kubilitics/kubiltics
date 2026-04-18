@@ -191,7 +191,13 @@ export default function CustomResourceDefinitions() {
  { columnId: 'version', getValue: (i) => i.storageVersion, sortable: true, filterable: false },
  { columnId: 'versions', getValue: (i) => i.versionsCount, sortable: true, filterable: false },
  { columnId: 'established', getValue: (i) => String(i.established), sortable: true, filterable: true },
- { columnId: 'age', getValue: (i) => i.age, sortable: true, filterable: false },
+ {
+   columnId: 'age',
+   getValue: (i) => i.age,
+   sortValue: (i) => -(i.creationTimestamp ? Date.parse(i.creationTimestamp) : 0),
+   sortable: true,
+   filterable: false,
+ },
  ], []);
 
  const { filteredAndSortedItems: filteredItems, distinctValuesByColumn, valueCountsByColumn, columnFilters, setColumnFilter, sortKey, sortOrder, setSort, clearAllFilters, hasActiveFilters } = useTableFiltersAndSort(itemsAfterSearch, { columns: crdColumnConfig, defaultSortKey: 'name', defaultSortOrder: 'asc' });

@@ -150,7 +150,13 @@ export default function VolumeAttachments() {
  { columnId: 'attached', getValue: (i) => (i.attached ? 'Yes' : 'No'), sortable: true, filterable: true },
  { columnId: 'attachmentState', getValue: (i) => (i.attached ? 'Attached' : i.attachError !== '—' ? 'Error' : 'Detaching'), sortable: false, filterable: true },
  { columnId: 'attachError', getValue: (i) => i.attachError, sortable: true, filterable: false },
- { columnId: 'age', getValue: (i) => i.age, sortable: true, filterable: false },
+ {
+   columnId: 'age',
+   getValue: (i) => i.age,
+   sortValue: (i) => -(i.creationTimestamp ? Date.parse(i.creationTimestamp) : 0),
+   sortable: true,
+   filterable: false,
+ },
  ],
  []
  );

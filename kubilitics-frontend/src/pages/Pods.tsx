@@ -483,7 +483,17 @@ export default function Pods() {
  return parseMemoryForSort(valA) - parseMemoryForSort(valB);
  },
  },
- { columnId: 'age', getValue: (p) => p.age, sortable: true, filterable: false },
+ {
+   columnId: 'age',
+   getValue: (p) => p.age, // displayed string ("5m", "2h") — also feeds filters/distinct
+   // Sort by absolute creation timestamp so freshly-created pods land at the top
+   // under the natural ASC order. The formatted age string drifts every render
+   // (a "5m" pod is "6m" a minute later) and lex-comparison ("92m" < "9h" < "9m")
+   // is unreliable; epoch-ms is monotonic and tie-stable.
+   sortValue: (p) => -(p.creationTimestamp ? Date.parse(p.creationTimestamp) : 0),
+   sortable: true,
+   filterable: false,
+ },
  { columnId: 'node', getValue: (p) => p.node || '-', sortable: true, filterable: true },
  ],
  }), [sortMetricsMap]);

@@ -190,7 +190,13 @@ export default function PersistentVolumes() {
  { columnId: 'claim', getValue: (i) => i.claim, sortable: true, filterable: false },
  { columnId: 'volumeMode', getValue: (i) => i.volumeMode, sortable: true, filterable: true },
  { columnId: 'usage', getValue: () => '', sortable: false, filterable: false },
- { columnId: 'age', getValue: (i) => i.age, sortable: true, filterable: false },
+ {
+   columnId: 'age',
+   getValue: (i) => i.age,
+   sortValue: (i) => -(i.creationTimestamp ? Date.parse(i.creationTimestamp) : 0),
+   sortable: true,
+   filterable: false,
+ },
  ],
  []
  );
