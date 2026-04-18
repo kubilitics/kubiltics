@@ -95,9 +95,11 @@ config:
   port: 8190
   databasePath: "/data/kubilitics.db"
   logLevel: "info"
-  # Authentication mode: "required" (production default), "optional" (accepts Bearer or anonymous), "disabled" (no auth)
-  # IMPORTANT: "required" mandates JWT tokens for all API access. Set secret.authJWTSecret (>= 32 chars).
-  authMode: "optional"
+  # Authentication mode: "required" (production), "optional" (accepts Bearer or anonymous), "disabled" (no auth)
+  # Default is "disabled" so a fresh `helm install kubilitics` is seamless: open the URL,
+  # see the auto-registered cluster, get insights immediately. For multi-user / production
+  # deployments override to authMode: "required" and set secret.authJWTSecret (>= 32 chars).
+  authMode: "disabled"
   # allowedOrigins for CORS. REQUIRED in production: set to your frontend origin(s), e.g. "https://kubilitics.example.com".
   # Do not use "*" in production. Development default in backend is localhost:5173, localhost:8190.
   allowedOrigins: "https://kubilitics.com"
