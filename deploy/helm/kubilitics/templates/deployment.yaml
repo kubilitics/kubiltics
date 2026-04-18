@@ -181,6 +181,14 @@ spec:
             - name: KUBILITICS_TLS_KEY_PATH
               value: {{ .Values.config.tlsKeyPath | quote }}
             {{- end }}
+            # Agent trust: stable HMAC signing secret for agent JWTs
+            - name: KUBILITICS_AGENT_SIGNING_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-agent-signing
+                  key: secret
+            - name: KUBILITICS_PUBLIC_HUB_URL
+              value: {{ .Values.publicHubURL | default (printf "http://%s.%s.svc:8190" .Release.Name .Release.Namespace) | quote }}
           livenessProbe:
             httpGet:
               path: /health

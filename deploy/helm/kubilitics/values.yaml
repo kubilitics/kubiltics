@@ -19,6 +19,12 @@
 #
 # For all available options, see the comments below and README.md
 
+# Optional public URL of the hub. Used by the admin "Add cluster" UI to
+# generate the helm install command for remote agents. If empty, the chart
+# falls back to the in-cluster Service DNS, which is fine for same-cluster
+# installs but not for remote-cluster bootstrap workflows.
+publicHubURL: ""
+
 replicaCount: 1
 
 image:
