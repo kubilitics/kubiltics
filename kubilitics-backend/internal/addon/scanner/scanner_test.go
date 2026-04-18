@@ -157,6 +157,9 @@ func (f *fakeClusterSvc) LoadClustersFromRepo(ctx context.Context) error { retur
 func (f *fakeClusterSvc) GetClient(id string) (*k8s.Client, error) {
 	return f.client, nil
 }
+func (f *fakeClusterSvc) GetOrReconnectClient(_ context.Context, id string) (*k8s.Client, error) {
+	return f.client, nil
+}
 func (f *fakeClusterSvc) HasMetalLB(ctx context.Context, id string) (bool, error) { return false, nil }
 func (f *fakeClusterSvc) DiscoverClusters(ctx context.Context) ([]*models.Cluster, error) {
 	return nil, nil

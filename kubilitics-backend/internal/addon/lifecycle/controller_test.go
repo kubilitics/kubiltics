@@ -286,6 +286,10 @@ func (s *fakeClusterService) GetClient(id string) (*k8s.Client, error) {
 	return s.clients[id], nil
 }
 
+func (s *fakeClusterService) GetOrReconnectClient(_ context.Context, id string) (*k8s.Client, error) {
+	return s.GetClient(id)
+}
+
 func (s *fakeClusterService) HasMetalLB(ctx context.Context, id string) (bool, error) {
 	return false, nil
 }
