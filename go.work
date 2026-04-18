@@ -1,6 +1,7 @@
 go 1.25.8
 
 use (
+	./kubilitics-agent
 	./kubilitics-backend
 	./kubilitics-cli
 )
