@@ -15,7 +15,7 @@ import { Terminal } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { SectionCard } from '@/components/resources';
-import { PodTerminal } from '@/components/resources/PodTerminal';
+import { MultiTerminal } from '@/components/resources/MultiTerminal';
 import { useK8sResourceList, type KubernetesResource } from '@/hooks/useKubernetes';
 
 interface WorkloadTerminalTabProps {
@@ -28,7 +28,7 @@ interface WorkloadTerminalTabProps {
 
 export function WorkloadTerminalTab({ matchLabels, namespace, tooltip }: WorkloadTerminalTabProps) {
   const [selectedPod, setSelectedPod] = useState('');
-  const [selectedContainer, setSelectedContainer] = useState('');
+  const [, setSelectedContainer] = useState('');
 
   const labelSelector = Object.entries(matchLabels).map(([k, v]) => `${k}=${v}`).join(',');
 
@@ -69,21 +69,17 @@ export function WorkloadTerminalTab({ matchLabels, namespace, tooltip }: Workloa
               </SelectContent>
             </Select>
           </div>
-          <div className="space-y-2">
-            <Label>Container</Label>
-            <Select value={selectedContainer || activePodContainers[0]} onValueChange={setSelectedContainer}>
-              <SelectTrigger className="w-[180px]"><SelectValue placeholder="Select container" /></SelectTrigger>
-              <SelectContent>
-                {activePodContainers.map((c) => (<SelectItem key={c} value={c}>{c}</SelectItem>))}
-              </SelectContent>
-            </Select>
-          </div>
         </div>
-        <PodTerminal
-          key={`${activePod}-${selectedContainer || activePodContainers[0]}`}
+        {/*
+          MultiTerminal owns its own session list with tab UI (+ button to spawn
+          new tabs, container picker per-tab). Keyed on activePod so changing the
+          pod from the selector above remounts MultiTerminal cleanly with fresh
+          sessions targeting the new pod.
+        */}
+        <MultiTerminal
+          key={activePod}
           podName={activePod}
-          namespace={namespace}
-          containerName={selectedContainer || activePodContainers[0]}
+          namespace={namespace ?? ''}
           containers={activePodContainers}
           onContainerChange={setSelectedContainer}
         />
