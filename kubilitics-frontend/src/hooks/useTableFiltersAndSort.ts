@@ -2,7 +2,18 @@ import { useMemo, useCallback, useState } from 'react';
 
 export interface ColumnConfig<T> {
   columnId: string;
+  /** Used for filter dropdown values, distinct counts, and as the sort fallback. */
   getValue: (item: T) => string | number;
+  /**
+   * Optional value used for sorting only. Use this when the displayed value is
+   * a derived/formatted string (e.g. "5m", "2h") whose lexical order does not
+   * match the underlying quantity. Common pattern for age columns:
+   *   sortValue: (i) => i.creationTimestamp ? Date.parse(i.creationTimestamp) : 0
+   * Then `compare` (default numeric) sorts by absolute timestamp regardless of
+   * how the string is rendered. Newer rows have larger timestamps; combine
+   * with `defaultSortOrder: 'desc'` for "newest first" first-click behavior.
+   */
+  sortValue?: (item: T) => string | number;
   sortable: boolean;
   filterable: boolean;
   compare?: (a: T, b: T) => number;
@@ -161,7 +172,9 @@ export function useTableFiltersAndSort<T>(
 
     const sortCol = columns.find((c) => c.columnId === sortKey && c.sortable);
     if (sortCol) {
-      const compare = sortCol.compare ?? defaultCompare(sortCol.getValue);
+      // Prefer custom compare; otherwise fall back to defaultCompare against
+      // sortValue (when provided) and finally against the display getValue.
+      const compare = sortCol.compare ?? defaultCompare(sortCol.sortValue ?? sortCol.getValue);
       result = [...result].sort((a, b) => {
         const cmp = compare(a, b);
         return sortOrder === 'asc' ? cmp : -cmp;
