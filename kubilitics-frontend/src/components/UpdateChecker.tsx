@@ -26,6 +26,7 @@ type UpdateState =
   | 'downloading'
   | 'ready'
   | 'restarting'
+  | 'manual_restart' // update installed; auto-relaunch failed but user can quit & reopen
   | 'error'
   | 'dismissed';
 
@@ -80,14 +81,28 @@ export function UpdateChecker() {
     try {
       const { relaunch } = await import('@tauri-apps/plugin-process');
       await relaunch();
-    } catch {
-      try {
-        const { exit } = await import('@tauri-apps/plugin-process');
-        await exit(0);
-      } catch {
-        setError('Please quit (Cmd+Q) and reopen the app to apply the update.');
-        setState('error');
-      }
+      return; // relaunch succeeded — process is going down, nothing else to do
+    } catch (relaunchErr) {
+      console.warn('[UpdateChecker] relaunch failed, falling back to exit', relaunchErr);
+    }
+    try {
+      const { exit } = await import('@tauri-apps/plugin-process');
+      await exit(0);
+      return; // exit succeeded — process is going down
+    } catch (exitErr) {
+      console.warn('[UpdateChecker] exit failed; user must quit manually', exitErr);
+    }
+    // The update IS installed — both auto-paths just failed to trigger the
+    // restart. Show success-with-instruction, NOT an error.
+    setState('manual_restart');
+  }, []);
+
+  const handleQuitNow = useCallback(async () => {
+    try {
+      const { exit } = await import('@tauri-apps/plugin-process');
+      await exit(0);
+    } catch (err) {
+      console.warn('[UpdateChecker] manual quit failed', err);
     }
   }, []);
 
@@ -163,18 +178,22 @@ export function UpdateChecker() {
         <div className={cn(
           'flex items-center justify-between px-4 py-3',
           'border-b border-slate-100 dark:border-slate-800',
-          state === 'ready' ? 'bg-emerald-50 dark:bg-emerald-950/30' : 'bg-slate-50 dark:bg-slate-800/50',
+          state === 'ready' || state === 'manual_restart'
+            ? 'bg-emerald-50 dark:bg-emerald-950/30'
+            : 'bg-slate-50 dark:bg-slate-800/50',
         )}>
           <div className="flex items-center gap-2">
             {state === 'available' && <Sparkles className="h-4 w-4 text-blue-500" />}
             {state === 'downloading' && <Loader2 className="h-4 w-4 text-blue-500 animate-spin" />}
             {state === 'ready' && <Check className="h-4 w-4 text-emerald-500" />}
+            {state === 'manual_restart' && <Check className="h-4 w-4 text-emerald-500" />}
             {state === 'restarting' && <RefreshCw className="h-4 w-4 text-blue-500 animate-spin" />}
             {state === 'error' && <X className="h-4 w-4 text-red-500" />}
             <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">
               {state === 'available' && `Update Available — v${info.version}`}
               {state === 'downloading' && `Downloading v${info.version}...`}
               {state === 'ready' && `Ready to Update`}
+              {state === 'manual_restart' && `Update Installed — Restart to Apply`}
               {state === 'restarting' && `Restarting...`}
               {state === 'error' && `Update Failed`}
             </span>
@@ -232,6 +251,15 @@ export function UpdateChecker() {
             </p>
           )}
 
+          {/* Update installed; user must quit manually (auto-restart blocked) */}
+          {state === 'manual_restart' && (
+            <p className="text-sm text-slate-700 dark:text-slate-300">
+              v{info.version} has been installed successfully. Click <strong>Quit Now</strong>
+              {' '}— next launch will load the new version. (Or press Cmd+Q on Mac, Ctrl+Q on Linux,
+              Alt+F4 on Windows.)
+            </p>
+          )}
+
           {/* Restarting */}
           {state === 'restarting' && (
             <p className="text-sm text-slate-500 dark:text-slate-400">
@@ -246,7 +274,7 @@ export function UpdateChecker() {
         </div>
 
         {/* Actions */}
-        {(state === 'available' || state === 'ready' || state === 'error') && (
+        {(state === 'available' || state === 'ready' || state === 'manual_restart' || state === 'error') && (
           <div className={cn(
             'flex items-center gap-2 px-4 py-3',
             'border-t border-slate-100 dark:border-slate-800',
@@ -289,6 +317,18 @@ export function UpdateChecker() {
               >
                 <RefreshCw className="h-3.5 w-3.5" />
                 Restart Now
+              </button>
+            )}
+            {state === 'manual_restart' && (
+              <button
+                onClick={handleQuitNow}
+                className={cn(
+                  'flex-1 flex items-center justify-center gap-2 h-9 rounded-lg text-sm font-semibold',
+                  'bg-emerald-600 text-white hover:bg-emerald-700 active:bg-emerald-800',
+                  'transition-colors',
+                )}
+              >
+                Quit Now
               </button>
             )}
             {state === 'error' && (
