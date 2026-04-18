@@ -18,7 +18,7 @@ import { useConnectionStatus } from '@/hooks/useConnectionStatus';
 import { DeleteConfirmDialog, ScaleDialog, MetricBar, parseCpu, parseMemory, calculatePodResourceMax } from '@/components/resources';
 import { ResourceExportDropdown, ListViewSegmentedControl, ListPagination, PAGE_SIZE_OPTIONS, ResourceCommandBar, resourceTableRowClassName, ROW_MOTION, StatusPill, ListPageStatCard, ListPageHeader, TableColumnHeaderWithFilterAndSort, TableFilterCell, AgeCell, TableEmptyState, TableErrorState, ListPageLoadingShell, NamespaceBadge, ResourceListTableToolbar } from '@/components/list';
 import type { StatusPillVariant } from '@/components/list';
-import { useTableFiltersAndSort, type ColumnConfig } from '@/hooks/useTableFiltersAndSort';
+import { useTableFiltersAndSort, mapClientSortToServerSort, type ColumnConfig, type ServerSortField } from '@/hooks/useTableFiltersAndSort';
 import { useColumnVisibility } from '@/hooks/useColumnVisibility';
 import { useWorkloadMetricsMap } from '@/hooks/useWorkloadMetricsMap';
 import { ResourceCreator, DEFAULT_YAMLS } from '@/components/editor';
@@ -130,6 +130,14 @@ export default function ReplicaSets() {
  const [pageSize, setPageSize] = useState(10);
  const [pageIndex, setPageIndex] = useState(0);
 
+ // Sort that gets pushed to the server. Defaults to "newest first" so the page
+ // opens with freshly-created replicasets at the top. Updated by the effect below
+ // when the user clicks a sortable column header.
+ const [serverSort, setServerSort] = useState<{ sortBy: ServerSortField; sortOrder: 'asc' | 'desc' }>({
+   sortBy: 'creationTimestamp',
+   sortOrder: 'desc',
+ });
+
  const { isConnected } = useConnectionStatus();
 
  // Server-side pagination path (backend + informer cache)
@@ -146,6 +154,8 @@ export default function ReplicaSets() {
  } = useServerPaginatedResourceList<ReplicaSetResource>('replicasets', selectedNamespace !== 'all' ? selectedNamespace : undefined, {
    pageSize,
    search: searchQuery || undefined,
+   sortBy: serverSort.sortBy,
+   sortOrder: serverSort.sortOrder,
  });
 
  // Fallback: direct K8s / non-backend mode
@@ -212,7 +222,13 @@ export default function ReplicaSets() {
  },
  ], []);
 
- const { filteredAndSortedItems: filteredItems, distinctValuesByColumn, valueCountsByColumn, columnFilters, setColumnFilter, sortKey, sortOrder, setSort, clearAllFilters, hasActiveFilters } = useTableFiltersAndSort(itemsAfterSearchAndNs, { columns: replicaSetsTableConfig, defaultSortKey: 'name', defaultSortOrder: 'asc' });
+ const { filteredAndSortedItems: filteredItems, distinctValuesByColumn, valueCountsByColumn, columnFilters, setColumnFilter, sortKey, sortOrder, setSort, clearAllFilters, hasActiveFilters } = useTableFiltersAndSort(itemsAfterSearchAndNs, { columns: replicaSetsTableConfig, defaultSortKey: 'age', defaultSortOrder: 'asc' });
+
+ // Push user's column-header sort to server so cross-page ordering is correct.
+ useEffect(() => {
+   setServerSort(mapClientSortToServerSort(sortKey, sortOrder));
+   setPageIndex(0);
+ }, [sortKey, sortOrder]);
 
  const columnVisibility = useColumnVisibility({
  tableId: 'replicasets',

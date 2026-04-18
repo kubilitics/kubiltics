@@ -90,6 +90,40 @@ export interface UseTableFiltersAndSortResult<T> {
   hasActiveFilters: boolean;
 }
 
+/**
+ * The set of sort fields the backend's resource cache understands. See
+ * `kubilitics-backend/internal/api/rest/resources.go canSortUnstructured`.
+ */
+export type ServerSortField = 'name' | 'namespace' | 'creationTimestamp';
+
+/**
+ * Map a client-side column sort (sortKey + 'asc'/'desc') to the server's
+ * paginator parameters. Use in pages that hit useServerPaginatedResourceList
+ * so user clicks on column headers produce correct CROSS-PAGE ordering, not
+ * just per-page re-sorting of an alphabetically-paginated slice.
+ *
+ * Mapping:
+ *   - 'name' / 'namespace' → passthrough.
+ *   - 'age' → server sortBy='creationTimestamp'. Client uses negated-timestamp
+ *     so client 'asc' means newest-first; map that to server 'desc' (and vice
+ *     versa) so the user-visible ordering matches.
+ *   - everything else → server falls back to creationTimestamp desc so the
+ *     visible page is at least a stable newest-first cohort. Client-side
+ *     re-sort then orders the visible 10 by the unsupported column.
+ */
+export function mapClientSortToServerSort(
+  sortKey: string | null,
+  sortOrder: 'asc' | 'desc',
+): { sortBy: ServerSortField; sortOrder: 'asc' | 'desc' } {
+  if (sortKey === 'name' || sortKey === 'namespace') {
+    return { sortBy: sortKey, sortOrder };
+  }
+  if (sortKey === 'age') {
+    return { sortBy: 'creationTimestamp', sortOrder: sortOrder === 'asc' ? 'desc' : 'asc' };
+  }
+  return { sortBy: 'creationTimestamp', sortOrder: 'desc' };
+}
+
 export function useTableFiltersAndSort<T>(
   items: T[],
   config: TableFiltersSortConfig<T>,
