@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 )
 
@@ -43,19 +44,16 @@ func NewTestDB(t *testing.T) *sql.DB {
 
 func findMigrationsDir(t *testing.T) string {
 	t.Helper()
-	candidates := []string{
-		"../../migrations",
-		"../../../migrations",
-		"../../../../migrations",
+	_, thisFile, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("runtime.Caller failed")
 	}
-	for _, c := range candidates {
-		if _, err := os.Stat(c); err == nil {
-			abs, _ := filepath.Abs(c)
-			return abs
-		}
+	// testing.go is in <repo>/kubilitics-backend/internal/repository/
+	dir := filepath.Join(filepath.Dir(thisFile), "..", "..", "migrations")
+	if _, err := os.Stat(dir); err != nil {
+		t.Fatalf("migrations dir not found at %s: %v", dir, err)
 	}
-	t.Fatalf("could not find migrations dir")
-	return ""
+	return dir
 }
 
 func isSQLFile(name string) bool {

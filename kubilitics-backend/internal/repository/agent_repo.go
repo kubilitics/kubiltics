@@ -31,7 +31,8 @@ ON CONFLICT(organization_id, cluster_uid) DO UPDATE SET
   k8s_version = excluded.k8s_version,
   agent_version = excluded.agent_version,
   node_count = excluded.node_count,
-  status = excluded.status
+  status = excluded.status,
+  credential_epoch = excluded.credential_epoch
 `, c.ID, c.OrganizationID, c.ClusterUID, c.Name, c.K8sVersion, c.AgentVersion,
 		c.NodeCount, c.Status, c.CredentialEpoch)
 	return err

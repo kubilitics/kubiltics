@@ -90,3 +90,79 @@ func TestRegister_SameClusterUIDMismatchRejected(t *testing.T) {
 		t.Fatalf("expected 403, got %d", rr.Code)
 	}
 }
+
+func TestRegister_SAHappyPath(t *testing.T) {
+	repo := newTestAgentRepo(t)
+	signer := agenttoken.NewSigner([]byte("test-secret-min-32-bytes-aaaaaaaa"))
+	rev := fakeReviewer{authed: true, username: "system:serviceaccount:kubilitics-system:agent"}
+	h := NewAgentRegisterHandler(repo, signer, rev, "hub-uid-MATCH")
+	body := []byte(`{"sa_token":"any","cluster_uid":"hub-uid-MATCH","cluster_name":"hub","agent_version":"0.4.0","k8s_version":"v1.29","node_count":2}`)
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, httptest.NewRequest("POST", "/x", bytes.NewReader(body)))
+	if rr.Code != 200 {
+		t.Fatalf("status %d body=%s", rr.Code, rr.Body.String())
+	}
+	var resp registerResponse
+	_ = json.Unmarshal(rr.Body.Bytes(), &resp)
+	if resp.ClusterID == "" || resp.AccessToken == "" || resp.RefreshToken == "" {
+		t.Fatalf("missing creds: %+v", resp)
+	}
+}
+
+func TestRegister_ReRegisterBumpsEpoch(t *testing.T) {
+	repo := newTestAgentRepo(t)
+	signer := agenttoken.NewSigner([]byte("test-secret-min-32-bytes-aaaaaaaa"))
+
+	// Helper: mint+insert a bootstrap token and post a registration with a fixed cluster_uid.
+	doRegister := func() registerResponse {
+		jti := uuid.NewString()
+		_ = repo.InsertBootstrapToken(context.Background(), &models.BootstrapToken{
+			JTI: jti, OrganizationID: defaultOrgID, CreatedBy: "admin",
+			ExpiresAt: time.Now().Add(time.Hour),
+		})
+		tok, _ := signer.IssueBootstrap(agenttoken.BootstrapClaims{JTI: jti, OrgID: defaultOrgID, TTL: time.Hour})
+		body, _ := json.Marshal(map[string]any{
+			"bootstrap_token": tok, "cluster_uid": "uid-stable", "cluster_name": "x",
+			"agent_version": "0.4.0", "k8s_version": "v1.29", "node_count": 1,
+		})
+		h := NewAgentRegisterHandler(repo, signer, nil, "hub")
+		rr := httptest.NewRecorder()
+		h.ServeHTTP(rr, httptest.NewRequest("POST", "/x", bytes.NewReader(body)))
+		if rr.Code != 200 {
+			t.Fatalf("status %d body=%s", rr.Code, rr.Body.String())
+		}
+		var resp registerResponse
+		_ = json.Unmarshal(rr.Body.Bytes(), &resp)
+		return resp
+	}
+
+	first := doRegister()
+	second := doRegister()
+	if first.ClusterID != second.ClusterID {
+		t.Fatalf("re-register changed cluster_id: %s vs %s", first.ClusterID, second.ClusterID)
+	}
+	// Decode the access tokens and compare epoch claims to verify bump.
+	c1, err := signer.VerifyAccess(first.AccessToken)
+	if err != nil {
+		t.Fatal(err)
+	}
+	c2, err := signer.VerifyAccess(second.AccessToken)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c2.Epoch != c1.Epoch+1 {
+		t.Fatalf("epoch did not bump: first=%d second=%d", c1.Epoch, c2.Epoch)
+	}
+}
+
+func TestRegister_MissingClusterUID(t *testing.T) {
+	repo := newTestAgentRepo(t)
+	signer := agenttoken.NewSigner([]byte("test-secret-min-32-bytes-aaaaaaaa"))
+	h := NewAgentRegisterHandler(repo, signer, nil, "hub")
+	body := []byte(`{"bootstrap_token":"x","agent_version":"0.4.0","k8s_version":"v1.29"}`)
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, httptest.NewRequest("POST", "/x", bytes.NewReader(body)))
+	if rr.Code != 400 {
+		t.Fatalf("expected 400, got %d", rr.Code)
+	}
+}

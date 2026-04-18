@@ -122,6 +122,11 @@ func (h *AgentRegisterHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
+	// NOTE: Spec §7.1 lists 409 Conflict for "same cluster_uid presented with
+	// proof that doesn't match the existing cluster's ownership". This handler
+	// currently treats every valid bootstrap as legitimate re-registration
+	// (epoch bump). Hardening to 409 is deferred to a follow-up spec; the
+	// admin "Reset cluster" UI flow (not yet built) is the intended remediation.
 	cluster, err := h.repo.GetClusterByUID(r.Context(), orgID, req.ClusterUID)
 	if err != nil && !errors.Is(err, repository.ErrAgentNotFound) {
 		writeAgentErr(w, http.StatusInternalServerError, "db_error", err.Error())
@@ -129,7 +134,7 @@ func (h *AgentRegisterHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 	}
 	name := req.ClusterName
 	if name == "" {
-		name = "cluster-" + req.ClusterUID[:minInt(6, len(req.ClusterUID))]
+		name = "cluster-" + req.ClusterUID[:min(6, len(req.ClusterUID))]
 	}
 	if cluster == nil {
 		cluster = &models.AgentCluster{
@@ -155,6 +160,9 @@ func (h *AgentRegisterHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
+	// MarkBootstrapTokenUsed runs AFTER UpsertCluster so that concurrent
+	// replays race-fail here on the atomic WHERE used_at IS NULL guard
+	// rather than racing in the cluster upsert. Order matters.
 	if jti != "" {
 		if err := h.repo.MarkBootstrapTokenUsed(r.Context(), jti, cluster.ID); err != nil {
 			writeAgentErr(w, http.StatusUnauthorized, "token_used", "race: token used")
@@ -162,8 +170,16 @@ func (h *AgentRegisterHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 		}
 	}
 
-	refresh, _ := agenttoken.NewRefreshToken()
-	hash, _ := agenttoken.HashRefreshToken(refresh)
+	refresh, err := agenttoken.NewRefreshToken()
+	if err != nil {
+		writeAgentErr(w, http.StatusInternalServerError, "token_mint_failed", "failed to generate refresh token")
+		return
+	}
+	hash, err := agenttoken.HashRefreshToken(refresh)
+	if err != nil {
+		writeAgentErr(w, http.StatusInternalServerError, "token_mint_failed", "failed to hash refresh token")
+		return
+	}
 	cred := &models.AgentCredential{
 		ID:               uuid.NewString(),
 		ClusterID:        cluster.ID,
@@ -176,9 +192,13 @@ func (h *AgentRegisterHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	access, _ := h.signer.IssueAccess(agenttoken.AccessClaims{
+	access, err := h.signer.IssueAccess(agenttoken.AccessClaims{
 		ClusterID: cluster.ID, OrgID: orgID, Epoch: cluster.CredentialEpoch, TTL: accessTTL,
 	})
+	if err != nil {
+		writeAgentErr(w, http.StatusInternalServerError, "token_mint_failed", "failed to issue access token")
+		return
+	}
 
 	_ = createdBy // reserved for audit log in later spec
 	writeAgentJSON(w, http.StatusOK, registerResponse{
@@ -204,9 +224,3 @@ func writeAgentJSON(w http.ResponseWriter, code int, v any) {
 	_ = json.NewEncoder(w).Encode(v)
 }
 
-func minInt(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
-}
