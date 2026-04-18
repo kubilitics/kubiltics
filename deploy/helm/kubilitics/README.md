@@ -24,47 +24,137 @@ Production-ready Helm chart for deploying Kubilitics - Kubernetes API gateway, t
 - Prometheus Operator (for ServiceMonitor support)
 - Ingress Controller (nginx, traefik, istio, etc.)
 
-## Quick Start
+## Quick Start — Seamless Install
 
-### Install with Default Values (SQLite)
-
-```bash
-# Clone the repository
-git clone https://github.com/kubilitics/kubilitics-os-emergent.git
-cd kubilitics-os-emergent
-
-# Install the chart
-helm install kubilitics ./deploy/helm/kubilitics \
-  --namespace kubilitics-system \
-  --create-namespace
-
-# Check status
-kubectl get pods -n kubilitics-system
-kubectl get svc -n kubilitics-system
-```
-
-### Install with PostgreSQL (HA)
+The default values are tuned so a single `helm install` gives you a working
+hub: the backend auto-registers the cluster it runs in, the frontend pod
+serves the web UI, and authentication is disabled out of the box (single-user
+in-cluster scenario). No clicks, no kubeconfig setup, no Settings page.
 
 ```bash
-helm install kubilitics ./deploy/helm/kubilitics \
+# 1. Add the chart repo (one-time)
+helm repo add kubilitics https://kubilitics.github.io/kubilitics
+helm repo update
+
+# 2. Install — frontend ON so you get the web UI immediately
+helm install kubilitics kubilitics/kubilitics \
   --namespace kubilitics-system \
   --create-namespace \
-  --set database.type=postgresql \
-  --set postgresql.enabled=true \
-  --set postgresql.auth.postgresPassword=changeme \
-  --set postgresql.auth.password=changeme
+  --set frontend.enabled=true
+
+# 3. Wait for the pods (≈30s)
+kubectl -n kubilitics-system rollout status deploy/kubilitics
+kubectl -n kubilitics-system rollout status deploy/kubilitics-frontend
+
+# 4. Open the UI
+kubectl -n kubilitics-system port-forward svc/kubilitics-frontend 8080:80
+# → browse http://localhost:8080
 ```
 
-### Install with Frontend
+That's it. The dashboard opens with the in-cluster cluster already registered
+and showing live data. To add **other** clusters, run the agent chart inside
+each one — see [Adding More Clusters](#adding-more-clusters).
+
+### Production Hardening
+
+The seamless defaults assume a single-user trial. For real deployments:
 
 ```bash
-helm install kubilitics ./deploy/helm/kubilitics \
+helm install kubilitics kubilitics/kubilitics \
   --namespace kubilitics-system \
   --create-namespace \
   --set frontend.enabled=true \
+  --set config.authMode=required \
+  --set secret.authJWTSecret="$(openssl rand -hex 32)" \
   --set ingress.enabled=true \
-  --set ingress.hosts[0].host=kubilitics.example.com
+  --set ingress.hosts[0].host=kubilitics.example.com \
+  --set ingress.tls[0].secretName=kubilitics-tls \
+  --set ingress.tls[0].hosts[0]=kubilitics.example.com
 ```
+
+`authMode=required` forces a login on every API call; `secret.authJWTSecret`
+must be ≥32 bytes (the `openssl rand` invocation above produces 64).
+
+### Storage Backend
+
+Default is SQLite on a 1Gi PVC — fine up to ~50 clusters / 100k events. For
+HA / horizontal scale, use the bundled PostgreSQL subchart:
+
+```bash
+helm install kubilitics kubilitics/kubilitics \
+  --namespace kubilitics-system \
+  --create-namespace \
+  --set frontend.enabled=true \
+  --set database.type=postgresql \
+  --set postgresql.enabled=true \
+  --set postgresql.auth.postgresPassword="$(openssl rand -hex 16)" \
+  --set postgresql.auth.password="$(openssl rand -hex 16)"
+```
+
+### Exposing the UI
+
+The Quick Start uses `kubectl port-forward` for the fastest first-look. For
+production, enable the Ingress (frontend included):
+
+```bash
+helm upgrade kubilitics kubilitics/kubilitics -n kubilitics-system \
+  --reuse-values \
+  --set ingress.enabled=true \
+  --set ingress.className=nginx \
+  --set ingress.hosts[0].host=kubilitics.example.com \
+  --set ingress.hosts[0].paths[0].path=/ \
+  --set ingress.hosts[0].paths[0].pathType=Prefix
+```
+
+Or expose just the frontend Service as `LoadBalancer` for cloud clusters:
+
+```bash
+helm upgrade kubilitics kubilitics/kubilitics -n kubilitics-system \
+  --reuse-values \
+  --set frontend.service.type=LoadBalancer
+```
+
+## Adding More Clusters
+
+The hub uses a hub-and-spoke model: the cluster you installed into is
+auto-registered. To monitor **additional** clusters, install the lightweight
+`kubilitics-agent` chart on each one, pointing it at this hub.
+
+### Same-Cluster Agent (Optional)
+
+The hub already monitors its own cluster — you don't need an agent there.
+Skip to "Remote Clusters" below for the typical case.
+
+### Remote Clusters
+
+On the **hub** cluster, mint a one-time bootstrap token (or generate via the
+admin UI when RBAC ships):
+
+```bash
+# After hub install — get a bootstrap token good for 24h
+HUB_URL=https://kubilitics.example.com   # or http://… for in-cluster only
+curl -sS -X POST "${HUB_URL}/api/v1/admin/clusters/bootstrap-token" \
+  -H 'Content-Type: application/json' \
+  -d '{"ttl_seconds":3600}' | jq -r '.bootstrap_token'
+# → eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+```
+
+On the **target** cluster:
+
+```bash
+helm install kubilitics-agent kubilitics/kubilitics-agent \
+  --namespace kubilitics-system \
+  --create-namespace \
+  --set hub.url="${HUB_URL}" \
+  --set hub.token="<bootstrap-token-from-above>"
+```
+
+The agent registers itself, exchanges the bootstrap token for a long-lived
+refresh credential, and starts heartbeating. Within 30 seconds the new
+cluster appears in the hub UI's cluster picker.
+
+See [the kubilitics-agent chart docs](../kubilitics-agent/README.md) for
+TLS pinning, custom CA, and air-gapped install patterns.
 
 ## Configuration
 
