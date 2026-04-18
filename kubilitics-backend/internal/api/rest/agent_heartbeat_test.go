@@ -72,3 +72,33 @@ func TestHeartbeat_UIDMismatch_410(t *testing.T) {
 		t.Fatalf("got %d", rr.Code)
 	}
 }
+
+func TestHeartbeat_EpochMismatch_401(t *testing.T) {
+	repo := newTestAgentRepo(t)
+	signer := agenttoken.NewSigner([]byte("test-secret-min-32-bytes-aaaaaaaa"))
+	cluster := &models.AgentCluster{
+		ID: uuid.NewString(), OrganizationID: defaultOrgID, ClusterUID: "uid-y",
+		Name: "c", Status: "active", CredentialEpoch: 5,
+	}
+	if err := repo.UpsertCluster(context.Background(), cluster); err != nil {
+		t.Fatal(err)
+	}
+	// Mint an access token with stale epoch (3 vs cluster's 5).
+	access, _ := signer.IssueAccess(agenttoken.AccessClaims{
+		ClusterID: cluster.ID, OrgID: defaultOrgID, Epoch: 3, TTL: time.Hour,
+	})
+	h := NewAgentHeartbeatHandler(repo, signer)
+	body, _ := json.Marshal(map[string]string{"cluster_id": cluster.ID, "cluster_uid": "uid-y", "status": "healthy"})
+	req := httptest.NewRequest("POST", "/x", bytes.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+access)
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, req)
+	if rr.Code != 401 {
+		t.Fatalf("expected 401, got %d body=%s", rr.Code, rr.Body.String())
+	}
+	var resp struct{ Code string `json:"code"` }
+	_ = json.Unmarshal(rr.Body.Bytes(), &resp)
+	if resp.Code != "epoch_mismatch" {
+		t.Fatalf("expected epoch_mismatch, got %q", resp.Code)
+	}
+}
