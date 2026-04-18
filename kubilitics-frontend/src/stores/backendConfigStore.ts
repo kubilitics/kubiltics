@@ -139,11 +139,13 @@ export const useBackendConfigStore = create<BackendConfigStore>()(
         if (isTauriBuildTime()) return true;
         // Runtime fallback: check if __TAURI_INTERNALS__ has been injected by now
         if (isTauri()) return true;
+        // Any browser context (dev or prod): empty URL means same-origin, which is
+        // the correct answer for the in-cluster Helm install (nginx proxies /api/*
+        // to the backend Service). Treat that as configured — without this, the
+        // production browser thinks "no backend", never calls /api/v1/clusters,
+        // and bounces every user to /connect even though the hub is running.
+        if (typeof window !== 'undefined') return true;
         const url = getEffectiveBackendBaseUrl(get().backendBaseUrl);
-        // In dev on localhost we use '' (proxy), which is valid
-        if (typeof import.meta !== 'undefined' && import.meta.env?.DEV && typeof window !== 'undefined' && isLocalHostname(window.location?.hostname ?? '')) {
-          return true;
-        }
         return typeof url === 'string' && url.length > 0;
       },
     }),
