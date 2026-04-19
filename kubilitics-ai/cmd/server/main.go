@@ -36,6 +36,7 @@ import (
 	"net"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 
 	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/config"
@@ -43,6 +44,7 @@ import (
 	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/engines/python"
 	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/router"
 	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/runtime"
+	wsafety "github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/safety/wrapper"
 	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/server"
 	kotgv1 "github.com/vellankikoti/kotg-schema/gen/go/kotg/v1"
 
@@ -115,12 +117,30 @@ func main() {
 		}))
 	}
 
+	r := router.New(
+		engines,
+		nil, // default picker — picks the first engine (LLM-direct in v1)
+	)
+
+	// Wrap the Router with the v1 Safety wrapper (subproject 3e). The
+	// AllowedActions list comes from KUBILITICS_AI_ALLOWED_ACTIONS (comma-
+	// separated). v1 engines (LLM, kagent stub, python stub) don't emit
+	// ActionPending events yet, so the policy is a no-op until v1.5 lands
+	// real action proposals; the wrapper is wired now so 3g (Approval UI)
+	// and v1.5 safety depth slot in cleanly.
+	allowed := strings.Split(os.Getenv("KUBILITICS_AI_ALLOWED_ACTIONS"), ",")
+	if len(allowed) == 1 && allowed[0] == "" {
+		allowed = nil
+	}
+	disp := wsafety.New(r, wsafety.Config{
+		AllowedActions:   allowed,
+		Audit:            wsafety.NoopSink{}, // v1.5: replace with kotg.ai's internal/audit pipeline
+		RequireClusterID: true,
+	})
+
 	rtSrv := runtime.New(runtime.Config{
-		Router: router.New(
-			engines,
-			nil, // default picker — picks the first engine (LLM-direct in v1)
-		),
-		AIVersion:     "0.5.0",
+		Dispatcher:    disp,
+		AIVersion:     "0.6.0",
 		SchemaVersion: "1.0.1",
 		Providers:     []string{cfg.LLM.Provider},
 	})

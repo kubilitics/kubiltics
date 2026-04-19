@@ -30,17 +30,28 @@ type LLMProvider interface {
 	StreamCompletion(ctx context.Context, prompt string) (<-chan string, error)
 }
 
+// Dispatcher abstracts whatever picks an engine for a request. v1
+// satisfied by *router.Router and *wrapper.Wrapper interchangeably so
+// the Safety wrapper (subproject 3e) can be slotted in without changing
+// the runtime contract.
+type Dispatcher interface {
+	Engines() []string
+	Dispatch(ctx context.Context, req router.Request) (engineName string, events <-chan router.Event, err error)
+}
+
 // Config holds the immutable wiring for a runtime server.
 //
 // As of subproject 3b the runtime no longer talks to LLMProvider directly;
-// it dispatches turns through Router. v1 wires a single LLM-direct engine
-// (see NewLLMEngine); 3c/3d will register kagent + Python engines alongside.
+// it dispatches turns through a Dispatcher. v1 wires a single LLM-direct
+// engine (see NewLLMEngine); 3c/3d register kagent + Python engines
+// alongside; 3e wraps the Router with a Safety wrapper.
 type Config struct {
-	Router        *router.Router
+	Dispatcher    Dispatcher
 	AIVersion     string
 	SchemaVersion string
 	// Providers/Models reflect the underlying LLM/model identities for
-	// AICapabilities. Engine names are reported separately via Router.Engines().
+	// AICapabilities. Engine names are reported separately via
+	// Dispatcher.Engines().
 	Providers []string
 	Models    []string
 }
@@ -151,7 +162,7 @@ func (s *Server) Send(stream kotgv1.Chat_SendServer) error {
 			ContextHint:    msg.ContextHint,
 		}
 
-		engineName, events, dispatchErr := s.cfg.Router.Dispatch(turnCtx, req)
+		engineName, events, dispatchErr := s.cfg.Dispatcher.Dispatch(turnCtx, req)
 		if dispatchErr != nil {
 			cancel()
 			s.mu.Lock()
