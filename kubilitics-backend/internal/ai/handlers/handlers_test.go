@@ -3,45 +3,80 @@ package handlers
 import (
 	"context"
 	"encoding/json"
+	"net"
 	"net/http"
 	"net/http/httptest"
-	"path/filepath"
-	"runtime"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/gorilla/websocket"
-	"github.com/kubilitics/kubilitics-backend/internal/ai/gate"
+	"github.com/kubilitics/kubilitics-backend/internal/ai/aiclient"
 	"github.com/kubilitics/kubilitics-backend/internal/ai/proxy"
-	"github.com/kubilitics/kubilitics-backend/internal/ai/supervisor"
-	"github.com/kubilitics/kubilitics-backend/internal/ai/types"
+
+	kotgv1 "github.com/vellankikoti/kotg-schema/gen/go/kotg/v1"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/test/bufconn"
 )
 
-func stubBinary(t *testing.T) string {
-	t.Helper()
-	_, file, _, _ := runtime.Caller(0)
-	return filepath.Clean(filepath.Join(filepath.Dir(file), "../supervisor/testdata/stubsidecar/stub"))
+type stubHandlersSrv struct {
+	kotgv1.UnimplementedChatServer
+	kotgv1.UnimplementedAIControlServer
 }
 
-func newTestServer(t *testing.T) (*httptest.Server, supervisor.Supervisor) {
-	sup := supervisor.New(supervisor.Config{
-		BinaryPath:         stubBinary(t),
-		IdleShutdown:       30 * time.Second,
-		MaxRestartAttempts: 3,
-		RestartWindow:      5 * time.Second,
-	})
-	p := proxy.New(sup, gate.NoOpGate{}, 60)
-	h := New(sup, p, Config{Enabled: true, ChatMaxDuration: 30 * time.Second})
+func (s *stubHandlersSrv) Capabilities(_ context.Context, _ *kotgv1.Empty) (*kotgv1.AICapabilities, error) {
+	return &kotgv1.AICapabilities{SchemaVersion: "1.0.1", AiVersion: "test"}, nil
+}
+
+func (s *stubHandlersSrv) CreateSession(_ context.Context, req *kotgv1.CreateSessionRequest) (*kotgv1.Session, error) {
+	return &kotgv1.Session{SessionId: "sess-1", Title: req.GetTitle(), FocusClusterId: req.GetFocusClusterId()}, nil
+}
+
+func newHandlerStack(t *testing.T, enabled bool) (*httptest.Server, func()) {
+	t.Helper()
+	lis := bufconn.Listen(1 << 20)
+	gsrv := grpc.NewServer()
+	stub := &stubHandlersSrv{}
+	kotgv1.RegisterChatServer(gsrv, stub)
+	kotgv1.RegisterAIControlServer(gsrv, stub)
+	go func() { _ = gsrv.Serve(lis) }()
+
+	conn, err := grpc.NewClient("passthrough:///bufnet",
+		grpc.WithContextDialer(func(_ context.Context, _ string) (net.Conn, error) {
+			return lis.Dial()
+		}),
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	)
+	if err != nil {
+		t.Fatalf("dial: %v", err)
+	}
+	gc := aiclient.NewGRPCClientFromConn(conn)
+
+	// Stub HTTP /status server.
+	httpsrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"state":"ready","version":"test","engines":["llm"]}`))
+	}))
+	hc := aiclient.NewHTTPClient(httpsrv.URL, aiclient.DefaultOpts())
+
+	p := proxy.New(gc, hc, 60)
+	h := New(p, Config{Enabled: enabled, ChatMaxDuration: 30 * time.Second})
 	mux := http.NewServeMux()
 	h.Register(mux)
-	return httptest.NewServer(mux), sup
+	srv := httptest.NewServer(mux)
+	return srv, func() {
+		srv.Close()
+		httpsrv.Close()
+		_ = gc.Close()
+		gsrv.Stop()
+		_ = lis.Close()
+	}
 }
 
 func TestStatusEndpoint(t *testing.T) {
-	srv, sup := newTestServer(t)
-	defer srv.Close()
-	defer sup.Shutdown(context.Background())
+	srv, cleanup := newHandlerStack(t, true)
+	defer cleanup()
 
 	resp, err := http.Get(srv.URL + "/ai/status")
 	if err != nil {
@@ -51,54 +86,30 @@ func TestStatusEndpoint(t *testing.T) {
 	if resp.StatusCode != 200 {
 		t.Fatalf("status code = %d", resp.StatusCode)
 	}
-	var st types.SidecarStatus
+	var st map[string]any
 	if err := json.NewDecoder(resp.Body).Decode(&st); err != nil {
 		t.Fatalf("decode: %v", err)
 	}
-}
-
-func TestRefreshEndpoint(t *testing.T) {
-	srv, sup := newTestServer(t)
-	defer srv.Close()
-	defer sup.Shutdown(context.Background())
-
-	req, _ := http.NewRequest("POST", srv.URL+"/ai/refresh", nil)
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		t.Fatalf("post: %v", err)
-	}
-	if resp.StatusCode != 202 {
-		t.Fatalf("status = %d, want 202", resp.StatusCode)
+	if st["state"] != "ready" {
+		t.Errorf("state = %v, want ready", st["state"])
 	}
 }
 
 func TestStatusWhenAIDisabled(t *testing.T) {
-	sup := supervisor.New(supervisor.Config{BinaryPath: stubBinary(t)})
-	p := proxy.New(sup, gate.NoOpGate{}, 60)
-	h := New(sup, p, Config{Enabled: false, ChatMaxDuration: 30 * time.Second})
-	mux := http.NewServeMux()
-	h.Register(mux)
-	srv := httptest.NewServer(mux)
-	defer srv.Close()
-	defer sup.Shutdown(context.Background())
+	srv, cleanup := newHandlerStack(t, false)
+	defer cleanup()
 
 	resp, _ := http.Get(srv.URL + "/ai/status")
-	var st types.SidecarStatus
+	var st map[string]any
 	json.NewDecoder(resp.Body).Decode(&st)
-	if st.DisabledReason != types.DisabledReasonAIDisabled {
-		t.Errorf("DisabledReason = %q, want %q", st.DisabledReason, types.DisabledReasonAIDisabled)
+	if st["disabled_reason"] != "ai_disabled" {
+		t.Errorf("DisabledReason = %v, want ai_disabled", st["disabled_reason"])
 	}
 }
 
 func TestCapabilitiesAIDisabled(t *testing.T) {
-	sup := supervisor.New(supervisor.Config{BinaryPath: stubBinary(t)})
-	p := proxy.New(sup, gate.NoOpGate{}, 60)
-	h := New(sup, p, Config{Enabled: false, ChatMaxDuration: 30 * time.Second})
-	mux := http.NewServeMux()
-	h.Register(mux)
-	srv := httptest.NewServer(mux)
-	defer srv.Close()
-	defer sup.Shutdown(context.Background())
+	srv, cleanup := newHandlerStack(t, false)
+	defer cleanup()
 
 	resp, _ := http.Get(srv.URL + "/ai/capabilities?cluster_id=c1")
 	var body map[string]any
@@ -112,9 +123,8 @@ func TestCapabilitiesAIDisabled(t *testing.T) {
 }
 
 func TestCapabilitiesMissingClusterID(t *testing.T) {
-	srv, sup := newTestServer(t)
-	defer srv.Close()
-	defer sup.Shutdown(context.Background())
+	srv, cleanup := newHandlerStack(t, true)
+	defer cleanup()
 
 	resp, _ := http.Get(srv.URL + "/ai/capabilities")
 	if resp.StatusCode != 400 {
@@ -122,28 +132,11 @@ func TestCapabilitiesMissingClusterID(t *testing.T) {
 	}
 }
 
-func TestCapabilitiesNeverStarted(t *testing.T) {
-	srv, sup := newTestServer(t)
-	defer srv.Close()
-	defer sup.Shutdown(context.Background())
+func TestCapabilitiesHappy(t *testing.T) {
+	srv, cleanup := newHandlerStack(t, true)
+	defer cleanup()
 
-	resp, _ := http.Get(srv.URL + "/ai/capabilities?cluster_id=c1")
-	var body map[string]any
-	json.NewDecoder(resp.Body).Decode(&body)
-	if body["ready"] != false {
-		t.Errorf("ready = %v, want false (sidecar never spawned)", body["ready"])
-	}
-	if body["disabled_reason"] != "never_started" {
-		t.Errorf("disabled_reason = %v, want never_started", body["disabled_reason"])
-	}
-}
-
-func TestCapabilitiesWarm(t *testing.T) {
-	srv, sup := newTestServer(t)
-	defer srv.Close()
-	defer sup.Shutdown(context.Background())
-
-	resp, err := http.Get(srv.URL + "/ai/capabilities?cluster_id=c1&warm=true")
+	resp, err := http.Get(srv.URL + "/ai/capabilities?cluster_id=c1")
 	if err != nil {
 		t.Fatalf("get: %v", err)
 	}
@@ -153,19 +146,13 @@ func TestCapabilitiesWarm(t *testing.T) {
 		t.Errorf("ready = %v, want true", body["ready"])
 	}
 	if body["capabilities"] == nil {
-		t.Errorf("capabilities should be populated after warm")
+		t.Errorf("capabilities should be populated")
 	}
 }
 
 func TestSessionsRequiresAIEnabled(t *testing.T) {
-	sup := supervisor.New(supervisor.Config{BinaryPath: stubBinary(t)})
-	p := proxy.New(sup, gate.NoOpGate{}, 60)
-	h := New(sup, p, Config{Enabled: false, ChatMaxDuration: 30 * time.Second})
-	mux := http.NewServeMux()
-	h.Register(mux)
-	srv := httptest.NewServer(mux)
-	defer srv.Close()
-	defer sup.Shutdown(context.Background())
+	srv, cleanup := newHandlerStack(t, false)
+	defer cleanup()
 
 	body := strings.NewReader(`{"focus_cluster_id":"c1"}`)
 	req, _ := http.NewRequest("POST", srv.URL+"/ai/sessions", body)
@@ -179,9 +166,8 @@ func TestSessionsRequiresAIEnabled(t *testing.T) {
 }
 
 func TestSessionsRejectsMissingCluster(t *testing.T) {
-	srv, sup := newTestServer(t)
-	defer srv.Close()
-	defer sup.Shutdown(context.Background())
+	srv, cleanup := newHandlerStack(t, true)
+	defer cleanup()
 
 	body := strings.NewReader(`{}`)
 	req, _ := http.NewRequest("POST", srv.URL+"/ai/sessions", body)
@@ -195,9 +181,8 @@ func TestSessionsRejectsMissingCluster(t *testing.T) {
 }
 
 func TestSessionsHappyPath(t *testing.T) {
-	srv, sup := newTestServer(t)
-	defer srv.Close()
-	defer sup.Shutdown(context.Background())
+	srv, cleanup := newHandlerStack(t, true)
+	defer cleanup()
 
 	body := strings.NewReader(`{"focus_cluster_id":"c1","title":"test"}`)
 	req, _ := http.NewRequest("POST", srv.URL+"/ai/sessions", body)
@@ -216,9 +201,8 @@ func TestSessionsHappyPath(t *testing.T) {
 }
 
 func TestChatMissingClusterID(t *testing.T) {
-	srv, sup := newTestServer(t)
-	defer srv.Close()
-	defer sup.Shutdown(context.Background())
+	srv, cleanup := newHandlerStack(t, true)
+	defer cleanup()
 
 	wsURL := "ws" + srv.URL[len("http"):] + "/ai/chat"
 	_, resp, err := websocket.DefaultDialer.Dial(wsURL, nil)
