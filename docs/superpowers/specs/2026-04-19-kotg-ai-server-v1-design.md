@@ -15,7 +15,7 @@
 | 1 | **New repo `vellankikoti/kotg-ai-server`** | Honors the freeze rule (no kubilitics/* org pushes); matches kotg-schema repo precedent; tags binary independently of the kotg.ai monorepo's Python work. |
 | 2 | **Native Go SDKs per provider (Ollama, OpenAI, Anthropic)** | Pure-Go binary; no Python runtime; full provider features. Three small Event mappers vs three SDKs is a fair trade. |
 | 3 | **CLI flags + env vars for provider config** | Uniform across Tauri (env from OS) and Helm (env from Secret refs); API keys never in argv (only env-var *names* passed); ps-debuggable. |
-| 4 | **Stateless chat — no server-side session storage** | Sidecar lifecycle is ephemeral (idle shutdown 15min); desktop already owns transcript; all three providers accept full message history natively. Token-budget guard trims oldest history. |
+| 4 | **Minimal in-memory session state (server holds history)** | The kotg-schema `Chat` service expects this — `UserMessage` carries no transcript field; `CreateSession`/`ListSessions`/`CancelTurn` exist server-side. State is bounded by the supervisor's idle-shutdown (everything wiped on restart, which the chat panel already handles via `spawn_changed`). No persistence, no summarization, no sync — just `map[session_id] → []Message` + a TTL reaper. Token-budget guard trims oldest non-system messages. |
 | 5 | **K8s-aware baked-in system prompt** | Product positioning is "the AI that knows your cluster"; portable across providers; no config fragility for v1 demo. Single `BuildSystemPrompt(clusterID)` function — A/B testable later. |
 
 ---
@@ -60,6 +60,8 @@
 | `internal/server/chat.go` | `Chat.Send` bidi handler — accumulates UserMessages, builds prompt, streams provider events back as AssistantEvents |
 | `internal/server/budget.go` | `TrimToBudget(msgs, max)` — drops oldest user/assistant pairs to fit token budget |
 | `internal/server/budget_test.go` | unit tests |
+| `internal/session/manager.go` | In-memory `Manager` — `Create()`, `Get()`, `Append()`, `CancelTurn()`, `List()`, TTL reaper goroutine |
+| `internal/session/manager_test.go` | TTL eviction, cap enforcement, concurrent access |
 | `internal/provider/provider.go` | `Provider` interface, `Config`, `Message`, `Event`, `New(cfg)` factory |
 | `internal/provider/errors.go` | error sentinels + classification → gRPC code mapping |
 | `internal/provider/ollama/ollama.go` | Ollama native-SDK adapter |
@@ -171,16 +173,62 @@ func New(cfg Config) (Provider, error) {
 
 ## 4. Chat Flow
 
+**Session manager** (`internal/session/manager.go`):
+
+```go
+type Session struct {
+    ID             string
+    FocusClusterID string
+    Title          string
+    CreatedAt      time.Time
+    UpdatedAt      time.Time
+    Messages       []provider.Message  // role + content; system prompt NOT stored here
+    activeTurnCancel context.CancelFunc // for CancelTurn
+}
+
+type Manager struct {
+    mu       sync.Mutex
+    sessions map[string]*Session
+    ttl      time.Duration  // default 15min, matches supervisor idle
+    maxSessions int           // hard cap, default 1000
+    maxMessagesPerSession int // hard cap, default 100
+}
+
+func (m *Manager) Create(focusClusterID, title string) (*Session, error)  // errors if cap exceeded
+func (m *Manager) Get(id string) (*Session, bool)
+func (m *Manager) Append(id string, msg provider.Message) error           // also touches UpdatedAt; trims to maxMessagesPerSession
+func (m *Manager) SetTurnCancel(id string, cancel context.CancelFunc)
+func (m *Manager) CancelTurn(id string) error
+func (m *Manager) List(limit int, sinceUnix int64) []*Session
+// reaper goroutine: every 60s, delete sessions where UpdatedAt+ttl < now
+```
+
+**RPC handlers:**
+
+- `CreateSession` → `manager.Create(req.FocusClusterID, req.Title)` → return `Session{}` proto (translate fields)
+- `Send(stream)` — per-turn flow below
+- `CancelTurn` → `manager.CancelTurn(req.SessionId)` (cancels the in-flight provider context for that session's active turn)
+- `ListSessions` → `manager.List(req.Limit, req.SinceUnix)` → stream Session protos
+
 **Per-turn data flow inside `chatHandler.Send`:**
 
-1. Read all `*kotgv1.UserMessage` frames from the bidi stream until half-close (or until the first frame in v1 — clients are expected to send one frame per turn for now).
-2. Extract `cluster_id` from gRPC incoming metadata (`md.Get("kotg-cluster-id")`); if missing, return `codes.InvalidArgument`.
-3. Build the system message: `prompt.BuildSystemPrompt(clusterID)`.
-4. Build `[]provider.Message`: `[{system, prompt}, ...history (role,content)..., {user, latestTurnText}]`. The chat handler accumulates `UserMessage.Text` from all read frames into the latest user message.
-5. Apply `TrimToBudget(msgs, maxHistoryTokens)` (default 16,000 tokens, approximate via chars/4). System message is never dropped; latest user message is never dropped.
-6. `provider.ChatStream(ctx, msgs)` → receive channel of `Event`.
-7. For each event: map to `AssistantEvent` and `stream.Send(...)`.
-8. After channel close: send `AssistantEvent_Done` (or `_Error` if terminal was Error), return.
+1. Read first `*kotgv1.UserMessage` frame from the bidi stream. Extract `session_id`, `turn_id`, `text`, `context_hint`.
+2. If `session_id` empty → `codes.InvalidArgument` ("session_id required; call CreateSession first").
+3. Look up session: `manager.Get(session_id)`. Missing → `codes.NotFound`.
+4. Extract `cluster_id` from gRPC incoming metadata (`md.Get("kotg-cluster-id")`); missing → `codes.InvalidArgument`. Cross-check against `session.FocusClusterID`; mismatch → `codes.PermissionDenied` (a session is bound to one cluster).
+5. Append the user turn to the session: `manager.Append(session_id, Message{Role:"user", Content: text + contextHintIfAny})`.
+6. Build the system message: `prompt.BuildSystemPrompt(clusterID)`.
+7. Build `[]provider.Message`: `[{system, prompt}, ...session.Messages...]`.
+8. Apply `TrimToBudget(msgs, maxHistoryTokens)` (default 16,000 tokens, chars/4 approximation). System message is never dropped; latest user message is never dropped.
+9. Create per-turn cancellable ctx; register with `manager.SetTurnCancel(session_id, cancel)`. `CancelTurn` RPC fires this.
+10. `provider.ChatStream(ctx, msgs)` → receive channel of `Event`.
+11. For each event: map to `AssistantEvent` and `stream.Send(...)`. Accumulate `TextDelta.Text` into a buffer.
+12. After channel close: append `Message{Role:"assistant", Content: buffer}` to the session. Send `AssistantEvent_Done{prompt_tokens, completion_tokens}` (counts approximate).
+13. Clear `activeTurnCancel`. Return.
+
+**Concurrency:** `Send` for the same session is serialized by the manager — second concurrent Send on the same session_id returns `codes.FailedPrecondition` ("turn already in flight; call CancelTurn first").
+
+**Reset on restart:** all sessions lost when the supervisor kills/restarts the sidecar. Desktop chat panel handles this via the `spawn_changed` toast (subproject 2 spec §5) and starts a fresh CreateSession on the next user action. By design.
 
 **System prompt** (`internal/prompt/prompt.go`):
 
@@ -235,7 +283,12 @@ kotg-ai-server \
   --endpoint=http://127.0.0.1:11434 \
   --model=qwen2.5-coder:7b \
   --api-key-env=KOTG_OLLAMA_KEY    # optional; ignored when not needed
+  --session-ttl=15m                # default; matches supervisor idle shutdown
+  --max-sessions=1000              # hard cap to prevent abuse
+  --max-messages-per-session=100   # hard cap; older messages dropped via TrimToBudget anyway
 ```
+
+`--session-ttl`, `--max-sessions`, `--max-messages-per-session` all have built-in defaults; supervisor only needs to pass them if overriding from `cfg.AI.session*`.
 
 **Startup validation (fail-fast, exit code 2 with a clear error message):**
 - `--provider` is one of `ollama|openai|anthropic`
@@ -317,6 +370,8 @@ No real OpenAI/Anthropic calls in CI (cost, auth). Mocks cover the wire contract
 | Multi-agent (LangGraph or Go equivalent) | v2 |
 | RAG / vector search (Qdrant) | v2 |
 | Knowledge graph (Kuzu) | v2 |
-| Server-side session storage + summarization | v2 |
+| Server-side session **summarization** (compress long histories) | v2 |
+| Session **persistence** (survive sidecar restart) | v2 |
+| Session **sync** across multiple sidecars (multi-replica) | v3 |
 | Provider routing / multi-provider single sidecar | v1.5 (`--provider=multi` flag) |
 | Configurable system prompt file | v1.5 |
