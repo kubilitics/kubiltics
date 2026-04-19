@@ -26,6 +26,10 @@ import (
 	"k8s.io/client-go/kubernetes"
 	k8srest "k8s.io/client-go/rest"
 
+	aigate "github.com/kubilitics/kubilitics-backend/internal/ai/gate"
+	aihandlers "github.com/kubilitics/kubilitics-backend/internal/ai/handlers"
+	aiproxy "github.com/kubilitics/kubilitics-backend/internal/ai/proxy"
+	aisup "github.com/kubilitics/kubilitics-backend/internal/ai/supervisor"
 	grpcapi "github.com/kubilitics/kubilitics-backend/internal/api/grpc"
 	"github.com/kubilitics/kubilitics-backend/internal/api/middleware"
 	"github.com/kubilitics/kubilitics-backend/internal/api/rest"
@@ -175,6 +179,18 @@ func readShellPATH() string {
 		}
 	}
 	return ""
+}
+
+// routerHandleFuncAdapter wraps gorilla/mux.Router so it satisfies the
+// narrower HandleFunc signature expected by aihandlers.Register (which takes
+// func(string, func(http.ResponseWriter, *http.Request))). gorilla's
+// Router.HandleFunc returns *mux.Route, which doesn't fit that interface.
+type routerHandleFuncAdapter struct {
+	r *mux.Router
+}
+
+func (a routerHandleFuncAdapter) HandleFunc(pattern string, h func(http.ResponseWriter, *http.Request)) {
+	a.r.HandleFunc(pattern, h)
 }
 
 func main() {
@@ -615,6 +631,35 @@ func main() {
 	// Scanner handler (DevSecOps scanning engine)
 	scannerSvc := service.NewScannerService(repo, log)
 	scannerHandler := rest.NewScannerHandler(scannerSvc)
+
+	// ---- AI sidecar wiring (gated on cfg.AI.Enabled; routes always exposed
+	// so the desktop can probe and render an "AI: Off" pill consistently) ----
+	var aiSupervisor aisup.Supervisor
+	{
+		supCfg := aisup.Config{
+			BinaryPath:         cfg.AI.BinaryPath,
+			IdleShutdown:       time.Duration(cfg.AI.IdleShutdownSeconds) * time.Second,
+			MaxRestartAttempts: cfg.AI.MaxRestartAttempts,
+			RestartWindow:      time.Duration(cfg.AI.RestartWindowSeconds) * time.Second,
+		}
+		aiSupervisor = aisup.New(supCfg)
+		rateLimit := cfg.AI.RateLimitPerUserPerMin
+		if !cfg.AI.Enabled {
+			rateLimit = 0 // unused when disabled; constructor still needs a value
+		}
+		aiPxy := aiproxy.New(aiSupervisor, aigate.NoOpGate{}, rateLimit)
+		aiH := aihandlers.New(aiSupervisor, aiPxy, aihandlers.Config{
+			Enabled:         cfg.AI.Enabled,
+			ChatMaxDuration: time.Duration(cfg.AI.ChatMaxDurationSeconds) * time.Second,
+			PerMessageIdle:  time.Duration(cfg.AI.PerMessageIdleSeconds) * time.Second,
+		})
+		aiH.Register(routerHandleFuncAdapter{r: router})
+		if cfg.AI.Enabled {
+			log.Info("AI sidecar enabled", "binary", cfg.AI.BinaryPath, "idle_shutdown_seconds", cfg.AI.IdleShutdownSeconds)
+		} else {
+			log.Info("AI sidecar disabled (ai.enabled=false)")
+		}
+	}
 
 	// Deployment rollout routes on main router (full path) so they always match regardless of subrouter path handling
 	router.HandleFunc("/api/v1/clusters/{clusterId}/resources/deployments/{namespace}/{name}/rollout-history", handler.GetDeploymentRolloutHistory).Methods("GET")
@@ -1074,6 +1119,16 @@ func main() {
 
 	if err := srv.Shutdown(shutdownCtx); err != nil {
 		log.Warn("Server forced to shutdown", "error", err)
+	}
+
+	// Stop the AI sidecar after the HTTP server has drained so any in-flight
+	// AI requests get a chance to finish before the supervisor signals exit.
+	if aiSupervisor != nil {
+		sctx, scancel := context.WithTimeout(context.Background(), 10*time.Second)
+		if err := aiSupervisor.Shutdown(sctx); err != nil {
+			log.Warn("AI supervisor shutdown error", "error", err)
+		}
+		scancel()
 	}
 
 	log.Info("Server exited gracefully")
