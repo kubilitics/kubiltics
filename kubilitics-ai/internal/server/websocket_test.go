@@ -3,7 +3,7 @@ package server
 import (
 	"testing"
 
-	"github.com/kubilitics/kubilitics-ai/internal/llm/types"
+	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/llm/types"
 )
 
 func TestBuildMessagesWithHistory_NilStore(t *testing.T) {

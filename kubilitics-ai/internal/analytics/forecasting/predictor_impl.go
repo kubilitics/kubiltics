@@ -6,8 +6,8 @@ import (
 	"math"
 	"time"
 
-	"github.com/kubilitics/kubilitics-ai/internal/analytics/forecast"
-	"github.com/kubilitics/kubilitics-ai/internal/analytics/timeseries"
+	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/analytics/forecast"
+	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/analytics/timeseries"
 )
 
 // predictorImpl is the concrete Predictor backed by the time-series engine and ARIMA.

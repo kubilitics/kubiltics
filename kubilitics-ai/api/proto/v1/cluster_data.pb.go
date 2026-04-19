@@ -2265,7 +2265,7 @@ const file_cluster_data_proto_rawDesc = "" +
 	"\x10GetClusterHealth\x12\x1f.kubilitics.ai.v1.HealthRequest\x1a\x1f.kubilitics.ai.v1.ClusterHealth\x12Q\n" +
 	"\n" +
 	"GetMetrics\x12 .kubilitics.ai.v1.MetricsRequest\x1a!.kubilitics.ai.v1.MetricsResponse\x12N\n" +
-	"\tGetEvents\x12\x1f.kubilitics.ai.v1.EventsRequest\x1a .kubilitics.ai.v1.EventsResponseB5Z3github.com/kubilitics/kubilitics-ai/api/proto/v1;v1b\x06proto3"
+	"\tGetEvents\x12\x1f.kubilitics.ai.v1.EventsRequest\x1a .kubilitics.ai.v1.EventsResponseB5Z3github.com/vellankikoti/kotg.ai/kubilitics-ai/api/proto/v1;v1b\x06proto3"
 
 var (
 	file_cluster_data_proto_rawDescOnce sync.Once

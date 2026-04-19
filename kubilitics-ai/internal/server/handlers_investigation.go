@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
-	"github.com/kubilitics/kubilitics-ai/internal/db"
-	reasoningengine "github.com/kubilitics/kubilitics-ai/internal/reasoning/engine"
+	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/db"
+	reasoningengine "github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/reasoning/engine"
 )
 
 // handleInvestigations handles GET (list) and POST (create) requests.

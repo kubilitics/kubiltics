@@ -12,8 +12,8 @@ import (
 	"net/http"
 	"testing"
 
-	pb "github.com/kubilitics/kubilitics-ai/api/proto/v1"
-	"github.com/kubilitics/kubilitics-ai/internal/cost"
+	pb "github.com/vellankikoti/kotg.ai/kubilitics-ai/api/proto/v1"
+	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/cost"
 )
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────

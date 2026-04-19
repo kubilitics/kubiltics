@@ -37,8 +37,8 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/kubilitics/kubilitics-ai/internal/config"
-	"github.com/kubilitics/kubilitics-ai/internal/server"
+	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/config"
+	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/server"
 )
 
 func main() {

@@ -6,12 +6,12 @@ import (
 	"os"
 	"time"
 
-	"github.com/kubilitics/kubilitics-ai/internal/llm/provider/anthropic"
-	"github.com/kubilitics/kubilitics-ai/internal/llm/provider/custom"
-	"github.com/kubilitics/kubilitics-ai/internal/llm/provider/ollama"
-	"github.com/kubilitics/kubilitics-ai/internal/llm/provider/openai"
-	"github.com/kubilitics/kubilitics-ai/internal/llm/types"
-	"github.com/kubilitics/kubilitics-ai/internal/metrics"
+	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/llm/provider/anthropic"
+	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/llm/provider/custom"
+	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/llm/provider/ollama"
+	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/llm/provider/openai"
+	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/llm/types"
+	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/metrics"
 )
 
 // Package adapter provides unified LLM interface supporting ANY provider.

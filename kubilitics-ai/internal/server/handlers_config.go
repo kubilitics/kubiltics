@@ -51,9 +51,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/kubilitics/kubilitics-ai/internal/db"
-	"github.com/kubilitics/kubilitics-ai/internal/llm/adapter"
-	"github.com/kubilitics/kubilitics-ai/internal/llm/types"
+	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/db"
+	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/llm/adapter"
+	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/llm/types"
 )
 
 // configProviderRequest is the JSON body accepted by POST /api/v1/config/provider.

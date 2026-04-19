@@ -27,7 +27,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/kubilitics/kubilitics-ai/internal/cost"
+	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/cost"
 )
 
 // handleCostDispatch routes /api/v1/cost/... to the right handler.

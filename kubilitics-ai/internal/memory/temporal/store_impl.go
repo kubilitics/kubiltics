@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	pb "github.com/kubilitics/kubilitics-ai/api/proto/v1"
+	pb "github.com/vellankikoti/kotg.ai/kubilitics-ai/api/proto/v1"
 )
 
 // Snapshot records a point-in-time state of a subset of the cluster.

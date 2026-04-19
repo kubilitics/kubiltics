@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/kubilitics/kubilitics-ai/internal/analytics/forecast"
-	"github.com/kubilitics/kubilitics-ai/internal/analytics/ml"
+	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/analytics/forecast"
+	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/analytics/ml"
 )
 
 // TimeSeriesPoint is a single data point in a time series

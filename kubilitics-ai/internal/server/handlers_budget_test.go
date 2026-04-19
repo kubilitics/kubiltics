@@ -12,8 +12,8 @@ import (
 
 	"os"
 
-	"github.com/kubilitics/kubilitics-ai/internal/db"
-	"github.com/kubilitics/kubilitics-ai/internal/llm/budget"
+	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/db"
+	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/llm/budget"
 )
 
 func newTestStore(t *testing.T) db.Store {

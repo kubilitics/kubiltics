@@ -5,9 +5,9 @@ import (
 	"testing"
 	"time"
 
-	pb "github.com/kubilitics/kubilitics-ai/api/proto/v1"
-	"github.com/kubilitics/kubilitics-ai/internal/audit"
-	"github.com/kubilitics/kubilitics-ai/internal/config"
+	pb "github.com/vellankikoti/kotg.ai/kubilitics-ai/api/proto/v1"
+	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/audit"
+	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/config"
 )
 
 // Helper function to create test config and audit logger

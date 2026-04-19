@@ -6,7 +6,7 @@ import (
 	"math"
 	"time"
 
-	"github.com/kubilitics/kubilitics-ai/internal/analytics/timeseries"
+	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/analytics/timeseries"
 )
 
 // scorerImpl is the concrete ResourceScorer.

@@ -23,7 +23,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/kubilitics/kubilitics-ai/internal/llm/types"
+	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/llm/types"
 )
 
 // ─── Request / response types ────────────────────────────────────────────────

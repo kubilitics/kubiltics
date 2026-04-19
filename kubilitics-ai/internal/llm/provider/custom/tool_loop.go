@@ -16,7 +16,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/kubilitics/kubilitics-ai/internal/llm/types"
+	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/llm/types"
 )
 
 // CompleteWithTools implements the agentic loop for OpenAI-compatible endpoints.

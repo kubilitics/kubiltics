@@ -8,8 +8,8 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/kubilitics/kubilitics-ai/internal/db"
-	"github.com/kubilitics/kubilitics-ai/internal/metrics"
+	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/db"
+	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/metrics"
 )
 
 // ─── Immutable safety rules (always enforced, cannot be overridden) ───────────

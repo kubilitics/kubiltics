@@ -22,7 +22,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/kubilitics/kubilitics-ai/internal/security"
+	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/security"
 )
 
 // handleSecurityDispatch routes /api/v1/security/... to the right handler.

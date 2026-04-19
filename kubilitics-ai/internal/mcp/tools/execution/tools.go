@@ -17,10 +17,10 @@ import (
 	"fmt"
 	"time"
 
-	pb "github.com/kubilitics/kubilitics-ai/api/proto/v1"
-	"github.com/kubilitics/kubilitics-ai/internal/audit"
-	"github.com/kubilitics/kubilitics-ai/internal/integration/backend"
-	"github.com/kubilitics/kubilitics-ai/internal/safety"
+	pb "github.com/vellankikoti/kotg.ai/kubilitics-ai/api/proto/v1"
+	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/audit"
+	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/integration/backend"
+	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/safety"
 )
 
 // ExecutionProxyInterface enables test injection for the backend proxy.

@@ -19,7 +19,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/kubilitics/kubilitics-ai/internal/llm/types"
+	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/llm/types"
 )
 
 // ─── Request / Response Types ─────────────────────────────────────────────────

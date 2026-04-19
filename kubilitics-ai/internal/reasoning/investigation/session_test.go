@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/kubilitics/kubilitics-ai/internal/audit"
+	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/audit"
 )
 
 func setupTestSession(t *testing.T) InvestigationSession {

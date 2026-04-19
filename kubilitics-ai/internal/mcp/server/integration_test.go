@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/kubilitics/kubilitics-ai/internal/audit"
-	"github.com/kubilitics/kubilitics-ai/internal/config"
-	"github.com/kubilitics/kubilitics-ai/internal/db"
-	"github.com/kubilitics/kubilitics-ai/internal/integration/backend"
+	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/audit"
+	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/config"
+	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/db"
+	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/integration/backend"
 )
 
 // TestMCPServerIntegration tests the full integration flow:

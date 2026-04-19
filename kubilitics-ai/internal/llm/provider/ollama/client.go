@@ -9,7 +9,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/kubilitics/kubilitics-ai/internal/llm/types"
+	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/llm/types"
 )
 
 // Package ollama provides Ollama provider implementation for LLM adapter.

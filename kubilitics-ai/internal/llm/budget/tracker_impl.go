@@ -17,8 +17,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/kubilitics/kubilitics-ai/internal/db"
-	"github.com/kubilitics/kubilitics-ai/internal/metrics"
+	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/db"
+	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/metrics"
 )
 
 // ─── Pricing ─────────────────────────────────────────────────────────────────
