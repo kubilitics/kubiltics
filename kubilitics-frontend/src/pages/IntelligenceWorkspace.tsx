@@ -25,9 +25,13 @@ import {
   Crosshair,
   Loader2,
   RotateCcw,
+  Sparkles,
   Upload,
   X,
 } from 'lucide-react';
+import { useChatStore } from '@/stores/chatStore';
+import { useAIContextStore } from '@/stores/aiContextStore';
+import { useAIContext } from '@/hooks/useAIContext';
 
 import { useWorkspaceData } from '@/hooks/useWorkspaceData';
 import { useCausalChainStore } from '@/stores/causalChainStore';
@@ -78,6 +82,15 @@ export default function IntelligenceWorkspace() {
   const clusterId = useActiveClusterId();
 
   const canFetch = !!clusterId && !!kind && !!name;
+
+  const aiCtx = useMemo(() => ({
+    type: 'blast-radius' as const,
+    cluster: clusterId ?? '',
+    namespace: namespace || undefined,
+    name: name || undefined,
+    extra: { kind },
+  }), [clusterId, namespace, name, kind]);
+  useAIContext(aiCtx);
 
   const workspace = useWorkspaceData(kind, namespace, name, canFetch);
 
@@ -366,6 +379,22 @@ export default function IntelligenceWorkspace() {
             </>
           )}
         </div>
+
+        {/* Ask AI */}
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-7 gap-1.5 text-xs bg-slate-800 border-slate-700 hover:bg-slate-700 text-slate-300 shrink-0"
+          onClick={() => {
+            useChatStore.getState().togglePanel(true);
+            useAIContextStore.getState().setExplicit(aiCtx);
+            useChatStore.getState().setPrefilled(`What would be impacted if I delete this resource?`);
+          }}
+          aria-label="Ask AI"
+        >
+          <Sparkles className="h-3.5 w-3.5" />
+          Ask AI
+        </Button>
 
         {/* Depth selector */}
         <DropdownMenu>

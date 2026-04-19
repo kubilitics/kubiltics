@@ -1,7 +1,10 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useQueries } from '@tanstack/react-query';
-import { Server, Clock, Cpu, HardDrive, Box, Shield, Pause, Play, AlertTriangle, Info, BarChart2, Activity, MapPin, Tag, RefreshCw } from 'lucide-react';
+import { Server, Clock, Cpu, HardDrive, Box, Shield, Pause, Play, AlertTriangle, Info, BarChart2, Activity, MapPin, Tag, RefreshCw, Sparkles } from 'lucide-react';
+import { useAIContext } from '@/hooks/useAIContext';
+import { useChatStore } from '@/stores/chatStore';
+import { useAIContextStore } from '@/stores/aiContextStore';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
@@ -270,6 +273,11 @@ function ConditionsTab({ resource: n }: ResourceContext<NodeResource>) {
 export default function NodeDetail() {
   const { name } = useParams();
   const clusterId = useActiveClusterId();
+  useAIContext(useMemo(() => ({
+    type: 'node' as const,
+    cluster: clusterId ?? '',
+    name: name ?? undefined,
+  }), [clusterId, name]));
   const navigate = useNavigate();
   const { isConnected } = useConnectionStatus();
   const { refetchInterval: fastPollInterval, isFastPolling, triggerFastPolling } = useMutationPolling({
@@ -557,6 +565,17 @@ export default function NodeDetail() {
       extraHeaderActions={() => [
         { label: isCordoned ? 'Uncordon' : 'Cordon', icon: isCordoned ? Play : Pause, variant: 'outline', onClick: handleCordon, className: 'press-effect' },
         { label: 'Drain', icon: Shield, variant: 'outline', onClick: handleDrain, className: 'press-effect' },
+        {
+          label: 'Ask AI',
+          icon: Sparkles,
+          variant: 'outline',
+          onClick: () => {
+            useChatStore.getState().togglePanel(true);
+            useAIContextStore.getState().setExplicit({ type: 'node', cluster: clusterId ?? '', name: name ?? undefined });
+            useChatStore.getState().setPrefilled(`Summarize this node's health.`);
+          },
+          className: 'press-effect',
+        },
       ]}
       extraActionItems={() => [
         {

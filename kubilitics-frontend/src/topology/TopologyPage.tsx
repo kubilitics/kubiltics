@@ -29,6 +29,8 @@ import { FilterIndicator } from "./FilterIndicator";
 import type { ViewMode } from "./types/topology";
 import { TopologyDiffTab } from "./TopologyDiffTab";
 import { GitCompareArrows } from "lucide-react";
+import { AskAIButton } from "@/components/ai/AskAIButton";
+import { useAIContext } from "@/hooks/useAIContext";
 
 // ─── URL Search Params helpers ───────────────────────────────────────────────
 // Namespace selection is persisted in URL as ?ns=default or ?ns=blue-green-demo,foo
@@ -48,6 +50,12 @@ function namespacesToURL(ns: Set<string>): string {
 export function TopologyPage() {
   const clusterId = useBackendConfigStore((s) => s.currentClusterId) ?? null;
   const clusterName = useClusterStore((s) => s.activeCluster?.name) ?? null;
+  const activeClusterId = useClusterStore((s) => s.activeCluster?.id);
+  const aiCtx = useMemo(() => ({
+    type: 'topology' as const,
+    cluster: activeClusterId ?? clusterId ?? '',
+  }), [activeClusterId, clusterId]);
+  useAIContext(aiCtx);
   const [searchParams, setSearchParams] = useSearchParams();
 
   // Store state
@@ -385,6 +393,12 @@ export function TopologyPage() {
       {/* View toggle: Topology / Changes */}
       {!presentationMode && (
         <div className="flex items-center gap-1 px-4 pt-2">
+          <div className="ml-auto order-2">
+            <AskAIButton
+              context={aiCtx}
+              promptTemplate="Explain the relationships in this topology view."
+            />
+          </div>
           <button
             onClick={() => setShowDiffView(false)}
             className={cn(

@@ -50,6 +50,7 @@ const ClusterShellPanel = lazy(() =>
 );
 // Wizards removed — resource creation handled by ResourceCreator in list pages
 import { NotificationCenter } from '@/components/notifications/NotificationCenter';
+import { ChatStatusPill } from '@/components/ai/ChatStatusPill';
 import { ActivePortForwardsIndicator } from '@/components/resources/ActivePortForwards';
 import { getClusterKubeconfig } from '@/services/backendApiClient';
 import { getEffectiveBackendBaseUrl, useBackendConfigStore } from '@/stores/backendConfigStore';
@@ -677,6 +678,11 @@ export function Header() {
 
                 {/* Active Port Forwards — shows count + expandable list with stop buttons */}
                 <ActivePortForwardsIndicator />
+
+                {/* AI status pill — opens right-side chat panel; styled for branded header */}
+                <div className="text-white/90 [&_button]:text-white/90 [&_button]:hover:bg-white/10 [&_button]:rounded-lg">
+                  <ChatStatusPill />
+                </div>
 
                 {/* Notifications */}
                 <NotificationCenter clusterId={currentClusterId} />

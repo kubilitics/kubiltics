@@ -35,6 +35,9 @@ import {
 import { cn } from '@/lib/utils';
 import { ListPagination } from '@/components/list/ListPagination';
 import { SectionOverviewHeader } from '@/components/layout/SectionOverviewHeader';
+import { AskAIButton } from '@/components/ai/AskAIButton';
+import { useAIContext } from '@/hooks/useAIContext';
+import { useClusterStore } from '@/stores/clusterStore';
 import { PageLayout } from '@/components/layout/PageLayout';
 import { PageLoadingState } from '@/components/PageLoadingState';
 import { ApiError } from '@/components/ui/error-state';
@@ -277,6 +280,13 @@ export default function HealthDashboard() {
   const [pageIndex, setPageIndex] = useState(0);
 
   const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
+  const activeClusterId = useClusterStore((s) => s.activeCluster?.id);
+  const aiCtx = useMemo(() => ({
+    type: 'dashboard' as const,
+    cluster: activeClusterId ?? currentClusterId ?? '',
+    page: 'health',
+  }), [activeClusterId, currentClusterId]);
+  useAIContext(aiCtx);
   const { data, isLoading, error } = useClusterHealth(currentClusterId);
   const { data: insights } = useActiveInsights();
   const dismissInsightMutation = useDismissInsight();
@@ -392,6 +402,12 @@ export default function HealthDashboard() {
           onSync={handleSync}
           isSyncing={isSyncing}
           showAiButton={false}
+          extraActions={
+            <AskAIButton
+              context={aiCtx}
+              promptTemplate="What are the top issues in this cluster right now?"
+            />
+          }
         />
 
         {/* Insights Banner */}

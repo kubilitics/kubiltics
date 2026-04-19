@@ -31,6 +31,9 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useConnectionStatus } from '@/hooks/useConnectionStatus';
 import { useClusterStore } from '@/stores/clusterStore';
+import { useChatStore } from '@/stores/chatStore';
+import { useAIContextStore } from '@/stores/aiContextStore';
+import { Sparkles } from 'lucide-react';
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
 import { usePaginatedResourceList } from '@/hooks/useKubernetes';
 import { getEvents, type BackendEvent } from '@/services/backendApiClient';
@@ -501,6 +504,17 @@ export default function Events() {
  <DropdownMenuContent align="end" className="w-48">
  <DropdownMenuItem onClick={() => navigate(`/events/${encodeURIComponent(ev.eventNamespace)}/${encodeURIComponent(ev.name)}`)} className="gap-2">
  View Details
+ </DropdownMenuItem>
+ <DropdownMenuItem
+ onClick={() => {
+ const cluster = useClusterStore.getState().activeCluster?.id ?? '';
+ useChatStore.getState().togglePanel(true);
+ useAIContextStore.getState().setExplicit({ type: 'event', cluster, namespace: ev.eventNamespace || undefined, name: ev.name });
+ useChatStore.getState().setPrefilled(`Explain this event.`);
+ }}
+ className="gap-2"
+ >
+ <Sparkles className="h-4 w-4" />Ask AI
  </DropdownMenuItem>
  <DropdownMenuSeparator />
  <DropdownMenuItem onClick={() => navigate(`/events/${encodeURIComponent(ev.eventNamespace)}/${encodeURIComponent(ev.name)}?tab=yaml`)} className="gap-2">

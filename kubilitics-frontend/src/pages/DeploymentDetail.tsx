@@ -54,6 +54,10 @@ import { useMutationPolling } from '@/hooks/useMutationPolling';
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
 import { useConnectionStatus } from '@/hooks/useConnectionStatus';
 import { useActiveClusterId } from '@/hooks/useActiveClusterId';
+import { useAIContext } from '@/hooks/useAIContext';
+import { useChatStore } from '@/stores/chatStore';
+import { useAIContextStore } from '@/stores/aiContextStore';
+import { Sparkles } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getDeploymentRolloutHistory, postDeploymentRollback, BackendApiError, getResourceEvents, getDeploymentMetrics, type RolloutHistoryRevision, type BackendEvent } from '@/services/backendApiClient';
 import { notifyError, notifySuccess } from '@/lib/notificationFormatter';
@@ -243,6 +247,12 @@ function OverviewTab({ resource: deployment }: ResourceContext<DeploymentResourc
 export default function DeploymentDetail() {
   const { namespace, name } = useParams();
   const clusterId = useActiveClusterId();
+  useAIContext(useMemo(() => ({
+    type: 'deployment' as const,
+    cluster: clusterId ?? '',
+    namespace: namespace ?? undefined,
+    name: name ?? undefined,
+  }), [clusterId, namespace, name]));
   const queryClient = useQueryClient();
   const { isConnected } = useConnectionStatus();
   const [, setSearchParams] = useSearchParams();
@@ -840,6 +850,18 @@ export default function DeploymentDetail() {
         detailOptions={{ refetchInterval: fastPollInterval, staleTime: isFastPolling ? 1000 : 5000 }}
         deriveStatus={(d) => d.status?.readyReplicas === d.spec?.replicas ? 'Running' : d.status?.readyReplicas ? 'Pending' : 'Failed'}
         customTabs={customTabs}
+        extraHeaderActions={() => [
+          {
+            label: 'Ask AI',
+            icon: Sparkles,
+            variant: 'outline',
+            onClick: () => {
+              useChatStore.getState().togglePanel(true);
+              useAIContextStore.getState().setExplicit({ type: 'deployment', cluster: clusterId ?? '', namespace: namespace ?? undefined, name: name ?? undefined });
+              useChatStore.getState().setPrefilled(`Walk me through this deployment's current rollout status.`);
+            },
+          },
+        ]}
         buildStatusCards={(ctx) => {
           const deployment = ctx.resource;
           const desired = deployment.spec?.replicas || 0;

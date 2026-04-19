@@ -37,6 +37,9 @@ import { useTableKeyboardNav } from '@/hooks/useTableKeyboardNav';
 import { useColumnVisibility } from '@/hooks/useColumnVisibility';
 import { ResizableTableProvider, ResizableTableHead, ResizableTableCell, type ResizableColumnConfig } from '@/components/ui/resizable-table';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
+import { Sparkles } from 'lucide-react';
+import { useChatStore } from '@/stores/chatStore';
+import { useAIContextStore } from '@/stores/aiContextStore';
 import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
@@ -1558,6 +1561,18 @@ export default function Pods() {
  <CopyNameDropdownItem name={pod.name} namespace={pod.namespace} />
  <DropdownMenuItem onClick={() => navigate(`/pods/${pod.namespace}/${pod.name}`)} className="press-effect gap-2">
  View Details
+ </DropdownMenuItem>
+ <DropdownMenuItem
+ onClick={() => {
+ const cluster = useClusterStore.getState().activeCluster?.id ?? '';
+ useChatStore.getState().togglePanel(true);
+ useAIContextStore.getState().setExplicit({ type: 'pod', cluster, namespace: pod.namespace, name: pod.name });
+ useChatStore.getState().setPrefilled(`Why is this pod in state ${pod.status ?? 'unknown'}?`);
+ }}
+ className="press-effect gap-2"
+ >
+ <Sparkles className="h-4 w-4" />
+ Ask AI
  </DropdownMenuItem>
  <DropdownMenuItem onClick={() => handleViewLogs(pod)} className="press-effect gap-2">
  <FileText className="h-4 w-4" />

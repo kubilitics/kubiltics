@@ -23,6 +23,9 @@ import { useKeyboardShortcuts, type KeyboardShortcut } from '@/hooks/useKeyboard
 import { UpdateChecker } from '@/components/UpdateChecker';
 import { useClusterWatcher } from '@/hooks/useClusterWatcher';
 import { useInsightNotifications } from '@/hooks/useInsightNotifications';
+import { ChatPanel } from '@/components/ai/ChatPanel';
+import { useChatHotkey } from '@/hooks/useChatHotkey';
+import { useChatStore } from '@/stores/chatStore';
 
 export function AppLayout() {
   useRecentlyVisited();
@@ -46,6 +49,10 @@ export function AppLayout() {
   useScrollRestoration(mainRef);
   const isShellOpen = useUIStore((s) => s.isShellOpen);
   const shellHeightPx = useUIStore((s) => s.shellHeightPx);
+
+  // -- Chat panel: Cmd+I / Ctrl+I toggles right-side AI assistant --
+  const toggleChatPanel = useChatStore((s) => s.togglePanel);
+  useChatHotkey(() => toggleChatPanel());
 
   // -- Global keyboard shortcuts overlay --
   const [shortcutsOverlayOpen, setShortcutsOverlayOpen] = useState(false);
@@ -138,6 +145,8 @@ export function AppLayout() {
             </motion.div>
           </div>
         </main>
+        {/* Right-side AI Assistant chat panel (renders null when closed) */}
+        <ChatPanel />
       </div>
 
       {/* Global keyboard shortcuts overlay — triggered by pressing ? */}
