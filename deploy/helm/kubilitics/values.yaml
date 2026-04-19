@@ -133,6 +133,20 @@ kcli:
   rateLimitBurst: 24  # Burst limit for kcli exec commands
   streamMaxConns: 4  # Maximum concurrent kcli stream connections per cluster
 
+# AI sidecar (kotg-ai-server) configuration. Disabled by default until
+# subprojects 3-6 of the AI integration arc are merged. When enabled, the
+# backend supervises a local kotg-ai-server binary at the configured path,
+# starting it on demand and shutting it down after idle timeouts.
+ai:
+  enabled: false
+  binaryPath: ""              # absolute path to kotg-ai-server binary inside the container
+  idleShutdownSeconds: 900    # shut down sidecar after this many seconds with no chat activity
+  chatMaxDurationSeconds: 600 # hard cap on a single chat session
+  perMessageIdleSeconds: 60   # idle timeout between messages within a session
+  maxRestartAttempts: 5       # max restart attempts inside the restart window before giving up
+  restartWindowSeconds: 300   # rolling window for counting restart attempts
+  rateLimitPerUserPerMin: 30  # per-user request budget per minute
+
 # Use in-cluster kubeconfig (default). For multiple clusters, backend adds them via API.
 # kubeconfig: leave empty to use in-cluster service account
 kubeconfig: {}
