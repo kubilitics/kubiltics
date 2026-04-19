@@ -29,7 +29,7 @@ require (
 	go.opentelemetry.io/otel/trace v1.43.0
 
 	// gRPC (for kubilitics-ai integration; grpc_health_v1 is a subpackage of this module)
-	google.golang.org/grpc v1.79.3
+	google.golang.org/grpc v1.80.0
 	// Add-on platform compatibility baseline:
 	// helm.sh/helm/v3 v3.16.3 and sigs.k8s.io/controller-runtime v0.18.4
 	// resolve against Kubernetes v0.31.x; keep all k8s.io/* on one minor.
@@ -99,6 +99,7 @@ require (
 	github.com/hashicorp/golang-lru/v2 v2.0.7
 	github.com/pquerna/otp v1.5.0
 	github.com/prometheus/client_golang v1.23.2
+	github.com/vellankikoti/kotg-schema v1.0.1
 	golang.org/x/crypto v0.48.0
 	golang.org/x/sync v0.19.0
 	k8s.io/apiextensions-apiserver v0.33.3
