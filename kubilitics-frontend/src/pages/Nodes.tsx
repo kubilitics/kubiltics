@@ -34,6 +34,9 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { usePaginatedResourceList, useDeleteK8sResource, usePatchK8sResource, useK8sResourceList, calculateAge, type KubernetesResource } from '@/hooks/useKubernetes';
 import { useConnectionStatus } from '@/hooks/useConnectionStatus';
 import { useClusterStore } from '@/stores/clusterStore';
+import { useChatStore } from '@/stores/chatStore';
+import { useAIContextStore } from '@/stores/aiContextStore';
+import { Sparkles } from 'lucide-react';
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
 import { getNodeMetrics, postNodeCordon, postNodeDrain } from '@/services/backendApiClient';
 import { toast } from 'sonner';
@@ -881,6 +884,17 @@ export default function Nodes() {
  <DropdownMenuContent align="end" className="w-52">
  <CopyNameDropdownItem name={node.name} />
  <DropdownMenuItem onClick={() => navigate(`/nodes/${node.name}`)} className="gap-2">View Details</DropdownMenuItem>
+ <DropdownMenuItem
+ onClick={() => {
+ const cluster = useClusterStore.getState().activeCluster?.id ?? '';
+ useChatStore.getState().togglePanel(true);
+ useAIContextStore.getState().setExplicit({ type: 'node', cluster, name: node.name });
+ useChatStore.getState().setPrefilled(`What's wrong with this node?`);
+ }}
+ className="gap-2"
+ >
+ <Sparkles className="h-4 w-4" />Ask AI
+ </DropdownMenuItem>
  <DropdownMenuItem onClick={() => navigate(`/pods?node=${encodeURIComponent(node.name)}`)} className="gap-2">View Pods on Node</DropdownMenuItem>
  <DropdownMenuItem onClick={() => handleCordon(node)} className="gap-2">Cordon</DropdownMenuItem>
  <DropdownMenuItem onClick={() => handleCordon(node)} className="gap-2">Uncordon</DropdownMenuItem>

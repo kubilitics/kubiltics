@@ -25,6 +25,9 @@ import { useK8sResourceList, useDeleteK8sResource, useCreateK8sResource, usePatc
 import { useConnectionStatus } from '@/hooks/useConnectionStatus';
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
 import { useClusterStore } from '@/stores/clusterStore';
+import { useChatStore } from '@/stores/chatStore';
+import { useAIContextStore } from '@/stores/aiContextStore';
+import { Sparkles } from 'lucide-react';
 import { applyManifest, CONFIRM_DESTRUCTIVE_HEADER, getDeploymentRolloutHistory, getEvents, postDeploymentRollback } from '@/services/backendApiClient';
 import { DeleteConfirmDialog, ScaleDialog, RolloutActionsDialog, MetricBar, parseCpu, parseMemory, calculatePodResourceMax, BulkActionBar, executeBulkOperation } from '@/components/resources';
 import { ResourceCommandBar, ResourceExportDropdown, ListViewSegmentedControl } from '@/components/list';
@@ -977,6 +980,17 @@ spec:
  <DropdownMenuContent align="end" className="w-52">
  <CopyNameDropdownItem name={item.name} namespace={item.namespace} />
  <DropdownMenuItem onClick={() => navigate(`/deployments/${item.namespace}/${item.name}`)} className="press-effect gap-2">View Details</DropdownMenuItem>
+ <DropdownMenuItem
+ onClick={() => {
+ const cluster = useClusterStore.getState().activeCluster?.id ?? '';
+ useChatStore.getState().togglePanel(true);
+ useAIContextStore.getState().setExplicit({ type: 'deployment', cluster, namespace: item.namespace, name: item.name });
+ useChatStore.getState().setPrefilled(`Why is this deployment unhealthy?`);
+ }}
+ className="press-effect gap-2"
+ >
+ <Sparkles className="h-4 w-4" />Ask AI
+ </DropdownMenuItem>
  <DropdownMenuItem onClick={() => navigate(`/pods?namespace=${item.namespace}&deployment=${item.name}`)} className="press-effect gap-2">View Pods</DropdownMenuItem>
  <DropdownMenuSeparator />
  <DropdownMenuItem onClick={() => setScaleDialog({ open: true, item })} className="gap-2" disabled={!isConnected}><Scale className="h-4 w-4" />Scale</DropdownMenuItem>
@@ -1093,6 +1107,17 @@ spec:
  <DropdownMenuContent align="end" className="w-52">
  <CopyNameDropdownItem name={item.name} namespace={item.namespace} />
  <DropdownMenuItem onClick={() => navigate(`/deployments/${item.namespace}/${item.name}`)} className="press-effect gap-2">View Details</DropdownMenuItem>
+ <DropdownMenuItem
+ onClick={() => {
+ const cluster = useClusterStore.getState().activeCluster?.id ?? '';
+ useChatStore.getState().togglePanel(true);
+ useAIContextStore.getState().setExplicit({ type: 'deployment', cluster, namespace: item.namespace, name: item.name });
+ useChatStore.getState().setPrefilled(`Why is this deployment unhealthy?`);
+ }}
+ className="press-effect gap-2"
+ >
+ <Sparkles className="h-4 w-4" />Ask AI
+ </DropdownMenuItem>
  <DropdownMenuItem onClick={() => navigate(`/pods?namespace=${item.namespace}&deployment=${item.name}`)} className="press-effect gap-2">View Pods</DropdownMenuItem>
  <DropdownMenuSeparator />
  <DropdownMenuItem onClick={() => setScaleDialog({ open: true, item })} className="gap-2" disabled={!isConnected}><Scale className="h-4 w-4" />Scale</DropdownMenuItem>
