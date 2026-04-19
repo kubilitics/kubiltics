@@ -19,23 +19,15 @@ const (
 	ModeInCluster DeploymentMode = "in-cluster" // running as a pod inside a Kubernetes cluster
 )
 
-// AIConfig controls the AI sidecar (kotg-ai-server) lifecycle and proxy.
+// AIConfig controls the kubilitics-backend → kubilitics-ai client (in-cluster
+// gRPC + HTTP). The AI runtime owns its own provider/model config via its
+// own Helm values; the backend only needs the wire endpoints.
 type AIConfig struct {
 	Enabled                bool   `mapstructure:"enabled"`
-	BinaryPath             string `mapstructure:"binary_path"`
-	IdleShutdownSeconds    int    `mapstructure:"idle_shutdown_seconds"`
-	ChatMaxDurationSeconds int    `mapstructure:"chat_max_duration_seconds"`
-	PerMessageIdleSeconds  int    `mapstructure:"per_message_idle_seconds"`
-	MaxRestartAttempts     int    `mapstructure:"max_restart_attempts"`
-	RestartWindowSeconds   int    `mapstructure:"restart_window_seconds"`
+	Endpoint               string `mapstructure:"endpoint"`                  // gRPC host:port
+	HTTPEndpoint           string `mapstructure:"http_endpoint"`             // HTTP base URL
+	RequestTimeoutSeconds  int    `mapstructure:"request_timeout_seconds"`
 	RateLimitPerUserPerMin int    `mapstructure:"rate_limit_per_user_per_min"`
-
-	// Provider selection — passed to kotg-ai-server as CLI flags.
-	// Defaults match the LLM provider strategy memo: Ollama for dev/scale.
-	Provider  string `mapstructure:"provider"`     // ollama | openai | anthropic
-	Endpoint  string `mapstructure:"endpoint"`     // provider base URL
-	Model     string `mapstructure:"model"`        // provider-specific model id
-	APIKeyEnv string `mapstructure:"api_key_env"`  // env var holding API key (empty for ollama)
 }
 
 type Config struct {
@@ -235,19 +227,12 @@ func Load() (*Config, error) {
 	// Deployment mode default (empty string = auto-detect in post-unmarshal block)
 	viper.SetDefault("deployment_mode", "")
 
-	// AI sidecar defaults — feature-flagged off; safe defaults for lifecycle and rate limit.
+	// AI client defaults — feature-flagged off; targets in-cluster kubilitics-ai.
 	viper.SetDefault("ai.enabled", false)
-	viper.SetDefault("ai.binary_path", "")
-	viper.SetDefault("ai.idle_shutdown_seconds", 900)
-	viper.SetDefault("ai.chat_max_duration_seconds", 600)
-	viper.SetDefault("ai.per_message_idle_seconds", 60)
-	viper.SetDefault("ai.max_restart_attempts", 5)
-	viper.SetDefault("ai.restart_window_seconds", 300)
+	viper.SetDefault("ai.endpoint", "kubilitics-ai.kubilitics.svc.cluster.local:50051")
+	viper.SetDefault("ai.http_endpoint", "http://kubilitics-ai.kubilitics.svc.cluster.local:8080")
+	viper.SetDefault("ai.request_timeout_seconds", 30)
 	viper.SetDefault("ai.rate_limit_per_user_per_min", 30)
-	viper.SetDefault("ai.provider", "ollama")
-	viper.SetDefault("ai.endpoint", "http://127.0.0.1:11434")
-	viper.SetDefault("ai.model", "qwen2.5-coder:7b")
-	viper.SetDefault("ai.api_key_env", "")
 
 	// Kubeconfig sync defaults
 	viper.SetDefault("kubeconfig_sync_enabled", true)
@@ -258,7 +243,16 @@ func Load() (*Config, error) {
 
 	// Environment variables
 	viper.SetEnvPrefix("KUBILITICS")
+	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	viper.AutomaticEnv()
+	// Explicit BindEnv for nested keys (AutomaticEnv + replacer covers most,
+	// but BindEnv guarantees these specific keys flow from env even when
+	// no config file is present and no defaults match).
+	_ = viper.BindEnv("ai.enabled")
+	_ = viper.BindEnv("ai.endpoint")
+	_ = viper.BindEnv("ai.http_endpoint")
+	_ = viper.BindEnv("ai.request_timeout_seconds")
+	_ = viper.BindEnv("ai.rate_limit_per_user_per_min")
 
 	if err := viper.ReadInConfig(); err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {

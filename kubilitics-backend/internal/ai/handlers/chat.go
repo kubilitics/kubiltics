@@ -33,7 +33,13 @@ type userMessagePayload struct {
 	ContextHint string `json:"context_hint"`
 }
 
-// GetChat upgrades the request to WebSocket and bridges it to the sidecar's
+// cancelTurnPayload is sent by the client to abort a turn server-side.
+type cancelTurnPayload struct {
+	SessionID string `json:"session_id"`
+	TurnID    string `json:"turn_id"`
+}
+
+// GetChat upgrades the request to WebSocket and bridges it to the runtime's
 // bidirectional Chat gRPC stream. The cluster_id query parameter is required.
 func (h *Handlers) GetChat(w http.ResponseWriter, r *http.Request) {
 	if !h.cfg.Enabled {
@@ -55,7 +61,7 @@ func (h *Handlers) GetChat(w http.ResponseWriter, r *http.Request) {
 
 	ctx := proxy.WithUser(r.Context(), userIDFromRequest(r))
 
-	stream, _, err := h.pxy.Chat(ctx, clusterID, h.cfg.ChatMaxDuration)
+	stream, err := h.pxy.Send(ctx, clusterID)
 	if err != nil {
 		_ = conn.WriteJSON(wsFrame{Type: "error", Payload: jsonString(err.Error())})
 		_ = conn.WriteControl(
@@ -104,6 +110,12 @@ func (h *Handlers) GetChat(w http.ResponseWriter, r *http.Request) {
 				Text:        p.Text,
 				ContextHint: p.ContextHint,
 			})
+		case "cancel_turn":
+			var p cancelTurnPayload
+			if err := json.Unmarshal(frame.Payload, &p); err != nil {
+				continue
+			}
+			_ = h.pxy.CancelTurn(ctx, clusterID, p.SessionID, p.TurnID)
 		default:
 			_ = conn.WriteControl(
 				websocket.CloseMessage,
@@ -118,8 +130,7 @@ func (h *Handlers) GetChat(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Client closed (or read error). Half-close the gRPC send side so the
-	// sidecar finishes streaming, then wait for the recv pump to exit so the
-	// guarded stream's closeOnce path fires DecStreams in the supervisor.
+	// runtime finishes streaming, then wait for the recv pump to exit.
 	_ = stream.CloseSend()
 	<-done
 }
@@ -142,8 +153,7 @@ func jsonString(s string) json.RawMessage {
 
 // assistantEventType returns the lowercase oneof variant name for the
 // AssistantEvent. Used as the WebSocket frame "type" tag so the frontend
-// can demultiplex without re-parsing the payload. Variant names verified
-// against ~/code/kotg-schema/gen/go/kotg/v1/chat.pb.go (oneof "event").
+// can demultiplex without re-parsing the payload.
 func assistantEventType(ev *kotgv1.AssistantEvent) string {
 	switch ev.GetEvent().(type) {
 	case *kotgv1.AssistantEvent_TextDelta:

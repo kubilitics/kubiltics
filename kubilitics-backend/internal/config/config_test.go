@@ -178,25 +178,16 @@ func TestAIConfigDefaults(t *testing.T) {
 	if cfg.AI.Enabled != false {
 		t.Errorf("AI.Enabled default = %v, want false", cfg.AI.Enabled)
 	}
-	if cfg.AI.IdleShutdownSeconds != 900 {
-		t.Errorf("AI.IdleShutdownSeconds default = %d, want 900", cfg.AI.IdleShutdownSeconds)
-	}
-	if cfg.AI.ChatMaxDurationSeconds != 600 {
-		t.Errorf("AI.ChatMaxDurationSeconds default = %d, want 600", cfg.AI.ChatMaxDurationSeconds)
-	}
-	if cfg.AI.PerMessageIdleSeconds != 60 {
-		t.Errorf("AI.PerMessageIdleSeconds default = %d, want 60", cfg.AI.PerMessageIdleSeconds)
-	}
-	if cfg.AI.MaxRestartAttempts != 5 {
-		t.Errorf("AI.MaxRestartAttempts default = %d, want 5", cfg.AI.MaxRestartAttempts)
-	}
-	if cfg.AI.RestartWindowSeconds != 300 {
-		t.Errorf("AI.RestartWindowSeconds default = %d, want 300", cfg.AI.RestartWindowSeconds)
+	if cfg.AI.RequestTimeoutSeconds != 30 {
+		t.Errorf("AI.RequestTimeoutSeconds default = %d, want 30", cfg.AI.RequestTimeoutSeconds)
 	}
 	if cfg.AI.RateLimitPerUserPerMin != 30 {
 		t.Errorf("AI.RateLimitPerUserPerMin default = %d, want 30", cfg.AI.RateLimitPerUserPerMin)
 	}
-	if cfg.AI.BinaryPath != "" {
-		t.Errorf("AI.BinaryPath default = %q, want empty", cfg.AI.BinaryPath)
+	if cfg.AI.Endpoint != "kubilitics-ai.kubilitics.svc.cluster.local:50051" {
+		t.Errorf("AI.Endpoint default = %q", cfg.AI.Endpoint)
+	}
+	if cfg.AI.HTTPEndpoint != "http://kubilitics-ai.kubilitics.svc.cluster.local:8080" {
+		t.Errorf("AI.HTTPEndpoint default = %q", cfg.AI.HTTPEndpoint)
 	}
 }
