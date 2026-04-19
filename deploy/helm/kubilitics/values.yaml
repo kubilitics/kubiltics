@@ -133,24 +133,15 @@ kcli:
   rateLimitBurst: 24  # Burst limit for kcli exec commands
   streamMaxConns: 4  # Maximum concurrent kcli stream connections per cluster
 
-# AI sidecar (kotg-ai-server) configuration. Disabled by default until
-# subprojects 3-6 of the AI integration arc are merged. When enabled, the
-# backend supervises a local kotg-ai-server binary at the configured path,
-# starting it on demand and shutting it down after idle timeouts.
+# AI integration — backend talks to in-cluster kubilitics-ai over gRPC
+# (Chat + AIControl) and HTTP (control-plane /status). The kubilitics-ai
+# runtime owns its own provider/model config via its own Helm values.
 ai:
   enabled: false
-  binaryPath: ""              # absolute path to kotg-ai-server binary inside the container
-  idleShutdownSeconds: 900    # shut down sidecar after this many seconds with no chat activity
-  chatMaxDurationSeconds: 600 # hard cap on a single chat session
-  perMessageIdleSeconds: 60   # idle timeout between messages within a session
-  maxRestartAttempts: 5       # max restart attempts inside the restart window before giving up
-  restartWindowSeconds: 300   # rolling window for counting restart attempts
+  endpoint: "kubilitics-ai.kubilitics.svc.cluster.local:50051"      # gRPC host:port
+  httpEndpoint: "http://kubilitics-ai.kubilitics.svc.cluster.local:8080"  # HTTP base URL
+  requestTimeoutSeconds: 30
   rateLimitPerUserPerMin: 30  # per-user request budget per minute
-  # Provider selection — passed to kotg-ai-server as CLI flags.
-  provider: "ollama"                       # ollama | openai | anthropic
-  endpoint: "http://127.0.0.1:11434"       # provider base URL (Ollama default)
-  model: "qwen2.5-coder:7b"                # provider-specific model id
-  apiKeyEnv: ""                            # env var holding API key (empty for ollama)
 
 # Use in-cluster kubeconfig (default). For multiple clusters, backend adds them via API.
 # kubeconfig: leave empty to use in-cluster service account
