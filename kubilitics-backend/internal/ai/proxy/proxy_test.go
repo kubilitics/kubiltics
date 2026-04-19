@@ -2,73 +2,105 @@ package proxy
 
 import (
 	"context"
-	"path/filepath"
-	"runtime"
+	"net"
 	"testing"
 	"time"
 
-	"github.com/kubilitics/kubilitics-backend/internal/ai/gate"
-	"github.com/kubilitics/kubilitics-backend/internal/ai/supervisor"
+	"github.com/kubilitics/kubilitics-backend/internal/ai/aiclient"
 	"github.com/kubilitics/kubilitics-backend/internal/ai/types"
+
+	kotgv1 "github.com/vellankikoti/kotg-schema/gen/go/kotg/v1"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/test/bufconn"
 )
 
-func stubBinaryPath(t *testing.T) string {
-	t.Helper()
-	_, file, _, _ := runtime.Caller(0)
-	return filepath.Clean(filepath.Join(filepath.Dir(file), "../supervisor/testdata/stubsidecar/stub"))
+type stubProxySrv struct {
+	kotgv1.UnimplementedChatServer
+	kotgv1.UnimplementedAIControlServer
 }
 
-func newTestProxy(t *testing.T) (*Proxy, supervisor.Supervisor) {
-	sup := supervisor.New(supervisor.Config{
-		BinaryPath:         stubBinaryPath(t),
-		IdleShutdown:       30 * time.Second,
-		MaxRestartAttempts: 3,
-		RestartWindow:      5 * time.Second,
-	})
-	return New(sup, gate.NoOpGate{}, 60), sup
+func (s *stubProxySrv) Capabilities(_ context.Context, _ *kotgv1.Empty) (*kotgv1.AICapabilities, error) {
+	return &kotgv1.AICapabilities{SchemaVersion: "1.0.1", AiVersion: "test"}, nil
+}
+
+func (s *stubProxySrv) CreateSession(_ context.Context, req *kotgv1.CreateSessionRequest) (*kotgv1.Session, error) {
+	return &kotgv1.Session{SessionId: "s-1", Title: req.GetTitle(), FocusClusterId: req.GetFocusClusterId()}, nil
+}
+
+func newTestProxy(t *testing.T, perMin int) (*Proxy, func()) {
+	t.Helper()
+	lis := bufconn.Listen(1 << 20)
+	srv := grpc.NewServer()
+	stub := &stubProxySrv{}
+	kotgv1.RegisterChatServer(srv, stub)
+	kotgv1.RegisterAIControlServer(srv, stub)
+	go func() { _ = srv.Serve(lis) }()
+	conn, err := grpc.NewClient("passthrough:///bufnet",
+		grpc.WithContextDialer(func(_ context.Context, _ string) (net.Conn, error) {
+			return lis.Dial()
+		}),
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	)
+	if err != nil {
+		t.Fatalf("dial: %v", err)
+	}
+	gc := aiclient.NewGRPCClientFromConn(conn)
+	hc := aiclient.NewHTTPClient("http://127.0.0.1:0", aiclient.DefaultOpts())
+	p := New(gc, hc, perMin)
+	return p, func() {
+		_ = gc.Close()
+		srv.Stop()
+		_ = lis.Close()
+	}
 }
 
 func TestProxyMissingClusterRejects(t *testing.T) {
-	p, sup := newTestProxy(t)
-	defer sup.Shutdown(context.Background())
-
-	_, err := p.GetCapabilities(WithUser(context.Background(), "u1"), "")
+	p, cleanup := newTestProxy(t, 60)
+	defer cleanup()
+	_, err := p.Capabilities(WithUser(context.Background(), "u1"), "")
 	if err != types.ErrMissingCluster {
 		t.Fatalf("err = %v, want ErrMissingCluster", err)
 	}
 }
 
-func TestProxyGetCapabilitiesHappy(t *testing.T) {
-	p, sup := newTestProxy(t)
-	defer sup.Shutdown(context.Background())
-
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+func TestProxyCapabilitiesHappy(t *testing.T) {
+	p, cleanup := newTestProxy(t, 60)
+	defer cleanup()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	snap, err := p.GetCapabilities(WithUser(ctx, "u1"), "cluster-a")
+	caps, err := p.Capabilities(WithUser(ctx, "u1"), "cluster-a")
 	if err != nil {
-		t.Fatalf("GetCapabilities: %v", err)
+		t.Fatalf("Capabilities: %v", err)
 	}
-	if snap == nil || snap.Capabilities == nil {
-		t.Fatalf("nil snapshot")
+	if caps == nil || caps.SchemaVersion != "1.0.1" {
+		t.Fatalf("unexpected caps: %+v", caps)
 	}
 }
 
 func TestProxyRateLimit(t *testing.T) {
-	sup := supervisor.New(supervisor.Config{
-		BinaryPath:         stubBinaryPath(t),
-		IdleShutdown:       30 * time.Second,
-		MaxRestartAttempts: 3,
-		RestartWindow:      5 * time.Second,
-	})
-	defer sup.Shutdown(context.Background())
-	p := New(sup, gate.NoOpGate{}, 1)
-
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	p, cleanup := newTestProxy(t, 1)
+	defer cleanup()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	if _, err := p.GetCapabilities(WithUser(ctx, "u1"), "cluster-a"); err != nil {
+	if _, err := p.Capabilities(WithUser(ctx, "u1"), "cluster-a"); err != nil {
 		t.Fatalf("first call: %v", err)
 	}
-	if _, err := p.GetCapabilities(WithUser(ctx, "u1"), "cluster-a"); err != types.ErrRateLimited {
+	if _, err := p.Capabilities(WithUser(ctx, "u1"), "cluster-a"); err != types.ErrRateLimited {
 		t.Fatalf("second call err = %v, want ErrRateLimited", err)
+	}
+}
+
+func TestProxyCreateSession(t *testing.T) {
+	p, cleanup := newTestProxy(t, 60)
+	defer cleanup()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	sess, err := p.CreateSession(WithUser(ctx, "u1"), "c1", "hello")
+	if err != nil {
+		t.Fatalf("CreateSession: %v", err)
+	}
+	if sess.GetSessionId() != "s-1" {
+		t.Fatalf("session = %+v", sess)
 	}
 }
