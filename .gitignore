@@ -205,3 +205,6 @@ kubilitics-backend/test_output.txt
 /kubilitics-cli/coverage.txt
 /kubilitics-cli/coverage.html
 /kubilitics-cli/*.db
+
+# Stub binaries used by manual smoke tests
+kubilitics-backend/internal/ai/aiclient/testdata/stub-kubilitics-ai/stub-kubilitics-ai
