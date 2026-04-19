@@ -47,7 +47,7 @@ func newTestServers(t *testing.T, llm runtime.LLMProvider) (kotgv1.ChatClient, k
 	lis := bufconn.Listen(bufSize)
 	s := grpc.NewServer()
 	rt := runtime.New(runtime.Config{
-		Router: router.New(
+		Dispatcher: router.New(
 			[]router.Engine{runtime.NewLLMEngine(llm)},
 			nil,
 		),
