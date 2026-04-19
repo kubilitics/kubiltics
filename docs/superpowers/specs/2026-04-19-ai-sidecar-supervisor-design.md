@@ -16,7 +16,7 @@
 | 2 | **Bundled binary + optional `ai.binaryPath` override** | Zero-setup default matches seamless-install ethos. Override accommodates self-built binaries / dev. |
 | 3 | **Capability discovery once per spawn** + manual "Refresh AI" button | Stable UI; no flicker; rare config changes restart cleanly. |
 | 4 | **Per-spawn ephemeral mTLS certs (in-memory, via stdin)** | Honors the kotg-schema mTLS rule literally; zero on-disk secrets; no rotation logic; regen-on-restart matches lifecycle. |
-| 5 | **One global sidecar; cluster_id required on every request** | Architect persona switches clusters constantly; per-cluster sidecars would burn RAM at scale. Schema already requires identity in metadata. |
+| 5 | **One global sidecar; cluster_id required on every request** | Architect persona switches clusters constantly; per-cluster sidecars would burn RAM at scale. Schema already requires identity in metadata. **The sidecar MUST be stateless per request — no cross-cluster memory, no cross-user cache, no inferred default cluster. Chat session state is keyed strictly by `(cluster_id, user_id, session_id)`.** This is a hard requirement on subproject 4 (kotg-ai-server). |
 | 6 | **Backend proxies everything (desktop never talks to sidecar)** | Single chokepoint for auth, RBAC, audit, observability, action gating. Sidecar stays bound to localhost behind mTLS only the backend holds. |
 
 ---
@@ -105,7 +105,7 @@ type SidecarStatus struct {
 
 **Crash policy:** unexpected exit → exponential backoff (1s, 2s, 4s, 8s, max 30s), capped at `ai.maxRestartAttempts` (default 5) within `ai.restartWindowSeconds` (default 300). After cap exhausted, transition to Stopped with `DisabledReason="restart_cap_exhausted"`. Next `EnsureReady` after `restartWindowSeconds` from last attempt resets the counter and retries from scratch.
 
-**Refresh semantics:** atomic `Stopping → kill(SIGTERM, 5s grace, SIGKILL) → Stopped → reset backoff counter → next call cold-spawns`. Active streams receive `Unavailable` with reason code `spawn_changed`.
+**Refresh semantics:** atomic `Stopping → kill(SIGTERM, 5s grace, SIGKILL) → Stopped → reset backoff counter → next call cold-spawns`. Active streams are cleanly terminated by the proxy (DecStreams runs, WS closes with reason `spawn_changed`). The desktop chat panel shows a non-blocking toast: "AI restarted — please retry your last message." User retries; new spawn handles it.
 
 **Binary discovery:** `ai.binaryPath` config wins → else `<executable_dir>/kotg-ai-server` → else `kotg-ai-server` on `$PATH` (last resort, logs warning).
 
@@ -150,7 +150,13 @@ func (p *Proxy) Chat(ctx context.Context, clusterID string, req *chatv1.ChatRequ
 
 **Timeout boundaries:** chat stream max duration `ai.chatMaxDurationSeconds` (default 600); per-message idle `ai.perMessageIdleSeconds` (default 60). Both enforced via `context.WithDeadline` at proxy. Exceeding either closes the stream with structured reason.
 
+**Idle timer behavior (clarified):** the per-message idle timer resets on **every** AssistantEvent received from the sidecar — not just text. Long-reasoning models that emit `ToolStart`/`ToolEnd`/`Citation` events between text chunks keep the stream alive. The 60s budget is "no event of any kind from the sidecar"; that's a real hang, not slow reasoning.
+
+**Rate limiting (v1):** simple per-user token bucket at the proxy: `ai.rateLimitPerUserPerMin` (default 30 chat starts/min, default 60 unary calls/min). Exceeded → HTTP 429 with `Retry-After`. Bucket keyed by `userIDFromCtx`. Counters exported as `kubilitics_ai_ratelimit_dropped_total{op,user_hash}`. Action gate (subproject 3) layers richer policy on top; this is the floor.
+
 **Observability** (every proxy call): structured log `{op, cluster_id, user_id, req_id, latency_ms, status_code, spawn_id}`, prometheus histogram `kubilitics_ai_proxy_duration_seconds{op,status}`, counter `kubilitics_ai_proxy_errors_total{op,code}`.
+
+> LLM-level metrics — token usage per request, provider latency, model-name labels, cost per call — are emitted by the sidecar itself in **subproject 4 (kotg-ai-server)** and surfaced in dashboards in **subproject 10**. The proxy measures only the wire boundary; it has no visibility into prompt/completion tokens.
 
 **ActionGate interface** (v1 stub; subproject 3 fills):
 ```go
@@ -167,7 +173,7 @@ type NoOpGate struct{}  // pass-through
 
 | Endpoint | Method | Behavior |
 |---|---|---|
-| `/api/v1/ai/capabilities?cluster_id=X[&warm=true]` | GET | **Read-only by default.** Returns cached snapshot or `disabled_reason="never_started"` with `capabilities=null`. `?warm=true` opts into a spawn. |
+| `/api/v1/ai/capabilities?cluster_id=X[&warm=true]` | GET | **Read-only by default.** If `ai.enabled=false` → always `{ready:false, disabled_reason:"ai_disabled", capabilities:null}` (sidecar is never spawned, `?warm=true` is ignored). Otherwise returns cached snapshot or `{ready:false, disabled_reason:"never_started", capabilities:null}` (UI should show "Open chat to start AI"). `?warm=true` opts into a spawn. |
 | `/api/v1/ai/chat?cluster_id=X` | WS upgrade | Bidi WS ↔ proxy.Chat stream. Client→server frames map to ChatRequest; server→client to AssistantEvent. **Only path that implicitly spawns the sidecar.** |
 | `/api/v1/ai/status` | GET | Raw supervisor status — for desktop's "AI: Ready/Starting/Disabled" pill and for ops debugging. Global (no cluster_id). |
 | `/api/v1/ai/refresh` | POST | Calls `Supervisor.Refresh()`; returns 202 with new spawn_id once Ready. Global. |
@@ -191,7 +197,14 @@ Backed by `GET /api/v1/ai/capabilities?cluster_id=X` (read-only; no spawn).
 - `Stopped`: 10s
 - `Crashed` / `Disabled`: exponential backoff to 30s
 
-**UI gating rule:** chat panel + Action Templates menu are hidden unless `useAICapabilities(...).ready === true`. When `disabledReason` is set, show a small banner with the reason and a "Refresh AI" button (calls `POST /api/v1/ai/refresh`).
+**UI gating rule:** chat panel + Action Templates menu are hidden unless `useAICapabilities(...).ready === true`. When `disabledReason` is set, show a small banner with an actionable message:
+
+| `disabledReason` | Banner message | CTA |
+|---|---|---|
+| `ai_disabled` | "AI is disabled in this deployment." | none |
+| `never_started` | "AI is ready. Open chat to start." | "Open chat" → focuses panel |
+| `restart_cap_exhausted` | "AI failed to start after multiple attempts." | "Retry" → POST `/refresh` |
+| `spawn_changed` (toast) | "AI restarted — please retry your last message." | none |
 
 ---
 
@@ -208,6 +221,7 @@ ai:
   perMessageIdleSeconds: 60
   maxRestartAttempts: 5
   restartWindowSeconds: 300
+  rateLimitPerUserPerMin: 30   # chat-start floor; subproject 3 layers richer policy
 ```
 
 Same block exposed in `deploy/helm/kubilitics/values.yaml` with identical defaults.
