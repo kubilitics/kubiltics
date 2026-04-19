@@ -29,6 +29,13 @@ type AIConfig struct {
 	MaxRestartAttempts     int    `mapstructure:"max_restart_attempts"`
 	RestartWindowSeconds   int    `mapstructure:"restart_window_seconds"`
 	RateLimitPerUserPerMin int    `mapstructure:"rate_limit_per_user_per_min"`
+
+	// Provider selection — passed to kotg-ai-server as CLI flags.
+	// Defaults match the LLM provider strategy memo: Ollama for dev/scale.
+	Provider  string `mapstructure:"provider"`     // ollama | openai | anthropic
+	Endpoint  string `mapstructure:"endpoint"`     // provider base URL
+	Model     string `mapstructure:"model"`        // provider-specific model id
+	APIKeyEnv string `mapstructure:"api_key_env"`  // env var holding API key (empty for ollama)
 }
 
 type Config struct {
@@ -237,6 +244,10 @@ func Load() (*Config, error) {
 	viper.SetDefault("ai.max_restart_attempts", 5)
 	viper.SetDefault("ai.restart_window_seconds", 300)
 	viper.SetDefault("ai.rate_limit_per_user_per_min", 30)
+	viper.SetDefault("ai.provider", "ollama")
+	viper.SetDefault("ai.endpoint", "http://127.0.0.1:11434")
+	viper.SetDefault("ai.model", "qwen2.5-coder:7b")
+	viper.SetDefault("ai.api_key_env", "")
 
 	// Kubeconfig sync defaults
 	viper.SetDefault("kubeconfig_sync_enabled", true)

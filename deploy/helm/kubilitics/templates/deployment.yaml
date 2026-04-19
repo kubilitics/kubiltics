@@ -128,6 +128,14 @@ spec:
               value: {{ .Values.ai.restartWindowSeconds | quote }}
             - name: KUBILITICS_AI_RATE_LIMIT_PER_USER_PER_MIN
               value: {{ .Values.ai.rateLimitPerUserPerMin | quote }}
+            - name: KUBILITICS_AI_PROVIDER
+              value: {{ .Values.ai.provider | quote }}
+            - name: KUBILITICS_AI_ENDPOINT
+              value: {{ .Values.ai.endpoint | quote }}
+            - name: KUBILITICS_AI_MODEL
+              value: {{ .Values.ai.model | quote }}
+            - name: KUBILITICS_AI_API_KEY_ENV
+              value: {{ .Values.ai.apiKeyEnv | quote }}
             {{- end }}
             {{- if eq .Values.database.type "postgresql" }}
             {{- if .Values.database.postgresql.connectionString }}

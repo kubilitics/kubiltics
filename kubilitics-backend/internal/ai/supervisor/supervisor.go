@@ -18,6 +18,14 @@ type Config struct {
 	IdleShutdown       time.Duration
 	MaxRestartAttempts int
 	RestartWindow      time.Duration
+
+	// Provider arguments forwarded to kotg-ai-server as CLI flags.
+	// APIKey is the resolved value (looked up from os.Getenv at startup);
+	// it never appears in argv — only --api-key-env=<name> does.
+	Provider    string
+	Endpoint    string
+	Model       string
+	APIKeyEnv   string
 }
 
 type ReadyConn struct {
@@ -98,7 +106,7 @@ func (s *supervisorImpl) spawnLocked(ctx context.Context) (*ReadyConn, error) {
 	if binPath == "" {
 		binPath = "kotg-ai-server"
 	}
-	proc, err := spawnSidecar(s.parentCtx, binPath)
+	proc, err := spawnSidecar(s.parentCtx, binPath, s.providerArgs()...)
 	if err != nil {
 		s.state.setLastError(err.Error())
 		_ = s.state.transition(types.StateCrashed)
@@ -226,6 +234,26 @@ func (s *supervisorImpl) Shutdown(ctx context.Context) error {
 	s.mu.Unlock()
 	s.idle.stop()
 	return s.Refresh(ctx)
+}
+
+// providerArgs builds the CLI flags forwarded to kotg-ai-server. Empty
+// fields are simply omitted, letting the binary's own defaults apply.
+// API keys are NEVER placed in argv — only --api-key-env=<name> is.
+func (s *supervisorImpl) providerArgs() []string {
+	args := []string{}
+	if s.cfg.Provider != "" {
+		args = append(args, "--provider="+s.cfg.Provider)
+	}
+	if s.cfg.Endpoint != "" {
+		args = append(args, "--endpoint="+s.cfg.Endpoint)
+	}
+	if s.cfg.Model != "" {
+		args = append(args, "--model="+s.cfg.Model)
+	}
+	if s.cfg.APIKeyEnv != "" {
+		args = append(args, "--api-key-env="+s.cfg.APIKeyEnv)
+	}
+	return args
 }
 
 func (s *supervisorImpl) onIdleFire() {

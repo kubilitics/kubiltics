@@ -707,6 +707,10 @@ func main() {
 			IdleShutdown:       time.Duration(cfg.AI.IdleShutdownSeconds) * time.Second,
 			MaxRestartAttempts: cfg.AI.MaxRestartAttempts,
 			RestartWindow:      time.Duration(cfg.AI.RestartWindowSeconds) * time.Second,
+			Provider:           cfg.AI.Provider,
+			Endpoint:           cfg.AI.Endpoint,
+			Model:              cfg.AI.Model,
+			APIKeyEnv:          cfg.AI.APIKeyEnv,
 		}
 		aiSupervisor = aisup.New(supCfg)
 		rateLimit := cfg.AI.RateLimitPerUserPerMin

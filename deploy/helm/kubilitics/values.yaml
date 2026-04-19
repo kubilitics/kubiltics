@@ -146,6 +146,11 @@ ai:
   maxRestartAttempts: 5       # max restart attempts inside the restart window before giving up
   restartWindowSeconds: 300   # rolling window for counting restart attempts
   rateLimitPerUserPerMin: 30  # per-user request budget per minute
+  # Provider selection — passed to kotg-ai-server as CLI flags.
+  provider: "ollama"                       # ollama | openai | anthropic
+  endpoint: "http://127.0.0.1:11434"       # provider base URL (Ollama default)
+  model: "qwen2.5-coder:7b"                # provider-specific model id
+  apiKeyEnv: ""                            # env var holding API key (empty for ollama)
 
 # Use in-cluster kubeconfig (default). For multiple clusters, backend adds them via API.
 # kubeconfig: leave empty to use in-cluster service account

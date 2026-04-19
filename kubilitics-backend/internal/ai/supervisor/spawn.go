@@ -29,13 +29,13 @@ func (p *runningProcess) kill() {
 	}
 }
 
-func spawnSidecar(ctx context.Context, binaryPath string) (*runningProcess, error) {
+func spawnSidecar(ctx context.Context, binaryPath string, args ...string) (*runningProcess, error) {
 	bundle, err := certs.Mint()
 	if err != nil {
 		return nil, fmt.Errorf("mint certs: %w", err)
 	}
 
-	cmd := exec.CommandContext(ctx, binaryPath)
+	cmd := exec.CommandContext(ctx, binaryPath, args...)
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
 		return nil, fmt.Errorf("stdin pipe: %w", err)
