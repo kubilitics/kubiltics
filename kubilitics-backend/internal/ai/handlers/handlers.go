@@ -45,9 +45,3 @@ func (h *Handlers) Register(mux muxHandleFunc) {
 	mux.HandleFunc("/api/v1/ai/chat", h.GetChat)
 }
 
-// GetChat is replaced by chat.go in T17. Stub returns 501 for now so the
-// package compiles and the route is reserved.
-func (h *Handlers) GetChat(w http.ResponseWriter, r *http.Request) {
-	http.Error(w, "not implemented (T17)", http.StatusNotImplemented)
-}
-

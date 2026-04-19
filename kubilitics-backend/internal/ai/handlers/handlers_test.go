@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/gorilla/websocket"
 	"github.com/kubilitics/kubilitics-backend/internal/ai/gate"
 	"github.com/kubilitics/kubilitics-backend/internal/ai/proxy"
 	"github.com/kubilitics/kubilitics-backend/internal/ai/supervisor"
@@ -152,5 +153,20 @@ func TestCapabilitiesWarm(t *testing.T) {
 	}
 	if body["capabilities"] == nil {
 		t.Errorf("capabilities should be populated after warm")
+	}
+}
+
+func TestChatMissingClusterID(t *testing.T) {
+	srv, sup := newTestServer(t)
+	defer srv.Close()
+	defer sup.Shutdown(context.Background())
+
+	wsURL := "ws" + srv.URL[len("http"):] + "/api/v1/ai/chat"
+	_, resp, err := websocket.DefaultDialer.Dial(wsURL, nil)
+	if err == nil {
+		t.Fatalf("expected dial failure, got success")
+	}
+	if resp == nil || resp.StatusCode != 400 {
+		t.Fatalf("status = %v, want 400", resp)
 	}
 }
