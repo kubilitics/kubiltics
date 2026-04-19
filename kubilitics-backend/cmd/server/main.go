@@ -632,34 +632,9 @@ func main() {
 	scannerSvc := service.NewScannerService(repo, log)
 	scannerHandler := rest.NewScannerHandler(scannerSvc)
 
-	// ---- AI sidecar wiring (gated on cfg.AI.Enabled; routes always exposed
-	// so the desktop can probe and render an "AI: Off" pill consistently) ----
+	// AI supervisor is constructed below (after apiRouter exists), but declared
+	// here at function scope so the shutdown handler can see it.
 	var aiSupervisor aisup.Supervisor
-	{
-		supCfg := aisup.Config{
-			BinaryPath:         cfg.AI.BinaryPath,
-			IdleShutdown:       time.Duration(cfg.AI.IdleShutdownSeconds) * time.Second,
-			MaxRestartAttempts: cfg.AI.MaxRestartAttempts,
-			RestartWindow:      time.Duration(cfg.AI.RestartWindowSeconds) * time.Second,
-		}
-		aiSupervisor = aisup.New(supCfg)
-		rateLimit := cfg.AI.RateLimitPerUserPerMin
-		if !cfg.AI.Enabled {
-			rateLimit = 0 // unused when disabled; constructor still needs a value
-		}
-		aiPxy := aiproxy.New(aiSupervisor, aigate.NoOpGate{}, rateLimit)
-		aiH := aihandlers.New(aiSupervisor, aiPxy, aihandlers.Config{
-			Enabled:         cfg.AI.Enabled,
-			ChatMaxDuration: time.Duration(cfg.AI.ChatMaxDurationSeconds) * time.Second,
-			PerMessageIdle:  time.Duration(cfg.AI.PerMessageIdleSeconds) * time.Second,
-		})
-		aiH.Register(routerHandleFuncAdapter{r: router})
-		if cfg.AI.Enabled {
-			log.Info("AI sidecar enabled", "binary", cfg.AI.BinaryPath, "idle_shutdown_seconds", cfg.AI.IdleShutdownSeconds)
-		} else {
-			log.Info("AI sidecar disabled (ai.enabled=false)")
-		}
-	}
 
 	// Deployment rollout routes on main router (full path) so they always match regardless of subrouter path handling
 	router.HandleFunc("/api/v1/clusters/{clusterId}/resources/deployments/{namespace}/{name}/rollout-history", handler.GetDeploymentRolloutHistory).Methods("GET")
@@ -721,6 +696,37 @@ func main() {
 	securityHandler.RegisterRoutes(apiRouter)
 	complianceHandler.RegisterRoutes(apiRouter)
 	scannerHandler.RegisterRoutes(apiRouter)
+
+	// ---- AI sidecar wiring (gated on cfg.AI.Enabled; routes always exposed
+	// so the desktop can probe and render an "AI: Off" pill consistently).
+	// Registered on apiRouter (the /api/v1 subrouter) BEFORE rest.SetupRoutes
+	// which sets apiRouter.NotFoundHandler — otherwise /api/v1/ai/* returns 404.
+	{
+		supCfg := aisup.Config{
+			BinaryPath:         cfg.AI.BinaryPath,
+			IdleShutdown:       time.Duration(cfg.AI.IdleShutdownSeconds) * time.Second,
+			MaxRestartAttempts: cfg.AI.MaxRestartAttempts,
+			RestartWindow:      time.Duration(cfg.AI.RestartWindowSeconds) * time.Second,
+		}
+		aiSupervisor = aisup.New(supCfg)
+		rateLimit := cfg.AI.RateLimitPerUserPerMin
+		if !cfg.AI.Enabled {
+			rateLimit = 0 // unused when disabled; constructor still needs a value
+		}
+		aiPxy := aiproxy.New(aiSupervisor, aigate.NoOpGate{}, rateLimit)
+		aiH := aihandlers.New(aiSupervisor, aiPxy, aihandlers.Config{
+			Enabled:         cfg.AI.Enabled,
+			ChatMaxDuration: time.Duration(cfg.AI.ChatMaxDurationSeconds) * time.Second,
+			PerMessageIdle:  time.Duration(cfg.AI.PerMessageIdleSeconds) * time.Second,
+		})
+		aiH.Register(routerHandleFuncAdapter{r: apiRouter})
+		if cfg.AI.Enabled {
+			log.Info("AI sidecar enabled", "binary", cfg.AI.BinaryPath, "idle_shutdown_seconds", cfg.AI.IdleShutdownSeconds)
+		} else {
+			log.Info("AI sidecar disabled (ai.enabled=false)")
+		}
+	}
+
 	// OTel trace ingestion (register BEFORE rest.SetupRoutes which sets NotFoundHandler)
 	otelDB := sqlx.NewDb(repo.DB(), "sqlite3")
 	otelStore := otel.NewStore(otelDB)

@@ -42,7 +42,7 @@ func TestStatusEndpoint(t *testing.T) {
 	defer srv.Close()
 	defer sup.Shutdown(context.Background())
 
-	resp, err := http.Get(srv.URL + "/api/v1/ai/status")
+	resp, err := http.Get(srv.URL + "/ai/status")
 	if err != nil {
 		t.Fatalf("get: %v", err)
 	}
@@ -61,7 +61,7 @@ func TestRefreshEndpoint(t *testing.T) {
 	defer srv.Close()
 	defer sup.Shutdown(context.Background())
 
-	req, _ := http.NewRequest("POST", srv.URL+"/api/v1/ai/refresh", nil)
+	req, _ := http.NewRequest("POST", srv.URL+"/ai/refresh", nil)
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		t.Fatalf("post: %v", err)
@@ -81,7 +81,7 @@ func TestStatusWhenAIDisabled(t *testing.T) {
 	defer srv.Close()
 	defer sup.Shutdown(context.Background())
 
-	resp, _ := http.Get(srv.URL + "/api/v1/ai/status")
+	resp, _ := http.Get(srv.URL + "/ai/status")
 	var st types.SidecarStatus
 	json.NewDecoder(resp.Body).Decode(&st)
 	if st.DisabledReason != types.DisabledReasonAIDisabled {
@@ -99,7 +99,7 @@ func TestCapabilitiesAIDisabled(t *testing.T) {
 	defer srv.Close()
 	defer sup.Shutdown(context.Background())
 
-	resp, _ := http.Get(srv.URL + "/api/v1/ai/capabilities?cluster_id=c1")
+	resp, _ := http.Get(srv.URL + "/ai/capabilities?cluster_id=c1")
 	var body map[string]any
 	json.NewDecoder(resp.Body).Decode(&body)
 	if body["disabled_reason"] != "ai_disabled" {
@@ -115,7 +115,7 @@ func TestCapabilitiesMissingClusterID(t *testing.T) {
 	defer srv.Close()
 	defer sup.Shutdown(context.Background())
 
-	resp, _ := http.Get(srv.URL + "/api/v1/ai/capabilities")
+	resp, _ := http.Get(srv.URL + "/ai/capabilities")
 	if resp.StatusCode != 400 {
 		t.Errorf("status = %d, want 400", resp.StatusCode)
 	}
@@ -126,7 +126,7 @@ func TestCapabilitiesNeverStarted(t *testing.T) {
 	defer srv.Close()
 	defer sup.Shutdown(context.Background())
 
-	resp, _ := http.Get(srv.URL + "/api/v1/ai/capabilities?cluster_id=c1")
+	resp, _ := http.Get(srv.URL + "/ai/capabilities?cluster_id=c1")
 	var body map[string]any
 	json.NewDecoder(resp.Body).Decode(&body)
 	if body["ready"] != false {
@@ -142,7 +142,7 @@ func TestCapabilitiesWarm(t *testing.T) {
 	defer srv.Close()
 	defer sup.Shutdown(context.Background())
 
-	resp, err := http.Get(srv.URL + "/api/v1/ai/capabilities?cluster_id=c1&warm=true")
+	resp, err := http.Get(srv.URL + "/ai/capabilities?cluster_id=c1&warm=true")
 	if err != nil {
 		t.Fatalf("get: %v", err)
 	}
@@ -161,7 +161,7 @@ func TestChatMissingClusterID(t *testing.T) {
 	defer srv.Close()
 	defer sup.Shutdown(context.Background())
 
-	wsURL := "ws" + srv.URL[len("http"):] + "/api/v1/ai/chat"
+	wsURL := "ws" + srv.URL[len("http"):] + "/ai/chat"
 	_, resp, err := websocket.DefaultDialer.Dial(wsURL, nil)
 	if err == nil {
 		t.Fatalf("expected dial failure, got success")

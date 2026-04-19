@@ -39,9 +39,9 @@ type muxHandleFunc interface {
 // *http.ServeMux directly (for tests) or a thin adapter around
 // gorilla/mux.Router for production use.
 func (h *Handlers) Register(mux muxHandleFunc) {
-	mux.HandleFunc("/api/v1/ai/status", h.GetStatus)
-	mux.HandleFunc("/api/v1/ai/refresh", h.PostRefresh)
-	mux.HandleFunc("/api/v1/ai/capabilities", h.GetCapabilities)
-	mux.HandleFunc("/api/v1/ai/chat", h.GetChat)
+	mux.HandleFunc("/ai/status", h.GetStatus)
+	mux.HandleFunc("/ai/refresh", h.PostRefresh)
+	mux.HandleFunc("/ai/capabilities", h.GetCapabilities)
+	mux.HandleFunc("/ai/chat", h.GetChat)
 }
 
