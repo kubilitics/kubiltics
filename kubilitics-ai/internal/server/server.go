@@ -459,6 +459,10 @@ func (s *Server) registerHandlers(mux *http.ServeMux) {
 	// Info endpoint
 	mux.HandleFunc("/info", s.handleInfo)
 
+	// Status endpoint — minimal liveness + capability probe for the
+	// kubilitics-backend aiclient.HTTPClient.
+	mux.HandleFunc("/status", HandleStatus(serverVersion))
+
 	// Prometheus metrics (production monitoring)
 	mux.Handle("/metrics", promhttp.Handler())
 

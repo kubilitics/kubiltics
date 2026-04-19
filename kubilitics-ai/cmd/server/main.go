@@ -33,12 +33,17 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"net"
 	"os"
 	"os/signal"
 	"syscall"
 
+	aiv1 "github.com/vellankikoti/kotg.ai/kubilitics-ai/api/proto/v1"
 	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/config"
+	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/runtime"
 	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/server"
+
+	"google.golang.org/grpc"
 )
 
 func main() {
@@ -74,6 +79,30 @@ func main() {
 		fmt.Fprintf(os.Stderr, "Failed to start server: %v\n", err)
 		os.Exit(1)
 	}
+
+	// Subproject 3a: start the AgentRuntimeService gRPC server on :50051.
+	// This is the new backend↔AI contract surface; the v1 stub delegates Chat
+	// directly to the existing LLM adapter (no tools, no agents, no actions).
+	grpcAddr := ":50051"
+	grpcLis, err := net.Listen("tcp", grpcAddr)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to listen on %s: %v\n", grpcAddr, err)
+		os.Exit(1)
+	}
+	grpcSrv := grpc.NewServer()
+	aiv1.RegisterAgentRuntimeServiceServer(grpcSrv, runtime.New(runtime.Config{
+		LLM:           &runtime.LLMAdapterBridge{A: srv.GetLLMAdapter()},
+		AIVersion:     "0.2.0",
+		SchemaVersion: "1.0.0",
+		Providers:     []string{cfg.LLM.Provider},
+	}))
+	go func() {
+		fmt.Printf("AgentRuntimeService gRPC listening on %s\n", grpcAddr)
+		if err := grpcSrv.Serve(grpcLis); err != nil {
+			fmt.Fprintf(os.Stderr, "gRPC serve error: %v\n", err)
+		}
+	}()
+	defer grpcSrv.GracefulStop()
 
 	// Setup signal handling for graceful shutdown and config hot-reload.
 	sigChan := make(chan os.Signal, 1)
