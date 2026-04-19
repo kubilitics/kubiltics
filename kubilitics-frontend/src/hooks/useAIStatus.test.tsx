@@ -10,21 +10,27 @@ const wrapper = ({ children }: { children: React.ReactNode }) => {
 
 describe('useAIStatus', () => {
   beforeEach(() => {
-    vi.stubGlobal('fetch', vi.fn(async () => ({
-      ok: true,
-      json: async () => ({ state: 'ready', restart_attempts: 0, active_streams: 0 }),
-    })));
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => ({
+        ok: true,
+        json: async () => ({ state: 'ready', version: 'test-1', engines: ['llm'] }),
+      })),
+    );
   });
 
   it('intervalForState returns adaptive cadence', () => {
-    expect(intervalForState('starting')).toBe(1000);
     expect(intervalForState('ready')).toBe(5000);
-    expect(intervalForState('stopped')).toBe(10_000);
-    expect(intervalForState('crashed')).toBe(30_000);
+    expect(intervalForState('degraded')).toBe(5000);
+    expect(intervalForState('unavailable')).toBe(30_000);
+    expect(intervalForState('error')).toBe(30_000);
+    expect(intervalForState(undefined)).toBe(5000);
   });
 
   it('fetches status', async () => {
     const { result } = renderHook(() => useAIStatus(), { wrapper });
     await waitFor(() => expect(result.current.data?.state).toBe('ready'));
+    expect(result.current.data?.version).toBe('test-1');
+    expect(result.current.data?.engines).toEqual(['llm']);
   });
 });

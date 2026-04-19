@@ -11,18 +11,29 @@ export function ChatStatusPill({ variant = 'pill' }: Props) {
   const { data, error } = useAIStatus();
   const togglePanel = useChatStore((s) => s.togglePanel);
 
-  const state = error ? 'crashed' : data?.state ?? 'stopped';
+  // Map kubilitics-ai status states to UI state. The supervisor-era
+  // 'starting' / 'crashed' states no longer exist; runtime is in-cluster
+  // and either reachable (ready/degraded) or not (unavailable/error).
+  const state = error ? 'unavailable' : data?.state ?? 'unknown';
   const dotClass =
-    state === 'ready' ? 'bg-emerald-500' :
-    state === 'starting' ? 'bg-amber-500 animate-pulse' :
-    state === 'crashed' || error ? 'bg-rose-500' :
-    'bg-muted-foreground';
+    state === 'ready'
+      ? 'bg-emerald-500'
+      : state === 'degraded'
+        ? 'bg-amber-500'
+        : state === 'unavailable' || state === 'error' || error
+          ? 'bg-rose-500'
+          : 'bg-muted-foreground';
 
   const label =
-    state === 'ready' ? 'AI Ready' :
-    state === 'starting' ? 'AI Starting…' :
-    state === 'crashed' ? 'AI Crashed' :
-    'AI';
+    state === 'ready'
+      ? 'AI Ready'
+      : state === 'degraded'
+        ? 'AI Degraded'
+        : state === 'unavailable'
+          ? 'AI Unreachable'
+          : state === 'error'
+            ? 'AI Error'
+            : 'AI';
 
   if (variant === 'dot') {
     return <span className={cn('inline-block w-2 h-2 rounded-full', dotClass)} aria-label={label} />;

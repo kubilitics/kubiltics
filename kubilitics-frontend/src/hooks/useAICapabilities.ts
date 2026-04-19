@@ -16,13 +16,15 @@ export type CapabilitiesResponse = {
   state: string;
 };
 
-export function useAICapabilities(clusterId: string | undefined, opts?: { warm?: boolean }) {
+// useAICapabilities — calls backend's /api/v1/ai/capabilities. The
+// `warm` option is retained for source-compat but is now a no-op: the
+// in-cluster runtime is always-on, so there's no cold-start to warm.
+export function useAICapabilities(clusterId: string | undefined, _opts?: { warm?: boolean }) {
   return useQuery<CapabilitiesResponse>({
-    queryKey: ['ai', 'capabilities', clusterId, opts?.warm],
+    queryKey: ['ai', 'capabilities', clusterId],
     enabled: !!clusterId,
     queryFn: async () => {
       const params = new URLSearchParams({ cluster_id: clusterId! });
-      if (opts?.warm) params.set('warm', 'true');
       const res = await fetch(`/api/v1/ai/capabilities?${params.toString()}`);
       if (!res.ok) throw new Error(`capabilities ${res.status}`);
       return res.json();
