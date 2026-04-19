@@ -223,8 +223,10 @@ func (m *Manager) List(limit int, sinceUnix int64) []*Session
 9. Create per-turn cancellable ctx; register with `manager.SetTurnCancel(session_id, cancel)`. `CancelTurn` RPC fires this.
 10. `provider.ChatStream(ctx, msgs)` → receive channel of `Event`.
 11. For each event: map to `AssistantEvent` and `stream.Send(...)`. Accumulate `TextDelta.Text` into a buffer.
-12. After channel close: append `Message{Role:"assistant", Content: buffer}` to the session. Send `AssistantEvent_Done{prompt_tokens, completion_tokens}` (counts approximate).
-13. Clear `activeTurnCancel`. Return.
+12. After channel close: **only if at least one TextDelta was received**, append `Message{Role:"assistant", Content: buffer}` to the session. If the provider errored before any token, do NOT append a partial assistant turn (keeps history clean for retry). Send `AssistantEvent_Done{prompt_tokens, completion_tokens}` (counts approximate).
+13. Clear `activeTurnCancel` (always — including on error/cancel paths via `defer`) so no stale cancel func remains in the session.
+
+**Storage cap vs token-budget interaction:** `maxMessagesPerSession` (default 100) caps how many turns the session manager retains in memory — oldest beyond that are evicted by `Append`. `TrimToBudget` (default 16,000 tokens) operates on the message slice *passed to the provider* per turn, dropping older entries to fit the model's context window. The two run independently: storage cap is bounded by message count, provider input is bounded by token estimate.
 
 **Concurrency:** `Send` for the same session is serialized by the manager — second concurrent Send on the same session_id returns `codes.FailedPrecondition` ("turn already in flight; call CancelTurn first").
 
