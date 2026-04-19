@@ -16,7 +16,11 @@ import {
   Info,
   BarChart2,
   FolderOpen,
+  Sparkles,
 } from 'lucide-react';
+import { useChatStore } from '@/stores/chatStore';
+import { useAIContextStore } from '@/stores/aiContextStore';
+import { useAIContext } from '@/hooks/useAIContext';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Button } from '@/components/ui/button';
@@ -484,6 +488,12 @@ export default function PodDetail() {
   const { namespace, name } = useParams();
   useTrackRecentResource({ resourceKind: 'Pod', name, namespace });
   const clusterId = useActiveClusterId();
+  useAIContext(useMemo(() => ({
+    type: 'pod' as const,
+    cluster: clusterId ?? '',
+    namespace: namespace ?? undefined,
+    name: name ?? undefined,
+  }), [clusterId, namespace, name]));
   const backendBaseUrl = getEffectiveBackendBaseUrl(useBackendConfigStore((s) => s.backendBaseUrl));
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -741,8 +751,20 @@ export default function PodDetail() {
           </span>
         );
       }}
-      extraHeaderActions={() => [
+      extraHeaderActions={(ctx) => [
         { label: 'Port Forward', icon: ExternalLink, variant: 'outline', onClick: () => setShowPortForwardDialog(true), className: 'press-effect' },
+        {
+          label: 'Ask AI',
+          icon: Sparkles,
+          variant: 'outline',
+          onClick: () => {
+            const phase = ctx.resource.status?.phase ?? 'unknown';
+            useChatStore.getState().togglePanel(true);
+            useAIContextStore.getState().setExplicit({ type: 'pod', cluster: clusterId ?? '', namespace: namespace ?? undefined, name: name ?? undefined });
+            useChatStore.getState().setPrefilled(`Why is this pod in state ${phase}?`);
+          },
+          className: 'press-effect',
+        },
       ]}
       extraActionItems={(ctx) => {
         const pod = ctx.resource;
