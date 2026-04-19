@@ -155,6 +155,10 @@ message CancelRequest {
 message AIEvent {
   string anchor_id = 1;
   google.protobuf.Timestamp emitted_at = 2;
+  // schema_version locks the AIEvent contract version. Backend MUST refuse
+  // to forward events whose schema_version is incompatible with what it was
+  // built against. Bumped on any oneof addition/removal/renumbering.
+  string schema_version = 99;
 
   oneof event {
     TextDelta      text_delta      = 10;
@@ -256,7 +260,8 @@ enum AutonomyLevel {
 ```
 
 **Notes:**
-- `Done.engine_used` is internal — the backend's gRPC→WS adapter MUST strip it before forwarding to the chat panel UI (which expects engine-agnostic events).
+- `Done.engine_used` is internal. The single rule: **only the WS-frame adapter at `internal/ai/handlers/chat.go`** strips it before forwarding to the chat panel. Every other code path that touches an `AIEvent` (logging, audit, metrics) is allowed to read it. No other component is permitted to write `AIEvent`s out to UI clients — enforced by lint rule (`engine_used` reference outside the chat handler triggers a CI failure).
+- `AIEvent.schema_version`: backend's WS adapter checks this on every received event. Mismatch → log + emit `ErrorEvent{code:"SchemaVersionMismatch"}` to the UI + close the stream. Prevents subtle silent breakage when kubilitics-ai upgrades the proto.
 - This proto is the contract. Every engine adapter (LLM, Python, kagent) maps its native output to `AIEvent`.
 
 ---
@@ -275,7 +280,7 @@ type GRPCClient struct {
     mu     sync.Mutex
 }
 
-func NewGRPCClient(addr string) *GRPCClient
+func NewGRPCClient(addr string, opts ClientOpts) *GRPCClient
 func (c *GRPCClient) Chat(ctx, opts) (aiv1.AgentRuntimeService_ChatClient, error)
 func (c *GRPCClient) RunAgent(ctx, opts) (aiv1.AgentRuntimeService_RunAgentClient, error)
 func (c *GRPCClient) Capabilities(ctx) (*aiv1.CapabilitiesResponse, error)
@@ -283,6 +288,26 @@ func (c *GRPCClient) CancelTurn(ctx, sessionOrRunID) error
 func (c *GRPCClient) Close() error
 func (c *GRPCClient) State() ConnectionState
 ```
+
+**Resilience policy (locked, not configurable in v1):**
+
+```go
+type ClientOpts struct {
+    DialTimeout       time.Duration  // default 5s — fail fast if Service DNS unresolvable
+    UnaryTimeout      time.Duration  // default 10s — Capabilities, CancelTurn
+    StreamIdleTimeout time.Duration  // default 90s — abort if no AIEvent received in window
+    StreamMaxDuration time.Duration  // default 600s — hard cap on a single Chat/RunAgent stream
+    ReconnectBackoff  []time.Duration // 1s, 2s, 4s, 8s, 16s, 30s (max), repeat 30s
+    ReconnectMaxAttempts int          // default 10 within a 5min window; after that, surface error to UI
+    KeepaliveTime     time.Duration  // default 20s — gRPC keepalive ping
+    KeepaliveTimeout  time.Duration  // default 10s — close conn if no pong
+}
+```
+
+**Retry rules:**
+- **Unary RPCs (`Capabilities`, `CancelTurn`):** retried once on `Unavailable` after `min(2*attempt-1 s, 8s)` backoff.
+- **Streaming RPCs (`Chat`, `RunAgent`):** NOT auto-retried. Stream failure → emit `ErrorEvent` to UI; user re-invokes via the chat panel's existing retry affordance. Auto-retry on a streaming chat would re-send the user's prompt and double-bill tokens.
+- **Connection-level:** the underlying `grpc.ClientConn` auto-reconnects per the `ReconnectBackoff` schedule. State changes (`open` → `error` → `connecting` → `open`) propagate through `setConnectionState` so the chat panel's status pill updates within ~1s.
 
 ```go
 // aiclient/http.go
