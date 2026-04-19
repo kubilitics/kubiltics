@@ -48,7 +48,10 @@ import {
   FlaskConical,
   Bot,
   GitBranch,
+  Sparkles,
 } from 'lucide-react';
+import { ChatStatusPill } from '@/components/ai/ChatStatusPill';
+import { useChatStore } from '@/stores/chatStore';
 import {
   K8sPodIcon, K8sDeploymentIcon, K8sReplicaSetIcon, K8sStatefulSetIcon,
   K8sDaemonSetIcon, K8sJobIcon, K8sCronJobIcon, K8sServiceIcon, K8sIngressIcon,
@@ -761,6 +764,23 @@ function SidebarContent({
         <TopLevelNavLink to="/fleet" icon={Layers} label="Fleet" isActive={isFleetActive} />
         <TopLevelNavLink to="/topology" icon={Network} label="Topology" isActive={isTopologyActive} />
         <TopLevelNavLink to="/templates" icon={LayoutTemplate} label="Templates" isActive={isTemplatesActive} />
+        <button
+          type="button"
+          onClick={() => useChatStore.getState().togglePanel()}
+          className={cn(
+            "flex items-center gap-3 px-4 py-1.5 rounded-lg transition-all duration-200 group border h-9 w-full text-left",
+            "bg-transparent text-slate-800 dark:text-slate-300 hover:bg-slate-100/60 dark:hover:bg-slate-800/60 border-transparent hover:border-slate-100 dark:hover:border-slate-700/50"
+          )}
+          aria-label="Toggle AI Assistant"
+        >
+          <div className="h-9 w-9 rounded-xl flex items-center justify-center shrink-0 bg-purple-50 dark:bg-purple-500/10 group-hover:bg-purple-100 dark:group-hover:bg-purple-500/20 transition-colors">
+            <Sparkles className="h-5 w-5 text-purple-600 dark:text-purple-400" strokeWidth={2} />
+          </div>
+          <span className="flex-1 font-bold text-sm tracking-[-0.01em] text-slate-800 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-slate-100">
+            AI Assistant
+          </span>
+          <ChatStatusPill variant="dot" />
+        </button>
       </div>
 
       {/* Fleet X-Ray sub-navigation */}
@@ -1055,6 +1075,18 @@ export function Sidebar() {
           <NavItemIconOnly to="/fleet" icon={Layers} label="Fleet" iconColor="text-indigo-600 group-hover:text-indigo-700" />
           <NavItemIconOnly to="/fleet/xray" icon={Scan} label="Fleet X-Ray" iconColor="text-indigo-500 group-hover:text-indigo-600" />
           <NavItemIconOnly to="/topology" icon={Network} label="Topology" iconColor="text-violet-600 group-hover:text-violet-700" />
+          <button
+            type="button"
+            onClick={() => useChatStore.getState().togglePanel()}
+            className="flex items-center justify-center w-11 h-11 rounded-xl transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring hover:scale-105 active:scale-95 group relative border border-transparent hover:border-border/50 hover:bg-muted/80"
+            title="AI Assistant"
+            aria-label="Toggle AI Assistant"
+          >
+            <Sparkles className="h-6 w-6 text-purple-600 group-hover:text-purple-700" aria-hidden />
+            <span className="absolute left-full ml-3 px-3 py-1.5 bg-popover text-popover-foreground text-sm font-medium rounded-lg shadow-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50 border border-border">
+              AI Assistant
+            </span>
+          </button>
           <NavItemIconOnly to="/workloads" icon={Cpu} label="Workloads" iconColor="text-amber-600 group-hover:text-amber-700" />
           <div className="w-12 h-px bg-border/50 my-2" />
           <NavItemIconOnly to="/pods" icon={Box} label="Pods" iconColor="text-emerald-600 group-hover:text-emerald-700" />
