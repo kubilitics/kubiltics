@@ -51,9 +51,3 @@ func (h *Handlers) GetChat(w http.ResponseWriter, r *http.Request) {
 	http.Error(w, "not implemented (T17)", http.StatusNotImplemented)
 }
 
-// GetCapabilities is replaced by capabilities.go in T16. Stub kept here
-// only for the brief window between T15 and T16 commits so the package
-// compiles.
-func (h *Handlers) GetCapabilities(w http.ResponseWriter, r *http.Request) {
-	http.Error(w, "not implemented (T16)", http.StatusNotImplemented)
-}

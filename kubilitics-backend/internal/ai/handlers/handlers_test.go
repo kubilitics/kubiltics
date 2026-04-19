@@ -87,3 +87,70 @@ func TestStatusWhenAIDisabled(t *testing.T) {
 		t.Errorf("DisabledReason = %q, want %q", st.DisabledReason, types.DisabledReasonAIDisabled)
 	}
 }
+
+func TestCapabilitiesAIDisabled(t *testing.T) {
+	sup := supervisor.New(supervisor.Config{BinaryPath: stubBinary(t)})
+	p := proxy.New(sup, gate.NoOpGate{}, 60)
+	h := New(sup, p, Config{Enabled: false, ChatMaxDuration: 30 * time.Second})
+	mux := http.NewServeMux()
+	h.Register(mux)
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+	defer sup.Shutdown(context.Background())
+
+	resp, _ := http.Get(srv.URL + "/api/v1/ai/capabilities?cluster_id=c1")
+	var body map[string]any
+	json.NewDecoder(resp.Body).Decode(&body)
+	if body["disabled_reason"] != "ai_disabled" {
+		t.Errorf("disabled_reason = %v, want ai_disabled", body["disabled_reason"])
+	}
+	if body["ready"] != false {
+		t.Errorf("ready = %v, want false", body["ready"])
+	}
+}
+
+func TestCapabilitiesMissingClusterID(t *testing.T) {
+	srv, sup := newTestServer(t)
+	defer srv.Close()
+	defer sup.Shutdown(context.Background())
+
+	resp, _ := http.Get(srv.URL + "/api/v1/ai/capabilities")
+	if resp.StatusCode != 400 {
+		t.Errorf("status = %d, want 400", resp.StatusCode)
+	}
+}
+
+func TestCapabilitiesNeverStarted(t *testing.T) {
+	srv, sup := newTestServer(t)
+	defer srv.Close()
+	defer sup.Shutdown(context.Background())
+
+	resp, _ := http.Get(srv.URL + "/api/v1/ai/capabilities?cluster_id=c1")
+	var body map[string]any
+	json.NewDecoder(resp.Body).Decode(&body)
+	if body["ready"] != false {
+		t.Errorf("ready = %v, want false (sidecar never spawned)", body["ready"])
+	}
+	if body["disabled_reason"] != "never_started" {
+		t.Errorf("disabled_reason = %v, want never_started", body["disabled_reason"])
+	}
+}
+
+func TestCapabilitiesWarm(t *testing.T) {
+	srv, sup := newTestServer(t)
+	defer srv.Close()
+	defer sup.Shutdown(context.Background())
+
+	resp, err := http.Get(srv.URL + "/api/v1/ai/capabilities?cluster_id=c1&warm=true")
+	if err != nil {
+		t.Fatalf("get: %v", err)
+	}
+	var body map[string]any
+	json.NewDecoder(resp.Body).Decode(&body)
+	if body["ready"] != true {
+		t.Errorf("ready = %v, want true", body["ready"])
+	}
+	if body["capabilities"] == nil {
+		t.Errorf("capabilities should be populated after warm")
+	}
+}
