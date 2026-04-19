@@ -19,6 +19,18 @@ const (
 	ModeInCluster DeploymentMode = "in-cluster" // running as a pod inside a Kubernetes cluster
 )
 
+// AIConfig controls the AI sidecar (kotg-ai-server) lifecycle and proxy.
+type AIConfig struct {
+	Enabled                bool   `mapstructure:"enabled"`
+	BinaryPath             string `mapstructure:"binary_path"`
+	IdleShutdownSeconds    int    `mapstructure:"idle_shutdown_seconds"`
+	ChatMaxDurationSeconds int    `mapstructure:"chat_max_duration_seconds"`
+	PerMessageIdleSeconds  int    `mapstructure:"per_message_idle_seconds"`
+	MaxRestartAttempts     int    `mapstructure:"max_restart_attempts"`
+	RestartWindowSeconds   int    `mapstructure:"restart_window_seconds"`
+	RateLimitPerUserPerMin int    `mapstructure:"rate_limit_per_user_per_min"`
+}
+
 type Config struct {
 	BindAddress         string   `mapstructure:"bind_address"`            // Listen address: 127.0.0.1 (desktop default) or 0.0.0.0 (in-cluster)
 	Port                int      `mapstructure:"port"`
@@ -120,6 +132,9 @@ type Config struct {
 	KubeconfigSyncHealthIntervalSec   int     `mapstructure:"kubeconfig_sync_health_interval_sec"`
 	KubeconfigSyncMaxAbsoluteRemovals int     `mapstructure:"kubeconfig_sync_max_absolute_removals"`
 	KubeconfigSyncMaxRemovalRatio     float64 `mapstructure:"kubeconfig_sync_max_removal_ratio"`
+
+	// AI sidecar (kotg-ai-server) — gated off by default.
+	AI AIConfig `mapstructure:"ai"`
 }
 
 func Load() (*Config, error) {
@@ -212,6 +227,16 @@ func Load() (*Config, error) {
 
 	// Deployment mode default (empty string = auto-detect in post-unmarshal block)
 	viper.SetDefault("deployment_mode", "")
+
+	// AI sidecar defaults — feature-flagged off; safe defaults for lifecycle and rate limit.
+	viper.SetDefault("ai.enabled", false)
+	viper.SetDefault("ai.binary_path", "")
+	viper.SetDefault("ai.idle_shutdown_seconds", 900)
+	viper.SetDefault("ai.chat_max_duration_seconds", 600)
+	viper.SetDefault("ai.per_message_idle_seconds", 60)
+	viper.SetDefault("ai.max_restart_attempts", 5)
+	viper.SetDefault("ai.restart_window_seconds", 300)
+	viper.SetDefault("ai.rate_limit_per_user_per_min", 30)
 
 	// Kubeconfig sync defaults
 	viper.SetDefault("kubeconfig_sync_enabled", true)

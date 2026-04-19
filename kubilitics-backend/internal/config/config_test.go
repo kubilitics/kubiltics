@@ -159,7 +159,7 @@ func TestLoad_AllowedOriginsCommaSeparatedWithWhitespace(t *testing.T) {
 func TestLoad_MissingConfigFile(t *testing.T) {
 	// Clear environment and use non-existent config file
 	os.Clearenv()
-	
+
 	cfg, err := Load()
 	// Should not error even if config file doesn't exist
 	if err != nil {
@@ -167,5 +167,36 @@ func TestLoad_MissingConfigFile(t *testing.T) {
 	}
 	if cfg == nil {
 		t.Fatal("Config should not be nil even without config file")
+	}
+}
+
+func TestAIConfigDefaults(t *testing.T) {
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if cfg.AI.Enabled != false {
+		t.Errorf("AI.Enabled default = %v, want false", cfg.AI.Enabled)
+	}
+	if cfg.AI.IdleShutdownSeconds != 900 {
+		t.Errorf("AI.IdleShutdownSeconds default = %d, want 900", cfg.AI.IdleShutdownSeconds)
+	}
+	if cfg.AI.ChatMaxDurationSeconds != 600 {
+		t.Errorf("AI.ChatMaxDurationSeconds default = %d, want 600", cfg.AI.ChatMaxDurationSeconds)
+	}
+	if cfg.AI.PerMessageIdleSeconds != 60 {
+		t.Errorf("AI.PerMessageIdleSeconds default = %d, want 60", cfg.AI.PerMessageIdleSeconds)
+	}
+	if cfg.AI.MaxRestartAttempts != 5 {
+		t.Errorf("AI.MaxRestartAttempts default = %d, want 5", cfg.AI.MaxRestartAttempts)
+	}
+	if cfg.AI.RestartWindowSeconds != 300 {
+		t.Errorf("AI.RestartWindowSeconds default = %d, want 300", cfg.AI.RestartWindowSeconds)
+	}
+	if cfg.AI.RateLimitPerUserPerMin != 30 {
+		t.Errorf("AI.RateLimitPerUserPerMin default = %d, want 30", cfg.AI.RateLimitPerUserPerMin)
+	}
+	if cfg.AI.BinaryPath != "" {
+		t.Errorf("AI.BinaryPath default = %q, want empty", cfg.AI.BinaryPath)
 	}
 }
