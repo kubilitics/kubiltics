@@ -39,6 +39,8 @@ import (
 	"syscall"
 
 	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/config"
+	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/engines/kagent"
+	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/engines/python"
 	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/router"
 	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/runtime"
 	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/server"
@@ -91,14 +93,34 @@ func main() {
 		os.Exit(1)
 	}
 	grpcSrv := grpc.NewServer()
+
+	// Build engine list. LLM-direct is always registered. kagent + python
+	// engines (subprojects 3c + 3d) register conditionally based on env vars
+	// so production deployments without those backends keep behaving exactly
+	// as v0.4.0. Real wire-level kagent/python integrations are scoped for v1.5;
+	// the registered engines emit structured "unimplemented" events until then.
+	engines := []router.Engine{
+		runtime.NewLLMEngine(&runtime.LLMAdapterBridge{A: srv.GetLLMAdapter()}),
+	}
+	if kagentEndpoint := os.Getenv("KAGENT_ENDPOINT"); kagentEndpoint != "" {
+		engines = append(engines, kagent.New(kagent.Config{
+			Endpoint:       kagentEndpoint,
+			DefaultAgentID: os.Getenv("KAGENT_DEFAULT_AGENT_ID"),
+		}))
+	}
+	if pyEndpoint := os.Getenv("PYTHON_AGENT_ENDPOINT"); pyEndpoint != "" {
+		engines = append(engines, python.New(python.Config{
+			Endpoint:          pyEndpoint,
+			DefaultWorkflowID: os.Getenv("PYTHON_AGENT_WORKFLOW"),
+		}))
+	}
+
 	rtSrv := runtime.New(runtime.Config{
 		Router: router.New(
-			[]router.Engine{
-				runtime.NewLLMEngine(&runtime.LLMAdapterBridge{A: srv.GetLLMAdapter()}),
-			},
+			engines,
 			nil, // default picker — picks the first engine (LLM-direct in v1)
 		),
-		AIVersion:     "0.4.0",
+		AIVersion:     "0.5.0",
 		SchemaVersion: "1.0.1",
 		Providers:     []string{cfg.LLM.Provider},
 	})
