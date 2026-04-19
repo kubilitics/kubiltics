@@ -26,10 +26,9 @@ import (
 	"k8s.io/client-go/kubernetes"
 	k8srest "k8s.io/client-go/rest"
 
-	aigate "github.com/kubilitics/kubilitics-backend/internal/ai/gate"
+	aiclient "github.com/kubilitics/kubilitics-backend/internal/ai/aiclient"
 	aihandlers "github.com/kubilitics/kubilitics-backend/internal/ai/handlers"
 	aiproxy "github.com/kubilitics/kubilitics-backend/internal/ai/proxy"
-	aisup "github.com/kubilitics/kubilitics-backend/internal/ai/supervisor"
 	grpcapi "github.com/kubilitics/kubilitics-backend/internal/api/grpc"
 	"github.com/kubilitics/kubilitics-backend/internal/api/middleware"
 	"github.com/kubilitics/kubilitics-backend/internal/api/rest"
@@ -632,9 +631,9 @@ func main() {
 	scannerSvc := service.NewScannerService(repo, log)
 	scannerHandler := rest.NewScannerHandler(scannerSvc)
 
-	// AI supervisor is constructed below (after apiRouter exists), but declared
+	// AI gRPC client is constructed below (after apiRouter exists), but declared
 	// here at function scope so the shutdown handler can see it.
-	var aiSupervisor aisup.Supervisor
+	var aiGRPCClient *aiclient.GRPCClient
 
 	// Deployment rollout routes on main router (full path) so they always match regardless of subrouter path handling
 	router.HandleFunc("/api/v1/clusters/{clusterId}/resources/deployments/{namespace}/{name}/rollout-history", handler.GetDeploymentRolloutHistory).Methods("GET")
@@ -697,37 +696,30 @@ func main() {
 	complianceHandler.RegisterRoutes(apiRouter)
 	scannerHandler.RegisterRoutes(apiRouter)
 
-	// ---- AI sidecar wiring (gated on cfg.AI.Enabled; routes always exposed
+	// ---- AI integration wiring (gated on cfg.AI.Enabled; routes always exposed
 	// so the desktop can probe and render an "AI: Off" pill consistently).
-	// Registered on apiRouter (the /api/v1 subrouter) BEFORE rest.SetupRoutes
-	// which sets apiRouter.NotFoundHandler — otherwise /api/v1/ai/* returns 404.
+	// Backend talks to in-cluster kubilitics-ai over gRPC (Chat + AIControl)
+	// and HTTP (control-plane /status). Registered on apiRouter BEFORE
+	// rest.SetupRoutes which sets apiRouter.NotFoundHandler — otherwise
+	// /api/v1/ai/* returns 404.
 	{
-		supCfg := aisup.Config{
-			BinaryPath:         cfg.AI.BinaryPath,
-			IdleShutdown:       time.Duration(cfg.AI.IdleShutdownSeconds) * time.Second,
-			MaxRestartAttempts: cfg.AI.MaxRestartAttempts,
-			RestartWindow:      time.Duration(cfg.AI.RestartWindowSeconds) * time.Second,
-			Provider:           cfg.AI.Provider,
-			Endpoint:           cfg.AI.Endpoint,
-			Model:              cfg.AI.Model,
-			APIKeyEnv:          cfg.AI.APIKeyEnv,
+		opts := aiclient.DefaultOpts()
+		if cfg.AI.RequestTimeoutSeconds > 0 {
+			opts.UnaryTimeout = time.Duration(cfg.AI.RequestTimeoutSeconds) * time.Second
 		}
-		aiSupervisor = aisup.New(supCfg)
+		aiGRPCClient = aiclient.NewGRPCClient(cfg.AI.Endpoint, opts)
+		aiHTTPClient := aiclient.NewHTTPClient(cfg.AI.HTTPEndpoint, opts)
 		rateLimit := cfg.AI.RateLimitPerUserPerMin
 		if !cfg.AI.Enabled {
-			rateLimit = 0 // unused when disabled; constructor still needs a value
+			rateLimit = 0
 		}
-		aiPxy := aiproxy.New(aiSupervisor, aigate.NoOpGate{}, rateLimit)
-		aiH := aihandlers.New(aiSupervisor, aiPxy, aihandlers.Config{
-			Enabled:         cfg.AI.Enabled,
-			ChatMaxDuration: time.Duration(cfg.AI.ChatMaxDurationSeconds) * time.Second,
-			PerMessageIdle:  time.Duration(cfg.AI.PerMessageIdleSeconds) * time.Second,
-		})
+		aiPxy := aiproxy.New(aiGRPCClient, aiHTTPClient, rateLimit)
+		aiH := aihandlers.New(aiPxy, aihandlers.Config{Enabled: cfg.AI.Enabled})
 		aiH.Register(routerHandleFuncAdapter{r: apiRouter})
 		if cfg.AI.Enabled {
-			log.Info("AI sidecar enabled", "binary", cfg.AI.BinaryPath, "idle_shutdown_seconds", cfg.AI.IdleShutdownSeconds)
+			log.Info("AI enabled", "endpoint", cfg.AI.Endpoint, "http_endpoint", cfg.AI.HTTPEndpoint)
 		} else {
-			log.Info("AI sidecar disabled (ai.enabled=false)")
+			log.Info("AI disabled (ai.enabled=false)")
 		}
 	}
 
@@ -1131,14 +1123,12 @@ func main() {
 		log.Warn("Server forced to shutdown", "error", err)
 	}
 
-	// Stop the AI sidecar after the HTTP server has drained so any in-flight
-	// AI requests get a chance to finish before the supervisor signals exit.
-	if aiSupervisor != nil {
-		sctx, scancel := context.WithTimeout(context.Background(), 10*time.Second)
-		if err := aiSupervisor.Shutdown(sctx); err != nil {
-			log.Warn("AI supervisor shutdown error", "error", err)
+	// Close the AI gRPC client after HTTP shutdown so any in-flight AI
+	// requests get a chance to finish.
+	if aiGRPCClient != nil {
+		if err := aiGRPCClient.Close(); err != nil {
+			log.Warn("AI client close error", "error", err)
 		}
-		scancel()
 	}
 
 	log.Info("Server exited gracefully")
