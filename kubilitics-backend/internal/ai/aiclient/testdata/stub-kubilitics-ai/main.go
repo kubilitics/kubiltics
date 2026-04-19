@@ -10,6 +10,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"os"
 	"strings"
 
 	kotgv1 "github.com/vellankikoti/kotg-schema/gen/go/kotg/v1"
@@ -73,16 +74,24 @@ func (s *srv) CancelTurn(_ context.Context, _ *kotgv1.CancelTurnRequest) (*kotgv
 }
 
 func main() {
-	grpcLis, err := net.Listen("tcp", ":50051")
+	grpcAddr := os.Getenv("STUB_GRPC_ADDR")
+	if grpcAddr == "" {
+		grpcAddr = ":50051"
+	}
+	httpAddr := os.Getenv("STUB_HTTP_ADDR")
+	if httpAddr == "" {
+		httpAddr = ":8080"
+	}
+	grpcLis, err := net.Listen("tcp", grpcAddr)
 	if err != nil {
-		log.Fatalf("grpc listen: %v", err)
+		log.Fatalf("grpc listen %s: %v", grpcAddr, err)
 	}
 	g := grpc.NewServer()
 	s := &srv{}
 	kotgv1.RegisterChatServer(g, s)
 	kotgv1.RegisterAIControlServer(g, s)
 	go func() {
-		log.Println("stub kubilitics-ai gRPC :50051")
+		log.Printf("stub kubilitics-ai gRPC %s", grpcAddr)
 		_ = g.Serve(grpcLis)
 	}()
 
@@ -91,6 +100,6 @@ func main() {
 			"state": "ready", "version": "stub-0.0.1", "engines": []string{"llm"},
 		})
 	})
-	log.Println("stub kubilitics-ai HTTP :8080")
-	log.Fatal(http.ListenAndServe(":8080", nil))
+	log.Printf("stub kubilitics-ai HTTP %s", httpAddr)
+	log.Fatal(http.ListenAndServe(httpAddr, nil))
 }

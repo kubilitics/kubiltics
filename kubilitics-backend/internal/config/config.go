@@ -243,7 +243,16 @@ func Load() (*Config, error) {
 
 	// Environment variables
 	viper.SetEnvPrefix("KUBILITICS")
+	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	viper.AutomaticEnv()
+	// Explicit BindEnv for nested keys (AutomaticEnv + replacer covers most,
+	// but BindEnv guarantees these specific keys flow from env even when
+	// no config file is present and no defaults match).
+	_ = viper.BindEnv("ai.enabled")
+	_ = viper.BindEnv("ai.endpoint")
+	_ = viper.BindEnv("ai.http_endpoint")
+	_ = viper.BindEnv("ai.request_timeout_seconds")
+	_ = viper.BindEnv("ai.rate_limit_per_user_per_min")
 
 	if err := viper.ReadInConfig(); err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
