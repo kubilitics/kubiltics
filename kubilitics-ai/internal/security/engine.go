@@ -20,7 +20,7 @@ import (
 	"sync"
 	"time"
 
-	pb "github.com/kubilitics/kubilitics-ai/api/proto/v1"
+	pb "github.com/vellankikoti/kotg.ai/kubilitics-ai/api/proto/v1"
 )
 
 // ResourceFetcher is the minimal interface SecurityEngine needs from the backend.

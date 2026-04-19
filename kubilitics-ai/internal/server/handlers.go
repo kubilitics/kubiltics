@@ -6,9 +6,9 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/kubilitics/kubilitics-ai/internal/analytics"
-	"github.com/kubilitics/kubilitics-ai/internal/llm/types"
-	"github.com/kubilitics/kubilitics-ai/internal/safety"
+	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/analytics"
+	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/llm/types"
+	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/safety"
 )
 
 // LLMCompleteRequest represents a request to the LLM complete endpoint

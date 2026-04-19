@@ -12,9 +12,9 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
-	"github.com/kubilitics/kubilitics-ai/internal/llm/types"
-	reasoningengine "github.com/kubilitics/kubilitics-ai/internal/reasoning/engine"
-	mcpserver "github.com/kubilitics/kubilitics-ai/internal/mcp/server"
+	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/llm/types"
+	reasoningengine "github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/reasoning/engine"
+	mcpserver "github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/mcp/server"
 )
 
 // WebSocket message types

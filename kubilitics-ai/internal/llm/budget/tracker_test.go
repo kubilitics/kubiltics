@@ -5,7 +5,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/kubilitics/kubilitics-ai/internal/db"
+	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/db"
 )
 
 func newTestStore(t *testing.T) db.Store {

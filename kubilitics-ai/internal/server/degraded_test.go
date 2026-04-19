@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	appconfig "github.com/kubilitics/kubilitics-ai/internal/config"
+	appconfig "github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/config"
 )
 
 // TestServerDegradedMode verifies that the server starts and operates

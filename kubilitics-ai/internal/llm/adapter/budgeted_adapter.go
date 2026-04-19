@@ -13,8 +13,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/kubilitics/kubilitics-ai/internal/llm/budget"
-	"github.com/kubilitics/kubilitics-ai/internal/llm/types"
+	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/llm/budget"
+	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/llm/types"
 )
 
 // budgetedAdapterImpl wraps an LLMAdapter with budget enforcement.

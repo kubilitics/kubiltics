@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	pb "github.com/kubilitics/kubilitics-ai/api/proto/v1"
+	pb "github.com/vellankikoti/kotg.ai/kubilitics-ai/api/proto/v1"
 )
 
 // QueryAPI wraps WorldModel with higher-level query methods.

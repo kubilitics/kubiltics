@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package kubilitics.ai.v1;
 
-option go_package = "github.com/kubilitics/kubilitics-ai/api/proto/v1;v1";
+option go_package = "github.com/vellankikoti/kotg.ai/kubilitics-ai/api/proto/v1;v1";
 
 import "google/protobuf/timestamp.proto";
 

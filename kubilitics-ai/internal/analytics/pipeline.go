@@ -7,11 +7,11 @@ import (
 	"sync"
 	"time"
 
-	pb "github.com/kubilitics/kubilitics-ai/api/proto/v1"
-	"github.com/kubilitics/kubilitics-ai/internal/analytics/anomaly"
-	"github.com/kubilitics/kubilitics-ai/internal/analytics/forecasting"
-	"github.com/kubilitics/kubilitics-ai/internal/analytics/scoring"
-	"github.com/kubilitics/kubilitics-ai/internal/analytics/timeseries"
+	pb "github.com/vellankikoti/kotg.ai/kubilitics-ai/api/proto/v1"
+	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/analytics/anomaly"
+	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/analytics/forecasting"
+	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/analytics/scoring"
+	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/analytics/timeseries"
 )
 
 // MetricsFetcher is the minimal interface needed to pull metrics from the backend.

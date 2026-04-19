@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/kubilitics/kubilitics-ai/internal/db"
+	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/db"
 )
 
 func TestNewEngine_AllComponentsInitialized(t *testing.T) {

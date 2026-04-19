@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/kubilitics/kubilitics-ai/internal/analytics"
+	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/analytics"
 )
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────

@@ -8,10 +8,10 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	pb "github.com/kubilitics/kubilitics-ai/api/proto/v1"
-	"github.com/kubilitics/kubilitics-ai/internal/memory/temporal"
-	"github.com/kubilitics/kubilitics-ai/internal/memory/vector"
-	"github.com/kubilitics/kubilitics-ai/internal/memory/worldmodel"
+	pb "github.com/vellankikoti/kotg.ai/kubilitics-ai/api/proto/v1"
+	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/memory/temporal"
+	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/memory/vector"
+	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/memory/worldmodel"
 )
 
 // buildTestServerWithMemory returns a minimal Server with memory layer wired.

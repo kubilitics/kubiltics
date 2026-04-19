@@ -1,4 +1,4 @@
-module github.com/kubilitics/kubilitics-ai
+module github.com/vellankikoti/kotg.ai/kubilitics-ai
 
 go 1.24.0
 

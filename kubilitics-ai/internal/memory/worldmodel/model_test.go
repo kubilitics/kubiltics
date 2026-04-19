@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	pb "github.com/kubilitics/kubilitics-ai/api/proto/v1"
+	pb "github.com/vellankikoti/kotg.ai/kubilitics-ai/api/proto/v1"
 )
 
 func TestNewWorldModel(t *testing.T) {

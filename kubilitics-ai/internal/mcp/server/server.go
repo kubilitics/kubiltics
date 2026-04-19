@@ -8,15 +8,15 @@ import (
 	"sync"
 	"time"
 
-	"github.com/kubilitics/kubilitics-ai/internal/audit"
-	"github.com/kubilitics/kubilitics-ai/internal/config"
-	"github.com/kubilitics/kubilitics-ai/internal/db"
-	"github.com/kubilitics/kubilitics-ai/internal/integration/backend"
-	"github.com/kubilitics/kubilitics-ai/internal/mcp/tools"
-	analysistools "github.com/kubilitics/kubilitics-ai/internal/mcp/tools/analysis"
-	executiontools "github.com/kubilitics/kubilitics-ai/internal/mcp/tools/execution"
-	"github.com/kubilitics/kubilitics-ai/internal/metrics"
-	"github.com/kubilitics/kubilitics-ai/internal/safety"
+	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/audit"
+	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/config"
+	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/db"
+	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/integration/backend"
+	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/mcp/tools"
+	analysistools "github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/mcp/tools/analysis"
+	executiontools "github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/mcp/tools/execution"
+	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/metrics"
+	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/safety"
 )
 
 // Package server implements the Model Context Protocol (MCP) server.

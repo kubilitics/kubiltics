@@ -10,7 +10,7 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/kubilitics/kubilitics-ai/internal/llm/types"
+	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/llm/types"
 )
 
 // Package openai provides OpenAI provider implementation for LLM adapter.

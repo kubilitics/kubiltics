@@ -7,11 +7,11 @@ import (
 	"sync"
 	"time"
 
-	pb "github.com/kubilitics/kubilitics-ai/api/proto/v1"
-	"github.com/kubilitics/kubilitics-ai/internal/audit"
-	"github.com/kubilitics/kubilitics-ai/internal/config"
-	grpcClient "github.com/kubilitics/kubilitics-ai/internal/integration/grpc"
-	"github.com/kubilitics/kubilitics-ai/internal/memory/worldmodel"
+	pb "github.com/vellankikoti/kotg.ai/kubilitics-ai/api/proto/v1"
+	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/audit"
+	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/config"
+	grpcClient "github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/integration/grpc"
+	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/memory/worldmodel"
 )
 
 // QueryMode determines how queries are executed

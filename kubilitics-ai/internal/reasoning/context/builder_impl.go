@@ -9,7 +9,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/kubilitics/kubilitics-ai/internal/integration/backend"
+	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/integration/backend"
 )
 
 // contextBuilderImpl is the concrete implementation of ContextBuilder.

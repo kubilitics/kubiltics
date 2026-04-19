@@ -21,7 +21,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/kubilitics/kubilitics-ai/internal/db"
+	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/db"
 )
 
 // handlePersistenceDispatch routes /api/v1/persistence/* requests.

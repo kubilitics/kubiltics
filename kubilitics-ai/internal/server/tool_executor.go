@@ -11,8 +11,8 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/kubilitics/kubilitics-ai/internal/llm/types"
-	mcpserver "github.com/kubilitics/kubilitics-ai/internal/mcp/server"
+	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/llm/types"
+	mcpserver "github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/mcp/server"
 )
 
 // Autonomy levels (mirrors config/defaults.go):

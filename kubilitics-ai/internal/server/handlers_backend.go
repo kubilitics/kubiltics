@@ -12,7 +12,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/kubilitics/kubilitics-ai/internal/integration/events"
+	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/integration/events"
 )
 
 // BackendStatusResponse is the JSON response for GET /api/v1/backend/status.

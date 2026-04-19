@@ -8,10 +8,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/kubilitics/kubilitics-ai/internal/analytics"
-	appconfig "github.com/kubilitics/kubilitics-ai/internal/config"
-	"github.com/kubilitics/kubilitics-ai/internal/llm/types"
-	"github.com/kubilitics/kubilitics-ai/internal/safety"
+	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/analytics"
+	appconfig "github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/config"
+	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/llm/types"
+	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/safety"
 )
 
 func createTestConfig() *appconfig.Config {

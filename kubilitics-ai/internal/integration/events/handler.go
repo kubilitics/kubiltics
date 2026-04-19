@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	pb "github.com/kubilitics/kubilitics-ai/api/proto/v1"
+	pb "github.com/vellankikoti/kotg.ai/kubilitics-ai/api/proto/v1"
 )
 
 // Package events provides event handling from kubilitics-backend stream.
