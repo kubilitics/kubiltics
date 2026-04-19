@@ -10,6 +10,9 @@ dist/
 # Test binary
 *.test
 
+# Stub sidecar binary (built by stubsidecar build_test.go)
+internal/ai/supervisor/testdata/stubsidecar/stub
+
 # Output of the go coverage tool
 *.out
 coverage.txt
