@@ -1,3 +1,5 @@
+// Bridge between the existing internal/llm/adapter.LLMAdapter
+// (CompleteStream signature) and the runtime.LLMProvider interface.
 package runtime
 
 import (
@@ -7,27 +9,22 @@ import (
 	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/llm/types"
 )
 
-// LLMAdapterBridge adapts the existing internal/llm/adapter.LLMAdapter (which
-// has a tool-aware multi-message API) into the minimal runtime.LLMProvider
-// surface (single prompt → token stream) needed by the v1 AgentRuntimeService
-// stub.
+// LLMAdapterBridge wraps an existing LLMAdapter so it satisfies LLMProvider.
 type LLMAdapterBridge struct {
 	A adapter.LLMAdapter
 }
 
-// StreamCompletion implements LLMProvider by wrapping the prompt as a single
-// user message with no tools and forwarding the underlying text channel.
 func (b *LLMAdapterBridge) StreamCompletion(ctx context.Context, prompt string) (<-chan string, error) {
-	msgs := []types.Message{{Role: "user", Content: prompt}}
-	textCh, toolCh, err := b.A.CompleteStream(ctx, msgs, nil)
+	textCh, toolCh, err := b.A.CompleteStream(ctx, []types.Message{{Role: "user", Content: prompt}}, nil)
 	if err != nil {
 		return nil, err
 	}
-	// Drain (and discard) the tool channel so the underlying stream does not
-	// block on an unconsumed buffered send.
-	go func() {
-		for range toolCh {
-		}
-	}()
+	// Drain unused tool channel to avoid blocking the producer.
+	if toolCh != nil {
+		go func() {
+			for range toolCh {
+			}
+		}()
+	}
 	return textCh, nil
 }

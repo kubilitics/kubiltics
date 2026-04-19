@@ -38,10 +38,10 @@ import (
 	"os/signal"
 	"syscall"
 
-	aiv1 "github.com/vellankikoti/kotg.ai/kubilitics-ai/api/proto/v1"
 	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/config"
 	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/runtime"
 	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/server"
+	kotgv1 "github.com/vellankikoti/kotg-schema/gen/go/kotg/v1"
 
 	"google.golang.org/grpc"
 )
@@ -90,12 +90,14 @@ func main() {
 		os.Exit(1)
 	}
 	grpcSrv := grpc.NewServer()
-	aiv1.RegisterAgentRuntimeServiceServer(grpcSrv, runtime.New(runtime.Config{
+	rtSrv := runtime.New(runtime.Config{
 		LLM:           &runtime.LLMAdapterBridge{A: srv.GetLLMAdapter()},
-		AIVersion:     "0.2.0",
-		SchemaVersion: "1.0.0",
+		AIVersion:     "0.3.0",
+		SchemaVersion: "1.0.1",
 		Providers:     []string{cfg.LLM.Provider},
-	}))
+	})
+	kotgv1.RegisterChatServer(grpcSrv, rtSrv)
+	kotgv1.RegisterAIControlServer(grpcSrv, rtSrv)
 	go func() {
 		fmt.Printf("AgentRuntimeService gRPC listening on %s\n", grpcAddr)
 		if err := grpcSrv.Serve(grpcLis); err != nil {
