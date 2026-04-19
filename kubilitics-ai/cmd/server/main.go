@@ -39,6 +39,7 @@ import (
 	"syscall"
 
 	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/config"
+	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/router"
 	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/runtime"
 	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/server"
 	kotgv1 "github.com/vellankikoti/kotg-schema/gen/go/kotg/v1"
@@ -91,8 +92,13 @@ func main() {
 	}
 	grpcSrv := grpc.NewServer()
 	rtSrv := runtime.New(runtime.Config{
-		LLM:           &runtime.LLMAdapterBridge{A: srv.GetLLMAdapter()},
-		AIVersion:     "0.3.0",
+		Router: router.New(
+			[]router.Engine{
+				runtime.NewLLMEngine(&runtime.LLMAdapterBridge{A: srv.GetLLMAdapter()}),
+			},
+			nil, // default picker — picks the first engine (LLM-direct in v1)
+		),
+		AIVersion:     "0.4.0",
 		SchemaVersion: "1.0.1",
 		Providers:     []string{cfg.LLM.Provider},
 	})

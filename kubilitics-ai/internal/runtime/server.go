@@ -17,6 +17,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/router"
 	kotgv1 "github.com/vellankikoti/kotg-schema/gen/go/kotg/v1"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -30,12 +31,18 @@ type LLMProvider interface {
 }
 
 // Config holds the immutable wiring for a runtime server.
+//
+// As of subproject 3b the runtime no longer talks to LLMProvider directly;
+// it dispatches turns through Router. v1 wires a single LLM-direct engine
+// (see NewLLMEngine); 3c/3d will register kagent + Python engines alongside.
 type Config struct {
-	LLM           LLMProvider
+	Router        *router.Router
 	AIVersion     string
 	SchemaVersion string
-	Providers     []string
-	Models        []string
+	// Providers/Models reflect the underlying LLM/model identities for
+	// AICapabilities. Engine names are reported separately via Router.Engines().
+	Providers []string
+	Models    []string
 }
 
 // session is the in-memory record. Cluster binding + idle eviction are
@@ -132,19 +139,26 @@ func (s *Server) Send(stream kotgv1.Chat_SendServer) error {
 		turnCtx, cancel := context.WithCancel(stream.Context())
 		s.mu.Lock()
 		sess.cancel = cancel
-		s.mu.Unlock()
-
-		prompt := buildPrompt(sess, msg)
-		s.mu.Lock()
 		sess.turnCount++
 		sess.updatedAt = time.Now()
 		s.mu.Unlock()
 
-		ch, err := s.cfg.LLM.StreamCompletion(turnCtx, prompt)
-		if err != nil {
+		req := router.Request{
+			SessionID:      msg.SessionId,
+			TurnID:         msg.TurnId,
+			FocusClusterID: sess.focusClusterID,
+			Text:           msg.Text,
+			ContextHint:    msg.ContextHint,
+		}
+
+		engineName, events, dispatchErr := s.cfg.Router.Dispatch(turnCtx, req)
+		if dispatchErr != nil {
 			cancel()
+			s.mu.Lock()
+			sess.cancel = nil
+			s.mu.Unlock()
 			if sendErr := stream.Send(s.event(msg.TurnId, &kotgv1.AssistantEvent_Error{
-				Error: &kotgv1.ErrorEvent{Code: "llm_error", Message: err.Error()},
+				Error: &kotgv1.ErrorEvent{Code: "router_error", Message: dispatchErr.Error()},
 			})); sendErr != nil {
 				return sendErr
 			}
@@ -156,16 +170,24 @@ func (s *Server) Send(stream kotgv1.Chat_SendServer) error {
 			continue
 		}
 
-		var partial bool
-		for chunk := range ch {
-			if turnCtx.Err() != nil {
-				partial = true
-				break
+		// Internal-only logging of which engine ran. NEVER surfaced on the wire
+		// (the Output Normalizer rule: chat clients only see canonical events).
+		// When observability is added: log.Info("engine_used", "engine", engineName).
+		_ = engineName
+
+		for ev := range events {
+			mapped := s.mapRouterEvent(msg.TurnId, ev)
+			if mapped == nil {
+				continue
 			}
-			if sendErr := stream.Send(s.event(msg.TurnId, &kotgv1.AssistantEvent_TextDelta{
-				TextDelta: &kotgv1.TextDelta{Text: chunk},
-			})); sendErr != nil {
+			if sendErr := stream.Send(mapped); sendErr != nil {
 				cancel()
+				// Drain remaining events so the engine goroutine isn't blocked.
+				for range events {
+				}
+				s.mu.Lock()
+				sess.cancel = nil
+				s.mu.Unlock()
 				return sendErr
 			}
 		}
@@ -173,17 +195,43 @@ func (s *Server) Send(stream kotgv1.Chat_SendServer) error {
 		s.mu.Lock()
 		sess.cancel = nil
 		s.mu.Unlock()
-
-		finishReason := "stop"
-		if partial {
-			finishReason = "cancel"
-		}
-		if sendErr := stream.Send(s.event(msg.TurnId, &kotgv1.AssistantEvent_Done{
-			Done: &kotgv1.Done{Partial: partial, FinishReason: finishReason},
-		})); sendErr != nil {
-			return sendErr
-		}
 	}
+}
+
+// mapRouterEvent translates a canonical router.Event into the kotg-schema
+// AssistantEvent variant. Action/Plan/Citation are forwarded for forward-compat
+// once 3e (safety) and 3g (approval UI) ship.
+func (s *Server) mapRouterEvent(turnID string, ev router.Event) *kotgv1.AssistantEvent {
+	switch ev.Kind {
+	case router.KindTextDelta:
+		return s.event(turnID, &kotgv1.AssistantEvent_TextDelta{
+			TextDelta: &kotgv1.TextDelta{Text: ev.Text},
+		})
+	case router.KindError:
+		return s.event(turnID, &kotgv1.AssistantEvent_Error{
+			Error: &kotgv1.ErrorEvent{Code: ev.Code, Message: ev.Message},
+		})
+	case router.KindDone:
+		return s.event(turnID, &kotgv1.AssistantEvent_Done{
+			Done: &kotgv1.Done{
+				Partial:      ev.Partial,
+				Cancelled:    ev.Cancelled,
+				FinishReason: ev.FinishReason,
+			},
+		})
+	case router.KindToolStart:
+		return s.event(turnID, &kotgv1.AssistantEvent_ToolStart{
+			ToolStart: &kotgv1.ToolStart{ToolCallId: ev.ToolCallID, ToolName: ev.ToolName, Preview: ev.Preview},
+		})
+	case router.KindToolEnd:
+		return s.event(turnID, &kotgv1.AssistantEvent_ToolEnd{
+			ToolEnd: &kotgv1.ToolEnd{ToolCallId: ev.ToolCallID, Ok: ev.OK, Preview: ev.Preview},
+		})
+	case router.KindActionPending, router.KindPlanProposed, router.KindCitation:
+		// TODO(3e/3g): map to AssistantEvent_ActionPending / _PlanProposed / _Citation.
+		return nil
+	}
+	return nil
 }
 
 func (s *Server) CancelTurn(_ context.Context, req *kotgv1.CancelTurnRequest) (*kotgv1.Empty, error) {
@@ -250,13 +298,6 @@ func (s *Server) event(turnID string, variant interface{}) *kotgv1.AssistantEven
 		ev.Event = v
 	}
 	return ev
-}
-
-func buildPrompt(sess *session, msg *kotgv1.UserMessage) string {
-	if msg.ContextHint == "" {
-		return msg.Text
-	}
-	return msg.Text + "\n\n[context: " + msg.ContextHint + "]"
 }
 
 func sessionToProto(s *session) *kotgv1.Session {

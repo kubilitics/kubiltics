@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/router"
 	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/runtime"
 	kotgv1 "github.com/vellankikoti/kotg-schema/gen/go/kotg/v1"
 
@@ -46,7 +47,10 @@ func newTestServers(t *testing.T, llm runtime.LLMProvider) (kotgv1.ChatClient, k
 	lis := bufconn.Listen(bufSize)
 	s := grpc.NewServer()
 	rt := runtime.New(runtime.Config{
-		LLM:           llm,
+		Router: router.New(
+			[]router.Engine{runtime.NewLLMEngine(llm)},
+			nil,
+		),
 		AIVersion:     "test",
 		SchemaVersion: "1.0.1",
 		Providers:     []string{"fake"},
