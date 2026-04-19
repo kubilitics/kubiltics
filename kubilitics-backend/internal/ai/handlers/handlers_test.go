@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 	"time"
 
@@ -153,6 +154,64 @@ func TestCapabilitiesWarm(t *testing.T) {
 	}
 	if body["capabilities"] == nil {
 		t.Errorf("capabilities should be populated after warm")
+	}
+}
+
+func TestSessionsRequiresAIEnabled(t *testing.T) {
+	sup := supervisor.New(supervisor.Config{BinaryPath: stubBinary(t)})
+	p := proxy.New(sup, gate.NoOpGate{}, 60)
+	h := New(sup, p, Config{Enabled: false, ChatMaxDuration: 30 * time.Second})
+	mux := http.NewServeMux()
+	h.Register(mux)
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+	defer sup.Shutdown(context.Background())
+
+	body := strings.NewReader(`{"focus_cluster_id":"c1"}`)
+	req, _ := http.NewRequest("POST", srv.URL+"/ai/sessions", body)
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("post: %v", err)
+	}
+	if resp.StatusCode != http.StatusServiceUnavailable {
+		t.Errorf("status = %d, want 503", resp.StatusCode)
+	}
+}
+
+func TestSessionsRejectsMissingCluster(t *testing.T) {
+	srv, sup := newTestServer(t)
+	defer srv.Close()
+	defer sup.Shutdown(context.Background())
+
+	body := strings.NewReader(`{}`)
+	req, _ := http.NewRequest("POST", srv.URL+"/ai/sessions", body)
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("post: %v", err)
+	}
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Errorf("status = %d, want 400", resp.StatusCode)
+	}
+}
+
+func TestSessionsHappyPath(t *testing.T) {
+	srv, sup := newTestServer(t)
+	defer srv.Close()
+	defer sup.Shutdown(context.Background())
+
+	body := strings.NewReader(`{"focus_cluster_id":"c1","title":"test"}`)
+	req, _ := http.NewRequest("POST", srv.URL+"/ai/sessions", body)
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("post: %v", err)
+	}
+	if resp.StatusCode != 200 {
+		t.Fatalf("status = %d, want 200", resp.StatusCode)
+	}
+	var got map[string]any
+	json.NewDecoder(resp.Body).Decode(&got)
+	if got["session_id"] == nil || got["session_id"] == "" {
+		t.Errorf("session_id missing in response: %v", got)
 	}
 }
 

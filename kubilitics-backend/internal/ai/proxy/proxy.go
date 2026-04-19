@@ -105,6 +105,31 @@ func (p *Proxy) Refresh(ctx context.Context) error {
 	return err
 }
 
+// CreateSession asks the sidecar to allocate a new chat session for the
+// given cluster and optional title. The returned Session carries the
+// server-assigned SessionId that subsequent Chat streams reference.
+func (p *Proxy) CreateSession(ctx context.Context, clusterID, title string) (*kotgv1.Session, error) {
+	if err := p.ensureCluster(clusterID); err != nil {
+		proxyErrors.WithLabelValues("create_session", "missing_cluster").Inc()
+		return nil, err
+	}
+	if uid := userID(ctx); uid != "" && !p.rl.allow(uid) {
+		rateDropped.WithLabelValues("create_session").Inc()
+		return nil, types.ErrRateLimited
+	}
+	rc, err := p.sup.EnsureReady(ctx)
+	if err != nil {
+		proxyErrors.WithLabelValues("create_session", statusLabel(err)).Inc()
+		return nil, err
+	}
+	cli := kotgv1.NewChatClient(rc.Conn)
+	cctx := p.attachMeta(ctx, clusterID)
+	return cli.CreateSession(cctx, &kotgv1.CreateSessionRequest{
+		FocusClusterId: clusterID,
+		Title:          title,
+	})
+}
+
 // Chat opens a bidirectional chat stream. The returned stream is
 // SpawnID-guarded; if the sidecar respawns, Recv returns Aborted +
 // ErrSpawnChanged. The caller MUST drain Recv until error to release the

@@ -43,5 +43,6 @@ func (h *Handlers) Register(mux muxHandleFunc) {
 	mux.HandleFunc("/ai/refresh", h.PostRefresh)
 	mux.HandleFunc("/ai/capabilities", h.GetCapabilities)
 	mux.HandleFunc("/ai/chat", h.GetChat)
+	mux.HandleFunc("/ai/sessions", h.PostCreateSession)
 }
 
