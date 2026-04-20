@@ -65,7 +65,11 @@ function renderPage() {
 
 describe('AISettingsPage', () => {
   beforeEach(() => {
-    vi.stubGlobal('fetch', vi.fn());
+    // Default: GET /ai/config on mount returns 404 (no saved config). Tests
+    // that exercise validate/save chain extra mockResolvedValueOnce calls
+    // on top of this default.
+    const f = vi.fn().mockResolvedValue({ ok: false, status: 404, json: async () => ({}) });
+    vi.stubGlobal('fetch', f);
   });
   afterEach(() => {
     vi.unstubAllGlobals();
@@ -87,10 +91,9 @@ describe('AISettingsPage', () => {
   });
 
   it('disables Save until Validate succeeds', async () => {
-    (globalThis.fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({ ok: true, latency_ms: 42 }),
-    });
+    const f = globalThis.fetch as unknown as ReturnType<typeof vi.fn>;
+    f.mockResolvedValueOnce({ ok: false, status: 404, json: async () => ({}) }) // mount GET
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ ok: true, latency_ms: 42 }) }); // validate
     renderPage();
 
     // Pre-validate: API key required + Save disabled
@@ -104,7 +107,9 @@ describe('AISettingsPage', () => {
 
   it('save flow posts to /api/v1/ai/config after a successful validate', async () => {
     const fetchMock = globalThis.fetch as unknown as ReturnType<typeof vi.fn>;
+    // 1st call: mount-time GET /ai/config (no saved config). Then validate, then save.
     fetchMock
+      .mockResolvedValueOnce({ ok: false, status: 404, json: async () => ({}) }) // mount GET
       .mockResolvedValueOnce({ ok: true, json: async () => ({ ok: true, latency_ms: 12 }) }) // validate
       .mockResolvedValueOnce({ ok: true, json: async () => ({ ok: true, applied_provider: 'openai' }) }); // save
 
@@ -114,12 +119,13 @@ describe('AISettingsPage', () => {
     await waitFor(() => expect(screen.getByTestId('save-btn')).not.toBeDisabled());
 
     fireEvent.click(screen.getByTestId('save-btn'));
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3));
 
-    const lastCall = fetchMock.mock.calls[1];
-    expect(lastCall[0]).toBe('/api/v1/ai/config');
-    expect(lastCall[1]?.method).toBe('POST');
-    const body = JSON.parse(lastCall[1]?.body as string);
+    // The save POST is the third (last) call after mount-GET + validate.
+    const saveCall = fetchMock.mock.calls[2];
+    expect(saveCall[0]).toBe('/api/v1/ai/config');
+    expect(saveCall[1]?.method).toBe('POST');
+    const body = JSON.parse(saveCall[1]?.body as string);
     expect(body.provider).toBe('openai');
     expect(body.api_key).toBe('sk-test');
   });

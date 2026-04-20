@@ -81,6 +81,46 @@ export default function AISettingsPage() {
   const [validateResult, setValidateResult] = useState<ValidateResult | null>(null);
   const [smokeOutput, setSmokeOutput] = useState<string | null>(null);
   const [isSmokeTesting, setIsSmokeTesting] = useState(false);
+  const [maskedKey, setMaskedKey] = useState<string>(''); // e.g. "••••PXR9"
+  const [hasSavedKey, setHasSavedKey] = useState(false);
+
+  // Hydrate the form from the saved overrides on mount. The api_key value is
+  // returned masked from the server (last 4 chars) and stored separately so the
+  // input can use it as the placeholder while the form's apiKey stays empty —
+  // empty on save means "leave the existing key alone" (backend merges).
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch('/api/v1/ai/config', { method: 'GET' });
+        if (!res.ok) return;
+        const json = (await res.json()) as {
+          provider?: string;
+          model?: string;
+          base_url?: string;
+          api_key_masked?: string;
+          has_api_key?: string;
+        };
+        if (cancelled) return;
+        if (json.provider) {
+          setForm((f) => ({
+            ...f,
+            provider: (json.provider as Provider) ?? f.provider,
+            model: json.model ?? f.model,
+            baseUrl: json.base_url ?? f.baseUrl,
+            apiKey: '',
+          }));
+        }
+        if (json.api_key_masked) setMaskedKey(json.api_key_masked);
+        setHasSavedKey(json.has_api_key === 'true');
+      } catch {
+        // GET is best-effort; the form stays at defaults if backend is down.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Reset validation whenever the user mutates the form.
   useEffect(() => {
@@ -311,6 +351,11 @@ export default function AISettingsPage() {
             <div className="space-y-2">
               <Label htmlFor="ai-key">
                 API Key {form.provider === 'custom' && <span className="text-muted-foreground">(optional)</span>}
+                {hasSavedKey && form.apiKey === '' && (
+                  <span className="ml-2 text-xs text-emerald-600 dark:text-emerald-400">
+                    saved ({maskedKey || '••••'})
+                  </span>
+                )}
               </Label>
               <Input
                 id="ai-key"
@@ -318,12 +363,13 @@ export default function AISettingsPage() {
                 type="password"
                 value={form.apiKey}
                 onChange={(e) => setField('apiKey', e.target.value)}
-                placeholder="sk-..."
+                placeholder={hasSavedKey ? maskedKey || '••••' + ' (leave blank to keep existing)' : 'sk-...'}
                 autoComplete="off"
                 className="font-mono text-sm"
               />
               <p className="text-xs text-muted-foreground">
                 Stored server-side only. Never persisted to browser storage.
+                {hasSavedKey && ' Leave this blank to keep the saved key; type a new key to replace.'}
               </p>
             </div>
           )}

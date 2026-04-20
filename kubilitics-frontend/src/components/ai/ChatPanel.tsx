@@ -47,16 +47,15 @@ function decodeNotReady(
     };
   }
   if (capsData.ready === true) {
-    // Belt-and-braces: ready=true but no providers/models means the brain is up
-    // but has nothing to call. This happens when the brain process started before
-    // any provider config landed. Treat as not configured.
+    // Belt-and-braces: ready=true but providers list is empty means the brain
+    // is up with no provider configured. (Models are not always returned; only
+    // the providers list is authoritative.) Treat that as not configured.
     const providers = capsData.capabilities?.providers ?? [];
-    const models = capsData.capabilities?.models ?? [];
-    if (providers.length === 0 || models.length === 0) {
+    if (providers.length === 0) {
       return {
         title: 'AI is not configured',
         detail:
-          'The AI service is running but has no provider or model configured. Pick one in Settings → AI and click Validate to turn this on.',
+          'The AI service is running but has no provider configured. Pick one in Settings → AI and click Validate to turn this on.',
       };
     }
     return null;

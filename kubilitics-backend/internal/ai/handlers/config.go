@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -44,6 +45,72 @@ var supportedProviders = map[string]bool{
 // don't interleave.
 var configWriteMu sync.Mutex
 
+// GetConfig serves GET /api/v1/ai/config. Returns the persisted overrides
+// (provider, model, base_url) with the API key MASKED — only the last 4
+// chars are returned so the frontend can render `sk-…XYZ9` while the real
+// key stays server-side. Returns empty fields if no config has been saved.
+func (h *Handlers) GetConfig(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	cfg, err := readOverrides()
+	if err != nil {
+		writeConfigErr(w, fmt.Sprintf("read overrides: %v", err), http.StatusInternalServerError)
+		return
+	}
+	masked := ""
+	if len(cfg.APIKey) > 4 {
+		masked = "••••" + cfg.APIKey[len(cfg.APIKey)-4:]
+	} else if cfg.APIKey != "" {
+		masked = "••••"
+	}
+	_ = json.NewEncoder(w).Encode(map[string]string{
+		"provider":       cfg.Provider,
+		"model":          cfg.Model,
+		"base_url":       cfg.BaseURL,
+		"api_key_masked": masked,
+		"has_api_key":    fmt.Sprintf("%t", cfg.APIKey != ""),
+	})
+}
+
+// readOverrides parses the ~/.kubilitics/ai-overrides.yaml file. Returns
+// zero-value config if missing.
+func readOverrides() (*configRequest, error) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return nil, err
+	}
+	path := filepath.Join(home, ".kubilitics", "ai-overrides.yaml")
+	body, err := os.ReadFile(path)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return &configRequest{}, nil
+		}
+		return nil, err
+	}
+	out := &configRequest{}
+	for _, line := range strings.Split(string(body), "\n") {
+		k, v, ok := strings.Cut(strings.TrimSpace(line), ":")
+		if !ok || strings.HasPrefix(k, "#") {
+			continue
+		}
+		v = strings.TrimSpace(v)
+		switch strings.TrimSpace(k) {
+		case "provider":
+			out.Provider = v
+		case "model":
+			out.Model = v
+		case "base_url":
+			out.BaseURL = v
+		case "api_key":
+			out.APIKey = v
+		}
+	}
+	return out, nil
+}
+
 // PostConfig serves POST /api/v1/ai/config. It validates the candidate
 // configuration shape and persists it to the local AI overrides file
 // at ~/.kubilitics/ai-overrides.yaml. The kubilitics-ai brain reloads
@@ -70,15 +137,36 @@ func (h *Handlers) PostConfig(w http.ResponseWriter, r *http.Request) {
 		writeConfigErr(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+	// Merge with existing on disk: when the user re-saves with an empty API key
+	// (e.g. they only changed the model), keep the previously stored key instead
+	// of wiping it. The frontend never re-sends the masked value, so empty here
+	// means "leave it alone" for hosted providers.
+	if existing, _ := readOverrides(); existing != nil && req.APIKey == "" && existing.APIKey != "" {
+		req.APIKey = existing.APIKey
+	}
 	if err := writeOverrides(req); err != nil {
 		writeConfigErr(w, fmt.Sprintf("persist overrides: %v", err), http.StatusInternalServerError)
 		return
 	}
+	// Best-effort: SIGHUP the brain so it re-reads the overrides without a
+	// process restart. If the brain isn't running locally (or runs in-cluster)
+	// this is a no-op — the next brain start will pick up the file.
+	go reloadBrain()
 	_ = json.NewEncoder(w).Encode(configResponse{
 		OK:              true,
 		AppliedProvider: req.Provider,
 		AppliedModel:    req.Model,
 	})
+}
+
+// reloadBrain sends SIGHUP to any local kubilitics-ai server process. The
+// brain has a SIGHUP handler that reloads its config. Best-effort: errors
+// are swallowed because the in-cluster (Helm-deployed) deployment doesn't
+// have a discoverable PID and the next brain restart picks up the override
+// file regardless.
+func reloadBrain() {
+	cmd := exec.Command("pkill", "-HUP", "-f", "kubilitics-ai.*/server$")
+	_ = cmd.Run()
 }
 
 // PostValidate serves POST /api/v1/ai/validate. It performs a shape check
@@ -102,6 +190,12 @@ func (h *Handlers) PostValidate(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		writeConfigErr(w, err.Error(), http.StatusBadRequest)
 		return
+	}
+	// Same merge as PostConfig: when validating with empty api_key, fall back
+	// to the saved key (if any) so "click Validate again" works after a reload
+	// — the user shouldn't have to re-paste the key every time.
+	if existing, _ := readOverrides(); existing != nil && req.APIKey == "" && existing.APIKey != "" {
+		req.APIKey = existing.APIKey
 	}
 	if err := validateConfigShape(req); err != nil {
 		writeConfigErr(w, err.Error(), http.StatusBadRequest)
