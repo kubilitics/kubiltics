@@ -1,0 +1,162 @@
+# Default values for kubilitics-ai.
+#
+# Pair this with the kubilitics chart, which exposes ai.endpoint
+# (default: kubilitics-ai.<ns>.svc.cluster.local:50051) — that resolves
+# to this chart's Service automatically when both are installed in the
+# same namespace.
+#
+# Quick start with Ollama:
+#   helm install kubilitics-ai ./deploy/helm/kubilitics-ai \
+#     --set llm.provider=ollama \
+#     --set llm.ollama.baseUrl=http://ollama.default.svc.cluster.local:11434 \
+#     --set llm.ollama.model=qwen2.5-coder:7b
+#
+# OpenAI:
+#   helm install kubilitics-ai ./deploy/helm/kubilitics-ai \
+#     --set llm.provider=openai \
+#     --set-string llm.openai.apiKey=sk-... \
+#     --set llm.openai.model=gpt-4o-mini
+#
+# kagent integration (kagent must be installed separately —
+# see https://kagent.dev/docs/kagent/introduction/installation):
+#   --set engines.kagent.enabled=true \
+#   --set engines.kagent.endpoint=http://kagent-controller.kagent.svc.cluster.local:8083
+
+replicaCount: 1
+
+image:
+  repository: ghcr.io/vellankikoti/kubilitics-ai
+  tag: ""    # defaults to .Chart.AppVersion if empty
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+podAnnotations: {}
+podLabels: {}
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  fsGroup: 1000
+
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop: [ALL]
+  readOnlyRootFilesystem: false   # sqlite cache + ollama temp files need writes
+  runAsNonRoot: true
+  runAsUser: 1000
+
+# Service exposes both gRPC (50051) and HTTP control-plane (8081).
+service:
+  type: ClusterIP
+  grpcPort: 50051
+  httpPort: 8081
+
+# LLM provider — required.
+#
+# The runtime config is rendered into a ConfigMap and mounted at
+# /etc/kubilitics/config.yaml. API keys, when provided inline, are
+# rendered into a Secret and projected as env vars (so they don't
+# end up in the ConfigMap on disk).
+llm:
+  provider: "ollama"   # "ollama" | "openai" | "anthropic" | "custom"
+
+  ollama:
+    baseUrl: "http://ollama.default.svc.cluster.local:11434"
+    model: "llama3"
+
+  openai:
+    apiKey: ""                  # rendered into Secret if set
+    apiKeySecretRef:            # alternative: reference an existing Secret
+      name: ""
+      key: "api-key"
+    model: "gpt-4o-mini"
+    maxTokens: 2048
+
+  anthropic:
+    apiKey: ""
+    apiKeySecretRef:
+      name: ""
+      key: "api-key"
+    model: "claude-3-5-sonnet-20241022"
+    maxTokens: 2048
+
+  custom:
+    baseUrl: ""
+    apiKey: ""
+    apiKeySecretRef:
+      name: ""
+      key: "api-key"
+    model: ""
+    maxTokens: 2048
+
+# Backend (kubilitics-backend gRPC) — leave empty in v1; the runtime
+# starts standalone if backend is unreachable. Set this when you want
+# the AI to subscribe to live cluster state.
+backend:
+  address: ""              # e.g. "kubilitics-backend.kubilitics.svc.cluster.local:50051"
+  timeout: 30
+  tlsEnabled: false
+
+# Engines beyond LLM-direct. Each enables the corresponding Engine
+# skeleton in the Router. Real wire integrations land in v1.5.
+engines:
+  kagent:
+    enabled: false
+    endpoint: ""              # kagent controller URL
+    defaultAgentId: ""        # kagent Agent CRD name to invoke
+  python:
+    enabled: false
+    endpoint: ""              # Python sidecar URL
+    defaultWorkflow: ""       # LangGraph workflow id
+
+# Safety wrapper allow-list. Empty (default) blocks ALL ActionPending
+# events emitted by engines (most conservative). Set to ["*"] to allow
+# everything, or list specific action types.
+safety:
+  allowedActions: []
+
+# Autonomy + safety policy (rendered into the runtime config file).
+autonomy:
+  defaultLevel: 2
+  allowLevelOverride: true
+
+safetyPolicy:
+  enableImmutableRules: true
+  enableCustomPolicies: true
+  requireApprovalForDeletions: true
+  requireApprovalForRiskyOps: true
+
+logging:
+  level: "info"
+  format: "json"
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 1000m
+    memory: 1Gi
+
+# Probes hit the HTTP /status endpoint.
+probes:
+  liveness:
+    initialDelaySeconds: 15
+    periodSeconds: 30
+  readiness:
+    initialDelaySeconds: 5
+    periodSeconds: 10
+
+nodeSelector: {}
+tolerations: []
+affinity: {}

@@ -1,0 +1,47 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "kubilitics-ai.fullname" . }}-config
+  labels:
+    {{- include "kubilitics-ai.labels" . | nindent 4 }}
+data:
+  config.yaml: |
+    server:
+      port: {{ .Values.service.httpPort }}
+      tls_enabled: false
+
+    backend:
+      address: {{ .Values.backend.address | quote }}
+      timeout: {{ .Values.backend.timeout }}
+      tls_enabled: {{ .Values.backend.tlsEnabled }}
+
+    llm:
+      provider: {{ .Values.llm.provider | quote }}
+      openai:
+        model: {{ .Values.llm.openai.model | quote }}
+        max_tokens: {{ .Values.llm.openai.maxTokens }}
+      anthropic:
+        model: {{ .Values.llm.anthropic.model | quote }}
+        max_tokens: {{ .Values.llm.anthropic.maxTokens }}
+      ollama:
+        base_url: {{ .Values.llm.ollama.baseUrl | quote }}
+        model: {{ .Values.llm.ollama.model | quote }}
+      custom:
+        base_url: {{ .Values.llm.custom.baseUrl | quote }}
+        model: {{ .Values.llm.custom.model | quote }}
+        max_tokens: {{ .Values.llm.custom.maxTokens }}
+
+    autonomy:
+      default_level: {{ .Values.autonomy.defaultLevel }}
+      allow_level_override: {{ .Values.autonomy.allowLevelOverride }}
+
+    safety:
+      enabled: true
+      enable_immutable_rules: {{ .Values.safetyPolicy.enableImmutableRules }}
+      enable_custom_policies: {{ .Values.safetyPolicy.enableCustomPolicies }}
+      require_approval_for_deletions: {{ .Values.safetyPolicy.requireApprovalForDeletions }}
+      require_approval_for_risky_ops: {{ .Values.safetyPolicy.requireApprovalForRiskyOps }}
+
+    logging:
+      level: {{ .Values.logging.level | quote }}
+      format: {{ .Values.logging.format | quote }}
