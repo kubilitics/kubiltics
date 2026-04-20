@@ -4,6 +4,7 @@ import { useChatStore, type Turn } from '@/stores/chatStore';
 import { useClusterStore } from '@/stores/clusterStore';
 import { useChatController } from '@/hooks/useChatController';
 import { useAICapabilities } from '@/hooks/useAICapabilities';
+import { useAIUserConfig } from '@/hooks/useAIUserConfig';
 import { ChatHeader } from './ChatHeader';
 import { ChatTranscript } from './ChatTranscript';
 import { ChatInput } from './ChatInput';
@@ -30,7 +31,21 @@ type CapsShape = {
 function decodeNotReady(
   capsData: CapsShape | undefined,
   capsError: unknown,
+  userConfig: { isConfigured: boolean; isLoading: boolean } | undefined,
 ): { title: string; detail: string } | null {
+  // Gate strictly on the user-visible Kubilitics Settings. Even when the
+  // brain is hot (e.g. started with a dev-baked provider in its config
+  // file), the chat stays disabled until the operator has explicitly
+  // chosen a provider + credentials in Settings → AI and hit Save. This
+  // prevents the "I never configured AI but the panel let me type"
+  // regression where the brain's private config leaks into UX.
+  if (userConfig && !userConfig.isLoading && !userConfig.isConfigured) {
+    return {
+      title: 'AI is not configured',
+      detail:
+        'Pick a provider and add an API key in Settings → AI, then click Validate to turn this on.',
+    };
+  }
   if (capsError) {
     return {
       title: 'AI is unreachable',
@@ -96,6 +111,7 @@ export function ChatPanel() {
   const activeCluster = useClusterStore((s) => s.activeCluster);
   const clusterId = activeCluster?.id;
   const caps = useAICapabilities(clusterId);
+  const userConfig = useAIUserConfig();
   const { sendMessage, cancelTurn } = useChatController();
 
   const turns = clusterId ? transcripts[clusterId] ?? [] : [];
@@ -108,7 +124,7 @@ export function ChatPanel() {
     | undefined;
   const streaming = lastAssistant?.state === 'streaming';
 
-  const notReady = decodeNotReady(caps.data, caps.error);
+  const notReady = decodeNotReady(caps.data, caps.error, userConfig);
   const inputDisabled = !clusterId || !!notReady || sessionExpired || connectionState === 'error';
 
   const systemNotices = useMemo(() => {
