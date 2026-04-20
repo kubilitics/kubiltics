@@ -37,12 +37,12 @@ type backendHTTP struct {
 	httpClient *http.Client
 }
 
-// newBackendHTTP creates a client pointing at baseURL (e.g. "http://localhost:819").
-// If baseURL is empty it defaults to http://localhost:819.
+// newBackendHTTP creates a client pointing at baseURL (e.g. "http://localhost:8190").
+// If baseURL is empty it defaults to http://localhost:8190.
 // All callers share the same pooled HTTP transport (AI-011).
 func newBackendHTTP(baseURL string) *backendHTTP {
 	if baseURL == "" {
-		baseURL = "http://localhost:819"
+		baseURL = "http://localhost:8190"
 	}
 	return &backendHTTP{
 		baseURL:    strings.TrimSuffix(baseURL, "/"),

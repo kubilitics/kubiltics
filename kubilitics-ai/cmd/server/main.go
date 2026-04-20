@@ -36,9 +36,12 @@ import (
 	"net"
 	"os"
 	"os/signal"
+	"strconv"
 	"strings"
 	"syscall"
+	"time"
 
+	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/audit"
 	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/config"
 	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/engines/kagent"
 	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/engines/python"
@@ -56,21 +59,31 @@ func main() {
 	flag.StringVar(&configPath, "config", "", "Path to configuration file")
 	flag.Parse()
 
-	// Load configuration
+	// Load configuration. The previous version declared `err` here but then
+	// shadowed it with the `if err := cfgMgr.Load(...)` line below, silently
+	// dropping any error returned by NewConfigManager. Today NewConfigManager
+	// never errors, but the shadow was a latent bug — be explicit about both.
 	var cfgMgr config.ConfigManager
-	var err error
+	var cfgErr error
 	if configPath != "" {
-		cfgMgr, err = config.NewConfigManager(configPath)
+		cfgMgr, cfgErr = config.NewConfigManager(configPath)
 	} else {
-		cfgMgr, err = config.NewConfigManagerWithDefaults()
+		cfgMgr, cfgErr = config.NewConfigManagerWithDefaults()
+	}
+	if cfgErr != nil {
+		fmt.Fprintf(os.Stderr, "Failed to construct config manager (path=%q): %v\n", configPath, cfgErr)
+		os.Exit(1)
 	}
 
 	if err := cfgMgr.Load(context.Background()); err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to load configuration: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Failed to load configuration from %q: %v\n", configPath, err)
 		os.Exit(1)
 	}
 
 	cfg := cfgMgr.Get(context.Background())
+	if configPath != "" {
+		fmt.Printf("Loaded configuration from %s (provider=%s, port=%d)\n", configPath, cfg.LLM.Provider, cfg.Server.Port)
+	}
 
 	// Create server with all components wired together
 	srv, err := server.NewServer(cfg)
@@ -101,13 +114,63 @@ func main() {
 	// so production deployments without those backends keep behaving exactly
 	// as v0.4.0. Real wire-level kagent/python integrations are scoped for v1.5;
 	// the registered engines emit structured "unimplemented" events until then.
+	// Defensive guard: if the LLM adapter failed to initialize (e.g. missing
+	// API key for the configured provider), srv.GetLLMAdapter() can be nil.
+	// In that case the LLMEngine would crash on the first Chat call AND the
+	// downstream gRPC server would silently come up serving a broken backend.
+	// Fail loud here instead — operators see a clear error and exit non-zero.
+	llmAdapter := srv.GetLLMAdapter()
+	if llmAdapter == nil {
+		fmt.Fprintf(os.Stderr,
+			"Fatal: LLM adapter is nil for provider %q. Check that the provider's API key is set in the config file or via the appropriate env var (OPENAI_API_KEY / ANTHROPIC_API_KEY / OLLAMA_BASE_URL).\n",
+			cfg.LLM.Provider)
+		_ = grpcLis.Close()
+		os.Exit(1)
+	}
+
+	// Construct a shared audit logger for engine-level + safety-wrapper
+	// telemetry. Best-effort: a logger creation failure here is non-fatal
+	// (the engine + wrapper both no-op on a nil audit.Logger), but it
+	// means we lose the LLM-call audit trail for this run. v1.5 closes
+	// this gap in production deployments.
+	auditLogger, auditErr := audit.NewLogger(nil)
+	if auditErr != nil {
+		fmt.Fprintf(os.Stderr, "warning: engine audit logger init failed: %v (engine + safety telemetry disabled)\n", auditErr)
+		auditLogger = nil
+	}
+
+	// Wire CompleteWithTools into the LLM-direct engine path so MCP tools
+	// fire from real LLM calls. The bridge holds Tools+Executor; the engine
+	// observes via the LLMToolProvider interface and never imports the MCP
+	// or types packages directly.
+	toolSchemas := srv.GetToolSchemas()
+	toolExecutor := srv.GetToolExecutor()
+	bridge := &runtime.LLMAdapterBridge{
+		A:        llmAdapter,
+		Tools:    toolSchemas,
+		Executor: toolExecutor,
+	}
+	llmEngOpts := []runtime.EngineOption{}
+	if toolExecutor != nil && len(toolSchemas) > 0 {
+		llmEngOpts = append(llmEngOpts, runtime.WithToolProvider(bridge, len(toolSchemas)))
+		fmt.Printf("LLM engine: tool-aware path enabled with %d MCP tools\n", len(toolSchemas))
+	} else {
+		fmt.Printf("LLM engine: text-only path (no MCP tools registered)\n")
+	}
+	if auditLogger != nil {
+		llmEngOpts = append(llmEngOpts, runtime.WithAudit(auditLogger))
+	}
 	engines := []router.Engine{
-		runtime.NewLLMEngine(&runtime.LLMAdapterBridge{A: srv.GetLLMAdapter()}),
+		runtime.NewLLMEngine(bridge, llmEngOpts...),
 	}
 	if kagentEndpoint := os.Getenv("KAGENT_ENDPOINT"); kagentEndpoint != "" {
 		engines = append(engines, kagent.New(kagent.Config{
 			Endpoint:       kagentEndpoint,
 			DefaultAgentID: os.Getenv("KAGENT_DEFAULT_AGENT_ID"),
+			Namespace:      os.Getenv("KAGENT_NAMESPACE"),
+			UserID:         os.Getenv("KAGENT_USER_ID"),
+			RequestTimeout: parseSecondsEnv("KAGENT_REQUEST_TIMEOUT_SECONDS", 0),
+			Audit:          auditLogger,
 		}))
 	}
 	if pyEndpoint := os.Getenv("PYTHON_AGENT_ENDPOINT"); pyEndpoint != "" {
@@ -132,9 +195,17 @@ func main() {
 	if len(allowed) == 1 && allowed[0] == "" {
 		allowed = nil
 	}
+	// v1.5: bridge the wrapper's AuditSink into the production
+	// internal/audit pipeline whenever we have a constructible logger.
+	// If audit init failed above we fall back to NoopSink so the wrapper
+	// still functions (just without the audit trail).
+	var safetyAudit wsafety.AuditSink = wsafety.NoopSink{}
+	if auditLogger != nil {
+		safetyAudit = wsafety.LoggerSink{L: auditLogger}
+	}
 	disp := wsafety.New(r, wsafety.Config{
 		AllowedActions:   allowed,
-		Audit:            wsafety.NoopSink{}, // v1.5: replace with kotg.ai's internal/audit pipeline
+		Audit:            safetyAudit,
 		RequireClusterID: true,
 	})
 
@@ -190,4 +261,18 @@ func main() {
 	}
 
 	fmt.Println("Shutdown complete")
+}
+
+// parseSecondsEnv reads an integer-seconds env var and returns it as a
+// time.Duration. Returns fallback if unset or unparseable.
+func parseSecondsEnv(name string, fallback time.Duration) time.Duration {
+	v := os.Getenv(name)
+	if v == "" {
+		return fallback
+	}
+	n, err := strconv.Atoi(v)
+	if err != nil || n <= 0 {
+		return fallback
+	}
+	return time.Duration(n) * time.Second
 }

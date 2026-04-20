@@ -12,7 +12,7 @@ func DefaultConfig() *Config {
 
 	// Backend defaults
 	cfg.Backend.Address = "localhost:50051"
-	cfg.Backend.HTTPBaseURL = "http://localhost:819"
+	cfg.Backend.HTTPBaseURL = "http://localhost:8190"
 	cfg.Backend.Timeout = 30
 	cfg.Backend.TLSEnabled = false
 

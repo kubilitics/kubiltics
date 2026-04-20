@@ -42,15 +42,10 @@ func TestStreamUnconfiguredEmitsErrorThenDone(t *testing.T) {
 	}
 }
 
-func TestStreamConfiguredReturnsUnimplemented(t *testing.T) {
-	e := New(Config{Endpoint: "http://kagent.test:8080"})
-	ch, _ := e.Stream(context.Background(), router.Request{})
-	first := <-ch
-	if first.Code != "kagent_unimplemented" {
-		t.Errorf("first.Code = %q, want kagent_unimplemented", first.Code)
-	}
-	_ = <-ch // Done
-}
+// v1.5: configured engines now make real HTTP calls — see
+// engine_integration_test.go for the wire-level coverage. The old
+// "unimplemented" path is gone; the unconfigured path above is the
+// only short-circuit that remains in this file.
 
 // Sanity: Engine satisfies router.Engine.
 var _ router.Engine = (*Engine)(nil)

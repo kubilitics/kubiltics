@@ -54,7 +54,7 @@ var sharedAnalysisHTTPClient = &http.Client{
 
 func newRestClient(baseURL string) *restClient {
 	if baseURL == "" {
-		baseURL = "http://localhost:819"
+		baseURL = "http://localhost:8190"
 	}
 	return &restClient{
 		baseURL:    strings.TrimSuffix(baseURL, "/"),
@@ -192,11 +192,11 @@ type AnalysisTools struct {
 }
 
 // NewAnalysisTools creates a new AnalysisTools instance backed by a real backend proxy.
-// A REST HTTP fallback is always wired to localhost:819 for resilience (AI-FIX-001).
+// A REST HTTP fallback is always wired to localhost:8190 for resilience (AI-FIX-001).
 func NewAnalysisTools(proxy *backend.Proxy) *AnalysisTools {
 	return &AnalysisTools{
 		proxy:   proxy,
-		restCli: newRestClient("http://localhost:819"),
+		restCli: newRestClient("http://localhost:8190"),
 	}
 }
 
@@ -205,7 +205,7 @@ func NewAnalysisTools(proxy *backend.Proxy) *AnalysisTools {
 func NewAnalysisToolsWithProxy(proxy BackendProxy) *AnalysisTools {
 	return &AnalysisTools{
 		proxy:   proxy,
-		restCli: newRestClient("http://localhost:819"),
+		restCli: newRestClient("http://localhost:8190"),
 	}
 }
 

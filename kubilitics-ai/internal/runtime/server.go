@@ -30,6 +30,36 @@ type LLMProvider interface {
 	StreamCompletion(ctx context.Context, prompt string) (<-chan string, error)
 }
 
+// LLMToolProvider is the optional tool-aware extension of LLMProvider. When
+// the underlying adapter implements this interface AND the engine was wired
+// with a non-nil tools+executor, llmEngine.Stream takes the tool-using path
+// instead of the text-only StreamCompletion path. See runtime.NewLLMEngine.
+type LLMToolProvider interface {
+	StreamCompletionWithTools(
+		ctx context.Context,
+		prompt string,
+	) (<-chan toolStreamEvent, error)
+}
+
+// toolStreamEvent is the runtime-internal mirror of types.AgentStreamEvent
+// re-declared here to avoid leaking the internal/llm/types dependency through
+// the public LLMProvider interface. The bridge translates between the two.
+type toolStreamEvent struct {
+	TextToken string
+	Tool      *toolEvent
+	Done      bool
+	Err       error
+}
+
+type toolEvent struct {
+	Phase    string // "calling" | "result" | "error"
+	CallID   string
+	ToolName string
+	Args     map[string]interface{}
+	Result   string
+	Error    string
+}
+
 // Dispatcher abstracts whatever picks an engine for a request. v1
 // satisfied by *router.Router and *wrapper.Wrapper interchangeably so
 // the Safety wrapper (subproject 3e) can be slotted in without changing
