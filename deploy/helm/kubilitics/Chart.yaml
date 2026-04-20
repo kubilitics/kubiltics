@@ -28,3 +28,9 @@ dependencies:
     condition: postgresql.enabled
     tags:
       - database
+  - name: kubilitics-ai
+    version: "0.6.0"
+    repository: ""
+    condition: kubilitics-ai.enabled
+    tags:
+      - ai
