@@ -115,7 +115,11 @@ for i in $(seq 1 60); do
   fi
 done
 
-# Pull models.
+# Pull models. Ollama CLI panics with "$HOME is not defined" under cloud-init's
+# bare root shell, so set HOME explicitly. OLLAMA_HOST keeps it pointed at
+# the local server we just started.
+export HOME=/root
+export OLLAMA_HOST=http://127.0.0.1:11434
 MODELS_JSON='${models}'
 echo "pulling models: $MODELS_JSON"
 echo "$MODELS_JSON" | jq -r '.[]' | while read -r m; do
