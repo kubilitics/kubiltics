@@ -277,16 +277,35 @@ function useRestoreClusterFromBackend() {
         useOnboardingStore.getState().completeFirstRun();
       }
 
-      // Determine which cluster to activate
+      // Determine which cluster to activate.
+      // Headlamp-style identity: match by (name, server_url) BEFORE falling back
+      // to id. When Docker Desktop / kind is restarted, the backend re-issues a
+      // new UUID for the same (name, server_url) tuple. Matching on id alone
+      // would pick list[0] (wrong cluster in multi-cluster setups); matching on
+      // (name, server_url) finds the re-registered entry and refreshes the id
+      // transparently so sidebar counters and chat focus_cluster_id stay right.
       const currentActive = useClusterStore.getState().activeCluster;
       const storedId = useBackendConfigStore.getState().currentClusterId;
 
-      // If we already have an active cluster that still exists in the list, keep it
-      if (currentActive && list.some((c) => c.id === currentActive.id)) {
-        return;
+      const sameIdentity = (c: { name?: string; server_url?: string } | null, d: { name?: string; server_url?: string } | null) =>
+        !!c && !!d && c.name === d.name && c.server_url === d.server_url;
+
+      if (currentActive) {
+        const sameById = list.find((c) => c.id === currentActive.id);
+        const sameByIdentity = list.find((c) => sameIdentity(c, { name: currentActive.name, server_url: currentActive.serverUrl }));
+        if (sameById) {
+          return; // id still matches, nothing to do
+        }
+        if (sameByIdentity) {
+          // Cluster was re-registered with a new id. Refresh in place.
+          setActiveCluster(backendClusterToCluster(sameByIdentity));
+          setCurrentClusterId(sameByIdentity.id);
+          return;
+        }
       }
 
-      // Try persisted ID first, then fall back to first available
+      // No currentActive (fresh launch) or it was truly removed. Prefer the
+      // persisted id, then fall back to first.
       const target = list.find((c) => c.id === storedId) ?? list[0];
       if (!target) {
         if (isInitial) setRestoreFailed(true);
@@ -357,10 +376,6 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const [hydrationTimedOut, setHydrationTimedOut] = useState(false);
   const [restoreTimedOut, setRestoreTimedOut] = useState(false);
   const { restoreAttempted, restoreFailed } = useRestoreClusterFromBackend();
-  // Headlamp-style cluster sync: keeps store id in lockstep with backend after
-  // external recreations (Docker Desktop restart, kind delete+create) so sidebar
-  // counters and chat panel focus_cluster_id stop pointing at dead UUIDs.
-  useClusterSync();
 
   useEffect(() => {
     const checkHydration = () => {

@@ -58,6 +58,7 @@ export function backendClusterToCluster(b: BackendCluster): Cluster {
     id: b.id,
     name: b.name,
     context: b.context,
+    serverUrl: server, // Headlamp-style identity (paired with name) for sync reconciliation.
     version: b.version ?? 'v1.28.0',
     status: b.status === 'connected' ? 'healthy' : b.status === 'disconnected' ? 'warning' : 'error',
     region: region || '',
