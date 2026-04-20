@@ -18,7 +18,7 @@ func GetChatToolDefinitions() []ToolDefinition {
 		{
 			Name:        "list_resources",
 			Category:    CategoryObservation,
-			Description: "List Kubernetes resources by kind and optional namespace. Use kind=Pod for pods, kind=Deployment for deployments, etc. Returns count and item summaries (name, namespace, status). Use this to answer 'how many pods', 'list pods in namespace X', 'pod names'.",
+			Description: "List Kubernetes resources of ANY kind. This is the primary tool for answering 'list/show/get X' questions. Set kind to the resource type: Namespace (for 'list namespaces'), Pod, Deployment, Service, Node, ConfigMap, Secret, Ingress, StatefulSet, DaemonSet, Job, CronJob, PersistentVolume, PersistentVolumeClaim, ReplicaSet, ServiceAccount, Role, RoleBinding, ClusterRole, ClusterRoleBinding, HorizontalPodAutoscaler, NetworkPolicy, Event, etc. Returns count and item summaries. ALWAYS use this tool for any 'list/show namespaces' or 'list/show <resource>' request — do NOT tell the user to run kubectl.",
 			InputSchema: map[string]interface{}{
 				"type": "object",
 				"properties": map[string]interface{}{
@@ -100,7 +100,7 @@ func GetChatTools() []types.Tool {
 	return []types.Tool{
 		{
 			Name:        "list_resources",
-			Description: "List Kubernetes resources by kind and optional namespace. Use kind=Pod for pods, kind=Deployment for deployments, etc. Returns count and item summaries (name, namespace, status). Use this to answer 'how many pods', 'list pods in namespace X', 'pod names'.",
+			Description: "List Kubernetes resources of ANY kind. This is the primary tool for answering 'list/show/get X' questions. Set kind to the resource type: Namespace (for 'list namespaces'), Pod, Deployment, Service, Node, ConfigMap, Secret, Ingress, StatefulSet, DaemonSet, Job, CronJob, PersistentVolume, PersistentVolumeClaim, ReplicaSet, ServiceAccount, Role, RoleBinding, ClusterRole, ClusterRoleBinding, HorizontalPodAutoscaler, NetworkPolicy, Event, etc. Returns count and item summaries. ALWAYS use this tool for any 'list/show namespaces' or 'list/show <resource>' request — do NOT tell the user to run kubectl.",
 			Parameters: map[string]interface{}{
 				"type": "object",
 				"properties": map[string]interface{}{
