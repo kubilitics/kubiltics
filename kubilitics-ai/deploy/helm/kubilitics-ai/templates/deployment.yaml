@@ -66,6 +66,18 @@ spec:
             - name: KAGENT_DEFAULT_AGENT_ID
               value: {{ .Values.engines.kagent.defaultAgentId | quote }}
             {{- end }}
+            {{- if .Values.engines.kagent.namespace }}
+            - name: KAGENT_NAMESPACE
+              value: {{ .Values.engines.kagent.namespace | quote }}
+            {{- end }}
+            {{- if .Values.engines.kagent.userId }}
+            - name: KAGENT_USER_ID
+              value: {{ .Values.engines.kagent.userId | quote }}
+            {{- end }}
+            {{- if .Values.engines.kagent.requestTimeoutSeconds }}
+            - name: KAGENT_REQUEST_TIMEOUT_SECONDS
+              value: {{ .Values.engines.kagent.requestTimeoutSeconds | quote }}
+            {{- end }}
             {{- end }}
             {{- if .Values.engines.python.enabled }}
             - name: PYTHON_AGENT_ENDPOINT

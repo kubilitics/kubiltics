@@ -36,9 +36,12 @@ import (
 	"net"
 	"os"
 	"os/signal"
+	"strconv"
 	"strings"
 	"syscall"
+	"time"
 
+	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/audit"
 	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/config"
 	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/engines/kagent"
 	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/engines/python"
@@ -125,6 +128,17 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Construct a shared audit logger for engine-level + safety-wrapper
+	// telemetry. Best-effort: a logger creation failure here is non-fatal
+	// (the engine + wrapper both no-op on a nil audit.Logger), but it
+	// means we lose the LLM-call audit trail for this run. v1.5 closes
+	// this gap in production deployments.
+	auditLogger, auditErr := audit.NewLogger(nil)
+	if auditErr != nil {
+		fmt.Fprintf(os.Stderr, "warning: engine audit logger init failed: %v (engine + safety telemetry disabled)\n", auditErr)
+		auditLogger = nil
+	}
+
 	engines := []router.Engine{
 		runtime.NewLLMEngine(&runtime.LLMAdapterBridge{A: llmAdapter}),
 	}
@@ -132,6 +146,10 @@ func main() {
 		engines = append(engines, kagent.New(kagent.Config{
 			Endpoint:       kagentEndpoint,
 			DefaultAgentID: os.Getenv("KAGENT_DEFAULT_AGENT_ID"),
+			Namespace:      os.Getenv("KAGENT_NAMESPACE"),
+			UserID:         os.Getenv("KAGENT_USER_ID"),
+			RequestTimeout: parseSecondsEnv("KAGENT_REQUEST_TIMEOUT_SECONDS", 0),
+			Audit:          auditLogger,
 		}))
 	}
 	if pyEndpoint := os.Getenv("PYTHON_AGENT_ENDPOINT"); pyEndpoint != "" {
@@ -156,9 +174,17 @@ func main() {
 	if len(allowed) == 1 && allowed[0] == "" {
 		allowed = nil
 	}
+	// v1.5: bridge the wrapper's AuditSink into the production
+	// internal/audit pipeline whenever we have a constructible logger.
+	// If audit init failed above we fall back to NoopSink so the wrapper
+	// still functions (just without the audit trail).
+	var safetyAudit wsafety.AuditSink = wsafety.NoopSink{}
+	if auditLogger != nil {
+		safetyAudit = wsafety.LoggerSink{L: auditLogger}
+	}
 	disp := wsafety.New(r, wsafety.Config{
 		AllowedActions:   allowed,
-		Audit:            wsafety.NoopSink{}, // v1.5: replace with kotg.ai's internal/audit pipeline
+		Audit:            safetyAudit,
 		RequireClusterID: true,
 	})
 
@@ -214,4 +240,18 @@ func main() {
 	}
 
 	fmt.Println("Shutdown complete")
+}
+
+// parseSecondsEnv reads an integer-seconds env var and returns it as a
+// time.Duration. Returns fallback if unset or unparseable.
+func parseSecondsEnv(name string, fallback time.Duration) time.Duration {
+	v := os.Getenv(name)
+	if v == "" {
+		return fallback
+	}
+	n, err := strconv.Atoi(v)
+	if err != nil || n <= 0 {
+		return fallback
+	}
+	return time.Duration(n) * time.Second
 }

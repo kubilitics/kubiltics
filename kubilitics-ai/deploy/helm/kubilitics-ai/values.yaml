@@ -112,8 +112,11 @@ backend:
 engines:
   kagent:
     enabled: false
-    endpoint: ""              # kagent controller URL
-    defaultAgentId: ""        # kagent Agent CRD name to invoke
+    endpoint: "http://kagent-controller.kagent.svc:8083"   # kagent controller URL
+    defaultAgentId: "k8s-agent"                            # kagent Agent CRD name to invoke
+    namespace: "kagent"                                    # K8s namespace of the Agent CRD
+    userId: "kubilitics-ai"                                # X-User-Id header (kagent unsecure mode)
+    requestTimeoutSeconds: 120                             # cap on a single Stream call
   python:
     enabled: false
     endpoint: ""              # Python sidecar URL
