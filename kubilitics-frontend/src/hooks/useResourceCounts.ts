@@ -132,7 +132,20 @@ const DIRECT_K8S_QUERY_OPTIONS = {
  * When direct K8s is connected: uses small list queries for common types only.
  * When disconnected: returns mock counts.
  */
-export function useResourceCounts(): { counts: ResourceCounts; isLoading: boolean; isInitialLoad: boolean; isConnected: boolean } {
+export function useResourceCounts(): {
+  counts: ResourceCounts;
+  isLoading: boolean;
+  isInitialLoad: boolean;
+  isConnected: boolean;
+  /** False when the cluster is unreachable (apiserver down / kubeconfig rotated / network blip). */
+  reachable: boolean;
+  /** True when `counts` come from the backend's last-known-good cache; live fetch failed. */
+  stale: boolean;
+  /** Error message surfaced by the backend when reachable=false (for tooltips/badges). */
+  errorMessage?: string;
+  /** True when the frontend is displaying last-known-good counts cached in-memory because the live summary said unreachable with no backend cache. */
+  usingClientCache: boolean;
+} {
   const { isConnected } = useConnectionStatus();
   const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured());
   // Source of truth: useActiveClusterId prefers the live restored activeCluster.id
@@ -212,9 +225,24 @@ export function useResourceCounts(): { counts: ResourceCounts; isLoading: boolea
   // we show the last-known real values instead of hardcoded mocks.
   const lastRealCountsRef = useRef<ResourceCounts | null>(null);
 
+  // Robustness: a summary response with reachable=false means the backend
+  // could not reach the cluster (apiserver down / kubeconfig rotated /
+  // network blip). Treat it the same as a disconnected state — prefer the
+  // last-known-good counts and never overwrite the sidebar with fake zeros.
+  const summaryReachable = summaryQuery.data?.reachable !== false;
+  const summaryStale = summaryQuery.data?.stale === true;
+
   const counts = useMemo<ResourceCounts>(() => {
     if (!isConnected) {
       // Prefer last-cached real counts; otherwise show zeros (not fake data)
+      return lastRealCountsRef.current ?? zeroCounts;
+    }
+
+    // Backend reached us but the cluster is unreachable and backend had no
+    // cache to fall back on → preserve whatever counts we last saw in this
+    // browser session. Zeros-as-a-mask is the single most common regression
+    // mode for this sidebar; treat unreachable as a soft-fail.
+    if (isBackendConfigured && summaryQuery.data && !summaryReachable && !summaryStale) {
       return lastRealCountsRef.current ?? zeroCounts;
     }
 
@@ -395,8 +423,11 @@ export function useResourceCounts(): { counts: ResourceCounts; isLoading: boolea
     isBackendConfigured,
   ]);
 
-  // Cache real counts so they survive disconnection
-  if (isConnected && counts) {
+  // Cache real counts so they survive disconnection AND apiserver blips.
+  // Only capture when the summary response says reachable (live data), not
+  // when it's served from the backend's own stale cache — otherwise a stale
+  // snapshot could get re-promoted as "the truth" locally.
+  if (isConnected && counts && summaryReachable && !summaryStale) {
     lastRealCountsRef.current = counts;
   }
 
@@ -418,7 +449,18 @@ export function useResourceCounts(): { counts: ResourceCounts; isLoading: boolea
 
   const isInitialLoad = isLoading && !summaryQuery.data && !pods.data;
 
-  return { counts, isLoading, isInitialLoad, isConnected };
+  const usingClientCache = isConnected && isBackendConfigured && !!summaryQuery.data && !summaryReachable && !summaryStale && !!lastRealCountsRef.current;
+
+  return {
+    counts,
+    isLoading,
+    isInitialLoad,
+    isConnected,
+    reachable: summaryReachable,
+    stale: summaryStale,
+    errorMessage: summaryQuery.data?.error_message,
+    usingClientCache,
+  };
 }
 
 // Kept for compatibility — returns a single resource count using the same small-limit approach.

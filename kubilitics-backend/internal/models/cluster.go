@@ -75,4 +75,20 @@ type ClusterSummary struct {
 	CustomResourceDefinitionCount int `json:"customresourcedefinition_count"`
 	MutatingWebhookConfigCount    int `json:"mutatingwebhookconfiguration_count"`
 	ValidatingWebhookConfigCount  int `json:"validatingwebhookconfiguration_count"`
+
+	// Reachable is true when the live cluster fetch succeeded. False when the
+	// apiserver is down, kubeconfig rotated, or the network is unreachable —
+	// counts may still be non-zero if they come from the last-known-good cache
+	// (see Stale). Frontend uses this to render a "cluster unreachable" badge
+	// instead of interpreting zero counts as "empty but healthy".
+	Reachable bool `json:"reachable"`
+	// ErrorMessage, when non-empty, explains why Reachable is false.
+	ErrorMessage string `json:"error_message,omitempty"`
+	// Stale is true when the payload is served from the last-known-good cache
+	// because the live fetch failed. Counts reflect the most recent successful
+	// fetch; frontend should annotate them as stale but still display the values.
+	Stale bool `json:"stale,omitempty"`
+	// StaleAsOf is the wall-clock time of the cached snapshot, set only when
+	// Stale is true. Lets the UI show "last updated N minutes ago".
+	StaleAsOf *time.Time `json:"stale_as_of,omitempty"`
 }

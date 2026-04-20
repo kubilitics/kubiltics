@@ -844,6 +844,14 @@ func (h *Handler) ReconnectCluster(w http.ResponseWriter, r *http.Request) {
 
 // GetClusterSummary handles GET /clusters/{clusterId}/summary. clusterId may be backend UUID or context/name.
 // Optional query: projectId — when set, counts are restricted to namespaces belonging to that project in this cluster.
+//
+// Robustness contract: this endpoint NEVER returns 5xx for cluster
+// reachability failures (apiserver down, kubeconfig rotated, network
+// unreachable). Those produce a 200 with Reachable=false and — when the
+// last successful fetch is still in process memory — the cached counts
+// with Stale=true. 5xx is reserved for genuine backend bugs. This lets
+// the sidebar keep showing meaningful numbers across transient blips
+// instead of flashing every counter to zero.
 func (h *Handler) GetClusterSummary(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	clusterID := vars["clusterId"]
@@ -858,19 +866,31 @@ func (h *Handler) GetClusterSummary(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	clusterID = resolvedID
+	projectIDForCache := strings.TrimSpace(r.URL.Query().Get("projectId"))
+
+	// Any failure to reach the cluster below is downgraded to an unreachable
+	// response (200 + Reachable=false). Prefer cached last-known-good counts
+	// when available so operators don't see a sudden wall of zeros on a blip.
+	respondUnreachable := func(cause error) {
+		if cached := summaryCacheGet(clusterID, projectIDForCache); cached != nil {
+			cached.ErrorMessage = cause.Error()
+			respondJSON(w, http.StatusOK, cached)
+			return
+		}
+		respondJSON(w, http.StatusOK, unreachableSummary(clusterID, cause))
+	}
+
 	// Headlamp/Lens model: try kubeconfig from request first, fall back to stored cluster
 	client, err := h.getClientFromRequest(r.Context(), r, clusterID, h.cfg)
 	if err != nil {
-		requestID := logger.FromContext(r.Context())
-		respondErrorWithCode(w, http.StatusNotFound, ErrCodeNotFound, err.Error(), requestID)
+		respondUnreachable(err)
 		return
 	}
 
 	// getClientFromRequest returns client (from kubeconfig or stored cluster); build summary from it
 	info, infoErr := client.GetClusterInfo(r.Context())
 	if infoErr != nil {
-		requestID := logger.FromContext(r.Context())
-		respondErrorWithCode(w, http.StatusInternalServerError, ErrCodeInternalError, infoErr.Error(), requestID)
+		respondUnreachable(infoErr)
 		return
 	}
 	nodeCount, _ := info["node_count"].(int)
@@ -1110,7 +1130,10 @@ func (h *Handler) GetClusterSummary(w http.ResponseWriter, r *http.Request) {
 		CustomResourceDefinitionCount: 0, // CRDs require dynamic client, handled separately if needed
 		MutatingWebhookConfigCount:    mutatingWebhookCount,
 		ValidatingWebhookConfigCount:  validatingWebhookCount,
+
+		Reachable: true,
 	}
+	summaryCachePut(clusterID, projectIDForCache, summary)
 	respondJSON(w, http.StatusOK, summary)
 }
 

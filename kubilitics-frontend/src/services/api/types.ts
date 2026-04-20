@@ -50,6 +50,14 @@ export interface BackendClusterSummary {
   cronjob_count?: number;
   health_status: string;
   health_reason?: string;
+  /** True when the live cluster fetch succeeded. False → apiserver/network unreachable. */
+  reachable?: boolean;
+  /** When reachable=false, the underlying cause surfaced by the backend. */
+  error_message?: string;
+  /** True when counts come from the backend's last-known-good cache (live fetch failed). */
+  stale?: boolean;
+  /** ISO timestamp of the cached snapshot; set only when stale=true. */
+  stale_as_of?: string;
 }
 
 /** Cluster overview shape from GET /api/v1/clusters/{clusterId}/overview (dashboard snapshot). */

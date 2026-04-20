@@ -266,3 +266,109 @@ describe('useResourceCounts — direct K8s fallback', () => {
     expect(result.current.isConnected).toBe(true);
   });
 });
+
+// ============================================================================
+// Robustness — unreachable clusters must NEVER flash counters to zero when
+// we have any prior real counts to fall back on. This is the regression the
+// user has fixed "100 times" — lock it down with explicit tests.
+// ============================================================================
+
+describe('useResourceCounts — unreachable robustness', () => {
+  it('exposes reachable=false when backend returns reachable:false', () => {
+    mockIsConnected = true;
+    mockIsBackendConfigured = true;
+    mockCurrentClusterId = 'test-cluster';
+    mockSummaryData = {
+      pod_count: 0, deployment_count: 0, node_count: 0,
+      // @ts-expect-error test stub allows boolean/string here
+      reachable: false,
+      // @ts-expect-error test stub allows string here
+      error_message: 'apiserver: connection refused',
+    };
+
+    const { result } = renderHook(() => useResourceCounts());
+    expect(result.current.reachable).toBe(false);
+    expect(result.current.errorMessage).toBe('apiserver: connection refused');
+    expect(result.current.stale).toBe(false);
+  });
+
+  it('preserves last-known counts when the cluster becomes unreachable mid-session', () => {
+    // Step 1: happy path — get real counts into the in-memory cache.
+    mockIsConnected = true;
+    mockIsBackendConfigured = true;
+    mockCurrentClusterId = 'test-cluster';
+    mockSummaryData = {
+      pod_count: 17, deployment_count: 4, node_count: 3, namespace_count: 7,
+    };
+
+    const { rerender, result } = renderHook(() => useResourceCounts());
+    expect(result.current.counts.pods).toBe(17);
+    expect(result.current.counts.deployments).toBe(4);
+
+    // Step 2: apiserver drops — backend responds reachable:false with zero
+    // counts and no server-side cache. The sidebar MUST NOT flash to zeros.
+    mockSummaryData = {
+      pod_count: 0, deployment_count: 0, node_count: 0,
+      // @ts-expect-error boolean in test stub
+      reachable: false,
+      // @ts-expect-error string in test stub
+      error_message: 'EOF',
+    };
+    rerender();
+
+    expect(result.current.reachable).toBe(false);
+    expect(result.current.usingClientCache).toBe(true);
+    // Last-known counts survive the blip.
+    expect(result.current.counts.pods).toBe(17);
+    expect(result.current.counts.deployments).toBe(4);
+  });
+
+  it('uses backend-served stale snapshot verbatim (does not re-promote as live)', () => {
+    mockIsConnected = true;
+    mockIsBackendConfigured = true;
+    mockCurrentClusterId = 'test-cluster';
+    // Backend says: counts are from its last-known-good cache, live fetch failed.
+    mockSummaryData = {
+      pod_count: 12, deployment_count: 2, node_count: 1,
+      // @ts-expect-error boolean
+      reachable: false,
+      // @ts-expect-error boolean
+      stale: true,
+      // @ts-expect-error string
+      stale_as_of: '2026-04-21T00:00:00Z',
+    };
+
+    const { result } = renderHook(() => useResourceCounts());
+    // Counts come through as-is (operator sees cached-but-real numbers).
+    expect(result.current.counts.pods).toBe(12);
+    expect(result.current.counts.deployments).toBe(2);
+    expect(result.current.reachable).toBe(false);
+    expect(result.current.stale).toBe(true);
+    // usingClientCache is only true when the frontend had to fall back to
+    // its OWN in-memory cache (no backend stale payload). Stale backend
+    // data is authoritative enough that we flag it via `stale`, not via
+    // usingClientCache.
+    expect(result.current.usingClientCache).toBe(false);
+  });
+
+  it('falls back to zeros only when unreachable AND no cache exists anywhere', () => {
+    // First render ever for this cluster — no prior counts observed in memory.
+    mockIsConnected = true;
+    mockIsBackendConfigured = true;
+    mockCurrentClusterId = 'never-reached-cluster';
+    mockSummaryData = {
+      pod_count: 0, deployment_count: 0,
+      // @ts-expect-error boolean
+      reachable: false,
+      // @ts-expect-error string
+      error_message: 'dial tcp: i/o timeout',
+    };
+
+    const { result } = renderHook(() => useResourceCounts());
+    expect(result.current.reachable).toBe(false);
+    expect(result.current.usingClientCache).toBe(false);
+    // Zeros are the only honest answer here — the Sidebar renders these as
+    // "—" based on (reachable=false && !usingClientCache && !stale), not 0.
+    expect(result.current.counts.pods).toBe(0);
+  });
+});
