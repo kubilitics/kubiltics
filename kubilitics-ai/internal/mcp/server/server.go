@@ -287,7 +287,9 @@ func (s *mcpServerImpl) ExecuteTool(ctx context.Context, toolName string, args m
 		WithDescription(fmt.Sprintf("Tool executed successfully: %s", toolName)).
 		WithResult(audit.ResultSuccess))
 
-	return result, nil
+	// Hard cap tool output size so no single handler can blow the LLM's
+	// output budget with an oversized payload. See list_summarize.go.
+	return capToolOutput(result), nil
 }
 
 // Start starts the MCP server.
