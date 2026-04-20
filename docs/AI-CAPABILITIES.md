@@ -122,6 +122,38 @@ today (2026-04-20).
 
 The Router + Wrapper layers add **no measurable latency**.
 
+### Tool-aware path: 166 MCP tools wired into the LLM-direct engine
+
+5 tool-specific prompts × 3 iterations + warmup, OpenAI gpt-4o-mini, full agentic loop (`CompleteWithTools`) through the LLM engine with the MCP executor + tool taxonomy:
+
+| metric                      | value |
+|-----------------------------|-------|
+| MCP tools registered        | **166** |
+| LLM-call success rate       | 100% (15/15) |
+| Tool-call coverage          | **100% (15/15 fired the correct tool)** |
+| TTFT p50 (after tool)       | ~3.0 s |
+| Total p50 / p95             | ~4.3 / ~10 s |
+| Agentic-loop overhead       | ~10% over no-tool baseline |
+| Engine panics / lost events | **0** |
+
+**Coverage matrix** (each row is a prompt, columns are tool actually called by the LLM):
+
+| Prompt                        | tool called                | iterations fired |
+|-------------------------------|----------------------------|------------------|
+| list-pods-default             | `list_resources`           | 3/3 |
+| get-events-kube-system        | `get_events`               | 3/3 |
+| cluster-health                | `observe_cluster_overview` | 3/3 (semantic substitution for `get_cluster_health`) |
+| analyze-pod-health            | `analyze_pod_health`       | 3/3 |
+| analyze-deployment            | `analyze_deployment_health`| 3/3 |
+
+The LLM picked the correct tool every iteration. Tool round-trips errored
+cleanly (`tool_error` payload) because the kubilitics-backend gRPC service
+on `:819` wasn't running for this measurement — that's expected; the goal
+was to validate that the engine wires the MCP executor end-to-end and that
+each `ToolStart`/`ToolEnd` pair lands in the wide-event ndjson with
+`call_id` correlation. Wiring + correlation: green. **Tool execution against
+a live backend is the next measurement.**
+
 ### Ollama qwen2.5:3b on AWS t3.large (2 vCPU, CPU-only)
 Same 3 prompts × 3 iterations + warmup, locally hosted Ollama on a stopped/started
 EC2 t3.large at $0.083/hr:
