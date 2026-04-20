@@ -79,6 +79,13 @@ func (s *Server) handleSafetyAutonomy(w http.ResponseWriter, r *http.Request) {
 
 	parts := strings.SplitN(rest, "/", 3) // [userID] or [userID, "namespaces"] or [userID, "namespaces", ns]
 	userID := parts[0]
+	// "_default_" is a sentinel that maps to the empty-string user key, which is
+	// what the runtime sends when no user identity is plumbed through (bench,
+	// CLI, default-tenant deployments). This lets operators raise the default
+	// autonomy level without editing config or wiring user IDs.
+	if userID == "_default_" {
+		userID = ""
+	}
 
 	// ── Namespace override sub-routes ────────────────────────────────────────
 	if len(parts) >= 2 && parts[1] == "namespaces" {

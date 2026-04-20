@@ -6,6 +6,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"crypto/rand"
 	"encoding/base32"
@@ -105,6 +106,7 @@ type benchConfig struct {
 	dryRun      bool
 	concurrency int
 	aliasesFile string
+	autonomy    int
 }
 
 type capabilities struct {
@@ -135,8 +137,41 @@ func parseFlags() benchConfig {
 	flag.BoolVar(&cfg.dryRun, "dry-run", false, "use in-process bufconn mock; no real LLM call")
 	flag.IntVar(&cfg.concurrency, "concurrency", 1, "number of prompts to run in parallel")
 	flag.StringVar(&cfg.aliasesFile, "aliases", "cmd/bench/aliases.json", "path to tool-alias map for semantic-match scoring")
+	flag.IntVar(&cfg.autonomy, "autonomy", 0, "autonomy level (0-5) to set on the AI server before the run; 0 leaves the configured default in place. >=3 is required for execution-category prompts to actually fire restart/scale/etc tools.")
 	flag.Parse()
 	return cfg
+}
+
+// configureAutonomy raises the AI server's global autonomy level via the
+// HTTP control plane. The "_default_" path segment is a sentinel for the
+// empty-string user the runtime sends when no user identity is plumbed
+// through (bench, CLI, default-tenant). Best-effort: failures are reported
+// to stderr but don't abort the run — execution-category prompts will
+// simply continue to be refused for safety.
+func configureAutonomy(ctx context.Context, cfg benchConfig) {
+	if cfg.autonomy <= 0 {
+		return
+	}
+	body := []byte(fmt.Sprintf(`{"level":%d}`, cfg.autonomy))
+	url := cfg.httpAddr + "/api/v1/safety/autonomy/_default_"
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(body))
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "[bench] autonomy: build request: %v\n", err)
+		return
+	}
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := (&http.Client{Timeout: 5 * time.Second}).Do(req)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "[bench] autonomy: POST %s: %v\n", url, err)
+		return
+	}
+	defer func() { _ = resp.Body.Close() }()
+	if resp.StatusCode >= 300 {
+		b, _ := io.ReadAll(resp.Body)
+		fmt.Fprintf(os.Stderr, "[bench] autonomy: HTTP %d: %s\n", resp.StatusCode, string(b))
+		return
+	}
+	fmt.Fprintf(os.Stderr, "[bench] autonomy level set to %d for default user (via %s)\n", cfg.autonomy, url)
 }
 
 // dialer is the gRPC connection factory. The dry-run mock injects a bufconn
@@ -164,6 +199,10 @@ func run(ctx context.Context, cfg benchConfig, customDialer dialer) error {
 		caps = mockCaps
 	} else if d == nil {
 		caps = fetchCapabilities(ctx, cfg)
+		// Set the server's autonomy level before any prompt fires so
+		// execution-category tools can actually run instead of being
+		// refused by the safety gate.
+		configureAutonomy(ctx, cfg)
 		d = func(ctx context.Context) (*grpc.ClientConn, error) {
 			return grpc.NewClient(cfg.server, grpc.WithTransportCredentials(insecure.NewCredentials()))
 		}

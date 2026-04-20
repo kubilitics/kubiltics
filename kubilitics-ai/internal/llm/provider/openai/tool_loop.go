@@ -36,11 +36,55 @@ import (
 // oaiMessage is the wire format for a single message in the multi-turn loop.
 // It intentionally overlaps with openAIMessage but carries ToolCalls and
 // ToolCallID fields needed for the agentic loop.
+//
+// MarshalJSON is custom because OpenAI's chat/completions endpoint REQUIRES
+// the "content" key on assistant messages that carry tool_calls and on tool
+// messages — even when the value is an empty string. The naive
+// `json:"content,omitempty"` strips empty strings and produces a 400
+// "expected a string, got null" once those messages re-enter the next turn.
+// See: https://platform.openai.com/docs/api-reference/chat/create
 type oaiMessage struct {
-	Role       string        `json:"role"`
-	Content    string        `json:"content,omitempty"`
-	ToolCalls  []oaiToolCall `json:"tool_calls,omitempty"`
-	ToolCallID string        `json:"tool_call_id,omitempty"`
+	Role       string
+	Content    string
+	ToolCalls  []oaiToolCall
+	ToolCallID string
+}
+
+// MarshalJSON serialises oaiMessage with role-aware content handling.
+// Assistant + tool messages always carry an explicit "content" string
+// (never null, never absent); user / system messages keep the legacy
+// omit-when-empty behavior so we don't change request shape unnecessarily.
+func (m oaiMessage) MarshalJSON() ([]byte, error) {
+	type aux struct {
+		Role       string        `json:"role"`
+		Content    string        `json:"content"`
+		ToolCalls  []oaiToolCall `json:"tool_calls,omitempty"`
+		ToolCallID string        `json:"tool_call_id,omitempty"`
+	}
+	type auxOmit struct {
+		Role       string        `json:"role"`
+		Content    string        `json:"content,omitempty"`
+		ToolCalls  []oaiToolCall `json:"tool_calls,omitempty"`
+		ToolCallID string        `json:"tool_call_id,omitempty"`
+	}
+	switch m.Role {
+	case "assistant", "tool":
+		// Always emit content as an explicit string — never null, never
+		// missing — even if empty. OpenAI rejects nulls here with HTTP 400.
+		return json.Marshal(aux{
+			Role:       m.Role,
+			Content:    m.Content,
+			ToolCalls:  m.ToolCalls,
+			ToolCallID: m.ToolCallID,
+		})
+	default:
+		return json.Marshal(auxOmit{
+			Role:       m.Role,
+			Content:    m.Content,
+			ToolCalls:  m.ToolCalls,
+			ToolCallID: m.ToolCallID,
+		})
+	}
 }
 
 type oaiToolCall struct {
@@ -151,10 +195,13 @@ func (c *OpenAIClientImpl) runAgentLoop(
 			return
 		}
 
-		// Append assistant message (with tool_calls).
+		// Append assistant message (with tool_calls). Content is intentionally
+		// kept as an explicit string (possibly "") — the custom MarshalJSON
+		// guarantees the JSON wire form carries `"content":""` rather than
+		// dropping the key, which OpenAI rejects on the next turn.
 		assistantMsg := oaiMessage{
 			Role:      "assistant",
-			Content:   text,
+			Content:   text, // may be "" when LLM emits only tool_calls; that is fine.
 			ToolCalls: toolCalls,
 		}
 		oaiMsgs = append(oaiMsgs, assistantMsg)

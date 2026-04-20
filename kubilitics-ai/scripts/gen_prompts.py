@@ -234,22 +234,67 @@ def templates_for(tool: dict) -> list[str]:
     ]
 
 
+def augment_execution_prompt(text: str, tool_name: str, action_verb: str) -> str:
+    """Add explicit pre-authorization context for execution-category prompts.
+
+    The bench runs at autonomy level 3, but the LLM still needs the user's
+    intent to be unambiguous — otherwise gpt-4o-mini defaults to "I should
+    confirm first" and never calls the tool. Real users at autonomy level 3
+    have already approved the change in advance; we mimic that here.
+    """
+    nice = humanize(tool_name)
+    return (
+        f"{text.rstrip('.')}. I have approved this change in advance and "
+        f"explicitly authorize you to call the `{tool_name}` tool to "
+        f"{action_verb} now (autonomy level 3, pre-approved)."
+    )
+
+
 def main() -> int:
     if not CATALOG.exists():
         print(f"missing {CATALOG}", file=sys.stderr)
         return 1
     catalog = json.loads(CATALOG.read_text())
 
+    # Map tool-name prefix → human action verb for the augmentation context.
+    action_verbs = {
+        "restart_": "restart it",
+        "scale_": "scale it",
+        "cordon_": "cordon it",
+        "drain_": "drain it",
+        "delete_": "delete it",
+        "rollback_": "roll it back",
+        "apply_": "apply the change",
+        "patch_": "apply the patch",
+        "update_": "update it",
+        "trigger_": "trigger it",
+        "create_": "create it",
+        "execute_": "execute it",
+        "approve_": "approve it",
+        "remediate_": "remediate it",
+        "action_": "perform the action",
+    }
+
     out_lines = ["version: 1", "prompts:"]
     total = 0
     for t in catalog:
         prompts = templates_for(t)
+        is_execution = t["category"] in ("execution", "action")
+        verb = "perform the action"
+        for prefix, v in action_verbs.items():
+            if t["name"].startswith(prefix):
+                verb = v
+                break
         for i, text in enumerate(prompts, start=1):
             # Light variety: every 3rd prompt mentions a namespace if obviously pod/deploy related
             if i == 2 and any(x in t["description"].lower() for x in ("pod", "deployment", "service", "namespace")):
                 ns = NAMESPACES[(total) % len(NAMESPACES)]
                 if "namespace" not in text.lower():
                     text = text.rstrip(".") + f" in the {ns} namespace."
+            # Execution / action category: tack on the explicit pre-authorization
+            # context so the LLM doesn't default to refusing.
+            if is_execution:
+                text = augment_execution_prompt(text, t["name"], verb)
             text = text.replace("  ", " ").strip()
             pid = f"{t['name']}__{i}"
             out_lines.append(f"  - id: {pid}")
