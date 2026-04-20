@@ -56,21 +56,31 @@ func main() {
 	flag.StringVar(&configPath, "config", "", "Path to configuration file")
 	flag.Parse()
 
-	// Load configuration
+	// Load configuration. The previous version declared `err` here but then
+	// shadowed it with the `if err := cfgMgr.Load(...)` line below, silently
+	// dropping any error returned by NewConfigManager. Today NewConfigManager
+	// never errors, but the shadow was a latent bug — be explicit about both.
 	var cfgMgr config.ConfigManager
-	var err error
+	var cfgErr error
 	if configPath != "" {
-		cfgMgr, err = config.NewConfigManager(configPath)
+		cfgMgr, cfgErr = config.NewConfigManager(configPath)
 	} else {
-		cfgMgr, err = config.NewConfigManagerWithDefaults()
+		cfgMgr, cfgErr = config.NewConfigManagerWithDefaults()
+	}
+	if cfgErr != nil {
+		fmt.Fprintf(os.Stderr, "Failed to construct config manager (path=%q): %v\n", configPath, cfgErr)
+		os.Exit(1)
 	}
 
 	if err := cfgMgr.Load(context.Background()); err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to load configuration: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Failed to load configuration from %q: %v\n", configPath, err)
 		os.Exit(1)
 	}
 
 	cfg := cfgMgr.Get(context.Background())
+	if configPath != "" {
+		fmt.Printf("Loaded configuration from %s (provider=%s, port=%d)\n", configPath, cfg.LLM.Provider, cfg.Server.Port)
+	}
 
 	// Create server with all components wired together
 	srv, err := server.NewServer(cfg)
@@ -101,8 +111,22 @@ func main() {
 	// so production deployments without those backends keep behaving exactly
 	// as v0.4.0. Real wire-level kagent/python integrations are scoped for v1.5;
 	// the registered engines emit structured "unimplemented" events until then.
+	// Defensive guard: if the LLM adapter failed to initialize (e.g. missing
+	// API key for the configured provider), srv.GetLLMAdapter() can be nil.
+	// In that case the LLMEngine would crash on the first Chat call AND the
+	// downstream gRPC server would silently come up serving a broken backend.
+	// Fail loud here instead — operators see a clear error and exit non-zero.
+	llmAdapter := srv.GetLLMAdapter()
+	if llmAdapter == nil {
+		fmt.Fprintf(os.Stderr,
+			"Fatal: LLM adapter is nil for provider %q. Check that the provider's API key is set in the config file or via the appropriate env var (OPENAI_API_KEY / ANTHROPIC_API_KEY / OLLAMA_BASE_URL).\n",
+			cfg.LLM.Provider)
+		_ = grpcLis.Close()
+		os.Exit(1)
+	}
+
 	engines := []router.Engine{
-		runtime.NewLLMEngine(&runtime.LLMAdapterBridge{A: srv.GetLLMAdapter()}),
+		runtime.NewLLMEngine(&runtime.LLMAdapterBridge{A: llmAdapter}),
 	}
 	if kagentEndpoint := os.Getenv("KAGENT_ENDPOINT"); kagentEndpoint != "" {
 		engines = append(engines, kagent.New(kagent.Config{
