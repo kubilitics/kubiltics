@@ -230,7 +230,7 @@ if ! $DRY_RUN; then
 
   # Quick health check via port-forward
   log "Running health check..."
-  kubectl port-forward "svc/${RELEASE}" 18190:819 -n "$NAMESPACE" >/dev/null 2>&1 &
+  kubectl port-forward "svc/${RELEASE}" 18190:8190 -n "$NAMESPACE" >/dev/null 2>&1 &
   PF_PID=$!
   sleep 3
 

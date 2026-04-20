@@ -148,7 +148,7 @@ The Router + Wrapper layers add **no measurable latency**.
 
 The LLM picked the correct tool every iteration. Tool round-trips errored
 cleanly (`tool_error` payload) because the kubilitics-backend gRPC service
-on `:819` wasn't running for this measurement — that's expected; the goal
+on `:8190` wasn't running for this measurement — that's expected; the goal
 was to validate that the engine wires the MCP executor end-to-end and that
 each `ToolStart`/`ToolEnd` pair lands in the wide-event ndjson with
 `call_id` correlation. Wiring + correlation: green. **Tool execution against

@@ -5,7 +5,7 @@
 
 set -euo pipefail
 
-BACKEND_URL="${1:-http://localhost:819}"
+BACKEND_URL="${1:-http://localhost:8190}"
 CLUSTER_ID="${2:-}"
 AUTH_TOKEN="${3:-}"
 
