@@ -150,3 +150,63 @@ func TestSummarizeListForLLM_PayloadSizeDropsDramatically(t *testing.T) {
 		t.Fatalf("summary should be ≥10x smaller than raw; raw=%d summary=%d", len(rawBytes), len(outBytes))
 	}
 }
+
+// ─── capToolOutput tests ──────────────────────────────────────────────────
+//
+// The regression this prevents: any future tool handler forgetting to
+// pre-summarize its backend response dumps raw JSON to the LLM, gpt-4o-mini
+// runs out of output budget, and the turn ends with a bare tool block and no
+// text answer. capToolOutput enforces MaxToolOutputBytes globally at the
+// dispatch layer so that class of bug can't ship again.
+
+func TestCapToolOutput_UnderBudget_PassesThrough(t *testing.T) {
+	in := map[string]interface{}{"status": "ok", "items": []interface{}{"a", "b"}}
+	out := capToolOutput(in)
+	m, ok := out.(map[string]interface{})
+	if !ok {
+		t.Fatalf("under budget: output must preserve type, got %T", out)
+	}
+	if m["status"] != "ok" {
+		t.Fatalf("under budget: content changed: %v", m)
+	}
+	if _, truncated := m["_truncated"]; truncated {
+		t.Fatalf("under budget payload must not be marked truncated")
+	}
+}
+
+func TestCapToolOutput_OverBudget_TruncatesAndFlags(t *testing.T) {
+	big := make([]interface{}, 500)
+	for i := range big {
+		big[i] = map[string]interface{}{"name": "pod-name", "blob": strings.Repeat("X", 60)}
+	}
+	raw := map[string]interface{}{"items": big, "item_count": 500}
+
+	out := capToolOutput(raw).(map[string]interface{})
+	if out["_truncated"] != true {
+		t.Fatalf("over-budget payload must set _truncated=true, got %v", out)
+	}
+	if _, ok := out["_truncated_reason"]; !ok {
+		t.Fatalf("over-budget payload must include _truncated_reason explaining what was cut")
+	}
+	blob, _ := json.Marshal(out)
+	max := int(MaxToolOutputBytes)
+	budget := max + max/10 // 10% slack for _truncated metadata keys
+	if len(blob) > budget {
+		t.Fatalf("capped output still exceeds budget: %d bytes (limit %d)", len(blob), budget)
+	}
+	if out["item_count"] != 500 {
+		t.Fatalf("item_count must survive truncation, got %v", out["item_count"])
+	}
+}
+
+func TestCapToolOutput_Nil(t *testing.T) {
+	if capToolOutput(nil) != nil {
+		t.Fatalf("nil must pass through")
+	}
+}
+
+func TestCapToolOutput_NonMapScalar(t *testing.T) {
+	if capToolOutput("hello") != "hello" {
+		t.Fatalf("small scalar must pass through")
+	}
+}
