@@ -79,6 +79,14 @@ export interface Cluster {
   cpu: { used: number; total: number };
   memory: { used: number; total: number };
   kubeconfig?: string; // Kubeconfig content for this cluster (desktop mode)
+  /**
+   * Headlamp-style identity. The backend's `id` (UUID) gets recreated whenever the
+   * cluster is re-registered (e.g. Docker Desktop restart). `serverUrl` + `name` is
+   * the stable identity tuple — `syncClusters()` uses it to update `id` in place
+   * instead of treating a re-registered cluster as a new entry, which is what used
+   * to leave the sidebar at zeros and the chat panel sending the dead UUID.
+   */
+  serverUrl?: string;
   /** P0-A: When true, cluster is demo mock — never use for API calls; backend has no such ID. */
   __isDemo?: boolean;
 }
@@ -113,6 +121,15 @@ interface ClusterState {
   setActiveNamespace: (namespace: string) => void;
   setNamespaces: (namespaces: Namespace[]) => void;
   setDemo: (isDemo: boolean) => void;
+  /**
+   * Headlamp-style sync: re-fetch the cluster list from the backend and reconcile
+   * the in-memory store by `(name, serverUrl)` rather than by `id`. When a cluster
+   * is re-registered externally (Docker Desktop restart, kind delete+create) it
+   * comes back with the same `(name, serverUrl)` but a fresh `id`; this updates
+   * the stored entry's `id` in place so sidebar counters, query keys, and chat
+   * `focus_cluster_id` keep working without a manual reselect.
+   */
+  syncClusters: () => Promise<void>;
   setAppMode: (mode: 'desktop' | 'in-cluster' | null) => void;
   setOnboarded: (onboarded: boolean) => void;
   setKubeconfigContent: (content: string, path?: string) => void;
@@ -210,6 +227,89 @@ export const useClusterStore = create<ClusterState>()(
               backend.setCurrentClusterId(cluster.id);
             }
           });
+        }
+      },
+      syncClusters: async () => {
+        const state = get();
+        if (state.isDemo) return;
+        try {
+          const { getBackendBase } = await import('@/lib/backendUrl');
+          const apiBase = getBackendBase();
+          const resp = await fetch(`${apiBase}/api/v1/clusters`, {
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+          });
+          if (!resp.ok) return;
+          const body = await resp.json();
+          const list: Array<{
+            id: string;
+            name: string;
+            context?: string;
+            server_url?: string;
+            version?: string;
+            status?: string;
+            provider?: string;
+          }> = Array.isArray(body) ? body : Array.isArray(body?.clusters) ? body.clusters : [];
+
+          const identity = (name: string, serverUrl?: string) => `${name}|${serverUrl ?? ''}`;
+          const incoming = new Map(list.map((c) => [identity(c.name, c.server_url), c]));
+
+          const next: Cluster[] = [];
+          for (const existing of state.clusters) {
+            if (existing.__isDemo) {
+              next.push(existing);
+              continue;
+            }
+            const match = incoming.get(identity(existing.name, existing.serverUrl));
+            if (!match) continue; // evict — cluster removed externally
+            next.push({
+              ...existing,
+              id: match.id, // refresh id in place (the bug fix)
+              status: (match.status as Cluster['status']) ?? existing.status,
+              version: match.version ?? existing.version,
+              serverUrl: match.server_url ?? existing.serverUrl,
+            });
+            incoming.delete(identity(existing.name, existing.serverUrl));
+          }
+          // anything left in `incoming` is new
+          for (const c of incoming.values()) {
+            next.push({
+              id: c.id,
+              name: c.name,
+              context: c.context ?? c.name,
+              version: c.version ?? '',
+              status: ((c.status as Cluster['status']) ?? 'healthy') as Cluster['status'],
+              region: 'unknown',
+              provider: ((c.provider?.toLowerCase() ?? 'kind') as Cluster['provider']),
+              nodes: 0,
+              namespaces: 0,
+              pods: { running: 0, pending: 0, failed: 0 },
+              cpu: { used: 0, total: 0 },
+              memory: { used: 0, total: 0 },
+              serverUrl: c.server_url,
+            });
+          }
+
+          let nextActive = state.activeCluster;
+          if (nextActive && !nextActive.__isDemo) {
+            const refreshed = next.find(
+              (c) => c.name === nextActive!.name && c.serverUrl === nextActive!.serverUrl,
+            );
+            if (refreshed) {
+              nextActive = refreshed; // active cluster's id (and other fields) refreshed
+              if (refreshed.id !== state.activeCluster!.id) {
+                // Keep backendConfigStore in sync with the freshly-rotated id.
+                import('@/stores/backendConfigStore').then(({ useBackendConfigStore }) => {
+                  useBackendConfigStore.getState().setCurrentClusterId(refreshed.id);
+                });
+              }
+            } else {
+              nextActive = null; // active cluster was evicted
+            }
+          }
+          set({ clusters: next, activeCluster: nextActive });
+        } catch {
+          // Silent — sync is best-effort. UI keeps last known state until next tick.
         }
       },
       setActiveNamespace: (namespace) => set({ activeNamespace: namespace }),
