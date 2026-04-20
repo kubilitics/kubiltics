@@ -1,0 +1,132 @@
+#!/usr/bin/env bash
+# Kubilitics Ollama bench bootstrap.
+# Idempotent: safe to re-run. Writes /var/lib/ollama-bench/ready when fully done.
+set -euo pipefail
+
+LOG=/var/log/ollama-bootstrap.log
+exec > >(tee -a "$LOG") 2>&1
+echo "[$(date -u +%FT%TZ)] bootstrap start"
+
+mkdir -p /var/lib/ollama-bench
+SENTINEL=/var/lib/ollama-bench/ready
+REBOOT_FLAG=/var/lib/ollama-bench/needs-reboot
+POSTREBOOT_FLAG=/var/lib/ollama-bench/post-reboot-done
+
+if [ -f "$SENTINEL" ]; then
+  echo "already ready, exiting"
+  exit 0
+fi
+
+# Wait for any in-flight apt/dpkg locks (cloud-init, unattended-upgrades).
+wait_apt() {
+  local i=0
+  while sudo fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1 \
+     || sudo fuser /var/lib/apt/lists/lock >/dev/null 2>&1 \
+     || sudo fuser /var/lib/dpkg/lock >/dev/null 2>&1; do
+    echo "waiting for apt lock... ($i)"
+    sleep 5
+    i=$((i+1))
+    [ "$i" -gt 60 ] && { echo "apt lock timeout"; break; }
+  done
+}
+
+wait_apt
+DEBIAN_FRONTEND=noninteractive apt-get update -y
+wait_apt
+DEBIAN_FRONTEND=noninteractive apt-get install -y curl jq ca-certificates
+
+# GPU detection + driver install (NVIDIA only).
+HAS_NVIDIA=0
+if lspci 2>/dev/null | grep -qi nvidia; then
+  HAS_NVIDIA=1
+fi
+
+if [ "$HAS_NVIDIA" = "1" ] && [ ! -f "$POSTREBOOT_FLAG" ]; then
+  echo "NVIDIA GPU detected"
+  if ! command -v nvidia-smi >/dev/null 2>&1; then
+    echo "installing NVIDIA drivers via ubuntu-drivers autoinstall"
+    wait_apt
+    DEBIAN_FRONTEND=noninteractive apt-get install -y ubuntu-drivers-common
+    wait_apt
+    ubuntu-drivers autoinstall || true
+    touch "$REBOOT_FLAG"
+  fi
+fi
+
+# Reboot once after driver install, then re-enter via systemd oneshot.
+if [ -f "$REBOOT_FLAG" ] && [ ! -f "$POSTREBOOT_FLAG" ]; then
+  echo "installing post-reboot continuation unit"
+  cat > /etc/systemd/system/ollama-bench-postreboot.service <<'UNIT'
+[Unit]
+Description=Kubilitics Ollama bench post-reboot continuation
+After=network-online.target
+Wants=network-online.target
+ConditionPathExists=!/var/lib/ollama-bench/ready
+
+[Service]
+Type=oneshot
+ExecStart=/var/lib/ollama-bench/continue.sh
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
+UNIT
+
+  # Self-copy this script for the post-reboot run.
+  cp "$0" /var/lib/ollama-bench/continue.sh 2>/dev/null || \
+    cat /var/lib/cloud/instance/scripts/part-001 > /var/lib/ollama-bench/continue.sh || true
+  chmod +x /var/lib/ollama-bench/continue.sh
+  touch "$POSTREBOOT_FLAG"
+  systemctl daemon-reload
+  systemctl enable ollama-bench-postreboot.service
+  rm -f "$REBOOT_FLAG"
+  echo "rebooting now to load NVIDIA drivers"
+  ( sleep 2; reboot ) &
+  exit 0
+fi
+
+# Install Ollama (idempotent).
+if ! command -v ollama >/dev/null 2>&1; then
+  echo "installing Ollama"
+  curl -fsSL https://ollama.com/install.sh | sh
+fi
+
+# Configure Ollama to listen on 0.0.0.0:11434.
+mkdir -p /etc/systemd/system/ollama.service.d
+cat > /etc/systemd/system/ollama.service.d/override.conf <<'OVR'
+[Service]
+Environment="OLLAMA_HOST=0.0.0.0:11434"
+OVR
+
+systemctl daemon-reload
+systemctl enable --now ollama
+
+# Wait for API readiness (5 min timeout).
+echo "waiting for Ollama API"
+for i in $(seq 1 60); do
+  if curl -sSf http://localhost:11434/api/version >/dev/null 2>&1; then
+    echo "Ollama API ready after $((i*5))s"
+    break
+  fi
+  sleep 5
+  if [ "$i" = "60" ]; then
+    echo "ERROR: Ollama API did not become ready in 5 minutes"
+    exit 1
+  fi
+done
+
+# Pull models. Ollama CLI panics with "$HOME is not defined" under cloud-init's
+# bare root shell, so set HOME explicitly. OLLAMA_HOST keeps it pointed at
+# the local server we just started.
+export HOME=/root
+export OLLAMA_HOST=http://127.0.0.1:11434
+MODELS_JSON='${models}'
+echo "pulling models: $MODELS_JSON"
+echo "$MODELS_JSON" | jq -r '.[]' | while read -r m; do
+  [ -z "$m" ] && continue
+  echo "[$(date -u +%FT%TZ)] pulling $m"
+  ollama pull "$m" || { echo "ERROR pulling $m"; exit 1; }
+done
+
+touch "$SENTINEL"
+echo "[$(date -u +%FT%TZ)] bootstrap complete"

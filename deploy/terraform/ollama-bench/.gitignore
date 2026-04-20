@@ -1,0 +1,8 @@
+.terraform/
+terraform.tfstate
+terraform.tfstate.backup
+terraform.tfvars
+bench-key.pem
+*.pem
+crash.log
+crash.*.log
