@@ -5,7 +5,6 @@ package runtime
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/llm/adapter"
 	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/llm/types"
@@ -72,17 +71,9 @@ func (b *LLMAdapterBridge) StreamCompletionWithTools(
 	msgs := make([]types.Message, 0, 2)
 	executor := b.Executor
 	if focusClusterID != "" {
-		msgs = append(msgs, types.Message{
-			Role: "system",
-			Content: fmt.Sprintf(
-				"You are Kubilitics, a Kubernetes operations assistant.\n"+
-					"Active cluster id: %q.\n"+
-					"MANDATORY: pass cluster_id=%q as an argument to every tool "+
-					"call that accepts a cluster_id parameter. Never omit it and "+
-					"never substitute a different cluster_id.",
-				focusClusterID, focusClusterID,
-			),
-		})
+		if sys := BuildSystemPrompt(focusClusterID); sys != "" {
+			msgs = append(msgs, types.Message{Role: "system", Content: sys})
+		}
 		executor = &clusterIDInjectingExecutor{inner: b.Executor, clusterID: focusClusterID}
 	}
 	msgs = append(msgs, types.Message{Role: "user", Content: prompt})
