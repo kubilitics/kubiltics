@@ -87,3 +87,16 @@ Bench: `/tmp/e2e-bench2.ndjson` — 50 prompts, concurrency 3, 90s timeout, auto
 ## Status
 
 DONE_WITH_CONCERNS — phases 1 and 2 both ran end-to-end, but the AI is currently giving wrong answers on a multi-cluster host because of P0 (1) cluster_id propagation. Fix that one and the events JSON shape and most of the chat panel becomes trustworthy.
+
+---
+
+## Update 2026-04-20 (second pass)
+
+### P0 status after fixes
+
+| P0 | Status | Commit / note |
+|---|---|---|
+| #1 cluster_id propagation | ✅ FIXED | `ec80c3f` — Headlamp-style sync on frontend; new `useClusterSync` hook; `clusterStore.syncClusters()` reconciles by `(name, serverUrl)` and refreshes `id` in place so brain never gets a dead UUID |
+| #2 stale backend binary | ✅ FIXED | fresh build from main — `kubilitics-server` rebuild step documented for release |
+| #3 events JSON shape | ✅ FIXED | kotg.ai `3862ad0` — brain's `handleEvents` now decodes `interface{}` + type-switches on array vs object; wraps array as `{items, count}` |
+| #4 ClusterDataService gRPC service-name mismatch | ⏸ DEFERRED | **Root cause confirmed**: backend proto package is `kubilitics.backend.v1`, brain proto package is `kubilitics.ai.v1` — two separate services with same shape. Proper fix: move `cluster_data.proto` into shared `kotg-schema` repo (same pattern as `chat.proto`). Quick regenerate on the brain side hit ~30 type-name drift errors (`ResourceRequest` vs `GetResourceRequest`, etc.) — too invasive for this pass. Consequence: `analyze_*` tools remain dead until proto unification ships. |
