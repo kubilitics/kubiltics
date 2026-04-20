@@ -19,17 +19,48 @@ export const CHAT_PANEL_WIDTH_PX = 480;
  * backend /api/v1/ai/capabilities endpoint. If the brain is unreachable, the
  * capabilities call itself errors and we flag it here too.
  */
+type CapsShape = {
+  ready?: boolean;
+  state?: string;
+  disabled_reason?: string;
+  last_error?: string;
+  capabilities?: { providers?: string[]; models?: string[] };
+};
+
 function decodeNotReady(
-  capsData: { ready?: boolean; state?: string; disabled_reason?: string; last_error?: string } | undefined,
+  capsData: CapsShape | undefined,
   capsError: unknown,
 ): { title: string; detail: string } | null {
   if (capsError) {
     return {
       title: 'AI is unreachable',
-      detail: 'The AI service did not respond. Check that it is running, or configure a provider in Settings.',
+      detail:
+        'The AI service did not respond. Check that it is running, or configure a provider in Settings.',
     };
   }
-  if (!capsData || capsData.ready) return null;
+  if (!capsData) {
+    // No data yet — be conservative: treat as not ready until we know.
+    return {
+      title: 'Checking AI…',
+      detail:
+        'Verifying that the AI service is configured and reachable. If this stays here for more than a few seconds, configure a provider in Settings.',
+    };
+  }
+  if (capsData.ready === true) {
+    // Belt-and-braces: ready=true but no providers/models means the brain is up
+    // but has nothing to call. This happens when the brain process started before
+    // any provider config landed. Treat as not configured.
+    const providers = capsData.capabilities?.providers ?? [];
+    const models = capsData.capabilities?.models ?? [];
+    if (providers.length === 0 || models.length === 0) {
+      return {
+        title: 'AI is not configured',
+        detail:
+          'The AI service is running but has no provider or model configured. Pick one in Settings → AI and click Validate to turn this on.',
+      };
+    }
+    return null;
+  }
 
   switch (capsData.disabled_reason) {
     case 'ai_disabled':
@@ -39,7 +70,8 @@ function decodeNotReady(
     case 'missing_api_key':
       return {
         title: 'AI is not configured',
-        detail: 'Pick a provider and add an API key in Settings → AI, then click Validate to turn this on.',
+        detail:
+          'Pick a provider and add an API key in Settings → AI, then click Validate to turn this on.',
       };
     case 'connection_failed':
     case 'provider_unavailable':
@@ -50,7 +82,9 @@ function decodeNotReady(
     default:
       return {
         title: 'AI is not ready',
-        detail: capsData.last_error || `State: ${capsData.state ?? 'unknown'}`,
+        detail:
+          capsData.last_error ||
+          'Pick a provider and add an API key in Settings → AI, then click Validate to turn this on.',
       };
   }
 }

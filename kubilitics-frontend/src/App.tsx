@@ -30,6 +30,7 @@ const PageLoader = () => (
 // Settings is eagerly imported to avoid Tauri WebView lazy-load failures
 import SettingsPage from "./pages/Settings";
 const AISettingsPage = lazy(() => import("./pages/settings/AISettingsPage"));
+const AIBudgetPage = lazy(() => import("./pages/settings/AIBudgetPage"));
 const ModeSelection = lazy(() => import("./pages/ModeSelection"));
 const ClusterConnect = lazy(() => import("./pages/ClusterConnect"));
 const ConnectedRedirect = lazy(() => import("./pages/ConnectedRedirect"));
@@ -840,6 +841,7 @@ const App = () => (
 
                         <Route path="/settings" element={<SettingsPage />} />
                         <Route path="/settings/ai" element={<AISettingsPage />} />
+                        <Route path="/settings/ai/budget" element={<AIBudgetPage />} />
                         {/* Cluster Topology */}
                         <Route path="/topology" element={<Topology />} />
                         {/* Resource Templates */}

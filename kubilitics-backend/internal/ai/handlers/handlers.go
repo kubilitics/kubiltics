@@ -43,4 +43,17 @@ func (h *Handlers) Register(mux muxHandleFunc) {
 	mux.HandleFunc("/ai/sessions", h.PostCreateSession)
 	mux.HandleFunc("/ai/config", h.PostConfig)
 	mux.HandleFunc("/ai/validate", h.PostValidate)
+	mux.HandleFunc("/ai/budget", h.HandleBudget)
+}
+
+// HandleBudget multiplexes GET (read current) and POST (persist new) for /ai/budget.
+func (h *Handlers) HandleBudget(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodGet:
+		h.GetBudget(w, r)
+	case http.MethodPost:
+		h.PostBudget(w, r)
+	default:
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+	}
 }

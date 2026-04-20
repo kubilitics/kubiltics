@@ -393,14 +393,9 @@ export default function AISettingsPage() {
               <CardTitle className="text-base">Cost & Budget</CardTitle>
               <CardDescription>Brain-reported usage. Configure a budget to enforce limits.</CardDescription>
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              disabled
-              title="Per-user / monthly budget limits ship in the next release"
-            >
+            <Button variant="outline" size="sm" onClick={() => navigate('/settings/ai/budget')}>
               Configure budget
-              <span className="ml-1.5 rounded bg-muted px-1.5 py-0.5 text-xs">Soon</span>
+              <ExternalLink className="h-3.5 w-3.5 ml-1.5" />
             </Button>
           </div>
         </CardHeader>
