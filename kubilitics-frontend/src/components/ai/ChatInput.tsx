@@ -55,7 +55,7 @@ export function ChatInput({ onSend, onStop, disabled, streaming, disabledPlaceho
         disabled={disabled}
         placeholder={disabled ? disabledPlaceholder ?? 'AI unavailable' : 'Ask about your cluster…'}
         rows={2}
-        className="flex-1 resize-none rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50"
+        className="flex-1 resize-none rounded-md border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground caret-foreground selection:bg-primary/30 dark:selection:bg-primary/40 selection:text-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50"
         data-testid="chat-input"
       />
       {streaming ? (
