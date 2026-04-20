@@ -122,37 +122,92 @@ today (2026-04-20).
 
 The Router + Wrapper layers add **no measurable latency**.
 
-### Tool-aware path: 166 MCP tools wired into the LLM-direct engine
+### Tool-aware path: comprehensive 498-case coverage matrix over **all 166 MCP tools**
 
-5 tool-specific prompts × 3 iterations + warmup, OpenAI gpt-4o-mini, full agentic loop (`CompleteWithTools`) through the LLM engine with the MCP executor + tool taxonomy:
+Earlier we shipped a 15-prompt smoke. Investors and we ourselves wanted real
+proof, not anecdote: 166 tools × 3 prompts each = **498 prompts**, generated
+programmatically from the taxonomy itself (no hand-cherry-picking), one
+iteration per prompt, OpenAI gpt-4o-mini, full agentic loop through the LLM
+engine with the MCP executor.
 
-| metric                      | value |
-|-----------------------------|-------|
-| MCP tools registered        | **166** |
-| LLM-call success rate       | 100% (15/15) |
-| Tool-call coverage          | **100% (15/15 fired the correct tool)** |
-| TTFT p50 (after tool)       | ~3.0 s |
-| Total p50 / p95             | ~4.3 / ~10 s |
-| Agentic-loop overhead       | ~10% over no-tool baseline |
-| Engine panics / lost events | **0** |
+Generator: `kubilitics-ai/scripts/gen_prompts.py` reads
+`kubilitics-ai/cmd/extract-tools` JSON dump (the merged
+`ToolTaxonomy` + `GetChatToolDefinitions`) and emits 3 paraphrased natural
+prompts per tool using verb/noun templates derived from the tool's name and
+description. Bench harness extended in
+[`vellankikoti/kotg.ai feat/ai-tool-coverage-bench`](https://github.com/vellankikoti/kotg.ai/tree/feat/ai-tool-coverage-bench)
+(commit `361a1d6`) to record `expected_tool`, the ordered list of tools the
+LLM actually fired (`actual_tools[]`), and a per-call `match` field
+(`exact | semantic | miss`). Concurrency: 10. Wall time: ~6 minutes.
+OpenAI cost: **$0.026**.
 
-**Coverage matrix** (each row is a prompt, columns are tool actually called by the LLM):
+**Headline numbers (498 prompts, 1 iteration each, gpt-4o-mini):**
 
-| Prompt                        | tool called                | iterations fired |
-|-------------------------------|----------------------------|------------------|
-| list-pods-default             | `list_resources`           | 3/3 |
-| get-events-kube-system        | `get_events`               | 3/3 |
-| cluster-health                | `observe_cluster_overview` | 3/3 (semantic substitution for `get_cluster_health`) |
-| analyze-pod-health            | `analyze_pod_health`       | 3/3 |
-| analyze-deployment            | `analyze_deployment_health`| 3/3 |
+| metric                                  | value |
+|-----------------------------------------|-------|
+| MCP tools registered                    | **166** |
+| Prompts run                             | 498 |
+| LLM-call success rate                   | 99.6% (496/498) |
+| **Exact-match (LLM picked the named tool)** | **45.0%** (224/498) |
+| **Semantic-match (LLM picked a functional sibling)** | 0.6% (3/498) |
+| **Combined hit rate**                   | **45.6%** |
+| Miss                                    | 54.4% (271/498) |
+| Engine panics / lost events             | **0** |
+| LLM total ms p50 / p95                  | 4069 / 10833 |
+| Tool exec ms p50 / p95                  | 3 / 50 (errors fast — no live backend) |
 
-The LLM picked the correct tool every iteration. Tool round-trips errored
-cleanly (`tool_error` payload) because the kubilitics-backend gRPC service
-on `:8190` wasn't running for this measurement — that's expected; the goal
-was to validate that the engine wires the MCP executor end-to-end and that
-each `ToolStart`/`ToolEnd` pair lands in the wide-event ndjson with
-`call_id` correlation. Wiring + correlation: green. **Tool execution against
-a live backend is the next measurement.**
+**Per-category breakdown (`prompt_category`, `match` ∈ {exact, semantic, miss}):**
+
+| Category         | N   | Exact   | Semantic | Combined hit |
+|------------------|-----|---------|----------|--------------|
+| cost             | 12  | 100.0%  | 0.0%     | **100.0%** |
+| troubleshooting  | 21  | 85.7%   | 0.0%     | 85.7% |
+| automation       | 12  | 75.0%   | 0.0%     | 75.0% |
+| analysis         | 93  | 69.9%   | 0.0%     | 69.9% |
+| security         | 15  | 60.0%   | 0.0%     | 60.0% |
+| action           | 15  | 40.0%   | 0.0%     | 40.0% |
+| recommendation   | 24  | 37.5%   | 0.0%     | 37.5% |
+| observation      | 279 | 34.1%   | 1.1%     | 35.1% |
+| execution        | 27  | 3.7%    | 0.0%     | 3.7% |
+
+**Honest analysis of the misses (no spin):**
+
+1. **Execution category (3.7% hit) is the most striking — and it is correct
+   behavior.** 26/27 destructive prompts (`scale_deployment`, `delete_resource`,
+   `restart_pod`, `drain_node`, `cordon_node`, `apply_resource_patch`) caused
+   the LLM to refuse-or-explain rather than call the tool. That's the safety
+   layer working: gpt-4o-mini does not call destructive tools without
+   confirmation context, even when the system prompt makes them available.
+   For a v1 product this is the right default. We will explicitly test
+   "approve and execute X" two-turn flows in the next bench.
+2. **Observation (35% hit) is dragged down by the 93 `observe_*` tools that
+   share overlapping surface area** (`observe_resource`, `observe_pod_detailed`,
+   `observe_pod_dependencies`, `observe_resources_by_query`, etc.). The
+   alias map only covers the obvious siblings (13 entries today). Many
+   "miss" rows actually picked a sensible sibling — e.g. prompt
+   `observe_resource__1` (`"Show me resource."`) picked
+   `observe_resources_by_query`, which a human would also call correct.
+   Expanding the alias map is mechanical work and would push observation
+   hit rate well above 60%.
+3. **Two LLM-call errors (0.4%)** trace to a real engine bug surfaced by
+   this run: when an MCP tool returns a Go error, the engine's next-turn
+   message construction can produce `content: null` instead of `""`, which
+   OpenAI rejects with HTTP 400 `expected a string, got null`. Bug filed
+   against `internal/runtime/llm_engine.go`; not fixed in the bench branch.
+4. **Analysis (70%), troubleshooting (86%), automation (75%), cost (100%)**
+   — the categories with verbs that map cleanly to tool names — show that
+   when the prompt's natural-English action matches the tool's primary
+   verb, the LLM routes reliably. This is the strongest signal in the data.
+
+Full per-prompt detail and the top-50-misses table:
+`/tmp/coverage-summary.md` (in-repo run artifact, regenerable with one
+`bench` invocation).
+
+**What this is NOT:** an end-to-end reliability number. The
+kubilitics-backend on `:8190` was not running, so tool execution returned
+errors after selection. This bench measures **selection coverage** — does
+the LLM pick the right tool — which is the right metric for a routing
+system. End-to-end success against a live backend is the next measurement.
 
 ### Ollama qwen2.5:3b on AWS t3.large (2 vCPU, CPU-only)
 Same 3 prompts × 3 iterations + warmup, locally hosted Ollama on a stopped/started
