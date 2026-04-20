@@ -82,7 +82,7 @@ func (h *Handlers) GetChat(w http.ResponseWriter, r *http.Request) {
 				_ = conn.WriteJSON(wsFrame{Type: "done", Payload: jsonString(recvErr.Error())})
 				return
 			}
-			payload, _ := json.Marshal(ev)
+			payload, _ := json.Marshal(assistantEventPayload(ev))
 			_ = conn.WriteJSON(wsFrame{Type: assistantEventType(ev), Payload: payload})
 		}
 	}()
@@ -149,6 +149,58 @@ func userIDFromRequest(r *http.Request) string {
 func jsonString(s string) json.RawMessage {
 	b, _ := json.Marshal(s)
 	return b
+}
+
+// assistantEventPayload flattens an AssistantEvent oneof into the flat
+// JSON shape the frontend chatStore parses (see src/services/ai/protocol.ts
+// and src/stores/chatStore.ts). Marshalling the proto directly produces
+// nested {anchor_id, Event: {ToolStart: {...}}} which the store doesn't
+// recognize — tool_call_id reads as undefined, tool_end never matches its
+// tool_start, text_delta drops, and the UI rendering falls through to the
+// stuck-spinner finalizer. Keep this function in sync with the frontend's
+// payload types when fields are added to the proto.
+func assistantEventPayload(ev *kotgv1.AssistantEvent) map[string]interface{} {
+	p := map[string]interface{}{
+		"anchor_id": ev.GetAnchorId(),
+	}
+	switch inner := ev.GetEvent().(type) {
+	case *kotgv1.AssistantEvent_TextDelta:
+		p["text"] = inner.TextDelta.GetText()
+	case *kotgv1.AssistantEvent_ToolStart:
+		p["tool_call_id"] = inner.ToolStart.GetToolCallId()
+		p["tool_name"] = inner.ToolStart.GetToolName()
+		p["preview"] = inner.ToolStart.GetPreview()
+	case *kotgv1.AssistantEvent_ToolEnd:
+		p["tool_call_id"] = inner.ToolEnd.GetToolCallId()
+		p["ok"] = inner.ToolEnd.GetOk()
+		p["preview"] = inner.ToolEnd.GetPreview()
+	case *kotgv1.AssistantEvent_ActionPending:
+		p["proposal_id"] = inner.ActionPending.GetProposalId()
+		p["tier"] = int32(inner.ActionPending.GetTier())
+		p["summary"] = inner.ActionPending.GetSummary()
+		if d := inner.ActionPending.GetDiff(); d != nil {
+			p["diff"] = d
+		}
+	case *kotgv1.AssistantEvent_PlanProposed:
+		p["plan_id"] = inner.PlanProposed.GetPlanId()
+		p["summary"] = inner.PlanProposed.GetSummary()
+		p["step_count"] = inner.PlanProposed.GetStepCount()
+	case *kotgv1.AssistantEvent_Citation:
+		p["tool_call_id"] = inner.Citation.GetToolCallId()
+		p["short_label"] = inner.Citation.GetShortLabel()
+		p["assistant_text_anchor_id"] = inner.Citation.GetAssistantTextAnchorId()
+	case *kotgv1.AssistantEvent_Error:
+		// Error frames in the frontend protocol use flat {code, message} at
+		// the payload root — no anchor_id, so reset the map.
+		return map[string]interface{}{
+			"code":    inner.Error.GetCode(),
+			"message": inner.Error.GetMessage(),
+		}
+	case *kotgv1.AssistantEvent_Done:
+		p["prompt_tokens"] = inner.Done.GetPromptTokens()
+		p["completion_tokens"] = inner.Done.GetCompletionTokens()
+	}
+	return p
 }
 
 // assistantEventType returns the lowercase oneof variant name for the
