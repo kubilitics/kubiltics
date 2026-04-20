@@ -23,6 +23,145 @@ import (
 // jsonUnmarshal is a local alias to avoid conflict with potential package-level json var.
 var jsonUnmarshal = json.Unmarshal
 
+// summarizeListForLLM trims a K8s-style list payload (e.g. {items:[...]})
+// to the fields an LLM actually needs to answer "list/count" questions:
+// kind, name, namespace, labels, creationTimestamp, and a compact status
+// slice. managedFields, annotations, the full spec, and status conditions
+// are dropped. Without this, "list all pods" on a real cluster returns
+// ~200KB of JSON per turn — gpt-4o-mini spends its output budget on
+// parsing it and emits no written answer, leaving users with a bare tool
+// block and no summary.
+//
+// The shape is preserved: { items: [...], item_count: N, kind: K? } so
+// existing tools that count len(items) continue to work.
+func summarizeListForLLM(raw interface{}) interface{} {
+	m, ok := raw.(map[string]interface{})
+	if !ok {
+		return raw
+	}
+	// Some backend endpoints return a bare slice at the top level.
+	itemsAny, hasItems := m["items"]
+	if !hasItems {
+		if arr, isArr := raw.([]interface{}); isArr {
+			summarized := make([]interface{}, 0, len(arr))
+			for _, it := range arr {
+				summarized = append(summarized, summarizeItem(it))
+			}
+			return map[string]interface{}{
+				"items":      summarized,
+				"item_count": len(summarized),
+			}
+		}
+		return raw
+	}
+	items, ok := itemsAny.([]interface{})
+	if !ok {
+		return raw
+	}
+	summarized := make([]interface{}, 0, len(items))
+	for _, it := range items {
+		summarized = append(summarized, summarizeItem(it))
+	}
+	out := map[string]interface{}{
+		"items":      summarized,
+		"item_count": len(summarized),
+	}
+	// Preserve commonly useful top-level fields if present.
+	for _, k := range []string{"kind", "apiVersion", "cluster_id", "namespace"} {
+		if v, ok := m[k]; ok {
+			out[k] = v
+		}
+	}
+	return out
+}
+
+// summarizeItem reduces a single K8s object to the fields an LLM reasoner
+// cares about. Everything else — managedFields, annotations, full spec,
+// verbose status — is discarded. This keeps the tool output dense and
+// keeps the context window well under the model's budget.
+func summarizeItem(raw interface{}) interface{} {
+	m, ok := raw.(map[string]interface{})
+	if !ok {
+		return raw
+	}
+	out := map[string]interface{}{}
+	if k, ok := m["kind"].(string); ok {
+		out["kind"] = k
+	}
+	if meta, ok := m["metadata"].(map[string]interface{}); ok {
+		md := map[string]interface{}{}
+		for _, k := range []string{"name", "namespace", "creationTimestamp", "labels"} {
+			if v, ok := meta[k]; ok {
+				md[k] = v
+			}
+		}
+		out["metadata"] = md
+	}
+	if st, ok := m["status"].(map[string]interface{}); ok {
+		ss := map[string]interface{}{}
+		// Pod-relevant
+		for _, k := range []string{"phase", "podIP", "hostIP", "reason", "message", "startTime"} {
+			if v, ok := st[k]; ok {
+				ss[k] = v
+			}
+		}
+		// Workload-relevant
+		for _, k := range []string{"replicas", "readyReplicas", "availableReplicas", "updatedReplicas", "unavailableReplicas"} {
+			if v, ok := st[k]; ok {
+				ss[k] = v
+			}
+		}
+		// Container restart summary (no per-field noise)
+		if cs, ok := st["containerStatuses"].([]interface{}); ok {
+			restarts := 0
+			notReady := 0
+			for _, c := range cs {
+				if cm, ok := c.(map[string]interface{}); ok {
+					if r, ok := cm["restartCount"].(float64); ok {
+						restarts += int(r)
+					}
+					if ready, ok := cm["ready"].(bool); ok && !ready {
+						notReady++
+					}
+				}
+			}
+			if restarts > 0 {
+				ss["total_restarts"] = restarts
+			}
+			if notReady > 0 {
+				ss["containers_not_ready"] = notReady
+			}
+		}
+		if len(ss) > 0 {
+			out["status"] = ss
+		}
+	}
+	// Node-relevant spec fields
+	if sp, ok := m["spec"].(map[string]interface{}); ok {
+		sp2 := map[string]interface{}{}
+		if v, ok := sp["nodeName"]; ok {
+			sp2["nodeName"] = v
+		}
+		if v, ok := sp["containers"].([]interface{}); ok {
+			names := make([]string, 0, len(v))
+			for _, c := range v {
+				if cm, ok := c.(map[string]interface{}); ok {
+					if n, ok := cm["name"].(string); ok {
+						names = append(names, n)
+					}
+				}
+			}
+			if len(names) > 0 {
+				sp2["container_names"] = names
+			}
+		}
+		if len(sp2) > 0 {
+			out["spec"] = sp2
+		}
+	}
+	return out
+}
+
 // kindToRestPlural converts a Kubernetes resource Kind to the lowercase plural form
 // expected by the kubilitics-backend REST API (e.g. "Pod" → "pods", "NetworkPolicy" → "networkpolicies").
 func kindToRestPlural(kind string) string {
@@ -171,7 +310,7 @@ func (s *mcpServerImpl) handleResourcesByQuery(ctx context.Context, args map[str
 			}
 			var listResults interface{}
 			if listErr := c.get(ctx, listPath, &listResults); listErr == nil {
-				return listResults, nil
+				return summarizeListForLLM(listResults), nil
 			}
 		}
 		// No kind either — return workloads overview as it's the richest summary.
