@@ -3,6 +3,30 @@ import type { ServerFrame } from '@/services/ai/protocol';
 
 export type Block =
   | { type: 'text'; content: string; complete: boolean }
+  | {
+      type: 'tool';
+      callId: string;
+      toolName: string;
+      startPreview?: string;
+      endPreview?: string;
+      ok?: boolean;
+      startedAt: number;
+      endedAt?: number;
+    }
+  | {
+      type: 'action_pending';
+      proposalId: string;
+      tier?: number | string;
+      summary: string;
+      diff?: unknown;
+    }
+  | {
+      type: 'plan_proposed';
+      planId: string;
+      summary: string;
+      steps?: Array<{ title?: string; description?: string }>;
+    }
+  | { type: 'citation'; toolCallId?: string; title?: string; url?: string }
   | { type: 'unknown'; raw: unknown; kind: string };
 
 export type AssistantTurn = {
@@ -165,7 +189,10 @@ function applyFrameToTurn(turn: AssistantTurn & { kind: 'assistant' }, frame: Se
     case 'text_delta': {
       const lastBlock = turn.blocks[turn.blocks.length - 1];
       if (lastBlock && lastBlock.type === 'text' && !lastBlock.complete) {
-        const updated = { ...lastBlock, content: lastBlock.content + (frame.payload as { text: string }).text };
+        const updated = {
+          ...lastBlock,
+          content: lastBlock.content + (frame.payload as { text: string }).text,
+        };
         return {
           ...turn,
           kind: 'assistant',
@@ -175,7 +202,106 @@ function applyFrameToTurn(turn: AssistantTurn & { kind: 'assistant' }, frame: Se
       return {
         ...turn,
         kind: 'assistant',
-        blocks: [...turn.blocks, { type: 'text', content: (frame.payload as { text: string }).text, complete: false }],
+        blocks: [
+          ...turn.blocks,
+          { type: 'text', content: (frame.payload as { text: string }).text, complete: false },
+        ],
+      };
+    }
+    case 'tool_start': {
+      const p = (frame.payload ?? {}) as {
+        tool_call_id?: string;
+        tool_name?: string;
+        preview?: string;
+      };
+      // Seal the currently-streaming text block so the tool renders after the
+      // text the AI has produced so far; any subsequent text_delta starts a
+      // fresh block after the tool.
+      const sealed = sealLastOpenText(turn.blocks);
+      return {
+        ...turn,
+        kind: 'assistant',
+        blocks: [
+          ...sealed,
+          {
+            type: 'tool',
+            callId: p.tool_call_id ?? `call-${turn.blocks.length}`,
+            toolName: p.tool_name ?? 'tool',
+            startPreview: p.preview,
+            startedAt: Date.now(),
+          },
+        ],
+      };
+    }
+    case 'tool_end': {
+      const p = (frame.payload ?? {}) as {
+        tool_call_id?: string;
+        ok?: boolean;
+        preview?: string;
+      };
+      const updated = turn.blocks.map((b) => {
+        if (b.type === 'tool' && b.callId === p.tool_call_id && b.endedAt === undefined) {
+          return { ...b, ok: !!p.ok, endPreview: p.preview, endedAt: Date.now() };
+        }
+        return b;
+      });
+      return { ...turn, kind: 'assistant', blocks: updated };
+    }
+    case 'action_pending': {
+      const p = (frame.payload ?? {}) as {
+        proposal_id?: string;
+        tier?: number | string;
+        summary?: string;
+        diff?: unknown;
+      };
+      return {
+        ...turn,
+        kind: 'assistant',
+        blocks: [
+          ...sealLastOpenText(turn.blocks),
+          {
+            type: 'action_pending',
+            proposalId: p.proposal_id ?? `proposal-${turn.blocks.length}`,
+            tier: p.tier,
+            summary: p.summary ?? 'AI wants to run an action.',
+            diff: p.diff,
+          },
+        ],
+      };
+    }
+    case 'plan_proposed': {
+      const p = (frame.payload ?? {}) as {
+        plan_id?: string;
+        summary?: string;
+        steps?: Array<{ title?: string; description?: string }>;
+      };
+      return {
+        ...turn,
+        kind: 'assistant',
+        blocks: [
+          ...sealLastOpenText(turn.blocks),
+          {
+            type: 'plan_proposed',
+            planId: p.plan_id ?? `plan-${turn.blocks.length}`,
+            summary: p.summary ?? '',
+            steps: p.steps,
+          },
+        ],
+      };
+    }
+    case 'citation': {
+      const p = (frame.payload ?? {}) as {
+        tool_call_id?: string;
+        title?: string;
+        url?: string;
+      };
+      return {
+        ...turn,
+        kind: 'assistant',
+        blocks: [
+          ...turn.blocks,
+          { type: 'citation', toolCallId: p.tool_call_id, title: p.title, url: p.url },
+        ],
       };
     }
     case 'done':
@@ -191,4 +317,15 @@ function applyFrameToTurn(turn: AssistantTurn & { kind: 'assistant' }, frame: Se
         ],
       };
   }
+}
+
+/** Seal (mark complete) the last text block if it is currently streaming, so
+ *  a subsequent non-text block renders in the right place and any later
+ *  text_delta creates a fresh block after the interstitial. */
+function sealLastOpenText(blocks: Block[]): Block[] {
+  const last = blocks[blocks.length - 1];
+  if (last && last.type === 'text' && !last.complete) {
+    return blocks.slice(0, -1).concat({ ...last, complete: true });
+  }
+  return blocks;
 }
