@@ -5,21 +5,21 @@ variable "region" {
 }
 
 variable "instance_type" {
-  description = "EC2 instance type. Default g5.xlarge (NVIDIA A10G 24GB). Use t3.xlarge for CPU-only fallback or g5.2xlarge for more headroom."
+  description = "EC2 instance type. Default t3.large (2 vCPU / 8 GiB RAM, CPU-only) — fits a 3B Q4 model with headroom and costs ~$0.083/hr. Bump to t3.xlarge (16 GiB) for 7B models, or g5.xlarge for GPU."
   type        = string
-  default     = "g5.xlarge"
+  default     = "t3.large"
 }
 
 variable "models" {
-  description = "List of Ollama models to pre-pull on first boot. Pulled in order via `ollama pull`."
+  description = "List of Ollama models to pre-pull on first boot. Pulled in order via `ollama pull`. Default qwen2.5:3b (~2GB, snappy on CPU, strong technical reasoning)."
   type        = list(string)
-  default     = ["qwen2.5-coder:7b"]
+  default     = ["qwen2.5:3b"]
 }
 
 variable "volume_size_gb" {
-  description = "Root EBS volume size in GiB. Sized for Ollama install + multiple 5-15GB models + system."
+  description = "Root EBS volume size in GiB. 30 fits ~3 small (3B) models plus system; bump to 60 if pulling 7B+ models too."
   type        = number
-  default     = 60
+  default     = 30
 }
 
 variable "allowed_cidr" {

@@ -1,27 +1,29 @@
 # Ollama bench VM (AWS, Terraform + Make)
 
-Provisions a single AWS EC2 GPU instance running Ollama with one or more
+Provisions a single AWS EC2 instance running Ollama with one or more
 models pre-pulled, for benchmarking the **kubilitics-ai** brain against
-real LLM backends.
+real LLM backends. CPU-only by default for cost; flip to GPU when you
+need production-speed iteration.
 
 ## What you get
 
-- 1x EC2 instance — default `g5.xlarge` (NVIDIA A10G, 24 GB VRAM, 16 GB RAM, 4 vCPU)
-- Ubuntu 22.04 LTS + NVIDIA drivers (auto-installed via `ubuntu-drivers autoinstall`)
+- 1x EC2 instance — default `t3.large` (2 vCPU, 8 GiB RAM, **CPU-only**)
+- Ubuntu 22.04 LTS; NVIDIA drivers auto-installed only when a GPU instance is selected
 - Ollama installed, listening on `0.0.0.0:11434`
-- Default model: `qwen2.5-coder:7b` (override via `models = [...]`)
-- 60 GB gp3 EBS root (room for multiple 5–15 GB models)
+- Default model: `qwen2.5:3b` (~2 GB; snappy on CPU; strong technical reasoning)
+- 30 GB gp3 EBS root (~3 small models + system; bump to 60 for 7B+)
 - Elastic IP (stable across stop/start)
 - Security group locked to **your current public IP only** (auto-detected)
 - Fresh SSH keypair written to `bench-key.pem` (chmod 0600, gitignored)
 
 ## Cost
 
-| State              | Approx cost (us-east-1) |
-|--------------------|-------------------------|
-| `g5.xlarge` running | ~$1.00 / hr             |
-| Stopped (EBS only)  | ~$0.005 / hr ≈ $3 / mo  |
-| EIP attached        | $0 (free while attached) |
+| Instance               | Running           | Stopped (EBS only)         |
+|------------------------|-------------------|----------------------------|
+| `t3.large` (default)   | **~$0.083 / hr**  | ~$0.004 / hr ≈ $2.50 / mo  |
+| `t3.xlarge` (16 GiB)   | ~$0.166 / hr      | same                       |
+| `g5.xlarge` (GPU)      | ~$1.00 / hr       | same                       |
+| EIP attached           | $0 (free while attached) | $0                  |
 
 **Lifecycle:** `make stop` after every session, `make start` to resume.
 The EBS volume preserves Ollama + pulled models — no re-pull on resume.
@@ -31,7 +33,7 @@ The EBS volume preserves Ollama + pulled models — no re-pull on resume.
 - Terraform >= 1.5
 - AWS CLI v2 (for `make stop` / `make start` / `make status`)
 - AWS credentials configured (env vars or `~/.aws/credentials`)
-- An AWS account with quota for `g5.xlarge` in your region (request via Service Quotas if first-time GPU usage)
+- A GPU instance (`g5.*`) requires a one-time Service Quota request if you've never launched GPU before; CPU instances need no extra quota.
 
 ## Quick start
 
@@ -54,13 +56,13 @@ export KUBILITICS_AI_LLM_OLLAMA_BASE_URL="$URL"
 
 # Run the bench harness:
 cd kubilitics-ai/cmd/bench
-./bench -tag ollama-qwen-7b -base "$URL"
+./bench -tag ollama-qwen-3b -base "$URL"
 ```
 
 ## Cost lifecycle
 
 ```bash
-make stop      # after each session — drops cost from ~$1/hr to ~$3/mo
+make stop      # after each session — drops compute cost to $0; only ~$2.50/mo EBS remains
 make start     # resume; same EIP, same model, ready in ~30s
 make status    # see state + bootstrap log tail
 ```
@@ -77,11 +79,12 @@ To bake them in for fresh provisions, also update `models` in `terraform.tfvars`
 
 ## Swapping instance type
 
-| Use case            | Variable                      |
-|---------------------|-------------------------------|
-| GPU default (A10G)  | `instance_type = "g5.xlarge"` |
-| More headroom       | `instance_type = "g5.2xlarge"`|
-| CPU-only fallback   | `instance_type = "t3.xlarge"` |
+| Use case                       | Variable                      |
+|--------------------------------|-------------------------------|
+| CPU-only default (3B models)   | `instance_type = "t3.large"`  |
+| CPU + headroom (7B models)     | `instance_type = "t3.xlarge"` |
+| GPU (production-speed)         | `instance_type = "g5.xlarge"` |
+| GPU + more VRAM                | `instance_type = "g5.2xlarge"`|
 
 The bootstrap script auto-detects NVIDIA presence (`lspci | grep -i nvidia`)
 and only installs drivers + reboots when GPU is present.
