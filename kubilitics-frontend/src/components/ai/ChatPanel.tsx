@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import { useChatStore, type Turn } from '@/stores/chatStore';
 import { useClusterStore } from '@/stores/clusterStore';
 import { useChatController } from '@/hooks/useChatController';
@@ -6,9 +7,53 @@ import { useAICapabilities } from '@/hooks/useAICapabilities';
 import { ChatHeader } from './ChatHeader';
 import { ChatTranscript } from './ChatTranscript';
 import { ChatInput } from './ChatInput';
+import { Button } from '@/components/ui/button';
+import { Settings2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export const CHAT_PANEL_WIDTH_PX = 480;
+
+/**
+ * Decode an AI "not ready" state into something the user can act on.
+ * Reasons come from the brain's /status (disabled_reason, last_error) via the
+ * backend /api/v1/ai/capabilities endpoint. If the brain is unreachable, the
+ * capabilities call itself errors and we flag it here too.
+ */
+function decodeNotReady(
+  capsData: { ready?: boolean; state?: string; disabled_reason?: string; last_error?: string } | undefined,
+  capsError: unknown,
+): { title: string; detail: string } | null {
+  if (capsError) {
+    return {
+      title: 'AI is unreachable',
+      detail: 'The AI service did not respond. Check that it is running, or configure a provider in Settings.',
+    };
+  }
+  if (!capsData || capsData.ready) return null;
+
+  switch (capsData.disabled_reason) {
+    case 'ai_disabled':
+      return { title: 'AI is disabled', detail: 'AI features are turned off in this deployment.' };
+    case 'provider_not_configured':
+    case 'no_api_key':
+    case 'missing_api_key':
+      return {
+        title: 'AI is not configured',
+        detail: 'Pick a provider and add an API key in Settings → AI, then click Validate to turn this on.',
+      };
+    case 'connection_failed':
+    case 'provider_unavailable':
+      return {
+        title: 'AI provider is unreachable',
+        detail: capsData.last_error || 'The configured LLM provider could not be reached.',
+      };
+    default:
+      return {
+        title: 'AI is not ready',
+        detail: capsData.last_error || `State: ${capsData.state ?? 'unknown'}`,
+      };
+  }
+}
 
 export function ChatPanel() {
   const open = useChatStore((s) => s.panelOpen);
@@ -30,8 +75,8 @@ export function ChatPanel() {
     | undefined;
   const streaming = lastAssistant?.state === 'streaming';
 
-  const aiOff = caps.data && !caps.data.ready && caps.data.disabled_reason === 'ai_disabled';
-  const inputDisabled = !clusterId || !!aiOff || sessionExpired || connectionState === 'error';
+  const notReady = decodeNotReady(caps.data, caps.error);
+  const inputDisabled = !clusterId || !!notReady || sessionExpired || connectionState === 'error';
 
   const systemNotices = useMemo(() => {
     const out: { id: string; message: string; afterIndex: number }[] = [];
@@ -46,12 +91,21 @@ export function ChatPanel() {
   }, [sessionExpired, turns.length]);
 
   if (!open) return null;
-  if (aiOff) {
+  if (notReady) {
     return (
       <aside className={cn('flex flex-col bg-background border-l')} style={{ width: CHAT_PANEL_WIDTH_PX }}>
         <ChatHeader />
-        <div className="flex-1 flex items-center justify-center text-sm text-muted-foreground p-6">
-          AI is disabled in this deployment.
+        <div className="flex-1 flex flex-col items-center justify-center gap-3 p-8 text-center">
+          <div className="rounded-full bg-muted p-3">
+            <Settings2 className="h-6 w-6 text-muted-foreground" />
+          </div>
+          <h3 className="font-semibold text-base">{notReady.title}</h3>
+          <p className="text-sm text-muted-foreground max-w-[340px] leading-relaxed">
+            {notReady.detail}
+          </p>
+          <Button asChild size="sm" className="mt-2">
+            <Link to="/settings/ai">Open AI Settings</Link>
+          </Button>
         </div>
       </aside>
     );
@@ -71,7 +125,6 @@ export function ChatPanel() {
         streaming={streaming}
         disabledPlaceholder={
           sessionExpired ? 'Session expired — start a new chat' :
-          aiOff ? 'AI is disabled' :
           connectionState === 'error' ? 'Reconnecting…' :
           undefined
         }
