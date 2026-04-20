@@ -923,11 +923,22 @@ func (s *mcpServerImpl) handleEvents(ctx context.Context, args map[string]interf
 		q.Set("namespace", namespace)
 	}
 
-	var events map[string]interface{}
-	if err := c.get(ctx, c.clusterPath(clusterID, "/events?"+q.Encode()), &events); err != nil {
+	// Backend returns a JSON array of event objects (not an envelope). Decode into
+	// `interface{}` so we accept either array or object shape — wrap arrays in
+	// {"items": [...], "count": N} so the LLM tool response stays consistent
+	// regardless of which backend version is on the wire.
+	var raw interface{}
+	if err := c.get(ctx, c.clusterPath(clusterID, "/events?"+q.Encode()), &raw); err != nil {
 		return nil, err
 	}
-	return events, nil
+	switch v := raw.(type) {
+	case []interface{}:
+		return map[string]interface{}{"items": v, "count": len(v)}, nil
+	case map[string]interface{}:
+		return v, nil
+	default:
+		return map[string]interface{}{"items": []interface{}{}, "count": 0}, nil
+	}
 }
 
 // ─── observe_pod_ownership_chain ───────────────────────────────────────────────
