@@ -141,34 +141,46 @@ LLM actually fired (`actual_tools[]`), and a per-call `match` field
 (`exact | semantic | miss`). Concurrency: 10. Wall time: ~6 minutes.
 OpenAI cost: **$0.026**.
 
-**Headline numbers (498 prompts, 1 iteration each, gpt-4o-mini):**
+**Headline numbers (v2, 2026-04-20 — 498 prompts, 1 iteration each, gpt-4o-mini):**
 
-| metric                                  | value |
-|-----------------------------------------|-------|
+| metric                                  | v1 → v2 |
+|-----------------------------------------|---------|
 | MCP tools registered                    | **166** |
 | Prompts run                             | 498 |
-| LLM-call success rate                   | 99.6% (496/498) |
-| **Exact-match (LLM picked the named tool)** | **45.0%** (224/498) |
-| **Semantic-match (LLM picked a functional sibling)** | 0.6% (3/498) |
-| **Combined hit rate**                   | **45.6%** |
-| Miss                                    | 54.4% (271/498) |
+| LLM-call success rate                   | 99.6% (496/498) — unchanged |
+| **Exact-match (LLM picked the named tool)** | 45.0% → **47.0%** (+2.0 pp) |
+| **Semantic-match (LLM picked a functional sibling)** | 0.6% → **12.0%** (+11.4 pp) |
+| **Combined hit rate**                   | 45.6% → **59.0%** (+13.4 pp) |
+| Miss                                    | 54.4% → **41.0%** (-13.4 pp) |
 | Engine panics / lost events             | **0** |
-| LLM total ms p50 / p95                  | 4069 / 10833 |
+| `content:null` 400-errors               | 0 (preventatively fixed in v2 — `oaiMessage.MarshalJSON` always emits `"content":""` on assistant tool-call + tool messages, locked in by 4 unit tests) |
+| LLM total ms p50 / p95                  | 4069 / 10833 (unchanged) |
 | Tool exec ms p50 / p95                  | 3 / 50 (errors fast — no live backend) |
 
-**Per-category breakdown (`prompt_category`, `match` ∈ {exact, semantic, miss}):**
+v2 ships three improvements on
+[`vellankikoti/kotg.ai feat/ai-tool-coverage-improvements`](https://github.com/vellankikoti/kotg.ai/tree/feat/ai-tool-coverage-improvements):
+(1) alias map expanded from 13 → **139 entries** via a generated
+`cmd/build-aliases` Go tool that groups read-only verb families by canonical
+resource noun; (2) `content:null` engine bug fixed in
+`internal/llm/provider/openai/tool_loop.go` with custom `MarshalJSON` for
+assistant + tool messages; (3) `cmd/bench` now takes `-autonomy` and
+`-cluster-id` flags and POSTs to a new `_default_` user sentinel on the
+safety autonomy endpoint, plus `scripts/gen_prompts.py` carries explicit
+pre-authorization context on execution-category prompts.
 
-| Category         | N   | Exact   | Semantic | Combined hit |
-|------------------|-----|---------|----------|--------------|
-| cost             | 12  | 100.0%  | 0.0%     | **100.0%** |
-| troubleshooting  | 21  | 85.7%   | 0.0%     | 85.7% |
-| automation       | 12  | 75.0%   | 0.0%     | 75.0% |
-| analysis         | 93  | 69.9%   | 0.0%     | 69.9% |
-| security         | 15  | 60.0%   | 0.0%     | 60.0% |
-| action           | 15  | 40.0%   | 0.0%     | 40.0% |
-| recommendation   | 24  | 37.5%   | 0.0%     | 37.5% |
-| observation      | 279 | 34.1%   | 1.1%     | 35.1% |
-| execution        | 27  | 3.7%    | 0.0%     | 3.7% |
+**Per-category breakdown — v1 → v2 deltas (`prompt_category`, `match` ∈ {exact, semantic, miss}):**
+
+| Category         | N   | v1 combined | v2 combined | Δ |
+|------------------|-----|-------------|-------------|---|
+| cost             | 12  | 100.0%      | 100.0%      | +0.0 pp |
+| analysis         | 93  | 69.9%       | **88.2%**   | **+18.3 pp** |
+| troubleshooting  | 21  | 85.7%       | 85.7%       | +0.0 pp |
+| automation       | 12  | 75.0%       | 75.0%       | +0.0 pp |
+| recommendation   | 24  | 37.5%       | **75.0%**   | **+37.5 pp** |
+| security         | 15  | 60.0%       | **73.3%**   | **+13.3 pp** |
+| action           | 15  | 40.0%       | **66.7%**   | **+26.7 pp** |
+| observation      | 279 | 35.1%       | **46.2%**   | **+11.1 pp** |
+| execution        | 27  | 3.7%        | **18.5%**   | **+14.8 pp** |
 
 **Honest analysis of the misses (no spin):**
 
