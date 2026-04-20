@@ -887,15 +887,30 @@ func (h *Handler) GetClusterSummary(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// getClientFromRequest returns client (from kubeconfig or stored cluster); build summary from it
-	info, infoErr := client.GetClusterInfo(r.Context())
-	if infoErr != nil {
-		respondUnreachable(infoErr)
+	// Compute node & namespace counts directly from List calls instead of
+	// via Client.GetClusterInfo. GetClusterInfo is the only K8s path in
+	// this handler that goes through the per-Client circuit breaker, and
+	// a stuck breaker was marking /summary unreachable (→ cached banner
+	// on the sidebar) even when every other list endpoint on the same
+	// cluster was returning live data. The fanout below already lists
+	// every namespaced resource via the raw clientset — this keeps
+	// /summary's health independent of TestConnection's breaker state.
+	nodes, _ := client.Clientset.CoreV1().Nodes().List(r.Context(), metav1.ListOptions{})
+	namespaces, _ := client.Clientset.CoreV1().Namespaces().List(r.Context(), metav1.ListOptions{})
+	nodeCount := 0
+	if nodes != nil {
+		nodeCount = len(nodes.Items)
+	}
+	namespaceCount := 0
+	if namespaces != nil {
+		namespaceCount = len(namespaces.Items)
+	}
+	// If both calls returned nil (not just "no data"), the apiserver is
+	// genuinely unreachable — fall back to cached snapshot same as before.
+	if nodes == nil && namespaces == nil {
+		respondUnreachable(fmt.Errorf("cluster API returned no data for nodes or namespaces"))
 		return
 	}
-	nodeCount, _ := info["node_count"].(int)
-	namespaceCount, _ := info["namespace_count"].(int)
-	nodes, _ := client.Clientset.CoreV1().Nodes().List(r.Context(), metav1.ListOptions{})
 
 	var projectNSSet map[string]struct{}
 	if projectID := strings.TrimSpace(r.URL.Query().Get("projectId")); projectID != "" && h.projSvc != nil {
