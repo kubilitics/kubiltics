@@ -123,18 +123,37 @@ today (2026-04-20).
 The Router + Wrapper layers add **no measurable latency**.
 
 ### Ollama qwen2.5:3b on AWS t3.large (2 vCPU, CPU-only)
-Same prompts, locally hosted Ollama:
+Same 3 prompts × 3 iterations + warmup, locally hosted Ollama on a stopped/started
+EC2 t3.large at $0.083/hr:
 
-| metric          | value |
-|-----------------|-------|
-| TTFT (warm)     | ~1.0 s |
-| Throughput      | ~2.9 tokens/sec |
-| Worst case      | 200 s for a 576-token answer |
+| metric            | value |
+|-------------------|-------|
+| success rate      | 100% (9/9) |
+| TTFT p50 / p95    | 1064 / 6124 ms (warm/cold) |
+| total p50 / p95   | **123,177 / 201,593 ms** |
+| throughput        | 3.0 tokens/sec sustained |
+| tokens out total  | 3053 (avg 339/answer) |
+| cost              | $0 incremental (~$0.10 for the bench session itself) |
 
-**Honest read:** CPU inference on small VMs is unsuitable for production
-chat UX. Production deploys land on GPU (A10G g5.xlarge: ~50-100 tok/s) or
-hosted APIs. Bench numbers above are real, captured with the public bench
-tool, and reproducible with one command.
+**Honest read:** CPU inference on small VMs is **unsuitable for production
+chat UX** — a 200-second answer to a single troubleshooting question is
+dead on arrival for an interactive product. Two clean fixes, both
+one-line config changes:
+
+1. **GPU**: switch `instance_type = "g5.xlarge"` (NVIDIA A10G, ~$1/hr) → expect ~50-100 tok/s, total p50 in the ~3-5s range.
+2. **Hosted API**: switch `provider: openai` (or anthropic) → see the OpenAI numbers above.
+
+The takeaway is **not** "Ollama is bad" — it's that the LLM-direct path
+is provider-agnostic and the bench harness gives an honest dollar-for-dollar
+picture. Same code, three providers, three real numbers.
+
+**Cold-load tax:** first request after a model loads into RAM takes ~5-11s
+extra TTFT (model pages in). All subsequent calls are warm at ~1s TTFT.
+Production deploys should keep one always-warm replica per model.
+
+Bench numbers above are real, captured with the public bench tool
+(`kubilitics-ai/cmd/bench/`), and reproducible with one command. Wide-event
+ndjson at `/tmp/ollama-smoke.ndjson` and `/tmp/openai-smoke.ndjson`.
 
 ---
 
