@@ -139,9 +139,27 @@ kcli:
 ai:
   enabled: false
   endpoint: "kubilitics-ai.kubilitics.svc.cluster.local:50051"      # gRPC host:port
-  httpEndpoint: "http://kubilitics-ai.kubilitics.svc.cluster.local:8080"  # HTTP base URL
+  httpEndpoint: "http://kubilitics-ai.kubilitics.svc.cluster.local:8081"  # HTTP base URL
   requestTimeoutSeconds: 30
   rateLimitPerUserPerMin: 30  # per-user request budget per minute
+
+# kubilitics-ai sub-chart — the AI brain. Disabled by default; enable
+# alongside ai.enabled=true to deploy backend + brain in one install.
+# When disabled, the parent chart still wires the AI client env vars
+# (use this when the brain runs in a different namespace or cluster).
+# fullnameOverride locks the sub-chart's Service name to "kubilitics-ai"
+# so the backend's default ai.endpoint resolves regardless of release name.
+kubilitics-ai:
+  enabled: false
+  fullnameOverride: kubilitics-ai
+  # All other knobs (image, llm.provider, engines.*, safety.*, etc.)
+  # are inherited from the sub-chart's defaults at
+  # charts/kubilitics-ai/values.yaml. Override here as needed, e.g.:
+  # llm:
+  #   provider: ollama
+  #   ollama:
+  #     baseUrl: http://ollama.default.svc.cluster.local:11434
+  #     model: qwen2.5-coder:7b
 
 # Use in-cluster kubeconfig (default). For multiple clusters, backend adds them via API.
 # kubeconfig: leave empty to use in-cluster service account
