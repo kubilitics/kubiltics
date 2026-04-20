@@ -1,7 +1,5 @@
-# bench binary built locally; do not commit
-bench
-server
+# local-built binaries (do not commit)
+/bench
+/server
 # local bench configs (contain API keys)
-config-bench.yaml
-config-llm-tools.yaml
-config-kagent.yaml
+config-*.yaml

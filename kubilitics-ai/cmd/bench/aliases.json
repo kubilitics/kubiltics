@@ -1,0 +1,16 @@
+{
+  "_doc": "Tools that are functionally siblings — picking either should count as a semantic match.",
+  "observe_cluster_overview": ["get_cluster_health", "observe_cluster_health"],
+  "get_cluster_health": ["observe_cluster_overview", "observe_cluster_health"],
+  "list_resources": ["observe_resources_by_query", "observe_resource"],
+  "get_resource": ["observe_resource", "observe_pod_detailed"],
+  "get_logs": ["observe_pod_logs"],
+  "observe_pod_logs": ["get_logs"],
+  "observe_resource": ["get_resource", "list_resources"],
+  "observe_resources_by_query": ["list_resources"],
+  "observe_events": ["get_events", "list_events"],
+  "analyze_pod_health": ["observe_pod_detailed", "diagnose_pod"],
+  "diagnose_pod": ["analyze_pod_health"],
+  "observe_metrics": ["get_metrics", "observe_pod_metrics"],
+  "observe_pod_detailed": ["observe_resource", "get_resource", "analyze_pod_health"]
+}

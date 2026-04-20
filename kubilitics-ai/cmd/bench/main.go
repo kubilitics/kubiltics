@@ -18,6 +18,7 @@ import (
 	"net/http"
 	"os"
 	"sort"
+	"sync"
 	"time"
 
 	kotgv1 "github.com/vellankikoti/kotg-schema/gen/go/kotg/v1"
@@ -30,9 +31,10 @@ import (
 const schemaVersion = 1
 
 type promptDef struct {
-	ID       string `yaml:"id"`
-	Category string `yaml:"category"`
-	Text     string `yaml:"text"`
+	ID           string `yaml:"id"`
+	Category     string `yaml:"category"`
+	Text         string `yaml:"text"`
+	ExpectedTool string `yaml:"expected_tool"`
 }
 
 type promptFile struct {
@@ -75,7 +77,10 @@ type wideEvent struct {
 	ErrorMessage       string                 `json:"error_message"`
 
 	// LLM-call only:
-	ToolCallsTotal int `json:"tool_calls_total,omitempty"`
+	ToolCallsTotal int      `json:"tool_calls_total,omitempty"`
+	ExpectedTool   string   `json:"expected_tool,omitempty"`
+	ActualTools    []string `json:"actual_tools,omitempty"`
+	Match          string   `json:"match,omitempty"` // exact|semantic|miss|n/a
 
 	// Tool-call only (event_type=bench.tool_call):
 	CallID         string `json:"call_id,omitempty"`
@@ -96,8 +101,10 @@ type benchConfig struct {
 	warmup     int
 	iterations int
 	timeout    time.Duration
-	tag        string
-	dryRun     bool
+	tag         string
+	dryRun      bool
+	concurrency int
+	aliasesFile string
 }
 
 type capabilities struct {
@@ -126,6 +133,8 @@ func parseFlags() benchConfig {
 	flag.DurationVar(&cfg.timeout, "timeout", 2*time.Minute, "per-prompt deadline")
 	flag.StringVar(&cfg.tag, "tag", "untagged", "free-form tag stamped on every row, e.g. 'ollama-llama3-7b'")
 	flag.BoolVar(&cfg.dryRun, "dry-run", false, "use in-process bufconn mock; no real LLM call")
+	flag.IntVar(&cfg.concurrency, "concurrency", 1, "number of prompts to run in parallel")
+	flag.StringVar(&cfg.aliasesFile, "aliases", "cmd/bench/aliases.json", "path to tool-alias map for semantic-match scoring")
 	flag.Parse()
 	return cfg
 }
@@ -171,33 +180,58 @@ func run(ctx context.Context, cfg benchConfig, customDialer dialer) error {
 
 	chat := kotgv1.NewChatClient(conn)
 
+	aliases := loadAliases(cfg.aliasesFile)
+
 	out, err := os.Create(cfg.output)
 	if err != nil {
 		return fmt.Errorf("open output: %w", err)
 	}
 	defer func() { _ = out.Close() }()
 	enc := json.NewEncoder(out)
-
+	var encMu sync.Mutex
+	var rowsMu sync.Mutex
 	var allRows []wideEvent
+
+	concurrency := cfg.concurrency
+	if concurrency < 1 {
+		concurrency = 1
+	}
+	sem := make(chan struct{}, concurrency)
+	var wg sync.WaitGroup
+	startWall := time.Now()
+	totalUnits := len(prompts) * cfg.iterations
+	var doneCount int
 	for _, p := range prompts {
-		// Warmup: same code path, results discarded.
+		// Warmup: same code path, results discarded. Sequential; warmup is rare.
 		for i := 0; i < cfg.warmup; i++ {
-			_, _ = runIteration(ctx, chat, cfg, caps, p, -1)
+			_, _ = runIteration(ctx, chat, cfg, caps, p, -1, aliases)
 		}
 		for i := 1; i <= cfg.iterations; i++ {
-			row, toolRows := runIteration(ctx, chat, cfg, caps, p, i)
-			for _, tr := range toolRows {
-				if err := enc.Encode(tr); err != nil {
-					return fmt.Errorf("encode tool row: %w", err)
+			wg.Add(1)
+			sem <- struct{}{}
+			go func(p promptDef, i int) {
+				defer wg.Done()
+				defer func() { <-sem }()
+				row, toolRows := runIteration(ctx, chat, cfg, caps, p, i, aliases)
+				encMu.Lock()
+				for _, tr := range toolRows {
+					_ = enc.Encode(tr)
 				}
-				allRows = append(allRows, tr)
-			}
-			if err := enc.Encode(row); err != nil {
-				return fmt.Errorf("encode row: %w", err)
-			}
-			allRows = append(allRows, row)
+				_ = enc.Encode(row)
+				encMu.Unlock()
+				rowsMu.Lock()
+				allRows = append(allRows, toolRows...)
+				allRows = append(allRows, row)
+				doneCount++
+				if doneCount%25 == 0 || doneCount == totalUnits {
+					fmt.Fprintf(os.Stderr, "[bench] %d/%d done in %s\n",
+						doneCount, totalUnits, time.Since(startWall).Round(time.Second))
+				}
+				rowsMu.Unlock()
+			}(p, i)
 		}
 	}
+	wg.Wait()
 
 	summary := summarize(allRows, cfg, caps)
 	if err := enc.Encode(summary); err != nil {
@@ -207,7 +241,7 @@ func run(ctx context.Context, cfg benchConfig, customDialer dialer) error {
 	return nil
 }
 
-func runIteration(ctx context.Context, chat kotgv1.ChatClient, cfg benchConfig, caps capabilities, p promptDef, iteration int) (wideEvent, []wideEvent) {
+func runIteration(ctx context.Context, chat kotgv1.ChatClient, cfg benchConfig, caps capabilities, p promptDef, iteration int, aliases map[string][]string) (wideEvent, []wideEvent) {
 	row := wideEvent{
 		SchemaVersion:      schemaVersion,
 		TS:                 time.Now().UTC().Format(time.RFC3339Nano),
@@ -223,6 +257,7 @@ func runIteration(ctx context.Context, chat kotgv1.ChatClient, cfg benchConfig, 
 		PromptCategory:     p.Category,
 		Iteration:          iteration,
 		InputTokenEstimate: estimateTokens(p.Text),
+		ExpectedTool:       p.ExpectedTool,
 		Attributes:         map[string]interface{}{},
 	}
 
@@ -294,11 +329,13 @@ func runIteration(ctx context.Context, chat kotgv1.ChatClient, cfg benchConfig, 
 			row.OutputChars += len(text)
 		case *kotgv1.AssistantEvent_ToolStart:
 			callID := v.ToolStart.GetToolCallId()
+			toolName := v.ToolStart.GetToolName()
 			pending[callID] = pendingTool{
-				name:    v.ToolStart.GetToolName(),
+				name:    toolName,
 				startTS: time.Now(),
 			}
 			row.ToolCallsTotal++
+			row.ActualTools = append(row.ActualTools, toolName)
 		case *kotgv1.AssistantEvent_ToolEnd:
 			callID := v.ToolEnd.GetToolCallId()
 			start, ok := pending[callID]
@@ -351,7 +388,66 @@ func runIteration(ctx context.Context, chat kotgv1.ChatClient, cfg benchConfig, 
 			row.CharsPerSec = float64(row.OutputChars) / dur
 		}
 	}
+	row.Match = scoreMatch(p.ExpectedTool, row.ActualTools, aliases)
 	return row, toolRows
+}
+
+// scoreMatch returns "exact" (expected ∈ actual), "semantic" (alias of expected
+// ∈ actual), "miss" (expected was set but no match), or "n/a" (no expected_tool
+// in the prompt def).
+func scoreMatch(expected string, actual []string, aliases map[string][]string) string {
+	if expected == "" {
+		return "n/a"
+	}
+	if len(actual) == 0 {
+		return "miss"
+	}
+	for _, a := range actual {
+		if a == expected {
+			return "exact"
+		}
+	}
+	for _, sib := range aliases[expected] {
+		for _, a := range actual {
+			if a == sib {
+				return "semantic"
+			}
+		}
+	}
+	return "miss"
+}
+
+// loadAliases reads the alias JSON map. Best-effort: missing/invalid file
+// yields an empty map (only exact matches will count).
+func loadAliases(path string) map[string][]string {
+	out := map[string][]string{}
+	if path == "" {
+		return out
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return out
+	}
+	var raw map[string]interface{}
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return out
+	}
+	for k, v := range raw {
+		arr, ok := v.([]interface{})
+		if !ok {
+			continue
+		}
+		var siblings []string
+		for _, item := range arr {
+			if s, ok := item.(string); ok {
+				siblings = append(siblings, s)
+			}
+		}
+		if len(siblings) > 0 {
+			out[k] = siblings
+		}
+	}
+	return out
 }
 
 func loadPrompts(path string) ([]promptDef, error) {
