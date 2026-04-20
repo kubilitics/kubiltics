@@ -42,6 +42,12 @@ type promptFile struct {
 
 // wideEvent is the per-iteration row appended to the NDJSON output.
 // Flat top-level fields stay queryable; new keys go in Attributes.
+//
+// The same struct carries two event_type variants:
+//   - "bench.llm_call":  one row per iteration (LLM round-trip)
+//   - "bench.tool_call": one row per MCP tool round-trip during an iteration
+//
+// Tool-call rows reuse the LLM-call's correlation_id so they JOIN naturally.
 type wideEvent struct {
 	SchemaVersion      int                    `json:"schema_version"`
 	TS                 string                 `json:"ts"`
@@ -67,7 +73,18 @@ type wideEvent struct {
 	Cancelled          bool                   `json:"cancelled"`
 	ErrorCode          string                 `json:"error_code"`
 	ErrorMessage       string                 `json:"error_message"`
-	Attributes         map[string]interface{} `json:"attributes"`
+
+	// LLM-call only:
+	ToolCallsTotal int `json:"tool_calls_total,omitempty"`
+
+	// Tool-call only (event_type=bench.tool_call):
+	CallID         string `json:"call_id,omitempty"`
+	ToolName       string `json:"tool_name,omitempty"`
+	ToolLatencyMs  int64  `json:"tool_latency_ms,omitempty"`
+	OK             bool   `json:"ok,omitempty"`
+	ResultChars    int    `json:"result_chars,omitempty"`
+
+	Attributes map[string]interface{} `json:"attributes"`
 }
 
 type benchConfig struct {
@@ -165,10 +182,16 @@ func run(ctx context.Context, cfg benchConfig, customDialer dialer) error {
 	for _, p := range prompts {
 		// Warmup: same code path, results discarded.
 		for i := 0; i < cfg.warmup; i++ {
-			_ = runIteration(ctx, chat, cfg, caps, p, -1)
+			_, _ = runIteration(ctx, chat, cfg, caps, p, -1)
 		}
 		for i := 1; i <= cfg.iterations; i++ {
-			row := runIteration(ctx, chat, cfg, caps, p, i)
+			row, toolRows := runIteration(ctx, chat, cfg, caps, p, i)
+			for _, tr := range toolRows {
+				if err := enc.Encode(tr); err != nil {
+					return fmt.Errorf("encode tool row: %w", err)
+				}
+				allRows = append(allRows, tr)
+			}
 			if err := enc.Encode(row); err != nil {
 				return fmt.Errorf("encode row: %w", err)
 			}
@@ -184,7 +207,7 @@ func run(ctx context.Context, cfg benchConfig, customDialer dialer) error {
 	return nil
 }
 
-func runIteration(ctx context.Context, chat kotgv1.ChatClient, cfg benchConfig, caps capabilities, p promptDef, iteration int) wideEvent {
+func runIteration(ctx context.Context, chat kotgv1.ChatClient, cfg benchConfig, caps capabilities, p promptDef, iteration int) (wideEvent, []wideEvent) {
 	row := wideEvent{
 		SchemaVersion:      schemaVersion,
 		TS:                 time.Now().UTC().Format(time.RFC3339Nano),
@@ -214,7 +237,7 @@ func runIteration(ctx context.Context, chat kotgv1.ChatClient, cfg benchConfig, 
 		row.Result = "failure"
 		row.ErrorCode = "create_session"
 		row.ErrorMessage = err.Error()
-		return row
+		return row, nil
 	}
 
 	turnID := newID()
@@ -224,7 +247,7 @@ func runIteration(ctx context.Context, chat kotgv1.ChatClient, cfg benchConfig, 
 		row.Result = "failure"
 		row.ErrorCode = "stream_open"
 		row.ErrorMessage = err.Error()
-		return row
+		return row, nil
 	}
 	if err := stream.Send(&kotgv1.UserMessage{
 		SessionId: sess.SessionId,
@@ -234,9 +257,16 @@ func runIteration(ctx context.Context, chat kotgv1.ChatClient, cfg benchConfig, 
 		row.Result = "failure"
 		row.ErrorCode = "send_user_message"
 		row.ErrorMessage = err.Error()
-		return row
+		return row, nil
 	}
 	_ = stream.CloseSend()
+
+	type pendingTool struct {
+		name    string
+		startTS time.Time
+	}
+	pending := map[string]pendingTool{}
+	var toolRows []wideEvent
 
 	var t1 time.Time
 	for {
@@ -262,6 +292,46 @@ func runIteration(ctx context.Context, chat kotgv1.ChatClient, cfg benchConfig, 
 			}
 			row.Chunks++
 			row.OutputChars += len(text)
+		case *kotgv1.AssistantEvent_ToolStart:
+			callID := v.ToolStart.GetToolCallId()
+			pending[callID] = pendingTool{
+				name:    v.ToolStart.GetToolName(),
+				startTS: time.Now(),
+			}
+			row.ToolCallsTotal++
+		case *kotgv1.AssistantEvent_ToolEnd:
+			callID := v.ToolEnd.GetToolCallId()
+			start, ok := pending[callID]
+			delete(pending, callID)
+			now := time.Now()
+			toolRow := wideEvent{
+				SchemaVersion:  schemaVersion,
+				TS:             now.UTC().Format(time.RFC3339Nano),
+				CorrelationID:  row.CorrelationID,
+				EventType:      "bench.tool_call",
+				Result:         "success",
+				Tag:            cfg.tag,
+				Provider:       caps.Provider,
+				Model:          caps.Model,
+				AIVersion:      caps.AIVersion,
+				ClusterID:      cfg.clusterID,
+				PromptID:       p.ID,
+				PromptCategory: p.Category,
+				Iteration:      iteration,
+				CallID:         callID,
+				ToolName:       start.name,
+				OK:             v.ToolEnd.GetOk(),
+				ResultChars:    len(v.ToolEnd.GetPreview()),
+				Attributes:     map[string]interface{}{},
+			}
+			if ok {
+				toolRow.ToolLatencyMs = now.Sub(start.startTS).Milliseconds()
+			}
+			if !v.ToolEnd.GetOk() {
+				toolRow.Result = "failure"
+				toolRow.ErrorMessage = v.ToolEnd.GetPreview()
+			}
+			toolRows = append(toolRows, toolRow)
 		case *kotgv1.AssistantEvent_Error:
 			row.Result = "failure"
 			row.ErrorCode = v.Error.GetCode()
@@ -281,7 +351,7 @@ func runIteration(ctx context.Context, chat kotgv1.ChatClient, cfg benchConfig, 
 			row.CharsPerSec = float64(row.OutputChars) / dur
 		}
 	}
-	return row
+	return row, toolRows
 }
 
 func loadPrompts(path string) ([]promptDef, error) {

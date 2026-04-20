@@ -139,8 +139,29 @@ func main() {
 		auditLogger = nil
 	}
 
+	// Wire CompleteWithTools into the LLM-direct engine path so MCP tools
+	// fire from real LLM calls. The bridge holds Tools+Executor; the engine
+	// observes via the LLMToolProvider interface and never imports the MCP
+	// or types packages directly.
+	toolSchemas := srv.GetToolSchemas()
+	toolExecutor := srv.GetToolExecutor()
+	bridge := &runtime.LLMAdapterBridge{
+		A:        llmAdapter,
+		Tools:    toolSchemas,
+		Executor: toolExecutor,
+	}
+	llmEngOpts := []runtime.EngineOption{}
+	if toolExecutor != nil && len(toolSchemas) > 0 {
+		llmEngOpts = append(llmEngOpts, runtime.WithToolProvider(bridge, len(toolSchemas)))
+		fmt.Printf("LLM engine: tool-aware path enabled with %d MCP tools\n", len(toolSchemas))
+	} else {
+		fmt.Printf("LLM engine: text-only path (no MCP tools registered)\n")
+	}
+	if auditLogger != nil {
+		llmEngOpts = append(llmEngOpts, runtime.WithAudit(auditLogger))
+	}
 	engines := []router.Engine{
-		runtime.NewLLMEngine(&runtime.LLMAdapterBridge{A: llmAdapter}),
+		runtime.NewLLMEngine(bridge, llmEngOpts...),
 	}
 	if kagentEndpoint := os.Getenv("KAGENT_ENDPOINT"); kagentEndpoint != "" {
 		engines = append(engines, kagent.New(kagent.Config{

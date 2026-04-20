@@ -43,6 +43,7 @@ type Server struct {
 	llmAdapter        adapter.LLMAdapter
 	mcpServer         mcpserver.MCPServer
 	toolExecutor      types.ToolExecutor
+	toolSchemas       []types.Tool
 	safetyEngine      *safety.Engine
 	analyticsEngine   *analytics.Engine
 	conversationStore *ConversationStore
@@ -300,6 +301,7 @@ func (s *Server) initializeComponents() error {
 				}
 			}
 		}
+		s.toolSchemas = toolSchemas
 
 		s.reasoningEngine = reasoningengine.NewReasoningEngine(
 			s.store,
@@ -431,6 +433,12 @@ func (s *Server) GetMCPServer() mcpserver.MCPServer {
 // GetToolExecutor returns the tool executor (may be nil).
 func (s *Server) GetToolExecutor() types.ToolExecutor {
 	return s.toolExecutor
+}
+
+// GetToolSchemas returns the tool taxonomy as adapter-friendly schemas.
+// May be empty if the MCP server is disabled or failed to register tools.
+func (s *Server) GetToolSchemas() []types.Tool {
+	return s.toolSchemas
 }
 
 // GetSafetyEngine returns the safety engine
