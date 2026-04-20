@@ -71,7 +71,7 @@ func kindToRestPlural(kind string) string {
 func (s *mcpServerImpl) http() *backendHTTP {
 	baseURL := s.config.Backend.HTTPBaseURL
 	if baseURL == "" {
-		baseURL = "http://localhost:819"
+		baseURL = "http://localhost:8190"
 	}
 	return newBackendHTTP(baseURL)
 }

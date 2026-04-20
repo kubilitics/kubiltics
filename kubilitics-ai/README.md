@@ -46,7 +46,7 @@ kubilitics-ai (port 8081)
 ├── WebSocket Handler (streaming investigation updates)
 └── Audit Logger (immutable append-only log)
         ↓
-kubilitics-backend (port 819, separate service)
+kubilitics-backend (port 8190, separate service)
         ↓
 Kubernetes API Server
 ```

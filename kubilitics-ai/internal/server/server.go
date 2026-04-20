@@ -731,7 +731,7 @@ func (s *Server) corsMiddleware(next http.Handler) http.Handler {
 		"tauri://",
 		"http://tauri.localhost",
 		"http://localhost:5173",
-		"http://localhost:819",
+		"http://localhost:8190",
 		"http://localhost:8081",
 	}
 	allowedSet := make(map[string]struct{}, len(defaultOrigins))

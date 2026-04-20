@@ -94,7 +94,7 @@ type Config struct {
 	// Backend configuration
 	Backend struct {
 		Address     string // gRPC address (e.g. localhost:50051)
-		HTTPBaseURL string // REST API base URL (e.g. http://localhost:819) for draw.io export, etc.
+		HTTPBaseURL string // REST API base URL (e.g. http://localhost:8190) for draw.io export, etc.
 		Timeout     int
 		TLSEnabled  bool
 		TLSCertPath string // client cert for mTLS
