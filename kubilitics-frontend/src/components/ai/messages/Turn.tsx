@@ -15,9 +15,14 @@ export function Turn({ turn }: Props) {
   // Detect the "ran tools but no text answer" case so we render a clear
   // fallback instead of a silent gap. Previously this rendered as two bare
   // "UI support coming soon" stubs.
-  const hasAnyText = turn.blocks.some((b) => b.type === 'text' && b.content.trim().length > 0);
+  // Defensive: blocks persisted from older shapes may lack `content`; treat
+  // missing/empty content as "no text".
+  const hasAnyText = turn.blocks.some(
+    (b) => b.type === 'text' && typeof b.content === 'string' && b.content.trim().length > 0,
+  );
   const hasAnyTool = turn.blocks.some((b) => b.type === 'tool');
-  const allToolsDone = hasAnyTool && turn.blocks.every((b) => b.type !== 'tool' || b.endedAt !== undefined);
+  const allToolsDone =
+    hasAnyTool && turn.blocks.every((b) => b.type !== 'tool' || b.endedAt !== undefined);
   const noAnswer = turn.state === 'done' && hasAnyTool && allToolsDone && !hasAnyText;
 
   return (

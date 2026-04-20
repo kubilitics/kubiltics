@@ -135,9 +135,22 @@ export const useChatStore = create<ChatState>((set, get) => ({
       const lastIdx = turns.length - 1;
       const last = turns[lastIdx];
       if (last.kind !== 'assistant') return s;
-      const completedBlocks = last.blocks.map((b) =>
-        b.type === 'text' ? { ...b, complete: true } : b
-      );
+      // Force-finalize every block on turn completion. Text blocks lose the
+      // streaming cursor; tool blocks that never received their tool_end (LLM
+      // crashed mid-tool, network drop, brain timeout) are marked failed so
+      // the spinner doesn't loop forever.
+      const completedBlocks = last.blocks.map((b) => {
+        if (b.type === 'text') return { ...b, complete: true };
+        if (b.type === 'tool' && b.endedAt === undefined) {
+          return {
+            ...b,
+            ok: false,
+            endedAt: finishedAt,
+            endPreview: b.endPreview ?? 'Tool did not complete before the turn ended.',
+          };
+        }
+        return b;
+      });
       const finished: Turn = {
         ...last,
         kind: 'assistant',

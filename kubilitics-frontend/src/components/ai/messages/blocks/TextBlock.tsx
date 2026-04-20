@@ -13,9 +13,12 @@ interface Props {
  * the end of the rendered content.
  */
 export function TextBlock({ content, complete }: Props) {
+  // Defensive: blocks rehydrated from older persisted shapes may be missing
+  // `content`. ReactMarkdown crashes on undefined input; coerce to empty.
+  const safe = typeof content === 'string' ? content : '';
   return (
     <div className={cn('text-sm leading-relaxed prose prose-sm max-w-none dark:prose-invert')}>
-      <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>
+      <ReactMarkdown remarkPlugins={[remarkGfm]}>{safe}</ReactMarkdown>
       {!complete && (
         <span
           data-streaming-cursor="true"
