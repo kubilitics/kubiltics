@@ -209,10 +209,34 @@ func NewAnalysisToolsWithProxy(proxy BackendProxy) *AnalysisTools {
 	}
 }
 
+// resolveClusterID picks the cluster_id for a backend REST call. Prefers
+// the session's focus cluster (injected into args by
+// runtime.clusterIDInjectingExecutor) and falls back to the first
+// registered cluster only when the LLM omits it AND no injection happened.
+// This mirrors Headlamp's per-request /clusters/{clusterName}/... model —
+// the brain never picks a cluster on its own when the operator has
+// already chosen one for the chat session.
+func (t *AnalysisTools) resolveClusterID(ctx context.Context, args map[string]interface{}) (string, error) {
+	if args != nil {
+		if id, ok := args["cluster_id"].(string); ok && id != "" {
+			return id, nil
+		}
+	}
+	if t.restCli == nil {
+		return "", fmt.Errorf("no cluster_id in args and no REST fallback configured")
+	}
+	id := t.restCli.firstClusterID(ctx)
+	if id == "" {
+		return "", fmt.Errorf("no clusters registered in backend")
+	}
+	return id, nil
+}
+
 // listResources calls the gRPC proxy first; if it returns "proxy not initialized"
-// it transparently falls back to the REST API. This makes all 12 analysis tools
-// resilient to gRPC connectivity issues (AI-FIX-001).
-func (t *AnalysisTools) listResources(ctx context.Context, kind, namespace string) ([]*pb.Resource, error) {
+// it transparently falls back to the REST API. The args map is consulted for
+// cluster_id so the session's focus cluster is honored instead of always
+// falling through to the first registered cluster.
+func (t *AnalysisTools) listResources(ctx context.Context, args map[string]interface{}, kind, namespace string) ([]*pb.Resource, error) {
 	resources, err := t.proxy.ListResources(ctx, kind, namespace)
 	if err == nil {
 		return resources, nil
@@ -228,9 +252,9 @@ func (t *AnalysisTools) listResources(ctx context.Context, kind, namespace strin
 		return nil, fmt.Errorf("gRPC proxy not initialized and no REST fallback configured")
 	}
 
-	clusterID := t.restCli.firstClusterID(ctx)
-	if clusterID == "" {
-		return nil, fmt.Errorf("no clusters registered in backend")
+	clusterID, cerr := t.resolveClusterID(ctx, args)
+	if cerr != nil {
+		return nil, cerr
 	}
 
 	plural := kindToPlural(kind)
@@ -247,7 +271,8 @@ func (t *AnalysisTools) listResources(ctx context.Context, kind, namespace strin
 }
 
 // getResource calls the gRPC proxy first; falls back to REST on "proxy not initialized".
-func (t *AnalysisTools) getResource(ctx context.Context, kind, namespace, name string) (*pb.Resource, error) {
+// Honors args["cluster_id"] for the REST path so the session's focus cluster is used.
+func (t *AnalysisTools) getResource(ctx context.Context, args map[string]interface{}, kind, namespace, name string) (*pb.Resource, error) {
 	resource, err := t.proxy.GetResource(ctx, kind, namespace, name)
 	if err == nil {
 		return resource, nil
@@ -262,9 +287,9 @@ func (t *AnalysisTools) getResource(ctx context.Context, kind, namespace, name s
 		return nil, fmt.Errorf("gRPC proxy not initialized and no REST fallback configured")
 	}
 
-	clusterID := t.restCli.firstClusterID(ctx)
-	if clusterID == "" {
-		return nil, fmt.Errorf("no clusters registered in backend")
+	clusterID, cerr := t.resolveClusterID(ctx, args)
+	if cerr != nil {
+		return nil, cerr
 	}
 
 	plural := kindToPlural(kind)
@@ -309,7 +334,7 @@ func (t *AnalysisTools) AnalyzePodHealth(ctx context.Context, args map[string]in
 		return nil, fmt.Errorf("analyze_pod_health: invalid args: %w", err)
 	}
 
-	pods, err := t.listResources(ctx, "Pod", a.Namespace)
+	pods, err := t.listResources(ctx, args, "Pod", a.Namespace)
 	if err != nil {
 		return nil, fmt.Errorf("analyze_pod_health: %w", err)
 	}
@@ -421,7 +446,7 @@ func (t *AnalysisTools) AnalyzeDeploymentHealth(ctx context.Context, args map[st
 		return nil, fmt.Errorf("analyze_deployment_health: invalid args: %w", err)
 	}
 
-	deployments, err := t.listResources(ctx, "Deployment", a.Namespace)
+	deployments, err := t.listResources(ctx, args, "Deployment", a.Namespace)
 	if err != nil {
 		return nil, fmt.Errorf("analyze_deployment_health: %w", err)
 	}
@@ -492,7 +517,7 @@ func (t *AnalysisTools) AnalyzeNodePressure(ctx context.Context, args map[string
 		return nil, fmt.Errorf("analyze_node_pressure: invalid args: %w", err)
 	}
 
-	nodes, err := t.listResources(ctx, "Node", "")
+	nodes, err := t.listResources(ctx, args, "Node", "")
 	if err != nil {
 		return nil, fmt.Errorf("analyze_node_pressure: %w", err)
 	}
@@ -569,7 +594,7 @@ func (t *AnalysisTools) DetectResourceContention(ctx context.Context, args map[s
 		return nil, fmt.Errorf("detect_resource_contention: invalid args: %w", err)
 	}
 
-	pods, err := t.listResources(ctx, "Pod", a.Namespace)
+	pods, err := t.listResources(ctx, args, "Pod", a.Namespace)
 	if err != nil {
 		return nil, fmt.Errorf("detect_resource_contention: %w", err)
 	}
@@ -636,7 +661,7 @@ func (t *AnalysisTools) AnalyzeNetworkConnectivity(ctx context.Context, args map
 		return nil, fmt.Errorf("analyze_network_connectivity: invalid args: %w", err)
 	}
 
-	services, err := t.listResources(ctx, "Service", a.Namespace)
+	services, err := t.listResources(ctx, args, "Service", a.Namespace)
 	if err != nil {
 		return nil, fmt.Errorf("analyze_network_connectivity: failed to list services: %w", err)
 	}
@@ -644,8 +669,8 @@ func (t *AnalysisTools) AnalyzeNetworkConnectivity(ctx context.Context, args map
 		services = filterByName(services, a.Name)
 	}
 
-	networkPolicies, _ := t.listResources(ctx, "NetworkPolicy", a.Namespace)
-	endpoints, _ := t.listResources(ctx, "Endpoints", a.Namespace)
+	networkPolicies, _ := t.listResources(ctx, args, "NetworkPolicy", a.Namespace)
+	endpoints, _ := t.listResources(ctx, args, "Endpoints", a.Namespace)
 
 	// Map endpoint readiness by service name
 	endpointReady := map[string]bool{}
@@ -702,12 +727,12 @@ func (t *AnalysisTools) AnalyzeRBACPermissions(ctx context.Context, args map[str
 		return nil, fmt.Errorf("analyze_rbac_permissions: invalid args: %w", err)
 	}
 
-	roleBindings, err := t.listResources(ctx, "RoleBinding", a.Namespace)
+	roleBindings, err := t.listResources(ctx, args, "RoleBinding", a.Namespace)
 	if err != nil {
 		return nil, fmt.Errorf("analyze_rbac_permissions: %w", err)
 	}
 
-	clusterRoleBindings, _ := t.listResources(ctx, "ClusterRoleBinding", "")
+	clusterRoleBindings, _ := t.listResources(ctx, args, "ClusterRoleBinding", "")
 
 	overprivileged := []map[string]interface{}{}
 	dangerousRoles := []string{"cluster-admin", "admin", "edit"}
@@ -801,7 +826,7 @@ func (t *AnalysisTools) AnalyzeStorageHealth(ctx context.Context, args map[strin
 		return nil, fmt.Errorf("analyze_storage_health: invalid args: %w", err)
 	}
 
-	pvcs, err := t.listResources(ctx, "PersistentVolumeClaim", a.Namespace)
+	pvcs, err := t.listResources(ctx, args, "PersistentVolumeClaim", a.Namespace)
 	if err != nil {
 		return nil, fmt.Errorf("analyze_storage_health: %w", err)
 	}
@@ -850,7 +875,7 @@ func (t *AnalysisTools) CheckResourceLimits(ctx context.Context, args map[string
 		return nil, fmt.Errorf("check_resource_limits: invalid args: %w", err)
 	}
 
-	pods, err := t.listResources(ctx, "Pod", a.Namespace)
+	pods, err := t.listResources(ctx, args, "Pod", a.Namespace)
 	if err != nil {
 		return nil, fmt.Errorf("check_resource_limits: %w", err)
 	}
@@ -914,7 +939,7 @@ func (t *AnalysisTools) AnalyzeHPABehavior(ctx context.Context, args map[string]
 		return nil, fmt.Errorf("analyze_hpa_behavior: invalid args: %w", err)
 	}
 
-	hpas, err := t.listResources(ctx, "HorizontalPodAutoscaler", a.Namespace)
+	hpas, err := t.listResources(ctx, args, "HorizontalPodAutoscaler", a.Namespace)
 	if err != nil {
 		return nil, fmt.Errorf("analyze_hpa_behavior: %w", err)
 	}
@@ -1085,7 +1110,7 @@ func (t *AnalysisTools) AssessSecurityPosture(ctx context.Context, args map[stri
 		return nil, fmt.Errorf("assess_security_posture: invalid args: %w", err)
 	}
 
-	pods, err := t.listResources(ctx, "Pod", a.Namespace)
+	pods, err := t.listResources(ctx, args, "Pod", a.Namespace)
 	if err != nil {
 		return nil, fmt.Errorf("assess_security_posture: %w", err)
 	}
@@ -1205,7 +1230,7 @@ func (t *AnalysisTools) DetectConfigurationDrift(ctx context.Context, args map[s
 		return nil, fmt.Errorf("detect_configuration_drift: kind and name are required")
 	}
 
-	resource, err := t.getResource(ctx, a.Kind, a.Namespace, a.Name)
+	resource, err := t.getResource(ctx, args, a.Kind, a.Namespace, a.Name)
 	if err != nil {
 		return nil, fmt.Errorf("detect_configuration_drift: %w", err)
 	}
