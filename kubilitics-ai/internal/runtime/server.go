@@ -37,6 +37,7 @@ type LLMProvider interface {
 type LLMToolProvider interface {
 	StreamCompletionWithTools(
 		ctx context.Context,
+		focusClusterID string,
 		prompt string,
 	) (<-chan toolStreamEvent, error)
 }

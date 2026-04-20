@@ -27,6 +27,7 @@ import (
 	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/router"
 )
 
+
 // llmEngine adapts an LLMProvider to router.Engine.
 type llmEngine struct {
 	llm       LLMProvider
@@ -129,7 +130,7 @@ func (e *llmEngine) runWithTools(ctx context.Context, req router.Request, prompt
 	startedAt := time.Now()
 	e.auditDispatchStart(ctx, req, len(prompt))
 
-	src, err := e.toolsLLM.StreamCompletionWithTools(ctx, prompt)
+	src, err := e.toolsLLM.StreamCompletionWithTools(ctx, req.FocusClusterID, prompt)
 	if err != nil {
 		emit(ctx, out, router.Event{Kind: router.KindError, Code: "llm_error", Message: err.Error()})
 		emit(ctx, out, router.Event{Kind: router.KindDone, Partial: true, FinishReason: "error"})
