@@ -16,6 +16,7 @@ iid=$(aws ec2 run-instances \
   --key-name "$KEY_NAME" \
   --security-group-ids "$SG_ID" \
   --user-data "file://cloud-init.yaml" \
+  --block-device-mappings 'DeviceName=/dev/sda1,Ebs={VolumeSize=30}' \
   --tag-specifications "ResourceType=instance,Tags=[{Key=Project,Value=kubilitics-bench},{Key=Size,Value=small},{Key=Name,Value=kubilitics-bench-small}]" \
   --query 'Instances[0].InstanceId' --output text)
 
