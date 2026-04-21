@@ -1,0 +1,22 @@
+{
+  "list_resources": "Shows you every workload, service, and config that lives inside a cluster.",
+  "get_resource": "Opens up a single Kubernetes object and shows you what it looks like right now.",
+  "list_pods": "Lists the running containers (pods) in a cluster or namespace so you can see what is alive.",
+  "get_pod_logs": "Pulls the recent log output from a container so you can read what it has been saying.",
+  "describe_pod": "Gives you the full story of a pod — why it started, why it failed, and what it is waiting on.",
+  "list_nodes": "Lists the machines (nodes) that are powering the cluster and how busy each one is.",
+  "get_node_metrics": "Shows how much CPU and memory each machine in the cluster is currently using.",
+  "list_deployments": "Shows the rollouts that keep your apps running and tells you if any are unhealthy.",
+  "list_services": "Lists the network addresses the cluster exposes so traffic can reach your apps.",
+  "list_events": "Shows the timeline of things Kubernetes has recently decided, succeeded at, or complained about.",
+  "analyze_cluster_health": "Gives you a one-glance health report for the whole cluster with the biggest problems called out first.",
+  "analyze_pod_failures": "Looks at failing pods and explains, in plain language, why they are not healthy.",
+  "analyze_resource_usage": "Tells you which workloads are using the most CPU and memory and whether they are wasting it.",
+  "analyze_blast_radius": "Shows what would break if a given service, node, or config went down right now.",
+  "recommend_optimizations": "Suggests concrete changes that would make the cluster cheaper, safer, or more reliable.",
+  "recommend_security_fixes": "Points out the security issues that actually matter and tells you how to fix each one.",
+  "troubleshoot_pod": "Walks through a failing pod step by step and lands on the most likely root cause.",
+  "troubleshoot_service": "Checks a service end to end — DNS, endpoints, pods, network — to find what is broken.",
+  "scale_deployment": "Changes how many copies of an app are running. Requires an approval step.",
+  "restart_deployment": "Restarts an app by rolling its pods. Requires an approval step."
+}
