@@ -6,9 +6,9 @@ cd "$(dirname "$0")"
 
 KEY_NAME="${KEY_NAME:-kubilitics-ollama-bench-key}"
 AMI_ID="${AMI_ID:-ami-0e2c8caa4b6378d8c}"   # Deep Learning AMI (Ubuntu 22.04), has NVIDIA drivers pre-installed.
-INSTANCE_TYPE="${INSTANCE_TYPE:-g5.12xlarge}"
+INSTANCE_TYPE="${INSTANCE_TYPE:-g5.2xlarge}"
 SG_ID="${SG_ID:?set SG_ID to a security group allowing 11434 from your laptop}"
-MODEL="${MODEL:-qwen2.5:72b-instruct}"
+MODEL="${MODEL:-qwen2.5:32b-instruct}"
 ROOT_DISK_GB="${ROOT_DISK_GB:-100}"
 MAX_PULL_WAIT_SEC="${MAX_PULL_WAIT_SEC:-1200}"
 

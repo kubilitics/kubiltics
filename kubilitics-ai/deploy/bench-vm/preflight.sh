@@ -12,8 +12,8 @@
 set -euo pipefail
 
 REGION="${AWS_REGION:-us-east-1}"
-INSTANCE_TYPE="${INSTANCE_TYPE:-g5.12xlarge}"
-REQUIRED_VCPU=48
+INSTANCE_TYPE="${INSTANCE_TYPE:-g5.2xlarge}"
+REQUIRED_VCPU=8
 SG_ID="${SG_ID:-sg-09b612ed6a1404d11}"
 AMI_ID="${AMI_ID:-ami-0e2c8caa4b6378d8c}"
 
