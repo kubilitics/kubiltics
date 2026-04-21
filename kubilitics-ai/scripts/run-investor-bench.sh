@@ -22,6 +22,10 @@ echo "=== 1/8 preflight ==="
 
 echo "=== 2/8 build + tests ==="
 go build ./...
+# Explicitly rebuild the brain binary — `go build ./...` compiles all packages
+# but doesn't replace ./server in the repo root, leaving the bench running
+# stale code on every attempt.
+go build -o server ./cmd/server
 go test ./internal/llm/... ./internal/runtime/... ./internal/mcp/server/... ./cmd/tool-catalog/... ./cmd/bench-report/... -count=1
 
 echo "=== 3/8 generate tool-catalog ==="
