@@ -1,0 +1,24 @@
+{
+  "prompts": [
+    {"id": "smoke-01-list-ns",            "text": "list namespaces",                        "expect_tool": true},
+    {"id": "smoke-02-list-pods",          "text": "list pods",                              "expect_tool": true},
+    {"id": "smoke-03-count-pods",         "text": "how many pods are running",              "expect_tool": true},
+    {"id": "smoke-04-ns-pods",            "text": "list pods in kube-system",               "expect_tool": true},
+    {"id": "smoke-05-list-deploys",       "text": "list deployments",                       "expect_tool": true},
+    {"id": "smoke-06-count-deploys",      "text": "how many deployments",                   "expect_tool": true},
+    {"id": "smoke-07-list-svc",           "text": "list services",                          "expect_tool": true},
+    {"id": "smoke-08-list-nodes",         "text": "what nodes do we have",                  "expect_tool": true},
+    {"id": "smoke-09-list-cm",            "text": "list configmaps in kube-system",         "expect_tool": true},
+    {"id": "smoke-10-list-secrets",       "text": "list secrets in default",                "expect_tool": true},
+    {"id": "smoke-11-cluster-health",     "text": "how is this cluster doing",              "expect_tool": true},
+    {"id": "smoke-12-analyze-pods",       "text": "analyze pod health in kube-system",      "expect_tool": true},
+    {"id": "smoke-13-node-pressure",      "text": "any nodes under pressure",               "expect_tool": true},
+    {"id": "smoke-14-events",             "text": "recent events in the cluster",           "expect_tool": true},
+    {"id": "smoke-15-warnings",           "text": "any warning events",                     "expect_tool": true},
+    {"id": "smoke-16-logs",               "text": "get logs from a coredns pod in kube-system","expect_tool": true},
+    {"id": "smoke-17-capacity",           "text": "cluster capacity overview",              "expect_tool": true},
+    {"id": "smoke-18-restarts",           "text": "which pods have restarted the most",     "expect_tool": true},
+    {"id": "smoke-19-ns-overview",        "text": "overview of the kube-system namespace",  "expect_tool": true},
+    {"id": "smoke-20-crashloop",          "text": "any pods in crashloopbackoff and why",   "expect_tool": true}
+  ]
+}
