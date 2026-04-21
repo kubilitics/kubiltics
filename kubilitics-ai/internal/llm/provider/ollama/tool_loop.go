@@ -70,7 +70,10 @@ func (c *OllamaClientImpl) runAgentLoop(
 		}
 
 		if len(rawToolCalls) == 0 {
-			evtCh <- types.AgentStreamEvent{Done: true}
+			evtCh <- types.AgentStreamEvent{
+				Done:       true,
+				TokenUsage: c.lastTokens,
+			}
 			return
 		}
 

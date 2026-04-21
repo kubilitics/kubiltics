@@ -2,6 +2,8 @@ package ollama
 
 import (
 	"context"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/llm/types"
@@ -263,5 +265,51 @@ func TestContains(t *testing.T) {
 				t.Errorf("contains(%q, %q) = %v, want %v", tt.s, tt.substr, result, tt.want)
 			}
 		})
+	}
+}
+
+func TestCompleteWithTools_EmitsTokenUsageOnDone(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/api/tags", func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`{"models":[]}`))
+	})
+	mux.HandleFunc("/api/chat", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{
+			"model": "qwen2.5:72b-instruct",
+			"created_at": "2026-04-21T12:00:00Z",
+			"message": {"role": "assistant", "content": "hi"},
+			"done": true,
+			"prompt_eval_count": 1234,
+			"eval_count": 56
+		}`))
+	})
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+
+	c, err := NewOllamaClient(srv.URL, "qwen2.5:72b-instruct")
+	if err != nil {
+		t.Fatalf("client: %v", err)
+	}
+	ch, err := c.CompleteWithTools(context.Background(),
+		[]types.Message{{Role: "user", Content: "hi"}},
+		nil, nil, types.DefaultAgentConfig())
+	if err != nil {
+		t.Fatalf("CompleteWithTools: %v", err)
+	}
+	var sawUsage bool
+	for ev := range ch {
+		if ev.TokenUsage != nil {
+			sawUsage = true
+			if ev.TokenUsage.PromptTokens != 1234 || ev.TokenUsage.CompletionTokens != 56 {
+				t.Fatalf("wrong counts: %+v", ev.TokenUsage)
+			}
+			if !ev.Done {
+				t.Fatalf("TokenUsage must arrive on a Done event")
+			}
+		}
+	}
+	if !sawUsage {
+		t.Fatalf("never saw an AgentStreamEvent with TokenUsage populated")
 	}
 }

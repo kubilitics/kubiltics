@@ -108,14 +108,16 @@ type ollamaChatRequest struct {
 }
 
 type ollamaChatResponse struct {
-	Model     string `json:"model"`
-	CreatedAt string `json:"created_at"`
-	Message   struct {
+	Model            string `json:"model"`
+	CreatedAt        string `json:"created_at"`
+	Message          struct {
 		Role      string           `json:"role"`
 		Content   string           `json:"content"`
 		ToolCalls []ollamaToolCall `json:"tool_calls,omitempty"`
 	} `json:"message"`
-	Done bool `json:"done"`
+	Done             bool `json:"done"`
+	PromptEvalCount  int  `json:"prompt_eval_count"`
+	EvalCount        int  `json:"eval_count"`
 }
 
 type ollamaStreamChunk struct {
@@ -131,10 +133,11 @@ type ollamaStreamChunk struct {
 
 // OllamaClientImpl implements the LLM adapter interface for Ollama.
 type OllamaClientImpl struct {
-	baseURL    string
-	model      string
-	maxTokens  int
-	httpClient *http.Client
+	baseURL      string
+	model        string
+	maxTokens    int
+	httpClient   *http.Client
+	lastTokens   *types.TokenUsage // cache last response token counts for agentic loop
 }
 
 // NewOllamaClient creates a new Ollama client with configuration.
@@ -242,6 +245,16 @@ func (c *OllamaClientImpl) Complete(
 	var chatResponse ollamaChatResponse
 	if err := json.Unmarshal(response, &chatResponse); err != nil {
 		return "", nil, fmt.Errorf("failed to parse Ollama response: %w", err)
+	}
+
+	// Cache token counts for agentic loop to emit on Done event.
+	// Only set if counts are non-zero (Ollama provides them on done:true responses).
+	if chatResponse.PromptEvalCount > 0 || chatResponse.EvalCount > 0 {
+		c.lastTokens = &types.TokenUsage{
+			PromptTokens:     chatResponse.PromptEvalCount,
+			CompletionTokens: chatResponse.EvalCount,
+			TotalTokens:      chatResponse.PromptEvalCount + chatResponse.EvalCount,
+		}
 	}
 
 	content := chatResponse.Message.Content
