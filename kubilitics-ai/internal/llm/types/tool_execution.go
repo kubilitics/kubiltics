@@ -81,4 +81,8 @@ type AgentStreamEvent struct {
 	Done bool
 	// Err carries any terminal error from the agentic loop.
 	Err error
+	// TokenUsage is non-nil only on the terminal Done event and carries
+	// the provider's final input/output token counts. Providers that
+	// don't surface usage leave this nil.
+	TokenUsage *TokenUsage
 }
