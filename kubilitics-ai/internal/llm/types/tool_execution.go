@@ -1,6 +1,10 @@
 package types
 
-import "context"
+import (
+	"context"
+	"os"
+	"strconv"
+)
 
 // ToolExecutor is the interface that MCP tool handlers must implement.
 // It is the bridge between the LLM (which decides what to call) and the
@@ -48,9 +52,20 @@ type AgentConfig struct {
 }
 
 // DefaultAgentConfig returns safe production defaults.
+//
+// MaxTurns was 10 historically. Bench on Apr 21 showed 14/250 prompts hit
+// that cap when the LLM walked resource lists one namespace at a time.
+// Bumped to 20. Overridable via KOTG_AGENT_MAX_TURNS for ops who want to
+// tune without a rebuild.
 func DefaultAgentConfig() AgentConfig {
+	max := 20
+	if v := os.Getenv("KOTG_AGENT_MAX_TURNS"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			max = n
+		}
+	}
 	return AgentConfig{
-		MaxTurns:      10,
+		MaxTurns:      max,
 		ParallelTools: true,
 	}
 }
