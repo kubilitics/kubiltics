@@ -1,0 +1,21 @@
+#cloud-config
+package_update: true
+package_upgrade: false
+packages:
+  - curl
+  - jq
+
+runcmd:
+  - curl -fsSL https://ollama.com/install.sh | sh
+  - systemctl enable --now ollama
+  # Bind ollama to 0.0.0.0 so the laptop can reach it; restrict via security group, not binding.
+  - sed -i '/^\[Service\]/a Environment="OLLAMA_HOST=0.0.0.0:11434"' /etc/systemd/system/ollama.service
+  - systemctl daemon-reload
+  - systemctl restart ollama
+  # Pull default model. The launch script may override by SSH for bigger models on bigger boxes.
+  - sleep 15 && ollama pull qwen2.5:3b
+
+write_files:
+  - path: /etc/bench-metadata.json
+    content: |
+      {"tag":"kubilitics-bench","created_by":"cloud-init"}
