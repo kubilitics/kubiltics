@@ -64,14 +64,39 @@ type promptTrace struct {
 	LatencyMs int
 }
 
+// catalogEntry mirrors the per-tool record emitted by cmd/tool-catalog.
+// Only the fields consumed by the v2 report are declared; extras unmarshal into map/slice.
+type catalogEntry struct {
+	Name         string                 `json:"name"`
+	Category     string                 `json:"category"`
+	Description  string                 `json:"description"`
+	Parameters   interface{}            `json:"parameters,omitempty"`
+	Required     interface{}            `json:"required,omitempty"`
+	PlainEnglish string                 `json:"plain_english"`
+	Autonomy     int                    `json:"autonomy_level"`
+}
+
 func main() {
 	junitPath := flag.String("junit", "", "path to JUnit XML")
 	tracesDir := flag.String("traces", "", "per-prompt trace dir")
 	suite := flag.String("suite", "chat-quality", "suite name (shown in report)")
 	out := flag.String("out", "", "output HTML path")
+	catalogPath := flag.String("catalog", "", "path to tool-catalog.json (optional; enables tool-explorer section)")
+	useV2 := flag.Bool("v2", false, "use the v2 interactive report template")
 	flag.Parse()
 	if *junitPath == "" || *out == "" {
 		log.Fatal("--junit and --out are required")
+	}
+
+	var catalog []catalogEntry
+	if *catalogPath != "" {
+		b, err := os.ReadFile(*catalogPath)
+		if err != nil {
+			log.Fatalf("read catalog: %v", err)
+		}
+		if err := json.Unmarshal(b, &catalog); err != nil {
+			log.Fatalf("parse catalog: %v", err)
+		}
 	}
 
 	xmlBytes, err := os.ReadFile(*junitPath)
@@ -112,7 +137,12 @@ func main() {
 		log.Fatalf("create out: %v", err)
 	}
 	defer f.Close()
-	if err := renderHTML(f, *suite, s, traces); err != nil {
+	if *useV2 {
+		err = renderHTMLv2(f, *suite, s, traces, catalog)
+	} else {
+		err = renderHTML(f, *suite, s, traces)
+	}
+	if err != nil {
 		log.Fatalf("render: %v", err)
 	}
 	fmt.Printf("wrote %s (%d cases, %d traces)\n", *out, len(s.Cases), len(traces))

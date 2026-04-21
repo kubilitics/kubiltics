@@ -70,3 +70,34 @@ func TestLoadJUnit_ParsesFailuresAndCases(t *testing.T) {
 		t.Fatalf("expected failure on case 2")
 	}
 }
+
+func TestRenderHTMLv2_IncludesExecSummaryAndToolExplorer(t *testing.T) {
+	j := &junitSuite{
+		Name:     "test",
+		Tests:    2,
+		Failures: 1,
+		Cases: []junitCase{
+			{Name: "p1", Time: 1.0},
+			{Name: "p2", Time: 2.0, Failure: &junitFailure{Message: "nope"}},
+		},
+	}
+	traces := map[string]*promptTrace{
+		"p1": {PromptID: "p1", Stages: []stage{{Stage: "user_msg", Fields: map[string]any{"bytes": 10.0}}}},
+	}
+	cat := []catalogEntry{
+		{Name: "list_resources", Category: "Observation", Description: "list k8s resources", PlainEnglish: "Shows things."},
+	}
+	var buf strings.Builder
+	if err := renderHTMLv2(&buf, "test-suite", j, traces, cat); err != nil {
+		t.Fatalf("render: %v", err)
+	}
+	h := buf.String()
+	for _, want := range []string{
+		"test-suite", "1 / 2 passed", "list_resources", "Shows things.",
+		"Observation", "<script", "tool-explorer",
+	} {
+		if !strings.Contains(h, want) {
+			t.Errorf("v2 html missing %q", want)
+		}
+	}
+}
