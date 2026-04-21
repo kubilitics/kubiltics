@@ -79,6 +79,29 @@ func capToolOutput(v interface{}) interface{} {
 			delete(out, trimKey)
 		}
 	}
+
+	// Final defense: if the map still serializes over budget (e.g. an
+	// unexpected shape with a huge non-array field), flatten the whole
+	// thing to a truncated JSON string. Preserves item_count + any
+	// top-level scalars the LLM needs for counting, and guarantees
+	// the string fed back never exceeds the cap.
+	if bb, _ := json.Marshal(out); len(bb) > MaxToolOutputBytes {
+		keep := map[string]interface{}{
+			"_truncated":        true,
+			"_truncated_reason": "tool output still over budget after array trim; flattened to preview",
+		}
+		for _, k := range []string{"item_count", "kind", "apiVersion", "cluster_id", "namespace"} {
+			if v, ok := out[k]; ok {
+				keep[k] = v
+			}
+		}
+		preview := string(bb)
+		if len(preview) > MaxToolOutputBytes-512 {
+			preview = preview[:MaxToolOutputBytes-512]
+		}
+		keep["preview"] = preview
+		return keep
+	}
 	return out
 }
 

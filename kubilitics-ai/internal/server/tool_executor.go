@@ -80,16 +80,31 @@ func (e *mcpToolExecutor) Execute(ctx context.Context, toolName string, args map
 	}
 
 	// Normalise result to a JSON string.
+	var s string
 	switch v := result.(type) {
 	case string:
-		return v, nil
+		s = v
 	case []byte:
-		return string(v), nil
+		s = string(v)
 	default:
 		b, jsonErr := json.Marshal(result)
 		if jsonErr != nil {
-			return fmt.Sprintf("%v", result), nil
+			s = fmt.Sprintf("%v", result)
+		} else {
+			s = string(b)
 		}
-		return string(b), nil
 	}
+
+	// Belt-and-braces string-level cap. capToolOutput already ran inside
+	// ExecuteTool at the interface{} level, but a handler that returns a
+	// pre-marshalled string can sneak past the map-aware trim. This byte
+	// cap ensures whatever reaches the LLM conversation history is under
+	// budget — essential for keeping multi-turn agentic loops inside the
+	// context window (the "API 400: maximum context length" failure mode
+	// the chat-quality bench was hitting on multi-tool turns).
+	const maxToolBytes = 8 * 1024
+	if len(s) > maxToolBytes {
+		s = s[:maxToolBytes-256] + `... [truncated: tool output exceeded ` + fmt.Sprintf("%d", maxToolBytes) + ` bytes]`
+	}
+	return s, nil
 }
