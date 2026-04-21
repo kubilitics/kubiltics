@@ -51,7 +51,8 @@ logging:
   level: info
   format: json
 EOF
-pkill -f 'kubilitics-ai/server' 2>/dev/null || true
+lsof -tiTCP:50051 -sTCP:LISTEN 2>/dev/null | xargs -r kill -9 2>/dev/null || true
+lsof -tiTCP:28081 -sTCP:LISTEN 2>/dev/null | xargs -r kill -9 2>/dev/null || true
 sleep 2
 nohup ./server -config /tmp/config-bench-big.yaml > /tmp/brain-big.log 2>&1 &
 sleep 5
