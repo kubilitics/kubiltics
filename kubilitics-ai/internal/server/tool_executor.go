@@ -13,6 +13,7 @@ import (
 
 	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/llm/types"
 	mcpserver "github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/mcp/server"
+	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/tracing/routing"
 )
 
 // Autonomy levels (mirrors config/defaults.go):
@@ -94,6 +95,19 @@ func (e *mcpToolExecutor) Execute(ctx context.Context, toolName string, args map
 			s = string(b)
 		}
 	}
+
+	// Record the summarization delta so the report can quantify how many
+	// bytes the summarizer/cap removed from each tool result.
+	rec := routing.FromContext(ctx)
+	rawBytes := 0
+	if rb, err := json.Marshal(result); err == nil {
+		rawBytes = len(rb)
+	}
+	rec.Stage("tool_result_summarized", map[string]any{
+		"tool_name": toolName,
+		"bytes_in":  rawBytes,
+		"bytes_out": len(s),
+	})
 
 	// Belt-and-braces string-level cap. capToolOutput already ran inside
 	// ExecuteTool at the interface{} level, but a handler that returns a

@@ -17,6 +17,8 @@ import (
 	"net/url"
 	"strings"
 	"time"
+
+	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/tracing/routing"
 )
 
 // sharedHTTPClient is a package-level HTTP client with a pooled transport.
@@ -65,6 +67,11 @@ func (c *backendHTTP) get(ctx context.Context, path string, out interface{}) err
 	defer resp.Body.Close()
 
 	body, _ := io.ReadAll(resp.Body)
+	routing.FromContext(ctx).Stage("backend_k8s_fetch", map[string]any{
+		"path":       path,
+		"method":     http.MethodGet,
+		"resp_bytes": len(body),
+	})
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("GET %s: HTTP %d: %s", path, resp.StatusCode, truncate(string(body), 200))
 	}

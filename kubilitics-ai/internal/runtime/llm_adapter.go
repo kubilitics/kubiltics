@@ -8,6 +8,7 @@ import (
 
 	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/llm/adapter"
 	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/llm/types"
+	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/tracing/routing"
 )
 
 // LLMAdapterBridge wraps an existing LLMAdapter so it satisfies LLMProvider
@@ -77,6 +78,16 @@ func (b *LLMAdapterBridge) StreamCompletionWithTools(
 		executor = &clusterIDInjectingExecutor{inner: b.Executor, clusterID: focusClusterID}
 	}
 	msgs = append(msgs, types.Message{Role: "user", Content: prompt})
+	promptBytes := 0
+	for _, m := range msgs {
+		promptBytes += len(m.Content)
+	}
+	routing.FromContext(ctx).Stage("llm_prompt_in", map[string]any{
+		"messages":      len(msgs),
+		"bytes":         promptBytes,
+		"has_system":    focusClusterID != "",
+		"focus_cluster": focusClusterID,
+	})
 	src, err := b.A.CompleteWithTools(
 		ctx,
 		msgs,
@@ -90,6 +101,7 @@ func (b *LLMAdapterBridge) StreamCompletionWithTools(
 	out := make(chan toolStreamEvent, 16)
 	go func() {
 		defer close(out)
+		var textBytes int
 		for ev := range src {
 			te := toolStreamEvent{
 				TextToken: ev.TextToken,
@@ -106,12 +118,16 @@ func (b *LLMAdapterBridge) StreamCompletionWithTools(
 					Error:    ev.ToolEvent.Error,
 				}
 			}
+			if ev.TextToken != "" {
+				textBytes += len(ev.TextToken)
+			}
 			select {
 			case out <- te:
 			case <-ctx.Done():
 				return
 			}
 		}
+		routing.FromContext(ctx).Stage("llm_text_out", map[string]any{"bytes": textBytes})
 	}()
 	return out, nil
 }
@@ -134,6 +150,18 @@ func (e *clusterIDInjectingExecutor) Execute(ctx context.Context, toolName strin
 	if v, ok := args["cluster_id"].(string); !ok || v == "" {
 		args["cluster_id"] = e.clusterID
 	}
+	// Record a redacted view of the dispatch. cluster_id is kept verbatim
+	// (it's a UUID, not sensitive); everything else is summarized to arg
+	// keys only so user-provided selectors don't leak into the trace.
+	argKeys := make([]string, 0, len(args))
+	for k := range args {
+		argKeys = append(argKeys, k)
+	}
+	routing.FromContext(ctx).Stage("tool_dispatch", map[string]any{
+		"tool_name":  toolName,
+		"arg_keys":   argKeys,
+		"cluster_id": e.clusterID,
+	})
 	return e.inner.Execute(ctx, toolName, args)
 }
 
