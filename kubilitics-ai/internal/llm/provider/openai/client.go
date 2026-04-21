@@ -367,7 +367,7 @@ func (c *OpenAIClientImpl) makeRequest(ctx context.Context, endpoint string, pay
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+c.apiKey)
 
-	resp, err := c.httpClient.Do(req)
+	resp, err := doWithRetryOn429(c.httpClient, req, 3)
 	if err != nil {
 		return nil, fmt.Errorf("HTTP request failed: %w", err)
 	}
@@ -412,7 +412,7 @@ func (c *OpenAIClientImpl) streamRequest(
 	req.Header.Set("Authorization", "Bearer "+c.apiKey)
 	req.Header.Set("Accept", "text/event-stream")
 
-	resp, err := c.httpClient.Do(req)
+	resp, err := doWithRetryOn429(c.httpClient, req, 3)
 	if err != nil {
 		return fmt.Errorf("HTTP request failed: %w", err)
 	}

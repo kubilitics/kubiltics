@@ -259,7 +259,7 @@ func (c *OpenAIClientImpl) streamSingleTurn(
 	httpReq.Header.Set("Accept", "text/event-stream")
 
 	streamClient := &http.Client{}
-	httpResp, err := streamClient.Do(httpReq)
+	httpResp, err := doWithRetryOn429(streamClient, httpReq, 3)
 	if err != nil {
 		return "", nil, fmt.Errorf("HTTP: %w", err)
 	}
