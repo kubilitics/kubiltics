@@ -1,0 +1,12 @@
+{"bytes":62,"stage":"user_msg","ts":"2026-04-21T18:47:13.750646Z","turn_id":"bench-scen-events-08"}
+{"bytes":2425,"focus_cluster":"5cb1f37d-e31e-4915-8c4d-bdf36ef335ec","has_system":true,"messages":2,"stage":"llm_prompt_in","ts":"2026-04-21T18:47:13.750858Z","turn_id":"bench-scen-events-08"}
+{"arg_keys":["cluster_id"],"cluster_id":"5cb1f37d-e31e-4915-8c4d-bdf36ef335ec","stage":"tool_dispatch","tool_name":"troubleshoot_resource_constraints","ts":"2026-04-21T18:47:19.328761Z","turn_id":"bench-scen-events-08"}
+{"method":"GET","path":"/api/v1/clusters/5cb1f37d-e31e-4915-8c4d-bdf36ef335ec/resources/nodes","resp_bytes":16461,"stage":"backend_k8s_fetch","ts":"2026-04-21T18:47:19.332808Z","turn_id":"bench-scen-events-08"}
+{"method":"GET","path":"/api/v1/clusters/5cb1f37d-e31e-4915-8c4d-bdf36ef335ec/metrics","resp_bytes":128,"stage":"backend_k8s_fetch","ts":"2026-04-21T18:47:19.335622Z","turn_id":"bench-scen-events-08"}
+{"method":"GET","path":"/api/v1/clusters/5cb1f37d-e31e-4915-8c4d-bdf36ef335ec/resources/resourcequotas","resp_bytes":76,"stage":"backend_k8s_fetch","ts":"2026-04-21T18:47:19.343995Z","turn_id":"bench-scen-events-08"}
+{"method":"GET","path":"/api/v1/clusters/5cb1f37d-e31e-4915-8c4d-bdf36ef335ec/resources/limitranges","resp_bytes":76,"stage":"backend_k8s_fetch","ts":"2026-04-21T18:47:19.352448Z","turn_id":"bench-scen-events-08"}
+{"method":"GET","path":"/api/v1/clusters/5cb1f37d-e31e-4915-8c4d-bdf36ef335ec/events?limit=100","resp_bytes":5,"stage":"backend_k8s_fetch","ts":"2026-04-21T18:47:19.365053Z","turn_id":"bench-scen-events-08"}
+{"bytes_in":8698,"bytes_out":8698,"stage":"tool_result_summarized","tool_name":"troubleshoot_resource_constraints","ts":"2026-04-21T18:47:19.365863Z","turn_id":"bench-scen-events-08"}
+{"bytes":1542,"stage":"llm_text_out","ts":"2026-04-21T18:47:40.181497Z","turn_id":"bench-scen-events-08"}
+{"duration_ms":26431,"finish_reason":"stop","stage":"done","ts":"2026-04-21T18:47:40.182286Z","turn_id":"bench-scen-events-08"}
+{"input_tokens":4096,"output_tokens":328,"stage":"cost","ts":"2026-04-21T18:47:40.182321Z","turn_id":"bench-scen-events-08","usd_total":0}

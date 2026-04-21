@@ -28,8 +28,6 @@ func (s *mcpServerImpl) routeAnalysisTool(ctx context.Context, name string, args
 		return s.handleAnalyzeFailurePatterns(ctx, args)
 	case "analyze_dependencies":
 		return s.handleAnalyzeDependencies(ctx, args)
-	case "analyze_configuration_drift":
-		return s.handleAnalyzeConfigurationDrift(ctx, args)
 	case "analyze_capacity_trends":
 		return s.handleAnalyzeCapacityTrends(ctx, args)
 	case "analyze_performance_bottlenecks":

@@ -1,0 +1,7 @@
+{"bytes":77,"stage":"user_msg","ts":"2026-04-21T18:51:04.920773Z","turn_id":"bench-scen-storage-15"}
+{"bytes":2440,"focus_cluster":"5cb1f37d-e31e-4915-8c4d-bdf36ef335ec","has_system":true,"messages":2,"stage":"llm_prompt_in","ts":"2026-04-21T18:51:04.921019Z","turn_id":"bench-scen-storage-15"}
+{"arg_keys":["cluster_id"],"cluster_id":"5cb1f37d-e31e-4915-8c4d-bdf36ef335ec","stage":"tool_dispatch","tool_name":"observe_pv_detailed","ts":"2026-04-21T18:51:11.409925Z","turn_id":"bench-scen-storage-15"}
+{"arg_keys":["limit","cluster_id"],"cluster_id":"5cb1f37d-e31e-4915-8c4d-bdf36ef335ec","stage":"tool_dispatch","tool_name":"observe_pv_events","ts":"2026-04-21T18:51:11.41038Z","turn_id":"bench-scen-storage-15"}
+{"bytes":423,"stage":"llm_text_out","ts":"2026-04-21T18:51:20.512391Z","turn_id":"bench-scen-storage-15"}
+{"duration_ms":15592,"finish_reason":"stop","stage":"done","ts":"2026-04-21T18:51:20.513494Z","turn_id":"bench-scen-storage-15"}
+{"input_tokens":4096,"output_tokens":94,"stage":"cost","ts":"2026-04-21T18:51:20.513878Z","turn_id":"bench-scen-storage-15","usd_total":0}

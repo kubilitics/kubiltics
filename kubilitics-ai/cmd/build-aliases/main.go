@@ -217,8 +217,8 @@ func main() {
 		// Action / execution alias group (so "restart pod X" → restart_pod ≅ action_restart_workload)
 		"restart_pod":               {"action_restart_workload"},
 		"action_restart_workload":   {"restart_pod"},
-		"scale_deployment":          {"action_scale_workload", "trigger_hpa_scale"},
-		"action_scale_workload":     {"scale_deployment", "trigger_hpa_scale"},
+		// action_scale_workload retired 2026-04-22 (see docs/strategy/2026-04-22-tool-audit.md).
+		"scale_deployment":          {"trigger_hpa_scale"},
 		"rollback_deployment":       {"action_rollback_deployment"},
 		"action_rollback_deployment": {"rollback_deployment"},
 		"apply_resource_patch":      {"action_apply_manifest"},

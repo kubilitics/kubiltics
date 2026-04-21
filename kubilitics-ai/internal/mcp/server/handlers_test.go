@@ -546,7 +546,7 @@ func TestRegisterAllTools_AllToolsRegistered(t *testing.T) {
 		"troubleshoot_pod_failures",
 		"security_scan_cluster",
 		"cost_analyze_spending",
-		"action_scale_workload",
+		"scale_deployment",
 		"automation_generate_runbook",
 	} {
 		if !names[expected] {

@@ -1,0 +1,4 @@
+{"bytes":16,"stage":"user_msg","ts":"2026-04-21T17:19:57.998475Z","turn_id":"bench-demo-list-02"}
+{"bytes":2379,"focus_cluster":"5cb1f37d-e31e-4915-8c4d-bdf36ef335ec","has_system":true,"messages":2,"stage":"llm_prompt_in","ts":"2026-04-21T17:19:57.998785Z","turn_id":"bench-demo-list-02"}
+{"arg_keys":["kind","cluster_id"],"cluster_id":"5cb1f37d-e31e-4915-8c4d-bdf36ef335ec","stage":"tool_dispatch","tool_name":"get_resource","ts":"2026-04-21T17:20:08.102639Z","turn_id":"bench-demo-list-02"}
+{"bytes":941,"stage":"llm_text_out","ts":"2026-04-21T17:20:16.786289Z","turn_id":"bench-demo-list-02"}

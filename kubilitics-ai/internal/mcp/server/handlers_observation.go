@@ -5841,8 +5841,6 @@ func (s *mcpServerImpl) routeObservationTool(ctx context.Context, name string, a
 		return s.handleStorageStatus(ctx, args)
 	case "observe_serviceaccount_detailed":
 		return s.handleServiceAccountDetailed(ctx, args)
-	case "observe_serviceaccount_events":
-		return s.handleServiceAccountEvents(ctx, args)
 	case "observe_serviceaccount_permissions":
 		return s.handleServiceAccountPermissions(ctx, args)
 	case "observe_role_detailed":

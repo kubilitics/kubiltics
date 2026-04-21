@@ -862,23 +862,11 @@ var ToolTaxonomy = []ToolDefinition{
 		Destructive: false,
 		RequiresAI:  true,
 	},
-	{
-		Name:        "observe_serviceaccount_events",
-		Category:    CategoryObservation,
-		Description: "Last N events for a ServiceAccount.",
-		InputSchema: map[string]interface{}{
-			"type": "object",
-			"properties": map[string]interface{}{
-				"cluster_id": map[string]interface{}{"type": "string", "description": "Cluster ID (optional)"},
-				"namespace":  map[string]interface{}{"type": "string", "description": "Namespace (required)"},
-				"name":       map[string]interface{}{"type": "string", "description": "ServiceAccount name (required)"},
-				"limit":      map[string]interface{}{"type": "number", "description": "Max events (default 10)"},
-			},
-			"required": []string{"namespace", "name"},
-		},
-		Destructive: false,
-		RequiresAI:  false,
-	},
+	// observe_serviceaccount_events retired 2026-04-22: SA events are empty on the
+	// happy path, which caused the LLM to call this tool 15+ times in a row
+	// (bench-scen-workload-17.jsonl) trying to extract signal that isn't there.
+	// Use observe_serviceaccount_permissions for RBAC questions and observe_events
+	// for the rare SA-related event. See docs/strategy/2026-04-22-tool-audit.md.
 	{
 		Name:        "observe_serviceaccount_permissions",
 		Category:    CategoryObservation,
@@ -1649,13 +1637,11 @@ var ToolTaxonomy = []ToolDefinition{
 		Destructive: false,
 		RequiresAI:  true,
 	},
-	{
-		Name:        "analyze_configuration_drift",
-		Category:    CategoryAnalysis,
-		Description: "Detect configuration drift from desired state with remediation suggestions.",
-		Destructive: false,
-		RequiresAI:  true,
-	},
+	// analyze_configuration_drift retired 2026-04-22: stub grade (no InputSchema,
+	// no handler differentiation from detect_configuration_drift). The LLM cannot
+	// disambiguate "analyze_" vs "detect_" variants of the same concept; keeping
+	// only detect_configuration_drift which has a real schema + GitOps semantics.
+	// See docs/strategy/2026-04-22-tool-audit.md (name-overlap failure pattern).
 	{
 		Name:        "analyze_capacity_trends",
 		Category:    CategoryAnalysis,
@@ -1909,14 +1895,12 @@ var ToolTaxonomy = []ToolDefinition{
 	// Cluster modifications (requires approval)
 	// Autonomy Level: 4 (Act)
 
-	{
-		Name:                  "action_scale_workload",
-		Category:              CategoryAction,
-		Description:           "Scale deployments, statefulsets, or replicasets with safety checks.",
-		Destructive:           false,
-		RequiresAI:            false,
-		RequiredAutonomyLevel: 4,
-	},
+	// action_scale_workload retired 2026-04-22: stub (no InputSchema, no blast-
+	// radius analysis in handler). scale_deployment is the real implementation —
+	// proper schema (namespace/name/replicas/justification/dry_run), blast-radius
+	// analysis, Destructive=true so the safety engine runs pre-flight.
+	// Keeping two scale tools silently bypassed the approval UX when the LLM
+	// picked the stub. See docs/strategy/2026-04-22-tool-audit.md.
 	{
 		Name:                  "action_restart_workload",
 		Category:              CategoryAction,

@@ -207,7 +207,7 @@ func TestMCPServerToolCategoryCoverage(t *testing.T) {
 		"troubleshooting": 7,
 		"security":        5,
 		"cost":            4,
-		"action":          5,
+		"action":          4,
 		"automation":      4,
 		"execution":       9,
 	}
