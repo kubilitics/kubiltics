@@ -5,7 +5,9 @@ package runtime
 
 import (
 	"context"
+	"time"
 
+	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/llm/accounting"
 	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/llm/adapter"
 	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/llm/types"
 	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/tracing/routing"
@@ -101,7 +103,9 @@ func (b *LLMAdapterBridge) StreamCompletionWithTools(
 	out := make(chan toolStreamEvent, 16)
 	go func() {
 		defer close(out)
+		start := time.Now()
 		var textBytes int
+		var lastUsage *toolTokenUsage
 		for ev := range src {
 			te := toolStreamEvent{
 				TextToken: ev.TextToken,
@@ -118,6 +122,13 @@ func (b *LLMAdapterBridge) StreamCompletionWithTools(
 					Error:    ev.ToolEvent.Error,
 				}
 			}
+			if ev.TokenUsage != nil {
+				te.TokenUsage = &toolTokenUsage{
+					InputTokens:  ev.TokenUsage.PromptTokens,
+					OutputTokens: ev.TokenUsage.CompletionTokens,
+				}
+				lastUsage = te.TokenUsage
+			}
 			if ev.TextToken != "" {
 				textBytes += len(ev.TextToken)
 			}
@@ -128,6 +139,29 @@ func (b *LLMAdapterBridge) StreamCompletionWithTools(
 			}
 		}
 		routing.FromContext(ctx).Stage("llm_text_out", map[string]any{"bytes": textBytes})
+
+		durationMs := time.Since(start).Milliseconds()
+		routing.FromContext(ctx).Stage("done", map[string]any{
+			"duration_ms":   durationMs,
+			"finish_reason": "stop",
+		})
+		if lastUsage != nil {
+			// Best-available pricing identifier: the provider type string
+			// (e.g. "openai", "ollama"). Per-model pricing goes through the
+			// Tallier's priceTable; unknown ids cleanly yield $0.
+			var providerID string
+			if gp, ok := b.A.(interface{ GetProvider() adapter.ProviderType }); ok {
+				providerID = string(gp.GetProvider())
+			}
+			t := accounting.NewTallier(providerID)
+			t.AddInput(lastUsage.InputTokens)
+			t.AddOutput(lastUsage.OutputTokens)
+			routing.FromContext(ctx).Stage("cost", map[string]any{
+				"input_tokens":  lastUsage.InputTokens,
+				"output_tokens": lastUsage.OutputTokens,
+				"usd_total":     t.USD(),
+			})
+		}
 	}()
 	return out, nil
 }

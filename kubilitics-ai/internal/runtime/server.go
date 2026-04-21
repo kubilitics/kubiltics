@@ -47,10 +47,16 @@ type LLMToolProvider interface {
 // re-declared here to avoid leaking the internal/llm/types dependency through
 // the public LLMProvider interface. The bridge translates between the two.
 type toolStreamEvent struct {
-	TextToken string
-	Tool      *toolEvent
-	Done      bool
-	Err       error
+	TextToken  string
+	Tool       *toolEvent
+	Done       bool
+	Err        error
+	TokenUsage *toolTokenUsage
+}
+
+type toolTokenUsage struct {
+	InputTokens  int
+	OutputTokens int
 }
 
 type toolEvent struct {
