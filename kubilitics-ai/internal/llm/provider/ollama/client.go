@@ -85,8 +85,13 @@ type ollamaFunctionDefinition struct {
 
 type ollamaToolCall struct {
 	Function struct {
-		Name      string `json:"name"`
-		Arguments string `json:"arguments"`
+		Name string `json:"name"`
+		// Ollama (recent versions) returns tool_call arguments as a JSON
+		// object, not a JSON-encoded string. Using json.RawMessage lets
+		// us accept both shapes: the caller Unmarshals into the target
+		// map either way (an object parses directly; a quoted string
+		// passes through once).
+		Arguments json.RawMessage `json:"arguments"`
 	} `json:"function"`
 }
 
@@ -94,8 +99,12 @@ type ollamaChatRequest struct {
 	Model    string                 `json:"model"`
 	Messages []ollamaMessage        `json:"messages"`
 	Tools    []ollamaTool           `json:"tools,omitempty"`
-	Stream   bool                   `json:"stream,omitempty"`
-	Options  map[string]interface{} `json:"options,omitempty"`
+	// Stream MUST send explicit false for non-streaming callers; the
+	// ,omitempty tag silently dropped it, causing Ollama to fall back
+	// to its default (stream=true) and our single-JSON parser to error
+	// with "invalid character '{' after top-level value".
+	Stream  bool                   `json:"stream"`
+	Options map[string]interface{} `json:"options,omitempty"`
 }
 
 type ollamaChatResponse struct {
@@ -217,6 +226,7 @@ func (c *OllamaClientImpl) Complete(
 		Model:    c.model,
 		Messages: ollamaMessages,
 		Tools:    ollamaTools,
+		Stream:   false,
 		Options: map[string]interface{}{
 			"num_predict": c.maxTokens,
 		},
@@ -241,10 +251,13 @@ func (c *OllamaClientImpl) Complete(
 	if len(chatResponse.Message.ToolCalls) > 0 {
 		toolCalls = make([]interface{}, len(chatResponse.Message.ToolCalls))
 		for i, tc := range chatResponse.Message.ToolCalls {
-			// Parse arguments JSON
-			var args map[string]interface{}
-			if err := json.Unmarshal([]byte(tc.Function.Arguments), &args); err != nil {
-				return "", nil, fmt.Errorf("failed to parse tool call arguments: %w", err)
+			// Parse arguments JSON. Ollama has shipped both shapes over
+			// its lifetime: object directly ({...}) and JSON-encoded
+			// string ("{...}"). Try object first; on failure, unmarshal
+			// as string and parse that.
+			args, perr := parseToolArgs(tc.Function.Arguments)
+			if perr != nil {
+				return "", nil, fmt.Errorf("failed to parse tool call arguments: %w", perr)
 			}
 
 			toolCalls[i] = map[string]interface{}{
@@ -454,8 +467,7 @@ func (c *OllamaClientImpl) streamRequest(
 
 		if len(chunk.Message.ToolCalls) > 0 {
 			for _, tc := range chunk.Message.ToolCalls {
-				var args map[string]interface{}
-				json.Unmarshal([]byte(tc.Function.Arguments), &args)
+				args, _ := parseToolArgs(tc.Function.Arguments)
 
 				toolChan <- map[string]interface{}{
 					"type": "function",
@@ -501,4 +513,31 @@ func getContextWindow(model string) int {
 // contains checks if a string contains a substring
 func contains(s, substr string) bool {
 	return len(s) >= len(substr) && (s == substr || len(s) > len(substr) && s[:len(substr)] == substr || len(s) > len(substr) && s[len(s)-len(substr):] == substr)
+}
+
+// parseToolArgs handles both Ollama tool-call argument shapes:
+//
+//  1. Object directly (current API): {"cluster_id":"x","kind":"Pod"}
+//  2. JSON-encoded string (older API): "{\"cluster_id\":\"x\"}"
+//
+// Tries object first; on failure falls back to string + recursive parse.
+// Returns an empty map (never nil) on any failure so callers can treat
+// missing args as "no args" without nil-checking.
+func parseToolArgs(raw json.RawMessage) (map[string]interface{}, error) {
+	if len(raw) == 0 {
+		return map[string]interface{}{}, nil
+	}
+	var obj map[string]interface{}
+	if err := json.Unmarshal(raw, &obj); err == nil {
+		return obj, nil
+	}
+	var s string
+	if err := json.Unmarshal(raw, &s); err != nil {
+		return map[string]interface{}{}, err
+	}
+	var obj2 map[string]interface{}
+	if err := json.Unmarshal([]byte(s), &obj2); err != nil {
+		return map[string]interface{}{}, err
+	}
+	return obj2, nil
 }
