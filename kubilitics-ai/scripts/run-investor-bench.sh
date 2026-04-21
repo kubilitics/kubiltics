@@ -56,11 +56,23 @@ lsof -tiTCP:28081 -sTCP:LISTEN 2>/dev/null | xargs -r kill -9 2>/dev/null || tru
 sleep 2
 nohup ./server -config /tmp/config-bench-big.yaml > /tmp/brain-big.log 2>&1 &
 # Wait until the brain's gRPC is actually listening, not just the process alive.
-for i in $(seq 1 30); do
-  if nc -z 127.0.0.1 50051 2>/dev/null; then echo "brain ready on :50051"; break; fi
+# Cold-start can be slow (Go runtime + 166 MCP tool registration + backend
+# bootstrap retries). 90s is the observed p99 on a warm laptop.
+ready=0
+for i in $(seq 1 90); do
+  if nc -z 127.0.0.1 50051 2>/dev/null; then
+    echo "brain ready on :50051 (after ${i}s)"
+    ready=1
+    break
+  fi
   sleep 1
 done
 tail -5 /tmp/brain-big.log
+if [ "$ready" != "1" ]; then
+  echo "FATAL: brain did not bind :50051 within 90s — aborting bench"
+  tail -30 /tmp/brain-big.log
+  exit 1
+fi
 
 echo "=== 6/8 run investor-demo-50 with traces ==="
 CID=$(curl -sS http://localhost:8190/api/v1/clusters | python3 -c "import sys,json; ids=[c['id'] for c in json.load(sys.stdin) if c['status']=='connected']; print(ids[0] if ids else '')")
