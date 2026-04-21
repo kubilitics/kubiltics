@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/router"
+	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/tracing/routing"
 	kotgv1 "github.com/vellankikoti/kotg-schema/gen/go/kotg/v1"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -104,8 +105,18 @@ type Server struct {
 	kotgv1.UnimplementedChatServer
 	kotgv1.UnimplementedAIControlServer
 	cfg      Config
-	mu       sync.Mutex
+	mu       sync.RWMutex
 	sessions map[string]*session
+	traceDir string
+}
+
+// SetTraceDir configures the directory where per-turn routing traces are
+// written. An empty string disables tracing (no-op recorder). The directory
+// is created on first use, not here, so callers can set this at any time.
+func (s *Server) SetTraceDir(dir string) {
+	s.mu.Lock()
+	s.traceDir = dir
+	s.mu.Unlock()
 }
 
 // New builds a runtime server. Caller wires it into a *grpc.Server.
@@ -184,6 +195,21 @@ func (s *Server) Send(stream kotgv1.Chat_SendServer) error {
 		sess.turnCount++
 		sess.updatedAt = time.Now()
 		s.mu.Unlock()
+
+		// Attach a per-turn routing trace recorder when a trace dir is configured.
+		// Off by default (traceDir == "") so production traffic sees zero overhead.
+		s.mu.RLock()
+		td := s.traceDir
+		s.mu.RUnlock()
+		if td != "" {
+			if rec, err := routing.NewFileRecorder(msg.TurnId, td); err == nil {
+				defer rec.Close()
+				rec.Stage("user_msg", map[string]any{
+					"bytes": len(msg.Text),
+				})
+				turnCtx = routing.WithRecorder(turnCtx, rec)
+			}
+		}
 
 		req := router.Request{
 			SessionID:      msg.SessionId,

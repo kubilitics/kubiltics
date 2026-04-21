@@ -77,9 +77,25 @@ func main() {
 	out := flag.String("out", "chat_quality_results.xml", "JUnit XML output path")
 	timeout := flag.Duration("timeout", 60*time.Second, "per-prompt timeout")
 	concurrency := flag.Int("concurrency", 1, "parallel workers (higher = faster, but watch LLM rate limits)")
+	traceDir := flag.String("trace-dir", "", "if set, write per-prompt JSONL traces into this directory; also sets the brain-side trace dir")
 	flag.Parse()
 	if *cluster == "" {
 		log.Fatal("--cluster is required")
+	}
+
+	// If a trace dir is requested, tell the brain to start recording routing
+	// traces keyed by turn_id. Best-effort: a failure here is non-fatal so
+	// the bench can still run against a brain that doesn't support the endpoint.
+	if *traceDir != "" {
+		reqBody, _ := json.Marshal(map[string]string{"trace_dir": *traceDir})
+		req, _ := http.NewRequest(http.MethodPost, "http://localhost:28081/admin/trace-dir", bytes.NewReader(reqBody))
+		req.Header.Set("Content-Type", "application/json")
+		if resp, err := http.DefaultClient.Do(req); err == nil {
+			_ = resp.Body.Close()
+			fmt.Fprintf(os.Stderr, "[bench] brain trace dir set: %s\n", *traceDir)
+		} else {
+			fmt.Fprintf(os.Stderr, "[bench] warning: failed to set brain trace dir: %v\n", err)
+		}
 	}
 
 	body, err := os.ReadFile(*prompts)

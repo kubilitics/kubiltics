@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"sync"
@@ -27,6 +28,7 @@ import (
 	reasoningcontext "github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/reasoning/context"
 	reasoningengine "github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/reasoning/engine"
 	reasoningprompt "github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/reasoning/prompt"
+	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/runtime"
 	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/safety"
 	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/security"
 
@@ -76,6 +78,10 @@ type Server struct {
 
 	// HTTP server
 	httpServer *http.Server
+
+	// runtimeSrv is the gRPC runtime server (set after Start via SetRuntimeServer).
+	// Used to forward the /admin/trace-dir request into the runtime layer.
+	runtimeSrv *runtime.Server
 
 	// Lifecycle
 	ctx    context.Context
@@ -456,6 +462,50 @@ func (s *Server) GetReasoningEngine() reasoningengine.ReasoningEngine {
 	return s.reasoningEngine
 }
 
+// SetRuntimeServer stores a reference to the gRPC runtime server so that
+// admin endpoints (e.g. /admin/trace-dir) can reach into the runtime layer.
+// This must be called after New and before the relevant handler fires, but
+// does not need to be called before Start — the handler reads the pointer
+// lazily at request time.
+func (s *Server) SetRuntimeServer(srv *runtime.Server) {
+	s.mu.Lock()
+	s.runtimeSrv = srv
+	s.mu.Unlock()
+}
+
+// handleAdminTraceDir implements POST /admin/trace-dir.
+// It hot-configures the directory where per-turn routing JSONL traces are
+// written by the runtime gRPC server. An empty trace_dir disables tracing.
+// This endpoint is intentionally unauthenticated — it binds on the same
+// loopback-only port as the rest of the admin API, so network exposure is
+// limited to localhost.
+func (s *Server) handleAdminTraceDir(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	var body struct {
+		TraceDir string `json:"trace_dir"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	if body.TraceDir != "" {
+		if err := os.MkdirAll(body.TraceDir, 0o755); err != nil {
+			http.Error(w, "mkdir: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+	}
+	s.mu.RLock()
+	rtSrv := s.runtimeSrv
+	s.mu.RUnlock()
+	if rtSrv != nil {
+		rtSrv.SetTraceDir(body.TraceDir)
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
 // registerHandlers registers HTTP handlers
 func (s *Server) registerHandlers(mux *http.ServeMux) {
 	// Health check
@@ -563,6 +613,12 @@ func (s *Server) registerHandlers(mux *http.ServeMux) {
 	// Model catalog endpoint.
 	// GET /api/v1/config/models — returns curated model list per provider for the frontend dropdown.
 	mux.HandleFunc("/api/v1/config/models", s.handleGetProviderModels)
+
+	// Admin: per-turn routing trace dir.
+	// POST /admin/trace-dir {"trace_dir": "/path/to/dir"} — sets the directory
+	// where the runtime gRPC server writes per-turn routing JSONL files.
+	// Empty trace_dir disables tracing. Loopback-only; no auth required.
+	mux.HandleFunc("/admin/trace-dir", s.handleAdminTraceDir)
 }
 
 // handleHealth handles health check requests.

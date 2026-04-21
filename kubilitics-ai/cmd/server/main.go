@@ -217,6 +217,9 @@ func main() {
 	})
 	kotgv1.RegisterChatServer(grpcSrv, rtSrv)
 	kotgv1.RegisterAIControlServer(grpcSrv, rtSrv)
+	// Wire the runtime server into the HTTP admin surface so that
+	// POST /admin/trace-dir can reach into the runtime layer.
+	srv.SetRuntimeServer(rtSrv)
 	go func() {
 		fmt.Printf("AgentRuntimeService gRPC listening on %s\n", grpcAddr)
 		if err := grpcSrv.Serve(grpcLis); err != nil {
