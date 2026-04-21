@@ -78,13 +78,14 @@ if [ "$ready" != "1" ]; then
   exit 1
 fi
 
-echo "=== 6/8 run investor-demo-50 with traces ==="
+echo "=== 6/8 run incident-scenarios-20 with traces ==="
+SUITE="${SUITE:-cmd/chat-quality-bench/suites/incident-scenarios-20.json}"
 CID=$(curl -sS http://localhost:8190/api/v1/clusters | python3 -c "import sys,json; ids=[c['id'] for c in json.load(sys.stdin) if c['status']=='connected']; print(ids[0] if ids else '')")
 test -n "$CID" || { echo "no connected cluster"; exit 1; }
 rm -rf /tmp/traces-bench && mkdir -p /tmp/traces-bench
 curl -sf -XPOST http://localhost:28081/admin/trace-dir -H 'Content-Type: application/json' -d '{"trace_dir":"/tmp/traces-bench"}'
 ./bin/chat-quality-bench --cluster "$CID" \
-  --prompts cmd/chat-quality-bench/suites/investor-demo-50.json \
+  --prompts "$SUITE" \
   --concurrency 1 --timeout 300s \
   --trace-dir /tmp/traces-bench \
   --out /tmp/bench-demo-junit.xml \
@@ -126,6 +127,7 @@ go build -o bin/bench-report ./cmd/bench-report
   --junit "$REPORT_DIR/junit-demo.xml" \
   --traces /tmp/traces-bench \
   --catalog "$REPORT_DIR/tool-catalog.json" \
+  --suite-file "$SUITE" \
   --suite "investor-demo-50 on $MODEL (g5.12xlarge)" \
   --out "$REPORT_DIR/report.html"
 

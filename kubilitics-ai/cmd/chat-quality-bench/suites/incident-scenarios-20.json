@@ -1,0 +1,125 @@
+{
+  "description": "20 real-world engineer scenarios — the kind of question an on-call SRE actually types at 3am during an incident. Each prompt is one natural-language question; the LLM must pick the right MCP tool(s) and synthesize a human-readable answer from the real cluster state. Cluster: kubilitics-test (kind, 3 nodes, 7 namespaces, demo/web + data/redis workloads).",
+  "prompts": [
+    {
+      "id": "scen-health-01",
+      "text": "Give me a quick health check of the whole cluster — what's running, what's broken, what should I worry about right now?",
+      "expect_tool": true,
+      "scenario": "Just-got-paged overview. Engineer wants one-shot situational awareness before digging in."
+    },
+    {
+      "id": "scen-health-02",
+      "text": "Is anything unhealthy in the demo namespace? If so, what and why?",
+      "expect_tool": true,
+      "scenario": "Scoped triage. Engineer knows the service area; wants targeted assessment without reading every pod manually."
+    },
+    {
+      "id": "scen-pods-03",
+      "text": "Show me the web deployment in demo — how many replicas, are they all ready, any recent restarts?",
+      "expect_tool": true,
+      "scenario": "Deployment-level status question that drives downstream 'is my service serving traffic?' reasoning."
+    },
+    {
+      "id": "scen-pods-04",
+      "text": "Any pods that have restarted more than once in the last hour? I need to know before standup.",
+      "expect_tool": true,
+      "scenario": "Flake detector. Engineer is looking for the 'silent failures' — services that are technically up but thrashing."
+    },
+    {
+      "id": "scen-logs-05",
+      "text": "Grab the latest logs from one of the web pods in demo — I want to see if there's anything funny in the output.",
+      "expect_tool": true,
+      "scenario": "Fast log peek. Engineer doesn't want to kubectl exec; the assistant should pick a representative pod."
+    },
+    {
+      "id": "scen-logs-06",
+      "text": "What errors or warnings are showing up in redis in the data namespace recently?",
+      "expect_tool": true,
+      "scenario": "Filtered log investigation. Tests whether the assistant fetches logs AND summarizes, not just dumps lines."
+    },
+    {
+      "id": "scen-events-07",
+      "text": "What happened in the demo namespace in the last 15 minutes? Any events I should know about?",
+      "expect_tool": true,
+      "scenario": "Event-based forensics — 'what changed' is usually the first question during an incident."
+    },
+    {
+      "id": "scen-events-08",
+      "text": "Have any pods been OOMKilled or evicted cluster-wide recently?",
+      "expect_tool": true,
+      "scenario": "Resource-pressure red flag. Engineer is hunting for silent memory issues before they cascade."
+    },
+    {
+      "id": "scen-nodes-09",
+      "text": "Are any of my nodes under pressure — CPU, memory, disk? I don't want to find out by being paged.",
+      "expect_tool": true,
+      "scenario": "Capacity pre-emption. The question a seasoned SRE asks BEFORE a capacity incident, not after."
+    },
+    {
+      "id": "scen-nodes-10",
+      "text": "How is the kubilitics-test-control-plane node doing — capacity, what's scheduled on it, any conditions?",
+      "expect_tool": true,
+      "scenario": "Specific-node deep dive. Tests whether the assistant can focus on one node without dumping cluster-wide data."
+    },
+    {
+      "id": "scen-capacity-11",
+      "text": "Do I have enough capacity to scale the web deployment from 3 to 10 replicas? Give me a realistic answer.",
+      "expect_tool": true,
+      "scenario": "What-if capacity planning. Requires reasoning about node resources + existing allocations, not just listing."
+    },
+    {
+      "id": "scen-rbac-12",
+      "text": "Who has permission to delete pods in the demo namespace? I need to know for a security review.",
+      "expect_tool": true,
+      "scenario": "Real RBAC audit scenario. The answer should name service accounts / roles, not just dump policy docs."
+    },
+    {
+      "id": "scen-rbac-13",
+      "text": "Are any service accounts granted cluster-admin by accident? That'd be a finding I need to escalate.",
+      "expect_tool": true,
+      "scenario": "Security-posture check. The SRE equivalent of 'is the door unlocked?'"
+    },
+    {
+      "id": "scen-network-14",
+      "text": "The web service in demo — where does its traffic go? Which pods does it actually route to right now?",
+      "expect_tool": true,
+      "scenario": "Service/endpoints correlation. Helps debug 'service exists but nothing responds' issues."
+    },
+    {
+      "id": "scen-storage-15",
+      "text": "What persistent volumes exist and are any close to full or in an error state?",
+      "expect_tool": true,
+      "scenario": "Storage-pressure scan. PVC-full is a classic silent incident cause; the assistant should flag it proactively."
+    },
+    {
+      "id": "scen-config-16",
+      "text": "Show me the environment variables the redis pod in data is running with — I suspect a config mismatch.",
+      "expect_tool": true,
+      "scenario": "Config drift debugging. Critical: the assistant must redact secret values while showing the shape."
+    },
+    {
+      "id": "scen-workload-17",
+      "text": "Walk me through everything the redis deployment depends on — configmaps, secrets, service accounts, the works.",
+      "expect_tool": true,
+      "scenario": "Dependency discovery. Tests multi-step reasoning: get deployment → trace refs → read each ref."
+    },
+    {
+      "id": "scen-compare-18",
+      "text": "Compare the web deployment's desired state to what's actually running — anything different?",
+      "expect_tool": true,
+      "scenario": "Drift detection. Exercises the 'desired vs actual' mental model that Kubernetes operators live in."
+    },
+    {
+      "id": "scen-change-19",
+      "text": "What's been deployed or changed in the last 2 hours? I came back from lunch and things feel off.",
+      "expect_tool": true,
+      "scenario": "Recent-change investigation. Nearly every incident starts with 'what changed?' — this is the core question."
+    },
+    {
+      "id": "scen-summary-20",
+      "text": "Summarize the kubilitics-test cluster for a weekly status update — what's deployed, who's healthy, any risks to flag.",
+      "expect_tool": true,
+      "scenario": "Narrative-style reporting. Tests whether the assistant can synthesize across multiple tools into a human-readable summary."
+    }
+  ]
+}

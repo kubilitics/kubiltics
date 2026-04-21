@@ -120,7 +120,41 @@ func errorBlockHTML(msg string) string {
 //  6. expandable prompt walkthroughs
 //  7. privacy guardrails section
 //  8. methodology + limitations (reused text)
-func renderHTMLv2(w io.Writer, suite string, junit *junitSuite, traces map[string]*promptTrace, catalog []catalogEntry) error {
+// toolSequenceFromTrace extracts the ordered list of tool names dispatched by
+// the LLM for one prompt, from the trace's tool_dispatch stages. Drives the
+// "journey" display on each walkthrough card.
+func toolSequenceFromTrace(stages []stage) []string {
+	var names []string
+	for _, s := range stages {
+		if s.Stage != "tool_dispatch" {
+			continue
+		}
+		if n, ok := s.Fields["tool"].(string); ok && n != "" {
+			names = append(names, n)
+			continue
+		}
+		if n, ok := s.Fields["name"].(string); ok && n != "" {
+			names = append(names, n)
+		}
+	}
+	return names
+}
+
+// finalAnswerFromTrace pulls a short preview of the model's final answer text
+// from the trace if the runtime recorded one. Falls back to "" when not present.
+func finalAnswerFromTrace(stages []stage) string {
+	for i := len(stages) - 1; i >= 0; i-- {
+		if stages[i].Stage != "llm_text_out" {
+			continue
+		}
+		if p, ok := stages[i].Fields["preview"].(string); ok && p != "" {
+			return p
+		}
+	}
+	return ""
+}
+
+func renderHTMLv2(w io.Writer, suite string, junit *junitSuite, traces map[string]*promptTrace, catalog []catalogEntry, prompts map[string]suitePrompt) error {
 	caseByName := make(map[string]*junitCase, len(junit.Cases))
 	for i := range junit.Cases {
 		caseByName[junit.Cases[i].Name] = &junit.Cases[i]
@@ -240,11 +274,54 @@ func renderHTMLv2(w io.Writer, suite string, junit *junitSuite, traces map[strin
 			}
 		}
 		latMs := traceDurationMs(t)
+
+		// Journey: question → tools-in-order → final answer preview.
+		promptText := ""
+		scenarioText := ""
+		if p, ok := prompts[id]; ok {
+			promptText = p.Text
+			scenarioText = p.Scenario
+		}
+		tools := toolSequenceFromTrace(t.Stages)
+		answer := finalAnswerFromTrace(t.Stages)
+
+		questionHTML := ""
+		if promptText != "" {
+			questionHTML = fmt.Sprintf(`<div class="wt-question"><span class="wt-label">You asked</span><div class="wt-question-text">%s</div></div>`, htmlEscape(promptText))
+		}
+		scenarioHTML := ""
+		if scenarioText != "" {
+			scenarioHTML = fmt.Sprintf(`<div class="wt-scenario"><span class="wt-label">Real-world scenario</span><div class="wt-scenario-text">%s</div></div>`, htmlEscape(scenarioText))
+		}
+		journeyHTML := `<div class="wt-journey"><span class="wt-label">Kubilitics picked tools (in order)</span>`
+		if len(tools) == 0 {
+			journeyHTML += `<div class="wt-empty">— no tools dispatched —</div>`
+		} else {
+			journeyHTML += `<ol class="wt-tool-list">`
+			for _, tn := range tools {
+				journeyHTML += fmt.Sprintf(`<li><code>%s</code></li>`, htmlEscape(tn))
+			}
+			journeyHTML += `</ol>`
+		}
+		journeyHTML += `</div>`
+		answerHTML := ""
+		if answer != "" {
+			answerHTML = fmt.Sprintf(`<div class="wt-answer"><span class="wt-label">Assistant answered</span><div class="wt-answer-text">%s</div></div>`, htmlEscape(answer))
+		}
+
 		fmt.Fprintf(w, `<details class="walkthrough">
-<summary><span>%s</span><span>%s · %d ms · $%.5f</span></summary>
-<ul class="stage-list">%s</ul>
+<summary><span class="wt-id">%s</span><span class="wt-stat">%s · %d ms · %d tools · $%.5f</span></summary>
+<div class="wt-body">
 %s
-</details>`, htmlEscape(id), badge, latMs, t.USD, stagesPretty(t.Stages), errHTML)
+%s
+%s
+%s
+<details class="wt-raw"><summary>raw stage log</summary><ul class="stage-list">%s</ul></details>
+%s
+</div>
+</details>`, htmlEscape(id), badge, latMs, len(tools), t.USD,
+			questionHTML, scenarioHTML, journeyHTML, answerHTML,
+			stagesPretty(t.Stages), errHTML)
 	}
 	fmt.Fprint(w, `</section>`)
 

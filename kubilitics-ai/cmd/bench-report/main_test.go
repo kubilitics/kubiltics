@@ -88,7 +88,7 @@ func TestRenderHTMLv2_IncludesExecSummaryAndToolExplorer(t *testing.T) {
 		{Name: "list_resources", Category: "Observation", Description: "list k8s resources", PlainEnglish: "Shows things."},
 	}
 	var buf strings.Builder
-	if err := renderHTMLv2(&buf, "test-suite", j, traces, cat); err != nil {
+	if err := renderHTMLv2(&buf, "test-suite", j, traces, cat, map[string]suitePrompt{"p1": {ID: "p1", Text: "test question", Scenario: "unit test"}}); err != nil {
 		t.Fatalf("render: %v", err)
 	}
 	h := buf.String()

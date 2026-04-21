@@ -154,3 +154,22 @@ table { width: 100%; border-collapse: collapse; font-size: 13px; }
 th, td { border-bottom: 1px solid var(--border); padding: 8px 12px; text-align: left; }
 th { background: #f3f4f6; font-weight: 600; }
 .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+
+/* Walkthrough journey — question → tools → answer */
+.wt-body { padding: 16px 0 4px; }
+.wt-label { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: #6b7280; font-weight: 700; margin-bottom: 4px; }
+.wt-question { background: #eff6ff; border-left: 3px solid #2563eb; padding: 10px 14px; border-radius: 4px; margin-bottom: 10px; }
+.wt-question-text { font-size: 15px; color: #1e3a8a; font-weight: 600; line-height: 1.5; }
+.wt-scenario { background: #fafafa; border-left: 3px solid #9ca3af; padding: 8px 14px; border-radius: 4px; margin-bottom: 10px; font-size: 13px; color: #4b5563; }
+.wt-scenario-text { font-style: italic; line-height: 1.5; }
+.wt-journey { margin-bottom: 10px; }
+.wt-tool-list { margin: 4px 0 0 18px; padding: 0; }
+.wt-tool-list li { padding: 2px 0; font-size: 13px; }
+.wt-tool-list code { background: #f3f4f6; color: #4338ca; padding: 1px 6px; border-radius: 3px; font-size: 12px; }
+.wt-empty { color: #9ca3af; font-style: italic; font-size: 12px; }
+.wt-answer { background: #f0fdf4; border-left: 3px solid #16a34a; padding: 10px 14px; border-radius: 4px; margin-bottom: 10px; }
+.wt-answer-text { font-size: 13px; color: #14532d; line-height: 1.55; white-space: pre-wrap; }
+.wt-raw { margin-top: 10px; }
+.wt-raw summary { font-size: 11px; color: #6b7280; cursor: pointer; }
+.wt-id { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; color: #374151; }
+.wt-stat { color: #6b7280; font-size: 12px; }

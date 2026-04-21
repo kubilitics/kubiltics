@@ -64,6 +64,15 @@ type promptTrace struct {
 	LatencyMs int
 }
 
+// suitePrompt mirrors one entry from a suite JSON (id/text/scenario/expect_tool).
+// Used to inject the real question text and scenario blurb into walkthrough cards.
+type suitePrompt struct {
+	ID         string `json:"id"`
+	Text       string `json:"text"`
+	Scenario   string `json:"scenario,omitempty"`
+	ExpectTool bool   `json:"expect_tool,omitempty"`
+}
+
 // catalogEntry mirrors the per-tool record emitted by cmd/tool-catalog.
 // Only the fields consumed by the v2 report are declared; extras unmarshal into map/slice.
 type catalogEntry struct {
@@ -82,6 +91,7 @@ func main() {
 	suite := flag.String("suite", "chat-quality", "suite name (shown in report)")
 	out := flag.String("out", "", "output HTML path")
 	catalogPath := flag.String("catalog", "", "path to tool-catalog.json (optional; enables tool-explorer section)")
+	suiteFile := flag.String("suite-file", "", "path to suite JSON (prompts + scenarios). Drives walkthrough-card question text.")
 	useV2 := flag.Bool("v2", false, "use the v2 interactive report template")
 	flag.Parse()
 	if *junitPath == "" || *out == "" {
@@ -117,7 +127,10 @@ func main() {
 			if !strings.HasSuffix(p, ".jsonl") {
 				return nil
 			}
-			id := strings.TrimSuffix(filepath.Base(p), ".jsonl")
+			// chat-quality-bench writes traces as "bench-<prompt-id>.jsonl" but
+			// the JUnit testcase name is just "<prompt-id>". Strip the prefix so
+			// the walkthrough-card badge can match against the junit case.
+			id := strings.TrimPrefix(strings.TrimSuffix(filepath.Base(p), ".jsonl"), "bench-")
 			pt, perr := loadTrace(p, id)
 			if perr == nil {
 				traces[id] = pt
@@ -137,8 +150,25 @@ func main() {
 		log.Fatalf("create out: %v", err)
 	}
 	defer f.Close()
+	prompts := map[string]suitePrompt{}
+	if *suiteFile != "" {
+		b, rerr := os.ReadFile(*suiteFile)
+		if rerr != nil {
+			log.Fatalf("read suite-file: %v", rerr)
+		}
+		var sf struct {
+			Prompts []suitePrompt `json:"prompts"`
+		}
+		if uerr := json.Unmarshal(b, &sf); uerr != nil {
+			log.Fatalf("parse suite-file: %v", uerr)
+		}
+		for _, p := range sf.Prompts {
+			prompts[p.ID] = p
+		}
+	}
+
 	if *useV2 {
-		err = renderHTMLv2(f, *suite, s, traces, catalog)
+		err = renderHTMLv2(f, *suite, s, traces, catalog, prompts)
 	} else {
 		err = renderHTML(f, *suite, s, traces)
 	}
