@@ -1,152 +1,18 @@
-<testsuite name="chat-quality" tests="50" failures="50">
-  <testcase name="demo-list-01" time="0.340711041">
-    <failure message="create session: 500 rpc error: code = Unavailable desc = connection error: desc = &#34;transport: Error while dialing: dial tcp 127.0.0.1:50051: connect: connection refused&#34;&#xA;">prompt=&#34;list the namespaces&#34; tools=[] text_len=0</failure>
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="chat-quality" tests="5" failures="5">
+  <testcase name="bench-demo-list-01" time="62.057">
+    <failure message="empty text answer">prompt_id=&#x27;bench-demo-list-01&#x27; tools=1 text_len=0</failure>
   </testcase>
-  <testcase name="demo-list-02" time="0.005970084">
-    <failure message="create session: 500 rpc error: code = Unavailable desc = connection error: desc = &#34;transport: Error while dialing: dial tcp 127.0.0.1:50051: connect: connection refused&#34;&#xA;">prompt=&#34;show me all pods&#34; tools=[] text_len=0</failure>
+  <testcase name="bench-demo-list-02" time="177.734">
+    <failure message="llm_error: agentic loop exceeded max turns (20)">prompt_id=&#x27;bench-demo-list-02&#x27; tools=20 text_len=0</failure>
   </testcase>
-  <testcase name="demo-list-03" time="0.004225209">
-    <failure message="create session: 500 rpc error: code = Unavailable desc = connection error: desc = &#34;transport: Error while dialing: dial tcp 127.0.0.1:50051: connect: connection refused&#34;&#xA;">prompt=&#34;list deployments&#34; tools=[] text_len=0</failure>
+  <testcase name="bench-demo-list-03" time="5.995">
+    <failure message="empty text answer">prompt_id=&#x27;bench-demo-list-03&#x27; tools=0 text_len=0</failure>
   </testcase>
-  <testcase name="demo-list-04" time="0.001955667">
-    <failure message="create session: 500 rpc error: code = Unavailable desc = connection error: desc = &#34;transport: Error while dialing: dial tcp 127.0.0.1:50051: connect: connection refused&#34;&#xA;">prompt=&#34;list services in default&#34; tools=[] text_len=0</failure>
+  <testcase name="bench-demo-list-04" time="4.738">
+    <failure message="empty text answer">prompt_id=&#x27;bench-demo-list-04&#x27; tools=0 text_len=0</failure>
   </testcase>
-  <testcase name="demo-list-05" time="0.099873958">
-    <failure message="create session: 500 rpc error: code = Unavailable desc = connection error: desc = &#34;transport: Error while dialing: dial tcp 127.0.0.1:50051: connect: connection refused&#34;&#xA;">prompt=&#34;what nodes are in the cluster&#34; tools=[] text_len=0</failure>
-  </testcase>
-  <testcase name="demo-list-06" time="0.098776459">
-    <failure message="create session: 500 rpc error: code = Unavailable desc = connection error: desc = &#34;transport: Error while dialing: dial tcp 127.0.0.1:50051: connect: connection refused&#34;&#xA;">prompt=&#34;list configmaps in kube-system&#34; tools=[] text_len=0</failure>
-  </testcase>
-  <testcase name="demo-list-07" time="0.045841833">
-    <failure message="create session: 500 rpc error: code = Unavailable desc = connection error: desc = &#34;transport: Error while dialing: dial tcp 127.0.0.1:50051: connect: connection refused&#34;&#xA;">prompt=&#34;list secrets in default&#34; tools=[] text_len=0</failure>
-  </testcase>
-  <testcase name="demo-list-08" time="0.028424875">
-    <failure message="create session: 500 rpc error: code = Unavailable desc = connection error: desc = &#34;transport: Error while dialing: dial tcp 127.0.0.1:50051: connect: connection refused&#34;&#xA;">prompt=&#34;list ingresses&#34; tools=[] text_len=0</failure>
-  </testcase>
-  <testcase name="demo-list-09" time="0.021756792">
-    <failure message="create session: 500 rpc error: code = Unavailable desc = connection error: desc = &#34;transport: Error while dialing: dial tcp 127.0.0.1:50051: connect: connection refused&#34;&#xA;">prompt=&#34;list statefulsets&#34; tools=[] text_len=0</failure>
-  </testcase>
-  <testcase name="demo-list-10" time="0.011486209">
-    <failure message="create session: 500 rpc error: code = Unavailable desc = connection error: desc = &#34;transport: Error while dialing: dial tcp 127.0.0.1:50051: connect: connection refused&#34;&#xA;">prompt=&#34;list daemonsets&#34; tools=[] text_len=0</failure>
-  </testcase>
-  <testcase name="demo-count-11" time="0.0115895">
-    <failure message="create session: 500 rpc error: code = Unavailable desc = connection error: desc = &#34;transport: Error while dialing: dial tcp 127.0.0.1:50051: connect: connection refused&#34;&#xA;">prompt=&#34;how many pods are running&#34; tools=[] text_len=0</failure>
-  </testcase>
-  <testcase name="demo-count-12" time="0.052349375">
-    <failure message="create session: 500 rpc error: code = Unavailable desc = connection error: desc = &#34;transport: Error while dialing: dial tcp 127.0.0.1:50051: connect: connection refused&#34;&#xA;">prompt=&#34;how many deployments&#34; tools=[] text_len=0</failure>
-  </testcase>
-  <testcase name="demo-count-13" time="0.039230625">
-    <failure message="create session: 500 rpc error: code = Unavailable desc = connection error: desc = &#34;transport: Error while dialing: dial tcp 127.0.0.1:50051: connect: connection refused&#34;&#xA;">prompt=&#34;how many services&#34; tools=[] text_len=0</failure>
-  </testcase>
-  <testcase name="demo-count-14" time="0.009813667">
-    <failure message="create session: 500 rpc error: code = Unavailable desc = connection error: desc = &#34;transport: Error while dialing: dial tcp 127.0.0.1:50051: connect: connection refused&#34;&#xA;">prompt=&#34;how many nodes&#34; tools=[] text_len=0</failure>
-  </testcase>
-  <testcase name="demo-count-15" time="0.0107215">
-    <failure message="create session: 500 rpc error: code = Unavailable desc = connection error: desc = &#34;transport: Error while dialing: dial tcp 127.0.0.1:50051: connect: connection refused&#34;&#xA;">prompt=&#34;how many pods in kube-system&#34; tools=[] text_len=0</failure>
-  </testcase>
-  <testcase name="demo-count-16" time="0.003970667">
-    <failure message="create session: 500 rpc error: code = Unavailable desc = connection error: desc = &#34;transport: Error while dialing: dial tcp 127.0.0.1:50051: connect: connection refused&#34;&#xA;">prompt=&#34;how many secrets are there&#34; tools=[] text_len=0</failure>
-  </testcase>
-  <testcase name="demo-count-17" time="0.043863333">
-    <failure message="create session: 500 rpc error: code = Unavailable desc = connection error: desc = &#34;transport: Error while dialing: dial tcp 127.0.0.1:50051: connect: connection refused&#34;&#xA;">prompt=&#34;how many configmaps in default&#34; tools=[] text_len=0</failure>
-  </testcase>
-  <testcase name="demo-count-18" time="0.036557208">
-    <failure message="create session: 500 rpc error: code = Unavailable desc = connection error: desc = &#34;transport: Error while dialing: dial tcp 127.0.0.1:50051: connect: connection refused&#34;&#xA;">prompt=&#34;pod count by namespace&#34; tools=[] text_len=0</failure>
-  </testcase>
-  <testcase name="demo-count-19" time="0.00228225">
-    <failure message="create session: 500 rpc error: code = Unavailable desc = connection error: desc = &#34;transport: Error while dialing: dial tcp 127.0.0.1:50051: connect: connection refused&#34;&#xA;">prompt=&#34;total pods across the cluster&#34; tools=[] text_len=0</failure>
-  </testcase>
-  <testcase name="demo-count-20" time="0.006048375">
-    <failure message="create session: 500 rpc error: code = Unavailable desc = connection error: desc = &#34;transport: Error while dialing: dial tcp 127.0.0.1:50051: connect: connection refused&#34;&#xA;">prompt=&#34;how many services are of type LoadBalancer&#34; tools=[] text_len=0</failure>
-  </testcase>
-  <testcase name="demo-analyze-21" time="0.007163666">
-    <failure message="create session: 500 rpc error: code = Unavailable desc = connection error: desc = &#34;transport: Error while dialing: dial tcp 127.0.0.1:50051: connect: connection refused&#34;&#xA;">prompt=&#34;how is this cluster doing&#34; tools=[] text_len=0</failure>
-  </testcase>
-  <testcase name="demo-analyze-22" time="0.019544834">
-    <failure message="create session: 500 rpc error: code = Unavailable desc = connection error: desc = &#34;transport: Error while dialing: dial tcp 127.0.0.1:50051: connect: connection refused&#34;&#xA;">prompt=&#34;analyze pod health in kube-system&#34; tools=[] text_len=0</failure>
-  </testcase>
-  <testcase name="demo-analyze-23" time="0.017966958">
-    <failure message="create session: 500 rpc error: code = Unavailable desc = connection error: desc = &#34;transport: Error while dialing: dial tcp 127.0.0.1:50051: connect: connection refused&#34;&#xA;">prompt=&#34;analyze deployment health in default&#34; tools=[] text_len=0</failure>
-  </testcase>
-  <testcase name="demo-analyze-24" time="0.277771792">
-    <failure message="create session: 500 rpc error: code = Unavailable desc = connection error: desc = &#34;transport: Error while dialing: dial tcp 127.0.0.1:50051: connect: connection refused&#34;&#xA;">prompt=&#34;are any nodes under pressure&#34; tools=[] text_len=0</failure>
-  </testcase>
-  <testcase name="demo-analyze-25" time="0.021910667">
-    <failure message="create session: 500 rpc error: code = Unavailable desc = connection error: desc = &#34;transport: Error while dialing: dial tcp 127.0.0.1:50051: connect: connection refused&#34;&#xA;">prompt=&#34;analyze rbac permissions in default&#34; tools=[] text_len=0</failure>
-  </testcase>
-  <testcase name="demo-analyze-26" time="0.029102333">
-    <failure message="create session: 500 rpc error: code = Unavailable desc = connection error: desc = &#34;transport: Error while dialing: dial tcp 127.0.0.1:50051: connect: connection refused&#34;&#xA;">prompt=&#34;any resource contention&#34; tools=[] text_len=0</failure>
-  </testcase>
-  <testcase name="demo-analyze-27" time="0.001520292">
-    <failure message="create session: 500 rpc error: code = Unavailable desc = connection error: desc = &#34;transport: Error while dialing: dial tcp 127.0.0.1:50051: connect: connection refused&#34;&#xA;">prompt=&#34;storage health check&#34; tools=[] text_len=0</failure>
-  </testcase>
-  <testcase name="demo-analyze-28" time="0.006353334">
-    <failure message="create session: 500 rpc error: code = Unavailable desc = connection error: desc = &#34;transport: Error while dialing: dial tcp 127.0.0.1:50051: connect: connection refused&#34;&#xA;">prompt=&#34;any pods in crashloopbackoff&#34; tools=[] text_len=0</failure>
-  </testcase>
-  <testcase name="demo-analyze-29" time="0.005166708">
-    <failure message="create session: 500 rpc error: code = Unavailable desc = connection error: desc = &#34;transport: Error while dialing: dial tcp 127.0.0.1:50051: connect: connection refused&#34;&#xA;">prompt=&#34;any pending pods and why&#34; tools=[] text_len=0</failure>
-  </testcase>
-  <testcase name="demo-analyze-30" time="0.08353675">
-    <failure message="create session: 500 rpc error: code = Unavailable desc = connection error: desc = &#34;transport: Error while dialing: dial tcp 127.0.0.1:50051: connect: connection refused&#34;&#xA;">prompt=&#34;are my workloads healthy&#34; tools=[] text_len=0</failure>
-  </testcase>
-  <testcase name="demo-logs-31" time="0.021115">
-    <failure message="create session: 500 rpc error: code = Unavailable desc = connection error: desc = &#34;transport: Error while dialing: dial tcp 127.0.0.1:50051: connect: connection refused&#34;&#xA;">prompt=&#34;get logs from coredns in kube-system&#34; tools=[] text_len=0</failure>
-  </testcase>
-  <testcase name="demo-logs-32" time="0.115103125">
-    <failure message="create session: 500 rpc error: code = Unavailable desc = connection error: desc = &#34;transport: Error while dialing: dial tcp 127.0.0.1:50051: connect: connection refused&#34;&#xA;">prompt=&#34;show recent logs from a pod in default&#34; tools=[] text_len=0</failure>
-  </testcase>
-  <testcase name="demo-logs-33" time="0.038628334">
-    <failure message="create session: 500 rpc error: code = Unavailable desc = connection error: desc = &#34;transport: Error while dialing: dial tcp 127.0.0.1:50051: connect: connection refused&#34;&#xA;">prompt=&#34;error logs in the cluster&#34; tools=[] text_len=0</failure>
-  </testcase>
-  <testcase name="demo-logs-34" time="0.083310209">
-    <failure message="create session: 500 rpc error: code = Unavailable desc = connection error: desc = &#34;transport: Error while dialing: dial tcp 127.0.0.1:50051: connect: connection refused&#34;&#xA;">prompt=&#34;last 50 lines of coredns logs&#34; tools=[] text_len=0</failure>
-  </testcase>
-  <testcase name="demo-logs-35" time="0.021351416">
-    <failure message="create session: 500 rpc error: code = Unavailable desc = connection error: desc = &#34;transport: Error while dialing: dial tcp 127.0.0.1:50051: connect: connection refused&#34;&#xA;">prompt=&#34;events in kube-system&#34; tools=[] text_len=0</failure>
-  </testcase>
-  <testcase name="demo-logs-36" time="0.018674791">
-    <failure message="create session: 500 rpc error: code = Unavailable desc = connection error: desc = &#34;transport: Error while dialing: dial tcp 127.0.0.1:50051: connect: connection refused&#34;&#xA;">prompt=&#34;warning events across the cluster&#34; tools=[] text_len=0</failure>
-  </testcase>
-  <testcase name="demo-logs-37" time="0.301730459">
-    <failure message="create session: 500 rpc error: code = Unavailable desc = connection error: desc = &#34;transport: Error while dialing: dial tcp 127.0.0.1:50051: connect: connection refused&#34;&#xA;">prompt=&#34;recent failed events&#34; tools=[] text_len=0</failure>
-  </testcase>
-  <testcase name="demo-logs-38" time="0.021175625">
-    <failure message="create session: 500 rpc error: code = Unavailable desc = connection error: desc = &#34;transport: Error while dialing: dial tcp 127.0.0.1:50051: connect: connection refused&#34;&#xA;">prompt=&#34;why did pods fail recently&#34; tools=[] text_len=0</failure>
-  </testcase>
-  <testcase name="demo-logs-39" time="0.014997792">
-    <failure message="create session: 500 rpc error: code = Unavailable desc = connection error: desc = &#34;transport: Error while dialing: dial tcp 127.0.0.1:50051: connect: connection refused&#34;&#xA;">prompt=&#34;events involving coredns&#34; tools=[] text_len=0</failure>
-  </testcase>
-  <testcase name="demo-logs-40" time="0.024777">
-    <failure message="create session: 500 rpc error: code = Unavailable desc = connection error: desc = &#34;transport: Error while dialing: dial tcp 127.0.0.1:50051: connect: connection refused&#34;&#xA;">prompt=&#34;scheduling events last hour&#34; tools=[] text_len=0</failure>
-  </testcase>
-  <testcase name="demo-advanced-41" time="0.437270708">
-    <failure message="create session: 500 rpc error: code = Unavailable desc = connection error: desc = &#34;transport: Error while dialing: dial tcp 127.0.0.1:50051: connect: connection refused&#34;&#xA;">prompt=&#34;which pods use the most cpu&#34; tools=[] text_len=0</failure>
-  </testcase>
-  <testcase name="demo-advanced-42" time="0.030178417">
-    <failure message="create session: 500 rpc error: code = Unavailable desc = connection error: desc = &#34;transport: Error while dialing: dial tcp 127.0.0.1:50051: connect: connection refused&#34;&#xA;">prompt=&#34;which pods use the most memory&#34; tools=[] text_len=0</failure>
-  </testcase>
-  <testcase name="demo-advanced-43" time="0.011256583">
-    <failure message="create session: 500 rpc error: code = Unavailable desc = connection error: desc = &#34;transport: Error while dialing: dial tcp 127.0.0.1:50051: connect: connection refused&#34;&#xA;">prompt=&#34;pods with more than 5 restarts&#34; tools=[] text_len=0</failure>
-  </testcase>
-  <testcase name="demo-advanced-44" time="0.002329167">
-    <failure message="create session: 500 rpc error: code = Unavailable desc = connection error: desc = &#34;transport: Error while dialing: dial tcp 127.0.0.1:50051: connect: connection refused&#34;&#xA;">prompt=&#34;deployments with 0 ready replicas&#34; tools=[] text_len=0</failure>
-  </testcase>
-  <testcase name="demo-advanced-45" time="0.001322792">
-    <failure message="create session: 500 rpc error: code = Unavailable desc = connection error: desc = &#34;transport: Error while dialing: dial tcp 127.0.0.1:50051: connect: connection refused&#34;&#xA;">prompt=&#34;services with no endpoints&#34; tools=[] text_len=0</failure>
-  </testcase>
-  <testcase name="demo-advanced-46" time="0.219690416">
-    <failure message="create session: 500 rpc error: code = Unavailable desc = connection error: desc = &#34;transport: Error while dialing: dial tcp 127.0.0.1:50051: connect: connection refused&#34;&#xA;">prompt=&#34;summarize the otel-demo namespace&#34; tools=[] text_len=0</failure>
-  </testcase>
-  <testcase name="demo-advanced-47" time="0.175003">
-    <failure message="create session: 500 rpc error: code = Unavailable desc = connection error: desc = &#34;transport: Error while dialing: dial tcp [::1]:50051: connect: connection refused&#34;&#xA;">prompt=&#34;summarize kube-system&#34; tools=[] text_len=0</failure>
-  </testcase>
-  <testcase name="demo-advanced-48" time="0.024430041">
-    <failure message="create session: 500 rpc error: code = Unavailable desc = connection error: desc = &#34;transport: Error while dialing: dial tcp [::1]:50051: connect: connection refused&#34;&#xA;">prompt=&#34;cluster capacity overview&#34; tools=[] text_len=0</failure>
-  </testcase>
-  <testcase name="demo-advanced-49" time="0.06745325">
-    <failure message="create session: 500 rpc error: code = Unavailable desc = connection error: desc = &#34;transport: Error while dialing: dial tcp [::1]:50051: connect: connection refused&#34;&#xA;">prompt=&#34;what images are running in otel-demo&#34; tools=[] text_len=0</failure>
-  </testcase>
-  <testcase name="demo-advanced-50" time="0.101453833">
-    <failure message="create session: 500 rpc error: code = Unavailable desc = connection error: desc = &#34;transport: Error while dialing: dial tcp [::1]:50051: connect: connection refused&#34;&#xA;">prompt=&#34;show me images used across the cluster&#34; tools=[] text_len=0</failure>
+  <testcase name="bench-demo-list-05" time="300.553">
+    <failure message="timeout after 5m0s">prompt_id=&#x27;bench-demo-list-05&#x27; tools=19 text_len=0</failure>
   </testcase>
 </testsuite>

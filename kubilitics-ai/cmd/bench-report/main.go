@@ -142,7 +142,8 @@ func loadTrace(path, id string) (*promptTrace, error) {
 		}
 		name, _ := m["stage"].(string)
 		delete(m, "stage")
-		delete(m, "ts")
+		// Keep ts in Fields — traceDurationMs in template.go parses it
+		// to derive wall-clock latency when no explicit done stage fires.
 		delete(m, "turn_id")
 		pt.Stages = append(pt.Stages, stage{Stage: name, Fields: m})
 		switch name {
