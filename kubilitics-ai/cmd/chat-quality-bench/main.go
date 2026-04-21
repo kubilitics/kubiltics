@@ -32,6 +32,8 @@ import (
 	"net/url"
 	"os"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -74,6 +76,7 @@ func main() {
 	prompts := flag.String("prompts", "cmd/chat-quality-bench/prompts.json", "prompts JSON path")
 	out := flag.String("out", "chat_quality_results.xml", "JUnit XML output path")
 	timeout := flag.Duration("timeout", 60*time.Second, "per-prompt timeout")
+	concurrency := flag.Int("concurrency", 1, "parallel workers (higher = faster, but watch LLM rate limits)")
 	flag.Parse()
 	if *cluster == "" {
 		log.Fatal("--cluster is required")
@@ -88,37 +91,62 @@ func main() {
 		log.Fatalf("parse prompts: %v", err)
 	}
 
-	results := make([]result, 0, len(pf.Prompts))
-	pass := 0
-	for _, p := range pf.Prompts {
-		r := runPrompt(*backend, *cluster, p, *timeout)
-		results = append(results, r)
-		status := "FAIL"
-		if r.Pass() {
-			status = "PASS"
-			pass++
-		}
-		errStr := ""
-		if r.Err != nil {
-			errStr = "  err=" + r.Err.Error()
-		}
-		fmt.Printf("%s  %-28s  tools=%d  %5dms  text=%d%s\n",
-			status, p.ID, len(r.Tools), r.Duration.Milliseconds(), len(r.Text), errStr)
-	}
+	results := make([]result, len(pf.Prompts))
+	var pass int64
+	var printMu sync.Mutex
 
-	fmt.Printf("\n%d / %d passed (%.0f%%)\n",
-		pass, len(results), 100*float64(pass)/float64(len(results)))
+	jobs := make(chan int, len(pf.Prompts))
+	for i := range pf.Prompts {
+		jobs <- i
+	}
+	close(jobs)
+
+	var wg sync.WaitGroup
+	workers := *concurrency
+	if workers < 1 {
+		workers = 1
+	}
+	startAll := time.Now()
+	for w := 0; w < workers; w++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for idx := range jobs {
+				p := pf.Prompts[idx]
+				r := runPrompt(*backend, *cluster, p, *timeout)
+				results[idx] = r
+				status := "FAIL"
+				if r.Pass() {
+					status = "PASS"
+					atomic.AddInt64(&pass, 1)
+				}
+				errStr := ""
+				if r.Err != nil {
+					errStr = "  err=" + r.Err.Error()
+				}
+				printMu.Lock()
+				fmt.Printf("%s  %-28s  tools=%d  %5dms  text=%d%s\n",
+					status, p.ID, len(r.Tools), r.Duration.Milliseconds(), len(r.Text), errStr)
+				printMu.Unlock()
+			}
+		}()
+	}
+	wg.Wait()
+
+	fmt.Printf("\n%d / %d passed (%.0f%%) in %s (concurrency=%d)\n",
+		pass, len(results), 100*float64(pass)/float64(len(results)),
+		time.Since(startAll).Round(time.Second), workers)
 	if err := writeJUnit(*out, results); err != nil {
 		log.Fatalf("write junit: %v", err)
 	}
-	if pass != len(results) {
+	if int(pass) != len(results) {
 		os.Exit(1)
 	}
 }
 
-func runPrompt(backend, cluster string, p promptSpec, timeout time.Duration) result {
+func runPrompt(backend, cluster string, p promptSpec, timeout time.Duration) (r result) {
 	start := time.Now()
-	r := result{Prompt: p}
+	r = result{Prompt: p}
 	defer func() { r.Duration = time.Since(start) }()
 
 	// Create session.
