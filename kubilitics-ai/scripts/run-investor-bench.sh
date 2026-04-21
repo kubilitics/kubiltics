@@ -55,7 +55,11 @@ lsof -tiTCP:50051 -sTCP:LISTEN 2>/dev/null | xargs -r kill -9 2>/dev/null || tru
 lsof -tiTCP:28081 -sTCP:LISTEN 2>/dev/null | xargs -r kill -9 2>/dev/null || true
 sleep 2
 nohup ./server -config /tmp/config-bench-big.yaml > /tmp/brain-big.log 2>&1 &
-sleep 5
+# Wait until the brain's gRPC is actually listening, not just the process alive.
+for i in $(seq 1 30); do
+  if nc -z 127.0.0.1 50051 2>/dev/null; then echo "brain ready on :50051"; break; fi
+  sleep 1
+done
 tail -5 /tmp/brain-big.log
 
 echo "=== 6/8 run investor-demo-50 with traces ==="
