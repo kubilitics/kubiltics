@@ -13,7 +13,9 @@ runcmd:
   - systemctl daemon-reload
   - systemctl restart ollama
   # Pull default model. The launch script may override by SSH for bigger models on bigger boxes.
-  - sleep 15 && ollama pull qwen2.5:3b
+  # HOME must be set explicitly — cloud-init runs as root without $HOME, which makes `ollama`
+  # panic in envconfig.Models() before it even starts pulling.
+  - sleep 15 && HOME=/root ollama pull qwen2.5:3b
 
 write_files:
   - path: /etc/bench-metadata.json
