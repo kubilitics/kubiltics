@@ -45,6 +45,7 @@ import (
 	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/config"
 	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/engines/kagent"
 	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/engines/python"
+	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/llm/toolrouter"
 	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/router"
 	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/runtime"
 	wsafety "github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/safety/wrapper"
@@ -149,6 +150,14 @@ func main() {
 		A:        llmAdapter,
 		Tools:    toolSchemas,
 		Executor: toolExecutor,
+	}
+	// Topic-aware tool filtering. Default OFF so this merge doesn't change
+	// production behavior; the Together.ai bench config flips it on via
+	// llm.tool_router.enabled, and operators can force it with
+	// KOTG_TOOL_ROUTER=1 without changing the yaml.
+	if toolRouterEnabled(cfg) {
+		bridge.ToolRouter = toolrouter.NewKeywordRouter()
+		fmt.Printf("LLM engine: topic-aware tool router ENABLED (cap=%d)\n", toolrouter.MaxToolsPerCall)
 	}
 	llmEngOpts := []runtime.EngineOption{}
 	if toolExecutor != nil && len(toolSchemas) > 0 {
@@ -264,6 +273,19 @@ func main() {
 	}
 
 	fmt.Println("Shutdown complete")
+}
+
+// toolRouterEnabled returns true when topic-aware tool selection should be
+// used. The env var is checked first so operators can force the behavior
+// without editing yaml; otherwise the config field decides. Default off.
+func toolRouterEnabled(cfg *config.Config) bool {
+	switch strings.ToLower(os.Getenv("KOTG_TOOL_ROUTER")) {
+	case "1", "true", "yes", "on":
+		return true
+	case "0", "false", "no", "off":
+		return false
+	}
+	return cfg != nil && cfg.LLM.ToolRouter.Enabled
 }
 
 // parseSecondsEnv reads an integer-seconds env var and returns it as a

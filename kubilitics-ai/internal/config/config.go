@@ -110,6 +110,12 @@ type Config struct {
 		Anthropic  map[string]interface{}
 		Ollama     map[string]interface{}
 		Custom     map[string]interface{}
+		// ToolRouter gates the topic-aware tool selector. Default false
+		// preserves v0.6-era behavior (send the full taxonomy each turn).
+		// Flip to true to send only the 30 most relevant tools per query.
+		ToolRouter struct {
+			Enabled bool
+		}
 	}
 
 	// Autonomy configuration

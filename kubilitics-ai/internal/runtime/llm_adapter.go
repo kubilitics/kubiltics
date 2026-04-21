@@ -9,6 +9,7 @@ import (
 
 	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/llm/accounting"
 	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/llm/adapter"
+	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/llm/toolrouter"
 	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/llm/types"
 	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/tracing/routing"
 )
@@ -29,6 +30,14 @@ type LLMAdapterBridge struct {
 	// AgentCfg overrides the agentic-loop limits (MaxTurns, ParallelTools).
 	// Zero value yields types.DefaultAgentConfig().
 	AgentCfg types.AgentConfig
+
+	// ToolRouter, when non-nil, filters b.Tools per request so the LLM
+	// receives only the subset relevant to the latest user question. This
+	// is the single largest lever we have against schema-token bloat: 163
+	// tools × ~150 tokens each = ~25K tokens burned per turn before the
+	// user's question even lands. A topic-aware filter trims that to a
+	// handful of relevant tools plus the always-on core set.
+	ToolRouter toolrouter.Router
 }
 
 func (b *LLMAdapterBridge) StreamCompletion(ctx context.Context, prompt string) (<-chan string, error) {
@@ -84,6 +93,21 @@ func (b *LLMAdapterBridge) StreamCompletionWithTools(
 	for _, m := range msgs {
 		promptBytes += len(m.Content)
 	}
+
+	tools := b.Tools
+	if b.ToolRouter != nil && len(tools) > 0 {
+		sel := b.ToolRouter.SelectTools(prompt, tools)
+		topicNames := make([]string, len(sel.Topics))
+		for i, t := range sel.Topics {
+			topicNames[i] = string(t)
+		}
+		routing.FromContext(ctx).Stage("tool_filter", map[string]any{
+			"selected_topics": topicNames,
+			"tool_count":      len(sel.Tools),
+			"total_available": len(tools),
+		})
+		tools = sel.Tools
+	}
 	routing.FromContext(ctx).Stage("llm_prompt_in", map[string]any{
 		"messages":      len(msgs),
 		"bytes":         promptBytes,
@@ -93,7 +117,7 @@ func (b *LLMAdapterBridge) StreamCompletionWithTools(
 	src, err := b.A.CompleteWithTools(
 		ctx,
 		msgs,
-		b.Tools,
+		tools,
 		executor,
 		cfg,
 	)

@@ -175,6 +175,14 @@ func (s *Server) initializeComponents() error {
 	case "openai":
 		apiKey, _ = s.config.LLM.OpenAI["api_key"].(string)
 		model, _ = s.config.LLM.OpenAI["model"].(string)
+		baseURL, _ = s.config.LLM.OpenAI["base_url"].(string)
+		// api_key_env allows pointing the yaml at an env var name rather
+		// than embedding the secret. Used by the Together.ai bench config.
+		if apiKey == "" {
+			if envName, ok := s.config.LLM.OpenAI["api_key_env"].(string); ok && envName != "" {
+				apiKey = os.Getenv(envName)
+			}
+		}
 	case "anthropic":
 		apiKey, _ = s.config.LLM.Anthropic["api_key"].(string)
 		model, _ = s.config.LLM.Anthropic["model"].(string)
@@ -710,6 +718,12 @@ func (s *Server) ReloadLLMAdapter(newCfg *appconfig.Config) error {
 	case "openai":
 		apiKey, _ = newCfg.LLM.OpenAI["api_key"].(string)
 		model, _ = newCfg.LLM.OpenAI["model"].(string)
+		baseURL, _ = newCfg.LLM.OpenAI["base_url"].(string)
+		if apiKey == "" {
+			if envName, ok := newCfg.LLM.OpenAI["api_key_env"].(string); ok && envName != "" {
+				apiKey = os.Getenv(envName)
+			}
+		}
 	case "anthropic":
 		apiKey, _ = newCfg.LLM.Anthropic["api_key"].(string)
 		model, _ = newCfg.LLM.Anthropic["model"].(string)

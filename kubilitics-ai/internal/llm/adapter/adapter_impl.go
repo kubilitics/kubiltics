@@ -107,10 +107,17 @@ func NewLLMAdapter(cfg *Config) (LLMAdapter, error) {
 		if cfg.APIKey == "" {
 			return &llmAdapterImpl{provider: ProviderNone, client: nil}, nil
 		}
-		client, err = openai.NewOpenAIClient(cfg.APIKey, cfg.Model)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create OpenAI client: %w", err)
+		oaClient, oaErr := openai.NewOpenAIClient(cfg.APIKey, cfg.Model)
+		if oaErr != nil {
+			return nil, fmt.Errorf("failed to create OpenAI client: %w", oaErr)
 		}
+		// BaseURL override lets us point the OpenAI-shaped client at
+		// Together.ai, Fireworks, Groq, or a local vLLM — any endpoint
+		// that speaks /v1/chat/completions.
+		if cfg.BaseURL != "" {
+			oaClient.SetBaseURL(cfg.BaseURL)
+		}
+		client = oaClient
 
 	case ProviderAnthropic:
 		if cfg.APIKey == "" {

@@ -207,6 +207,7 @@ func (m *viperConfigManager) unmarshalConfig() error {
 	cfg.LLM.Anthropic = m.viper.GetStringMap("llm.anthropic")
 	cfg.LLM.Ollama = m.viper.GetStringMap("llm.ollama")
 	cfg.LLM.Custom = m.viper.GetStringMap("llm.custom")
+	cfg.LLM.ToolRouter.Enabled = m.viper.GetBool("llm.tool_router.enabled")
 
 	// Autonomy
 	cfg.Autonomy.DefaultLevel = m.viper.GetInt("autonomy.default_level")
