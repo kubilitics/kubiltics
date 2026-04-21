@@ -21,6 +21,7 @@ package runtime
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"time"
 
 	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/audit"
@@ -235,13 +236,22 @@ func emit(ctx context.Context, out chan<- router.Event, ev router.Event) {
 	}
 }
 
-func compactArgs(args map[string]interface{}) string {
+func compactArgs(args map[string]interface{}) (s string) {
 	if len(args) == 0 {
 		return ""
 	}
+	// This is a debug-only helper. A provider can hand us arg maps that
+	// json.Marshal panics on (non-string-keyed nested maps, cycles, etc.).
+	// A panic here would crash the whole agent process mid-stream — and
+	// this value only drives log/trace output, never control flow. Swallow.
+	defer func() {
+		if r := recover(); r != nil {
+			s = fmt.Sprintf("(unmarshalable args: %v)", r)
+		}
+	}()
 	b, err := json.Marshal(args)
 	if err != nil {
-		return ""
+		return fmt.Sprintf("(marshal err: %v)", err)
 	}
 	return truncate(string(b), 512)
 }
