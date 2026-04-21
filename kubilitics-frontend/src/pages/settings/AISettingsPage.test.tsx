@@ -105,6 +105,20 @@ describe('AISettingsPage', () => {
     expect(screen.getByTestId('save-btn')).not.toBeDisabled();
   });
 
+  it('defaults the OpenAI model to gpt-4o, not gpt-4o-mini', async () => {
+    // Fresh install: no saved config. The provider dropdown starts on OpenAI,
+    // and the model dropdown must land on gpt-4o — not gpt-4o-mini. Using the
+    // mini by default was the single biggest "feels dumb" lever: per-prompt
+    // fragility, missing summaries, text that collapses on any large tool
+    // output. gpt-4o costs more per million tokens but eliminates most of
+    // the tax gpt-4o-mini was charging us in UX.
+    renderPage();
+    // The SelectTrigger renders the current value as its text content.
+    const trigger = await screen.findByTestId('model-select');
+    expect(trigger).toHaveTextContent('gpt-4o');
+    expect(trigger).not.toHaveTextContent('gpt-4o-mini');
+  });
+
   it('save flow posts to /api/v1/ai/config after a successful validate', async () => {
     const fetchMock = globalThis.fetch as unknown as ReturnType<typeof vi.fn>;
     // 1st call: mount-time GET /ai/config (no saved config). Then validate, then save.

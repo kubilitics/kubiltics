@@ -62,9 +62,14 @@ const MODEL_OPTIONS: Record<Provider, string[]> = {
   custom: [],
 };
 
+// Default to gpt-4o (not gpt-4o-mini). The mini variant was the single
+// biggest "feels dumb" lever in the chat: per-prompt fragility, silent
+// summarization failures, answers that collapse on large tool outputs.
+// Operators who deliberately want cost-optimized can still pick mini
+// from the dropdown — it's first-alt in MODEL_OPTIONS.openai.
 const DEFAULT_FORM: FormState = {
   provider: 'openai',
-  model: 'gpt-4o-mini',
+  model: 'gpt-4o',
   apiKey: '',
   baseUrl: '',
 };
