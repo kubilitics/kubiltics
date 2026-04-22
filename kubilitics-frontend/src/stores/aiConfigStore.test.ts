@@ -5,7 +5,7 @@ vi.mock('@tauri-apps/api/core', () => ({
 }));
 
 import { invoke } from '@tauri-apps/api/core';
-import { useAIConfigStore } from './aiConfigStore';
+import { useAIConfigStore, setFieldDebounced, flushFieldDebounce } from './aiConfigStore';
 
 describe('aiConfigStore', () => {
   beforeEach(() => {
@@ -76,6 +76,49 @@ describe('aiConfigStore', () => {
       .testConnection({ provider: 'openai', model: 'gpt-4o', baseUrl: '', apiKey: 'sk-x' });
     expect(res.ok).toBe(true);
     expect(res.latencyMs).toBe(137);
+  });
+
+  it('debounces rapid non-secret field edits to a single save invoke (500ms)', async () => {
+    vi.useFakeTimers();
+    const invokeMock = invoke as ReturnType<typeof vi.fn>;
+    invokeMock.mockImplementation((cmd: string) => {
+      if (cmd === 'save_ai_config') return Promise.resolve();
+      if (cmd === 'load_ai_config')
+        return Promise.resolve({ provider: 'openai', model: 'gpt-4o', base_url: '', has_api_key: false });
+      return Promise.resolve();
+    });
+    // Simulate the user typing a base_url character-by-character.
+    setFieldDebounced('baseUrl', 'h');
+    setFieldDebounced('baseUrl', 'ht');
+    setFieldDebounced('baseUrl', 'htt');
+    setFieldDebounced('baseUrl', 'http://localhost:11434');
+    // Before the debounce window elapses no save should have fired.
+    vi.advanceTimersByTime(400);
+    expect(
+      invokeMock.mock.calls.filter((c) => c[0] === 'save_ai_config').length,
+    ).toBe(0);
+    // After the 500ms window exactly one save is issued.
+    vi.advanceTimersByTime(200);
+    await flushFieldDebounce();
+    const saveCalls = invokeMock.mock.calls.filter((c) => c[0] === 'save_ai_config');
+    expect(saveCalls.length).toBe(1);
+    expect(saveCalls[0][1]).toMatchObject({ cfg: { base_url: 'http://localhost:11434' } });
+    vi.useRealTimers();
+  });
+
+  it('api_key save is NOT debounced — fires immediately', async () => {
+    const invokeMock = invoke as ReturnType<typeof vi.fn>;
+    invokeMock.mockImplementation((cmd: string) => {
+      if (cmd === 'save_ai_config') return Promise.resolve();
+      if (cmd === 'load_ai_config')
+        return Promise.resolve({ provider: 'openai', model: 'gpt-4o', base_url: '', has_api_key: true });
+      return Promise.resolve();
+    });
+    await useAIConfigStore
+      .getState()
+      .save({ provider: 'openai', model: 'gpt-4o', baseUrl: '', apiKey: 'sk-new-xyz-abcdef0123' });
+    const saveCalls = invokeMock.mock.calls.filter((c) => c[0] === 'save_ai_config');
+    expect(saveCalls.length).toBe(1);
   });
 
   it('surfaces save errors via lastError', async () => {

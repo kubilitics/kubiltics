@@ -63,6 +63,55 @@ function toRust(cfg: AIConfigInput): RustCfg {
   };
 }
 
+// ── Debounced non-secret field edits ─────────────────────────────────────
+//
+// Phase 2 / B.15. The Settings UI calls `setFieldDebounced('baseUrl', v)`
+// on every keystroke; we collect the latest value across all fields and
+// fire a single `save_ai_config` 500ms after the last edit. The api_key
+// path is deliberately excluded — a user clicking "Save & Test" should
+// not wait for a timer to elapse. `save()` is the immediate path for
+// secrets and explicit form submissions.
+const DEBOUNCE_MS = 500;
+type DebounceableField = 'provider' | 'model' | 'baseUrl';
+let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+let debouncePending: Partial<Record<DebounceableField, unknown>> = {};
+let debounceFlush: Promise<void> | null = null;
+
+export function setFieldDebounced<K extends DebounceableField>(
+  field: K,
+  value: AIConfigInput[K],
+): void {
+  // Update the store immediately so the UI is responsive.
+  useAIConfigStore.setState({ [field]: value } as Partial<AIConfigState>);
+  debouncePending[field] = value;
+  if (debounceTimer) clearTimeout(debounceTimer);
+  debounceFlush = new Promise<void>((resolve) => {
+    debounceTimer = setTimeout(async () => {
+      debounceTimer = null;
+      const state = useAIConfigStore.getState();
+      const cfg: AIConfigInput = {
+        provider: state.provider,
+        model: state.model,
+        baseUrl: state.baseUrl,
+        // api_key intentionally omitted — Rust treats absent as "leave existing"
+      };
+      debouncePending = {};
+      try {
+        await invoke('save_ai_config', { cfg: toRust(cfg) });
+      } catch (err) {
+        useAIConfigStore.setState({ lastError: String(err) });
+      } finally {
+        resolve();
+      }
+    }, DEBOUNCE_MS);
+  });
+}
+
+// Test helper — awaits the pending debounced save (if any). No-op when idle.
+export async function flushFieldDebounce(): Promise<void> {
+  if (debounceFlush) await debounceFlush;
+}
+
 export const useAIConfigStore = create<AIConfigState>((set, get) => ({
   provider: 'openai',
   model: 'gpt-4o',
