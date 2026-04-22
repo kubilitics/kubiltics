@@ -370,6 +370,10 @@ export default function AISettingsPage() {
                 Configure budget
                 <ExternalLink className="h-3.5 w-3.5 ml-1.5" />
               </Button>
+              <Button variant="outline" size="sm" onClick={() => navigate('/settings/ai/tools')}>
+                Tool Catalog
+                <ExternalLink className="h-3.5 w-3.5 ml-1.5" />
+              </Button>
             </div>
           </div>
         </CardHeader>

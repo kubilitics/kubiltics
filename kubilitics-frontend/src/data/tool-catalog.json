@@ -1,0 +1,1164 @@
+{
+  "generated_at": "2026-04-22",
+  "version": "1.1.0",
+  "tools": [
+    {
+      "name": "action_apply_manifest",
+      "category": "Action",
+      "group": "Action",
+      "description": "Applies a raw Kubernetes manifest (YAML/JSON) to the cluster after a safety review."
+    },
+    {
+      "name": "action_execute_command",
+      "category": "Action",
+      "group": "Action",
+      "description": "Runs a shell command inside a pod's container \u2014 essentially `kubectl exec`."
+    },
+    {
+      "name": "action_restart_workload",
+      "category": "Action",
+      "group": "Action",
+      "description": "Rolling-restarts a deployment / statefulset / daemonset without changing its spec."
+    },
+    {
+      "name": "action_rollback_deployment",
+      "category": "Action",
+      "group": "Action",
+      "description": "Reverts a deployment to a previous revision after a bad rollout."
+    },
+    {
+      "name": "apply_resource_patch",
+      "category": "Execution",
+      "group": "Action",
+      "description": "Applies a strategic-merge or JSON patch to a single resource."
+    },
+    {
+      "name": "cordon_node",
+      "category": "Execution",
+      "group": "Action",
+      "description": "Marks a node unschedulable so new pods don't land there."
+    },
+    {
+      "name": "delete_resource",
+      "category": "Execution",
+      "group": "Action",
+      "description": "Deletes a specific resource by kind + name. Safety-gated."
+    },
+    {
+      "name": "drain_node",
+      "category": "Execution",
+      "group": "Action",
+      "description": "Evicts all pods off a node in prep for maintenance, honoring PodDisruptionBudgets."
+    },
+    {
+      "name": "restart_pod",
+      "category": "Execution",
+      "group": "Action",
+      "description": "Deletes a pod so its controller spins up a fresh replacement."
+    },
+    {
+      "name": "rollback_deployment",
+      "category": "Execution",
+      "group": "Action",
+      "description": "Rolls a deployment back to its previous revision."
+    },
+    {
+      "name": "scale_deployment",
+      "category": "Execution",
+      "group": "Action",
+      "description": "Changes a deployment's replica count."
+    },
+    {
+      "name": "trigger_hpa_scale",
+      "category": "Execution",
+      "group": "Action",
+      "description": "Nudges an HPA to re-evaluate metrics and scale now instead of waiting."
+    },
+    {
+      "name": "update_resource_limits",
+      "category": "Execution",
+      "group": "Action",
+      "description": "Updates a container's CPU / memory requests + limits without a full rollout."
+    },
+    {
+      "name": "analyze_blast_radius",
+      "category": "Analysis",
+      "group": "Analysis",
+      "description": "Given a resource, shows everything that would be impacted if it crashed \u2014 dependents, traffic, data loss risk."
+    },
+    {
+      "name": "analyze_capacity_trends",
+      "category": "Analysis",
+      "group": "Analysis",
+      "description": "Looks at CPU / memory / pod-count over time to predict when the cluster needs more capacity."
+    },
+    {
+      "name": "analyze_cronjob_health",
+      "category": "Analysis",
+      "group": "Analysis",
+      "description": "Scans CronJobs for missed schedules, failed runs, and suspended jobs."
+    },
+    {
+      "name": "analyze_daemonset_health",
+      "category": "Analysis",
+      "group": "Analysis",
+      "description": "Checks that each DaemonSet has a pod on every eligible node and all are Ready."
+    },
+    {
+      "name": "analyze_dependencies",
+      "category": "Analysis",
+      "group": "Analysis",
+      "description": "Maps which services depend on which, so you can see the blast-radius of a change."
+    },
+    {
+      "name": "analyze_deployment_health",
+      "category": "Analysis",
+      "group": "Analysis",
+      "description": "Checks if deployments have the right number of ready replicas and flags ones that are degraded."
+    },
+    {
+      "name": "analyze_error_correlation",
+      "category": "Analysis",
+      "group": "Analysis",
+      "description": "Correlates errors across events, logs, and metrics to find the root cause."
+    },
+    {
+      "name": "analyze_failure_patterns",
+      "category": "Analysis",
+      "group": "Analysis",
+      "description": "Looks for recurring failure patterns \u2014 the same thing going wrong over and over."
+    },
+    {
+      "name": "analyze_hpa_behavior",
+      "category": "Analysis",
+      "group": "Analysis",
+      "description": "Looks at HPA scale events over time to see if scaling is jumpy, stuck, or well-tuned."
+    },
+    {
+      "name": "analyze_image_vulnerabilities",
+      "category": "Analysis",
+      "group": "Analysis",
+      "description": "Scans the container images running in the cluster for known CVEs."
+    },
+    {
+      "name": "analyze_ingress_health",
+      "category": "Analysis",
+      "group": "Analysis",
+      "description": "Checks every ingress: backend exists, endpoints ready, TLS certs valid, recent 5xx rate."
+    },
+    {
+      "name": "analyze_job_health",
+      "category": "Analysis",
+      "group": "Analysis",
+      "description": "Scans Jobs for stuck ones, failing retry loops, and jobs that never complete."
+    },
+    {
+      "name": "analyze_log_patterns",
+      "category": "Analysis",
+      "group": "Analysis",
+      "description": "Groups recent log lines into clusters so frequent error signatures pop out."
+    },
+    {
+      "name": "analyze_network_connectivity",
+      "category": "Analysis",
+      "group": "Analysis",
+      "description": "Checks DNS, services, and NetworkPolicies for connectivity gaps."
+    },
+    {
+      "name": "analyze_node_pressure",
+      "category": "Analysis",
+      "group": "Analysis",
+      "description": "Looks for nodes under CPU / memory / disk pressure that might start evicting pods."
+    },
+    {
+      "name": "analyze_performance_bottlenecks",
+      "category": "Analysis",
+      "group": "Analysis",
+      "description": "Finds the slowest pods, the hottest nodes, and the chokepoints in between."
+    },
+    {
+      "name": "analyze_pod_health",
+      "category": "Analysis",
+      "group": "Analysis",
+      "description": "Checks every pod for common problems \u2014 restarts, OOM kills, image-pull errors, CrashLoopBackOff \u2014 and summarizes in plain language."
+    },
+    {
+      "name": "analyze_pod_scheduling",
+      "category": "Analysis",
+      "group": "Analysis",
+      "description": "Explains why pods are landing where they are \u2014 node selectors, affinity, taints, spread."
+    },
+    {
+      "name": "analyze_rbac_permissions",
+      "category": "Analysis",
+      "group": "Analysis",
+      "description": "Reviews who has access to what in the cluster and flags overly-broad bindings."
+    },
+    {
+      "name": "analyze_replicaset_health",
+      "category": "Analysis",
+      "group": "Analysis",
+      "description": "Checks ReplicaSets for the gap between desired and ready replicas and why."
+    },
+    {
+      "name": "analyze_resource_efficiency",
+      "category": "Analysis",
+      "group": "Analysis",
+      "description": "Compares requested resources against actual usage to find overprovisioned workloads."
+    },
+    {
+      "name": "analyze_rollout_risk",
+      "category": "Analysis",
+      "group": "Analysis",
+      "description": "Assesses how risky the next rollout of a deployment is based on recent history + blast radius."
+    },
+    {
+      "name": "analyze_service_health",
+      "category": "Analysis",
+      "group": "Analysis",
+      "description": "Checks every service: has endpoints, selector works, traffic is flowing."
+    },
+    {
+      "name": "analyze_statefulset_health",
+      "category": "Analysis",
+      "group": "Analysis",
+      "description": "Inspects StatefulSets for ordering issues, stuck replicas, and PVC mount failures."
+    },
+    {
+      "name": "analyze_storage_health",
+      "category": "Analysis",
+      "group": "Analysis",
+      "description": "Checks persistent-volume claims \u2014 are they bound, are they full, are any in an error state."
+    },
+    {
+      "name": "analyze_workload_patterns",
+      "category": "Analysis",
+      "group": "Analysis",
+      "description": "Clusters workloads by their usage profile \u2014 batch vs steady vs spiky."
+    },
+    {
+      "name": "automation_create_alert_rule",
+      "category": "Automation",
+      "group": "Automation",
+      "description": "Generates a Prometheus-style alert rule for a condition you describe."
+    },
+    {
+      "name": "automation_generate_runbook",
+      "category": "Automation",
+      "group": "Automation",
+      "description": "Generates a plain-English runbook for an incident type, based on cluster state."
+    },
+    {
+      "name": "automation_run_playbook",
+      "category": "Automation",
+      "group": "Automation",
+      "description": "Executes a named runbook end-to-end, stopping for approval on destructive steps."
+    },
+    {
+      "name": "automation_schedule_task",
+      "category": "Automation",
+      "group": "Automation",
+      "description": "Schedules a recurring task (a CronJob / alert / report)."
+    },
+    {
+      "name": "check_capabilities_all_added",
+      "category": "Security",
+      "group": "Compliance",
+      "description": "Flags containers that add the ALL or SYS_ADMIN Linux capability \u2014 essentially root with a different name."
+    },
+    {
+      "name": "check_default_service_accounts_in_use",
+      "category": "Security",
+      "group": "Compliance",
+      "description": "Workloads using the 'default' ServiceAccount when they should have a dedicated, least-privilege one."
+    },
+    {
+      "name": "check_host_path_mounts",
+      "category": "Security",
+      "group": "Compliance",
+      "description": "Lists pods mounting host paths, the classic container-to-host escape surface."
+    },
+    {
+      "name": "check_image_tag_latest",
+      "category": "Security",
+      "group": "Compliance",
+      "description": "Workloads whose images have no tag or are pinned to :latest \u2014 unreproducible rollouts waiting to happen."
+    },
+    {
+      "name": "check_ingress_tls_expiry_30d",
+      "category": "Security",
+      "group": "Compliance",
+      "description": "TLS certificates behind your ingresses that will expire within 30 days. Uses the backend's /tls-info endpoint."
+    },
+    {
+      "name": "check_privileged_containers",
+      "category": "Security",
+      "group": "Compliance",
+      "description": "Flags pods running privileged containers or using hostNetwork/hostPID \u2014 the hardest escape-risks in Kubernetes."
+    },
+    {
+      "name": "check_rbac_wildcards",
+      "category": "Security",
+      "group": "Compliance",
+      "description": "Role and ClusterRole rules with '*' verbs or resources \u2014 a standing invitation to privilege escalation."
+    },
+    {
+      "name": "check_resource_limits",
+      "category": "Analysis",
+      "group": "Compliance",
+      "description": "Flags containers with no CPU / memory limits set (an operational foot-gun)."
+    },
+    {
+      "name": "check_root_containers",
+      "category": "Security",
+      "group": "Compliance",
+      "description": "Finds containers that may run as UID 0 because runAsNonRoot isn't set true."
+    },
+    {
+      "name": "check_secrets_in_env",
+      "category": "Security",
+      "group": "Compliance",
+      "description": "Containers that read Secret values via env variables \u2014 prefer file mounts so logs can't leak them."
+    },
+    {
+      "name": "check_writable_root_fs",
+      "category": "Security",
+      "group": "Compliance",
+      "description": "Finds containers without a read-only root filesystem \u2014 a defense-in-depth control you almost always want."
+    },
+    {
+      "name": "cost_analyze_spending",
+      "category": "Cost",
+      "group": "Cost",
+      "description": "Breaks down where cluster spend is going right now \u2014 by namespace, workload, node."
+    },
+    {
+      "name": "cost_forecast_spending",
+      "category": "Cost",
+      "group": "Cost",
+      "description": "Projects cluster cost N days out based on current growth trend."
+    },
+    {
+      "name": "cost_identify_waste",
+      "category": "Cost",
+      "group": "Cost",
+      "description": "Finds the dollar-value waste \u2014 idle workloads, released volumes, over-provisioned requests."
+    },
+    {
+      "name": "cost_optimization_plan",
+      "category": "Cost",
+      "group": "Cost",
+      "description": "Composes a ranked list of cost-reduction actions with estimated $ saved per action."
+    },
+    {
+      "name": "detect_configuration_drift",
+      "category": "Analysis",
+      "group": "Diagnostics",
+      "description": "Finds resources whose live spec has drifted from what's in source control / last known good."
+    },
+    {
+      "name": "detect_resource_contention",
+      "category": "Analysis",
+      "group": "Diagnostics",
+      "description": "Pairs of pods fighting over the same node's CPU / memory / IO / network."
+    },
+    {
+      "name": "diagnose_certificate_failures",
+      "category": "Troubleshooting",
+      "group": "Diagnostics",
+      "description": "Lists cert-manager Certificate and CertificateRequest failure events in the window, with reasons."
+    },
+    {
+      "name": "diagnose_cronjob_missing_runs",
+      "category": "Troubleshooting",
+      "group": "Diagnostics",
+      "description": "Explains why a CronJob didn't fire recently \u2014 suspended, concurrency conflict, or never scheduled."
+    },
+    {
+      "name": "diagnose_deployment_rollback_needed",
+      "category": "Troubleshooting",
+      "group": "Diagnostics",
+      "description": "Compares current revision to the prior one and tells you if the new rollout is worse than what it replaced."
+    },
+    {
+      "name": "diagnose_hpa_not_scaling",
+      "category": "Troubleshooting",
+      "group": "Diagnostics",
+      "description": "Why isn't the autoscaler scaling? Checks min=max, missing metrics, and unreachable targets in conditions."
+    },
+    {
+      "name": "diagnose_ingress_404",
+      "category": "Troubleshooting",
+      "group": "Diagnostics",
+      "description": "Traces an ingress path to backend service to endpoints and reports which link in the chain is broken."
+    },
+    {
+      "name": "diagnose_networkpolicy_blocking",
+      "category": "Troubleshooting",
+      "group": "Diagnostics",
+      "description": "Detects default-deny network policies and flags when a manual trace is needed to decide if a specific flow is blocked."
+    },
+    {
+      "name": "diagnose_node_unschedulable",
+      "category": "Troubleshooting",
+      "group": "Diagnostics",
+      "description": "Tells you why pods won't land on a node \u2014 cordoned, tainted, or under memory/disk/PID pressure."
+    },
+    {
+      "name": "diagnose_pod_not_ready",
+      "category": "Troubleshooting",
+      "group": "Diagnostics",
+      "description": "Tells you exactly why a specific pod isn't Ready \u2014 CrashLoopBackOff, OOMKilled, ImagePullBackOff, probe failures, or still Pending."
+    },
+    {
+      "name": "diagnose_pvc_pending",
+      "category": "Troubleshooting",
+      "group": "Diagnostics",
+      "description": "Walks through why a PVC is stuck Pending \u2014 missing storage class, no matching volume, or provisioner failing."
+    },
+    {
+      "name": "diagnose_service_no_endpoints",
+      "category": "Troubleshooting",
+      "group": "Diagnostics",
+      "description": "Explains why a service has no backends \u2014 selector mismatch, no pods running, or the service is headless."
+    },
+    {
+      "name": "narrate_capacity_report",
+      "category": "Analysis",
+      "group": "Narrative",
+      "description": "Cluster-wide capacity: per-node utilization, headroom, whether a hypothetical new workload fits, trend direction."
+    },
+    {
+      "name": "narrate_change_impact",
+      "category": "Analysis",
+      "group": "Narrative",
+      "description": "What-if analysis: given a proposed change, reasons through first- and second-order effects on the cluster."
+    },
+    {
+      "name": "narrate_cost_report",
+      "category": "Analysis",
+      "group": "Narrative",
+      "description": "Cost breakdown by namespace or workload, with the single biggest driver and biggest cut opportunity."
+    },
+    {
+      "name": "narrate_deploy_diff",
+      "category": "Analysis",
+      "group": "Narrative",
+      "description": "Explains in plain words what changed between a deployment's last two revisions and what users are likely seeing."
+    },
+    {
+      "name": "narrate_incident_timeline",
+      "category": "Analysis",
+      "group": "Narrative",
+      "description": "Turns the last hour of events into a Slack-ready chronological story of what broke and when."
+    },
+    {
+      "name": "narrate_migration_readiness",
+      "category": "Analysis",
+      "group": "Narrative",
+      "description": "What you'd have to move to migrate a namespace: workloads, PVCs, config, secrets, and known risks."
+    },
+    {
+      "name": "narrate_onboarding_for_user",
+      "category": "Analysis",
+      "group": "Narrative",
+      "description": "What a specific ServiceAccount can actually touch \u2014 roles, resources, verbs, namespaces. Flags cluster-admin."
+    },
+    {
+      "name": "narrate_security_posture",
+      "category": "Analysis",
+      "group": "Narrative",
+      "description": "CISO-ready posture summary \u2014 pod security, network policies, RBAC, secrets \u2014 with one next step each."
+    },
+    {
+      "name": "narrate_service_dependency_graph",
+      "category": "Analysis",
+      "group": "Narrative",
+      "description": "Describes what calls a service and what it calls in turn, including the policies gating each hop."
+    },
+    {
+      "name": "narrate_weekly_status",
+      "category": "Analysis",
+      "group": "Narrative",
+      "description": "An exec-friendly weekly cluster status \u2014 health headline, top changes, top issues, a few call-outs."
+    },
+    {
+      "name": "get_cluster_health",
+      "category": "Chat",
+      "group": "Observation",
+      "description": "Gives a plain-English summary of whether the cluster looks healthy right now: node count, pod statuses, obvious problems."
+    },
+    {
+      "name": "get_events",
+      "category": "Chat",
+      "group": "Observation",
+      "description": "Lists recent Kubernetes events \u2014 useful for 'why did my pod fail?' or 'what happened in the last hour?'"
+    },
+    {
+      "name": "get_logs",
+      "category": "Chat",
+      "group": "Observation",
+      "description": "Gets recent log lines from a pod, so you can see what the application actually said or errored out with."
+    },
+    {
+      "name": "get_resource",
+      "category": "Chat",
+      "group": "Observation",
+      "description": "Gets the full details of one specific thing (a single pod, a single deployment) when you need to see everything about it."
+    },
+    {
+      "name": "inspect_clusterrole",
+      "category": "Observation",
+      "group": "Observation",
+      "description": "Everything about a ClusterRole: rules, who's bound to it, blast radius."
+    },
+    {
+      "name": "inspect_clusterrolebinding",
+      "category": "Observation",
+      "group": "Observation",
+      "description": "A ClusterRoleBinding's subjects, the role they grant, and what it lets them do."
+    },
+    {
+      "name": "inspect_configmap",
+      "category": "Observation",
+      "group": "Observation",
+      "description": "A ConfigMap's data, which pods mount it, and recent changes."
+    },
+    {
+      "name": "inspect_crd",
+      "category": "Observation",
+      "group": "Observation",
+      "description": "A CRD's schema, scope, versions, and the custom resources it owns."
+    },
+    {
+      "name": "inspect_cronjob",
+      "category": "Observation",
+      "group": "Observation",
+      "description": "A CronJob's schedule, last run status, active jobs, recent events, ownership chain."
+    },
+    {
+      "name": "inspect_daemonset",
+      "category": "Observation",
+      "group": "Observation",
+      "description": "A DaemonSet's spec, which nodes run it, pod status per node, recent events."
+    },
+    {
+      "name": "inspect_deployment",
+      "category": "Observation",
+      "group": "Observation",
+      "description": "One-call deep dive into a Deployment: spec, rollout status, events, owned ReplicaSets."
+    },
+    {
+      "name": "inspect_hpa",
+      "category": "Observation",
+      "group": "Observation",
+      "description": "An HPA's target, metrics, current vs desired replicas, recent scale events."
+    },
+    {
+      "name": "inspect_ingress",
+      "category": "Observation",
+      "group": "Observation",
+      "description": "An Ingress's rules, TLS config, backend services, recent events."
+    },
+    {
+      "name": "inspect_job",
+      "category": "Observation",
+      "group": "Observation",
+      "description": "A Job's spec, completions, active pods, failed retries, events."
+    },
+    {
+      "name": "inspect_limitrange",
+      "category": "Observation",
+      "group": "Observation",
+      "description": "A LimitRange's enforced min/max values per container / pod / pvc."
+    },
+    {
+      "name": "inspect_namespace",
+      "category": "Observation",
+      "group": "Observation",
+      "description": "A namespace's pod / workload inventory, quotas, events, current usage."
+    },
+    {
+      "name": "inspect_networkpolicy",
+      "category": "Observation",
+      "group": "Observation",
+      "description": "A NetworkPolicy's selectors, ingress/egress rules, and the pods it applies to."
+    },
+    {
+      "name": "inspect_node",
+      "category": "Observation",
+      "group": "Observation",
+      "description": "One-call deep dive into a Node: capacity, conditions, taints, pods, events."
+    },
+    {
+      "name": "inspect_pdb",
+      "category": "Observation",
+      "group": "Observation",
+      "description": "A PodDisruptionBudget's selector, minAvailable / maxUnavailable, and the workloads it covers."
+    },
+    {
+      "name": "inspect_pod",
+      "category": "Observation",
+      "group": "Observation",
+      "description": "One-call deep dive into a Pod: spec, status, containers, events, ownership chain."
+    },
+    {
+      "name": "inspect_pv",
+      "category": "Observation",
+      "group": "Observation",
+      "description": "A PV's capacity, reclaim policy, current PVC binding, storage class."
+    },
+    {
+      "name": "inspect_pvc",
+      "category": "Observation",
+      "group": "Observation",
+      "description": "A PVC's phase, storage class, bound PV, and consuming pods."
+    },
+    {
+      "name": "inspect_replicaset",
+      "category": "Observation",
+      "group": "Observation",
+      "description": "A ReplicaSet's desired/ready/available replicas, its parent Deployment, and its pods."
+    },
+    {
+      "name": "inspect_resourcequota",
+      "category": "Observation",
+      "group": "Observation",
+      "description": "A ResourceQuota's hard limits and current usage per resource type."
+    },
+    {
+      "name": "inspect_role",
+      "category": "Observation",
+      "group": "Observation",
+      "description": "A Role's rules, who's bound to it, and what operations it enables."
+    },
+    {
+      "name": "inspect_rolebinding",
+      "category": "Observation",
+      "group": "Observation",
+      "description": "A RoleBinding's subjects, the role it grants, and effective permissions."
+    },
+    {
+      "name": "inspect_secret",
+      "category": "Observation",
+      "group": "Observation",
+      "description": "A Secret's metadata, which pods mount it, type, and recent changes. Never returns raw values."
+    },
+    {
+      "name": "inspect_service",
+      "category": "Observation",
+      "group": "Observation",
+      "description": "A Service's selector, ports, endpoints, traffic policy, and recent events."
+    },
+    {
+      "name": "inspect_statefulset",
+      "category": "Observation",
+      "group": "Observation",
+      "description": "A StatefulSet's spec, ordinal pod status, PVC templates, update strategy, events."
+    },
+    {
+      "name": "inspect_storageclass",
+      "category": "Observation",
+      "group": "Observation",
+      "description": "A StorageClass's provisioner, parameters, reclaim policy, and bound PVs."
+    },
+    {
+      "name": "inspect_vpa",
+      "category": "Observation",
+      "group": "Observation",
+      "description": "A VerticalPodAutoscaler's recommendations vs current requests, and update mode."
+    },
+    {
+      "name": "list_resources",
+      "category": "Chat",
+      "group": "Observation",
+      "description": "Shows you a list of things in your cluster \u2014 pods, services, anything. Tell it 'list pods' and it fetches them straight from Kubernetes."
+    },
+    {
+      "name": "observe_api_resources",
+      "category": "Observation",
+      "group": "Observation",
+      "description": "Lists every API resource type the cluster knows about \u2014 including CRDs."
+    },
+    {
+      "name": "observe_cluster_overview",
+      "category": "Observation",
+      "group": "Observation",
+      "description": "A dashboard-style snapshot of the whole cluster: what's running, what's broken, at-a-glance numbers."
+    },
+    {
+      "name": "observe_configmap_consumers",
+      "category": "Observation",
+      "group": "Observation",
+      "description": "Which pods mount or reference a given ConfigMap."
+    },
+    {
+      "name": "observe_custom_resources",
+      "category": "Observation",
+      "group": "Observation",
+      "description": "Lists all custom-resource instances of a given CRD."
+    },
+    {
+      "name": "observe_deployment_detailed",
+      "category": "Chat",
+      "group": "Observation",
+      "description": "Everything about one deployment: replicas, pods, rollout status, recent changes."
+    },
+    {
+      "name": "observe_deployment_rollout_history",
+      "category": "Observation",
+      "group": "Observation",
+      "description": "The revision history of a deployment with cause + timestamp per revision."
+    },
+    {
+      "name": "observe_events",
+      "category": "Observation",
+      "group": "Observation",
+      "description": "Recent Kubernetes events \u2014 OOM kills, scheduling failures, rolled out, unhealthy, and more."
+    },
+    {
+      "name": "observe_flapping_services",
+      "category": "Observation",
+      "group": "Observation",
+      "description": "Finds services whose endpoints keep churning \u2014 a sign pods behind them are unstable or being rescheduled."
+    },
+    {
+      "name": "observe_high_cardinality_labels",
+      "category": "Observation",
+      "group": "Observation",
+      "description": "Would flag label keys with more than a thousand distinct values (Prometheus risk); backend index not yet available."
+    },
+    {
+      "name": "observe_ingresses_by_tls_expiry",
+      "category": "Observation",
+      "group": "Observation",
+      "description": "Ingresses sorted by how close their TLS cert is to expiring."
+    },
+    {
+      "name": "observe_metrics",
+      "category": "Observation",
+      "group": "Observation",
+      "description": "Raw pod + node metrics from metrics-server \u2014 CPU millicores and memory."
+    },
+    {
+      "name": "observe_missing_probes",
+      "category": "Observation",
+      "group": "Observation",
+      "description": "Flags workloads whose containers have neither liveness nor readiness probes \u2014 you're flying blind there."
+    },
+    {
+      "name": "observe_namespace_detailed",
+      "category": "Chat",
+      "group": "Observation",
+      "description": "Deep dive into a namespace \u2014 every pod, every service, every config, plus recent changes."
+    },
+    {
+      "name": "observe_namespace_overview",
+      "category": "Observation",
+      "group": "Observation",
+      "description": "Zoom in on one namespace: what's running inside it, resource usage, recent events."
+    },
+    {
+      "name": "observe_network_policies",
+      "category": "Observation",
+      "group": "Observation",
+      "description": "All NetworkPolicies in scope with their selector and ingress/egress rule summary."
+    },
+    {
+      "name": "observe_node_detailed",
+      "category": "Chat",
+      "group": "Observation",
+      "description": "Everything about a single node: its pods, capacity, conditions, what's failing if anything."
+    },
+    {
+      "name": "observe_node_metrics",
+      "category": "Observation",
+      "group": "Observation",
+      "description": "CPU / memory usage for every node right now."
+    },
+    {
+      "name": "observe_node_status",
+      "category": "Observation",
+      "group": "Observation",
+      "description": "Is this node healthy? Are disks / memory / CPU under pressure?"
+    },
+    {
+      "name": "observe_noisy_neighbors",
+      "category": "Observation",
+      "group": "Observation",
+      "description": "Shows pods eating more than 80% of a node's CPU or memory \u2014 the ones starving their neighbors."
+    },
+    {
+      "name": "observe_orphaned_pods",
+      "category": "Observation",
+      "group": "Observation",
+      "description": "Finds pods whose owning ReplicaSet or Job is gone \u2014 leftovers from a partial delete or controller bug."
+    },
+    {
+      "name": "observe_pending_scheduler_events",
+      "category": "Observation",
+      "group": "Observation",
+      "description": "Shows recent FailedScheduling events so you can see which pods can't land and why \u2014 taint, affinity, or capacity."
+    },
+    {
+      "name": "observe_pod_dependencies",
+      "category": "Observation",
+      "group": "Observation",
+      "description": "Everything a pod depends on \u2014 ConfigMaps, Secrets, PVCs, Services \u2014 and what depends on it."
+    },
+    {
+      "name": "observe_pod_detailed",
+      "category": "Chat",
+      "group": "Observation",
+      "description": "Deep dive into a single pod: containers, status, restarts, resource usage, recent events."
+    },
+    {
+      "name": "observe_pod_events",
+      "category": "Chat",
+      "group": "Observation",
+      "description": "Just the events that mention a specific pod \u2014 scheduled, started, killed, restarted, etc."
+    },
+    {
+      "name": "observe_pod_logs",
+      "category": "Observation",
+      "group": "Observation",
+      "description": "Fetches logs for a specific pod with filtering by tail size or time window."
+    },
+    {
+      "name": "observe_pod_logs_filtered",
+      "category": "Observation",
+      "group": "Observation",
+      "description": "Pod logs filtered to only error- or warn-level lines."
+    },
+    {
+      "name": "observe_pod_metrics",
+      "category": "Observation",
+      "group": "Observation",
+      "description": "CPU / memory usage for one pod or across the cluster."
+    },
+    {
+      "name": "observe_pvc_consumers",
+      "category": "Observation",
+      "group": "Observation",
+      "description": "Which pods currently use a given PVC."
+    },
+    {
+      "name": "observe_recent_changes",
+      "category": "Observation",
+      "group": "Observation",
+      "description": "Every meaningful cluster change in a time window \u2014 rollouts, scales, config updates, failures."
+    },
+    {
+      "name": "observe_resource",
+      "category": "Observation",
+      "group": "Observation",
+      "description": "Full details of a specific Kubernetes resource by kind + namespace + name."
+    },
+    {
+      "name": "observe_resource_history",
+      "category": "Observation",
+      "group": "Observation",
+      "description": "Previous versions of a resource (if tracked), with diff between revisions."
+    },
+    {
+      "name": "observe_resource_links",
+      "category": "Observation",
+      "group": "Observation",
+      "description": "What a resource links to and what links to it \u2014 the dependency edges."
+    },
+    {
+      "name": "observe_resource_topology",
+      "category": "Observation",
+      "group": "Observation",
+      "description": "Graph view of related resources around a starting resource."
+    },
+    {
+      "name": "observe_resources_by_query",
+      "category": "Observation",
+      "group": "Observation",
+      "description": "Finds resources matching a natural-language query, like 'failing pods in production'."
+    },
+    {
+      "name": "observe_restart_storms",
+      "category": "Observation",
+      "group": "Observation",
+      "description": "Lists containers whose cumulative restart count is above threshold \u2014 the ones CrashLoopBackOff-ing hardest."
+    },
+    {
+      "name": "observe_secret_consumers",
+      "category": "Observation",
+      "group": "Observation",
+      "description": "Which pods mount or reference a given Secret."
+    },
+    {
+      "name": "observe_secrets_usage",
+      "category": "Observation",
+      "group": "Observation",
+      "description": "Cluster-wide view of which Secrets are actually used, stale, or referenced-but-missing."
+    },
+    {
+      "name": "observe_service_endpoints",
+      "category": "Observation",
+      "group": "Observation",
+      "description": "The backing endpoints (IPs + ports) for a Service right now."
+    },
+    {
+      "name": "observe_serviceaccount_detailed",
+      "category": "Observation",
+      "group": "Observation",
+      "description": "A ServiceAccount's secrets, bound roles, and the pods using it."
+    },
+    {
+      "name": "observe_serviceaccount_permissions",
+      "category": "Observation",
+      "group": "Observation",
+      "description": "Exactly what a ServiceAccount can do across the cluster."
+    },
+    {
+      "name": "observe_services_by_filter",
+      "category": "Observation",
+      "group": "Observation",
+      "description": "Services filtered by selector label, port, type, or recent issues."
+    },
+    {
+      "name": "observe_storage_status",
+      "category": "Observation",
+      "group": "Observation",
+      "description": "Cluster-wide storage health \u2014 PVs, PVCs, classes, capacity, errors."
+    },
+    {
+      "name": "observe_stuck_rollouts",
+      "category": "Observation",
+      "group": "Observation",
+      "description": "Surfaces deployments that have been 'progressing' for more than ten minutes without any new replicas becoming ready."
+    },
+    {
+      "name": "observe_top_pods_by_metric",
+      "category": "Observation",
+      "group": "Observation",
+      "description": "Top N pods sorted by a metric (CPU, memory, network, or events)."
+    },
+    {
+      "name": "observe_unhealthy_probes",
+      "category": "Observation",
+      "group": "Observation",
+      "description": "Lists pods whose liveness or readiness probes are failing right now, grouped so the noise is denoised."
+    },
+    {
+      "name": "observe_workload_health",
+      "category": "Observation",
+      "group": "Observation",
+      "description": "A high-level 'is my workload healthy?' check across deployments, statefulsets, daemonsets."
+    },
+    {
+      "name": "observe_zombie_finalizers",
+      "category": "Observation",
+      "group": "Observation",
+      "description": "Finds resources stuck in Terminating longer than ten minutes because a finalizer won't release them."
+    },
+    {
+      "name": "plan_backup_coverage",
+      "category": "Recommendation",
+      "group": "Planning",
+      "description": "Lists workloads that store data in PVCs but have no backup label or schedule \u2014 backup gaps you probably didn't know about."
+    },
+    {
+      "name": "plan_cost_reduction",
+      "category": "Recommendation",
+      "group": "Planning",
+      "description": "Looks for idle nodes, orphaned persistent volumes, and over-replicated workloads so you can cut spend without pain."
+    },
+    {
+      "name": "plan_drain_node",
+      "category": "Recommendation",
+      "group": "Planning",
+      "description": "Before you drain a node, see which pods would evict, which PDBs you'd break, and whether other nodes can absorb the work."
+    },
+    {
+      "name": "plan_ha_upgrade",
+      "category": "Recommendation",
+      "group": "Planning",
+      "description": "Finds single-replica workloads that would die if a node blinks, and tells you how to make them highly-available."
+    },
+    {
+      "name": "plan_image_pull_secrets",
+      "category": "Recommendation",
+      "group": "Planning",
+      "description": "Finds the same pull secret cloned across many namespaces and recommends a consolidated pattern."
+    },
+    {
+      "name": "plan_pdb_coverage",
+      "category": "Recommendation",
+      "group": "Planning",
+      "description": "Deployments and StatefulSets with multiple replicas that lack a PodDisruptionBudget, with a suggested minAvailable for each."
+    },
+    {
+      "name": "plan_psa_enforcement",
+      "category": "Recommendation",
+      "group": "Planning",
+      "description": "Which namespaces can safely tighten to restricted pod security? Names the pods that would need to change first."
+    },
+    {
+      "name": "plan_resource_quota",
+      "category": "Recommendation",
+      "group": "Planning",
+      "description": "Suggests ResourceQuota limits per namespace based on what each one actually uses today, padded for growth."
+    },
+    {
+      "name": "plan_rollout_safety",
+      "category": "Recommendation",
+      "group": "Planning",
+      "description": "Estimates how risky rolling out a new image tag is \u2014 who consumes this service, are replicas ready, what's the safe canary percentage."
+    },
+    {
+      "name": "plan_scale_deployment",
+      "category": "Recommendation",
+      "group": "Planning",
+      "description": "Given observed load, tells you what replica count would put utilization in the healthy band \u2014 and flags when HPA is maxed out."
+    },
+    {
+      "name": "who_can_do",
+      "category": "Analysis",
+      "group": "RBAC",
+      "description": "Given a verb + resource, lists which service accounts / users can do it."
+    },
+    {
+      "name": "recommend_architecture_improvements",
+      "category": "Recommendation",
+      "group": "Recommendation",
+      "description": "Suggests architectural improvements based on what's running and how it behaves."
+    },
+    {
+      "name": "recommend_cost_reduction",
+      "category": "Recommendation",
+      "group": "Recommendation",
+      "description": "Ranked list of changes that would cut cost with minimal risk."
+    },
+    {
+      "name": "recommend_disaster_recovery",
+      "category": "Recommendation",
+      "group": "Recommendation",
+      "description": "Assesses DR posture and recommends backup schedules, cross-AZ spread, and failover drills."
+    },
+    {
+      "name": "recommend_monitoring_improvements",
+      "category": "Recommendation",
+      "group": "Recommendation",
+      "description": "Gaps in observability \u2014 missing alerts, unmonitored probes, missing dashboards."
+    },
+    {
+      "name": "recommend_resource_optimization",
+      "category": "Recommendation",
+      "group": "Recommendation",
+      "description": "Rightsizing suggestions: which containers should request more / less CPU or memory."
+    },
+    {
+      "name": "recommend_scaling_strategy",
+      "category": "Recommendation",
+      "group": "Recommendation",
+      "description": "Recommends HPA / VPA / KEDA configuration for each workload based on its load profile."
+    },
+    {
+      "name": "recommend_security_hardening",
+      "category": "Recommendation",
+      "group": "Recommendation",
+      "description": "Specific security controls to turn on, prioritized by risk reduction."
+    },
+    {
+      "name": "recommend_upgrade_path",
+      "category": "Recommendation",
+      "group": "Recommendation",
+      "description": "Suggests a safe Kubernetes version upgrade path given current cluster state."
+    },
+    {
+      "name": "assess_security_posture",
+      "category": "Analysis",
+      "group": "Security",
+      "description": "High-level check of the cluster's security hygiene \u2014 pod security, RBAC, secrets, network."
+    },
+    {
+      "name": "security_audit_rbac",
+      "category": "Security",
+      "group": "Security",
+      "description": "End-to-end RBAC audit \u2014 cluster-admin bindings, wildcard rules, stale accounts."
+    },
+    {
+      "name": "security_check_pod_security",
+      "category": "Security",
+      "group": "Security",
+      "description": "Scans every pod against pod-security-standards (privileged / baseline / restricted)."
+    },
+    {
+      "name": "security_compliance_report",
+      "category": "Security",
+      "group": "Security",
+      "description": "Maps findings to compliance frameworks: CIS, SOC2, HIPAA, PCI-DSS."
+    },
+    {
+      "name": "security_scan_cluster",
+      "category": "Security",
+      "group": "Security",
+      "description": "Comprehensive cluster-level security scan covering CIS benchmark controls."
+    },
+    {
+      "name": "security_scan_secrets",
+      "category": "Security",
+      "group": "Security",
+      "description": "Looks for secret hygiene issues: plaintext, over-mounted, old, unused."
+    },
+    {
+      "name": "troubleshoot_deployment_failures",
+      "category": "Troubleshooting",
+      "group": "Troubleshooting",
+      "description": "Autonomous investigation of a failing deployment \u2014 pod events, rollout history, logs."
+    },
+    {
+      "name": "troubleshoot_network_issues",
+      "category": "Troubleshooting",
+      "group": "Troubleshooting",
+      "description": "Traces a connectivity problem across DNS, services, endpoints, and NetworkPolicies."
+    },
+    {
+      "name": "troubleshoot_performance_degradation",
+      "category": "Troubleshooting",
+      "group": "Troubleshooting",
+      "description": "Correlates slow-down symptoms with metrics, events, and recent changes."
+    },
+    {
+      "name": "troubleshoot_pod_failures",
+      "category": "Troubleshooting",
+      "group": "Troubleshooting",
+      "description": "End-to-end investigation of why a pod keeps failing, with suggested fixes."
+    },
+    {
+      "name": "troubleshoot_rbac_issues",
+      "category": "Troubleshooting",
+      "group": "Troubleshooting",
+      "description": "Traces 'Forbidden' errors back to the missing RBAC rule and who could grant it."
+    },
+    {
+      "name": "troubleshoot_resource_constraints",
+      "category": "Troubleshooting",
+      "group": "Troubleshooting",
+      "description": "Correlates OOM / throttle / pressure events with resource requests + limits."
+    },
+    {
+      "name": "troubleshoot_storage_issues",
+      "category": "Troubleshooting",
+      "group": "Troubleshooting",
+      "description": "Walks PV / PVC / mount / provisioner errors to pinpoint storage failures."
+    },
+    {
+      "name": "export_topology_to_drawio",
+      "category": "Observation",
+      "group": "Utility",
+      "description": "Exports the cluster topology as a draw.io / diagrams.net file for slides or docs."
+    },
+    {
+      "name": "resolve_resource",
+      "category": "Observation",
+      "group": "Utility",
+      "description": "Given a kind and a fuzzy name, finds the actual namespace + full name."
+    }
+  ]
+}
