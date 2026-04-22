@@ -262,7 +262,7 @@ func (s *mcpServerImpl) handleObserveRecentChanges(ctx context.Context, args map
 				Name:    name,
 				Ns:      ns,
 				Action:  "rollout",
-				Summary: firstNonEmpty(strOr(rev, "cause", "change_cause", "message"), "new revision"),
+				Summary: firstNonEmpty(strOr(rev, "cause", "change_cause", "changeCause", "message"), "new revision"),
 			})
 		}
 	}
