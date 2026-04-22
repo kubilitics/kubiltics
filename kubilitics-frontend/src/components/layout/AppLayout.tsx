@@ -20,6 +20,7 @@ import { useMemoryMonitor } from '@/hooks/useMemoryMonitor';
 import { ProductionBanner } from './ProductionBanner';
 import { KeyboardShortcutsOverlay } from '@/components/KeyboardShortcutsOverlay';
 import { useKeyboardShortcuts, type KeyboardShortcut } from '@/hooks/useKeyboardShortcuts';
+import { UpdateBanner } from '@/components/UpdateBanner';
 import { useClusterWatcher } from '@/hooks/useClusterWatcher';
 import { useInsightNotifications } from '@/hooks/useInsightNotifications';
 import { ChatPanel } from '@/components/ai/ChatPanel';
@@ -95,6 +96,7 @@ export function AppLayout() {
         Skip to main content
       </a>
       <RouteAnnouncer />
+      <UpdateBanner />
       <ProductionBanner />
       <Header />
       {isDemo && (
