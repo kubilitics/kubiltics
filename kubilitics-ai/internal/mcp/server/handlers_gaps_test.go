@@ -157,6 +157,95 @@ func TestResolveResource_NoMatchGivesSuggestions(t *testing.T) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// Gap 1 — live metrics adapter
+// ═══════════════════════════════════════════════════════════════════════════
+
+func TestObservePodMetrics_SinglePod(t *testing.T) {
+	fb := newFakeBackend(t)
+	fb.registerCluster()
+	fb.register("/clusters/"+testClusterID+"/metrics/demo/web-1", map[string]interface{}{
+		"cpu_millicores": 250, "memory_mib": 512,
+	})
+	s := newTestServer(t, fb.server.URL)
+	out, err := s.handleObservePodMetrics(context.Background(), map[string]interface{}{
+		"namespace": "demo", "name": "web-1",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	m := out.(map[string]interface{})
+	if m["pod"] != "web-1" {
+		t.Errorf("pod mismatch")
+	}
+}
+
+func TestObservePodMetrics_FallbackWhenUnavailable(t *testing.T) {
+	fb := newFakeBackend(t)
+	fb.registerCluster()
+	s := newTestServer(t, fb.server.URL)
+	out, err := s.handleObservePodMetrics(context.Background(), map[string]interface{}{
+		"namespace": "demo", "name": "web-1",
+	})
+	if err != nil {
+		t.Fatalf("expected fallback (no error), got %v", err)
+	}
+	m := out.(map[string]interface{})
+	if m["metrics_unavailable"] != true {
+		t.Errorf("expected metrics_unavailable=true, got %v", m)
+	}
+}
+
+func TestObserveTopPodsByMetric_SortsByCPU(t *testing.T) {
+	fb := newFakeBackend(t)
+	fb.registerCluster()
+	fb.register("/clusters/"+testClusterID+"/metrics/summary", map[string]interface{}{
+		"pods": []interface{}{
+			map[string]interface{}{"namespace": "demo", "name": "a", "cpu_millicores": 100.0, "memory_mib": 50.0},
+			map[string]interface{}{"namespace": "demo", "name": "b", "cpu_millicores": 500.0, "memory_mib": 20.0},
+			map[string]interface{}{"namespace": "demo", "name": "c", "cpu_millicores": 200.0, "memory_mib": 80.0},
+		},
+	})
+	s := newTestServer(t, fb.server.URL)
+	out, err := s.handleObserveTopPodsByMetric(context.Background(), map[string]interface{}{
+		"metric_type": "cpu", "limit": 2,
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	m := out.(map[string]interface{})
+	top := m["top_pods"].([]map[string]interface{})
+	if len(top) != 2 || top[0]["name"] != "b" {
+		t.Errorf("expected b first, got %+v", top)
+	}
+}
+
+func TestObserveTopPodsByMetric_EmptyFallback(t *testing.T) {
+	fb := newFakeBackend(t)
+	fb.registerCluster()
+	s := newTestServer(t, fb.server.URL)
+	out, err := s.handleObserveTopPodsByMetric(context.Background(), map[string]interface{}{
+		"metric_type": "memory",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	m := out.(map[string]interface{})
+	if m["metrics_unavailable"] != true {
+		t.Errorf("expected metrics_unavailable fallback, got %v", m)
+	}
+}
+
+func TestObserveTopPodsByMetric_InvalidType(t *testing.T) {
+	s := newTestServer(t, "http://unused")
+	_, err := s.handleObserveTopPodsByMetric(context.Background(), map[string]interface{}{
+		"cluster_id": "c1", "metric_type": "disk",
+	})
+	if err == nil || !strings.Contains(err.Error(), "metric_type") {
+		t.Errorf("expected metric_type error, got %v", err)
+	}
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // Gap 3 — who_can_do RBAC aggregator
 // ═══════════════════════════════════════════════════════════════════════════
 

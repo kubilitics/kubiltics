@@ -839,6 +839,55 @@ var ToolTaxonomy = []ToolDefinition{
 		RequiresAI:  true,
 	},
 
+	// ─── Live metrics adapter (gap 1, 2026-04-22 bench) ───
+	{
+		Name:        "observe_pod_metrics",
+		Category:    CategoryObservation,
+		Description: "Get live CPU/memory for a pod (name+namespace) OR an aggregate summary for a namespace (namespace only, no name). Returns a structured metrics-unavailable fallback if metrics-server is not installed.",
+		InputSchema: map[string]interface{}{
+			"type": "object",
+			"properties": map[string]interface{}{
+				"cluster_id":  map[string]interface{}{"type": "string"},
+				"namespace":   map[string]interface{}{"type": "string", "description": "Namespace (required when 'name' is given)"},
+				"name":        map[string]interface{}{"type": "string", "description": "Pod name (optional; omit for namespace/cluster aggregate)"},
+				"metric_type": map[string]interface{}{"type": "string", "enum": []string{"cpu", "memory", "all"}, "description": "Metric to emphasize (default 'all')"},
+			},
+		},
+		Destructive: false,
+		RequiresAI:  false,
+	},
+	{
+		Name:        "observe_node_metrics",
+		Category:    CategoryObservation,
+		Description: "Get live CPU/memory/disk metrics for a specific node (if 'name' given) or all nodes. Returns a metrics-unavailable fallback when metrics-server is absent.",
+		InputSchema: map[string]interface{}{
+			"type": "object",
+			"properties": map[string]interface{}{
+				"cluster_id": map[string]interface{}{"type": "string"},
+				"name":       map[string]interface{}{"type": "string", "description": "Node name (optional)"},
+			},
+		},
+		Destructive: false,
+		RequiresAI:  false,
+	},
+	{
+		Name:        "observe_top_pods_by_metric",
+		Category:    CategoryObservation,
+		Description: "Return the top-N pods sorted by a live metric (cpu or memory). Useful for 'which pod uses most CPU right now' without enumerating every pod. Returns a metrics-unavailable fallback when metrics-server is absent.",
+		InputSchema: map[string]interface{}{
+			"type": "object",
+			"properties": map[string]interface{}{
+				"cluster_id":  map[string]interface{}{"type": "string"},
+				"metric_type": map[string]interface{}{"type": "string", "enum": []string{"cpu", "memory"}, "description": "Which metric to rank by (required)"},
+				"namespace":   map[string]interface{}{"type": "string", "description": "Restrict to a namespace (optional)"},
+				"limit":       map[string]interface{}{"type": "integer", "description": "Max pods to return (default 10)"},
+			},
+			"required": []string{"metric_type"},
+		},
+		Destructive: false,
+		RequiresAI:  false,
+	},
+
 	// ─── Timeline fusion (gap 4, 2026-04-22 bench) ───
 	{
 		Name:        "observe_recent_changes",

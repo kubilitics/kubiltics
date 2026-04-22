@@ -619,3 +619,192 @@ func summarizeWhoCanDo(verb, resource, namespace string, principalCount int, rol
 	return fmt.Sprintf("%d principal(s) can %s %s in %s via %d cluster-level role(s) and %d namespaced role(s).",
 		principalCount, verb, resource, scope, clusterRoles, namespacedRoles)
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Gap 1 — live metrics adapter (pod / node / top-N)
+// ═══════════════════════════════════════════════════════════════════════════
+
+// metricsFallback returns a structured "metrics-server not installed"
+// response when the backend metrics endpoint is unavailable. The LLM gets
+// a coherent non-empty shape instead of a generic error.
+func metricsFallback(reason string) map[string]interface{} {
+	return map[string]interface{}{
+		"metrics_unavailable": true,
+		"reason":              reason,
+		"install_hint":        "kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml",
+	}
+}
+
+// handleObservePodMetrics returns CPU/memory for a single pod, or a
+// namespace-aggregate summary when no name is given. Closes scen-pods-33 /
+// scen-pods-42.
+func (s *mcpServerImpl) handleObservePodMetrics(ctx context.Context, args map[string]interface{}) (interface{}, error) {
+	c := s.http()
+	clusterID, err := c.resolveCluster(ctx, args)
+	if err != nil {
+		return nil, err
+	}
+	namespace := strArg(args, "namespace")
+	name := strArg(args, "name")
+
+	if name != "" {
+		if namespace == "" {
+			return nil, fmt.Errorf("observe_pod_metrics: 'namespace' is required when 'name' is given")
+		}
+		var m map[string]interface{}
+		if err := c.get(ctx, c.clusterPath(clusterID, "/metrics/"+url.PathEscape(namespace)+"/"+url.PathEscape(name)), &m); err != nil {
+			return metricsFallback(fmt.Sprintf("metrics for pod %q in %q unavailable: %v", name, namespace, err)), nil
+		}
+		return map[string]interface{}{
+			"pod":       name,
+			"namespace": namespace,
+			"metrics":   m,
+		}, nil
+	}
+
+	// Namespace / cluster-wide aggregate via /metrics/summary.
+	var raw map[string]interface{}
+	if err := c.get(ctx, c.clusterPath(clusterID, "/metrics/summary"), &raw); err != nil {
+		return metricsFallback(fmt.Sprintf("metrics-server summary unavailable: %v", err)), nil
+	}
+	return map[string]interface{}{
+		"namespace":       namespace,
+		"metrics_summary": raw,
+		"analysis_hint":   "Use 'pods' key (if present) to identify hot pods. For a top-N ranking call observe_top_pods_by_metric.",
+	}, nil
+}
+
+// handleObserveNodeMetrics returns per-node CPU/memory/disk.
+func (s *mcpServerImpl) handleObserveNodeMetrics(ctx context.Context, args map[string]interface{}) (interface{}, error) {
+	c := s.http()
+	clusterID, err := c.resolveCluster(ctx, args)
+	if err != nil {
+		return nil, err
+	}
+	name := strArg(args, "name")
+	if name != "" {
+		var m map[string]interface{}
+		if err := c.get(ctx, c.clusterPath(clusterID, "/metrics/nodes/"+url.PathEscape(name)), &m); err == nil {
+			return map[string]interface{}{"node": name, "metrics": m}, nil
+		}
+	}
+	var raw map[string]interface{}
+	if err := c.get(ctx, c.clusterPath(clusterID, "/metrics"), &raw); err != nil {
+		return metricsFallback(fmt.Sprintf("cluster metrics unavailable: %v", err)), nil
+	}
+	return map[string]interface{}{
+		"node":    name,
+		"metrics": raw,
+	}, nil
+}
+
+// handleObserveTopPodsByMetric returns the N highest-consuming pods for
+// cpu|memory. Closes gap scen-pods-42 ("pod with highest CPU this hour").
+func (s *mcpServerImpl) handleObserveTopPodsByMetric(ctx context.Context, args map[string]interface{}) (interface{}, error) {
+	c := s.http()
+	clusterID, err := c.resolveCluster(ctx, args)
+	if err != nil {
+		return nil, err
+	}
+	metricType := strings.ToLower(strArg(args, "metric_type"))
+	if metricType == "" {
+		metricType = "cpu"
+	}
+	if metricType != "cpu" && metricType != "memory" {
+		return nil, fmt.Errorf("observe_top_pods_by_metric: 'metric_type' must be 'cpu' or 'memory'")
+	}
+	namespace := strArg(args, "namespace")
+	limit := intArg(args, "limit", 10)
+	if limit < 1 {
+		limit = 10
+	}
+
+	var raw map[string]interface{}
+	if err := c.get(ctx, c.clusterPath(clusterID, "/metrics/summary"), &raw); err != nil {
+		return metricsFallback(fmt.Sprintf("metrics-server summary unavailable: %v", err)), nil
+	}
+
+	podsRaw, _ := raw["pods"].([]interface{})
+	type row struct {
+		Namespace string  `json:"namespace"`
+		Name      string  `json:"name"`
+		CPU       float64 `json:"cpu_millicores"`
+		Memory    float64 `json:"memory_mib"`
+	}
+	var rows []row
+	for _, p := range podsRaw {
+		pm, ok := p.(map[string]interface{})
+		if !ok {
+			continue
+		}
+		ns, _ := pm["namespace"].(string)
+		if namespace != "" && ns != namespace {
+			continue
+		}
+		rows = append(rows, row{
+			Namespace: ns,
+			Name:      strOr(pm, "name", "pod"),
+			CPU:       floatOr(pm, "cpu_millicores", "cpu"),
+			Memory:    floatOr(pm, "memory_mib", "memory"),
+		})
+	}
+
+	sort.Slice(rows, func(i, j int) bool {
+		if metricType == "cpu" {
+			return rows[i].CPU > rows[j].CPU
+		}
+		return rows[i].Memory > rows[j].Memory
+	})
+	if len(rows) > limit {
+		rows = rows[:limit]
+	}
+
+	if len(rows) == 0 {
+		return map[string]interface{}{
+			"metric_type":  metricType,
+			"namespace":    namespace,
+			"top_pods":     []interface{}{},
+			"summary":      "No pod metrics available — metrics-server may not be installed or summary endpoint has no pod rows.",
+			"install_hint": "kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml",
+		}, nil
+	}
+
+	out := make([]map[string]interface{}, 0, len(rows))
+	for _, r := range rows {
+		out = append(out, map[string]interface{}{
+			"namespace":      r.Namespace,
+			"name":           r.Name,
+			"cpu_millicores": r.CPU,
+			"memory_mib":     r.Memory,
+		})
+	}
+	return map[string]interface{}{
+		"metric_type": metricType,
+		"namespace":   namespace,
+		"top_pods":    out,
+		"summary":     fmt.Sprintf("Top %d pods by %s in %s", len(out), metricType, namespaceLabel(namespace)),
+	}, nil
+}
+
+func namespaceLabel(ns string) string {
+	if ns == "" {
+		return "all namespaces"
+	}
+	return "namespace " + ns
+}
+
+// floatOr looks up multiple keys and returns the first numeric value
+// (float64 / int / int64).
+func floatOr(m map[string]interface{}, keys ...string) float64 {
+	for _, k := range keys {
+		switch v := m[k].(type) {
+		case float64:
+			return v
+		case int:
+			return float64(v)
+		case int64:
+			return float64(v)
+		}
+	}
+	return 0
+}
