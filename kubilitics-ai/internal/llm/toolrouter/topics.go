@@ -355,6 +355,18 @@ var toolTopicOverrides = map[string][]Topic{
 	"observe_secrets_usage":           {TopicSecurity, TopicCore},
 	"observe_ingresses_by_tls_expiry": {TopicNetworking, TopicSecurity},
 
+	// Phase 3 Category 2 root-cause diagnostics.
+	"diagnose_pod_not_ready":            {TopicPods, TopicEvents},
+	"diagnose_service_no_endpoints":     {TopicNetworking, TopicPods},
+	"diagnose_pvc_pending":              {TopicStorage, TopicEvents},
+	"diagnose_ingress_404":              {TopicNetworking},
+	"diagnose_deployment_rollback_needed": {TopicWorkloads, TopicChange},
+	"diagnose_cronjob_missing_runs":     {TopicWorkloads},
+	"diagnose_node_unschedulable":       {TopicNodes, TopicPods},
+	"diagnose_hpa_not_scaling":          {TopicCapacity, TopicWorkloads},
+	"diagnose_networkpolicy_blocking":   {TopicNetworking, TopicSecurity},
+	"diagnose_certificate_failures":     {TopicSecurity, TopicNetworking, TopicEvents},
+
 	// Phase 3 Category 1 observability aggregators — prefix-based topic
 	// derivation doesn't catch most of these names, so pin them explicitly.
 	"observe_flapping_services":        {TopicNetworking, TopicEvents},

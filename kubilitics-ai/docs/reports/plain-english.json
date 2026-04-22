@@ -28,5 +28,15 @@
   "observe_high_cardinality_labels": "Would flag label keys with more than a thousand distinct values (Prometheus risk); backend index not yet available.",
   "observe_restart_storms": "Lists containers whose cumulative restart count is above threshold — the ones CrashLoopBackOff-ing hardest.",
   "observe_pending_scheduler_events": "Shows recent FailedScheduling events so you can see which pods can't land and why — taint, affinity, or capacity.",
-  "observe_zombie_finalizers": "Finds resources stuck in Terminating longer than ten minutes because a finalizer won't release them."
+  "observe_zombie_finalizers": "Finds resources stuck in Terminating longer than ten minutes because a finalizer won't release them.",
+  "diagnose_pod_not_ready": "Tells you exactly why a specific pod isn't Ready — CrashLoopBackOff, OOMKilled, ImagePullBackOff, probe failures, or still Pending.",
+  "diagnose_service_no_endpoints": "Explains why a service has no backends — selector mismatch, no pods running, or the service is headless.",
+  "diagnose_pvc_pending": "Walks through why a PVC is stuck Pending — missing storage class, no matching volume, or provisioner failing.",
+  "diagnose_ingress_404": "Traces an ingress path to backend service to endpoints and reports which link in the chain is broken.",
+  "diagnose_deployment_rollback_needed": "Compares current revision to the prior one and tells you if the new rollout is worse than what it replaced.",
+  "diagnose_cronjob_missing_runs": "Explains why a CronJob didn't fire recently — suspended, concurrency conflict, or never scheduled.",
+  "diagnose_node_unschedulable": "Tells you why pods won't land on a node — cordoned, tainted, or under memory/disk/PID pressure.",
+  "diagnose_hpa_not_scaling": "Why isn't the autoscaler scaling? Checks min=max, missing metrics, and unreachable targets in conditions.",
+  "diagnose_networkpolicy_blocking": "Detects default-deny network policies and flags when a manual trace is needed to decide if a specific flow is blocked.",
+  "diagnose_certificate_failures": "Lists cert-manager Certificate and CertificateRequest failure events in the window, with reasons."
 }

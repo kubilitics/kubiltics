@@ -1530,6 +1530,29 @@ func (s *mcpServerImpl) routeTroubleshootingTool(ctx context.Context, name strin
 		return s.handleTroubleshootRBACIssues(ctx, args)
 	case "troubleshoot_storage_issues":
 		return s.handleTroubleshootStorageIssues(ctx, args)
+
+	// Phase 3 Category 2 — root-cause diagnostics (handlers_diagnose.go).
+	case "diagnose_pod_not_ready":
+		return s.handleDiagnosePodNotReady(ctx, args)
+	case "diagnose_service_no_endpoints":
+		return s.handleDiagnoseServiceNoEndpoints(ctx, args)
+	case "diagnose_pvc_pending":
+		return s.handleDiagnosePVCPending(ctx, args)
+	case "diagnose_ingress_404":
+		return s.handleDiagnoseIngress404(ctx, args)
+	case "diagnose_deployment_rollback_needed":
+		return s.handleDiagnoseDeploymentRollbackNeeded(ctx, args)
+	case "diagnose_cronjob_missing_runs":
+		return s.handleDiagnoseCronJobMissingRuns(ctx, args)
+	case "diagnose_node_unschedulable":
+		return s.handleDiagnoseNodeUnschedulable(ctx, args)
+	case "diagnose_hpa_not_scaling":
+		return s.handleDiagnoseHPANotScaling(ctx, args)
+	case "diagnose_networkpolicy_blocking":
+		return s.handleDiagnoseNetworkPolicyBlocking(ctx, args)
+	case "diagnose_certificate_failures":
+		return s.handleDiagnoseCertificateFailures(ctx, args)
+
 	default:
 		return nil, fmt.Errorf("troubleshooting tool not implemented: %s", name)
 	}

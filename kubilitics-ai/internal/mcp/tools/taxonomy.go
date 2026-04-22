@@ -1629,6 +1629,79 @@ var ToolTaxonomy = []ToolDefinition{
 		RequiresAI:  true,
 	},
 
+	// === ROOT-CAUSE DIAGNOSTICS — Phase 3 C2 (10 tools) ===
+	// Take a specific subject and return findings + probable_cause.
+	{
+		Name:        "diagnose_pod_not_ready",
+		Category:    CategoryTroubleshooting,
+		Description: "Why is this pod not Ready? Inspects phase, container waiting/terminated states, restart counts. Classifies as CrashLoopBackOff / OOMKilled / ImagePullBackOff / ProbeFailure when possible.",
+		InputSchema: map[string]interface{}{"type": "object", "properties": map[string]interface{}{"cluster_id": map[string]interface{}{"type": "string"}, "namespace": map[string]interface{}{"type": "string"}, "name": map[string]interface{}{"type": "string"}}, "required": []string{"namespace", "name"}},
+		Destructive: false, RequiresAI: false,
+	},
+	{
+		Name:        "diagnose_service_no_endpoints",
+		Category:    CategoryTroubleshooting,
+		Description: "Why does this service have no ready endpoints? Reports selector mismatch, zero backing pods, or headless/external configuration.",
+		InputSchema: map[string]interface{}{"type": "object", "properties": map[string]interface{}{"cluster_id": map[string]interface{}{"type": "string"}, "namespace": map[string]interface{}{"type": "string"}, "name": map[string]interface{}{"type": "string"}}, "required": []string{"namespace", "name"}},
+		Destructive: false, RequiresAI: false,
+	},
+	{
+		Name:        "diagnose_pvc_pending",
+		Category:    CategoryTroubleshooting,
+		Description: "Why is this PVC stuck Pending? Checks storageClassName presence, class existence, and provisioner failure events.",
+		InputSchema: map[string]interface{}{"type": "object", "properties": map[string]interface{}{"cluster_id": map[string]interface{}{"type": "string"}, "namespace": map[string]interface{}{"type": "string"}, "name": map[string]interface{}{"type": "string"}}, "required": []string{"namespace", "name"}},
+		Destructive: false, RequiresAI: false,
+	},
+	{
+		Name:        "diagnose_ingress_404",
+		Category:    CategoryTroubleshooting,
+		Description: "Why does this ingress return 404? Walks rules → backend service → endpoints and reports which link is broken.",
+		InputSchema: map[string]interface{}{"type": "object", "properties": map[string]interface{}{"cluster_id": map[string]interface{}{"type": "string"}, "namespace": map[string]interface{}{"type": "string"}, "name": map[string]interface{}{"type": "string"}}, "required": []string{"namespace", "name"}},
+		Destructive: false, RequiresAI: false,
+	},
+	{
+		Name:        "diagnose_deployment_rollback_needed",
+		Category:    CategoryTroubleshooting,
+		Description: "Is this deployment degraded after its latest revision? Compares current revision cause to the prior cause and reports readiness delta.",
+		InputSchema: map[string]interface{}{"type": "object", "properties": map[string]interface{}{"cluster_id": map[string]interface{}{"type": "string"}, "namespace": map[string]interface{}{"type": "string"}, "name": map[string]interface{}{"type": "string"}}, "required": []string{"namespace", "name"}},
+		Destructive: false, RequiresAI: false,
+	},
+	{
+		Name:        "diagnose_cronjob_missing_runs",
+		Category:    CategoryTroubleshooting,
+		Description: "Why did this CronJob not fire? Checks suspend flag, concurrencyPolicy, and lastScheduleTime.",
+		InputSchema: map[string]interface{}{"type": "object", "properties": map[string]interface{}{"cluster_id": map[string]interface{}{"type": "string"}, "namespace": map[string]interface{}{"type": "string"}, "name": map[string]interface{}{"type": "string"}}, "required": []string{"namespace", "name"}},
+		Destructive: false, RequiresAI: false,
+	},
+	{
+		Name:        "diagnose_node_unschedulable",
+		Category:    CategoryTroubleshooting,
+		Description: "Why won't pods land on this node? Inspects cordon flag, taints (NoSchedule/NoExecute), and node conditions (Pressure / Ready).",
+		InputSchema: map[string]interface{}{"type": "object", "properties": map[string]interface{}{"cluster_id": map[string]interface{}{"type": "string"}, "name": map[string]interface{}{"type": "string"}}, "required": []string{"name"}},
+		Destructive: false, RequiresAI: false,
+	},
+	{
+		Name:        "diagnose_hpa_not_scaling",
+		Category:    CategoryTroubleshooting,
+		Description: "Why isn't this HPA scaling? Checks min=max, and ScalingActive/AbleToScale condition reasons (metrics unavailable, target unreachable, etc.).",
+		InputSchema: map[string]interface{}{"type": "object", "properties": map[string]interface{}{"cluster_id": map[string]interface{}{"type": "string"}, "namespace": map[string]interface{}{"type": "string"}, "name": map[string]interface{}{"type": "string"}}, "required": []string{"namespace", "name"}},
+		Destructive: false, RequiresAI: false,
+	},
+	{
+		Name:        "diagnose_networkpolicy_blocking",
+		Category:    CategoryTroubleshooting,
+		Description: "Is a NetworkPolicy blocking from_pod → to_pod? Detects default-deny policies and reports manual-review when per-pod simulation isn't available.",
+		InputSchema: map[string]interface{}{"type": "object", "properties": map[string]interface{}{"cluster_id": map[string]interface{}{"type": "string"}, "namespace": map[string]interface{}{"type": "string"}, "from_pod": map[string]interface{}{"type": "string"}, "to_pod": map[string]interface{}{"type": "string"}}, "required": []string{"namespace"}},
+		Destructive: false, RequiresAI: false,
+	},
+	{
+		Name:        "diagnose_certificate_failures",
+		Category:    CategoryTroubleshooting,
+		Description: "cert-manager issuance failures in the window. Reads Certificate/CertificateRequest events whose reason matches Failed/Error.",
+		InputSchema: map[string]interface{}{"type": "object", "properties": map[string]interface{}{"cluster_id": map[string]interface{}{"type": "string"}, "namespace": map[string]interface{}{"type": "string"}, "window_minutes": map[string]interface{}{"type": "integer", "description": "Default 1440 (24h)"}}},
+		Destructive: false, RequiresAI: false,
+	},
+
 	// === SECURITY TOOLS (5 tools) ===
 	// Security analysis and compliance
 	// Autonomy Level: 2 (Recommend)
