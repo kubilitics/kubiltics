@@ -1,0 +1,7 @@
+{"bytes":92,"stage":"user_msg","ts":"2026-04-22T03:45:07.053017Z","turn_id":"bench-scen-cost-110"}
+{"selected_topics":["core","workloads","capacity"],"stage":"tool_filter","tool_count":30,"total_available":129,"ts":"2026-04-22T03:45:07.053441Z","turn_id":"bench-scen-cost-110"}
+{"bytes":2455,"focus_cluster":"5cb1f37d-e31e-4915-8c4d-bdf36ef335ec","has_system":true,"messages":2,"stage":"llm_prompt_in","ts":"2026-04-22T03:45:07.053468Z","turn_id":"bench-scen-cost-110"}
+{"arg_keys":["namespace","cluster_id"],"cluster_id":"5cb1f37d-e31e-4915-8c4d-bdf36ef335ec","stage":"tool_dispatch","tool_name":"analyze_deployment_health","ts":"2026-04-22T03:45:08.408934Z","turn_id":"bench-scen-cost-110"}
+{"bytes_in":36,"bytes_out":36,"stage":"tool_result_summarized","tool_name":"analyze_deployment_health","ts":"2026-04-22T03:45:08.413063Z","turn_id":"bench-scen-cost-110"}
+{"bytes":91,"preview":"There are no deployments scaled above 1 replica that haven't served real traffic in a week.","stage":"llm_text_out","ts":"2026-04-22T03:45:09.5526Z","turn_id":"bench-scen-cost-110"}
+{"duration_ms":2499,"finish_reason":"stop","stage":"done","ts":"2026-04-22T03:45:09.552715Z","turn_id":"bench-scen-cost-110"}

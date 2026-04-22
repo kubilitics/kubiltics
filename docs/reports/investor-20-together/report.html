@@ -1,0 +1,578 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
+<title>Kubilitics Bench v2 — incident-scenarios-20 on Together.ai Llama 3.3 70B Turbo (tool router ON)</title>
+<style>/* bench-report v2 — all styles, no CDN */
+:root {
+  --bg: #f7f8fb;
+  --fg: #111827;
+  --muted: #6b7280;
+  --border: #e5e7eb;
+  --card: #ffffff;
+  --brand-from: #4338ca;
+  --brand-to: #7c3aed;
+  --pass: #16a34a;
+  --fail: #dc2626;
+  --warn: #d97706;
+  --info: #2563eb;
+}
+* { box-sizing: border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  margin: 0;
+  color: var(--fg);
+  background: var(--bg);
+  line-height: 1.55;
+}
+a { color: var(--info); }
+header.hero {
+  background: linear-gradient(135deg, var(--brand-from) 0%, var(--brand-to) 100%);
+  color: #fff;
+  padding: 48px 60px 40px;
+}
+header.hero h1 { margin: 0 0 6px; font-size: 30px; font-weight: 700; letter-spacing: -0.5px; }
+header.hero .meta { opacity: 0.88; font-size: 14px; }
+nav.toc {
+  position: sticky; top: 0; z-index: 5;
+  background: rgba(255,255,255,0.96);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--border);
+  padding: 10px 60px;
+  font-size: 13px;
+  display: flex; gap: 18px; flex-wrap: wrap;
+}
+nav.toc a { color: var(--muted); text-decoration: none; font-weight: 500; }
+nav.toc a:hover { color: var(--fg); }
+main { max-width: 1280px; margin: 0 auto; padding: 32px 60px 80px; }
+section.panel {
+  background: var(--card);
+  border-radius: 14px;
+  padding: 28px 32px;
+  margin-bottom: 22px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.02);
+}
+section.panel h2 {
+  margin-top: 0; font-size: 20px; font-weight: 600;
+  border-bottom: 2px solid var(--border);
+  padding-bottom: 10px;
+}
+.big { font-size: 54px; font-weight: 800; letter-spacing: -2px; line-height: 1; }
+.big.green { color: var(--pass); }
+.big.red   { color: var(--fail); }
+.big.amber { color: var(--warn); }
+.sub { color: var(--muted); font-size: 14px; margin-top: 8px; }
+p.lede { font-size: 16px; color: #1f2937; }
+/* tool explorer */
+.tool-explorer-controls {
+  display: flex; gap: 10px; flex-wrap: wrap;
+  margin: 12px 0 16px;
+}
+.tool-explorer-controls input[type="search"] {
+  flex: 1 1 260px;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 14px;
+}
+.tool-explorer-controls select {
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #fff;
+  font-size: 14px;
+}
+#tool-explorer .tool-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 12px;
+}
+.tool-card {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 14px;
+  background: #fff;
+  transition: box-shadow .12s ease, transform .12s ease;
+}
+.tool-card:hover { box-shadow: 0 4px 14px rgba(0,0,0,0.07); transform: translateY(-1px); }
+.tool-card .tool-name { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; font-weight: 600; }
+.tool-card .tool-cat {
+  display: inline-block; font-size: 11px; padding: 2px 8px;
+  border-radius: 999px; background: #eef2ff; color: #3730a3; margin-left: 6px;
+}
+.tool-card .tool-plain { color: #1f2937; font-size: 13px; margin-top: 6px; }
+.tool-card .tool-desc { color: var(--muted); font-size: 12px; margin-top: 4px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+#tool-explorer-count { color: var(--muted); font-size: 13px; margin-top: 8px; }
+/* walkthrough */
+details.walkthrough {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 14px;
+  margin-bottom: 10px;
+  background: #fff;
+}
+details.walkthrough[open] { box-shadow: 0 2px 6px rgba(0,0,0,0.04); }
+details.walkthrough summary {
+  cursor: pointer; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px;
+  display: flex; justify-content: space-between; align-items: center; gap: 8px;
+}
+details.walkthrough summary::-webkit-details-marker { display: none; }
+.badge-pass, .badge-fail, .badge-incomplete { font-weight: 700; font-size: 12px; }
+.badge-pass { color: var(--pass); }
+.badge-fail { color: var(--fail); }
+.badge-incomplete { color: var(--warn); }
+.walkthrough .stage-list {
+  margin: 10px 0 4px;
+  padding-left: 18px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  color: #374151;
+}
+.walkthrough .stage-list li { margin-bottom: 2px; }
+.walkthrough .errblock {
+  color: #991b1b; background: #fef2f2;
+  padding: 8px 10px; border-radius: 6px; margin-top: 8px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px;
+  word-break: break-word;
+}
+/* architecture */
+.arch-wrap { overflow-x: auto; padding: 8px 0; }
+.arch-wrap svg { min-width: 720px; }
+/* privacy box */
+.guardrails {
+  background: #ecfdf5;
+  border-left: 4px solid var(--pass);
+  padding: 12px 16px;
+  border-radius: 6px;
+  color: #064e3b;
+  font-size: 14px;
+}
+.note {
+  background: #fef3c7; border-left: 4px solid var(--warn);
+  padding: 12px 16px; border-radius: 6px; color: #78350f;
+  font-size: 13px; margin-bottom: 16px;
+}
+footer {
+  text-align: center; color: var(--muted); padding: 24px; font-size: 12px;
+}
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th, td { border-bottom: 1px solid var(--border); padding: 8px 12px; text-align: left; }
+th { background: #f3f4f6; font-weight: 600; }
+.mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+
+/* Walkthrough journey — question → tools → answer */
+.wt-body { padding: 16px 0 4px; }
+.wt-label { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: #6b7280; font-weight: 700; margin-bottom: 4px; }
+.wt-question { background: #eff6ff; border-left: 3px solid #2563eb; padding: 10px 14px; border-radius: 4px; margin-bottom: 10px; }
+.wt-question-text { font-size: 15px; color: #1e3a8a; font-weight: 600; line-height: 1.5; }
+.wt-scenario { background: #fafafa; border-left: 3px solid #9ca3af; padding: 8px 14px; border-radius: 4px; margin-bottom: 10px; font-size: 13px; color: #4b5563; }
+.wt-scenario-text { font-style: italic; line-height: 1.5; }
+.wt-journey { margin-bottom: 10px; }
+.wt-tool-list { margin: 4px 0 0 18px; padding: 0; }
+.wt-tool-list li { padding: 2px 0; font-size: 13px; }
+.wt-tool-list code { background: #f3f4f6; color: #4338ca; padding: 1px 6px; border-radius: 3px; font-size: 12px; }
+.wt-empty { color: #9ca3af; font-style: italic; font-size: 12px; }
+.wt-answer { background: #f0fdf4; border-left: 3px solid #16a34a; padding: 10px 14px; border-radius: 4px; margin-bottom: 10px; }
+.wt-answer-text { font-size: 13px; color: #14532d; line-height: 1.55; white-space: pre-wrap; }
+.wt-raw { margin-top: 10px; }
+.wt-raw summary { font-size: 11px; color: #6b7280; cursor: pointer; }
+.wt-id { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; color: #374151; }
+.wt-stat { color: #6b7280; font-size: 12px; }
+</style></head><body><header class="hero">
+<h1>Kubilitics Privacy-First Validation Bench</h1>
+<div class="meta">Suite: incident-scenarios-20 on Together.ai Llama 3.3 70B Turbo (tool router ON) · Generated: 2026-04-22 03:26 UTC</div>
+</header><nav class="toc">
+<a href="#intro">What is this?</a>
+<a href="#summary">Summary</a>
+<a href="#architecture">Architecture</a>
+<a href="#tool-explorer">Tools</a>
+<a href="#walkthroughs">Walkthroughs</a>
+<a href="#guardrails">Privacy</a>
+<a href="#method">Methodology</a>
+</nav><main><section class="panel" id="intro">
+<h2>What is this report?</h2>
+<p class="lede">Kubilitics is an AI copilot for Kubernetes. This report is our honest, reproducible proof that the copilot works and — more importantly — that your cluster data never leaves your boundary.</p>
+<p>Every prompt in this run hit a real cluster through a real backend and a real language model. For each prompt we recorded every hop: what the user typed, what the model saw, which tool was called, how many bytes travelled where, and the final answer. Green edges in the architecture diagram below mark the spots where we summarize or redact <em>before</em> anything is shown to the model.</p>
+</section><section class="panel" id="summary">
+<h2>Executive summary</h2>
+<div class="big green">20 / 20 passed (100.0%)</div>
+<div class="sub">Traces captured: 20 · LLM cost: $0.0000 · Failures: 0</div>
+</section><section class="panel" id="architecture">
+<h2>Architecture at a glance</h2>
+<div class="arch-wrap"><svg viewBox="0 0 780 240" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Kubilitics architecture">
+  <style>
+    .box { fill: #eef2ff; stroke: #4338ca; stroke-width: 1.5; }
+    .box-llm { fill: #fef3c7; stroke: #d97706; }
+    .box-k8s { fill: #dcfce7; stroke: #16a34a; }
+    .lbl { font: 600 13px -apple-system, system-ui, sans-serif; fill: #111827; }
+    .sub { font: 11px ui-monospace, SFMono-Regular, Menlo, monospace; fill: #4b5563; }
+    .edge { stroke: #6b7280; stroke-width: 1.5; fill: none; marker-end: url(#arr); }
+    .edge-redact { stroke: #16a34a; stroke-width: 2; }
+    .note { font: 11px -apple-system, system-ui, sans-serif; fill: #065f46; }
+  </style>
+  <defs>
+    <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#6b7280"/>
+    </marker>
+  </defs>
+  <rect class="box" x="10"  y="90" width="120" height="60" rx="8"/>
+  <text class="lbl" x="70"  y="118" text-anchor="middle">User</text>
+  <text class="sub" x="70"  y="138" text-anchor="middle">chat panel</text>
+
+  <rect class="box" x="170" y="90" width="140" height="60" rx="8"/>
+  <text class="lbl" x="240" y="118" text-anchor="middle">Backend</text>
+  <text class="sub" x="240" y="138" text-anchor="middle">privacy boundary</text>
+
+  <rect class="box-llm box" x="350" y="90" width="140" height="60" rx="8"/>
+  <text class="lbl" x="420" y="118" text-anchor="middle">LLM Brain</text>
+  <text class="sub" x="420" y="138" text-anchor="middle">tool schemas + summaries</text>
+
+  <rect class="box" x="530" y="20"  width="140" height="60" rx="8"/>
+  <text class="lbl" x="600" y="48"  text-anchor="middle">MCP Tools</text>
+  <text class="sub" x="600" y="68"  text-anchor="middle">166 tools</text>
+
+  <rect class="box-k8s box" x="530" y="160" width="140" height="60" rx="8"/>
+  <text class="lbl" x="600" y="188" text-anchor="middle">Kubernetes</text>
+  <text class="sub" x="600" y="208" text-anchor="middle">read-only for bench</text>
+
+  <path class="edge" d="M 130 120 L 170 120"/>
+  <path class="edge edge-redact" d="M 310 120 L 350 120"/>
+  <path class="edge" d="M 490 110 L 530 60"/>
+  <path class="edge" d="M 490 130 L 530 180"/>
+  <path class="edge" d="M 600 160 L 600 80"/>
+  <text class="note" x="330" y="82">green edge = summarized / redacted</text>
+</svg></div>
+<p class="sub">The model only ever sees tool schemas and summarized tool results. Raw Kubernetes responses (Secrets, env vars, managedFields, last-applied-configuration) stay between the backend and the cluster.</p>
+</section><section class="panel" id="tool-explorer">
+<h2>Tool explorer</h2>
+<p>All 163 tools the copilot can call, searchable by name or plain-English description. Filter by category to explore what the copilot can do without writing code.</p>
+<div class="tool-explorer-controls">
+  <input id="tool-search" type="search" placeholder="Search tools by name or what they do…" autocomplete="off"/>
+  <select id="tool-category" aria-label="Filter by category">
+    <option value="">All categories</option>
+  </select>
+</div>
+<div id="tool-explorer-count"></div>
+<div id="tool-grid" class="tool-grid"></div>
+</section><section class="panel" id="walkthroughs">
+<h2>Prompt walkthroughs</h2>
+<p>Each entry expands to the stage-by-stage trace of a single prompt: user bytes in, model tokens, tool dispatched, bytes returned, final text out. Click any row to open.</p><details class="walkthrough">
+<summary><span class="wt-id">scen-capacity-11</span><span class="wt-stat"><span class="badge-pass">PASS</span> · 3565 ms · 0 tools · $0.00000</span></summary>
+<div class="wt-body">
+<div class="wt-question"><span class="wt-label">You asked</span><div class="wt-question-text">Do I have enough capacity to scale the web deployment from 3 to 10 replicas? Give me a realistic answer.</div></div>
+<div class="wt-scenario"><span class="wt-label">Real-world scenario</span><div class="wt-scenario-text">What-if capacity planning. Requires reasoning about node resources + existing allocations, not just listing.</div></div>
+<div class="wt-journey"><span class="wt-label">Kubilitics picked tools (in order)</span><div class="wt-empty">— no tools dispatched —</div></div>
+<div class="wt-answer"><span class="wt-label">Assistant answered</span><div class="wt-answer-text">To determine if you have enough capacity to scale the web deployment from 3 to 10 replicas, I&#39;ve analyzed the rollout risk. The analysis suggests checking the rollout strategy, minReadySeconds, and cluster headroom. Additionally, a high restart count in the history may indicate a risky rollout. 
+
+Let me check the current node pressure to give a more informed answer.</div></div>
+<details class="wt-raw"><summary>raw stage log</summary><ul class="stage-list"><li>user_msg — bytes=104</li><li>tool_filter</li><li>llm_prompt_in — bytes=2467</li><li>tool_dispatch — tool_name=analyze_rollout_risk</li><li>backend_k8s_fetch — resp_bytes=165</li><li>backend_k8s_fetch — resp_bytes=47</li><li>backend_k8s_fetch — resp_bytes=121</li><li>backend_k8s_fetch — resp_bytes=74</li><li>tool_result_summarized — tool_name=analyze_rollout_risk bytes_in=157 bytes_out=157</li><li>llm_text_out — bytes=368</li><li>done — duration_ms=3565</li></ul></details>
+
+</div>
+</details><details class="walkthrough">
+<summary><span class="wt-id">scen-change-19</span><span class="wt-stat"><span class="badge-pass">PASS</span> · 3243 ms · 0 tools · $0.00000</span></summary>
+<div class="wt-body">
+<div class="wt-question"><span class="wt-label">You asked</span><div class="wt-question-text">What&#39;s been deployed or changed in the last 2 hours? I came back from lunch and things feel off.</div></div>
+<div class="wt-scenario"><span class="wt-label">Real-world scenario</span><div class="wt-scenario-text">Recent-change investigation. Nearly every incident starts with &#39;what changed?&#39; — this is the core question.</div></div>
+<div class="wt-journey"><span class="wt-label">Kubilitics picked tools (in order)</span><div class="wt-empty">— no tools dispatched —</div></div>
+<div class="wt-answer"><span class="wt-label">Assistant answered</span><div class="wt-answer-text">The observe_resource_history tool failed because it requires &#39;kind&#39; and &#39;name&#39; parameters. To find recent changes, I&#39;ll try listing events in each namespace instead.
+
+Calling get_events with cluster_id=&quot;5cb1f37d-e31e-4915-8c4d-bdf36ef335ec&quot; to find recent events.</div></div>
+<details class="wt-raw"><summary>raw stage log</summary><ul class="stage-list"><li>user_msg — bytes=96</li><li>tool_filter</li><li>llm_prompt_in — bytes=2459</li><li>tool_dispatch — tool_name=observe_resource_history</li><li>llm_text_out — bytes=263</li><li>done — duration_ms=3243</li></ul></details>
+
+</div>
+</details><details class="walkthrough">
+<summary><span class="wt-id">scen-compare-18</span><span class="wt-stat"><span class="badge-pass">PASS</span> · 3388 ms · 0 tools · $0.00000</span></summary>
+<div class="wt-body">
+<div class="wt-question"><span class="wt-label">You asked</span><div class="wt-question-text">Compare the web deployment&#39;s desired state to what&#39;s actually running — anything different?</div></div>
+<div class="wt-scenario"><span class="wt-label">Real-world scenario</span><div class="wt-scenario-text">Drift detection. Exercises the &#39;desired vs actual&#39; mental model that Kubernetes operators live in.</div></div>
+<div class="wt-journey"><span class="wt-label">Kubilitics picked tools (in order)</span><div class="wt-empty">— no tools dispatched —</div></div>
+<div class="wt-answer"><span class="wt-label">Assistant answered</span><div class="wt-answer-text">The observe_deployment_detailed tool failed because it couldn&#39;t find a Deployment named &quot;web&quot; in the default namespace.</div></div>
+<details class="wt-raw"><summary>raw stage log</summary><ul class="stage-list"><li>user_msg — bytes=93</li><li>tool_filter</li><li>llm_prompt_in — bytes=2456</li><li>tool_dispatch — tool_name=observe_deployment_detailed</li><li>backend_k8s_fetch — resp_bytes=165</li><li>llm_text_out — bytes=119</li><li>done — duration_ms=3388</li></ul></details>
+
+</div>
+</details><details class="walkthrough">
+<summary><span class="wt-id">scen-config-16</span><span class="wt-stat"><span class="badge-pass">PASS</span> · 2272 ms · 0 tools · $0.00000</span></summary>
+<div class="wt-body">
+<div class="wt-question"><span class="wt-label">You asked</span><div class="wt-question-text">Show me the environment variables the redis pod in data is running with — I suspect a config mismatch.</div></div>
+<div class="wt-scenario"><span class="wt-label">Real-world scenario</span><div class="wt-scenario-text">Config drift debugging. Critical: the assistant must redact secret values while showing the shape.</div></div>
+<div class="wt-journey"><span class="wt-label">Kubilitics picked tools (in order)</span><div class="wt-empty">— no tools dispatched —</div></div>
+<div class="wt-answer"><span class="wt-label">Assistant answered</span><div class="wt-answer-text">The tool returned an error because the &#39;redis&#39; pod was not found in the &#39;data&#39; namespace. You may need to check the pod name or namespace.</div></div>
+<details class="wt-raw"><summary>raw stage log</summary><ul class="stage-list"><li>user_msg — bytes=104</li><li>tool_filter</li><li>llm_prompt_in — bytes=2467</li><li>tool_dispatch — tool_name=get_resource</li><li>backend_k8s_fetch — resp_bytes=145</li><li>llm_text_out — bytes=138</li><li>done — duration_ms=2272</li></ul></details>
+
+</div>
+</details><details class="walkthrough">
+<summary><span class="wt-id">scen-events-07</span><span class="wt-stat"><span class="badge-pass">PASS</span> · 3359 ms · 0 tools · $0.00000</span></summary>
+<div class="wt-body">
+<div class="wt-question"><span class="wt-label">You asked</span><div class="wt-question-text">What happened in the demo namespace in the last 15 minutes? Any events I should know about?</div></div>
+<div class="wt-scenario"><span class="wt-label">Real-world scenario</span><div class="wt-scenario-text">Event-based forensics — &#39;what changed&#39; is usually the first question during an incident.</div></div>
+<div class="wt-journey"><span class="wt-label">Kubilitics picked tools (in order)</span><div class="wt-empty">— no tools dispatched —</div></div>
+<div class="wt-answer"><span class="wt-label">Assistant answered</span><div class="wt-answer-text">There are no events in the demo namespace in the last 15 minutes.</div></div>
+<details class="wt-raw"><summary>raw stage log</summary><ul class="stage-list"><li>user_msg — bytes=91</li><li>tool_filter</li><li>llm_prompt_in — bytes=2454</li><li>tool_dispatch — tool_name=get_events</li><li>backend_k8s_fetch — resp_bytes=50</li><li>tool_result_summarized — tool_name=get_events bytes_in=49 bytes_out=49</li><li>llm_text_out — bytes=65</li><li>done — duration_ms=3359</li></ul></details>
+
+</div>
+</details><details class="walkthrough">
+<summary><span class="wt-id">scen-events-08</span><span class="wt-stat"><span class="badge-pass">PASS</span> · 2288 ms · 0 tools · $0.00000</span></summary>
+<div class="wt-body">
+<div class="wt-question"><span class="wt-label">You asked</span><div class="wt-question-text">Have any pods been OOMKilled or evicted cluster-wide recently?</div></div>
+<div class="wt-scenario"><span class="wt-label">Real-world scenario</span><div class="wt-scenario-text">Resource-pressure red flag. Engineer is hunting for silent memory issues before they cascade.</div></div>
+<div class="wt-journey"><span class="wt-label">Kubilitics picked tools (in order)</span><div class="wt-empty">— no tools dispatched —</div></div>
+<div class="wt-answer"><span class="wt-label">Assistant answered</span><div class="wt-answer-text">No pods have been OOMKilled or evicted cluster-wide recently.</div></div>
+<details class="wt-raw"><summary>raw stage log</summary><ul class="stage-list"><li>user_msg — bytes=62</li><li>tool_filter</li><li>llm_prompt_in — bytes=2425</li><li>tool_dispatch — tool_name=observe_events</li><li>backend_k8s_fetch — resp_bytes=5</li><li>tool_result_summarized — tool_name=observe_events bytes_in=22 bytes_out=22</li><li>llm_text_out — bytes=61</li><li>done — duration_ms=2288</li></ul></details>
+
+</div>
+</details><details class="walkthrough">
+<summary><span class="wt-id">scen-health-01</span><span class="wt-stat"><span class="badge-pass">PASS</span> · 7909 ms · 0 tools · $0.00000</span></summary>
+<div class="wt-body">
+<div class="wt-question"><span class="wt-label">You asked</span><div class="wt-question-text">Give me a quick health check of the whole cluster — what&#39;s running, what&#39;s broken, what should I worry about right now?</div></div>
+<div class="wt-scenario"><span class="wt-label">Real-world scenario</span><div class="wt-scenario-text">Just-got-paged overview. Engineer wants one-shot situational awareness before digging in.</div></div>
+<div class="wt-journey"><span class="wt-label">Kubilitics picked tools (in order)</span><div class="wt-empty">— no tools dispatched —</div></div>
+<div class="wt-answer"><span class="wt-label">Assistant answered</span><div class="wt-answer-text">The cluster is operating normally with a health score of 100. There are no critical alerts or warnings. The cluster has 3 nodes, all of which are ready, and 17 pods, all of which are running. There are 4 deployments, all of which are available, and 2 daemonsets, both of which are ready. The workloads are all running with low pressure. 
+
+Here is a breakdown of the workloads:
+* Deployment `redis` in namespace `data` is running with 1 desired and 1 ready replica.
+* Deployment `web` in namespace `demo` is running with 3 desired and 3 ready replicas.
+* Deployment `coredns` in namespace `kube-system` is running with 2 desired and 2 ready replicas.
+* Deployment `local-path-provisioner` in namespace `local-path-storage` is running with 1 desired and 1 ready replica.
+* DaemonSet `kindnet` in namespace `kube-system` is optimal with 3 desired and 3 ready replicas.
+* DaemonSet `kube-proxy` in namespace `kube-system` is optimal with 3 desired and 3 ready replicas.
+
+Overall, the cluster is healthy and there are no issues that need immediate attention.</div></div>
+<details class="wt-raw"><summary>raw stage log</summary><ul class="stage-list"><li>user_msg — bytes=121</li><li>tool_filter</li><li>llm_prompt_in — bytes=2484</li><li>tool_dispatch — tool_name=get_cluster_health</li><li>backend_k8s_fetch — resp_bytes=643</li><li>backend_k8s_fetch — resp_bytes=888</li><li>tool_result_summarized — tool_name=get_cluster_health bytes_in=1654 bytes_out=1654</li><li>llm_text_out — bytes=1053</li><li>done — duration_ms=7909</li></ul></details>
+
+</div>
+</details><details class="walkthrough">
+<summary><span class="wt-id">scen-health-02</span><span class="wt-stat"><span class="badge-pass">PASS</span> · 2199 ms · 0 tools · $0.00000</span></summary>
+<div class="wt-body">
+<div class="wt-question"><span class="wt-label">You asked</span><div class="wt-question-text">Is anything unhealthy in the demo namespace? If so, what and why?</div></div>
+<div class="wt-scenario"><span class="wt-label">Real-world scenario</span><div class="wt-scenario-text">Scoped triage. Engineer knows the service area; wants targeted assessment without reading every pod manually.</div></div>
+<div class="wt-journey"><span class="wt-label">Kubilitics picked tools (in order)</span><div class="wt-empty">— no tools dispatched —</div></div>
+<div class="wt-answer"><span class="wt-label">Assistant answered</span><div class="wt-answer-text">In the demo namespace, all 3 pods are healthy. There are no issues reported.</div></div>
+<details class="wt-raw"><summary>raw stage log</summary><ul class="stage-list"><li>user_msg — bytes=65</li><li>tool_filter</li><li>llm_prompt_in — bytes=2428</li><li>tool_dispatch — tool_name=analyze_pod_health</li><li>tool_result_summarized — tool_name=analyze_pod_health bytes_in=104 bytes_out=104</li><li>llm_text_out — bytes=76</li><li>done — duration_ms=2199</li></ul></details>
+
+</div>
+</details><details class="walkthrough">
+<summary><span class="wt-id">scen-logs-05</span><span class="wt-stat"><span class="badge-pass">PASS</span> · 3461 ms · 0 tools · $0.00000</span></summary>
+<div class="wt-body">
+<div class="wt-question"><span class="wt-label">You asked</span><div class="wt-question-text">Grab the latest logs from one of the web pods in demo — I want to see if there&#39;s anything funny in the output.</div></div>
+<div class="wt-scenario"><span class="wt-label">Real-world scenario</span><div class="wt-scenario-text">Fast log peek. Engineer doesn&#39;t want to kubectl exec; the assistant should pick a representative pod.</div></div>
+<div class="wt-journey"><span class="wt-label">Kubilitics picked tools (in order)</span><div class="wt-empty">— no tools dispatched —</div></div>
+<div class="wt-answer"><span class="wt-label">Assistant answered</span><div class="wt-answer-text">The pod &#39;web&#39; was not found in the &#39;demo&#39; namespace, likely because it needs a full pod name. I will try to list the pods in the &#39;demo&#39; namespace to find the full name of one of the web pods.</div></div>
+<details class="wt-raw"><summary>raw stage log</summary><ul class="stage-list"><li>user_msg — bytes=112</li><li>tool_filter</li><li>llm_prompt_in — bytes=2475</li><li>tool_dispatch — tool_name=get_logs</li><li>tool_result_summarized — tool_name=get_logs bytes_in=147 bytes_out=147</li><li>llm_text_out — bytes=191</li><li>done — duration_ms=3461</li></ul></details>
+
+</div>
+</details><details class="walkthrough">
+<summary><span class="wt-id">scen-logs-06</span><span class="wt-stat"><span class="badge-pass">PASS</span> · 1489 ms · 0 tools · $0.00000</span></summary>
+<div class="wt-body">
+<div class="wt-question"><span class="wt-label">You asked</span><div class="wt-question-text">What errors or warnings are showing up in redis in the data namespace recently?</div></div>
+<div class="wt-scenario"><span class="wt-label">Real-world scenario</span><div class="wt-scenario-text">Filtered log investigation. Tests whether the assistant fetches logs AND summarizes, not just dumps lines.</div></div>
+<div class="wt-journey"><span class="wt-label">Kubilitics picked tools (in order)</span><div class="wt-empty">— no tools dispatched —</div></div>
+<div class="wt-answer"><span class="wt-label">Assistant answered</span><div class="wt-answer-text">There are no recent errors or warnings showing up in redis in the data namespace.</div></div>
+<details class="wt-raw"><summary>raw stage log</summary><ul class="stage-list"><li>user_msg — bytes=79</li><li>tool_filter</li><li>llm_prompt_in — bytes=2442</li><li>tool_dispatch — tool_name=observe_pod_events</li><li>backend_k8s_fetch — resp_bytes=3</li><li>tool_result_summarized — tool_name=observe_pod_events bytes_in=104 bytes_out=104</li><li>llm_text_out — bytes=81</li><li>done — duration_ms=1489</li></ul></details>
+
+</div>
+</details><details class="walkthrough">
+<summary><span class="wt-id">scen-network-14</span><span class="wt-stat"><span class="badge-pass">PASS</span> · 4527 ms · 0 tools · $0.00000</span></summary>
+<div class="wt-body">
+<div class="wt-question"><span class="wt-label">You asked</span><div class="wt-question-text">The web service in demo — where does its traffic go? Which pods does it actually route to right now?</div></div>
+<div class="wt-scenario"><span class="wt-label">Real-world scenario</span><div class="wt-scenario-text">Service/endpoints correlation. Helps debug &#39;service exists but nothing responds&#39; issues.</div></div>
+<div class="wt-journey"><span class="wt-label">Kubilitics picked tools (in order)</span><div class="wt-empty">— no tools dispatched —</div></div>
+<div class="wt-answer"><span class="wt-label">Assistant answered</span><div class="wt-answer-text">The web service in the demo namespace routes traffic to the pods selected by the `demo` service. To determine which pods are currently receiving traffic, we need to look at the endpoints of the service. 
+
+Let me check the endpoints for the `demo` service in the `default` namespace.</div></div>
+<details class="wt-raw"><summary>raw stage log</summary><ul class="stage-list"><li>user_msg — bytes=102</li><li>tool_filter</li><li>llm_prompt_in — bytes=2465</li><li>tool_dispatch — tool_name=observe_resource_links</li><li>backend_k8s_fetch — resp_bytes=3477</li><li>tool_result_summarized — tool_name=observe_resource_links bytes_in=3476 bytes_out=3476</li><li>llm_text_out — bytes=282</li><li>done — duration_ms=4527</li></ul></details>
+
+</div>
+</details><details class="walkthrough">
+<summary><span class="wt-id">scen-nodes-09</span><span class="wt-stat"><span class="badge-pass">PASS</span> · 3364 ms · 0 tools · $0.00000</span></summary>
+<div class="wt-body">
+<div class="wt-question"><span class="wt-label">You asked</span><div class="wt-question-text">Are any of my nodes under pressure — CPU, memory, disk? I don&#39;t want to find out by being paged.</div></div>
+<div class="wt-scenario"><span class="wt-label">Real-world scenario</span><div class="wt-scenario-text">Capacity pre-emption. The question a seasoned SRE asks BEFORE a capacity incident, not after.</div></div>
+<div class="wt-journey"><span class="wt-label">Kubilitics picked tools (in order)</span><div class="wt-empty">— no tools dispatched —</div></div>
+<div class="wt-answer"><span class="wt-label">Assistant answered</span><div class="wt-answer-text">No nodes are under pressure. All 3 nodes have no active pressures, and no disk, memory, or pid pressures.</div></div>
+<details class="wt-raw"><summary>raw stage log</summary><ul class="stage-list"><li>user_msg — bytes=98</li><li>tool_filter</li><li>llm_prompt_in — bytes=2461</li><li>tool_dispatch — tool_name=analyze_node_pressure</li><li>tool_result_summarized — tool_name=analyze_node_pressure bytes_in=483 bytes_out=483</li><li>llm_text_out — bytes=105</li><li>done — duration_ms=3364</li></ul></details>
+
+</div>
+</details><details class="walkthrough">
+<summary><span class="wt-id">scen-nodes-10</span><span class="wt-stat"><span class="badge-pass">PASS</span> · 7768 ms · 0 tools · $0.00000</span></summary>
+<div class="wt-body">
+<div class="wt-question"><span class="wt-label">You asked</span><div class="wt-question-text">How is the kubilitics-test-control-plane node doing — capacity, what&#39;s scheduled on it, any conditions?</div></div>
+<div class="wt-scenario"><span class="wt-label">Real-world scenario</span><div class="wt-scenario-text">Specific-node deep dive. Tests whether the assistant can focus on one node without dumping cluster-wide data.</div></div>
+<div class="wt-journey"><span class="wt-label">Kubilitics picked tools (in order)</span><div class="wt-empty">— no tools dispatched —</div></div>
+<div class="wt-answer"><span class="wt-label">Assistant answered</span><div class="wt-answer-text">The kubilitics-test-control-plane node has 4 CPU cores and 8127500Ki of memory. It has a capacity for 110 pods and currently has 9 pods scheduled on it, including coredns, etcd, kindnet, kube-apiserver, kube-controller-manager, kube-proxy, kube-scheduler, and local-path-provisioner. The node&#39;s conditions are healthy, with no disk pressure, memory pressure, or PID pressure, and it is ready. The node has a taint that prevents it from scheduling pods that do not tolerate the node-role.kubernetes.io/control-plane taint.</div></div>
+<details class="wt-raw"><summary>raw stage log</summary><ul class="stage-list"><li>user_msg — bytes=105</li><li>tool_filter</li><li>llm_prompt_in — bytes=2468</li><li>tool_dispatch — tool_name=observe_node_detailed</li><li>backend_k8s_fetch — resp_bytes=5518</li><li>backend_k8s_fetch — resp_bytes=3</li><li>backend_k8s_fetch — resp_bytes=192</li><li>backend_k8s_fetch — resp_bytes=70954</li><li>tool_result_summarized — tool_name=observe_node_detailed bytes_in=3691 bytes_out=3691</li><li>llm_text_out — bytes=521</li><li>done — duration_ms=7768</li></ul></details>
+
+</div>
+</details><details class="walkthrough">
+<summary><span class="wt-id">scen-pods-03</span><span class="wt-stat"><span class="badge-pass">PASS</span> · 3569 ms · 0 tools · $0.00000</span></summary>
+<div class="wt-body">
+<div class="wt-question"><span class="wt-label">You asked</span><div class="wt-question-text">Show me the web deployment in demo — how many replicas, are they all ready, any recent restarts?</div></div>
+<div class="wt-scenario"><span class="wt-label">Real-world scenario</span><div class="wt-scenario-text">Deployment-level status question that drives downstream &#39;is my service serving traffic?&#39; reasoning.</div></div>
+<div class="wt-journey"><span class="wt-label">Kubilitics picked tools (in order)</span><div class="wt-empty">— no tools dispatched —</div></div>
+<div class="wt-answer"><span class="wt-label">Assistant answered</span><div class="wt-answer-text">The web deployment in the demo namespace has 3 replicas, all of which are ready and available. There have been no recent restarts. The deployment has a rolling update strategy with a maximum surge of 25% and a maximum unavailable of 25%. The deployment&#39;s metrics show 0 CPU and memory usage.</div></div>
+<details class="wt-raw"><summary>raw stage log</summary><ul class="stage-list"><li>user_msg — bytes=98</li><li>tool_filter</li><li>llm_prompt_in — bytes=2461</li><li>tool_dispatch — tool_name=observe_deployment_detailed</li><li>backend_k8s_fetch — resp_bytes=3870</li><li>backend_k8s_fetch — resp_bytes=213</li><li>backend_k8s_fetch — resp_bytes=3</li><li>backend_k8s_fetch — resp_bytes=109</li><li>backend_k8s_fetch — resp_bytes=2819</li><li>tool_result_summarized — tool_name=observe_deployment_detailed bytes_in=2019 bytes_out=2019</li><li>llm_text_out — bytes=291</li><li>done — duration_ms=3569</li></ul></details>
+
+</div>
+</details><details class="walkthrough">
+<summary><span class="wt-id">scen-pods-04</span><span class="wt-stat"><span class="badge-pass">PASS</span> · 5854 ms · 0 tools · $0.00000</span></summary>
+<div class="wt-body">
+<div class="wt-question"><span class="wt-label">You asked</span><div class="wt-question-text">Any pods that have restarted more than once in the last hour? I need to know before standup.</div></div>
+<div class="wt-scenario"><span class="wt-label">Real-world scenario</span><div class="wt-scenario-text">Flake detector. Engineer is looking for the &#39;silent failures&#39; — services that are technically up but thrashing.</div></div>
+<div class="wt-journey"><span class="wt-label">Kubilitics picked tools (in order)</span><div class="wt-empty">— no tools dispatched —</div></div>
+<div class="wt-answer"><span class="wt-label">Assistant answered</span><div class="wt-answer-text">An error occurred: unable to execute the query. Let me try a different approach. 
+The following pods have restarted more than once in the last hour:
+* None. All pods are running and have not restarted in the last hour.</div></div>
+<details class="wt-raw"><summary>raw stage log</summary><ul class="stage-list"><li>user_msg — bytes=92</li><li>tool_filter</li><li>llm_prompt_in — bytes=2455</li><li>tool_dispatch — tool_name=observe_resources_by_query</li><li>backend_k8s_fetch — resp_bytes=17</li><li>tool_result_summarized — tool_name=observe_resources_by_query bytes_in=16 bytes_out=16</li><li>tool_dispatch — tool_name=list_resources</li><li>backend_k8s_fetch — resp_bytes=121614</li><li>tool_result_summarized — tool_name=list_resources bytes_in=6638 bytes_out=6638</li><li>llm_text_out — bytes=218</li><li>done — duration_ms=5854</li></ul></details>
+
+</div>
+</details><details class="walkthrough">
+<summary><span class="wt-id">scen-rbac-12</span><span class="wt-stat"><span class="badge-pass">PASS</span> · 4997 ms · 0 tools · $0.00000</span></summary>
+<div class="wt-body">
+<div class="wt-question"><span class="wt-label">You asked</span><div class="wt-question-text">Who has permission to delete pods in the demo namespace? I need to know for a security review.</div></div>
+<div class="wt-scenario"><span class="wt-label">Real-world scenario</span><div class="wt-scenario-text">Real RBAC audit scenario. The answer should name service accounts / roles, not just dump policy docs.</div></div>
+<div class="wt-journey"><span class="wt-label">Kubilitics picked tools (in order)</span><div class="wt-empty">— no tools dispatched —</div></div>
+<div class="wt-answer"><span class="wt-label">Assistant answered</span><div class="wt-answer-text">The tool returned an error because the RoleBinding &quot;demo&quot; was not found in the &quot;demo&quot; namespace. To find who has permission to delete pods, you should check the RoleBindings and ClusterRoleBindings in the cluster. 
+
+Let me try to list the RoleBindings in the demo namespace.</div></div>
+<details class="wt-raw"><summary>raw stage log</summary><ul class="stage-list"><li>user_msg — bytes=94</li><li>tool_filter</li><li>llm_prompt_in — bytes=2457</li><li>tool_dispatch — tool_name=get_resource</li><li>backend_k8s_fetch — resp_bytes=211</li><li>llm_text_out — bytes=274</li><li>done — duration_ms=4997</li></ul></details>
+
+</div>
+</details><details class="walkthrough">
+<summary><span class="wt-id">scen-rbac-13</span><span class="wt-stat"><span class="badge-pass">PASS</span> · 2831 ms · 0 tools · $0.00000</span></summary>
+<div class="wt-body">
+<div class="wt-question"><span class="wt-label">You asked</span><div class="wt-question-text">Are any service accounts granted cluster-admin by accident? That&#39;d be a finding I need to escalate.</div></div>
+<div class="wt-scenario"><span class="wt-label">Real-world scenario</span><div class="wt-scenario-text">Security-posture check. The SRE equivalent of &#39;is the door unlocked?&#39;</div></div>
+<div class="wt-journey"><span class="wt-label">Kubilitics picked tools (in order)</span><div class="wt-empty">— no tools dispatched —</div></div>
+<div class="wt-answer"><span class="wt-label">Assistant answered</span><div class="wt-answer-text">The analyze_rbac_permissions tool did not find any service accounts granted cluster-admin by accident in the default namespace. However, the tool only checked the default namespace. To get a complete picture, we should run the tool without specifying a namespace. 
+
+Let me try that.</div></div>
+<details class="wt-raw"><summary>raw stage log</summary><ul class="stage-list"><li>user_msg — bytes=99</li><li>tool_filter</li><li>llm_prompt_in — bytes=2462</li><li>tool_dispatch — tool_name=analyze_rbac_permissions</li><li>tool_result_summarized — tool_name=analyze_rbac_permissions bytes_in=137 bytes_out=137</li><li>llm_text_out — bytes=282</li><li>done — duration_ms=2831</li></ul></details>
+
+</div>
+</details><details class="walkthrough">
+<summary><span class="wt-id">scen-storage-15</span><span class="wt-stat"><span class="badge-pass">PASS</span> · 2115 ms · 0 tools · $0.00000</span></summary>
+<div class="wt-body">
+<div class="wt-question"><span class="wt-label">You asked</span><div class="wt-question-text">What persistent volumes exist and are any close to full or in an error state?</div></div>
+<div class="wt-scenario"><span class="wt-label">Real-world scenario</span><div class="wt-scenario-text">Storage-pressure scan. PVC-full is a classic silent incident cause; the assistant should flag it proactively.</div></div>
+<div class="wt-journey"><span class="wt-label">Kubilitics picked tools (in order)</span><div class="wt-empty">— no tools dispatched —</div></div>
+<div class="wt-answer"><span class="wt-label">Assistant answered</span><div class="wt-answer-text">There are no Persistent Volumes in the cluster.</div></div>
+<details class="wt-raw"><summary>raw stage log</summary><ul class="stage-list"><li>user_msg — bytes=77</li><li>tool_filter</li><li>llm_prompt_in — bytes=2440</li><li>tool_dispatch — tool_name=list_resources</li><li>backend_k8s_fetch — resp_bytes=68</li><li>tool_result_summarized — tool_name=list_resources bytes_in=27 bytes_out=27</li><li>llm_text_out — bytes=47</li><li>done — duration_ms=2115</li></ul></details>
+
+</div>
+</details><details class="walkthrough">
+<summary><span class="wt-id">scen-summary-20</span><span class="wt-stat"><span class="badge-pass">PASS</span> · 4189 ms · 0 tools · $0.00000</span></summary>
+<div class="wt-body">
+<div class="wt-question"><span class="wt-label">You asked</span><div class="wt-question-text">Summarize the kubilitics-test cluster for a weekly status update — what&#39;s deployed, who&#39;s healthy, any risks to flag.</div></div>
+<div class="wt-scenario"><span class="wt-label">Real-world scenario</span><div class="wt-scenario-text">Narrative-style reporting. Tests whether the assistant can synthesize across multiple tools into a human-readable summary.</div></div>
+<div class="wt-journey"><span class="wt-label">Kubilitics picked tools (in order)</span><div class="wt-empty">— no tools dispatched —</div></div>
+<div class="wt-answer"><span class="wt-label">Assistant answered</span><div class="wt-answer-text">### Cluster Overview
+
+The cluster `5cb1f37d-e31e-4915-8c4d-bdf36ef335ec` is operating normally with a health score of 100. 
+
+#### Deployed Workloads
+
+The following workloads are deployed:
+* Deployment `redis` in namespace `data` with 1 desired and ready replica
+* Deployment `web` in namespace `demo` with 3 desired and ready replicas
+* Deployment `coredns` in namespace `kube-system` with 2 desired and ready replicas
+* Deployment `local-path-provisioner` in namespace `local-path-storage` with 1 desired and ready replica
+* DaemonSet `kindnet` in namespace `kube-system` with 3 desired and ready replicas
+* DaemonSet `kube-proxy` in namespace `kube-system` with 3 desired and ready replicas
+
+#### Health and Risks
+
+There are no critical or warning alerts in the cluster. All nodes, pods, and workloads are healthy. The cluster has 3 nodes, 7 namespaces, and 17 pods. There are no signs of disk, memory, or PID pressure on any nodes. 
+
+Overall, the cluster is stable and operating as expected, with no immediate risks flagged.</div></div>
+<details class="wt-raw"><summary>raw stage log</summary><ul class="stage-list"><li>user_msg — bytes=119</li><li>tool_filter</li><li>llm_prompt_in — bytes=2482</li><li>tool_dispatch — tool_name=observe_cluster_overview</li><li>backend_k8s_fetch — resp_bytes=643</li><li>backend_k8s_fetch — resp_bytes=888</li><li>tool_result_summarized — tool_name=observe_cluster_overview bytes_in=1654 bytes_out=1654</li><li>llm_text_out — bytes=1027</li><li>done — duration_ms=4189</li></ul></details>
+
+</div>
+</details><details class="walkthrough">
+<summary><span class="wt-id">scen-workload-17</span><span class="wt-stat"><span class="badge-pass">PASS</span> · 3521 ms · 0 tools · $0.00000</span></summary>
+<div class="wt-body">
+<div class="wt-question"><span class="wt-label">You asked</span><div class="wt-question-text">Walk me through everything the redis deployment depends on — configmaps, secrets, service accounts, the works.</div></div>
+<div class="wt-scenario"><span class="wt-label">Real-world scenario</span><div class="wt-scenario-text">Dependency discovery. Tests multi-step reasoning: get deployment → trace refs → read each ref.</div></div>
+<div class="wt-journey"><span class="wt-label">Kubilitics picked tools (in order)</span><div class="wt-empty">— no tools dispatched —</div></div>
+<div class="wt-answer"><span class="wt-label">Assistant answered</span><div class="wt-answer-text">The Redis deployment depends on the following resources:
+* ConfigMap: `kube-root-ca.crt`
+* Endpoints: `kubernetes`
+* Service: `kubernetes`
+* ServiceAccount: `default`
+These resources are all located in the `default` namespace. The `kube-root-ca.crt` ConfigMap contains a CA bundle used to verify the kube-apiserver, while the `kubernetes` Endpoints and Service are used for internal communication within the cluster. The `default` ServiceAccount is used to authenticate and authorize the Redis deployment.</div></div>
+<details class="wt-raw"><summary>raw stage log</summary><ul class="stage-list"><li>user_msg — bytes=112</li><li>tool_filter</li><li>llm_prompt_in — bytes=2475</li><li>tool_dispatch — tool_name=observe_resource_links</li><li>backend_k8s_fetch — resp_bytes=3477</li><li>tool_result_summarized — tool_name=observe_resource_links bytes_in=3476 bytes_out=3476</li><li>llm_text_out — bytes=505</li><li>done — duration_ms=3521</li></ul></details>
+
+</div>
+</details></section><section class="panel" id="guardrails">
+<h2>Privacy guardrails</h2>
+<div class="guardrails">
+<strong>Seven automated guardrail tests gate every commit</strong> — <code>internal/mcp/server/privacy_test.go</code>. Scenarios covered: Secret.data plaintext, Secret.data base64, ConfigMap.data, Pod env <code>DB_PASSWORD</code>, <code>last-applied-configuration</code> annotation, <code>managedFields</code>, ServiceAccount token refs. Plus one positive case: benign node.status.nodeInfo.kubeletVersion must pass through.
+</div>
+</section><section class="panel" id="method">
+<h2>Methodology &amp; honest limitations</h2>
+<p>Real Kubernetes cluster (docker-desktop, 3 nodes, 49 pods, 7 namespaces). Real Kubilitics backend. Real brain process. Real LLM via Ollama on an AWS g4dn.xlarge GPU VM (or OpenAI / Claude for spot validation). No canned answers.</p>
+<p><strong>Pass criteria (strict):</strong> the assistant produced natural-language text <em>and</em> called at least one tool when <code>expect_tool</code> was true. A turn that calls the right tool but fails to summarize back into natural language is marked FAIL.</p>
+<ul>
+<li><code>kagent</code> engine is a registered skeleton — not in the hot path for this bench.</li>
+<li>Destructive tools (delete, patch, scale) are not exercised; bench is read-only.</li>
+<li>When the recorder does not emit an explicit <code>done</code> stage, latency is derived from trace timestamp deltas.</li>
+</ul>
+</section></main><footer>Kubilitics Privacy-First Bench — generated by <code>cmd/bench-report --v2</code></footer><script>window.__CATALOG__ = [{"name":"action_apply_manifest","category":"action","description":"Apply Kubernetes manifests with validation and dry-run support.","plain_english":"(description pending)","autonomy_level":4},{"name":"action_execute_command","category":"action","description":"Execute command in pod container with security validation.","plain_english":"(description pending)","autonomy_level":4},{"name":"action_restart_workload","category":"action","description":"Restart pods or workloads with rolling update strategy.","plain_english":"(description pending)","autonomy_level":4},{"name":"action_rollback_deployment","category":"action","description":"Rollback deployment to previous revision with impact analysis.","plain_english":"(description pending)","autonomy_level":4},{"name":"analyze_blast_radius","category":"analysis","description":"Assess potential impact of resource changes or failures on dependent services.","plain_english":"(description pending)","autonomy_level":0},{"name":"analyze_capacity_trends","category":"analysis","description":"Predict future capacity needs based on historical trends and growth patterns.","plain_english":"(description pending)","autonomy_level":0},{"name":"analyze_cronjob_health","category":"analysis","description":"CronJob health: suspended, last run, failed child Jobs. Single name or namespace-wide.","parameters":["name","namespace"],"required":["namespace"],"plain_english":"(description pending)","autonomy_level":0},{"name":"analyze_daemonset_health","category":"analysis","description":"Analyze DaemonSet health: node coverage gaps, scheduling taints/tolerations, and rolling update progress across the fleet. Detects pods stuck on specific nodes.","parameters":["name","namespace"],"required":["namespace"],"plain_english":"(description pending)","autonomy_level":0},{"name":"analyze_dependencies","category":"analysis","description":"Map service dependencies and identify potential single points of failure.","plain_english":"(description pending)","autonomy_level":0},{"name":"analyze_deployment_health","category":"analysis","description":"Senior-level Deployment analysis: rollout stall detection, replica availability, image version drift, and HPA integration. Detects 'Progressing=False' conditions and resource misalignment.","parameters":["name","namespace"],"required":["namespace"],"plain_english":"Checks if deployments have the right number of ready replicas and flags ones that are degraded.","autonomy_level":0},{"name":"analyze_error_correlation","category":"analysis","description":"Correlate errors across logs, events, and metrics to find root causes.","plain_english":"(description pending)","autonomy_level":0},{"name":"analyze_failure_patterns","category":"analysis","description":"Detect recurring failure patterns across pods, deployments, and nodes.","plain_english":"(description pending)","autonomy_level":0},{"name":"analyze_hpa_behavior","category":"analysis","description":"Analyze HorizontalPodAutoscaler behavior: detect flapping, scaling delays, inactive HPAs, and HPAs at max replicas. Returns per-HPA warnings with scaling context.","parameters":["name","namespace"],"required":["namespace"],"plain_english":"(description pending)","autonomy_level":0},{"name":"analyze_image_vulnerabilities","category":"analysis","description":"Scan container images for vulnerabilities with severity prioritization.","plain_english":"(description pending)","autonomy_level":0},{"name":"analyze_ingress_health","category":"analysis","description":"Analyze Ingress health: backend services exist, no empty rules. Single Ingress or namespace list. Returns status, risk_flags, recommendations.","parameters":["name","namespace"],"required":["namespace"],"plain_english":"(description pending)","autonomy_level":0},{"name":"analyze_job_health","category":"analysis","description":"Job health: completion status, failed count, backoff limit, deadline. Single name or namespace-wide.","parameters":["name","namespace"],"required":["namespace"],"plain_english":"(description pending)","autonomy_level":0},{"name":"analyze_log_patterns","category":"analysis","description":"Extract and classify error/warning patterns from pod logs. Detects error keywords (panic, fatal, exception, OOM), counts patterns by type, and returns sample error lines with severity.","parameters":["container_name","namespace","pod_name","tail_lines"],"required":["namespace","pod_name"],"plain_english":"(description pending)","autonomy_level":0},{"name":"analyze_network_connectivity","category":"analysis","description":"Analyze network connectivity: check service endpoint readiness, count active NetworkPolicies, and detect services with no ready endpoints. Use to diagnose connectivity failures.","parameters":["name","namespace"],"required":["namespace"],"plain_english":"(description pending)","autonomy_level":0},{"name":"analyze_node_pressure","category":"analysis","description":"Analyze node pressure conditions: MemoryPressure, DiskPressure, PIDPressure. Identifies nodes under stress with severity HIGH. Use to diagnose cluster-wide resource exhaustion.","parameters":["name"],"plain_english":"Looks for nodes under CPU / memory / disk pressure that might start evicting pods.","autonomy_level":0},{"name":"analyze_performance_bottlenecks","category":"analysis","description":"Identify performance bottlenecks across compute, network, and storage.","plain_english":"(description pending)","autonomy_level":0},{"name":"analyze_pod_health","category":"analysis","description":"Analyze pod health across a namespace: detect OOMKills, restart loops, eviction patterns, and stuck-pending pods. Returns per-pod severity findings with actionable messages.","parameters":["name","namespace"],"required":["namespace"],"plain_english":"Checks every pod for common problems — restarts, OOM kills, image-pull errors, CrashLoopBackOff — and summarizes in plain language.","autonomy_level":2},{"name":"analyze_pod_scheduling","category":"analysis","description":"Analyze pod scheduling decisions, affinity rules, and placement optimization.","plain_english":"(description pending)","autonomy_level":0},{"name":"analyze_rbac_permissions","category":"analysis","description":"Analyze RBAC permissions for over-privileged service accounts. Checks RoleBindings and ClusterRoleBindings for dangerous roles (cluster-admin, admin, edit). Returns risk level and per-binding findings.","parameters":["namespace","service_account_name"],"required":["namespace"],"plain_english":"Reviews who has access to what in the cluster and flags overly-broad bindings.","autonomy_level":0},{"name":"analyze_replicaset_health","category":"analysis","description":"ReplicaSet health: desired vs available replicas, condition-based issues. Single name or namespace-wide.","parameters":["name","namespace"],"required":["namespace"],"plain_english":"(description pending)","autonomy_level":0},{"name":"analyze_resource_efficiency","category":"analysis","description":"Analyze resource requests vs actual usage with rightsizing recommendations.","plain_english":"(description pending)","autonomy_level":0},{"name":"analyze_rollout_risk","category":"analysis","description":"Assess risk of deployments, updates, and configuration changes.","plain_english":"(description pending)","autonomy_level":0},{"name":"analyze_service_health","category":"analysis","description":"Analyze Service health: endpoint readiness, orphan services (no pods match selector), exposure risk (NodePort/LoadBalancer). Single service or namespace list. Returns status, risk_flags, recommendations.","parameters":["name","namespace"],"required":["namespace"],"plain_english":"(description pending)","autonomy_level":0},{"name":"analyze_statefulset_health","category":"analysis","description":"Deep analysis of StatefulSet health: ordinal readiness, volume provisioning patterns, and update strategy alignment. Detects stuck rollouts and quorum risks.","parameters":["name","namespace"],"required":["namespace"],"plain_english":"(description pending)","autonomy_level":0},{"name":"analyze_storage_health","category":"analysis","description":"Analyze storage health: detect unbound PVCs, failed provisioning, and storage class issues. Returns storage health status (Healthy/Degraded) with list of problematic PVCs.","parameters":["namespace"],"required":["namespace"],"plain_english":"Checks persistent-volume claims — are they bound, are they full, are any in an error state.","autonomy_level":0},{"name":"analyze_workload_patterns","category":"analysis","description":"Identify traffic patterns, peak hours, and scaling opportunities.","plain_english":"(description pending)","autonomy_level":0},{"name":"assess_security_posture","category":"analysis","description":"Assess security posture with CIS Kubernetes Benchmark checks: hostNetwork, hostPID, privileged containers, runAsRoot, writable root filesystems. Returns security score (0-100) and per-finding CIS IDs.","parameters":["namespace"],"required":["namespace"],"plain_english":"(description pending)","autonomy_level":0},{"name":"check_resource_limits","category":"analysis","description":"Check for containers missing CPU/memory limits and requests. Returns compliance rate and list of violations with per-container recommendations. Critical for cluster stability.","parameters":["namespace"],"required":["namespace"],"plain_english":"(description pending)","autonomy_level":0},{"name":"detect_configuration_drift","category":"analysis","description":"Detect configuration drift between a resource's live state and a provided desired state specification. Returns drift count, field-level differences, and drift summary for GitOps validation.","parameters":["desired_state","kind","name","namespace"],"required":["namespace","kind","name"],"plain_english":"(description pending)","autonomy_level":0},{"name":"detect_resource_contention","category":"analysis","description":"Detect CPU throttling risk and memory overcommit by finding containers without resource limits/requests. Returns contention risk level (LOW/MEDIUM/HIGH) and list of violating containers.","parameters":["namespace"],"required":["namespace"],"plain_english":"(description pending)","autonomy_level":0},{"name":"automation_create_alert_rule","category":"automation","description":"Create intelligent alert rules with auto-remediation triggers.","plain_english":"(description pending)","autonomy_level":0},{"name":"automation_generate_runbook","category":"automation","description":"Generate runbooks for common operational scenarios.","plain_english":"(description pending)","autonomy_level":0},{"name":"automation_run_playbook","category":"automation","description":"Run a predefined remediation playbook (e.g., 'clear-logs', 'restart-deployment', 'cordon-node').","plain_english":"(description pending)","autonomy_level":4},{"name":"automation_schedule_task","category":"automation","description":"Schedule recurring tasks like backups, cleanups, and health checks.","plain_english":"(description pending)","autonomy_level":0},{"name":"cost_analyze_spending","category":"cost","description":"Analyze cluster costs with breakdown by namespace, workload, and and resource type.","plain_english":"(description pending)","autonomy_level":2},{"name":"cost_forecast_spending","category":"cost","description":"Forecast future costs based on trends and planned changes.","plain_english":"(description pending)","autonomy_level":0},{"name":"cost_identify_waste","category":"cost","description":"Identify wasted resources: over-provisioned pods, unused PVs, idle nodes.","plain_english":"(description pending)","autonomy_level":0},{"name":"cost_optimization_plan","category":"cost","description":"Generate comprehensive cost optimization plan with ROI estimates.","plain_english":"(description pending)","autonomy_level":0},{"name":"apply_resource_patch","category":"execution","description":"Apply a JSON merge or strategic merge patch to any Kubernetes resource. Safety Level 4. Use for targeted field updates (e.g., updating container image, annotations). Supports dry_run.","parameters":["dry_run","justification","kind","name","namespace","patch","patch_type"],"required":["kind","name","patch"],"plain_english":"(description pending)","autonomy_level":0},{"name":"cordon_node","category":"execution","description":"Mark a node as unschedulable (cordon) to prevent new pods from being scheduled. Safety Level 3. Existing pods are NOT evicted. Supports dry_run.","parameters":["dry_run","justification","name"],"required":["name"],"plain_english":"(description pending)","autonomy_level":0},{"name":"delete_resource","category":"execution","description":"Delete a Kubernetes resource. Safety Level 5 — most restrictive, always requires human approval regardless of autonomy level. Supports optional grace period. Supports dry_run (strongly recommended first).","parameters":["dry_run","grace_period_seconds","justification","kind","name","namespace"],"required":["kind","name"],"plain_english":"(description pending)","autonomy_level":0},{"name":"drain_node","category":"execution","description":"Evict all pods from a node (drain) to prepare for maintenance. Safety Level 4 — highest restriction, always reviewed by policy engine. Supports grace period, ignore-daemonsets, and delete-emptydir options. Supports dry_run.","parameters":["delete_emptydir_data","dry_run","grace_period_seconds","ignore_daemon_sets","justification","name"],"required":["name"],"plain_english":"(description pending)","autonomy_level":0},{"name":"restart_pod","category":"execution","description":"Restart a pod by deleting it (its controller will recreate it). Safety Level 2 — semi-autonomous. Passes through policy + blast-radius check. Supports dry_run for impact preview. Requires namespace and pod name.","parameters":["dry_run","justification","name","namespace"],"required":["namespace","name"],"plain_english":"(description pending)","autonomy_level":0},{"name":"rollback_deployment","category":"execution","description":"Roll back a Deployment to a previous revision. Safety Level 3. Specify revision number (0 = previous revision). Returns rollback plan before execution. Supports dry_run.","parameters":["dry_run","justification","name","namespace","revision"],"required":["namespace","name"],"plain_english":"(description pending)","autonomy_level":0},{"name":"scale_deployment","category":"execution","description":"Scale a Deployment to a target replica count. Safety Level 3 — requires explicit user confirmation unless autonomy level allows. Blast radius analysis is performed. Supports dry_run.","parameters":["dry_run","justification","name","namespace","replicas"],"required":["namespace","name","replicas"],"plain_english":"(description pending)","autonomy_level":0},{"name":"trigger_hpa_scale","category":"execution","description":"Manually override an HPA's current desired replica count by patching its status. Safety Level 4. Use when immediate scaling is needed before the HPA's metric-based decisions take effect. Supports dry_run.","parameters":["dry_run","justification","name","namespace","target_replicas"],"required":["namespace","name","target_replicas"],"plain_english":"(description pending)","autonomy_level":0},{"name":"update_resource_limits","category":"execution","description":"Update CPU/memory requests and limits for a specific container in a workload. Safety Level 3. Builds a strategic merge patch and applies it. Requires container_name. Supports dry_run.","parameters":["container_name","cpu_limit","cpu_request","dry_run","justification","kind","memory_limit","memory_request","name","namespace"],"required":["namespace","kind","name","container_name"],"plain_english":"(description pending)","autonomy_level":0},{"name":"export_topology_to_drawio","category":"observation","description":"Export cluster topology as an editable diagram. Returns a draw.io URL that opens the architecture diagram in a new tab. Use when user asks for 'architecture diagram', 'show me the topology', or 'export to draw.io'.","plain_english":"(description pending)","autonomy_level":0},{"name":"get_cluster_health","category":"observation","description":"Get overall cluster health: status, score, node count, pod count, and component statuses. Use for 'cluster health', 'how is the cluster doing'.","plain_english":"Gives a plain-English summary of whether the cluster looks healthy right now: node count, pod statuses, obvious problems.","autonomy_level":1},{"name":"get_events","category":"observation","description":"List recent Kubernetes events, optionally filtered by namespace, involved object, or reason. Use to diagnose failures, scheduling, or pod issues.","parameters":["involved_object","limit","namespace","reason"],"plain_english":"Lists recent Kubernetes events — useful for 'why did my pod fail?' or 'what happened in the last hour?'","autonomy_level":1},{"name":"get_logs","category":"observation","description":"Get logs from a pod. Use for debugging, error inspection, or when the user asks for pod logs.","parameters":["container_name","namespace","pod_name","since","tail_lines"],"required":["namespace","pod_name"],"plain_english":"Gets recent log lines from a pod, so you can see what the application actually said or errored out with.","autonomy_level":1},{"name":"get_resource","category":"observation","description":"Get detailed information about a single resource by kind, namespace, and name. Use for full pod/details, metrics context, or when you need one resource's spec/status.","parameters":["kind","name","namespace"],"required":["kind","name"],"plain_english":"Gets the full details of one specific thing (a single pod, a single deployment) when you need to see everything about it.","autonomy_level":1},{"name":"list_resources","category":"observation","description":"List Kubernetes resources of ANY kind. This is the primary tool for answering 'list/show/get X' questions. Set kind to the resource type: Namespace (for 'list namespaces'), Pod, Deployment, Service, Node, ConfigMap, Secret, Ingress, StatefulSet, DaemonSet, Job, CronJob, PersistentVolume, PersistentVolumeClaim, ReplicaSet, ServiceAccount, Role, RoleBinding, ClusterRole, ClusterRoleBinding, HorizontalPodAutoscaler, NetworkPolicy, Event, etc. Returns count and item summaries. ALWAYS use this tool for any 'list/show namespaces' or 'list/show \u003cresource\u003e' request — do NOT tell the user to run kubectl.","parameters":["kind","label_selector","limit","namespace"],"required":["kind"],"plain_english":"Shows you a list of things in your cluster — pods, services, anything. Tell it 'list pods' and it fetches them straight from Kubernetes.","autonomy_level":1},{"name":"observe_api_resources","category":"observation","description":"List all available API resources with intelligent categorization and usage examples.","plain_english":"(description pending)","autonomy_level":0},{"name":"observe_cluster_overview","category":"observation","description":"Get comprehensive cluster overview with health, capacity, and resource distribution. Returns intelligent summary with anomaly detection.","plain_english":"A dashboard-style snapshot of the whole cluster: what's running, what's broken, at-a-glance numbers.","autonomy_level":1},{"name":"observe_clusterrole_detailed","category":"observation","description":"ClusterRole detail (cluster-scoped): rules, ClusterRoleBindings that reference it, risk flags (cluster-admin, wildcards).","parameters":["cluster_id","name"],"required":["name"],"plain_english":"(description pending)","autonomy_level":0},{"name":"observe_clusterrole_events","category":"observation","description":"Last N events for a ClusterRole.","parameters":["cluster_id","limit","name"],"required":["name"],"plain_english":"(description pending)","autonomy_level":0},{"name":"observe_clusterrolebinding_detailed","category":"observation","description":"ClusterRoleBinding detail (cluster-scoped): roleRef, subjects, resolved ClusterRole, risk flags (cluster-admin to non-system SA).","parameters":["cluster_id","name"],"required":["name"],"plain_english":"(description pending)","autonomy_level":0},{"name":"observe_clusterrolebinding_events","category":"observation","description":"Last N events for a ClusterRoleBinding.","parameters":["cluster_id","limit","name"],"required":["name"],"plain_english":"(description pending)","autonomy_level":0},{"name":"observe_configmap_consumers","category":"observation","description":"Pods and workloads (Deployments) that reference this ConfigMap. PRD: observe_configmap_usage.","parameters":["cluster_id","name","namespace"],"required":["namespace","name"],"plain_english":"(description pending)","autonomy_level":0},{"name":"observe_configmap_detailed","category":"observation","description":"ConfigMap detail: metadata, data keys (no values), consumers (pods/deployments), events, risk flags (UNUSED_CONFIGMAP, MANY_CONSUMERS). PRD: observe_configmap_usage.","parameters":["cluster_id","name","namespace"],"required":["namespace","name"],"plain_english":"(description pending)","autonomy_level":0},{"name":"observe_configmap_events","category":"observation","description":"Last N events for a ConfigMap.","parameters":["cluster_id","limit","name","namespace"],"required":["namespace","name"],"plain_english":"(description pending)","autonomy_level":0},{"name":"observe_crd_detailed","category":"observation","description":"Get a single CustomResourceDefinition by name: spec (group, names, scope, versions), status, events, relationships (instances_count), risk flags.","parameters":["cluster_id","name"],"required":["name"],"plain_english":"(description pending)","autonomy_level":0},{"name":"observe_crd_events","category":"observation","description":"Get events for a CustomResourceDefinition (cluster-scoped) by name.","parameters":["cluster_id","limit","name"],"required":["name"],"plain_english":"(description pending)","autonomy_level":0},{"name":"observe_cronjob_detailed","category":"observation","description":"Senior view of a CronJob: metadata, schedule, suspend, last run, child Jobs, events, metrics, risk flags and recommendations.","parameters":["name","namespace"],"required":["namespace","name"],"plain_english":"(description pending)","autonomy_level":0},{"name":"observe_cronjob_events","category":"observation","description":"Last N events for a specific CronJob. Use for diagnosing schedule or trigger issues.","parameters":["limit","name","namespace"],"required":["namespace","name"],"plain_english":"(description pending)","autonomy_level":0},{"name":"observe_cronjob_ownership_chain","category":"observation","description":"CronJob to child Jobs (no parent). Returns ownership chain and list of Jobs created by this CronJob.","parameters":["name","namespace"],"required":["namespace","name"],"plain_english":"(description pending)","autonomy_level":0},{"name":"observe_custom_resources","category":"observation","description":"Get CRDs and custom resources with validation schema analysis.","plain_english":"(description pending)","autonomy_level":0},{"name":"observe_daemonset_detailed","category":"observation","description":"Senior view of a DaemonSet: metadata, spec/status, events, metrics, child pods, risk flags and recommendations.","parameters":["name","namespace"],"required":["namespace","name"],"plain_english":"(description pending)","autonomy_level":0},{"name":"observe_daemonset_events","category":"observation","description":"Last N events for a specific DaemonSet. Use for diagnosing node coverage or rollout issues.","parameters":["limit","name","namespace"],"required":["namespace","name"],"plain_english":"(description pending)","autonomy_level":0},{"name":"observe_daemonset_ownership_chain","category":"observation","description":"DaemonSet to child Pods (no parent). Returns ownership chain and pod list.","parameters":["name","namespace"],"required":["namespace","name"],"plain_english":"(description pending)","autonomy_level":0},{"name":"observe_deployment_detailed","category":"observation","description":"Senior Engineer view of a Deployment: metadata, spec/status, rollout history, events, metrics, child ReplicaSets, risk flags and recommendations.","parameters":["name","namespace"],"required":["namespace","name"],"plain_english":"Everything about one deployment: replicas, pods, rollout status, recent changes.","autonomy_level":0},{"name":"observe_deployment_events","category":"observation","description":"Last N events for a specific Deployment (e.g. scaling, rollout). Use for diagnosing rollout stalls or replica issues.","parameters":["limit","name","namespace"],"required":["namespace","name"],"plain_english":"(description pending)","autonomy_level":0},{"name":"observe_deployment_ownership_chain","category":"observation","description":"Deployment to child ReplicaSets (and replica counts). No parent; use to see which ReplicaSets belong to this deployment.","parameters":["name","namespace"],"required":["namespace","name"],"plain_english":"(description pending)","autonomy_level":0},{"name":"observe_deployment_rollout_history","category":"observation","description":"Retrieve detailed rollout history for a deployment, including revisions, image changes, and timestamps. Essential for rollback decision making.","parameters":["name","namespace"],"required":["namespace","name"],"plain_english":"(description pending)","autonomy_level":0},{"name":"observe_events","category":"observation","description":"Get cluster events with intelligent grouping, correlation, and impact analysis.","plain_english":"(description pending)","autonomy_level":0},{"name":"observe_hpa_detailed","category":"observation","description":"HorizontalPodAutoscaler detail: metadata, spec (minReplicas, maxReplicas, scaleTargetRef), status (current/desiredReplicas), events, scale_target relationship, risk HPA_AT_MAX, HPA_AT_MIN, TARGET_NOT_FOUND.","parameters":["cluster_id","name","namespace"],"required":["namespace","name"],"plain_english":"(description pending)","autonomy_level":0},{"name":"observe_hpa_events","category":"observation","description":"Last N events for a HorizontalPodAutoscaler.","parameters":["cluster_id","limit","name","namespace"],"required":["namespace","name"],"plain_english":"(description pending)","autonomy_level":0},{"name":"observe_ingress_detailed","category":"observation","description":"Senior view of an Ingress: metadata, spec (rules, tls, ingressClassName), status, events, backend_services (with exists check), risk flags (NO_RULES, BACKEND_SERVICE_NOT_FOUND).","parameters":["name","namespace"],"required":["namespace","name"],"plain_english":"(description pending)","autonomy_level":0},{"name":"observe_ingress_events","category":"observation","description":"Last N events for a specific Ingress. Use for diagnosing load balancer or backend changes.","parameters":["limit","name","namespace"],"required":["namespace","name"],"plain_english":"(description pending)","autonomy_level":0},{"name":"observe_job_detailed","category":"observation","description":"Senior view of a Job: metadata, spec/status, completion, events, metrics, owner (CronJob if any), child pods, risk flags and recommendations.","parameters":["name","namespace"],"required":["namespace","name"],"plain_english":"(description pending)","autonomy_level":0},{"name":"observe_job_events","category":"observation","description":"Last N events for a specific Job. Use for diagnosing job failures or backoff.","parameters":["limit","name","namespace"],"required":["namespace","name"],"plain_english":"(description pending)","autonomy_level":0},{"name":"observe_job_ownership_chain","category":"observation","description":"Job to parent (CronJob if any) and child Pods. Returns ownership chain and pod list.","parameters":["name","namespace"],"required":["namespace","name"],"plain_english":"(description pending)","autonomy_level":0},{"name":"observe_limitrange_detailed","category":"observation","description":"LimitRange detail: metadata, spec (limits: type, default, defaultRequest, max, min), events. No metrics.","parameters":["cluster_id","name","namespace"],"required":["namespace","name"],"plain_english":"(description pending)","autonomy_level":0},{"name":"observe_limitrange_events","category":"observation","description":"Last N events for a LimitRange.","parameters":["cluster_id","limit","name","namespace"],"required":["namespace","name"],"plain_english":"(description pending)","autonomy_level":0},{"name":"observe_metrics","category":"observation","description":"Get current CPU/memory metrics for a resource. For pod, deployment, replicaset, statefulset, daemonset, job, cronjob namespace is required. For node only name is required.","parameters":["cluster_id","kind","name","namespace","resource_name","resource_type"],"required":["kind","name"],"plain_english":"(description pending)","autonomy_level":0},{"name":"observe_namespace_detailed","category":"observation","description":"Detailed view of a namespace: metadata (labels, annotations), status phase, events, pod count, and risk flags (e.g. Terminating).","parameters":["cluster_id","name"],"required":["name"],"plain_english":"Deep dive into a namespace — every pod, every service, every config, plus recent changes.","autonomy_level":0},{"name":"observe_namespace_events","category":"observation","description":"List recent events for a namespace (cluster-scoped).","parameters":["cluster_id","limit","name"],"required":["name"],"plain_english":"(description pending)","autonomy_level":0},{"name":"observe_namespace_overview","category":"observation","description":"Get comprehensive namespace overview with quotas, limits, and resource usage.","plain_english":"Zoom in on one namespace: what's running inside it, resource usage, recent events.","autonomy_level":0},{"name":"observe_network_policies","category":"observation","description":"Analyze network policies with traffic flow visualization and gap detection.","plain_english":"(description pending)","autonomy_level":0},{"name":"observe_networkpolicy_detailed","category":"observation","description":"Senior view of a NetworkPolicy: metadata, spec (podSelector, policyTypes, ingress/egress rule counts), events, pods selected by the policy.","parameters":["name","namespace"],"required":["namespace","name"],"plain_english":"(description pending)","autonomy_level":0},{"name":"observe_networkpolicy_events","category":"observation","description":"Last N events for a specific NetworkPolicy. Use for diagnosing policy updates or conflicts.","parameters":["limit","name","namespace"],"required":["namespace","name"],"plain_english":"(description pending)","autonomy_level":0},{"name":"observe_node_detailed","category":"observation","description":"Senior-engineer view of a single node: spec (taints), status (capacity, allocatable, conditions), metrics, events, pods on node, and risk flags (NotReady, DiskPressure, MemoryPressure, PIDPressure).","parameters":["cluster_id","name"],"required":["name"],"plain_english":"Everything about a single node: its pods, capacity, conditions, what's failing if anything.","autonomy_level":0},{"name":"observe_node_events","category":"observation","description":"List recent events for a node (cluster-scoped).","parameters":["cluster_id","limit","name"],"required":["name"],"plain_english":"(description pending)","autonomy_level":0},{"name":"observe_node_status","category":"observation","description":"Get detailed node health, capacity, and workload distribution with recommendations.","plain_english":"Is this node healthy? Are disks / memory / CPU under pressure?","autonomy_level":0},{"name":"observe_pdb_detailed","category":"observation","description":"PodDisruptionBudget detail: metadata, spec (minAvailable, maxUnavailable, selector), status (currentHealthy, desiredHealthy, disruptedPodsAllowed), events, matching_pods_count, risk PDB_BLOCKING_DRAIN.","parameters":["cluster_id","name","namespace"],"required":["namespace","name"],"plain_english":"(description pending)","autonomy_level":0},{"name":"observe_pdb_events","category":"observation","description":"Last N events for a PodDisruptionBudget.","parameters":["cluster_id","limit","name","namespace"],"required":["namespace","name"],"plain_english":"(description pending)","autonomy_level":0},{"name":"observe_pod_dependencies","category":"observation","description":"Map all configuration and storage dependencies for a pod (ConfigMaps, Secrets, PVCs, PVs). Useful for diagnosing 'stuck' pods due to missing secrets/volumes.","parameters":["name","namespace"],"required":["namespace","name"],"plain_english":"(description pending)","autonomy_level":0},{"name":"observe_pod_detailed","category":"observation","description":"Comprehensive 'Senior Engineer' view of a Pod. Returns metadata, status (with restart reasons), ownership chain (RS -\u003e Deployment), resource analytics (CPU/RAM vs limits), service associations, and dependency summaries.","parameters":["name","namespace"],"required":["namespace","name"],"plain_english":"Deep dive into a single pod: containers, status, restarts, resource usage, recent events.","autonomy_level":0},{"name":"observe_pod_events","category":"observation","description":"Get last N events for a specific pod (e.g. OOMKilled, Failed, Killing). Use for 'why is this pod restarting?' and crash analysis. Returns events sorted by lastTimestamp descending.","parameters":["limit","name","namespace"],"required":["namespace","name"],"plain_english":"Just the events that mention a specific pod — scheduled, started, killed, restarted, etc.","autonomy_level":0},{"name":"observe_pod_logs","category":"observation","description":"Stream or retrieve pod logs with intelligent filtering. Supports 'filter' (regex for error/warning) and 'tail_lines' (default 10).","parameters":["container_name","filter","namespace","pod_name","tail_lines"],"required":["namespace","pod_name"],"plain_english":"Fetches logs for a specific pod with filtering by tail size or time window.","autonomy_level":0},{"name":"observe_pod_logs_filtered","category":"observation","description":"Retrieve pod logs filtered by 'error' or 'warn' (PRD: error logs + warning logs). Use filter=error or filter=warn. Same as observe_pod_logs with filter set.","parameters":["container_name","filter","namespace","pod_name","tail_lines"],"required":["namespace","pod_name","filter"],"plain_english":"(description pending)","autonomy_level":0},{"name":"observe_pod_ownership_chain","category":"observation","description":"Return ownership chain for a pod: Pod → ReplicaSet → Deployment (or Job). Use when tracing who owns the pod for rollback or debugging.","parameters":["name","namespace"],"required":["namespace","name"],"plain_english":"(description pending)","autonomy_level":0},{"name":"observe_pv_detailed","category":"observation","description":"Senior view of a PersistentVolume (cluster-scoped): metadata, spec (capacity, accessModes, reclaimPolicy, storageClassName, claimRef), status (phase), events, relationships (claim, claim_exists), risk_flags (PV_AVAILABLE, PV_RELEASED, ORPHAN_PV).","parameters":["name"],"required":["name"],"plain_english":"(description pending)","autonomy_level":0},{"name":"observe_pv_events","category":"observation","description":"Last N events for a specific PersistentVolume. Use for diagnosing provisioning or reclaim issues.","parameters":["limit","name"],"required":["name"],"plain_english":"(description pending)","autonomy_level":0},{"name":"observe_pvc_consumers","category":"observation","description":"Return pods and workloads (Deployments, StatefulSets, etc.) that use this PVC. Use for 'which pods use this PVC?'.","parameters":["name","namespace"],"required":["namespace","name"],"plain_english":"(description pending)","autonomy_level":0},{"name":"observe_pvc_detailed","category":"observation","description":"Senior view of a PersistentVolumeClaim: metadata, spec (accessModes, requested storage, storageClassName), status (phase, capacity), events, relationships (consumers, bound_volume), risk_flags (PVC_PENDING, PVC_LOST).","parameters":["name","namespace"],"required":["namespace","name"],"plain_english":"(description pending)","autonomy_level":0},{"name":"observe_pvc_events","category":"observation","description":"Last N events for a specific PersistentVolumeClaim. Use for diagnosing binding or provisioner issues.","parameters":["limit","name","namespace"],"required":["namespace","name"],"plain_english":"(description pending)","autonomy_level":0},{"name":"observe_replicaset_detailed","category":"observation","description":"Senior view of a ReplicaSet: metadata, spec/status, events, metrics, owner (Deployment), child pods, risk flags and recommendations.","parameters":["name","namespace"],"required":["namespace","name"],"plain_english":"(description pending)","autonomy_level":0},{"name":"observe_replicaset_events","category":"observation","description":"Last N events for a specific ReplicaSet. Use for diagnosing replica or scaling issues.","parameters":["limit","name","namespace"],"required":["namespace","name"],"plain_english":"(description pending)","autonomy_level":0},{"name":"observe_replicaset_ownership_chain","category":"observation","description":"ReplicaSet to parent (Deployment) and child Pods. Returns ownership chain and pod list.","parameters":["name","namespace"],"required":["namespace","name"],"plain_english":"(description pending)","autonomy_level":0},{"name":"observe_resource","category":"observation","description":"Get detailed information about a specific resource (Pod, Deployment, Service, etc.) with intelligent context about relationships and dependencies.","plain_english":"(description pending)","autonomy_level":0},{"name":"observe_resource_history","category":"observation","description":"Get temporal history of resource changes, revisions, and state transitions.","plain_english":"(description pending)","autonomy_level":0},{"name":"observe_resource_links","category":"observation","description":"Trace and return relationships between resources (e.g. which Service points to which Pods, which Deployment owns which ReplicaSet).","parameters":["kind","name","namespace"],"required":["namespace"],"plain_english":"(description pending)","autonomy_level":0},{"name":"observe_resource_topology","category":"observation","description":"Visualize resource relationships and dependencies with intelligent graph analysis.","plain_english":"(description pending)","autonomy_level":0},{"name":"observe_resourcequota_detailed","category":"observation","description":"ResourceQuota detail: metadata, spec (hard), status (used), events, risk QUOTA_EXHAUSTED when used \u003e= hard.","parameters":["cluster_id","name","namespace"],"required":["namespace","name"],"plain_english":"(description pending)","autonomy_level":0},{"name":"observe_resourcequota_events","category":"observation","description":"Last N events for a ResourceQuota.","parameters":["cluster_id","limit","name","namespace"],"required":["namespace","name"],"plain_english":"(description pending)","autonomy_level":0},{"name":"observe_resources_by_query","category":"observation","description":"Query resources using natural language. Example: 'all pods in production with high CPU' or 'failing deployments in last hour'.","plain_english":"(description pending)","autonomy_level":0},{"name":"observe_role_detailed","category":"observation","description":"Role detail: rules (verbs, resources), RoleBindings that reference this Role, risk flags (wildcard verbs/resources).","parameters":["cluster_id","name","namespace"],"required":["namespace","name"],"plain_english":"(description pending)","autonomy_level":0},{"name":"observe_role_events","category":"observation","description":"Last N events for a Role.","parameters":["cluster_id","limit","name","namespace"],"required":["namespace","name"],"plain_english":"(description pending)","autonomy_level":0},{"name":"observe_rolebinding_detailed","category":"observation","description":"RoleBinding detail: roleRef, subjects, resolved Role/ClusterRole summary, risk flags (cluster-admin, overprivileged).","parameters":["cluster_id","name","namespace"],"required":["namespace","name"],"plain_english":"(description pending)","autonomy_level":0},{"name":"observe_rolebinding_events","category":"observation","description":"Last N events for a RoleBinding.","parameters":["cluster_id","limit","name","namespace"],"required":["namespace","name"],"plain_english":"(description pending)","autonomy_level":0},{"name":"observe_secret_consumers","category":"observation","description":"Pods and workloads (Deployments) that reference this Secret.","parameters":["cluster_id","name","namespace"],"required":["namespace","name"],"plain_english":"(description pending)","autonomy_level":0},{"name":"observe_secret_detailed","category":"observation","description":"Secret detail: metadata, type, data keys (values redacted), consumers, TLS info when applicable, risk flags.","parameters":["cluster_id","name","namespace"],"required":["namespace","name"],"plain_english":"(description pending)","autonomy_level":0},{"name":"observe_secret_events","category":"observation","description":"Last N events for a Secret.","parameters":["cluster_id","limit","name","namespace"],"required":["namespace","name"],"plain_english":"(description pending)","autonomy_level":0},{"name":"observe_service_detailed","category":"observation","description":"Senior view of a Service: metadata, spec (type, ports, selector), status, endpoints, events, pods selected, risk flags (NO_ENDPOINTS, ORPHAN_SERVICE, EXPOSURE_RISK).","parameters":["name","namespace"],"required":["namespace","name"],"plain_english":"(description pending)","autonomy_level":0},{"name":"observe_service_endpoints","category":"observation","description":"Return Service endpoints (subsets/addresses) and summary of which pods back the service. Use for 'which pods back this service?'.","parameters":["name","namespace"],"required":["namespace","name"],"plain_english":"(description pending)","autonomy_level":0},{"name":"observe_service_events","category":"observation","description":"Last N events for a specific Service. Use for diagnosing endpoint or exposure changes.","parameters":["limit","name","namespace"],"required":["namespace","name"],"plain_english":"(description pending)","autonomy_level":0},{"name":"observe_serviceaccount_detailed","category":"observation","description":"ServiceAccount detail: metadata, token count, pods using this SA, RoleBindings and ClusterRoleBindings that reference it, risk flags.","parameters":["cluster_id","name","namespace"],"required":["namespace","name"],"plain_english":"(description pending)","autonomy_level":0},{"name":"observe_serviceaccount_permissions","category":"observation","description":"Resolved permissions for a ServiceAccount: RoleBindings, ClusterRoleBindings, and summary of Role/ClusterRole rules (PRD Layer 7).","parameters":["cluster_id","name","namespace"],"required":["namespace","name"],"plain_english":"(description pending)","autonomy_level":0},{"name":"observe_statefulset_detailed","category":"observation","description":"Senior view of a StatefulSet: metadata, spec/status, update strategy, events, metrics, child pods, risk flags and recommendations.","parameters":["name","namespace"],"required":["namespace","name"],"plain_english":"(description pending)","autonomy_level":0},{"name":"observe_statefulset_events","category":"observation","description":"Last N events for a specific StatefulSet. Use for diagnosing rollout or ordinal issues.","parameters":["limit","name","namespace"],"required":["namespace","name"],"plain_english":"(description pending)","autonomy_level":0},{"name":"observe_statefulset_ownership_chain","category":"observation","description":"StatefulSet to child Pods (no parent). Returns ownership chain and pod list.","parameters":["name","namespace"],"required":["namespace","name"],"plain_english":"(description pending)","autonomy_level":0},{"name":"observe_storage_status","category":"observation","description":"Get storage utilization, PV/PVC status, and capacity planning insights.","plain_english":"(description pending)","autonomy_level":0},{"name":"observe_storageclass_detailed","category":"observation","description":"Senior view of a StorageClass (cluster-scoped): metadata, provisioner, parameters, allowVolumeExpansion, volumeBindingMode, events, relationships (pv_count), risk_flags (NO_PROVISIONER).","parameters":["name"],"required":["name"],"plain_english":"(description pending)","autonomy_level":0},{"name":"observe_storageclass_events","category":"observation","description":"Last N events for a specific StorageClass. Use for diagnosing provisioner or admin changes.","parameters":["limit","name"],"required":["name"],"plain_english":"(description pending)","autonomy_level":0},{"name":"observe_vpa_detailed","category":"observation","description":"VerticalPodAutoscaler detail: metadata, spec (targetRef, updatePolicy, resourcePolicy), status summary, events, target relationship, risk TARGET_NOT_FOUND, VPA_OFF.","parameters":["cluster_id","name","namespace"],"required":["namespace","name"],"plain_english":"(description pending)","autonomy_level":0},{"name":"observe_vpa_events","category":"observation","description":"Last N events for a VerticalPodAutoscaler.","parameters":["cluster_id","limit","name","namespace"],"required":["namespace","name"],"plain_english":"(description pending)","autonomy_level":0},{"name":"observe_workload_health","category":"observation","description":"Get intelligent health assessment of workloads (Deployments, StatefulSets, DaemonSets).","plain_english":"A high-level 'is my workload healthy?' check across deployments, statefulsets, daemonsets.","autonomy_level":0},{"name":"recommend_architecture_improvements","category":"recommendation","description":"Suggest architectural improvements for resilience, performance, and cost.","plain_english":"(description pending)","autonomy_level":0},{"name":"recommend_cost_reduction","category":"recommendation","description":"Identify cost-saving opportunities with projected savings estimates.","plain_english":"(description pending)","autonomy_level":0},{"name":"recommend_disaster_recovery","category":"recommendation","description":"Provide disaster recovery and backup strategy recommendations.","plain_english":"(description pending)","autonomy_level":0},{"name":"recommend_monitoring_improvements","category":"recommendation","description":"Suggest monitoring, alerting, and observability enhancements.","plain_english":"(description pending)","autonomy_level":0},{"name":"recommend_resource_optimization","category":"recommendation","description":"Generate actionable recommendations for resource optimization (CPU, memory, storage).","plain_english":"(description pending)","autonomy_level":2},{"name":"recommend_scaling_strategy","category":"recommendation","description":"Suggest HPA/VPA configurations and scaling strategies based on workload patterns.","plain_english":"(description pending)","autonomy_level":0},{"name":"recommend_security_hardening","category":"recommendation","description":"Provide security hardening recommendations based on best practices and CVEs.","plain_english":"(description pending)","autonomy_level":0},{"name":"recommend_upgrade_path","category":"recommendation","description":"Plan Kubernetes and application upgrade paths with risk assessment.","plain_english":"(description pending)","autonomy_level":0},{"name":"security_audit_rbac","category":"security","description":"Audit RBAC configurations, identify overprivileged accounts and security risks.","plain_english":"(description pending)","autonomy_level":0},{"name":"security_check_pod_security","category":"security","description":"Validate pod security policies, admission controls, and runtime security.","plain_english":"(description pending)","autonomy_level":0},{"name":"security_compliance_report","category":"security","description":"Generate compliance reports for SOC2, HIPAA, PCI-DSS, etc.","plain_english":"(description pending)","autonomy_level":0},{"name":"security_scan_cluster","category":"security","description":"Comprehensive cluster security scan with CIS benchmarks and compliance checks.","plain_english":"(description pending)","autonomy_level":2},{"name":"security_scan_secrets","category":"security","description":"Scan for exposed secrets, weak encryption, and secret management issues.","plain_english":"(description pending)","autonomy_level":0},{"name":"troubleshoot_deployment_failures","category":"troubleshooting","description":"Analyze failed deployments, rollouts, and update issues with remediation steps.","plain_english":"(description pending)","autonomy_level":0},{"name":"troubleshoot_network_issues","category":"troubleshooting","description":"Diagnose network connectivity, DNS, and service discovery issues.","plain_english":"(description pending)","autonomy_level":0},{"name":"troubleshoot_performance_degradation","category":"troubleshooting","description":"Investigate performance issues with metric correlation and bottleneck identification.","plain_english":"(description pending)","autonomy_level":0},{"name":"troubleshoot_pod_failures","category":"troubleshooting","description":"Autonomous investigation of pod failures with root cause analysis and fix suggestions.","plain_english":"(description pending)","autonomy_level":2},{"name":"troubleshoot_rbac_issues","category":"troubleshooting","description":"Debug RBAC permission issues and suggest proper role configurations.","plain_english":"(description pending)","autonomy_level":0},{"name":"troubleshoot_resource_constraints","category":"troubleshooting","description":"Identify resource exhaustion, OOM kills, and capacity issues.","plain_english":"(description pending)","autonomy_level":0},{"name":"troubleshoot_storage_issues","category":"troubleshooting","description":"Diagnose PV/PVC issues, mount failures, and storage provisioning problems.","plain_english":"(description pending)","autonomy_level":0}];</script><script>// bench-report v2 — client-side interactivity. No external deps.
+// Reads window.__CATALOG__ (injected by renderHTMLv2) and wires the
+// searchable tool-explorer + category filter + result counter.
+(function () {
+  "use strict";
+  var catalog = (window.__CATALOG__ || []).slice();
+  var search = document.getElementById("tool-search");
+  var catSel = document.getElementById("tool-category");
+  var grid = document.getElementById("tool-grid");
+  var countEl = document.getElementById("tool-explorer-count");
+  if (!grid) return;
+
+  // Populate category dropdown from the catalog (unique, sorted).
+  var cats = {};
+  catalog.forEach(function (t) { if (t.category) cats[t.category] = true; });
+  var catList = Object.keys(cats).sort();
+  if (catSel) {
+    catList.forEach(function (c) {
+      var o = document.createElement("option");
+      o.value = c; o.textContent = c;
+      catSel.appendChild(o);
+    });
+  }
+
+  function esc(s) {
+    return String(s == null ? "" : s)
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+  }
+
+  function render() {
+    var q = (search && search.value || "").trim().toLowerCase();
+    var cat = (catSel && catSel.value) || "";
+    var out = [];
+    var shown = 0;
+    for (var i = 0; i < catalog.length; i++) {
+      var t = catalog[i];
+      if (cat && t.category !== cat) continue;
+      if (q) {
+        var hay = (t.name + " " + (t.description || "") + " " + (t.plain_english || "")).toLowerCase();
+        if (hay.indexOf(q) === -1) continue;
+      }
+      shown++;
+      out.push(
+        '<div class="tool-card">' +
+          '<div><span class="tool-name">' + esc(t.name) + '</span>' +
+          (t.category ? '<span class="tool-cat">' + esc(t.category) + '</span>' : '') +
+          '</div>' +
+          (t.plain_english ? '<div class="tool-plain">' + esc(t.plain_english) + '</div>' : '') +
+          (t.description ? '<div class="tool-desc">' + esc(t.description) + '</div>' : '') +
+        '</div>'
+      );
+    }
+    grid.innerHTML = out.join("");
+    if (countEl) {
+      countEl.textContent = shown + " of " + catalog.length + " tools";
+    }
+  }
+
+  if (search) search.addEventListener("input", render);
+  if (catSel) catSel.addEventListener("change", render);
+  render();
+})();
+</script></body></html>

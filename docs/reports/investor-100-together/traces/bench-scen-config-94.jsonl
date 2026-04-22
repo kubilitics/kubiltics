@@ -1,0 +1,8 @@
+{"bytes":106,"stage":"user_msg","ts":"2026-04-22T03:43:59.521005Z","turn_id":"bench-scen-config-94"}
+{"selected_topics":["core","workloads"],"stage":"tool_filter","tool_count":30,"total_available":129,"ts":"2026-04-22T03:43:59.521538Z","turn_id":"bench-scen-config-94"}
+{"bytes":2469,"focus_cluster":"5cb1f37d-e31e-4915-8c4d-bdf36ef335ec","has_system":true,"messages":2,"stage":"llm_prompt_in","ts":"2026-04-22T03:43:59.521582Z","turn_id":"bench-scen-config-94"}
+{"arg_keys":["kind","label_selector","limit","namespace","cluster_id"],"cluster_id":"5cb1f37d-e31e-4915-8c4d-bdf36ef335ec","stage":"tool_dispatch","tool_name":"list_resources","ts":"2026-04-22T03:44:00.463321Z","turn_id":"bench-scen-config-94"}
+{"method":"GET","path":"/api/v1/clusters/5cb1f37d-e31e-4915-8c4d-bdf36ef335ec/resources/configmaps","resp_bytes":28149,"stage":"backend_k8s_fetch","ts":"2026-04-22T03:44:00.471298Z","turn_id":"bench-scen-config-94"}
+{"bytes_in":1836,"bytes_out":1836,"stage":"tool_result_summarized","tool_name":"list_resources","ts":"2026-04-22T03:44:00.471941Z","turn_id":"bench-scen-config-94"}
+{"bytes":193,"preview":"To find ConfigMaps referenced by Deployments that don't exist, we need to analyze the Deployments. \nCalling analyze_deployment_references with cluster_id=\"5cb1f37d-e31e-4915-8c4d-bdf36ef335ec\".","stage":"llm_text_out","ts":"2026-04-22T03:44:02.171332Z","turn_id":"bench-scen-config-94"}
+{"duration_ms":2649,"finish_reason":"stop","stage":"done","ts":"2026-04-22T03:44:02.171399Z","turn_id":"bench-scen-config-94"}
