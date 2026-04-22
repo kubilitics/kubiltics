@@ -345,6 +345,7 @@ var toolTopicOverrides = map[string][]Topic{
 	// topic routing so the router emits them for the right prompts.
 	"resolve_resource":       {TopicCore},
 	"observe_recent_changes": {TopicChange, TopicEvents},
+	"who_can_do":             {TopicRBAC},
 
 	// Troubleshoot tools — route by the subsystem they troubleshoot.
 	"troubleshoot_pod_failures":             {TopicPods, TopicEvents},

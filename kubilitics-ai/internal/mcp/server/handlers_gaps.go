@@ -13,6 +13,7 @@ import (
 	"net/url"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -402,4 +403,219 @@ func strOr(m map[string]interface{}, keys ...string) string {
 		}
 	}
 	return ""
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Gap 3 — who_can_do RBAC aggregator
+// ═══════════════════════════════════════════════════════════════════════════
+
+// handleWhoCanDo answers "who can <verb> <resource> in <namespace>?" in a
+// single call. Closes the scen-rbac-12 95-tool-fan-out outlier where the
+// LLM enumerated every ClusterRole one-by-one via inspect_clusterrole.
+func (s *mcpServerImpl) handleWhoCanDo(ctx context.Context, args map[string]interface{}) (interface{}, error) {
+	c := s.http()
+	clusterID, err := c.resolveCluster(ctx, args)
+	if err != nil {
+		return nil, err
+	}
+	verb := strings.ToLower(strArg(args, "verb"))
+	resource := strings.ToLower(strArg(args, "resource"))
+	namespace := strArg(args, "namespace")
+	if verb == "" || resource == "" {
+		return nil, fmt.Errorf("who_can_do: 'verb' and 'resource' are required")
+	}
+
+	// Pull all roles + bindings in parallel.
+	var wg sync.WaitGroup
+	var clusterRoles, roles, clusterRoleBindings, roleBindings interface{}
+	var crErr, rErr, crbErr, rbErr error
+
+	wg.Add(4)
+	go func() {
+		defer wg.Done()
+		crErr = c.get(ctx, c.clusterPath(clusterID, "/resources/clusterroles"), &clusterRoles)
+	}()
+	go func() {
+		defer wg.Done()
+		rErr = c.get(ctx, c.clusterPath(clusterID, "/resources/roles"), &roles)
+	}()
+	go func() {
+		defer wg.Done()
+		crbErr = c.get(ctx, c.clusterPath(clusterID, "/resources/clusterrolebindings"), &clusterRoleBindings)
+	}()
+	go func() {
+		defer wg.Done()
+		rbErr = c.get(ctx, c.clusterPath(clusterID, "/resources/rolebindings"), &roleBindings)
+	}()
+	wg.Wait()
+
+	roleMatches := map[string]bool{}
+	grantingRoleNames := map[string][]string{}
+
+	checkRules := func(rules []interface{}, key string, scope string) {
+		for _, r := range rules {
+			rule, ok := r.(map[string]interface{})
+			if !ok {
+				continue
+			}
+			if !stringSliceMatches(rule["verbs"], verb) {
+				continue
+			}
+			if !stringSliceMatches(rule["resources"], resource) {
+				continue
+			}
+			roleMatches[key] = true
+			grantingRoleNames[key] = append(grantingRoleNames[key], scope)
+		}
+	}
+
+	for _, cr := range extractResourceItems(clusterRoles) {
+		name := resourceName(cr)
+		if name == "" {
+			continue
+		}
+		rules, _ := cr["rules"].([]interface{})
+		checkRules(rules, "ClusterRole/"+name, "cluster")
+	}
+	for _, r := range extractResourceItems(roles) {
+		name := resourceName(r)
+		ns := resourceNamespace(r)
+		if name == "" {
+			continue
+		}
+		if namespace != "" && ns != namespace {
+			continue
+		}
+		rules, _ := r["rules"].([]interface{})
+		checkRules(rules, "Role/"+ns+"/"+name, ns)
+	}
+
+	type principal struct {
+		Kind      string `json:"kind"`
+		Name      string `json:"name"`
+		Namespace string `json:"namespace,omitempty"`
+		Via       string `json:"via"`
+	}
+	var principals []principal
+	seen := map[string]bool{}
+
+	addPrincipals := func(subjects []interface{}, via string) {
+		for _, s := range subjects {
+			subj, ok := s.(map[string]interface{})
+			if !ok {
+				continue
+			}
+			kind, _ := subj["kind"].(string)
+			name, _ := subj["name"].(string)
+			ns, _ := subj["namespace"].(string)
+			if kind == "" || name == "" {
+				continue
+			}
+			dedupKey := kind + "/" + ns + "/" + name + "|" + via
+			if seen[dedupKey] {
+				continue
+			}
+			seen[dedupKey] = true
+			principals = append(principals, principal{
+				Kind: kind, Name: name, Namespace: ns, Via: via,
+			})
+		}
+	}
+
+	for _, crb := range extractResourceItems(clusterRoleBindings) {
+		ref, _ := crb["roleRef"].(map[string]interface{})
+		refKind, _ := ref["kind"].(string)
+		refName, _ := ref["name"].(string)
+		key := refKind + "/" + refName
+		if !roleMatches[key] {
+			continue
+		}
+		subjects, _ := crb["subjects"].([]interface{})
+		addPrincipals(subjects, "ClusterRoleBinding/"+resourceName(crb))
+	}
+	for _, rb := range extractResourceItems(roleBindings) {
+		rbNS := resourceNamespace(rb)
+		if namespace != "" && rbNS != namespace {
+			continue
+		}
+		ref, _ := rb["roleRef"].(map[string]interface{})
+		refKind, _ := ref["kind"].(string)
+		refName, _ := ref["name"].(string)
+		// A RoleBinding can point at either a Role (same namespace) or a
+		// ClusterRole (then scoped to the binding's namespace).
+		var key string
+		if refKind == "ClusterRole" {
+			key = "ClusterRole/" + refName
+		} else {
+			key = "Role/" + rbNS + "/" + refName
+		}
+		if !roleMatches[key] {
+			continue
+		}
+		subjects, _ := rb["subjects"].([]interface{})
+		addPrincipals(subjects, "RoleBinding/"+rbNS+"/"+resourceName(rb))
+	}
+
+	rolesGranting := make([]string, 0, len(grantingRoleNames))
+	for k := range grantingRoleNames {
+		rolesGranting = append(rolesGranting, k)
+	}
+	sort.Strings(rolesGranting)
+
+	return map[string]interface{}{
+		"verb":           verb,
+		"resource":       resource,
+		"namespace":      namespace,
+		"principals":     principals,
+		"roles_granting": rolesGranting,
+		"summary":        summarizeWhoCanDo(verb, resource, namespace, len(principals), rolesGranting),
+		"backend_errors": filterNonNilErrs(crErr, rErr, crbErr, rbErr),
+	}, nil
+}
+
+func filterNonNilErrs(errs ...error) []string {
+	var out []string
+	for _, e := range errs {
+		if e != nil {
+			out = append(out, e.Error())
+		}
+	}
+	return out
+}
+
+// stringSliceMatches returns true if needle matches any element in the
+// slice. Honors the kubernetes "*" wildcard.
+func stringSliceMatches(v interface{}, needle string) bool {
+	list, ok := v.([]interface{})
+	if !ok {
+		return false
+	}
+	for _, e := range list {
+		s, ok := e.(string)
+		if !ok {
+			continue
+		}
+		if s == "*" || strings.EqualFold(s, needle) {
+			return true
+		}
+	}
+	return false
+}
+
+func summarizeWhoCanDo(verb, resource, namespace string, principalCount int, roles []string) string {
+	clusterRoles := 0
+	namespacedRoles := 0
+	for _, r := range roles {
+		if strings.HasPrefix(r, "ClusterRole/") {
+			clusterRoles++
+		} else {
+			namespacedRoles++
+		}
+	}
+	scope := "cluster-wide"
+	if namespace != "" {
+		scope = "namespace " + namespace
+	}
+	return fmt.Sprintf("%d principal(s) can %s %s in %s via %d cluster-level role(s) and %d namespaced role(s).",
+		principalCount, verb, resource, scope, clusterRoles, namespacedRoles)
 }

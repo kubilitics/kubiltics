@@ -1243,6 +1243,25 @@ var ToolTaxonomy = []ToolDefinition{
 		RequiresAI:  true,
 	},
 
+	// ─── RBAC aggregator (gap 3, 2026-04-22 bench) ───
+	{
+		Name:        "who_can_do",
+		Category:    CategoryAnalysis,
+		Description: "Answer 'who can <verb> <resource> in <namespace>?' in ONE call. Aggregates Roles, ClusterRoles, RoleBindings, ClusterRoleBindings and returns principals + the roles that granted the permission. Call this INSTEAD of enumerating clusterroles one-by-one — the old approach fanned out to 95 tool calls per question.",
+		InputSchema: map[string]interface{}{
+			"type": "object",
+			"properties": map[string]interface{}{
+				"cluster_id": map[string]interface{}{"type": "string"},
+				"verb":       map[string]interface{}{"type": "string", "description": "RBAC verb e.g. get, list, create, delete, patch (required)"},
+				"resource":   map[string]interface{}{"type": "string", "description": "Resource plural e.g. pods, deployments, secrets (required)"},
+				"namespace":  map[string]interface{}{"type": "string", "description": "Scope to a single namespace (optional — default is cluster-wide)"},
+			},
+			"required": []string{"verb", "resource"},
+		},
+		Destructive: false,
+		RequiresAI:  false,
+	},
+
 	// === RECOMMENDATION TOOLS (8 tools) ===
 	// AI-powered suggestions and optimizations
 	// Autonomy Level: 2 (Recommend)

@@ -157,6 +157,98 @@ func TestResolveResource_NoMatchGivesSuggestions(t *testing.T) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// Gap 3 — who_can_do RBAC aggregator
+// ═══════════════════════════════════════════════════════════════════════════
+
+func TestWhoCanDo_AggregatesMatchingRolesAndBindings(t *testing.T) {
+	fb := newFakeBackend(t)
+	fb.registerCluster()
+	fb.register("/clusters/"+testClusterID+"/resources/clusterroles", map[string]interface{}{
+		"items": []interface{}{
+			map[string]interface{}{
+				"metadata": map[string]interface{}{"name": "cluster-admin"},
+				"rules": []interface{}{
+					map[string]interface{}{
+						"verbs":     []interface{}{"*"},
+						"resources": []interface{}{"*"},
+					},
+				},
+			},
+			map[string]interface{}{
+				"metadata": map[string]interface{}{"name": "read-only"},
+				"rules": []interface{}{
+					map[string]interface{}{
+						"verbs":     []interface{}{"get", "list"},
+						"resources": []interface{}{"pods"},
+					},
+				},
+			},
+		},
+	})
+	fb.register("/clusters/"+testClusterID+"/resources/clusterrolebindings", map[string]interface{}{
+		"items": []interface{}{
+			map[string]interface{}{
+				"metadata": map[string]interface{}{"name": "bind-admin"},
+				"roleRef":  map[string]interface{}{"kind": "ClusterRole", "name": "cluster-admin"},
+				"subjects": []interface{}{
+					map[string]interface{}{"kind": "ServiceAccount", "name": "default", "namespace": "kube-system"},
+				},
+			},
+		},
+	})
+	fb.register("/clusters/"+testClusterID+"/resources/roles", map[string]interface{}{"items": []interface{}{}})
+	fb.register("/clusters/"+testClusterID+"/resources/rolebindings", map[string]interface{}{"items": []interface{}{}})
+	s := newTestServer(t, fb.server.URL)
+	out, err := s.handleWhoCanDo(context.Background(), map[string]interface{}{
+		"verb": "delete", "resource": "pods", "namespace": "demo",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	m := out.(map[string]interface{})
+	roles := m["roles_granting"].([]string)
+	found := false
+	for _, r := range roles {
+		if r == "ClusterRole/cluster-admin" {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("expected ClusterRole/cluster-admin to grant delete pods, got %v", roles)
+	}
+}
+
+func TestWhoCanDo_NoMatches(t *testing.T) {
+	fb := newFakeBackend(t)
+	fb.registerCluster()
+	fb.register("/clusters/"+testClusterID+"/resources/clusterroles", map[string]interface{}{"items": []interface{}{}})
+	fb.register("/clusters/"+testClusterID+"/resources/roles", map[string]interface{}{"items": []interface{}{}})
+	fb.register("/clusters/"+testClusterID+"/resources/clusterrolebindings", map[string]interface{}{"items": []interface{}{}})
+	fb.register("/clusters/"+testClusterID+"/resources/rolebindings", map[string]interface{}{"items": []interface{}{}})
+	s := newTestServer(t, fb.server.URL)
+	out, err := s.handleWhoCanDo(context.Background(), map[string]interface{}{
+		"verb": "create", "resource": "secrets",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	m := out.(map[string]interface{})
+	if len(m["roles_granting"].([]string)) != 0 {
+		t.Errorf("expected no granting roles")
+	}
+}
+
+func TestWhoCanDo_RequiresArgs(t *testing.T) {
+	s := newTestServer(t, "http://unused")
+	_, err := s.handleWhoCanDo(context.Background(), map[string]interface{}{
+		"cluster_id": "c1",
+	})
+	if err == nil || !strings.Contains(err.Error(), "verb") {
+		t.Errorf("expected verb/resource error, got %v", err)
+	}
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // Gap 4 — observe_recent_changes
 // ═══════════════════════════════════════════════════════════════════════════
 

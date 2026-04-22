@@ -62,6 +62,8 @@ func (s *mcpServerImpl) routeAnalysisTool(ctx context.Context, name string, args
 		return s.handleAnalyzeServiceHealth(ctx, args)
 	case "analyze_ingress_health":
 		return s.handleAnalyzeIngressHealth(ctx, args)
+	case "who_can_do":
+		return s.handleWhoCanDo(ctx, args)
 	default:
 		return nil, fmt.Errorf("analysis tool not implemented: %s", name)
 	}
