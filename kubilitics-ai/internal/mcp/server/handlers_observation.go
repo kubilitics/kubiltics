@@ -5855,20 +5855,18 @@ func (s *mcpServerImpl) routeObservationTool(ctx context.Context, name string, a
 		return s.handleServiceAccountPermissions(ctx, args)
 	case "observe_role_detailed":
 		return s.handleRoleDetailed(ctx, args)
-	case "observe_role_events":
-		return s.handleRoleEvents(ctx, args)
+	// observe_role_events retired 2026-04-22 (iteration 3): events on RBAC
+	// objects are near-never useful; who_can_do + observe_recent_changes
+	// answer the real questions. Handler kept alive for internal use.
 	case "observe_rolebinding_detailed":
 		return s.handleRoleBindingDetailed(ctx, args)
-	case "observe_rolebinding_events":
-		return s.handleRoleBindingEvents(ctx, args)
+	// observe_rolebinding_events retired 2026-04-22 (iteration 3).
 	case "observe_clusterrole_detailed":
 		return s.handleClusterRoleDetailed(ctx, args)
-	case "observe_clusterrole_events":
-		return s.handleClusterRoleEvents(ctx, args)
+	// observe_clusterrole_events retired 2026-04-22 (iteration 3).
 	case "observe_clusterrolebinding_detailed":
 		return s.handleClusterRoleBindingDetailed(ctx, args)
-	case "observe_clusterrolebinding_events":
-		return s.handleClusterRoleBindingEvents(ctx, args)
+	// observe_clusterrolebinding_events retired 2026-04-22 (iteration 3).
 	case "observe_secret_detailed":
 		return s.handleSecretDetailed(ctx, args)
 	case "observe_secret_events":
