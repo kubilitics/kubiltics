@@ -58,5 +58,15 @@
   "check_secrets_in_env": "Containers that read Secret values via env variables — prefer file mounts so logs can't leak them.",
   "check_image_tag_latest": "Workloads whose images have no tag or are pinned to :latest — unreproducible rollouts waiting to happen.",
   "check_ingress_tls_expiry_30d": "TLS certificates behind your ingresses that will expire within 30 days. Uses the backend's /tls-info endpoint.",
-  "check_rbac_wildcards": "Role and ClusterRole rules with '*' verbs or resources — a standing invitation to privilege escalation."
+  "check_rbac_wildcards": "Role and ClusterRole rules with '*' verbs or resources — a standing invitation to privilege escalation.",
+  "narrate_incident_timeline": "Turns the last hour of events into a Slack-ready chronological story of what broke and when.",
+  "narrate_deploy_diff": "Explains in plain words what changed between a deployment's last two revisions and what users are likely seeing.",
+  "narrate_weekly_status": "An exec-friendly weekly cluster status — health headline, top changes, top issues, a few call-outs.",
+  "narrate_onboarding_for_user": "What a specific ServiceAccount can actually touch — roles, resources, verbs, namespaces. Flags cluster-admin.",
+  "narrate_service_dependency_graph": "Describes what calls a service and what it calls in turn, including the policies gating each hop.",
+  "narrate_capacity_report": "Cluster-wide capacity: per-node utilization, headroom, whether a hypothetical new workload fits, trend direction.",
+  "narrate_cost_report": "Cost breakdown by namespace or workload, with the single biggest driver and biggest cut opportunity.",
+  "narrate_security_posture": "CISO-ready posture summary — pod security, network policies, RBAC, secrets — with one next step each.",
+  "narrate_migration_readiness": "What you'd have to move to migrate a namespace: workloads, PVCs, config, secrets, and known risks.",
+  "narrate_change_impact": "What-if analysis: given a proposed change, reasons through first- and second-order effects on the cluster."
 }

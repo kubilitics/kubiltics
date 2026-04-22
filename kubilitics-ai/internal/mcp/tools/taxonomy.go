@@ -1574,6 +1574,20 @@ var ToolTaxonomy = []ToolDefinition{
 		RequiresAI:  true,
 	},
 
+	// === NARRATIVE TOOLS — Phase 3 C5 (10 tools) ===
+	// Each gathers scoped data + a narrative_prompt for the LLM to
+	// render human-ready text. Category: Analysis.
+	{Name: "narrate_incident_timeline", Category: CategoryAnalysis, Description: "Slack-ready chronological incident summary from events within a window.", Destructive: false, RequiresAI: true, RequiredAutonomyLevel: 2},
+	{Name: "narrate_deploy_diff", Category: CategoryAnalysis, Description: "Plain-English description of what changed between a deployment's two most recent revisions and the likely impact.", Destructive: false, RequiresAI: true, RequiredAutonomyLevel: 2},
+	{Name: "narrate_weekly_status", Category: CategoryAnalysis, Description: "Exec-friendly weekly cluster status: health headline, top changes, top issues, call-outs.", Destructive: false, RequiresAI: true, RequiredAutonomyLevel: 2},
+	{Name: "narrate_onboarding_for_user", Category: CategoryAnalysis, Description: "What this ServiceAccount can touch — roles bound, resources + verbs, namespaces reached. Flags cluster-admin.", Destructive: false, RequiresAI: true, RequiredAutonomyLevel: 2},
+	{Name: "narrate_service_dependency_graph", Category: CategoryAnalysis, Description: "Upstream/downstream dependencies of a service, with policies that gate each edge.", Destructive: false, RequiresAI: true, RequiredAutonomyLevel: 2},
+	{Name: "narrate_capacity_report", Category: CategoryAnalysis, Description: "Cluster-wide capacity report: per-node utilization, headroom, trend.", Destructive: false, RequiresAI: true, RequiredAutonomyLevel: 2},
+	{Name: "narrate_cost_report", Category: CategoryAnalysis, Description: "Cost breakdown by namespace/workload with biggest driver + cut opportunity.", Destructive: false, RequiresAI: true, RequiredAutonomyLevel: 2},
+	{Name: "narrate_security_posture", Category: CategoryAnalysis, Description: "CISO-ready posture: pod security, network-policy coverage, RBAC, secrets. One next step per area.", Destructive: false, RequiresAI: true, RequiredAutonomyLevel: 2},
+	{Name: "narrate_migration_readiness", Category: CategoryAnalysis, Description: "What to move for a namespace migration — workloads, stateful data, config, known risks.", Destructive: false, RequiresAI: true, RequiredAutonomyLevel: 2},
+	{Name: "narrate_change_impact", Category: CategoryAnalysis, Description: "What-if textual report reasoning about first- and second-order effects of a hypothetical change.", Destructive: false, RequiresAI: true, RequiredAutonomyLevel: 2},
+
 	// === PLANNING TOOLS — Phase 3 C3 (10 tools) ===
 	// "What would happen if?" planners — gather state and emit a
 	// planning_hint for the LLM to narrate. Autonomy Level: 2 (Recommend).

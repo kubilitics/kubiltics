@@ -355,6 +355,18 @@ var toolTopicOverrides = map[string][]Topic{
 	"observe_secrets_usage":           {TopicSecurity, TopicCore},
 	"observe_ingresses_by_tls_expiry": {TopicNetworking, TopicSecurity},
 
+	// Phase 3 Category 5 narrative tools.
+	"narrate_incident_timeline":       {TopicEvents, TopicChange},
+	"narrate_deploy_diff":             {TopicWorkloads, TopicChange},
+	"narrate_weekly_status":           {TopicCore},
+	"narrate_onboarding_for_user":     {TopicRBAC},
+	"narrate_service_dependency_graph": {TopicNetworking, TopicWorkloads},
+	"narrate_capacity_report":         {TopicCapacity, TopicNodes},
+	"narrate_cost_report":             {TopicCost, TopicCapacity},
+	"narrate_security_posture":        {TopicSecurity, TopicRBAC},
+	"narrate_migration_readiness":     {TopicCore, TopicWorkloads},
+	"narrate_change_impact":           {TopicChange, TopicCore},
+
 	// Phase 3 Category 4 compliance checks.
 	"check_privileged_containers":           {TopicSecurity, TopicPods},
 	"check_root_containers":                 {TopicSecurity, TopicPods},

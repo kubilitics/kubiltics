@@ -65,6 +65,10 @@ func (s *mcpServerImpl) routeAnalysisTool(ctx context.Context, name string, args
 	case "who_can_do":
 		return s.handleWhoCanDo(ctx, args)
 	default:
+		// Phase 3 Category 5 narrate_* tools (handlers_narrate.go).
+		if out, matched, err := s.routeNarrateTool(ctx, name, args); matched {
+			return out, err
+		}
 		return nil, fmt.Errorf("analysis tool not implemented: %s", name)
 	}
 }
