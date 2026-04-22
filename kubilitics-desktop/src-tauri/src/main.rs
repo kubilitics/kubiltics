@@ -9,6 +9,7 @@ compile_error!("the 'devtools' Cargo feature must not be enabled in release buil
 
 use tauri::{Emitter, Manager, RunEvent};
 
+mod ai_config;
 mod backend_ports;
 mod commands;
 mod menu;
@@ -54,6 +55,10 @@ fn main() {
             commands::restart_sidecar,
             commands::is_kcli_sidecar_available,
             sidecar::get_backend_status,
+            // Phase 2 / Blocker C — AI settings keychain round-trip
+            ai_config::save_ai_config,
+            ai_config::load_ai_config,
+            ai_config::test_llm_connection,
         ])
         .setup(|app| {
             let handle = app.handle().clone();
