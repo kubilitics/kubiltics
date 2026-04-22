@@ -167,6 +167,7 @@ project-docs/
 !CONTRIBUTING.md
 !SECURITY.md
 !NOTICE
+!KNOWN_ISSUES.md
 !docs/*.md
 !docs/**/*.md
 !deploy/**/*.md
