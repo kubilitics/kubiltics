@@ -129,11 +129,38 @@ fn read_yaml() -> Result<Option<YamlPayload>, String> {
 
 // ── Commands ─────────────────────────────────────────────────────────────
 
+// The webview is untrusted: the Rust command is the authority for what a
+// valid AIConfig looks like. Centralized here so save_ai_config has a
+// single validate-then-commit shape. Errors surface back as toast.
+const VALID_PROVIDERS: &[&str] = &["openai", "anthropic", "ollama", "custom"];
+const MAX_MODEL_LEN: usize = 100;
+
+fn validate_ai_config(cfg: &AIConfig) -> Result<(), String> {
+    if !VALID_PROVIDERS.contains(&cfg.provider.as_str()) {
+        return Err(format!(
+            "invalid provider {:?}: must be one of {:?}",
+            cfg.provider, VALID_PROVIDERS
+        ));
+    }
+    if cfg.model.trim().is_empty() {
+        return Err("model must not be empty".to_string());
+    }
+    if cfg.model.len() > MAX_MODEL_LEN {
+        return Err(format!(
+            "model name too long: {} chars, max {}",
+            cfg.model.len(),
+            MAX_MODEL_LEN
+        ));
+    }
+    if !cfg.base_url.trim().is_empty() {
+        url::Url::parse(&cfg.base_url).map_err(|e| format!("invalid base_url: {}", e))?;
+    }
+    Ok(())
+}
+
 #[command]
 pub async fn save_ai_config(cfg: AIConfig) -> Result<(), String> {
-    if cfg.provider.is_empty() {
-        return Err("provider required".to_string());
-    }
+    validate_ai_config(&cfg)?;
     write_yaml(&cfg)?;
     if let Some(key) = cfg.api_key.as_deref() {
         if !key.is_empty() {
@@ -429,3 +456,59 @@ mod tests {
 #[cfg(test)]
 #[path = "ai_config_e2e_test.rs"]
 mod e2e;
+
+#[cfg(test)]
+mod validation_tests {
+    use super::*;
+
+    fn cfg(provider: &str, model: &str, base_url: &str) -> AIConfig {
+        AIConfig {
+            provider: provider.to_string(),
+            model: model.to_string(),
+            base_url: base_url.to_string(),
+            api_key: None,
+            has_api_key: false,
+        }
+    }
+
+    #[test]
+    fn valid_config_passes() {
+        let c = cfg("openai", "gpt-4o-mini", "https://api.openai.com/v1");
+        assert!(validate_ai_config(&c).is_ok());
+    }
+
+    #[test]
+    fn empty_base_url_is_ok() {
+        // Users may leave base_url blank to use provider defaults.
+        let c = cfg("openai", "gpt-4o-mini", "");
+        assert!(validate_ai_config(&c).is_ok());
+    }
+
+    #[test]
+    fn invalid_provider_is_rejected() {
+        let c = cfg("gemini", "gemini-pro", "");
+        let err = validate_ai_config(&c).expect_err("expected rejection");
+        assert!(err.contains("invalid provider"), "got: {}", err);
+    }
+
+    #[test]
+    fn empty_model_is_rejected() {
+        let c = cfg("openai", "   ", "");
+        let err = validate_ai_config(&c).expect_err("expected rejection");
+        assert!(err.contains("model must not be empty"), "got: {}", err);
+    }
+
+    #[test]
+    fn overlong_model_is_rejected() {
+        let c = cfg("openai", &"x".repeat(101), "");
+        let err = validate_ai_config(&c).expect_err("expected rejection");
+        assert!(err.contains("model name too long"), "got: {}", err);
+    }
+
+    #[test]
+    fn malformed_base_url_is_rejected() {
+        let c = cfg("openai", "gpt-4o-mini", "not a url");
+        let err = validate_ai_config(&c).expect_err("expected rejection");
+        assert!(err.contains("invalid base_url"), "got: {}", err);
+    }
+}

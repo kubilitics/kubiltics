@@ -32,6 +32,8 @@ sha2 = "0.10"
 # under a single API. Replaces the macOS `security` CLI shell-out and the
 # 0600 filesystem fallback that plaintext-stored keys on Linux/Windows.
 keyring = { version = "3", features = ["apple-native", "windows-native", "linux-native"] }
+# Phase 2 code-quality fix #2 — validate base_url in save_ai_config.
+url = "2"
 
 # Note: Tauri 2 gates the WKWebView inspector on Rust's built-in debug_assertions
 # flag inside the Tauri crate. Do not add the 'devtools' Cargo feature to the base
