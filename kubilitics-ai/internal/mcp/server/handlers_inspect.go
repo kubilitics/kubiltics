@@ -1,0 +1,381 @@
+package server
+
+// handlers_inspect.go — composite inspect_<kind> handlers.
+//
+// Each handler folds the existing observe_<kind>_detailed +
+// observe_<kind>_events + observe_<kind>_ownership_chain (for kinds that
+// have one) into a single call. They fan out to the existing handlers in
+// parallel via sync.WaitGroup and return a bounded JSON with
+// {detailed, events, ownership_chain, _summary}.
+//
+// The underlying handlers are intentionally NOT deleted — they stay in
+// the codebase for direct invocation (tests, retries, safety-net). Only
+// the LLM-facing taxonomy entries are retired by the same commit that
+// adds these composites.
+
+import (
+	"context"
+	"fmt"
+	"strings"
+	"sync"
+)
+
+// inspectResult is the shape every inspect_<kind> handler returns.
+// Fields that weren't fetched for this kind stay nil so the LLM can tell
+// "we didn't try" apart from "we tried and got nothing". The _summary
+// line is a plain-English one-liner the LLM can quote directly.
+type inspectResult struct {
+	Kind           string      `json:"kind"`
+	Namespace      string      `json:"namespace,omitempty"`
+	Name           string      `json:"name"`
+	Detailed       interface{} `json:"detailed,omitempty"`
+	DetailedError  string      `json:"detailed_error,omitempty"`
+	Events         interface{} `json:"events,omitempty"`
+	EventsError    string      `json:"events_error,omitempty"`
+	OwnershipChain interface{} `json:"ownership_chain,omitempty"`
+	OwnershipError string      `json:"ownership_error,omitempty"`
+	Summary        string      `json:"_summary"`
+}
+
+// handlerFn is the common signature of every underlying observe_* handler.
+type handlerFn func(ctx context.Context, args map[string]interface{}) (interface{}, error)
+
+// fanOut runs up to three handlers in parallel and collects their results.
+// A nil fn is treated as "this kind doesn't have that underlying handler"
+// and contributes a note to the summary.
+func (s *mcpServerImpl) fanOut(
+	ctx context.Context,
+	args map[string]interface{},
+	detailed, events, ownership handlerFn,
+) (detailedOut, eventsOut, ownershipOut interface{}, detailedErr, eventsErr, ownershipErr error) {
+	var wg sync.WaitGroup
+
+	if detailed != nil {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			detailedOut, detailedErr = detailed(ctx, args)
+		}()
+	}
+	if events != nil {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			eventsOut, eventsErr = events(ctx, args)
+		}()
+	}
+	if ownership != nil {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			ownershipOut, ownershipErr = ownership(ctx, args)
+		}()
+	}
+	wg.Wait()
+	return
+}
+
+// buildInspectResult assembles the final bounded JSON.
+func buildInspectResult(
+	kind, namespace, name string,
+	detailed, events, ownership interface{},
+	detailedErr, eventsErr, ownershipErr error,
+	missing []string,
+) interface{} {
+	res := inspectResult{
+		Kind:           kind,
+		Namespace:      namespace,
+		Name:           name,
+		Detailed:       detailed,
+		Events:         events,
+		OwnershipChain: ownership,
+	}
+	if detailedErr != nil {
+		res.DetailedError = detailedErr.Error()
+	}
+	if eventsErr != nil {
+		res.EventsError = eventsErr.Error()
+	}
+	if ownershipErr != nil {
+		res.OwnershipError = ownershipErr.Error()
+	}
+
+	// _summary: compact one-liner the LLM can use directly.
+	var parts []string
+	if detailed != nil {
+		parts = append(parts, "detailed=ok")
+	} else if detailedErr != nil {
+		parts = append(parts, "detailed=err")
+	}
+	if events != nil {
+		parts = append(parts, "events=ok")
+	} else if eventsErr != nil {
+		parts = append(parts, "events=err")
+	}
+	if ownership != nil {
+		parts = append(parts, "ownership=ok")
+	} else if ownershipErr != nil {
+		parts = append(parts, "ownership=err")
+	}
+	if len(missing) > 0 {
+		parts = append(parts, "not_applicable="+strings.Join(missing, ","))
+	}
+	target := name
+	if namespace != "" {
+		target = namespace + "/" + name
+	}
+	res.Summary = fmt.Sprintf("inspect_%s %s: %s", strings.ToLower(kind), target, strings.Join(parts, " "))
+
+	// Pass through the same list-trimmer + output-cap the rest of the
+	// observation handlers use so one fat composite can't blow the budget.
+	return capToolOutput(summarizeListForLLM(res))
+}
+
+// ─── namespaced composites with detailed+events+ownership ────────────────
+
+func (s *mcpServerImpl) handleInspectPod(ctx context.Context, args map[string]interface{}) (interface{}, error) {
+	ns, name := strArg(args, "namespace"), strArg(args, "name")
+	if ns == "" || name == "" {
+		return nil, fmt.Errorf("inspect_pod: 'namespace' and 'name' are required")
+	}
+	d, e, o, de, ee, oe := s.fanOut(ctx, args, s.handlePodDetailed, s.handlePodEvents, s.handlePodOwnershipChain)
+	return buildInspectResult("Pod", ns, name, d, e, o, de, ee, oe, nil), nil
+}
+
+func (s *mcpServerImpl) handleInspectDeployment(ctx context.Context, args map[string]interface{}) (interface{}, error) {
+	ns, name := strArg(args, "namespace"), strArg(args, "name")
+	if ns == "" || name == "" {
+		return nil, fmt.Errorf("inspect_deployment: 'namespace' and 'name' are required")
+	}
+	d, e, o, de, ee, oe := s.fanOut(ctx, args, s.handleDeploymentDetailed, s.handleDeploymentEvents, s.handleDeploymentOwnershipChain)
+	return buildInspectResult("Deployment", ns, name, d, e, o, de, ee, oe, nil), nil
+}
+
+func (s *mcpServerImpl) handleInspectReplicaSet(ctx context.Context, args map[string]interface{}) (interface{}, error) {
+	ns, name := strArg(args, "namespace"), strArg(args, "name")
+	if ns == "" || name == "" {
+		return nil, fmt.Errorf("inspect_replicaset: 'namespace' and 'name' are required")
+	}
+	d, e, o, de, ee, oe := s.fanOut(ctx, args, s.handleReplicaSetDetailed, s.handleReplicaSetEvents, s.handleReplicaSetOwnershipChain)
+	return buildInspectResult("ReplicaSet", ns, name, d, e, o, de, ee, oe, nil), nil
+}
+
+func (s *mcpServerImpl) handleInspectStatefulSet(ctx context.Context, args map[string]interface{}) (interface{}, error) {
+	ns, name := strArg(args, "namespace"), strArg(args, "name")
+	if ns == "" || name == "" {
+		return nil, fmt.Errorf("inspect_statefulset: 'namespace' and 'name' are required")
+	}
+	d, e, o, de, ee, oe := s.fanOut(ctx, args, s.handleStatefulSetDetailed, s.handleStatefulSetEvents, s.handleStatefulSetOwnershipChain)
+	return buildInspectResult("StatefulSet", ns, name, d, e, o, de, ee, oe, nil), nil
+}
+
+func (s *mcpServerImpl) handleInspectDaemonSet(ctx context.Context, args map[string]interface{}) (interface{}, error) {
+	ns, name := strArg(args, "namespace"), strArg(args, "name")
+	if ns == "" || name == "" {
+		return nil, fmt.Errorf("inspect_daemonset: 'namespace' and 'name' are required")
+	}
+	d, e, o, de, ee, oe := s.fanOut(ctx, args, s.handleDaemonSetDetailed, s.handleDaemonSetEvents, s.handleDaemonSetOwnershipChain)
+	return buildInspectResult("DaemonSet", ns, name, d, e, o, de, ee, oe, nil), nil
+}
+
+func (s *mcpServerImpl) handleInspectJob(ctx context.Context, args map[string]interface{}) (interface{}, error) {
+	ns, name := strArg(args, "namespace"), strArg(args, "name")
+	if ns == "" || name == "" {
+		return nil, fmt.Errorf("inspect_job: 'namespace' and 'name' are required")
+	}
+	d, e, o, de, ee, oe := s.fanOut(ctx, args, s.handleJobDetailed, s.handleJobEvents, s.handleJobOwnershipChain)
+	return buildInspectResult("Job", ns, name, d, e, o, de, ee, oe, nil), nil
+}
+
+func (s *mcpServerImpl) handleInspectCronJob(ctx context.Context, args map[string]interface{}) (interface{}, error) {
+	ns, name := strArg(args, "namespace"), strArg(args, "name")
+	if ns == "" || name == "" {
+		return nil, fmt.Errorf("inspect_cronjob: 'namespace' and 'name' are required")
+	}
+	d, e, o, de, ee, oe := s.fanOut(ctx, args, s.handleCronJobDetailed, s.handleCronJobEvents, s.handleCronJobOwnershipChain)
+	return buildInspectResult("CronJob", ns, name, d, e, o, de, ee, oe, nil), nil
+}
+
+// ─── namespaced composites with only detailed+events (no ownership) ──────
+
+func (s *mcpServerImpl) handleInspectService(ctx context.Context, args map[string]interface{}) (interface{}, error) {
+	ns, name := strArg(args, "namespace"), strArg(args, "name")
+	if ns == "" || name == "" {
+		return nil, fmt.Errorf("inspect_service: 'namespace' and 'name' are required")
+	}
+	d, e, _, de, ee, _ := s.fanOut(ctx, args, s.handleServiceDetailed, s.handleServiceEvents, nil)
+	return buildInspectResult("Service", ns, name, d, e, nil, de, ee, nil, []string{"ownership_chain"}), nil
+}
+
+func (s *mcpServerImpl) handleInspectIngress(ctx context.Context, args map[string]interface{}) (interface{}, error) {
+	ns, name := strArg(args, "namespace"), strArg(args, "name")
+	if ns == "" || name == "" {
+		return nil, fmt.Errorf("inspect_ingress: 'namespace' and 'name' are required")
+	}
+	d, e, _, de, ee, _ := s.fanOut(ctx, args, s.handleIngressDetailed, s.handleIngressEvents, nil)
+	return buildInspectResult("Ingress", ns, name, d, e, nil, de, ee, nil, []string{"ownership_chain"}), nil
+}
+
+func (s *mcpServerImpl) handleInspectConfigMap(ctx context.Context, args map[string]interface{}) (interface{}, error) {
+	ns, name := strArg(args, "namespace"), strArg(args, "name")
+	if ns == "" || name == "" {
+		return nil, fmt.Errorf("inspect_configmap: 'namespace' and 'name' are required")
+	}
+	d, e, _, de, ee, _ := s.fanOut(ctx, args, s.handleConfigMapDetailed, s.handleConfigMapEvents, nil)
+	return buildInspectResult("ConfigMap", ns, name, d, e, nil, de, ee, nil, []string{"ownership_chain"}), nil
+}
+
+func (s *mcpServerImpl) handleInspectSecret(ctx context.Context, args map[string]interface{}) (interface{}, error) {
+	ns, name := strArg(args, "namespace"), strArg(args, "name")
+	if ns == "" || name == "" {
+		return nil, fmt.Errorf("inspect_secret: 'namespace' and 'name' are required")
+	}
+	d, e, _, de, ee, _ := s.fanOut(ctx, args, s.handleSecretDetailed, s.handleSecretEvents, nil)
+	return buildInspectResult("Secret", ns, name, d, e, nil, de, ee, nil, []string{"ownership_chain"}), nil
+}
+
+func (s *mcpServerImpl) handleInspectNetworkPolicy(ctx context.Context, args map[string]interface{}) (interface{}, error) {
+	ns, name := strArg(args, "namespace"), strArg(args, "name")
+	if ns == "" || name == "" {
+		return nil, fmt.Errorf("inspect_networkpolicy: 'namespace' and 'name' are required")
+	}
+	d, e, _, de, ee, _ := s.fanOut(ctx, args, s.handleNetworkPolicyDetailed, s.handleNetworkPolicyEvents, nil)
+	return buildInspectResult("NetworkPolicy", ns, name, d, e, nil, de, ee, nil, []string{"ownership_chain"}), nil
+}
+
+func (s *mcpServerImpl) handleInspectPVC(ctx context.Context, args map[string]interface{}) (interface{}, error) {
+	ns, name := strArg(args, "namespace"), strArg(args, "name")
+	if ns == "" || name == "" {
+		return nil, fmt.Errorf("inspect_pvc: 'namespace' and 'name' are required")
+	}
+	d, e, _, de, ee, _ := s.fanOut(ctx, args, s.handlePvcDetailed, s.handlePvcEvents, nil)
+	return buildInspectResult("PersistentVolumeClaim", ns, name, d, e, nil, de, ee, nil, []string{"ownership_chain"}), nil
+}
+
+func (s *mcpServerImpl) handleInspectHPA(ctx context.Context, args map[string]interface{}) (interface{}, error) {
+	ns, name := strArg(args, "namespace"), strArg(args, "name")
+	if ns == "" || name == "" {
+		return nil, fmt.Errorf("inspect_hpa: 'namespace' and 'name' are required")
+	}
+	d, e, _, de, ee, _ := s.fanOut(ctx, args, s.handleHPADetailed, s.handleHPAEvents, nil)
+	return buildInspectResult("HorizontalPodAutoscaler", ns, name, d, e, nil, de, ee, nil, []string{"ownership_chain"}), nil
+}
+
+func (s *mcpServerImpl) handleInspectVPA(ctx context.Context, args map[string]interface{}) (interface{}, error) {
+	ns, name := strArg(args, "namespace"), strArg(args, "name")
+	if ns == "" || name == "" {
+		return nil, fmt.Errorf("inspect_vpa: 'namespace' and 'name' are required")
+	}
+	d, e, _, de, ee, _ := s.fanOut(ctx, args, s.handleVPADetailed, s.handleVPAEvents, nil)
+	return buildInspectResult("VerticalPodAutoscaler", ns, name, d, e, nil, de, ee, nil, []string{"ownership_chain"}), nil
+}
+
+func (s *mcpServerImpl) handleInspectPDB(ctx context.Context, args map[string]interface{}) (interface{}, error) {
+	ns, name := strArg(args, "namespace"), strArg(args, "name")
+	if ns == "" || name == "" {
+		return nil, fmt.Errorf("inspect_pdb: 'namespace' and 'name' are required")
+	}
+	d, e, _, de, ee, _ := s.fanOut(ctx, args, s.handlePDBDetailed, s.handlePDBEvents, nil)
+	return buildInspectResult("PodDisruptionBudget", ns, name, d, e, nil, de, ee, nil, []string{"ownership_chain"}), nil
+}
+
+func (s *mcpServerImpl) handleInspectRole(ctx context.Context, args map[string]interface{}) (interface{}, error) {
+	ns, name := strArg(args, "namespace"), strArg(args, "name")
+	if ns == "" || name == "" {
+		return nil, fmt.Errorf("inspect_role: 'namespace' and 'name' are required")
+	}
+	d, e, _, de, ee, _ := s.fanOut(ctx, args, s.handleRoleDetailed, s.handleRoleEvents, nil)
+	return buildInspectResult("Role", ns, name, d, e, nil, de, ee, nil, []string{"ownership_chain"}), nil
+}
+
+func (s *mcpServerImpl) handleInspectRoleBinding(ctx context.Context, args map[string]interface{}) (interface{}, error) {
+	ns, name := strArg(args, "namespace"), strArg(args, "name")
+	if ns == "" || name == "" {
+		return nil, fmt.Errorf("inspect_rolebinding: 'namespace' and 'name' are required")
+	}
+	d, e, _, de, ee, _ := s.fanOut(ctx, args, s.handleRoleBindingDetailed, s.handleRoleBindingEvents, nil)
+	return buildInspectResult("RoleBinding", ns, name, d, e, nil, de, ee, nil, []string{"ownership_chain"}), nil
+}
+
+func (s *mcpServerImpl) handleInspectLimitRange(ctx context.Context, args map[string]interface{}) (interface{}, error) {
+	ns, name := strArg(args, "namespace"), strArg(args, "name")
+	if ns == "" || name == "" {
+		return nil, fmt.Errorf("inspect_limitrange: 'namespace' and 'name' are required")
+	}
+	d, e, _, de, ee, _ := s.fanOut(ctx, args, s.handleLimitRangeDetailed, s.handleLimitRangeEvents, nil)
+	return buildInspectResult("LimitRange", ns, name, d, e, nil, de, ee, nil, []string{"ownership_chain"}), nil
+}
+
+func (s *mcpServerImpl) handleInspectResourceQuota(ctx context.Context, args map[string]interface{}) (interface{}, error) {
+	ns, name := strArg(args, "namespace"), strArg(args, "name")
+	if ns == "" || name == "" {
+		return nil, fmt.Errorf("inspect_resourcequota: 'namespace' and 'name' are required")
+	}
+	d, e, _, de, ee, _ := s.fanOut(ctx, args, s.handleResourceQuotaDetailed, s.handleResourceQuotaEvents, nil)
+	return buildInspectResult("ResourceQuota", ns, name, d, e, nil, de, ee, nil, []string{"ownership_chain"}), nil
+}
+
+// ─── cluster-scoped composites (name only) ──────────────────────────────
+
+func (s *mcpServerImpl) handleInspectNode(ctx context.Context, args map[string]interface{}) (interface{}, error) {
+	name := strArg(args, "name")
+	if name == "" {
+		return nil, fmt.Errorf("inspect_node: 'name' is required")
+	}
+	d, e, _, de, ee, _ := s.fanOut(ctx, args, s.handleNodeDetailed, s.handleNodeEvents, nil)
+	return buildInspectResult("Node", "", name, d, e, nil, de, ee, nil, []string{"ownership_chain"}), nil
+}
+
+func (s *mcpServerImpl) handleInspectNamespace(ctx context.Context, args map[string]interface{}) (interface{}, error) {
+	name := strArg(args, "name")
+	if name == "" {
+		return nil, fmt.Errorf("inspect_namespace: 'name' is required")
+	}
+	d, e, _, de, ee, _ := s.fanOut(ctx, args, s.handleNamespaceDetailed, s.handleNamespaceEvents, nil)
+	return buildInspectResult("Namespace", "", name, d, e, nil, de, ee, nil, []string{"ownership_chain"}), nil
+}
+
+func (s *mcpServerImpl) handleInspectPV(ctx context.Context, args map[string]interface{}) (interface{}, error) {
+	name := strArg(args, "name")
+	if name == "" {
+		return nil, fmt.Errorf("inspect_pv: 'name' is required")
+	}
+	d, e, _, de, ee, _ := s.fanOut(ctx, args, s.handlePvDetailed, s.handlePvEvents, nil)
+	return buildInspectResult("PersistentVolume", "", name, d, e, nil, de, ee, nil, []string{"ownership_chain"}), nil
+}
+
+func (s *mcpServerImpl) handleInspectStorageClass(ctx context.Context, args map[string]interface{}) (interface{}, error) {
+	name := strArg(args, "name")
+	if name == "" {
+		return nil, fmt.Errorf("inspect_storageclass: 'name' is required")
+	}
+	d, e, _, de, ee, _ := s.fanOut(ctx, args, s.handleStorageClassDetailed, s.handleStorageClassEvents, nil)
+	return buildInspectResult("StorageClass", "", name, d, e, nil, de, ee, nil, []string{"ownership_chain"}), nil
+}
+
+func (s *mcpServerImpl) handleInspectClusterRole(ctx context.Context, args map[string]interface{}) (interface{}, error) {
+	name := strArg(args, "name")
+	if name == "" {
+		return nil, fmt.Errorf("inspect_clusterrole: 'name' is required")
+	}
+	d, e, _, de, ee, _ := s.fanOut(ctx, args, s.handleClusterRoleDetailed, s.handleClusterRoleEvents, nil)
+	return buildInspectResult("ClusterRole", "", name, d, e, nil, de, ee, nil, []string{"ownership_chain"}), nil
+}
+
+func (s *mcpServerImpl) handleInspectClusterRoleBinding(ctx context.Context, args map[string]interface{}) (interface{}, error) {
+	name := strArg(args, "name")
+	if name == "" {
+		return nil, fmt.Errorf("inspect_clusterrolebinding: 'name' is required")
+	}
+	d, e, _, de, ee, _ := s.fanOut(ctx, args, s.handleClusterRoleBindingDetailed, s.handleClusterRoleBindingEvents, nil)
+	return buildInspectResult("ClusterRoleBinding", "", name, d, e, nil, de, ee, nil, []string{"ownership_chain"}), nil
+}
+
+func (s *mcpServerImpl) handleInspectCRD(ctx context.Context, args map[string]interface{}) (interface{}, error) {
+	name := strArg(args, "name")
+	if name == "" {
+		return nil, fmt.Errorf("inspect_crd: 'name' is required")
+	}
+	d, e, _, de, ee, _ := s.fanOut(ctx, args, s.handleCRDDetailed, s.handleCRDEvents, nil)
+	return buildInspectResult("CustomResourceDefinition", "", name, d, e, nil, de, ee, nil, []string{"ownership_chain"}), nil
+}

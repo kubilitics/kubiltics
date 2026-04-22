@@ -289,3 +289,28 @@ func TestToolTopics_OverridesWin(t *testing.T) {
 		t.Errorf("override failed: got %v want [core]", got)
 	}
 }
+
+// TestInspectComposites_RouteCorrectly locks the topic mapping for the
+// inspect_<kind> composites introduced in 2026-04-22. Each composite must
+// land in the topic(s) most engineers reach for on the matching incident.
+func TestInspectComposites_RouteCorrectly(t *testing.T) {
+	cases := []struct {
+		name  string
+		topic Topic
+	}{
+		{"inspect_pod", TopicPods},
+		{"inspect_deployment", TopicWorkloads},
+		{"inspect_service", TopicNetworking},
+		{"inspect_pv", TopicStorage},
+		{"inspect_node", TopicNodes},
+		{"inspect_rolebinding", TopicRBAC},
+		{"inspect_secret", TopicSecurity},
+		{"inspect_hpa", TopicCapacity},
+	}
+	for _, tc := range cases {
+		got := ToolTopics(tc.name)
+		if !containsTopic(got, tc.topic) {
+			t.Errorf("ToolTopics(%q) missing %v: %v", tc.name, tc.topic, got)
+		}
+	}
+}

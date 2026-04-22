@@ -308,6 +308,39 @@ var toolTopicOverrides = map[string][]Topic{
 	"recommend_monitoring_improvements": {TopicCore},
 	"recommend_disaster_recovery":      {TopicStorage, TopicChange},
 
+	// inspect_<kind> composites (replaces per-kind detailed+events+ownership
+	// since 2026-04-22). The prefix-based classifier catches most of them
+	// via the substring of the kind name (e.g. "inspect_pod" contains "pod",
+	// "inspect_deployment" contains "deployment"). These overrides nail down
+	// the few whose kind doesn't appear in any topic keyword list.
+	"inspect_pv":                  {TopicStorage},
+	"inspect_pvc":                 {TopicStorage},
+	"inspect_storageclass":        {TopicStorage},
+	"inspect_namespace":           {TopicCore},
+	"inspect_crd":                 {TopicCore, TopicChange},
+	"inspect_secret":              {TopicSecurity, TopicRBAC},
+	"inspect_configmap":           {TopicCore, TopicChange},
+	"inspect_limitrange":          {TopicCapacity},
+	"inspect_resourcequota":       {TopicCapacity},
+	"inspect_role":                {TopicRBAC},
+	"inspect_rolebinding":         {TopicRBAC},
+	"inspect_clusterrole":         {TopicRBAC},
+	"inspect_clusterrolebinding":  {TopicRBAC},
+	"inspect_pdb":                 {TopicCapacity, TopicWorkloads},
+	"inspect_hpa":                 {TopicCapacity, TopicWorkloads},
+	"inspect_vpa":                 {TopicCapacity, TopicWorkloads},
+	"inspect_networkpolicy":       {TopicNetworking, TopicSecurity},
+	"inspect_ingress":             {TopicNetworking},
+	"inspect_service":             {TopicNetworking},
+	"inspect_node":                {TopicNodes},
+	"inspect_pod":                 {TopicPods, TopicEvents},
+	"inspect_deployment":          {TopicWorkloads, TopicChange, TopicEvents},
+	"inspect_replicaset":          {TopicWorkloads, TopicEvents},
+	"inspect_statefulset":         {TopicWorkloads, TopicEvents},
+	"inspect_daemonset":           {TopicWorkloads, TopicEvents},
+	"inspect_job":                 {TopicWorkloads, TopicEvents},
+	"inspect_cronjob":             {TopicWorkloads, TopicEvents},
+
 	// Troubleshoot tools — route by the subsystem they troubleshoot.
 	"troubleshoot_pod_failures":             {TopicPods, TopicEvents},
 	"troubleshoot_network_issues":           {TopicNetworking},

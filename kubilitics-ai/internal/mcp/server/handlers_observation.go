@@ -5895,6 +5895,61 @@ func (s *mcpServerImpl) routeObservationTool(ctx context.Context, name string, a
 		return s.handleCRDDetailed(ctx, args)
 	case "observe_crd_events":
 		return s.handleCRDEvents(ctx, args)
+	// ─── inspect_<kind> composites (replaces per-kind detailed+events+ownership) ───
+	case "inspect_pod":
+		return s.handleInspectPod(ctx, args)
+	case "inspect_deployment":
+		return s.handleInspectDeployment(ctx, args)
+	case "inspect_replicaset":
+		return s.handleInspectReplicaSet(ctx, args)
+	case "inspect_statefulset":
+		return s.handleInspectStatefulSet(ctx, args)
+	case "inspect_daemonset":
+		return s.handleInspectDaemonSet(ctx, args)
+	case "inspect_job":
+		return s.handleInspectJob(ctx, args)
+	case "inspect_cronjob":
+		return s.handleInspectCronJob(ctx, args)
+	case "inspect_service":
+		return s.handleInspectService(ctx, args)
+	case "inspect_ingress":
+		return s.handleInspectIngress(ctx, args)
+	case "inspect_configmap":
+		return s.handleInspectConfigMap(ctx, args)
+	case "inspect_secret":
+		return s.handleInspectSecret(ctx, args)
+	case "inspect_networkpolicy":
+		return s.handleInspectNetworkPolicy(ctx, args)
+	case "inspect_pvc":
+		return s.handleInspectPVC(ctx, args)
+	case "inspect_hpa":
+		return s.handleInspectHPA(ctx, args)
+	case "inspect_vpa":
+		return s.handleInspectVPA(ctx, args)
+	case "inspect_pdb":
+		return s.handleInspectPDB(ctx, args)
+	case "inspect_role":
+		return s.handleInspectRole(ctx, args)
+	case "inspect_rolebinding":
+		return s.handleInspectRoleBinding(ctx, args)
+	case "inspect_limitrange":
+		return s.handleInspectLimitRange(ctx, args)
+	case "inspect_resourcequota":
+		return s.handleInspectResourceQuota(ctx, args)
+	case "inspect_node":
+		return s.handleInspectNode(ctx, args)
+	case "inspect_namespace":
+		return s.handleInspectNamespace(ctx, args)
+	case "inspect_pv":
+		return s.handleInspectPV(ctx, args)
+	case "inspect_storageclass":
+		return s.handleInspectStorageClass(ctx, args)
+	case "inspect_clusterrole":
+		return s.handleInspectClusterRole(ctx, args)
+	case "inspect_clusterrolebinding":
+		return s.handleInspectClusterRoleBinding(ctx, args)
+	case "inspect_crd":
+		return s.handleInspectCRD(ctx, args)
 	case "observe_api_resources":
 		return s.handleAPIResources(ctx, args)
 	case "observe_custom_resources":

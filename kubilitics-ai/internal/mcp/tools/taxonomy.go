@@ -86,20 +86,24 @@ var ToolTaxonomy = []ToolDefinition{
 		Destructive: false,
 		RequiresAI:  true,
 	},
+	// observe_pod_detailed retired 2026-04-22: folded into inspect_pod (along with
+	// observe_pod_events + observe_pod_ownership_chain). Underlying handler
+	// handlePodDetailed stays alive in handlers_observation.go.
 	{
-		Name:        "observe_pod_detailed",
+		Name:        "inspect_pod",
 		Category:    CategoryObservation,
-		Description: "Comprehensive 'Senior Engineer' view of a Pod. Returns metadata, status (with restart reasons), ownership chain (RS -> Deployment), resource analytics (CPU/RAM vs limits), service associations, and dependency summaries.",
+		Description: "One-call deep dive into a Pod: current spec+status, recent events, ownership chain (RS → Deployment). Replaces observe_pod_detailed + observe_pod_events + observe_pod_ownership_chain.",
 		InputSchema: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
-				"namespace": map[string]interface{}{"type": "string", "description": "Kubernetes namespace (required)"},
-				"name":      map[string]interface{}{"type": "string", "description": "Pod name (required)"},
+				"cluster_id": map[string]interface{}{"type": "string", "description": "Cluster ID (optional)"},
+				"namespace":  map[string]interface{}{"type": "string", "description": "Kubernetes namespace (required)"},
+				"name":       map[string]interface{}{"type": "string", "description": "Pod name (required)"},
 			},
 			"required": []string{"namespace", "name"},
 		},
 		Destructive: false,
-		RequiresAI:  true,
+		RequiresAI:  false,
 	},
 	{
 		Name:        "observe_pod_dependencies",
@@ -152,21 +156,7 @@ var ToolTaxonomy = []ToolDefinition{
 		Destructive: false,
 		RequiresAI:  false,
 	},
-	{
-		Name:        "observe_pod_ownership_chain",
-		Category:    CategoryObservation,
-		Description: "Return ownership chain for a pod: Pod → ReplicaSet → Deployment (or Job). Use when tracing who owns the pod for rollback or debugging.",
-		InputSchema: map[string]interface{}{
-			"type": "object",
-			"properties": map[string]interface{}{
-				"namespace": map[string]interface{}{"type": "string", "description": "Kubernetes namespace (required)"},
-				"name":      map[string]interface{}{"type": "string", "description": "Pod name (required)"},
-			},
-			"required": []string{"namespace", "name"},
-		},
-		Destructive: false,
-		RequiresAI:  false,
-	},
+	// observe_pod_ownership_chain retired 2026-04-22: folded into inspect_pod.
 	{
 		Name:        "observe_resource_links",
 		Category:    CategoryObservation,
@@ -190,22 +180,7 @@ var ToolTaxonomy = []ToolDefinition{
 		Destructive: false,
 		RequiresAI:  true,
 	},
-	{
-		Name:        "observe_pod_events",
-		Category:    CategoryObservation,
-		Description: "Get last N events for a specific pod (e.g. OOMKilled, Failed, Killing). Use for 'why is this pod restarting?' and crash analysis. Returns events sorted by lastTimestamp descending.",
-		InputSchema: map[string]interface{}{
-			"type": "object",
-			"properties": map[string]interface{}{
-				"namespace": map[string]interface{}{"type": "string", "description": "Pod namespace (required)"},
-				"name":      map[string]interface{}{"type": "string", "description": "Pod name (required)"},
-				"limit":     map[string]interface{}{"type": "integer", "description": "Max events to return (default 10)"},
-			},
-			"required": []string{"namespace", "name"},
-		},
-		Destructive: false,
-		RequiresAI:  false,
-	},
+	// observe_pod_events retired 2026-04-22: folded into inspect_pod.
 	{
 		Name:        "observe_resource_topology",
 		Category:    CategoryObservation,
@@ -253,31 +228,16 @@ var ToolTaxonomy = []ToolDefinition{
 		Destructive: false,
 		RequiresAI:  true,
 	},
+	// observe_node_detailed + observe_node_events retired 2026-04-22: folded into inspect_node.
 	{
-		Name:        "observe_node_detailed",
+		Name:        "inspect_node",
 		Category:    CategoryObservation,
-		Description: "Senior-engineer view of a single node: spec (taints), status (capacity, allocatable, conditions), metrics, events, pods on node, and risk flags (NotReady, DiskPressure, MemoryPressure, PIDPressure).",
+		Description: "One-call deep dive into a Node: spec+status (capacity, taints, conditions) and recent events. Replaces observe_node_detailed + observe_node_events.",
 		InputSchema: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
 				"cluster_id": map[string]interface{}{"type": "string", "description": "Cluster ID (optional)"},
 				"name":       map[string]interface{}{"type": "string", "description": "Node name (required)"},
-			},
-			"required": []string{"name"},
-		},
-		Destructive: false,
-		RequiresAI:  true,
-	},
-	{
-		Name:        "observe_node_events",
-		Category:    CategoryObservation,
-		Description: "List recent events for a node (cluster-scoped).",
-		InputSchema: map[string]interface{}{
-			"type": "object",
-			"properties": map[string]interface{}{
-				"cluster_id": map[string]interface{}{"type": "string", "description": "Cluster ID (optional)"},
-				"name":       map[string]interface{}{"type": "string", "description": "Node name (required)"},
-				"limit":      map[string]interface{}{"type": "number", "description": "Max events to return (default 10)"},
 			},
 			"required": []string{"name"},
 		},
@@ -291,31 +251,16 @@ var ToolTaxonomy = []ToolDefinition{
 		Destructive: false,
 		RequiresAI:  true,
 	},
+	// observe_namespace_detailed + observe_namespace_events retired 2026-04-22: folded into inspect_namespace.
 	{
-		Name:        "observe_namespace_detailed",
+		Name:        "inspect_namespace",
 		Category:    CategoryObservation,
-		Description: "Detailed view of a namespace: metadata (labels, annotations), status phase, events, pod count, and risk flags (e.g. Terminating).",
+		Description: "One-call deep dive into a Namespace: metadata, status phase, pod count and recent events. Replaces observe_namespace_detailed + observe_namespace_events.",
 		InputSchema: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
 				"cluster_id": map[string]interface{}{"type": "string", "description": "Cluster ID (optional)"},
 				"name":       map[string]interface{}{"type": "string", "description": "Namespace name (required)"},
-			},
-			"required": []string{"name"},
-		},
-		Destructive: false,
-		RequiresAI:  true,
-	},
-	{
-		Name:        "observe_namespace_events",
-		Category:    CategoryObservation,
-		Description: "List recent events for a namespace (cluster-scoped).",
-		InputSchema: map[string]interface{}{
-			"type": "object",
-			"properties": map[string]interface{}{
-				"cluster_id": map[string]interface{}{"type": "string", "description": "Cluster ID (optional)"},
-				"name":       map[string]interface{}{"type": "string", "description": "Namespace name (required)"},
-				"limit":      map[string]interface{}{"type": "number", "description": "Max events to return (default 10)"},
 			},
 			"required": []string{"name"},
 		},
@@ -329,31 +274,17 @@ var ToolTaxonomy = []ToolDefinition{
 		Destructive: false,
 		RequiresAI:  true,
 	},
+	// observe_service_detailed + observe_service_events retired 2026-04-22: folded into inspect_service.
 	{
-		Name:        "observe_service_detailed",
+		Name:        "inspect_service",
 		Category:    CategoryObservation,
-		Description: "Senior view of a Service: metadata, spec (type, ports, selector), status, endpoints, events, pods selected, risk flags (NO_ENDPOINTS, ORPHAN_SERVICE, EXPOSURE_RISK).",
+		Description: "One-call deep dive into a Service: spec (type, ports, selector), endpoints, pods selected and recent events. Replaces observe_service_detailed + observe_service_events.",
 		InputSchema: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
-				"namespace": map[string]interface{}{"type": "string", "description": "Kubernetes namespace (required)"},
-				"name":      map[string]interface{}{"type": "string", "description": "Service name (required)"},
-			},
-			"required": []string{"namespace", "name"},
-		},
-		Destructive: false,
-		RequiresAI:  true,
-	},
-	{
-		Name:        "observe_service_events",
-		Category:    CategoryObservation,
-		Description: "Last N events for a specific Service. Use for diagnosing endpoint or exposure changes.",
-		InputSchema: map[string]interface{}{
-			"type": "object",
-			"properties": map[string]interface{}{
-				"namespace": map[string]interface{}{"type": "string", "description": "Kubernetes namespace (required)"},
-				"name":      map[string]interface{}{"type": "string", "description": "Service name (required)"},
-				"limit":     map[string]interface{}{"type": "integer", "description": "Max events (default 10)"},
+				"cluster_id": map[string]interface{}{"type": "string", "description": "Cluster ID (optional)"},
+				"namespace":  map[string]interface{}{"type": "string", "description": "Kubernetes namespace (required)"},
+				"name":       map[string]interface{}{"type": "string", "description": "Service name (required)"},
 			},
 			"required": []string{"namespace", "name"},
 		},
@@ -375,62 +306,34 @@ var ToolTaxonomy = []ToolDefinition{
 		Destructive: false,
 		RequiresAI:  false,
 	},
+	// observe_ingress_detailed + observe_ingress_events retired 2026-04-22: folded into inspect_ingress.
 	{
-		Name:        "observe_ingress_detailed",
+		Name:        "inspect_ingress",
 		Category:    CategoryObservation,
-		Description: "Senior view of an Ingress: metadata, spec (rules, tls, ingressClassName), status, events, backend_services (with exists check), risk flags (NO_RULES, BACKEND_SERVICE_NOT_FOUND).",
+		Description: "One-call deep dive into an Ingress: spec (rules, tls, ingressClassName), backend services and recent events. Replaces observe_ingress_detailed + observe_ingress_events.",
 		InputSchema: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
-				"namespace": map[string]interface{}{"type": "string", "description": "Kubernetes namespace (required)"},
-				"name":      map[string]interface{}{"type": "string", "description": "Ingress name (required)"},
-			},
-			"required": []string{"namespace", "name"},
-		},
-		Destructive: false,
-		RequiresAI:  true,
-	},
-	{
-		Name:        "observe_ingress_events",
-		Category:    CategoryObservation,
-		Description: "Last N events for a specific Ingress. Use for diagnosing load balancer or backend changes.",
-		InputSchema: map[string]interface{}{
-			"type": "object",
-			"properties": map[string]interface{}{
-				"namespace": map[string]interface{}{"type": "string", "description": "Kubernetes namespace (required)"},
-				"name":      map[string]interface{}{"type": "string", "description": "Ingress name (required)"},
-				"limit":     map[string]interface{}{"type": "integer", "description": "Max events (default 10)"},
+				"cluster_id": map[string]interface{}{"type": "string", "description": "Cluster ID (optional)"},
+				"namespace":  map[string]interface{}{"type": "string", "description": "Kubernetes namespace (required)"},
+				"name":       map[string]interface{}{"type": "string", "description": "Ingress name (required)"},
 			},
 			"required": []string{"namespace", "name"},
 		},
 		Destructive: false,
 		RequiresAI:  false,
 	},
+	// observe_networkpolicy_detailed + observe_networkpolicy_events retired 2026-04-22: folded into inspect_networkpolicy.
 	{
-		Name:        "observe_networkpolicy_detailed",
+		Name:        "inspect_networkpolicy",
 		Category:    CategoryObservation,
-		Description: "Senior view of a NetworkPolicy: metadata, spec (podSelector, policyTypes, ingress/egress rule counts), events, pods selected by the policy.",
+		Description: "One-call deep dive into a NetworkPolicy: spec (podSelector, policyTypes, ingress/egress), pods selected and recent events. Replaces observe_networkpolicy_detailed + observe_networkpolicy_events.",
 		InputSchema: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
-				"namespace": map[string]interface{}{"type": "string", "description": "Kubernetes namespace (required)"},
-				"name":      map[string]interface{}{"type": "string", "description": "NetworkPolicy name (required)"},
-			},
-			"required": []string{"namespace", "name"},
-		},
-		Destructive: false,
-		RequiresAI:  true,
-	},
-	{
-		Name:        "observe_networkpolicy_events",
-		Category:    CategoryObservation,
-		Description: "Last N events for a specific NetworkPolicy. Use for diagnosing policy updates or conflicts.",
-		InputSchema: map[string]interface{}{
-			"type": "object",
-			"properties": map[string]interface{}{
-				"namespace": map[string]interface{}{"type": "string", "description": "Kubernetes namespace (required)"},
-				"name":      map[string]interface{}{"type": "string", "description": "NetworkPolicy name (required)"},
-				"limit":     map[string]interface{}{"type": "integer", "description": "Max events (default 10)"},
+				"cluster_id": map[string]interface{}{"type": "string", "description": "Cluster ID (optional)"},
+				"namespace":  map[string]interface{}{"type": "string", "description": "Kubernetes namespace (required)"},
+				"name":       map[string]interface{}{"type": "string", "description": "NetworkPolicy name (required)"},
 			},
 			"required": []string{"namespace", "name"},
 		},
@@ -459,307 +362,119 @@ var ToolTaxonomy = []ToolDefinition{
 		Destructive: false,
 		RequiresAI:  false,
 	},
+	// observe_deployment_detailed + _events + _ownership_chain retired 2026-04-22: folded into inspect_deployment.
 	{
-		Name:        "observe_deployment_detailed",
+		Name:        "inspect_deployment",
 		Category:    CategoryObservation,
-		Description: "Senior Engineer view of a Deployment: metadata, spec/status, rollout history, events, metrics, child ReplicaSets, risk flags and recommendations.",
+		Description: "One-call deep dive into a Deployment: spec+status, rollout history, recent events, child ReplicaSets. Replaces observe_deployment_detailed + observe_deployment_events + observe_deployment_ownership_chain.",
 		InputSchema: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
-				"namespace": map[string]interface{}{"type": "string", "description": "Kubernetes namespace (required)"},
-				"name":      map[string]interface{}{"type": "string", "description": "Deployment name (required)"},
-			},
-			"required": []string{"namespace", "name"},
-		},
-		Destructive: false,
-		RequiresAI:  true,
-	},
-	{
-		Name:        "observe_deployment_events",
-		Category:    CategoryObservation,
-		Description: "Last N events for a specific Deployment (e.g. scaling, rollout). Use for diagnosing rollout stalls or replica issues.",
-		InputSchema: map[string]interface{}{
-			"type": "object",
-			"properties": map[string]interface{}{
-				"namespace": map[string]interface{}{"type": "string", "description": "Kubernetes namespace (required)"},
-				"name":      map[string]interface{}{"type": "string", "description": "Deployment name (required)"},
-				"limit":     map[string]interface{}{"type": "integer", "description": "Max events to return (default 10)"},
+				"cluster_id": map[string]interface{}{"type": "string", "description": "Cluster ID (optional)"},
+				"namespace":  map[string]interface{}{"type": "string", "description": "Kubernetes namespace (required)"},
+				"name":       map[string]interface{}{"type": "string", "description": "Deployment name (required)"},
 			},
 			"required": []string{"namespace", "name"},
 		},
 		Destructive: false,
 		RequiresAI:  false,
 	},
+	// observe_replicaset_detailed + _events + _ownership_chain retired 2026-04-22: folded into inspect_replicaset.
 	{
-		Name:        "observe_deployment_ownership_chain",
+		Name:        "inspect_replicaset",
 		Category:    CategoryObservation,
-		Description: "Deployment to child ReplicaSets (and replica counts). No parent; use to see which ReplicaSets belong to this deployment.",
+		Description: "One-call deep dive into a ReplicaSet: spec+status, recent events, ownership chain (parent Deployment → child Pods). Replaces observe_replicaset_detailed + observe_replicaset_events + observe_replicaset_ownership_chain.",
 		InputSchema: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
-				"namespace": map[string]interface{}{"type": "string", "description": "Kubernetes namespace (required)"},
-				"name":      map[string]interface{}{"type": "string", "description": "Deployment name (required)"},
+				"cluster_id": map[string]interface{}{"type": "string", "description": "Cluster ID (optional)"},
+				"namespace":  map[string]interface{}{"type": "string", "description": "Kubernetes namespace (required)"},
+				"name":       map[string]interface{}{"type": "string", "description": "ReplicaSet name (required)"},
 			},
 			"required": []string{"namespace", "name"},
 		},
 		Destructive: false,
 		RequiresAI:  false,
 	},
+	// observe_statefulset_detailed + _events + _ownership_chain retired 2026-04-22: folded into inspect_statefulset.
 	{
-		Name:        "observe_replicaset_detailed",
+		Name:        "inspect_statefulset",
 		Category:    CategoryObservation,
-		Description: "Senior view of a ReplicaSet: metadata, spec/status, events, metrics, owner (Deployment), child pods, risk flags and recommendations.",
+		Description: "One-call deep dive into a StatefulSet: spec+status, update strategy, recent events, child Pods. Replaces observe_statefulset_detailed + observe_statefulset_events + observe_statefulset_ownership_chain.",
 		InputSchema: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
-				"namespace": map[string]interface{}{"type": "string", "description": "Kubernetes namespace (required)"},
-				"name":      map[string]interface{}{"type": "string", "description": "ReplicaSet name (required)"},
-			},
-			"required": []string{"namespace", "name"},
-		},
-		Destructive: false,
-		RequiresAI:  true,
-	},
-	{
-		Name:        "observe_replicaset_events",
-		Category:    CategoryObservation,
-		Description: "Last N events for a specific ReplicaSet. Use for diagnosing replica or scaling issues.",
-		InputSchema: map[string]interface{}{
-			"type": "object",
-			"properties": map[string]interface{}{
-				"namespace": map[string]interface{}{"type": "string", "description": "Kubernetes namespace (required)"},
-				"name":      map[string]interface{}{"type": "string", "description": "ReplicaSet name (required)"},
-				"limit":     map[string]interface{}{"type": "integer", "description": "Max events (default 10)"},
+				"cluster_id": map[string]interface{}{"type": "string", "description": "Cluster ID (optional)"},
+				"namespace":  map[string]interface{}{"type": "string", "description": "Kubernetes namespace (required)"},
+				"name":       map[string]interface{}{"type": "string", "description": "StatefulSet name (required)"},
 			},
 			"required": []string{"namespace", "name"},
 		},
 		Destructive: false,
 		RequiresAI:  false,
 	},
+	// observe_daemonset_detailed + _events + _ownership_chain retired 2026-04-22: folded into inspect_daemonset.
 	{
-		Name:        "observe_replicaset_ownership_chain",
+		Name:        "inspect_daemonset",
 		Category:    CategoryObservation,
-		Description: "ReplicaSet to parent (Deployment) and child Pods. Returns ownership chain and pod list.",
+		Description: "One-call deep dive into a DaemonSet: spec+status, recent events, child Pods. Replaces observe_daemonset_detailed + observe_daemonset_events + observe_daemonset_ownership_chain.",
 		InputSchema: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
-				"namespace": map[string]interface{}{"type": "string", "description": "Kubernetes namespace (required)"},
-				"name":      map[string]interface{}{"type": "string", "description": "ReplicaSet name (required)"},
+				"cluster_id": map[string]interface{}{"type": "string", "description": "Cluster ID (optional)"},
+				"namespace":  map[string]interface{}{"type": "string", "description": "Kubernetes namespace (required)"},
+				"name":       map[string]interface{}{"type": "string", "description": "DaemonSet name (required)"},
 			},
 			"required": []string{"namespace", "name"},
 		},
 		Destructive: false,
 		RequiresAI:  false,
 	},
+	// observe_job_detailed + _events + _ownership_chain retired 2026-04-22: folded into inspect_job.
 	{
-		Name:        "observe_statefulset_detailed",
+		Name:        "inspect_job",
 		Category:    CategoryObservation,
-		Description: "Senior view of a StatefulSet: metadata, spec/status, update strategy, events, metrics, child pods, risk flags and recommendations.",
+		Description: "One-call deep dive into a Job: spec+status, completion/backoff state, recent events, ownership chain (parent CronJob → child Pods). Replaces observe_job_detailed + observe_job_events + observe_job_ownership_chain.",
 		InputSchema: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
-				"namespace": map[string]interface{}{"type": "string", "description": "Kubernetes namespace (required)"},
-				"name":      map[string]interface{}{"type": "string", "description": "StatefulSet name (required)"},
-			},
-			"required": []string{"namespace", "name"},
-		},
-		Destructive: false,
-		RequiresAI:  true,
-	},
-	{
-		Name:        "observe_statefulset_events",
-		Category:    CategoryObservation,
-		Description: "Last N events for a specific StatefulSet. Use for diagnosing rollout or ordinal issues.",
-		InputSchema: map[string]interface{}{
-			"type": "object",
-			"properties": map[string]interface{}{
-				"namespace": map[string]interface{}{"type": "string", "description": "Kubernetes namespace (required)"},
-				"name":      map[string]interface{}{"type": "string", "description": "StatefulSet name (required)"},
-				"limit":     map[string]interface{}{"type": "integer", "description": "Max events (default 10)"},
+				"cluster_id": map[string]interface{}{"type": "string", "description": "Cluster ID (optional)"},
+				"namespace":  map[string]interface{}{"type": "string", "description": "Kubernetes namespace (required)"},
+				"name":       map[string]interface{}{"type": "string", "description": "Job name (required)"},
 			},
 			"required": []string{"namespace", "name"},
 		},
 		Destructive: false,
 		RequiresAI:  false,
 	},
+	// observe_cronjob_detailed + _events + _ownership_chain retired 2026-04-22: folded into inspect_cronjob.
 	{
-		Name:        "observe_statefulset_ownership_chain",
+		Name:        "inspect_cronjob",
 		Category:    CategoryObservation,
-		Description: "StatefulSet to child Pods (no parent). Returns ownership chain and pod list.",
+		Description: "One-call deep dive into a CronJob: schedule, suspend, last run, recent events, child Jobs. Replaces observe_cronjob_detailed + observe_cronjob_events + observe_cronjob_ownership_chain.",
 		InputSchema: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
-				"namespace": map[string]interface{}{"type": "string", "description": "Kubernetes namespace (required)"},
-				"name":      map[string]interface{}{"type": "string", "description": "StatefulSet name (required)"},
+				"cluster_id": map[string]interface{}{"type": "string", "description": "Cluster ID (optional)"},
+				"namespace":  map[string]interface{}{"type": "string", "description": "Kubernetes namespace (required)"},
+				"name":       map[string]interface{}{"type": "string", "description": "CronJob name (required)"},
 			},
 			"required": []string{"namespace", "name"},
 		},
 		Destructive: false,
 		RequiresAI:  false,
 	},
+	// observe_pvc_detailed + observe_pvc_events retired 2026-04-22: folded into inspect_pvc.
 	{
-		Name:        "observe_daemonset_detailed",
+		Name:        "inspect_pvc",
 		Category:    CategoryObservation,
-		Description: "Senior view of a DaemonSet: metadata, spec/status, events, metrics, child pods, risk flags and recommendations.",
+		Description: "One-call deep dive into a PersistentVolumeClaim: spec (accessModes, storage, storageClassName), status (phase, capacity), bound volume and recent events. Replaces observe_pvc_detailed + observe_pvc_events.",
 		InputSchema: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
-				"namespace": map[string]interface{}{"type": "string", "description": "Kubernetes namespace (required)"},
-				"name":      map[string]interface{}{"type": "string", "description": "DaemonSet name (required)"},
-			},
-			"required": []string{"namespace", "name"},
-		},
-		Destructive: false,
-		RequiresAI:  true,
-	},
-	{
-		Name:        "observe_daemonset_events",
-		Category:    CategoryObservation,
-		Description: "Last N events for a specific DaemonSet. Use for diagnosing node coverage or rollout issues.",
-		InputSchema: map[string]interface{}{
-			"type": "object",
-			"properties": map[string]interface{}{
-				"namespace": map[string]interface{}{"type": "string", "description": "Kubernetes namespace (required)"},
-				"name":      map[string]interface{}{"type": "string", "description": "DaemonSet name (required)"},
-				"limit":     map[string]interface{}{"type": "integer", "description": "Max events (default 10)"},
-			},
-			"required": []string{"namespace", "name"},
-		},
-		Destructive: false,
-		RequiresAI:  false,
-	},
-	{
-		Name:        "observe_daemonset_ownership_chain",
-		Category:    CategoryObservation,
-		Description: "DaemonSet to child Pods (no parent). Returns ownership chain and pod list.",
-		InputSchema: map[string]interface{}{
-			"type": "object",
-			"properties": map[string]interface{}{
-				"namespace": map[string]interface{}{"type": "string", "description": "Kubernetes namespace (required)"},
-				"name":      map[string]interface{}{"type": "string", "description": "DaemonSet name (required)"},
-			},
-			"required": []string{"namespace", "name"},
-		},
-		Destructive: false,
-		RequiresAI:  false,
-	},
-	{
-		Name:        "observe_job_detailed",
-		Category:    CategoryObservation,
-		Description: "Senior view of a Job: metadata, spec/status, completion, events, metrics, owner (CronJob if any), child pods, risk flags and recommendations.",
-		InputSchema: map[string]interface{}{
-			"type": "object",
-			"properties": map[string]interface{}{
-				"namespace": map[string]interface{}{"type": "string", "description": "Kubernetes namespace (required)"},
-				"name":      map[string]interface{}{"type": "string", "description": "Job name (required)"},
-			},
-			"required": []string{"namespace", "name"},
-		},
-		Destructive: false,
-		RequiresAI:  true,
-	},
-	{
-		Name:        "observe_job_events",
-		Category:    CategoryObservation,
-		Description: "Last N events for a specific Job. Use for diagnosing job failures or backoff.",
-		InputSchema: map[string]interface{}{
-			"type": "object",
-			"properties": map[string]interface{}{
-				"namespace": map[string]interface{}{"type": "string", "description": "Kubernetes namespace (required)"},
-				"name":      map[string]interface{}{"type": "string", "description": "Job name (required)"},
-				"limit":     map[string]interface{}{"type": "integer", "description": "Max events (default 10)"},
-			},
-			"required": []string{"namespace", "name"},
-		},
-		Destructive: false,
-		RequiresAI:  false,
-	},
-	{
-		Name:        "observe_job_ownership_chain",
-		Category:    CategoryObservation,
-		Description: "Job to parent (CronJob if any) and child Pods. Returns ownership chain and pod list.",
-		InputSchema: map[string]interface{}{
-			"type": "object",
-			"properties": map[string]interface{}{
-				"namespace": map[string]interface{}{"type": "string", "description": "Kubernetes namespace (required)"},
-				"name":      map[string]interface{}{"type": "string", "description": "Job name (required)"},
-			},
-			"required": []string{"namespace", "name"},
-		},
-		Destructive: false,
-		RequiresAI:  false,
-	},
-	{
-		Name:        "observe_cronjob_detailed",
-		Category:    CategoryObservation,
-		Description: "Senior view of a CronJob: metadata, schedule, suspend, last run, child Jobs, events, metrics, risk flags and recommendations.",
-		InputSchema: map[string]interface{}{
-			"type": "object",
-			"properties": map[string]interface{}{
-				"namespace": map[string]interface{}{"type": "string", "description": "Kubernetes namespace (required)"},
-				"name":      map[string]interface{}{"type": "string", "description": "CronJob name (required)"},
-			},
-			"required": []string{"namespace", "name"},
-		},
-		Destructive: false,
-		RequiresAI:  true,
-	},
-	{
-		Name:        "observe_cronjob_events",
-		Category:    CategoryObservation,
-		Description: "Last N events for a specific CronJob. Use for diagnosing schedule or trigger issues.",
-		InputSchema: map[string]interface{}{
-			"type": "object",
-			"properties": map[string]interface{}{
-				"namespace": map[string]interface{}{"type": "string", "description": "Kubernetes namespace (required)"},
-				"name":      map[string]interface{}{"type": "string", "description": "CronJob name (required)"},
-				"limit":     map[string]interface{}{"type": "integer", "description": "Max events (default 10)"},
-			},
-			"required": []string{"namespace", "name"},
-		},
-		Destructive: false,
-		RequiresAI:  false,
-	},
-	{
-		Name:        "observe_cronjob_ownership_chain",
-		Category:    CategoryObservation,
-		Description: "CronJob to child Jobs (no parent). Returns ownership chain and list of Jobs created by this CronJob.",
-		InputSchema: map[string]interface{}{
-			"type": "object",
-			"properties": map[string]interface{}{
-				"namespace": map[string]interface{}{"type": "string", "description": "Kubernetes namespace (required)"},
-				"name":      map[string]interface{}{"type": "string", "description": "CronJob name (required)"},
-			},
-			"required": []string{"namespace", "name"},
-		},
-		Destructive: false,
-		RequiresAI:  false,
-	},
-	{
-		Name:        "observe_pvc_detailed",
-		Category:    CategoryObservation,
-		Description: "Senior view of a PersistentVolumeClaim: metadata, spec (accessModes, requested storage, storageClassName), status (phase, capacity), events, relationships (consumers, bound_volume), risk_flags (PVC_PENDING, PVC_LOST).",
-		InputSchema: map[string]interface{}{
-			"type": "object",
-			"properties": map[string]interface{}{
-				"namespace": map[string]interface{}{"type": "string", "description": "Kubernetes namespace (required)"},
-				"name":      map[string]interface{}{"type": "string", "description": "PVC name (required)"},
-			},
-			"required": []string{"namespace", "name"},
-		},
-		Destructive: false,
-		RequiresAI:  true,
-	},
-	{
-		Name:        "observe_pvc_events",
-		Category:    CategoryObservation,
-		Description: "Last N events for a specific PersistentVolumeClaim. Use for diagnosing binding or provisioner issues.",
-		InputSchema: map[string]interface{}{
-			"type": "object",
-			"properties": map[string]interface{}{
-				"namespace": map[string]interface{}{"type": "string", "description": "Kubernetes namespace (required)"},
-				"name":      map[string]interface{}{"type": "string", "description": "PVC name (required)"},
-				"limit":     map[string]interface{}{"type": "integer", "description": "Max events (default 10)"},
+				"cluster_id": map[string]interface{}{"type": "string", "description": "Cluster ID (optional)"},
+				"namespace":  map[string]interface{}{"type": "string", "description": "Kubernetes namespace (required)"},
+				"name":       map[string]interface{}{"type": "string", "description": "PVC name (required)"},
 			},
 			"required": []string{"namespace", "name"},
 		},
@@ -781,58 +496,32 @@ var ToolTaxonomy = []ToolDefinition{
 		Destructive: false,
 		RequiresAI:  false,
 	},
+	// observe_pv_detailed + observe_pv_events retired 2026-04-22: folded into inspect_pv.
 	{
-		Name:        "observe_pv_detailed",
+		Name:        "inspect_pv",
 		Category:    CategoryObservation,
-		Description: "Senior view of a PersistentVolume (cluster-scoped): metadata, spec (capacity, accessModes, reclaimPolicy, storageClassName, claimRef), status (phase), events, relationships (claim, claim_exists), risk_flags (PV_AVAILABLE, PV_RELEASED, ORPHAN_PV).",
+		Description: "One-call deep dive into a PersistentVolume (cluster-scoped): spec (capacity, accessModes, reclaimPolicy, claimRef), status and recent events. Replaces observe_pv_detailed + observe_pv_events.",
 		InputSchema: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
-				"name": map[string]interface{}{"type": "string", "description": "PV name (required); PV is cluster-scoped (no namespace)"},
-			},
-			"required": []string{"name"},
-		},
-		Destructive: false,
-		RequiresAI:  true,
-	},
-	{
-		Name:        "observe_pv_events",
-		Category:    CategoryObservation,
-		Description: "Last N events for a specific PersistentVolume. Use for diagnosing provisioning or reclaim issues.",
-		InputSchema: map[string]interface{}{
-			"type": "object",
-			"properties": map[string]interface{}{
-				"name":  map[string]interface{}{"type": "string", "description": "PV name (required)"},
-				"limit": map[string]interface{}{"type": "integer", "description": "Max events (default 10)"},
+				"cluster_id": map[string]interface{}{"type": "string", "description": "Cluster ID (optional)"},
+				"name":       map[string]interface{}{"type": "string", "description": "PV name (required); cluster-scoped"},
 			},
 			"required": []string{"name"},
 		},
 		Destructive: false,
 		RequiresAI:  false,
 	},
+	// observe_storageclass_detailed + observe_storageclass_events retired 2026-04-22: folded into inspect_storageclass.
 	{
-		Name:        "observe_storageclass_detailed",
+		Name:        "inspect_storageclass",
 		Category:    CategoryObservation,
-		Description: "Senior view of a StorageClass (cluster-scoped): metadata, provisioner, parameters, allowVolumeExpansion, volumeBindingMode, events, relationships (pv_count), risk_flags (NO_PROVISIONER).",
+		Description: "One-call deep dive into a StorageClass (cluster-scoped): provisioner, parameters, volumeBindingMode, pv count and recent events. Replaces observe_storageclass_detailed + observe_storageclass_events.",
 		InputSchema: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
-				"name": map[string]interface{}{"type": "string", "description": "StorageClass name (required); cluster-scoped"},
-			},
-			"required": []string{"name"},
-		},
-		Destructive: false,
-		RequiresAI:  true,
-	},
-	{
-		Name:        "observe_storageclass_events",
-		Category:    CategoryObservation,
-		Description: "Last N events for a specific StorageClass. Use for diagnosing provisioner or admin changes.",
-		InputSchema: map[string]interface{}{
-			"type": "object",
-			"properties": map[string]interface{}{
-				"name":  map[string]interface{}{"type": "string", "description": "StorageClass name (required)"},
-				"limit": map[string]interface{}{"type": "integer", "description": "Max events (default 10)"},
+				"cluster_id": map[string]interface{}{"type": "string", "description": "Cluster ID (optional)"},
+				"name":       map[string]interface{}{"type": "string", "description": "StorageClass name (required); cluster-scoped"},
 			},
 			"required": []string{"name"},
 		},
@@ -883,10 +572,11 @@ var ToolTaxonomy = []ToolDefinition{
 		Destructive: false,
 		RequiresAI:  true,
 	},
+	// observe_role_detailed + observe_role_events retired 2026-04-22: folded into inspect_role.
 	{
-		Name:        "observe_role_detailed",
+		Name:        "inspect_role",
 		Category:    CategoryObservation,
-		Description: "Role detail: rules (verbs, resources), RoleBindings that reference this Role, risk flags (wildcard verbs/resources).",
+		Description: "One-call deep dive into a Role: rules, referencing RoleBindings and recent events. Replaces observe_role_detailed + observe_role_events.",
 		InputSchema: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
@@ -897,29 +587,13 @@ var ToolTaxonomy = []ToolDefinition{
 			"required": []string{"namespace", "name"},
 		},
 		Destructive: false,
-		RequiresAI:  true,
-	},
-	{
-		Name:        "observe_role_events",
-		Category:    CategoryObservation,
-		Description: "Last N events for a Role.",
-		InputSchema: map[string]interface{}{
-			"type": "object",
-			"properties": map[string]interface{}{
-				"cluster_id": map[string]interface{}{"type": "string", "description": "Cluster ID (optional)"},
-				"namespace":  map[string]interface{}{"type": "string", "description": "Namespace (required)"},
-				"name":       map[string]interface{}{"type": "string", "description": "Role name (required)"},
-				"limit":      map[string]interface{}{"type": "number", "description": "Max events (default 10)"},
-			},
-			"required": []string{"namespace", "name"},
-		},
-		Destructive: false,
 		RequiresAI:  false,
 	},
+	// observe_rolebinding_detailed + observe_rolebinding_events retired 2026-04-22: folded into inspect_rolebinding.
 	{
-		Name:        "observe_rolebinding_detailed",
+		Name:        "inspect_rolebinding",
 		Category:    CategoryObservation,
-		Description: "RoleBinding detail: roleRef, subjects, resolved Role/ClusterRole summary, risk flags (cluster-admin, overprivileged).",
+		Description: "One-call deep dive into a RoleBinding: roleRef, subjects, resolved Role/ClusterRole summary and recent events. Replaces observe_rolebinding_detailed + observe_rolebinding_events.",
 		InputSchema: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
@@ -930,29 +604,13 @@ var ToolTaxonomy = []ToolDefinition{
 			"required": []string{"namespace", "name"},
 		},
 		Destructive: false,
-		RequiresAI:  true,
-	},
-	{
-		Name:        "observe_rolebinding_events",
-		Category:    CategoryObservation,
-		Description: "Last N events for a RoleBinding.",
-		InputSchema: map[string]interface{}{
-			"type": "object",
-			"properties": map[string]interface{}{
-				"cluster_id": map[string]interface{}{"type": "string", "description": "Cluster ID (optional)"},
-				"namespace":  map[string]interface{}{"type": "string", "description": "Namespace (required)"},
-				"name":       map[string]interface{}{"type": "string", "description": "RoleBinding name (required)"},
-				"limit":      map[string]interface{}{"type": "number", "description": "Max events (default 10)"},
-			},
-			"required": []string{"namespace", "name"},
-		},
-		Destructive: false,
 		RequiresAI:  false,
 	},
+	// observe_clusterrole_detailed + observe_clusterrole_events retired 2026-04-22: folded into inspect_clusterrole.
 	{
-		Name:        "observe_clusterrole_detailed",
+		Name:        "inspect_clusterrole",
 		Category:    CategoryObservation,
-		Description: "ClusterRole detail (cluster-scoped): rules, ClusterRoleBindings that reference it, risk flags (cluster-admin, wildcards).",
+		Description: "One-call deep dive into a ClusterRole (cluster-scoped): rules, referencing ClusterRoleBindings and recent events. Replaces observe_clusterrole_detailed + observe_clusterrole_events.",
 		InputSchema: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
@@ -962,28 +620,13 @@ var ToolTaxonomy = []ToolDefinition{
 			"required": []string{"name"},
 		},
 		Destructive: false,
-		RequiresAI:  true,
-	},
-	{
-		Name:        "observe_clusterrole_events",
-		Category:    CategoryObservation,
-		Description: "Last N events for a ClusterRole.",
-		InputSchema: map[string]interface{}{
-			"type": "object",
-			"properties": map[string]interface{}{
-				"cluster_id": map[string]interface{}{"type": "string", "description": "Cluster ID (optional)"},
-				"name":       map[string]interface{}{"type": "string", "description": "ClusterRole name (required)"},
-				"limit":      map[string]interface{}{"type": "number", "description": "Max events (default 10)"},
-			},
-			"required": []string{"name"},
-		},
-		Destructive: false,
 		RequiresAI:  false,
 	},
+	// observe_clusterrolebinding_detailed + observe_clusterrolebinding_events retired 2026-04-22: folded into inspect_clusterrolebinding.
 	{
-		Name:        "observe_clusterrolebinding_detailed",
+		Name:        "inspect_clusterrolebinding",
 		Category:    CategoryObservation,
-		Description: "ClusterRoleBinding detail (cluster-scoped): roleRef, subjects, resolved ClusterRole, risk flags (cluster-admin to non-system SA).",
+		Description: "One-call deep dive into a ClusterRoleBinding (cluster-scoped): roleRef, subjects, resolved ClusterRole and recent events. Replaces observe_clusterrolebinding_detailed + observe_clusterrolebinding_events.",
 		InputSchema: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
@@ -993,51 +636,19 @@ var ToolTaxonomy = []ToolDefinition{
 			"required": []string{"name"},
 		},
 		Destructive: false,
-		RequiresAI:  true,
-	},
-	{
-		Name:        "observe_clusterrolebinding_events",
-		Category:    CategoryObservation,
-		Description: "Last N events for a ClusterRoleBinding.",
-		InputSchema: map[string]interface{}{
-			"type": "object",
-			"properties": map[string]interface{}{
-				"cluster_id": map[string]interface{}{"type": "string", "description": "Cluster ID (optional)"},
-				"name":       map[string]interface{}{"type": "string", "description": "ClusterRoleBinding name (required)"},
-				"limit":      map[string]interface{}{"type": "number", "description": "Max events (default 10)"},
-			},
-			"required": []string{"name"},
-		},
-		Destructive: false,
 		RequiresAI:  false,
 	},
+	// observe_secret_detailed + observe_secret_events retired 2026-04-22: folded into inspect_secret.
 	{
-		Name:        "observe_secret_detailed",
+		Name:        "inspect_secret",
 		Category:    CategoryObservation,
-		Description: "Secret detail: metadata, type, data keys (values redacted), consumers, TLS info when applicable, risk flags.",
+		Description: "One-call deep dive into a Secret: metadata, type, data keys (values redacted), TLS info and recent events. Replaces observe_secret_detailed + observe_secret_events.",
 		InputSchema: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
 				"cluster_id": map[string]interface{}{"type": "string", "description": "Cluster ID (optional)"},
 				"namespace":  map[string]interface{}{"type": "string", "description": "Namespace (required)"},
 				"name":       map[string]interface{}{"type": "string", "description": "Secret name (required)"},
-			},
-			"required": []string{"namespace", "name"},
-		},
-		Destructive: false,
-		RequiresAI:  true,
-	},
-	{
-		Name:        "observe_secret_events",
-		Category:    CategoryObservation,
-		Description: "Last N events for a Secret.",
-		InputSchema: map[string]interface{}{
-			"type": "object",
-			"properties": map[string]interface{}{
-				"cluster_id": map[string]interface{}{"type": "string", "description": "Cluster ID (optional)"},
-				"namespace":  map[string]interface{}{"type": "string", "description": "Namespace (required)"},
-				"name":       map[string]interface{}{"type": "string", "description": "Secret name (required)"},
-				"limit":      map[string]interface{}{"type": "number", "description": "Max events (default 10)"},
 			},
 			"required": []string{"namespace", "name"},
 		},
@@ -1061,33 +672,17 @@ var ToolTaxonomy = []ToolDefinition{
 		RequiresAI:  false,
 	},
 	// Resources: ConfigMaps, LimitRanges, ResourceQuotas, HPA, PDB (Layer 1)
+	// observe_configmap_detailed + observe_configmap_events retired 2026-04-22: folded into inspect_configmap.
 	{
-		Name:        "observe_configmap_detailed",
+		Name:        "inspect_configmap",
 		Category:    CategoryObservation,
-		Description: "ConfigMap detail: metadata, data keys (no values), consumers (pods/deployments), events, risk flags (UNUSED_CONFIGMAP, MANY_CONSUMERS). PRD: observe_configmap_usage.",
+		Description: "One-call deep dive into a ConfigMap: metadata, data keys, consumers and recent events. Replaces observe_configmap_detailed + observe_configmap_events.",
 		InputSchema: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
 				"cluster_id": map[string]interface{}{"type": "string", "description": "Cluster ID (optional)"},
 				"namespace":  map[string]interface{}{"type": "string", "description": "Namespace (required)"},
 				"name":       map[string]interface{}{"type": "string", "description": "ConfigMap name (required)"},
-			},
-			"required": []string{"namespace", "name"},
-		},
-		Destructive: false,
-		RequiresAI:  true,
-	},
-	{
-		Name:        "observe_configmap_events",
-		Category:    CategoryObservation,
-		Description: "Last N events for a ConfigMap.",
-		InputSchema: map[string]interface{}{
-			"type": "object",
-			"properties": map[string]interface{}{
-				"cluster_id": map[string]interface{}{"type": "string", "description": "Cluster ID (optional)"},
-				"namespace":  map[string]interface{}{"type": "string", "description": "Namespace (required)"},
-				"name":       map[string]interface{}{"type": "string", "description": "ConfigMap name (required)"},
-				"limit":      map[string]interface{}{"type": "number", "description": "Max events (default 10)"},
 			},
 			"required": []string{"namespace", "name"},
 		},
@@ -1110,10 +705,11 @@ var ToolTaxonomy = []ToolDefinition{
 		Destructive: false,
 		RequiresAI:  false,
 	},
+	// observe_limitrange_detailed + observe_limitrange_events retired 2026-04-22: folded into inspect_limitrange.
 	{
-		Name:        "observe_limitrange_detailed",
+		Name:        "inspect_limitrange",
 		Category:    CategoryObservation,
-		Description: "LimitRange detail: metadata, spec (limits: type, default, defaultRequest, max, min), events. No metrics.",
+		Description: "One-call deep dive into a LimitRange: spec (limits: type, default, defaultRequest, max, min) and recent events. Replaces observe_limitrange_detailed + observe_limitrange_events.",
 		InputSchema: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
@@ -1124,29 +720,13 @@ var ToolTaxonomy = []ToolDefinition{
 			"required": []string{"namespace", "name"},
 		},
 		Destructive: false,
-		RequiresAI:  true,
-	},
-	{
-		Name:        "observe_limitrange_events",
-		Category:    CategoryObservation,
-		Description: "Last N events for a LimitRange.",
-		InputSchema: map[string]interface{}{
-			"type": "object",
-			"properties": map[string]interface{}{
-				"cluster_id": map[string]interface{}{"type": "string", "description": "Cluster ID (optional)"},
-				"namespace":  map[string]interface{}{"type": "string", "description": "Namespace (required)"},
-				"name":       map[string]interface{}{"type": "string", "description": "LimitRange name (required)"},
-				"limit":      map[string]interface{}{"type": "number", "description": "Max events (default 10)"},
-			},
-			"required": []string{"namespace", "name"},
-		},
-		Destructive: false,
 		RequiresAI:  false,
 	},
+	// observe_resourcequota_detailed + observe_resourcequota_events retired 2026-04-22: folded into inspect_resourcequota.
 	{
-		Name:        "observe_resourcequota_detailed",
+		Name:        "inspect_resourcequota",
 		Category:    CategoryObservation,
-		Description: "ResourceQuota detail: metadata, spec (hard), status (used), events, risk QUOTA_EXHAUSTED when used >= hard.",
+		Description: "One-call deep dive into a ResourceQuota: spec (hard), status (used) and recent events. Replaces observe_resourcequota_detailed + observe_resourcequota_events.",
 		InputSchema: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
@@ -1157,29 +737,13 @@ var ToolTaxonomy = []ToolDefinition{
 			"required": []string{"namespace", "name"},
 		},
 		Destructive: false,
-		RequiresAI:  true,
-	},
-	{
-		Name:        "observe_resourcequota_events",
-		Category:    CategoryObservation,
-		Description: "Last N events for a ResourceQuota.",
-		InputSchema: map[string]interface{}{
-			"type": "object",
-			"properties": map[string]interface{}{
-				"cluster_id": map[string]interface{}{"type": "string", "description": "Cluster ID (optional)"},
-				"namespace":  map[string]interface{}{"type": "string", "description": "Namespace (required)"},
-				"name":       map[string]interface{}{"type": "string", "description": "ResourceQuota name (required)"},
-				"limit":      map[string]interface{}{"type": "number", "description": "Max events (default 10)"},
-			},
-			"required": []string{"namespace", "name"},
-		},
-		Destructive: false,
 		RequiresAI:  false,
 	},
+	// observe_hpa_detailed + observe_hpa_events retired 2026-04-22: folded into inspect_hpa.
 	{
-		Name:        "observe_hpa_detailed",
+		Name:        "inspect_hpa",
 		Category:    CategoryObservation,
-		Description: "HorizontalPodAutoscaler detail: metadata, spec (minReplicas, maxReplicas, scaleTargetRef), status (current/desiredReplicas), events, scale_target relationship, risk HPA_AT_MAX, HPA_AT_MIN, TARGET_NOT_FOUND.",
+		Description: "One-call deep dive into a HorizontalPodAutoscaler: spec (minReplicas/maxReplicas/scaleTargetRef), status and recent events. Replaces observe_hpa_detailed + observe_hpa_events.",
 		InputSchema: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
@@ -1190,52 +754,19 @@ var ToolTaxonomy = []ToolDefinition{
 			"required": []string{"namespace", "name"},
 		},
 		Destructive: false,
-		RequiresAI:  true,
-	},
-	{
-		Name:        "observe_hpa_events",
-		Category:    CategoryObservation,
-		Description: "Last N events for a HorizontalPodAutoscaler.",
-		InputSchema: map[string]interface{}{
-			"type": "object",
-			"properties": map[string]interface{}{
-				"cluster_id": map[string]interface{}{"type": "string", "description": "Cluster ID (optional)"},
-				"namespace":  map[string]interface{}{"type": "string", "description": "Namespace (required)"},
-				"name":       map[string]interface{}{"type": "string", "description": "HPA name (required)"},
-				"limit":      map[string]interface{}{"type": "number", "description": "Max events (default 10)"},
-			},
-			"required": []string{"namespace", "name"},
-		},
-		Destructive: false,
 		RequiresAI:  false,
 	},
+	// observe_pdb_detailed + observe_pdb_events retired 2026-04-22: folded into inspect_pdb.
 	{
-		Name:        "observe_pdb_detailed",
+		Name:        "inspect_pdb",
 		Category:    CategoryObservation,
-		Description: "PodDisruptionBudget detail: metadata, spec (minAvailable, maxUnavailable, selector), status (currentHealthy, desiredHealthy, disruptedPodsAllowed), events, matching_pods_count, risk PDB_BLOCKING_DRAIN.",
+		Description: "One-call deep dive into a PodDisruptionBudget: spec (minAvailable/maxUnavailable/selector), status and recent events. Replaces observe_pdb_detailed + observe_pdb_events.",
 		InputSchema: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
 				"cluster_id": map[string]interface{}{"type": "string", "description": "Cluster ID (optional)"},
 				"namespace":  map[string]interface{}{"type": "string", "description": "Namespace (required)"},
 				"name":       map[string]interface{}{"type": "string", "description": "PDB name (required)"},
-			},
-			"required": []string{"namespace", "name"},
-		},
-		Destructive: false,
-		RequiresAI:  true,
-	},
-	{
-		Name:        "observe_pdb_events",
-		Category:    CategoryObservation,
-		Description: "Last N events for a PodDisruptionBudget.",
-		InputSchema: map[string]interface{}{
-			"type": "object",
-			"properties": map[string]interface{}{
-				"cluster_id": map[string]interface{}{"type": "string", "description": "Cluster ID (optional)"},
-				"namespace":  map[string]interface{}{"type": "string", "description": "Namespace (required)"},
-				"name":       map[string]interface{}{"type": "string", "description": "PDB name (required)"},
-				"limit":      map[string]interface{}{"type": "number", "description": "Max events (default 10)"},
 			},
 			"required": []string{"namespace", "name"},
 		},
@@ -1243,33 +774,17 @@ var ToolTaxonomy = []ToolDefinition{
 		RequiresAI:  false,
 	},
 	// Scaling: VerticalPodAutoscalers (VPA)
+	// observe_vpa_detailed + observe_vpa_events retired 2026-04-22: folded into inspect_vpa.
 	{
-		Name:        "observe_vpa_detailed",
+		Name:        "inspect_vpa",
 		Category:    CategoryObservation,
-		Description: "VerticalPodAutoscaler detail: metadata, spec (targetRef, updatePolicy, resourcePolicy), status summary, events, target relationship, risk TARGET_NOT_FOUND, VPA_OFF.",
+		Description: "One-call deep dive into a VerticalPodAutoscaler: spec (targetRef, updatePolicy, resourcePolicy), status and recent events. Replaces observe_vpa_detailed + observe_vpa_events.",
 		InputSchema: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
 				"cluster_id": map[string]interface{}{"type": "string", "description": "Cluster ID (optional)"},
 				"namespace":  map[string]interface{}{"type": "string", "description": "Namespace (required)"},
 				"name":       map[string]interface{}{"type": "string", "description": "VPA name (required)"},
-			},
-			"required": []string{"namespace", "name"},
-		},
-		Destructive: false,
-		RequiresAI:  true,
-	},
-	{
-		Name:        "observe_vpa_events",
-		Category:    CategoryObservation,
-		Description: "Last N events for a VerticalPodAutoscaler.",
-		InputSchema: map[string]interface{}{
-			"type": "object",
-			"properties": map[string]interface{}{
-				"cluster_id": map[string]interface{}{"type": "string", "description": "Cluster ID (optional)"},
-				"namespace":  map[string]interface{}{"type": "string", "description": "Namespace (required)"},
-				"name":       map[string]interface{}{"type": "string", "description": "VPA name (required)"},
-				"limit":      map[string]interface{}{"type": "number", "description": "Max events (default 10)"},
 			},
 			"required": []string{"namespace", "name"},
 		},
@@ -1283,10 +798,11 @@ var ToolTaxonomy = []ToolDefinition{
 		Destructive: false,
 		RequiresAI:  false,
 	},
+	// observe_crd_detailed + observe_crd_events retired 2026-04-22: folded into inspect_crd.
 	{
-		Name:        "observe_crd_detailed",
+		Name:        "inspect_crd",
 		Category:    CategoryObservation,
-		Description: "Get a single CustomResourceDefinition by name: spec (group, names, scope, versions), status, events, relationships (instances_count), risk flags.",
+		Description: "One-call deep dive into a CustomResourceDefinition (cluster-scoped): spec (group, names, scope, versions), instances count and recent events. Replaces observe_crd_detailed + observe_crd_events.",
 		InputSchema: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
@@ -1296,23 +812,7 @@ var ToolTaxonomy = []ToolDefinition{
 			"required": []string{"name"},
 		},
 		Destructive: false,
-		RequiresAI:  true,
-	},
-	{
-		Name:        "observe_crd_events",
-		Category:    CategoryObservation,
-		Description: "Get events for a CustomResourceDefinition (cluster-scoped) by name.",
-		InputSchema: map[string]interface{}{
-			"type": "object",
-			"properties": map[string]interface{}{
-				"cluster_id": map[string]interface{}{"type": "string", "description": "Cluster ID (optional)"},
-				"name":       map[string]interface{}{"type": "string", "description": "CustomResourceDefinition name (required)"},
-				"limit":      map[string]interface{}{"type": "integer", "description": "Max events (default 10)"},
-			},
-			"required": []string{"name"},
-		},
-		Destructive: false,
-		RequiresAI:  true,
+		RequiresAI:  false,
 	},
 	{
 		Name:        "observe_custom_resources",
