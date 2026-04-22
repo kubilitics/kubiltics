@@ -265,6 +265,7 @@ func renderHTMLv2(w io.Writer, suite string, junit *junitSuite, traces map[strin
 		t := traces[id]
 		badge := `<span class="badge-incomplete">INCOMPLETE</span>`
 		errHTML := ""
+		var judge *judgeScore
 		if c, ok := caseByName[id]; ok {
 			if c.Failure != nil {
 				badge = `<span class="badge-fail">FAIL</span>`
@@ -272,6 +273,7 @@ func renderHTMLv2(w io.Writer, suite string, junit *junitSuite, traces map[strin
 			} else {
 				badge = `<span class="badge-pass">PASS</span>`
 			}
+			judge = parseJudgeFromSystemOut(c.SystemOut)
 		}
 		latMs := traceDurationMs(t)
 
@@ -309,9 +311,26 @@ func renderHTMLv2(w io.Writer, suite string, junit *junitSuite, traces map[strin
 			answerHTML = fmt.Sprintf(`<div class="wt-answer"><span class="wt-label">Assistant answered</span><div class="wt-answer-text">%s</div></div>`, htmlEscape(answer))
 		}
 
+		judgeSummaryHTML := ""
+		judgeCardHTML := ""
+		if judge != nil {
+			judgeSummaryHTML = fmt.Sprintf(` · judge <strong>%.1f</strong>`, judge.Mean())
+			judgeCardHTML = fmt.Sprintf(`<div class="wt-judge"><span class="wt-label">LLM-as-judge</span>
+<div class="wt-judge-row">
+  <span class="wt-judge-metric">factual <strong>%d</strong>/5</span>
+  <span class="wt-judge-metric">completeness <strong>%d</strong>/5</span>
+  <span class="wt-judge-metric">clarity <strong>%d</strong>/5</span>
+  <span class="wt-judge-metric">tool_use <strong>%d</strong>/5</span>
+  <span class="wt-judge-metric">mean <strong>%.1f</strong></span>
+</div>
+<div class="wt-judge-critique">%s</div>
+</div>`, judge.Factual, judge.Completeness, judge.Clarity, judge.ToolUse, judge.Mean(), htmlEscape(judge.Critique))
+		}
+
 		fmt.Fprintf(w, `<details class="walkthrough">
-<summary><span class="wt-id">%s</span><span class="wt-stat">%s · %d ms · %d tools · $%.5f</span></summary>
+<summary><span class="wt-id">%s</span><span class="wt-stat">%s · %d ms · %d tools · $%.5f%s</span></summary>
 <div class="wt-body">
+%s
 %s
 %s
 %s
@@ -319,8 +338,8 @@ func renderHTMLv2(w io.Writer, suite string, junit *junitSuite, traces map[strin
 <details class="wt-raw"><summary>raw stage log</summary><ul class="stage-list">%s</ul></details>
 %s
 </div>
-</details>`, htmlEscape(id), badge, latMs, len(tools), t.USD,
-			questionHTML, scenarioHTML, journeyHTML, answerHTML,
+</details>`, htmlEscape(id), badge, latMs, len(tools), t.USD, judgeSummaryHTML,
+			questionHTML, scenarioHTML, journeyHTML, answerHTML, judgeCardHTML,
 			stagesPretty(t.Stages), errHTML)
 	}
 	fmt.Fprint(w, `</section>`)

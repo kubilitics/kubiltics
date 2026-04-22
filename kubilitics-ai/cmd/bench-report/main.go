@@ -40,9 +40,41 @@ type junitSuite struct {
 	Cases    []junitCase `xml:"testcase"`
 }
 type junitCase struct {
-	Name    string        `xml:"name,attr"`
-	Time    float64       `xml:"time,attr"`
-	Failure *junitFailure `xml:"failure,omitempty"`
+	Name      string        `xml:"name,attr"`
+	Time      float64       `xml:"time,attr"`
+	Failure   *junitFailure `xml:"failure,omitempty"`
+	SystemOut string        `xml:"system-out,omitempty"`
+}
+
+// judgeScore is parsed from <system-out>judge=<JSON> when
+// chat-quality-bench was run with --judge-base-url. Fields mirror the
+// JSON emitted by cmd/chat-quality-bench/judge.go.
+type judgeScore struct {
+	Factual      int    `json:"factual"`
+	Completeness int    `json:"completeness"`
+	Clarity      int    `json:"clarity"`
+	ToolUse      int    `json:"tool_use"`
+	Critique     string `json:"critique"`
+}
+
+func (j judgeScore) Mean() float64 {
+	return float64(j.Factual+j.Completeness+j.Clarity+j.ToolUse) / 4.0
+}
+
+// parseJudgeFromSystemOut finds the "judge=<JSON>" fragment in a
+// JUnit <system-out> block and parses it. Returns nil if absent.
+func parseJudgeFromSystemOut(systemOut string) *judgeScore {
+	systemOut = strings.TrimSpace(systemOut)
+	idx := strings.Index(systemOut, "judge=")
+	if idx < 0 {
+		return nil
+	}
+	blob := strings.TrimSpace(systemOut[idx+len("judge="):])
+	var j judgeScore
+	if err := json.Unmarshal([]byte(blob), &j); err != nil {
+		return nil
+	}
+	return &j
 }
 type junitFailure struct {
 	Message string `xml:"message,attr"`
