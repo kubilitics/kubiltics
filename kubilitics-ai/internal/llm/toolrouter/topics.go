@@ -355,6 +355,18 @@ var toolTopicOverrides = map[string][]Topic{
 	"observe_secrets_usage":           {TopicSecurity, TopicCore},
 	"observe_ingresses_by_tls_expiry": {TopicNetworking, TopicSecurity},
 
+	// Phase 3 Category 3 planning tools.
+	"plan_scale_deployment":     {TopicCapacity, TopicWorkloads},
+	"plan_drain_node":           {TopicNodes, TopicCapacity},
+	"plan_rollout_safety":       {TopicWorkloads, TopicChange},
+	"plan_cost_reduction":       {TopicCost, TopicCapacity},
+	"plan_ha_upgrade":           {TopicWorkloads, TopicCapacity},
+	"plan_resource_quota":       {TopicCapacity, TopicCore},
+	"plan_psa_enforcement":      {TopicSecurity, TopicCore},
+	"plan_image_pull_secrets":   {TopicSecurity, TopicCore},
+	"plan_backup_coverage":      {TopicStorage, TopicWorkloads},
+	"plan_pdb_coverage":         {TopicWorkloads, TopicCapacity},
+
 	// Phase 3 Category 2 root-cause diagnostics.
 	"diagnose_pod_not_ready":            {TopicPods, TopicEvents},
 	"diagnose_service_no_endpoints":     {TopicNetworking, TopicPods},

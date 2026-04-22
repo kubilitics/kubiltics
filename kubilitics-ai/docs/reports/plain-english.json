@@ -38,5 +38,15 @@
   "diagnose_node_unschedulable": "Tells you why pods won't land on a node — cordoned, tainted, or under memory/disk/PID pressure.",
   "diagnose_hpa_not_scaling": "Why isn't the autoscaler scaling? Checks min=max, missing metrics, and unreachable targets in conditions.",
   "diagnose_networkpolicy_blocking": "Detects default-deny network policies and flags when a manual trace is needed to decide if a specific flow is blocked.",
-  "diagnose_certificate_failures": "Lists cert-manager Certificate and CertificateRequest failure events in the window, with reasons."
+  "diagnose_certificate_failures": "Lists cert-manager Certificate and CertificateRequest failure events in the window, with reasons.",
+  "plan_scale_deployment": "Given observed load, tells you what replica count would put utilization in the healthy band — and flags when HPA is maxed out.",
+  "plan_drain_node": "Before you drain a node, see which pods would evict, which PDBs you'd break, and whether other nodes can absorb the work.",
+  "plan_rollout_safety": "Estimates how risky rolling out a new image tag is — who consumes this service, are replicas ready, what's the safe canary percentage.",
+  "plan_cost_reduction": "Looks for idle nodes, orphaned persistent volumes, and over-replicated workloads so you can cut spend without pain.",
+  "plan_ha_upgrade": "Finds single-replica workloads that would die if a node blinks, and tells you how to make them highly-available.",
+  "plan_resource_quota": "Suggests ResourceQuota limits per namespace based on what each one actually uses today, padded for growth.",
+  "plan_psa_enforcement": "Which namespaces can safely tighten to restricted pod security? Names the pods that would need to change first.",
+  "plan_image_pull_secrets": "Finds the same pull secret cloned across many namespaces and recommends a consolidated pattern.",
+  "plan_backup_coverage": "Lists workloads that store data in PVCs but have no backup label or schedule — backup gaps you probably didn't know about.",
+  "plan_pdb_coverage": "Deployments and StatefulSets with multiple replicas that lack a PodDisruptionBudget, with a suggested minAvailable for each."
 }

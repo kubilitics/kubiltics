@@ -1574,6 +1574,20 @@ var ToolTaxonomy = []ToolDefinition{
 		RequiresAI:  true,
 	},
 
+	// === PLANNING TOOLS — Phase 3 C3 (10 tools) ===
+	// "What would happen if?" planners — gather state and emit a
+	// planning_hint for the LLM to narrate. Autonomy Level: 2 (Recommend).
+	{Name: "plan_scale_deployment", Category: CategoryRecommendation, Description: "Plan a replica-count change for a deployment using observed CPU/memory utilization and HPA constraints.", Destructive: false, RequiresAI: true, RequiredAutonomyLevel: 2},
+	{Name: "plan_drain_node", Category: CategoryRecommendation, Description: "What would happen if we drained this node? Lists evictions, PDB conflicts, singletons, and other-node capacity.", Destructive: false, RequiresAI: true, RequiredAutonomyLevel: 2},
+	{Name: "plan_rollout_safety", Category: CategoryRecommendation, Description: "Estimate blast radius of rolling out a new image tag for a deployment. Recommends canary %, maxSurge, and pre-flight checks.", Destructive: false, RequiresAI: true, RequiredAutonomyLevel: 2},
+	{Name: "plan_cost_reduction", Category: CategoryRecommendation, Description: "Identify cost-reduction candidates: idle nodes, Released PVs, over-replicated workloads, rightsizing opportunities.", Destructive: false, RequiresAI: true, RequiredAutonomyLevel: 2},
+	{Name: "plan_ha_upgrade", Category: CategoryRecommendation, Description: "Find singletons (replicas=1 without PDB/anti-affinity) and recommend a zero-downtime HA upgrade per workload.", Destructive: false, RequiresAI: true, RequiredAutonomyLevel: 2},
+	{Name: "plan_resource_quota", Category: CategoryRecommendation, Description: "Suggest ResourceQuota values per namespace based on 30-day observed usage (CPU/memory/pod/PVC counts).", Destructive: false, RequiresAI: true, RequiredAutonomyLevel: 2},
+	{Name: "plan_psa_enforcement", Category: CategoryRecommendation, Description: "Which namespaces can safely move to pod-security.kubernetes.io/enforce=restricted? Flags which pods would violate.", Destructive: false, RequiresAI: true, RequiredAutonomyLevel: 2},
+	{Name: "plan_image_pull_secrets", Category: CategoryRecommendation, Description: "Find duplicate pull secrets across namespaces and suggest consolidation patterns.", Destructive: false, RequiresAI: true, RequiredAutonomyLevel: 2},
+	{Name: "plan_backup_coverage", Category: CategoryRecommendation, Description: "Identify stateful workloads whose PVCs lack backup annotations/labels. Prioritizes StatefulSets over Deployments.", Destructive: false, RequiresAI: true, RequiredAutonomyLevel: 2},
+	{Name: "plan_pdb_coverage", Category: CategoryRecommendation, Description: "Deployments / StatefulSets with replicas>=2 and no matching PDB. Suggests minAvailable for each.", Destructive: false, RequiresAI: true, RequiredAutonomyLevel: 2},
+
 	// === TROUBLESHOOTING TOOLS (7 tools) ===
 	// Problem detection and resolution
 	// Autonomy Level: 2 (Recommend)

@@ -1861,6 +1861,10 @@ func (s *mcpServerImpl) routeRecommendationTool(ctx context.Context, name string
 		base["recommendation_hint"] = "Deployments without HPA and variable load → suggest HPA with CPU/memory targets. Predictable load → KEDA event-driven autoscaling."
 
 	default:
+		// Phase 3 Category 3 planning tools — handled in handlers_plan.go.
+		if out, matched, err := s.handlePlanRoute(ctx, name, args); matched {
+			return out, err
+		}
 		// For remaining recommendation tools, return cluster overview
 		var overview map[string]interface{}
 		_ = c.get(ctx, c.clusterPath(clusterID, "/overview"), &overview)
