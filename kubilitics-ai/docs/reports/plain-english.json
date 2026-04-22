@@ -18,5 +18,15 @@
   "analyze_deployment_health": "Checks if deployments have the right number of ready replicas and flags ones that are degraded.",
   "analyze_node_pressure": "Looks for nodes under CPU / memory / disk pressure that might start evicting pods.",
   "analyze_rbac_permissions": "Reviews who has access to what in the cluster and flags overly-broad bindings.",
-  "analyze_storage_health": "Checks persistent-volume claims — are they bound, are they full, are any in an error state."
+  "analyze_storage_health": "Checks persistent-volume claims — are they bound, are they full, are any in an error state.",
+  "observe_flapping_services": "Finds services whose endpoints keep churning — a sign pods behind them are unstable or being rescheduled.",
+  "observe_noisy_neighbors": "Shows pods eating more than 80% of a node's CPU or memory — the ones starving their neighbors.",
+  "observe_unhealthy_probes": "Lists pods whose liveness or readiness probes are failing right now, grouped so the noise is denoised.",
+  "observe_missing_probes": "Flags workloads whose containers have neither liveness nor readiness probes — you're flying blind there.",
+  "observe_orphaned_pods": "Finds pods whose owning ReplicaSet or Job is gone — leftovers from a partial delete or controller bug.",
+  "observe_stuck_rollouts": "Surfaces deployments that have been 'progressing' for more than ten minutes without any new replicas becoming ready.",
+  "observe_high_cardinality_labels": "Would flag label keys with more than a thousand distinct values (Prometheus risk); backend index not yet available.",
+  "observe_restart_storms": "Lists containers whose cumulative restart count is above threshold — the ones CrashLoopBackOff-ing hardest.",
+  "observe_pending_scheduler_events": "Shows recent FailedScheduling events so you can see which pods can't land and why — taint, affinity, or capacity.",
+  "observe_zombie_finalizers": "Finds resources stuck in Terminating longer than ten minutes because a finalizer won't release them."
 }

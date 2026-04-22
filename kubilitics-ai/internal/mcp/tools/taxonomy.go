@@ -952,6 +952,160 @@ var ToolTaxonomy = []ToolDefinition{
 		RequiresAI:  false,
 	},
 
+	// === OBSERVABILITY AGGREGATORS — Phase 3 C1 (10 tools) ===
+	// Cluster-wide health signals that per-resource observation tools can't
+	// answer directly. All are read-only; many degrade gracefully when the
+	// underlying backend endpoint is absent so the LLM can narrate the gap.
+	{
+		Name:        "observe_flapping_services",
+		Category:    CategoryObservation,
+		Description: "Find services whose endpoint set churned more than `threshold` times in the last `window_minutes`. Reveals services whose backends are unstable under the hood.",
+		InputSchema: map[string]interface{}{
+			"type": "object",
+			"properties": map[string]interface{}{
+				"cluster_id":     map[string]interface{}{"type": "string"},
+				"namespace":      map[string]interface{}{"type": "string"},
+				"window_minutes": map[string]interface{}{"type": "integer", "description": "Look-back window (default 15)"},
+				"threshold":      map[string]interface{}{"type": "integer", "description": "Churn-count minimum (default 5)"},
+			},
+		},
+		Destructive: false,
+		RequiresAI:  false,
+	},
+	{
+		Name:        "observe_noisy_neighbors",
+		Category:    CategoryObservation,
+		Description: "Pods using more than `cpu_threshold_pct`/`mem_threshold_pct` of their node's capacity. Uses /metrics/summary aggregate. Great for 'who is starving my tenants?' questions.",
+		InputSchema: map[string]interface{}{
+			"type": "object",
+			"properties": map[string]interface{}{
+				"cluster_id":        map[string]interface{}{"type": "string"},
+				"cpu_threshold_pct": map[string]interface{}{"type": "integer", "description": "CPU utilization threshold (default 80)"},
+				"mem_threshold_pct": map[string]interface{}{"type": "integer", "description": "Memory utilization threshold (default 80)"},
+			},
+		},
+		Destructive: false,
+		RequiresAI:  false,
+	},
+	{
+		Name:        "observe_unhealthy_probes",
+		Category:    CategoryObservation,
+		Description: "Pods whose liveness/readiness probes fired Unhealthy / ProbeWarning / ContainerNotReady events in the window. Aggregated by pod+reason for a denoised view.",
+		InputSchema: map[string]interface{}{
+			"type": "object",
+			"properties": map[string]interface{}{
+				"cluster_id":     map[string]interface{}{"type": "string"},
+				"namespace":      map[string]interface{}{"type": "string"},
+				"window_minutes": map[string]interface{}{"type": "integer", "description": "Look-back window (default 60)"},
+			},
+		},
+		Destructive: false,
+		RequiresAI:  false,
+	},
+	{
+		Name:        "observe_missing_probes",
+		Category:    CategoryObservation,
+		Description: "Workloads (Deployment/StatefulSet/DaemonSet) whose containers have NEITHER liveness NOR readiness probes. The canonical 'you're flying blind here' hygiene check.",
+		InputSchema: map[string]interface{}{
+			"type": "object",
+			"properties": map[string]interface{}{
+				"cluster_id": map[string]interface{}{"type": "string"},
+				"namespace":  map[string]interface{}{"type": "string"},
+			},
+		},
+		Destructive: false,
+		RequiresAI:  false,
+	},
+	{
+		Name:        "observe_orphaned_pods",
+		Category:    CategoryObservation,
+		Description: "Pods whose ownerReference points at a ReplicaSet/Job that no longer exists. Indicates a controller bug or partial deletion. Owner-existence cached per call.",
+		InputSchema: map[string]interface{}{
+			"type": "object",
+			"properties": map[string]interface{}{
+				"cluster_id": map[string]interface{}{"type": "string"},
+				"namespace":  map[string]interface{}{"type": "string"},
+			},
+		},
+		Destructive: false,
+		RequiresAI:  false,
+	},
+	{
+		Name:        "observe_stuck_rollouts",
+		Category:    CategoryObservation,
+		Description: "Deployments whose Progressing condition hasn't advanced in `stuck_minutes` AND ready<desired. Points straight at the rollouts that need human attention.",
+		InputSchema: map[string]interface{}{
+			"type": "object",
+			"properties": map[string]interface{}{
+				"cluster_id":    map[string]interface{}{"type": "string"},
+				"namespace":     map[string]interface{}{"type": "string"},
+				"stuck_minutes": map[string]interface{}{"type": "integer", "description": "Transition-age cutoff (default 10)"},
+			},
+		},
+		Destructive: false,
+		RequiresAI:  false,
+	},
+	{
+		Name:        "observe_high_cardinality_labels",
+		Category:    CategoryObservation,
+		Description: "Label keys whose distinct-value count exceeds `threshold` cluster-wide (Prometheus cardinality risk). Currently degrades gracefully — backend label-cardinality index not yet exposed.",
+		InputSchema: map[string]interface{}{
+			"type": "object",
+			"properties": map[string]interface{}{
+				"cluster_id": map[string]interface{}{"type": "string"},
+				"threshold":  map[string]interface{}{"type": "integer", "description": "Cardinality threshold (default 1000)"},
+			},
+		},
+		Destructive: false,
+		RequiresAI:  false,
+	},
+	{
+		Name:        "observe_restart_storms",
+		Category:    CategoryObservation,
+		Description: "Containers whose cumulative restartCount is above `threshold`. Note: restartCount is cumulative since pod start; no per-window history is available from backend today.",
+		InputSchema: map[string]interface{}{
+			"type": "object",
+			"properties": map[string]interface{}{
+				"cluster_id": map[string]interface{}{"type": "string"},
+				"namespace":  map[string]interface{}{"type": "string"},
+				"threshold":  map[string]interface{}{"type": "integer", "description": "Restart-count minimum (default 5)"},
+			},
+		},
+		Destructive: false,
+		RequiresAI:  false,
+	},
+	{
+		Name:        "observe_pending_scheduler_events",
+		Category:    CategoryObservation,
+		Description: "Pending pods that emitted FailedScheduling events in the window. Answers 'why won't this pod land?' — taint / affinity / capacity reason comes from message field.",
+		InputSchema: map[string]interface{}{
+			"type": "object",
+			"properties": map[string]interface{}{
+				"cluster_id":     map[string]interface{}{"type": "string"},
+				"namespace":      map[string]interface{}{"type": "string"},
+				"window_minutes": map[string]interface{}{"type": "integer", "description": "Look-back window (default 60)"},
+			},
+		},
+		Destructive: false,
+		RequiresAI:  false,
+	},
+	{
+		Name:        "observe_zombie_finalizers",
+		Category:    CategoryObservation,
+		Description: "Resources whose deletionTimestamp is older than `stuck_minutes` — strong signal a finalizer is holding them in Terminating. Default kinds: pods, namespaces, pvcs.",
+		InputSchema: map[string]interface{}{
+			"type": "object",
+			"properties": map[string]interface{}{
+				"cluster_id":    map[string]interface{}{"type": "string"},
+				"namespace":     map[string]interface{}{"type": "string"},
+				"stuck_minutes": map[string]interface{}{"type": "integer", "description": "Terminating-age cutoff (default 10)"},
+				"kinds":         map[string]interface{}{"type": "array", "items": map[string]interface{}{"type": "string"}, "description": "Override kinds to scan (default pods/namespaces/pvcs)"},
+			},
+		},
+		Destructive: false,
+		RequiresAI:  false,
+	},
+
 	// === DEEP ANALYSIS TOOLS (12 tools) ===
 	// === DEEP ANALYSIS TOOLS (12 tools) ===
 	// Tier-2 specialized analysis tools — compute real intelligence from K8s data

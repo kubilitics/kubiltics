@@ -5968,6 +5968,29 @@ func (s *mcpServerImpl) routeObservationTool(ctx context.Context, name string, a
 		return s.handleAPIResources(ctx, args)
 	case "observe_custom_resources":
 		return s.handleCustomResources(ctx, args)
+
+	// Phase 3 Category 1 — observability aggregators (handlers_observability.go).
+	case "observe_flapping_services":
+		return s.handleObserveFlappingServices(ctx, args)
+	case "observe_noisy_neighbors":
+		return s.handleObserveNoisyNeighbors(ctx, args)
+	case "observe_unhealthy_probes":
+		return s.handleObserveUnhealthyProbes(ctx, args)
+	case "observe_missing_probes":
+		return s.handleObserveMissingProbes(ctx, args)
+	case "observe_orphaned_pods":
+		return s.handleObserveOrphanedPods(ctx, args)
+	case "observe_stuck_rollouts":
+		return s.handleObserveStuckRollouts(ctx, args)
+	case "observe_high_cardinality_labels":
+		return s.handleObserveHighCardinalityLabels(ctx, args)
+	case "observe_restart_storms":
+		return s.handleObserveRestartStorms(ctx, args)
+	case "observe_pending_scheduler_events":
+		return s.handleObservePendingSchedulerEvents(ctx, args)
+	case "observe_zombie_finalizers":
+		return s.handleObserveZombieFinalizers(ctx, args)
+
 	default:
 		return nil, fmt.Errorf("observation tool not implemented: %s", name)
 	}

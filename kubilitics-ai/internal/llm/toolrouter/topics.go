@@ -355,6 +355,19 @@ var toolTopicOverrides = map[string][]Topic{
 	"observe_secrets_usage":           {TopicSecurity, TopicCore},
 	"observe_ingresses_by_tls_expiry": {TopicNetworking, TopicSecurity},
 
+	// Phase 3 Category 1 observability aggregators — prefix-based topic
+	// derivation doesn't catch most of these names, so pin them explicitly.
+	"observe_flapping_services":        {TopicNetworking, TopicEvents},
+	"observe_noisy_neighbors":          {TopicCapacity, TopicPods, TopicNodes},
+	"observe_unhealthy_probes":         {TopicPods, TopicEvents},
+	"observe_missing_probes":           {TopicWorkloads, TopicPods},
+	"observe_orphaned_pods":            {TopicPods, TopicWorkloads},
+	"observe_stuck_rollouts":           {TopicWorkloads, TopicChange},
+	"observe_high_cardinality_labels":  {TopicCore},
+	"observe_restart_storms":           {TopicPods, TopicEvents},
+	"observe_pending_scheduler_events": {TopicPods, TopicEvents, TopicNodes},
+	"observe_zombie_finalizers":        {TopicCore, TopicStorage},
+
 	// Troubleshoot tools — route by the subsystem they troubleshoot.
 	"troubleshoot_pod_failures":             {TopicPods, TopicEvents},
 	"troubleshoot_network_issues":           {TopicNetworking},
