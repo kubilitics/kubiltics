@@ -92,7 +92,7 @@ async function fetchInvestigateData(
   insight: Insight,
 ): Promise<InvestigateData> {
   const parsed = parseInsightDetail(insight.detail);
-  let podRefs = parsed.pods;
+  const podRefs = parsed.pods;
 
   // Fallback: if no individual pod names but a namespace is mentioned (e.g. "restart storm in namespace X"),
   // list all pods in that namespace with restarts > 0 and build full info directly (skip re-fetch)
