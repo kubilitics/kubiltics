@@ -119,9 +119,19 @@ All must pass. Each has a regression test.
 | D — Auto-update (broken) | Updater shows "available" before assets exist | Proper implementation: static `.latest.json` on releases host, signed ed25519 manifest, in-app banner, one-click install | 8 h |
 | E — Chat regressions | None currently known (99/100 on bench) | Smoke-test post-fix, sign off | 1 h |
 | F — Tauri sidecar wiring | Brain not in `externalBin` today | Add `kubilitics-ai-server` to `externalBin`, Rust spawn + health-check + SIGTERM path | 6 h |
-| G — Code signing | Apple Developer already active, Windows cert needed | Reuse existing `APPLE_*` secrets in `release.yml`; purchase EV cert for Windows (~$200/yr) | 3 h + cert lead time |
+| G — Code signing | Apple Developer already active; Windows + Linux ship unsigned (matches Headlamp, the category leader) | Reuse existing `APPLE_*` secrets in `release.yml`; Windows SmartScreen warning accepted; Linux no signing needed | 3 h |
 
 **Total Section 4: ~26 h.**
+
+### Signing posture benchmark (Headlamp v0.41.0 reference)
+
+| Platform | Kubilitics 1.1.0 | Headlamp (category leader, 45k★) |
+|---|---|---|
+| macOS | Signed (Dev ID) + Notarized | Not notarized — Gatekeeper warning |
+| Linux | Unsigned | Unsigned |
+| Windows | Unsigned — SmartScreen warning | Unsigned — SmartScreen warning |
+
+Kubilitics signs + notarizes macOS; Headlamp does not. Our trust-signal posture is **already ahead** of the open-source K8s UI leader on first-install experience.
 
 ---
 
@@ -133,7 +143,7 @@ Existing `release.yml` is 25 KB with version-consistency check across 6 files, A
 `tauri.conf.json` + matching cross-compile build step for `darwin-amd64` / `darwin-arm64`.
 
 ### Delta 2 — Windows + Linux builds (9 h)
-Matrix expand `release.yml`: `windows-2022` + `ubuntu-22.04` runners. Windows signing via purchased cert. Linux AppImage + `.deb` + `.rpm`.
+Matrix expand `release.yml`: `windows-2022` + `ubuntu-22.04` runners. **Both ship unsigned** (Headlamp industry norm). Windows `.msi` — SmartScreen warning on first install, README one-liner explaining it. Linux AppImage + `.deb` + `.rpm`.
 
 ### Delta 3 — Proper auto-update (8 h, overlaps Blocker D)
 - `.latest.json` hosted at `https://releases.kubilitics.io/latest.json`
@@ -195,12 +205,14 @@ Per-page: functional test + bug fix + release-notes screenshot. Per-page budget:
 - Dashboard, Topology, Simulation, Reports, Auto-Pilot, Advisor, Cost, Security, Observability
 - Navigation consistency across all pages
 
-### Package F — Release infrastructure (20 h)
+### Package F — Release infrastructure (14 h)
 - Proper auto-update (Blocker D + Delta 3) — 8 h
-- Windows build + signing — 6 h
-- Linux AppImage + deb + rpm — 3 h
+- Windows build — 3 h (unsigned; SmartScreen warning documented in README)
+- Linux AppImage + deb + rpm — 3 h (unsigned)
 - Homebrew tap — 1 h
 - CHANGELOG + release-notes automation — 2 h
+
+(Dropped from 20 h — Windows EV cert purchase + signing workflow no longer needed; matches Headlamp's released posture.)
 
 ### Package G — Final QA + ceremony (10 h)
 - Fresh-install smoke test on clean macOS + Windows + Linux VMs
@@ -208,7 +220,9 @@ Per-page: functional test + bug fix + release-notes screenshot. Per-page budget:
 - Tag push, CI watch, GitHub release publish
 - Sunset `kubilitics/kubilitics@v1.0.0` (README deprecation, issues disabled, install URL redirects)
 
-**Total Section 6: ~133 h ≈ 10–14 calendar days with parallel agent execution.**
+**Total Section 6: ~127 h ≈ 10–14 calendar days with parallel agent execution.**
+
+(Revised from 133 h after Windows-unsigned decision.)
 
 ---
 
@@ -272,4 +286,4 @@ Anything not in that sentence is out.
 
 ## Total budget
 
-**133 hours. ~2 weeks calendar with 2–3 parallel agent streams. First robust stable release.**
+**127 hours. ~2 weeks calendar with 2–3 parallel agent streams. First robust stable release.**
