@@ -35,7 +35,7 @@ func DeliverWebhook(webhookURL, webhookType string, report *ResilienceReport) er
 	if err != nil {
 		return fmt.Errorf("webhook POST failed: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode >= 300 {
 		slog.Warn("webhook returned non-2xx status",

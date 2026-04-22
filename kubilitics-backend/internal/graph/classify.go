@@ -577,7 +577,7 @@ func resolveIntOrPercent(val intstr.IntOrString, total int) float64 {
 		// Parse percentage string like "50%"
 		s := strings.TrimSuffix(val.StrVal, "%")
 		var pct float64
-		fmt.Sscanf(s, "%f", &pct)
+		_, _ = fmt.Sscanf(s, "%f", &pct)
 		return pct / 100.0
 	default:
 		return 0.5

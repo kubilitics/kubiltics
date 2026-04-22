@@ -141,7 +141,7 @@ func enrichPath() {
 		}
 	}
 
-	os.Setenv("PATH", current)
+	_ = os.Setenv("PATH", current)
 }
 
 // readShellPATH attempts to read the user's full login shell PATH.

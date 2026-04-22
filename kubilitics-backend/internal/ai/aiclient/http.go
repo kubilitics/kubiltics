@@ -36,7 +36,7 @@ func (c *HTTPClient) GetStatus(ctx context.Context) (*Status, error) {
 	if err != nil {
 		return nil, fmt.Errorf("get status: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode >= 400 {
 		return nil, fmt.Errorf("status returned HTTP %d", resp.StatusCode)
 	}

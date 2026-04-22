@@ -245,7 +245,7 @@ func (s *Store) GetActiveCausalChains(ctx context.Context, clusterID string) ([]
 	if err != nil {
 		return nil, fmt.Errorf("get active causal chains (cluster=%s): %w", clusterID, err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var chains []CausalChain
 	for rows.Next() {

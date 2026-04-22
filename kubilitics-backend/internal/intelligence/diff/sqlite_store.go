@@ -132,7 +132,7 @@ func (s *SQLiteSnapshotStore) GetByDateRange(clusterID, namespace string, from, 
 	if err != nil {
 		return nil, fmt.Errorf("failed to query snapshots by date range: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var results []TopologySnapshot
 	for rows.Next() {

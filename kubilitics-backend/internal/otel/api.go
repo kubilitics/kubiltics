@@ -69,7 +69,7 @@ func (h *OTelHandler) ReceiveTraces(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, `{"error":"failed to decompress gzip"}`, http.StatusBadRequest)
 			return
 		}
-		defer gz.Close()
+		defer func() { _ = gz.Close() }()
 		bodyReader = gz
 	}
 
