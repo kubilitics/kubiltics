@@ -14,9 +14,11 @@ import (
 	"encoding/hex"
 	"errors"
 	"io"
+	"strings"
 	"sync"
 	"time"
 
+	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/chat"
 	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/router"
 	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/tracing/routing"
 	kotgv1 "github.com/vellankikoti/kotg-schema/gen/go/kotg/v1"
@@ -110,10 +112,25 @@ type session struct {
 type Server struct {
 	kotgv1.UnimplementedChatServer
 	kotgv1.UnimplementedAIControlServer
-	cfg      Config
-	mu       sync.RWMutex
-	sessions map[string]*session
-	traceDir string
+	cfg          Config
+	mu           sync.RWMutex
+	sessions     map[string]*session
+	traceDir     string
+	sessionStore chat.SessionStore // optional — nil-safe (no persistence)
+}
+
+// SetSessionStore wires a persistent backing store for chat messages.
+// When set, every Send user message is appended before dispatch and
+// assistant text-deltas are concatenated into an assistant message on
+// turn completion. nil-safe — passing nil keeps the in-memory-only
+// behavior of previous builds.
+//
+// Phase 2 / B.3 — survives process restart so reopening the app lands
+// the user back in the prior conversation.
+func (s *Server) SetSessionStore(store chat.SessionStore) {
+	s.mu.Lock()
+	s.sessionStore = store
+	s.mu.Unlock()
 }
 
 // SetTraceDir configures the directory where per-turn routing traces are
@@ -217,6 +234,19 @@ func (s *Server) Send(stream kotgv1.Chat_SendServer) error {
 			}
 		}
 
+		// Persist the user message before dispatch. If the store write
+		// fails (disk full, schema drift), log-and-continue: a persistence
+		// miss must never block an in-flight turn.
+		s.mu.RLock()
+		store := s.sessionStore
+		s.mu.RUnlock()
+		if store != nil {
+			_ = store.Append(turnCtx, msg.SessionId, chat.Message{
+				Role:    "user",
+				Content: msg.Text,
+			})
+		}
+
 		req := router.Request{
 			SessionID:      msg.SessionId,
 			TurnID:         msg.TurnId,
@@ -249,7 +279,11 @@ func (s *Server) Send(stream kotgv1.Chat_SendServer) error {
 		// When observability is added: log.Info("engine_used", "engine", engineName).
 		_ = engineName
 
+		var assistantBuf strings.Builder
 		for ev := range events {
+			if ev.Kind == router.KindTextDelta {
+				assistantBuf.WriteString(ev.Text)
+			}
 			mapped := s.mapRouterEvent(msg.TurnId, ev)
 			if mapped == nil {
 				continue
@@ -264,6 +298,13 @@ func (s *Server) Send(stream kotgv1.Chat_SendServer) error {
 				s.mu.Unlock()
 				return sendErr
 			}
+		}
+		// Commit the assistant side of the turn once the stream closes.
+		if store != nil && assistantBuf.Len() > 0 {
+			_ = store.Append(context.Background(), msg.SessionId, chat.Message{
+				Role:    "assistant",
+				Content: assistantBuf.String(),
+			})
 		}
 		cancel()
 		s.mu.Lock()
