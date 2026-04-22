@@ -103,7 +103,12 @@ func main() {
 	// Subproject 3a: start the AgentRuntimeService gRPC server on :50051.
 	// This is the new backend↔AI contract surface; the v1 stub delegates Chat
 	// directly to the existing LLM adapter (no tools, no agents, no actions).
+	// KUBILITICS_AI_GRPC_PORT overrides the default so the Tauri sidecar can
+	// pick a port that doesn't collide with kubilitics-backend's own gRPC.
 	grpcAddr := ":50051"
+	if p := os.Getenv("KUBILITICS_AI_GRPC_PORT"); p != "" {
+		grpcAddr = ":" + p
+	}
 	grpcLis, err := net.Listen("tcp", grpcAddr)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to listen on %s: %v\n", grpcAddr, err)
