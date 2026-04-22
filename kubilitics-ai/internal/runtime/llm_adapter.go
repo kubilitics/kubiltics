@@ -129,6 +129,11 @@ func (b *LLMAdapterBridge) StreamCompletionWithTools(
 		defer close(out)
 		start := time.Now()
 		var textBytes int
+		// Capture the first ~4 KB of assistant text so the bench report can
+		// show the actual answer a user would have seen, not just a byte
+		// count. Bounded to keep traces small.
+		const textPreviewCap = 4096
+		var textPreview []byte
 		var lastUsage *toolTokenUsage
 		for ev := range src {
 			te := toolStreamEvent{
@@ -155,6 +160,14 @@ func (b *LLMAdapterBridge) StreamCompletionWithTools(
 			}
 			if ev.TextToken != "" {
 				textBytes += len(ev.TextToken)
+				if len(textPreview) < textPreviewCap {
+					remaining := textPreviewCap - len(textPreview)
+					if len(ev.TextToken) <= remaining {
+						textPreview = append(textPreview, ev.TextToken...)
+					} else {
+						textPreview = append(textPreview, ev.TextToken[:remaining]...)
+					}
+				}
 			}
 			select {
 			case out <- te:
@@ -162,7 +175,11 @@ func (b *LLMAdapterBridge) StreamCompletionWithTools(
 				return
 			}
 		}
-		routing.FromContext(ctx).Stage("llm_text_out", map[string]any{"bytes": textBytes})
+		textOut := map[string]any{"bytes": textBytes}
+		if len(textPreview) > 0 {
+			textOut["preview"] = string(textPreview)
+		}
+		routing.FromContext(ctx).Stage("llm_text_out", textOut)
 
 		durationMs := time.Since(start).Milliseconds()
 		routing.FromContext(ctx).Stage("done", map[string]any{
