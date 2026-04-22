@@ -314,3 +314,100 @@ func TestInspectComposites_RouteCorrectly(t *testing.T) {
 		}
 	}
 }
+
+// ──────────────────────────────────────────────────────────────────────────
+// Iteration-3: priorityKey + aggregator-first sort
+// ──────────────────────────────────────────────────────────────────────────
+
+func TestPriorityKey_ClassifiesShapes(t *testing.T) {
+	cases := map[string]int{
+		// Aggregators
+		"who_can_do":                     0,
+		"analyze_blast_radius":           0,
+		"resolve_resource":               0,
+		"observe_recent_changes":         0,
+		"observe_top_pods_by_metric":     0,
+		"observe_pod_metrics":            0,
+		"observe_node_metrics":           0,
+		"observe_services_by_filter":     0,
+		"observe_secrets_usage":          0,
+		"observe_ingresses_by_tls_expiry": 0,
+		// Composites
+		"inspect_pod":        1,
+		"inspect_deployment": 1,
+		// Legacy
+		"observe_pod_detailed":      2,
+		"observe_deployment_events": 2,
+		"list_resources":            2,
+		"get_resource":              2,
+	}
+	for name, want := range cases {
+		if got := priorityKey(name); got != want {
+			t.Errorf("priorityKey(%q)=%d, want %d", name, got, want)
+		}
+	}
+}
+
+func TestFilterTools_AggregatorsSurfaceFirst(t *testing.T) {
+	// Build a taxonomy where one aggregator, one composite and one legacy
+	// tool all share the pods topic. Aggregator must come first.
+	tools := []types.Tool{
+		{Name: "observe_pod_detailed"},       // legacy, topic=pods
+		{Name: "inspect_pod"},                // composite, topic=pods
+		{Name: "observe_top_pods_by_metric"}, // aggregator, topic=pods+capacity
+	}
+	selected := filterTools([]Topic{TopicCore, TopicPods}, tools)
+	if len(selected) < 3 {
+		t.Fatalf("expected all 3 tools, got %d: %+v", len(selected), names(selected))
+	}
+	if selected[0].Name != "observe_top_pods_by_metric" {
+		t.Errorf("expected aggregator first, got %q (all: %v)", selected[0].Name, names(selected))
+	}
+}
+
+func TestFilterTools_CompositesBeatLegacyObservers(t *testing.T) {
+	tools := []types.Tool{
+		{Name: "observe_pod_detailed"}, // legacy
+		{Name: "observe_pod_events"},   // legacy
+		{Name: "inspect_pod"},          // composite
+	}
+	selected := filterTools([]Topic{TopicCore, TopicPods}, tools)
+	// Composite must appear before either legacy per-resource observer.
+	positions := map[string]int{}
+	for i, tl := range selected {
+		positions[tl.Name] = i
+	}
+	if positions["inspect_pod"] > positions["observe_pod_detailed"] ||
+		positions["inspect_pod"] > positions["observe_pod_events"] {
+		t.Errorf("composite must precede legacy observers, got order %v", names(selected))
+	}
+}
+
+func TestFilterTools_LegacyObserversLast(t *testing.T) {
+	tools := []types.Tool{
+		{Name: "observe_service_detailed"},           // legacy
+		{Name: "observe_services_by_filter"},         // aggregator
+		{Name: "inspect_service"},                    // composite
+		{Name: "observe_ingresses_by_tls_expiry"},    // aggregator
+	}
+	selected := filterTools([]Topic{TopicCore, TopicNetworking}, tools)
+	positions := map[string]int{}
+	for i, tl := range selected {
+		positions[tl.Name] = i
+	}
+	// Both aggregators must come before composite and legacy observers.
+	if positions["observe_service_detailed"] < positions["observe_services_by_filter"] {
+		t.Errorf("legacy observer must come after aggregator, got %v", names(selected))
+	}
+	if positions["observe_service_detailed"] < positions["inspect_service"] {
+		t.Errorf("legacy observer must come after composite, got %v", names(selected))
+	}
+}
+
+func names(tools []types.Tool) []string {
+	out := make([]string, 0, len(tools))
+	for _, t := range tools {
+		out = append(out, t.Name)
+	}
+	return out
+}

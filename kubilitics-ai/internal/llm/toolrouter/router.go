@@ -132,7 +132,8 @@ func filterTools(topics []Topic, allTools []types.Tool) []types.Tool {
 	type scored struct {
 		tool     types.Tool
 		priority int // 0 = core, 1 = matched, 2 = fallback
-		rank     int // tie-break inside priority
+		rank     int // tie-break inside priority (topic-match order)
+		shape    int // tie-break inside rank: aggregator (0) / composite (1) / legacy (2)
 	}
 
 	picked := make([]scored, 0, len(allTools))
@@ -151,11 +152,12 @@ func filterTools(topics []Topic, allTools []types.Tool) []types.Tool {
 				}
 			}
 		}
+		shape := priorityKey(tool.Name)
 		switch {
 		case isCore:
-			picked = append(picked, scored{tool, 0, 0})
+			picked = append(picked, scored{tool, 0, 0, shape})
 		case bestMatch >= 0:
-			picked = append(picked, scored{tool, 1, bestMatch})
+			picked = append(picked, scored{tool, 1, bestMatch, shape})
 		}
 	}
 
@@ -163,7 +165,10 @@ func filterTools(topics []Topic, allTools []types.Tool) []types.Tool {
 		if picked[i].priority != picked[j].priority {
 			return picked[i].priority < picked[j].priority
 		}
-		return picked[i].rank < picked[j].rank
+		if picked[i].rank != picked[j].rank {
+			return picked[i].rank < picked[j].rank
+		}
+		return picked[i].shape < picked[j].shape
 	})
 
 	out := make([]types.Tool, 0, MaxToolsPerCall)
@@ -179,4 +184,41 @@ func filterTools(topics []Topic, allTools []types.Tool) []types.Tool {
 		out = append(out, p.tool)
 	}
 	return out
+}
+
+// priorityKey biases the filtered tool list so the LLM sees aggregators
+// FIRST, composites next, legacy per-resource observers last. LLMs tend
+// to pick the first relevant tool they see — the 2026-04-22 v2 bench
+// showed the picker choosing legacy siblings when both sat in the prompt.
+//
+// Returns:
+//   0 — aggregator (who_*, analyze_*, observe_recent_*, observe_*_metrics,
+//       observe_*_by_*, observe_*_usage, resolve_*, observe_top_*)
+//   1 — composite (inspect_*)
+//   2 — everything else (legacy per-resource observers and fallbacks)
+func priorityKey(toolName string) int {
+	n := strings.ToLower(toolName)
+	// Aggregators.
+	if strings.HasPrefix(n, "who_") ||
+		strings.HasPrefix(n, "analyze_") ||
+		strings.HasPrefix(n, "resolve_") ||
+		strings.HasPrefix(n, "observe_recent_") ||
+		strings.HasPrefix(n, "observe_top_") {
+		return 0
+	}
+	// Pattern-matched aggregators: observe_*_metrics, observe_*_by_*,
+	// observe_*_usage. These are cheaper string ops than regex; the
+	// taxonomy is small enough that startsWith + contains is clearer.
+	if strings.HasPrefix(n, "observe_") {
+		if strings.HasSuffix(n, "_metrics") ||
+			strings.HasSuffix(n, "_usage") ||
+			strings.Contains(n, "_by_") {
+			return 0
+		}
+	}
+	// Composites.
+	if strings.HasPrefix(n, "inspect_") {
+		return 1
+	}
+	return 2
 }
