@@ -13,7 +13,9 @@ import (
 	"crypto/sha256"
 	"database/sql"
 	"encoding/hex"
+	"errors"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -127,9 +129,16 @@ func (s *SQLiteSessionStore) Close() error {
 // DeriveSessionID produces a stable session identifier from (cluster_id,
 // user_id). Used by multi-cluster isolation — the same pair always maps
 // to the same session, different pairs diverge.
-func DeriveSessionID(clusterID, userID string) string {
+//
+// Returns an error when clusterID is empty: otherwise all anonymous
+// sessions would collide into one shared transcript, leaking context
+// across unrelated users and clusters.
+func DeriveSessionID(clusterID, userID string) (string, error) {
+	if strings.TrimSpace(clusterID) == "" {
+		return "", errors.New("cluster_id must not be empty")
+	}
 	sum := sha256.Sum256([]byte(clusterID + "|" + userID))
-	return "chat-" + hex.EncodeToString(sum[:16])
+	return "chat-" + hex.EncodeToString(sum[:16]), nil
 }
 
 func nullableStr(s string) interface{} {

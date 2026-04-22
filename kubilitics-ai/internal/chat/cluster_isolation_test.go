@@ -9,10 +9,22 @@ import (
 // TestDeriveSessionID_StableAndUnique asserts the same (cluster, user)
 // pair always yields the same ID, and any distinct pair diverges.
 func TestDeriveSessionID_StableAndUnique(t *testing.T) {
-	a1 := DeriveSessionID("cluster-A", "alice")
-	a2 := DeriveSessionID("cluster-A", "alice")
-	b := DeriveSessionID("cluster-B", "alice")
-	c := DeriveSessionID("cluster-A", "bob")
+	a1, err := DeriveSessionID("cluster-A", "alice")
+	if err != nil {
+		t.Fatalf("a1: %v", err)
+	}
+	a2, err := DeriveSessionID("cluster-A", "alice")
+	if err != nil {
+		t.Fatalf("a2: %v", err)
+	}
+	b, err := DeriveSessionID("cluster-B", "alice")
+	if err != nil {
+		t.Fatalf("b: %v", err)
+	}
+	c, err := DeriveSessionID("cluster-A", "bob")
+	if err != nil {
+		t.Fatalf("c: %v", err)
+	}
 
 	if a1 != a2 {
 		t.Fatalf("stability broken: %q != %q", a1, a2)
@@ -40,8 +52,14 @@ func TestClusterSwitch_FreshSession(t *testing.T) {
 
 	ctx := context.Background()
 	userID := "alice"
-	sidA := DeriveSessionID("cluster-A", userID)
-	sidB := DeriveSessionID("cluster-B", userID)
+	sidA, err := DeriveSessionID("cluster-A", userID)
+	if err != nil {
+		t.Fatalf("sidA: %v", err)
+	}
+	sidB, err := DeriveSessionID("cluster-B", userID)
+	if err != nil {
+		t.Fatalf("sidB: %v", err)
+	}
 
 	// Ask something in cluster A.
 	if err := store.Append(ctx, sidA, Message{Role: "user", Content: "what pods are crashing in A?"}); err != nil {
@@ -77,5 +95,21 @@ func TestClusterSwitch_FreshSession(t *testing.T) {
 		if m.Content == "what about B?" {
 			t.Fatal("cluster A saw a cluster-B message")
 		}
+	}
+}
+
+// TestDeriveSessionID_RejectsEmptyClusterID — empty cluster_id is a programming
+// error; returning a valid session ID would collide all anonymous sessions.
+func TestDeriveSessionID_RejectsEmptyClusterID(t *testing.T) {
+	if _, err := DeriveSessionID("", "alice"); err == nil {
+		t.Fatal("expected error for empty cluster_id")
+	}
+	if _, err := DeriveSessionID("   ", "alice"); err == nil {
+		t.Fatal("expected error for whitespace-only cluster_id")
+	}
+	// Empty user_id is still allowed — anonymous chats within one cluster
+	// are a legitimate use case.
+	if _, err := DeriveSessionID("cluster-A", ""); err != nil {
+		t.Fatalf("empty user_id should be allowed: %v", err)
 	}
 }
