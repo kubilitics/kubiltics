@@ -1166,7 +1166,17 @@ var ToolTaxonomy = []ToolDefinition{
 	{
 		Name:        "analyze_blast_radius",
 		Category:    CategoryAnalysis,
-		Description: "Assess potential impact of resource changes or failures on dependent services.",
+		Description: "Assess potential impact of a change or failure. Scope-aware: scope=resource requires kind+name (single workload); scope=namespace needs only namespace (all workloads in that namespace); scope=cluster takes no args and returns node-loss + critical-path summary cluster-wide.",
+		InputSchema: map[string]interface{}{
+			"type": "object",
+			"properties": map[string]interface{}{
+				"cluster_id": map[string]interface{}{"type": "string", "description": "Cluster ID (optional)"},
+				"scope":      map[string]interface{}{"type": "string", "enum": []string{"resource", "namespace", "cluster"}, "description": "Blast radius scope (default 'resource')"},
+				"kind":       map[string]interface{}{"type": "string", "description": "Resource kind (required when scope=resource)"},
+				"name":       map[string]interface{}{"type": "string", "description": "Resource name (required when scope=resource)"},
+				"namespace":  map[string]interface{}{"type": "string", "description": "Namespace (required when scope=namespace; optional for scope=resource)"},
+			},
+		},
 		Destructive: false,
 		RequiresAI:  true,
 	},

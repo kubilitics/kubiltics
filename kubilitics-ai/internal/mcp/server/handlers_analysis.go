@@ -295,7 +295,11 @@ func (s *mcpServerImpl) handleAnalyzeErrorCorrelation(ctx context.Context, args 
 	return result, nil
 }
 
-// analyze_blast_radius — impact of a resource failing
+// analyze_blast_radius — impact of a resource, namespace, or cluster-wide event
+//
+// Scope-aware (gap 6, 2026-04-22): the LLM was calling this with cluster-wide
+// intent (e.g. "Scale web 3→10, realistic?") and failing the hard kind/name
+// precondition. Schema now accepts scope ∈ {resource, namespace, cluster}.
 func (s *mcpServerImpl) handleAnalyzeBlastRadius(ctx context.Context, args map[string]interface{}) (interface{}, error) {
 	c := s.http()
 	clusterID, err := c.resolveCluster(ctx, args)
@@ -305,41 +309,98 @@ func (s *mcpServerImpl) handleAnalyzeBlastRadius(ctx context.Context, args map[s
 	kind := strArg(args, "kind")
 	name := strArg(args, "name")
 	namespace := strArg(args, "namespace")
+	scope := strings.ToLower(strArg(args, "scope"))
 
-	if kind == "" || name == "" {
-		return nil, fmt.Errorf("analyze_blast_radius: 'kind' and 'name' are required")
-	}
-
-	result := map[string]interface{}{
-		"subject_kind":      kind,
-		"subject_name":      name,
-		"subject_namespace": namespace,
-	}
-
-	// Resource topology shows who depends on this resource
-	var path string
-	if namespace != "" {
-		path = c.clusterPath(clusterID, fmt.Sprintf("/topology/resource/%s/%s/%s",
-			url.PathEscape(strings.ToLower(kind)),
-			url.PathEscape(namespace),
-			url.PathEscape(name)))
-	} else {
-		path = c.clusterPath(clusterID, "/topology?maxNodes=300")
-	}
-	var topology map[string]interface{}
-	if err := c.get(ctx, path, &topology); err == nil {
-		result["topology"] = topology
-	}
-	// Services that select pods from this workload
-	if namespace != "" {
-		qs := "?namespace=" + url.QueryEscape(namespace)
-		var svcs map[string]interface{}
-		if err := c.get(ctx, c.clusterPath(clusterID, "/resources/services"+qs), &svcs); err == nil {
-			result["services_in_namespace"] = svcs
+	// Infer scope from the provided args if not explicit — preserves backwards
+	// compat with callers that never pass scope.
+	if scope == "" {
+		switch {
+		case kind != "" && name != "":
+			scope = "resource"
+		case namespace != "":
+			scope = "namespace"
+		default:
+			scope = "cluster"
 		}
 	}
-	result["analysis_hint"] = "Trace outgoing edges in the topology graph to find all dependent services. Services with no alternative upstream are in the blast radius."
-	return result, nil
+
+	switch scope {
+	case "resource":
+		if kind == "" || name == "" {
+			return nil, fmt.Errorf("analyze_blast_radius: scope=resource requires 'kind' and 'name'")
+		}
+		result := map[string]interface{}{
+			"scope":             "resource",
+			"subject_kind":      kind,
+			"subject_name":      name,
+			"subject_namespace": namespace,
+		}
+		var path string
+		if namespace != "" {
+			path = c.clusterPath(clusterID, fmt.Sprintf("/topology/resource/%s/%s/%s",
+				url.PathEscape(strings.ToLower(kind)),
+				url.PathEscape(namespace),
+				url.PathEscape(name)))
+		} else {
+			path = c.clusterPath(clusterID, "/topology?maxNodes=300")
+		}
+		var topology map[string]interface{}
+		if err := c.get(ctx, path, &topology); err == nil {
+			result["topology"] = topology
+		}
+		if namespace != "" {
+			qs := "?namespace=" + url.QueryEscape(namespace)
+			var svcs map[string]interface{}
+			if err := c.get(ctx, c.clusterPath(clusterID, "/resources/services"+qs), &svcs); err == nil {
+				result["services_in_namespace"] = svcs
+			}
+		}
+		result["analysis_hint"] = "Trace outgoing edges in the topology graph to find dependent services. Services with no alternative upstream are in the blast radius."
+		return result, nil
+
+	case "namespace":
+		if namespace == "" {
+			return nil, fmt.Errorf("analyze_blast_radius: scope=namespace requires 'namespace'")
+		}
+		result := map[string]interface{}{
+			"scope":             "namespace",
+			"subject_namespace": namespace,
+		}
+		qs := "?namespace=" + url.QueryEscape(namespace)
+		for _, kindPlural := range []string{"deployments", "statefulsets", "daemonsets", "services", "ingresses"} {
+			var data map[string]interface{}
+			if err := c.get(ctx, c.clusterPath(clusterID, "/resources/"+kindPlural+qs), &data); err == nil {
+				result[kindPlural] = data
+			}
+		}
+		// Ingress exposure tells us what's externally-visible (worst-case user impact).
+		result["analysis_hint"] = "Count ingress-backed services — those are the externally-visible blast radius. Count statefulsets — they are the durable-state blast radius."
+		return result, nil
+
+	case "cluster":
+		result := map[string]interface{}{
+			"scope": "cluster",
+		}
+		// Node inventory — worst-case node loss estimate.
+		var nodes map[string]interface{}
+		if err := c.get(ctx, c.clusterPath(clusterID, "/resources/nodes"), &nodes); err == nil {
+			result["nodes"] = nodes
+		}
+		// Cluster-wide topology (capped) for critical-path hints.
+		var topology map[string]interface{}
+		if err := c.get(ctx, c.clusterPath(clusterID, "/topology?maxNodes=300"), &topology); err == nil {
+			result["topology"] = topology
+		}
+		// Metrics summary lets the LLM gauge headroom.
+		var metrics map[string]interface{}
+		if err := c.get(ctx, c.clusterPath(clusterID, "/metrics/summary"), &metrics); err == nil {
+			result["metrics_summary"] = metrics
+		}
+		result["analysis_hint"] = "Cluster-wide blast radius: identify nodes hosting the most pods (concentration risk) and compare cluster headroom in metrics_summary against the proposed change."
+		return result, nil
+	}
+
+	return nil, fmt.Errorf("analyze_blast_radius: unknown scope %q (want resource|namespace|cluster)", scope)
 }
 
 // analyze_rollout_risk — assess risk before a deployment rollout
