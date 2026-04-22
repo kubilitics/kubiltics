@@ -422,3 +422,10 @@ mod tests {
         assert!(default_base_url("ollama").contains("11434"));
     }
 }
+
+// E2E round-trip regression (Phase 2 / Gap 5). In its own file for
+// clarity. Uses the keyring mock backend + a wiremock HTTP server so
+// `cargo test` can run it without network or a real keychain.
+#[cfg(test)]
+#[path = "ai_config_e2e_test.rs"]
+mod e2e;

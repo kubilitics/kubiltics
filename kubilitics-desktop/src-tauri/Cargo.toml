@@ -38,6 +38,12 @@ keyring = { version = "3", features = ["apple-native", "windows-native", "linux-
 # dependency above — the release build must never ship the inspector. A
 # compile-time guard in src/main.rs makes this impossible to break by accident.
 
+# Phase 2 / Gap 5 — E2E AI Settings round-trip test deps.
+[dev-dependencies]
+wiremock = "0.6"
+tempfile = "3"
+tokio = { version = "1", features = ["full", "test-util"] }
+
 [features]
 default = ["custom-protocol"]
 custom-protocol = ["tauri/custom-protocol"]
