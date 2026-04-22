@@ -839,6 +839,23 @@ var ToolTaxonomy = []ToolDefinition{
 		RequiresAI:  true,
 	},
 
+	// ─── Timeline fusion (gap 4, 2026-04-22 bench) ───
+	{
+		Name:        "observe_recent_changes",
+		Category:    CategoryObservation,
+		Description: "Return all meaningful changes (deployment rollouts, pod create/delete, configmap/secret updates, scaling events, failures) inside a time window. Fuses k8s events + deployment rollout history. Answers 'what changed in the last N minutes?'.",
+		InputSchema: map[string]interface{}{
+			"type": "object",
+			"properties": map[string]interface{}{
+				"cluster_id":     map[string]interface{}{"type": "string"},
+				"window_minutes": map[string]interface{}{"type": "integer", "description": "Look-back window in minutes (default 60)"},
+				"namespace":      map[string]interface{}{"type": "string", "description": "Restrict to a namespace (optional)"},
+			},
+		},
+		Destructive: false,
+		RequiresAI:  false,
+	},
+
 	// === DEEP ANALYSIS TOOLS (12 tools) ===
 	// === DEEP ANALYSIS TOOLS (12 tools) ===
 	// Tier-2 specialized analysis tools — compute real intelligence from K8s data

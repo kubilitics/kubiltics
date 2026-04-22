@@ -343,7 +343,8 @@ var toolTopicOverrides = map[string][]Topic{
 
 	// Gap closures (2026-04-22 bench): new tools must ship with explicit
 	// topic routing so the router emits them for the right prompts.
-	"resolve_resource": {TopicCore},
+	"resolve_resource":       {TopicCore},
+	"observe_recent_changes": {TopicChange, TopicEvents},
 
 	// Troubleshoot tools — route by the subsystem they troubleshoot.
 	"troubleshoot_pod_failures":             {TopicPods, TopicEvents},

@@ -156,6 +156,74 @@ func TestResolveResource_NoMatchGivesSuggestions(t *testing.T) {
 	}
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// Gap 4 — observe_recent_changes
+// ═══════════════════════════════════════════════════════════════════════════
+
+func TestRecentChanges_FiltersByWindow(t *testing.T) {
+	fb := newFakeBackend(t)
+	fb.registerCluster()
+	fb.register("/clusters/"+testClusterID+"/events", []interface{}{
+		map[string]interface{}{
+			"reason":         "ScalingReplicaSet",
+			"lastTimestamp":  "2099-01-01T00:00:00Z",
+			"involvedObject": map[string]interface{}{"kind": "Deployment", "name": "web", "namespace": "demo"},
+			"message":        "scaled to 3",
+		},
+		map[string]interface{}{
+			"reason":         "ScalingReplicaSet",
+			"lastTimestamp":  "2000-01-01T00:00:00Z", // outside window
+			"involvedObject": map[string]interface{}{"kind": "Deployment", "name": "old"},
+		},
+	})
+	fb.register("/clusters/"+testClusterID+"/resources/deployments", map[string]interface{}{"items": []interface{}{}})
+	s := newTestServer(t, fb.server.URL)
+	out, err := s.handleObserveRecentChanges(context.Background(), map[string]interface{}{
+		"window_minutes": 60,
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	m := out.(map[string]interface{})
+	if m["window_minutes"] != 60 {
+		t.Errorf("unexpected window: %v", m["window_minutes"])
+	}
+}
+
+func TestRecentChanges_EmptyWindow(t *testing.T) {
+	fb := newFakeBackend(t)
+	fb.registerCluster()
+	fb.register("/clusters/"+testClusterID+"/events", []interface{}{})
+	fb.register("/clusters/"+testClusterID+"/resources/deployments", map[string]interface{}{"items": []interface{}{}})
+	s := newTestServer(t, fb.server.URL)
+	out, err := s.handleObserveRecentChanges(context.Background(), map[string]interface{}{
+		"window_minutes": 5,
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	m := out.(map[string]interface{})
+	if m["window_minutes"] != 5 {
+		t.Errorf("expected window=5, got %v", m["window_minutes"])
+	}
+}
+
+func TestClassifyEventReason(t *testing.T) {
+	cases := map[string]string{
+		"ScalingReplicaSet":  "rollout",
+		"SuccessfulCreate":   "create",
+		"ConfigMapUpdated":   "update",
+		"FailedScheduling":   "failure",
+		"BackOff":            "failure",
+		"SomethingUnrelated": "",
+	}
+	for reason, want := range cases {
+		if got := classifyEventReason(reason); got != want {
+			t.Errorf("classifyEventReason(%q)=%q, want %q", reason, got, want)
+		}
+	}
+}
+
 func TestResolveResource_RequiresArgs(t *testing.T) {
 	s := newTestServer(t, "http://unused")
 	_, err := s.handleResolveResource(context.Background(), map[string]interface{}{

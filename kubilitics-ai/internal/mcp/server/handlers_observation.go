@@ -5733,6 +5733,8 @@ func (s *mcpServerImpl) routeObservationTool(ctx context.Context, name string, a
 		return s.handleResourcesByQuery(ctx, args)
 	case "resolve_resource":
 		return s.handleResolveResource(ctx, args)
+	case "observe_recent_changes":
+		return s.handleObserveRecentChanges(ctx, args)
 	case "observe_pod_logs":
 		return s.handlePodLogs(ctx, args)
 	case "observe_pod_detailed":
