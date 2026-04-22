@@ -76,7 +76,14 @@ type Config struct {
 	AuthAdminPass   string `mapstructure:"auth_admin_pass"`   // Bootstrap admin password (plaintext; only used on first run)
 
 	// gRPC
+	// GRPCPort semantics:
+	//   > 0  → bind explicitly to that port
+	//   = 0  → bind to an ephemeral OS-assigned port (test + desktop coexistence)
+	//   < 0  → disabled (no gRPC listener). Set via KUBILITICS_GRPC_DISABLED=true
+	//          or GRPCPort = -1 when the desktop runs brain on :50051 and does not
+	//          need a backend gRPC listener.
 	GRPCPort     int  `mapstructure:"grpc_port"`      // gRPC server port (default: 50051)
+	GRPCDisabled bool `mapstructure:"grpc_disabled"`   // Explicitly disable gRPC listener
 	GRPCTLSEnabled bool `mapstructure:"grpc_tls_enabled"` // Enable TLS for gRPC (default: false)
 
 	// Metrics endpoint authentication
@@ -180,6 +187,7 @@ func Load() (*Config, error) {
 	viper.SetDefault("kcli_allow_shell_mode", false) // Security: shell mode requires explicit opt-in
 	viper.SetDefault("ai_backend_url", "http://localhost:8081")
 	viper.SetDefault("grpc_port", 50051)
+	viper.SetDefault("grpc_disabled", false)
 	viper.SetDefault("grpc_tls_enabled", false)
 	viper.SetDefault("metrics_auth_enabled", false) // Default: public metrics (Prometheus scraping)
 

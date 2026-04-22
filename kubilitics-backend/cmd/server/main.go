@@ -1044,20 +1044,30 @@ func main() {
 		log.Warn("TLS is disabled", "hint", "not recommended for production")
 	}
 
-	// Start gRPC server for kubilitics-ai integration
+	// Start gRPC server for kubilitics-ai integration.
+	// Bind semantics (see internal/config/config.go):
+	//   GRPCDisabled=true → skip entirely (desktop coexists with standalone brain)
+	//   GRPCPort  < 0     → skip (legacy "disabled" signal, kept for back-compat)
+	//   GRPCPort == 0     → ephemeral OS-assigned port (useful for tests + side-by-side
+	//                       runs where brain owns :50051)
+	//   GRPCPort  > 0     → explicit port
 	var grpcServer *grpcapi.Server
-	if cfg.GRPCPort > 0 {
+	if !cfg.GRPCDisabled && cfg.GRPCPort >= 0 {
 		grpcServer = grpcapi.NewServer(cfg, clusterService, topologyService, metricsService, log)
 		if err := grpcServer.Start(ctx); err != nil {
 			log.Error("Failed to start gRPC server", "error", err, "port", cfg.GRPCPort)
 		} else {
-			log.Info("gRPC server started", "port", cfg.GRPCPort)
+			log.Info("gRPC server started", "port", grpcServer.BoundPort())
 		}
 		defer func() {
 			if grpcServer != nil {
 				grpcServer.Stop()
 			}
 		}()
+	} else {
+		log.Info("gRPC server disabled",
+			"grpc_disabled", cfg.GRPCDisabled, "grpc_port", cfg.GRPCPort,
+			"hint", "set grpc_port >= 0 and grpc_disabled=false to enable")
 	}
 
 	// Start LMC after server is ready (Part 4)
