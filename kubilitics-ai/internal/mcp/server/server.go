@@ -257,6 +257,16 @@ func (s *mcpServerImpl) ExecuteTool(ctx context.Context, toolName string, args m
 		return nil, fmt.Errorf("tool not found: %s", toolName)
 	}
 
+	// Wildcard-arg guard: catch fabricated params like name="all" /
+	// namespace="*" before they reach the backend. Returns a structured
+	// rejection payload (not an error) so the LLM treats it as a normal
+	// tool result and retries with the correct scope. See validation.go.
+	if rej := validateToolArgs(toolName, args); rej != nil {
+		s.recordSuccess(toolName, 0)
+		metrics.MCPToolCalls.WithLabelValues(toolName, "rejected_wildcard").Inc()
+		return rej.asToolResult(), nil
+	}
+
 	// Log tool call start
 	s.auditLog.Log(ctx, audit.NewEvent(audit.EventActionProposed).
 		WithCorrelationID(correlationID).
