@@ -59,6 +59,8 @@ fn main() {
             ai_config::save_ai_config,
             ai_config::load_ai_config,
             ai_config::test_llm_connection,
+            ai_config::get_budget_status,
+            ai_config::reset_budget,
         ])
         .setup(|app| {
             let handle = app.handle().clone();

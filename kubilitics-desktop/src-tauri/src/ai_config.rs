@@ -286,6 +286,53 @@ pub struct TestResult {
     pub error: Option<String>,
 }
 
+// ── Budget admin (Phase 2 / Gap 3) ───────────────────────────────────────
+//
+// The kubilitics-ai brain exposes /admin/budget/status + /admin/budget/reset
+// on its loopback HTTP port. These desktop commands are thin wrappers so
+// the AISettingsPage can surface spend + a Reset button without speaking
+// HTTP directly from the webview.
+
+#[derive(Debug, Serialize, Deserialize, Default)]
+pub struct BudgetStatus {
+    pub spent_usd: f64,
+    pub cap_usd: f64,
+}
+
+/// Endpoint override for tests; falls back to the in-cluster default.
+fn brain_admin_base() -> String {
+    std::env::var("KUBILITICS_AI_ADMIN_URL").unwrap_or_else(|_| "http://127.0.0.1:8081".to_string())
+}
+
+#[command]
+pub async fn get_budget_status() -> Result<BudgetStatus, String> {
+    let url = format!("{}/admin/budget/status", brain_admin_base().trim_end_matches('/'));
+    let resp = reqwest::Client::new()
+        .get(&url)
+        .send()
+        .await
+        .map_err(|e| redact(&format!("{}", e)))?;
+    if !resp.status().is_success() {
+        return Err(format!("HTTP {}", resp.status().as_u16()));
+    }
+    let body: BudgetStatus = resp.json().await.map_err(|e| format!("parse: {}", e))?;
+    Ok(body)
+}
+
+#[command]
+pub async fn reset_budget() -> Result<(), String> {
+    let url = format!("{}/admin/budget/reset", brain_admin_base().trim_end_matches('/'));
+    let resp = reqwest::Client::new()
+        .post(&url)
+        .send()
+        .await
+        .map_err(|e| redact(&format!("{}", e)))?;
+    if !resp.status().is_success() {
+        return Err(format!("HTTP {}", resp.status().as_u16()));
+    }
+    Ok(())
+}
+
 fn default_base_url(provider: &str) -> String {
     match provider {
         "anthropic" => "https://api.anthropic.com/v1".to_string(),
