@@ -4,6 +4,7 @@
  */
 import { create } from 'zustand';
 import type { AnalyzeQuery } from '@/services/api/eventsIntelligence';
+import { onClusterSwitch } from './clusterSwitch';
 
 export type EventsMode = 'timeline' | 'analyze' | 'incidents';
 
@@ -63,3 +64,14 @@ export const useEventsStore = create<EventsState>()((set) => ({
   setAnalyzeQuery: (analyzeQuery) => set({ analyzeQuery }),
   resetFilters: () => set(DEFAULT_FILTERS),
 }));
+
+// Phase 2 / Gap 4 — drop cluster-scoped slices on every cluster switch so
+// stale filters/selection from the previous cluster never leak across.
+onClusterSwitch(() => {
+  useEventsStore.setState({
+    ...DEFAULT_FILTERS,
+    selectedEventId: null,
+    contextPanelOpen: false,
+    analyzeQuery: null,
+  });
+});

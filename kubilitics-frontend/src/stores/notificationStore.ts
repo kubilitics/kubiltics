@@ -10,6 +10,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { safeLocalStorage } from '@/lib/safeStorage';
+import { onClusterSwitch } from './clusterSwitch';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -160,3 +161,11 @@ export const useNotificationStore = create<NotificationState>()(
     },
   ),
 );
+
+// Phase 2 / Gap 4 — notifications are cluster-scoped (each entry references
+// a resourceKind/namespace/name in the active cluster). On cluster switch
+// drop the list; fresh notifications for the new cluster's events will
+// stream in from the WS subscriber.
+onClusterSwitch(() => {
+  useNotificationStore.setState({ notifications: [] });
+});

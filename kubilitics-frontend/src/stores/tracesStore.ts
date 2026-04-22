@@ -3,6 +3,7 @@
  * Stores filters, selected trace, and active view mode.
  */
 import { create } from 'zustand';
+import { onClusterSwitch } from './clusterSwitch';
 
 export type TracesMode = 'list' | 'map';
 
@@ -51,3 +52,14 @@ export const useTracesStore = create<TracesState>()((set) => ({
   selectSpan: (id) => set({ selectedSpanId: id }),
   resetFilters: () => set(DEFAULT_FILTERS),
 }));
+
+// Phase 2 / Gap 4 — on cluster switch, reset trace filters + selection so
+// a span id from the prior cluster can't "select" a stale row.
+onClusterSwitch(() => {
+  useTracesStore.setState({
+    ...DEFAULT_FILTERS,
+    mode: 'list',
+    selectedTraceId: null,
+    selectedSpanId: null,
+  });
+});

@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { AutoPilotFinding, AutoPilotAction, AutoPilotRuleConfig } from '@/services/api/autopilot';
+import { onClusterSwitch } from './clusterSwitch';
 
 interface AutoPilotState {
   /** Current findings from the latest scan. */
@@ -57,3 +58,15 @@ export const useAutoPilotStore = create<AutoPilotState>((set) => ({
 
   setIsScanning: (isScanning) => set({ isScanning }),
 }));
+
+// Phase 2 / Gap 4 — findings/actions/config are all cluster-scoped; on
+// cluster switch wipe everything so the AutoPilot page never shows
+// the prior cluster's recommendations after the active id rotates.
+onClusterSwitch(() => {
+  useAutoPilotStore.setState({
+    findings: [],
+    actions: [],
+    config: [],
+    isScanning: false,
+  });
+});

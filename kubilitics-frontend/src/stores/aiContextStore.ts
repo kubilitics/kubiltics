@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { onClusterSwitch } from './clusterSwitch';
 
 export type AIContext = {
   type:
@@ -26,3 +27,10 @@ export const useAIContextStore = create<AIContextState>((set, get) => ({
   setExplicit: (ctx) => set({ explicit: ctx }),
   current: () => get().explicit ?? get().implicit,
 }));
+
+// Phase 2 / Gap 4 — AI context (the thing AskAIButton pre-fills) is
+// tightly cluster-scoped; a pod hint from cluster-A pinned after switch
+// to cluster-B was a P0 quality hit for chat answers.
+onClusterSwitch(() => {
+  useAIContextStore.setState({ implicit: null, explicit: null });
+});
