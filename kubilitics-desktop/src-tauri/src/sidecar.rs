@@ -418,6 +418,38 @@ pub fn get_backend_status(app_handle: AppHandle) -> Result<serde_json::Value, St
 // ─────────────────────────────────────────────────────────────────────────────
 
 const BRAIN_HTTP_PORT: u16 = 8081;
+
+/// read_saved_provider_and_key pulls the provider from the Tauri-written
+/// config.yaml and the matching API key from the OS keychain so we can
+/// hand both to the brain on spawn. Returns (None, None) gracefully if
+/// either is missing — the brain then runs with its own built-in
+/// defaults.
+fn read_saved_provider_and_key(config_dir: &std::path::Path) -> (Option<String>, Option<String>) {
+    let yaml_path = config_dir.join("config.yaml");
+    let raw = match std::fs::read_to_string(&yaml_path) {
+        Ok(s) => s,
+        Err(_) => return (None, None),
+    };
+    // Lightweight parse — only "provider:" line matters here. Avoids
+    // pulling serde_yaml dependency for a single field.
+    let provider = raw
+        .lines()
+        .filter_map(|l| l.strip_prefix("provider:"))
+        .map(|v| v.trim().trim_matches('"').to_string())
+        .next()
+        .filter(|s| !s.is_empty());
+    // Fetch key from keychain. service="kubilitics", account=<provider>
+    // mirrors ai_config::keychain_set.
+    let key = match &provider {
+        Some(p) => keyring::Entry::new("kubilitics", p)
+            .ok()
+            .and_then(|e| e.get_password().ok())
+            .filter(|s| !s.is_empty()),
+        None => None,
+    };
+    (provider, key)
+}
+
 // 50061 to avoid collision with kubilitics-backend's gRPC on 50051.
 const BRAIN_GRPC_PORT: u16 = 50061;
 const BRAIN_READY_TIMEOUT_SECS: u64 = 90;
@@ -461,23 +493,51 @@ impl BrainManager {
             }
         };
 
-        // Config path: reuse the app data dir used by the backend for consistency.
+        // Two directories matter here and they can differ across OSes:
+        //   config_dir  — where ai_config::save_ai_config writes config.yaml
+        //                 + keychain-managed API keys (macOS: Library/Application
+        //                 Support, Linux: ~/.config, Windows: %AppData%)
+        //   data_dir    — where the brain writes its SQLite DB (macOS:
+        //                 Library/Application Support, Linux: ~/.local/share,
+        //                 Windows: %LocalAppData%)
+        // Point the brain at the correct one for each. Missing dirs are
+        // created best-effort.
+        let config_dir = dirs::config_dir()
+            .unwrap_or_else(|| dirs::home_dir().unwrap_or_else(|| std::path::PathBuf::from(".")))
+            .join("kubilitics");
         let data_dir = dirs::data_local_dir()
             .unwrap_or_else(|| dirs::home_dir().unwrap_or_else(|| std::path::PathBuf::from(".")))
             .join("kubilitics");
+        let _ = std::fs::create_dir_all(&config_dir);
         let _ = std::fs::create_dir_all(&data_dir);
 
-        let cmd = sidecar
+        // Look up the saved provider + API key so we can hand them to the
+        // brain via env vars. The brain respects KUBILITICS_LLM_API_KEY as
+        // a universal override; see internal/llm/adapter/adapter_impl.go.
+        // Empty = brain falls back to its own provider-specific env vars
+        // (OPENAI_API_KEY, ANTHROPIC_API_KEY, etc.).
+        let (saved_provider, saved_key) = read_saved_provider_and_key(&config_dir);
+
+        let mut cmd = sidecar
             .env("KUBILITICS_AI_HTTP_PORT", BRAIN_HTTP_PORT.to_string())
             .env("KUBILITICS_AI_GRPC_PORT", BRAIN_GRPC_PORT.to_string())
-            // Brain reads its provider config from this file (written by AI Settings).
-            .env("KUBILITICS_AI_CONFIG_PATH", data_dir.join("ai-config.yaml").to_string_lossy().as_ref())
+            // Brain reads its provider config from the same file the AI
+            // Settings page writes to (ai_config::app_config_dir + config.yaml).
+            // Must match — otherwise Save & Test persists but the brain
+            // never re-reads and stays on its default provider.
+            .env("KUBILITICS_AI_CONFIG_PATH", config_dir.join("config.yaml").to_string_lossy().as_ref())
             // SQLite path — brain defaults to /var/lib/kubilitics which is
             // read-only outside a container. Point it at the user-writable
             // data dir same as the backend.
             .env("KUBILITICS_DATABASE_PATH", data_dir.join("kubilitics-ai.db").to_string_lossy().as_ref())
             // Point the brain at the backend so it can call MCP tools.
             .env("KUBILITICS_BACKEND_URL", format!("http://localhost:{}", BACKEND_PORT));
+        if let Some(provider) = saved_provider.as_deref() {
+            cmd = cmd.env("KUBILITICS_LLM_PROVIDER", provider);
+        }
+        if let Some(key) = saved_key.as_deref() {
+            cmd = cmd.env("KUBILITICS_LLM_API_KEY", key);
+        }
 
         let (_rx, child) = cmd.spawn()?;
         *self.brain_process.lock().unwrap() = Some(child);

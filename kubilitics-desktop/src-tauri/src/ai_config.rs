@@ -159,24 +159,49 @@ fn validate_ai_config(cfg: &AIConfig) -> Result<(), String> {
 }
 
 #[command]
-pub async fn save_ai_config(app_handle: tauri::AppHandle, cfg: AIConfig) -> Result<(), String> {
+pub async fn save_ai_config(cfg: AIConfig) -> Result<(), String> {
     validate_ai_config(&cfg)?;
     write_yaml(&cfg)?;
-    if let Some(key) = cfg.api_key.as_deref() {
-        if !key.is_empty() {
-            keychain_set(&cfg.provider, key)?;
+
+    // Pull the key: either the user just pasted one (cfg.api_key) or we
+    // already have one in the keychain from a previous save.
+    let live_key = match cfg.api_key.as_deref() {
+        Some(k) if !k.is_empty() => {
+            keychain_set(&cfg.provider, k)?;
+            k.to_string()
         }
-    }
-    // The brain reads config.yaml + keychain once at startup. Restart it
-    // so the new provider / key takes effect without the user having to
-    // quit the app. Best-effort — save still succeeds if restart fails.
-    if let Some(manager) = app_handle.try_state::<std::sync::Arc<crate::sidecar::BrainManager>>() {
-        let m = (*manager).clone();
-        tauri::async_runtime::spawn(async move {
-            if let Err(e) = m.restart().await {
-                eprintln!("save_ai_config: brain restart failed: {:#}", e);
-            }
+        _ => keychain_get(&cfg.provider).ok().flatten().unwrap_or_default(),
+    };
+
+    // Hot-wire the brain with the new provider/key via its
+    // POST /api/v1/config/provider endpoint.  Unlike restart, this avoids
+    // port churn and the user never sees the AI drop to "unreachable"
+    // in the middle of a save.  Best-effort: save succeeds even if the
+    // brain isn't running yet.
+    if !live_key.is_empty() || cfg.provider == "ollama" {
+        let base = std::env::var("KUBILITICS_AI_ADMIN_URL")
+            .unwrap_or_else(|_| "http://127.0.0.1:8081".to_string());
+        let body = serde_json::json!({
+            "provider": cfg.provider,
+            "api_key": live_key,
+            "model":   cfg.model,
+            "base_url": cfg.base_url,
         });
+        let client = reqwest::Client::builder()
+            .timeout(std::time::Duration::from_secs(5))
+            .build()
+            .map_err(|e| format!("http client: {}", e))?;
+        if let Err(e) = client
+            .post(format!("{}/api/v1/config/provider", base.trim_end_matches('/')))
+            .json(&body)
+            .send()
+            .await
+        {
+            // Non-fatal: the brain might not be running yet (first launch,
+            // or the user is editing Settings before the brain has spawned).
+            // The config is persisted; the brain will load it on next start.
+            eprintln!("save_ai_config: brain hot-wire failed (will apply on next brain start): {}", e);
+        }
     }
     Ok(())
 }
