@@ -45,6 +45,7 @@ import (
 	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/config"
 	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/engines/kagent"
 	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/engines/python"
+	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/llm/budget"
 	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/llm/toolrouter"
 	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/router"
 	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/runtime"
@@ -229,6 +230,18 @@ func main() {
 	// Wire the runtime server into the HTTP admin surface so that
 	// POST /admin/trace-dir can reach into the runtime layer.
 	srv.SetRuntimeServer(rtSrv)
+
+	// Phase 2 / Gap 3 — pre-dispatch budget gate. Cap is driven by env
+	// var KUBILITICS_AI_BUDGET_USD (0 = unlimited). When the cap is
+	// exceeded, Server.Send emits an Error{Code:"budget_exceeded"} and
+	// the frontend BudgetExceededBanner surfaces the reset CTA.
+	budgetCap := 0.0
+	if raw := os.Getenv("KUBILITICS_AI_BUDGET_USD"); raw != "" {
+		if v, err := strconv.ParseFloat(raw, 64); err == nil && v >= 0 {
+			budgetCap = v
+		}
+	}
+	rtSrv.SetBudgetGate(budget.NewMemoryGate(budgetCap), 0.01)
 	go func() {
 		fmt.Printf("AgentRuntimeService gRPC listening on %s\n", grpcAddr)
 		if err := grpcSrv.Serve(grpcLis); err != nil {

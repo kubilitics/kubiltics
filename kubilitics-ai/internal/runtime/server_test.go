@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/llm/budget"
 	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/router"
 	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/runtime"
 	kotgv1 "github.com/vellankikoti/kotg-schema/gen/go/kotg/v1"
@@ -204,6 +205,88 @@ func TestSendLLMErrorEmitsErrorAndDone(t *testing.T) {
 	}
 	if !sawErr || !sawDone {
 		t.Errorf("sawErr=%v sawDone=%v", sawErr, sawDone)
+	}
+}
+
+// Phase 2 / Gap 3. Wire a Gate with a $0.001 cap and a $1 estimated cost.
+// The first Send turn must short-circuit with an Error{Code:"budget_exceeded"}
+// followed by Done{Partial:true, FinishReason:"budget"}, without calling
+// into the (here unused) LLM stream.
+func TestSendBudgetExceededEmitsErrorAndBudgetDone(t *testing.T) {
+	// Build a server by hand so we can attach the gate before serving.
+	lis := bufconn.Listen(bufSize)
+	s := grpc.NewServer()
+	rt := runtime.New(runtime.Config{
+		Dispatcher: router.New(
+			[]router.Engine{runtime.NewLLMEngine(&fakeLLM{tokens: []string{"should-not-be-streamed"}})},
+			nil,
+		),
+		AIVersion:     "test",
+		SchemaVersion: "1.0.1",
+		Providers:     []string{"fake"},
+		Models:        []string{"fake-model"},
+	})
+	// $0.001 cap + $1 per-turn estimate = first turn always over budget.
+	rt.SetBudgetGate(budget.NewMemoryGate(0.001), 1.00)
+	kotgv1.RegisterChatServer(s, rt)
+	kotgv1.RegisterAIControlServer(s, rt)
+	go func() { _ = s.Serve(lis) }()
+	defer s.Stop()
+
+	conn, err := grpc.NewClient("passthrough:///bufnet",
+		grpc.WithContextDialer(func(_ context.Context, _ string) (net.Conn, error) { return lis.Dial() }),
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	)
+	if err != nil {
+		t.Fatalf("dial: %v", err)
+	}
+	defer conn.Close()
+	chat := kotgv1.NewChatClient(conn)
+
+	sess, err := chat.CreateSession(context.Background(), &kotgv1.CreateSessionRequest{FocusClusterId: "c1"})
+	if err != nil {
+		t.Fatalf("CreateSession: %v", err)
+	}
+	stream, err := chat.Send(context.Background())
+	if err != nil {
+		t.Fatalf("Send: %v", err)
+	}
+	if err := stream.Send(&kotgv1.UserMessage{SessionId: sess.SessionId, TurnId: "t1", Text: "hi"}); err != nil {
+		t.Fatalf("send msg: %v", err)
+	}
+	stream.CloseSend()
+
+	var sawBudgetErr bool
+	var sawBudgetDone bool
+	var sawAnyTextDelta bool
+	for {
+		ev, recvErr := stream.Recv()
+		if errors.Is(recvErr, io.EOF) {
+			break
+		}
+		if recvErr != nil {
+			break
+		}
+		if e := ev.GetError(); e != nil && e.Code == "budget_exceeded" {
+			sawBudgetErr = true
+		}
+		if d := ev.GetDone(); d != nil {
+			if d.FinishReason == "budget" && d.Partial {
+				sawBudgetDone = true
+			}
+		}
+		if ev.GetTextDelta() != nil {
+			sawAnyTextDelta = true
+		}
+	}
+	if !sawBudgetErr {
+		t.Errorf("expected Error{Code:\"budget_exceeded\"}")
+	}
+	if !sawBudgetDone {
+		t.Errorf("expected Done{Partial,FinishReason:\"budget\"}")
+	}
+	if sawAnyTextDelta {
+		t.Errorf("LLM stream should NOT have fired once the gate denied the turn")
 	}
 }
 

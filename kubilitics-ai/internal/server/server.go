@@ -627,6 +627,59 @@ func (s *Server) registerHandlers(mux *http.ServeMux) {
 	// where the runtime gRPC server writes per-turn routing JSONL files.
 	// Empty trace_dir disables tracing. Loopback-only; no auth required.
 	mux.HandleFunc("/admin/trace-dir", s.handleAdminTraceDir)
+
+	// Admin: pre-dispatch budget gate (Phase 2 / Gap 3).
+	// GET /admin/budget/status → {"spent_usd": x, "cap_usd": y}
+	// POST /admin/budget/reset → clears the accumulator.
+	// Both are loopback-only; the Tauri-desktop side calls these from
+	// AISettingsPage's "Reset budget cap" control.
+	mux.HandleFunc("/admin/budget/status", s.handleAdminBudgetStatus)
+	mux.HandleFunc("/admin/budget/reset", s.handleAdminBudgetReset)
+}
+
+// handleAdminBudgetStatus returns the gate's running spend + active cap.
+// Safe to call when no gate is wired — returns zeros so the UI renders
+// "—" placeholders without a 500.
+func (s *Server) handleAdminBudgetStatus(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	s.mu.RLock()
+	rtSrv := s.runtimeSrv
+	s.mu.RUnlock()
+	w.Header().Set("Content-Type", "application/json")
+	if rtSrv == nil || rtSrv.BudgetGate() == nil {
+		_, _ = w.Write([]byte(`{"spent_usd":0,"cap_usd":0}`))
+		return
+	}
+	g := rtSrv.BudgetGate()
+	// Gate interface exposes SpentUSD; Cap is only surfaced by MemoryGate.
+	// Use a type assertion for the optional cap read.
+	spent := g.SpentUSD()
+	var cap float64
+	type capReader interface{ Cap() float64 }
+	if cr, ok := g.(capReader); ok {
+		cap = cr.Cap()
+	}
+	fmt.Fprintf(w, `{"spent_usd":%g,"cap_usd":%g}`, spent, cap)
+}
+
+// handleAdminBudgetReset zeroes the gate accumulator.
+func (s *Server) handleAdminBudgetReset(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	s.mu.RLock()
+	rtSrv := s.runtimeSrv
+	s.mu.RUnlock()
+	if rtSrv != nil {
+		if g := rtSrv.BudgetGate(); g != nil {
+			g.ResetSpend()
+		}
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 // handleHealth handles health check requests.

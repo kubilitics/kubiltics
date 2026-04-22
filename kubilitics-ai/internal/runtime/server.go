@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/chat"
+	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/llm/budget"
 	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/router"
 	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/tracing/routing"
 	kotgv1 "github.com/vellankikoti/kotg-schema/gen/go/kotg/v1"
@@ -117,6 +118,12 @@ type Server struct {
 	sessions     map[string]*session
 	traceDir     string
 	sessionStore chat.SessionStore // optional — nil-safe (no persistence)
+	budgetGate   budget.Gate        // optional — nil-safe (no enforcement)
+	// estimatedTurnCostUSD is used when a Gate is wired but the runtime
+	// has no per-turn cost estimator yet. A conservative constant (fractions
+	// of a cent) keeps the pre-spend check honest without blocking benign
+	// conversations on zero-budget setups.
+	estimatedTurnCostUSD float64
 }
 
 // SetSessionStore wires a persistent backing store for chat messages.
@@ -133,6 +140,28 @@ func (s *Server) SetSessionStore(store chat.SessionStore) {
 	s.mu.Unlock()
 }
 
+// SetBudgetGate wires a pre-dispatch budget primitive (Phase 2 / Gap 3).
+// When set, every Send turn debits estimatedTurnCostUSD before dispatching
+// to the router. On ErrBudgetExceeded the handler emits an Error event
+// with code="budget_exceeded" + a Done{Partial:true,FinishReason:"budget"}
+// and returns without invoking the LLM. nil disables enforcement.
+func (s *Server) SetBudgetGate(g budget.Gate, estimatedTurnCostUSD float64) {
+	s.mu.Lock()
+	s.budgetGate = g
+	if estimatedTurnCostUSD > 0 {
+		s.estimatedTurnCostUSD = estimatedTurnCostUSD
+	}
+	s.mu.Unlock()
+}
+
+// BudgetGate returns the wired gate (may be nil). Exposed so admin HTTP
+// endpoints can query spend + reset the accumulator.
+func (s *Server) BudgetGate() budget.Gate {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.budgetGate
+}
+
 // SetTraceDir configures the directory where per-turn routing traces are
 // written. An empty string disables tracing (no-op recorder). The directory
 // is created on first use, not here, so callers can set this at any time.
@@ -145,8 +174,9 @@ func (s *Server) SetTraceDir(dir string) {
 // New builds a runtime server. Caller wires it into a *grpc.Server.
 func New(cfg Config) *Server {
 	return &Server{
-		cfg:      cfg,
-		sessions: make(map[string]*session),
+		cfg:                  cfg,
+		sessions:             make(map[string]*session),
+		estimatedTurnCostUSD: 0.01, // conservative default: 1¢/turn
 	}
 }
 
@@ -239,12 +269,41 @@ func (s *Server) Send(stream kotgv1.Chat_SendServer) error {
 		// miss must never block an in-flight turn.
 		s.mu.RLock()
 		store := s.sessionStore
+		gate := s.budgetGate
+		estCost := s.estimatedTurnCostUSD
 		s.mu.RUnlock()
 		if store != nil {
 			_ = store.Append(turnCtx, msg.SessionId, chat.Message{
 				Role:    "user",
 				Content: msg.Text,
 			})
+		}
+
+		// Pre-dispatch budget gate (Phase 2 / Gap 3). Debit estCost; on
+		// ErrBudgetExceeded short-circuit the turn with a recognizable
+		// Error event + partial-Done. The frontend's BudgetExceededBanner
+		// keys off ErrorEvent.Code == "budget_exceeded".
+		if gate != nil {
+			if budgetErr := gate.AllowDebit(turnCtx, estCost); budgetErr != nil {
+				cancel()
+				s.mu.Lock()
+				sess.cancel = nil
+				s.mu.Unlock()
+				if sendErr := stream.Send(s.event(msg.TurnId, &kotgv1.AssistantEvent_Error{
+					Error: &kotgv1.ErrorEvent{
+						Code:    "budget_exceeded",
+						Message: budgetErr.Error(),
+					},
+				})); sendErr != nil {
+					return sendErr
+				}
+				if sendErr := stream.Send(s.event(msg.TurnId, &kotgv1.AssistantEvent_Done{
+					Done: &kotgv1.Done{Partial: true, FinishReason: "budget"},
+				})); sendErr != nil {
+					return sendErr
+				}
+				continue
+			}
 		}
 
 		req := router.Request{

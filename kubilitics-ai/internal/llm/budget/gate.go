@@ -67,6 +67,15 @@ func (g *MemoryGate) SpentUSD() float64 {
 	return g.spent
 }
 
+// Cap returns the active cap in dollars. 0 = unlimited. Exposed for the
+// admin HTTP surface (Phase 2 / Gap 3) so the frontend Settings page
+// can render "Spent $x of $y".
+func (g *MemoryGate) Cap() float64 {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	return g.cap
+}
+
 // SetCap replaces the active cap. Existing spend is retained; the next
 // AllowDebit call is evaluated against the new cap.
 func (g *MemoryGate) SetCap(usd float64) {
