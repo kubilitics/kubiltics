@@ -86,6 +86,23 @@ var ToolTaxonomy = []ToolDefinition{
 		Destructive: false,
 		RequiresAI:  true,
 	},
+	{
+		Name:        "resolve_resource",
+		Category:    CategoryObservation,
+		Description: "Resolve a resource kind + fuzzy name hint to its concrete {namespace, name} across the whole cluster. Call this FIRST when you know the kind (e.g. 'deployment', 'configmap', 'service') but are not sure which namespace the resource lives in. Returns up to 5 matches (exact → prefix → substring) with a suggestions list if nothing matches.",
+		InputSchema: map[string]interface{}{
+			"type": "object",
+			"properties": map[string]interface{}{
+				"cluster_id":   map[string]interface{}{"type": "string", "description": "Cluster ID (optional)"},
+				"kind":         map[string]interface{}{"type": "string", "description": "Resource kind e.g. 'Deployment', 'Service', 'ConfigMap' (required)"},
+				"name_hint":    map[string]interface{}{"type": "string", "description": "Resource name or fuzzy substring hint (required)"},
+				"cluster_wide": map[string]interface{}{"type": "boolean", "description": "Whether to search across all namespaces (default true)"},
+			},
+			"required": []string{"kind", "name_hint"},
+		},
+		Destructive: false,
+		RequiresAI:  false,
+	},
 	// observe_pod_detailed retired 2026-04-22: folded into inspect_pod (along with
 	// observe_pod_events + observe_pod_ownership_chain). Underlying handler
 	// handlePodDetailed stays alive in handlers_observation.go.

@@ -341,6 +341,10 @@ var toolTopicOverrides = map[string][]Topic{
 	"inspect_job":                 {TopicWorkloads, TopicEvents},
 	"inspect_cronjob":             {TopicWorkloads, TopicEvents},
 
+	// Gap closures (2026-04-22 bench): new tools must ship with explicit
+	// topic routing so the router emits them for the right prompts.
+	"resolve_resource": {TopicCore},
+
 	// Troubleshoot tools — route by the subsystem they troubleshoot.
 	"troubleshoot_pod_failures":             {TopicPods, TopicEvents},
 	"troubleshoot_network_issues":           {TopicNetworking},
