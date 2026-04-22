@@ -56,6 +56,7 @@ fn main() {
             commands::is_kcli_sidecar_available,
             sidecar::get_backend_status,
             sidecar::get_brain_status,
+            sidecar::restart_brain,
             // Phase 2 / Blocker C — AI settings keychain round-trip
             ai_config::save_ai_config,
             ai_config::load_ai_config,

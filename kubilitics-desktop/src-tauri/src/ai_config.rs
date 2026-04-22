@@ -27,7 +27,7 @@
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
-use tauri::command;
+use tauri::{command, Manager};
 
 const KEYCHAIN_SERVICE: &str = "kubilitics";
 const ENV_API_KEY: &str = "KUBILITICS_LLM_API_KEY";
@@ -159,13 +159,24 @@ fn validate_ai_config(cfg: &AIConfig) -> Result<(), String> {
 }
 
 #[command]
-pub async fn save_ai_config(cfg: AIConfig) -> Result<(), String> {
+pub async fn save_ai_config(app_handle: tauri::AppHandle, cfg: AIConfig) -> Result<(), String> {
     validate_ai_config(&cfg)?;
     write_yaml(&cfg)?;
     if let Some(key) = cfg.api_key.as_deref() {
         if !key.is_empty() {
             keychain_set(&cfg.provider, key)?;
         }
+    }
+    // The brain reads config.yaml + keychain once at startup. Restart it
+    // so the new provider / key takes effect without the user having to
+    // quit the app. Best-effort — save still succeeds if restart fails.
+    if let Some(manager) = app_handle.try_state::<std::sync::Arc<crate::sidecar::BrainManager>>() {
+        let m = (*manager).clone();
+        tauri::async_runtime::spawn(async move {
+            if let Err(e) = m.restart().await {
+                eprintln!("save_ai_config: brain restart failed: {:#}", e);
+            }
+        });
     }
     Ok(())
 }

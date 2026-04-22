@@ -529,6 +529,24 @@ impl BrainManager {
             println!("kubilitics-ai-server stopped");
         }
     }
+
+    /// Restart the brain after config.yaml / keychain changes so it
+    /// picks up the new provider / model / API key. Called from
+    /// ai_config::save_ai_config.
+    pub async fn restart(self: Arc<Self>) -> Result<(), Box<dyn std::error::Error>> {
+        // Kill the current child and clear the ready flag.
+        if let Some(child) = self.brain_process.lock().unwrap().take() {
+            let _ = child.kill();
+        }
+        *self.is_ready.lock().unwrap() = false;
+        let _ = self.app_handle.emit("brain-status", serde_json::json!({
+            "status": "starting",
+            "message": "Reloading AI engine with new configuration…"
+        }));
+        // Give the OS a moment to release the port, then start fresh.
+        sleep(Duration::from_millis(500)).await;
+        self.start().await
+    }
 }
 
 pub fn start_brain(app_handle: &AppHandle) -> Result<Arc<BrainManager>, Box<dyn std::error::Error>> {
@@ -551,4 +569,16 @@ pub fn get_brain_status(app_handle: AppHandle) -> Result<serde_json::Value, Stri
         "status": if ready { "ready" } else { "starting" },
         "message": if ready { "AI engine ready" } else { "Starting AI engine…" }
     }))
+}
+
+/// restart_brain — kill + respawn kubilitics-ai-server so it re-reads
+/// config.yaml + the keychain API key. Called from save_ai_config so
+/// "Save & Test" actually tests against the new config.
+#[tauri::command]
+pub async fn restart_brain(app_handle: AppHandle) -> Result<(), String> {
+    let manager = app_handle
+        .try_state::<Arc<BrainManager>>()
+        .ok_or_else(|| "brain manager not initialized".to_string())?;
+    let m = (*manager).clone();
+    m.restart().await.map_err(|e| format!("restart: {:#}", e))
 }
