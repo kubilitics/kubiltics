@@ -85,7 +85,16 @@ func doWithRetryOn429(client *http.Client, req *http.Request, maxAttempts int) (
 		if wait > defaultMaxRetryDelay {
 			wait = defaultMaxRetryDelay
 		}
-		time.Sleep(wait)
+		// Honor ctx cancellation during backoff. A cancelled streaming-chat
+		// request should return immediately, not wait out the full retry
+		// window (which can be 30 s on repeated 5xx).
+		timer := time.NewTimer(wait)
+		select {
+		case <-timer.C:
+		case <-req.Context().Done():
+			timer.Stop()
+			return nil, req.Context().Err()
+		}
 	}
 	return lastResp, nil
 }

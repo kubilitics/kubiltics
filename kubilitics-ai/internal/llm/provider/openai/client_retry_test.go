@@ -116,3 +116,40 @@ func TestRetry5xx_BackoffTiming(t *testing.T) {
 		t.Fatalf("elapsed=%s < 300ms, backoff not applied", elapsed)
 	}
 }
+
+// TestRetry5xx_HonorsContextCancellation — a cancelled ctx should short-
+// circuit the retry backoff instead of waiting out the full window.
+func TestRetry5xx_HonorsContextCancellation(t *testing.T) {
+	var attempts int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		atomic.AddInt32(&attempts, 1)
+		w.WriteHeader(http.StatusServiceUnavailable)
+	}))
+	defer srv.Close()
+
+	c, _ := NewOpenAIClient("k", "gpt-x")
+	c.SetBaseURL(srv.URL)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	// Cancel after the first 503 response lands.
+	go func() {
+		for atomic.LoadInt32(&attempts) < 1 {
+			time.Sleep(5 * time.Millisecond)
+		}
+		cancel()
+	}()
+
+	start := time.Now()
+	_, _, err := c.Complete(ctx,
+		[]types.Message{{Role: "user", Content: "hi"}}, nil)
+	elapsed := time.Since(start)
+
+	if err == nil {
+		t.Fatal("expected error after cancellation")
+	}
+	// Without ctx honoring, elapsed would be ≥ 100ms×2^0 + 100ms×2^1 = 300 ms.
+	// With ctx honoring, should return within ~150 ms of cancel.
+	if elapsed > 300*time.Millisecond {
+		t.Fatalf("ctx not honored during backoff; elapsed=%s", elapsed)
+	}
+}
