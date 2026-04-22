@@ -71,45 +71,81 @@ function toRust(cfg: AIConfigInput): RustCfg {
 // path is deliberately excluded — a user clicking "Save & Test" should
 // not wait for a timer to elapse. `save()` is the immediate path for
 // secrets and explicit form submissions.
+//
+// State is scoped inside an IIFE-created controller so tests can grab a
+// fresh instance via `__createDebounceControllerForTests()`. Module-level
+// globals (the prior design) leaked between parallel vitest files and
+// could resurface as flakes.
 const DEBOUNCE_MS = 500;
 type DebounceableField = 'provider' | 'model' | 'baseUrl';
-let debounceTimer: ReturnType<typeof setTimeout> | null = null;
-let debouncePending: Partial<Record<DebounceableField, unknown>> = {};
-let debounceFlush: Promise<void> | null = null;
+
+interface DebounceController {
+  setField: <K extends DebounceableField>(field: K, value: AIConfigInput[K]) => void;
+  flush: () => Promise<void>;
+  cancel: () => void;
+}
+
+function createDebounceController(): DebounceController {
+  let timer: ReturnType<typeof setTimeout> | null = null;
+  let flushPromise: Promise<void> | null = null;
+
+  return {
+    setField<K extends DebounceableField>(field: K, value: AIConfigInput[K]) {
+      // Update the store immediately so the UI is responsive.
+      useAIConfigStore.setState({ [field]: value } as Partial<AIConfigState>);
+      if (timer) clearTimeout(timer);
+      flushPromise = new Promise<void>((resolve) => {
+        timer = setTimeout(async () => {
+          timer = null;
+          const state = useAIConfigStore.getState();
+          const cfg: AIConfigInput = {
+            provider: state.provider,
+            model: state.model,
+            baseUrl: state.baseUrl,
+            // api_key intentionally omitted — Rust treats absent as "leave existing"
+          };
+          try {
+            await invoke('save_ai_config', { cfg: toRust(cfg) });
+          } catch (err) {
+            useAIConfigStore.setState({ lastError: String(err) });
+          } finally {
+            resolve();
+          }
+        }, DEBOUNCE_MS);
+      });
+    },
+    async flush() {
+      if (flushPromise) await flushPromise;
+    },
+    cancel() {
+      if (timer) {
+        clearTimeout(timer);
+        timer = null;
+      }
+      flushPromise = null;
+    },
+  };
+}
+
+const debounceController = createDebounceController();
 
 export function setFieldDebounced<K extends DebounceableField>(
   field: K,
   value: AIConfigInput[K],
 ): void {
-  // Update the store immediately so the UI is responsive.
-  useAIConfigStore.setState({ [field]: value } as Partial<AIConfigState>);
-  debouncePending[field] = value;
-  if (debounceTimer) clearTimeout(debounceTimer);
-  debounceFlush = new Promise<void>((resolve) => {
-    debounceTimer = setTimeout(async () => {
-      debounceTimer = null;
-      const state = useAIConfigStore.getState();
-      const cfg: AIConfigInput = {
-        provider: state.provider,
-        model: state.model,
-        baseUrl: state.baseUrl,
-        // api_key intentionally omitted — Rust treats absent as "leave existing"
-      };
-      debouncePending = {};
-      try {
-        await invoke('save_ai_config', { cfg: toRust(cfg) });
-      } catch (err) {
-        useAIConfigStore.setState({ lastError: String(err) });
-      } finally {
-        resolve();
-      }
-    }, DEBOUNCE_MS);
-  });
+  debounceController.setField(field, value);
 }
 
 // Test helper — awaits the pending debounced save (if any). No-op when idle.
 export async function flushFieldDebounce(): Promise<void> {
-  if (debounceFlush) await debounceFlush;
+  await debounceController.flush();
+}
+
+// Test-only reset — parallel vitest files can call this in afterEach to
+// guarantee a clean slate even if a test skipped vi.useFakeTimers or
+// forgot to flush. Not exported to product code paths.
+export function __resetDebounceForTests(): void {
+  debounceController.cancel();
 }
 
 export const useAIConfigStore = create<AIConfigState>((set, get) => ({
