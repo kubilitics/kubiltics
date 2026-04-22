@@ -55,6 +55,7 @@ type result struct {
 	Tools    []string
 	Duration time.Duration
 	Err      error
+	Judge    *JudgeResult // non-nil when --judge was enabled
 }
 
 func (r result) Pass() bool {
@@ -78,6 +79,11 @@ func main() {
 	timeout := flag.Duration("timeout", 60*time.Second, "per-prompt timeout")
 	concurrency := flag.Int("concurrency", 1, "parallel workers (higher = faster, but watch LLM rate limits)")
 	traceDir := flag.String("trace-dir", "", "if set, write per-prompt JSONL traces into this directory; also sets the brain-side trace dir")
+	judgeBaseURL := flag.String("judge-base-url", "", "LLM-as-judge base URL (e.g. https://api.openai.com). Empty disables judge.")
+	judgeModel := flag.String("judge-model", "gpt-4o-mini", "Judge model name")
+	judgeAPIKey := flag.String("judge-api-key", os.Getenv("JUDGE_API_KEY"), "Judge API key (defaults to JUDGE_API_KEY env)")
+	judgeThreshold := flag.Float64("judge-threshold", 4.0, "Minimum judge mean required for release gate (PASS remains about text+tools; this is report-only unless --judge-gate is set)")
+	judgeGate := flag.Bool("judge-gate", false, "Make prompts with judge mean < --judge-threshold count as failures for exit code")
 	flag.Parse()
 	if *cluster == "" {
 		log.Fatal("--cluster is required")
@@ -107,6 +113,17 @@ func main() {
 		log.Fatalf("parse prompts: %v", err)
 	}
 
+	var judge *Judge
+	if *judgeBaseURL != "" {
+		judge = NewJudge(JudgeConfig{
+			BaseURL: *judgeBaseURL,
+			APIKey:  *judgeAPIKey,
+			Model:   *judgeModel,
+		})
+		fmt.Fprintf(os.Stderr, "[bench] LLM-as-judge enabled: %s model=%s threshold=%.2f gate=%v\n",
+			*judgeBaseURL, *judgeModel, *judgeThreshold, *judgeGate)
+	}
+
 	results := make([]result, len(pf.Prompts))
 	var pass int64
 	var printMu sync.Mutex
@@ -130,9 +147,21 @@ func main() {
 			for idx := range jobs {
 				p := pf.Prompts[idx]
 				r := runPrompt(*backend, *cluster, p, *timeout)
+				if judge != nil && r.Err == nil && strings.TrimSpace(r.Text) != "" {
+					jctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+					jr := judge.Score(jctx, p.Text, r.Tools, r.Text)
+					cancel()
+					r.Judge = &jr
+				}
 				results[idx] = r
+				passed := r.Pass()
+				if passed && *judgeGate && r.Judge != nil && r.Judge.Err == nil {
+					if r.Judge.Mean() < *judgeThreshold {
+						passed = false
+					}
+				}
 				status := "FAIL"
-				if r.Pass() {
+				if passed {
 					status = "PASS"
 					atomic.AddInt64(&pass, 1)
 				}
@@ -140,9 +169,17 @@ func main() {
 				if r.Err != nil {
 					errStr = "  err=" + r.Err.Error()
 				}
+				judgeStr := ""
+				if r.Judge != nil {
+					if r.Judge.Err != nil {
+						judgeStr = fmt.Sprintf("  judge=err(%v)", r.Judge.Err)
+					} else {
+						judgeStr = fmt.Sprintf("  judge=%.1f", r.Judge.Mean())
+					}
+				}
 				printMu.Lock()
-				fmt.Printf("%s  %-28s  tools=%d  %5dms  text=%d%s\n",
-					status, p.ID, len(r.Tools), r.Duration.Milliseconds(), len(r.Text), errStr)
+				fmt.Printf("%s  %-28s  tools=%d  %5dms  text=%d%s%s\n",
+					status, p.ID, len(r.Tools), r.Duration.Milliseconds(), len(r.Text), errStr, judgeStr)
 				printMu.Unlock()
 			}
 		}()
@@ -152,6 +189,22 @@ func main() {
 	fmt.Printf("\n%d / %d passed (%.0f%%) in %s (concurrency=%d)\n",
 		pass, len(results), 100*float64(pass)/float64(len(results)),
 		time.Since(startAll).Round(time.Second), workers)
+	if judge != nil {
+		var meanSum float64
+		var scored int
+		for _, r := range results {
+			if r.Judge != nil && r.Judge.Err == nil {
+				meanSum += r.Judge.Mean()
+				scored++
+			}
+		}
+		if scored > 0 {
+			fmt.Printf("judge: mean %.2f across %d scored answers (threshold %.2f, gate=%v)\n",
+				meanSum/float64(scored), scored, *judgeThreshold, *judgeGate)
+		} else {
+			fmt.Println("judge: no answers were scored (all failed upstream or judge errored)")
+		}
+	}
 	if err := writeJUnit(*out, results); err != nil {
 		log.Fatalf("write junit: %v", err)
 	}
@@ -275,10 +328,11 @@ type junitTestSuite struct {
 	Cases    []junitTestCase `xml:"testcase"`
 }
 type junitTestCase struct {
-	XMLName xml.Name      `xml:"testcase"`
-	Name    string        `xml:"name,attr"`
-	Time    float64       `xml:"time,attr"`
-	Failure *junitFailure `xml:"failure,omitempty"`
+	XMLName   xml.Name      `xml:"testcase"`
+	Name      string        `xml:"name,attr"`
+	Time      float64       `xml:"time,attr"`
+	Failure   *junitFailure `xml:"failure,omitempty"`
+	SystemOut string        `xml:"system-out,omitempty"`
 }
 type junitFailure struct {
 	XMLName xml.Name `xml:"failure"`
@@ -300,6 +354,14 @@ func writeJUnit(path string, rs []result) error {
 			}
 			body := fmt.Sprintf("prompt=%q tools=%v text_len=%d", r.Prompt.Text, r.Tools, len(r.Text))
 			tc.Failure = &junitFailure{Message: msg, Body: body}
+		}
+		if r.Judge != nil {
+			if r.Judge.Err != nil {
+				tc.SystemOut = fmt.Sprintf("judge_error=%v", r.Judge.Err)
+			} else {
+				js, _ := json.Marshal(r.Judge)
+				tc.SystemOut = "judge=" + string(js)
+			}
 		}
 		suite.Cases = append(suite.Cases, tc)
 	}
