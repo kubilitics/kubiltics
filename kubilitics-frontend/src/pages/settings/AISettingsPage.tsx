@@ -115,6 +115,61 @@ export default function AISettingsPage() {
     }
   };
 
+  // Paste-any-key detector. Users paste whatever they have; we figure out
+  // which provider + model from the key prefix. No URL/model selection.
+  const [pastedKey, setPastedKey] = useState<string>('');
+  const [pasting, setPasting] = useState(false);
+
+  type Guess = { provider: Provider; model: string; baseUrl: string; label: string };
+  const guessFromKey = (k: string): Guess | null => {
+    const key = k.trim();
+    if (!key) return null;
+    if (key.startsWith('sk-ant-')) {
+      return { provider: 'anthropic', model: 'claude-3-5-sonnet-latest', baseUrl: '', label: 'Anthropic' };
+    }
+    if (key.startsWith('sk-or-')) {
+      return { provider: 'custom', model: 'openai/gpt-4o-mini', baseUrl: 'https://openrouter.ai/api/v1', label: 'OpenRouter' };
+    }
+    if (key.startsWith('gsk_')) {
+      return { provider: 'custom', model: 'llama-3.3-70b-versatile', baseUrl: 'https://api.groq.com/openai/v1', label: 'Groq' };
+    }
+    if (key.startsWith('tgp_')) {
+      return { provider: 'custom', model: 'Qwen/Qwen2.5-7B-Instruct-Turbo', baseUrl: 'https://api.together.xyz/v1', label: 'Together.ai' };
+    }
+    if (key.startsWith('sk-')) {
+      return { provider: 'openai', model: 'gpt-4o-mini', baseUrl: '', label: 'OpenAI' };
+    }
+    // Unknown prefix — assume OpenAI-compatible and let the user refine below.
+    return null;
+  };
+  const pastedGuess = guessFromKey(pastedKey);
+
+  const handlePasteConnect = async () => {
+    if (!pastedGuess) return;
+    setPasting(true);
+    try {
+      await store.save({
+        provider: pastedGuess.provider,
+        model: pastedGuess.model,
+        baseUrl: pastedGuess.baseUrl,
+        apiKey: pastedKey.trim(),
+      });
+      setPastedKey('');
+      const res = await store.testConnection({
+        provider: pastedGuess.provider,
+        model: pastedGuess.model,
+        baseUrl: pastedGuess.baseUrl,
+      });
+      setTestResult({ ok: res.ok, latencyMs: res.latencyMs, error: res.error ?? undefined });
+      if (res.ok) toast.success(`Connected to ${pastedGuess.label} (${res.latencyMs ?? 0}ms)`);
+      else toast.error(`Saved but connection test failed: ${res.error ?? 'unknown'}`);
+    } catch (e) {
+      toast.error(`Connect failed: ${e instanceof Error ? e.message : String(e)}`);
+    } finally {
+      setPasting(false);
+    }
+  };
+
   // Hydrate on mount — pulls provider/model/base_url from config.yaml
   // and flips has_api_key from the keychain probe.
   useEffect(() => {
@@ -235,46 +290,73 @@ export default function AISettingsPage() {
         </CardContent>
       </Card>
 
-      {/* ━━━ Quick Connect ━━━ */}
-      {detected.length > 0 && (
-        <Card className="border-none soft-shadow glass-panel" data-testid="ai-quick-connect-card">
-          <CardHeader>
-            <CardTitle className="text-base">Quick Connect</CardTitle>
-            <CardDescription>
-              We detected AI providers available on this machine. One click to wire up — no model names or URLs to memorize.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="flex flex-wrap gap-3">
-            {detected.map((d) => {
-              const label =
-                d.provider === 'openai' ? 'OpenAI' :
-                d.provider === 'anthropic' ? 'Anthropic' :
-                d.provider === 'ollama' ? 'Ollama (local)' :
-                d.env_var.replace('_API_KEY', '').toLowerCase();
-              const sourceText =
-                d.source === 'env' ? `from $${d.env_var}` :
-                d.source === 'localhost' ? 'running on localhost' :
-                'saved in keychain';
-              return (
-                <Button
-                  key={`${d.provider}-${d.source}-${d.env_var}`}
-                  variant="outline"
-                  className="h-auto py-3 px-4 flex flex-col items-start gap-1"
-                  onClick={() => handleQuickConnect(d)}
-                  disabled={connecting !== null}
-                >
-                  <span className="font-semibold text-sm">
-                    {connecting === d.provider ? 'Connecting…' : `Use ${label}`}
-                  </span>
-                  <span className="text-xs text-muted-foreground">
-                    {d.model} · {sourceText}
-                  </span>
-                </Button>
-              );
-            })}
-          </CardContent>
-        </Card>
-      )}
+      {/* ━━━ Quick Connect — always visible, paste any key ━━━ */}
+      <Card className="border-none soft-shadow glass-panel" data-testid="ai-quick-connect-card">
+        <CardHeader>
+          <CardTitle className="text-base">Quick Connect</CardTitle>
+          <CardDescription>
+            Paste any AI provider key below — we detect the provider from the
+            prefix and pick a sensible model for you. No URL or model name to memorize.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-3">
+          {detected.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {detected.map((d) => {
+                const label =
+                  d.provider === 'openai' ? 'OpenAI' :
+                  d.provider === 'anthropic' ? 'Anthropic' :
+                  d.provider === 'ollama' ? 'Ollama (local)' :
+                  d.env_var.replace('_API_KEY', '').toLowerCase();
+                const sourceText =
+                  d.source === 'env' ? `from $${d.env_var}` :
+                  d.source === 'localhost' ? 'running on localhost' :
+                  'saved in keychain';
+                return (
+                  <Button
+                    key={`${d.provider}-${d.source}-${d.env_var}`}
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleQuickConnect(d)}
+                    disabled={connecting !== null}
+                  >
+                    {connecting === d.provider ? 'Connecting…' : `${label} · ${sourceText}`}
+                  </Button>
+                );
+              })}
+            </div>
+          )}
+          <div className="flex flex-col sm:flex-row gap-2">
+            <Input
+              type="password"
+              placeholder="Paste any API key — sk-... (OpenAI), sk-ant-... (Anthropic), gsk_... (Groq), tgp_... (Together), sk-or-... (OpenRouter)"
+              value={pastedKey}
+              onChange={(e) => setPastedKey(e.target.value)}
+              className="flex-1 font-mono text-xs"
+              aria-label="API key"
+            />
+            <Button
+              onClick={handlePasteConnect}
+              disabled={!pastedGuess || pasting}
+              className="whitespace-nowrap"
+            >
+              {pasting
+                ? 'Connecting…'
+                : pastedGuess
+                  ? `Connect ${pastedGuess.label}`
+                  : 'Paste a key to continue'}
+            </Button>
+          </div>
+          {pastedGuess && (
+            <p className="text-xs text-muted-foreground">
+              Detected <strong>{pastedGuess.label}</strong>. We'll save as
+              provider <code>{pastedGuess.provider}</code>, model <code>{pastedGuess.model}</code>
+              {pastedGuess.baseUrl ? <>, base URL <code>{pastedGuess.baseUrl}</code></> : null}.
+              Change anything below if you want — this is just a sensible default.
+            </p>
+          )}
+        </CardContent>
+      </Card>
 
       {/* ━━━ Provider Configuration ━━━ */}
       <Card className="border-none soft-shadow glass-panel" data-testid="ai-provider-card">
