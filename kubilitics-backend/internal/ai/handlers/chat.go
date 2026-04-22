@@ -57,7 +57,7 @@ func (h *Handlers) GetChat(w http.ResponseWriter, r *http.Request) {
 		// Upgrader already wrote the HTTP error response.
 		return
 	}
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	ctx := proxy.WithUser(r.Context(), userIDFromRequest(r))
 

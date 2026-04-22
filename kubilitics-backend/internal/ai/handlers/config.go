@@ -390,11 +390,11 @@ func readBudget() (budgetConfig, error) {
 		v = strings.TrimSpace(v)
 		switch strings.TrimSpace(k) {
 		case "global_monthly_budget":
-			fmt.Sscanf(v, "%f", &out.GlobalMonthlyBudget)
+			_, _ = fmt.Sscanf(v, "%f", &out.GlobalMonthlyBudget)
 		case "per_user_monthly_budget":
-			fmt.Sscanf(v, "%f", &out.PerUserMonthlyBudget)
+			_, _ = fmt.Sscanf(v, "%f", &out.PerUserMonthlyBudget)
 		case "per_investigation_limit":
-			fmt.Sscanf(v, "%d", &out.PerInvestigationLimit)
+			_, _ = fmt.Sscanf(v, "%d", &out.PerInvestigationLimit)
 		}
 	}
 	return out, nil

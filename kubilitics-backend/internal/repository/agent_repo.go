@@ -152,7 +152,7 @@ FROM agent_credentials WHERE cluster_id = ? AND revoked_at IS NULL`, clusterID)
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	var out []models.AgentCredential
 	for rows.Next() {
 		var c models.AgentCredential
@@ -206,7 +206,7 @@ WHERE ac.revoked_at IS NULL AND ac.expires_at > CURRENT_TIMESTAMP`)
 	if err != nil {
 		return nil, nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	for rows.Next() {
 		var cred models.AgentCredential
 		var cluster models.AgentCluster
