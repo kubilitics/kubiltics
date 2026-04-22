@@ -55,6 +55,7 @@ fn main() {
             commands::restart_sidecar,
             commands::is_kcli_sidecar_available,
             sidecar::get_backend_status,
+            sidecar::get_brain_status,
             // Phase 2 / Blocker C — AI settings keychain round-trip
             ai_config::save_ai_config,
             ai_config::load_ai_config,
@@ -100,6 +101,12 @@ fn main() {
             }
             // Start Go backend sidecar
             sidecar::start_backend(&handle)?;
+
+            // Start kubilitics-ai-server (brain) sidecar — non-fatal if the
+            // binary isn't bundled; AI just shows "unavailable" in that case.
+            if let Err(e) = sidecar::start_brain(&handle) {
+                eprintln!("Brain sidecar start failed: {:#}", e);
+            }
             
             // Setup system tray
             if let Err(e) = tray::setup_system_tray(&handle) {
@@ -128,6 +135,9 @@ fn main() {
             if let RunEvent::Exit = event {
                 if let Some(manager) = app_handle.try_state::<std::sync::Arc<sidecar::BackendManager>>() {
                     tauri::async_runtime::block_on(manager.stop());
+                }
+                if let Some(brain) = app_handle.try_state::<std::sync::Arc<sidecar::BrainManager>>() {
+                    tauri::async_runtime::block_on(brain.stop());
                 }
             }
         });

@@ -405,3 +405,145 @@ pub fn get_backend_status(app_handle: AppHandle) -> Result<serde_json::Value, St
     }))
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// BrainManager — kubilitics-ai-server sidecar (Phase 6 F.2)
+//
+// Spawns the brain as a sibling sidecar to the backend. The brain exposes an
+// HTTP health endpoint on :8081 (config-driven; see kubilitics-ai Helm chart)
+// and its gRPC API on :50051. We wait for /health before marking ready.
+//
+// Missing-sidecar is non-fatal: if the kubilitics-ai-server binary isn't
+// shipped (dev bundle, partial build), we log and skip — the AI chat panel
+// will show "AI disabled" but the rest of the app works.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const BRAIN_HTTP_PORT: u16 = 8081;
+const BRAIN_GRPC_PORT: u16 = 50051;
+const BRAIN_READY_TIMEOUT_SECS: u64 = 90;
+
+pub struct BrainManager {
+    app_handle: AppHandle,
+    is_ready: Arc<Mutex<bool>>,
+    brain_process: Arc<Mutex<Option<tauri_plugin_shell::process::CommandChild>>>,
+}
+
+impl BrainManager {
+    pub fn new(app_handle: AppHandle) -> Self {
+        Self {
+            app_handle,
+            is_ready: Arc::new(Mutex::new(false)),
+            brain_process: Arc::new(Mutex::new(None)),
+        }
+    }
+
+    pub fn is_ready(&self) -> bool {
+        *self.is_ready.lock().unwrap()
+    }
+
+    pub async fn start(self: Arc<Self>) -> Result<(), Box<dyn std::error::Error>> {
+        let _ = self.app_handle.emit("brain-status", serde_json::json!({
+            "status": "starting",
+            "message": "Starting AI engine…"
+        }));
+
+        let sidecar = match self.app_handle.shell().sidecar("kubilitics-ai-server") {
+            Ok(s) => s,
+            Err(e) => {
+                // Binary not bundled. Emit "unavailable" and return Ok — the app
+                // remains usable without AI.
+                println!("kubilitics-ai-server sidecar not found ({}); AI disabled", e);
+                let _ = self.app_handle.emit("brain-status", serde_json::json!({
+                    "status": "unavailable",
+                    "message": "AI engine binary not bundled; chat disabled"
+                }));
+                return Ok(());
+            }
+        };
+
+        // Config path: reuse the app data dir used by the backend for consistency.
+        let data_dir = dirs::data_local_dir()
+            .unwrap_or_else(|| dirs::home_dir().unwrap_or_else(|| std::path::PathBuf::from(".")))
+            .join("kubilitics");
+        let _ = std::fs::create_dir_all(&data_dir);
+
+        let cmd = sidecar
+            .env("KUBILITICS_AI_HTTP_PORT", BRAIN_HTTP_PORT.to_string())
+            .env("KUBILITICS_AI_GRPC_PORT", BRAIN_GRPC_PORT.to_string())
+            // Brain reads its provider config from this file (written by AI Settings).
+            .env("KUBILITICS_AI_CONFIG_PATH", data_dir.join("ai-config.yaml").to_string_lossy().as_ref())
+            // Point the brain at the backend so it can call MCP tools.
+            .env("KUBILITICS_BACKEND_URL", format!("http://localhost:{}", BACKEND_PORT));
+
+        let (_rx, child) = cmd.spawn()?;
+        *self.brain_process.lock().unwrap() = Some(child);
+        println!("kubilitics-ai-server started on http://localhost:{} (gRPC :{})", BRAIN_HTTP_PORT, BRAIN_GRPC_PORT);
+
+        // Wait for /health.
+        match self.wait_for_ready().await {
+            Ok(()) => {
+                *self.is_ready.lock().unwrap() = true;
+                let _ = self.app_handle.emit("brain-status", serde_json::json!({
+                    "status": "ready",
+                    "message": "AI engine ready"
+                }));
+            }
+            Err(e) => {
+                eprintln!("Brain failed to become ready: {:#}", e);
+                let _ = self.app_handle.emit("brain-status", serde_json::json!({
+                    "status": "error",
+                    "message": format!("AI engine failed to start: {:#}", e)
+                }));
+            }
+        }
+        Ok(())
+    }
+
+    async fn wait_for_ready(&self) -> Result<(), Box<dyn std::error::Error>> {
+        let url = format!("http://localhost:{}/health", BRAIN_HTTP_PORT);
+        let client = reqwest::Client::builder()
+            .timeout(Duration::from_secs(HEALTH_CHECK_TIMEOUT_SECS))
+            .build()?;
+        let attempts = BRAIN_READY_TIMEOUT_SECS * 2; // 500 ms cadence
+        for i in 0..attempts {
+            match client.get(&url).send().await {
+                Ok(resp) if resp.status().is_success() => return Ok(()),
+                _ => {
+                    if i % 10 == 0 && i > 0 {
+                        println!("Waiting for brain /health... ({}s)", i / 2);
+                    }
+                    sleep(Duration::from_millis(500)).await;
+                }
+            }
+        }
+        Err(format!("brain did not become ready within {}s", BRAIN_READY_TIMEOUT_SECS).into())
+    }
+
+    pub async fn stop(&self) {
+        if let Some(child) = self.brain_process.lock().unwrap().take() {
+            let _ = child.kill();
+            println!("kubilitics-ai-server stopped");
+        }
+    }
+}
+
+pub fn start_brain(app_handle: &AppHandle) -> Result<Arc<BrainManager>, Box<dyn std::error::Error>> {
+    let manager = Arc::new(BrainManager::new(app_handle.clone()));
+    app_handle.manage(manager.clone());
+    let manager_clone = manager.clone();
+    tauri::async_runtime::spawn(async move {
+        if let Err(e) = manager_clone.start().await {
+            eprintln!("Failed to start brain: {}", e);
+        }
+    });
+    Ok(manager)
+}
+
+#[tauri::command]
+pub fn get_brain_status(app_handle: AppHandle) -> Result<serde_json::Value, String> {
+    let manager = app_handle.try_state::<Arc<BrainManager>>();
+    let ready = manager.map(|m| m.is_ready()).unwrap_or(false);
+    Ok(serde_json::json!({
+        "status": if ready { "ready" } else { "starting" },
+        "message": if ready { "AI engine ready" } else { "Starting AI engine…" }
+    }))
+}
