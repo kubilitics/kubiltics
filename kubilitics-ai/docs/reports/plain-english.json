@@ -48,5 +48,15 @@
   "plan_psa_enforcement": "Which namespaces can safely tighten to restricted pod security? Names the pods that would need to change first.",
   "plan_image_pull_secrets": "Finds the same pull secret cloned across many namespaces and recommends a consolidated pattern.",
   "plan_backup_coverage": "Lists workloads that store data in PVCs but have no backup label or schedule — backup gaps you probably didn't know about.",
-  "plan_pdb_coverage": "Deployments and StatefulSets with multiple replicas that lack a PodDisruptionBudget, with a suggested minAvailable for each."
+  "plan_pdb_coverage": "Deployments and StatefulSets with multiple replicas that lack a PodDisruptionBudget, with a suggested minAvailable for each.",
+  "check_privileged_containers": "Flags pods running privileged containers or using hostNetwork/hostPID — the hardest escape-risks in Kubernetes.",
+  "check_root_containers": "Finds containers that may run as UID 0 because runAsNonRoot isn't set true.",
+  "check_writable_root_fs": "Finds containers without a read-only root filesystem — a defense-in-depth control you almost always want.",
+  "check_capabilities_all_added": "Flags containers that add the ALL or SYS_ADMIN Linux capability — essentially root with a different name.",
+  "check_host_path_mounts": "Lists pods mounting host paths, the classic container-to-host escape surface.",
+  "check_default_service_accounts_in_use": "Workloads using the 'default' ServiceAccount when they should have a dedicated, least-privilege one.",
+  "check_secrets_in_env": "Containers that read Secret values via env variables — prefer file mounts so logs can't leak them.",
+  "check_image_tag_latest": "Workloads whose images have no tag or are pinned to :latest — unreproducible rollouts waiting to happen.",
+  "check_ingress_tls_expiry_30d": "TLS certificates behind your ingresses that will expire within 30 days. Uses the backend's /tls-info endpoint.",
+  "check_rbac_wildcards": "Role and ClusterRole rules with '*' verbs or resources — a standing invitation to privilege escalation."
 }

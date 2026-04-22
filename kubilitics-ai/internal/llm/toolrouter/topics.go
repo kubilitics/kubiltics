@@ -355,6 +355,18 @@ var toolTopicOverrides = map[string][]Topic{
 	"observe_secrets_usage":           {TopicSecurity, TopicCore},
 	"observe_ingresses_by_tls_expiry": {TopicNetworking, TopicSecurity},
 
+	// Phase 3 Category 4 compliance checks.
+	"check_privileged_containers":           {TopicSecurity, TopicPods},
+	"check_root_containers":                 {TopicSecurity, TopicPods},
+	"check_writable_root_fs":                {TopicSecurity, TopicPods},
+	"check_capabilities_all_added":          {TopicSecurity, TopicPods},
+	"check_host_path_mounts":                {TopicSecurity, TopicPods, TopicStorage},
+	"check_default_service_accounts_in_use": {TopicSecurity, TopicRBAC},
+	"check_secrets_in_env":                  {TopicSecurity},
+	"check_image_tag_latest":                {TopicSecurity, TopicWorkloads},
+	"check_ingress_tls_expiry_30d":          {TopicSecurity, TopicNetworking},
+	"check_rbac_wildcards":                  {TopicSecurity, TopicRBAC},
+
 	// Phase 3 Category 3 planning tools.
 	"plan_scale_deployment":     {TopicCapacity, TopicWorkloads},
 	"plan_drain_node":           {TopicNodes, TopicCapacity},

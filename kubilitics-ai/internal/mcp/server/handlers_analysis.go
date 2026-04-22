@@ -1928,6 +1928,12 @@ func (s *mcpServerImpl) routeSecurityTool(ctx context.Context, name string, args
 		result["overview"] = overview
 		result["pods"] = pods
 		result["security_hint"] = "Map findings to CIS Benchmark controls: network segmentation (5.3), least-privilege RBAC (5.1), pod security (5.2), and audit logging (3.2)."
+
+	default:
+		// Phase 3 Category 4 — check_* compliance/hygiene tools.
+		if out, matched, err := s.routeSecurityCheck(ctx, name, args); matched {
+			return out, err
+		}
 	}
 	return result, nil
 }

@@ -1757,6 +1757,20 @@ var ToolTaxonomy = []ToolDefinition{
 		RequiresAI:  true,
 	},
 
+	// === COMPLIANCE CHECKS — Phase 3 C4 (10 tools) ===
+	// Deterministic rule-based hygiene checks. Each returns
+	// {findings:[], summary:"..."} with no LLM synthesis required.
+	{Name: "check_privileged_containers", Category: CategorySecurity, Description: "Pods running privileged containers or with hostNetwork/hostPID set. Returns per-pod findings.", Destructive: false, RequiresAI: false},
+	{Name: "check_root_containers", Category: CategorySecurity, Description: "Containers without runAsNonRoot=true that may execute as UID 0.", Destructive: false, RequiresAI: false},
+	{Name: "check_writable_root_fs", Category: CategorySecurity, Description: "Containers without readOnlyRootFilesystem=true.", Destructive: false, RequiresAI: false},
+	{Name: "check_capabilities_all_added", Category: CategorySecurity, Description: "Containers that add CAP_SYS_ADMIN or ALL.", Destructive: false, RequiresAI: false},
+	{Name: "check_host_path_mounts", Category: CategorySecurity, Description: "Pods mounting host paths (container-escape risk surface).", Destructive: false, RequiresAI: false},
+	{Name: "check_default_service_accounts_in_use", Category: CategorySecurity, Description: "Workloads using the 'default' ServiceAccount instead of a dedicated one.", Destructive: false, RequiresAI: false},
+	{Name: "check_secrets_in_env", Category: CategorySecurity, Description: "Containers that reference Secret keys via env vars instead of file mounts.", Destructive: false, RequiresAI: false},
+	{Name: "check_image_tag_latest", Category: CategorySecurity, Description: "Workloads whose images have no tag or are pinned to :latest.", Destructive: false, RequiresAI: false},
+	{Name: "check_ingress_tls_expiry_30d", Category: CategorySecurity, Description: "Ingress TLS certificates expiring within 30 days. Uses the /tls-info subresource for each ingress.", Destructive: false, RequiresAI: false},
+	{Name: "check_rbac_wildcards", Category: CategorySecurity, Description: "Roles / ClusterRoles with verbs:['*'] or resources:['*'] rules.", Destructive: false, RequiresAI: false},
+
 	// === COST TOOLS (4 tools) ===
 	// Resource optimization and cost analysis
 	// Autonomy Level: 2 (Recommend)
