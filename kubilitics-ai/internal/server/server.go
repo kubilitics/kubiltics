@@ -195,6 +195,22 @@ func (s *Server) initializeComponents() error {
 		apiKey, _ = s.config.LLM.Custom["api_key"].(string)
 	}
 
+	// Universal env override: the Tauri desktop app stores the API key in
+	// the OS keychain, never in config.yaml plaintext, and hands it to us
+	// via KUBILITICS_LLM_API_KEY at spawn time. Honor it here so we don't
+	// start with llm_configured=false while the key is already in memory.
+	// Overrides YAML values only when the env var is non-empty, so bench
+	// configs that embed keys continue to work.
+	if envKey := os.Getenv("KUBILITICS_LLM_API_KEY"); envKey != "" {
+		apiKey = envKey
+	}
+	if envBase := os.Getenv("KUBILITICS_LLM_BASE_URL"); envBase != "" {
+		baseURL = envBase
+	}
+	if envModel := os.Getenv("KUBILITICS_LLM_MODEL"); envModel != "" && model == "" {
+		model = envModel
+	}
+
 	llmConfig := &adapter.Config{
 		Provider: adapter.ProviderType(s.config.LLM.Provider),
 		APIKey:   apiKey,
