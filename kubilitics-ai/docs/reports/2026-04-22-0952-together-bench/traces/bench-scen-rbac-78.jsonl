@@ -1,0 +1,8 @@
+{"bytes":82,"stage":"user_msg","ts":"2026-04-22T04:26:36.159394Z","turn_id":"bench-scen-rbac-78"}
+{"selected_topics":["core","security"],"stage":"tool_filter","tool_count":27,"total_available":135,"ts":"2026-04-22T04:26:36.159683Z","turn_id":"bench-scen-rbac-78"}
+{"bytes":2445,"focus_cluster":"5cb1f37d-e31e-4915-8c4d-bdf36ef335ec","has_system":true,"messages":2,"stage":"llm_prompt_in","ts":"2026-04-22T04:26:36.159696Z","turn_id":"bench-scen-rbac-78"}
+{"arg_keys":["cluster_id","kind","label_selector","limit","namespace"],"cluster_id":"5cb1f37d-e31e-4915-8c4d-bdf36ef335ec","stage":"tool_dispatch","tool_name":"list_resources","ts":"2026-04-22T04:26:37.403858Z","turn_id":"bench-scen-rbac-78"}
+{"method":"GET","path":"/api/v1/clusters/5cb1f37d-e31e-4915-8c4d-bdf36ef335ec/resources/secrets","resp_bytes":1704,"stage":"backend_k8s_fetch","ts":"2026-04-22T04:26:37.408951Z","turn_id":"bench-scen-rbac-78"}
+{"bytes_in":237,"bytes_out":237,"stage":"tool_result_summarized","tool_name":"list_resources","ts":"2026-04-22T04:26:37.409199Z","turn_id":"bench-scen-rbac-78"}
+{"bytes":296,"preview":"### Secrets Older Than 90 Days\nThere are 2 secrets in the cluster that are older than 90 days:\n* `bootstrap-token-abcdef` in `kube-system` namespace, created on April 21, 2026\n* `db-creds` in `data` namespace, created on April 21, 2026 \n\nThese secrets may need to be rotated to maintain security.","stage":"llm_text_out","ts":"2026-04-22T04:26:39.024138Z","turn_id":"bench-scen-rbac-78"}
+{"duration_ms":2864,"finish_reason":"stop","stage":"done","ts":"2026-04-22T04:26:39.024389Z","turn_id":"bench-scen-rbac-78"}

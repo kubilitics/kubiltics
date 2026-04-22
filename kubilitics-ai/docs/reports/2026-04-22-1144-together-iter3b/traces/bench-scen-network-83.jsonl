@@ -1,0 +1,8 @@
+{"bytes":89,"stage":"user_msg","ts":"2026-04-22T06:12:19.311248Z","turn_id":"bench-scen-network-83"}
+{"selected_topics":["core","networking","nodes","security"],"stage":"tool_filter","tool_count":30,"total_available":138,"ts":"2026-04-22T06:12:19.311885Z","turn_id":"bench-scen-network-83"}
+{"bytes":2452,"focus_cluster":"5cb1f37d-e31e-4915-8c4d-bdf36ef335ec","has_system":true,"messages":2,"stage":"llm_prompt_in","ts":"2026-04-22T06:12:19.312025Z","turn_id":"bench-scen-network-83"}
+{"arg_keys":["kind","label_selector","cluster_id"],"cluster_id":"5cb1f37d-e31e-4915-8c4d-bdf36ef335ec","stage":"tool_dispatch","tool_name":"list_resources","ts":"2026-04-22T06:12:20.648693Z","turn_id":"bench-scen-network-83"}
+{"method":"GET","path":"/api/v1/clusters/5cb1f37d-e31e-4915-8c4d-bdf36ef335ec/resources/services","resp_bytes":4845,"stage":"backend_k8s_fetch","ts":"2026-04-22T06:12:20.65069Z","turn_id":"bench-scen-network-83"}
+{"bytes_in":657,"bytes_out":657,"stage":"tool_result_summarized","tool_name":"list_resources","ts":"2026-04-22T06:12:20.650847Z","turn_id":"bench-scen-network-83"}
+{"bytes":205,"preview":"Here are the LoadBalancer and NodePort services exposed externally:\n* app-welcome-to-docker-653c/app\n* kube-system/kube-dns\n* default/kubernetes\n* demo/web \n\nThese services are exposed to external traffic.","stage":"llm_text_out","ts":"2026-04-22T06:12:21.978389Z","turn_id":"bench-scen-network-83"}
+{"duration_ms":2666,"finish_reason":"stop","stage":"done","ts":"2026-04-22T06:12:21.978533Z","turn_id":"bench-scen-network-83"}

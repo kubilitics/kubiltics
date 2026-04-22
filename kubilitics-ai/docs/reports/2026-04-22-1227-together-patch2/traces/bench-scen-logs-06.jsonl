@@ -1,0 +1,5 @@
+{"bytes":79,"stage":"user_msg","ts":"2026-04-22T06:49:11.427351Z","turn_id":"bench-scen-logs-06"}
+{"selected_topics":["core","events","workloads"],"stage":"tool_filter","tool_count":30,"total_available":138,"ts":"2026-04-22T06:49:11.427959Z","turn_id":"bench-scen-logs-06"}
+{"bytes":2442,"focus_cluster":"5cb1f37d-e31e-4915-8c4d-bdf36ef335ec","has_system":true,"messages":2,"stage":"llm_prompt_in","ts":"2026-04-22T06:49:11.428003Z","turn_id":"bench-scen-logs-06"}
+{"bytes":0,"stage":"llm_text_out","ts":"2026-04-22T06:49:11.987444Z","turn_id":"bench-scen-logs-06"}
+{"duration_ms":559,"finish_reason":"stop","stage":"done","ts":"2026-04-22T06:49:11.987575Z","turn_id":"bench-scen-logs-06"}

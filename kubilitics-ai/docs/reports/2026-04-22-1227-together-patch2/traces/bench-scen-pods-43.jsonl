@@ -1,0 +1,8 @@
+{"bytes":101,"stage":"user_msg","ts":"2026-04-22T06:52:04.468725Z","turn_id":"bench-scen-pods-43"}
+{"selected_topics":["core","capacity","pods"],"stage":"tool_filter","tool_count":30,"total_available":138,"ts":"2026-04-22T06:52:04.469373Z","turn_id":"bench-scen-pods-43"}
+{"bytes":2464,"focus_cluster":"5cb1f37d-e31e-4915-8c4d-bdf36ef335ec","has_system":true,"messages":2,"stage":"llm_prompt_in","ts":"2026-04-22T06:52:04.46945Z","turn_id":"bench-scen-pods-43"}
+{"arg_keys":["kind","cluster_id"],"cluster_id":"5cb1f37d-e31e-4915-8c4d-bdf36ef335ec","stage":"tool_dispatch","tool_name":"list_resources","ts":"2026-04-22T06:52:07.520056Z","turn_id":"bench-scen-pods-43"}
+{"method":"GET","path":"/api/v1/clusters/5cb1f37d-e31e-4915-8c4d-bdf36ef335ec/resources/pods","resp_bytes":141877,"stage":"backend_k8s_fetch","ts":"2026-04-22T06:52:07.541014Z","turn_id":"bench-scen-pods-43"}
+{"bytes_in":8086,"bytes_out":8086,"stage":"tool_result_summarized","tool_name":"list_resources","ts":"2026-04-22T06:52:07.546293Z","turn_id":"bench-scen-pods-43"}
+{"bytes":304,"preview":"The following containers are running without a memory limit:\n* app (in namespace app-welcome-to-docker-653c)\n* kindnet-cni (in namespace kube-system)\n* kube-proxy (in namespace kube-system)\n* local-path-provisioner (in namespace local-path-storage)\n* nginx (in namespace demo)\n* redis (in namespace data)","stage":"llm_text_out","ts":"2026-04-22T06:52:08.844732Z","turn_id":"bench-scen-pods-43"}
+{"duration_ms":4375,"finish_reason":"stop","stage":"done","ts":"2026-04-22T06:52:08.84483Z","turn_id":"bench-scen-pods-43"}

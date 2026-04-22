@@ -1,0 +1,7 @@
+{"bytes":104,"stage":"user_msg","ts":"2026-04-22T05:58:09.695515Z","turn_id":"bench-scen-logs-50"}
+{"selected_topics":["core","pods","logs"],"stage":"tool_filter","tool_count":30,"total_available":138,"ts":"2026-04-22T05:58:09.696015Z","turn_id":"bench-scen-logs-50"}
+{"bytes":2467,"focus_cluster":"5cb1f37d-e31e-4915-8c4d-bdf36ef335ec","has_system":true,"messages":2,"stage":"llm_prompt_in","ts":"2026-04-22T05:58:09.696097Z","turn_id":"bench-scen-logs-50"}
+{"arg_keys":["namespace","pod_name","container_name","previous","cluster_id"],"cluster_id":"5cb1f37d-e31e-4915-8c4d-bdf36ef335ec","stage":"tool_dispatch","tool_name":"get_logs","ts":"2026-04-22T05:58:11.135382Z","turn_id":"bench-scen-logs-50"}
+{"bytes_in":158,"bytes_out":158,"stage":"tool_result_summarized","tool_name":"get_logs","ts":"2026-04-22T05:58:11.167012Z","turn_id":"bench-scen-logs-50"}
+{"bytes":151,"preview":"The redis pod was not found in the default namespace, suggesting it may be in a different namespace or does not exist. Check the namespace or pod name.","stage":"llm_text_out","ts":"2026-04-22T05:58:12.705751Z","turn_id":"bench-scen-logs-50"}
+{"duration_ms":3009,"finish_reason":"stop","stage":"done","ts":"2026-04-22T05:58:12.705917Z","turn_id":"bench-scen-logs-50"}

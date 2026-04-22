@@ -1,0 +1,9 @@
+{"bytes":88,"stage":"user_msg","ts":"2026-04-22T06:09:30.750466Z","turn_id":"bench-scen-health-27"}
+{"selected_topics":["core","rbac","workloads"],"stage":"tool_filter","tool_count":30,"total_available":138,"ts":"2026-04-22T06:09:30.750985Z","turn_id":"bench-scen-health-27"}
+{"bytes":2451,"focus_cluster":"5cb1f37d-e31e-4915-8c4d-bdf36ef335ec","has_system":true,"messages":2,"stage":"llm_prompt_in","ts":"2026-04-22T06:09:30.751047Z","turn_id":"bench-scen-health-27"}
+{"arg_keys":["cluster_id"],"cluster_id":"5cb1f37d-e31e-4915-8c4d-bdf36ef335ec","stage":"tool_dispatch","tool_name":"get_cluster_health","ts":"2026-04-22T06:09:31.771226Z","turn_id":"bench-scen-health-27"}
+{"method":"GET","path":"/api/v1/clusters/5cb1f37d-e31e-4915-8c4d-bdf36ef335ec/overview","resp_bytes":1232,"stage":"backend_k8s_fetch","ts":"2026-04-22T06:09:31.775915Z","turn_id":"bench-scen-health-27"}
+{"method":"GET","path":"/api/v1/clusters/5cb1f37d-e31e-4915-8c4d-bdf36ef335ec/workloads","resp_bytes":1489,"stage":"backend_k8s_fetch","ts":"2026-04-22T06:09:32.272179Z","turn_id":"bench-scen-health-27"}
+{"bytes_in":2844,"bytes_out":2844,"stage":"tool_result_summarized","tool_name":"get_cluster_health","ts":"2026-04-22T06:09:32.272531Z","turn_id":"bench-scen-health-27"}
+{"bytes":414,"preview":"The cluster is currently healthy with a score of 99. There are 4 warning events and 1 deployment that is partially unavailable. The unavailable deployment is \"app\" in the \"app-welcome-to-docker-653c\" namespace. There are also 2 daemonsets and 5 deployments running, with 3 nodes and 20 pods in total. The next person on-call should monitor the cluster's health and investigate the partially unavailable deployment.","stage":"llm_text_out","ts":"2026-04-22T06:09:33.840692Z","turn_id":"bench-scen-health-27"}
+{"duration_ms":3089,"finish_reason":"stop","stage":"done","ts":"2026-04-22T06:09:33.840756Z","turn_id":"bench-scen-health-27"}

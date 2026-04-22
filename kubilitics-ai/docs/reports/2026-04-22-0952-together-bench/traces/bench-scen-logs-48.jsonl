@@ -1,0 +1,7 @@
+{"bytes":101,"stage":"user_msg","ts":"2026-04-22T04:25:07.40692Z","turn_id":"bench-scen-logs-48"}
+{"selected_topics":["core","logs","pods"],"stage":"tool_filter","tool_count":30,"total_available":135,"ts":"2026-04-22T04:25:07.407621Z","turn_id":"bench-scen-logs-48"}
+{"bytes":2464,"focus_cluster":"5cb1f37d-e31e-4915-8c4d-bdf36ef335ec","has_system":true,"messages":2,"stage":"llm_prompt_in","ts":"2026-04-22T04:25:07.407695Z","turn_id":"bench-scen-logs-48"}
+{"arg_keys":["namespace","pod_name","since","tail_lines","container_name","cluster_id"],"cluster_id":"5cb1f37d-e31e-4915-8c4d-bdf36ef335ec","stage":"tool_dispatch","tool_name":"get_logs","ts":"2026-04-22T04:25:08.990998Z","turn_id":"bench-scen-logs-48"}
+{"bytes_in":153,"bytes_out":153,"stage":"tool_result_summarized","tool_name":"get_logs","ts":"2026-04-22T04:25:09.001377Z","turn_id":"bench-scen-logs-48"}
+{"bytes":96,"preview":"The 'web' pod was not found in the default namespace, which is why the logs cannot be retrieved.","stage":"llm_text_out","ts":"2026-04-22T04:25:09.658406Z","turn_id":"bench-scen-logs-48"}
+{"duration_ms":2250,"finish_reason":"stop","stage":"done","ts":"2026-04-22T04:25:09.658557Z","turn_id":"bench-scen-logs-48"}

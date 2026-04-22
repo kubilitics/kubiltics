@@ -1,0 +1,10 @@
+{"bytes":98,"stage":"user_msg","ts":"2026-04-22T05:57:28.662708Z","turn_id":"bench-scen-pods-41"}
+{"selected_topics":["core","pods","workloads"],"stage":"tool_filter","tool_count":30,"total_available":138,"ts":"2026-04-22T05:57:28.662987Z","turn_id":"bench-scen-pods-41"}
+{"bytes":2461,"focus_cluster":"5cb1f37d-e31e-4915-8c4d-bdf36ef335ec","has_system":true,"messages":2,"stage":"llm_prompt_in","ts":"2026-04-22T05:57:28.663001Z","turn_id":"bench-scen-pods-41"}
+{"arg_keys":["cluster_wide","cluster_id","kind","name_hint"],"cluster_id":"5cb1f37d-e31e-4915-8c4d-bdf36ef335ec","stage":"tool_dispatch","tool_name":"resolve_resource","ts":"2026-04-22T05:57:29.97093Z","turn_id":"bench-scen-pods-41"}
+{"method":"GET","path":"/api/v1/clusters/5cb1f37d-e31e-4915-8c4d-bdf36ef335ec/resources/deployments","resp_bytes":19313,"stage":"backend_k8s_fetch","ts":"2026-04-22T05:57:29.973102Z","turn_id":"bench-scen-pods-41"}
+{"bytes_in":109,"bytes_out":109,"stage":"tool_result_summarized","tool_name":"resolve_resource","ts":"2026-04-22T05:57:29.973566Z","turn_id":"bench-scen-pods-41"}
+{"arg_keys":["cluster_id","namespace","name"],"cluster_id":"5cb1f37d-e31e-4915-8c4d-bdf36ef335ec","stage":"tool_dispatch","tool_name":"analyze_deployment_health","ts":"2026-04-22T05:57:31.183492Z","turn_id":"bench-scen-pods-41"}
+{"bytes_in":149,"bytes_out":149,"stage":"tool_result_summarized","tool_name":"analyze_deployment_health","ts":"2026-04-22T05:57:31.187471Z","turn_id":"bench-scen-pods-41"}
+{"bytes":206,"preview":"The Redis deployment in the \"data\" namespace has liveness and readiness probes configured and they are passing. The deployment is healthy with 1 desired replica, 1 ready replica, and 0 unavailable replicas.","stage":"llm_text_out","ts":"2026-04-22T05:57:32.153922Z","turn_id":"bench-scen-pods-41"}
+{"duration_ms":3490,"finish_reason":"stop","stage":"done","ts":"2026-04-22T05:57:32.153969Z","turn_id":"bench-scen-pods-41"}

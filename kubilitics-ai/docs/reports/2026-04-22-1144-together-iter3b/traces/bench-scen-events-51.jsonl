@@ -1,0 +1,8 @@
+{"bytes":62,"stage":"user_msg","ts":"2026-04-22T06:10:29.521586Z","turn_id":"bench-scen-events-51"}
+{"selected_topics":["core","events","pods"],"stage":"tool_filter","tool_count":30,"total_available":138,"ts":"2026-04-22T06:10:29.522113Z","turn_id":"bench-scen-events-51"}
+{"bytes":2425,"focus_cluster":"5cb1f37d-e31e-4915-8c4d-bdf36ef335ec","has_system":true,"messages":2,"stage":"llm_prompt_in","ts":"2026-04-22T06:10:29.522148Z","turn_id":"bench-scen-events-51"}
+{"arg_keys":["cluster_id","reason"],"cluster_id":"5cb1f37d-e31e-4915-8c4d-bdf36ef335ec","stage":"tool_dispatch","tool_name":"get_events","ts":"2026-04-22T06:10:31.202623Z","turn_id":"bench-scen-events-51"}
+{"method":"GET","path":"/api/v1/clusters/5cb1f37d-e31e-4915-8c4d-bdf36ef335ec/events?limit=50","resp_bytes":14775,"stage":"backend_k8s_fetch","ts":"2026-04-22T06:10:31.230637Z","turn_id":"bench-scen-events-51"}
+{"bytes_in":7981,"bytes_out":7981,"stage":"tool_result_summarized","tool_name":"get_events","ts":"2026-04-22T06:10:31.231703Z","turn_id":"bench-scen-events-51"}
+{"bytes":278,"preview":"No OOMKilled pods were found between 2:15 and 2:45 today. The get_events tool returned 30 events, but none of them indicated an OOMKilled pod. The events were mostly related to pod creation, image pulling, and liveness probe failures in the app-welcome-to-docker-653c namespace.","stage":"llm_text_out","ts":"2026-04-22T06:10:33.451236Z","turn_id":"bench-scen-events-51"}
+{"duration_ms":3929,"finish_reason":"stop","stage":"done","ts":"2026-04-22T06:10:33.451336Z","turn_id":"bench-scen-events-51"}

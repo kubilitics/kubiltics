@@ -1,0 +1,7 @@
+{"bytes":92,"stage":"user_msg","ts":"2026-04-22T03:38:57.223312Z","turn_id":"bench-scen-pods-04"}
+{"selected_topics":["core","pods","workloads"],"stage":"tool_filter","tool_count":30,"total_available":129,"ts":"2026-04-22T03:38:57.223786Z","turn_id":"bench-scen-pods-04"}
+{"bytes":2455,"focus_cluster":"5cb1f37d-e31e-4915-8c4d-bdf36ef335ec","has_system":true,"messages":2,"stage":"llm_prompt_in","ts":"2026-04-22T03:38:57.223807Z","turn_id":"bench-scen-pods-04"}
+{"arg_keys":["namespace","cluster_id"],"cluster_id":"5cb1f37d-e31e-4915-8c4d-bdf36ef335ec","stage":"tool_dispatch","tool_name":"analyze_pod_health","ts":"2026-04-22T03:38:58.089956Z","turn_id":"bench-scen-pods-04"}
+{"bytes_in":103,"bytes_out":103,"stage":"tool_result_summarized","tool_name":"analyze_pod_health","ts":"2026-04-22T03:38:58.094279Z","turn_id":"bench-scen-pods-04"}
+{"bytes":70,"preview":"There are no pods that have restarted more than once in the last hour.","stage":"llm_text_out","ts":"2026-04-22T03:38:59.178478Z","turn_id":"bench-scen-pods-04"}
+{"duration_ms":1954,"finish_reason":"stop","stage":"done","ts":"2026-04-22T03:38:59.178612Z","turn_id":"bench-scen-pods-04"}

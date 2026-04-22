@@ -1,0 +1,8 @@
+{"bytes":63,"stage":"user_msg","ts":"2026-04-22T06:52:01.862725Z","turn_id":"bench-scen-pods-42"}
+{"selected_topics":["core","pods"],"stage":"tool_filter","tool_count":30,"total_available":138,"ts":"2026-04-22T06:52:01.863204Z","turn_id":"bench-scen-pods-42"}
+{"bytes":2426,"focus_cluster":"5cb1f37d-e31e-4915-8c4d-bdf36ef335ec","has_system":true,"messages":2,"stage":"llm_prompt_in","ts":"2026-04-22T06:52:01.863262Z","turn_id":"bench-scen-pods-42"}
+{"arg_keys":["cluster_id","metric_type","namespace"],"cluster_id":"5cb1f37d-e31e-4915-8c4d-bdf36ef335ec","stage":"tool_dispatch","tool_name":"observe_top_pods_by_metric","ts":"2026-04-22T06:52:03.411389Z","turn_id":"bench-scen-pods-42"}
+{"method":"GET","path":"/api/v1/clusters/5cb1f37d-e31e-4915-8c4d-bdf36ef335ec/metrics/summary","resp_bytes":74,"stage":"backend_k8s_fetch","ts":"2026-04-22T06:52:03.41269Z","turn_id":"bench-scen-pods-42"}
+{"bytes_in":365,"bytes_out":365,"stage":"tool_result_summarized","tool_name":"observe_top_pods_by_metric","ts":"2026-04-22T06:52:03.412764Z","turn_id":"bench-scen-pods-42"}
+{"bytes":170,"preview":"The metrics-server is not available, likely because it's not installed or not functioning correctly, so CPU usage data for pods in the demo namespace cannot be retrieved.","stage":"llm_text_out","ts":"2026-04-22T06:52:04.459392Z","turn_id":"bench-scen-pods-42"}
+{"duration_ms":2596,"finish_reason":"stop","stage":"done","ts":"2026-04-22T06:52:04.459523Z","turn_id":"bench-scen-pods-42"}

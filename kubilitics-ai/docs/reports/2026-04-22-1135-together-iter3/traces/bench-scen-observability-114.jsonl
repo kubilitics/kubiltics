@@ -1,0 +1,5 @@
+{"bytes":121,"stage":"user_msg","ts":"2026-04-22T06:02:04.321618Z","turn_id":"bench-scen-observability-114"}
+{"selected_topics":["core","logs"],"stage":"tool_filter","tool_count":21,"total_available":138,"ts":"2026-04-22T06:02:04.322172Z","turn_id":"bench-scen-observability-114"}
+{"bytes":2484,"focus_cluster":"5cb1f37d-e31e-4915-8c4d-bdf36ef335ec","has_system":true,"messages":2,"stage":"llm_prompt_in","ts":"2026-04-22T06:02:04.322216Z","turn_id":"bench-scen-observability-114"}
+{"bytes":112,"preview":"Your input is lacking necessary details. Please provide more information or specify the task you need help with.","stage":"llm_text_out","ts":"2026-04-22T06:02:05.556501Z","turn_id":"bench-scen-observability-114"}
+{"duration_ms":1234,"finish_reason":"stop","stage":"done","ts":"2026-04-22T06:02:05.556574Z","turn_id":"bench-scen-observability-114"}
