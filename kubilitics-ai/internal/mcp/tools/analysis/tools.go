@@ -132,6 +132,28 @@ func (r *restClient) listResourcesViaREST(ctx context.Context, clusterID, kind, 
 	return result.Items, nil
 }
 
+// getLogsViaREST fetches plain-text pod logs via the backend /logs/{ns}/{pod}
+// endpoint. Used as a fallback when the gRPC proxy is not initialized (gap 5
+// in the 2026-04-22 bench: analyze_log_patterns was hard-failing with
+// "proxy not initialized" because the handler had no REST escape hatch).
+func (r *restClient) getLogsViaREST(ctx context.Context, clusterID, namespace, pod, container string, tail int) (string, error) {
+	if tail <= 0 {
+		tail = 100
+	}
+	q := url.Values{}
+	q.Set("tail", fmt.Sprint(tail))
+	if container != "" {
+		q.Set("container", container)
+	}
+	path := fmt.Sprintf("/api/v1/clusters/%s/logs/%s/%s?%s",
+		clusterID, url.PathEscape(namespace), url.PathEscape(pod), q.Encode())
+	body, err := r.get(ctx, path)
+	if err != nil {
+		return "", err
+	}
+	return string(body), nil
+}
+
 // kindToPlural converts a K8s resource kind to the plural lowercase form used by the backend.
 func kindToPlural(kind string) string {
 	lower := strings.ToLower(kind)
@@ -206,6 +228,17 @@ func NewAnalysisToolsWithProxy(proxy BackendProxy) *AnalysisTools {
 	return &AnalysisTools{
 		proxy:   proxy,
 		restCli: newRestClient("http://localhost:8190"),
+	}
+}
+
+// NewAnalysisToolsWithProxyAndREST is the same as NewAnalysisToolsWithProxy
+// but lets tests point the REST fallback at an httptest.Server. Added for
+// gap 5 (2026-04-22 bench) so the log-streaming fallback can be verified
+// end-to-end without real network I/O.
+func NewAnalysisToolsWithProxyAndREST(proxy BackendProxy, restBaseURL string) *AnalysisTools {
+	return &AnalysisTools{
+		proxy:   proxy,
+		restCli: newRestClient(restBaseURL),
 	}
 }
 
@@ -1028,12 +1061,27 @@ func (t *AnalysisTools) AnalyzeLogPatterns(ctx context.Context, args map[string]
 	}
 	paramsJSON, _ := json.Marshal(params)
 
+	var logContent string
 	result, err := t.proxy.ExecuteCommand(ctx, "get_logs", target, paramsJSON, true)
-	if err != nil {
+	switch {
+	case err == nil:
+		logContent = result.Message
+	case strings.Contains(err.Error(), "proxy not initialized") && t.restCli != nil:
+		// gap 5 fix (2026-04-22): REST fallback. The bench had analyze_log_patterns
+		// hard-fail with "proxy not initialized" for scen-logs-48 because the
+		// in-cluster gRPC proxy was not wired on a kind cluster. REST works fine.
+		clusterID, cerr := t.resolveClusterID(ctx, args)
+		if cerr != nil {
+			return nil, fmt.Errorf("analyze_log_patterns: gRPC proxy not initialized and REST fallback cannot resolve cluster: %w", cerr)
+		}
+		logContent, err = t.restCli.getLogsViaREST(ctx, clusterID, a.Namespace, a.PodName, a.ContainerName, a.TailLines)
+		if err != nil {
+			return nil, fmt.Errorf("analyze_log_patterns: REST log fetch failed: %w", err)
+		}
+	default:
 		return nil, fmt.Errorf("analyze_log_patterns: failed to get logs: %w", err)
 	}
 
-	logContent := result.Message
 	lines := strings.Split(logContent, "\n")
 
 	errorPatterns := map[string]int{}
