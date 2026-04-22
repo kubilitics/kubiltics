@@ -143,3 +143,61 @@ describe('ChatPanel — budget_exceeded banner', () => {
     expect(screen.queryByTestId('budget-exceeded-banner')).not.toBeInTheDocument();
   });
 });
+
+// ── Phase 2 quality fix #5: banner clears after successful reset ─────────
+describe('ChatPanel banner auto-clear', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    useChatStore.setState({
+      transcripts: {
+        'c-1': [
+          {
+            kind: 'assistant',
+            turnId: 't1',
+            anchorId: 'a1',
+            blocks: [],
+            state: 'error',
+            startedAt: 1,
+            finishedAt: 2,
+            error: { code: 'budget_exceeded', message: 'Monthly AI budget reached.' },
+          },
+        ],
+      },
+    });
+  });
+
+  function renderPanel() {
+    return render(
+      <MemoryRouter>
+        <ChatPanel clusterId="c-1" open={true} onClose={() => {}} />
+      </MemoryRouter>,
+    );
+  }
+
+  it('banner unmounts after invoke("reset_budget") resolves', async () => {
+    (invoke as ReturnType<typeof vi.fn>).mockResolvedValue(undefined);
+    renderPanel();
+
+    expect(screen.getByTestId('budget-exceeded-banner')).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('budget-exceeded-reset'));
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('budget-exceeded-banner')).not.toBeInTheDocument();
+    });
+  });
+
+  it('banner stays if invoke("reset_budget") rejects', async () => {
+    (invoke as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('network'));
+    renderPanel();
+
+    expect(screen.getByTestId('budget-exceeded-banner')).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('budget-exceeded-reset'));
+
+    // Banner should remain since reset failed — user needs to see the warning.
+    await waitFor(() => {
+      const calls = (invoke as ReturnType<typeof vi.fn>).mock.calls.map((c) => c[0]);
+      expect(calls).toContain('reset_budget');
+    });
+    expect(screen.getByTestId('budget-exceeded-banner')).toBeInTheDocument();
+  });
+});

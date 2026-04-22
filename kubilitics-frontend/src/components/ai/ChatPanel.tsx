@@ -137,17 +137,29 @@ export function ChatPanel() {
   // last error event on this turn is {code:"budget_exceeded", message}.
   // Surface the dedicated banner above the input so the user can reset
   // the cap (via the reset_budget Tauri command) without leaving chat.
-  const budgetError =
+  const rawBudgetError =
     lastAssistant?.state === 'error' &&
     isBudgetExceededError(lastAssistant.error?.code)
       ? lastAssistant.error
       : undefined;
+
+  // Phase 2 / quality fix #5 — auto-clear the banner after successful reset.
+  // A component-local "dismissed" flag suppresses the banner until a NEW
+  // budget_exceeded event arrives on the next turn. The flag re-arms
+  // whenever the error REFERENCE changes, so subsequent trips still show.
+  const [dismissedError, setDismissedError] = useState<unknown>(null);
+  const budgetError =
+    rawBudgetError && dismissedError !== rawBudgetError ? rawBudgetError : undefined;
+
   const [resettingBudget, setResettingBudget] = useState(false);
   const handleResetBudget = async () => {
     if (resettingBudget) return;
     setResettingBudget(true);
     try {
       await invoke('reset_budget');
+      // Unmount the banner immediately on success; a future trip will
+      // re-mount because rawBudgetError will be a NEW object reference.
+      setDismissedError(rawBudgetError);
       toast.success('Budget cap reset');
     } catch (e) {
       toast.error(`Reset failed: ${e instanceof Error ? e.message : String(e)}`);
