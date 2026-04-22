@@ -7,7 +7,7 @@
  *
  * Phase 2 / Gap 3.
  */
-import { AlertCircle, ExternalLink } from 'lucide-react';
+import { AlertCircle, ExternalLink, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
@@ -20,6 +20,10 @@ export interface BudgetExceededBannerProps {
   message?: string;
   /** Fired when the user clicks "Open Settings". Router-agnostic. */
   onOpenSettings?: () => void;
+  /** Fired when the user clicks "Reset". Wired by the chat panel to
+   *  the `reset_budget` Tauri command so the user can unblock the
+   *  stream without leaving the panel. */
+  onReset?: () => void;
   /** Presentational override (e.g. "embedded" vs "overlay"). */
   className?: string;
 }
@@ -29,6 +33,7 @@ export function BudgetExceededBanner({
   capUSD,
   message,
   onOpenSettings,
+  onReset,
   className,
 }: BudgetExceededBannerProps): JSX.Element {
   const costLine =
@@ -56,6 +61,18 @@ export function BudgetExceededBanner({
           {costLine ? ` (${costLine})` : ''} Reset the cap in Settings or wait for the monthly rollover.
         </p>
       </div>
+      {onReset && (
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={onReset}
+          className="flex-shrink-0"
+          data-testid="budget-exceeded-reset"
+        >
+          Reset
+          <RotateCcw className="ml-1.5 h-3 w-3" />
+        </Button>
+      )}
       {onOpenSettings && (
         <Button
           size="sm"

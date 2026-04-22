@@ -1,5 +1,7 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { invoke } from '@tauri-apps/api/core';
+import { toast } from '@/components/ui/sonner';
 import { useChatStore, type Turn } from '@/stores/chatStore';
 import { useClusterStore } from '@/stores/clusterStore';
 import { useChatController } from '@/hooks/useChatController';
@@ -11,6 +13,10 @@ import { ChatInput } from './ChatInput';
 import { Button } from '@/components/ui/button';
 import { Settings2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import {
+  BudgetExceededBanner,
+  isBudgetExceededError,
+} from '@/components/chat/BudgetExceededBanner';
 
 export const CHAT_PANEL_WIDTH_PX = 480;
 
@@ -127,6 +133,29 @@ export function ChatPanel() {
   const notReady = decodeNotReady(caps.data, caps.error, userConfig);
   const inputDisabled = !clusterId || !!notReady || sessionExpired || connectionState === 'error';
 
+  // Phase 2 / Gap 3 — when the brain trips the monthly budget cap, its
+  // last error event on this turn is {code:"budget_exceeded", message}.
+  // Surface the dedicated banner above the input so the user can reset
+  // the cap (via the reset_budget Tauri command) without leaving chat.
+  const budgetError =
+    lastAssistant?.state === 'error' &&
+    isBudgetExceededError(lastAssistant.error?.code)
+      ? lastAssistant.error
+      : undefined;
+  const [resettingBudget, setResettingBudget] = useState(false);
+  const handleResetBudget = async () => {
+    if (resettingBudget) return;
+    setResettingBudget(true);
+    try {
+      await invoke('reset_budget');
+      toast.success('Budget cap reset');
+    } catch (e) {
+      toast.error(`Reset failed: ${e instanceof Error ? e.message : String(e)}`);
+    } finally {
+      setResettingBudget(false);
+    }
+  };
+
   const systemNotices = useMemo(() => {
     const out: { id: string; message: string; afterIndex: number }[] = [];
     if (sessionExpired && turns.length > 0) {
@@ -167,6 +196,14 @@ export function ChatPanel() {
     >
       <ChatHeader />
       <ChatTranscript turns={turns} systemNotices={systemNotices} />
+      {budgetError && (
+        <div className="px-3 pt-2">
+          <BudgetExceededBanner
+            message={budgetError.message}
+            onReset={handleResetBudget}
+          />
+        </div>
+      )}
       <ChatInput
         onSend={sendMessage}
         onStop={cancelTurn}

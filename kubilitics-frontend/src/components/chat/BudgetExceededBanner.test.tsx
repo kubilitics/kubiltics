@@ -24,6 +24,13 @@ describe('BudgetExceededBanner', () => {
     expect(cb).toHaveBeenCalledOnce();
   });
 
+  it('fires onReset when the Reset button is clicked', () => {
+    const cb = vi.fn();
+    render(<BudgetExceededBanner onReset={cb} />);
+    fireEvent.click(screen.getByTestId('budget-exceeded-reset'));
+    expect(cb).toHaveBeenCalledOnce();
+  });
+
   it('isBudgetExceededError recognizes the wire code', () => {
     expect(isBudgetExceededError('budget_exceeded')).toBe(true);
     expect(isBudgetExceededError('router_error')).toBe(false);
