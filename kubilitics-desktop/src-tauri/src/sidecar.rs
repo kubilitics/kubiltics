@@ -418,7 +418,8 @@ pub fn get_backend_status(app_handle: AppHandle) -> Result<serde_json::Value, St
 // ─────────────────────────────────────────────────────────────────────────────
 
 const BRAIN_HTTP_PORT: u16 = 8081;
-const BRAIN_GRPC_PORT: u16 = 50051;
+// 50061 to avoid collision with kubilitics-backend's gRPC on 50051.
+const BRAIN_GRPC_PORT: u16 = 50061;
 const BRAIN_READY_TIMEOUT_SECS: u64 = 90;
 
 pub struct BrainManager {
@@ -471,6 +472,10 @@ impl BrainManager {
             .env("KUBILITICS_AI_GRPC_PORT", BRAIN_GRPC_PORT.to_string())
             // Brain reads its provider config from this file (written by AI Settings).
             .env("KUBILITICS_AI_CONFIG_PATH", data_dir.join("ai-config.yaml").to_string_lossy().as_ref())
+            // SQLite path — brain defaults to /var/lib/kubilitics which is
+            // read-only outside a container. Point it at the user-writable
+            // data dir same as the backend.
+            .env("KUBILITICS_DATABASE_PATH", data_dir.join("kubilitics-ai.db").to_string_lossy().as_ref())
             // Point the brain at the backend so it can call MCP tools.
             .env("KUBILITICS_BACKEND_URL", format!("http://localhost:{}", BACKEND_PORT));
 

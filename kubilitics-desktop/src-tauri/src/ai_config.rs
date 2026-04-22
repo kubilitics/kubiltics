@@ -281,6 +281,95 @@ fn brain_admin_base() -> String {
     std::env::var("KUBILITICS_AI_ADMIN_URL").unwrap_or_else(|_| "http://127.0.0.1:8081".to_string())
 }
 
+#[derive(Debug, Serialize, Clone)]
+pub struct DetectedProvider {
+    pub provider: String, // openai | anthropic | ollama
+    pub source: String,   // env | localhost | keychain
+    pub model: String,    // recommended model
+    pub base_url: String, // empty for hosted providers
+    pub env_var: String,  // which env var was found (blank for localhost)
+}
+
+/// detect_available_providers — scans the user's environment + localhost for
+/// any AI provider we support, so the UI can offer a one-click "Use this".
+///
+/// Order:
+///   1. OPENAI_API_KEY in env   → openai / gpt-4o-mini
+///   2. ANTHROPIC_API_KEY       → anthropic / claude-3-5-sonnet-latest
+///   3. TOGETHER_API_KEY        → custom base_url=https://api.together.xyz/v1 / Qwen/Qwen2.5-7B-Instruct-Turbo
+///   4. GROQ_API_KEY            → custom base_url=https://api.groq.com/openai/v1 / llama-3.3-70b-versatile
+///   5. Ollama on localhost:11434 → ollama / llama3
+///   6. Already in keychain     → the saved provider
+///
+/// Returns all detected options so the UI can rank them with the first as the
+/// recommended default.
+#[command]
+pub async fn detect_available_providers() -> Result<Vec<DetectedProvider>, String> {
+    let mut out: Vec<DetectedProvider> = Vec::new();
+
+    let env_sources: [(&str, &str, &str, &str); 4] = [
+        ("OPENAI_API_KEY",    "openai",    "gpt-4o-mini",                     ""),
+        ("ANTHROPIC_API_KEY", "anthropic", "claude-3-5-sonnet-latest",        ""),
+        ("TOGETHER_API_KEY",  "custom",    "Qwen/Qwen2.5-7B-Instruct-Turbo",  "https://api.together.xyz/v1"),
+        ("GROQ_API_KEY",      "custom",    "llama-3.3-70b-versatile",         "https://api.groq.com/openai/v1"),
+    ];
+    for (var, provider, model, base_url) in env_sources {
+        if !std::env::var(var).unwrap_or_default().is_empty() {
+            out.push(DetectedProvider {
+                provider: provider.into(),
+                source: "env".into(),
+                model: model.into(),
+                base_url: base_url.into(),
+                env_var: var.into(),
+            });
+        }
+    }
+
+    // Probe Ollama on localhost (best-effort, 1s timeout).
+    let ollama_ok = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(1))
+        .build()
+        .ok()
+        .and_then(|c| tauri::async_runtime::block_on(async move {
+            c.get("http://localhost:11434/api/tags").send().await.ok()
+        }))
+        .map(|r| r.status().is_success())
+        .unwrap_or(false);
+    if ollama_ok {
+        out.push(DetectedProvider {
+            provider: "ollama".into(),
+            source: "localhost".into(),
+            model: "llama3".into(),
+            base_url: "http://localhost:11434".into(),
+            env_var: String::new(),
+        });
+    }
+
+    // Surface keychain-stored configs even when the env is empty, so users who
+    // already connected once see that as an option.
+    for provider in ["openai", "anthropic", "ollama", "custom"] {
+        if let Ok(Some(_)) = keychain_get(provider) {
+            let already_listed = out.iter().any(|p| p.provider == provider);
+            if !already_listed {
+                out.push(DetectedProvider {
+                    provider: provider.into(),
+                    source: "keychain".into(),
+                    model: match provider {
+                        "openai" => "gpt-4o-mini",
+                        "anthropic" => "claude-3-5-sonnet-latest",
+                        "ollama" => "llama3",
+                        _ => "",
+                    }.into(),
+                    base_url: if provider == "ollama" { "http://localhost:11434".into() } else { String::new() },
+                    env_var: String::new(),
+                });
+            }
+        }
+    }
+
+    Ok(out)
+}
+
 #[command]
 pub async fn get_budget_status() -> Result<BudgetStatus, String> {
     let url = format!("{}/admin/budget/status", brain_admin_base().trim_end_matches('/'));

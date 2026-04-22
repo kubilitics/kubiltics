@@ -74,6 +74,47 @@ export default function AISettingsPage() {
   const [budgetCap, setBudgetCap] = useState<number | null>(null);
   const [resettingBudget, setResettingBudget] = useState(false);
 
+  // Detected providers from the OS env / localhost probe.  Surfaced as
+  // one-click connect buttons so users don't have to know model names or
+  // base URLs on their first run.
+  type Detected = {
+    provider: string; source: string; model: string; base_url: string; env_var: string;
+  };
+  const [detected, setDetected] = useState<Detected[]>([]);
+  const [connecting, setConnecting] = useState<string | null>(null);
+  useEffect(() => {
+    invoke<Detected[]>('detect_available_providers')
+      .then(setDetected)
+      .catch(() => setDetected([]));
+  }, []);
+
+  const handleQuickConnect = async (d: Detected) => {
+    setConnecting(d.provider);
+    try {
+      // Quick-connect doesn't need to pass the key — the brain reads the
+      // env var itself (OPENAI_API_KEY / ANTHROPIC_API_KEY etc.) or in the
+      // Ollama case there's no key at all. We just save provider/model/base_url.
+      await store.save({
+        provider: d.provider as Provider,
+        model: d.model,
+        baseUrl: d.base_url,
+        apiKey: '',
+      });
+      const res = await store.testConnection({
+        provider: d.provider as Provider,
+        model: d.model,
+        baseUrl: d.base_url,
+      });
+      setTestResult({ ok: res.ok, latencyMs: res.latencyMs, error: res.error ?? undefined });
+      if (res.ok) toast.success(`Connected to ${d.provider} (${res.latencyMs ?? 0}ms)`);
+      else toast.error(`Test failed: ${res.error ?? 'unknown'}`);
+    } catch (e) {
+      toast.error(`Quick-connect failed: ${e instanceof Error ? e.message : String(e)}`);
+    } finally {
+      setConnecting(null);
+    }
+  };
+
   // Hydrate on mount — pulls provider/model/base_url from config.yaml
   // and flips has_api_key from the keychain probe.
   useEffect(() => {
@@ -193,6 +234,47 @@ export default function AISettingsPage() {
           <StatTile label="Key in Keychain" value={hasApiKey ? 'yes' : 'no'} />
         </CardContent>
       </Card>
+
+      {/* ━━━ Quick Connect ━━━ */}
+      {detected.length > 0 && (
+        <Card className="border-none soft-shadow glass-panel" data-testid="ai-quick-connect-card">
+          <CardHeader>
+            <CardTitle className="text-base">Quick Connect</CardTitle>
+            <CardDescription>
+              We detected AI providers available on this machine. One click to wire up — no model names or URLs to memorize.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-wrap gap-3">
+            {detected.map((d) => {
+              const label =
+                d.provider === 'openai' ? 'OpenAI' :
+                d.provider === 'anthropic' ? 'Anthropic' :
+                d.provider === 'ollama' ? 'Ollama (local)' :
+                d.env_var.replace('_API_KEY', '').toLowerCase();
+              const sourceText =
+                d.source === 'env' ? `from $${d.env_var}` :
+                d.source === 'localhost' ? 'running on localhost' :
+                'saved in keychain';
+              return (
+                <Button
+                  key={`${d.provider}-${d.source}-${d.env_var}`}
+                  variant="outline"
+                  className="h-auto py-3 px-4 flex flex-col items-start gap-1"
+                  onClick={() => handleQuickConnect(d)}
+                  disabled={connecting !== null}
+                >
+                  <span className="font-semibold text-sm">
+                    {connecting === d.provider ? 'Connecting…' : `Use ${label}`}
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    {d.model} · {sourceText}
+                  </span>
+                </Button>
+              );
+            })}
+          </CardContent>
+        </Card>
+      )}
 
       {/* ━━━ Provider Configuration ━━━ */}
       <Card className="border-none soft-shadow glass-panel" data-testid="ai-provider-card">
