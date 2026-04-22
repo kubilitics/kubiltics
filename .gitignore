@@ -168,6 +168,11 @@ project-docs/
 !SECURITY.md
 !NOTICE
 !KNOWN_ISSUES.md
+
+# Stray local build artifacts (native binaries without a sanctioned path)
+/server_v*
+kubilitics-backend/server_fresh
+kubilitics-backend/server_v*
 !docs/*.md
 !docs/**/*.md
 !deploy/**/*.md
