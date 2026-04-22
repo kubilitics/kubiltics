@@ -156,3 +156,8 @@ func intArg(args map[string]interface{}, key string, def int) int {
 	}
 	return def
 }
+
+func boolArg(args map[string]interface{}, key string) bool {
+	v, _ := args[key].(bool)
+	return v
+}

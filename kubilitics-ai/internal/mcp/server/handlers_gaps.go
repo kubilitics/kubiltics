@@ -808,3 +808,386 @@ func floatOr(m map[string]interface{}, keys ...string) float64 {
 	}
 	return 0
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Iteration 3 aggregators (2026-04-22 v2 bench gap closure)
+// ═══════════════════════════════════════════════════════════════════════════
+
+// handleObserveServicesByFilter returns Services matching any of the
+// requested filters (flapping, no_endpoints) with a short reason. Answers
+// scen-health-26 ("any services flapping cluster-wide?") without making
+// the LLM enumerate Services one-by-one.
+func (s *mcpServerImpl) handleObserveServicesByFilter(ctx context.Context, args map[string]interface{}) (interface{}, error) {
+	c := s.http()
+	clusterID, err := c.resolveCluster(ctx, args)
+	if err != nil {
+		return nil, err
+	}
+	namespace := strArg(args, "namespace")
+	wantFlapping := boolArg(args, "flapping")
+	wantNoEndpoints := boolArg(args, "no_endpoints")
+
+	// If nothing was asked for, imply both — "show me problem services".
+	if !wantFlapping && !wantNoEndpoints {
+		wantFlapping = true
+		wantNoEndpoints = true
+	}
+
+	var svcList map[string]interface{}
+	if err := c.get(ctx, c.clusterPath(clusterID, "/resources/services"+nsQuery(namespace)), &svcList); err != nil {
+		return nil, err
+	}
+	items := extractResourceItems(svcList)
+
+	// Events scoped to recent window for flap detection.
+	eq := url.Values{}
+	eq.Set("since", "15m")
+	if namespace != "" {
+		eq.Set("namespace", namespace)
+	}
+	var rawEvents interface{}
+	_ = c.get(ctx, c.clusterPath(clusterID, "/events?"+eq.Encode()), &rawEvents)
+	flapCount := countEndpointChurn(rawEvents)
+
+	type row struct {
+		Namespace      string   `json:"namespace"`
+		Name           string   `json:"name"`
+		Reasons        []string `json:"reasons"`
+		EndpointChurn  int      `json:"endpoint_churn_events,omitempty"`
+		ReadyEndpoints int      `json:"ready_endpoints"`
+	}
+	var out []row
+
+	for _, svc := range items {
+		ns := resourceNamespace(svc)
+		name := resourceName(svc)
+		if name == "" {
+			continue
+		}
+		if namespace != "" && ns != namespace {
+			continue
+		}
+		var reasons []string
+		readyCount := 0
+
+		// Count endpoints by reading the subresource.
+		var eps map[string]interface{}
+		_ = c.get(ctx, c.clusterPath(clusterID, "/resources/services/"+url.PathEscape(ns)+"/"+url.PathEscape(name)+"/endpoints"), &eps)
+		readyCount = countReadyEndpoints(eps)
+
+		if wantNoEndpoints && readyCount == 0 {
+			reasons = append(reasons, "no ready endpoints")
+		}
+		churn := flapCount[ns+"/"+name]
+		if wantFlapping && churn >= 3 {
+			reasons = append(reasons, fmt.Sprintf("endpoint churn: %d events in 15m", churn))
+		}
+		if len(reasons) == 0 {
+			continue
+		}
+		out = append(out, row{
+			Namespace:      ns,
+			Name:           name,
+			Reasons:        reasons,
+			EndpointChurn:  churn,
+			ReadyEndpoints: readyCount,
+		})
+	}
+
+	summary := fmt.Sprintf("%d service(s) matched in %s", len(out), namespaceLabel(namespace))
+	if len(out) == 0 {
+		summary = "No services matched the requested filters."
+	}
+	return map[string]interface{}{
+		"filters": map[string]interface{}{
+			"flapping":     wantFlapping,
+			"no_endpoints": wantNoEndpoints,
+			"namespace":    namespace,
+		},
+		"services": out,
+		"summary":  summary,
+	}, nil
+}
+
+func countEndpointChurn(rawEvents interface{}) map[string]int {
+	counts := map[string]int{}
+	evs := extractResourceItems(rawEvents)
+	for _, ev := range evs {
+		reason, _ := ev["reason"].(string)
+		r := strings.ToLower(reason)
+		if !strings.Contains(r, "endpoint") && !strings.Contains(r, "nodenotready") {
+			continue
+		}
+		kind, name, ns := eventInvolvedObject(ev)
+		if !strings.EqualFold(kind, "Service") && !strings.EqualFold(kind, "Endpoints") {
+			continue
+		}
+		counts[ns+"/"+name]++
+	}
+	return counts
+}
+
+func countReadyEndpoints(eps map[string]interface{}) int {
+	if eps == nil {
+		return 0
+	}
+	n := 0
+	subsets, _ := eps["subsets"].([]interface{})
+	for _, s := range subsets {
+		ss, _ := s.(map[string]interface{})
+		addrs, _ := ss["addresses"].([]interface{})
+		n += len(addrs)
+	}
+	// EndpointSlice style.
+	endpoints, _ := eps["endpoints"].([]interface{})
+	for _, e := range endpoints {
+		em, _ := e.(map[string]interface{})
+		cond, _ := em["conditions"].(map[string]interface{})
+		if ready, ok := cond["ready"].(bool); ok && ready {
+			n++
+		}
+	}
+	return n
+}
+
+// handleObserveSecretsUsage returns every Secret with a reference graph
+// showing which Pods mount it (volume) or consume it via env. Answers
+// scen-config-95 ("any secrets not actually used?").
+func (s *mcpServerImpl) handleObserveSecretsUsage(ctx context.Context, args map[string]interface{}) (interface{}, error) {
+	c := s.http()
+	clusterID, err := c.resolveCluster(ctx, args)
+	if err != nil {
+		return nil, err
+	}
+	namespace := strArg(args, "namespace")
+
+	var secretList, podList map[string]interface{}
+	if err := c.get(ctx, c.clusterPath(clusterID, "/resources/secrets"+nsQuery(namespace)), &secretList); err != nil {
+		return nil, err
+	}
+	if err := c.get(ctx, c.clusterPath(clusterID, "/resources/pods"+nsQuery(namespace)), &podList); err != nil {
+		return nil, err
+	}
+
+	// Build reference graph.
+	type usage struct {
+		MountedBy   []string `json:"mounted_by_pods"`
+		EnvBy       []string `json:"mounted_as_env_by_pods"`
+	}
+	ref := map[string]*usage{} // key: "ns/name"
+
+	pods := extractResourceItems(podList)
+	for _, pod := range pods {
+		ns := resourceNamespace(pod)
+		pname := resourceName(pod)
+		if pname == "" {
+			continue
+		}
+		spec, _ := pod["spec"].(map[string]interface{})
+		if spec == nil {
+			continue
+		}
+
+		// Volumes of type secret.
+		if vols, ok := spec["volumes"].([]interface{}); ok {
+			for _, v := range vols {
+				vm, _ := v.(map[string]interface{})
+				sec, _ := vm["secret"].(map[string]interface{})
+				if sec == nil {
+					continue
+				}
+				secName, _ := sec["secretName"].(string)
+				if secName == "" {
+					continue
+				}
+				k := ns + "/" + secName
+				if ref[k] == nil {
+					ref[k] = &usage{}
+				}
+				ref[k].MountedBy = append(ref[k].MountedBy, ns+"/"+pname)
+			}
+		}
+
+		// Env sources on every container.
+		for _, section := range []string{"containers", "initContainers"} {
+			containers, _ := spec[section].([]interface{})
+			for _, c := range containers {
+				cm, _ := c.(map[string]interface{})
+				if cm == nil {
+					continue
+				}
+				if env, ok := cm["env"].([]interface{}); ok {
+					for _, e := range env {
+						em, _ := e.(map[string]interface{})
+						vf, _ := em["valueFrom"].(map[string]interface{})
+						sr, _ := vf["secretKeyRef"].(map[string]interface{})
+						if sn, _ := sr["name"].(string); sn != "" {
+							k := ns + "/" + sn
+							if ref[k] == nil {
+								ref[k] = &usage{}
+							}
+							ref[k].EnvBy = append(ref[k].EnvBy, ns+"/"+pname)
+						}
+					}
+				}
+				if sources, ok := cm["envFrom"].([]interface{}); ok {
+					for _, src := range sources {
+						sm, _ := src.(map[string]interface{})
+						sr, _ := sm["secretRef"].(map[string]interface{})
+						if sn, _ := sr["name"].(string); sn != "" {
+							k := ns + "/" + sn
+							if ref[k] == nil {
+								ref[k] = &usage{}
+							}
+							ref[k].EnvBy = append(ref[k].EnvBy, ns+"/"+pname)
+						}
+					}
+				}
+			}
+		}
+	}
+
+	type row struct {
+		Namespace  string   `json:"namespace"`
+		Name       string   `json:"name"`
+		Type       string   `json:"type,omitempty"`
+		Mounted    []string `json:"mounted_by_pods"`
+		Env        []string `json:"mounted_as_env_by_pods"`
+		Unused     bool     `json:"unused"`
+	}
+	var out []row
+	unusedCount := 0
+	secrets := extractResourceItems(secretList)
+	for _, sec := range secrets {
+		ns := resourceNamespace(sec)
+		name := resourceName(sec)
+		if name == "" {
+			continue
+		}
+		stype, _ := sec["type"].(string)
+		u := ref[ns+"/"+name]
+		var mounted, env []string
+		if u != nil {
+			mounted = u.MountedBy
+			env = u.EnvBy
+		}
+		unused := len(mounted) == 0 && len(env) == 0 &&
+			// Filter out service-account tokens and helm ownership secrets;
+			// those are "used" by the infrastructure even if no pod references them.
+			!strings.HasPrefix(stype, "kubernetes.io/service-account-token") &&
+			!strings.HasPrefix(stype, "helm.sh/")
+		if unused {
+			unusedCount++
+		}
+		out = append(out, row{
+			Namespace: ns, Name: name, Type: stype,
+			Mounted: mounted, Env: env, Unused: unused,
+		})
+	}
+
+	return map[string]interface{}{
+		"namespace":     namespace,
+		"secrets":       out,
+		"unused_count":  unusedCount,
+		"summary":       fmt.Sprintf("%d secret(s) total, %d unused in %s", len(out), unusedCount, namespaceLabel(namespace)),
+	}, nil
+}
+
+// handleObserveIngressesByTLSExpiry returns Ingresses whose TLS certs
+// expire within the given window (default 30 days). Answers scen-network-86
+// ("certs about to expire") without per-ingress iteration.
+func (s *mcpServerImpl) handleObserveIngressesByTLSExpiry(ctx context.Context, args map[string]interface{}) (interface{}, error) {
+	c := s.http()
+	clusterID, err := c.resolveCluster(ctx, args)
+	if err != nil {
+		return nil, err
+	}
+	days := intArg(args, "days", 30)
+	if days < 1 {
+		days = 30
+	}
+	namespace := strArg(args, "namespace")
+
+	var ingList map[string]interface{}
+	if err := c.get(ctx, c.clusterPath(clusterID, "/resources/ingresses"+nsQuery(namespace)), &ingList); err != nil {
+		return nil, err
+	}
+	items := extractResourceItems(ingList)
+
+	type row struct {
+		Namespace     string `json:"namespace"`
+		Name          string `json:"name"`
+		Host          string `json:"host,omitempty"`
+		Issuer        string `json:"issuer,omitempty"`
+		ExpiresAt     string `json:"expires_at,omitempty"`
+		DaysRemaining int    `json:"days_remaining"`
+	}
+	var out []row
+	anyTLSInfo := false
+	cutoff := time.Now().Add(time.Duration(days) * 24 * time.Hour)
+	for _, ing := range items {
+		ns := resourceNamespace(ing)
+		name := resourceName(ing)
+		if name == "" {
+			continue
+		}
+		var tlsInfo map[string]interface{}
+		err := c.get(ctx, c.clusterPath(clusterID, "/resources/ingresses/"+url.PathEscape(ns)+"/"+url.PathEscape(name)+"/tls-info"), &tlsInfo)
+		if err != nil || tlsInfo == nil {
+			continue
+		}
+		anyTLSInfo = true
+		certs, _ := tlsInfo["certificates"].([]interface{})
+		for _, cert := range certs {
+			cm, _ := cert.(map[string]interface{})
+			if cm == nil {
+				continue
+			}
+			expStr, _ := cm["not_after"].(string)
+			if expStr == "" {
+				expStr, _ = cm["expires_at"].(string)
+			}
+			if expStr == "" {
+				continue
+			}
+			exp, err := time.Parse(time.RFC3339, expStr)
+			if err != nil {
+				continue
+			}
+			if exp.After(cutoff) {
+				continue
+			}
+			host, _ := cm["host"].(string)
+			issuer, _ := cm["issuer"].(string)
+			remaining := int(time.Until(exp).Hours() / 24)
+			out = append(out, row{
+				Namespace:     ns,
+				Name:          name,
+				Host:          host,
+				Issuer:        issuer,
+				ExpiresAt:     expStr,
+				DaysRemaining: remaining,
+			})
+		}
+	}
+
+	if !anyTLSInfo {
+		return map[string]interface{}{
+			"tls_inspection_unavailable": true,
+			"reason":                     "Backend /ingresses/<ns>/<name>/tls-info endpoint returned nothing — cluster may not expose TLS inspection or no Ingress has a TLS section.",
+			"install_hint":               "Install cert-manager and ensure the backend certificate inspector is enabled on this cluster.",
+			"days_window":                days,
+			"namespace":                  namespace,
+		}, nil
+	}
+
+	// Sort ascending — expiring soonest first.
+	sort.Slice(out, func(i, j int) bool { return out[i].DaysRemaining < out[j].DaysRemaining })
+
+	return map[string]interface{}{
+		"days_window":         days,
+		"namespace":           namespace,
+		"expiring_ingresses":  out,
+		"summary":             fmt.Sprintf("%d ingress TLS cert(s) expire within %d days in %s", len(out), days, namespaceLabel(namespace)),
+	}, nil
+}

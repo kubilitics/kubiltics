@@ -350,6 +350,11 @@ var toolTopicOverrides = map[string][]Topic{
 	"observe_node_metrics":       {TopicNodes, TopicCapacity},
 	"observe_top_pods_by_metric": {TopicPods, TopicCapacity},
 
+	// Iteration 3 aggregators (2026-04-22 v2 bench).
+	"observe_services_by_filter":      {TopicNetworking, TopicEvents},
+	"observe_secrets_usage":           {TopicSecurity, TopicCore},
+	"observe_ingresses_by_tls_expiry": {TopicNetworking, TopicSecurity},
+
 	// Troubleshoot tools — route by the subsystem they troubleshoot.
 	"troubleshoot_pod_failures":             {TopicPods, TopicEvents},
 	"troubleshoot_network_issues":           {TopicNetworking},

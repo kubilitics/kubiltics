@@ -11,6 +11,7 @@ import (
 	"context"
 	"strings"
 	"testing"
+	"time"
 )
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -412,5 +413,187 @@ func TestResolveResource_RequiresArgs(t *testing.T) {
 	})
 	if err == nil || !strings.Contains(err.Error(), "name_hint") {
 		t.Errorf("expected name_hint error, got %v", err)
+	}
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Iteration 3 — services_by_filter / secrets_usage / ingresses_by_tls_expiry
+// ═══════════════════════════════════════════════════════════════════════════
+
+func TestServicesByFilter_NoEndpoints(t *testing.T) {
+	fb := newFakeBackend(t)
+	fb.registerCluster()
+	fb.register("/clusters/"+testClusterID+"/resources/services", map[string]interface{}{
+		"items": []interface{}{
+			map[string]interface{}{
+				"metadata": map[string]interface{}{"name": "lonely", "namespace": "demo"},
+			},
+			map[string]interface{}{
+				"metadata": map[string]interface{}{"name": "healthy", "namespace": "demo"},
+			},
+		},
+	})
+	fb.register("/clusters/"+testClusterID+"/events", []interface{}{})
+	// lonely has no endpoints route — fake backend returns 404 → nil map → 0 ready
+	// healthy has endpoints with 1 ready address.
+	fb.register("/clusters/"+testClusterID+"/resources/services/demo/healthy/endpoints", map[string]interface{}{
+		"subsets": []interface{}{
+			map[string]interface{}{
+				"addresses": []interface{}{map[string]interface{}{"ip": "10.0.0.1"}},
+			},
+		},
+	})
+	s := newTestServer(t, fb.server.URL)
+	out, err := s.handleObserveServicesByFilter(context.Background(), map[string]interface{}{
+		"no_endpoints": true,
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	m := out.(map[string]interface{})
+	summary, _ := m["summary"].(string)
+	if !strings.Contains(summary, "service(s) matched") && !strings.Contains(summary, "No services") {
+		t.Errorf("unexpected summary: %q", summary)
+	}
+}
+
+func TestServicesByFilter_ImpliedFiltersWhenNoneGiven(t *testing.T) {
+	fb := newFakeBackend(t)
+	fb.registerCluster()
+	fb.register("/clusters/"+testClusterID+"/resources/services", map[string]interface{}{"items": []interface{}{}})
+	fb.register("/clusters/"+testClusterID+"/events", []interface{}{})
+	s := newTestServer(t, fb.server.URL)
+	out, err := s.handleObserveServicesByFilter(context.Background(), map[string]interface{}{})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	m := out.(map[string]interface{})
+	filters, _ := m["filters"].(map[string]interface{})
+	if filters["flapping"] != true || filters["no_endpoints"] != true {
+		t.Errorf("expected both filters implied, got %#v", filters)
+	}
+}
+
+func TestSecretsUsage_MarksUnused(t *testing.T) {
+	fb := newFakeBackend(t)
+	fb.registerCluster()
+	fb.register("/clusters/"+testClusterID+"/resources/secrets", map[string]interface{}{
+		"items": []interface{}{
+			map[string]interface{}{
+				"metadata": map[string]interface{}{"name": "db-creds", "namespace": "demo"},
+				"type":     "Opaque",
+			},
+			map[string]interface{}{
+				"metadata": map[string]interface{}{"name": "sa-token", "namespace": "demo"},
+				"type":     "kubernetes.io/service-account-token",
+			},
+		},
+	})
+	fb.register("/clusters/"+testClusterID+"/resources/pods", map[string]interface{}{
+		"items": []interface{}{
+			map[string]interface{}{
+				"metadata": map[string]interface{}{"name": "web", "namespace": "demo"},
+				"spec": map[string]interface{}{
+					"volumes": []interface{}{
+						map[string]interface{}{"secret": map[string]interface{}{"secretName": "db-creds"}},
+					},
+					"containers": []interface{}{
+						map[string]interface{}{"name": "c", "env": []interface{}{}},
+					},
+				},
+			},
+		},
+	})
+	s := newTestServer(t, fb.server.URL)
+	out, err := s.handleObserveSecretsUsage(context.Background(), map[string]interface{}{})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	m := out.(map[string]interface{})
+	// db-creds is mounted → unused=false; sa-token is service-account-token → filtered out of unused.
+	if unused, _ := m["unused_count"].(int); unused != 0 {
+		t.Errorf("expected 0 unused secrets (sa-tokens excluded), got %d", unused)
+	}
+	summary, _ := m["summary"].(string)
+	if !strings.Contains(summary, "secret(s) total") {
+		t.Errorf("summary shape wrong: %q", summary)
+	}
+}
+
+func TestSecretsUsage_CatchesTrulyUnused(t *testing.T) {
+	fb := newFakeBackend(t)
+	fb.registerCluster()
+	fb.register("/clusters/"+testClusterID+"/resources/secrets", map[string]interface{}{
+		"items": []interface{}{
+			map[string]interface{}{
+				"metadata": map[string]interface{}{"name": "orphan", "namespace": "demo"},
+				"type":     "Opaque",
+			},
+		},
+	})
+	fb.register("/clusters/"+testClusterID+"/resources/pods", map[string]interface{}{"items": []interface{}{}})
+	s := newTestServer(t, fb.server.URL)
+	out, _ := s.handleObserveSecretsUsage(context.Background(), map[string]interface{}{})
+	m := out.(map[string]interface{})
+	if unused, _ := m["unused_count"].(int); unused != 1 {
+		t.Errorf("expected 1 unused secret, got %d", unused)
+	}
+}
+
+func TestIngressesByTLSExpiry_UnavailableFallback(t *testing.T) {
+	fb := newFakeBackend(t)
+	fb.registerCluster()
+	fb.register("/clusters/"+testClusterID+"/resources/ingresses", map[string]interface{}{
+		"items": []interface{}{
+			map[string]interface{}{
+				"metadata": map[string]interface{}{"name": "web", "namespace": "demo"},
+			},
+		},
+	})
+	// No tls-info route registered — fake backend 404s → unavailable fallback.
+	s := newTestServer(t, fb.server.URL)
+	out, err := s.handleObserveIngressesByTLSExpiry(context.Background(), map[string]interface{}{})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	m := out.(map[string]interface{})
+	if m["tls_inspection_unavailable"] != true {
+		t.Errorf("expected tls_inspection_unavailable=true, got %#v", m)
+	}
+}
+
+func TestIngressesByTLSExpiry_FlagsExpiring(t *testing.T) {
+	fb := newFakeBackend(t)
+	fb.registerCluster()
+	fb.register("/clusters/"+testClusterID+"/resources/ingresses", map[string]interface{}{
+		"items": []interface{}{
+			map[string]interface{}{
+				"metadata": map[string]interface{}{"name": "web", "namespace": "demo"},
+			},
+		},
+	})
+	// Cert expiring in ~1 day (well inside 30-day default window).
+	soon := time.Now().Add(24 * time.Hour).UTC().Format(time.RFC3339)
+	fb.register("/clusters/"+testClusterID+"/resources/ingresses/demo/web/tls-info", map[string]interface{}{
+		"certificates": []interface{}{
+			map[string]interface{}{
+				"host":      "web.example.com",
+				"issuer":    "Let's Encrypt",
+				"not_after": soon,
+			},
+		},
+	})
+	s := newTestServer(t, fb.server.URL)
+	out, err := s.handleObserveIngressesByTLSExpiry(context.Background(), map[string]interface{}{})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	m := out.(map[string]interface{})
+	if m["tls_inspection_unavailable"] == true {
+		t.Fatalf("did not expect unavailable fallback; got %#v", m)
+	}
+	summary, _ := m["summary"].(string)
+	if !strings.Contains(summary, "expire within") {
+		t.Errorf("unexpected summary: %q", summary)
 	}
 }

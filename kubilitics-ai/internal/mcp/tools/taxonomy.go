@@ -888,6 +888,53 @@ var ToolTaxonomy = []ToolDefinition{
 		RequiresAI:  false,
 	},
 
+	// ─── Iteration 3 aggregators (2026-04-22 v2 bench) ───
+	{
+		Name:        "observe_services_by_filter",
+		Category:    CategoryObservation,
+		Description: "ALWAYS use this for 'flapping services' / 'services with no endpoints' / cluster-wide service-health questions. Returns Services matching any requested filter with a short reason. Filters: flapping=true (endpoint churn events in last 15m), no_endpoints=true (zero ready endpoints). When no filter is passed, both are implied.",
+		InputSchema: map[string]interface{}{
+			"type": "object",
+			"properties": map[string]interface{}{
+				"cluster_id":   map[string]interface{}{"type": "string"},
+				"flapping":     map[string]interface{}{"type": "boolean", "description": "Include services whose endpoints have churned in the last 15 minutes"},
+				"no_endpoints": map[string]interface{}{"type": "boolean", "description": "Include services with zero ready endpoints"},
+				"namespace":    map[string]interface{}{"type": "string", "description": "Restrict to a namespace (optional — default is cluster-wide)"},
+			},
+		},
+		Destructive: false,
+		RequiresAI:  false,
+	},
+	{
+		Name:        "observe_secrets_usage",
+		Category:    CategoryObservation,
+		Description: "ALWAYS use this for 'unused secrets' / 'which secrets are referenced by workloads' questions. Returns every Secret with a reference graph {mounted_by_pods, mounted_as_env_by_pods, unused}. Filters out service-account and helm ownership secrets from the unused count so the signal is real.",
+		InputSchema: map[string]interface{}{
+			"type": "object",
+			"properties": map[string]interface{}{
+				"cluster_id": map[string]interface{}{"type": "string"},
+				"namespace":  map[string]interface{}{"type": "string", "description": "Restrict to a namespace (optional — default is cluster-wide)"},
+			},
+		},
+		Destructive: false,
+		RequiresAI:  false,
+	},
+	{
+		Name:        "observe_ingresses_by_tls_expiry",
+		Category:    CategoryObservation,
+		Description: "ALWAYS use this for 'certs about to expire' / 'which ingresses have TLS expiring soon' questions. Returns Ingresses whose TLS certs expire within 'days' (default 30). Falls back gracefully with {tls_inspection_unavailable:true, reason} on clusters that don't expose TLS inspection.",
+		InputSchema: map[string]interface{}{
+			"type": "object",
+			"properties": map[string]interface{}{
+				"cluster_id": map[string]interface{}{"type": "string"},
+				"days":       map[string]interface{}{"type": "integer", "description": "Expiry window in days (default 30)"},
+				"namespace":  map[string]interface{}{"type": "string", "description": "Restrict to a namespace (optional)"},
+			},
+		},
+		Destructive: false,
+		RequiresAI:  false,
+	},
+
 	// ─── Timeline fusion (gap 4, 2026-04-22 bench) ───
 	{
 		Name:        "observe_recent_changes",

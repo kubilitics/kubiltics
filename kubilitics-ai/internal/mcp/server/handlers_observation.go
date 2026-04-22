@@ -5741,6 +5741,12 @@ func (s *mcpServerImpl) routeObservationTool(ctx context.Context, name string, a
 		return s.handleObserveNodeMetrics(ctx, args)
 	case "observe_top_pods_by_metric":
 		return s.handleObserveTopPodsByMetric(ctx, args)
+	case "observe_services_by_filter":
+		return s.handleObserveServicesByFilter(ctx, args)
+	case "observe_secrets_usage":
+		return s.handleObserveSecretsUsage(ctx, args)
+	case "observe_ingresses_by_tls_expiry":
+		return s.handleObserveIngressesByTLSExpiry(ctx, args)
 	case "observe_pod_logs":
 		return s.handlePodLogs(ctx, args)
 	case "observe_pod_detailed":
