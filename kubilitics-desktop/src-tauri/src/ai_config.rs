@@ -27,7 +27,6 @@
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
-use std::process::Command;
 use tauri::command;
 
 const KEYCHAIN_SERVICE: &str = "kubilitics";
@@ -58,92 +57,43 @@ fn config_yaml_path() -> Result<PathBuf, String> {
 
 // ── Keychain wrappers ────────────────────────────────────────────────────
 //
-// macOS: `security add-generic-password` / `find-generic-password`.
-// Other platforms: stub to filesystem-encrypted fallback (same dir, file
-// permissions 0600). Full Windows Credential Manager / libsecret wiring
-// is a Phase 3 follow-up.
+// Phase 2 / Gap 6 — single cross-platform implementation via the `keyring`
+// crate. The crate binds natively to:
+//   - macOS: Keychain Services (same store the old `security` CLI used)
+//   - Windows: Credential Manager (wincred)
+//   - Linux: libsecret / Secret Service (gnome-keyring, kwallet)
+//
+// The previous implementation shelled out to `security` on macOS and
+// plaintext-wrote to `.{provider}.key` on Linux/Windows — a spec
+// violation (Section 3 line 100-102 mandates OS-native keychain on all
+// three platforms). This rewrite closes that gap.
 
-#[cfg(target_os = "macos")]
 fn keychain_set(account: &str, secret: &str) -> Result<(), String> {
-    // Delete first so `add-generic-password` doesn't fail on duplicates.
-    let _ = Command::new("security")
-        .args([
-            "delete-generic-password",
-            "-s",
-            KEYCHAIN_SERVICE,
-            "-a",
-            account,
-        ])
-        .output();
-
-    let out = Command::new("security")
-        .args([
-            "add-generic-password",
-            "-s",
-            KEYCHAIN_SERVICE,
-            "-a",
-            account,
-            "-w",
-            secret,
-            "-U",
-        ])
-        .output()
-        .map_err(|e| format!("security CLI: {}", e))?;
-    if !out.status.success() {
-        return Err(format!(
-            "keychain add failed: {}",
-            String::from_utf8_lossy(&out.stderr)
-        ));
-    }
-    Ok(())
+    let entry = keyring::Entry::new(KEYCHAIN_SERVICE, account)
+        .map_err(|e| format!("keychain entry: {}", e))?;
+    entry
+        .set_password(secret)
+        .map_err(|e| format!("keychain set: {}", e))
 }
 
-#[cfg(target_os = "macos")]
 fn keychain_get(account: &str) -> Result<Option<String>, String> {
-    let out = Command::new("security")
-        .args([
-            "find-generic-password",
-            "-s",
-            KEYCHAIN_SERVICE,
-            "-a",
-            account,
-            "-w",
-        ])
-        .output()
-        .map_err(|e| format!("security CLI: {}", e))?;
-    if !out.status.success() {
-        return Ok(None);
-    }
-    let s = String::from_utf8_lossy(&out.stdout).trim().to_string();
-    if s.is_empty() {
-        Ok(None)
-    } else {
-        Ok(Some(s))
+    let entry = keyring::Entry::new(KEYCHAIN_SERVICE, account)
+        .map_err(|e| format!("keychain entry: {}", e))?;
+    match entry.get_password() {
+        Ok(s) => Ok(Some(s)),
+        Err(keyring::Error::NoEntry) => Ok(None),
+        Err(e) => Err(format!("keychain get: {}", e)),
     }
 }
 
-// Non-macOS fallback: filesystem (mode 0600). Windows Credential Manager
-// + libsecret are Phase-3 follow-ups; this still gives users a working
-// round-trip on Linux / Windows without shipping a stub crash.
-#[cfg(not(target_os = "macos"))]
-fn keychain_set(account: &str, secret: &str) -> Result<(), String> {
-    let path = app_config_dir()?.join(format!(".{}.key", account));
-    fs::write(&path, secret).map_err(|e| format!("fallback store: {}", e))?;
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        let perm = fs::Permissions::from_mode(0o600);
-        let _ = fs::set_permissions(&path, perm);
-    }
-    Ok(())
-}
-
-#[cfg(not(target_os = "macos"))]
-fn keychain_get(account: &str) -> Result<Option<String>, String> {
-    let path = app_config_dir()?.join(format!(".{}.key", account));
-    match fs::read_to_string(&path) {
-        Ok(s) => Ok(Some(s.trim().to_string())),
-        Err(_) => Ok(None),
+#[allow(dead_code)]
+fn keychain_delete(account: &str) -> Result<(), String> {
+    let entry = keyring::Entry::new(KEYCHAIN_SERVICE, account)
+        .map_err(|e| format!("keychain entry: {}", e))?;
+    match entry.delete_credential() {
+        Ok(()) => Ok(()),
+        Err(keyring::Error::NoEntry) => Ok(()),
+        Err(e) => Err(format!("keychain delete: {}", e)),
     }
 }
 
@@ -403,6 +353,27 @@ fn is_key_char(b: u8) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    // Phase 2 / Gap 6 — keyring round-trip. Uses the `mock` backend (keyring
+    // v3 ships one for CI/test use) so this runs in a sandbox without
+    // touching real OS credentials. Set via an init guard so concurrent
+    // tests in the same process share one mock store safely.
+    #[test]
+    fn keyring_round_trip_mock_backend() {
+        keyring::set_default_credential_builder(keyring::mock::default_credential_builder());
+        // set + get
+        keychain_set("test-account-a", "sk-abc-123").expect("set");
+        let got = keychain_get("test-account-a").expect("get");
+        assert_eq!(got.as_deref(), Some("sk-abc-123"));
+        // overwrite + get returns the new value
+        keychain_set("test-account-a", "sk-new").expect("set2");
+        assert_eq!(keychain_get("test-account-a").unwrap().as_deref(), Some("sk-new"));
+        // delete + get returns None
+        keychain_delete("test-account-a").expect("delete");
+        assert!(keychain_get("test-account-a").unwrap().is_none());
+        // NoEntry is not an error for delete
+        assert!(keychain_delete("never-set").is_ok());
+    }
 
     #[test]
     fn redact_openai_key() {
