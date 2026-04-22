@@ -89,7 +89,7 @@ var ToolTaxonomy = []ToolDefinition{
 	{
 		Name:        "resolve_resource",
 		Category:    CategoryObservation,
-		Description: "Resolve a resource kind + fuzzy name hint to its concrete {namespace, name} across the whole cluster. Call this FIRST when you know the kind (e.g. 'deployment', 'configmap', 'service') but are not sure which namespace the resource lives in. Returns up to 5 matches (exact → prefix → substring) with a suggestions list if nothing matches.",
+		Description: "Call this FIRST when the user gives a bare resource name with no namespace ('check redis', 'is web healthy'). Returns the concrete {namespace, name} or empty. Resolve a resource kind + fuzzy name hint to its concrete {namespace, name} across the whole cluster. Call this FIRST when you know the kind (e.g. 'deployment', 'configmap', 'service') but are not sure which namespace the resource lives in. Returns up to 5 matches (exact → prefix → substring) with a suggestions list if nothing matches.",
 		InputSchema: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
@@ -109,7 +109,7 @@ var ToolTaxonomy = []ToolDefinition{
 	{
 		Name:        "inspect_pod",
 		Category:    CategoryObservation,
-		Description: "One-call deep dive into a Pod: current spec+status, recent events, ownership chain (RS → Deployment). Replaces observe_pod_detailed + observe_pod_events + observe_pod_ownership_chain.",
+		Description: "One-call deep dive into a Pod: current spec+status, recent events, ownership chain (RS → Deployment). Replaces observe_pod_detailed + observe_pod_events + observe_pod_ownership_chain. Always prefer this over calling observe_<kind>_detailed / _events / _ownership_chain separately.",
 		InputSchema: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
@@ -249,7 +249,7 @@ var ToolTaxonomy = []ToolDefinition{
 	{
 		Name:        "inspect_node",
 		Category:    CategoryObservation,
-		Description: "One-call deep dive into a Node: spec+status (capacity, taints, conditions) and recent events. Replaces observe_node_detailed + observe_node_events.",
+		Description: "One-call deep dive into a Node: spec+status (capacity, taints, conditions) and recent events. Replaces observe_node_detailed + observe_node_events. Always prefer this over calling observe_<kind>_detailed / _events / _ownership_chain separately.",
 		InputSchema: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
@@ -272,7 +272,7 @@ var ToolTaxonomy = []ToolDefinition{
 	{
 		Name:        "inspect_namespace",
 		Category:    CategoryObservation,
-		Description: "One-call deep dive into a Namespace: metadata, status phase, pod count and recent events. Replaces observe_namespace_detailed + observe_namespace_events.",
+		Description: "One-call deep dive into a Namespace: metadata, status phase, pod count and recent events. Replaces observe_namespace_detailed + observe_namespace_events. Always prefer this over calling observe_<kind>_detailed / _events / _ownership_chain separately.",
 		InputSchema: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
@@ -295,7 +295,7 @@ var ToolTaxonomy = []ToolDefinition{
 	{
 		Name:        "inspect_service",
 		Category:    CategoryObservation,
-		Description: "One-call deep dive into a Service: spec (type, ports, selector), endpoints, pods selected and recent events. Replaces observe_service_detailed + observe_service_events.",
+		Description: "One-call deep dive into a Service: spec (type, ports, selector), endpoints, pods selected and recent events. Replaces observe_service_detailed + observe_service_events. Always prefer this over calling observe_<kind>_detailed / _events / _ownership_chain separately.",
 		InputSchema: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
@@ -327,7 +327,7 @@ var ToolTaxonomy = []ToolDefinition{
 	{
 		Name:        "inspect_ingress",
 		Category:    CategoryObservation,
-		Description: "One-call deep dive into an Ingress: spec (rules, tls, ingressClassName), backend services and recent events. Replaces observe_ingress_detailed + observe_ingress_events.",
+		Description: "One-call deep dive into an Ingress: spec (rules, tls, ingressClassName), backend services and recent events. Replaces observe_ingress_detailed + observe_ingress_events. Always prefer this over calling observe_<kind>_detailed / _events / _ownership_chain separately.",
 		InputSchema: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
@@ -344,7 +344,7 @@ var ToolTaxonomy = []ToolDefinition{
 	{
 		Name:        "inspect_networkpolicy",
 		Category:    CategoryObservation,
-		Description: "One-call deep dive into a NetworkPolicy: spec (podSelector, policyTypes, ingress/egress), pods selected and recent events. Replaces observe_networkpolicy_detailed + observe_networkpolicy_events.",
+		Description: "One-call deep dive into a NetworkPolicy: spec (podSelector, policyTypes, ingress/egress), pods selected and recent events. Replaces observe_networkpolicy_detailed + observe_networkpolicy_events. Always prefer this over calling observe_<kind>_detailed / _events / _ownership_chain separately.",
 		InputSchema: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
@@ -383,7 +383,7 @@ var ToolTaxonomy = []ToolDefinition{
 	{
 		Name:        "inspect_deployment",
 		Category:    CategoryObservation,
-		Description: "One-call deep dive into a Deployment: spec+status, rollout history, recent events, child ReplicaSets. Replaces observe_deployment_detailed + observe_deployment_events + observe_deployment_ownership_chain.",
+		Description: "One-call deep dive into a Deployment: spec+status, rollout history, recent events, child ReplicaSets. Replaces observe_deployment_detailed + observe_deployment_events + observe_deployment_ownership_chain. Always prefer this over calling observe_<kind>_detailed / _events / _ownership_chain separately.",
 		InputSchema: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
@@ -400,7 +400,7 @@ var ToolTaxonomy = []ToolDefinition{
 	{
 		Name:        "inspect_replicaset",
 		Category:    CategoryObservation,
-		Description: "One-call deep dive into a ReplicaSet: spec+status, recent events, ownership chain (parent Deployment → child Pods). Replaces observe_replicaset_detailed + observe_replicaset_events + observe_replicaset_ownership_chain.",
+		Description: "One-call deep dive into a ReplicaSet: spec+status, recent events, ownership chain (parent Deployment → child Pods). Replaces observe_replicaset_detailed + observe_replicaset_events + observe_replicaset_ownership_chain. Always prefer this over calling observe_<kind>_detailed / _events / _ownership_chain separately.",
 		InputSchema: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
@@ -417,7 +417,7 @@ var ToolTaxonomy = []ToolDefinition{
 	{
 		Name:        "inspect_statefulset",
 		Category:    CategoryObservation,
-		Description: "One-call deep dive into a StatefulSet: spec+status, update strategy, recent events, child Pods. Replaces observe_statefulset_detailed + observe_statefulset_events + observe_statefulset_ownership_chain.",
+		Description: "One-call deep dive into a StatefulSet: spec+status, update strategy, recent events, child Pods. Replaces observe_statefulset_detailed + observe_statefulset_events + observe_statefulset_ownership_chain. Always prefer this over calling observe_<kind>_detailed / _events / _ownership_chain separately.",
 		InputSchema: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
@@ -434,7 +434,7 @@ var ToolTaxonomy = []ToolDefinition{
 	{
 		Name:        "inspect_daemonset",
 		Category:    CategoryObservation,
-		Description: "One-call deep dive into a DaemonSet: spec+status, recent events, child Pods. Replaces observe_daemonset_detailed + observe_daemonset_events + observe_daemonset_ownership_chain.",
+		Description: "One-call deep dive into a DaemonSet: spec+status, recent events, child Pods. Replaces observe_daemonset_detailed + observe_daemonset_events + observe_daemonset_ownership_chain. Always prefer this over calling observe_<kind>_detailed / _events / _ownership_chain separately.",
 		InputSchema: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
@@ -451,7 +451,7 @@ var ToolTaxonomy = []ToolDefinition{
 	{
 		Name:        "inspect_job",
 		Category:    CategoryObservation,
-		Description: "One-call deep dive into a Job: spec+status, completion/backoff state, recent events, ownership chain (parent CronJob → child Pods). Replaces observe_job_detailed + observe_job_events + observe_job_ownership_chain.",
+		Description: "One-call deep dive into a Job: spec+status, completion/backoff state, recent events, ownership chain (parent CronJob → child Pods). Replaces observe_job_detailed + observe_job_events + observe_job_ownership_chain. Always prefer this over calling observe_<kind>_detailed / _events / _ownership_chain separately.",
 		InputSchema: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
@@ -468,7 +468,7 @@ var ToolTaxonomy = []ToolDefinition{
 	{
 		Name:        "inspect_cronjob",
 		Category:    CategoryObservation,
-		Description: "One-call deep dive into a CronJob: schedule, suspend, last run, recent events, child Jobs. Replaces observe_cronjob_detailed + observe_cronjob_events + observe_cronjob_ownership_chain.",
+		Description: "One-call deep dive into a CronJob: schedule, suspend, last run, recent events, child Jobs. Replaces observe_cronjob_detailed + observe_cronjob_events + observe_cronjob_ownership_chain. Always prefer this over calling observe_<kind>_detailed / _events / _ownership_chain separately.",
 		InputSchema: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
@@ -485,7 +485,7 @@ var ToolTaxonomy = []ToolDefinition{
 	{
 		Name:        "inspect_pvc",
 		Category:    CategoryObservation,
-		Description: "One-call deep dive into a PersistentVolumeClaim: spec (accessModes, storage, storageClassName), status (phase, capacity), bound volume and recent events. Replaces observe_pvc_detailed + observe_pvc_events.",
+		Description: "One-call deep dive into a PersistentVolumeClaim: spec (accessModes, storage, storageClassName), status (phase, capacity), bound volume and recent events. Replaces observe_pvc_detailed + observe_pvc_events. Always prefer this over calling observe_<kind>_detailed / _events / _ownership_chain separately.",
 		InputSchema: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
@@ -517,7 +517,7 @@ var ToolTaxonomy = []ToolDefinition{
 	{
 		Name:        "inspect_pv",
 		Category:    CategoryObservation,
-		Description: "One-call deep dive into a PersistentVolume (cluster-scoped): spec (capacity, accessModes, reclaimPolicy, claimRef), status and recent events. Replaces observe_pv_detailed + observe_pv_events.",
+		Description: "One-call deep dive into a PersistentVolume (cluster-scoped): spec (capacity, accessModes, reclaimPolicy, claimRef), status and recent events. Replaces observe_pv_detailed + observe_pv_events. Always prefer this over calling observe_<kind>_detailed / _events / _ownership_chain separately.",
 		InputSchema: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
@@ -533,7 +533,7 @@ var ToolTaxonomy = []ToolDefinition{
 	{
 		Name:        "inspect_storageclass",
 		Category:    CategoryObservation,
-		Description: "One-call deep dive into a StorageClass (cluster-scoped): provisioner, parameters, volumeBindingMode, pv count and recent events. Replaces observe_storageclass_detailed + observe_storageclass_events.",
+		Description: "One-call deep dive into a StorageClass (cluster-scoped): provisioner, parameters, volumeBindingMode, pv count and recent events. Replaces observe_storageclass_detailed + observe_storageclass_events. Always prefer this over calling observe_<kind>_detailed / _events / _ownership_chain separately.",
 		InputSchema: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
@@ -593,7 +593,7 @@ var ToolTaxonomy = []ToolDefinition{
 	{
 		Name:        "inspect_role",
 		Category:    CategoryObservation,
-		Description: "One-call deep dive into a Role: rules, referencing RoleBindings and recent events. Replaces observe_role_detailed + observe_role_events.",
+		Description: "One-call deep dive into a Role: rules, referencing RoleBindings and recent events. Replaces observe_role_detailed + observe_role_events. Always prefer this over calling observe_<kind>_detailed / _events / _ownership_chain separately.",
 		InputSchema: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
@@ -610,7 +610,7 @@ var ToolTaxonomy = []ToolDefinition{
 	{
 		Name:        "inspect_rolebinding",
 		Category:    CategoryObservation,
-		Description: "One-call deep dive into a RoleBinding: roleRef, subjects, resolved Role/ClusterRole summary and recent events. Replaces observe_rolebinding_detailed + observe_rolebinding_events.",
+		Description: "One-call deep dive into a RoleBinding: roleRef, subjects, resolved Role/ClusterRole summary and recent events. Replaces observe_rolebinding_detailed + observe_rolebinding_events. Always prefer this over calling observe_<kind>_detailed / _events / _ownership_chain separately.",
 		InputSchema: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
@@ -627,7 +627,7 @@ var ToolTaxonomy = []ToolDefinition{
 	{
 		Name:        "inspect_clusterrole",
 		Category:    CategoryObservation,
-		Description: "One-call deep dive into a ClusterRole (cluster-scoped): rules, referencing ClusterRoleBindings and recent events. Replaces observe_clusterrole_detailed + observe_clusterrole_events.",
+		Description: "One-call deep dive into a ClusterRole (cluster-scoped): rules, referencing ClusterRoleBindings and recent events. Replaces observe_clusterrole_detailed + observe_clusterrole_events. Always prefer this over calling observe_<kind>_detailed / _events / _ownership_chain separately.",
 		InputSchema: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
@@ -643,7 +643,7 @@ var ToolTaxonomy = []ToolDefinition{
 	{
 		Name:        "inspect_clusterrolebinding",
 		Category:    CategoryObservation,
-		Description: "One-call deep dive into a ClusterRoleBinding (cluster-scoped): roleRef, subjects, resolved ClusterRole and recent events. Replaces observe_clusterrolebinding_detailed + observe_clusterrolebinding_events.",
+		Description: "One-call deep dive into a ClusterRoleBinding (cluster-scoped): roleRef, subjects, resolved ClusterRole and recent events. Replaces observe_clusterrolebinding_detailed + observe_clusterrolebinding_events. Always prefer this over calling observe_<kind>_detailed / _events / _ownership_chain separately.",
 		InputSchema: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
@@ -659,7 +659,7 @@ var ToolTaxonomy = []ToolDefinition{
 	{
 		Name:        "inspect_secret",
 		Category:    CategoryObservation,
-		Description: "One-call deep dive into a Secret: metadata, type, data keys (values redacted), TLS info and recent events. Replaces observe_secret_detailed + observe_secret_events.",
+		Description: "One-call deep dive into a Secret: metadata, type, data keys (values redacted), TLS info and recent events. Replaces observe_secret_detailed + observe_secret_events. Always prefer this over calling observe_<kind>_detailed / _events / _ownership_chain separately.",
 		InputSchema: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
@@ -693,7 +693,7 @@ var ToolTaxonomy = []ToolDefinition{
 	{
 		Name:        "inspect_configmap",
 		Category:    CategoryObservation,
-		Description: "One-call deep dive into a ConfigMap: metadata, data keys, consumers and recent events. Replaces observe_configmap_detailed + observe_configmap_events.",
+		Description: "One-call deep dive into a ConfigMap: metadata, data keys, consumers and recent events. Replaces observe_configmap_detailed + observe_configmap_events. Always prefer this over calling observe_<kind>_detailed / _events / _ownership_chain separately.",
 		InputSchema: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
@@ -726,7 +726,7 @@ var ToolTaxonomy = []ToolDefinition{
 	{
 		Name:        "inspect_limitrange",
 		Category:    CategoryObservation,
-		Description: "One-call deep dive into a LimitRange: spec (limits: type, default, defaultRequest, max, min) and recent events. Replaces observe_limitrange_detailed + observe_limitrange_events.",
+		Description: "One-call deep dive into a LimitRange: spec (limits: type, default, defaultRequest, max, min) and recent events. Replaces observe_limitrange_detailed + observe_limitrange_events. Always prefer this over calling observe_<kind>_detailed / _events / _ownership_chain separately.",
 		InputSchema: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
@@ -743,7 +743,7 @@ var ToolTaxonomy = []ToolDefinition{
 	{
 		Name:        "inspect_resourcequota",
 		Category:    CategoryObservation,
-		Description: "One-call deep dive into a ResourceQuota: spec (hard), status (used) and recent events. Replaces observe_resourcequota_detailed + observe_resourcequota_events.",
+		Description: "One-call deep dive into a ResourceQuota: spec (hard), status (used) and recent events. Replaces observe_resourcequota_detailed + observe_resourcequota_events. Always prefer this over calling observe_<kind>_detailed / _events / _ownership_chain separately.",
 		InputSchema: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
@@ -760,7 +760,7 @@ var ToolTaxonomy = []ToolDefinition{
 	{
 		Name:        "inspect_hpa",
 		Category:    CategoryObservation,
-		Description: "One-call deep dive into a HorizontalPodAutoscaler: spec (minReplicas/maxReplicas/scaleTargetRef), status and recent events. Replaces observe_hpa_detailed + observe_hpa_events.",
+		Description: "One-call deep dive into a HorizontalPodAutoscaler: spec (minReplicas/maxReplicas/scaleTargetRef), status and recent events. Replaces observe_hpa_detailed + observe_hpa_events. Always prefer this over calling observe_<kind>_detailed / _events / _ownership_chain separately.",
 		InputSchema: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
@@ -777,7 +777,7 @@ var ToolTaxonomy = []ToolDefinition{
 	{
 		Name:        "inspect_pdb",
 		Category:    CategoryObservation,
-		Description: "One-call deep dive into a PodDisruptionBudget: spec (minAvailable/maxUnavailable/selector), status and recent events. Replaces observe_pdb_detailed + observe_pdb_events.",
+		Description: "One-call deep dive into a PodDisruptionBudget: spec (minAvailable/maxUnavailable/selector), status and recent events. Replaces observe_pdb_detailed + observe_pdb_events. Always prefer this over calling observe_<kind>_detailed / _events / _ownership_chain separately.",
 		InputSchema: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
@@ -795,7 +795,7 @@ var ToolTaxonomy = []ToolDefinition{
 	{
 		Name:        "inspect_vpa",
 		Category:    CategoryObservation,
-		Description: "One-call deep dive into a VerticalPodAutoscaler: spec (targetRef, updatePolicy, resourcePolicy), status and recent events. Replaces observe_vpa_detailed + observe_vpa_events.",
+		Description: "One-call deep dive into a VerticalPodAutoscaler: spec (targetRef, updatePolicy, resourcePolicy), status and recent events. Replaces observe_vpa_detailed + observe_vpa_events. Always prefer this over calling observe_<kind>_detailed / _events / _ownership_chain separately.",
 		InputSchema: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
@@ -819,7 +819,7 @@ var ToolTaxonomy = []ToolDefinition{
 	{
 		Name:        "inspect_crd",
 		Category:    CategoryObservation,
-		Description: "One-call deep dive into a CustomResourceDefinition (cluster-scoped): spec (group, names, scope, versions), instances count and recent events. Replaces observe_crd_detailed + observe_crd_events.",
+		Description: "One-call deep dive into a CustomResourceDefinition (cluster-scoped): spec (group, names, scope, versions), instances count and recent events. Replaces observe_crd_detailed + observe_crd_events. Always prefer this over calling observe_<kind>_detailed / _events / _ownership_chain separately.",
 		InputSchema: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
@@ -843,7 +843,7 @@ var ToolTaxonomy = []ToolDefinition{
 	{
 		Name:        "observe_pod_metrics",
 		Category:    CategoryObservation,
-		Description: "Get live CPU/memory for a pod (name+namespace) OR an aggregate summary for a namespace (namespace only, no name). Returns a structured metrics-unavailable fallback if metrics-server is not installed.",
+		Description: "Preferred for live CPU / memory / disk questions. Do NOT use inspect_pod or inspect_node — they return spec not live utilization. Get live CPU/memory for a pod (name+namespace) OR an aggregate summary for a namespace (namespace only, no name). Returns a structured metrics-unavailable fallback if metrics-server is not installed.",
 		InputSchema: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
@@ -859,7 +859,7 @@ var ToolTaxonomy = []ToolDefinition{
 	{
 		Name:        "observe_node_metrics",
 		Category:    CategoryObservation,
-		Description: "Get live CPU/memory/disk metrics for a specific node (if 'name' given) or all nodes. Returns a metrics-unavailable fallback when metrics-server is absent.",
+		Description: "Preferred for live CPU / memory / disk questions. Do NOT use inspect_pod or inspect_node — they return spec not live utilization. Get live CPU/memory/disk metrics for a specific node (if 'name' given) or all nodes. Returns a metrics-unavailable fallback when metrics-server is absent.",
 		InputSchema: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
@@ -873,7 +873,7 @@ var ToolTaxonomy = []ToolDefinition{
 	{
 		Name:        "observe_top_pods_by_metric",
 		Category:    CategoryObservation,
-		Description: "Return the top-N pods sorted by a live metric (cpu or memory). Useful for 'which pod uses most CPU right now' without enumerating every pod. Returns a metrics-unavailable fallback when metrics-server is absent.",
+		Description: "Preferred for live CPU / memory / disk questions. Do NOT use inspect_pod or inspect_node — they return spec not live utilization. Return the top-N pods sorted by a live metric (cpu or memory). Useful for 'which pod uses most CPU right now' without enumerating every pod. Returns a metrics-unavailable fallback when metrics-server is absent.",
 		InputSchema: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
@@ -892,7 +892,7 @@ var ToolTaxonomy = []ToolDefinition{
 	{
 		Name:        "observe_recent_changes",
 		Category:    CategoryObservation,
-		Description: "Return all meaningful changes (deployment rollouts, pod create/delete, configmap/secret updates, scaling events, failures) inside a time window. Fuses k8s events + deployment rollout history. Answers 'what changed in the last N minutes?'.",
+		Description: "ALWAYS use this for 'what changed recently' / 'did anything deploy in the last N hours' / timeline questions. Do NOT call observe_events and observe_deployment_rollout_history separately for change investigations. Return all meaningful changes (deployment rollouts, pod create/delete, configmap/secret updates, scaling events, failures) inside a time window. Fuses k8s events + deployment rollout history. Answers 'what changed in the last N minutes?'.",
 		InputSchema: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
@@ -1249,7 +1249,7 @@ var ToolTaxonomy = []ToolDefinition{
 	{
 		Name:        "analyze_blast_radius",
 		Category:    CategoryAnalysis,
-		Description: "Assess potential impact of a change or failure. Scope-aware: scope=resource requires kind+name (single workload); scope=namespace needs only namespace (all workloads in that namespace); scope=cluster takes no args and returns node-loss + critical-path summary cluster-wide.",
+		Description: "Use scope='cluster' for cluster-wide questions (no kind/name needed), scope='namespace' with namespace set, scope='resource' with kind+name. Never pass kind='all' or name='all' — use the scope enum instead. Assess potential impact of a change or failure. Scope-aware: scope=resource requires kind+name (single workload); scope=namespace needs only namespace (all workloads in that namespace); scope=cluster takes no args and returns node-loss + critical-path summary cluster-wide.",
 		InputSchema: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
@@ -1296,7 +1296,7 @@ var ToolTaxonomy = []ToolDefinition{
 	{
 		Name:        "who_can_do",
 		Category:    CategoryAnalysis,
-		Description: "Answer 'who can <verb> <resource> in <namespace>?' in ONE call. Aggregates Roles, ClusterRoles, RoleBindings, ClusterRoleBindings and returns principals + the roles that granted the permission. Call this INSTEAD of enumerating clusterroles one-by-one — the old approach fanned out to 95 tool calls per question.",
+		Description: "ALWAYS use this for 'who can / who has permission to' questions. Do NOT enumerate RoleBindings or ClusterRoleBindings individually — that pattern produces dozens of unnecessary tool calls. Answer 'who can <verb> <resource> in <namespace>?' in ONE call. Aggregates Roles, ClusterRoles, RoleBindings, ClusterRoleBindings and returns principals + the roles that granted the permission. Call this INSTEAD of enumerating clusterroles one-by-one — the old approach fanned out to 95 tool calls per question.",
 		InputSchema: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
