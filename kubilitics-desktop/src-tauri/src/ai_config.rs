@@ -325,16 +325,22 @@ pub async fn detect_available_providers() -> Result<Vec<DetectedProvider>, Strin
         }
     }
 
-    // Probe Ollama on localhost (best-effort, 1s timeout).
-    let ollama_ok = reqwest::Client::builder()
+    // Probe Ollama on localhost (best-effort, 1s timeout).  Must use async
+    // reqwest here — Tauri commands already run on tokio, and block_on
+    // inside a tokio worker panics with "Cannot start a runtime from
+    // within a runtime".
+    let ollama_ok = match reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(1))
         .build()
-        .ok()
-        .and_then(|c| tauri::async_runtime::block_on(async move {
-            c.get("http://localhost:11434/api/tags").send().await.ok()
-        }))
-        .map(|r| r.status().is_success())
-        .unwrap_or(false);
+    {
+        Ok(c) => c
+            .get("http://localhost:11434/api/tags")
+            .send()
+            .await
+            .map(|r| r.status().is_success())
+            .unwrap_or(false),
+        Err(_) => false,
+    };
     if ollama_ok {
         out.push(DetectedProvider {
             provider: "ollama".into(),
