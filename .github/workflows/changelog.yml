@@ -20,6 +20,10 @@ permissions:
 jobs:
   update-changelog:
     name: Regenerate CHANGELOG.md
+    # Skip prerelease tags (v1.1.0-rc.1, v1.1.0-beta.2). Changelog is
+    # regenerated once for the GA tag; the RC build flavors share the
+    # same codebase as the upcoming GA.
+    if: "!contains(github.ref_name, '-')"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5

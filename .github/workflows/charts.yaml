@@ -13,6 +13,10 @@ permissions:
 
 jobs:
   publish:
+    # Skip prerelease tags (v1.1.0-rc.1, v1.1.0-beta.2). Helm chart is
+    # published once for the GA tag. Pages setup also errors out on
+    # unconfigured repos — not a release blocker for prereleases.
+    if: "!contains(github.ref_name, '-')"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
