@@ -114,7 +114,8 @@ export default defineConfig(({ mode }) => ({
       });
       return {
         "/api": proxyOptions("/api"),
-        "/health": proxyOptions("/health"),
+        // /healthz (not /health — the SPA owns /health for the Health Dashboard route).
+        "/healthz": proxyOptions("/healthz"),
         "/ws": { target, changeOrigin: true, ws: true, configure: (proxy: HttpProxyServer) => { proxy.on("error", () => {}); } },
       };
     })(),
