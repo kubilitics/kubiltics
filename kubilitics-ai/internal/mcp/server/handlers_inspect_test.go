@@ -179,3 +179,15 @@ func TestHandleTriageCluster_ComposesAndRanks(t *testing.T) {
 	// Assert the handler symbol exists (compile-time guard).
 	var _ handlerFn = (&mcpServerImpl{}).handleTriageCluster
 }
+
+func TestHandleListProblems_UnknownFilter(t *testing.T) {
+	s := &mcpServerImpl{}
+	_, err := s.handleListProblems(context.Background(), map[string]interface{}{"filter": "bogus"})
+	if err == nil {
+		t.Fatal("expected error for unknown filter")
+	}
+}
+
+func TestHandleListProblems_CompileGuard(t *testing.T) {
+	var _ handlerFn = (&mcpServerImpl{}).handleListProblems
+}

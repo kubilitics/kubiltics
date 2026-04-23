@@ -611,3 +611,76 @@ func timeFrom(m map[string]interface{}, k string) time.Time {
 	t, _ := time.Parse(time.RFC3339, s)
 	return t
 }
+
+// handleListProblems: typed-filter enumerator over workloads.
+func (s *mcpServerImpl) handleListProblems(ctx context.Context, args map[string]interface{}) (interface{}, error) {
+	filter := strArg(args, "filter")
+	if filter == "" {
+		return nil, fmt.Errorf("list_problems: 'filter' is required; one of: crashlooping, oom, pending, evicted, image_pull_error, unhealthy")
+	}
+	if problemPredicateName(filter) == "" {
+		return nil, fmt.Errorf("list_problems: unknown filter %q; accepted: crashlooping, oom, pending, evicted, image_pull_error, unhealthy", filter)
+	}
+
+	limit := intArgDefault(args, "limit", 50)
+	if limit > 200 {
+		limit = 200
+	}
+	clusterID := strArg(args, "cluster_id")
+
+	// Delegate to resources_by_query (the broadest pod enumerator).
+	queryArgs := copyArgs(args)
+	queryArgs["kind"] = "Pod"
+	tr := s.timedCall(ctx, "observe_resources_by_query", queryArgs, s.handleResourcesByQuery)
+	errs := map[string]error{}
+	if tr.err != nil {
+		errs["observe_resources_by_query"] = tr.err
+	}
+
+	var pods []triage.NamedPodState
+	if m, ok := tr.out.(map[string]interface{}); ok {
+		if list, ok := m["pods"].([]interface{}); ok {
+			for _, p := range list {
+				np := shapePod(p)
+				if np.Name != "" {
+					pods = append(pods, np)
+				}
+			}
+		}
+	}
+	ranked, truncated := triage.RankProblems(pods, filter, limit)
+
+	summary := fmt.Sprintf("%d pods matching %q", len(ranked), filter)
+	if truncated {
+		summary += " (truncated to limit)"
+	}
+	data := map[string]interface{}{
+		"filter":    filter,
+		"count":     len(ranked),
+		"problems":  ranked,
+		"truncated": truncated,
+	}
+	return buildComposableResult("ProblemList", clusterID, summary, data,
+		[]compositeSource{{Tool: tr.name, MS: tr.ms}}, errs), nil
+}
+
+// problemPredicateName returns a non-empty tag when the filter is known.
+// Reused as the validity gate in handleListProblems.
+func problemPredicateName(filter string) string {
+	switch filter {
+	case "crashlooping", "oom", "pending", "evicted", "image_pull_error", "unhealthy":
+		return filter
+	}
+	return ""
+}
+
+// intArgDefault parses args[k] as an int; returns def if missing.
+func intArgDefault(args map[string]interface{}, k string, def int) int {
+	switch v := args[k].(type) {
+	case int:
+		return v
+	case float64:
+		return int(v)
+	}
+	return def
+}
