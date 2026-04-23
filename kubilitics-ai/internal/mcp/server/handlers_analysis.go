@@ -941,8 +941,8 @@ func (s *mcpServerImpl) handleAnalyzeReplicaSetHealth(ctx context.Context, args 
 		return map[string]interface{}{
 			"name":            name,
 			"namespace":       namespace,
-			"status":         healthStatus,
-			"replicas":       map[string]interface{}{"desired": desired, "available": available},
+			"status":          healthStatus,
+			"replicas":        map[string]interface{}{"desired": desired, "available": available},
 			"issues":          riskFlags,
 			"risk_flags":      riskFlags,
 			"recommendations": recommendations,
@@ -1017,7 +1017,7 @@ func (s *mcpServerImpl) handleAnalyzeJobHealth(ctx context.Context, args map[str
 		return map[string]interface{}{
 			"name":            name,
 			"namespace":       namespace,
-			"status":         healthStatus,
+			"status":          healthStatus,
 			"succeeded":       succeeded,
 			"failed":          failed,
 			"active":          active,
@@ -1093,7 +1093,7 @@ func (s *mcpServerImpl) handleAnalyzeCronJobHealth(ctx context.Context, args map
 		return map[string]interface{}{
 			"name":            name,
 			"namespace":       namespace,
-			"status":         status,
+			"status":          status,
 			"issues":          riskFlags,
 			"risk_flags":      riskFlags,
 			"recommendations": recommendations,
@@ -1183,7 +1183,7 @@ func (s *mcpServerImpl) handleAnalyzeServiceHealth(ctx context.Context, args map
 		return map[string]interface{}{
 			"name":            name,
 			"namespace":       namespace,
-			"status":         status,
+			"status":          status,
 			"issues":          riskFlags,
 			"risk_flags":      riskFlags,
 			"recommendations": recommendations,
@@ -1286,7 +1286,7 @@ func (s *mcpServerImpl) handleAnalyzeIngressHealth(ctx context.Context, args map
 		return map[string]interface{}{
 			"name":            name,
 			"namespace":       namespace,
-			"status":         status,
+			"status":          status,
 			"issues":          riskFlags,
 			"risk_flags":      riskFlags,
 			"recommendations": recommendations,

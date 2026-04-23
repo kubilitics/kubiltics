@@ -104,10 +104,10 @@ func GetChatTools() []types.Tool {
 			Parameters: map[string]interface{}{
 				"type": "object",
 				"properties": map[string]interface{}{
-					"kind":          map[string]interface{}{"type": "string", "description": "Resource kind (required), e.g. Pod, Deployment, Node, Service"},
-					"namespace":     map[string]interface{}{"type": "string", "description": "Namespace to filter (optional); omit for cluster-scoped or all namespaces"},
+					"kind":           map[string]interface{}{"type": "string", "description": "Resource kind (required), e.g. Pod, Deployment, Node, Service"},
+					"namespace":      map[string]interface{}{"type": "string", "description": "Namespace to filter (optional); omit for cluster-scoped or all namespaces"},
 					"label_selector": map[string]interface{}{"type": "string", "description": "Optional label selector"},
-					"limit":         map[string]interface{}{"type": "integer", "description": "Max items to return (default 50)"},
+					"limit":          map[string]interface{}{"type": "integer", "description": "Max items to return (default 50)"},
 				},
 				"required": []interface{}{"kind"},
 			},
@@ -211,7 +211,7 @@ func ToolDefinitionToLLMTool(def ToolDefinition) types.Tool {
 	return types.Tool{
 		Name:                  def.Name,
 		Description:           def.Description,
-		Parameters:           asParamsMap(params),
+		Parameters:            asParamsMap(params),
 		RequiredAutonomyLevel: def.RequiredAutonomyLevel,
 	}
 }

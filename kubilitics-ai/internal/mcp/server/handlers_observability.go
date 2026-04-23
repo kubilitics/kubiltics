@@ -684,12 +684,12 @@ func (s *mcpServerImpl) handleObserveZombieFinalizers(ctx context.Context, args 
 		}
 	}
 	type zombie struct {
-		Namespace        string   `json:"namespace,omitempty"`
-		Kind             string   `json:"kind"`
-		Name             string   `json:"name"`
-		DeletionStarted  string   `json:"deletion_started"`
-		StuckMinutes     int      `json:"stuck_minutes"`
-		Finalizers       []string `json:"finalizers"`
+		Namespace       string   `json:"namespace,omitempty"`
+		Kind            string   `json:"kind"`
+		Name            string   `json:"name"`
+		DeletionStarted string   `json:"deletion_started"`
+		StuckMinutes    int      `json:"stuck_minutes"`
+		Finalizers      []string `json:"finalizers"`
 	}
 	var items []zombie
 	for _, kind := range kinds {

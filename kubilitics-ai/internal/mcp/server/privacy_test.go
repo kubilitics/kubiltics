@@ -188,7 +188,7 @@ func TestPrivacy_BenignNodeVersion_DoesReach(t *testing.T) {
 		"kind": "NodeList",
 		"items": []any{
 			map[string]any{
-				"kind": "Node",
+				"kind":     "Node",
 				"metadata": map[string]any{"name": "ip-10-0-0-1"},
 				"status": map[string]any{
 					"nodeInfo": map[string]any{"kubeletVersion": "v1.28.3"},

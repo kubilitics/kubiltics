@@ -971,8 +971,8 @@ func (s *mcpServerImpl) handleObserveSecretsUsage(ctx context.Context, args map[
 
 	// Build reference graph.
 	type usage struct {
-		MountedBy   []string `json:"mounted_by_pods"`
-		EnvBy       []string `json:"mounted_as_env_by_pods"`
+		MountedBy []string `json:"mounted_by_pods"`
+		EnvBy     []string `json:"mounted_as_env_by_pods"`
 	}
 	ref := map[string]*usage{} // key: "ns/name"
 
@@ -1048,12 +1048,12 @@ func (s *mcpServerImpl) handleObserveSecretsUsage(ctx context.Context, args map[
 	}
 
 	type row struct {
-		Namespace  string   `json:"namespace"`
-		Name       string   `json:"name"`
-		Type       string   `json:"type,omitempty"`
-		Mounted    []string `json:"mounted_by_pods"`
-		Env        []string `json:"mounted_as_env_by_pods"`
-		Unused     bool     `json:"unused"`
+		Namespace string   `json:"namespace"`
+		Name      string   `json:"name"`
+		Type      string   `json:"type,omitempty"`
+		Mounted   []string `json:"mounted_by_pods"`
+		Env       []string `json:"mounted_as_env_by_pods"`
+		Unused    bool     `json:"unused"`
 	}
 	var out []row
 	unusedCount := 0
@@ -1086,10 +1086,10 @@ func (s *mcpServerImpl) handleObserveSecretsUsage(ctx context.Context, args map[
 	}
 
 	return map[string]interface{}{
-		"namespace":     namespace,
-		"secrets":       out,
-		"unused_count":  unusedCount,
-		"summary":       fmt.Sprintf("%d secret(s) total, %d unused in %s", len(out), unusedCount, namespaceLabel(namespace)),
+		"namespace":    namespace,
+		"secrets":      out,
+		"unused_count": unusedCount,
+		"summary":      fmt.Sprintf("%d secret(s) total, %d unused in %s", len(out), unusedCount, namespaceLabel(namespace)),
 	}, nil
 }
 
@@ -1185,9 +1185,9 @@ func (s *mcpServerImpl) handleObserveIngressesByTLSExpiry(ctx context.Context, a
 	sort.Slice(out, func(i, j int) bool { return out[i].DaysRemaining < out[j].DaysRemaining })
 
 	return map[string]interface{}{
-		"days_window":         days,
-		"namespace":           namespace,
-		"expiring_ingresses":  out,
-		"summary":             fmt.Sprintf("%d ingress TLS cert(s) expire within %d days in %s", len(out), days, namespaceLabel(namespace)),
+		"days_window":        days,
+		"namespace":          namespace,
+		"expiring_ingresses": out,
+		"summary":            fmt.Sprintf("%d ingress TLS cert(s) expire within %d days in %s", len(out), days, namespaceLabel(namespace)),
 	}, nil
 }
