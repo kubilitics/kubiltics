@@ -110,9 +110,11 @@ jobs:
           helm package . --destination /tmp/charts
           CHART_TGZ=$(ls /tmp/charts/kubilitics-*.tgz)
           VERSION=$(basename "$CHART_TGZ" .tgz | sed 's/^kubilitics-//')
-          PUSH_OUT=$(helm push "$CHART_TGZ" "oci://ghcr.io/${OWNER_LC,,}/charts" 2>&1)
-          echo "$PUSH_OUT"
-          DIGEST=$(echo "$PUSH_OUT" | awk '/Digest:/ {print $2}')
+          PUSH_LOG=$(mktemp)
+          # tee so helm's output is visible in the workflow log even when
+          # the push fails (pipefail still causes the pipeline to fail).
+          helm push "$CHART_TGZ" "oci://ghcr.io/${OWNER_LC,,}/charts" 2>&1 | tee "$PUSH_LOG"
+          DIGEST=$(awk '/Digest:/ {print $2}' "$PUSH_LOG")
           [ -n "$DIGEST" ] || { echo "::error::no digest from helm push"; exit 1; }
           cosign sign --yes "ghcr.io/${OWNER_LC,,}/charts/kubilitics@${DIGEST}"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
@@ -129,9 +131,11 @@ jobs:
           helm package . --destination /tmp/charts
           CHART_TGZ=$(ls /tmp/charts/kubilitics-agent-*.tgz)
           VERSION=$(basename "$CHART_TGZ" .tgz | sed 's/^kubilitics-agent-//')
-          PUSH_OUT=$(helm push "$CHART_TGZ" "oci://ghcr.io/${OWNER_LC,,}/charts" 2>&1)
-          echo "$PUSH_OUT"
-          DIGEST=$(echo "$PUSH_OUT" | awk '/Digest:/ {print $2}')
+          PUSH_LOG=$(mktemp)
+          # tee so helm's output is visible in the workflow log even when
+          # the push fails (pipefail still causes the pipeline to fail).
+          helm push "$CHART_TGZ" "oci://ghcr.io/${OWNER_LC,,}/charts" 2>&1 | tee "$PUSH_LOG"
+          DIGEST=$(awk '/Digest:/ {print $2}' "$PUSH_LOG")
           [ -n "$DIGEST" ] || { echo "::error::no digest from helm push"; exit 1; }
           cosign sign --yes "ghcr.io/${OWNER_LC,,}/charts/kubilitics-agent@${DIGEST}"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
@@ -150,9 +154,11 @@ jobs:
           helm package . --destination /tmp/charts
           CHART_TGZ=$(ls /tmp/charts/kubilitics-otel-*.tgz)
           VERSION=$(basename "$CHART_TGZ" .tgz | sed 's/^kubilitics-otel-//')
-          PUSH_OUT=$(helm push "$CHART_TGZ" "oci://ghcr.io/${OWNER_LC,,}/charts" 2>&1)
-          echo "$PUSH_OUT"
-          DIGEST=$(echo "$PUSH_OUT" | awk '/Digest:/ {print $2}')
+          PUSH_LOG=$(mktemp)
+          # tee so helm's output is visible in the workflow log even when
+          # the push fails (pipefail still causes the pipeline to fail).
+          helm push "$CHART_TGZ" "oci://ghcr.io/${OWNER_LC,,}/charts" 2>&1 | tee "$PUSH_LOG"
+          DIGEST=$(awk '/Digest:/ {print $2}' "$PUSH_LOG")
           [ -n "$DIGEST" ] || { echo "::error::no digest from helm push"; exit 1; }
           cosign sign --yes "ghcr.io/${OWNER_LC,,}/charts/kubilitics-otel@${DIGEST}"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
