@@ -238,6 +238,9 @@ func generateDRRecommendations(a *DRAssessment) []string {
 
 // allWorkloadKeys returns a deduplicated, sorted list of all workload keys
 // across both snapshots. This helper is used for comprehensive comparison.
+//
+//nolint:unused // currently referenced only by dr_assessment_test.go — kept as a
+// building block for a richer DR report; remove once production use lands.
 func allWorkloadKeys(primary, backup *graph.GraphSnapshot) []string {
 	seen := make(map[string]bool)
 	for _, ref := range primary.Nodes {
@@ -259,6 +262,8 @@ func allWorkloadKeys(primary, backup *graph.GraphSnapshot) []string {
 }
 
 // workloadKeyToRef parses a "Kind/Namespace/Name" key back to a ResourceRef.
+//
+//nolint:unused // currently referenced only by dr_assessment_test.go.
 func workloadKeyToRef(key string) models.ResourceRef {
 	// Split on "/" — format is "Kind/Namespace/Name"
 	parts := splitKey(key)
@@ -269,6 +274,8 @@ func workloadKeyToRef(key string) models.ResourceRef {
 }
 
 // splitKey splits a "Kind/Namespace/Name" key into its parts.
+//
+//nolint:unused // currently referenced only by dr_assessment_test.go.
 func splitKey(key string) []string {
 	var parts []string
 	start := 0

@@ -8,8 +8,6 @@ import (
 	"github.com/kubilitics/kubilitics-backend/internal/repository"
 )
 
-const defaultOrgID = "00000000-0000-0000-0000-000000000001"
-
 // newTestAgentRepo opens an in-memory SQLite, applies all migrations,
 // and returns an *AgentRepo.
 func newTestAgentRepo(t *testing.T) *repository.AgentRepo {

@@ -656,6 +656,9 @@ func ensureRemediationSlice(r []models.Remediation) []models.Remediation {
 
 // criticalityLevel maps a numeric score (0-100) to a human-readable level.
 // Recalibrated thresholds: LOW < 20, MEDIUM 20-45, HIGH 45-70, CRITICAL > 70.
+//
+//nolint:unused // referenced only by snapshot_test.go; kept as the canonical
+// graph-package threshold table — spof/intelligence has its own copy.
 func criticalityLevel(score float64) string {
 	switch {
 	case score > 70:

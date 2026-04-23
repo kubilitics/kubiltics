@@ -547,15 +547,6 @@ func classificationRank(cls string) int {
 	}
 }
 
-// extractNamespace splits a "Kind/Namespace/Name" key and returns the Namespace.
-func extractNamespace(refKeyStr string) string {
-	parts := strings.SplitN(refKeyStr, "/", 3)
-	if len(parts) >= 2 {
-		return parts[1]
-	}
-	return ""
-}
-
 // parseRefKey parses a "Kind/Namespace/Name" key into a ResourceRef.
 func parseRefKey(key string) models.ResourceRef {
 	parts := strings.SplitN(key, "/", 3)
