@@ -147,7 +147,16 @@ impl BackendManager {
             // Allow tauri:// origin so fetch() calls from the WebView are not blocked by CORS
             .env("KUBILITICS_ALLOWED_ORIGINS", tauri_allowed_origins)
             // P0-J: Write SQLite DB to user-writable location (not read-only .app bundle)
-            .env("KUBILITICS_DATABASE_PATH", db_file.to_string_lossy().as_ref());
+            .env("KUBILITICS_DATABASE_PATH", db_file.to_string_lossy().as_ref())
+            // AI wiring — backend proxies chat/capabilities to the brain sidecar.
+            // Without these three env vars, /api/v1/ai/* returns 404 and the
+            // Chat panel shows "AI Unreachable" even when the brain itself is up.
+            //   KUBILITICS_AI_ENABLED=true         → register the /ai routes
+            //   KUBILITICS_AI_ENDPOINT             → brain gRPC (matches BRAIN_GRPC_PORT)
+            //   KUBILITICS_AI_HTTP_ENDPOINT        → brain HTTP  (matches BRAIN_HTTP_PORT)
+            .env("KUBILITICS_AI_ENABLED", "true")
+            .env("KUBILITICS_AI_ENDPOINT", format!("localhost:{}", BRAIN_GRPC_PORT))
+            .env("KUBILITICS_AI_HTTP_ENDPOINT", format!("http://localhost:{}", BRAIN_HTTP_PORT));
 
         // Only set KCLI_BIN when the sidecar actually found a real path.
         // Setting KCLI_BIN="" or KCLI_BIN="kcli" (bare name) causes the backend to
