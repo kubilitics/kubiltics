@@ -27,7 +27,7 @@
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
-use tauri::{command, Manager};
+use tauri::command;
 
 const KEYCHAIN_SERVICE: &str = "kubilitics";
 const ENV_API_KEY: &str = "KUBILITICS_LLM_API_KEY";
