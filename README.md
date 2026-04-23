@@ -10,9 +10,9 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/kubilitics/kubilitics/releases"><img src="https://img.shields.io/github/v/release/kubilitics/kubilitics?style=flat-square&color=blue" alt="Release" /></a>
-  <a href="https://github.com/kubilitics/kubilitics/actions"><img src="https://img.shields.io/github/actions/workflow/status/kubilitics/kubilitics/backend-ci.yml?branch=main&style=flat-square&label=CI" alt="CI" /></a>
-  <a href="https://github.com/kubilitics/kubilitics/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-green?style=flat-square" alt="License" /></a>
+  <a href="https://github.com/vellankikoti/kubilitics/releases"><img src="https://img.shields.io/github/v/release/vellankikoti/kubilitics?style=flat-square&color=blue" alt="Release" /></a>
+  <a href="https://github.com/vellankikoti/kubilitics/actions"><img src="https://img.shields.io/github/actions/workflow/status/vellankikoti/kubilitics/backend-ci.yml?branch=main&style=flat-square&label=CI" alt="CI" /></a>
+  <a href="https://github.com/vellankikoti/kubilitics/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-green?style=flat-square" alt="License" /></a>
   <a href="https://kubilitics.com"><img src="https://img.shields.io/badge/website-kubilitics.com-purple?style=flat-square" alt="Website" /></a>
 </p>
 
@@ -61,13 +61,23 @@ Your `~/.kube/config` is auto-detected — clusters appear automatically.
 
 ### Option 2: Desktop App (macOS / Windows / Linux)
 
+Signed, notarized releases are published at
+[github.com/vellankikoti/kubilitics/releases/latest](https://github.com/vellankikoti/kubilitics/releases/latest).
+
+**macOS:**
 ```bash
-cd kubilitics-desktop
-npm install
-cargo tauri dev
+brew tap vellankikoti/kubilitics
+brew install --cask kubilitics
 ```
 
-The desktop app bundles the backend as a sidecar — no separate server needed.
+**Windows:**
+```powershell
+winget install Kubilitics.Kubilitics
+```
+
+**Linux:** download the `.AppImage`, `.deb`, or `.rpm` from the releases page.
+
+The desktop app bundles the backend as a sidecar — no separate server needed. To run from source during development, `cd kubilitics-desktop && npm install && cargo tauri dev`.
 
 ### Option 3: Helm (In-Cluster Deployment)
 
@@ -158,14 +168,14 @@ Deploy Kubilitics to your Kubernetes cluster for team-wide access.
 ```bash
 # Install from OCI registry (recommended)
 helm install kubilitics \
-  oci://ghcr.io/kubilitics/charts/kubilitics \
-  --version 0.1.0 \
+  oci://ghcr.io/vellankikoti/charts/kubilitics \
+  --version 1.1.0 \
   --namespace kubilitics --create-namespace
 ```
 
 ```bash
 # Or install from source
-git clone https://github.com/kubilitics/kubilitics.git
+git clone https://github.com/vellankikoti/kubilitics.git
 helm install kubilitics ./deploy/helm/kubilitics \
   --namespace kubilitics --create-namespace
 ```
@@ -188,8 +198,8 @@ kubectl port-forward -n kubilitics svc/kubilitics 8190:8190
 
 ```bash
 helm install kubilitics \
-  oci://ghcr.io/kubilitics/charts/kubilitics \
-  --version 0.1.0 \
+  oci://ghcr.io/vellankikoti/charts/kubilitics \
+  --version 1.1.0 \
   --namespace kubilitics --create-namespace \
   --set ingress.enabled=true \
   --set ingress.hosts[0].host=kubilitics.example.com \
@@ -199,7 +209,7 @@ helm install kubilitics \
 ### Full Configuration Reference
 
 ```bash
-helm show values oci://ghcr.io/kubilitics/charts/kubilitics --version 0.1.0
+helm show values oci://ghcr.io/vellankikoti/charts/kubilitics --version 1.1.0
 ```
 
 Key configuration options:
@@ -323,7 +333,7 @@ kubilitics/
 | Desktop | Tauri 2.0 (Rust), WebView2/WKWebView |
 | CLI | kcli (kubectl wrapper with shell integration) |
 | CI/CD | GitHub Actions, Helm OCI (ghcr.io) |
-| Charts | OCI artifacts at `oci://ghcr.io/kubilitics/charts` |
+| Charts | OCI artifacts at `oci://ghcr.io/vellankikoti/charts` |
 
 ---
 
@@ -434,9 +444,9 @@ Apache 2.0 — See [LICENSE](LICENSE) for details.
 ## 📧 Links
 
 - **Website**: [kubilitics.com](https://kubilitics.com)
-- **GitHub**: [github.com/kubilitics/kubilitics](https://github.com/kubilitics/kubilitics)
-- **Issues**: [github.com/kubilitics/kubilitics/issues](https://github.com/kubilitics/kubilitics/issues)
-- **Helm Charts**: `oci://ghcr.io/kubilitics/charts/kubilitics`
+- **GitHub**: [github.com/vellankikoti/kubilitics](https://github.com/vellankikoti/kubilitics)
+- **Issues**: [github.com/vellankikoti/kubilitics/issues](https://github.com/vellankikoti/kubilitics/issues)
+- **Helm Charts**: `oci://ghcr.io/vellankikoti/charts/kubilitics`
 
 ---
 

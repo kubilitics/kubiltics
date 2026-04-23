@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # sync_chart.sh — copy charts/kubilitics-otel/ into internal/otel/chart/ so
 # the embedded chart used by the backend stays in sync with the top-level
-# chart that's published to charts.kubilitics.io.
+# chart that's published to oci://ghcr.io/vellankikoti/charts/kubilitics-otel.
 #
 # Invoked by `go generate ./internal/otel/...` (see chart_embed.go) and the
 # CI workflow before building the backend binary.

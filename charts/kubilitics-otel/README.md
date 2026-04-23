@@ -25,9 +25,8 @@ kubectl wait --for=condition=available --timeout=120s deployment/opentelemetry-o
 ## Install
 
 ```bash
-helm repo add kubilitics https://charts.kubilitics.io
-helm repo update
-helm install kubilitics-otel kubilitics/kubilitics-otel \
+helm install kubilitics-otel oci://ghcr.io/vellankikoti/charts/kubilitics-otel \
+  --version 0.1.0 \
   --namespace kubilitics-system --create-namespace \
   --set kubilitics.clusterId=<your-cluster-id> \
   --set kubilitics.backendUrl=<your-kubilitics-backend-url>

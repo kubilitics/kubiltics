@@ -32,12 +32,9 @@ serves the web UI, and authentication is disabled out of the box (single-user
 in-cluster scenario). No clicks, no kubeconfig setup, no Settings page.
 
 ```bash
-# 1. Add the chart repo (one-time)
-helm repo add kubilitics https://kubilitics.github.io/kubilitics
-helm repo update
-
-# 2. Install — frontend ON so you get the web UI immediately
-helm install kubilitics kubilitics/kubilitics \
+# 1. Install from the signed OCI registry (no repo add needed — Helm 3.8+)
+helm install kubilitics oci://ghcr.io/vellankikoti/charts/kubilitics \
+  --version 1.1.0 \
   --namespace kubilitics-system \
   --create-namespace \
   --set frontend.enabled=true
@@ -60,7 +57,8 @@ each one — see [Adding More Clusters](#adding-more-clusters).
 The seamless defaults assume a single-user trial. For real deployments:
 
 ```bash
-helm install kubilitics kubilitics/kubilitics \
+helm install kubilitics oci://ghcr.io/vellankikoti/charts/kubilitics \
+  --version 1.1.0 \
   --namespace kubilitics-system \
   --create-namespace \
   --set frontend.enabled=true \
@@ -81,7 +79,8 @@ Default is SQLite on a 1Gi PVC — fine up to ~50 clusters / 100k events. For
 HA / horizontal scale, use the bundled PostgreSQL subchart:
 
 ```bash
-helm install kubilitics kubilitics/kubilitics \
+helm install kubilitics oci://ghcr.io/vellankikoti/charts/kubilitics \
+  --version 1.1.0 \
   --namespace kubilitics-system \
   --create-namespace \
   --set frontend.enabled=true \

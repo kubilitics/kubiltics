@@ -44,10 +44,8 @@ URL and token already substituted — copy that to skip the next step.
 ## Install
 
 ```bash
-helm repo add kubilitics https://kubilitics.github.io/kubilitics
-helm repo update
-
-helm install kubilitics-agent kubilitics/kubilitics-agent \
+helm install kubilitics-agent oci://ghcr.io/vellankikoti/charts/kubilitics-agent \
+  --version 1.1.0 \
   --namespace kubilitics-system \
   --create-namespace \
   --set hub.url="https://kubilitics.example.com" \

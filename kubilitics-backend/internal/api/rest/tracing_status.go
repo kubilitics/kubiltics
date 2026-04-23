@@ -182,14 +182,14 @@ func (h *TracingHandler) computeTracingStatus(
 	// Render install commands with cluster-specific values.
 	resp.Install = TracingInstallCommands{
 		Helm: fmt.Sprintf(
-			"helm repo add kubilitics https://charts.kubilitics.io && helm install kubilitics-otel kubilitics/kubilitics-otel --namespace kubilitics-system --create-namespace --set kubilitics.clusterId=%s --set kubilitics.backendUrl=%s",
+			"helm install kubilitics-otel oci://ghcr.io/vellankikoti/charts/kubilitics-otel --version 0.1.0 --namespace kubilitics-system --create-namespace --set kubilitics.clusterId=%s --set kubilitics.backendUrl=%s",
 			clusterID, backendURL,
 		),
 		Kubectl: fmt.Sprintf(
 			"kubectl apply -f http://localhost:8190/api/v1/clusters/%s/install/kubilitics-otel.yaml",
 			clusterID,
 		),
-		KustomizeURL: "https://github.com/kubilitics/kubilitics/tree/main/install/kustomize",
+		KustomizeURL: "https://github.com/vellankikoti/kubilitics/tree/main/install/kustomize",
 	}
 
 	return resp

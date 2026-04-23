@@ -1,5 +1,8 @@
 name: Helm Chart CI
 
+# PR-time lint + test for all Helm charts in this repo. Publish lives in
+# charts-publish.yml (tag-triggered, signed OCI push to ghcr.io).
+
 on:
   pull_request:
     branches:
@@ -7,17 +10,11 @@ on:
       - develop
     paths:
       - 'deploy/helm/kubilitics/**'
+      - 'charts/kubilitics-otel/**'
   workflow_dispatch:
-    inputs:
-      publish:
-        description: 'Publish chart to OCI registry'
-        required: false
-        type: boolean
-        default: false
 
 permissions:
   contents: read
-  packages: write
 
 concurrency:
   group: helm-ci-${{ github.ref }}
@@ -155,56 +152,9 @@ jobs:
           helm uninstall kubilitics-test --namespace kubilitics-test || true
           kubectl delete namespace kubilitics-test --wait=false || true
 
-  package:
-    name: Package Chart
+  lint-otel:
+    name: Lint OTel Chart
     runs-on: ubuntu-latest
-    needs: lint
-    if: github.event_name != 'pull_request'
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v5
-        with:
-          fetch-depth: 0
-
-      - name: Install Helm
-        uses: azure/setup-helm@v4.3.0
-        with:
-          version: '3.16.0'
-
-      - name: Extract chart version
-        id: chart-version
-        working-directory: deploy/helm/kubilitics
-        run: |
-          VERSION=$(helm show chart . | grep '^version:' | awk '{print $2}')
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "Chart version: $VERSION"
-
-      - name: Add Helm repositories
-        run: |
-          helm repo add bitnami https://charts.bitnami.com/bitnami
-          helm repo update
-
-      - name: Package chart
-        working-directory: deploy/helm/kubilitics
-        run: |
-          helm dependency update .
-          helm package . --destination ./packaged
-          ls -lh ./packaged/
-
-      - name: Upload chart artifact
-        uses: actions/upload-artifact@v7
-        with:
-          name: helm-chart-${{ steps.chart-version.outputs.version }}
-          path: deploy/helm/kubilitics/packaged/*.tgz
-          retention-days: 30
-
-  publish:
-    name: Publish Chart to OCI
-    runs-on: ubuntu-latest
-    needs: [lint, package]
-    if: |
-      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
-      (github.event_name == 'workflow_dispatch' && github.event.inputs.publish == 'true')
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
@@ -214,44 +164,23 @@ jobs:
         with:
           version: '3.16.0'
 
-      - name: Download chart artifact
-        uses: actions/download-artifact@v8
-        with:
-          # FIX: pattern matches artifact *names* not filenames — the artifact is named
-          # "helm-chart-{version}" (no .tgz suffix), so the old pattern never matched.
-          pattern: helm-chart-*
-          path: ./charts
-          merge-multiple: true
-
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v4
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Extract chart version and name
-        id: chart-info
+      - name: Lint OTel chart
+        working-directory: charts/kubilitics-otel
         run: |
-          CHART_FILE=$(ls ./charts/*.tgz | head -1)
-          CHART_NAME=$(basename "$CHART_FILE" .tgz | sed 's/-[0-9].*//')
-          CHART_VERSION=$(basename "$CHART_FILE" .tgz | sed 's/.*-//')
-          echo "name=$CHART_NAME" >> $GITHUB_OUTPUT
-          echo "version=$CHART_VERSION" >> $GITHUB_OUTPUT
-          echo "file=$CHART_FILE" >> $GITHUB_OUTPUT
-          echo "Chart: $CHART_NAME version $CHART_VERSION"
+          helm lint . \
+            --set kubilitics.clusterId=lint \
+            --set kubilitics.backendUrl=http://lint.example.com
+          helm template . \
+            --set kubilitics.clusterId=lint \
+            --set kubilitics.backendUrl=http://lint.example.com \
+            --debug --dry-run > /dev/null
 
-      - name: Push chart to OCI registry
-        continue-on-error: true
+      - name: Verify OTel chart embed sync
         run: |
-          helm push ${{ steps.chart-info.outputs.file }} \
-            oci://ghcr.io/${{ github.repository_owner }}/charts
-          
-          echo "✓ Chart pushed: oci://ghcr.io/${{ github.repository_owner }}/charts/${{ steps.chart-info.outputs.name }}:${{ steps.chart-info.outputs.version }}"
-
-      - name: Output chart location
-        run: |
-          echo "Chart published to: oci://ghcr.io/${{ github.repository_owner }}/charts/${{ steps.chart-info.outputs.name }}:${{ steps.chart-info.outputs.version }}"
-          echo ""
-          echo "To install from OCI registry:"
-          echo "  helm install kubilitics oci://ghcr.io/${{ github.repository_owner }}/charts/kubilitics --version ${{ steps.chart-info.outputs.version }}"
+          bash kubilitics-backend/internal/otel/sync_chart.sh
+          if ! git diff --quiet kubilitics-backend/internal/otel/chart/; then
+            echo "::error::Embedded OTel chart is out of sync with charts/kubilitics-otel/."
+            echo "Run 'cd kubilitics-backend && go generate ./internal/otel/...' and commit."
+            git diff --stat kubilitics-backend/internal/otel/chart/
+            exit 1
+          fi

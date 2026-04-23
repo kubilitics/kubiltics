@@ -1,0 +1,199 @@
+# Publish Helm charts to ghcr.io as signed OCI artifacts.
+#
+# Design:
+#   - Single workflow publishes BOTH charts (kubilitics, kubilitics-otel)
+#     on stable GA tags. One failure path, one set of logs.
+#   - Pushes to oci://ghcr.io/<owner>/charts/<name>:<version>.
+#   - Cosign-signs each chart with keyless OIDC — no secret required.
+#   - workflow_dispatch accepts an explicit tag input for one-shot
+#     backfills (e.g. publishing 1.1.0 after this workflow lands, without
+#     cutting a new tag just for chart parity).
+#   - No continue-on-error. If publish fails we want to know.
+#   - Skips prereleases (-rc/-beta/-alpha/-dev/-pre) — charts are only
+#     cut for the GA tag.
+
+name: Publish Helm charts
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to publish (e.g. v1.1.0). Leave blank to use the current ref.'
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+  packages: write     # push to ghcr.io
+  id-token: write     # cosign keyless OIDC
+
+concurrency:
+  group: charts-publish-${{ github.event.inputs.tag || github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Publish OCI charts
+    # Skip prereleases on tag push. workflow_dispatch always runs (the
+    # user explicitly chose a tag).
+    if: ${{ github.event_name == 'workflow_dispatch' || !contains(github.ref_name, '-') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Resolve target tag
+        id: target
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "${{ github.event.inputs.tag }}" ]; then
+            TAG="${{ github.event.inputs.tag }}"
+          else
+            TAG="${{ github.ref_name }}"
+          fi
+          # Reject prerelease if forced via dispatch — charts are GA-only.
+          if [[ "$TAG" =~ -(rc|beta|alpha|dev|pre) ]]; then
+            echo "::error::Refusing to publish charts for prerelease tag $TAG"
+            exit 1
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "Publishing for tag: $TAG"
+
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ steps.target.outputs.tag }}
+
+      - name: Install Helm
+        uses: azure/setup-helm@v4.3.0
+        with:
+          version: '3.16.0'
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@v3.7.0
+
+      - name: Add upstream Helm repos (for dependencies)
+        run: |
+          helm repo add bitnami https://charts.bitnami.com/bitnami
+          helm repo update
+
+      - name: Log in to ghcr.io
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Verify OTel chart embed sync
+        # The backend embeds charts/kubilitics-otel via go:embed at
+        # kubilitics-backend/internal/otel/chart/. If a contributor edited
+        # charts/kubilitics-otel/ but forgot to regenerate the embed,
+        # the binary ships a stale chart. Fail loudly before publishing.
+        run: |
+          bash kubilitics-backend/internal/otel/sync_chart.sh
+          if ! git diff --quiet kubilitics-backend/internal/otel/chart/; then
+            echo "::error::Embedded OTel chart is out of sync with charts/kubilitics-otel/."
+            echo "Run 'cd kubilitics-backend && go generate ./internal/otel/...' and commit."
+            git diff --stat kubilitics-backend/internal/otel/chart/
+            exit 1
+          fi
+
+      - name: Package + push + sign kubilitics chart
+        id: kubilitics
+        env:
+          OWNER_LC: ${{ github.repository_owner }}
+        run: |
+          set -euo pipefail
+          cd deploy/helm/kubilitics
+          helm dependency update .
+          helm lint .
+          helm package . --destination /tmp/charts
+          CHART_TGZ=$(ls /tmp/charts/kubilitics-*.tgz)
+          VERSION=$(basename "$CHART_TGZ" .tgz | sed 's/^kubilitics-//')
+          PUSH_OUT=$(helm push "$CHART_TGZ" "oci://ghcr.io/${OWNER_LC,,}/charts" 2>&1)
+          echo "$PUSH_OUT"
+          DIGEST=$(echo "$PUSH_OUT" | awk '/Digest:/ {print $2}')
+          [ -n "$DIGEST" ] || { echo "::error::no digest from helm push"; exit 1; }
+          cosign sign --yes "ghcr.io/${OWNER_LC,,}/charts/kubilitics@${DIGEST}"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "digest=$DIGEST"   >> "$GITHUB_OUTPUT"
+
+      - name: Package + push + sign kubilitics-agent chart
+        id: agent
+        env:
+          OWNER_LC: ${{ github.repository_owner }}
+        run: |
+          set -euo pipefail
+          cd deploy/helm/kubilitics-agent
+          helm lint .
+          helm package . --destination /tmp/charts
+          CHART_TGZ=$(ls /tmp/charts/kubilitics-agent-*.tgz)
+          VERSION=$(basename "$CHART_TGZ" .tgz | sed 's/^kubilitics-agent-//')
+          PUSH_OUT=$(helm push "$CHART_TGZ" "oci://ghcr.io/${OWNER_LC,,}/charts" 2>&1)
+          echo "$PUSH_OUT"
+          DIGEST=$(echo "$PUSH_OUT" | awk '/Digest:/ {print $2}')
+          [ -n "$DIGEST" ] || { echo "::error::no digest from helm push"; exit 1; }
+          cosign sign --yes "ghcr.io/${OWNER_LC,,}/charts/kubilitics-agent@${DIGEST}"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "digest=$DIGEST"   >> "$GITHUB_OUTPUT"
+
+      - name: Package + push + sign kubilitics-otel chart
+        id: otel
+        env:
+          OWNER_LC: ${{ github.repository_owner }}
+        run: |
+          set -euo pipefail
+          cd charts/kubilitics-otel
+          helm lint . \
+            --set kubilitics.clusterId=lint \
+            --set kubilitics.backendUrl=http://lint.example.com
+          helm package . --destination /tmp/charts
+          CHART_TGZ=$(ls /tmp/charts/kubilitics-otel-*.tgz)
+          VERSION=$(basename "$CHART_TGZ" .tgz | sed 's/^kubilitics-otel-//')
+          PUSH_OUT=$(helm push "$CHART_TGZ" "oci://ghcr.io/${OWNER_LC,,}/charts" 2>&1)
+          echo "$PUSH_OUT"
+          DIGEST=$(echo "$PUSH_OUT" | awk '/Digest:/ {print $2}')
+          [ -n "$DIGEST" ] || { echo "::error::no digest from helm push"; exit 1; }
+          cosign sign --yes "ghcr.io/${OWNER_LC,,}/charts/kubilitics-otel@${DIGEST}"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "digest=$DIGEST"   >> "$GITHUB_OUTPUT"
+
+      - name: Summary
+        run: |
+          cat <<EOF >> "$GITHUB_STEP_SUMMARY"
+          ## Helm charts published
+
+          Both charts signed with cosign (keyless OIDC, Rekor transparency log).
+
+          ### kubilitics ${{ steps.kubilitics.outputs.version }}
+          \`\`\`bash
+          helm install kubilitics oci://ghcr.io/${{ github.repository_owner }}/charts/kubilitics \\
+            --version ${{ steps.kubilitics.outputs.version }}
+          \`\`\`
+          Digest: \`${{ steps.kubilitics.outputs.digest }}\`
+
+          ### kubilitics-agent ${{ steps.agent.outputs.version }}
+          \`\`\`bash
+          helm install kubilitics-agent oci://ghcr.io/${{ github.repository_owner }}/charts/kubilitics-agent \\
+            --version ${{ steps.agent.outputs.version }} \\
+            --namespace kubilitics-system --create-namespace \\
+            --set hub.url=<url> --set hub.token=<token>
+          \`\`\`
+          Digest: \`${{ steps.agent.outputs.digest }}\`
+
+          ### kubilitics-otel ${{ steps.otel.outputs.version }}
+          \`\`\`bash
+          helm install kubilitics-otel oci://ghcr.io/${{ github.repository_owner }}/charts/kubilitics-otel \\
+            --version ${{ steps.otel.outputs.version }} \\
+            --namespace kubilitics-system --create-namespace \\
+            --set kubilitics.clusterId=<id> --set kubilitics.backendUrl=<url>
+          \`\`\`
+          Digest: \`${{ steps.otel.outputs.digest }}\`
+
+          ### Verify signatures
+          \`\`\`bash
+          cosign verify ghcr.io/${{ github.repository_owner }}/charts/kubilitics:${{ steps.kubilitics.outputs.version }} \\
+            --certificate-identity-regexp="^https://github.com/${{ github.repository }}" \\
+            --certificate-oidc-issuer="https://token.actions.githubusercontent.com"
+          \`\`\`
+          EOF
