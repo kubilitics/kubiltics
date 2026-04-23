@@ -13,7 +13,7 @@ The 12-week new-tools plan at [`kubilitics/docs/strategy/2026-04-22-new-tools-pl
 
 | Wk | Deliverable | Status |
 |---|---|---|
-| **1** | Finish inspect surface (3 new tools + retire 42 `observe_*`) | **this spec** |
+| **1** | Finish inspect surface (3 new tools + retire 25 `observe_*`) | **this spec** |
 | **2** | DAG planner (plan-then-execute) | next |
 | **5** | Counterfactual scheduler simulator | later |
 | **6** | OTel span store + trace tools | later |
@@ -25,13 +25,15 @@ Dropped from the plan (table-stakes work, will integrate-not-build or defer): `a
 
 - 183 tools in `internal/mcp/tools/taxonomy.go`
 - **27 `inspect_*` composites already implemented** via `fanOut` + `buildInspectResult` in `internal/mcp/server/handlers_inspect.go`
-- 42 `observe_*` tools still exposed (cause of LLM loop-trap failures)
+- 42 `observe_*` tools still exposed — 25 are folded (`_detailed/_events/_ownership_chain` families) and cause the LLM loop-trap failures; 17 are specialty observers with unique signal that stay
 - `incident-scenarios-20.json` bench: 14/20 pass on qwen2.5:32b (2026-04-22 baseline)
 - `cmd/bench/aliases.json` maps old tool names to new composites for bench-scoring equivalence
 
 ### Goal
 
-Ship the final 3 Week-1 tools (`triage_cluster`, `list_problems`, `search_logs`), atomically retire the 42 `observe_*` tools, eliminate same-tool-15×-loop failures, and raise the bench by at least +1 (≥15/20 merge-gate; 16/20 stretch).
+Ship the final 3 Week-1 tools (`triage_cluster`, `list_problems`, `search_logs`), atomically retire **25** of the 42 `observe_*` tools (the `_detailed/_events/_ownership_chain` families covered by `cmd/bench/aliases.json` — all their bench-scoring equivalence is already mapped), eliminate same-tool-15×-loop failures, and raise the bench by at least +1 (≥15/20 merge-gate; 16/20 stretch).
+
+The remaining **17 specialty observers** (e.g., `observe_flapping_services`, `observe_ingresses_by_tls_expiry`, `observe_missing_probes`, `observe_zombie_finalizers`) stay — they expose unique signal not covered by any composite, and retiring them would lose functionality AND break any bench prompt that referenced them without alias coverage.
 
 `describe_topology` is explicitly cut — its value was PageRank-ranking, which is deferred indefinitely under Option C.
 
@@ -62,7 +64,7 @@ kubilitics-ai/internal/
 
 ```
 internal/mcp/tools/
-  taxonomy.go                # +3 tool definitions; −42 observe_* entries (atomic diff)
+  taxonomy.go                # +3 tool definitions; −25 observe_* entries (atomic diff)
 internal/mcp/server/
   handlers_inspect.go        # +handleTriageCluster, +handleListProblems, +handleSearchLogs
   handlers_observation.go    # dispatch case-entries for the 3 new tool names
@@ -255,15 +257,47 @@ Rules run in order; each consumes and replaces before the next runs. Output is `
 
 ---
 
-## 4. Retirement of 42 `observe_*` tools
+## 4. Retirement of 25 `observe_*` tools
 
 **Atomic diff** in `internal/mcp/tools/taxonomy.go`:
 
-- **Remove** the per-kind `observe_*_detailed`, `observe_*_events`, `observe_*_ownership_chain` entries whose composites now exist as `inspect_*` (27 families covered).
-- **Remove** other legacy observe tools subsumed by the 3 new tools: `observe_cluster_overview` (triage), `observe_events` (partially absorbed), `observe_pod_logs_filtered` (fully absorbed by `search_logs`).
-- Full retirement list is produced from `cmd/bench/aliases.json` + taxonomy grep during implementation.
+**The 25 names to retire** (all present in `cmd/bench/aliases.json`, so bench scoring already maps them to their surviving composites):
 
-**Important:** retiring from the **taxonomy** only hides the tools from the LLM's surface. The underlying internal methods (`handlePodDetailed`, `handleEvents`, etc.) stay — they're still the engine behind `inspect_*` + the 3 new composites.
+```
+observe_api_resources                observe_cluster_overview
+observe_configmap_consumers          observe_custom_resources
+observe_deployment_rollout_history   observe_events
+observe_metrics                      observe_namespace_overview
+observe_network_policies             observe_node_status
+observe_pod_dependencies             observe_pod_logs
+observe_pod_logs_filtered            observe_pvc_consumers
+observe_resource                     observe_resource_history
+observe_resource_links               observe_resource_topology
+observe_resources_by_query           observe_secret_consumers
+observe_service_endpoints            observe_serviceaccount_detailed
+observe_serviceaccount_permissions   observe_storage_status
+observe_workload_health
+```
+
+Generation rule: `grep -oE 'Name: *"observe_[a-z_]+' internal/mcp/tools/taxonomy.go | awk -F'"' '{print $2}' | sort > /tmp/current-observe.txt; grep -oE 'observe_[a-z_]+' cmd/bench/aliases.json | sort -u > /tmp/aliased.txt; comm -12 /tmp/current-observe.txt /tmp/aliased.txt`. This produces exactly the 25 above.
+
+**The 17 specialty observers that STAY** (no alias coverage, unique signal):
+
+```
+observe_flapping_services              observe_high_cardinality_labels
+observe_ingresses_by_tls_expiry        observe_missing_probes
+observe_node_metrics                   observe_noisy_neighbors
+observe_orphaned_pods                  observe_pending_scheduler_events
+observe_pod_metrics                    observe_recent_changes
+observe_restart_storms                 observe_secrets_usage
+observe_services_by_filter             observe_stuck_rollouts
+observe_top_pods_by_metric             observe_unhealthy_probes
+observe_zombie_finalizers
+```
+
+These may eventually be folded into `list_problems` filter enum extensions or Wk-4 Prometheus adapter output, but that's explicitly out of Week-1 scope.
+
+**Important:** retiring from the **taxonomy** only hides the tools from the LLM's surface. The underlying internal methods (`handlePodDetailed`, `handleEvents`, etc.) stay — they're still the engine behind `inspect_*` + the 3 new composites, and the dispatch switch in `handlers_observation.go` stays wired so direct-call compatibility is preserved.
 
 `cmd/bench/aliases.json` already maps old tool names to new composites for bench-scoring equivalence, so historical bench prompts that reference retired names still score correctly.
 
@@ -287,7 +321,7 @@ Rules run in order; each consumes and replaces before the next runs. Output is `
 
 ### 5.3 Retirement regression
 
-- `taxonomy_test.go` (existing) must pass with the new count (183 → 144 tools).
+- `taxonomy_test.go` (existing) must pass with the new count (183 → 161 tools: 183 − 25 retired + 3 new).
 - For every retired name, there must be an entry in `cmd/bench/aliases.json` mapping it to the surviving tool. Table test enforces this.
 
 ### 5.4 Bench gate
@@ -355,7 +389,7 @@ Automated bench-in-CI is Wk 6/7 work (when OTel + planner land). For Week 1:
 ## 8. Delivery shape
 
 - **Branch:** `feat/week1-inspect-completion` off `main@59cb7a7`
-- **PR title:** `feat(tools): Week 1 — complete inspect surface + retire 42 observe_*`
+- **PR title:** `feat(tools): Week 1 — complete inspect surface + retire 25 observe_*`
 - **PR description template:** summary, retirement list, bench before/after diff, loop-trap-count before/after, test coverage, non-goals
 - **Estimated size:** ~800 LOC new code (triage + logpattern + 3 handlers + tests), ~400 LOC taxonomy deletion
 - **Estimated calendar time:** 3–5 focused days
