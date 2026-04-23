@@ -169,3 +169,75 @@ func TestRankProblems_UnknownFilterReturnsEmpty(t *testing.T) {
 		t.Fatalf("unknown filter must return empty, got %d", len(out))
 	}
 }
+
+func TestRankProblems_AllFiltersMatchOnlyExpected(t *testing.T) {
+	now := time.Now()
+	cases := []struct {
+		filter     string
+		match      PodState
+		noMatch    PodState
+		wantReason string
+	}{
+		{
+			filter:     "oom",
+			match:      PodState{Phase: "Running", LastReason: "OOMKilled", LastExitCode: 137},
+			noMatch:    PodState{Phase: "Running", Ready: true},
+			wantReason: "OOMKilled",
+		},
+		{
+			filter:     "pending",
+			match:      PodState{Phase: "Pending", SchedulingFailed: true},
+			noMatch:    PodState{Phase: "Pending"}, // pending but NOT scheduling-failed
+			wantReason: "FailedScheduling",
+		},
+		{
+			filter:     "evicted",
+			match:      PodState{Phase: "Failed", LastReason: "Evicted"},
+			noMatch:    PodState{Phase: "Failed", LastReason: "Error"},
+			wantReason: "Evicted",
+		},
+		{
+			filter:     "image_pull_error",
+			match:      PodState{Phase: "Pending", WaitingReason: "ErrImagePull"},
+			noMatch:    PodState{Phase: "Running", WaitingReason: "CrashLoopBackOff"},
+			wantReason: "ErrImagePull",
+		},
+		{
+			filter:     "unhealthy",
+			match:      PodState{Phase: "Running", Ready: false, FirstSeen: now.Add(-10 * time.Minute)},
+			noMatch:    PodState{Phase: "Running", Ready: true},
+			wantReason: "NotReady",
+		},
+	}
+	for _, c := range cases {
+		t.Run(c.filter, func(t *testing.T) {
+			pods := []NamedPodState{
+				{Kind: "Pod", Namespace: "ns", Name: "match", State: c.match},
+				{Kind: "Pod", Namespace: "ns", Name: "nomatch", State: c.noMatch},
+			}
+			out, _ := RankProblems(pods, c.filter, 50)
+			if len(out) != 1 {
+				t.Fatalf("filter %q: expected exactly 1 match, got %d", c.filter, len(out))
+			}
+			if out[0].Name != "match" {
+				t.Fatalf("filter %q: wrong pod matched: %q", c.filter, out[0].Name)
+			}
+			if out[0].Reason != c.wantReason {
+				t.Fatalf("filter %q: reason=%q, want %q", c.filter, out[0].Reason, c.wantReason)
+			}
+		})
+	}
+}
+
+func TestRankProblems_StableSortPreservesInputOrder(t *testing.T) {
+	// Two pods with identical severity — stable sort must preserve input order.
+	same := PodState{Phase: "Running", WaitingReason: "CrashLoopBackOff", RestartCount: 5}
+	pods := []NamedPodState{
+		{Kind: "Pod", Namespace: "a", Name: "first", State: same},
+		{Kind: "Pod", Namespace: "a", Name: "second", State: same},
+	}
+	out, _ := RankProblems(pods, "crashlooping", 50)
+	if len(out) != 2 || out[0].Name != "first" || out[1].Name != "second" {
+		t.Fatalf("stable order broken: %+v", out)
+	}
+}

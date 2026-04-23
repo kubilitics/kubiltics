@@ -351,8 +351,13 @@ func problemPredicate(filter string) podPredicate {
 		}
 	case "unhealthy":
 		return func(p PodState) bool {
-			// Caller passes only pods observed unhealthy for >= 5m.
-			return !p.Ready && p.Phase == "Running"
+			if p.Ready || p.Phase != "Running" {
+				return false
+			}
+			// Require ≥5m unhealthy observation window. FirstSeen zero-value
+			// fails the test — upstream callers must populate it for the
+			// unhealthy filter to match.
+			return !p.FirstSeen.IsZero() && time.Since(p.FirstSeen) >= 5*time.Minute
 		}
 	default:
 		return nil
@@ -373,7 +378,10 @@ func predicateReason(filter string, p PodState) string {
 	case "evicted":
 		return "Evicted"
 	case "image_pull_error":
-		return p.WaitingReason
+		if p.WaitingReason != "" {
+			return p.WaitingReason
+		}
+		return "ImagePullError"
 	case "unhealthy":
 		return "NotReady"
 	}
