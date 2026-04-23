@@ -1,12 +1,9 @@
-# Homebrew formula for Kubilitics desktop app.
+# Homebrew cask for Kubilitics desktop app.
 #
-# This file is the source of truth — the tap repo at
+# Source of truth: this file. The tap at
 # https://github.com/vellankikoti/homebrew-kubilitics is updated from
-# this file via scripts/publish-homebrew-formula.sh after each release.
-#
-# Bump the version constant and the SHA256s (one per arch) when cutting
-# a release, then run:
-#   ./scripts/publish-homebrew-formula.sh v1.1.0
+# it via scripts/publish-homebrew-formula.sh (manual) or
+# .github/workflows/post-release.yml (automatic on tag).
 #
 # Users install with:
 #   brew tap vellankikoti/kubilitics
@@ -14,22 +11,19 @@
 
 cask "kubilitics" do
   version "1.1.0"
+  sha256 "86e8bb4e7a80959ac3b944ecf966907328d9ba758e7ba03d3c6cd6f0a710d11e"
 
-  on_arm do
-    url "https://github.com/vellankikoti/kubilitics/releases/download/v#{version}/Kubilitics_#{version}_aarch64.dmg"
-    sha256 "REPLACE_WITH_AARCH64_DMG_SHA256"
-  end
-
-  on_intel do
-    url "https://github.com/vellankikoti/kubilitics/releases/download/v#{version}/Kubilitics_#{version}_x64.dmg"
-    sha256 "REPLACE_WITH_X86_64_DMG_SHA256"
-  end
-
+  url "https://github.com/vellankikoti/kubilitics/releases/download/v#{version}/Kubilitics_#{version}_universal.dmg"
   name "Kubilitics"
   desc "Kubernetes operational intelligence platform with AI chat"
   homepage "https://github.com/vellankikoti/kubilitics"
 
-  auto_updates true   # handled by tauri-plugin-updater, not Homebrew
+  livecheck do
+    url :url
+    strategy :github_latest
+  end
+
+  auto_updates true
   depends_on macos: ">= :sonoma"
 
   app "Kubilitics.app"

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# publish-homebrew-formula.sh — compute DMG SHA256s from a GitHub release
-# and open a PR against the Homebrew tap with the updated formula.
+# publish-homebrew-formula.sh — compute the universal DMG SHA256 from a
+# GitHub release and open a PR against the Homebrew tap with the updated cask.
 #
 # Usage:
 #   ./scripts/publish-homebrew-formula.sh v1.1.0
@@ -22,29 +22,27 @@ if [ ! -d "$TAP_PATH" ]; then
   exit 1
 fi
 
-# Fetch the DMG checksums from the release's checksums.txt asset.
+# Fetch the DMG checksum from the release's checksums.txt asset.
 echo "Downloading checksums.txt for $TAG"
 TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT
 gh release download "$TAG" --repo vellankikoti/kubilitics --pattern "checksums.txt" --dir "$TMP"
 
-ARM_SHA=$(awk "/Kubilitics_${VERSION}_aarch64\.dmg$/ {print \$1}" "$TMP/checksums.txt")
-X86_SHA=$(awk "/Kubilitics_${VERSION}_x64\.dmg$/ {print \$1}" "$TMP/checksums.txt")
+DMG_SHA=$(awk "/Kubilitics_${VERSION}_universal\\.dmg\$/ {print \$1}" "$TMP/checksums.txt")
 
-if [ -z "$ARM_SHA" ] || [ -z "$X86_SHA" ]; then
-  echo "ERROR: could not find DMG entries in checksums.txt:" >&2
+if [ -z "$DMG_SHA" ]; then
+  echo "ERROR: universal DMG entry not found in checksums.txt:" >&2
   cat "$TMP/checksums.txt" >&2
   exit 1
 fi
 
-echo "arm64 sha: $ARM_SHA"
-echo "x86_64 sha: $X86_SHA"
+echo "universal dmg sha: $DMG_SHA"
 
-# Copy our canonical formula into the tap with the SHAs substituted.
+# Copy the canonical cask into the tap with version + SHA substituted.
+mkdir -p "$TAP_PATH/Casks"
 cp deploy/homebrew/kubilitics.rb "$TAP_PATH/Casks/kubilitics.rb"
-sed -i.bak "s/^  version \"[^\"]*\"/  version \"$VERSION\"/" "$TAP_PATH/Casks/kubilitics.rb"
-sed -i.bak "s/REPLACE_WITH_AARCH64_DMG_SHA256/$ARM_SHA/" "$TAP_PATH/Casks/kubilitics.rb"
-sed -i.bak "s/REPLACE_WITH_X86_64_DMG_SHA256/$X86_SHA/" "$TAP_PATH/Casks/kubilitics.rb"
+sed -i.bak "s|^  version \"[^\"]*\"|  version \"$VERSION\"|" "$TAP_PATH/Casks/kubilitics.rb"
+sed -i.bak "s|^  sha256 \"[^\"]*\"|  sha256 \"$DMG_SHA\"|" "$TAP_PATH/Casks/kubilitics.rb"
 rm -f "$TAP_PATH/Casks/kubilitics.rb.bak"
 
 cd "$TAP_PATH"

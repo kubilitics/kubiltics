@@ -44,52 +44,38 @@ jobs:
           installers-regex: 'Kubilitics[_-].*x64[-_]setup\.exe$'
           token: ${{ secrets.WINGET_TOKEN }}
 
-  # ── Update Homebrew tap for desktop app ─────────────────────────────────
-  update-homebrew:
-    name: Update Homebrew Tap
+  # ── Notify Homebrew tap of new release ──────────────────────────────────
+  #
+  # Pull-model design: the tap at vellankikoti/homebrew-kubilitics runs its
+  # own scheduled workflow (.github/workflows/sync-upstream.yml over there)
+  # that polls this repo's /releases/latest every 30 min and self-updates
+  # using its own default GITHUB_TOKEN. Zero cross-repo secrets are
+  # required for correctness.
+  #
+  # This job is a best-effort low-latency nudge: if HOMEBREW_TAP_DISPATCH
+  # is present (a fine-grained PAT scoped to contents:write on the tap
+  # only), fire a repository_dispatch so the tap picks up the release
+  # immediately instead of waiting up to 30 min. The step is
+  # continue-on-error — the poll is the invariant, this is convenience.
+  notify-homebrew-tap:
+    name: Notify Homebrew Tap
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 2
+    continue-on-error: true
     env:
-      HAS_HOMEBREW_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN != '' }}
+      HAS_DISPATCH_TOKEN: ${{ secrets.HOMEBREW_TAP_DISPATCH != '' }}
     steps:
-      - uses: actions/checkout@v5
+      - name: Skip if no dispatch token (poll will pick it up within 30 min)
+        if: env.HAS_DISPATCH_TOKEN != 'true'
+        run: echo "HOMEBREW_TAP_DISPATCH not set — tap will self-update via schedule."
 
-      - name: Extract version from tag
-        id: version
-        run: |
-          TAG="${{ github.event.workflow_run.head_branch }}"
-          VERSION="${TAG#v}"
-          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-
-      - name: Update Homebrew formula
-        if: env.HAS_HOMEBREW_TOKEN == 'true'
+      - name: Fire repository_dispatch
+        if: env.HAS_DISPATCH_TOKEN == 'true'
         env:
-          GH_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          GH_TOKEN: ${{ secrets.HOMEBREW_TAP_DISPATCH }}
+          TAG: ${{ github.event.workflow_run.head_branch }}
         run: |
-          VERSION="${{ steps.version.outputs.version }}"
-
-          # Download release checksums (retry up to 3 times with 60s wait)
-          for i in 1 2 3; do
-            curl -fsSL "https://github.com/${{ github.repository }}/releases/download/${{ steps.version.outputs.tag }}/checksums.txt" \
-              -o checksums.txt && break
-            echo "Attempt $i failed, retrying in 60s..."
-            sleep 60
-          done
-          [ -f checksums.txt ] || { echo "No checksums found after retries — skipping"; exit 0; }
-
-          # Update kubilitics formula version
-          if [ -f "packaging/homebrew/kubilitics.rb" ]; then
-            sed -e "s/version \".*\"/version \"${VERSION}\"/" \
-              packaging/homebrew/kubilitics.rb > kubilitics-updated.rb
-
-            git clone "https://x-access-token:${GH_TOKEN}@github.com/kubilitics/homebrew-tap.git" tap
-            cp kubilitics-updated.rb tap/Formula/kubilitics.rb
-            cd tap
-            git config user.name "kubilitics-bot"
-            git config user.email "bot@kubilitics.io"
-            git add Formula/kubilitics.rb
-            git commit -m "kubilitics ${VERSION}" || echo "No changes"
-            git push
-          fi
+          gh api "repos/vellankikoti/homebrew-kubilitics/dispatches" \
+            -f event_type='kubilitics-release' \
+            -f "client_payload[tag]=${TAG}"
