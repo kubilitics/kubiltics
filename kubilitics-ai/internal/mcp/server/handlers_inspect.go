@@ -20,6 +20,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/logpattern"
 	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/triage"
 )
 
@@ -683,4 +684,128 @@ func intArgDefault(args map[string]interface{}, k string, def int) int {
 		return int(v)
 	}
 	return def
+}
+
+// handleSearchLogs: pattern-clustered log search across pods in a namespace.
+func (s *mcpServerImpl) handleSearchLogs(ctx context.Context, args map[string]interface{}) (interface{}, error) {
+	namespace := strArg(args, "namespace")
+	regex := strArg(args, "regex")
+	if namespace == "" {
+		return nil, fmt.Errorf("search_logs: 'namespace' is required")
+	}
+	if regex == "" {
+		return nil, fmt.Errorf("search_logs: 'regex' is required")
+	}
+
+	maxPods := intArgDefault(args, "max_pods", 10)
+	maxLinesPerPod := intArgDefault(args, "max_lines_per_pod", 1000)
+	clusterID := strArg(args, "cluster_id")
+
+	// Resolve pod candidates — either the explicit workload or all pods
+	// in the namespace.
+	queryArgs := copyArgs(args)
+	queryArgs["kind"] = "Pod"
+	tr := s.timedCall(ctx, "observe_resources_by_query", queryArgs, s.handleResourcesByQuery)
+	errs := map[string]error{}
+	if tr.err != nil {
+		errs["observe_resources_by_query"] = tr.err
+	}
+	pods := extractPodNames(tr.out)
+	podsSkipped := 0
+	if len(pods) > maxPods {
+		podsSkipped = len(pods) - maxPods
+		pods = pods[:maxPods]
+	}
+
+	// Fan out log fetches across the selected pods.
+	var allLines []logpattern.LogLine
+	var mu sync.Mutex
+	var wg sync.WaitGroup
+	var logSources []compositeSource
+	for _, pod := range pods {
+		wg.Add(1)
+		go func(podName string) {
+			defer wg.Done()
+			podArgs := copyArgs(args)
+			podArgs["pod"] = podName
+			podArgs["grep"] = regex
+			podArgs["lines"] = maxLinesPerPod
+			tr := s.timedCall(ctx, "observe_pod_logs_filtered:"+podName, podArgs, s.handlePodLogs)
+			mu.Lock()
+			logSources = append(logSources, compositeSource{Tool: tr.name, MS: tr.ms})
+			if tr.err != nil {
+				errs[tr.name] = tr.err
+			} else {
+				allLines = append(allLines, extractLogLines(tr.out, podName)...)
+			}
+			mu.Unlock()
+		}(pod)
+	}
+	wg.Wait()
+
+	result := logpattern.Cluster(allLines)
+
+	// Summarize: "X error patterns across Y pods; most frequent: <template> (N× in K pods)"
+	summary := fmt.Sprintf("%d pattern(s) across %d pod(s)", len(result.Patterns), len(pods))
+	if len(result.Patterns) > 0 {
+		top := result.Patterns[0]
+		summary += fmt.Sprintf("; most frequent: %s (%d× in %d pod(s))", top.Template, top.Count, len(top.Pods))
+	}
+
+	data := map[string]interface{}{
+		"query":                      map[string]interface{}{"namespace": namespace, "workload": strArg(args, "workload"), "regex": regex, "since": strArg(args, "since")},
+		"patterns":                   result.Patterns,
+		"pods_searched":              len(pods),
+		"pods_skipped_due_to_cap":    podsSkipped,
+		"unmatched_error_line_count": 0, // reserved; Extract always returns a template
+	}
+	sources := append([]compositeSource{{Tool: tr.name, MS: tr.ms}}, logSources...)
+	return buildComposableResult("LogPatterns", clusterID, summary, data, sources, errs), nil
+}
+
+// extractPodNames pulls names out of a generic resources_by_query response.
+func extractPodNames(in interface{}) []string {
+	m, ok := in.(map[string]interface{})
+	if !ok {
+		return nil
+	}
+	list, ok := m["pods"].([]interface{})
+	if !ok {
+		return nil
+	}
+	var out []string
+	for _, p := range list {
+		if pm, ok := p.(map[string]interface{}); ok {
+			if n, ok := pm["name"].(string); ok && n != "" {
+				out = append(out, n)
+			}
+		}
+	}
+	return out
+}
+
+// extractLogLines pulls LogLine entries out of the generic pod-logs handler
+// output. Tolerant of multiple upstream shapes.
+func extractLogLines(in interface{}, pod string) []logpattern.LogLine {
+	m, ok := in.(map[string]interface{})
+	if !ok {
+		return nil
+	}
+	list, ok := m["lines"].([]interface{})
+	if !ok {
+		return nil
+	}
+	var out []logpattern.LogLine
+	for _, l := range list {
+		switch t := l.(type) {
+		case string:
+			out = append(out, logpattern.LogLine{Pod: pod, Line: t, Timestamp: time.Now()})
+		case map[string]interface{}:
+			line, _ := t["line"].(string)
+			tsStr, _ := t["ts"].(string)
+			ts, _ := time.Parse(time.RFC3339, tsStr)
+			out = append(out, logpattern.LogLine{Pod: pod, Line: line, Timestamp: ts})
+		}
+	}
+	return out
 }

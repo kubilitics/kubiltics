@@ -191,3 +191,18 @@ func TestHandleListProblems_UnknownFilter(t *testing.T) {
 func TestHandleListProblems_CompileGuard(t *testing.T) {
 	var _ handlerFn = (&mcpServerImpl{}).handleListProblems
 }
+
+func TestHandleSearchLogs_RequiresNamespaceAndRegex(t *testing.T) {
+	s := &mcpServerImpl{}
+
+	if _, err := s.handleSearchLogs(context.Background(), map[string]interface{}{"regex": "error"}); err == nil {
+		t.Fatal("expected error when namespace missing")
+	}
+	if _, err := s.handleSearchLogs(context.Background(), map[string]interface{}{"namespace": "default"}); err == nil {
+		t.Fatal("expected error when regex missing")
+	}
+}
+
+func TestHandleSearchLogs_CompileGuard(t *testing.T) {
+	var _ handlerFn = (&mcpServerImpl{}).handleSearchLogs
+}
