@@ -78,69 +78,82 @@ func TestMCPServerIntegration(t *testing.T) {
 		t.Errorf("Expected at least 80 tools, got %d", len(tools))
 	}
 
-	// Verify observation tools are present
-	hasClusterOverview := false
-	hasObserveResource := false
-	hasObservePodLogs := false
+	// Verify Week-1 composites that replaced the retired observe_* tools are
+	// present. observe_cluster_overview → triage_cluster, observe_resource →
+	// inspect_pod (representative per-kind composite), observe_pod_logs →
+	// search_logs.
+	hasTriageCluster := false
+	hasInspectPod := false
+	hasSearchLogs := false
 
 	for _, tool := range tools {
-		if tool.Name == "observe_cluster_overview" {
-			hasClusterOverview = true
+		if tool.Name == "triage_cluster" {
+			hasTriageCluster = true
 		}
-		if tool.Name == "observe_resource" {
-			hasObserveResource = true
+		if tool.Name == "inspect_pod" {
+			hasInspectPod = true
 		}
-		if tool.Name == "observe_pod_logs" {
-			hasObservePodLogs = true
+		if tool.Name == "search_logs" {
+			hasSearchLogs = true
 		}
 	}
 
-	if !hasClusterOverview {
-		t.Error("observe_cluster_overview tool not registered")
+	if !hasTriageCluster {
+		t.Error("triage_cluster tool not registered")
 	}
-	if !hasObserveResource {
-		t.Error("observe_resource tool not registered")
+	if !hasInspectPod {
+		t.Error("inspect_pod tool not registered")
 	}
-	if !hasObservePodLogs {
-		t.Error("observe_pod_logs tool not registered")
+	if !hasSearchLogs {
+		t.Error("search_logs tool not registered")
 	}
 
 	// Test tool execution — without a live backend the HTTP client will get a
-	// connection-refused error. The handler should propagate this as an error.
+	// connection-refused error. triage_cluster is a composite that captures
+	// per-subcall errors inside its response, so whether ExecuteTool returns
+	// a top-level error depends on how many subcalls degrade; either is fine
+	// here (we just want the dispatch path exercised).
 	args := map[string]interface{}{}
-	_, err = server.ExecuteTool(ctx, "observe_cluster_overview", args)
+	_, err = server.ExecuteTool(ctx, "triage_cluster", args)
 	if err != nil {
 		t.Logf("Got expected network error (no backend running): %v", err)
 	}
 
-	// Test tool with parameters
-	resourceArgs := map[string]interface{}{
-		"kind":      "Pod",
-		"namespace": "default",
-		"name":      "test-pod",
+	// Test tool with parameters — search_logs does an HTTP list-pods call
+	// up front (via observe_resources_by_query), which errors with no backend
+	// and surfaces as a non-nil top-level error because no pods are found
+	// and subsequent log fan-out never runs. Representative of the wiring.
+	searchArgs := map[string]interface{}{
+		"namespace":  "default",
+		"regex":      "error",
+		"cluster_id": "test-cluster",
 	}
-	_, err = server.ExecuteTool(ctx, "observe_resource", resourceArgs)
-	if err == nil {
-		t.Error("Expected error when proxy not initialized, got nil")
+	_, err = server.ExecuteTool(ctx, "search_logs", searchArgs)
+	if err != nil {
+		t.Logf("search_logs returned expected error (no backend): %v", err)
 	}
 
-	// Test missing parameter validation
+	// Test missing parameter validation — inspect_pod requires namespace + name
+	// and rejects with a top-level error before any HTTP call.
 	invalidArgs := map[string]interface{}{
 		"namespace": "default",
-		// missing "kind" and "name"
+		// missing "name"
 	}
-	_, err = server.ExecuteTool(ctx, "observe_resource", invalidArgs)
+	_, err = server.ExecuteTool(ctx, "inspect_pod", invalidArgs)
 	if err == nil {
 		t.Error("Expected error for missing parameters, got nil")
 	}
 
-	// Verify stats after tool executions
+	// Verify stats after tool executions — three ExecuteTool calls above.
 	stats := server.GetStats()
-	if stats["total_calls"].(int64) < 2 {
-		t.Errorf("Expected at least 2 total calls, got %d", stats["total_calls"])
+	if stats["total_calls"].(int64) < 3 {
+		t.Errorf("Expected at least 3 total calls, got %d", stats["total_calls"])
 	}
-	if stats["failed_calls"].(int64) < 2 {
-		t.Errorf("Expected at least 2 failed calls (no backend), got %d", stats["failed_calls"])
+	// At minimum inspect_pod's validation error counts as a failure; other
+	// composites may or may not return a top-level error depending on how
+	// they aggregate partial failures, so we don't over-constrain here.
+	if stats["failed_calls"].(int64) < 1 {
+		t.Errorf("Expected at least 1 failed call (inspect_pod validation), got %d", stats["failed_calls"])
 	}
 
 	// Stop the server
@@ -253,39 +266,35 @@ func TestMCPServerObservationToolsWiring(t *testing.T) {
 
 	ctx := context.Background()
 
-	// Test each observation tool
+	// Test each Week-1 observation composite. After the 2026-04-23 retirement
+	// of 25 observe_* leaf tools, these composites are the public surface:
+	//   observe_cluster_overview → triage_cluster
+	//   observe_resource         → inspect_pod (representative per-kind)
+	//   observe_pod_logs         → search_logs
+	//   observe_events           → folded into triage_cluster
+	//   observe_metrics          → no Wk-1 successor (Prometheus adapter is Wk-4),
+	//                              subtest removed.
 	observationTools := []struct {
 		name string
 		args map[string]interface{}
 	}{
 		{
-			name: "observe_cluster_overview",
+			name: "triage_cluster",
 			args: map[string]interface{}{},
 		},
 		{
-			name: "observe_resource",
+			name: "inspect_pod",
 			args: map[string]interface{}{
-				"kind":      "Pod",
 				"namespace": "default",
 				"name":      "test-pod",
 			},
 		},
 		{
-			name: "observe_pod_logs",
+			name: "search_logs",
 			args: map[string]interface{}{
 				"namespace": "default",
-				"pod_name":  "test-pod",
+				"regex":     "error",
 			},
-		},
-		{
-			name: "observe_events",
-			args: map[string]interface{}{
-				"namespace": "default",
-			},
-		},
-		{
-			name: "observe_metrics",
-			args: map[string]interface{}{},
 		},
 	}
 

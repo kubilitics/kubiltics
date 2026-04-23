@@ -482,47 +482,65 @@ func TestObservationHandlerBeforeProxyInit(t *testing.T) {
 	}
 }
 
-func TestHandleObserveResourceValidation(t *testing.T) {
+// TestHandleInspectPodValidation replaces TestHandleObserveResourceValidation
+// after the 2026-04-23 retirement of observe_resource. inspect_pod is the
+// Week-1 composite that now covers detail+events+ownership for a pod and
+// requires both 'namespace' and 'name' up front (see handlers_inspect.go:143).
+func TestHandleInspectPodValidation(t *testing.T) {
 	server, _, _ := setupTestServer(t)
 
 	ctx := context.Background()
 
-	// Test missing kind parameter — the handler validates args before any HTTP
-	// call, so the error should always contain "kind".
+	// Missing namespace — the handler validates args before any HTTP call,
+	// so the error should always contain "namespace".
 	args := map[string]interface{}{
 		"name": "test-pod",
 		// Provide cluster_id so we skip the first-cluster HTTP call.
 		"cluster_id": "test-cluster",
 	}
-	_, err := server.ExecuteTool(ctx, "observe_resource", args)
-	if err == nil || !containsSubstring(err.Error(), "kind") {
-		t.Errorf("Expected 'kind' error, got: %v", err)
+	_, err := server.ExecuteTool(ctx, "inspect_pod", args)
+	if err == nil || !containsSubstring(err.Error(), "namespace") {
+		t.Errorf("Expected 'namespace' error, got: %v", err)
 	}
 
-	// Test missing name parameter
+	// Missing name
 	args = map[string]interface{}{
-		"kind":       "Pod",
+		"namespace":  "default",
 		"cluster_id": "test-cluster",
 	}
-	_, err = server.ExecuteTool(ctx, "observe_resource", args)
+	_, err = server.ExecuteTool(ctx, "inspect_pod", args)
 	if err == nil || !containsSubstring(err.Error(), "name") {
 		t.Errorf("Expected 'name' error, got: %v", err)
 	}
 }
 
-func TestHandlePodLogsValidation(t *testing.T) {
+// TestHandleSearchLogsValidation replaces TestHandlePodLogsValidation after
+// the 2026-04-23 retirement of observe_pod_logs. search_logs is the Week-1
+// composite that fans pod-log fetches across a namespace and requires both
+// 'namespace' and 'regex' (see handlers_inspect.go:694-698).
+func TestHandleSearchLogsValidation(t *testing.T) {
 	server, _, _ := setupTestServer(t)
 
 	ctx := context.Background()
 
-	// Test missing pod_name parameter — validated before HTTP call.
+	// Missing namespace — validated before HTTP call.
 	args := map[string]interface{}{
+		"regex":      "error",
+		"cluster_id": "test-cluster",
+	}
+	_, err := server.ExecuteTool(ctx, "search_logs", args)
+	if err == nil || !containsSubstring(err.Error(), "namespace") {
+		t.Errorf("Expected 'namespace' error, got: %v", err)
+	}
+
+	// Missing regex
+	args = map[string]interface{}{
 		"namespace":  "default",
 		"cluster_id": "test-cluster",
 	}
-	_, err := server.ExecuteTool(ctx, "observe_pod_logs", args)
-	if err == nil || !containsSubstring(err.Error(), "pod_name") {
-		t.Errorf("Expected 'pod_name' error, got: %v", err)
+	_, err = server.ExecuteTool(ctx, "search_logs", args)
+	if err == nil || !containsSubstring(err.Error(), "regex") {
+		t.Errorf("Expected 'regex' error, got: %v", err)
 	}
 }
 
