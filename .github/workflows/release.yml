@@ -43,6 +43,11 @@ jobs:
           set -euo pipefail
           TAG_VERSION=${GITHUB_REF#refs/tags/v}
           echo "version=$TAG_VERSION" >> $GITHUB_OUTPUT
+          # Strip prerelease suffix (-rc.1, -beta.2, -alpha) for comparison.
+          # Source files track the final release version; RC/beta tags are
+          # build flavors of the same codebase, not different versions.
+          BASE_VERSION=${TAG_VERSION%%-*}
+          echo "Comparing source files against base version: $BASE_VERSION (from tag v$TAG_VERSION)"
 
           VERSIONS=(
             "$(jq -r '.version' kubilitics-frontend/package.json)"
@@ -55,12 +60,12 @@ jobs:
 
           ERRORS=0
           for V in "${VERSIONS[@]}"; do
-            if [ "$V" != "$TAG_VERSION" ]; then
-              echo "MISMATCH: expected $TAG_VERSION, got $V"
+            if [ "$V" != "$BASE_VERSION" ]; then
+              echo "MISMATCH: expected $BASE_VERSION, got $V"
               ERRORS=$((ERRORS + 1))
             fi
           done
-          [ $ERRORS -eq 0 ] && echo "All 6 version files match v$TAG_VERSION" || exit 1
+          [ $ERRORS -eq 0 ] && echo "All 6 version files match v$BASE_VERSION (tag v$TAG_VERSION)" || exit 1
 
       - name: Verify CI passed on this commit
         env:
