@@ -192,8 +192,25 @@ type ClusterRanking struct {
 	RecentCriticalEvents []NamedEventState `json:"recent_critical_events,omitempty"`
 }
 
-// MaxTopProblems caps the returned ranked list size.
-const MaxTopProblems = 10
+const (
+	// Filter thresholds — pods/nodes scoring below these are excluded from
+	// the ranked output entirely. Tune via bench feedback.
+	minPodSeverity  = 0.40
+	minNodeSeverity = 0.50
+
+	// Cluster-health aggregation cutoffs. "critical" wins if either axis
+	// crosses its threshold; "degraded" is the shared secondary line.
+	criticalPodSeverity  = 0.85
+	criticalNodeSeverity = 0.80
+	degradedSeverity     = 0.50
+
+	// MaxTopProblems caps the returned ranked list size.
+	MaxTopProblems = 10
+
+	// maxRecentCriticalEvents caps the recent-warnings list emitted
+	// alongside TopProblems.
+	maxRecentCriticalEvents = 10
+)
 
 // RankCluster produces the ranked triage output. Pods and events are each
 // scored and the top entries emitted; cluster_health is derived from the
@@ -205,7 +222,7 @@ func RankCluster(in ClusterInput) ClusterRanking {
 	var maxSev float64
 	for _, np := range in.Pods {
 		s := ScorePod(np.State)
-		if s < 0.40 {
+		if s < minPodSeverity {
 			continue
 		}
 		reason := np.State.WaitingReason
@@ -235,7 +252,7 @@ func RankCluster(in ClusterInput) ClusterRanking {
 	var maxNode float64
 	for _, nn := range in.Nodes {
 		s := ScoreNode(nn.State)
-		if s < 0.50 {
+		if s < minNodeSeverity {
 			continue
 		}
 		nodes = append(nodes, NodePressure{
@@ -248,24 +265,33 @@ func RankCluster(in ClusterInput) ClusterRanking {
 	sort.SliceStable(nodes, func(i, j int) bool { return nodes[i].Severity > nodes[j].Severity })
 	out.NodePressure = nodes
 
-	// Keep up to 10 recent critical events — callers already filtered window.
-	var crit []NamedEventState
+	// Score each warning event, keep the top-N recent-critical entries.
+	type scoredEvent struct {
+		ne  NamedEventState
+		sev float64
+	}
+	var scored []scoredEvent
 	for _, ne := range in.Events {
 		if ne.State.Type != "Warning" {
 			continue
 		}
-		crit = append(crit, ne)
+		scored = append(scored, scoredEvent{ne: ne, sev: ScoreEvent(ne.State)})
 	}
-	if len(crit) > 10 {
-		crit = crit[:10]
+	sort.SliceStable(scored, func(i, j int) bool { return scored[i].sev > scored[j].sev })
+	if len(scored) > maxRecentCriticalEvents {
+		scored = scored[:maxRecentCriticalEvents]
+	}
+	crit := make([]NamedEventState, 0, len(scored))
+	for _, s := range scored {
+		crit = append(crit, s.ne)
 	}
 	out.RecentCriticalEvents = crit
 
 	// Cluster health aggregation.
 	switch {
-	case maxSev >= 0.85 || maxNode >= 0.80:
+	case maxSev >= criticalPodSeverity || maxNode >= criticalNodeSeverity:
 		out.ClusterHealth = "critical"
-	case maxSev >= 0.50 || maxNode >= 0.50:
+	case maxSev >= degradedSeverity || maxNode >= degradedSeverity:
 		out.ClusterHealth = "degraded"
 	default:
 		out.ClusterHealth = "healthy"
