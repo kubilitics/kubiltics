@@ -84,3 +84,50 @@ func TestScoreEvent(t *testing.T) {
 		})
 	}
 }
+
+func TestRankCluster_OrdersProblemsBySeverity(t *testing.T) {
+	now := time.Now()
+	in := ClusterInput{
+		Pods: []NamedPodState{
+			{Kind: "Pod", Namespace: "default", Name: "web-1", State: PodState{Phase: "Running", Ready: true}},
+			{Kind: "Pod", Namespace: "payments", Name: "redis-primary-0", State: PodState{Phase: "Running", WaitingReason: "CrashLoopBackOff", RestartCount: 47, LastExitCode: 137, FirstSeen: now.Add(-5 * time.Minute)}},
+			{Kind: "Pod", Namespace: "logs", Name: "fluent-q", State: PodState{Phase: "Pending", SchedulingFailed: true, FirstSeen: now.Add(-2 * time.Minute)}},
+		},
+		Nodes: []NamedNodeState{
+			{Name: "ip-10-0-1-4", State: NodeState{PressureKind: "memory", PressurePct: 94}},
+		},
+		Events: []NamedEventState{
+			{Kind: "Event", Name: "FailedScheduling/fluent-q", State: EventState{Type: "Warning", Reason: "FailedScheduling", FirstSeen: now.Add(-1 * time.Minute)}},
+		},
+	}
+	out := RankCluster(in)
+
+	if len(out.TopProblems) < 2 {
+		t.Fatalf("want at least 2 top problems, got %d", len(out.TopProblems))
+	}
+	// redis (0.70 base + restart bonus) must outrank fluent-q (Pending).
+	if out.TopProblems[0].Name != "redis-primary-0" {
+		t.Fatalf("expected redis-primary-0 first, got %q", out.TopProblems[0].Name)
+	}
+	if out.ClusterHealth != "critical" {
+		t.Fatalf("cluster with CrashLoopBackOff should be critical, got %q", out.ClusterHealth)
+	}
+	if len(out.NodePressure) != 1 || out.NodePressure[0].Severity < 0.75 {
+		t.Fatalf("expected 1 node pressure ≥ 0.75, got %+v", out.NodePressure)
+	}
+}
+
+func TestRankCluster_HealthyAggregation(t *testing.T) {
+	in := ClusterInput{
+		Pods:   []NamedPodState{{Kind: "Pod", Namespace: "default", Name: "web-1", State: PodState{Phase: "Running", Ready: true}}},
+		Nodes:  []NamedNodeState{{Name: "ip-10-0-1-1", State: NodeState{PressureKind: "memory", PressurePct: 35}}},
+		Events: nil,
+	}
+	out := RankCluster(in)
+	if out.ClusterHealth != "healthy" {
+		t.Fatalf("expected healthy, got %q", out.ClusterHealth)
+	}
+	if len(out.TopProblems) != 0 {
+		t.Fatalf("expected 0 problems, got %d", len(out.TopProblems))
+	}
+}

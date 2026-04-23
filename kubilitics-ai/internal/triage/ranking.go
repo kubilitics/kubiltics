@@ -3,7 +3,10 @@
 // here; this package imports no k8s.io/* types.
 package triage
 
-import "time"
+import (
+	"sort"
+	"time"
+)
 
 // PodState is the minimal shape needed to score a Pod's problem severity.
 // All fields optional; zero-value represents "not observed".
@@ -132,4 +135,140 @@ func max64(a, b float64) float64 {
 		return a
 	}
 	return b
+}
+
+// NamedPodState tags a PodState with identity so RankCluster can emit
+// human-addressable problem references.
+type NamedPodState struct {
+	Kind      string
+	Namespace string
+	Name      string
+	State     PodState
+}
+
+// NamedNodeState tags a NodeState with a node name.
+type NamedNodeState struct {
+	Name  string
+	State NodeState
+}
+
+// NamedEventState tags an EventState with a display identifier.
+type NamedEventState struct {
+	Kind  string
+	Name  string
+	State EventState
+}
+
+// ClusterInput is the structured bundle RankCluster operates on.
+type ClusterInput struct {
+	Pods   []NamedPodState
+	Nodes  []NamedNodeState
+	Events []NamedEventState
+}
+
+// RankedProblem is a single ranked entry for the triage top_problems list.
+type RankedProblem struct {
+	Kind      string    `json:"kind"`
+	Namespace string    `json:"namespace,omitempty"`
+	Name      string    `json:"name"`
+	Severity  float64   `json:"severity"`
+	Reason    string    `json:"reason,omitempty"`
+	FirstSeen time.Time `json:"first_seen,omitempty"`
+}
+
+// NodePressure is a single ranked node-pressure entry.
+type NodePressure struct {
+	Node     string  `json:"node"`
+	Kind     string  `json:"kind"`
+	Pct      float64 `json:"pct"`
+	Severity float64 `json:"severity"`
+}
+
+// ClusterRanking is the RankCluster output.
+type ClusterRanking struct {
+	ClusterHealth        string            `json:"cluster_health"` // healthy | degraded | critical
+	TopProblems          []RankedProblem   `json:"top_problems"`
+	NodePressure         []NodePressure    `json:"node_pressure"`
+	RecentCriticalEvents []NamedEventState `json:"recent_critical_events,omitempty"`
+}
+
+// MaxTopProblems caps the returned ranked list size.
+const MaxTopProblems = 10
+
+// RankCluster produces the ranked triage output. Pods and events are each
+// scored and the top entries emitted; cluster_health is derived from the
+// maximum severity seen across pods and nodes.
+func RankCluster(in ClusterInput) ClusterRanking {
+	out := ClusterRanking{}
+
+	var problems []RankedProblem
+	var maxSev float64
+	for _, np := range in.Pods {
+		s := ScorePod(np.State)
+		if s < 0.40 {
+			continue
+		}
+		reason := np.State.WaitingReason
+		if reason == "" {
+			reason = np.State.LastReason
+		}
+		if reason == "" && np.State.Phase == "Pending" && np.State.SchedulingFailed {
+			reason = "FailedScheduling"
+		}
+		problems = append(problems, RankedProblem{
+			Kind: np.Kind, Namespace: np.Namespace, Name: np.Name,
+			Severity: s, Reason: reason, FirstSeen: np.State.FirstSeen,
+		})
+		if s > maxSev {
+			maxSev = s
+		}
+	}
+	sort.SliceStable(problems, func(i, j int) bool {
+		return problems[i].Severity > problems[j].Severity
+	})
+	if len(problems) > MaxTopProblems {
+		problems = problems[:MaxTopProblems]
+	}
+	out.TopProblems = problems
+
+	var nodes []NodePressure
+	var maxNode float64
+	for _, nn := range in.Nodes {
+		s := ScoreNode(nn.State)
+		if s < 0.50 {
+			continue
+		}
+		nodes = append(nodes, NodePressure{
+			Node: nn.Name, Kind: nn.State.PressureKind, Pct: nn.State.PressurePct, Severity: s,
+		})
+		if s > maxNode {
+			maxNode = s
+		}
+	}
+	sort.SliceStable(nodes, func(i, j int) bool { return nodes[i].Severity > nodes[j].Severity })
+	out.NodePressure = nodes
+
+	// Keep up to 10 recent critical events — callers already filtered window.
+	var crit []NamedEventState
+	for _, ne := range in.Events {
+		if ne.State.Type != "Warning" {
+			continue
+		}
+		crit = append(crit, ne)
+	}
+	if len(crit) > 10 {
+		crit = crit[:10]
+	}
+	out.RecentCriticalEvents = crit
+
+	// Cluster health aggregation.
+	switch {
+	case maxSev >= 0.85 || maxNode >= 0.80:
+		out.ClusterHealth = "critical"
+	case maxSev >= 0.50 || maxNode >= 0.50:
+		out.ClusterHealth = "degraded"
+	default:
+		out.ClusterHealth = "healthy"
+	}
+	return out
 }
