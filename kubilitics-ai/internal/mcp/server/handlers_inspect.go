@@ -18,6 +18,9 @@ import (
 	"fmt"
 	"strings"
 	"sync"
+	"time"
+
+	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/triage"
 )
 
 // inspectResult is the shape every inspect_<kind> handler returns.
@@ -378,4 +381,233 @@ func (s *mcpServerImpl) handleInspectCRD(ctx context.Context, args map[string]in
 	}
 	d, e, _, de, ee, _ := s.fanOut(ctx, args, s.handleCRDDetailed, s.handleCRDEvents, nil)
 	return buildInspectResult("CustomResourceDefinition", "", name, d, e, nil, de, ee, nil, []string{"ownership_chain"}), nil
+}
+
+// ─── Week 1 composites ────────────────────────────────────────────────────
+
+// handleTriageCluster: zero-config "I just got paged" narrative triage.
+// Fans out cluster overview + node status + workload health + recent events,
+// feeds structured snapshots into triage.RankCluster, emits the envelope.
+func (s *mcpServerImpl) handleTriageCluster(ctx context.Context, args map[string]interface{}) (interface{}, error) {
+	clusterID := strArg(args, "cluster_id")
+	// cluster_id is optional; lower layers fall back to session focus_cluster_id.
+
+	// Inject a 15m window on the events sub-call if caller didn't pass one.
+	eventArgs := copyArgs(args)
+	if eventArgs["since"] == nil || eventArgs["since"] == "" {
+		eventArgs["since"] = "15m"
+	}
+
+	tcOverview := s.timedCall(ctx, "observe_cluster_overview", args, s.handleClusterOverview)
+	tcNodes := s.timedCall(ctx, "observe_node_status", args, s.handleNodeStatus)
+	tcWorkloads := s.timedCall(ctx, "observe_workload_health", args, s.handleWorkloadHealth)
+	tcEvents := s.timedCall(ctx, "observe_events", eventArgs, s.handleEvents)
+
+	results := []timedResult{tcOverview, tcNodes, tcWorkloads, tcEvents}
+
+	// Shape upstream results into triage.ClusterInput. The shaping uses
+	// lenient coercion — if an upstream handler returned a different shape
+	// than expected, that axis contributes zero signal rather than crashing
+	// the whole tool.
+	in := shapeClusterInput(tcOverview.out, tcNodes.out, tcWorkloads.out, tcEvents.out)
+	ranking := triage.RankCluster(in)
+
+	var sources []compositeSource
+	errs := map[string]error{}
+	for _, r := range results {
+		sources = append(sources, compositeSource{Tool: r.name, MS: r.ms})
+		if r.err != nil {
+			errs[r.name] = r.err
+		}
+	}
+
+	summary := narrateCluster(ranking)
+	return buildComposableResult("TriageCluster", clusterID, summary, ranking, sources, errs), nil
+}
+
+func narrateCluster(r triage.ClusterRanking) string {
+	if r.ClusterHealth == "healthy" {
+		return "Cluster healthy, no active issues."
+	}
+	if len(r.TopProblems) == 0 {
+		return fmt.Sprintf("Cluster %s but no specific pod problems ranked; check node pressure.", r.ClusterHealth)
+	}
+	top := r.TopProblems[0]
+	bits := []string{fmt.Sprintf("Cluster %s:", r.ClusterHealth)}
+	bits = append(bits, fmt.Sprintf("top problem %s/%s (%s, severity %.2f)", top.Namespace, top.Name, top.Reason, top.Severity))
+	if len(r.TopProblems) > 1 {
+		bits = append(bits, fmt.Sprintf("plus %d other(s)", len(r.TopProblems)-1))
+	}
+	if len(r.NodePressure) > 0 {
+		np := r.NodePressure[0]
+		bits = append(bits, fmt.Sprintf("node %s at %.0f%% %s", np.Node, np.Pct, np.Kind))
+	}
+	return strings.Join(bits, "; ") + "."
+}
+
+// ─── Week-1 shared helpers ────────────────────────────────────────────────
+
+// timedResult records a sub-handler call's identity, output, latency, and
+// error. Returned by timedCall; consumed by Week-1 composite handlers.
+type timedResult struct {
+	name string
+	out  interface{}
+	ms   int64
+	err  error
+}
+
+// timedCall invokes a sub-handler and records wall-clock latency in ms.
+// It reuses the existing handlerFn contract.
+func (s *mcpServerImpl) timedCall(ctx context.Context, name string, args map[string]interface{}, fn handlerFn) timedResult {
+	start := time.Now()
+	out, err := fn(ctx, args)
+	return timedResult{name: name, out: out, ms: time.Since(start).Milliseconds(), err: err}
+}
+
+// copyArgs returns a shallow copy so sub-handlers can mutate "since" etc.
+// without mutating the caller's map.
+func copyArgs(a map[string]interface{}) map[string]interface{} {
+	out := make(map[string]interface{}, len(a)+1)
+	for k, v := range a {
+		out[k] = v
+	}
+	return out
+}
+
+// shapeClusterInput performs lenient coercion of four upstream sub-handler
+// outputs into triage.ClusterInput. Each axis is independent — an upstream
+// error yields zero contribution from that axis only.
+func shapeClusterInput(overviewOut, nodesOut, workloadsOut, eventsOut interface{}) triage.ClusterInput {
+	in := triage.ClusterInput{}
+	// Pods — extract from workload-health rollup. Tolerant: look for a
+	// "pods" array on the map, fall back to empty.
+	if m, ok := workloadsOut.(map[string]interface{}); ok {
+		if pods, ok := m["pods"].([]interface{}); ok {
+			for _, p := range pods {
+				np := shapePod(p)
+				if np.Name != "" {
+					in.Pods = append(in.Pods, np)
+				}
+			}
+		}
+	}
+	// Nodes — from node_status.
+	if m, ok := nodesOut.(map[string]interface{}); ok {
+		if nodes, ok := m["nodes"].([]interface{}); ok {
+			for _, n := range nodes {
+				nn := shapeNode(n)
+				if nn.Name != "" {
+					in.Nodes = append(in.Nodes, nn)
+				}
+			}
+		}
+	}
+	// Events — from events output.
+	if m, ok := eventsOut.(map[string]interface{}); ok {
+		if evs, ok := m["events"].([]interface{}); ok {
+			for _, ev := range evs {
+				ne := shapeEvent(ev)
+				if ne.Name != "" {
+					in.Events = append(in.Events, ne)
+				}
+			}
+		}
+	}
+	_ = overviewOut // reserved — overview currently provides no pod-level detail used here
+	return in
+}
+
+func shapePod(in interface{}) triage.NamedPodState {
+	m, ok := in.(map[string]interface{})
+	if !ok {
+		return triage.NamedPodState{}
+	}
+	return triage.NamedPodState{
+		Kind:      "Pod",
+		Namespace: strFrom(m, "namespace"),
+		Name:      strFrom(m, "name"),
+		State: triage.PodState{
+			Phase:            strFrom(m, "phase"),
+			WaitingReason:    strFrom(m, "waiting_reason"),
+			LastReason:       strFrom(m, "last_reason"),
+			LastExitCode:     intFrom(m, "last_exit_code"),
+			RestartCount:     intFrom(m, "restart_count"),
+			Ready:            boolFrom(m, "ready"),
+			SchedulingFailed: boolFrom(m, "scheduling_failed"),
+			FirstSeen:        timeFrom(m, "first_seen"),
+		},
+	}
+}
+
+func shapeNode(in interface{}) triage.NamedNodeState {
+	m, ok := in.(map[string]interface{})
+	if !ok {
+		return triage.NamedNodeState{}
+	}
+	return triage.NamedNodeState{
+		Name: strFrom(m, "name"),
+		State: triage.NodeState{
+			PressureKind: strFrom(m, "pressure_kind"),
+			PressurePct:  floatFrom(m, "pressure_pct"),
+		},
+	}
+}
+
+func shapeEvent(in interface{}) triage.NamedEventState {
+	m, ok := in.(map[string]interface{})
+	if !ok {
+		return triage.NamedEventState{}
+	}
+	return triage.NamedEventState{
+		Kind: "Event",
+		Name: strFrom(m, "name"),
+		State: triage.EventState{
+			Type:      strFrom(m, "type"),
+			Reason:    strFrom(m, "reason"),
+			FirstSeen: timeFrom(m, "first_seen"),
+		},
+	}
+}
+
+func strFrom(m map[string]interface{}, k string) string {
+	if v, ok := m[k].(string); ok {
+		return v
+	}
+	return ""
+}
+
+func intFrom(m map[string]interface{}, k string) int {
+	switch v := m[k].(type) {
+	case int:
+		return v
+	case float64:
+		return int(v)
+	}
+	return 0
+}
+
+func floatFrom(m map[string]interface{}, k string) float64 {
+	switch v := m[k].(type) {
+	case float64:
+		return v
+	case int:
+		return float64(v)
+	}
+	return 0
+}
+
+func boolFrom(m map[string]interface{}, k string) bool {
+	if v, ok := m[k].(bool); ok {
+		return v
+	}
+	return false
+}
+
+func timeFrom(m map[string]interface{}, k string) time.Time {
+	s, ok := m[k].(string)
+	if !ok {
+		return time.Time{}
+	}
+	t, _ := time.Parse(time.RFC3339, s)
+	return t
 }
