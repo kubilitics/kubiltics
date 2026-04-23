@@ -45,6 +45,10 @@ url = "2"
 wiremock = "0.6"
 tempfile = "3"
 tokio = { version = "1", features = ["full", "test-util"] }
+# Serialize tests that touch process-global state (keyring default builder,
+# HOME/XDG_CONFIG_HOME env vars). Parallel execution races and produces
+# flaky "keychain lost the key" failures on CI.
+serial_test = "3"
 
 [features]
 default = ["custom-protocol"]

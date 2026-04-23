@@ -30,9 +30,95 @@ use wiremock::{Mock, MockServer, ResponseTemplate};
 
 use super::*;
 
-fn use_mock_keyring() {
-    // Idempotent — safe to call from multiple tests.
-    keyring::set_default_credential_builder(keyring::mock::default_credential_builder());
+pub(super) fn use_mock_keyring() {
+    // keyring v3's bundled mock has no cross-Entry persistence — each
+    // Entry::new creates a fresh mock credential with EntryOnly persistence
+    // (see keyring::mock::MockCredentialBuilder). That defeats save→load
+    // round-trip testing because the second Entry can't see the first's
+    // password.
+    //
+    // We install a custom InMemoryCredentialBuilder that persists in a
+    // process-global HashMap keyed by (service, user). Install exactly
+    // once per process via Once; concurrent tests are serialized via
+    // #[serial_test::serial(ai_config_global_state)] so writes + reads
+    // never interleave.
+    use std::sync::Once;
+    static INIT: Once = Once::new();
+    INIT.call_once(|| {
+        keyring::set_default_credential_builder(inmem_keyring::builder());
+    });
+}
+
+mod inmem_keyring {
+    //! Process-global in-memory credential store for tests.
+    //!
+    //! Unlike keyring::mock (EntryOnly persistence), this store survives
+    //! across Entry::new calls — which is what the save → simulated-restart
+    //! → load flow actually exercises.
+
+    use keyring::credential::{Credential, CredentialApi, CredentialBuilderApi, CredentialPersistence};
+    use keyring::Error as KErr;
+    use std::collections::HashMap;
+    use std::sync::{Mutex, OnceLock};
+
+    fn store() -> &'static Mutex<HashMap<(String, String), String>> {
+        static STORE: OnceLock<Mutex<HashMap<(String, String), String>>> = OnceLock::new();
+        STORE.get_or_init(|| Mutex::new(HashMap::new()))
+    }
+
+    pub struct InMemCredential {
+        service: String,
+        user: String,
+    }
+
+    impl CredentialApi for InMemCredential {
+        fn set_password(&self, password: &str) -> keyring::Result<()> {
+            self.set_secret(password.as_bytes())
+        }
+        fn set_secret(&self, secret: &[u8]) -> keyring::Result<()> {
+            let s = std::str::from_utf8(secret).map_err(|_| KErr::BadEncoding(secret.to_vec()))?;
+            store().lock().unwrap().insert((self.service.clone(), self.user.clone()), s.to_string());
+            Ok(())
+        }
+        fn get_password(&self) -> keyring::Result<String> {
+            match store().lock().unwrap().get(&(self.service.clone(), self.user.clone())) {
+                Some(s) => Ok(s.clone()),
+                None => Err(KErr::NoEntry),
+            }
+        }
+        fn get_secret(&self) -> keyring::Result<Vec<u8>> {
+            self.get_password().map(|s| s.into_bytes())
+        }
+        fn delete_credential(&self) -> keyring::Result<()> {
+            let mut map = store().lock().unwrap();
+            if map.remove(&(self.service.clone(), self.user.clone())).is_some() {
+                Ok(())
+            } else {
+                Err(KErr::NoEntry)
+            }
+        }
+        fn as_any(&self) -> &dyn std::any::Any { self }
+        fn debug_fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            write!(f, "InMemCredential({}, {})", self.service, self.user)
+        }
+    }
+
+    pub struct InMemBuilder;
+
+    impl CredentialBuilderApi for InMemBuilder {
+        fn build(&self, _target: Option<&str>, service: &str, user: &str) -> keyring::Result<Box<Credential>> {
+            Ok(Box::new(InMemCredential {
+                service: service.to_string(),
+                user: user.to_string(),
+            }))
+        }
+        fn as_any(&self) -> &dyn std::any::Any { self }
+        fn persistence(&self) -> CredentialPersistence { CredentialPersistence::ProcessOnly }
+    }
+
+    pub fn builder() -> Box<dyn CredentialBuilderApi + Send + Sync + 'static> {
+        Box::new(InMemBuilder)
+    }
 }
 
 fn scoped_config_dir() -> tempfile::TempDir {
@@ -47,6 +133,7 @@ fn scoped_config_dir() -> tempfile::TempDir {
 }
 
 #[tokio::test]
+#[serial_test::serial(ai_config_global_state)]
 async fn e2e_save_restart_load_roundtrip_preserves_keychain() {
     use_mock_keyring();
     let _tmp = scoped_config_dir();
@@ -78,6 +165,7 @@ async fn e2e_save_restart_load_roundtrip_preserves_keychain() {
 }
 
 #[tokio::test]
+#[serial_test::serial(ai_config_global_state)]
 async fn e2e_test_llm_connection_sends_stored_key_as_bearer() {
     use_mock_keyring();
     let _tmp = scoped_config_dir();

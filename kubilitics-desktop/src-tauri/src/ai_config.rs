@@ -517,8 +517,13 @@ mod tests {
     // touching real OS credentials. Set via an init guard so concurrent
     // tests in the same process share one mock store safely.
     #[test]
+    #[serial_test::serial(ai_config_global_state)]
     fn keyring_round_trip_mock_backend() {
-        keyring::set_default_credential_builder(keyring::mock::default_credential_builder());
+        // Uses the cross-Entry-persisting in-memory credential builder
+        // defined in ai_config_e2e_test::inmem_keyring. keyring v3's
+        // bundled mock has EntryOnly persistence, which makes save+load
+        // tests impossible because each Entry::new creates a fresh mock.
+        super::e2e::use_mock_keyring();
         // set + get
         keychain_set("test-account-a", "sk-abc-123").expect("set");
         let got = keychain_get("test-account-a").expect("get");
