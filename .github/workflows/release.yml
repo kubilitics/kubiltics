@@ -280,15 +280,17 @@ jobs:
           VERSION=${GITHUB_REF#refs/tags/v}
           BACKEND_LDFLAGS="-s -w -X github.com/kubilitics/kubilitics-backend/internal/version.Version=${VERSION}"
 
-          BRAIN_SRC="kubilitics-ai-src/kubilitics-ai"
+          # kotg.ai repo root IS the Go module (cmd/ at root) — no nested
+          # kubilitics-ai/ subdirectory since the repo reorg.
+          BRAIN_SRC="kubilitics-ai-src"
           BRAIN_PKG="./cmd/server"
           if [ "${{ matrix.os }}" == "macos-latest" ]; then
             (cd kubilitics-backend && CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -ldflags="$BACKEND_LDFLAGS" -o "../$BINS/kubilitics-backend-x86_64-apple-darwin"   ./cmd/server) &
             (cd kubilitics-backend && CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -ldflags="$BACKEND_LDFLAGS" -o "../$BINS/kubilitics-backend-aarch64-apple-darwin"  ./cmd/server) &
             (cd kubilitics-cli    && CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -ldflags="-s -w" -o "../$BINS/kcli-x86_64-apple-darwin"                  ./cmd/kcli) &
             (cd kubilitics-cli    && CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -ldflags="-s -w" -o "../$BINS/kcli-aarch64-apple-darwin"                 ./cmd/kcli) &
-            (cd "$BRAIN_SRC"      && CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -ldflags="-s -w" -o "../../$BINS/kubilitics-ai-server-x86_64-apple-darwin"   $BRAIN_PKG) &
-            (cd "$BRAIN_SRC"      && CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -ldflags="-s -w" -o "../../$BINS/kubilitics-ai-server-aarch64-apple-darwin"  $BRAIN_PKG) &
+            (cd "$BRAIN_SRC"      && CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -ldflags="-s -w" -o "../$BINS/kubilitics-ai-server-x86_64-apple-darwin"   $BRAIN_PKG) &
+            (cd "$BRAIN_SRC"      && CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -ldflags="-s -w" -o "../$BINS/kubilitics-ai-server-aarch64-apple-darwin"  $BRAIN_PKG) &
             wait
             lipo -create "$BINS/kubilitics-backend-x86_64-apple-darwin" \
                          "$BINS/kubilitics-backend-aarch64-apple-darwin" \
@@ -312,15 +314,15 @@ jobs:
             cd "../$BRAIN_SRC"
             CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build \
               -ldflags="-s -w" \
-              -o "../../$BINS/kubilitics-ai-server-x86_64-pc-windows-msvc.exe" $BRAIN_PKG
+              -o "../$BINS/kubilitics-ai-server-x86_64-pc-windows-msvc.exe" $BRAIN_PKG
 
           else
             (cd kubilitics-backend && CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="$BACKEND_LDFLAGS" -o "../$BINS/kubilitics-backend-x86_64-unknown-linux-gnu"   ./cmd/server) &
             (cd kubilitics-backend && CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -ldflags="$BACKEND_LDFLAGS" -o "../$BINS/kubilitics-backend-aarch64-unknown-linux-gnu"  ./cmd/server) &
             (cd kubilitics-cli    && CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o "../$BINS/kcli-x86_64-unknown-linux-gnu"                  ./cmd/kcli) &
             (cd kubilitics-cli    && CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -ldflags="-s -w" -o "../$BINS/kcli-aarch64-unknown-linux-gnu"                 ./cmd/kcli) &
-            (cd "$BRAIN_SRC"      && CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o "../../$BINS/kubilitics-ai-server-x86_64-unknown-linux-gnu"   $BRAIN_PKG) &
-            (cd "$BRAIN_SRC"      && CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -ldflags="-s -w" -o "../../$BINS/kubilitics-ai-server-aarch64-unknown-linux-gnu"  $BRAIN_PKG) &
+            (cd "$BRAIN_SRC"      && CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o "../$BINS/kubilitics-ai-server-x86_64-unknown-linux-gnu"   $BRAIN_PKG) &
+            (cd "$BRAIN_SRC"      && CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -ldflags="-s -w" -o "../$BINS/kubilitics-ai-server-aarch64-unknown-linux-gnu"  $BRAIN_PKG) &
             wait
             chmod +x "$BINS/kubilitics-backend-"* "$BINS/kcli-"* "$BINS/kubilitics-ai-server-"*
           fi
