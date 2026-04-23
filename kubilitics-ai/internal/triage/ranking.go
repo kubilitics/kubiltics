@@ -298,3 +298,84 @@ func RankCluster(in ClusterInput) ClusterRanking {
 	}
 	return out
 }
+
+// RankProblems applies a filter-enum predicate over NamedPodState and
+// returns the severity-ranked matches. truncated=true signals the list
+// hit the cap.
+func RankProblems(pods []NamedPodState, filter string, limit int) (out []RankedProblem, truncated bool) {
+	pred := problemPredicate(filter)
+	if pred == nil {
+		return nil, false
+	}
+	for _, np := range pods {
+		if !pred(np.State) {
+			continue
+		}
+		out = append(out, RankedProblem{
+			Kind: np.Kind, Namespace: np.Namespace, Name: np.Name,
+			Severity:  ScorePod(np.State),
+			Reason:    predicateReason(filter, np.State),
+			FirstSeen: np.State.FirstSeen,
+		})
+	}
+	sort.SliceStable(out, func(i, j int) bool { return out[i].Severity > out[j].Severity })
+	if limit > 0 && len(out) > limit {
+		return out[:limit], true
+	}
+	return out, false
+}
+
+type podPredicate func(PodState) bool
+
+func problemPredicate(filter string) podPredicate {
+	switch filter {
+	case "crashlooping":
+		return func(p PodState) bool {
+			return p.WaitingReason == "CrashLoopBackOff" || p.RestartCount > 5
+		}
+	case "oom":
+		return func(p PodState) bool {
+			return p.LastReason == "OOMKilled" || p.LastExitCode == 137
+		}
+	case "pending":
+		return func(p PodState) bool {
+			return p.Phase == "Pending" && p.SchedulingFailed
+		}
+	case "evicted":
+		return func(p PodState) bool {
+			return p.Phase == "Failed" && p.LastReason == "Evicted"
+		}
+	case "image_pull_error":
+		return func(p PodState) bool {
+			return p.WaitingReason == "ImagePullBackOff" || p.WaitingReason == "ErrImagePull"
+		}
+	case "unhealthy":
+		return func(p PodState) bool {
+			// Caller passes only pods observed unhealthy for >= 5m.
+			return !p.Ready && p.Phase == "Running"
+		}
+	default:
+		return nil
+	}
+}
+
+func predicateReason(filter string, p PodState) string {
+	switch filter {
+	case "crashlooping":
+		if p.WaitingReason != "" {
+			return p.WaitingReason
+		}
+		return "RestartStorm"
+	case "oom":
+		return "OOMKilled"
+	case "pending":
+		return "FailedScheduling"
+	case "evicted":
+		return "Evicted"
+	case "image_pull_error":
+		return p.WaitingReason
+	case "unhealthy":
+		return "NotReady"
+	}
+	return ""
+}

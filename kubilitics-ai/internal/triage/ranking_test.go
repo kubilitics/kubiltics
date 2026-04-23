@@ -131,3 +131,41 @@ func TestRankCluster_HealthyAggregation(t *testing.T) {
 		t.Fatalf("expected 0 problems, got %d", len(out.TopProblems))
 	}
 }
+
+func TestRankProblems_CrashloopingFilter(t *testing.T) {
+	now := time.Now()
+	pods := []NamedPodState{
+		{Kind: "Pod", Namespace: "a", Name: "healthy", State: PodState{Phase: "Running", Ready: true}},
+		{Kind: "Pod", Namespace: "b", Name: "crash-x", State: PodState{Phase: "Running", WaitingReason: "CrashLoopBackOff", RestartCount: 9, FirstSeen: now.Add(-2 * time.Minute)}},
+		{Kind: "Pod", Namespace: "b", Name: "crash-y", State: PodState{Phase: "Running", WaitingReason: "CrashLoopBackOff", RestartCount: 47, LastExitCode: 137, FirstSeen: now.Add(-20 * time.Minute)}},
+	}
+	out, truncated := RankProblems(pods, "crashlooping", 50)
+	if truncated {
+		t.Fatalf("unexpected truncation")
+	}
+	if len(out) != 2 {
+		t.Fatalf("expected 2 crashlooping entries, got %d", len(out))
+	}
+	// crash-y (47 restarts + OOM) outranks crash-x (9 restarts).
+	if out[0].Name != "crash-y" {
+		t.Fatalf("expected crash-y first, got %q", out[0].Name)
+	}
+}
+
+func TestRankProblems_TruncatesToLimit(t *testing.T) {
+	var pods []NamedPodState
+	for i := 0; i < 60; i++ {
+		pods = append(pods, NamedPodState{Kind: "Pod", Namespace: "x", Name: "p", State: PodState{WaitingReason: "CrashLoopBackOff", RestartCount: 5}})
+	}
+	out, truncated := RankProblems(pods, "crashlooping", 50)
+	if !truncated || len(out) != 50 {
+		t.Fatalf("expected len=50 & truncated, got len=%d truncated=%v", len(out), truncated)
+	}
+}
+
+func TestRankProblems_UnknownFilterReturnsEmpty(t *testing.T) {
+	out, _ := RankProblems(nil, "unknownfilter", 50)
+	if len(out) != 0 {
+		t.Fatalf("unknown filter must return empty, got %d", len(out))
+	}
+}
