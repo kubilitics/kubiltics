@@ -2,6 +2,8 @@ package audit
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -341,7 +343,11 @@ func WithCorrelationID(ctx context.Context, id string) context.Context {
 	return context.WithValue(ctx, "correlation_id", id)
 }
 
-// GenerateCorrelationID generates a new correlation ID
+// GenerateCorrelationID generates a new correlation ID. Uniqueness is guaranteed
+// even for back-to-back calls at sub-nanosecond resolution by mixing in 8 random
+// bytes — UnixNano alone collides on modern fast machines with coarse clocks.
 func GenerateCorrelationID() string {
-	return fmt.Sprintf("%d-%d", time.Now().UnixNano(), os.Getpid())
+	var b [8]byte
+	_, _ = rand.Read(b[:])
+	return fmt.Sprintf("%d-%d-%s", time.Now().UnixNano(), os.Getpid(), hex.EncodeToString(b[:]))
 }

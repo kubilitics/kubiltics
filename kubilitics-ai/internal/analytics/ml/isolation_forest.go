@@ -54,6 +54,12 @@ func NewIsolationForest(numTrees, subSampleSize, maxDepth int) *IsolationForest 
 	}
 }
 
+// SetSeed pins the internal RNG for deterministic training. Use in tests to
+// make isolation-forest behavior reproducible.
+func (f *IsolationForest) SetSeed(seed int64) {
+	f.rng = rand.New(rand.NewSource(seed))
+}
+
 // normalizeDataPoints ensures every DataPoint has a populated Features slice.
 // If Features is empty but Value is set, we use [Value] as a 1-D feature vector.
 func normalizeDataPoints(data []DataPoint) []DataPoint {
