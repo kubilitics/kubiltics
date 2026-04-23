@@ -97,6 +97,12 @@ checks, and narrators.
   `observe_recent_changes` (was silently empty).
 - Sidebar counter widget gracefully degrades when `/summary` is
   rate-limited; no more 0-everywhere flashes on cluster switch.
+- Audit-log correlation IDs are now guaranteed unique across rapid
+  back-to-back calls (previously collided on fast machines where
+  two calls landed in the same nanosecond).
+- Addon-audit-events DELETE is now allowed to cascade on cluster
+  removal (migration 052 intent) — prior release kept a stale
+  DELETE trigger that blocked cluster-unregister transactions.
 
 ### Known Issues
 
