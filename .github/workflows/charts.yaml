@@ -17,6 +17,12 @@ jobs:
     # published once for the GA tag. Pages setup also errors out on
     # unconfigured repos — not a release blocker for prereleases.
     if: "!contains(github.ref_name, '-')"
+    # Soft-fail: publishing requires GitHub Pages to be enabled on the
+    # repo (Settings → Pages → Source: GitHub Actions). Until that's
+    # turned on, this fails — we don't want that to block a successful
+    # desktop release. Chart is still linted in the helm-ci workflow on
+    # every PR; this step only blocks the Pages-hosted chart index.
+    continue-on-error: true
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

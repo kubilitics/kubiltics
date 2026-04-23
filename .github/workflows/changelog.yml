@@ -42,6 +42,11 @@ jobs:
 
       - name: Open PR with regenerated changelog
         uses: peter-evans/create-pull-request@v7
+        # Soft-fail: "Allow GitHub Actions to create and approve pull
+        # requests" is off at the repo level, so this will error. The
+        # CHANGELOG has already been generated; a maintainer can commit
+        # it manually or enable the setting.
+        continue-on-error: true
         with:
           commit-message: "chore(changelog): regenerate for ${{ github.ref_name }}"
           title: "chore(changelog): regenerate for ${{ github.ref_name }}"
