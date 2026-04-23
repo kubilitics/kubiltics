@@ -31,6 +31,7 @@ const PageLoader = () => (
 import SettingsPage from "./pages/Settings";
 const AISettingsPage = lazy(() => import("./pages/settings/AISettingsPage"));
 const AIBudgetPage = lazy(() => import("./pages/settings/AIBudgetPage"));
+const ToolCatalogPage = lazy(() => import("./pages/settings/ToolCatalogPage"));
 const ModeSelection = lazy(() => import("./pages/ModeSelection"));
 const ClusterConnect = lazy(() => import("./pages/ClusterConnect"));
 const ConnectedRedirect = lazy(() => import("./pages/ConnectedRedirect"));
@@ -842,6 +843,7 @@ const App = () => (
                         <Route path="/settings" element={<SettingsPage />} />
                         <Route path="/settings/ai" element={<AISettingsPage />} />
                         <Route path="/settings/ai/budget" element={<AIBudgetPage />} />
+                        <Route path="/settings/ai/tools" element={<ToolCatalogPage />} />
                         {/* Cluster Topology */}
                         <Route path="/topology" element={<Topology />} />
                         {/* Resource Templates */}

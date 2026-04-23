@@ -142,6 +142,35 @@ type MetricsHistoryPoint struct {
 	PodPoints  []PodHistoryPoint  `json:"pods,omitempty"`
 }
 
+// ClusterAggregatePod is a per-pod row in the unscoped metrics aggregate.
+// Field names match the shape the kubilitics-ai brain consumes directly
+// (observe_pod_metrics unscoped, observe_top_pods_by_metric).
+type ClusterAggregatePod struct {
+	Namespace     string  `json:"namespace"`
+	Name          string  `json:"name"`
+	CPUMillicores float64 `json:"cpu_millicores"`
+	MemoryMiB     float64 `json:"memory_mib"`
+}
+
+// ClusterAggregateNode is a per-node row in the unscoped metrics aggregate.
+type ClusterAggregateNode struct {
+	Name          string  `json:"name"`
+	CPUMillicores float64 `json:"cpu_millicores"`
+	MemoryMiB     float64 `json:"memory_mib"`
+}
+
+// ClusterMetricsAggregate is the response shape for GET /metrics/summary when
+// no resource_type / resource_name is supplied. Brain tools expect either
+// populated slices or the degrades-gracefully fallback flag.
+type ClusterMetricsAggregate struct {
+	ClusterID          string                 `json:"cluster_id"`
+	Pods               []ClusterAggregatePod  `json:"pods"`
+	Nodes              []ClusterAggregateNode `json:"nodes"`
+	TopN               int                    `json:"top_n,omitempty"`
+	MetricsUnavailable bool                   `json:"metrics_unavailable,omitempty"`
+	Reason             string                 `json:"reason,omitempty"`
+}
+
 type MetricsHistoryResponse struct {
 	ClusterID    string               `json:"cluster_id"`
 	Namespace    string               `json:"namespace"`

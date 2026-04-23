@@ -147,7 +147,16 @@ impl BackendManager {
             // Allow tauri:// origin so fetch() calls from the WebView are not blocked by CORS
             .env("KUBILITICS_ALLOWED_ORIGINS", tauri_allowed_origins)
             // P0-J: Write SQLite DB to user-writable location (not read-only .app bundle)
-            .env("KUBILITICS_DATABASE_PATH", db_file.to_string_lossy().as_ref());
+            .env("KUBILITICS_DATABASE_PATH", db_file.to_string_lossy().as_ref())
+            // AI wiring — backend proxies chat/capabilities to the brain sidecar.
+            // Without these three env vars, /api/v1/ai/* returns 404 and the
+            // Chat panel shows "AI Unreachable" even when the brain itself is up.
+            //   KUBILITICS_AI_ENABLED=true         → register the /ai routes
+            //   KUBILITICS_AI_ENDPOINT             → brain gRPC (matches BRAIN_GRPC_PORT)
+            //   KUBILITICS_AI_HTTP_ENDPOINT        → brain HTTP  (matches BRAIN_HTTP_PORT)
+            .env("KUBILITICS_AI_ENABLED", "true")
+            .env("KUBILITICS_AI_ENDPOINT", format!("localhost:{}", BRAIN_GRPC_PORT))
+            .env("KUBILITICS_AI_HTTP_ENDPOINT", format!("http://localhost:{}", BRAIN_HTTP_PORT));
 
         // Only set KCLI_BIN when the sidecar actually found a real path.
         // Setting KCLI_BIN="" or KCLI_BIN="kcli" (bare name) causes the backend to
@@ -405,3 +414,200 @@ pub fn get_backend_status(app_handle: AppHandle) -> Result<serde_json::Value, St
     }))
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// BrainManager — kubilitics-ai-server sidecar (Phase 6 F.2)
+//
+// Spawns the brain as a sibling sidecar to the backend. The brain exposes an
+// HTTP health endpoint on :8081 (config-driven; see kubilitics-ai Helm chart)
+// and its gRPC API on :50051. We wait for /health before marking ready.
+//
+// Missing-sidecar is non-fatal: if the kubilitics-ai-server binary isn't
+// shipped (dev bundle, partial build), we log and skip — the AI chat panel
+// will show "AI disabled" but the rest of the app works.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const BRAIN_HTTP_PORT: u16 = 8081;
+
+// 50061 to avoid collision with kubilitics-backend's gRPC on 50051.
+const BRAIN_GRPC_PORT: u16 = 50061;
+const BRAIN_READY_TIMEOUT_SECS: u64 = 90;
+
+pub struct BrainManager {
+    app_handle: AppHandle,
+    is_ready: Arc<Mutex<bool>>,
+    brain_process: Arc<Mutex<Option<tauri_plugin_shell::process::CommandChild>>>,
+}
+
+impl BrainManager {
+    pub fn new(app_handle: AppHandle) -> Self {
+        Self {
+            app_handle,
+            is_ready: Arc::new(Mutex::new(false)),
+            brain_process: Arc::new(Mutex::new(None)),
+        }
+    }
+
+    pub fn is_ready(&self) -> bool {
+        *self.is_ready.lock().unwrap()
+    }
+
+    pub async fn start(self: Arc<Self>) -> Result<(), Box<dyn std::error::Error>> {
+        let _ = self.app_handle.emit("brain-status", serde_json::json!({
+            "status": "starting",
+            "message": "Starting AI engine…"
+        }));
+
+        let sidecar = match self.app_handle.shell().sidecar("kubilitics-ai-server") {
+            Ok(s) => s,
+            Err(e) => {
+                // Binary not bundled. Emit "unavailable" and return Ok — the app
+                // remains usable without AI.
+                println!("kubilitics-ai-server sidecar not found ({}); AI disabled", e);
+                let _ = self.app_handle.emit("brain-status", serde_json::json!({
+                    "status": "unavailable",
+                    "message": "AI engine binary not bundled; chat disabled"
+                }));
+                return Ok(());
+            }
+        };
+
+        // Two directories matter here and they can differ across OSes:
+        //   config_dir  — where ai_config::save_ai_config writes config.yaml
+        //                 + keychain-managed API keys (macOS: Library/Application
+        //                 Support, Linux: ~/.config, Windows: %AppData%)
+        //   data_dir    — where the brain writes its SQLite DB (macOS:
+        //                 Library/Application Support, Linux: ~/.local/share,
+        //                 Windows: %LocalAppData%)
+        // Point the brain at the correct one for each. Missing dirs are
+        // created best-effort.
+        let config_dir = dirs::config_dir()
+            .unwrap_or_else(|| dirs::home_dir().unwrap_or_else(|| std::path::PathBuf::from(".")))
+            .join("kubilitics");
+        let data_dir = dirs::data_local_dir()
+            .unwrap_or_else(|| dirs::home_dir().unwrap_or_else(|| std::path::PathBuf::from(".")))
+            .join("kubilitics");
+        let _ = std::fs::create_dir_all(&config_dir);
+        let _ = std::fs::create_dir_all(&data_dir);
+
+        // Brain spawns with no API key on purpose — reading the keychain
+        // at spawn time triggers a macOS permission dialog on every dev
+        // rebuild (the binary hash changes, so the ACL stored against the
+        // old hash doesn't match). Instead, save_ai_config hot-wires the
+        // brain via POST /api/v1/config/provider whenever the user saves
+        // a key, so the keychain is only read once per save action (by
+        // the same Tauri process that wrote it, which macOS trusts).
+        //
+        // Net effect: brain comes up in "provider configured, no key"
+        // mode until the user clicks Save & Test — which both happens
+        // implicitly on Quick Connect AND is idempotent for returning
+        // users. No repeating keychain dialogs.
+        let cmd = sidecar
+            .env("KUBILITICS_AI_HTTP_PORT", BRAIN_HTTP_PORT.to_string())
+            .env("KUBILITICS_AI_GRPC_PORT", BRAIN_GRPC_PORT.to_string())
+            .env("KUBILITICS_AI_CONFIG_PATH", config_dir.join("config.yaml").to_string_lossy().as_ref())
+            .env("KUBILITICS_DATABASE_PATH", data_dir.join("kubilitics-ai.db").to_string_lossy().as_ref())
+            .env("KUBILITICS_BACKEND_URL", format!("http://localhost:{}", BACKEND_PORT));
+
+        let (_rx, child) = cmd.spawn()?;
+        *self.brain_process.lock().unwrap() = Some(child);
+        println!("kubilitics-ai-server started on http://localhost:{} (gRPC :{})", BRAIN_HTTP_PORT, BRAIN_GRPC_PORT);
+
+        // Wait for /health.
+        match self.wait_for_ready().await {
+            Ok(()) => {
+                *self.is_ready.lock().unwrap() = true;
+                let _ = self.app_handle.emit("brain-status", serde_json::json!({
+                    "status": "ready",
+                    "message": "AI engine ready"
+                }));
+            }
+            Err(e) => {
+                eprintln!("Brain failed to become ready: {:#}", e);
+                let _ = self.app_handle.emit("brain-status", serde_json::json!({
+                    "status": "error",
+                    "message": format!("AI engine failed to start: {:#}", e)
+                }));
+            }
+        }
+        Ok(())
+    }
+
+    async fn wait_for_ready(&self) -> Result<(), Box<dyn std::error::Error>> {
+        let url = format!("http://localhost:{}/health", BRAIN_HTTP_PORT);
+        let client = reqwest::Client::builder()
+            .timeout(Duration::from_secs(HEALTH_CHECK_TIMEOUT_SECS))
+            .build()?;
+        let attempts = BRAIN_READY_TIMEOUT_SECS * 2; // 500 ms cadence
+        for i in 0..attempts {
+            match client.get(&url).send().await {
+                Ok(resp) if resp.status().is_success() => return Ok(()),
+                _ => {
+                    if i % 10 == 0 && i > 0 {
+                        println!("Waiting for brain /health... ({}s)", i / 2);
+                    }
+                    sleep(Duration::from_millis(500)).await;
+                }
+            }
+        }
+        Err(format!("brain did not become ready within {}s", BRAIN_READY_TIMEOUT_SECS).into())
+    }
+
+    pub async fn stop(&self) {
+        if let Some(child) = self.brain_process.lock().unwrap().take() {
+            let _ = child.kill();
+            println!("kubilitics-ai-server stopped");
+        }
+    }
+
+    /// Restart the brain after config.yaml / keychain changes so it
+    /// picks up the new provider / model / API key. Called from
+    /// ai_config::save_ai_config.
+    pub async fn restart(self: Arc<Self>) -> Result<(), Box<dyn std::error::Error>> {
+        // Kill the current child and clear the ready flag.
+        if let Some(child) = self.brain_process.lock().unwrap().take() {
+            let _ = child.kill();
+        }
+        *self.is_ready.lock().unwrap() = false;
+        let _ = self.app_handle.emit("brain-status", serde_json::json!({
+            "status": "starting",
+            "message": "Reloading AI engine with new configuration…"
+        }));
+        // Give the OS a moment to release the port, then start fresh.
+        sleep(Duration::from_millis(500)).await;
+        self.start().await
+    }
+}
+
+pub fn start_brain(app_handle: &AppHandle) -> Result<Arc<BrainManager>, Box<dyn std::error::Error>> {
+    let manager = Arc::new(BrainManager::new(app_handle.clone()));
+    app_handle.manage(manager.clone());
+    let manager_clone = manager.clone();
+    tauri::async_runtime::spawn(async move {
+        if let Err(e) = manager_clone.start().await {
+            eprintln!("Failed to start brain: {}", e);
+        }
+    });
+    Ok(manager)
+}
+
+#[tauri::command]
+pub fn get_brain_status(app_handle: AppHandle) -> Result<serde_json::Value, String> {
+    let manager = app_handle.try_state::<Arc<BrainManager>>();
+    let ready = manager.map(|m| m.is_ready()).unwrap_or(false);
+    Ok(serde_json::json!({
+        "status": if ready { "ready" } else { "starting" },
+        "message": if ready { "AI engine ready" } else { "Starting AI engine…" }
+    }))
+}
+
+/// restart_brain — kill + respawn kubilitics-ai-server so it re-reads
+/// config.yaml + the keychain API key. Called from save_ai_config so
+/// "Save & Test" actually tests against the new config.
+#[tauri::command]
+pub async fn restart_brain(app_handle: AppHandle) -> Result<(), String> {
+    let manager = app_handle
+        .try_state::<Arc<BrainManager>>()
+        .ok_or_else(|| "brain manager not initialized".to_string())?;
+    let m = (*manager).clone();
+    m.restart().await.map_err(|e| format!("restart: {:#}", e))
+}

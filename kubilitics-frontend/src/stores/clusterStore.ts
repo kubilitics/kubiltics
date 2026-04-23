@@ -228,6 +228,14 @@ export const useClusterStore = create<ClusterState>()(
             }
           });
         }
+        // Phase 2 / Blocker B — broadcast the switch so cluster-scoped caches
+        // (events, topology, traces, sidebar counters, ...) can clear their
+        // stale slices synchronously. No-ops when the id is unchanged.
+        if (cluster?.id) {
+          import('@/stores/clusterSwitch').then(({ emitClusterSwitch }) => {
+            emitClusterSwitch(cluster.id);
+          });
+        }
       },
       syncClusters: async () => {
         const state = get();

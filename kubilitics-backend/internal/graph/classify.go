@@ -547,15 +547,6 @@ func classificationRank(cls string) int {
 	}
 }
 
-// extractNamespace splits a "Kind/Namespace/Name" key and returns the Namespace.
-func extractNamespace(refKeyStr string) string {
-	parts := strings.SplitN(refKeyStr, "/", 3)
-	if len(parts) >= 2 {
-		return parts[1]
-	}
-	return ""
-}
-
 // parseRefKey parses a "Kind/Namespace/Name" key into a ResourceRef.
 func parseRefKey(key string) models.ResourceRef {
 	parts := strings.SplitN(key, "/", 3)
@@ -577,7 +568,7 @@ func resolveIntOrPercent(val intstr.IntOrString, total int) float64 {
 		// Parse percentage string like "50%"
 		s := strings.TrimSuffix(val.StrVal, "%")
 		var pct float64
-		fmt.Sscanf(s, "%f", &pct)
+		_, _ = fmt.Sscanf(s, "%f", &pct)
 		return pct / 100.0
 	default:
 		return 0.5

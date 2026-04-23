@@ -96,8 +96,3 @@ func criticalityLevel(score float64) string {
 	}
 }
 
-// refKeyFromParts builds a canonical "Kind/Namespace/Name" key matching the
-// graph snapshot's key format.
-func refKeyFromParts(kind, namespace, name string) string {
-	return kind + "/" + namespace + "/" + name
-}

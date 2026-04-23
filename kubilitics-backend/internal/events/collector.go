@@ -48,14 +48,16 @@ func (c *Collector) Start(clientset kubernetes.Interface, clusterID string) erro
 	factory := informers.NewSharedInformerFactory(clientset, 5*time.Minute)
 	eventsInformer := factory.Core().V1().Events().Informer()
 
-	eventsInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+	if _, err := eventsInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
 			c.handleK8sEvent(obj, clusterID)
 		},
 		UpdateFunc: func(_, newObj interface{}) {
 			c.handleK8sEvent(newObj, clusterID)
 		},
-	})
+	}); err != nil {
+		log.Printf("[events/collector] AddEventHandler failed for cluster %s: %v", clusterID, err)
+	}
 
 	// Start factory in background (handles its own goroutines safely)
 	factory.Start(c.stopCh)

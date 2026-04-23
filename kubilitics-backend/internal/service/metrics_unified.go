@@ -22,6 +22,10 @@ type UnifiedMetricsService struct {
 	cache          metrics.MetricsCache
 	history        *metrics.MetricsHistoryStore
 	repo           *repository.SQLiteRepository
+
+	// clusterAggregateFn is an optional test seam used by GetClusterAggregate.
+	// When nil, the production code path queries metrics.k8s.io.
+	clusterAggregateFn func(ctx context.Context, clusterID string, topN int) (*models.ClusterMetricsAggregate, error)
 }
 
 // NewUnifiedMetricsService builds the service with the default provider and resolver.

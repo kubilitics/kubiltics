@@ -6,6 +6,7 @@
  * React Query cache -- this store only manages selection/UI state.
  */
 import { create } from 'zustand';
+import { onClusterSwitch } from './clusterSwitch';
 
 interface FleetXrayState {
   /** Two-element tuple for cluster comparison selection. */
@@ -46,3 +47,14 @@ export const useFleetXrayStore = create<FleetXrayState>()((set) => ({
       drBackupId: null,
     }),
 }));
+
+// Phase 2 / Gap 4 — clear Fleet X-Ray selections on cluster switch so
+// stale comparison/DR pairs from the prior cluster context don't linger.
+onClusterSwitch(() => {
+  useFleetXrayStore.setState({
+    selectedClusters: [null, null],
+    activeTemplateId: null,
+    drPrimaryId: null,
+    drBackupId: null,
+  });
+});

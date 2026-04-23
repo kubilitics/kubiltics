@@ -234,7 +234,9 @@ func (p *Pipeline) Stop() {
 			if err := p.store.InsertEvent(bgCtx, event); err != nil {
 				log.Printf("[events/pipeline] flush-on-stop: failed to store event %s: %v", event.EventID, err)
 			}
-			p.relationships.BuildRelationships(bgCtx, event)
+			if err := p.relationships.BuildRelationships(bgCtx, event); err != nil {
+				log.Printf("[events/pipeline] flush-on-stop: BuildRelationships failed for %s: %v", event.EventID, err)
+			}
 		}
 	}
 
@@ -520,8 +522,12 @@ func (p *Pipeline) checkDBSize(ctx context.Context) {
 	sizeAfter, _ := p.store.GetDBSizeBytes()
 	if float64(sizeAfter)/(1024*1024) > maxMB {
 		oneDayAgo := time.Now().Add(-1 * 24 * time.Hour).UnixMilli()
-		p.store.PruneOldEvents(ctx, oneDayAgo)
-		p.store.PruneLogs(ctx, 0) // delete all logs
+		if _, err := p.store.PruneOldEvents(ctx, oneDayAgo); err != nil {
+			log.Printf("[events/pipeline] emergency PruneOldEvents failed: %v", err)
+		}
+		if _, err := p.store.PruneLogs(ctx, 0); err != nil {
+			log.Printf("[events/pipeline] emergency PruneLogs failed: %v", err)
+		}
 		log.Printf("[events/pipeline] emergency prune complete (1-day events, all logs deleted)")
 	}
 

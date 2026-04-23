@@ -397,15 +397,13 @@ func runPreflightChecks(dep *appsv1.Deployment, container *corev1.Container) Pre
 
 	// 4. Existing service-mesh instrumentation
 	annotations := dep.Spec.Template.GetAnnotations()
-	if annotations != nil {
-		for k := range annotations {
-			if strings.HasPrefix(k, "sidecar.istio.io/inject") || strings.HasPrefix(k, "linkerd.io/inject") {
-				checks = append(checks, PreflightCheck{
-					Name: "Service mesh detected", Severity: "info", Passed: true,
-					Message: fmt.Sprintf("Detected service mesh annotation: %s", k),
-					Detail:  "Service mesh sidecars (Istio/Linkerd) coexist with OTel auto-instrumentation but generate spans of their own. You may see duplicate spans.",
-				})
-			}
+	for k := range annotations {
+		if strings.HasPrefix(k, "sidecar.istio.io/inject") || strings.HasPrefix(k, "linkerd.io/inject") {
+			checks = append(checks, PreflightCheck{
+				Name: "Service mesh detected", Severity: "info", Passed: true,
+				Message: fmt.Sprintf("Detected service mesh annotation: %s", k),
+				Detail:  "Service mesh sidecars (Istio/Linkerd) coexist with OTel auto-instrumentation but generate spans of their own. You may see duplicate spans.",
+			})
 		}
 	}
 

@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { onClusterSwitch } from './clusterSwitch';
 
 export interface CausalNode {
   resourceKey: string;
@@ -75,3 +76,16 @@ export const useCausalChainStore = create<CausalChainState>()((set) => ({
       ...(s.overlayEnabled ? { highlightedStep: null, isTimelineExpanded: false } : {}),
     })),
 }));
+
+// Phase 2 / Gap 4 — causal chains are cluster-scoped; on cluster switch
+// drop the active chain so the topology overlay doesn't paint
+// yesterday's cluster.
+onClusterSwitch(() => {
+  useCausalChainStore.setState({
+    activeChainId: null,
+    chainData: null,
+    highlightedStep: null,
+    isTimelineExpanded: false,
+    overlayEnabled: false,
+  });
+});

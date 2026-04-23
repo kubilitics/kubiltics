@@ -49,7 +49,7 @@ jobs:
         run: |
           TRIPLE="x86_64-unknown-linux-gnu"
           mkdir -p kubilitics-desktop/src-tauri/binaries
-          for bin in kubilitics-backend kcli; do
+          for bin in kubilitics-backend kubilitics-ai-server kcli; do
             stub="kubilitics-desktop/src-tauri/binaries/${bin}-${TRIPLE}"
             if [ ! -f "$stub" ]; then
               echo "#!/bin/sh" > "$stub"
@@ -118,7 +118,7 @@ jobs:
           fi
           
           mkdir -p kubilitics-desktop/src-tauri/binaries
-          for bin in kubilitics-backend kcli; do
+          for bin in kubilitics-backend kubilitics-ai-server kcli; do
             stub="kubilitics-desktop/src-tauri/binaries/${bin}-${TRIPLE}"
             if [ ! -f "$stub" ]; then
               echo "#!/bin/sh" > "$stub"
@@ -142,7 +142,7 @@ jobs:
           $binariesDir = "kubilitics-desktop/src-tauri/binaries"
           New-Item -ItemType Directory -Force -Path $binariesDir | Out-Null
           
-          $bins = @("kubilitics-backend", "kcli")
+          $bins = @("kubilitics-backend", "kubilitics-ai-server", "kcli")
           foreach ($bin in $bins) {
             $stub = Join-Path $binariesDir "${bin}-${TRIPLE}.exe"
             if (-not (Test-Path $stub)) {

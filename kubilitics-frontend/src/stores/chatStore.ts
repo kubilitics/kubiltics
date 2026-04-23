@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { ServerFrame } from '@/services/ai/protocol';
+import { onClusterSwitch } from './clusterSwitch';
 
 export type Block =
   | { type: 'text'; content: string; complete: boolean }
@@ -342,3 +343,18 @@ function sealLastOpenText(blocks: Block[]): Block[] {
   }
   return blocks;
 }
+
+// Phase 2 / Gap 4 — drop the per-cluster chat transcripts on cluster
+// switch. The brain keeps sessions persisted server-side (B.3/B.4), so
+// re-selecting the previous cluster will re-hydrate its history.
+// Clearing here prevents a stale cluster's transcript from flashing
+// during the switch transition.
+onClusterSwitch(() => {
+  useChatStore.setState({
+    transcripts: {},
+    sessionByCluster: {},
+    connectionState: 'idle',
+    connectionError: undefined,
+    spawnIdAtConnect: undefined,
+  });
+});

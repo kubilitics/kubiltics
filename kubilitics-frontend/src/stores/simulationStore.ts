@@ -7,6 +7,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { Scenario, SimulationResult } from '@/services/api/simulation';
+import { onClusterSwitch } from './clusterSwitch';
 
 export interface SimulationState {
   scenarios: Scenario[];
@@ -73,3 +74,15 @@ export const useSimulationStore = create<SimulationState>()(
     }
   )
 );
+
+// Phase 2 / Gap 4 — scenarios target a specific cluster's workloads;
+// on cluster switch drop the active list + last result so a simulation
+// queued for cluster-A doesn't silently replay against cluster-B.
+onClusterSwitch(() => {
+  useSimulationStore.setState({
+    scenarios: [],
+    result: null,
+    isRunning: false,
+    error: null,
+  });
+});

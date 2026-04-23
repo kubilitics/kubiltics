@@ -57,8 +57,25 @@ func (h *Handler) GetMetricsSummary(w http.ResponseWriter, r *http.Request) {
 	namespace := r.URL.Query().Get("namespace")
 	resourceType := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("resource_type")))
 	resourceName := strings.TrimSpace(r.URL.Query().Get("resource_name"))
-	if !validate.ClusterID(clusterID) || resourceName == "" || resourceType == "" {
-		respondError(w, http.StatusBadRequest, "Missing or invalid clusterId, resource_type, or resource_name")
+	if !validate.ClusterID(clusterID) {
+		respondError(w, http.StatusBadRequest, "Invalid clusterId")
+		return
+	}
+	// Unscoped cluster aggregate: kubilitics-ai's observe_pod_metrics (no name)
+	// and observe_top_pods_by_metric consume {pods:[...], nodes:[...]} here.
+	// Degrades gracefully (200 + metrics_unavailable:true) when metrics-server
+	// is not installed/reachable.
+	if resourceType == "" && resourceName == "" {
+		agg, err := h.unifiedMetricsService.GetClusterAggregate(r.Context(), clusterID, 100)
+		if err != nil {
+			respondError(w, http.StatusServiceUnavailable, err.Error())
+			return
+		}
+		respondJSON(w, http.StatusOK, agg)
+		return
+	}
+	if resourceName == "" || resourceType == "" {
+		respondError(w, http.StatusBadRequest, "Missing or invalid resource_type or resource_name")
 		return
 	}
 	if namespace != "" && !validate.Namespace(namespace) {

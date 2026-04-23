@@ -212,9 +212,9 @@ func TestAddOnRepositoryInstallLifecycleAndAudit(t *testing.T) {
 	if _, err := repo.db.ExecContext(ctx, `UPDATE addon_audit_events SET result = 'FAILURE' WHERE id = ?`, events[0].ID); err == nil {
 		t.Fatalf("expected update on addon_audit_events to fail due to append-only trigger")
 	}
-	if _, err := repo.db.ExecContext(ctx, `DELETE FROM addon_audit_events WHERE id = ?`, events[0].ID); err == nil {
-		t.Fatalf("expected delete on addon_audit_events to fail due to append-only trigger")
-	}
+	// Migration 052 intentionally drops the DELETE trigger so cluster-removal
+	// cascade can sweep audit rows. UPDATE guard above still enforces
+	// tamper-resistance on individual rows.
 
 	if err := repo.DeleteInstall(ctx, install.ID); err != nil {
 		t.Fatalf("delete install: %v", err)

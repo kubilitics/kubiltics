@@ -33,7 +33,7 @@ type ClusterResources struct {
 	PVCs             []corev1.PersistentVolumeClaim
 	HPAs             []autoscalingv1.HorizontalPodAutoscaler
 	PDBs             []policyv1.PodDisruptionBudget
-	Endpoints        []corev1.Endpoints
+	Endpoints        []corev1.Endpoints //nolint:staticcheck // TODO: migrate to EndpointSlice (same as topology/v2)
 }
 
 // BuildSnapshot constructs a complete GraphSnapshot from cluster resources.

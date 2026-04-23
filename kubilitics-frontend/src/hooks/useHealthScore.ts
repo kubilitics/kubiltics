@@ -81,11 +81,19 @@ export function useHealthScore(): HealthScore {
     if (isBackendConfigured && overviewQuery.data) {
       // Use backend's enterprise health scoring — already cached by Dashboard
       const ov = overviewQuery.data;
-      const bd = (ov.health as any)?.breakdown ?? {};
+      const health = ov.health as unknown as {
+        score: number;
+        grade: HealthScore['grade'];
+        status: HealthScore['status'];
+        breakdown?: Record<string, number>;
+        findings?: Array<{ message: string }>;
+        insight?: string;
+      };
+      const bd = health.breakdown ?? {};
       return {
-        score: ov.health.score,
-        grade: ov.health.grade as HealthScore['grade'],
-        status: ov.health.status as HealthScore['status'],
+        score: health.score,
+        grade: health.grade,
+        status: health.status,
         breakdown: {
           podHealth: bd.pods ?? 100,
           nodeHealth: bd.nodes ?? 100,
@@ -93,8 +101,8 @@ export function useHealthScore(): HealthScore {
           stability: bd.stability ?? 100,
           eventHealth: bd.events ?? 100,
         },
-        details: ((ov.health as any)?.findings ?? []).map((f: any) => f.message),
-        insight: (ov.health as any)?.insight ?? 'No data available.',
+        details: (health.findings ?? []).map((f) => f.message),
+        insight: health.insight ?? 'No data available.',
       };
     }
 

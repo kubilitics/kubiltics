@@ -78,15 +78,25 @@ func NewServer(cfg *config.Config, clusterService service.ClusterService, topolo
 	}
 }
 
-// Start starts the gRPC server
+// Start starts the gRPC server. When cfg.GRPCPort == 0, the OS assigns an
+// ephemeral port; callers can read the actual bound port via BoundPort().
 func (s *Server) Start(ctx context.Context) error {
-	addr := fmt.Sprintf("0.0.0.0:%d", s.port)
+	port := s.port
+	if port < 0 {
+		port = 0
+	}
+	addr := fmt.Sprintf("0.0.0.0:%d", port)
 	listener, err := net.Listen("tcp", addr)
 	if err != nil {
 		return fmt.Errorf("failed to listen on %s: %w", addr, err)
 	}
 
-	s.log.Info("gRPC server starting", "address", addr, "port", s.port)
+	// Capture the actual bound port (relevant when port==0 ephemeral).
+	if tcpAddr, ok := listener.Addr().(*net.TCPAddr); ok {
+		s.port = tcpAddr.Port
+	}
+
+	s.log.Info("gRPC server starting", "address", listener.Addr().String(), "port", s.port)
 
 	go func() {
 		if err := s.server.Serve(listener); err != nil {
@@ -95,6 +105,12 @@ func (s *Server) Start(ctx context.Context) error {
 	}()
 
 	return nil
+}
+
+// BoundPort returns the actually-bound port (useful when the server was
+// started with GRPCPort=0 and the OS assigned an ephemeral port).
+func (s *Server) BoundPort() int {
+	return s.port
 }
 
 // Stop gracefully stops the gRPC server

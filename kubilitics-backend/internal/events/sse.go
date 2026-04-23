@@ -31,7 +31,7 @@ func (h *EventsHandler) StreamEvents(w http.ResponseWriter, r *http.Request) {
 		} else {
 			// No flushing available — return empty SSE that stays open but doesn't stream.
 			// Better than a 500 error which causes infinite reconnect loops.
-			fmt.Fprintf(w, "event: connected\ndata: {\"status\":\"connected\",\"streaming\":false}\n\n")
+			_, _ = fmt.Fprintf(w, "event: connected\ndata: {\"status\":\"connected\",\"streaming\":false}\n\n")
 			<-r.Context().Done()
 			return
 		}
@@ -45,7 +45,7 @@ func (h *EventsHandler) StreamEvents(w http.ResponseWriter, r *http.Request) {
 	namespace := r.URL.Query().Get("namespace")
 
 	// Send initial connection event.
-	fmt.Fprintf(w, "event: connected\ndata: {\"status\":\"connected\"}\n\n")
+	_, _ = fmt.Fprintf(w, "event: connected\ndata: {\"status\":\"connected\"}\n\n")
 	flush()
 
 	for {
@@ -62,7 +62,7 @@ func (h *EventsHandler) StreamEvents(w http.ResponseWriter, r *http.Request) {
 			if err != nil {
 				continue
 			}
-			fmt.Fprintf(w, "data: %s\n\n", data)
+			_, _ = fmt.Fprintf(w, "data: %s\n\n", data)
 			flush()
 
 		case <-r.Context().Done():

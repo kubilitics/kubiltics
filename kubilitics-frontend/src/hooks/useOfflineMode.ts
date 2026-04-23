@@ -70,12 +70,11 @@ export function useOfflineMode(): OfflineModeState {
     if (!isConfigured) return;
 
     const baseUrl = getEffectiveBackendBaseUrl(storedUrl);
-    // Use /health — the legacy endpoint that always returns 200 with {"status":"healthy"}.
-    // IMPORTANT: The backend registers /healthz/live and /healthz/ready but NOT bare /healthz.
-    // Previously this called /healthz which returned 404 on every poll, causing the
-    // "Backend unreachable" banner to appear after 90 seconds — even when the backend
-    // was perfectly healthy. This was the root cause of the persistent banner.
-    const healthUrl = baseUrl ? `${baseUrl}/health` : '/health';
+    // Backend liveness probe. We call /healthz/live (not bare /health) because
+    // the SPA reserves /health as the Health Dashboard route — in dev the Vite
+    // proxy rule for /health would otherwise swallow all SPA navigation to
+    // that page. /healthz/live is backend-only (registered in cmd/server/main.go).
+    const healthUrl = baseUrl ? `${baseUrl}/healthz/live` : '/healthz/live';
 
     try {
       const res = await fetch(healthUrl, {

@@ -1,6 +1,6 @@
 [package]
 name = "kubilitics-desktop"
-version = "1.0.0"
+version = "1.1.0"
 edition = "2021"
 
 [build-dependencies]
@@ -27,11 +27,28 @@ aes-gcm = "0.10"
 base64 = "0.22"
 rand = "0.8"
 sha2 = "0.10"
+# Phase 2 / Gap 6 — cross-platform keychain. Wraps macOS Security framework
+# (Keychain Services), Windows Credential Manager, and Linux libsecret
+# under a single API. Replaces the macOS `security` CLI shell-out and the
+# 0600 filesystem fallback that plaintext-stored keys on Linux/Windows.
+keyring = { version = "3", features = ["apple-native", "windows-native", "linux-native"] }
+# Phase 2 code-quality fix #2 — validate base_url in save_ai_config.
+url = "2"
 
 # Note: Tauri 2 gates the WKWebView inspector on Rust's built-in debug_assertions
 # flag inside the Tauri crate. Do not add the 'devtools' Cargo feature to the base
 # dependency above — the release build must never ship the inspector. A
 # compile-time guard in src/main.rs makes this impossible to break by accident.
+
+# Phase 2 / Gap 5 — E2E AI Settings round-trip test deps.
+[dev-dependencies]
+wiremock = "0.6"
+tempfile = "3"
+tokio = { version = "1", features = ["full", "test-util"] }
+# Serialize tests that touch process-global state (keyring default builder,
+# HOME/XDG_CONFIG_HOME env vars). Parallel execution races and produces
+# flaky "keychain lost the key" failures on CI.
+serial_test = "3"
 
 [features]
 default = ["custom-protocol"]

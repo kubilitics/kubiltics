@@ -217,11 +217,7 @@ func (s *Store) GetServiceMap(ctx context.Context, clusterID string, from, to in
 
 	serviceEdges := make([]ServiceEdge, len(edges))
 	for i, e := range edges {
-		serviceEdges[i] = ServiceEdge{
-			Source: e.Source,
-			Target: e.Target,
-			Count:  e.Count,
-		}
+		serviceEdges[i] = ServiceEdge(e)
 	}
 
 	return &ServiceMap{
