@@ -9,13 +9,13 @@ import "time"
 // All fields optional; zero-value represents "not observed".
 type PodState struct {
 	Phase            string // Pending, Running, Succeeded, Failed
-	WaitingReason   string // CrashLoopBackOff, ImagePullBackOff, ErrImagePull, etc.
-	LastReason      string // OOMKilled, Error, etc.
-	LastExitCode    int
-	RestartCount    int
-	Ready           bool
+	WaitingReason    string // CrashLoopBackOff, ImagePullBackOff, ErrImagePull, etc.
+	LastReason       string // OOMKilled, Error, etc.
+	LastExitCode     int
+	RestartCount     int
+	Ready            bool
 	SchedulingFailed bool
-	FirstSeen       time.Time
+	FirstSeen        time.Time
 }
 
 // NodeState captures resource-pressure signal from a single node.

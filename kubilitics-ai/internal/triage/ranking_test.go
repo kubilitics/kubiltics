@@ -43,10 +43,10 @@ func TestScorePod_Monotonic(t *testing.T) {
 
 func TestScoreNode(t *testing.T) {
 	cases := []struct {
-		name       string
-		in         NodeState
-		minOut     float64
-		maxOut     float64
+		name   string
+		in     NodeState
+		minOut float64
+		maxOut float64
 	}{
 		{"memory_critical", NodeState{PressureKind: "memory", PressurePct: 94}, 0.75, 1.00},
 		{"cpu_high", NodeState{PressureKind: "cpu", PressurePct: 85}, 0.50, 0.85},
