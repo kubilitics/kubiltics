@@ -87,6 +87,9 @@ jobs:
           fi
           [ "$TOTAL" -eq 0 ] && echo "WARNING: No CI runs found. Proceeding." || echo "All $TOTAL CI checks passed."
 
+      - name: Check macOS signing config
+        run: bash scripts/check-tauri-signing-config.sh
+
   # ── Frontend dist: build once, share across 3 desktop runners ───────────
   # Scanning happens in CI (on PR) and weekly deep scans — not at release time.
   # Release pipeline is build + sign + ship. Fast and reliable.
