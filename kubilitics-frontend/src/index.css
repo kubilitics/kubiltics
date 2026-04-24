@@ -539,7 +539,11 @@
 
   .page-inner {
     @apply flex flex-col gap-0 w-full mx-auto;
-    max-width: 1600px;
+    /* Historically capped at 1600px which wasted ~800px on 2400+
+       viewports. Now fluid up to 2100px (covers 27" 2560×1440 and
+       most 4K at 125% scaling); ultrawide still caps so line-length
+       stays readable. */
+    max-width: 2100px;
   }
 
   /* Tablet (768-1024px): tighter horizontal padding */
