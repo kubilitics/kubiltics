@@ -4,6 +4,7 @@
  */
 import { useAuthStore } from '@/stores/authStore';
 import { useClusterStore } from '@/stores/clusterStore';
+import { useKubeconfigStore } from '@/stores/kubeconfigSourceStore';
 import { isTauri } from '@/lib/tauri';
 
 export const API_PREFIX = '/api/v1';
@@ -183,7 +184,8 @@ export async function backendRequest<T>(
 
   // Desktop mode (Tauri): Send kubeconfig with each request (Headlamp/Lens model)
   if (isTauri()) {
-    const { activeCluster, kubeconfigContent } = useClusterStore.getState();
+    const { activeCluster } = useClusterStore.getState();
+    const { kubeconfigContent } = useKubeconfigStore.getState();
 
     if (kubeconfigContent) {
       headers['X-Kubeconfig'] = btoa(kubeconfigContent);
@@ -305,7 +307,8 @@ export async function backendRequestText(
   };
 
   if (isTauri()) {
-    const { activeCluster, kubeconfigContent } = useClusterStore.getState();
+    const { activeCluster } = useClusterStore.getState();
+    const { kubeconfigContent } = useKubeconfigStore.getState();
 
     if (kubeconfigContent) {
       headers['X-Kubeconfig'] = btoa(kubeconfigContent);

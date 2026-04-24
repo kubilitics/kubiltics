@@ -3,6 +3,7 @@
  */
 import { isTauri } from '@/lib/tauri';
 import { useClusterStore } from '@/stores/clusterStore';
+import { useKubeconfigStore } from '@/stores/kubeconfigSourceStore';
 import {
   backendRequest,
   BackendApiError,
@@ -218,7 +219,8 @@ export async function getClusterKubeconfig(
 
   const headers: Record<string, string> = {};
   if (isTauri()) {
-    const { activeCluster, kubeconfigContent } = useClusterStore.getState();
+    const { activeCluster } = useClusterStore.getState();
+    const { kubeconfigContent } = useKubeconfigStore.getState();
     if (kubeconfigContent) {
       headers['X-Kubeconfig'] = btoa(kubeconfigContent);
     } else if (activeCluster?.kubeconfig) {
