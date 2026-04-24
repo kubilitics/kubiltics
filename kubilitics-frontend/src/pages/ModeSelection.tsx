@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import { BrandLogo } from '@/components/BrandLogo';
 import { Button } from '@/components/ui/button';
-import { useClusterStore } from '@/stores/clusterStore';
+import { useAppModeStore } from '@/stores/appModeStore';
 import {
     Dialog,
     DialogContent,
@@ -42,7 +42,7 @@ const item: Variants = {
 
 export default function ModeSelection() {
     const navigate = useNavigate();
-    const setAppMode = useClusterStore((s) => s.setAppMode);
+    const setAppMode = useAppModeStore((s) => s.setAppMode);
     const [showComparison, setShowComparison] = useState(false);
     const [hoveredCard, setHoveredCard] = useState<'desktop' | 'cluster' | null>(null);
 
