@@ -9,9 +9,9 @@
 // Wired as "/clusters" in App.tsx (Phase 7: unconditional).
 import { useCallback, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Layers, Plus } from 'lucide-react';
+import { Plus } from 'lucide-react';
+import { motion } from 'framer-motion';
 
-import { SectionOverviewHeader } from '@/components/layout/SectionOverviewHeader';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -30,6 +30,7 @@ import type {
 import { logicalIdentityKey } from '@/types/resilient';
 import { addCluster } from '@/services/api/clusters';
 import { toast } from 'sonner';
+import { getProviderLogo, getProviderLabel } from '@/topology/icons/providerLogoMap';
 
 type Reachability = 'reachable' | 'unreachable' | 'unknown';
 
@@ -42,6 +43,40 @@ interface MergedCluster {
   /** Passed through from the underlying DiscoveredCluster when available;
    *  used to auto-register kubeconfig-sourced clusters on click. */
   kubeconfigPath?: string;
+  /** Provider classification (eks/aks/gke/docker-desktop/kind/...) — used
+   *  to render the cloud-provider logo on the card. */
+  provider?: string;
+}
+
+// Normalize the backend's provider string (e.g. "Kind", "AWS", "Docker Desktop")
+// to the lowercase keys the providerLogoMap expects.
+function normalizeProvider(raw?: string): string | undefined {
+  if (!raw) return undefined;
+  const v = raw.trim().toLowerCase();
+  // Backend emits "AWS" for EKS, "Azure" for AKS, "GCP" for GKE — translate.
+  if (v === 'aws') return 'eks';
+  if (v === 'azure') return 'aks';
+  if (v === 'gcp' || v === 'google') return 'gke';
+  if (v === 'docker desktop' || v === 'docker-desktop') return 'docker-desktop';
+  return v;
+}
+
+// inferProviderFromName — best-effort classification for kubeconfig-discovered
+// clusters (which only carry a context name, no provider field). Matches the
+// heuristics from the pre-Phase-7 ClusterConnect flow so users see familiar
+// EKS/AKS/GKE/Docker/Kind badges even before they click a cluster.
+function inferProviderFromName(name: string): string | undefined {
+  const n = name.toLowerCase();
+  if (n.includes('docker-desktop') || n.includes('docker-for-desktop')) return 'docker-desktop';
+  if (n.startsWith('kind-') || n === 'kind') return 'kind';
+  if (n.includes('minikube')) return 'minikube';
+  if (n.startsWith('arn:aws:eks') || n.includes('eks') || n.endsWith('.eks') || n.endsWith('-eks')) return 'eks';
+  if (n.endsWith('.aks') || n.includes('aks') || n.includes('azure')) return 'aks';
+  if (n.startsWith('gke_') || n.includes('gke') || n.includes('gcp')) return 'gke';
+  if (n.includes('openshift') || n.includes('-ocp')) return 'openshift';
+  if (n.includes('rancher') || n.includes('rke')) return 'rancher';
+  if (n.includes('k3s') || n.includes('k3d')) return 'k3s';
+  return undefined;
 }
 
 function mergeClusters(
@@ -61,6 +96,7 @@ function mergeClusters(
       isConnected: connectedKeys.has(k),
       connectedAt: connectedAtMap.get(k),
       kubeconfigPath: d.kubeconfig_path,
+      provider: normalizeProvider(d.provider) ?? inferProviderFromName(d.identity.name),
     });
   }
   for (const r of registered) {
@@ -73,6 +109,7 @@ function mergeClusters(
       isConnected: connectedKeys.has(k) || prev?.isConnected || false,
       connectedAt: connectedAtMap.get(k) ?? prev?.connectedAt,
       kubeconfigPath: r.kubeconfig_path ?? prev?.kubeconfigPath,
+      provider: normalizeProvider(r.provider) ?? prev?.provider ?? inferProviderFromName(r.identity.name),
     });
   }
   return Array.from(byKey.values());
@@ -248,22 +285,44 @@ export function ClusterPickerPage() {
       aria-label="Clusters"
     >
       <div className="page-inner p-6 gap-6 flex flex-col">
-        <SectionOverviewHeader
-          title="Clusters"
-          description="Select a cluster to view its dashboard."
-          icon={Layers}
-          extraActions={
-            <Button
-              type="button"
-              onClick={() => setAddOpen(true)}
-              className="gap-2 h-10"
-              aria-label="Add cluster"
-            >
-              <Plus className="h-4 w-4" />
-              Add cluster
-            </Button>
-          }
-        />
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35, ease: 'easeOut' }}
+          className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-border/40"
+        >
+          <div className="flex items-center gap-4">
+            <motion.img
+              src="/brand/logo-mark-rounded.png"
+              alt="Kubilitics"
+              className="h-14 w-14 rounded-2xl shadow-sm"
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ type: 'spring', stiffness: 300, damping: 20, delay: 0.1 }}
+            />
+            <div>
+              <h1 className="text-3xl font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
+                Your clusters
+              </h1>
+              <div className="text-sm text-muted-foreground mt-1 flex items-center gap-2">
+                <span>Pick one to open its dashboard.</span>
+                <Badge variant="secondary" className="font-normal">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 mr-1.5" />
+                  Live
+                </Badge>
+              </div>
+            </div>
+          </div>
+          <Button
+            type="button"
+            onClick={() => setAddOpen(true)}
+            className="gap-2 h-10"
+            aria-label="Add cluster"
+          >
+            <Plus className="h-4 w-4" />
+            Add cluster
+          </Button>
+        </motion.div>
 
         <AddClusterDialog
           open={addOpen}
@@ -314,15 +373,34 @@ export function ClusterPickerPage() {
                       )}
                       aria-label={`Open cluster ${c.identity.name}`}
                     >
-                      <span
-                        className={cn(
-                          'h-2.5 w-2.5 rounded-full shrink-0',
-                          reachabilityDotClass(c.reachability),
-                        )}
-                        role="img"
-                        aria-label={reachabilityTitle(c.reachability)}
-                        title={reachabilityTitle(c.reachability)}
-                      />
+                      {/* Provider logo (AWS/Azure/GCP/Docker/Kind/...) with a
+                          reachability dot overlayed in the bottom-right corner.
+                          Falls back to a neutral Kubernetes-style dot when the
+                          provider can't be inferred. */}
+                      <div className="relative shrink-0">
+                        <div className="h-12 w-12 rounded-xl bg-muted/40 border border-border/40 flex items-center justify-center overflow-hidden">
+                          {getProviderLogo(c.provider) ? (
+                            <img
+                              src={getProviderLogo(c.provider) as string}
+                              alt={getProviderLabel(c.provider)}
+                              className="h-8 w-8 object-contain"
+                            />
+                          ) : (
+                            <span className="text-lg font-semibold text-muted-foreground">
+                              {c.identity.name.slice(0, 1).toUpperCase()}
+                            </span>
+                          )}
+                        </div>
+                        <span
+                          className={cn(
+                            'absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-background',
+                            reachabilityDotClass(c.reachability),
+                          )}
+                          role="img"
+                          aria-label={reachabilityTitle(c.reachability)}
+                          title={reachabilityTitle(c.reachability)}
+                        />
+                      </div>
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
                           <span className="text-lg font-semibold truncate">
@@ -340,6 +418,11 @@ export function ClusterPickerPage() {
                         <div className="text-xs font-mono text-muted-foreground truncate mt-0.5">
                           {c.identity.serverUrl}
                         </div>
+                        {c.provider && (
+                          <div className="text-xs text-muted-foreground mt-1">
+                            {getProviderLabel(c.provider)}
+                          </div>
+                        )}
                       </div>
                       <Badge variant="outline" className="shrink-0 font-normal">
                         {sourceBadgeLabel(c.source)}
