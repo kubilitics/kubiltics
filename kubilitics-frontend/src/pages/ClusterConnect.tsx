@@ -38,7 +38,11 @@ import {
   BookOpen,
   ChevronRight,
   Database,
+  X as XIcon,
+  Info,
 } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { featurePresenceV2 } from '@/lib/featureFlags';
 import { BrandLogo } from '@/components/BrandLogo';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -126,6 +130,56 @@ function getPostConnectPath(returnUrl: string | null): string {
   if (!returnUrl || !returnUrl.startsWith('/') || returnUrl.startsWith('//')) return '/dashboard';
   if (returnUrl === '/' || returnUrl === '/connect' || returnUrl.startsWith('/connect?') || returnUrl === '/mode-selection') return '/dashboard';
   return returnUrl;
+}
+
+/**
+ * Phase 6 task 6.2: Dismissible banner that tells the user /connect is
+ * deprecated now that the Cluster Presence Layer (onboarding v2) is the
+ * default experience.
+ *
+ *   - Renders only when FEATURE_PRESENCE_V2 is ON. When the flag is OFF
+ *     (explicit rollback via env var or localStorage), this component
+ *     returns null so legacy users never see a banner pointing at a
+ *     feature they disabled.
+ *   - Dismissal is in-memory / per-mount; there is no persisted cookie.
+ *     The banner is scheduled for removal in Phase 7 along with the
+ *     /connect route itself (docs/architecture/plans/2026-04-24-onboarding-v2-plan.md
+ *     task 7.4).
+ *
+ * Exported solely so ClusterConnect.deprecation.test.tsx can exercise it
+ * without mounting the full ClusterConnect render tree.
+ */
+export function ConnectDeprecationBanner() {
+  const [dismissed, setDismissed] = useState(false);
+  if (!featurePresenceV2()) return null;
+  if (dismissed) return null;
+  return (
+    <div
+      role="alert"
+      className="flex items-start gap-3 border-b border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100"
+    >
+      <Info className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-300" aria-hidden />
+      <div className="flex-1">
+        <strong className="font-medium">This page is deprecated.</strong>{' '}
+        Your clusters now appear automatically on startup.{' '}
+        <Link
+          to="/clusters"
+          className="inline-flex items-center gap-1 font-medium underline underline-offset-2 hover:text-amber-950 dark:hover:text-white"
+        >
+          Go to clusters
+          <ArrowRight className="h-3 w-3" aria-hidden />
+        </Link>
+      </div>
+      <button
+        type="button"
+        onClick={() => setDismissed(true)}
+        aria-label="Dismiss"
+        className="rounded p-1 text-amber-700 hover:bg-amber-100 hover:text-amber-900 dark:text-amber-200 dark:hover:bg-amber-900/60 dark:hover:text-amber-50"
+      >
+        <XIcon className="h-4 w-4" aria-hidden />
+      </button>
+    </div>
+  );
 }
 
 export default function ClusterConnect() {
@@ -655,7 +709,8 @@ export default function ClusterConnect() {
   }
 
   return (
-    <div className="min-h-screen bg-background text-foreground flex">
+    <div className="min-h-screen bg-background text-foreground flex flex-col">
+      <ConnectDeprecationBanner />
       <div className="flex-1 flex items-center justify-center p-8 overflow-y-auto">
         <motion.div
           initial="hidden"
@@ -1229,6 +1284,7 @@ kubectl get svc -n kubilitics`,
 
   return (
     <div className="min-h-screen bg-background text-foreground overflow-y-auto">
+      <ConnectDeprecationBanner />
       <div className="max-w-4xl mx-auto px-6 py-10">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
           {/* Header */}
