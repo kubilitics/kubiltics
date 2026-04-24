@@ -39,6 +39,9 @@ interface MergedCluster {
   reachability: Reachability;
   isConnected: boolean;
   connectedAt?: string;
+  /** Passed through from the underlying DiscoveredCluster when available;
+   *  used to auto-register kubeconfig-sourced clusters on click. */
+  kubeconfigPath?: string;
 }
 
 function mergeClusters(
@@ -57,6 +60,7 @@ function mergeClusters(
       reachability: 'unknown',
       isConnected: connectedKeys.has(k),
       connectedAt: connectedAtMap.get(k),
+      kubeconfigPath: d.kubeconfig_path,
     });
   }
   for (const r of registered) {
@@ -68,6 +72,7 @@ function mergeClusters(
       reachability: r.reachable ? 'reachable' : 'unreachable',
       isConnected: connectedKeys.has(k) || prev?.isConnected || false,
       connectedAt: connectedAtMap.get(k) ?? prev?.connectedAt,
+      kubeconfigPath: r.kubeconfig_path ?? prev?.kubeconfigPath,
     });
   }
   return Array.from(byKey.values());
@@ -187,7 +192,11 @@ export function ClusterPickerPage() {
       // assigns a session_id, and the SSE stream subsequently updates
       // registered[]. We refresh the snapshot synchronously right after
       // so the user doesn't briefly see "no cluster connected" on /dashboard.
-      await addCluster(backendBaseUrl, '', cluster.identity.name);
+      // The backend requires kubeconfig_path; use the one the discovery
+      // source attached, falling back to the platform default.
+      const kubeconfigPath =
+        cluster.kubeconfigPath ?? '~/.kube/config';
+      await addCluster(backendBaseUrl, kubeconfigPath, cluster.identity.name);
       await refreshSnapshot();
       setActiveByLogicalIdentity(cluster.identity);
       navigate('/dashboard');
