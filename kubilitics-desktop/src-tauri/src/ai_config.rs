@@ -472,6 +472,63 @@ pub struct TestResult {
     pub error: Option<String>,
 }
 
+/// list_ollama_models — hits `<base_url>/api/tags` on a user-specified
+/// Ollama server and returns the list of model names actually pulled
+/// there. Used by the AI Settings UI to populate the Model dropdown
+/// dynamically for Ollama (local or remote) — hardcoded defaults like
+/// "llama3" produce Test failures for users whose servers have
+/// different models pulled (e.g. iximiuz Playground Ollama has
+/// qwen2.5:3b, not llama3).
+///
+/// Normalizes the base URL the same way test_llm_connection does:
+/// strip trailing slash, strip trailing /v1 (OpenAI-compat path), so
+/// users pasting either variant get the same behavior.
+///
+/// Empty `base_url` falls back to http://localhost:11434 so the
+/// default-provider-picked-from-dropdown path works without the user
+/// typing anything.
+#[command]
+pub async fn list_ollama_models(base_url: String) -> Result<Vec<String>, String> {
+    let base = if base_url.trim().is_empty() {
+        "http://localhost:11434".to_string()
+    } else {
+        base_url
+            .trim()
+            .trim_end_matches('/')
+            .trim_end_matches("/v1")
+            .to_string()
+    };
+    let url = format!("{}/api/tags", base);
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(10))
+        .build()
+        .map_err(|e| format!("http client: {}", e))?;
+    let resp = client
+        .get(&url)
+        .send()
+        .await
+        .map_err(|e| format!("request failed: {}", e))?;
+    if !resp.status().is_success() {
+        return Err(format!(
+            "Ollama /api/tags returned HTTP {} at {}",
+            resp.status().as_u16(),
+            base
+        ));
+    }
+    #[derive(Deserialize)]
+    struct TagsResp {
+        models: Vec<TagModel>,
+    }
+    #[derive(Deserialize)]
+    struct TagModel {
+        name: String,
+    }
+    let body = resp.text().await.unwrap_or_default();
+    let parsed: TagsResp = serde_json::from_str(&body)
+        .map_err(|e| format!("could not parse Ollama tags response: {}", e))?;
+    Ok(parsed.models.into_iter().map(|m| m.name).collect())
+}
+
 // ── Budget admin (Phase 2 / Gap 3) ───────────────────────────────────────
 //
 // The kubilitics-ai brain exposes /admin/budget/status + /admin/budget/reset

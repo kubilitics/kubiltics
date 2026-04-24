@@ -49,6 +49,7 @@ import {
   ExternalLink,
   AlertTriangle,
   ServerCrash,
+  RefreshCw,
 } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
 
@@ -177,6 +178,54 @@ export default function AISettingsPage() {
   // indicators driven by chat-level probes.
   const [brainReady, setBrainReady] = useState<boolean>(true); // optimistic — hide banner until we know otherwise
   const [restarting, setRestarting] = useState(false);
+
+  // Ollama model discovery — hardcoded "llama3" defaults broke every
+  // user whose server actually had a different model pulled (qwen2.5,
+  // phi3, etc.). Fetch the real list from <base_url>/api/tags whenever
+  // the user is on the Ollama provider AND the base URL is non-empty.
+  const [ollamaModels, setOllamaModels] = useState<string[]>([]);
+  const [ollamaModelsError, setOllamaModelsError] = useState<string | null>(null);
+  const [ollamaModelsLoading, setOllamaModelsLoading] = useState(false);
+
+  const fetchOllamaModels = async (baseUrlArg?: string) => {
+    setOllamaModelsLoading(true);
+    setOllamaModelsError(null);
+    try {
+      const list = await invoke<string[]>('list_ollama_models', {
+        baseUrl: baseUrlArg ?? baseUrl,
+      });
+      setOllamaModels(list);
+      // If the currently-selected model isn't in the list (common after
+      // switching servers or on first load), auto-select the first one
+      // so Save doesn't silently fail with a model-not-pulled error.
+      if (list.length > 0 && !list.includes(model)) {
+        setFieldDebounced('model', list[0]);
+      }
+    } catch (e) {
+      setOllamaModels([]);
+      setOllamaModelsError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setOllamaModelsLoading(false);
+    }
+  };
+
+  // Auto-fetch when provider flips to ollama or baseUrl changes (debounced
+  // implicitly via the store's 500ms setFieldDebounced). Strict "only run
+  // for ollama" guard — we don't want to fire Ollama calls while the user
+  // is on OpenAI.
+  useEffect(() => {
+    if (provider !== 'ollama') {
+      setOllamaModels([]);
+      setOllamaModelsError(null);
+      return;
+    }
+    // Small delay so the user typing a URL doesn't fire 20 requests.
+    const t = window.setTimeout(() => {
+      void fetchOllamaModels(baseUrl);
+    }, 400);
+    return () => window.clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [provider, baseUrl]);
 
   // Quick Connect — auto-detected providers from the Rust side.
   type Detected = {
@@ -533,8 +582,67 @@ export default function AISettingsPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="ai-model">Model</Label>
-              {(MODEL_OPTIONS[provider] ?? []).length > 0 ? (
+              <Label htmlFor="ai-model" className="flex items-center gap-2">
+                Model
+                {provider === 'ollama' && (
+                  <button
+                    type="button"
+                    onClick={() => void fetchOllamaModels(baseUrl)}
+                    disabled={ollamaModelsLoading}
+                    className={cn(
+                      'inline-flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground',
+                      'px-1.5 py-0.5 rounded border border-border/60 hover:border-border',
+                      'transition-colors',
+                      ollamaModelsLoading && 'opacity-60 cursor-wait',
+                    )}
+                    title="Re-fetch model list from the Ollama server"
+                    data-testid="ollama-refresh-models"
+                  >
+                    <RefreshCw
+                      className={cn('h-3 w-3', ollamaModelsLoading && 'animate-spin')}
+                      aria-hidden="true"
+                    />
+                    Refresh
+                  </button>
+                )}
+              </Label>
+              {provider === 'ollama' ? (
+                // Ollama: dynamically fetched from <base_url>/api/tags.
+                // If the fetch failed (unreachable / typo'd URL / CORS),
+                // fall back to a freeform input so the user can still
+                // type a model name and fix the URL later.
+                ollamaModels.length > 0 ? (
+                  <Select value={model} onValueChange={(v) => setFieldDebounced('model', v)}>
+                    <SelectTrigger id="ai-model" data-testid="model-select">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {ollamaModels.map((m) => (
+                        <SelectItem key={m} value={m}>
+                          {m}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <>
+                    <Input
+                      id="ai-model"
+                      data-testid="model-input"
+                      value={model}
+                      onChange={(e) => setFieldDebounced('model', e.target.value)}
+                      placeholder={ollamaModelsLoading ? 'Fetching models…' : 'qwen2.5:3b'}
+                      disabled={ollamaModelsLoading}
+                    />
+                    {ollamaModelsError && !ollamaModelsLoading && (
+                      <p className="text-xs text-amber-600 dark:text-amber-400 flex items-start gap-1.5">
+                        <AlertTriangle className="h-3 w-3 mt-0.5 shrink-0" aria-hidden="true" />
+                        <span>Couldn't list models from that URL: {ollamaModelsError}. Check the base URL above, or type a model name manually.</span>
+                      </p>
+                    )}
+                  </>
+                )
+              ) : (MODEL_OPTIONS[provider] ?? []).length > 0 ? (
                 <Select value={model} onValueChange={(v) => setFieldDebounced('model', v)}>
                   <SelectTrigger id="ai-model" data-testid="model-select">
                     <SelectValue />
@@ -553,7 +661,7 @@ export default function AISettingsPage() {
                   data-testid="model-input"
                   value={model}
                   onChange={(e) => setFieldDebounced('model', e.target.value)}
-                  placeholder={provider === 'ollama' ? 'qwen2.5:3b' : 'model-name'}
+                  placeholder="model-name"
                 />
               )}
             </div>

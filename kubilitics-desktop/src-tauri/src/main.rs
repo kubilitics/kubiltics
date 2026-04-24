@@ -63,6 +63,7 @@ fn main() {
             ai_config::load_ai_config,
             ai_config::test_llm_connection,
             ai_config::detect_available_providers,
+            ai_config::list_ollama_models,
             ai_config::get_budget_status,
             ai_config::reset_budget,
         ])
