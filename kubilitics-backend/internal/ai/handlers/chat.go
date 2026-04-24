@@ -220,6 +220,8 @@ func assistantEventPayload(ev *kotgv1.AssistantEvent) map[string]interface{} {
 	case *kotgv1.AssistantEvent_Done:
 		p["prompt_tokens"] = inner.Done.GetPromptTokens()
 		p["completion_tokens"] = inner.Done.GetCompletionTokens()
+		p["finish_reason"] = inner.Done.GetFinishReason()
+		p["partial"] = inner.Done.GetPartial()
 	}
 	return p
 }

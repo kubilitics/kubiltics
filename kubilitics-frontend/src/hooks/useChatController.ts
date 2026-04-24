@@ -123,9 +123,17 @@ async function createSession(clusterId: string): Promise<string> {
 
 function handleFrame(clusterId: string, frame: ServerFrame): void {
   if (frame.type === 'done') {
+    const p = frame.payload as {
+      prompt_tokens?: number;
+      completion_tokens?: number;
+      finish_reason?: string;
+      partial?: boolean;
+    };
     useChatStore.getState().finishActiveTurn(clusterId, Date.now(), undefined, {
-      promptTokens: frame.payload.prompt_tokens,
-      completionTokens: frame.payload.completion_tokens,
+      promptTokens: p.prompt_tokens,
+      completionTokens: p.completion_tokens,
+      finishReason: p.finish_reason,
+      partial: p.partial,
     });
     return;
   }

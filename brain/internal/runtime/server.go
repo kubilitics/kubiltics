@@ -388,9 +388,11 @@ func (s *Server) mapRouterEvent(turnID string, ev router.Event) *kotgv1.Assistan
 	case router.KindDone:
 		return s.event(turnID, &kotgv1.AssistantEvent_Done{
 			Done: &kotgv1.Done{
-				Partial:      ev.Partial,
-				Cancelled:    ev.Cancelled,
-				FinishReason: ev.FinishReason,
+				Partial:          ev.Partial,
+				Cancelled:        ev.Cancelled,
+				FinishReason:     ev.FinishReason,
+				PromptTokens:     ev.PromptTokens,
+				CompletionTokens: ev.CompletionTokens,
 			},
 		})
 	case router.KindToolStart:

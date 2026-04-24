@@ -6,6 +6,8 @@ import { PlanBlock } from './blocks/PlanBlock';
 import { UnknownBlock } from './blocks/UnknownBlock';
 import { cn } from '@/lib/utils';
 import { AlertCircle, ExternalLink } from 'lucide-react';
+import { useAIConfigStore } from '@/stores/aiConfigStore';
+import { costForTurn, formatCostUSD } from '@/lib/aiPricing';
 
 interface Props {
   turn: AssistantTurn;
@@ -76,12 +78,61 @@ export function Turn({ turn }: Props) {
           <span>{turn.error.message}</span>
         </div>
       )}
-      {turn.state === 'done' && turn.meta?.completionTokens !== undefined && (
-        <div className="text-[10px] text-muted-foreground mt-1">
-          {turn.meta.promptTokens ?? 0} → {turn.meta.completionTokens} tokens
-          {turn.meta.latencyMs !== undefined && ` · ${turn.meta.latencyMs}ms`}
-        </div>
+      <TurnFooter turn={turn} />
+    </div>
+  );
+}
+
+/**
+ * Per-turn footer rendered only when a turn has completed. Surfaces every
+ * signal the brain already produces — tokens, cost, latency, tool count,
+ * finish reason — in a single monospace strip. Previously the UI showed
+ * "0 → 0 tokens" on every turn because the plumbing from adapter → router
+ * → Done proto dropped these on the floor; see kotg-schema Done.
+ */
+function TurnFooter({ turn }: { turn: AssistantTurn }) {
+  if (turn.state !== 'done' && turn.state !== 'error') return null;
+
+  const provider = useAIConfigStore((s) => s.provider);
+  const model = useAIConfigStore((s) => s.model);
+
+  const promptTokens = turn.meta?.promptTokens ?? 0;
+  const completionTokens = turn.meta?.completionTokens ?? 0;
+  const hasTokens = promptTokens > 0 || completionTokens > 0;
+  const toolCalls = turn.blocks.filter((b) => b.type === 'tool').length;
+
+  // Compute USD client-side from the authoritative token counts + the
+  // locally-known provider/model. Brain's accounting.Tallier is the
+  // budget-enforcement source of truth; this is a display mirror.
+  const usd = hasTokens ? costForTurn(provider, model, promptTokens, completionTokens) : 0;
+
+  // Build the strip parts first so we can comma-join and skip falsy ones
+  // without stringly-typed concat mess.
+  const parts: string[] = [];
+  if (hasTokens) parts.push(`${promptTokens} → ${completionTokens} tokens`);
+  if (hasTokens) parts.push(formatCostUSD(usd));
+  if (toolCalls > 0) parts.push(`${toolCalls} tool${toolCalls === 1 ? '' : 's'}`);
+  if (turn.meta?.latencyMs != null) parts.push(`${turn.meta.latencyMs}ms`);
+  if (turn.meta?.finishReason && turn.meta.finishReason !== 'stop') {
+    parts.push(turn.meta.finishReason);
+  }
+  if (parts.length === 0) return null;
+
+  return (
+    <div
+      className={cn(
+        'text-[10px] font-mono text-muted-foreground/80 mt-1 flex flex-wrap items-center gap-x-1',
+        turn.meta?.partial && 'text-amber-600/80 dark:text-amber-400/80',
       )}
+      data-testid="turn-footer"
+      title={`provider: ${provider} · model: ${model}`}
+    >
+      {parts.map((p, i) => (
+        <span key={i}>
+          {i > 0 && <span className="text-muted-foreground/40 mx-0.5">·</span>}
+          {p}
+        </span>
+      ))}
     </div>
   );
 }

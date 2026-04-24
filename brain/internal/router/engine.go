@@ -51,9 +51,19 @@ type Event struct {
 	FinishReason string            // KindDone
 	Partial      bool              // KindDone
 	Cancelled    bool              // KindDone
-	Code         string            // KindError
-	Message      string            // KindError
-	Extra        map[string]string // engine-specific extras (logged, never surfaced)
+	// Token accounting for KindDone. Populated by engines from the
+	// LLM adapter's usage report at end-of-turn. The runtime forwards
+	// them to kotgv1.Done so the frontend can render real numbers
+	// instead of the "0 → 0 tokens" that haunted every chat turn
+	// before this was wired end-to-end.
+	PromptTokens     int32 // KindDone
+	CompletionTokens int32 // KindDone
+	// DurationMs is the total engine wall time from request dispatch
+	// to KindDone emission. Populated on KindDone; zero elsewhere.
+	DurationMs int64 // KindDone
+	Code       string            // KindError
+	Message    string            // KindError
+	Extra      map[string]string // engine-specific extras (logged, never surfaced)
 }
 
 // Request carries everything an Engine needs for one chat turn.

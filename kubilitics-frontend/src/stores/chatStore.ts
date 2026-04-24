@@ -38,7 +38,19 @@ export type AssistantTurn = {
   startedAt: number;
   finishedAt?: number;
   error?: { code: string; message: string };
-  meta?: { latencyMs?: number; promptTokens?: number; completionTokens?: number };
+  meta?: {
+    latencyMs?: number;
+    promptTokens?: number;
+    completionTokens?: number;
+    /** brain's AssistantEvent_Done.FinishReason: "stop" | "error" | "cancel" | "budget" */
+    finishReason?: string;
+    /** True when the turn ended without reaching the model's natural stop. */
+    partial?: boolean;
+    /** Count of MCP tool calls the model made in this turn. Derived in the
+     *  store from tool_end frames so Turn.tsx can render "3 tools" next to
+     *  tokens without scanning blocks. */
+    toolCalls?: number;
+  };
 };
 
 export type UserTurn = {

@@ -143,11 +143,24 @@ func (e *llmEngine) runWithTools(ctx context.Context, req router.Request, prompt
 	toolCallsTotal := 0
 	finishReason := ""
 	toolStartTimes := map[string]time.Time{}
+	// Capture the last TokenUsage the adapter emits before the stream
+	// closes so we can surface real token counts on the terminal Done
+	// event. Previously this was only consumed by the internal cost
+	// tally and never reached the frontend, which is why the chat UI
+	// has been rendering "0 → 0 tokens" on every turn.
+	var lastPromptTokens, lastCompletionTokens int32
 
 	for ev := range src {
 		if ctx.Err() != nil {
 			finishReason = "cancel"
 			break
+		}
+		if ev.TokenUsage != nil {
+			// Adapter reports usage as `int` (could be cumulative across
+			// turns in multi-turn agentic loops). Keep the last one we
+			// see — that's the adapter's final accounting for this turn.
+			lastPromptTokens = int32(ev.TokenUsage.InputTokens)
+			lastCompletionTokens = int32(ev.TokenUsage.OutputTokens)
 		}
 		switch {
 		case ev.Err != nil:
@@ -219,10 +232,13 @@ func (e *llmEngine) runWithTools(ctx context.Context, req router.Request, prompt
 		}
 	}
 	emit(ctx, out, router.Event{
-		Kind:         router.KindDone,
-		Partial:      finishReason != "stop",
-		Cancelled:    finishReason == "cancel",
-		FinishReason: finishReason,
+		Kind:             router.KindDone,
+		Partial:          finishReason != "stop",
+		Cancelled:        finishReason == "cancel",
+		FinishReason:     finishReason,
+		PromptTokens:     lastPromptTokens,
+		CompletionTokens: lastCompletionTokens,
+		DurationMs:       time.Since(startedAt).Milliseconds(),
 	})
 	e.auditDispatchEnd(ctx, req, textChunks, toolCallsTotal, time.Since(startedAt), finishReason)
 }
