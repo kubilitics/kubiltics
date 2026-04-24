@@ -311,7 +311,22 @@ func main() {
 
 // toolRouterEnabled returns true when topic-aware tool selection should be
 // used. The env var is checked first so operators can force the behavior
-// without editing yaml; otherwise the config field decides. Default off.
+// without editing yaml; otherwise the config field + provider-aware default
+// decides.
+//
+// Provider-aware default:
+//
+//   - Ollama: ON by default. Small local models (qwen2.5:3b, llama3.1:8b,
+//     phi3:mini, etc.) choke on 166 tool schemas (~25K tokens of tool
+//     metadata BEFORE the user's question lands). Remote CPU-only Ollama
+//     sandboxes take 60-120s per turn with the full schema, which blows
+//     past the UI's stream timeout and users see "chat didn't work".
+//     Tool-router trims to ~5-10 relevant tools → sub-10s turns.
+//
+//   - OpenAI/Anthropic hosted: OFF by default, because they handle 25K
+//     prompts comfortably and the router's keyword heuristic is imperfect;
+//     we'd rather send the full taxonomy when the model can consume it.
+//     Operators can still force-enable via env var or yaml.
 func toolRouterEnabled(cfg *config.Config) bool {
 	switch strings.ToLower(os.Getenv("KOTG_TOOL_ROUTER")) {
 	case "1", "true", "yes", "on":
@@ -319,7 +334,14 @@ func toolRouterEnabled(cfg *config.Config) bool {
 	case "0", "false", "no", "off":
 		return false
 	}
-	return cfg != nil && cfg.LLM.ToolRouter.Enabled
+	if cfg != nil && cfg.LLM.ToolRouter.Enabled {
+		return true
+	}
+	// Provider-aware default: Ollama auto-enables the router.
+	if cfg != nil && strings.ToLower(cfg.LLM.Provider) == "ollama" {
+		return true
+	}
+	return false
 }
 
 // parseSecondsEnv reads an integer-seconds env var and returns it as a
