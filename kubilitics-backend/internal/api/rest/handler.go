@@ -17,6 +17,7 @@ import (
 	"github.com/hashicorp/golang-lru/v2/expirable"
 
 	"github.com/kubilitics/kubilitics-backend/internal/api/middleware"
+	"github.com/kubilitics/kubilitics-backend/internal/api/resilient"
 	"github.com/kubilitics/kubilitics-backend/internal/healthscore"
 	"github.com/kubilitics/kubilitics-backend/internal/auth"
 	"github.com/kubilitics/kubilitics-backend/internal/config"
@@ -145,6 +146,12 @@ type Handler struct {
 	scheduleHandler       *ScheduleHandler                     // optional: report schedule CRUD (nil = disabled)
 	tracingHandler        *TracingHandler                      // optional: tracing enable/disable/instrument (nil = disabled)
 	lifecycleHooks        []ClusterLifecycleHook               // optional: lifecycle hooks (events pipeline, etc.)
+
+	// summaryLRU and eventsLRU back the resilient envelope for the
+	// cluster-scoped list endpoints migrated in Phase 4 onboarding-v2.
+	// Keys: see buildSummaryCacheKey / buildEventsCacheKey.
+	summaryLRU *resilient.LRUCache[string, *models.ClusterSummary]
+	eventsLRU  *resilient.LRUCache[string, eventsResponse]
 }
 
 // NewHandler creates a new HTTP handler. unifiedMetricsService can be nil; then metrics summary uses legacy per-resource endpoints. projSvc can be nil; then project routes return 501. addonService can be nil; then addon routes return 404 or 501. repo can be nil if auth is disabled. snapshotStore can be nil; then topology snapshot endpoints return 503.
@@ -169,6 +176,8 @@ func NewHandler(cs service.ClusterService, ts service.TopologyService, cfg *conf
 		wsConns:               map[string]int{},
 		graphEngines:          graphEngines,
 		snapshotStore:         snapshotStore,
+		summaryLRU:            resilient.NewLRUCache[string, *models.ClusterSummary](256),
+		eventsLRU:             resilient.NewLRUCache[string, eventsResponse](256),
 	}
 }
 
@@ -848,11 +857,16 @@ func (h *Handler) ReconnectCluster(w http.ResponseWriter, r *http.Request) {
 //
 // Robustness contract: this endpoint NEVER returns 5xx for cluster
 // reachability failures (apiserver down, kubeconfig rotated, network
-// unreachable). Those produce a 200 with Reachable=false and — when the
-// last successful fetch is still in process memory — the cached counts
-// with Stale=true. 5xx is reserved for genuine backend bugs. This lets
-// the sidebar keep showing meaningful numbers across transient blips
-// instead of flashing every counter to zero.
+// unreachable). Those produce HTTP 200 + a resilient.ResilientResponse
+// envelope with Reachable=false and — when the last successful fetch
+// is still in the LRU — the cached summary with Stale=true. 5xx is
+// reserved for genuine backend bugs. The sidebar keeps showing meaningful
+// numbers across transient blips instead of flashing every counter to zero.
+//
+// JSON shape changed in the onboarding-v2 rollout from flat
+// {..., reachable, stale, ...} to nested {data:{...}, reachable, stale, ...}.
+// Frontend unwraps the envelope in services/api/clusters.ts so the
+// per-field consumers (BackendClusterSummary) still see the flat fields.
 func (h *Handler) GetClusterSummary(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	clusterID := vars["clusterId"]
@@ -866,38 +880,46 @@ func (h *Handler) GetClusterSummary(w http.ResponseWriter, r *http.Request) {
 		respondErrorWithCode(w, http.StatusNotFound, ErrCodeNotFound, resolveErr.Error(), requestID)
 		return
 	}
-	clusterID = resolvedID
-	projectIDForCache := strings.TrimSpace(r.URL.Query().Get("projectId"))
 
-	// Any failure to reach the cluster below is downgraded to an unreachable
-	// response (200 + Reachable=false). Prefer cached last-known-good counts
-	// when available so operators don't see a sudden wall of zeros on a blip.
-	respondUnreachable := func(cause error) {
-		if cached := summaryCacheGet(clusterID, projectIDForCache); cached != nil {
-			cached.ErrorMessage = cause.Error()
-			respondJSON(w, http.StatusOK, cached)
-			return
-		}
-		respondJSON(w, http.StatusOK, unreachableSummary(clusterID, cause))
-	}
+	// Rewrite the request so downstream reads of mux vars see the resolved ID.
+	// WrapClusterHandler builds its cache key from the request; the key must
+	// stabilise on the resolved cluster identifier (UUID), not the request alias.
+	r = mux.SetURLVars(r, map[string]string{"clusterId": resolvedID})
 
-	// Headlamp/Lens model: try kubeconfig from request first, fall back to stored cluster
-	client, err := h.getClientFromRequest(r.Context(), r, clusterID, h.cfg)
+	wrapper := resilient.WrapClusterHandler[*models.ClusterSummary](
+		h.summaryLRU,
+		func(req *http.Request) string {
+			vv := mux.Vars(req)
+			return vv["clusterId"] + "|" + strings.TrimSpace(req.URL.Query().Get("projectId"))
+		},
+		func(ctx context.Context, req *http.Request) (*models.ClusterSummary, error) {
+			return h.buildClusterSummary(ctx, req)
+		},
+	)
+	wrapper(w, r)
+}
+
+// buildClusterSummary is the fetch-and-aggregate half of GetClusterSummary.
+// Returning a non-nil error signals the cluster is unreachable; the caller
+// (WrapClusterHandler) downgrades that to HTTP 200 + Reachable=false +
+// any LRU-cached prior summary marked Stale=true.
+func (h *Handler) buildClusterSummary(ctx context.Context, r *http.Request) (*models.ClusterSummary, error) {
+	vars := mux.Vars(r)
+	clusterID := vars["clusterId"]
+
+	// Headlamp/Lens model: try kubeconfig from request first, fall back to stored cluster.
+	client, err := h.getClientFromRequest(ctx, r, clusterID, h.cfg)
 	if err != nil {
-		respondUnreachable(err)
-		return
+		return nil, err
 	}
 
 	// Compute node & namespace counts directly from List calls instead of
 	// via Client.GetClusterInfo. GetClusterInfo is the only K8s path in
 	// this handler that goes through the per-Client circuit breaker, and
-	// a stuck breaker was marking /summary unreachable (→ cached banner
-	// on the sidebar) even when every other list endpoint on the same
-	// cluster was returning live data. The fanout below already lists
-	// every namespaced resource via the raw clientset — this keeps
-	// /summary's health independent of TestConnection's breaker state.
-	nodes, _ := client.Clientset.CoreV1().Nodes().List(r.Context(), metav1.ListOptions{})
-	namespaces, _ := client.Clientset.CoreV1().Namespaces().List(r.Context(), metav1.ListOptions{})
+	// a stuck breaker was marking /summary unreachable even when every
+	// other list endpoint on the same cluster was returning live data.
+	nodes, _ := client.Clientset.CoreV1().Nodes().List(ctx, metav1.ListOptions{})
+	namespaces, _ := client.Clientset.CoreV1().Namespaces().List(ctx, metav1.ListOptions{})
 	nodeCount := 0
 	if nodes != nil {
 		nodeCount = len(nodes.Items)
@@ -906,11 +928,9 @@ func (h *Handler) GetClusterSummary(w http.ResponseWriter, r *http.Request) {
 	if namespaces != nil {
 		namespaceCount = len(namespaces.Items)
 	}
-	// If both calls returned nil (not just "no data"), the apiserver is
-	// genuinely unreachable — fall back to cached snapshot same as before.
+	// Both calls returned nil — apiserver is genuinely unreachable.
 	if nodes == nil && namespaces == nil {
-		respondUnreachable(fmt.Errorf("cluster API returned no data for nodes or namespaces"))
-		return
+		return nil, fmt.Errorf("cluster API returned no data for nodes or namespaces")
 	}
 
 	var projectNSSet map[string]struct{}
@@ -935,7 +955,6 @@ func (h *Handler) GetClusterSummary(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Fetch all resource counts in parallel — 27 API calls via goroutines
-	ctx := r.Context()
 	listOpts := metav1.ListOptions{}
 	var wg sync.WaitGroup
 
@@ -1149,8 +1168,7 @@ func (h *Handler) GetClusterSummary(w http.ResponseWriter, r *http.Request) {
 
 		Reachable: true,
 	}
-	summaryCachePut(clusterID, projectIDForCache, summary)
-	respondJSON(w, http.StatusOK, summary)
+	return summary, nil
 }
 
 // computeClusterHealth builds a ClusterState from raw K8s list data and delegates

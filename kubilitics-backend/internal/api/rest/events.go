@@ -1,6 +1,7 @@
 package rest
 
 import (
+	"encoding/json"
 	"net/http"
 	"sort"
 	"strconv"
@@ -12,6 +13,32 @@ import (
 	"github.com/kubilitics/kubilitics-backend/internal/pkg/logger"
 	"github.com/kubilitics/kubilitics-backend/internal/pkg/validate"
 )
+
+// eventsResponse is the shape returned under .data of the resilient envelope
+// for GET /clusters/{clusterId}/events. Mirrors the previous untyped
+// map[string]any response shape so the frontend (.data) reads identical fields.
+type eventsResponse struct {
+	Items    []*models.Event   `json:"items"`
+	Metadata map[string]any    `json:"metadata,omitempty"`
+	// PodOnly is used for the resource-scoped branch, which historically
+	// returned a bare []*models.Event. Non-empty signals the pod-scoped shape;
+	// in that case Items/Metadata are nil and the marshalled JSON uses PodOnly
+	// as the inlined payload. See the MarshalJSON override below.
+	PodOnly []*models.Event `json:"-"`
+}
+
+// MarshalJSON preserves the legacy shape-per-branch behavior while living
+// inside the resilient envelope's Data field.
+func (e eventsResponse) MarshalJSON() ([]byte, error) {
+	if e.PodOnly != nil {
+		return json.Marshal(e.PodOnly)
+	}
+	type envelope struct {
+		Items    []*models.Event `json:"items"`
+		Metadata map[string]any  `json:"metadata,omitempty"`
+	}
+	return json.Marshal(envelope{Items: e.Items, Metadata: e.Metadata})
+}
 
 // sortEventsByLastTimestampDesc sorts events by LastTimestamp descending (most recent first).
 func sortEventsByLastTimestampDesc(events []*models.Event) {
