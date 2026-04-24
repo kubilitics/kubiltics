@@ -28,6 +28,8 @@ import type {
   RegisteredCluster,
 } from '@/types/resilient';
 import { logicalIdentityKey } from '@/types/resilient';
+import { addCluster } from '@/services/api/clusters';
+import { toast } from 'sonner';
 
 type Reachability = 'reachable' | 'unreachable' | 'unknown';
 
@@ -161,9 +163,40 @@ export function ClusterPickerPage() {
     });
   }, [clusters, query]);
 
-  const handlePick = (id: LogicalIdentity) => {
-    setActiveByLogicalIdentity(id);
-    navigate('/dashboard');
+  const [pendingKey, setPendingKey] = useState<string | null>(null);
+
+  // Auto-register kubeconfig-sourced clusters that haven't been added to the
+  // backend yet. The presence layer discovers every kubeconfig context but
+  // only promotes ManualSource entries to Registered (with a session_id).
+  // For dashboard queries to work we need that session_id, so clicking a
+  // discovered-only card triggers AddCluster before navigating.
+  const handlePick = async (cluster: MergedCluster) => {
+    const key = logicalIdentityKey(cluster.identity);
+    const isKubeconfigOnly = cluster.source === 'kubeconfig' && !cluster.isConnected;
+
+    if (!isKubeconfigOnly) {
+      setActiveByLogicalIdentity(cluster.identity);
+      navigate('/dashboard');
+      return;
+    }
+
+    if (pendingKey === key) return; // debounce double-clicks
+    setPendingKey(key);
+    try {
+      // Register via legacy cluster API — backend creates the K8s client,
+      // assigns a session_id, and the SSE stream subsequently updates
+      // registered[]. We refresh the snapshot synchronously right after
+      // so the user doesn't briefly see "no cluster connected" on /dashboard.
+      await addCluster(backendBaseUrl, '', cluster.identity.name);
+      await refreshSnapshot();
+      setActiveByLogicalIdentity(cluster.identity);
+      navigate('/dashboard');
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      toast.error(`Couldn't connect to ${cluster.identity.name}`, { description: msg });
+    } finally {
+      setPendingKey(null);
+    }
   };
 
   return (
@@ -228,12 +261,14 @@ export function ClusterPickerPage() {
                   >
                     <button
                       type="button"
-                      onClick={() => handlePick(c.identity)}
+                      onClick={() => { void handlePick(c); }}
+                      disabled={pendingKey === key}
                       className={cn(
                         'w-full text-left p-5 flex items-center gap-4',
                         'hover:bg-muted/40 focus-visible:outline-none',
                         'focus-visible:ring-2 focus-visible:ring-primary/30',
                         'transition-colors duration-150',
+                        pendingKey === key && 'opacity-60 cursor-wait',
                       )}
                       aria-label={`Open cluster ${c.identity.name}`}
                     >

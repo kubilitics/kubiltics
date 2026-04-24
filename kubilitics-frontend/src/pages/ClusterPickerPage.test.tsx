@@ -45,13 +45,30 @@ describe('ClusterPickerPage', () => {
     expect(screen.getByText('dev')).toBeInTheDocument();
   });
 
-  it('clicking a cluster sets active identity and navigates to /dashboard', () => {
+  it('clicking a registered+connected cluster sets active identity and navigates to /dashboard', () => {
     useClusterPresenceStore.setState({
       discovered: [
         { identity: { name: 'prod', serverUrl: 'https://p.example' }, source: 'kubeconfig' },
       ],
-      registered: [],
-      connected: [],
+      registered: [
+        {
+          identity: { name: 'prod', serverUrl: 'https://p.example' },
+          source: 'kubeconfig',
+          registered_at: '2026-01-01T00:00:00Z',
+          reachable: true,
+          session_id: 'prod-uuid',
+        },
+      ],
+      connected: [
+        {
+          identity: { name: 'prod', serverUrl: 'https://p.example' },
+          source: 'kubeconfig',
+          registered_at: '2026-01-01T00:00:00Z',
+          reachable: true,
+          session_id: 'prod-uuid',
+          connected_at: '2026-01-01T00:00:00Z',
+        },
+      ],
       isReady: true,
     });
     renderPicker();
