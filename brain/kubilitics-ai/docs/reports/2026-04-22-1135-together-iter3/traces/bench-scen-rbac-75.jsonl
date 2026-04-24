@@ -1,0 +1,11 @@
+{"bytes":98,"stage":"user_msg","ts":"2026-04-22T05:59:31.22385Z","turn_id":"bench-scen-rbac-75"}
+{"selected_topics":["core","networking"],"stage":"tool_filter","tool_count":30,"total_available":138,"ts":"2026-04-22T05:59:31.22453Z","turn_id":"bench-scen-rbac-75"}
+{"bytes":2461,"focus_cluster":"5cb1f37d-e31e-4915-8c4d-bdf36ef335ec","has_system":true,"messages":2,"stage":"llm_prompt_in","ts":"2026-04-22T05:59:31.224615Z","turn_id":"bench-scen-rbac-75"}
+{"arg_keys":["kind","namespace","cluster_id"],"cluster_id":"5cb1f37d-e31e-4915-8c4d-bdf36ef335ec","stage":"tool_dispatch","tool_name":"list_resources","ts":"2026-04-22T05:59:32.40264Z","turn_id":"bench-scen-rbac-75"}
+{"method":"GET","path":"/api/v1/clusters/5cb1f37d-e31e-4915-8c4d-bdf36ef335ec/resources/networkpolicies?namespace=demo","resp_bytes":68,"stage":"backend_k8s_fetch","ts":"2026-04-22T05:59:32.406092Z","turn_id":"bench-scen-rbac-75"}
+{"bytes_in":27,"bytes_out":27,"stage":"tool_result_summarized","tool_name":"list_resources","ts":"2026-04-22T05:59:32.406399Z","turn_id":"bench-scen-rbac-75"}
+{"arg_keys":["kind","namespace","cluster_id"],"cluster_id":"5cb1f37d-e31e-4915-8c4d-bdf36ef335ec","stage":"tool_dispatch","tool_name":"list_resources","ts":"2026-04-22T05:59:33.279897Z","turn_id":"bench-scen-rbac-75"}
+{"method":"GET","path":"/api/v1/clusters/5cb1f37d-e31e-4915-8c4d-bdf36ef335ec/resources/networkpolicies?namespace=data","resp_bytes":68,"stage":"backend_k8s_fetch","ts":"2026-04-22T05:59:33.281389Z","turn_id":"bench-scen-rbac-75"}
+{"bytes_in":27,"bytes_out":27,"stage":"tool_result_summarized","tool_name":"list_resources","ts":"2026-04-22T05:59:33.281505Z","turn_id":"bench-scen-rbac-75"}
+{"bytes":89,"preview":"There are no network policies in place for the 'demo' namespace and the 'data' namespace.","stage":"llm_text_out","ts":"2026-04-22T05:59:33.88335Z","turn_id":"bench-scen-rbac-75"}
+{"duration_ms":2658,"finish_reason":"stop","stage":"done","ts":"2026-04-22T05:59:33.883448Z","turn_id":"bench-scen-rbac-75"}

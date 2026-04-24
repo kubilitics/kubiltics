@@ -1,0 +1,30 @@
+# Pre-built binaries
+bin/
+server
+**/kubilitics-ai
+
+# Build artifacts
+tmp/
+*.db
+*.log
+coverage.out
+*.test
+*.prof
+
+# Version control & IDE
+.git
+.cursor
+.vscode
+.idea
+*.swp
+
+# Docs & tests
+*.md
+docs/
+tests/
+testdata/
+*_test.go
+
+# OS
+.DS_Store
+Thumbs.db

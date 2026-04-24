@@ -1,0 +1,7 @@
+{"bytes":93,"stage":"user_msg","ts":"2026-04-22T05:56:05.832501Z","turn_id":"bench-scen-compare-18"}
+{"selected_topics":["core","workloads","change"],"stage":"tool_filter","tool_count":30,"total_available":138,"ts":"2026-04-22T05:56:05.834596Z","turn_id":"bench-scen-compare-18"}
+{"bytes":2456,"focus_cluster":"5cb1f37d-e31e-4915-8c4d-bdf36ef335ec","has_system":true,"messages":2,"stage":"llm_prompt_in","ts":"2026-04-22T05:56:05.83489Z","turn_id":"bench-scen-compare-18"}
+{"arg_keys":["namespace","name","cluster_id"],"cluster_id":"5cb1f37d-e31e-4915-8c4d-bdf36ef335ec","stage":"tool_dispatch","tool_name":"analyze_deployment_health","ts":"2026-04-22T05:56:08.131003Z","turn_id":"bench-scen-compare-18"}
+{"bytes_in":40,"bytes_out":40,"stage":"tool_result_summarized","tool_name":"analyze_deployment_health","ts":"2026-04-22T05:56:08.13522Z","turn_id":"bench-scen-compare-18"}
+{"bytes":179,"preview":"The analyze_deployment_health tool returned an error: Deployment 'web' not found in namespace 'default'. This means the 'web' deployment does not exist in the 'default' namespace.","stage":"llm_text_out","ts":"2026-04-22T05:56:09.864503Z","turn_id":"bench-scen-compare-18"}
+{"duration_ms":4029,"finish_reason":"stop","stage":"done","ts":"2026-04-22T05:56:09.864737Z","turn_id":"bench-scen-compare-18"}

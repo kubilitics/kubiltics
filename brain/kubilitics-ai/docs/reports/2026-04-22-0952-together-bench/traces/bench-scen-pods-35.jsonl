@@ -1,0 +1,7 @@
+{"bytes":86,"stage":"user_msg","ts":"2026-04-22T04:24:27.296742Z","turn_id":"bench-scen-pods-35"}
+{"selected_topics":["core","pods","workloads"],"stage":"tool_filter","tool_count":30,"total_available":135,"ts":"2026-04-22T04:24:27.297159Z","turn_id":"bench-scen-pods-35"}
+{"bytes":2449,"focus_cluster":"5cb1f37d-e31e-4915-8c4d-bdf36ef335ec","has_system":true,"messages":2,"stage":"llm_prompt_in","ts":"2026-04-22T04:24:27.297188Z","turn_id":"bench-scen-pods-35"}
+{"arg_keys":["namespace","cluster_id"],"cluster_id":"5cb1f37d-e31e-4915-8c4d-bdf36ef335ec","stage":"tool_dispatch","tool_name":"analyze_pod_health","ts":"2026-04-22T04:24:28.260425Z","turn_id":"bench-scen-pods-35"}
+{"bytes_in":104,"bytes_out":104,"stage":"tool_result_summarized","tool_name":"analyze_pod_health","ts":"2026-04-22T04:24:28.267347Z","turn_id":"bench-scen-pods-35"}
+{"bytes":144,"preview":"In the demo namespace, all 3 pods are healthy, with no issues found. To check for over-provisioning, let's look at resource requests and limits.","stage":"llm_text_out","ts":"2026-04-22T04:24:29.439597Z","turn_id":"bench-scen-pods-35"}
+{"duration_ms":2142,"finish_reason":"stop","stage":"done","ts":"2026-04-22T04:24:29.439737Z","turn_id":"bench-scen-pods-35"}

@@ -1,0 +1,8 @@
+{"bytes":91,"stage":"user_msg","ts":"2026-04-22T03:25:52.366928Z","turn_id":"bench-scen-events-07"}
+{"selected_topics":["core","events"],"stage":"tool_filter","tool_count":30,"total_available":163,"ts":"2026-04-22T03:25:52.367609Z","turn_id":"bench-scen-events-07"}
+{"bytes":2454,"focus_cluster":"5cb1f37d-e31e-4915-8c4d-bdf36ef335ec","has_system":true,"messages":2,"stage":"llm_prompt_in","ts":"2026-04-22T03:25:52.367629Z","turn_id":"bench-scen-events-07"}
+{"arg_keys":["namespace","cluster_id"],"cluster_id":"5cb1f37d-e31e-4915-8c4d-bdf36ef335ec","stage":"tool_dispatch","tool_name":"get_events","ts":"2026-04-22T03:25:54.186479Z","turn_id":"bench-scen-events-07"}
+{"method":"GET","path":"/api/v1/clusters/5cb1f37d-e31e-4915-8c4d-bdf36ef335ec/events?limit=50\u0026namespace=demo","resp_bytes":50,"stage":"backend_k8s_fetch","ts":"2026-04-22T03:25:54.191538Z","turn_id":"bench-scen-events-07"}
+{"bytes_in":49,"bytes_out":49,"stage":"tool_result_summarized","tool_name":"get_events","ts":"2026-04-22T03:25:54.191618Z","turn_id":"bench-scen-events-07"}
+{"bytes":65,"preview":"There are no events in the demo namespace in the last 15 minutes.","stage":"llm_text_out","ts":"2026-04-22T03:25:55.726665Z","turn_id":"bench-scen-events-07"}
+{"duration_ms":3359,"finish_reason":"stop","stage":"done","ts":"2026-04-22T03:25:55.726804Z","turn_id":"bench-scen-events-07"}

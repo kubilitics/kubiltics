@@ -1,0 +1,7 @@
+{"bytes":98,"stage":"user_msg","ts":"2026-04-22T03:15:14.707898Z","turn_id":"bench-scen-nodes-09"}
+{"selected_topics":["core","nodes"],"stage":"tool_filter","tool_count":20,"total_available":163,"ts":"2026-04-22T03:15:14.709204Z","turn_id":"bench-scen-nodes-09"}
+{"bytes":2461,"focus_cluster":"5cb1f37d-e31e-4915-8c4d-bdf36ef335ec","has_system":true,"messages":2,"stage":"llm_prompt_in","ts":"2026-04-22T03:15:14.709281Z","turn_id":"bench-scen-nodes-09"}
+{"arg_keys":["name","cluster_id"],"cluster_id":"5cb1f37d-e31e-4915-8c4d-bdf36ef335ec","stage":"tool_dispatch","tool_name":"analyze_node_pressure","ts":"2026-04-22T03:15:16.639425Z","turn_id":"bench-scen-nodes-09"}
+{"bytes_in":483,"bytes_out":483,"stage":"tool_result_summarized","tool_name":"analyze_node_pressure","ts":"2026-04-22T03:15:16.654792Z","turn_id":"bench-scen-nodes-09"}
+{"bytes":191,"stage":"llm_text_out","ts":"2026-04-22T03:15:19.548696Z","turn_id":"bench-scen-nodes-09"}
+{"duration_ms":4838,"finish_reason":"stop","stage":"done","ts":"2026-04-22T03:15:19.548836Z","turn_id":"bench-scen-nodes-09"}

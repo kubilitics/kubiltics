@@ -1,0 +1,34 @@
+<testsuite name="chat-quality" tests="20" failures="6">
+  <testcase name="scen-health-01" time="91.47059775"></testcase>
+  <testcase name="scen-health-02" time="45.088736959">
+    <failure message="empty text answer">prompt=&#34;Is anything unhealthy in the demo namespace? If so, what and why?&#34; tools=[observe_workload_health] text_len=0</failure>
+  </testcase>
+  <testcase name="scen-pods-03" time="140.811230042">
+    <failure message="llm_error: agentic loop exceeded max turns (20)">prompt=&#34;Show me the web deployment in demo — how many replicas, are they all ready, any recent restarts?&#34; tools=[observe_deployment_rollout_history observe_deployment_ownership_chain observe_deployment_rollout_history observe_deployment_rollout_history observe_deployment_rollout_history observe_deployment_rollout_history observe_deployment_rollout_history observe_deployment_rollout_history observe_deployment_rollout_history observe_deployment_rollout_history observe_deployment_rollout_history observe_deployment_rollout_history observe_deployment_rollout_history observe_deployment_rollout_history observe_deployment_rollout_history observe_deployment_rollout_history observe_deployment_rollout_history observe_deployment_rollout_history observe_deployment_rollout_history observe_deployment_rollout_history observe_deployment_rollout_history] text_len=0</failure>
+  </testcase>
+  <testcase name="scen-pods-04" time="19.598975209"></testcase>
+  <testcase name="scen-logs-05" time="5.863966042">
+    <failure message="expected a tool call, none fired">prompt=&#34;Grab the latest logs from one of the web pods in demo — I want to see if there&#39;s anything funny in the output.&#34; tools=[] text_len=0</failure>
+  </testcase>
+  <testcase name="scen-logs-06" time="37.222552834"></testcase>
+  <testcase name="scen-events-07" time="136.050189416">
+    <failure message="llm_error: agentic loop exceeded max turns (20)">prompt=&#34;What happened in the demo namespace in the last 15 minutes? Any events I should know about?&#34; tools=[observe_namespace_detailed observe_namespace_detailed observe_namespace_detailed observe_namespace_detailed observe_namespace_detailed observe_namespace_detailed observe_namespace_detailed observe_namespace_detailed observe_namespace_detailed observe_namespace_detailed observe_namespace_detailed observe_namespace_detailed observe_namespace_detailed observe_namespace_detailed observe_namespace_detailed observe_namespace_detailed observe_namespace_detailed observe_namespace_detailed observe_namespace_detailed observe_namespace_detailed] text_len=0</failure>
+  </testcase>
+  <testcase name="scen-events-08" time="26.443037"></testcase>
+  <testcase name="scen-nodes-09" time="31.23789375"></testcase>
+  <testcase name="scen-nodes-10" time="26.115391167"></testcase>
+  <testcase name="scen-capacity-11" time="27.060979667"></testcase>
+  <testcase name="scen-rbac-12" time="24.111575791">
+    <failure message="empty text answer">prompt=&#34;Who has permission to delete pods in the demo namespace? I need to know for a security review.&#34; tools=[troubleshoot_rbac_issues] text_len=0</failure>
+  </testcase>
+  <testcase name="scen-rbac-13" time="60.236924542"></testcase>
+  <testcase name="scen-network-14" time="35.964839667"></testcase>
+  <testcase name="scen-storage-15" time="15.604122667"></testcase>
+  <testcase name="scen-config-16" time="13.850414667"></testcase>
+  <testcase name="scen-workload-17" time="154.635298833">
+    <failure message="llm_error: agentic loop exceeded max turns (20)">prompt=&#34;Walk me through everything the redis deployment depends on — configmaps, secrets, service accounts, the works.&#34; tools=[observe_serviceaccount_events observe_deployment_ownership_chain observe_configmap_consumers observe_secret_consumers observe_serviceaccount_events observe_serviceaccount_events observe_serviceaccount_events observe_serviceaccount_events observe_serviceaccount_events observe_serviceaccount_events observe_serviceaccount_events observe_serviceaccount_events observe_serviceaccount_events observe_serviceaccount_events observe_serviceaccount_events observe_serviceaccount_events observe_serviceaccount_events observe_serviceaccount_events observe_serviceaccount_events observe_serviceaccount_events observe_serviceaccount_events observe_serviceaccount_events observe_serviceaccount_events] text_len=0</failure>
+  </testcase>
+  <testcase name="scen-compare-18" time="27.322918833"></testcase>
+  <testcase name="scen-change-19" time="38.356923584"></testcase>
+  <testcase name="scen-summary-20" time="145.794415042"></testcase>
+</testsuite>

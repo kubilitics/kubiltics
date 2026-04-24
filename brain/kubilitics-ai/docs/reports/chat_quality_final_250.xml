@@ -1,0 +1,412 @@
+<testsuite name="chat-quality" tests="250" failures="80">
+  <testcase name="list-0001" time="57.321955958"></testcase>
+  <testcase name="list-0002" time="16.086846584"></testcase>
+  <testcase name="list-0003" time="6.190209"></testcase>
+  <testcase name="list-0004" time="30.455482458"></testcase>
+  <testcase name="list-0005" time="11.179785458"></testcase>
+  <testcase name="list-0006" time="7.751297375"></testcase>
+  <testcase name="count-0007" time="6.186116333"></testcase>
+  <testcase name="count-0008" time="4.956216667"></testcase>
+  <testcase name="count-0009" time="2.282842208"></testcase>
+  <testcase name="list-0010" time="5.44910125"></testcase>
+  <testcase name="list-0011" time="3.212591459"></testcase>
+  <testcase name="list-0012" time="4.694285708"></testcase>
+  <testcase name="list-0013" time="2.747840666"></testcase>
+  <testcase name="list-0014" time="2.8404865"></testcase>
+  <testcase name="list-0015" time="2.740008417"></testcase>
+  <testcase name="count-0016" time="3.610124042"></testcase>
+  <testcase name="count-0017" time="3.376777667"></testcase>
+  <testcase name="count-0018" time="2.392736083"></testcase>
+  <testcase name="list-0019" time="2.823948708"></testcase>
+  <testcase name="list-0020" time="4.214200667"></testcase>
+  <testcase name="list-0021" time="11.447624584"></testcase>
+  <testcase name="list-0022" time="3.924496416"></testcase>
+  <testcase name="list-0023" time="6.3387670830000005"></testcase>
+  <testcase name="list-0024" time="6.389259292"></testcase>
+  <testcase name="count-0025" time="1.958390542"></testcase>
+  <testcase name="count-0026" time="2.113099167"></testcase>
+  <testcase name="count-0027" time="2.011971125"></testcase>
+  <testcase name="list-0028" time="9.300778417"></testcase>
+  <testcase name="list-0029" time="5.019171875"></testcase>
+  <testcase name="list-0030" time="13.597314">
+    <failure message="llm_error: agentic loop exceeded max turns (10) without final answer">prompt=&#34;show me services&#34; tools=[automation_generate_runbook observe_cluster_overview observe_namespace_events get_events observe_api_resources observe_namespace_detailed get_events get_events get_events get_events] text_len=0</failure>
+  </testcase>
+  <testcase name="list-0031" time="4.706493167"></testcase>
+  <testcase name="list-0032" time="7.054595208"></testcase>
+  <testcase name="list-0033" time="5.401303375"></testcase>
+  <testcase name="count-0034" time="17.731529625">
+    <failure message="llm_error: agentic loop exceeded max turns (10) without final answer">prompt=&#34;how many services are there&#34; tools=[automation_generate_runbook automation_generate_runbook automation_generate_runbook automation_generate_runbook automation_generate_runbook automation_generate_runbook automation_generate_runbook automation_generate_runbook automation_generate_runbook automation_generate_runbook] text_len=0</failure>
+  </testcase>
+  <testcase name="count-0035" time="4.858460459"></testcase>
+  <testcase name="count-0036" time="4.060449292"></testcase>
+  <testcase name="list-0037" time="3.208323083"></testcase>
+  <testcase name="list-0038" time="4.0463299169999996"></testcase>
+  <testcase name="list-0039" time="2.9645882500000003"></testcase>
+  <testcase name="list-0040" time="4.169160333"></testcase>
+  <testcase name="list-0041" time="2.380297833"></testcase>
+  <testcase name="list-0042" time="7.730682959"></testcase>
+  <testcase name="count-0043" time="5.856745666"></testcase>
+  <testcase name="count-0044" time="2.988731167"></testcase>
+  <testcase name="count-0045" time="5.733270542"></testcase>
+  <testcase name="list-0046" time="11.315943"></testcase>
+  <testcase name="list-0047" time="8.206111541"></testcase>
+  <testcase name="list-0048" time="11.196685584"></testcase>
+  <testcase name="list-0049" time="12.824980667"></testcase>
+  <testcase name="list-0050" time="9.267119375"></testcase>
+  <testcase name="list-0051" time="9.446052958"></testcase>
+  <testcase name="count-0052" time="4.959300583"></testcase>
+  <testcase name="count-0053" time="14.773871625"></testcase>
+  <testcase name="count-0054" time="20.881493542">
+    <failure message="llm_error: agentic loop exceeded max turns (10) without final answer">prompt=&#34;how many configmaps do we have&#34; tools=[automation_generate_runbook observe_cluster_overview assess_security_posture cost_analyze_spending observe_network_policies analyze_failure_patterns analyze_error_correlation check_resource_limits observe_namespace_detailed get_resource] text_len=0</failure>
+  </testcase>
+  <testcase name="list-0055" time="6.65201525"></testcase>
+  <testcase name="list-0056" time="7.297982625"></testcase>
+  <testcase name="list-0057" time="8.156128542"></testcase>
+  <testcase name="list-0058" time="16.196434958"></testcase>
+  <testcase name="list-0059" time="2.599286083"></testcase>
+  <testcase name="list-0060" time="8.1375445"></testcase>
+  <testcase name="count-0061" time="12.135203708">
+    <failure message="llm_error: agentic loop exceeded max turns (10) without final answer">prompt=&#34;how many secrets are there&#34; tools=[automation_generate_runbook cordon_node observe_namespace_events detect_resource_contention observe_resource apply_resource_patch observe_namespace_detailed observe_custom_resources observe_network_policies observe_namespace_events] text_len=0</failure>
+  </testcase>
+  <testcase name="count-0062" time="14.089188417"></testcase>
+  <testcase name="count-0063" time="15.917198584">
+    <failure message="llm_error: agentic loop exceeded max turns (10) without final answer">prompt=&#34;how many secrets do we have&#34; tools=[automation_generate_runbook observe_cluster_overview get_events get_events get_events get_events get_events get_events get_events get_events] text_len=0</failure>
+  </testcase>
+  <testcase name="list-0064" time="5.077350583"></testcase>
+  <testcase name="list-0065" time="4.665020584"></testcase>
+  <testcase name="list-0066" time="6.037626959"></testcase>
+  <testcase name="list-0067" time="7.230549916"></testcase>
+  <testcase name="list-0068" time="5.9616115"></testcase>
+  <testcase name="list-0069" time="7.825350833"></testcase>
+  <testcase name="count-0070" time="25.548907042">
+    <failure message="llm_error: agentic loop exceeded max turns (10) without final answer">prompt=&#34;how many ingresses are there&#34; tools=[automation_generate_runbook observe_api_resources get_events observe_api_resources get_events export_topology_to_drawio get_logs get_events observe_api_resources get_events] text_len=0</failure>
+  </testcase>
+  <testcase name="count-0071" time="19.75861375">
+    <failure message="llm_error: agentic loop exceeded max turns (10) without final answer">prompt=&#34;count the ingresses&#34; tools=[automation_generate_runbook observe_api_resources get_events observe_resource_links get_events observe_resource_links observe_resource observe_namespace_detailed observe_cluster_overview get_events] text_len=0</failure>
+  </testcase>
+  <testcase name="count-0072" time="6.686694083"></testcase>
+  <testcase name="list-0073" time="3.055506292"></testcase>
+  <testcase name="list-0074" time="4.854335375"></testcase>
+  <testcase name="list-0075" time="3.562007625"></testcase>
+  <testcase name="list-0076" time="8.200679459"></testcase>
+  <testcase name="list-0077" time="2.7351265"></testcase>
+  <testcase name="list-0078" time="2.7757255"></testcase>
+  <testcase name="count-0079" time="11.578063958">
+    <failure message="llm_error: agentic loop exceeded max turns (10) without final answer">prompt=&#34;how many statefulsets are there&#34; tools=[check_resource_limits check_resource_limits check_resource_limits check_resource_limits check_resource_limits check_resource_limits check_resource_limits check_resource_limits check_resource_limits check_resource_limits] text_len=0</failure>
+  </testcase>
+  <testcase name="count-0080" time="2.886166125"></testcase>
+  <testcase name="count-0081" time="2.366190375"></testcase>
+  <testcase name="list-0082" time="3.992321875"></testcase>
+  <testcase name="list-0083" time="3.788239791"></testcase>
+  <testcase name="list-0084" time="10.397119208"></testcase>
+  <testcase name="list-0085" time="6.706050875"></testcase>
+  <testcase name="list-0086" time="2.9356887499999997"></testcase>
+  <testcase name="list-0087" time="3.472902375"></testcase>
+  <testcase name="count-0088" time="3.402552292"></testcase>
+  <testcase name="count-0089" time="2.792656583"></testcase>
+  <testcase name="count-0090" time="5.5875147080000005"></testcase>
+  <testcase name="list-0091" time="7.491874875"></testcase>
+  <testcase name="list-0092" time="3.442675666"></testcase>
+  <testcase name="list-0093" time="6.170477375"></testcase>
+  <testcase name="list-0094" time="4.3537955"></testcase>
+  <testcase name="list-0095" time="17.192555083"></testcase>
+  <testcase name="list-0096" time="6.957143416"></testcase>
+  <testcase name="count-0097" time="4.89388525"></testcase>
+  <testcase name="count-0098" time="3.155484834"></testcase>
+  <testcase name="count-0099" time="6.24913875"></testcase>
+  <testcase name="list-0100" time="8.755016166"></testcase>
+  <testcase name="list-0101" time="10.510954042"></testcase>
+  <testcase name="list-0102" time="5.618394875"></testcase>
+  <testcase name="list-0103" time="11.005522333"></testcase>
+  <testcase name="list-0104" time="10.129124167"></testcase>
+  <testcase name="list-0105" time="7.38781625"></testcase>
+  <testcase name="count-0106" time="21.439740625">
+    <failure message="llm_error: agentic loop exceeded max turns (10) without final answer">prompt=&#34;how many cronjobs are there&#34; tools=[automation_generate_runbook automation_generate_runbook observe_api_resources observe_cluster_overview observe_custom_resources get_events automation_generate_runbook observe_resource get_events get_events] text_len=366</failure>
+  </testcase>
+  <testcase name="count-0107" time="7.926386625"></testcase>
+  <testcase name="count-0108" time="15.201579167"></testcase>
+  <testcase name="list-0109" time="12.017040792"></testcase>
+  <testcase name="list-0110" time="11.218239083"></testcase>
+  <testcase name="list-0111" time="7.015426292"></testcase>
+  <testcase name="list-0112" time="6.174963959"></testcase>
+  <testcase name="list-0113" time="11.053268084"></testcase>
+  <testcase name="list-0114" time="10.710336625"></testcase>
+  <testcase name="count-0115" time="10.28408075"></testcase>
+  <testcase name="count-0116" time="10.835415459"></testcase>
+  <testcase name="count-0117" time="5.208386208"></testcase>
+  <testcase name="list-0118" time="9.1146505"></testcase>
+  <testcase name="list-0119" time="5.06153775"></testcase>
+  <testcase name="list-0120" time="7.853605792"></testcase>
+  <testcase name="list-0121" time="11.62704325"></testcase>
+  <testcase name="list-0122" time="8.818725916"></testcase>
+  <testcase name="list-0123" time="4.557603125"></testcase>
+  <testcase name="count-0124" time="4.934560917"></testcase>
+  <testcase name="count-0125" time="7.894963125"></testcase>
+  <testcase name="count-0126" time="4.2398905"></testcase>
+  <testcase name="list-0127" time="10.425608541"></testcase>
+  <testcase name="list-0128" time="9.3435575"></testcase>
+  <testcase name="list-0129" time="18.085492625">
+    <failure message="llm_error: agentic loop exceeded max turns (10) without final answer">prompt=&#34;show me replicasets&#34; tools=[automation_generate_runbook observe_workload_health observe_resource_links observe_namespace_events observe_namespace_events observe_namespace_events observe_namespace_events observe_namespace_events observe_namespace_events observe_namespace_events] text_len=0</failure>
+  </testcase>
+  <testcase name="list-0130" time="20.684790292"></testcase>
+  <testcase name="list-0131" time="13.024554958"></testcase>
+  <testcase name="list-0132" time="7.322505333"></testcase>
+  <testcase name="count-0133" time="18.702193833">
+    <failure message="llm_error: agentic loop exceeded max turns (10) without final answer">prompt=&#34;how many replicasets are there&#34; tools=[automation_generate_runbook observe_cluster_overview analyze_resource_efficiency analyze_resource_efficiency analyze_resource_efficiency analyze_resource_efficiency analyze_resource_efficiency analyze_resource_efficiency analyze_resource_efficiency analyze_resource_efficiency] text_len=0</failure>
+  </testcase>
+  <testcase name="count-0134" time="18.946729125">
+    <failure message="llm_error: agentic loop exceeded max turns (10) without final answer">prompt=&#34;count the replicasets&#34; tools=[get_events observe_resource observe_api_resources analyze_failure_patterns get_events observe_cronjob_ownership_chain check_resource_limits troubleshoot_rbac_issues analyze_resource_efficiency observe_cronjob_events] text_len=0</failure>
+  </testcase>
+  <testcase name="count-0135" time="15.031786041"></testcase>
+  <testcase name="list-0136" time="15.458704167"></testcase>
+  <testcase name="list-0137" time="6.378885375"></testcase>
+  <testcase name="list-0138" time="15.2157225"></testcase>
+  <testcase name="list-0139" time="10.748806875"></testcase>
+  <testcase name="list-0140" time="9.017715917"></testcase>
+  <testcase name="list-0141" time="11.070898125"></testcase>
+  <testcase name="count-0142" time="10.386626583"></testcase>
+  <testcase name="count-0143" time="2.479750083"></testcase>
+  <testcase name="count-0144" time="16.577554583"></testcase>
+  <testcase name="list-0145" time="15.042773209"></testcase>
+  <testcase name="list-0146" time="5.324766833"></testcase>
+  <testcase name="list-0147" time="5.64713575"></testcase>
+  <testcase name="list-0148" time="14.74966025"></testcase>
+  <testcase name="list-0149" time="9.221276291"></testcase>
+  <testcase name="list-0150" time="35.38307475"></testcase>
+  <testcase name="count-0151" time="12.117324083"></testcase>
+  <testcase name="count-0152" time="10.695083"></testcase>
+  <testcase name="count-0153" time="17.961339416">
+    <failure message="llm_error: agentic loop exceeded max turns (10) without final answer">prompt=&#34;how many roles do we have&#34; tools=[automation_generate_runbook automation_generate_runbook automation_generate_runbook automation_schedule_task automation_schedule_task automation_schedule_task security_audit_rbac observe_api_resources observe_api_resources observe_api_resources] text_len=259</failure>
+  </testcase>
+  <testcase name="list-0154" time="7.37738025"></testcase>
+  <testcase name="list-0155" time="18.89789075"></testcase>
+  <testcase name="list-0156" time="6.684425959"></testcase>
+  <testcase name="list-0157" time="10.519390459"></testcase>
+  <testcase name="list-0158" time="9.160039083"></testcase>
+  <testcase name="list-0159" time="8.17689125"></testcase>
+  <testcase name="count-0160" time="4.445131334"></testcase>
+  <testcase name="count-0161" time="3.9790229999999998"></testcase>
+  <testcase name="count-0162" time="16.903985083">
+    <failure message="llm_error: agentic loop exceeded max turns (10) without final answer">prompt=&#34;how many rolebindings do we have&#34; tools=[automation_generate_runbook get_events get_events get_events automation_generate_runbook automation_generate_runbook automation_generate_runbook automation_generate_runbook observe_resource observe_resource] text_len=380</failure>
+  </testcase>
+  <testcase name="list-0163" time="1.4142293750000001">
+    <failure message="expected a tool call, none fired">prompt=&#34;list network policies&#34; tools=[] text_len=233</failure>
+  </testcase>
+  <testcase name="list-0164" time="3.332140625"></testcase>
+  <testcase name="list-0165" time="2.524490125"></testcase>
+  <testcase name="list-0166" time="2.58429225"></testcase>
+  <testcase name="list-0167" time="2.144195708"></testcase>
+  <testcase name="list-0168" time="3.224879375"></testcase>
+  <testcase name="count-0169" time="3.662500041"></testcase>
+  <testcase name="count-0170" time="2.578425083"></testcase>
+  <testcase name="count-0171" time="3.901870083"></testcase>
+  <testcase name="list-0172" time="7.260477"></testcase>
+  <testcase name="list-0173" time="14.540496167"></testcase>
+  <testcase name="list-0174" time="5.4903855"></testcase>
+  <testcase name="list-0175" time="8.117034459"></testcase>
+  <testcase name="list-0176" time="8.049286875"></testcase>
+  <testcase name="list-0177" time="12.863704625"></testcase>
+  <testcase name="count-0178" time="5.7182369170000005"></testcase>
+  <testcase name="count-0179" time="3.423234333"></testcase>
+  <testcase name="count-0180" time="4.11492125"></testcase>
+  <testcase name="list-0181" time="5.712679625"></testcase>
+  <testcase name="list-0182" time="0.533618542">
+    <failure message="llm_error: LLM turn 0: API 429: {&#xA;    &#34;error&#34;: {&#xA;        &#34;message&#34;: &#34;You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.&#34;,&#xA;        &#34;type&#34;: &#34;insufficient_quota&#34;,&#xA;        &#34;param&#34;: null,&#xA;        &#34;code&#34;: &#34;insufficient_quota&#34;&#xA;    }&#xA;}&#xA;">prompt=&#34;show hpas&#34; tools=[] text_len=0</failure>
+  </testcase>
+  <testcase name="list-0183" time="1.6575546669999999">
+    <failure message="llm_error: LLM turn 1: API 429: {&#xA;    &#34;error&#34;: {&#xA;        &#34;message&#34;: &#34;You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.&#34;,&#xA;        &#34;type&#34;: &#34;insufficient_quota&#34;,&#xA;        &#34;param&#34;: null,&#xA;        &#34;code&#34;: &#34;insufficient_quota&#34;&#xA;    }&#xA;}&#xA;">prompt=&#34;show me hpas&#34; tools=[automation_generate_runbook] text_len=0</failure>
+  </testcase>
+  <testcase name="list-0184" time="1.96606425">
+    <failure message="llm_error: LLM turn 1: API 429: {&#xA;    &#34;error&#34;: {&#xA;        &#34;message&#34;: &#34;You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.&#34;,&#xA;        &#34;type&#34;: &#34;insufficient_quota&#34;,&#xA;        &#34;param&#34;: null,&#xA;        &#34;code&#34;: &#34;insufficient_quota&#34;&#xA;    }&#xA;}&#xA;">prompt=&#34;what hpas are running&#34; tools=[automation_generate_runbook] text_len=0</failure>
+  </testcase>
+  <testcase name="list-0185" time="0.310962792">
+    <failure message="llm_error: LLM turn 0: API 429: {&#xA;    &#34;error&#34;: {&#xA;        &#34;message&#34;: &#34;You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.&#34;,&#xA;        &#34;type&#34;: &#34;insufficient_quota&#34;,&#xA;        &#34;param&#34;: null,&#xA;        &#34;code&#34;: &#34;insufficient_quota&#34;&#xA;    }&#xA;}&#xA;">prompt=&#34;list all hpas&#34; tools=[] text_len=0</failure>
+  </testcase>
+  <testcase name="list-0186" time="2.854931833">
+    <failure message="llm_error: LLM turn 2: API 429: {&#xA;    &#34;error&#34;: {&#xA;        &#34;message&#34;: &#34;You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.&#34;,&#xA;        &#34;type&#34;: &#34;insufficient_quota&#34;,&#xA;        &#34;param&#34;: null,&#xA;        &#34;code&#34;: &#34;insufficient_quota&#34;&#xA;    }&#xA;}&#xA;">prompt=&#34;list every hpas&#34; tools=[automation_generate_runbook observe_api_resources] text_len=0</failure>
+  </testcase>
+  <testcase name="count-0187" time="3.611804583">
+    <failure message="llm_error: LLM turn 2: API 429: {&#xA;    &#34;error&#34;: {&#xA;        &#34;message&#34;: &#34;You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.&#34;,&#xA;        &#34;type&#34;: &#34;insufficient_quota&#34;,&#xA;        &#34;param&#34;: null,&#xA;        &#34;code&#34;: &#34;insufficient_quota&#34;&#xA;    }&#xA;}&#xA;">prompt=&#34;how many hpas are there&#34; tools=[automation_generate_runbook observe_api_resources] text_len=0</failure>
+  </testcase>
+  <testcase name="count-0188" time="2.535470708">
+    <failure message="llm_error: LLM turn 1: API 429: {&#xA;    &#34;error&#34;: {&#xA;        &#34;message&#34;: &#34;You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.&#34;,&#xA;        &#34;type&#34;: &#34;insufficient_quota&#34;,&#xA;        &#34;param&#34;: null,&#xA;        &#34;code&#34;: &#34;insufficient_quota&#34;&#xA;    }&#xA;}&#xA;">prompt=&#34;count the hpas&#34; tools=[automation_schedule_task] text_len=0</failure>
+  </testcase>
+  <testcase name="count-0189" time="0.322825042">
+    <failure message="llm_error: LLM turn 0: API 429: {&#xA;    &#34;error&#34;: {&#xA;        &#34;message&#34;: &#34;You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.&#34;,&#xA;        &#34;type&#34;: &#34;insufficient_quota&#34;,&#xA;        &#34;param&#34;: null,&#xA;        &#34;code&#34;: &#34;insufficient_quota&#34;&#xA;    }&#xA;}&#xA;">prompt=&#34;how many hpas do we have&#34; tools=[] text_len=0</failure>
+  </testcase>
+  <testcase name="nslist-0190" time="0.318186959">
+    <failure message="llm_error: LLM turn 0: API 429: {&#xA;    &#34;error&#34;: {&#xA;        &#34;message&#34;: &#34;You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.&#34;,&#xA;        &#34;type&#34;: &#34;insufficient_quota&#34;,&#xA;        &#34;param&#34;: null,&#xA;        &#34;code&#34;: &#34;insufficient_quota&#34;&#xA;    }&#xA;}&#xA;">prompt=&#34;list namespaces in kube-system&#34; tools=[] text_len=0</failure>
+  </testcase>
+  <testcase name="nslist-0191" time="0.491609542">
+    <failure message="llm_error: LLM turn 0: API 429: {&#xA;    &#34;error&#34;: {&#xA;        &#34;message&#34;: &#34;You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.&#34;,&#xA;        &#34;type&#34;: &#34;insufficient_quota&#34;,&#xA;        &#34;param&#34;: null,&#xA;        &#34;code&#34;: &#34;insufficient_quota&#34;&#xA;    }&#xA;}&#xA;">prompt=&#34;show namespaces in kube-system&#34; tools=[] text_len=0</failure>
+  </testcase>
+  <testcase name="nslist-0192" time="1.528777667">
+    <failure message="llm_error: LLM turn 1: API 429: {&#xA;    &#34;error&#34;: {&#xA;        &#34;message&#34;: &#34;You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.&#34;,&#xA;        &#34;type&#34;: &#34;insufficient_quota&#34;,&#xA;        &#34;param&#34;: null,&#xA;        &#34;code&#34;: &#34;insufficient_quota&#34;&#xA;    }&#xA;}&#xA;">prompt=&#34;what namespaces are in kube-system&#34; tools=[get_resource] text_len=0</failure>
+  </testcase>
+  <testcase name="nslist-0193" time="3.313574125"></testcase>
+  <testcase name="nslist-0194" time="2.502359791">
+    <failure message="llm_error: LLM turn 1: API 429: {&#xA;    &#34;error&#34;: {&#xA;        &#34;message&#34;: &#34;You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.&#34;,&#xA;        &#34;type&#34;: &#34;insufficient_quota&#34;,&#xA;        &#34;param&#34;: null,&#xA;        &#34;code&#34;: &#34;insufficient_quota&#34;&#xA;    }&#xA;}&#xA;">prompt=&#34;show namespaces in default&#34; tools=[automation_schedule_task] text_len=229</failure>
+  </testcase>
+  <testcase name="nslist-0195" time="0.56876225">
+    <failure message="llm_error: LLM turn 0: API 429: {&#xA;    &#34;error&#34;: {&#xA;        &#34;message&#34;: &#34;You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.&#34;,&#xA;        &#34;type&#34;: &#34;insufficient_quota&#34;,&#xA;        &#34;param&#34;: null,&#xA;        &#34;code&#34;: &#34;insufficient_quota&#34;&#xA;    }&#xA;}&#xA;">prompt=&#34;what namespaces are in default&#34; tools=[] text_len=0</failure>
+  </testcase>
+  <testcase name="nslist-0196" time="0.299604375">
+    <failure message="llm_error: LLM turn 0: API 429: {&#xA;    &#34;error&#34;: {&#xA;        &#34;message&#34;: &#34;You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.&#34;,&#xA;        &#34;type&#34;: &#34;insufficient_quota&#34;,&#xA;        &#34;param&#34;: null,&#xA;        &#34;code&#34;: &#34;insufficient_quota&#34;&#xA;    }&#xA;}&#xA;">prompt=&#34;list pods in kube-system&#34; tools=[] text_len=0</failure>
+  </testcase>
+  <testcase name="nslist-0197" time="0.537628625">
+    <failure message="llm_error: LLM turn 0: API 429: {&#xA;    &#34;error&#34;: {&#xA;        &#34;message&#34;: &#34;You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.&#34;,&#xA;        &#34;type&#34;: &#34;insufficient_quota&#34;,&#xA;        &#34;param&#34;: null,&#xA;        &#34;code&#34;: &#34;insufficient_quota&#34;&#xA;    }&#xA;}&#xA;">prompt=&#34;show pods in kube-system&#34; tools=[] text_len=0</failure>
+  </testcase>
+  <testcase name="nslist-0198" time="0.283335959">
+    <failure message="llm_error: LLM turn 0: API 429: {&#xA;    &#34;error&#34;: {&#xA;        &#34;message&#34;: &#34;You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.&#34;,&#xA;        &#34;type&#34;: &#34;insufficient_quota&#34;,&#xA;        &#34;param&#34;: null,&#xA;        &#34;code&#34;: &#34;insufficient_quota&#34;&#xA;    }&#xA;}&#xA;">prompt=&#34;what pods are in kube-system&#34; tools=[] text_len=0</failure>
+  </testcase>
+  <testcase name="nslist-0199" time="0.408541208">
+    <failure message="llm_error: LLM turn 0: API 429: {&#xA;    &#34;error&#34;: {&#xA;        &#34;message&#34;: &#34;You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.&#34;,&#xA;        &#34;type&#34;: &#34;insufficient_quota&#34;,&#xA;        &#34;param&#34;: null,&#xA;        &#34;code&#34;: &#34;insufficient_quota&#34;&#xA;    }&#xA;}&#xA;">prompt=&#34;list pods in default&#34; tools=[] text_len=0</failure>
+  </testcase>
+  <testcase name="nslist-0200" time="3.5076268329999998"></testcase>
+  <testcase name="nslist-0201" time="1.447964291">
+    <failure message="llm_error: LLM turn 1: API 429: {&#xA;    &#34;error&#34;: {&#xA;        &#34;message&#34;: &#34;You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.&#34;,&#xA;        &#34;type&#34;: &#34;insufficient_quota&#34;,&#xA;        &#34;param&#34;: null,&#xA;        &#34;code&#34;: &#34;insufficient_quota&#34;&#xA;    }&#xA;}&#xA;">prompt=&#34;what pods are in default&#34; tools=[automation_generate_runbook] text_len=0</failure>
+  </testcase>
+  <testcase name="nslist-0202" time="13.539469583">
+    <failure message="llm_error: LLM turn 4: API 429: {&#xA;    &#34;error&#34;: {&#xA;        &#34;message&#34;: &#34;You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.&#34;,&#xA;        &#34;type&#34;: &#34;insufficient_quota&#34;,&#xA;        &#34;param&#34;: null,&#xA;        &#34;code&#34;: &#34;insufficient_quota&#34;&#xA;    }&#xA;}&#xA;">prompt=&#34;list deployments in kube-system&#34; tools=[automation_generate_runbook automation_generate_runbook automation_generate_runbook automation_generate_runbook] text_len=0</failure>
+  </testcase>
+  <testcase name="nslist-0203" time="0.316331">
+    <failure message="llm_error: LLM turn 0: API 429: {&#xA;    &#34;error&#34;: {&#xA;        &#34;message&#34;: &#34;You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.&#34;,&#xA;        &#34;type&#34;: &#34;insufficient_quota&#34;,&#xA;        &#34;param&#34;: null,&#xA;        &#34;code&#34;: &#34;insufficient_quota&#34;&#xA;    }&#xA;}&#xA;">prompt=&#34;show deployments in kube-system&#34; tools=[] text_len=0</failure>
+  </testcase>
+  <testcase name="nslist-0204" time="0.287076583">
+    <failure message="llm_error: LLM turn 0: API 429: {&#xA;    &#34;error&#34;: {&#xA;        &#34;message&#34;: &#34;You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.&#34;,&#xA;        &#34;type&#34;: &#34;insufficient_quota&#34;,&#xA;        &#34;param&#34;: null,&#xA;        &#34;code&#34;: &#34;insufficient_quota&#34;&#xA;    }&#xA;}&#xA;">prompt=&#34;what deployments are in kube-system&#34; tools=[] text_len=0</failure>
+  </testcase>
+  <testcase name="nslist-0205" time="0.290131083">
+    <failure message="llm_error: LLM turn 0: API 429: {&#xA;    &#34;error&#34;: {&#xA;        &#34;message&#34;: &#34;You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.&#34;,&#xA;        &#34;type&#34;: &#34;insufficient_quota&#34;,&#xA;        &#34;param&#34;: null,&#xA;        &#34;code&#34;: &#34;insufficient_quota&#34;&#xA;    }&#xA;}&#xA;">prompt=&#34;list deployments in default&#34; tools=[] text_len=0</failure>
+  </testcase>
+  <testcase name="nslist-0206" time="3.218723959">
+    <failure message="llm_error: LLM turn 2: API 429: {&#xA;    &#34;error&#34;: {&#xA;        &#34;message&#34;: &#34;You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.&#34;,&#xA;        &#34;type&#34;: &#34;insufficient_quota&#34;,&#xA;        &#34;param&#34;: null,&#xA;        &#34;code&#34;: &#34;insufficient_quota&#34;&#xA;    }&#xA;}&#xA;">prompt=&#34;show deployments in default&#34; tools=[automation_generate_runbook observe_replicaset_detailed] text_len=0</failure>
+  </testcase>
+  <testcase name="nslist-0207" time="0.323324625">
+    <failure message="llm_error: LLM turn 0: API 429: {&#xA;    &#34;error&#34;: {&#xA;        &#34;message&#34;: &#34;You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.&#34;,&#xA;        &#34;type&#34;: &#34;insufficient_quota&#34;,&#xA;        &#34;param&#34;: null,&#xA;        &#34;code&#34;: &#34;insufficient_quota&#34;&#xA;    }&#xA;}&#xA;">prompt=&#34;what deployments are in default&#34; tools=[] text_len=0</failure>
+  </testcase>
+  <testcase name="nslist-0208" time="0.31254425">
+    <failure message="llm_error: LLM turn 0: API 429: {&#xA;    &#34;error&#34;: {&#xA;        &#34;message&#34;: &#34;You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.&#34;,&#xA;        &#34;type&#34;: &#34;insufficient_quota&#34;,&#xA;        &#34;param&#34;: null,&#xA;        &#34;code&#34;: &#34;insufficient_quota&#34;&#xA;    }&#xA;}&#xA;">prompt=&#34;list services in kube-system&#34; tools=[] text_len=0</failure>
+  </testcase>
+  <testcase name="nslist-0209" time="0.284010584">
+    <failure message="llm_error: LLM turn 0: API 429: {&#xA;    &#34;error&#34;: {&#xA;        &#34;message&#34;: &#34;You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.&#34;,&#xA;        &#34;type&#34;: &#34;insufficient_quota&#34;,&#xA;        &#34;param&#34;: null,&#xA;        &#34;code&#34;: &#34;insufficient_quota&#34;&#xA;    }&#xA;}&#xA;">prompt=&#34;show services in kube-system&#34; tools=[] text_len=0</failure>
+  </testcase>
+  <testcase name="nslist-0210" time="1.511171625">
+    <failure message="llm_error: LLM turn 1: API 429: {&#xA;    &#34;error&#34;: {&#xA;        &#34;message&#34;: &#34;You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.&#34;,&#xA;        &#34;type&#34;: &#34;insufficient_quota&#34;,&#xA;        &#34;param&#34;: null,&#xA;        &#34;code&#34;: &#34;insufficient_quota&#34;&#xA;    }&#xA;}&#xA;">prompt=&#34;what services are in kube-system&#34; tools=[automation_generate_runbook] text_len=0</failure>
+  </testcase>
+  <testcase name="nslist-0211" time="5.131569792">
+    <failure message="llm_error: LLM turn 2: API 429: {&#xA;    &#34;error&#34;: {&#xA;        &#34;message&#34;: &#34;You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.&#34;,&#xA;        &#34;type&#34;: &#34;insufficient_quota&#34;,&#xA;        &#34;param&#34;: null,&#xA;        &#34;code&#34;: &#34;insufficient_quota&#34;&#xA;    }&#xA;}&#xA;">prompt=&#34;list services in default&#34; tools=[automation_create_alert_rule observe_namespace_events] text_len=0</failure>
+  </testcase>
+  <testcase name="nslist-0212" time="5.449802791"></testcase>
+  <testcase name="nslist-0213" time="0.885971959">
+    <failure message="llm_error: LLM turn 0: API 429: {&#xA;    &#34;error&#34;: {&#xA;        &#34;message&#34;: &#34;You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.&#34;,&#xA;        &#34;type&#34;: &#34;insufficient_quota&#34;,&#xA;        &#34;param&#34;: null,&#xA;        &#34;code&#34;: &#34;insufficient_quota&#34;&#xA;    }&#xA;}&#xA;">prompt=&#34;what services are in default&#34; tools=[] text_len=0</failure>
+  </testcase>
+  <testcase name="nslist-0214" time="0.288931">
+    <failure message="llm_error: LLM turn 0: API 429: {&#xA;    &#34;error&#34;: {&#xA;        &#34;message&#34;: &#34;You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.&#34;,&#xA;        &#34;type&#34;: &#34;insufficient_quota&#34;,&#xA;        &#34;param&#34;: null,&#xA;        &#34;code&#34;: &#34;insufficient_quota&#34;&#xA;    }&#xA;}&#xA;">prompt=&#34;list nodes in kube-system&#34; tools=[] text_len=0</failure>
+  </testcase>
+  <testcase name="nslist-0215" time="0.287957">
+    <failure message="llm_error: LLM turn 0: API 429: {&#xA;    &#34;error&#34;: {&#xA;        &#34;message&#34;: &#34;You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.&#34;,&#xA;        &#34;type&#34;: &#34;insufficient_quota&#34;,&#xA;        &#34;param&#34;: null,&#xA;        &#34;code&#34;: &#34;insufficient_quota&#34;&#xA;    }&#xA;}&#xA;">prompt=&#34;show nodes in kube-system&#34; tools=[] text_len=0</failure>
+  </testcase>
+  <testcase name="nslist-0216" time="6.59415525">
+    <failure message="llm_error: LLM turn 2: API 429: {&#xA;    &#34;error&#34;: {&#xA;        &#34;message&#34;: &#34;You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.&#34;,&#xA;        &#34;type&#34;: &#34;insufficient_quota&#34;,&#xA;        &#34;param&#34;: null,&#xA;        &#34;code&#34;: &#34;insufficient_quota&#34;&#xA;    }&#xA;}&#xA;">prompt=&#34;what nodes are in kube-system&#34; tools=[get_events observe_cluster_overview] text_len=634</failure>
+  </testcase>
+  <testcase name="nslist-0217" time="0.485309083">
+    <failure message="llm_error: LLM turn 0: API 429: {&#xA;    &#34;error&#34;: {&#xA;        &#34;message&#34;: &#34;You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.&#34;,&#xA;        &#34;type&#34;: &#34;insufficient_quota&#34;,&#xA;        &#34;param&#34;: null,&#xA;        &#34;code&#34;: &#34;insufficient_quota&#34;&#xA;    }&#xA;}&#xA;">prompt=&#34;list nodes in default&#34; tools=[] text_len=0</failure>
+  </testcase>
+  <testcase name="nslist-0218" time="0.283261333">
+    <failure message="llm_error: LLM turn 0: API 429: {&#xA;    &#34;error&#34;: {&#xA;        &#34;message&#34;: &#34;You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.&#34;,&#xA;        &#34;type&#34;: &#34;insufficient_quota&#34;,&#xA;        &#34;param&#34;: null,&#xA;        &#34;code&#34;: &#34;insufficient_quota&#34;&#xA;    }&#xA;}&#xA;">prompt=&#34;show nodes in default&#34; tools=[] text_len=0</failure>
+  </testcase>
+  <testcase name="nslist-0219" time="2.69397825">
+    <failure message="llm_error: LLM turn 1: API 429: {&#xA;    &#34;error&#34;: {&#xA;        &#34;message&#34;: &#34;You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.&#34;,&#xA;        &#34;type&#34;: &#34;insufficient_quota&#34;,&#xA;        &#34;param&#34;: null,&#xA;        &#34;code&#34;: &#34;insufficient_quota&#34;&#xA;    }&#xA;}&#xA;">prompt=&#34;what nodes are in default&#34; tools=[automation_generate_runbook] text_len=173</failure>
+  </testcase>
+  <testcase name="nslist-0220" time="1.399740292">
+    <failure message="llm_error: LLM turn 1: API 429: {&#xA;    &#34;error&#34;: {&#xA;        &#34;message&#34;: &#34;You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.&#34;,&#xA;        &#34;type&#34;: &#34;insufficient_quota&#34;,&#xA;        &#34;param&#34;: null,&#xA;        &#34;code&#34;: &#34;insufficient_quota&#34;&#xA;    }&#xA;}&#xA;">prompt=&#34;list configmaps in kube-system&#34; tools=[automation_generate_runbook] text_len=0</failure>
+  </testcase>
+  <testcase name="nslist-0221" time="0.299882459">
+    <failure message="llm_error: LLM turn 0: API 429: {&#xA;    &#34;error&#34;: {&#xA;        &#34;message&#34;: &#34;You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.&#34;,&#xA;        &#34;type&#34;: &#34;insufficient_quota&#34;,&#xA;        &#34;param&#34;: null,&#xA;        &#34;code&#34;: &#34;insufficient_quota&#34;&#xA;    }&#xA;}&#xA;">prompt=&#34;show configmaps in kube-system&#34; tools=[] text_len=0</failure>
+  </testcase>
+  <testcase name="nslist-0222" time="0.326452125">
+    <failure message="llm_error: LLM turn 0: API 429: {&#xA;    &#34;error&#34;: {&#xA;        &#34;message&#34;: &#34;You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.&#34;,&#xA;        &#34;type&#34;: &#34;insufficient_quota&#34;,&#xA;        &#34;param&#34;: null,&#xA;        &#34;code&#34;: &#34;insufficient_quota&#34;&#xA;    }&#xA;}&#xA;">prompt=&#34;what configmaps are in kube-system&#34; tools=[] text_len=0</failure>
+  </testcase>
+  <testcase name="nslist-0223" time="6.520866">
+    <failure message="llm_error: LLM turn 3: API 429: {&#xA;    &#34;error&#34;: {&#xA;        &#34;message&#34;: &#34;You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.&#34;,&#xA;        &#34;type&#34;: &#34;insufficient_quota&#34;,&#xA;        &#34;param&#34;: null,&#xA;        &#34;code&#34;: &#34;insufficient_quota&#34;&#xA;    }&#xA;}&#xA;">prompt=&#34;list configmaps in default&#34; tools=[automation_generate_runbook observe_custom_resources observe_storage_status] text_len=0</failure>
+  </testcase>
+  <testcase name="nslist-0224" time="1.435263917">
+    <failure message="llm_error: LLM turn 1: API 429: {&#xA;    &#34;error&#34;: {&#xA;        &#34;message&#34;: &#34;You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.&#34;,&#xA;        &#34;type&#34;: &#34;insufficient_quota&#34;,&#xA;        &#34;param&#34;: null,&#xA;        &#34;code&#34;: &#34;insufficient_quota&#34;&#xA;    }&#xA;}&#xA;">prompt=&#34;show configmaps in default&#34; tools=[automation_generate_runbook] text_len=0</failure>
+  </testcase>
+  <testcase name="nslist-0225" time="0.38072175">
+    <failure message="llm_error: LLM turn 0: API 429: {&#xA;    &#34;error&#34;: {&#xA;        &#34;message&#34;: &#34;You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.&#34;,&#xA;        &#34;type&#34;: &#34;insufficient_quota&#34;,&#xA;        &#34;param&#34;: null,&#xA;        &#34;code&#34;: &#34;insufficient_quota&#34;&#xA;    }&#xA;}&#xA;">prompt=&#34;what configmaps are in default&#34; tools=[] text_len=0</failure>
+  </testcase>
+  <testcase name="nslist-0226" time="1.562502667">
+    <failure message="llm_error: LLM turn 1: API 429: {&#xA;    &#34;error&#34;: {&#xA;        &#34;message&#34;: &#34;You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.&#34;,&#xA;        &#34;type&#34;: &#34;insufficient_quota&#34;,&#xA;        &#34;param&#34;: null,&#xA;        &#34;code&#34;: &#34;insufficient_quota&#34;&#xA;    }&#xA;}&#xA;">prompt=&#34;list secrets in kube-system&#34; tools=[automation_generate_runbook] text_len=0</failure>
+  </testcase>
+  <testcase name="nslist-0227" time="0.2924095">
+    <failure message="llm_error: LLM turn 0: API 429: {&#xA;    &#34;error&#34;: {&#xA;        &#34;message&#34;: &#34;You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.&#34;,&#xA;        &#34;type&#34;: &#34;insufficient_quota&#34;,&#xA;        &#34;param&#34;: null,&#xA;        &#34;code&#34;: &#34;insufficient_quota&#34;&#xA;    }&#xA;}&#xA;">prompt=&#34;show secrets in kube-system&#34; tools=[] text_len=0</failure>
+  </testcase>
+  <testcase name="nslist-0228" time="0.288934541">
+    <failure message="llm_error: LLM turn 0: API 429: {&#xA;    &#34;error&#34;: {&#xA;        &#34;message&#34;: &#34;You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.&#34;,&#xA;        &#34;type&#34;: &#34;insufficient_quota&#34;,&#xA;        &#34;param&#34;: null,&#xA;        &#34;code&#34;: &#34;insufficient_quota&#34;&#xA;    }&#xA;}&#xA;">prompt=&#34;what secrets are in kube-system&#34; tools=[] text_len=0</failure>
+  </testcase>
+  <testcase name="nslist-0229" time="0.278787583">
+    <failure message="llm_error: LLM turn 0: API 429: {&#xA;    &#34;error&#34;: {&#xA;        &#34;message&#34;: &#34;You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.&#34;,&#xA;        &#34;type&#34;: &#34;insufficient_quota&#34;,&#xA;        &#34;param&#34;: null,&#xA;        &#34;code&#34;: &#34;insufficient_quota&#34;&#xA;    }&#xA;}&#xA;">prompt=&#34;list secrets in default&#34; tools=[] text_len=0</failure>
+  </testcase>
+  <testcase name="nslist-0230" time="1.421889209">
+    <failure message="llm_error: LLM turn 1: API 429: {&#xA;    &#34;error&#34;: {&#xA;        &#34;message&#34;: &#34;You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.&#34;,&#xA;        &#34;type&#34;: &#34;insufficient_quota&#34;,&#xA;        &#34;param&#34;: null,&#xA;        &#34;code&#34;: &#34;insufficient_quota&#34;&#xA;    }&#xA;}&#xA;">prompt=&#34;show secrets in default&#34; tools=[automation_generate_runbook] text_len=0</failure>
+  </testcase>
+  <testcase name="nslist-0231" time="1.766617667">
+    <failure message="llm_error: LLM turn 1: API 429: {&#xA;    &#34;error&#34;: {&#xA;        &#34;message&#34;: &#34;You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.&#34;,&#xA;        &#34;type&#34;: &#34;insufficient_quota&#34;,&#xA;        &#34;param&#34;: null,&#xA;        &#34;code&#34;: &#34;insufficient_quota&#34;&#xA;    }&#xA;}&#xA;">prompt=&#34;what secrets are in default&#34; tools=[automation_generate_runbook] text_len=0</failure>
+  </testcase>
+  <testcase name="nslist-0232" time="0.284016917">
+    <failure message="llm_error: LLM turn 0: API 429: {&#xA;    &#34;error&#34;: {&#xA;        &#34;message&#34;: &#34;You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.&#34;,&#xA;        &#34;type&#34;: &#34;insufficient_quota&#34;,&#xA;        &#34;param&#34;: null,&#xA;        &#34;code&#34;: &#34;insufficient_quota&#34;&#xA;    }&#xA;}&#xA;">prompt=&#34;list ingresses in kube-system&#34; tools=[] text_len=0</failure>
+  </testcase>
+  <testcase name="nslist-0233" time="1.608082292">
+    <failure message="llm_error: LLM turn 1: API 429: {&#xA;    &#34;error&#34;: {&#xA;        &#34;message&#34;: &#34;You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.&#34;,&#xA;        &#34;type&#34;: &#34;insufficient_quota&#34;,&#xA;        &#34;param&#34;: null,&#xA;        &#34;code&#34;: &#34;insufficient_quota&#34;&#xA;    }&#xA;}&#xA;">prompt=&#34;show ingresses in kube-system&#34; tools=[automation_generate_runbook] text_len=0</failure>
+  </testcase>
+  <testcase name="nslist-0234" time="1.250159625">
+    <failure message="llm_error: LLM turn 1: API 429: {&#xA;    &#34;error&#34;: {&#xA;        &#34;message&#34;: &#34;You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.&#34;,&#xA;        &#34;type&#34;: &#34;insufficient_quota&#34;,&#xA;        &#34;param&#34;: null,&#xA;        &#34;code&#34;: &#34;insufficient_quota&#34;&#xA;    }&#xA;}&#xA;">prompt=&#34;what ingresses are in kube-system&#34; tools=[automation_generate_runbook] text_len=0</failure>
+  </testcase>
+  <testcase name="nslist-0235" time="1.32357825">
+    <failure message="llm_error: LLM turn 1: API 429: {&#xA;    &#34;error&#34;: {&#xA;        &#34;message&#34;: &#34;You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.&#34;,&#xA;        &#34;type&#34;: &#34;insufficient_quota&#34;,&#xA;        &#34;param&#34;: null,&#xA;        &#34;code&#34;: &#34;insufficient_quota&#34;&#xA;    }&#xA;}&#xA;">prompt=&#34;list ingresses in default&#34; tools=[automation_generate_runbook] text_len=0</failure>
+  </testcase>
+  <testcase name="nslist-0236" time="4.457153625"></testcase>
+  <testcase name="nslist-0237" time="0.318795458">
+    <failure message="llm_error: LLM turn 0: API 429: {&#xA;    &#34;error&#34;: {&#xA;        &#34;message&#34;: &#34;You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.&#34;,&#xA;        &#34;type&#34;: &#34;insufficient_quota&#34;,&#xA;        &#34;param&#34;: null,&#xA;        &#34;code&#34;: &#34;insufficient_quota&#34;&#xA;    }&#xA;}&#xA;">prompt=&#34;what ingresses are in default&#34; tools=[] text_len=0</failure>
+  </testcase>
+  <testcase name="nslist-0238" time="0.289680709">
+    <failure message="llm_error: LLM turn 0: API 429: {&#xA;    &#34;error&#34;: {&#xA;        &#34;message&#34;: &#34;You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.&#34;,&#xA;        &#34;type&#34;: &#34;insufficient_quota&#34;,&#xA;        &#34;param&#34;: null,&#xA;        &#34;code&#34;: &#34;insufficient_quota&#34;&#xA;    }&#xA;}&#xA;">prompt=&#34;list statefulsets in kube-system&#34; tools=[] text_len=0</failure>
+  </testcase>
+  <testcase name="nslist-0239" time="0.288615625">
+    <failure message="llm_error: LLM turn 0: API 429: {&#xA;    &#34;error&#34;: {&#xA;        &#34;message&#34;: &#34;You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.&#34;,&#xA;        &#34;type&#34;: &#34;insufficient_quota&#34;,&#xA;        &#34;param&#34;: null,&#xA;        &#34;code&#34;: &#34;insufficient_quota&#34;&#xA;    }&#xA;}&#xA;">prompt=&#34;show statefulsets in kube-system&#34; tools=[] text_len=0</failure>
+  </testcase>
+  <testcase name="nslist-0240" time="6.208677083">
+    <failure message="llm_error: LLM turn 1: API 429: {&#xA;    &#34;error&#34;: {&#xA;        &#34;message&#34;: &#34;You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.&#34;,&#xA;        &#34;type&#34;: &#34;insufficient_quota&#34;,&#xA;        &#34;param&#34;: null,&#xA;        &#34;code&#34;: &#34;insufficient_quota&#34;&#xA;    }&#xA;}&#xA;">prompt=&#34;what statefulsets are in kube-system&#34; tools=[automation_generate_runbook] text_len=0</failure>
+  </testcase>
+  <testcase name="nslist-0241" time="1.610846375">
+    <failure message="llm_error: LLM turn 1: API 429: {&#xA;    &#34;error&#34;: {&#xA;        &#34;message&#34;: &#34;You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.&#34;,&#xA;        &#34;type&#34;: &#34;insufficient_quota&#34;,&#xA;        &#34;param&#34;: null,&#xA;        &#34;code&#34;: &#34;insufficient_quota&#34;&#xA;    }&#xA;}&#xA;">prompt=&#34;list statefulsets in default&#34; tools=[automation_generate_runbook] text_len=0</failure>
+  </testcase>
+  <testcase name="nslist-0242" time="0.373197375">
+    <failure message="llm_error: LLM turn 0: API 429: {&#xA;    &#34;error&#34;: {&#xA;        &#34;message&#34;: &#34;You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.&#34;,&#xA;        &#34;type&#34;: &#34;insufficient_quota&#34;,&#xA;        &#34;param&#34;: null,&#xA;        &#34;code&#34;: &#34;insufficient_quota&#34;&#xA;    }&#xA;}&#xA;">prompt=&#34;show statefulsets in default&#34; tools=[] text_len=0</failure>
+  </testcase>
+  <testcase name="nslist-0243" time="1.3601242089999999">
+    <failure message="llm_error: LLM turn 1: API 429: {&#xA;    &#34;error&#34;: {&#xA;        &#34;message&#34;: &#34;You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.&#34;,&#xA;        &#34;type&#34;: &#34;insufficient_quota&#34;,&#xA;        &#34;param&#34;: null,&#xA;        &#34;code&#34;: &#34;insufficient_quota&#34;&#xA;    }&#xA;}&#xA;">prompt=&#34;what statefulsets are in default&#34; tools=[automation_create_alert_rule] text_len=0</failure>
+  </testcase>
+  <testcase name="nslist-0244" time="1.27514675">
+    <failure message="llm_error: LLM turn 1: API 429: {&#xA;    &#34;error&#34;: {&#xA;        &#34;message&#34;: &#34;You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.&#34;,&#xA;        &#34;type&#34;: &#34;insufficient_quota&#34;,&#xA;        &#34;param&#34;: null,&#xA;        &#34;code&#34;: &#34;insufficient_quota&#34;&#xA;    }&#xA;}&#xA;">prompt=&#34;list daemonsets in kube-system&#34; tools=[automation_generate_runbook] text_len=0</failure>
+  </testcase>
+  <testcase name="nslist-0245" time="0.374325708">
+    <failure message="llm_error: LLM turn 0: API 429: {&#xA;    &#34;error&#34;: {&#xA;        &#34;message&#34;: &#34;You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.&#34;,&#xA;        &#34;type&#34;: &#34;insufficient_quota&#34;,&#xA;        &#34;param&#34;: null,&#xA;        &#34;code&#34;: &#34;insufficient_quota&#34;&#xA;    }&#xA;}&#xA;">prompt=&#34;show daemonsets in kube-system&#34; tools=[] text_len=0</failure>
+  </testcase>
+  <testcase name="nslist-0246" time="0.3011625">
+    <failure message="llm_error: LLM turn 0: API 429: {&#xA;    &#34;error&#34;: {&#xA;        &#34;message&#34;: &#34;You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.&#34;,&#xA;        &#34;type&#34;: &#34;insufficient_quota&#34;,&#xA;        &#34;param&#34;: null,&#xA;        &#34;code&#34;: &#34;insufficient_quota&#34;&#xA;    }&#xA;}&#xA;">prompt=&#34;what daemonsets are in kube-system&#34; tools=[] text_len=0</failure>
+  </testcase>
+  <testcase name="nslist-0247" time="2.366363208">
+    <failure message="llm_error: LLM turn 1: API 429: {&#xA;    &#34;error&#34;: {&#xA;        &#34;message&#34;: &#34;You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.&#34;,&#xA;        &#34;type&#34;: &#34;insufficient_quota&#34;,&#xA;        &#34;param&#34;: null,&#xA;        &#34;code&#34;: &#34;insufficient_quota&#34;&#xA;    }&#xA;}&#xA;">prompt=&#34;list daemonsets in default&#34; tools=[automation_generate_runbook] text_len=0</failure>
+  </testcase>
+  <testcase name="nslist-0248" time="1.341321875">
+    <failure message="llm_error: LLM turn 1: API 429: {&#xA;    &#34;error&#34;: {&#xA;        &#34;message&#34;: &#34;You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.&#34;,&#xA;        &#34;type&#34;: &#34;insufficient_quota&#34;,&#xA;        &#34;param&#34;: null,&#xA;        &#34;code&#34;: &#34;insufficient_quota&#34;&#xA;    }&#xA;}&#xA;">prompt=&#34;show daemonsets in default&#34; tools=[automation_generate_runbook] text_len=0</failure>
+  </testcase>
+  <testcase name="nslist-0249" time="3.788146958">
+    <failure message="llm_error: LLM turn 3: API 429: {&#xA;    &#34;error&#34;: {&#xA;        &#34;message&#34;: &#34;You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.&#34;,&#xA;        &#34;type&#34;: &#34;insufficient_quota&#34;,&#xA;        &#34;param&#34;: null,&#xA;        &#34;code&#34;: &#34;insufficient_quota&#34;&#xA;    }&#xA;}&#xA;">prompt=&#34;what daemonsets are in default&#34; tools=[automation_create_alert_rule automation_create_alert_rule analyze_daemonset_health] text_len=0</failure>
+  </testcase>
+  <testcase name="nscount-0250" time="1.576096541">
+    <failure message="llm_error: LLM turn 1: API 429: {&#xA;    &#34;error&#34;: {&#xA;        &#34;message&#34;: &#34;You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.&#34;,&#xA;        &#34;type&#34;: &#34;insufficient_quota&#34;,&#xA;        &#34;param&#34;: null,&#xA;        &#34;code&#34;: &#34;insufficient_quota&#34;&#xA;    }&#xA;}&#xA;">prompt=&#34;how many namespaces are in kube-system&#34; tools=[get_resource] text_len=0</failure>
+  </testcase>
+</testsuite>

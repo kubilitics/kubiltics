@@ -1,0 +1,7 @@
+{"bytes":98,"stage":"user_msg","ts":"2026-04-22T04:26:53.578268Z","turn_id":"bench-scen-network-82"}
+{"selected_topics":["core","networking"],"stage":"tool_filter","tool_count":28,"total_available":135,"ts":"2026-04-22T04:26:53.578702Z","turn_id":"bench-scen-network-82"}
+{"bytes":2461,"focus_cluster":"5cb1f37d-e31e-4915-8c4d-bdf36ef335ec","has_system":true,"messages":2,"stage":"llm_prompt_in","ts":"2026-04-22T04:26:53.578739Z","turn_id":"bench-scen-network-82"}
+{"arg_keys":["namespace","name","cluster_id"],"cluster_id":"5cb1f37d-e31e-4915-8c4d-bdf36ef335ec","stage":"tool_dispatch","tool_name":"analyze_network_connectivity","ts":"2026-04-22T04:26:54.525549Z","turn_id":"bench-scen-network-82"}
+{"bytes_in":143,"bytes_out":143,"stage":"tool_result_summarized","tool_name":"analyze_network_connectivity","ts":"2026-04-22T04:26:54.533431Z","turn_id":"bench-scen-network-82"}
+{"bytes":138,"preview":"There are no NetworkPolicies in the data namespace that could block the web service. Additionally, no services were found in the analysis.","stage":"llm_text_out","ts":"2026-04-22T04:26:57.644552Z","turn_id":"bench-scen-network-82"}
+{"duration_ms":4065,"finish_reason":"stop","stage":"done","ts":"2026-04-22T04:26:57.64462Z","turn_id":"bench-scen-network-82"}

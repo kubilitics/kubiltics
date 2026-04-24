@@ -1,0 +1,7 @@
+{"bytes":102,"stage":"user_msg","ts":"2026-04-22T06:01:09.072314Z","turn_id":"bench-scen-config-99"}
+{"selected_topics":["core","pods","security","workloads"],"stage":"tool_filter","tool_count":30,"total_available":138,"ts":"2026-04-22T06:01:09.076044Z","turn_id":"bench-scen-config-99"}
+{"bytes":2465,"focus_cluster":"5cb1f37d-e31e-4915-8c4d-bdf36ef335ec","has_system":true,"messages":2,"stage":"llm_prompt_in","ts":"2026-04-22T06:01:09.076276Z","turn_id":"bench-scen-config-99"}
+{"arg_keys":["name","namespace","cluster_id"],"cluster_id":"5cb1f37d-e31e-4915-8c4d-bdf36ef335ec","stage":"tool_dispatch","tool_name":"observe_pod_dependencies","ts":"2026-04-22T06:01:10.002631Z","turn_id":"bench-scen-config-99"}
+{"method":"GET","path":"/api/v1/clusters/5cb1f37d-e31e-4915-8c4d-bdf36ef335ec/resources/pods/demo/web","resp_bytes":141,"stage":"backend_k8s_fetch","ts":"2026-04-22T06:01:10.030248Z","turn_id":"bench-scen-config-99"}
+{"bytes":83,"preview":"The tool failed because it couldn't find a pod named \"web\" in the namespace \"demo\".","stage":"llm_text_out","ts":"2026-04-22T06:01:11.29797Z","turn_id":"bench-scen-config-99"}
+{"duration_ms":2219,"finish_reason":"stop","stage":"done","ts":"2026-04-22T06:01:11.298157Z","turn_id":"bench-scen-config-99"}

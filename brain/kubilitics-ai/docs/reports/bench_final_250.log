@@ -1,0 +1,772 @@
+PASS  list-0001                     tools=4  57321ms  text=261
+PASS  list-0002                     tools=5  16086ms  text=435
+PASS  list-0003                     tools=2   6190ms  text=655
+PASS  list-0004                     tools=6  30455ms  text=451
+PASS  list-0005                     tools=4  11179ms  text=543
+PASS  list-0006                     tools=3   7751ms  text=587
+PASS  count-0007                    tools=1   6186ms  text=38
+PASS  count-0008                    tools=1   4956ms  text=68
+PASS  count-0009                    tools=1   2282ms  text=38
+PASS  list-0010                     tools=1   5449ms  text=851
+PASS  list-0011                     tools=1   3212ms  text=705
+PASS  list-0012                     tools=1   4694ms  text=492
+PASS  list-0013                     tools=1   2747ms  text=308
+PASS  list-0014                     tools=1   2840ms  text=366
+PASS  list-0015                     tools=1   2740ms  text=261
+PASS  count-0016                    tools=1   3610ms  text=269
+PASS  count-0017                    tools=1   3376ms  text=280
+PASS  count-0018                    tools=1   2392ms  text=217
+PASS  list-0019                     tools=1   2823ms  text=449
+PASS  list-0020                     tools=1   4214ms  text=1141
+PASS  list-0021                     tools=5  11447ms  text=657
+PASS  list-0022                     tools=1   3924ms  text=429
+PASS  list-0023                     tools=3   6338ms  text=871
+PASS  list-0024                     tools=2   6389ms  text=425
+PASS  count-0025                    tools=1   1958ms  text=47
+PASS  count-0026                    tools=1   2113ms  text=40
+PASS  count-0027                    tools=1   2011ms  text=114
+PASS  list-0028                     tools=10   9300ms  text=1375
+PASS  list-0029                     tools=1   5019ms  text=931
+FAIL  list-0030                     tools=10  13597ms  text=0  err=llm_error: agentic loop exceeded max turns (10) without final answer
+PASS  list-0031                     tools=2   4706ms  text=248
+PASS  list-0032                     tools=4   7054ms  text=639
+PASS  list-0033                     tools=1   5401ms  text=1476
+FAIL  count-0034                    tools=10  17731ms  text=0  err=llm_error: agentic loop exceeded max turns (10) without final answer
+PASS  count-0035                    tools=3   4858ms  text=47
+PASS  count-0036                    tools=2   4060ms  text=478
+PASS  list-0037                     tools=1   3208ms  text=187
+PASS  list-0038                     tools=1   4046ms  text=433
+PASS  list-0039                     tools=1   2964ms  text=151
+PASS  list-0040                     tools=1   4169ms  text=329
+PASS  list-0041                     tools=1   2380ms  text=205
+PASS  list-0042                     tools=2   7730ms  text=228
+PASS  count-0043                    tools=2   5856ms  text=66
+PASS  count-0044                    tools=1   2988ms  text=301
+PASS  count-0045                    tools=1   5733ms  text=72
+PASS  list-0046                     tools=6  11315ms  text=507
+PASS  list-0047                     tools=4   8206ms  text=414
+PASS  list-0048                     tools=5  11196ms  text=915
+PASS  list-0049                     tools=7  12824ms  text=1056
+PASS  list-0050                     tools=5   9267ms  text=427
+PASS  list-0051                     tools=4   9446ms  text=209
+PASS  count-0052                    tools=3   4959ms  text=200
+PASS  count-0053                    tools=4  14773ms  text=512
+FAIL  count-0054                    tools=10  20881ms  text=0  err=llm_error: agentic loop exceeded max turns (10) without final answer
+PASS  list-0055                     tools=3   6652ms  text=146
+PASS  list-0056                     tools=1   7297ms  text=1378
+PASS  list-0057                     tools=4   8156ms  text=1004
+PASS  list-0058                     tools=7  16196ms  text=1262
+PASS  list-0059                     tools=1   2599ms  text=221
+PASS  list-0060                     tools=4   8137ms  text=356
+FAIL  count-0061                    tools=10  12135ms  text=0  err=llm_error: agentic loop exceeded max turns (10) without final answer
+PASS  count-0062                    tools=7  14089ms  text=799
+FAIL  count-0063                    tools=10  15917ms  text=0  err=llm_error: agentic loop exceeded max turns (10) without final answer
+PASS  list-0064                     tools=3   5077ms  text=158
+PASS  list-0065                     tools=3   4665ms  text=270
+PASS  list-0066                     tools=4   6037ms  text=147
+PASS  list-0067                     tools=5   7230ms  text=173
+PASS  list-0068                     tools=3   5961ms  text=555
+PASS  list-0069                     tools=5   7825ms  text=390
+FAIL  count-0070                    tools=10  25548ms  text=0  err=llm_error: agentic loop exceeded max turns (10) without final answer
+FAIL  count-0071                    tools=10  19758ms  text=0  err=llm_error: agentic loop exceeded max turns (10) without final answer
+PASS  count-0072                    tools=3   6686ms  text=459
+PASS  list-0073                     tools=1   3055ms  text=150
+PASS  list-0074                     tools=3   4854ms  text=183
+PASS  list-0075                     tools=2   3562ms  text=54
+PASS  list-0076                     tools=4   8200ms  text=106
+PASS  list-0077                     tools=1   2735ms  text=90
+PASS  list-0078                     tools=1   2775ms  text=98
+FAIL  count-0079                    tools=10  11578ms  text=0  err=llm_error: agentic loop exceeded max turns (10) without final answer
+PASS  count-0080                    tools=1   2886ms  text=99
+PASS  count-0081                    tools=1   2366ms  text=92
+PASS  list-0082                     tools=2   3992ms  text=131
+PASS  list-0083                     tools=2   3788ms  text=463
+PASS  list-0084                     tools=4  10397ms  text=834
+PASS  list-0085                     tools=2   6706ms  text=486
+PASS  list-0086                     tools=1   2935ms  text=220
+PASS  list-0087                     tools=1   3472ms  text=508
+PASS  count-0088                    tools=1   3402ms  text=75
+PASS  count-0089                    tools=1   2792ms  text=74
+PASS  count-0090                    tools=1   5587ms  text=92
+PASS  list-0091                     tools=11   7491ms  text=233
+PASS  list-0092                     tools=2   3442ms  text=203
+PASS  list-0093                     tools=3   6170ms  text=166
+PASS  list-0094                     tools=2   4353ms  text=148
+PASS  list-0095                     tools=8  17192ms  text=928
+PASS  list-0096                     tools=4   6957ms  text=119
+PASS  count-0097                    tools=3   4893ms  text=70
+PASS  count-0098                    tools=2   3155ms  text=43
+PASS  count-0099                    tools=4   6249ms  text=131
+PASS  list-0100                     tools=6   8755ms  text=184
+PASS  list-0101                     tools=6  10510ms  text=465
+PASS  list-0102                     tools=2   5618ms  text=672
+PASS  list-0103                     tools=6  11005ms  text=185
+PASS  list-0104                     tools=2  10129ms  text=503
+PASS  list-0105                     tools=4   7387ms  text=297
+FAIL  count-0106                    tools=10  21439ms  text=366  err=llm_error: agentic loop exceeded max turns (10) without final answer
+PASS  count-0107                    tools=4   7926ms  text=114
+PASS  count-0108                    tools=8  15201ms  text=342
+PASS  list-0109                     tools=1  12017ms  text=1214
+PASS  list-0110                     tools=4  11218ms  text=1215
+PASS  list-0111                     tools=3   7015ms  text=238
+PASS  list-0112                     tools=3   6174ms  text=397
+PASS  list-0113                     tools=3  11053ms  text=515
+PASS  list-0114                     tools=5  10710ms  text=571
+PASS  count-0115                    tools=4  10284ms  text=561
+PASS  count-0116                    tools=5  10835ms  text=663
+PASS  count-0117                    tools=3   5208ms  text=121
+PASS  list-0118                     tools=3   9114ms  text=684
+PASS  list-0119                     tools=1   5061ms  text=975
+PASS  list-0120                     tools=5   7853ms  text=200
+PASS  list-0121                     tools=5  11627ms  text=275
+PASS  list-0122                     tools=2   8818ms  text=1012
+PASS  list-0123                     tools=1   4557ms  text=586
+PASS  count-0124                    tools=3   4934ms  text=107
+PASS  count-0125                    tools=3   7894ms  text=58
+PASS  count-0126                    tools=2   4239ms  text=60
+PASS  list-0127                     tools=3  10425ms  text=1747
+PASS  list-0128                     tools=4   9343ms  text=1121
+FAIL  list-0129                     tools=10  18085ms  text=0  err=llm_error: agentic loop exceeded max turns (10) without final answer
+PASS  list-0130                     tools=9  20684ms  text=450
+PASS  list-0131                     tools=5  13024ms  text=1917
+PASS  list-0132                     tools=5   7322ms  text=142
+FAIL  count-0133                    tools=10  18702ms  text=0  err=llm_error: agentic loop exceeded max turns (10) without final answer
+FAIL  count-0134                    tools=10  18946ms  text=0  err=llm_error: agentic loop exceeded max turns (10) without final answer
+PASS  count-0135                    tools=6  15031ms  text=612
+PASS  list-0136                     tools=11  15458ms  text=1796
+PASS  list-0137                     tools=3   6378ms  text=652
+PASS  list-0138                     tools=8  15215ms  text=583
+PASS  list-0139                     tools=5  10748ms  text=896
+PASS  list-0140                     tools=6   9017ms  text=315
+PASS  list-0141                     tools=9  11070ms  text=1075
+PASS  count-0142                    tools=4  10386ms  text=453
+PASS  count-0143                    tools=1   2479ms  text=187
+PASS  count-0144                    tools=8  16577ms  text=464
+PASS  list-0145                     tools=5  15042ms  text=1638
+PASS  list-0146                     tools=3   5324ms  text=300
+PASS  list-0147                     tools=3   5647ms  text=440
+PASS  list-0148                     tools=4  14749ms  text=1209
+PASS  list-0149                     tools=3   9221ms  text=943
+PASS  list-0150                     tools=3  35383ms  text=1280
+PASS  count-0151                    tools=6  12117ms  text=655
+PASS  count-0152                    tools=3  10695ms  text=155
+FAIL  count-0153                    tools=10  17961ms  text=259  err=llm_error: agentic loop exceeded max turns (10) without final answer
+PASS  list-0154                     tools=4   7377ms  text=351
+PASS  list-0155                     tools=5  18897ms  text=551
+PASS  list-0156                     tools=2   6684ms  text=1434
+PASS  list-0157                     tools=3  10519ms  text=1106
+PASS  list-0158                     tools=3   9160ms  text=798
+PASS  list-0159                     tools=4   8176ms  text=737
+PASS  count-0160                    tools=3   4445ms  text=197
+PASS  count-0161                    tools=1   3979ms  text=687
+FAIL  count-0162                    tools=10  16903ms  text=380  err=llm_error: agentic loop exceeded max turns (10) without final answer
+FAIL  list-0163                     tools=0   1414ms  text=233
+PASS  list-0164                     tools=1   3332ms  text=112
+PASS  list-0165                     tools=1   2524ms  text=72
+PASS  list-0166                     tools=1   2584ms  text=63
+PASS  list-0167                     tools=1   2144ms  text=54
+PASS  list-0168                     tools=1   3224ms  text=57
+PASS  count-0169                    tools=1   3662ms  text=51
+PASS  count-0170                    tools=1   2578ms  text=55
+PASS  count-0171                    tools=2   3901ms  text=214
+PASS  list-0172                     tools=1   7260ms  text=1112
+PASS  list-0173                     tools=1  14540ms  text=1819
+PASS  list-0174                     tools=1   5490ms  text=943
+PASS  list-0175                     tools=1   8117ms  text=1262
+PASS  list-0176                     tools=1   8049ms  text=1320
+PASS  list-0177                     tools=1  12863ms  text=1951
+PASS  count-0178                    tools=1   5718ms  text=590
+PASS  count-0179                    tools=1   3423ms  text=797
+PASS  count-0180                    tools=1   4114ms  text=845
+PASS  list-0181                     tools=3   5712ms  text=300
+FAIL  list-0182                     tools=0    533ms  text=0  err=llm_error: LLM turn 0: API 429: {
+    "error": {
+        "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.",
+        "type": "insufficient_quota",
+        "param": null,
+        "code": "insufficient_quota"
+    }
+}
+
+FAIL  list-0183                     tools=1   1657ms  text=0  err=llm_error: LLM turn 1: API 429: {
+    "error": {
+        "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.",
+        "type": "insufficient_quota",
+        "param": null,
+        "code": "insufficient_quota"
+    }
+}
+
+FAIL  list-0184                     tools=1   1966ms  text=0  err=llm_error: LLM turn 1: API 429: {
+    "error": {
+        "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.",
+        "type": "insufficient_quota",
+        "param": null,
+        "code": "insufficient_quota"
+    }
+}
+
+FAIL  list-0185                     tools=0    310ms  text=0  err=llm_error: LLM turn 0: API 429: {
+    "error": {
+        "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.",
+        "type": "insufficient_quota",
+        "param": null,
+        "code": "insufficient_quota"
+    }
+}
+
+FAIL  list-0186                     tools=2   2854ms  text=0  err=llm_error: LLM turn 2: API 429: {
+    "error": {
+        "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.",
+        "type": "insufficient_quota",
+        "param": null,
+        "code": "insufficient_quota"
+    }
+}
+
+FAIL  count-0187                    tools=2   3611ms  text=0  err=llm_error: LLM turn 2: API 429: {
+    "error": {
+        "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.",
+        "type": "insufficient_quota",
+        "param": null,
+        "code": "insufficient_quota"
+    }
+}
+
+FAIL  count-0188                    tools=1   2535ms  text=0  err=llm_error: LLM turn 1: API 429: {
+    "error": {
+        "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.",
+        "type": "insufficient_quota",
+        "param": null,
+        "code": "insufficient_quota"
+    }
+}
+
+FAIL  count-0189                    tools=0    322ms  text=0  err=llm_error: LLM turn 0: API 429: {
+    "error": {
+        "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.",
+        "type": "insufficient_quota",
+        "param": null,
+        "code": "insufficient_quota"
+    }
+}
+
+FAIL  nslist-0190                   tools=0    318ms  text=0  err=llm_error: LLM turn 0: API 429: {
+    "error": {
+        "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.",
+        "type": "insufficient_quota",
+        "param": null,
+        "code": "insufficient_quota"
+    }
+}
+
+FAIL  nslist-0191                   tools=0    491ms  text=0  err=llm_error: LLM turn 0: API 429: {
+    "error": {
+        "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.",
+        "type": "insufficient_quota",
+        "param": null,
+        "code": "insufficient_quota"
+    }
+}
+
+FAIL  nslist-0192                   tools=1   1528ms  text=0  err=llm_error: LLM turn 1: API 429: {
+    "error": {
+        "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.",
+        "type": "insufficient_quota",
+        "param": null,
+        "code": "insufficient_quota"
+    }
+}
+
+PASS  nslist-0193                   tools=1   3313ms  text=174
+FAIL  nslist-0194                   tools=1   2502ms  text=229  err=llm_error: LLM turn 1: API 429: {
+    "error": {
+        "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.",
+        "type": "insufficient_quota",
+        "param": null,
+        "code": "insufficient_quota"
+    }
+}
+
+FAIL  nslist-0195                   tools=0    568ms  text=0  err=llm_error: LLM turn 0: API 429: {
+    "error": {
+        "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.",
+        "type": "insufficient_quota",
+        "param": null,
+        "code": "insufficient_quota"
+    }
+}
+
+FAIL  nslist-0196                   tools=0    299ms  text=0  err=llm_error: LLM turn 0: API 429: {
+    "error": {
+        "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.",
+        "type": "insufficient_quota",
+        "param": null,
+        "code": "insufficient_quota"
+    }
+}
+
+FAIL  nslist-0197                   tools=0    537ms  text=0  err=llm_error: LLM turn 0: API 429: {
+    "error": {
+        "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.",
+        "type": "insufficient_quota",
+        "param": null,
+        "code": "insufficient_quota"
+    }
+}
+
+FAIL  nslist-0198                   tools=0    283ms  text=0  err=llm_error: LLM turn 0: API 429: {
+    "error": {
+        "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.",
+        "type": "insufficient_quota",
+        "param": null,
+        "code": "insufficient_quota"
+    }
+}
+
+FAIL  nslist-0199                   tools=0    408ms  text=0  err=llm_error: LLM turn 0: API 429: {
+    "error": {
+        "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.",
+        "type": "insufficient_quota",
+        "param": null,
+        "code": "insufficient_quota"
+    }
+}
+
+PASS  nslist-0200                   tools=1   3507ms  text=432
+FAIL  nslist-0201                   tools=1   1447ms  text=0  err=llm_error: LLM turn 1: API 429: {
+    "error": {
+        "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.",
+        "type": "insufficient_quota",
+        "param": null,
+        "code": "insufficient_quota"
+    }
+}
+
+FAIL  nslist-0202                   tools=4  13539ms  text=0  err=llm_error: LLM turn 4: API 429: {
+    "error": {
+        "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.",
+        "type": "insufficient_quota",
+        "param": null,
+        "code": "insufficient_quota"
+    }
+}
+
+FAIL  nslist-0203                   tools=0    316ms  text=0  err=llm_error: LLM turn 0: API 429: {
+    "error": {
+        "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.",
+        "type": "insufficient_quota",
+        "param": null,
+        "code": "insufficient_quota"
+    }
+}
+
+FAIL  nslist-0204                   tools=0    287ms  text=0  err=llm_error: LLM turn 0: API 429: {
+    "error": {
+        "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.",
+        "type": "insufficient_quota",
+        "param": null,
+        "code": "insufficient_quota"
+    }
+}
+
+FAIL  nslist-0205                   tools=0    290ms  text=0  err=llm_error: LLM turn 0: API 429: {
+    "error": {
+        "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.",
+        "type": "insufficient_quota",
+        "param": null,
+        "code": "insufficient_quota"
+    }
+}
+
+FAIL  nslist-0206                   tools=2   3218ms  text=0  err=llm_error: LLM turn 2: API 429: {
+    "error": {
+        "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.",
+        "type": "insufficient_quota",
+        "param": null,
+        "code": "insufficient_quota"
+    }
+}
+
+FAIL  nslist-0207                   tools=0    323ms  text=0  err=llm_error: LLM turn 0: API 429: {
+    "error": {
+        "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.",
+        "type": "insufficient_quota",
+        "param": null,
+        "code": "insufficient_quota"
+    }
+}
+
+FAIL  nslist-0208                   tools=0    312ms  text=0  err=llm_error: LLM turn 0: API 429: {
+    "error": {
+        "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.",
+        "type": "insufficient_quota",
+        "param": null,
+        "code": "insufficient_quota"
+    }
+}
+
+FAIL  nslist-0209                   tools=0    284ms  text=0  err=llm_error: LLM turn 0: API 429: {
+    "error": {
+        "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.",
+        "type": "insufficient_quota",
+        "param": null,
+        "code": "insufficient_quota"
+    }
+}
+
+FAIL  nslist-0210                   tools=1   1511ms  text=0  err=llm_error: LLM turn 1: API 429: {
+    "error": {
+        "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.",
+        "type": "insufficient_quota",
+        "param": null,
+        "code": "insufficient_quota"
+    }
+}
+
+FAIL  nslist-0211                   tools=2   5131ms  text=0  err=llm_error: LLM turn 2: API 429: {
+    "error": {
+        "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.",
+        "type": "insufficient_quota",
+        "param": null,
+        "code": "insufficient_quota"
+    }
+}
+
+PASS  nslist-0212                   tools=2   5449ms  text=253
+FAIL  nslist-0213                   tools=0    885ms  text=0  err=llm_error: LLM turn 0: API 429: {
+    "error": {
+        "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.",
+        "type": "insufficient_quota",
+        "param": null,
+        "code": "insufficient_quota"
+    }
+}
+
+FAIL  nslist-0214                   tools=0    288ms  text=0  err=llm_error: LLM turn 0: API 429: {
+    "error": {
+        "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.",
+        "type": "insufficient_quota",
+        "param": null,
+        "code": "insufficient_quota"
+    }
+}
+
+FAIL  nslist-0215                   tools=0    287ms  text=0  err=llm_error: LLM turn 0: API 429: {
+    "error": {
+        "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.",
+        "type": "insufficient_quota",
+        "param": null,
+        "code": "insufficient_quota"
+    }
+}
+
+FAIL  nslist-0216                   tools=2   6594ms  text=634  err=llm_error: LLM turn 2: API 429: {
+    "error": {
+        "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.",
+        "type": "insufficient_quota",
+        "param": null,
+        "code": "insufficient_quota"
+    }
+}
+
+FAIL  nslist-0217                   tools=0    485ms  text=0  err=llm_error: LLM turn 0: API 429: {
+    "error": {
+        "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.",
+        "type": "insufficient_quota",
+        "param": null,
+        "code": "insufficient_quota"
+    }
+}
+
+FAIL  nslist-0218                   tools=0    283ms  text=0  err=llm_error: LLM turn 0: API 429: {
+    "error": {
+        "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.",
+        "type": "insufficient_quota",
+        "param": null,
+        "code": "insufficient_quota"
+    }
+}
+
+FAIL  nslist-0219                   tools=1   2693ms  text=173  err=llm_error: LLM turn 1: API 429: {
+    "error": {
+        "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.",
+        "type": "insufficient_quota",
+        "param": null,
+        "code": "insufficient_quota"
+    }
+}
+
+FAIL  nslist-0220                   tools=1   1399ms  text=0  err=llm_error: LLM turn 1: API 429: {
+    "error": {
+        "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.",
+        "type": "insufficient_quota",
+        "param": null,
+        "code": "insufficient_quota"
+    }
+}
+
+FAIL  nslist-0221                   tools=0    299ms  text=0  err=llm_error: LLM turn 0: API 429: {
+    "error": {
+        "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.",
+        "type": "insufficient_quota",
+        "param": null,
+        "code": "insufficient_quota"
+    }
+}
+
+FAIL  nslist-0222                   tools=0    326ms  text=0  err=llm_error: LLM turn 0: API 429: {
+    "error": {
+        "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.",
+        "type": "insufficient_quota",
+        "param": null,
+        "code": "insufficient_quota"
+    }
+}
+
+FAIL  nslist-0223                   tools=3   6520ms  text=0  err=llm_error: LLM turn 3: API 429: {
+    "error": {
+        "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.",
+        "type": "insufficient_quota",
+        "param": null,
+        "code": "insufficient_quota"
+    }
+}
+
+FAIL  nslist-0224                   tools=1   1435ms  text=0  err=llm_error: LLM turn 1: API 429: {
+    "error": {
+        "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.",
+        "type": "insufficient_quota",
+        "param": null,
+        "code": "insufficient_quota"
+    }
+}
+
+FAIL  nslist-0225                   tools=0    380ms  text=0  err=llm_error: LLM turn 0: API 429: {
+    "error": {
+        "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.",
+        "type": "insufficient_quota",
+        "param": null,
+        "code": "insufficient_quota"
+    }
+}
+
+FAIL  nslist-0226                   tools=1   1562ms  text=0  err=llm_error: LLM turn 1: API 429: {
+    "error": {
+        "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.",
+        "type": "insufficient_quota",
+        "param": null,
+        "code": "insufficient_quota"
+    }
+}
+
+FAIL  nslist-0227                   tools=0    292ms  text=0  err=llm_error: LLM turn 0: API 429: {
+    "error": {
+        "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.",
+        "type": "insufficient_quota",
+        "param": null,
+        "code": "insufficient_quota"
+    }
+}
+
+FAIL  nslist-0228                   tools=0    288ms  text=0  err=llm_error: LLM turn 0: API 429: {
+    "error": {
+        "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.",
+        "type": "insufficient_quota",
+        "param": null,
+        "code": "insufficient_quota"
+    }
+}
+
+FAIL  nslist-0229                   tools=0    278ms  text=0  err=llm_error: LLM turn 0: API 429: {
+    "error": {
+        "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.",
+        "type": "insufficient_quota",
+        "param": null,
+        "code": "insufficient_quota"
+    }
+}
+
+FAIL  nslist-0230                   tools=1   1421ms  text=0  err=llm_error: LLM turn 1: API 429: {
+    "error": {
+        "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.",
+        "type": "insufficient_quota",
+        "param": null,
+        "code": "insufficient_quota"
+    }
+}
+
+FAIL  nslist-0231                   tools=1   1766ms  text=0  err=llm_error: LLM turn 1: API 429: {
+    "error": {
+        "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.",
+        "type": "insufficient_quota",
+        "param": null,
+        "code": "insufficient_quota"
+    }
+}
+
+FAIL  nslist-0232                   tools=0    284ms  text=0  err=llm_error: LLM turn 0: API 429: {
+    "error": {
+        "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.",
+        "type": "insufficient_quota",
+        "param": null,
+        "code": "insufficient_quota"
+    }
+}
+
+FAIL  nslist-0233                   tools=1   1608ms  text=0  err=llm_error: LLM turn 1: API 429: {
+    "error": {
+        "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.",
+        "type": "insufficient_quota",
+        "param": null,
+        "code": "insufficient_quota"
+    }
+}
+
+FAIL  nslist-0234                   tools=1   1250ms  text=0  err=llm_error: LLM turn 1: API 429: {
+    "error": {
+        "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.",
+        "type": "insufficient_quota",
+        "param": null,
+        "code": "insufficient_quota"
+    }
+}
+
+FAIL  nslist-0235                   tools=1   1323ms  text=0  err=llm_error: LLM turn 1: API 429: {
+    "error": {
+        "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.",
+        "type": "insufficient_quota",
+        "param": null,
+        "code": "insufficient_quota"
+    }
+}
+
+PASS  nslist-0236                   tools=3   4457ms  text=58
+FAIL  nslist-0237                   tools=0    318ms  text=0  err=llm_error: LLM turn 0: API 429: {
+    "error": {
+        "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.",
+        "type": "insufficient_quota",
+        "param": null,
+        "code": "insufficient_quota"
+    }
+}
+
+FAIL  nslist-0238                   tools=0    289ms  text=0  err=llm_error: LLM turn 0: API 429: {
+    "error": {
+        "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.",
+        "type": "insufficient_quota",
+        "param": null,
+        "code": "insufficient_quota"
+    }
+}
+
+FAIL  nslist-0239                   tools=0    288ms  text=0  err=llm_error: LLM turn 0: API 429: {
+    "error": {
+        "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.",
+        "type": "insufficient_quota",
+        "param": null,
+        "code": "insufficient_quota"
+    }
+}
+
+FAIL  nslist-0240                   tools=1   6208ms  text=0  err=llm_error: LLM turn 1: API 429: {
+    "error": {
+        "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.",
+        "type": "insufficient_quota",
+        "param": null,
+        "code": "insufficient_quota"
+    }
+}
+
+FAIL  nslist-0241                   tools=1   1610ms  text=0  err=llm_error: LLM turn 1: API 429: {
+    "error": {
+        "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.",
+        "type": "insufficient_quota",
+        "param": null,
+        "code": "insufficient_quota"
+    }
+}
+
+FAIL  nslist-0242                   tools=0    373ms  text=0  err=llm_error: LLM turn 0: API 429: {
+    "error": {
+        "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.",
+        "type": "insufficient_quota",
+        "param": null,
+        "code": "insufficient_quota"
+    }
+}
+
+FAIL  nslist-0243                   tools=1   1360ms  text=0  err=llm_error: LLM turn 1: API 429: {
+    "error": {
+        "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.",
+        "type": "insufficient_quota",
+        "param": null,
+        "code": "insufficient_quota"
+    }
+}
+
+FAIL  nslist-0244                   tools=1   1275ms  text=0  err=llm_error: LLM turn 1: API 429: {
+    "error": {
+        "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.",
+        "type": "insufficient_quota",
+        "param": null,
+        "code": "insufficient_quota"
+    }
+}
+
+FAIL  nslist-0245                   tools=0    374ms  text=0  err=llm_error: LLM turn 0: API 429: {
+    "error": {
+        "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.",
+        "type": "insufficient_quota",
+        "param": null,
+        "code": "insufficient_quota"
+    }
+}
+
+FAIL  nslist-0246                   tools=0    301ms  text=0  err=llm_error: LLM turn 0: API 429: {
+    "error": {
+        "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.",
+        "type": "insufficient_quota",
+        "param": null,
+        "code": "insufficient_quota"
+    }
+}
+
+FAIL  nslist-0247                   tools=1   2366ms  text=0  err=llm_error: LLM turn 1: API 429: {
+    "error": {
+        "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.",
+        "type": "insufficient_quota",
+        "param": null,
+        "code": "insufficient_quota"
+    }
+}
+
+FAIL  nslist-0248                   tools=1   1341ms  text=0  err=llm_error: LLM turn 1: API 429: {
+    "error": {
+        "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.",
+        "type": "insufficient_quota",
+        "param": null,
+        "code": "insufficient_quota"
+    }
+}
+
+FAIL  nslist-0249                   tools=3   3788ms  text=0  err=llm_error: LLM turn 3: API 429: {
+    "error": {
+        "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.",
+        "type": "insufficient_quota",
+        "param": null,
+        "code": "insufficient_quota"
+    }
+}
+
+FAIL  nscount-0250                  tools=1   1576ms  text=0  err=llm_error: LLM turn 1: API 429: {
+    "error": {
+        "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.",
+        "type": "insufficient_quota",
+        "param": null,
+        "code": "insufficient_quota"
+    }
+}
+
+
+170 / 250 passed (68%) in 27m39s (concurrency=1)

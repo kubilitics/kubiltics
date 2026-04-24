@@ -1,0 +1,13 @@
+version: 1
+prompts:
+  - id: list-pods-default
+    category: observation
+    text: "List all pods in the default namespace and tell me which ones are unhealthy. Be concise."
+
+  - id: troubleshoot-crashloop
+    category: troubleshooting
+    text: "A pod named api-7d8 is in CrashLoopBackOff. Walk me through the first three diagnostic steps in order."
+
+  - id: explain-deployment-vs-statefulset
+    category: explanation
+    text: "Briefly explain when to use a Deployment versus a StatefulSet in Kubernetes."

@@ -1,0 +1,102 @@
+<testsuite name="chat-quality" tests="50" failures="25">
+  <testcase name="demo-list-01" time="70.039601">
+    <failure message="expected a tool call, none fired">prompt=&#34;list the namespaces&#34; tools=[] text_len=0</failure>
+  </testcase>
+  <testcase name="demo-list-02" time="18.798708041"></testcase>
+  <testcase name="demo-list-03" time="157.984253">
+    <failure message="llm_error: agentic loop exceeded max turns (20)">prompt=&#34;list deployments&#34; tools=[get_resource get_resource get_resource get_resource get_resource get_resource get_resource get_resource get_resource get_resource get_resource get_resource get_resource get_resource get_resource get_resource get_resource get_resource get_resource get_resource] text_len=410</failure>
+  </testcase>
+  <testcase name="demo-list-04" time="5.53869125">
+    <failure message="expected a tool call, none fired">prompt=&#34;list services in default&#34; tools=[] text_len=0</failure>
+  </testcase>
+  <testcase name="demo-list-05" time="22.677636667"></testcase>
+  <testcase name="demo-list-06" time="5.6248935410000005">
+    <failure message="expected a tool call, none fired">prompt=&#34;list configmaps in kube-system&#34; tools=[] text_len=0</failure>
+  </testcase>
+  <testcase name="demo-list-07" time="148.932116292">
+    <failure message="llm_error: agentic loop exceeded max turns (20)">prompt=&#34;list secrets in default&#34; tools=[get_resource get_resource get_resource get_resource get_resource get_resource get_resource get_resource get_resource get_resource get_resource get_resource get_resource get_resource get_resource get_resource get_resource get_resource get_resource get_resource] text_len=310</failure>
+  </testcase>
+  <testcase name="demo-list-08" time="21.691669542"></testcase>
+  <testcase name="demo-list-09" time="29.837507916"></testcase>
+  <testcase name="demo-list-10" time="175.5294255">
+    <failure message="llm_error: agentic loop exceeded max turns (20)">prompt=&#34;list daemonsets&#34; tools=[get_resource get_resource get_resource get_resource get_resource get_resource get_resource get_resource get_resource get_resource get_resource get_resource get_resource get_resource get_resource get_resource get_resource get_resource get_resource get_resource] text_len=472</failure>
+  </testcase>
+  <testcase name="demo-count-11" time="19.992015833"></testcase>
+  <testcase name="demo-count-12" time="153.6022165">
+    <failure message="llm_error: agentic loop exceeded max turns (20)">prompt=&#34;how many deployments&#34; tools=[get_resource get_resource get_resource get_resource get_resource get_resource get_resource get_resource get_resource get_resource get_resource get_resource get_resource get_resource get_resource get_resource get_resource get_resource get_resource get_resource] text_len=560</failure>
+  </testcase>
+  <testcase name="demo-count-13" time="17.340846333000002"></testcase>
+  <testcase name="demo-count-14" time="23.21098725"></testcase>
+  <testcase name="demo-count-15" time="5.746746417">
+    <failure message="expected a tool call, none fired">prompt=&#34;how many pods in kube-system&#34; tools=[] text_len=0</failure>
+  </testcase>
+  <testcase name="demo-count-16" time="20.955741417"></testcase>
+  <testcase name="demo-count-17" time="15.067994166"></testcase>
+  <testcase name="demo-count-18" time="193.723597167">
+    <failure message="llm_error: agentic loop exceeded max turns (20)">prompt=&#34;pod count by namespace&#34; tools=[get_resource get_resource get_resource get_resource get_resource get_resource get_resource get_resource get_resource get_resource get_resource get_resource get_resource get_resource get_resource get_resource get_resource get_resource get_resource get_resource get_resource get_resource get_resource] text_len=655</failure>
+  </testcase>
+  <testcase name="demo-count-19" time="9.086058584">
+    <failure message="expected a tool call, none fired">prompt=&#34;total pods across the cluster&#34; tools=[] text_len=372</failure>
+  </testcase>
+  <testcase name="demo-count-20" time="5.578332291">
+    <failure message="expected a tool call, none fired">prompt=&#34;how many services are of type LoadBalancer&#34; tools=[] text_len=0</failure>
+  </testcase>
+  <testcase name="demo-analyze-21" time="21.864035333"></testcase>
+  <testcase name="demo-analyze-22" time="5.628457292">
+    <failure message="expected a tool call, none fired">prompt=&#34;analyze pod health in kube-system&#34; tools=[] text_len=0</failure>
+  </testcase>
+  <testcase name="demo-analyze-23" time="5.726739041">
+    <failure message="expected a tool call, none fired">prompt=&#34;analyze deployment health in default&#34; tools=[] text_len=0</failure>
+  </testcase>
+  <testcase name="demo-analyze-24" time="127.506860375">
+    <failure message="llm_error: agentic loop exceeded max turns (20)">prompt=&#34;are any nodes under pressure&#34; tools=[analyze_node_pressure analyze_node_pressure analyze_node_pressure analyze_node_pressure analyze_node_pressure analyze_node_pressure analyze_node_pressure analyze_node_pressure analyze_node_pressure analyze_node_pressure analyze_node_pressure analyze_node_pressure analyze_node_pressure analyze_node_pressure analyze_node_pressure analyze_node_pressure analyze_node_pressure analyze_node_pressure analyze_node_pressure analyze_node_pressure] text_len=0</failure>
+  </testcase>
+  <testcase name="demo-analyze-25" time="49.107997791"></testcase>
+  <testcase name="demo-analyze-26" time="149.9927055">
+    <failure message="llm_error: agentic loop exceeded max turns (20)">prompt=&#34;any resource contention&#34; tools=[detect_resource_contention detect_resource_contention detect_resource_contention detect_resource_contention detect_resource_contention detect_resource_contention detect_resource_contention detect_resource_contention detect_resource_contention detect_resource_contention detect_resource_contention detect_resource_contention detect_resource_contention detect_resource_contention detect_resource_contention detect_resource_contention detect_resource_contention detect_resource_contention detect_resource_contention detect_resource_contention] text_len=2028</failure>
+  </testcase>
+  <testcase name="demo-analyze-27" time="42.722548292"></testcase>
+  <testcase name="demo-analyze-28" time="5.781313375">
+    <failure message="expected a tool call, none fired">prompt=&#34;any pods in crashloopbackoff&#34; tools=[] text_len=0</failure>
+  </testcase>
+  <testcase name="demo-analyze-29" time="20.903417"></testcase>
+  <testcase name="demo-analyze-30" time="32.778149125"></testcase>
+  <testcase name="demo-logs-31" time="45.872161291"></testcase>
+  <testcase name="demo-logs-32" time="75.2379075"></testcase>
+  <testcase name="demo-logs-33" time="22.676228667"></testcase>
+  <testcase name="demo-logs-34" time="43.787811791"></testcase>
+  <testcase name="demo-logs-35" time="24.495254792"></testcase>
+  <testcase name="demo-logs-36" time="5.600508542">
+    <failure message="expected a tool call, none fired">prompt=&#34;warning events across the cluster&#34; tools=[] text_len=0</failure>
+  </testcase>
+  <testcase name="demo-logs-37" time="178.417587416">
+    <failure message="llm_error: agentic loop exceeded max turns (20)">prompt=&#34;recent failed events&#34; tools=[observe_namespace_events observe_namespace_events observe_namespace_events observe_pod_ownership_chain observe_pod_ownership_chain observe_pod_ownership_chain observe_pod_ownership_chain observe_pod_ownership_chain observe_pod_ownership_chain observe_pod_ownership_chain observe_pod_ownership_chain observe_pod_ownership_chain observe_pod_ownership_chain observe_pod_ownership_chain observe_pod_ownership_chain observe_pod_ownership_chain observe_pod_ownership_chain observe_pod_ownership_chain observe_pod_ownership_chain observe_pod_ownership_chain observe_pod_ownership_chain] text_len=1943</failure>
+  </testcase>
+  <testcase name="demo-logs-38" time="18.644260917"></testcase>
+  <testcase name="demo-logs-39" time="149.705222792">
+    <failure message="llm_error: agentic loop exceeded max turns (20)">prompt=&#34;events involving coredns&#34; tools=[observe_deployment_events observe_deployment_events observe_deployment_events observe_deployment_events observe_deployment_events observe_deployment_events observe_deployment_events observe_deployment_events observe_deployment_events observe_deployment_events observe_deployment_events observe_deployment_events observe_deployment_events observe_deployment_events observe_deployment_events observe_deployment_events observe_deployment_events observe_deployment_events observe_deployment_events observe_deployment_events] text_len=392</failure>
+  </testcase>
+  <testcase name="demo-logs-40" time="26.531550166"></testcase>
+  <testcase name="demo-advanced-41" time="26.990537292"></testcase>
+  <testcase name="demo-advanced-42" time="20.772261"></testcase>
+  <testcase name="demo-advanced-43" time="7.406432">
+    <failure message="expected a tool call, none fired">prompt=&#34;pods with more than 5 restarts&#34; tools=[] text_len=150</failure>
+  </testcase>
+  <testcase name="demo-advanced-44" time="5.643482791">
+    <failure message="expected a tool call, none fired">prompt=&#34;deployments with 0 ready replicas&#34; tools=[] text_len=0</failure>
+  </testcase>
+  <testcase name="demo-advanced-45" time="7.685743542">
+    <failure message="expected a tool call, none fired">prompt=&#34;services with no endpoints&#34; tools=[] text_len=228</failure>
+  </testcase>
+  <testcase name="demo-advanced-46" time="5.646251167">
+    <failure message="expected a tool call, none fired">prompt=&#34;summarize the otel-demo namespace&#34; tools=[] text_len=0</failure>
+  </testcase>
+  <testcase name="demo-advanced-47" time="13.695860333"></testcase>
+  <testcase name="demo-advanced-48" time="30.2354875"></testcase>
+  <testcase name="demo-advanced-49" time="6.114501083">
+    <failure message="expected a tool call, none fired">prompt=&#34;what images are running in otel-demo&#34; tools=[] text_len=0</failure>
+  </testcase>
+  <testcase name="demo-advanced-50" time="5.40874275">
+    <failure message="expected a tool call, none fired">prompt=&#34;show me images used across the cluster&#34; tools=[] text_len=0</failure>
+  </testcase>
+</testsuite>

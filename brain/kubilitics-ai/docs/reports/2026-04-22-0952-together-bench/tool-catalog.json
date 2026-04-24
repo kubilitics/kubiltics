@@ -1,0 +1,3666 @@
+[
+  {
+    "name": "action_apply_manifest",
+    "category": "action",
+    "description": "Apply Kubernetes manifests with validation and dry-run support.",
+    "plain_english": "(description pending)",
+    "autonomy_level": 4,
+    "destructive": true,
+    "requires_ai": false,
+    "source": "taxonomy"
+  },
+  {
+    "name": "action_execute_command",
+    "category": "action",
+    "description": "Execute command in pod container with security validation.",
+    "plain_english": "(description pending)",
+    "autonomy_level": 4,
+    "destructive": true,
+    "requires_ai": false,
+    "source": "taxonomy"
+  },
+  {
+    "name": "action_restart_workload",
+    "category": "action",
+    "description": "Restart pods or workloads with rolling update strategy.",
+    "plain_english": "(description pending)",
+    "autonomy_level": 4,
+    "destructive": true,
+    "requires_ai": false,
+    "source": "taxonomy"
+  },
+  {
+    "name": "action_rollback_deployment",
+    "category": "action",
+    "description": "Rollback deployment to previous revision with impact analysis.",
+    "plain_english": "(description pending)",
+    "autonomy_level": 4,
+    "destructive": true,
+    "requires_ai": true,
+    "source": "taxonomy"
+  },
+  {
+    "name": "analyze_blast_radius",
+    "category": "analysis",
+    "description": "Assess potential impact of a change or failure. Scope-aware: scope=resource requires kind+name (single workload); scope=namespace needs only namespace (all workloads in that namespace); scope=cluster takes no args and returns node-loss + critical-path summary cluster-wide.",
+    "plain_english": "(description pending)",
+    "autonomy_level": 0,
+    "destructive": false,
+    "requires_ai": true,
+    "input_schema": {
+      "properties": {
+        "cluster_id": {
+          "description": "Cluster ID (optional)",
+          "type": "string"
+        },
+        "kind": {
+          "description": "Resource kind (required when scope=resource)",
+          "type": "string"
+        },
+        "name": {
+          "description": "Resource name (required when scope=resource)",
+          "type": "string"
+        },
+        "namespace": {
+          "description": "Namespace (required when scope=namespace; optional for scope=resource)",
+          "type": "string"
+        },
+        "scope": {
+          "description": "Blast radius scope (default 'resource')",
+          "enum": [
+            "resource",
+            "namespace",
+            "cluster"
+          ],
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "parameters": [
+      "cluster_id",
+      "kind",
+      "name",
+      "namespace",
+      "scope"
+    ],
+    "source": "taxonomy"
+  },
+  {
+    "name": "analyze_capacity_trends",
+    "category": "analysis",
+    "description": "Predict future capacity needs based on historical trends and growth patterns.",
+    "plain_english": "(description pending)",
+    "autonomy_level": 0,
+    "destructive": false,
+    "requires_ai": true,
+    "source": "taxonomy"
+  },
+  {
+    "name": "analyze_cronjob_health",
+    "category": "analysis",
+    "description": "CronJob health: suspended, last run, failed child Jobs. Single name or namespace-wide.",
+    "plain_english": "(description pending)",
+    "autonomy_level": 0,
+    "destructive": false,
+    "requires_ai": false,
+    "input_schema": {
+      "properties": {
+        "name": {
+          "description": "Optional specific CronJob name",
+          "type": "string"
+        },
+        "namespace": {
+          "description": "Kubernetes namespace (required)",
+          "type": "string"
+        }
+      },
+      "required": [
+        "namespace"
+      ],
+      "type": "object"
+    },
+    "parameters": [
+      "name",
+      "namespace"
+    ],
+    "required": [
+      "namespace"
+    ],
+    "source": "taxonomy"
+  },
+  {
+    "name": "analyze_daemonset_health",
+    "category": "analysis",
+    "description": "Analyze DaemonSet health: node coverage gaps, scheduling taints/tolerations, and rolling update progress across the fleet. Detects pods stuck on specific nodes.",
+    "plain_english": "(description pending)",
+    "autonomy_level": 0,
+    "destructive": false,
+    "requires_ai": false,
+    "input_schema": {
+      "properties": {
+        "name": {
+          "description": "Optional specific DaemonSet name to focus on",
+          "type": "string"
+        },
+        "namespace": {
+          "description": "Kubernetes namespace to analyze (required)",
+          "type": "string"
+        }
+      },
+      "required": [
+        "namespace"
+      ],
+      "type": "object"
+    },
+    "parameters": [
+      "name",
+      "namespace"
+    ],
+    "required": [
+      "namespace"
+    ],
+    "source": "taxonomy"
+  },
+  {
+    "name": "analyze_dependencies",
+    "category": "analysis",
+    "description": "Map service dependencies and identify potential single points of failure.",
+    "plain_english": "(description pending)",
+    "autonomy_level": 0,
+    "destructive": false,
+    "requires_ai": true,
+    "source": "taxonomy"
+  },
+  {
+    "name": "analyze_deployment_health",
+    "category": "analysis",
+    "description": "Senior-level Deployment analysis: rollout stall detection, replica availability, image version drift, and HPA integration. Detects 'Progressing=False' conditions and resource misalignment.",
+    "plain_english": "Checks if deployments have the right number of ready replicas and flags ones that are degraded.",
+    "autonomy_level": 0,
+    "destructive": false,
+    "requires_ai": false,
+    "input_schema": {
+      "properties": {
+        "name": {
+          "description": "Optional specific deployment name to focus on",
+          "type": "string"
+        },
+        "namespace": {
+          "description": "Kubernetes namespace to analyze (required)",
+          "type": "string"
+        }
+      },
+      "required": [
+        "namespace"
+      ],
+      "type": "object"
+    },
+    "parameters": [
+      "name",
+      "namespace"
+    ],
+    "required": [
+      "namespace"
+    ],
+    "source": "taxonomy"
+  },
+  {
+    "name": "analyze_error_correlation",
+    "category": "analysis",
+    "description": "Correlate errors across logs, events, and metrics to find root causes.",
+    "plain_english": "(description pending)",
+    "autonomy_level": 0,
+    "destructive": false,
+    "requires_ai": true,
+    "source": "taxonomy"
+  },
+  {
+    "name": "analyze_failure_patterns",
+    "category": "analysis",
+    "description": "Detect recurring failure patterns across pods, deployments, and nodes.",
+    "plain_english": "(description pending)",
+    "autonomy_level": 0,
+    "destructive": false,
+    "requires_ai": true,
+    "source": "taxonomy"
+  },
+  {
+    "name": "analyze_hpa_behavior",
+    "category": "analysis",
+    "description": "Analyze HorizontalPodAutoscaler behavior: detect flapping, scaling delays, inactive HPAs, and HPAs at max replicas. Returns per-HPA warnings with scaling context.",
+    "plain_english": "(description pending)",
+    "autonomy_level": 0,
+    "destructive": false,
+    "requires_ai": false,
+    "input_schema": {
+      "properties": {
+        "name": {
+          "description": "Optional specific HPA name to focus on",
+          "type": "string"
+        },
+        "namespace": {
+          "description": "Kubernetes namespace to analyze (required)",
+          "type": "string"
+        }
+      },
+      "required": [
+        "namespace"
+      ],
+      "type": "object"
+    },
+    "parameters": [
+      "name",
+      "namespace"
+    ],
+    "required": [
+      "namespace"
+    ],
+    "source": "taxonomy"
+  },
+  {
+    "name": "analyze_image_vulnerabilities",
+    "category": "analysis",
+    "description": "Scan container images for vulnerabilities with severity prioritization.",
+    "plain_english": "(description pending)",
+    "autonomy_level": 0,
+    "destructive": false,
+    "requires_ai": true,
+    "source": "taxonomy"
+  },
+  {
+    "name": "analyze_ingress_health",
+    "category": "analysis",
+    "description": "Analyze Ingress health: backend services exist, no empty rules. Single Ingress or namespace list. Returns status, risk_flags, recommendations.",
+    "plain_english": "(description pending)",
+    "autonomy_level": 0,
+    "destructive": false,
+    "requires_ai": false,
+    "input_schema": {
+      "properties": {
+        "name": {
+          "description": "Optional specific Ingress name; if omitted, analyzes all Ingresses in namespace",
+          "type": "string"
+        },
+        "namespace": {
+          "description": "Kubernetes namespace (required)",
+          "type": "string"
+        }
+      },
+      "required": [
+        "namespace"
+      ],
+      "type": "object"
+    },
+    "parameters": [
+      "name",
+      "namespace"
+    ],
+    "required": [
+      "namespace"
+    ],
+    "source": "taxonomy"
+  },
+  {
+    "name": "analyze_job_health",
+    "category": "analysis",
+    "description": "Job health: completion status, failed count, backoff limit, deadline. Single name or namespace-wide.",
+    "plain_english": "(description pending)",
+    "autonomy_level": 0,
+    "destructive": false,
+    "requires_ai": false,
+    "input_schema": {
+      "properties": {
+        "name": {
+          "description": "Optional specific Job name",
+          "type": "string"
+        },
+        "namespace": {
+          "description": "Kubernetes namespace (required)",
+          "type": "string"
+        }
+      },
+      "required": [
+        "namespace"
+      ],
+      "type": "object"
+    },
+    "parameters": [
+      "name",
+      "namespace"
+    ],
+    "required": [
+      "namespace"
+    ],
+    "source": "taxonomy"
+  },
+  {
+    "name": "analyze_log_patterns",
+    "category": "analysis",
+    "description": "Extract and classify error/warning patterns from pod logs. Detects error keywords (panic, fatal, exception, OOM), counts patterns by type, and returns sample error lines with severity.",
+    "plain_english": "(description pending)",
+    "autonomy_level": 0,
+    "destructive": false,
+    "requires_ai": true,
+    "input_schema": {
+      "properties": {
+        "container_name": {
+          "description": "Optional specific container name within the pod",
+          "type": "string"
+        },
+        "namespace": {
+          "description": "Kubernetes namespace (required)",
+          "type": "string"
+        },
+        "pod_name": {
+          "description": "Pod name to analyze logs from (required)",
+          "type": "string"
+        },
+        "tail_lines": {
+          "description": "Number of log lines to analyze (default: 100)",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "namespace",
+        "pod_name"
+      ],
+      "type": "object"
+    },
+    "parameters": [
+      "container_name",
+      "namespace",
+      "pod_name",
+      "tail_lines"
+    ],
+    "required": [
+      "namespace",
+      "pod_name"
+    ],
+    "source": "taxonomy"
+  },
+  {
+    "name": "analyze_network_connectivity",
+    "category": "analysis",
+    "description": "Analyze network connectivity: check service endpoint readiness, count active NetworkPolicies, and detect services with no ready endpoints. Use to diagnose connectivity failures.",
+    "plain_english": "(description pending)",
+    "autonomy_level": 0,
+    "destructive": false,
+    "requires_ai": false,
+    "input_schema": {
+      "properties": {
+        "name": {
+          "description": "Optional specific service name to focus on",
+          "type": "string"
+        },
+        "namespace": {
+          "description": "Kubernetes namespace to analyze (required)",
+          "type": "string"
+        }
+      },
+      "required": [
+        "namespace"
+      ],
+      "type": "object"
+    },
+    "parameters": [
+      "name",
+      "namespace"
+    ],
+    "required": [
+      "namespace"
+    ],
+    "source": "taxonomy"
+  },
+  {
+    "name": "analyze_node_pressure",
+    "category": "analysis",
+    "description": "Analyze node pressure conditions: MemoryPressure, DiskPressure, PIDPressure. Identifies nodes under stress with severity HIGH. Use to diagnose cluster-wide resource exhaustion.",
+    "plain_english": "Looks for nodes under CPU / memory / disk pressure that might start evicting pods.",
+    "autonomy_level": 0,
+    "destructive": false,
+    "requires_ai": false,
+    "input_schema": {
+      "properties": {
+        "name": {
+          "description": "Optional specific node name to analyze",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "parameters": [
+      "name"
+    ],
+    "source": "taxonomy"
+  },
+  {
+    "name": "analyze_performance_bottlenecks",
+    "category": "analysis",
+    "description": "Identify performance bottlenecks across compute, network, and storage.",
+    "plain_english": "(description pending)",
+    "autonomy_level": 0,
+    "destructive": false,
+    "requires_ai": true,
+    "source": "taxonomy"
+  },
+  {
+    "name": "analyze_pod_health",
+    "category": "analysis",
+    "description": "Analyze pod health across a namespace: detect OOMKills, restart loops, eviction patterns, and stuck-pending pods. Returns per-pod severity findings with actionable messages.",
+    "plain_english": "Checks every pod for common problems — restarts, OOM kills, image-pull errors, CrashLoopBackOff — and summarizes in plain language.",
+    "autonomy_level": 2,
+    "destructive": false,
+    "requires_ai": false,
+    "input_schema": {
+      "properties": {
+        "name": {
+          "description": "Optional specific pod name to focus on",
+          "type": "string"
+        },
+        "namespace": {
+          "description": "Kubernetes namespace to analyze (required)",
+          "type": "string"
+        }
+      },
+      "required": [
+        "namespace"
+      ],
+      "type": "object"
+    },
+    "parameters": [
+      "name",
+      "namespace"
+    ],
+    "required": [
+      "namespace"
+    ],
+    "source": "taxonomy"
+  },
+  {
+    "name": "analyze_pod_scheduling",
+    "category": "analysis",
+    "description": "Analyze pod scheduling decisions, affinity rules, and placement optimization.",
+    "plain_english": "(description pending)",
+    "autonomy_level": 0,
+    "destructive": false,
+    "requires_ai": true,
+    "source": "taxonomy"
+  },
+  {
+    "name": "analyze_rbac_permissions",
+    "category": "analysis",
+    "description": "Analyze RBAC permissions for over-privileged service accounts. Checks RoleBindings and ClusterRoleBindings for dangerous roles (cluster-admin, admin, edit). Returns risk level and per-binding findings.",
+    "plain_english": "Reviews who has access to what in the cluster and flags overly-broad bindings.",
+    "autonomy_level": 0,
+    "destructive": false,
+    "requires_ai": false,
+    "input_schema": {
+      "properties": {
+        "namespace": {
+          "description": "Kubernetes namespace to analyze (required)",
+          "type": "string"
+        },
+        "service_account_name": {
+          "description": "Optional specific service account name to focus on",
+          "type": "string"
+        }
+      },
+      "required": [
+        "namespace"
+      ],
+      "type": "object"
+    },
+    "parameters": [
+      "namespace",
+      "service_account_name"
+    ],
+    "required": [
+      "namespace"
+    ],
+    "source": "taxonomy"
+  },
+  {
+    "name": "analyze_replicaset_health",
+    "category": "analysis",
+    "description": "ReplicaSet health: desired vs available replicas, condition-based issues. Single name or namespace-wide.",
+    "plain_english": "(description pending)",
+    "autonomy_level": 0,
+    "destructive": false,
+    "requires_ai": false,
+    "input_schema": {
+      "properties": {
+        "name": {
+          "description": "Optional specific ReplicaSet name",
+          "type": "string"
+        },
+        "namespace": {
+          "description": "Kubernetes namespace (required)",
+          "type": "string"
+        }
+      },
+      "required": [
+        "namespace"
+      ],
+      "type": "object"
+    },
+    "parameters": [
+      "name",
+      "namespace"
+    ],
+    "required": [
+      "namespace"
+    ],
+    "source": "taxonomy"
+  },
+  {
+    "name": "analyze_resource_efficiency",
+    "category": "analysis",
+    "description": "Analyze resource requests vs actual usage with rightsizing recommendations.",
+    "plain_english": "(description pending)",
+    "autonomy_level": 0,
+    "destructive": false,
+    "requires_ai": true,
+    "source": "taxonomy"
+  },
+  {
+    "name": "analyze_rollout_risk",
+    "category": "analysis",
+    "description": "Assess risk of deployments, updates, and configuration changes.",
+    "plain_english": "(description pending)",
+    "autonomy_level": 0,
+    "destructive": false,
+    "requires_ai": true,
+    "source": "taxonomy"
+  },
+  {
+    "name": "analyze_service_health",
+    "category": "analysis",
+    "description": "Analyze Service health: endpoint readiness, orphan services (no pods match selector), exposure risk (NodePort/LoadBalancer). Single service or namespace list. Returns status, risk_flags, recommendations.",
+    "plain_english": "(description pending)",
+    "autonomy_level": 0,
+    "destructive": false,
+    "requires_ai": false,
+    "input_schema": {
+      "properties": {
+        "name": {
+          "description": "Optional specific service name; if omitted, analyzes all services in namespace",
+          "type": "string"
+        },
+        "namespace": {
+          "description": "Kubernetes namespace (required)",
+          "type": "string"
+        }
+      },
+      "required": [
+        "namespace"
+      ],
+      "type": "object"
+    },
+    "parameters": [
+      "name",
+      "namespace"
+    ],
+    "required": [
+      "namespace"
+    ],
+    "source": "taxonomy"
+  },
+  {
+    "name": "analyze_statefulset_health",
+    "category": "analysis",
+    "description": "Deep analysis of StatefulSet health: ordinal readiness, volume provisioning patterns, and update strategy alignment. Detects stuck rollouts and quorum risks.",
+    "plain_english": "(description pending)",
+    "autonomy_level": 0,
+    "destructive": false,
+    "requires_ai": false,
+    "input_schema": {
+      "properties": {
+        "name": {
+          "description": "Optional specific StatefulSet name to focus on",
+          "type": "string"
+        },
+        "namespace": {
+          "description": "Kubernetes namespace to analyze (required)",
+          "type": "string"
+        }
+      },
+      "required": [
+        "namespace"
+      ],
+      "type": "object"
+    },
+    "parameters": [
+      "name",
+      "namespace"
+    ],
+    "required": [
+      "namespace"
+    ],
+    "source": "taxonomy"
+  },
+  {
+    "name": "analyze_storage_health",
+    "category": "analysis",
+    "description": "Analyze storage health: detect unbound PVCs, failed provisioning, and storage class issues. Returns storage health status (Healthy/Degraded) with list of problematic PVCs.",
+    "plain_english": "Checks persistent-volume claims — are they bound, are they full, are any in an error state.",
+    "autonomy_level": 0,
+    "destructive": false,
+    "requires_ai": false,
+    "input_schema": {
+      "properties": {
+        "namespace": {
+          "description": "Kubernetes namespace to analyze (required)",
+          "type": "string"
+        }
+      },
+      "required": [
+        "namespace"
+      ],
+      "type": "object"
+    },
+    "parameters": [
+      "namespace"
+    ],
+    "required": [
+      "namespace"
+    ],
+    "source": "taxonomy"
+  },
+  {
+    "name": "analyze_workload_patterns",
+    "category": "analysis",
+    "description": "Identify traffic patterns, peak hours, and scaling opportunities.",
+    "plain_english": "(description pending)",
+    "autonomy_level": 0,
+    "destructive": false,
+    "requires_ai": true,
+    "source": "taxonomy"
+  },
+  {
+    "name": "assess_security_posture",
+    "category": "analysis",
+    "description": "Assess security posture with CIS Kubernetes Benchmark checks: hostNetwork, hostPID, privileged containers, runAsRoot, writable root filesystems. Returns security score (0-100) and per-finding CIS IDs.",
+    "plain_english": "(description pending)",
+    "autonomy_level": 0,
+    "destructive": false,
+    "requires_ai": false,
+    "input_schema": {
+      "properties": {
+        "namespace": {
+          "description": "Kubernetes namespace to assess (required)",
+          "type": "string"
+        }
+      },
+      "required": [
+        "namespace"
+      ],
+      "type": "object"
+    },
+    "parameters": [
+      "namespace"
+    ],
+    "required": [
+      "namespace"
+    ],
+    "source": "taxonomy"
+  },
+  {
+    "name": "check_resource_limits",
+    "category": "analysis",
+    "description": "Check for containers missing CPU/memory limits and requests. Returns compliance rate and list of violations with per-container recommendations. Critical for cluster stability.",
+    "plain_english": "(description pending)",
+    "autonomy_level": 0,
+    "destructive": false,
+    "requires_ai": false,
+    "input_schema": {
+      "properties": {
+        "namespace": {
+          "description": "Kubernetes namespace to check (required)",
+          "type": "string"
+        }
+      },
+      "required": [
+        "namespace"
+      ],
+      "type": "object"
+    },
+    "parameters": [
+      "namespace"
+    ],
+    "required": [
+      "namespace"
+    ],
+    "source": "taxonomy"
+  },
+  {
+    "name": "detect_configuration_drift",
+    "category": "analysis",
+    "description": "Detect configuration drift between a resource's live state and a provided desired state specification. Returns drift count, field-level differences, and drift summary for GitOps validation.",
+    "plain_english": "(description pending)",
+    "autonomy_level": 0,
+    "destructive": false,
+    "requires_ai": false,
+    "input_schema": {
+      "properties": {
+        "desired_state": {
+          "description": "Desired state specification to compare against live state",
+          "type": "object"
+        },
+        "kind": {
+          "description": "Resource kind (e.g., Deployment, ConfigMap) (required)",
+          "type": "string"
+        },
+        "name": {
+          "description": "Resource name (required)",
+          "type": "string"
+        },
+        "namespace": {
+          "description": "Kubernetes namespace of the resource (required)",
+          "type": "string"
+        }
+      },
+      "required": [
+        "namespace",
+        "kind",
+        "name"
+      ],
+      "type": "object"
+    },
+    "parameters": [
+      "desired_state",
+      "kind",
+      "name",
+      "namespace"
+    ],
+    "required": [
+      "namespace",
+      "kind",
+      "name"
+    ],
+    "source": "taxonomy"
+  },
+  {
+    "name": "detect_resource_contention",
+    "category": "analysis",
+    "description": "Detect CPU throttling risk and memory overcommit by finding containers without resource limits/requests. Returns contention risk level (LOW/MEDIUM/HIGH) and list of violating containers.",
+    "plain_english": "(description pending)",
+    "autonomy_level": 0,
+    "destructive": false,
+    "requires_ai": false,
+    "input_schema": {
+      "properties": {
+        "namespace": {
+          "description": "Kubernetes namespace to scan for resource contention (required)",
+          "type": "string"
+        }
+      },
+      "required": [
+        "namespace"
+      ],
+      "type": "object"
+    },
+    "parameters": [
+      "namespace"
+    ],
+    "required": [
+      "namespace"
+    ],
+    "source": "taxonomy"
+  },
+  {
+    "name": "who_can_do",
+    "category": "analysis",
+    "description": "Answer 'who can \u003cverb\u003e \u003cresource\u003e in \u003cnamespace\u003e?' in ONE call. Aggregates Roles, ClusterRoles, RoleBindings, ClusterRoleBindings and returns principals + the roles that granted the permission. Call this INSTEAD of enumerating clusterroles one-by-one — the old approach fanned out to 95 tool calls per question.",
+    "plain_english": "(description pending)",
+    "autonomy_level": 0,
+    "destructive": false,
+    "requires_ai": false,
+    "input_schema": {
+      "properties": {
+        "cluster_id": {
+          "type": "string"
+        },
+        "namespace": {
+          "description": "Scope to a single namespace (optional — default is cluster-wide)",
+          "type": "string"
+        },
+        "resource": {
+          "description": "Resource plural e.g. pods, deployments, secrets (required)",
+          "type": "string"
+        },
+        "verb": {
+          "description": "RBAC verb e.g. get, list, create, delete, patch (required)",
+          "type": "string"
+        }
+      },
+      "required": [
+        "verb",
+        "resource"
+      ],
+      "type": "object"
+    },
+    "parameters": [
+      "cluster_id",
+      "namespace",
+      "resource",
+      "verb"
+    ],
+    "required": [
+      "verb",
+      "resource"
+    ],
+    "source": "taxonomy"
+  },
+  {
+    "name": "automation_create_alert_rule",
+    "category": "automation",
+    "description": "Create intelligent alert rules with auto-remediation triggers.",
+    "plain_english": "(description pending)",
+    "autonomy_level": 0,
+    "destructive": false,
+    "requires_ai": true,
+    "source": "taxonomy"
+  },
+  {
+    "name": "automation_generate_runbook",
+    "category": "automation",
+    "description": "Generate runbooks for common operational scenarios.",
+    "plain_english": "(description pending)",
+    "autonomy_level": 0,
+    "destructive": false,
+    "requires_ai": true,
+    "source": "taxonomy"
+  },
+  {
+    "name": "automation_run_playbook",
+    "category": "automation",
+    "description": "Run a predefined remediation playbook (e.g., 'clear-logs', 'restart-deployment', 'cordon-node').",
+    "plain_english": "(description pending)",
+    "autonomy_level": 4,
+    "destructive": false,
+    "requires_ai": true,
+    "source": "taxonomy"
+  },
+  {
+    "name": "automation_schedule_task",
+    "category": "automation",
+    "description": "Schedule recurring tasks like backups, cleanups, and health checks.",
+    "plain_english": "(description pending)",
+    "autonomy_level": 0,
+    "destructive": false,
+    "requires_ai": false,
+    "source": "taxonomy"
+  },
+  {
+    "name": "cost_analyze_spending",
+    "category": "cost",
+    "description": "Analyze cluster costs with breakdown by namespace, workload, and and resource type.",
+    "plain_english": "(description pending)",
+    "autonomy_level": 2,
+    "destructive": false,
+    "requires_ai": true,
+    "source": "taxonomy"
+  },
+  {
+    "name": "cost_forecast_spending",
+    "category": "cost",
+    "description": "Forecast future costs based on trends and planned changes.",
+    "plain_english": "(description pending)",
+    "autonomy_level": 0,
+    "destructive": false,
+    "requires_ai": true,
+    "source": "taxonomy"
+  },
+  {
+    "name": "cost_identify_waste",
+    "category": "cost",
+    "description": "Identify wasted resources: over-provisioned pods, unused PVs, idle nodes.",
+    "plain_english": "(description pending)",
+    "autonomy_level": 0,
+    "destructive": false,
+    "requires_ai": true,
+    "source": "taxonomy"
+  },
+  {
+    "name": "cost_optimization_plan",
+    "category": "cost",
+    "description": "Generate comprehensive cost optimization plan with ROI estimates.",
+    "plain_english": "(description pending)",
+    "autonomy_level": 0,
+    "destructive": false,
+    "requires_ai": true,
+    "source": "taxonomy"
+  },
+  {
+    "name": "apply_resource_patch",
+    "category": "execution",
+    "description": "Apply a JSON merge or strategic merge patch to any Kubernetes resource. Safety Level 4. Use for targeted field updates (e.g., updating container image, annotations). Supports dry_run.",
+    "plain_english": "(description pending)",
+    "autonomy_level": 0,
+    "destructive": true,
+    "requires_ai": false,
+    "input_schema": {
+      "properties": {
+        "dry_run": {
+          "description": "Preview changes without executing",
+          "type": "boolean"
+        },
+        "justification": {
+          "description": "Reason for patch",
+          "type": "string"
+        },
+        "kind": {
+          "description": "Resource kind (e.g., Deployment) (required)",
+          "type": "string"
+        },
+        "name": {
+          "description": "Resource name (required)",
+          "type": "string"
+        },
+        "namespace": {
+          "description": "Resource namespace",
+          "type": "string"
+        },
+        "patch": {
+          "description": "JSON patch object (required)",
+          "type": "object"
+        },
+        "patch_type": {
+          "description": "Patch type: merge or strategic",
+          "enum": [
+            "merge",
+            "strategic"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "name",
+        "patch"
+      ],
+      "type": "object"
+    },
+    "parameters": [
+      "dry_run",
+      "justification",
+      "kind",
+      "name",
+      "namespace",
+      "patch",
+      "patch_type"
+    ],
+    "required": [
+      "kind",
+      "name",
+      "patch"
+    ],
+    "source": "taxonomy"
+  },
+  {
+    "name": "cordon_node",
+    "category": "execution",
+    "description": "Mark a node as unschedulable (cordon) to prevent new pods from being scheduled. Safety Level 3. Existing pods are NOT evicted. Supports dry_run.",
+    "plain_english": "(description pending)",
+    "autonomy_level": 0,
+    "destructive": true,
+    "requires_ai": false,
+    "input_schema": {
+      "properties": {
+        "dry_run": {
+          "description": "Preview changes without executing",
+          "type": "boolean"
+        },
+        "justification": {
+          "description": "Reason for cordoning",
+          "type": "string"
+        },
+        "name": {
+          "description": "Node name to cordon (required)",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "type": "object"
+    },
+    "parameters": [
+      "dry_run",
+      "justification",
+      "name"
+    ],
+    "required": [
+      "name"
+    ],
+    "source": "taxonomy"
+  },
+  {
+    "name": "delete_resource",
+    "category": "execution",
+    "description": "Delete a Kubernetes resource. Safety Level 5 — most restrictive, always requires human approval regardless of autonomy level. Supports optional grace period. Supports dry_run (strongly recommended first).",
+    "plain_english": "(description pending)",
+    "autonomy_level": 0,
+    "destructive": true,
+    "requires_ai": false,
+    "input_schema": {
+      "properties": {
+        "dry_run": {
+          "description": "Preview without deleting (strongly recommended)",
+          "type": "boolean"
+        },
+        "grace_period_seconds": {
+          "description": "Grace period before deletion",
+          "type": "integer"
+        },
+        "justification": {
+          "description": "Reason for deletion (required for audit)",
+          "type": "string"
+        },
+        "kind": {
+          "description": "Resource kind (required)",
+          "type": "string"
+        },
+        "name": {
+          "description": "Resource name (required)",
+          "type": "string"
+        },
+        "namespace": {
+          "description": "Resource namespace",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "name"
+      ],
+      "type": "object"
+    },
+    "parameters": [
+      "dry_run",
+      "grace_period_seconds",
+      "justification",
+      "kind",
+      "name",
+      "namespace"
+    ],
+    "required": [
+      "kind",
+      "name"
+    ],
+    "source": "taxonomy"
+  },
+  {
+    "name": "drain_node",
+    "category": "execution",
+    "description": "Evict all pods from a node (drain) to prepare for maintenance. Safety Level 4 — highest restriction, always reviewed by policy engine. Supports grace period, ignore-daemonsets, and delete-emptydir options. Supports dry_run.",
+    "plain_english": "(description pending)",
+    "autonomy_level": 0,
+    "destructive": true,
+    "requires_ai": false,
+    "input_schema": {
+      "properties": {
+        "delete_emptydir_data": {
+          "description": "Allow deleting pods with emptyDir volumes",
+          "type": "boolean"
+        },
+        "dry_run": {
+          "description": "Preview changes without executing",
+          "type": "boolean"
+        },
+        "grace_period_seconds": {
+          "description": "Grace period for pod eviction in seconds (default: 30)",
+          "type": "integer"
+        },
+        "ignore_daemon_sets": {
+          "description": "Ignore DaemonSet-managed pods (default: true)",
+          "type": "boolean"
+        },
+        "justification": {
+          "description": "Reason for draining",
+          "type": "string"
+        },
+        "name": {
+          "description": "Node name to drain (required)",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "type": "object"
+    },
+    "parameters": [
+      "delete_emptydir_data",
+      "dry_run",
+      "grace_period_seconds",
+      "ignore_daemon_sets",
+      "justification",
+      "name"
+    ],
+    "required": [
+      "name"
+    ],
+    "source": "taxonomy"
+  },
+  {
+    "name": "restart_pod",
+    "category": "execution",
+    "description": "Restart a pod by deleting it (its controller will recreate it). Safety Level 2 — semi-autonomous. Passes through policy + blast-radius check. Supports dry_run for impact preview. Requires namespace and pod name.",
+    "plain_english": "(description pending)",
+    "autonomy_level": 0,
+    "destructive": true,
+    "requires_ai": false,
+    "input_schema": {
+      "properties": {
+        "dry_run": {
+          "description": "Preview changes without executing",
+          "type": "boolean"
+        },
+        "justification": {
+          "description": "Reason for restart (recommended for audit log)",
+          "type": "string"
+        },
+        "name": {
+          "description": "Pod name to restart (required)",
+          "type": "string"
+        },
+        "namespace": {
+          "description": "Pod namespace (required)",
+          "type": "string"
+        }
+      },
+      "required": [
+        "namespace",
+        "name"
+      ],
+      "type": "object"
+    },
+    "parameters": [
+      "dry_run",
+      "justification",
+      "name",
+      "namespace"
+    ],
+    "required": [
+      "namespace",
+      "name"
+    ],
+    "source": "taxonomy"
+  },
+  {
+    "name": "rollback_deployment",
+    "category": "execution",
+    "description": "Roll back a Deployment to a previous revision. Safety Level 3. Specify revision number (0 = previous revision). Returns rollback plan before execution. Supports dry_run.",
+    "plain_english": "(description pending)",
+    "autonomy_level": 0,
+    "destructive": true,
+    "requires_ai": false,
+    "input_schema": {
+      "properties": {
+        "dry_run": {
+          "description": "Preview changes without executing",
+          "type": "boolean"
+        },
+        "justification": {
+          "description": "Reason for rollback",
+          "type": "string"
+        },
+        "name": {
+          "description": "Deployment name (required)",
+          "type": "string"
+        },
+        "namespace": {
+          "description": "Deployment namespace (required)",
+          "type": "string"
+        },
+        "revision": {
+          "description": "Revision to roll back to (0 = previous revision)",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "namespace",
+        "name"
+      ],
+      "type": "object"
+    },
+    "parameters": [
+      "dry_run",
+      "justification",
+      "name",
+      "namespace",
+      "revision"
+    ],
+    "required": [
+      "namespace",
+      "name"
+    ],
+    "source": "taxonomy"
+  },
+  {
+    "name": "scale_deployment",
+    "category": "execution",
+    "description": "Scale a Deployment to a target replica count. Safety Level 3 — requires explicit user confirmation unless autonomy level allows. Blast radius analysis is performed. Supports dry_run.",
+    "plain_english": "(description pending)",
+    "autonomy_level": 0,
+    "destructive": true,
+    "requires_ai": false,
+    "input_schema": {
+      "properties": {
+        "dry_run": {
+          "description": "Preview changes without executing",
+          "type": "boolean"
+        },
+        "justification": {
+          "description": "Reason for scaling",
+          "type": "string"
+        },
+        "name": {
+          "description": "Deployment name (required)",
+          "type": "string"
+        },
+        "namespace": {
+          "description": "Deployment namespace (required)",
+          "type": "string"
+        },
+        "replicas": {
+          "description": "Target replica count (required)",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "namespace",
+        "name",
+        "replicas"
+      ],
+      "type": "object"
+    },
+    "parameters": [
+      "dry_run",
+      "justification",
+      "name",
+      "namespace",
+      "replicas"
+    ],
+    "required": [
+      "namespace",
+      "name",
+      "replicas"
+    ],
+    "source": "taxonomy"
+  },
+  {
+    "name": "trigger_hpa_scale",
+    "category": "execution",
+    "description": "Manually override an HPA's current desired replica count by patching its status. Safety Level 4. Use when immediate scaling is needed before the HPA's metric-based decisions take effect. Supports dry_run.",
+    "plain_english": "(description pending)",
+    "autonomy_level": 0,
+    "destructive": true,
+    "requires_ai": false,
+    "input_schema": {
+      "properties": {
+        "dry_run": {
+          "description": "Preview changes without executing",
+          "type": "boolean"
+        },
+        "justification": {
+          "description": "Reason for manual scale trigger",
+          "type": "string"
+        },
+        "name": {
+          "description": "HPA name (required)",
+          "type": "string"
+        },
+        "namespace": {
+          "description": "HPA namespace (required)",
+          "type": "string"
+        },
+        "target_replicas": {
+          "description": "Target replica count (required)",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "namespace",
+        "name",
+        "target_replicas"
+      ],
+      "type": "object"
+    },
+    "parameters": [
+      "dry_run",
+      "justification",
+      "name",
+      "namespace",
+      "target_replicas"
+    ],
+    "required": [
+      "namespace",
+      "name",
+      "target_replicas"
+    ],
+    "source": "taxonomy"
+  },
+  {
+    "name": "update_resource_limits",
+    "category": "execution",
+    "description": "Update CPU/memory requests and limits for a specific container in a workload. Safety Level 3. Builds a strategic merge patch and applies it. Requires container_name. Supports dry_run.",
+    "plain_english": "(description pending)",
+    "autonomy_level": 0,
+    "destructive": true,
+    "requires_ai": false,
+    "input_schema": {
+      "properties": {
+        "container_name": {
+          "description": "Container name to update (required)",
+          "type": "string"
+        },
+        "cpu_limit": {
+          "description": "CPU limit (e.g., '500m')",
+          "type": "string"
+        },
+        "cpu_request": {
+          "description": "CPU request (e.g., '250m')",
+          "type": "string"
+        },
+        "dry_run": {
+          "description": "Preview changes without executing",
+          "type": "boolean"
+        },
+        "justification": {
+          "description": "Reason for limit change",
+          "type": "string"
+        },
+        "kind": {
+          "description": "Resource kind: Deployment, StatefulSet, DaemonSet (required)",
+          "type": "string"
+        },
+        "memory_limit": {
+          "description": "Memory limit (e.g., '512Mi')",
+          "type": "string"
+        },
+        "memory_request": {
+          "description": "Memory request (e.g., '256Mi')",
+          "type": "string"
+        },
+        "name": {
+          "description": "Workload name (required)",
+          "type": "string"
+        },
+        "namespace": {
+          "description": "Workload namespace (required)",
+          "type": "string"
+        }
+      },
+      "required": [
+        "namespace",
+        "kind",
+        "name",
+        "container_name"
+      ],
+      "type": "object"
+    },
+    "parameters": [
+      "container_name",
+      "cpu_limit",
+      "cpu_request",
+      "dry_run",
+      "justification",
+      "kind",
+      "memory_limit",
+      "memory_request",
+      "name",
+      "namespace"
+    ],
+    "required": [
+      "namespace",
+      "kind",
+      "name",
+      "container_name"
+    ],
+    "source": "taxonomy"
+  },
+  {
+    "name": "export_topology_to_drawio",
+    "category": "observation",
+    "description": "Export cluster topology as an editable diagram. Returns a draw.io URL that opens the architecture diagram in a new tab. Use when user asks for 'architecture diagram', 'show me the topology', or 'export to draw.io'.",
+    "plain_english": "(description pending)",
+    "autonomy_level": 0,
+    "destructive": false,
+    "requires_ai": false,
+    "source": "taxonomy"
+  },
+  {
+    "name": "get_cluster_health",
+    "category": "observation",
+    "description": "Get overall cluster health: status, score, node count, pod count, and component statuses. Use for 'cluster health', 'how is the cluster doing'.",
+    "plain_english": "Gives a plain-English summary of whether the cluster looks healthy right now: node count, pod statuses, obvious problems.",
+    "autonomy_level": 1,
+    "destructive": false,
+    "requires_ai": false,
+    "input_schema": {
+      "properties": {},
+      "type": "object"
+    },
+    "source": "chat"
+  },
+  {
+    "name": "get_events",
+    "category": "observation",
+    "description": "List recent Kubernetes events, optionally filtered by namespace, involved object, or reason. Use to diagnose failures, scheduling, or pod issues.",
+    "plain_english": "Lists recent Kubernetes events — useful for 'why did my pod fail?' or 'what happened in the last hour?'",
+    "autonomy_level": 1,
+    "destructive": false,
+    "requires_ai": false,
+    "input_schema": {
+      "properties": {
+        "involved_object": {
+          "description": "Filter by involved object name",
+          "type": "string"
+        },
+        "limit": {
+          "description": "Max events (default 20)",
+          "type": "integer"
+        },
+        "namespace": {
+          "description": "Namespace to list events from",
+          "type": "string"
+        },
+        "reason": {
+          "description": "Filter by event reason",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "parameters": [
+      "involved_object",
+      "limit",
+      "namespace",
+      "reason"
+    ],
+    "source": "chat"
+  },
+  {
+    "name": "get_logs",
+    "category": "observation",
+    "description": "Get logs from a pod. Use for debugging, error inspection, or when the user asks for pod logs.",
+    "plain_english": "Gets recent log lines from a pod, so you can see what the application actually said or errored out with.",
+    "autonomy_level": 1,
+    "destructive": false,
+    "requires_ai": false,
+    "input_schema": {
+      "properties": {
+        "container_name": {
+          "description": "Optional container name",
+          "type": "string"
+        },
+        "namespace": {
+          "description": "Namespace (required)",
+          "type": "string"
+        },
+        "pod_name": {
+          "description": "Pod name (required)",
+          "type": "string"
+        },
+        "since": {
+          "description": "Optional time duration (e.g. 1h)",
+          "type": "string"
+        },
+        "tail_lines": {
+          "description": "Number of lines (default 100)",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "namespace",
+        "pod_name"
+      ],
+      "type": "object"
+    },
+    "parameters": [
+      "container_name",
+      "namespace",
+      "pod_name",
+      "since",
+      "tail_lines"
+    ],
+    "required": [
+      "namespace",
+      "pod_name"
+    ],
+    "source": "chat"
+  },
+  {
+    "name": "get_resource",
+    "category": "observation",
+    "description": "Get detailed information about a single resource by kind, namespace, and name. Use for full pod/details, metrics context, or when you need one resource's spec/status.",
+    "plain_english": "Gets the full details of one specific thing (a single pod, a single deployment) when you need to see everything about it.",
+    "autonomy_level": 1,
+    "destructive": false,
+    "requires_ai": false,
+    "input_schema": {
+      "properties": {
+        "kind": {
+          "description": "Resource kind (required), e.g. Pod, Deployment",
+          "type": "string"
+        },
+        "name": {
+          "description": "Resource name (required)",
+          "type": "string"
+        },
+        "namespace": {
+          "description": "Namespace (required for namespaced resources)",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "name"
+      ],
+      "type": "object"
+    },
+    "parameters": [
+      "kind",
+      "name",
+      "namespace"
+    ],
+    "required": [
+      "kind",
+      "name"
+    ],
+    "source": "chat"
+  },
+  {
+    "name": "inspect_clusterrole",
+    "category": "observation",
+    "description": "One-call deep dive into a ClusterRole (cluster-scoped): rules, referencing ClusterRoleBindings and recent events. Replaces observe_clusterrole_detailed + observe_clusterrole_events.",
+    "plain_english": "(description pending)",
+    "autonomy_level": 0,
+    "destructive": false,
+    "requires_ai": false,
+    "input_schema": {
+      "properties": {
+        "cluster_id": {
+          "description": "Cluster ID (optional)",
+          "type": "string"
+        },
+        "name": {
+          "description": "ClusterRole name (required)",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "type": "object"
+    },
+    "parameters": [
+      "cluster_id",
+      "name"
+    ],
+    "required": [
+      "name"
+    ],
+    "source": "taxonomy"
+  },
+  {
+    "name": "inspect_clusterrolebinding",
+    "category": "observation",
+    "description": "One-call deep dive into a ClusterRoleBinding (cluster-scoped): roleRef, subjects, resolved ClusterRole and recent events. Replaces observe_clusterrolebinding_detailed + observe_clusterrolebinding_events.",
+    "plain_english": "(description pending)",
+    "autonomy_level": 0,
+    "destructive": false,
+    "requires_ai": false,
+    "input_schema": {
+      "properties": {
+        "cluster_id": {
+          "description": "Cluster ID (optional)",
+          "type": "string"
+        },
+        "name": {
+          "description": "ClusterRoleBinding name (required)",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "type": "object"
+    },
+    "parameters": [
+      "cluster_id",
+      "name"
+    ],
+    "required": [
+      "name"
+    ],
+    "source": "taxonomy"
+  },
+  {
+    "name": "inspect_configmap",
+    "category": "observation",
+    "description": "One-call deep dive into a ConfigMap: metadata, data keys, consumers and recent events. Replaces observe_configmap_detailed + observe_configmap_events.",
+    "plain_english": "(description pending)",
+    "autonomy_level": 0,
+    "destructive": false,
+    "requires_ai": false,
+    "input_schema": {
+      "properties": {
+        "cluster_id": {
+          "description": "Cluster ID (optional)",
+          "type": "string"
+        },
+        "name": {
+          "description": "ConfigMap name (required)",
+          "type": "string"
+        },
+        "namespace": {
+          "description": "Namespace (required)",
+          "type": "string"
+        }
+      },
+      "required": [
+        "namespace",
+        "name"
+      ],
+      "type": "object"
+    },
+    "parameters": [
+      "cluster_id",
+      "name",
+      "namespace"
+    ],
+    "required": [
+      "namespace",
+      "name"
+    ],
+    "source": "taxonomy"
+  },
+  {
+    "name": "inspect_crd",
+    "category": "observation",
+    "description": "One-call deep dive into a CustomResourceDefinition (cluster-scoped): spec (group, names, scope, versions), instances count and recent events. Replaces observe_crd_detailed + observe_crd_events.",
+    "plain_english": "(description pending)",
+    "autonomy_level": 0,
+    "destructive": false,
+    "requires_ai": false,
+    "input_schema": {
+      "properties": {
+        "cluster_id": {
+          "description": "Cluster ID (optional)",
+          "type": "string"
+        },
+        "name": {
+          "description": "CustomResourceDefinition name (required); cluster-scoped",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "type": "object"
+    },
+    "parameters": [
+      "cluster_id",
+      "name"
+    ],
+    "required": [
+      "name"
+    ],
+    "source": "taxonomy"
+  },
+  {
+    "name": "inspect_cronjob",
+    "category": "observation",
+    "description": "One-call deep dive into a CronJob: schedule, suspend, last run, recent events, child Jobs. Replaces observe_cronjob_detailed + observe_cronjob_events + observe_cronjob_ownership_chain.",
+    "plain_english": "(description pending)",
+    "autonomy_level": 0,
+    "destructive": false,
+    "requires_ai": false,
+    "input_schema": {
+      "properties": {
+        "cluster_id": {
+          "description": "Cluster ID (optional)",
+          "type": "string"
+        },
+        "name": {
+          "description": "CronJob name (required)",
+          "type": "string"
+        },
+        "namespace": {
+          "description": "Kubernetes namespace (required)",
+          "type": "string"
+        }
+      },
+      "required": [
+        "namespace",
+        "name"
+      ],
+      "type": "object"
+    },
+    "parameters": [
+      "cluster_id",
+      "name",
+      "namespace"
+    ],
+    "required": [
+      "namespace",
+      "name"
+    ],
+    "source": "taxonomy"
+  },
+  {
+    "name": "inspect_daemonset",
+    "category": "observation",
+    "description": "One-call deep dive into a DaemonSet: spec+status, recent events, child Pods. Replaces observe_daemonset_detailed + observe_daemonset_events + observe_daemonset_ownership_chain.",
+    "plain_english": "(description pending)",
+    "autonomy_level": 0,
+    "destructive": false,
+    "requires_ai": false,
+    "input_schema": {
+      "properties": {
+        "cluster_id": {
+          "description": "Cluster ID (optional)",
+          "type": "string"
+        },
+        "name": {
+          "description": "DaemonSet name (required)",
+          "type": "string"
+        },
+        "namespace": {
+          "description": "Kubernetes namespace (required)",
+          "type": "string"
+        }
+      },
+      "required": [
+        "namespace",
+        "name"
+      ],
+      "type": "object"
+    },
+    "parameters": [
+      "cluster_id",
+      "name",
+      "namespace"
+    ],
+    "required": [
+      "namespace",
+      "name"
+    ],
+    "source": "taxonomy"
+  },
+  {
+    "name": "inspect_deployment",
+    "category": "observation",
+    "description": "One-call deep dive into a Deployment: spec+status, rollout history, recent events, child ReplicaSets. Replaces observe_deployment_detailed + observe_deployment_events + observe_deployment_ownership_chain.",
+    "plain_english": "(description pending)",
+    "autonomy_level": 0,
+    "destructive": false,
+    "requires_ai": false,
+    "input_schema": {
+      "properties": {
+        "cluster_id": {
+          "description": "Cluster ID (optional)",
+          "type": "string"
+        },
+        "name": {
+          "description": "Deployment name (required)",
+          "type": "string"
+        },
+        "namespace": {
+          "description": "Kubernetes namespace (required)",
+          "type": "string"
+        }
+      },
+      "required": [
+        "namespace",
+        "name"
+      ],
+      "type": "object"
+    },
+    "parameters": [
+      "cluster_id",
+      "name",
+      "namespace"
+    ],
+    "required": [
+      "namespace",
+      "name"
+    ],
+    "source": "taxonomy"
+  },
+  {
+    "name": "inspect_hpa",
+    "category": "observation",
+    "description": "One-call deep dive into a HorizontalPodAutoscaler: spec (minReplicas/maxReplicas/scaleTargetRef), status and recent events. Replaces observe_hpa_detailed + observe_hpa_events.",
+    "plain_english": "(description pending)",
+    "autonomy_level": 0,
+    "destructive": false,
+    "requires_ai": false,
+    "input_schema": {
+      "properties": {
+        "cluster_id": {
+          "description": "Cluster ID (optional)",
+          "type": "string"
+        },
+        "name": {
+          "description": "HPA name (required)",
+          "type": "string"
+        },
+        "namespace": {
+          "description": "Namespace (required)",
+          "type": "string"
+        }
+      },
+      "required": [
+        "namespace",
+        "name"
+      ],
+      "type": "object"
+    },
+    "parameters": [
+      "cluster_id",
+      "name",
+      "namespace"
+    ],
+    "required": [
+      "namespace",
+      "name"
+    ],
+    "source": "taxonomy"
+  },
+  {
+    "name": "inspect_ingress",
+    "category": "observation",
+    "description": "One-call deep dive into an Ingress: spec (rules, tls, ingressClassName), backend services and recent events. Replaces observe_ingress_detailed + observe_ingress_events.",
+    "plain_english": "(description pending)",
+    "autonomy_level": 0,
+    "destructive": false,
+    "requires_ai": false,
+    "input_schema": {
+      "properties": {
+        "cluster_id": {
+          "description": "Cluster ID (optional)",
+          "type": "string"
+        },
+        "name": {
+          "description": "Ingress name (required)",
+          "type": "string"
+        },
+        "namespace": {
+          "description": "Kubernetes namespace (required)",
+          "type": "string"
+        }
+      },
+      "required": [
+        "namespace",
+        "name"
+      ],
+      "type": "object"
+    },
+    "parameters": [
+      "cluster_id",
+      "name",
+      "namespace"
+    ],
+    "required": [
+      "namespace",
+      "name"
+    ],
+    "source": "taxonomy"
+  },
+  {
+    "name": "inspect_job",
+    "category": "observation",
+    "description": "One-call deep dive into a Job: spec+status, completion/backoff state, recent events, ownership chain (parent CronJob → child Pods). Replaces observe_job_detailed + observe_job_events + observe_job_ownership_chain.",
+    "plain_english": "(description pending)",
+    "autonomy_level": 0,
+    "destructive": false,
+    "requires_ai": false,
+    "input_schema": {
+      "properties": {
+        "cluster_id": {
+          "description": "Cluster ID (optional)",
+          "type": "string"
+        },
+        "name": {
+          "description": "Job name (required)",
+          "type": "string"
+        },
+        "namespace": {
+          "description": "Kubernetes namespace (required)",
+          "type": "string"
+        }
+      },
+      "required": [
+        "namespace",
+        "name"
+      ],
+      "type": "object"
+    },
+    "parameters": [
+      "cluster_id",
+      "name",
+      "namespace"
+    ],
+    "required": [
+      "namespace",
+      "name"
+    ],
+    "source": "taxonomy"
+  },
+  {
+    "name": "inspect_limitrange",
+    "category": "observation",
+    "description": "One-call deep dive into a LimitRange: spec (limits: type, default, defaultRequest, max, min) and recent events. Replaces observe_limitrange_detailed + observe_limitrange_events.",
+    "plain_english": "(description pending)",
+    "autonomy_level": 0,
+    "destructive": false,
+    "requires_ai": false,
+    "input_schema": {
+      "properties": {
+        "cluster_id": {
+          "description": "Cluster ID (optional)",
+          "type": "string"
+        },
+        "name": {
+          "description": "LimitRange name (required)",
+          "type": "string"
+        },
+        "namespace": {
+          "description": "Namespace (required)",
+          "type": "string"
+        }
+      },
+      "required": [
+        "namespace",
+        "name"
+      ],
+      "type": "object"
+    },
+    "parameters": [
+      "cluster_id",
+      "name",
+      "namespace"
+    ],
+    "required": [
+      "namespace",
+      "name"
+    ],
+    "source": "taxonomy"
+  },
+  {
+    "name": "inspect_namespace",
+    "category": "observation",
+    "description": "One-call deep dive into a Namespace: metadata, status phase, pod count and recent events. Replaces observe_namespace_detailed + observe_namespace_events.",
+    "plain_english": "(description pending)",
+    "autonomy_level": 0,
+    "destructive": false,
+    "requires_ai": false,
+    "input_schema": {
+      "properties": {
+        "cluster_id": {
+          "description": "Cluster ID (optional)",
+          "type": "string"
+        },
+        "name": {
+          "description": "Namespace name (required)",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "type": "object"
+    },
+    "parameters": [
+      "cluster_id",
+      "name"
+    ],
+    "required": [
+      "name"
+    ],
+    "source": "taxonomy"
+  },
+  {
+    "name": "inspect_networkpolicy",
+    "category": "observation",
+    "description": "One-call deep dive into a NetworkPolicy: spec (podSelector, policyTypes, ingress/egress), pods selected and recent events. Replaces observe_networkpolicy_detailed + observe_networkpolicy_events.",
+    "plain_english": "(description pending)",
+    "autonomy_level": 0,
+    "destructive": false,
+    "requires_ai": false,
+    "input_schema": {
+      "properties": {
+        "cluster_id": {
+          "description": "Cluster ID (optional)",
+          "type": "string"
+        },
+        "name": {
+          "description": "NetworkPolicy name (required)",
+          "type": "string"
+        },
+        "namespace": {
+          "description": "Kubernetes namespace (required)",
+          "type": "string"
+        }
+      },
+      "required": [
+        "namespace",
+        "name"
+      ],
+      "type": "object"
+    },
+    "parameters": [
+      "cluster_id",
+      "name",
+      "namespace"
+    ],
+    "required": [
+      "namespace",
+      "name"
+    ],
+    "source": "taxonomy"
+  },
+  {
+    "name": "inspect_node",
+    "category": "observation",
+    "description": "One-call deep dive into a Node: spec+status (capacity, taints, conditions) and recent events. Replaces observe_node_detailed + observe_node_events.",
+    "plain_english": "(description pending)",
+    "autonomy_level": 0,
+    "destructive": false,
+    "requires_ai": false,
+    "input_schema": {
+      "properties": {
+        "cluster_id": {
+          "description": "Cluster ID (optional)",
+          "type": "string"
+        },
+        "name": {
+          "description": "Node name (required)",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "type": "object"
+    },
+    "parameters": [
+      "cluster_id",
+      "name"
+    ],
+    "required": [
+      "name"
+    ],
+    "source": "taxonomy"
+  },
+  {
+    "name": "inspect_pdb",
+    "category": "observation",
+    "description": "One-call deep dive into a PodDisruptionBudget: spec (minAvailable/maxUnavailable/selector), status and recent events. Replaces observe_pdb_detailed + observe_pdb_events.",
+    "plain_english": "(description pending)",
+    "autonomy_level": 0,
+    "destructive": false,
+    "requires_ai": false,
+    "input_schema": {
+      "properties": {
+        "cluster_id": {
+          "description": "Cluster ID (optional)",
+          "type": "string"
+        },
+        "name": {
+          "description": "PDB name (required)",
+          "type": "string"
+        },
+        "namespace": {
+          "description": "Namespace (required)",
+          "type": "string"
+        }
+      },
+      "required": [
+        "namespace",
+        "name"
+      ],
+      "type": "object"
+    },
+    "parameters": [
+      "cluster_id",
+      "name",
+      "namespace"
+    ],
+    "required": [
+      "namespace",
+      "name"
+    ],
+    "source": "taxonomy"
+  },
+  {
+    "name": "inspect_pod",
+    "category": "observation",
+    "description": "One-call deep dive into a Pod: current spec+status, recent events, ownership chain (RS → Deployment). Replaces observe_pod_detailed + observe_pod_events + observe_pod_ownership_chain.",
+    "plain_english": "(description pending)",
+    "autonomy_level": 0,
+    "destructive": false,
+    "requires_ai": false,
+    "input_schema": {
+      "properties": {
+        "cluster_id": {
+          "description": "Cluster ID (optional)",
+          "type": "string"
+        },
+        "name": {
+          "description": "Pod name (required)",
+          "type": "string"
+        },
+        "namespace": {
+          "description": "Kubernetes namespace (required)",
+          "type": "string"
+        }
+      },
+      "required": [
+        "namespace",
+        "name"
+      ],
+      "type": "object"
+    },
+    "parameters": [
+      "cluster_id",
+      "name",
+      "namespace"
+    ],
+    "required": [
+      "namespace",
+      "name"
+    ],
+    "source": "taxonomy"
+  },
+  {
+    "name": "inspect_pv",
+    "category": "observation",
+    "description": "One-call deep dive into a PersistentVolume (cluster-scoped): spec (capacity, accessModes, reclaimPolicy, claimRef), status and recent events. Replaces observe_pv_detailed + observe_pv_events.",
+    "plain_english": "(description pending)",
+    "autonomy_level": 0,
+    "destructive": false,
+    "requires_ai": false,
+    "input_schema": {
+      "properties": {
+        "cluster_id": {
+          "description": "Cluster ID (optional)",
+          "type": "string"
+        },
+        "name": {
+          "description": "PV name (required); cluster-scoped",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "type": "object"
+    },
+    "parameters": [
+      "cluster_id",
+      "name"
+    ],
+    "required": [
+      "name"
+    ],
+    "source": "taxonomy"
+  },
+  {
+    "name": "inspect_pvc",
+    "category": "observation",
+    "description": "One-call deep dive into a PersistentVolumeClaim: spec (accessModes, storage, storageClassName), status (phase, capacity), bound volume and recent events. Replaces observe_pvc_detailed + observe_pvc_events.",
+    "plain_english": "(description pending)",
+    "autonomy_level": 0,
+    "destructive": false,
+    "requires_ai": false,
+    "input_schema": {
+      "properties": {
+        "cluster_id": {
+          "description": "Cluster ID (optional)",
+          "type": "string"
+        },
+        "name": {
+          "description": "PVC name (required)",
+          "type": "string"
+        },
+        "namespace": {
+          "description": "Kubernetes namespace (required)",
+          "type": "string"
+        }
+      },
+      "required": [
+        "namespace",
+        "name"
+      ],
+      "type": "object"
+    },
+    "parameters": [
+      "cluster_id",
+      "name",
+      "namespace"
+    ],
+    "required": [
+      "namespace",
+      "name"
+    ],
+    "source": "taxonomy"
+  },
+  {
+    "name": "inspect_replicaset",
+    "category": "observation",
+    "description": "One-call deep dive into a ReplicaSet: spec+status, recent events, ownership chain (parent Deployment → child Pods). Replaces observe_replicaset_detailed + observe_replicaset_events + observe_replicaset_ownership_chain.",
+    "plain_english": "(description pending)",
+    "autonomy_level": 0,
+    "destructive": false,
+    "requires_ai": false,
+    "input_schema": {
+      "properties": {
+        "cluster_id": {
+          "description": "Cluster ID (optional)",
+          "type": "string"
+        },
+        "name": {
+          "description": "ReplicaSet name (required)",
+          "type": "string"
+        },
+        "namespace": {
+          "description": "Kubernetes namespace (required)",
+          "type": "string"
+        }
+      },
+      "required": [
+        "namespace",
+        "name"
+      ],
+      "type": "object"
+    },
+    "parameters": [
+      "cluster_id",
+      "name",
+      "namespace"
+    ],
+    "required": [
+      "namespace",
+      "name"
+    ],
+    "source": "taxonomy"
+  },
+  {
+    "name": "inspect_resourcequota",
+    "category": "observation",
+    "description": "One-call deep dive into a ResourceQuota: spec (hard), status (used) and recent events. Replaces observe_resourcequota_detailed + observe_resourcequota_events.",
+    "plain_english": "(description pending)",
+    "autonomy_level": 0,
+    "destructive": false,
+    "requires_ai": false,
+    "input_schema": {
+      "properties": {
+        "cluster_id": {
+          "description": "Cluster ID (optional)",
+          "type": "string"
+        },
+        "name": {
+          "description": "ResourceQuota name (required)",
+          "type": "string"
+        },
+        "namespace": {
+          "description": "Namespace (required)",
+          "type": "string"
+        }
+      },
+      "required": [
+        "namespace",
+        "name"
+      ],
+      "type": "object"
+    },
+    "parameters": [
+      "cluster_id",
+      "name",
+      "namespace"
+    ],
+    "required": [
+      "namespace",
+      "name"
+    ],
+    "source": "taxonomy"
+  },
+  {
+    "name": "inspect_role",
+    "category": "observation",
+    "description": "One-call deep dive into a Role: rules, referencing RoleBindings and recent events. Replaces observe_role_detailed + observe_role_events.",
+    "plain_english": "(description pending)",
+    "autonomy_level": 0,
+    "destructive": false,
+    "requires_ai": false,
+    "input_schema": {
+      "properties": {
+        "cluster_id": {
+          "description": "Cluster ID (optional)",
+          "type": "string"
+        },
+        "name": {
+          "description": "Role name (required)",
+          "type": "string"
+        },
+        "namespace": {
+          "description": "Namespace (required)",
+          "type": "string"
+        }
+      },
+      "required": [
+        "namespace",
+        "name"
+      ],
+      "type": "object"
+    },
+    "parameters": [
+      "cluster_id",
+      "name",
+      "namespace"
+    ],
+    "required": [
+      "namespace",
+      "name"
+    ],
+    "source": "taxonomy"
+  },
+  {
+    "name": "inspect_rolebinding",
+    "category": "observation",
+    "description": "One-call deep dive into a RoleBinding: roleRef, subjects, resolved Role/ClusterRole summary and recent events. Replaces observe_rolebinding_detailed + observe_rolebinding_events.",
+    "plain_english": "(description pending)",
+    "autonomy_level": 0,
+    "destructive": false,
+    "requires_ai": false,
+    "input_schema": {
+      "properties": {
+        "cluster_id": {
+          "description": "Cluster ID (optional)",
+          "type": "string"
+        },
+        "name": {
+          "description": "RoleBinding name (required)",
+          "type": "string"
+        },
+        "namespace": {
+          "description": "Namespace (required)",
+          "type": "string"
+        }
+      },
+      "required": [
+        "namespace",
+        "name"
+      ],
+      "type": "object"
+    },
+    "parameters": [
+      "cluster_id",
+      "name",
+      "namespace"
+    ],
+    "required": [
+      "namespace",
+      "name"
+    ],
+    "source": "taxonomy"
+  },
+  {
+    "name": "inspect_secret",
+    "category": "observation",
+    "description": "One-call deep dive into a Secret: metadata, type, data keys (values redacted), TLS info and recent events. Replaces observe_secret_detailed + observe_secret_events.",
+    "plain_english": "(description pending)",
+    "autonomy_level": 0,
+    "destructive": false,
+    "requires_ai": false,
+    "input_schema": {
+      "properties": {
+        "cluster_id": {
+          "description": "Cluster ID (optional)",
+          "type": "string"
+        },
+        "name": {
+          "description": "Secret name (required)",
+          "type": "string"
+        },
+        "namespace": {
+          "description": "Namespace (required)",
+          "type": "string"
+        }
+      },
+      "required": [
+        "namespace",
+        "name"
+      ],
+      "type": "object"
+    },
+    "parameters": [
+      "cluster_id",
+      "name",
+      "namespace"
+    ],
+    "required": [
+      "namespace",
+      "name"
+    ],
+    "source": "taxonomy"
+  },
+  {
+    "name": "inspect_service",
+    "category": "observation",
+    "description": "One-call deep dive into a Service: spec (type, ports, selector), endpoints, pods selected and recent events. Replaces observe_service_detailed + observe_service_events.",
+    "plain_english": "(description pending)",
+    "autonomy_level": 0,
+    "destructive": false,
+    "requires_ai": false,
+    "input_schema": {
+      "properties": {
+        "cluster_id": {
+          "description": "Cluster ID (optional)",
+          "type": "string"
+        },
+        "name": {
+          "description": "Service name (required)",
+          "type": "string"
+        },
+        "namespace": {
+          "description": "Kubernetes namespace (required)",
+          "type": "string"
+        }
+      },
+      "required": [
+        "namespace",
+        "name"
+      ],
+      "type": "object"
+    },
+    "parameters": [
+      "cluster_id",
+      "name",
+      "namespace"
+    ],
+    "required": [
+      "namespace",
+      "name"
+    ],
+    "source": "taxonomy"
+  },
+  {
+    "name": "inspect_statefulset",
+    "category": "observation",
+    "description": "One-call deep dive into a StatefulSet: spec+status, update strategy, recent events, child Pods. Replaces observe_statefulset_detailed + observe_statefulset_events + observe_statefulset_ownership_chain.",
+    "plain_english": "(description pending)",
+    "autonomy_level": 0,
+    "destructive": false,
+    "requires_ai": false,
+    "input_schema": {
+      "properties": {
+        "cluster_id": {
+          "description": "Cluster ID (optional)",
+          "type": "string"
+        },
+        "name": {
+          "description": "StatefulSet name (required)",
+          "type": "string"
+        },
+        "namespace": {
+          "description": "Kubernetes namespace (required)",
+          "type": "string"
+        }
+      },
+      "required": [
+        "namespace",
+        "name"
+      ],
+      "type": "object"
+    },
+    "parameters": [
+      "cluster_id",
+      "name",
+      "namespace"
+    ],
+    "required": [
+      "namespace",
+      "name"
+    ],
+    "source": "taxonomy"
+  },
+  {
+    "name": "inspect_storageclass",
+    "category": "observation",
+    "description": "One-call deep dive into a StorageClass (cluster-scoped): provisioner, parameters, volumeBindingMode, pv count and recent events. Replaces observe_storageclass_detailed + observe_storageclass_events.",
+    "plain_english": "(description pending)",
+    "autonomy_level": 0,
+    "destructive": false,
+    "requires_ai": false,
+    "input_schema": {
+      "properties": {
+        "cluster_id": {
+          "description": "Cluster ID (optional)",
+          "type": "string"
+        },
+        "name": {
+          "description": "StorageClass name (required); cluster-scoped",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "type": "object"
+    },
+    "parameters": [
+      "cluster_id",
+      "name"
+    ],
+    "required": [
+      "name"
+    ],
+    "source": "taxonomy"
+  },
+  {
+    "name": "inspect_vpa",
+    "category": "observation",
+    "description": "One-call deep dive into a VerticalPodAutoscaler: spec (targetRef, updatePolicy, resourcePolicy), status and recent events. Replaces observe_vpa_detailed + observe_vpa_events.",
+    "plain_english": "(description pending)",
+    "autonomy_level": 0,
+    "destructive": false,
+    "requires_ai": false,
+    "input_schema": {
+      "properties": {
+        "cluster_id": {
+          "description": "Cluster ID (optional)",
+          "type": "string"
+        },
+        "name": {
+          "description": "VPA name (required)",
+          "type": "string"
+        },
+        "namespace": {
+          "description": "Namespace (required)",
+          "type": "string"
+        }
+      },
+      "required": [
+        "namespace",
+        "name"
+      ],
+      "type": "object"
+    },
+    "parameters": [
+      "cluster_id",
+      "name",
+      "namespace"
+    ],
+    "required": [
+      "namespace",
+      "name"
+    ],
+    "source": "taxonomy"
+  },
+  {
+    "name": "list_resources",
+    "category": "observation",
+    "description": "List Kubernetes resources of ANY kind. This is the primary tool for answering 'list/show/get X' questions. Set kind to the resource type: Namespace (for 'list namespaces'), Pod, Deployment, Service, Node, ConfigMap, Secret, Ingress, StatefulSet, DaemonSet, Job, CronJob, PersistentVolume, PersistentVolumeClaim, ReplicaSet, ServiceAccount, Role, RoleBinding, ClusterRole, ClusterRoleBinding, HorizontalPodAutoscaler, NetworkPolicy, Event, etc. Returns count and item summaries. ALWAYS use this tool for any 'list/show namespaces' or 'list/show \u003cresource\u003e' request — do NOT tell the user to run kubectl.",
+    "plain_english": "Shows you a list of things in your cluster — pods, services, anything. Tell it 'list pods' and it fetches them straight from Kubernetes.",
+    "autonomy_level": 1,
+    "destructive": false,
+    "requires_ai": false,
+    "input_schema": {
+      "properties": {
+        "kind": {
+          "description": "Resource kind (required), e.g. Pod, Deployment, Node, Service",
+          "type": "string"
+        },
+        "label_selector": {
+          "description": "Optional label selector",
+          "type": "string"
+        },
+        "limit": {
+          "description": "Max items to return (default 50)",
+          "type": "integer"
+        },
+        "namespace": {
+          "description": "Namespace to filter (optional); omit for cluster-scoped or all namespaces",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "type": "object"
+    },
+    "parameters": [
+      "kind",
+      "label_selector",
+      "limit",
+      "namespace"
+    ],
+    "required": [
+      "kind"
+    ],
+    "source": "chat"
+  },
+  {
+    "name": "observe_api_resources",
+    "category": "observation",
+    "description": "List all available API resources with intelligent categorization and usage examples.",
+    "plain_english": "(description pending)",
+    "autonomy_level": 0,
+    "destructive": false,
+    "requires_ai": false,
+    "source": "taxonomy"
+  },
+  {
+    "name": "observe_cluster_overview",
+    "category": "observation",
+    "description": "Get comprehensive cluster overview with health, capacity, and resource distribution. Returns intelligent summary with anomaly detection.",
+    "plain_english": "A dashboard-style snapshot of the whole cluster: what's running, what's broken, at-a-glance numbers.",
+    "autonomy_level": 1,
+    "destructive": false,
+    "requires_ai": true,
+    "source": "taxonomy"
+  },
+  {
+    "name": "observe_configmap_consumers",
+    "category": "observation",
+    "description": "Pods and workloads (Deployments) that reference this ConfigMap. PRD: observe_configmap_usage.",
+    "plain_english": "(description pending)",
+    "autonomy_level": 0,
+    "destructive": false,
+    "requires_ai": false,
+    "input_schema": {
+      "properties": {
+        "cluster_id": {
+          "description": "Cluster ID (optional)",
+          "type": "string"
+        },
+        "name": {
+          "description": "ConfigMap name (required)",
+          "type": "string"
+        },
+        "namespace": {
+          "description": "Namespace (required)",
+          "type": "string"
+        }
+      },
+      "required": [
+        "namespace",
+        "name"
+      ],
+      "type": "object"
+    },
+    "parameters": [
+      "cluster_id",
+      "name",
+      "namespace"
+    ],
+    "required": [
+      "namespace",
+      "name"
+    ],
+    "source": "taxonomy"
+  },
+  {
+    "name": "observe_custom_resources",
+    "category": "observation",
+    "description": "Get CRDs and custom resources with validation schema analysis.",
+    "plain_english": "(description pending)",
+    "autonomy_level": 0,
+    "destructive": false,
+    "requires_ai": true,
+    "source": "taxonomy"
+  },
+  {
+    "name": "observe_deployment_rollout_history",
+    "category": "observation",
+    "description": "Retrieve detailed rollout history for a deployment, including revisions, image changes, and timestamps. Essential for rollback decision making.",
+    "plain_english": "(description pending)",
+    "autonomy_level": 0,
+    "destructive": false,
+    "requires_ai": false,
+    "input_schema": {
+      "properties": {
+        "name": {
+          "description": "Deployment name (required)",
+          "type": "string"
+        },
+        "namespace": {
+          "description": "Kubernetes namespace (required)",
+          "type": "string"
+        }
+      },
+      "required": [
+        "namespace",
+        "name"
+      ],
+      "type": "object"
+    },
+    "parameters": [
+      "name",
+      "namespace"
+    ],
+    "required": [
+      "namespace",
+      "name"
+    ],
+    "source": "taxonomy"
+  },
+  {
+    "name": "observe_events",
+    "category": "observation",
+    "description": "Get cluster events with intelligent grouping, correlation, and impact analysis.",
+    "plain_english": "(description pending)",
+    "autonomy_level": 0,
+    "destructive": false,
+    "requires_ai": true,
+    "source": "taxonomy"
+  },
+  {
+    "name": "observe_metrics",
+    "category": "observation",
+    "description": "Get current CPU/memory metrics for a resource. For pod, deployment, replicaset, statefulset, daemonset, job, cronjob namespace is required. For node only name is required.",
+    "plain_english": "(description pending)",
+    "autonomy_level": 0,
+    "destructive": false,
+    "requires_ai": true,
+    "input_schema": {
+      "properties": {
+        "cluster_id": {
+          "description": "Cluster ID (optional; defaults to first cluster)",
+          "type": "string"
+        },
+        "kind": {
+          "description": "Resource kind: pod, node, deployment, replicaset, statefulset, daemonset, job, cronjob",
+          "type": "string"
+        },
+        "name": {
+          "description": "Resource name",
+          "type": "string"
+        },
+        "namespace": {
+          "description": "Namespace (required for pod, deployment, replicaset, statefulset, daemonset, job, cronjob)",
+          "type": "string"
+        },
+        "resource_name": {
+          "description": "Alias for name",
+          "type": "string"
+        },
+        "resource_type": {
+          "description": "Alias for kind",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "name"
+      ],
+      "type": "object"
+    },
+    "parameters": [
+      "cluster_id",
+      "kind",
+      "name",
+      "namespace",
+      "resource_name",
+      "resource_type"
+    ],
+    "required": [
+      "kind",
+      "name"
+    ],
+    "source": "taxonomy"
+  },
+  {
+    "name": "observe_namespace_overview",
+    "category": "observation",
+    "description": "Get comprehensive namespace overview with quotas, limits, and resource usage.",
+    "plain_english": "Zoom in on one namespace: what's running inside it, resource usage, recent events.",
+    "autonomy_level": 0,
+    "destructive": false,
+    "requires_ai": true,
+    "source": "taxonomy"
+  },
+  {
+    "name": "observe_network_policies",
+    "category": "observation",
+    "description": "Analyze network policies with traffic flow visualization and gap detection.",
+    "plain_english": "(description pending)",
+    "autonomy_level": 0,
+    "destructive": false,
+    "requires_ai": true,
+    "source": "taxonomy"
+  },
+  {
+    "name": "observe_node_metrics",
+    "category": "observation",
+    "description": "Get live CPU/memory/disk metrics for a specific node (if 'name' given) or all nodes. Returns a metrics-unavailable fallback when metrics-server is absent.",
+    "plain_english": "(description pending)",
+    "autonomy_level": 0,
+    "destructive": false,
+    "requires_ai": false,
+    "input_schema": {
+      "properties": {
+        "cluster_id": {
+          "type": "string"
+        },
+        "name": {
+          "description": "Node name (optional)",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "parameters": [
+      "cluster_id",
+      "name"
+    ],
+    "source": "taxonomy"
+  },
+  {
+    "name": "observe_node_status",
+    "category": "observation",
+    "description": "Get detailed node health, capacity, and workload distribution with recommendations.",
+    "plain_english": "Is this node healthy? Are disks / memory / CPU under pressure?",
+    "autonomy_level": 0,
+    "destructive": false,
+    "requires_ai": true,
+    "source": "taxonomy"
+  },
+  {
+    "name": "observe_pod_dependencies",
+    "category": "observation",
+    "description": "Map all configuration and storage dependencies for a pod (ConfigMaps, Secrets, PVCs, PVs). Useful for diagnosing 'stuck' pods due to missing secrets/volumes.",
+    "plain_english": "(description pending)",
+    "autonomy_level": 0,
+    "destructive": false,
+    "requires_ai": false,
+    "input_schema": {
+      "properties": {
+        "name": {
+          "description": "Pod name (required)",
+          "type": "string"
+        },
+        "namespace": {
+          "description": "Kubernetes namespace (required)",
+          "type": "string"
+        }
+      },
+      "required": [
+        "namespace",
+        "name"
+      ],
+      "type": "object"
+    },
+    "parameters": [
+      "name",
+      "namespace"
+    ],
+    "required": [
+      "namespace",
+      "name"
+    ],
+    "source": "taxonomy"
+  },
+  {
+    "name": "observe_pod_logs",
+    "category": "observation",
+    "description": "Stream or retrieve pod logs with intelligent filtering. Supports 'filter' (regex for error/warning) and 'tail_lines' (default 10).",
+    "plain_english": "Fetches logs for a specific pod with filtering by tail size or time window.",
+    "autonomy_level": 0,
+    "destructive": false,
+    "requires_ai": true,
+    "input_schema": {
+      "properties": {
+        "container_name": {
+          "description": "Optional container name",
+          "type": "string"
+        },
+        "filter": {
+          "description": "Optional regex/text filter (e.g. 'error', 'warning', 'timeout')",
+          "type": "string"
+        },
+        "namespace": {
+          "description": "Kubernetes namespace (required)",
+          "type": "string"
+        },
+        "pod_name": {
+          "description": "Pod name (required)",
+          "type": "string"
+        },
+        "tail_lines": {
+          "description": "Number of lines to return (default 10)",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "namespace",
+        "pod_name"
+      ],
+      "type": "object"
+    },
+    "parameters": [
+      "container_name",
+      "filter",
+      "namespace",
+      "pod_name",
+      "tail_lines"
+    ],
+    "required": [
+      "namespace",
+      "pod_name"
+    ],
+    "source": "taxonomy"
+  },
+  {
+    "name": "observe_pod_logs_filtered",
+    "category": "observation",
+    "description": "Retrieve pod logs filtered by 'error' or 'warn' (PRD: error logs + warning logs). Use filter=error or filter=warn. Same as observe_pod_logs with filter set.",
+    "plain_english": "(description pending)",
+    "autonomy_level": 0,
+    "destructive": false,
+    "requires_ai": false,
+    "input_schema": {
+      "properties": {
+        "container_name": {
+          "description": "Optional container name",
+          "type": "string"
+        },
+        "filter": {
+          "description": "Filter: 'error' or 'warn' (required for this tool)",
+          "type": "string"
+        },
+        "namespace": {
+          "description": "Kubernetes namespace (required)",
+          "type": "string"
+        },
+        "pod_name": {
+          "description": "Pod name (required)",
+          "type": "string"
+        },
+        "tail_lines": {
+          "description": "Number of lines to return (default 10)",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "namespace",
+        "pod_name",
+        "filter"
+      ],
+      "type": "object"
+    },
+    "parameters": [
+      "container_name",
+      "filter",
+      "namespace",
+      "pod_name",
+      "tail_lines"
+    ],
+    "required": [
+      "namespace",
+      "pod_name",
+      "filter"
+    ],
+    "source": "taxonomy"
+  },
+  {
+    "name": "observe_pod_metrics",
+    "category": "observation",
+    "description": "Get live CPU/memory for a pod (name+namespace) OR an aggregate summary for a namespace (namespace only, no name). Returns a structured metrics-unavailable fallback if metrics-server is not installed.",
+    "plain_english": "(description pending)",
+    "autonomy_level": 0,
+    "destructive": false,
+    "requires_ai": false,
+    "input_schema": {
+      "properties": {
+        "cluster_id": {
+          "type": "string"
+        },
+        "metric_type": {
+          "description": "Metric to emphasize (default 'all')",
+          "enum": [
+            "cpu",
+            "memory",
+            "all"
+          ],
+          "type": "string"
+        },
+        "name": {
+          "description": "Pod name (optional; omit for namespace/cluster aggregate)",
+          "type": "string"
+        },
+        "namespace": {
+          "description": "Namespace (required when 'name' is given)",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "parameters": [
+      "cluster_id",
+      "metric_type",
+      "name",
+      "namespace"
+    ],
+    "source": "taxonomy"
+  },
+  {
+    "name": "observe_pvc_consumers",
+    "category": "observation",
+    "description": "Return pods and workloads (Deployments, StatefulSets, etc.) that use this PVC. Use for 'which pods use this PVC?'.",
+    "plain_english": "(description pending)",
+    "autonomy_level": 0,
+    "destructive": false,
+    "requires_ai": false,
+    "input_schema": {
+      "properties": {
+        "name": {
+          "description": "PVC name (required)",
+          "type": "string"
+        },
+        "namespace": {
+          "description": "Kubernetes namespace (required)",
+          "type": "string"
+        }
+      },
+      "required": [
+        "namespace",
+        "name"
+      ],
+      "type": "object"
+    },
+    "parameters": [
+      "name",
+      "namespace"
+    ],
+    "required": [
+      "namespace",
+      "name"
+    ],
+    "source": "taxonomy"
+  },
+  {
+    "name": "observe_recent_changes",
+    "category": "observation",
+    "description": "Return all meaningful changes (deployment rollouts, pod create/delete, configmap/secret updates, scaling events, failures) inside a time window. Fuses k8s events + deployment rollout history. Answers 'what changed in the last N minutes?'.",
+    "plain_english": "(description pending)",
+    "autonomy_level": 0,
+    "destructive": false,
+    "requires_ai": false,
+    "input_schema": {
+      "properties": {
+        "cluster_id": {
+          "type": "string"
+        },
+        "namespace": {
+          "description": "Restrict to a namespace (optional)",
+          "type": "string"
+        },
+        "window_minutes": {
+          "description": "Look-back window in minutes (default 60)",
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "parameters": [
+      "cluster_id",
+      "namespace",
+      "window_minutes"
+    ],
+    "source": "taxonomy"
+  },
+  {
+    "name": "observe_resource",
+    "category": "observation",
+    "description": "Get detailed information about a specific resource (Pod, Deployment, Service, etc.) with intelligent context about relationships and dependencies.",
+    "plain_english": "(description pending)",
+    "autonomy_level": 0,
+    "destructive": false,
+    "requires_ai": false,
+    "source": "taxonomy"
+  },
+  {
+    "name": "observe_resource_history",
+    "category": "observation",
+    "description": "Get temporal history of resource changes, revisions, and state transitions.",
+    "plain_english": "(description pending)",
+    "autonomy_level": 0,
+    "destructive": false,
+    "requires_ai": false,
+    "source": "taxonomy"
+  },
+  {
+    "name": "observe_resource_links",
+    "category": "observation",
+    "description": "Trace and return relationships between resources (e.g. which Service points to which Pods, which Deployment owns which ReplicaSet).",
+    "plain_english": "(description pending)",
+    "autonomy_level": 0,
+    "destructive": false,
+    "requires_ai": true,
+    "input_schema": {
+      "properties": {
+        "kind": {
+          "description": "Resource kind (e.g. Deployment, Service)",
+          "type": "string"
+        },
+        "name": {
+          "description": "Resource name",
+          "type": "string"
+        },
+        "namespace": {
+          "description": "Kubernetes namespace (required)",
+          "type": "string"
+        }
+      },
+      "required": [
+        "namespace"
+      ],
+      "type": "object"
+    },
+    "parameters": [
+      "kind",
+      "name",
+      "namespace"
+    ],
+    "required": [
+      "namespace"
+    ],
+    "source": "taxonomy"
+  },
+  {
+    "name": "observe_resource_topology",
+    "category": "observation",
+    "description": "Visualize resource relationships and dependencies with intelligent graph analysis.",
+    "plain_english": "(description pending)",
+    "autonomy_level": 0,
+    "destructive": false,
+    "requires_ai": true,
+    "source": "taxonomy"
+  },
+  {
+    "name": "observe_resources_by_query",
+    "category": "observation",
+    "description": "Query resources using natural language. Example: 'all pods in production with high CPU' or 'failing deployments in last hour'.",
+    "plain_english": "(description pending)",
+    "autonomy_level": 0,
+    "destructive": false,
+    "requires_ai": true,
+    "source": "taxonomy"
+  },
+  {
+    "name": "observe_secret_consumers",
+    "category": "observation",
+    "description": "Pods and workloads (Deployments) that reference this Secret.",
+    "plain_english": "(description pending)",
+    "autonomy_level": 0,
+    "destructive": false,
+    "requires_ai": false,
+    "input_schema": {
+      "properties": {
+        "cluster_id": {
+          "description": "Cluster ID (optional)",
+          "type": "string"
+        },
+        "name": {
+          "description": "Secret name (required)",
+          "type": "string"
+        },
+        "namespace": {
+          "description": "Namespace (required)",
+          "type": "string"
+        }
+      },
+      "required": [
+        "namespace",
+        "name"
+      ],
+      "type": "object"
+    },
+    "parameters": [
+      "cluster_id",
+      "name",
+      "namespace"
+    ],
+    "required": [
+      "namespace",
+      "name"
+    ],
+    "source": "taxonomy"
+  },
+  {
+    "name": "observe_service_endpoints",
+    "category": "observation",
+    "description": "Return Service endpoints (subsets/addresses) and summary of which pods back the service. Use for 'which pods back this service?'.",
+    "plain_english": "(description pending)",
+    "autonomy_level": 0,
+    "destructive": false,
+    "requires_ai": false,
+    "input_schema": {
+      "properties": {
+        "name": {
+          "description": "Service name (required)",
+          "type": "string"
+        },
+        "namespace": {
+          "description": "Kubernetes namespace (required)",
+          "type": "string"
+        }
+      },
+      "required": [
+        "namespace",
+        "name"
+      ],
+      "type": "object"
+    },
+    "parameters": [
+      "name",
+      "namespace"
+    ],
+    "required": [
+      "namespace",
+      "name"
+    ],
+    "source": "taxonomy"
+  },
+  {
+    "name": "observe_serviceaccount_detailed",
+    "category": "observation",
+    "description": "ServiceAccount detail: metadata, token count, pods using this SA, RoleBindings and ClusterRoleBindings that reference it, risk flags.",
+    "plain_english": "(description pending)",
+    "autonomy_level": 0,
+    "destructive": false,
+    "requires_ai": true,
+    "input_schema": {
+      "properties": {
+        "cluster_id": {
+          "description": "Cluster ID (optional)",
+          "type": "string"
+        },
+        "name": {
+          "description": "ServiceAccount name (required)",
+          "type": "string"
+        },
+        "namespace": {
+          "description": "Namespace (required)",
+          "type": "string"
+        }
+      },
+      "required": [
+        "namespace",
+        "name"
+      ],
+      "type": "object"
+    },
+    "parameters": [
+      "cluster_id",
+      "name",
+      "namespace"
+    ],
+    "required": [
+      "namespace",
+      "name"
+    ],
+    "source": "taxonomy"
+  },
+  {
+    "name": "observe_serviceaccount_permissions",
+    "category": "observation",
+    "description": "Resolved permissions for a ServiceAccount: RoleBindings, ClusterRoleBindings, and summary of Role/ClusterRole rules (PRD Layer 7).",
+    "plain_english": "(description pending)",
+    "autonomy_level": 0,
+    "destructive": false,
+    "requires_ai": true,
+    "input_schema": {
+      "properties": {
+        "cluster_id": {
+          "description": "Cluster ID (optional)",
+          "type": "string"
+        },
+        "name": {
+          "description": "ServiceAccount name (required)",
+          "type": "string"
+        },
+        "namespace": {
+          "description": "Namespace (required)",
+          "type": "string"
+        }
+      },
+      "required": [
+        "namespace",
+        "name"
+      ],
+      "type": "object"
+    },
+    "parameters": [
+      "cluster_id",
+      "name",
+      "namespace"
+    ],
+    "required": [
+      "namespace",
+      "name"
+    ],
+    "source": "taxonomy"
+  },
+  {
+    "name": "observe_storage_status",
+    "category": "observation",
+    "description": "Get storage utilization, PV/PVC status, and capacity planning insights.",
+    "plain_english": "(description pending)",
+    "autonomy_level": 0,
+    "destructive": false,
+    "requires_ai": true,
+    "source": "taxonomy"
+  },
+  {
+    "name": "observe_top_pods_by_metric",
+    "category": "observation",
+    "description": "Return the top-N pods sorted by a live metric (cpu or memory). Useful for 'which pod uses most CPU right now' without enumerating every pod. Returns a metrics-unavailable fallback when metrics-server is absent.",
+    "plain_english": "(description pending)",
+    "autonomy_level": 0,
+    "destructive": false,
+    "requires_ai": false,
+    "input_schema": {
+      "properties": {
+        "cluster_id": {
+          "type": "string"
+        },
+        "limit": {
+          "description": "Max pods to return (default 10)",
+          "type": "integer"
+        },
+        "metric_type": {
+          "description": "Which metric to rank by (required)",
+          "enum": [
+            "cpu",
+            "memory"
+          ],
+          "type": "string"
+        },
+        "namespace": {
+          "description": "Restrict to a namespace (optional)",
+          "type": "string"
+        }
+      },
+      "required": [
+        "metric_type"
+      ],
+      "type": "object"
+    },
+    "parameters": [
+      "cluster_id",
+      "limit",
+      "metric_type",
+      "namespace"
+    ],
+    "required": [
+      "metric_type"
+    ],
+    "source": "taxonomy"
+  },
+  {
+    "name": "observe_workload_health",
+    "category": "observation",
+    "description": "Get intelligent health assessment of workloads (Deployments, StatefulSets, DaemonSets).",
+    "plain_english": "A high-level 'is my workload healthy?' check across deployments, statefulsets, daemonsets.",
+    "autonomy_level": 0,
+    "destructive": false,
+    "requires_ai": true,
+    "source": "taxonomy"
+  },
+  {
+    "name": "resolve_resource",
+    "category": "observation",
+    "description": "Resolve a resource kind + fuzzy name hint to its concrete {namespace, name} across the whole cluster. Call this FIRST when you know the kind (e.g. 'deployment', 'configmap', 'service') but are not sure which namespace the resource lives in. Returns up to 5 matches (exact → prefix → substring) with a suggestions list if nothing matches.",
+    "plain_english": "(description pending)",
+    "autonomy_level": 0,
+    "destructive": false,
+    "requires_ai": false,
+    "input_schema": {
+      "properties": {
+        "cluster_id": {
+          "description": "Cluster ID (optional)",
+          "type": "string"
+        },
+        "cluster_wide": {
+          "description": "Whether to search across all namespaces (default true)",
+          "type": "boolean"
+        },
+        "kind": {
+          "description": "Resource kind e.g. 'Deployment', 'Service', 'ConfigMap' (required)",
+          "type": "string"
+        },
+        "name_hint": {
+          "description": "Resource name or fuzzy substring hint (required)",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "name_hint"
+      ],
+      "type": "object"
+    },
+    "parameters": [
+      "cluster_id",
+      "cluster_wide",
+      "kind",
+      "name_hint"
+    ],
+    "required": [
+      "kind",
+      "name_hint"
+    ],
+    "source": "taxonomy"
+  },
+  {
+    "name": "recommend_architecture_improvements",
+    "category": "recommendation",
+    "description": "Suggest architectural improvements for resilience, performance, and cost.",
+    "plain_english": "(description pending)",
+    "autonomy_level": 0,
+    "destructive": false,
+    "requires_ai": true,
+    "source": "taxonomy"
+  },
+  {
+    "name": "recommend_cost_reduction",
+    "category": "recommendation",
+    "description": "Identify cost-saving opportunities with projected savings estimates.",
+    "plain_english": "(description pending)",
+    "autonomy_level": 0,
+    "destructive": false,
+    "requires_ai": true,
+    "source": "taxonomy"
+  },
+  {
+    "name": "recommend_disaster_recovery",
+    "category": "recommendation",
+    "description": "Provide disaster recovery and backup strategy recommendations.",
+    "plain_english": "(description pending)",
+    "autonomy_level": 0,
+    "destructive": false,
+    "requires_ai": true,
+    "source": "taxonomy"
+  },
+  {
+    "name": "recommend_monitoring_improvements",
+    "category": "recommendation",
+    "description": "Suggest monitoring, alerting, and observability enhancements.",
+    "plain_english": "(description pending)",
+    "autonomy_level": 0,
+    "destructive": false,
+    "requires_ai": true,
+    "source": "taxonomy"
+  },
+  {
+    "name": "recommend_resource_optimization",
+    "category": "recommendation",
+    "description": "Generate actionable recommendations for resource optimization (CPU, memory, storage).",
+    "plain_english": "(description pending)",
+    "autonomy_level": 2,
+    "destructive": false,
+    "requires_ai": true,
+    "source": "taxonomy"
+  },
+  {
+    "name": "recommend_scaling_strategy",
+    "category": "recommendation",
+    "description": "Suggest HPA/VPA configurations and scaling strategies based on workload patterns.",
+    "plain_english": "(description pending)",
+    "autonomy_level": 0,
+    "destructive": false,
+    "requires_ai": true,
+    "source": "taxonomy"
+  },
+  {
+    "name": "recommend_security_hardening",
+    "category": "recommendation",
+    "description": "Provide security hardening recommendations based on best practices and CVEs.",
+    "plain_english": "(description pending)",
+    "autonomy_level": 0,
+    "destructive": false,
+    "requires_ai": true,
+    "source": "taxonomy"
+  },
+  {
+    "name": "recommend_upgrade_path",
+    "category": "recommendation",
+    "description": "Plan Kubernetes and application upgrade paths with risk assessment.",
+    "plain_english": "(description pending)",
+    "autonomy_level": 0,
+    "destructive": false,
+    "requires_ai": true,
+    "source": "taxonomy"
+  },
+  {
+    "name": "security_audit_rbac",
+    "category": "security",
+    "description": "Audit RBAC configurations, identify overprivileged accounts and security risks.",
+    "plain_english": "(description pending)",
+    "autonomy_level": 0,
+    "destructive": false,
+    "requires_ai": true,
+    "source": "taxonomy"
+  },
+  {
+    "name": "security_check_pod_security",
+    "category": "security",
+    "description": "Validate pod security policies, admission controls, and runtime security.",
+    "plain_english": "(description pending)",
+    "autonomy_level": 0,
+    "destructive": false,
+    "requires_ai": true,
+    "source": "taxonomy"
+  },
+  {
+    "name": "security_compliance_report",
+    "category": "security",
+    "description": "Generate compliance reports for SOC2, HIPAA, PCI-DSS, etc.",
+    "plain_english": "(description pending)",
+    "autonomy_level": 0,
+    "destructive": false,
+    "requires_ai": true,
+    "source": "taxonomy"
+  },
+  {
+    "name": "security_scan_cluster",
+    "category": "security",
+    "description": "Comprehensive cluster security scan with CIS benchmarks and compliance checks.",
+    "plain_english": "(description pending)",
+    "autonomy_level": 2,
+    "destructive": false,
+    "requires_ai": true,
+    "source": "taxonomy"
+  },
+  {
+    "name": "security_scan_secrets",
+    "category": "security",
+    "description": "Scan for exposed secrets, weak encryption, and secret management issues.",
+    "plain_english": "(description pending)",
+    "autonomy_level": 0,
+    "destructive": false,
+    "requires_ai": true,
+    "source": "taxonomy"
+  },
+  {
+    "name": "troubleshoot_deployment_failures",
+    "category": "troubleshooting",
+    "description": "Analyze failed deployments, rollouts, and update issues with remediation steps.",
+    "plain_english": "(description pending)",
+    "autonomy_level": 0,
+    "destructive": false,
+    "requires_ai": true,
+    "source": "taxonomy"
+  },
+  {
+    "name": "troubleshoot_network_issues",
+    "category": "troubleshooting",
+    "description": "Diagnose network connectivity, DNS, and service discovery issues.",
+    "plain_english": "(description pending)",
+    "autonomy_level": 0,
+    "destructive": false,
+    "requires_ai": true,
+    "source": "taxonomy"
+  },
+  {
+    "name": "troubleshoot_performance_degradation",
+    "category": "troubleshooting",
+    "description": "Investigate performance issues with metric correlation and bottleneck identification.",
+    "plain_english": "(description pending)",
+    "autonomy_level": 0,
+    "destructive": false,
+    "requires_ai": true,
+    "source": "taxonomy"
+  },
+  {
+    "name": "troubleshoot_pod_failures",
+    "category": "troubleshooting",
+    "description": "Autonomous investigation of pod failures with root cause analysis and fix suggestions.",
+    "plain_english": "(description pending)",
+    "autonomy_level": 2,
+    "destructive": false,
+    "requires_ai": true,
+    "source": "taxonomy"
+  },
+  {
+    "name": "troubleshoot_rbac_issues",
+    "category": "troubleshooting",
+    "description": "Debug RBAC permission issues and suggest proper role configurations.",
+    "plain_english": "(description pending)",
+    "autonomy_level": 0,
+    "destructive": false,
+    "requires_ai": true,
+    "source": "taxonomy"
+  },
+  {
+    "name": "troubleshoot_resource_constraints",
+    "category": "troubleshooting",
+    "description": "Identify resource exhaustion, OOM kills, and capacity issues.",
+    "plain_english": "(description pending)",
+    "autonomy_level": 0,
+    "destructive": false,
+    "requires_ai": true,
+    "source": "taxonomy"
+  },
+  {
+    "name": "troubleshoot_storage_issues",
+    "category": "troubleshooting",
+    "description": "Diagnose PV/PVC issues, mount failures, and storage provisioning problems.",
+    "plain_english": "(description pending)",
+    "autonomy_level": 0,
+    "destructive": false,
+    "requires_ai": true,
+    "source": "taxonomy"
+  }
+]

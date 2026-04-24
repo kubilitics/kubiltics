@@ -1,0 +1,5 @@
+{"bytes":105,"stage":"user_msg","ts":"2026-04-22T06:53:51.08813Z","turn_id":"bench-scen-rbac-73"}
+{"selected_topics":["core","security"],"stage":"tool_filter","tool_count":29,"total_available":138,"ts":"2026-04-22T06:53:51.088834Z","turn_id":"bench-scen-rbac-73"}
+{"bytes":2468,"focus_cluster":"5cb1f37d-e31e-4915-8c4d-bdf36ef335ec","has_system":true,"messages":2,"stage":"llm_prompt_in","ts":"2026-04-22T06:53:51.08889Z","turn_id":"bench-scen-rbac-73"}
+{"bytes":0,"stage":"llm_text_out","ts":"2026-04-22T06:53:51.640839Z","turn_id":"bench-scen-rbac-73"}
+{"duration_ms":552,"finish_reason":"stop","stage":"done","ts":"2026-04-22T06:53:51.641575Z","turn_id":"bench-scen-rbac-73"}

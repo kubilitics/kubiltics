@@ -1,0 +1,9 @@
+{"bytes":109,"stage":"user_msg","ts":"2026-04-22T06:12:57.564477Z","turn_id":"bench-scen-config-95"}
+{"selected_topics":["core","pods","security","workloads"],"stage":"tool_filter","tool_count":30,"total_available":138,"ts":"2026-04-22T06:12:57.565117Z","turn_id":"bench-scen-config-95"}
+{"bytes":2472,"focus_cluster":"5cb1f37d-e31e-4915-8c4d-bdf36ef335ec","has_system":true,"messages":2,"stage":"llm_prompt_in","ts":"2026-04-22T06:12:57.565154Z","turn_id":"bench-scen-config-95"}
+{"arg_keys":["cluster_id"],"cluster_id":"5cb1f37d-e31e-4915-8c4d-bdf36ef335ec","stage":"tool_dispatch","tool_name":"observe_secrets_usage","ts":"2026-04-22T06:12:58.543629Z","turn_id":"bench-scen-config-95"}
+{"method":"GET","path":"/api/v1/clusters/5cb1f37d-e31e-4915-8c4d-bdf36ef335ec/resources/secrets","resp_bytes":1704,"stage":"backend_k8s_fetch","ts":"2026-04-22T06:12:58.547294Z","turn_id":"bench-scen-config-95"}
+{"method":"GET","path":"/api/v1/clusters/5cb1f37d-e31e-4915-8c4d-bdf36ef335ec/resources/pods","resp_bytes":141591,"stage":"backend_k8s_fetch","ts":"2026-04-22T06:12:58.559467Z","turn_id":"bench-scen-config-95"}
+{"bytes_in":391,"bytes_out":391,"stage":"tool_result_summarized","tool_name":"observe_secrets_usage","ts":"2026-04-22T06:12:58.562716Z","turn_id":"bench-scen-config-95"}
+{"bytes":147,"preview":"There are 2 secrets that are not used by any pods: \n* `bootstrap-token-abcdef` in the `kube-system` namespace\n* `db-creds` in the `data` namespace.","stage":"llm_text_out","ts":"2026-04-22T06:12:59.98183Z","turn_id":"bench-scen-config-95"}
+{"duration_ms":2416,"finish_reason":"stop","stage":"done","ts":"2026-04-22T06:12:59.981899Z","turn_id":"bench-scen-config-95"}

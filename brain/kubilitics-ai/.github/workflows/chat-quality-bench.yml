@@ -1,0 +1,143 @@
+name: chat-quality-bench
+
+# Nightly + manually-triggerable end-to-end test of the AI chat pipeline.
+# Brings up a kind cluster, the Kubilitics backend, the brain configured
+# with gpt-4o, waits for the auto-registered cluster, then runs the 30
+# varied prompts in cmd/chat-quality-bench/prompts.json.
+#
+# Kept OFF the PR gate for now — first runs will likely need YAML tweaks
+# (secrets availability, kind-action version pin, backend auto-register
+# timing). Promote to required once the pass rate is reliably green.
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 6 * * *"  # 06:00 UTC daily
+
+permissions:
+  contents: read
+
+jobs:
+  bench:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - name: Checkout kotg.ai (brain)
+        uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.24"
+          cache: true
+
+      - name: Build brain
+        run: go build -o bin/server ./cmd/server
+
+      - name: Build bench
+        run: go build -o bin/chat-quality-bench ./cmd/chat-quality-bench
+
+      - name: Start kind cluster
+        uses: helm/kind-action@v1
+        with:
+          cluster_name: bench
+          wait: 60s
+
+      - name: Checkout kubilitics (backend)
+        uses: actions/checkout@v4
+        with:
+          repository: vellankikoti/kubilitics
+          path: kubilitics
+          ref: main
+
+      - name: Build backend
+        working-directory: kubilitics/kubilitics-backend
+        run: go build -o server ./cmd/server
+
+      - name: Start backend
+        working-directory: kubilitics/kubilitics-backend
+        env:
+          KUBILITICS_PORT: "8190"
+          KUBILITICS_GRPC_PORT: "50061"
+          KUBILITICS_AUTH_DISABLED: "true"
+          KUBILITICS_AI_ENABLED: "true"
+          KUBILITICS_AI_ENDPOINT: "localhost:50051"
+          KUBILITICS_AI_HTTP_ENDPOINT: "http://localhost:28081"
+        run: |
+          ./server > /tmp/backend.log 2>&1 &
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:8190/health >/dev/null; then
+              echo "backend up"
+              break
+            fi
+            sleep 1
+          done
+          curl -sf http://localhost:8190/health
+
+      - name: Start brain
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          if [ -z "$OPENAI_API_KEY" ]; then
+            echo "OPENAI_API_KEY secret not set — skipping run"
+            exit 78  # neutral exit; marks workflow as skipped
+          fi
+          cat > /tmp/bench-brain.yaml <<'EOF'
+          server:
+            grpc_port: 50051
+            http_port: 28081
+          llm:
+            provider: openai
+            model: gpt-4o
+          EOF
+          export KOTG_LLM_API_KEY="$OPENAI_API_KEY"
+          ./bin/server -config /tmp/bench-brain.yaml > /tmp/brain.log 2>&1 &
+          for i in $(seq 1 30); do
+            if nc -z localhost 50051 2>/dev/null; then
+              echo "brain up"
+              break
+            fi
+            sleep 1
+          done
+
+      - name: Wait for cluster to register
+        run: |
+          CID=""
+          for i in $(seq 1 30); do
+            CID=$(curl -sS http://localhost:8190/api/v1/clusters | \
+              python3 -c "import sys,json; ids=[c['id'] for c in json.load(sys.stdin) if c.get('status')=='connected']; print(ids[0] if ids else '')" 2>/dev/null || true)
+            if [ -n "$CID" ]; then
+              break
+            fi
+            sleep 2
+          done
+          if [ -z "$CID" ]; then
+            echo "no connected cluster after 60s"
+            curl -sS http://localhost:8190/api/v1/clusters || true
+            exit 1
+          fi
+          echo "CLUSTER_ID=$CID" >> $GITHUB_ENV
+
+      - name: Run chat-quality bench
+        run: |
+          ./bin/chat-quality-bench \
+            --cluster "$CLUSTER_ID" \
+            --prompts cmd/chat-quality-bench/prompts.json \
+            --out chat_quality_results.xml
+
+      - name: Upload logs + results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: chat-quality-results
+          path: |
+            chat_quality_results.xml
+            /tmp/backend.log
+            /tmp/brain.log
+
+      - name: Publish JUnit report
+        if: always()
+        uses: mikepenz/action-junit-report@v4
+        with:
+          report_paths: chat_quality_results.xml
+          fail_on_failure: true
