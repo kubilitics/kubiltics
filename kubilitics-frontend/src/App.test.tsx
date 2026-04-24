@@ -2,8 +2,7 @@
 //
 // Phase 7: FEATURE_PRESENCE_V2 flag removed — V2 is the only path.
 // PresenceEntryPoint unconditionally redirects to /clusters when at least one
-// cluster is available, /welcome otherwise. FlagGatedRoute is a passthrough
-// until Task 7.4 deletes it entirely.
+// cluster is available, /welcome otherwise.
 //
 // App.tsx is massive — rendering the whole root is expensive and pulls in
 // 140+ lazy pages. We exercise the exported routing helpers directly against
@@ -17,7 +16,6 @@ import {
   __resetForTest,
 } from '@/stores/clusterPresenceStore';
 import {
-  FlagGatedRoute,
   PresenceEntryPoint,
   ClusterPresenceSubscriber,
 } from './App';
@@ -33,22 +31,8 @@ function renderAt(pathname: string) {
   return render(
     <MemoryRouter initialEntries={[pathname]}>
       <Routes>
-        <Route
-          path="/clusters"
-          element={
-            <FlagGatedRoute>
-              <div>CLUSTER_PICKER_STUB</div>
-            </FlagGatedRoute>
-          }
-        />
-        <Route
-          path="/welcome"
-          element={
-            <FlagGatedRoute>
-              <div>WELCOME_STUB</div>
-            </FlagGatedRoute>
-          }
-        />
+        <Route path="/clusters" element={<div>CLUSTER_PICKER_STUB</div>} />
+        <Route path="/welcome" element={<div>WELCOME_STUB</div>} />
         <Route path="/" element={<PresenceEntryPoint />} />
       </Routes>
     </MemoryRouter>,

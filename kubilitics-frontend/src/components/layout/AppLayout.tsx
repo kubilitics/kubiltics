@@ -107,7 +107,7 @@ export function AppLayout() {
         >
           <span>Demo Mode — showing sample data.</span>
           <Link
-            to="/connect"
+            to="/clusters"
             className="underline font-semibold hover:no-underline focus:outline-none focus:ring-2 focus:ring-amber-500 rounded"
           >
             Connect a real cluster

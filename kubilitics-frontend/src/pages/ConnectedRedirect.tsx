@@ -9,13 +9,13 @@ import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { setActiveClusterBySessionId } from '@/stores/clusterPresenceStore';
 import { useDemoStore } from '@/stores/demoStore';
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
-import type { ConnectState } from '@/types/connect';
+import type { ConnectState } from '@/types/clusters';
 import { getClusters } from '@/services/backendApiClient';
 import { Loader2 } from 'lucide-react';
 
 function getPostConnectPath(returnUrl: string | null): string {
   if (!returnUrl || !returnUrl.startsWith('/') || returnUrl.startsWith('//')) return '/dashboard';
-  if (returnUrl === '/' || returnUrl === '/connect' || returnUrl.startsWith('/connect?') || returnUrl === '/mode-selection') return '/dashboard';
+  if (returnUrl === '/' || returnUrl === '/clusters' || returnUrl.startsWith('/clusters?') || returnUrl === '/mode-selection') return '/dashboard';
   return returnUrl;
 }
 

@@ -50,7 +50,7 @@ export default function Dashboard() {
       const error = overviewQuery.error as unknown as Record<string, unknown>;
       if ((error?.status) === 404 || (error?.status) === 503 || (error?.status) === 500) {
         console.warn(`[Dashboard] Cluster ${currentClusterId} is not accessible (${error.status}). Redirecting to connect page.`);
-        navigate('/connect', { replace: true });
+        navigate('/clusters', { replace: true });
       }
     }
   }, [overviewQuery.error, overviewQuery.isError, currentClusterId, navigate]);
@@ -61,7 +61,7 @@ export default function Dashboard() {
         <AlertCircle className="h-12 w-12 text-muted-foreground" />
         <h2 className="text-xl font-semibold">No cluster selected</h2>
         <p className="text-muted-foreground">Please connect to a cluster to view the dashboard.</p>
-        <Button onClick={() => navigate('/connect')} variant="default">
+        <Button onClick={() => navigate('/clusters')} variant="default">
           Connect Cluster
         </Button>
       </div>

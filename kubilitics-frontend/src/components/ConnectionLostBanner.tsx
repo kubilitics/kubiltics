@@ -95,7 +95,7 @@ export function ConnectionLostBanner() {
           Reconnect
         </button>
         <Link
-          to="/connect"
+          to="/clusters"
           className="text-xs text-amber-700/70 dark:text-amber-300/60 hover:text-amber-800 dark:hover:text-amber-200 underline underline-offset-2"
         >
           Switch cluster

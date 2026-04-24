@@ -524,7 +524,7 @@ function EmptyState() {
           Connect your first cluster to see fleet-wide health, metrics, and status at a glance.
         </p>
       </div>
-      <Button onClick={() => navigate('/connect?addCluster=true')} variant="default" size="sm">
+      <Button onClick={() => navigate('/clusters?addCluster=true')} variant="default" size="sm">
         Connect Cluster
       </Button>
     </div>
@@ -834,7 +834,7 @@ export default function FleetDashboard() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Button size="sm" variant="default" onClick={() => navigate('/connect?addCluster=true')} className="gap-1.5">
+            <Button size="sm" variant="default" onClick={() => navigate('/clusters?addCluster=true')} className="gap-1.5">
               <Plus className="h-3.5 w-3.5" />
               Add Cluster
             </Button>

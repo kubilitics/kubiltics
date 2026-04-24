@@ -48,7 +48,7 @@ export default function ModeSelection() {
 
     const handleSelectMode = (mode: 'desktop' | 'in-cluster') => {
         setAppMode(mode);
-        navigate('/connect');
+        navigate('/clusters');
     };
 
     return (

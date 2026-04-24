@@ -93,7 +93,7 @@ export const ClusterHealthWidget = () => {
           <div className="flex-1 flex items-center justify-center">
             <EmptyNoClusters
               size="sm"
-              primaryAction={{ label: "Connect Cluster", href: "/connect?addCluster=true" }}
+              primaryAction={{ label: "Connect Cluster", href: "/clusters?addCluster=true" }}
             />
           </div>
         ) : (

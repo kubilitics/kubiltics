@@ -608,7 +608,7 @@ export function Header() {
 
                       {/* Footer actions */}
                       <DropdownMenuSeparator className="my-2 bg-border/60" />
-                      <DropdownMenuItem onClick={() => navigate('/connect?addCluster=true')} className="gap-3 cursor-pointer py-3 px-4 rounded-2xl text-muted-foreground hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+                      <DropdownMenuItem onClick={() => navigate('/clusters?addCluster=true')} className="gap-3 cursor-pointer py-3 px-4 rounded-2xl text-muted-foreground hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
                         <div className="h-8 w-8 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
                           <Plus className="h-3.5 w-3.5 text-muted-foreground" />
                         </div>
@@ -725,7 +725,7 @@ export function Header() {
                       <Settings className="h-4 w-4 text-muted-foreground" />
                       <span className="text-sm">Settings</span>
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => navigate('/connect?addCluster=true')} className="gap-2 py-2.5 cursor-pointer">
+                    <DropdownMenuItem onClick={() => navigate('/clusters?addCluster=true')} className="gap-2 py-2.5 cursor-pointer">
                       <Plus className="h-4 w-4 text-muted-foreground" />
                       <span className="text-sm">Add Cluster</span>
                     </DropdownMenuItem>

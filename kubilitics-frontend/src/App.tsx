@@ -34,7 +34,6 @@ const AISettingsPage = lazy(() => import("./pages/settings/AISettingsPage"));
 const AIBudgetPage = lazy(() => import("./pages/settings/AIBudgetPage"));
 const ToolCatalogPage = lazy(() => import("./pages/settings/ToolCatalogPage"));
 const ModeSelection = lazy(() => import("./pages/ModeSelection"));
-const ClusterConnect = lazy(() => import("./pages/ClusterConnect"));
 const ConnectedRedirect = lazy(() => import("./pages/ConnectedRedirect"));
 // Onboarding-v2 entry pages (Phase 7: unconditional).
 const ClusterPickerPage = lazy(() => import("./pages/ClusterPickerPage"));
@@ -429,8 +428,11 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   }
 
   if (!activeCluster) {
+    // Phase 7: /connect retired — all cluster-entry UX lives on /clusters
+    // (picker + AddClusterDialog). The returnUrl survives round-trip through
+    // the router so users land back on the page they were trying to view.
     const returnUrl = encodeURIComponent(location.pathname + location.search);
-    return <Navigate to={returnUrl ? `/connect?returnUrl=${returnUrl}` : '/connect'} replace />;
+    return <Navigate to={returnUrl ? `/clusters?returnUrl=${returnUrl}` : '/clusters'} replace />;
   }
 
   return <>{children}</>;
@@ -446,13 +448,6 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 export function ClusterPresenceSubscriber() {
   useClusterPresence();
   return null;
-}
-
-/** Flag-gated route element: kept in Phase 7 as a passthrough while the
- *  component is retired in Task 7.4. No-op now that the flag is gone. */
-// eslint-disable-next-line react-refresh/only-export-components
-export function FlagGatedRoute({ children }: { children: React.ReactNode }) {
-  return <>{children}</>;
 }
 
 /** Entry-point decision for "/":
@@ -719,7 +714,7 @@ function KubeconfigContextWrapper({ children }: { children: React.ReactNode }) {
       }
       const { invoke } = await import('@tauri-apps/api/core');
       await invoke('mark_first_launch_complete');
-      navigate('/connect', { replace: true });
+      navigate('/clusters', { replace: true });
     } catch (error) {
       console.error('Failed to register contexts:', error);
     }
@@ -820,13 +815,13 @@ const App = () => (
                       {/* Entry and setup (no login — Headlamp/Lens model) */}
                       <Route element={<ModeSelectionEntryPoint />} path="/" />
                       <Route element={<ModeSelection />} path="/mode-selection" />
-                      <Route element={<ClusterConnect />} path="/connect" />
                       <Route element={<ConnectedRedirect />} path="/connected" />
-                      <Route element={<Navigate to="/connect?addCluster=true" replace />} path="/setup/kubeconfig" />
+                      <Route element={<Navigate to="/clusters" replace />} path="/connect" />
+                      <Route element={<Navigate to="/clusters" replace />} path="/setup/kubeconfig" />
                       <Route element={<Navigate to="/clusters" replace />} path="/setup/clusters" />
                       {/* Onboarding-v2 — the only cluster-entry path. */}
-                      <Route path="/clusters" element={<FlagGatedRoute><ClusterPickerPage /></FlagGatedRoute>} />
-                      <Route path="/welcome" element={<FlagGatedRoute><WelcomePage /></FlagGatedRoute>} />
+                      <Route path="/clusters" element={<ClusterPickerPage />} />
+                      <Route path="/welcome" element={<WelcomePage />} />
 
                       {/* App routes — require cluster connection only */}
                       <Route
