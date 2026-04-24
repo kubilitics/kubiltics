@@ -44,8 +44,8 @@ func TestAnalyzeLogPatterns_RESTFallback(t *testing.T) {
 	at := analysis.NewAnalysisToolsWithProxyAndREST(fp, fb.URL)
 
 	out, err := at.AnalyzeLogPatterns(context.Background(), map[string]interface{}{
-		"namespace": "demo",
-		"pod_name":  "web-1",
+		"namespace":  "demo",
+		"pod_name":   "web-1",
 		"tail_lines": 100,
 	})
 	if err != nil {

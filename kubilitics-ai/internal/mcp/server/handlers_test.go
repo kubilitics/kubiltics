@@ -540,8 +540,12 @@ func TestRegisterAllTools_AllToolsRegistered(t *testing.T) {
 		names[tool.Name] = true
 	}
 	for _, expected := range []string{
-		"observe_cluster_overview",
-		"observe_pod_logs",
+		// observe_cluster_overview retired 2026-04-23 → triage_cluster (composite
+		// that includes cluster-overview data alongside triage narrative).
+		"triage_cluster",
+		// observe_pod_logs retired 2026-04-23 → search_logs (pod-log fan-out
+		// with regex across a namespace).
+		"search_logs",
 		"analyze_resource_efficiency",
 		"troubleshoot_pod_failures",
 		"security_scan_cluster",

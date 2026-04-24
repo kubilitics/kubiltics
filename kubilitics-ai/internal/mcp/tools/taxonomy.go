@@ -65,28 +65,6 @@ var ToolTaxonomy = []ToolDefinition{
 	// Autonomy Level: 1 (Observe)
 
 	{
-		Name:                  "observe_cluster_overview",
-		Category:              CategoryObservation,
-		Description:           "Get comprehensive cluster overview with health, capacity, and resource distribution. Returns intelligent summary with anomaly detection.",
-		Destructive:           false,
-		RequiresAI:            true,
-		RequiredAutonomyLevel: 1,
-	},
-	{
-		Name:        "observe_resource",
-		Category:    CategoryObservation,
-		Description: "Get detailed information about a specific resource (Pod, Deployment, Service, etc.) with intelligent context about relationships and dependencies.",
-		Destructive: false,
-		RequiresAI:  false,
-	},
-	{
-		Name:        "observe_resources_by_query",
-		Category:    CategoryObservation,
-		Description: "Query resources using natural language. Example: 'all pods in production with high CPU' or 'failing deployments in last hour'.",
-		Destructive: false,
-		RequiresAI:  true,
-	},
-	{
 		Name:        "resolve_resource",
 		Category:    CategoryObservation,
 		Description: "Resolve a resource kind + fuzzy name hint to its concrete {namespace, name} across the whole cluster. Call this FIRST when you know the kind (e.g. 'deployment', 'configmap', 'service') but are not sure which namespace the resource lives in. Returns up to 5 matches (exact → prefix → substring) with a suggestions list if nothing matches.",
@@ -122,128 +100,14 @@ var ToolTaxonomy = []ToolDefinition{
 		Destructive: false,
 		RequiresAI:  false,
 	},
-	{
-		Name:        "observe_pod_dependencies",
-		Category:    CategoryObservation,
-		Description: "Map all configuration and storage dependencies for a pod (ConfigMaps, Secrets, PVCs, PVs). Useful for diagnosing 'stuck' pods due to missing secrets/volumes.",
-		InputSchema: map[string]interface{}{
-			"type": "object",
-			"properties": map[string]interface{}{
-				"namespace": map[string]interface{}{"type": "string", "description": "Kubernetes namespace (required)"},
-				"name":      map[string]interface{}{"type": "string", "description": "Pod name (required)"},
-			},
-			"required": []string{"namespace", "name"},
-		},
-		Destructive: false,
-		RequiresAI:  false,
-	},
-	{
-		Name:        "observe_pod_logs",
-		Category:    CategoryObservation,
-		Description: "Stream or retrieve pod logs with intelligent filtering. Supports 'filter' (regex for error/warning) and 'tail_lines' (default 10).",
-		InputSchema: map[string]interface{}{
-			"type": "object",
-			"properties": map[string]interface{}{
-				"namespace":      map[string]interface{}{"type": "string", "description": "Kubernetes namespace (required)"},
-				"pod_name":       map[string]interface{}{"type": "string", "description": "Pod name (required)"},
-				"container_name": map[string]interface{}{"type": "string", "description": "Optional container name"},
-				"tail_lines":     map[string]interface{}{"type": "integer", "description": "Number of lines to return (default 10)"},
-				"filter":         map[string]interface{}{"type": "string", "description": "Optional regex/text filter (e.g. 'error', 'warning', 'timeout')"},
-			},
-			"required": []string{"namespace", "pod_name"},
-		},
-		Destructive: false,
-		RequiresAI:  true,
-	},
-	{
-		Name:        "observe_pod_logs_filtered",
-		Category:    CategoryObservation,
-		Description: "Retrieve pod logs filtered by 'error' or 'warn' (PRD: error logs + warning logs). Use filter=error or filter=warn. Same as observe_pod_logs with filter set.",
-		InputSchema: map[string]interface{}{
-			"type": "object",
-			"properties": map[string]interface{}{
-				"namespace":      map[string]interface{}{"type": "string", "description": "Kubernetes namespace (required)"},
-				"pod_name":       map[string]interface{}{"type": "string", "description": "Pod name (required)"},
-				"container_name": map[string]interface{}{"type": "string", "description": "Optional container name"},
-				"tail_lines":     map[string]interface{}{"type": "integer", "description": "Number of lines to return (default 10)"},
-				"filter":         map[string]interface{}{"type": "string", "description": "Filter: 'error' or 'warn' (required for this tool)"},
-			},
-			"required": []string{"namespace", "pod_name", "filter"},
-		},
-		Destructive: false,
-		RequiresAI:  false,
-	},
 	// observe_pod_ownership_chain retired 2026-04-22: folded into inspect_pod.
-	{
-		Name:        "observe_resource_links",
-		Category:    CategoryObservation,
-		Description: "Trace and return relationships between resources (e.g. which Service points to which Pods, which Deployment owns which ReplicaSet).",
-		InputSchema: map[string]interface{}{
-			"type": "object",
-			"properties": map[string]interface{}{
-				"namespace": map[string]interface{}{"type": "string", "description": "Kubernetes namespace (required)"},
-				"kind":      map[string]interface{}{"type": "string", "description": "Resource kind (e.g. Deployment, Service)"},
-				"name":      map[string]interface{}{"type": "string", "description": "Resource name"},
-			},
-			"required": []string{"namespace"},
-		},
-		Destructive: false,
-		RequiresAI:  true,
-	},
-	{
-		Name:        "observe_events",
-		Category:    CategoryObservation,
-		Description: "Get cluster events with intelligent grouping, correlation, and impact analysis.",
-		Destructive: false,
-		RequiresAI:  true,
-	},
 	// observe_pod_events retired 2026-04-22: folded into inspect_pod.
-	{
-		Name:        "observe_resource_topology",
-		Category:    CategoryObservation,
-		Description: "Visualize resource relationships and dependencies with intelligent graph analysis.",
-		Destructive: false,
-		RequiresAI:  true,
-	},
 	{
 		Name:        "export_topology_to_drawio",
 		Category:    CategoryObservation,
 		Description: "Export cluster topology as an editable diagram. Returns a draw.io URL that opens the architecture diagram in a new tab. Use when user asks for 'architecture diagram', 'show me the topology', or 'export to draw.io'.",
 		Destructive: false,
 		RequiresAI:  false,
-	},
-	{
-		Name:        "observe_resource_history",
-		Category:    CategoryObservation,
-		Description: "Get temporal history of resource changes, revisions, and state transitions.",
-		Destructive: false,
-		RequiresAI:  false,
-	},
-	{
-		Name:        "observe_metrics",
-		Category:    CategoryObservation,
-		Description: "Get current CPU/memory metrics for a resource. For pod, deployment, replicaset, statefulset, daemonset, job, cronjob namespace is required. For node only name is required.",
-		InputSchema: map[string]interface{}{
-			"type": "object",
-			"properties": map[string]interface{}{
-				"cluster_id":     map[string]interface{}{"type": "string", "description": "Cluster ID (optional; defaults to first cluster)"},
-				"namespace":      map[string]interface{}{"type": "string", "description": "Namespace (required for pod, deployment, replicaset, statefulset, daemonset, job, cronjob)"},
-				"kind":           map[string]interface{}{"type": "string", "description": "Resource kind: pod, node, deployment, replicaset, statefulset, daemonset, job, cronjob"},
-				"resource_type":  map[string]interface{}{"type": "string", "description": "Alias for kind"},
-				"name":           map[string]interface{}{"type": "string", "description": "Resource name"},
-				"resource_name":  map[string]interface{}{"type": "string", "description": "Alias for name"},
-			},
-			"required": []string{"kind", "name"},
-		},
-		Destructive: false,
-		RequiresAI:  true,
-	},
-	{
-		Name:        "observe_node_status",
-		Category:    CategoryObservation,
-		Description: "Get detailed node health, capacity, and workload distribution with recommendations.",
-		Destructive: false,
-		RequiresAI:  true,
 	},
 	// observe_node_detailed + observe_node_events retired 2026-04-22: folded into inspect_node.
 	{
@@ -261,13 +125,6 @@ var ToolTaxonomy = []ToolDefinition{
 		Destructive: false,
 		RequiresAI:  false,
 	},
-	{
-		Name:        "observe_namespace_overview",
-		Category:    CategoryObservation,
-		Description: "Get comprehensive namespace overview with quotas, limits, and resource usage.",
-		Destructive: false,
-		RequiresAI:  true,
-	},
 	// observe_namespace_detailed + observe_namespace_events retired 2026-04-22: folded into inspect_namespace.
 	{
 		Name:        "inspect_namespace",
@@ -283,13 +140,6 @@ var ToolTaxonomy = []ToolDefinition{
 		},
 		Destructive: false,
 		RequiresAI:  false,
-	},
-	{
-		Name:        "observe_workload_health",
-		Category:    CategoryObservation,
-		Description: "Get intelligent health assessment of workloads (Deployments, StatefulSets, DaemonSets).",
-		Destructive: false,
-		RequiresAI:  true,
 	},
 	// observe_service_detailed + observe_service_events retired 2026-04-22: folded into inspect_service.
 	{
@@ -309,19 +159,58 @@ var ToolTaxonomy = []ToolDefinition{
 		RequiresAI:  false,
 	},
 	{
-		Name:        "observe_service_endpoints",
+		Name:        "triage_cluster",
 		Category:    CategoryObservation,
-		Description: "Return Service endpoints (subsets/addresses) and summary of which pods back the service. Use for 'which pods back this service?'.",
+		Description: "Single-turn triage: ranked narrative of top pod problems + node pressure + recent critical events for a cluster. Call this first when paged. Replaces a multi-call sequence of observe_cluster_overview + observe_node_status + observe_workload_health + observe_events.",
 		InputSchema: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
-				"namespace": map[string]interface{}{"type": "string", "description": "Kubernetes namespace (required)"},
-				"name":      map[string]interface{}{"type": "string", "description": "Service name (required)"},
+				"cluster_id": map[string]interface{}{"type": "string", "description": "Cluster ID (optional; defaults to session focus cluster)"},
 			},
-			"required": []string{"namespace", "name"},
 		},
-		Destructive: false,
-		RequiresAI:  false,
+		Destructive:           false,
+		RequiresAI:            false,
+		RequiredAutonomyLevel: 1,
+	},
+	{
+		Name:        "list_problems",
+		Category:    CategoryObservation,
+		Description: "Enumerate pods matching a problem filter (crashlooping, oom, pending, evicted, image_pull_error, unhealthy) ranked by severity. Replaces ad-hoc loops over observe_resources_by_query.",
+		InputSchema: map[string]interface{}{
+			"type": "object",
+			"properties": map[string]interface{}{
+				"filter":     map[string]interface{}{"type": "string", "enum": []string{"crashlooping", "oom", "pending", "evicted", "image_pull_error", "unhealthy"}, "description": "Problem filter"},
+				"namespace":  map[string]interface{}{"type": "string", "description": "Optional namespace scope"},
+				"since":      map[string]interface{}{"type": "string", "description": "Go duration (15m, 1h) — optional"},
+				"limit":      map[string]interface{}{"type": "integer", "description": "Max entries; default 50, max 200"},
+				"cluster_id": map[string]interface{}{"type": "string"},
+			},
+			"required": []string{"filter"},
+		},
+		Destructive:           false,
+		RequiresAI:            false,
+		RequiredAutonomyLevel: 1,
+	},
+	{
+		Name:        "search_logs",
+		Category:    CategoryObservation,
+		Description: "Pattern-clustered log search across pods in a namespace. Returns grouped error templates with counts — not raw log dumps. Replaces repeated observe_pod_logs_filtered calls.",
+		InputSchema: map[string]interface{}{
+			"type": "object",
+			"properties": map[string]interface{}{
+				"namespace":         map[string]interface{}{"type": "string"},
+				"workload":          map[string]interface{}{"type": "string", "description": "Optional workload name filter"},
+				"regex":             map[string]interface{}{"type": "string"},
+				"since":             map[string]interface{}{"type": "string", "description": "Go duration"},
+				"max_pods":          map[string]interface{}{"type": "integer", "description": "Pod cap; default 10"},
+				"max_lines_per_pod": map[string]interface{}{"type": "integer", "description": "Line cap; default 1000"},
+				"cluster_id":        map[string]interface{}{"type": "string"},
+			},
+			"required": []string{"namespace", "regex"},
+		},
+		Destructive:           false,
+		RequiresAI:            false,
+		RequiredAutonomyLevel: 1,
 	},
 	// observe_ingress_detailed + observe_ingress_events retired 2026-04-22: folded into inspect_ingress.
 	{
@@ -351,28 +240,6 @@ var ToolTaxonomy = []ToolDefinition{
 				"cluster_id": map[string]interface{}{"type": "string", "description": "Cluster ID (optional)"},
 				"namespace":  map[string]interface{}{"type": "string", "description": "Kubernetes namespace (required)"},
 				"name":       map[string]interface{}{"type": "string", "description": "NetworkPolicy name (required)"},
-			},
-			"required": []string{"namespace", "name"},
-		},
-		Destructive: false,
-		RequiresAI:  false,
-	},
-	{
-		Name:        "observe_network_policies",
-		Category:    CategoryObservation,
-		Description: "Analyze network policies with traffic flow visualization and gap detection.",
-		Destructive: false,
-		RequiresAI:  true,
-	},
-	{
-		Name:        "observe_deployment_rollout_history",
-		Category:    CategoryObservation,
-		Description: "Retrieve detailed rollout history for a deployment, including revisions, image changes, and timestamps. Essential for rollback decision making.",
-		InputSchema: map[string]interface{}{
-			"type": "object",
-			"properties": map[string]interface{}{
-				"namespace": map[string]interface{}{"type": "string", "description": "Kubernetes namespace (required)"},
-				"name":      map[string]interface{}{"type": "string", "description": "Deployment name (required)"},
 			},
 			"required": []string{"namespace", "name"},
 		},
@@ -498,21 +365,6 @@ var ToolTaxonomy = []ToolDefinition{
 		Destructive: false,
 		RequiresAI:  false,
 	},
-	{
-		Name:        "observe_pvc_consumers",
-		Category:    CategoryObservation,
-		Description: "Return pods and workloads (Deployments, StatefulSets, etc.) that use this PVC. Use for 'which pods use this PVC?'.",
-		InputSchema: map[string]interface{}{
-			"type": "object",
-			"properties": map[string]interface{}{
-				"namespace": map[string]interface{}{"type": "string", "description": "Kubernetes namespace (required)"},
-				"name":      map[string]interface{}{"type": "string", "description": "PVC name (required)"},
-			},
-			"required": []string{"namespace", "name"},
-		},
-		Destructive: false,
-		RequiresAI:  false,
-	},
 	// observe_pv_detailed + observe_pv_events retired 2026-04-22: folded into inspect_pv.
 	{
 		Name:        "inspect_pv",
@@ -545,50 +397,11 @@ var ToolTaxonomy = []ToolDefinition{
 		Destructive: false,
 		RequiresAI:  false,
 	},
-	{
-		Name:        "observe_storage_status",
-		Category:    CategoryObservation,
-		Description: "Get storage utilization, PV/PVC status, and capacity planning insights.",
-		Destructive: false,
-		RequiresAI:  true,
-	},
-	{
-		Name:        "observe_serviceaccount_detailed",
-		Category:    CategoryObservation,
-		Description: "ServiceAccount detail: metadata, token count, pods using this SA, RoleBindings and ClusterRoleBindings that reference it, risk flags.",
-		InputSchema: map[string]interface{}{
-			"type": "object",
-			"properties": map[string]interface{}{
-				"cluster_id": map[string]interface{}{"type": "string", "description": "Cluster ID (optional)"},
-				"namespace":  map[string]interface{}{"type": "string", "description": "Namespace (required)"},
-				"name":       map[string]interface{}{"type": "string", "description": "ServiceAccount name (required)"},
-			},
-			"required": []string{"namespace", "name"},
-		},
-		Destructive: false,
-		RequiresAI:  true,
-	},
 	// observe_serviceaccount_events retired 2026-04-22: SA events are empty on the
 	// happy path, which caused the LLM to call this tool 15+ times in a row
 	// (bench-scen-workload-17.jsonl) trying to extract signal that isn't there.
 	// Use observe_serviceaccount_permissions for RBAC questions and observe_events
 	// for the rare SA-related event. See docs/strategy/2026-04-22-tool-audit.md.
-	{
-		Name:        "observe_serviceaccount_permissions",
-		Category:    CategoryObservation,
-		Description: "Resolved permissions for a ServiceAccount: RoleBindings, ClusterRoleBindings, and summary of Role/ClusterRole rules (PRD Layer 7).",
-		InputSchema: map[string]interface{}{
-			"type": "object",
-			"properties": map[string]interface{}{
-				"cluster_id": map[string]interface{}{"type": "string", "description": "Cluster ID (optional)"},
-				"namespace":  map[string]interface{}{"type": "string", "description": "Namespace (required)"},
-				"name":       map[string]interface{}{"type": "string", "description": "ServiceAccount name (required)"},
-			},
-			"required": []string{"namespace", "name"},
-		},
-		Destructive: false,
-		RequiresAI:  true,
-	},
 	// observe_role_detailed + observe_role_events retired 2026-04-22: folded into inspect_role.
 	{
 		Name:        "inspect_role",
@@ -672,44 +485,12 @@ var ToolTaxonomy = []ToolDefinition{
 		Destructive: false,
 		RequiresAI:  false,
 	},
-	{
-		Name:        "observe_secret_consumers",
-		Category:    CategoryObservation,
-		Description: "Pods and workloads (Deployments) that reference this Secret.",
-		InputSchema: map[string]interface{}{
-			"type": "object",
-			"properties": map[string]interface{}{
-				"cluster_id": map[string]interface{}{"type": "string", "description": "Cluster ID (optional)"},
-				"namespace":  map[string]interface{}{"type": "string", "description": "Namespace (required)"},
-				"name":       map[string]interface{}{"type": "string", "description": "Secret name (required)"},
-			},
-			"required": []string{"namespace", "name"},
-		},
-		Destructive: false,
-		RequiresAI:  false,
-	},
 	// Resources: ConfigMaps, LimitRanges, ResourceQuotas, HPA, PDB (Layer 1)
 	// observe_configmap_detailed + observe_configmap_events retired 2026-04-22: folded into inspect_configmap.
 	{
 		Name:        "inspect_configmap",
 		Category:    CategoryObservation,
 		Description: "One-call deep dive into a ConfigMap: metadata, data keys, consumers and recent events. Replaces observe_configmap_detailed + observe_configmap_events.",
-		InputSchema: map[string]interface{}{
-			"type": "object",
-			"properties": map[string]interface{}{
-				"cluster_id": map[string]interface{}{"type": "string", "description": "Cluster ID (optional)"},
-				"namespace":  map[string]interface{}{"type": "string", "description": "Namespace (required)"},
-				"name":       map[string]interface{}{"type": "string", "description": "ConfigMap name (required)"},
-			},
-			"required": []string{"namespace", "name"},
-		},
-		Destructive: false,
-		RequiresAI:  false,
-	},
-	{
-		Name:        "observe_configmap_consumers",
-		Category:    CategoryObservation,
-		Description: "Pods and workloads (Deployments) that reference this ConfigMap. PRD: observe_configmap_usage.",
 		InputSchema: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
@@ -808,13 +589,6 @@ var ToolTaxonomy = []ToolDefinition{
 		Destructive: false,
 		RequiresAI:  false,
 	},
-	{
-		Name:        "observe_api_resources",
-		Category:    CategoryObservation,
-		Description: "List all available API resources with intelligent categorization and usage examples.",
-		Destructive: false,
-		RequiresAI:  false,
-	},
 	// observe_crd_detailed + observe_crd_events retired 2026-04-22: folded into inspect_crd.
 	{
 		Name:        "inspect_crd",
@@ -830,13 +604,6 @@ var ToolTaxonomy = []ToolDefinition{
 		},
 		Destructive: false,
 		RequiresAI:  false,
-	},
-	{
-		Name:        "observe_custom_resources",
-		Category:    CategoryObservation,
-		Description: "Get CRDs and custom resources with validation schema analysis.",
-		Destructive: false,
-		RequiresAI:  true,
 	},
 
 	// ─── Live metrics adapter (gap 1, 2026-04-22 bench) ───

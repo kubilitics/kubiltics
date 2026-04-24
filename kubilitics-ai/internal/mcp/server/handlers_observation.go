@@ -5991,6 +5991,17 @@ func (s *mcpServerImpl) routeObservationTool(ctx context.Context, name string, a
 	case "observe_zombie_finalizers":
 		return s.handleObserveZombieFinalizers(ctx, args)
 
+	// ─── Week-1 composites (triage + problem-listing + log-search) ───────────
+	// Added 2026-04-23 alongside the 25-tool observe_* retirement so the
+	// public tool surface actually dispatches to the handlers wired in
+	// handlers_inspect.go.
+	case "triage_cluster":
+		return s.handleTriageCluster(ctx, args)
+	case "list_problems":
+		return s.handleListProblems(ctx, args)
+	case "search_logs":
+		return s.handleSearchLogs(ctx, args)
+
 	default:
 		return nil, fmt.Errorf("observation tool not implemented: %s", name)
 	}

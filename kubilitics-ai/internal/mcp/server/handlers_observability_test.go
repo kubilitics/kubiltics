@@ -39,18 +39,18 @@ func TestObserveFlappingServices_CountsChurn(t *testing.T) {
 	fb.registerCluster()
 	fb.register("/clusters/"+testClusterID+"/events", []interface{}{
 		map[string]interface{}{
-			"reason":    "EndpointAddresses",
-			"lastTimestamp": recentIsoAgo(1),
+			"reason":         "EndpointAddresses",
+			"lastTimestamp":  recentIsoAgo(1),
 			"involvedObject": map[string]interface{}{"kind": "Service", "name": "web", "namespace": "demo"},
 		},
 		map[string]interface{}{
-			"reason":    "EndpointAddresses",
-			"lastTimestamp": recentIsoAgo(2),
+			"reason":         "EndpointAddresses",
+			"lastTimestamp":  recentIsoAgo(2),
 			"involvedObject": map[string]interface{}{"kind": "Service", "name": "web", "namespace": "demo"},
 		},
 		map[string]interface{}{
-			"reason":    "EndpointAddresses",
-			"lastTimestamp": recentIsoAgo(3),
+			"reason":         "EndpointAddresses",
+			"lastTimestamp":  recentIsoAgo(3),
 			"involvedObject": map[string]interface{}{"kind": "Service", "name": "web", "namespace": "demo"},
 		},
 	})
@@ -123,10 +123,10 @@ func TestObserveUnhealthyProbes_FiltersByReason(t *testing.T) {
 	fb.registerCluster()
 	fb.register("/clusters/"+testClusterID+"/events", []interface{}{
 		map[string]interface{}{
-			"reason":          "Unhealthy",
-			"lastTimestamp":   recentIsoAgo(5),
-			"involvedObject":  map[string]interface{}{"kind": "Pod", "name": "api-1", "namespace": "demo"},
-			"message":         "Liveness probe failed: HTTP 500",
+			"reason":         "Unhealthy",
+			"lastTimestamp":  recentIsoAgo(5),
+			"involvedObject": map[string]interface{}{"kind": "Pod", "name": "api-1", "namespace": "demo"},
+			"message":        "Liveness probe failed: HTTP 500",
 		},
 		map[string]interface{}{
 			"reason":         "Normal",
