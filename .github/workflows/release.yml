@@ -382,7 +382,6 @@ jobs:
 
       - name: Notarize macOS DMG
         if: matrix.os == 'macos-latest'
-        continue-on-error: true
         timeout-minutes: 25
         env:
           APPLE_ID: ${{ secrets.APPLE_ID }}
@@ -390,16 +389,20 @@ jobs:
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
           DMG=$(find kubilitics-desktop/src-tauri/target/universal-apple-darwin/release/bundle -name "*.dmg" | head -1)
-          if [ -n "$DMG" ] && [ -n "$APPLE_ID" ]; then
-            echo "Notarizing $DMG..."
-            xcrun notarytool submit "$DMG" \
-              --apple-id "$APPLE_ID" --password "$APPLE_PASSWORD" --team-id "$APPLE_TEAM_ID" \
-              --wait --timeout 20m
-            xcrun stapler staple "$DMG"
-            echo "Notarization and stapling complete"
-          else
-            echo "Skipping notarization — no DMG found or APPLE_ID not set"
+          if [ -z "$DMG" ]; then
+            echo "::error::No .dmg found to notarize."
+            exit 1
           fi
+          if [ -z "$APPLE_ID" ]; then
+            echo "::error::APPLE_ID secret is empty — refusing to ship un-notarized DMG."
+            exit 1
+          fi
+          echo "Notarizing $DMG..."
+          xcrun notarytool submit "$DMG" \
+            --apple-id "$APPLE_ID" --password "$APPLE_PASSWORD" --team-id "$APPLE_TEAM_ID" \
+            --wait --timeout 20m
+          xcrun stapler staple "$DMG"
+          echo "Notarization and stapling complete"
 
       - name: Build Tauri app (Windows)
         if: matrix.os == 'windows-latest'
