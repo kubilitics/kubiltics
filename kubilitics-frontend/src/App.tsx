@@ -387,18 +387,26 @@ function ResourceLiveUpdates() {
 }
 
 /**
- * PERMANENT FIX (TASK-NET-001 + P0-B):
+ * PERMANENT FIX (TASK-NET-001 + P0-B + dynamic-port):
  *
- * Two-layer defense to ensure backendBaseUrl is always http://localhost:8190 in Tauri:
+ * Three-layer defense so backendBaseUrl is always correct in Tauri, even when
+ * the backend had to fall back to an OS-assigned port because 8190 was taken.
  *
  * Layer 1 (build-time, in backendConfigStore.ts):
- *   __VITE_IS_TAURI_BUILD__ constant baked by vite.config.ts → initialState uses
- *   DEFAULT_BACKEND_BASE_URL instead of '' → correct from the very first render.
+ *   __VITE_IS_TAURI_BUILD__ constant baked by vite.config.ts → initialState
+ *   seeds DEFAULT_BACKEND_BASE_URL instead of '' → correct from first render.
  *
- * Layer 2 (runtime, this component):
- *   Fires on mount (by which time __TAURI_INTERNALS__ IS injected). Checks isTauri()
- *   AND __VITE_IS_TAURI_BUILD__ and writes the correct URL if still empty. This heals
- *   any persisted '' from a previous broken build or localStorage corruption.
+ * Layer 2 (runtime, this component — default URL):
+ *   On mount, if the persisted URL is empty (fresh install, or corrupted
+ *   localStorage from a prior broken build), heal it to the default.
+ *
+ * Layer 3 (runtime, this component — dynamic port):
+ *   Ask the Rust sidecar what URL it ACTUALLY bound to via the get_backend_url
+ *   Tauri command. If the sidecar fell back to a free port (because 8190 was
+ *   occupied by a dev build, a stale instance, or an unrelated squatter), the
+ *   frontend learns about it here and writes the real URL into the store.
+ *   Without this, the webview would keep talking to whatever is on 8190 —
+ *   which has silently produced orphaned UI + backend pairs forever.
  */
 function SyncBackendUrl() {
   const setBackendBaseUrl = useBackendConfigStore((s) => s.setBackendBaseUrl);
@@ -407,11 +415,28 @@ function SyncBackendUrl() {
     // Use build-time constant OR runtime check — belt-and-suspenders
     const isDesktop = (typeof __VITE_IS_TAURI_BUILD__ !== 'undefined' && __VITE_IS_TAURI_BUILD__) || isTauri();
     if (!isDesktop) return;
-    const expectedUrl = `http://localhost:${import.meta.env.VITE_BACKEND_PORT || 8190}`;
-    // Always ensure the stored URL is correct for Tauri — heal persisted '' values
+
+    const defaultUrl = `http://localhost:${import.meta.env.VITE_BACKEND_PORT || 8190}`;
+    // Layer 2: heal an empty persisted URL so the first render after Tauri
+    // injection has something sensible to hit while layer 3 is in flight.
     if (!backendBaseUrl || backendBaseUrl === '') {
-      setBackendBaseUrl(expectedUrl);
+      setBackendBaseUrl(defaultUrl);
     }
+
+    // Layer 3: fetch the authoritative URL from the Rust side. Lazy-imported
+    // so the browser-dev bundle (no Tauri runtime) doesn't fail at load time.
+    void (async () => {
+      try {
+        const { invoke } = await import('@tauri-apps/api/core');
+        const actual = await invoke<string>('get_backend_url');
+        if (typeof actual === 'string' && actual.length > 0 && actual !== backendBaseUrl) {
+          setBackendBaseUrl(actual);
+        }
+      } catch {
+        // Older bundle without the get_backend_url command, or invoke failed.
+        // Layer 1 + 2 already set the default URL; fall through silently.
+      }
+    })();
     // Run once on mount — backendBaseUrl intentionally excluded to avoid re-running on every change
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [setBackendBaseUrl]);

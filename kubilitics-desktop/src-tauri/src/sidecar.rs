@@ -17,6 +17,11 @@ pub struct BackendManager {
     is_ready: Arc<Mutex<bool>>,
     /// TASK-SIDECAR-001: Store process handle so we can kill on exit, not just send HTTP shutdown.
     backend_process: Arc<Mutex<Option<tauri_plugin_shell::process::CommandChild>>>,
+    /// Port the backend actually listens on. Prefer BACKEND_PORT (8190); fall back to an
+    /// OS-assigned free port if 8190 is already bound by another process (another
+    /// Kubilitics instance, dev build, stray previous run, unrelated squatter).
+    /// Resolved once at start() and reused across restarts.
+    resolved_port: Arc<Mutex<u16>>,
 }
 
 impl BackendManager {
@@ -27,11 +32,52 @@ impl BackendManager {
             is_running: Arc::new(Mutex::new(false)),
             is_ready: Arc::new(Mutex::new(false)),
             backend_process: Arc::new(Mutex::new(None)),
+            resolved_port: Arc::new(Mutex::new(BACKEND_PORT)),
         }
     }
 
     pub fn is_ready(&self) -> bool {
         *self.is_ready.lock().unwrap()
+    }
+
+    /// Port the backend is currently running on. Equals BACKEND_PORT in the common
+    /// case; a different, OS-assigned port if 8190 was already in use at start.
+    pub fn port(&self) -> u16 {
+        *self.resolved_port.lock().unwrap()
+    }
+
+    /// Backend URL for frontend fetches. Always reflects the resolved port.
+    pub fn url(&self) -> String {
+        format!("http://localhost:{}", self.port())
+    }
+
+    /// Pick a port for the backend sidecar. Prefer BACKEND_PORT so dev users keep
+    /// the familiar curl-able URL; if that port is taken (dev backend already
+    /// running, another Kubilitics instance, anything else), ask the OS for a
+    /// guaranteed-free port. Never piggyback on whatever is already on 8190 —
+    /// that path has produced silent-orphan UX bugs every time it fires.
+    fn pick_port() -> u16 {
+        if Self::can_bind(BACKEND_PORT) {
+            return BACKEND_PORT;
+        }
+        eprintln!(
+            "Port {} is occupied — asking OS for a free port instead. The in-app \
+             backend will spawn on that port and the frontend will be told about it.",
+            BACKEND_PORT
+        );
+        match std::net::TcpListener::bind("127.0.0.1:0") {
+            Ok(listener) => listener
+                .local_addr()
+                .map(|a| a.port())
+                .unwrap_or(BACKEND_PORT),
+            Err(_) => BACKEND_PORT,
+        }
+    }
+
+    /// True if we can bind to 127.0.0.1:port right now. Dropping the listener
+    /// releases it immediately; the sidecar process will bind to it next.
+    fn can_bind(port: u16) -> bool {
+        std::net::TcpListener::bind(format!("127.0.0.1:{}", port)).is_ok()
     }
 
     /// Start backend and health monitor. Takes Arc<Self> so the health monitor can restart
@@ -43,23 +89,19 @@ impl BackendManager {
             "message": "Starting backend engine…"
         }));
 
-        // Check for port conflicts — if 8190 already responds to /health, the backend
-        // may already be running (e.g. user restarted the app quickly). Treat it as ready.
-        // Delay so the JS event listener in BackendStartupOverlay has time to register
-        // before we emit "ready" (the JS setup() runs after the first render tick).
-        // Increased delay to 1500ms to ensure listener is registered even on slower systems.
-        if self.is_port_in_use(BACKEND_PORT).await {
-            println!("Port {} already in use — assuming backend is already running", BACKEND_PORT);
-            *self.is_running.lock().unwrap() = true;
-            sleep(Duration::from_millis(1500)).await;
-            *self.is_ready.lock().unwrap() = true;
-            let _ = self.app_handle.emit("backend-status", serde_json::json!({
-                "status": "ready",
-                "message": "Backend engine ready"
-            }));
-            let _ = self.app_handle.emit("backend-circuit-reset", ());
-            Self::start_health_monitor(self.clone());
-            return Ok(());
+        // Previously this function piggybacked on any kubilitics-backend already
+        // listening on 8190 (dev build, stale instance, fresh copy left over from a
+        // crash). That sounded helpful but silently produced orphaned UI + backend
+        // pairs every time it fired — the UX-1000x-regressor. We now *always* spawn
+        // our own sidecar; if 8190 is taken, pick_port falls back to an OS-assigned
+        // free port and the frontend is told the real URL via get_backend_url.
+        let chosen_port = Self::pick_port();
+        *self.resolved_port.lock().unwrap() = chosen_port;
+        if chosen_port != BACKEND_PORT {
+            println!(
+                "Kubilitics backend will use port {} because {} is already in use.",
+                chosen_port, BACKEND_PORT
+            );
         }
 
         match self.start_backend_process().await {
@@ -105,6 +147,7 @@ impl BackendManager {
 
     async fn start_backend_process(&self) -> Result<(), Box<dyn std::error::Error>> {
         let sidecar_command = self.app_handle.shell().sidecar("kubilitics-backend")?;
+        let port = self.port();
 
         // Resolve kcli binary path for bundled binary
         let kcli_bin_path = self.resolve_kcli_binary_path().await?;
@@ -124,7 +167,7 @@ impl BackendManager {
         // uses http://tauri.localhost instead of the tauri:// custom-protocol scheme).
         let tauri_allowed_origins = format!(
             "tauri://localhost,tauri://,http://tauri.localhost,http://localhost:5173,http://localhost:{}",
-            BACKEND_PORT
+            port
         );
 
         // P0-J: Resolve user-writable DB path.
@@ -143,7 +186,7 @@ impl BackendManager {
         // Passing KUBECONFIG="" causes some k8s client versions to skip the default
         // kubeconfig search instead of falling back to ~/.kube/config.
         let mut cmd = sidecar_command
-            .env("KUBILITICS_PORT", BACKEND_PORT.to_string())
+            .env("KUBILITICS_PORT", port.to_string())
             // Allow tauri:// origin so fetch() calls from the WebView are not blocked by CORS
             .env("KUBILITICS_ALLOWED_ORIGINS", tauri_allowed_origins)
             // P0-J: Write SQLite DB to user-writable location (not read-only .app bundle)
@@ -174,16 +217,16 @@ impl BackendManager {
         // TASK-SIDECAR-001: Store the process handle so stop() can kill it on force-quit.
         *self.backend_process.lock().unwrap() = Some(child);
         *self.is_running.lock().unwrap() = true;
-        println!("Kubilitics backend started on http://localhost:{}", BACKEND_PORT);
-        
+        println!("Kubilitics backend started on http://localhost:{}", port);
+
         // Wait for backend to be ready
         self.wait_for_ready().await?;
-        
+
         Ok(())
     }
 
     async fn wait_for_ready(&self) -> Result<(), Box<dyn std::error::Error>> {
-        let url = format!("http://localhost:{}/health", BACKEND_PORT);
+        let url = format!("http://localhost:{}/health", self.port());
 
         // Performance optimization: Allow up to 60 seconds (120 attempts × 500ms) for the backend to start.
         // Go binary cold-start on first launch can take 10-15 seconds on a slow machine.
@@ -214,25 +257,6 @@ impl BackendManager {
 
     /// P1-11: Only treat port as "in use by our backend" if the health response is from kubilitics-backend.
     /// Another HTTP server on 8190 would otherwise be treated as ready and we'd skip spawning.
-    async fn is_port_in_use(&self, port: u16) -> bool {
-        let url = format!("http://localhost:{}/health", port);
-        let Ok(response) = reqwest::get(&url).await else {
-            return false;
-        };
-        if !response.status().is_success() {
-            return false;
-        }
-        let Ok(body) = response.text().await else {
-            return false;
-        };
-        let json: Option<serde_json::Value> = serde_json::from_str(&body).ok();
-        let service = json
-            .as_ref()
-            .and_then(|j| j.get("service"))
-            .and_then(|s| s.as_str());
-        matches!(service, Some("kubilitics-backend"))
-    }
-
     /// P1-2: Use the same Arc<BackendManager> so restart_count is shared and we don't create a new manager on each restart.
     fn start_health_monitor(this: Arc<Self>) {
         tokio::spawn(async move {
@@ -248,7 +272,7 @@ impl BackendManager {
                     continue;
                 }
 
-                if !Self::check_health(BACKEND_PORT).await {
+                if !Self::check_health(this.port()).await {
                     println!("Backend health check failed. Attempting restart...");
 
                     let count = {
@@ -294,7 +318,7 @@ impl BackendManager {
         *self.is_running.lock().unwrap() = false;
 
         // Try graceful HTTP shutdown; fall through to SIGKILL on failure or force-quit.
-        let url = format!("http://localhost:{}/api/v1/shutdown", BACKEND_PORT);
+        let url = format!("http://localhost:{}/api/v1/shutdown", self.port());
         let client = reqwest::Client::new();
         let _ = client.post(&url).send().await;
 
@@ -402,6 +426,21 @@ pub fn start_backend(app_handle: &AppHandle) -> Result<Arc<BackendManager>, Box<
     Ok(manager)
 }
 
+/// Returns the actual backend URL the frontend should hit. Equals
+/// http://localhost:8190 in the common case; a different URL when 8190 was
+/// already in use at startup and the sidecar bound to an OS-assigned port.
+///
+/// The frontend must invoke this on mount — before any API calls — and store
+/// the result in backendConfigStore. Without this, a dynamic port is invisible
+/// to the webview and every fetch lands on the wrong process (or nothing).
+#[tauri::command]
+pub fn get_backend_url(app_handle: AppHandle) -> String {
+    match app_handle.try_state::<Arc<BackendManager>>() {
+        Some(m) => m.url(),
+        None => format!("http://localhost:{}", BACKEND_PORT),
+    }
+}
+
 /// Returns the current backend ready state. The frontend calls this on mount to handle
 /// the race where backend-status:ready fires before the JS event listener is registered.
 #[tauri::command]
@@ -506,7 +545,16 @@ impl BrainManager {
             .env("KUBILITICS_AI_GRPC_PORT", BRAIN_GRPC_PORT.to_string())
             .env("KUBILITICS_AI_CONFIG_PATH", config_dir.join("config.yaml").to_string_lossy().as_ref())
             .env("KUBILITICS_DATABASE_PATH", data_dir.join("kubilitics-ai.db").to_string_lossy().as_ref())
-            .env("KUBILITICS_BACKEND_URL", format!("http://localhost:{}", BACKEND_PORT));
+            // Brain must know where the backend actually landed — use the resolved
+            // port from BackendManager, not the compile-time default, so a backend
+            // that fell back to a free port is still reachable from the brain.
+            .env("KUBILITICS_BACKEND_URL", {
+                let backend = self.app_handle.try_state::<Arc<BackendManager>>();
+                match backend {
+                    Some(m) => m.url(),
+                    None => format!("http://localhost:{}", BACKEND_PORT),
+                }
+            });
 
         let (_rx, child) = cmd.spawn()?;
         *self.brain_process.lock().unwrap() = Some(child);
