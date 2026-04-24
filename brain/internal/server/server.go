@@ -55,6 +55,16 @@ type Server struct {
 	backendProxy *backend.Proxy
 	eventHandler events.EventHandler
 
+	// onAdapterChange is invoked by handlePostConfigProvider right after
+	// s.llmAdapter is swapped to a newly-built adapter. This lets
+	// cmd/server/main.go plug in the runtime LLMAdapterBridge's
+	// SetAdapter so the gRPC LLMEngine picks up the new provider without
+	// a full brain restart. Without this, hot-wiring the adapter only
+	// affected the HTTP-side handlers and the gRPC chat stream kept
+	// using the frozen startup-time adapter (or nothing, if startup had
+	// no valid adapter).
+	onAdapterChange func(adapter.LLMAdapter)
+
 	// Memory layer (A-CORE-009)
 	worldModel    *worldmodel.WorldModel
 	queryAPI      *worldmodel.QueryAPI
@@ -470,6 +480,17 @@ func (s *Server) IsRunning() bool {
 // GetLLMAdapter returns the LLM adapter
 func (s *Server) GetLLMAdapter() adapter.LLMAdapter {
 	return s.llmAdapter
+}
+
+// SetAdapterChangeHook registers a callback invoked whenever s.llmAdapter
+// is swapped at runtime (typically via POST /api/v1/config/provider from
+// AI Settings). cmd/server/main.go uses this to propagate the new adapter
+// into the runtime LLMAdapterBridge so the gRPC chat engine sees it
+// without needing a process restart. Passing nil unregisters.
+func (s *Server) SetAdapterChangeHook(h func(adapter.LLMAdapter)) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.onAdapterChange = h
 }
 
 // GetMCPServer returns the MCP server (may be nil if not enabled or init failed).

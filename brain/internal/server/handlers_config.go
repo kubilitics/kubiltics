@@ -198,11 +198,22 @@ func (s *Server) handlePostConfigProvider(w http.ResponseWriter, r *http.Request
 	// ── Hot-wire the adapter and update config ────────────────────────────────
 	s.mu.Lock()
 	s.llmAdapter = newAdapter
+	hook := s.onAdapterChange
 
 	// Ensure the Reasoning Engine also receives the new adapter so any future chat requests
 	// use the newly selected provider/model over what was loaded at initialization time.
 	if engine := s.GetReasoningEngine(); engine != nil {
 		engine.SetLLMAdapter(newAdapter)
+	}
+
+	// Notify the runtime LLMAdapterBridge (registered by cmd/server/main.go
+	// via SetAdapterChangeHook) so the gRPC chat engine picks up the new
+	// adapter. Without this the HTTP side would report "configured" while
+	// the gRPC side still served the frozen startup-time adapter — the
+	// exact "Save says Connected but chat still says Unreachable"
+	// paradox that motivated this hook.
+	if hook != nil {
+		hook(newAdapter)
 	}
 
 	// Keep the in-memory config in sync so /health and /info reflect the change.

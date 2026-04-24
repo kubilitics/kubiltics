@@ -5,6 +5,7 @@ package runtime
 
 import (
 	"context"
+	"sync"
 	"time"
 
 	"github.com/vellankikoti/kubilitics/brain/internal/llm/accounting"
@@ -18,8 +19,17 @@ import (
 // (text-only streaming) AND LLMToolProvider (the agentic loop). The engine
 // picks the tool path when both Tools+Executor are configured; otherwise it
 // falls back to the text-only path so existing tests keep working.
+//
+// The underlying adapter is held behind a RWMutex because the brain's
+// HTTP POST /api/v1/config/provider endpoint lets the user change LLM
+// provider at runtime (e.g. pasting a new key in AI Settings). Streaming
+// calls from the gRPC engine happen concurrently with that hot-wire.
+// Use .Adapter() to read and .SetAdapter() to swap; direct field access
+// on A is preserved for backward compatibility but is NOT thread-safe —
+// prefer the methods in new code.
 type LLMAdapterBridge struct {
-	A adapter.LLMAdapter
+	mu sync.RWMutex
+	A  adapter.LLMAdapter
 
 	// Tools + Executor are optional. When both are set, the engine wires
 	// CompleteWithTools as the streaming path. Set via cmd/server/main.go
@@ -40,8 +50,31 @@ type LLMAdapterBridge struct {
 	ToolRouter toolrouter.Router
 }
 
+// Adapter returns the current underlying adapter. Returns nil when no
+// adapter has been configured yet — callers must nil-check before use.
+// Safe for concurrent access with SetAdapter.
+func (b *LLMAdapterBridge) Adapter() adapter.LLMAdapter {
+	b.mu.RLock()
+	defer b.mu.RUnlock()
+	return b.A
+}
+
+// SetAdapter swaps the underlying adapter. Called by the brain's
+// runtime config endpoint when the user saves a new provider/key/model
+// in AI Settings — the bridge picks up the new adapter on the next
+// Stream* call without needing a full brain restart.
+func (b *LLMAdapterBridge) SetAdapter(a adapter.LLMAdapter) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	b.A = a
+}
+
 func (b *LLMAdapterBridge) StreamCompletion(ctx context.Context, prompt string) (<-chan string, error) {
-	textCh, toolCh, err := b.A.CompleteStream(ctx, []types.Message{{Role: "user", Content: prompt}}, nil)
+	a := b.Adapter()
+	if a == nil {
+		return nil, adapter.ErrProviderNotConfigured
+	}
+	textCh, toolCh, err := a.CompleteStream(ctx, []types.Message{{Role: "user", Content: prompt}}, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -74,6 +107,12 @@ func (b *LLMAdapterBridge) StreamCompletionWithTools(
 ) (<-chan toolStreamEvent, error) {
 	if b.Executor == nil {
 		// Should never happen — engine guards before calling this method.
+		return nil, adapter.ErrProviderNotConfigured
+	}
+	a := b.Adapter()
+	if a == nil {
+		// No provider configured yet (user hasn't saved AI Settings).
+		// Return a clear error; the engine surfaces this to the chat stream.
 		return nil, adapter.ErrProviderNotConfigured
 	}
 	cfg := b.AgentCfg
@@ -114,7 +153,7 @@ func (b *LLMAdapterBridge) StreamCompletionWithTools(
 		"has_system":    focusClusterID != "",
 		"focus_cluster": focusClusterID,
 	})
-	src, err := b.A.CompleteWithTools(
+	src, err := a.CompleteWithTools(
 		ctx,
 		msgs,
 		tools,
@@ -191,7 +230,7 @@ func (b *LLMAdapterBridge) StreamCompletionWithTools(
 			// (e.g. "openai", "ollama"). Per-model pricing goes through the
 			// Tallier's priceTable; unknown ids cleanly yield $0.
 			var providerID string
-			if gp, ok := b.A.(interface{ GetProvider() adapter.ProviderType }); ok {
+			if gp, ok := a.(interface{ GetProvider() adapter.ProviderType }); ok {
 				providerID = string(gp.GetProvider())
 			}
 			t := accounting.NewTallier(providerID)

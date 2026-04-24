@@ -121,18 +121,29 @@ func main() {
 	// so production deployments without those backends keep behaving exactly
 	// as v0.4.0. Real wire-level kagent/python integrations are scoped for v1.5;
 	// the registered engines emit structured "unimplemented" events until then.
-	// Defensive guard: if the LLM adapter failed to initialize (e.g. missing
-	// API key for the configured provider), srv.GetLLMAdapter() can be nil.
-	// In that case the LLMEngine would crash on the first Chat call AND the
-	// downstream gRPC server would silently come up serving a broken backend.
-	// Fail loud here instead — operators see a clear error and exit non-zero.
+	// Previously this block was a FATAL guard: if srv.GetLLMAdapter()
+	// returned nil (missing key, dead Ollama host, stale SQLite config
+	// pointing at an offline endpoint, etc.) we called os.Exit(1).
+	// That produced a chicken-and-egg loop — the desktop AI Settings
+	// page needs the brain to be LIVE to POST /api/v1/config/provider
+	// and hot-wire a working adapter, but the brain refused to stay up
+	// because it had no adapter. Users saw "AI Unreachable" forever
+	// with no way to fix it from the UI.
+	//
+	// Now we log loudly and keep running. The LLMEngine is still
+	// registered (with the nil adapter threaded through the bridge).
+	// StreamCompletion / StreamCompletionWithTools guard with a clear
+	// ErrProviderNotConfigured until the adapter becomes non-nil.
+	// cmd/server/main.go wires SetAdapterChangeHook below so
+	// POST /api/v1/config/provider swaps the bridge's adapter at
+	// runtime and chat starts working without a full restart.
 	llmAdapter := srv.GetLLMAdapter()
 	if llmAdapter == nil {
 		fmt.Fprintf(os.Stderr,
-			"Fatal: LLM adapter is nil for provider %q. Check that the provider's API key is set in the config file or via the appropriate env var (OPENAI_API_KEY / ANTHROPIC_API_KEY / OLLAMA_BASE_URL).\n",
+			"[WARN] LLM adapter is nil for provider %q at startup. Brain will run "+
+				"with chat disabled until the user saves a working provider in AI "+
+				"Settings (the hot-wire endpoint will activate it at runtime).\n",
 			cfg.LLM.Provider)
-		_ = grpcLis.Close()
-		os.Exit(1)
 	}
 
 	// Construct a shared audit logger for engine-level + safety-wrapper
@@ -157,6 +168,11 @@ func main() {
 		Tools:    toolSchemas,
 		Executor: toolExecutor,
 	}
+	// Hot-wire: when AI Settings POST /api/v1/config/provider builds a
+	// new adapter, the server notifies this hook and the bridge swaps
+	// atomically. The gRPC LLMEngine's very next StreamCompletion uses
+	// the new adapter — no restart needed.
+	srv.SetAdapterChangeHook(bridge.SetAdapter)
 	// Topic-aware tool filtering. Default OFF so this merge doesn't change
 	// production behavior; the Together.ai bench config flips it on via
 	// llm.tool_router.enabled, and operators can force it with
