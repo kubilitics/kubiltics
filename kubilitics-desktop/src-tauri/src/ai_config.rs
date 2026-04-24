@@ -295,103 +295,20 @@ pub async fn load_ai_config() -> Result<AIConfig, String> {
     })
 }
 
-/// Report for the one-shot keychain probe. Returned by migrate_has_api_key
-/// so the UI can tell the user whether migration ran and what the
-/// authoritative key state is.
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct MigrationReport {
-    /// True iff migration executed this call (false = already done earlier).
-    pub ran: bool,
-    /// Authoritative has_api_key after this call (env > keychain > cache).
-    pub has_api_key: bool,
-    /// True iff a key was actually found in the keychain for the configured
-    /// provider during this probe. Useful for UI to distinguish "env
-    /// override" from "real keychain entry".
-    pub key_found_in_keychain: bool,
-}
-
-/// One-shot keychain migration: authoritatively probes the OS keychain
-/// for the configured provider and writes the result into the yaml cache.
-///
-/// The UI calls this on first mount of AI Settings when the cached yaml
-/// has `migrated_keychain_probe: false`. It triggers AT MOST one keychain
-/// access per install lifetime, producing the expected macOS password
-/// prompt ONCE (with a clear "Verifying saved credentials…" toast
-/// preceding it so the prompt isn't a surprise). After this, the cached
-/// `has_api_key` flag is the authoritative UI state and no further
-/// keychain probes fire on page load.
-///
-/// Idempotent: calling after migration has run is a no-op (returns
-/// `ran=false` with the current cached state).
-#[command]
-pub async fn migrate_has_api_key() -> Result<MigrationReport, String> {
-    // Read current yaml. If it doesn't exist, there was nothing to migrate
-    // — mark migrated=true (so we don't re-probe a non-existent setup)
-    // and report no key.
-    let yaml = read_yaml()?;
-    let (provider, model, base_url, cached_flag, already) = match yaml {
-        Some(y) => (y.provider, y.model, y.base_url, y.has_api_key, y.migrated_keychain_probe),
-        None => {
-            // No yaml at all — write a minimal one marking migrated so
-            // the UI doesn't call this every mount on a fresh install.
-            let default_cfg = AIConfig {
-                provider: "openai".to_string(),
-                model: "gpt-4o".to_string(),
-                base_url: String::new(),
-                api_key: None,
-                has_api_key: false,
-            };
-            write_yaml(&default_cfg, false, true)?;
-            return Ok(MigrationReport { ran: false, has_api_key: false, key_found_in_keychain: false });
-        }
-    };
-
-    // Env-var override takes precedence without touching the keychain.
-    let env_key_present = std::env::var(ENV_API_KEY)
-        .ok()
-        .filter(|v| !v.is_empty())
-        .is_some();
-
-    if already {
-        // Already migrated — just honor env override and cached state.
-        return Ok(MigrationReport {
-            ran: false,
-            has_api_key: env_key_present || cached_flag,
-            key_found_in_keychain: cached_flag,
-        });
-    }
-
-    // Migration path: probe the keychain for the saved provider. This is
-    // the ONE authoritative keychain read per install. The macOS dialog
-    // the user may see here is expected; the UI shows a toast before
-    // invoking so they know why.
-    let key_found_in_keychain = if provider.is_empty() {
-        false
-    } else {
-        keychain_get(&provider)
-            .ok()
-            .flatten()
-            .map(|k| !k.is_empty())
-            .unwrap_or(false)
-    };
-
-    // Persist the authoritative result. From now on, `has_api_key` in
-    // yaml is the source of truth for the UI badge.
-    let cfg = AIConfig {
-        provider: provider.clone(),
-        model,
-        base_url,
-        api_key: None,
-        has_api_key: key_found_in_keychain,
-    };
-    write_yaml(&cfg, key_found_in_keychain, true)?;
-
-    Ok(MigrationReport {
-        ran: true,
-        has_api_key: env_key_present || key_found_in_keychain,
-        key_found_in_keychain,
-    })
-}
+// REMOVED: migrate_has_api_key
+//
+// This command used to do a one-shot authoritative keychain probe to
+// reconcile the cached `has_api_key` yaml flag with the real keychain
+// state (useful for users upgrading from pre-cache-flag builds). Even
+// one prompt on page open was deemed unacceptable UX — removed on user
+// request. The yaml cache is now the ONLY source for has_api_key on the
+// UI path. Users who had a key on a pre-cache build will see "needs
+// API key" until they next click Save; that single Save is the only
+// user-initiated keychain touch and the prompt there is expected.
+//
+// If the migration need resurfaces in a future release, reintroduce
+// behind a user-triggered "Verify keychain" button — never automatic
+// on mount.
 
 #[command]
 pub async fn test_llm_connection(cfg: AIConfig) -> Result<TestResult, String> {

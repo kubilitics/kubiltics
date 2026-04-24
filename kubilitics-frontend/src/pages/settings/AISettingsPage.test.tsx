@@ -152,34 +152,22 @@ describe('AISettingsPage (keychain round-trip)', () => {
 
   // ── Post-P0/P1/P2/P3 redesign ────────────────────────────────────────
 
-  it('calls migrate_has_api_key on mount (idempotent one-shot)', async () => {
+  it('NEVER probes the keychain on mount — no migrate_has_api_key call', async () => {
+    // Regression guard: the migration command existed briefly and was
+    // removed because even one prompt on page open was unacceptable.
+    // If a future refactor re-introduces any keychain-touching command
+    // on the mount path, this test fails and the reviewer has to make
+    // a conscious choice about user-visible prompts.
     renderPage();
+    // Wait long enough for all mount effects to settle.
     await waitFor(() => {
       const calls = (invoke as ReturnType<typeof vi.fn>).mock.calls.map((c) => c[0]);
-      expect(calls).toContain('migrate_has_api_key');
+      expect(calls).toContain('load_ai_config');
+      expect(calls).toContain('get_brain_status');
     });
-  });
-
-  it('surfaces a success toast when migration finds a saved key in the keychain', async () => {
-    const { toast } = await import('@/components/ui/sonner');
-    (invoke as ReturnType<typeof vi.fn>).mockImplementation((cmd: string) => {
-      if (cmd === 'load_ai_config') {
-        return Promise.resolve({ provider: 'openai', model: 'gpt-4o', base_url: '', has_api_key: false });
-      }
-      if (cmd === 'get_budget_status') return Promise.resolve({ spent_usd: 0, cap_usd: 0 });
-      if (cmd === 'migrate_has_api_key') {
-        return Promise.resolve({ ran: true, has_api_key: true, key_found_in_keychain: true });
-      }
-      if (cmd === 'get_brain_status') return Promise.resolve({ status: 'ready' });
-      if (cmd === 'detect_available_providers') return Promise.resolve([]);
-      return Promise.resolve(undefined);
-    });
-    renderPage();
-    await waitFor(() => {
-      expect(toast.success).toHaveBeenCalledWith(
-        expect.stringMatching(/verified saved api key/i),
-      );
-    });
+    const calls = (invoke as ReturnType<typeof vi.fn>).mock.calls.map((c) => c[0]);
+    expect(calls).not.toContain('migrate_has_api_key');
+    expect(calls).not.toContain('test_llm_connection'); // test is ALSO keychain-touching
   });
 
   it('hides the brain reachability banner when the engine is ready', async () => {

@@ -268,39 +268,32 @@ export default function AISettingsPage() {
   };
 
   // ── Lifecycle ───────────────────────────────────────────────────────────
+  // HARD RULE: mounting this page must NEVER hit the keychain, directly
+  // or transitively. macOS binds keychain ACLs to a binary signature
+  // hash; every `cargo tauri dev` rebuild shifts the hash and any
+  // keychain access triggers the "enter login password" dialog. There
+  // used to be a one-shot migration here that probed the keychain once
+  // per install to reconcile an older yaml schema. Even one prompt on
+  // open is a prompt too many — removed. Users who saved a key on a
+  // pre-cache-flag build will see "needs API key" until they next hit
+  // Save; that single Save is the only time the keychain is touched,
+  // and they expect a prompt there. No more surprise dialogs on page
+  // open. Ever.
   useEffect(() => {
     void (async () => {
       // 1. Hydrate non-secret config from yaml. Never touches the keychain.
       await store.hydrate();
 
-      // 2. One-shot keychain migration. Only users upgrading from a
-      //    pre-cache-flag build hit the real probe — fresh installs are
-      //    short-circuited server-side. Either way we call unconditionally
-      //    (idempotent) and only surface a toast when the backing call
-      //    is actually going to hit the keychain (`ran: true`).
-      const report = await store.migrateKeychainFlag();
-      if (report.ran && report.keyFoundInKeychain) {
-        toast.success('Verified saved API key in your OS keychain.');
-      } else if (report.ran && !report.keyFoundInKeychain) {
-        // Migration ran but found nothing — yaml will now say has_api_key:
-        // false authoritatively. Don't toast; the UI's "needs API key"
-        // badge already communicates the state.
+      // 2. Brain reachability. Pure in-memory bool on the Rust side —
+      //    no file I/O, no keychain, no network.
+      try {
+        const s = await invoke<BrainStatus>('get_brain_status');
+        setBrainReady(s.status === 'ready');
+      } catch {
+        setBrainReady(false);
       }
 
-      // 3. Brain reachability. Check once on mount, then every 5s until
-      //    it goes ready. The polling interval is cheap (just a Tauri
-      //    command that reads an in-memory bool), no network cost.
-      const pollBrain = async () => {
-        try {
-          const s = await invoke<BrainStatus>('get_brain_status');
-          setBrainReady(s.status === 'ready');
-        } catch {
-          setBrainReady(false);
-        }
-      };
-      await pollBrain();
-
-      // Budget probe — harmless if the brain is down; it just returns nulls.
+      // 3. Budget probe — harmless if the brain is down; returns nulls.
       try {
         const b = await invoke<{ spent_usd: number; cap_usd: number }>('get_budget_status');
         setBudgetSpent(b.spent_usd);

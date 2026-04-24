@@ -37,25 +37,6 @@ export interface AIConfigState {
   hydrate: () => Promise<void>;
   save: (cfg: AIConfigInput) => Promise<void>;
   testConnection: (cfg: AIConfigInput) => Promise<TestResult>;
-  /**
-   * One-shot keychain migration. On the first AI Settings mount after
-   * the cached `has_api_key` flag was introduced, we authoritatively
-   * probe the keychain once to populate it (the cached flag defaults to
-   * false in old yaml files, producing a confusing "key in keychain: no"
-   * badge for users who did save a key on a previous build). Safe to
-   * call every mount — the Rust side is idempotent and returns
-   * `ran: false` after the first successful migration.
-   */
-  migrateKeychainFlag: () => Promise<MigrationReport>;
-}
-
-export interface MigrationReport {
-  /** True if migration actually ran on this invocation (one-shot). */
-  ran: boolean;
-  /** Authoritative has_api_key after this call. */
-  hasApiKey: boolean;
-  /** True if the keychain actually contained a key for the saved provider. */
-  keyFoundInKeychain: boolean;
 }
 
 // Rust payload shape (snake_case).
@@ -220,28 +201,6 @@ export const useAIConfigStore = create<AIConfigState>((set, get) => ({
       };
     } catch (err) {
       return { ok: false, error: String(err) };
-    }
-  },
-
-  migrateKeychainFlag: async () => {
-    interface RustMigrationReport {
-      ran: boolean;
-      has_api_key: boolean;
-      key_found_in_keychain: boolean;
-    }
-    try {
-      const res = await invoke<RustMigrationReport>('migrate_has_api_key');
-      // Reflect the authoritative result back into the store so the UI
-      // renders the correct badge immediately.
-      set({ hasApiKey: res.has_api_key });
-      return {
-        ran: res.ran,
-        hasApiKey: res.has_api_key,
-        keyFoundInKeychain: res.key_found_in_keychain,
-      };
-    } catch (err) {
-      set({ lastError: String(err) });
-      return { ran: false, hasApiKey: false, keyFoundInKeychain: false };
     }
   },
 }));
