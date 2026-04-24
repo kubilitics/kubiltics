@@ -7,7 +7,7 @@ import { Header } from './Header';
 import { Sidebar } from './Sidebar';
 import { OfflineIndicator } from '@/components/OfflineIndicator';
 import { ConnectionLostBanner } from '@/components/ConnectionLostBanner';
-import { useClusterStore } from '@/stores/clusterStore';
+import { useDemoStore } from '@/stores/demoStore';
 import { useRecentlyVisited } from '@/hooks/useRecentlyVisited';
 import { analyticsService } from '@/services/analyticsService';
 import { isTauri } from '@/lib/tauri';
@@ -43,7 +43,7 @@ export function AppLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const reduceMotion = useReducedMotion();
-  const isDemo = useClusterStore((s) => s.isDemo);
+  const isDemo = useDemoStore((s) => s.isDemo);
   // PERF Area 2: Restore scroll position when navigating back to a previously visited page
   const mainRef = useRef<HTMLElement>(null);
   useScrollRestoration(mainRef);
@@ -107,7 +107,7 @@ export function AppLayout() {
         >
           <span>Demo Mode — showing sample data.</span>
           <Link
-            to="/connect"
+            to="/clusters"
             className="underline font-semibold hover:no-underline focus:outline-none focus:ring-2 focus:ring-amber-500 rounded"
           >
             Connect a real cluster

@@ -22,7 +22,7 @@ import {
 import { toast } from '@/components/ui/sonner';
 import { startPortForward, stopPortForward } from '@/services/backendApiClient';
 import { usePortForwardStore } from '@/stores/portForwardStore';
-import { useClusterStore } from '@/stores/clusterStore';
+import { useActiveCluster } from '@/stores/clusterPresenceStore';
 import { openExternal } from '@/lib/tauri';
 
 export interface PortInfo {
@@ -153,7 +153,7 @@ export function PortForwardDialog({
   };
 
   const addForward = usePortForwardStore((s) => s.add);
-  const clusterName = useClusterStore((s) => s.activeCluster?.name ?? 'cluster');
+  const clusterName = useActiveCluster()?.name ?? 'cluster';
 
   const handleStartForwarding = async () => {
     if (!selectedPort || !localPort) return;

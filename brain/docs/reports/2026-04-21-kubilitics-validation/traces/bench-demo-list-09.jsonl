@@ -1,0 +1,6 @@
+{"bytes":17,"stage":"user_msg","ts":"2026-04-21T17:26:19.245636Z","turn_id":"bench-demo-list-09"}
+{"bytes":2380,"focus_cluster":"5cb1f37d-e31e-4915-8c4d-bdf36ef335ec","has_system":true,"messages":2,"stage":"llm_prompt_in","ts":"2026-04-21T17:26:19.245921Z","turn_id":"bench-demo-list-09"}
+{"arg_keys":["kind","namespace","cluster_id"],"cluster_id":"5cb1f37d-e31e-4915-8c4d-bdf36ef335ec","stage":"tool_dispatch","tool_name":"get_resource","ts":"2026-04-21T17:26:28.823947Z","turn_id":"bench-demo-list-09"}
+{"arg_keys":["namespace","cluster_id","kind","name"],"cluster_id":"5cb1f37d-e31e-4915-8c4d-bdf36ef335ec","stage":"tool_dispatch","tool_name":"get_resource","ts":"2026-04-21T17:26:40.454371Z","turn_id":"bench-demo-list-09"}
+{"method":"GET","path":"/api/v1/clusters/5cb1f37d-e31e-4915-8c4d-bdf36ef335ec/resources/pods/default/example-pod","resp_bytes":157,"stage":"backend_k8s_fetch","ts":"2026-04-21T17:26:40.466532Z","turn_id":"bench-demo-list-09"}
+{"bytes":1123,"stage":"llm_text_out","ts":"2026-04-21T17:26:49.073414Z","turn_id":"bench-demo-list-09"}

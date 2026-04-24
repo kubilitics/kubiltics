@@ -2,10 +2,11 @@ import { useQuery } from '@tanstack/react-query';
 import { useK8sResource, useK8sResourceList, calculateAge, type KubernetesResource, type ResourceType } from './useKubernetes';
 import { useConnectionStatus } from '@/hooks/useConnectionStatus';
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
-import { useClusterStore } from '@/stores/clusterStore';
+import { useActiveCluster } from '@/stores/clusterPresenceStore';
 import { getResourceEvents } from '@/services/backendApiClient';
 import yaml from 'js-yaml';
 
+import { useActiveClusterId } from '@/hooks/useActiveClusterId';
 /** Canonical K8s kind for involvedObject (used in events fieldSelector). */
 export const RESOURCE_EVENTS_KIND = [
   'Pod', 'Deployment', 'ReplicaSet', 'StatefulSet', 'DaemonSet', 'Job', 'CronJob',
@@ -74,7 +75,7 @@ export function useResourceEvents(
   const storedUrl = useBackendConfigStore((s) => s.backendBaseUrl);
   const baseUrl = getEffectiveBackendBaseUrl(storedUrl);
   const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured());
-  const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
+  const currentClusterId = useActiveClusterId();
   const clusterId = currentClusterId ?? null;
   const useBackend = !!(isBackendConfigured && clusterId && name && (namespace !== undefined || kind === 'IngressClass'));
 
@@ -121,7 +122,7 @@ export function usePodEvents(namespace: string | undefined, podName: string | un
   const storedUrl = useBackendConfigStore((s) => s.backendBaseUrl);
   const backendBaseUrl = getEffectiveBackendBaseUrl(storedUrl);
   const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured());
-  const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
+  const currentClusterId = useActiveClusterId();
   const clusterId = currentClusterId ?? null;
   const enabled = !!(isBackendConfigured && clusterId && namespace && podName);
 

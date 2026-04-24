@@ -1,0 +1,3 @@
+{"bytes":24,"stage":"user_msg","ts":"2026-04-21T17:22:54.783834Z","turn_id":"bench-demo-list-04"}
+{"bytes":2387,"focus_cluster":"5cb1f37d-e31e-4915-8c4d-bdf36ef335ec","has_system":true,"messages":2,"stage":"llm_prompt_in","ts":"2026-04-21T17:22:54.784196Z","turn_id":"bench-demo-list-04"}
+{"bytes":0,"stage":"llm_text_out","ts":"2026-04-21T17:23:00.309137Z","turn_id":"bench-demo-list-04"}

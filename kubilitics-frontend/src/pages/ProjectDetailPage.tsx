@@ -34,9 +34,9 @@ import { useProject, useProjectMutations } from '@/hooks/useProjects';
 import { useProjectStore, type Project } from '@/stores/projectStore';
 import type { BackendProjectWithDetails } from '@/services/backendApiClient';
 import { useClustersFromBackend } from '@/hooks/useClustersFromBackend';
-import { useClusterStore } from '@/stores/clusterStore';
+import { setActiveClusterBySessionId } from '@/stores/clusterPresenceStore';
+import { useDemoStore } from '@/stores/demoStore';
 import { useBackendConfigStore } from '@/stores/backendConfigStore';
-import { backendClusterToCluster } from '@/lib/backendClusterAdapter';
 import { toast } from '@/components/ui/sonner';
 import { AddClusterDialog } from '@/features/projects/AddClusterDialog';
 import { AddNamespaceDialog } from '@/features/projects/AddNamespaceDialog';
@@ -78,8 +78,7 @@ export default function ProjectDetailPage() {
   const [addNamespaceClusterId, setAddNamespaceClusterId] = useState<string | undefined>(undefined);
   const [editProjectOpen, setEditProjectOpen] = useState(false);
   const [deleteProjectOpen, setDeleteProjectOpen] = useState(false);
-  const { setActiveCluster, setClusters, setDemo } = useClusterStore();
-  const setCurrentClusterId = useBackendConfigStore((s) => s.setCurrentClusterId);
+  const setDemo = useDemoStore((s) => s.setDemo);
   const clustersQuery = useClustersFromBackend();
   const allClusters = clustersQuery.data ?? [];
 
@@ -103,11 +102,8 @@ export default function ProjectDetailPage() {
       toast.error('Cluster not found');
       return;
     }
-    const connected = allClusters.map(backendClusterToCluster);
-    const active = backendClusterToCluster(backendCluster);
-    setCurrentClusterId(clusterId);
-    setClusters(connected);
-    setActiveCluster(active);
+    // Presence SSE has every registered cluster; activate by session id.
+    setActiveClusterBySessionId(clusterId);
     setDemo(false);
     toast.success(`Connected to ${backendCluster.name}`);
     navigate(`/projects/${projectId}/dashboard`, { replace: true });

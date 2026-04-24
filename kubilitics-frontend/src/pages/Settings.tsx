@@ -18,12 +18,11 @@ import {
   AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
-import { useClusterStore } from '@/stores/clusterStore';
+import { useActiveCluster, setActiveClusterBySessionId } from '@/stores/clusterPresenceStore';
 import { getHealth, deleteCluster, getProjects, deleteProject, type BackendCluster, type BackendProject } from '@/services/backendApiClient';
 import { useClustersFromBackend } from '@/hooks/useClustersFromBackend';
 import { useActiveClusterId } from '@/hooks/useActiveClusterId';
 import { useBackendCircuitOpen } from '@/hooks/useBackendCircuitOpen';
-import { backendClusterToCluster } from '@/lib/backendClusterAdapter';
 import { CreateProjectDialog } from '@/components/projects/CreateProjectDialog';
 import { ProjectCard } from '@/components/projects/ProjectCard';
 import { ProjectSettingsDialog } from '@/components/projects/ProjectSettingsDialog';
@@ -60,10 +59,6 @@ export default function Settings() {
   const setBackendBaseUrl = useBackendConfigStore((s) => s.setBackendBaseUrl);
   const effectiveBackendBaseUrl = useMemo(() => getEffectiveBackendBaseUrl(backendBaseUrl), [backendBaseUrl]);
   const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured());
-  const setCurrentClusterId = useBackendConfigStore((s) => s.setCurrentClusterId);
-  const setActiveCluster = useClusterStore((s) => s.setActiveCluster);
-  const setClusters = useClusterStore((s) => s.setClusters);
-  const storeClusters = useClusterStore((s) => s.clusters);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
@@ -83,15 +78,15 @@ export default function Settings() {
     },
     onSuccess: (_, cluster) => {
       queryClient.invalidateQueries({ queryKey: ['backend', 'clusters', effectiveBackendBaseUrl] });
-
-      // Remove from Zustand store so header dropdown updates immediately
-      const remainingStore = storeClusters.filter((c) => c.id !== cluster.id);
-      setClusters(remainingStore);
-
+      // Presence SSE removes the deleted cluster from the store automatically;
+      // we only need to rotate the backend-config pointer and activate the
+      // fallback if the user was viewing the deleted cluster.
       if (cluster.id === currentClusterId) {
         const remaining = clusters.filter((c) => c.id !== cluster.id);
-        setCurrentClusterId(remaining[0]?.id ?? null);
-        if (remaining[0]) setActiveCluster(backendClusterToCluster(remaining[0]));
+        const fallbackId = remaining[0]?.id ?? null;
+        if (fallbackId) {
+          setActiveClusterBySessionId(fallbackId);
+        }
       }
       setClusterToRemove(null);
       toast.success('Cluster removed');
@@ -370,7 +365,7 @@ export default function Settings() {
                 </CardDescription>
               </div>
             </div>
-            <Button variant="default" size="sm" className="rounded-xl h-9 bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm" onClick={() => navigate('/connect?addCluster=true')}>
+            <Button variant="default" size="sm" className="rounded-xl h-9 bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm" onClick={() => navigate('/clusters?addCluster=true')}>
               <Plus className="h-4 w-4 mr-1.5" />
               Add Cluster
             </Button>
@@ -384,7 +379,7 @@ export default function Settings() {
               </div>
               <p className="text-sm font-semibold text-foreground">No clusters connected</p>
               <p className="text-xs text-muted-foreground mt-1.5 max-w-xs mx-auto">Connect a Kubernetes cluster to start monitoring workloads, nodes, and services</p>
-              <Button size="sm" className="mt-5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => navigate('/connect?addCluster=true')}>
+              <Button size="sm" className="mt-5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => navigate('/clusters?addCluster=true')}>
                 <Plus className="h-4 w-4 mr-1.5" />
                 Connect First Cluster
               </Button>
@@ -448,8 +443,7 @@ export default function Settings() {
                             size="sm"
                             className="h-8 text-xs rounded-lg flex-1 border-blue-200 text-blue-700 hover:bg-blue-50 dark:border-blue-800 dark:text-blue-300 dark:hover:bg-blue-950/40"
                             onClick={() => {
-                              setCurrentClusterId(cluster.id);
-                              setActiveCluster(backendClusterToCluster(cluster));
+                              setActiveClusterBySessionId(cluster.id);
                               toast.success(`Switched to ${cluster.name}`);
                             }}
                           >

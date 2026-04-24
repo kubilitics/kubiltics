@@ -4,12 +4,13 @@
  */
 import { Link } from 'react-router-dom';
 import { Server } from 'lucide-react';
-import { useClusterStore } from '@/stores/clusterStore';
+import { useActiveCluster } from '@/stores/clusterPresenceStore';
 import { useBackendConfigStore } from '@/stores/backendConfigStore';
 import { useClusterSummary } from '@/hooks/useClusterSummary';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
+import { useActiveClusterId } from '@/hooks/useActiveClusterId';
 const PROVIDER_LABELS: Record<string, string> = {
   eks: 'EKS',
   gke: 'GKE',
@@ -24,19 +25,20 @@ function formatProvider(p: string): string {
 }
 
 export function ClusterDetailsPanel() {
-  const { activeCluster } = useClusterStore();
-  const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
+  const activeCluster = useActiveCluster();
+  const currentClusterId = useActiveClusterId();
   const clusterId = currentClusterId ?? null;
   const summaryQuery = useClusterSummary(clusterId ?? undefined);
 
-  // Real data: version from cluster, provider formatted, region or — when unknown
-  const version = activeCluster?.version?.trim() ? activeCluster.version : '—';
+  // Provider comes from presence; version/region metadata is not carried in the
+  // presence layer and is shown as "—" until a dedicated metadata endpoint is
+  // wired up. Namespace count comes from the cluster summary API.
+  const version = '—';
   const provider = formatProvider(activeCluster?.provider ?? '');
-  const rawRegion = activeCluster?.region ?? '';
-  const region = rawRegion && rawRegion !== 'default' ? rawRegion : '—';
+  const region = '—';
   const namespaces = typeof summaryQuery.data?.namespace_count === 'number'
     ? summaryQuery.data.namespace_count
-    : (activeCluster?.namespaces ?? 0);
+    : 0;
 
   const items = [
     { label: 'Cluster Version', value: version, bold: false },

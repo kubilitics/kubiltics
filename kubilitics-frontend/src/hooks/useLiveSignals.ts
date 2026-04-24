@@ -9,13 +9,14 @@
  */
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { useClusterStore } from '@/stores/clusterStore';
+import { useActiveCluster, useClusterPresenceStore } from '@/stores/clusterPresenceStore';
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
 import { useK8sResourceList } from './useKubernetes';
 import { getEvents } from '@/services/backendApiClient';
 import { useClusterSummary } from './useClusterSummary';
 import { useClusterOverview } from './useClusterOverview';
 
+import { useActiveClusterId } from '@/hooks/useActiveClusterId';
 function getRestartCount(pod: { status?: { containerStatuses?: Array<{ restartCount?: number }> } }): number {
   const statuses = pod?.status?.containerStatuses ?? [];
   return statuses.reduce((sum, s) => sum + (s.restartCount ?? 0), 0);
@@ -52,11 +53,12 @@ export interface LiveSignals {
 }
 
 export function useLiveSignals(): LiveSignals {
-  const { activeCluster, clusters } = useClusterStore();
+  const activeCluster = useActiveCluster();
+  const clusters = useClusterPresenceStore((s) => s.availableClusters());
   const storedUrl = useBackendConfigStore((s) => s.backendBaseUrl);
   const backendBaseUrl = getEffectiveBackendBaseUrl(storedUrl);
   const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured());
-  const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
+  const currentClusterId = useActiveClusterId();
   const clusterId = currentClusterId ?? null;
 
   // Backend path: reuse existing cluster summary + overview queries (already cached from Dashboard)

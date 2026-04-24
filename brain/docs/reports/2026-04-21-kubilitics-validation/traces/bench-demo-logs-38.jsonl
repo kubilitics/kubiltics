@@ -1,0 +1,6 @@
+{"bytes":26,"stage":"user_msg","ts":"2026-04-21T17:51:47.039448Z","turn_id":"bench-demo-logs-38"}
+{"bytes":2389,"focus_cluster":"5cb1f37d-e31e-4915-8c4d-bdf36ef335ec","has_system":true,"messages":2,"stage":"llm_prompt_in","ts":"2026-04-21T17:51:47.039773Z","turn_id":"bench-demo-logs-38"}
+{"arg_keys":["namespace","cluster_id","pod_name"],"cluster_id":"5cb1f37d-e31e-4915-8c4d-bdf36ef335ec","stage":"tool_dispatch","tool_name":"observe_pod_events","ts":"2026-04-21T17:51:56.666067Z","turn_id":"bench-demo-logs-38"}
+{"arg_keys":["namespace","pod_name","filter","cluster_id"],"cluster_id":"5cb1f37d-e31e-4915-8c4d-bdf36ef335ec","stage":"tool_dispatch","tool_name":"observe_pod_logs_filtered","ts":"2026-04-21T17:51:56.667093Z","turn_id":"bench-demo-logs-38"}
+{"bytes_in":180,"bytes_out":180,"stage":"tool_result_summarized","tool_name":"observe_pod_logs_filtered","ts":"2026-04-21T17:51:56.890538Z","turn_id":"bench-demo-logs-38"}
+{"bytes":581,"stage":"llm_text_out","ts":"2026-04-21T17:52:05.662744Z","turn_id":"bench-demo-logs-38"}

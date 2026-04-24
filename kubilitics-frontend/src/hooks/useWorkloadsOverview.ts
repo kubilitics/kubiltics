@@ -5,11 +5,12 @@
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
-import { useClusterStore } from '@/stores/clusterStore';
+import { useActiveCluster } from '@/stores/clusterPresenceStore';
 import { getWorkloadsOverview, type WorkloadsOverview } from '@/services/backendApiClient';
 import { useK8sResourceList } from './useKubernetes';
 import { useClusterOverview } from './useClusterOverview';
 
+import { useActiveClusterId } from '@/hooks/useActiveClusterId';
 function aggregateFromK8s(
   deployments: Record<string, unknown>[],
   statefulsets: Record<string, unknown>[],
@@ -170,8 +171,8 @@ function aggregateFromK8s(
 }
 
 export function useWorkloadsOverview() {
-  const { activeCluster } = useClusterStore();
-  const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
+  const activeCluster = useActiveCluster();
+  const currentClusterId = useActiveClusterId();
   const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured());
   const stored = useBackendConfigStore((s) => s.backendBaseUrl);
   const backendBaseUrl = getEffectiveBackendBaseUrl(stored);

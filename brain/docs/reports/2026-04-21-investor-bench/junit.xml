@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="chat-quality" tests="5" failures="5">
+  <testcase name="bench-demo-list-01" time="62.057">
+    <failure message="empty text answer">prompt_id=&#x27;bench-demo-list-01&#x27; tools=1 text_len=0</failure>
+  </testcase>
+  <testcase name="bench-demo-list-02" time="177.734">
+    <failure message="llm_error: agentic loop exceeded max turns (20)">prompt_id=&#x27;bench-demo-list-02&#x27; tools=20 text_len=0</failure>
+  </testcase>
+  <testcase name="bench-demo-list-03" time="5.995">
+    <failure message="empty text answer">prompt_id=&#x27;bench-demo-list-03&#x27; tools=0 text_len=0</failure>
+  </testcase>
+  <testcase name="bench-demo-list-04" time="4.738">
+    <failure message="empty text answer">prompt_id=&#x27;bench-demo-list-04&#x27; tools=0 text_len=0</failure>
+  </testcase>
+  <testcase name="bench-demo-list-05" time="300.553">
+    <failure message="timeout after 5m0s">prompt_id=&#x27;bench-demo-list-05&#x27; tools=19 text_len=0</failure>
+  </testcase>
+</testsuite>

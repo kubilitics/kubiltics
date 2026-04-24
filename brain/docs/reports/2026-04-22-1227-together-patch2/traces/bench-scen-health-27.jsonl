@@ -1,0 +1,9 @@
+{"bytes":88,"stage":"user_msg","ts":"2026-04-22T06:51:14.321354Z","turn_id":"bench-scen-health-27"}
+{"selected_topics":["core","rbac","workloads"],"stage":"tool_filter","tool_count":30,"total_available":138,"ts":"2026-04-22T06:51:14.321783Z","turn_id":"bench-scen-health-27"}
+{"bytes":2451,"focus_cluster":"5cb1f37d-e31e-4915-8c4d-bdf36ef335ec","has_system":true,"messages":2,"stage":"llm_prompt_in","ts":"2026-04-22T06:51:14.321811Z","turn_id":"bench-scen-health-27"}
+{"arg_keys":["cluster_id"],"cluster_id":"5cb1f37d-e31e-4915-8c4d-bdf36ef335ec","stage":"tool_dispatch","tool_name":"get_cluster_health","ts":"2026-04-22T06:51:16.411935Z","turn_id":"bench-scen-health-27"}
+{"method":"GET","path":"/api/v1/clusters/5cb1f37d-e31e-4915-8c4d-bdf36ef335ec/overview","resp_bytes":1548,"stage":"backend_k8s_fetch","ts":"2026-04-22T06:51:16.414784Z","turn_id":"bench-scen-health-27"}
+{"method":"GET","path":"/api/v1/clusters/5cb1f37d-e31e-4915-8c4d-bdf36ef335ec/workloads","resp_bytes":1485,"stage":"backend_k8s_fetch","ts":"2026-04-22T06:51:16.65021Z","turn_id":"bench-scen-health-27"}
+{"bytes_in":3156,"bytes_out":3156,"stage":"tool_result_summarized","tool_name":"get_cluster_health","ts":"2026-04-22T06:51:16.650735Z","turn_id":"bench-scen-health-27"}
+{"bytes":336,"preview":"The cluster is currently healthy with a score of 95. There are a few issues to note: \n* 2 pods are in a CrashLoopBackOff state\n* 1 deployment is partially unavailable\n* There are 8 warning events and 30 total container restarts detected\n* 2 nodes have moderate restarts. \n\nThese issues should be investigated by the next on-call person.","stage":"llm_text_out","ts":"2026-04-22T06:51:18.375588Z","turn_id":"bench-scen-health-27"}
+{"duration_ms":4053,"finish_reason":"stop","stage":"done","ts":"2026-04-22T06:51:18.375715Z","turn_id":"bench-scen-health-27"}

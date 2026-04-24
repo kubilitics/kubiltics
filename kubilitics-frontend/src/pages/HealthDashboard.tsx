@@ -37,7 +37,7 @@ import { ListPagination } from '@/components/list/ListPagination';
 import { SectionOverviewHeader } from '@/components/layout/SectionOverviewHeader';
 import { AskAIButton } from '@/components/ai/AskAIButton';
 import { useAIContext } from '@/hooks/useAIContext';
-import { useClusterStore } from '@/stores/clusterStore';
+import { useActiveCluster } from '@/stores/clusterPresenceStore';
 import { PageLayout } from '@/components/layout/PageLayout';
 import { PageLoadingState } from '@/components/PageLoadingState';
 import { ApiError } from '@/components/ui/error-state';
@@ -50,6 +50,7 @@ import { InsightsBanner } from '@/components/events/InsightsBanner';
 import { HealthChangesCard } from '@/components/events/HealthChangesCard';
 import type { ComponentScore, NamespaceHealth } from '@/services/api/clusterHealth';
 
+import { useActiveClusterId } from '@/hooks/useActiveClusterId';
 /* ─── Constants ───────────────────────────────────────────────────────────── */
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50];
@@ -279,8 +280,8 @@ export default function HealthDashboard() {
   const [pageSize, setPageSize] = useState(10);
   const [pageIndex, setPageIndex] = useState(0);
 
-  const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
-  const activeClusterId = useClusterStore((s) => s.activeCluster?.id);
+  const currentClusterId = useActiveClusterId();
+  const activeClusterId = useActiveCluster()?.id ?? null;
   const aiCtx = useMemo(() => ({
     type: 'dashboard' as const,
     cluster: activeClusterId ?? currentClusterId ?? '',

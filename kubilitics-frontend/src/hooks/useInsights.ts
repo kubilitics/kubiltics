@@ -4,11 +4,12 @@
  */
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { useClusterStore } from '@/stores/clusterStore';
+import { useActiveCluster } from '@/stores/clusterPresenceStore';
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
 import { useK8sResourceList } from './useKubernetes';
 import { getEvents } from '@/services/backendApiClient';
 
+import { useActiveClusterId } from '@/hooks/useActiveClusterId';
 export type InsightSeverity = 'info' | 'warning' | 'critical';
 
 export interface Insight {
@@ -59,8 +60,8 @@ function linkFor(kind: string, namespace: string, name: string): string {
 }
 
 export function useInsights(): { insights: Insight[]; isLoading: boolean } {
-  const { activeCluster } = useClusterStore();
-  const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
+  const activeCluster = useActiveCluster();
+  const currentClusterId = useActiveClusterId();
   const storedUrl = useBackendConfigStore((s) => s.backendBaseUrl);
   const backendBaseUrl = getEffectiveBackendBaseUrl(storedUrl);
   const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured());

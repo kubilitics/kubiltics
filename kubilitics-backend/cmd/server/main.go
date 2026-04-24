@@ -33,6 +33,7 @@ import (
 	"github.com/kubilitics/kubilitics-backend/internal/api/middleware"
 	"github.com/kubilitics/kubilitics-backend/internal/api/rest"
 	"github.com/kubilitics/kubilitics-backend/internal/autopilot"
+	"github.com/kubilitics/kubilitics-backend/internal/cluster/discovery"
 	"github.com/kubilitics/kubilitics-backend/internal/api/websocket"
 	"github.com/kubilitics/kubilitics-backend/internal/addon/notifications"
 	"github.com/kubilitics/kubilitics-backend/internal/addon/helm"
@@ -190,6 +191,50 @@ type routerHandleFuncAdapter struct {
 
 func (a routerHandleFuncAdapter) HandleFunc(pattern string, h func(http.ResponseWriter, *http.Request)) {
 	a.r.HandleFunc(pattern, h)
+}
+
+// resolveKubeconfigPaths honors the KUBECONFIG env var (os.PathListSeparator
+// split) then falls back to $HOME/.kube/config. Returns nil when neither is
+// usable — callers should treat nil as "no kubeconfig source to register".
+func resolveKubeconfigPaths() []string {
+	if env := os.Getenv("KUBECONFIG"); env != "" {
+		return filepath.SplitList(env)
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return nil
+	}
+	return []string{filepath.Join(home, ".kube", "config")}
+}
+
+// clusterRepoAdapter adapts the existing repository's List(ctx) method to
+// the minimal discovery.ClusterRepository read port (ListAll() returning a
+// thin StoredCluster shape). The adapter isolates ManualSource from the
+// rich models.Cluster type.
+type clusterRepoAdapter struct {
+	repo interface {
+		List(ctx context.Context) ([]*models.Cluster, error)
+	}
+}
+
+func (a *clusterRepoAdapter) ListAll() ([]discovery.StoredCluster, error) {
+	rows, err := a.repo.List(context.Background())
+	if err != nil {
+		return nil, err
+	}
+	out := make([]discovery.StoredCluster, 0, len(rows))
+	for _, r := range rows {
+		if r == nil {
+			continue
+		}
+		out = append(out, discovery.StoredCluster{
+			Name:      r.Name,
+			ServerURL: r.ServerURL,
+			SessionID: r.ID,
+			Provider:  r.Provider,
+		})
+	}
+	return out, nil
 }
 
 func main() {
@@ -639,6 +684,42 @@ func main() {
 	router.HandleFunc("/api/v1/clusters/{clusterId}/resources/deployments/{namespace}/{name}/rollout-history", handler.GetDeploymentRolloutHistory).Methods("GET")
 	router.HandleFunc("/api/v1/clusters/{clusterId}/resources/deployments/{namespace}/{name}/rollback", handler.PostDeploymentRollback).Methods("POST")
 	router.HandleFunc("/api/v1/clusters/{clusterId}/shell/stream", handler.GetShellStream).Methods("GET")
+
+	// Presence layer (onboarding-v2). Mounted unconditionally — the V2
+	// path is now the only path (FEATURE_PRESENCE_V2 flag removed in
+	// Phase 7). Real composer of DiscoverySources (kubeconfig files,
+	// in-cluster Secrets when reachable, manual DB). First-wins dedup
+	// across sources: earlier entries in the slice take precedence.
+	var presenceSources []discovery.DiscoverySource
+	if kcPaths := resolveKubeconfigPaths(); len(kcPaths) > 0 {
+		presenceSources = append(presenceSources, discovery.NewKubeconfigFileSource(kcPaths))
+	}
+	if inClusterCfg, inClusterErr := k8srest.InClusterConfig(); inClusterErr == nil {
+		if inCS, csErr := kubernetes.NewForConfig(inClusterCfg); csErr == nil {
+			presenceSources = append(presenceSources, discovery.NewKubernetesSecretSource(inCS, "kubilitics"))
+		}
+	}
+	presenceSources = append(presenceSources, discovery.NewManualSource(&clusterRepoAdapter{repo: repo}))
+
+	discoveryMgr := discovery.NewManager(presenceSources)
+	if refreshErr := discoveryMgr.Refresh(context.Background()); refreshErr != nil {
+		log.Warn("initial discovery refresh failed; /api/v1/presence will start empty", "error", refreshErr.Error())
+	}
+
+	presenceHandler := rest.NewPresenceHandler(discoveryMgr)
+	router.HandleFunc("/api/v1/presence", presenceHandler.GetSnapshot).Methods("GET")
+	router.HandleFunc("/api/v1/presence/events", presenceHandler.StreamEvents).Methods("GET")
+
+	// Periodic refresh (defensive — watch streams should keep state up to
+	// date, but a dropped channel or misbehaving source shouldn't silently
+	// stall the snapshot).
+	go func() {
+		t := time.NewTicker(60 * time.Second)
+		defer t.Stop()
+		for range t.C {
+			_ = discoveryMgr.Refresh(context.Background())
+		}
+	}()
 
 	// actualPort is set after we bind; health handler includes it for discovery (e.g. desktop)
 	var actualPort int

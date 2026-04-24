@@ -6,16 +6,24 @@
  */
 import { useEffect, useRef } from 'react';
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
-import { useClusterStore } from '@/stores/clusterStore';
+import { setActiveClusterBySessionId } from '@/stores/clusterPresenceStore';
+import { useDemoStore } from '@/stores/demoStore';
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
-import type { ConnectState } from '@/types/connect';
 import { getClusters } from '@/services/backendApiClient';
-import { backendClusterToCluster } from '@/lib/backendClusterAdapter';
 import { Loader2 } from 'lucide-react';
+
+/** State passed when navigating to /connected so the cluster switch can
+ *  happen without refetching the whole cluster list. Shape inlined here
+ *  because nothing else consumes it post-Phase-7. */
+interface ConnectState {
+  connectedCluster?: { id: string; name: string };
+  connectedClusters?: unknown[];
+  clusterId: string;
+}
 
 function getPostConnectPath(returnUrl: string | null): string {
   if (!returnUrl || !returnUrl.startsWith('/') || returnUrl.startsWith('//')) return '/dashboard';
-  if (returnUrl === '/' || returnUrl === '/connect' || returnUrl.startsWith('/connect?') || returnUrl === '/mode-selection') return '/dashboard';
+  if (returnUrl === '/' || returnUrl === '/clusters' || returnUrl.startsWith('/clusters?') || returnUrl === '/mode-selection') return '/dashboard';
   return returnUrl;
 }
 
@@ -27,8 +35,7 @@ export default function ConnectedRedirect() {
   const returnUrl = searchParams.get('returnUrl');
   const postConnectPath = getPostConnectPath(returnUrl);
   const backendBaseUrl = useBackendConfigStore((s) => s.backendBaseUrl);
-  const { setActiveCluster, setClusters, setDemo } = useClusterStore();
-  const setCurrentClusterId = useBackendConfigStore((s) => s.setCurrentClusterId);
+  const setDemo = useDemoStore((s) => s.setDemo);
   const didRun = useRef(false);
 
   useEffect(() => {
@@ -36,9 +43,8 @@ export default function ConnectedRedirect() {
     const state = location.state as ConnectState | null;
     if (state?.connectedCluster && state?.clusterId) {
       didRun.current = true;
-      setCurrentClusterId(state.clusterId);
-      setClusters(state.connectedClusters);
-      setActiveCluster(state.connectedCluster);
+      // Presence SSE populates the logical identity list; look up by session id.
+      setActiveClusterBySessionId(state.clusterId);
       setDemo(false);
       navigate(postConnectPath, { replace: true });
       return;
@@ -58,11 +64,7 @@ export default function ConnectedRedirect() {
             navigate('/', { replace: true });
             return;
           }
-          const connectedCluster = backendClusterToCluster(backendCluster);
-          const connectedClusters = list.map(backendClusterToCluster);
-          setCurrentClusterId(clusterIdFromUrl);
-          setClusters(connectedClusters);
-          setActiveCluster(connectedCluster);
+          setActiveClusterBySessionId(clusterIdFromUrl);
           setDemo(false);
           navigate(postConnectPath, { replace: true });
         })
@@ -79,9 +81,6 @@ export default function ConnectedRedirect() {
     postConnectPath,
     backendBaseUrl,
     navigate,
-    setCurrentClusterId,
-    setClusters,
-    setActiveCluster,
     setDemo,
   ]);
 

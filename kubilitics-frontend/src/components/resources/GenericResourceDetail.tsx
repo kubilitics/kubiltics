@@ -61,7 +61,7 @@ import { ResourceEventsTab } from '@/components/events/ResourceEventsTab';
 import { ResourceTracesTab } from '@/components/traces/ResourceTracesTab';
 import { BlastRadiusTab } from '@/components/resources/BlastRadiusTab';
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
-import { useClusterStore } from '@/stores/clusterStore';
+import { useActiveCluster } from '@/stores/clusterPresenceStore';
 import { useActiveClusterId } from '@/hooks/useActiveClusterId';
 import { Breadcrumbs, useDetailBreadcrumbs } from '@/components/layout/Breadcrumbs';
 import { downloadResourceJson } from '@/lib/exportUtils';
@@ -408,7 +408,7 @@ export function GenericResourceDetail<T extends KubernetesResource>({
   const [searchParams, setSearchParams] = useSearchParams();
   const initialTab = searchParams.get('tab') || 'overview';
   const [activeTab, setActiveTab] = useState(initialTab);
-  const { activeCluster } = useClusterStore();
+  const activeCluster = useActiveCluster();
   const breadcrumbSegments = useDetailBreadcrumbs(kind, name ?? undefined, namespace ?? undefined, activeCluster?.name);
   const clusterId = useActiveClusterId();
   const isBackendConfiguredVal = useBackendConfigStore((s) => s.isBackendConfigured());

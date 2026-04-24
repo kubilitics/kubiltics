@@ -47,7 +47,7 @@ import {
   type NetworkPolicyTemplate,
 } from '@/lib/networkPolicyTemplates';
 import { useBackendConfigStore } from '@/stores/backendConfigStore';
-import { useClusterStore } from '@/stores/clusterStore';
+import { useNamespaceStore } from '@/stores/namespaceStore';
 
 // ─── Category icons ──────────────────────────────────────────
 
@@ -69,7 +69,7 @@ const SEVERITY_COLORS: Record<string, string> = {
 
 export default function NetworkPolicyTemplates() {
   const backendBaseUrl = useBackendConfigStore((s) => s.backendBaseUrl);
-  const activeNamespace = useClusterStore((s) => s.activeNamespace);
+  const activeNamespace = useNamespaceStore((s) => s.activeNamespace);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');

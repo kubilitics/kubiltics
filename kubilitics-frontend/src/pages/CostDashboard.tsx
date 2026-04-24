@@ -49,6 +49,7 @@ import { SectionOverviewHeader } from '@/components/layout/SectionOverviewHeader
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
 import { ApiError } from '@/components/ui/error-state';
 
+import { useActiveClusterId } from '@/hooks/useActiveClusterId';
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 interface NamespaceCost {
@@ -166,7 +167,7 @@ export default function CostDashboard() {
   const [search, setSearch] = useState('');
   const stored = useBackendConfigStore((s) => s.backendBaseUrl);
   const baseUrl = getEffectiveBackendBaseUrl(stored);
-  const clusterId = useBackendConfigStore((s) => s.currentClusterId);
+  const clusterId = useActiveClusterId();
   const isConfigured = useBackendConfigStore((s) => s.isBackendConfigured());
 
   const { data, isLoading, error, refetch } = useQuery({

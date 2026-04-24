@@ -16,7 +16,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useK8sResourceList, useDeleteK8sResource, usePatchK8sResource, useCreateK8sResource, calculateAge, useCronJobChildJobs, type KubernetesResource } from '@/hooks/useKubernetes';
 import { useConnectionStatus } from '@/hooks/useConnectionStatus';
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
-import { useClusterStore } from '@/stores/clusterStore';
+import { useActiveCluster, useClusterPresenceStore } from '@/stores/clusterPresenceStore';
 import { postCronJobTrigger } from '@/services/backendApiClient';
 import { DeleteConfirmDialog } from '@/components/resources';
 import { ResourceExportDropdown, ListViewSegmentedControl, ListPagination, PAGE_SIZE_OPTIONS, ResourceCommandBar, resourceTableRowClassName, ROW_MOTION, StatusPill, ListPageStatCard, ListPageHeader, TableColumnHeaderWithFilterAndSort, TableFilterCell, AgeCell, TableEmptyState, TableErrorState, ListPageLoadingShell, CopyNameDropdownItem, NamespaceBadge, ResourceListTableToolbar } from '@/components/list';
@@ -426,7 +426,7 @@ spec:
  toast.error('Connect to Kubilitics backend and select a cluster to trigger CronJob.');
  return;
  }
- const cid = useBackendConfigStore.getState().currentClusterId;
+ const cid = useClusterPresenceStore.getState().activeCluster()?.session_id ?? null;
  if (!cid) {
  toast.error('Select a cluster from the cluster list to perform this action.');
  return;

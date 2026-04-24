@@ -25,7 +25,7 @@ import { toast } from "sonner";
 import { BrandWatermark } from "@/components/BrandWatermark";
 import { useResourceTopology } from "@/hooks/useResourceTopology";
 import { useBackendConfigStore } from "@/stores/backendConfigStore";
-import { useClusterStore } from "@/stores/clusterStore";
+import { useActiveCluster } from '@/stores/clusterPresenceStore';
 import { useActiveClusterId } from "@/hooks/useActiveClusterId";
 import { useCapabilities } from "@/hooks/useCapabilities";
 import {
@@ -61,7 +61,7 @@ export function ResourceTopologyV2View({
   const navigate = useNavigate();
   const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured());
   const clusterId = useActiveClusterId();
-  const activeClusterName = useClusterStore((s) => s.activeCluster?.name);
+  const activeClusterName = useActiveCluster()?.name;
   const fitViewRef = useRef<(() => void) | null>(null);
   const exportCanvasRef = useRef<((format: ExportFormat, filename: string) => void) | null>(null);
   const centerOnNodeRef = useRef<((nodeId: string) => void) | null>(null);

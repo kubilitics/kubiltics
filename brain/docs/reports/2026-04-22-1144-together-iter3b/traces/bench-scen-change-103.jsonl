@@ -1,0 +1,7 @@
+{"bytes":83,"stage":"user_msg","ts":"2026-04-22T06:13:20.716948Z","turn_id":"bench-scen-change-103"}
+{"selected_topics":["core","workloads"],"stage":"tool_filter","tool_count":30,"total_available":138,"ts":"2026-04-22T06:13:20.717511Z","turn_id":"bench-scen-change-103"}
+{"bytes":2446,"focus_cluster":"5cb1f37d-e31e-4915-8c4d-bdf36ef335ec","has_system":true,"messages":2,"stage":"llm_prompt_in","ts":"2026-04-22T06:13:20.717582Z","turn_id":"bench-scen-change-103"}
+{"arg_keys":["name","namespace","cluster_id"],"cluster_id":"5cb1f37d-e31e-4915-8c4d-bdf36ef335ec","stage":"tool_dispatch","tool_name":"analyze_deployment_health","ts":"2026-04-22T06:13:21.846409Z","turn_id":"bench-scen-change-103"}
+{"bytes_in":40,"bytes_out":40,"stage":"tool_result_summarized","tool_name":"analyze_deployment_health","ts":"2026-04-22T06:13:21.858032Z","turn_id":"bench-scen-change-103"}
+{"bytes":97,"preview":"Error: Deployment 'web' not found in namespace 'default'. Check the namespace or deployment name.","stage":"llm_text_out","ts":"2026-04-22T06:13:22.55388Z","turn_id":"bench-scen-change-103"}
+{"duration_ms":1836,"finish_reason":"stop","stage":"done","ts":"2026-04-22T06:13:22.553983Z","turn_id":"bench-scen-change-103"}

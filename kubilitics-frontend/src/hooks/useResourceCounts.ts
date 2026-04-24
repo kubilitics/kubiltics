@@ -8,13 +8,46 @@
  *   queries, but only for the handful of resource types shown in the sidebar nav,
  *   and only with limit:100 (counts don't need full data).
  * - When disconnected: show zero counts.
+ *
+ * Resilience: the backend-summary path now runs through useResilientQuery so
+ * the four-state model (healthy | backend-stale | session-cache-stale | no-data)
+ * is shared with every other cluster-scoped hook.
  */
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
+import { useParams } from 'react-router-dom';
 import { useK8sResourceList, type KubernetesResource, type ResourceList, type ResourceType } from './useKubernetes';
 import { useConnectionStatus } from '@/hooks/useConnectionStatus';
-import { useClusterSummaryWithProject } from '@/hooks/useClusterSummary';
 import { useActiveClusterId } from '@/hooks/useActiveClusterId';
+import { useProjectStore } from '@/stores/projectStore';
+import { useResilientQuery } from './useResilientQuery';
+import type { BackendClusterSummary } from '@/services/api/types';
 import { useMemo, useRef } from 'react';
+
+/**
+ * Wraps useResilientQuery for the /summary endpoint so the hook's data
+ * type is the familiar BackendClusterSummary and the URL plumbing
+ * (baseUrl, path encoding, project scoping) lives in one place.
+ */
+function useResilientClusterSummary(clusterId: string | undefined) {
+  const stored = useBackendConfigStore((s) => s.backendBaseUrl);
+  const backendBaseUrl = getEffectiveBackendBaseUrl(stored);
+  const isConfigured = useBackendConfigStore((s) => s.isBackendConfigured());
+
+  const { projectId: projectIdFromRoute } = useParams<{ projectId?: string }>();
+  const activeProjectId = useProjectStore((s) => s.activeProjectId);
+  const projectId = projectIdFromRoute || activeProjectId || '';
+
+  const search = projectId ? `?projectId=${encodeURIComponent(projectId)}` : '';
+  const url = clusterId && backendBaseUrl
+    ? `${backendBaseUrl.replace(/\/$/, '')}/api/v1/clusters/${encodeURIComponent(clusterId)}/summary${search}`
+    : '';
+
+  return useResilientQuery<BackendClusterSummary>(url, {
+    clusterId,
+    enabled: Boolean(isConfigured && clusterId && backendBaseUrl),
+    refetchInterval: 60_000,
+  });
+}
 
 // Zero counts returned when disconnected (no fake data)
 const zeroCounts: ResourceCounts = {
@@ -154,10 +187,31 @@ export function useResourceCounts(): {
   // after a kubeconfig swap or external cluster deletion.
   const activeClusterId = useActiveClusterId();
 
-  // Backend path: single summary request (project-scoped when activeProject is set)
-  const summaryQuery = useClusterSummaryWithProject(
+  // Backend path: single summary request (project-scoped when activeProject is set).
+  // Runs through useResilientQuery so the four-state resilient model
+  // (healthy | backend-stale | session-cache-stale | no-data) is shared.
+  const summaryResilient = useResilientClusterSummary(
     isBackendConfigured && activeClusterId ? activeClusterId : undefined
   );
+  // Adapter: the legacy useClusterSummary returned `{data: BackendClusterSummary | undefined, isLoading}`
+  // where each BackendClusterSummary row carried reachable/stale/error_message flat.
+  // useResilientQuery exposes those as top-level flags; re-compose the legacy shape
+  // so the downstream logic (unchanged) keeps reading summaryQuery.data.reachable etc.
+  const summaryQuery = useMemo(() => {
+    const base = summaryResilient.data;
+    if (!base) {
+      return { data: undefined as BackendClusterSummary | undefined, isLoading: summaryResilient.isLoading };
+    }
+    return {
+      data: {
+        ...base,
+        reachable: summaryResilient.isReachable,
+        stale: summaryResilient.isStale,
+        error_message: summaryResilient.errorMessage ?? undefined,
+      } as BackendClusterSummary,
+      isLoading: summaryResilient.isLoading,
+    };
+  }, [summaryResilient.data, summaryResilient.isLoading, summaryResilient.isReachable, summaryResilient.isStale, summaryResilient.errorMessage]);
 
   // Direct K8s path: enabled when K8s is connected.
   // When backend IS configured, the summary endpoint only covers ~10 key resource types

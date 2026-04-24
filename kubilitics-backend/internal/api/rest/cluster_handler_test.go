@@ -682,12 +682,25 @@ func TestHandler_GetClusterSummary_Success(t *testing.T) {
 		t.Fatalf("Expected status 200, got %d: %s", rec.Code, rec.Body.String())
 	}
 
-	var summary models.ClusterSummary
-	if err := json.NewDecoder(rec.Body).Decode(&summary); err != nil {
+	// Post-Phase-4 envelope: {data:{...}, reachable, stale, health_status}.
+	// The flat ClusterSummary now lives under .data.
+	var envelope struct {
+		Data         *models.ClusterSummary `json:"data"`
+		Reachable    bool                   `json:"reachable"`
+		Stale        bool                   `json:"stale"`
+		HealthStatus string                 `json:"health_status"`
+	}
+	if err := json.NewDecoder(rec.Body).Decode(&envelope); err != nil {
 		t.Fatalf("Failed to decode response: %v", err)
 	}
-	if summary.NodeCount != 3 {
-		t.Errorf("Expected 3 nodes, got %d", summary.NodeCount)
+	if !envelope.Reachable {
+		t.Fatalf("Expected reachable=true, got %+v", envelope)
+	}
+	if envelope.Data == nil {
+		t.Fatalf("Expected data payload, got nil")
+	}
+	if envelope.Data.NodeCount != 3 {
+		t.Errorf("Expected 3 nodes, got %d", envelope.Data.NodeCount)
 	}
 }
 

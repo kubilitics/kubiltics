@@ -6,7 +6,7 @@
 import { useCallback, useEffect, useRef, useState, useImperativeHandle, forwardRef } from 'react';
 import { getKCLIComplete, getKCLITUIState, getKubectlShellStreamUrl, getShellComplete, type ShellStatusResult } from '@/services/backendApiClient';
 import { applyCompletionToLine, updateLineBuffer } from './completionEngine';
-import { useClusterStore } from '@/stores/clusterStore';
+import { useNamespaceStore } from '@/stores/namespaceStore';
 import { useBackendCircuitOpen } from '@/hooks/useBackendCircuitOpen';
 import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
@@ -65,10 +65,8 @@ export const ShellSession = forwardRef<ShellSessionHandle, ShellSessionProps>(fu
   { isActive, open, clusterId, backendBaseUrl, onStatusChange },
   ref
 ) {
-  const activeNamespace = useClusterStore((s) => s.activeNamespace);
-  const setActiveNamespace = useClusterStore((s) => s.setActiveNamespace);
-  const setActiveCluster = useClusterStore((s) => s.setActiveCluster);
-  const setClusters = useClusterStore((s) => s.setClusters);
+  const activeNamespace = useNamespaceStore((s) => s.activeNamespace);
+  const setActiveNamespace = useNamespaceStore((s) => s.setActiveNamespace);
 
   const [connecting, setConnecting] = useState(false);
   const [connected, setConnected] = useState(false);
@@ -146,20 +144,11 @@ export const ShellSession = forwardRef<ShellSessionHandle, ShellSessionProps>(fu
     if (next.namespace && next.namespace !== 'all') {
       setActiveNamespace(next.namespace);
     }
-
-    const state = useClusterStore.getState();
-    const current = state.activeCluster;
-    if (!current || current.id !== next.clusterId || current.context === next.context) {
-      return;
-    }
-
-    const updatedCluster = { ...current, context: next.context };
-    setActiveCluster(updatedCluster);
-    const updatedClusters = state.clusters.map((c) =>
-      c.id === updatedCluster.id ? updatedCluster : c
-    );
-    setClusters(updatedClusters);
-  }, [setActiveCluster, setActiveNamespace, setClusters]);
+    // Phase 7: the legacy cluster.context mirror used to be maintained here;
+    // now the shell state informs the terminal UI directly via setShellStatus.
+    // Cluster identity (name + serverUrl) is immutable from the shell — context
+    // changes are surfaced in shellStatus.context for any downstream display.
+  }, [setActiveNamespace]);
 
   const syncShellState = useCallback(async () => {
     if (!open || !clusterId) return;

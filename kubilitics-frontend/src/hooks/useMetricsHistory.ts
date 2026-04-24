@@ -9,6 +9,7 @@ import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/back
 import { getMetricsHistory, type MetricsHistoryResponse } from '@/services/backendApiClient';
 import type { MetricsSummaryResourceType } from './useMetricsSummary';
 
+import { useActiveClusterId } from '@/hooks/useActiveClusterId';
 export function useMetricsHistory(
   resourceType: MetricsSummaryResourceType,
   namespace: string | undefined,
@@ -18,7 +19,7 @@ export function useMetricsHistory(
   const storedUrl = useBackendConfigStore((s) => s.backendBaseUrl);
   const backendBaseUrl = getEffectiveBackendBaseUrl(storedUrl);
   const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured());
-  const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
+  const currentClusterId = useActiveClusterId();
   const clusterId = currentClusterId ?? null;
 
   const needsNamespace = resourceType !== 'node';

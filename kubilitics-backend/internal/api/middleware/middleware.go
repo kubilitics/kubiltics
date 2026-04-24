@@ -37,6 +37,18 @@ func RequestID(next http.Handler) http.Handler {
 }
 
 // responseWriter captures status code for logging.
+//
+// Embedding the http.ResponseWriter interface drops optional methods
+// (Flusher, Hijacker, Pusher). We re-expose Flusher + Hijacker explicitly
+// because StructuredLog wraps every request in this writer, and downstream
+// handlers rely on them:
+//   - http.Flusher: SSE handlers (rest.PresenceHandler.StreamEvents,
+//     events.StreamEvents, etc.) type-assert *http.Flusher* on the writer
+//     and return 500 "streaming not supported" if it's missing.
+//   - http.Hijacker: WebSocket upgrades need the raw net.Conn.
+// Missing Flusher caused a production regression on the /api/v1/presence/events
+// SSE stream that httptest.NewRecorder could not surface (it implements
+// Flusher natively, unlike a real net/http server's writer).
 type responseWriter struct {
 	http.ResponseWriter
 	status int
@@ -45,6 +57,12 @@ type responseWriter struct {
 func (rw *responseWriter) WriteHeader(code int) {
 	rw.status = code
 	rw.ResponseWriter.WriteHeader(code)
+}
+
+func (rw *responseWriter) Flush() {
+	if f, ok := rw.ResponseWriter.(http.Flusher); ok {
+		f.Flush()
+	}
 }
 
 func (rw *responseWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {

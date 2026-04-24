@@ -46,6 +46,7 @@ import { useActiveClusterId } from '@/hooks/useActiveClusterId';
 import { useQuery } from '@tanstack/react-query';
 import { postJobRetry, getJobMetrics } from '@/services/backendApiClient';
 
+import { useClusterPresenceStore } from '@/stores/clusterPresenceStore';
 interface JobResource extends KubernetesResource {
   spec?: {
     completions?: number;
@@ -253,7 +254,7 @@ export default function JobDetail() {
       toast.error('Connect to Kubilitics backend in Settings to retry Job.');
       return;
     }
-    const cid = useBackendConfigStore.getState().currentClusterId;
+    const cid = useClusterPresenceStore.getState().activeCluster()?.session_id ?? null;
     if (!cid) {
       toast.error('Select a cluster from the cluster list to perform this action.');
       return;

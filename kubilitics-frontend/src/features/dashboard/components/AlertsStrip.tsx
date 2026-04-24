@@ -19,7 +19,7 @@ import {
 } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { useClusterOverview } from "@/hooks/useClusterOverview";
-import { useClusterStore } from "@/stores/clusterStore";
+import { useActiveCluster } from "@/stores/clusterPresenceStore";
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from "@/stores/backendConfigStore";
 import { useConnectionStatus } from "@/hooks/useConnectionStatus";
 import { getEvents, type BackendEvent } from "@/services/backendApiClient";
@@ -27,6 +27,7 @@ import { useK8sResourceList } from "@/hooks/useKubernetes";
 import { getDetailPath } from "@/utils/resourceKindMapper";
 import { cn } from "@/lib/utils";
 
+import { useActiveClusterId } from '@/hooks/useActiveClusterId';
 const MAX_ALERTS_DISPLAY = 10;
 
 type AlertItem = { reason: string; resource: string; namespace: string; kind: string; name: string };
@@ -68,8 +69,8 @@ function groupAlertsByReason(alerts: AlertItem[]): Map<string, AlertItem[]> {
 }
 
 export const AlertsStrip = () => {
-  const { activeCluster } = useClusterStore();
-  const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
+  const activeCluster = useActiveCluster();
+  const currentClusterId = useActiveClusterId();
   const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured());
   const backendBaseUrl = getEffectiveBackendBaseUrl(useBackendConfigStore((s) => s.backendBaseUrl));
   const clusterId = currentClusterId ?? undefined;

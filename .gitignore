@@ -42,6 +42,10 @@ dist/
 *.env.*
 !.env.example
 !.env.template
+# .env.production holds only public build-time feature flags (VITE_*). It
+# contains no secrets and must be checked in so CI/prod builds apply the
+# intended flags.
+!.env.production
 
 # ── Internal / Sensitive documents (NEVER commit) ──────────────────────────
 # Strategy, investor decks, pricing, competitive analysis

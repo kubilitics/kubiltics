@@ -2,7 +2,7 @@ import React, { useMemo } from "react";
 import { Link } from "react-router-dom";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Label } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { useClusterStore } from "@/stores/clusterStore";
+import { useActiveCluster } from '@/stores/clusterPresenceStore';
 import { useResourceCounts } from "@/hooks/useResourceCounts";
 import { useK8sResourceList } from "@/hooks/useKubernetes";
 import { Loader2, TrendingUp, AlertTriangle, CheckCircle2, ChevronRight, Hexagon } from "lucide-react";
@@ -31,7 +31,7 @@ const STATUS_CONFIG = [
 ] as const;
 
 export const PodStatusDistribution = () => {
-    const { activeCluster } = useClusterStore();
+    const activeCluster = useActiveCluster();
     const { counts, isConnected } = useResourceCounts();
     const { data: podsList, isLoading: podsLoading } = useK8sResourceList(
         "pods",
@@ -88,12 +88,11 @@ export const PodStatusDistribution = () => {
 
     const hasAnyPods = running + pending + failed + succeeded > 0;
 
-    const version = activeCluster?.version || "—";
+    // Presence only carries logical identity — version is no longer sourced
+    // from the store; display as "—" until a metadata endpoint is wired up.
+    const version = "—";
     const provider = formatProvider(activeCluster?.provider ?? activeCluster?.name ?? "");
-    const namespaces =
-        isConnected && counts.namespaces != null
-            ? counts.namespaces
-            : (activeCluster?.namespaces ?? 0);
+    const namespaces = isConnected && counts.namespaces != null ? counts.namespaces : 0;
 
     return (
         <Card className="h-full min-h-[28rem] flex flex-col border-none glass-panel relative overflow-hidden">

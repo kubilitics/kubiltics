@@ -1,0 +1,6 @@
+{"bytes":98,"stage":"user_msg","ts":"2026-04-22T06:12:59.986975Z","turn_id":"bench-scen-config-96"}
+{"selected_topics":["core","change","workloads"],"stage":"tool_filter","tool_count":30,"total_available":138,"ts":"2026-04-22T06:12:59.98746Z","turn_id":"bench-scen-config-96"}
+{"bytes":2461,"focus_cluster":"5cb1f37d-e31e-4915-8c4d-bdf36ef335ec","has_system":true,"messages":2,"stage":"llm_prompt_in","ts":"2026-04-22T06:12:59.987488Z","turn_id":"bench-scen-config-96"}
+{"arg_keys":["kind","name","desired_state","cluster_id","namespace"],"cluster_id":"5cb1f37d-e31e-4915-8c4d-bdf36ef335ec","stage":"tool_dispatch","tool_name":"detect_configuration_drift","ts":"2026-04-22T06:13:02.743658Z","turn_id":"bench-scen-config-96"}
+{"bytes":152,"preview":"The tool execution failed because the Deployment \"web\" was not found in the default namespace. The fix is to check the namespace or the deployment name.","stage":"llm_text_out","ts":"2026-04-22T06:13:03.486696Z","turn_id":"bench-scen-config-96"}
+{"duration_ms":3499,"finish_reason":"stop","stage":"done","ts":"2026-04-22T06:13:03.486823Z","turn_id":"bench-scen-config-96"}

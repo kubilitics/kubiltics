@@ -1,0 +1,7 @@
+{"bytes":108,"stage":"user_msg","ts":"2026-04-22T05:56:33.582105Z","turn_id":"bench-scen-health-25"}
+{"selected_topics":["core","networking","pods","workloads"],"stage":"tool_filter","tool_count":30,"total_available":138,"ts":"2026-04-22T05:56:33.583381Z","turn_id":"bench-scen-health-25"}
+{"bytes":2471,"focus_cluster":"5cb1f37d-e31e-4915-8c4d-bdf36ef335ec","has_system":true,"messages":2,"stage":"llm_prompt_in","ts":"2026-04-22T05:56:33.583449Z","turn_id":"bench-scen-health-25"}
+{"arg_keys":["cluster_id","namespace","name"],"cluster_id":"5cb1f37d-e31e-4915-8c4d-bdf36ef335ec","stage":"tool_dispatch","tool_name":"analyze_network_connectivity","ts":"2026-04-22T05:56:35.129655Z","turn_id":"bench-scen-health-25"}
+{"bytes_in":211,"bytes_out":211,"stage":"tool_result_summarized","tool_name":"analyze_network_connectivity","ts":"2026-04-22T05:56:35.134763Z","turn_id":"bench-scen-health-25"}
+{"bytes":196,"preview":"The cluster is serving traffic end-to-end. There is 1 service analyzed, and it has ready endpoints with a status of OK. Additionally, there are no network policies active in the default namespace.","stage":"llm_text_out","ts":"2026-04-22T05:56:36.400461Z","turn_id":"bench-scen-health-25"}
+{"duration_ms":2817,"finish_reason":"stop","stage":"done","ts":"2026-04-22T05:56:36.400578Z","turn_id":"bench-scen-health-25"}

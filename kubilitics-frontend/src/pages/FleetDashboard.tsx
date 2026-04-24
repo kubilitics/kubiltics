@@ -54,7 +54,7 @@ import {
 import { useFleetOverview } from '@/hooks/useFleetOverview';
 import type { FleetCluster, FleetAggregates } from '@/hooks/useFleetOverview';
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
-import { useClusterStore } from '@/stores/clusterStore';
+import { useActiveCluster, setActiveClusterBySessionId } from '@/stores/clusterPresenceStore';
 import { searchResources } from '@/services/backendApiClient';
 import type { SearchResultItem } from '@/services/backendApiClient';
 import {
@@ -524,7 +524,7 @@ function EmptyState() {
           Connect your first cluster to see fleet-wide health, metrics, and status at a glance.
         </p>
       </div>
-      <Button onClick={() => navigate('/connect?addCluster=true')} variant="default" size="sm">
+      <Button onClick={() => navigate('/clusters?addCluster=true')} variant="default" size="sm">
         Connect Cluster
       </Button>
     </div>
@@ -549,8 +549,6 @@ function CrossClusterSearch({
   const stored = useBackendConfigStore((s) => s.backendBaseUrl);
   const backendBaseUrl = getEffectiveBackendBaseUrl(stored);
   const isConfigured = useBackendConfigStore((s) => s.isBackendConfigured());
-  const { setActiveCluster, clusters: storeClusters } = useClusterStore();
-  const setCurrentClusterId = useBackendConfigStore((s) => s.setCurrentClusterId);
   const queryClient = useQueryClient();
 
   const [query, setQuery] = useState('');
@@ -627,9 +625,7 @@ function CrossClusterSearch({
   const handleResultClick = useCallback(
     (result: FleetSearchResult) => {
       // Switch to the cluster context first
-      setCurrentClusterId(result.clusterId);
-      const storeCluster = storeClusters.find((c) => c.id === result.clusterId);
-      if (storeCluster) setActiveCluster(storeCluster);
+      setActiveClusterBySessionId(result.clusterId);
 
       // Clear stale queries
       queryClient.removeQueries({ queryKey: ['k8s'] });
@@ -642,7 +638,7 @@ function CrossClusterSearch({
       setResults([]);
       setIsFocused(false);
     },
-    [navigate, setCurrentClusterId, setActiveCluster, storeClusters, queryClient],
+    [navigate, queryClient],
   );
 
   const showResults = isFocused && query.trim().length > 0;
@@ -735,8 +731,6 @@ function CrossClusterSearch({
 export default function FleetDashboard() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const setCurrentClusterId = useBackendConfigStore((s) => s.setCurrentClusterId);
-  const { setActiveCluster, clusters: storeClusters } = useClusterStore();
   const fleetData = useFleetOverview();
   const { clusters, aggregates, isError, error } = fleetData;
   // Only show loading skeleton on FIRST render. Once we have data, never go back to skeleton.
@@ -777,15 +771,12 @@ export default function FleetDashboard() {
   };
 
   function handleClusterClick(cluster: FleetCluster) {
-    // Update BOTH stores so header, topology exports, and all downstream
-    // consumers see the correct cluster immediately.
-    setCurrentClusterId(cluster.id);
-
-    // Find the matching Cluster object from the clusterStore
-    const storeCluster = storeClusters.find((c) => c.id === cluster.id);
-    if (storeCluster) {
-      setActiveCluster(storeCluster);
-    }
+    // Update both stores so header, topology exports, and all downstream
+    // consumers see the correct cluster immediately. The presence layer is
+    // the canonical source; the backend-config currentClusterId is still
+    // written for the subset of hooks that read from it during the
+    // transition window.
+    setActiveClusterBySessionId(cluster.id);
 
     // Clear stale queries from the previous cluster so fresh data loads
     queryClient.removeQueries({ queryKey: ['k8s'] });
@@ -839,7 +830,7 @@ export default function FleetDashboard() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Button size="sm" variant="default" onClick={() => navigate('/connect?addCluster=true')} className="gap-1.5">
+            <Button size="sm" variant="default" onClick={() => navigate('/clusters?addCluster=true')} className="gap-1.5">
               <Plus className="h-3.5 w-3.5" />
               Add Cluster
             </Button>

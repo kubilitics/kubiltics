@@ -30,7 +30,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useConnectionStatus } from '@/hooks/useConnectionStatus';
-import { useClusterStore } from '@/stores/clusterStore';
+import { getActiveCluster, useActiveCluster } from '@/stores/clusterPresenceStore';
 import { useChatStore } from '@/stores/chatStore';
 import { useAIContextStore } from '@/stores/aiContextStore';
 import { Sparkles } from 'lucide-react';
@@ -59,6 +59,7 @@ import { useTableFiltersAndSort, type ColumnConfig } from '@/hooks/useTableFilte
 import { useColumnVisibility } from '@/hooks/useColumnVisibility';
 import { getDetailPath, normalizeKindForTopology } from '@/utils/resourceKindMapper';
 
+import { useActiveClusterId } from '@/hooks/useActiveClusterId';
 const typeConfig = {
  Normal: { icon: CheckCircle2, color: 'text-muted-foreground', bg: 'bg-muted' },
  Warning: { icon: AlertTriangle, color: 'text-orange-500', bg: 'bg-orange-500/15' },
@@ -147,7 +148,7 @@ export default function Events() {
  const storedUrl = useBackendConfigStore((s) => s.backendBaseUrl);
  const backendBaseUrl = getEffectiveBackendBaseUrl(storedUrl);
  const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured());
- const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
+ const currentClusterId = useActiveClusterId();
  const clusterId = currentClusterId ?? null;
  const useBackend = isBackendConfigured && !!clusterId;
 
@@ -507,7 +508,7 @@ export default function Events() {
  </DropdownMenuItem>
  <DropdownMenuItem
  onClick={() => {
- const cluster = useClusterStore.getState().activeCluster?.id ?? '';
+ const cluster = getActiveCluster()?.id ?? '';
  useChatStore.getState().togglePanel(true);
  useAIContextStore.getState().setExplicit({ type: 'event', cluster, namespace: ev.eventNamespace || undefined, name: ev.name });
  useChatStore.getState().setPrefilled(`Explain this event.`);

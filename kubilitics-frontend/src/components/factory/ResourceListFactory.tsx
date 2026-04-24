@@ -48,7 +48,7 @@ import {
   type KubernetesResource,
 } from '@/hooks/useKubernetes';
 import { useConnectionStatus } from '@/hooks/useConnectionStatus';
-import { useClusterStore } from '@/stores/clusterStore';
+import { useNamespaceStore } from '@/stores/namespaceStore';
 import { toast } from '@/components/ui/sonner';
 import type {
   ResourceKindConfig, ResourceColumnDef, ResourceActionDef,
@@ -121,7 +121,7 @@ export function ResourceListPage({
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { isOnline } = useConnectionStatus();
-  const activeNamespace = useClusterStore((s) => s.activeNamespace);
+  const activeNamespace = useNamespaceStore((s) => s.activeNamespace);
   const effectiveNamespace = overrideNamespace ?? (activeNamespace !== 'All Namespaces' ? activeNamespace : undefined);
 
   // ── State ────────────────────────────────────────────────────────────────

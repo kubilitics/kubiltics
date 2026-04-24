@@ -1,0 +1,7 @@
+{"bytes":70,"stage":"user_msg","ts":"2026-04-22T06:50:51.096083Z","turn_id":"bench-scen-health-21"}
+{"selected_topics":["core","pods","workloads"],"stage":"tool_filter","tool_count":30,"total_available":138,"ts":"2026-04-22T06:50:51.096755Z","turn_id":"bench-scen-health-21"}
+{"bytes":2433,"focus_cluster":"5cb1f37d-e31e-4915-8c4d-bdf36ef335ec","has_system":true,"messages":2,"stage":"llm_prompt_in","ts":"2026-04-22T06:50:51.096811Z","turn_id":"bench-scen-health-21"}
+{"arg_keys":["namespace","pod_name","tail_lines","cluster_id"],"cluster_id":"5cb1f37d-e31e-4915-8c4d-bdf36ef335ec","stage":"tool_dispatch","tool_name":"observe_pod_logs","ts":"2026-04-22T06:50:52.236544Z","turn_id":"bench-scen-health-21"}
+{"bytes_in":150,"bytes_out":150,"stage":"tool_result_summarized","tool_name":"observe_pod_logs","ts":"2026-04-22T06:50:52.301712Z","turn_id":"bench-scen-health-21"}
+{"bytes":87,"preview":"The Redis pod in the data namespace does not exist, which is likely why you were paged.","stage":"llm_text_out","ts":"2026-04-22T06:50:53.140618Z","turn_id":"bench-scen-health-21"}
+{"duration_ms":2043,"finish_reason":"stop","stage":"done","ts":"2026-04-22T06:50:53.140687Z","turn_id":"bench-scen-health-21"}

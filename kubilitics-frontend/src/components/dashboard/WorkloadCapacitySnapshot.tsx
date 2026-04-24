@@ -4,13 +4,14 @@
  */
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { useClusterStore } from '@/stores/clusterStore';
+import { useActiveCluster } from '@/stores/clusterPresenceStore';
 import { useBackendConfigStore } from '@/stores/backendConfigStore';
 import { useK8sResourceList } from '@/hooks/useKubernetes';
 import { useClusterSummary } from '@/hooks/useClusterSummary';
 import { useLiveSignals } from '@/hooks/useLiveSignals';
 import { cn } from '@/lib/utils';
 
+import { useActiveClusterId } from '@/hooks/useActiveClusterId';
 function isNodeReady(node: { status?: { conditions?: Array<{ type: string; status: string }> } }): boolean {
   const conditions = node?.status?.conditions ?? [];
   const ready = conditions.find((c) => c.type === 'Ready');
@@ -26,8 +27,8 @@ const PHASE_COLORS: Record<string, string> = {
 };
 
 export function WorkloadCapacitySnapshot() {
-  const { activeCluster } = useClusterStore();
-  const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
+  const activeCluster = useActiveCluster();
+  const currentClusterId = useActiveClusterId();
   const clusterId = currentClusterId ?? null;
   const summaryQuery = useClusterSummary(clusterId ?? undefined);
   const summary = summaryQuery.data;

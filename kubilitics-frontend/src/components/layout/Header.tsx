@@ -24,7 +24,18 @@ import {
 import { BrandLogo } from '@/components/BrandLogo';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { isTauri } from '@/lib/tauri';
-import { useClusterStore, getClusterAppearance, getEnvBadgeLabel, getEnvBadgeClasses } from '@/stores/clusterStore';
+import {
+  getClusterAppearance,
+  getEnvBadgeLabel,
+  getEnvBadgeClasses,
+} from '@/stores/clusterAppearance';
+import {
+  useActiveCluster,
+  setActiveClusterBySessionId,
+} from '@/stores/clusterPresenceStore';
+import { useClustersFromBackend } from '@/hooks/useClustersFromBackend';
+import type { BackendCluster } from '@/services/api/types';
+import { useDemoStore } from '@/stores/demoStore';
 import {
   useClusterOrganizationStore,
   fuzzyMatch,
@@ -61,6 +72,7 @@ import { cn } from '@/lib/utils';
 import { useOfflineMode } from '@/hooks/useOfflineMode';
 import { getProviderLogo } from '@/topology/icons/providerLogoMap';
 import { useQueryClient } from '@tanstack/react-query';
+import { useActiveClusterId } from '@/hooks/useActiveClusterId';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -115,9 +127,13 @@ export function Header() {
   const collapsed = useUIStore((s) => s.isSidebarCollapsed);
   const navigate = useNavigate();
   const activeProject = useProjectStore((s) => s.activeProject);
-  const { activeCluster, clusters, setActiveCluster, isDemo, signOut } = useClusterStore();
-  const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
-  const setCurrentClusterId = useBackendConfigStore((s) => s.setCurrentClusterId);
+  const activeCluster = useActiveCluster();
+  // Dropdown list — backend is the source of truth for cluster metadata
+  // (provider/status/context/...). Presence only carries logical identity.
+  const { data: backendClusters } = useClustersFromBackend();
+  const clusters: BackendCluster[] = backendClusters ?? [];
+  const isDemo = useDemoStore((s) => s.isDemo);
+  const currentClusterId = useActiveClusterId();
   const clearBackend = useBackendConfigStore((s) => s.clearBackend);
   const setLogoutFlag = useBackendConfigStore((s) => s.setLogoutFlag);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -130,7 +146,7 @@ export function Header() {
   // Wizards removed — resource creation handled by ResourceCreator in list pages
   const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
-  const [prodConfirmCluster, setProdConfirmCluster] = useState<import('@/stores/clusterStore').Cluster | null>(null);
+  const [prodConfirmCluster, setProdConfirmCluster] = useState<BackendCluster | null>(null);
   const [clusterSearch, setClusterSearch] = useState('');
   const clusterSearchRef = useRef<HTMLInputElement>(null);
   const queryClient = useQueryClient();
@@ -156,10 +172,11 @@ export function Header() {
   const activeEnvClasses = activeAppearance ? getEnvBadgeClasses(activeAppearance.environment) : '';
 
   // ─── Cluster switching with production confirmation ──────────────────
-  const doSwitchCluster = useCallback((cluster: import('@/stores/clusterStore').Cluster) => {
+  const doSwitchCluster = useCallback((cluster: BackendCluster) => {
     const isSwitching = cluster.id !== (currentClusterId ?? activeCluster?.id);
-    setActiveCluster(cluster);
-    if (!isDemo) setCurrentClusterId(cluster.id);
+    if (!isDemo) {
+      setActiveClusterBySessionId(cluster.id);
+    }
     if (isSwitching) {
       // Clear ALL cached data from the previous cluster to prevent stale data flash.
       // Previously only cleared specific query keys, missing clusterOverview, metrics,
@@ -168,9 +185,9 @@ export function Header() {
       queryClient.removeQueries({ queryKey: ['backend'] });
       navigate('/dashboard');
     }
-  }, [currentClusterId, activeCluster?.id, setActiveCluster, isDemo, setCurrentClusterId, queryClient, navigate]);
+  }, [currentClusterId, activeCluster?.id, isDemo, queryClient, navigate]);
 
-  const handleClusterSelect = useCallback((cluster: import('@/stores/clusterStore').Cluster) => {
+  const handleClusterSelect = useCallback((cluster: BackendCluster) => {
     const env = orgEnvTags[cluster.id];
     if (env === 'production' && cluster.id !== activeCluster?.id) {
       setProdConfirmCluster(cluster);
@@ -189,7 +206,7 @@ export function Header() {
           const appearance = getClusterAppearance(c.id);
           const displayName = appearance.alias || c.name;
           const env = orgEnvTags[c.id] || '';
-          const target = `${displayName} ${c.region} ${c.provider} ${env}`;
+          const target = `${displayName} ${c.provider ?? ''} ${env}`;
           const result = fuzzyMatch(clusterSearch.trim(), target);
           return { cluster: c, ...result };
         })
@@ -227,8 +244,18 @@ export function Header() {
       // Set logout flag to prevent session restore
       setLogoutFlag(true);
 
-      // Clear all cluster and backend state
-      signOut();
+      // Clear cluster state — presence SSE will repopulate on next launch,
+      // domain stores (namespace/demo/kubeconfig/appMode) reset explicitly.
+      const { useClusterPresenceStore } = await import('@/stores/clusterPresenceStore');
+      useClusterPresenceStore.setState({ activeLogicalIdentity: null });
+      const { useNamespaceStore } = await import('@/stores/namespaceStore');
+      useNamespaceStore.getState().reset();
+      const { useKubeconfigStore } = await import('@/stores/kubeconfigSourceStore');
+      useKubeconfigStore.getState().reset();
+      const { useDemoStore } = await import('@/stores/demoStore');
+      useDemoStore.getState().reset();
+      const { useAppModeStore } = await import('@/stores/appModeStore');
+      useAppModeStore.getState().reset();
       clearBackend();
 
       // Small delay to ensure state is cleared
@@ -462,7 +489,7 @@ export function Header() {
                                         </span>
                                       )}
                                     </div>
-                                    <div className="text-[11px] font-bold text-muted-foreground mt-0.5">{cluster.region} · {cluster.provider}</div>
+                                    <div className="text-[11px] font-bold text-muted-foreground mt-0.5">{cluster.provider ?? 'unknown'} · {cluster.context ?? cluster.name}</div>
                                   </div>
                                   {cluster.id === activeCluster.id && (
                                     <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center">
@@ -524,7 +551,7 @@ export function Header() {
                                           {ENV_LABELS[env]}
                                         </span>
                                       </div>
-                                      <div className="text-[11px] font-bold text-muted-foreground mt-0.5">{cluster.region} · {cluster.provider}</div>
+                                      <div className="text-[11px] font-bold text-muted-foreground mt-0.5">{cluster.provider ?? 'unknown'} · {cluster.context ?? cluster.name}</div>
                                     </div>
                                     {cluster.id === activeCluster.id && (
                                       <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center">
@@ -583,7 +610,7 @@ export function Header() {
                                         </span>
                                       )}
                                     </div>
-                                    <div className="text-[11px] font-bold text-muted-foreground mt-0.5">{cluster.region} · {cluster.version}</div>
+                                    <div className="text-[11px] font-bold text-muted-foreground mt-0.5">{cluster.provider ?? 'unknown'} · {cluster.version ?? ''}</div>
                                   </div>
                                   {cluster.id === activeCluster.id && (
                                     <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center">
@@ -606,7 +633,7 @@ export function Header() {
 
                       {/* Footer actions */}
                       <DropdownMenuSeparator className="my-2 bg-border/60" />
-                      <DropdownMenuItem onClick={() => navigate('/connect?addCluster=true')} className="gap-3 cursor-pointer py-3 px-4 rounded-2xl text-muted-foreground hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+                      <DropdownMenuItem onClick={() => navigate('/clusters?addCluster=true')} className="gap-3 cursor-pointer py-3 px-4 rounded-2xl text-muted-foreground hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
                         <div className="h-8 w-8 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
                           <Plus className="h-3.5 w-3.5 text-muted-foreground" />
                         </div>
@@ -663,7 +690,7 @@ export function Header() {
                         onClick={() => handleDownloadKubeconfig(cluster.id, cluster.name)}
                         className="flex items-center gap-4 py-4 px-4 cursor-pointer rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
                       >
-                        <div className={cn('w-2 h-2 rounded-full shrink-0 shadow-sm', statusColors[cluster.status])} />
+                        <div className={cn('w-2 h-2 rounded-full shrink-0 shadow-sm', statusColors[cluster.status ?? 'healthy'])} />
                         <span className="flex-1 text-sm font-bold text-foreground/80 truncate">{cluster.name}</span>
                         <div className="h-9 w-9 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
                           <FileDown className="h-4 w-4 text-muted-foreground" />
@@ -723,7 +750,7 @@ export function Header() {
                       <Settings className="h-4 w-4 text-muted-foreground" />
                       <span className="text-sm">Settings</span>
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => navigate('/connect?addCluster=true')} className="gap-2 py-2.5 cursor-pointer">
+                    <DropdownMenuItem onClick={() => navigate('/clusters?addCluster=true')} className="gap-2 py-2.5 cursor-pointer">
                       <Plus className="h-4 w-4 text-muted-foreground" />
                       <span className="text-sm">Add Cluster</span>
                     </DropdownMenuItem>

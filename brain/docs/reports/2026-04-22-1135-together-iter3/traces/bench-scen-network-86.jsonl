@@ -1,0 +1,8 @@
+{"bytes":88,"stage":"user_msg","ts":"2026-04-22T06:00:14.130346Z","turn_id":"bench-scen-network-86"}
+{"selected_topics":["core","networking"],"stage":"tool_filter","tool_count":30,"total_available":138,"ts":"2026-04-22T06:00:14.130971Z","turn_id":"bench-scen-network-86"}
+{"bytes":2451,"focus_cluster":"5cb1f37d-e31e-4915-8c4d-bdf36ef335ec","has_system":true,"messages":2,"stage":"llm_prompt_in","ts":"2026-04-22T06:00:14.131084Z","turn_id":"bench-scen-network-86"}
+{"arg_keys":["cluster_id","days"],"cluster_id":"5cb1f37d-e31e-4915-8c4d-bdf36ef335ec","stage":"tool_dispatch","tool_name":"observe_ingresses_by_tls_expiry","ts":"2026-04-22T06:00:15.76006Z","turn_id":"bench-scen-network-86"}
+{"method":"GET","path":"/api/v1/clusters/5cb1f37d-e31e-4915-8c4d-bdf36ef335ec/resources/ingresses","resp_bytes":68,"stage":"backend_k8s_fetch","ts":"2026-04-22T06:00:15.763406Z","turn_id":"bench-scen-network-86"}
+{"bytes_in":350,"bytes_out":350,"stage":"tool_result_summarized","tool_name":"observe_ingresses_by_tls_expiry","ts":"2026-04-22T06:00:15.763591Z","turn_id":"bench-scen-network-86"}
+{"bytes":231,"preview":"The cluster does not have TLS inspection enabled or no Ingress has a TLS section, so it's not possible to determine if any Ingress TLS certificates are about to expire. Consider installing cert-manager to enable this functionality.","stage":"llm_text_out","ts":"2026-04-22T06:00:17.073695Z","turn_id":"bench-scen-network-86"}
+{"duration_ms":2942,"finish_reason":"stop","stage":"done","ts":"2026-04-22T06:00:17.073784Z","turn_id":"bench-scen-network-86"}

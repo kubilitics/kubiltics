@@ -1,0 +1,61 @@
+version: 1
+prompts:
+  - id: list-pods-default
+    category: observation
+    text: "List all pods in the default namespace and tell me which ones are unhealthy. Be concise."
+
+  - id: cluster-overview
+    category: observation
+    text: "Give me a one-paragraph health overview of the cluster: node count, pod count, anything not Ready."
+
+  - id: troubleshoot-crashloop
+    category: troubleshooting
+    text: "Pod api-7d8 in namespace prod is in CrashLoopBackOff. Walk me through diagnosis in order, including which kubectl commands to run."
+
+  - id: troubleshoot-oomkilled
+    category: troubleshooting
+    text: "A container was OOMKilled. How do I confirm root cause and decide whether to raise limits versus fix a memory leak?"
+
+  - id: troubleshoot-pending-pod
+    category: troubleshooting
+    text: "A pod has been in Pending state for 10 minutes. List the top causes and the exact field on the pod object I should inspect for each."
+
+  - id: networking-service-unreachable
+    category: networking
+    text: "I can't reach a ClusterIP Service from another pod in the same namespace. Give me a step-by-step debugging path."
+
+  - id: networking-ingress-503
+    category: networking
+    text: "My Ingress is returning 503 intermittently. What are the three most likely causes and how do I tell them apart?"
+
+  - id: storage-pvc-pending
+    category: storage
+    text: "A PersistentVolumeClaim is stuck in Pending. What are the common causes by storage class type, and what should I look at first?"
+
+  - id: security-rbac-denied
+    category: security
+    text: "A ServiceAccount is getting 'forbidden' errors. How do I figure out exactly which RBAC rule is missing?"
+
+  - id: security-network-policy
+    category: security
+    text: "Pod A cannot reach Pod B and I suspect a NetworkPolicy. How do I find which policy is blocking it?"
+
+  - id: cost-overprovisioned
+    category: cost
+    text: "How do I identify deployments that are heavily overprovisioned on CPU and memory requests?"
+
+  - id: scaling-hpa-not-scaling
+    category: scaling
+    text: "My HorizontalPodAutoscaler isn't scaling up under load. What do I check, in order?"
+
+  - id: explain-controllers
+    category: explanation
+    text: "Briefly explain what a controller is in Kubernetes and how the control loop pattern works."
+
+  - id: explain-crds
+    category: explanation
+    text: "Explain CustomResourceDefinitions and the difference between a CRD and a custom controller."
+
+  - id: multistep-trace-request-path
+    category: reasoning
+    text: "Trace the network path of an external HTTPS request from an internet user all the way to a Pod behind an Ingress controller. For each hop, tell me what to inspect if the request returns 504."

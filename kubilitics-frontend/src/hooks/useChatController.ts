@@ -1,7 +1,7 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { useChatStore } from '@/stores/chatStore';
 import { useAIContextStore } from '@/stores/aiContextStore';
-import { useClusterStore } from '@/stores/clusterStore';
+import { useActiveCluster } from '@/stores/clusterPresenceStore';
 import { ChatClient } from '@/services/ai/chatClient';
 import type { ServerFrame } from '@/services/ai/protocol';
 
@@ -15,7 +15,7 @@ function wsUrlFor(clusterId: string): string {
 }
 
 export function useChatController() {
-  const activeCluster = useClusterStore((s) => s.activeCluster);
+  const activeCluster = useActiveCluster();
   const clusterId = activeCluster?.id;
 
   const clientRef = useRef<ChatClient | null>(null);

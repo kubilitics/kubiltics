@@ -1,0 +1,11 @@
+{"bytes":29,"stage":"user_msg","ts":"2026-04-21T17:47:34.725089Z","turn_id":"bench-demo-logs-34"}
+{"bytes":2392,"focus_cluster":"5cb1f37d-e31e-4915-8c4d-bdf36ef335ec","has_system":true,"messages":2,"stage":"llm_prompt_in","ts":"2026-04-21T17:47:34.725232Z","turn_id":"bench-demo-logs-34"}
+{"arg_keys":["pod_name","tail_lines","cluster_id","namespace"],"cluster_id":"5cb1f37d-e31e-4915-8c4d-bdf36ef335ec","stage":"tool_dispatch","tool_name":"observe_pod_logs","ts":"2026-04-21T17:47:41.10441Z","turn_id":"bench-demo-logs-34"}
+{"bytes_in":161,"bytes_out":161,"stage":"tool_result_summarized","tool_name":"observe_pod_logs","ts":"2026-04-21T17:47:41.115457Z","turn_id":"bench-demo-logs-34"}
+{"arg_keys":["cluster_id","container_name","filter","namespace","pod_name","tail_lines"],"cluster_id":"5cb1f37d-e31e-4915-8c4d-bdf36ef335ec","stage":"tool_dispatch","tool_name":"observe_pod_logs_filtered","ts":"2026-04-21T17:47:48.10912Z","turn_id":"bench-demo-logs-34"}
+{"bytes_in":164,"bytes_out":164,"stage":"tool_result_summarized","tool_name":"observe_pod_logs_filtered","ts":"2026-04-21T17:47:48.115903Z","turn_id":"bench-demo-logs-34"}
+{"arg_keys":["namespace","pod_name","filter","cluster_id"],"cluster_id":"5cb1f37d-e31e-4915-8c4d-bdf36ef335ec","stage":"tool_dispatch","tool_name":"observe_pod_logs_filtered","ts":"2026-04-21T17:48:00.364234Z","turn_id":"bench-demo-logs-34"}
+{"bytes_in":178,"bytes_out":178,"stage":"tool_result_summarized","tool_name":"observe_pod_logs_filtered","ts":"2026-04-21T17:48:00.378585Z","turn_id":"bench-demo-logs-34"}
+{"arg_keys":["container_name","filter","namespace","pod_name","tail_lines","cluster_id"],"cluster_id":"5cb1f37d-e31e-4915-8c4d-bdf36ef335ec","stage":"tool_dispatch","tool_name":"observe_pod_logs_filtered","ts":"2026-04-21T17:48:07.625664Z","turn_id":"bench-demo-logs-34"}
+{"bytes_in":178,"bytes_out":178,"stage":"tool_result_summarized","tool_name":"observe_pod_logs_filtered","ts":"2026-04-21T17:48:07.633333Z","turn_id":"bench-demo-logs-34"}
+{"bytes":1198,"stage":"llm_text_out","ts":"2026-04-21T17:48:18.50403Z","turn_id":"bench-demo-logs-34"}

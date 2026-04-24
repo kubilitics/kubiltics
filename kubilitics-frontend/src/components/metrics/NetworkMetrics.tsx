@@ -40,6 +40,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { cn } from '@/lib/utils';
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
 
+import { useActiveClusterId } from '@/hooks/useActiveClusterId';
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 interface NetworkFlow {
@@ -188,7 +189,7 @@ export function NetworkMetrics({ className }: { className?: string }) {
   const [sortBy, setSortBy] = useState<SortField>('rx');
   const stored = useBackendConfigStore((s) => s.backendBaseUrl);
   const baseUrl = getEffectiveBackendBaseUrl(stored);
-  const clusterId = useBackendConfigStore((s) => s.currentClusterId);
+  const clusterId = useActiveClusterId();
   const isConfigured = useBackendConfigStore((s) => s.isBackendConfigured());
 
   const { data, isLoading, error, refetch } = useQuery({

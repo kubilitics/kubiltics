@@ -40,7 +40,9 @@ import { cn } from '@/lib/utils';
 import { Link, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
-import { useClusterStore } from '@/stores/clusterStore';
+import { useActiveCluster } from '@/stores/clusterPresenceStore';
+import { useNamespaceStore } from '@/stores/namespaceStore';
+import { useDemoStore } from '@/stores/demoStore';
 import { useConnectionStatus } from '@/hooks/useConnectionStatus';
 import { calculateAge, useDeleteK8sResource, usePatchK8sResource, type KubernetesResource } from '@/hooks/useKubernetes';
 import { listResources } from '@/services/backendApiClient';
@@ -49,6 +51,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { BulkActionBar, executeBulkOperation } from '@/components/resources';
 import { useMultiSelect } from '@/hooks/useMultiSelect';
 
+import { useActiveClusterId } from '@/hooks/useActiveClusterId';
 // ── Types ──────────────────────────────────────────────────────────────────────
 
 type GatewayResourceTab = 'gateways' | 'gatewayclasses' | 'httproutes' | 'grpcroutes';
@@ -199,8 +202,8 @@ function useGatewayResources<T extends KubernetesResource>(
   const storedUrl = useBackendConfigStore((s) => s.backendBaseUrl);
   const backendBaseUrl = getEffectiveBackendBaseUrl(storedUrl);
   const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured());
-  const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
-  const isDemo = useClusterStore((s) => s.isDemo);
+  const currentClusterId = useActiveClusterId();
+  const isDemo = useDemoStore((s) => s.isDemo);
 
   const config = GATEWAY_API_GROUPS[type];
 
@@ -238,7 +241,7 @@ function useGatewayResources<T extends KubernetesResource>(
 export default function Gateways() {
   const navigate = useNavigate();
   const { isOnline } = useConnectionStatus();
-  const activeNamespace = useClusterStore((s) => s.activeNamespace);
+  const activeNamespace = useNamespaceStore((s) => s.activeNamespace);
   const effectiveNamespace = activeNamespace !== 'All Namespaces' ? activeNamespace : undefined;
 
   const [activeTab, setActiveTab] = useState<GatewayResourceTab>('gateways');

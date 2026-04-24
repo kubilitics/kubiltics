@@ -1,28 +1,25 @@
 /**
  * Single source of truth for the active cluster ID used in every backend API path.
  *
- * Resolution order:
- *   1. `useClusterStore.activeCluster.id` — the validated, live cluster object set
- *      by `useRestoreClusterFromBackend` after reconciling against the backend's
- *      cluster list. This is the trusted source.
- *   2. `useBackendConfigStore.currentClusterId` — the localStorage-persisted ID.
- *      Only used as a hint during the very first render before restore completes;
- *      may be stale if the underlying cluster was deleted/renamed externally.
+ * Phase 7 Task 4 clean-up: the legacy fallbacks are gone.
+ * `clusterPresenceStore` is the canonical source for "which cluster is
+ * active and what is its backend session UUID?".
  *
- * `setActiveCluster` in clusterStore syncs both stores on every write, so in
- * steady state the two always agree. This hook simply picks the safer source.
- *
- * Demo clusters (`__demo__*`) are excluded because they never hit the backend.
+ * Returns the `session_id` of the currently-active connected cluster, or
+ * `null` when no cluster is selected or when the selected logical identity
+ * has been discovered but not yet registered. Callers must guard against
+ * the `null` case before making cluster-scoped API calls.
  */
-import { useBackendConfigStore } from '@/stores/backendConfigStore';
-import { useClusterStore } from '@/stores/clusterStore';
+import { useClusterPresenceStore } from '@/stores/clusterPresenceStore';
+import { logicalIdentityEqual } from '@/types/resilient';
 
 export function useActiveClusterId(): string | null {
-  const activeClusterId = useClusterStore((s) => s.activeCluster?.id);
-  const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
-
-  if (activeClusterId && !activeClusterId.startsWith('__demo__')) {
-    return activeClusterId;
-  }
-  return currentClusterId ?? null;
+  return useClusterPresenceStore((s) => {
+    const id = s.activeLogicalIdentity;
+    if (!id) return null;
+    const hit =
+      s.connected.find((c) => logicalIdentityEqual(c.identity, id))
+      ?? s.registered.find((c) => logicalIdentityEqual(c.identity, id));
+    return hit?.session_id || null;
+  });
 }

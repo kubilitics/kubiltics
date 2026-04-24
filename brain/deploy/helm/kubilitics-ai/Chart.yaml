@@ -1,0 +1,17 @@
+apiVersion: v2
+name: kubilitics-ai
+description: Kubilitics AI runtime — implements kotg-schema Chat + AIControl (Router + Engine architecture). Pairs with the kubilitics chart.
+type: application
+version: 0.6.0
+appVersion: "0.6.0"
+home: https://github.com/vellankikoti/kotg.ai
+sources:
+  - https://github.com/vellankikoti/kotg.ai
+keywords:
+  - kubilitics
+  - ai
+  - llm
+  - kagent
+  - kubernetes
+maintainers:
+  - name: vellankikoti

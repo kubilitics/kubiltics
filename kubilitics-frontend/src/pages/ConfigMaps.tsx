@@ -56,7 +56,7 @@ import { usePaginatedResourceList, useDeleteK8sResource, useCreateK8sResource, u
 import { resourceToYaml } from '@/hooks/useK8sResourceDetail';
 import { useConnectionStatus } from '@/hooks/useConnectionStatus';
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
-import { useClusterStore } from '@/stores/clusterStore';
+import { useActiveCluster } from '@/stores/clusterPresenceStore';
 import { getConfigMapConsumers } from '@/services/backendApiClient';
 import { ResourceCreator, DEFAULT_YAMLS } from '@/components/editor';
 import { DeleteConfirmDialog, BulkActionBar, executeBulkOperation } from '@/components/resources';
@@ -64,6 +64,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { toast } from '@/components/ui/sonner';
 import { useMultiSelect } from '@/hooks/useMultiSelect';
 
+import { useActiveClusterId } from '@/hooks/useActiveClusterId';
 interface ConfigMap {
  uid?: string;
  name: string;
@@ -163,8 +164,8 @@ export default function ConfigMaps() {
  const [pageIndex, setPageIndex] = useState(0);
  const backendBaseUrl = getEffectiveBackendBaseUrl(useBackendConfigStore((s) => s.backendBaseUrl));
  const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured());
- const activeCluster = useClusterStore((s) => s.activeCluster);
- const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
+ const activeCluster = useActiveCluster();
+ const currentClusterId = useActiveClusterId();
  const clusterId = currentClusterId ?? null;
 
  const allItems = useMemo(() => (data?.allItems ?? []) as K8sConfigMap[], [data?.allItems]);

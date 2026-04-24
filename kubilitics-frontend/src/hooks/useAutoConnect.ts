@@ -15,7 +15,9 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { isTauri } from '@/lib/tauri';
-import { useClusterStore } from '@/stores/clusterStore';
+import { setActiveClusterBySessionId } from '@/stores/clusterPresenceStore';
+import { useDemoStore } from '@/stores/demoStore';
+import { useAppModeStore } from '@/stores/appModeStore';
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
 import {
   getClusters,
@@ -24,7 +26,6 @@ import {
   type BackendCluster,
 } from '@/services/backendApiClient';
 import { isBackendEverReady } from '@/services/api/client';
-import { backendClusterToCluster } from '@/lib/backendClusterAdapter';
 import { toast } from '@/components/ui/sonner';
 
 /** Context info surfaced to the UI for the context picker. */
@@ -86,9 +87,9 @@ export function useAutoConnect(): UseAutoConnectReturn {
   const queryClient = useQueryClient();
 
   // Stores
-  const { setActiveCluster, setClusters, setDemo, setAppMode } = useClusterStore();
+  const setDemo = useDemoStore((s) => s.setDemo);
+  const setAppMode = useAppModeStore((s) => s.setAppMode);
   const storedBackendUrl = useBackendConfigStore((s) => s.backendBaseUrl);
-  const setCurrentClusterId = useBackendConfigStore((s) => s.setCurrentClusterId);
 
   // State
   const [isAutoConnecting, setIsAutoConnecting] = useState(false);
@@ -140,13 +141,10 @@ export function useAutoConnect(): UseAutoConnectReturn {
         }
       }
 
-      // Apply connection to stores
-      const connectedCluster = backendClusterToCluster(backendCluster);
-      const allClusters = clusterList.map(backendClusterToCluster);
-
-      setCurrentClusterId(backendCluster.id);
-      setClusters(allClusters);
-      setActiveCluster(connectedCluster);
+      // Apply connection: presence SSE populates the identity list; activate
+      // by session id and flip the backend-config pointer for hooks still
+      // reading from there.
+      setActiveClusterBySessionId(backendCluster.id);
       setDemo(false);
       setAppMode('desktop');
 
@@ -158,7 +156,7 @@ export function useAutoConnect(): UseAutoConnectReturn {
         description: `Context: ${target}`,
       });
 
-      navigate('/home', { replace: true });
+      navigate('/dashboard', { replace: true });
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       setError(message);
@@ -173,9 +171,6 @@ export function useAutoConnect(): UseAutoConnectReturn {
   }, [
     selectedContext,
     storedBackendUrl,
-    setCurrentClusterId,
-    setClusters,
-    setActiveCluster,
     setDemo,
     setAppMode,
     queryClient,

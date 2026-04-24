@@ -49,8 +49,6 @@ import {
   Bot,
   GitBranch,
   Sparkles,
-  WifiOff,
-  CloudOff,
 } from 'lucide-react';
 import { ChatStatusPill } from '@/components/ai/ChatStatusPill';
 import { useChatStore } from '@/stores/chatStore';
@@ -71,6 +69,9 @@ import { useProjectStore } from '@/stores/projectStore';
 import { RecentResources } from '@/components/layout/RecentResources';
 import { useHoverPrefetch } from '@/hooks/useHoverPrefetch';
 import { BrandLogo } from '@/components/BrandLogo';
+import { useQueryClient } from '@tanstack/react-query';
+import { ClusterUnreachableBoundary } from '@/components/common/ClusterUnreachableBoundary';
+// Phase 7: FEATURE_PRESENCE_V2 deleted — /clusters is the only path.
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -151,62 +152,12 @@ function getCategoryForPath(pathname: string): string | null {
 }
 
 // ─── Cluster Reachability Banner ─────────────────────────────────────────────
-// Surfaces backend-signalled unreachable / stale state so the user never has
-// to guess whether "0 pods" means "empty cluster" or "apiserver is down".
-// Hidden in the happy path; appears the moment the sidebar falls back to
-// cached counts or genuinely has nothing to show.
-
-function ClusterReachabilityBanner({
-  reachable,
-  stale,
-  usingClientCache,
-  errorMessage,
-  collapsed,
-}: {
-  reachable: boolean;
-  stale: boolean;
-  usingClientCache: boolean;
-  errorMessage?: string;
-  collapsed: boolean;
-}) {
-  if (reachable && !stale) return null;
-  if (collapsed) return null;
-
-  // Three shades: backend-cached (stale), frontend-cached (usingClientCache),
-  // or truly unreachable with no cache. Pick the most honest message.
-  let title: string;
-  let sub: string;
-  let Icon: React.ElementType;
-  if (usingClientCache) {
-    title = 'Cluster unreachable';
-    sub = 'Showing last-seen counts from this session.';
-    Icon = WifiOff;
-  } else if (stale) {
-    title = 'Cached snapshot';
-    sub = 'Live fetch failed; showing last-known-good counts.';
-    Icon = CloudOff;
-  } else {
-    title = 'Cluster unreachable';
-    sub = 'No counts available until the cluster is reachable.';
-    Icon = WifiOff;
-  }
-  const tooltip = errorMessage ? `${title}\n${sub}\n\n${errorMessage}` : `${title}\n${sub}`;
-
-  return (
-    <div
-      role="status"
-      aria-live="polite"
-      title={tooltip}
-      className="mb-3 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50/80 dark:border-amber-900/40 dark:bg-amber-950/30 px-3 py-2"
-    >
-      <Icon className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400 mt-0.5" aria-hidden />
-      <div className="min-w-0 flex-1">
-        <div className="text-[12px] font-semibold text-amber-900 dark:text-amber-200 truncate">{title}</div>
-        <div className="text-[11px] text-amber-800/80 dark:text-amber-200/80 leading-snug">{sub}</div>
-      </div>
-    </div>
-  );
-}
+// Phase 4 / Task 4.11: the ad-hoc banner that lived here was replaced by the
+// shared <ClusterUnreachableBoundary/> in components/common, which wraps the
+// whole sidebar body and layers a role="alert" amber banner above it.
+// The semantic payload (reachable, stale, errorMessage) still comes from
+// useResourceCounts, so no data pipeline changed — only the rendering
+// primitive.
 
 // ─── NavItem Component ───────────────────────────────────────────────────────
 
@@ -1023,6 +974,20 @@ export function Sidebar() {
   const { installed: metallbInstalled } = useMetalLBInstalled();
   const collapsed = useUIStore((s) => s.isSidebarCollapsed);
   const setCollapsed = useUIStore((s) => s.setSidebarCollapsed);
+  const qc = useQueryClient();
+  const sidebarNavigate = useNavigate();
+  // Phase 4 Task 4.11: wired into ClusterUnreachableBoundary. Invalidate the
+  // resilient summary query so a user-driven "Retry" hits the apiserver now;
+  // "Switch cluster" routes to the picker.
+  const handleRetryCounts = useCallback(() => {
+    void qc.invalidateQueries({ queryKey: ['resilient'] });
+    // Also invalidate the legacy summary key in case any other view still uses it.
+    void qc.invalidateQueries({ queryKey: ['backend', 'clusterSummary'] });
+  }, [qc]);
+  const handleSwitchCluster = useCallback(() => {
+    // Phase 7: /clusters is the onboarding-v2 picker — the only path.
+    sidebarNavigate('/clusters');
+  }, [sidebarNavigate]);
   const [flyoutOpen, setFlyoutOpen] = useState(false);
   const mountedTime = useRef(Date.now());
 
@@ -1064,14 +1029,15 @@ export function Sidebar() {
     <div className="flex flex-col flex-1 min-h-0 bg-slate-50/10 dark:bg-transparent">
       {/* Traffic light clearance handled by Header.tsx pl-[78px] */}
       <div className="flex-1 min-h-0 overflow-y-auto px-5 pt-6 pb-4 scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-700 hover:scrollbar-thumb-slate-300 dark:hover:scrollbar-thumb-slate-600">
-        <ClusterReachabilityBanner
-          reachable={reachable}
-          stale={stale}
-          usingClientCache={usingClientCache}
-          errorMessage={errorMessage}
-          collapsed={false}
-        />
-        <SidebarContent counts={counts} isLoading={isLoading} isInitialLoad={isInitialLoad} metallbInstalled={metallbInstalled} />
+        <ClusterUnreachableBoundary
+          isReachable={reachable}
+          isStale={stale || usingClientCache}
+          errorMessage={errorMessage ?? null}
+          onRetry={handleRetryCounts}
+          onSwitchCluster={handleSwitchCluster}
+        >
+          <SidebarContent counts={counts} isLoading={isLoading} isInitialLoad={isInitialLoad} metallbInstalled={metallbInstalled} />
+        </ClusterUnreachableBoundary>
       </div>
 
       {/* Fixed footer */}

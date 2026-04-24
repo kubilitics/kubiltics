@@ -5,12 +5,12 @@
  * access protected routes (e.g. after refresh when only currentClusterId was persisted).
  */
 import { useBackendConfigStore } from '@/stores/backendConfigStore';
-import { useClusterStore } from '@/stores/clusterStore';
+import { useActiveCluster } from '@/stores/clusterPresenceStore';
 import { useKubernetesConfigStore } from '@/stores/kubernetesConfigStore';
 
 export function useConnectionStatus(): { isConnected: boolean } {
   const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured());
-  const activeCluster = useClusterStore((s) => s.activeCluster);
+  const activeCluster = useActiveCluster();
   const { config } = useKubernetesConfigStore();
 
   const isConnected =

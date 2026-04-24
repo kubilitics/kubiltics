@@ -1,0 +1,7 @@
+{"bytes":94,"stage":"user_msg","ts":"2026-04-22T03:42:17.502788Z","turn_id":"bench-scen-events-56"}
+{"selected_topics":["core","pods"],"stage":"tool_filter","tool_count":27,"total_available":129,"ts":"2026-04-22T03:42:17.503309Z","turn_id":"bench-scen-events-56"}
+{"bytes":2457,"focus_cluster":"5cb1f37d-e31e-4915-8c4d-bdf36ef335ec","has_system":true,"messages":2,"stage":"llm_prompt_in","ts":"2026-04-22T03:42:17.503388Z","turn_id":"bench-scen-events-56"}
+{"arg_keys":["namespace","cluster_id"],"cluster_id":"5cb1f37d-e31e-4915-8c4d-bdf36ef335ec","stage":"tool_dispatch","tool_name":"analyze_pod_health","ts":"2026-04-22T03:42:18.640461Z","turn_id":"bench-scen-events-56"}
+{"bytes_in":103,"bytes_out":103,"stage":"tool_result_summarized","tool_name":"analyze_pod_health","ts":"2026-04-22T03:42:18.648666Z","turn_id":"bench-scen-events-56"}
+{"bytes":129,"preview":"No pods have been BackOff'd more than 3 times in the last hour. In fact, there are no pods to check, as the total pod count is 0.","stage":"llm_text_out","ts":"2026-04-22T03:42:20.164452Z","turn_id":"bench-scen-events-56"}
+{"duration_ms":2661,"finish_reason":"stop","stage":"done","ts":"2026-04-22T03:42:20.16456Z","turn_id":"bench-scen-events-56"}

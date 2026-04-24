@@ -39,6 +39,7 @@ import {
 } from '@/lib/k8sTooltips';
 import { BackendApiError } from '@/services/backendApiClient';
 
+import { useActiveClusterId } from '@/hooks/useActiveClusterId';
 interface MetricDataPoint {
   time: string;
   value: number;
@@ -221,7 +222,7 @@ export function MetricsDashboard({ resourceType, resourceName, namespace, podRes
   const [activeTab, setActiveTab] = useState('overview');
   const [timeRange, setTimeRange] = useState('15m');
 
-  const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
+  const currentClusterId = useActiveClusterId();
   const summaryType: MetricsSummaryResourceType | null = isMetricsSummaryType(resourceType) ? resourceType : null;
   const {
     data: queryResult,

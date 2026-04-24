@@ -38,10 +38,12 @@ import { cn } from '@/lib/utils';
 import { PageLayout } from '@/components/layout/PageLayout';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
-import { useClusterStore } from '@/stores/clusterStore';
+import { useActiveCluster } from '@/stores/clusterPresenceStore';
+import { useDemoStore } from '@/stores/demoStore';
 import { useConnectionStatus } from '@/hooks/useConnectionStatus';
 import { toast } from '@/components/ui/sonner';
 
+import { useActiveClusterId } from '@/hooks/useActiveClusterId';
 // ── Types ──────────────────────────────────────────────────────────────────────
 
 interface Backup {
@@ -154,7 +156,7 @@ function getPhaseLabel(phase: string): string {
 function useBackupApi() {
   const storedUrl = useBackendConfigStore((s) => s.backendBaseUrl);
   const backendBaseUrl = getEffectiveBackendBaseUrl(storedUrl);
-  const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
+  const currentClusterId = useActiveClusterId();
 
   const apiUrl = `${backendBaseUrl}/api/v1/clusters/${currentClusterId}/backups`;
 
@@ -204,8 +206,8 @@ function useBackupApi() {
 
 export default function BackupRestore() {
   const { isOnline } = useConnectionStatus();
-  const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
-  const isDemo = useClusterStore((s) => s.isDemo);
+  const currentClusterId = useActiveClusterId();
+  const isDemo = useDemoStore((s) => s.isDemo);
   const queryClient = useQueryClient();
   const api = useBackupApi();
 

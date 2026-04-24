@@ -7,10 +7,10 @@ import { Link } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Activity, AlertTriangle, CheckCircle2, ChevronRight } from "lucide-react";
 import { useHealthScore } from "@/hooks/useHealthScore";
-import { useClusterStore } from "@/stores/clusterStore";
+import { useActiveCluster } from '@/stores/clusterPresenceStore';
 
 export function DataDrivenInsightsCard() {
-  const { activeCluster } = useClusterStore();
+  const activeCluster = useActiveCluster();
   const health = useHealthScore();
 
   if (!activeCluster) {

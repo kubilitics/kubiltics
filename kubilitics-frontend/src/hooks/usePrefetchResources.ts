@@ -18,10 +18,11 @@
 import { useEffect, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
-import { useClusterStore } from '@/stores/clusterStore';
+import { useActiveCluster } from '@/stores/clusterPresenceStore';
 import { useProjectStore } from '@/stores/projectStore';
 import { listResources } from '@/services/backendApiClient';
 
+import { useActiveClusterId } from '@/hooks/useActiveClusterId';
 /** Resource types to prefetch on cluster connect */
 const PREFETCH_RESOURCES = [
   'pods',
@@ -48,8 +49,8 @@ export function usePrefetchResources() {
   const storedUrl = useBackendConfigStore((s) => s.backendBaseUrl);
   const backendBaseUrl = getEffectiveBackendBaseUrl(storedUrl);
   const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured());
-  const clusterId = useBackendConfigStore((s) => s.currentClusterId);
-  const activeCluster = useClusterStore((s) => s.activeCluster);
+  const clusterId = useActiveClusterId();
+  const activeCluster = useActiveCluster();
   const activeProjectId = useProjectStore((s) => s.activeProject?.id ?? null);
 
   const prefetchedRef = useRef<string | null>(null);

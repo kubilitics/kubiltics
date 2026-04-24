@@ -10,11 +10,12 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { Progress } from "@/components/ui/progress";
 import { useClusterOverview } from "@/hooks/useClusterOverview";
 import { useHealthScore } from "@/hooks/useHealthScore";
-import { useClusterStore } from "@/stores/clusterStore";
+import { useActiveCluster } from "@/stores/clusterPresenceStore";
 import { useBackendConfigStore } from "@/stores/backendConfigStore";
 import { EmptyNoClusters } from "@/components/ui/empty-state";
 import { cn } from "@/lib/utils";
 
+import { useActiveClusterId } from '@/hooks/useActiveClusterId';
 const STATUS_CONFIG: Record<string, { badge: string; icon: typeof CheckCircle2 }> = {
   excellent: { badge: "bg-success/10 border-success/20 text-success", icon: CheckCircle2 },
   healthy: { badge: "bg-success/10 border-success/20 text-success", icon: CheckCircle2 },
@@ -35,8 +36,8 @@ const BREAKDOWN_LABELS: Record<string, string> = {
 };
 
 export const ClusterHealthWidget = () => {
-  const { activeCluster } = useClusterStore();
-  const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
+  const activeCluster = useActiveCluster();
+  const currentClusterId = useActiveClusterId();
   const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured());
   const clusterId = currentClusterId ?? undefined;
 
@@ -93,7 +94,7 @@ export const ClusterHealthWidget = () => {
           <div className="flex-1 flex items-center justify-center">
             <EmptyNoClusters
               size="sm"
-              primaryAction={{ label: "Connect Cluster", href: "/connect?addCluster=true" }}
+              primaryAction={{ label: "Connect Cluster", href: "/clusters?addCluster=true" }}
             />
           </div>
         ) : (

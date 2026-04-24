@@ -31,15 +31,58 @@ vi.mock('@/stores/backendConfigStore', () => ({
   getEffectiveBackendBaseUrl: () => 'http://localhost:8190',
 }));
 
-vi.mock('@/hooks/useClusterSummary', () => ({
-  useClusterSummaryWithProject: (clusterId?: string) => {
-    summaryCalledWith = clusterId;
+// Phase 4 Task 4.4: the hook now runs on useResilientQuery instead of
+// useClusterSummaryWithProject. Mock at the resilient-query layer so the
+// existing regression matrix (disconnected, backend-configured, direct-k8s)
+// still exercises the integration end-to-end.
+//
+// The legacy mockSummaryData embedded { reachable, stale, error_message }
+// on the data payload; the resilient hook exposes those as top-level flags.
+// The mock destructures them back out so the existing test vectors still
+// exercise the same unreachable / stale / no-cache branches.
+vi.mock('./useResilientQuery', () => ({
+  useResilientQuery: (endpoint: string) => {
+    const match = endpoint.match(/\/clusters\/([^/?]+)\/summary/);
+    summaryCalledWith = match ? decodeURIComponent(match[1]) : undefined;
+    if (!endpoint || mockSummaryData === null) {
+      return {
+        data: undefined,
+        isLoading: false,
+        isReachable: false,
+        isStale: false,
+        errorMessage: null,
+        refetch: () => {},
+      };
+    }
+    const raw = mockSummaryData as Record<string, unknown>;
+    const reachable = raw.reachable === undefined ? true : Boolean(raw.reachable);
+    const stale = Boolean(raw.stale);
+    const errorMessage = typeof raw.error_message === 'string' ? raw.error_message : null;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { reachable: _r, stale: _s, error_message: _em, stale_as_of: _sa, ...counts } = raw;
     return {
-      data: clusterId ? mockSummaryData : null,
+      data: counts,
       isLoading: false,
+      isReachable: reachable,
+      isStale: stale,
+      errorMessage,
+      refetch: () => {},
     };
   },
 }));
+
+vi.mock('@/stores/projectStore', () => ({
+  useProjectStore: (selector: (s: { activeProjectId: string | null }) => unknown) =>
+    selector({ activeProjectId: null }),
+}));
+
+vi.mock('react-router-dom', async () => {
+  const actual = await vi.importActual<typeof import('react-router-dom')>('react-router-dom');
+  return {
+    ...actual,
+    useParams: () => ({}),
+  };
+});
 
 vi.mock('@/hooks/useActiveClusterId', () => ({
   useActiveClusterId: () => mockActiveClusterId ?? mockCurrentClusterId,

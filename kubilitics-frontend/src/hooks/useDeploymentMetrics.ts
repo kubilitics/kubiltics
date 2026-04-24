@@ -4,9 +4,10 @@
  */
 import { useQuery } from '@tanstack/react-query';
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
-import { useClusterStore } from '@/stores/clusterStore';
+import { useActiveCluster, useClusterPresenceStore } from '@/stores/clusterPresenceStore';
 import { getDeploymentMetrics, type BackendDeploymentMetrics } from '@/services/backendApiClient';
 
+import { useActiveClusterId } from '@/hooks/useActiveClusterId';
 export function useDeploymentMetrics(
   namespace: string | undefined,
   deploymentName: string | undefined,
@@ -15,9 +16,9 @@ export function useDeploymentMetrics(
   const storedUrl = useBackendConfigStore((s) => s.backendBaseUrl);
   const backendBaseUrl = getEffectiveBackendBaseUrl(storedUrl);
   const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured());
-  const activeCluster = useClusterStore((s) => s.activeCluster);
-  const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
-  const clusters = useClusterStore((s) => s.clusters);
+  const activeCluster = useActiveCluster();
+  const currentClusterId = useActiveClusterId();
+  const clusters = useClusterPresenceStore((s) => s.availableClusters());
   const clusterId = currentClusterId ?? undefined;
 
   const enabled =

@@ -38,11 +38,34 @@ vi.mock('@/hooks/useKubernetes', () => ({
   useUpdateK8sResource: () => ({ mutateAsync: vi.fn() }),
 }));
 
-vi.mock('@/stores/clusterStore', () => ({
-  useClusterStore: (selector?: (s: Record<string, unknown>) => unknown) => {
-    const state = { activeCluster: { name: 'test-cluster' } };
-    return selector ? selector(state) : state;
-  },
+vi.mock('@/stores/clusterAppearance', () => ({
+  getClusterAppearance: () => ({ color: '', environment: '', alias: '' }),
+  setClusterAppearance: vi.fn(),
+  getEnvBadgeLabel: () => null,
+  getEnvBadgeClasses: () => '',
+}));
+
+vi.mock('@/stores/clusterPresenceStore', () => ({
+  useActiveCluster: () => ({
+    id: 'test-cluster-id',
+    name: 'test-cluster',
+    serverUrl: 'https://test',
+    provider: '',
+  }),
+  getActiveCluster: () => ({
+    id: 'test-cluster-id',
+    name: 'test-cluster',
+    serverUrl: 'https://test',
+    provider: '',
+  }),
+  useClusterPresenceStore: () => ({
+    discovered: [],
+    registered: [],
+    connected: [],
+    availableClusters: () => [],
+  }),
+  setActiveClusterBySessionId: vi.fn(),
+  __resetForTest: vi.fn(),
 }));
 
 vi.mock('@/hooks/useActiveClusterId', () => ({

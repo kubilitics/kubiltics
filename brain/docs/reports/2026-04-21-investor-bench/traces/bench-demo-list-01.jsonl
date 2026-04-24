@@ -1,0 +1,7 @@
+{"bytes":19,"stage":"user_msg","ts":"2026-04-21T10:14:06.189366Z","turn_id":"bench-demo-list-01"}
+{"bytes":2382,"focus_cluster":"99c8b3d4-c74a-42dd-a00e-ef138c0721ae","has_system":true,"messages":2,"stage":"llm_prompt_in","ts":"2026-04-21T10:14:06.207698Z","turn_id":"bench-demo-list-01"}
+{"arg_keys":["cluster_id"],"cluster_id":"99c8b3d4-c74a-42dd-a00e-ef138c0721ae","stage":"tool_dispatch","tool_name":"observe_namespace_overview","ts":"2026-04-21T10:14:17.463777Z","turn_id":"bench-demo-list-01"}
+{"method":"GET","path":"/api/v1/clusters/99c8b3d4-c74a-42dd-a00e-ef138c0721ae/resources/namespaces/counts","resp_bytes":61,"stage":"backend_k8s_fetch","ts":"2026-04-21T10:14:20.222818Z","turn_id":"bench-demo-list-01"}
+{"method":"GET","path":"/api/v1/clusters/99c8b3d4-c74a-42dd-a00e-ef138c0721ae/resources/namespaces","resp_bytes":4093,"stage":"backend_k8s_fetch","ts":"2026-04-21T10:14:20.944504Z","turn_id":"bench-demo-list-01"}
+{"bytes_in":4121,"bytes_out":4121,"stage":"tool_result_summarized","tool_name":"observe_namespace_overview","ts":"2026-04-21T10:14:21.01008Z","turn_id":"bench-demo-list-01"}
+{"bytes":0,"stage":"llm_text_out","ts":"2026-04-21T10:15:03.743008Z","turn_id":"bench-demo-list-01"}

@@ -1,0 +1,25 @@
+kubilitics-ai {{ .Chart.AppVersion }} installed in namespace {{ .Release.Namespace }}.
+
+gRPC endpoint: {{ include "kubilitics-ai.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.service.grpcPort }}
+HTTP endpoint: http://{{ include "kubilitics-ai.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.service.httpPort }}
+
+Wire your kubilitics-backend Helm release to point at this:
+
+  helm upgrade kubilitics ../kubilitics/deploy/helm/kubilitics \
+    --set ai.enabled=true \
+    --set ai.endpoint={{ include "kubilitics-ai.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.service.grpcPort }} \
+    --set ai.httpEndpoint=http://{{ include "kubilitics-ai.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.service.httpPort }}
+
+Engines registered:
+  - llm (always — provider: {{ .Values.llm.provider }})
+{{- if .Values.engines.kagent.enabled }}
+  - kagent (skeleton; v1.5 wire-level integration pending)
+{{- end }}
+{{- if .Values.engines.python.enabled }}
+  - python (skeleton; v1.5 wire-level integration pending)
+{{- end }}
+
+Safety allow-list: {{ if .Values.safety.allowedActions }}{{ join ", " .Values.safety.allowedActions }}{{ else }}<empty — blocks all ActionPending events>{{ end }}
+
+For kagent installation (separate from this chart):
+  https://kagent.dev/docs/kagent/introduction/installation

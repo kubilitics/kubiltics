@@ -22,6 +22,7 @@ import { cn } from '@/lib/utils';
 import { toast } from '@/components/ui/sonner';
 import { openExternal } from '@/lib/tauri';
 
+import { useActiveClusterId } from '@/hooks/useActiveClusterId';
 interface IngressResource extends KubernetesResource {
   spec?: {
     ingressClassName?: string;
@@ -304,7 +305,7 @@ function TLSTab({ resource: ing }: ResourceContext<IngressResource>) {
   const tls = ing.spec?.tls || [];
   const backendBaseUrl = useBackendConfigStore((s) => s.backendBaseUrl);
   const baseUrl = getEffectiveBackendBaseUrl(backendBaseUrl);
-  const clusterId = useBackendConfigStore((s) => s.currentClusterId);
+  const clusterId = useActiveClusterId();
 
   if (tls.length === 0) {
     return <SectionCard title="TLS/SSL" icon={Lock}><p className="text-muted-foreground text-sm">No TLS configured</p></SectionCard>;

@@ -3,7 +3,7 @@ import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Zap, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useClusterStore } from '@/stores/clusterStore';
+import { useActiveCluster } from '@/stores/clusterPresenceStore';
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
 import { cn } from '@/lib/utils';
 import { LiveSignalStrip } from '@/components/dashboard/LiveSignalStrip';
@@ -20,6 +20,7 @@ import { RecentEventsCard } from '@/components/events/RecentEventsCard';
 import { InsightsBanner } from '@/components/events/InsightsBanner';
 import { useActiveInsights, useDismissInsight } from '@/hooks/useEventsIntelligence';
 
+import { useActiveClusterId } from '@/hooks/useActiveClusterId';
 const container = {
   hidden: { opacity: 0 },
   show: {
@@ -35,8 +36,8 @@ const item = {
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const { activeCluster } = useClusterStore();
-  const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
+  const activeCluster = useActiveCluster();
+  const currentClusterId = useActiveClusterId();
   const { showTour, completeTour, skipTour } = useDashboardTour();
   const { data: insights } = useActiveInsights();
   const dismissInsight = useDismissInsight();
@@ -50,7 +51,7 @@ export default function Dashboard() {
       const error = overviewQuery.error as unknown as Record<string, unknown>;
       if ((error?.status) === 404 || (error?.status) === 503 || (error?.status) === 500) {
         console.warn(`[Dashboard] Cluster ${currentClusterId} is not accessible (${error.status}). Redirecting to connect page.`);
-        navigate('/connect', { replace: true });
+        navigate('/clusters', { replace: true });
       }
     }
   }, [overviewQuery.error, overviewQuery.isError, currentClusterId, navigate]);
@@ -61,7 +62,7 @@ export default function Dashboard() {
         <AlertCircle className="h-12 w-12 text-muted-foreground" />
         <h2 className="text-xl font-semibold">No cluster selected</h2>
         <p className="text-muted-foreground">Please connect to a cluster to view the dashboard.</p>
-        <Button onClick={() => navigate('/connect')} variant="default">
+        <Button onClick={() => navigate('/clusters')} variant="default">
           Connect Cluster
         </Button>
       </div>

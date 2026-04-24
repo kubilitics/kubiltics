@@ -1,9 +1,10 @@
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
-import { useClusterStore } from '@/stores/clusterStore';
+import { useActiveCluster } from '@/stores/clusterPresenceStore';
 import { useK8sResourceList } from './useKubernetes';
 
+import { useActiveClusterId } from '@/hooks/useActiveClusterId';
 export interface NetworkingOverviewData {
     pulse: {
         total: number;
@@ -23,9 +24,9 @@ export interface NetworkingOverviewData {
 }
 
 export function useNetworkingOverview() {
-    const { activeCluster } = useClusterStore();
+    const activeCluster = useActiveCluster();
     const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured());
-    const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
+    const currentClusterId = useActiveClusterId();
     const clusterId = currentClusterId ?? undefined;
 
     const fallbackEnabled = !!(activeCluster || clusterId);

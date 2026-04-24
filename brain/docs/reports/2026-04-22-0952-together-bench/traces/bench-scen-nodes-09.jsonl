@@ -1,0 +1,7 @@
+{"bytes":98,"stage":"user_msg","ts":"2026-04-22T04:23:09.188253Z","turn_id":"bench-scen-nodes-09"}
+{"selected_topics":["core","nodes"],"stage":"tool_filter","tool_count":24,"total_available":135,"ts":"2026-04-22T04:23:09.188687Z","turn_id":"bench-scen-nodes-09"}
+{"bytes":2461,"focus_cluster":"5cb1f37d-e31e-4915-8c4d-bdf36ef335ec","has_system":true,"messages":2,"stage":"llm_prompt_in","ts":"2026-04-22T04:23:09.188716Z","turn_id":"bench-scen-nodes-09"}
+{"arg_keys":["cluster_id"],"cluster_id":"5cb1f37d-e31e-4915-8c4d-bdf36ef335ec","stage":"tool_dispatch","tool_name":"analyze_node_pressure","ts":"2026-04-22T04:23:10.414621Z","turn_id":"bench-scen-nodes-09"}
+{"bytes_in":483,"bytes_out":483,"stage":"tool_result_summarized","tool_name":"analyze_node_pressure","ts":"2026-04-22T04:23:10.421335Z","turn_id":"bench-scen-nodes-09"}
+{"bytes":123,"preview":"No nodes are under pressure. All 3 nodes have no active pressures, and none are experiencing disk, memory, or PID pressure.","stage":"llm_text_out","ts":"2026-04-22T04:23:12.447243Z","turn_id":"bench-scen-nodes-09"}
+{"duration_ms":3258,"finish_reason":"stop","stage":"done","ts":"2026-04-22T04:23:12.447356Z","turn_id":"bench-scen-nodes-09"}

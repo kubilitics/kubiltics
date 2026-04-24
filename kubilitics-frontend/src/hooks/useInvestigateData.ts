@@ -8,6 +8,7 @@ import { parseInsightDetail, type PodReference } from '@/lib/parseInsightPods';
 import { inferRootCause, extractErrorSnippet, type RootCauseResult } from '@/lib/rootCauseHeuristic';
 import type { Insight } from '@/services/api/eventsIntelligence';
 
+import { useActiveClusterId } from '@/hooks/useActiveClusterId';
 export interface PodInvestigateInfo {
   namespace: string;
   name: string;
@@ -240,7 +241,7 @@ async function fetchInvestigateData(
 }
 
 export function useInvestigateData(insight: Insight | null, enabled = false) {
-  const clusterId = useBackendConfigStore((s) => s.currentClusterId);
+  const clusterId = useActiveClusterId();
   const backendBaseUrl = useBackendConfigStore((s) => s.backendBaseUrl);
   const effectiveBaseUrl = getEffectiveBackendBaseUrl(backendBaseUrl);
   const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured());

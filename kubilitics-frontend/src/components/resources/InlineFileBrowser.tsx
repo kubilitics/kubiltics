@@ -31,8 +31,9 @@ import {
   type ContainerFileEntry,
 } from '@/services/backendApiClient';
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
-import { useClusterStore } from '@/stores/clusterStore';
+import { useActiveCluster } from '@/stores/clusterPresenceStore';
 
+import { useActiveClusterId } from '@/hooks/useActiveClusterId';
 interface InlineFileBrowserProps {
   podName: string;
   namespace: string;
@@ -73,8 +74,8 @@ export function InlineFileBrowser({
 }: InlineFileBrowserProps) {
   const storedUrl = useBackendConfigStore((s) => s.backendBaseUrl);
   const isConfigured = useBackendConfigStore((s) => s.isBackendConfigured());
-  const activeClusterId = useClusterStore((s) => s.activeCluster?.id);
-  const backendClusterId = useBackendConfigStore((s) => s.currentClusterId);
+  const activeClusterId = useActiveCluster()?.id ?? null;
+  const backendClusterId = useActiveClusterId();
   const storedClusterId = activeClusterId || backendClusterId;
   const baseUrl = baseUrlProp ?? getEffectiveBackendBaseUrl(storedUrl);
   const clusterId = clusterIdProp || storedClusterId || '';

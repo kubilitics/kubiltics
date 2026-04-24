@@ -38,6 +38,7 @@ import { getDetailPath } from "@/utils/resourceKindMapper";
 import { cn } from "@/lib/utils";
 import type { KubernetesResource } from "@/hooks/useKubernetes";
 
+import { useActiveClusterId } from '@/hooks/useActiveClusterId';
 /** Shape of a raw Kubernetes Event object from the API. */
 interface K8sEventItem extends KubernetesResource {
   type?: string;
@@ -104,7 +105,7 @@ function reasonIcon(reason: string) {
 
 export const RecentActivityPanel = () => {
   const { isConnected } = useConnectionStatus();
-  const clusterId = useBackendConfigStore((s) => s.currentClusterId);
+  const clusterId = useActiveClusterId();
   const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured());
   const backendBaseUrl = getEffectiveBackendBaseUrl(useBackendConfigStore((s) => s.backendBaseUrl));
 

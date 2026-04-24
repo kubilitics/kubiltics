@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useMemo, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useBackendConfigStore } from "@/stores/backendConfigStore";
-import { useClusterStore } from "@/stores/clusterStore";
+import { useActiveCluster } from '@/stores/clusterPresenceStore';
 
 import { TopologyToolbar } from "./TopologyToolbar";
 import { TopologyCanvas } from "./TopologyCanvas";
@@ -32,6 +32,7 @@ import { GitCompareArrows } from "lucide-react";
 import { AskAIButton } from "@/components/ai/AskAIButton";
 import { useAIContext } from "@/hooks/useAIContext";
 
+import { useActiveClusterId } from '@/hooks/useActiveClusterId';
 // ─── URL Search Params helpers ───────────────────────────────────────────────
 // Namespace selection is persisted in URL as ?ns=default or ?ns=blue-green-demo,foo
 // This ensures the browser back button restores the correct namespace.
@@ -48,9 +49,9 @@ function namespacesToURL(ns: Set<string>): string {
 }
 
 export function TopologyPage() {
-  const clusterId = useBackendConfigStore((s) => s.currentClusterId) ?? null;
-  const clusterName = useClusterStore((s) => s.activeCluster?.name) ?? null;
-  const activeClusterId = useClusterStore((s) => s.activeCluster?.id);
+  const clusterId = useActiveClusterId() ?? null;
+  const clusterName = useActiveCluster()?.name ?? null;
+  const activeClusterId = useActiveCluster()?.id ?? null;
   const aiCtx = useMemo(() => ({
     type: 'topology' as const,
     cluster: activeClusterId ?? clusterId ?? '',

@@ -1,0 +1,605 @@
+{
+  "description": "100 real-world engineer scenarios — the kind of questions on-call SREs, platform engineers, and security folks actually type during incidents, capacity reviews, audits, and weekly status preps. First 20 preserved verbatim from incident-scenarios-20.json; remaining 80 extend coverage into blast radius, drift, dependencies, forensics, cost, observability gaps, and narrative reporting. Cluster: kubilitics-test (kind, 3 nodes, 7 namespaces, demo/web + data/redis workloads).",
+  "prompts": [
+    {
+      "id": "scen-health-01",
+      "text": "Give me a quick health check of the whole cluster — what's running, what's broken, what should I worry about right now?",
+      "expect_tool": true,
+      "scenario": "Just-got-paged overview. Engineer wants one-shot situational awareness before digging in."
+    },
+    {
+      "id": "scen-health-02",
+      "text": "Is anything unhealthy in the demo namespace? If so, what and why?",
+      "expect_tool": true,
+      "scenario": "Scoped triage. Engineer knows the service area; wants targeted assessment without reading every pod manually."
+    },
+    {
+      "id": "scen-pods-03",
+      "text": "Show me the web deployment in demo — how many replicas, are they all ready, any recent restarts?",
+      "expect_tool": true,
+      "scenario": "Deployment-level status question that drives downstream 'is my service serving traffic?' reasoning."
+    },
+    {
+      "id": "scen-pods-04",
+      "text": "Any pods that have restarted more than once in the last hour? I need to know before standup.",
+      "expect_tool": true,
+      "scenario": "Flake detector. Engineer is looking for the 'silent failures' — services that are technically up but thrashing."
+    },
+    {
+      "id": "scen-logs-05",
+      "text": "Grab the latest logs from one of the web pods in demo — I want to see if there's anything funny in the output.",
+      "expect_tool": true,
+      "scenario": "Fast log peek. Engineer doesn't want to kubectl exec; the assistant should pick a representative pod."
+    },
+    {
+      "id": "scen-logs-06",
+      "text": "What errors or warnings are showing up in redis in the data namespace recently?",
+      "expect_tool": true,
+      "scenario": "Filtered log investigation. Tests whether the assistant fetches logs AND summarizes, not just dumps lines."
+    },
+    {
+      "id": "scen-events-07",
+      "text": "What happened in the demo namespace in the last 15 minutes? Any events I should know about?",
+      "expect_tool": true,
+      "scenario": "Event-based forensics — 'what changed' is usually the first question during an incident."
+    },
+    {
+      "id": "scen-events-08",
+      "text": "Have any pods been OOMKilled or evicted cluster-wide recently?",
+      "expect_tool": true,
+      "scenario": "Resource-pressure red flag. Engineer is hunting for silent memory issues before they cascade."
+    },
+    {
+      "id": "scen-nodes-09",
+      "text": "Are any of my nodes under pressure — CPU, memory, disk? I don't want to find out by being paged.",
+      "expect_tool": true,
+      "scenario": "Capacity pre-emption. The question a seasoned SRE asks BEFORE a capacity incident, not after."
+    },
+    {
+      "id": "scen-nodes-10",
+      "text": "How is the kubilitics-test-control-plane node doing — capacity, what's scheduled on it, any conditions?",
+      "expect_tool": true,
+      "scenario": "Specific-node deep dive. Tests whether the assistant can focus on one node without dumping cluster-wide data."
+    },
+    {
+      "id": "scen-capacity-11",
+      "text": "Do I have enough capacity to scale the web deployment from 3 to 10 replicas? Give me a realistic answer.",
+      "expect_tool": true,
+      "scenario": "What-if capacity planning. Requires reasoning about node resources + existing allocations, not just listing."
+    },
+    {
+      "id": "scen-rbac-12",
+      "text": "Who has permission to delete pods in the demo namespace? I need to know for a security review.",
+      "expect_tool": true,
+      "scenario": "Real RBAC audit scenario. The answer should name service accounts / roles, not just dump policy docs."
+    },
+    {
+      "id": "scen-rbac-13",
+      "text": "Are any service accounts granted cluster-admin by accident? That'd be a finding I need to escalate.",
+      "expect_tool": true,
+      "scenario": "Security-posture check. The SRE equivalent of 'is the door unlocked?'"
+    },
+    {
+      "id": "scen-network-14",
+      "text": "The web service in demo — where does its traffic go? Which pods does it actually route to right now?",
+      "expect_tool": true,
+      "scenario": "Service/endpoints correlation. Helps debug 'service exists but nothing responds' issues."
+    },
+    {
+      "id": "scen-storage-15",
+      "text": "What persistent volumes exist and are any close to full or in an error state?",
+      "expect_tool": true,
+      "scenario": "Storage-pressure scan. PVC-full is a classic silent incident cause; the assistant should flag it proactively."
+    },
+    {
+      "id": "scen-config-16",
+      "text": "Show me the environment variables the redis pod in data is running with — I suspect a config mismatch.",
+      "expect_tool": true,
+      "scenario": "Config drift debugging. Critical: the assistant must redact secret values while showing the shape."
+    },
+    {
+      "id": "scen-workload-17",
+      "text": "Walk me through everything the redis deployment depends on — configmaps, secrets, service accounts, the works.",
+      "expect_tool": true,
+      "scenario": "Dependency discovery. Tests multi-step reasoning: get deployment → trace refs → read each ref."
+    },
+    {
+      "id": "scen-compare-18",
+      "text": "Compare the web deployment's desired state to what's actually running — anything different?",
+      "expect_tool": true,
+      "scenario": "Drift detection. Exercises the 'desired vs actual' mental model that Kubernetes operators live in."
+    },
+    {
+      "id": "scen-change-19",
+      "text": "What's been deployed or changed in the last 2 hours? I came back from lunch and things feel off.",
+      "expect_tool": true,
+      "scenario": "Recent-change investigation. Nearly every incident starts with 'what changed?' — this is the core question."
+    },
+    {
+      "id": "scen-summary-20",
+      "text": "Summarize the kubilitics-test cluster for a weekly status update — what's deployed, who's healthy, any risks to flag.",
+      "expect_tool": true,
+      "scenario": "Narrative-style reporting. Tests whether the assistant can synthesize across multiple tools into a human-readable summary."
+    },
+    {
+      "id": "scen-health-21",
+      "text": "I just got paged — redis, data namespace. What's going on right now?",
+      "expect_tool": true,
+      "scenario": "The literal first 30 seconds of an incident — engineer needs immediate context on a named service."
+    },
+    {
+      "id": "scen-health-22",
+      "text": "Anything in the cluster stuck in a non-Running state? Pending, CrashLooping, ImagePullBackOff, whatever.",
+      "expect_tool": true,
+      "scenario": "Broad sweep for stuck pods across all namespaces before standup."
+    },
+    {
+      "id": "scen-health-23",
+      "text": "Are all my system pods in kube-system happy? If kube-dns or the API server is flaky I need to know first.",
+      "expect_tool": true,
+      "scenario": "Control-plane sanity check — rules out infra problems before chasing app-level issues."
+    },
+    {
+      "id": "scen-health-24",
+      "text": "Give me the top 3 things that look wrong right now, ranked by how much I should care.",
+      "expect_tool": true,
+      "scenario": "Prioritized triage. Tests whether the model can rank severity, not just list."
+    },
+    {
+      "id": "scen-health-25",
+      "text": "Is the cluster actually serving traffic? Not 'are pods Running' — I mean are endpoints healthy end-to-end.",
+      "expect_tool": true,
+      "scenario": "Beyond-pod-status reasoning — distinguishing Pod Ready from Service actually serving."
+    },
+    {
+      "id": "scen-health-26",
+      "text": "Anything flapping? I want to catch services that keep going Ready then NotReady.",
+      "expect_tool": true,
+      "scenario": "Flap hunt — the silent killer that Prometheus alerting often misses until customers complain."
+    },
+    {
+      "id": "scen-health-27",
+      "text": "Quick sanity check before I hand off on-call — anything the next person needs to know?",
+      "expect_tool": true,
+      "scenario": "End-of-shift handoff — forces the assistant to surface only what's actionable."
+    },
+    {
+      "id": "scen-health-30",
+      "text": "What's the single biggest risk in this cluster right now? One thing, not a list.",
+      "expect_tool": true,
+      "scenario": "Force-rank question — most useful during a war-room where focus matters."
+    },
+    {
+      "id": "scen-health-31",
+      "text": "Is anything degraded but not outright broken? The grey-zone stuff is what bites.",
+      "expect_tool": true,
+      "scenario": "Captures the partial-failure reality of real production — not Red or Green."
+    },
+    {
+      "id": "scen-health-32",
+      "text": "I'm about to go into a customer demo in 10 minutes. Anything in this cluster that will embarrass me?",
+      "expect_tool": true,
+      "scenario": "Pre-demo jitters — classic time-pressured sanity check."
+    },
+    {
+      "id": "scen-pods-33",
+      "text": "The frontend is slow. Web pods in demo — CPU or memory pinned on any of them?",
+      "expect_tool": true,
+      "scenario": "Performance triage. Direct quote from the calibration example list."
+    },
+    {
+      "id": "scen-pods-34",
+      "text": "Any pods without resource requests set? I keep getting scheduling issues and I think that's the cause.",
+      "expect_tool": true,
+      "scenario": "Config-hygiene check — missing requests are one of the top causes of scheduling chaos."
+    },
+    {
+      "id": "scen-pods-35",
+      "text": "Are any pods in demo way over-provisioned? I want to trim the fat before finance asks.",
+      "expect_tool": true,
+      "scenario": "Rightsizing question — requests vs actual usage comparison."
+    },
+    {
+      "id": "scen-pods-36",
+      "text": "Is the web deployment actually running the image I think it is? I want to confirm the tag.",
+      "expect_tool": true,
+      "scenario": "Post-deploy verification — did my rollout actually take effect."
+    },
+    {
+      "id": "scen-pods-37",
+      "text": "Any pod that's been Pending for more than 5 minutes? Something's wrong if so.",
+      "expect_tool": true,
+      "scenario": "Scheduler starvation hunt — Pending pods are almost always a signal, not noise."
+    },
+    {
+      "id": "scen-pods-39",
+      "text": "How many times has the redis pod in data restarted since it was created? Is that a lot for its age?",
+      "expect_tool": true,
+      "scenario": "Restart-rate reasoning — requires normalization by uptime, not just raw count."
+    },
+    {
+      "id": "scen-pods-40",
+      "text": "Any of the web pods stuck on a single node? I want them spread for HA.",
+      "expect_tool": true,
+      "scenario": "Anti-affinity / topology spread audit — common post-incident finding."
+    },
+    {
+      "id": "scen-pods-41",
+      "text": "Check if redis has liveness and readiness probes configured, and whether they're actually passing.",
+      "expect_tool": true,
+      "scenario": "Probe configuration audit — missing probes is a top-5 reliability smell."
+    },
+    {
+      "id": "scen-pods-42",
+      "text": "Which pod in demo has used the most CPU in the last 30 minutes?",
+      "expect_tool": true,
+      "scenario": "Hot-pod identification — classic 'who is eating my lunch' question."
+    },
+    {
+      "id": "scen-pods-43",
+      "text": "Is any container in the cluster running without a memory limit? That's an accident waiting to happen.",
+      "expect_tool": true,
+      "scenario": "Memory-limit hygiene — unbounded containers can tip entire nodes."
+    },
+    {
+      "id": "scen-pods-44",
+      "text": "The web deployment — is HPA attached, and if yes what's it currently targeting?",
+      "expect_tool": true,
+      "scenario": "HPA configuration check — common during scale investigations."
+    },
+    {
+      "id": "scen-pods-46",
+      "text": "Any pod that's been in Terminating state for more than a minute? Those usually mean a stuck finalizer.",
+      "expect_tool": true,
+      "scenario": "Stuck-terminating hunt — classic operator bug signature."
+    },
+    {
+      "id": "scen-logs-48",
+      "text": "I'm seeing 500s from web — look through the recent web pod logs and tell me what's throwing errors.",
+      "expect_tool": true,
+      "scenario": "Error-hunt in logs — requires filtering + summarizing, not dumping."
+    },
+    {
+      "id": "scen-logs-49",
+      "text": "Find any 'panic' or 'fatal' strings in any pod logs across the cluster in the last hour.",
+      "expect_tool": true,
+      "scenario": "Keyword-triggered forensics — broad-sweep log scan during major incidents."
+    },
+    {
+      "id": "scen-logs-50",
+      "text": "Grab the previous container logs for the redis pod — I think it restarted and I want the crash output.",
+      "expect_tool": true,
+      "scenario": "Post-crash forensics — --previous is the flag you only remember after you need it."
+    },
+    {
+      "id": "scen-events-51",
+      "text": "Did any pod get OOMKilled between roughly 2:15 and 2:45 today?",
+      "expect_tool": true,
+      "scenario": "Time-bounded forensics — matches a known alert window."
+    },
+    {
+      "id": "scen-events-52",
+      "text": "Any FailedScheduling events in the last hour? Which pods and why?",
+      "expect_tool": true,
+      "scenario": "Scheduling-failure investigation — commonly a capacity or taint problem."
+    },
+    {
+      "id": "scen-events-53",
+      "text": "What warning-level events are showing up cluster-wide? Ignore the routine Normal stuff.",
+      "expect_tool": true,
+      "scenario": "Noise-filtered event scan — separates signal from Kubernetes chatter."
+    },
+    {
+      "id": "scen-events-54",
+      "text": "Any image pull failures anywhere? Registry might be flaking again.",
+      "expect_tool": true,
+      "scenario": "Registry-trouble hunt — a common source of mysterious 'pods won't start' pages."
+    },
+    {
+      "id": "scen-events-56",
+      "text": "Has anything been BackOff'd more than 3 times in the last hour? That's basically a broken pod.",
+      "expect_tool": true,
+      "scenario": "Backoff-threshold alert — specific quantitative trigger."
+    },
+    {
+      "id": "scen-nodes-60",
+      "text": "How much headroom do I have on each node? CPU and memory available after requests.",
+      "expect_tool": true,
+      "scenario": "Classic capacity-remaining question for scheduling decisions."
+    },
+    {
+      "id": "scen-nodes-61",
+      "text": "Any node that's running way hotter than the others? I want to catch imbalance early.",
+      "expect_tool": true,
+      "scenario": "Load imbalance — often surfaces before outright node failure."
+    },
+    {
+      "id": "scen-nodes-62",
+      "text": "Are all three of my nodes Ready and schedulable? No cordons, no taints I didn't put there?",
+      "expect_tool": true,
+      "scenario": "Scheduler-input audit — cordons/taints cause surprise Pending pods."
+    },
+    {
+      "id": "scen-nodes-63",
+      "text": "If one node dies right now, do I have room to reschedule everything on the other two?",
+      "expect_tool": true,
+      "scenario": "N-1 capacity planning — the scenario every enterprise architect asks."
+    },
+    {
+      "id": "scen-nodes-64",
+      "text": "Which pods are running on kubilitics-test-worker? I want to see what I'd lose if that node fell over.",
+      "expect_tool": true,
+      "scenario": "Blast-radius-per-node — classic failure domain review."
+    },
+    {
+      "id": "scen-nodes-65",
+      "text": "Are any pods with no PDB pinned to a single node? Those are my cascading-failure risks.",
+      "expect_tool": true,
+      "scenario": "PDB + topology-spread cross-check — real DR hygiene."
+    },
+    {
+      "id": "scen-nodes-67",
+      "text": "Can we absorb a 2x traffic surge without adding nodes? Black Friday is coming.",
+      "expect_tool": true,
+      "scenario": "Capacity planning with a business deadline — forces forward-looking math."
+    },
+    {
+      "id": "scen-nodes-68",
+      "text": "Which node has the most pods and the least resources free? That's my next incident.",
+      "expect_tool": true,
+      "scenario": "Hotspot identification — proactive rather than reactive."
+    },
+    {
+      "id": "scen-rbac-69",
+      "text": "Does any role outside kube-system have wildcard permissions? Quarterly audit needs a clean answer.",
+      "expect_tool": true,
+      "scenario": "Wildcard-perm audit — classic compliance finding."
+    },
+    {
+      "id": "scen-rbac-70",
+      "text": "Which service accounts can read secrets cluster-wide? That's a blast-radius question for a SOC2 prep.",
+      "expect_tool": true,
+      "scenario": "Secrets-read audit — high-leverage permission to track."
+    },
+    {
+      "id": "scen-rbac-71",
+      "text": "Is there any workload running as root? Our baseline says no and I want to confirm.",
+      "expect_tool": true,
+      "scenario": "Pod-security baseline audit — runAsNonRoot enforcement check."
+    },
+    {
+      "id": "scen-rbac-72",
+      "text": "Any pod with hostPath mounts? Those are almost always a risk to call out.",
+      "expect_tool": true,
+      "scenario": "HostPath audit — node-escape risk surface."
+    },
+    {
+      "id": "scen-rbac-73",
+      "text": "Which namespaces have ImagePullSecrets configured vs not? Trying to understand our registry auth posture.",
+      "expect_tool": true,
+      "scenario": "Registry-auth audit — often drifts silently."
+    },
+    {
+      "id": "scen-rbac-74",
+      "text": "Do we have any privileged containers anywhere? That's a hard-no in our policy.",
+      "expect_tool": true,
+      "scenario": "Privileged-container detector — a top PSP / Pod Security Standards violation."
+    },
+    {
+      "id": "scen-rbac-75",
+      "text": "Are network policies in place for demo and data namespaces? We've been meaning to lock those down.",
+      "expect_tool": true,
+      "scenario": "NetworkPolicy coverage audit — default-open namespaces are a common finding."
+    },
+    {
+      "id": "scen-rbac-76",
+      "text": "Security prep for the BigCorp onboarding call tomorrow — give me the quick-wins and the known gaps.",
+      "expect_tool": true,
+      "scenario": "Customer-facing security review — forces positive AND negative framing."
+    },
+    {
+      "id": "scen-rbac-78",
+      "text": "Any secret in the cluster older than 90 days that probably should've been rotated?",
+      "expect_tool": true,
+      "scenario": "Secret-age check — rotation-policy enforcement hint."
+    },
+    {
+      "id": "scen-network-79",
+      "text": "Is DNS working properly inside the cluster? I'm seeing weird resolve failures from web.",
+      "expect_tool": true,
+      "scenario": "CoreDNS health debugging — a frequent root cause of 'random' app failures."
+    },
+    {
+      "id": "scen-network-80",
+      "text": "Any service in the cluster with zero endpoints? That's a broken selector.",
+      "expect_tool": true,
+      "scenario": "Zero-endpoint services — silent routing black holes."
+    },
+    {
+      "id": "scen-network-81",
+      "text": "What ingresses do we have and are their backends all healthy?",
+      "expect_tool": true,
+      "scenario": "Ingress-to-backend correlation — external-traffic readiness check."
+    },
+    {
+      "id": "scen-network-82",
+      "text": "Is the web service in demo reachable from the data namespace? Suspect a NetworkPolicy blocking it.",
+      "expect_tool": true,
+      "scenario": "Cross-namespace reachability — NetworkPolicy debugging scenario."
+    },
+    {
+      "id": "scen-network-83",
+      "text": "Show me all LoadBalancer and NodePort services. I want to know what's exposed externally.",
+      "expect_tool": true,
+      "scenario": "External-surface audit — useful for security reviews and cost tracking."
+    },
+    {
+      "id": "scen-network-85",
+      "text": "Explain why billing would depend on auth — trace the service wiring so I can understand the blast radius if auth goes down.",
+      "expect_tool": true,
+      "scenario": "Service dependency mapping — architectural blast-radius exercise."
+    },
+    {
+      "id": "scen-network-86",
+      "text": "Any ingress with a TLS cert about to expire? I don't want to be that person on a Friday.",
+      "expect_tool": true,
+      "scenario": "Cert-expiry pre-check — classic Friday-saver."
+    },
+    {
+      "id": "scen-storage-87",
+      "text": "Any PVC stuck in Pending? Means the StorageClass or a provisioner is sideways.",
+      "expect_tool": true,
+      "scenario": "PVC-pending hunt — common dev-cluster and prod pain point."
+    },
+    {
+      "id": "scen-storage-88",
+      "text": "Which PVs use the local-path StorageClass and how much space is used vs allocated?",
+      "expect_tool": true,
+      "scenario": "Storage-usage drill — kind cluster uses local-path, so this is grounded."
+    },
+    {
+      "id": "scen-storage-89",
+      "text": "Any PVC that's been Released but not Deleted? Those hold capacity hostage.",
+      "expect_tool": true,
+      "scenario": "Reclaim-policy audit — finds orphaned claims."
+    },
+    {
+      "id": "scen-storage-90",
+      "text": "If redis's PVC filled up right now, what would happen? Walk me through it.",
+      "expect_tool": true,
+      "scenario": "What-if storage exhaustion — forces reasoning about app behavior, not just K8s objects."
+    },
+    {
+      "id": "scen-storage-92",
+      "text": "What's the retention policy on each PV? Do any say Delete when they should be Retain?",
+      "expect_tool": true,
+      "scenario": "ReclaimPolicy audit — critical before any cluster rebuild."
+    },
+    {
+      "id": "scen-config-93",
+      "text": "If I delete the web configmap in demo right now, what breaks?",
+      "expect_tool": true,
+      "scenario": "Blast-radius question against a specific config object — pure impact analysis."
+    },
+    {
+      "id": "scen-config-94",
+      "text": "Find any configmap referenced by a deployment but that doesn't actually exist. Those are silent landmines.",
+      "expect_tool": true,
+      "scenario": "Dangling-reference hunt — pods boot but don't reload properly."
+    },
+    {
+      "id": "scen-config-95",
+      "text": "Are there any secrets mounted into pods that aren't actually used by the container? Smell of leftover config.",
+      "expect_tool": true,
+      "scenario": "Unused-secret audit — surface-area reduction."
+    },
+    {
+      "id": "scen-config-96",
+      "text": "Diff the live web deployment against what looks like its declared manifest — is there env drift?",
+      "expect_tool": true,
+      "scenario": "Live-vs-declared drift — GitOps hygiene check."
+    },
+    {
+      "id": "scen-config-98",
+      "text": "Which pods mount the same secret? If that secret rotates, I want the blast radius.",
+      "expect_tool": true,
+      "scenario": "Secret-consumer mapping — rotation-planning primitive."
+    },
+    {
+      "id": "scen-config-99",
+      "text": "Show me the shape of all env vars on the web pod in demo — don't print secret values, just the keys.",
+      "expect_tool": true,
+      "scenario": "Structured-config inspection — must redact values."
+    },
+    {
+      "id": "scen-config-100",
+      "text": "Any pod still referencing a ConfigMap from a namespace that was deleted? I'm chasing a stale binding theory.",
+      "expect_tool": true,
+      "scenario": "Stale-binding forensics — obscure but real operator-introduced bug."
+    },
+    {
+      "id": "scen-change-101",
+      "text": "Did anything get deployed in the last hour? PagerDuty just lit up and I need to know what changed.",
+      "expect_tool": true,
+      "scenario": "Direct calibration-example quote — the archetypal 'what changed' question."
+    },
+    {
+      "id": "scen-change-102",
+      "text": "Are there any deployments currently mid-rollout? I want to know if we're in a partial state.",
+      "expect_tool": true,
+      "scenario": "Active-rollout detector — in-flight changes are their own category of risk."
+    },
+    {
+      "id": "scen-change-103",
+      "text": "Did the web deployment's image tag change in the last 24 hours? Show me old vs new.",
+      "expect_tool": true,
+      "scenario": "Tag-diff question — GitOps / audit angle."
+    },
+    {
+      "id": "scen-change-104",
+      "text": "Was anything scaled up or down in demo recently? I'm trying to explain a cost spike.",
+      "expect_tool": true,
+      "scenario": "Scale-event forensics — cost-driven investigation."
+    },
+    {
+      "id": "scen-change-105",
+      "text": "Roll me through redis's rollout history — how many revisions, any rollbacks?",
+      "expect_tool": true,
+      "scenario": "Revision history review — standard during rollout postmortems."
+    },
+    {
+      "id": "scen-change-107",
+      "text": "If I roll the web deployment back one revision, what would that actually revert?",
+      "expect_tool": true,
+      "scenario": "What-if rollback — spec-level diff reasoning."
+    },
+    {
+      "id": "scen-cost-108",
+      "text": "Which namespace is eating the most CPU this week? Finance is asking and I need a number.",
+      "expect_tool": true,
+      "scenario": "Namespace-level cost attribution — common monthly ritual."
+    },
+    {
+      "id": "scen-cost-109",
+      "text": "Any workloads that request a lot of memory but barely use any? That's the rightsizing backlog.",
+      "expect_tool": true,
+      "scenario": "Requests vs usage gap — classic waste signal."
+    },
+    {
+      "id": "scen-cost-110",
+      "text": "Are there any deployments scaled above 1 replica that haven't served real traffic in a week?",
+      "expect_tool": true,
+      "scenario": "Idle-replica identification — cost-reduction opportunity."
+    },
+    {
+      "id": "scen-cost-111",
+      "text": "Give me an estimate of how much slack CPU we have paid for but aren't using across the cluster.",
+      "expect_tool": true,
+      "scenario": "Cluster-level slack — feeds into quarterly capacity conversations."
+    },
+    {
+      "id": "scen-observability-112",
+      "text": "Which services don't have liveness probes? We can't page on what we can't detect.",
+      "expect_tool": true,
+      "scenario": "Probe-coverage audit — basic observability hygiene."
+    },
+    {
+      "id": "scen-observability-113",
+      "text": "Any pod without the standard Prometheus scrape annotations? I want to know where our metrics gap is.",
+      "expect_tool": true,
+      "scenario": "Metrics-coverage audit — observability-stack hygiene."
+    },
+    {
+      "id": "scen-observability-114",
+      "text": "Which namespaces have zero logs flowing to our aggregator in the last hour? Either nothing's running or logging's broken.",
+      "expect_tool": true,
+      "scenario": "Log-coverage gap — catches silent log-pipeline failures."
+    },
+    {
+      "id": "scen-summary-116",
+      "text": "Put together a postmortem-style narrative of what happened in the cluster in the last hour — even if nothing bad, just the story.",
+      "expect_tool": true,
+      "scenario": "Narrative forensics — mixes events + changes + health into one story."
+    }
+  ]
+}

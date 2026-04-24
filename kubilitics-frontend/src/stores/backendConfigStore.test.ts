@@ -8,7 +8,6 @@ describe('backendConfigStore', () => {
 
   beforeEach(() => {
     useBackendConfigStore.getState().setBackendBaseUrl('');
-    useBackendConfigStore.getState().setCurrentClusterId(null);
   });
 
   afterEach(() => {
@@ -47,24 +46,15 @@ describe('backendConfigStore', () => {
     expect(useBackendConfigStore.getState().backendBaseUrl).toBe(DEFAULT_BACKEND_BASE_URL);
   });
 
-  it('setCurrentClusterId updates cluster id', () => {
-    useBackendConfigStore.getState().setCurrentClusterId('cluster-1');
-    expect(useBackendConfigStore.getState().currentClusterId).toBe('cluster-1');
-  });
+  // Phase 7: currentClusterId / setCurrentClusterId were removed from
+  // backendConfigStore — presence is now the single source of truth for
+  // active cluster identity. The corresponding tests are gone with the fields.
 
-  it('setCurrentClusterId accepts null to clear', () => {
-    useBackendConfigStore.getState().setCurrentClusterId('cluster-1');
-    useBackendConfigStore.getState().setCurrentClusterId(null);
-    expect(useBackendConfigStore.getState().currentClusterId).toBeNull();
-  });
-
-  it('clearBackend resets URL to default and clears cluster', () => {
+  it('clearBackend resets URL to default and flips the logout flag', () => {
     useBackendConfigStore.getState().setBackendBaseUrl('http://custom:9999');
-    useBackendConfigStore.getState().setCurrentClusterId('c1');
 
     useBackendConfigStore.getState().clearBackend();
 
-    expect(useBackendConfigStore.getState().currentClusterId).toBeNull();
     expect(useBackendConfigStore.getState().logoutFlag).toBe(true);
   });
 

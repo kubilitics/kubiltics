@@ -1,0 +1,504 @@
+{
+  "prompts": [
+    {
+      "id": "list-0001",
+      "text": "list namespaces",
+      "expect_tool": true
+    },
+    {
+      "id": "list-0002",
+      "text": "show namespaces",
+      "expect_tool": true
+    },
+    {
+      "id": "list-0003",
+      "text": "show me namespaces",
+      "expect_tool": true
+    },
+    {
+      "id": "list-0004",
+      "text": "what namespaces are running",
+      "expect_tool": true
+    },
+    {
+      "id": "list-0005",
+      "text": "list all namespaces",
+      "expect_tool": true
+    },
+    {
+      "id": "list-0006",
+      "text": "list every namespaces",
+      "expect_tool": true
+    },
+    {
+      "id": "count-0007",
+      "text": "how many namespaces are there",
+      "expect_tool": true
+    },
+    {
+      "id": "count-0008",
+      "text": "count the namespaces",
+      "expect_tool": true
+    },
+    {
+      "id": "count-0009",
+      "text": "how many namespaces do we have",
+      "expect_tool": true
+    },
+    {
+      "id": "list-0010",
+      "text": "list pods",
+      "expect_tool": true
+    },
+    {
+      "id": "list-0011",
+      "text": "show pods",
+      "expect_tool": true
+    },
+    {
+      "id": "list-0012",
+      "text": "show me pods",
+      "expect_tool": true
+    },
+    {
+      "id": "list-0013",
+      "text": "what pods are running",
+      "expect_tool": true
+    },
+    {
+      "id": "list-0014",
+      "text": "list all pods",
+      "expect_tool": true
+    },
+    {
+      "id": "list-0015",
+      "text": "list every pods",
+      "expect_tool": true
+    },
+    {
+      "id": "count-0016",
+      "text": "how many pods are there",
+      "expect_tool": true
+    },
+    {
+      "id": "count-0017",
+      "text": "count the pods",
+      "expect_tool": true
+    },
+    {
+      "id": "count-0018",
+      "text": "how many pods do we have",
+      "expect_tool": true
+    },
+    {
+      "id": "list-0019",
+      "text": "list deployments",
+      "expect_tool": true
+    },
+    {
+      "id": "list-0020",
+      "text": "show deployments",
+      "expect_tool": true
+    },
+    {
+      "id": "list-0021",
+      "text": "show me deployments",
+      "expect_tool": true
+    },
+    {
+      "id": "list-0022",
+      "text": "what deployments are running",
+      "expect_tool": true
+    },
+    {
+      "id": "list-0023",
+      "text": "list all deployments",
+      "expect_tool": true
+    },
+    {
+      "id": "list-0024",
+      "text": "list every deployments",
+      "expect_tool": true
+    },
+    {
+      "id": "count-0025",
+      "text": "how many deployments are there",
+      "expect_tool": true
+    },
+    {
+      "id": "count-0026",
+      "text": "count the deployments",
+      "expect_tool": true
+    },
+    {
+      "id": "count-0027",
+      "text": "how many deployments do we have",
+      "expect_tool": true
+    },
+    {
+      "id": "list-0028",
+      "text": "list services",
+      "expect_tool": true
+    },
+    {
+      "id": "list-0029",
+      "text": "show services",
+      "expect_tool": true
+    },
+    {
+      "id": "list-0030",
+      "text": "show me services",
+      "expect_tool": true
+    },
+    {
+      "id": "list-0031",
+      "text": "what services are running",
+      "expect_tool": true
+    },
+    {
+      "id": "list-0032",
+      "text": "list all services",
+      "expect_tool": true
+    },
+    {
+      "id": "list-0033",
+      "text": "list every services",
+      "expect_tool": true
+    },
+    {
+      "id": "count-0034",
+      "text": "how many services are there",
+      "expect_tool": true
+    },
+    {
+      "id": "count-0035",
+      "text": "count the services",
+      "expect_tool": true
+    },
+    {
+      "id": "count-0036",
+      "text": "how many services do we have",
+      "expect_tool": true
+    },
+    {
+      "id": "list-0037",
+      "text": "list nodes",
+      "expect_tool": true
+    },
+    {
+      "id": "list-0038",
+      "text": "show nodes",
+      "expect_tool": true
+    },
+    {
+      "id": "list-0039",
+      "text": "show me nodes",
+      "expect_tool": true
+    },
+    {
+      "id": "list-0040",
+      "text": "what nodes are running",
+      "expect_tool": true
+    },
+    {
+      "id": "list-0041",
+      "text": "list all nodes",
+      "expect_tool": true
+    },
+    {
+      "id": "list-0042",
+      "text": "list every nodes",
+      "expect_tool": true
+    },
+    {
+      "id": "count-0043",
+      "text": "how many nodes are there",
+      "expect_tool": true
+    },
+    {
+      "id": "count-0044",
+      "text": "count the nodes",
+      "expect_tool": true
+    },
+    {
+      "id": "count-0045",
+      "text": "how many nodes do we have",
+      "expect_tool": true
+    },
+    {
+      "id": "list-0046",
+      "text": "list configmaps",
+      "expect_tool": true
+    },
+    {
+      "id": "list-0047",
+      "text": "show configmaps",
+      "expect_tool": true
+    },
+    {
+      "id": "list-0048",
+      "text": "show me configmaps",
+      "expect_tool": true
+    },
+    {
+      "id": "list-0049",
+      "text": "what configmaps are running",
+      "expect_tool": true
+    },
+    {
+      "id": "list-0050",
+      "text": "list all configmaps",
+      "expect_tool": true
+    },
+    {
+      "id": "list-0051",
+      "text": "list every configmaps",
+      "expect_tool": true
+    },
+    {
+      "id": "count-0052",
+      "text": "how many configmaps are there",
+      "expect_tool": true
+    },
+    {
+      "id": "count-0053",
+      "text": "count the configmaps",
+      "expect_tool": true
+    },
+    {
+      "id": "count-0054",
+      "text": "how many configmaps do we have",
+      "expect_tool": true
+    },
+    {
+      "id": "list-0055",
+      "text": "list secrets",
+      "expect_tool": true
+    },
+    {
+      "id": "list-0056",
+      "text": "show secrets",
+      "expect_tool": true
+    },
+    {
+      "id": "list-0057",
+      "text": "show me secrets",
+      "expect_tool": true
+    },
+    {
+      "id": "list-0058",
+      "text": "what secrets are running",
+      "expect_tool": true
+    },
+    {
+      "id": "list-0059",
+      "text": "list all secrets",
+      "expect_tool": true
+    },
+    {
+      "id": "list-0060",
+      "text": "list every secrets",
+      "expect_tool": true
+    },
+    {
+      "id": "count-0061",
+      "text": "how many secrets are there",
+      "expect_tool": true
+    },
+    {
+      "id": "count-0062",
+      "text": "count the secrets",
+      "expect_tool": true
+    },
+    {
+      "id": "count-0063",
+      "text": "how many secrets do we have",
+      "expect_tool": true
+    },
+    {
+      "id": "list-0064",
+      "text": "list ingresses",
+      "expect_tool": true
+    },
+    {
+      "id": "list-0065",
+      "text": "show ingresses",
+      "expect_tool": true
+    },
+    {
+      "id": "list-0066",
+      "text": "show me ingresses",
+      "expect_tool": true
+    },
+    {
+      "id": "list-0067",
+      "text": "what ingresses are running",
+      "expect_tool": true
+    },
+    {
+      "id": "list-0068",
+      "text": "list all ingresses",
+      "expect_tool": true
+    },
+    {
+      "id": "list-0069",
+      "text": "list every ingresses",
+      "expect_tool": true
+    },
+    {
+      "id": "count-0070",
+      "text": "how many ingresses are there",
+      "expect_tool": true
+    },
+    {
+      "id": "count-0071",
+      "text": "count the ingresses",
+      "expect_tool": true
+    },
+    {
+      "id": "count-0072",
+      "text": "how many ingresses do we have",
+      "expect_tool": true
+    },
+    {
+      "id": "list-0073",
+      "text": "list statefulsets",
+      "expect_tool": true
+    },
+    {
+      "id": "list-0074",
+      "text": "show statefulsets",
+      "expect_tool": true
+    },
+    {
+      "id": "list-0075",
+      "text": "show me statefulsets",
+      "expect_tool": true
+    },
+    {
+      "id": "list-0076",
+      "text": "what statefulsets are running",
+      "expect_tool": true
+    },
+    {
+      "id": "list-0077",
+      "text": "list all statefulsets",
+      "expect_tool": true
+    },
+    {
+      "id": "list-0078",
+      "text": "list every statefulsets",
+      "expect_tool": true
+    },
+    {
+      "id": "count-0079",
+      "text": "how many statefulsets are there",
+      "expect_tool": true
+    },
+    {
+      "id": "count-0080",
+      "text": "count the statefulsets",
+      "expect_tool": true
+    },
+    {
+      "id": "count-0081",
+      "text": "how many statefulsets do we have",
+      "expect_tool": true
+    },
+    {
+      "id": "list-0082",
+      "text": "list daemonsets",
+      "expect_tool": true
+    },
+    {
+      "id": "list-0083",
+      "text": "show daemonsets",
+      "expect_tool": true
+    },
+    {
+      "id": "list-0084",
+      "text": "show me daemonsets",
+      "expect_tool": true
+    },
+    {
+      "id": "list-0085",
+      "text": "what daemonsets are running",
+      "expect_tool": true
+    },
+    {
+      "id": "list-0086",
+      "text": "list all daemonsets",
+      "expect_tool": true
+    },
+    {
+      "id": "list-0087",
+      "text": "list every daemonsets",
+      "expect_tool": true
+    },
+    {
+      "id": "count-0088",
+      "text": "how many daemonsets are there",
+      "expect_tool": true
+    },
+    {
+      "id": "count-0089",
+      "text": "count the daemonsets",
+      "expect_tool": true
+    },
+    {
+      "id": "count-0090",
+      "text": "how many daemonsets do we have",
+      "expect_tool": true
+    },
+    {
+      "id": "list-0091",
+      "text": "list jobs",
+      "expect_tool": true
+    },
+    {
+      "id": "list-0092",
+      "text": "show jobs",
+      "expect_tool": true
+    },
+    {
+      "id": "list-0093",
+      "text": "show me jobs",
+      "expect_tool": true
+    },
+    {
+      "id": "list-0094",
+      "text": "what jobs are running",
+      "expect_tool": true
+    },
+    {
+      "id": "list-0095",
+      "text": "list all jobs",
+      "expect_tool": true
+    },
+    {
+      "id": "list-0096",
+      "text": "list every jobs",
+      "expect_tool": true
+    },
+    {
+      "id": "count-0097",
+      "text": "how many jobs are there",
+      "expect_tool": true
+    },
+    {
+      "id": "count-0098",
+      "text": "count the jobs",
+      "expect_tool": true
+    },
+    {
+      "id": "count-0099",
+      "text": "how many jobs do we have",
+      "expect_tool": true
+    },
+    {
+      "id": "list-0100",
+      "text": "list cronjobs",
+      "expect_tool": true
+    }
+  ]
+}

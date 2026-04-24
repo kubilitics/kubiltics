@@ -5,8 +5,9 @@ import {
 } from '@/stores/backendConfigStore';
 import type { CausalChain } from '@/stores/causalChainStore';
 
+import { useActiveClusterId } from '@/hooks/useActiveClusterId';
 export function useCausalChain(insightId: string | null) {
-  const clusterId = useBackendConfigStore((s) => s.currentClusterId);
+  const clusterId = useActiveClusterId();
   const backendBaseUrl = useBackendConfigStore((s) => s.backendBaseUrl);
   const effectiveBaseUrl = getEffectiveBackendBaseUrl(backendBaseUrl);
   const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured());

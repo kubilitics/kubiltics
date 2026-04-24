@@ -13,9 +13,9 @@ vi.mock('@/lib/tauri', () => ({ isTauri: () => false }));
 vi.mock('@/stores/authStore', () => ({
   useAuthStore: { getState: () => ({ logout: vi.fn() }) },
 }));
-vi.mock('@/stores/clusterStore', () => ({
-  useClusterStore: { getState: () => ({ activeCluster: null, kubeconfigContent: null }) },
-}));
+// Phase 7: clusterStore deleted — it was previously dipped into here for the
+// X-Kubeconfig header fallback. Service client now reads only from
+// kubeconfigSourceStore, which is mocked below.
 
 import {
   backendRequest,

@@ -1,6 +1,6 @@
 import { Download, FileText, FileSpreadsheet, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useClusterStore } from '@/stores/clusterStore';
+import { useActiveCluster } from '@/stores/clusterPresenceStore';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -64,7 +64,7 @@ export function ResourceExportDropdown<T>({
   clusterName: clusterNameProp,
   className,
 }: ResourceExportDropdownProps<T>) {
-  const activeCluster = useClusterStore((s) => s.activeCluster);
+  const activeCluster = useActiveCluster();
   const clusterName = clusterNameProp ?? activeCluster?.name;
   const filenamePrefix = clusterName ? `${sanitizeClusterName(clusterName)}-${config.filenamePrefix}` : config.filenamePrefix;
   const itemsToExport =

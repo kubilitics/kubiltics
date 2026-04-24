@@ -48,6 +48,7 @@ import { useActiveClusterId } from '@/hooks/useActiveClusterId';
 import { postCronJobTrigger } from '@/services/backendApiClient';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 
+import { useClusterPresenceStore } from '@/stores/clusterPresenceStore';
 interface CronJobResource extends KubernetesResource {
   spec?: {
     schedule?: string;
@@ -651,7 +652,7 @@ export default function CronJobDetail() {
       toast.error('Connect to Kubilitics backend and select a cluster to trigger CronJob.');
       return;
     }
-    const cid = useBackendConfigStore.getState().currentClusterId;
+    const cid = useClusterPresenceStore.getState().activeCluster()?.session_id ?? null;
     if (!cid) {
       toast.error('Select a cluster from the cluster list to perform this action.');
       return;

@@ -24,7 +24,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useK8sResourceList, useDeleteK8sResource, useCreateK8sResource, usePatchK8sResource, calculateAge, type KubernetesResource } from '@/hooks/useKubernetes';
 import { useConnectionStatus } from '@/hooks/useConnectionStatus';
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
-import { useClusterStore } from '@/stores/clusterStore';
+import { getActiveCluster, useActiveCluster } from '@/stores/clusterPresenceStore';
 import { useChatStore } from '@/stores/chatStore';
 import { useAIContextStore } from '@/stores/aiContextStore';
 import { Sparkles } from 'lucide-react';
@@ -40,6 +40,7 @@ import { Progress } from '@/components/ui/progress';
 import { DeploymentIcon } from '@/components/icons/KubernetesIcons';
 import { useMultiSelect } from '@/hooks/useMultiSelect';
 
+import { useActiveClusterId } from '@/hooks/useActiveClusterId';
 interface DeploymentResource extends KubernetesResource {
  spec: {
  replicas: number;
@@ -239,8 +240,8 @@ export default function Deployments() {
  const patchDeployment = usePatchK8sResource('deployments');
  const backendBaseUrl = getEffectiveBackendBaseUrl(useBackendConfigStore((s) => s.backendBaseUrl));
  const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured());
- const activeCluster = useClusterStore((s) => s.activeCluster);
- const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
+ const activeCluster = useActiveCluster();
+ const currentClusterId = useActiveClusterId();
  const clusterId = currentClusterId ?? null;
 
  // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -982,7 +983,7 @@ spec:
  <DropdownMenuItem onClick={() => navigate(`/deployments/${item.namespace}/${item.name}`)} className="press-effect gap-2">View Details</DropdownMenuItem>
  <DropdownMenuItem
  onClick={() => {
- const cluster = useClusterStore.getState().activeCluster?.id ?? '';
+ const cluster = getActiveCluster()?.id ?? '';
  useChatStore.getState().togglePanel(true);
  useAIContextStore.getState().setExplicit({ type: 'deployment', cluster, namespace: item.namespace, name: item.name });
  useChatStore.getState().setPrefilled(`Why is this deployment unhealthy?`);
@@ -1109,7 +1110,7 @@ spec:
  <DropdownMenuItem onClick={() => navigate(`/deployments/${item.namespace}/${item.name}`)} className="press-effect gap-2">View Details</DropdownMenuItem>
  <DropdownMenuItem
  onClick={() => {
- const cluster = useClusterStore.getState().activeCluster?.id ?? '';
+ const cluster = getActiveCluster()?.id ?? '';
  useChatStore.getState().togglePanel(true);
  useAIContextStore.getState().setExplicit({ type: 'deployment', cluster, namespace: item.namespace, name: item.name });
  useChatStore.getState().setPrefilled(`Why is this deployment unhealthy?`);

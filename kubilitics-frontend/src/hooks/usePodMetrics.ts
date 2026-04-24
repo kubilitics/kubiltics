@@ -6,6 +6,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
 import { getPodMetrics, type BackendPodMetrics } from '@/services/backendApiClient';
 
+import { useActiveClusterId } from '@/hooks/useActiveClusterId';
 export function usePodMetrics(
   namespace: string | undefined,
   podName: string | undefined,
@@ -14,7 +15,7 @@ export function usePodMetrics(
   const storedUrl = useBackendConfigStore((s) => s.backendBaseUrl);
   const backendBaseUrl = getEffectiveBackendBaseUrl(storedUrl);
   const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured());
-  const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
+  const currentClusterId = useActiveClusterId();
   const clusterId = currentClusterId ?? null;
 
   const enabled =

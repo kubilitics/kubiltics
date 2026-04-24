@@ -24,11 +24,12 @@ import {
 } from "lucide-react";
 import { useK8sResourceList } from "@/hooks/useKubernetes";
 import { useClusterUtilization } from "@/hooks/useClusterUtilization";
-import { useClusterStore } from "@/stores/clusterStore";
+import { useActiveCluster } from '@/stores/clusterPresenceStore';
 import { useBackendConfigStore } from "@/stores/backendConfigStore";
 import { parseCpu, parseMemory, cn } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { useActiveClusterId } from '@/hooks/useActiveClusterId';
 import {
   getEfficiencyLabel,
   getGaugeColor,
@@ -208,8 +209,8 @@ function DualLayerBar({
 // ─── Main Component ──────────────────────────────────────────────────────────
 
 export function ClusterResourceIntelligence() {
-  const { activeCluster } = useClusterStore();
-  const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
+  const activeCluster = useActiveCluster();
+  const currentClusterId = useActiveClusterId();
 
   // ── Data sources ──
   const nodesList = useK8sResourceList("nodes", undefined, {

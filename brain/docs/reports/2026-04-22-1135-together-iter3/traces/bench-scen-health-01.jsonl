@@ -1,0 +1,5 @@
+{"bytes":121,"stage":"user_msg","ts":"2026-04-22T05:55:08.827317Z","turn_id":"bench-scen-health-01"}
+{"selected_topics":["core","pods","workloads"],"stage":"tool_filter","tool_count":30,"total_available":138,"ts":"2026-04-22T05:55:08.827649Z","turn_id":"bench-scen-health-01"}
+{"bytes":2484,"focus_cluster":"5cb1f37d-e31e-4915-8c4d-bdf36ef335ec","has_system":true,"messages":2,"stage":"llm_prompt_in","ts":"2026-04-22T05:55:08.827674Z","turn_id":"bench-scen-health-01"}
+{"bytes":112,"preview":"Your input is lacking necessary details. Please provide more information or specify the task you need help with.","stage":"llm_text_out","ts":"2026-04-22T05:55:12.193369Z","turn_id":"bench-scen-health-01"}
+{"duration_ms":3367,"finish_reason":"stop","stage":"done","ts":"2026-04-22T05:55:12.193456Z","turn_id":"bench-scen-health-01"}

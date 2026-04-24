@@ -31,7 +31,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { usePaginatedResourceList, useK8sResourceList, useDeleteK8sResource, useCreateK8sResource, usePatchK8sResource, calculateAge, type KubernetesResource } from '@/hooks/useKubernetes';
 import { useConnectionStatus } from '@/hooks/useConnectionStatus';
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
-import { useClusterStore } from '@/stores/clusterStore';
+import { getActiveCluster, useActiveCluster } from '@/stores/clusterPresenceStore';
 import { getNamespaceCounts } from '@/services/backendApiClient';
 import { ResourceCreator, DEFAULT_YAMLS } from '@/components/editor';
 import { DeleteConfirmDialog, BulkActionBar, executeBulkOperation } from '@/components/resources';
@@ -61,6 +61,7 @@ import { useTableFiltersAndSort, type ColumnConfig } from '@/hooks/useTableFilte
 import { useColumnVisibility } from '@/hooks/useColumnVisibility';
 import { useMultiSelect } from '@/hooks/useMultiSelect';
 
+import { useActiveClusterId } from '@/hooks/useActiveClusterId';
 interface NamespaceResource extends KubernetesResource {
  status?: {
  phase?: string;
@@ -128,8 +129,8 @@ const NS_COLUMNS_FOR_VISIBILITY = [
 export default function Namespaces() {
  const navigate = useNavigate();
  const { isConnected } = useConnectionStatus();
- const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
- const activeCluster = useClusterStore((s) => s.activeCluster);
+ const currentClusterId = useActiveClusterId();
+ const activeCluster = useActiveCluster();
  const storedUrl = useBackendConfigStore((s) => s.backendBaseUrl);
  const backendBaseUrl = getEffectiveBackendBaseUrl(storedUrl);
  const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured());
@@ -364,7 +365,7 @@ export default function Namespaces() {
      const baseUrl = (await import('@/stores/backendConfigStore')).getEffectiveBackendBaseUrl(
        (await import('@/stores/backendConfigStore')).useBackendConfigStore.getState().backendBaseUrl
      );
-     const clusterId = (await import('@/stores/clusterStore')).useClusterStore.getState().activeCluster?.id;
+     const clusterId = (await import('@/stores/clusterPresenceStore')).getActiveCluster()?.id;
      if (baseUrl != null && clusterId) {
        await applyManifest(baseUrl, clusterId, yaml);
        toast.success('Namespace created');

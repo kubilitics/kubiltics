@@ -54,7 +54,7 @@ import { getRowAnimationClass } from '@/hooks/useResourceLiveUpdates';
 import { usePaginatedResourceList, useDeleteK8sResource, useCreateK8sResource, usePatchK8sResource, calculateAge, type KubernetesResource } from '@/hooks/useKubernetes';
 import { useConnectionStatus } from '@/hooks/useConnectionStatus';
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
-import { useClusterStore } from '@/stores/clusterStore';
+import { useActiveCluster } from '@/stores/clusterPresenceStore';
 import { getSecretConsumers, getSecretTLSInfo, type TLSSecretInfo } from '@/services/backendApiClient';
 import { ResourceCreator, DEFAULT_YAMLS } from '@/components/editor';
 import { DeleteConfirmDialog, BulkActionBar, executeBulkOperation } from '@/components/resources';
@@ -62,6 +62,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { toast } from '@/components/ui/sonner';
 import { useMultiSelect } from '@/hooks/useMultiSelect';
 
+import { useActiveClusterId } from '@/hooks/useActiveClusterId';
 interface Secret {
  uid?: string;
  name: string;
@@ -197,8 +198,8 @@ export default function Secrets() {
 
  const backendBaseUrl = getEffectiveBackendBaseUrl(useBackendConfigStore((s) => s.backendBaseUrl));
  const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured());
- const activeCluster = useClusterStore((s) => s.activeCluster);
- const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
+ const activeCluster = useActiveCluster();
+ const currentClusterId = useActiveClusterId();
  const clusterId = currentClusterId ?? null;
 
  // eslint-disable-next-line react-hooks/exhaustive-deps

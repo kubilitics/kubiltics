@@ -40,11 +40,42 @@ vi.mock('@/hooks/useKubernetes', () => ({
   useUpdateK8sResource: () => ({ mutateAsync: vi.fn() }),
 }));
 
-vi.mock('@/stores/clusterStore', () => ({
-  useClusterStore: (selector?: (s: Record<string, unknown>) => unknown) => {
-    const state = { activeCluster: { name: 'smoke-cluster' } };
+// Phase 7: clusterStore deleted. Appearance helpers moved to clusterAppearance.
+vi.mock('@/stores/clusterAppearance', () => ({
+  getClusterAppearance: () => ({ color: '', environment: '', alias: '' }),
+  setClusterAppearance: vi.fn(),
+  getEnvBadgeLabel: () => null,
+  getEnvBadgeClasses: () => '',
+}));
+
+vi.mock('@/stores/clusterPresenceStore', () => ({
+  useActiveCluster: () => ({
+    id: 'smoke-cluster-id',
+    name: 'smoke-cluster',
+    serverUrl: 'https://smoke',
+    provider: '',
+  }),
+  getActiveCluster: () => ({
+    id: 'smoke-cluster-id',
+    name: 'smoke-cluster',
+    serverUrl: 'https://smoke',
+    provider: '',
+  }),
+  useClusterPresenceStore: (selector?: (s: Record<string, unknown>) => unknown) => {
+    const state: Record<string, unknown> = {
+      discovered: [],
+      registered: [],
+      connected: [],
+      availableClusters: () => [],
+      activeLogicalIdentity: null,
+      isReady: true,
+      setActiveByLogicalIdentity: vi.fn(),
+      applySnapshot: vi.fn(),
+    };
     return selector ? selector(state) : state;
   },
+  setActiveClusterBySessionId: vi.fn(),
+  __resetForTest: vi.fn(),
 }));
 
 vi.mock('@/hooks/useActiveClusterId', () => ({

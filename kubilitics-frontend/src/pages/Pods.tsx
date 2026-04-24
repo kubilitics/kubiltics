@@ -46,7 +46,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useK8sResourceList, useServerPaginatedResourceList, useDeleteK8sResource, useCreateK8sResource, usePatchK8sResource, calculateAge, type KubernetesResource } from '@/hooks/useKubernetes';
 import { useConnectionStatus } from '@/hooks/useConnectionStatus';
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
-import { useClusterStore } from '@/stores/clusterStore';
+import { getActiveCluster, useActiveCluster } from '@/stores/clusterPresenceStore';
 import { getPodMetrics, postShellCommand } from '@/services/backendApiClient';
 import { DeleteConfirmDialog, PortForwardDialog, parseCpu, parseMemory, calculatePodResourceMax, ResourceComparisonView, BulkActionBar, executeBulkOperation } from '@/components/resources';
 import { ResourceCommandBar, ResourceExportDropdown, ListViewSegmentedControl, NamespaceFilter } from '@/components/list';
@@ -61,6 +61,7 @@ import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 import { SearchHighlight } from '@/components/list/SearchHighlight';
 import { useMultiSelect } from '@/hooks/useMultiSelect';
 
+import { useActiveClusterId } from '@/hooks/useActiveClusterId';
 interface PodResource extends KubernetesResource {
  spec: {
  nodeName?: string;
@@ -329,7 +330,7 @@ export default function Pods() {
  const createResource = useCreateK8sResource('pods');
  const backendBaseUrl = getEffectiveBackendBaseUrl(useBackendConfigStore((s) => s.backendBaseUrl));
  const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured());
- const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
+ const currentClusterId = useActiveClusterId();
  const clusterId = currentClusterId ?? null;
  const { data: summaryData } = useClusterSummaryWithProject(clusterId ?? undefined);
 
@@ -1564,7 +1565,7 @@ export default function Pods() {
  </DropdownMenuItem>
  <DropdownMenuItem
  onClick={() => {
- const cluster = useClusterStore.getState().activeCluster?.id ?? '';
+ const cluster = getActiveCluster()?.id ?? '';
  useChatStore.getState().togglePanel(true);
  useAIContextStore.getState().setExplicit({ type: 'pod', cluster, namespace: pod.namespace, name: pod.name });
  useChatStore.getState().setPrefilled(`Why is this pod in state ${pod.status ?? 'unknown'}?`);

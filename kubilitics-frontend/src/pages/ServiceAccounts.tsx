@@ -33,7 +33,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { usePaginatedResourceList, useDeleteK8sResource, usePatchK8sResource, calculateAge, type KubernetesResource } from '@/hooks/useKubernetes';
 import { useConnectionStatus } from '@/hooks/useConnectionStatus';
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
-import { useClusterStore } from '@/stores/clusterStore';
+import { useActiveCluster } from '@/stores/clusterPresenceStore';
 import { getServiceAccountTokenCounts } from '@/services/backendApiClient';
 import { ResourceCreator, DEFAULT_YAMLS } from '@/components/editor';
 import { DeleteConfirmDialog, BulkActionBar, executeBulkOperation } from '@/components/resources';
@@ -61,6 +61,7 @@ import {
 import { useTableFiltersAndSort, type ColumnConfig } from '@/hooks/useTableFiltersAndSort';
 import { useColumnVisibility } from '@/hooks/useColumnVisibility';
 
+import { useActiveClusterId } from '@/hooks/useActiveClusterId';
 interface ServiceAccountResource extends KubernetesResource {
  secrets?: Array<{ name?: string }>;
  imagePullSecrets?: Array<{ name?: string }>;
@@ -139,8 +140,8 @@ const SA_COLUMNS_FOR_VISIBILITY = [
 export default function ServiceAccounts() {
  const navigate = useNavigate();
  const { isConnected } = useConnectionStatus();
- const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
- const activeCluster = useClusterStore((s) => s.activeCluster);
+ const currentClusterId = useActiveClusterId();
+ const activeCluster = useActiveCluster();
  const storedUrl = useBackendConfigStore((s) => s.backendBaseUrl);
  const backendBaseUrl = getEffectiveBackendBaseUrl(storedUrl);
  const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured());

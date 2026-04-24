@@ -39,6 +39,7 @@ import { cn } from '@/lib/utils';
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
 import { downloadBlob, buildCsv, escapeCsvCell } from '@/lib/exportUtils';
 
+import { useActiveClusterId } from '@/hooks/useActiveClusterId';
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 interface HistoricalDataPoint {
@@ -138,7 +139,7 @@ export function HistoricalMetrics({
   const [offset, setOffset] = useState(0); // offset in range-lengths from now
   const stored = useBackendConfigStore((s) => s.backendBaseUrl);
   const baseUrl = getEffectiveBackendBaseUrl(stored);
-  const clusterId = useBackendConfigStore((s) => s.currentClusterId);
+  const clusterId = useActiveClusterId();
 
   const rangeConfig = RANGES.find((r) => r.value === range)!;
   const endMs = Date.now() - offset * rangeConfig.ms;

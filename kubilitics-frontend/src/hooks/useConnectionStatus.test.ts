@@ -20,13 +20,8 @@ vi.mock('@/stores/backendConfigStore', () => ({
   },
 }));
 
-vi.mock('@/stores/clusterStore', () => ({
-  useClusterStore: (selector: (s: Record<string, unknown>) => unknown) => {
-    const state = {
-      activeCluster: mockActiveCluster,
-    };
-    return selector(state);
-  },
+vi.mock('@/stores/clusterPresenceStore', () => ({
+  useActiveCluster: () => mockActiveCluster,
 }));
 
 vi.mock('@/stores/kubernetesConfigStore', () => ({

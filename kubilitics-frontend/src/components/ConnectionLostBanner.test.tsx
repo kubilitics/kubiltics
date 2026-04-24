@@ -99,6 +99,6 @@ describe('ConnectionLostBanner', () => {
 
     const link = screen.getByText('Switch cluster');
     expect(link).toBeInTheDocument();
-    expect(link.closest('a')).toHaveAttribute('href', '/connect');
+    expect(link.closest('a')).toHaveAttribute('href', '/clusters');
   });
 });
