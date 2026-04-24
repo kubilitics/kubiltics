@@ -163,6 +163,18 @@ else
 fi
 echo ""
 
+# ── macOS signing config regression guard ───────────────────────────
+# Added as part of v1.2.0 macOS-signing work. Fails the pre-release
+# check if anyone nulls out the entitlements field. See
+# docs/macos-signing.md for recovery.
+info "Checking macOS signing config"
+if bash "$(dirname "$0")/check-tauri-signing-config.sh"; then
+  pass "macOS signing config intact"
+else
+  fail "macOS signing config regression"
+fi
+echo ""
+
 # ── Summary ──────────────────────────────────────────────────────────────
 echo "=============================================="
 if [ $ERRORS -eq 0 ]; then
