@@ -41,10 +41,35 @@ describe('clusterPresenceStore', () => {
         identity: { name: 'prod', serverUrl: 'https://prod' },
         source: 'kubeconfig',
         registered_at: '', reachable: true, connected_at: '',
+        session_id: 'uuid-prod',
       }],
       last_used: { name: 'prod', serverUrl: 'https://prod' },
     });
     const s = useClusterPresenceStore.getState();
     expect(s.activeCluster()?.identity.name).toBe('prod');
+  });
+
+  it('session_id + provider round-trip through applySnapshot', () => {
+    useClusterPresenceStore.getState().applySnapshot({
+      discovered: [{
+        identity: { name: 'prod', serverUrl: 'https://prod' },
+        source: 'manual',
+        session_id: 'uuid-prod',
+        provider: 'eks',
+      }],
+      registered: [{
+        identity: { name: 'prod', serverUrl: 'https://prod' },
+        source: 'manual',
+        registered_at: '2026-04-24T00:00:00Z',
+        reachable: true,
+        session_id: 'uuid-prod',
+        provider: 'eks',
+      }],
+      connected: [],
+    });
+    const s = useClusterPresenceStore.getState();
+    expect(s.registered[0].session_id).toBe('uuid-prod');
+    expect(s.registered[0].provider).toBe('eks');
+    expect(s.discovered[0].session_id).toBe('uuid-prod');
   });
 });

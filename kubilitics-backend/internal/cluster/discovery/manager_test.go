@@ -28,6 +28,46 @@ func TestManager_SnapshotDedupesAcrossSources(t *testing.T) {
 	}
 }
 
+// Task A regression: a DiscoveredCluster carrying SessionID must be
+// promoted into presence.RegisteredCluster with SessionID + Provider
+// preserved. Discovered-only entries (no SessionID) appear in Discovered
+// but NOT in Registered.
+func TestManager_SnapshotPromotesManualSourceToRegistered(t *testing.T) {
+	src := &fakeSource{clusters: []DiscoveredCluster{
+		{
+			Identity:  identity.LogicalIdentity{Name: "prod", ServerURL: "https://prod"},
+			Source:    "manual",
+			SessionID: "uuid-prod",
+			Provider:  "eks",
+		},
+		{
+			Identity: identity.LogicalIdentity{Name: "dev", ServerURL: "https://dev"},
+			Source:   "kubeconfig",
+			// no SessionID — file-sourced only, not yet registered.
+		},
+	}}
+	m := NewManager([]DiscoverySource{src})
+	if err := m.Refresh(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	snap := m.Snapshot()
+	if len(snap.Discovered) != 2 {
+		t.Fatalf("both entries must appear in discovered: %+v", snap.Discovered)
+	}
+	if len(snap.Registered) != 1 {
+		t.Fatalf("only the manual entry with SessionID should be promoted: %+v", snap.Registered)
+	}
+	if snap.Registered[0].SessionID != "uuid-prod" {
+		t.Fatalf("SessionID not promoted: %q", snap.Registered[0].SessionID)
+	}
+	if snap.Registered[0].Provider != "eks" {
+		t.Fatalf("Provider not promoted: %q", snap.Registered[0].Provider)
+	}
+	if snap.Registered[0].Identity.Name != "prod" {
+		t.Fatalf("identity not promoted: %+v", snap.Registered[0].Identity)
+	}
+}
+
 func TestManager_WatchFansInFromSources(t *testing.T) {
 	a := &fakeSource{events: make(chan DiscoveryEvent, 4)}
 	m := NewManager([]DiscoverySource{a})

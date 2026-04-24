@@ -27,6 +27,16 @@ type RegisteredCluster struct {
 	// Reachable is the last known reachability status (from preflight or
 	// any cached envelope). Frontend treats this as a hint, not truth.
 	Reachable bool `json:"reachable"`
+	// SessionID is the backend-issued UUID used by cluster-scoped APIs
+	// (e.g. /api/v1/clusters/{uuid}/pods). Present for clusters the
+	// backend has registered (ManualSource); empty for entries sourced
+	// only from file/secret discovery — those become registered (and get
+	// a SessionID) once the user "connects" them.
+	SessionID string `json:"session_id,omitempty"`
+	// Provider is the detected cloud/local provider (eks | gke | aks |
+	// minikube | kind | docker-desktop | on-prem | openshift | rancher |
+	// k3s). Empty when unknown. The frontend renders cloud chips from this.
+	Provider string `json:"provider,omitempty"`
 }
 
 // ConnectedCluster is registered + has an active backend session.

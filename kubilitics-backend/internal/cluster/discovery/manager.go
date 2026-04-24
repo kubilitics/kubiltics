@@ -49,23 +49,40 @@ func (m *Manager) Refresh(ctx context.Context) error {
 	return nil
 }
 
-// Snapshot returns a copy-safe view. Registered/Connected wiring comes in
-// Phase 2.7 when we attach the registration+connection managers.
+// Snapshot returns a copy-safe view. Entries that came from a source
+// that carries a SessionID (today: ManualSource — the cluster is already
+// in the backend DB with an assigned UUID) are promoted into
+// Registered so the frontend can use session_id for cluster-scoped API
+// calls. Entries without a SessionID stay in Discovered only.
+//
+// Connected wiring (session tracking with connected_at) is future work;
+// it would come from a ConnectionManager that observes active sessions.
 func (m *Manager) Snapshot() presence.Snapshot {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
-	// Copy to avoid callers mutating internal state.
-	disc := make([]presence.DiscoveredCluster, len(m.discovered))
-	for i, c := range m.discovered {
-		disc[i] = presence.DiscoveredCluster{
+	now := time.Now().Format(time.RFC3339)
+	disc := make([]presence.DiscoveredCluster, 0, len(m.discovered))
+	reg := make([]presence.RegisteredCluster, 0, len(m.discovered))
+	for _, c := range m.discovered {
+		pd := presence.DiscoveredCluster{
 			Identity:   c.Identity,
 			Source:     c.Source,
-			LastSeenAt: time.Now().Format(time.RFC3339),
+			LastSeenAt: now,
+		}
+		disc = append(disc, pd)
+		if c.SessionID != "" {
+			reg = append(reg, presence.RegisteredCluster{
+				DiscoveredCluster: pd,
+				RegisteredAt:      now,
+				Reachable:         true,
+				SessionID:         c.SessionID,
+				Provider:          c.Provider,
+			})
 		}
 	}
 	return presence.Snapshot{
 		Discovered: disc,
-		Registered: []presence.RegisteredCluster{},
+		Registered: reg,
 		Connected:  []presence.ConnectedCluster{},
 	}
 }

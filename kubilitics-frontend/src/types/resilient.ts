@@ -40,11 +40,20 @@ export interface DiscoveredCluster {
   context_name?: string;
   kubeconfig_path?: string;
   last_seen_at?: string;
+  /** Backend-issued UUID for cluster-scoped API calls. Only present on
+   *  entries that have been registered (ManualSource); empty until the
+   *  user explicitly registers a file-/secret-sourced cluster. */
+  session_id?: string;
+  /** Cloud/local provider classification (eks | gke | aks | minikube |
+   *  kind | docker-desktop | on-prem | openshift | rancher | k3s). */
+  provider?: string;
 }
 
 export interface RegisteredCluster extends DiscoveredCluster {
   registered_at: string;
   reachable: boolean;
+  /** Required on RegisteredCluster: a registered entry always has a UUID. */
+  session_id: string;
 }
 
 export interface ConnectedCluster extends RegisteredCluster {

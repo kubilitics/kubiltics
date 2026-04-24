@@ -9,9 +9,16 @@ import (
 
 // StoredCluster is the minimum shape from the cluster DB that this
 // source needs. Decouples from the full Cluster model.
+//
+// SessionID and Provider are carried through to the presence snapshot so
+// the frontend can (a) use SessionID as the UUID for cluster-scoped API
+// calls without keeping a second store, and (b) render cloud-provider
+// chips without a second lookup.
 type StoredCluster struct {
 	Name      string
 	ServerURL string
+	SessionID string
+	Provider  string
 }
 
 // ClusterRepository is the read port onto the cluster DB.
@@ -42,8 +49,10 @@ func (s *ManualSource) Enumerate(ctx context.Context) ([]DiscoveredCluster, erro
 	out := make([]DiscoveredCluster, 0, len(rows))
 	for _, r := range rows {
 		out = append(out, DiscoveredCluster{
-			Identity: identity.LogicalIdentity{Name: r.Name, ServerURL: r.ServerURL},
-			Source:   s.Name(),
+			Identity:  identity.LogicalIdentity{Name: r.Name, ServerURL: r.ServerURL},
+			Source:    s.Name(),
+			SessionID: r.SessionID,
+			Provider:  r.Provider,
 		})
 	}
 	return out, nil
@@ -83,8 +92,10 @@ func (s *ManualSource) emit(kind EventKind, c StoredCluster) {
 	evt := DiscoveryEvent{
 		Kind: kind,
 		Cluster: DiscoveredCluster{
-			Identity: identity.LogicalIdentity{Name: c.Name, ServerURL: c.ServerURL},
-			Source:   s.Name(),
+			Identity:  identity.LogicalIdentity{Name: c.Name, ServerURL: c.ServerURL},
+			Source:    s.Name(),
+			SessionID: c.SessionID,
+			Provider:  c.Provider,
 		},
 	}
 	s.mu.Lock()

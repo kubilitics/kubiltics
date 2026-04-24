@@ -227,7 +227,12 @@ func (a *clusterRepoAdapter) ListAll() ([]discovery.StoredCluster, error) {
 		if r == nil {
 			continue
 		}
-		out = append(out, discovery.StoredCluster{Name: r.Name, ServerURL: r.ServerURL})
+		out = append(out, discovery.StoredCluster{
+			Name:      r.Name,
+			ServerURL: r.ServerURL,
+			SessionID: r.ID,
+			Provider:  r.Provider,
+		})
 	}
 	return out, nil
 }

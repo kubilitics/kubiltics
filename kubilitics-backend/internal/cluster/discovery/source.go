@@ -24,6 +24,12 @@ type DiscoveredCluster struct {
 	ContextName string `json:"context_name,omitempty"`
 	// KubeconfigPath is the on-disk path that produced this entry, if any.
 	KubeconfigPath string `json:"kubeconfig_path,omitempty"`
+	// SessionID is the backend-issued UUID for clusters that have been
+	// registered (ManualSource populates it; file/secret sources leave it
+	// empty). Promoted to presence.RegisteredCluster by the Manager.
+	SessionID string `json:"session_id,omitempty"`
+	// Provider is the cloud/local provider classification when known.
+	Provider string `json:"provider,omitempty"`
 }
 
 // EventKind describes a discovery event's type.
