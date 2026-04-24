@@ -81,7 +81,13 @@ service-account*.json
 # Binaries
 kubilitics-backend/cmd/server/kubilitics-server
 **/kubilitics-server
-**/server
+# Do NOT use bare `**/server` — it matches both binary files AND directories
+# named "server" (like brain/cmd/server/ and kubilitics-backend/cmd/server/),
+# which hides Go source from git checkouts. That broke v1.1.x → v1.2.0 CI
+# because brain/cmd/server/main.go was silently never committed.
+# Match only the built binary file forms instead.
+**/cmd/server/server
+**/cmd/server/server.exe
 !**/server.go
 !**/server.ts
 !**/server.tsx
@@ -159,7 +165,9 @@ test-results/
 .emergent/
 .claude/
 .gitconfig
-memory/
+# Bare `memory/` was too broad — it matched brain/internal/memory/ and hid
+# legitimate Go source (temporal/vector/worldmodel stores) from CI, causing
+# release builds to fail. .claude/ already covers the agent-memory caches.
 project-docs/
 
 # ── Markdown control ───────────────────────────────────────────────────────
