@@ -526,7 +526,7 @@ export default function AISettingsPage() {
                 <SelectContent>
                   <SelectItem value="openai">OpenAI</SelectItem>
                   <SelectItem value="anthropic">Anthropic</SelectItem>
-                  <SelectItem value="ollama">Ollama (local)</SelectItem>
+                  <SelectItem value="ollama">Ollama (local or remote)</SelectItem>
                   <SelectItem value="custom">Custom (OpenAI-compatible)</SelectItem>
                 </SelectContent>
               </Select>
@@ -567,7 +567,7 @@ export default function AISettingsPage() {
                 data-testid="base-url-input"
                 value={baseUrl}
                 onChange={(e) => setFieldDebounced('baseUrl', e.target.value)}
-                placeholder={provider === 'ollama' ? 'http://localhost:11434' : 'https://api.example.com/v1'}
+                placeholder={provider === 'ollama' ? 'http://localhost:11434 — or https://your-remote-ollama.example' : 'https://api.example.com/v1'}
                 className="font-mono text-sm"
               />
             </div>

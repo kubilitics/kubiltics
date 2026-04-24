@@ -333,10 +333,27 @@ pub async fn test_llm_connection(cfg: AIConfig) -> Result<TestResult, String> {
         _ => return Err(format!("unknown provider: {}", cfg.provider)),
     }
 
-    // Best-effort 10-token ping. Any error body is scrubbed before bubbling.
-    // We keep the HTTP logic intentionally shallow — the authoritative
-    // connection test lives in the brain; this desktop-side probe is just
-    // to give users an instant pass/fail.
+    // Best-effort liveness ping. Any error body is scrubbed before
+    // bubbling. We keep the HTTP logic intentionally shallow — the
+    // authoritative connection test lives in the brain; this desktop-side
+    // probe is just to give users an instant pass/fail.
+    //
+    // Per-provider endpoints:
+    //   openai/anthropic/custom  → POST /chat/completions (OpenAI-compat)
+    //   ollama                   → GET /api/tags (Ollama-native)
+    //
+    // Ollama is a DIFFERENT API surface from OpenAI — it does not speak
+    // /chat/completions at the root of the URL the user types in. (It
+    // *can* speak OpenAI-compat at /v1/chat/completions, but we'd then
+    // have to guess whether to append /v1 or not based on what the user
+    // pasted. Fragile.) Instead we hit /api/tags: Ollama's list-models
+    // endpoint — fast, returns 200 + JSON on a live server, no tokens
+    // billed, no model needs to be loaded. This exactly matches the
+    // brain's own Ollama adapter (brain/internal/llm/provider/ollama
+    // also uses /api/tags for liveness), so if the test passes the real
+    // path will too. If the user configured a model that isn't pulled
+    // on the remote server, we additionally flag that as a warning so
+    // Test doesn't lie with a green tick when the actual chat will 404.
     let base = if cfg.base_url.is_empty() {
         default_base_url(&cfg.provider)
     } else {
@@ -347,8 +364,84 @@ pub async fn test_llm_connection(cfg: AIConfig) -> Result<TestResult, String> {
     } else {
         cfg.model.clone()
     };
-    let client = reqwest::Client::new();
+
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(15))
+        .build()
+        .map_err(|e| format!("http client: {}", e))?;
     let start = std::time::Instant::now();
+
+    if cfg.provider == "ollama" {
+        // Strip a trailing /v1 if the user copy-pasted an OpenAI-compat
+        // URL — Ollama native lives at the root, and /v1/api/tags does
+        // not exist. Also normalize trailing slash.
+        let base_normalized = base
+            .trim_end_matches('/')
+            .trim_end_matches("/v1")
+            .to_string();
+        let url = format!("{}/api/tags", base_normalized);
+        let resp = client
+            .get(&url)
+            .send()
+            .await
+            .map_err(|e| redact(&format!("{}", e)))?;
+        let status = resp.status().as_u16();
+        if !resp.status().is_success() {
+            let body = resp.text().await.unwrap_or_default();
+            return Ok(TestResult {
+                ok: false,
+                status,
+                latency_ms: start.elapsed().as_millis() as u64,
+                error: Some(format!(
+                    "Ollama /api/tags returned HTTP {}. Is {} actually an Ollama server? {}",
+                    status,
+                    base_normalized,
+                    redact(&body).chars().take(200).collect::<String>()
+                )),
+            });
+        }
+        // Parse tags response and check the configured model exists. If
+        // not, return ok=false with a friendly error — passing the
+        // liveness test while the model is absent would make Save &
+        // Test lie; the brain's first real chat would then 404.
+        let body = resp.text().await.unwrap_or_default();
+        let latency_ms = start.elapsed().as_millis() as u64;
+        #[derive(Deserialize)]
+        struct TagsResp {
+            models: Vec<TagModel>,
+        }
+        #[derive(Deserialize)]
+        struct TagModel {
+            name: String,
+        }
+        let available: Vec<String> = serde_json::from_str::<TagsResp>(&body)
+            .map(|t| t.models.into_iter().map(|m| m.name).collect())
+            .unwrap_or_default();
+        let model_present = model.is_empty() || available.iter().any(|m| m == &model);
+        if !model_present {
+            let sample: Vec<String> = available.iter().take(5).cloned().collect();
+            return Ok(TestResult {
+                ok: false,
+                status,
+                latency_ms,
+                error: Some(format!(
+                    "Ollama server is reachable ({}ms) but model \"{}\" is not pulled there. Available models: {}{}",
+                    latency_ms,
+                    model,
+                    if sample.is_empty() { "(none)".to_string() } else { sample.join(", ") },
+                    if available.len() > sample.len() { format!(" (+{} more)", available.len() - sample.len()) } else { String::new() },
+                )),
+            });
+        }
+        return Ok(TestResult {
+            ok: true,
+            status,
+            latency_ms,
+            error: None,
+        });
+    }
+
+    // OpenAI-compat path (openai, anthropic, custom).
     let resp = client
         .post(format!("{}/chat/completions", base.trim_end_matches('/')))
         .bearer_auth(key.as_deref().unwrap_or(""))
@@ -548,7 +641,13 @@ pub async fn reset_budget() -> Result<(), String> {
 fn default_base_url(provider: &str) -> String {
     match provider {
         "anthropic" => "https://api.anthropic.com/v1".to_string(),
-        "ollama" => "http://localhost:11434/v1".to_string(),
+        // Ollama uses its NATIVE API surface at the root (/api/tags,
+        // /api/chat, /api/generate). No /v1 suffix — that's Ollama's
+        // OpenAI-compat mode and it lives at a different path. The brain's
+        // Ollama adapter assumes root + /api/*, so matching that here
+        // means test_llm_connection tests the exact URL the brain will
+        // actually hit.
+        "ollama" => "http://localhost:11434".to_string(),
         _ => "https://api.openai.com/v1".to_string(),
     }
 }
