@@ -304,7 +304,19 @@ export function ClusterPresenceSubscriber() {
 // eslint-disable-next-line react-refresh/only-export-components
 export function PresenceEntryPoint() {
   const isReady = useClusterPresenceStore((s) => s.isReady);
-  if (!isReady) {
+  const [timedOut, setTimedOut] = useState(false);
+
+  // Safety timeout: if the presence snapshot hasn't arrived in 5s (e.g.
+  // backend binary predates the /api/v1/presence endpoint, or network is
+  // hosed), stop waiting and route to /welcome so the user isn't stuck on
+  // an infinite loading spinner. useClusterPresence also applies an empty
+  // snapshot on fetch failure, so this is belt-and-suspenders.
+  useEffect(() => {
+    const t = setTimeout(() => setTimedOut(true), 5000);
+    return () => clearTimeout(t);
+  }, []);
+
+  if (!isReady && !timedOut) {
     return (
       <div
         data-testid="presence-entry-loader"

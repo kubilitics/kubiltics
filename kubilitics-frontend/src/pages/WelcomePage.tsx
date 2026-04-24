@@ -9,13 +9,14 @@
 //   3. Take the tour — demo mode, deferred.
 //
 // Wired as "/welcome" in App.tsx (Phase 7: unconditional).
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Rocket, Plus, PlayCircle, Sparkles } from 'lucide-react';
+import { Plus, PlayCircle, Sparkles } from 'lucide-react';
+import { motion } from 'framer-motion';
 
-import { SectionOverviewHeader } from '@/components/layout/SectionOverviewHeader';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import {
   Tooltip,
   TooltipContent,
@@ -92,6 +93,15 @@ export function WelcomePage() {
   const [addOpen, setAddOpen] = useState(false);
   const applySnapshot = useClusterPresenceStore((s) => s.applySnapshot);
   const backendBaseUrl = useBackendConfigStore((s) => getEffectiveBackendBaseUrl(s.backendBaseUrl));
+  // Auto-redirect to /clusters once any become available — the presence
+  // hook's background retry will populate the store if the backend was
+  // temporarily unreachable when we first landed here.
+  const availableCount = useClusterPresenceStore(
+    (s) => s.availableClusters().length,
+  );
+  useEffect(() => {
+    if (availableCount > 0) navigate('/clusters', { replace: true });
+  }, [availableCount, navigate]);
 
   const refreshSnapshot = useCallback(async () => {
     try {
@@ -112,11 +122,35 @@ export function WelcomePage() {
       aria-label="Welcome"
     >
       <div className="page-inner p-6 gap-6 flex flex-col">
-        <SectionOverviewHeader
-          title="Welcome to Kubilitics"
-          description="Let’s get you connected to a cluster."
-          icon={Rocket}
-        />
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35, ease: 'easeOut' }}
+          className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-border/40"
+        >
+          <div className="flex items-center gap-4">
+            <motion.img
+              src="/brand/logo-mark-rounded.png"
+              alt="Kubilitics"
+              className="h-14 w-14 rounded-2xl shadow-sm"
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ type: 'spring', stiffness: 300, damping: 20, delay: 0.1 }}
+            />
+            <div>
+              <h1 className="text-3xl font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
+                Welcome to Kubilitics
+              </h1>
+              <p className="text-sm text-muted-foreground mt-1 flex items-center gap-2">
+                Let’s get you connected to a cluster.
+                <Badge variant="secondary" className="font-normal">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 mr-1.5" />
+                  Live
+                </Badge>
+              </p>
+            </div>
+          </div>
+        </motion.div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Cta
