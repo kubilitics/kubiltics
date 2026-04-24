@@ -538,12 +538,13 @@
   }
 
   .page-inner {
-    @apply flex flex-col gap-0 w-full mx-auto;
-    /* Historically capped at 1600px which wasted ~800px on 2400+
-       viewports. Now fluid up to 2100px (covers 27" 2560×1440 and
-       most 4K at 125% scaling); ultrawide still caps so line-length
-       stays readable. */
-    max-width: 2100px;
+    /* Truly responsive: fill the full main-content width, edge-to-edge,
+       like Lens / Headlamp / k9s. Previous max-width caps (1600px,
+       2100px) left huge dead gutters on 2560+ displays and in-cluster
+       browser sessions with wide panes. No cap now — content scales
+       with the viewport. The natural grid/flex inside individual
+       cards handles line-length for readability. */
+    @apply flex flex-col gap-0 w-full;
   }
 
   /* Tablet (768-1024px): tighter horizontal padding */
