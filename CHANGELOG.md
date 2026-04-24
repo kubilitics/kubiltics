@@ -8,6 +8,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [UNRELEASED]
 
 
+### Changed
+
+- **macOS**: desktop binaries now signed with Apple Developer ID
+  Application (Team `DJAF5D948L`) and notarized via `xcrun notarytool`.
+  Eliminates the macOS keychain "enter login password" prompt users
+  previously saw on every save after a version update. First save
+  after upgrading from a pre-v1.2.0 install may prompt once —
+  click Always Allow, never see it again. Gatekeeper "unidentified
+  developer" warning is also gone on fresh installs. See
+  `docs/macos-signing.md` for the operator runbook.
+
 ### Fixed
 
 - Soft-fail cosmetic aux workflows by @vellankikoti ([b364f55](https://github.com/vellankikoti/kubilitics/commit/b364f55e3bdeb93fe7ad9ba2a9afaeb146fc5e64))
