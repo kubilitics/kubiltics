@@ -218,11 +218,28 @@ func (s *Server) initializeComponents() error {
 		BaseURL:  baseURL,
 	}
 
+	// LLM init is deliberately NON-FATAL. Previously an init failure (dead
+	// Ollama host, revoked API key, stale base URL cached in SQLite from a
+	// prior run, etc.) aborted the entire brain startup — which meant the
+	// AI was "unreachable" forever with no way for the user to fix it, since
+	// the AI Settings UI needs the brain's /api/v1/config/provider endpoint
+	// to live-update the provider config. That produced the chicken-and-egg
+	// "brain crashes on bad persisted config, UI can't fix what it can't
+	// reach" loop.
+	//
+	// Start the brain anyway. Chat / wizards / topology-AI paths already
+	// guard `s.llmAdapter != nil`, so an unconfigured brain just responds
+	// with "provider not configured" until the user saves a working config,
+	// which triggers the runtime hot-wire in handlers_config.go. The
+	// reasoning engine receives nil and activates lazily.
 	llmAdapter, err := adapter.NewLLMAdapter(llmConfig)
 	if err != nil {
-		return fmt.Errorf("failed to initialize LLM adapter: %w", err)
+		fmt.Printf("[WARN] LLM adapter init failed (%v) — brain will start with no provider; user can fix via AI Settings\n", err)
+		s.llmAdapter = nil
+		s.config.LLM.Configured = false
+	} else {
+		s.llmAdapter = llmAdapter
 	}
-	s.llmAdapter = llmAdapter
 
 	// 2. Initialize Safety Engine (if enabled)
 	if s.config.Safety.Enabled {

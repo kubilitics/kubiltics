@@ -105,13 +105,29 @@ struct YamlPayload {
     model: String,
     #[serde(default)]
     base_url: String,
+    /// Cached "we saved a key previously" flag. DELIBERATELY not the
+    /// ground truth — ground truth is whether the keychain Entry returns
+    /// a value when the brain actually tries to use it. We avoid probing
+    /// the keychain on every page load because macOS binds keychain ACLs
+    /// to a binary signature hash: every `cargo tauri dev` rebuild
+    /// changes the hash, the ACL no longer matches, and the OS pops the
+    /// "enter login password" dialog on every hydrate(). That dialog is
+    /// what users see as "dangerously annoying UX". Instead, we flip
+    /// this flag to true on save_ai_config() (we just wrote a key) and
+    /// to false when the user explicitly clears. The UI uses this to
+    /// render "configured" vs "needs API key". Staleness is bounded:
+    /// test_llm_connection() and real brain calls always hit the
+    /// keychain and surface authoritative errors.
+    #[serde(default)]
+    has_api_key: bool,
 }
 
-fn write_yaml(cfg: &AIConfig) -> Result<(), String> {
+fn write_yaml(cfg: &AIConfig, has_api_key: bool) -> Result<(), String> {
     let payload = YamlPayload {
         provider: cfg.provider.clone(),
         model: cfg.model.clone(),
         base_url: cfg.base_url.clone(),
+        has_api_key,
     };
     let yaml = serde_yaml::to_string(&payload).map_err(|e| format!("yaml: {}", e))?;
     fs::write(config_yaml_path()?, yaml).map_err(|e| format!("write: {}", e))
@@ -161,17 +177,35 @@ fn validate_ai_config(cfg: &AIConfig) -> Result<(), String> {
 #[command]
 pub async fn save_ai_config(cfg: AIConfig) -> Result<(), String> {
     validate_ai_config(&cfg)?;
-    write_yaml(&cfg)?;
 
     // Pull the key: either the user just pasted one (cfg.api_key) or we
-    // already have one in the keychain from a previous save.
-    let live_key = match cfg.api_key.as_deref() {
+    // already have one in the keychain from a previous save. Track
+    // whether a key ended up present so we can persist the cached flag
+    // alongside the non-secret fields.
+    let (live_key, has_api_key) = match cfg.api_key.as_deref() {
         Some(k) if !k.is_empty() => {
             keychain_set(&cfg.provider, k)?;
-            k.to_string()
+            (k.to_string(), true)
         }
-        _ => keychain_get(&cfg.provider).ok().flatten().unwrap_or_default(),
+        _ => {
+            // No new key pasted. Check whether one already exists in the
+            // keychain for this provider (reuse prior save). If the read
+            // fails (e.g. dev-rebuild ACL mismatch), keep whatever the
+            // yaml flag said before — reading the yaml is cheap and doesn't
+            // prompt. Net effect: "key is still there, we just can't read
+            // it right now" is preserved, so the UI doesn't flip to
+            // needs-API-key after every rebuild.
+            let existing = keychain_get(&cfg.provider).ok().flatten().unwrap_or_default();
+            let flag = if !existing.is_empty() {
+                true
+            } else {
+                read_yaml().ok().flatten().map(|y| y.has_api_key).unwrap_or(false)
+            };
+            (existing, flag)
+        }
     };
+
+    write_yaml(&cfg, has_api_key)?;
 
     // Hot-wire the brain with the new provider/key via its
     // POST /api/v1/config/provider endpoint.  Unlike restart, this avoids
@@ -208,19 +242,33 @@ pub async fn save_ai_config(cfg: AIConfig) -> Result<(), String> {
 
 #[command]
 pub async fn load_ai_config() -> Result<AIConfig, String> {
+    // Read non-secret fields + cached has_api_key flag from YAML.
+    // IMPORTANT: DO NOT probe the keychain here. Reading the keychain
+    // triggers the macOS "enter login password to allow access" dialog
+    // every time the binary signature hash doesn't match the stored ACL
+    // — which is every `cargo tauri dev` rebuild. Previously load_ai_config
+    // was called on every AI Settings page mount, so opening the page
+    // after any dev rebuild produced a password prompt. Authoritative
+    // keychain access happens only on explicit user actions:
+    //   save_ai_config         (writing a new key)
+    //   test_llm_connection   (testing the current key)
+    //   brain spawn via POST /api/v1/config/provider in save_ai_config
+    // All three are user-initiated, so the dialog they might trigger is
+    // expected and consented to.
     let yaml = read_yaml()?.unwrap_or(YamlPayload {
         provider: "openai".to_string(),
         model: "gpt-4o".to_string(),
         base_url: String::new(),
+        has_api_key: false,
     });
-    let key_present = if std::env::var(ENV_API_KEY).ok().filter(|v| !v.is_empty()).is_some() {
-        true
-    } else {
-        keychain_get(&yaml.provider)
-            .unwrap_or(None)
-            .map(|k| !k.is_empty())
-            .unwrap_or(false)
-    };
+    // Env-var override: when an API key is injected via env (CI, headless
+    // Helm installs, bench configs) report present regardless of the yaml
+    // cache. Env-var access does not touch the keychain.
+    let env_key_present = std::env::var(ENV_API_KEY)
+        .ok()
+        .filter(|v| !v.is_empty())
+        .is_some();
+    let key_present = env_key_present || yaml.has_api_key;
     Ok(AIConfig {
         provider: yaml.provider,
         model: yaml.model,
@@ -572,10 +620,16 @@ mod tests {
             provider: cfg.provider.clone(),
             model: cfg.model.clone(),
             base_url: cfg.base_url.clone(),
+            has_api_key: true,
         };
         let s = serde_yaml::to_string(&payload).unwrap();
         assert!(!s.contains("sk-do-not-persist"), "yaml leaked key: {}", s);
-        assert!(!s.contains("api_key"), "yaml included api_key field: {}", s);
+        // YAML IS allowed to contain the substring "api_key" now — we
+        // serialize the cached has_api_key boolean flag. The assertion
+        // must still reject an actual secret. Check for raw-key-looking
+        // patterns instead of any substring match.
+        assert!(!s.contains("api_key: \"sk-"), "yaml looks like it leaked a raw key: {}", s);
+        assert!(!s.contains("api_key: sk-"), "yaml looks like it leaked a raw key: {}", s);
     }
 
     #[test]
