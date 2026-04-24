@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tansta
 import { useKubernetesConfigStore } from '@/stores/kubernetesConfigStore';
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
 import { useClusterStore } from '@/stores/clusterStore';
+import { useDemoStore } from '@/stores/demoStore';
 import { listResources, getResource, deleteResource, patchResource, applyManifest, getPodLogsUrl, CONFIRM_DESTRUCTIVE_HEADER, getCronJobJobs, BackendApiError } from '@/services/backendApiClient';
 import type { ResourceListParams } from '@/services/backendApiClient';
 import { notifyError, notifySuccess } from '@/lib/notificationFormatter';
@@ -208,7 +209,7 @@ export function useK8sResourceList<T extends KubernetesResource>(
   const backendBaseUrl = getEffectiveBackendBaseUrl(storedUrl);
   const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured());
   const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
-  const isDemo = useClusterStore((s) => s.isDemo);
+  const isDemo = useDemoStore((s) => s.isDemo);
   // P0-D: Use currentClusterId exclusively for API paths.
   const clusterId = currentClusterId;
   // P1-8: Demo mode must not fire backend or real K8s requests.
@@ -619,7 +620,7 @@ export function useK8sResource<T extends KubernetesResource>(
   const backendBaseUrl = getEffectiveBackendBaseUrl(storedUrl);
   const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured());
   const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
-  const isDemo = useClusterStore((s) => s.isDemo);
+  const isDemo = useDemoStore((s) => s.isDemo);
   const clusterId = currentClusterId;
 
   const apiBase = API_GROUPS[resourceType];

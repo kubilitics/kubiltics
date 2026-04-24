@@ -25,6 +25,7 @@ import { BrandLogo } from '@/components/BrandLogo';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { isTauri } from '@/lib/tauri';
 import { useClusterStore, getClusterAppearance, getEnvBadgeLabel, getEnvBadgeClasses } from '@/stores/clusterStore';
+import { useDemoStore } from '@/stores/demoStore';
 import {
   useClusterOrganizationStore,
   fuzzyMatch,
@@ -115,7 +116,8 @@ export function Header() {
   const collapsed = useUIStore((s) => s.isSidebarCollapsed);
   const navigate = useNavigate();
   const activeProject = useProjectStore((s) => s.activeProject);
-  const { activeCluster, clusters, setActiveCluster, isDemo, signOut } = useClusterStore();
+  const { activeCluster, clusters, setActiveCluster, signOut } = useClusterStore();
+  const isDemo = useDemoStore((s) => s.isDemo);
   const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
   const setCurrentClusterId = useBackendConfigStore((s) => s.setCurrentClusterId);
   const clearBackend = useBackendConfigStore((s) => s.clearBackend);

@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, MemoryRouter, Routes, Route, Navigate, useNavigate, useLocation } from "react-router-dom";
 import { useClusterStore } from "@/stores/clusterStore";
+import { useDemoStore } from "@/stores/demoStore";
 import { useClusterSync } from "@/hooks/useClusterSync";
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from "@/stores/backendConfigStore";
 import { Loader2 } from "lucide-react";
@@ -253,7 +254,8 @@ const queryClient = new QueryClient({
 // If no clusters exist, show the connect page.
 // Polls every 30s so external changes (CLI, API) propagate without refresh.
 function useRestoreClusterFromBackend() {
-  const { activeCluster, setActiveCluster, setClusters, setDemo } = useClusterStore();
+  const { activeCluster, setActiveCluster, setClusters } = useClusterStore();
+  const setDemo = useDemoStore((s) => s.setDemo);
   const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
   const setCurrentClusterId = useBackendConfigStore((s) => s.setCurrentClusterId);
   const backendBaseUrl = useBackendConfigStore((s) => s.backendBaseUrl);

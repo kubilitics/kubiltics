@@ -7,6 +7,7 @@
 import { useEffect, useRef } from 'react';
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { useClusterStore } from '@/stores/clusterStore';
+import { useDemoStore } from '@/stores/demoStore';
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
 import type { ConnectState } from '@/types/connect';
 import { getClusters } from '@/services/backendApiClient';
@@ -27,7 +28,8 @@ export default function ConnectedRedirect() {
   const returnUrl = searchParams.get('returnUrl');
   const postConnectPath = getPostConnectPath(returnUrl);
   const backendBaseUrl = useBackendConfigStore((s) => s.backendBaseUrl);
-  const { setActiveCluster, setClusters, setDemo } = useClusterStore();
+  const { setActiveCluster, setClusters } = useClusterStore();
+  const setDemo = useDemoStore((s) => s.setDemo);
   const setCurrentClusterId = useBackendConfigStore((s) => s.setCurrentClusterId);
   const didRun = useRef(false);
 

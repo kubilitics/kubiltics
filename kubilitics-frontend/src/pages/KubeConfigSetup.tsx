@@ -28,6 +28,7 @@ import {
   DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
 import { useClusterStore } from '@/stores/clusterStore';
+import { useDemoStore } from '@/stores/demoStore';
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
 import { addClusterWithUpload, discoverClusters, type BackendCluster } from '@/services/backendApiClient';
 import { backendClusterToCluster } from '@/lib/backendClusterAdapter';
@@ -98,7 +99,8 @@ const fadeUp = {
 
 export default function KubeConfigSetup() {
   const navigate = useNavigate();
-  const { setDemo, setClusters, setActiveCluster } = useClusterStore();
+  const { setClusters, setActiveCluster } = useClusterStore();
+  const setDemo = useDemoStore((s) => s.setDemo);
   const storedUrl = useBackendConfigStore((s) => s.backendBaseUrl);
   const backendBaseUrl = getEffectiveBackendBaseUrl(storedUrl);
   const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured());

@@ -16,6 +16,7 @@ import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { isTauri } from '@/lib/tauri';
 import { useClusterStore } from '@/stores/clusterStore';
+import { useDemoStore } from '@/stores/demoStore';
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
 import {
   getClusters,
@@ -86,7 +87,8 @@ export function useAutoConnect(): UseAutoConnectReturn {
   const queryClient = useQueryClient();
 
   // Stores
-  const { setActiveCluster, setClusters, setDemo, setAppMode } = useClusterStore();
+  const { setActiveCluster, setClusters, setAppMode } = useClusterStore();
+  const setDemo = useDemoStore((s) => s.setDemo);
   const storedBackendUrl = useBackendConfigStore((s) => s.backendBaseUrl);
   const setCurrentClusterId = useBackendConfigStore((s) => s.setCurrentClusterId);
 

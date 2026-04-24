@@ -35,6 +35,7 @@ import { useProjectStore, type Project } from '@/stores/projectStore';
 import type { BackendProjectWithDetails } from '@/services/backendApiClient';
 import { useClustersFromBackend } from '@/hooks/useClustersFromBackend';
 import { useClusterStore } from '@/stores/clusterStore';
+import { useDemoStore } from '@/stores/demoStore';
 import { useBackendConfigStore } from '@/stores/backendConfigStore';
 import { backendClusterToCluster } from '@/lib/backendClusterAdapter';
 import { toast } from '@/components/ui/sonner';
@@ -78,7 +79,8 @@ export default function ProjectDetailPage() {
   const [addNamespaceClusterId, setAddNamespaceClusterId] = useState<string | undefined>(undefined);
   const [editProjectOpen, setEditProjectOpen] = useState(false);
   const [deleteProjectOpen, setDeleteProjectOpen] = useState(false);
-  const { setActiveCluster, setClusters, setDemo } = useClusterStore();
+  const { setActiveCluster, setClusters } = useClusterStore();
+  const setDemo = useDemoStore((s) => s.setDemo);
   const setCurrentClusterId = useBackendConfigStore((s) => s.setCurrentClusterId);
   const clustersQuery = useClustersFromBackend();
   const allClusters = clustersQuery.data ?? [];

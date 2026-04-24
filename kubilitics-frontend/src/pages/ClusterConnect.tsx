@@ -58,6 +58,7 @@ import {
 } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { useClusterStore } from '@/stores/clusterStore';
+import { useDemoStore } from '@/stores/demoStore';
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
 import { DEFAULT_BACKEND_BASE_URL } from '@/lib/backendConstants';
 import { useClustersFromBackend } from '@/hooks/useClustersFromBackend';
@@ -187,7 +188,8 @@ export default function ClusterConnect() {
   const returnUrl = searchParams.get('returnUrl');
   const isAddClusterMode = searchParams.get('addCluster') === 'true';
   const postConnectPath = getPostConnectPath(returnUrl);
-  const { activeCluster, setActiveCluster, setClusters, setDemo, appMode, setAppMode } = useClusterStore();
+  const { activeCluster, setActiveCluster, setClusters, appMode, setAppMode } = useClusterStore();
+  const setDemo = useDemoStore((s) => s.setDemo);
   const storedBackendUrl = useBackendConfigStore((s) => s.backendBaseUrl);
   const backendBaseUrl = getEffectiveBackendBaseUrl(storedBackendUrl);
   const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured());

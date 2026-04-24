@@ -32,6 +32,7 @@ import { calculateAge, type KubernetesResource } from '@/hooks/useKubernetes';
 import { useQuery } from '@tanstack/react-query';
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
 import { useClusterStore } from '@/stores/clusterStore';
+import { useDemoStore } from '@/stores/demoStore';
 import { listResources } from '@/services/backendApiClient';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -102,7 +103,7 @@ function useGatewayRoutes(namespace: string, name: string) {
   const backendBaseUrl = getEffectiveBackendBaseUrl(storedUrl);
   const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured());
   const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
-  const isDemo = useClusterStore((s) => s.isDemo);
+  const isDemo = useDemoStore((s) => s.isDemo);
 
   const routesQuery = useQuery({
     queryKey: ['gateway-routes', currentClusterId, namespace, name],

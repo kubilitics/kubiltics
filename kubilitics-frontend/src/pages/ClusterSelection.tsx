@@ -18,6 +18,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useKubeConfigStore, ParsedCluster } from '@/stores/kubeConfigStore';
 import { useClusterStore, Cluster } from '@/stores/clusterStore';
+import { useDemoStore } from '@/stores/demoStore';
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
 import { DEFAULT_BACKEND_BASE_URL } from '@/lib/backendConstants';
 import { useClustersFromBackend } from '@/hooks/useClustersFromBackend';
@@ -77,7 +78,8 @@ function backendClusterToCluster(b: BackendCluster): Cluster {
 export default function ClusterSelection() {
   const navigate = useNavigate();
   const { parsedClusters, selectCluster, setAuthenticated } = useKubeConfigStore();
-  const { setDemo, setClusters, setActiveCluster } = useClusterStore();
+  const { setClusters, setActiveCluster } = useClusterStore();
+  const setDemo = useDemoStore((s) => s.setDemo);
   const storedBackendUrl = useBackendConfigStore((s) => s.backendBaseUrl);
   const backendBaseUrl = getEffectiveBackendBaseUrl(storedBackendUrl);
   const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured());

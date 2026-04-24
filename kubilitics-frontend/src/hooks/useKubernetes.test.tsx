@@ -7,6 +7,7 @@ import { renderHook, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useK8sResourceList, useK8sResource } from './useKubernetes';
 import { useClusterStore } from '@/stores/clusterStore';
+import { useDemoStore } from '@/stores/demoStore';
 import * as backendApiClient from '@/services/backendApiClient';
 
 // Mock backend API client functions
@@ -34,7 +35,7 @@ describe('useKubernetes hooks - demo mode', () => {
     });
     vi.clearAllMocks();
     // Reset demo mode to false
-    useClusterStore.getState().setDemo(false);
+    useDemoStore.getState().setDemo(false);
   });
 
   afterEach(() => {
@@ -44,7 +45,7 @@ describe('useKubernetes hooks - demo mode', () => {
 
   it('useK8sResourceList does not fire HTTP requests when demo mode is enabled (test gaps)', async () => {
     // Set demo mode to true
-    useClusterStore.getState().setDemo(true);
+    useDemoStore.getState().setDemo(true);
 
     const wrapper = ({ children }: { children: React.ReactNode }) => (
       <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
@@ -64,7 +65,7 @@ describe('useKubernetes hooks - demo mode', () => {
 
   it('useK8sResource does not fire HTTP requests when demo mode is enabled (test gaps)', async () => {
     // Set demo mode to true
-    useClusterStore.getState().setDemo(true);
+    useDemoStore.getState().setDemo(true);
 
     const wrapper = ({ children }: { children: React.ReactNode }) => (
       <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
@@ -101,7 +102,7 @@ describe('useK8sResourceList — namespace vs project priority', () => {
       defaultOptions: { queries: { retry: false, gcTime: 0 } },
     });
     vi.clearAllMocks();
-    useClusterStore.getState().setDemo(false);
+    useDemoStore.getState().setDemo(false);
 
     // Simulate: backend configured with a cluster
     useBackendConfigStore.setState({

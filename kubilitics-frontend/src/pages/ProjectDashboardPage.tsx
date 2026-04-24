@@ -10,6 +10,7 @@ import { useProject } from '@/hooks/useProjects';
 import { useProjectStore, type Project } from '@/stores/projectStore';
 import { useBackendConfigStore } from '@/stores/backendConfigStore';
 import { useClusterStore } from '@/stores/clusterStore';
+import { useDemoStore } from '@/stores/demoStore';
 import type { BackendProjectWithDetails } from '@/services/backendApiClient';
 import { backendClusterToCluster } from '@/lib/backendClusterAdapter';
 import { useClustersFromBackend } from '@/hooks/useClustersFromBackend';
@@ -36,7 +37,8 @@ export default function ProjectDashboardPage() {
   const navigate = useNavigate();
   const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
   const setCurrentClusterId = useBackendConfigStore((s) => s.setCurrentClusterId);
-  const { setActiveCluster, setClusters, setDemo } = useClusterStore();
+  const { setActiveCluster, setClusters } = useClusterStore();
+  const setDemo = useDemoStore((s) => s.setDemo);
   const setActiveProject = useProjectStore((s) => s.setActiveProject);
   const clearActiveProject = useProjectStore((s) => s.clearActiveProject);
 
