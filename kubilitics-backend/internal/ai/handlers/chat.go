@@ -2,6 +2,8 @@ package handlers
 
 import (
 	"encoding/json"
+	"errors"
+	"io"
 	"net/http"
 	"time"
 
@@ -79,7 +81,26 @@ func (h *Handlers) GetChat(w http.ResponseWriter, r *http.Request) {
 		for {
 			ev, recvErr := stream.Recv()
 			if recvErr != nil {
-				_ = conn.WriteJSON(wsFrame{Type: "done", Payload: jsonString(recvErr.Error())})
+				// Natural end-of-stream: the brain finished sending and
+				// closed the gRPC stream. The brain should have emitted
+				// its own AssistantEvent_Done frame before this point;
+				// don't synthesize another one. Exit cleanly.
+				if errors.Is(recvErr, io.EOF) {
+					return
+				}
+				// Real stream error (gRPC Unavailable, Canceled, brain
+				// crashed mid-stream, safety guard rejected, adapter
+				// nil, etc.). Previously this was silently converted
+				// to a bogus done frame with a string payload where
+				// prompt_tokens/completion_tokens were supposed to be
+				// — the frontend rendered it as "0 → 0 tokens · 7ms"
+				// with no visible error. Send a real error frame so
+				// the UI surfaces WHY the chat failed.
+				errPayload, _ := json.Marshal(map[string]any{
+					"code":    "stream_error",
+					"message": recvErr.Error(),
+				})
+				_ = conn.WriteJSON(wsFrame{Type: "error", Payload: errPayload})
 				return
 			}
 			payload, _ := json.Marshal(assistantEventPayload(ev))
