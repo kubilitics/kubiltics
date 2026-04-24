@@ -425,6 +425,20 @@ jobs:
             --wait --timeout 20m
           xcrun stapler staple "$DMG"
           echo "Notarization and stapling complete"
+          # Fail-closed post-staple verification. If any of these fail,
+          # the DMG is effectively unusable and we must not ship it.
+          echo "Validating stapler ticket…"
+          xcrun stapler validate "$DMG" || {
+            echo "::error::stapler validate failed — DMG is not properly notarized."
+            exit 1
+          }
+          echo "Running Gatekeeper assessment…"
+          if ! spctl -a -vv -t install "$DMG" 2>&1 | grep -q 'accepted'; then
+            echo "::error::spctl assessment did not return 'accepted' — Gatekeeper will reject this DMG."
+            spctl -a -vv -t install "$DMG" 2>&1 || true
+            exit 1
+          fi
+          echo "Post-notarize verification passed."
 
       - name: Build Tauri app (Windows)
         if: matrix.os == 'windows-latest'
