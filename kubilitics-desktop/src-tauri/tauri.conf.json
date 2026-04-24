@@ -5,7 +5,7 @@
   "identifier": "com.kubilitics.desktop",
   "build": {
     "beforeDevCommand": "bash ../scripts/build-sidecars.sh && cd ../kubilitics-frontend && npm run dev",
-    "beforeBuildCommand": "bash ../scripts/build-sidecars.sh && cd ../kubilitics-frontend && TAURI_BUILD=true npm run build",
+    "beforeBuildCommand": "if [ -z \"$CI\" ]; then bash ../scripts/build-sidecars.sh && cd ../kubilitics-frontend && TAURI_BUILD=true npm run build; fi",
     "devUrl": "http://localhost:5173",
     "frontendDist": "../dist"
   },
