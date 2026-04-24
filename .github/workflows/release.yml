@@ -22,10 +22,6 @@ env:
   # Use pre-built tauri-cli from GitHub releases instead of compiling from source.
   # This saves 8-11 minutes per desktop runner.
   TAURI_CLI_VERSION: '2.10.1'
-  # kubilitics-ai (brain) git ref — override in workflow input on release PRs
-  # that need to track a feature branch of the brain. Default main tracks the
-  # last stable brain tag.
-  KUBILITICS_AI_REF: 'main'
 
 jobs:
   # ── Gate: version consistency + CI status ────────────────────────────────
@@ -257,16 +253,9 @@ jobs:
           go-version: ${{ env.GO_VERSION }}
           cache-dependency-path: kubilitics-backend/go.sum
 
-      # ── Check out kubilitics-ai (brain) alongside the backend ──────────
-      # The brain ships as an externalBin sidecar in the Tauri bundle.
-      # KUBILITICS_AI_REF overrides the default via `env:` at job level;
-      # falls back to main when unset.
-      - name: Check out kubilitics-ai
-        uses: actions/checkout@v5
-        with:
-          repository: vellankikoti/kotg.ai
-          ref: ${{ env.KUBILITICS_AI_REF || 'main' }}
-          path: kubilitics-ai-src
+      # Brain source now lives in-monorepo at ./brain/ — no cross-repo
+      # checkout is needed since the Phase A subtree migration from
+      # github.com/vellankikoti/kotg.ai into this repository.
 
       # ── Windows version resources ───────────────────────────────────────
       - name: Embed Windows version resources
@@ -285,19 +274,16 @@ jobs:
           VERSION=${GITHUB_REF#refs/tags/v}
           BACKEND_LDFLAGS="-s -w -X github.com/kubilitics/kubilitics-backend/internal/version.Version=${VERSION}"
 
-          # kotg.ai's git repo has a nested kubilitics-ai/ subdirectory
-          # holding the Go module (verified via `git rev-parse --show-toplevel`
-          # on a fresh clone). Checkout path is kubilitics-ai-src; Go module
-          # is at kubilitics-ai-src/kubilitics-ai/.
-          BRAIN_SRC="kubilitics-ai-src/kubilitics-ai"
+          # Brain lives in-monorepo at ./brain/ after Phase A.
+          BRAIN_SRC="brain"
           BRAIN_PKG="./cmd/server"
           if [ "${{ matrix.os }}" == "macos-latest" ]; then
             (cd kubilitics-backend && CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -ldflags="$BACKEND_LDFLAGS" -o "../$BINS/kubilitics-backend-x86_64-apple-darwin"   ./cmd/server) &
             (cd kubilitics-backend && CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -ldflags="$BACKEND_LDFLAGS" -o "../$BINS/kubilitics-backend-aarch64-apple-darwin"  ./cmd/server) &
             (cd kubilitics-cli    && CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -ldflags="-s -w" -o "../$BINS/kcli-x86_64-apple-darwin"                  ./cmd/kcli) &
             (cd kubilitics-cli    && CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -ldflags="-s -w" -o "../$BINS/kcli-aarch64-apple-darwin"                 ./cmd/kcli) &
-            (cd "$BRAIN_SRC"      && GOWORK=off CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -ldflags="-s -w" -o "../../$BINS/kubilitics-ai-server-x86_64-apple-darwin"   $BRAIN_PKG) &
-            (cd "$BRAIN_SRC"      && GOWORK=off CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -ldflags="-s -w" -o "../../$BINS/kubilitics-ai-server-aarch64-apple-darwin"  $BRAIN_PKG) &
+            (cd "$BRAIN_SRC"      && CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -ldflags="-s -w" -o "../$BINS/kubilitics-ai-server-x86_64-apple-darwin"   $BRAIN_PKG) &
+            (cd "$BRAIN_SRC"      && CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -ldflags="-s -w" -o "../$BINS/kubilitics-ai-server-aarch64-apple-darwin"  $BRAIN_PKG) &
             wait
             lipo -create "$BINS/kubilitics-backend-x86_64-apple-darwin" \
                          "$BINS/kubilitics-backend-aarch64-apple-darwin" \
@@ -319,19 +305,18 @@ jobs:
             CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build \
               -o "../$BINS/kcli-x86_64-pc-windows-msvc.exe" ./cmd/kcli
             cd "../$BRAIN_SRC"
-            # GOWORK=off: brain is NOT in the kubilitics go.work workspace
-            # (that workspace only includes kubilitics-{backend,cli,agent}).
-            GOWORK=off CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build \
+            # Brain is in the monorepo go.work workspace as of Phase B.
+            CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build \
               -ldflags="-s -w" \
-              -o "../../$BINS/kubilitics-ai-server-x86_64-pc-windows-msvc.exe" $BRAIN_PKG
+              -o "../$BINS/kubilitics-ai-server-x86_64-pc-windows-msvc.exe" $BRAIN_PKG
 
           else
             (cd kubilitics-backend && CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="$BACKEND_LDFLAGS" -o "../$BINS/kubilitics-backend-x86_64-unknown-linux-gnu"   ./cmd/server) &
             (cd kubilitics-backend && CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -ldflags="$BACKEND_LDFLAGS" -o "../$BINS/kubilitics-backend-aarch64-unknown-linux-gnu"  ./cmd/server) &
             (cd kubilitics-cli    && CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o "../$BINS/kcli-x86_64-unknown-linux-gnu"                  ./cmd/kcli) &
             (cd kubilitics-cli    && CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -ldflags="-s -w" -o "../$BINS/kcli-aarch64-unknown-linux-gnu"                 ./cmd/kcli) &
-            (cd "$BRAIN_SRC"      && GOWORK=off CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o "../../$BINS/kubilitics-ai-server-x86_64-unknown-linux-gnu"   $BRAIN_PKG) &
-            (cd "$BRAIN_SRC"      && GOWORK=off CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -ldflags="-s -w" -o "../../$BINS/kubilitics-ai-server-aarch64-unknown-linux-gnu"  $BRAIN_PKG) &
+            (cd "$BRAIN_SRC"      && CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o "../$BINS/kubilitics-ai-server-x86_64-unknown-linux-gnu"   $BRAIN_PKG) &
+            (cd "$BRAIN_SRC"      && CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -ldflags="-s -w" -o "../$BINS/kubilitics-ai-server-aarch64-unknown-linux-gnu"  $BRAIN_PKG) &
             wait
             chmod +x "$BINS/kubilitics-backend-"* "$BINS/kcli-"* "$BINS/kubilitics-ai-server-"*
           fi
