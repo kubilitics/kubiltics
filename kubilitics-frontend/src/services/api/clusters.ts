@@ -57,6 +57,12 @@ export async function getClusterFeatureMetallb(
 /**
  * GET /api/v1/clusters/{clusterId}/summary — cluster statistics (node_count, namespace_count, pod_count, etc.).
  * Optional projectId: when set, counts are restricted to that project's namespaces in the cluster.
+ *
+ * Backend wire shape after onboarding-v2 Phase 4 is the resilient envelope:
+ *   {data:{...summaryFields}, reachable, stale, stale_as_of, error_message, health_status}
+ * This client unwraps `.data` and merges the envelope status fields into the
+ * flat `BackendClusterSummary` so existing consumers (Sidebar, Dashboard,
+ * FleetOverview) don't need to change their per-field reads.
  */
 export async function getClusterSummary(
   baseUrl: string,
@@ -65,7 +71,34 @@ export async function getClusterSummary(
 ): Promise<BackendClusterSummary> {
   const search = projectId ? `?projectId=${encodeURIComponent(projectId)}` : '';
   const path = `clusters/${encodeURIComponent(clusterId)}/summary${search}`;
-  return backendRequest<BackendClusterSummary>(baseUrl, path);
+  const envelope = await backendRequest<{
+    data?: BackendClusterSummary;
+    reachable?: boolean;
+    stale?: boolean;
+    stale_as_of?: string;
+    error_message?: string;
+    health_status?: string;
+  }>(baseUrl, path);
+
+  // Backward-compat: if the backend ever returns the pre-envelope flat shape
+  // (e.g. during rollback or for an older backend build), treat it as-is.
+  const looksFlat = envelope && 'node_count' in (envelope as unknown as BackendClusterSummary);
+  if (looksFlat) {
+    return envelope as unknown as BackendClusterSummary;
+  }
+
+  const base = envelope.data ?? ({} as BackendClusterSummary);
+  // Merge envelope status fields onto the flat shape consumers already read.
+  // Explicit fallbacks preserve pre-envelope semantics — Reachable was optional
+  // before; it's still optional here.
+  return {
+    ...base,
+    reachable: envelope.reachable ?? base.reachable,
+    stale: envelope.stale ?? base.stale,
+    stale_as_of: envelope.stale_as_of ?? base.stale_as_of,
+    error_message: envelope.error_message ?? base.error_message,
+    health_status: envelope.health_status ?? base.health_status,
+  };
 }
 
 export async function getClusterOverview(

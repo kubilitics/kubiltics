@@ -97,17 +97,50 @@ describe('getClusterSummary', () => {
     health_status: 'healthy',
   };
 
-  it('returns summary data for a cluster', async () => {
-    mockBackendRequest.mockResolvedValue(summary);
+  // After onboarding-v2 Phase 4, the backend returns the resilient envelope.
+  // The client unwraps `.data` and merges status fields onto the flat shape.
+  const envelope = {
+    data: summary,
+    reachable: true,
+    health_status: 'healthy',
+  };
+
+  it('returns summary data for a cluster, flattened from the envelope', async () => {
+    mockBackendRequest.mockResolvedValue(envelope);
 
     const result = await getClusterSummary(BASE, 'c1');
 
-    expect(result).toEqual(summary);
+    expect(result).toMatchObject({
+      id: 'c1',
+      node_count: 3,
+      pod_count: 42,
+      reachable: true,
+      health_status: 'healthy',
+    });
     expect(mockBackendRequest).toHaveBeenCalledWith(BASE, 'clusters/c1/summary');
   });
 
+  it('surfaces unreachable + error_message from the envelope', async () => {
+    mockBackendRequest.mockResolvedValue({
+      reachable: false,
+      stale: true,
+      stale_as_of: '2026-04-24T10:00:00Z',
+      error_message: 'connection refused',
+      health_status: 'unreachable',
+      data: summary,
+    });
+
+    const result = await getClusterSummary(BASE, 'c1');
+    expect(result.reachable).toBe(false);
+    expect(result.stale).toBe(true);
+    expect(result.error_message).toBe('connection refused');
+    expect(result.stale_as_of).toBe('2026-04-24T10:00:00Z');
+    // Still shows the (last-known) counts via .data merging.
+    expect(result.node_count).toBe(3);
+  });
+
   it('appends projectId query param when provided', async () => {
-    mockBackendRequest.mockResolvedValue(summary);
+    mockBackendRequest.mockResolvedValue(envelope);
 
     await getClusterSummary(BASE, 'c1', 'proj-1');
 
@@ -118,7 +151,7 @@ describe('getClusterSummary', () => {
   });
 
   it('omits projectId query param when not provided', async () => {
-    mockBackendRequest.mockResolvedValue(summary);
+    mockBackendRequest.mockResolvedValue(envelope);
 
     await getClusterSummary(BASE, 'c1');
 
@@ -126,7 +159,7 @@ describe('getClusterSummary', () => {
   });
 
   it('encodes special characters in clusterId', async () => {
-    mockBackendRequest.mockResolvedValue(summary);
+    mockBackendRequest.mockResolvedValue(envelope);
 
     await getClusterSummary(BASE, 'cluster with spaces');
 
@@ -134,6 +167,13 @@ describe('getClusterSummary', () => {
       BASE,
       'clusters/cluster%20with%20spaces/summary'
     );
+  });
+
+  it('back-compat: accepts a pre-envelope flat payload unchanged', async () => {
+    mockBackendRequest.mockResolvedValue(summary); // older backend
+
+    const result = await getClusterSummary(BASE, 'c1');
+    expect(result).toEqual(summary);
   });
 });
 
