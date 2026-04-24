@@ -133,7 +133,8 @@ export default function StorageClasses() {
  const { data: pvCounts } = useQuery({
  queryKey: ['storageclass-pv-counts', clusterId],
  queryFn: () => getStorageClassPVCounts(backendBaseUrl!, clusterId!),
- enabled: !!(isBackendConfigured && clusterId && backendBaseUrl),
+ // '' backendBaseUrl = same-origin (dev proxy / in-cluster nginx); do not gate on truthy.
+ enabled: !!(isBackendConfigured && clusterId),
  staleTime: 60_000,
  });
 

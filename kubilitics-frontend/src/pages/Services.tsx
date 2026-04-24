@@ -350,7 +350,9 @@ export default function Services() {
  queries: itemsOnPage.map((svc) => ({
  queryKey: ['service-endpoints-list', clusterId, svc.namespace, svc.name],
  queryFn: () => getServiceEndpoints(backendBaseUrl!, clusterId!, svc.namespace, svc.name),
- enabled: !!(isBackendConfigured && clusterId && backendBaseUrl && itemsOnPage.length > 0),
+ // backendBaseUrl === '' is a valid same-origin config (dev proxy / in-cluster nginx).
+ // Do NOT gate on backendBaseUrl being truthy — empty-string disables every query.
+ enabled: !!(isBackendConfigured && clusterId && itemsOnPage.length > 0),
  staleTime: 30_000,
  })),
  });

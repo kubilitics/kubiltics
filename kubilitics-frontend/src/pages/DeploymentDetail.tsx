@@ -317,7 +317,8 @@ export default function DeploymentDetail() {
   const scalingEventsQuery = useQuery({
     queryKey: ['backend', 'resource-events', clusterId, namespace, 'Deployment', name],
     queryFn: () => getResourceEvents(backendBaseUrl!, clusterId!, namespace!, 'Deployment', name!, 100),
-    enabled: !!(isBackendConfigured && backendBaseUrl && clusterId && namespace && name),
+    // '' backendBaseUrl = same-origin (dev proxy / in-cluster nginx); do not gate on truthy.
+    enabled: !!(isBackendConfigured && clusterId && namespace && name),
     staleTime: 30_000,
   });
 
@@ -325,7 +326,8 @@ export default function DeploymentDetail() {
   const deploymentMetricsQuery = useQuery({
     queryKey: ['backend', 'deployment-metrics', clusterId, namespace, name],
     queryFn: () => getDeploymentMetrics(backendBaseUrl!, clusterId!, namespace!, name!),
-    enabled: !!(isBackendConfigured && backendBaseUrl && clusterId && namespace && name),
+    // '' backendBaseUrl = same-origin (dev proxy / in-cluster nginx); do not gate on truthy.
+    enabled: !!(isBackendConfigured && clusterId && namespace && name),
     staleTime: 15_000,
   });
 

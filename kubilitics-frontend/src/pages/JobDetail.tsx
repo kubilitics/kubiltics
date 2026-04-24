@@ -235,7 +235,8 @@ export default function JobDetail() {
   const jobMetricsQuery = useQuery({
     queryKey: ['backend', 'job-metrics', clusterId, namespace, name],
     queryFn: () => getJobMetrics(backendBaseUrl!, clusterId!, namespace!, name!),
-    enabled: !!(isBackendConfigured && backendBaseUrl && clusterId && namespace && name),
+    // '' backendBaseUrl = same-origin (dev proxy / in-cluster nginx); do not gate on truthy.
+    enabled: !!(isBackendConfigured && clusterId && namespace && name),
     staleTime: 15_000,
   });
   const podMetricsByName = useMemo(() => {

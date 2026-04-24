@@ -184,7 +184,10 @@ export function useBackendWebSocket(options: UseBackendWebSocketOptions = {}) {
   }, []);
 
   useEffect(() => {
-    if (enabled && isConfigured && backendBaseUrl) {
+    // backendBaseUrl === '' is a valid same-origin config (dev proxy / in-cluster
+    // nginx) — connect() already falls back to window.location.host in that case.
+    // Do NOT gate on backendBaseUrl being truthy; that silently disables WS.
+    if (enabled && isConfigured) {
       connect();
     }
     return () => disconnect();

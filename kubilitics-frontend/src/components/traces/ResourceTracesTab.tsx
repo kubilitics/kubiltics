@@ -66,7 +66,8 @@ export function ResourceTracesTab({
   const { data: tracingStatus } = useQuery({
     queryKey: ['tracing-status', clusterId],
     queryFn: () => getTracingStatus(baseUrl, clusterId!),
-    enabled: !!clusterId && !!baseUrl,
+    // '' baseUrl = same-origin (dev proxy / in-cluster nginx); do not gate on truthy.
+    enabled: !!clusterId,
     staleTime: 30_000,
     retry: 1,
   });
