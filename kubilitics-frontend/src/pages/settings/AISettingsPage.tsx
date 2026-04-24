@@ -36,8 +36,9 @@
  * authoritative has_api_key is in the yaml and no further keychain
  * access happens on page load.
  */
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   Bot,
   CheckCircle2,
@@ -158,8 +159,38 @@ function BrainReachabilityBanner({
 // ─────────────────────────────────────────────────────────────────────────────
 export default function AISettingsPage() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const store = useAIConfigStore();
   const { provider, model, baseUrl, hasApiKey, lastError } = store;
+
+  /**
+   * "Is this config actually usable?" — provider-aware. Previously the
+   * badge was driven by a raw `hasApiKey` boolean, which is wrong for
+   * Ollama (no key needed) and noisy for Custom (key optional). This
+   * mirrors what the backend validates in ai/handlers/config.go and
+   * what useAIUserConfig uses to gate the chat input.
+   */
+  const isConfigured = useMemo(() => {
+    if (!provider) return false;
+    // Ollama + custom: URL is the gate. No key required.
+    if (provider === 'ollama' || provider === 'custom') {
+      return !!baseUrl.trim();
+    }
+    // OpenAI / Anthropic: key is the gate.
+    return hasApiKey;
+  }, [provider, baseUrl, hasApiKey]);
+
+  /**
+   * Invalidate the AI-related react-query caches so the top-bar status
+   * pill, chat capabilities, and any other consumer refetches the moment
+   * config changes. Without this the pill stayed red ("AI Unreachable")
+   * for up to 30s after a successful save because its cache hadn't
+   * expired — producing the classic "Test says Connected, top bar says
+   * Unreachable" paradox the user reported.
+   */
+  const refreshAIConsumers = () => {
+    void queryClient.invalidateQueries({ queryKey: ['ai'] });
+  };
 
   // API key is transient — held only in this component's state until the
   // user saves. Once save() returns and hydrate() re-reads the store,
@@ -269,12 +300,17 @@ export default function AISettingsPage() {
   const handleQuickConnect = async (d: Detected) => {
     setConnecting(d.provider);
     try {
-      await store.save({
+      const saveRes = await store.save({
         provider: d.provider as Provider,
         model: d.model,
         baseUrl: d.base_url,
         apiKey: '',
       });
+      refreshAIConsumers();
+      if (!saveRes.brainHotwireOk) {
+        toast.error(`Saved, but AI engine didn't accept the new config: ${saveRes.brainHotwireError}`);
+        return;
+      }
       const res = await store.testConnection({
         provider: d.provider as Provider,
         model: d.model,
@@ -294,13 +330,18 @@ export default function AISettingsPage() {
     if (!pastedGuess) return;
     setPasting(true);
     try {
-      await store.save({
+      const saveRes = await store.save({
         provider: pastedGuess.provider,
         model: pastedGuess.model,
         baseUrl: pastedGuess.baseUrl,
         apiKey: pastedKey.trim(),
       });
+      refreshAIConsumers();
       setPastedKey('');
+      if (!saveRes.brainHotwireOk) {
+        toast.error(`Saved, but AI engine didn't accept the new config: ${saveRes.brainHotwireError}`);
+        return;
+      }
       const res = await store.testConnection({
         provider: pastedGuess.provider,
         model: pastedGuess.model,
@@ -393,9 +434,20 @@ export default function AISettingsPage() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      await store.save({ provider, model, baseUrl, apiKey });
-      toast.success('AI configuration saved');
+      const saveRes = await store.save({ provider, model, baseUrl, apiKey });
+      refreshAIConsumers();
       setApiKey('');
+      if (!saveRes.brainHotwireOk) {
+        // Yaml + keychain persisted, but the brain either rejected the
+        // config or wasn't reachable. Tell the user the real state — do
+        // NOT toast a green "saved" success when the top-bar pill is
+        // about to stay red. That mismatch is exactly what produced the
+        // "Test says Connected, AI says Unreachable" paradox.
+        toast.error(`Saved, but AI engine didn't accept the new config: ${saveRes.brainHotwireError}`);
+        setTestResult({ ok: false, error: saveRes.brainHotwireError });
+        return;
+      }
+      toast.success('AI configuration saved and activated');
       const res = await store.testConnection({ provider, model, baseUrl });
       setTestResult({ ok: res.ok, latencyMs: res.latencyMs, error: res.error ?? undefined });
     } catch (e) {
@@ -450,7 +502,7 @@ export default function AISettingsPage() {
     }
   };
 
-  const stateTone = hasApiKey
+  const stateTone = isConfigured
     ? 'border-emerald-300 text-emerald-700 dark:border-emerald-800 dark:text-emerald-300'
     : 'border-amber-300 text-amber-700 dark:border-amber-800 dark:text-amber-300';
 
@@ -560,7 +612,11 @@ export default function AISettingsPage() {
               className={cn('rounded-full px-3 py-1 text-xs font-medium whitespace-nowrap', stateTone)}
               data-testid="ai-provider-status-badge"
             >
-              {hasApiKey ? 'configured' : 'needs API key'}
+              {isConfigured
+                ? 'configured'
+                : provider === 'ollama' || provider === 'custom'
+                  ? 'needs base URL'
+                  : 'needs API key'}
             </Badge>
           </div>
         </CardHeader>

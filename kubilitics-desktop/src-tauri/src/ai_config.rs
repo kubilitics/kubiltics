@@ -188,8 +188,28 @@ fn validate_ai_config(cfg: &AIConfig) -> Result<(), String> {
     Ok(())
 }
 
+/// Result of save_ai_config — the UI needs more than "ok / err" to render
+/// an honest post-save state. Previously this returned `()` and silently
+/// dropped brain-hot-wire failures, which is why users saw "Connected
+/// 81ms" on the Test line while the top-bar pill stayed "AI Unreachable":
+/// the local test talks directly to the LLM, but the brain (which owns
+/// the /ai/capabilities endpoint driving the pill) never got the new
+/// config. Now we surface both signals.
+#[derive(Debug, Serialize, Deserialize, Default)]
+pub struct SaveResult {
+    /// Yaml + keychain persisted. Always true if the command returned Ok.
+    pub saved: bool,
+    /// True iff the POST to the brain's /api/v1/config/provider endpoint
+    /// succeeded. When false, the brain is unaware of the new config —
+    /// chat would 404 or use stale config. UI should surface a warning.
+    pub brain_hotwire_ok: bool,
+    /// Human-readable explanation when brain_hotwire_ok=false. Empty
+    /// string when everything worked.
+    pub brain_hotwire_error: String,
+}
+
 #[command]
-pub async fn save_ai_config(cfg: AIConfig) -> Result<(), String> {
+pub async fn save_ai_config(cfg: AIConfig) -> Result<SaveResult, String> {
     validate_ai_config(&cfg)?;
 
     // Pull the key: either the user just pasted one (cfg.api_key) or we
@@ -219,15 +239,29 @@ pub async fn save_ai_config(cfg: AIConfig) -> Result<(), String> {
         }
     };
 
+    // For Ollama we don't need a key at all — the "configured" state is
+    // entirely determined by provider + base_url + model. Reflect that in
+    // the cached has_api_key flag so the UI badge stops saying
+    // "needs API key" after a successful Ollama save.
+    let effective_has_api_key = has_api_key || cfg.provider == "ollama";
+
     // Saving is itself an authoritative keychain touch — mark migration
     // complete so the UI doesn't re-probe on next launch.
-    write_yaml(&cfg, has_api_key, true)?;
+    write_yaml(&cfg, effective_has_api_key, true)?;
 
     // Hot-wire the brain with the new provider/key via its
-    // POST /api/v1/config/provider endpoint.  Unlike restart, this avoids
-    // port churn and the user never sees the AI drop to "unreachable"
-    // in the middle of a save.  Best-effort: save succeeds even if the
-    // brain isn't running yet.
+    // POST /api/v1/config/provider endpoint. Unlike a full restart, this
+    // avoids port churn and the user never sees the AI drop to
+    // "unreachable" in the middle of a save.
+    //
+    // We report success/failure honestly in the returned SaveResult —
+    // previously this was logged to stderr and swallowed, producing the
+    // "Test says Connected but the top-bar pill says AI Unreachable"
+    // paradox. Now the UI can toast a clear "Saved but AI engine
+    // didn't acknowledge the new config" warning instead of lying.
+    let mut hotwire_ok = false;
+    let mut hotwire_error = String::new();
+
     if !live_key.is_empty() || cfg.provider == "ollama" {
         let base = std::env::var("KUBILITICS_AI_ADMIN_URL")
             .unwrap_or_else(|_| "http://127.0.0.1:8081".to_string());
@@ -238,22 +272,55 @@ pub async fn save_ai_config(cfg: AIConfig) -> Result<(), String> {
             "base_url": cfg.base_url,
         });
         let client = reqwest::Client::builder()
-            .timeout(std::time::Duration::from_secs(5))
+            .timeout(std::time::Duration::from_secs(8))
             .build()
             .map_err(|e| format!("http client: {}", e))?;
-        if let Err(e) = client
+        match client
             .post(format!("{}/api/v1/config/provider", base.trim_end_matches('/')))
             .json(&body)
             .send()
             .await
         {
-            // Non-fatal: the brain might not be running yet (first launch,
-            // or the user is editing Settings before the brain has spawned).
-            // The config is persisted; the brain will load it on next start.
-            eprintln!("save_ai_config: brain hot-wire failed (will apply on next brain start): {}", e);
+            Ok(resp) => {
+                let status = resp.status();
+                if status.is_success() {
+                    hotwire_ok = true;
+                } else {
+                    // Brain is reachable but rejected the config —
+                    // usually means the adapter init failed (wrong URL,
+                    // model not pulled, bad key). Surface the response
+                    // body so the UI shows the real reason.
+                    let body = resp.text().await.unwrap_or_default();
+                    hotwire_error = format!(
+                        "AI engine rejected the config (HTTP {}): {}",
+                        status.as_u16(),
+                        redact(&body).chars().take(400).collect::<String>()
+                    );
+                    eprintln!("save_ai_config: brain hot-wire {}", hotwire_error);
+                }
+            }
+            Err(e) => {
+                hotwire_error = format!(
+                    "AI engine is unreachable ({}). The config is saved \
+                     and will apply the next time the engine starts.",
+                    redact(&format!("{}", e))
+                );
+                eprintln!("save_ai_config: brain hot-wire {}", hotwire_error);
+            }
         }
+    } else {
+        // Provider is openai/anthropic/custom, no key was provided and
+        // none was in the keychain. Nothing to hot-wire; the brain will
+        // pick up the new yaml on next restart (or when the user provides
+        // a key). Treat as non-failure — the save itself succeeded.
+        hotwire_ok = true;
     }
-    Ok(())
+
+    Ok(SaveResult {
+        saved: true,
+        brain_hotwire_ok: hotwire_ok,
+        brain_hotwire_error: hotwire_error,
+    })
 }
 
 #[command]

@@ -37,7 +37,7 @@ describe('aiConfigStore', () => {
 
   it('save calls save_ai_config + re-hydrates', async () => {
     (invoke as ReturnType<typeof vi.fn>).mockImplementation((cmd: string) => {
-      if (cmd === 'save_ai_config') return Promise.resolve();
+      if (cmd === 'save_ai_config') return Promise.resolve({ saved: true, brain_hotwire_ok: true, brain_hotwire_error: '' });
       if (cmd === 'load_ai_config') {
         return Promise.resolve({
           provider: 'openai',
@@ -82,7 +82,7 @@ describe('aiConfigStore', () => {
     vi.useFakeTimers();
     const invokeMock = invoke as ReturnType<typeof vi.fn>;
     invokeMock.mockImplementation((cmd: string) => {
-      if (cmd === 'save_ai_config') return Promise.resolve();
+      if (cmd === 'save_ai_config') return Promise.resolve({ saved: true, brain_hotwire_ok: true, brain_hotwire_error: '' });
       if (cmd === 'load_ai_config')
         return Promise.resolve({ provider: 'openai', model: 'gpt-4o', base_url: '', has_api_key: false });
       return Promise.resolve();
@@ -109,7 +109,7 @@ describe('aiConfigStore', () => {
   it('api_key save is NOT debounced — fires immediately', async () => {
     const invokeMock = invoke as ReturnType<typeof vi.fn>;
     invokeMock.mockImplementation((cmd: string) => {
-      if (cmd === 'save_ai_config') return Promise.resolve();
+      if (cmd === 'save_ai_config') return Promise.resolve({ saved: true, brain_hotwire_ok: true, brain_hotwire_error: '' });
       if (cmd === 'load_ai_config')
         return Promise.resolve({ provider: 'openai', model: 'gpt-4o', base_url: '', has_api_key: true });
       return Promise.resolve();

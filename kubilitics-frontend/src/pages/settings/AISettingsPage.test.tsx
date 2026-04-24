@@ -13,6 +13,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { MemoryRouter } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import React from 'react';
 
 import AISettingsPage from './AISettingsPage';
@@ -32,10 +33,19 @@ vi.mock('@/components/ui/sonner', () => ({
 }));
 
 function renderPage() {
+  // AISettingsPage uses useQueryClient to invalidate the ['ai'] query
+  // tree after save, so react-query's Provider must be in the tree
+  // for the component to mount. Fresh QueryClient per render so cache
+  // state doesn't bleed across tests.
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false, gcTime: 0 } },
+  });
   return render(
-    <MemoryRouter>
-      <AISettingsPage />
-    </MemoryRouter>,
+    <QueryClientProvider client={client}>
+      <MemoryRouter>
+        <AISettingsPage />
+      </MemoryRouter>
+    </QueryClientProvider>,
   );
 }
 
@@ -131,7 +141,13 @@ describe('AISettingsPage (keychain round-trip)', () => {
         return Promise.resolve({ provider: 'openai', model: 'gpt-4o', base_url: '', has_api_key: false });
       }
       if (cmd === 'get_budget_status') return Promise.resolve({ spent_usd: 0, cap_usd: 0 });
-      if (cmd === 'save_ai_config') return Promise.resolve();
+      if (cmd === 'save_ai_config') {
+        return Promise.resolve({
+          saved: true,
+          brain_hotwire_ok: true,
+          brain_hotwire_error: '',
+        });
+      }
       if (cmd === 'test_llm_connection') {
         return Promise.resolve({ ok: true, status: 200, latency_ms: 15, error: null });
       }

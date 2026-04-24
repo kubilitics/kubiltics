@@ -35,8 +35,22 @@ export interface AIConfigState {
   lastError: string | null;
 
   hydrate: () => Promise<void>;
-  save: (cfg: AIConfigInput) => Promise<void>;
+  save: (cfg: AIConfigInput) => Promise<SaveResult>;
   testConnection: (cfg: AIConfigInput) => Promise<TestResult>;
+}
+
+/**
+ * Shape returned by save_ai_config. `saved` is always true when the
+ * promise resolves; `brainHotwireOk` is the real "is AI live right now"
+ * signal — false means yaml was persisted but the brain's runtime
+ * adapter didn't accept the new config (so the top-bar AI pill will
+ * still say Unreachable). UI callers should surface this honestly
+ * rather than toasting a generic "saved" success.
+ */
+export interface SaveResult {
+  saved: boolean;
+  brainHotwireOk: boolean;
+  brainHotwireError: string;
 }
 
 // Rust payload shape (snake_case).
@@ -178,12 +192,22 @@ export const useAIConfigStore = create<AIConfigState>((set, get) => ({
   },
 
   save: async (cfg) => {
+    interface RustSaveResult {
+      saved: boolean;
+      brain_hotwire_ok: boolean;
+      brain_hotwire_error: string;
+    }
     set({ loading: true, lastError: null });
     try {
-      await invoke('save_ai_config', { cfg: toRust(cfg) });
+      const res = await invoke<RustSaveResult>('save_ai_config', { cfg: toRust(cfg) });
       // Re-hydrate so has_api_key flips true and any normalization the
       // Rust side applied (default base_url, default model) is reflected.
       await get().hydrate();
+      return {
+        saved: res.saved,
+        brainHotwireOk: res.brain_hotwire_ok,
+        brainHotwireError: res.brain_hotwire_error,
+      };
     } catch (err) {
       set({ loading: false, lastError: String(err) });
       throw err;
