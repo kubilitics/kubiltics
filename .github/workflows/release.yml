@@ -380,6 +380,28 @@ jobs:
           fi
           CI=true cargo tauri build --target universal-apple-darwin --bundles app,dmg --config "$CONFIG"
 
+      - name: Verify macOS codesign (pre-notarize)
+        if: matrix.os == 'macos-latest'
+        run: |
+          APP=$(find kubilitics-desktop/src-tauri/target/universal-apple-darwin/release/bundle -name "Kubilitics.app" -type d | head -1)
+          if [ -z "$APP" ]; then
+            echo "::error::No Kubilitics.app found to verify."
+            exit 1
+          fi
+          echo "Verifying $APP"
+          # Must be signed with our Developer ID Application (not ad-hoc).
+          if ! codesign -dv --verbose=4 "$APP" 2>&1 | grep -qE 'Authority=Developer ID Application'; then
+            echo "::error::App is NOT signed with Developer ID Application."
+            codesign -dv --verbose=4 "$APP" 2>&1 || true
+            exit 1
+          fi
+          # Deep verify all embedded binaries are signed + hardened.
+          codesign --verify --deep --strict --verbose=2 "$APP" || {
+            echo "::error::codesign --verify failed."
+            exit 1
+          }
+          echo "codesign verification passed."
+
       - name: Notarize macOS DMG
         if: matrix.os == 'macos-latest'
         timeout-minutes: 25
