@@ -49,6 +49,20 @@ func (h *Handlers) GetCapabilities(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
+	// Honest readiness: brain process up + gRPC reachable is NOT the
+	// same as "AI can answer a turn". The brain reports an empty
+	// Providers list when its adapter probe says no working adapter is
+	// wired (no saved config, bad creds, unreachable Ollama). Downgrade
+	// ready to false so the chat status pill matches reality.
+	if caps == nil || len(caps.Providers) == 0 {
+		_ = json.NewEncoder(w).Encode(capsResponse{
+			Ready:          false,
+			Capabilities:   caps,
+			DisabledReason: "no_provider_configured",
+			State:          "unavailable",
+		})
+		return
+	}
 	_ = json.NewEncoder(w).Encode(capsResponse{
 		Ready:        true,
 		Capabilities: caps,

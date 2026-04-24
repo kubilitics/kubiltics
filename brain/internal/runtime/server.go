@@ -119,6 +119,12 @@ type Server struct {
 	traceDir     string
 	sessionStore chat.SessionStore // optional — nil-safe (no persistence)
 	budgetGate   budget.Gate        // optional — nil-safe (no enforcement)
+	// adapterProbe reports whether a working LLM adapter is currently
+	// wired into the bridge. Capabilities() consults it so the response
+	// reflects runtime truth (config-saved + hot-wire applied) rather
+	// than the immutable startup-time cfg.Providers list. nil-safe:
+	// when unset, capabilities falls back to cfg.Providers.
+	adapterProbe func() bool
 	// estimatedTurnCostUSD is used when a Gate is wired but the runtime
 	// has no per-turn cost estimator yet. A conservative constant (fractions
 	// of a cent) keeps the pre-spend check honest without blocking benign
@@ -183,14 +189,41 @@ func New(cfg Config) *Server {
 // ── AIControl ──────────────────────────────────────────────────────────────
 
 func (s *Server) Capabilities(_ context.Context, _ *kotgv1.Empty) (*kotgv1.AICapabilities, error) {
+	// Honest readiness signal: when the adapter probe says no provider is
+	// wired (user hasn't saved config yet, or saved config built a nil
+	// adapter due to bad creds / unreachable Ollama), return empty
+	// Providers + Models. The kubilitics-backend handler downgrades
+	// `ready` to false based on that, and the chat-status pill shows
+	// "AI Not Configured" or "AI Unreachable" instead of a green light
+	// over a brain that can't actually answer a turn.
+	s.mu.RLock()
+	probe := s.adapterProbe
+	s.mu.RUnlock()
+	providers := s.cfg.Providers
+	models := s.cfg.Models
+	if probe != nil && !probe() {
+		providers = nil
+		models = nil
+	}
 	return &kotgv1.AICapabilities{
 		SchemaVersion: s.cfg.SchemaVersion,
 		AiVersion:     s.cfg.AIVersion,
-		Providers:     s.cfg.Providers,
-		Models:        s.cfg.Models,
+		Providers:     providers,
+		Models:        models,
 		SupportsUndo:  false,
 		SupportsPlans: false,
 	}, nil
+}
+
+// SetAdapterProbe wires a callback that Capabilities consults to report
+// whether a working LLM adapter is currently bridged. cmd/server/main.go
+// passes `func() bool { return bridge.Adapter() != nil }` so AI Settings
+// hot-wire flips the readiness signal without restarting the brain.
+// nil-safe — passing nil reverts to the static cfg.Providers behavior.
+func (s *Server) SetAdapterProbe(probe func() bool) {
+	s.mu.Lock()
+	s.adapterProbe = probe
+	s.mu.Unlock()
 }
 
 func (s *Server) Health(_ context.Context, _ *kotgv1.Empty) (*kotgv1.HealthStatus, error) {

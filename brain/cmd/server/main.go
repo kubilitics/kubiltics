@@ -246,6 +246,12 @@ func main() {
 		SchemaVersion: "1.0.1",
 		Providers:     []string{cfg.LLM.Provider},
 	})
+	// Probe consulted by AICapabilities so /capabilities reflects whether
+	// the bridge currently holds a working adapter. Without this, the
+	// brain reported `ready=true` even when the user's saved config built
+	// a nil adapter (bad key, dead Ollama) — green pill over a chat that
+	// fails on every turn.
+	rtSrv.SetAdapterProbe(func() bool { return bridge.Adapter() != nil })
 	kotgv1.RegisterChatServer(grpcSrv, rtSrv)
 	kotgv1.RegisterAIControlServer(grpcSrv, rtSrv)
 	// Wire the runtime server into the HTTP admin surface so that

@@ -26,7 +26,14 @@ type stubHandlersSrv struct {
 }
 
 func (s *stubHandlersSrv) Capabilities(_ context.Context, _ *kotgv1.Empty) (*kotgv1.AICapabilities, error) {
-	return &kotgv1.AICapabilities{SchemaVersion: "1.0.1", AiVersion: "test"}, nil
+	// Non-empty Providers is the runtime signal that an LLM adapter is wired.
+	// The capabilities handler downgrades `ready` to false when this list
+	// is empty, so a "happy" stub must populate it.
+	return &kotgv1.AICapabilities{
+		SchemaVersion: "1.0.1",
+		AiVersion:     "test",
+		Providers:     []string{"openai"},
+	}, nil
 }
 
 func (s *stubHandlersSrv) CreateSession(_ context.Context, req *kotgv1.CreateSessionRequest) (*kotgv1.Session, error) {
@@ -148,6 +155,74 @@ func TestCapabilitiesHappy(t *testing.T) {
 	if body["capabilities"] == nil {
 		t.Errorf("capabilities should be populated")
 	}
+}
+
+// Regression: brain process up + gRPC reachable but no LLM adapter wired
+// (no provider configured, or hot-wire built nil from bad creds) must
+// surface as ready=false. Otherwise the chat status pill shows green
+// over a brain that fails on every turn.
+func TestCapabilitiesNoProviderConfigured(t *testing.T) {
+	lis := bufconn.Listen(1 << 20)
+	gsrv := grpc.NewServer()
+	stub := &noProviderStub{}
+	kotgv1.RegisterChatServer(gsrv, stub)
+	kotgv1.RegisterAIControlServer(gsrv, stub)
+	go func() { _ = gsrv.Serve(lis) }()
+	defer gsrv.Stop()
+
+	conn, err := grpc.NewClient("passthrough:///bufnet",
+		grpc.WithContextDialer(func(_ context.Context, _ string) (net.Conn, error) { return lis.Dial() }),
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	)
+	if err != nil {
+		t.Fatalf("dial: %v", err)
+	}
+	defer func() { _ = conn.Close() }()
+	gc := aiclient.NewGRPCClientFromConn(conn)
+
+	httpsrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"state":"ready","version":"test","engines":["llm"]}`))
+	}))
+	defer httpsrv.Close()
+	hc := aiclient.NewHTTPClient(httpsrv.URL, aiclient.DefaultOpts())
+
+	p := proxy.New(gc, hc, 60)
+	h := New(p, Config{Enabled: true, ChatMaxDuration: 30 * time.Second})
+	mux := http.NewServeMux()
+	h.Register(mux)
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+
+	resp, err := http.Get(srv.URL + "/ai/capabilities?cluster_id=c1")
+	if err != nil {
+		t.Fatalf("get: %v", err)
+	}
+	defer resp.Body.Close()
+	var body map[string]any
+	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if body["ready"] != false {
+		t.Errorf("ready = %v, want false (no provider configured)", body["ready"])
+	}
+	if body["state"] != "unavailable" {
+		t.Errorf("state = %v, want unavailable", body["state"])
+	}
+	if body["disabled_reason"] != "no_provider_configured" {
+		t.Errorf("disabled_reason = %v, want no_provider_configured", body["disabled_reason"])
+	}
+}
+
+// noProviderStub mirrors the brain's behavior when no LLM adapter is
+// wired — Capabilities returns an empty Providers list.
+type noProviderStub struct {
+	kotgv1.UnimplementedChatServer
+	kotgv1.UnimplementedAIControlServer
+}
+
+func (n *noProviderStub) Capabilities(_ context.Context, _ *kotgv1.Empty) (*kotgv1.AICapabilities, error) {
+	return &kotgv1.AICapabilities{SchemaVersion: "1.0.1", AiVersion: "test"}, nil
 }
 
 func TestSessionsRequiresAIEnabled(t *testing.T) {
