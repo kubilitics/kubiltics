@@ -189,16 +189,49 @@ export function ClusterPickerPage() {
     setPendingKey(key);
     try {
       // Register via legacy cluster API — backend creates the K8s client,
-      // assigns a session_id, and the SSE stream subsequently updates
-      // registered[]. We refresh the snapshot synchronously right after
-      // so the user doesn't briefly see "no cluster connected" on /dashboard.
-      // The backend requires kubeconfig_path; use the one the discovery
-      // source attached, falling back to the platform default.
-      const kubeconfigPath =
-        cluster.kubeconfigPath ?? '~/.kube/config';
-      await addCluster(backendBaseUrl, kubeconfigPath, cluster.identity.name);
-      await refreshSnapshot();
-      setActiveByLogicalIdentity(cluster.identity);
+      // assigns a session_id. The DiscoveryManager's snapshot cache won't
+      // reflect the new registration until its 60s defensive refresh, so
+      // we inject the result into presenceStore directly (best-effort the
+      // store will reconcile naturally on next refresh), then navigate.
+      const kubeconfigPath = cluster.kubeconfigPath ?? '~/.kube/config';
+      const added = await addCluster(backendBaseUrl, kubeconfigPath, cluster.identity.name);
+      // Inject so activeCluster() finds it immediately on /dashboard.
+      const store = useClusterPresenceStore.getState();
+      const identity = {
+        name: added.name ?? cluster.identity.name,
+        serverUrl: (added as unknown as { server_url?: string }).server_url ?? cluster.identity.serverUrl,
+      };
+      const registeredEntry = {
+        identity,
+        source: 'kubeconfig' as const,
+        context_name: added.context ?? cluster.identity.name,
+        kubeconfig_path: added.kubeconfig_path ?? kubeconfigPath,
+        registered_at: added.created_at ?? new Date().toISOString(),
+        reachable: added.status === 'connected',
+        session_id: added.id,
+        provider: added.provider,
+      };
+      const connectedEntry = {
+        ...registeredEntry,
+        connected_at: added.last_connected ?? new Date().toISOString(),
+      };
+      store.applySnapshot({
+        discovered: store.discovered,
+        registered: [
+          ...store.registered.filter((r) => r.identity.name !== identity.name),
+          registeredEntry,
+        ],
+        connected: [
+          ...store.connected.filter((c) => c.identity.name !== identity.name),
+          connectedEntry,
+        ],
+        last_used: null,
+      });
+      setActiveByLogicalIdentity(identity);
+      // Kick off a background presence refresh — by the time the user
+      // clicks something on the dashboard the SSE stream + 60s refresh
+      // will have caught up.
+      void refreshSnapshot();
       navigate('/dashboard');
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);

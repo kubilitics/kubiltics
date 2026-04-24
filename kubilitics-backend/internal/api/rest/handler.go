@@ -7,6 +7,8 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
@@ -776,7 +778,21 @@ func (h *Handler) AddCluster(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	cluster, err := h.clusterService.AddCluster(r.Context(), req.KubeconfigPath, req.Context)
+	// Expand ~ → $HOME so frontend clients (ClusterPickerPage auto-register,
+	// kubectl-style users, scripts) can use shell-idiomatic paths without
+	// needing to resolve the absolute path themselves.
+	resolvedKubeconfigPath := req.KubeconfigPath
+	if strings.HasPrefix(resolvedKubeconfigPath, "~/") {
+		if home, err := os.UserHomeDir(); err == nil {
+			resolvedKubeconfigPath = filepath.Join(home, resolvedKubeconfigPath[2:])
+		}
+	} else if resolvedKubeconfigPath == "~" {
+		if home, err := os.UserHomeDir(); err == nil {
+			resolvedKubeconfigPath = home
+		}
+	}
+
+	cluster, err := h.clusterService.AddCluster(r.Context(), resolvedKubeconfigPath, req.Context)
 	if err != nil {
 		// P1-MC: Return 409 Conflict when cluster limit reached, with count and limit.
 		var limitErr *service.ErrClusterLimitReached

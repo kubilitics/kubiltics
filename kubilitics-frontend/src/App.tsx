@@ -677,9 +677,15 @@ const App = () => (
                       <Route element={<Navigate to="/clusters" replace />} path="/connect" />
                       <Route element={<Navigate to="/clusters" replace />} path="/setup/kubeconfig" />
                       <Route element={<Navigate to="/clusters" replace />} path="/setup/clusters" />
-                      {/* Onboarding-v2 — the only cluster-entry path. */}
-                      <Route path="/clusters" element={<ClusterPickerPage />} />
-                      <Route path="/welcome" element={<WelcomePage />} />
+                      {/* Onboarding-v2 — the only cluster-entry path.
+                          These routes get the chrome (sidebar + header) via
+                          AppLayout but NOT the ProtectedRoute guard, since
+                          they are how the user picks/adds a cluster in the
+                          first place. */}
+                      <Route element={<AppLayout />}>
+                        <Route path="/clusters" element={<ClusterPickerPage />} />
+                        <Route path="/welcome" element={<WelcomePage />} />
+                      </Route>
 
                       {/* App routes — require cluster connection only */}
                       <Route

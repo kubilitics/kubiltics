@@ -141,13 +141,13 @@ export function WelcomePage() {
               <h1 className="text-3xl font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
                 Welcome to Kubilitics
               </h1>
-              <p className="text-sm text-muted-foreground mt-1 flex items-center gap-2">
-                Let’s get you connected to a cluster.
+              <div className="text-sm text-muted-foreground mt-1 flex items-center gap-2">
+                <span>Let’s get you connected to a cluster.</span>
                 <Badge variant="secondary" className="font-normal">
                   <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 mr-1.5" />
                   Live
                 </Badge>
-              </p>
+              </div>
             </div>
           </div>
         </motion.div>
