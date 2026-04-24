@@ -62,7 +62,11 @@ Before starting: close out everything in-flight on `kotg.ai`.
 
 ## 3. Migration phases
 
-**Estimated wall-clock: 4–6 hours for an experienced operator.** Each phase is individually committable and reversible.
+**Estimated wall-clock: 4–6 hours of migration + ~2 hours of smoke-gate runtime (6 runs × ~20 min) for an experienced operator.** Each phase is individually committable and reversible.
+
+**Smoke gate between every phase.** A regression on any of the 10 critical UI flows halts the migration and forces rollback of the last phase. See [`docs/testing/2026-04-24-ui-smoke-harness.md`](../testing/2026-04-24-ui-smoke-harness.md) for the full flow list and pass/fail contract.
+
+**Baseline (run ONCE before Phase A):** capture all 10 flows on pre-migration main, save to `docs/testing/baselines/2026-04-24-pre-migration/`. Every subsequent phase run diffs against this.
 
 ### Phase A — Prepare target tree (~30 min)
 
@@ -95,6 +99,8 @@ git commit -m "migrate: bring kotg.ai/kubilitics-ai subtree into brain/"
 ```
 
 **Rollback at end of Phase A:** `git reset --hard origin/main && git branch -D migrate/monorepo-consolidation`. Nothing has been pushed.
+
+**→ Smoke gate Phase A.** Run [UI smoke harness](../testing/2026-04-24-ui-smoke-harness.md) (~20 min). Phase A only adds a subtree — the desktop + backend shouldn't care. Expect all 10 flows GREEN. If any RED: something about the subtree add broke module resolution or file visibility; investigate + rollback.
 
 ### Phase B — Fix Go module path (~1–2 hours)
 
@@ -132,6 +138,8 @@ git commit -m "migrate: rename module path to github.com/vellankikoti/kubilitics
 ```
 
 **Rollback at end of Phase B:** `git reset --hard HEAD~2` then go back to main. Still local only.
+
+**→ Smoke gate Phase B.** Module path changes don't affect the running desktop (brain binary's internal Go paths are invisible to the UI). Expect all 10 flows GREEN. If Flow 9 (AI chat) RED: the brain was rebuilt with a bad module path and the backend can't dial it. Check `lsof -iTCP:50051` for the brain process; check brain logs for import errors.
 
 ### Phase C — Merge workflows + configs (~1 hour)
 
@@ -173,6 +181,8 @@ gh workflow list --repo vellankikoti/kubilitics | head
 
 **Rollback at end of Phase C:** `git push origin :migrate/monorepo-consolidation` to delete the remote branch; local reset.
 
+**→ Smoke gate Phase C.** CI workflow changes don't affect the running desktop. Expect all 10 flows GREEN. The real Phase-C validation is on GitHub (watch the Actions tab for clean runs) — that's not UI-visible.
+
 ### Phase D — Release tagging strategy (~30 min, a decision rather than a mechanical step)
 
 **Pick one:**
@@ -186,6 +196,8 @@ D1 is my recommendation because Kubilitics ships as a product, not as a toolkit 
 - [ ] Update `.github/workflows/release.yml` to build backend + brain binaries from the monorepo at the same tag.
 - [ ] Update `deploy/homebrew/kubilitics.rb` and charts to reference the new binary location.
 - [ ] Cut `v1.2.0-rc.1` from the migrate branch to dry-run the release workflow.
+
+**→ Smoke gate Phase D.** Tagging strategy is metadata-only; the desktop bits don't change. Expect all 10 flows GREEN. Also verify the RC release workflow produces all expected artifacts (backend binary, brain binary, DMG, Helm chart on ghcr.io).
 
 ### Phase E — Merge + archive (~15 min)
 
@@ -221,12 +233,16 @@ gh repo archive vellankikoti/kotg.ai --yes
 #    - Any docs / READMEs in kotg-schema referencing kotg.ai
 ```
 
+**→ Smoke gate Phase E.** This is THE big one. After the merge lands on main, the whole monorepo is the new reality. Expect all 10 flows GREEN. If Flow 1 (sidebar) RED post-merge: backend couldn't dial brain because the image tag changed / binary moved; re-check Phase C CI published artifacts correctly. **Do NOT archive `kotg.ai` until this gate is GREEN** — that's the last point of no-return.
+
 ### Phase F — Downstream fixups (~30 min)
 
 - [ ] `vellankikoti/homebrew-kubilitics` — **no changes needed**. Its sync workflow reads from `vellankikoti/kubilitics/releases/latest`.
 - [ ] `vellankikoti/kotg-schema` — update README to say "consumed by `vellankikoti/kubilitics`" (was `kotg.ai`).
 - [ ] Any external tap/package managers (winget, AUR) — no change (distribution channels, not code).
 - [ ] Update team docs: onboarding guide now says `git clone https://github.com/vellankikoti/kubilitics` — one command.
+
+**→ Smoke gate Phase F.** Final gate. Expect all 10 flows GREEN. This is also the baseline for v1.2.0's release smoke — archive this run's artifacts as `docs/testing/baselines/2026-05-XX-post-migration/` so future regressions can be bisected against a known-good post-migration state.
 
 ## 4. Risks + mitigations
 
