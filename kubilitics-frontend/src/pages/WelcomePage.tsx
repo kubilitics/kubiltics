@@ -4,11 +4,12 @@
 // three paths forward:
 //   1. Create a local cluster (kind/k3d) — disabled in this phase, the
 //      backing flow ships in a follow-up.
-//   2. Add an existing cluster — routes to the legacy /connect flow which
-//      remains live throughout Phase 5.
+//   2. Add an existing cluster — opens the AddClusterDialog in-place
+//      (no routing to /connect).
 //   3. Take the tour — demo mode, deferred.
 //
 // Wired as "/welcome" in App.tsx (Phase 7: unconditional).
+import { useCallback, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Rocket, Plus, PlayCircle, Sparkles } from 'lucide-react';
 
@@ -21,6 +22,10 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { AddClusterDialog } from '@/components/cluster/AddClusterDialog';
+import { useClusterPresenceStore } from '@/stores/clusterPresenceStore';
+import { getEffectiveBackendBaseUrl, useBackendConfigStore } from '@/stores/backendConfigStore';
+import type { PresenceSnapshot } from '@/types/resilient';
 
 interface CtaProps {
   icon: React.ReactNode;
@@ -84,6 +89,21 @@ function Cta({
 
 export function WelcomePage() {
   const navigate = useNavigate();
+  const [addOpen, setAddOpen] = useState(false);
+  const applySnapshot = useClusterPresenceStore((s) => s.applySnapshot);
+  const backendBaseUrl = useBackendConfigStore((s) => getEffectiveBackendBaseUrl(s.backendBaseUrl));
+
+  const refreshSnapshot = useCallback(async () => {
+    try {
+      const url = `${backendBaseUrl}/api/v1/presence`;
+      const res = await fetch(url, { credentials: 'include' });
+      if (!res.ok) return;
+      const snap: PresenceSnapshot = await res.json();
+      applySnapshot(snap);
+    } catch {
+      // best-effort
+    }
+  }, [backendBaseUrl, applySnapshot]);
 
   return (
     <div
@@ -112,7 +132,7 @@ export function WelcomePage() {
             title="Add an existing cluster"
             description="Point Kubilitics at a kubeconfig context or paste credentials for a remote cluster."
             buttonLabel="Add an existing cluster"
-            onClick={() => navigate('/connect')}
+            onClick={() => setAddOpen(true)}
           />
           <Cta
             icon={<PlayCircle className="h-5 w-5" aria-hidden />}
@@ -123,6 +143,16 @@ export function WelcomePage() {
             disabledTooltip="Coming soon"
           />
         </div>
+
+        <AddClusterDialog
+          open={addOpen}
+          onClose={() => setAddOpen(false)}
+          onAdded={() => {
+            void refreshSnapshot();
+            // Once a cluster is added, the picker page becomes useful.
+            navigate('/clusters');
+          }}
+        />
       </div>
     </div>
   );

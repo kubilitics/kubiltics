@@ -36,12 +36,15 @@ describe('WelcomePage', () => {
     ).toBeInTheDocument();
   });
 
-  it('clicking "Add an existing cluster" navigates to /connect', () => {
+  it('clicking "Add an existing cluster" opens the AddClusterDialog (no routing)', () => {
     renderWelcome();
     fireEvent.click(
       screen.getByRole('button', { name: /add an existing cluster/i }),
     );
-    expect(navigateMock).toHaveBeenCalledWith('/connect');
+    // Dialog opens in-place; user stays on /welcome.
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    expect(screen.getByText('Add a cluster')).toBeInTheDocument();
+    expect(navigateMock).not.toHaveBeenCalled();
   });
 
   it('"Create a local cluster" is disabled (route not available yet)', () => {

@@ -160,4 +160,22 @@ describe('ClusterPickerPage', () => {
     expect(cards[1]).toHaveTextContent('alpha');
     expect(cards[2]).toHaveTextContent('bravo');
   });
+
+  it('exposes an "Add cluster" trigger that opens the AddClusterDialog', () => {
+    useClusterPresenceStore.setState({
+      discovered: [],
+      registered: [],
+      connected: [],
+      isReady: true,
+    });
+    renderPicker();
+    // Dialog starts closed: its "Add a cluster" title is absent.
+    expect(screen.queryByText('Add a cluster')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /^add cluster$/i }));
+
+    // Dialog now rendered.
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    expect(screen.getByText('Add a cluster')).toBeInTheDocument();
+  });
 });

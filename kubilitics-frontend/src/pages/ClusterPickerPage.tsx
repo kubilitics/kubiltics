@@ -7,20 +7,24 @@
 // see Phase 5 notes.)
 //
 // Wired as "/clusters" in App.tsx (Phase 7: unconditional).
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Layers } from 'lucide-react';
+import { Layers, Plus } from 'lucide-react';
 
 import { SectionOverviewHeader } from '@/components/layout/SectionOverviewHeader';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
+import { AddClusterDialog } from '@/components/cluster/AddClusterDialog';
 import { useClusterPresenceStore } from '@/stores/clusterPresenceStore';
+import { getEffectiveBackendBaseUrl, useBackendConfigStore } from '@/stores/backendConfigStore';
 import type {
   DiscoveredCluster,
   LogicalIdentity,
+  PresenceSnapshot,
   RegisteredCluster,
 } from '@/types/resilient';
 import { logicalIdentityKey } from '@/types/resilient';
@@ -112,6 +116,7 @@ function reachabilityDotClass(r: Reachability): string {
 export function ClusterPickerPage() {
   const navigate = useNavigate();
   const [query, setQuery] = useState('');
+  const [addOpen, setAddOpen] = useState(false);
 
   const discovered = useClusterPresenceStore((s) => s.discovered);
   const registered = useClusterPresenceStore((s) => s.registered);
@@ -119,6 +124,24 @@ export function ClusterPickerPage() {
   const setActiveByLogicalIdentity = useClusterPresenceStore(
     (s) => s.setActiveByLogicalIdentity,
   );
+  const applySnapshot = useClusterPresenceStore((s) => s.applySnapshot);
+  const backendBaseUrl = useBackendConfigStore((s) => getEffectiveBackendBaseUrl(s.backendBaseUrl));
+
+  // Force-refresh the presence snapshot after a successful add — the SSE
+  // stream typically fires first, but don't rely on it: a single fetch
+  // guarantees the new cluster shows up on the picker before the user
+  // blinks. Best-effort; silent on failure.
+  const refreshSnapshot = useCallback(async () => {
+    try {
+      const url = `${backendBaseUrl}/api/v1/presence`;
+      const res = await fetch(url, { credentials: 'include' });
+      if (!res.ok) return;
+      const snap: PresenceSnapshot = await res.json();
+      applySnapshot(snap);
+    } catch {
+      // best-effort; SSE will catch up eventually.
+    }
+  }, [backendBaseUrl, applySnapshot]);
 
   const clusters = useMemo<MergedCluster[]>(() => {
     const connectedKeys = new Set(connected.map((c) => logicalIdentityKey(c.identity)));
@@ -154,6 +177,23 @@ export function ClusterPickerPage() {
           title="Clusters"
           description="Select a cluster to view its dashboard."
           icon={Layers}
+          extraActions={
+            <Button
+              type="button"
+              onClick={() => setAddOpen(true)}
+              className="gap-2 h-10"
+              aria-label="Add cluster"
+            >
+              <Plus className="h-4 w-4" />
+              Add cluster
+            </Button>
+          }
+        />
+
+        <AddClusterDialog
+          open={addOpen}
+          onClose={() => setAddOpen(false)}
+          onAdded={() => { void refreshSnapshot(); }}
         />
 
         <div className="flex flex-col gap-4">
