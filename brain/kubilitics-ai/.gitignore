@@ -1,5 +1,0 @@
-# local-built binaries (do not commit)
-/bench
-/server
-# local bench configs (contain API keys)
-config-*.yaml

@@ -1,84 +1,72 @@
-.PHONY: install install-dev test test-unit test-cov lint format type-check clean dev-up dev-down models
+.PHONY: build test clean run help proto
 
-PYTHON := python3
-UV := uv
-PYTEST := pytest
+# Variables
+BINARY_NAME=kubilitics-ai
+BIN_DIR=bin
+CMD_DIR=cmd/server
+PROTO_DIR=api/proto
+PROTO_OUT_DIR=api/proto/v1
+VERSION=0.1.0
 
-# ── Installation ────────────────────────────────────────────────────────────
+help: ## Show this help message
+	@echo 'Usage: make [target]'
+	@echo ''
+	@echo 'Available targets:'
+	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  %-15s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 
-install:
-	$(UV) sync
+build: ## Build the kubilitics-ai binary
+	@echo "Building $(BINARY_NAME)..."
+	@mkdir -p $(BIN_DIR)
+	@go build -o $(BIN_DIR)/$(BINARY_NAME) ./$(CMD_DIR)
+	@echo "✓ Binary built: $(BIN_DIR)/$(BINARY_NAME)"
 
-install-dev:
-	$(UV) sync --extra dev
-	$(UV) run pre-commit install
+test: ## Run all tests
+	@echo "Running tests..."
+	@go test ./... -v -cover
 
-# ── Testing ─────────────────────────────────────────────────────────────────
+test-coverage: ## Run tests with coverage report
+	@echo "Running tests with coverage..."
+	@go test ./... -v -coverprofile=coverage.out
+	@go tool cover -html=coverage.out -o coverage.html
+	@echo "✓ Coverage report generated: coverage.html"
 
-test:
-	$(UV) run $(PYTEST) tests/ -v
+run: build ## Build and run the server
+	@echo "Starting $(BINARY_NAME)..."
+	@./$(BIN_DIR)/$(BINARY_NAME)
 
-test-unit:
-	$(UV) run $(PYTEST) tests/core tests/mcp -v
+clean: ## Clean build artifacts
+	@echo "Cleaning..."
+	@rm -rf $(BIN_DIR)
+	@rm -f coverage.out coverage.html
+	@echo "✓ Clean complete"
 
-test-cov:
-	$(UV) run $(PYTEST) tests/ --cov=kotg --cov-report=html --cov-report=term-missing
+fmt: ## Format code
+	@echo "Formatting code..."
+	@go fmt ./...
+	@echo "✓ Code formatted"
 
-# ── Code quality ─────────────────────────────────────────────────────────────
+lint: ## Run linters
+	@echo "Running linters..."
+	@go vet ./...
+	@echo "✓ Linting complete"
 
-lint:
-	$(UV) run ruff check kotg/ tests/
+tidy: ## Tidy dependencies
+	@echo "Tidying dependencies..."
+	@go mod tidy
+	@echo "✓ Dependencies tidied"
 
-format:
-	$(UV) run ruff format kotg/ tests/
-	$(UV) run black kotg/ tests/
+proto: ## Generate Go code from protocol buffers
+	@echo "Generating protobuf code..."
+	@mkdir -p $(PROTO_OUT_DIR)
+	@protoc --go_out=$(PROTO_OUT_DIR) --go_opt=paths=source_relative \
+		--go-grpc_out=$(PROTO_OUT_DIR) --go-grpc_opt=paths=source_relative \
+		-I$(PROTO_DIR) $(PROTO_DIR)/*.proto
+	@echo "✓ Protobuf code generated in $(PROTO_OUT_DIR)"
 
-type-check:
-	$(UV) run mypy kotg/
+proto-check: ## Check if protoc is installed
+	@which protoc > /dev/null || (echo "Error: protoc not found. Install with: brew install protobuf" && exit 1)
+	@which protoc-gen-go > /dev/null || (echo "Error: protoc-gen-go not found. Install with: go install google.golang.org/protobuf/cmd/protoc-gen-go@latest" && exit 1)
+	@which protoc-gen-go-grpc > /dev/null || (echo "Error: protoc-gen-go-grpc not found. Install with: go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest" && exit 1)
+	@echo "✓ All protobuf tools installed"
 
-# ── Docker dev environment ───────────────────────────────────────────────────
-
-dev-up:
-	docker compose up -d
-	@echo "Waiting for services to be healthy..."
-	@sleep 5
-	@echo "Ollama:  http://localhost:11434"
-	@echo "Qdrant:  http://localhost:6333"
-
-dev-down:
-	docker compose down
-
-dev-logs:
-	docker compose logs -f
-
-# ── Model management ─────────────────────────────────────────────────────────
-
-models:
-	$(UV) run kotg models install medium
-
-models-all:
-	$(UV) run kotg models install all
-
-# ── Cleanup ──────────────────────────────────────────────────────────────────
-
-clean:
-	find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
-	find . -type f -name "*.pyc" -delete
-	rm -rf .pytest_cache .mypy_cache .ruff_cache htmlcov .coverage
-
-# ── Help ─────────────────────────────────────────────────────────────────────
-
-help:
-	@echo "KOTG.AI Development Commands"
-	@echo ""
-	@echo "  make install       Install dependencies (production)"
-	@echo "  make install-dev   Install dev dependencies + pre-commit hooks"
-	@echo "  make test          Run all tests"
-	@echo "  make test-cov      Run tests with HTML coverage report"
-	@echo "  make lint          Run ruff linter"
-	@echo "  make format        Auto-format code"
-	@echo "  make type-check    Run mypy type checker"
-	@echo "  make dev-up        Start Ollama + Qdrant via Docker Compose"
-	@echo "  make dev-down      Stop Docker Compose services"
-	@echo "  make models        Pull medium-tier LLM models via Ollama"
-	@echo "  make clean         Remove build artifacts"
+.DEFAULT_GOAL := help
