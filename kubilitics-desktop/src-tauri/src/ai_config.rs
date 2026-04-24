@@ -435,22 +435,46 @@ pub async fn detect_available_providers() -> Result<Vec<DetectedProvider>, Strin
         });
     }
 
-    // Surface keychain-stored configs even when the env is empty, so users who
-    // already connected once see that as an option.
-    for provider in ["openai", "anthropic", "ollama", "custom"] {
-        if let Ok(Some(_)) = keychain_get(provider) {
-            let already_listed = out.iter().any(|p| p.provider == provider);
+    // Surface the keychain-stored config even when the env is empty, so
+    // users who already connected once see that as an option.
+    //
+    // IMPORTANT: DO NOT probe the keychain here. A raw keychain_get()
+    // triggers the macOS "enter login password" dialog every time the
+    // binary signature hash doesn't match the stored ACL — which is
+    // every `cargo tauri dev` rebuild. Previously this function iterated
+    // over all four providers and fired up to four keychain reads on
+    // every AI Settings page mount, producing the password prompt users
+    // reported as "dangerously annoying UX".
+    //
+    // Instead, consult the cached `has_api_key` flag in config.yaml
+    // (written by save_ai_config) and surface only the currently-saved
+    // provider. That's the one the user actually saved; we don't need
+    // to fish for old entries across all providers.
+    let saved = read_yaml().ok().flatten();
+    if let Some(y) = saved {
+        if y.has_api_key && !y.provider.is_empty() {
+            let already_listed = out.iter().any(|p| p.provider == y.provider);
             if !already_listed {
+                // Prefer the user's saved model/base_url over a default so
+                // the "keychain" quick-connect reproduces the exact last
+                // working config. Falls back to provider defaults if the
+                // yaml somehow doesn't carry them.
+                let default_model = match y.provider.as_str() {
+                    "openai" => "gpt-4o-mini",
+                    "anthropic" => "claude-3-5-sonnet-latest",
+                    "ollama" => "llama3",
+                    _ => "",
+                };
+                let default_base = if y.provider == "ollama" {
+                    "http://localhost:11434".to_string()
+                } else {
+                    String::new()
+                };
                 out.push(DetectedProvider {
-                    provider: provider.into(),
+                    provider: y.provider.clone(),
                     source: "keychain".into(),
-                    model: match provider {
-                        "openai" => "gpt-4o-mini",
-                        "anthropic" => "claude-3-5-sonnet-latest",
-                        "ollama" => "llama3",
-                        _ => "",
-                    }.into(),
-                    base_url: if provider == "ollama" { "http://localhost:11434".into() } else { String::new() },
+                    model: if y.model.is_empty() { default_model.to_string() } else { y.model.clone() },
+                    base_url: if y.base_url.is_empty() { default_base } else { y.base_url.clone() },
                     env_var: String::new(),
                 });
             }
