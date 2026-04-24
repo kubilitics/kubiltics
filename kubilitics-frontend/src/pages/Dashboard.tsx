@@ -3,7 +3,7 @@ import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Zap, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useClusterStore } from '@/stores/clusterStore';
+import { useActiveCluster } from '@/stores/clusterPresenceStore';
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
 import { cn } from '@/lib/utils';
 import { LiveSignalStrip } from '@/components/dashboard/LiveSignalStrip';
@@ -35,7 +35,7 @@ const item = {
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const { activeCluster } = useClusterStore();
+  const activeCluster = useActiveCluster();
   const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
   const { showTour, completeTour, skipTour } = useDashboardTour();
   const { data: insights } = useActiveInsights();

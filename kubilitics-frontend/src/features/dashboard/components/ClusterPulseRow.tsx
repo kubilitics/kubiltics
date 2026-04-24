@@ -7,7 +7,7 @@ import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Server, Activity, AlertTriangle, Cpu } from "lucide-react";
 import { useClusterOverview } from "@/hooks/useClusterOverview";
-import { useClusterStore } from "@/stores/clusterStore";
+import { useActiveCluster } from '@/stores/clusterPresenceStore';
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from "@/stores/backendConfigStore";
 import { useResourceCounts } from "@/hooks/useResourceCounts";
 import { useConnectionStatus } from "@/hooks/useConnectionStatus";
@@ -23,7 +23,7 @@ const PILL_CONFIG = [
 ];
 
 export const ClusterPulseRow = () => {
-  const { activeCluster } = useClusterStore();
+  const activeCluster = useActiveCluster();
   const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
   const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured());
   const backendBaseUrl = getEffectiveBackendBaseUrl(useBackendConfigStore((s) => s.backendBaseUrl));

@@ -47,7 +47,8 @@ vi.mock('@/stores/backendConfigStore', () => ({
   getEffectiveBackendBaseUrl: () => 'http://localhost:8190',
 }));
 
-// Cluster store
+// Cluster store — both the legacy and presence flavours are mocked so pages
+// migrated to `useActiveCluster()` keep seeing the test cluster.
 vi.mock('@/stores/clusterStore', () => ({
   useClusterStore: (selector?: (s: Record<string, unknown>) => unknown) => {
     const state: Record<string, unknown> = {
@@ -58,6 +59,41 @@ vi.mock('@/stores/clusterStore', () => ({
     };
     return selector ? selector(state) : state;
   },
+  getClusterAppearance: () => ({ color: '', environment: '', alias: '' }),
+  setClusterAppearance: vi.fn(),
+  getEnvBadgeLabel: () => null,
+  getEnvBadgeClasses: () => '',
+}));
+
+vi.mock('@/stores/clusterPresenceStore', () => ({
+  useActiveCluster: () => ({
+    id: 'test-cluster-id',
+    name: 'test-cluster',
+    serverUrl: 'https://test',
+    provider: '',
+  }),
+  getActiveCluster: () => ({
+    id: 'test-cluster-id',
+    name: 'test-cluster',
+    serverUrl: 'https://test',
+    provider: '',
+  }),
+  useClusterPresenceStore: (selector?: (s: Record<string, unknown>) => unknown) => {
+    const state: Record<string, unknown> = {
+      discovered: [],
+      registered: [],
+      connected: [],
+      availableClusters: () => [],
+      activeLogicalIdentity: { name: 'test-cluster', serverUrl: 'https://test' },
+      isReady: true,
+      setActiveByLogicalIdentity: vi.fn(),
+      applySnapshot: vi.fn(),
+      activeCluster: () => null,
+    };
+    return selector ? selector(state) : state;
+  },
+  setActiveClusterBySessionId: vi.fn(),
+  __resetForTest: vi.fn(),
 }));
 
 // Theme store
@@ -315,10 +351,14 @@ describe('Page smoke tests', () => {
     });
 
     it('shows "No cluster selected" when no active cluster', async () => {
-      // Temporarily override the cluster store mock
-      const mod = await import('@/stores/clusterStore') as unknown as Record<string, unknown>;
-      const original = mod.useClusterStore;
-      mod.useClusterStore = (selector?: (s: Record<string, unknown>) => unknown) => {
+      // Temporarily override BOTH legacy and presence mocks — Dashboard reads
+      // the presence view via `useActiveCluster()`, but some transitively
+      // imported hooks still dip into `useClusterStore` during the transition.
+      const legacy = (await import('@/stores/clusterStore')) as unknown as Record<string, unknown>;
+      const presence = (await import('@/stores/clusterPresenceStore')) as unknown as Record<string, unknown>;
+
+      const origLegacy = legacy.useClusterStore;
+      legacy.useClusterStore = (selector?: (s: Record<string, unknown>) => unknown) => {
         const state: Record<string, unknown> = {
           activeCluster: null,
           clusters: [],
@@ -327,13 +367,15 @@ describe('Page smoke tests', () => {
         };
         return selector ? selector(state) : state;
       };
+      const origUseActive = presence.useActiveCluster;
+      presence.useActiveCluster = () => null;
 
       const Dashboard = (await import('@/pages/Dashboard')).default;
       renderPage(<Dashboard />);
       expect(screen.getByText('No cluster selected')).toBeInTheDocument();
 
-      // Restore
-      mod.useClusterStore = original;
+      legacy.useClusterStore = origLegacy;
+      presence.useActiveCluster = origUseActive;
     });
   });
 

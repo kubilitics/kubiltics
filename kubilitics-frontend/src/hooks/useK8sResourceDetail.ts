@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useK8sResource, useK8sResourceList, calculateAge, type KubernetesResource, type ResourceType } from './useKubernetes';
 import { useConnectionStatus } from '@/hooks/useConnectionStatus';
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
-import { useClusterStore } from '@/stores/clusterStore';
+import { useActiveCluster } from '@/stores/clusterPresenceStore';
 import { getResourceEvents } from '@/services/backendApiClient';
 import yaml from 'js-yaml';
 

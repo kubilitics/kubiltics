@@ -2,7 +2,6 @@
  * Cluster CRUD, summary, overview, reconnect, kubeconfig, capabilities, workloads.
  */
 import { isTauri } from '@/lib/tauri';
-import { useClusterStore } from '@/stores/clusterStore';
 import { useKubeconfigStore } from '@/stores/kubeconfigSourceStore';
 import {
   backendRequest,
@@ -219,12 +218,9 @@ export async function getClusterKubeconfig(
 
   const headers: Record<string, string> = {};
   if (isTauri()) {
-    const { activeCluster } = useClusterStore.getState();
     const { kubeconfigContent } = useKubeconfigStore.getState();
     if (kubeconfigContent) {
       headers['X-Kubeconfig'] = btoa(kubeconfigContent);
-    } else if (activeCluster?.kubeconfig) {
-      headers['X-Kubeconfig'] = btoa(activeCluster.kubeconfig);
     }
   }
 

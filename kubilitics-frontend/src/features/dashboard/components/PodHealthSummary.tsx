@@ -5,14 +5,14 @@
 import React, { useMemo } from "react";
 import { Link } from "react-router-dom";
 import { useClusterOverview } from "@/hooks/useClusterOverview";
-import { useClusterStore } from "@/stores/clusterStore";
+import { useActiveCluster } from '@/stores/clusterPresenceStore';
 import { useBackendConfigStore } from "@/stores/backendConfigStore";
 import { useConnectionStatus } from "@/hooks/useConnectionStatus";
 import { useK8sResourceList } from "@/hooks/useKubernetes";
 import { cn } from "@/lib/utils";
 
 export const PodHealthSummary = () => {
-  const { activeCluster } = useClusterStore();
+  const activeCluster = useActiveCluster();
   const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
   const clusterId = currentClusterId ?? undefined;
   const { isConnected } = useConnectionStatus();

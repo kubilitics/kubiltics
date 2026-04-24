@@ -11,7 +11,7 @@
 import { useCallback, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
-import { useClusterStore } from '@/stores/clusterStore';
+import { useActiveCluster } from '@/stores/clusterPresenceStore';
 import { useProjectStore } from '@/stores/projectStore';
 import { listResources, getResource } from '@/services/backendApiClient';
 
@@ -87,7 +87,7 @@ export function useHoverPrefetch() {
   const backendBaseUrl = getEffectiveBackendBaseUrl(storedUrl);
   const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured());
   const clusterId = useBackendConfigStore((s) => s.currentClusterId);
-  const activeCluster = useClusterStore((s) => s.activeCluster);
+  const activeCluster = useActiveCluster();
   const activeProjectId = useProjectStore((s) => s.activeProject?.id ?? null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 

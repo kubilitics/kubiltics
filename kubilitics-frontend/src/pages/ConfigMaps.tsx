@@ -56,7 +56,7 @@ import { usePaginatedResourceList, useDeleteK8sResource, useCreateK8sResource, u
 import { resourceToYaml } from '@/hooks/useK8sResourceDetail';
 import { useConnectionStatus } from '@/hooks/useConnectionStatus';
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
-import { useClusterStore } from '@/stores/clusterStore';
+import { useActiveCluster } from '@/stores/clusterPresenceStore';
 import { getConfigMapConsumers } from '@/services/backendApiClient';
 import { ResourceCreator, DEFAULT_YAMLS } from '@/components/editor';
 import { DeleteConfirmDialog, BulkActionBar, executeBulkOperation } from '@/components/resources';
@@ -163,7 +163,7 @@ export default function ConfigMaps() {
  const [pageIndex, setPageIndex] = useState(0);
  const backendBaseUrl = getEffectiveBackendBaseUrl(useBackendConfigStore((s) => s.backendBaseUrl));
  const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured());
- const activeCluster = useClusterStore((s) => s.activeCluster);
+ const activeCluster = useActiveCluster();
  const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
  const clusterId = currentClusterId ?? null;
 

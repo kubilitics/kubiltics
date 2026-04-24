@@ -9,10 +9,9 @@ import { Button } from '@/components/ui/button';
 import { useProject } from '@/hooks/useProjects';
 import { useProjectStore, type Project } from '@/stores/projectStore';
 import { useBackendConfigStore } from '@/stores/backendConfigStore';
-import { useClusterStore } from '@/stores/clusterStore';
+import { setActiveClusterBySessionId } from '@/stores/clusterPresenceStore';
 import { useDemoStore } from '@/stores/demoStore';
 import type { BackendProjectWithDetails } from '@/services/backendApiClient';
-import { backendClusterToCluster } from '@/lib/backendClusterAdapter';
 import { useClustersFromBackend } from '@/hooks/useClustersFromBackend';
 import { DashboardLayout } from '@/features/dashboard/components/DashboardLayout';
 import { cn } from '@/lib/utils';
@@ -37,7 +36,6 @@ export default function ProjectDashboardPage() {
   const navigate = useNavigate();
   const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
   const setCurrentClusterId = useBackendConfigStore((s) => s.setCurrentClusterId);
-  const { setActiveCluster, setClusters } = useClusterStore();
   const setDemo = useDemoStore((s) => s.setDemo);
   const setActiveProject = useProjectStore((s) => s.setActiveProject);
   const clearActiveProject = useProjectStore((s) => s.clearActiveProject);
@@ -67,11 +65,9 @@ export default function ProjectDashboardPage() {
   const handleConnectCluster = (clusterId: string) => {
     const backendCluster = allClusters.find((c) => c.id === clusterId);
     if (!backendCluster) return;
-    const connected = allClusters.map(backendClusterToCluster);
-    const active = backendClusterToCluster(backendCluster);
     setCurrentClusterId(clusterId);
-    setClusters(connected);
-    setActiveCluster(active);
+    // Presence SSE already has every registered cluster; activate by uuid.
+    setActiveClusterBySessionId(clusterId);
     setDemo(false);
   };
 

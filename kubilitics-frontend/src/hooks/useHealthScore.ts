@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { useClusterStore } from '@/stores/clusterStore';
+import { useActiveCluster } from '@/stores/clusterPresenceStore';
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
 import { useK8sResourceList } from './useKubernetes';
 import { useClusterSummary } from './useClusterSummary';
@@ -34,7 +34,7 @@ function getRestartCount(pod: { status?: { containerStatuses?: Array<{ restartCo
 }
 
 export function useHealthScore(): HealthScore {
-  const { activeCluster } = useClusterStore();
+  const activeCluster = useActiveCluster();
   const storedUrl = useBackendConfigStore((s) => s.backendBaseUrl);
   const backendBaseUrl = getEffectiveBackendBaseUrl(storedUrl);
   const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured());

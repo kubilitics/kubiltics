@@ -33,7 +33,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { usePaginatedResourceList, useDeleteK8sResource, usePatchK8sResource, calculateAge, type KubernetesResource } from '@/hooks/useKubernetes';
 import { useConnectionStatus } from '@/hooks/useConnectionStatus';
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
-import { useClusterStore } from '@/stores/clusterStore';
+import { useActiveCluster } from '@/stores/clusterPresenceStore';
 import { getServiceAccountTokenCounts } from '@/services/backendApiClient';
 import { ResourceCreator, DEFAULT_YAMLS } from '@/components/editor';
 import { DeleteConfirmDialog, BulkActionBar, executeBulkOperation } from '@/components/resources';
@@ -140,7 +140,7 @@ export default function ServiceAccounts() {
  const navigate = useNavigate();
  const { isConnected } = useConnectionStatus();
  const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
- const activeCluster = useClusterStore((s) => s.activeCluster);
+ const activeCluster = useActiveCluster();
  const storedUrl = useBackendConfigStore((s) => s.backendBaseUrl);
  const backendBaseUrl = getEffectiveBackendBaseUrl(storedUrl);
  const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured());

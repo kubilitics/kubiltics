@@ -5,7 +5,7 @@
  */
 import { useQuery } from '@tanstack/react-query';
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
-import { useClusterStore } from '@/stores/clusterStore';
+import { useActiveCluster } from '@/stores/clusterPresenceStore';
 import { listCRDInstances } from '@/services/backendApiClient';
 import type { KubernetesResource } from './useKubernetes';
 
@@ -27,7 +27,7 @@ export function useCRDInstances(
   const storedUrl = useBackendConfigStore((s) => s.backendBaseUrl);
   const backendBaseUrl = getEffectiveBackendBaseUrl(storedUrl);
   const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured());
-  const activeCluster = useClusterStore((s) => s.activeCluster);
+  const activeCluster = useActiveCluster();
   const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
   const clusterId = currentClusterId ?? null;
 

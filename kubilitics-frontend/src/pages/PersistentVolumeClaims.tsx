@@ -50,7 +50,7 @@ import { useColumnVisibility } from '@/hooks/useColumnVisibility';
 import { usePaginatedResourceList, useDeleteK8sResource, usePatchK8sResource, calculateAge, type KubernetesResource } from '@/hooks/useKubernetes';
 import { useConnectionStatus } from '@/hooks/useConnectionStatus';
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
-import { useClusterStore } from '@/stores/clusterStore';
+import { useActiveCluster } from '@/stores/clusterPresenceStore';
 import { getPVCConsumers } from '@/services/backendApiClient';
 import { useQueries } from '@tanstack/react-query';
 import { ResourceCreator, DEFAULT_YAMLS } from '@/components/editor';
@@ -239,7 +239,7 @@ export default function PersistentVolumeClaims() {
 
  const backendBaseUrl = getEffectiveBackendBaseUrl(useBackendConfigStore((s) => s.backendBaseUrl));
  const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured());
- const activeCluster = useClusterStore((s) => s.activeCluster);
+ const activeCluster = useActiveCluster();
  const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
  const clusterId = currentClusterId ?? null;
 

@@ -36,8 +36,6 @@ const ToolCatalogPage = lazy(() => import("./pages/settings/ToolCatalogPage"));
 const ModeSelection = lazy(() => import("./pages/ModeSelection"));
 const ClusterConnect = lazy(() => import("./pages/ClusterConnect"));
 const ConnectedRedirect = lazy(() => import("./pages/ConnectedRedirect"));
-const KubeConfigSetup = lazy(() => import("./pages/KubeConfigSetup"));
-const ClusterSelection = lazy(() => import("./pages/ClusterSelection"));
 // Onboarding-v2 entry pages (Phase 7: unconditional).
 const ClusterPickerPage = lazy(() => import("./pages/ClusterPickerPage"));
 const WelcomePage = lazy(() => import("./pages/WelcomePage"));
@@ -825,7 +823,7 @@ const App = () => (
                       <Route element={<ClusterConnect />} path="/connect" />
                       <Route element={<ConnectedRedirect />} path="/connected" />
                       <Route element={<Navigate to="/connect?addCluster=true" replace />} path="/setup/kubeconfig" />
-                      <Route element={<ClusterSelection />} path="/setup/clusters" />
+                      <Route element={<Navigate to="/clusters" replace />} path="/setup/clusters" />
                       {/* Onboarding-v2 — the only cluster-entry path. */}
                       <Route path="/clusters" element={<FlagGatedRoute><ClusterPickerPage /></FlagGatedRoute>} />
                       <Route path="/welcome" element={<FlagGatedRoute><WelcomePage /></FlagGatedRoute>} />

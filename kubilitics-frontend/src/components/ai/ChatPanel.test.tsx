@@ -52,7 +52,7 @@ vi.mock('./ChatInput', () => ({
 
 import { ChatPanel } from './ChatPanel';
 import { useChatStore } from '@/stores/chatStore';
-import { useClusterStore } from '@/stores/clusterStore';
+import { useActiveCluster, useClusterPresenceStore } from '@/stores/clusterPresenceStore';
 
 function seedBudgetExceeded(clusterId: string) {
   useChatStore.setState({
@@ -95,10 +95,24 @@ describe('ChatPanel — budget_exceeded banner', () => {
   beforeEach(() => {
     (invoke as ReturnType<typeof vi.fn>).mockReset();
     (invoke as ReturnType<typeof vi.fn>).mockResolvedValue(undefined);
-    useClusterStore.setState({
-      // Minimal shape: only `activeCluster.id` is read by ChatPanel.
-      activeCluster: { id: 'c-1', name: 'demo' } as never,
-    } as never);
+    // Seed presence with a connected cluster. `useActiveCluster()` derives the
+    // legacy-shaped view from this state, so ChatPanel sees `{ id: 'c-1' }`.
+    useClusterPresenceStore.setState({
+      discovered: [],
+      registered: [],
+      connected: [
+        {
+          identity: { name: 'demo', serverUrl: 'https://demo' },
+          source: 'manual',
+          session_id: 'c-1',
+          registered_at: new Date().toISOString(),
+          connected_at: new Date().toISOString(),
+          reachable: true,
+        },
+      ],
+      activeLogicalIdentity: { name: 'demo', serverUrl: 'https://demo' },
+      isReady: true,
+    });
     seedBudgetExceeded('c-1');
   });
   afterEach(() => {

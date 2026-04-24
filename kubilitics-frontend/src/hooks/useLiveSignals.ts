@@ -9,7 +9,7 @@
  */
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { useClusterStore } from '@/stores/clusterStore';
+import { useActiveCluster, useClusterPresenceStore } from '@/stores/clusterPresenceStore';
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
 import { useK8sResourceList } from './useKubernetes';
 import { getEvents } from '@/services/backendApiClient';
@@ -52,7 +52,8 @@ export interface LiveSignals {
 }
 
 export function useLiveSignals(): LiveSignals {
-  const { activeCluster, clusters } = useClusterStore();
+  const activeCluster = useActiveCluster();
+  const clusters = useClusterPresenceStore((s) => s.availableClusters());
   const storedUrl = useBackendConfigStore((s) => s.backendBaseUrl);
   const backendBaseUrl = getEffectiveBackendBaseUrl(storedUrl);
   const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured());

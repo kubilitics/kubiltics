@@ -30,7 +30,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useConnectionStatus } from '@/hooks/useConnectionStatus';
-import { useClusterStore } from '@/stores/clusterStore';
+import { getActiveCluster, useActiveCluster } from '@/stores/clusterPresenceStore';
 import { useChatStore } from '@/stores/chatStore';
 import { useAIContextStore } from '@/stores/aiContextStore';
 import { Sparkles } from 'lucide-react';
@@ -507,7 +507,7 @@ export default function Events() {
  </DropdownMenuItem>
  <DropdownMenuItem
  onClick={() => {
- const cluster = useClusterStore.getState().activeCluster?.id ?? '';
+ const cluster = getActiveCluster()?.id ?? '';
  useChatStore.getState().togglePanel(true);
  useAIContextStore.getState().setExplicit({ type: 'event', cluster, namespace: ev.eventNamespace || undefined, name: ev.name });
  useChatStore.getState().setPrefilled(`Explain this event.`);

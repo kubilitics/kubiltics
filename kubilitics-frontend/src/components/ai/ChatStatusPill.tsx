@@ -1,7 +1,7 @@
 import { useAICapabilities } from '@/hooks/useAICapabilities';
 import { useAIUserConfig } from '@/hooks/useAIUserConfig';
 import { useChatStore } from '@/stores/chatStore';
-import { useClusterStore } from '@/stores/clusterStore';
+import { useActiveCluster } from '@/stores/clusterPresenceStore';
 import { Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -27,7 +27,7 @@ interface Props {
  *   gray    — still loading on first render only
  */
 export function ChatStatusPill({ variant = 'pill' }: Props) {
-  const clusterId = useClusterStore((s) => s.activeCluster?.id);
+  const clusterId = useActiveCluster()?.id;
   const caps = useAICapabilities(clusterId);
   const userConfig = useAIUserConfig();
   const togglePanel = useChatStore((s) => s.togglePanel);

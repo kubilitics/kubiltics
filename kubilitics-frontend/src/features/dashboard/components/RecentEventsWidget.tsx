@@ -16,7 +16,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useQuery } from "@tanstack/react-query";
-import { useClusterStore } from "@/stores/clusterStore";
+import { useActiveCluster } from '@/stores/clusterPresenceStore';
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from "@/stores/backendConfigStore";
 import { useK8sResourceList } from "@/hooks/useKubernetes";
 import { getEvents, type BackendEvent } from "@/services/backendApiClient";
@@ -120,7 +120,7 @@ function k8sToNormalized(item: {
 }
 
 export const RecentEventsWidget = () => {
-  const { activeCluster } = useClusterStore();
+  const activeCluster = useActiveCluster();
   const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
   const storedUrl = useBackendConfigStore((s) => s.backendBaseUrl);
   const backendBaseUrl = getEffectiveBackendBaseUrl(storedUrl);

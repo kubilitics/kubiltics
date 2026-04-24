@@ -5,7 +5,7 @@
  */
 import { useQuery } from '@tanstack/react-query';
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
-import { useClusterStore } from '@/stores/clusterStore';
+import { useActiveCluster } from '@/stores/clusterPresenceStore';
 import { getClusterFeatureMetallb } from '@/services/backendApiClient';
 import { useK8sResourceList } from './useKubernetes';
 import { useConnectionStatus } from './useConnectionStatus';
@@ -14,7 +14,7 @@ export function useMetalLBInstalled(): { installed: boolean; isLoading: boolean 
   const { isConnected } = useConnectionStatus();
   const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured());
   const backendBaseUrl = getEffectiveBackendBaseUrl();
-  const activeCluster = useClusterStore((s) => s.activeCluster);
+  const activeCluster = useActiveCluster();
   const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
   const clusterId = currentClusterId ?? null;
 

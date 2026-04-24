@@ -32,7 +32,7 @@ import {
   uploadContainerFile,
   type ContainerFileEntry,
 } from '@/services/backendApiClient';
-import { useClusterStore } from '@/stores/clusterStore';
+import { getActiveCluster, useActiveCluster } from '@/stores/clusterPresenceStore';
 
 export interface FileTransferDialogProps {
   open: boolean;
@@ -73,7 +73,7 @@ export function FileTransferDialog({
   containers,
 }: FileTransferDialogProps) {
   const effectiveBaseUrl = baseUrl ?? '';
-  const effectiveClusterId = clusterId || useClusterStore.getState().activeCluster?.id;
+  const effectiveClusterId = clusterId || getActiveCluster()?.id;
 
   const [currentPath, setCurrentPath] = useState('/');
   const [entries, setEntries] = useState<ContainerFileEntry[]>([]);

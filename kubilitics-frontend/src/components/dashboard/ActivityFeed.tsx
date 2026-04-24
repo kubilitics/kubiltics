@@ -20,7 +20,7 @@ import {
   Scale,
   Activity,
 } from 'lucide-react';
-import { useClusterStore } from '@/stores/clusterStore';
+import { useActiveCluster } from '@/stores/clusterPresenceStore';
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
 import { getEvents } from '@/services/backendApiClient';
 import { useK8sResourceList } from '@/hooks/useKubernetes';
@@ -107,7 +107,7 @@ function normalizeK8sEvent(item: { metadata?: { uid?: string }; type?: string; r
 }
 
 export function ActivityFeed() {
-  const { activeCluster } = useClusterStore();
+  const activeCluster = useActiveCluster();
   const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
   const storedUrl = useBackendConfigStore((s) => s.backendBaseUrl);
   const backendBaseUrl = getEffectiveBackendBaseUrl(storedUrl);

@@ -11,7 +11,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from '@/components/ui/sonner';
 import { useCreateK8sResource } from '@/hooks/useKubernetes';
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
-import { useClusterStore } from '@/stores/clusterStore';
+import { useActiveCluster } from '@/stores/clusterPresenceStore';
 import { applyManifest } from '@/services/backendApiClient';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
@@ -538,7 +538,7 @@ export function QuickCreateDialog({ open, onOpenChange, kind, onSuccess }: Quick
   const backendBaseUrl = getEffectiveBackendBaseUrl(useBackendConfigStore((s) => s.backendBaseUrl));
   const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured());
   const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
-  const activeCluster = useClusterStore((s) => s.activeCluster);
+  const activeCluster = useActiveCluster();
 
   // Generate YAML from form fields
   const generatedYaml = useMemo(() => generateYaml(kind, fields), [kind, fields]);

@@ -1,10 +1,10 @@
 import { useMemo } from 'react';
-import { useClusterStore } from '@/stores/clusterStore';
+import { useActiveCluster } from '@/stores/clusterPresenceStore';
 import { useBackendConfigStore } from '@/stores/backendConfigStore';
 import { useK8sResourceList } from './useKubernetes';
 
 export function useAdmissionOverview() {
-    const { activeCluster } = useClusterStore();
+    const activeCluster = useActiveCluster();
     const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured());
     const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
     const clusterId = currentClusterId ?? undefined;

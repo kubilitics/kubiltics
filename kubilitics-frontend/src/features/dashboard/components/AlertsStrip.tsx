@@ -19,7 +19,7 @@ import {
 } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { useClusterOverview } from "@/hooks/useClusterOverview";
-import { useClusterStore } from "@/stores/clusterStore";
+import { useActiveCluster } from "@/stores/clusterPresenceStore";
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from "@/stores/backendConfigStore";
 import { useConnectionStatus } from "@/hooks/useConnectionStatus";
 import { getEvents, type BackendEvent } from "@/services/backendApiClient";
@@ -68,7 +68,7 @@ function groupAlertsByReason(alerts: AlertItem[]): Map<string, AlertItem[]> {
 }
 
 export const AlertsStrip = () => {
-  const { activeCluster } = useClusterStore();
+  const activeCluster = useActiveCluster();
   const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
   const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured());
   const backendBaseUrl = getEffectiveBackendBaseUrl(useBackendConfigStore((s) => s.backendBaseUrl));

@@ -6,9 +6,10 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useClusterPresenceStore } from '@/stores/clusterPresenceStore';
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 import { useBackendConfigStore } from '@/stores/backendConfigStore';
-import { useClusterStore, type Cluster } from '@/stores/clusterStore';
+import type { Cluster } from '@/stores/clusterStore';
 
 // ─── Types ───────────────────────────────────────────────────
 
@@ -73,7 +74,7 @@ function buildResourceHref(kind: string, name: string, namespace?: string): stri
 
 export function useCrossClusterSearch(): CrossClusterSearchState {
   const backendBaseUrl = useBackendConfigStore((s) => s.backendBaseUrl);
-  const clusters = useClusterStore((s) => s.clusters);
+  const clusters = useClusterPresenceStore((s) => s.availableClusters());
   const [query, setQuery] = useState('');
   const debouncedQuery = useDebouncedValue(query, 300);
   const [results, setResults] = useState<ClusterSearchGroup[]>([]);

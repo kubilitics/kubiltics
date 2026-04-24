@@ -10,7 +10,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { Progress } from "@/components/ui/progress";
 import { useClusterOverview } from "@/hooks/useClusterOverview";
 import { useHealthScore } from "@/hooks/useHealthScore";
-import { useClusterStore } from "@/stores/clusterStore";
+import { useActiveCluster } from "@/stores/clusterPresenceStore";
 import { useBackendConfigStore } from "@/stores/backendConfigStore";
 import { EmptyNoClusters } from "@/components/ui/empty-state";
 import { cn } from "@/lib/utils";
@@ -35,7 +35,7 @@ const BREAKDOWN_LABELS: Record<string, string> = {
 };
 
 export const ClusterHealthWidget = () => {
-  const { activeCluster } = useClusterStore();
+  const activeCluster = useActiveCluster();
   const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
   const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured());
   const clusterId = currentClusterId ?? undefined;

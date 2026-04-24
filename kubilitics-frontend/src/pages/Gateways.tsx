@@ -40,7 +40,7 @@ import { cn } from '@/lib/utils';
 import { Link, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
-import { useClusterStore } from '@/stores/clusterStore';
+import { useActiveCluster } from '@/stores/clusterPresenceStore';
 import { useNamespaceStore } from '@/stores/namespaceStore';
 import { useDemoStore } from '@/stores/demoStore';
 import { useConnectionStatus } from '@/hooks/useConnectionStatus';

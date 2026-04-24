@@ -3,7 +3,6 @@
  * All domain API modules import backendRequest/backendRequestText from here.
  */
 import { useAuthStore } from '@/stores/authStore';
-import { useClusterStore } from '@/stores/clusterStore';
 import { useKubeconfigStore } from '@/stores/kubeconfigSourceStore';
 import { isTauri } from '@/lib/tauri';
 
@@ -182,15 +181,14 @@ export async function backendRequest<T>(
     ...((init?.headers as Record<string, string>) || {}),
   };
 
-  // Desktop mode (Tauri): Send kubeconfig with each request (Headlamp/Lens model)
+  // Desktop mode (Tauri): Send kubeconfig with each request (Headlamp/Lens model).
+  // Phase 7: activeCluster.kubeconfig fallback is dead — the kubeconfig lives
+  // only in useKubeconfigStore post-extraction; presence layer carries no
+  // credential bytes.
   if (isTauri()) {
-    const { activeCluster } = useClusterStore.getState();
     const { kubeconfigContent } = useKubeconfigStore.getState();
-
     if (kubeconfigContent) {
       headers['X-Kubeconfig'] = btoa(kubeconfigContent);
-    } else if (activeCluster?.kubeconfig) {
-      headers['X-Kubeconfig'] = btoa(activeCluster.kubeconfig);
     }
   }
   // Web mode: No login — no Authorization header. When auth_mode=required, re-add token injection.
@@ -307,13 +305,9 @@ export async function backendRequestText(
   };
 
   if (isTauri()) {
-    const { activeCluster } = useClusterStore.getState();
     const { kubeconfigContent } = useKubeconfigStore.getState();
-
     if (kubeconfigContent) {
       headers['X-Kubeconfig'] = btoa(kubeconfigContent);
-    } else if (activeCluster?.kubeconfig) {
-      headers['X-Kubeconfig'] = btoa(activeCluster.kubeconfig);
     }
   }
 

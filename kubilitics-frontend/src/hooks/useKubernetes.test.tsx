@@ -6,7 +6,7 @@ import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { renderHook, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useK8sResourceList, useK8sResource } from './useKubernetes';
-import { useClusterStore } from '@/stores/clusterStore';
+import { useActiveCluster, __resetForTest } from '@/stores/clusterPresenceStore';
 import { useDemoStore } from '@/stores/demoStore';
 import * as backendApiClient from '@/services/backendApiClient';
 
@@ -40,7 +40,7 @@ describe('useKubernetes hooks - demo mode', () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
-    useClusterStore.getState().signOut();
+    __resetForTest();
   });
 
   it('useK8sResourceList does not fire HTTP requests when demo mode is enabled (test gaps)', async () => {
@@ -132,7 +132,7 @@ describe('useK8sResourceList — namespace vs project priority', () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
-    useClusterStore.getState().signOut();
+    __resetForTest();
     useBackendConfigStore.setState({ backendBaseUrl: '', currentClusterId: null });
     useProjectStore.setState({ activeProject: null, activeProjectId: null });
   });

@@ -17,7 +17,7 @@
 import { useEffect, useRef, useCallback, useState, useMemo } from 'react';
 import { useQueryClient, type QueryKey } from '@tanstack/react-query';
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
-import { useClusterStore } from '@/stores/clusterStore';
+import { useActiveCluster } from '@/stores/clusterPresenceStore';
 import { useDemoStore } from '@/stores/demoStore';
 import { trackRowAnimation } from './useResourceLiveUpdates';
 import type { KubernetesResource, ResourceList, ResourceType } from '@/hooks/useKubernetes';

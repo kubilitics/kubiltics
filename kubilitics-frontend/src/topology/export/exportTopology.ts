@@ -2,7 +2,7 @@ import type { TopologyResponse, ViewMode } from "../types/topology";
 import { EXPORT, CANVAS, getCategoryColor, STATUS_COLORS } from "../constants/designTokens";
 import { openExternal } from "@/lib/tauri";
 import { getCloudContext } from '@/topology/hooks/useCloudContext';
-import { useClusterStore } from '@/stores/clusterStore';
+import { getActiveCluster, useActiveCluster } from '@/stores/clusterPresenceStore';
 
 // ─── Export bounds — computed from React Flow state or DOM ──────────────────
 
@@ -338,7 +338,7 @@ export function exportTopologyDrawIO(
 ) {
   if (!topology) return;
 
-  const provider = useClusterStore.getState().activeCluster?.provider ?? 'on-prem';
+  const provider = getActiveCluster()?.provider ?? 'on-prem';
 
   const viewport = document.querySelector(".react-flow__viewport");
   const positionMap = new Map<

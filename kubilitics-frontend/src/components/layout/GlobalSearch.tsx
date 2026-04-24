@@ -42,7 +42,7 @@ import { cn } from '@/lib/utils';
 import { searchResources, type SearchResultItem as ApiSearchResult } from '@/services/backendApiClient';
 import { getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
 import { useBackendConfigStore } from '@/stores/backendConfigStore';
-import { useClusterStore } from '@/stores/clusterStore';
+import { useActiveCluster } from '@/stores/clusterPresenceStore';
 import { useNamespaceStore } from '@/stores/namespaceStore';
 import { useSearchHistory } from '@/hooks/useSearchHistory';
 
@@ -215,7 +215,7 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
   const backendBaseUrl = getEffectiveBackendBaseUrl(useBackendConfigStore((s) => s.backendBaseUrl));
   const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured());
   const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
-  const activeCluster = useClusterStore((s) => s.activeCluster);
+  const activeCluster = useActiveCluster();
   const setActiveNamespace = useNamespaceStore((s) => s.setActiveNamespace);
   const activeNamespace = useNamespaceStore((s) => s.activeNamespace);
 

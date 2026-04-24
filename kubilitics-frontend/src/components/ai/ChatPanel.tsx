@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { invoke } from '@tauri-apps/api/core';
 import { toast } from '@/components/ui/sonner';
 import { useChatStore, type Turn } from '@/stores/chatStore';
-import { useClusterStore } from '@/stores/clusterStore';
+import { useActiveCluster } from '@/stores/clusterPresenceStore';
 import { useChatController } from '@/hooks/useChatController';
 import { useAICapabilities } from '@/hooks/useAICapabilities';
 import { useAIUserConfig } from '@/hooks/useAIUserConfig';
@@ -114,7 +114,7 @@ export function ChatPanel() {
   const transcripts = useChatStore((s) => s.transcripts);
   const sessionByCluster = useChatStore((s) => s.sessionByCluster);
   const connectionState = useChatStore((s) => s.connectionState);
-  const activeCluster = useClusterStore((s) => s.activeCluster);
+  const activeCluster = useActiveCluster();
   const clusterId = activeCluster?.id;
   const caps = useAICapabilities(clusterId);
   const userConfig = useAIUserConfig();

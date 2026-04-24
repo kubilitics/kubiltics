@@ -45,7 +45,7 @@ import {
   Maximize2, SlidersHorizontal,
 } from 'lucide-react';
 import ELK from 'elkjs/lib/elk.bundled.js';
-import { useClusterStore } from '@/stores/clusterStore';
+import { useActiveCluster } from '@/stores/clusterPresenceStore';
 import { useNavigate } from 'react-router-dom';
 import { toast } from '@/components/ui/sonner';
 import { useClusterTopology } from '@/hooks/useClusterTopology';
@@ -1292,7 +1292,7 @@ const FEATURE_TOPOLOGY_V2 =
     (typeof process !== 'undefined' && process.env?.VITE_FEATURE_TOPOLOGY_V2 === 'false'));
 
 function TopologyV1() {
-  const { activeCluster } = useClusterStore();
+  const activeCluster = useActiveCluster();
   const clusterId = useActiveClusterId();
   const navigate = useNavigate();
 

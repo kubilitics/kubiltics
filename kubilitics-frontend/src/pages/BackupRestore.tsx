@@ -38,7 +38,7 @@ import { cn } from '@/lib/utils';
 import { PageLayout } from '@/components/layout/PageLayout';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
-import { useClusterStore } from '@/stores/clusterStore';
+import { useActiveCluster } from '@/stores/clusterPresenceStore';
 import { useDemoStore } from '@/stores/demoStore';
 import { useConnectionStatus } from '@/hooks/useConnectionStatus';
 import { toast } from '@/components/ui/sonner';

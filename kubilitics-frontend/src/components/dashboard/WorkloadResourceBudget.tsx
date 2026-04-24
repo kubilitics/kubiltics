@@ -22,7 +22,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { useK8sResourceList } from "@/hooks/useKubernetes";
-import { useClusterStore } from "@/stores/clusterStore";
+import { useActiveCluster } from '@/stores/clusterPresenceStore';
 import { parseCpu, parseMemory, cn } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -89,7 +89,7 @@ const RIGHT_SIZING_STYLES: Record<
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export function WorkloadResourceBudget() {
-  const { activeCluster } = useClusterStore();
+  const activeCluster = useActiveCluster();
 
   const podsList = useK8sResourceList("pods", undefined, {
     enabled: !!activeCluster,

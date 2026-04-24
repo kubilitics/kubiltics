@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { useClusterStore } from '@/stores/clusterStore';
+import { useActiveCluster } from '@/stores/clusterPresenceStore';
 import { getProviderLogo, getProviderLabel } from '@/topology/icons/providerLogoMap';
 import { getCloudIcon, type CloudIconMetadata } from '@/topology/icons/cloudIconMap';
 
@@ -14,7 +14,7 @@ export function useCloudContext(
   kind: string,
   metadata?: CloudIconMetadata
 ): CloudContext {
-  const activeCluster = useClusterStore((s) => s.activeCluster);
+  const activeCluster = useActiveCluster();
   const provider = activeCluster?.provider ?? 'on-prem';
 
   return useMemo(() => ({

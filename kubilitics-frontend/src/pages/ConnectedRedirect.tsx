@@ -6,12 +6,11 @@
  */
 import { useEffect, useRef } from 'react';
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
-import { useClusterStore } from '@/stores/clusterStore';
+import { setActiveClusterBySessionId } from '@/stores/clusterPresenceStore';
 import { useDemoStore } from '@/stores/demoStore';
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
 import type { ConnectState } from '@/types/connect';
 import { getClusters } from '@/services/backendApiClient';
-import { backendClusterToCluster } from '@/lib/backendClusterAdapter';
 import { Loader2 } from 'lucide-react';
 
 function getPostConnectPath(returnUrl: string | null): string {
@@ -28,7 +27,6 @@ export default function ConnectedRedirect() {
   const returnUrl = searchParams.get('returnUrl');
   const postConnectPath = getPostConnectPath(returnUrl);
   const backendBaseUrl = useBackendConfigStore((s) => s.backendBaseUrl);
-  const { setActiveCluster, setClusters } = useClusterStore();
   const setDemo = useDemoStore((s) => s.setDemo);
   const setCurrentClusterId = useBackendConfigStore((s) => s.setCurrentClusterId);
   const didRun = useRef(false);
@@ -39,8 +37,8 @@ export default function ConnectedRedirect() {
     if (state?.connectedCluster && state?.clusterId) {
       didRun.current = true;
       setCurrentClusterId(state.clusterId);
-      setClusters(state.connectedClusters);
-      setActiveCluster(state.connectedCluster);
+      // Presence SSE populates the logical identity list; look up by session id.
+      setActiveClusterBySessionId(state.clusterId);
       setDemo(false);
       navigate(postConnectPath, { replace: true });
       return;
@@ -60,11 +58,8 @@ export default function ConnectedRedirect() {
             navigate('/', { replace: true });
             return;
           }
-          const connectedCluster = backendClusterToCluster(backendCluster);
-          const connectedClusters = list.map(backendClusterToCluster);
           setCurrentClusterId(clusterIdFromUrl);
-          setClusters(connectedClusters);
-          setActiveCluster(connectedCluster);
+          setActiveClusterBySessionId(clusterIdFromUrl);
           setDemo(false);
           navigate(postConnectPath, { replace: true });
         })
@@ -82,8 +77,6 @@ export default function ConnectedRedirect() {
     backendBaseUrl,
     navigate,
     setCurrentClusterId,
-    setClusters,
-    setActiveCluster,
     setDemo,
   ]);
 

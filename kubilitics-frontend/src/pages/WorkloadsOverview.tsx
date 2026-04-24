@@ -47,7 +47,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
 import { useWorkloadsOverview } from '@/hooks/useWorkloadsOverview';
-import { useClusterStore } from '@/stores/clusterStore';
+import { useActiveCluster } from '@/stores/clusterPresenceStore';
 import { getDetailPath } from '@/utils/resourceKindMapper';
 import { PageLayout } from '@/components/layout/PageLayout';
 import { useTableFiltersAndSort, type ColumnConfig } from '@/hooks/useTableFiltersAndSort';
@@ -115,7 +115,7 @@ export default function WorkloadsOverview() {
   const [pageSize, setPageSize] = useState(10);
   const [pageIndex, setPageIndex] = useState(0);
   const queryClient = useQueryClient();
-  const { activeCluster } = useClusterStore();
+  const activeCluster = useActiveCluster();
   const { data, isLoading, isError, refetch } = useWorkloadsOverview();
 
   const handleSync = useCallback(() => {

@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { useKubernetesConfigStore } from '@/stores/kubernetesConfigStore';
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
-import { useClusterStore } from '@/stores/clusterStore';
+import { useActiveCluster } from '@/stores/clusterPresenceStore';
 import { useDemoStore } from '@/stores/demoStore';
 import { listResources, getResource, deleteResource, patchResource, applyManifest, getPodLogsUrl, CONFIRM_DESTRUCTIVE_HEADER, getCronJobJobs, BackendApiError } from '@/services/backendApiClient';
 import type { ResourceListParams } from '@/services/backendApiClient';
@@ -309,7 +309,7 @@ export function useK8sResourceListPaginated<T extends KubernetesResource>(
   const backendBaseUrl = getEffectiveBackendBaseUrl(storedUrl);
   const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured());
   const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
-  const activeCluster = useClusterStore((s) => s.activeCluster);
+  const activeCluster = useActiveCluster();
   // P0-D: Use currentClusterId exclusively. activeCluster.id may hold a stale or demo
   // ID (e.g. '__demo__cluster-alpha') which corrupts all resource API URLs.
   const clusterId = currentClusterId;
@@ -392,7 +392,7 @@ export function usePaginatedResourceList<T extends KubernetesResource>(
 ) {
   const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured());
   const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
-  const activeCluster = useClusterStore((s) => s.activeCluster);
+  const activeCluster = useActiveCluster();
   // P0-D: Use currentClusterId exclusively. activeCluster.id may hold a stale or demo
   // ID (e.g. '__demo__cluster-alpha') which corrupts all resource API URLs.
   const clusterId = currentClusterId;
@@ -741,7 +741,7 @@ export function usePatchK8sResource(resourceType: ResourceType) {
   const storedUrl = useBackendConfigStore((s) => s.backendBaseUrl);
   const backendBaseUrl = getEffectiveBackendBaseUrl(storedUrl);
   const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured());
-  const activeCluster = useClusterStore((s) => s.activeCluster);
+  const activeCluster = useActiveCluster();
   const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
   // P0-D: Use currentClusterId exclusively. activeCluster.id may hold a stale or demo
   // ID (e.g. '__demo__cluster-alpha') which corrupts all resource API URLs.
@@ -855,7 +855,7 @@ export function useDeleteK8sResource(resourceType: ResourceType) {
   const backendBaseUrl = getEffectiveBackendBaseUrl(storedUrl);
   const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured());
   const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
-  const activeCluster = useClusterStore((s) => s.activeCluster);
+  const activeCluster = useActiveCluster();
   // P0-D: Use currentClusterId exclusively. activeCluster.id may hold a stale or demo
   // ID (e.g. '__demo__cluster-alpha') which corrupts all resource API URLs.
   const clusterId = currentClusterId;
@@ -1001,7 +1001,7 @@ export function useK8sPodLogs(
   const storedUrl = useBackendConfigStore((s) => s.backendBaseUrl);
   const backendBaseUrl = getEffectiveBackendBaseUrl(storedUrl);
   const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured());
-  const activeCluster = useClusterStore((s) => s.activeCluster);
+  const activeCluster = useActiveCluster();
   const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
   // P0-D: Use currentClusterId exclusively. activeCluster.id may hold a stale or demo
   // ID (e.g. '__demo__cluster-alpha') which corrupts all resource API URLs.
@@ -1091,7 +1091,7 @@ export function useCronJobChildJobs(namespace: string, name: string, enabled: bo
   const storedUrl = useBackendConfigStore((s) => s.backendBaseUrl);
   const backendBaseUrl = getEffectiveBackendBaseUrl(storedUrl);
   const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured());
-  const activeCluster = useClusterStore((s) => s.activeCluster);
+  const activeCluster = useActiveCluster();
   const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
   // P0-D: Use currentClusterId exclusively. activeCluster.id may hold a stale or demo
   // ID (e.g. '__demo__cluster-alpha') which corrupts all resource API URLs.

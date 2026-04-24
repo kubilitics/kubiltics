@@ -6,7 +6,8 @@ import { useState, useCallback, useEffect } from 'react';
 import { ChevronDown } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { useClusterStore, getClusterAppearance, setClusterAppearance, getEnvBadgeLabel, getEnvBadgeClasses } from '@/stores/clusterStore';
+import { getClusterAppearance, setClusterAppearance, getEnvBadgeLabel, getEnvBadgeClasses } from '@/stores/clusterStore';
+import { useActiveCluster, useClusterPresenceStore } from '@/stores/clusterPresenceStore';
 import { cn } from '@/lib/utils';
 
 const PRESET_COLORS = [
@@ -29,8 +30,12 @@ const ENVIRONMENTS = [
 ];
 
 export function ClusterAppearanceSettings() {
-  const clusters = useClusterStore((s) => s.clusters);
-  const activeCluster = useClusterStore((s) => s.activeCluster);
+  // Appearance keys off the backend session_id, so only registered/connected
+  // clusters (those with a UUID) are selectable — discovered-but-not-registered
+  // entries have session_id === '' and would collide on the default bucket.
+  const registered = useClusterPresenceStore((s) => s.registered);
+  const clusters = registered.map((r) => ({ id: r.session_id, name: r.identity.name }));
+  const activeCluster = useActiveCluster();
   const [selectedClusterId, setSelectedClusterId] = useState<string>(activeCluster?.id ?? '');
   const [appearance, setAppearanceState] = useState(() => getClusterAppearance(selectedClusterId));
   const [envDropdownOpen, setEnvDropdownOpen] = useState(false);

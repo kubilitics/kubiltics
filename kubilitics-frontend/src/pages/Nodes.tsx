@@ -33,7 +33,7 @@ import {
 import { Checkbox } from '@/components/ui/checkbox';
 import { usePaginatedResourceList, useDeleteK8sResource, usePatchK8sResource, useK8sResourceList, calculateAge, type KubernetesResource } from '@/hooks/useKubernetes';
 import { useConnectionStatus } from '@/hooks/useConnectionStatus';
-import { useClusterStore } from '@/stores/clusterStore';
+import { getActiveCluster, useActiveCluster } from '@/stores/clusterPresenceStore';
 import { useChatStore } from '@/stores/chatStore';
 import { useAIContextStore } from '@/stores/aiContextStore';
 import { Sparkles } from 'lucide-react';
@@ -259,7 +259,7 @@ export default function Nodes() {
  const navigate = useNavigate();
  const { isConnected } = useConnectionStatus();
  const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
- const activeCluster = useClusterStore((s) => s.activeCluster);
+ const activeCluster = useActiveCluster();
  const storedUrl = useBackendConfigStore((s) => s.backendBaseUrl);
  const backendBaseUrl = getEffectiveBackendBaseUrl(storedUrl);
  const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured());
@@ -886,7 +886,7 @@ export default function Nodes() {
  <DropdownMenuItem onClick={() => navigate(`/nodes/${node.name}`)} className="gap-2">View Details</DropdownMenuItem>
  <DropdownMenuItem
  onClick={() => {
- const cluster = useClusterStore.getState().activeCluster?.id ?? '';
+ const cluster = getActiveCluster()?.id ?? '';
  useChatStore.getState().togglePanel(true);
  useAIContextStore.getState().setExplicit({ type: 'node', cluster, name: node.name });
  useChatStore.getState().setPrefilled(`What's wrong with this node?`);

@@ -25,7 +25,7 @@ import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/back
 import { useActiveClusterId } from '@/hooks/useActiveClusterId';
 import { useQuery } from '@tanstack/react-query';
 import { getServiceEndpoints, startPortForward } from '@/services/backendApiClient';
-import { useClusterStore } from '@/stores/clusterStore';
+import { getActiveCluster, useActiveCluster } from '@/stores/clusterPresenceStore';
 import { usePortForwardStore } from '@/stores/portForwardStore';
 import { openExternal } from '@/lib/tauri';
 import { toast } from '@/components/ui/sonner';
@@ -81,8 +81,8 @@ function InlinePortForward({
   const addForward = usePortForwardStore((s) => s.add);
   const forwards = usePortForwardStore((s) => s.forwards);
   const stopAndRemove = usePortForwardStore((s) => s.stopAndRemove);
-  const clusterName = useClusterStore((s) => s.activeCluster?.name ?? 'cluster');
-  const clusterId = useClusterStore((s) => s.activeCluster?.id) ?? null;
+  const clusterName = useActiveCluster()?.name ?? 'cluster';
+  const clusterId = useActiveCluster()?.id ?? null;
 
   const activeForwards = forwards.filter(
     (f) => f.resourceName === resourceName && f.namespace === namespace
@@ -96,7 +96,7 @@ function InlinePortForward({
     }
     const resolvedClusterId = clusterId
       || useBackendConfigStore.getState().currentClusterId
-      || useClusterStore.getState().activeCluster?.id
+      || getActiveCluster()?.id
       || null;
     if (baseUrl == null) {
       toast.error('Backend URL not configured');

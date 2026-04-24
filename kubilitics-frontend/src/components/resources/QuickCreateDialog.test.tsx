@@ -23,6 +23,18 @@ vi.mock('@/stores/clusterStore', () => ({
   useClusterStore: (selector: (s: Record<string, unknown>) => unknown) =>
     selector({ activeCluster: null }),
 }));
+vi.mock('@/stores/clusterPresenceStore', () => ({
+  useActiveCluster: () => null,
+  getActiveCluster: () => null,
+  useClusterPresenceStore: () => ({
+    discovered: [],
+    registered: [],
+    connected: [],
+    availableClusters: () => [],
+  }),
+  setActiveClusterBySessionId: vi.fn(),
+  __resetForTest: vi.fn(),
+}));
 vi.mock('@/services/backendApiClient', () => ({
   applyManifest: vi.fn(),
 }));

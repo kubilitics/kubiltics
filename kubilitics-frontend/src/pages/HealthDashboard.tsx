@@ -37,7 +37,7 @@ import { ListPagination } from '@/components/list/ListPagination';
 import { SectionOverviewHeader } from '@/components/layout/SectionOverviewHeader';
 import { AskAIButton } from '@/components/ai/AskAIButton';
 import { useAIContext } from '@/hooks/useAIContext';
-import { useClusterStore } from '@/stores/clusterStore';
+import { useActiveCluster } from '@/stores/clusterPresenceStore';
 import { PageLayout } from '@/components/layout/PageLayout';
 import { PageLoadingState } from '@/components/PageLoadingState';
 import { ApiError } from '@/components/ui/error-state';
@@ -280,7 +280,7 @@ export default function HealthDashboard() {
   const [pageIndex, setPageIndex] = useState(0);
 
   const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
-  const activeClusterId = useClusterStore((s) => s.activeCluster?.id);
+  const activeClusterId = useActiveCluster()?.id ?? null;
   const aiCtx = useMemo(() => ({
     type: 'dashboard' as const,
     cluster: activeClusterId ?? currentClusterId ?? '',

@@ -1,6 +1,6 @@
 import { Button } from '@/components/ui/button';
 import { useChatStore, type Turn } from '@/stores/chatStore';
-import { useClusterStore } from '@/stores/clusterStore';
+import { useActiveCluster } from '@/stores/clusterPresenceStore';
 import { ChatStatusPill } from './ChatStatusPill';
 import { Plus, Copy, X } from 'lucide-react';
 import { toast } from 'sonner';
@@ -9,7 +9,7 @@ export function ChatHeader() {
   const togglePanel = useChatStore((s) => s.togglePanel);
   const newChat = useChatStore((s) => s.newChat);
   const transcripts = useChatStore((s) => s.transcripts);
-  const activeCluster = useClusterStore((s) => s.activeCluster);
+  const activeCluster = useActiveCluster();
 
   const onNewChat = () => {
     if (activeCluster) newChat(activeCluster.id);
