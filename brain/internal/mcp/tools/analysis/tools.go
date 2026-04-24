@@ -24,8 +24,8 @@ import (
 	"strings"
 	"time"
 
-	pb "github.com/vellankikoti/kotg.ai/kubilitics-ai/api/proto/v1"
-	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/integration/backend"
+	pb "github.com/vellankikoti/kubilitics/brain/api/proto/v1"
+	"github.com/vellankikoti/kubilitics/brain/internal/integration/backend"
 )
 
 // BackendProxy defines the minimal interface needed by AnalysisTools.

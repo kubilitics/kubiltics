@@ -6,7 +6,7 @@
 package tools
 
 import (
-	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/llm/types"
+	"github.com/vellankikoti/kubilitics/brain/internal/llm/types"
 )
 
 // GetChatToolDefinitions returns ToolDefinitions for chat-only tool names that the MCP server

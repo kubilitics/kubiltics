@@ -3,7 +3,7 @@ package ml
 import (
 	"errors"
 
-	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/analytics/forecast"
+	"github.com/vellankikoti/kubilitics/brain/internal/analytics/forecast"
 )
 
 // Severity represents the severity level of an anomaly detected by IsolationForest.

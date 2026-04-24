@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/router"
+	"github.com/vellankikoti/kubilitics/brain/internal/router"
 )
 
 func TestNameIsKagent(t *testing.T) {

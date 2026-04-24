@@ -18,7 +18,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/llm/types"
+	"github.com/vellankikoti/kubilitics/brain/internal/llm/types"
 )
 
 // MaxToolsPerCall caps the filtered list sent to the LLM per request.

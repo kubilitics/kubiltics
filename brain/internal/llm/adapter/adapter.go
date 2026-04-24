@@ -3,7 +3,7 @@ package adapter
 import (
 	"context"
 
-	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/llm/types"
+	"github.com/vellankikoti/kubilitics/brain/internal/llm/types"
 )
 
 // Package adapter provides a unified interface for different LLM providers.

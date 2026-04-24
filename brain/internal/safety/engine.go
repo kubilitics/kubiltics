@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/db"
-	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/safety/autonomy"
-	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/safety/blastradius"
-	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/safety/policy"
-	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/safety/rollback"
+	"github.com/vellankikoti/kubilitics/brain/internal/db"
+	"github.com/vellankikoti/kubilitics/brain/internal/safety/autonomy"
+	"github.com/vellankikoti/kubilitics/brain/internal/safety/blastradius"
+	"github.com/vellankikoti/kubilitics/brain/internal/safety/policy"
+	"github.com/vellankikoti/kubilitics/brain/internal/safety/rollback"
 )
 
 // Package safety provides the unified Safety Engine for kubilitics-ai.

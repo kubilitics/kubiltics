@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/audit"
-	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/config"
+	"github.com/vellankikoti/kubilitics/brain/internal/audit"
+	"github.com/vellankikoti/kubilitics/brain/internal/config"
 )
 
 func TestNewClient(t *testing.T) {

@@ -3,7 +3,7 @@ package wrapper
 import (
 	"context"
 
-	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/audit"
+	"github.com/vellankikoti/kubilitics/brain/internal/audit"
 )
 
 // LoggerSink bridges the wrapper's AuditSink interface into the

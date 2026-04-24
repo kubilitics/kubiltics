@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/llm/types"
+	"github.com/vellankikoti/kubilitics/brain/internal/llm/types"
 )
 
 func TestNewOpenAIClient(t *testing.T) {

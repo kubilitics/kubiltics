@@ -28,7 +28,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/llm/types"
+	"github.com/vellankikoti/kubilitics/brain/internal/llm/types"
 )
 
 // ─── OpenAI multi-turn message types ──────────────────────────────────────────

@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/analytics/timeseries"
+	"github.com/vellankikoti/kubilitics/brain/internal/analytics/timeseries"
 )
 
 // baselineEntry stores computed baseline for a resource metric.

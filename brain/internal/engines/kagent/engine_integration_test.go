@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/router"
+	"github.com/vellankikoti/kubilitics/brain/internal/router"
 )
 
 // fakeKagent serves a scripted SSE response so tests can assert the

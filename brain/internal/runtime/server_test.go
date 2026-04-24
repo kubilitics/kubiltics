@@ -8,9 +8,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/llm/budget"
-	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/router"
-	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/runtime"
+	"github.com/vellankikoti/kubilitics/brain/internal/llm/budget"
+	"github.com/vellankikoti/kubilitics/brain/internal/router"
+	"github.com/vellankikoti/kubilitics/brain/internal/runtime"
 	kotgv1 "github.com/vellankikoti/kotg-schema/gen/go/kotg/v1"
 
 	"google.golang.org/grpc"

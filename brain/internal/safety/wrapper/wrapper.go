@@ -25,7 +25,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/router"
+	"github.com/vellankikoti/kubilitics/brain/internal/router"
 )
 
 // Decision describes what Safety did on a single Event in flight.

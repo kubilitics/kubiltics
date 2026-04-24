@@ -15,7 +15,7 @@ import (
 	"os"
 	"sort"
 
-	tools "github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/mcp/tools"
+	tools "github.com/vellankikoti/kubilitics/brain/internal/mcp/tools"
 )
 
 // CatalogEntry is the merged, flattened view of one MCP tool.

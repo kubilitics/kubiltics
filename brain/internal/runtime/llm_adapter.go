@@ -7,11 +7,11 @@ import (
 	"context"
 	"time"
 
-	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/llm/accounting"
-	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/llm/adapter"
-	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/llm/toolrouter"
-	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/llm/types"
-	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/tracing/routing"
+	"github.com/vellankikoti/kubilitics/brain/internal/llm/accounting"
+	"github.com/vellankikoti/kubilitics/brain/internal/llm/adapter"
+	"github.com/vellankikoti/kubilitics/brain/internal/llm/toolrouter"
+	"github.com/vellankikoti/kubilitics/brain/internal/llm/types"
+	"github.com/vellankikoti/kubilitics/brain/internal/tracing/routing"
 )
 
 // LLMAdapterBridge wraps an existing LLMAdapter so it satisfies LLMProvider

@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	pb "github.com/vellankikoti/kotg.ai/kubilitics-ai/api/proto/v1"
+	pb "github.com/vellankikoti/kubilitics/brain/api/proto/v1"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 

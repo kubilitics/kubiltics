@@ -14,7 +14,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/router"
+	"github.com/vellankikoti/kubilitics/brain/internal/router"
 )
 
 // Config controls how this Engine reaches the Python sidecar. v1 only

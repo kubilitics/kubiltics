@@ -19,10 +19,10 @@ import (
 	"testing"
 	"time"
 
-	pb "github.com/vellankikoti/kotg.ai/kubilitics-ai/api/proto/v1"
-	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/audit"
-	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/mcp/tools/execution"
-	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/safety"
+	pb "github.com/vellankikoti/kubilitics/brain/api/proto/v1"
+	"github.com/vellankikoti/kubilitics/brain/internal/audit"
+	"github.com/vellankikoti/kubilitics/brain/internal/mcp/tools/execution"
+	"github.com/vellankikoti/kubilitics/brain/internal/safety"
 )
 
 // ─────────────────────────────────────────────────────────────────────────────

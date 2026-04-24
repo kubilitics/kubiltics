@@ -29,8 +29,8 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/audit"
-	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/router"
+	"github.com/vellankikoti/kubilitics/brain/internal/audit"
+	"github.com/vellankikoti/kubilitics/brain/internal/router"
 )
 
 // Config controls how this Engine reaches kagent.

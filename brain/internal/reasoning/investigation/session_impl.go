@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/audit"
+	"github.com/vellankikoti/kubilitics/brain/internal/audit"
 )
 
 // investigationSessionImpl implements InvestigationSession interface

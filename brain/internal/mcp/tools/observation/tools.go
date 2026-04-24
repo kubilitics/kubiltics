@@ -10,8 +10,8 @@ import (
 	"fmt"
 	"strings"
 
-	pb "github.com/vellankikoti/kotg.ai/kubilitics-ai/api/proto/v1"
-	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/integration/backend"
+	pb "github.com/vellankikoti/kubilitics/brain/api/proto/v1"
+	"github.com/vellankikoti/kubilitics/brain/internal/integration/backend"
 )
 
 // ObservationTools implements all read-only cluster observation tools.

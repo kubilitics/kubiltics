@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/audit"
+	"github.com/vellankikoti/kubilitics/brain/internal/audit"
 )
 
 // fakeLogger captures audit.Events for assertions. Implements audit.Logger.

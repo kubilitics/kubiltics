@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	tools "github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/mcp/tools"
+	tools "github.com/vellankikoti/kubilitics/brain/internal/mcp/tools"
 )
 
 func main() {

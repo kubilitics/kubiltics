@@ -10,7 +10,7 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/llm/types"
+	"github.com/vellankikoti/kubilitics/brain/internal/llm/types"
 )
 
 // Package custom provides Custom provider implementation for LLM adapter.

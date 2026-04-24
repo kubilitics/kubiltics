@@ -23,9 +23,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/llm/provider/anthropic"
-	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/llm/provider/openai"
-	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/llm/types"
+	"github.com/vellankikoti/kubilitics/brain/internal/llm/provider/anthropic"
+	"github.com/vellankikoti/kubilitics/brain/internal/llm/provider/openai"
+	"github.com/vellankikoti/kubilitics/brain/internal/llm/types"
 )
 
 // ─── Mock ToolExecutor ────────────────────────────────────────────────────────

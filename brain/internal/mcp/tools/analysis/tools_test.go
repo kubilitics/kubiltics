@@ -15,8 +15,8 @@ import (
 	"fmt"
 	"testing"
 
-	pb "github.com/vellankikoti/kotg.ai/kubilitics-ai/api/proto/v1"
-	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/mcp/tools/analysis"
+	pb "github.com/vellankikoti/kubilitics/brain/api/proto/v1"
+	"github.com/vellankikoti/kubilitics/brain/internal/mcp/tools/analysis"
 )
 
 // ─────────────────────────────────────────────────────────────

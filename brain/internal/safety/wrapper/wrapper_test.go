@@ -5,7 +5,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/router"
+	"github.com/vellankikoti/kubilitics/brain/internal/router"
 )
 
 type stubEngine struct {

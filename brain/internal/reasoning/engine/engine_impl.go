@@ -19,13 +19,13 @@ import (
 	"sync"
 	"time"
 
-	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/audit"
-	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/db"
-	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/llm/adapter"
-	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/llm/types"
-	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/mcp/tools"
-	reasoningContext "github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/reasoning/context"
-	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/reasoning/prompt"
+	"github.com/vellankikoti/kubilitics/brain/internal/audit"
+	"github.com/vellankikoti/kubilitics/brain/internal/db"
+	"github.com/vellankikoti/kubilitics/brain/internal/llm/adapter"
+	"github.com/vellankikoti/kubilitics/brain/internal/llm/types"
+	"github.com/vellankikoti/kubilitics/brain/internal/mcp/tools"
+	reasoningContext "github.com/vellankikoti/kubilitics/brain/internal/reasoning/context"
+	"github.com/vellankikoti/kubilitics/brain/internal/reasoning/prompt"
 )
 
 // GetChatToolSchemas returns the pod-first tool subset for AI chat/stream.

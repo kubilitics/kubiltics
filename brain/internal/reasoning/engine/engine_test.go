@@ -11,9 +11,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/db"
-	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/llm/types"
-	"github.com/vellankikoti/kotg.ai/kubilitics-ai/internal/reasoning/engine"
+	"github.com/vellankikoti/kubilitics/brain/internal/db"
+	"github.com/vellankikoti/kubilitics/brain/internal/llm/types"
+	"github.com/vellankikoti/kubilitics/brain/internal/reasoning/engine"
 )
 
 // ─────────────────────────────────────────────────────────────────────────────
