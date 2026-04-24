@@ -42,7 +42,7 @@ import {
   Info,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { featurePresenceV2 } from '@/lib/featureFlags';
+// Phase 7: featurePresenceV2 flag removed; deprecation banner unconditional.
 import { BrandLogo } from '@/components/BrandLogo';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -151,7 +151,6 @@ function getPostConnectPath(returnUrl: string | null): string {
  */
 export function ConnectDeprecationBanner() {
   const [dismissed, setDismissed] = useState(false);
-  if (!featurePresenceV2()) return null;
   if (dismissed) return null;
   return (
     <div

@@ -6,7 +6,7 @@
 // connected first, then alphabetical. (Last-used + starred ordering deferred;
 // see Phase 5 notes.)
 //
-// Behind FEATURE_PRESENCE_V2 — the route is wired in App.tsx (Task 5.3).
+// Wired as "/clusters" in App.tsx (Phase 7: unconditional).
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Layers } from 'lucide-react';

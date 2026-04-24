@@ -8,7 +8,7 @@
 //      remains live throughout Phase 5.
 //   3. Take the tour — demo mode, deferred.
 //
-// Behind FEATURE_PRESENCE_V2 — the route is wired in App.tsx (Task 5.3).
+// Wired as "/welcome" in App.tsx (Phase 7: unconditional).
 import { useNavigate } from 'react-router-dom';
 import { Rocket, Plus, PlayCircle, Sparkles } from 'lucide-react';
 

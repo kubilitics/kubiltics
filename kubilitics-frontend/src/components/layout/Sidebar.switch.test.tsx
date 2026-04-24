@@ -1,12 +1,7 @@
 /**
- * Phase 6 task 6.0c: Sidebar's handleSwitchCluster must route to `/clusters`
- * when FEATURE_PRESENCE_V2 is on, and to `/connect` when it is off. The
- * behavior is a two-branch conditional that no existing test covers.
- *
- * This test mocks the feature-flag module (so we can flip it per test) and
- * verifies the navigate target by driving the "switch cluster" button on
- * the ClusterUnreachableBoundary — the same button `handleSwitchCluster` is
- * wired to in Sidebar.tsx.
+ * Phase 7: FEATURE_PRESENCE_V2 removed — V2 is the only path. Sidebar's
+ * handleSwitchCluster always routes to /clusters. This test enforces that
+ * contract so we don't regress to /connect.
  */
 import React from 'react';
 import { describe, it, expect, vi, beforeEach, beforeAll } from 'vitest';
@@ -26,12 +21,6 @@ vi.mock('react-router-dom', async () => {
     useNavigate: () => navigateMock,
   };
 });
-
-// Feature-flag module — tests toggle the return value.
-vi.mock('@/lib/featureFlags', () => ({
-  featurePresenceV2: vi.fn(() => false),
-}));
-import { featurePresenceV2 } from '@/lib/featureFlags';
 
 // Force the boundary into unreachable state so the "Switch cluster" button
 // actually renders.
@@ -88,7 +77,6 @@ beforeAll(() => {
 
 beforeEach(() => {
   navigateMock.mockReset();
-  vi.mocked(featurePresenceV2).mockReturnValue(false);
 });
 
 function renderSidebar() {
@@ -102,18 +90,8 @@ function renderSidebar() {
   );
 }
 
-describe('Sidebar — switch-cluster navigation target per FEATURE_PRESENCE_V2', () => {
-  it('routes to /connect when the flag is OFF', async () => {
-    vi.mocked(featurePresenceV2).mockReturnValue(false);
-    renderSidebar();
-    const switchBtn = await screen.findByRole('button', { name: /switch cluster/i });
-    await userEvent.click(switchBtn);
-    expect(navigateMock).toHaveBeenCalledWith('/connect');
-    expect(navigateMock).not.toHaveBeenCalledWith('/clusters');
-  });
-
-  it('routes to /clusters when the flag is ON', async () => {
-    vi.mocked(featurePresenceV2).mockReturnValue(true);
+describe('Sidebar — switch-cluster navigation (Phase 7: always /clusters)', () => {
+  it('routes to /clusters', async () => {
     renderSidebar();
     const switchBtn = await screen.findByRole('button', { name: /switch cluster/i });
     await userEvent.click(switchBtn);

@@ -680,10 +680,9 @@ func main() {
 	router.HandleFunc("/api/v1/clusters/{clusterId}/resources/deployments/{namespace}/{name}/rollback", handler.PostDeploymentRollback).Methods("POST")
 	router.HandleFunc("/api/v1/clusters/{clusterId}/shell/stream", handler.GetShellStream).Methods("GET")
 
-	// Presence layer (onboarding-v2). Mounted unconditionally so CI can
-	// curl-probe it even when the frontend's feature flag is off. The
-	// frontend gates its UI consumption via VITE_FEATURE_PRESENCE_V2.
-	// Phase 2.7: real composer of DiscoverySources (kubeconfig files,
+	// Presence layer (onboarding-v2). Mounted unconditionally — the V2
+	// path is now the only path (FEATURE_PRESENCE_V2 flag removed in
+	// Phase 7). Real composer of DiscoverySources (kubeconfig files,
 	// in-cluster Secrets when reachable, manual DB). First-wins dedup
 	// across sources: earlier entries in the slice take precedence.
 	var presenceSources []discovery.DiscoverySource
