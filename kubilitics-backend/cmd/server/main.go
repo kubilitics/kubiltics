@@ -192,6 +192,20 @@ func (a routerHandleFuncAdapter) HandleFunc(pattern string, h func(http.Response
 	a.r.HandleFunc(pattern, h)
 }
 
+// noopPresenceMgr is the Phase-1 stand-in for the DiscoveryManager that
+// Phase-2 will introduce. It satisfies rest.DiscoveryManager and returns
+// an empty (non-nil) snapshot — enough for the /api/v1/presence endpoint
+// to serve 200 + JSON while the real composer is being built.
+type noopPresenceMgr struct{}
+
+func (*noopPresenceMgr) Snapshot() rest.PresenceSnapshot {
+	return rest.PresenceSnapshot{
+		Discovered: []rest.DiscoveredCluster{},
+		Registered: []rest.RegisteredCluster{},
+		Connected:  []rest.ConnectedCluster{},
+	}
+}
+
 func main() {
 	// Subcommand dispatch. Recognized subcommands handle their own config
 	// loading and call os.Exit — they never return to main's normal server
@@ -639,6 +653,13 @@ func main() {
 	router.HandleFunc("/api/v1/clusters/{clusterId}/resources/deployments/{namespace}/{name}/rollout-history", handler.GetDeploymentRolloutHistory).Methods("GET")
 	router.HandleFunc("/api/v1/clusters/{clusterId}/resources/deployments/{namespace}/{name}/rollback", handler.PostDeploymentRollback).Methods("POST")
 	router.HandleFunc("/api/v1/clusters/{clusterId}/shell/stream", handler.GetShellStream).Methods("GET")
+
+	// Presence layer (onboarding-v2). Mounted unconditionally so CI can
+	// curl-probe it even when the frontend's feature flag is off. The
+	// frontend gates its UI consumption via VITE_FEATURE_PRESENCE_V2.
+	// Phase-1 uses a noop DiscoveryManager; Phase-2 swaps in the real composer.
+	presenceHandler := rest.NewPresenceHandler(&noopPresenceMgr{})
+	router.HandleFunc("/api/v1/presence", presenceHandler.GetSnapshot).Methods("GET")
 
 	// actualPort is set after we bind; health handler includes it for discovery (e.g. desktop)
 	var actualPort int
