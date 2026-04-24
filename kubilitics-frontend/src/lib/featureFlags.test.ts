@@ -8,8 +8,9 @@ describe('featurePresenceV2', () => {
     vi.unstubAllEnvs();
   });
 
-  it('defaults false when nothing is set', () => {
-    expect(featurePresenceV2()).toBe(false);
+  // Phase 6 (2026-04-24) flipped the default on.
+  it('defaults true when nothing is set (post-Phase-6 default-on)', () => {
+    expect(featurePresenceV2()).toBe(true);
   });
 
   it('honors Vite env VITE_FEATURE_PRESENCE_V2=true', () => {
@@ -22,5 +23,18 @@ describe('featurePresenceV2', () => {
     localStorage.setItem('kubilitics.feature.presenceV2', 'true');
     expect(featurePresenceV2()).toBe(true);
     localStorage.removeItem('kubilitics.feature.presenceV2');
+  });
+
+  // Explicit opt-out: QA must be able to roll back the UI without rebuilding.
+  it('localStorage override "false" forces feature off even when default is on', () => {
+    localStorage.setItem('kubilitics.feature.presenceV2', 'false');
+    expect(featurePresenceV2()).toBe(false);
+    localStorage.removeItem('kubilitics.feature.presenceV2');
+  });
+
+  it('Vite env VITE_FEATURE_PRESENCE_V2=false forces feature off', () => {
+    vi.stubEnv('VITE_FEATURE_PRESENCE_V2', 'false');
+    expect(featurePresenceV2()).toBe(false);
+    vi.unstubAllEnvs();
   });
 });

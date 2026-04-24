@@ -78,6 +78,12 @@ beforeAll(() => {
       }),
     });
   }
+  // jsdom has no scrollIntoView; Sidebar fires a deferred scrollIntoView
+  // 150ms after mount. If our test finishes before that timer, the unhandled
+  // TypeError pollutes other test files. Stub it once.
+  if (!Element.prototype.scrollIntoView) {
+    Element.prototype.scrollIntoView = () => {};
+  }
 });
 
 beforeEach(() => {
