@@ -6,6 +6,13 @@ kubeconfig context is deleted externally (via `kind delete cluster`,
 Fleet page in sync with the user's actual kubeconfig without manual
 cleanup.
 
+> **UI-side companion (Phase 6, 2026-04-24):** the frontend surfaces
+> discovered kubeconfig contexts as cards on the `/clusters` picker the
+> moment the user opens Kubilitics. The old `/connect` page is deprecated.
+> Sync still runs on the backend exactly as described below — the picker
+> consumes `GET /api/v1/presence` (and subscribes to
+> `/api/v1/presence/events` SSE) as its source of truth.
+
 The feature is modeled on [Headlamp's kubeconfig watcher](https://github.com/headlamp-k8s/headlamp/blob/main/backend/pkg/kubeconfig/watcher.go)
 and is hardened with several enterprise safety mechanisms. It is
 enabled by default for desktop and browser deployments and

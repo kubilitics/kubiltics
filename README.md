@@ -57,7 +57,9 @@ npm install && npm run dev
 ```
 
 On first visit, choose **Personal** (local kubeconfig) or **Team Server** (Helm in-cluster).
-Your `~/.kube/config` is auto-detected — clusters appear automatically.
+Your `~/.kube/config` is auto-detected — clusters appear automatically on startup
+at `/clusters`. Pick one and you land on the dashboard; if the kubeconfig is
+empty you land on `/welcome` with one-click detection for common distros.
 
 ### Option 2: Desktop App (macOS / Windows / Linux)
 
