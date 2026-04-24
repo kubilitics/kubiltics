@@ -37,6 +37,9 @@ const ClusterConnect = lazy(() => import("./pages/ClusterConnect"));
 const ConnectedRedirect = lazy(() => import("./pages/ConnectedRedirect"));
 const KubeConfigSetup = lazy(() => import("./pages/KubeConfigSetup"));
 const ClusterSelection = lazy(() => import("./pages/ClusterSelection"));
+// Onboarding-v2 (behind FEATURE_PRESENCE_V2). See /lib/featureFlags.ts.
+const ClusterPickerPage = lazy(() => import("./pages/ClusterPickerPage"));
+const WelcomePage = lazy(() => import("./pages/WelcomePage"));
 const DashboardPage = lazy(() => import("./pages/DashboardPage"));
 const FleetDashboard = lazy(() => import("./pages/FleetDashboard"));
 const FleetXRayDashboard = lazy(() => import("./pages/FleetXRayDashboard"));
@@ -196,6 +199,12 @@ const ResourceTemplates = lazy(() => import("./pages/ResourceTemplates"));
 
 
 import { useResourceLiveUpdates } from "./hooks/useResourceLiveUpdates";
+
+// Onboarding-v2 presence layer — subscribe once at the top of the tree
+// when the feature flag is ON. See /lib/featureFlags.ts, /hooks/useClusterPresence.ts.
+import { featurePresenceV2 } from "@/lib/featureFlags";
+import { useClusterPresence } from "@/hooks/useClusterPresence";
+import { useClusterPresenceStore } from "@/stores/clusterPresenceStore";
 
 // Layout
 import { AppLayout } from "./components/layout/AppLayout";
@@ -433,12 +442,55 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+// ─── Onboarding-v2 presence wiring ────────────────────────────────────────
+// Behind FEATURE_PRESENCE_V2. All three components are pure no-ops when the
+// flag is OFF, guaranteeing byte-for-byte identical behavior to today.
+
+/** Mount once near the top of the authenticated layout. Starts the /presence
+ *  SSE subscription and keeps clusterPresenceStore in sync. Renders nothing.
+ *  Exported for direct unit testing. */
+// eslint-disable-next-line react-refresh/only-export-components
+export function ClusterPresenceSubscriber() {
+  useClusterPresence();
+  return null;
+}
+
+/** Flag-gated route element: renders the given page when flag is ON, else
+ *  redirects to /connect (back-compat for anyone who bookmarks /clusters).
+ *  Exported for integration testing. */
+// eslint-disable-next-line react-refresh/only-export-components
+export function FlagGatedRoute({ children }: { children: React.ReactNode }) {
+  if (!featurePresenceV2()) {
+    return <Navigate to="/connect" replace />;
+  }
+  return <>{children}</>;
+}
+
+/** Entry-point decision for "/" when FEATURE_PRESENCE_V2 is ON:
+ *  at least one available cluster → /clusters; otherwise → /welcome.
+ *  Reads a one-shot snapshot from the store (no subscription needed here).
+ *  Exported for integration testing. */
+// eslint-disable-next-line react-refresh/only-export-components
+export function PresenceEntryPoint() {
+  const hasClusters =
+    useClusterPresenceStore.getState().availableClusters().length > 0;
+  return <Navigate to={hasClusters ? '/clusters' : '/welcome'} replace />;
+}
+
 // Initial navigation logic.
 // Tauri (desktop app) → always 'desktop' mode (auto-set, skip mode selection).
 // Browser (first visit, no mode persisted) → show ModeSelection so the user can
 //   choose Personal (desktop/kubeconfig) or Team Server (in-cluster Helm).
 // Browser (returning visit, mode persisted) → straight to /connect.
+// With FEATURE_PRESENCE_V2 ON, presence-based entry supersedes both paths.
 function ModeSelectionEntryPoint() {
+  if (featurePresenceV2()) {
+    return <PresenceEntryPoint />;
+  }
+  return <LegacyModeSelectionEntryPoint />;
+}
+
+function LegacyModeSelectionEntryPoint() {
   const { appMode, setAppMode } = useClusterStore();
 
   // Tauri is always desktop mode — no need for mode selection
@@ -781,6 +833,8 @@ const App = () => (
         <AnalyticsConsentWrapper>
           <AppRouter>
             <TauriMenuHandler />
+            {/* Onboarding-v2 presence subscription — no-op when flag is OFF. */}
+            {featurePresenceV2() && <ClusterPresenceSubscriber />}
             <AuthLogoutListener>
               {/* KubeconfigContextWrapper must be inside AppRouter because it calls
                   useNavigate() — hooks that use Router context cannot be rendered
@@ -802,6 +856,10 @@ const App = () => (
                       <Route element={<ConnectedRedirect />} path="/connected" />
                       <Route element={<Navigate to="/connect?addCluster=true" replace />} path="/setup/kubeconfig" />
                       <Route element={<ClusterSelection />} path="/setup/clusters" />
+                      {/* Onboarding-v2 — flag-gated. With FEATURE_PRESENCE_V2
+                          OFF, both routes redirect to /connect (back-compat). */}
+                      <Route path="/clusters" element={<FlagGatedRoute><ClusterPickerPage /></FlagGatedRoute>} />
+                      <Route path="/welcome" element={<FlagGatedRoute><WelcomePage /></FlagGatedRoute>} />
 
                       {/* App routes — require cluster connection only */}
                       <Route

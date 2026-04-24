@@ -71,6 +71,7 @@ import { useHoverPrefetch } from '@/hooks/useHoverPrefetch';
 import { BrandLogo } from '@/components/BrandLogo';
 import { useQueryClient } from '@tanstack/react-query';
 import { ClusterUnreachableBoundary } from '@/components/common/ClusterUnreachableBoundary';
+import { featurePresenceV2 } from '@/lib/featureFlags';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -984,7 +985,9 @@ export function Sidebar() {
     void qc.invalidateQueries({ queryKey: ['backend', 'clusterSummary'] });
   }, [qc]);
   const handleSwitchCluster = useCallback(() => {
-    sidebarNavigate('/connect');
+    // Onboarding-v2: route "Switch cluster" to the new picker when the
+    // feature flag is ON. Off → legacy /connect flow (unchanged).
+    sidebarNavigate(featurePresenceV2() ? '/clusters' : '/connect');
   }, [sidebarNavigate]);
   const [flyoutOpen, setFlyoutOpen] = useState(false);
   const mountedTime = useRef(Date.now());
