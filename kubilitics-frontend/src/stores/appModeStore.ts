@@ -3,7 +3,8 @@
  *
  * Extracted from the monolithic `useClusterStore` during Phase 7 — whether
  * the app is running in desktop (Tauri) or in-cluster (browser) mode is a
- * one-time boot-time flag independent of cluster state.
+ * one-time boot-time flag independent of cluster state. This store is now
+ * the SOLE source of truth for app mode; clusterStore has been dismantled.
  *
  * `isOnboarded` is NOT ported: it is now derived from the presence store
  * (`clusterPresenceStore.activeLogicalIdentity !== null`) via the helper
@@ -13,7 +14,6 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { safeLocalStorage } from '@/lib/safeStorage';
-import { useClusterStore } from '@/stores/clusterStore';
 import { useClusterPresenceStore } from '@/stores/clusterPresenceStore';
 
 export type AppMode = 'desktop' | 'in-cluster' | null;
@@ -21,19 +21,15 @@ export type AppMode = 'desktop' | 'in-cluster' | null;
 interface AppModeState {
   appMode: AppMode;
   setAppMode: (mode: AppMode) => void;
+  reset: () => void;
 }
 
 export const useAppModeStore = create<AppModeState>()(
   persist(
     (set) => ({
       appMode: null,
-      setAppMode: (appMode) => {
-        // Mirror into clusterStore so any remaining readers still see the
-        // old field. Subagent 2 will flip those readers and remove the
-        // mirror.
-        useClusterStore.getState().setAppMode(appMode);
-        set({ appMode });
-      },
+      setAppMode: (appMode) => set({ appMode }),
+      reset: () => set({ appMode: null }),
     }),
     {
       name: 'kubilitics.app.mode',

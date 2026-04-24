@@ -1,12 +1,10 @@
 /**
  * Unit tests for demoStore.
  *
- * Covers: default, setDemo, localStorage persistence round-trip, pass-through
- * to clusterStore so the demo-cluster seeding side effect is preserved.
+ * Covers: default, setDemo, reset, localStorage persistence round-trip.
  */
 import { describe, it, expect, beforeEach } from 'vitest';
 import { useDemoStore } from './demoStore';
-import { useClusterStore } from './clusterStore';
 
 const PERSIST_KEY = 'kubilitics.demo.enabled';
 
@@ -14,7 +12,6 @@ describe('demoStore', () => {
   beforeEach(() => {
     localStorage.removeItem(PERSIST_KEY);
     useDemoStore.setState({ isDemo: false });
-    useClusterStore.getState().signOut();
   });
 
   it('has correct default value', () => {
@@ -42,11 +39,9 @@ describe('demoStore', () => {
     expect(parsed.state.isDemo).toBe(true);
   });
 
-  it('setDemo(true) preserves clusterStore demo-seeding side effect', () => {
+  it('reset() returns to default', () => {
     useDemoStore.getState().setDemo(true);
-    // clusterStore.setDemo(true) seeds 3 mock demo clusters
-    const cluster = useClusterStore.getState();
-    expect(cluster.isDemo).toBe(true);
-    expect(cluster.clusters.length).toBeGreaterThan(0);
+    useDemoStore.getState().reset();
+    expect(useDemoStore.getState().isDemo).toBe(false);
   });
 });

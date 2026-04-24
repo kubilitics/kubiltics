@@ -15,6 +15,7 @@ import { safeLocalStorage } from '@/lib/safeStorage';
 interface NamespaceState {
   activeNamespace: string;
   setActiveNamespace: (ns: string) => void;
+  reset: () => void;
 }
 
 export const useNamespaceStore = create<NamespaceState>()(
@@ -22,6 +23,7 @@ export const useNamespaceStore = create<NamespaceState>()(
     (set) => ({
       activeNamespace: 'all',
       setActiveNamespace: (activeNamespace) => set({ activeNamespace }),
+      reset: () => set({ activeNamespace: 'all' }),
     }),
     {
       name: 'kubilitics.namespace.active',

@@ -1,13 +1,12 @@
 /**
  * Unit tests for appModeStore.
  *
- * Covers: default, setAppMode, persistence round-trip, clusterStore mirror,
+ * Covers: default, setAppMode, reset, persistence round-trip,
  * useIsOnboarded derivation from presence store.
  */
 import { describe, it, expect, beforeEach } from 'vitest';
 import { renderHook } from '@testing-library/react';
 import { useAppModeStore, useIsOnboarded } from './appModeStore';
-import { useClusterStore } from './clusterStore';
 import { useClusterPresenceStore, __resetForTest } from './clusterPresenceStore';
 
 const PERSIST_KEY = 'kubilitics.app.mode';
@@ -16,7 +15,6 @@ describe('appModeStore', () => {
   beforeEach(() => {
     localStorage.removeItem(PERSIST_KEY);
     useAppModeStore.setState({ appMode: null });
-    useClusterStore.getState().signOut();
     __resetForTest();
   });
 
@@ -32,11 +30,6 @@ describe('appModeStore', () => {
     expect(useAppModeStore.getState().appMode).toBe('in-cluster');
   });
 
-  it('setAppMode mirrors into clusterStore for legacy readers', () => {
-    useAppModeStore.getState().setAppMode('desktop');
-    expect(useClusterStore.getState().appMode).toBe('desktop');
-  });
-
   it('persists appMode to localStorage', async () => {
     useAppModeStore.getState().setAppMode('desktop');
     await new Promise((r) => setTimeout(r, 20));
@@ -45,6 +38,12 @@ describe('appModeStore', () => {
     expect(raw).toBeTruthy();
     const parsed = JSON.parse(raw!);
     expect(parsed.state.appMode).toBe('desktop');
+  });
+
+  it('reset() returns to default', () => {
+    useAppModeStore.getState().setAppMode('desktop');
+    useAppModeStore.getState().reset();
+    expect(useAppModeStore.getState().appMode).toBeNull();
   });
 });
 
