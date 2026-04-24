@@ -279,14 +279,9 @@ function useRestoreClusterFromBackend() {
       const connectedClusters = list.map(backendClusterToCluster);
       setClusters(connectedClusters);
 
-      // Seamless in-cluster install: when the helm-deployed hub auto-registers
-      // its own cluster (see backend cmd/server/main.go self-registration), the
-      // browser-served UI should NOT show the desktop-style FirstRunWizard.
-      // The first-run is "complete" the moment the user has a cluster to view.
-      // Only applies in browser mode — desktop keeps its original wizard flow.
-      if (!isTauri() && list.length > 0 && !useOnboardingStore.getState().hasCompletedFirstRun) {
-        useOnboardingStore.getState().completeFirstRun();
-      }
+      // Phase 7: onboardingStore deleted. "Has the user completed onboarding?"
+      // is derived from `clusterPresenceStore.activeLogicalIdentity !== null`.
+      // No action needed here — the PresenceEntryPoint gates the entry UX.
 
       // Determine which cluster to activate.
       // Headlamp-style identity: match by (name, server_url) BEFORE falling back
@@ -539,9 +534,8 @@ import { BackendClusterValidator } from "@/components/BackendClusterValidator";
 import { useOverviewStream } from "@/hooks/useOverviewStream";
 import { isTauri, invokeWithRetry, openExternal } from "@/lib/tauri";
 import { ThemeProvider } from "@/providers/ThemeProvider";
-import { useOnboardingStore } from "@/stores/onboardingStore";
-import { WelcomeScreen } from "@/components/onboarding/WelcomeScreen";
-import { FirstRunWizard } from "@/components/onboarding/FirstRunWizard";
+// Phase 7: onboardingStore + WelcomeScreen + FirstRunWizard deleted.
+// Entry UX is now owned by PresenceEntryPoint + /welcome + /clusters.
 
 // Error tracking is initialized in main.tsx (before React mounts).
 
@@ -789,22 +783,10 @@ function KubeconfigContextWrapper({ children }: { children: React.ReactNode }) {
   );
 }
 
-/** Gate: unified onboarding flow for first-time users.
- *  Desktop (Tauri): shows the 4-step FirstRunWizard on first launch.
- *  Browser / in-cluster: shows the FirstRunWizard if not completed, falls back to WelcomeScreen.
- *  All modes: if onboarding is complete, user proceeds directly. */
-function OnboardingGate({ children }: { children: React.ReactNode }) {
-  const hasCompletedWelcome = useOnboardingStore((s) => s.hasCompletedWelcome);
-  const hasCompletedFirstRun = useOnboardingStore((s) => s.hasCompletedFirstRun);
-
-  // Show the FirstRunWizard if user hasn't completed it yet
-  if (!hasCompletedFirstRun) return <FirstRunWizard />;
-
-  // Legacy fallback: if somehow welcome wasn't marked but first-run was
-  if (!hasCompletedWelcome) return <WelcomeScreen />;
-
-  return <>{children}</>;
-}
+// Phase 7: OnboardingGate deleted. PresenceEntryPoint (at "/") handles the
+// first-run experience: redirects to /welcome when no clusters are available,
+// /clusters when at least one cluster is discovered or registered. The old
+// FirstRunWizard + WelcomeScreen are gone with it.
 
 function AppZoom({ children }: { children: ReactNode }) {
   useAppZoom();
@@ -848,7 +830,6 @@ const App = () => (
         <ResourceLiveUpdates />
         <ThemeProvider />
         <SyncBackendUrl />
-        <OnboardingGate>
         <AnalyticsConsentWrapper>
           <AppRouter>
             <TauriMenuHandler />
@@ -1066,7 +1047,6 @@ const App = () => (
             </AuthLogoutListener>
           </AppRouter>
         </AnalyticsConsentWrapper>
-        </OnboardingGate>
       </GlobalErrorBoundary>
       </AppZoom>
     </TooltipProvider>

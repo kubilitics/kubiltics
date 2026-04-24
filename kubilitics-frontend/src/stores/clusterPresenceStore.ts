@@ -1,6 +1,6 @@
 // The single source of truth for cluster presence in the frontend.
-// Supersedes clusterStore + backendConfigStore cluster fields +
-// onboardingStore (the latter three are deleted in Phase 7).
+// Supersedes the former clusterStore + backendConfigStore cluster fields +
+// onboardingStore (all deleted in Phase 7).
 //
 // Never persists session UUIDs. Only logical identity persists.
 import { create } from 'zustand';
