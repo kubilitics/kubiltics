@@ -43,6 +43,7 @@ import { searchResources, type SearchResultItem as ApiSearchResult } from '@/ser
 import { getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
 import { useBackendConfigStore } from '@/stores/backendConfigStore';
 import { useClusterStore } from '@/stores/clusterStore';
+import { useNamespaceStore } from '@/stores/namespaceStore';
 import { useSearchHistory } from '@/hooks/useSearchHistory';
 
 const SEARCH_DEBOUNCE_MS = 250;
@@ -215,8 +216,8 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
   const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured());
   const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
   const activeCluster = useClusterStore((s) => s.activeCluster);
-  const setActiveNamespace = useClusterStore((s) => s.setActiveNamespace);
-  const activeNamespace = useClusterStore((s) => s.activeNamespace);
+  const setActiveNamespace = useNamespaceStore((s) => s.setActiveNamespace);
+  const activeNamespace = useNamespaceStore((s) => s.activeNamespace);
 
   const clusterId = currentClusterId ?? activeCluster?.id ?? null;
   const canSearchLive = isBackendConfigured && !!clusterId && !!backendBaseUrl;

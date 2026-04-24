@@ -7,6 +7,7 @@ import { useCallback, useEffect, useRef, useState, useImperativeHandle, forwardR
 import { getKCLIComplete, getKCLITUIState, getKubectlShellStreamUrl, getShellComplete, type ShellStatusResult } from '@/services/backendApiClient';
 import { applyCompletionToLine, updateLineBuffer } from './completionEngine';
 import { useClusterStore } from '@/stores/clusterStore';
+import { useNamespaceStore } from '@/stores/namespaceStore';
 import { useBackendCircuitOpen } from '@/hooks/useBackendCircuitOpen';
 import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
@@ -65,8 +66,8 @@ export const ShellSession = forwardRef<ShellSessionHandle, ShellSessionProps>(fu
   { isActive, open, clusterId, backendBaseUrl, onStatusChange },
   ref
 ) {
-  const activeNamespace = useClusterStore((s) => s.activeNamespace);
-  const setActiveNamespace = useClusterStore((s) => s.setActiveNamespace);
+  const activeNamespace = useNamespaceStore((s) => s.activeNamespace);
+  const setActiveNamespace = useNamespaceStore((s) => s.setActiveNamespace);
   const setActiveCluster = useClusterStore((s) => s.setActiveCluster);
   const setClusters = useClusterStore((s) => s.setClusters);
 

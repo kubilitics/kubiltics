@@ -41,6 +41,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
 import { useClusterStore } from '@/stores/clusterStore';
+import { useNamespaceStore } from '@/stores/namespaceStore';
 import { useConnectionStatus } from '@/hooks/useConnectionStatus';
 import { calculateAge, useDeleteK8sResource, usePatchK8sResource, type KubernetesResource } from '@/hooks/useKubernetes';
 import { listResources } from '@/services/backendApiClient';
@@ -238,7 +239,7 @@ function useGatewayResources<T extends KubernetesResource>(
 export default function Gateways() {
   const navigate = useNavigate();
   const { isOnline } = useConnectionStatus();
-  const activeNamespace = useClusterStore((s) => s.activeNamespace);
+  const activeNamespace = useNamespaceStore((s) => s.activeNamespace);
   const effectiveNamespace = activeNamespace !== 'All Namespaces' ? activeNamespace : undefined;
 
   const [activeTab, setActiveTab] = useState<GatewayResourceTab>('gateways');
