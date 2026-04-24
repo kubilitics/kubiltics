@@ -35,7 +35,7 @@
     "macOS": {
       "signingIdentity": null,
       "providerShortName": null,
-      "entitlements": null,
+      "entitlements": "entitlements.plist",
       "frameworks": null,
       "exceptionDomain": null,
       "minimumSystemVersion": "10.13"
