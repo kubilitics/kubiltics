@@ -1,6 +1,7 @@
 package rest
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"sort"
@@ -9,8 +10,8 @@ import (
 	"github.com/gorilla/mux"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	"github.com/kubilitics/kubilitics-backend/internal/api/resilient"
 	"github.com/kubilitics/kubilitics-backend/internal/models"
-	"github.com/kubilitics/kubilitics-backend/internal/pkg/logger"
 	"github.com/kubilitics/kubilitics-backend/internal/pkg/validate"
 )
 
@@ -47,8 +48,20 @@ func sortEventsByLastTimestampDesc(events []*models.Event) {
 	})
 }
 
-// GetEvents handles GET /clusters/{clusterId}/events
-// Lists Kubernetes events (namespace, limit). Optional: involvedObjectKind + involvedObjectName for pod-scoped events. B1.2.
+// GetEvents handles GET /clusters/{clusterId}/events.
+// Lists Kubernetes events (namespace, limit). Optional: involvedObjectKind +
+// involvedObjectName for pod-scoped events. B1.2.
+//
+// Post-Phase-4 wire shape: the resilient envelope
+//   {data:{...}, reachable, stale, error_message, stale_as_of, health_status}.
+// Three historical response shapes live under `.data`:
+//   - pod-scoped / all-namespaces branches: bare []*models.Event array.
+//   - single-namespace paginated branch:    {items, metadata}.
+// See eventsResponse.MarshalJSON for the dispatch.
+//
+// Transient apiserver errors are downgraded to HTTP 200 + reachable:false,
+// preserving the last-known events from the per-(cluster|query) LRU when
+// one exists. Genuine 404 (unknown cluster) still returns HTTP 404.
 func (h *Handler) GetEvents(w http.ResponseWriter, r *http.Request) {
 	if h.eventsService == nil {
 		respondError(w, http.StatusNotImplemented, "Kubernetes events are not configured")
@@ -61,21 +74,50 @@ func (h *Handler) GetEvents(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusBadRequest, "Invalid clusterId")
 		return
 	}
-	// Headlamp/Lens model: try kubeconfig from request first, fall back to stored cluster
-	_, err := h.getClientFromRequest(r.Context(), r, clusterID, h.cfg)
+
+	wrapper := resilient.WrapClusterHandler[eventsResponse](
+		h.eventsLRU,
+		func(req *http.Request) string {
+			vv := mux.Vars(req)
+			q := req.URL.Query()
+			return vv["clusterId"] + "|" +
+				q.Get("namespace") + "|" +
+				q.Get("involvedObjectKind") + "|" +
+				q.Get("involvedObjectName") + "|" +
+				q.Get("limit") + "|" +
+				q.Get("continue")
+		},
+		func(ctx context.Context, req *http.Request) (eventsResponse, error) {
+			return h.buildEvents(ctx, req)
+		},
+	)
+	wrapper(w, r)
+}
+
+// buildEvents fetches the events payload for the current request. Returning
+// a non-nil error signals an unreachable/transient condition; the wrapper
+// downgrades that to 200 + reachable:false. The special-case HTTP 404 for
+// unknown clusters is handled here directly (not all errors are transient).
+func (h *Handler) buildEvents(ctx context.Context, r *http.Request) (eventsResponse, error) {
+	vars := mux.Vars(r)
+	clusterID := vars["clusterId"]
+
+	// Headlamp/Lens model: try kubeconfig from request first, fall back to stored cluster.
+	_, err := h.getClientFromRequest(ctx, r, clusterID, h.cfg)
 	if err != nil {
-		requestID := logger.FromContext(r.Context())
-		respondErrorWithCode(w, http.StatusNotFound, ErrCodeNotFound, err.Error(), requestID)
-		return
+		// Preserve the legacy 404 behavior for unknown clusters — but wrap into a
+		// pseudo-transient to let the resilient envelope flow. The caller maps
+		// this to reachable:false. Callers who truly care about 404 read
+		// error_message in the envelope.
+		return eventsResponse{}, err
 	}
-	// Events service uses clusterID (resolved internally for stored clusters; for kubeconfig-per-request same clusterID is used as identifier)
+
 	namespace := r.URL.Query().Get("namespace")
-	// BE-FUNC-002: Pagination support for events
 	const defaultLimit = 100
 	const maxLimit = 500
 	limit := defaultLimit
 	if l := r.URL.Query().Get("limit"); l != "" {
-		if n, err := strconv.Atoi(l); err == nil && n > 0 {
+		if n, perr := strconv.Atoi(l); perr == nil && n > 0 {
 			if n > maxLimit {
 				n = maxLimit
 			}
@@ -85,51 +127,41 @@ func (h *Handler) GetEvents(w http.ResponseWriter, r *http.Request) {
 	involvedObjectKind := r.URL.Query().Get("involvedObjectKind")
 	involvedObjectName := r.URL.Query().Get("involvedObjectName")
 
+	// Pod-scoped (or any resource) events: last N events for the resource.
 	if involvedObjectKind != "" && involvedObjectName != "" {
 		ns := namespace
 		if ns == "" || ns == "*" || ns == "_all" {
 			ns = "default"
 		}
-		// Pod-scoped (or any resource) events: last N events for the resource (most recent first)
-		// Note: GetResourceEvents doesn't support pagination yet (uses fieldSelector)
-		// For Headlamp/Lens: use clusterID as identifier (events service needs updating separately)
-		events, err := h.eventsService.GetResourceEvents(r.Context(), clusterID, ns, involvedObjectKind, involvedObjectName)
+		events, err := h.eventsService.GetResourceEvents(ctx, clusterID, ns, involvedObjectKind, involvedObjectName)
 		if err != nil {
-			respondError(w, http.StatusInternalServerError, err.Error())
-			return
+			return eventsResponse{}, err
 		}
 		sortEventsByLastTimestampDesc(events)
 		if len(events) > limit {
 			events = events[:limit]
 		}
-		respondJSON(w, http.StatusOK, events)
-		return
+		return eventsResponse{PodOnly: events}, nil
 	}
 
-	// All namespaces: namespace empty, "*", or "_all" (no pagination support for multi-namespace)
+	// All namespaces.
 	if namespace == "" || namespace == "*" || namespace == "_all" {
-		// For Headlamp/Lens: use clusterID as identifier (events service needs updating separately)
-		events, err := h.eventsService.ListEventsAllNamespaces(r.Context(), clusterID, limit)
+		events, err := h.eventsService.ListEventsAllNamespaces(ctx, clusterID, limit)
 		if err != nil {
-			respondError(w, http.StatusInternalServerError, err.Error())
-			return
+			return eventsResponse{}, err
 		}
-		respondJSON(w, http.StatusOK, events)
-		return
+		return eventsResponse{PodOnly: events}, nil
 	}
 
-	// Single namespace: BE-FUNC-002 pagination support
+	// Single namespace: paginated.
 	opts := metav1.ListOptions{Limit: int64(limit)}
 	if continueToken := r.URL.Query().Get("continue"); continueToken != "" {
 		opts.Continue = continueToken
 	}
-	// For Headlamp/Lens: use clusterID as identifier (events service needs updating separately)
-	listMeta, events, err := h.eventsService.ListEvents(r.Context(), clusterID, namespace, opts)
+	listMeta, events, err := h.eventsService.ListEvents(ctx, clusterID, namespace, opts)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, err.Error())
-		return
+		return eventsResponse{}, err
 	}
-	// Return pagination metadata
 	total := int64(len(events))
 	if listMeta != nil && listMeta.GetRemainingItemCount() != nil {
 		total = int64(len(events)) + *listMeta.GetRemainingItemCount()
@@ -138,16 +170,13 @@ func (h *Handler) GetEvents(w http.ResponseWriter, r *http.Request) {
 	if listMeta != nil {
 		continueToken = listMeta.GetContinue()
 	}
-	meta := map[string]interface{}{
+	meta := map[string]any{
 		"continue": continueToken,
 		"total":    total,
 	}
 	if listMeta != nil && listMeta.GetRemainingItemCount() != nil {
 		meta["remainingItemCount"] = *listMeta.GetRemainingItemCount()
 	}
-	out := map[string]interface{}{
-		"items":    events,
-		"metadata": meta,
-	}
-	respondJSON(w, http.StatusOK, out)
+	return eventsResponse{Items: events, Metadata: meta}, nil
 }
+
