@@ -710,6 +710,18 @@ func main() {
 	router.HandleFunc("/api/v1/presence", presenceHandler.GetSnapshot).Methods("GET")
 	router.HandleFunc("/api/v1/presence/events", presenceHandler.StreamEvents).Methods("GET")
 
+	// When AddCluster / RemoveCluster / reconnect happens on the REST
+	// handler, rebuild the presence snapshot so /api/v1/presence exposes
+	// the change immediately instead of waiting for the 60s defensive
+	// tick. Without this the onboarding-v2 picker lands users on a
+	// dashboard that reports "no cluster connected" despite the backend
+	// having just registered the cluster.
+	handler.OnClusterMutation = func() {
+		if err := discoveryMgr.Refresh(context.Background()); err != nil {
+			log.Warn("discovery refresh after cluster mutation failed", "error", err.Error())
+		}
+	}
+
 	// Periodic refresh (defensive — watch streams should keep state up to
 	// date, but a dropped channel or misbehaving source shouldn't silently
 	// stall the snapshot).

@@ -154,6 +154,13 @@ type Handler struct {
 	// Keys: see buildSummaryCacheKey / buildEventsCacheKey.
 	summaryLRU *resilient.LRUCache[string, *models.ClusterSummary]
 	eventsLRU  *resilient.LRUCache[string, eventsResponse]
+
+	// OnClusterMutation is invoked after AddCluster / RemoveCluster / reconnect
+	// operations so the caller (main.go) can refresh the DiscoveryManager
+	// snapshot cache. Otherwise /api/v1/presence serves a stale
+	// `registered: []` until the manager's 60s defensive tick fires.
+	// Optional — zero value = no-op.
+	OnClusterMutation func()
 }
 
 // NewHandler creates a new HTTP handler. unifiedMetricsService can be nil; then metrics summary uses legacy per-resource endpoints. projSvc can be nil; then project routes return 501. addonService can be nil; then addon routes return 404 or 501. repo can be nil if auth is disabled. snapshotStore can be nil; then topology snapshot endpoints return 503.
@@ -768,6 +775,11 @@ func (h *Handler) AddCluster(w http.ResponseWriter, r *http.Request) {
 		// Start events pipeline for the newly added cluster.
 		h.notifyClusterConnected(cluster.ID)
 
+		// Refresh the presence snapshot (see matching block below for Path 2).
+		if h.OnClusterMutation != nil {
+			h.OnClusterMutation()
+		}
+
 		respondJSON(w, http.StatusCreated, cluster)
 		return
 	}
@@ -810,6 +822,14 @@ func (h *Handler) AddCluster(w http.ResponseWriter, r *http.Request) {
 
 	// Start events pipeline for the newly added cluster.
 	h.notifyClusterConnected(cluster.ID)
+
+	// Invalidate the DiscoveryManager snapshot so /api/v1/presence
+	// surfaces this cluster in `registered[]` immediately (otherwise the
+	// frontend dashboard sees an empty active cluster until the 60s
+	// defensive tick fires).
+	if h.OnClusterMutation != nil {
+		h.OnClusterMutation()
+	}
 
 	respondJSON(w, http.StatusCreated, cluster)
 }

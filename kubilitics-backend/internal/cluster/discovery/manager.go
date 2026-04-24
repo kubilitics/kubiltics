@@ -35,7 +35,28 @@ func (m *Manager) Refresh(ctx context.Context) error {
 		}
 		for _, c := range enum {
 			k := c.Identity.Key()
-			if _, seen := byKey[k]; seen {
+			if idx, seen := byKey[k]; seen {
+				// A later source can enrich an entry an earlier source
+				// provided — most importantly, ManualSource carries the
+				// SessionID + Provider for clusters that are ALSO in a
+				// kubeconfig file. Without this merge, `kind-kubilitics-test`
+				// (seen first by KubeconfigFileSource → no SessionID) would
+				// mask the registered state from ManualSource and stay
+				// stuck in Discovered-only forever.
+				existing := merged[idx]
+				if existing.SessionID == "" && c.SessionID != "" {
+					existing.SessionID = c.SessionID
+				}
+				if existing.Provider == "" && c.Provider != "" {
+					existing.Provider = c.Provider
+				}
+				if existing.ContextName == "" && c.ContextName != "" {
+					existing.ContextName = c.ContextName
+				}
+				if existing.KubeconfigPath == "" && c.KubeconfigPath != "" {
+					existing.KubeconfigPath = c.KubeconfigPath
+				}
+				merged[idx] = existing
 				continue
 			}
 			byKey[k] = len(merged)
