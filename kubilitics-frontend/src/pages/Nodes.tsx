@@ -70,6 +70,7 @@ import { useColumnVisibility } from '@/hooks/useColumnVisibility';
 import { getRowAnimationClass } from '@/hooks/useResourceLiveUpdates';
 import { useMultiSelect } from '@/hooks/useMultiSelect';
 
+import { useActiveClusterId } from '@/hooks/useActiveClusterId';
 interface NodeResource extends KubernetesResource {
  spec?: {
  unschedulable?: boolean;
@@ -258,7 +259,7 @@ const NODES_COLUMNS_FOR_VISIBILITY = [
 export default function Nodes() {
  const navigate = useNavigate();
  const { isConnected } = useConnectionStatus();
- const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
+ const currentClusterId = useActiveClusterId();
  const activeCluster = useActiveCluster();
  const storedUrl = useBackendConfigStore((s) => s.backendBaseUrl);
  const backendBaseUrl = getEffectiveBackendBaseUrl(storedUrl);

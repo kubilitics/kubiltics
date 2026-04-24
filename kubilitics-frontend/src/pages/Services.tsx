@@ -65,6 +65,7 @@ import { ResourceCreator, DEFAULT_YAMLS } from '@/components/editor';
 import { toast } from '@/components/ui/sonner';
 import { useMultiSelect } from '@/hooks/useMultiSelect';
 
+import { useActiveClusterId } from '@/hooks/useActiveClusterId';
 interface ServiceResource extends KubernetesResource {
  spec: {
  type: string;
@@ -229,7 +230,7 @@ export default function Services() {
  const backendBaseUrl = getEffectiveBackendBaseUrl(useBackendConfigStore((s) => s.backendBaseUrl));
  const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured());
  const activeCluster = useActiveCluster();
- const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
+ const currentClusterId = useActiveClusterId();
  const clusterId = currentClusterId ?? null;
  const { data, isLoading, isError, isFetching, dataUpdatedAt, refetch } = useK8sResourceList<ServiceResource>('services', undefined, { limit: 5000 });
  const deleteResource = useDeleteK8sResource('services');

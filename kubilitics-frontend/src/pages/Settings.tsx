@@ -59,7 +59,6 @@ export default function Settings() {
   const setBackendBaseUrl = useBackendConfigStore((s) => s.setBackendBaseUrl);
   const effectiveBackendBaseUrl = useMemo(() => getEffectiveBackendBaseUrl(backendBaseUrl), [backendBaseUrl]);
   const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured());
-  const setCurrentClusterId = useBackendConfigStore((s) => s.setCurrentClusterId);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
@@ -85,7 +84,6 @@ export default function Settings() {
       if (cluster.id === currentClusterId) {
         const remaining = clusters.filter((c) => c.id !== cluster.id);
         const fallbackId = remaining[0]?.id ?? null;
-        setCurrentClusterId(fallbackId);
         if (fallbackId) {
           setActiveClusterBySessionId(fallbackId);
         }
@@ -445,7 +443,6 @@ export default function Settings() {
                             size="sm"
                             className="h-8 text-xs rounded-lg flex-1 border-blue-200 text-blue-700 hover:bg-blue-50 dark:border-blue-800 dark:text-blue-300 dark:hover:bg-blue-950/40"
                             onClick={() => {
-                              setCurrentClusterId(cluster.id);
                               setActiveClusterBySessionId(cluster.id);
                               toast.success(`Switched to ${cluster.name}`);
                             }}

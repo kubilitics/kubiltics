@@ -16,9 +16,9 @@ import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/back
 import { useClustersFromBackend } from '@/hooks/useClustersFromBackend';
 import { getClusterOverview, reconnectCluster, BackendApiError } from '@/services/backendApiClient';
 
+import { useActiveClusterId } from '@/hooks/useActiveClusterId';
 export function BackendClusterValidator() {
-  const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
-  const setCurrentClusterId = useBackendConfigStore((s) => s.setCurrentClusterId);
+  const currentClusterId = useActiveClusterId();
   const isBackendConfiguredVal = useBackendConfigStore((s) => s.isBackendConfigured());
   const validatedRef = useRef(false);
   const originalClusterIdRef = useRef<string | null>(null);
@@ -84,7 +84,6 @@ export function BackendClusterValidator() {
         const clusterExists = clustersQuery.data.some((c) => c.id === originalCid);
         if (!clusterExists) {
           // Cluster doesn't exist in backend list - clear it silently
-          setCurrentClusterId(null);
           validatedRef.current = true;
           return;
         }
@@ -105,25 +104,21 @@ export function BackendClusterValidator() {
                 // Reconnect succeeded — cluster is healthy now
               } catch {
                 // Reconnect also failed — clear the cluster ID so the user sees the connect page
-                setCurrentClusterId(null);
                 validatedRef.current = true;
                 return;
               }
             } else {
               // Non-503 error (network, 404, etc.) — clear the cluster ID
-              setCurrentClusterId(null);
               validatedRef.current = true;
               return;
             }
           }
           // Cluster is accessible - ensure it's set (may have been cleared earlier)
           if (currentClusterId !== originalCid) {
-            setCurrentClusterId(originalCid);
           }
         } catch (error) {
           // Cluster exists but is not accessible - clear it silently
           // Don't log errors - they're expected during startup or transient failures
-          setCurrentClusterId(null);
         }
         
         validatedRef.current = true;
@@ -180,7 +175,6 @@ export function BackendClusterValidator() {
   }, [
     isBackendConfiguredVal,
     currentClusterId,
-    setCurrentClusterId,
     clustersQuery.data,
   ]);
 

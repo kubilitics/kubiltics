@@ -10,6 +10,7 @@ import { useClusterSummary } from '@/hooks/useClusterSummary';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
+import { useActiveClusterId } from '@/hooks/useActiveClusterId';
 const PROVIDER_LABELS: Record<string, string> = {
   eks: 'EKS',
   gke: 'GKE',
@@ -25,7 +26,7 @@ function formatProvider(p: string): string {
 
 export function ClusterDetailsPanel() {
   const activeCluster = useActiveCluster();
-  const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
+  const currentClusterId = useActiveClusterId();
   const clusterId = currentClusterId ?? null;
   const summaryQuery = useClusterSummary(clusterId ?? undefined);
 

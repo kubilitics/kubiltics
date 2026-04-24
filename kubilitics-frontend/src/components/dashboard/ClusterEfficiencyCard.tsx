@@ -29,6 +29,7 @@ import { useBackendConfigStore } from "@/stores/backendConfigStore";
 import { parseCpu, parseMemory, cn } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { useActiveClusterId } from '@/hooks/useActiveClusterId';
 import {
   getEfficiencyLabel,
   getGaugeColor,
@@ -209,7 +210,7 @@ function DualLayerBar({
 
 export function ClusterResourceIntelligence() {
   const activeCluster = useActiveCluster();
-  const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
+  const currentClusterId = useActiveClusterId();
 
   // ── Data sources ──
   const nodesList = useK8sResourceList("nodes", undefined, {

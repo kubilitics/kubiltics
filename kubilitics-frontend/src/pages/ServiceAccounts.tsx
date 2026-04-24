@@ -61,6 +61,7 @@ import {
 import { useTableFiltersAndSort, type ColumnConfig } from '@/hooks/useTableFiltersAndSort';
 import { useColumnVisibility } from '@/hooks/useColumnVisibility';
 
+import { useActiveClusterId } from '@/hooks/useActiveClusterId';
 interface ServiceAccountResource extends KubernetesResource {
  secrets?: Array<{ name?: string }>;
  imagePullSecrets?: Array<{ name?: string }>;
@@ -139,7 +140,7 @@ const SA_COLUMNS_FOR_VISIBILITY = [
 export default function ServiceAccounts() {
  const navigate = useNavigate();
  const { isConnected } = useConnectionStatus();
- const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
+ const currentClusterId = useActiveClusterId();
  const activeCluster = useActiveCluster();
  const storedUrl = useBackendConfigStore((s) => s.backendBaseUrl);
  const backendBaseUrl = getEffectiveBackendBaseUrl(storedUrl);

@@ -79,7 +79,6 @@ export default function ProjectDetailPage() {
   const [editProjectOpen, setEditProjectOpen] = useState(false);
   const [deleteProjectOpen, setDeleteProjectOpen] = useState(false);
   const setDemo = useDemoStore((s) => s.setDemo);
-  const setCurrentClusterId = useBackendConfigStore((s) => s.setCurrentClusterId);
   const clustersQuery = useClustersFromBackend();
   const allClusters = clustersQuery.data ?? [];
 
@@ -103,7 +102,6 @@ export default function ProjectDetailPage() {
       toast.error('Cluster not found');
       return;
     }
-    setCurrentClusterId(clusterId);
     // Presence SSE has every registered cluster; activate by session id.
     setActiveClusterBySessionId(clusterId);
     setDemo(false);

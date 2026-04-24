@@ -51,6 +51,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { BulkActionBar, executeBulkOperation } from '@/components/resources';
 import { useMultiSelect } from '@/hooks/useMultiSelect';
 
+import { useActiveClusterId } from '@/hooks/useActiveClusterId';
 // ── Types ──────────────────────────────────────────────────────────────────────
 
 type GatewayResourceTab = 'gateways' | 'gatewayclasses' | 'httproutes' | 'grpcroutes';
@@ -201,7 +202,7 @@ function useGatewayResources<T extends KubernetesResource>(
   const storedUrl = useBackendConfigStore((s) => s.backendBaseUrl);
   const backendBaseUrl = getEffectiveBackendBaseUrl(storedUrl);
   const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured());
-  const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
+  const currentClusterId = useActiveClusterId();
   const isDemo = useDemoStore((s) => s.isDemo);
 
   const config = GATEWAY_API_GROUPS[type];

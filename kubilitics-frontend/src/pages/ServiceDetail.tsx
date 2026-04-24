@@ -25,7 +25,7 @@ import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/back
 import { useActiveClusterId } from '@/hooks/useActiveClusterId';
 import { useQuery } from '@tanstack/react-query';
 import { getServiceEndpoints, startPortForward } from '@/services/backendApiClient';
-import { getActiveCluster, useActiveCluster } from '@/stores/clusterPresenceStore';
+import { getActiveCluster, useActiveCluster, useClusterPresenceStore } from '@/stores/clusterPresenceStore';
 import { usePortForwardStore } from '@/stores/portForwardStore';
 import { openExternal } from '@/lib/tauri';
 import { toast } from '@/components/ui/sonner';
@@ -95,7 +95,7 @@ function InlinePortForward({
       return;
     }
     const resolvedClusterId = clusterId
-      || useBackendConfigStore.getState().currentClusterId
+      || (useClusterPresenceStore.getState().activeCluster()?.session_id ?? null)
       || getActiveCluster()?.id
       || null;
     if (baseUrl == null) {

@@ -34,6 +34,7 @@ import { DeleteConfirmDialog } from './DeleteConfirmDialog';
 import { cn } from '@/lib/utils';
 import { objectsToYaml, downloadBlob, downloadResourceJson } from '@/lib/exportUtils';
 
+import { useActiveClusterId } from '@/hooks/useActiveClusterId';
 /* ---------- Types ---------- */
 
 export interface DetailPod {
@@ -148,7 +149,7 @@ export function DetailPodTable({
   const storedUrl = useBackendConfigStore((s) => s.backendBaseUrl);
   const backendBaseUrl = getEffectiveBackendBaseUrl(storedUrl);
   const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured());
-  const clusterId = useBackendConfigStore((s) => s.currentClusterId) ?? null;
+  const clusterId = useActiveClusterId() ?? null;
 
   /* -- Search -- */
   const [search, setSearch] = useState('');

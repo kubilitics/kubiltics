@@ -16,6 +16,7 @@ import { useClustersFromBackend } from '@/hooks/useClustersFromBackend';
 import { DashboardLayout } from '@/features/dashboard/components/DashboardLayout';
 import { cn } from '@/lib/utils';
 
+import { useActiveClusterId } from '@/hooks/useActiveClusterId';
 function toStoreProject(api: BackendProjectWithDetails): Project {
   const clusters = (api.clusters ?? []).map((c) => ({
     cluster_id: c.cluster_id,
@@ -34,8 +35,7 @@ function toStoreProject(api: BackendProjectWithDetails): Project {
 export default function ProjectDashboardPage() {
   const { projectId } = useParams<{ projectId: string }>();
   const navigate = useNavigate();
-  const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
-  const setCurrentClusterId = useBackendConfigStore((s) => s.setCurrentClusterId);
+  const currentClusterId = useActiveClusterId();
   const setDemo = useDemoStore((s) => s.setDemo);
   const setActiveProject = useProjectStore((s) => s.setActiveProject);
   const clearActiveProject = useProjectStore((s) => s.clearActiveProject);
@@ -65,7 +65,6 @@ export default function ProjectDashboardPage() {
   const handleConnectCluster = (clusterId: string) => {
     const backendCluster = allClusters.find((c) => c.id === clusterId);
     if (!backendCluster) return;
-    setCurrentClusterId(clusterId);
     // Presence SSE already has every registered cluster; activate by uuid.
     setActiveClusterBySessionId(clusterId);
     setDemo(false);

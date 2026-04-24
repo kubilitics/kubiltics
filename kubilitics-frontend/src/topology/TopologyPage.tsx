@@ -32,6 +32,7 @@ import { GitCompareArrows } from "lucide-react";
 import { AskAIButton } from "@/components/ai/AskAIButton";
 import { useAIContext } from "@/hooks/useAIContext";
 
+import { useActiveClusterId } from '@/hooks/useActiveClusterId';
 // ─── URL Search Params helpers ───────────────────────────────────────────────
 // Namespace selection is persisted in URL as ?ns=default or ?ns=blue-green-demo,foo
 // This ensures the browser back button restores the correct namespace.
@@ -48,7 +49,7 @@ function namespacesToURL(ns: Set<string>): string {
 }
 
 export function TopologyPage() {
-  const clusterId = useBackendConfigStore((s) => s.currentClusterId) ?? null;
+  const clusterId = useActiveClusterId() ?? null;
   const clusterName = useActiveCluster()?.name ?? null;
   const activeClusterId = useActiveCluster()?.id ?? null;
   const aiCtx = useMemo(() => ({

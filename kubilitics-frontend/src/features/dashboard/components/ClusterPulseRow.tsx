@@ -15,6 +15,7 @@ import { getEvents } from "@/services/backendApiClient";
 import { useK8sResourceList } from "@/hooks/useKubernetes";
 import { cn } from "@/lib/utils";
 
+import { useActiveClusterId } from '@/hooks/useActiveClusterId';
 const PILL_CONFIG = [
   { key: "nodes", label: "Nodes", href: "/nodes", icon: Server, color: "text-blue-600 bg-blue-500/10 border-blue-500/20 hover:bg-blue-500/15" },
   { key: "pods", label: "Pods", href: "/pods", icon: Activity, color: "text-violet-600 bg-violet-500/10 border-violet-500/20 hover:bg-violet-500/15" },
@@ -24,7 +25,7 @@ const PILL_CONFIG = [
 
 export const ClusterPulseRow = () => {
   const activeCluster = useActiveCluster();
-  const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
+  const currentClusterId = useActiveClusterId();
   const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured());
   const backendBaseUrl = getEffectiveBackendBaseUrl(useBackendConfigStore((s) => s.backendBaseUrl));
   const clusterId = currentClusterId ?? undefined;

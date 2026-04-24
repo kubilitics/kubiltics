@@ -27,6 +27,7 @@ import { useK8sResourceList } from "@/hooks/useKubernetes";
 import { getDetailPath } from "@/utils/resourceKindMapper";
 import { cn } from "@/lib/utils";
 
+import { useActiveClusterId } from '@/hooks/useActiveClusterId';
 const MAX_ALERTS_DISPLAY = 10;
 
 type AlertItem = { reason: string; resource: string; namespace: string; kind: string; name: string };
@@ -69,7 +70,7 @@ function groupAlertsByReason(alerts: AlertItem[]): Map<string, AlertItem[]> {
 
 export const AlertsStrip = () => {
   const activeCluster = useActiveCluster();
-  const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
+  const currentClusterId = useActiveClusterId();
   const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured());
   const backendBaseUrl = getEffectiveBackendBaseUrl(useBackendConfigStore((s) => s.backendBaseUrl));
   const clusterId = currentClusterId ?? undefined;

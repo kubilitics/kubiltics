@@ -22,6 +22,7 @@ import { useDemoStore } from '@/stores/demoStore';
 import { trackRowAnimation } from './useResourceLiveUpdates';
 import type { KubernetesResource, ResourceList, ResourceType } from '@/hooks/useKubernetes';
 
+import { useActiveClusterId } from '@/hooks/useActiveClusterId';
 // ── Types ──────────────────────────────────────────────────────────────────────
 
 export type WatchEventType = 'ADDED' | 'MODIFIED' | 'DELETED' | 'BOOKMARK' | 'ERROR';
@@ -111,7 +112,7 @@ export function useKubernetesWatch<T extends KubernetesResource = KubernetesReso
   const storedUrl = useBackendConfigStore((s) => s.backendBaseUrl);
   const backendBaseUrl = getEffectiveBackendBaseUrl(storedUrl);
   const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured());
-  const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
+  const currentClusterId = useActiveClusterId();
   const isDemo = useDemoStore((s) => s.isDemo);
 
   const [connectionState, setConnectionState] = useState<WatchConnectionState>('disconnected');

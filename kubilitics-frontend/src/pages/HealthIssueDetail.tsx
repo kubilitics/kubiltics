@@ -35,6 +35,7 @@ import { listResources, getPodLogsUrl } from '@/services/backendApiClient';
 import { ERROR_KEYWORDS } from '@/lib/rootCauseHeuristic';
 import type { Insight } from '@/services/api/eventsIntelligence';
 
+import { useActiveClusterId } from '@/hooks/useActiveClusterId';
 /* ─── Severity helpers ──────────────────────────────────────────────────── */
 
 function severityIcon(severity: string) {
@@ -429,7 +430,7 @@ export default function HealthIssueDetail() {
   const { insightId } = useParams<{ insightId: string }>();
   const navigate = useNavigate();
 
-  const clusterId = useBackendConfigStore((s) => s.currentClusterId);
+  const clusterId = useActiveClusterId();
   const backendBaseUrl = useBackendConfigStore((s) => s.backendBaseUrl);
   const effectiveBaseUrl = getEffectiveBackendBaseUrl(backendBaseUrl);
 

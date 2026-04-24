@@ -15,6 +15,7 @@ import { useBackendConfigStore } from "@/stores/backendConfigStore";
 import { EmptyNoClusters } from "@/components/ui/empty-state";
 import { cn } from "@/lib/utils";
 
+import { useActiveClusterId } from '@/hooks/useActiveClusterId';
 const STATUS_CONFIG: Record<string, { badge: string; icon: typeof CheckCircle2 }> = {
   excellent: { badge: "bg-success/10 border-success/20 text-success", icon: CheckCircle2 },
   healthy: { badge: "bg-success/10 border-success/20 text-success", icon: CheckCircle2 },
@@ -36,7 +37,7 @@ const BREAKDOWN_LABELS: Record<string, string> = {
 
 export const ClusterHealthWidget = () => {
   const activeCluster = useActiveCluster();
-  const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
+  const currentClusterId = useActiveClusterId();
   const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured());
   const clusterId = currentClusterId ?? undefined;
 

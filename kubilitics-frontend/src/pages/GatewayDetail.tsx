@@ -35,6 +35,7 @@ import { useActiveCluster } from '@/stores/clusterPresenceStore';
 import { useDemoStore } from '@/stores/demoStore';
 import { listResources } from '@/services/backendApiClient';
 
+import { useActiveClusterId } from '@/hooks/useActiveClusterId';
 // ── Types ──────────────────────────────────────────────────────────────────────
 
 interface GatewayResource extends KubernetesResource {
@@ -102,7 +103,7 @@ function useGatewayRoutes(namespace: string, name: string) {
   const storedUrl = useBackendConfigStore((s) => s.backendBaseUrl);
   const backendBaseUrl = getEffectiveBackendBaseUrl(storedUrl);
   const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured());
-  const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
+  const currentClusterId = useActiveClusterId();
   const isDemo = useDemoStore((s) => s.isDemo);
 
   const routesQuery = useQuery({

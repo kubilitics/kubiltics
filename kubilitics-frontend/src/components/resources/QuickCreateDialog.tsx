@@ -14,6 +14,7 @@ import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/back
 import { useActiveCluster } from '@/stores/clusterPresenceStore';
 import { applyManifest } from '@/services/backendApiClient';
 
+import { useActiveClusterId } from '@/hooks/useActiveClusterId';
 // ─── Types ──────────────────────────────────────────────────────────────────
 
 export type QuickCreateResourceKind = 'Pod' | 'Deployment' | 'Service' | 'ConfigMap' | 'Namespace';
@@ -537,7 +538,7 @@ export function QuickCreateDialog({ open, onOpenChange, kind, onSuccess }: Quick
 
   const backendBaseUrl = getEffectiveBackendBaseUrl(useBackendConfigStore((s) => s.backendBaseUrl));
   const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured());
-  const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
+  const currentClusterId = useActiveClusterId();
   const activeCluster = useActiveCluster();
 
   // Generate YAML from form fields

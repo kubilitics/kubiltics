@@ -33,6 +33,7 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
 
+import { useActiveClusterId } from '@/hooks/useActiveClusterId';
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 export type TimeRange = '5m' | '15m' | '30m' | '1h' | '3h' | '6h' | '12h' | '24h';
@@ -263,7 +264,7 @@ export function TimeRangeMetrics({
   const [timeRange, setTimeRange] = useState<TimeRange>('1h');
   const stored = useBackendConfigStore((s) => s.backendBaseUrl);
   const baseUrl = getEffectiveBackendBaseUrl(stored);
-  const clusterId = useBackendConfigStore((s) => s.currentClusterId);
+  const clusterId = useActiveClusterId();
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const rangeConfig = TIME_RANGES.find((r) => r.value === timeRange)!;

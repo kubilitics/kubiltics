@@ -50,6 +50,7 @@ import { InsightsBanner } from '@/components/events/InsightsBanner';
 import { HealthChangesCard } from '@/components/events/HealthChangesCard';
 import type { ComponentScore, NamespaceHealth } from '@/services/api/clusterHealth';
 
+import { useActiveClusterId } from '@/hooks/useActiveClusterId';
 /* ─── Constants ───────────────────────────────────────────────────────────── */
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50];
@@ -279,7 +280,7 @@ export default function HealthDashboard() {
   const [pageSize, setPageSize] = useState(10);
   const [pageIndex, setPageIndex] = useState(0);
 
-  const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
+  const currentClusterId = useActiveClusterId();
   const activeClusterId = useActiveCluster()?.id ?? null;
   const aiCtx = useMemo(() => ({
     type: 'dashboard' as const,

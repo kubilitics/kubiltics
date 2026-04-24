@@ -61,6 +61,7 @@ import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 import { SearchHighlight } from '@/components/list/SearchHighlight';
 import { useMultiSelect } from '@/hooks/useMultiSelect';
 
+import { useActiveClusterId } from '@/hooks/useActiveClusterId';
 interface PodResource extends KubernetesResource {
  spec: {
  nodeName?: string;
@@ -329,7 +330,7 @@ export default function Pods() {
  const createResource = useCreateK8sResource('pods');
  const backendBaseUrl = getEffectiveBackendBaseUrl(useBackendConfigStore((s) => s.backendBaseUrl));
  const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured());
- const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
+ const currentClusterId = useActiveClusterId();
  const clusterId = currentClusterId ?? null;
  const { data: summaryData } = useClusterSummaryWithProject(clusterId ?? undefined);
 

@@ -49,6 +49,7 @@ import { PageLayout } from "@/components/layout/PageLayout";
 import { PageLoadingState } from "@/components/PageLoadingState";
 import { ApiError } from "@/components/ui/error-state";
 
+import { useActiveClusterId } from '@/hooks/useActiveClusterId';
 /* ─── Constants ────────────────────────────────────────────────────────────── */
 
 const KIND_ICONS: Record<string, typeof Server> = {
@@ -240,7 +241,7 @@ export default function ClusterOverview() {
   const [pageSize] = useState(10);
   const [pageIndex, setPageIndex] = useState(0);
 
-  const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
+  const currentClusterId = useActiveClusterId();
   const clusterId = currentClusterId ?? undefined;
 
   const { data, isLoading, isError } = useClusterOverviewData();

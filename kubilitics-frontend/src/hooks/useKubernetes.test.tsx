@@ -6,7 +6,7 @@ import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { renderHook, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useK8sResourceList, useK8sResource } from './useKubernetes';
-import { useActiveCluster, __resetForTest } from '@/stores/clusterPresenceStore';
+import { useActiveCluster, useClusterPresenceStore, __resetForTest } from '@/stores/clusterPresenceStore';
 import { useDemoStore } from '@/stores/demoStore';
 import * as backendApiClient from '@/services/backendApiClient';
 
@@ -104,10 +104,25 @@ describe('useK8sResourceList — namespace vs project priority', () => {
     vi.clearAllMocks();
     useDemoStore.getState().setDemo(false);
 
-    // Simulate: backend configured with a cluster
-    useBackendConfigStore.setState({
-      backendBaseUrl: 'http://localhost:8190',
-      currentClusterId: 'test-cluster',
+    // Simulate: backend configured with an active cluster. Post-Phase-7 the
+    // backend base URL lives in backendConfigStore and the active cluster
+    // lives in the presence store — seed both.
+    useBackendConfigStore.setState({ backendBaseUrl: 'http://localhost:8190' });
+    useClusterPresenceStore.setState({
+      discovered: [],
+      registered: [],
+      connected: [
+        {
+          identity: { name: 'test-cluster', serverUrl: 'https://test' },
+          source: 'manual',
+          session_id: 'test-cluster',
+          registered_at: new Date().toISOString(),
+          connected_at: new Date().toISOString(),
+          reachable: true,
+        },
+      ],
+      activeLogicalIdentity: { name: 'test-cluster', serverUrl: 'https://test' },
+      isReady: true,
     });
 
     // Simulate: active project that only includes 'default' and 'kube-system'
@@ -133,7 +148,7 @@ describe('useK8sResourceList — namespace vs project priority', () => {
   afterEach(() => {
     vi.restoreAllMocks();
     __resetForTest();
-    useBackendConfigStore.setState({ backendBaseUrl: '', currentClusterId: null });
+    useBackendConfigStore.setState({ backendBaseUrl: '' });
     useProjectStore.setState({ activeProject: null, activeProjectId: null });
   });
 

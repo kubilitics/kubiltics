@@ -9,6 +9,7 @@ import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/back
 import { useK8sResourceList } from './useKubernetes';
 import { getEvents } from '@/services/backendApiClient';
 
+import { useActiveClusterId } from '@/hooks/useActiveClusterId';
 export type InsightSeverity = 'info' | 'warning' | 'critical';
 
 export interface Insight {
@@ -60,7 +61,7 @@ function linkFor(kind: string, namespace: string, name: string): string {
 
 export function useInsights(): { insights: Insight[]; isLoading: boolean } {
   const activeCluster = useActiveCluster();
-  const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
+  const currentClusterId = useActiveClusterId();
   const storedUrl = useBackendConfigStore((s) => s.backendBaseUrl);
   const backendBaseUrl = getEffectiveBackendBaseUrl(storedUrl);
   const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured());

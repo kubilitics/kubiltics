@@ -10,6 +10,7 @@ import { getWorkloadsOverview, type WorkloadsOverview } from '@/services/backend
 import { useK8sResourceList } from './useKubernetes';
 import { useClusterOverview } from './useClusterOverview';
 
+import { useActiveClusterId } from '@/hooks/useActiveClusterId';
 function aggregateFromK8s(
   deployments: Record<string, unknown>[],
   statefulsets: Record<string, unknown>[],
@@ -171,7 +172,7 @@ function aggregateFromK8s(
 
 export function useWorkloadsOverview() {
   const activeCluster = useActiveCluster();
-  const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
+  const currentClusterId = useActiveClusterId();
   const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured());
   const stored = useBackendConfigStore((s) => s.backendBaseUrl);
   const backendBaseUrl = getEffectiveBackendBaseUrl(stored);

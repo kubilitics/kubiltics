@@ -14,6 +14,7 @@ import { useClusterSummaryWithProject } from './useClusterSummary';
 import { useBackendConfigStore } from '@/stores/backendConfigStore';
 import { useConnectionStatus } from './useConnectionStatus';
 
+import { useActiveClusterId } from '@/hooks/useActiveClusterId';
 export interface HealthSegment {
   label: string;
   count: number;
@@ -35,7 +36,7 @@ const QUERY_OPTS = {
 
 export function useDashboardResourceHealth() {
   const { isConnected } = useConnectionStatus();
-  const clusterId = useBackendConfigStore((s) => s.currentClusterId);
+  const clusterId = useActiveClusterId();
   const overview = useClusterOverview(clusterId ?? undefined);
 
   const enabled = isConnected;

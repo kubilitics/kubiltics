@@ -20,6 +20,7 @@ import { RecentEventsCard } from '@/components/events/RecentEventsCard';
 import { InsightsBanner } from '@/components/events/InsightsBanner';
 import { useActiveInsights, useDismissInsight } from '@/hooks/useEventsIntelligence';
 
+import { useActiveClusterId } from '@/hooks/useActiveClusterId';
 const container = {
   hidden: { opacity: 0 },
   show: {
@@ -36,7 +37,7 @@ const item = {
 export default function Dashboard() {
   const navigate = useNavigate();
   const activeCluster = useActiveCluster();
-  const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
+  const currentClusterId = useActiveClusterId();
   const { showTour, completeTour, skipTour } = useDashboardTour();
   const { data: insights } = useActiveInsights();
   const dismissInsight = useDismissInsight();

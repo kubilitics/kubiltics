@@ -59,6 +59,7 @@ import { useTableFiltersAndSort, type ColumnConfig } from '@/hooks/useTableFilte
 import { useColumnVisibility } from '@/hooks/useColumnVisibility';
 import { getDetailPath, normalizeKindForTopology } from '@/utils/resourceKindMapper';
 
+import { useActiveClusterId } from '@/hooks/useActiveClusterId';
 const typeConfig = {
  Normal: { icon: CheckCircle2, color: 'text-muted-foreground', bg: 'bg-muted' },
  Warning: { icon: AlertTriangle, color: 'text-orange-500', bg: 'bg-orange-500/15' },
@@ -147,7 +148,7 @@ export default function Events() {
  const storedUrl = useBackendConfigStore((s) => s.backendBaseUrl);
  const backendBaseUrl = getEffectiveBackendBaseUrl(storedUrl);
  const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured());
- const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
+ const currentClusterId = useActiveClusterId();
  const clusterId = currentClusterId ?? null;
  const useBackend = isBackendConfigured && !!clusterId;
 

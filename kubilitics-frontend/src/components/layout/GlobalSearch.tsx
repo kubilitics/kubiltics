@@ -46,6 +46,7 @@ import { useActiveCluster } from '@/stores/clusterPresenceStore';
 import { useNamespaceStore } from '@/stores/namespaceStore';
 import { useSearchHistory } from '@/hooks/useSearchHistory';
 
+import { useActiveClusterId } from '@/hooks/useActiveClusterId';
 const SEARCH_DEBOUNCE_MS = 250;
 
 // --- Category colors ---
@@ -214,7 +215,7 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
   // Cluster / backend state
   const backendBaseUrl = getEffectiveBackendBaseUrl(useBackendConfigStore((s) => s.backendBaseUrl));
   const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured());
-  const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
+  const currentClusterId = useActiveClusterId();
   const activeCluster = useActiveCluster();
   const setActiveNamespace = useNamespaceStore((s) => s.setActiveNamespace);
   const activeNamespace = useNamespaceStore((s) => s.activeNamespace);

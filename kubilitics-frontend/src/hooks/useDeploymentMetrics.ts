@@ -7,6 +7,7 @@ import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/back
 import { useActiveCluster, useClusterPresenceStore } from '@/stores/clusterPresenceStore';
 import { getDeploymentMetrics, type BackendDeploymentMetrics } from '@/services/backendApiClient';
 
+import { useActiveClusterId } from '@/hooks/useActiveClusterId';
 export function useDeploymentMetrics(
   namespace: string | undefined,
   deploymentName: string | undefined,
@@ -16,7 +17,7 @@ export function useDeploymentMetrics(
   const backendBaseUrl = getEffectiveBackendBaseUrl(storedUrl);
   const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured());
   const activeCluster = useActiveCluster();
-  const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
+  const currentClusterId = useActiveClusterId();
   const clusters = useClusterPresenceStore((s) => s.availableClusters());
   const clusterId = currentClusterId ?? undefined;
 

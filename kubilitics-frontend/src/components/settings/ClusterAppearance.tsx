@@ -6,7 +6,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { ChevronDown } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { getClusterAppearance, setClusterAppearance, getEnvBadgeLabel, getEnvBadgeClasses } from '@/stores/clusterStore';
+import { getClusterAppearance, setClusterAppearance, getEnvBadgeLabel, getEnvBadgeClasses } from '@/stores/clusterAppearance';
 import { useActiveCluster, useClusterPresenceStore } from '@/stores/clusterPresenceStore';
 import { cn } from '@/lib/utils';
 

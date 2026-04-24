@@ -549,7 +549,6 @@ function CrossClusterSearch({
   const stored = useBackendConfigStore((s) => s.backendBaseUrl);
   const backendBaseUrl = getEffectiveBackendBaseUrl(stored);
   const isConfigured = useBackendConfigStore((s) => s.isBackendConfigured());
-  const setCurrentClusterId = useBackendConfigStore((s) => s.setCurrentClusterId);
   const queryClient = useQueryClient();
 
   const [query, setQuery] = useState('');
@@ -626,7 +625,6 @@ function CrossClusterSearch({
   const handleResultClick = useCallback(
     (result: FleetSearchResult) => {
       // Switch to the cluster context first
-      setCurrentClusterId(result.clusterId);
       setActiveClusterBySessionId(result.clusterId);
 
       // Clear stale queries
@@ -640,7 +638,7 @@ function CrossClusterSearch({
       setResults([]);
       setIsFocused(false);
     },
-    [navigate, setCurrentClusterId, queryClient],
+    [navigate, queryClient],
   );
 
   const showResults = isFocused && query.trim().length > 0;
@@ -733,7 +731,6 @@ function CrossClusterSearch({
 export default function FleetDashboard() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const setCurrentClusterId = useBackendConfigStore((s) => s.setCurrentClusterId);
   const fleetData = useFleetOverview();
   const { clusters, aggregates, isError, error } = fleetData;
   // Only show loading skeleton on FIRST render. Once we have data, never go back to skeleton.
@@ -779,7 +776,6 @@ export default function FleetDashboard() {
     // the canonical source; the backend-config currentClusterId is still
     // written for the subset of hooks that read from it during the
     // transition window.
-    setCurrentClusterId(cluster.id);
     setActiveClusterBySessionId(cluster.id);
 
     // Clear stale queries from the previous cluster so fresh data loads

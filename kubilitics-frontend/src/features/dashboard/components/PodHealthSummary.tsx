@@ -11,9 +11,10 @@ import { useConnectionStatus } from "@/hooks/useConnectionStatus";
 import { useK8sResourceList } from "@/hooks/useKubernetes";
 import { cn } from "@/lib/utils";
 
+import { useActiveClusterId } from '@/hooks/useActiveClusterId';
 export const PodHealthSummary = () => {
   const activeCluster = useActiveCluster();
-  const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
+  const currentClusterId = useActiveClusterId();
   const clusterId = currentClusterId ?? undefined;
   const { isConnected } = useConnectionStatus();
   const overview = useClusterOverview(clusterId);

@@ -9,6 +9,7 @@ import { useMemo } from 'react';
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
 import { getMetricsSummary, type BackendMetricsQueryResult } from '@/services/backendApiClient';
 
+import { useActiveClusterId } from '@/hooks/useActiveClusterId';
 export type WorkloadMetricsMapResourceType =
   | 'deployment'
   | 'replicaset'
@@ -37,7 +38,7 @@ export function useWorkloadMetricsMap(
   const storedUrl = useBackendConfigStore((s) => s.backendBaseUrl);
   const backendBaseUrl = getEffectiveBackendBaseUrl(storedUrl);
   const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured());
-  const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
+  const currentClusterId = useActiveClusterId();
   const clusterId = currentClusterId ?? null;
 
   const boundedEntries = useMemo(

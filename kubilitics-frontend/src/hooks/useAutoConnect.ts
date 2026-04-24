@@ -90,7 +90,6 @@ export function useAutoConnect(): UseAutoConnectReturn {
   const setDemo = useDemoStore((s) => s.setDemo);
   const setAppMode = useAppModeStore((s) => s.setAppMode);
   const storedBackendUrl = useBackendConfigStore((s) => s.backendBaseUrl);
-  const setCurrentClusterId = useBackendConfigStore((s) => s.setCurrentClusterId);
 
   // State
   const [isAutoConnecting, setIsAutoConnecting] = useState(false);
@@ -145,7 +144,6 @@ export function useAutoConnect(): UseAutoConnectReturn {
       // Apply connection: presence SSE populates the identity list; activate
       // by session id and flip the backend-config pointer for hooks still
       // reading from there.
-      setCurrentClusterId(backendCluster.id);
       setActiveClusterBySessionId(backendCluster.id);
       setDemo(false);
       setAppMode('desktop');
@@ -173,7 +171,6 @@ export function useAutoConnect(): UseAutoConnectReturn {
   }, [
     selectedContext,
     storedBackendUrl,
-    setCurrentClusterId,
     setDemo,
     setAppMode,
     queryClient,

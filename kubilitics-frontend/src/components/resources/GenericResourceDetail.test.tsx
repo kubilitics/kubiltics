@@ -38,11 +38,7 @@ vi.mock('@/hooks/useKubernetes', () => ({
   useUpdateK8sResource: () => ({ mutateAsync: vi.fn() }),
 }));
 
-vi.mock('@/stores/clusterStore', () => ({
-  useClusterStore: (selector?: (s: Record<string, unknown>) => unknown) => {
-    const state = { activeCluster: { name: 'test-cluster' } };
-    return selector ? selector(state) : state;
-  },
+vi.mock('@/stores/clusterAppearance', () => ({
   getClusterAppearance: () => ({ color: '', environment: '', alias: '' }),
   setClusterAppearance: vi.fn(),
   getEnvBadgeLabel: () => null,

@@ -40,6 +40,7 @@ import { Progress } from '@/components/ui/progress';
 import { DeploymentIcon } from '@/components/icons/KubernetesIcons';
 import { useMultiSelect } from '@/hooks/useMultiSelect';
 
+import { useActiveClusterId } from '@/hooks/useActiveClusterId';
 interface DeploymentResource extends KubernetesResource {
  spec: {
  replicas: number;
@@ -240,7 +241,7 @@ export default function Deployments() {
  const backendBaseUrl = getEffectiveBackendBaseUrl(useBackendConfigStore((s) => s.backendBaseUrl));
  const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured());
  const activeCluster = useActiveCluster();
- const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
+ const currentClusterId = useActiveClusterId();
  const clusterId = currentClusterId ?? null;
 
  // eslint-disable-next-line react-hooks/exhaustive-deps

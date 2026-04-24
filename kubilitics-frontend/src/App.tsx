@@ -1,13 +1,11 @@
-import { Suspense, lazy, useState, useEffect, useCallback, type ReactNode } from "react";
+import { Suspense, lazy, useState, useEffect, type ReactNode } from "react";
 import { useAppZoom } from "@/hooks/useAppZoom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, MemoryRouter, Routes, Route, Navigate, useNavigate, useLocation } from "react-router-dom";
-import { useClusterStore } from "@/stores/clusterStore";
-import { useDemoStore } from "@/stores/demoStore";
-import { useClusterSync } from "@/hooks/useClusterSync";
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from "@/stores/backendConfigStore";
+import { useActiveCluster } from "@/stores/clusterPresenceStore";
 import { Loader2 } from "lucide-react";
 
 // Lazy-load heavy API modules to prevent TDZ (Temporal Dead Zone) crashes.
@@ -15,7 +13,6 @@ import { Loader2 } from "lucide-react";
 // eagerly importing it into the root chunk causes initialization order issues
 // in Rollup's bundled output.
 const lazyBackendApi = () => import("@/services/backendApiClient");
-const lazyAdapter = () => import("@/lib/backendClusterAdapter");
 
 // Loading Fallback Component — uses a skeleton that mirrors typical list page layout
 // instead of a blank screen with a spinner, preventing the "white flash" problem.
@@ -242,190 +239,34 @@ const queryClient = new QueryClient({
   },
 });
 
-// Restore activeCluster from backend when currentClusterId is persisted (e.g. after refresh).
-// So the user stays on the current URL instead of being sent to "/".
-//
-// Headlamp-style cluster sync: always fetch cluster list from backend on startup.
-// If persisted currentClusterId matches a backend cluster, restore it.
-// If not (stale/deleted), auto-select the first available cluster.
-// If no clusters exist, show the connect page.
-// Polls every 30s so external changes (CLI, API) propagate without refresh.
-function useRestoreClusterFromBackend() {
-  const { activeCluster, setActiveCluster, setClusters } = useClusterStore();
-  const setDemo = useDemoStore((s) => s.setDemo);
-  const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
-  const setCurrentClusterId = useBackendConfigStore((s) => s.setCurrentClusterId);
-  const backendBaseUrl = useBackendConfigStore((s) => s.backendBaseUrl);
-  const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured());
-  const [restoreAttempted, setRestoreAttempted] = useState(false);
-  const [restoreFailed, setRestoreFailed] = useState(false);
-
-  // Core sync function — fetches cluster list and reconciles with store
-  const syncClusters = useCallback(async (isInitial: boolean) => {
-    const baseUrl = getEffectiveBackendBaseUrl(backendBaseUrl);
-    if (!baseUrl || !isBackendConfigured) {
-      if (isInitial) setRestoreFailed(true);
-      return;
-    }
-
-    try {
-      const [{ getClusters }, { backendClusterToCluster }] = await Promise.all([
-        lazyBackendApi(),
-        lazyAdapter(),
-      ]);
-      const list = await getClusters(baseUrl);
-      const connectedClusters = list.map(backendClusterToCluster);
-      setClusters(connectedClusters);
-
-      // Phase 7: onboardingStore deleted. "Has the user completed onboarding?"
-      // is derived from `clusterPresenceStore.activeLogicalIdentity !== null`.
-      // No action needed here — the PresenceEntryPoint gates the entry UX.
-
-      // Determine which cluster to activate.
-      // Headlamp-style identity: match by (name, server_url) BEFORE falling back
-      // to id. When Docker Desktop / kind is restarted, the backend re-issues a
-      // new UUID for the same (name, server_url) tuple. Matching on id alone
-      // would pick list[0] (wrong cluster in multi-cluster setups); matching on
-      // (name, server_url) finds the re-registered entry and refreshes the id
-      // transparently so sidebar counters and chat focus_cluster_id stay right.
-      const currentActive = useClusterStore.getState().activeCluster;
-      const storedId = useBackendConfigStore.getState().currentClusterId;
-
-      const sameIdentity = (c: { name?: string; server_url?: string } | null, d: { name?: string; server_url?: string } | null) =>
-        !!c && !!d && c.name === d.name && c.server_url === d.server_url;
-
-      if (currentActive) {
-        const sameById = list.find((c) => c.id === currentActive.id);
-        const sameByIdentity = list.find((c) => sameIdentity(c, { name: currentActive.name, server_url: currentActive.serverUrl }));
-        if (sameById) {
-          return; // id still matches, nothing to do
-        }
-        if (sameByIdentity) {
-          // Cluster was re-registered with a new id. Refresh in place.
-          setActiveCluster(backendClusterToCluster(sameByIdentity));
-          setCurrentClusterId(sameByIdentity.id);
-          return;
-        }
-      }
-
-      // No currentActive (fresh launch) or it was truly removed. Prefer the
-      // persisted id, then fall back to first.
-      const target = list.find((c) => c.id === storedId) ?? list[0];
-      if (!target) {
-        if (isInitial) setRestoreFailed(true);
-        return;
-      }
-
-      // Update persisted ID if it changed
-      if (target.id !== storedId) {
-        setCurrentClusterId(target.id);
-      }
-
-      setActiveCluster(backendClusterToCluster(target));
-      setDemo(false);
-    } catch {
-      if (isInitial) setRestoreFailed(true);
-    }
-  }, [backendBaseUrl, isBackendConfigured, setClusters, setActiveCluster, setCurrentClusterId, setDemo]);
-
-  // Initial sync on mount — set restoreAttempted AFTER async fetch completes
-  useEffect(() => {
-    if (restoreAttempted || !isBackendConfigured) return;
-    let cancelled = false;
-    syncClusters(true).then(() => {
-      if (!cancelled) setRestoreAttempted(true);
-    }).catch(() => {
-      if (!cancelled) setRestoreAttempted(true);
-    });
-    return () => { cancelled = true; };
-  }, [isBackendConfigured, restoreAttempted, syncClusters]);
-
-  // Poll every 15s to pick up external changes (cluster add/delete via API/CLI),
-  // AND re-sync immediately whenever the window regains focus or becomes visible.
-  // The focus/visibility hooks are the main robustness win: a user who deletes a
-  // context in their terminal and switches back to Kubilitics sees the change
-  // within a frame instead of waiting up to 30s for the next poll. When the
-  // persisted activeCluster.id no longer exists in the returned list, syncClusters
-  // falls through to picking list[0], so split-brain UI (header on a pruned
-  // cluster, widgets on a valid one) is impossible past the next sync.
-  useEffect(() => {
-    if (!isBackendConfigured) return;
-    const interval = setInterval(() => syncClusters(false), 15_000);
-    const onFocus = () => syncClusters(false);
-    const onVisibility = () => {
-      if (document.visibilityState === 'visible') syncClusters(false);
-    };
-    window.addEventListener('focus', onFocus);
-    document.addEventListener('visibilitychange', onVisibility);
-    return () => {
-      clearInterval(interval);
-      window.removeEventListener('focus', onFocus);
-      document.removeEventListener('visibilitychange', onVisibility);
-    };
-  }, [isBackendConfigured, syncClusters]);
-
-  return { restoreAttempted, restoreFailed };
-}
-
 // Protected route: requires active cluster only (Headlamp/Lens model — no login wall).
-// On refresh, activeCluster is not persisted; we restore it from backend using persisted currentClusterId
-// so the user stays on the current page instead of being redirected to "/".
-// When redirecting to connect, we preserve the current URL in returnUrl so after reconnect the user lands back.
+//
+// Phase 7: the legacy `useRestoreClusterFromBackend` + `useClusterStore`
+// hydration dance is gone. `clusterPresenceStore` is the canonical source of
+// the active-cluster identity — populated by the SSE subscription mounted via
+// `ClusterPresenceSubscriber`. When presence is still loading we show the
+// skeleton; when it's ready but no cluster is active we redirect to /clusters.
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const location = useLocation();
-  const { activeCluster } = useClusterStore();
-  const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
-  const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured());
-  const [isHydrated, setIsHydrated] = useState(false);
-  const [hydrationTimedOut, setHydrationTimedOut] = useState(false);
-  const [restoreTimedOut, setRestoreTimedOut] = useState(false);
-  const { restoreAttempted, restoreFailed } = useRestoreClusterFromBackend();
+  const activeCluster = useActiveCluster();
+  const isReady = useClusterPresenceStore((s) => s.isReady);
+  const [presenceTimedOut, setPresenceTimedOut] = useState(false);
 
+  // Safety timeout: if presence snapshot takes more than 8 seconds, stop waiting.
   useEffect(() => {
-    const checkHydration = () => {
-      const clusterHydrated = useClusterStore.persist.hasHydrated();
-      const configHydrated = useBackendConfigStore.persist.hasHydrated();
-      if (clusterHydrated && configHydrated) {
-        setIsHydrated(true);
-      }
-    };
-
-    checkHydration();
-    const unsubCluster = useClusterStore.persist.onFinishHydration(checkHydration);
-    const unsubConfig = useBackendConfigStore.persist.onFinishHydration(checkHydration);
-
-    return () => {
-      unsubCluster();
-      unsubConfig();
-    };
-  }, []);
-
-  // Safety timeout: if hydration takes more than 3 seconds, stop waiting
-  // This prevents a permanent skeleton if localStorage is broken or persist middleware fails
-  useEffect(() => {
-    const timer = setTimeout(() => setHydrationTimedOut(true), 3000);
+    const timer = setTimeout(() => setPresenceTimedOut(true), 8000);
     return () => clearTimeout(timer);
   }, []);
 
-  // Safety timeout: if restore takes more than 8 seconds, stop waiting
-  useEffect(() => {
-    const timer = setTimeout(() => setRestoreTimedOut(true), 8000);
-    return () => clearTimeout(timer);
-  }, []);
-
-  // Settings page is always accessible — never gated by hydration, restore, or cluster state.
+  // Settings page is always accessible — never gated by cluster state.
   // It's a configuration page that must render instantly regardless of app state.
   const isSettingsPage = location.pathname === '/settings';
   if (isSettingsPage) return <>{children}</>;
 
-  // Never block on hydration forever — if it times out, proceed with defaults
-  if (!isHydrated && !hydrationTimedOut) return <PageLoader />;
-
-  // If we have a persisted cluster ID but no activeCluster yet, wait for restore (or show loader until it fails).
-  const canRestore = currentClusterId && isBackendConfigured;
-  if (!activeCluster && canRestore && !restoreFailed && !restoreTimedOut) {
-    return <PageLoader />;
-  }
+  // Wait for the first presence snapshot before redirecting; otherwise the
+  // route would briefly bounce to /clusters on cold start even when the user
+  // has a populated kubeconfig.
+  if (!isReady && !presenceTimedOut) return <PageLoader />;
 
   if (!activeCluster) {
     // Phase 7: /connect retired — all cluster-entry UX lives on /clusters
@@ -497,6 +338,7 @@ import { BackendClusterValidator } from "@/components/BackendClusterValidator";
 import { useOverviewStream } from "@/hooks/useOverviewStream";
 import { isTauri, invokeWithRetry, openExternal } from "@/lib/tauri";
 import { ThemeProvider } from "@/providers/ThemeProvider";
+import { useActiveClusterId } from '@/hooks/useActiveClusterId';
 // Phase 7: onboardingStore + WelcomeScreen + FirstRunWizard deleted.
 // Entry UX is now owned by PresenceEntryPoint + /welcome + /clusters.
 
@@ -516,7 +358,7 @@ const AppRouter = isTauri() ? MemoryRouter : BrowserRouter;
  * Renders nothing — purely a side-effect component.
  */
 function ClusterOverviewStream() {
-  const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
+  const currentClusterId = useActiveClusterId();
   useOverviewStream(currentClusterId ?? undefined);
   return null;
 }
@@ -527,7 +369,7 @@ function ClusterOverviewStream() {
  * invalidations for the corresponding resource types.
  */
 function ResourceLiveUpdates() {
-  const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
+  const currentClusterId = useActiveClusterId();
   useResourceLiveUpdates({ clusterId: currentClusterId });
   return null;
 }
@@ -757,18 +599,22 @@ function AppZoom({ children }: { children: ReactNode }) {
 }
 
 // ─── Centralized cache invalidation on cluster switch ──────────────────────
-// Every setActiveCluster call (Header picker, ClusterConnect.handleConnect,
-// useRestoreClusterFromBackend, FirstRunWizard, ShellSession) changes the
-// cluster identity. If we don't clear React Query's cache, widgets briefly
-// render stale pods/deployments/services from the PREVIOUS cluster under the
-// NEW cluster's identity — same class of bug as the P0 cluster-identity fix.
-// Subscribing at the store level (outside React) guarantees no caller can
-// forget to invalidate.
-let _prevActiveClusterId: string | undefined;
-useClusterStore.subscribe((state) => {
-  const nextId = state.activeCluster?.id;
-  if (nextId && nextId !== _prevActiveClusterId) {
-    _prevActiveClusterId = nextId;
+// Every cluster-switch code path (Header picker, FleetDashboard, ShellSession,
+// ProjectDetailPage, useAutoConnect, AddClusterDialog) eventually flips the
+// active logical identity in clusterPresenceStore. If we don't clear React
+// Query's cache, widgets briefly render stale pods/deployments/services from
+// the PREVIOUS cluster under the NEW cluster's identity — same class of bug
+// as the P0 cluster-identity fix.
+//
+// Subscribing at the presence-store level (outside React) guarantees no
+// caller can forget to invalidate. `activeLogicalIdentity` is compared by
+// key (name|serverUrl) so swapping identically-shaped objects is a no-op.
+let _prevClusterKey: string | undefined;
+useClusterPresenceStore.subscribe((state) => {
+  const id = state.activeLogicalIdentity;
+  const nextKey = id ? `${id.name}|${id.serverUrl}` : undefined;
+  if (nextKey && nextKey !== _prevClusterKey) {
+    _prevClusterKey = nextKey;
     queryClient.removeQueries({ queryKey: ['k8s'] });
     queryClient.removeQueries({ queryKey: ['backend'] });
   }

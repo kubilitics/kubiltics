@@ -15,6 +15,7 @@ import { useActiveCluster } from '@/stores/clusterPresenceStore';
 import { useProjectStore } from '@/stores/projectStore';
 import { listResources, getResource } from '@/services/backendApiClient';
 
+import { useActiveClusterId } from '@/hooks/useActiveClusterId';
 /** Maps sidebar route paths to the resource type(s) they display. */
 const ROUTE_RESOURCE_MAP: Record<string, string[]> = {
   '/pods': ['pods'],
@@ -86,7 +87,7 @@ export function useHoverPrefetch() {
   const storedUrl = useBackendConfigStore((s) => s.backendBaseUrl);
   const backendBaseUrl = getEffectiveBackendBaseUrl(storedUrl);
   const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured());
-  const clusterId = useBackendConfigStore((s) => s.currentClusterId);
+  const clusterId = useActiveClusterId();
   const activeCluster = useActiveCluster();
   const activeProjectId = useProjectStore((s) => s.activeProject?.id ?? null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);

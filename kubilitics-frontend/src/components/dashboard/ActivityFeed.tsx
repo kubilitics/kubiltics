@@ -28,6 +28,7 @@ import { useKubernetesConfigStore } from '@/stores/kubernetesConfigStore';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 
+import { useActiveClusterId } from '@/hooks/useActiveClusterId';
 /** Normalized event shape (backend or K8s list). */
 interface NormalizedEvent {
   type: string;
@@ -108,7 +109,7 @@ function normalizeK8sEvent(item: { metadata?: { uid?: string }; type?: string; r
 
 export function ActivityFeed() {
   const activeCluster = useActiveCluster();
-  const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
+  const currentClusterId = useActiveClusterId();
   const storedUrl = useBackendConfigStore((s) => s.backendBaseUrl);
   const backendBaseUrl = getEffectiveBackendBaseUrl(storedUrl);
   const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured());

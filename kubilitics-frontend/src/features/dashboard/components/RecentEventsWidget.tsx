@@ -22,6 +22,7 @@ import { useK8sResourceList } from "@/hooks/useKubernetes";
 import { getEvents, type BackendEvent } from "@/services/backendApiClient";
 import { getDetailPath } from "@/utils/resourceKindMapper";
 
+import { useActiveClusterId } from '@/hooks/useActiveClusterId';
 const ROUTE_BY_KIND: Record<string, string> = {
   Pod: "pods",
   Deployment: "deployments",
@@ -121,7 +122,7 @@ function k8sToNormalized(item: {
 
 export const RecentEventsWidget = () => {
   const activeCluster = useActiveCluster();
-  const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
+  const currentClusterId = useActiveClusterId();
   const storedUrl = useBackendConfigStore((s) => s.backendBaseUrl);
   const backendBaseUrl = getEffectiveBackendBaseUrl(storedUrl);
   const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured());

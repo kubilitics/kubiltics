@@ -5,6 +5,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
 import { useActiveCluster } from '@/stores/clusterPresenceStore';
+import { useActiveClusterId } from '@/hooks/useActiveClusterId';
 import {
   getReplicaSetMetrics,
   getStatefulSetMetrics,
@@ -34,7 +35,7 @@ export function useWorkloadMetrics(
   const backendBaseUrl = getEffectiveBackendBaseUrl(storedUrl);
   const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured());
   const activeCluster = useActiveCluster();
-  const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
+  const currentClusterId = useActiveClusterId();
   const clusterId = currentClusterId ?? null;
 
   const enabled =

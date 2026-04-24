@@ -47,18 +47,9 @@ vi.mock('@/stores/backendConfigStore', () => ({
   getEffectiveBackendBaseUrl: () => 'http://localhost:8190',
 }));
 
-// Cluster store — both the legacy and presence flavours are mocked so pages
-// migrated to `useActiveCluster()` keep seeing the test cluster.
-vi.mock('@/stores/clusterStore', () => ({
-  useClusterStore: (selector?: (s: Record<string, unknown>) => unknown) => {
-    const state: Record<string, unknown> = {
-      activeCluster: { id: 'test-cluster-id', name: 'test-cluster', context: 'test-context' },
-      clusters: [{ id: 'test-cluster-id', name: 'test-cluster', context: 'test-context' }],
-      setActiveCluster: vi.fn(),
-      setClusters: vi.fn(),
-    };
-    return selector ? selector(state) : state;
-  },
+// Phase 7: clusterStore is deleted. The cluster-appearance helpers that used
+// to live there now live in @/stores/clusterAppearance; mock that instead.
+vi.mock('@/stores/clusterAppearance', () => ({
   getClusterAppearance: () => ({ color: '', environment: '', alias: '' }),
   setClusterAppearance: vi.fn(),
   getEnvBadgeLabel: () => null,
@@ -351,22 +342,9 @@ describe('Page smoke tests', () => {
     });
 
     it('shows "No cluster selected" when no active cluster', async () => {
-      // Temporarily override BOTH legacy and presence mocks — Dashboard reads
-      // the presence view via `useActiveCluster()`, but some transitively
-      // imported hooks still dip into `useClusterStore` during the transition.
-      const legacy = (await import('@/stores/clusterStore')) as unknown as Record<string, unknown>;
+      // Swap the presence mock so useActiveCluster() returns null; Dashboard
+      // reads the presence view directly post-Phase-7.
       const presence = (await import('@/stores/clusterPresenceStore')) as unknown as Record<string, unknown>;
-
-      const origLegacy = legacy.useClusterStore;
-      legacy.useClusterStore = (selector?: (s: Record<string, unknown>) => unknown) => {
-        const state: Record<string, unknown> = {
-          activeCluster: null,
-          clusters: [],
-          setActiveCluster: vi.fn(),
-          setClusters: vi.fn(),
-        };
-        return selector ? selector(state) : state;
-      };
       const origUseActive = presence.useActiveCluster;
       presence.useActiveCluster = () => null;
 
@@ -374,7 +352,6 @@ describe('Page smoke tests', () => {
       renderPage(<Dashboard />);
       expect(screen.getByText('No cluster selected')).toBeInTheDocument();
 
-      legacy.useClusterStore = origLegacy;
       presence.useActiveCluster = origUseActive;
     });
   });

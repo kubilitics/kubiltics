@@ -32,6 +32,7 @@ import { JobIcon } from '@/components/icons/KubernetesIcons';
 import { BulkActionBar, executeBulkOperation } from '@/components/resources';
 import { useMultiSelect } from '@/hooks/useMultiSelect';
 
+import { useActiveClusterId } from '@/hooks/useActiveClusterId';
 interface JobResource extends KubernetesResource {
  metadata: KubernetesResource['metadata'] & { ownerReferences?: Array<{ kind: string; name: string }> };
  spec: {
@@ -183,7 +184,7 @@ export default function Jobs() {
  const backendBaseUrl = getEffectiveBackendBaseUrl(useBackendConfigStore((s) => s.backendBaseUrl));
  const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured());
  const activeCluster = useActiveCluster();
- const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
+ const currentClusterId = useActiveClusterId();
  const clusterId = currentClusterId ?? null;
  const { data, isLoading, isError, isFetching, dataUpdatedAt, refetch } = useK8sResourceList<JobResource>('jobs', undefined, { limit: 5000 });
  const deleteResource = useDeleteK8sResource('jobs');

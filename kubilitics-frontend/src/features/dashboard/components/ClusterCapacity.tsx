@@ -23,6 +23,7 @@ import { Loader2, Server, Cpu, MemoryStick, Hexagon, Info, Layers } from "lucide
 import { EmptyNoClusters } from "@/components/ui/empty-state";
 import { cn } from "@/lib/utils";
 
+import { useActiveClusterId } from '@/hooks/useActiveClusterId';
 /* ═══════════════════════════════════════════════════════════════════════════
    Helpers
    ═══════════════════════════════════════════════════════════════════════════ */
@@ -215,7 +216,7 @@ function CapacityDonut({
    ═══════════════════════════════════════════════════════════════════════════ */
 
 export const ClusterCapacity = () => {
-  const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
+  const currentClusterId = useActiveClusterId();
   const clusterId = currentClusterId ?? undefined;
   const { isConnected } = useConnectionStatus();
   const overview = useClusterOverview(clusterId);

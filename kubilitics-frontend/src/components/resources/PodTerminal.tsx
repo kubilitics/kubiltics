@@ -15,6 +15,7 @@ import { toast } from '@/components/ui/sonner';
 import { BrandWatermark } from '@/components/BrandWatermark';
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
 
+import { useActiveClusterId } from '@/hooks/useActiveClusterId';
 interface PodTerminalProps {
   podName: string;
   namespace: string;
@@ -56,7 +57,7 @@ export function PodTerminal({
 
   const storedUrl = useBackendConfigStore((s) => s.backendBaseUrl);
   const baseUrl = getEffectiveBackendBaseUrl(storedUrl);
-  const clusterId = useBackendConfigStore((s) => s.currentClusterId);
+  const clusterId = useActiveClusterId();
 
   const connect = useCallback(() => {
     if (!clusterId || !podName || !namespace) return;

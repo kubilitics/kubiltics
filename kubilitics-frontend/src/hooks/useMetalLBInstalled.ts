@@ -10,12 +10,13 @@ import { getClusterFeatureMetallb } from '@/services/backendApiClient';
 import { useK8sResourceList } from './useKubernetes';
 import { useConnectionStatus } from './useConnectionStatus';
 
+import { useActiveClusterId } from '@/hooks/useActiveClusterId';
 export function useMetalLBInstalled(): { installed: boolean; isLoading: boolean } {
   const { isConnected } = useConnectionStatus();
   const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured());
   const backendBaseUrl = getEffectiveBackendBaseUrl();
   const activeCluster = useActiveCluster();
-  const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
+  const currentClusterId = useActiveClusterId();
   const clusterId = currentClusterId ?? null;
 
   const backendQuery = useQuery({

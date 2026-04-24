@@ -9,7 +9,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useClusterPresenceStore } from '@/stores/clusterPresenceStore';
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 import { useBackendConfigStore } from '@/stores/backendConfigStore';
-import type { Cluster } from '@/stores/clusterStore';
+import type { DiscoveredCluster } from '@/types/resilient';
 
 // ─── Types ───────────────────────────────────────────────────
 
@@ -43,7 +43,7 @@ export interface SearchResult {
 }
 
 export interface ClusterSearchGroup {
-  cluster: Pick<Cluster, 'id' | 'name' | 'provider' | 'status'>;
+  cluster: { id: string; name: string; provider?: string; status?: string };
   results: SearchResult[];
   error?: string;
 }
@@ -184,21 +184,26 @@ export function useCrossClusterSearch(): CrossClusterSearchState {
 
 async function searchClustersIndividually(
   backendBaseUrl: string,
-  clusters: Cluster[],
+  clusters: DiscoveredCluster[],
   query: string,
   signal: AbortSignal
 ): Promise<ClusterSearchGroup[]> {
-  const activeClusters = clusters.filter((c) => !c.__isDemo && c.status !== 'error');
+  // Only registered entries (session_id !== '') are reachable via the
+  // cluster-scoped API. Discovered-but-not-yet-registered entries are
+  // skipped — the search simply won't include them.
+  const activeClusters = clusters.filter((c) => !!c.session_id);
 
   const promises = activeClusters.map(async (cluster): Promise<ClusterSearchGroup> => {
+    const id = cluster.session_id ?? '';
+    const name = cluster.identity.name;
     try {
       const res = await fetch(
-        `${backendBaseUrl}/api/v1/clusters/${cluster.id}/search?q=${encodeURIComponent(query)}`,
+        `${backendBaseUrl}/api/v1/clusters/${id}/search?q=${encodeURIComponent(query)}`,
         { signal }
       );
       if (!res.ok) {
         return {
-          cluster: { id: cluster.id, name: cluster.name, provider: cluster.provider, status: cluster.status },
+          cluster: { id, name, provider: cluster.provider },
           results: [],
           error: `HTTP ${res.status}`,
         };
@@ -206,18 +211,18 @@ async function searchClustersIndividually(
       const data = await res.json();
       const items: SearchResult[] = (data.results ?? []).map((r: SearchResult) => ({
         ...r,
-        clusterId: cluster.id,
-        clusterName: cluster.name,
+        clusterId: id,
+        clusterName: name,
         href: r.href || buildResourceHref(r.kind, r.name, r.namespace),
       }));
       return {
-        cluster: { id: cluster.id, name: cluster.name, provider: cluster.provider, status: cluster.status },
+        cluster: { id, name, provider: cluster.provider },
         results: items,
       };
     } catch (err) {
       if ((err as Error).name === 'AbortError') throw err;
       return {
-        cluster: { id: cluster.id, name: cluster.name, provider: cluster.provider, status: cluster.status },
+        cluster: { id, name, provider: cluster.provider },
         results: [],
         error: err instanceof Error ? err.message : 'Search failed',
       };

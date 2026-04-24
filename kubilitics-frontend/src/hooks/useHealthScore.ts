@@ -7,6 +7,7 @@ import { useClusterSummary } from './useClusterSummary';
 import { useClusterOverview } from './useClusterOverview';
 import { getEvents } from '@/services/backendApiClient';
 
+import { useActiveClusterId } from '@/hooks/useActiveClusterId';
 export interface HealthScore {
   score: number;
   grade: 'A' | 'B' | 'C' | 'D' | 'F';
@@ -38,7 +39,7 @@ export function useHealthScore(): HealthScore {
   const storedUrl = useBackendConfigStore((s) => s.backendBaseUrl);
   const backendBaseUrl = getEffectiveBackendBaseUrl(storedUrl);
   const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured());
-  const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
+  const currentClusterId = useActiveClusterId();
   const clusterId = currentClusterId ?? undefined;
 
   // Backend path: reuse cached summary + overview queries (no extra requests)

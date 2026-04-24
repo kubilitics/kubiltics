@@ -4,7 +4,7 @@
  * Week 7: Cluster Colors & Environment Badges
  */
 import { useState, useEffect } from 'react';
-import { getClusterAppearance } from '@/stores/clusterStore';
+import { getClusterAppearance } from '@/stores/clusterAppearance';
 import { useActiveCluster } from '@/stores/clusterPresenceStore';
 
 export function ProductionBanner() {

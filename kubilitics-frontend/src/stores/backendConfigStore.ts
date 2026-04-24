@@ -82,16 +82,13 @@ export function getEffectiveBackendBaseUrl(stored: string): string {
 export interface BackendConfigState {
   /** Base URL of Kubilitics backend (e.g. http://localhost:8190). Empty = backend not configured. */
   backendBaseUrl: string;
-  /** Currently selected cluster ID for backend-scoped requests (e.g. topology, resources). */
-  currentClusterId: string | null;
   /** Flag to prevent session restore after explicit logout. */
   logoutFlag: boolean;
 }
 
 interface BackendConfigStore extends BackendConfigState {
   setBackendBaseUrl: (url: string) => void;
-  setCurrentClusterId: (clusterId: string | null) => void;
-  /** Clear backend URL and cluster; call when switching to direct K8s or disconnecting. */
+  /** Clear backend URL; call when switching to direct K8s or disconnecting. */
   clearBackend: () => void;
   /** Set logout flag to prevent session restore. */
   setLogoutFlag: (flag: boolean) => void;
@@ -107,7 +104,6 @@ const initialBackendUrl = isTauriBuildTime() ? DEFAULT_BACKEND_BASE_URL : '';
 
 const initialState: BackendConfigState = {
   backendBaseUrl: initialBackendUrl,
-  currentClusterId: null,
   logoutFlag: false,
 };
 
@@ -121,13 +117,9 @@ export const useBackendConfigStore = create<BackendConfigStore>()(
           backendBaseUrl: (url || '').trim().replace(/\/+$/, ''),
         }),
 
-      setCurrentClusterId: (clusterId) =>
-        set({ currentClusterId: clusterId ?? null }),
-
       clearBackend: () =>
         set({
           backendBaseUrl: getDefaultBackendBaseUrl(),
-          currentClusterId: null,
           logoutFlag: true,
         }),
 

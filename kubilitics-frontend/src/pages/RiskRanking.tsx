@@ -38,6 +38,7 @@ import { useRiskRanking } from '@/hooks/useClusterHealth';
 import { useBackendConfigStore } from '@/stores/backendConfigStore';
 import type { NamespaceRisk } from '@/services/api/clusterHealth';
 
+import { useActiveClusterId } from '@/hooks/useActiveClusterId';
 /* ─── Constants ───────────────────────────────────────────────────────────── */
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50];
@@ -255,7 +256,7 @@ export default function RiskRanking() {
   const [pageSize, setPageSize] = useState(10);
   const [pageIndex, setPageIndex] = useState(0);
 
-  const currentClusterId = useBackendConfigStore((s) => s.currentClusterId);
+  const currentClusterId = useActiveClusterId();
   const { data, isLoading, error } = useRiskRanking(currentClusterId);
 
   const handleSync = useCallback(() => {

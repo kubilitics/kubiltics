@@ -9,9 +9,17 @@ import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { setActiveClusterBySessionId } from '@/stores/clusterPresenceStore';
 import { useDemoStore } from '@/stores/demoStore';
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
-import type { ConnectState } from '@/types/clusters';
 import { getClusters } from '@/services/backendApiClient';
 import { Loader2 } from 'lucide-react';
+
+/** State passed when navigating to /connected so the cluster switch can
+ *  happen without refetching the whole cluster list. Shape inlined here
+ *  because nothing else consumes it post-Phase-7. */
+interface ConnectState {
+  connectedCluster?: { id: string; name: string };
+  connectedClusters?: unknown[];
+  clusterId: string;
+}
 
 function getPostConnectPath(returnUrl: string | null): string {
   if (!returnUrl || !returnUrl.startsWith('/') || returnUrl.startsWith('//')) return '/dashboard';
@@ -28,7 +36,6 @@ export default function ConnectedRedirect() {
   const postConnectPath = getPostConnectPath(returnUrl);
   const backendBaseUrl = useBackendConfigStore((s) => s.backendBaseUrl);
   const setDemo = useDemoStore((s) => s.setDemo);
-  const setCurrentClusterId = useBackendConfigStore((s) => s.setCurrentClusterId);
   const didRun = useRef(false);
 
   useEffect(() => {
@@ -36,7 +43,6 @@ export default function ConnectedRedirect() {
     const state = location.state as ConnectState | null;
     if (state?.connectedCluster && state?.clusterId) {
       didRun.current = true;
-      setCurrentClusterId(state.clusterId);
       // Presence SSE populates the logical identity list; look up by session id.
       setActiveClusterBySessionId(state.clusterId);
       setDemo(false);
@@ -58,7 +64,6 @@ export default function ConnectedRedirect() {
             navigate('/', { replace: true });
             return;
           }
-          setCurrentClusterId(clusterIdFromUrl);
           setActiveClusterBySessionId(clusterIdFromUrl);
           setDemo(false);
           navigate(postConnectPath, { replace: true });
@@ -76,7 +81,6 @@ export default function ConnectedRedirect() {
     postConnectPath,
     backendBaseUrl,
     navigate,
-    setCurrentClusterId,
     setDemo,
   ]);
 
