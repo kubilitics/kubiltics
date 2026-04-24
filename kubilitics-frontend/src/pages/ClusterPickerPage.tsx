@@ -9,13 +9,13 @@
 // Wired as "/clusters" in App.tsx (Phase 7: unconditional).
 import { useCallback, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus } from 'lucide-react';
+import { Plus, Search } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 import { Card } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { BrandLogo } from '@/components/BrandLogo';
 import { cn } from '@/lib/utils';
 
 import { AddClusterDialog } from '@/components/cluster/AddClusterDialog';
@@ -280,159 +280,178 @@ export function ClusterPickerPage() {
 
   return (
     <div
-      className="page-container"
+      className="page-container min-h-screen flex flex-col"
       role="main"
       aria-label="Clusters"
     >
-      <div className="page-inner p-6 gap-6 flex flex-col">
+      {/* Minimal brand — centered, large. No sidebar, no app header. */}
+      <header className="w-full px-6 pt-14 pb-6 flex flex-col items-center gap-3">
         <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.35, ease: 'easeOut' }}
-          className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-border/40"
+          initial={{ scale: 0.8, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ type: 'spring', stiffness: 300, damping: 20 }}
         >
-          <div className="flex items-center gap-4">
-            <motion.img
-              src="/brand/logo-mark-rounded.png"
-              alt="Kubilitics"
-              className="h-14 w-14 rounded-2xl shadow-sm"
-              initial={{ scale: 0.8, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ type: 'spring', stiffness: 300, damping: 20, delay: 0.1 }}
-            />
-            <div>
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
-                Your clusters
-              </h1>
-              <div className="text-sm text-muted-foreground mt-1 flex items-center gap-2">
-                <span>Pick one to open its dashboard.</span>
-                <Badge variant="secondary" className="font-normal">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 mr-1.5" />
-                  Live
-                </Badge>
-              </div>
+          <BrandLogo mark height={72} className="rounded-2xl shadow-sm" />
+        </motion.div>
+        <span className="text-[20px] font-semibold tracking-[0.12em] text-foreground">
+          KUBILITICS
+        </span>
+      </header>
+
+      <div className="flex-1 flex items-start justify-center px-6 pb-12">
+        <div className="w-full max-w-2xl flex flex-col gap-6">
+          <div className="flex flex-col gap-2 items-center text-center">
+            <h1 className="text-4xl font-bold tracking-tight text-foreground">
+              Your clusters
+            </h1>
+            <div className="text-sm text-muted-foreground flex items-center gap-2">
+              <span>Pick one to open its dashboard.</span>
+              <Badge variant="secondary" className="font-normal">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 mr-1.5" />
+                Live
+              </Badge>
             </div>
           </div>
-          <Button
-            type="button"
-            onClick={() => setAddOpen(true)}
-            className="gap-2 h-10"
-            aria-label="Add cluster"
-          >
-            <Plus className="h-4 w-4" />
-            Add cluster
-          </Button>
-        </motion.div>
 
-        <AddClusterDialog
-          open={addOpen}
-          onClose={() => setAddOpen(false)}
-          onAdded={() => { void refreshSnapshot(); }}
-        />
-
-        <div className="flex flex-col gap-4">
-          <Input
-            type="search"
-            placeholder="Search clusters by name or URL…"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            aria-label="Search clusters"
-            className="max-w-md"
+          <AddClusterDialog
+            open={addOpen}
+            onClose={() => setAddOpen(false)}
+            onAdded={() => { void refreshSnapshot(); }}
           />
 
-          {filtered.length === 0 ? (
-            <Card className="border-none soft-shadow glass-panel p-8 text-center text-muted-foreground">
-              {clusters.length === 0
-                ? 'No clusters available yet. Add a cluster to get started.'
-                : 'No clusters match your search.'}
-            </Card>
-          ) : (
-            <div
-              className="flex flex-col gap-3 max-h-[calc(100vh-260px)] overflow-auto pr-1"
-              role="list"
-              aria-label="Available clusters"
-            >
-              {filtered.map((c) => {
-                const key = logicalIdentityKey(c.identity);
-                return (
-                  <Card
-                    key={key}
-                    className="border-none soft-shadow glass-panel p-0 overflow-hidden"
-                    data-testid="cluster-picker-card"
-                  >
-                    <button
-                      type="button"
-                      onClick={() => { void handlePick(c); }}
-                      disabled={pendingKey === key}
-                      className={cn(
-                        'w-full text-left p-5 flex items-center gap-4',
-                        'hover:bg-muted/40 focus-visible:outline-none',
-                        'focus-visible:ring-2 focus-visible:ring-primary/30',
-                        'transition-colors duration-150',
-                        pendingKey === key && 'opacity-60 cursor-wait',
-                      )}
-                      aria-label={`Open cluster ${c.identity.name}`}
-                    >
-                      {/* Provider logo (AWS/Azure/GCP/Docker/Kind/...) with a
-                          reachability dot overlayed in the bottom-right corner.
-                          Falls back to a neutral Kubernetes-style dot when the
-                          provider can't be inferred. */}
-                      <div className="relative shrink-0">
-                        <div className="h-12 w-12 rounded-xl bg-muted/40 border border-border/40 flex items-center justify-center overflow-hidden">
-                          {getProviderLogo(c.provider) ? (
-                            <img
-                              src={getProviderLogo(c.provider) as string}
-                              alt={getProviderLabel(c.provider)}
-                              className="h-8 w-8 object-contain"
-                            />
-                          ) : (
-                            <span className="text-lg font-semibold text-muted-foreground">
-                              {c.identity.name.slice(0, 1).toUpperCase()}
-                            </span>
-                          )}
-                        </div>
-                        <span
-                          className={cn(
-                            'absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-background',
-                            reachabilityDotClass(c.reachability),
-                          )}
-                          role="img"
-                          aria-label={reachabilityTitle(c.reachability)}
-                          title={reachabilityTitle(c.reachability)}
-                        />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2">
-                          <span className="text-lg font-semibold truncate">
-                            {c.identity.name}
-                          </span>
-                          {c.isConnected && (
-                            <Badge
-                              variant="secondary"
-                              className="bg-primary/10 text-primary border-primary/20"
-                            >
-                              Connected
-                            </Badge>
-                          )}
-                        </div>
-                        <div className="text-xs font-mono text-muted-foreground truncate mt-0.5">
-                          {c.identity.serverUrl}
-                        </div>
-                        {c.provider && (
-                          <div className="text-xs text-muted-foreground mt-1">
-                            {getProviderLabel(c.provider)}
-                          </div>
-                        )}
-                      </div>
-                      <Badge variant="outline" className="shrink-0 font-normal">
-                        {sourceBadgeLabel(c.source)}
-                      </Badge>
-                    </button>
-                  </Card>
-                );
-              })}
+          <div className="flex flex-col gap-4">
+            <div className="relative">
+              <Search
+                className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none"
+                aria-hidden="true"
+              />
+              <input
+                type="search"
+                placeholder="Search clusters by name or URL…"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                aria-label="Search clusters"
+                className={cn(
+                  'w-full h-12 pl-11 pr-4 rounded-2xl',
+                  'bg-background/70 backdrop-blur border border-border/60',
+                  'text-sm text-foreground placeholder:text-muted-foreground/70',
+                  'shadow-[var(--shadow-1)]',
+                  'transition-[border-color,box-shadow,background-color] duration-200',
+                  'hover:border-border',
+                  'focus:outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary/50 focus:bg-background',
+                )}
+              />
             </div>
-          )}
+
+            {filtered.length === 0 ? (
+              <Card className="border-none soft-shadow glass-panel p-8 text-center text-muted-foreground">
+                {clusters.length === 0
+                  ? 'No clusters available yet. Add a cluster to get started.'
+                  : 'No clusters match your search.'}
+              </Card>
+            ) : (
+              <div
+                className="flex flex-col gap-3 max-h-[calc(100vh-340px)] overflow-auto pr-1"
+                role="list"
+                aria-label="Available clusters"
+              >
+                {filtered.map((c) => {
+                  const key = logicalIdentityKey(c.identity);
+                  return (
+                    <Card
+                      key={key}
+                      className="border-none soft-shadow glass-panel p-0 overflow-hidden"
+                      data-testid="cluster-picker-card"
+                    >
+                      <button
+                        type="button"
+                        onClick={() => { void handlePick(c); }}
+                        disabled={pendingKey === key}
+                        className={cn(
+                          'w-full text-left p-5 flex items-center gap-4',
+                          'hover:bg-muted/40 focus-visible:outline-none',
+                          'focus-visible:ring-2 focus-visible:ring-primary/30',
+                          'transition-colors duration-150',
+                          pendingKey === key && 'opacity-60 cursor-wait',
+                        )}
+                        aria-label={`Open cluster ${c.identity.name}`}
+                      >
+                        <div className="relative shrink-0">
+                          <div className="h-12 w-12 rounded-xl bg-muted/40 border border-border/40 flex items-center justify-center overflow-hidden">
+                            {getProviderLogo(c.provider) ? (
+                              <img
+                                src={getProviderLogo(c.provider) as string}
+                                alt={getProviderLabel(c.provider)}
+                                className="h-8 w-8 object-contain"
+                              />
+                            ) : (
+                              <span className="text-lg font-semibold text-muted-foreground">
+                                {c.identity.name.slice(0, 1).toUpperCase()}
+                              </span>
+                            )}
+                          </div>
+                          <span
+                            className={cn(
+                              'absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-background',
+                              reachabilityDotClass(c.reachability),
+                            )}
+                            role="img"
+                            aria-label={reachabilityTitle(c.reachability)}
+                            title={reachabilityTitle(c.reachability)}
+                          />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className="text-lg font-semibold truncate">
+                              {c.identity.name}
+                            </span>
+                            {c.isConnected && (
+                              <Badge
+                                variant="secondary"
+                                className="bg-primary/10 text-primary border-primary/20"
+                              >
+                                Connected
+                              </Badge>
+                            )}
+                          </div>
+                          <div className="text-xs font-mono text-muted-foreground truncate mt-0.5">
+                            {c.identity.serverUrl}
+                          </div>
+                          {c.provider && (
+                            <div className="text-xs text-muted-foreground mt-1">
+                              {getProviderLabel(c.provider)}
+                            </div>
+                          )}
+                        </div>
+                        <Badge variant="outline" className="shrink-0 font-normal">
+                          {sourceBadgeLabel(c.source)}
+                        </Badge>
+                      </button>
+                    </Card>
+                  );
+                })}
+              </div>
+            )}
+
+            <div className="flex justify-center pt-2">
+              <Button
+                type="button"
+                onClick={() => setAddOpen(true)}
+                className={cn(
+                  'gap-2 h-11 px-5 rounded-xl',
+                  'bg-primary hover:bg-primary/90 text-primary-foreground',
+                  'shadow-[var(--shadow-2)] hover:shadow-[var(--shadow-3)]',
+                  'transition-all duration-200',
+                )}
+                aria-label="Add cluster"
+              >
+                <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-white/20">
+                  <Plus className="h-3.5 w-3.5" />
+                </span>
+                Add cluster
+              </Button>
+            </div>
+          </div>
         </div>
       </div>
     </div>

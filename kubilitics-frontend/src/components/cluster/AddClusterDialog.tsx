@@ -1,22 +1,19 @@
 /**
  * AddClusterDialog — reusable modal for adding a cluster via kubeconfig.
  *
- * Extracted from pages/ClusterConnect.tsx so the "add cluster" flow can be
- * invoked from anywhere (picker page, welcome page, settings) without
- * routing to /connect. The /connect page itself is scheduled for deletion
- * once the remaining clusterStore callers migrate to clusterPresenceStore.
- *
- * Responsibilities (deliberately minimal):
- *  - Tabs for Upload vs Paste.
- *  - File picker / drag-drop for kubeconfig upload.
- *  - Textarea for kubeconfig paste.
- *  - Parses contexts; single-context path submits straight away, multi-context
- *    shows an inline context picker.
- *  - Calls backend addClusterWithUpload; caller decides how to refresh state
- *    (via onAdded callback — typically refetches presence snapshot).
+ * Crafted UX: iconed header, segmented tabs, rich drop-zone, polished
+ * context picker, elevated primary CTA. Reused from picker/welcome/settings.
  */
 import { useCallback, useState, type DragEvent } from 'react';
-import { Upload, ClipboardPaste, Loader2, Check } from 'lucide-react';
+import {
+  Upload,
+  ClipboardPaste,
+  Loader2,
+  Check,
+  Server,
+  FileCode2,
+  CheckCircle2,
+} from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -41,6 +38,13 @@ export interface AddClusterDialogProps {
   onAdded?: (contextName: string) => void;
 }
 
+const PRIMARY_CTA = cn(
+  'gap-2 h-11 px-5 rounded-xl',
+  'bg-primary hover:bg-primary/90 text-primary-foreground',
+  'shadow-[var(--shadow-2)] hover:shadow-[var(--shadow-3)]',
+  'transition-all duration-200 disabled:shadow-none',
+);
+
 export function AddClusterDialog({ open, onClose, onAdded }: AddClusterDialogProps) {
   const backendBaseUrl = useBackendConfigStore((s) => getEffectiveBackendBaseUrl(s.backendBaseUrl));
   const [tab, setTab] = useState<'upload' | 'paste'>('upload');
@@ -48,7 +52,6 @@ export function AddClusterDialog({ open, onClose, onAdded }: AddClusterDialogPro
   const [pasteContent, setPasteContent] = useState('');
   const [isDragging, setIsDragging] = useState(false);
 
-  // Multi-context picker state (when kubeconfig has >1 context)
   const [contexts, setContexts] = useState<string[] | null>(null);
   const [selectedContext, setSelectedContext] = useState<string | null>(null);
   const [pendingBase64, setPendingBase64] = useState<string | null>(null);
@@ -97,7 +100,6 @@ export function AddClusterDialog({ open, onClose, onAdded }: AddClusterDialogPro
         await submit(base64, contextName);
         return;
       }
-      // Multi-context: let user pick.
       setContexts(parsed.contexts);
       setSelectedContext(parsed.currentContext || parsed.contexts[0]);
       setPendingBase64(base64);
@@ -145,128 +147,206 @@ export function AddClusterDialog({ open, onClose, onAdded }: AddClusterDialogPro
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) handleClose(); }}>
-      <DialogContent className="max-w-2xl">
-        <DialogHeader>
-          <DialogTitle>Add a cluster</DialogTitle>
-          <DialogDescription>
-            Upload or paste a kubeconfig file. The context you select becomes
-            a new cluster in Kubilitics.
-          </DialogDescription>
-        </DialogHeader>
+      <DialogContent className="max-w-2xl border-none p-0 gap-0 overflow-hidden">
+        {/* Accent rail */}
+        <div className="h-1 w-full bg-gradient-to-r from-primary via-primary/80 to-[hsl(263,70%,60%)]" />
 
-        {contexts ? (
-          // Multi-context picker pane
-          <div className="flex flex-col gap-3" data-testid="add-cluster-context-picker">
-            <p className="text-sm text-muted-foreground">
-              This kubeconfig has multiple contexts. Pick the one to register:
-            </p>
-            <div className="flex flex-col gap-2 max-h-64 overflow-y-auto">
-              {contexts.map((ctx) => (
-                <button
-                  key={ctx}
-                  type="button"
-                  onClick={() => setSelectedContext(ctx)}
-                  className={cn(
-                    'flex items-center justify-between rounded-lg border px-3 py-2 text-left text-sm',
-                    selectedContext === ctx
-                      ? 'border-primary bg-primary/5'
-                      : 'border-border hover:bg-muted',
-                  )}
-                >
-                  <span>{ctx}</span>
-                  {selectedContext === ctx && <Check className="h-4 w-4 text-primary" />}
-                </button>
-              ))}
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={handleClose} disabled={isBusy}>Cancel</Button>
-              <Button
-                onClick={() => {
-                  if (selectedContext && pendingBase64) {
-                    void submit(pendingBase64, selectedContext);
-                  }
-                }}
-                disabled={isBusy || !selectedContext}
-              >
-                {isBusy ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                Add cluster
-              </Button>
-            </DialogFooter>
-          </div>
-        ) : (
-          <Tabs value={tab} onValueChange={(v) => setTab(v as 'upload' | 'paste')}>
-            <TabsList className="grid grid-cols-2">
-              <TabsTrigger value="upload" className="gap-2">
-                <Upload className="h-4 w-4" />
-                Upload
-              </TabsTrigger>
-              <TabsTrigger value="paste" className="gap-2">
-                <ClipboardPaste className="h-4 w-4" />
-                Paste
-              </TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="upload" className="mt-4">
-              <div
-                role="button"
-                tabIndex={0}
-                onClick={() => document.getElementById('add-cluster-file-input')?.click()}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    document.getElementById('add-cluster-file-input')?.click();
-                  }
-                }}
-                onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
-                onDragLeave={() => setIsDragging(false)}
-                onDrop={handleDrop}
-                className={cn(
-                  'flex flex-col items-center justify-center gap-3 rounded-lg border-2 border-dashed p-8 cursor-pointer transition',
-                  isDragging ? 'border-primary bg-primary/5' : 'border-border hover:bg-muted/50',
-                )}
-                data-testid="add-cluster-dropzone"
-              >
-                <Upload className="h-8 w-8 text-muted-foreground" />
-                <div className="text-center">
-                  <p className="text-sm font-medium">Drop kubeconfig here or click to browse</p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    YAML file, typically at ~/.kube/config
-                  </p>
-                </div>
-                <input
-                  id="add-cluster-file-input"
-                  type="file"
-                  accept=".yaml,.yml,.config,application/x-yaml,text/yaml,text/plain"
-                  className="hidden"
-                  onChange={(e) => {
-                    const f = e.target.files?.[0];
-                    if (f) void handleFile(f);
-                  }}
-                />
+        <div className="p-6 sm:p-7">
+          <DialogHeader>
+            <div className="flex items-start gap-4">
+              <div className="h-11 w-11 shrink-0 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
+                <Server className="h-5 w-5" />
               </div>
-            </TabsContent>
+              <div className="flex flex-col gap-1 text-left">
+                <DialogTitle className="text-xl font-semibold tracking-tight">
+                  Add a cluster
+                </DialogTitle>
+                <DialogDescription className="text-sm text-muted-foreground">
+                  Upload or paste a kubeconfig. The context you pick becomes a new
+                  cluster in Kubilitics.
+                </DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
 
-            <TabsContent value="paste" className="mt-4">
-              <Textarea
-                value={pasteContent}
-                onChange={(e) => setPasteContent(e.target.value)}
-                placeholder="Paste your kubeconfig YAML here…"
-                className="min-h-[200px] font-mono text-xs"
-                data-testid="add-cluster-paste-area"
-              />
-              <DialogFooter className="mt-4">
-                <Button variant="outline" onClick={handleClose} disabled={isBusy}>Cancel</Button>
+          <div className="mt-6">
+          {contexts ? (
+            <div className="flex flex-col gap-4" data-testid="add-cluster-context-picker">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <CheckCircle2 className="h-4 w-4 text-primary" />
+                <span>Multiple contexts detected. Select the one to register:</span>
+              </div>
+              <div className="flex flex-col gap-2 max-h-72 overflow-y-auto pr-1">
+                {contexts.map((ctx) => {
+                  const active = selectedContext === ctx;
+                  return (
+                    <button
+                      key={ctx}
+                      type="button"
+                      onClick={() => setSelectedContext(ctx)}
+                      className={cn(
+                        'group flex items-center justify-between gap-3 rounded-xl border px-4 py-3 text-left transition-all',
+                        active
+                          ? 'border-primary/60 bg-primary/5 shadow-[var(--shadow-1)]'
+                          : 'border-border/60 hover:border-border hover:bg-muted/40',
+                      )}
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div
+                          className={cn(
+                            'h-8 w-8 shrink-0 rounded-lg flex items-center justify-center',
+                            active ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground',
+                          )}
+                        >
+                          <Server className="h-4 w-4" />
+                        </div>
+                        <span className="text-sm font-medium text-foreground truncate">{ctx}</span>
+                      </div>
+                      <span
+                        className={cn(
+                          'shrink-0 h-6 w-6 rounded-full flex items-center justify-center transition-colors',
+                          active ? 'bg-primary text-primary-foreground' : 'bg-muted/60 text-transparent',
+                        )}
+                      >
+                        <Check className="h-3.5 w-3.5" />
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+              <DialogFooter className="gap-2 pt-2">
                 <Button
-                  onClick={handlePasteSubmit}
-                  disabled={isBusy || !pasteContent.trim()}
-                  data-testid="add-cluster-paste-submit"
+                  variant="ghost"
+                  onClick={handleClose}
+                  disabled={isBusy}
+                  className="h-11 px-4 rounded-xl"
                 >
-                  {isBusy ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                  Cancel
+                </Button>
+                <Button
+                  onClick={() => {
+                    if (selectedContext && pendingBase64) {
+                      void submit(pendingBase64, selectedContext);
+                    }
+                  }}
+                  disabled={isBusy || !selectedContext}
+                  className={PRIMARY_CTA}
+                >
+                  {isBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
                   Add cluster
                 </Button>
               </DialogFooter>
-            </TabsContent>
-          </Tabs>
-        )}
+            </div>
+          ) : (
+            <Tabs value={tab} onValueChange={(v) => setTab(v as 'upload' | 'paste')}>
+              <TabsList className="grid grid-cols-2 h-11 p-1 rounded-xl bg-muted/60">
+                <TabsTrigger value="upload" className="gap-2 rounded-lg data-[state=active]:shadow-[var(--shadow-1)]">
+                  <Upload className="h-4 w-4" />
+                  Upload
+                </TabsTrigger>
+                <TabsTrigger value="paste" className="gap-2 rounded-lg data-[state=active]:shadow-[var(--shadow-1)]">
+                  <ClipboardPaste className="h-4 w-4" />
+                  Paste
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="upload" className="mt-5">
+                <div
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => document.getElementById('add-cluster-file-input')?.click()}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      document.getElementById('add-cluster-file-input')?.click();
+                    }
+                  }}
+                  onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+                  onDragLeave={() => setIsDragging(false)}
+                  onDrop={handleDrop}
+                  className={cn(
+                    'relative flex flex-col items-center justify-center gap-4 rounded-2xl border-2 border-dashed px-8 py-10 cursor-pointer',
+                    'transition-all duration-200',
+                    isDragging
+                      ? 'border-primary bg-primary/5 scale-[1.01]'
+                      : 'border-border/60 hover:border-primary/40 hover:bg-muted/40',
+                  )}
+                  data-testid="add-cluster-dropzone"
+                >
+                  <div className="h-14 w-14 rounded-2xl bg-primary/10 text-primary flex items-center justify-center">
+                    <Upload className="h-6 w-6" />
+                  </div>
+                  <div className="text-center">
+                    <p className="text-sm font-semibold text-foreground">
+                      Drop your kubeconfig here
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      or <span className="text-primary font-medium">click to browse</span> · typically at{' '}
+                      <span className="font-mono text-[11px] px-1.5 py-0.5 rounded bg-muted/70 text-foreground/80">
+                        ~/.kube/config
+                      </span>
+                    </p>
+                  </div>
+                  <input
+                    id="add-cluster-file-input"
+                    type="file"
+                    accept=".yaml,.yml,.config,application/x-yaml,text/yaml,text/plain"
+                    className="hidden"
+                    onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      if (f) void handleFile(f);
+                    }}
+                  />
+                </div>
+                <DialogFooter className="gap-2 mt-5">
+                  <Button
+                    variant="ghost"
+                    onClick={handleClose}
+                    disabled={isBusy}
+                    className="h-11 px-4 rounded-xl"
+                  >
+                    Cancel
+                  </Button>
+                </DialogFooter>
+              </TabsContent>
+
+              <TabsContent value="paste" className="mt-5">
+                <div className="relative rounded-2xl border border-border/60 bg-muted/30 focus-within:border-primary/40 focus-within:ring-4 focus-within:ring-primary/10 transition-all">
+                  <div className="flex items-center gap-2 px-4 py-2 border-b border-border/50 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+                    <FileCode2 className="h-3.5 w-3.5" />
+                    kubeconfig.yaml
+                  </div>
+                  <Textarea
+                    value={pasteContent}
+                    onChange={(e) => setPasteContent(e.target.value)}
+                    placeholder={'apiVersion: v1\nkind: Config\nclusters:\n  - cluster:\n      server: https://…'}
+                    className="min-h-[220px] font-mono text-xs border-0 bg-transparent rounded-none focus-visible:ring-0 focus-visible:ring-offset-0 resize-none"
+                    data-testid="add-cluster-paste-area"
+                  />
+                </div>
+                <DialogFooter className="gap-2 mt-5">
+                  <Button
+                    variant="ghost"
+                    onClick={handleClose}
+                    disabled={isBusy}
+                    className="h-11 px-4 rounded-xl"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={handlePasteSubmit}
+                    disabled={isBusy || !pasteContent.trim()}
+                    className={PRIMARY_CTA}
+                    data-testid="add-cluster-paste-submit"
+                  >
+                    {isBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                    Add cluster
+                  </Button>
+                </DialogFooter>
+              </TabsContent>
+            </Tabs>
+          )}
+          </div>
+        </div>
       </DialogContent>
     </Dialog>
   );
