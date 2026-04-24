@@ -88,6 +88,8 @@ kubilitics-backend/cmd/server/kubilitics-server
 # Match only the built binary file forms instead.
 **/cmd/server/server
 **/cmd/server/server.exe
+**/cmd/server/server_bin
+**/cmd/server/*_bin
 !**/server.go
 !**/server.ts
 !**/server.tsx

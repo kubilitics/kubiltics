@@ -1,15 +1,17 @@
-// Integration test for Phase 5 routing helpers exported from App.tsx.
+// Integration test for App routing helpers.
 //
-// Phase 7: FEATURE_PRESENCE_V2 flag removed — V2 is the only path.
-// PresenceEntryPoint unconditionally redirects to /clusters when at least one
-// cluster is available, /welcome otherwise.
+// The cluster-entry flow is a single page: /clusters. The picker renders a
+// list when clusters exist and a clean empty state when none do. There is
+// no separate /welcome route — a legacy redirect is kept so any stored
+// bookmarks / deep links still resolve to the right place.
 //
 // App.tsx is massive — rendering the whole root is expensive and pulls in
 // 140+ lazy pages. We exercise the exported routing helpers directly against
-// a MemoryRouter, which exactly exercises the contracts promised by the plan.
+// a MemoryRouter, which exactly exercises the contracts promised by the
+// current onboarding flow.
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { MemoryRouter, Navigate, Route, Routes } from 'react-router-dom';
 
 import {
   useClusterPresenceStore,
@@ -32,14 +34,17 @@ function renderAt(pathname: string) {
     <MemoryRouter initialEntries={[pathname]}>
       <Routes>
         <Route path="/clusters" element={<div>CLUSTER_PICKER_STUB</div>} />
-        <Route path="/welcome" element={<div>WELCOME_STUB</div>} />
+        {/* Legacy route — preserved in App.tsx as a Navigate redirect so
+            stored bookmarks keep working even though there's no WelcomePage
+            anymore. The stub here mirrors that redirect. */}
+        <Route path="/welcome" element={<Navigate to="/clusters" replace />} />
         <Route path="/" element={<PresenceEntryPoint />} />
       </Routes>
     </MemoryRouter>,
   );
 }
 
-describe('App routing helpers — onboarding-v2 (Phase 7 unconditional)', () => {
+describe('App routing helpers — single-page onboarding', () => {
   beforeEach(() => {
     __resetForTest();
     vi.restoreAllMocks();
@@ -50,12 +55,12 @@ describe('App routing helpers — onboarding-v2 (Phase 7 unconditional)', () => 
     expect(screen.getByText('CLUSTER_PICKER_STUB')).toBeInTheDocument();
   });
 
-  it('/welcome renders the welcome page', () => {
+  it('legacy /welcome bookmark redirects to /clusters', () => {
     renderAt('/welcome');
-    expect(screen.getByText('WELCOME_STUB')).toBeInTheDocument();
+    expect(screen.getByText('CLUSTER_PICKER_STUB')).toBeInTheDocument();
   });
 
-  it('PresenceEntryPoint redirects / → /welcome when no clusters', () => {
+  it('PresenceEntryPoint redirects / → /clusters when no clusters (picker owns the empty state)', () => {
     useClusterPresenceStore.setState({
       discovered: [],
       registered: [],
@@ -63,7 +68,7 @@ describe('App routing helpers — onboarding-v2 (Phase 7 unconditional)', () => 
       isReady: true,
     });
     renderAt('/');
-    expect(screen.getByText('WELCOME_STUB')).toBeInTheDocument();
+    expect(screen.getByText('CLUSTER_PICKER_STUB')).toBeInTheDocument();
   });
 
   it('PresenceEntryPoint redirects / → /clusters when clusters exist', () => {
@@ -79,13 +84,10 @@ describe('App routing helpers — onboarding-v2 (Phase 7 unconditional)', () => 
     expect(screen.getByText('CLUSTER_PICKER_STUB')).toBeInTheDocument();
   });
 
-  // Phase 6 task 6.0b: PresenceEntryPoint must NOT redirect while the
-  // presence snapshot is still loading. On cold start, availableClusters()
-  // reads an empty array before SSE populates the store, which would
-  // briefly route users with populated kubeconfigs to /welcome for one
-  // frame before bouncing them to /clusters. Render a lightweight loader
-  // until `isReady` flips to true.
   it('PresenceEntryPoint shows loader and does NOT navigate while isReady=false', () => {
+    // Cold-start: availableClusters() reads an empty array before SSE
+    // populates the store. Wait until isReady flips before deciding to
+    // navigate — otherwise the loader is needed to avoid a flash.
     useClusterPresenceStore.setState({
       discovered: [
         { identity: { name: 'prod', serverUrl: 'https://p' }, source: 'kubeconfig' },
@@ -95,10 +97,7 @@ describe('App routing helpers — onboarding-v2 (Phase 7 unconditional)', () => 
       isReady: false,
     });
     renderAt('/');
-    // No navigation: neither picker nor welcome rendered yet.
     expect(screen.queryByText('CLUSTER_PICKER_STUB')).toBeNull();
-    expect(screen.queryByText('WELCOME_STUB')).toBeNull();
-    // Loader placeholder is present.
     expect(
       screen.getByTestId('presence-entry-loader'),
     ).toBeInTheDocument();
@@ -116,7 +115,6 @@ describe('App routing helpers — onboarding-v2 (Phase 7 unconditional)', () => 
     renderAt('/');
     expect(screen.queryByText('CLUSTER_PICKER_STUB')).toBeNull();
 
-    // Flip isReady; the subscribed component should now redirect.
     useClusterPresenceStore.setState({ isReady: true });
     await screen.findByText('CLUSTER_PICKER_STUB');
   });

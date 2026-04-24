@@ -34,7 +34,6 @@ const ModeSelection = lazy(() => import("./pages/ModeSelection"));
 const ConnectedRedirect = lazy(() => import("./pages/ConnectedRedirect"));
 // Onboarding-v2 entry pages (Phase 7: unconditional).
 const ClusterPickerPage = lazy(() => import("./pages/ClusterPickerPage"));
-const WelcomePage = lazy(() => import("./pages/WelcomePage"));
 const DashboardPage = lazy(() => import("./pages/DashboardPage"));
 const FleetDashboard = lazy(() => import("./pages/FleetDashboard"));
 const FleetXRayDashboard = lazy(() => import("./pages/FleetXRayDashboard"));
@@ -291,14 +290,16 @@ export function ClusterPresenceSubscriber() {
   return null;
 }
 
-/** Entry-point decision for "/":
- *  at least one available cluster → /clusters; otherwise → /welcome.
+/** Entry-point decision for "/" — always routes to /clusters. The picker is
+ *  the single source of truth for cluster selection: it renders the cluster
+ *  list when one or more are available, and a dignified empty state with an
+ *  Add-cluster CTA when none are. No separate /welcome page, no split flow.
+ *  Headlamp / Lens work this way for a reason — one screen, one mental model.
  *
- *  Must wait for the first presence snapshot before redirecting. Without
- *  this guard, on cold start `availableClusters()` returns `[]` for one
- *  frame (before SSE lands the initial payload) and users with a populated
- *  kubeconfig would flash onto /welcome and then bounce to /clusters.
- *  We subscribe to `isReady` so React re-renders when the snapshot arrives.
+ *  Waits for the first presence snapshot before redirecting so callers don't
+ *  see a flash of the empty state while the initial SSE payload is in flight.
+ *  Has a 5s safety timeout so a dead backend doesn't leave users on an
+ *  infinite spinner.
  *
  *  Exported for integration testing. */
 // eslint-disable-next-line react-refresh/only-export-components
@@ -306,11 +307,6 @@ export function PresenceEntryPoint() {
   const isReady = useClusterPresenceStore((s) => s.isReady);
   const [timedOut, setTimedOut] = useState(false);
 
-  // Safety timeout: if the presence snapshot hasn't arrived in 5s (e.g.
-  // backend binary predates the /api/v1/presence endpoint, or network is
-  // hosed), stop waiting and route to /welcome so the user isn't stuck on
-  // an infinite loading spinner. useClusterPresence also applies an empty
-  // snapshot on fetch failure, so this is belt-and-suspenders.
   useEffect(() => {
     const t = setTimeout(() => setTimedOut(true), 5000);
     return () => clearTimeout(t);
@@ -328,14 +324,10 @@ export function PresenceEntryPoint() {
       </div>
     );
   }
-  const hasClusters =
-    useClusterPresenceStore.getState().availableClusters().length > 0;
-  return <Navigate to={hasClusters ? '/clusters' : '/welcome'} replace />;
+  return <Navigate to="/clusters" replace />;
 }
 
-// Initial navigation logic. Phase 7: FEATURE_PRESENCE_V2 is the only path —
-// PresenceEntryPoint handles "/" unconditionally. Redirects to /clusters when
-// at least one cluster is available, /welcome otherwise.
+// Initial navigation logic. PresenceEntryPoint handles "/" unconditionally.
 function ModeSelectionEntryPoint() {
   return <PresenceEntryPoint />;
 }
@@ -702,14 +694,16 @@ const App = () => (
                       <Route element={<Navigate to="/clusters" replace />} path="/connect" />
                       <Route element={<Navigate to="/clusters" replace />} path="/setup/kubeconfig" />
                       <Route element={<Navigate to="/clusters" replace />} path="/setup/clusters" />
-                      {/* Onboarding-v2 — the only cluster-entry path.
-                          Rendered standalone (no sidebar/header) so first-time
-                          users see just brand + detected clusters. Once a
-                          cluster is picked they land on /dashboard which wears
-                          the full app chrome. Switching clusters later happens
-                          via the header dropdown or Fleet/Settings. */}
+                      {/* Onboarding — single cluster-entry path. Rendered
+                          standalone (no sidebar/header) so first-time users
+                          see just brand + detected clusters (or an empty
+                          state with Add-cluster when none are found). Once
+                          a cluster is picked they land on /dashboard which
+                          wears the full app chrome. /welcome no longer
+                          exists — the picker owns both populated and empty
+                          states, same as Headlamp / Lens. */}
                       <Route path="/clusters" element={<ClusterPickerPage />} />
-                      <Route path="/welcome" element={<WelcomePage />} />
+                      <Route path="/welcome" element={<Navigate to="/clusters" replace />} />
 
                       {/* App routes — require cluster connection only */}
                       <Route

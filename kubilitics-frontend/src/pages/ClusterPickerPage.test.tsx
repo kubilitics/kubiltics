@@ -178,7 +178,10 @@ describe('ClusterPickerPage', () => {
     expect(cards[2]).toHaveTextContent('bravo');
   });
 
-  it('exposes an "Add cluster" trigger that opens the AddClusterDialog', () => {
+  it('empty state exposes an Add-a-cluster trigger that opens the AddClusterDialog', () => {
+    // Zero-cluster case is now owned by the picker (the old WelcomePage was
+    // deleted). The empty-state renders ServerOff icon + "No clusters found"
+    // title + an Add-a-cluster button that opens the dialog in place.
     useClusterPresenceStore.setState({
       discovered: [],
       registered: [],
@@ -186,13 +189,20 @@ describe('ClusterPickerPage', () => {
       isReady: true,
     });
     renderPicker();
-    // Dialog starts closed: its "Add a cluster" title is absent.
-    expect(screen.queryByText('Add a cluster')).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: /^add cluster$/i }));
+    // Empty state renders — headline present, no search input (don't let
+    // people search an empty list).
+    expect(screen.getByText(/no clusters found/i)).toBeInTheDocument();
+    expect(
+      screen.queryByRole('searchbox', { name: /search clusters/i }),
+    ).not.toBeInTheDocument();
 
-    // Dialog now rendered.
+    // Dialog starts closed.
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+
+    fireEvent.click(
+      screen.getByTestId('cluster-picker-add-cluster-empty'),
+    );
     expect(screen.getByRole('dialog')).toBeInTheDocument();
-    expect(screen.getByText('Add a cluster')).toBeInTheDocument();
   });
 });
