@@ -159,12 +159,17 @@ export const useAIConfigStore = create<AIConfigState>((set, get) => ({
   hydrate: async () => {
     set({ loading: true, lastError: null });
     try {
-      const cfg = await invoke<RustCfg>('load_ai_config');
+      const cfg = await invoke<RustCfg | null>('load_ai_config');
+      const rawProvider = (cfg?.provider ?? '').toLowerCase();
+      const known: readonly Provider[] = ['openai', 'anthropic', 'ollama', 'custom'];
+      const provider = (known as readonly string[]).includes(rawProvider)
+        ? (rawProvider as Provider)
+        : 'openai';
       set({
-        provider: (cfg.provider as Provider) || 'openai',
-        model: cfg.model || 'gpt-4o',
-        baseUrl: cfg.base_url ?? '',
-        hasApiKey: Boolean(cfg.has_api_key),
+        provider,
+        model: cfg?.model || 'gpt-4o',
+        baseUrl: cfg?.base_url ?? '',
+        hasApiKey: Boolean(cfg?.has_api_key),
         loading: false,
       });
     } catch (err) {

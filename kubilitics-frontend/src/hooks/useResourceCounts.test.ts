@@ -15,6 +15,8 @@ let mockActiveClusterId: string | null = null;
 let mockSummaryData: Record<string, number> | null = null;
 let mockK8sData: Record<string, unknown> = {};
 let summaryCalledWith: string | undefined = undefined;
+let summaryEndpointCalledWith: string | undefined = undefined;
+let mockBackendBaseUrl = 'http://localhost:8190';
 
 vi.mock('@/hooks/useConnectionStatus', () => ({
   useConnectionStatus: () => ({ isConnected: mockIsConnected }),
@@ -25,10 +27,16 @@ vi.mock('@/stores/backendConfigStore', () => ({
     const state = {
       isBackendConfigured: () => mockIsBackendConfigured,
       currentClusterId: mockCurrentClusterId,
+      backendBaseUrl: mockBackendBaseUrl,
     };
     return selector(state);
   },
-  getEffectiveBackendBaseUrl: () => 'http://localhost:8190',
+  getEffectiveBackendBaseUrl: (stored: string) => {
+    // Mirror the real function's contract: stored === '' is a valid
+    // same-origin configuration (dev proxy / nginx forward), NOT a
+    // "not-configured" sentinel. Tests must see '' pass through.
+    return stored ?? mockBackendBaseUrl;
+  },
 }));
 
 // Phase 4 Task 4.4: the hook now runs on useResilientQuery instead of
@@ -41,7 +49,21 @@ vi.mock('@/stores/backendConfigStore', () => ({
 // The mock destructures them back out so the existing test vectors still
 // exercise the same unreachable / stale / no-cache branches.
 vi.mock('./useResilientQuery', () => ({
-  useResilientQuery: (endpoint: string) => {
+  useResilientQuery: (endpoint: string, options: { enabled?: boolean } = {}) => {
+    // Respect the caller's enabled gate — a false gate means the query
+    // never fires. The regression we're locking is exactly this: the
+    // sidebar used to disable itself in dev-mode (empty backendBaseUrl).
+    if (options.enabled === false) {
+      return {
+        data: undefined,
+        isLoading: false,
+        isReachable: false,
+        isStale: false,
+        errorMessage: null,
+        refetch: () => {},
+      };
+    }
+    summaryEndpointCalledWith = endpoint;
     const match = endpoint.match(/\/clusters\/([^/?]+)\/summary/);
     summaryCalledWith = match ? decodeURIComponent(match[1]) : undefined;
     if (!endpoint || mockSummaryData === null) {
@@ -112,6 +134,8 @@ beforeEach(() => {
   mockSummaryData = null;
   mockK8sData = {};
   summaryCalledWith = undefined;
+  summaryEndpointCalledWith = undefined;
+  mockBackendBaseUrl = 'http://localhost:8190';
 });
 
 // ============================================================================
@@ -392,6 +416,54 @@ describe('useResourceCounts — unreachable robustness', () => {
     // data is authoritative enough that we flag it via `stale`, not via
     // usingClientCache.
     expect(result.current.usingClientCache).toBe(false);
+  });
+
+  it('fires the summary query when backendBaseUrl is "" (same-origin dev/in-cluster browser)', () => {
+    // Regression: in Vite dev on localhost AND in the in-cluster browser
+    // install, backendBaseUrl is deliberately "" — it means "call /api/*
+    // on the same origin; the dev proxy (or nginx) forwards to the backend".
+    // The prior implementation gated `enabled` on `Boolean(backendBaseUrl)`,
+    // which is false for "". Result: summary never fired, counts all zero,
+    // users saw "0 pods" in the sidebar for a cluster that obviously had pods.
+    // This test locks the contract: empty backendBaseUrl is a VALID config.
+    mockIsConnected = true;
+    mockIsBackendConfigured = true;
+    mockCurrentClusterId = 'test-cluster';
+    mockBackendBaseUrl = '';
+    mockSummaryData = {
+      pod_count: 19,
+      deployment_count: 5,
+      node_count: 3,
+      namespace_count: 9,
+    };
+
+    const { result } = renderHook(() => useResourceCounts());
+
+    // URL is built as same-origin (no host prefix) so the dev proxy forwards it.
+    expect(summaryEndpointCalledWith).toBe('/api/v1/clusters/test-cluster/summary');
+    expect(summaryCalledWith).toBe('test-cluster');
+    expect(result.current.counts.pods).toBe(19);
+    expect(result.current.counts.deployments).toBe(5);
+    expect(result.current.counts.nodes).toBe(3);
+    expect(result.current.counts.namespaces).toBe(9);
+  });
+
+  it('still fires when backendBaseUrl has a trailing slash (defensive)', () => {
+    // Other resilient callers normalize with .replace(/\/$/, '') — lock the
+    // same normalization for this hook so the URL never ends up with a
+    // double slash that 404s on the backend.
+    mockIsConnected = true;
+    mockIsBackendConfigured = true;
+    mockCurrentClusterId = 'test-cluster';
+    mockBackendBaseUrl = 'http://localhost:8190/';
+    mockSummaryData = { pod_count: 3 };
+
+    const { result } = renderHook(() => useResourceCounts());
+
+    expect(summaryEndpointCalledWith).toBe(
+      'http://localhost:8190/api/v1/clusters/test-cluster/summary',
+    );
+    expect(result.current.counts.pods).toBe(3);
   });
 
   it('falls back to zeros only when unreachable AND no cache exists anywhere', () => {

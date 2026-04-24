@@ -83,8 +83,8 @@ export default function AISettingsPage() {
   const [detected, setDetected] = useState<Detected[]>([]);
   const [connecting, setConnecting] = useState<string | null>(null);
   useEffect(() => {
-    invoke<Detected[]>('detect_available_providers')
-      .then(setDetected)
+    invoke<Detected[] | null>('detect_available_providers')
+      .then((v) => setDetected(Array.isArray(v) ? v : []))
       .catch(() => setDetected([]));
   }, []);
 
@@ -383,13 +383,13 @@ export default function AISettingsPage() {
 
             <div className="space-y-2">
               <Label htmlFor="ai-model">Model</Label>
-              {MODEL_OPTIONS[provider].length > 0 ? (
+              {(MODEL_OPTIONS[provider] ?? []).length > 0 ? (
                 <Select value={model} onValueChange={(v) => setFieldDebounced('model', v)}>
                   <SelectTrigger id="ai-model" data-testid="model-select">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {MODEL_OPTIONS[provider].map((m) => (
+                    {(MODEL_OPTIONS[provider] ?? []).map((m) => (
                       <SelectItem key={m} value={m}>
                         {m}
                       </SelectItem>

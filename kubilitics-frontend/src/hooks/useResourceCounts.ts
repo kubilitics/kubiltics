@@ -38,13 +38,18 @@ function useResilientClusterSummary(clusterId: string | undefined) {
   const projectId = projectIdFromRoute || activeProjectId || '';
 
   const search = projectId ? `?projectId=${encodeURIComponent(projectId)}` : '';
-  const url = clusterId && backendBaseUrl
-    ? `${backendBaseUrl.replace(/\/$/, '')}/api/v1/clusters/${encodeURIComponent(clusterId)}/summary${search}`
+  // backendBaseUrl === '' is a VALID configuration in browser-dev / in-cluster
+  // browser mode — it means "use same-origin, the dev-proxy/nginx forwards
+  // /api/* to the backend". Gating on truthy-backendBaseUrl used to silently
+  // disable the summary query and bake zeros into the sidebar forever.
+  const base = (backendBaseUrl || '').replace(/\/$/, '');
+  const url = clusterId
+    ? `${base}/api/v1/clusters/${encodeURIComponent(clusterId)}/summary${search}`
     : '';
 
   return useResilientQuery<BackendClusterSummary>(url, {
     clusterId,
-    enabled: Boolean(isConfigured && clusterId && backendBaseUrl),
+    enabled: Boolean(isConfigured && clusterId),
     refetchInterval: 60_000,
   });
 }
