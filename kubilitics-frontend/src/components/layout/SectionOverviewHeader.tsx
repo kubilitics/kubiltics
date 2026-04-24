@@ -15,6 +15,14 @@ interface SectionOverviewHeaderProps {
     showAiButton?: boolean;
     aiButtonText?: string;
     extraActions?: React.ReactNode;
+    /**
+     * Render the decorative "Live" pill next to the description.
+     * Default true for backward compatibility with the 25+ pages that
+     * already rely on it. Set to false on pages where nothing actually
+     * streams (e.g. AI Settings, static config pages) — decorative
+     * liveness is UX theater when the underlying data isn't live.
+     */
+    liveBadge?: boolean;
 }
 
 export function SectionOverviewHeader({
@@ -27,6 +35,7 @@ export function SectionOverviewHeader({
     showAiButton = false,
     aiButtonText = 'AI Recommendations',
     extraActions,
+    liveBadge = true,
 }: SectionOverviewHeaderProps) {
     return (
         <motion.div
@@ -62,13 +71,15 @@ export function SectionOverviewHeader({
                         className="text-muted-foreground mt-1 flex items-center gap-2"
                     >
                         {description}
-                        <Badge variant="secondary" className="bg-primary/10 text-primary border-primary/20 animate-in fade-in duration-500">
-                            <span className="relative flex h-1.5 w-1.5 mr-1.5">
-                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[hsl(var(--success))] opacity-60" />
-                                <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-[hsl(var(--success))]" />
-                            </span>
-                            Live
-                        </Badge>
+                        {liveBadge && (
+                            <Badge variant="secondary" className="bg-primary/10 text-primary border-primary/20 animate-in fade-in duration-500">
+                                <span className="relative flex h-1.5 w-1.5 mr-1.5">
+                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[hsl(var(--success))] opacity-60" />
+                                    <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-[hsl(var(--success))]" />
+                                </span>
+                                Live
+                            </Badge>
+                        )}
                     </motion.p>
                 </div>
             </div>

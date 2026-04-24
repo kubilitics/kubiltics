@@ -1,29 +1,55 @@
 /**
- * AI Settings page — driven by the `useAIConfigStore` Tauri-keychain
- * round-trip (Phase 2 / Blocker C). The raw API key never touches the
- * backend REST API; the Rust side pushes it into the OS keychain and
- * the brain reads it there on startup. This page therefore talks
- * exclusively to the Tauri commands via the store.
+ * AI Settings page.
  *
- * Previous iteration POSTed to `/api/v1/ai/config` via fetch — that
- * endpoint is now legacy and the store is the single source of truth.
+ * Contract with the Rust side (see `src-tauri/src/ai_config.rs`):
+ *   load_ai_config           — reads yaml ONLY. Never probes the keychain.
+ *                              Returns provider, model, base_url, and a
+ *                              cached has_api_key flag.
+ *   save_ai_config           — validates + writes yaml + keychain + hot-
+ *                              wires the brain via POST /api/v1/config/provider.
+ *                              Authoritative keychain touch; one expected
+ *                              macOS prompt.
+ *   test_llm_connection      — 10-token ping. Authoritative keychain read.
+ *   detect_available_providers — env + localhost + yaml cache. NO keychain.
+ *   migrate_has_api_key      — one-shot keychain probe for pre-cache-flag
+ *                              upgraders. Idempotent after first success.
+ *   get_brain_status /       — reachability signals for the banner + the
+ *   restart_brain              manual Restart-engine button.
  *
- * - provider dropdown (OpenAI / Anthropic / Ollama / Custom)
- * - model (dropdown for OpenAI / Anthropic; freeform for Ollama / Custom)
- * - base_url (shown for Ollama + Custom)
- * - api_key (shown for OpenAI / Anthropic / Custom; masked display when
- *   a key is already in the keychain; empty entry preserves existing)
- * - Test connection — round-trips through `test_llm_connection`
- * - Save & Test — debounced non-secret edits save on a 500ms timer;
- *   clicking the button forces an immediate save + a connection test.
+ * Page structure (post-P0/P1/P2/P3 redesign):
+ *   1. Header (no "Live" decoration — nothing on this page streams)
+ *   2. Brain Reachability Banner — conditional, only shown when the
+ *      sidecar isn't responding. Calls get_brain_status on mount and
+ *      surfaces a Restart-engine button.
+ *   3. Quick Connect card — auto-detected providers + paste-any-key.
+ *      Pill labels read "Use <name>" so the action is unambiguous.
+ *   4. Provider card — single live-editable card holding provider,
+ *      model, base URL, and API key with Test / Save actions. This
+ *      replaces the old "Current State" (read-only tiles) +
+ *      "Provider Configuration" (editable) split, which was two
+ *      views of the same data.
+ *   5. Cost & Budget card — unchanged.
  *
- * Reset budget cap lives in this page too (Gap 3): the backend brain
- * exposes `reset_budget` via a Tauri command; the button here fires it
- * and toasts the result.
+ * One-shot keychain migration runs on first mount if the yaml's
+ * migrated_keychain_probe flag is false. A preface toast explains
+ * the macOS prompt the user may see; after migration completes the
+ * authoritative has_api_key is in the yaml and no further keychain
+ * access happens on page load.
  */
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Bot, CheckCircle2, XCircle, Loader2, Save, RotateCcw, Activity, ExternalLink } from 'lucide-react';
+import {
+  Bot,
+  CheckCircle2,
+  XCircle,
+  Loader2,
+  Save,
+  RotateCcw,
+  Activity,
+  ExternalLink,
+  AlertTriangle,
+  ServerCrash,
+} from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -58,10 +84,81 @@ interface TestUI {
   error?: string;
 }
 
+// Brain status reported by the Tauri command. Treat anything other than
+// "ready" as "not ready" — there's no useful distinction for this page
+// between "starting" and "stopped".
+interface BrainStatus {
+  status: string;
+  message?: string;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Brain reachability banner — rendered only when the AI engine sidecar
+// isn't responding. Without this, users hit "Save" expecting everything
+// to work and are bewildered when the AI stays Unreachable. The banner
+// names the actual problem and offers the one-click fix (Restart engine).
+// ─────────────────────────────────────────────────────────────────────────────
+function BrainReachabilityBanner({
+  ready,
+  onRestart,
+  restarting,
+}: {
+  ready: boolean;
+  onRestart: () => void;
+  restarting: boolean;
+}) {
+  if (ready) return null;
+  return (
+    <div
+      role="alert"
+      data-testid="brain-reachability-banner"
+      className={cn(
+        'rounded-xl border p-4 flex items-start gap-3',
+        'border-amber-300 bg-amber-50 text-amber-900',
+        'dark:border-amber-800/60 dark:bg-amber-950/30 dark:text-amber-200',
+      )}
+    >
+      <ServerCrash className="h-5 w-5 shrink-0 mt-0.5" aria-hidden="true" />
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-semibold">AI engine isn't responding</p>
+        <p className="text-xs mt-1 leading-relaxed text-amber-900/80 dark:text-amber-200/80">
+          You can still edit and save configuration here, but saving
+          won't activate AI features until the engine comes online. If
+          this persists after a restart, check the app logs for the
+          kubilitics-ai-server sidecar.
+        </p>
+      </div>
+      <Button
+        size="sm"
+        variant="outline"
+        onClick={onRestart}
+        disabled={restarting}
+        className={cn(
+          'shrink-0 bg-white dark:bg-amber-950/40',
+          'border-amber-400/60 dark:border-amber-700/60',
+          'text-amber-900 dark:text-amber-100',
+          'hover:bg-amber-100 dark:hover:bg-amber-900/50',
+        )}
+        data-testid="brain-restart-btn"
+      >
+        {restarting ? (
+          <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+        ) : (
+          <RotateCcw className="h-3.5 w-3.5 mr-1.5" />
+        )}
+        {restarting ? 'Restarting…' : 'Restart engine'}
+      </Button>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Page
+// ─────────────────────────────────────────────────────────────────────────────
 export default function AISettingsPage() {
   const navigate = useNavigate();
   const store = useAIConfigStore();
-  const { provider, model, baseUrl, hasApiKey, loading, lastError } = store;
+  const { provider, model, baseUrl, hasApiKey, lastError } = store;
 
   // API key is transient — held only in this component's state until the
   // user saves. Once save() returns and hydrate() re-reads the store,
@@ -74,9 +171,14 @@ export default function AISettingsPage() {
   const [budgetCap, setBudgetCap] = useState<number | null>(null);
   const [resettingBudget, setResettingBudget] = useState(false);
 
-  // Detected providers from the OS env / localhost probe.  Surfaced as
-  // one-click connect buttons so users don't have to know model names or
-  // base URLs on their first run.
+  // Brain reachability — polled on mount and when the user restarts.
+  // Kept in local state (not in the zustand store) because it's specific
+  // to this page's banner; other screens have their own "AI Unreachable"
+  // indicators driven by chat-level probes.
+  const [brainReady, setBrainReady] = useState<boolean>(true); // optimistic — hide banner until we know otherwise
+  const [restarting, setRestarting] = useState(false);
+
+  // Quick Connect — auto-detected providers from the Rust side.
   type Detected = {
     provider: string; source: string; model: string; base_url: string; env_var: string;
   };
@@ -88,35 +190,7 @@ export default function AISettingsPage() {
       .catch(() => setDetected([]));
   }, []);
 
-  const handleQuickConnect = async (d: Detected) => {
-    setConnecting(d.provider);
-    try {
-      // Quick-connect doesn't need to pass the key — the brain reads the
-      // env var itself (OPENAI_API_KEY / ANTHROPIC_API_KEY etc.) or in the
-      // Ollama case there's no key at all. We just save provider/model/base_url.
-      await store.save({
-        provider: d.provider as Provider,
-        model: d.model,
-        baseUrl: d.base_url,
-        apiKey: '',
-      });
-      const res = await store.testConnection({
-        provider: d.provider as Provider,
-        model: d.model,
-        baseUrl: d.base_url,
-      });
-      setTestResult({ ok: res.ok, latencyMs: res.latencyMs, error: res.error ?? undefined });
-      if (res.ok) toast.success(`Connected to ${d.provider} (${res.latencyMs ?? 0}ms)`);
-      else toast.error(`Test failed: ${res.error ?? 'unknown'}`);
-    } catch (e) {
-      toast.error(`Quick-connect failed: ${e instanceof Error ? e.message : String(e)}`);
-    } finally {
-      setConnecting(null);
-    }
-  };
-
-  // Paste-any-key detector. Users paste whatever they have; we figure out
-  // which provider + model from the key prefix. No URL/model selection.
+  // Paste-any-key detector.
   const [pastedKey, setPastedKey] = useState<string>('');
   const [pasting, setPasting] = useState(false);
 
@@ -139,10 +213,33 @@ export default function AISettingsPage() {
     if (key.startsWith('sk-')) {
       return { provider: 'openai', model: 'gpt-4o-mini', baseUrl: '', label: 'OpenAI' };
     }
-    // Unknown prefix — assume OpenAI-compatible and let the user refine below.
     return null;
   };
   const pastedGuess = guessFromKey(pastedKey);
+
+  const handleQuickConnect = async (d: Detected) => {
+    setConnecting(d.provider);
+    try {
+      await store.save({
+        provider: d.provider as Provider,
+        model: d.model,
+        baseUrl: d.base_url,
+        apiKey: '',
+      });
+      const res = await store.testConnection({
+        provider: d.provider as Provider,
+        model: d.model,
+        baseUrl: d.base_url,
+      });
+      setTestResult({ ok: res.ok, latencyMs: res.latencyMs, error: res.error ?? undefined });
+      if (res.ok) toast.success(`Connected to ${d.provider} (${res.latencyMs ?? 0}ms)`);
+      else toast.error(`Test failed: ${res.error ?? 'unknown'}`);
+    } catch (e) {
+      toast.error(`Quick-connect failed: ${e instanceof Error ? e.message : String(e)}`);
+    } finally {
+      setConnecting(null);
+    }
+  };
 
   const handlePasteConnect = async () => {
     if (!pastedGuess) return;
@@ -170,20 +267,59 @@ export default function AISettingsPage() {
     }
   };
 
-  // Hydrate on mount — pulls provider/model/base_url from config.yaml
-  // and flips has_api_key from the keychain probe.
+  // ── Lifecycle ───────────────────────────────────────────────────────────
   useEffect(() => {
-    void store.hydrate();
-    // Kick off a budget probe — returns {spent_usd, cap_usd}. Non-fatal
-    // if the brain isn't reachable; the card just shows "—".
-    invoke<{ spent_usd: number; cap_usd: number }>('get_budget_status')
-      .then((b) => {
+    void (async () => {
+      // 1. Hydrate non-secret config from yaml. Never touches the keychain.
+      await store.hydrate();
+
+      // 2. One-shot keychain migration. Only users upgrading from a
+      //    pre-cache-flag build hit the real probe — fresh installs are
+      //    short-circuited server-side. Either way we call unconditionally
+      //    (idempotent) and only surface a toast when the backing call
+      //    is actually going to hit the keychain (`ran: true`).
+      const report = await store.migrateKeychainFlag();
+      if (report.ran && report.keyFoundInKeychain) {
+        toast.success('Verified saved API key in your OS keychain.');
+      } else if (report.ran && !report.keyFoundInKeychain) {
+        // Migration ran but found nothing — yaml will now say has_api_key:
+        // false authoritatively. Don't toast; the UI's "needs API key"
+        // badge already communicates the state.
+      }
+
+      // 3. Brain reachability. Check once on mount, then every 5s until
+      //    it goes ready. The polling interval is cheap (just a Tauri
+      //    command that reads an in-memory bool), no network cost.
+      const pollBrain = async () => {
+        try {
+          const s = await invoke<BrainStatus>('get_brain_status');
+          setBrainReady(s.status === 'ready');
+        } catch {
+          setBrainReady(false);
+        }
+      };
+      await pollBrain();
+
+      // Budget probe — harmless if the brain is down; it just returns nulls.
+      try {
+        const b = await invoke<{ spent_usd: number; cap_usd: number }>('get_budget_status');
         setBudgetSpent(b.spent_usd);
         setBudgetCap(b.cap_usd);
-      })
-      .catch(() => {
+      } catch {
         /* budget card stays blank; not a Settings-level error */
-      });
+      }
+    })();
+
+    // Brain reachability poll loop — lightweight, 5s cadence. Clears on unmount.
+    const interval = window.setInterval(async () => {
+      try {
+        const s = await invoke<BrainStatus>('get_brain_status');
+        setBrainReady(s.status === 'ready');
+      } catch {
+        setBrainReady(false);
+      }
+    }, 5000);
+    return () => window.clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -194,8 +330,6 @@ export default function AISettingsPage() {
 
   const handleProviderChange = (p: Provider) => {
     setFieldDebounced('provider', p);
-    // When the user flips providers the model + base_url defaults shift;
-    // push them through the debouncer too so the next save includes them.
     const nextModel = MODEL_OPTIONS[p][0] ?? '';
     setFieldDebounced('model', nextModel);
     setFieldDebounced('baseUrl', p === 'ollama' ? 'http://localhost:11434' : '');
@@ -219,8 +353,7 @@ export default function AISettingsPage() {
     try {
       await store.save({ provider, model, baseUrl, apiKey });
       toast.success('AI configuration saved');
-      setApiKey(''); // drop raw key from React state once it's in the keychain
-      // Immediately pulse a connection test so the user sees end-to-end green.
+      setApiKey('');
       const res = await store.testConnection({ provider, model, baseUrl });
       setTestResult({ ok: res.ok, latencyMs: res.latencyMs, error: res.error ?? undefined });
     } catch (e) {
@@ -231,8 +364,6 @@ export default function AISettingsPage() {
   };
 
   const handleReset = () => {
-    // Reset the form to defaults WITHOUT touching the keychain. User can
-    // hit Save to commit.
     setFieldDebounced('provider', 'openai');
     setFieldDebounced('model', 'gpt-4o');
     setFieldDebounced('baseUrl', '');
@@ -246,7 +377,6 @@ export default function AISettingsPage() {
     try {
       await invoke('reset_budget');
       toast.success('Budget cap reset');
-      // Re-probe
       const b = await invoke<{ spent_usd: number; cap_usd: number }>('get_budget_status');
       setBudgetSpent(b.spent_usd);
       setBudgetCap(b.cap_usd);
@@ -254,6 +384,27 @@ export default function AISettingsPage() {
       toast.error(`Reset failed: ${e instanceof Error ? e.message : String(e)}`);
     } finally {
       setResettingBudget(false);
+    }
+  };
+
+  const handleRestartBrain = async () => {
+    setRestarting(true);
+    try {
+      await invoke('restart_brain');
+      toast.success('AI engine restart requested');
+      // Give the sidecar a moment to come up, then re-poll.
+      window.setTimeout(async () => {
+        try {
+          const s = await invoke<BrainStatus>('get_brain_status');
+          setBrainReady(s.status === 'ready');
+        } catch {
+          setBrainReady(false);
+        }
+      }, 1500);
+    } catch (e) {
+      toast.error(`Restart failed: ${e instanceof Error ? e.message : String(e)}`);
+    } finally {
+      setRestarting(false);
     }
   };
 
@@ -265,38 +416,26 @@ export default function AISettingsPage() {
     <PageLayout label="AI Settings" showBanner={false} className="max-w-5xl mx-auto">
       <SectionOverviewHeader
         title="AI Settings"
-        description="Configure the AI provider, model, and credentials. The API key lives in the OS keychain — never in a config file."
+        description="Configure the AI provider, model, and credentials. API keys live in your OS keychain — never in a config file."
         icon={Bot}
+        liveBadge={false}
       />
 
-      {/* ━━━ Current State ━━━ */}
-      <Card className="border-none soft-shadow glass-panel" data-testid="ai-current-state-card">
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="text-base">Current State</CardTitle>
-              <CardDescription>Brain-reported configuration from the keychain round-trip.</CardDescription>
-            </div>
-            <Badge variant="outline" className={cn('rounded-full px-3 py-1 text-xs font-medium', stateTone)}>
-              {hasApiKey ? 'configured' : 'needs API key'}
-            </Badge>
-          </div>
-        </CardHeader>
-        <CardContent className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <StatTile label="Provider" value={provider} />
-          <StatTile label="Model" value={model || '—'} />
-          <StatTile label="Base URL" value={baseUrl || 'default'} />
-          <StatTile label="Key in Keychain" value={hasApiKey ? 'yes' : 'no'} />
-        </CardContent>
-      </Card>
+      {/* ━━━ Brain Reachability Banner ━━━ */}
+      <BrainReachabilityBanner
+        ready={brainReady}
+        onRestart={handleRestartBrain}
+        restarting={restarting}
+      />
 
-      {/* ━━━ Quick Connect — always visible, paste any key ━━━ */}
+      {/* ━━━ Quick Connect ━━━ */}
       <Card className="border-none soft-shadow glass-panel" data-testid="ai-quick-connect-card">
         <CardHeader>
           <CardTitle className="text-base">Quick Connect</CardTitle>
           <CardDescription>
-            Paste any AI provider key below — we detect the provider from the
-            prefix and pick a sensible model for you. No URL or model name to memorize.
+            Paste any AI provider key below — we detect the provider from
+            the prefix and pick a sensible model for you. No URL or model
+            name to memorize.
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-3">
@@ -306,12 +445,12 @@ export default function AISettingsPage() {
                 const label =
                   d.provider === 'openai' ? 'OpenAI' :
                   d.provider === 'anthropic' ? 'Anthropic' :
-                  d.provider === 'ollama' ? 'Ollama (local)' :
+                  d.provider === 'ollama' ? 'Ollama' :
                   d.env_var.replace('_API_KEY', '').toLowerCase();
                 const sourceText =
                   d.source === 'env' ? `from $${d.env_var}` :
-                  d.source === 'localhost' ? 'running on localhost' :
-                  'saved in keychain';
+                  d.source === 'localhost' ? 'local' :
+                  'saved';
                 return (
                   <Button
                     key={`${d.provider}-${d.source}-${d.env_var}`}
@@ -320,7 +459,7 @@ export default function AISettingsPage() {
                     onClick={() => handleQuickConnect(d)}
                     disabled={connecting !== null}
                   >
-                    {connecting === d.provider ? 'Connecting…' : `${label} · ${sourceText}`}
+                    {connecting === d.provider ? 'Connecting…' : `Use ${label} · ${sourceText}`}
                   </Button>
                 );
               })}
@@ -358,11 +497,30 @@ export default function AISettingsPage() {
         </CardContent>
       </Card>
 
-      {/* ━━━ Provider Configuration ━━━ */}
+      {/* ━━━ Provider (merged: status + editable fields) ━━━
+          Replaces the old "Current State" (read-only tiles) +
+          "Provider Configuration" (editable) split — those were two
+          views of the same underlying data and confused users about
+          which was authoritative. */}
       <Card className="border-none soft-shadow glass-panel" data-testid="ai-provider-card">
         <CardHeader>
-          <CardTitle className="text-base">Provider Configuration</CardTitle>
-          <CardDescription>Changes to provider / model / base URL auto-save 500ms after you stop typing.</CardDescription>
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+            <div>
+              <CardTitle className="text-base">Provider</CardTitle>
+              <CardDescription>
+                Edit provider, model, and credentials. Non-secret changes
+                auto-save 500ms after you stop typing. API keys are only
+                written to the OS keychain when you click Save.
+              </CardDescription>
+            </div>
+            <Badge
+              variant="outline"
+              className={cn('rounded-full px-3 py-1 text-xs font-medium whitespace-nowrap', stateTone)}
+              data-testid="ai-provider-status-badge"
+            >
+              {hasApiKey ? 'configured' : 'needs API key'}
+            </Badge>
+          </div>
         </CardHeader>
         <CardContent className="space-y-5">
           <div className="grid sm:grid-cols-2 gap-4">
@@ -441,8 +599,9 @@ export default function AISettingsPage() {
                 className="font-mono text-sm"
               />
               <p className="text-xs text-muted-foreground">
-                Saved to the OS keychain (macOS Keychain / Windows Credential Manager / Linux libsecret).
-                Never written to disk in plaintext, never returned to this form.
+                Saved to the OS keychain (macOS Keychain / Windows Credential
+                Manager / Linux libsecret). Never written to disk in
+                plaintext, never returned to this form.
               </p>
             </div>
           )}
@@ -503,7 +662,11 @@ export default function AISettingsPage() {
               </span>
             )}
             {lastError && (
-              <span className="text-xs text-red-600 dark:text-red-400" data-testid="store-error">
+              <span
+                className="text-xs text-red-600 dark:text-red-400 inline-flex items-center gap-1.5"
+                data-testid="store-error"
+              >
+                <AlertTriangle className="h-3.5 w-3.5" />
                 {lastError}
               </span>
             )}

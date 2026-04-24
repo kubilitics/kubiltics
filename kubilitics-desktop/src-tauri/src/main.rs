@@ -61,6 +61,7 @@ fn main() {
             // Phase 2 / Blocker C — AI settings keychain round-trip
             ai_config::save_ai_config,
             ai_config::load_ai_config,
+            ai_config::migrate_has_api_key,
             ai_config::test_llm_connection,
             ai_config::detect_available_providers,
             ai_config::get_budget_status,

@@ -50,8 +50,9 @@ describe('AISettingsPage (keychain round-trip)', () => {
       lastError: null,
     });
     (invoke as ReturnType<typeof vi.fn>).mockReset();
-    // Default: load_ai_config returns the current store-like payload;
-    // get_budget_status returns a sane default.
+    // Default mocks. The page calls several commands on mount; every
+    // one must have an answer or useEffect throws unhandled rejections
+    // and the test's render flakes.
     (invoke as ReturnType<typeof vi.fn>).mockImplementation((cmd: string) => {
       if (cmd === 'load_ai_config') {
         return Promise.resolve({
@@ -63,6 +64,21 @@ describe('AISettingsPage (keychain round-trip)', () => {
       }
       if (cmd === 'get_budget_status') {
         return Promise.resolve({ spent_usd: 0, cap_usd: 0 });
+      }
+      if (cmd === 'migrate_has_api_key') {
+        // Default: migration already ran (idempotent no-op).
+        return Promise.resolve({
+          ran: false,
+          has_api_key: false,
+          key_found_in_keychain: false,
+        });
+      }
+      if (cmd === 'get_brain_status') {
+        // Default: brain is ready → banner stays hidden.
+        return Promise.resolve({ status: 'ready', message: 'AI engine ready' });
+      }
+      if (cmd === 'detect_available_providers') {
+        return Promise.resolve([]);
       }
       return Promise.resolve(undefined);
     });
@@ -132,6 +148,102 @@ describe('AISettingsPage (keychain round-trip)', () => {
     // responsible for keychain-persisting it. We assert the payload shape.
     const saveCall = (invoke as ReturnType<typeof vi.fn>).mock.calls.find((c) => c[0] === 'save_ai_config');
     expect(saveCall?.[1]).toMatchObject({ cfg: { provider: 'openai', api_key: 'sk-test-xyz-012345' } });
+  });
+
+  // ── Post-P0/P1/P2/P3 redesign ────────────────────────────────────────
+
+  it('calls migrate_has_api_key on mount (idempotent one-shot)', async () => {
+    renderPage();
+    await waitFor(() => {
+      const calls = (invoke as ReturnType<typeof vi.fn>).mock.calls.map((c) => c[0]);
+      expect(calls).toContain('migrate_has_api_key');
+    });
+  });
+
+  it('surfaces a success toast when migration finds a saved key in the keychain', async () => {
+    const { toast } = await import('@/components/ui/sonner');
+    (invoke as ReturnType<typeof vi.fn>).mockImplementation((cmd: string) => {
+      if (cmd === 'load_ai_config') {
+        return Promise.resolve({ provider: 'openai', model: 'gpt-4o', base_url: '', has_api_key: false });
+      }
+      if (cmd === 'get_budget_status') return Promise.resolve({ spent_usd: 0, cap_usd: 0 });
+      if (cmd === 'migrate_has_api_key') {
+        return Promise.resolve({ ran: true, has_api_key: true, key_found_in_keychain: true });
+      }
+      if (cmd === 'get_brain_status') return Promise.resolve({ status: 'ready' });
+      if (cmd === 'detect_available_providers') return Promise.resolve([]);
+      return Promise.resolve(undefined);
+    });
+    renderPage();
+    await waitFor(() => {
+      expect(toast.success).toHaveBeenCalledWith(
+        expect.stringMatching(/verified saved api key/i),
+      );
+    });
+  });
+
+  it('hides the brain reachability banner when the engine is ready', async () => {
+    renderPage();
+    // Defaults set get_brain_status → ready. Wait for useEffect to fire
+    // load_ai_config first so the page has settled.
+    await waitFor(() => {
+      const calls = (invoke as ReturnType<typeof vi.fn>).mock.calls.map((c) => c[0]);
+      expect(calls).toContain('get_brain_status');
+    });
+    expect(screen.queryByTestId('brain-reachability-banner')).not.toBeInTheDocument();
+  });
+
+  it('shows the brain reachability banner and a Restart engine button when the engine is not ready', async () => {
+    (invoke as ReturnType<typeof vi.fn>).mockImplementation((cmd: string) => {
+      if (cmd === 'load_ai_config') {
+        return Promise.resolve({ provider: 'openai', model: 'gpt-4o', base_url: '', has_api_key: false });
+      }
+      if (cmd === 'get_budget_status') return Promise.resolve({ spent_usd: 0, cap_usd: 0 });
+      if (cmd === 'migrate_has_api_key') {
+        return Promise.resolve({ ran: false, has_api_key: false, key_found_in_keychain: false });
+      }
+      if (cmd === 'get_brain_status') return Promise.resolve({ status: 'starting' });
+      if (cmd === 'detect_available_providers') return Promise.resolve([]);
+      return Promise.resolve(undefined);
+    });
+    renderPage();
+    const banner = await screen.findByTestId('brain-reachability-banner');
+    expect(banner).toBeInTheDocument();
+    expect(screen.getByTestId('brain-restart-btn')).toBeInTheDocument();
+  });
+
+  it('Restart engine button invokes restart_brain', async () => {
+    (invoke as ReturnType<typeof vi.fn>).mockImplementation((cmd: string) => {
+      if (cmd === 'load_ai_config') {
+        return Promise.resolve({ provider: 'openai', model: 'gpt-4o', base_url: '', has_api_key: false });
+      }
+      if (cmd === 'get_budget_status') return Promise.resolve({ spent_usd: 0, cap_usd: 0 });
+      if (cmd === 'migrate_has_api_key') {
+        return Promise.resolve({ ran: false, has_api_key: false, key_found_in_keychain: false });
+      }
+      if (cmd === 'get_brain_status') return Promise.resolve({ status: 'starting' });
+      if (cmd === 'detect_available_providers') return Promise.resolve([]);
+      if (cmd === 'restart_brain') return Promise.resolve();
+      return Promise.resolve(undefined);
+    });
+    renderPage();
+    const restartBtn = await screen.findByTestId('brain-restart-btn');
+    fireEvent.click(restartBtn);
+    await waitFor(() => {
+      const calls = (invoke as ReturnType<typeof vi.fn>).mock.calls.map((c) => c[0]);
+      expect(calls).toContain('restart_brain');
+    });
+  });
+
+  it('renders the merged Provider card with a status badge (no separate Current State card)', () => {
+    // P2 redesign: the old "Current State" read-only tiles + "Provider
+    // Configuration" editable fields were merged into a single card.
+    // Test asserts the merged card's status-badge testid exists and
+    // that the legacy separate Current State card is gone.
+    renderPage();
+    expect(screen.getByTestId('ai-provider-card')).toBeInTheDocument();
+    expect(screen.getByTestId('ai-provider-status-badge')).toBeInTheDocument();
+    expect(screen.queryByTestId('ai-current-state-card')).not.toBeInTheDocument();
   });
 
   it('Reset budget cap button invokes reset_budget', async () => {
