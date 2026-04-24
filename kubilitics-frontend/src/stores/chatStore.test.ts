@@ -98,11 +98,18 @@ describe('chatStore', () => {
     useChatStore.getState().appendAssistantTurn('c1', {
       turnId: 't1', anchorId: 'a1', blocks: [], state: 'streaming', startedAt: 1,
     });
+    // Pick a variant the reducer has no explicit case for — the whole point
+    // of this test is the default-branch fallback. Do NOT use a real variant
+    // like plan_proposed; the reducer grew a real case for it and this
+    // assertion regressed once already.
     useChatStore.getState().applyEventToActiveTurn('c1', {
-      type: 'plan_proposed', payload: { plan_id: 'p1' },
+      type: 'some_frame_the_reducer_does_not_know', payload: { whatever: 1 },
     } as never);
     const turn = useChatStore.getState().transcripts['c1'][0];
     if (turn.kind !== 'assistant') throw new Error('expected assistant');
-    expect(turn.blocks[0]).toMatchObject({ type: 'unknown', kind: 'plan_proposed' });
+    expect(turn.blocks[0]).toMatchObject({
+      type: 'unknown',
+      kind: 'some_frame_the_reducer_does_not_know',
+    });
   });
 });
