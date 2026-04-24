@@ -18,10 +18,33 @@ const STORAGE_KEY = 'kubilitics.presence.lastActive';
 function loadPersisted(): LogicalIdentity | null {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? (JSON.parse(raw) as LogicalIdentity) : null;
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return parsed ? normalizeIdentity(parsed) : null;
   } catch {
     return null;
   }
+}
+
+// normalizeIdentity translates the backend wire shape ({name, server_url})
+// into the frontend camelCase shape ({name, serverUrl}). Tolerates either
+// input case-shape so already-camelCase data round-trips unchanged.
+function normalizeIdentity(id: Record<string, unknown> | LogicalIdentity): LogicalIdentity {
+  const raw = id as { name?: string; serverUrl?: string; server_url?: string };
+  return {
+    name: raw?.name ?? '',
+    serverUrl: raw?.serverUrl ?? raw?.server_url ?? '',
+  };
+}
+
+// normalizeClusterShape walks a cluster-like object and normalizes the
+// inner identity. Non-identity fields pass through untouched so top-
+// level snake_case fields (context_name, last_seen_at, session_id,
+// registered_at, connected_at, etc.) stay as the rest of the frontend
+// already reads them.
+function normalizeClusterShape<T extends { identity: LogicalIdentity | Record<string, unknown> }>(c: T): T {
+  if (!c) return c;
+  return { ...c, identity: normalizeIdentity(c.identity as Record<string, unknown>) } as T;
 }
 
 interface ClusterPresenceState {
@@ -45,13 +68,28 @@ export const useClusterPresenceStore = create<ClusterPresenceState>((set, get) =
   isReady: false,
 
   applySnapshot(snap) {
+    // Normalize wire-shape: the Go backend serializes LogicalIdentity as
+    // {name, server_url} (snake_case per json tags). The frontend TS
+    // interface declares {name, serverUrl} (camelCase). When the raw
+    // JSON is handed to the store unchanged, every read of
+    // identity.serverUrl returns undefined — crashing normalizeUrl in
+    // type helpers, blanking cluster cards, and in the worst case
+    // tripping the GlobalErrorBoundary. Translate once here so every
+    // downstream consumer gets the camelCase shape it expects.
+    const normalized = {
+      discovered: (snap.discovered ?? []).map(normalizeClusterShape) as DiscoveredCluster[],
+      registered: (snap.registered ?? []).map(normalizeClusterShape) as RegisteredCluster[],
+      connected: (snap.connected ?? []).map(normalizeClusterShape) as ConnectedCluster[],
+      last_used: snap.last_used ? normalizeIdentity(snap.last_used) : null,
+    };
     set((state) => ({
-      discovered: snap.discovered,
-      registered: snap.registered,
-      connected: snap.connected,
+      discovered: normalized.discovered,
+      registered: normalized.registered,
+      connected: normalized.connected,
       isReady: true,
       // Prefer backend's last_used only if no local preference exists.
-      activeLogicalIdentity: state.activeLogicalIdentity ?? snap.last_used ?? null,
+      activeLogicalIdentity:
+        state.activeLogicalIdentity ?? normalized.last_used ?? null,
     }));
   },
 

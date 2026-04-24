@@ -8,14 +8,21 @@ export interface LogicalIdentity {
 }
 
 export function logicalIdentityKey(id: LogicalIdentity): string {
-  return `${id.name}|${normalizeUrl(id.serverUrl)}`;
+  // Defensive: if the identity is malformed (e.g. backend returned an
+  // unexpected shape or field is genuinely missing), return a stable
+  // fallback key instead of crashing the whole page. Callers that rely
+  // on uniqueness should check for `id?.name` beforehand if it matters.
+  const name = id?.name ?? '';
+  const server = id?.serverUrl ?? '';
+  return `${name}|${normalizeUrl(server)}`;
 }
 
 export function logicalIdentityEqual(a: LogicalIdentity, b: LogicalIdentity): boolean {
   return logicalIdentityKey(a) === logicalIdentityKey(b);
 }
 
-function normalizeUrl(raw: string): string {
+function normalizeUrl(raw: string | null | undefined): string {
+  if (raw == null || typeof raw !== 'string' || raw.length === 0) return '';
   try {
     const u = new URL(raw);
     const path = u.pathname.replace(/\/+$/, '');
