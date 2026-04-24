@@ -1,6 +1,9 @@
 package middleware
 
 import (
+	"bufio"
+	"fmt"
+	"net"
 	"net/http"
 	"strings"
 
@@ -10,6 +13,12 @@ import (
 )
 
 // responseRecorder wraps http.ResponseWriter to capture status code.
+// Embedding the interface drops Flusher/Hijacker passthrough; we re-expose
+// them explicitly so SSE handlers (text/event-stream) and WebSocket upgrades
+// that land behind AuditLog continue to function. Missing these methods
+// caused the /api/v1/presence/events stream to return 500
+// "streaming not supported" in production — httptest.NewRecorder hides the
+// regression because it implements Flusher natively.
 type responseRecorder struct {
 	http.ResponseWriter
 	statusCode int
@@ -18,6 +27,24 @@ type responseRecorder struct {
 func (r *responseRecorder) WriteHeader(code int) {
 	r.statusCode = code
 	r.ResponseWriter.WriteHeader(code)
+}
+
+// Flush forwards to the underlying ResponseWriter when it supports
+// http.Flusher. No-op otherwise so callers never panic.
+func (r *responseRecorder) Flush() {
+	if f, ok := r.ResponseWriter.(http.Flusher); ok {
+		f.Flush()
+	}
+}
+
+// Hijack forwards to the underlying ResponseWriter when it supports
+// http.Hijacker (e.g. for WebSocket upgrades). Returns an explicit
+// not-supported error otherwise.
+func (r *responseRecorder) Hijack() (net.Conn, *bufio.ReadWriter, error) {
+	if hj, ok := r.ResponseWriter.(http.Hijacker); ok {
+		return hj.Hijack()
+	}
+	return nil, nil, fmt.Errorf("http.ResponseWriter does not support hijacking")
 }
 
 // AuditLog returns middleware that logs mutating operations (POST, PATCH, DELETE) to audit_log (BE-SEC-002).
