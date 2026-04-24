@@ -5,7 +5,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/kubilitics/kubilitics-backend/internal/api/rest"
+	"github.com/kubilitics/kubilitics-backend/internal/cluster/presence"
 )
 
 // Manager composes multiple DiscoverySources into a single deduplicated
@@ -51,22 +51,22 @@ func (m *Manager) Refresh(ctx context.Context) error {
 
 // Snapshot returns a copy-safe view. Registered/Connected wiring comes in
 // Phase 2.7 when we attach the registration+connection managers.
-func (m *Manager) Snapshot() rest.PresenceSnapshot {
+func (m *Manager) Snapshot() presence.Snapshot {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 	// Copy to avoid callers mutating internal state.
-	disc := make([]rest.DiscoveredCluster, len(m.discovered))
+	disc := make([]presence.DiscoveredCluster, len(m.discovered))
 	for i, c := range m.discovered {
-		disc[i] = rest.DiscoveredCluster{
+		disc[i] = presence.DiscoveredCluster{
 			Identity:   c.Identity,
 			Source:     c.Source,
 			LastSeenAt: time.Now().Format(time.RFC3339),
 		}
 	}
-	return rest.PresenceSnapshot{
+	return presence.Snapshot{
 		Discovered: disc,
-		Registered: []rest.RegisteredCluster{},
-		Connected:  []rest.ConnectedCluster{},
+		Registered: []presence.RegisteredCluster{},
+		Connected:  []presence.ConnectedCluster{},
 	}
 }
 
