@@ -468,10 +468,29 @@ export function FlagGatedRoute({ children }: { children: React.ReactNode }) {
 
 /** Entry-point decision for "/" when FEATURE_PRESENCE_V2 is ON:
  *  at least one available cluster → /clusters; otherwise → /welcome.
- *  Reads a one-shot snapshot from the store (no subscription needed here).
+ *
+ *  Must wait for the first presence snapshot before redirecting. Without
+ *  this guard, on cold start `availableClusters()` returns `[]` for one
+ *  frame (before SSE lands the initial payload) and users with a populated
+ *  kubeconfig would flash onto /welcome and then bounce to /clusters.
+ *  We subscribe to `isReady` so React re-renders when the snapshot arrives.
+ *
  *  Exported for integration testing. */
 // eslint-disable-next-line react-refresh/only-export-components
 export function PresenceEntryPoint() {
+  const isReady = useClusterPresenceStore((s) => s.isReady);
+  if (!isReady) {
+    return (
+      <div
+        data-testid="presence-entry-loader"
+        className="flex min-h-screen items-center justify-center"
+        role="status"
+        aria-label="Loading clusters"
+      >
+        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
   const hasClusters =
     useClusterPresenceStore.getState().availableClusters().length > 0;
   return <Navigate to={hasClusters ? '/clusters' : '/welcome'} replace />;

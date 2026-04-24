@@ -124,6 +124,48 @@ describe('App routing helpers — onboarding-v2 flag gates', () => {
       renderAt('/');
       expect(screen.getByText('CLUSTER_PICKER_STUB')).toBeInTheDocument();
     });
+
+    // Phase 6 task 6.0b: PresenceEntryPoint must NOT redirect while the
+    // presence snapshot is still loading. On cold start, availableClusters()
+    // reads an empty array before SSE populates the store, which would
+    // briefly route users with populated kubeconfigs to /welcome for one
+    // frame before bouncing them to /clusters. Render a lightweight loader
+    // until `isReady` flips to true.
+    it('PresenceEntryPoint shows loader and does NOT navigate while isReady=false', () => {
+      useClusterPresenceStore.setState({
+        discovered: [
+          { identity: { name: 'prod', serverUrl: 'https://p' }, source: 'kubeconfig' },
+        ],
+        registered: [],
+        connected: [],
+        isReady: false,
+      });
+      renderAt('/');
+      // No navigation: neither picker nor welcome rendered yet.
+      expect(screen.queryByText('CLUSTER_PICKER_STUB')).toBeNull();
+      expect(screen.queryByText('WELCOME_STUB')).toBeNull();
+      // Loader placeholder is present.
+      expect(
+        screen.getByTestId('presence-entry-loader'),
+      ).toBeInTheDocument();
+    });
+
+    it('PresenceEntryPoint navigates once isReady flips to true', async () => {
+      useClusterPresenceStore.setState({
+        discovered: [
+          { identity: { name: 'prod', serverUrl: 'https://p' }, source: 'kubeconfig' },
+        ],
+        registered: [],
+        connected: [],
+        isReady: false,
+      });
+      renderAt('/');
+      expect(screen.queryByText('CLUSTER_PICKER_STUB')).toBeNull();
+
+      // Flip isReady; the subscribed component should now redirect.
+      useClusterPresenceStore.setState({ isReady: true });
+      await screen.findByText('CLUSTER_PICKER_STUB');
+    });
   });
 
   it('ClusterPresenceSubscriber renders nothing', () => {
