@@ -17,7 +17,9 @@ import { useAIUserConfig } from './useAIUserConfig';
  *   3. Status reports state='error' or state='unavailable' → 'brain_error'
  *   4. User has not saved provider+key → 'not_configured'   ← THE HEADLINE BUG
  *   5. Status reports state='degraded' → 'degraded' (ready=true; still usable)
- *   6. All green → 'ready'
+ *   6. capabilities.data.ready === true → 'ready' (status.state need not be
+ *      'ready' — the brain's /status historically returns "" when up but
+ *      pre-event; capabilities is the authoritative ready signal)
  *   7. Anything else (defensive) → 'loading'
  *
  * `ready: boolean` is true for 'ready' and 'degraded'; false otherwise.
@@ -67,14 +69,12 @@ export function useAIReady(clusterId?: string): AIReadyState {
     if (state === 'error' || state === 'unavailable') return 'brain_error';
     if (!config.isConfigured) return 'not_configured';
     if (state === 'degraded') return 'degraded';
-    if (state === 'ready' && capabilities.data?.ready) return 'ready';
-    // Defensive fallback. Reachable when:
-    //   (a) status.state === 'ready' but capabilities.data.ready === false
-    //       (brain healthcheck and capabilities disagree — transient).
-    //   (b) status.data.state is an unrecognized value (new backend state
-    //       this frontend doesn't yet know about).
-    // We surface 'loading' so the UI shows a spinner rather than asserting
-    // ready or asserting an error neither of which is correct here.
+    if (capabilities.data?.ready) return 'ready';
+    // Defensive fallback. Reachable when capabilities.data.ready is false
+    // and status.state is not 'error'/'unavailable'/'degraded' — typically
+    // the brain just started and hasn't loaded a provider yet, or
+    // capabilities is mid-refetch. Surfacing 'loading' shows a spinner
+    // rather than incorrectly asserting ready or error.
     return 'loading';
   })();
 

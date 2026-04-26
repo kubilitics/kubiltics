@@ -107,6 +107,37 @@ describe('useAIReady — reason precedence', () => {
     expect(result.current.reason).toBe('ready');
     expect(result.current.ready).toBe(true);
   });
+
+  it("returns 'ready' when status.state is empty (brain up but no ready event) and capabilities reports ready (REGRESSION: brain's /status historically returns empty when up)", () => {
+    // /api/v1/ai/status returns {"state":""} — brain is reachable but hasn't
+    // pushed a ready event yet. /api/v1/ai/capabilities and /api/v1/ai/config
+    // both report ready/configured. ChatPanel must NOT sit on "Checking AI…".
+    vi.mocked(useAIStatus).mockReturnValueOnce({
+      data: { state: '' as unknown as 'ready' }, // backend wart: empty string
+      isLoading: false,
+      isError: false,
+      error: null,
+    } as ReturnType<typeof useAIStatus>);
+    const { result } = renderHook(() => useAIReady('c1'), { wrapper });
+    expect(result.current.reason).toBe('ready');
+    expect(result.current.ready).toBe(true);
+  });
+
+  it("still returns 'not_configured' when status.state is empty AND user is unconfigured (headline bug must not regress)", () => {
+    vi.mocked(useAIStatus).mockReturnValueOnce({
+      data: { state: '' as unknown as 'ready' },
+      isLoading: false,
+      isError: false,
+      error: null,
+    } as ReturnType<typeof useAIStatus>);
+    vi.mocked(useAIUserConfig).mockReturnValueOnce({
+      data: { provider: '', model: '', base_url: '', api_key_masked: '', has_api_key: 'false' },
+      isConfigured: false, isLoading: false, error: undefined,
+    });
+    const { result } = renderHook(() => useAIReady('c1'), { wrapper });
+    expect(result.current.reason).toBe('not_configured');
+    expect(result.current.ready).toBe(false);
+  });
 });
 
 describe('useAIReady — labels', () => {
