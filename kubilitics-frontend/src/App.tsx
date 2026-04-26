@@ -343,6 +343,7 @@ import { useOverviewStream } from "@/hooks/useOverviewStream";
 import { isTauri, invokeWithRetry, openExternal } from "@/lib/tauri";
 import { ThemeProvider } from "@/providers/ThemeProvider";
 import { useActiveClusterId } from '@/hooks/useActiveClusterId';
+import { useBrainStatusListener } from '@/hooks/useBrainStatusListener';
 // Phase 7: onboardingStore + WelcomeScreen + FirstRunWizard deleted.
 // Entry UX is now owned by PresenceEntryPoint + /welcome + /clusters.
 
@@ -432,6 +433,18 @@ function SyncBackendUrl() {
     // Run once on mount — backendBaseUrl intentionally excluded to avoid re-running on every change
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [setBackendBaseUrl]);
+  return null;
+}
+
+/**
+ * BrainStatusListener — mounts useBrainStatusListener once at app root.
+ * In Tauri, every brain-status transition triggers an awaited refetch of
+ * all three AI queries (status / capabilities / user-config), so the UI
+ * can never sit on stale data after the brain transitions ready/error.
+ * No-op outside Tauri.
+ */
+function BrainStatusListener() {
+  useBrainStatusListener();
   return null;
 }
 
@@ -668,6 +681,7 @@ const App = () => (
         <ResourceLiveUpdates />
         <ThemeProvider />
         <SyncBackendUrl />
+        <BrainStatusListener />
         <AnalyticsConsentWrapper>
           <AppRouter>
             <TauriMenuHandler />
