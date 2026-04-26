@@ -109,6 +109,12 @@ export function useAIReady(clusterId?: string): AIReadyState {
     const state = status.data?.state;
     if (state === 'error' || state === 'unavailable') return 'brain_error';
     if (!config.isConfigured) return 'not_configured';
+    // Active profile carries a last_error from the most recent activate /
+    // test / cold-start hot-wire attempt. If it's set, surface it as
+    // brain_error so the UI doesn't silently fall back to 'loading' when
+    // the brain rejected our key or returned an upstream LLM error. The
+    // error clears the next time activate succeeds.
+    if (active && active.last_error) return 'brain_error';
     if (state === 'degraded') return 'degraded';
     if (capabilities.data?.ready) return 'ready';
     // Defensive fallback. Reachable when capabilities.data.ready is false
@@ -128,7 +134,9 @@ export function useAIReady(clusterId?: string): AIReadyState {
       (capabilities.error instanceof Error ? capabilities.error.message : undefined) ??
       (config.error instanceof Error ? config.error.message : undefined);
   } else if (reason === 'brain_error') {
-    detail = status.data?.disabled_reason;
+    // Profile-level error wins over the brain's generic disabled_reason —
+    // it's the most specific and most recent.
+    detail = active?.last_error ?? status.data?.disabled_reason;
   }
 
   return useMemo(
