@@ -360,6 +360,18 @@ cd kubilitics-frontend && npm install && npm run dev
 
 Backend: http://localhost:8190 • Frontend: http://localhost:5173 • Metrics: http://localhost:8190/metrics
 
+#### Port conflicts
+
+The desktop dev session binds **fixed** ports — no fallback. If 8190 (backend),
+8081/50061 (AI server), or 5173 (Vite) is already held, the sidecar exits with
+a message naming the offending PID. `scripts/dev-preflight.sh` runs before
+`cargo tauri dev` and clears stale listeners from prior crashed sessions; if a
+port is held by an unrelated app, free it manually:
+
+```bash
+lsof -ti tcp:8190 | xargs kill -9
+```
+
 ### Tests
 
 ```bash

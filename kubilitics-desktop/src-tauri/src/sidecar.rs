@@ -17,10 +17,12 @@ pub struct BackendManager {
     is_ready: Arc<Mutex<bool>>,
     /// TASK-SIDECAR-001: Store process handle so we can kill on exit, not just send HTTP shutdown.
     backend_process: Arc<Mutex<Option<tauri_plugin_shell::process::CommandChild>>>,
-    /// Port the backend actually listens on. Prefer BACKEND_PORT (8190); fall back to an
-    /// OS-assigned free port if 8190 is already bound by another process (another
-    /// Kubilitics instance, dev build, stray previous run, unrelated squatter).
-    /// Resolved once at start() and reused across restarts.
+    /// Port the backend actually listens on. Always BACKEND_PORT (8190).
+    /// We used to fall back to an OS-assigned port when 8190 was occupied — that
+    /// produced a Vite-proxy/sidecar mismatch in dev (proxy hardcoded to 8190,
+    /// sidecar bound elsewhere → ECONNREFUSED on every fetch). Headlamp/k9s/etc
+    /// fail loud on port conflict instead, and so do we now. Field is kept so
+    /// callers (`port()`, `url()`) keep their shape.
     resolved_port: Arc<Mutex<u16>>,
 }
 
@@ -51,33 +53,46 @@ impl BackendManager {
         format!("http://localhost:{}", self.port())
     }
 
-    /// Pick a port for the backend sidecar. Prefer BACKEND_PORT so dev users keep
-    /// the familiar curl-able URL; if that port is taken (dev backend already
-    /// running, another Kubilitics instance, anything else), ask the OS for a
-    /// guaranteed-free port. Never piggyback on whatever is already on 8190 —
-    /// that path has produced silent-orphan UX bugs every time it fires.
-    fn pick_port() -> u16 {
-        if Self::can_bind(BACKEND_PORT) {
-            return BACKEND_PORT;
-        }
-        eprintln!(
-            "Port {} is occupied — asking OS for a free port instead. The in-app \
-             backend will spawn on that port and the frontend will be told about it.",
-            BACKEND_PORT
-        );
-        match std::net::TcpListener::bind("127.0.0.1:0") {
-            Ok(listener) => listener
-                .local_addr()
-                .map(|a| a.port())
-                .unwrap_or(BACKEND_PORT),
-            Err(_) => BACKEND_PORT,
-        }
-    }
-
     /// True if we can bind to 127.0.0.1:port right now. Dropping the listener
     /// releases it immediately; the sidecar process will bind to it next.
     fn can_bind(port: u16) -> bool {
         std::net::TcpListener::bind(format!("127.0.0.1:{}", port)).is_ok()
+    }
+
+    /// Best-effort PID lookup for whoever is holding `port`. Used only for the
+    /// human-facing error message — returns None if `lsof` isn't available
+    /// (Windows, minimal Linux containers) or the port is already free.
+    fn port_holder_pid(port: u16) -> Option<String> {
+        let out = std::process::Command::new("lsof")
+            .args(["-ti", &format!("tcp:{}", port), "-sTCP:LISTEN"])
+            .output()
+            .ok()?;
+        if !out.status.success() {
+            return None;
+        }
+        let pid = String::from_utf8_lossy(&out.stdout)
+            .lines()
+            .next()
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty())?;
+        Some(pid)
+    }
+
+    /// Format a friendly port-conflict error pointing the user at the PID and
+    /// the exact command to free the port.
+    fn port_conflict_message(port: u16) -> String {
+        match Self::port_holder_pid(port) {
+            Some(pid) => format!(
+                "Port {port} is in use by PID {pid}. Quit that process and relaunch, \
+                 or run `kill -9 {pid}` (macOS/Linux). Kubilitics binds {port} on purpose \
+                 — the dev frontend's Vite proxy targets that exact port, and silently \
+                 falling back to a different port produces ECONNREFUSED on every API call."
+            ),
+            None => format!(
+                "Port {port} is already in use. Quit the conflicting process \
+                 (`lsof -ti tcp:{port} | xargs kill -9` on macOS/Linux) and relaunch."
+            ),
+        }
     }
 
     /// Start backend and health monitor. Takes Arc<Self> so the health monitor can restart
@@ -89,20 +104,23 @@ impl BackendManager {
             "message": "Starting backend engine…"
         }));
 
-        // Previously this function piggybacked on any kubilitics-backend already
-        // listening on 8190 (dev build, stale instance, fresh copy left over from a
-        // crash). That sounded helpful but silently produced orphaned UI + backend
-        // pairs every time it fired — the UX-1000x-regressor. We now *always* spawn
-        // our own sidecar; if 8190 is taken, pick_port falls back to an OS-assigned
-        // free port and the frontend is told the real URL via get_backend_url.
-        let chosen_port = Self::pick_port();
-        *self.resolved_port.lock().unwrap() = chosen_port;
-        if chosen_port != BACKEND_PORT {
-            println!(
-                "Kubilitics backend will use port {} because {} is already in use.",
-                chosen_port, BACKEND_PORT
-            );
+        // We always spawn our own sidecar on BACKEND_PORT (8190). If that port
+        // is occupied, fail loud rather than fall back to a random OS-assigned
+        // port — the Vite dev proxy is hardcoded to 8190, so a fallback port
+        // produces ECONNREFUSED on every API call (Headlamp/k9s/argocd take the
+        // same fail-loud stance). Piggybacking on a process already on 8190 is
+        // also off the table: it produced orphaned UI + backend pairs every
+        // time it fired.
+        if !Self::can_bind(BACKEND_PORT) {
+            let msg = Self::port_conflict_message(BACKEND_PORT);
+            eprintln!("Backend cannot start: {}", msg);
+            let _ = self.app_handle.emit("backend-status", serde_json::json!({
+                "status": "error",
+                "message": msg,
+            }));
+            return Ok(());
         }
+        *self.resolved_port.lock().unwrap() = BACKEND_PORT;
 
         match self.start_backend_process().await {
             Ok(()) => {
