@@ -32,6 +32,58 @@ use tauri::command;
 const KEYCHAIN_SERVICE: &str = "kubilitics";
 const ENV_API_KEY: &str = "KUBILITICS_LLM_API_KEY";
 
+/// Provider-specific environment variables. SINGLE SOURCE OF TRUTH —
+/// both `detect_available_providers` (offers Quick Connect for these
+/// providers when their env var is set) AND `test_llm_connection` (falls
+/// back to these env vars when neither cfg.api_key nor the keychain has
+/// a key) consume this table. Keep them in sync by editing this one
+/// place.
+///
+/// Format: (env_var, provider, model, base_url)
+///   - env_var: the env var to check
+///   - provider: "openai" | "anthropic" | "custom"
+///   - model:    the recommended model for this provider/key combo
+///   - base_url: for "custom" providers, the URL that disambiguates
+///               Together vs Groq vs others. Empty for openai/anthropic.
+///
+/// Spec: docs/superpowers/specs/2026-04-26-ai-status-single-source-design.md
+pub const PROVIDER_ENV_SOURCES: &[(&str, &str, &str, &str)] = &[
+    ("OPENAI_API_KEY",    "openai",    "gpt-4o-mini",                    ""),
+    ("ANTHROPIC_API_KEY", "anthropic", "claude-3-5-sonnet-latest",       ""),
+    ("TOGETHER_API_KEY",  "custom",    "Qwen/Qwen2.5-7B-Instruct-Turbo", "https://api.together.xyz/v1"),
+    ("GROQ_API_KEY",      "custom",    "llama-3.3-70b-versatile",        "https://api.groq.com/openai/v1"),
+];
+
+/// Look up an API key from the provider-specific env-var table that
+/// matches `cfg.provider` (and, for "custom" providers, `cfg.base_url`).
+/// Returns None when no entry matches, when the matching env var is
+/// unset, or when its value is empty.
+///
+/// This is the bridge that keeps `detect_available_providers` and
+/// `test_llm_connection` in agreement: if a provider was advertised as
+/// available because its env var is set, the test path can find that
+/// same key without going through the keychain.
+fn provider_env_key(provider: &str, base_url: &str) -> Option<String> {
+    for (var, p, _model, b) in PROVIDER_ENV_SOURCES {
+        if *p != provider {
+            continue;
+        }
+        // For openai/anthropic, base_url is empty in the table — accept
+        // any cfg.base_url (the user may set a custom proxy). For
+        // "custom" the table's base_url disambiguates between Together /
+        // Groq / future entries; require an exact match.
+        if !b.is_empty() && *b != base_url {
+            continue;
+        }
+        if let Ok(v) = std::env::var(var) {
+            if !v.is_empty() {
+                return Some(v);
+            }
+        }
+    }
+    None
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct AIConfig {
     pub provider: String, // openai | anthropic | ollama | custom
@@ -383,16 +435,29 @@ pub async fn test_llm_connection(cfg: AIConfig) -> Result<TestResult, String> {
     // whitespace defensively — paste-from-clipboard frequently captures
     // a trailing newline or leading space and providers reject the key
     // outright with "Invalid API key" rather than auto-trimming.
-    let key = if let Ok(env) = std::env::var(ENV_API_KEY) {
-        if !env.is_empty() {
-            Some(env)
-        } else {
-            keychain_get(&cfg.provider).unwrap_or(None)
-        }
-    } else {
-        cfg.api_key.clone().or_else(|| keychain_get(&cfg.provider).unwrap_or(None))
-    }
-    .map(|k| k.trim().to_string());
+    // Resolve the key the same way the brain will at startup. Trim
+    // whitespace defensively — paste-from-clipboard frequently captures
+    // a trailing newline or leading space and providers reject the key
+    // outright with "Invalid API key" rather than auto-trimming.
+    //
+    // Lookup order (most specific first):
+    //   1. cfg.api_key — the user just pasted one in the Settings input.
+    //   2. KUBILITICS_LLM_API_KEY env — generic ops override.
+    //   3. keychain_get(&cfg.provider) — previously saved.
+    //   4. provider_env_key(provider, base_url) — provider-specific env
+    //      var (OPENAI_API_KEY / TOGETHER_API_KEY / etc.). Same table that
+    //      detect_available_providers uses, so Quick Connect and Manual
+    //      Test agree about whether a key is present.
+    let key: Option<String> = cfg
+        .api_key
+        .as_deref()
+        .map(str::trim)
+        .filter(|k| !k.is_empty())
+        .map(str::to_string)
+        .or_else(|| std::env::var(ENV_API_KEY).ok().filter(|v| !v.is_empty()))
+        .or_else(|| keychain_get(&cfg.provider).ok().flatten().filter(|v| !v.is_empty()))
+        .or_else(|| provider_env_key(&cfg.provider, &cfg.base_url))
+        .map(|k| k.trim().to_string());
 
     match cfg.provider.as_str() {
         "openai" | "anthropic" | "custom" => {
@@ -644,20 +709,14 @@ pub struct DetectedProvider {
 pub async fn detect_available_providers() -> Result<Vec<DetectedProvider>, String> {
     let mut out: Vec<DetectedProvider> = Vec::new();
 
-    let env_sources: [(&str, &str, &str, &str); 4] = [
-        ("OPENAI_API_KEY",    "openai",    "gpt-4o-mini",                     ""),
-        ("ANTHROPIC_API_KEY", "anthropic", "claude-3-5-sonnet-latest",        ""),
-        ("TOGETHER_API_KEY",  "custom",    "Qwen/Qwen2.5-7B-Instruct-Turbo",  "https://api.together.xyz/v1"),
-        ("GROQ_API_KEY",      "custom",    "llama-3.3-70b-versatile",         "https://api.groq.com/openai/v1"),
-    ];
-    for (var, provider, model, base_url) in env_sources {
+    for (var, provider, model, base_url) in PROVIDER_ENV_SOURCES {
         if !std::env::var(var).unwrap_or_default().is_empty() {
             out.push(DetectedProvider {
-                provider: provider.into(),
+                provider: (*provider).into(),
                 source: "env".into(),
-                model: model.into(),
-                base_url: base_url.into(),
-                env_var: var.into(),
+                model: (*model).into(),
+                base_url: (*base_url).into(),
+                env_var: (*var).into(),
             });
         }
     }
@@ -984,5 +1043,104 @@ mod validation_tests {
         let c = cfg("openai", "gpt-4o-mini", "not a url");
         let err = validate_ai_config(&c).expect_err("expected rejection");
         assert!(err.contains("invalid base_url"), "got: {}", err);
+    }
+}
+
+#[cfg(test)]
+mod env_lookup_tests {
+    use super::*;
+    use std::sync::Mutex;
+
+    // serde tests must serialize on env-var access; cargo test runs them
+    // in parallel by default. A module-level mutex keeps them sequential.
+    static ENV_LOCK: Mutex<()> = Mutex::new(());
+
+    fn with_env<F: FnOnce()>(vars: &[(&str, Option<&str>)], body: F) {
+        let _g = ENV_LOCK.lock().unwrap();
+        let saved: Vec<(String, Option<String>)> = vars
+            .iter()
+            .map(|(k, _)| ((*k).to_string(), std::env::var(*k).ok()))
+            .collect();
+        for (k, v) in vars {
+            match v {
+                Some(val) => std::env::set_var(k, val),
+                None => std::env::remove_var(k),
+            }
+        }
+        let r = std::panic::catch_unwind(std::panic::AssertUnwindSafe(body));
+        for (k, v) in saved {
+            match v {
+                Some(val) => std::env::set_var(&k, val),
+                None => std::env::remove_var(&k),
+            }
+        }
+        if let Err(e) = r { std::panic::resume_unwind(e); }
+    }
+
+    #[test]
+    fn provider_env_key_finds_openai_key_for_openai_provider() {
+        with_env(
+            &[("OPENAI_API_KEY", Some("sk-test-123")), ("ANTHROPIC_API_KEY", None), ("TOGETHER_API_KEY", None), ("GROQ_API_KEY", None)],
+            || {
+                let key = provider_env_key("openai", "");
+                assert_eq!(key.as_deref(), Some("sk-test-123"));
+            },
+        );
+    }
+
+    #[test]
+    fn provider_env_key_finds_together_key_when_base_url_matches() {
+        with_env(
+            &[("OPENAI_API_KEY", None), ("ANTHROPIC_API_KEY", None), ("TOGETHER_API_KEY", Some("tg-test-abc")), ("GROQ_API_KEY", None)],
+            || {
+                let key = provider_env_key("custom", "https://api.together.xyz/v1");
+                assert_eq!(key.as_deref(), Some("tg-test-abc"));
+            },
+        );
+    }
+
+    #[test]
+    fn provider_env_key_finds_groq_key_when_base_url_matches() {
+        with_env(
+            &[("OPENAI_API_KEY", None), ("ANTHROPIC_API_KEY", None), ("TOGETHER_API_KEY", None), ("GROQ_API_KEY", Some("gsk-test-xyz"))],
+            || {
+                let key = provider_env_key("custom", "https://api.groq.com/openai/v1");
+                assert_eq!(key.as_deref(), Some("gsk-test-xyz"));
+            },
+        );
+    }
+
+    #[test]
+    fn provider_env_key_does_not_cross_match_custom_providers() {
+        // TOGETHER_API_KEY set, but base_url is groq — must NOT return TOGETHER.
+        with_env(
+            &[("OPENAI_API_KEY", None), ("ANTHROPIC_API_KEY", None), ("TOGETHER_API_KEY", Some("tg-test")), ("GROQ_API_KEY", None)],
+            || {
+                let key = provider_env_key("custom", "https://api.groq.com/openai/v1");
+                assert_eq!(key, None);
+            },
+        );
+    }
+
+    #[test]
+    fn provider_env_key_returns_none_when_no_env_set() {
+        with_env(
+            &[("OPENAI_API_KEY", None), ("ANTHROPIC_API_KEY", None), ("TOGETHER_API_KEY", None), ("GROQ_API_KEY", None)],
+            || {
+                assert_eq!(provider_env_key("openai", ""), None);
+                assert_eq!(provider_env_key("custom", "https://api.together.xyz/v1"), None);
+            },
+        );
+    }
+
+    #[test]
+    fn provider_env_key_treats_empty_env_as_unset() {
+        // OPENAI_API_KEY="" should be treated as unset, not as a literal empty key.
+        with_env(
+            &[("OPENAI_API_KEY", Some("")), ("ANTHROPIC_API_KEY", None), ("TOGETHER_API_KEY", None), ("GROQ_API_KEY", None)],
+            || {
+                assert_eq!(provider_env_key("openai", ""), None);
+            },
+        );
     }
 }
