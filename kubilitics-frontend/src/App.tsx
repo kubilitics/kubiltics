@@ -344,6 +344,8 @@ import { isTauri, invokeWithRetry, openExternal } from "@/lib/tauri";
 import { ThemeProvider } from "@/providers/ThemeProvider";
 import { useActiveClusterId } from '@/hooks/useActiveClusterId';
 import { useBrainStatusListener } from '@/hooks/useBrainStatusListener';
+import { toast } from '@/components/ui/sonner';
+import type { Profile } from '@/hooks/useAIProfiles';
 // Phase 7: onboardingStore + WelcomeScreen + FirstRunWizard deleted.
 // Entry UX is now owned by PresenceEntryPoint + /welcome + /clusters.
 
@@ -445,6 +447,39 @@ function SyncBackendUrl() {
  */
 function BrainStatusListener() {
   useBrainStatusListener();
+  return null;
+}
+
+/**
+ * MigrationToast — fires ONCE when the app mounts if any profile has the
+ * "needs key re-entry after migration" error. The Profile architecture's
+ * migration (kubilitics-desktop/src-tauri/src/profile/migration.rs) does
+ * NOT carry old API keys forward; users must re-enter them through the
+ * atomic save path before AI works. This toast is the user-visible
+ * signal that they need to do that.
+ *
+ * Spec: docs/superpowers/specs/2026-04-26-ai-profile-architecture-design.md
+ */
+function MigrationToast() {
+  useEffect(() => {
+    void (async () => {
+      try {
+        const { invoke } = await import('@tauri-apps/api/core');
+        const profiles = await invoke<Profile[]>('list_profiles');
+        const needsKey = profiles.find(
+          (p) => p.last_error === 'Re-enter API key after migration',
+        );
+        if (needsKey) {
+          toast.info(
+            `AI settings migrated to profiles. Re-enter your API key for "${needsKey.name}" in Settings → AI to activate.`,
+            { duration: 12_000 },
+          );
+        }
+      } catch {
+        // Silent — non-Tauri context (browser dev) or migration didn't run.
+      }
+    })();
+  }, []);
   return null;
 }
 
@@ -682,6 +717,7 @@ const App = () => (
         <ThemeProvider />
         <SyncBackendUrl />
         <BrainStatusListener />
+        <MigrationToast />
         <AnalyticsConsentWrapper>
           <AppRouter>
             <TauriMenuHandler />
