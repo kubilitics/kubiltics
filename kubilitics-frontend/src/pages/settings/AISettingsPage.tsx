@@ -38,7 +38,7 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useQueryClient } from '@tanstack/react-query';
+import { useInvalidateAI } from '@/hooks/useInvalidateAI';
 import {
   Bot,
   CheckCircle2,
@@ -159,7 +159,6 @@ function BrainReachabilityBanner({
 // ─────────────────────────────────────────────────────────────────────────────
 export default function AISettingsPage() {
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
   const store = useAIConfigStore();
   const { provider, model, baseUrl, hasApiKey, lastError } = store;
 
@@ -180,17 +179,7 @@ export default function AISettingsPage() {
     return hasApiKey;
   }, [provider, baseUrl, hasApiKey]);
 
-  /**
-   * Invalidate the AI-related react-query caches so the top-bar status
-   * pill, chat capabilities, and any other consumer refetches the moment
-   * config changes. Without this the pill stayed red ("AI Unreachable")
-   * for up to 30s after a successful save because its cache hadn't
-   * expired — producing the classic "Test says Connected, top bar says
-   * Unreachable" paradox the user reported.
-   */
-  const refreshAIConsumers = () => {
-    void queryClient.invalidateQueries({ queryKey: ['ai'] });
-  };
+  const invalidateAI = useInvalidateAI();
 
   // API key is transient — held only in this component's state until the
   // user saves. Once save() returns and hydrate() re-reads the store,
@@ -306,7 +295,7 @@ export default function AISettingsPage() {
         baseUrl: d.base_url,
         apiKey: '',
       });
-      refreshAIConsumers();
+      await invalidateAI();
       if (!saveRes.brainHotwireOk) {
         toast.error(`Saved, but AI engine didn't accept the new config: ${saveRes.brainHotwireError}`);
         return;
@@ -336,7 +325,7 @@ export default function AISettingsPage() {
         baseUrl: pastedGuess.baseUrl,
         apiKey: pastedKey.trim(),
       });
-      refreshAIConsumers();
+      await invalidateAI();
       setPastedKey('');
       if (!saveRes.brainHotwireOk) {
         toast.error(`Saved, but AI engine didn't accept the new config: ${saveRes.brainHotwireError}`);
@@ -440,7 +429,7 @@ export default function AISettingsPage() {
     const submittedKey = apiKey;
     try {
       const saveRes = await store.save({ provider, model, baseUrl, apiKey: submittedKey });
-      refreshAIConsumers();
+      await invalidateAI();
       setApiKey('');
       if (!saveRes.brainHotwireOk) {
         // Yaml + keychain persisted, but the brain either rejected the
