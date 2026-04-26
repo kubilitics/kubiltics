@@ -47,6 +47,8 @@ import {
   AlertTriangle,
   ServerCrash,
   RefreshCw,
+  Trash2,
+  Plus as PlusIcon,
 } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
 
@@ -157,7 +159,7 @@ function BrainReachabilityBanner({
 // ─────────────────────────────────────────────────────────────────────────────
 export default function AISettingsPage() {
   const navigate = useNavigate();
-  const { profiles, activeId, reload: reloadProfiles } = useAIProfiles();
+  const { profiles, activeId, isLoading: profilesLoading, reload: reloadProfiles } = useAIProfiles();
   const activeProfile = activeId ? profiles.find((p) => p.id === activeId) : null;
 
   // Form state — mirrors the active profile by default; user edits this
@@ -589,6 +591,45 @@ export default function AISettingsPage() {
     }
   };
 
+  const handleActivate = async (id: string) => {
+    try {
+      const result = await invoke<{ ok: boolean; latency_ms: number; error?: string | null }>(
+        'activate_profile',
+        { id },
+      );
+      await reloadProfiles();
+      await invalidateAI();
+      if (result.ok) {
+        toast.success(`Activated (${result.latency_ms}ms)`);
+      } else if (result.error === 'needs_key') {
+        toast.error('That profile needs an API key. Click Edit to add it.');
+      } else {
+        toast.error(`Activate failed: ${result.error ?? 'unknown'}`);
+      }
+    } catch (e) {
+      toast.error(`Activate failed: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  };
+
+  const handleDelete = async (id: string, name: string) => {
+    if (!window.confirm(`Delete profile "${name}"? This will remove its API key from the keychain too.`)) {
+      return;
+    }
+    try {
+      await invoke<void>('delete_profile', { id });
+      await reloadProfiles();
+      await invalidateAI();
+      // If we just deleted the selected one, fall back to the active.
+      if (selectedProfileId === id) {
+        setSelectedProfileId(null);
+      }
+      toast.success(`Profile "${name}" deleted`);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      toast.error(`Delete failed: ${msg}`);
+    }
+  };
+
   const stateTone = isConfigured
     ? 'border-emerald-300 text-emerald-700 dark:border-emerald-800 dark:text-emerald-300'
     : 'border-amber-300 text-amber-700 dark:border-amber-800 dark:text-amber-300';
@@ -608,6 +649,131 @@ export default function AISettingsPage() {
         onRestart={handleRestartBrain}
         restarting={restarting}
       />
+
+      {/* ━━━ Profiles ━━━ */}
+      <Card className="border-none soft-shadow glass-panel">
+        <CardHeader className="flex-row items-center justify-between">
+          <div>
+            <CardTitle className="text-base">Profiles</CardTitle>
+            <p className="text-sm text-muted-foreground mt-1">
+              Each profile is a saved AI configuration. Switch active to change which one the chat uses.
+            </p>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              setSelectedProfileId(null);
+              setProvider('openai');
+              setModel('gpt-4o-mini');
+              setBaseUrl('');
+              setApiKey('');
+              setTestResult(null);
+            }}
+          >
+            <PlusIcon className="h-4 w-4 mr-1" />
+            New profile
+          </Button>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          {profilesLoading && profiles.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-4 text-center">Loading profiles…</p>
+          ) : profiles.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-4 text-center">
+              No profiles yet. Use Quick Connect below or click "New profile" to create one.
+            </p>
+          ) : (
+            profiles.map((p) => {
+              const isActive = activeId === p.id;
+              const isSelected = selectedProfileId === p.id;
+              return (
+                <div
+                  key={p.id}
+                  className={cn(
+                    'flex items-center justify-between gap-3 rounded-md border px-3 py-2 transition-colors',
+                    isActive && 'border-emerald-500/40 bg-emerald-500/5',
+                    !isActive && isSelected && 'border-primary/40 bg-primary/5',
+                    !isActive && !isSelected && 'border-border hover:bg-muted/50',
+                  )}
+                >
+                  <div className="flex items-center gap-3 min-w-0 flex-1">
+                    <span
+                      className={cn(
+                        'inline-block w-2 h-2 rounded-full flex-shrink-0',
+                        isActive ? 'bg-emerald-500' : 'bg-muted-foreground/30',
+                      )}
+                      aria-label={isActive ? 'active' : 'inactive'}
+                    />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium text-sm truncate">{p.name}</span>
+                        {isActive && (
+                          <Badge variant="outline" className="text-xs h-5 border-emerald-500/40 text-emerald-700 dark:text-emerald-400">
+                            active
+                          </Badge>
+                        )}
+                        {!p.has_key && p.provider !== 'ollama' && (
+                          <Badge variant="outline" className="text-xs h-5 border-amber-500/40 text-amber-700 dark:text-amber-400">
+                            needs key
+                          </Badge>
+                        )}
+                      </div>
+                      <div className="text-xs text-muted-foreground truncate">
+                        {p.provider}
+                        {p.model && ` · ${p.model}`}
+                        {p.last_error && (
+                          <span className="text-rose-600 dark:text-rose-400 ml-1">
+                            · {p.last_error}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1 flex-shrink-0">
+                    {!isActive && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 text-xs"
+                        disabled={!p.has_key && p.provider !== 'ollama'}
+                        onClick={() => void handleActivate(p.id)}
+                      >
+                        Activate
+                      </Button>
+                    )}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 text-xs"
+                      onClick={() => {
+                        setSelectedProfileId(p.id);
+                        setProvider(p.provider as Provider);
+                        setModel(p.model);
+                        setBaseUrl(p.base_url);
+                        setApiKey('');
+                        setTestResult(null);
+                      }}
+                    >
+                      Edit
+                    </Button>
+                    {!isActive && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 text-muted-foreground hover:text-rose-600"
+                        onClick={() => void handleDelete(p.id, p.name)}
+                        aria-label={`Delete ${p.name}`}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </CardContent>
+      </Card>
 
       {/* ━━━ Quick Connect ━━━
           Always shown — first-time setup AND swap-providers (paste a
@@ -691,7 +857,13 @@ export default function AISettingsPage() {
         <CardHeader>
           <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
             <div>
-              <CardTitle className="text-base">Provider</CardTitle>
+              <CardTitle className="text-base">
+                {isNew
+                  ? 'New profile'
+                  : selectedProfile
+                    ? `Editing: ${selectedProfile.name}`
+                    : 'Provider'}
+              </CardTitle>
               <CardDescription>
                 Edit provider, model, and credentials. API keys are only
                 written to the OS keychain when you click Save.
