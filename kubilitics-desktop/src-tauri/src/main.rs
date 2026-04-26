@@ -13,6 +13,7 @@ mod ai_config;
 mod backend_ports;
 mod commands;
 mod menu;
+mod profile;
 mod sidecar;
 mod tray;
 
