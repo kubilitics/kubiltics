@@ -639,7 +639,6 @@ impl BrainManager {
         let cmd = sidecar
             .env("KUBILITICS_AI_HTTP_PORT", BRAIN_HTTP_PORT.to_string())
             .env("KUBILITICS_AI_GRPC_PORT", BRAIN_GRPC_PORT.to_string())
-            .env("KUBILITICS_AI_CONFIG_PATH", config_dir.join("config.yaml").to_string_lossy().as_ref())
             .env("KUBILITICS_DATABASE_PATH", data_dir.join("kubilitics-ai.db").to_string_lossy().as_ref())
             // Brain must know where the backend actually landed — use the resolved
             // port from BackendManager, not the compile-time default, so a backend

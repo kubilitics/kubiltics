@@ -67,6 +67,14 @@ fn main() {
             ai_config::list_ollama_models,
             ai_config::get_budget_status,
             ai_config::reset_budget,
+            // Phase 3 — Profile management
+            profile::commands::list_profiles,
+            profile::commands::get_active_profile,
+            profile::commands::save_profile,
+            profile::commands::update_profile,
+            profile::commands::delete_profile,
+            profile::commands::activate_profile,
+            profile::commands::test_profile,
         ])
         .setup(|app| {
             let handle = app.handle().clone();
@@ -129,7 +137,31 @@ fn main() {
                     }
                 });
             }
-            
+
+            // Phase 3 — Profile store: run migration once, then register
+            // ProfileStore so the 7 profile commands can access it.
+            {
+                use crate::profile::commands::ProfileStore;
+                use crate::profile::journal::Journal;
+
+                let journal_path = Journal::default_path();
+                let desktop_yaml = journal_path.parent()
+                    .map(|p| p.join("config.yaml"))
+                    .unwrap_or_default();
+                let backend_overrides = dirs::home_dir()
+                    .unwrap_or_default()
+                    .join(".kubilitics")
+                    .join("ai-overrides.yaml");
+                match crate::profile::migration::migrate(&journal_path, &desktop_yaml, &backend_overrides) {
+                    Ok(report) => println!("profile migration: {:?}", report),
+                    Err(e) => eprintln!("profile migration failed: {}", e),
+                }
+                match ProfileStore::new(journal_path) {
+                    Ok(store) => { app.manage(store); }
+                    Err(e) => eprintln!("profile store init failed: {}", e),
+                }
+            }
+
             Ok(())
         })
         .build(tauri::generate_context!())
