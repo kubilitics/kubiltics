@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"os"
 	"time"
 
 	"github.com/vellankikoti/kubilitics/brain/internal/llm/types"
@@ -172,12 +173,19 @@ func NewCustomClient(baseURL, apiKey, model string) (*CustomClientImpl, error) {
 		},
 	}
 
-	// Test connection to endpoint
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	// Best-effort connectivity probe. Non-fatal: a slow first-time TLS
+	// handshake (Together, OpenRouter, regional egress) commonly takes
+	// 5–10s and used to fail adapter construction outright, leaving the
+	// brain stuck without a working chat path. The real chat call has
+	// its own per-request timeout and surfaces any auth/network problem
+	// with a useful error — the construction-time probe is just for
+	// fast-failing obvious typos in the URL.
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
-
 	if err := client.testConnection(ctx); err != nil {
-		return nil, fmt.Errorf("failed to connect to custom endpoint at %s: %w", baseURL, err)
+		fmt.Fprintf(os.Stderr,
+			"[WARN] custom endpoint probe failed at %s: %v — keeping adapter; chat call will return the authoritative error.\n",
+			baseURL, err)
 	}
 
 	return client, nil
