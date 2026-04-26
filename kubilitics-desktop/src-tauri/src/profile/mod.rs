@@ -67,8 +67,6 @@ pub enum ProfileError {
     Keychain(String),
     #[error("invalid input: {0}")]
     Invalid(String),
-    #[error("brain hot-wire failed: {0}")]
-    BrainHotwire(String),
 }
 
 #[cfg(test)]

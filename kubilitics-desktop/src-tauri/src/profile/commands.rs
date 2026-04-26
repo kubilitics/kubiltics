@@ -164,12 +164,23 @@ pub fn delete_profile(id: Uuid, store: State<'_, ProfileStore>) -> Result<(), St
     if journal.active_profile_id == Some(id) {
         return Err(ProfileError::DeleteActive.to_string());
     }
-    let original_len = journal.profiles.len();
-    journal.profiles.retain(|p| p.id != id);
-    if journal.profiles.len() == original_len {
+    // Snapshot the entry being removed so we can restore in-memory state
+    // if the on-disk write fails. Without this, a disk-write failure
+    // would leave the live process showing the profile as deleted while
+    // the file still has it — drift on restart.
+    let removed: Option<Profile> = journal
+        .profiles
+        .iter()
+        .find(|p| p.id == id)
+        .cloned();
+    let Some(removed) = removed else {
         return Err(ProfileError::NotFound(id).to_string());
-    }
+    };
+    journal.profiles.retain(|p| p.id != id);
     if let Err(e) = store.write_locked(&journal) {
+        // Restore in-memory state — we can't undo a disk failure but we
+        // can keep RAM consistent with disk.
+        journal.profiles.push(removed);
         return Err(e.to_string());
     }
     let _ = keychain::delete_key(id);
