@@ -22,19 +22,25 @@ vi.mock('./useAICapabilities', () => ({
     error: null,
   })),
 }));
-vi.mock('./useAIUserConfig', () => ({
-  useAIUserConfig: vi.fn(() => ({
-    data: { provider: 'openai', model: 'gpt-4o', base_url: '', api_key_masked: '****', has_api_key: 'true' },
-    isConfigured: true,
-    isLoading: false,
-    error: undefined,
+vi.mock('./useActiveProfile', () => ({
+  useActiveProfile: vi.fn(() => ({
+    id: 'a',
+    name: 'Test',
+    provider: 'openai',
+    model: 'gpt-4o',
+    base_url: '',
+    has_key: true,
+    created_at: '',
+    updated_at: '',
+    last_validated_at: null,
+    last_error: null,
   })),
 }));
 
 import { useAIReady } from './useAIReady';
 import { useAIStatus } from './useAIStatus';
 import { useAICapabilities } from './useAICapabilities';
-import { useAIUserConfig } from './useAIUserConfig';
+import { useActiveProfile } from './useActiveProfile';
 
 const wrapper = ({ children }: { children: ReactNode }) => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -84,10 +90,7 @@ describe('useAIReady — reason precedence', () => {
   it("returns 'not_configured' when user config is not configured (HEADLINE BUG)", () => {
     // Capabilities ready=true AND status=ready, but user has not saved config.
     // Old code in ChatStatusPill could show 'AI Ready' here. New code must NOT.
-    vi.mocked(useAIUserConfig).mockReturnValueOnce({
-      data: { provider: '', model: '', base_url: '', api_key_masked: '', has_api_key: 'false' },
-      isConfigured: false, isLoading: false, error: undefined,
-    });
+    vi.mocked(useActiveProfile).mockReturnValueOnce(null);
     const { result } = renderHook(() => useAIReady('c1'), { wrapper });
     expect(result.current.reason).toBe('not_configured');
     expect(result.current.ready).toBe(false);
@@ -130,10 +133,7 @@ describe('useAIReady — reason precedence', () => {
       isError: false,
       error: null,
     } as ReturnType<typeof useAIStatus>);
-    vi.mocked(useAIUserConfig).mockReturnValueOnce({
-      data: { provider: '', model: '', base_url: '', api_key_masked: '', has_api_key: 'false' },
-      isConfigured: false, isLoading: false, error: undefined,
-    });
+    vi.mocked(useActiveProfile).mockReturnValueOnce(null);
     const { result } = renderHook(() => useAIReady('c1'), { wrapper });
     expect(result.current.reason).toBe('not_configured');
     expect(result.current.ready).toBe(false);

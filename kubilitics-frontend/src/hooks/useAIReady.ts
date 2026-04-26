@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { useAIStatus } from './useAIStatus';
 import { useAICapabilities } from './useAICapabilities';
-import { useAIUserConfig } from './useAIUserConfig';
+import { useActiveProfile, type Profile } from './useActiveProfile';
 
 /**
  * useAIReady — THE ONLY HOOK ANY UI MAY GATE ON.
@@ -44,9 +44,35 @@ export type AIReadyState = {
   // must live inside useAIReady, never in consumers. The CI scanner blocks
   // direct *imports* of the underlying hooks; reading these here is fine.
   status: ReturnType<typeof useAIStatus>;
-  config: ReturnType<typeof useAIUserConfig>;
+  config: ReturnType<typeof activeProfileToConfigShape>;
   capabilities: ReturnType<typeof useAICapabilities>;
 };
+
+/**
+ * Translate an active Profile into the same `{ data, isConfigured, isLoading,
+ * error }` shape that the old `useAIUserConfig` returned, so the existing
+ * precedence chain in `useAIReady` doesn't need to change. This function
+ * is the only consumer of the Profile type within the readiness path.
+ */
+function activeProfileToConfigShape(p: Profile | null): {
+  data?: { provider: string; has_api_key: string };
+  isConfigured: boolean;
+  isLoading: boolean;
+  error?: unknown;
+} {
+  if (!p) {
+    return { isConfigured: false, isLoading: false };
+  }
+  const hasBaseUrl = !!p.base_url.trim();
+  const credsOk =
+    p.provider === 'ollama' || p.provider === 'custom' ? hasBaseUrl : p.has_key;
+  return {
+    data: { provider: p.provider, has_api_key: p.has_key ? 'true' : 'false' },
+    isConfigured: !!p.provider && credsOk,
+    isLoading: false,
+    error: undefined,
+  };
+}
 
 const LABELS: Record<AIReadyReason, string> = {
   loading: 'AI',
@@ -60,7 +86,8 @@ const LABELS: Record<AIReadyReason, string> = {
 export function useAIReady(clusterId?: string): AIReadyState {
   const status = useAIStatus();
   const capabilities = useAICapabilities(clusterId);
-  const config = useAIUserConfig();
+  const active = useActiveProfile();
+  const config = activeProfileToConfigShape(active);
 
   const reason: AIReadyReason = (() => {
     if (status.isLoading || capabilities.isLoading || config.isLoading) return 'loading';
@@ -100,6 +127,6 @@ export function useAIReady(clusterId?: string): AIReadyState {
       config,
       capabilities,
     }),
-    [ready, reason, detail, status, config, capabilities],
+    [ready, reason, detail, status, active, capabilities],
   );
 }

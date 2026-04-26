@@ -6,7 +6,6 @@ import { PlanBlock } from './blocks/PlanBlock';
 import { UnknownBlock } from './blocks/UnknownBlock';
 import { cn } from '@/lib/utils';
 import { AlertCircle, ExternalLink } from 'lucide-react';
-import { useAIConfigStore } from '@/stores/aiConfigStore';
 import { costForTurn, formatCostUSD } from '@/lib/aiPricing';
 
 interface Props {
@@ -93,8 +92,8 @@ export function Turn({ turn }: Props) {
 function TurnFooter({ turn }: { turn: AssistantTurn }) {
   if (turn.state !== 'done' && turn.state !== 'error') return null;
 
-  const provider = useAIConfigStore((s) => s.provider);
-  const model = useAIConfigStore((s) => s.model);
+  const provider = (turn as { meta?: { provider?: string } }).meta?.provider ?? '';
+  const model = (turn as { meta?: { model?: string } }).meta?.model ?? '';
 
   const promptTokens = turn.meta?.promptTokens ?? 0;
   const completionTokens = turn.meta?.completionTokens ?? 0;

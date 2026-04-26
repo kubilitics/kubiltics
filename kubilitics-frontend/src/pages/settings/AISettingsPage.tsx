@@ -70,7 +70,49 @@ import {
 
 import { PageLayout } from '@/components/layout/PageLayout';
 import { SectionOverviewHeader } from '@/components/layout/SectionOverviewHeader';
-import { useAIConfigStore, setFieldDebounced, type Provider } from '@/stores/aiConfigStore';
+// TEMPORARY shim until Phase 6 rewrites this page. Reads from the new
+// useAIProfiles hook and exposes a useAIConfigStore-shaped object so the
+// existing form code keeps compiling. Phase 6 deletes this and refactors
+// the form to read profiles directly.
+import { useAIProfiles, type Profile } from '@/hooks/useAIProfiles';
+
+export type Provider = 'openai' | 'anthropic' | 'ollama' | 'custom';
+
+interface AIConfigInput {
+  provider: Provider;
+  model: string;
+  baseUrl: string;
+  apiKey?: string;
+}
+interface SaveResult { saved: boolean; brainHotwireOk: boolean; brainHotwireError: string; }
+interface TestResult { ok: boolean; latencyMs?: number; error?: string | null; }
+
+function useAIConfigStoreShim() {
+  const { profiles, activeId, reload } = useAIProfiles();
+  const active: Profile | undefined = profiles.find((p) => p.id === activeId);
+  return {
+    provider: (active?.provider ?? 'openai') as Provider,
+    model: active?.model ?? '',
+    baseUrl: active?.base_url ?? '',
+    hasApiKey: active?.has_key ?? false,
+    lastError: active?.last_error ?? null,
+    save: async (_cfg: AIConfigInput): Promise<SaveResult> => {
+      return { saved: false, brainHotwireOk: false, brainHotwireError: 'Phase 6 will wire save' };
+    },
+    testConnection: async (_cfg: AIConfigInput): Promise<TestResult> => {
+      return { ok: false, latencyMs: 0, error: 'Phase 6 will wire test' };
+    },
+    hydrate: async () => { await reload(); },
+  };
+}
+
+// Debounced field setter shim — no-op until Phase 6 wires the profile save path.
+function setFieldDebounced<K extends 'provider' | 'model' | 'baseUrl'>(
+  _field: K,
+  _value: string,
+): void {
+  // Phase 6 replaces this with a proper profile-based save.
+}
 import { cn } from '@/lib/utils';
 
 const MODEL_OPTIONS: Record<Provider, string[]> = {
@@ -159,7 +201,7 @@ function BrainReachabilityBanner({
 // ─────────────────────────────────────────────────────────────────────────────
 export default function AISettingsPage() {
   const navigate = useNavigate();
-  const store = useAIConfigStore();
+  const store = useAIConfigStoreShim();
   const { provider, model, baseUrl, hasApiKey, lastError } = store;
 
   /**
