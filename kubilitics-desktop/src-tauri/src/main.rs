@@ -140,8 +140,13 @@ fn main() {
 
             // Phase 3 — Profile store: run migration once, then register
             // ProfileStore so the 7 profile commands can access it.
+            // Cold-start activation: spawn a background task that waits
+            // for the brain's /health and re-hot-wires the active profile
+            // (if any). Without this, a Tauri restart leaves the brain
+            // empty even though the journal says "<X> is active" — chat
+            // panel pill would lie about readiness.
             {
-                use crate::profile::commands::ProfileStore;
+                use crate::profile::commands::{cold_start_activate, ProfileStore};
                 use crate::profile::journal::Journal;
 
                 let journal_path = Journal::default_path();
@@ -156,10 +161,12 @@ fn main() {
                     Ok(report) => println!("profile migration: {:?}", report),
                     Err(e) => eprintln!("profile migration failed: {}", e),
                 }
-                match ProfileStore::new(journal_path) {
+                match ProfileStore::new(journal_path.clone()) {
                     Ok(store) => { app.manage(store); }
                     Err(e) => eprintln!("profile store init failed: {}", e),
                 }
+                // Spawn cold-start activation. Best-effort, non-blocking.
+                tauri::async_runtime::spawn(cold_start_activate(journal_path));
             }
 
             Ok(())

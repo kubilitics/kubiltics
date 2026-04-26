@@ -233,6 +233,112 @@ fn brain_url() -> String {
     format!("http://127.0.0.1:{}", BRAIN_HTTP_PORT)
 }
 
+/// Cold-start activation: hot-wire the brain with the journal's currently-
+/// active profile after Tauri startup. Without this, a restart leaves the
+/// brain empty even though the journal says "Together.ai is active" — the
+/// chat panel pill would lie about readiness and any chat call would fail.
+///
+/// Spawned as a background tokio task from main.rs::setup() so it can wait
+/// for the brain's /health to come up without blocking the Tauri builder.
+/// Best-effort: errors are logged to stderr + stamped into the profile's
+/// last_error so the UI surfaces the truth. Idempotent — safe to call
+/// multiple times.
+pub async fn cold_start_activate(store_path: std::path::PathBuf) {
+    // Wait for the brain to come up. Tauri's BrainManager waits up to
+    // BRAIN_READY_TIMEOUT_SECS (90s) for /health; we wait the same way.
+    let brain_health = format!("{}/health", brain_url());
+    let client = match reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(5))
+        .build()
+    {
+        Ok(c) => c,
+        Err(e) => {
+            eprintln!("cold_start_activate: client build failed: {}", e);
+            return;
+        }
+    };
+    let mut ready = false;
+    for _ in 0..180 { // 90s @ 500ms cadence
+        if let Ok(r) = client.get(&brain_health).send().await {
+            if r.status().is_success() {
+                ready = true;
+                break;
+            }
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+    }
+    if !ready {
+        eprintln!("cold_start_activate: brain not ready after 90s, giving up");
+        return;
+    }
+
+    // Load the journal directly — we can't use State<'_, ProfileStore>
+    // here because this runs outside a Tauri command handler. Re-loading
+    // is cheap (small JSON) and avoids holding a lock across the .await
+    // calls below.
+    let journal = match Journal::load(&store_path) {
+        Ok(j) => j,
+        Err(e) => {
+            eprintln!("cold_start_activate: load journal failed: {}", e);
+            return;
+        }
+    };
+    let Some(active_id) = journal.active_profile_id else {
+        // No active profile — nothing to activate. Common after fresh
+        // install or migration with no legacy YAML.
+        return;
+    };
+    let Some(profile) = journal.profiles.iter().find(|p| p.id == active_id).cloned() else {
+        eprintln!("cold_start_activate: active id points at missing profile, skipping");
+        return;
+    };
+
+    let key_opt = match keychain::get_key(active_id) {
+        Ok(k) => k,
+        Err(e) => {
+            eprintln!("cold_start_activate: keychain read failed: {}", e);
+            None
+        }
+    };
+    let key = match key_opt {
+        Some(k) if !k.trim().is_empty() => k,
+        _ => {
+            // Active profile has no key — common after migration. Don't
+            // hot-wire empty config; UI will show "needs key" and prompt
+            // the user.
+            eprintln!("cold_start_activate: active profile has no key, skipping");
+            return;
+        }
+    };
+
+    let url = brain_url();
+    match brain_hotwire(&profile, &key, &url).await {
+        Ok(latency_ms) => {
+            // Stamp validation result into journal.
+            if let Ok(mut j) = Journal::load(&store_path) {
+                if let Some(p) = j.find_mut(active_id) {
+                    p.last_validated_at = Some(Utc::now());
+                    p.last_error = None;
+                    p.updated_at = Utc::now();
+                }
+                let _ = j.save_atomic(&store_path);
+            }
+            println!("cold_start_activate: hot-wired {} ({}ms)", profile.name, latency_ms);
+        }
+        Err(err) => {
+            if let Ok(mut j) = Journal::load(&store_path) {
+                if let Some(p) = j.find_mut(active_id) {
+                    p.last_error = Some(err.clone());
+                    p.last_validated_at = Some(Utc::now());
+                    p.updated_at = Utc::now();
+                }
+                let _ = j.save_atomic(&store_path);
+            }
+            eprintln!("cold_start_activate: hot-wire failed: {}", err);
+        }
+    }
+}
+
 async fn brain_hotwire(profile: &Profile, key: &str, brain_url: &str) -> Result<u64, String> {
     let body = serde_json::json!({
         "provider": profile.provider,
