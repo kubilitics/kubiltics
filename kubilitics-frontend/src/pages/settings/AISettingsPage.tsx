@@ -433,8 +433,13 @@ export default function AISettingsPage() {
 
   const handleSave = async () => {
     setSaving(true);
+    // Capture before any clearing — the post-save Test below needs the
+    // key in-hand. Falling back to keychain_get is unreliable in dev
+    // (binary-hash-bound ACL) and produces a misleading "missing API
+    // key" error right after a successful save.
+    const submittedKey = apiKey;
     try {
-      const saveRes = await store.save({ provider, model, baseUrl, apiKey });
+      const saveRes = await store.save({ provider, model, baseUrl, apiKey: submittedKey });
       refreshAIConsumers();
       setApiKey('');
       if (!saveRes.brainHotwireOk) {
@@ -448,7 +453,7 @@ export default function AISettingsPage() {
         return;
       }
       toast.success('AI configuration saved and activated');
-      const res = await store.testConnection({ provider, model, baseUrl });
+      const res = await store.testConnection({ provider, model, baseUrl, apiKey: submittedKey });
       setTestResult({ ok: res.ok, latencyMs: res.latencyMs, error: res.error ?? undefined });
     } catch (e) {
       toast.error(`Save failed: ${e instanceof Error ? e.message : String(e)}`);
