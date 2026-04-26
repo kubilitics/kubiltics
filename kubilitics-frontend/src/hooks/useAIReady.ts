@@ -63,9 +63,23 @@ function activeProfileToConfigShape(p: Profile | null): {
   if (!p) {
     return { isConfigured: false, isLoading: false };
   }
-  const hasBaseUrl = !!p.base_url.trim();
+  const baseUrl = p.base_url.trim();
+  const hasBaseUrl = !!baseUrl;
+  // Hosted providers (openai, anthropic) always need a key.
+  // Ollama only needs a base_url (typically localhost — local LLM, no auth).
+  // Custom is the tricky one: it can be a local proxy (no auth) OR a hosted
+  // OpenAI-compatible API like Together / Groq / Mistral / Fireworks
+  // (key required). Heuristic: localhost ⇒ no key needed; otherwise treat
+  // as hosted and require a key. This matches every real-world deployment
+  // pattern we've seen and stops the chat panel from lying about readiness
+  // when a hosted custom provider has no key in the keychain.
+  const isLocalCustom =
+    p.provider === 'custom' &&
+    /^(https?:\/\/)?(localhost|127\.0\.0\.1|0\.0\.0\.0)(:|\/|$)/.test(baseUrl);
   const credsOk =
-    p.provider === 'ollama' || p.provider === 'custom' ? hasBaseUrl : p.has_key;
+    p.provider === 'ollama' ? hasBaseUrl :
+    isLocalCustom ? hasBaseUrl :
+    p.has_key;
   return {
     data: { provider: p.provider, has_api_key: p.has_key ? 'true' : 'false' },
     isConfigured: !!p.provider && credsOk,

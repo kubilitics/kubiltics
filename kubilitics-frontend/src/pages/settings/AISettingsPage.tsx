@@ -462,9 +462,16 @@ export default function AISettingsPage() {
     }
     setTesting(true);
     try {
+      // Pass the typed key (if any) directly to test_profile so the user
+      // can validate a key BEFORE committing it to keychain. The Rust side
+      // prefers this over keychain over provider-specific env var.
+      const typedKey = apiKey.trim();
       const result = await invoke<{ ok: boolean; latency_ms: number; error?: string | null }>(
         'test_profile',
-        { id: selectedProfileId },
+        {
+          id: selectedProfileId,
+          apiKey: typedKey || null,
+        },
       );
       setTestResult({
         ok: result.ok,
@@ -473,6 +480,8 @@ export default function AISettingsPage() {
       });
       if (result.ok) {
         toast.success(`Connected (${result.latency_ms}ms)`);
+      } else if (result.error === 'needs_key') {
+        toast.error('Paste your API key in the field above, then click Test (or use Save & Test).');
       } else {
         toast.error(`Test failed: ${result.error ?? 'unknown'}`);
       }

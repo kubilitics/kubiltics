@@ -322,9 +322,18 @@ pub async fn activate_profile(
     }
 }
 
+/// Probe-only — does NOT change `active_profile_id`. The frontend's Test
+/// Connection button calls this. Lookup order for the API key:
+///   1. `api_key` argument (if provided non-empty) — the user typed it
+///      into the form but hasn't clicked Save yet.
+///   2. keychain entry under this profile's UUID — the previously-saved key.
+///   3. provider-specific env var (OPENAI_API_KEY / TOGETHER_API_KEY / …)
+///      via the same fallback `test_llm_connection` uses.
+/// If none of the three yields a key, returns `{ok: false, error: "needs_key"}`.
 #[tauri::command]
 pub async fn test_profile(
     id: Uuid,
+    api_key: Option<String>,
     store: State<'_, ProfileStore>,
 ) -> Result<TestResult, String> {
     let profile = {
@@ -334,9 +343,25 @@ pub async fn test_profile(
             .cloned()
             .ok_or_else(|| ProfileError::NotFound(id).to_string())?
     };
-    let key = match keychain::get_key(id).map_err(|e| e.to_string())? {
-        Some(k) => k,
-        None => {
+    // Priority: typed key > keychain > provider-specific env var.
+    let key = api_key
+        .as_deref()
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .map(str::to_string)
+        .or_else(|| {
+            keychain::get_key(id)
+                .ok()
+                .flatten()
+                .filter(|s| !s.is_empty())
+        })
+        .or_else(|| {
+            crate::ai_config::provider_env_key(&profile.provider, &profile.base_url)
+        });
+
+    let key = match key {
+        Some(k) if !k.trim().is_empty() => k,
+        _ => {
             return Ok(TestResult {
                 ok: false,
                 latency_ms: 0,

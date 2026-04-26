@@ -63,7 +63,7 @@ pub const PROVIDER_ENV_SOURCES: &[(&str, &str, &str, &str)] = &[
 /// `test_llm_connection` in agreement: if a provider was advertised as
 /// available because its env var is set, the test path can find that
 /// same key without going through the keychain.
-fn provider_env_key(provider: &str, base_url: &str) -> Option<String> {
+pub fn provider_env_key(provider: &str, base_url: &str) -> Option<String> {
     for (var, p, _model, b) in PROVIDER_ENV_SOURCES {
         if *p != provider {
             continue;
