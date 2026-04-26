@@ -360,17 +360,27 @@ cd kubilitics-frontend && npm install && npm run dev
 
 Backend: http://localhost:8190 • Frontend: http://localhost:5173 • Metrics: http://localhost:8190/metrics
 
-#### Port conflicts
+#### Port conflicts (all platforms)
 
 The desktop dev session binds **fixed** ports — no fallback. If 8190 (backend),
 8081/50061 (AI server), or 5173 (Vite) is already held, the sidecar exits with
-a message naming the offending PID. `scripts/dev-preflight.sh` runs before
-`cargo tauri dev` and clears stale listeners from prior crashed sessions; if a
-port is held by an unrelated app, free it manually:
+a message naming the offending PID and the exact platform-native kill command.
+`scripts/dev-preflight.mjs` (Node, cross-platform) runs before `cargo tauri dev`
+and clears stale listeners from prior crashed sessions on macOS, Linux, **and**
+Windows. If a port is held by an unrelated app, free it manually:
 
 ```bash
+# macOS / Linux
 lsof -ti tcp:8190 | xargs kill -9
 ```
+
+```powershell
+# Windows (PowerShell or cmd)
+for /f "tokens=5" %a in ('netstat -ano ^| findstr :8190 ^| findstr LISTENING') do taskkill /F /PID %a
+```
+
+In-cluster (Helm chart): the backend is the only process in its container, so
+8190 is always free and the fail-loud check is a no-op.
 
 ### Tests
 

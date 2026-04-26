@@ -60,37 +60,85 @@ impl BackendManager {
     }
 
     /// Best-effort PID lookup for whoever is holding `port`. Used only for the
-    /// human-facing error message — returns None if `lsof` isn't available
-    /// (Windows, minimal Linux containers) or the port is already free.
+    /// human-facing error message. Cross-platform:
+    ///   - Unix: `lsof -ti tcp:PORT -sTCP:LISTEN`
+    ///   - Windows: `netstat -ano -p TCP` + parse the LISTENING row for :PORT
+    /// Returns None if the lookup tool isn't on PATH (e.g. minimal containers)
+    /// or the port is somehow already free between bind-check and lookup.
     fn port_holder_pid(port: u16) -> Option<String> {
-        let out = std::process::Command::new("lsof")
-            .args(["-ti", &format!("tcp:{}", port), "-sTCP:LISTEN"])
-            .output()
-            .ok()?;
-        if !out.status.success() {
+        #[cfg(unix)]
+        {
+            let out = std::process::Command::new("lsof")
+                .args(["-ti", &format!("tcp:{}", port), "-sTCP:LISTEN"])
+                .output()
+                .ok()?;
+            if !out.status.success() {
+                return None;
+            }
+            return String::from_utf8_lossy(&out.stdout)
+                .lines()
+                .next()
+                .map(|s| s.trim().to_string())
+                .filter(|s| !s.is_empty());
+        }
+        #[cfg(windows)]
+        {
+            // netstat -ano output (TCP rows):
+            //   Proto  Local Address     Foreign Address  State       PID
+            //   TCP    0.0.0.0:8190      0.0.0.0:0        LISTENING   12345
+            let out = std::process::Command::new("netstat")
+                .args(["-ano", "-p", "TCP"])
+                .output()
+                .ok()?;
+            if !out.status.success() {
+                return None;
+            }
+            let needle = format!(":{}", port);
+            for line in String::from_utf8_lossy(&out.stdout).lines() {
+                let line = line.trim();
+                if !line.starts_with("TCP") || !line.contains("LISTENING") {
+                    continue;
+                }
+                let cols: Vec<&str> = line.split_whitespace().collect();
+                // cols: [TCP, local, foreign, LISTENING, PID]
+                if cols.len() >= 5 && cols[1].ends_with(&needle) {
+                    return Some(cols[4].to_string());
+                }
+            }
             return None;
         }
-        let pid = String::from_utf8_lossy(&out.stdout)
-            .lines()
-            .next()
-            .map(|s| s.trim().to_string())
-            .filter(|s| !s.is_empty())?;
-        Some(pid)
+        #[cfg(not(any(unix, windows)))]
+        {
+            None
+        }
     }
 
     /// Format a friendly port-conflict error pointing the user at the PID and
-    /// the exact command to free the port.
+    /// the exact command to free the port. Uses the platform-native command in
+    /// the hint so users can copy-paste without translation.
     fn port_conflict_message(port: u16) -> String {
-        match Self::port_holder_pid(port) {
-            Some(pid) => format!(
-                "Port {port} is in use by PID {pid}. Quit that process and relaunch, \
-                 or run `kill -9 {pid}` (macOS/Linux). Kubilitics binds {port} on purpose \
-                 — the dev frontend's Vite proxy targets that exact port, and silently \
-                 falling back to a different port produces ECONNREFUSED on every API call."
+        let pid = Self::port_holder_pid(port);
+        let kill_hint = if cfg!(windows) {
+            match pid.as_deref() {
+                Some(p) => format!("`taskkill /F /PID {p}`"),
+                None => format!(
+                    "`for /f \"tokens=5\" %a in ('netstat -ano ^| findstr :{port} ^| findstr LISTENING') do taskkill /F /PID %a`"
+                ),
+            }
+        } else {
+            match pid.as_deref() {
+                Some(p) => format!("`kill -9 {p}`"),
+                None => format!("`lsof -ti tcp:{port} | xargs kill -9`"),
+            }
+        };
+        match pid {
+            Some(p) => format!(
+                "Port {port} is in use by PID {p}. Quit that process and relaunch, or run {kill_hint}. \
+                 Kubilitics binds {port} on purpose — the dev frontend's Vite proxy targets that exact port, \
+                 and silently falling back to a different port produces ECONNREFUSED on every API call."
             ),
             None => format!(
-                "Port {port} is already in use. Quit the conflicting process \
-                 (`lsof -ti tcp:{port} | xargs kill -9` on macOS/Linux) and relaunch."
+                "Port {port} is already in use. Quit the conflicting process ({kill_hint}) and relaunch."
             ),
         }
     }

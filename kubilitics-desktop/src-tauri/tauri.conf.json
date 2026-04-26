@@ -4,7 +4,7 @@
   "version": "1.2.0",
   "identifier": "com.kubilitics.desktop",
   "build": {
-    "beforeDevCommand": "bash ../scripts/dev-preflight.sh && bash ../scripts/build-sidecars.sh && cd ../kubilitics-frontend && npm run dev",
+    "beforeDevCommand": "node ../scripts/dev-preflight.mjs && bash ../scripts/build-sidecars.sh && cd ../kubilitics-frontend && npm run dev",
     "beforeBuildCommand": "bash ../scripts/tauri-before-build.sh",
     "devUrl": "http://localhost:5173",
     "frontendDist": "../dist"
