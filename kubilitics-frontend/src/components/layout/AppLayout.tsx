@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useMemo, useCallback } from 'react';
+import { cn } from '@/lib/utils';
 import { Outlet, useNavigate, useLocation, Link } from 'react-router-dom';
 import { useScrollRestoration } from './KeepAlive';
 import { motion } from 'framer-motion';
@@ -52,6 +53,7 @@ export function AppLayout() {
 
   // -- Chat panel: Cmd+I / Ctrl+I toggles right-side AI assistant --
   const toggleChatPanel = useChatStore((s) => s.togglePanel);
+  const chatPanelOpen = useChatStore((s) => s.panelOpen);
   useChatHotkey(() => toggleChatPanel());
 
   // -- Global keyboard shortcuts overlay --
@@ -119,7 +121,10 @@ export function AppLayout() {
         <main
           ref={mainRef}
           id="main-content"
-          className="flex-1 p-4 sm:p-6 sm:pr-3 overflow-auto flex flex-col gap-4 relative"
+          className={cn(
+            "flex-1 p-4 sm:p-6 sm:pr-3 overflow-auto flex flex-col gap-4 relative transition-[padding] duration-300 ease-out",
+            chatPanelOpen && "lg:pr-[calc(min(480px,95vw)+1rem)]"
+          )}
           style={{ paddingBottom: isShellOpen ? `${shellHeightPx + 24}px` : '24px' }}
           role="main"
           aria-label="Main content"

@@ -12,12 +12,11 @@ import { ChatInput } from './ChatInput';
 import { Button } from '@/components/ui/button';
 import { Settings2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   BudgetExceededBanner,
   isBudgetExceededError,
 } from '@/components/chat/BudgetExceededBanner';
-
-export const CHAT_PANEL_WIDTH_PX = 480;
 
 const NOT_READY_BY_REASON: Partial<Record<AIReadyReason, { title: string; detail: string }>> = {
   not_configured: {
@@ -42,6 +41,27 @@ const NOT_READY_BY_REASON: Partial<Record<AIReadyReason, { title: string; detail
   },
   // ready / degraded — falsy → chat is usable.
 };
+
+// Header is h-[60px] — drawer starts below it and fills remaining viewport height.
+function ChatDrawer({ children }: { children: React.ReactNode }) {
+  return (
+    <motion.aside
+      key="chat-drawer"
+      initial={{ x: '100%' }}
+      animate={{ x: 0 }}
+      exit={{ x: '100%' }}
+      transition={{ type: 'spring', damping: 28, stiffness: 280 }}
+      className={cn(
+        'fixed right-0 z-40 flex flex-col',
+        'bg-background border-l shadow-xl',
+        'top-[60px] h-[calc(100vh-60px)]',
+        'w-[min(480px,95vw)]',
+      )}
+    >
+      {children}
+    </motion.aside>
+  );
+}
 
 export function ChatPanel() {
   const open = useChatStore((s) => s.panelOpen);
@@ -113,53 +133,51 @@ export function ChatPanel() {
     return out;
   }, [sessionExpired, turns.length]);
 
-  if (!open) return null;
-  if (notReady) {
-    return (
-      <aside className={cn('flex flex-col bg-background border-l')} style={{ width: CHAT_PANEL_WIDTH_PX }}>
-        <ChatHeader />
-        <div className="flex-1 flex flex-col items-center justify-center gap-3 p-8 text-center">
-          <div className="rounded-full bg-muted p-3">
-            <Settings2 className="h-6 w-6 text-muted-foreground" />
-          </div>
-          <h3 className="font-semibold text-base">{notReady.title}</h3>
-          <p className="text-sm text-muted-foreground max-w-[340px] leading-relaxed">
-            {notReady.detail}
-          </p>
-          <Button asChild size="sm" className="mt-2">
-            <Link to="/settings/ai">Open AI Settings</Link>
-          </Button>
-        </div>
-      </aside>
-    );
-  }
-
   return (
-    <aside
-      className={cn('flex flex-col bg-background border-l')}
-      style={{ width: CHAT_PANEL_WIDTH_PX }}
-    >
-      <ChatHeader />
-      <ChatTranscript turns={turns} systemNotices={systemNotices} />
-      {budgetError && (
-        <div className="px-3 pt-2">
-          <BudgetExceededBanner
-            message={budgetError.message}
-            onReset={handleResetBudget}
-          />
-        </div>
+    <AnimatePresence>
+      {open && (
+        notReady ? (
+          <ChatDrawer>
+            <ChatHeader />
+            <div className="flex-1 flex flex-col items-center justify-center gap-3 p-8 text-center">
+              <div className="rounded-full bg-muted p-3">
+                <Settings2 className="h-6 w-6 text-muted-foreground" />
+              </div>
+              <h3 className="font-semibold text-base">{notReady.title}</h3>
+              <p className="text-sm text-muted-foreground max-w-[340px] leading-relaxed">
+                {notReady.detail}
+              </p>
+              <Button asChild size="sm" className="mt-2">
+                <Link to="/settings/ai">Open AI Settings</Link>
+              </Button>
+            </div>
+          </ChatDrawer>
+        ) : (
+          <ChatDrawer>
+            <ChatHeader />
+            <ChatTranscript turns={turns} systemNotices={systemNotices} />
+            {budgetError && (
+              <div className="px-3 pt-2">
+                <BudgetExceededBanner
+                  message={budgetError.message}
+                  onReset={handleResetBudget}
+                />
+              </div>
+            )}
+            <ChatInput
+              onSend={sendMessage}
+              onStop={cancelTurn}
+              disabled={inputDisabled}
+              streaming={streaming}
+              disabledPlaceholder={
+                sessionExpired ? 'Session expired — start a new chat' :
+                connectionState === 'error' ? 'Reconnecting…' :
+                undefined
+              }
+            />
+          </ChatDrawer>
+        )
       )}
-      <ChatInput
-        onSend={sendMessage}
-        onStop={cancelTurn}
-        disabled={inputDisabled}
-        streaming={streaming}
-        disabledPlaceholder={
-          sessionExpired ? 'Session expired — start a new chat' :
-          connectionState === 'error' ? 'Reconnecting…' :
-          undefined
-        }
-      />
-    </aside>
+    </AnimatePresence>
   );
 }
