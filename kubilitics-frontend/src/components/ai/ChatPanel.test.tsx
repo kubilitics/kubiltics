@@ -23,19 +23,17 @@ vi.mock('@/components/ui/sonner', () => ({
   toast: { success: vi.fn(), error: vi.fn(), info: vi.fn() },
 }));
 
-// --- AI readiness hooks: pretend AI is fully configured & ready ---
-vi.mock('@/hooks/useAICapabilities', () => ({
-  useAICapabilities: () => ({
-    data: {
-      ready: true,
-      state: 'ready',
-      capabilities: { providers: ['openai'], models: ['gpt-4o'] },
-    },
-    error: undefined,
+// --- AI readiness: useAIReady is the only gate ChatPanel reads. ---
+vi.mock('@/hooks/useAIReady', () => ({
+  useAIReady: () => ({
+    ready: true,
+    reason: 'ready',
+    label: 'AI Ready',
+    detail: undefined,
+    status: { data: { state: 'ready' }, isLoading: false, isError: false, error: null },
+    config: { data: undefined, isConfigured: true, isLoading: false, error: undefined },
+    capabilities: { data: { ready: true }, isLoading: false, isError: false, error: null },
   }),
-}));
-vi.mock('@/hooks/useAIUserConfig', () => ({
-  useAIUserConfig: () => ({ isConfigured: true, isLoading: false }),
 }));
 vi.mock('@/hooks/useChatController', () => ({
   useChatController: () => ({ sendMessage: vi.fn(), cancelTurn: vi.fn() }),
