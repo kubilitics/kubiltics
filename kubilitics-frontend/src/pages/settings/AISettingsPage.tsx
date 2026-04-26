@@ -1,20 +1,16 @@
 /**
  * AI Settings page.
  *
- * Contract with the Rust side (see `src-tauri/src/ai_config.rs`):
- *   load_ai_config           — reads yaml ONLY. Never probes the keychain.
- *                              Returns provider, model, base_url, and a
- *                              cached has_api_key flag.
- *   save_ai_config           — validates + writes yaml + keychain + hot-
- *                              wires the brain via POST /api/v1/config/provider.
- *                              Authoritative keychain touch; one expected
- *                              macOS prompt.
- *   test_llm_connection      — 10-token ping. Authoritative keychain read.
+ * Contract with the Rust side (Phase 6a — new profile commands):
+ *   list_profiles          — returns Profile[] from profiles.json
+ *   get_active_profile     — returns the currently-active Profile | null
+ *   save_profile           — creates a NEW profile entry (name/provider/model/base_url/api_key)
+ *   update_profile         — patches an existing profile by id
+ *   activate_profile       — marks a profile active + hot-wires the brain
+ *   test_profile           — probes brain hot-wire WITHOUT activating
  *   detect_available_providers — env + localhost + yaml cache. NO keychain.
- *   migrate_has_api_key      — one-shot keychain probe for pre-cache-flag
- *                              upgraders. Idempotent after first success.
- *   get_brain_status /       — reachability signals for the banner + the
- *   restart_brain              manual Restart-engine button.
+ *   get_brain_status /     — reachability signals for the banner + the
+ *   restart_brain            manual Restart-engine button.
  *
  * Page structure (post-P0/P1/P2/P3 redesign):
  *   1. Header (no "Live" decoration — nothing on this page streams)
@@ -70,50 +66,16 @@ import {
 
 import { PageLayout } from '@/components/layout/PageLayout';
 import { SectionOverviewHeader } from '@/components/layout/SectionOverviewHeader';
-// TEMPORARY shim until Phase 6 rewrites this page. Reads from the new
-// useAIProfiles hook and exposes a useAIConfigStore-shaped object so the
-// existing form code keeps compiling. Phase 6 deletes this and refactors
-// the form to read profiles directly.
 import { useAIProfiles, type Profile } from '@/hooks/useAIProfiles';
+import { cn } from '@/lib/utils';
 
 export type Provider = 'openai' | 'anthropic' | 'ollama' | 'custom';
 
-interface AIConfigInput {
-  provider: Provider;
-  model: string;
-  baseUrl: string;
-  apiKey?: string;
+interface TestUI {
+  ok: boolean;
+  latencyMs?: number;
+  error?: string;
 }
-interface SaveResult { saved: boolean; brainHotwireOk: boolean; brainHotwireError: string; }
-interface TestResult { ok: boolean; latencyMs?: number; error?: string | null; }
-
-function useAIConfigStoreShim() {
-  const { profiles, activeId, reload } = useAIProfiles();
-  const active: Profile | undefined = profiles.find((p) => p.id === activeId);
-  return {
-    provider: (active?.provider ?? 'openai') as Provider,
-    model: active?.model ?? '',
-    baseUrl: active?.base_url ?? '',
-    hasApiKey: active?.has_key ?? false,
-    lastError: active?.last_error ?? null,
-    save: async (_cfg: AIConfigInput): Promise<SaveResult> => {
-      return { saved: false, brainHotwireOk: false, brainHotwireError: 'Phase 6 will wire save' };
-    },
-    testConnection: async (_cfg: AIConfigInput): Promise<TestResult> => {
-      return { ok: false, latencyMs: 0, error: 'Phase 6 will wire test' };
-    },
-    hydrate: async () => { await reload(); },
-  };
-}
-
-// Debounced field setter shim — no-op until Phase 6 wires the profile save path.
-function setFieldDebounced<K extends 'provider' | 'model' | 'baseUrl'>(
-  _field: K,
-  _value: string,
-): void {
-  // Phase 6 replaces this with a proper profile-based save.
-}
-import { cn } from '@/lib/utils';
 
 const MODEL_OPTIONS: Record<Provider, string[]> = {
   openai: ['gpt-4o', 'gpt-4o-mini', 'gpt-3.5-turbo', 'gpt-4-turbo'],
@@ -121,12 +83,6 @@ const MODEL_OPTIONS: Record<Provider, string[]> = {
   ollama: [],
   custom: [],
 };
-
-interface TestUI {
-  ok: boolean;
-  latencyMs?: number;
-  error?: string;
-}
 
 // Brain status reported by the Tauri command. Treat anything other than
 // "ready" as "not ready" — there's no useful distinction for this page
@@ -201,8 +157,46 @@ function BrainReachabilityBanner({
 // ─────────────────────────────────────────────────────────────────────────────
 export default function AISettingsPage() {
   const navigate = useNavigate();
-  const store = useAIConfigStoreShim();
-  const { provider, model, baseUrl, hasApiKey, lastError } = store;
+  const { profiles, activeId, reload: reloadProfiles } = useAIProfiles();
+  const activeProfile = activeId ? profiles.find((p) => p.id === activeId) : null;
+
+  // Form state — mirrors the active profile by default; user edits this
+  // then clicks Save which writes back via update_profile (or save_profile
+  // for "+ New profile"). We initialize/reset from activeProfile when it
+  // changes so the form always shows what's persisted unless the user
+  // has typed.
+  const [provider, setProvider] = useState<Provider>('openai');
+  const [model, setModel] = useState<string>('');
+  const [baseUrl, setBaseUrl] = useState<string>('');
+  const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null);
+
+  // Track whether the user is editing a draft for a NEW profile (no id yet)
+  // or modifying an existing one. New = no selectedProfileId.
+  const isNew = selectedProfileId === null;
+
+  // When the active profile loads (or changes), pre-fill the form IF the
+  // user hasn't selected something else.
+  useEffect(() => {
+    if (selectedProfileId === null && activeProfile) {
+      setSelectedProfileId(activeProfile.id);
+      setProvider(activeProfile.provider as Provider);
+      setModel(activeProfile.model);
+      setBaseUrl(activeProfile.base_url);
+    }
+  }, [activeProfile, selectedProfileId]);
+
+  // Replacement for the deleted `setFieldDebounced` — direct setters.
+  // The page no longer auto-saves on edit; user must click Save.
+  function setFieldDebounced<K extends 'provider' | 'model' | 'baseUrl'>(field: K, value: string) {
+    if (field === 'provider') setProvider(value as Provider);
+    else if (field === 'model') setModel(value);
+    else if (field === 'baseUrl') setBaseUrl(value);
+  }
+
+  // Compute hasApiKey from the currently-selected profile (not just the active one).
+  const selectedProfile = selectedProfileId ? profiles.find((p) => p.id === selectedProfileId) : null;
+  const hasApiKey = selectedProfile?.has_key ?? false;
+  const lastError = selectedProfile?.last_error ?? null;
 
   /**
    * "Is this config actually usable?" — provider-aware. Previously the
@@ -224,7 +218,7 @@ export default function AISettingsPage() {
   const invalidateAI = useInvalidateAI();
 
   // API key is transient — held only in this component's state until the
-  // user saves. Once save() returns and hydrate() re-reads the store,
+  // user saves. Once save() returns and reloadProfiles() re-reads the store,
   // `hasApiKey` flips true and this local input is cleared.
   const [apiKey, setApiKey] = useState<string>('');
   const [testing, setTesting] = useState(false);
@@ -331,25 +325,34 @@ export default function AISettingsPage() {
   const handleQuickConnect = async (d: Detected) => {
     setConnecting(d.provider);
     try {
-      const saveRes = await store.save({
-        provider: d.provider as Provider,
-        model: d.model,
-        baseUrl: d.base_url,
-        apiKey: '',
+      // Detected providers from Rust side know which env var the brain
+      // can see — so we don't need an explicit api_key (Rust path falls
+      // back to the env var via the provider_env_key helper).
+      const saved = await invoke<Profile>('save_profile', {
+        args: {
+          name: d.provider === 'openai' ? 'OpenAI'
+            : d.provider === 'anthropic' ? 'Anthropic'
+            : d.provider === 'ollama' ? 'Ollama local'
+            : d.env_var.replace('_API_KEY', '').toLowerCase(),
+          provider: d.provider,
+          model: d.model,
+          base_url: d.base_url,
+          api_key: null, // env var path — see save_profile's keychain rollback contract
+        },
       });
+      const result = await invoke<{ ok: boolean; latency_ms: number; error?: string | null }>(
+        'activate_profile',
+        { id: saved.id },
+      );
+      await reloadProfiles();
       await invalidateAI();
-      if (!saveRes.brainHotwireOk) {
-        toast.error(`Saved, but AI engine didn't accept the new config: ${saveRes.brainHotwireError}`);
-        return;
+      if (result.ok) {
+        toast.success(`Connected to ${d.provider} (${result.latency_ms}ms)`);
+        setTestResult({ ok: true, latencyMs: result.latency_ms });
+      } else {
+        toast.error(`Quick-connect saved but activation failed: ${result.error ?? 'unknown'}`);
+        setTestResult({ ok: false, error: result.error ?? undefined });
       }
-      const res = await store.testConnection({
-        provider: d.provider as Provider,
-        model: d.model,
-        baseUrl: d.base_url,
-      });
-      setTestResult({ ok: res.ok, latencyMs: res.latencyMs, error: res.error ?? undefined });
-      if (res.ok) toast.success(`Connected to ${d.provider} (${res.latencyMs ?? 0}ms)`);
-      else toast.error(`Test failed: ${res.error ?? 'unknown'}`);
     } catch (e) {
       toast.error(`Quick-connect failed: ${e instanceof Error ? e.message : String(e)}`);
     } finally {
@@ -361,26 +364,29 @@ export default function AISettingsPage() {
     if (!pastedGuess) return;
     setPasting(true);
     try {
-      const saveRes = await store.save({
-        provider: pastedGuess.provider,
-        model: pastedGuess.model,
-        baseUrl: pastedGuess.baseUrl,
-        apiKey: pastedKey.trim(),
+      const saved = await invoke<Profile>('save_profile', {
+        args: {
+          name: pastedGuess.label,
+          provider: pastedGuess.provider,
+          model: pastedGuess.model,
+          base_url: pastedGuess.baseUrl,
+          api_key: pastedKey.trim(),
+        },
       });
-      await invalidateAI();
+      const result = await invoke<{ ok: boolean; latency_ms: number; error?: string | null }>(
+        'activate_profile',
+        { id: saved.id },
+      );
       setPastedKey('');
-      if (!saveRes.brainHotwireOk) {
-        toast.error(`Saved, but AI engine didn't accept the new config: ${saveRes.brainHotwireError}`);
-        return;
+      await reloadProfiles();
+      await invalidateAI();
+      if (result.ok) {
+        toast.success(`Connected to ${pastedGuess.label} (${result.latency_ms}ms)`);
+        setTestResult({ ok: true, latencyMs: result.latency_ms });
+      } else {
+        toast.error(`Saved but activation failed: ${result.error ?? 'unknown'}`);
+        setTestResult({ ok: false, error: result.error ?? undefined });
       }
-      const res = await store.testConnection({
-        provider: pastedGuess.provider,
-        model: pastedGuess.model,
-        baseUrl: pastedGuess.baseUrl,
-      });
-      setTestResult({ ok: res.ok, latencyMs: res.latencyMs, error: res.error ?? undefined });
-      if (res.ok) toast.success(`Connected to ${pastedGuess.label} (${res.latencyMs ?? 0}ms)`);
-      else toast.error(`Saved but connection test failed: ${res.error ?? 'unknown'}`);
     } catch (e) {
       toast.error(`Connect failed: ${e instanceof Error ? e.message : String(e)}`);
     } finally {
@@ -402,10 +408,7 @@ export default function AISettingsPage() {
   // open. Ever.
   useEffect(() => {
     void (async () => {
-      // 1. Hydrate non-secret config from yaml. Never touches the keychain.
-      await store.hydrate();
-
-      // 2. Brain reachability. Pure in-memory bool on the Rust side —
+      // 1. Brain reachability. Pure in-memory bool on the Rust side —
       //    no file I/O, no keychain, no network.
       try {
         const s = await invoke<BrainStatus>('get_brain_status');
@@ -414,7 +417,7 @@ export default function AISettingsPage() {
         setBrainReady(false);
       }
 
-      // 3. Budget probe — harmless if the brain is down; returns nulls.
+      // 2. Budget probe — harmless if the brain is down; returns nulls.
       try {
         const b = await invoke<{ spent_usd: number; cap_usd: number }>('get_budget_status');
         setBudgetSpent(b.spent_usd);
@@ -451,12 +454,26 @@ export default function AISettingsPage() {
   };
 
   const handleTest = async () => {
+    if (isNew || !selectedProfileId) {
+      toast.info('Save the profile first, then test.');
+      return;
+    }
     setTesting(true);
     try {
-      const res = await store.testConnection({ provider, model, baseUrl, apiKey });
-      setTestResult({ ok: res.ok, latencyMs: res.latencyMs, error: res.error ?? undefined });
-      if (res.ok) toast.success(`Connected (${res.latencyMs ?? 0}ms)`);
-      else toast.error(`Test failed: ${res.error ?? 'unknown error'}`);
+      const result = await invoke<{ ok: boolean; latency_ms: number; error?: string | null }>(
+        'test_profile',
+        { id: selectedProfileId },
+      );
+      setTestResult({
+        ok: result.ok,
+        latencyMs: result.latency_ms,
+        error: result.error ?? undefined,
+      });
+      if (result.ok) {
+        toast.success(`Connected (${result.latency_ms}ms)`);
+      } else {
+        toast.error(`Test failed: ${result.error ?? 'unknown'}`);
+      }
     } finally {
       setTesting(false);
     }
@@ -464,28 +481,62 @@ export default function AISettingsPage() {
 
   const handleSave = async () => {
     setSaving(true);
-    // Capture before any clearing — the post-save Test below needs the
+    // Capture before any clearing — the post-save activation below needs the
     // key in-hand. Falling back to keychain_get is unreliable in dev
     // (binary-hash-bound ACL) and produces a misleading "missing API
     // key" error right after a successful save.
     const submittedKey = apiKey;
     try {
-      const saveRes = await store.save({ provider, model, baseUrl, apiKey: submittedKey });
-      await invalidateAI();
-      setApiKey('');
-      if (!saveRes.brainHotwireOk) {
-        // Yaml + keychain persisted, but the brain either rejected the
-        // config or wasn't reachable. Tell the user the real state — do
-        // NOT toast a green "saved" success when the top-bar pill is
-        // about to stay red. That mismatch is exactly what produced the
-        // "Test says Connected, AI says Unreachable" paradox.
-        toast.error(`Saved, but AI engine didn't accept the new config: ${saveRes.brainHotwireError}`);
-        setTestResult({ ok: false, error: saveRes.brainHotwireError });
-        return;
+      let saved: Profile;
+      if (isNew) {
+        // Create a new profile.
+        saved = await invoke<Profile>('save_profile', {
+          args: {
+            name: provider === 'openai' ? 'OpenAI'
+              : provider === 'anthropic' ? 'Anthropic'
+              : provider === 'ollama' ? 'Ollama local'
+              : 'Custom provider',
+            provider,
+            model,
+            base_url: baseUrl,
+            api_key: submittedKey || null,
+          },
+        });
+      } else {
+        // Update existing.
+        saved = await invoke<Profile>('update_profile', {
+          args: {
+            id: selectedProfileId,
+            name: null,
+            provider,
+            model,
+            base_url: baseUrl,
+            api_key: submittedKey || null,
+          },
+        });
       }
-      toast.success('AI configuration saved and activated');
-      const res = await store.testConnection({ provider, model, baseUrl, apiKey: submittedKey });
-      setTestResult({ ok: res.ok, latencyMs: res.latencyMs, error: res.error ?? undefined });
+      setSelectedProfileId(saved.id);
+      setApiKey(''); // clear form field — key is in keychain now
+
+      // Activate it. This calls brain hot-wire and stamps last_validated_at.
+      const result = await invoke<{ ok: boolean; latency_ms: number; error?: string | null }>(
+        'activate_profile',
+        { id: saved.id },
+      );
+
+      await reloadProfiles();
+      await invalidateAI();
+
+      if (result.ok) {
+        toast.success(`AI configuration saved and activated (${result.latency_ms}ms)`);
+        setTestResult({ ok: true, latencyMs: result.latency_ms });
+      } else if (result.error === 'needs_key') {
+        toast.error('Saved, but no API key in keychain. Re-enter the key and try again.');
+        setTestResult({ ok: false, error: 'Re-enter API key' });
+      } else {
+        toast.error(`Saved, but AI engine didn't accept the new config: ${result.error ?? 'unknown'}`);
+        setTestResult({ ok: false, error: result.error ?? undefined });
+      }
     } catch (e) {
       toast.error(`Save failed: ${e instanceof Error ? e.message : String(e)}`);
     } finally {
@@ -494,9 +545,9 @@ export default function AISettingsPage() {
   };
 
   const handleReset = () => {
-    setFieldDebounced('provider', 'openai');
-    setFieldDebounced('model', 'gpt-4o');
-    setFieldDebounced('baseUrl', '');
+    setProvider('openai');
+    setModel('gpt-4o');
+    setBaseUrl('');
     setApiKey('');
     setTestResult(null);
     toast.info('Restored defaults (click Save to persist)');
@@ -642,8 +693,7 @@ export default function AISettingsPage() {
             <div>
               <CardTitle className="text-base">Provider</CardTitle>
               <CardDescription>
-                Edit provider, model, and credentials. Non-secret changes
-                auto-save 500ms after you stop typing. API keys are only
+                Edit provider, model, and credentials. API keys are only
                 written to the OS keychain when you click Save.
               </CardDescription>
             </div>
