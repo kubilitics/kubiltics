@@ -10,6 +10,7 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
+pub mod commands;
 pub mod journal;
 pub mod keychain;
 pub mod migration;
