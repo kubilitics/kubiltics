@@ -1,18 +1,23 @@
 #!/usr/bin/env node
 /**
- * check-frontend-discipline.mjs — fail-CI scanner enforcing two rules:
+ * check-frontend-discipline.mjs — fail-CI scanner enforcing three rules:
  *
  * 1. Backend path discipline (Option B port architecture, 2026-04-26):
  *    Bare fetch / new WebSocket / new EventSource / new URL calls with a
  *    hardcoded `/api/`, `/ws/`, or `/healthz` path are forbidden. Use
  *    apiUrl() / wsUrl() / eventSourceUrl() from '@/lib/backendUrl'.
  *
- * 2. AI single-source-of-truth (this spec):
+ * 2. AI readiness single-source: useAIReady is the only gate UI may consume.
  *    Direct imports of useAIStatus / useAICapabilities / useAIUserConfig
  *    are forbidden outside src/hooks/useAIReady.ts. UI components must
  *    consume useAIReady — the only hook that composes all three.
  *
- * Both rules patch the same kind of bug — multiple sources of truth that
+ * 3. Profile invoke discipline: profile commands (save/list/activate/...)
+ *    must go through useAIProfiles / useActiveProfile + AISettingsPage.
+ *    Direct invoke('save_profile' | 'list_profiles' | 'activate_profile' | …)
+ *    is forbidden outside the helper hooks and AISettingsPage.
+ *
+ * All rules patch the same kind of bug — multiple sources of truth that
  * silently disagree — so they ship in one scanner. Easy to audit, easy to
  * extend with future single-source-of-truth invariants.
  *
@@ -23,6 +28,7 @@
  * Per-line escape hatches:
  *   // allow-backend-path     — suppresses rule 1 on the matching line
  *   // allow-direct-ai-hook   — suppresses rule 2 on the matching line
+ *   // allow-profile-invoke   — suppresses rule 3 on the matching line
  */
 
 import { readFileSync } from 'node:fs';
@@ -59,6 +65,22 @@ const ALLOWED_AI_IMPORT_FILES = new Set([
 const ALLOW_AI_IMPORT = /\/\/\s*allow-direct-ai-hook/;
 // Match `import { ... useAIStatus ... } from '...'` — covers the three names.
 const AI_IMPORT_PATTERN = /\bimport\b[^;]*\b(useAIStatus|useAICapabilities|useAIUserConfig)\b[^;]*from\b/;
+
+// ─── Rule 3: Profile commands via invoke ──────────────────────────────
+const ALLOWED_PROFILE_INVOKE_FILES = new Set([
+  'src/hooks/useAIProfiles.ts',
+  'src/hooks/useAIProfiles.test.tsx',
+  'src/hooks/useActiveProfile.ts',
+  'src/hooks/useActiveProfile.test.tsx',
+  'src/pages/settings/AISettingsPage.tsx',
+  'src/pages/settings/AISettingsPage.test.tsx',
+  'src/pages/settings/AISettingsPage.save.test.tsx',
+  'src/App.tsx', // for MigrationToast
+]);
+const ALLOW_PROFILE_INVOKE = /\/\/\s*allow-profile-invoke/;
+// Match invoke('save_profile') | invoke("list_profiles") | invoke(`activate_profile`)
+const PROFILE_INVOKE_PATTERN =
+  /\binvoke\s*[<(]\s*[^>]*?>?\s*\(?\s*['"`](list_profiles|get_active_profile|save_profile|update_profile|delete_profile|activate_profile|test_profile)['"`]/;
 
 function listFiles() {
   const out = execSync(
@@ -109,6 +131,20 @@ for (const abs of listFiles()) {
         code: line.trim(),
       });
     }
+
+    // Rule 3 — profile invoke discipline
+    if (
+      !ALLOWED_PROFILE_INVOKE_FILES.has(rel) &&
+      !ALLOW_PROFILE_INVOKE.test(line) &&
+      PROFILE_INVOKE_PATTERN.test(line)
+    ) {
+      violations.push({
+        rule: 'profile-direct-invoke',
+        file: rel,
+        line: i + 1,
+        code: line.trim(),
+      });
+    }
   }
 }
 
@@ -140,6 +176,17 @@ if (byRule['ai-direct-hook']?.length) {
   console.error('  outside the helper itself (see the allowlist in this script).');
   console.error('  Per-line escape: `// allow-direct-ai-hook`');
   for (const v of byRule['ai-direct-hook']) {
+    console.error(`  ${v.file}:${v.line}\n    ${v.code}`);
+  }
+  console.error('');
+}
+if (byRule['profile-direct-invoke']?.length) {
+  console.error(`Rule: profile-direct-invoke (${byRule['profile-direct-invoke'].length})`);
+  console.error("  Use useAIProfiles() / useActiveProfile() from '@/hooks/...'.");
+  console.error("  Direct invoke('save_profile' | 'activate_profile' | …) is forbidden");
+  console.error('  outside the helper hooks + AISettingsPage. See ALLOWED_PROFILE_INVOKE_FILES.');
+  console.error('  Per-line escape: `// allow-profile-invoke`');
+  for (const v of byRule['profile-direct-invoke']) {
     console.error(`  ${v.file}:${v.line}\n    ${v.code}`);
   }
   console.error('');
