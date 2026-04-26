@@ -650,6 +650,22 @@ export default function AISettingsPage() {
         restarting={restarting}
       />
 
+      {/* ━━━ Migration banner — only when a profile needs key re-entry ━━━ */}
+      {profiles.some((p) => p.last_error === 'Re-enter API key after migration') && (
+        <div className="flex items-start gap-3 rounded-md border border-amber-300 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/20 px-4 py-3 text-sm">
+          <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0 text-amber-600 dark:text-amber-500" aria-hidden="true" />
+          <div className="flex-1">
+            <p className="font-medium text-amber-800 dark:text-amber-300">
+              AI settings migrated to profiles
+            </p>
+            <p className="text-amber-700 dark:text-amber-400 mt-1">
+              Your previous configuration was preserved as a profile, but API keys aren't carried over for security.
+              Re-enter the key for any profile marked <span className="font-medium">needs key</span> below, then click Save & Test.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* ━━━ Profiles ━━━ */}
       <Card className="border-none soft-shadow glass-panel">
         <CardHeader className="flex-row items-center justify-between">
