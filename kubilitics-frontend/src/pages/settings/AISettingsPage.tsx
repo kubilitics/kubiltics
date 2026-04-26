@@ -527,12 +527,11 @@ export default function AISettingsPage() {
         restarting={restarting}
       />
 
-      {/* ━━━ Quick Connect ━━━ */}
-      {/* Hide once a key is saved. Quick Connect is the first-time-paste
-          affordance; after that the custom form below is the source of
-          truth and the QC card's "Paste a key to continue" disabled CTA
-          looks broken to users who already configured a provider. */}
-      {!hasApiKey && (
+      {/* ━━━ Quick Connect ━━━
+          Always shown — first-time setup AND swap-providers (paste a
+          different prefix and the form below auto-fills with the right
+          baseUrl/model so users don't need to memorize Together vs
+          OpenRouter vs OpenAI URL conventions). */}
       <Card className="border-none soft-shadow glass-panel" data-testid="ai-quick-connect-card">
         <CardHeader>
           <CardTitle className="text-base">Quick Connect</CardTitle>
@@ -600,7 +599,6 @@ export default function AISettingsPage() {
           )}
         </CardContent>
       </Card>
-      )}
 
       {/* ━━━ Provider (merged: status + editable fields) ━━━
           Replaces the old "Current State" (read-only tiles) +
@@ -771,6 +769,26 @@ export default function AISettingsPage() {
                 Manager / Linux libsecret). Never written to disk in
                 plaintext, never returned to this form.
               </p>
+              {/* Detect prefix/provider mismatch — Together (tgp_), OpenRouter
+                  (sk-or-), Groq (gsk_), Anthropic (sk-ant-) keys won't work
+                  against OpenAI's endpoint. Warn before the user wastes a
+                  Save → Test cycle on a 401. */}
+              {(() => {
+                const k = apiKey.trim();
+                if (!k) return null;
+                let warn: string | null = null;
+                if (provider === 'openai' && (k.startsWith('tgp_') || k.startsWith('sk-or-') || k.startsWith('gsk_') || k.startsWith('sk-ant-'))) {
+                  if (k.startsWith('tgp_')) warn = 'This looks like a Together AI key. Switch Provider to "custom" and set Base URL to https://api.together.xyz/v1.';
+                  else if (k.startsWith('sk-or-')) warn = 'This looks like an OpenRouter key. Switch Provider to "custom" and set Base URL to https://openrouter.ai/api/v1.';
+                  else if (k.startsWith('gsk_')) warn = 'This looks like a Groq key. Switch Provider to "custom" and set Base URL to https://api.groq.com/openai/v1.';
+                  else if (k.startsWith('sk-ant-')) warn = 'This looks like an Anthropic key. Switch Provider to "anthropic".';
+                } else if (provider === 'anthropic' && !k.startsWith('sk-ant-')) {
+                  warn = 'Anthropic keys start with "sk-ant-". Double-check the key or switch Provider.';
+                }
+                return warn ? (
+                  <p className="text-xs text-amber-600 dark:text-amber-400">⚠ {warn}</p>
+                ) : null;
+              })()}
             </div>
           )}
 
