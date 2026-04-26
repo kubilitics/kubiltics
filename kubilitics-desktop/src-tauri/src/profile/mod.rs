@@ -11,6 +11,7 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 pub mod journal;
+pub mod keychain;
 pub mod migration;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
