@@ -528,6 +528,11 @@ export default function AISettingsPage() {
       />
 
       {/* ━━━ Quick Connect ━━━ */}
+      {/* Hide once a key is saved. Quick Connect is the first-time-paste
+          affordance; after that the custom form below is the source of
+          truth and the QC card's "Paste a key to continue" disabled CTA
+          looks broken to users who already configured a provider. */}
+      {!hasApiKey && (
       <Card className="border-none soft-shadow glass-panel" data-testid="ai-quick-connect-card">
         <CardHeader>
           <CardTitle className="text-base">Quick Connect</CardTitle>
@@ -595,6 +600,7 @@ export default function AISettingsPage() {
           )}
         </CardContent>
       </Card>
+      )}
 
       {/* ━━━ Provider (merged: status + editable fields) ━━━
           Replaces the old "Current State" (read-only tiles) +
