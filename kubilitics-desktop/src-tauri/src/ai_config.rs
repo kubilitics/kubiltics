@@ -216,7 +216,7 @@ pub async fn save_ai_config(cfg: AIConfig) -> Result<SaveResult, String> {
     // already have one in the keychain from a previous save. Track
     // whether a key ended up present so we can persist the cached flag
     // alongside the non-secret fields.
-    let (live_key, has_api_key) = match cfg.api_key.as_deref() {
+    let (live_key, has_api_key) = match cfg.api_key.as_deref().map(str::trim) {
         Some(k) if !k.is_empty() => {
             keychain_set(&cfg.provider, k)?;
             (k.to_string(), true)
@@ -379,7 +379,10 @@ pub async fn load_ai_config() -> Result<AIConfig, String> {
 
 #[command]
 pub async fn test_llm_connection(cfg: AIConfig) -> Result<TestResult, String> {
-    // Resolve the key the same way the brain will at startup.
+    // Resolve the key the same way the brain will at startup. Trim
+    // whitespace defensively — paste-from-clipboard frequently captures
+    // a trailing newline or leading space and providers reject the key
+    // outright with "Invalid API key" rather than auto-trimming.
     let key = if let Ok(env) = std::env::var(ENV_API_KEY) {
         if !env.is_empty() {
             Some(env)
@@ -388,7 +391,8 @@ pub async fn test_llm_connection(cfg: AIConfig) -> Result<TestResult, String> {
         }
     } else {
         cfg.api_key.clone().or_else(|| keychain_get(&cfg.provider).unwrap_or(None))
-    };
+    }
+    .map(|k| k.trim().to_string());
 
     match cfg.provider.as_str() {
         "openai" | "anthropic" | "custom" => {
