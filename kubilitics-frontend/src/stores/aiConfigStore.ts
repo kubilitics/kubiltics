@@ -1,5 +1,14 @@
 /**
- * aiConfigStore — Zustand store for the AI Settings round-trip.
+ * AI config store — holds the last-saved provider / model / base_url /
+ * has_api_key snapshot from disk for instant render after Settings save.
+ *
+ * IMPORTANT: DO NOT use this store to gate UI on AI readiness. The single
+ * source of truth for "is AI usable right now?" is the useAIReady hook
+ * (src/hooks/useAIReady.ts), which composes all three react-query inputs
+ * with deterministic precedence and is the only thing scripts/
+ * check-frontend-discipline.mjs allows UI components to import.
+ *
+ * Spec: docs/superpowers/specs/2026-04-26-ai-status-single-source-design.md
  *
  * Phase 2 / Blocker C. The raw API key NEVER lives in this store or
  * localStorage — it is handed to the Rust `save_ai_config` command which
