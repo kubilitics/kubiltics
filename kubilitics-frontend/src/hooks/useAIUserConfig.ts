@@ -1,14 +1,15 @@
 import { useQuery } from '@tanstack/react-query';
 import { apiUrl } from '@/lib/backendUrl';
+import { intervalForState } from './useAIStatus';
 
 /**
  * Shape returned by GET /api/v1/ai/config — the user-visible AI
  * configuration persisted by the Kubilitics Settings UI
  * (~/.kubilitics/ai-overrides.yaml). Distinct from the brain's own
- * runtime capabilities (`/api/v1/ai/capabilities`). The chat panel must
- * gate on BOTH to avoid the pathological case where the brain boots
- * with a dev-baked provider and the user lands in a working chat
- * without ever visiting Settings.
+ * runtime capabilities (`/api/v1/ai/capabilities`). useAIReady gates
+ * on BOTH to avoid the pathological case where the brain boots with a
+ * dev-baked provider and the user lands in a working chat without ever
+ * visiting Settings.
  */
 export type AIUserConfig = {
   provider: string;
@@ -27,6 +28,9 @@ export type AIUserConfigState = {
   error?: unknown;
 };
 
+// Refetch cadence is locked to the same intervalForState used by
+// useAIStatus, and staleTime is 0 — both are required so this query
+// stays in lockstep with useAIStatus and useAICapabilities.
 export function useAIUserConfig(): AIUserConfigState {
   const q = useQuery<AIUserConfig>({
     queryKey: ['ai', 'user-config'],
@@ -35,7 +39,10 @@ export function useAIUserConfig(): AIUserConfigState {
       if (!res.ok) throw new Error(`ai/config ${res.status}`);
       return res.json();
     },
-    staleTime: 15_000,
+    staleTime: 0,
+    // user-config doesn't have its own state field; key off has_api_key
+    // presence to decide between the fast and slow cadence.
+    refetchInterval: (query) => intervalForState(query.state.data?.has_api_key === 'true' ? 'ready' : 'unknown'),
   });
   const provider = (q.data?.provider ?? '').trim();
   const hasKey = q.data?.has_api_key === 'true';
