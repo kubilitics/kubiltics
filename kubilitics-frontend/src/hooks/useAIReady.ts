@@ -1,0 +1,105 @@
+import { useMemo } from 'react';
+import { useAIStatus } from './useAIStatus';
+import { useAICapabilities } from './useAICapabilities';
+import { useAIUserConfig } from './useAIUserConfig';
+
+/**
+ * useAIReady — THE ONLY HOOK ANY UI MAY GATE ON.
+ *
+ * Composes the three underlying queries (status / capabilities / user-config)
+ * into one boolean + reason. UI components MUST consume this hook; direct
+ * imports of useAIStatus / useAICapabilities / useAIUserConfig outside this
+ * file are blocked by scripts/check-frontend-discipline.mjs at lint time.
+ *
+ * Reason precedence (the only place this logic lives):
+ *   1. Any underlying query loading → 'loading'
+ *   2. Any underlying query errored → 'brain_unreachable'
+ *   3. Status reports state='error' or state='unavailable' → 'brain_error'
+ *   4. User has not saved provider+key → 'not_configured'   ← THE HEADLINE BUG
+ *   5. Status reports state='degraded' → 'degraded' (ready=true; still usable)
+ *   6. All green → 'ready'
+ *   7. Anything else (defensive) → 'loading'
+ *
+ * `ready: boolean` is true for 'ready' and 'degraded'; false otherwise.
+ *
+ * Spec: docs/superpowers/specs/2026-04-26-ai-status-single-source-design.md
+ */
+
+export type AIReadyReason =
+  | 'loading'
+  | 'brain_unreachable'
+  | 'brain_error'
+  | 'not_configured'
+  | 'degraded'
+  | 'ready';
+
+export type AIReadyState = {
+  ready: boolean;
+  reason: AIReadyReason;
+  label: string;
+  detail?: string;
+  // Diagnostic escape hatches — for debug overlays only. New gating logic
+  // must live inside useAIReady, never in consumers. The CI scanner blocks
+  // direct *imports* of the underlying hooks; reading these here is fine.
+  status: ReturnType<typeof useAIStatus>;
+  config: ReturnType<typeof useAIUserConfig>;
+  capabilities: ReturnType<typeof useAICapabilities>;
+};
+
+const LABELS: Record<AIReadyReason, string> = {
+  loading: 'AI',
+  brain_unreachable: 'AI Unreachable',
+  brain_error: 'AI Error',
+  not_configured: 'AI Not Configured',
+  degraded: 'AI Degraded',
+  ready: 'AI Ready',
+};
+
+export function useAIReady(clusterId?: string): AIReadyState {
+  const status = useAIStatus();
+  const capabilities = useAICapabilities(clusterId);
+  const config = useAIUserConfig();
+
+  const reason: AIReadyReason = (() => {
+    if (status.isLoading || capabilities.isLoading || config.isLoading) return 'loading';
+    if (status.isError || capabilities.isError || config.error instanceof Error) return 'brain_unreachable';
+    const state = status.data?.state;
+    if (state === 'error' || state === 'unavailable') return 'brain_error';
+    if (!config.isConfigured) return 'not_configured';
+    if (state === 'degraded') return 'degraded';
+    if (state === 'ready' && capabilities.data?.ready) return 'ready';
+    // Defensive fallback. Reachable when:
+    //   (a) status.state === 'ready' but capabilities.data.ready === false
+    //       (brain healthcheck and capabilities disagree — transient).
+    //   (b) status.data.state is an unrecognized value (new backend state
+    //       this frontend doesn't yet know about).
+    // We surface 'loading' so the UI shows a spinner rather than asserting
+    // ready or asserting an error neither of which is correct here.
+    return 'loading';
+  })();
+
+  const ready = reason === 'ready' || reason === 'degraded';
+
+  let detail: string | undefined;
+  if (reason === 'brain_unreachable') {
+    detail =
+      (status.error instanceof Error ? status.error.message : undefined) ??
+      (capabilities.error instanceof Error ? capabilities.error.message : undefined) ??
+      (config.error instanceof Error ? config.error.message : undefined);
+  } else if (reason === 'brain_error') {
+    detail = status.data?.disabled_reason;
+  }
+
+  return useMemo(
+    () => ({
+      ready,
+      reason,
+      label: LABELS[reason],
+      detail,
+      status,
+      config,
+      capabilities,
+    }),
+    [ready, reason, detail, status, config, capabilities],
+  );
+}
