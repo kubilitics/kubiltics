@@ -28,8 +28,9 @@ export default tseslint.config(
       // Tauri (no proxy) and in any deployment where the backend lives on a
       // different origin. The lib/backendUrl.ts file itself is exempt because
       // its docstring contains example strings.
-      // Hardcoded backend paths (/api/, /ws/, /healthz) are scanned by
-      // scripts/check-backend-paths.mjs (wired into `npm run lint`). We
+      // Hardcoded backend paths AND AI single-source-of-truth invariants
+      // are scanned by scripts/check-frontend-discipline.mjs (wired into
+      // `npm run lint`). See that file for the full rule list. We
       // tried doing it in ESLint via no-restricted-syntax, but esquery
       // can't represent a literal `/` in its selector regex cleanly and
       // doesn't honour `^=` on Literal.value reliably across versions.
