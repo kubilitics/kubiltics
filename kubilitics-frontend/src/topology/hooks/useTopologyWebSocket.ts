@@ -1,5 +1,5 @@
 import { useEffect, useRef, useCallback, useState } from "react";
-import { getEffectiveBackendBaseUrl } from "@/stores/backendConfigStore";
+import { wsUrl } from "@/lib/backendUrl";
 import type { TopologyNode, TopologyEdge } from "../types/topology";
 
 export interface TopologyEvent {
@@ -79,13 +79,7 @@ export function useTopologyWebSocket({
   const connect = useCallback(() => {
     if (!clusterId || !enabled) return;
 
-    const baseUrl = getEffectiveBackendBaseUrl();
-    if (!baseUrl) return;
-
-    const wsUrl = baseUrl
-      .replace(/^http/, "ws")
-      .replace(/\/$/, "");
-    const url = `${wsUrl}/api/v1/ws/topology/${clusterId}`;
+    const url = wsUrl(`/api/v1/ws/topology/${clusterId}`);
 
     try {
       const ws = new WebSocket(url);

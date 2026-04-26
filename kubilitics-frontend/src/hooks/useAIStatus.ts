@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import { apiUrl } from '@/lib/backendUrl';
 
 // AIStatus mirrors kubilitics-ai's HTTP /status response, surfaced via
 // kubilitics-backend /api/v1/ai/status. The supervisor-era SidecarStatus
@@ -32,7 +33,7 @@ export function useAIStatus() {
   return useQuery<AIStatus>({
     queryKey: ['ai', 'status'],
     queryFn: async () => {
-      const res = await fetch('/api/v1/ai/status');
+      const res = await fetch(apiUrl('/api/v1/ai/status'));
       if (!res.ok) throw new Error(`status ${res.status}`);
       return res.json();
     },

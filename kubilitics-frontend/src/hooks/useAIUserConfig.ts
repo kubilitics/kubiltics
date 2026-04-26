@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import { apiUrl } from '@/lib/backendUrl';
 
 /**
  * Shape returned by GET /api/v1/ai/config — the user-visible AI
@@ -30,7 +31,7 @@ export function useAIUserConfig(): AIUserConfigState {
   const q = useQuery<AIUserConfig>({
     queryKey: ['ai', 'user-config'],
     queryFn: async () => {
-      const res = await fetch('/api/v1/ai/config');
+      const res = await fetch(apiUrl('/api/v1/ai/config'));
       if (!res.ok) throw new Error(`ai/config ${res.status}`);
       return res.json();
     },

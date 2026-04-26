@@ -3,9 +3,6 @@ import react from "@vitejs/plugin-react-swc";
 import { visualizer } from "rollup-plugin-visualizer";
 import path from "path";
 import { readFileSync } from "fs";
-import type { Server as HttpProxyServer } from "http-proxy";
-import type { IncomingMessage } from "http";
-import type { Socket } from "net";
 
 const pkg = JSON.parse(readFileSync(path.resolve(__dirname, 'package.json'), 'utf-8'));
 
@@ -14,15 +11,10 @@ const isTauriBuild = process.env.TAURI_BUILD === 'true';
 // When present, we're running inside a real Tauri webview — do NOT mock the Tauri API.
 const isTauriDev = !!process.env.TAURI_ENV_PLATFORM;
 
-// Suppress noisy "ws proxy socket error: write EPIPE" messages that flood the
-// console when the backend isn't running. These are harmless in dev — the
-// frontend handles reconnection itself.
+// Logger is kept minimal — the Vite proxy was dropped (Option B); the dev
+// frontend talks to the backend directly via apiUrl()/wsUrl() helpers, so
+// the previous "ws proxy socket error" noise filter is no longer relevant.
 const logger = createLogger();
-const originalError = logger.error.bind(logger);
-logger.error = (msg, options) => {
-  if (typeof msg === 'string' && msg.includes('ws proxy socket error')) return;
-  originalError(msg, options);
-};
 
 // Tauri's tauri:// custom-protocol does not send CORS headers for its own assets.
 // Vite emits <script type="module" crossorigin> and <link crossorigin> tags which
@@ -89,36 +81,19 @@ export default defineConfig(({ mode }) => ({
   },
   server: {
     host: "::",
-    // Use 5173 only; fail if port is in use instead of trying another
+    // Use 5173 only; fail if port is in use instead of trying another.
     port: 5173,
     strictPort: true,
-    // Proxy API, WebSocket, and health to the backend (port 8190).
-    // Override with VITE_BACKEND_PORT env var if main backend runs on a different port.
-    proxy: (() => {
-      const port = process.env.VITE_BACKEND_PORT || "8190";
-      const target = `http://127.0.0.1:${port}`;
-      const proxyOptions = (path: string) => ({
-        target,
-        changeOrigin: true,
-        ...(path === "/api" ? { ws: true } : {}),
-        configure: (proxy: HttpProxyServer) => {
-          // Suppress ECONNREFUSED / EPIPE proxy errors — frontend handles reconnect itself.
-          proxy.on("error", () => {});
-          // Suppress "ws proxy socket error: write EPIPE" — emitted when the browser
-          // closes the WebSocket connection (e.g. navigating away) while the backend is
-          // still writing. Harmless in dev; backend sees a closed socket and stops writing.
-          proxy.on("proxyReqWs", (_proxyReq: IncomingMessage, _req: IncomingMessage, socket: Socket) => {
-            socket.on("error", () => {});
-          });
-        },
-      });
-      return {
-        "/api": proxyOptions("/api"),
-        // /healthz (not /health — the SPA owns /health for the Health Dashboard route).
-        "/healthz": proxyOptions("/healthz"),
-        "/ws": { target, changeOrigin: true, ws: true, configure: (proxy: HttpProxyServer) => { proxy.on("error", () => {}); } },
-      };
-    })(),
+    // INTENTIONALLY NO `proxy` block. Option B: every backend call goes
+    // through `apiUrl(path)` / `wsUrl(path)` (src/lib/backendUrl.ts) which
+    // resolves to an absolute URL at runtime. Backend CORS allows
+    // http://localhost:5173 (see kubilitics-backend internal/config/config.go),
+    // so cross-origin fetches from the dev frontend work without a proxy.
+    //
+    // Why this matters: the proxy was hardcoded to port 8190. If the desktop
+    // sidecar ever fell back to a free port, every relative-URL fetch died
+    // with ECONNREFUSED. Removing the proxy + routing through apiUrl() makes
+    // the port irrelevant.
   },
   plugins: [
     react(),

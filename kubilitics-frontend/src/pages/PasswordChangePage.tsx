@@ -5,6 +5,7 @@ import { BrandLogo } from '@/components/BrandLogo';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAuthStore } from '@/stores/authStore';
+import { apiUrl } from '@/lib/backendUrl';
 
 interface PasswordError {
   message: string;
@@ -88,7 +89,7 @@ export default function PasswordChangePage() {
     }
 
     try {
-      const response = await fetch('/api/v1/auth/change-password', {
+      const response = await fetch(apiUrl('/api/v1/auth/change-password'), {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

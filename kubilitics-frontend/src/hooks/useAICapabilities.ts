@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import { apiUrl } from '@/lib/backendUrl';
 
 export type AICapabilities = {
   schema_version: string;
@@ -25,7 +26,7 @@ export function useAICapabilities(clusterId: string | undefined, _opts?: { warm?
     enabled: !!clusterId,
     queryFn: async () => {
       const params = new URLSearchParams({ cluster_id: clusterId! });
-      const res = await fetch(`/api/v1/ai/capabilities?${params.toString()}`);
+      const res = await fetch(apiUrl(`/api/v1/ai/capabilities?${params.toString()}`));
       if (!res.ok) throw new Error(`capabilities ${res.status}`);
       return res.json();
     },

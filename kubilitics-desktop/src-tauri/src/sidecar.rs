@@ -17,12 +17,14 @@ pub struct BackendManager {
     is_ready: Arc<Mutex<bool>>,
     /// TASK-SIDECAR-001: Store process handle so we can kill on exit, not just send HTTP shutdown.
     backend_process: Arc<Mutex<Option<tauri_plugin_shell::process::CommandChild>>>,
-    /// Port the backend actually listens on. Always BACKEND_PORT (8190).
-    /// We used to fall back to an OS-assigned port when 8190 was occupied — that
-    /// produced a Vite-proxy/sidecar mismatch in dev (proxy hardcoded to 8190,
-    /// sidecar bound elsewhere → ECONNREFUSED on every fetch). Headlamp/k9s/etc
-    /// fail loud on port conflict instead, and so do we now. Field is kept so
-    /// callers (`port()`, `url()`) keep their shape.
+    /// Port the backend actually listens on. Prefer BACKEND_PORT (8190) — gives
+    /// the user a curl-able default. If 8190 is occupied (stale dev, another
+    /// Kubilitics instance, an unrelated app), fall back to an OS-assigned
+    /// free port; the frontend's `apiUrl()` / `wsUrl()` helpers (Option B —
+    /// see src/lib/backendUrl.ts) read the real URL at runtime via
+    /// `invoke('get_backend_url')` and follow along — no Vite-proxy mismatch
+    /// possible because there is no Vite proxy. Resolved once at start() and
+    /// reused across restarts.
     resolved_port: Arc<Mutex<u16>>,
 }
 
@@ -57,6 +59,14 @@ impl BackendManager {
     /// releases it immediately; the sidecar process will bind to it next.
     fn can_bind(port: u16) -> bool {
         std::net::TcpListener::bind(format!("127.0.0.1:{}", port)).is_ok()
+    }
+
+    /// Ask the OS for a free TCP port on 127.0.0.1. Used as a fallback when
+    /// BACKEND_PORT is occupied. Returns None if even ephemeral-port allocation
+    /// fails (network stack broken).
+    fn pick_free_port() -> Option<u16> {
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").ok()?;
+        listener.local_addr().ok().map(|a| a.port())
     }
 
     /// Best-effort PID lookup for whoever is holding `port`. Used only for the
@@ -152,23 +162,43 @@ impl BackendManager {
             "message": "Starting backend engine…"
         }));
 
-        // We always spawn our own sidecar on BACKEND_PORT (8190). If that port
-        // is occupied, fail loud rather than fall back to a random OS-assigned
-        // port — the Vite dev proxy is hardcoded to 8190, so a fallback port
-        // produces ECONNREFUSED on every API call (Headlamp/k9s/argocd take the
-        // same fail-loud stance). Piggybacking on a process already on 8190 is
-        // also off the table: it produced orphaned UI + backend pairs every
-        // time it fired.
-        if !Self::can_bind(BACKEND_PORT) {
-            let msg = Self::port_conflict_message(BACKEND_PORT);
-            eprintln!("Backend cannot start: {}", msg);
-            let _ = self.app_handle.emit("backend-status", serde_json::json!({
-                "status": "error",
-                "message": msg,
-            }));
-            return Ok(());
-        }
-        *self.resolved_port.lock().unwrap() = BACKEND_PORT;
+        // Prefer BACKEND_PORT (8190) so dev users keep a familiar curl-able
+        // URL. If it's occupied (stale Kubilitics instance, unrelated app),
+        // ask the OS for a guaranteed-free port. The frontend reads the real
+        // URL at runtime via invoke('get_backend_url') and routes through
+        // apiUrl()/wsUrl() — there is no Vite proxy to mismatch.
+        //
+        // Piggybacking on an existing :8190 listener is still off the table:
+        // that produced orphaned UI + backend pairs every time it fired.
+        let chosen_port = if Self::can_bind(BACKEND_PORT) {
+            BACKEND_PORT
+        } else {
+            match Self::pick_free_port() {
+                Some(p) => {
+                    let holder = Self::port_holder_pid(BACKEND_PORT);
+                    eprintln!(
+                        "Port {} is occupied{} — backend will use OS-assigned port {} instead. \
+                         The frontend follows along via apiUrl().",
+                        BACKEND_PORT,
+                        holder.map(|p| format!(" by PID {}", p)).unwrap_or_default(),
+                        p
+                    );
+                    p
+                }
+                None => {
+                    // Both 8190 AND a fresh OS-assigned port failed — likely
+                    // network stack misconfiguration. Surface the error.
+                    let msg = Self::port_conflict_message(BACKEND_PORT);
+                    eprintln!("Backend cannot start: {}", msg);
+                    let _ = self.app_handle.emit("backend-status", serde_json::json!({
+                        "status": "error",
+                        "message": msg,
+                    }));
+                    return Ok(());
+                }
+            }
+        };
+        *self.resolved_port.lock().unwrap() = chosen_port;
 
         match self.start_backend_process().await {
             Ok(()) => {

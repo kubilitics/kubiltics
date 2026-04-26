@@ -4,7 +4,8 @@
  */
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useActiveClusterId } from './useActiveClusterId';
-import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
+import { useBackendConfigStore } from '@/stores/backendConfigStore';
+import { eventSourceUrl } from '@/lib/backendUrl';
 import { API_PREFIX } from '@/services/api/client';
 import type { WideEvent } from '@/services/api/eventsIntelligence';
 
@@ -22,8 +23,6 @@ export function useEventsStream(namespace?: string): {
   const reconnectTimer = useRef<ReturnType<typeof setTimeout>>();
 
   const clusterId = useActiveClusterId();
-  const backendBaseUrl = useBackendConfigStore((s) => s.backendBaseUrl);
-  const effectiveBaseUrl = getEffectiveBackendBaseUrl(backendBaseUrl);
   const isBackendConfigured = useBackendConfigStore((s) => s.isBackendConfigured());
 
   const clearEvents = useCallback(() => setEvents([]), []);
@@ -32,13 +31,11 @@ export function useEventsStream(namespace?: string): {
     if (!clusterId || !isBackendConfigured) return;
 
     function connect() {
-      const base = effectiveBaseUrl.replace(/\/+$/, '');
-      let url = `${base}${API_PREFIX}/clusters/${encodeURIComponent(clusterId!)}/events-intelligence/stream`;
+      let path = `${API_PREFIX}/clusters/${encodeURIComponent(clusterId!)}/events-intelligence/stream`;
       if (namespace) {
-        url += `?namespace=${encodeURIComponent(namespace)}`;
+        path += `?namespace=${encodeURIComponent(namespace)}`;
       }
-
-      const es = new EventSource(url);
+      const es = new EventSource(eventSourceUrl(path));
       esRef.current = es;
 
       es.onopen = () => setIsConnected(true);
@@ -78,7 +75,7 @@ export function useEventsStream(namespace?: string): {
       }
       setIsConnected(false);
     };
-  }, [clusterId, effectiveBaseUrl, isBackendConfigured, namespace]);
+  }, [clusterId, isBackendConfigured, namespace]);
 
   return { events, isConnected, clearEvents };
 }

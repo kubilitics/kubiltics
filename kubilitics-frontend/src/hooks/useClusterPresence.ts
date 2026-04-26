@@ -1,9 +1,10 @@
 import { useEffect, useRef } from 'react';
 import type { PresenceSnapshot } from '@/types/resilient';
 import { useClusterPresenceStore } from '@/stores/clusterPresenceStore';
+import { apiUrl, eventSourceUrl } from '@/lib/backendUrl';
 
-const PRESENCE_URL = '/api/v1/presence';
-const SSE_URL = '/api/v1/presence/events';
+const PRESENCE_PATH = '/api/v1/presence';
+const SSE_PATH = '/api/v1/presence/events';
 
 // useClusterPresence subscribes to the backend's presence layer:
 //   1. On mount, fetch the current snapshot and apply it.
@@ -29,7 +30,7 @@ export function useClusterPresence(): void {
 
     async function fetchSnapshot(): Promise<boolean> {
       try {
-        const r = await fetch(PRESENCE_URL, { credentials: 'include' });
+        const r = await fetch(apiUrl(PRESENCE_PATH), { credentials: 'include' });
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
         const snap = (await r.json()) as PresenceSnapshot;
         if (!cancelled) applySnapshot(snap);
@@ -55,7 +56,7 @@ export function useClusterPresence(): void {
 
     function openStream() {
       if (cancelled) return;
-      const es = new EventSource(SSE_URL, { withCredentials: true } as EventSourceInit);
+      const es = new EventSource(eventSourceUrl(SSE_PATH), { withCredentials: true } as EventSourceInit);
       esRef.current = es;
       es.onmessage = async () => {
         // Simplest correct impl: re-fetch snapshot on any event.

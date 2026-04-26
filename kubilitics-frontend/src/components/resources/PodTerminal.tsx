@@ -13,7 +13,7 @@ import { Maximize2, Minimize2, Trash2, RefreshCw, Copy } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from '@/components/ui/sonner';
 import { BrandWatermark } from '@/components/BrandWatermark';
-import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
+import { wsUrl as buildWsUrl } from '@/lib/backendUrl';
 
 import { useActiveClusterId } from '@/hooks/useActiveClusterId';
 interface PodTerminalProps {
@@ -55,18 +55,14 @@ export function PodTerminal({
   const isConnected = connState === 'connected';
   const [isMaximized, setIsMaximized] = useState(false);
 
-  const storedUrl = useBackendConfigStore((s) => s.backendBaseUrl);
-  const baseUrl = getEffectiveBackendBaseUrl(storedUrl);
   const clusterId = useActiveClusterId();
 
   const connect = useCallback(() => {
     if (!clusterId || !podName || !namespace) return;
 
-    // Build WebSocket URL
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const host = baseUrl || window.location.host;
-    const wsHost = host.startsWith('http') ? host.replace(/^https?:\/\//, '') : host;
-    const wsUrl = `${protocol}//${wsHost || window.location.host}/api/v1/clusters/${encodeURIComponent(clusterId)}/pods/${encodeURIComponent(namespace)}/${encodeURIComponent(podName)}/exec?container=${encodeURIComponent(selectedContainer)}`;
+    const wsUrl = buildWsUrl(
+      `/api/v1/clusters/${encodeURIComponent(clusterId)}/pods/${encodeURIComponent(namespace)}/${encodeURIComponent(podName)}/exec?container=${encodeURIComponent(selectedContainer)}`
+    );
 
     // Close existing connection
     if (wsRef.current) {
@@ -209,7 +205,7 @@ export function PodTerminal({
     };
 
     dataDisposableRef.current = dataDisposable;
-  }, [clusterId, podName, namespace, selectedContainer, baseUrl]);
+  }, [clusterId, podName, namespace, selectedContainer]);
 
   // Connect on mount, auto-reconnect on tab visibility
   useEffect(() => {

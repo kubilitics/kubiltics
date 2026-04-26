@@ -4,14 +4,14 @@ import { useAIContextStore } from '@/stores/aiContextStore';
 import { useActiveCluster } from '@/stores/clusterPresenceStore';
 import { ChatClient } from '@/services/ai/chatClient';
 import type { ServerFrame } from '@/services/ai/protocol';
+import { apiUrl, wsUrl } from '@/lib/backendUrl';
 
 function newId(prefix: string): string {
   return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
 function wsUrlFor(clusterId: string): string {
-  const proto = window.location.protocol === 'https:' ? 'wss' : 'ws';
-  return `${proto}://${window.location.host}/api/v1/ai/chat?cluster_id=${encodeURIComponent(clusterId)}`;
+  return wsUrl(`/api/v1/ai/chat?cluster_id=${encodeURIComponent(clusterId)}`);
 }
 
 export function useChatController() {
@@ -111,7 +111,7 @@ export function useChatController() {
 }
 
 async function createSession(clusterId: string): Promise<string> {
-  const res = await fetch('/api/v1/ai/sessions', {
+  const res = await fetch(apiUrl('/api/v1/ai/sessions'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ focus_cluster_id: clusterId, title: '' }),

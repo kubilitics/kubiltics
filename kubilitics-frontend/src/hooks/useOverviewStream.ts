@@ -13,7 +13,8 @@
  */
 import { useEffect, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
+import { useBackendConfigStore } from '@/stores/backendConfigStore';
+import { getBackendBase, wsUrl } from '@/lib/backendUrl';
 import type { ClusterOverview } from '@/services/backendApiClient';
 
 // Exponential backoff: 1s → 2s → 4s → 8s → 16s → cap 30s
@@ -23,7 +24,6 @@ function nextBackoff(prev: number): number {
 
 export function useOverviewStream(clusterId: string | undefined) {
   const queryClient = useQueryClient();
-  const stored = useBackendConfigStore((s) => s.backendBaseUrl);
   const isConfigured = useBackendConfigStore((s) => s.isBackendConfigured());
   const wsRef = useRef<WebSocket | null>(null);
   const backoffRef = useRef(1_000);
@@ -34,10 +34,9 @@ export function useOverviewStream(clusterId: string | undefined) {
     if (!isConfigured || !clusterId) return;
     unmountedRef.current = false;
 
-    const baseUrl = getEffectiveBackendBaseUrl(stored);
-    // Convert http(s):// → ws(s)://
-    const wsBase = baseUrl.replace(/^http/, 'ws');
-    const url = `${wsBase}/api/v1/clusters/${encodeURIComponent(clusterId)}/overview/stream`;
+    // Cache key needs the resolved base so it stays stable per-cluster.
+    const baseUrl = getBackendBase();
+    const url = wsUrl(`/api/v1/clusters/${encodeURIComponent(clusterId)}/overview/stream`);
 
     function connect() {
       if (unmountedRef.current) return;
@@ -88,5 +87,5 @@ export function useOverviewStream(clusterId: string | undefined) {
         wsRef.current = null;
       }
     };
-  }, [clusterId, isConfigured, stored, queryClient]);
+  }, [clusterId, isConfigured, queryClient]);
 }

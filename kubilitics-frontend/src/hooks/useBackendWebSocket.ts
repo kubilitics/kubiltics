@@ -10,7 +10,8 @@
  */
 import { useEffect, useRef, useCallback, useState } from 'react';
 import { toast } from '@/components/ui/sonner';
-import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
+import { useBackendConfigStore } from '@/stores/backendConfigStore';
+import { wsUrl } from '@/lib/backendUrl';
 
 /** Fast phase: exponential backoff for this many attempts */
 const FAST_RETRY_ATTEMPTS = 20;
@@ -44,8 +45,6 @@ export function useBackendWebSocket(options: UseBackendWebSocketOptions = {}) {
     enabled = true,
   } = options;
 
-  const stored = useBackendConfigStore((s) => s.backendBaseUrl);
-  const backendBaseUrl = getEffectiveBackendBaseUrl(stored);
   const isConfigured = useBackendConfigStore((s) => s.isBackendConfigured());
 
   const [connected, setConnected] = useState(false);
@@ -64,12 +63,7 @@ export function useBackendWebSocket(options: UseBackendWebSocketOptions = {}) {
   const connect = useCallback(() => {
     if (!isConfigured || !enabled) return;
 
-    const protocol = backendBaseUrl?.startsWith('https') ? 'wss' : 'ws';
-    const host = backendBaseUrl
-      ? backendBaseUrl.replace(/^https?:\/\//, '').replace(/\/+$/, '')
-      : (typeof window !== 'undefined' ? window.location.host : '');
-    if (!host) return;
-    const url = new URL('/ws/resources', `${protocol}://${host}`);
+    const url = new URL(wsUrl('/ws/resources'));
     if (clusterId) url.searchParams.set('cluster_id', clusterId);
 
     const ws = new WebSocket(url.toString());
@@ -138,7 +132,7 @@ export function useBackendWebSocket(options: UseBackendWebSocketOptions = {}) {
     ws.onerror = () => {
       setError('WebSocket error');
     };
-  }, [backendBaseUrl, clusterId, enabled, isConfigured, onMessage]);
+  }, [clusterId, enabled, isConfigured, onMessage]);
 
   // Keep connectRef in sync with the latest connect callback
   useEffect(() => { connectRef.current = connect; }, [connect]);
@@ -184,14 +178,13 @@ export function useBackendWebSocket(options: UseBackendWebSocketOptions = {}) {
   }, []);
 
   useEffect(() => {
-    // backendBaseUrl === '' is a valid same-origin config (dev proxy / in-cluster
-    // nginx) — connect() already falls back to window.location.host in that case.
-    // Do NOT gate on backendBaseUrl being truthy; that silently disables WS.
+    // wsUrl() handles same-origin (in-cluster nginx) and absolute-base (Tauri /
+    // dev) cases — no need to gate on a truthy backendBaseUrl.
     if (enabled && isConfigured) {
       connect();
     }
     return () => disconnect();
-  }, [enabled, backendBaseUrl, clusterId, isConfigured]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [enabled, clusterId, isConfigured]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Reconnect immediately when tab becomes visible again (user switches back).
   // Lens and Headlamp both do this — avoids stale "paused" state sitting there.

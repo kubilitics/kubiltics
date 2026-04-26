@@ -6,6 +6,7 @@ import { BrandLogo } from '@/components/BrandLogo';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
+import { apiUrl } from '@/lib/backendUrl';
 
 interface LoginError {
   message: string;
@@ -35,7 +36,7 @@ export default function LoginPage() {
   useEffect(() => {
     const checkAuthProviders = async () => {
       try {
-        const response = await fetch('/api/v1/auth/providers');
+        const response = await fetch(apiUrl('/api/v1/auth/providers'));
         if (response.ok) {
           const data = await response.json();
           // Check if OIDC provider is available
@@ -57,7 +58,7 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
-      const response = await fetch('/api/v1/auth/login', {
+      const response = await fetch(apiUrl('/api/v1/auth/login'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

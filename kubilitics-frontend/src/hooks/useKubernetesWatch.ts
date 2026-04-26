@@ -17,6 +17,7 @@
 import { useEffect, useRef, useCallback, useState, useMemo } from 'react';
 import { useQueryClient, type QueryKey } from '@tanstack/react-query';
 import { useBackendConfigStore, getEffectiveBackendBaseUrl } from '@/stores/backendConfigStore';
+import { wsUrl } from '@/lib/backendUrl';
 import { useActiveCluster } from '@/stores/clusterPresenceStore';
 import { useDemoStore } from '@/stores/demoStore';
 import { trackRowAnimation } from './useResourceLiveUpdates';
@@ -206,15 +207,15 @@ export function useKubernetesWatch<T extends KubernetesResource = KubernetesReso
       informerRegistry.set(key, entry);
     }
 
-    // Build URL
-    const protocol = backendBaseUrl.startsWith('https') ? 'wss' : 'ws';
-    const host = backendBaseUrl.replace(/^https?:\/\//, '').replace(/\/+$/, '');
-    const url = new URL(`/ws/watch/${resourceType}`, `${protocol}://${host}`);
-    url.searchParams.set('cluster_id', currentClusterId);
-    if (namespace) url.searchParams.set('namespace', namespace);
-    if (labelSelector) url.searchParams.set('labelSelector', labelSelector);
-    if (fieldSelector) url.searchParams.set('fieldSelector', fieldSelector);
-    if (entry.resourceVersion) url.searchParams.set('resourceVersion', entry.resourceVersion);
+    // Build URL via the central wsUrl helper so it works in Tauri / dev /
+    // in-cluster web identically. Query params are appended after the
+    // helper resolves the base.
+    const params = new URLSearchParams({ cluster_id: currentClusterId });
+    if (namespace) params.set('namespace', namespace);
+    if (labelSelector) params.set('labelSelector', labelSelector);
+    if (fieldSelector) params.set('fieldSelector', fieldSelector);
+    if (entry.resourceVersion) params.set('resourceVersion', entry.resourceVersion);
+    const url = new URL(wsUrl(`/ws/watch/${resourceType}?${params.toString()}`));
 
     const updateState = (state: WatchConnectionState) => {
       entry!.state = state;

@@ -37,7 +37,23 @@ function isTauri(): boolean {
   return !!(w.__TAURI_INTERNALS__ ?? w.__TAURI__);
 }
 
-/** Default backend URL: desktop sidecar or local host (dev) so users never need to "set backend" like Lens/Headlamp. */
+/**
+ * Default backend URL when the user hasn't configured one.
+ *
+ * Resolution:
+ *  - Tauri desktop (build-time or runtime detection) → http://localhost:8190
+ *    SyncBackendUrl in App.tsx then asks the Rust sidecar for the actual port
+ *    via invoke('get_backend_url') and overrides this if the sidecar moved.
+ *  - VITE_API_URL env override → use as-is (CI / custom dev setups).
+ *  - Local dev (vite hot-reload, hostname=localhost) → http://localhost:8190.
+ *    Used to be '' so requests went via the Vite proxy. Now we hit the
+ *    backend directly — Option B, no proxy.
+ *  - Production browser (in-cluster web, same-origin) → ''. Empty string
+ *    keeps API paths relative so nginx in front of the SPA proxies /api/*
+ *    to the backend Service. Hardcoding a localhost URL here would break
+ *    the in-cluster web mode (the user's browser can't reach the backend
+ *    pod directly).
+ */
 export function getDefaultBackendBaseUrl(): string {
   // Build-time: always correct for Tauri desktop
   if (isTauriBuildTime()) return DEFAULT_BACKEND_BASE_URL;
@@ -47,14 +63,15 @@ export function getDefaultBackendBaseUrl(): string {
     const url = String(import.meta.env.VITE_API_URL).trim();
     if (url) return url.replace(/\/+$/, ''); // strip trailing slashes
   }
-  // In dev on localhost: use empty base URL so requests go to same origin and Vite proxy forwards to backend (avoids cross-origin WebSocket errors)
+  // Dev on localhost (Vite hot-reload at :5173) → talk directly to the
+  // backend on :8190. Backend CORS allows http://localhost:5173 so the
+  // cross-origin call is permitted. The Vite proxy has been removed.
   if (typeof import.meta !== 'undefined' && import.meta.env?.DEV && typeof window !== 'undefined' && isLocalHostname(window.location?.hostname ?? '')) {
-    return '';
+    return DEFAULT_BACKEND_BASE_URL;
   }
-  // Production browser (no Tauri, no Dev, no explicit VITE_API_URL): use SAME-ORIGIN.
-  // This is the in-cluster web deployment — nginx serves the dist and proxies /api/* to
-  // the backend Service. Hardcoding http://localhost:8190 here used to break the browser
-  // path because the user's browser cannot reach the in-cluster backend pod directly.
+  // Production browser (no Tauri, no dev, no explicit VITE_API_URL):
+  // same-origin. This is the in-cluster web deployment — nginx fronting
+  // the SPA proxies /api/* to the backend Service.
   return '';
 }
 
@@ -62,20 +79,18 @@ export function getDefaultBackendBaseUrl(): string {
  * Effective backend URL for all API calls.
  *
  * Resolution order:
- *  1. Tauri build (build-time constant) → always http://localhost:8190  [TIMING-INDEPENDENT]
- *  2. Dev on localhost → '' (empty = same-origin, Vite proxy handles it)
- *  3. Stored URL (user-configured) → use as-is
- *  4. Default (getDefaultBackendBaseUrl) → http://localhost:8190 or ''
+ *  1. Tauri build (build-time constant) → http://localhost:<sidecar-port>
+ *     [TIMING-INDEPENDENT]
+ *  2. Stored URL (user-configured Settings → Backend) → use as-is
+ *  3. Default (getDefaultBackendBaseUrl) → dev/Tauri/in-cluster as above
  */
 export function getEffectiveBackendBaseUrl(stored: string): string {
-  // PERMANENT FIX: build-time constant — no timing race, works on first render
-  if (isTauriBuildTime()) return DEFAULT_BACKEND_BASE_URL;
-  // In dev on localhost, always use same-origin so Vite proxy is used (avoids WebSocket connection errors)
-  if (typeof import.meta !== 'undefined' && import.meta.env?.DEV && typeof window !== 'undefined' && isLocalHostname(window.location?.hostname ?? '')) {
-    return '';
-  }
+  // PERMANENT FIX: build-time constant — no timing race, works on first render.
+  // For Tauri builds, App.tsx#SyncBackendUrl fetches the live sidecar port and
+  // writes it into `stored`; that path is checked next.
   const trimmed = (stored || '').trim();
   if (trimmed) return trimmed.replace(/\/+$/, '');
+  if (isTauriBuildTime()) return DEFAULT_BACKEND_BASE_URL;
   return getDefaultBackendBaseUrl();
 }
 
