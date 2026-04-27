@@ -49,6 +49,24 @@ type AgentConfig struct {
 	// ParallelTools enables concurrent execution of multiple tool calls
 	// returned in a single LLM response (default true).
 	ParallelTools bool
+	// Namespace is the session-pinned K8s namespace; the executor
+	// wrapper (see internal/llm/executor_wrapper.go) passes it to
+	// the deterministic-render path so DerivedSummary.Namespace is
+	// populated without reading raw tool data.
+	Namespace string
+}
+
+// RenderBlockEvent is a structured renderer payload pushed onto the
+// agent stream by the executor wrapper. It bypasses the LLM entirely
+// for tools classified Deterministic in package render.
+type RenderBlockEvent struct {
+	// Type matches a registered RenderType
+	// (e.g. "kubectl_table", "yaml_block", "render_error").
+	Type string `json:"type"`
+	// Data is opaque JSON owned by the brain's shaper.
+	Data []byte `json:"data"`
+	// Summary is a ≤80-char single-line description; brain enforces.
+	Summary string `json:"summary,omitempty"`
 }
 
 // DefaultAgentConfig returns safe production defaults.
@@ -77,6 +95,9 @@ type AgentStreamEvent struct {
 	TextToken string
 	// ToolEvent is set when this event carries a tool lifecycle notification.
 	ToolEvent *ToolEvent
+	// RenderBlock is set when this event carries a structured render
+	// payload pushed by the executor wrapper for Deterministic tools.
+	RenderBlock *RenderBlockEvent
 	// Done signals the end of the agentic loop.
 	Done bool
 	// Err carries any terminal error from the agentic loop.

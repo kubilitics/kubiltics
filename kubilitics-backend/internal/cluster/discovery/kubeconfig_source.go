@@ -83,7 +83,7 @@ func (s *KubeconfigFileSource) Watch(ctx context.Context) (<-chan DiscoveryEvent
 	out := make(chan DiscoveryEvent, 32)
 	go func() {
 		defer close(out)
-		defer w.Close()
+		defer func() { _ = w.Close() }()
 
 		prev, _ := s.Enumerate(ctx)
 		prevByKey := byKey(prev)

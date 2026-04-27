@@ -13,6 +13,7 @@ import (
 
 	"github.com/vellankikoti/kubilitics/brain/internal/llm/types"
 	mcpserver "github.com/vellankikoti/kubilitics/brain/internal/mcp/server"
+	"github.com/vellankikoti/kubilitics/brain/internal/render"
 	"github.com/vellankikoti/kubilitics/brain/internal/tracing/routing"
 )
 
@@ -116,9 +117,16 @@ func (e *mcpToolExecutor) Execute(ctx context.Context, toolName string, args map
 	// budget — essential for keeping multi-turn agentic loops inside the
 	// context window (the "API 400: maximum context length" failure mode
 	// the chat-quality bench was hitting on multi-tool turns).
-	const maxToolBytes = 8 * 1024
-	if len(s) > maxToolBytes {
-		s = s[:maxToolBytes-256] + `... [truncated: tool output exceeded ` + fmt.Sprintf("%d", maxToolBytes) + ` bytes]`
+	//
+	// Skip the cap for tools classified Deterministic in package render:
+	// the render wrapper above us replaces the LLM-bound result with a
+	// fixed stub anyway (data goes to the user via render_block, not to
+	// the LLM), so capping would only break our shaper's JSON parse.
+	if render.Lookup(toolName).Class != render.Deterministic {
+		const maxToolBytes = 8 * 1024
+		if len(s) > maxToolBytes {
+			s = s[:maxToolBytes-256] + `... [truncated: tool output exceeded ` + fmt.Sprintf("%d", maxToolBytes) + ` bytes]`
+		}
 	}
 	return s, nil
 }

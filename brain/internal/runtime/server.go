@@ -50,11 +50,22 @@ type LLMToolProvider interface {
 // re-declared here to avoid leaking the internal/llm/types dependency through
 // the public LLMProvider interface. The bridge translates between the two.
 type toolStreamEvent struct {
-	TextToken  string
-	Tool       *toolEvent
-	Done       bool
-	Err        error
-	TokenUsage *toolTokenUsage
+	TextToken   string
+	Tool        *toolEvent
+	RenderBlock *renderBlockEvent
+	Done        bool
+	Err         error
+	TokenUsage  *toolTokenUsage
+}
+
+// renderBlockEvent mirrors types.RenderBlockEvent at the runtime
+// boundary (same isolation rationale as toolEvent above). For
+// Deterministic tools the executor wrapper produces these directly;
+// the LLM never sees the underlying data.
+type renderBlockEvent struct {
+	Type    string
+	Data    []byte
+	Summary string
 }
 
 type toolTokenUsage struct {
@@ -439,6 +450,14 @@ func (s *Server) mapRouterEvent(turnID string, ev router.Event) *kotgv1.Assistan
 	case router.KindActionPending, router.KindPlanProposed, router.KindCitation:
 		// TODO(3e/3g): map to AssistantEvent_ActionPending / _PlanProposed / _Citation.
 		return nil
+	case router.KindRenderBlock:
+		return s.event(turnID, &kotgv1.AssistantEvent_RenderBlock{
+			RenderBlock: &kotgv1.RenderBlock{
+				Type:    ev.RenderType,
+				Data:    ev.RenderData,
+				Summary: ev.RenderSummary,
+			},
+		})
 	}
 	return nil
 }
@@ -504,6 +523,8 @@ func (s *Server) event(turnID string, variant interface{}) *kotgv1.AssistantEven
 	case *kotgv1.AssistantEvent_Error:
 		ev.Event = v
 	case *kotgv1.AssistantEvent_Done:
+		ev.Event = v
+	case *kotgv1.AssistantEvent_RenderBlock:
 		ev.Event = v
 	}
 	return ev

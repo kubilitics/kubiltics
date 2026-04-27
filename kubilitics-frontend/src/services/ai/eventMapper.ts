@@ -23,6 +23,20 @@ export function applyEventToTurn(
       return { turn, finished: true };
     case 'error':
       return { turn, finished: true };
+    case 'render_block': {
+      // Seal any open text block so the structured render appears
+      // after prose the LLM emitted earlier in this turn.
+      const blocks: Block[] = turn.blocks.map((b) =>
+        b.type === 'text' && !b.complete ? { ...b, complete: true } : b,
+      );
+      blocks.push({
+        type: 'render_block',
+        renderType: frame.payload.render?.type ?? 'render_error',
+        data: frame.payload.render?.data ?? null,
+        summary: frame.payload.summary,
+      });
+      return { turn: { ...turn, blocks }, finished: false };
+    }
     default:
       return {
         turn: {

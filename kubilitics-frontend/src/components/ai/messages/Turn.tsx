@@ -3,6 +3,7 @@ import { TextBlock } from './blocks/TextBlock';
 import { ToolBlock } from './blocks/ToolBlock';
 import { ActionPendingBlock } from './blocks/ActionPendingBlock';
 import { PlanBlock } from './blocks/PlanBlock';
+import { RenderBlock } from './blocks/RenderBlock';
 import { UnknownBlock } from './blocks/UnknownBlock';
 import { cn } from '@/lib/utils';
 import { AlertCircle, ExternalLink } from 'lucide-react';
@@ -21,10 +22,15 @@ export function Turn({ turn }: Props) {
   const hasAnyText = turn.blocks.some(
     (b) => b.type === 'text' && typeof b.content === 'string' && b.content.trim().length > 0,
   );
+  // A render_block from a Deterministic tool IS the answer; the LLM
+  // intentionally returns no prose because the user sees structured
+  // data directly. Don't surface the "no answer" fallback in that case.
+  const hasRenderBlock = turn.blocks.some((b) => b.type === 'render_block');
   const hasAnyTool = turn.blocks.some((b) => b.type === 'tool');
   const allToolsDone =
     hasAnyTool && turn.blocks.every((b) => b.type !== 'tool' || b.endedAt !== undefined);
-  const noAnswer = turn.state === 'done' && hasAnyTool && allToolsDone && !hasAnyText;
+  const noAnswer =
+    turn.state === 'done' && hasAnyTool && allToolsDone && !hasAnyText && !hasRenderBlock;
 
   return (
     <div
@@ -45,6 +51,16 @@ export function Turn({ turn }: Props) {
         }
         if (b.type === 'plan_proposed') {
           return <PlanBlock key={i} block={b} />;
+        }
+        if (b.type === 'render_block') {
+          return (
+            <RenderBlock
+              key={i}
+              renderType={b.renderType}
+              data={b.data}
+              summary={b.summary}
+            />
+          );
         }
         if (b.type === 'citation') {
           return (

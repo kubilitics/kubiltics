@@ -190,6 +190,13 @@ func (b *LLMAdapterBridge) StreamCompletionWithTools(
 					Error:    ev.ToolEvent.Error,
 				}
 			}
+			if ev.RenderBlock != nil {
+				te.RenderBlock = &renderBlockEvent{
+					Type:    ev.RenderBlock.Type,
+					Data:    ev.RenderBlock.Data,
+					Summary: ev.RenderBlock.Summary,
+				}
+			}
 			if ev.TokenUsage != nil {
 				te.TokenUsage = &toolTokenUsage{
 					InputTokens:  ev.TokenUsage.PromptTokens,

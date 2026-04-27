@@ -28,6 +28,15 @@ export type Block =
       steps?: Array<{ title?: string; description?: string }>;
     }
   | { type: 'citation'; toolCallId?: string; title?: string; url?: string }
+  | {
+      // render_block carries opaque structured data shipped by the
+      // brain for Deterministic tools — rendered directly by the
+      // type-keyed dispatcher (no LLM paraphrasing).
+      type: 'render_block';
+      renderType: string;
+      data: unknown;
+      summary?: string;
+    }
   | { type: 'unknown'; raw: unknown; kind: string };
 
 export type AssistantTurn = {
@@ -327,6 +336,28 @@ function applyFrameToTurn(turn: AssistantTurn & { kind: 'assistant' }, frame: Se
         blocks: [
           ...turn.blocks,
           { type: 'citation', toolCallId: p.tool_call_id, title: p.title, url: p.url },
+        ],
+      };
+    }
+    case 'render_block': {
+      const p = (frame.payload ?? {}) as {
+        render?: { type?: string; data?: unknown };
+        summary?: string;
+      };
+      // Seal the currently-streaming text block so the structured
+      // render appears after any prose the LLM emitted in this turn.
+      const sealed = sealLastOpenText(turn.blocks);
+      return {
+        ...turn,
+        kind: 'assistant',
+        blocks: [
+          ...sealed,
+          {
+            type: 'render_block',
+            renderType: p.render?.type ?? 'render_error',
+            data: p.render?.data ?? null,
+            summary: p.summary,
+          },
         ],
       };
     }

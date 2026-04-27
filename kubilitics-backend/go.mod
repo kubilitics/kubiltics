@@ -99,7 +99,7 @@ require (
 	github.com/hashicorp/golang-lru/v2 v2.0.7
 	github.com/pquerna/otp v1.5.0
 	github.com/prometheus/client_golang v1.23.2
-	github.com/vellankikoti/kotg-schema v1.0.1
+	github.com/vellankikoti/kotg-schema v1.0.2
 	golang.org/x/crypto v0.48.0
 	golang.org/x/sync v0.19.0
 	k8s.io/apiextensions-apiserver v0.33.3

@@ -15,6 +15,7 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/vellankikoti/kubilitics/brain/internal/llm"
 	"github.com/vellankikoti/kubilitics/brain/internal/llm/types"
 )
 
@@ -31,6 +32,10 @@ func (c *OllamaClientImpl) CompleteWithTools(
 	}
 
 	evtCh := make(chan types.AgentStreamEvent, 64)
+
+	// Wrap executor so deterministic tools emit render_block events directly
+	// on evtCh and return a safe stub to the LLM. See internal/llm/executor_wrapper.go.
+	executor = llm.WrapExecutorForRender(executor, evtCh, cfg.Namespace)
 
 	go func() {
 		defer close(evtCh)

@@ -9,10 +9,12 @@ import { useAIReady, type AIReadyReason } from '@/hooks/useAIReady';
 import { ChatHeader } from './ChatHeader';
 import { ChatTranscript } from './ChatTranscript';
 import { ChatInput } from './ChatInput';
+import { ChatResizeHandle } from './ChatResizeHandle';
 import { Button } from '@/components/ui/button';
 import { Settings2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useChatPanelLayoutStore } from '@/stores/chatPanelLayoutStore';
 import {
   BudgetExceededBanner,
   isBudgetExceededError,
@@ -42,8 +44,17 @@ const NOT_READY_BY_REASON: Partial<Record<AIReadyReason, { title: string; detail
   // ready / degraded — falsy → chat is usable.
 };
 
-// Header is h-[60px] — drawer starts below it and fills remaining viewport height.
+// Header is h-[60px] — drawer starts below it and fills remaining viewport
+// height. Width is driven by useChatPanelLayoutStore (resizable, persisted,
+// clamped). The drawer floats OVER the main content (position: fixed, no
+// reserved padding in AppLayout) so dashboards stay full-width. A soft
+// drop shadow + thin border give the panel its own surface; the slight
+// translucency on the surface lets users sense content underneath without
+// reading it — the same affordance Cursor / Claude desktop use.
 function ChatDrawer({ children }: { children: React.ReactNode }) {
+  const width = useChatPanelLayoutStore((s) => s.width);
+  const isResizing = useChatPanelLayoutStore((s) => s.isResizing);
+
   return (
     <motion.aside
       key="chat-drawer"
@@ -51,13 +62,24 @@ function ChatDrawer({ children }: { children: React.ReactNode }) {
       animate={{ x: 0 }}
       exit={{ x: '100%' }}
       transition={{ type: 'spring', damping: 28, stiffness: 280 }}
+      style={{
+        width: `min(${width}px, 95vw)`,
+        maxWidth: '95vw',
+      }}
       className={cn(
         'fixed right-0 z-40 flex flex-col',
-        'bg-background border-l shadow-xl',
+        // Floating overlay: solid background (no transparency on the
+        // surface itself; legibility wins), a refined left border, and
+        // a soft elevation shadow that visually separates it from the
+        // content underneath.
+        'bg-background border-l border-border/80',
+        'shadow-[-12px_0_32px_-12px_rgba(0,0,0,0.18)]',
+        'dark:shadow-[-16px_0_40px_-12px_rgba(0,0,0,0.55)]',
         'top-[60px] h-[calc(100vh-60px)]',
-        'w-[min(480px,95vw)]',
+        isResizing && 'transition-none',
       )}
     >
+      <ChatResizeHandle />
       {children}
     </motion.aside>
   );

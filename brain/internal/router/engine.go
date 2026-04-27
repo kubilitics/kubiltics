@@ -27,6 +27,12 @@ const (
 	KindCitation
 	KindDone
 	KindError
+	// KindRenderBlock is emitted by the LLM-direct engine (and any
+	// future engine) when a deterministic tool's structured render
+	// payload is produced. The runtime maps it 1:1 to
+	// kotgv1.AssistantEvent_RenderBlock so the frontend renders the
+	// data directly without LLM paraphrasing.
+	KindRenderBlock
 )
 
 // Event is the canonical streamed unit. Each engine emits these; the
@@ -64,6 +70,12 @@ type Event struct {
 	Code       string            // KindError
 	Message    string            // KindError
 	Extra      map[string]string // engine-specific extras (logged, never surfaced)
+	// Render fields populated for KindRenderBlock. RenderData is opaque
+	// JSON owned by the brain shaper — never inspected or mutated by
+	// the runtime or backend. RenderSummary is a ≤80-char one-liner.
+	RenderType    string // KindRenderBlock
+	RenderData    []byte // KindRenderBlock
+	RenderSummary string // KindRenderBlock
 }
 
 // Request carries everything an Engine needs for one chat turn.

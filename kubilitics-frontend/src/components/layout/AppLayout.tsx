@@ -53,7 +53,9 @@ export function AppLayout() {
 
   // -- Chat panel: Cmd+I / Ctrl+I toggles right-side AI assistant --
   const toggleChatPanel = useChatStore((s) => s.togglePanel);
-  const chatPanelOpen = useChatStore((s) => s.panelOpen);
+  // chatPanelOpen / width are no longer needed here — the chat panel
+  // overlays the main content (position: fixed) and the AppLayout
+  // doesn't reserve horizontal space for it. See ChatPanel.tsx.
   useChatHotkey(() => toggleChatPanel());
 
   // -- Global keyboard shortcuts overlay --
@@ -122,10 +124,19 @@ export function AppLayout() {
           ref={mainRef}
           id="main-content"
           className={cn(
-            "flex-1 p-4 sm:p-6 sm:pr-3 overflow-auto flex flex-col gap-4 relative transition-[padding] duration-300 ease-out",
-            chatPanelOpen && "lg:pr-[calc(min(480px,95vw)+1rem)]"
+            "flex-1 p-4 sm:p-6 sm:pr-3 overflow-auto flex flex-col gap-4 relative ease-out",
           )}
-          style={{ paddingBottom: isShellOpen ? `${shellHeightPx + 24}px` : '24px' }}
+          style={{
+            paddingBottom: isShellOpen ? `${shellHeightPx + 24}px` : '24px',
+            // Main content stays full-width AT ALL TIMES. The chat
+            // panel overlays from the right (with backdrop) instead of
+            // squeezing the main work area — same pattern as Cursor /
+            // Claude / ChatGPT desktop. Trade-off accepted: the right
+            // edge of dashboards may be partially covered while the
+            // panel is open, but the cost of ALWAYS losing 380-560px
+            // of horizontal real estate to the chat is worse for SREs
+            // scanning wide tables and topology graphs.
+          }}
           role="main"
           aria-label="Main content"
         >

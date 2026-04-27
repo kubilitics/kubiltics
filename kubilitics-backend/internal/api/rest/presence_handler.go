@@ -73,7 +73,7 @@ func (h *PresenceHandler) StreamEvents(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			b, _ := json.Marshal(evt)
-			fmt.Fprintf(w, "data: %s\n\n", b)
+			_, _ = fmt.Fprintf(w, "data: %s\n\n", b)
 			flusher.Flush()
 		}
 	}

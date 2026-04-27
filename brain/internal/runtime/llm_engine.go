@@ -218,6 +218,14 @@ func (e *llmEngine) runWithTools(ctx context.Context, req router.Request, prompt
 				})
 			}
 
+		case ev.RenderBlock != nil:
+			emit(ctx, out, router.Event{
+				Kind:          router.KindRenderBlock,
+				RenderType:    ev.RenderBlock.Type,
+				RenderData:    ev.RenderBlock.Data,
+				RenderSummary: ev.RenderBlock.Summary,
+			})
+
 		case ev.TextToken != "":
 			textChunks++
 			emit(ctx, out, router.Event{Kind: router.KindTextDelta, Text: ev.TextToken})

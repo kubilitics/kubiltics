@@ -113,8 +113,11 @@ export function BackendClusterValidator() {
               return;
             }
           }
-          // Cluster is accessible - ensure it's set (may have been cleared earlier)
+          // Cluster is accessible. The branch is intentionally a no-op:
+          // the clear-on-error path below is what restores state — no
+          // positive action is required when validation succeeds.
           if (currentClusterId !== originalCid) {
+            // intentionally empty
           }
         } catch (error) {
           // Cluster exists but is not accessible - clear it silently

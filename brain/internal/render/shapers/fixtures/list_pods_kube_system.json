@@ -1,0 +1,23 @@
+[
+  {
+    "metadata": {"name": "coredns-1", "namespace": "kube-system",
+                 "creationTimestamp": "2026-04-26T10:00:00Z"},
+    "spec": {"containers": [{"name": "coredns"}]},
+    "status": {"phase": "Running",
+               "containerStatuses": [{"ready": true, "restartCount": 0}]}
+  },
+  {
+    "metadata": {"name": "coredns-2", "namespace": "kube-system",
+                 "creationTimestamp": "2026-04-26T10:00:00Z"},
+    "spec": {"containers": [{"name": "coredns"}]},
+    "status": {"phase": "Running",
+               "containerStatuses": [{"ready": true, "restartCount": 2}]}
+  },
+  {
+    "metadata": {"name": "kube-proxy-1", "namespace": "kube-system",
+                 "creationTimestamp": "2026-04-26T10:00:00Z"},
+    "spec": {"containers": [{"name": "kube-proxy"}]},
+    "status": {"phase": "Pending",
+               "containerStatuses": [{"ready": false, "restartCount": 0}]}
+  }
+]

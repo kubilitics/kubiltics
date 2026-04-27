@@ -222,6 +222,18 @@ func assistantEventPayload(ev *kotgv1.AssistantEvent) map[string]interface{} {
 		p["completion_tokens"] = inner.Done.GetCompletionTokens()
 		p["finish_reason"] = inner.Done.GetFinishReason()
 		p["partial"] = inner.Done.GetPartial()
+	case *kotgv1.AssistantEvent_RenderBlock:
+		// Opaque passthrough. Backend MUST NOT unmarshal or mutate
+		// render.data — the bytes belong to the brain's shaper and
+		// flow byte-equal to the frontend renderer.
+		rb := inner.RenderBlock
+		p["render"] = map[string]interface{}{
+			"type": rb.GetType(),
+			// Wrap as json.RawMessage so the JSON encoder forwards
+			// the bytes without re-encoding (which would base64 a []byte).
+			"data": json.RawMessage(rb.GetData()),
+		}
+		p["summary"] = rb.GetSummary()
 	}
 	return p
 }
@@ -247,6 +259,8 @@ func assistantEventType(ev *kotgv1.AssistantEvent) string {
 		return "error"
 	case *kotgv1.AssistantEvent_Done:
 		return "done"
+	case *kotgv1.AssistantEvent_RenderBlock:
+		return "render_block"
 	default:
 		return "event"
 	}
