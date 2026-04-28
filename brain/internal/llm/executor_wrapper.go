@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/vellankikoti/kubilitics/brain/internal/llm/types"
 	"github.com/vellankikoti/kubilitics/brain/internal/render"
@@ -50,12 +51,58 @@ func (w *renderWrappedExecutor) WithAutonomyLevel(level int) types.ToolExecutor 
 
 // stubForLLM is the only string the LLM receives for deterministic
 // tools. Contains no entity names, no rows, no YAML — only the
-// rendered render type and the row count, both safe.
-func stubForLLM(renderType string, rowCount int) string {
-	return fmt.Sprintf(
-		"Result rendered to user as %s (%d rows). Do not retell the data.",
-		renderType, rowCount,
-	)
+// shape of what was rendered + behaviour guidance.
+//
+// Phase 2 #2 redesign: the previous wording ("Result rendered to user
+// as yaml_block...") let the LLM treat the surface as a hidden log and
+// suggest "I would typically use kubectl get pod ..." as if the user
+// hadn't seen anything. The new wording:
+//
+//   1. Affirms present-tense visibility ("the user is now viewing…")
+//   2. Types the rendered shape humanly per render type
+//   3. Explicitly forbids suggesting kubectl/CLI alternatives
+//
+// `kind` (e.g. "Pod") comes from the LLM's own tool args and is
+// echoed back as plain English ("table of 13 pods"). Echoing the
+// LLM's own input is not a hallucination vector.
+func stubForLLM(renderType string, rowCount int, kind string) string {
+	const guidance = "Acknowledge briefly in one short sentence — " +
+		"do NOT restate the data, " +
+		"do NOT suggest running kubectl or any other CLI, " +
+		"the user has the full result on screen."
+
+	var what string
+	switch renderType {
+	case "kubectl_table":
+		if kind != "" {
+			what = fmt.Sprintf("a table of %d %s", rowCount, pluralKind(kind, rowCount))
+		} else {
+			what = fmt.Sprintf("a table of %d rows", rowCount)
+		}
+	case "yaml_block":
+		what = "the full YAML document"
+	case "render_error":
+		what = "an error message explaining what could not be rendered"
+	default:
+		// Forward-compat for future render types — name the type so the
+		// LLM can react sensibly even before this switch is updated.
+		what = fmt.Sprintf("a %s with %d rows", renderType, rowCount)
+	}
+	return fmt.Sprintf("The user is now viewing %s above this message. %s", what, guidance)
+}
+
+// pluralKind formats a Kubernetes kind for inline reading:
+// "Pod" + 1 → "pod"; "Pod" + 13 → "pods"; "StatefulSet" + 2 →
+// "statefulsets". Pure formatting — never leaks data.
+func pluralKind(kind string, n int) string {
+	s := strings.ToLower(kind)
+	if n == 1 {
+		return s
+	}
+	if strings.HasSuffix(s, "s") {
+		return s
+	}
+	return s + "s"
 }
 
 func (w *renderWrappedExecutor) Execute(
@@ -87,7 +134,12 @@ func (w *renderWrappedExecutor) Execute(
 		},
 	}
 
-	return stubForLLM(ev.RenderType, countRows(ev.RenderData)), nil
+	// Recover the K8s kind from the LLM's own tool args so the stub
+	// can read naturally ("a table of 13 pods" vs "a table of 13 rows").
+	// Echoing the LLM's input back to itself is not a hallucination
+	// vector; row data is still gated by BuildDeterministicResponse.
+	kind, _ := args["kind"].(string)
+	return stubForLLM(ev.RenderType, countRows(ev.RenderData), kind), nil
 }
 
 // countRows is a best-effort row count for the LLM stub. It reads
