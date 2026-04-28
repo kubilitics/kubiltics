@@ -69,6 +69,26 @@ func (b *LLMAdapterBridge) SetAdapter(a adapter.LLMAdapter) {
 	b.A = a
 }
 
+// Complete is a one-shot text completion suitable for short auxiliary
+// prompts (e.g. the summary line under render blocks — Phase 2 #5).
+//
+// Returns "" + nil (NOT an error) when no adapter is configured so
+// best-effort callers like summary.NewLLMCompleter can fall back to
+// their deterministic path without surfacing a confusing error to the
+// chat UI.
+//
+// The bridge satisfies summary.SummaryLLM by virtue of having this
+// method — no extra wrapper type needed in cmd/server/main.go.
+func (b *LLMAdapterBridge) Complete(ctx context.Context, prompt string) (string, error) {
+	a := b.Adapter()
+	if a == nil {
+		return "", nil
+	}
+	msgs := []types.Message{{Role: "user", Content: prompt}}
+	text, _, err := a.Complete(ctx, msgs, nil)
+	return text, err
+}
+
 func (b *LLMAdapterBridge) StreamCompletion(ctx context.Context, prompt string) (<-chan string, error) {
 	a := b.Adapter()
 	if a == nil {

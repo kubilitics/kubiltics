@@ -46,6 +46,7 @@ import (
 	"github.com/vellankikoti/kubilitics/brain/internal/engines/kagent"
 	"github.com/vellankikoti/kubilitics/brain/internal/engines/python"
 	"github.com/vellankikoti/kubilitics/brain/internal/llm/budget"
+	"github.com/vellankikoti/kubilitics/brain/internal/llm/summary"
 	"github.com/vellankikoti/kubilitics/brain/internal/llm/toolrouter"
 	"github.com/vellankikoti/kubilitics/brain/internal/router"
 	"github.com/vellankikoti/kubilitics/brain/internal/runtime"
@@ -173,6 +174,13 @@ func main() {
 	// atomically. The gRPC LLMEngine's very next StreamCompletion uses
 	// the new adapter — no restart needed.
 	srv.SetAdapterChangeHook(bridge.SetAdapter)
+
+	// Phase 2 #5: install the LLM-backed summary completer. The bridge
+	// satisfies summary.SummaryLLM via its Complete(ctx, prompt) method.
+	// Failure modes (no adapter, timeout, transport error, empty output)
+	// fall back to the deterministic formatter — see internal/llm/summary
+	// for the contract. The render path NEVER stalls on summary.
+	summary.SetCompleter(summary.NewLLMCompleter(bridge))
 	// Topic-aware tool filtering. Default OFF so this merge doesn't change
 	// production behavior; the Together.ai bench config flips it on via
 	// llm.tool_router.enabled, and operators can force it with
