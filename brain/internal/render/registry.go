@@ -20,7 +20,13 @@ const (
 const (
 	RenderKubectlTable RenderType = "kubectl_table"
 	RenderYAMLBlock    RenderType = "yaml_block"
-	RenderError        RenderType = "render_error"
+	// RenderLogBlock is for line-oriented log output (Phase 2 #4).
+	// Unlike kubectl_table (rows of structured columns) or yaml_block
+	// (a single document), logs are an ordered sequence of opaque
+	// strings. The frontend renders them in a monospace, scrollable
+	// log surface with line numbers and truncation indicators.
+	RenderLogBlock RenderType = "log_block"
+	RenderError    RenderType = "render_error"
 	// RenderText is reserved for the analytical default. Deterministic
 	// tools must declare a structured renderer (enforced by tests).
 	RenderText RenderType = "text"
@@ -55,6 +61,9 @@ var registry = map[string]ToolBehavior{
 	// — Phase 1 production tools —
 	"list_resources": {Class: Deterministic, Render: RenderKubectlTable},
 	"get_resource":   {Class: Deterministic, Render: RenderYAMLBlock},
+
+	// — Phase 2 #4: log-oriented tools —
+	"get_logs": {Class: Deterministic, Render: RenderLogBlock},
 
 	// — Phase 2 #3: inspect_<kind> family —
 	// Workloads

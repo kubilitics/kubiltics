@@ -27,6 +27,9 @@ var Shapers = map[string]func(json.RawMessage) (json.RawMessage, error){
 	"list_resources": ShapeListResources,
 	"get_resource":   ShapeGetResource,
 
+	// — Phase 2 #4: log-oriented tools —
+	"get_logs": ShapeGetLogs,
+
 	// — Phase 2 #3: inspect_<kind> family — all reuse ShapeGetResource —
 	"inspect_pod":                ShapeGetResource,
 	"inspect_deployment":         ShapeGetResource,

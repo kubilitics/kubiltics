@@ -1,6 +1,7 @@
-import type { KubectlTableData, YamlBlockData, RenderErrorData } from './render-types';
+import type { KubectlTableData, YamlBlockData, LogBlockData, RenderErrorData } from './render-types';
 import { KubectlTableBlock } from './KubectlTableBlock';
 import { YamlBlock } from './YamlBlock';
+import { LogBlock } from './LogBlock';
 import { RenderErrorBlock } from './RenderErrorBlock';
 
 interface Props {
@@ -28,6 +29,8 @@ function dispatch(renderType: string, data: unknown) {
       return <KubectlTableBlock data={data as KubectlTableData} />;
     case 'yaml_block':
       return <YamlBlock data={data as YamlBlockData} />;
+    case 'log_block':
+      return <LogBlock data={data as LogBlockData} />;
     case 'render_error':
       return <RenderErrorBlock data={data as RenderErrorData} />;
     default:

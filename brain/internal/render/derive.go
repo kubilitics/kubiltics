@@ -44,6 +44,18 @@ func derive(toolName, namespace string, shaped json.RawMessage) (derived.Derived
 		// inspect_<kind> is rolled in via the prefix so future
 		// inspect_* additions don't need to touch derive().
 		d.RowCount = 1
+	case toolName == "get_logs":
+		// Counts the lines in the shaped log payload. The shaper
+		// caps at MaxLogLines and exposes "total" too; we count the
+		// emitted lines slice for the summary number ("X lines from
+		// pod ..."). RowCount stays a single int as per type fence.
+		var t struct {
+			Lines []string `json:"lines"`
+		}
+		if err := json.Unmarshal(shaped, &t); err != nil {
+			return d, err
+		}
+		d.RowCount = len(t.Lines)
 	default:
 		// Should be unreachable — only deterministic tools call derive.
 		d.RowCount = 0
