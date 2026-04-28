@@ -13,13 +13,50 @@ import (
 // Shapers is the registry of tool name → shaper function. Every
 // Deterministic tool in render.registry MUST have an entry here
 // (enforced by an architecture test in package render).
+// Shapers maps a tool name to the function that turns its raw output
+// into wire-shape render data. Every Deterministic tool in
+// render.registry MUST have an entry here — enforced at build time
+// by render.TestDeterministicToolsHaveShapers.
+//
+// All inspect_<kind> tools share ShapeGetResource because they all
+// return rich nested JSON that the YamlBlock renderer pretty-prints
+// directly. Adding a new inspect tool is a one-line registration in
+// both this map and render.registry.
 var Shapers = map[string]func(json.RawMessage) (json.RawMessage, error){
-	// Production tool names (what the brain's MCP layer actually
-	// registers — see brain/internal/mcp/tools/chat_tools.go).
+	// — Phase 1 production tools —
 	"list_resources": ShapeListResources,
 	"get_resource":   ShapeGetResource,
-	// Test-only names retained for the fixture-based unit tests in
-	// shapers/pods_test.go and the hallucination probe suite.
+
+	// — Phase 2 #3: inspect_<kind> family — all reuse ShapeGetResource —
+	"inspect_pod":                ShapeGetResource,
+	"inspect_deployment":         ShapeGetResource,
+	"inspect_replicaset":         ShapeGetResource,
+	"inspect_statefulset":        ShapeGetResource,
+	"inspect_daemonset":          ShapeGetResource,
+	"inspect_job":                ShapeGetResource,
+	"inspect_cronjob":            ShapeGetResource,
+	"inspect_node":               ShapeGetResource,
+	"inspect_namespace":          ShapeGetResource,
+	"inspect_crd":                ShapeGetResource,
+	"inspect_service":            ShapeGetResource,
+	"inspect_ingress":            ShapeGetResource,
+	"inspect_networkpolicy":      ShapeGetResource,
+	"inspect_pvc":                ShapeGetResource,
+	"inspect_pv":                 ShapeGetResource,
+	"inspect_storageclass":       ShapeGetResource,
+	"inspect_configmap":          ShapeGetResource,
+	"inspect_secret":             ShapeGetResource,
+	"inspect_role":               ShapeGetResource,
+	"inspect_rolebinding":        ShapeGetResource,
+	"inspect_clusterrole":        ShapeGetResource,
+	"inspect_clusterrolebinding": ShapeGetResource,
+	"inspect_limitrange":         ShapeGetResource,
+	"inspect_resourcequota":      ShapeGetResource,
+	"inspect_hpa":                ShapeGetResource,
+	"inspect_vpa":                ShapeGetResource,
+	"inspect_pdb":                ShapeGetResource,
+
+	// — Test-only fixture-driven entries —
 	"list_pods":    ShapeListPods,
 	"get_pod_yaml": ShapeGetPodYaml,
 }

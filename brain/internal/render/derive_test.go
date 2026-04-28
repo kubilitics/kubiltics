@@ -26,6 +26,26 @@ func TestDeriveListPods_StatusBreakdown(t *testing.T) {
 	}
 }
 
+// Phase 2 #3: every inspect_<kind> tool counts as a single resource
+// per call. The prefix-match branch in derive() makes this generic
+// for all 27 inspect_* tools without per-name boilerplate.
+func TestDeriveInspectFamily_SingleDoc(t *testing.T) {
+	shaped, _ := json.Marshal(map[string]string{"yaml": "irrelevant"})
+	for _, name := range []string{
+		"inspect_pod", "inspect_deployment", "inspect_node",
+		"inspect_namespace", "inspect_pvc", "inspect_clusterrole",
+		"inspect_hpa",
+	} {
+		d, err := derive(name, "kube-system", shaped)
+		if err != nil {
+			t.Fatalf("%s: %v", name, err)
+		}
+		if d.RowCount != 1 {
+			t.Errorf("%s RowCount: got %d want 1", name, d.RowCount)
+		}
+	}
+}
+
 func TestDeriveGetPodYaml_NoBreakdown(t *testing.T) {
 	shaped, _ := json.Marshal(map[string]string{"yaml": "kind: Pod"})
 	d, err := derive("get_pod_yaml", "kube-system", shaped)
