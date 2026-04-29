@@ -5,6 +5,7 @@ import { ActionPendingBlock } from './blocks/ActionPendingBlock';
 import { PlanBlock } from './blocks/PlanBlock';
 import { RenderBlock } from './blocks/RenderBlock';
 import { UnknownBlock } from './blocks/UnknownBlock';
+import { QueryFlowDiagram } from './QueryFlowDiagram';
 import { cn } from '@/lib/utils';
 import { AlertCircle, ExternalLink } from 'lucide-react';
 import { costForTurn, formatCostUSD } from '@/lib/aiPricing';
@@ -94,6 +95,7 @@ export function Turn({ turn }: Props) {
         </div>
       )}
       <TurnFooter turn={turn} />
+      <QueryFlowDiagram turn={turn} />
     </div>
   );
 }
