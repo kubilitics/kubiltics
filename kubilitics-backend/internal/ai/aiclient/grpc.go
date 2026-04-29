@@ -60,7 +60,7 @@ func (c *GRPCClient) ensureOpen(_ context.Context) error {
 		grpc.WithKeepaliveParams(keepalive.ClientParameters{
 			Time:                c.opts.KeepaliveTime,
 			Timeout:             c.opts.KeepaliveTimeout,
-			PermitWithoutStream: true,
+			PermitWithoutStream: false,
 		}),
 	)
 	if err != nil {

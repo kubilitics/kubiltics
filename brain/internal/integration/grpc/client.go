@@ -125,9 +125,9 @@ func (c *Client) Connect(ctx context.Context) error {
 	opts := []grpc.DialOption{
 		grpc.WithTransportCredentials(transportCreds),
 		grpc.WithKeepaliveParams(keepalive.ClientParameters{
-			Time:                60 * time.Second,
+			Time:                120 * time.Second,
 			Timeout:             20 * time.Second,
-			PermitWithoutStream: true,
+			PermitWithoutStream: false,
 		}),
 		grpc.WithDefaultCallOptions(
 			grpc.MaxCallRecvMsgSize(100*1024*1024), // 100MB max message size

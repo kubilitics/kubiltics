@@ -38,7 +38,7 @@ func DefaultOpts() ClientOpts {
 		DialTimeout:       5 * time.Second,
 		UnaryTimeout:      10 * time.Second,
 		StreamMaxDuration: 600 * time.Second,
-		KeepaliveTime:     20 * time.Second,
-		KeepaliveTimeout:  10 * time.Second,
+		KeepaliveTime:     120 * time.Second,
+		KeepaliveTimeout:  20 * time.Second,
 	}
 }

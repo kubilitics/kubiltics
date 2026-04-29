@@ -55,6 +55,7 @@ import (
 	kotgv1 "github.com/vellankikoti/kotg-schema/gen/go/kotg/v1"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/keepalive"
 )
 
 func main() {
@@ -115,7 +116,16 @@ func main() {
 		fmt.Fprintf(os.Stderr, "Failed to listen on %s: %v\n", grpcAddr, err)
 		os.Exit(1)
 	}
-	grpcSrv := grpc.NewServer()
+	grpcSrv := grpc.NewServer(
+		grpc.KeepaliveEnforcementPolicy(keepalive.EnforcementPolicy{
+			MinTime:             30 * time.Second,
+			PermitWithoutStream: true,
+		}),
+		grpc.KeepaliveParams(keepalive.ServerParameters{
+			Time:    120 * time.Second,
+			Timeout: 20 * time.Second,
+		}),
+	)
 
 	// Build engine list. LLM-direct is always registered. kagent + python
 	// engines (subprojects 3c + 3d) register conditionally based on env vars
