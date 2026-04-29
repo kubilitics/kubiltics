@@ -11,6 +11,7 @@ import (
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/health"
 	"google.golang.org/grpc/health/grpc_health_v1"
+	"google.golang.org/grpc/keepalive"
 	"google.golang.org/grpc/reflection"
 
 	v1 "github.com/kubilitics/kubilitics-backend/api/grpc/v1"
@@ -35,6 +36,14 @@ func NewServer(cfg *config.Config, clusterService service.ClusterService, topolo
 		grpc.MaxRecvMsgSize(10 * 1024 * 1024), // 10MB max message size
 		grpc.MaxSendMsgSize(10 * 1024 * 1024),
 		grpc.ConnectionTimeout(30 * time.Second),
+		grpc.KeepaliveEnforcementPolicy(keepalive.EnforcementPolicy{
+			MinTime:             30 * time.Second,
+			PermitWithoutStream: true,
+		}),
+		grpc.KeepaliveParams(keepalive.ServerParameters{
+			Time:    120 * time.Second,
+			Timeout: 20 * time.Second,
+		}),
 	}
 
 	// FIX P2-003: Wire TLS support for gRPC when configured.
