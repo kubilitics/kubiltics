@@ -10,8 +10,8 @@ use super::{
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
-use std::sync::Mutex;
-use tauri::State;
+use std::sync::{Arc, Mutex};
+use tauri::{AppHandle, Manager, State};
 use uuid::Uuid;
 
 /// Held in Tauri's state. Locks all journal mutations.
@@ -227,10 +227,11 @@ pub struct TestResult {
     pub error: Option<String>,
 }
 
-const BRAIN_HTTP_PORT: u16 = 8081;
-
-fn brain_url() -> String {
-    format!("http://127.0.0.1:{}", BRAIN_HTTP_PORT)
+fn resolve_brain_url(app_handle: &AppHandle) -> String {
+    app_handle
+        .try_state::<Arc<crate::sidecar::BrainManager>>()
+        .map(|m: tauri::State<'_, Arc<crate::sidecar::BrainManager>>| m.url())
+        .unwrap_or_else(|| "http://127.0.0.1:8081".to_string())
 }
 
 /// Cold-start activation: hot-wire the brain with the journal's currently-
@@ -243,10 +244,10 @@ fn brain_url() -> String {
 /// Best-effort: errors are logged to stderr + stamped into the profile's
 /// last_error so the UI surfaces the truth. Idempotent — safe to call
 /// multiple times.
-pub async fn cold_start_activate(store_path: std::path::PathBuf) {
+pub async fn cold_start_activate(store_path: std::path::PathBuf, brain_base_url: String) {
     // Wait for the brain to come up. Tauri's BrainManager waits up to
     // BRAIN_READY_TIMEOUT_SECS (90s) for /health; we wait the same way.
-    let brain_health = format!("{}/health", brain_url());
+    let brain_health = format!("{}/health", brain_base_url.trim_end_matches('/'));
     let client = match reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(5))
         .build()
@@ -311,8 +312,7 @@ pub async fn cold_start_activate(store_path: std::path::PathBuf) {
         }
     };
 
-    let url = brain_url();
-    match brain_hotwire(&profile, &key, &url).await {
+    match brain_hotwire(&profile, &key, &brain_base_url).await {
         Ok(latency_ms) => {
             // Stamp validation result into journal.
             if let Ok(mut j) = Journal::load(&store_path) {
@@ -373,6 +373,7 @@ async fn brain_hotwire(profile: &Profile, key: &str, brain_url: &str) -> Result<
 #[tauri::command]
 pub async fn activate_profile(
     id: Uuid,
+    app_handle: AppHandle,
     store: State<'_, ProfileStore>,
 ) -> Result<ActivateResult, String> {
     let profile = {
@@ -394,7 +395,7 @@ pub async fn activate_profile(
         }
     };
 
-    let url = brain_url();
+    let url = resolve_brain_url(&app_handle);
     match brain_hotwire(&profile, &key, &url).await {
         Ok(latency_ms) => {
             let mut journal = store.journal.lock().unwrap();
@@ -440,6 +441,7 @@ pub async fn activate_profile(
 pub async fn test_profile(
     id: Uuid,
     api_key: Option<String>,
+    app_handle: AppHandle,
     store: State<'_, ProfileStore>,
 ) -> Result<TestResult, String> {
     let profile = {
@@ -475,7 +477,7 @@ pub async fn test_profile(
             })
         }
     };
-    match brain_hotwire(&profile, &key, &brain_url()).await {
+    match brain_hotwire(&profile, &key, &resolve_brain_url(&app_handle)).await {
         Ok(latency_ms) => Ok(TestResult {
             ok: true,
             latency_ms,

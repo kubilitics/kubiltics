@@ -43,6 +43,17 @@ const MAX_RESTART_ATTEMPTS: u32 = 3;
 const HEALTH_CHECK_INTERVAL_SECS: u64 = 10;
 const HEALTH_CHECK_TIMEOUT_SECS: u64 = 5;
 
+/// True if we can bind to 127.0.0.1:port right now.
+fn can_bind(port: u16) -> bool {
+    std::net::TcpListener::bind(format!("127.0.0.1:{}", port)).is_ok()
+}
+
+/// Ask the OS for a free TCP port on 127.0.0.1.
+fn pick_free_port() -> Option<u16> {
+    let listener = std::net::TcpListener::bind("127.0.0.1:0").ok()?;
+    listener.local_addr().ok().map(|a| a.port())
+}
+
 pub struct BackendManager {
     app_handle: AppHandle,
     restart_count: Arc<Mutex<u32>>,
@@ -87,20 +98,6 @@ impl BackendManager {
     /// Backend URL for frontend fetches. Always reflects the resolved port.
     pub fn url(&self) -> String {
         format!("http://localhost:{}", self.port())
-    }
-
-    /// True if we can bind to 127.0.0.1:port right now. Dropping the listener
-    /// releases it immediately; the sidecar process will bind to it next.
-    fn can_bind(port: u16) -> bool {
-        std::net::TcpListener::bind(format!("127.0.0.1:{}", port)).is_ok()
-    }
-
-    /// Ask the OS for a free TCP port on 127.0.0.1. Used as a fallback when
-    /// BACKEND_PORT is occupied. Returns None if even ephemeral-port allocation
-    /// fails (network stack broken).
-    fn pick_free_port() -> Option<u16> {
-        let listener = std::net::TcpListener::bind("127.0.0.1:0").ok()?;
-        listener.local_addr().ok().map(|a| a.port())
     }
 
     /// Best-effort PID lookup for whoever is holding `port`. Used only for the
@@ -204,10 +201,10 @@ impl BackendManager {
         //
         // Piggybacking on an existing :8190 listener is still off the table:
         // that produced orphaned UI + backend pairs every time it fired.
-        let chosen_port = if Self::can_bind(BACKEND_PORT) {
+        let chosen_port = if can_bind(BACKEND_PORT) {
             BACKEND_PORT
         } else {
-            match Self::pick_free_port() {
+            match pick_free_port() {
                 Some(p) => {
                     let holder = Self::port_holder_pid(BACKEND_PORT);
                     eprintln!(
@@ -329,7 +326,14 @@ impl BackendManager {
             //   KUBILITICS_AI_HTTP_ENDPOINT        → brain HTTP  (matches BRAIN_HTTP_PORT)
             .env("KUBILITICS_AI_ENABLED", "true")
             .env("KUBILITICS_AI_ENDPOINT", format!("localhost:{}", BRAIN_GRPC_PORT))
-            .env("KUBILITICS_AI_HTTP_ENDPOINT", format!("http://localhost:{}", BRAIN_HTTP_PORT));
+            .env("KUBILITICS_AI_HTTP_ENDPOINT", {
+                // Use the resolved brain URL from BrainManager state so a
+                // port-fallback brain is still reachable from the backend.
+                self.app_handle
+                    .try_state::<Arc<BrainManager>>()
+                    .map(|m| m.url())
+                    .unwrap_or_else(|| format!("http://localhost:{}", BRAIN_HTTP_PORT))
+            });
 
         // Only set KCLI_BIN when the sidecar actually found a real path.
         // Setting KCLI_BIN="" or KCLI_BIN="kcli" (bare name) causes the backend to
@@ -606,6 +610,9 @@ pub struct BrainManager {
     app_handle: AppHandle,
     is_ready: Arc<Mutex<bool>>,
     brain_process: Arc<Mutex<Option<tauri_plugin_shell::process::CommandChild>>>,
+    /// Resolved HTTP port — equals BRAIN_HTTP_PORT in the common case; a
+    /// different OS-assigned port when BRAIN_HTTP_PORT was already in use.
+    resolved_http_port: Arc<Mutex<u16>>,
 }
 
 impl BrainManager {
@@ -614,11 +621,22 @@ impl BrainManager {
             app_handle,
             is_ready: Arc::new(Mutex::new(false)),
             brain_process: Arc::new(Mutex::new(None)),
+            resolved_http_port: Arc::new(Mutex::new(BRAIN_HTTP_PORT)),
         }
     }
 
     pub fn is_ready(&self) -> bool {
         *self.is_ready.lock().unwrap()
+    }
+
+    /// HTTP port the brain sidecar is actually bound to.
+    pub fn port(&self) -> u16 {
+        *self.resolved_http_port.lock().unwrap()
+    }
+
+    /// Base URL for HTTP calls to the brain (e.g. health checks, provider config).
+    pub fn url(&self) -> String {
+        format!("http://127.0.0.1:{}", self.port())
     }
 
     pub async fn start(self: Arc<Self>) -> Result<(), Box<dyn std::error::Error>> {
@@ -671,8 +689,9 @@ impl BrainManager {
         // mode until the user clicks Save & Test — which both happens
         // implicitly on Quick Connect AND is idempotent for returning
         // users. No repeating keychain dialogs.
+        let http_port = self.port();
         let cmd = sidecar
-            .env("KUBILITICS_AI_HTTP_PORT", BRAIN_HTTP_PORT.to_string())
+            .env("KUBILITICS_AI_HTTP_PORT", http_port.to_string())
             .env("KUBILITICS_AI_GRPC_PORT", BRAIN_GRPC_PORT.to_string())
             .env("KUBILITICS_DATABASE_PATH", data_dir.join("kubilitics-ai.db").to_string_lossy().as_ref())
             // Brain must know where the backend actually landed — use the resolved
@@ -689,7 +708,7 @@ impl BrainManager {
         let (rx, child) = cmd.spawn()?;
         drain_sidecar_output(rx, "brain");
         *self.brain_process.lock().unwrap() = Some(child);
-        println!("kubilitics-ai-server started on http://localhost:{} (gRPC :{})", BRAIN_HTTP_PORT, BRAIN_GRPC_PORT);
+        println!("kubilitics-ai-server started on http://localhost:{} (gRPC :{})", http_port, BRAIN_GRPC_PORT);
 
         // Wait for /health.
         match self.wait_for_ready().await {
@@ -712,7 +731,7 @@ impl BrainManager {
     }
 
     async fn wait_for_ready(&self) -> Result<(), Box<dyn std::error::Error>> {
-        let url = format!("http://localhost:{}/health", BRAIN_HTTP_PORT);
+        let url = format!("http://localhost:{}/health", self.port());
         let client = reqwest::Client::builder()
             .timeout(Duration::from_secs(HEALTH_CHECK_TIMEOUT_SECS))
             .build()?;
@@ -759,6 +778,21 @@ impl BrainManager {
 
 pub fn start_brain(app_handle: &AppHandle) -> Result<Arc<BrainManager>, Box<dyn std::error::Error>> {
     let manager = Arc::new(BrainManager::new(app_handle.clone()));
+
+    // Resolve brain HTTP port now (sync) so profile commands and the backend
+    // can read it via BrainManager::url() before the brain sidecar finishes starting.
+    let resolved_http = if can_bind(BRAIN_HTTP_PORT) {
+        BRAIN_HTTP_PORT
+    } else {
+        let fallback = pick_free_port().unwrap_or(BRAIN_HTTP_PORT);
+        eprintln!(
+            "Brain port {} is occupied — using OS-assigned port {} instead",
+            BRAIN_HTTP_PORT, fallback
+        );
+        fallback
+    };
+    *manager.resolved_http_port.lock().unwrap() = resolved_http;
+
     app_handle.manage(manager.clone());
     let manager_clone = manager.clone();
     tauri::async_runtime::spawn(async move {
@@ -777,6 +811,17 @@ pub fn get_brain_status(app_handle: AppHandle) -> Result<serde_json::Value, Stri
         "status": if ready { "ready" } else { "starting" },
         "message": if ready { "AI engine ready" } else { "Starting AI engine…" }
     }))
+}
+
+/// Returns the base URL the brain HTTP API is actually bound to.
+/// Equals http://127.0.0.1:8081 in the common case; a different port when
+/// 8081 was occupied at startup and the brain fell back to a free port.
+#[tauri::command]
+pub fn get_brain_url(app_handle: AppHandle) -> String {
+    match app_handle.try_state::<Arc<BrainManager>>() {
+        Some(m) => m.url(),
+        None => format!("http://127.0.0.1:{}", BRAIN_HTTP_PORT),
+    }
 }
 
 /// restart_brain — kill + respawn kubilitics-ai-server so it re-reads

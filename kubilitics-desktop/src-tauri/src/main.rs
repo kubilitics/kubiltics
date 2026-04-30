@@ -58,6 +58,7 @@ fn main() {
             sidecar::get_backend_status,
             sidecar::get_backend_url,
             sidecar::get_brain_status,
+            sidecar::get_brain_url,
             sidecar::restart_brain,
             // Phase 2 / Blocker C — AI settings keychain round-trip
             ai_config::save_ai_config,
@@ -166,7 +167,13 @@ fn main() {
                     Err(e) => eprintln!("profile store init failed: {}", e),
                 }
                 // Spawn cold-start activation. Best-effort, non-blocking.
-                tauri::async_runtime::spawn(cold_start_activate(journal_path));
+                // Read the resolved brain URL from BrainManager state so a
+                // port-fallback brain is targeted correctly.
+                let brain_base_url = app
+                    .try_state::<std::sync::Arc<sidecar::BrainManager>>()
+                    .map(|m| m.url())
+                    .unwrap_or_else(|| "http://127.0.0.1:8081".to_string());
+                tauri::async_runtime::spawn(cold_start_activate(journal_path, brain_base_url));
             }
 
             Ok(())
