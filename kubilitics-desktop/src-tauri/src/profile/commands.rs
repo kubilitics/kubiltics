@@ -244,27 +244,17 @@ fn resolve_brain_url(app_handle: &AppHandle) -> String {
 /// Best-effort: errors are logged to stderr + stamped into the profile's
 /// last_error so the UI surfaces the truth. Idempotent — safe to call
 /// multiple times.
-pub async fn cold_start_activate(store_path: std::path::PathBuf, brain_base_url: String) {
-    // Wait for the brain to come up. Tauri's BrainManager waits up to
-    // BRAIN_READY_TIMEOUT_SECS (90s) for /health; we wait the same way.
-    let brain_health = format!("{}/health", brain_base_url.trim_end_matches('/'));
-    let client = match reqwest::Client::builder()
-        .timeout(std::time::Duration::from_secs(5))
-        .build()
-    {
-        Ok(c) => c,
-        Err(e) => {
-            eprintln!("cold_start_activate: client build failed: {}", e);
-            return;
-        }
-    };
+pub async fn cold_start_activate(store_path: std::path::PathBuf, app_handle: tauri::AppHandle) {
+    use tauri::Manager as _;
+    // Wait for BrainManager::is_ready() instead of re-polling /health —
+    // BrainManager already owns the health loop so we avoid a duplicate
+    // 90s HTTP poller running in parallel.
+    let brain_manager = app_handle.try_state::<Arc<crate::sidecar::BrainManager>>();
     let mut ready = false;
     for _ in 0..180 { // 90s @ 500ms cadence
-        if let Ok(r) = client.get(&brain_health).send().await {
-            if r.status().is_success() {
-                ready = true;
-                break;
-            }
+        if brain_manager.as_ref().map(|m| m.is_ready()).unwrap_or(false) {
+            ready = true;
+            break;
         }
         tokio::time::sleep(std::time::Duration::from_millis(500)).await;
     }
@@ -272,6 +262,7 @@ pub async fn cold_start_activate(store_path: std::path::PathBuf, brain_base_url:
         eprintln!("cold_start_activate: brain not ready after 90s, giving up");
         return;
     }
+    let brain_base_url = crate::sidecar::brain_url_from_state(&app_handle);
 
     // Load the journal directly — we can't use State<'_, ProfileStore>
     // here because this runs outside a Tauri command handler. Re-loading

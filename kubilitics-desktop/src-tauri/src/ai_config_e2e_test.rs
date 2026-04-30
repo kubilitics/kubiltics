@@ -146,7 +146,7 @@ async fn e2e_save_restart_load_roundtrip_preserves_keychain() {
         has_api_key: false,
     };
 
-    save_ai_config(cfg.clone()).await.expect("save");
+    save_ai_config_inner(&cfg, "").await.expect("save");
 
     // --- simulate process restart ---
     // There's no in-memory struct to drop; calling load_ai_config in
@@ -172,13 +172,13 @@ async fn e2e_test_llm_connection_sends_stored_key_as_bearer() {
 
     // 1) Stash the key via save_ai_config.
     let stored_key = "sk-bearer-check-9876543210";
-    save_ai_config(AIConfig {
+    save_ai_config_inner(&AIConfig {
         provider: "openai".to_string(),
         model: "gpt-4o".to_string(),
         base_url: "".to_string(),
         api_key: Some(stored_key.to_string()),
         has_api_key: false,
-    })
+    }, "")
     .await
     .expect("save");
 

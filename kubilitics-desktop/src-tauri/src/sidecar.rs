@@ -818,6 +818,18 @@ pub fn get_brain_status(app_handle: AppHandle) -> Result<serde_json::Value, Stri
 /// 8081 was occupied at startup and the brain fell back to a free port.
 #[tauri::command]
 pub fn get_brain_url(app_handle: AppHandle) -> String {
+    brain_url_from_state(&app_handle)
+}
+
+/// Shared resolver used by all Tauri commands that call the brain's HTTP API.
+/// Priority: KUBILITICS_AI_ADMIN_URL env (for tests/CI) → BrainManager state
+/// (respects dynamic port fallback) → compile-time default.
+pub fn brain_url_from_state(app_handle: &AppHandle) -> String {
+    if let Ok(v) = std::env::var("KUBILITICS_AI_ADMIN_URL") {
+        if !v.is_empty() {
+            return v;
+        }
+    }
     match app_handle.try_state::<Arc<BrainManager>>() {
         Some(m) => m.url(),
         None => format!("http://127.0.0.1:{}", BRAIN_HTTP_PORT),

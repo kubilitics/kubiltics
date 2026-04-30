@@ -1,33 +1,21 @@
-// Phase 2 / Blocker C — AI Settings round-trip through the OS keychain.
+// AI Settings — keychain round-trip + brain hot-wire.
 //
-// Three Tauri commands:
-//   save_ai_config(cfg)       — writes YAML (non-secret fields) to
-//                                `<app_data>/config.yaml` and pushes the
-//                                API key to the OS keychain under
-//                                (service="kubilitics", account=<provider>).
-//   load_ai_config()          — reads YAML + keychain, returns AIConfig with
-//                                `has_api_key` flag. The key is NEVER
-//                                returned to the frontend — it only leaves
-//                                the keychain when the backend / brain
-//                                reads it directly.
-//   test_llm_connection(cfg)  — 10-token ping to the configured provider.
-//                                Errors are returned with API keys redacted.
+// Commands:
+//   save_ai_config       — persists YAML (non-secret) + keychain (key), then
+//                          hot-wires the brain via POST /api/v1/config/provider.
+//   load_ai_config       — reads YAML + cached has_api_key flag. Never probes
+//                          keychain on load (avoids macOS ACL dialog on rebuilds).
+//   test_llm_connection  — direct ping to the configured LLM provider.
+//   list_ollama_models   — fetches model list from an Ollama server.
+//   detect_available_providers — scans env + localhost for usable providers.
+//   get_budget_status / reset_budget — thin wrappers to brain /admin/budget/*.
 //
-// Env override:
-//   If `KUBILITICS_LLM_API_KEY` is set in the environment, it shadows the
-//   keychain (useful for CI, headless runs, Helm-deployed installs).
-//
-// Security:
-//   - Key never written to config.yaml.
-//   - Key never returned to the webview — load_ai_config() returns only
-//     `has_api_key: bool`.
-//   - "Test connection" error bodies are scrubbed of any `sk-...` /
-//     `Bearer ...` substrings.
+// Security: the raw API key is NEVER returned to the webview.
 
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
-use tauri::command;
+use tauri::{command, AppHandle};
 
 const KEYCHAIN_SERVICE: &str = "kubilitics";
 const ENV_API_KEY: &str = "KUBILITICS_LLM_API_KEY";
@@ -138,7 +126,7 @@ fn keychain_get(account: &str) -> Result<Option<String>, String> {
     }
 }
 
-#[allow(dead_code)]
+#[cfg(test)]
 fn keychain_delete(account: &str) -> Result<(), String> {
     let entry = keyring::Entry::new(KEYCHAIN_SERVICE, account)
         .map_err(|e| format!("keychain entry: {}", e))?;
@@ -260,8 +248,19 @@ pub struct SaveResult {
     pub brain_hotwire_error: String,
 }
 
+/// Inner implementation — accepts an explicit brain URL so tests can call it
+/// without needing a real AppHandle (they pass an empty string to skip hotwire).
+pub(crate) async fn save_ai_config_inner(cfg: &AIConfig, brain_url: &str) -> Result<SaveResult, String> {
+    save_ai_config_impl(cfg, brain_url).await
+}
+
 #[command]
-pub async fn save_ai_config(cfg: AIConfig) -> Result<SaveResult, String> {
+pub async fn save_ai_config(cfg: AIConfig, app_handle: AppHandle) -> Result<SaveResult, String> {
+    let brain_url = crate::sidecar::brain_url_from_state(&app_handle);
+    save_ai_config_impl(&cfg, &brain_url).await
+}
+
+async fn save_ai_config_impl(cfg: &AIConfig, brain_url: &str) -> Result<SaveResult, String> {
     validate_ai_config(&cfg)?;
 
     // Pull the key: either the user just pasted one (cfg.api_key) or we
@@ -315,8 +314,7 @@ pub async fn save_ai_config(cfg: AIConfig) -> Result<SaveResult, String> {
     let mut hotwire_error = String::new();
 
     if !live_key.is_empty() || cfg.provider == "ollama" {
-        let base = std::env::var("KUBILITICS_AI_ADMIN_URL")
-            .unwrap_or_else(|_| "http://127.0.0.1:8081".to_string());
+        let base = brain_url;
         let body = serde_json::json!({
             "provider": cfg.provider,
             "api_key": live_key,
@@ -414,33 +412,10 @@ pub async fn load_ai_config() -> Result<AIConfig, String> {
     })
 }
 
-// REMOVED: migrate_has_api_key
-//
-// This command used to do a one-shot authoritative keychain probe to
-// reconcile the cached `has_api_key` yaml flag with the real keychain
-// state (useful for users upgrading from pre-cache-flag builds). Even
-// one prompt on page open was deemed unacceptable UX — removed on user
-// request. The yaml cache is now the ONLY source for has_api_key on the
-// UI path. Users who had a key on a pre-cache build will see "needs
-// API key" until they next click Save; that single Save is the only
-// user-initiated keychain touch and the prompt there is expected.
-//
-// If the migration need resurfaces in a future release, reintroduce
-// behind a user-triggered "Verify keychain" button — never automatic
-// on mount.
-
 #[command]
 pub async fn test_llm_connection(cfg: AIConfig) -> Result<TestResult, String> {
-    // Resolve the key the same way the brain will at startup. Trim
-    // whitespace defensively — paste-from-clipboard frequently captures
-    // a trailing newline or leading space and providers reject the key
-    // outright with "Invalid API key" rather than auto-trimming.
-    // Resolve the key the same way the brain will at startup. Trim
-    // whitespace defensively — paste-from-clipboard frequently captures
-    // a trailing newline or leading space and providers reject the key
-    // outright with "Invalid API key" rather than auto-trimming.
-    //
-    // Lookup order (most specific first):
+    // Resolve the key — trim whitespace defensively (clipboard paste often
+    // includes a trailing newline). Lookup order (most specific first):
     //   1. cfg.api_key — the user just pasted one in the Settings input.
     //   2. KUBILITICS_LLM_API_KEY env — generic ops override.
     //   3. keychain_get(&cfg.provider) — previously saved.
@@ -508,13 +483,7 @@ pub async fn test_llm_connection(cfg: AIConfig) -> Result<TestResult, String> {
     let start = std::time::Instant::now();
 
     if cfg.provider == "ollama" {
-        // Strip a trailing /v1 if the user copy-pasted an OpenAI-compat
-        // URL — Ollama native lives at the root, and /v1/api/tags does
-        // not exist. Also normalize trailing slash.
-        let base_normalized = base
-            .trim_end_matches('/')
-            .trim_end_matches("/v1")
-            .to_string();
+        let base_normalized = normalize_ollama_url(&base);
         let url = format!("{}/api/tags", base_normalized);
         let resp = client
             .get(&url)
@@ -628,11 +597,7 @@ pub async fn list_ollama_models(base_url: String) -> Result<Vec<String>, String>
     let base = if base_url.trim().is_empty() {
         "http://localhost:11434".to_string()
     } else {
-        base_url
-            .trim()
-            .trim_end_matches('/')
-            .trim_end_matches("/v1")
-            .to_string()
+        normalize_ollama_url(base_url.trim())
     };
     let url = format!("{}/api/tags", base);
     let client = reqwest::Client::builder()
@@ -678,10 +643,6 @@ pub struct BudgetStatus {
     pub cap_usd: f64,
 }
 
-/// Endpoint override for tests; falls back to the in-cluster default.
-fn brain_admin_base() -> String {
-    std::env::var("KUBILITICS_AI_ADMIN_URL").unwrap_or_else(|_| "http://127.0.0.1:8081".to_string())
-}
 
 #[derive(Debug, Serialize, Clone)]
 pub struct DetectedProvider {
@@ -797,8 +758,8 @@ pub async fn detect_available_providers() -> Result<Vec<DetectedProvider>, Strin
 }
 
 #[command]
-pub async fn get_budget_status() -> Result<BudgetStatus, String> {
-    let url = format!("{}/admin/budget/status", brain_admin_base().trim_end_matches('/'));
+pub async fn get_budget_status(app_handle: AppHandle) -> Result<BudgetStatus, String> {
+    let url = format!("{}/admin/budget/status", crate::sidecar::brain_url_from_state(&app_handle).trim_end_matches('/'));
     let resp = reqwest::Client::new()
         .get(&url)
         .send()
@@ -812,8 +773,8 @@ pub async fn get_budget_status() -> Result<BudgetStatus, String> {
 }
 
 #[command]
-pub async fn reset_budget() -> Result<(), String> {
-    let url = format!("{}/admin/budget/reset", brain_admin_base().trim_end_matches('/'));
+pub async fn reset_budget(app_handle: AppHandle) -> Result<(), String> {
+    let url = format!("{}/admin/budget/reset", crate::sidecar::brain_url_from_state(&app_handle).trim_end_matches('/'));
     let resp = reqwest::Client::new()
         .post(&url)
         .send()
@@ -823,6 +784,15 @@ pub async fn reset_budget() -> Result<(), String> {
         return Err(format!("HTTP {}", resp.status().as_u16()));
     }
     Ok(())
+}
+
+/// Strip trailing slash and optional `/v1` suffix so both native Ollama URLs
+/// (`http://host:11434`) and OpenAI-compat URLs (`http://host:11434/v1`) are
+/// normalised to the same root before appending `/api/tags` or `/api/chat`.
+fn normalize_ollama_url(url: &str) -> String {
+    url.trim_end_matches('/')
+        .trim_end_matches("/v1")
+        .to_string()
 }
 
 fn default_base_url(provider: &str) -> String {
