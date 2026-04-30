@@ -1,8 +1,42 @@
 use tauri::{AppHandle, Emitter, Manager};
+use tauri_plugin_shell::process::CommandEvent;
 use tauri_plugin_shell::ShellExt;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use tokio::time::sleep;
+
+/// Drain a sidecar's stdout/stderr receiver in a background task.
+/// Without draining, the OS pipe buffer fills up and the child process blocks
+/// on write. Logs valid UTF-8 lines with a `[label]` prefix; silently drops
+/// binary frames (gRPC/protobuf bytes) so they never reach the host log viewer.
+fn drain_sidecar_output(
+    mut rx: tauri::async_runtime::Receiver<CommandEvent>,
+    label: &'static str,
+) {
+    tokio::spawn(async move {
+        while let Some(event) = rx.recv().await {
+            match event {
+                CommandEvent::Stdout(bytes) | CommandEvent::Stderr(bytes) => {
+                    if let Ok(text) = std::str::from_utf8(&bytes) {
+                        let trimmed = text.trim();
+                        if !trimmed.is_empty() {
+                            println!("[{}] {}", label, trimmed);
+                        }
+                    }
+                    // Binary / non-UTF8 bytes are intentionally dropped here.
+                    // They are typically raw gRPC/protobuf frames written to
+                    // stdout by the Go binary and would show as garbage in any
+                    // log viewer that expects text.
+                }
+                CommandEvent::Terminated(p) => {
+                    println!("[{}] process exited (code={:?})", label, p.code);
+                    break;
+                }
+                _ => {}
+            }
+        }
+    });
+}
 
 use crate::backend_ports::BACKEND_PORT;
 const MAX_RESTART_ATTEMPTS: u32 = 3;
@@ -308,7 +342,8 @@ impl BackendManager {
             cmd = cmd.env("KUBECONFIG", &kubeconfig_path);
         }
 
-        let (_rx, child) = cmd.spawn()?;
+        let (rx, child) = cmd.spawn()?;
+        drain_sidecar_output(rx, "backend");
 
         // TASK-SIDECAR-001: Store the process handle so stop() can kill it on force-quit.
         *self.backend_process.lock().unwrap() = Some(child);
@@ -651,7 +686,8 @@ impl BrainManager {
                 }
             });
 
-        let (_rx, child) = cmd.spawn()?;
+        let (rx, child) = cmd.spawn()?;
+        drain_sidecar_output(rx, "brain");
         *self.brain_process.lock().unwrap() = Some(child);
         println!("kubilitics-ai-server started on http://localhost:{} (gRPC :{})", BRAIN_HTTP_PORT, BRAIN_GRPC_PORT);
 
