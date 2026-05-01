@@ -100,6 +100,25 @@ interface BrainStatus {
 // to work and are bewildered when the AI stays Unreachable. The banner
 // names the actual problem and offers the one-click fix (Restart engine).
 // ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Returns true for errors that reflect a transient infrastructure failure
+ * (brain not yet started, OS port refused, timeout during startup) rather
+ * than a real misconfiguration. These should never be shown as permanent
+ * status on profile cards because they self-heal once the brain is ready.
+ */
+function isTransientBrainError(err: string): boolean {
+  const lower = err.toLowerCase();
+  return (
+    lower.includes('brain unreachable') ||
+    lower.includes('connection refused') ||
+    lower.includes('error sending request') ||
+    lower.includes('os error') ||
+    lower.includes('timed out') ||
+    lower.includes('timeout')
+  );
+}
+
 function BrainReachabilityBanner({
   ready,
   onRestart,
@@ -746,7 +765,7 @@ export default function AISettingsPage() {
                       <div className="text-xs text-muted-foreground truncate">
                         {p.provider}
                         {p.model && ` · ${p.model}`}
-                        {p.last_error && (
+                        {p.last_error && !isTransientBrainError(p.last_error) && (
                           <span className="text-rose-600 dark:text-rose-400 ml-1">
                             · {p.last_error}
                           </span>
@@ -1125,7 +1144,7 @@ export default function AISettingsPage() {
                 )}
               </span>
             )}
-            {lastError && (
+            {lastError && !isTransientBrainError(lastError) && (
               <span
                 className="text-xs text-red-600 dark:text-red-400 inline-flex items-center gap-1.5"
                 data-testid="store-error"

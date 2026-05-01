@@ -305,25 +305,39 @@ pub async fn cold_start_activate(store_path: std::path::PathBuf, app_handle: tau
 
     match brain_hotwire(&profile, &key, &brain_base_url).await {
         Ok(latency_ms) => {
-            // Stamp validation result into journal.
+            // Stamp validation result AND sweep all profiles for stale
+            // connectivity errors written by previous sessions that failed
+            // before the brain was ready.
             if let Ok(mut j) = Journal::load(&store_path) {
-                if let Some(p) = j.find_mut(active_id) {
-                    p.last_validated_at = Some(Utc::now());
-                    p.last_error = None;
-                    p.updated_at = Utc::now();
+                let now = Utc::now();
+                for p in j.profiles.iter_mut() {
+                    if p.id == active_id {
+                        p.last_validated_at = Some(now);
+                        p.last_error = None;
+                        p.updated_at = now;
+                    } else if p.last_error.as_deref().map(is_transient_error).unwrap_or(false) {
+                        // Wipe stale "brain unreachable" from inactive profiles too.
+                        p.last_error = None;
+                        p.updated_at = now;
+                    }
                 }
                 let _ = j.save_atomic(&store_path);
             }
             println!("cold_start_activate: hot-wired {} ({}ms)", profile.name, latency_ms);
         }
         Err(err) => {
-            if let Ok(mut j) = Journal::load(&store_path) {
-                if let Some(p) = j.find_mut(active_id) {
-                    p.last_error = Some(err.clone());
-                    p.last_validated_at = Some(Utc::now());
-                    p.updated_at = Utc::now();
+            // Same rule as activate_profile: only persist real config errors,
+            // not connectivity failures. cold_start runs at startup before the
+            // brain is guaranteed up — don't permanently mark working profiles.
+            if !is_transient_error(&err) {
+                if let Ok(mut j) = Journal::load(&store_path) {
+                    if let Some(p) = j.find_mut(active_id) {
+                        p.last_error = Some(err.clone());
+                        p.last_validated_at = Some(Utc::now());
+                        p.updated_at = Utc::now();
+                    }
+                    let _ = j.save_atomic(&store_path);
                 }
-                let _ = j.save_atomic(&store_path);
             }
             eprintln!("cold_start_activate: hot-wire failed: {}", err);
         }
@@ -404,13 +418,20 @@ pub async fn activate_profile(
             })
         }
         Err(err) => {
-            let mut journal = store.journal.lock().unwrap();
-            if let Some(p) = journal.find_mut(id) {
-                p.last_error = Some(err.clone());
-                p.last_validated_at = Some(Utc::now());
-                p.updated_at = Utc::now();
+            // Only persist configuration errors (bad key, model rejected by the
+            // brain) to the journal.  Connectivity errors ("brain unreachable")
+            // are transient — the brain may still be starting up.  Writing them
+            // to disk produces stale red text that survives reboots and makes
+            // working profiles look permanently broken.
+            if !is_transient_error(&err) {
+                let mut journal = store.journal.lock().unwrap();
+                if let Some(p) = journal.find_mut(id) {
+                    p.last_error = Some(err.clone());
+                    p.last_validated_at = Some(Utc::now());
+                    p.updated_at = Utc::now();
+                }
+                let _ = store.write_locked(&journal);
             }
-            let _ = store.write_locked(&journal);
             Ok(ActivateResult {
                 ok: false,
                 latency_ms: 0,
@@ -418,6 +439,21 @@ pub async fn activate_profile(
             })
         }
     }
+}
+
+/// Returns true for errors that should NOT be persisted to the journal because
+/// they are transient infrastructure problems (brain not yet started, port
+/// unreachable, OS-level connection refused) rather than misconfiguration.
+/// These errors clear themselves once the brain is ready — storing them
+/// permanently produces stale red text on profile cards.
+fn is_transient_error(err: &str) -> bool {
+    let lower = err.to_lowercase();
+    lower.contains("brain unreachable")
+        || lower.contains("connection refused")
+        || lower.contains("error sending request")
+        || lower.contains("os error")
+        || lower.contains("timeout")
+        || lower.contains("timed out")
 }
 
 /// Probe-only — does NOT change `active_profile_id`. The frontend's Test
