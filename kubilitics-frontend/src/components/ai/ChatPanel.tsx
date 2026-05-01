@@ -65,8 +65,6 @@ function ChatDrawer({ children }: { children: React.ReactNode }) {
       style={{
         width: `min(${width}px, 95vw)`,
         maxWidth: '95vw',
-      }}
-      style={{
         top: 'var(--app-header-offset, 60px)',
         height: 'calc(100vh - var(--app-header-offset, 60px))',
       }}
