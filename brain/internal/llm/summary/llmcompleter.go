@@ -96,9 +96,11 @@ func buildSummaryPrompt(d derived.DerivedSummary) string {
 	if len(d.StatusBreakdown) > 0 {
 		breakdown = fmt.Sprintf(" Status breakdown: %v.", d.StatusBreakdown)
 	}
-	ns := ""
+	var scope string
 	if d.Namespace != "" {
-		ns = fmt.Sprintf(" Namespace: %s.", d.Namespace)
+		scope = fmt.Sprintf(" Namespace filter: %s (results are scoped to this namespace only).", d.Namespace)
+	} else {
+		scope = " Namespace filter: none (results span ALL namespaces — do NOT mention any specific namespace)."
 	}
 	return fmt.Sprintf(
 		"Write ONE short sentence (max 80 characters) summarizing this Kubernetes "+
@@ -107,13 +109,16 @@ func buildSummaryPrompt(d derived.DerivedSummary) string {
 			"\n"+
 			"Resource counts: %d total.%s%s\n"+
 			"\n"+
-			"Examples of good summaries:\n"+
-			"  - 13 pods running in kube-system\n"+
-			"  - No resources found in namespace empty-ns\n"+
-			"  - 1 service in default, healthy\n"+
+			"CRITICAL: If namespace filter is 'none', do NOT mention any namespace in your summary.\n"+
+			"\n"+
+			"Examples:\n"+
+			"  - Namespace filter=none, 15 pods, all Running → \"15 pods running across all namespaces\"\n"+
+			"  - Namespace filter=kube-system, 8 pods, all Running → \"8 pods running in kube-system\"\n"+
+			"  - Namespace filter=none, 3 services → \"3 services across all namespaces\"\n"+
+			"  - Namespace filter=default, 0 resources → \"No resources found in default\"\n"+
 			"\n"+
 			"Your one-line summary:",
-		d.RowCount, ns, breakdown,
+		d.RowCount, scope, breakdown,
 	)
 }
 
