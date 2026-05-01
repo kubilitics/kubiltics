@@ -250,6 +250,7 @@ pub struct SaveResult {
 
 /// Inner implementation — accepts an explicit brain URL so tests can call it
 /// without needing a real AppHandle (they pass an empty string to skip hotwire).
+#[allow(dead_code)]
 pub(crate) async fn save_ai_config_inner(cfg: &AIConfig, brain_url: &str) -> Result<SaveResult, String> {
     save_ai_config_impl(cfg, brain_url).await
 }
