@@ -1153,6 +1153,14 @@ func main() {
 	actualPort = cfg.Port
 	defer func() { _ = listener.Close() }()
 
+	// Write the actual HTTP port to a well-known tempfile so co-process sidecars
+	// (e.g. the brain) can discover the real port when a fallback port was chosen.
+	if portFile := os.Getenv("KUBILITICS_PORT_FILE"); portFile != "" {
+		_ = os.WriteFile(portFile, []byte(fmt.Sprintf("%d", actualPort)), 0o644)
+	} else {
+		_ = os.WriteFile("/tmp/kubilitics-backend.port", []byte(fmt.Sprintf("%d", actualPort)), 0o644)
+	}
+
 	srv := &http.Server{
 		Handler:      handlerWithCORS,
 		ReadTimeout:  readTimeout,

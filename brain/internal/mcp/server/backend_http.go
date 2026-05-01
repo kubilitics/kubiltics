@@ -15,6 +15,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 	"time"
 
@@ -52,9 +53,51 @@ func newBackendHTTP(baseURL string) *backendHTTP {
 	}
 }
 
+// resolvedBaseURL returns the effective backend base URL. When the configured
+// URL is unreachable (connection refused), it falls back to the port written
+// by the backend process into /tmp/kubilitics-backend.port. This handles the
+// case where Tauri's health-monitor restarted the backend on a different port
+// after the brain was already started with the old URL.
+func (c *backendHTTP) resolvedBaseURL() string {
+	portFile := "/tmp/kubilitics-backend.port"
+	if pf := os.Getenv("KUBILITICS_PORT_FILE"); pf != "" {
+		portFile = pf
+	}
+	raw, err := os.ReadFile(portFile)
+	if err != nil {
+		return c.baseURL
+	}
+	port := strings.TrimSpace(string(raw))
+	if port == "" {
+		return c.baseURL
+	}
+	candidate := "http://localhost:" + port
+	if candidate == c.baseURL {
+		return c.baseURL
+	}
+	// Only switch to the file-reported URL if the configured one appears to be wrong.
+	// We do a quick dial check (not a full HTTP round-trip) to avoid false positives.
+	testReq, err := http.NewRequest(http.MethodGet, c.baseURL+"/health", nil)
+	if err != nil {
+		return candidate
+	}
+	testCtx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
+	defer cancel()
+	testReq = testReq.WithContext(testCtx)
+	resp, err := c.httpClient.Do(testReq)
+	if err == nil {
+		resp.Body.Close()
+		return c.baseURL // configured URL works fine
+	}
+	log.Printf("[WARN] backend unreachable at %s — switching to port-file URL %s", c.baseURL, candidate)
+	c.baseURL = candidate // update so future calls use the new URL directly
+	return candidate
+}
+
 // get performs a GET request and unmarshals the JSON response.
 func (c *backendHTTP) get(ctx context.Context, path string, out interface{}) error {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.baseURL+path, nil)
+	base := c.resolvedBaseURL()
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, base+path, nil)
 	if err != nil {
 		return fmt.Errorf("create request: %w", err)
 	}
