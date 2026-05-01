@@ -66,6 +66,10 @@ function ChatDrawer({ children }: { children: React.ReactNode }) {
         width: `min(${width}px, 95vw)`,
         maxWidth: '95vw',
       }}
+      style={{
+        top: 'var(--app-header-offset, 60px)',
+        height: 'calc(100vh - var(--app-header-offset, 60px))',
+      }}
       className={cn(
         'fixed right-0 z-40 flex flex-col',
         // Floating overlay: solid background (no transparency on the
@@ -75,7 +79,6 @@ function ChatDrawer({ children }: { children: React.ReactNode }) {
         'bg-background border-l border-border/80',
         'shadow-[-12px_0_32px_-12px_rgba(0,0,0,0.18)]',
         'dark:shadow-[-16px_0_40px_-12px_rgba(0,0,0,0.55)]',
-        'top-[60px] h-[calc(100vh-60px)]',
         isResizing && 'transition-none',
       )}
     >

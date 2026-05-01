@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useMemo, useCallback } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, useMemo, useCallback } from 'react';
 import { cn } from '@/lib/utils';
 import { Outlet, useNavigate, useLocation, Link } from 'react-router-dom';
 import { useScrollRestoration } from './KeepAlive';
@@ -47,6 +47,7 @@ export function AppLayout() {
   const isDemo = useDemoStore((s) => s.isDemo);
   // PERF Area 2: Restore scroll position when navigating back to a previously visited page
   const mainRef = useRef<HTMLElement>(null);
+  const headerAreaRef = useRef<HTMLDivElement>(null);
   useScrollRestoration(mainRef);
   const isShellOpen = useUIStore((s) => s.isShellOpen);
   const shellHeightPx = useUIStore((s) => s.shellHeightPx);
@@ -84,6 +85,25 @@ export function AppLayout() {
     }
   }, []);
 
+  // Keep --app-header-offset in sync with the real height of the header
+  // area (UpdateBanner + ProductionBanner + Header). The chat panel uses
+  // this variable for its top/height so it never overlaps the blue header
+  // regardless of which banners are showing.
+  useLayoutEffect(() => {
+    const el = headerAreaRef.current;
+    if (!el) return;
+    const update = () => {
+      document.documentElement.style.setProperty(
+        '--app-header-offset',
+        `${el.getBoundingClientRect().height}px`,
+      );
+    };
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
   // Listen for the sidebar "Keyboard Shortcuts" button click
   useEffect(() => {
     const handler = () => setShortcutsOverlayOpen(true);
@@ -100,9 +120,11 @@ export function AppLayout() {
         Skip to main content
       </a>
       <RouteAnnouncer />
-      <UpdateBanner />
-      <ProductionBanner />
-      <Header />
+      <div ref={headerAreaRef}>
+        <UpdateBanner />
+        <ProductionBanner />
+        <Header />
+      </div>
       {isDemo && (
         <div
           className="flex-shrink-0 flex items-center justify-center gap-2 px-4 py-2 bg-amber-500/15 border-b border-amber-500/30 text-amber-800 dark:text-amber-200 text-sm font-medium"

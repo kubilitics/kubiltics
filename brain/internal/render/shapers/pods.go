@@ -134,14 +134,23 @@ func ShapeListResources(raw json.RawMessage) (json.RawMessage, error) {
 	}
 
 	allSameNS := true
+	var commonNS string
 	if len(rowsExt) > 0 {
-		first := rowsExt[0].Namespace
+		commonNS = rowsExt[0].Namespace
 		for _, r := range rowsExt[1:] {
-			if r.Namespace != first {
+			if r.Namespace != commonNS {
 				allSameNS = false
 				break
 			}
 		}
+	}
+
+	// Only set SingleNamespace when rows genuinely share one non-empty
+	// namespace (e.g. all in "default"). Cluster-scoped resources have
+	// no namespace, so commonNS="" → leave SingleNamespace blank.
+	var singleNS string
+	if allSameNS && commonNS != "" {
+		singleNS = commonNS
 	}
 
 	cols := []column{{Key: "NAME", Label: "NAME"}}
@@ -162,7 +171,7 @@ func ShapeListResources(raw json.RawMessage) (json.RawMessage, error) {
 		}
 		rows[i] = row
 	}
-	return json.Marshal(table{Columns: cols, Rows: rows})
+	return json.Marshal(table{Columns: cols, Rows: rows, SingleNamespace: singleNS})
 }
 
 func statusOrDefault(s string) string {
@@ -199,6 +208,10 @@ type column struct {
 type table struct {
 	Columns []column                 `json:"columns"`
 	Rows    []map[string]interface{} `json:"rows"`
+	// SingleNamespace is non-empty when every row belongs to the same
+	// namespace. derive.go reads this to label the summary accurately
+	// regardless of what namespace the LLM passed in its tool args.
+	SingleNamespace string `json:"single_namespace,omitempty"`
 }
 
 type podLite struct {

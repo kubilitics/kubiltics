@@ -20,17 +20,23 @@ func derive(toolName, namespace string, shaped json.RawMessage) (derived.Derived
 	d := derived.DerivedSummary{ToolName: toolName, Namespace: namespace}
 	switch {
 	case toolName == "list_pods" || toolName == "list_resources":
-		// Both shapers produce the same {columns, rows[{STATUS,...}]}
-		// shape, so a single row+status decoder works for both.
+		// Both shapers produce the same {columns, rows[{STATUS,...}], single_namespace}
+		// shape. Derive namespace from actual data — not from the LLM's tool args —
+		// so "15 pods across all namespaces" is never mislabelled as "in default".
 		var t struct {
 			Rows []struct {
 				Status string `json:"STATUS"`
 			} `json:"rows"`
+			SingleNamespace string `json:"single_namespace"`
 		}
 		if err := json.Unmarshal(shaped, &t); err != nil {
 			return d, err
 		}
 		d.RowCount = len(t.Rows)
+		// Override: use the namespace observed in the rendered data, not the
+		// namespace the LLM requested. SingleNamespace is "" when rows span
+		// multiple namespaces or are cluster-scoped — no qualifier in summary.
+		d.Namespace = t.SingleNamespace
 		if len(t.Rows) > 0 {
 			d.StatusBreakdown = map[string]int{}
 			for _, r := range t.Rows {

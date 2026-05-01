@@ -6,11 +6,13 @@ import (
 )
 
 func TestDeriveListPods_StatusBreakdown(t *testing.T) {
+	// Namespace is derived from single_namespace in shaped data, not from
+	// the passed namespace arg. When single_namespace is present, it wins.
 	shaped := []byte(`{"columns":[],"rows":[
 		{"NAME":"a","STATUS":"Running"},
 		{"NAME":"b","STATUS":"Running"},
 		{"NAME":"c","STATUS":"Pending"}
-	]}`)
+	],"single_namespace":"kube-system"}`)
 	d, err := derive("list_pods", "kube-system", shaped)
 	if err != nil {
 		t.Fatalf("derive: %v", err)
@@ -23,6 +25,26 @@ func TestDeriveListPods_StatusBreakdown(t *testing.T) {
 	}
 	if d.StatusBreakdown["Running"] != 2 || d.StatusBreakdown["Pending"] != 1 {
 		t.Errorf("StatusBreakdown: got %v", d.StatusBreakdown)
+	}
+}
+
+func TestDeriveListResources_MultiNamespace_NoLabel(t *testing.T) {
+	// When rows span multiple namespaces, single_namespace is absent and
+	// Namespace must be "" regardless of the ns arg — prevents mislabels
+	// like "15 pods in default" when the result spans all namespaces.
+	shaped := []byte(`{"columns":[],"rows":[
+		{"NAME":"a","NAMESPACE":"default","STATUS":"Running"},
+		{"NAME":"b","NAMESPACE":"kube-system","STATUS":"Running"}
+	]}`)
+	d, err := derive("list_resources", "default", shaped)
+	if err != nil {
+		t.Fatalf("derive: %v", err)
+	}
+	if d.Namespace != "" {
+		t.Errorf("Namespace: got %q want empty (multi-namespace result)", d.Namespace)
+	}
+	if d.RowCount != 2 {
+		t.Errorf("RowCount: got %d want 2", d.RowCount)
 	}
 }
 
