@@ -17,6 +17,15 @@ import (
 	kotgv1 "github.com/vellankikoti/kotg-schema/gen/go/kotg/v1"
 )
 
+// recordEvent counts the event by phase and type for the Prometheus
+// kubilitics_ai_events_total metric — the primary signal for execution plane
+// sizing and audit dashboards.
+func recordEvent(ev *kotgv1.AssistantEvent) {
+	phase := proxy.ClassifyEvent(ev)
+	evType := assistantEventType(ev)
+	proxy.RecordEventByPhase(string(phase), evType)
+}
+
 // upgrader accepts any origin; cross-origin enforcement happens upstream
 // in the parent HTTP middleware (CORS + auth).
 var upgrader = websocket.Upgrader{
@@ -114,6 +123,7 @@ func (h *Handlers) GetChat(w http.ResponseWriter, r *http.Request) {
 				_ = conn.WriteJSON(wsFrame{Type: "error", Payload: errPayload})
 				return
 			}
+			recordEvent(ev)
 			payload, _ := json.Marshal(assistantEventPayload(ev))
 			_ = conn.WriteJSON(wsFrame{Type: assistantEventType(ev), Payload: payload})
 		}
@@ -140,6 +150,7 @@ func (h *Handlers) GetChat(w http.ResponseWriter, r *http.Request) {
 				attribute.String("session_id", p.SessionID),
 				attribute.String("turn_id", p.TurnID),
 				attribute.Int("text_len", len(p.Text)),
+				attribute.String("execution_phase", string(proxy.PhaseThinking)),
 			)
 			sendErr := stream.Send(&kotgv1.UserMessage{
 				SessionId:   p.SessionID,
