@@ -100,12 +100,18 @@ type oaiToolFunction struct {
 }
 
 // oaiRequest is the full chat/completions request body.
+// oaiStreamOptions enables usage reporting in streaming responses.
+type oaiStreamOptions struct {
+	IncludeUsage bool `json:"include_usage"`
+}
+
 type oaiRequest struct {
-	Model     string       `json:"model"`
-	Messages  []oaiMessage `json:"messages"`
-	Tools     []openAITool `json:"tools,omitempty"`
-	MaxTokens int          `json:"max_tokens"`
-	Stream    bool         `json:"stream"`
+	Model         string            `json:"model"`
+	Messages      []oaiMessage      `json:"messages"`
+	Tools         []openAITool      `json:"tools,omitempty"`
+	MaxTokens     int               `json:"max_tokens"`
+	Stream        bool              `json:"stream"`
+	StreamOptions *oaiStreamOptions `json:"stream_options,omitempty"`
 }
 
 // oaiDelta is the delta object inside an SSE chunk choice.
@@ -116,12 +122,17 @@ type oaiDelta struct {
 }
 
 // oaiStreamChunk is one SSE event from the streaming endpoint.
+// The terminal usage chunk has empty Choices and a non-nil Usage.
 type oaiStreamChunk struct {
 	Choices []struct {
 		Index        int      `json:"index"`
 		Delta        oaiDelta `json:"delta"`
 		FinishReason string   `json:"finish_reason"`
 	} `json:"choices"`
+	Usage *struct {
+		PromptTokens     int `json:"prompt_tokens"`
+		CompletionTokens int `json:"completion_tokens"`
+	} `json:"usage,omitempty"`
 }
 
 // ─── CompleteWithTools ────────────────────────────────────────────────────────
@@ -178,25 +189,34 @@ func (c *OpenAIClientImpl) runAgentLoop(
 		oaiTools = oaiTools[:types.MaxToolsPerRequest]
 	}
 
+	var totalUsage *types.TokenUsage
 	for turn := 0; turn < cfg.MaxTurns; turn++ {
 		req := oaiRequest{
-			Model:     c.model,
-			MaxTokens: c.maxTokens,
-			Messages:  oaiMsgs,
-			Tools:     oaiTools,
-			Stream:    true,
+			Model:         c.model,
+			MaxTokens:     c.maxTokens,
+			Messages:      oaiMsgs,
+			Tools:         oaiTools,
+			Stream:        true,
+			StreamOptions: &oaiStreamOptions{IncludeUsage: true},
 		}
 
-		text, toolCalls, err := c.streamSingleTurn(ctx, req, evtCh, turn)
+		text, toolCalls, usage, err := c.streamSingleTurn(ctx, req, evtCh, turn)
 		if err != nil {
 			evtCh <- types.AgentStreamEvent{Err: fmt.Errorf("LLM turn %d: %w", turn, err)}
 			return
+		}
+		if usage != nil {
+			if totalUsage == nil {
+				totalUsage = &types.TokenUsage{}
+			}
+			totalUsage.PromptTokens += usage.PromptTokens
+			totalUsage.CompletionTokens += usage.CompletionTokens
 		}
 
 		// No tool calls → final answer.
 		if len(toolCalls) == 0 {
 			_ = text // already streamed token-by-token
-			evtCh <- types.AgentStreamEvent{Done: true}
+			evtCh <- types.AgentStreamEvent{Done: true, TokenUsage: totalUsage}
 			return
 		}
 
@@ -235,29 +255,30 @@ func (c *OpenAIClientImpl) runAgentLoop(
 
 // ─── streamSingleTurn ─────────────────────────────────────────────────────────
 // Makes one streaming call. Text tokens are forwarded to evtCh; assembled
-// tool_calls are returned once the stream ends.
+// tool_calls and the final token usage are returned once the stream ends.
+// Usage is non-nil only when the API sends stream_options.include_usage=true.
 func (c *OpenAIClientImpl) streamSingleTurn(
 	ctx context.Context,
 	req oaiRequest,
 	evtCh chan<- types.AgentStreamEvent,
 	turn int,
-) (string, []oaiToolCall, error) {
+) (string, []oaiToolCall, *types.TokenUsage, error) {
 	// Enforce 128-tool limit right before send; API rejects larger arrays.
 	if len(req.Tools) > types.MaxToolsPerRequest {
 		req.Tools = req.Tools[:types.MaxToolsPerRequest]
 	}
 	body, err := json.Marshal(req)
 	if err != nil {
-		return "", nil, fmt.Errorf("marshal: %w", err)
+		return "", nil, nil, fmt.Errorf("marshal: %w", err)
 	}
 
 	requestURL, err := url.JoinPath(c.baseURL, "/chat/completions")
 	if err != nil {
-		return "", nil, fmt.Errorf("failed to join url path: %w", err)
+		return "", nil, nil, fmt.Errorf("failed to join url path: %w", err)
 	}
 	httpReq, err := http.NewRequestWithContext(ctx, "POST", requestURL, bytes.NewBuffer(body))
 	if err != nil {
-		return "", nil, fmt.Errorf("create request: %w", err)
+		return "", nil, nil, fmt.Errorf("create request: %w", err)
 	}
 	httpReq.Header.Set("Content-Type", "application/json")
 	httpReq.Header.Set("Authorization", "Bearer "+c.apiKey)
@@ -266,13 +287,13 @@ func (c *OpenAIClientImpl) streamSingleTurn(
 	streamClient := &http.Client{}
 	httpResp, err := doWithRetryOn429(streamClient, httpReq, 3)
 	if err != nil {
-		return "", nil, fmt.Errorf("HTTP: %w", err)
+		return "", nil, nil, fmt.Errorf("HTTP: %w", err)
 	}
 	defer httpResp.Body.Close()
 
 	if httpResp.StatusCode != http.StatusOK {
 		b, _ := io.ReadAll(httpResp.Body)
-		return "", nil, fmt.Errorf("API %d: %s", httpResp.StatusCode, string(b))
+		return "", nil, nil, fmt.Errorf("API %d: %s", httpResp.StatusCode, string(b))
 	}
 
 	// ── Parse SSE stream ──────────────────────────────────────────────────────
@@ -285,15 +306,16 @@ func (c *OpenAIClientImpl) streamSingleTurn(
 	}
 
 	var (
-		textBuf strings.Builder
-		tcByIdx = map[int]*tcAccumulator{}
+		textBuf        strings.Builder
+		tcByIdx        = map[int]*tcAccumulator{}
+		capturedUsage  *types.TokenUsage
 	)
 
 	scanner := bufio.NewScanner(httpResp.Body)
 	for scanner.Scan() {
 		select {
 		case <-ctx.Done():
-			return textBuf.String(), nil, ctx.Err()
+			return textBuf.String(), nil, nil, ctx.Err()
 		default:
 		}
 
@@ -311,6 +333,13 @@ func (c *OpenAIClientImpl) streamSingleTurn(
 			continue
 		}
 		if len(chunk.Choices) == 0 {
+			// Final usage chunk — OpenAI sends usage with empty choices array.
+			if chunk.Usage != nil {
+				capturedUsage = &types.TokenUsage{
+					PromptTokens:     chunk.Usage.PromptTokens,
+					CompletionTokens: chunk.Usage.CompletionTokens,
+				}
+			}
 			continue
 		}
 
@@ -321,7 +350,7 @@ func (c *OpenAIClientImpl) streamSingleTurn(
 			select {
 			case evtCh <- types.AgentStreamEvent{TextToken: delta.Content}:
 			case <-ctx.Done():
-				return textBuf.String(), nil, ctx.Err()
+				return textBuf.String(), nil, nil, ctx.Err()
 			}
 		}
 
@@ -357,7 +386,7 @@ func (c *OpenAIClientImpl) streamSingleTurn(
 	}
 
 	if err := scanner.Err(); err != nil {
-		return textBuf.String(), nil, fmt.Errorf("scanner: %w", err)
+		return textBuf.String(), nil, nil, fmt.Errorf("scanner: %w", err)
 	}
 
 	// Assemble final oaiToolCall list.
@@ -378,7 +407,7 @@ func (c *OpenAIClientImpl) streamSingleTurn(
 		}
 	}
 
-	return textBuf.String(), toolCalls, nil
+	return textBuf.String(), toolCalls, capturedUsage, nil
 }
 
 // ─── Tool execution ───────────────────────────────────────────────────────────

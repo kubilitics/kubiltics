@@ -1,7 +1,28 @@
 # Kubilitics — Enterprise-grade one-command dev and test (B3)
-# Usage: make dev | desktop | desktop-dev | test | backend | frontend | clean
+# Usage: make start | stop | restart | desktop | test | backend | frontend | clean
 
-.PHONY: dev dev-ai test backend frontend backend-test frontend-test test-reports clean env-example restart desktop desktop-dev kcli kcli-build
+.PHONY: dev dev-ai start stop restart test backend frontend backend-test frontend-test test-reports clean env-example desktop desktop-dev desktop-install kcli kcli-build
+
+# ── Desktop app lifecycle (Tauri dev window + all sidecars) ──────────────────
+
+# Launch the full Kubilitics desktop dev stack (kills stale processes, builds
+# all Go sidecars, opens Tauri dev window with hot-reload frontend).
+# Ctrl+C stops everything. Logs also written to /tmp/tauri-dev.log.
+start:
+	@chmod +x scripts/desktop.sh
+	@./scripts/desktop.sh start
+
+# Kill all kubilitics processes and dev-server ports (backend, brain, Tauri, Vite).
+stop:
+	@chmod +x scripts/desktop.sh
+	@./scripts/desktop.sh stop
+
+# Clean relaunch: stop everything, then start fresh.
+restart:
+	@chmod +x scripts/desktop.sh
+	@./scripts/desktop.sh restart
+
+# ── Non-desktop (web-only) dev stack ────────────────────────────────────────
 
 # Default: run full stack (backend + frontend) via script
 dev: env-example
@@ -12,11 +33,6 @@ dev: env-example
 dev-ai: env-example
 	@chmod +x scripts/dev-with-ai.sh 2>/dev/null || true
 	@./scripts/dev-with-ai.sh
-
-# Build backend + kubilitics-ai, kill processes on 819/8081/5173, then start backend + AI + frontend.
-restart:
-	@chmod +x scripts/restart.sh 2>/dev/null || true
-	@./scripts/restart.sh
 
 # Or run in separate terminals: make backend-dev | make frontend-dev
 
@@ -84,11 +100,9 @@ desktop: backend kcli
 	@chmod +x scripts/build-desktop.sh
 	@./scripts/build-desktop.sh
 
-# Desktop development mode (hot reload)
-# Starts backend sidecar + frontend dev server + Tauri dev window
-desktop-dev: backend kcli
-	@chmod +x scripts/dev-desktop.sh
-	@./scripts/dev-desktop.sh
+# Desktop development mode (alias for start)
+desktop-dev:
+	@$(MAKE) start
 
 # Install npm dependencies for desktop (needed once after creating package.json)
 desktop-install:

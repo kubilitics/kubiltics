@@ -209,6 +209,21 @@ func summarizeItem(raw interface{}) interface{} {
 				ss["containers_not_ready"] = notReady
 			}
 		}
+		// Derive a single health string for workloads so the LLM can populate
+		// a STATUS column without having to interpret raw replica counts.
+		if _, hasReplicas := ss["replicas"]; hasReplicas {
+			desired := intFromFloat(ss["replicas"])
+			ready := intFromFloat(ss["readyReplicas"])
+			if desired == 0 {
+				ss["health"] = "ScaledToZero"
+			} else if ready >= desired {
+				ss["health"] = "Available"
+			} else if ready == 0 {
+				ss["health"] = "Unavailable"
+			} else {
+				ss["health"] = "Degraded"
+			}
+		}
 		if len(ss) > 0 {
 			out["status"] = ss
 		}
@@ -236,4 +251,11 @@ func summarizeItem(raw interface{}) interface{} {
 		}
 	}
 	return out
+}
+
+func intFromFloat(v interface{}) int {
+	if f, ok := v.(float64); ok {
+		return int(f)
+	}
+	return 0
 }
