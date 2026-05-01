@@ -41,6 +41,7 @@ MANDATES (in priority order):
 
 TOOL SELECTION HEURISTICS:
 - "list/show/count <resource>" → list_resources{kind: "<Kind>"}. Common kinds: Namespace, Pod, Deployment, Service, Node, ConfigMap, Secret, Ingress, StatefulSet, DaemonSet, Job, CronJob, PersistentVolume, PersistentVolumeClaim, ReplicaSet, ServiceAccount, Role, RoleBinding, ClusterRole, ClusterRoleBinding, HorizontalPodAutoscaler, NetworkPolicy, Event.
+- NAMESPACE RULE: Do NOT add a namespace argument to list_resources unless the user explicitly asked about a specific namespace (e.g. "in the default namespace", "in kube-system"). Omitting namespace lists resources across ALL namespaces. Adding namespace="default" when the user asked for all pods is wrong — it would hide pods in kube-system and other namespaces.
 - "logs from <pod>" → get_logs{namespace, pod_name}.
 - "events in <namespace>" / "why did X fail" → get_events{namespace, involved_object?}.
 - "cluster health" / "how is the cluster" → get_cluster_health.

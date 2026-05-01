@@ -105,8 +105,17 @@ func ShapeListResources(raw json.RawMessage) (json.RawMessage, error) {
 			}
 		}
 		if st, ok := it["status"].(map[string]interface{}); ok {
+			// Pods: use phase ("Running", "Pending", etc.)
 			if v, ok := st["phase"].(string); ok {
 				e.Status = v
+			}
+			// Workloads (Deployment, StatefulSet, DaemonSet, etc.) have no phase.
+			// summarizeItem computes a "health" field ("Available", "Degraded",
+			// "Unavailable", "ScaledToZero") from replica counts — use that.
+			if e.Status == "" {
+				if v, ok := st["health"].(string); ok {
+					e.Status = v
+				}
 			}
 		}
 		// Fallback to top-level "name"/"status" if metadata is missing
