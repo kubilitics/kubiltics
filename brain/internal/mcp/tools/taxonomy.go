@@ -659,7 +659,7 @@ var ToolTaxonomy = []ToolDefinition{
 	{
 		Name:        "observe_services_by_filter",
 		Category:    CategoryObservation,
-		Description: "ALWAYS use this for 'flapping services' / 'services with no endpoints' / cluster-wide service-health questions. Returns Services matching any requested filter with a short reason. Filters: flapping=true (endpoint churn events in last 15m), no_endpoints=true (zero ready endpoints). When no filter is passed, both are implied.",
+		Description: "Use ONLY for service HEALTH questions: 'flapping services', 'services with no endpoints', 'broken services'. DO NOT use for 'list services' or 'show services' — use list_resources{kind:Service} for those. Returns Services matching the requested health filter with a short reason. Filters: flapping=true (endpoint churn in last 15m), no_endpoints=true (zero ready endpoints). At least one filter must be explicitly requested; without a health question, use list_resources instead.",
 		InputSchema: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
