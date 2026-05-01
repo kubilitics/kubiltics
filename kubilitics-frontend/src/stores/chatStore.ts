@@ -80,6 +80,8 @@ interface ChatState {
   prefilledText?: string;
   transcripts: Record<string, Turn[]>;
   sessionByCluster: Record<string, string>;
+  /** Past sessions per cluster — last 5, newest first */
+  chatHistory: Record<string, Turn[][]>;
   connectionState: ConnectionState;
   connectionError?: string;
   spawnIdAtConnect?: string;
@@ -97,6 +99,7 @@ interface ChatState {
   ) => void;
   markAllHistorical: (clusterId: string) => void;
   newChat: (clusterId: string) => void;
+  restoreSession: (clusterId: string, sessionIndex: number) => void;
   setSession: (clusterId: string, sessionId: string | undefined) => void;
   setConnectionState: (s: ConnectionState, err?: string) => void;
   setSpawnIdAtConnect: (id: string | undefined) => void;
@@ -108,6 +111,7 @@ const INITIAL: Partial<ChatState> = {
   prefilledText: undefined,
   transcripts: {},
   sessionByCluster: {},
+  chatHistory: {},
   connectionState: 'idle',
   connectionError: undefined,
   spawnIdAtConnect: undefined,
@@ -197,10 +201,39 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
   newChat: (clusterId) =>
     set((s) => {
+      const current = s.transcripts[clusterId] ?? [];
+      const prevHistory = s.chatHistory?.[clusterId] ?? [];
+      const newHistory = current.length > 0
+        ? [current, ...prevHistory].slice(0, 5)
+        : prevHistory;
       const nextTranscripts = { ...s.transcripts, [clusterId]: [] };
       const nextSessions = { ...s.sessionByCluster };
       delete nextSessions[clusterId];
-      return { transcripts: nextTranscripts, sessionByCluster: nextSessions };
+      return {
+        transcripts: nextTranscripts,
+        sessionByCluster: nextSessions,
+        chatHistory: { ...(s.chatHistory ?? {}), [clusterId]: newHistory },
+      };
+    }),
+
+  restoreSession: (clusterId, sessionIndex) =>
+    set((s) => {
+      const history = s.chatHistory?.[clusterId] ?? [];
+      const session = history[sessionIndex];
+      if (!session) return s;
+      // Save current transcript if non-empty before restoring
+      const current = s.transcripts[clusterId] ?? [];
+      const prevHistory = history.filter((_, i) => i !== sessionIndex);
+      const newHistory = current.length > 0
+        ? [current, ...prevHistory].slice(0, 5)
+        : prevHistory;
+      const nextSessions = { ...s.sessionByCluster };
+      delete nextSessions[clusterId];
+      return {
+        transcripts: { ...s.transcripts, [clusterId]: session },
+        sessionByCluster: nextSessions,
+        chatHistory: { ...(s.chatHistory ?? {}), [clusterId]: newHistory },
+      };
     }),
 
   setSession: (clusterId, sessionId) =>
