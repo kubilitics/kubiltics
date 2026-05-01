@@ -72,11 +72,12 @@ type gzipResponseWriter struct {
 
 func (w *gzipResponseWriter) WriteHeader(code int) {
 	w.statusCode = code
-	if !w.decided {
-		// Don't write header yet — we need to see the content type first
-		return
-	}
-	w.ResponseWriter.WriteHeader(code)
+	// Never forward WriteHeader when headers are already decided/sent.
+	// commit() already called w.ResponseWriter.WriteHeader; a second call
+	// here would produce a "superfluous WriteHeader" warning and is a no-op
+	// in net/http anyway. Only forward if we are in passthrough mode where
+	// the inner ResponseWriter hasn't seen WriteHeader yet — but that case
+	// is fully handled by commit(), so we never need to forward here.
 }
 
 func (w *gzipResponseWriter) Write(b []byte) (int, error) {
