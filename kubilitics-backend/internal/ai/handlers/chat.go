@@ -10,6 +10,9 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/kubilitics/kubilitics-backend/internal/ai/proxy"
 	"github.com/kubilitics/kubilitics-backend/internal/ai/types"
+	"github.com/kubilitics/kubilitics-backend/internal/pkg/tracing"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
 
 	kotgv1 "github.com/vellankikoti/kotg-schema/gen/go/kotg/v1"
 )
@@ -61,10 +64,18 @@ func (h *Handlers) GetChat(w http.ResponseWriter, r *http.Request) {
 	}
 	defer func() { _ = conn.Close() }()
 
-	ctx := proxy.WithUser(r.Context(), userIDFromRequest(r))
+	ctx, sessionSpan := tracing.StartSpanWithAttributes(r.Context(), "ai.chat.session",
+		attribute.String("cluster_id", clusterID),
+		attribute.String("user_id", userIDFromRequest(r)),
+	)
+	defer sessionSpan.End()
+
+	ctx = proxy.WithUser(ctx, userIDFromRequest(r))
 
 	stream, err := h.pxy.Send(ctx, clusterID)
 	if err != nil {
+		sessionSpan.RecordError(err)
+		sessionSpan.SetStatus(codes.Error, err.Error())
 		_ = conn.WriteJSON(wsFrame{Type: "error", Payload: jsonString(err.Error())})
 		_ = conn.WriteControl(
 			websocket.CloseMessage,
@@ -125,12 +136,22 @@ func (h *Handlers) GetChat(w http.ResponseWriter, r *http.Request) {
 				)
 				continue
 			}
-			_ = stream.Send(&kotgv1.UserMessage{
+			_, turnSpan := tracing.StartSpanWithAttributes(ctx, "ai.chat.turn",
+				attribute.String("session_id", p.SessionID),
+				attribute.String("turn_id", p.TurnID),
+				attribute.Int("text_len", len(p.Text)),
+			)
+			sendErr := stream.Send(&kotgv1.UserMessage{
 				SessionId:   p.SessionID,
 				TurnId:      p.TurnID,
 				Text:        p.Text,
 				ContextHint: p.ContextHint,
 			})
+			if sendErr != nil {
+				turnSpan.RecordError(sendErr)
+				turnSpan.SetStatus(codes.Error, sendErr.Error())
+			}
+			turnSpan.End()
 		case "cancel_turn":
 			var p cancelTurnPayload
 			if err := json.Unmarshal(frame.Payload, &p); err != nil {

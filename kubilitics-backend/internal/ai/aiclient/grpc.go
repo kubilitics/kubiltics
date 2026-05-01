@@ -8,7 +8,10 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/kubilitics/kubilitics-backend/internal/pkg/tracing"
 	kotgv1 "github.com/vellankikoti/kotg-schema/gen/go/kotg/v1"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/keepalive"
@@ -79,47 +82,98 @@ func (c *GRPCClient) ensureOpen(_ context.Context) error {
 }
 
 func (c *GRPCClient) Capabilities(ctx context.Context) (*kotgv1.AICapabilities, error) {
+	ctx, span := tracing.StartSpanWithAttributes(ctx, "aiclient.grpc.Capabilities",
+		attribute.String("rpc.system", "grpc"),
+	)
+	defer span.End()
 	if err := c.ensureOpen(ctx); err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
 		return nil, err
 	}
 	cctx, cancel := context.WithTimeout(ctx, c.opts.UnaryTimeout)
 	defer cancel()
-	return c.control.Capabilities(cctx, &kotgv1.Empty{})
+	resp, err := c.control.Capabilities(cctx, &kotgv1.Empty{})
+	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
+	}
+	return resp, err
 }
 
 func (c *GRPCClient) Health(ctx context.Context) (*kotgv1.HealthStatus, error) {
+	ctx, span := tracing.StartSpan(ctx, "aiclient.grpc.Health")
+	defer span.End()
 	if err := c.ensureOpen(ctx); err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
 		return nil, err
 	}
 	cctx, cancel := context.WithTimeout(ctx, c.opts.UnaryTimeout)
 	defer cancel()
-	return c.control.Health(cctx, &kotgv1.Empty{})
+	resp, err := c.control.Health(cctx, &kotgv1.Empty{})
+	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
+	}
+	return resp, err
 }
 
 func (c *GRPCClient) CreateSession(ctx context.Context, req *kotgv1.CreateSessionRequest) (*kotgv1.Session, error) {
+	ctx, span := tracing.StartSpanWithAttributes(ctx, "aiclient.grpc.CreateSession",
+		attribute.String("cluster_id", req.GetFocusClusterId()),
+	)
+	defer span.End()
 	if err := c.ensureOpen(ctx); err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
 		return nil, err
 	}
 	cctx, cancel := context.WithTimeout(ctx, c.opts.UnaryTimeout)
 	defer cancel()
-	return c.chat.CreateSession(cctx, req)
+	resp, err := c.chat.CreateSession(cctx, req)
+	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
+	}
+	return resp, err
 }
 
 // Send opens the bidi chat stream. Caller drives Send() / Recv().
 func (c *GRPCClient) Send(ctx context.Context) (kotgv1.Chat_SendClient, error) {
+	ctx, span := tracing.StartSpan(ctx, "aiclient.grpc.Send")
+	defer span.End()
 	if err := c.ensureOpen(ctx); err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
 		return nil, err
 	}
-	return c.chat.Send(ctx)
+	stream, err := c.chat.Send(ctx)
+	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
+	}
+	return stream, err
 }
 
 func (c *GRPCClient) CancelTurn(ctx context.Context, req *kotgv1.CancelTurnRequest) error {
+	ctx, span := tracing.StartSpanWithAttributes(ctx, "aiclient.grpc.CancelTurn",
+		attribute.String("session_id", req.GetSessionId()),
+		attribute.String("turn_id", req.GetTurnId()),
+	)
+	defer span.End()
 	if err := c.ensureOpen(ctx); err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
 		return err
 	}
 	cctx, cancel := context.WithTimeout(ctx, c.opts.UnaryTimeout)
 	defer cancel()
 	_, err := c.chat.CancelTurn(cctx, req)
+	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
+	}
 	return err
 }
 
