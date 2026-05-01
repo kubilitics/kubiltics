@@ -332,14 +332,16 @@ func (c *OpenAIClientImpl) streamSingleTurn(
 		if err := json.Unmarshal([]byte(data), &chunk); err != nil {
 			continue
 		}
-		if len(chunk.Choices) == 0 {
-			// Final usage chunk — OpenAI sends usage with empty choices array.
-			if chunk.Usage != nil {
-				capturedUsage = &types.TokenUsage{
-					PromptTokens:     chunk.Usage.PromptTokens,
-					CompletionTokens: chunk.Usage.CompletionTokens,
-				}
+		// Capture usage whenever present — OpenAI sends it in a trailing
+		// empty-choices chunk; Ollama-compatible APIs embed it in the last
+		// choices chunk (finish_reason="stop"). Accept both.
+		if chunk.Usage != nil {
+			capturedUsage = &types.TokenUsage{
+				PromptTokens:     chunk.Usage.PromptTokens,
+				CompletionTokens: chunk.Usage.CompletionTokens,
 			}
+		}
+		if len(chunk.Choices) == 0 {
 			continue
 		}
 

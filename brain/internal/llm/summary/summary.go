@@ -48,15 +48,23 @@ func defaultDeterministicFormatter(_ context.Context, d derived.DerivedSummary) 
 
 func pluralize(toolName string, n int) string {
 	switch toolName {
-	case "list_pods":
+	case "list_pods", "list_resources":
 		if n == 1 {
-			return "pod"
+			return "resource"
 		}
-		return "pods"
+		return "resources"
 	case "get_pod_yaml":
 		return "YAML document"
+	case "get_logs":
+		if n == 1 {
+			return "line"
+		}
+		return "lines"
 	}
-	return "result"
+	if n == 1 {
+		return "result"
+	}
+	return "results"
 }
 
 func enforceOneLine(s string, max int) string {

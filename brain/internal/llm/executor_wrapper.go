@@ -120,9 +120,17 @@ func (w *renderWrappedExecutor) Execute(
 		return "", err
 	}
 
-	ns := w.namespace
+	// Use the namespace from the tool args when explicitly provided.
+	// Fall back to the session namespace ONLY for tools that always
+	// operate in a single namespace (e.g. get_logs, get_resource).
+	// For list_resources, if no namespace arg was given the tool
+	// queries all namespaces — labelling the summary "in default"
+	// would be misleading.
+	var ns string
 	if v, ok := args["namespace"].(string); ok && v != "" {
 		ns = v
+	} else if toolName != "list_resources" && toolName != "list_pods" {
+		ns = w.namespace
 	}
 
 	ev, _ := render.BuildDeterministicResponse(ctx, toolName, ns, []byte(rawResult))
