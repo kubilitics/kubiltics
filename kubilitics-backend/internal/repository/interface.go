@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"database/sql"
 	"time"
 
 	"github.com/kubilitics/kubilitics-backend/internal/models"
@@ -122,4 +123,17 @@ type Repository struct {
 	History  HistoryRepository
 	Project  ProjectRepository
 	AddOn    AddOnRepository
+}
+
+// DatabaseRepository is the interface satisfied by both SQLiteRepository and
+// PostgresRepository.  It exposes the minimum surface area needed by main.go
+// to initialise the application without depending on a concrete type.
+type DatabaseRepository interface {
+	ClusterRepository
+	// DB returns the underlying *sql.DB for subsystems that need a raw connection.
+	DB() *sql.DB
+	// RunMigrations executes a migration SQL block.
+	RunMigrations(sql string) error
+	// Close releases the database connection.
+	Close() error
 }

@@ -33,6 +33,12 @@ func NewPostgresRepository(connectionString string) (*PostgresRepository, error)
 	return &PostgresRepository{db: db}, nil
 }
 
+// DB returns the underlying *sql.DB so callers that accept *sql.DB directly
+// (e.g. sqlx.NewDb wrappers) can wrap the same connection.
+func (r *PostgresRepository) DB() *sql.DB {
+	return r.db.DB
+}
+
 // Close closes the database connection
 func (r *PostgresRepository) Close() error {
 	return r.db.Close()

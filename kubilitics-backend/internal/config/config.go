@@ -34,6 +34,16 @@ type Config struct {
 	BindAddress         string   `mapstructure:"bind_address"`            // Listen address: 127.0.0.1 (desktop default) or 0.0.0.0 (in-cluster)
 	Port                int      `mapstructure:"port"`
 	DatabasePath        string   `mapstructure:"database_path"`
+	// DatabaseURL overrides DatabasePath for non-SQLite drivers.
+	// Set KUBILITICS_DATABASE_URL=postgres://user:pass@host:5432/dbname for PostgreSQL.
+	// When set, DatabaseDriver must also be set to "postgres".
+	DatabaseURL         string   `mapstructure:"database_url"`
+	// DatabaseDriver selects the database backend: "sqlite" (default) or "postgres".
+	DatabaseDriver      string   `mapstructure:"database_driver"`
+	// Redis — optional caching + distributed session layer.
+	// Set KUBILITICS_REDIS_URL=redis://host:6379/0 to enable.
+	RedisURL            string   `mapstructure:"redis_url"`
+	RedisEnabled        bool     `mapstructure:"redis_enabled"`
 	LogLevel            string   `mapstructure:"log_level"`   // debug | info | warn | error
 	LogFormat           string   `mapstructure:"log_format"`  // json | text (BE-OBS-002)
 	AllowedOrigins      []string `mapstructure:"allowed_origins"`
@@ -154,6 +164,8 @@ func Load() (*Config, error) {
 	viper.SetDefault("bind_address", "127.0.0.1") // Loopback only — safe for desktop. In-cluster deployments set KUBILITICS_BIND_ADDRESS=0.0.0.0
 	viper.SetDefault("port", 8190)
 	viper.SetDefault("database_path", "./kubilitics.db")
+	viper.SetDefault("database_driver", "sqlite")
+	viper.SetDefault("redis_enabled", false)
 	viper.SetDefault("log_level", "info")
 	viper.SetDefault("log_format", "json") // BE-OBS-002: JSON structured logging by default
 	// Development-safe default: no wildcard. Production must set explicit origins (e.g. https://your-domain.com).

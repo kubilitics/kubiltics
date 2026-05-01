@@ -237,6 +237,17 @@ func (a *clusterRepoAdapter) ListAll() ([]discovery.StoredCluster, error) {
 	return out, nil
 }
 
+// maskDSN replaces the password in a DSN/URL with "***" for safe logging.
+func maskDSN(dsn string) string {
+	// Handle postgres://user:pass@host/db
+	if idx := strings.Index(dsn, "@"); idx != -1 {
+		if start := strings.LastIndex(dsn[:idx], ":"); start != -1 {
+			return dsn[:start+1] + "***" + dsn[idx:]
+		}
+	}
+	return dsn
+}
+
 func main() {
 	// Subcommand dispatch. Recognized subcommands handle their own config
 	// loading and call os.Exit — they never return to main's normal server
@@ -326,8 +337,43 @@ func main() {
 	}
 	defer tracingCleanup()
 
-	// Initialize database
-	log.Info("Initializing database", "path", cfg.DatabasePath)
+	// Initialize database — driver selection via KUBILITICS_DATABASE_DRIVER
+	// (or config.yaml database_driver).  Default: "sqlite".
+	// PostgreSQL: set DATABASE_DRIVER=postgres + DATABASE_URL=postgres://...
+	// NOTE: full PostgreSQL service wiring is in progress; all services
+	// currently accept *repository.SQLiteRepository.  The PostgreSQL path
+	// pre-warms the connection and validates the schema so the migration is
+	// ready to land without a flag day on every service constructor.
+	if cfg.DatabaseDriver == "postgres" {
+		if cfg.DatabaseURL == "" {
+			log.Error("DATABASE_DRIVER=postgres but DATABASE_URL is empty")
+			os.Exit(1)
+		}
+		log.Info("PostgreSQL configured — connecting to verify schema", "url", maskDSN(cfg.DatabaseURL))
+		pgRepo, pgErr := repository.NewPostgresRepository(cfg.DatabaseURL)
+		if pgErr != nil {
+			log.Error("Failed to connect to PostgreSQL", "error", pgErr)
+			os.Exit(1)
+		}
+		pgSchema, pgErr := dbmigrations.FS.ReadFile("postgresql/001_full_schema.sql")
+		if pgErr != nil {
+			log.Error("Failed to read PostgreSQL schema", "error", pgErr)
+			_ = pgRepo.Close()
+			os.Exit(1)
+		}
+		if err := pgRepo.RunMigrations(string(pgSchema)); err != nil {
+			log.Error("Failed to apply PostgreSQL schema", "error", err)
+			_ = pgRepo.Close()
+			os.Exit(1)
+		}
+		log.Info("PostgreSQL schema verified — service layer migration pending")
+		_ = pgRepo.Close()
+	}
+	if cfg.RedisEnabled && cfg.RedisURL != "" {
+		log.Info("Redis configured", "url", maskDSN(cfg.RedisURL))
+	}
+
+	log.Info("Initializing SQLite database", "path", cfg.DatabasePath)
 	repo, err := repository.NewSQLiteRepository(cfg.DatabasePath)
 	if err != nil {
 		log.Error("Failed to initialize database", "error", err)
