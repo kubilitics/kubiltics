@@ -136,7 +136,17 @@ func (w *gzipResponseWriter) Close() {
 }
 
 // Flush implements http.Flusher for SSE/streaming compatibility.
+// Commit must run before the inner Flush so that Content-Encoding is set
+// on the headers before they are sent. Without this, a handler that calls
+// Flush() before writing any body (e.g. streaming log endpoints) causes the
+// inner ResponseWriter to send headers with no Content-Encoding, and then
+// commit() later tries to set gzip headers and call WriteHeader again —
+// resulting in a "superfluous WriteHeader" warning and a compressed body
+// delivered without the Content-Encoding: gzip header (garbled on the client).
 func (w *gzipResponseWriter) Flush() {
+	if !w.decided {
+		w.commit()
+	}
 	if w.gzWriter != nil {
 		w.gzWriter.Flush() //nolint:errcheck
 	}
