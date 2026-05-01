@@ -159,14 +159,29 @@ func summarizeListForLLM(raw interface{}) interface{} {
 // summarizeItem reduces a single K8s object to the fields an LLM reasoner
 // cares about. Everything else — managedFields, annotations, full spec,
 // verbose status — is discarded.
+//
+// Every resource kind produces a non-empty status.health or status.phase so
+// the STATUS column in the rendered kubectl-style table is never "Unknown":
+//
+//   Pod                 → status.phase (Running/Pending/Failed/Succeeded)
+//   Deployment/SS/DS/RS → status.health derived from replica counts
+//   Job                 → status.health (Completed/Failed/Running/Pending)
+//   CronJob             → status.health (Active/Idle)
+//   Node                → status.health derived from Ready condition
+//   Service             → status.health = spec.type (ClusterIP/NodePort/LoadBalancer)
+//   Ingress             → status.health (Provisioned/Pending)
+//   Namespace/PVC/PV    → status.phase (Active/Bound/etc. — already in K8s status)
+//   ConfigMap/Secret/   → status.health = "Active" (no failure mode; presence = working)
+//   Role/SA/etc.
 func summarizeItem(raw interface{}) interface{} {
 	m, ok := raw.(map[string]interface{})
 	if !ok {
 		return raw
 	}
 	out := map[string]interface{}{}
-	if k, ok := m["kind"].(string); ok {
-		out["kind"] = k
+	kind, _ := m["kind"].(string)
+	if kind != "" {
+		out["kind"] = kind
 	}
 	if meta, ok := m["metadata"].(map[string]interface{}); ok {
 		md := map[string]interface{}{}
@@ -177,18 +192,22 @@ func summarizeItem(raw interface{}) interface{} {
 		}
 		out["metadata"] = md
 	}
+
+	ss := map[string]interface{}{}
 	if st, ok := m["status"].(map[string]interface{}); ok {
-		ss := map[string]interface{}{}
+		// Pod scalar fields
 		for _, k := range []string{"phase", "podIP", "hostIP", "reason", "message", "startTime"} {
 			if v, ok := st[k]; ok {
 				ss[k] = v
 			}
 		}
+		// Workload replica fields (Deployment, StatefulSet, DaemonSet, ReplicaSet)
 		for _, k := range []string{"replicas", "readyReplicas", "availableReplicas", "updatedReplicas", "unavailableReplicas"} {
 			if v, ok := st[k]; ok {
 				ss[k] = v
 			}
 		}
+		// Container restart / readiness counters
 		if cs, ok := st["containerStatuses"].([]interface{}); ok {
 			restarts := 0
 			notReady := 0
@@ -209,8 +228,7 @@ func summarizeItem(raw interface{}) interface{} {
 				ss["containers_not_ready"] = notReady
 			}
 		}
-		// Derive a single health string for workloads so the LLM can populate
-		// a STATUS column without having to interpret raw replica counts.
+		// Workload health: single string derived from replica counts.
 		if _, hasReplicas := ss["replicas"]; hasReplicas {
 			desired := intFromFloat(ss["replicas"])
 			ready := intFromFloat(ss["readyReplicas"])
@@ -224,10 +242,87 @@ func summarizeItem(raw interface{}) interface{} {
 				ss["health"] = "Degraded"
 			}
 		}
-		if len(ss) > 0 {
-			out["status"] = ss
+		// Job: derive health from completion/failure/active counters.
+		if kind == "Job" {
+			succeeded := intFromFloat(st["succeeded"])
+			failed := intFromFloat(st["failed"])
+			active := intFromFloat(st["active"])
+			switch {
+			case succeeded > 0:
+				ss["health"] = "Completed"
+			case failed > 0 && active == 0:
+				ss["health"] = "Failed"
+			case active > 0:
+				ss["health"] = "Running"
+			default:
+				ss["health"] = "Pending"
+			}
+		}
+		// CronJob: active jobs list indicates scheduling activity.
+		if kind == "CronJob" {
+			if active, ok := st["active"].([]interface{}); ok && len(active) > 0 {
+				ss["health"] = "Active"
+			} else {
+				ss["health"] = "Idle"
+			}
+		}
+		// Node: derive health from the Ready condition.
+		if kind == "Node" {
+			nodeHealth := "Unknown"
+			if conds, ok := st["conditions"].([]interface{}); ok {
+				for _, c := range conds {
+					if cm, ok := c.(map[string]interface{}); ok && cm["type"] == "Ready" {
+						switch cm["status"] {
+						case "True":
+							nodeHealth = "Ready"
+						case "False":
+							nodeHealth = "NotReady"
+						}
+					}
+				}
+			}
+			ss["health"] = nodeHealth
+		}
+		// Ingress: provisioned once loadBalancer.ingress is populated.
+		if kind == "Ingress" {
+			if lb, ok := st["loadBalancer"].(map[string]interface{}); ok {
+				if ingresses, ok := lb["ingress"].([]interface{}); ok && len(ingresses) > 0 {
+					ss["health"] = "Provisioned"
+				} else {
+					ss["health"] = "Pending"
+				}
+			} else {
+				ss["health"] = "Pending"
+			}
 		}
 	}
+
+	// Service: type lives in spec, not status. Show ClusterIP/NodePort/LoadBalancer
+	// as the STATUS value — more useful than any status field Services expose.
+	if kind == "Service" {
+		if sp, ok := m["spec"].(map[string]interface{}); ok {
+			if svcType, ok := sp["type"].(string); ok && svcType != "" {
+				ss["health"] = svcType
+			} else {
+				ss["health"] = "ClusterIP" // implicit default
+			}
+		}
+	}
+
+	// Fallback: any resource with no phase and no health after all of the
+	// above (ConfigMap, Secret, ServiceAccount, Role, RoleBinding,
+	// ClusterRole, ClusterRoleBinding, LimitRange, ResourceQuota, etc.)
+	// is effectively healthy by virtue of existing — mark it "Active".
+	if _, hasPhase := ss["phase"]; !hasPhase {
+		if _, hasHealth := ss["health"]; !hasHealth {
+			ss["health"] = "Active"
+		}
+	}
+
+	if len(ss) > 0 {
+		out["status"] = ss
+	}
+
 	if sp, ok := m["spec"].(map[string]interface{}); ok {
 		sp2 := map[string]interface{}{}
 		if v, ok := sp["nodeName"]; ok {
