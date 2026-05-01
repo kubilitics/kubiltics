@@ -50,3 +50,39 @@ func TestBuildSystemPrompt_MandatesClusterIDArg(t *testing.T) {
 		t.Fatalf("prompt must instruct the LLM to pass cluster_id in tool args, got: %s", p)
 	}
 }
+
+func TestBuildSystemPrompt_DescribeUsesInspectTools(t *testing.T) {
+	p := BuildSystemPrompt("c")
+	// "describe <resource>" must route to inspect_<kind>, not list_resources.
+	if !strings.Contains(p, "inspect_") {
+		t.Fatalf("prompt must mention inspect_<kind> tools for describe/show specific resource, got: %s", p)
+	}
+	if !strings.Contains(p, "NEVER call list_resources when the user mentions a specific resource name") {
+		t.Fatalf("prompt must forbid list_resources for specific-name queries, got: %s", p)
+	}
+}
+
+func TestBuildSystemPrompt_NamespaceUnknownUsesResolveResource(t *testing.T) {
+	p := BuildSystemPrompt("c")
+	if !strings.Contains(p, "resolve_resource") {
+		t.Fatalf("prompt must mention resolve_resource for namespace-unknown flows, got: %s", p)
+	}
+	lower := strings.ToLower(p)
+	if !strings.Contains(lower, "namespace unknown") {
+		t.Fatalf("prompt must have a NAMESPACE UNKNOWN section explaining resolve_resource flow, got: %s", p)
+	}
+}
+
+func TestBuildSystemPrompt_ObserveToolsNotForListing(t *testing.T) {
+	p := BuildSystemPrompt("c")
+	if !strings.Contains(p, "observe_* tools are for analytical health questions only") {
+		t.Fatalf("prompt must restrict observe_* tools from list/show queries, got: %s", p)
+	}
+}
+
+func TestBuildSystemPrompt_ProblemPodsHeuristic(t *testing.T) {
+	p := BuildSystemPrompt("c")
+	if !strings.Contains(p, "observe_problem_pods") {
+		t.Fatalf("prompt must route crashlooping/pending/oom queries to observe_problem_pods, got: %s", p)
+	}
+}
