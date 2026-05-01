@@ -325,7 +325,14 @@ impl BackendManager {
             //   KUBILITICS_AI_ENDPOINT             → brain gRPC (matches BRAIN_GRPC_PORT)
             //   KUBILITICS_AI_HTTP_ENDPOINT        → brain HTTP  (matches BRAIN_HTTP_PORT)
             .env("KUBILITICS_AI_ENABLED", "true")
-            .env("KUBILITICS_AI_ENDPOINT", format!("localhost:{}", BRAIN_GRPC_PORT))
+            .env("KUBILITICS_AI_ENDPOINT", {
+                // Use the resolved gRPC port from BrainManager so a port-fallback
+                // brain is still reachable from the backend.
+                self.app_handle
+                    .try_state::<Arc<BrainManager>>()
+                    .map(|m| m.grpc_target())
+                    .unwrap_or_else(|| format!("localhost:{}", BRAIN_GRPC_PORT))
+            })
             .env("KUBILITICS_AI_HTTP_ENDPOINT", {
                 // Use the resolved brain URL from BrainManager state so a
                 // port-fallback brain is still reachable from the backend.
@@ -613,6 +620,9 @@ pub struct BrainManager {
     /// Resolved HTTP port — equals BRAIN_HTTP_PORT in the common case; a
     /// different OS-assigned port when BRAIN_HTTP_PORT was already in use.
     resolved_http_port: Arc<Mutex<u16>>,
+    /// Resolved gRPC port — equals BRAIN_GRPC_PORT (50061) in the common case;
+    /// a different OS-assigned port when 50061 was already in use.
+    resolved_grpc_port: Arc<Mutex<u16>>,
 }
 
 impl BrainManager {
@@ -622,6 +632,7 @@ impl BrainManager {
             is_ready: Arc::new(Mutex::new(false)),
             brain_process: Arc::new(Mutex::new(None)),
             resolved_http_port: Arc::new(Mutex::new(BRAIN_HTTP_PORT)),
+            resolved_grpc_port: Arc::new(Mutex::new(BRAIN_GRPC_PORT)),
         }
     }
 
@@ -634,9 +645,19 @@ impl BrainManager {
         *self.resolved_http_port.lock().unwrap()
     }
 
+    /// gRPC port the brain sidecar is actually bound to.
+    pub fn grpc_port(&self) -> u16 {
+        *self.resolved_grpc_port.lock().unwrap()
+    }
+
     /// Base URL for HTTP calls to the brain (e.g. health checks, provider config).
     pub fn url(&self) -> String {
         format!("http://127.0.0.1:{}", self.port())
+    }
+
+    /// gRPC target for the brain (host:port, no scheme — for tonic/gRPC clients).
+    pub fn grpc_target(&self) -> String {
+        format!("localhost:{}", self.grpc_port())
     }
 
     pub async fn start(self: Arc<Self>) -> Result<(), Box<dyn std::error::Error>> {
@@ -690,9 +711,10 @@ impl BrainManager {
         // implicitly on Quick Connect AND is idempotent for returning
         // users. No repeating keychain dialogs.
         let http_port = self.port();
+        let grpc_port = self.grpc_port();
         let cmd = sidecar
             .env("KUBILITICS_AI_HTTP_PORT", http_port.to_string())
-            .env("KUBILITICS_AI_GRPC_PORT", BRAIN_GRPC_PORT.to_string())
+            .env("KUBILITICS_AI_GRPC_PORT", grpc_port.to_string())
             .env("KUBILITICS_DATABASE_PATH", data_dir.join("kubilitics-ai.db").to_string_lossy().as_ref())
             // Brain must know where the backend actually landed — use the resolved
             // port from BackendManager, not the compile-time default, so a backend
@@ -708,7 +730,7 @@ impl BrainManager {
         let (rx, child) = cmd.spawn()?;
         drain_sidecar_output(rx, "brain");
         *self.brain_process.lock().unwrap() = Some(child);
-        println!("kubilitics-ai-server started on http://localhost:{} (gRPC :{})", http_port, BRAIN_GRPC_PORT);
+        println!("kubilitics-ai-server started on http://localhost:{} (gRPC :{})", http_port, grpc_port);
 
         // Wait for /health.
         match self.wait_for_ready().await {
@@ -779,19 +801,31 @@ impl BrainManager {
 pub fn start_brain(app_handle: &AppHandle) -> Result<Arc<BrainManager>, Box<dyn std::error::Error>> {
     let manager = Arc::new(BrainManager::new(app_handle.clone()));
 
-    // Resolve brain HTTP port now (sync) so profile commands and the backend
-    // can read it via BrainManager::url() before the brain sidecar finishes starting.
+    // Resolve both brain ports now (sync) so all callers can read the real
+    // addresses via BrainManager methods before the async start completes.
     let resolved_http = if can_bind(BRAIN_HTTP_PORT) {
         BRAIN_HTTP_PORT
     } else {
         let fallback = pick_free_port().unwrap_or(BRAIN_HTTP_PORT);
         eprintln!(
-            "Brain port {} is occupied — using OS-assigned port {} instead",
+            "Brain HTTP port {} is occupied — using OS-assigned port {} instead",
             BRAIN_HTTP_PORT, fallback
         );
         fallback
     };
     *manager.resolved_http_port.lock().unwrap() = resolved_http;
+
+    let resolved_grpc = if can_bind(BRAIN_GRPC_PORT) {
+        BRAIN_GRPC_PORT
+    } else {
+        let fallback = pick_free_port().unwrap_or(BRAIN_GRPC_PORT);
+        eprintln!(
+            "Brain gRPC port {} is occupied — using OS-assigned port {} instead",
+            BRAIN_GRPC_PORT, fallback
+        );
+        fallback
+    };
+    *manager.resolved_grpc_port.lock().unwrap() = resolved_grpc;
 
     app_handle.manage(manager.clone());
     let manager_clone = manager.clone();
