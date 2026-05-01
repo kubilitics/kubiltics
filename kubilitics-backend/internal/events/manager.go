@@ -49,13 +49,20 @@ type PipelineManager struct {
 }
 
 // NewPipelineManager creates a manager that lazily creates per-cluster pipelines
-// sharing the same SQLite database.
+// sharing the same SQLite database. EnsureTables is called here as a
+// belt-and-suspenders guard: the SQL migration (053_causal_chains.sql) is the
+// canonical path, but this covers cases where the migration runner is skipped
+// (e.g. in-process SQLite on first launch before migrations apply).
 func NewPipelineManager(db *sqlx.DB) *PipelineManager {
-	return &PipelineManager{
+	m := &PipelineManager{
 		db:        db,
 		pipelines: make(map[string]*Pipeline),
 		startedAt: time.Now(),
 	}
+	if err := NewStore(db).EnsureTables(); err != nil {
+		log.Printf("events: EnsureTables: %v", err)
+	}
+	return m
 }
 
 // SetMetricsProvider configures a MetricsProvider applied to every pipeline.
