@@ -45,6 +45,57 @@ func toolDataSource(toolName string) string {
 	}
 }
 
+// toolDerivedFrom returns the list of data sources a tool reads from.
+// Used for the "derived_from" lineage field on every tool result.
+func toolDerivedFrom(toolName string) []string {
+	switch {
+	case toolName == "get_logs":
+		return []string{"logs-live"}
+	case toolName == "get_events":
+		return []string{"events-live"}
+	case strings.HasPrefix(toolName, "observe_top_"),
+		toolName == "observe_pod_metrics",
+		toolName == "get_resource_metrics":
+		return []string{"metrics-live"}
+	// Mixed: k8s-live + metrics
+	case toolName == "analyze_blast_radius",
+		toolName == "analyze_rollout_risk",
+		toolName == "narrate_capacity_report",
+		toolName == "cost_optimize_cluster":
+		return []string{"k8s-live", "metrics-live"}
+	// Mixed: k8s-live + events
+	case toolName == "analyze_failure_patterns",
+		toolName == "analyze_error_correlation",
+		toolName == "narrate_incident_timeline",
+		toolName == "narrate_weekly_status",
+		toolName == "diagnose_deployment_rollback_needed",
+		toolName == "diagnose_pod_not_ready",
+		toolName == "diagnose_pvc_pending",
+		toolName == "diagnose_ingress_404",
+		toolName == "diagnose_node_unschedulable":
+		return []string{"k8s-live", "events-live"}
+	// Pure derived from k8s-live
+	case strings.HasPrefix(toolName, "analyze_"),
+		strings.HasPrefix(toolName, "diagnose_"),
+		strings.HasPrefix(toolName, "troubleshoot_"),
+		strings.HasPrefix(toolName, "recommend_"),
+		strings.HasPrefix(toolName, "narrate_"),
+		strings.HasPrefix(toolName, "plan_"),
+		strings.HasPrefix(toolName, "security_"),
+		strings.HasPrefix(toolName, "cost_"),
+		strings.HasPrefix(toolName, "automation_"),
+		toolName == "observe_problem_pods",
+		toolName == "list_problems",
+		toolName == "triage_cluster",
+		toolName == "observe_services_by_filter",
+		toolName == "observe_cluster_risk",
+		toolName == "get_cluster_health":
+		return []string{"k8s-live"}
+	default:
+		return []string{"k8s-live"}
+	}
+}
+
 // injectToolMetadata annotates a successful tool result with data lineage and
 // latency. If the result is not a map (e.g. a raw string or array from a legacy
 // handler), it is wrapped in one. Existing keys are never overwritten so
@@ -56,6 +107,9 @@ func injectToolMetadata(result interface{}, toolName string, duration time.Durat
 	}
 	if _, has := m["data_source"]; !has {
 		m["data_source"] = toolDataSource(toolName)
+	}
+	if _, has := m["derived_from"]; !has {
+		m["derived_from"] = toolDerivedFrom(toolName)
 	}
 	if _, has := m["latency_ms"]; !has {
 		m["latency_ms"] = duration.Milliseconds()

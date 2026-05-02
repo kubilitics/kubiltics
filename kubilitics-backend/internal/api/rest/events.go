@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"sort"
 	"strconv"
+	"time"
 
 	"github.com/gorilla/mux"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -126,6 +127,34 @@ func (h *Handler) buildEvents(ctx context.Context, r *http.Request) (eventsRespo
 	}
 	involvedObjectKind := r.URL.Query().Get("involvedObjectKind")
 	involvedObjectName := r.URL.Query().Get("involvedObjectName")
+	eventType := r.URL.Query().Get("type")   // "Warning", "Normal", or "" for all
+	sinceParam := r.URL.Query().Get("since") // duration string: "1h", "30m", "24h" etc.
+
+	var sinceTime *time.Time
+	if sinceParam != "" {
+		if d, err := time.ParseDuration(sinceParam); err == nil {
+			t := time.Now().UTC().Add(-d)
+			sinceTime = &t
+		}
+	}
+
+	// filterEvents applies optional type and since filters to an event slice.
+	filterEvents := func(events []*models.Event) []*models.Event {
+		if eventType == "" && sinceTime == nil {
+			return events
+		}
+		out := events[:0:0]
+		for _, e := range events {
+			if eventType != "" && e.Type != eventType {
+				continue
+			}
+			if sinceTime != nil && !e.LastTimestamp.IsZero() && e.LastTimestamp.Before(*sinceTime) {
+				continue
+			}
+			out = append(out, e)
+		}
+		return out
+	}
 
 	// Pod-scoped (or any resource) events: last N events for the resource.
 	if involvedObjectKind != "" && involvedObjectName != "" {
@@ -137,6 +166,7 @@ func (h *Handler) buildEvents(ctx context.Context, r *http.Request) (eventsRespo
 		if err != nil {
 			return eventsResponse{}, err
 		}
+		events = filterEvents(events)
 		sortEventsByLastTimestampDesc(events)
 		if len(events) > limit {
 			events = events[:limit]
@@ -146,21 +176,40 @@ func (h *Handler) buildEvents(ctx context.Context, r *http.Request) (eventsRespo
 
 	// All namespaces.
 	if namespace == "" || namespace == "*" || namespace == "_all" {
-		events, err := h.eventsService.ListEventsAllNamespaces(ctx, clusterID, limit)
+		// Fetch more than limit before filtering so time/type filters don't
+		// reduce an already-truncated set. Cap at 500 to stay bounded.
+		fetchLimit := limit
+		if sinceTime != nil || eventType != "" {
+			fetchLimit = 500
+		}
+		events, err := h.eventsService.ListEventsAllNamespaces(ctx, clusterID, fetchLimit)
 		if err != nil {
 			return eventsResponse{}, err
+		}
+		events = filterEvents(events)
+		if len(events) > limit {
+			events = events[:limit]
 		}
 		return eventsResponse{PodOnly: events}, nil
 	}
 
-	// Single namespace: paginated.
-	opts := metav1.ListOptions{Limit: int64(limit)}
+	// Single namespace: paginated. Fetch extra when filtering so the caller
+	// sees up to `limit` results after the since/type filter is applied.
+	fetchLimit := int64(limit)
+	if sinceTime != nil || eventType != "" {
+		fetchLimit = 500
+	}
+	opts := metav1.ListOptions{Limit: fetchLimit}
 	if continueToken := r.URL.Query().Get("continue"); continueToken != "" {
 		opts.Continue = continueToken
 	}
 	listMeta, events, err := h.eventsService.ListEvents(ctx, clusterID, namespace, opts)
 	if err != nil {
 		return eventsResponse{}, err
+	}
+	events = filterEvents(events)
+	if len(events) > limit {
+		events = events[:limit]
 	}
 	total := int64(len(events))
 	if listMeta != nil && listMeta.GetRemainingItemCount() != nil {

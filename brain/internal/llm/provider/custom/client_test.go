@@ -34,7 +34,7 @@ func TestNewCustomClient(t *testing.T) {
 			baseURL:   "http://localhost:8000/v1",
 			apiKey:    "test-key",
 			model:     "llama-2-7b",
-			wantError: true, // Will fail to connect
+			wantError: false, // Connection probe failure is non-fatal; error deferred to chat call
 		},
 	}
 
