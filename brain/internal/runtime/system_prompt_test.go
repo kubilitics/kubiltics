@@ -86,3 +86,15 @@ func TestBuildSystemPrompt_ProblemPodsHeuristic(t *testing.T) {
 		t.Fatalf("prompt must route crashlooping/pending/oom queries to observe_problem_pods, got: %s", p)
 	}
 }
+
+func TestBuildSystemPrompt_ExplainRoutesToInspect(t *testing.T) {
+	p := BuildSystemPrompt("c")
+	// "explain <kind> <name>" must route to inspect_<kind>, not get_resource.
+	lower := strings.ToLower(p)
+	if !strings.Contains(lower, "explain") {
+		t.Fatalf("prompt must include 'explain' in the describe/inspect routing pattern, got: %s", p)
+	}
+	if !strings.Contains(p, "NEVER call get_resource for user-facing describe/explain/inspect queries") {
+		t.Fatalf("prompt must forbid get_resource for user-facing queries, got: %s", p)
+	}
+}
