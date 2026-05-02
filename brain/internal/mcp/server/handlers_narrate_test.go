@@ -54,3 +54,56 @@ func TestNarrate_DispatchRegistered(t *testing.T) {
 		})
 	}
 }
+
+func TestNarrateWeeklyStatus_IncludesClusterData(t *testing.T) {
+	fb := newFakeBackend(t)
+	fb.registerCluster()
+	fb.register("/clusters/"+testClusterID+"/overview", map[string]interface{}{"summary": "ok"})
+	fb.register("/clusters/"+testClusterID+"/events", []interface{}{})
+	fb.register("/clusters/"+testClusterID+"/resources/pods", map[string]interface{}{"items": []interface{}{}})
+	s := newTestServer(t, fb.server.URL)
+	result, matched, err := s.routeNarrateTool(context.Background(), "narrate_weekly_status", map[string]interface{}{})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !matched {
+		t.Fatal("narrate_weekly_status must be matched by routeNarrateTool")
+	}
+	m, ok := result.(map[string]interface{})
+	if !ok {
+		t.Fatalf("expected map, got %T", result)
+	}
+	if _, ok := m["narrative_prompt"]; !ok {
+		t.Errorf("narrate tool must return narrative_prompt key, got: %v", mapKeysNarrate(m))
+	}
+}
+
+func TestNarrateIncidentTimeline_ReturnsHint(t *testing.T) {
+	fb := newFakeBackend(t)
+	fb.registerCluster()
+	fb.register("/clusters/"+testClusterID+"/events", []interface{}{})
+	fb.register("/clusters/"+testClusterID+"/resources/pods", map[string]interface{}{"items": []interface{}{}})
+	s := newTestServer(t, fb.server.URL)
+	result, matched, err := s.routeNarrateTool(context.Background(), "narrate_incident_timeline", map[string]interface{}{})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !matched {
+		t.Fatal("narrate_incident_timeline must be matched")
+	}
+	m, ok := result.(map[string]interface{})
+	if !ok {
+		t.Fatalf("expected map, got %T", result)
+	}
+	if _, ok := m["narrative_prompt"]; !ok {
+		t.Errorf("narrate_incident_timeline must return narrative_prompt, got: %v", mapKeysNarrate(m))
+	}
+}
+
+func mapKeysNarrate(m map[string]interface{}) []string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	return keys
+}
