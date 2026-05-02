@@ -389,13 +389,15 @@ func TestHandleAnalyzeResourceEfficiency_ReturnsFindingsAndCount(t *testing.T) {
 	}
 }
 
-func TestHandleAnalyzeBlastRadius_RequiresKindAndName(t *testing.T) {
+func TestHandleAnalyzeBlastRadius_ScopeResourceRequiresKindAndName(t *testing.T) {
+	// scope=resource without kind/name must error; namespace-only is valid (scope=namespace).
 	s := newTestServer(t, "http://unused")
 	_, err := s.handleAnalyzeBlastRadius(context.Background(), map[string]interface{}{
+		"scope":     "resource",
 		"namespace": "default",
 	})
 	if err == nil {
-		t.Error("expected error for missing kind/name")
+		t.Error("expected error for scope=resource without kind/name")
 	}
 }
 
