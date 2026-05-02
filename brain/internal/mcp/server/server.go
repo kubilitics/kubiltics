@@ -480,15 +480,11 @@ func (s *mcpServerImpl) registerAllTools() error {
 		totalTools++
 	}
 
-	// Register action tools
-	actionTools := tools.GetToolsByCategory(tools.CategoryAction)
-	for _, toolDef := range actionTools {
-		handler := s.createActionHandler(&toolDef)
-		if err := s.registerToolWithCategory(toolDef.Name, toolDef.Description, toolDef.InputSchema, handler, string(toolDef.Category), toolDef.Destructive, toolDef.RequiresAI, toolDef.RequiredAutonomyLevel); err != nil {
-			return fmt.Errorf("failed to register action tool %s: %w", toolDef.Name, err)
-		}
-		totalTools++
-	}
+	// NOTE: action_* tools (CategoryAction) are intentionally NOT registered here.
+	// action_restart_workload, action_apply_manifest, action_rollback_deployment, and
+	// action_execute_command always returned an approval-required error and confused the LLM.
+	// Use the safety-gated execution tools (restart_pod, scale_deployment, rollback_deployment)
+	// registered below instead.
 
 	// Register automation tools
 	automationTools := tools.GetToolsByCategory(tools.CategoryAutomation)
@@ -511,7 +507,7 @@ func (s *mcpServerImpl) registerAllTools() error {
 	}
 
 	s.auditLog.Log(context.Background(), audit.NewEvent(audit.EventServerStarted).
-		WithDescription(fmt.Sprintf("Registered %d tools across 9 categories (includes 12 deep-analysis A-CORE-003 tools and 9 safety-gated A-CORE-004 execution tools)", totalTools)).
+		WithDescription(fmt.Sprintf("Registered %d tools across 8 categories (includes 12 deep-analysis A-CORE-003 tools and 9 safety-gated A-CORE-004 execution tools; action_* tools removed — use execution tools instead)", totalTools)).
 		WithResult(audit.ResultSuccess))
 
 	return nil

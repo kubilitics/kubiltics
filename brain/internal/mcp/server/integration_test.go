@@ -213,6 +213,8 @@ func TestMCPServerToolCategoryCoverage(t *testing.T) {
 	}
 
 	// Minimum expected per category (taxonomy grows; e.g. observe_pod_events for pod-intelligence).
+	// NOTE: "action" category is intentionally absent — action_* tools are not registered in
+	// the LLM tool list (they always errored). Use execution tools (restart_pod etc.) instead.
 	expectedMin := map[string]int{
 		"observation":     17,
 		"analysis":        24,
@@ -220,7 +222,6 @@ func TestMCPServerToolCategoryCoverage(t *testing.T) {
 		"troubleshooting": 7,
 		"security":        5,
 		"cost":            4,
-		"action":          4,
 		"automation":      4,
 		"execution":       9,
 	}
