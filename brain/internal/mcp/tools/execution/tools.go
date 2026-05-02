@@ -12,20 +12,25 @@ package execution
 //   update_resource_limits, trigger_hpa_scale
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
+	"strings"
 	"time"
 
-	pb "github.com/vellankikoti/kubilitics/brain/api/proto/v1"
 	"github.com/vellankikoti/kubilitics/brain/internal/audit"
-	"github.com/vellankikoti/kubilitics/brain/internal/integration/backend"
 	"github.com/vellankikoti/kubilitics/brain/internal/safety"
 )
 
-// ExecutionProxyInterface enables test injection for the backend proxy.
-type ExecutionProxyInterface interface {
-	ExecuteCommand(ctx context.Context, operation string, target *pb.Resource, params []byte, dryRun bool) (*pb.CommandResult, error)
+// HTTPExecutor abstracts REST calls to the kubilitics-backend API.
+// The three methods map to the three HTTP verbs used by execution tools.
+type HTTPExecutor interface {
+	Post(ctx context.Context, path string, body interface{}) (map[string]interface{}, int, error)
+	Patch(ctx context.Context, path string, body interface{}) (map[string]interface{}, int, error)
+	Delete(ctx context.Context, path string, headers map[string]string) (map[string]interface{}, int, error)
 }
 
 // SafetyEvaluator enables test injection for the safety engine.
@@ -35,20 +40,21 @@ type SafetyEvaluator interface {
 
 // ExecutionTools holds all execution tool implementations.
 type ExecutionTools struct {
-	proxy    ExecutionProxyInterface
+	http     HTTPExecutor
 	safety   SafetyEvaluator
 	auditLog audit.Logger
 }
 
-// NewExecutionTools creates a new ExecutionTools instance.
-func NewExecutionTools(proxy *backend.Proxy, safetyEngine *safety.Engine, auditLog audit.Logger) *ExecutionTools {
-	return NewExecutionToolsWithDeps(proxy, safetyEngine, auditLog)
+// NewExecutionTools creates a new ExecutionTools instance using the backend base URL.
+func NewExecutionTools(backendBaseURL string, safetyEngine *safety.Engine, auditLog audit.Logger) *ExecutionTools {
+	return NewExecutionToolsWithDeps(newDefaultHTTPExecutor(backendBaseURL), safetyEngine, auditLog)
 }
 
-// NewExecutionToolsWithDeps creates a new ExecutionTools instance with injected dependencies (for testing).
-func NewExecutionToolsWithDeps(proxy ExecutionProxyInterface, safetyEval SafetyEvaluator, auditLog audit.Logger) *ExecutionTools {
+// NewExecutionToolsWithDeps creates a new ExecutionTools instance with injected
+// dependencies (used in tests).
+func NewExecutionToolsWithDeps(httpExec HTTPExecutor, safetyEval SafetyEvaluator, auditLog audit.Logger) *ExecutionTools {
 	return &ExecutionTools{
-		proxy:    proxy,
+		http:     httpExec,
 		safety:   safetyEval,
 		auditLog: auditLog,
 	}
@@ -102,6 +108,7 @@ func safetyDenied(result *safety.SafetyResult) (interface{}, error) {
 // ─── restart_pod (Autonomy Level 2) ───────────────────────────────────────────
 
 type restartPodArgs struct {
+	ClusterID     string `json:"cluster_id,omitempty"`
 	Namespace     string `json:"namespace"`
 	Name          string `json:"name"`
 	Justification string `json:"justification,omitempty"`
@@ -109,6 +116,7 @@ type restartPodArgs struct {
 }
 
 // RestartPod deletes a pod to trigger a restart (Level 2 — semi-autonomous).
+// Uses DELETE /api/v1/clusters/{clusterId}/resources/pods/{namespace}/{name}
 func (t *ExecutionTools) RestartPod(ctx context.Context, args map[string]interface{}) (interface{}, error) {
 	var a restartPodArgs
 	if err := decodeArgs(args, &a); err != nil {
@@ -126,9 +134,6 @@ func (t *ExecutionTools) RestartPod(ctx context.Context, args map[string]interfa
 		return safetyDenied(result)
 	}
 
-	target := &pb.Resource{Kind: "Pod", Namespace: a.Namespace, Name: a.Name}
-	params, _ := json.Marshal(map[string]interface{}{"grace_period": 0})
-
 	if a.DryRun {
 		return map[string]interface{}{
 			"dry_run":   true,
@@ -139,7 +144,12 @@ func (t *ExecutionTools) RestartPod(ctx context.Context, args map[string]interfa
 		}, nil
 	}
 
-	cmdResult, err := t.proxy.ExecuteCommand(ctx, "delete_pod", target, params, false)
+	clusterID := strExecArg(args, "cluster_id")
+	path := fmt.Sprintf("/api/v1/clusters/%s/resources/pods/%s/%s",
+		clusterID, a.Namespace, a.Name)
+	resp, status, err := t.http.Delete(ctx, path, map[string]string{
+		"X-Confirm-Destructive": "true",
+	})
 	if err != nil {
 		return nil, fmt.Errorf("restart_pod: %w", err)
 	}
@@ -152,14 +162,15 @@ func (t *ExecutionTools) RestartPod(ctx context.Context, args map[string]interfa
 		"approved":  true,
 		"pod":       a.Name,
 		"namespace": a.Namespace,
-		"success":   cmdResult.Success,
-		"message":   cmdResult.Message,
+		"success":   status < 300,
+		"message":   responseMessage(resp, status),
 	}, nil
 }
 
 // ─── scale_deployment (Autonomy Level 3) ──────────────────────────────────────
 
 type scaleDeploymentArgs struct {
+	ClusterID     string `json:"cluster_id,omitempty"`
 	Namespace     string `json:"namespace"`
 	Name          string `json:"name"`
 	Replicas      int    `json:"replicas"`
@@ -168,6 +179,7 @@ type scaleDeploymentArgs struct {
 }
 
 // ScaleDeployment changes the replica count of a deployment (Level 3).
+// Uses PATCH /api/v1/clusters/{clusterId}/resources/deployments/{namespace}/{name}
 func (t *ExecutionTools) ScaleDeployment(ctx context.Context, args map[string]interface{}) (interface{}, error) {
 	var a scaleDeploymentArgs
 	if err := decodeArgs(args, &a); err != nil {
@@ -200,10 +212,12 @@ func (t *ExecutionTools) ScaleDeployment(ctx context.Context, args map[string]in
 		}, nil
 	}
 
-	target := &pb.Resource{Kind: "Deployment", Namespace: a.Namespace, Name: a.Name}
-	params, _ := json.Marshal(map[string]interface{}{"replicas": a.Replicas})
-
-	cmdResult, err := t.proxy.ExecuteCommand(ctx, "scale", target, params, false)
+	clusterID := strExecArg(args, "cluster_id")
+	path := fmt.Sprintf("/api/v1/clusters/%s/resources/Deployment/%s/%s",
+		clusterID, a.Namespace, a.Name)
+	resp, status, err := t.http.Patch(ctx, path, map[string]interface{}{
+		"spec": map[string]interface{}{"replicas": a.Replicas},
+	})
 	if err != nil {
 		return nil, fmt.Errorf("scale_deployment: %w", err)
 	}
@@ -217,20 +231,22 @@ func (t *ExecutionTools) ScaleDeployment(ctx context.Context, args map[string]in
 		"name":      a.Name,
 		"namespace": a.Namespace,
 		"replicas":  a.Replicas,
-		"success":   cmdResult.Success,
-		"message":   cmdResult.Message,
+		"success":   status < 300,
+		"message":   responseMessage(resp, status),
 	}, nil
 }
 
 // ─── cordon_node (Autonomy Level 3) ───────────────────────────────────────────
 
 type cordonNodeArgs struct {
+	ClusterID     string `json:"cluster_id,omitempty"`
 	Name          string `json:"name"`
 	Justification string `json:"justification,omitempty"`
 	DryRun        bool   `json:"dry_run,omitempty"`
 }
 
 // CordonNode marks a node as unschedulable (Level 3).
+// Uses POST /api/v1/clusters/{clusterId}/resources/nodes/{name}/cordon
 func (t *ExecutionTools) CordonNode(ctx context.Context, args map[string]interface{}) (interface{}, error) {
 	var a cordonNodeArgs
 	if err := decodeArgs(args, &a); err != nil {
@@ -258,10 +274,11 @@ func (t *ExecutionTools) CordonNode(ctx context.Context, args map[string]interfa
 		}, nil
 	}
 
-	target := &pb.Resource{Kind: "Node", Name: a.Name}
-	params, _ := json.Marshal(map[string]interface{}{"unschedulable": true})
-
-	cmdResult, err := t.proxy.ExecuteCommand(ctx, "cordon", target, params, false)
+	clusterID := strExecArg(args, "cluster_id")
+	path := fmt.Sprintf("/api/v1/clusters/%s/resources/nodes/%s/cordon", clusterID, a.Name)
+	resp, status, err := t.http.Post(ctx, path, map[string]interface{}{
+		"unschedulable": true,
+	})
 	if err != nil {
 		return nil, fmt.Errorf("cordon_node: %w", err)
 	}
@@ -273,14 +290,15 @@ func (t *ExecutionTools) CordonNode(ctx context.Context, args map[string]interfa
 	return map[string]interface{}{
 		"approved": true,
 		"node":     a.Name,
-		"success":  cmdResult.Success,
-		"message":  cmdResult.Message,
+		"success":  status < 300,
+		"message":  responseMessage(resp, status),
 	}, nil
 }
 
 // ─── drain_node (Autonomy Level 4) ────────────────────────────────────────────
 
 type drainNodeArgs struct {
+	ClusterID          string `json:"cluster_id,omitempty"`
 	Name               string `json:"name"`
 	GracePeriod        int    `json:"grace_period_seconds,omitempty"`
 	IgnoreDaemonSets   bool   `json:"ignore_daemon_sets,omitempty"`
@@ -290,6 +308,7 @@ type drainNodeArgs struct {
 }
 
 // DrainNode evicts all pods from a node (Level 4 — requires explicit approval).
+// Uses POST /api/v1/clusters/{clusterId}/resources/nodes/{name}/drain
 func (t *ExecutionTools) DrainNode(ctx context.Context, args map[string]interface{}) (interface{}, error) {
 	var a drainNodeArgs
 	if err := decodeArgs(args, &a); err != nil {
@@ -324,14 +343,13 @@ func (t *ExecutionTools) DrainNode(ctx context.Context, args map[string]interfac
 		}, nil
 	}
 
-	target := &pb.Resource{Kind: "Node", Name: a.Name}
-	params, _ := json.Marshal(map[string]interface{}{
-		"grace_period":         a.GracePeriod,
-		"ignore_daemon_sets":   a.IgnoreDaemonSets,
-		"delete_emptydir_data": a.DeleteEmptyDirData,
+	clusterID := strExecArg(args, "cluster_id")
+	path := fmt.Sprintf("/api/v1/clusters/%s/resources/nodes/%s/drain", clusterID, a.Name)
+	resp, status, err := t.http.Post(ctx, path, map[string]interface{}{
+		"grace_period_seconds":  a.GracePeriod,
+		"ignore_daemon_sets":    a.IgnoreDaemonSets,
+		"delete_emptydir_data":  a.DeleteEmptyDirData,
 	})
-
-	cmdResult, err := t.proxy.ExecuteCommand(ctx, "drain", target, params, false)
 	if err != nil {
 		return nil, fmt.Errorf("drain_node: %w", err)
 	}
@@ -343,14 +361,15 @@ func (t *ExecutionTools) DrainNode(ctx context.Context, args map[string]interfac
 	return map[string]interface{}{
 		"approved": true,
 		"node":     a.Name,
-		"success":  cmdResult.Success,
-		"message":  cmdResult.Message,
+		"success":  status < 300,
+		"message":  responseMessage(resp, status),
 	}, nil
 }
 
 // ─── apply_resource_patch (Autonomy Level 4) ──────────────────────────────────
 
 type applyResourcePatchArgs struct {
+	ClusterID     string                 `json:"cluster_id,omitempty"`
 	Namespace     string                 `json:"namespace"`
 	Kind          string                 `json:"kind"`
 	Name          string                 `json:"name"`
@@ -360,7 +379,8 @@ type applyResourcePatchArgs struct {
 	DryRun        bool                   `json:"dry_run,omitempty"`
 }
 
-// ApplyResourcePatch applies a JSON merge or strategic merge patch to a resource.
+// ApplyResourcePatch applies a JSON merge patch to a resource.
+// Uses PATCH /api/v1/clusters/{clusterId}/resources/{kind}/{namespace}/{name}
 func (t *ExecutionTools) ApplyResourcePatch(ctx context.Context, args map[string]interface{}) (interface{}, error) {
 	var a applyResourcePatchArgs
 	if err := decodeArgs(args, &a); err != nil {
@@ -394,13 +414,10 @@ func (t *ExecutionTools) ApplyResourcePatch(ctx context.Context, args map[string
 		}, nil
 	}
 
-	target := &pb.Resource{Kind: a.Kind, Namespace: a.Namespace, Name: a.Name}
-	params, _ := json.Marshal(map[string]interface{}{
-		"patch":      a.Patch,
-		"patch_type": a.PatchType,
-	})
-
-	cmdResult, err := t.proxy.ExecuteCommand(ctx, "patch", target, params, false)
+	clusterID := strExecArg(args, "cluster_id")
+	path := fmt.Sprintf("/api/v1/clusters/%s/resources/%s/%s/%s",
+		clusterID, a.Kind, a.Namespace, a.Name)
+	resp, status, err := t.http.Patch(ctx, path, a.Patch)
 	if err != nil {
 		return nil, fmt.Errorf("apply_resource_patch: %w", err)
 	}
@@ -412,14 +429,15 @@ func (t *ExecutionTools) ApplyResourcePatch(ctx context.Context, args map[string
 	return map[string]interface{}{
 		"approved": true,
 		"resource": fmt.Sprintf("%s/%s/%s", a.Kind, a.Namespace, a.Name),
-		"success":  cmdResult.Success,
-		"message":  cmdResult.Message,
+		"success":  status < 300,
+		"message":  responseMessage(resp, status),
 	}, nil
 }
 
 // ─── delete_resource (Autonomy Level 5) ───────────────────────────────────────
 
 type deleteResourceArgs struct {
+	ClusterID          string `json:"cluster_id,omitempty"`
 	Namespace          string `json:"namespace"`
 	Kind               string `json:"kind"`
 	Name               string `json:"name"`
@@ -429,6 +447,7 @@ type deleteResourceArgs struct {
 }
 
 // DeleteResource deletes a resource (Level 5 — most restrictive, always requires human approval).
+// Uses DELETE /api/v1/clusters/{clusterId}/resources/{kind}/{namespace}/{name}
 func (t *ExecutionTools) DeleteResource(ctx context.Context, args map[string]interface{}) (interface{}, error) {
 	var a deleteResourceArgs
 	if err := decodeArgs(args, &a); err != nil {
@@ -455,10 +474,12 @@ func (t *ExecutionTools) DeleteResource(ctx context.Context, args map[string]int
 		}, nil
 	}
 
-	target := &pb.Resource{Kind: a.Kind, Namespace: a.Namespace, Name: a.Name}
-	params, _ := json.Marshal(map[string]interface{}{"grace_period": a.GracePeriodSeconds})
-
-	cmdResult, err := t.proxy.ExecuteCommand(ctx, "delete", target, params, false)
+	clusterID := strExecArg(args, "cluster_id")
+	path := fmt.Sprintf("/api/v1/clusters/%s/resources/%s/%s/%s",
+		clusterID, a.Kind, a.Namespace, a.Name)
+	resp, status, err := t.http.Delete(ctx, path, map[string]string{
+		"X-Confirm-Destructive": "true",
+	})
 	if err != nil {
 		return nil, fmt.Errorf("delete_resource: %w", err)
 	}
@@ -470,14 +491,15 @@ func (t *ExecutionTools) DeleteResource(ctx context.Context, args map[string]int
 	return map[string]interface{}{
 		"approved": true,
 		"resource": fmt.Sprintf("%s/%s/%s", a.Kind, a.Namespace, a.Name),
-		"success":  cmdResult.Success,
-		"message":  cmdResult.Message,
+		"success":  status < 300,
+		"message":  responseMessage(resp, status),
 	}, nil
 }
 
 // ─── rollback_deployment (Autonomy Level 3) ───────────────────────────────────
 
 type rollbackDeploymentArgs struct {
+	ClusterID     string `json:"cluster_id,omitempty"`
 	Namespace     string `json:"namespace"`
 	Name          string `json:"name"`
 	Revision      int    `json:"revision,omitempty"` // 0 = previous
@@ -486,6 +508,7 @@ type rollbackDeploymentArgs struct {
 }
 
 // RollbackDeployment rolls back a deployment to a previous revision.
+// Uses POST /api/v1/clusters/{clusterId}/resources/deployments/{namespace}/{name}/rollback
 func (t *ExecutionTools) RollbackDeployment(ctx context.Context, args map[string]interface{}) (interface{}, error) {
 	var a rollbackDeploymentArgs
 	if err := decodeArgs(args, &a); err != nil {
@@ -515,10 +538,12 @@ func (t *ExecutionTools) RollbackDeployment(ctx context.Context, args map[string
 		}, nil
 	}
 
-	target := &pb.Resource{Kind: "Deployment", Namespace: a.Namespace, Name: a.Name}
-	params, _ := json.Marshal(map[string]interface{}{"revision": a.Revision})
-
-	cmdResult, err := t.proxy.ExecuteCommand(ctx, "rollback", target, params, false)
+	clusterID := strExecArg(args, "cluster_id")
+	path := fmt.Sprintf("/api/v1/clusters/%s/resources/deployments/%s/%s/rollback",
+		clusterID, a.Namespace, a.Name)
+	resp, status, err := t.http.Post(ctx, path, map[string]interface{}{
+		"revision": a.Revision,
+	})
 	if err != nil {
 		return nil, fmt.Errorf("rollback_deployment: %w", err)
 	}
@@ -532,14 +557,15 @@ func (t *ExecutionTools) RollbackDeployment(ctx context.Context, args map[string
 		"name":      a.Name,
 		"namespace": a.Namespace,
 		"revision":  a.Revision,
-		"success":   cmdResult.Success,
-		"message":   cmdResult.Message,
+		"success":   status < 300,
+		"message":   responseMessage(resp, status),
 	}, nil
 }
 
 // ─── update_resource_limits (Autonomy Level 3) ────────────────────────────────
 
 type updateResourceLimitsArgs struct {
+	ClusterID     string `json:"cluster_id,omitempty"`
 	Namespace     string `json:"namespace"`
 	Kind          string `json:"kind"`
 	Name          string `json:"name"`
@@ -553,6 +579,7 @@ type updateResourceLimitsArgs struct {
 }
 
 // UpdateResourceLimits patches resource requests/limits on a container.
+// Uses PATCH /api/v1/clusters/{clusterId}/resources/{kind}/{namespace}/{name}
 func (t *ExecutionTools) UpdateResourceLimits(ctx context.Context, args map[string]interface{}) (interface{}, error) {
 	var a updateResourceLimitsArgs
 	if err := decodeArgs(args, &a); err != nil {
@@ -582,13 +609,10 @@ func (t *ExecutionTools) UpdateResourceLimits(ctx context.Context, args map[stri
 		}, nil
 	}
 
-	target := &pb.Resource{Kind: a.Kind, Namespace: a.Namespace, Name: a.Name}
-	params, _ := json.Marshal(map[string]interface{}{
-		"patch":      patch,
-		"patch_type": "strategic",
-	})
-
-	cmdResult, err := t.proxy.ExecuteCommand(ctx, "patch", target, params, false)
+	clusterID := strExecArg(args, "cluster_id")
+	path := fmt.Sprintf("/api/v1/clusters/%s/resources/%s/%s/%s",
+		clusterID, a.Kind, a.Namespace, a.Name)
+	resp, status, err := t.http.Patch(ctx, path, patch)
 	if err != nil {
 		return nil, fmt.Errorf("update_resource_limits: %w", err)
 	}
@@ -602,8 +626,8 @@ func (t *ExecutionTools) UpdateResourceLimits(ctx context.Context, args map[stri
 		"approved":  true,
 		"resource":  fmt.Sprintf("%s/%s/%s", a.Kind, a.Namespace, a.Name),
 		"container": a.ContainerName,
-		"success":   cmdResult.Success,
-		"message":   cmdResult.Message,
+		"success":   status < 300,
+		"message":   responseMessage(resp, status),
 	}, nil
 }
 
@@ -649,6 +673,7 @@ func buildResourceLimitsPatch(a updateResourceLimitsArgs) map[string]interface{}
 // ─── trigger_hpa_scale (Autonomy Level 4) ─────────────────────────────────────
 
 type triggerHPAScaleArgs struct {
+	ClusterID      string `json:"cluster_id,omitempty"`
 	Namespace      string `json:"namespace"`
 	Name           string `json:"name"`
 	TargetReplicas int    `json:"target_replicas"`
@@ -656,7 +681,8 @@ type triggerHPAScaleArgs struct {
 	DryRun         bool   `json:"dry_run,omitempty"`
 }
 
-// TriggerHPAScale manually overrides HPA target replica count.
+// TriggerHPAScale manually overrides HPA min/max replica counts.
+// Uses PATCH /api/v1/clusters/{clusterId}/resources/HorizontalPodAutoscaler/{namespace}/{name}
 func (t *ExecutionTools) TriggerHPAScale(ctx context.Context, args map[string]interface{}) (interface{}, error) {
 	var a triggerHPAScaleArgs
 	if err := decodeArgs(args, &a); err != nil {
@@ -689,10 +715,15 @@ func (t *ExecutionTools) TriggerHPAScale(ctx context.Context, args map[string]in
 		}, nil
 	}
 
-	target := &pb.Resource{Kind: "HorizontalPodAutoscaler", Namespace: a.Namespace, Name: a.Name}
-	params, _ := json.Marshal(map[string]interface{}{"target_replicas": a.TargetReplicas})
-
-	cmdResult, err := t.proxy.ExecuteCommand(ctx, "scale_hpa", target, params, false)
+	clusterID := strExecArg(args, "cluster_id")
+	path := fmt.Sprintf("/api/v1/clusters/%s/resources/HorizontalPodAutoscaler/%s/%s",
+		clusterID, a.Namespace, a.Name)
+	resp, status, err := t.http.Patch(ctx, path, map[string]interface{}{
+		"spec": map[string]interface{}{
+			"minReplicas": a.TargetReplicas,
+			"maxReplicas": a.TargetReplicas,
+		},
+	})
 	if err != nil {
 		return nil, fmt.Errorf("trigger_hpa_scale: %w", err)
 	}
@@ -707,9 +738,87 @@ func (t *ExecutionTools) TriggerHPAScale(ctx context.Context, args map[string]in
 		"hpa":             a.Name,
 		"namespace":       a.Namespace,
 		"target_replicas": a.TargetReplicas,
-		"success":         cmdResult.Success,
-		"message":         cmdResult.Message,
+		"success":         status < 300,
+		"message":         responseMessage(resp, status),
 	}, nil
+}
+
+// ─── defaultHTTPExecutor ──────────────────────────────────────────────────────
+
+// defaultHTTPExecutor implements HTTPExecutor using Go's net/http.
+type defaultHTTPExecutor struct {
+	baseURL    string
+	httpClient *http.Client
+}
+
+func newDefaultHTTPExecutor(baseURL string) *defaultHTTPExecutor {
+	if baseURL == "" {
+		baseURL = "http://localhost:8190"
+	}
+	return &defaultHTTPExecutor{
+		baseURL: strings.TrimSuffix(baseURL, "/"),
+		httpClient: &http.Client{
+			Timeout: 30 * time.Second,
+			Transport: &http.Transport{
+				MaxIdleConns:        100,
+				MaxIdleConnsPerHost: 20,
+				IdleConnTimeout:     90 * time.Second,
+			},
+		},
+	}
+}
+
+func (e *defaultHTTPExecutor) Post(ctx context.Context, path string, body interface{}) (map[string]interface{}, int, error) {
+	return e.doJSON(ctx, http.MethodPost, path, body, nil)
+}
+
+func (e *defaultHTTPExecutor) Patch(ctx context.Context, path string, body interface{}) (map[string]interface{}, int, error) {
+	return e.doJSON(ctx, http.MethodPatch, path, body, nil)
+}
+
+func (e *defaultHTTPExecutor) Delete(ctx context.Context, path string, headers map[string]string) (map[string]interface{}, int, error) {
+	return e.doJSON(ctx, http.MethodDelete, path, nil, headers)
+}
+
+func (e *defaultHTTPExecutor) doJSON(ctx context.Context, method, path string, body interface{}, extraHeaders map[string]string) (map[string]interface{}, int, error) {
+	var bodyReader io.Reader
+	if body != nil {
+		b, err := json.Marshal(body)
+		if err != nil {
+			return nil, 0, fmt.Errorf("marshal request body: %w", err)
+		}
+		bodyReader = bytes.NewReader(b)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, method, e.baseURL+path, bodyReader)
+	if err != nil {
+		return nil, 0, fmt.Errorf("create request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json")
+	for k, v := range extraHeaders {
+		req.Header.Set(k, v)
+	}
+
+	resp, err := e.httpClient.Do(req)
+	if err != nil {
+		return nil, 0, fmt.Errorf("%s %s: %w", method, path, err)
+	}
+	defer resp.Body.Close()
+
+	respBody, _ := io.ReadAll(resp.Body)
+	var result map[string]interface{}
+	if len(respBody) > 0 {
+		_ = json.Unmarshal(respBody, &result)
+	}
+	if result == nil {
+		result = map[string]interface{}{}
+	}
+
+	if resp.StatusCode >= 400 {
+		return result, resp.StatusCode, fmt.Errorf("%s %s: HTTP %d: %s", method, path, resp.StatusCode, truncateExec(string(respBody), 200))
+	}
+	return result, resp.StatusCode, nil
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -720,4 +829,28 @@ func decodeArgs(args map[string]interface{}, target interface{}) error {
 		return err
 	}
 	return json.Unmarshal(b, target)
+}
+
+// strExecArg extracts a string value from args by key.
+func strExecArg(args map[string]interface{}, key string) string {
+	v, _ := args[key].(string)
+	return v
+}
+
+// responseMessage extracts a human-readable message from an HTTP response map.
+func responseMessage(resp map[string]interface{}, status int) string {
+	if msg, ok := resp["message"].(string); ok && msg != "" {
+		return msg
+	}
+	if status < 300 {
+		return "ok"
+	}
+	return fmt.Sprintf("HTTP %d", status)
+}
+
+func truncateExec(s string, n int) string {
+	if len(s) <= n {
+		return s
+	}
+	return s[:n] + "…"
 }

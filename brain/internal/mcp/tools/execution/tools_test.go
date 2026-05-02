@@ -2,15 +2,15 @@ package execution_test
 
 // Comprehensive tests for all 9 safety-gated execution tools (A-CORE-004).
 //
-// Strategy: inject fakeProxy (satisfies ExecutionProxyInterface) and
+// Strategy: inject fakeHTTP (satisfies HTTPExecutor) and
 // fakeSafety (satisfies SafetyEvaluator) to test:
-//   - Safety gate DENIAL: approved=false returned, no proxy call made
-//   - Safety gate APPROVAL: proxy called, result propagated
-//   - Dry-run: no proxy call, dry_run=true in response
+//   - Safety gate DENIAL: approved=false returned, no HTTP call made
+//   - Safety gate APPROVAL: HTTP called, result propagated
+//   - Dry-run: no HTTP call, dry_run=true in response
 //   - Missing required args: error returned before safety check
 //   - Invalid args (replicas < 0, etc.): error returned before safety check
 //   - Safety evaluation error: error propagated
-//   - Proxy command error: error propagated
+//   - HTTP executor error: error propagated
 //   - HandlerMap: all 9 names present
 
 import (
@@ -19,45 +19,73 @@ import (
 	"testing"
 	"time"
 
-	pb "github.com/vellankikoti/kubilitics/brain/api/proto/v1"
 	"github.com/vellankikoti/kubilitics/brain/internal/audit"
 	"github.com/vellankikoti/kubilitics/brain/internal/mcp/tools/execution"
 	"github.com/vellankikoti/kubilitics/brain/internal/safety"
 )
 
 // ─────────────────────────────────────────────────────────────────────────────
-// fakeProxy — deterministic in-memory command executor
+// fakeHTTP — deterministic in-memory HTTP executor
 // ─────────────────────────────────────────────────────────────────────────────
 
-type fakeProxy struct {
-	result *pb.CommandResult
-	err    error
-	calls  []string // operation names that were called
+type fakeHTTP struct {
+	resp  map[string]interface{}
+	err   error
+	calls []string // method+path that were called
 }
 
-func (f *fakeProxy) ExecuteCommand(_ context.Context, operation string, _ *pb.Resource, _ []byte, _ bool) (*pb.CommandResult, error) {
-	f.calls = append(f.calls, operation)
-	if f.err != nil {
-		return nil, f.err
-	}
-	if f.result != nil {
-		return f.result, nil
-	}
-	return &pb.CommandResult{Success: true, Message: "ok"}, nil
+func newFakeHTTP() *fakeHTTP {
+	return &fakeHTTP{}
 }
 
-func newFakeProxy() *fakeProxy {
-	return &fakeProxy{}
-}
-
-func (f *fakeProxy) withResult(msg string) *fakeProxy {
-	f.result = &pb.CommandResult{Success: true, Message: msg}
+func (f *fakeHTTP) withResponse(msg string) *fakeHTTP {
+	f.resp = map[string]interface{}{"message": msg}
 	return f
 }
 
-func (f *fakeProxy) withError(err error) *fakeProxy {
+func (f *fakeHTTP) withError(err error) *fakeHTTP {
 	f.err = err
 	return f
+}
+
+func (f *fakeHTTP) record(method, path string) {
+	f.calls = append(f.calls, method+":"+path)
+}
+
+func (f *fakeHTTP) Post(_ context.Context, path string, _ interface{}) (map[string]interface{}, int, error) {
+	f.record("POST", path)
+	if f.err != nil {
+		return nil, 500, f.err
+	}
+	resp := f.resp
+	if resp == nil {
+		resp = map[string]interface{}{"message": "ok"}
+	}
+	return resp, 200, nil
+}
+
+func (f *fakeHTTP) Patch(_ context.Context, path string, _ interface{}) (map[string]interface{}, int, error) {
+	f.record("PATCH", path)
+	if f.err != nil {
+		return nil, 500, f.err
+	}
+	resp := f.resp
+	if resp == nil {
+		resp = map[string]interface{}{"message": "ok"}
+	}
+	return resp, 200, nil
+}
+
+func (f *fakeHTTP) Delete(_ context.Context, path string, _ map[string]string) (map[string]interface{}, int, error) {
+	f.record("DELETE", path)
+	if f.err != nil {
+		return nil, 500, f.err
+	}
+	resp := f.resp
+	if resp == nil {
+		resp = map[string]interface{}{"message": "ok"}
+	}
+	return resp, 200, nil
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -144,8 +172,8 @@ func (n *noopAuditLog) Close() error                                            
 // helper to create ExecutionTools with fake deps
 // ─────────────────────────────────────────────────────────────────────────────
 
-func newTools(proxy execution.ExecutionProxyInterface, safetyEval execution.SafetyEvaluator) *execution.ExecutionTools {
-	return execution.NewExecutionToolsWithDeps(proxy, safetyEval, &noopAuditLog{})
+func newTools(httpExec execution.HTTPExecutor, safetyEval execution.SafetyEvaluator) *execution.ExecutionTools {
+	return execution.NewExecutionToolsWithDeps(httpExec, safetyEval, &noopAuditLog{})
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -153,7 +181,7 @@ func newTools(proxy execution.ExecutionProxyInterface, safetyEval execution.Safe
 // ─────────────────────────────────────────────────────────────────────────────
 
 func TestHandlerMapCompleteness(t *testing.T) {
-	tools := newTools(newFakeProxy(), approvedSafety())
+	tools := newTools(newFakeHTTP(), approvedSafety())
 	handlers := tools.HandlerMap()
 
 	expected := []string{
@@ -184,7 +212,7 @@ func TestHandlerMapCompleteness(t *testing.T) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 func TestRestartPod_MissingArgs(t *testing.T) {
-	tools := newTools(newFakeProxy(), approvedSafety())
+	tools := newTools(newFakeHTTP(), approvedSafety())
 	ctx := context.Background()
 
 	tests := []struct {
@@ -207,8 +235,8 @@ func TestRestartPod_MissingArgs(t *testing.T) {
 }
 
 func TestRestartPod_SafetyDenied(t *testing.T) {
-	proxy := newFakeProxy()
-	tools := newTools(proxy, deniedSafety("kube-system namespace protected"))
+	h := newFakeHTTP()
+	tools := newTools(h, deniedSafety("kube-system namespace protected"))
 	ctx := context.Background()
 
 	result, err := tools.RestartPod(ctx, map[string]interface{}{
@@ -229,15 +257,15 @@ func TestRestartPod_SafetyDenied(t *testing.T) {
 	if m["requires_human"] == nil {
 		t.Error("expected requires_human field")
 	}
-	// Verify proxy was NOT called
-	if len(proxy.calls) > 0 {
-		t.Errorf("proxy should not be called when safety denied, got calls: %v", proxy.calls)
+	// Verify HTTP was NOT called
+	if len(h.calls) > 0 {
+		t.Errorf("http should not be called when safety denied, got calls: %v", h.calls)
 	}
 }
 
 func TestRestartPod_DryRun(t *testing.T) {
-	proxy := newFakeProxy()
-	tools := newTools(proxy, approvedSafety())
+	h := newFakeHTTP()
+	tools := newTools(h, approvedSafety())
 	ctx := context.Background()
 
 	result, err := tools.RestartPod(ctx, map[string]interface{}{
@@ -256,15 +284,15 @@ func TestRestartPod_DryRun(t *testing.T) {
 	if !m["approved"].(bool) {
 		t.Error("expected approved=true in dry-run")
 	}
-	// Proxy must NOT be called in dry-run
-	if len(proxy.calls) > 0 {
-		t.Errorf("proxy should not be called in dry-run, got calls: %v", proxy.calls)
+	// HTTP must NOT be called in dry-run
+	if len(h.calls) > 0 {
+		t.Errorf("http should not be called in dry-run, got calls: %v", h.calls)
 	}
 }
 
 func TestRestartPod_HappyPath(t *testing.T) {
-	proxy := newFakeProxy().withResult("pod deleted")
-	tools := newTools(proxy, approvedSafety())
+	h := newFakeHTTP().withResponse("pod deleted")
+	tools := newTools(h, approvedSafety())
 	ctx := context.Background()
 
 	result, err := tools.RestartPod(ctx, map[string]interface{}{
@@ -286,13 +314,14 @@ func TestRestartPod_HappyPath(t *testing.T) {
 	if m["namespace"] != "default" {
 		t.Errorf("expected namespace=default, got %v", m["namespace"])
 	}
-	if len(proxy.calls) == 0 || proxy.calls[0] != "delete_pod" {
-		t.Errorf("expected delete_pod call, got %v", proxy.calls)
+	// RestartPod uses DELETE
+	if len(h.calls) == 0 {
+		t.Error("expected HTTP call, got none")
 	}
 }
 
 func TestRestartPod_SafetyError(t *testing.T) {
-	tools := newTools(newFakeProxy(), errorSafety(fmt.Errorf("safety engine unavailable")))
+	tools := newTools(newFakeHTTP(), errorSafety(fmt.Errorf("safety engine unavailable")))
 	ctx := context.Background()
 
 	_, err := tools.RestartPod(ctx, map[string]interface{}{
@@ -305,8 +334,8 @@ func TestRestartPod_SafetyError(t *testing.T) {
 }
 
 func TestRestartPod_ProxyError(t *testing.T) {
-	proxy := newFakeProxy().withError(fmt.Errorf("gRPC unavailable"))
-	tools := newTools(proxy, approvedSafety())
+	h := newFakeHTTP().withError(fmt.Errorf("backend unavailable"))
+	tools := newTools(h, approvedSafety())
 	ctx := context.Background()
 
 	_, err := tools.RestartPod(ctx, map[string]interface{}{
@@ -314,12 +343,12 @@ func TestRestartPod_ProxyError(t *testing.T) {
 		"name":      "my-pod",
 	})
 	if err == nil {
-		t.Fatal("expected error when proxy fails")
+		t.Fatal("expected error when http executor fails")
 	}
 }
 
 func TestRestartPod_RequiresApproval(t *testing.T) {
-	tools := newTools(newFakeProxy(), requiresApprovalSafety())
+	tools := newTools(newFakeHTTP(), requiresApprovalSafety())
 	ctx := context.Background()
 
 	result, err := tools.RestartPod(ctx, map[string]interface{}{
@@ -347,7 +376,7 @@ func TestRestartPod_RequiresApproval(t *testing.T) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 func TestScaleDeployment_MissingArgs(t *testing.T) {
-	tools := newTools(newFakeProxy(), approvedSafety())
+	tools := newTools(newFakeHTTP(), approvedSafety())
 	ctx := context.Background()
 
 	tests := []struct {
@@ -369,7 +398,7 @@ func TestScaleDeployment_MissingArgs(t *testing.T) {
 }
 
 func TestScaleDeployment_NegativeReplicas(t *testing.T) {
-	tools := newTools(newFakeProxy(), approvedSafety())
+	tools := newTools(newFakeHTTP(), approvedSafety())
 	ctx := context.Background()
 
 	_, err := tools.ScaleDeployment(ctx, map[string]interface{}{
@@ -383,8 +412,8 @@ func TestScaleDeployment_NegativeReplicas(t *testing.T) {
 }
 
 func TestScaleDeployment_SafetyDenied(t *testing.T) {
-	proxy := newFakeProxy()
-	tools := newTools(proxy, deniedSafety("scale to 0 not allowed"))
+	h := newFakeHTTP()
+	tools := newTools(h, deniedSafety("scale to 0 not allowed"))
 	ctx := context.Background()
 
 	result, err := tools.ScaleDeployment(ctx, map[string]interface{}{
@@ -400,14 +429,14 @@ func TestScaleDeployment_SafetyDenied(t *testing.T) {
 	if m["approved"].(bool) {
 		t.Error("expected approved=false")
 	}
-	if len(proxy.calls) > 0 {
-		t.Error("proxy should not be called when safety denied")
+	if len(h.calls) > 0 {
+		t.Error("http should not be called when safety denied")
 	}
 }
 
 func TestScaleDeployment_DryRun(t *testing.T) {
-	proxy := newFakeProxy()
-	tools := newTools(proxy, approvedSafety())
+	h := newFakeHTTP()
+	tools := newTools(h, approvedSafety())
 	ctx := context.Background()
 
 	result, err := tools.ScaleDeployment(ctx, map[string]interface{}{
@@ -438,14 +467,14 @@ func TestScaleDeployment_DryRun(t *testing.T) {
 	default:
 		t.Errorf("unexpected replicas type: %T = %v", v, v)
 	}
-	if len(proxy.calls) > 0 {
-		t.Error("proxy should not be called in dry-run")
+	if len(h.calls) > 0 {
+		t.Error("http should not be called in dry-run")
 	}
 }
 
 func TestScaleDeployment_HappyPath(t *testing.T) {
-	proxy := newFakeProxy().withResult("scaled to 3")
-	tools := newTools(proxy, approvedSafety())
+	h := newFakeHTTP().withResponse("scaled to 3")
+	tools := newTools(h, approvedSafety())
 	ctx := context.Background()
 
 	result, err := tools.ScaleDeployment(ctx, map[string]interface{}{
@@ -474,7 +503,7 @@ func TestScaleDeployment_HappyPath(t *testing.T) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 func TestCordonNode_MissingName(t *testing.T) {
-	tools := newTools(newFakeProxy(), approvedSafety())
+	tools := newTools(newFakeHTTP(), approvedSafety())
 	ctx := context.Background()
 
 	_, err := tools.CordonNode(ctx, map[string]interface{}{})
@@ -484,8 +513,8 @@ func TestCordonNode_MissingName(t *testing.T) {
 }
 
 func TestCordonNode_SafetyDenied(t *testing.T) {
-	proxy := newFakeProxy()
-	tools := newTools(proxy, deniedSafety("node is critical infra"))
+	h := newFakeHTTP()
+	tools := newTools(h, deniedSafety("node is critical infra"))
 	ctx := context.Background()
 
 	result, err := tools.CordonNode(ctx, map[string]interface{}{"name": "node-1"})
@@ -497,14 +526,14 @@ func TestCordonNode_SafetyDenied(t *testing.T) {
 	if m["approved"].(bool) {
 		t.Error("expected approved=false")
 	}
-	if len(proxy.calls) > 0 {
-		t.Error("proxy should not be called")
+	if len(h.calls) > 0 {
+		t.Error("http should not be called")
 	}
 }
 
 func TestCordonNode_DryRun(t *testing.T) {
-	proxy := newFakeProxy()
-	tools := newTools(proxy, approvedSafety())
+	h := newFakeHTTP()
+	tools := newTools(h, approvedSafety())
 	ctx := context.Background()
 
 	result, err := tools.CordonNode(ctx, map[string]interface{}{
@@ -519,14 +548,14 @@ func TestCordonNode_DryRun(t *testing.T) {
 	if !m["dry_run"].(bool) {
 		t.Error("expected dry_run=true")
 	}
-	if len(proxy.calls) > 0 {
-		t.Error("proxy should not be called in dry-run")
+	if len(h.calls) > 0 {
+		t.Error("http should not be called in dry-run")
 	}
 }
 
 func TestCordonNode_HappyPath(t *testing.T) {
-	proxy := newFakeProxy().withResult("cordoned")
-	tools := newTools(proxy, approvedSafety())
+	h := newFakeHTTP().withResponse("cordoned")
+	tools := newTools(h, approvedSafety())
 	ctx := context.Background()
 
 	result, err := tools.CordonNode(ctx, map[string]interface{}{
@@ -551,7 +580,7 @@ func TestCordonNode_HappyPath(t *testing.T) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 func TestDrainNode_MissingName(t *testing.T) {
-	tools := newTools(newFakeProxy(), approvedSafety())
+	tools := newTools(newFakeHTTP(), approvedSafety())
 	ctx := context.Background()
 
 	_, err := tools.DrainNode(ctx, map[string]interface{}{})
@@ -561,9 +590,9 @@ func TestDrainNode_MissingName(t *testing.T) {
 }
 
 func TestDrainNode_SafetyDenied_HighRisk(t *testing.T) {
-	proxy := newFakeProxy()
+	h := newFakeHTTP()
 	// drain_node is Level 4 — high blast radius → typically requires approval
-	tools := newTools(proxy, requiresApprovalSafety())
+	tools := newTools(h, requiresApprovalSafety())
 	ctx := context.Background()
 
 	result, err := tools.DrainNode(ctx, map[string]interface{}{"name": "node-1"})
@@ -575,14 +604,14 @@ func TestDrainNode_SafetyDenied_HighRisk(t *testing.T) {
 	if m["approved"].(bool) {
 		t.Error("expected approved=false for high-risk drain")
 	}
-	if len(proxy.calls) > 0 {
-		t.Error("proxy should not be called")
+	if len(h.calls) > 0 {
+		t.Error("http should not be called")
 	}
 }
 
 func TestDrainNode_DryRun(t *testing.T) {
-	proxy := newFakeProxy()
-	tools := newTools(proxy, approvedSafety())
+	h := newFakeHTTP()
+	tools := newTools(h, approvedSafety())
 	ctx := context.Background()
 
 	result, err := tools.DrainNode(ctx, map[string]interface{}{
@@ -597,15 +626,15 @@ func TestDrainNode_DryRun(t *testing.T) {
 	if !m["dry_run"].(bool) {
 		t.Error("expected dry_run=true")
 	}
-	if len(proxy.calls) > 0 {
-		t.Error("proxy should not be called in dry-run")
+	if len(h.calls) > 0 {
+		t.Error("http should not be called in dry-run")
 	}
 }
 
 func TestDrainNode_DefaultGracePeriod(t *testing.T) {
 	// grace_period defaults to 30 when not provided
-	proxy := newFakeProxy().withResult("drained")
-	tools := newTools(proxy, approvedSafety())
+	h := newFakeHTTP().withResponse("drained")
+	tools := newTools(h, approvedSafety())
 	ctx := context.Background()
 
 	result, err := tools.DrainNode(ctx, map[string]interface{}{"name": "node-1"})
@@ -624,7 +653,7 @@ func TestDrainNode_DefaultGracePeriod(t *testing.T) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 func TestApplyResourcePatch_MissingArgs(t *testing.T) {
-	tools := newTools(newFakeProxy(), approvedSafety())
+	tools := newTools(newFakeHTTP(), approvedSafety())
 	ctx := context.Background()
 
 	tests := []struct {
@@ -647,8 +676,8 @@ func TestApplyResourcePatch_MissingArgs(t *testing.T) {
 }
 
 func TestApplyResourcePatch_SafetyDenied(t *testing.T) {
-	proxy := newFakeProxy()
-	tools := newTools(proxy, deniedSafety("patch not allowed"))
+	h := newFakeHTTP()
+	tools := newTools(h, deniedSafety("patch not allowed"))
 	ctx := context.Background()
 
 	result, err := tools.ApplyResourcePatch(ctx, map[string]interface{}{
@@ -665,14 +694,14 @@ func TestApplyResourcePatch_SafetyDenied(t *testing.T) {
 	if m["approved"].(bool) {
 		t.Error("expected approved=false")
 	}
-	if len(proxy.calls) > 0 {
-		t.Error("proxy should not be called")
+	if len(h.calls) > 0 {
+		t.Error("http should not be called")
 	}
 }
 
 func TestApplyResourcePatch_DryRun(t *testing.T) {
-	proxy := newFakeProxy()
-	tools := newTools(proxy, approvedSafety())
+	h := newFakeHTTP()
+	tools := newTools(h, approvedSafety())
 	ctx := context.Background()
 
 	patch := map[string]interface{}{"metadata": map[string]interface{}{"labels": map[string]interface{}{"env": "test"}}}
@@ -694,14 +723,14 @@ func TestApplyResourcePatch_DryRun(t *testing.T) {
 	if m["patch"] == nil {
 		t.Error("expected patch in dry-run response")
 	}
-	if len(proxy.calls) > 0 {
-		t.Error("proxy should not be called in dry-run")
+	if len(h.calls) > 0 {
+		t.Error("http should not be called in dry-run")
 	}
 }
 
 func TestApplyResourcePatch_HappyPath(t *testing.T) {
-	proxy := newFakeProxy().withResult("patched")
-	tools := newTools(proxy, approvedSafety())
+	h := newFakeHTTP().withResponse("patched")
+	tools := newTools(h, approvedSafety())
 	ctx := context.Background()
 
 	result, err := tools.ApplyResourcePatch(ctx, map[string]interface{}{
@@ -728,7 +757,7 @@ func TestApplyResourcePatch_HappyPath(t *testing.T) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 func TestDeleteResource_MissingArgs(t *testing.T) {
-	tools := newTools(newFakeProxy(), approvedSafety())
+	tools := newTools(newFakeHTTP(), approvedSafety())
 	ctx := context.Background()
 
 	tests := []struct {
@@ -751,8 +780,8 @@ func TestDeleteResource_MissingArgs(t *testing.T) {
 
 func TestDeleteResource_AlwaysSafetyGated(t *testing.T) {
 	// delete_resource is Level 5 — should almost always require human approval
-	proxy := newFakeProxy()
-	tools := newTools(proxy, requiresApprovalSafety())
+	h := newFakeHTTP()
+	tools := newTools(h, requiresApprovalSafety())
 	ctx := context.Background()
 
 	result, err := tools.DeleteResource(ctx, map[string]interface{}{
@@ -771,14 +800,14 @@ func TestDeleteResource_AlwaysSafetyGated(t *testing.T) {
 	if !m["requires_human"].(bool) {
 		t.Error("expected requires_human=true")
 	}
-	if len(proxy.calls) > 0 {
-		t.Error("proxy must not be called when approval required")
+	if len(h.calls) > 0 {
+		t.Error("http must not be called when approval required")
 	}
 }
 
 func TestDeleteResource_DryRun(t *testing.T) {
-	proxy := newFakeProxy()
-	tools := newTools(proxy, approvedSafety())
+	h := newFakeHTTP()
+	tools := newTools(h, approvedSafety())
 	ctx := context.Background()
 
 	result, err := tools.DeleteResource(ctx, map[string]interface{}{
@@ -795,14 +824,14 @@ func TestDeleteResource_DryRun(t *testing.T) {
 	if !m["dry_run"].(bool) {
 		t.Error("expected dry_run=true")
 	}
-	if len(proxy.calls) > 0 {
-		t.Error("proxy should not be called in dry-run")
+	if len(h.calls) > 0 {
+		t.Error("http should not be called in dry-run")
 	}
 }
 
 func TestDeleteResource_HappyPath(t *testing.T) {
-	proxy := newFakeProxy().withResult("deleted")
-	tools := newTools(proxy, approvedSafety())
+	h := newFakeHTTP().withResponse("deleted")
+	tools := newTools(h, approvedSafety())
 	ctx := context.Background()
 
 	result, err := tools.DeleteResource(ctx, map[string]interface{}{
@@ -829,7 +858,7 @@ func TestDeleteResource_HappyPath(t *testing.T) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 func TestRollbackDeployment_MissingArgs(t *testing.T) {
-	tools := newTools(newFakeProxy(), approvedSafety())
+	tools := newTools(newFakeHTTP(), approvedSafety())
 	ctx := context.Background()
 
 	_, err := tools.RollbackDeployment(ctx, map[string]interface{}{"name": "app"})
@@ -839,8 +868,8 @@ func TestRollbackDeployment_MissingArgs(t *testing.T) {
 }
 
 func TestRollbackDeployment_SafetyDenied(t *testing.T) {
-	proxy := newFakeProxy()
-	tools := newTools(proxy, deniedSafety("rollback not permitted in prod"))
+	h := newFakeHTTP()
+	tools := newTools(h, deniedSafety("rollback not permitted in prod"))
 	ctx := context.Background()
 
 	result, err := tools.RollbackDeployment(ctx, map[string]interface{}{
@@ -855,14 +884,14 @@ func TestRollbackDeployment_SafetyDenied(t *testing.T) {
 	if m["approved"].(bool) {
 		t.Error("expected approved=false")
 	}
-	if len(proxy.calls) > 0 {
-		t.Error("proxy should not be called")
+	if len(h.calls) > 0 {
+		t.Error("http should not be called")
 	}
 }
 
 func TestRollbackDeployment_DryRun(t *testing.T) {
-	proxy := newFakeProxy()
-	tools := newTools(proxy, approvedSafety())
+	h := newFakeHTTP()
+	tools := newTools(h, approvedSafety())
 	ctx := context.Background()
 
 	result, err := tools.RollbackDeployment(ctx, map[string]interface{}{
@@ -879,14 +908,14 @@ func TestRollbackDeployment_DryRun(t *testing.T) {
 	if !m["dry_run"].(bool) {
 		t.Error("expected dry_run=true")
 	}
-	if len(proxy.calls) > 0 {
-		t.Error("proxy should not be called in dry-run")
+	if len(h.calls) > 0 {
+		t.Error("http should not be called in dry-run")
 	}
 }
 
 func TestRollbackDeployment_HappyPath(t *testing.T) {
-	proxy := newFakeProxy().withResult("rolled back to revision 3")
-	tools := newTools(proxy, approvedSafety())
+	h := newFakeHTTP().withResponse("rolled back to revision 3")
+	tools := newTools(h, approvedSafety())
 	ctx := context.Background()
 
 	result, err := tools.RollbackDeployment(ctx, map[string]interface{}{
@@ -913,7 +942,7 @@ func TestRollbackDeployment_HappyPath(t *testing.T) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 func TestUpdateResourceLimits_MissingArgs(t *testing.T) {
-	tools := newTools(newFakeProxy(), approvedSafety())
+	tools := newTools(newFakeHTTP(), approvedSafety())
 	ctx := context.Background()
 
 	tests := []struct {
@@ -936,8 +965,8 @@ func TestUpdateResourceLimits_MissingArgs(t *testing.T) {
 }
 
 func TestUpdateResourceLimits_SafetyDenied(t *testing.T) {
-	proxy := newFakeProxy()
-	tools := newTools(proxy, deniedSafety("limits change denied"))
+	h := newFakeHTTP()
+	tools := newTools(h, deniedSafety("limits change denied"))
 	ctx := context.Background()
 
 	result, err := tools.UpdateResourceLimits(ctx, map[string]interface{}{
@@ -956,14 +985,14 @@ func TestUpdateResourceLimits_SafetyDenied(t *testing.T) {
 	if m["approved"].(bool) {
 		t.Error("expected approved=false")
 	}
-	if len(proxy.calls) > 0 {
-		t.Error("proxy should not be called")
+	if len(h.calls) > 0 {
+		t.Error("http should not be called")
 	}
 }
 
 func TestUpdateResourceLimits_DryRun(t *testing.T) {
-	proxy := newFakeProxy()
-	tools := newTools(proxy, approvedSafety())
+	h := newFakeHTTP()
+	tools := newTools(h, approvedSafety())
 	ctx := context.Background()
 
 	result, err := tools.UpdateResourceLimits(ctx, map[string]interface{}{
@@ -986,14 +1015,14 @@ func TestUpdateResourceLimits_DryRun(t *testing.T) {
 	if m["patch"] == nil {
 		t.Error("expected patch in dry-run response")
 	}
-	if len(proxy.calls) > 0 {
-		t.Error("proxy should not be called in dry-run")
+	if len(h.calls) > 0 {
+		t.Error("http should not be called in dry-run")
 	}
 }
 
 func TestUpdateResourceLimits_HappyPath(t *testing.T) {
-	proxy := newFakeProxy().withResult("limits updated")
-	tools := newTools(proxy, approvedSafety())
+	h := newFakeHTTP().withResponse("limits updated")
+	tools := newTools(h, approvedSafety())
 	ctx := context.Background()
 
 	result, err := tools.UpdateResourceLimits(ctx, map[string]interface{}{
@@ -1023,7 +1052,7 @@ func TestUpdateResourceLimits_HappyPath(t *testing.T) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 func TestTriggerHPAScale_MissingArgs(t *testing.T) {
-	tools := newTools(newFakeProxy(), approvedSafety())
+	tools := newTools(newFakeHTTP(), approvedSafety())
 	ctx := context.Background()
 
 	tests := []struct {
@@ -1045,7 +1074,7 @@ func TestTriggerHPAScale_MissingArgs(t *testing.T) {
 }
 
 func TestTriggerHPAScale_ZeroReplicas(t *testing.T) {
-	tools := newTools(newFakeProxy(), approvedSafety())
+	tools := newTools(newFakeHTTP(), approvedSafety())
 	ctx := context.Background()
 
 	_, err := tools.TriggerHPAScale(ctx, map[string]interface{}{
@@ -1059,8 +1088,8 @@ func TestTriggerHPAScale_ZeroReplicas(t *testing.T) {
 }
 
 func TestTriggerHPAScale_SafetyDenied(t *testing.T) {
-	proxy := newFakeProxy()
-	tools := newTools(proxy, deniedSafety("manual HPA override not allowed"))
+	h := newFakeHTTP()
+	tools := newTools(h, deniedSafety("manual HPA override not allowed"))
 	ctx := context.Background()
 
 	result, err := tools.TriggerHPAScale(ctx, map[string]interface{}{
@@ -1076,14 +1105,14 @@ func TestTriggerHPAScale_SafetyDenied(t *testing.T) {
 	if m["approved"].(bool) {
 		t.Error("expected approved=false")
 	}
-	if len(proxy.calls) > 0 {
-		t.Error("proxy should not be called")
+	if len(h.calls) > 0 {
+		t.Error("http should not be called")
 	}
 }
 
 func TestTriggerHPAScale_DryRun(t *testing.T) {
-	proxy := newFakeProxy()
-	tools := newTools(proxy, approvedSafety())
+	h := newFakeHTTP()
+	tools := newTools(h, approvedSafety())
 	ctx := context.Background()
 
 	result, err := tools.TriggerHPAScale(ctx, map[string]interface{}{
@@ -1100,14 +1129,14 @@ func TestTriggerHPAScale_DryRun(t *testing.T) {
 	if !m["dry_run"].(bool) {
 		t.Error("expected dry_run=true")
 	}
-	if len(proxy.calls) > 0 {
-		t.Error("proxy should not be called in dry-run")
+	if len(h.calls) > 0 {
+		t.Error("http should not be called in dry-run")
 	}
 }
 
 func TestTriggerHPAScale_HappyPath(t *testing.T) {
-	proxy := newFakeProxy().withResult("HPA updated")
-	tools := newTools(proxy, approvedSafety())
+	h := newFakeHTTP().withResponse("HPA updated")
+	tools := newTools(h, approvedSafety())
 	ctx := context.Background()
 
 	result, err := tools.TriggerHPAScale(ctx, map[string]interface{}{
@@ -1130,7 +1159,7 @@ func TestTriggerHPAScale_HappyPath(t *testing.T) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Cross-cutting: all tools propagate proxy errors
+// Cross-cutting: all tools propagate HTTP executor errors
 // ─────────────────────────────────────────────────────────────────────────────
 
 func TestAllTools_ProxyErrorPropagated(t *testing.T) {
@@ -1213,11 +1242,11 @@ func TestAllTools_ProxyErrorPropagated(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.toolName, func(t *testing.T) {
-			proxy := newFakeProxy().withError(proxyErr)
-			tools := newTools(proxy, approvedSafety())
+			h := newFakeHTTP().withError(proxyErr)
+			tools := newTools(h, approvedSafety())
 			_, err := tc.fn(tools)
 			if err == nil {
-				t.Errorf("%s: expected error when proxy fails, got nil", tc.toolName)
+				t.Errorf("%s: expected error when http executor fails, got nil", tc.toolName)
 			}
 		})
 	}

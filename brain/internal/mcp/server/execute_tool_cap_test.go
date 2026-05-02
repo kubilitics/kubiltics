@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"strings"
 	"testing"
+	"time"
 )
 
 // ExecuteTool must never return a JSON blob larger than MaxToolOutputBytes
@@ -35,5 +36,59 @@ func TestExecuteTool_CapsOversizedHandlerOutput(t *testing.T) {
 	}
 	if m["_truncated"] != true {
 		t.Fatalf("caller must know the payload was truncated so it can warn the user")
+	}
+}
+
+func TestInjectToolMetadata_AddsDataSourceAndLatency(t *testing.T) {
+	cases := []struct {
+		tool   string
+		source string
+	}{
+		{"list_resources", "k8s-live"},
+		{"inspect_pod", "k8s-live"},
+		{"get_logs", "logs-live"},
+		{"get_events", "events-live"},
+		{"observe_top_pods_by_metric", "metrics-live"},
+		{"analyze_pod_health", "derived"},
+		{"diagnose_pod_not_ready", "derived"},
+		{"narrate_cluster_incident", "derived"},
+		{"plan_scale_deployment", "derived"},
+		{"observe_problem_pods", "derived"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.tool, func(t *testing.T) {
+			raw := map[string]interface{}{"some_field": "value"}
+			result := injectToolMetadata(raw, tc.tool, 42*time.Millisecond)
+			m := result.(map[string]interface{})
+			if m["data_source"] != tc.source {
+				t.Fatalf("tool %s: want data_source=%q, got %q", tc.tool, tc.source, m["data_source"])
+			}
+			if m["latency_ms"] != int64(42) {
+				t.Fatalf("tool %s: want latency_ms=42, got %v", tc.tool, m["latency_ms"])
+			}
+		})
+	}
+}
+
+func TestInjectToolMetadata_DoesNotOverwriteExistingDataSource(t *testing.T) {
+	raw := map[string]interface{}{"data_source": "custom-override"}
+	result := injectToolMetadata(raw, "list_resources", time.Millisecond)
+	m := result.(map[string]interface{})
+	if m["data_source"] != "custom-override" {
+		t.Fatalf("existing data_source must not be overwritten, got %v", m["data_source"])
+	}
+}
+
+func TestInjectToolMetadata_WrapsNonMapResult(t *testing.T) {
+	result := injectToolMetadata("raw string result", "get_logs", 5*time.Millisecond)
+	m, ok := result.(map[string]interface{})
+	if !ok {
+		t.Fatal("non-map result must be wrapped in a map")
+	}
+	if m["data_source"] != "logs-live" {
+		t.Fatalf("wrapped result must have data_source, got %v", m["data_source"])
+	}
+	if m["result"] != "raw string result" {
+		t.Fatalf("original result must be preserved under 'result' key, got %v", m["result"])
 	}
 }

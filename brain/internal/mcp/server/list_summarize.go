@@ -1,6 +1,67 @@
 package server
 
-import "encoding/json"
+import (
+	"encoding/json"
+	"strings"
+	"time"
+)
+
+// toolDataSource classifies a tool by the freshness of its backing data.
+// These values are injected into every tool result as "data_source" so the
+// LLM can express staleness caveats to the operator when relevant.
+//
+//   k8s-live    — informer cache (Watch-based, ~0 ms staleness, resyncs every 5 min)
+//   metrics-live — metrics cache with 10 s TTL
+//   events-live  — event informer cache (same Watch path as k8s-live)
+//   logs-live    — direct Kubernetes API call, no cache
+//   derived      — computed/analyzed from one or more live sources
+func toolDataSource(toolName string) string {
+	switch {
+	case toolName == "get_logs":
+		return "logs-live"
+	case toolName == "get_events":
+		return "events-live"
+	case strings.HasPrefix(toolName, "observe_top_"),
+		toolName == "observe_pod_metrics",
+		toolName == "get_resource_metrics":
+		return "metrics-live"
+	case strings.HasPrefix(toolName, "analyze_"),
+		strings.HasPrefix(toolName, "diagnose_"),
+		strings.HasPrefix(toolName, "troubleshoot_"),
+		strings.HasPrefix(toolName, "recommend_"),
+		strings.HasPrefix(toolName, "narrate_"),
+		strings.HasPrefix(toolName, "plan_"),
+		strings.HasPrefix(toolName, "security_"),
+		strings.HasPrefix(toolName, "cost_"),
+		strings.HasPrefix(toolName, "automation_"),
+		toolName == "observe_problem_pods",
+		toolName == "observe_services_by_filter",
+		toolName == "observe_cluster_risk",
+		toolName == "get_cluster_health":
+		return "derived"
+	default:
+		// observe_*, inspect_*, list_*, get_*, resolve_*, execution_*
+		return "k8s-live"
+	}
+}
+
+// injectToolMetadata annotates a successful tool result with data lineage and
+// latency. If the result is not a map (e.g. a raw string or array from a legacy
+// handler), it is wrapped in one. Existing keys are never overwritten so
+// handlers that already set data_source or latency_ms keep their values.
+func injectToolMetadata(result interface{}, toolName string, duration time.Duration) interface{} {
+	m, ok := result.(map[string]interface{})
+	if !ok {
+		m = map[string]interface{}{"result": result}
+	}
+	if _, has := m["data_source"]; !has {
+		m["data_source"] = toolDataSource(toolName)
+	}
+	if _, has := m["latency_ms"]; !has {
+		m["latency_ms"] = duration.Milliseconds()
+	}
+	return m
+}
 
 // MaxToolOutputBytes is the hard ceiling on the JSON-serialized tool
 // result returned to the LLM. gpt-4o-mini's output budget collapses

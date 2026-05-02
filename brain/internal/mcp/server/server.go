@@ -154,7 +154,7 @@ func NewMCPServer(cfg *config.Config, backendProxy *backend.Proxy, auditLog audi
 		backendProxy:   backendProxy,
 		auditLog:       auditLog,
 		analysisTools:  analysistools.NewAnalysisTools(backendProxy),
-		executionTools: executiontools.NewExecutionTools(backendProxy, safetyEngine, auditLog),
+		executionTools: executiontools.NewExecutionTools(cfg.Backend.HTTPBaseURL, safetyEngine, auditLog),
 		tools:          make(map[string]*toolRegistration),
 		handlers:       make(map[string]ToolHandler),
 		stopChan:       make(chan struct{}),
@@ -296,6 +296,9 @@ func (s *mcpServerImpl) ExecuteTool(ctx context.Context, toolName string, args m
 		WithCorrelationID(correlationID).
 		WithDescription(fmt.Sprintf("Tool executed successfully: %s", toolName)).
 		WithResult(audit.ResultSuccess))
+
+	// Annotate result with data lineage and latency before capping.
+	result = injectToolMetadata(result, toolName, duration)
 
 	// Hard cap tool output size so no single handler can blow the LLM's
 	// output budget with an oversized payload. See list_summarize.go.
