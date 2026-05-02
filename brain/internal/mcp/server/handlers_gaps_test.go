@@ -597,3 +597,43 @@ func TestIngressesByTLSExpiry_FlagsExpiring(t *testing.T) {
 		t.Errorf("unexpected summary: %q", summary)
 	}
 }
+
+func TestServicesByFilter_EmptyResults_HasExplanatoryMessage(t *testing.T) {
+	fb := newFakeBackend(t)
+	fb.registerCluster()
+	// One healthy service with ready endpoints — should NOT match either filter
+	fb.register("/clusters/"+testClusterID+"/resources/services", map[string]interface{}{
+		"items": []interface{}{
+			map[string]interface{}{
+				"metadata": map[string]interface{}{"name": "kube-dns", "namespace": "kube-system"},
+				"spec":     map[string]interface{}{"type": "ClusterIP"},
+			},
+		},
+	})
+	fb.register("/clusters/"+testClusterID+"/resources/services/kube-system/kube-dns/endpoints", map[string]interface{}{
+		"subsets": []interface{}{
+			map[string]interface{}{
+				"addresses": []interface{}{map[string]interface{}{"ip": "10.0.0.1"}},
+			},
+		},
+	})
+	fb.register("/clusters/"+testClusterID+"/events", []interface{}{})
+	s := newTestServer(t, fb.server.URL)
+	out, err := s.handleObserveServicesByFilter(context.Background(), map[string]interface{}{})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	m, ok := out.(map[string]interface{})
+	if !ok {
+		t.Fatalf("expected map, got %T", out)
+	}
+	if _, ok := m["summary"]; !ok {
+		t.Errorf("observe_services_by_filter must return 'summary' key when no services match, got keys: %v", func() []string {
+			var ks []string
+			for k := range m {
+				ks = append(ks, k)
+			}
+			return ks
+		}())
+	}
+}

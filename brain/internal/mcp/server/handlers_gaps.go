@@ -896,13 +896,13 @@ func (s *mcpServerImpl) handleObserveServicesByFilter(ctx context.Context, args 
 
 	summary := fmt.Sprintf("%d service(s) matched in %s", len(out), namespaceLabel(namespace))
 	if len(out) == 0 {
-		summary = "No services matched the requested filters."
+		summary = "All services healthy — no flapping or endpoint-less services detected"
 	}
 	return map[string]interface{}{
+		"cluster_id": clusterID,
 		"filters": map[string]interface{}{
 			"flapping":     wantFlapping,
 			"no_endpoints": wantNoEndpoints,
-			"namespace":    namespace,
 		},
 		"services": out,
 		"summary":  summary,
