@@ -73,7 +73,7 @@ func (s *mcpServerImpl) routeAnalysisTool(ctx context.Context, name string, args
 	}
 }
 
-// analyze_resource_efficiency — requests vs. actual usage across workloads
+// analyze_resource_efficiency — pre-computed findings from workload resource specs
 func (s *mcpServerImpl) handleAnalyzeResourceEfficiency(ctx context.Context, args map[string]interface{}) (interface{}, error) {
 	c := s.http()
 	clusterID, err := c.resolveCluster(ctx, args)
@@ -83,31 +83,61 @@ func (s *mcpServerImpl) handleAnalyzeResourceEfficiency(ctx context.Context, arg
 	namespace := strArg(args, "namespace")
 	qs := nsQuery(namespace)
 
-	result := map[string]interface{}{}
+	var deploys map[string]interface{}
+	_ = c.get(ctx, c.clusterPath(clusterID, "/resources/deployments"+qs), &deploys)
 
-	// Workload resource requests
-	for _, kind := range []string{"deployments", "statefulsets", "daemonsets"} {
-		var data map[string]interface{}
-		if err := c.get(ctx, c.clusterPath(clusterID, "/resources/"+kind+qs), &data); err == nil {
-			result[kind] = data
+	var findings []string
+	noLimitCount, highRequestCount := 0, 0
+	items := extractResourceItems(deploys)
+	for _, m := range items {
+		ns := resourceNamespace(m)
+		name := resourceName(m)
+		spec, _ := m["spec"].(map[string]interface{})
+		containers, _ := spec["containers"].([]interface{})
+		for _, cont := range containers {
+			cm, ok := cont.(map[string]interface{})
+			if !ok {
+				continue
+			}
+			res, _ := cm["resources"].(map[string]interface{})
+			limits, hasLimits := res["limits"].(map[string]interface{})
+			requests, _ := res["requests"].(map[string]interface{})
+			if !hasLimits || len(limits) == 0 {
+				noLimitCount++
+				findings = append(findings, fmt.Sprintf("%s/%s: no resource limits set — OOM risk", ns, name))
+			}
+			if cpuReq, ok := requests["cpu"].(string); ok {
+				if strings.HasSuffix(cpuReq, "m") {
+					val := parseCPUMillisTier1(cpuReq)
+					if val > 2000 {
+						highRequestCount++
+						findings = append(findings, fmt.Sprintf("%s/%s: high CPU request %s — consider rightsizing", ns, name, cpuReq))
+					}
+				}
+			}
 		}
 	}
-	// Actual usage summary
-	var metrics map[string]interface{}
-	if err := c.get(ctx, c.clusterPath(clusterID, "/metrics/summary"), &metrics); err == nil {
-		result["metrics_summary"] = metrics
+	if len(findings) == 0 {
+		findings = []string{"No obvious inefficiencies found — all deployments have resource limits set"}
 	}
-	// Cluster-wide metrics
-	var clusterMetrics map[string]interface{}
-	if err := c.get(ctx, c.clusterPath(clusterID, "/metrics"), &clusterMetrics); err == nil {
-		result["cluster_metrics"] = clusterMetrics
-	}
-	result["namespace"] = namespace
-	result["analysis_hint"] = "Compare requests/limits in workload specs with actual CPU/memory from metrics_summary to identify over-provisioned or under-provisioned resources."
-	return result, nil
+	return map[string]interface{}{
+		"cluster_id":         clusterID,
+		"deployment_count":   len(items),
+		"no_limit_count":     noLimitCount,
+		"high_request_count": highRequestCount,
+		"findings":           findings,
+		"recommendation":     "Focus on containers with no limits (OOM risk) and high requests vs actual usage. Use VPA for variable workloads.",
+	}, nil
 }
 
-// analyze_failure_patterns — detect recurring failures via events + pod restarts
+func parseCPUMillisTier1(s string) int {
+	s = strings.TrimSuffix(s, "m")
+	var v int
+	fmt.Sscanf(s, "%d", &v)
+	return v
+}
+
+// analyze_failure_patterns — pre-computed findings from recent warning events
 func (s *mcpServerImpl) handleAnalyzeFailurePatterns(ctx context.Context, args map[string]interface{}) (interface{}, error) {
 	c := s.http()
 	clusterID, err := c.resolveCluster(ctx, args)
@@ -115,36 +145,58 @@ func (s *mcpServerImpl) handleAnalyzeFailurePatterns(ctx context.Context, args m
 		return nil, err
 	}
 	namespace := strArg(args, "namespace")
-
-	q := url.Values{}
-	q.Set("limit", "200")
+	evPath := "/events?since=1h"
 	if namespace != "" {
-		q.Set("namespace", namespace)
+		evPath += "&namespace=" + namespace
+	}
+	var events interface{}
+	_ = c.get(ctx, c.clusterPath(clusterID, evPath), &events)
+
+	reasonCounts := map[string]int{}
+	for _, ev := range extractEventItemsTier1(events) {
+		m, ok := ev.(map[string]interface{})
+		if !ok {
+			continue
+		}
+		if tp, _ := m["type"].(string); tp != "Warning" {
+			continue
+		}
+		reason, _ := m["reason"].(string)
+		if reason != "" {
+			reasonCounts[reason]++
+		}
 	}
 
-	result := map[string]interface{}{}
-
-	// Recent events — Warning events indicate failures
-	var events map[string]interface{}
-	if err := c.get(ctx, c.clusterPath(clusterID, "/events?"+q.Encode()), &events); err == nil {
-		result["events"] = events
+	var findings []string
+	for reason, count := range reasonCounts {
+		if count >= 3 {
+			findings = append(findings, fmt.Sprintf("%s: %d occurrences in last 1h", reason, count))
+		}
 	}
-	// Pod restarts visible in metrics
-	var metrics map[string]interface{}
-	if err := c.get(ctx, c.clusterPath(clusterID, "/metrics/summary"), &metrics); err == nil {
-		result["metrics_summary"] = metrics
+	if len(findings) == 0 {
+		findings = []string{"No repeated warning events detected in the last hour"}
 	}
-	// Pod list to check restartCount
-	qs := nsQuery(namespace)
-	var pods map[string]interface{}
-	if err := c.get(ctx, c.clusterPath(clusterID, "/resources/pods"+qs), &pods); err == nil {
-		result["pods"] = pods
-	}
-	result["analysis_hint"] = "Look for Warning events with high count, pods with restartCount > 5, and OOMKilled or CrashLoopBackOff statuses."
-	return result, nil
+	return map[string]interface{}{
+		"cluster_id":    clusterID,
+		"event_reasons": reasonCounts,
+		"findings":      findings,
+		"analysis_hint": "Repeated BackOff/OOMKilled/FailedScheduling events indicate systemic issues. Investigate the top recurring reason first.",
+	}, nil
 }
 
-// analyze_dependencies — service dependency map via topology
+func extractEventItemsTier1(raw interface{}) []interface{} {
+	if m, ok := raw.(map[string]interface{}); ok {
+		if items, ok := m["items"].([]interface{}); ok {
+			return items
+		}
+	}
+	if arr, ok := raw.([]interface{}); ok {
+		return arr
+	}
+	return nil
+}
+
+// analyze_dependencies — compact counts + findings from services and deployments
 func (s *mcpServerImpl) handleAnalyzeDependencies(ctx context.Context, args map[string]interface{}) (interface{}, error) {
 	c := s.http()
 	clusterID, err := c.resolveCluster(ctx, args)
@@ -152,26 +204,27 @@ func (s *mcpServerImpl) handleAnalyzeDependencies(ctx context.Context, args map[
 		return nil, err
 	}
 	namespace := strArg(args, "namespace")
-
-	q := url.Values{}
-	q.Set("maxNodes", "500")
-	if namespace != "" {
-		q.Set("namespace", namespace)
-	}
-
-	var topology map[string]interface{}
-	if err := c.get(ctx, c.clusterPath(clusterID, "/topology?"+q.Encode()), &topology); err != nil {
-		return nil, err
-	}
-	// Also pull services and endpoints to enrich the map
 	qs := nsQuery(namespace)
-	result := map[string]interface{}{"topology": topology}
+
 	var svcs map[string]interface{}
-	if err := c.get(ctx, c.clusterPath(clusterID, "/resources/services"+qs), &svcs); err == nil {
-		result["services"] = svcs
-	}
-	result["analysis_hint"] = "Use the topology graph to identify services without redundancy (single node) and circular dependencies."
-	return result, nil
+	_ = c.get(ctx, c.clusterPath(clusterID, "/resources/services"+qs), &svcs)
+	var deploys map[string]interface{}
+	_ = c.get(ctx, c.clusterPath(clusterID, "/resources/deployments"+qs), &deploys)
+
+	svcCount := len(extractResourceItems(svcs))
+	depCount := len(extractResourceItems(deploys))
+
+	return map[string]interface{}{
+		"cluster_id":       clusterID,
+		"service_count":    svcCount,
+		"deployment_count": depCount,
+		"findings": []string{
+			fmt.Sprintf("%d services and %d deployments found in scope", svcCount, depCount),
+			"Use 'describe service <name>' to see which pods a specific service selects",
+			"Use 'inspect_networkpolicy' to see traffic rules between services",
+		},
+		"analysis_hint": "Map service → selector → pod label relationships. Services with 0 ready endpoints are broken dependency edges.",
+	}, nil
 }
 
 // analyze_configuration_drift — compare desired vs. running state
@@ -204,38 +257,61 @@ func (s *mcpServerImpl) handleAnalyzeConfigurationDrift(ctx context.Context, arg
 	return result, nil
 }
 
-// analyze_capacity_trends — node capacity and workload growth
+// analyze_capacity_trends — pre-computed node summaries + findings (no raw node list)
 func (s *mcpServerImpl) handleAnalyzeCapacityTrends(ctx context.Context, args map[string]interface{}) (interface{}, error) {
 	c := s.http()
 	clusterID, err := c.resolveCluster(ctx, args)
 	if err != nil {
 		return nil, err
 	}
-	result := map[string]interface{}{}
-	// Node capacity
+
 	var nodes map[string]interface{}
-	if err := c.get(ctx, c.clusterPath(clusterID, "/resources/nodes"), &nodes); err == nil {
-		result["nodes"] = nodes
+	_ = c.get(ctx, c.clusterPath(clusterID, "/resources/nodes"), &nodes)
+
+	type nodeSummary struct {
+		Name   string `json:"name"`
+		CPUCap string `json:"cpu_capacity,omitempty"`
+		MemCap string `json:"memory_capacity,omitempty"`
+		Ready  bool   `json:"ready"`
 	}
-	// Current utilisation
-	var metrics map[string]interface{}
-	if err := c.get(ctx, c.clusterPath(clusterID, "/metrics"), &metrics); err == nil {
-		result["cluster_metrics"] = metrics
+	var summaries []nodeSummary
+	var findings []string
+	for _, m := range extractResourceItems(nodes) {
+		ns := nodeSummary{Name: resourceName(m)}
+		if st, ok := m["status"].(map[string]interface{}); ok {
+			if cap, ok := st["capacity"].(map[string]interface{}); ok {
+				ns.CPUCap, _ = cap["cpu"].(string)
+				ns.MemCap, _ = cap["memory"].(string)
+			}
+			if conds, ok := st["conditions"].([]interface{}); ok {
+				for _, c := range conds {
+					if cm, ok := c.(map[string]interface{}); ok && cm["type"] == "Ready" && cm["status"] == "True" {
+						ns.Ready = true
+					}
+				}
+			}
+		}
+		summaries = append(summaries, ns)
+		if !ns.Ready {
+			findings = append(findings, fmt.Sprintf("node %s is not Ready — capacity reduced", ns.Name))
+		}
 	}
-	var summary map[string]interface{}
-	if err := c.get(ctx, c.clusterPath(clusterID, "/metrics/summary"), &summary); err == nil {
-		result["metrics_summary"] = summary
+	if len(findings) == 0 && len(summaries) > 0 {
+		findings = []string{fmt.Sprintf("%d nodes all Ready — no capacity concerns detected", len(summaries))}
 	}
-	// HPAs give scaling signals
-	var hpa map[string]interface{}
-	if err := c.get(ctx, c.clusterPath(clusterID, "/resources/horizontalpodautoscalers"), &hpa); err == nil {
-		result["hpas"] = hpa
+	if len(summaries) == 0 {
+		findings = []string{"No nodes found in cluster"}
 	}
-	result["analysis_hint"] = "Extrapolate current growth rate from pod counts and CPU/memory utilisation. If nodes are above 80% capacity, scaling or node addition is imminent."
-	return result, nil
+	return map[string]interface{}{
+		"cluster_id":     clusterID,
+		"node_count":     len(summaries),
+		"node_summaries": summaries,
+		"findings":       findings,
+		"trend_hint":     "Compare node count and capacity week-over-week. Add nodes when average allocatable CPU > 80% for 3+ days.",
+	}, nil
 }
 
-// analyze_performance_bottlenecks — CPU/memory/network hotspots
+// analyze_performance_bottlenecks — pre-computed findings from pod restart counts
 func (s *mcpServerImpl) handleAnalyzePerformanceBottlenecks(ctx context.Context, args map[string]interface{}) (interface{}, error) {
 	c := s.http()
 	clusterID, err := c.resolveCluster(ctx, args)
@@ -243,36 +319,40 @@ func (s *mcpServerImpl) handleAnalyzePerformanceBottlenecks(ctx context.Context,
 		return nil, err
 	}
 	namespace := strArg(args, "namespace")
+	qs := nsQuery(namespace)
 
-	result := map[string]interface{}{}
-	var metrics map[string]interface{}
-	if err := c.get(ctx, c.clusterPath(clusterID, "/metrics"), &metrics); err == nil {
-		result["cluster_metrics"] = metrics
+	var pods map[string]interface{}
+	_ = c.get(ctx, c.clusterPath(clusterID, "/resources/pods"+qs), &pods)
+
+	var findings []string
+	restartTotal := 0
+	for _, m := range extractResourceItems(pods) {
+		name := resourceNamespace(m) + "/" + resourceName(m)
+		st, _ := m["status"].(map[string]interface{})
+		cs, _ := st["containerStatuses"].([]interface{})
+		for _, c := range cs {
+			cm, ok := c.(map[string]interface{})
+			if !ok {
+				continue
+			}
+			if r, ok := cm["restartCount"].(float64); ok && r > 5 {
+				restartTotal += int(r)
+				findings = append(findings, fmt.Sprintf("%s: %d restarts — likely OOM or probe failure", name, int(r)))
+			}
+		}
 	}
-	var summary map[string]interface{}
-	if err := c.get(ctx, c.clusterPath(clusterID, "/metrics/summary"), &summary); err == nil {
-		result["metrics_summary"] = summary
+	if len(findings) == 0 {
+		findings = []string{"No high-restart pods detected — no obvious performance bottleneck from restart storms"}
 	}
-	// Per-node metrics reveal hotspot nodes
-	var nodes map[string]interface{}
-	if err := c.get(ctx, c.clusterPath(clusterID, "/resources/nodes"), &nodes); err == nil {
-		result["nodes"] = nodes
-	}
-	// Warning events often indicate throttling/OOM
-	q := url.Values{}
-	q.Set("limit", "100")
-	if namespace != "" {
-		q.Set("namespace", namespace)
-	}
-	var events map[string]interface{}
-	if err := c.get(ctx, c.clusterPath(clusterID, "/events?"+q.Encode()), &events); err == nil {
-		result["events"] = events
-	}
-	result["analysis_hint"] = "Nodes with >90% CPU or >85% memory are bottlenecks. OOMKilled events indicate memory pressure. Throttled containers show in cpu.throttling metrics."
-	return result, nil
+	return map[string]interface{}{
+		"cluster_id":     clusterID,
+		"total_restarts": restartTotal,
+		"findings":       findings,
+		"analysis_hint":  "Check pod memory limits vs usage for OOM kills. Check liveness probe timeouts for probe-induced restarts.",
+	}, nil
 }
 
-// analyze_error_correlation — correlate logs/events across services
+// analyze_error_correlation — pre-computed findings from correlated warning events
 func (s *mcpServerImpl) handleAnalyzeErrorCorrelation(ctx context.Context, args map[string]interface{}) (interface{}, error) {
 	c := s.http()
 	clusterID, err := c.resolveCluster(ctx, args)
@@ -280,25 +360,43 @@ func (s *mcpServerImpl) handleAnalyzeErrorCorrelation(ctx context.Context, args 
 		return nil, err
 	}
 	namespace := strArg(args, "namespace")
-	q := url.Values{}
-	q.Set("limit", "300")
+	evPath := "/events?since=30m&type=Warning"
 	if namespace != "" {
-		q.Set("namespace", namespace)
+		evPath += "&namespace=" + namespace
+	}
+	var events interface{}
+	_ = c.get(ctx, c.clusterPath(clusterID, evPath), &events)
+
+	type errorKey struct{ Kind, Name, Reason string }
+	counts := map[errorKey]int{}
+	for _, ev := range extractEventItemsTier1(events) {
+		m, ok := ev.(map[string]interface{})
+		if !ok {
+			continue
+		}
+		reason, _ := m["reason"].(string)
+		involved, _ := m["involvedObject"].(map[string]interface{})
+		kind, _ := involved["kind"].(string)
+		name, _ := involved["name"].(string)
+		if kind != "" && reason != "" {
+			counts[errorKey{kind, name, reason}]++
+		}
 	}
 
-	result := map[string]interface{}{}
-	var events map[string]interface{}
-	if err := c.get(ctx, c.clusterPath(clusterID, "/events?"+q.Encode()), &events); err == nil {
-		result["events"] = events
+	var findings []string
+	for k, n := range counts {
+		if n >= 2 {
+			findings = append(findings, fmt.Sprintf("%s/%s: %s (×%d)", k.Kind, k.Name, k.Reason, n))
+		}
 	}
-	// List failing pods
-	qs := nsQuery(namespace)
-	var pods map[string]interface{}
-	if err := c.get(ctx, c.clusterPath(clusterID, "/resources/pods"+qs), &pods); err == nil {
-		result["pods"] = pods
+	if len(findings) == 0 {
+		findings = []string{"No correlated warning events in the last 30 minutes"}
 	}
-	result["analysis_hint"] = "Group Warning events by timestamp windows. Simultaneous failures across different namespaces point to node-level or control-plane issues."
-	return result, nil
+	return map[string]interface{}{
+		"cluster_id":    clusterID,
+		"findings":      findings,
+		"analysis_hint": "Multiple warning events on the same object indicate a systemic problem. Check resource limits, probes, and image availability.",
+	}, nil
 }
 
 // analyze_blast_radius — impact of a resource, namespace, or cluster-wide event
@@ -457,7 +555,7 @@ func (s *mcpServerImpl) handleAnalyzeRolloutRisk(ctx context.Context, args map[s
 	return result, nil
 }
 
-// analyze_pod_scheduling — scheduling decisions and node affinity
+// analyze_pod_scheduling — pre-computed pending/unschedulable findings
 func (s *mcpServerImpl) handleAnalyzePodScheduling(ctx context.Context, args map[string]interface{}) (interface{}, error) {
 	c := s.http()
 	clusterID, err := c.resolveCluster(ctx, args)
@@ -467,30 +565,41 @@ func (s *mcpServerImpl) handleAnalyzePodScheduling(ctx context.Context, args map
 	namespace := strArg(args, "namespace")
 	qs := nsQuery(namespace)
 
-	result := map[string]interface{}{}
 	var pods map[string]interface{}
-	if err := c.get(ctx, c.clusterPath(clusterID, "/resources/pods"+qs), &pods); err == nil {
-		result["pods"] = pods
-	}
+	_ = c.get(ctx, c.clusterPath(clusterID, "/resources/pods"+qs), &pods)
 	var nodes map[string]interface{}
-	if err := c.get(ctx, c.clusterPath(clusterID, "/resources/nodes"), &nodes); err == nil {
-		result["nodes"] = nodes
+	_ = c.get(ctx, c.clusterPath(clusterID, "/resources/nodes"), &nodes)
+
+	pendingPods := 0
+	unschedulableNodes := 0
+	var findings []string
+	for _, p := range extractResourceItems(pods) {
+		st, _ := p["status"].(map[string]interface{})
+		if phase, _ := st["phase"].(string); phase == "Pending" {
+			pendingPods++
+			findings = append(findings, fmt.Sprintf("%s/%s is Pending — check node selectors, taints, and resource availability", resourceNamespace(p), resourceName(p)))
+		}
 	}
-	// Pending pods appear in events
-	q := url.Values{}
-	q.Set("limit", "100")
-	if namespace != "" {
-		q.Set("namespace", namespace)
+	for _, n := range extractResourceItems(nodes) {
+		spec, _ := n["spec"].(map[string]interface{})
+		if unschedulable, _ := spec["unschedulable"].(bool); unschedulable {
+			unschedulableNodes++
+			findings = append(findings, fmt.Sprintf("node %s is cordoned (unschedulable)", resourceName(n)))
+		}
 	}
-	var events map[string]interface{}
-	if err := c.get(ctx, c.clusterPath(clusterID, "/events?"+q.Encode()), &events); err == nil {
-		result["events"] = events
+	if len(findings) == 0 {
+		findings = []string{"All pods scheduled — no scheduling issues detected"}
 	}
-	result["analysis_hint"] = "Pods in Pending state with FailedScheduling events indicate node pressure or affinity mismatches. Compare taints/tolerations and resource requests."
-	return result, nil
+	return map[string]interface{}{
+		"cluster_id":          clusterID,
+		"pending_pods":        pendingPods,
+		"unschedulable_nodes": unschedulableNodes,
+		"findings":            findings,
+		"analysis_hint":       "For Pending pods: check events for FailedScheduling reason. Common causes: insufficient CPU/memory, taint mismatch, node selector mismatch.",
+	}, nil
 }
 
-// analyze_image_vulnerabilities — scan images in running workloads
+// analyze_image_vulnerabilities — pre-computed findings for :latest/untagged images
 func (s *mcpServerImpl) handleAnalyzeImageVulnerabilities(ctx context.Context, args map[string]interface{}) (interface{}, error) {
 	c := s.http()
 	clusterID, err := c.resolveCluster(ctx, args)
@@ -500,18 +609,44 @@ func (s *mcpServerImpl) handleAnalyzeImageVulnerabilities(ctx context.Context, a
 	namespace := strArg(args, "namespace")
 	qs := nsQuery(namespace)
 
-	// Gather all images from pods
 	var pods map[string]interface{}
-	if err := c.get(ctx, c.clusterPath(clusterID, "/resources/pods"+qs), &pods); err != nil {
-		return nil, fmt.Errorf("could not list pods: %w", err)
+	_ = c.get(ctx, c.clusterPath(clusterID, "/resources/pods"+qs), &pods)
+
+	latestTagImages := map[string]int{}
+	for _, p := range extractResourceItems(pods) {
+		spec, _ := p["spec"].(map[string]interface{})
+		containers, _ := spec["containers"].([]interface{})
+		for _, cont := range containers {
+			cm, ok := cont.(map[string]interface{})
+			if !ok {
+				continue
+			}
+			image, _ := cm["image"].(string)
+			if image == "" {
+				continue
+			}
+			if strings.HasSuffix(image, ":latest") || (!strings.Contains(image, ":") && !strings.Contains(image, "@")) {
+				latestTagImages[image]++
+			}
+		}
+	}
+
+	var findings []string
+	for img, count := range latestTagImages {
+		findings = append(findings, fmt.Sprintf("image %q used by %d pod(s) is :latest or untagged — not reproducible", img, count))
+	}
+	if len(findings) == 0 {
+		findings = []string{"No :latest or untagged images detected — all images are pinned"}
 	}
 	return map[string]interface{}{
-		"pods":          pods,
-		"analysis_hint": "Extract spec.containers[].image from each pod. Cross-reference with CVE databases or run trivy/grype against each image tag. Prioritise images with known Critical CVEs.",
+		"cluster_id":       clusterID,
+		"latest_tag_count": len(latestTagImages),
+		"findings":         findings,
+		"analysis_hint":    "Latest/untagged images are a supply-chain risk and make rollbacks unreliable. Pin all images to a digest or immutable tag.",
 	}, nil
 }
 
-// analyze_workload_patterns — traffic and scaling patterns
+// analyze_workload_patterns — compact workload counts + findings
 func (s *mcpServerImpl) handleAnalyzeWorkloadPatterns(ctx context.Context, args map[string]interface{}) (interface{}, error) {
 	c := s.http()
 	clusterID, err := c.resolveCluster(ctx, args)
@@ -521,21 +656,37 @@ func (s *mcpServerImpl) handleAnalyzeWorkloadPatterns(ctx context.Context, args 
 	namespace := strArg(args, "namespace")
 	qs := nsQuery(namespace)
 
-	result := map[string]interface{}{}
-	var metrics map[string]interface{}
-	if err := c.get(ctx, c.clusterPath(clusterID, "/metrics/summary"), &metrics); err == nil {
-		result["metrics_summary"] = metrics
-	}
-	var hpa map[string]interface{}
-	if err := c.get(ctx, c.clusterPath(clusterID, "/resources/horizontalpodautoscalers"+qs), &hpa); err == nil {
-		result["hpas"] = hpa
-	}
 	var deploys map[string]interface{}
-	if err := c.get(ctx, c.clusterPath(clusterID, "/resources/deployments"+qs), &deploys); err == nil {
-		result["deployments"] = deploys
-	}
-	result["analysis_hint"] = "HPA currentReplicas vs minReplicas shows scaling activity. Steady high CPU indicates sustained load; spikes suggest bursty workloads needing KEDA or KUPE."
-	return result, nil
+	_ = c.get(ctx, c.clusterPath(clusterID, "/resources/deployments"+qs), &deploys)
+	var sts map[string]interface{}
+	_ = c.get(ctx, c.clusterPath(clusterID, "/resources/statefulsets"+qs), &sts)
+	var ds map[string]interface{}
+	_ = c.get(ctx, c.clusterPath(clusterID, "/resources/daemonsets"+qs), &ds)
+	var jobs map[string]interface{}
+	_ = c.get(ctx, c.clusterPath(clusterID, "/resources/jobs"+qs), &jobs)
+	var cronjobs map[string]interface{}
+	_ = c.get(ctx, c.clusterPath(clusterID, "/resources/cronjobs"+qs), &cronjobs)
+
+	dCount := len(extractResourceItems(deploys))
+	sCount := len(extractResourceItems(sts))
+	dsCount := len(extractResourceItems(ds))
+	jCount := len(extractResourceItems(jobs))
+	cjCount := len(extractResourceItems(cronjobs))
+
+	return map[string]interface{}{
+		"cluster_id": clusterID,
+		"workload_counts": map[string]int{
+			"deployments":  dCount,
+			"statefulsets": sCount,
+			"daemonsets":   dsCount,
+			"jobs":         jCount,
+			"cronjobs":     cjCount,
+		},
+		"findings": []string{
+			fmt.Sprintf("%d Deployments, %d StatefulSets, %d DaemonSets, %d Jobs, %d CronJobs", dCount, sCount, dsCount, jCount, cjCount),
+		},
+		"analysis_hint": "Heavy StatefulSet use → check storage provisioning. Many failed Jobs → check backoff limits. CronJob count → check for scheduling overlap.",
+	}, nil
 }
 
 // handleAnalyzePodHealth — intelligent pod health diagnostics (A-CORE-003)
@@ -894,6 +1045,7 @@ func (s *mcpServerImpl) handleAnalyzeStatefulSetHealth(ctx context.Context, args
 	}
 
 	return map[string]interface{}{
+		"cluster_id": clusterID,
 		"namespace": namespace,
 		"findings":  findings,
 		"timestamp": time.Now(),
@@ -971,6 +1123,7 @@ func (s *mcpServerImpl) handleAnalyzeReplicaSetHealth(ctx context.Context, args 
 		}
 	}
 	return map[string]interface{}{
+		"cluster_id": clusterID,
 		"namespace": namespace,
 		"findings":  findings,
 		"total":     len(items),
@@ -1049,6 +1202,7 @@ func (s *mcpServerImpl) handleAnalyzeJobHealth(ctx context.Context, args map[str
 		}
 	}
 	return map[string]interface{}{
+		"cluster_id": clusterID,
 		"namespace": namespace,
 		"findings":  findings,
 		"total":     len(items),
@@ -1122,6 +1276,7 @@ func (s *mcpServerImpl) handleAnalyzeCronJobHealth(ctx context.Context, args map
 		}
 	}
 	return map[string]interface{}{
+		"cluster_id": clusterID,
 		"namespace": namespace,
 		"findings":  findings,
 		"total":     len(items),
@@ -1243,6 +1398,7 @@ func (s *mcpServerImpl) handleAnalyzeServiceHealth(ctx context.Context, args map
 		}
 	}
 	return map[string]interface{}{
+		"cluster_id": clusterID,
 		"namespace": namespace,
 		"findings":  findings,
 		"total":     len(items),
@@ -1328,6 +1484,7 @@ func (s *mcpServerImpl) handleAnalyzeIngressHealth(ctx context.Context, args map
 		}
 	}
 	return map[string]interface{}{
+		"cluster_id": clusterID,
 		"namespace": namespace,
 		"findings":  findings,
 		"total":     len(items),
@@ -1374,6 +1531,7 @@ func (s *mcpServerImpl) handleAnalyzeDaemonSetHealth(ctx context.Context, args m
 	}
 
 	return map[string]interface{}{
+		"cluster_id": clusterID,
 		"namespace": namespace,
 		"findings":  findings,
 		"timestamp": time.Now(),
