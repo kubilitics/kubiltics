@@ -1978,48 +1978,104 @@ func (s *mcpServerImpl) routeRecommendationTool(ctx context.Context, name string
 
 	switch name {
 	case "recommend_resource_optimization":
-		var metrics map[string]interface{}
-		_ = c.get(ctx, c.clusterPath(clusterID, "/metrics/summary"), &metrics)
 		var deploys map[string]interface{}
 		_ = c.get(ctx, c.clusterPath(clusterID, "/resources/deployments"+qs), &deploys)
-		base["metrics_summary"] = metrics
-		base["deployments"] = deploys
+		var metrics map[string]interface{}
+		_ = c.get(ctx, c.clusterPath(clusterID, "/metrics/summary"), &metrics)
+
+		var findings []string
+		noLimitsCount := 0
+		for _, d := range extractResourceItems(deploys) {
+			spec, _ := d["spec"].(map[string]interface{})
+			containers, _ := spec["containers"].([]interface{})
+			for _, cont := range containers {
+				cm, _ := cont.(map[string]interface{})
+				res, _ := cm["resources"].(map[string]interface{})
+				limits, hasLimits := res["limits"].(map[string]interface{})
+				if !hasLimits || len(limits) == 0 {
+					noLimitsCount++
+					findings = append(findings, fmt.Sprintf("%s/%s: no resource limits — OOM risk", resourceNamespace(d), resourceName(d)))
+				}
+			}
+		}
+		if len(findings) == 0 {
+			findings = []string{"All deployments have resource limits set"}
+		}
+		base["deployment_count"] = len(extractResourceItems(deploys))
+		base["no_limits_count"] = noLimitsCount
+		base["findings"] = findings
+		base["metrics_available"] = metrics != nil
 		base["recommendation_hint"] = "Identify containers with requests >> actual usage and suggest rightsizing. Recommend VPA for variable workloads."
 
 	case "recommend_cost_reduction":
-		var nodes map[string]interface{}
+		var nodes, pvs map[string]interface{}
 		_ = c.get(ctx, c.clusterPath(clusterID, "/resources/nodes"), &nodes)
-		var pvs map[string]interface{}
 		_ = c.get(ctx, c.clusterPath(clusterID, "/resources/persistentvolumes"), &pvs)
-		var metrics map[string]interface{}
-		_ = c.get(ctx, c.clusterPath(clusterID, "/metrics"), &metrics)
-		base["nodes"] = nodes
-		base["persistent_volumes"] = pvs
-		base["cluster_metrics"] = metrics
+
+		releasedPVs := 0
+		for _, pv := range extractResourceItems(pvs) {
+			status, _ := pv["status"].(map[string]interface{})
+			if phase, _ := status["phase"].(string); phase == "Released" {
+				releasedPVs++
+			}
+		}
+		base["node_count"] = len(extractResourceItems(nodes))
+		base["pv_count"] = len(extractResourceItems(pvs))
+		base["released_pv_count"] = releasedPVs
 		base["recommendation_hint"] = "Look for idle nodes (low CPU/memory), Released PVs, and over-replicated workloads. Spot/preemptible nodes for stateless workloads."
 
 	case "recommend_security_hardening":
-		var pods map[string]interface{}
+		var pods, netpol, rb map[string]interface{}
 		_ = c.get(ctx, c.clusterPath(clusterID, "/resources/pods"+qs), &pods)
-		var netpol map[string]interface{}
 		_ = c.get(ctx, c.clusterPath(clusterID, "/resources/networkpolicies"+qs), &netpol)
-		var rb map[string]interface{}
 		_ = c.get(ctx, c.clusterPath(clusterID, "/resources/rolebindings"+qs), &rb)
-		base["pods"] = pods
-		base["network_policies"] = netpol
-		base["role_bindings"] = rb
+
+		privilegedCount := 0
+		rootCount := 0
+		for _, pod := range extractResourceItems(pods) {
+			spec, _ := pod["spec"].(map[string]interface{})
+			containers, _ := spec["containers"].([]interface{})
+			for _, cont := range containers {
+				cm, _ := cont.(map[string]interface{})
+				sc, _ := cm["securityContext"].(map[string]interface{})
+				if priv, _ := sc["privileged"].(bool); priv {
+					privilegedCount++
+				}
+				if uid, ok := sc["runAsUser"].(float64); ok && uid == 0 {
+					rootCount++
+				}
+			}
+		}
+		base["pod_count"] = len(extractResourceItems(pods))
+		base["netpol_count"] = len(extractResourceItems(netpol))
+		base["rb_count"] = len(extractResourceItems(rb))
+		base["privileged_container_count"] = privilegedCount
+		base["root_container_count"] = rootCount
 		base["recommendation_hint"] = "Flag containers running as root, privileged containers, hostNetwork/hostPID, missing NetworkPolicies, and overly broad ClusterRoleBindings."
 
 	case "recommend_scaling_strategy":
-		var hpa map[string]interface{}
+		var hpa, deploys, metrics map[string]interface{}
 		_ = c.get(ctx, c.clusterPath(clusterID, "/resources/horizontalpodautoscalers"+qs), &hpa)
-		var deploys map[string]interface{}
 		_ = c.get(ctx, c.clusterPath(clusterID, "/resources/deployments"+qs), &deploys)
-		var metrics map[string]interface{}
 		_ = c.get(ctx, c.clusterPath(clusterID, "/metrics/summary"), &metrics)
-		base["hpas"] = hpa
-		base["deployments"] = deploys
-		base["metrics_summary"] = metrics
+
+		hpaTargets := map[string]bool{}
+		for _, h := range extractResourceItems(hpa) {
+			spec, _ := h["spec"].(map[string]interface{})
+			ref, _ := spec["scaleTargetRef"].(map[string]interface{})
+			if n, _ := ref["name"].(string); n != "" {
+				hpaTargets[n] = true
+			}
+		}
+		noHPACount := 0
+		for _, d := range extractResourceItems(deploys) {
+			if !hpaTargets[resourceName(d)] {
+				noHPACount++
+			}
+		}
+		base["deployment_count"] = len(extractResourceItems(deploys))
+		base["hpa_count"] = len(extractResourceItems(hpa))
+		base["deployments_without_hpa"] = noHPACount
 		base["recommendation_hint"] = "Deployments without HPA and variable load → suggest HPA with CPU/memory targets. Predictable load → KEDA event-driven autoscaling."
 
 	default:
@@ -2027,11 +2083,16 @@ func (s *mcpServerImpl) routeRecommendationTool(ctx context.Context, name string
 		if out, matched, err := s.handlePlanRoute(ctx, name, args); matched {
 			return out, err
 		}
-		// For remaining recommendation tools, return cluster overview
+		// Stub recommend_* tools: fetch real cluster summary for context
 		var overview map[string]interface{}
 		_ = c.get(ctx, c.clusterPath(clusterID, "/overview"), &overview)
+		var deploys, pods map[string]interface{}
+		_ = c.get(ctx, c.clusterPath(clusterID, "/resources/deployments"+qs), &deploys)
+		_ = c.get(ctx, c.clusterPath(clusterID, "/resources/pods"+qs), &pods)
 		base["overview"] = overview
-		base["recommendation_hint"] = fmt.Sprintf("Generate %s recommendations based on the cluster state above.", name)
+		base["deployment_count"] = len(extractResourceItems(deploys))
+		base["pod_count"] = len(extractResourceItems(pods))
+		base["recommendation_hint"] = fmt.Sprintf("Generate %s recommendations based on the cluster state. deployment_count and pod_count show the workload scale.", name)
 	}
 	return base, nil
 }
@@ -2055,10 +2116,33 @@ func (s *mcpServerImpl) routeSecurityTool(ctx context.Context, name string, args
 	case "security_scan_cluster", "security_check_pod_security":
 		var pods map[string]interface{}
 		_ = c.get(ctx, c.clusterPath(clusterID, "/resources/pods"+qs), &pods)
-		var psp map[string]interface{}
-		_ = c.get(ctx, c.clusterPath(clusterID, "/resources/podsecuritypolicies"), &psp)
-		result["pods"] = pods
-		result["pod_security_policies"] = psp
+		privileged, root, hostNet, noSecCtx := 0, 0, 0, 0
+		for _, pod := range extractResourceItems(pods) {
+			spec, _ := pod["spec"].(map[string]interface{})
+			if hn, _ := spec["hostNetwork"].(bool); hn {
+				hostNet++
+			}
+			containers, _ := spec["containers"].([]interface{})
+			for _, cont := range containers {
+				cm, _ := cont.(map[string]interface{})
+				sc, _ := cm["securityContext"].(map[string]interface{})
+				if sc == nil {
+					noSecCtx++
+					continue
+				}
+				if priv, _ := sc["privileged"].(bool); priv {
+					privileged++
+				}
+				if uid, ok := sc["runAsUser"].(float64); ok && uid == 0 {
+					root++
+				}
+			}
+		}
+		result["pod_count"] = len(extractResourceItems(pods))
+		result["privileged_containers"] = privileged
+		result["root_containers"] = root
+		result["host_network_pods"] = hostNet
+		result["missing_security_context"] = noSecCtx
 		result["security_hint"] = "Check for privileged:true, runAsRoot, hostNetwork, hostPID, missing securityContext, and wildcard RBAC verbs."
 
 	case "security_audit_rbac":
@@ -2070,16 +2154,46 @@ func (s *mcpServerImpl) routeSecurityTool(ctx context.Context, name string, args
 		_ = c.get(ctx, c.clusterPath(clusterID, "/resources/roles"+qs), &roles)
 		var rb map[string]interface{}
 		_ = c.get(ctx, c.clusterPath(clusterID, "/resources/rolebindings"+qs), &rb)
-		result["cluster_roles"] = croles
-		result["cluster_role_bindings"] = crb
-		result["roles"] = roles
-		result["role_bindings"] = rb
+		clusterAdminBindings := []string{}
+		wildcardRules := 0
+		for _, b := range extractResourceItems(crb) {
+			rref, _ := b["roleRef"].(map[string]interface{})
+			if rn, _ := rref["name"].(string); rn == "cluster-admin" {
+				clusterAdminBindings = append(clusterAdminBindings, resourceName(b))
+			}
+		}
+		for _, r := range extractResourceItems(croles) {
+			rules, _ := r["rules"].([]interface{})
+			for _, rule := range rules {
+				rm, _ := rule.(map[string]interface{})
+				verbs, _ := rm["verbs"].([]interface{})
+				for _, v := range verbs {
+					if vs, _ := v.(string); vs == "*" {
+						wildcardRules++
+					}
+				}
+			}
+		}
+		result["clusterrole_count"] = len(extractResourceItems(croles))
+		result["clusterrolebinding_count"] = len(extractResourceItems(crb))
+		result["role_count"] = len(extractResourceItems(roles))
+		result["rolebinding_count"] = len(extractResourceItems(rb))
+		result["cluster_admin_bindings"] = clusterAdminBindings
+		result["wildcard_verb_rules"] = wildcardRules
 		result["security_hint"] = "Flag cluster-admin bindings to non-system accounts, wildcard resource/verb rules, and service accounts with unnecessary permissions."
 
 	case "security_scan_secrets":
 		var secrets map[string]interface{}
 		_ = c.get(ctx, c.clusterPath(clusterID, "/resources/secrets"+qs), &secrets)
-		result["secrets"] = secrets
+		opaqueCount := 0
+		for _, s := range extractResourceItems(secrets) {
+			st, _ := s["type"].(string)
+			if st == "Opaque" || st == "" {
+				opaqueCount++
+			}
+		}
+		result["secret_count"] = len(extractResourceItems(secrets))
+		result["opaque_count"] = opaqueCount
 		result["security_hint"] = "Identify secrets of type Opaque that may contain plaintext credentials, secrets mounted in too many pods, and secrets older than 90 days."
 
 	case "security_compliance_report":
@@ -2087,8 +2201,8 @@ func (s *mcpServerImpl) routeSecurityTool(ctx context.Context, name string, args
 		_ = c.get(ctx, c.clusterPath(clusterID, "/overview"), &overview)
 		var pods map[string]interface{}
 		_ = c.get(ctx, c.clusterPath(clusterID, "/resources/pods"+qs), &pods)
-		result["overview"] = overview
-		result["pods"] = pods
+		result["overview"] = overview // keep — already compact
+		result["pod_count"] = len(extractResourceItems(pods))
 		result["security_hint"] = "Map findings to CIS Benchmark controls: network segmentation (5.3), least-privilege RBAC (5.1), pod security (5.2), and audit logging (3.2)."
 
 	default:
@@ -2124,10 +2238,23 @@ func (s *mcpServerImpl) routeCostTool(ctx context.Context, name string, args map
 	var pvs map[string]interface{}
 	_ = c.get(ctx, c.clusterPath(clusterID, "/resources/persistentvolumes"), &pvs)
 
-	result["nodes"] = nodes
-	result["metrics_summary"] = metrics
-	result["deployments"] = deploys
-	result["persistent_volumes"] = pvs
+	nodeItems := extractResourceItems(nodes)
+	pvItems := extractResourceItems(pvs)
+	deployItems := extractResourceItems(deploys)
+
+	releasedPVs := 0
+	for _, pv := range pvItems {
+		status, _ := pv["status"].(map[string]interface{})
+		if phase, _ := status["phase"].(string); phase == "Released" {
+			releasedPVs++
+		}
+	}
+
+	result["node_count"] = len(nodeItems)
+	result["pv_count"] = len(pvItems)
+	result["deployment_count"] = len(deployItems)
+	result["released_pv_count"] = releasedPVs
+	result["metrics_available"] = metrics != nil
 
 	switch name {
 	case "cost_identify_waste":
@@ -2154,15 +2281,60 @@ func (s *mcpServerImpl) routeAutomationTool(ctx context.Context, name string, ar
 	if err != nil {
 		return nil, err
 	}
+	namespace := strArg(args, "namespace")
+	qs := nsQuery(namespace)
+
 	var overview map[string]interface{}
 	_ = c.get(ctx, c.clusterPath(clusterID, "/overview"), &overview)
 
-	return map[string]interface{}{
+	result := map[string]interface{}{
 		"tool":             name,
 		"cluster_id":       clusterID,
 		"cluster_overview": overview,
-		"automation_hint":  fmt.Sprintf("Generate a %s based on the cluster state above. Output as structured YAML or Markdown runbook.", name),
-	}, nil
+	}
+
+	safeMapCast := func(v interface{}) map[string]interface{} {
+		if m, ok := v.(map[string]interface{}); ok {
+			return m
+		}
+		return nil
+	}
+
+	switch name {
+	case "automation_generate_runbook":
+		var events interface{}
+		_ = c.get(ctx, c.clusterPath(clusterID, "/events?limit=100&type=Warning"), &events)
+		warningReasons := map[string]int{}
+		for _, ev := range extractResourceItems(safeMapCast(events)) {
+			if r, _ := ev["reason"].(string); r != "" {
+				warningReasons[r]++
+			}
+		}
+		result["recent_warning_reasons"] = warningReasons
+		result["automation_hint"] = "Generate a runbook for the most frequent warning reason above. Output as numbered Markdown steps with kubectl commands."
+
+	case "automation_run_playbook":
+		var deploys map[string]interface{}
+		_ = c.get(ctx, c.clusterPath(clusterID, "/resources/deployments"+qs), &deploys)
+		result["deployment_count"] = len(extractResourceItems(deploys))
+		result["automation_hint"] = "Generate a structured YAML playbook for the requested operation. Include pre-flight checks, rollback steps, and success criteria."
+
+	case "automation_create_alert_rule":
+		var nodes map[string]interface{}
+		_ = c.get(ctx, c.clusterPath(clusterID, "/resources/nodes"), &nodes)
+		result["node_count"] = len(extractResourceItems(nodes))
+		result["automation_hint"] = "Generate a Prometheus alerting rule YAML for the requested condition. Include severity, labels, and runbook_url annotation."
+
+	case "automation_schedule_task":
+		var cronjobs map[string]interface{}
+		_ = c.get(ctx, c.clusterPath(clusterID, "/resources/cronjobs"+qs), &cronjobs)
+		result["existing_cronjob_count"] = len(extractResourceItems(cronjobs))
+		result["automation_hint"] = "Generate a Kubernetes CronJob manifest for the requested task. Include resource limits, restart policy, and failure handling."
+
+	default:
+		result["automation_hint"] = fmt.Sprintf("Generate a %s based on the cluster state above. Output as structured YAML or Markdown runbook.", name)
+	}
+	return result, nil
 }
 
 // ════════════════════════════════════════════════════════════════════════════
