@@ -571,14 +571,6 @@ func (s *mcpServerImpl) createCostHandler(toolDef *tools.ToolDefinition) ToolHan
 	}
 }
 
-// createActionHandler creates a handler for action tools.
-func (s *mcpServerImpl) createActionHandler(toolDef *tools.ToolDefinition) ToolHandler {
-	name := toolDef.Name
-	return func(ctx context.Context, args map[string]interface{}) (interface{}, error) {
-		return s.routeActionTool(ctx, name, args)
-	}
-}
-
 // createExecutionHandler creates a handler for safety-gated execution tools.
 func (s *mcpServerImpl) createExecutionHandler(toolDef *tools.ToolDefinition) ToolHandler {
 	name := toolDef.Name

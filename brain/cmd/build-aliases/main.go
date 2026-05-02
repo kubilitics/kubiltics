@@ -214,15 +214,9 @@ func main() {
 		"export_topology_to_drawio": {"observe_resource_topology"},
 		// Metrics → cluster overview is a common LLM substitution for "show metrics"
 		"observe_metrics":           {"observe_cluster_overview", "get_cluster_health"},
-		// Action / execution alias group (so "restart pod X" → restart_pod ≅ action_restart_workload)
-		"restart_pod":               {"action_restart_workload"},
-		"action_restart_workload":   {"restart_pod"},
 		// action_scale_workload retired 2026-04-22 (see docs/strategy/2026-04-22-tool-audit.md).
-		"scale_deployment":          {"trigger_hpa_scale"},
-		"rollback_deployment":       {"action_rollback_deployment"},
-		"action_rollback_deployment": {"rollback_deployment"},
-		"apply_resource_patch":      {"action_apply_manifest"},
-		"action_apply_manifest":     {"apply_resource_patch"},
+		// action_restart_workload, action_rollback_deployment, action_apply_manifest retired d9215a06.
+		"scale_deployment":  {"trigger_hpa_scale"},
 		// Resource fetch family (intentionally crosses verbs — read-only)
 		"get_resource":              {"observe_resource", "list_resources", "observe_resources_by_query"},
 		"observe_resource":          {"get_resource", "list_resources", "observe_resources_by_query"},

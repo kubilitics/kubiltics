@@ -1985,18 +1985,6 @@ func (s *mcpServerImpl) routeCostTool(ctx context.Context, name string, args map
 }
 
 // ════════════════════════════════════════════════════════════════════════════
-// ACTION TOOLS (mutating — require explicit approval in calling UI)
-// ════════════════════════════════════════════════════════════════════════════
-
-func (s *mcpServerImpl) routeActionTool(ctx context.Context, name string, args map[string]interface{}) (interface{}, error) {
-	// NOTE: Action tools mutate cluster state. The AI server enforces that action
-	// tools are only executed when the autonomy level grants permission. The LLM
-	// must present the proposed action to the user and receive approval before
-	// calling these tools.
-	return nil, fmt.Errorf("action tool '%s' requires explicit user approval — not auto-executed", name)
-}
-
-// ════════════════════════════════════════════════════════════════════════════
 // AUTOMATION TOOLS
 // ════════════════════════════════════════════════════════════════════════════
 

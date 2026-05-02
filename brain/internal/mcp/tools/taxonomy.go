@@ -13,9 +13,6 @@ const (
 	// Recommendation tools - AI-powered suggestions
 	CategoryRecommendation ToolCategory = "recommendation"
 
-	// Action tools - Cluster modifications (requires approval)
-	CategoryAction ToolCategory = "action"
-
 	// Troubleshooting tools - Problem detection and resolution
 	CategoryTroubleshooting ToolCategory = "troubleshooting"
 
@@ -1584,49 +1581,6 @@ var ToolTaxonomy = []ToolDefinition{
 		Description: "Generate comprehensive cost optimization plan with ROI estimates.",
 		Destructive: false,
 		RequiresAI:  true,
-	},
-
-	// === ACTION TOOLS (5 tools) ===
-	// Cluster modifications (requires approval)
-	// Autonomy Level: 4 (Act)
-
-	// action_scale_workload retired 2026-04-22: stub (no InputSchema, no blast-
-	// radius analysis in handler). scale_deployment is the real implementation —
-	// proper schema (namespace/name/replicas/justification/dry_run), blast-radius
-	// analysis, Destructive=true so the safety engine runs pre-flight.
-	// Keeping two scale tools silently bypassed the approval UX when the LLM
-	// picked the stub. See docs/strategy/2026-04-22-tool-audit.md.
-	{
-		Name:                  "action_restart_workload",
-		Category:              CategoryAction,
-		Description:           "Restart pods or workloads with rolling update strategy.",
-		Destructive:           true,
-		RequiresAI:            false,
-		RequiredAutonomyLevel: 4,
-	},
-	{
-		Name:                  "action_apply_manifest",
-		Category:              CategoryAction,
-		Description:           "Apply Kubernetes manifests with validation and dry-run support.",
-		Destructive:           true,
-		RequiresAI:            false,
-		RequiredAutonomyLevel: 4,
-	},
-	{
-		Name:                  "action_rollback_deployment",
-		Category:              CategoryAction,
-		Description:           "Rollback deployment to previous revision with impact analysis.",
-		Destructive:           true,
-		RequiresAI:            true,
-		RequiredAutonomyLevel: 4,
-	},
-	{
-		Name:                  "action_execute_command",
-		Category:              CategoryAction,
-		Description:           "Execute command in pod container with security validation.",
-		Destructive:           true,
-		RequiresAI:            false,
-		RequiredAutonomyLevel: 4,
 	},
 
 	// === AUTOMATION TOOLS (3 tools) ===
