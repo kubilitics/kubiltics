@@ -364,15 +364,12 @@ func TestHandleStorageStatus_AggregatesResources(t *testing.T) {
 
 // ─── Analysis handler tests ───────────────────────────────────────────────────
 
-func TestHandleAnalyzeResourceEfficiency_ReturnsBothWorkloadsAndMetrics(t *testing.T) {
+func TestHandleAnalyzeResourceEfficiency_ReturnsFindingsAndCount(t *testing.T) {
 	fb := newFakeBackend(t)
 	fb.registerCluster()
 	base := "/clusters/" + testClusterID + "/resources/"
 	fb.register(base+"deployments", map[string]interface{}{"items": []interface{}{}})
-	fb.register(base+"statefulsets", map[string]interface{}{"items": []interface{}{}})
-	fb.register(base+"daemonsets", map[string]interface{}{"items": []interface{}{}})
 	fb.register("/clusters/"+testClusterID+"/metrics/summary", map[string]interface{}{"cpu": "70%"})
-	fb.register("/clusters/"+testClusterID+"/metrics", map[string]interface{}{"nodes": 3})
 
 	s := newTestServer(t, fb.server.URL)
 	result, err := s.handleAnalyzeResourceEfficiency(context.Background(), map[string]interface{}{})
@@ -380,12 +377,15 @@ func TestHandleAnalyzeResourceEfficiency_ReturnsBothWorkloadsAndMetrics(t *testi
 		t.Fatalf("unexpected error: %v", err)
 	}
 	m := result.(map[string]interface{})
-	if m["deployments"] == nil || m["metrics_summary"] == nil {
-		t.Errorf("missing expected keys: %v", m)
+	// Must return compact findings, not raw K8s list objects
+	if m["findings"] == nil {
+		t.Errorf("missing 'findings' key: %v", m)
 	}
-	// Should always include analysis hint
-	if m["analysis_hint"] == nil {
-		t.Error("missing analysis_hint")
+	if m["deployment_count"] == nil {
+		t.Errorf("missing 'deployment_count' key: %v", m)
+	}
+	if m["recommendation"] == nil {
+		t.Error("missing recommendation")
 	}
 }
 
