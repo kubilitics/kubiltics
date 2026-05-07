@@ -269,16 +269,22 @@ export function ClusterPickerPage() {
     if (file) void handleFile(file);
   }, [handleFile]);
 
-  // Can the "Add Cluster" button be clicked?
+  // Upload tab: always enabled (click = open file picker if nothing staged yet).
+  // Paste tab: enabled when content present. Picker: enabled when selection made.
   const canAdd = (() => {
     if (isAdding) return false;
     if (picker) return !!picker.selected;
-    if (addTab === 'upload') return !!pendingFile;
+    if (addTab === 'upload') return true;   // always clickable; handler opens picker if needed
     return pasteContent.trim().length > 0;
   })();
 
   const handleAddCluster = useCallback(async () => {
     if (!canAdd) return;
+    // Upload tab with no staged file → open the file picker instead of submitting
+    if (!picker && addTab === 'upload' && !pendingFile) {
+      fileInputRef.current?.click();
+      return;
+    }
     setIsAdding(true);
     try {
       let base64 = '';
