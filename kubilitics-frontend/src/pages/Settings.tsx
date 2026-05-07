@@ -365,7 +365,7 @@ export default function Settings() {
                 </CardDescription>
               </div>
             </div>
-            <Button variant="default" size="sm" className="rounded-xl h-9 bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm" onClick={() => navigate('/clusters?addCluster=true')}>
+            <Button variant="default" size="sm" className="rounded-xl h-9 bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm" onClick={() => navigate('/clusters')}>
               <Plus className="h-4 w-4 mr-1.5" />
               Add Cluster
             </Button>
@@ -379,7 +379,7 @@ export default function Settings() {
               </div>
               <p className="text-sm font-semibold text-foreground">No clusters connected</p>
               <p className="text-xs text-muted-foreground mt-1.5 max-w-xs mx-auto">Connect a Kubernetes cluster to start monitoring workloads, nodes, and services</p>
-              <Button size="sm" className="mt-5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => navigate('/clusters?addCluster=true')}>
+              <Button size="sm" className="mt-5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => navigate('/clusters')}>
                 <Plus className="h-4 w-4 mr-1.5" />
                 Connect First Cluster
               </Button>

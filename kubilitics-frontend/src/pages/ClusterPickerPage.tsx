@@ -7,8 +7,8 @@
 // see Phase 5 notes.)
 //
 // Wired as "/clusters" in App.tsx (Phase 7: unconditional).
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useCallback, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Plus, Search, ServerOff } from 'lucide-react';
 import { motion } from 'framer-motion';
 
@@ -159,17 +159,8 @@ function reachabilityDotClass(r: Reachability): string {
 
 export function ClusterPickerPage() {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
   const [query, setQuery] = useState('');
   const [addOpen, setAddOpen] = useState(false);
-
-  // If navigated here via ?addCluster=true (from Header / Settings), auto-open
-  // the dialog so the user lands directly on the "Add cluster" flow.
-  useEffect(() => {
-    if (searchParams.get('addCluster') === 'true') {
-      setAddOpen(true);
-    }
-  }, [searchParams]);
 
   // Whether the user came from within the app (has an active cluster) — used
   // to show the "Back" escape button so they're never stranded on this screen.
@@ -338,15 +329,7 @@ export function ClusterPickerPage() {
               path (bottom Add button) and the empty-state path. */}
           <AddClusterDialog
             open={addOpen}
-            onClose={() => {
-              setAddOpen(false);
-              // If the user arrived via ?addCluster=true and has an active
-              // cluster, dismissing the dialog should return them where they came
-              // from — not leave them stranded on the full-screen picker.
-              if (searchParams.get('addCluster') === 'true' && hasActiveCluster) {
-                navigate(-1);
-              }
-            }}
+            onClose={() => setAddOpen(false)}
             onAdded={() => { void refreshSnapshot(); }}
           />
 
