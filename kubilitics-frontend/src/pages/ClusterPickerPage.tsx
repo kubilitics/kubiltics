@@ -630,8 +630,9 @@ export function ClusterPickerPage() {
       <div className="border-t border-border/40 bg-background/80 backdrop-blur px-6 py-4 flex items-center justify-end gap-3 shrink-0">
         <Button
           type="button"
+          variant="outline"
           onClick={() => navigate(-1)}
-          className="h-11 w-36 rounded-xl text-sm font-medium bg-destructive hover:bg-destructive/90 text-destructive-foreground shadow-[var(--shadow-2)] hover:shadow-[var(--shadow-3)] transition-all duration-200"
+          className="h-11 w-36 rounded-xl text-sm font-medium border-border hover:bg-muted/60 transition-all duration-200"
         >
           Cancel
         </Button>
