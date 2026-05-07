@@ -327,7 +327,7 @@ export function ClusterPickerPage() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.25 }}
         >
-          <BrandLogo mark height={30} className="rounded-lg" />
+          <BrandLogo mark height={44} />
           <span className="text-sm font-semibold tracking-[0.1em] text-foreground">KUBILITICS</span>
         </motion.div>
       </header>
@@ -516,22 +516,23 @@ export function ClusterPickerPage() {
                   exit={{ opacity: 0 }}
                   className="space-y-5"
                 >
-                  {/* Tab switcher */}
-                  <div className="grid grid-cols-2 gap-1 p-1 rounded-xl bg-muted/50 border border-border/30">
-                    {(['upload', 'paste'] as const).map((t) => (
+                  {/* Tab switcher — clearly visible segmented control */}
+                  <div className="grid grid-cols-2 gap-0 rounded-xl border border-border overflow-hidden bg-muted/30">
+                    {(['upload', 'paste'] as const).map((t, i) => (
                       <button
                         key={t}
                         type="button"
                         onClick={() => { setAddTab(t); setPendingFile(null); }}
                         className={cn(
-                          'flex items-center justify-center gap-2 h-9 rounded-lg text-xs font-medium transition-all',
+                          'flex items-center justify-center gap-2 h-11 text-sm font-medium transition-all duration-150',
+                          i === 0 ? 'border-r border-border' : '',
                           addTab === t
-                            ? 'bg-background shadow-[var(--shadow-1)] text-foreground'
-                            : 'text-muted-foreground hover:text-foreground',
+                            ? 'bg-primary text-primary-foreground shadow-inner'
+                            : 'bg-background text-muted-foreground hover:bg-muted/60 hover:text-foreground',
                         )}
                       >
-                        {t === 'upload' ? <Upload className="h-3.5 w-3.5" /> : <ClipboardPaste className="h-3.5 w-3.5" />}
-                        {t === 'upload' ? 'Upload file' : 'Paste YAML'}
+                        {t === 'upload' ? <Upload className="h-4 w-4" /> : <ClipboardPaste className="h-4 w-4" />}
+                        {t === 'upload' ? 'Upload File' : 'Paste KubeConfig'}
                       </button>
                     ))}
                   </div>
