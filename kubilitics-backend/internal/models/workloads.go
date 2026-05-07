@@ -2,9 +2,10 @@ package models
 
 // WorkloadsOverview is the response for GET /clusters/{clusterId}/workloads
 type WorkloadsOverview struct {
-	Pulse     WorkloadPulse   `json:"pulse"`
-	Workloads []WorkloadItem  `json:"workloads"`
-	Alerts    WorkloadAlerts  `json:"alerts"`
+	Pulse       WorkloadPulse   `json:"pulse"`
+	Workloads   []WorkloadItem  `json:"workloads"`
+	Alerts      WorkloadAlerts  `json:"alerts"`
+	DataPartial bool            `json:"data_partial,omitempty"` // true when any data source failed
 }
 
 // WorkloadPulse aggregates health counts for the Workloads page hero.

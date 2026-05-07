@@ -2,6 +2,7 @@ package rest
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/gorilla/mux"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -61,19 +62,29 @@ func (h *Handler) GetWorkloadsOverview(w http.ResponseWriter, r *http.Request) {
 	}
 	// Fall back to live API for any kind the informer didn't cover.
 	if deployments == nil {
-		deployments, _ = client.ListResources(r.Context(), "deployments", "", opts)
+		if d, err := client.ListResources(r.Context(), "deployments", "", opts); err == nil {
+			deployments = d
+		}
 	}
 	if statefulsets == nil {
-		statefulsets, _ = client.ListResources(r.Context(), "statefulsets", "", opts)
+		if s, err := client.ListResources(r.Context(), "statefulsets", "", opts); err == nil {
+			statefulsets = s
+		}
 	}
 	if daemonsets == nil {
-		daemonsets, _ = client.ListResources(r.Context(), "daemonsets", "", opts)
+		if d, err := client.ListResources(r.Context(), "daemonsets", "", opts); err == nil {
+			daemonsets = d
+		}
 	}
 	if jobs == nil {
-		jobs, _ = client.ListResources(r.Context(), "jobs", "", opts)
+		if j, err := client.ListResources(r.Context(), "jobs", "", opts); err == nil {
+			jobs = j
+		}
 	}
 	if cronjobs == nil {
-		cronjobs, _ = client.ListResources(r.Context(), "cronjobs", "", opts)
+		if c, err := client.ListResources(r.Context(), "cronjobs", "", opts); err == nil {
+			cronjobs = c
+		}
 	}
 
 	// Pods: informer cache first, then live API.
@@ -95,8 +106,31 @@ func (h *Handler) GetWorkloadsOverview(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Events for alerts — only fetch Warning events; bounded to 200.
-	events, _ := h.eventsService.ListEventsAllNamespaces(r.Context(), clusterID, 200)
+	// Events for alerts — informer cache first (avoids 6 live API calls per request),
+	// fall back to live service only when cache unavailable.
+	dataPartial := false
+	var events []*models.Event
+	usedCache := false
+	if im := h.clusterService.GetInformerManager(clusterID); im != nil && im.HasSynced() {
+		if cached, ok := im.ListFromCache("events", "", metav1.ListOptions{Limit: 200}); ok {
+			usedCache = true
+			if cached != nil {
+				for _, u := range cached.Items {
+					var ev corev1.Event
+					if err2 := fromUnstructured(u.Object, &ev); err2 == nil {
+						events = append(events, k8sEventToWorkloadModel(&ev))
+					}
+				}
+			}
+		}
+	}
+	if !usedCache {
+		var eventsErr error
+		events, eventsErr = h.eventsService.ListEventsAllNamespaces(r.Context(), clusterID, 200)
+		if eventsErr != nil {
+			dataPartial = true
+		}
+	}
 	eventWarnings := 0
 	critical := 0
 	var top3 []models.WorkloadAlert
@@ -148,8 +182,9 @@ func (h *Handler) GetWorkloadsOverview(w http.ResponseWriter, r *http.Request) {
 	pulse := computeWorkloadPulse(workloads, pods, eventWarnings, critical)
 
 	overview := models.WorkloadsOverview{
-		Pulse:     pulse,
-		Workloads: workloads,
+		Pulse:       pulse,
+		Workloads:   workloads,
+		DataPartial: dataPartial,
 		Alerts: models.WorkloadAlerts{
 			Warnings: eventWarnings,
 			Critical: critical,
@@ -492,5 +527,39 @@ func computeWorkloadPulse(workloads []models.WorkloadItem, pods *corev1.PodList,
 		EventWarnings:  eventWarnings,
 		Critical:       crit,
 		OptimalPercent: optimalPct,
+	}
+}
+
+// k8sEventToWorkloadModel converts a typed corev1.Event to models.Event for
+// use in GetWorkloadsOverview. Mirrors the private k8sEventToModel in events_service.go.
+func k8sEventToWorkloadModel(ev *corev1.Event) *models.Event {
+	firstTS := ev.FirstTimestamp.Time
+	lastTS := ev.LastTimestamp.Time
+	if firstTS.IsZero() && !ev.EventTime.IsZero() {
+		firstTS = ev.EventTime.Time
+	}
+	if firstTS.IsZero() && !ev.CreationTimestamp.IsZero() {
+		firstTS = ev.CreationTimestamp.Time
+	}
+	if lastTS.IsZero() {
+		lastTS = firstTS
+	}
+	if lastTS.IsZero() {
+		lastTS = time.Now()
+	}
+	return &models.Event{
+		ID:              string(ev.UID),
+		Name:            ev.Name,
+		EventNamespace:  ev.Namespace,
+		Type:            ev.Type,
+		Reason:          ev.Reason,
+		Message:         ev.Message,
+		ResourceKind:    ev.InvolvedObject.Kind,
+		ResourceName:    ev.InvolvedObject.Name,
+		Namespace:       ev.InvolvedObject.Namespace,
+		FirstTimestamp:  firstTS,
+		LastTimestamp:   lastTS,
+		Count:           ev.Count,
+		SourceComponent: ev.Source.Component,
 	}
 }

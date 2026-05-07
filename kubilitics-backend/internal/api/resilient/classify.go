@@ -70,5 +70,16 @@ func IsTransientClusterError(err error) bool {
 		return true
 	}
 
+	// Cluster registration errors from resolveClusterID / GetOrReconnectClient.
+	// These are not server bugs — the cluster ID is unknown or reconnect failed.
+	// Return 200+reachable:false rather than 500 so the frontend sees a clean
+	// "unreachable" state instead of an opaque internal error.
+	msg := err.Error()
+	if strings.Contains(msg, "cluster not found") ||
+		strings.Contains(msg, "failed to create client") ||
+		strings.Contains(msg, "failed to reconnect") {
+		return true
+	}
+
 	return false
 }
