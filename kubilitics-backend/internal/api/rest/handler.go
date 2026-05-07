@@ -152,8 +152,9 @@ type Handler struct {
 	// summaryLRU and eventsLRU back the resilient envelope for the
 	// cluster-scoped list endpoints migrated in Phase 4 onboarding-v2.
 	// Keys: see buildSummaryCacheKey / buildEventsCacheKey.
-	summaryLRU *resilient.LRUCache[string, *models.ClusterSummary]
-	eventsLRU  *resilient.LRUCache[string, eventsResponse]
+	summaryLRU    *resilient.LRUCache[string, *models.ClusterSummary]
+	eventsLRU     *resilient.LRUCache[string, eventsResponse]
+	workloadsLRU  *resilient.LRUCache[string, models.WorkloadsOverview]
 
 	// OnClusterMutation is invoked after AddCluster / RemoveCluster / reconnect
 	// operations so the caller (main.go) can refresh the DiscoveryManager
@@ -187,6 +188,7 @@ func NewHandler(cs service.ClusterService, ts service.TopologyService, cfg *conf
 		snapshotStore:         snapshotStore,
 		summaryLRU:            resilient.NewLRUCache[string, *models.ClusterSummary](256),
 		eventsLRU:             resilient.NewLRUCache[string, eventsResponse](256),
+		workloadsLRU:          resilient.NewLRUCache[string, models.WorkloadsOverview](256),
 	}
 }
 
@@ -2088,7 +2090,11 @@ func respondJSON(w http.ResponseWriter, status int, data interface{}) {
 }
 
 func respondError(w http.ResponseWriter, status int, message string) {
-	respondJSON(w, status, map[string]string{"error": message})
+	respondJSON(w, status, map[string]interface{}{
+		"error":   message,
+		"code":    "UNCLASSIFIED",
+		"message": message,
+	})
 }
 
 // respondErrorWithRequestID is a convenience wrapper that includes request ID from context

@@ -607,6 +607,7 @@ func (s *mcpServerImpl) routeNarrateTool(ctx context.Context, name string, args 
 			}
 		}
 		base["narrative_prompt"] = "From the rollout history, describe what changed between the two most recent revisions and the likely user-visible impact. Prefer concrete language over jargon."
+		base["advisory_only"] = true
 
 	// ── narrate_weekly_status ────────────────────────────────────────────────
 	case "narrate_weekly_status":

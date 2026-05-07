@@ -254,6 +254,7 @@ func (s *mcpServerImpl) handleAnalyzeConfigurationDrift(ctx context.Context, arg
 		result["pods"] = pods
 	}
 	result["analysis_hint"] = "Compare spec.replicas vs. status.availableReplicas in deployments; differences indicate drift. Look for pods with images that differ from deployment spec."
+	result["advisory_only"] = true
 	return result, nil
 }
 
@@ -552,6 +553,7 @@ func (s *mcpServerImpl) handleAnalyzeRolloutRisk(ctx context.Context, args map[s
 		result["cluster_metrics_summary"] = clMetrics
 	}
 	result["analysis_hint"] = "Check rollout strategy (RollingUpdate vs Recreate), minReadySeconds, and cluster headroom. High restart count in history = risky rollout."
+	result["advisory_only"] = true
 	return result, nil
 }
 

@@ -1,6 +1,7 @@
 package rest
 
 import (
+	"context"
 	"net/http"
 	"time"
 
@@ -10,8 +11,8 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	corev1 "k8s.io/api/core/v1"
 
+	"github.com/kubilitics/kubilitics-backend/internal/api/resilient"
 	"github.com/kubilitics/kubilitics-backend/internal/models"
-	"github.com/kubilitics/kubilitics-backend/internal/pkg/logger"
 	"github.com/kubilitics/kubilitics-backend/internal/pkg/validate"
 )
 
@@ -33,13 +34,17 @@ func (h *Handler) GetWorkloadsOverview(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusBadRequest, "Invalid clusterId")
 		return
 	}
+	cacheKey := func(r *http.Request) string { return clusterID }
+	resilient.WrapClusterHandler(h.workloadsLRU, cacheKey, h.buildWorkloads)(w, r)
+}
 
-	// Headlamp/Lens model: try kubeconfig from request first, fall back to stored cluster
-	client, err := h.getClientFromRequest(r.Context(), r, clusterID, h.cfg)
+func (h *Handler) buildWorkloads(ctx context.Context, r *http.Request) (models.WorkloadsOverview, error) {
+	vars := mux.Vars(r)
+	clusterID := vars["clusterId"]
+
+	client, err := h.getClientFromRequest(ctx, r, clusterID, h.cfg)
 	if err != nil {
-		requestID := logger.FromContext(r.Context())
-		respondErrorWithCode(w, http.StatusNotFound, ErrCodeNotFound, err.Error(), requestID)
-		return
+		return models.WorkloadsOverview{}, err
 	}
 
 	opts := metav1.ListOptions{Limit: 5000}
@@ -181,7 +186,7 @@ func (h *Handler) GetWorkloadsOverview(w http.ResponseWriter, r *http.Request) {
 	// healthy). See pulse.event_warnings for the event-level signal.
 	pulse := computeWorkloadPulse(workloads, pods, eventWarnings, critical)
 
-	overview := models.WorkloadsOverview{
+	return models.WorkloadsOverview{
 		Pulse:       pulse,
 		Workloads:   workloads,
 		DataPartial: dataPartial,
@@ -190,9 +195,7 @@ func (h *Handler) GetWorkloadsOverview(w http.ResponseWriter, r *http.Request) {
 			Critical: critical,
 			Top3:     top3,
 		},
-	}
-
-	respondJSON(w, http.StatusOK, overview)
+	}, nil
 }
 
 // buildRestartIndex returns a map of "namespace/name" → max restart count for

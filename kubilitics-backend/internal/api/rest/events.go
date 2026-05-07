@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/kubilitics/kubilitics-backend/internal/api/resilient"
@@ -182,9 +183,29 @@ func (h *Handler) buildEvents(ctx context.Context, r *http.Request) (eventsRespo
 		if sinceTime != nil || eventType != "" {
 			fetchLimit = 500
 		}
-		events, err := h.eventsService.ListEventsAllNamespaces(ctx, clusterID, fetchLimit)
-		if err != nil {
-			return eventsResponse{}, err
+
+		// Prefer informer cache (avoids 6 live K8s API fan-out calls).
+		var events []*models.Event
+		usedCache := false
+		if im := h.clusterService.GetInformerManager(clusterID); im != nil && im.HasSynced() {
+			if cached, ok := im.ListFromCache("events", "", metav1.ListOptions{Limit: int64(fetchLimit)}); ok {
+				usedCache = true
+				if cached != nil {
+					for _, u := range cached.Items {
+						var ev corev1.Event
+						if err2 := fromUnstructured(u.Object, &ev); err2 == nil {
+							events = append(events, k8sEventToWorkloadModel(&ev))
+						}
+					}
+				}
+			}
+		}
+		if !usedCache {
+			var liveErr error
+			events, liveErr = h.eventsService.ListEventsAllNamespaces(ctx, clusterID, fetchLimit)
+			if liveErr != nil {
+				return eventsResponse{}, liveErr
+			}
 		}
 		events = filterEvents(events)
 		if len(events) > limit {

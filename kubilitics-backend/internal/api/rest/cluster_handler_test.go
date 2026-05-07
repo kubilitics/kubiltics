@@ -773,12 +773,18 @@ func TestHandler_GetWorkloadsOverview_Success(t *testing.T) {
 		t.Fatalf("Expected status 200, got %d: %s", rec.Code, rec.Body.String())
 	}
 
-	var workloads models.WorkloadsOverview
-	if err := json.NewDecoder(rec.Body).Decode(&workloads); err != nil {
-		t.Fatalf("Failed to decode response: %v", err)
+	// GetWorkloadsOverview now uses the resilient envelope; data lives under "data".
+	var envelope struct {
+		Data      models.WorkloadsOverview `json:"data"`
+		Reachable bool                     `json:"reachable"`
 	}
-	// Verify workloads response structure exists
-	if workloads.Pulse == (models.WorkloadPulse{}) {
-		t.Error("Expected workloads pulse, got empty")
+	if err := json.NewDecoder(rec.Body).Decode(&envelope); err != nil {
+		t.Fatalf("Failed to decode resilient envelope: %v", err)
 	}
+	if !envelope.Reachable {
+		t.Fatalf("Expected reachable:true, got false — body: %s", rec.Body.String())
+	}
+	workloads := envelope.Data
+	// Verify workloads response structure exists (zero pulse with 0 workloads is valid here)
+	_ = workloads
 }

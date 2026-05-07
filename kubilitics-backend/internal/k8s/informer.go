@@ -3,6 +3,7 @@ package k8s
 import (
 	"context"
 	"fmt"
+	"log"
 	"sort"
 	"strings"
 	"sync/atomic"
@@ -192,11 +193,13 @@ func (im *InformerManager) ListFromCache(resourceType, namespace string, opts me
 	// Read all items from the informer store (lock-free, O(n))
 	items := store.List()
 	result := &unstructured.UnstructuredList{}
+	skipped := 0
 
 	for _, item := range items {
 		// Convert runtime.Object to unstructured
 		obj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(item)
 		if err != nil {
+			skipped++
 			continue
 		}
 		u := unstructured.Unstructured{Object: obj}
@@ -207,6 +210,9 @@ func (im *InformerManager) ListFromCache(resourceType, namespace string, opts me
 		}
 
 		result.Items = append(result.Items, u)
+	}
+	if skipped > 0 {
+		log.Printf("ListFromCache: skipped %d/%d items (%s) due to conversion errors", skipped, len(items), resourceType)
 	}
 
 	// Apply limit if specified
