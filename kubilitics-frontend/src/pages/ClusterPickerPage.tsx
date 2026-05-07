@@ -622,25 +622,22 @@ export function ClusterPickerPage() {
 
       {/* ── Bottom action bar — spans both panes ──────────────────── */}
       <div className="border-t border-border/40 bg-background/80 backdrop-blur px-6 py-4 flex items-center justify-end gap-3 shrink-0">
-        {hasActive && (
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => navigate(-1)}
-            className="h-10 px-5 rounded-xl border-border/60 text-sm"
-          >
-            Cancel
-          </Button>
-        )}
+        <Button
+          type="button"
+          onClick={() => navigate(-1)}
+          className="h-11 w-36 rounded-xl text-sm font-medium bg-destructive hover:bg-destructive/90 text-destructive-foreground shadow-[var(--shadow-2)] hover:shadow-[var(--shadow-3)] transition-all duration-200"
+        >
+          Cancel
+        </Button>
         <Button
           type="button"
           onClick={() => { void handleAddCluster(); }}
           disabled={!canAdd || isAdding}
           className={cn(
-            'h-10 px-6 rounded-xl text-sm font-medium gap-2',
+            'h-11 w-36 rounded-xl text-sm font-medium gap-2',
             'bg-primary hover:bg-primary/90 text-primary-foreground',
             'shadow-[var(--shadow-2)] hover:shadow-[var(--shadow-3)]',
-            'transition-all duration-200 disabled:shadow-none disabled:opacity-50',
+            'transition-all duration-200 disabled:shadow-none disabled:opacity-40',
           )}
         >
           {isAdding && <Loader2 className="h-4 w-4 animate-spin" />}
