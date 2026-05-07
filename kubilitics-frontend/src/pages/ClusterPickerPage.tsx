@@ -7,9 +7,9 @@
 // see Phase 5 notes.)
 //
 // Wired as "/clusters" in App.tsx (Phase 7: unconditional).
-import { useCallback, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Plus, Search, ServerOff } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { ArrowLeft, Plus, Search, ServerOff } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 import { Card } from '@/components/ui/card';
@@ -19,7 +19,7 @@ import { BrandLogo } from '@/components/BrandLogo';
 import { cn } from '@/lib/utils';
 
 import { AddClusterDialog } from '@/components/cluster/AddClusterDialog';
-import { useClusterPresenceStore } from '@/stores/clusterPresenceStore';
+import { useClusterPresenceStore, useActiveCluster } from '@/stores/clusterPresenceStore';
 import { getEffectiveBackendBaseUrl, useBackendConfigStore } from '@/stores/backendConfigStore';
 import type {
   DiscoveredCluster,
@@ -159,8 +159,26 @@ function reachabilityDotClass(r: Reachability): string {
 
 export function ClusterPickerPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [query, setQuery] = useState('');
   const [addOpen, setAddOpen] = useState(false);
+
+  // If navigated here via ?addCluster=true (from Header / Settings), auto-open
+  // the dialog so the user lands directly on the "Add cluster" flow.
+  useEffect(() => {
+    if (searchParams.get('addCluster') === 'true') {
+      setAddOpen(true);
+    }
+  }, [searchParams]);
+
+  // Whether the user came from within the app (has an active cluster) — used
+  // to show the "Back" escape button so they're never stranded on this screen.
+  const activeCluster = useActiveCluster();
+  const hasActiveCluster = activeCluster !== null;
+
+  const handleBack = useCallback(() => {
+    navigate(-1);
+  }, [navigate]);
 
   const discovered = useClusterPresenceStore((s) => s.discovered);
   const registered = useClusterPresenceStore((s) => s.registered);
@@ -285,7 +303,22 @@ export function ClusterPickerPage() {
       aria-label="Clusters"
     >
       {/* Minimal brand — centered, large. No sidebar, no app header. */}
-      <header className="w-full px-6 pt-14 pb-6 flex flex-col items-center gap-3">
+      <header className="w-full px-6 pt-14 pb-6 flex flex-col items-center gap-3 relative">
+        {/* Back button — only shown when user navigated here from within the app */}
+        {hasActiveCluster && (
+          <motion.button
+            type="button"
+            onClick={handleBack}
+            initial={{ opacity: 0, x: -8 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.2 }}
+            className="absolute left-6 top-6 flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors rounded-lg px-2 py-1.5 hover:bg-muted/50"
+            aria-label="Go back"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back
+          </motion.button>
+        )}
         <motion.div
           initial={{ scale: 0.8, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
@@ -305,7 +338,15 @@ export function ClusterPickerPage() {
               path (bottom Add button) and the empty-state path. */}
           <AddClusterDialog
             open={addOpen}
-            onClose={() => setAddOpen(false)}
+            onClose={() => {
+              setAddOpen(false);
+              // If the user arrived via ?addCluster=true and has an active
+              // cluster, dismissing the dialog should return them where they came
+              // from — not leave them stranded on the full-screen picker.
+              if (searchParams.get('addCluster') === 'true' && hasActiveCluster) {
+                navigate(-1);
+              }
+            }}
             onAdded={() => { void refreshSnapshot(); }}
           />
 
