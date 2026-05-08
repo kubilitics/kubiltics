@@ -357,7 +357,17 @@ export function PodTerminal({
             {containers.map(c => (
               <button
                 key={c}
-                onClick={() => { setSelectedContainer(c); onContainerChange?.(c); }}
+                onClick={() => {
+                  if (c === selectedContainer) return;
+                  setSelectedContainer(c);
+                  onContainerChange?.(c);
+                  // selectedContainer state update is async; drive reconnect
+                  // imperatively so there's no dependency-chain delay.
+                  if (wsRef.current) {
+                    wsRef.current.close(1000, 'container-switch');
+                    wsRef.current = null;
+                  }
+                }}
                 className={cn(
                   'h-6 px-2.5 text-[11px] font-medium rounded-sm transition-all',
                   selectedContainer === c
