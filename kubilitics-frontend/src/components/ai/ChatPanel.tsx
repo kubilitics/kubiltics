@@ -69,7 +69,7 @@ function ChatDrawer({ children }: { children: React.ReactNode }) {
         height: 'calc(100vh - var(--app-header-offset, 60px))',
       }}
       className={cn(
-        'fixed right-0 z-40 flex flex-col',
+        'fixed right-0 z-[200] flex flex-col',
         // Floating overlay: solid background (no transparency on the
         // surface itself; legibility wins), a refined left border, and
         // a soft elevation shadow that visually separates it from the
