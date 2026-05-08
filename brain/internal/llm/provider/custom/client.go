@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/vellankikoti/kubilitics/brain/internal/llm/types"
@@ -164,7 +165,7 @@ func NewCustomClient(baseURL, apiKey, model string) (*CustomClientImpl, error) {
 	}
 
 	client := &CustomClientImpl{
-		baseURL:   baseURL,
+		baseURL:   strings.TrimRight(baseURL, "/"),
 		apiKey:    apiKey,
 		model:     model,
 		maxTokens: DefaultMaxTokens,

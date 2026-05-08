@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
 	"sync"
 
@@ -123,7 +124,11 @@ func (c *CustomClientImpl) streamSingleTurn(
 		return "", nil, fmt.Errorf("marshal: %w", err)
 	}
 
-	httpReq, err := http.NewRequestWithContext(ctx, "POST", c.baseURL+"/chat/completions", bytes.NewBuffer(body))
+	chatURL, err := url.JoinPath(c.baseURL, "/chat/completions")
+	if err != nil {
+		return "", nil, fmt.Errorf("build url: %w", err)
+	}
+	httpReq, err := http.NewRequestWithContext(ctx, "POST", chatURL, bytes.NewBuffer(body))
 	if err != nil {
 		return "", nil, fmt.Errorf("create request: %w", err)
 	}
@@ -132,6 +137,10 @@ func (c *CustomClientImpl) streamSingleTurn(
 		httpReq.Header.Set("Authorization", "Bearer "+c.apiKey)
 	}
 	httpReq.Header.Set("Accept", "text/event-stream")
+	// OpenRouter (and some other providers) use these for routing/ranking.
+	// Harmless for others; required etiquette for OpenRouter free tier.
+	httpReq.Header.Set("HTTP-Referer", "https://kubilitics.com")
+	httpReq.Header.Set("X-Title", "Kubilitics")
 
 	streamClient := &http.Client{}
 	httpResp, err := streamClient.Do(httpReq)

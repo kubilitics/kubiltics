@@ -10,6 +10,30 @@ import { cn } from '@/lib/utils';
 import { AlertCircle, ExternalLink } from 'lucide-react';
 import { costForTurn, formatCostUSD } from '@/lib/aiPricing';
 
+// Extract a readable sentence from the raw Go error chain that the brain sends.
+// Typical shape: "LLM turn 0: API 401: {"error":{"message":"Invalid API key"}}"
+function cleanLLMError(raw: string): string {
+  // Strip leading "LLM turn N: " prefix
+  const stripped = raw.replace(/^LLM turn \d+:\s*/, '');
+
+  // Try to extract JSON error body after "API NNN: "
+  const apiMatch = stripped.match(/^API \d+:\s*(.+)$/s);
+  if (apiMatch) {
+    const body = apiMatch[1].trim();
+    try {
+      const parsed = JSON.parse(body);
+      // OpenAI/OpenRouter shape: { error: { message: "..." } }
+      const msg = parsed?.error?.message ?? parsed?.message;
+      if (typeof msg === 'string' && msg.length > 0) return msg;
+    } catch {
+      // body is not JSON — return it directly (trim to 200 chars)
+    }
+    return body.slice(0, 200);
+  }
+
+  return stripped || raw;
+}
+
 interface Props {
   turn: AssistantTurn;
 }
@@ -90,8 +114,8 @@ export function Turn({ turn }: Props) {
       )}
       {turn.state === 'error' && turn.error && (
         <div className="flex items-center gap-2 text-xs text-destructive mt-2">
-          <AlertCircle className="h-3.5 w-3.5" />
-          <span>{turn.error.message}</span>
+          <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+          <span>{cleanLLMError(turn.error.message)}</span>
         </div>
       )}
       <TurnFooter turn={turn} />
