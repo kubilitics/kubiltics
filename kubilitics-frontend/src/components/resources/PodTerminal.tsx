@@ -50,15 +50,22 @@ export function PodTerminal({
   const dataDisposableRef = useRef<{ dispose: () => void } | null>(null);
   const gotFirstOutput = useRef(false);
   const mountedRef = useRef(true);
+  const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const connectingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [selectedContainer, setSelectedContainer] = useState(containerName);
   const [connState, setConnState] = useState<'disconnected' | 'connecting' | 'connected'>('disconnected');
-  const isConnected = connState === 'connected';
   const [isMaximized, setIsMaximized] = useState(false);
 
   const clusterId = useActiveClusterId();
 
   const connect = useCallback(() => {
     if (!clusterId || !podName || !namespace) return;
+
+    // Cancel any pending retry or reconnect timers
+    if (retryTimerRef.current) { clearTimeout(retryTimerRef.current); retryTimerRef.current = null; }
+    if (reconnectTimerRef.current) { clearTimeout(reconnectTimerRef.current); reconnectTimerRef.current = null; }
+    if (connectingTimerRef.current) { clearTimeout(connectingTimerRef.current); connectingTimerRef.current = null; }
 
     const wsUrl = buildWsUrl(
       `/api/v1/clusters/${encodeURIComponent(clusterId)}/pods/${encodeURIComponent(namespace)}/${encodeURIComponent(podName)}/exec?container=${encodeURIComponent(selectedContainer)}`
@@ -74,10 +81,11 @@ export function PodTerminal({
     if (!xtermRef.current) {
       if (!termRef.current) return;
       const container = termRef.current;
-      // Ensure container has dimensions (tab may have just become visible)
+      // Ensure container has dimensions (tab may have just become visible).
+      // Use retryTimerRef so the timer can always be cancelled on unmount.
       if (container.clientHeight === 0) {
-        const timer = setTimeout(() => connect(), 100);
-        return () => clearTimeout(timer);
+        retryTimerRef.current = setTimeout(() => connect(), 100);
+        return;
       }
       const term = new Terminal({
         cursorBlink: true,
@@ -141,13 +149,21 @@ export function PodTerminal({
     });
 
     ws.onopen = () => {
-      // Don't set 'connected' yet — wait for first stdout to confirm end-to-end exec works
-      fitRef.current?.fit();
-      // Send initial resize with actual terminal dimensions
+      // Don't set 'connected' yet — wait for first stdout to confirm end-to-end exec works.
+      // Refit + send resize so the backend PTY has correct dimensions from the start.
       requestAnimationFrame(() => {
+        fitRef.current?.fit();
         const { cols, rows } = term;
         ws.send(JSON.stringify({ t: 'resize', r: { cols, rows } }));
       });
+      // 12s timeout: if no stdout arrives the backend is likely unreachable
+      connectingTimerRef.current = setTimeout(() => {
+        if (connState !== 'connected' && mountedRef.current) {
+          setConnState('disconnected');
+          term.writeln('\r\n\x1b[33mNo response from container — check if the pod is running.\x1b[0m');
+          ws.close(1000, 'timeout');
+        }
+      }, 12_000);
     };
 
     ws.onmessage = (evt) => {
@@ -158,6 +174,8 @@ export function PodTerminal({
             term.clear();
             gotFirstOutput.current = true;
           }
+          // Clear the connecting timeout — we have live output
+          if (connectingTimerRef.current) { clearTimeout(connectingTimerRef.current); connectingTimerRef.current = null; }
           setConnState('connected');
           const bytes = atob(msg.d);
           term.write(bytes);
@@ -187,20 +205,21 @@ export function PodTerminal({
     };
 
     ws.onclose = (evt) => {
+      if (connectingTimerRef.current) { clearTimeout(connectingTimerRef.current); connectingTimerRef.current = null; }
       setConnState('disconnected');
-      // Suppress close messages entirely when the component is still mounted
-      // (auto-reconnect via visibility change will handle it) and for normal
-      // close codes (1000 = clean, 1005 = no status, 1006 = abnormal).
-      // Only show a message if unmounted won't reconnect AND it's an unexpected code.
-      if (!mountedRef.current && evt.code !== 1000 && evt.code !== 1005 && evt.code !== 1006) {
+      // Code 1000 = clean close by us (unmount / container switch / reconnect button).
+      // For unexpected drops while still mounted, auto-reconnect after 3s.
+      if (mountedRef.current && evt.code !== 1000) {
+        term.writeln('\r\n\x1b[33mConnection lost — reconnecting in 3s…\x1b[0m');
+        reconnectTimerRef.current = setTimeout(() => {
+          if (mountedRef.current) connect();
+        }, 3_000);
+      } else if (!mountedRef.current && evt.code !== 1000 && evt.code !== 1005 && evt.code !== 1006) {
         term.writeln(`\r\n\x1b[33mDisconnected (code: ${evt.code}). Click Reconnect.\x1b[0m`);
       }
     };
 
     ws.onerror = () => {
-      // Don't write error text to the terminal — the header badge shows
-      // "Connecting..." which is sufficient. Auto-reconnect on visibility
-      // change will retry silently.
       setConnState('disconnected');
     };
 
@@ -222,6 +241,9 @@ export function PodTerminal({
     return () => {
       mountedRef.current = false;
       document.removeEventListener('visibilitychange', handleVisibility);
+      if (retryTimerRef.current) { clearTimeout(retryTimerRef.current); retryTimerRef.current = null; }
+      if (connectingTimerRef.current) { clearTimeout(connectingTimerRef.current); connectingTimerRef.current = null; }
+      if (reconnectTimerRef.current) { clearTimeout(reconnectTimerRef.current); reconnectTimerRef.current = null; }
       wsRef.current?.close(1000, 'unmount');
     };
   }, [connect]);

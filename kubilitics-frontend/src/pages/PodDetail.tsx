@@ -45,7 +45,6 @@ import {
   type ResourceStatus,
   type CustomTab,
 } from '@/components/resources';
-import { PodTerminal } from '@/components/resources/PodTerminal';
 import { MultiTerminal } from '@/components/resources/MultiTerminal';
 import { InlineFileBrowser } from '@/components/resources/InlineFileBrowser';
 import {
