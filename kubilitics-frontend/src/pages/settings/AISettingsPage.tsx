@@ -761,6 +761,12 @@ export default function AISettingsPage() {
                             needs key
                           </Badge>
                         )}
+                        {/* Mismatch: OpenRouter profile saved as non-custom provider */}
+                        {p.name.toLowerCase().includes('openrouter') && p.provider !== 'custom' && (
+                          <Badge variant="outline" className="text-xs h-5 border-rose-500/40 text-rose-700 dark:text-rose-400">
+                            misconfigured
+                          </Badge>
+                        )}
                       </div>
                       <div className="text-xs text-muted-foreground truncate">
                         {p.provider}
@@ -791,9 +797,26 @@ export default function AISettingsPage() {
                       className="h-7 text-xs"
                       onClick={() => {
                         setSelectedProfileId(p.id);
-                        setProvider(p.provider as Provider);
-                        setModel(p.model);
-                        setBaseUrl(p.base_url);
+                        // Auto-correct known provider mismatches so the user can
+                        // just click Save without having to fix fields manually.
+                        const pName = p.name.toLowerCase();
+                        if (pName.includes('openrouter') && p.provider !== 'custom') {
+                          setProvider('custom');
+                          setModel('openai/gpt-4o-mini');
+                          setBaseUrl('https://openrouter.ai/api/v1');
+                        } else if (pName.includes('groq') && p.provider !== 'custom') {
+                          setProvider('custom');
+                          setModel('llama-3.3-70b-versatile');
+                          setBaseUrl('https://api.groq.com/openai/v1');
+                        } else if (pName.includes('together') && p.provider !== 'custom') {
+                          setProvider('custom');
+                          setModel('Qwen/Qwen2.5-7B-Instruct-Turbo');
+                          setBaseUrl('https://api.together.xyz/v1');
+                        } else {
+                          setProvider(p.provider as Provider);
+                          setModel(p.model);
+                          setBaseUrl(p.base_url);
+                        }
                         setApiKey('');
                         setTestResult(null);
                       }}
@@ -1085,6 +1108,39 @@ export default function AISettingsPage() {
                 return warn ? (
                   <p className="text-xs text-amber-600 dark:text-amber-400">⚠ {warn}</p>
                 ) : null;
+              })()}
+              {/* Saved-profile mismatch: detect when a stored profile has the
+                  wrong provider for the service it represents. The key is in
+                  keychain so we can't read it — infer from profile name or model. */}
+              {(() => {
+                const name = (selectedProfile?.name ?? '').toLowerCase();
+                const isOpenRouterProfile = name.includes('openrouter') || name.includes('open router');
+                const isGroqProfile = name.includes('groq');
+                const isTogetherProfile = name.includes('together');
+                if (!apiKey.trim() && hasApiKey) {
+                  if (isOpenRouterProfile && provider !== 'custom') {
+                    return (
+                      <p className="text-xs text-amber-600 dark:text-amber-400">
+                        ⚠ This profile is named &quot;{selectedProfile?.name}&quot; but Provider is set to <strong>{provider}</strong> — OpenRouter requires Provider = <strong>Custom</strong> with Base URL <code>https://openrouter.ai/api/v1</code>. Fix below and save.
+                      </p>
+                    );
+                  }
+                  if (isGroqProfile && provider !== 'custom') {
+                    return (
+                      <p className="text-xs text-amber-600 dark:text-amber-400">
+                        ⚠ This profile is named &quot;{selectedProfile?.name}&quot; but Provider is set to <strong>{provider}</strong> — Groq requires Provider = <strong>Custom</strong> with Base URL <code>https://api.groq.com/openai/v1</code>.
+                      </p>
+                    );
+                  }
+                  if (isTogetherProfile && provider !== 'custom') {
+                    return (
+                      <p className="text-xs text-amber-600 dark:text-amber-400">
+                        ⚠ This profile is named &quot;{selectedProfile?.name}&quot; but Provider is set to <strong>{provider}</strong> — Together AI requires Provider = <strong>Custom</strong> with Base URL <code>https://api.together.xyz/v1</code>.
+                      </p>
+                    );
+                  }
+                }
+                return null;
               })()}
             </div>
           )}
