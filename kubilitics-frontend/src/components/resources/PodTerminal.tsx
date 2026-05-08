@@ -226,79 +226,68 @@ export function PodTerminal({
     };
   }, [connect]);
 
-  // Handle container resize via ResizeObserver (works when sidebar collapses, etc.)
+  // Single refit helper used everywhere — fits xterm then syncs new dimensions
+  // to the backend PTY via WS resize message. Without the WS message the server
+  // keeps wrapping text at the old column width even after the visual refit.
+  const refitAndSendResize = useCallback(() => {
+    const el = termRef.current;
+    if (!el || !el.offsetWidth || !el.offsetHeight) return;
+    fitRef.current?.fit();
+    if (xtermRef.current && wsRef.current?.readyState === WebSocket.OPEN) {
+      const { cols, rows } = xtermRef.current;
+      wsRef.current.send(JSON.stringify({ t: 'resize', r: { cols, rows } }));
+    }
+  }, []);
+
+  // ResizeObserver — fires on sidebar collapse, panel resize, etc.
   useEffect(() => {
     const container = termRef.current;
     if (!container) return;
-
-    const handleResize = () => {
-      // Skip refit when container is hidden (keep-alive tab) to avoid 0×0 terminal
-      if (!container.offsetWidth || !container.offsetHeight) return;
-      fitRef.current?.fit();
-      if (xtermRef.current && wsRef.current?.readyState === WebSocket.OPEN) {
-        const { cols, rows } = xtermRef.current;
-        wsRef.current.send(JSON.stringify({ t: 'resize', r: { cols, rows } }));
-      }
-    };
-
     const ro = new ResizeObserver(() => {
-      // Debounce slightly to avoid fitting during rapid layout shifts
-      requestAnimationFrame(handleResize);
+      requestAnimationFrame(refitAndSendResize);
     });
     ro.observe(container);
-
-    // Also listen on window resize as fallback
-    window.addEventListener('resize', handleResize);
+    window.addEventListener('resize', refitAndSendResize);
     return () => {
       ro.disconnect();
-      window.removeEventListener('resize', handleResize);
+      window.removeEventListener('resize', refitAndSendResize);
     };
-  }, []);
+  }, [refitAndSendResize]);
 
   // Refit on maximize toggle + Escape to exit fullscreen
   useEffect(() => {
-    setTimeout(() => fitRef.current?.fit(), 100);
+    refitAndSendResize();
+    setTimeout(refitAndSendResize, 100);
     if (!isMaximized) return;
     const handleEsc = (e: KeyboardEvent) => {
       if (e.key === 'Escape') setIsMaximized(false);
     };
     window.addEventListener('keydown', handleEsc);
     return () => window.removeEventListener('keydown', handleEsc);
-  }, [isMaximized]);
+  }, [isMaximized, refitAndSendResize]);
 
-  // Refit + reconnect when terminal becomes visible (e.g. tab switch with keep-alive)
+  // IntersectionObserver — fires when terminal transitions from hidden to visible
+  // (Terminal ↔ File Explorer tab switch, MultiTerminal session switch, etc.).
+  // Uses multiple staggered refits because WKWebView layout can settle slowly.
+  // Each attempt also sends WS resize so the backend PTY gets the correct width.
   useEffect(() => {
     const el = termRef.current;
     if (!el) return;
     const observer = new IntersectionObserver((entries) => {
-      if (entries[0]?.isIntersecting) {
-        // Refit terminal dimensions — multiple attempts because layout may not be settled
-        const fit = () => fitRef.current?.fit();
-        requestAnimationFrame(fit);
-        setTimeout(fit, 50);
-        setTimeout(fit, 150);
-        setTimeout(fit, 300);
-        // Reconnect if disconnected (first terminal starts hidden)
-        if (wsRef.current?.readyState !== WebSocket.OPEN) {
-          connect();
-        }
+      if (!entries[0]?.isIntersecting) return;
+      // Staggered refits — each one fits AND notifies the backend PTY
+      requestAnimationFrame(refitAndSendResize);
+      setTimeout(refitAndSendResize, 60);
+      setTimeout(refitAndSendResize, 180);
+      setTimeout(refitAndSendResize, 400);
+      // Reconnect if WS dropped while hidden
+      if (wsRef.current?.readyState !== WebSocket.OPEN) {
+        connect();
       }
     });
     observer.observe(el);
-
-    // Also refit whenever container size actually changes (catches hidden→visible transitions)
-    const resizeObs = new ResizeObserver(() => {
-      if (el.offsetWidth > 50 && el.offsetHeight > 50) {
-        fitRef.current?.fit();
-      }
-    });
-    resizeObs.observe(el);
-
-    return () => {
-      observer.disconnect();
-      resizeObs.disconnect();
-    };
-  }, [connect]);
+    return () => observer.disconnect();
+  }, [connect, refitAndSendResize]);
 
   const handleClear = () => xtermRef.current?.clear();
   const handleCopy = () => {

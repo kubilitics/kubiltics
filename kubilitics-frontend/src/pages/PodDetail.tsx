@@ -118,8 +118,10 @@ function TerminalAndFiles({
         </div>
       </div>
 
-      {/* Content — both modes stay mounted so state is preserved across toggles */}
-      <div className={mode === 'terminal' ? 'flex-1 min-h-0 flex flex-col' : 'overflow-hidden'} style={mode !== 'terminal' ? { height: 0, visibility: 'hidden', position: 'absolute', width: 0 } : undefined}>
+      {/* Content — both modes stay mounted so state is preserved across toggles.
+          Use display:none (not visibility:hidden/width:0) so xterm FitAddon never
+          measures a 0×0 container and computes garbage column widths. */}
+      <div className="flex-1 min-h-0 flex flex-col" style={{ display: mode === 'terminal' ? 'flex' : 'none' }}>
         <MultiTerminal
           podName={podName}
           namespace={namespace}
