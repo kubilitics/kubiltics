@@ -364,7 +364,90 @@ impl BackendManager {
         // Wait for backend to be ready
         self.wait_for_ready().await?;
 
+        // Auto-hotwire: if the brain has no LLM adapter configured (fresh start
+        // or restarted without a persisted key), push the active profile so the
+        // user never has to click Save & Test manually after every restart.
+        self.auto_hotwire_active_profile(port).await;
+
         Ok(())
+    }
+
+    /// Push the active AI profile to the backend if it starts with no LLM configured.
+    /// Called immediately after wait_for_ready() on every backend start/restart.
+    async fn auto_hotwire_active_profile(&self, port: u16) {
+        let health_url = format!("http://localhost:{}/health", port);
+        let config_url = format!("http://localhost:{}/api/v1/config/provider", port);
+
+        // Only hotwire when the brain says llm_configured=false.
+        let needs_config = async {
+            let resp = reqwest::get(&health_url).await.ok()?;
+            let val = resp.json::<serde_json::Value>().await.ok()?;
+            let configured = val.get("llm_configured").and_then(|b| b.as_bool()).unwrap_or(true);
+            Some(!configured)
+        }
+        .await
+        .unwrap_or(false);
+
+        if !needs_config {
+            println!("[auto-hotwire] LLM already configured, skipping");
+            return;
+        }
+
+        // Read the active profile from the profile store.
+        let store = match self.app_handle.try_state::<crate::profile::commands::ProfileStore>() {
+            Some(s) => s,
+            None => {
+                println!("[auto-hotwire] No ProfileStore available, skipping");
+                return;
+            }
+        };
+
+        let profile = {
+            let journal = store.journal.lock().unwrap();
+            journal.active().cloned()
+        };
+
+        let profile = match profile {
+            Some(p) => p,
+            None => {
+                println!("[auto-hotwire] No active profile, skipping");
+                return;
+            }
+        };
+
+        // Read key from keychain.
+        let key = match crate::profile::keychain::get_key(profile.id) {
+            Ok(Some(k)) => k,
+            Ok(None) => {
+                println!("[auto-hotwire] No key in keychain for profile {}, skipping", profile.id);
+                return;
+            }
+            Err(e) => {
+                println!("[auto-hotwire] Keychain error: {e}, skipping");
+                return;
+            }
+        };
+
+        let body = serde_json::json!({
+            "provider": profile.provider,
+            "model": profile.model,
+            "base_url": profile.base_url,
+            "api_key": key,
+        });
+
+        match reqwest::Client::new()
+            .post(&config_url)
+            .json(&body)
+            .send()
+            .await
+        {
+            Ok(resp) if resp.status().is_success() =>
+                println!("[auto-hotwire] Pushed active profile '{}' ({})", profile.name, profile.provider),
+            Ok(resp) =>
+                println!("[auto-hotwire] Brain rejected config: {}", resp.status()),
+            Err(e) =>
+                println!("[auto-hotwire] Failed to push config: {e}"),
+        }
     }
 
     async fn wait_for_ready(&self) -> Result<(), Box<dyn std::error::Error>> {
