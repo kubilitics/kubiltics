@@ -269,7 +269,15 @@ func main() {
 	// brain reported `ready=true` even when the user's saved config built
 	// a nil adapter (bad key, dead Ollama) — green pill over a chat that
 	// fails on every turn.
-	rtSrv.SetAdapterProbe(func() bool { return bridge.Adapter() != nil })
+	// Adapter must be non-nil AND its last API call must not have returned a
+	// credential error (HTTP 401/403). A bad key means chat will fail on
+	// every turn — report ready=false so the UI shows "AI Not Configured"
+	// instead of a green "AI Ready" pill over a non-working provider.
+	// MarkCredentialError is called by the streaming goroutine on 401/403;
+	// SetAdapter clears it when the user saves a new key in AI Settings.
+	rtSrv.SetAdapterProbe(func() bool {
+		return bridge.Adapter() != nil && bridge.CredentialError() == ""
+	})
 	kotgv1.RegisterChatServer(grpcSrv, rtSrv)
 	kotgv1.RegisterAIControlServer(grpcSrv, rtSrv)
 	// Wire the runtime server into the HTTP admin surface so that

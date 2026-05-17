@@ -5,6 +5,7 @@ package runtime
 
 import (
 	"context"
+	"strings"
 	"sync"
 	"time"
 
@@ -14,6 +15,21 @@ import (
 	"github.com/vellankikoti/kubilitics/brain/internal/llm/types"
 	"github.com/vellankikoti/kubilitics/brain/internal/tracing/routing"
 )
+
+// isCredentialError returns true when an LLM error is caused by an invalid
+// or expired API key rather than a transient network or quota issue.
+// Auth errors must not retry — they indicate the stored key is wrong.
+func isCredentialError(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := strings.ToLower(err.Error())
+	return strings.Contains(msg, "api 401") ||
+		strings.Contains(msg, "api 403") ||
+		strings.Contains(msg, "user not found") ||
+		strings.Contains(msg, "invalid api key") ||
+		strings.Contains(msg, "incorrect api key")
+}
 
 // LLMAdapterBridge wraps an existing LLMAdapter so it satisfies LLMProvider
 // (text-only streaming) AND LLMToolProvider (the agentic loop). The engine
@@ -30,6 +46,14 @@ import (
 type LLMAdapterBridge struct {
 	mu sync.RWMutex
 	A  adapter.LLMAdapter
+
+	// credentialError is non-empty when the last LLM call failed with an
+	// authentication error (HTTP 401/403). The adapterProbe returns false
+	// while this is set so Capabilities() reports ready=false and the UI
+	// shows "AI Not Configured" instead of a green "AI Ready" pill over a
+	// provider whose key is invalid. Cleared by SetAdapter() when the user
+	// saves a new working key via AI Settings.
+	credentialError string
 
 	// Tools + Executor are optional. When both are set, the engine wires
 	// CompleteWithTools as the streaming path. Set via cmd/server/main.go
@@ -62,11 +86,31 @@ func (b *LLMAdapterBridge) Adapter() adapter.LLMAdapter {
 // SetAdapter swaps the underlying adapter. Called by the brain's
 // runtime config endpoint when the user saves a new provider/key/model
 // in AI Settings — the bridge picks up the new adapter on the next
-// Stream* call without needing a full brain restart.
+// Stream* call without needing a full brain restart. Also clears any
+// credentialError so Capabilities() starts reporting ready=true again.
 func (b *LLMAdapterBridge) SetAdapter(a adapter.LLMAdapter) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	b.A = a
+	b.credentialError = "" // new config → assume valid until proven otherwise
+}
+
+// MarkCredentialError records that the current adapter rejected a request
+// with an authentication error. The adapterProbe uses this to flip
+// Capabilities() to ready=false so the UI shows "AI Not Configured".
+// Automatically cleared the next time SetAdapter is called.
+func (b *LLMAdapterBridge) MarkCredentialError(msg string) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	b.credentialError = msg
+}
+
+// CredentialError returns the stored auth-error message, or "" if the
+// current adapter's credentials appear valid.
+func (b *LLMAdapterBridge) CredentialError() string {
+	b.mu.RLock()
+	defer b.mu.RUnlock()
+	return b.credentialError
 }
 
 // Complete is a one-shot text completion suitable for short auxiliary
@@ -188,6 +232,7 @@ func (b *LLMAdapterBridge) StreamCompletionWithTools(
 		defer close(out)
 		start := time.Now()
 		var textBytes int
+		bridge := b // capture for credential error marking inside goroutine
 		// Capture the first ~4 KB of assistant text so the bench report can
 		// show the actual answer a user would have seen, not just a byte
 		// count. Bounded to keep traces small.
@@ -199,6 +244,9 @@ func (b *LLMAdapterBridge) StreamCompletionWithTools(
 				TextToken: ev.TextToken,
 				Done:      ev.Done,
 				Err:       ev.Err,
+			}
+			if isCredentialError(ev.Err) {
+				bridge.MarkCredentialError(ev.Err.Error())
 			}
 			if ev.ToolEvent != nil {
 				te.Tool = &toolEvent{
