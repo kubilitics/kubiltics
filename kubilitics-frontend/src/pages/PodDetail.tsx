@@ -84,6 +84,12 @@ function TerminalAndFiles({
   onContainerChange?: (c: string) => void;
 }) {
   const [mode, setMode] = useState<'terminal' | 'files'>('terminal');
+  const [fileRefreshKey, setFileRefreshKey] = useState(0);
+
+  const switchMode = (next: 'terminal' | 'files') => {
+    if (next === 'files') setFileRefreshKey((k) => k + 1);
+    setMode(next);
+  };
 
   return (
     <div className="flex flex-col flex-1 min-h-0 gap-3">
@@ -91,7 +97,7 @@ function TerminalAndFiles({
       <div className="flex justify-center">
         <div className="inline-flex items-center bg-muted rounded-lg p-1 gap-0.5 border border-border">
           <button
-            onClick={() => setMode('terminal')}
+            onClick={() => switchMode('terminal')}
             className={cn(
               'flex items-center gap-1.5 px-4 py-1.5 text-sm font-medium rounded-md transition-all',
               mode === 'terminal'
@@ -103,7 +109,7 @@ function TerminalAndFiles({
             Terminal
           </button>
           <button
-            onClick={() => setMode('files')}
+            onClick={() => switchMode('files')}
             className={cn(
               'flex items-center gap-1.5 px-4 py-1.5 text-sm font-medium rounded-md transition-all',
               mode === 'files'
@@ -133,6 +139,7 @@ function TerminalAndFiles({
           podName={podName}
           namespace={namespace}
           containerName={containerName}
+          refreshTrigger={fileRefreshKey}
         />
       </div>
     </div>

@@ -38,6 +38,8 @@ interface InlineFileBrowserProps {
   podName: string;
   namespace: string;
   containerName: string;
+  /** Increment to force a refresh of the current directory (e.g. after switching from Terminal). */
+  refreshTrigger?: number;
   /** Optional — falls back to stores if not provided */
   baseUrl?: string;
   /** Optional — falls back to stores if not provided */
@@ -68,6 +70,7 @@ export function InlineFileBrowser({
   podName,
   namespace,
   containerName,
+  refreshTrigger,
   baseUrl: baseUrlProp,
   clusterId: clusterIdProp,
   className,
@@ -82,6 +85,7 @@ export function InlineFileBrowser({
   // baseUrl can legitimately be '' (empty string = same-origin proxy in dev)
   const hasBackend = baseUrlProp != null ? true : isConfigured;
   const [currentPath, setCurrentPath] = useState('/');
+  const currentPathRef = useRef('/');
   const [entries, setEntries] = useState<ContainerFileEntry[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -101,6 +105,7 @@ export function InlineFileBrowser({
         const result = await listContainerFiles(baseUrl, clusterId, namespace, podName, dirPath, containerName);
         setEntries(result || []);
         setCurrentPath(dirPath);
+        currentPathRef.current = dirPath;
       } catch (e) {
         setError(e instanceof Error ? e.message : 'Failed to list files');
         setEntries([]);
@@ -117,6 +122,14 @@ export function InlineFileBrowser({
       loadDirectory('/');
     }
   }, [containerName, loadDirectory]);
+
+  // Re-fetch current directory whenever the caller increments refreshTrigger
+  // (e.g. user switches from Terminal → File Explorer after creating files).
+  // refreshTrigger starts at 0 (skip) and increments on each Tab→Files switch.
+  useEffect(() => {
+    if (!refreshTrigger) return;
+    loadDirectory(currentPathRef.current);
+  }, [refreshTrigger, loadDirectory]);
 
   const navigateTo = (entry: ContainerFileEntry) => {
     if (entry.type === 'dir') {
