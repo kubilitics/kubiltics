@@ -78,16 +78,12 @@ export function PodTerminal({
       wsRef.current = null;
     }
 
-    // Create xterm if not exists — defer to next frame to ensure DOM has dimensions
+    // Create xterm if not exists. connect() is only called from the
+    // IntersectionObserver (element is visible) or visibilitychange, so the
+    // container always has real dimensions at this point.
     if (!xtermRef.current) {
       if (!termRef.current) return;
       const container = termRef.current;
-      // Ensure container has dimensions (tab may have just become visible).
-      // Use retryTimerRef so the timer can always be cancelled on unmount.
-      if (container.clientHeight === 0) {
-        retryTimerRef.current = setTimeout(() => connect(), 100);
-        return;
-      }
       const term = new Terminal({
         cursorBlink: true,
         fontSize: 13,
@@ -230,11 +226,17 @@ export function PodTerminal({
     dataDisposableRef.current = dataDisposable;
   }, [clusterId, podName, namespace, selectedContainer]);
 
-  // Connect on mount, auto-reconnect on tab visibility
+  // Lifecycle: track mounted state, handle app-level visibility, and clean up.
+  // We do NOT call connect() here — the IntersectionObserver is the sole trigger.
+  // Reason: the keep-alive tab renders PodTerminal at left:-9999px with height:60vh,
+  // so clientHeight is non-zero while the element is off-screen. If we connect on
+  // mount, xterm is created with wrong dimensions → resize SIGWINCH on first show
+  // → bash redraws the prompt mid-line → double prompt. Connecting only when the
+  // element is actually intersecting means xterm always measures correct dimensions.
   useEffect(() => {
     mountedRef.current = true;
-    connect();
 
+    // Re-connect if the entire OS window regains focus while the WS is dropped.
     const handleVisibility = () => {
       const rs = wsRef.current?.readyState;
       if (document.visibilityState === 'visible' && rs !== WebSocket.OPEN && rs !== WebSocket.CONNECTING) {
@@ -293,23 +295,32 @@ export function PodTerminal({
     return () => window.removeEventListener('keydown', handleEsc);
   }, [isMaximized, refitAndSendResize]);
 
-  // IntersectionObserver — fires when terminal transitions from hidden to visible
-  // (Terminal ↔ File Explorer tab switch, MultiTerminal session switch, etc.).
-  // Uses multiple staggered refits because WKWebView layout can settle slowly.
-  // Each attempt also sends WS resize so the backend PTY gets the correct width.
+  // IntersectionObserver — the sole trigger for connecting and for refitting.
+  //
+  // Why this is the connect() trigger (not the mount effect):
+  //   The keep-alive tab keeps PodTerminal mounted at left:-9999px with a real
+  //   height (60vh). Connecting on mount creates xterm with off-screen dimensions
+  //   (wrong column count). When the tab becomes visible the column count changes
+  //   → resize SIGWINCH → bash redraws the prompt mid-line → double prompt.
+  //   Connecting here guarantees xterm is always created at real visible dimensions.
+  //
+  // Staggered refits: WKWebView layout settles across several frames. We refit
+  // multiple times so the PTY column count converges to the final width.
+  // refitAndSendResize only sends WS resize when readyState === OPEN, so while
+  // the WS is still CONNECTING (new tab open) these calls only fit xterm locally
+  // and don't trigger extra SIGWINCH signals. The single resize in ws.onopen
+  // is the one that actually informs the backend PTY.
   useEffect(() => {
     const el = termRef.current;
     if (!el) return;
     const observer = new IntersectionObserver((entries) => {
       if (!entries[0]?.isIntersecting) return;
-      // Staggered refits — each one fits AND notifies the backend PTY
+      // Staggered local refits for WKWebView layout settling
       requestAnimationFrame(refitAndSendResize);
       setTimeout(refitAndSendResize, 60);
-      setTimeout(refitAndSendResize, 180);
-      setTimeout(refitAndSendResize, 400);
-      // Reconnect only if truly dropped — not if we're mid-connect.
-      // IntersectionObserver fires immediately on observe(), so without
-      // this guard it races with the mount connect() call.
+      setTimeout(refitAndSendResize, 250);
+      // Connect if not already open or mid-connect.
+      // This also handles first-open (rs === undefined) and reconnect-after-drop.
       const rs = wsRef.current?.readyState;
       if (rs !== WebSocket.OPEN && rs !== WebSocket.CONNECTING) {
         connect();
