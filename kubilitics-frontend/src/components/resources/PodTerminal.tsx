@@ -71,9 +71,10 @@ export function PodTerminal({
       `/api/v1/clusters/${encodeURIComponent(clusterId)}/pods/${encodeURIComponent(namespace)}/${encodeURIComponent(podName)}/exec?container=${encodeURIComponent(selectedContainer)}`
     );
 
-    // Close existing connection
+    // Close existing connection — must use code 1000 so onclose doesn't
+    // misread this as an unexpected drop and trigger the "Connection lost" path.
     if (wsRef.current) {
-      wsRef.current.close();
+      wsRef.current.close(1000, 'reconnect');
       wsRef.current = null;
     }
 
@@ -156,9 +157,12 @@ export function PodTerminal({
         const { cols, rows } = term;
         ws.send(JSON.stringify({ t: 'resize', r: { cols, rows } }));
       });
-      // 12s timeout: if no stdout arrives the backend is likely unreachable
+      // 12s timeout: if no stdout arrives the backend is likely unreachable.
+      // Use gotFirstOutput.current (a ref) instead of connState — connState is
+      // captured at useCallback creation and will be stale, causing this to
+      // fire and kill a live connection 12s after it connected.
       connectingTimerRef.current = setTimeout(() => {
-        if (connState !== 'connected' && mountedRef.current) {
+        if (!gotFirstOutput.current && mountedRef.current) {
           setConnState('disconnected');
           term.writeln('\r\n\x1b[33mNo response from container — check if the pod is running.\x1b[0m');
           ws.close(1000, 'timeout');
@@ -232,7 +236,8 @@ export function PodTerminal({
     connect();
 
     const handleVisibility = () => {
-      if (document.visibilityState === 'visible' && wsRef.current?.readyState !== WebSocket.OPEN) {
+      const rs = wsRef.current?.readyState;
+      if (document.visibilityState === 'visible' && rs !== WebSocket.OPEN && rs !== WebSocket.CONNECTING) {
         connect();
       }
     };
@@ -302,8 +307,11 @@ export function PodTerminal({
       setTimeout(refitAndSendResize, 60);
       setTimeout(refitAndSendResize, 180);
       setTimeout(refitAndSendResize, 400);
-      // Reconnect if WS dropped while hidden
-      if (wsRef.current?.readyState !== WebSocket.OPEN) {
+      // Reconnect only if truly dropped — not if we're mid-connect.
+      // IntersectionObserver fires immediately on observe(), so without
+      // this guard it races with the mount connect() call.
+      const rs = wsRef.current?.readyState;
+      if (rs !== WebSocket.OPEN && rs !== WebSocket.CONNECTING) {
         connect();
       }
     });
