@@ -11,7 +11,7 @@ import { ChatTranscript } from './ChatTranscript';
 import { ChatInput } from './ChatInput';
 import { ChatResizeHandle } from './ChatResizeHandle';
 import { Button } from '@/components/ui/button';
-import { Settings2 } from 'lucide-react';
+import { AlertCircle, KeyRound, Settings2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useChatPanelLayoutStore } from '@/stores/chatPanelLayoutStore';
@@ -19,6 +19,46 @@ import {
   BudgetExceededBanner,
   isBudgetExceededError,
 } from '@/components/chat/BudgetExceededBanner';
+
+function isApiKeyError(code?: string, message?: string): boolean {
+  if (code === 'llm_error' && message) {
+    const m = message.toLowerCase();
+    return m.includes('api 401') || m.includes('user not found') || m.includes('invalid api key') || m.includes('api key');
+  }
+  return false;
+}
+
+function ApiKeyErrorBanner({ className }: { className?: string }) {
+  return (
+    <div
+      role="alert"
+      className={cn(
+        'flex items-start gap-3 rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3',
+        'dark:border-destructive/60 dark:bg-destructive/20',
+        className,
+      )}
+    >
+      <KeyRound className="mt-0.5 h-4 w-4 flex-shrink-0 text-destructive" />
+      <div className="flex-1 space-y-0.5">
+        <p className="text-sm font-semibold text-destructive">API key invalid or expired</p>
+        <p className="text-xs text-destructive/80">
+          The AI provider rejected the request. Update your API key in AI Settings to restore chat.
+        </p>
+      </div>
+      <Button
+        size="sm"
+        variant="destructive"
+        className="flex-shrink-0"
+        asChild
+      >
+        <Link to="/settings/ai">
+          <AlertCircle className="mr-1.5 h-3 w-3" />
+          Fix in AI Settings
+        </Link>
+      </Button>
+    </div>
+  );
+}
 
 const NOT_READY_BY_REASON: Partial<Record<AIReadyReason, { title: string; detail: string }>> = {
   not_configured: {
@@ -109,6 +149,10 @@ export function ChatPanel() {
   const notReady = aiReady.ready ? null : (NOT_READY_BY_REASON[aiReady.reason] ?? null);
   const inputDisabled = !clusterId || !!notReady || sessionExpired || connectionState === 'error';
 
+  const apiKeyError =
+    lastAssistant?.state === 'error' &&
+    isApiKeyError(lastAssistant.error?.code, lastAssistant.error?.message);
+
   // Phase 2 / Gap 3 — when the brain trips the monthly budget cap, its
   // last error event on this turn is {code:"budget_exceeded", message}.
   // Surface the dedicated banner above the input so the user can reset
@@ -179,7 +223,12 @@ export function ChatPanel() {
           <ChatDrawer>
             <ChatHeader />
             <ChatTranscript turns={turns} systemNotices={systemNotices} />
-            {budgetError && (
+            {apiKeyError && (
+              <div className="px-3 pt-2">
+                <ApiKeyErrorBanner />
+              </div>
+            )}
+            {budgetError && !apiKeyError && (
               <div className="px-3 pt-2">
                 <BudgetExceededBanner
                   message={budgetError.message}
