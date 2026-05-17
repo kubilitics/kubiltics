@@ -11,27 +11,48 @@ import { AlertCircle, ExternalLink } from 'lucide-react';
 import { costForTurn, formatCostUSD } from '@/lib/aiPricing';
 
 // Extract a readable sentence from the raw Go error chain that the brain sends.
-// Typical shape: "LLM turn 0: API 401: {"error":{"message":"Invalid API key"}}"
+// Typical shapes:
+//   "Agent error: LLM turn 0: API 401: {"error":{"message":"Invalid API key"}}"
+//   "LLM turn 0: API 401: {"error":{"message":"Invalid API key"}}"
+//   "rpc error: code = NotFound desc = session ... not found"
 function cleanLLMError(raw: string): string {
-  // Strip leading "LLM turn N: " prefix
-  const stripped = raw.replace(/^LLM turn \d+:\s*/, '');
+  if (!raw) return raw;
 
-  // Try to extract JSON error body after "API NNN: "
-  const apiMatch = stripped.match(/^API \d+:\s*(.+)$/s);
+  // Strip the outer agent-loop wrapper if present.
+  let s = raw.replace(/^Agent error:\s*/i, '');
+  // Strip "LLM turn N: " prefix
+  s = s.replace(/^LLM turn \d+:\s*/i, '');
+
+  // Extract JSON error body after "API NNN: "
+  const apiMatch = s.match(/^API (\d+):\s*(.+)$/s);
   if (apiMatch) {
-    const body = apiMatch[1].trim();
+    const status = parseInt(apiMatch[1], 10);
+    const body = apiMatch[2].trim();
     try {
       const parsed = JSON.parse(body);
       // OpenAI/OpenRouter shape: { error: { message: "..." } }
       const msg = parsed?.error?.message ?? parsed?.message;
-      if (typeof msg === 'string' && msg.length > 0) return msg;
+      if (typeof msg === 'string' && msg.length > 0) {
+        // 401 — give an actionable hint instead of the raw provider message
+        if (status === 401) {
+          return `API key invalid or expired — please reconfigure it in AI Settings. (${msg})`;
+        }
+        return msg;
+      }
     } catch {
-      // body is not JSON — return it directly (trim to 200 chars)
+      // body is not JSON — fall through
+    }
+    if (status === 401) {
+      return 'API key invalid or expired — please reconfigure it in AI Settings.';
     }
     return body.slice(0, 200);
   }
 
-  return stripped || raw;
+  // Session / gRPC errors: strip the verbose prefix
+  const grpcMatch = s.match(/rpc error:.*desc\s*=\s*(.+)$/i);
+  if (grpcMatch) return grpcMatch[1].trim().slice(0, 200);
+
+  return s || raw;
 }
 
 interface Props {

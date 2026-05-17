@@ -144,6 +144,11 @@ function handleFrame(clusterId: string, frame: ServerFrame): void {
       useChatStore.getState().setSession(clusterId, undefined);
       return;
     }
+    // Session not found means the brain restarted and the in-memory session
+    // is gone. Clear the stale session so the next message creates a new one.
+    if (err.code === 'stream_error' && err.message?.toLowerCase().includes('not found')) {
+      useChatStore.getState().setSession(clusterId, undefined);
+    }
     useChatStore.getState().finishActiveTurn(clusterId, Date.now(), err);
     return;
   }
