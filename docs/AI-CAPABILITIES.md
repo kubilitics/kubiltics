@@ -4,7 +4,7 @@
 > code and measured numbers, not roadmap slides. If a feature is partial
 > or planned, it's marked plainly.
 
-**Date:** 2026-04-20  •  **Repos:** `vellankikoti/kubilitics` (control plane + UI), `vellankikoti/kotg.ai` (AI brain), `vellankikoti/kotg-schema` (wire contract)
+**Date:** 2026-05-18  •  **Version:** v1.3.0  •  **Repos:** `vellankikoti/kubilitics` (control plane + UI), `vellankikoti/kotg.ai` (AI brain), `vellankikoti/kotg-schema` (wire contract)
 
 ---
 
@@ -14,13 +14,80 @@ We ship a Kubernetes operational-intelligence platform with an AI brain that
 runs **in your cluster**, behind a **typed wire contract**, gated by a
 **safety wrapper** with autonomy levels, and instrumented with
 **observability-2.0 wide events**. The AI is **provider-agnostic** (Ollama,
-OpenAI, Anthropic, any OpenAI-compatible endpoint), with a **Router + Engine**
-architecture that lets us swap reasoning engines (LLM-direct today; kagent
-and Python multi-agent registered as drop-in engines, with live integrations
-landing in v1.5). One-command install via Helm. End-to-end measured today:
-TTFT ~1.0s and total ~3.9s through OpenAI gpt-4o-mini via the full server
-stack (Router → LLMEngine → Safety wrapper → adapter), with **zero
-measurable overhead** vs. calling OpenAI directly.
+OpenAI, Anthropic, OpenRouter, any OpenAI-compatible endpoint), with a
+**Router + Engine** architecture that lets us swap reasoning engines
+(LLM-direct today; kagent and Python multi-agent registered as drop-in
+engines, with live integrations landing in v1.5). One-command install via Helm.
+End-to-end measured: TTFT ~1.0s and total ~3.9s through OpenAI gpt-4o-mini via
+the full server stack (Router → LLMEngine → Safety wrapper → adapter), with
+**zero measurable overhead** vs. calling OpenAI directly.
+
+**v1.3.0 ships**: accurate pod counts on any cluster size, slim token-efficient
+list payloads, real-time invalid API key detection, OpenRouter provider support,
+auto-hotwire on brain start, chat session history, terminal hardening, and a
+full production-readiness audit with data-lineage fields on every tool result.
+
+---
+
+## v1.3.0 Highlights (2026-05-18)
+
+### Accurate pod listing at any scale
+
+**Problem:** On a 32-pod cluster, the AI showed only 8 pods. Root cause: raw K8s API
+responses are ~200 KB per list; the binary-halving cap at 8 KB silently discarded
+most items; the LLM reported the visible count as the total.
+
+**Fix (three layers):**
+
+1. **`slimSummarizeItem`** — strips annotations (often 10 KB+ of `last-applied-configuration`),
+   managedFields, IPs, full spec, verbose status conditions. Keeps: semantic labels
+   (`app`, `component`, `env`), container names, `phase`/`health`, restart counts.
+   A 32-pod cluster goes from 64 KB raw → 10.5 KB slim.
+
+2. **`MaxListOutputBytes = 16 KB`** (vs. 8 KB for detail views) via `capListOutput`.
+   Slim 32-pod payload fits comfortably; binary-halving is now a last resort.
+
+3. **`total_count` forwarded from backend** — `metadata.total` from paginated backend
+   responses is hoisted as `total_count` so the LLM always knows the real cluster size.
+   On a 1000-pod cluster: LLM receives `{item_count: 50, total_count: 1000}` and tells
+   the operator "1000 pods total — use namespace filter to narrow down."
+
+**Result:** 32 pods all shown. 1000 pods: accurate count reported, 50 shown with guidance.
+
+### Invalid API key detection
+
+When an LLM call returns HTTP 401/403, the brain marks `credentialError` on the adapter
+bridge, and `Capabilities()` immediately returns `ready=false`. The desktop shows
+"AI Not Configured" instead of a stuck "Checking AI…" spinner. A red error banner
+appears above the chat input with a "Fix in AI Settings" deep link.
+Clearing: save a valid key via AI Settings → `SetAdapter()` clears `credentialError`.
+
+### Auto-hotwire on brain start
+
+The Tauri sidecar reads the active LLM profile key from the OS keychain and POSTs it
+to `/api/v1/config/provider` immediately on brain startup. AI is ready without any
+user action after app launch — no "save and test" required after restart.
+
+### OpenRouter provider
+
+Full OpenRouter support: correct base URL construction, required headers
+(`HTTP-Referer`, `X-Title`), and clean error display. Auto-detects and repairs
+OpenRouter misconfigured as Anthropic (different base URL, same API key format).
+
+### MCP tool output quality
+
+All higher-order tools now return structured compact findings instead of raw K8s JSON:
+
+| Tool family | Before | After |
+|-------------|--------|-------|
+| `analyze_*` | Raw K8s list JSON (50–200 KB) | Compact risk findings with severity + recommendation |
+| `narrate_*` | Raw event/workload dumps | Narrative summary with structured timeline |
+| `plan_*` | Raw YAML dumps | Step-by-step action plan |
+| `recommend_*` | Full spec JSON | Prioritized recommendations with rationale |
+| `security_*` | Raw RBAC/network policy JSON | Security posture summary with findings |
+| `cost_*` | Raw metrics JSON | Cost optimization findings with savings estimate |
+
+Per-turn token savings: ~80% for analysis tools vs. v1.2.0.
 
 ---
 
@@ -300,12 +367,19 @@ file path with a defined integration shape and a tagged release for it.
 
 ## 7. Repos / commits / tags (proof points)
 
-- `vellankikoti/kubilitics` main `b79374f` — backend + UI + parent helm chart with ai sub-chart wired.
-- `vellankikoti/kotg.ai` main `ef3bde5` — brain through subproject 3f.
-- `vellankikoti/kotg.ai` `feat/ai-bench` `19caad7` — bench harness + server fixes.
-- `vellankikoti/kubilitics` `feat/bench-vm` `590bac2` — Terraform for Ollama bench VM.
-- `vellankikoti/kotg-schema@v1.0.1` — frozen wire contract.
-- `vellankikoti/kotg.ai/kubilitics-ai/v0.7.0` — brain + standalone helm chart.
+- `vellankikoti/kubilitics` **v1.3.0** `6bada345` — backend + UI + parent helm chart + all v1.3.0 fixes.
+- `kubilitics/kubilitics` **v1.3.0** — org repo synced from fork at v1.3.0.
+- `vellankikoti/kotg.ai` main — AI brain (brain sub-directory of monorepo).
+- `vellankikoti/kotg-schema@v1.0.2` — frozen wire contract.
+- Key commits this release:
+  - `6bada345` fix(ai): show all pods — slim list items, 16KB cap, total_count from backend
+  - `4454dd2d` fix(brain): stop reporting AI Ready when API key is invalid (401/403)
+  - `9b8ffaa3` feat(chat): prominent API key error banner above input
+  - `1b53aee1` feat(sidecar): auto-hotwire active LLM profile on brain start
+  - `935a5f79` fix(ai-settings): detect and auto-fix OpenRouter misconfigured as Anthropic
+  - `4ce03767` feat(chat): persist past sessions — History dropdown in ChatHeader
+  - `f814e48b` fix(chat): token counts + deployment health status in AI responses
+  - `537db291` feat(ai): execution plane classification — thinking vs execution metrics
 
 ---
 

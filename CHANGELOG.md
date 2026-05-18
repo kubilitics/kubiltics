@@ -7,21 +7,56 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [UNRELEASED]
 
+## [1.3.0] - 2026-05-18
+
+### Added
+
+- **AI: Pod listing now shows all pods** — AI responses for "list pods" show the real cluster total (`total_count` forwarded from backend `metadata.total`). Responses on 1000-pod clusters correctly say "1000 pods total, showing 50" instead of silently capping at 8–16.
+- **AI: Slim list items** — `slimSummarizeItem` strips annotations, managedFields, IPs, full spec; keeps semantic labels, container names, phase/health, restart counts. 32 pods now fits in ~10.5 KB (vs 64 KB raw) without binary-halving.
+- **AI: 16 KB list output ceiling** — `MaxListOutputBytes = 16 KB` (vs 8 KB for detail views) via new `capListOutput` function. All three list call sites (composite, inspect, observation) use it.
+- **AI: Invalid API key detection** — Brain marks `credentialError` on HTTP 401/403 from any LLM provider and reports `ready=false` via the Capabilities gRPC endpoint so the desktop shows "AI Not Configured" immediately instead of a stuck "Checking AI…" spinner.
+- **AI: API key error banner** — Red destructive banner above the chat input when the last turn returned an auth error, with a "Fix in AI Settings" deep link.
+- **AI: Auto-hotwire on brain start** — Sidecar reads the active LLM profile key from the OS keychain and POSTs it to the brain's `/api/v1/config/provider` immediately on startup, so AI is ready without any user action after app launch.
+- **AI: Chat history persistence** — History dropdown in the Chat header lets users re-open past sessions from the current app session.
+- **AI: Token counts + deployment health** — Chat responses include input/output token counts and per-deployment health status derived from replica counts.
+- **AI: Execution plane classification** — Thinking vs execution metrics tracked per AI turn for observability.
+- **AI: OpenRouter support** — Full OpenRouter provider support including correct URL joining, headers, and error display. Auto-detects and repairs OpenRouter misconfigured as Anthropic.
+- **Cluster onboarding: Two-pane layout** — Headlamp-style add-cluster dialog with detected kubeconfig contexts as the primary path (left: cluster list, right: add cluster); context upload promoted from secondary to primary.
+- **OTel spans on AI execution paths** — `feat(observability)`: spans emitted for every AI turn through the execution pipeline.
+- **PostgreSQL + Redis config plumbing** — Schema verification and config plumbing for persistent storage.
 
 ### Changed
 
-- **macOS**: desktop binaries now signed with Apple Developer ID
-  Application (Team `DJAF5D948L`) and notarized via `xcrun notarytool`.
-  Eliminates the macOS keychain "enter login password" prompt users
-  previously saw on every save after a version update. First save
-  after upgrading from a pre-v1.2.0 install may prompt once —
-  click Always Allow, never see it again. Gatekeeper "unidentified
-  developer" warning is also gone on fresh installs. See
-  `docs/macos-signing.md` for the operator runbook.
+- **AI: MCP tool outputs use compact findings** — `analyze_*`, `narrate_*`, `plan_*`, `recommend_*`, `security_*`, `cost_*`, `automation_*` tools now return structured compact findings instead of raw K8s JSON dumps. Reduces per-turn token cost by ~80% for analysis tools.
+- **AI: `list_resources` default limit raised to 50** — Backend is queried with `limit=50` instead of the implicit 25, matching the new 16 KB ceiling.
+- **AI: Routing improvements** — `describe`/`inspect` queries routed to `inspect_<kind>` tools; `list services` routed to `list_resources`; `explain` added to inspect patterns; `get_resource` forbidden for conversational queries.
+- **AI: `observe_services_by_filter` adds summary field** — LLM can now distinguish healthy vs missing services in one response.
+- **macOS**: desktop binaries now signed with Apple Developer ID Application (Team `DJAF5D948L`) and notarized via `xcrun notarytool`. Eliminates the macOS keychain "enter login password" prompt on every save. See `docs/macos-signing.md` for the operator runbook.
 
 ### Fixed
 
-- Soft-fail cosmetic aux workflows by @vellankikoti ([b364f55](https://github.com/vellankikoti/kubilitics/commit/b364f55e3bdeb93fe7ad9ba2a9afaeb146fc5e64))
+- **AI: Session staleness after brain restart** — Chat sessions that return `not found` from the brain are automatically cleared so the next message creates a fresh session.
+- **AI: Namespace hallucination** — LLM completer no longer injects a namespace into all-namespace results.
+- **AI: Unknown status for K8s resources** — All resource kinds (ConfigMap, Secret, ServiceAccount, Role, etc.) now emit a health/status value; "Unknown" is eliminated.
+- **AI: Namespace labels + deployment status** — Namespace label reads from data; deployment health derived from replica counts.
+- **AI: Brain port discovery** — Sidecar auto-discovers backend port after Tauri health-monitor restarts (dynamic port assignment).
+- **AI: Transient brain-unreachable errors suppressed** — Short connectivity blips no longer flash "AI Not Configured" to the user.
+- **Terminal: double prompt on tab activation** — Terminal now connects only when the tab is visible.
+- **Terminal: timer leaks + auto-reconnect timeout** — e2e audit fixed timer leaks, tightened auto-reconnect, and corrected the connecting-state timeout.
+- **Terminal: garbled text on tab switch** — Text corruption when switching between Terminal and File Explorer tabs is resolved.
+- **Terminal: duplicate container bar** — Removed duplicate container selector bar; fixed container picker clipping.
+- **Terminal: history across container switches** — Terminal history is now preserved when switching between containers.
+- **Terminal: multi-container tab switching** — Consistent session behavior across container tabs.
+- **File Explorer: directory refresh on tab switch** — Directory listing now refreshes when switching back from the Terminal tab.
+- **UX: action bar buttons** — Consistent styling: red Cancel (outline/border), blue Add Cluster, equal size.
+- **UX: cluster picker** — Equal panes, bottom action bar, no top back button, back button + auto-open add dialog from nav.
+- **UX: logo + tab switcher** — Correct logo size, prominent tab switcher, renamed "Paste KubeConfig" label.
+- **gzip: streaming response corruption** — `WriteHeader` forward path plugged; headers committed before `Flush` to prevent `Content-Encoding: gzip` corruption on streaming endpoints.
+- **Events: causal_chains migration** — `EnsureTables` wired on startup; `causal_chains` table present before any event processing.
+- **MCP: action_* tools removed from LLM registry** — Execution tools are used instead; dead `createActionHandler`/`routeActionTool` code deleted.
+- **Production: resilient 500 responses** — Backend 500s now return partial data signals instead of empty responses where possible.
+- **Production: data_source field** — All tool results carry `data_source` and `derived_from` lineage fields.
+- **k8s interface extraction** — Narrow `k8siface` interfaces extracted to reduce coupling in the backend.
 
 ## [1.1.0-rc.1] - 2026-04-23
 
