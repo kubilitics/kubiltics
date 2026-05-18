@@ -2,6 +2,7 @@ package server
 
 import (
 	"encoding/json"
+	"fmt"
 	"strings"
 	"time"
 )
@@ -125,6 +126,14 @@ func injectToolMetadata(result interface{}, toolName string, duration time.Durat
 // torpedo the turn regardless of how lazy it is about pre-summarizing.
 const MaxToolOutputBytes = 8 * 1024
 
+// MaxListOutputBytes is the ceiling for list-query results. List items
+// are already stripped of annotations, managedFields, spec, and verbose
+// status by summarizeListForLLM, so a higher limit is safe without
+// triggering the gpt-4o-mini "wall of JSON → zero text" failure mode.
+// 16 KB accommodates ~48 pods with full labels and container names while
+// staying comfortably below the ~20 KB collapse threshold.
+const MaxListOutputBytes = 16 * 1024
+
 // capToolOutput ensures a tool result serializes to at most
 // MaxToolOutputBytes. Under budget → unchanged. Over budget → trim the
 // largest list-valued field (usually "items"), keep a top-level
@@ -135,6 +144,20 @@ const MaxToolOutputBytes = 8 * 1024
 // questions the model can still truthfully say "49 pods" even when
 // per-pod detail has been cut.
 func capToolOutput(v interface{}) interface{} {
+	return capToolOutputN(v, MaxToolOutputBytes)
+}
+
+// capListOutput is the list-specific variant of capToolOutput. List items
+// are already stripped of annotations, managedFields, and spec by
+// summarizeListForLLM, so the 16 KB ceiling is safe — it accommodates
+// ~48 pods while staying below the ~20 KB gpt-4o-mini collapse threshold.
+func capListOutput(v interface{}) interface{} {
+	return capToolOutputN(v, MaxListOutputBytes)
+}
+
+// capToolOutputN is the shared implementation behind capToolOutput and
+// capListOutput. maxBytes controls the hard ceiling.
+func capToolOutputN(v interface{}, maxBytes int) interface{} {
 	if v == nil {
 		return nil
 	}
@@ -142,7 +165,7 @@ func capToolOutput(v interface{}) interface{} {
 	if err != nil {
 		return v // can't size it; pass through rather than drop the result
 	}
-	if len(b) <= MaxToolOutputBytes {
+	if len(b) <= maxBytes {
 		return v
 	}
 
@@ -150,8 +173,8 @@ func capToolOutput(v interface{}) interface{} {
 	if !ok {
 		// Non-map (array, string) over budget. Stringify and cut.
 		trunc := string(b)
-		if len(trunc) > MaxToolOutputBytes-200 {
-			trunc = trunc[:MaxToolOutputBytes-200]
+		if len(trunc) > maxBytes-200 {
+			trunc = trunc[:maxBytes-200]
 		}
 		return map[string]interface{}{
 			"_truncated":        true,
@@ -166,7 +189,7 @@ func capToolOutput(v interface{}) interface{} {
 		out[k] = val
 	}
 	out["_truncated"] = true
-	out["_truncated_reason"] = "tool output exceeded 8KB; per-item detail reduced"
+	out["_truncated_reason"] = fmt.Sprintf("tool output exceeded %dKB; per-item detail reduced", maxBytes/1024)
 
 	trimKey := ""
 	if _, ok := out["items"].([]interface{}); ok {
@@ -182,16 +205,34 @@ func capToolOutput(v interface{}) interface{} {
 	}
 	if trimKey != "" {
 		arr := out[trimKey].([]interface{})
+		totalItems := len(arr)
+		// Preserve the original total count before binary-halving.
+		// item_count (if set) is the authoritative total from the
+		// list handler; fall back to array length.
+		if _, hasCount := out["item_count"]; !hasCount {
+			out["item_count"] = totalItems
+		}
 		for len(arr) > 0 {
 			out[trimKey] = arr
 			bb, _ := json.Marshal(out)
-			if len(bb) <= MaxToolOutputBytes {
+			if len(bb) <= maxBytes {
 				break
 			}
 			arr = arr[:len(arr)/2]
 		}
 		if len(arr) == 0 {
 			delete(out, trimKey)
+		}
+		// Stamp items_shown so the LLM can say "showing N of M total"
+		// instead of reporting only the visible slice as the full count.
+		shownCount := len(arr)
+		if shownCount > 0 {
+			out["items_shown"] = shownCount
+			out["_truncated_reason"] = fmt.Sprintf(
+				"Showing %d of %d total items — output capped at %d KB. "+
+					"Report item_count (%d) as the real total, not items_shown.",
+				shownCount, out["item_count"], maxBytes/1024, out["item_count"],
+			)
 		}
 	}
 
@@ -200,7 +241,7 @@ func capToolOutput(v interface{}) interface{} {
 	// thing to a truncated JSON string. Preserves item_count + any
 	// top-level scalars the LLM needs for counting, and guarantees
 	// the string fed back never exceeds the cap.
-	if bb, _ := json.Marshal(out); len(bb) > MaxToolOutputBytes {
+	if bb, _ := json.Marshal(out); len(bb) > maxBytes {
 		keep := map[string]interface{}{
 			"_truncated":        true,
 			"_truncated_reason": "tool output still over budget after array trim; flattened to preview",
@@ -211,8 +252,8 @@ func capToolOutput(v interface{}) interface{} {
 			}
 		}
 		preview := string(bb)
-		if len(preview) > MaxToolOutputBytes-512 {
-			preview = preview[:MaxToolOutputBytes-512]
+		if len(preview) > maxBytes-512 {
+			preview = preview[:maxBytes-512]
 		}
 		keep["preview"] = preview
 		return keep
@@ -221,13 +262,12 @@ func capToolOutput(v interface{}) interface{} {
 }
 
 // summarizeListForLLM trims a K8s-style list payload (e.g. {items:[...]})
-// to the fields an LLM actually needs to answer "list/count" questions:
-// kind, name, namespace, labels, creationTimestamp, and a compact status
-// slice. managedFields, annotations, the full spec, and status conditions
-// are dropped. Without this, "list all pods" on a real cluster returns
-// ~200KB of JSON per turn — gpt-4o-mini spends its output budget on
-// parsing it and emits no written answer, leaving users with a bare tool
-// block and no summary.
+// to the fields an LLM actually needs to answer "list/count" questions.
+// Uses slimSummarizeItem (name+namespace+status only, no labels/IPs) so
+// that 30–50 items fit within the 8KB capToolOutput ceiling without binary
+// halving. managedFields, annotations, spec, and status conditions are
+// dropped. Without this, "list all pods" on a real cluster returns ~200KB
+// per turn and gpt-4o-mini emits no written answer.
 //
 // The shape is preserved: { items: [...], item_count: N, kind: K? } so
 // existing tools that count len(items) continue to work.
@@ -242,7 +282,7 @@ func summarizeListForLLM(raw interface{}) interface{} {
 		if arr, isArr := raw.([]interface{}); isArr {
 			summarized := make([]interface{}, 0, len(arr))
 			for _, it := range arr {
-				summarized = append(summarized, summarizeItem(it))
+				summarized = append(summarized, slimSummarizeItem(it))
 			}
 			return map[string]interface{}{
 				"items":      summarized,
@@ -257,15 +297,160 @@ func summarizeListForLLM(raw interface{}) interface{} {
 	}
 	summarized := make([]interface{}, 0, len(items))
 	for _, it := range items {
-		summarized = append(summarized, summarizeItem(it))
+		summarized = append(summarized, slimSummarizeItem(it))
 	}
 	out := map[string]interface{}{
 		"items":      summarized,
 		"item_count": len(summarized),
 	}
-	for _, k := range []string{"kind", "apiVersion", "cluster_id", "namespace"} {
+	for _, k := range []string{"kind", "apiVersion", "cluster_id", "namespace", "total_count"} {
 		if v, ok := m[k]; ok {
 			out[k] = v
+		}
+	}
+	// If total_count (from backend metadata.total) exceeds item_count, the
+	// LLM is seeing a paged subset. Surface this explicitly.
+	if tc, ok := out["total_count"]; ok {
+		if tcInt, ok := tc.(int); ok && tcInt > len(summarized) {
+			out["_note"] = fmt.Sprintf(
+				"Showing %d of %d total. Use limit or namespace parameters to page.",
+				len(summarized), tcInt,
+			)
+		}
+	}
+	return out
+}
+
+// isSemanticLabel returns true for labels that help the LLM understand
+// resource identity and grouping. Generated hash labels (pod-template-hash,
+// controller-revision-hash) and verbose Helm/operator metadata labels
+// (helm.sh/chart, app.kubernetes.io/version, app.kubernetes.io/managed-by)
+// are excluded — they add 100-400 bytes per resource without helping answers.
+func isSemanticLabel(key string) bool {
+	switch key {
+	case "pod-template-hash", "controller-revision-hash",
+		"statefulset.kubernetes.io/pod-name",
+		"apps.kubernetes.io/pod-index":
+		return false
+	}
+	// Skip Helm/operator verbose metadata labels.
+	for _, prefix := range []string{
+		"helm.sh/",
+		"app.kubernetes.io/managed-by",
+		"app.kubernetes.io/version",
+		"meta.helm.sh/",
+	} {
+		if strings.HasPrefix(key, prefix) || key == prefix {
+			return false
+		}
+	}
+	return true
+}
+
+// slimSummarizeItem produces a compact list-row representation of a K8s
+// object that fits 30-50 items within the 8 KB capToolOutput ceiling.
+// The key insight: real cluster bloat comes from annotations (10KB+
+// last-applied-configuration), managedFields (several KB per object),
+// and spec (volumes, resources, env). Labels are kept — they're small and
+// the LLM needs them for grouping. Container restart/readiness counters
+// are kept as aggregate numbers (not per-container detail).
+func slimSummarizeItem(raw interface{}) interface{} {
+	m, ok := raw.(map[string]interface{})
+	if !ok {
+		return raw
+	}
+	out := map[string]interface{}{}
+	kind, _ := m["kind"].(string)
+	if kind != "" {
+		out["kind"] = kind
+	}
+	if meta, ok := m["metadata"].(map[string]interface{}); ok {
+		md := map[string]interface{}{}
+		for _, k := range []string{"name", "namespace", "creationTimestamp"} {
+			if v, ok := meta[k]; ok {
+				md[k] = v
+			}
+		}
+		// Keep semantic labels only — strip generated hash labels
+		// (pod-template-hash, controller-revision-hash) and verbose
+		// Helm/operator labels (helm.sh/chart, app.kubernetes.io/version)
+		// that add hundreds of bytes without helping the LLM group resources.
+		if labels, ok := meta["labels"].(map[string]interface{}); ok {
+			slim := make(map[string]interface{}, len(labels))
+			for k, v := range labels {
+				if isSemanticLabel(k) {
+					slim[k] = v
+				}
+			}
+			if len(slim) > 0 {
+				md["labels"] = slim
+			} else {
+				md["labels"] = labels // keep all if nothing survived the filter
+			}
+		}
+		out["metadata"] = md
+	}
+	// Compact status: phase or derived health + aggregated restart/readiness.
+	// Excludes conditions, podIP, hostIP, startTime, full containerStatuses.
+	ss := map[string]interface{}{}
+	if st, ok := m["status"].(map[string]interface{}); ok {
+		if phase, ok := st["phase"].(string); ok && phase != "" {
+			ss["phase"] = phase
+		}
+		// Workload health from replica counts.
+		if desired, hasR := st["replicas"].(float64); hasR {
+			ready, _ := st["readyReplicas"].(float64)
+			switch {
+			case desired == 0:
+				ss["health"] = "ScaledToZero"
+			case ready >= desired:
+				ss["health"] = "Available"
+			case ready == 0:
+				ss["health"] = "Unavailable"
+			default:
+				ss["health"] = "Degraded"
+			}
+		}
+		// Aggregate container restarts and not-ready count — two numbers,
+		// not per-container detail.
+		if cs, ok := st["containerStatuses"].([]interface{}); ok {
+			restarts, notReady := 0, 0
+			for _, c := range cs {
+				if cm, ok := c.(map[string]interface{}); ok {
+					if r, ok := cm["restartCount"].(float64); ok {
+						restarts += int(r)
+					}
+					if ready, ok := cm["ready"].(bool); ok && !ready {
+						notReady++
+					}
+				}
+			}
+			if restarts > 0 {
+				ss["total_restarts"] = restarts
+			}
+			if notReady > 0 {
+				ss["containers_not_ready"] = notReady
+			}
+		}
+	}
+	if len(ss) > 0 {
+		out["status"] = ss
+	}
+	// Slim spec: just container names (no images/env/volumeMounts).
+	// Enough for "what containers are in this pod?" without the bloat.
+	if sp, ok := m["spec"].(map[string]interface{}); ok {
+		if containers, ok := sp["containers"].([]interface{}); ok {
+			names := make([]string, 0, len(containers))
+			for _, c := range containers {
+				if cm, ok := c.(map[string]interface{}); ok {
+					if n, ok := cm["name"].(string); ok {
+						names = append(names, n)
+					}
+				}
+			}
+			if len(names) > 0 {
+				out["spec"] = map[string]interface{}{"container_names": names}
+			}
 		}
 	}
 	return out

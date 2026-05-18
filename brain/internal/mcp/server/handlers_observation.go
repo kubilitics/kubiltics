@@ -158,21 +158,36 @@ func (s *mcpServerImpl) handleResourcesByQuery(ctx context.Context, args map[str
 	query := strings.TrimSpace(strArg(args, "query"))
 	namespace := strArg(args, "namespace")
 	kind := strArg(args, "kind")
-	limit := intArg(args, "limit", 25)
+	limit := intArg(args, "limit", 50)
 
 	// If no search query is given, fall back to listing resources by kind/namespace
 	// or returning the cluster overview. This avoids the backend 400 for empty q=.
-	// Backend list route: GET /resources/{kindPlural}?namespace={ns}
+	// Backend list route: GET /resources/{kindPlural}?namespace={ns}&limit=N
 	if query == "" {
 		if kind != "" {
-			// Build the correct list path: /resources/{kindPlural}?namespace={ns}
-			listPath := c.clusterPath(clusterID, "/resources/"+url.PathEscape(kindToRestPlural(kind)))
+			// Pass limit to the backend so we never over-fetch on large clusters
+			// (1000-pod clusters would return 150KB+ without it). The backend
+			// also returns metadata.total so the LLM can report the real count
+			// even when showing a capped subset.
+			params := url.Values{}
 			if namespace != "" {
-				listPath += "?namespace=" + url.QueryEscape(namespace)
+				params.Set("namespace", namespace)
 			}
-			var listResults interface{}
+			params.Set("limit", fmt.Sprint(limit))
+			listPath := c.clusterPath(clusterID, "/resources/"+url.PathEscape(kindToRestPlural(kind)))
+			if len(params) > 0 {
+				listPath += "?" + params.Encode()
+			}
+			var listResults map[string]interface{}
 			if listErr := c.get(ctx, listPath, &listResults); listErr == nil {
-				return summarizeListForLLM(listResults), nil
+				// Hoist metadata.total as total_count so the LLM always knows
+				// the real cluster-wide count even when items are capped.
+				if meta, ok := listResults["metadata"].(map[string]interface{}); ok {
+					if total, ok := meta["total"].(float64); ok && total > 0 {
+						listResults["total_count"] = int(total)
+					}
+				}
+				return capListOutput(summarizeListForLLM(listResults)), nil
 			}
 		}
 		// No kind either — return workloads overview as it's the richest summary.

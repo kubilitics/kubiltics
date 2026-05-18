@@ -41,5 +41,5 @@ func buildComposableResult(
 		}
 		res.Partial = append(res.Partial, tool)
 	}
-	return capToolOutput(summarizeListForLLM(res))
+	return capListOutput(summarizeListForLLM(res))
 }

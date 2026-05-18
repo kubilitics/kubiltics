@@ -132,7 +132,7 @@ func buildInspectResult(
 
 	// Pass through the same list-trimmer + output-cap the rest of the
 	// observation handlers use so one fat composite can't blow the budget.
-	return capToolOutput(summarizeListForLLM(res))
+	return capListOutput(summarizeListForLLM(res))
 }
 
 // ─── namespaced composites with detailed+events+ownership ────────────────
