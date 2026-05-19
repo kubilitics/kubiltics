@@ -389,6 +389,41 @@ jobs:
           fi
           CI=true cargo tauri build --target universal-apple-darwin --bundles app,dmg --config "$CONFIG"
 
+      # macOS 26 (Darwin 25+) refuses to spawn any app bundle that contains
+      # LSRequiresCarbon=true — launchd returns POSIX error 163 before the
+      # process even starts.  Tauri hard-codes this key in its bundle
+      # template, so we strip it with a post-build plist patch and re-sign.
+      - name: Patch Info.plist for macOS 26 compatibility
+        if: matrix.os == 'macos-latest'
+        run: |
+          APP=$(find kubilitics-desktop/src-tauri/target/universal-apple-darwin/release/bundle -name "Kubilitics.app" -type d | head -1)
+          PLIST="$APP/Contents/Info.plist"
+          python3 - <<PYEOF
+          import plistlib
+          with open("$PLIST", "rb") as f:
+              pl = plistlib.load(f)
+          pl.pop("LSRequiresCarbon", None)
+          pl["NSPrincipalClass"] = "NSApplication"
+          pl["LSMinimumSystemVersion"] = "12.0"
+          with open("$PLIST", "wb") as f:
+              plistlib.dump(pl, f)
+          print("Patched:", list(pl.keys()))
+          PYEOF
+
+      - name: Re-sign app after Info.plist patch
+        if: matrix.os == 'macos-latest'
+        run: |
+          APP=$(find kubilitics-desktop/src-tauri/target/universal-apple-darwin/release/bundle -name "Kubilitics.app" -type d | head -1)
+          if [ -n "${{ secrets.APPLE_CERTIFICATE }}" ]; then
+            IDENTITY="${{ secrets.APPLE_SIGNING_IDENTITY }}"
+          else
+            IDENTITY="-"
+          fi
+          codesign --force --deep --sign "$IDENTITY" \
+            --entitlements kubilitics-desktop/src-tauri/entitlements.plist \
+            --options runtime "$APP"
+          echo "Re-signed $APP with $IDENTITY"
+
       - name: Verify macOS codesign (pre-notarize)
         if: matrix.os == 'macos-latest'
         run: |
