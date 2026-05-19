@@ -339,6 +339,12 @@ jobs:
             [ -f "$BINS/$bin" ] && echo "✅ $bin" || { echo "❌ Missing: $bin"; exit 1; }
           done
 
+      # ── macOS DMG tooling ───────────────────────────────────────────────
+      # Tauri's bundle_dmg.sh requires create-dmg; not pre-installed on runners.
+      - name: Install create-dmg (macOS only)
+        if: matrix.os == 'macos-latest'
+        run: brew install create-dmg
+
       # ── macOS code signing ──────────────────────────────────────────────
       - name: Setup macOS code signing
         if: matrix.os == 'macos-latest'
