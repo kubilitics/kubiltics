@@ -38,11 +38,7 @@
       "entitlements": "entitlements.plist",
       "frameworks": null,
       "exceptionDomain": null,
-      "minimumSystemVersion": "12.0",
-      "infoPlistData": {
-        "LSRequiresCarbon": false,
-        "NSPrincipalClass": "NSApplication"
-      }
+      "minimumSystemVersion": "12.0"
     },
     "windows": {
       "certificateThumbprint": null,
