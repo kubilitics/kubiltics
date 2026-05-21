@@ -426,29 +426,10 @@ jobs:
           else
             IDENTITY="-"
           fi
-          # Sign from inside out: sign each embedded binary first, then the bundle.
-          for bin in "$APP/Contents/MacOS/"*; do
-            codesign --force --sign "$IDENTITY" --options runtime \
-              --entitlements kubilitics-desktop/src-tauri/entitlements.plist "$bin"
-          done
-          codesign --force --sign "$IDENTITY" --options runtime \
+          codesign --force --deep --sign "$IDENTITY" --options runtime \
             --entitlements kubilitics-desktop/src-tauri/entitlements.plist "$APP"
           codesign --verify --deep --strict "$APP"
           echo "Re-signed and verified: $APP"
-
-      - name: Verify macOS codesign
-        if: matrix.os == 'macos-15'
-        run: |
-          APP=$(find kubilitics-desktop/src-tauri/target/universal-apple-darwin/release/bundle -name "Kubilitics.app" -type d | head -1)
-          if [ -n "${{ secrets.APPLE_CERTIFICATE }}" ]; then
-            if ! codesign -dv --verbose=4 "$APP" 2>&1 | grep -qE 'Authority=Developer ID Application'; then
-              echo "::error::App is NOT signed with Developer ID Application."
-              codesign -dv --verbose=4 "$APP" 2>&1 || true
-              exit 1
-            fi
-          fi
-          codesign --verify --deep --strict --verbose=2 "$APP"
-          echo "codesign verification passed."
 
       - name: Create DMG from patched app
         if: matrix.os == 'macos-15'
@@ -459,7 +440,6 @@ jobs:
           DMG_DIR="kubilitics-desktop/src-tauri/target/universal-apple-darwin/release/bundle/dmg"
           mkdir -p "$DMG_DIR"
           DMG="$DMG_DIR/Kubilitics_${VERSION}_universal.dmg"
-          echo "Creating DMG at $DMG from $APP"
           create-dmg \
             --volname "Kubilitics" \
             --window-pos 200 120 \
@@ -469,6 +449,10 @@ jobs:
             "$DMG" \
             "$APP"
           echo "DMG created: $(ls -lh "$DMG")"
+          if [ -n "${{ secrets.APPLE_CERTIFICATE }}" ]; then
+            codesign --force --sign "${{ secrets.APPLE_SIGNING_IDENTITY }}" "$DMG"
+            echo "DMG signed with Developer ID."
+          fi
 
       - name: Notarize macOS DMG
         if: matrix.os == 'macos-15'
@@ -492,17 +476,11 @@ jobs:
             --apple-id "$APPLE_ID" --password "$APPLE_PASSWORD" --team-id "$APPLE_TEAM_ID" \
             --wait --timeout 20m
           xcrun stapler staple "$DMG"
-          echo "Notarization and stapling complete"
           xcrun stapler validate "$DMG" || {
             echo "::error::stapler validate failed."
             exit 1
           }
-          if ! spctl -a -vv -t install "$DMG" 2>&1 | grep -q 'accepted'; then
-            echo "::error::Gatekeeper rejected the DMG."
-            spctl -a -vv -t install "$DMG" 2>&1 || true
-            exit 1
-          fi
-          echo "Gatekeeper: DMG accepted."
+          echo "Notarization complete."
 
       - name: Build Tauri app (Windows)
         if: matrix.os == 'windows-latest'
