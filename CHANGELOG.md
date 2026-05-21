@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [UNRELEASED]
 
+## [1.4.0] - 2026-05-21
+
+### Fixed
+
+- **macOS keychain: no more repeated "enter login password" dialogs** — `list_profiles` and `get_active_profile` no longer probe the OS keychain on every call. The `has_key` field is now read from the persisted journal (already correctly maintained on save/delete) instead of issuing a live keychain query. This eliminates the macOS Keychain ACL dialog that fired on every profile list after an app upgrade or re-sign.
+- **macOS 26 (Darwin 25+) launch failure** — Tauri hard-codes `LSRequiresCarbon = true` in `Info.plist`; macOS 26 (Darwin 25.4.0) refuses to spawn any bundle with this key set, returning `NSPOSIXErrorDomain Code=163`. CI now strips the key post-build, adds `NSPrincipalClass = NSApplication`, sets `LSMinimumSystemVersion = 12.0`, and re-signs the app before notarization.
+- **DMG build failure on CI runners** — `bundle_dmg.sh` requires `create-dmg`; added `brew install create-dmg` to the macOS release step so CI always has it.
+
+### Removed
+
+- Releases v1.3.0, v1.3.1, v1.3.2 deprecated and removed — v1.4.0 supersedes all three with the above stability fixes.
+
 ## [1.3.0] - 2026-05-18
 
 ### Added

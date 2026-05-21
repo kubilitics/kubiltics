@@ -34,25 +34,15 @@ impl ProfileStore {
     }
 }
 
-fn refresh_has_key(p: &mut Profile) {
-    p.has_key = keychain::has_key(p.id);
-}
-
 #[tauri::command]
 pub fn list_profiles(store: State<'_, ProfileStore>) -> Result<Vec<Profile>, String> {
-    let mut journal = store.journal.lock().unwrap();
-    for p in &mut journal.profiles {
-        refresh_has_key(p);
-    }
+    let journal = store.journal.lock().unwrap();
     Ok(journal.profiles.clone())
 }
 
 #[tauri::command]
 pub fn get_active_profile(store: State<'_, ProfileStore>) -> Result<Option<Profile>, String> {
-    let mut journal = store.journal.lock().unwrap();
-    for p in &mut journal.profiles {
-        refresh_has_key(p);
-    }
+    let journal = store.journal.lock().unwrap();
     Ok(journal.active().cloned())
 }
 
