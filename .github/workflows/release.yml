@@ -420,6 +420,24 @@ jobs:
           print("Keys:", sorted(pl.keys()))
           PYEOF
 
+      - name: Rewrite Carbon dylib to HIToolbox (macOS 26 compatibility)
+        if: matrix.os == 'macos-15'
+        run: |
+          APP=$(find kubilitics-desktop/src-tauri/target/universal-apple-darwin/release/bundle -name "Kubilitics.app" -type d | head -1)
+          BINARY="$APP/Contents/MacOS/kubilitics-desktop"
+          # macOS 26 (Tahoe) removed the Carbon.framework umbrella dylib.
+          # tao (Tauri's windowing library) links Carbon for keyboard APIs
+          # (TISCopyCurrentKeyboardLayoutInputSource, UCKeyTranslate, LMGetKbdType).
+          # Those symbols live in HIToolbox, which is still present in the dyld
+          # shared cache on macOS 26. Rewrite the LC_LOAD_DYLIB entry before
+          # re-signing so the app can launch on macOS 26.
+          install_name_tool -change \
+            "/System/Library/Frameworks/Carbon.framework/Versions/A/Carbon" \
+            "/System/Library/Frameworks/Carbon.framework/Versions/A/Frameworks/HIToolbox.framework/Versions/A/HIToolbox" \
+            "$BINARY"
+          echo "Verification — Carbon should now point to HIToolbox:"
+          otool -L "$BINARY" | grep -E 'Carbon|HIToolbox'
+
       - name: Re-sign app after Info.plist verification
         if: matrix.os == 'macos-15'
         run: |
@@ -438,10 +456,11 @@ jobs:
           #      needs allow-jit for JavaScript execution).
           # Do NOT use --deep: it is deprecated, applies wrong entitlements to
           # sidecars, and misbehaves with universal binaries on macOS 13+.
+          MAIN_BINARY="kubilitics-desktop"
           for bin in "$APP/Contents/MacOS/"*; do
             bin_name="$(basename "$bin")"
-            if [ "$bin_name" = "Kubilitics" ]; then
-              continue  # main executable is covered by the bundle re-sign below
+            if [ "$bin_name" = "$MAIN_BINARY" ]; then
+              continue  # main binary is covered by the bundle re-sign below
             fi
             codesign --force --sign "$IDENTITY" --options runtime \
               --entitlements kubilitics-desktop/src-tauri/entitlements-sidecar.plist "$bin"
