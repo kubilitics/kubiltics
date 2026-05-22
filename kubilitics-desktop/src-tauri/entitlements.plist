@@ -23,13 +23,10 @@
   <true/>
   <key>com.apple.security.files.user-selected.read-write</key>
   <true/>
-  <!-- Scopes keychain entries to the team prefix so a single "Always Allow"
-       persists across app updates. Use literal team ID prefix (not
-       $(AppIdentifierPrefix)) — Developer ID signing without a provisioning
-       profile does not expand that variable, leaving it as a literal string. -->
-  <key>keychain-access-groups</key>
-  <array>
-    <string>DJAF5D948L.com.kubilitics.desktop</string>
-  </array>
+  <!-- keychain-access-groups intentionally absent: on macOS 26 (Tahoe)
+       this entitlement triggers NSPOSIXErrorDomain Code=163 "Launchd job
+       spawn failed" for Developer ID apps without a provisioning profile.
+       Keychain still works for storing AI credentials — items are scoped
+       by the app's bundle ID automatically. -->
 </dict>
 </plist>
