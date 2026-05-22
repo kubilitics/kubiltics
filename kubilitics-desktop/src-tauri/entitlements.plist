@@ -4,23 +4,18 @@
 <plist version="1.0">
 <dict>
   <!-- Tauri-2 / WKWebView hardened-runtime entitlements.
-       allow-jit and allow-unsigned-executable-memory are required by
-       WebKit's JavaScript engine (Nitro JIT) running inside WKWebView.
-       Without them, WKWebView falls back to a slow interpreter and the
-       UI is sluggish or fails to render complex pages.
-
-       disable-library-validation is intentionally NOT present: the Go
-       sidecar binaries are CGO_ENABLED=0 (fully static) and Apple's
-       WKWebView / Tauri frameworks are all Apple-signed. There is no
-       need to bypass library validation, and keeping it absent avoids
-       Gatekeeper flagging on macOS 13+.
+       allow-jit is required for WKWebView's JavaScript engine (Nitro JIT).
+       On macOS 14+, WKWebView runs JS in a separate Apple-signed WebContent
+       process that manages its own JIT permissions — the host app only needs
+       allow-jit. allow-unsigned-executable-memory is NOT needed and is
+       BLOCKED by macOS 26 (Tahoe) policy for Developer ID apps with
+       Hardened Runtime — keeping it causes NSPOSIXErrorDomain Code=163
+       "Launchd job spawn failed" on macOS 26.
 
        The sidecar binaries (kubilitics-backend, kubilitics-ai-server,
        kcli) are signed separately with entitlements-sidecar.plist which
        has no JIT entitlements. -->
   <key>com.apple.security.cs.allow-jit</key>
-  <true/>
-  <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
   <true/>
   <key>com.apple.security.network.client</key>
   <true/>
@@ -28,14 +23,13 @@
   <true/>
   <key>com.apple.security.files.user-selected.read-write</key>
   <true/>
-  <!-- Load-bearing: scopes our keychain entries to the team prefix.
-       Without this, the keychain ACL is bound to binary hash and
-       users hit the "enter login password" dialog on every release
-       update. With it, the ACL is bound to TeamIdentifier+bundle ID
-       so a single "Always Allow" persists across every future update. -->
+  <!-- Scopes keychain entries to the team prefix so a single "Always Allow"
+       persists across app updates. Use literal team ID prefix (not
+       $(AppIdentifierPrefix)) — Developer ID signing without a provisioning
+       profile does not expand that variable, leaving it as a literal string. -->
   <key>keychain-access-groups</key>
   <array>
-    <string>$(AppIdentifierPrefix)com.kubilitics.desktop</string>
+    <string>DJAF5D948L.com.kubilitics.desktop</string>
   </array>
 </dict>
 </plist>
