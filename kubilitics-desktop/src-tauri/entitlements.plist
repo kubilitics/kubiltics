@@ -3,14 +3,24 @@
   "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-  <!-- Tauri-2 hardened-runtime defaults required because `cargo tauri
-       build` enables hardened runtime. See codesign output showing
-       `flags=0x10000(runtime)` on the produced .app. -->
+  <!-- Tauri-2 / WKWebView hardened-runtime entitlements.
+       allow-jit and allow-unsigned-executable-memory are required by
+       WebKit's JavaScript engine (Nitro JIT) running inside WKWebView.
+       Without them, WKWebView falls back to a slow interpreter and the
+       UI is sluggish or fails to render complex pages.
+
+       disable-library-validation is intentionally NOT present: the Go
+       sidecar binaries are CGO_ENABLED=0 (fully static) and Apple's
+       WKWebView / Tauri frameworks are all Apple-signed. There is no
+       need to bypass library validation, and keeping it absent avoids
+       Gatekeeper flagging on macOS 13+.
+
+       The sidecar binaries (kubilitics-backend, kubilitics-ai-server,
+       kcli) are signed separately with entitlements-sidecar.plist which
+       has no JIT entitlements. -->
   <key>com.apple.security.cs.allow-jit</key>
   <true/>
   <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
-  <true/>
-  <key>com.apple.security.cs.disable-library-validation</key>
   <true/>
   <key>com.apple.security.network.client</key>
   <true/>

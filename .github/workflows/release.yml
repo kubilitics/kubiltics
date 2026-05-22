@@ -21,7 +21,8 @@ env:
   PLATFORMS: linux/amd64,linux/arm64
   # Use pre-built tauri-cli from GitHub releases instead of compiling from source.
   # This saves 8-11 minutes per desktop runner.
-  TAURI_CLI_VERSION: '2.10.1'
+  # Must match the tauri framework version in Cargo.lock.
+  TAURI_CLI_VERSION: '2.11.2'
 
 jobs:
   # ── Gate: version consistency + CI status ────────────────────────────────
@@ -300,18 +301,20 @@ jobs:
             chmod +x "$BINS/kubilitics-backend-"* "$BINS/kcli-"* "$BINS/kubilitics-ai-server-"*
 
           elif [ "${{ matrix.os }}" == "windows-latest" ]; then
+            # Use absolute BINS path to survive the chain of cd commands below.
+            ABS_BINS="$(pwd)/$BINS"
             cd kubilitics-backend
             CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build \
               -ldflags="-X github.com/kubilitics/kubilitics-backend/internal/version.Version=${VERSION}" \
-              -o "../$BINS/kubilitics-backend-x86_64-pc-windows-msvc.exe" ./cmd/server
+              -o "$ABS_BINS/kubilitics-backend-x86_64-pc-windows-msvc.exe" ./cmd/server
             cd ../kubilitics-cli
             CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build \
-              -o "../$BINS/kcli-x86_64-pc-windows-msvc.exe" ./cmd/kcli
+              -o "$ABS_BINS/kcli-x86_64-pc-windows-msvc.exe" ./cmd/kcli
             cd "../$BRAIN_SRC"
             # Brain is in the monorepo go.work workspace as of Phase B.
             CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build \
               -ldflags="-s -w" \
-              -o "../$BINS/kubilitics-ai-server-x86_64-pc-windows-msvc.exe" $BRAIN_PKG
+              -o "$ABS_BINS/kubilitics-ai-server-x86_64-pc-windows-msvc.exe" $BRAIN_PKG
 
           else
             (cd kubilitics-backend && CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="$BACKEND_LDFLAGS" -o "../$BINS/kubilitics-backend-x86_64-unknown-linux-gnu"   ./cmd/server) &
@@ -426,9 +429,27 @@ jobs:
           else
             IDENTITY="-"
           fi
-          codesign --force --deep --sign "$IDENTITY" --options runtime \
+          # Sign from inside out:
+          #   1. Re-sign each embedded sidecar binary with hardened runtime.
+          #      Go binaries (CGO_ENABLED=0) don't need JIT entitlements — use
+          #      a minimal sidecar entitlements file so Apple doesn't flag the
+          #      overly-permissive JIT/library-validation flags during notarization.
+          #   2. Re-sign the bundle itself with full app entitlements (WKWebView
+          #      needs allow-jit for JavaScript execution).
+          # Do NOT use --deep: it is deprecated, applies wrong entitlements to
+          # sidecars, and misbehaves with universal binaries on macOS 13+.
+          for bin in "$APP/Contents/MacOS/"*; do
+            bin_name="$(basename "$bin")"
+            if [ "$bin_name" = "Kubilitics" ]; then
+              continue  # main executable is covered by the bundle re-sign below
+            fi
+            codesign --force --sign "$IDENTITY" --options runtime \
+              --entitlements kubilitics-desktop/src-tauri/entitlements-sidecar.plist "$bin"
+          done
+          codesign --force --sign "$IDENTITY" --options runtime \
             --entitlements kubilitics-desktop/src-tauri/entitlements.plist "$APP"
-          codesign --verify --deep --strict "$APP"
+          # Verify all nested signatures are valid before creating the DMG.
+          codesign --verify --deep --strict --verbose=2 "$APP"
           echo "Re-signed and verified: $APP"
 
       - name: Create DMG from patched app
@@ -480,7 +501,16 @@ jobs:
             echo "::error::stapler validate failed."
             exit 1
           }
-          echo "Notarization complete."
+          echo "Notarization and stapling complete."
+          # Final Gatekeeper gate: reject the release before upload if the DMG
+          # fails spctl. On GitHub-hosted macOS 15 runners spctl has network
+          # access to verify the notarization ticket, so this is authoritative.
+          if ! spctl -a -vv -t install "$DMG" 2>&1 | grep -q 'accepted'; then
+            echo "::error::Gatekeeper rejected the notarized DMG. The release would be un-openable for users."
+            spctl -a -vv -t install "$DMG" 2>&1 || true
+            exit 1
+          fi
+          echo "Gatekeeper: DMG accepted."
 
       - name: Build Tauri app (Windows)
         if: matrix.os == 'windows-latest'

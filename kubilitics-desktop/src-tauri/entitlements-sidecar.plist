@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <!-- Minimal hardened-runtime entitlements for the Go sidecar binaries
+       (kubilitics-backend, kubilitics-ai-server, kcli).
+
+       These binaries are built with CGO_ENABLED=0 (fully static Go), so they
+       do NOT need:
+         - com.apple.security.cs.allow-jit (no JavaScript engine)
+         - com.apple.security.cs.allow-unsigned-executable-memory (no JIT)
+         - com.apple.security.cs.disable-library-validation (no C dylibs)
+
+       Applying those permissive flags to Go binaries would flag them in
+       Apple's notarization review and can cause Gatekeeper to reject the
+       bundle on macOS 13+.
+
+       See entitlements.plist for the main Tauri/WKWebView executable. -->
+  <key>com.apple.security.network.client</key>
+  <true/>
+  <key>com.apple.security.network.server</key>
+  <true/>
+  <key>com.apple.security.files.user-selected.read-write</key>
+  <true/>
+</dict>
+</plist>
