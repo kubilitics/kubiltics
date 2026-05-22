@@ -56,4 +56,23 @@ if ! grep -q 'keychain-access-groups' "$ENT_PATH"; then
   exit 1
 fi
 
+# Also verify the sidecar entitlements file exists (used for signing Go binaries).
+SIDECAR_ENT_PATH="$ROOT/kubilitics-desktop/src-tauri/entitlements-sidecar.plist"
+if [ ! -f "$SIDECAR_ENT_PATH" ]; then
+  echo "FAIL: $SIDECAR_ENT_PATH does not exist."
+  echo "      Required for correct inside-out re-signing of Go sidecar binaries."
+  exit 1
+fi
+
+# Verify entitlements.plist does NOT grant disable-library-validation.
+# That flag is overly permissive for a Tauri+WKWebView app with static Go
+# sidecars and causes Gatekeeper to flag the bundle on macOS 13+.
+# Check for the XML <key> tag specifically to avoid matching comments.
+if grep -q '<key>com.apple.security.cs.disable-library-validation</key>' "$ENT_PATH"; then
+  echo "FAIL: $ENT_PATH grants com.apple.security.cs.disable-library-validation."
+  echo "      This entitlement is not needed (CGO_ENABLED=0 sidecars, Apple-signed frameworks)."
+  echo "      Remove it to pass Gatekeeper checks."
+  exit 1
+fi
+
 echo "OK: tauri macOS signing config is intact."
