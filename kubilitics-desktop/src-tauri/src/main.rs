@@ -14,6 +14,7 @@ mod backend_ports;
 mod commands;
 mod menu;
 mod profile;
+mod secure_store;
 mod sidecar;
 mod tray;
 

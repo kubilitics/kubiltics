@@ -28,11 +28,18 @@ func derive(toolName, namespace string, shaped json.RawMessage) (derived.Derived
 				Status string `json:"STATUS"`
 			} `json:"rows"`
 			SingleNamespace string `json:"single_namespace"`
+			TotalCount      int    `json:"total_count"`
 		}
 		if err := json.Unmarshal(shaped, &t); err != nil {
 			return d, err
 		}
 		d.RowCount = len(t.Rows)
+		// When capListOutput trimmed the items array, TotalCount holds the
+		// real cluster-wide count. Use it so the summary reports the truth
+		// ("32 resources") rather than the visible subset ("16").
+		if t.TotalCount > d.RowCount {
+			d.RowCount = t.TotalCount
+		}
 		// Override: use the namespace observed in the rendered data, not the
 		// namespace the LLM requested. SingleNamespace is "" when rows span
 		// multiple namespaces or are cluster-scoped — no qualifier in summary.

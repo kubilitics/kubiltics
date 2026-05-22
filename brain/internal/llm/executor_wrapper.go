@@ -153,12 +153,18 @@ func (w *renderWrappedExecutor) Execute(
 // countRows is a best-effort row count for the LLM stub. It reads
 // only "rows" array length — never names, never values. yaml_block
 // has no rows; treat as 1 document. Errors silently → 0.
+// When the renderer set total_count (because capListOutput trimmed
+// the array), we return that — it's the real cluster-wide count.
 func countRows(shaped []byte) int {
 	type rowCounter struct {
-		Rows []struct{} `json:"rows"`
+		Rows       []struct{} `json:"rows"`
+		TotalCount int        `json:"total_count"`
 	}
 	var rc rowCounter
 	_ = json.Unmarshal(shaped, &rc)
+	if rc.TotalCount > len(rc.Rows) && rc.TotalCount > 0 {
+		return rc.TotalCount
+	}
 	if len(rc.Rows) > 0 {
 		return len(rc.Rows)
 	}

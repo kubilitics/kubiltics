@@ -30,11 +30,6 @@ aes-gcm = "0.10"
 base64 = "0.22"
 rand = "0.8"
 sha2 = "0.10"
-# Phase 2 / Gap 6 — cross-platform keychain. Wraps macOS Security framework
-# (Keychain Services), Windows Credential Manager, and Linux libsecret
-# under a single API. Replaces the macOS `security` CLI shell-out and the
-# 0600 filesystem fallback that plaintext-stored keys on Linux/Windows.
-keyring = { version = "3", features = ["apple-native", "windows-native", "linux-native"] }
 # Phase 2 code-quality fix #2 — validate base_url in save_ai_config.
 url = "2"
 

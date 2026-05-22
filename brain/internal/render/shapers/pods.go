@@ -171,7 +171,13 @@ func ShapeListResources(raw json.RawMessage) (json.RawMessage, error) {
 		}
 		rows[i] = row
 	}
-	return json.Marshal(table{Columns: cols, Rows: rows, SingleNamespace: singleNS})
+	tbl := table{Columns: cols, Rows: rows, SingleNamespace: singleNS}
+	// Preserve real total when capListOutput trimmed items so the summary
+	// says "32 resources" even when only 16 rows are shown.
+	if p.ItemCount > len(rows) && p.ItemCount > 0 {
+		tbl.TotalCount = p.ItemCount
+	}
+	return json.Marshal(tbl)
 }
 
 func statusOrDefault(s string) string {
@@ -206,12 +212,13 @@ type column struct {
 }
 
 type table struct {
-	Columns []column                 `json:"columns"`
-	Rows    []map[string]interface{} `json:"rows"`
-	// SingleNamespace is non-empty when every row belongs to the same
-	// namespace. derive.go reads this to label the summary accurately
-	// regardless of what namespace the LLM passed in its tool args.
-	SingleNamespace string `json:"single_namespace,omitempty"`
+	Columns         []column                 `json:"columns"`
+	Rows            []map[string]interface{} `json:"rows"`
+	SingleNamespace string                   `json:"single_namespace,omitempty"`
+	// TotalCount is set when capListOutput trimmed the items array so
+	// derive.go can report the real cluster-wide count in the summary
+	// ("32 resources") rather than the visible subset count ("16").
+	TotalCount int `json:"total_count,omitempty"`
 }
 
 type podLite struct {

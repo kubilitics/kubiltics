@@ -109,32 +109,16 @@ fn config_yaml_path() -> Result<PathBuf, String> {
 // three platforms). This rewrite closes that gap.
 
 fn keychain_set(account: &str, secret: &str) -> Result<(), String> {
-    let entry = keyring::Entry::new(KEYCHAIN_SERVICE, account)
-        .map_err(|e| format!("keychain entry: {}", e))?;
-    entry
-        .set_password(secret)
-        .map_err(|e| format!("keychain set: {}", e))
+    crate::secure_store::set_secret(KEYCHAIN_SERVICE, account, secret)
 }
 
 fn keychain_get(account: &str) -> Result<Option<String>, String> {
-    let entry = keyring::Entry::new(KEYCHAIN_SERVICE, account)
-        .map_err(|e| format!("keychain entry: {}", e))?;
-    match entry.get_password() {
-        Ok(s) => Ok(Some(s)),
-        Err(keyring::Error::NoEntry) => Ok(None),
-        Err(e) => Err(format!("keychain get: {}", e)),
-    }
+    crate::secure_store::get_secret(KEYCHAIN_SERVICE, account)
 }
 
 #[cfg(test)]
 fn keychain_delete(account: &str) -> Result<(), String> {
-    let entry = keyring::Entry::new(KEYCHAIN_SERVICE, account)
-        .map_err(|e| format!("keychain entry: {}", e))?;
-    match entry.delete_credential() {
-        Ok(()) => Ok(()),
-        Err(keyring::Error::NoEntry) => Ok(()),
-        Err(e) => Err(format!("keychain delete: {}", e)),
-    }
+    crate::secure_store::delete_secret(KEYCHAIN_SERVICE, account)
 }
 
 // ── YAML persistence (non-secret fields) ─────────────────────────────────
@@ -873,18 +857,16 @@ fn is_key_char(b: u8) -> bool {
 mod tests {
     use super::*;
 
-    // Phase 2 / Gap 6 — keyring round-trip. Uses the `mock` backend (keyring
-    // v3 ships one for CI/test use) so this runs in a sandbox without
-    // touching real OS credentials. Set via an init guard so concurrent
-    // tests in the same process share one mock store safely.
+    // Gap 6 — secure_store round-trip. Uses a temp HOME so the encrypted
+    // file store writes to an isolated directory, never the real config.
     #[test]
     #[serial_test::serial(ai_config_global_state)]
     fn keyring_round_trip_mock_backend() {
-        // Uses the cross-Entry-persisting in-memory credential builder
-        // defined in ai_config_e2e_test::inmem_keyring. keyring v3's
-        // bundled mock has EntryOnly persistence, which makes save+load
-        // tests impossible because each Entry::new creates a fresh mock.
-        super::e2e::use_mock_keyring();
+        let tmp = tempfile::tempdir().expect("tempdir");
+        unsafe {
+            std::env::set_var("HOME", tmp.path());
+            std::env::set_var("XDG_CONFIG_HOME", tmp.path());
+        }
         // set + get
         keychain_set("test-account-a", "sk-abc-123").expect("set");
         let got = keychain_get("test-account-a").expect("get");
@@ -895,8 +877,9 @@ mod tests {
         // delete + get returns None
         keychain_delete("test-account-a").expect("delete");
         assert!(keychain_get("test-account-a").unwrap().is_none());
-        // NoEntry is not an error for delete
+        // missing entry treated as None, not error
         assert!(keychain_delete("never-set").is_ok());
+        drop(tmp);
     }
 
     #[test]
