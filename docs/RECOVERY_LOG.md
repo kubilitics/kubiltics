@@ -82,3 +82,52 @@ Tested with `/tmp/KubiliticsTest.app` (ad-hoc signed after install_name_tool):
 - `open` exit code: 0
 
 **App opens successfully on macOS 26.4.1.**
+
+---
+
+## Recovery Session 2 — 2026-05-22 (hotfix/desktop-launch-recovery)
+
+### Problem
+
+v1.2.0 shipped with the HIToolbox fix applied. `spctl` accepted the notarized DMG.
+But `open /Applications/Kubilitics.app` still returned:
+
+```
+RBSRequestErrorDomain Code=5 / NSPOSIXErrorDomain Code=163 "Launchd job spawn failed"
+```
+
+The Carbon→HIToolbox fix addressed ONE trigger of `Code=163`. A second, independent
+trigger was present in the entitlements.
+
+### Root Cause (Second Trigger)
+
+`com.apple.security.cs.allow-unsigned-executable-memory` added in commit `6c08ffc2`
+is **blocked by macOS 26 (Tahoe)** for Hardened Runtime + Developer ID apps. The OS
+rejects the process at the launchd spawn level — before any app code executes.
+
+This entitlement is not needed by WKWebView on macOS 14+. WKWebView's JavaScript JIT
+runs in a separate Apple-signed `WebContent` process. The host app only needs
+`com.apple.security.cs.allow-jit`.
+
+### Evidence
+
+```
+# With allow-unsigned-executable-memory:
+open /Applications/Kubilitics.app → Code=163 ✗
+
+# Without allow-unsigned-executable-memory (ad-hoc signed copy):
+open /tmp/KubiTest.app → LAUNCH EXIT: 0 ✓
+  kubilitics-desktop PID: 65574  RUNNING
+  kubilitics-backend PID: 65580  RUNNING
+  Window: appeared ✓
+```
+
+### Fix
+
+`kubilitics-desktop/src-tauri/entitlements.plist` — commit `ee5966b2`:
+- Removed `com.apple.security.cs.allow-unsigned-executable-memory`
+- Replaced `$(AppIdentifierPrefix)` with literal `DJAF5D948L.` in keychain-access-groups
+
+### Status
+
+Fix committed on `hotfix/desktop-launch-recovery`. Needs CI rebuild + notarize for v1.2.1.
