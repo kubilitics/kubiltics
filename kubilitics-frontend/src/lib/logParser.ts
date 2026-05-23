@@ -5,6 +5,7 @@
 
 // Strips ANSI/VT100 escape sequences (colors, cursor moves, etc.) so pod logs
 // from apps that write colored terminal output render as plain text.
+// eslint-disable-next-line no-control-regex
 const ANSI_RE = /\x1b\[[0-9;]*[a-zA-Z]|\x1b[()][AB012]|\x1b[=>]|\x9b[0-9;]*[a-zA-Z]/g;
 function stripAnsi(s: string): string {
   return s.replace(ANSI_RE, '');
